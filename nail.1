@@ -98,9 +98,41 @@
 .Bk
 .Op Fl - Ar mta-option ...
 .Ek
+.\" }}}
 .\"
-.\" --  >8  --  8<  --
+.\" TOC {{{
+.if d this_is_only_for_mandoc \{
+.Sh "TABLE OF CONTENTS"
+.Bl -item
+.It
+. Sx DESCRIPTION
+.It
+. Sx "USAGE INTRODUCTION"
+.It
+. Sx "SPECIFYING MESSAGES"
+.It
+. Sx COMMANDS
+.It
+. Sx "TILDE ESCAPES"
+.It
+. Sx "VARIABLE OPTIONS"
+.It
+. Sx ENVIRONMENT
+.It
+. Sx FILES
+.It
+. Sx EXAMPLES
+.It
+. Sx "SEE ALSO"
+.It
+. Sx "IMPLEMENTATION NOTES"
+.It
+. Sx HISTORY
+.El
+.\}
+.\" }}} (TOC)
 .\"
+.\" .Sh DESCRIPTION {{{
 .Sh DESCRIPTION
 .Bd -filled -offset indent -compact
 .Sy Compatibility note:
@@ -320,6 +352,9 @@ E.g., the following should send an email message to `alias'.
 .El
 .\" }}}
 .\"
+.\" .Sh "USAGE INTRODUCTION" {{{
+.Sh "USAGE INTRODUCTION"
+.\"
 .\" .Ss "Sending mail" {{{
 .Ss "Sending mail"
 To send a message to one or more people,
@@ -369,14 +404,14 @@ command, or short: `p'.
 By default the current message (dot) is printed, but just like many
 other commands it is possible to specify lists of messages, as is
 documented in
-.Sx "Specifying messages" ;
+.Sx "SPECIFYING MESSAGES" ;
 e.g., `p:u' will display all unread messages, `p.' will print the dot,
 `p 1 5' will print the messages 1 and 5 and `p-' and `p+' will print the
 last and the next message, respectively.
 Dependent upon the configuration a
 .Sx "Command line editor"
 aims at making user experience with the many
-.Sx "Commands"
+.Sx "COMMANDS"
 a bit nicer.
 .\" }}}
 .\"
@@ -399,8 +434,102 @@ Deleted messages will, however, usually disappear never to be seen
 again.
 .\" }}}
 .\"
-.\" .Ss "Specifying messages" {{{
-.Ss "Specifying messages"
+.\" .Ss "Replying to or originating mail" {{{
+.Ss "Replying to or originating mail"
+The command
+.Ic reply
+can be used to set up a response to a message,
+sending it back to the person who it was from.
+Text the user types in, up to an end-of-file,
+defines the contents of the message.
+While the user is composing a message \*(UA treats lines beginning with
+the character `~' specially.
+For instance, typing `~m' (alone on a line) will place a copy of the
+current message into the response, each line prefixed by the value of
+.Va indentprefix .
+Other escapes will set up subject fields,
+add and delete recipients to the message,
+attach files to it
+and allow the user to escape to an editor to revise the message
+or to a shell to run some commands.
+(These options are given in the summary below.)
+.\" }}}
+.\"
+.\" .Ss "Recipient address specifications" {{{
+.Ss "Recipient address specifications"
+When an address is used to name a recipient (in `To:', `Cc:', or `Bcc:'),
+names of local mail folders and pipes to external commands may also be
+specified \(en the message text is then written to them.
+The rules are: Any name which starts with a `|' (vertical bar) character
+specifies a pipe \(en the command string following the `|' is executed
+and the message is sent to its standard input;
+any other name which contains a `@' (at sign) character is treated as
+a mail address;
+any other name which starts with a `+' (plus sign) character specifies
+a folder name;
+any other name which contains a `/' (slash) character but no `!'
+(exclamation mark) or `%' (percent sign) character before also specifies
+a folder name;
+what remains is treated as a mail address.
+Compressed folders are handled as described for the
+.Ic folder
+command.
+.\" }}}
+.\"
+.\" .Ss "Personal and systemwide distribution lists" {{{
+.Ss "Personal and systemwide distribution lists"
+It is possible to create personal distribution lists so that,
+for instance, the user can send mail to `cohorts'
+and have it go to a group of people.
+Such lists can be defined via the
+.Ic alias
+command by, e.g., placing lines like
+.Pp
+.Dl alias cohorts bill ozalp jkf mark kridle@ucbcory
+.Pp
+in the file \*(ur in the user's home directory.
+Using
+.Ic alias
+without arguments lists all the currently known aliases.
+.Pp
+Please note that this mechanism has nothing in common with the system
+wide aliases that may be used by the local MTA (mail-transfer-agent)
+and are often tracked in a file
+.Pa /etc/aliases
+(and documented in
+.Xr aliases 5
+and
+.Xr sendmail 1 Ns
+).
+Personal aliases will be expanded by \*(UA before the message is sent.
+They are a convenient alternative to specifying each addressee by
+itself.
+.\" }}}
+.\"
+.\" .Ss "Ending a mail processing session" {{{
+.Ss "Ending a mail processing session"
+The user can end a \*(UA session by issuing the
+.Ic quit
+(`q') command.
+Messages which have been examined go to the user's mbox file unless they
+have been deleted,
+in which case they are discarded.
+Unexamined messages go back to the post office.
+(Also see the
+.Fl f
+option above.)
+When command line history is tracked, an updated history file is
+written.
+None of these actions is performed when the command
+.Ic exit
+(`x') is used instead of
+.Ic quit
+(`q').
+.\" }}}
+.\" }}} (Usage introduction)
+.\"
+.\" .Sh "SPECIFYING MESSAGES" {{{
+.Sh "SPECIFYING MESSAGES"
 Commands such as print and delete can be given a list of message numbers
 as arguments to apply to a number of messages at once.
 Thus
@@ -675,98 +804,7 @@ criterion then the last of those criteria is used.
 .El
 .\" }}}
 .\"
-.\" .Ss "Replying to or originating mail" {{{
-.Ss "Replying to or originating mail"
-The command
-.Ic reply
-can be used to set up a response to a message,
-sending it back to the person who it was from.
-Text the user types in, up to an end-of-file,
-defines the contents of the message.
-While the user is composing a message \*(UA treats lines beginning with
-the character `~' specially.
-For instance, typing `~m' (alone on a line) will place a copy of the
-current message into the response, each line prefixed by the value of
-.Va indentprefix .
-Other escapes will set up subject fields,
-add and delete recipients to the message,
-attach files to it
-and allow the user to escape to an editor to revise the message
-or to a shell to run some commands.
-(These options are given in the summary below.)
-.\" }}}
-.\"
-.\" .Ss "Ending a mail processing session" {{{
-.Ss "Ending a mail processing session"
-The user can end a \*(UA session by issuing the
-.Ic quit
-(`q') command.
-Messages which have been examined go to the user's mbox file unless they
-have been deleted,
-in which case they are discarded.
-Unexamined messages go back to the post office.
-(Also see the
-.Fl f
-option above.)
-When command line history is tracked, an updated history file is
-written.
-None of these actions is performed when the command
-.Ic exit
-(`x') is used instead of
-.Ic quit
-(`q').
-.\" }}}
-.\"
-.\" .Ss "Personal and systemwide distribution lists" {{{
-.Ss "Personal and systemwide distribution lists"
-It is possible to create personal distribution lists so that,
-for instance, the user can send mail to `cohorts'
-and have it go to a group of people.
-Such lists can be defined via the
-.Ic alias
-command by, e.g., placing lines like
-.Pp
-.Dl alias cohorts bill ozalp jkf mark kridle@ucbcory
-.Pp
-in the file \*(ur in the user's home directory.
-Using
-.Ic alias
-without arguments lists all the currently known aliases.
-.Pp
-Please note that this mechanism has nothing in common with the system
-wide aliases that may be used by the local MTA (mail-transfer-agent)
-and are often tracked in a file
-.Pa /etc/aliases
-(and documented in
-.Xr aliases 5
-and
-.Xr sendmail 1 Ns
-).
-Personal aliases will be expanded by \*(UA before the message is sent.
-They are a convenient alternative to specifying each addressee by
-itself.
-.\" }}}
-.\"
-.\" .Ss "Recipient address specifications" {{{
-.Ss "Recipient address specifications"
-When an address is used to name a recipient (in `To:', `Cc:', or `Bcc:'),
-names of local mail folders and pipes to external commands may also be
-specified \(en the message text is then written to them.
-The rules are: Any name which starts with a `|' (vertical bar) character
-specifies a pipe \(en the command string following the `|' is executed
-and the message is sent to its standard input;
-any other name which contains a `@' (at sign) character is treated as
-a mail address;
-any other name which starts with a `+' (plus sign) character specifies
-a folder name;
-any other name which contains a `/' (slash) character but no `!'
-(exclamation mark) or `%' (percent sign) character before also specifies
-a folder name;
-what remains is treated as a mail address.
-Compressed folders are handled as described for the
-.Ic folder
-command.
-.\" }}}
+.\" TODO group logically (network/URL..); no .Ss at top level; EXAMPLES!
 .\"
 .\" .Ss "Network mail (Internet / ARPA, UUCP, Berknet)" {{{
 .Ss "Network mail (Internet / ARPA, UUCP, Berknet)"
@@ -804,7 +842,7 @@ there also exist other ways to define the information in question or
 because support of the part is protocol-specific \(en
 e.g., `/path' is used by the IMAP protocol but not by POP3.
 .Pp
-.Dl PROTO://[USER[:PASSWORD]@]server[:port][/path]
+.Dl PROTOCOL://[USER[:PASSWORD]@]server[:port][/path]
 .Pp
 If `USER' and `PASSWORD' are specified as part of an URL they must be
 given in URL percent encoded (RFC 3986) form \(en the command
@@ -855,11 +893,11 @@ which in turn defaults to
 which, again, defaults to `getpwuid(getuid())' a.k.a. the current user.
 .It
 Authentication: unless otherwise noted this will first look for
-.Va PROTO-auth-USER@HOST ,
+.Va PROTOCOL-auth-USER@HOST ,
 then
-.Va PROTO-auth-HOST
+.Va PROTOCOL-auth-HOST
 and finally
-.Va PROTO-auth ,
+.Va PROTOCOL-auth ,
 which has a protocol-specific default should none of the variables be
 set.
 .It
@@ -1165,8 +1203,8 @@ To forcefully disable colours, set
 .Va colour-disable .
 .\" }}}
 .\"
-.\" .Ss "Commands" {{{
-.Ss "Commands"
+.\" .Sh "COMMANDS" {{{
+.Sh "COMMANDS"
 Each command is typed on a line by itself,
 and may take arguments following the command word.
 The command need not be typed in its entirety \(en
@@ -1379,7 +1417,7 @@ this command is identical to
 .Ic copy .
 Encrypted messages are first decrypted, if possible, and then copied.
 .It Ic Decrypt
-\*OP (Dec) Similar to
+\*(OP (Dec) Similar to
 .Ic decrypt ,
 but saves the messages in a file named after the local part of the
 sender address of the first message.
@@ -2355,8 +2393,8 @@ new or `flagged' message.
 .El
 .\" }}}
 .\"
-.\" .Ss "Tilde escapes" {{{
-.Ss "Tilde escapes"
+.\" .Sh "TILDE ESCAPES" {{{
+.Sh "TILDE ESCAPES"
 Here is a summary of the tilde escapes,
 which are used to perform special functions when composing messages.
 Tilde escapes are only recognized at the beginning of lines.
@@ -2586,26 +2624,90 @@ is often used as a rejustifying filter.
 .El
 .\" }}}
 .\"
-.\" .Ss "Variable options" {{{
-.Ss "Variable options"
+.\" .Sh "VARIABLE OPTIONS" {{{
+.Sh "VARIABLE OPTIONS"
 Options are controlled via
 .Ic set
 and
 .Ic unset
-commands, see the corresponding entries for a syntax description.
-An option is also set if it is passed to \*(UA as part of the program
-environment (this is not restricted to specific variables as in the
-POSIX standard).
-A value given in a startup file overrides a value imported from the
-environment.
-Options may be either binary, in which case it is only significant to
-see whether they are set or not;
-or string, in which case the actual value is of interest.
+commands, see the corresponding entries for a syntax description;
+in general using
+.Ic unset
+can also be accomplished by prefixing a variable name with the string
+"no" and calling
+.Ic set ,
+e.g., "unset crt" will have the same effect as "set nocrt".
+.Pp
+An option is also set if it has been passed to \*(UA as part of the
+program environment or when it has been set explicitly via the
+.Fl S
+command line option.
+.Pp
+\*(UA differentiates in between two different kind of options:
+binary options, which can only be in the two states set and unset,
+as well as value options which have an assigned string value.
+(For the latter kind proper quoting is important upon assignment time.)
+The command
+.Ic varshow
+will show informations about all given variables and
+.Ic set ,
+when used without arguments, will print a listing of all currently set
+variables, including values of string variables.
+.\"
+.\" .Ss "Initial settings" {{{
+.Ss "Initial Settings"
+The standard POSIX 2008/Cor 1-2013 mandates the following initial
+variable settings:
+.Ns no Ns Va allnet ,
+.Ns no Ns Va append ,
+.Va asksub ,
+.Ns no Ns Va askbcc ,
+.Ns no Ns Va autoprint ,
+.Ns no Ns Va bang ,
+.Ns no Ns Va cmd ,
+.Ns no Ns Va crt ,
+.Ns no Ns Va debug ,
+.Ns no Ns Va dot ,
+.Va escape
+set to "~",
+.Ns no Ns Va flipr ,
+.Ns no Ns Va folder ,
+.Va header ,
+.Ns no Ns Va hold ,
+.Ns no Ns Va ignore ,
+.Ns no Ns Va ignoreeof ,
+.Ns no Ns Va keep ,
+.Ns no Ns Va keepsave ,
+.Ns no Ns Va metoo ,
+.Ns no Ns Va outfolder ,
+.Ns no Ns Va page ,
+.Va prompt
+set to "? "
+(note that \*(UA deviates from the standard by using "\\& ", but the
+`\\&' special
+.Va prompt
+escape results in "?" being printed unless
+.Va bsdcompat
+is set),
+.Ns no Ns Va quiet,
+.Ns no Ns Va record ,
+.Va save ,
+.Ns no Ns Va sendwait ,
+.Ns no Ns Va showto ,
+.Ns no Ns Va sign ,
+.Ns no Ns Va Sign ,
+.Va toplines
+set to "5".
+.Pp
+Notes: \*(UA doesn't support the
+.Ns no Ns Va onehop
+variable \(en use command line options or
+.Va sendmail-arguments
+to pass options through to a MTA.
 .\" }}}
 .\"
 .\" .Ss "Binary options" {{{
 .Ss "Binary options"
-The binary options include the following:
 .Bl -tag -width ".Va autoprint"
 .It Va add-file-recipients
 When file or pipe recipients have been specified,
@@ -3189,7 +3291,6 @@ also left as an excercise to the user.
 .\"
 .\" .Ss "Value options" {{{
 .Ss "Value options"
-The value options include the following:
 .Bl -tag -width ".Va autoprint"
 .It Va attrlist
 A sequence of characters to print in the `attribute' column of a header
@@ -3876,7 +3977,7 @@ that name.
 The default is `sendmail'.
 .It Va SHELL
 Pathname of the shell to use in the
-.Ic !
+.Ic \!
 command and the `~!' tilde escape.
 A default shell is used if this option is not defined.
 .It Va Sign
@@ -4264,6 +4365,7 @@ Pathname of the text editor to use in the
 command and `~v' tilde escape.
 .El
 .\" }}}
+.\" }}} (Variable options)
 .\"
 .\" .Sh ENVIRONMENT {{{
 .Sh ENVIRONMENT
@@ -5212,3 +5314,4 @@ remains intact.
 .\"
 .Sh BUGS
 Too many (see the file `TODO' from the distribution or the repository).
+.\" s-ts-mode
