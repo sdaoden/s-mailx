@@ -907,7 +907,7 @@ _var_vokclear(char const *vokey)
    return err;
 }
 
-#ifdef HAVE_SMTP
+#ifdef HAVE_SOCKETS
 FL char *
 _var_xoklook(enum okeys okey, struct url const *urlp, enum okey_xlook_mode oxm)
 {
@@ -961,7 +961,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif /* HAVE_SMTP */
+#endif /* HAVE_SOCKETS */
 
 FL void
 var_list_all(void)

@@ -184,7 +184,7 @@ FL bool_t      _var_vokclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef HAVE_SMTP
+#ifdef HAVE_SOCKETS
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
 #endif
