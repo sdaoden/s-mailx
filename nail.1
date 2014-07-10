@@ -121,6 +121,8 @@
 .It
 . Sx FILES
 .It
+. Sx THE .netrc FILE
+.It
 . Sx EXAMPLES
 .It
 . Sx "SEE ALSO"
@@ -936,7 +938,7 @@ and
 are looked up; if no such variable(s) can be found then \*(UA will,
 when enforced by the \*(OPal variables
 .Va netrc-lookup-HOST
-and
+or
 .Va netrc-lookup ,
 search the users
 .Pa .netrc
@@ -981,7 +983,7 @@ The chain is \*(OPionally continued via the described
 lookup when enabled via
 .Va netrc-lookup-USER@HOST ,
 .Va netrc-lookup-HOST
-and
+or
 .Va netrc-lookup ,
 this time looking only for the password (multiple user accounts
 for a single machine may exist as well as a fallback entry without user
@@ -1962,7 +1964,10 @@ In the former case the file is loaded first as necessary.
 See
 .Va netrc-lookup
 and the section
-.Sx "URL syntax" .
+.Sx "URL syntax" ;
+the section
+.Sx THE .netrc FILE
+documents the file format in detail.
 .It Ic newmail
 Checks for new mail in the current folder without committing any changes
 before.
@@ -3116,28 +3121,14 @@ original `Content-Type:' will not be overwritten.
   Va netrc-lookup-HOST , \
   Va netrc-lookup
 \*(IN \*(OP Used to control usage of the users
-.Pa ~/.netrc
-file for lookup of account credentials (see the section
+.Pa .netrc
+file for lookup of account credentials, as documented in the section
 .Sx "URL syntax"
-and the command
-.Ic netrc Ns
-).
-The default path can be overridden by the environment variable
-.Ev NETRC .
-Note that \*(UA requires that the file is only accessible by the user,
-regardless of the file content; also, whereas a conforming parser is
-used, only `machine', `login' and `password' entries are saved and used.
-A given `HOST' must match exactly the `machine NAME', but as an
-extension \*(UA allows a single wildcard prefix, as in
-.Pp
-.Dl *.example.com login USER password PASSWORD
-.Dl imap.example.com login USER password PASSWORD
-.Pp
-which would match `smtp.example.com' as well as `pop3.example.com', but
-neither `example.com' nor `local.smtp.example.com'.
-Note that in the example `imap.example.com' will not be matched by the
-wildcard, since the exact match takes precedence (it is however faster
-to specify it the other way around).
+and for the command
+.Ic netrc ;
+the section
+.Sx THE .netrc FILE
+documents the file format.
 .It Va outfolder
 Causes the filename given in the
 .Va record
@@ -4554,7 +4545,106 @@ System wide MIME types.
 .It Pa ~/.netrc
 \*(IN \*(OP The default location of the users
 .Pa .netrc
-file.
+file \(en the section
+.Sx "THE .netrc FILE"
+documents the file format.
+.El
+.\" }}}
+.\"
+.\" .Sh THE .netrc FILE {{{
+.Sh THE .netrc FILE
+The
+.Pa .netrc
+file contains user credentials for machine accounts.
+The default location in the user's home directory may be
+overridden by the
+.Ev NETRC
+environment variable.
+The file consists of space, tabulator or newline separated tokens.
+\*(UA implements a parser that supports a superset of the original BSD
+syntax, but users should nonetheless be aware of portability glitches
+of that file format, shall their
+.Pa .netrc
+be usable across multiple programs and platforms:
+.Bl -bullet
+.It
+BSD doesn't support single, but only double quotation marks;
+e.g., `password="pass with spaces"'.
+.It
+BSD (only?) supports escaping of single characters via a backslash
+(e.g., a space can be escaped via `\e '), in- as well as outside of
+a quoted string.
+.It
+BSD doesn't require the final quotation mark of the final user input
+token.
+.It
+At least Hewlett-Packard seems to support a format which also allows
+tokens to be separated with commas \(en this format is not supported!
+.It
+Whereas other programs may require that the
+.Pa .netrc
+file is accessible by only the user if it contains a
+.Ic password
+token for any other
+.Ic login
+than anonymous, \*(UA will always require these strict permissions.
+.El
+.Pp
+Of the following list of supported tokens \*(UA only uses (and caches)
+`machine', `login' and `password':
+.Bl -tag -width password
+.It Ic machine Ar name
+The hostname of the entries machine, lowercase-normalized by \*(UA
+before use.
+Any further file content, until either end-of-file or the occurrence
+of another
+.Ic machine
+or a
+.Ic default
+first-class token is bound (only related) to the machine
+.Ar name .
+.Pp
+As an extension that shouldn't be the cause of any worries
+\*(UA supports a single wildcard prefix for
+.Ar name :
+.Pp
+.Dl *.example.com login USER password PASSWORD
+.Dl imap.example.com login USER password PASSWORD
+.Pp
+which would match `smtp.example.com' as well as `pop3.example.com', but
+neither `example.com' nor `local.smtp.example.com'.
+Note that in the example `imap.example.com' will not be matched by the
+wildcard, since the exact match takes precedence (it is however faster
+to specify it the other way around).
+.It Ic default
+This is the same as
+.Ic machine
+except that it is a fallback entry that is used shall none of the
+specified machines match; only one default token may be specified,
+and it must be the last first-class token.
+.It Ic login Ar name
+The user name on the remote machine.
+.It Ic password Ar string
+The user's password on the remote machine.
+.It Ic account Ar string
+Supply an additional account password.
+This is merely for FTP purposes.
+.It Ic macdef Ar name
+Define a macro.
+A macro is defined with the specified
+.Ar name ;
+it is formed from all lines beginning with the next line and continuing
+until a blank line is (consecutive newline characters are) encountered.
+(Note that
+.Ic macdef
+entries cannot be utilized by multiple machines, too, but must be
+defined following the
+.Ic machine
+they are intended to be used with.)
+If a macro named
+.Ar init
+exists, it is automatically run as the last step of the login process.
+This is merely for FTP purposes.
 .El
 .\" }}}
 .\"
