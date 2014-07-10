@@ -140,13 +140,22 @@ jnext:
    default: /* Doesn't happen (but on error?), keep CC happy */
    case NRC_DEFAULT:
 jdef:
+      /* We ignore the default entry (require an exact host match), and we also
+       * ignore anything after such an entry (faulty syntax) */
       seen_default = TRU1;
       /* FALLTHRU */
    case NRC_MACHINE:
 jm_h:
+      /* Normalize HOST to lowercase */
       *host = '\0';
       if (!seen_default && (t = __nrc_token(fi, host)) != NRC_INPUT)
          goto jerr;
+      else {
+         char *cp;
+         for (cp = host; *cp != '\0'; ++cp)
+            *cp = lowerconv(*cp);
+      }
+
       *user = *pass = '\0';
       while ((t = __nrc_token(fi, buffer)) != NRC_NONE && t != NRC_MACHINE &&
             t != NRC_DEFAULT) {
@@ -246,9 +255,13 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
       goto jleave;
 
    cp = buffer;
-   if (c == '"') {
-      /* Not requiring the closing QM is the portable way */
-      while ((c = getc(fi)) != EOF && c != '"') {
+   /* Is it a quoted token?  At least IBM syntax also supports ' quotes */
+   if (c == '"' || c == '\'') {
+      int quotec = c;
+
+      /* Not requiring the closing QM is (Net)BSD syntax */
+      while ((c = getc(fi)) != EOF && c != quotec) {
+         /* Backslash escaping the next character is (Net)BSD syntax */
          if (c == '\\')
             if ((c = getc(fi)) == EOF)
                break;
@@ -261,6 +274,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
    } else {
       *cp++ = c;
       while ((c = getc(fi)) != EOF && !whitechar(c)) {
+         /* Backslash escaping the next character is (Net)BSD syntax */
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
@@ -352,7 +366,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    int rv = 0;
    NYD2_ENTER;
 
-   /* Find a matching machine entry -- entries are lowercase normalized */
+   /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
       if (LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
