@@ -66,14 +66,12 @@ cc_all_configs() {
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
             printf "WANT_AUTOCC=1\n"
-            printf "\n"
 
             for (k = 0; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
             printf "WANT_AUTOCC=1\n"
-            printf "\n"
          }
       }
    ' | while read c; do
