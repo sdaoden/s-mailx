@@ -247,18 +247,37 @@
  * CC support, generic macros etc.
  */
 
-#undef __PREREQ
-#if defined __GNUC__ || defined __clang__
-# define __EXTEN  __extension__
-# ifdef __GNUC__
-#  define __PREREQ(X,Y) \
-   (__GNUC__ > (X) || (__GNUC__ == (X) && __GNUC_MINOR__ >= (Y)))
-# else
-#  define __PREREQ(X,Y) 1
-# endif
-#else
+#if defined __clang__
+# define CC_CLANG          1
+# define PREREQ_CLANG(X,Y) \
+   (__clang_major__ + 0 > (X) || \
+    (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
+# define __EXTEN           __extension__
+#elif defined __GNUC__
+# define CC_GCC            1
+# define PREREQ_GCC(X,Y)   \
+   (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
+# define __EXTEN           __extension__
+#endif
+
+#ifndef CC_CLANG
+# define CC_CLANG          0
+# define PREREQ_CLANG(X,Y) 0
+#endif
+#ifndef CC_GCC
+# define CC_GCC            0
+# define PREREQ_GCC(X,Y)   0
+#endif
+#ifndef __EXTEN
 # define __EXTEN
-# define __PREREQ(X,Y)  0
+#endif
+
+/* XXX Suppress unused return values via #pragma's;
+ * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
+#if PREREQ_CLANG(3, 4)
+# pragma clang diagnostic ignored "-Wunused-result"
+#elif PREREQ_GCC(4, 7)
+# pragma GCC diagnostic ignored "-Wunused-result"
 #endif
 
 /* For injection macros like DBG(), NATCH_CHAR() */
@@ -313,7 +332,7 @@
 #else
 # define VFIELD_SIZE(X) (X)
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
-# if __PREREQ(2, 9)
+# if CC_CLANG || PREREQ_GCC(2, 9)
 #   define INLINE       static __inline
 #   define SINLINE      static __inline
 # else
@@ -325,7 +344,7 @@
 #undef __FUN__
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define __FUN__        __func__
-#elif __PREREQ(3, 4)
+#elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __FUNCTION__
 #else
 # define __FUN__        uagent   /* Something that is not a literal */
@@ -334,7 +353,7 @@
 #if defined __predict_true && defined __predict_false
 # define LIKELY(X)      __predict_true(X)
 # define UNLIKELY(X)    __predict_false(X)
-#elif __PREREQ(2, 96)
+#elif CC_CLANG || PREREQ_GCC(2, 96)
 # define LIKELY(X)      __builtin_expect(X, 1)
 # define UNLIKELY(X)    __builtin_expect(X, 0)
 #else
