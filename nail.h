@@ -592,6 +592,11 @@ enum mimeenc {
    MIME_B64          /* message is in base64 encoding */
 };
 
+enum mime_counter_evidence {
+   MIMECE_NONE,
+   MIMECE_USR_OVWR   = 1<<1
+};
+
 enum conversion {
    CONV_NONE,        /* no conversion */
    CONV_7BIT,        /* no conversion, is 7bit */
@@ -794,7 +799,6 @@ enum okeys {
    ok_b_message_id_disable,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
-   ok_b_mime_counter_evidence,
    ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
@@ -867,6 +871,7 @@ enum okeys {
    ok_v_LISTER,
    ok_v_MAIL,
    ok_v_MBOX,
+   ok_v_mime_counter_evidence,
    /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
    ok_v_mimetypes_load_control,
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
@@ -1196,6 +1201,7 @@ struct mimepart {
    struct mimepart *m_parent;       /* enclosing multipart part */
    char        *m_ct_type;          /* content-type */
    char        *m_ct_type_plain;    /* content-type without specs */
+   char        *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    enum mimecontent m_mimecontent;  /* same in enum */
    char const  *m_charset;    /* charset */
    char        *m_ct_transfer_enc;  /* content-transfer-encoding */

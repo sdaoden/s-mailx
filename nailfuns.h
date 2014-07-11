@@ -1184,13 +1184,17 @@ FL char *      mime_create_boundary(void);
 FL int         mime_classify_file(FILE *fp, char const **contenttype,
                   char const **charset, int *do_iconv);
 
-/* */
-FL enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
+/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
+ * but otherwise mpp is const */
+FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
 
 /* Return the Content-Type matching the extension of name */
 FL char *      mime_classify_content_type_by_fileext(char const *name);
 
-/* "mimetypes" command */
+/* Get the (pipe) handler for a part, or NULL if there is none known */
+FL char *      mimepart_get_handler(struct mimepart const *mpp);
+
+/* `mimetypes' command */
 FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */

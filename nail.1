@@ -434,6 +434,57 @@ Deleted messages will, however, usually disappear never to be seen
 again.
 .\" }}}
 .\"
+.\" .Ss "Viewing HTML mail and MIME attachments" {{{
+.Ss "Viewing HTML mail and MIME attachments"
+Messages which are HTML-only get more and more common and of course many
+messages come bundled with a bouquet of MIME attachments.
+\*(UA can't deal with any of these itself, but instead programs need to
+become registered to deal with specific MIME types or file extensions;
+these programs may either prepare a plain text version of its input,
+i.e., in order to enable \*(UA to display the content on the terminal
+(or, as necessary and desired, through
+.Ev PAGER Ns
+), or display the content themselves, for example in a graphical window.
+The latter type of programs by default "suspends" \*(UA until the
+external viewer is terminated, but asynchronous side-by-side execution
+is also possible, in which case \*(UA will continue to display the
+message and remain responsive.
+.Pp
+To install an external handler program for a specific MIME type, set a
+.Va pipe-CONTENT/SUBCONTENT
+variable accordingly.
+To define a handler for a specific file extension set the respective
+.Va pipe-EXTENSION
+variable \(en these handlers take precedence.
+The variable
+.Va mime-counter-evidence
+can be set to improve dealing with faulty MIME part declarations as are
+often seen in real-life messages.
+E.g., to display a HTML message inline (that is, converted to plain
+text) with either of the text-mode browsers
+.Xr lynx 1
+or
+.Xr elinks 1 ,
+and to open PDF attachments in an external PDF viewer, asynchronously:
+.Bd -literal -offset indent
+  #set pipe-text/html="elinks -force-html -dump 1"
+  set pipe-text/html="lynx -stdin -dump -force_html"
+  set pipe-application/pdf="@&cat >/tmp/\*(ua$$.pdf; \e
+      acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
+.Ed
+.Pp
+Note: special care must be taken when using such commands as mail
+viruses may be distributed by this method;
+if messages of type `application/x-sh' or files with the extensions `sh'
+were blindly filtered through the shell, for example, a message sender
+could easily execute arbitrary code on the system \*(UA is running on.
+For more on MIME, also in respect to sending of messages, see the
+section
+.Sx "MIME types"
+and the command
+.Ic mimetypes .
+.\" }}}
+.\"
 .\" .Ss "Replying to or originating mail" {{{
 .Ss "Replying to or originating mail"
 The command
@@ -3043,16 +3094,6 @@ automatically interpret the contents of the part.
 If this option is set, and the data was unambiguously identified as text
 data at first glance (by a `.txt' or `.html' file extension), then the
 original `Content-Type:' will not be overwritten.
-.It Va mime-counter-evidence
-Normally the `Content-Type:' field is used to decide how to treat
-a messages MIME part.
-Some MUAs however don't use
-.Xr mime.types 5
-or a similar mechanism to correctly classify content,
-but simply specify `application/octet-stream',
-even for plain text attachments like `text/diff'.
-If this variable is set then \*(UA will use the file extension of
-attachments to classify such MIME message parts, if possible.
 .It Va netrc-lookup
 \*(IN \*(OP Used to control usage of the users
 .Pa ~/.netrc
@@ -3690,6 +3731,25 @@ for the
 command and the
 .Va folder
 option.
+.It Va mime-counter-evidence
+Normally the `Content-Type:' field is used to decide how to treat
+a messages MIME part.
+Some MUAs however don't use
+.Xr mime.types 5
+or a similar mechanism to correctly classify content,
+but simply specify `application/octet-stream',
+even for plain text attachments like `text/diff'.
+If this variable is set then \*(UA will use the file extension of
+attachments to classify such MIME message parts, if possible.
+.Pp
+This can also be given a non-empty value: in this case the value is
+expected to be a number, actually a carrier of bits.
+If bit two is set (0x2) then the detected "real" content-type will be
+carried along with the message and be used for detecting which
+.Va pipe-CONTENT/SUBCONTENT
+is responsible for the MIME part, shall that question arise;
+when displaying such a MIME part the part-info will indicate the
+overridden content-type by showing a plus-sign (`+').
 .It Va mimetypes-load-control
 This option can be used to control which of the
 .Xr mime.types 5
@@ -3781,9 +3841,9 @@ If no such variable is defined for a host,
 the user will be asked for a password on standard input.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
-.It Va pipe-content/subcontent
-When a MIME message part of `content/subcontent' type is displayed or
-is replied to,
+.It Va pipe-CONTENT/SUBCONTENT
+When a MIME message part of `CONTENT/SUBCONTENT' (normalized to
+lowercase) type is displayed or is replied to,
 its text is filtered through the value of this variable interpreted as
 a shell command.
 .Pp
@@ -3801,13 +3861,12 @@ addition to what has been described for the plain `@' shell command
 prefix, the command will be run asynchronously, i.e., without blocking
 \*(UA, which may be a handy way to display a, e.g., PDF file while also
 continuing to read the mail message.
-.Pp
-Special care must be taken when using such commands as mail viruses may
-be distributed by this method;
-if messages of type `application/x-sh' were filtered through the shell,
-for example,
-a message sender could easily execute arbitrary code on the system \*(UA
-is running on.
+.It Va pipe-EXTENSION
+This is identical to
+.Va pipe-CONTENT/SUBCONTENT
+except that `EXTENSION' (normalized to lowercase using character
+mappings of the ASCII charset) names a file extension, e.g., `xhtml'.
+Handlers registered using this method take precedence.
 .It Va pop3-keepalive
 \*(OP POP3 servers close the connection after a period of inactivity;
 the standard requires this to be at least 10 minutes,
@@ -4894,36 +4953,6 @@ Note that the example above is \fBinsecure\fR!
 One should use the `-verify' and `-CAfile' options of
 .Xr s_client 1
 to be "on the safe side" regarding the fetched certificates.
-.\" }}}
-.\"
-.\" .Ss "Reading HTML mail" {{{
-.Ss "Reading HTML mail"
-You need either the
-.Xr elinks 1
-or
-.Xr lynx 1
-utility or another command-line web browser that can write plain text to
-standard output.
-.Pp
-.Dl set pipe-text/html="elinks -force-html -dump 1"
-.Dl set pipe-text/html="lynx -stdin -dump -force_html"
-.Pp
-will cause HTML message parts to be converted into a more friendly form.
-.\" }}}
-.\"
-.\" .Ss "Viewing PDF attachments" {{{
-.Ss "Viewing PDF attachments"
-Most PDF viewers do not accept input directly from a pipe.
-It is thus necessary to store the attachment in a temporary file first:
-.Pp
-.Dl set pipe-application/pdf="@&cat >/tmp/\*(ua$$.pdf; \e
-.Dl \ \ \ \ \ \ acroread /tmp/\*(ua$$.pdf; rm /tmp/\*(ua$$.pdf"
-.Pp
-Note that security defects are discovered in PDF viewers from time to
-time.
-Automatical command execution like this can compromise your system
-security,
-in particular if you stay not always informed about such issues.
 .\" }}}
 .\"
 .\" .Ss "Signed and encrypted messages with S/MIME" {{{

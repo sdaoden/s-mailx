@@ -77,8 +77,8 @@ static void          __endpart(struct mimepart **np, off_t xoffs, long lines);
 static void          _print_part_info(struct str *out, struct mimepart *mip,
                            struct ignoretab *doign, int level);
 
-/* Query possible pipe command for MIME type */
-static enum pipeflags _pipecmd(char **result, char const *content_type);
+/* Query possible pipe command for MIME part */
+static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
 
 /* Create a pipe */
 static FILE *        _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote,
@@ -159,6 +159,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       ip->m_ct_type_plain = UNCONST("message/rfc822");
    else
       ip->m_ct_type_plain = UNCONST("text/plain");
+   ip->m_ct_type_usr_ovwr = NULL;
 
    if (ip->m_ct_type != NULL)
       ip->m_charset = mime_getparam("charset", ip->m_ct_type);
@@ -438,20 +439,33 @@ _print_part_info(struct str *out, struct mimepart *mip,
 
    /* Max. 24 */
    if (is_ign("content-type", 12, doign)) {
-      out->s = mip->m_ct_type_plain;
+      size_t addon;
+
+      if ((out->s = mip->m_ct_type_usr_ovwr) != NULL)
+         addon = 2;
+      else {
+         addon = 0;
+         out->s = mip->m_ct_type_plain;
+      }
       out->l = strlen(out->s);
-      ct.s = ac_alloc(out->l + 2 +1);
+
+      ct.s = ac_alloc(out->l + 2 + addon +1);
       ct.s[0] = ',';
       ct.s[1] = ' ';
       ct.l = 2;
+      if (addon) {
+         ct.s[ct.l++] = '+';
+         ct.s[ct.l++] = ' ';
+      }
+
       if (is_prefix("application/", out->s)) {
-         memcpy(ct.s + 2, "appl../", 7);
+         memcpy(ct.s + ct.l, "appl../", 7);
          ct.l += 7;
          out->l -= 12;
          out->s += 12;
-         out->l = MIN(out->l, 17);
+         out->l = MIN(out->l, 17 - addon);
       } else
-         out->l = MIN(out->l, 24);
+         out->l = MIN(out->l, 24 - addon);
       memcpy(ct.s + ct.l, out->s, out->l);
       ct.l += out->l;
       ct.s[ct.l] = '\0';
@@ -512,34 +526,19 @@ _print_part_info(struct str *out, struct mimepart *mip,
 }
 
 static enum pipeflags
-_pipecmd(char **result, char const *content_type)
+_pipecmd(char **result, struct mimepart const *mpp)
 {
    enum pipeflags ret;
-   char *s, *cp;
-   char const *cq;
+   char *cp;
    NYD_ENTER;
 
-   ret = PIPE_NULL;
-   *result = NULL;
-   if (content_type == NULL)
-      goto jleave;
-
-   /* First check wether there is a special pipe-MIMETYPE handler */
-   s = ac_alloc(strlen(content_type) + 5 +1);
-   memcpy(s, "pipe-", 5);
-   cp = s + 5;
-   cq = content_type;
-   do
-      *cp++ = lowerconv(*cq);
-   while (*cq++ != '\0');
-   cp = vok_vlook(s);
-   ac_free(s);
-
-   if (cp == NULL)
-      goto jleave;
-
+   /* Do we have any handler for this part? */
+   if ((cp = mimepart_get_handler(mpp)) == NULL) {
+      ret = PIPE_NULL;
+      *result = NULL;
+   }
    /* User specified a command, inspect for special cases */
-   if (cp[0] != '@') {
+   else if (cp[0] != '@') {
       /* Normal command line */
       ret = PIPE_COMM;
       *result = cp;
@@ -552,31 +551,16 @@ _pipecmd(char **result, char const *content_type)
       *result = UNCONST(_("[Directly address message only to display this]\n"));
    } else {
       /* Viewing a single message only */
-#if 0 /* TODO send/MIME layer rewrite: when we have a single-pass parser
-    * TODO then the parsing phase and the send phase will be separated;
-    * TODO that allows us to ask a user *before* we start the send, i.e.,
-    * TODO *before* a pager pipe is setup (which is the problem with
-    * TODO the '#if 0' code here) */
-      size_t l = strlen(content_type);
-      char const *x = _("Should i display a part `%s' (y/n)? ");
-      s = ac_alloc(l += strlen(x) +1);
-      snprintf(s, l - 1, x, content_type);
-      l = getapproval(s), TRU1;
-         puts(""); /* .. we've hijacked a pipe 8-] ... */
-      ac_free(s);
-      if (!l) {
-         x = _("[User skipped diplay]\n");
-         ret = PIPE_MSG;
-         *result = UNCONST(x);
-      } else
-#endif
+      /* TODO send/MIME layer rewrite: when we have a single-pass parser
+       * TODO then the parsing phase and the send phase will be separated;
+       * TODO that allows us to ask a user *before* we start the send, i.e.,
+       * TODO *before* a pager pipe is setup */
       if (cp[0] == '&')
          /* Asynchronous command, normal command line */
          ret = PIPE_ASYNC, *result = ++cp;
       else
          ret = PIPE_COMM, *result = cp;
    }
-jleave:
    NYD_LEAVE;
    return ret;
 }
@@ -935,16 +919,18 @@ jskip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          ispipe = TRU1;
-         switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
+         switch (_pipecmd(&pipecomm, ip)) {
          case PIPE_MSG:
             _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
-            pipecomm = NULL;
-            /* FALLTRHU */
+            /* We would print this as plain text, so better force going home */
+            goto jleave;
          case PIPE_TEXT:
          case PIPE_COMM:
-         case PIPE_ASYNC:
          case PIPE_NULL:
+            break;
+         case PIPE_ASYNC:
+            ispipe = FAL0;
             break;
          }
          /* FALLTRHU */
@@ -968,7 +954,7 @@ jskip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          ispipe = TRU1;
-         switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
+         switch (_pipecmd(&pipecomm, ip)) {
          case PIPE_MSG:
             _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
