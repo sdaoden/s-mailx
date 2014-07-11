@@ -144,7 +144,7 @@
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
-#define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
+#define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
