@@ -201,6 +201,9 @@ FL int         c_setenv(void *v);
 FL int         c_unset(void *v);
 FL int         c_unsetenv(void *v);
 
+/* Ditto: `varedit' */
+FL int         c_varedit(void *v);
+
 /* Macros: `define', `undefine', `call' / `~' */
 FL int         c_define(void *v);
 FL int         c_undefine(void *v);
@@ -663,7 +666,9 @@ FL int         c_editor(void *v);
 /* Invoke the visual editor on a message list */
 FL int         c_visual(void *v);
 
-/* Run an editor on the file at fp of size bytes, and return a new file.
+/* Run an editor on either size bytes of the file fp (or until EOF if size is
+ * negative) or on the message mp, and return a new file or NULL on error of if
+ * the user didn't perform any edits.
  * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,

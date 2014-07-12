@@ -91,9 +91,9 @@
      DS(N_("Delete the current message, then print the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS("Un\"delete\" <message-list>") },
-   { "unset", &c_unset, (M | RAWLIST), 1, 1000
+   { "unset", &c_unset, (H | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>")) },
-   { "unsetenv", &c_unsetenv, (M | RAWLIST), 1, 1000
+   { "unsetenv", &c_unsetenv, (H | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>, also in the program environment")) },
    { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -117,7 +117,7 @@
      DS(N_("Mark <message-list> as not being read")) },
    { "New", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> as not being read")) },
-   { "!", &c_shell, (I | STRLIST), 0, 0
+   { "!", &c_shell, (I | STRLIST), 0, 0 /* XXX I? */
      DS(N_("Execute <shell-command>")) },
    { "copy", &c_copy, (A | M | STRLIST), 0, 0
      DS(N_("Copy <message-list>, but don't mark them for deletion")) },
@@ -133,9 +133,9 @@
      DS("Like \"save\", but derive filename from first sender") },
    { "source", &c_source, (M | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
-   { "set", &c_set, (M | RAWLIST), 0, 1000
+   { "set", &c_set, (H | M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) variable(s)")) },
-   { "setenv", &c_setenv, (M | RAWLIST), 2, 2
+   { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
      DS(N_("Set (a) variable(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -373,6 +373,8 @@
      DS(N_("Print current working directory (CWD)")) },
    { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
+   { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
+     DS(N_("Edit the value(s) of (an) existing variable(s)")) },
    { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
