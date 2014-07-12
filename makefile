@@ -66,25 +66,30 @@ _update-release:
 	read i;\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	printf > ./version.h "#define VERSION \"v$${REL}\"\n" &&\
-	< nail.1 sed -E \
-		-e "/^\.\\\\\" $${UUAGENT}\(1\):/ {" \
-	-e "s/^.*$$/.\\\\\" $${UUAGENT}(1): v$${REL} \/ $${DATE_ISO}/" \
-			-e b \
-		-e '}' \
-		-e '/^\.Dd / {' \
-			-e "s/^.*$$/.Dd $${DATE_MAN}/" \
-			-e b \
-		-e '}' \
-		-e '/^\.ds VV / {' \
-			-e "s/^.*$$/.ds VV \\\\\\\\%v$${REL}/" \
-			-e b \
-		-e '}' -e n > nail.1x &&\
+	< nail.1 > nail.1x awk '\
+	/^\.\\" '"$${UUAGENT}"'\(1\):/ {\
+		print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
+			" / '"$${DATE_ISO}"'";\
+		next;\
+	}\
+	/^\.Dd / {\
+		print ".Dd '"$${DATE_MAN}"'";\
+		next;\
+	}\
+	/^\.ds VV / {\
+		print ".ds VV \\\\%v'"$${REL}"'";\
+		next;\
+	}\
+	{print}\
+	' &&\
 	mv -f nail.1x nail.1 &&\
-	< nail.rc sed -E \
-		-e "/^# $${UUAGENT}\(1\):/ {" \
-	-e "s/^.*$$/# $${UUAGENT}(1): v$${REL} \/ $${DATE_ISO}/" \
-			-e b \
-		-e '}' -e n > nail.rcx &&\
+	< nail.rc > nail.rcx awk '\
+	/^# '$${UUAGENT}'\(1\):/ {\
+		print "# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
+		next;\
+	}\
+	{print}\
+	' && \
 	mv -f nail.rcx nail.rc &&\
 	git add version.h nail.1 nail.rc &&\
 	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
