@@ -600,8 +600,9 @@ FL int         c_group(void *v);
 /* Delete the passed groups */
 FL int         c_ungroup(void *v);
 
-/* Change to another file.  With no argument, print info about current file */
+/* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
+FL int         c_File(void *v);
 
 /* Expand file names like echo */
 FL int         c_echo(void *v);
@@ -970,7 +971,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int nmail, int isedit);
+FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -1022,7 +1023,7 @@ FL void        putcache(struct mailbox *mp, struct message *m);
 FL void        initcache(struct mailbox *mp);
 FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
 FL void        delcache(struct mailbox *mp, struct message *m);
-FL enum okay   cache_setptr(int transparent);
+FL enum okay   cache_setptr(enum fedit_mode fm, int transparent);
 FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
                   FILE *fp);
 FL enum okay   cache_remove(char const *name);
@@ -1047,8 +1048,9 @@ FL enum okay   imap_search(char const *spec, int f);
 /* Set up editing on the given file name.
  * If the first character of name is %, we are considered to be editing the
  * file, otherwise we are reading our mail which has signficance for mbox and
- * so forth.  nmail: Check for new mail in the current folder only */
-FL int         setfile(char const *name, int nmail);
+ * so forth.
+ nmail: Check for new mail in the current folder only */
+FL int         setfile(char const *name, enum fedit_mode fm);
 
 FL int         newmailinfo(int omsgCount);
 
@@ -1125,7 +1127,7 @@ FL void *      zalloc(FILE *fp);
  * maildir.c
  */
 
-FL int         maildir_setfile(char const *name, int nmail, int isedit);
+FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
 FL void        maildir_quit(void);
 
@@ -1376,7 +1378,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 FL enum okay   pop3_noop(void);
 
 /*  */
-FL int         pop3_setfile(char const *server, int nmail, int isedit);
+FL int         pop3_setfile(char const *server, enum fedit_mode fm);
 
 /*  */
 FL enum okay   pop3_header(struct message *m);

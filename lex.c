@@ -418,7 +418,7 @@ hangup(int s)
 }
 
 FL int
-setfile(char const *name, int nmail) /* TODO oh my god */
+setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 {
    static int shudclob;
 
@@ -426,7 +426,6 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    struct flock flp;
    FILE *ibuf = NULL;
    int rv, i, compressed = 0, omsgCount = 0;
-   bool_t isedit;
    char const *who;
    size_t offset;
    struct shortcut *sh;
@@ -436,8 +435,21 @@ setfile(char const *name, int nmail) /* TODO oh my god */
     * necessary to make a mailbox accessible by a different user, and if that
     * has happened, let's just let the usual file perms decide */
    who = (name[1] != '\0') ? name + 1 : myname;
-   isedit = (*name != '%' && ((sh = get_shortcut(name)) == NULL ||
-         *sh->sh_long != '%'));
+
+#if 1
+   if (name[0] == '%' ||
+         ((sh = get_shortcut(name)) != NULL && *sh->sh_long == '%'))
+      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
+#else
+   if (name[0] == '%' && (name[1] == '\0' || name[1] == ':'))
+      fm |= FEDIT_SYSBOX;
+   else if ((sh = get_shortcut(name)) != NULL) {
+      char const *x = sh->sh_long;
+
+      if (x[0] == '%' && (x[1] == '\0' || x[1] == ':'))
+         fm |= FEDIT_SYSBOX;
+   }
+#endif
    if ((name = expand(name)) == NULL)
       goto jem1;
 
@@ -445,21 +457,21 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    case PROTO_FILE:
       break;
    case PROTO_MAILDIR:
-      rv = maildir_setfile(name, nmail, isedit);
+      rv = maildir_setfile(name, fm);
       goto jleave;
 #ifdef HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
-      rv = pop3_setfile(name, nmail, isedit);
+      rv = pop3_setfile(name, fm);
       goto jleave;
 #endif
 #ifdef HAVE_IMAP
    case PROTO_IMAP:
       shudclob = 1;
-      if (nmail && mb.mb_type == MB_CACHE)
+      if ((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
          rv = 1;
       else
-         rv = imap_setfile(name, nmail, isedit);
+         rv = imap_setfile(name, fm);
       goto jleave;
 #endif
    default:
@@ -473,8 +485,8 @@ setfile(char const *name, int nmail) /* TODO oh my god */
     * FIXME the current box and (2) open the new box; yet, since (2) may fail
     * FIXME we terribly need our VOID box to make this logic order possible! */
    if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
-      if ((!isedit && errno == ENOENT) || nmail) {
-         if (nmail)
+      if (((fm & FEDIT_SYSBOX) && errno == ENOENT) || (fm & FEDIT_NEWMAIL)) {
+         if (fm & FEDIT_NEWMAIL)
             goto jnonmail;
          goto jnomail;
       }
@@ -483,7 +495,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    }
 
    if (fstat(fileno(ibuf), &stb) == -1) {
-      if (nmail)
+      if (fm & FEDIT_NEWMAIL)
          goto jnonmail;
       perror("fstat");
       goto jem1;
@@ -493,7 +505,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
          ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"))) {
       /* EMPTY */
    } else {
-      if (nmail)
+      if (fm & FEDIT_NEWMAIL)
          goto jnonmail;
       errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
       perror(name);
@@ -505,10 +517,10 @@ setfile(char const *name, int nmail) /* TODO oh my god */
     * file, else we will ruin the message[] data structure */
 
    hold_sigs(); /* TODO note on this one in quit.c:quit() */
-   if (shudclob && !nmail)
+   if (shudclob && !(fm & FEDIT_NEWMAIL))
       quit();
 #ifdef HAVE_SOCKETS
-   if (!nmail && mb.mb_sock.s_fd >= 0)
+   if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
 #endif
 
@@ -516,9 +528,10 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    flp.l_type = F_RDLCK;
    flp.l_start = 0;
    flp.l_whence = SEEK_SET;
-   if (!nmail) {
+   if (!(fm & FEDIT_NEWMAIL)) {
       mb.mb_type = MB_FILE;
-      mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE | MB_EDIT;
+      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY))
+            ? 0 : MB_DELE | MB_EDIT);
       mb.mb_compressed = compressed;
       if (compressed) {
          if (compressed & 0200)
@@ -540,7 +553,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
          }
       }
       shudclob = 1;
-      edit = isedit;
+      edit = !(fm & FEDIT_SYSBOX);
       initbox(name);
       offset = 0;
       flp.l_len = 0;
@@ -549,7 +562,7 @@ setfile(char const *name, int nmail) /* TODO oh my god */
          rele_sigs();
          goto jem1;
       }
-   } else /* nmail */{
+   } else /* FEDIT_NEWMAIL */{
       fseek(mb.mb_otf, 0L, SEEK_END);
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
@@ -562,13 +575,13 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    }
    mailsize = fsize(ibuf);
 
-   if (nmail && UICMP(z, mailsize, <=, offset)) {
+   if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
       rele_sigs();
       goto jnonmail;
    }
    setptr(ibuf, offset);
    setmsize(msgCount);
-   if (nmail && mb.mb_sorted) {
+   if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
@@ -576,12 +589,12 @@ setfile(char const *name, int nmail) /* TODO oh my god */
    Fclose(ibuf);
    ibuf = NULL;
    rele_sigs();
-   if (!nmail)
+   if (!(fm & FEDIT_NEWMAIL))
       sawcom = FAL0;
 
-   if ((!edit || nmail) && msgCount == 0) {
+   if ((!edit || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
 jnonmail:
-      if (!nmail) {
+      if (!(fm & FEDIT_NEWMAIL)) {
          if (!ok_blook(emptystart))
 jnomail:
             fprintf(stderr, _("No mail for %s\n"), who);
@@ -589,7 +602,7 @@ jnomail:
       rv = 1;
       goto jleave;
    }
-   if (nmail)
+   if (fm & FEDIT_NEWMAIL)
       newmailinfo(omsgCount);
 
    rv = 0;

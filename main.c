@@ -477,7 +477,7 @@ _rcv_mode(char const *folder, char const *Larg)
          n_strlcpy(mailname, cp, PATH_MAX);
    }
 
-   i = setfile(folder, 0);
+   i = setfile(folder, FEDIT_NONE);
    if (i < 0) {
       exit_status = EXIT_ERR; /* error already reported */
       goto jleave;
