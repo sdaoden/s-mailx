@@ -333,7 +333,10 @@ static bool_t
 _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
 {
    bool_t v15, rv = FAL0;
-   char *shost, *from, *smtp;
+   char *shost, *from;
+#ifdef HAVE_SMTP
+   char *smtp;
+#endif
    NYD_ENTER;
 
    v15 = ok_blook(v15_compat);
@@ -351,6 +354,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          sbp->sb_signer.l = strlen(sbp->sb_signer.s = from);
    }
 
+#ifdef HAVE_SMTP
    if ((smtp = ok_vlook(smtp)) == NULL) {
       rv = TRU1;
       goto jleave;
@@ -380,7 +384,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    }
 
    rv = TRU1;
+#endif /* HAVE_SMTP */
+#if defined HAVE_SSL || defined HAVE_SMTP
 jleave:
+#endif
    NYD_LEAVE;
    return rv;
 }

@@ -184,8 +184,10 @@ FL bool_t      _var_vokclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
+#ifdef HAVE_SMTP
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
+#endif
 #define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
 #define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
 
@@ -1211,6 +1213,13 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * - Base64, section 6.8
  */
 
+/* Utilities: the former converts the byte c into a (NUL terminated)
+ * hexadecimal string as is used in URL percent- and quoted-printable encoding,
+ * the latter performs the backward conversion and returns the character or -1
+ * on error */
+FL char *      mime_char_to_hexseq(char store[3], char c);
+FL si32_t      mime_hexseq_to_char(char const *hex);
+
 /* How many characters of (the complete body) ln need to be quoted */
 FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead);
 
@@ -1670,14 +1679,6 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 # define protbase(CP)            protbase(CP, __FILE__, __LINE__)
 #endif
 
-/* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
-FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
-# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
-#endif
-
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
@@ -1706,9 +1707,6 @@ FL void        i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
 FL int         is_prefix(char const *as1, char const *as2);
-
-/* Find the last AT @ before the first slash */
-FL char const * last_at_before_slash(char const *sp);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
  * to indicate wether getmsglist() et al need to be called to collect
@@ -1819,6 +1817,7 @@ FL void        uncollapse1(struct message *mp, int always);
  * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
+#ifdef HAVE_SOCKETS
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
 FL char *      getuser(char const *query);
@@ -1827,6 +1826,7 @@ FL char *      getuser(char const *query);
  * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
+#endif
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
@@ -1860,6 +1860,16 @@ FL int         c_history(void *v);
  * urlcrecry.c
  */
 
+/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
+ * These return a newly salloc()ated result */
+FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
+FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
+# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+#endif
+
+#ifdef HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
@@ -1870,9 +1880,12 @@ FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
 FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
+#endif /* HAVE_SOCKETS */
 
 /* `netrc' */
+#ifdef HAVE_NETRC
 FL int         c_netrc(void *v);
+#endif
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5

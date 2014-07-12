@@ -56,7 +56,15 @@ struct nrc_node {
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
 static struct nrc_node  *_nrc_list;
+#endif /* HAVE_NETRC */
 
+/* Find the last @ before a slash
+ * TODO Casts off the const but this is ok here; obsolete function! */
+#ifdef HAVE_SOCKETS /* temporary (we'll have file://..) */
+static char *           _url_last_at_before_slash(char const *sp);
+#endif
+
+#ifdef HAVE_NETRC
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
 static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN]);
@@ -74,6 +82,26 @@ static bool_t           __nrc_find_user(struct url *urlp,
 static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
                            struct nrc_node const *nrc);
 #endif /* HAVE_NETRC */
+
+#ifdef HAVE_SOCKETS
+static char *
+_url_last_at_before_slash(char const *sp)
+{
+   char const *cp;
+   char c;
+   NYD2_ENTER;
+
+   for (cp = sp; (c = *cp) != '\0'; ++cp)
+      if (c == '/')
+         break;
+   while (cp > sp && *--cp != '@')
+      ;
+   if (*cp != '@')
+      cp = NULL;
+   NYD2_LEAVE;
+   return UNCONST(cp);
+}
+#endif
 
 #ifdef HAVE_NETRC
 static void
@@ -408,6 +436,63 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 }
 #endif /* HAVE_NETRC */
 
+FL char *
+(urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS)
+{
+   char *n, *np, c1;
+   NYD2_ENTER;
+
+   np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
+
+   for (; (c1 = *cp) != '\0'; ++cp) {
+      /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
+       *    ALPHA / DIGIT / "-" / "." / "_" / "~"
+       * However add a special is[file]path mode for file-system friendliness */
+      if (alnumchar(c1) || c1 == '_')
+         *np++ = c1;
+      else if (!ispath) {
+         if (c1 != '-' && c1 != '.' && c1 != '~')
+            goto jesc;
+         *np++ = c1;
+      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+         *np++ = c1;
+      else {
+jesc:
+         np[0] = '%';
+         mime_char_to_hexseq(np + 1, c1);
+         np += 3;
+      }
+   }
+   *np = '\0';
+   NYD2_LEAVE;
+   return n;
+}
+
+FL char *
+(urlxdec)(char const *cp SALLOC_DEBUG_ARGS)
+{
+   char *n, *np;
+   si32_t c;
+   NYD2_ENTER;
+
+   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
+
+   while ((c = (uc_it)*cp++) != '\0') {
+      if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
+         si32_t o = c;
+         if (LIKELY((c = mime_hexseq_to_char(cp)) >= '\0'))
+            cp += 2;
+         else
+            c = o;
+      }
+      *np++ = (char)c;
+   }
+   *np = '\0';
+   NYD2_LEAVE;
+   return n;
+}
+
+#ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
@@ -495,7 +580,7 @@ jeproto:
 
    /* User and password, I */
 juser:
-   if ((cp = UNCONST(last_at_before_slash(data))) != NULL) {
+   if ((cp = _url_last_at_before_slash(data)) != NULL) {
       size_t l = PTR2SIZE(cp - data);
       char const *d = data;
       char *ub = ac_alloc(l +1);
@@ -791,27 +876,27 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       ccp = NULL;
       goto jleave;
    }
-#ifndef HAVE_MD5
+# ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
-#ifndef HAVE_GSSAPI
+# endif
+# ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
+# endif
 
    /* User name */
    if (!(ware & (WANT_USER | REQ_USER)))
       goto jpass;
 
    if (!addr_is_nuser) {
-      if ((s = UNCONST(last_at_before_slash(addr))) != NULL) {
+      if ((s = _url_last_at_before_slash(addr)) != NULL) {
          ccp->cc_user.s = urlxdec(savestrbuf(addr, PTR2SIZE(s - addr)));
          ccp->cc_user.l = strlen(ccp->cc_user.s);
       } else if (ware & REQ_USER)
@@ -958,20 +1043,20 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       ccp = NULL;
       goto jleave;
    }
-#ifndef HAVE_MD5
+# ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
-#ifndef HAVE_GSSAPI
+# endif
+# ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       fprintf(stderr, _("No GSS-API support compiled in.\n"));
       ccp = NULL;
       goto jleave;
    }
-#endif
+# endif
 
    /* Password */
    if ((ccp->cc_pass = urlp->url_pass).s != NULL)
@@ -985,7 +1070,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       if ((s = vok_vlook(vbuf)) == NULL) {
          /* But before we go and deal with the absolute fallbacks, check wether
           * we may look into .netrc */
-#ifdef HAVE_NETRC
+# ifdef HAVE_NETRC
          if (ok_blook(netrc_lookup))
             switch (_nrc_lookup(urlp, TRU1)) {
             default:
@@ -999,7 +1084,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
                ccp = NULL;
                goto jleave;
             }
-#endif
+# endif
          vbuf[--i] = '\0';
          if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
                (s = getpassword(NULL)) == NULL) {
@@ -1022,6 +1107,7 @@ jleave:
    NYD_LEAVE;
    return (ccp != NULL);
 }
+#endif /* HAVE_SOCKETS */
 
 #ifdef HAVE_NETRC
 FL int

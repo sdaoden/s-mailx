@@ -555,67 +555,6 @@ FL char *
    return n;
 }
 
-FL char *
-(urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS) /* XXX (->URL) */
-{
-   char *n, *np, c1, c2;
-   NYD_ENTER;
-
-   np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
-
-   for (; (c1 = *cp) != '\0'; ++cp) {
-      /* RFC 3986, 2.3 Unreserved Characters:
-       *    ALPHA / DIGIT / "-" / "." / "_" / "~"
-       * However add a special is[file]path mode for file-system friendliness */
-      if (alnumchar(c1) || c1 == '_')
-         *np++ = c1;
-      else if (!ispath) {
-         if (c1 != '-' && c1 != '.' && c1 != '~')
-            goto jesc;
-         *np++ = c1;
-      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
-         *np++ = c1;
-      else {
-jesc:
-         np[0] = '%';
-         c2 = c1 & 0x0F;
-         c2 += (c2 > 9) ? 'A' - 10 : '0';
-         np[2] = c2;
-         c1 = (ui8_t)(c1 & 0xF0) >> 4;
-         c1 += (c1 > 9) ? 'A' - 10 : '0';
-         np[1] = c1;
-         np += 3;
-      }
-   }
-   *np = '\0';
-   NYD_LEAVE;
-   return n;
-}
-
-FL char *
-(urlxdec)(char const *cp SALLOC_DEBUG_ARGS) /* XXX (->URL (yet auxlily.c)) */
-{
-   char *n, *np, c1, c2;
-   NYD_ENTER;
-
-   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
-
-   while (*cp != '\0') {
-      if (cp[0] == '%' && (c1 = cp[1]) != '\0' && (c2 = cp[2]) != '\0') {
-         c1 -= (c1 <= '9') ? '0' : 'A' - 10;
-         c1 <<= 4;
-         c2 -= (c2 <= '9') ? '0' : 'A' - 10;
-         *np = c1;
-         *np++ |= c2;
-         cp += 3;
-      } else
-         *np++ = *cp++;
-   }
-   *np = '\0';
-   NYD_LEAVE;
-   return n;
-}
-
 FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
@@ -744,24 +683,6 @@ is_prefix(char const *as1, char const *as2)
          break;
    NYD2_LEAVE;
    return (c == '\0');
-}
-
-FL char const *
-last_at_before_slash(char const *sp)/* XXX (->URL (yet auxlily.c) / obsolete) */
-{
-   char const *cp;
-   char c;
-   NYD_ENTER;
-
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
-      if (c == '/')
-         break;
-   while (cp > sp && *--cp != '@')
-      ;
-   if (*cp != '@')
-      cp = NULL;
-   NYD_LEAVE;
-   return cp;
 }
 
 FL char *
