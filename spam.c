@@ -462,4 +462,4 @@ c_spam_spam(void *v)
 }
 #endif /* HAVE_SPAM */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

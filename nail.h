@@ -121,28 +121,44 @@
 
 /*  */
 
-#if BUFSIZ > 2560                   /* TODO simply use BUFSIZ? */
+#if BUFSIZ + 0 > 2560               /* TODO simply use BUFSIZ? */
 # define LINESIZE       BUFSIZ      /* max readable line width */
 #else
 # define LINESIZE       2560
 #endif
 #define BUFFER_SIZE     (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
-#define CBAD            (-15555)
+/* Number of Not-Yet-Dead calls that are remembered */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
+# ifdef HAVE_NYD2
+#  define NYD_CALLS_MAX (25 * 99)
+# elif defined HAVE_DEVEL
+#  define NYD_CALLS_MAX (25 * 66)
+# else
+#  define NYD_CALLS_MAX (25 * 33)
+# endif
+#endif
+
 #define APPEND                   /* New mail goes to end of mailbox */
+#define CBAD            (-15555)
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
-#define HSHSIZE         23       /* Hash prime (aliases, vars, macros) */
+#define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
-#define NYD_CALLS_MAX   1000     /* Number of NYD calls that are remembered */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
 #define NETRC           "~/.netrc"
 #define TMPDIR_FALLBACK "/tmp"
+
+/* Some environment variables for pipe hooks */
+#define AGENT_USER      "NAIL_USER"
+#define AGENT_USER_ENC  "NAIL_USER_ENC"
+#define AGENT_HOST      "NAIL_HOST"
+#define AGENT_HOST_PORT "NAIL_HOST_PORT"
 
 #undef COLOUR
 #ifdef HAVE_COLOUR
@@ -191,6 +207,12 @@
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
+/* Some environment variables for pipe hooks */
+#define PIPEHOOK_FILENAME           "NAIL_FILENAME"
+#define PIPEHOOK_FILENAME_GENERATED "NAIL_FILENAME_GENERATED"
+#define PIPEHOOK_CONTENT            "NAIL_CONTENT"
+#define PIPEHOOK_CONTENT_EVIDENCE   "NAIL_CONTENT_EVIDENCE"
+
 /* Is *W* a quoting (ASCII only) character? */
 #define ISQUOTE(W)      \
    ((W) == L'>' || (W) == L'|' || (W) == L'}' || (W) == L':')
@@ -225,18 +247,37 @@
  * CC support, generic macros etc.
  */
 
-#undef __PREREQ
-#if defined __GNUC__ || defined __clang__
-# define __EXTEN  __extension__
-# ifdef __GNUC__
-#  define __PREREQ(X,Y) \
-   (__GNUC__ > (X) || (__GNUC__ == (X) && __GNUC_MINOR__ >= (Y)))
-# else
-#  define __PREREQ(X,Y) 1
-# endif
-#else
+#if defined __clang__
+# define CC_CLANG          1
+# define PREREQ_CLANG(X,Y) \
+   (__clang_major__ + 0 > (X) || \
+    (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
+# define __EXTEN           __extension__
+#elif defined __GNUC__
+# define CC_GCC            1
+# define PREREQ_GCC(X,Y)   \
+   (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
+# define __EXTEN           __extension__
+#endif
+
+#ifndef CC_CLANG
+# define CC_CLANG          0
+# define PREREQ_CLANG(X,Y) 0
+#endif
+#ifndef CC_GCC
+# define CC_GCC            0
+# define PREREQ_GCC(X,Y)   0
+#endif
+#ifndef __EXTEN
 # define __EXTEN
-# define __PREREQ(X,Y)  0
+#endif
+
+/* XXX Suppress unused return values via #pragma's;
+ * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
+#if PREREQ_CLANG(3, 4)
+# pragma clang diagnostic ignored "-Wunused-result"
+#elif PREREQ_GCC(4, 7)
+# pragma GCC diagnostic ignored "-Wunused-result"
 #endif
 
 /* For injection macros like DBG(), NATCH_CHAR() */
@@ -291,7 +332,7 @@
 #else
 # define VFIELD_SIZE(X) (X)
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
-# if __PREREQ(2, 9)
+# if CC_CLANG || PREREQ_GCC(2, 9)
 #   define INLINE       static __inline
 #   define SINLINE      static __inline
 # else
@@ -303,7 +344,7 @@
 #undef __FUN__
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define __FUN__        __func__
-#elif __PREREQ(3, 4)
+#elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __FUNCTION__
 #else
 # define __FUN__        uagent   /* Something that is not a literal */
@@ -312,7 +353,7 @@
 #if defined __predict_true && defined __predict_false
 # define LIKELY(X)      __predict_true(X)
 # define UNLIKELY(X)    __predict_false(X)
-#elif __PREREQ(2, 96)
+#elif CC_CLANG || PREREQ_GCC(2, 96)
 # define LIKELY(X)      __builtin_expect(X, 1)
 # define UNLIKELY(X)    __builtin_expect(X, 0)
 #else
@@ -529,6 +570,13 @@ enum exit_status {
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
 
+enum fedit_mode {
+   FEDIT_NONE     = 0,
+   FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
+   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, OPT_R_FLAG is global) */
+   FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
+};
+
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
    FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
@@ -575,6 +623,11 @@ enum mimeenc {
    MIME_B64          /* message is in base64 encoding */
 };
 
+enum mime_counter_evidence {
+   MIMECE_NONE,
+   MIMECE_USR_OVWR   = 1<<1
+};
+
 enum conversion {
    CONV_NONE,        /* no conversion */
    CONV_7BIT,        /* no conversion, is 7bit */
@@ -596,7 +649,6 @@ enum sendaction {
    SEND_TODISP_ALL,  /* same, include all MIME parts */
    SEND_SHOW,        /* convert to 'show' command form */
    SEND_TOSRCH,      /* convert for IMAP SEARCH */
-   SEND_TOFLTR,      /* convert for spam mail filtering */
    SEND_TOFILE,      /* convert for saving body to a file */
    SEND_TOPIPE,      /* convert for pipe-content/subc. */
    SEND_QUOTE,       /* convert for quoting */
@@ -778,7 +830,6 @@ enum okeys {
    ok_b_message_id_disable,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
-   ok_b_mime_counter_evidence,
    ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
@@ -814,6 +865,7 @@ enum okeys {
    ok_b_writebackedited,
 
    /* Option keys for values options */
+   ok_v_agent_shell_lookup,
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
@@ -851,6 +903,7 @@ enum okeys {
    ok_v_LISTER,
    ok_v_MAIL,
    ok_v_MBOX,
+   ok_v_mime_counter_evidence,
    /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
    ok_v_mimetypes_load_control,
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
@@ -866,6 +919,9 @@ enum okeys {
    ok_v_newmail,
    ok_v_ORGANIZATION,
    ok_v_PAGER,
+   ok_v_password,
+   /* TODO pop3_auth is yet a dummy to enable easier impl. of ccred_lookup()! */
+   ok_v_pop3_auth,
    ok_v_pop3_keepalive,
    ok_v_prompt,
    ok_v_quote,
@@ -1180,6 +1236,7 @@ struct mimepart {
    struct mimepart *m_parent;       /* enclosing multipart part */
    char        *m_ct_type;          /* content-type */
    char        *m_ct_type_plain;    /* content-type without specs */
+   char        *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    enum mimecontent m_mimecontent;  /* same in enum */
    char const  *m_charset;    /* charset */
    char        *m_ct_transfer_enc;  /* content-transfer-encoding */
@@ -1525,4 +1582,4 @@ VL uc_it const class_char[];
 
 #include "nailfuns.h"
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

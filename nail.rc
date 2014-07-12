@@ -1,7 +1,7 @@
 #--MKRC-START--
-# /etc/s-nail.rc
-# Configuration file for S-nail(1).
+# /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
+# S-nail(1): v14.7.2 / 2014-07-12
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
@@ -13,7 +13,8 @@
 # [t-z] toplines="5"
 # Notes:
 # - *noonehop* doesn't exist in this implementation.
-#   To pass through options to the MTA, use the `-O' command line option
+#   (To pass options through to an MTA, either add them after a '--' separator
+#   on the command line or by setting the *sendmail-arguments* variable.)
 # - *prompt* is "\\& " by default, which will act POSIX-compliant
 #   unless the user would set *bsdcompat*
 
@@ -63,7 +64,7 @@ set emptybox
 # Startup into interactive mode even if the (given) mailbox is empty
 #set emptystart
 
-# [OPTION] Add more entries to the history as is done by default
+# [OPTION] Add more entries to the history as is done by default
 set history-gabby
 
 # Do not forward to mbox by default since this is likely to be
@@ -158,4 +159,4 @@ set pipe-image/svg+xml=@
 # Other pipe-CONTENT/SUBCONTENT entries
 #set pipe-text/html="lynx -stdin -dump -force_html"
 
-# vim:set fenc=utf-8 syntax=conf:s-it-mode
+# s-it-mode

@@ -120,7 +120,7 @@ static char const *
 _from__skipword(char const *wp)
 {
    char c = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (wp != NULL) {
       while ((c = *wp++) != '\0' && !blankchar(c)) {
@@ -134,7 +134,7 @@ _from__skipword(char const *wp)
       for (; blankchar(c); c = *wp++)
          ;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (c == 0 ? NULL : wp - 1);
 }
 
@@ -142,7 +142,7 @@ static int
 _cmatch(size_t len, char const *date, char const *tp)
 {
    int ret = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    while (len--) {
       char c = date[len];
@@ -179,7 +179,7 @@ _cmatch(size_t len, char const *date, char const *tp)
    }
    ret = 1;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ret;
 }
 
@@ -189,13 +189,13 @@ _is_date(char const *date)
    struct cmatch_data const *cmdp;
    size_t dl;
    int rv = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((dl = strlen(date)) >= _DATE_MINLEN)
       for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
          if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
             break;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -497,19 +497,19 @@ charcount(char *str, int c)
 {
    char *cp;
    int i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (i = 0, cp = str; *cp; ++cp)
       if (*cp == c)
          ++i;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
 static char const *
 nexttoken(char const *cp)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    for (;;) {
       if (*cp == '\0') {
          cp = NULL;
@@ -532,7 +532,7 @@ nexttoken(char const *cp)
       else
          break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return cp;
 }
 
@@ -1355,7 +1355,7 @@ unixtime(char const *fromline)
    time_t t;
    int i, year, month, day, hour, minute, second, tzdiff;
    struct tm *tmptr;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
       ;
@@ -1396,7 +1396,7 @@ unixtime(char const *fromline)
       tzdiff += 3600;
    t -= tzdiff;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return t;
 jinvalid:
    time(&t);
@@ -1411,7 +1411,7 @@ rfctime(char const *date)
    char *x;
    time_t t;
    int i, year, month, day, hour, minute, second;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((cp = nexttoken(cp)) == NULL)
       goto jinvalid;
@@ -1489,7 +1489,7 @@ rfctime(char const *date)
        * TODO See RFC 5322, 4.3! */
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return t;
 jinvalid:
    t = 0;
@@ -1502,7 +1502,7 @@ FL time_t
 combinetime(int year, int month, int day, int hour, int minute, int second)
 {
    time_t t;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (second < 0 || minute < 0 || hour < 0 || day < 1) {
       t = (time_t)-1;
@@ -1536,7 +1536,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second)
    t += (year - 70) * 31536000 + ((year - 69) / 4) * 86400 -
          ((year - 1) / 100) * 86400 + ((year + 299) / 400) * 86400;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return t;
 }
 
@@ -1707,4 +1707,4 @@ jleave:
    return rv;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

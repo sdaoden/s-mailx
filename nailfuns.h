@@ -184,10 +184,14 @@ FL bool_t      _var_vokclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
+#ifdef HAVE_SOCKETS
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
-#define xok_blook(C,URL,M)       (_var_xoklook(CONCAT(ok_b_, C),URL,M) != NULL)
-#define xok_vlook(C,URL,M)       _var_xoklook(CONCAT(ok_v_, C), URL, M)
+#endif
+#define xok_BLOOK(C,URL,M)       (_var_xoklook(C, URL, M) != NULL)
+#define xok_VLOOK(C,URL,M)       _var_xoklook(C, URL, M)
+#define xok_blook(C,URL,M)       xok_BLOOK(CONCAT(ok_b_, C), URL, M)
+#define xok_vlook(C,URL,M)       xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 
 /* List all variables */
 FL void        var_list_all(void);
@@ -200,6 +204,9 @@ FL int         c_set(void *v);
 FL int         c_setenv(void *v);
 FL int         c_unset(void *v);
 FL int         c_unsetenv(void *v);
+
+/* Ditto: `varedit' */
+FL int         c_varedit(void *v);
 
 /* Macros: `define', `undefine', `call' / `~' */
 FL int         c_define(void *v);
@@ -253,20 +260,34 @@ FL void        hold_sigs(void);
 FL void        rele_sigs(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c) */
-#ifdef HAVE_DEBUG
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
 FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
                   char const *fun);
 FL void        _nyd_oncrash(int signo);
 
+# define HAVE_NYD
 # define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
 # define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# ifdef HAVE_NYD2
+#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# endif
 #else
+# undef HAVE_NYD
+#endif
+#ifndef NYD
 # define NYD_ENTER               do {} while (0)
 # define NYD_LEAVE               do {} while (0)
 # define NYD                     do {} while (0)
 # define NYD_X                   do {} while (0) /* XXX LEGACY */
+#endif
+#ifndef NYD2
+# define NYD2_ENTER              do {} while (0)
+# define NYD2_LEAVE              do {} while (0)
+# define NYD2                    do {} while (0)
 #endif
 
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have
@@ -282,8 +303,9 @@ FL int         argcount(char **argv);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is check wether we know about
- * some environment variable that supports colour+ */
+/* Get our $PAGER; if env_addon is not NULL it is checked wether we know about
+ * some environment variable that supports colour+ and set *env_addon to that,
+ * e.g., "LESS=FRSXi" */
 FL char const *get_pager(char const **env_addon);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
@@ -581,8 +603,9 @@ FL int         c_group(void *v);
 /* Delete the passed groups */
 FL int         c_ungroup(void *v);
 
-/* Change to another file.  With no argument, print info about current file */
+/* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
+FL int         c_File(void *v);
 
 /* Expand file names like echo */
 FL int         c_echo(void *v);
@@ -661,7 +684,9 @@ FL int         c_editor(void *v);
 /* Invoke the visual editor on a message list */
 FL int         c_visual(void *v);
 
-/* Run an editor on the file at fp of size bytes, and return a new file.
+/* Run an editor on either size bytes of the file fp (or until EOF if size is
+ * negative) or on the message mp, and return a new file or NULL on error of if
+ * the user didn't perform any edits.
  * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
@@ -810,7 +835,7 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
 
-/* Load a file of user definitions */
+/* Load a file of user definitions -- this is *only* for main()! */
 FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
@@ -949,7 +974,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx);
-FL int         imap_setfile(const char *xserver, int nmail, int isedit);
+FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -1001,7 +1026,7 @@ FL void        putcache(struct mailbox *mp, struct message *m);
 FL void        initcache(struct mailbox *mp);
 FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
 FL void        delcache(struct mailbox *mp, struct message *m);
-FL enum okay   cache_setptr(int transparent);
+FL enum okay   cache_setptr(enum fedit_mode fm, int transparent);
 FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
                   FILE *fp);
 FL enum okay   cache_remove(char const *name);
@@ -1026,13 +1051,15 @@ FL enum okay   imap_search(char const *spec, int f);
 /* Set up editing on the given file name.
  * If the first character of name is %, we are considered to be editing the
  * file, otherwise we are reading our mail which has signficance for mbox and
- * so forth.  nmail: Check for new mail in the current folder only */
-FL int         setfile(char const *name, int nmail);
+ * so forth.
+ nmail: Check for new mail in the current folder only */
+FL int         setfile(char const *name, enum fedit_mode fm);
 
 FL int         newmailinfo(int omsgCount);
 
-/* Interpret user commands.  If standard input is not a tty, print no prompt */
-FL void        commands(void);
+/* Interpret user commands.  If standard input is not a tty, print no prompt;
+ * return wether the last processed command returned error */
+FL bool_t      commands(void);
 
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.
@@ -1104,7 +1131,7 @@ FL void *      zalloc(FILE *fp);
  * maildir.c
  */
 
-FL int         maildir_setfile(char const *name, int nmail, int isedit);
+FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
 FL void        maildir_quit(void);
 
@@ -1161,13 +1188,17 @@ FL char *      mime_create_boundary(void);
 FL int         mime_classify_file(FILE *fp, char const **contenttype,
                   char const **charset, int *do_iconv);
 
-/* */
-FL enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
+/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
+ * but otherwise mpp is const */
+FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
 
 /* Return the Content-Type matching the extension of name */
 FL char *      mime_classify_content_type_by_fileext(char const *name);
 
-/* "mimetypes" command */
+/* Get the (pipe) handler for a part, or NULL if there is none known */
+FL char *      mimepart_get_handler(struct mimepart const *mpp);
+
+/* `mimetypes' command */
 FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */
@@ -1191,6 +1222,13 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
  */
+
+/* Utilities: the former converts the byte c into a (NUL terminated)
+ * hexadecimal string as is used in URL percent- and quoted-printable encoding,
+ * the latter performs the backward conversion and returns the character or -1
+ * on error */
+FL char *      mime_char_to_hexseq(char store[3], char c);
+FL si32_t      mime_hexseq_to_char(char const *hex);
 
 /* How many characters of (the complete body) ln need to be quoted */
 FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead);
@@ -1348,7 +1386,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 FL enum okay   pop3_noop(void);
 
 /*  */
-FL int         pop3_setfile(char const *server, int nmail, int isedit);
+FL int         pop3_setfile(char const *server, enum fedit_mode fm);
 
 /*  */
 FL enum okay   pop3_header(struct message *m);
@@ -1398,8 +1436,11 @@ FL void        Ftmp_free(char **fn);
 /* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
 FL bool_t      pipe_cloexec(int fd[2]);
 
+/*
+ * env_addon may be NULL, otherwise it is expected to be a NULL terminated
+ * array of "K=V" strings to be placed into the childs environment */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  char const *env_addon, int newfd1);
+                  char const **env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
@@ -1412,9 +1453,12 @@ FL void        close_all_files(void);
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
+/*
+ * env_addon may be NULL, otherwise it is expected to be a NULL terminated
+ * array of "K=V" strings to be placed into the childs environment */
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
-                  char const *env_addon);
+                  char const **env_addon);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 
@@ -1651,14 +1695,6 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 # define protbase(CP)            protbase(CP, __FILE__, __LINE__)
 #endif
 
-/* URL en- and decoding (RFC 1738, but not really) */
-FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
-FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
-# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
-#endif
-
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
@@ -1687,9 +1723,6 @@ FL void        i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
 FL int         is_prefix(char const *as1, char const *as2);
-
-/* Find the last AT @ before the first slash */
-FL char const * last_at_before_slash(char const *sp);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
  * to indicate wether getmsglist() et al need to be called to collect
@@ -1800,6 +1833,7 @@ FL void        uncollapse1(struct message *mp, int always);
  * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
+#ifdef HAVE_SOCKETS
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
 FL char *      getuser(char const *query);
@@ -1808,6 +1842,7 @@ FL char *      getuser(char const *query);
  * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
 FL char *      getpassword(char const *query);
+#endif
 
 /* Overall interactive terminal life cycle for command line editor library */
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
@@ -1841,6 +1876,16 @@ FL int         c_history(void *v);
  * urlcrecry.c
  */
 
+/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
+ * These return a newly salloc()ated result */
+FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
+FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
+# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+#endif
+
+#ifdef HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
@@ -1851,9 +1896,12 @@ FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
 FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
+#endif /* HAVE_SOCKETS */
 
 /* `netrc' */
+#ifdef HAVE_NETRC
 FL int         c_netrc(void *v);
+#endif
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
@@ -1891,4 +1939,4 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 # define FL
 #endif
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

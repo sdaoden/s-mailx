@@ -169,6 +169,7 @@ static long             had_expunge = -1;
 static long             expunged_messages;
 static int volatile     imaplock;
 static int              same_imap_account;
+static bool_t           _imap_rdonly;
 
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
@@ -202,7 +203,7 @@ static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
 static bool_t     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
                      struct url *urlp);
-static int        _imap_setfile1(struct url *urlp, int nmail, int isedit,
+static int        _imap_setfile1(struct url *urlp, enum fedit_mode fm,
                      int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      size_t expected, int need, const char *head,
@@ -263,7 +264,7 @@ static void
 imap_other_get(char *pp)
 {
    char *xp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (ascncasecmp(pp, "FLAGS ", 6) == 0) {
       pp += 6;
@@ -303,13 +304,13 @@ imap_other_get(char *pp)
          response_other = RESPONSE_OTHER_UNKNOWN;
    }
    responded_other_text = pp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 imap_response_get(const char **cp)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (ascncasecmp(*cp, "OK ", 3) == 0) {
       *cp += 3;
       response_status = RESPONSE_OK;
@@ -327,7 +328,7 @@ imap_response_get(const char **cp)
       response_status = RESPONSE_BYE;
    } else
       response_status = RESPONSE_OTHER;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -338,7 +339,7 @@ imap_response_parse(void)
 
    const char *ip = imapbuf;
    char *pp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (parsebufsize < imapbufsize)
       parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
@@ -395,7 +396,7 @@ imap_response_parse(void)
    if (response_type != RESPONSE_CONT && response_type != RESPONSE_ILLEGAL &&
          response_status == RESPONSE_OTHER)
       imap_other_get(pp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static enum okay
@@ -403,7 +404,7 @@ imap_answer(struct mailbox *mp, int errprnt)
 {
    int i, complete;
    enum okay rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = OKAY;
    if (mp->mb_type == MB_CACHE)
@@ -479,7 +480,7 @@ jstop:
       mp->mb_active = MB_NONE;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -488,7 +489,7 @@ imap_parse_list(void)
 {
    char *cp;
    enum okay rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = STOP;
 
@@ -540,7 +541,7 @@ imap_parse_list(void)
    *cp = '\0';
    rv = OKAY;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1055,8 +1056,12 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
       }
    }
 
-   for (n = X; n <= Y; n++)
+   srelax_hold();
+   for (n = X; n <= Y; ++n) {
       putcache(mp, &message[n-1]);
+      srelax();
+   }
+   srelax_rele();
    return OKAY;
 }
 
@@ -1130,7 +1135,7 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
 }
 
 FL int
-imap_setfile(const char *xserver, int nmail, int isedit)
+imap_setfile(const char *xserver, enum fedit_mode fm)
 {
    struct url url;
    int rv;
@@ -1144,7 +1149,8 @@ imap_setfile(const char *xserver, int nmail, int isedit)
          (!url.url_had_user || url.url_pass.s != NULL))
       fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
 
-   rv = _imap_setfile1(&url, nmail, isedit, 0);
+   _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
+   rv = _imap_setfile1(&url, fm, 0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1180,8 +1186,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(struct url *urlp, int nmail, int isedit,
-   int volatile transparent)
+_imap_setfile1(struct url *urlp, enum fedit_mode fm, int volatile transparent)
 {
    struct sock so;
    struct ccred ccred;
@@ -1192,7 +1197,7 @@ _imap_setfile1(struct url *urlp, int nmail, int isedit,
    enum mbflags same_flags;
    NYD_ENTER;
 
-   if (nmail) {
+   if (fm & FEDIT_NEWMAIL) {
       saveint = safe_signal(SIGINT, SIG_IGN);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
       if (saveint != SIG_IGN)
@@ -1236,7 +1241,7 @@ jduppass:
    if (!transparent)
       quit();
 
-   edit = (isedit != 0);
+   edit = !(fm & FEDIT_SYSBOX);
    if (mb.mb_imap_account != NULL)
       free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
@@ -1292,7 +1297,7 @@ jduppass:
 
    if (mb.mb_sock.s_fd < 0) {
       if (disconnected(mb.mb_imap_account)) {
-         if (cache_setptr(transparent) == STOP)
+         if (cache_setptr(fm, transparent) == STOP)
             fprintf(stderr, "Mailbox \"%s\" is not cached.\n",
                urlp->url_p_eu_h_p_p);
          goto jdone;
@@ -1320,7 +1325,7 @@ jduppass:
    } else   /* same account */
       mb.mb_flags |= same_flags;
 
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
@@ -1336,30 +1341,31 @@ jduppass:
    }
 
 jnmail:
-   imap_setptr(&mb, nmail, transparent, UNVOLATILE(&prevcount));
+   imap_setptr(&mb, ((fm & FEDIT_NEWMAIL) != 0), transparent,
+      UNVOLATILE(&prevcount));
 jdone:
    setmsize(msgCount);
-   if (!nmail && !transparent)
+   if (!(fm & FEDIT_NEWMAIL) && !transparent)
       sawcom = FAL0;
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
 
-   if (!nmail && mb.mb_type == MB_IMAP)
+   if (!(fm & FEDIT_NEWMAIL) && mb.mb_type == MB_IMAP)
       purgecache(&mb, message, msgCount);
-   if ((nmail || transparent) && mb.mb_sorted) {
+   if (((fm & FEDIT_NEWMAIL) || transparent) && mb.mb_sorted) {
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
 
-   if (!nmail && !edit && msgCount == 0) {
+   if (!(fm & FEDIT_NEWMAIL) && !edit && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
       rv = 1;
       goto jleave;
    }
-   if (nmail)
+   if (fm & FEDIT_NEWMAIL)
       newmailinfo(prevcount);
    rv = 0;
 jleave:
@@ -1721,6 +1727,8 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          tag(1), bot, topp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
+
+   srelax_hold();
    for (;;) {
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER)
@@ -1767,7 +1775,10 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
             n = 0;
          }
       }
+      srelax();
    }
+   srelax_rele();
+
    while (mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);
    return ok;
@@ -1777,7 +1788,7 @@ FL void
 imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 {
    sighandler_type saveint, savepipe;
-   /* enum okay ok = STOP;*/
+   /*enum okay ok = STOP;*/
    int i, chunk = 256;
    NYD_X;
 
@@ -1984,6 +1995,7 @@ jbypass:
          putcache(mp, m);
          modflags++;
       }
+
    if ((gotcha || modflags) && edit) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
@@ -2122,12 +2134,12 @@ tag(int new)
 {
    static char ts[20];
    static long n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (new)
       ++n;
    snprintf(ts, sizeof ts, "T%lu", n);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ts;
 }
 
@@ -2196,7 +2208,7 @@ imap_putflags(int f)
 {
    const char *cp;
    char *buf, *bp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    bp = buf = salloc(100);
    if (f & (MREAD | MFLAGGED | MANSWERED | MDRAFTED)) {
@@ -2229,14 +2241,14 @@ imap_putflags(int f)
       *bp++ = ' ';
    }
    *bp = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return buf;
 }
 
 static void
 imap_getflags(const char *cp, char const **xp, enum mflag *f)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    while (*cp != ')') {
       if (*cp == '\\') {
          if (ascncasecmp(cp, "\\Seen", 5) == 0)
@@ -2257,7 +2269,7 @@ imap_getflags(const char *cp, char const **xp, enum mflag *f)
 
    if (xp != NULL)
       *xp = cp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static enum okay
@@ -3443,7 +3455,12 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
    var_clear_allow_undefined = FAL0;
 
    if (mb.mb_type == MB_CACHE) {
-      _imap_setfile1(&url, 0, edit, 1);
+      enum fedit_mode fm = FEDIT_NONE;
+      if (_imap_rdonly)
+         fm |= FEDIT_RDONLY;
+      if (!edit)
+         fm |= FEDIT_SYSBOX;
+      _imap_setfile1(&url, fm, 1);
       if (msgCount > omsgCount)
          newmailinfo(omsgCount);
    }
@@ -3476,8 +3493,13 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       c_cache(vp);
    ok_bset(disconnected, TRU1);
    if (mb.mb_type == MB_IMAP) {
+      enum fedit_mode fm = FEDIT_NONE;
+      if (_imap_rdonly)
+         fm |= FEDIT_RDONLY;
+      if (!edit)
+         fm |= FEDIT_SYSBOX;
       sclose(&mb.mb_sock);
-      _imap_setfile1(&url, 0, edit, 1);
+      _imap_setfile1(&url, fm, 1);
    }
    rv = 0;
 jleave:
@@ -3501,11 +3523,15 @@ c_cache(void *vp)
       goto jleave;
    }
 
+   srelax_hold();
    for (ip = msgvec; *ip; ++ip) {
       mp = &message[*ip - 1];
-      if (!(mp->m_have & HAVE_BODY))
+      if (!(mp->m_have & HAVE_BODY)) {
          get_body(mp);
+         srelax();
+      }
    }
+   srelax_rele();
    rv = 0;
 jleave:
    NYD_LEAVE;
@@ -3577,7 +3603,7 @@ imap_read_date_time(const char *cp)
    char buf[3];
    time_t t;
    int i, year, month, day, hour, minute, second, sign = -1;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* "25-Jul-2004 15:33:44 +0200"
     * |    |    |    |    |    |
@@ -3615,7 +3641,7 @@ imap_read_date_time(const char *cp)
    buf[1] = cp[26];
    t += strtol(buf, NULL, 10) * sign * 60;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return t;
 jinvalid:
    time(&t);
@@ -3628,7 +3654,7 @@ imap_make_date_time(time_t t)
    static char s[30];
    struct tm *tmptr;
    int tzdiff, tzdiff_hour, tzdiff_min;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    tzdiff = t - mktime(gmtime(&t));
    tzdiff_hour = (int)(tzdiff / 60);
@@ -3640,7 +3666,7 @@ imap_make_date_time(time_t t)
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
          tmptr->tm_mday, month_names[tmptr->tm_mon], tmptr->tm_year + 1900,
          tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, tzdiff_hour, tzdiff_min);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return s;
 }
 #endif /* HAVE_IMAP */
@@ -3650,7 +3676,7 @@ FL char *
 imap_quotestr(char const *s)
 {
    char *n, *np;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    np = n = salloc(2 * strlen(s) + 3);
    *np++ = '"';
@@ -3661,7 +3687,7 @@ imap_quotestr(char const *s)
    }
    *np++ = '"';
    *np = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 
@@ -3669,7 +3695,7 @@ FL char *
 imap_unquotestr(char const *s)
 {
    char *n, *np;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (*s != '"') {
       n = savestr(s);
@@ -3686,9 +3712,9 @@ imap_unquotestr(char const *s)
    }
    *np = '\0';
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 #endif /* defined HAVE_IMAP || defined HAVE_IMAP_SEARCH */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

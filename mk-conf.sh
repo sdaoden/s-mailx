@@ -50,10 +50,11 @@ fi
 option_update() {
    if nwantfeat SOCKETS; then
       WANT_IPV6=0 WANT_SSL=0
-      WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_NETRC=0 WANT_GSSAPI=0
+      WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_GSSAPI=0
+      WANT_NETRC=0 WANT_AGENT=0
    fi
    if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0
+      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
    fi
    if nwantfeat IMAP && nwantfeat SMTP; then
       WANT_GSSAPI=0
@@ -64,7 +65,7 @@ option_update() {
       WANT_MD5=0
    fi
    if wantfeat DEBUG; then
-      WANT_NOALLOCA=1
+      WANT_NOALLOCA=1 WANT_DEVEL=1
    fi
 }
 
@@ -199,8 +200,8 @@ ${rm} -f ${tmp}
 
 < ${conf} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
 while read line; do
-   i=`echo ${line} | ${sed} -e 's/=.*$//'`
-   eval j=\$${i} jx=\${${i}+x}
+   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
+   eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
       line="${i}=\"${j}\""
    fi
@@ -638,6 +639,14 @@ int main(void)
 !
 fi
 
+if wantfeat DEVEL; then
+   echo '#define HAVE_DEVEL' >> ${h}
+fi
+
+if wantfeat NYD2; then
+   echo '#define HAVE_NYD2' >> ${h}
+fi
+
 ##
 
 if wantfeat ICONV; then
@@ -885,12 +894,6 @@ else
    echo '/* WANT_SSL=0 */' >> ${h}
 fi # wantfeat SSL
 
-if wantfeat NETRC; then
-   echo '#define HAVE_NETRC' >> ${h}
-else
-   echo '/* WANT_NETRC=0 */' >> ${h}
-fi
-
 if wantfeat GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
@@ -950,6 +953,18 @@ int main(void)
 else
    echo '/* WANT_GSSAPI=0 */' >> ${h}
 fi # wantfeat GSSAPI
+
+if wantfeat NETRC; then
+   echo '#define HAVE_NETRC' >> ${h}
+else
+   echo '/* WANT_NETRC=0 */' >> ${h}
+fi
+
+if wantfeat AGENT; then
+   echo '#define HAVE_AGENT' >> ${h}
+else
+   echo '/* WANT_AGENT=0 */' >> ${h}
+fi
 
 if wantfeat IDNA; then
    link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
@@ -1361,4 +1376,4 @@ ${cat} > ${tmp2}.c << \!
 ${make} -f ${makefile} ${tmp2}.x
 < ${tmp2}.x >&5 ${sed} -e '/^[^:]/d; /^$/d; s/^://'
 
-# vim:set fenc=utf-8:s-it-mode
+# s-it-mode

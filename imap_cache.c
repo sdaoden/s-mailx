@@ -95,7 +95,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
    char *cachedir, *eaccount, *ename, *res;
    char const *emailbox;
    int resz;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
@@ -121,7 +121,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
             (*ename ? "/" : ""), ename);
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return res;
 }
 
@@ -129,11 +129,11 @@ static char *
 encuid(struct mailbox *mp, unsigned long uid)
 {
    char buf[30], *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    snprintf(buf, sizeof buf, "%lu", uid);
    cp = encname(mp, buf, 1, NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return cp;
 }
 
@@ -148,7 +148,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    off_t offset;
    void *zp;
    enum okay rv = STOP;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
@@ -248,7 +248,7 @@ jflags:
 jfail:
    Fclose(fp);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -579,7 +579,7 @@ delcache(struct mailbox *mp, struct message *m)
 }
 
 FL enum okay
-cache_setptr(int transparent)
+cache_setptr(enum fedit_mode fm, int transparent)
 {
    struct cw cw;
    int i, omsgCount = 0;
@@ -613,14 +613,19 @@ cache_setptr(int transparent)
       abort();
    }
    cwrelse(&cw);
+
+   srelax_hold();
    for (i = 0; i < msgCount; i++) {
       message[i].m_uid = contents[i];
       getcache1(&mb, &message[i], NEED_UNSPEC, 3);
+      srelax();
    }
+   srelax_rele();
+
    if (contents != NULL)
       free(contents);
    mb.mb_type = MB_CACHE;
-   mb.mb_perm = (options & OPT_R_FLAG) ? 0 : MB_DELE;
+   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    if (transparent)
       transflags(omessage, omsgCount, 1);
    else {
@@ -873,4 +878,4 @@ jleave:
 }
 #endif /* HAVE_IMAP */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

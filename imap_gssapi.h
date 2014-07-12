@@ -75,6 +75,7 @@
 # ifdef GSSAPI_OLD_STYLE
 #  include <gssapi/gssapi_generic.h>
 #  define GSS_C_NT_HOSTBASED_SERVICE   gss_nt_service_name
+#  define NAIL_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 # endif
 #else
 # include <gssapi.h>
@@ -83,6 +84,7 @@
 static void _imap_gssapi_error1(const char *s, OM_uint32 code, int typ);
 static void _imap_gssapi_error(const char *s, OM_uint32 maj_stat,
                OM_uint32 min_stat);
+static char * _imap_gssapi_last_at_before_slash(char const *sp);
 
 static void
 _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
@@ -116,6 +118,24 @@ _imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
    NYD_LEAVE;
 }
 
+static char *
+_imap_gssapi_last_at_before_slash(char const *sp)
+{
+   char const *cp;
+   char c;
+   NYD_ENTER;
+
+   for (cp = sp; (c = *cp) != '\0'; ++cp)
+      if (c == '/')
+         break;
+   while (cp > sp && *--cp != '@')
+      ;
+   if (*cp != '@')
+      cp = NULL;
+   NYD_LEAVE;
+   return UNCONST(cp);
+}
+
 static enum okay
 _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
 {
@@ -139,7 +159,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       server += 7;
    else if (!strncmp(server, "imaps://", 8))
       server += 8;
-   if ((cp = UNCONST(last_at_before_slash(server))) != NULL)
+   if ((cp = _imap_gssapi_last_at_before_slash(server)) != NULL)
       server = &cp[1];
    for (cp = server; *cp; cp++)
       *cp = lowerconv(*cp);
@@ -273,7 +293,9 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    return ok;
 }
 
-# undef GSS_C_NT_HOSTBASED_SERVICE
+# ifdef NAIL_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+#  undef GSS_C_NT_HOSTBASED_SERVICE
+# endif
 #endif /* HAVE_GSSAPI */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

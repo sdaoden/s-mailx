@@ -460,4 +460,4 @@ rfc2595_hostname_match(char const *host, char const *pattern)
 }
 #endif /* HAVE_SSL */
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

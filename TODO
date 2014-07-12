@@ -59,6 +59,9 @@ With a clean, conforming and efficient codebase, then.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
 
+-- Also, when we run a pipe handler asynchronously there should possible
+   written something like [pipe-handler xy started] or something
+
 - Offer the possibility to work with certificate fingerprints instead of
   full certificates, in equal spirit to the current maintainers S-Postman
   and Mercurial.  S-nail(1) could simply offer something in equal spirit to
@@ -80,17 +83,10 @@ With a clean, conforming and efficient codebase, then.
 - Command line editing should gain possibility of context sensitive tab
   completion.
 
--- Note that the TTY is sick.  If ^C on input it simply jumps to next
-   input, instead of saying "Interrupted, one more to die hard" or
-   something (talking about ~@ charset selection prompts in particular).
-
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
   What i want is a *real* resend, best if possible from command line.
   Meaning, also the possibility to postpone a message.  In general.
-
-- POP3 doesn't support "newmail" for real.  If implemented, should it sync?
-  Look at POP3 impl. in general..
 
 - Having a newsreader would be a really cool thing.  (RFC 977 and 2980)
 
@@ -376,7 +372,7 @@ Low-Level
      open mailboxes, e.g., views over multiple such!
 100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
 
-TODO S-nail 14.7:
+TODO S-nail 14.8:
 -----------------
 
 - Deal with faulty message selection that may occur when selecting threads
@@ -447,9 +443,6 @@ TODO S-nail 14.7:
    in case we have so many of them that they don't fit on the screen.
    ...  Etc. ...
 
-- IMAP: if i `d' a message then this is a local change (in the meanwhile);
-  yet, when i `u' it, that will go through the server, needlessly.
-
 - I got an email in base64 that obviously used CRNL line endings, and once
   i've replied the CR where quoted as *control* characters.
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
@@ -473,6 +466,7 @@ TODO S-nail 14.7:
   . It would be cool if ghosts, shortcuts, alternates could
     (optionally?) be tracked via localopts.
     (Additional entry on xy-local xy somewhere above)
+    And / or local to a macro/account if defined in one.
   . The spam* series (spam.c:_spam_action()) should abort if the command
     execution failed, instead of iterating the entire list.  Look into
     that.
@@ -521,6 +515,11 @@ TODO S-nail 14.7:
      also trailing whitespace; also, the expanded command should be
      stored, not the abbreviation, so that 'sst' and 'sstats' will no
      longer produce two separate entries.
+  ... Because of laststring() and because the evaluate()d line buffer is
+      not constant history entries sometimes do not 100% reflect what
+      was actually present on the command line, but i refrained from
+      hacking a solution since that buffer must end up as a constant
+      (TODOs or so in the source).
   . getprompt() could reserve for each dynamic entry at least one
     visible offset, so that at least a `?' could be written if the room
     is otherwise insufficient; in addition, if there were 3 such
@@ -591,6 +590,17 @@ TODO S-nail 14.7:
     mightrecord() may internally (via _compress()) instantiate
     a complete IMAP session and try to send incomplete data etc.,
     and all that may jump, i refrained from doing so.
+  .. Note that mutt also has send-hooks with special triggers etc.,
+     which even allows setting some options which affect the mail to be
+     sent, like choosing a signing certificate dependend on the value in
+     From: and such;
+     That is (v15.0)
+      1. init send carrier enough for allowing
+      2. user compose mode
+      3. fully initialize send carrier according to what is "final"
+      4. run trigger macros WHICH MAY MODIFY THE MESSAGE AGAIN, so
+      5. fully reinitialize the send carrier
+      6. pass the final message down the send/mime chain
   . SMTPS never became a standard and :465 was already reassigned
     (thanks, carriers), but if a user says SMTPS and doesn't specify
     a port also then we could simply assume :465 because except NetBSD
@@ -602,8 +612,6 @@ TODO S-nail 14.7:
     follow
   . [-- #2 : 41/2761, text/plain, 0001-Israel-DST-transitio --]
     If not fit, it should do `...'
-    It is not multibyte safe anyway, implement a generic function (or
-    two, one that takes an iconv_t) to trim a string into a buffer
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
     then the composed mail is lost completely, it seems we jump to the
     very main loop!
@@ -642,7 +650,6 @@ TODO S-nail 14.7:
   . mutt list handling (`~') is very powerful
   . Check what happens if an account switch or a network connection is
     done while we are loading the resource files...
-  . urlxdec() doesn't know about invalid input strings, just deconverts
   . We have some use of *at() functions, especially anything which
     temporarily switches cwd.
   . *newmail* is terrible.  At some later time we need to do somethings
@@ -653,8 +660,6 @@ TODO S-nail 14.7:
     deleted message or deleted message header shall be displayed by any
     mailx command other than undelete.)
     If i say p:d or f:d it should work.
-  . The manual should clearly state which options are enabled by
-    default.
   . The RFC 3798 *disposition-notification-send* mechanism is yet not
     truly conforming (and works with *from*).  Also, this is only the
     sender side, there should be support for creating the MDN response.
@@ -675,5 +680,75 @@ TODO S-nail 14.7:
     a meaning for S-nail; this needn't be as expensive as it sounds.
   . The *sendmail** variables should have been replaced by *mta** in
     v15.0!?!
+  . We should support more named colours, enabled via a, e.g.,
+    *colour-plus*, but provide downgrade colours for given colour names
+    if that isn't set. (Gavin Troy)
+  . I want *pipemac* (or *pipe-hookXY*).  This requires v15.0
+    infrastructure (pseudo: evaluate() returns enum eval_retval{OK=0,
+    ERR=1, ISMAC=0x80, MACOK=ISMAC|OK, MACERR=ISMAC|ERR}; new `return'
+    command which only works in an executing macro (care: recursion);
+    macro arguments in pseudo variables $1...$x (works?); `return' can
+    "return" a list (simply keep argument list around); macro execution
+    can then simply check the return value to decide what to do (no
+    jumping); btw.: where is our `clone' command which clones WHATEVER?):
+      define pipemac {
+        clone name=$1 base=$2 ext=$3 ACTION=$4([SEND_]MBOX|DISPLAY|etc)
+        if $name =~ 'README|INSTALL|TODO|COPYING|*.(txt|rc|cfg|conf)$'
+          return 'text/plain'
+        elif $ext =~ 'gz$'
+          return 'application/gzip'
+        elif $ext =~ '*.\.nim$'
+          return 'text/x-nimrod'
+        else
+          varshell i /usr/bin/file --preserve-date $name
+          return $i
+        endif
+      }
+    Also interesting would be the possibility to let a macro BE the
+    (forked+exec, I/O redirected) external handler, "returning the
+    output I/O handle".
+    Inspired by Gavin Troy and Bob Tennent.
+  . Check cmd_tab.h <-> POSIX:
+      The following commands shall be invalid in the start-up file: !,
+      edit, hold, mail, preserve, reply, Reply, shell, visual, Copy,
+      followup, and Followup.
+    Add setenv, unsetenv etc.  But that shouldn't be covered by the
+    ARG_I bit, but we need another one; setenv and unsetenv currently
+    explicitly test for the "starting" variable.  (That+ should be
+    a bit(s) anyway, see elsewhere in this file.)
+  .. NOTE: POSIX also has a clear idea on what variable comes in from
+     the environment and which not.  This was actually adjusted
+     accordingly in the manual after v14.7.1, but we don't really honour
+     it; since our -S mechanism now works correctly it is possibly
+     a good idea to again make a *true and real difference* in between
+     external variables that will be overtaken from the environment and
+     internal variables, which *may not* come in from the environment.
+     They may however override values which (are allowed to) come in
+     from the environment -- that is, for those we should force
+     overriding via setenv even upon startup!  (Add a FROMENV flag for
+     enum okeys, and handle it somehow like special!)
+  ... While here: variables with a defined fallback value (like LISTER
+      <- XLISTER, SHELL <- XSHELL etc.) should RETURN the fallback
+      value, i.e., the following should NOT be necessary:
+       if ((sh = ok_vlook(SHELL)) == NULL)
+          sh = XSHELL;
+      but be done automatically -- why not have yet another enum okeys
+      flag that names a preprocessor macro, as in fallback=NAME?
+  ... fexpand() the 2nd: it should return structure because we need to
+      check for FEDIT_SYSBOX, which currently only checks wether the first
+      character of a file name is '%', not wether it is '%', '%:FILEPATH'
+      or '%VALIDUSER', because that is impossible to do!
+  . On the long run in-memory password storage should be zeroed after
+    use, possibly even encoded *during* use.  After v15.
+  . Add direct support of gpg-agent(1) and add *agent-lookup* (requires
+    libassuan, but is so much more performant than *agent-shell-lookup*).
+  . Try to deal with invalid MBOXes: if a final MIME boundary is seen,
+    don't require the separating newline before the from (when reading
+    the mailbox).
+  . My signal handling is pretty messy, too.  E.g., for the new spam
+    handling we even reset TTIN etc. etc., whereas for
+    *agent-shell-lookup* we don't do just about anything.  Even though
+    it work (due to stacking of handlers all over the place etc.), but
+    we need to have a clean design at some later time.
 
-vim:set fenc=utf-8:s-ts-mode
+# s-ts-mode

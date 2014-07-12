@@ -77,12 +77,13 @@ static void          __endpart(struct mimepart **np, off_t xoffs, long lines);
 static void          _print_part_info(struct str *out, struct mimepart *mip,
                            struct ignoretab *doign, int level);
 
-/* Query possible pipe command for MIME type */
-static enum pipeflags _pipecmd(char **result, char const *content_type);
+/* Query possible pipe command for MIME part */
+static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
 
-/* Create a pipe */
-static FILE *        _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote,
-                        bool_t async);
+/* Create a pipe; if mpp is not NULL, place some PIPEHOOK_* environment
+ * variables accordingly */
+static FILE *        _pipefile(char const *pipecomm, struct mimepart const *mpp,
+                        FILE **qbuf, bool_t quote, bool_t async);
 
 /* Adjust output statistics */
 SINLINE void         _addstats(off_t *stats, off_t lines, off_t bytes);
@@ -159,6 +160,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       ip->m_ct_type_plain = UNCONST("message/rfc822");
    else
       ip->m_ct_type_plain = UNCONST("text/plain");
+   ip->m_ct_type_usr_ovwr = NULL;
 
    if (ip->m_ct_type != NULL)
       ip->m_charset = mime_getparam("charset", ip->m_ct_type);
@@ -438,20 +440,33 @@ _print_part_info(struct str *out, struct mimepart *mip,
 
    /* Max. 24 */
    if (is_ign("content-type", 12, doign)) {
-      out->s = mip->m_ct_type_plain;
+      size_t addon;
+
+      if ((out->s = mip->m_ct_type_usr_ovwr) != NULL)
+         addon = 2;
+      else {
+         addon = 0;
+         out->s = mip->m_ct_type_plain;
+      }
       out->l = strlen(out->s);
-      ct.s = ac_alloc(out->l + 2 +1);
+
+      ct.s = ac_alloc(out->l + 2 + addon +1);
       ct.s[0] = ',';
       ct.s[1] = ' ';
       ct.l = 2;
+      if (addon) {
+         ct.s[ct.l++] = '+';
+         ct.s[ct.l++] = ' ';
+      }
+
       if (is_prefix("application/", out->s)) {
-         memcpy(ct.s + 2, "appl../", 7);
+         memcpy(ct.s + ct.l, "appl../", 7);
          ct.l += 7;
          out->l -= 12;
          out->s += 12;
-         out->l = MIN(out->l, 17);
+         out->l = MIN(out->l, 17 - addon);
       } else
-         out->l = MIN(out->l, 24);
+         out->l = MIN(out->l, 24 - addon);
       memcpy(ct.s + ct.l, out->s, out->l);
       ct.l += out->l;
       ct.s[ct.l] = '\0';
@@ -512,34 +527,19 @@ _print_part_info(struct str *out, struct mimepart *mip,
 }
 
 static enum pipeflags
-_pipecmd(char **result, char const *content_type)
+_pipecmd(char **result, struct mimepart const *mpp)
 {
    enum pipeflags ret;
-   char *s, *cp;
-   char const *cq;
+   char *cp;
    NYD_ENTER;
 
-   ret = PIPE_NULL;
-   *result = NULL;
-   if (content_type == NULL)
-      goto jleave;
-
-   /* First check wether there is a special pipe-MIMETYPE handler */
-   s = ac_alloc(strlen(content_type) + 5 +1);
-   memcpy(s, "pipe-", 5);
-   cp = s + 5;
-   cq = content_type;
-   do
-      *cp++ = lowerconv(*cq);
-   while (*cq++ != '\0');
-   cp = vok_vlook(s);
-   ac_free(s);
-
-   if (cp == NULL)
-      goto jleave;
-
+   /* Do we have any handler for this part? */
+   if ((cp = mimepart_get_handler(mpp)) == NULL) {
+      ret = PIPE_NULL;
+      *result = NULL;
+   }
    /* User specified a command, inspect for special cases */
-   if (cp[0] != '@') {
+   else if (cp[0] != '@') {
       /* Normal command line */
       ret = PIPE_COMM;
       *result = cp;
@@ -552,40 +552,28 @@ _pipecmd(char **result, char const *content_type)
       *result = UNCONST(_("[Directly address message only to display this]\n"));
    } else {
       /* Viewing a single message only */
-#if 0 /* TODO send/MIME layer rewrite: when we have a single-pass parser
-    * TODO then the parsing phase and the send phase will be separated;
-    * TODO that allows us to ask a user *before* we start the send, i.e.,
-    * TODO *before* a pager pipe is setup (which is the problem with
-    * TODO the '#if 0' code here) */
-      size_t l = strlen(content_type);
-      char const *x = _("Should i display a part `%s' (y/n)? ");
-      s = ac_alloc(l += strlen(x) +1);
-      snprintf(s, l - 1, x, content_type);
-      l = getapproval(s), TRU1;
-         puts(""); /* .. we've hijacked a pipe 8-] ... */
-      ac_free(s);
-      if (!l) {
-         x = _("[User skipped diplay]\n");
-         ret = PIPE_MSG;
-         *result = UNCONST(x);
-      } else
-#endif
+      /* TODO send/MIME layer rewrite: when we have a single-pass parser
+       * TODO then the parsing phase and the send phase will be separated;
+       * TODO that allows us to ask a user *before* we start the send, i.e.,
+       * TODO *before* a pager pipe is setup */
       if (cp[0] == '&')
          /* Asynchronous command, normal command line */
          ret = PIPE_ASYNC, *result = ++cp;
       else
          ret = PIPE_COMM, *result = cp;
    }
-jleave:
    NYD_LEAVE;
    return ret;
 }
 
 static FILE *
-_pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
+_pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
+   bool_t quote, bool_t async)
 {
-   char const *sh;
+   struct str s;
+   char const *env_addon[8], *sh;
    FILE *rbuf;
+   char *cp;
    NYD_ENTER;
 
    rbuf = *qbuf;
@@ -599,9 +587,43 @@ _pipefile(char const *pipecomm, FILE **qbuf, bool_t quote, bool_t async)
       async = FAL0;
    }
 
+   /* NAIL_FILENAME */
+   if (mpp == NULL || (cp = mpp->m_filename) == NULL)
+      cp = UNCONST("");
+   env_addon[0] = str_concat_csvl(&s, PIPEHOOK_FILENAME, "=", cp, NULL)->s;
+
+   /* NAIL_FILENAME_GENERATED */
+   s.s = getrandstring(8);
+   if (mpp == NULL)
+      cp = s.s;
+   else if (*cp == '\0') {
+      if (  (((cp = mpp->m_ct_type_usr_ovwr) == NULL || *cp == '\0') &&
+             ((cp = mpp->m_ct_type_plain) == NULL || *cp == '\0')) ||
+            ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0'))
+         cp = s.s;
+      else {
+         (cp = s.s)[7] = '.';
+         cp = savecat(cp, sh);
+      }
+   }
+   env_addon[1] = str_concat_csvl(&s, PIPEHOOK_FILENAME_GENERATED, "=", cp,
+         NULL)->s;
+
+   /* NAIL_CONTENT{,_EVIDENCE} */
+   if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
+      cp = UNCONST("");
+   env_addon[2] = str_concat_csvl(&s, PIPEHOOK_CONTENT, "=", cp, NULL)->s;
+
+   if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
+      cp = mpp->m_ct_type_usr_ovwr;
+   env_addon[3] = str_concat_csvl(&s, PIPEHOOK_CONTENT_EVIDENCE, "=", cp,
+         NULL)->s;
+
+   env_addon[4] = NULL;
+
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
-   if ((rbuf = Popen(pipecomm, "W", sh, NULL, (async ? -1 : fileno(*qbuf)))
+   if ((rbuf = Popen(pipecomm, "W", sh, env_addon, (async ? -1 : fileno(*qbuf)))
          ) == NULL)
       perror(pipecomm);
    else {
@@ -664,8 +686,7 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
             action == SEND_QUOTE || action == SEND_QUOTE_ALL)
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE)
-            ? TD_ICONV : (action == SEND_TOFLTR)
-            ?  TD_DELCTRL : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
+            ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
          qf, rest);
    if (n < 0)
       sz = n;
@@ -740,7 +761,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    isenc = 0;
    convert = (action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-         action == SEND_TOSRCH || action == SEND_TOFLTR)
+         action == SEND_TOSRCH)
          ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
@@ -850,7 +871,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          start = line;
          if (action == SEND_TODISP || action == SEND_TODISP_ALL ||
                action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-               action == SEND_TOSRCH || action == SEND_TOFLTR) {
+               action == SEND_TOSRCH) {
             /* Strip blank characters if two MIME-encoded words follow on
              * continuing lines */
             if (isenc & 1)
@@ -899,9 +920,6 @@ jskip:
    switch (ip->m_mimecontent) {
    case MIME_822:
       switch (action) {
-      case SEND_TOFLTR:
-         putc('\0', obuf);
-         /* FALLTHRU */
       case SEND_TODISP:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
@@ -931,9 +949,6 @@ jskip:
       }
       break;
    case MIME_TEXT_HTML:
-      if (action == SEND_TOFLTR)
-         putc('\b', obuf);
-      /* FALLTHRU */
    case MIME_TEXT:
    case MIME_TEXT_PLAIN:
       switch (action) {
@@ -942,16 +957,18 @@ jskip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          ispipe = TRU1;
-         switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
+         switch (_pipecmd(&pipecomm, ip)) {
          case PIPE_MSG:
             _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
-            pipecomm = NULL;
-            /* FALLTRHU */
+            /* We would print this as plain text, so better force going home */
+            goto jleave;
          case PIPE_TEXT:
          case PIPE_COMM:
-         case PIPE_ASYNC:
          case PIPE_NULL:
+            break;
+         case PIPE_ASYNC:
+            ispipe = FAL0;
             break;
          }
          /* FALLTRHU */
@@ -975,7 +992,7 @@ jskip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          ispipe = TRU1;
-         switch (_pipecmd(&pipecomm, ip->m_ct_type_plain)) {
+         switch (_pipecmd(&pipecomm, ip)) {
          case PIPE_MSG:
             _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
@@ -996,8 +1013,6 @@ jskip:
             char const *x = _("[Binary content]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
-         /* FALLTHRU */
-      case SEND_TOFLTR:
          goto jleave;
       case SEND_TOFILE:
       case SEND_TOPIPE:
@@ -1047,7 +1062,6 @@ jskip:
       case SEND_TOFILE:
       case SEND_TOPIPE:
       case SEND_TOSRCH:
-      case SEND_TOFLTR:
       case SEND_DECRYPT:
 jmulti:
          if ((action == SEND_TODISP || action == SEND_TODISP_ALL) &&
@@ -1089,9 +1103,6 @@ jmulti:
                _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
                   NULL);
                break;
-            case SEND_TOFLTR:
-               putc('\0', obuf);
-               /* FALLTHRU */
             case SEND_MBOX:
             case SEND_RFC822:
             case SEND_SHOW:
@@ -1207,7 +1218,7 @@ jcopyout:
          action == SEND_TODISP_ALL || action == SEND_QUOTE ||
          action == SEND_QUOTE_ALL)) {
       qbuf = obuf;
-      pbuf = _pipefile(pipecomm, UNVOLATILE(&qbuf),
+      pbuf = _pipefile(pipecomm, ip, UNVOLATILE(&qbuf),
             (action == SEND_QUOTE || action == SEND_QUOTE_ALL), !ispipe);
       action = SEND_TOPIPE;
       if (pbuf != qbuf) {
@@ -1449,7 +1460,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    int rv = -1, c;
    NYD_ENTER;
 
-   if (mp == dot && action != SEND_TOSRCH && action != SEND_TOFLTR)
+   if (mp == dot && action != SEND_TOSRCH)
       did_print_dot = 1;
    if (stats != NULL)
       stats[0] = stats[1] = 0;
@@ -1531,4 +1542,4 @@ jleave:
    return rv;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

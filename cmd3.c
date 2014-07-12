@@ -88,6 +88,9 @@ static int        diction(void const *a, void const *b);
 /* Do the real work of resending */
 static int        _resend1(void *v, bool_t add_resent);
 
+/* c_file, c_File */
+static int        _c_file(void *v, enum fedit_mode fm);
+
 /* ..to stdout */
 static void       list_shortcuts(void);
 
@@ -521,6 +524,44 @@ _resend1(void *v, bool_t add_resent)
 jleave:
    NYD_LEAVE;
    return (f != FAL0);
+}
+
+static int
+_c_file(void *v, enum fedit_mode fm)
+{
+   char **argv = v;
+   int i;
+   NYD2_ENTER;
+
+   if (*argv == NULL) {
+      newfileinfo();
+      i = 0;
+      goto jleave;
+   }
+
+   if (inhook) {
+      fprintf(stderr, _("Cannot change folder from within a hook.\n"));
+      i = 1;
+      goto jleave;
+   }
+
+   save_mbox_for_possible_quitstuff();
+
+   i = setfile(*argv, fm);
+   if (i < 0) {
+      i = 1;
+      goto jleave;
+   }
+   callhook(mailname, 0);
+   if (i > 0 && !ok_blook(emptystart)) {
+      i = 1;
+      goto jleave;
+   }
+   announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
+   i = 0;
+jleave:
+   NYD2_LEAVE;
+   return i;
 }
 
 static void
@@ -1000,39 +1041,23 @@ jleave:
 FL int
 c_file(void *v)
 {
-   char **argv = v;
-   int i;
+   int rv;
    NYD_ENTER;
 
-   if (*argv == NULL) {
-      newfileinfo();
-      i = 0;
-      goto jleave;
-   }
-
-   if (inhook) {
-      fprintf(stderr, _("Cannot change folder from within a hook.\n"));
-      i = 1;
-      goto jleave;
-   }
-
-   save_mbox_for_possible_quitstuff();
-
-   i = setfile(*argv, 0);
-   if (i < 0) {
-      i = 1;
-      goto jleave;
-   }
-   callhook(mailname, 0);
-   if (i > 0 && !ok_blook(emptystart)) {
-      i = 1;
-      goto jleave;
-   }
-   announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
-   i = 0;
-jleave:
+   rv = _c_file(v, FEDIT_NONE);
    NYD_LEAVE;
-   return i;
+   return rv;
+}
+
+FL int
+c_File(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _c_file(v, FEDIT_RDONLY);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
@@ -1301,7 +1326,7 @@ c_newmail(void *v)
 #ifdef HAVE_IMAP
          (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
-         (val = setfile(mailname, 1)) == 0) {
+         (val = setfile(mailname, FEDIT_NEWMAIL)) == 0) {
       mdot = getmdot(1);
       setdot(message + mdot - 1);
    }
@@ -1712,4 +1737,4 @@ c_urldecode(void *v) /* XXX IDNA?? */
    return 0;
 }
 
-/* vim:set fenc=utf-8:s-it-mode */
+/* s-it-mode */

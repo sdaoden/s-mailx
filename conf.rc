@@ -64,15 +64,17 @@ WANT_POP3=1
 # Support for SMTP protocol?  (Directly sending mails over the network)
 WANT_SMTP=1
 
-# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
-# can optionally be supported (see *netrc-load*)
-WANT_NETRC=1
-
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
-# This is disabled by default because it brings in a bunch of dependencies,
-# and most people don't need it.
-WANT_GSSAPI=0
+WANT_GSSAPI=1
+
+# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
+# can optionally be supported (see *netrc-lookup*)
+WANT_NETRC=1
+
+# Passwords can also be looked up through an external "agent" in order to allow
+# for encrypted password storage (see *agent-shell-lookup*)
+WANT_AGENT=1
 
 # Several facilities use the MD5 message digest, but for some of them it is
 # only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
@@ -171,7 +173,8 @@ DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
 # (Only of interest if the local mail system is used)
-MAILSPOOL=/var/mail
+# xxx Should we `dirname ${MAIL}` if -n ${MAIL} first / instead?
+MAILSPOOL=`[ -d /var/spool/mail ] && echo /var/spool/mail || echo /var/mail`
 
 # Path to the local MTA (Mail Transport Agent).
 # (Only of interest if the local mail system is used)
@@ -248,4 +251,14 @@ WANT_NOEXTMD5=0
 # Note: this will be forcefully set (again) if WANT_DEBUG=1
 WANT_NOALLOCA="${WANT_DEBUG}"
 
-# vim:set fenc=utf-8 syntax=conf:s-it-mode
+# Note: this will be forcefully set (again) if WANT_DEBUG=1
+WANT_DEVEL=0
+
+# Our functions are instrumented with Not-Yet-Dead chirps, which print
+# a function call trace when the program crashes.  Whereas NYD will be used
+# automatically when either of WANT_DEBUG and WANT_DEVEL is defined, an
+# extended level of NYD is compiled in only on explicit request
+# TODO Separation in between NYD and NYD2 not yet fully done
+WANT_NYD2=0
+
+# s-it-mode
