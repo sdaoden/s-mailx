@@ -642,6 +642,10 @@ if wantfeat DEVEL; then
    echo '#define HAVE_DEVEL' >> ${h}
 fi
 
+if wantfeat NYD2; then
+   echo '#define HAVE_NYD2' >> ${h}
+fi
+
 ##
 
 if wantfeat ICONV; then

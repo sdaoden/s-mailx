@@ -266,12 +266,24 @@ FL void        _nyd_oncrash(int signo);
 # define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# ifdef HAVE_NYD2
+#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# endif
 #else
 # undef HAVE_NYD
+#endif
+#ifndef NYD
 # define NYD_ENTER               do {} while (0)
 # define NYD_LEAVE               do {} while (0)
 # define NYD                     do {} while (0)
 # define NYD_X                   do {} while (0) /* XXX LEGACY */
+#endif
+#ifndef NYD2
+# define NYD2_ENTER              do {} while (0)
+# define NYD2_LEAVE              do {} while (0)
+# define NYD2                    do {} while (0)
 #endif
 
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have

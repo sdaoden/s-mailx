@@ -271,14 +271,14 @@ static size_t
 _length_of_line(char const *line, size_t linesize)
 {
    size_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* Last character is always '\0' and was added by fgets() */
    for (--linesize, i = 0; i < linesize; i++)
       if (line[i] == '\n')
          break;
    i = (i < linesize) ? i + 1 : linesize;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
@@ -288,7 +288,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
 {
    char *rv;
    int c;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    assert(*linesize == 0 || *line != NULL);
    for (rv = *line;;) {
@@ -318,7 +318,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    if (llen)
       *llen = n;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -396,7 +396,7 @@ FL char *
 {
    size_t i_llen, sz;
    char *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (cnt == NULL) {
       /* Without count, we can't determine where the chars returned by fgets()
@@ -436,7 +436,7 @@ FL char *
    if (llen)
       *llen = i_llen;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -448,7 +448,7 @@ FL int
     * TODO should be configurable just as for fgetline(); ..or whatever.. */
    int rv = -1;
    long sz;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    clearerr(ibuf);
 
@@ -493,7 +493,7 @@ jagain:
       (*linebuf)[--n] = '\0';
    rv = (int)n;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -505,7 +505,7 @@ FL int
    FILE *ifile = (_fio_input != NULL) ? _fio_input : stdin;
    bool_t doprompt, dotty;
    int n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    doprompt = (!sourcing && (options & OPT_INTERACTIVE));
    dotty = (doprompt && !ok_blook(line_editor_disable));
@@ -549,7 +549,7 @@ FL int
       }
       break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return n;
 }
 
@@ -560,7 +560,7 @@ readstr_input(char const *prompt, char const *string)
    size_t linesize = 0;
    char *linebuf = NULL, *rv = NULL;
    int n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
    if (n > 0)
@@ -568,7 +568,7 @@ readstr_input(char const *prompt, char const *string)
 
    if (linebuf != NULL)
       free(linebuf);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1155,10 +1155,10 @@ FL enum okay
 swrite(struct sock *sp, char const *data)
 {
    enum okay rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = swrite1(sp, data, strlen(data), 0);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1167,7 +1167,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
 {
    enum okay rv = STOP;
    int x;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (use_buffer > 0) {
       int di;
@@ -1243,7 +1243,7 @@ jssl_retry:
    }
    rv = OKAY;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1391,7 +1391,7 @@ FL int
    int rv;
    size_t lsize;
    char *lp_base, *lp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    lsize = *linesize;
    lp_base = *line;
@@ -1458,7 +1458,7 @@ jagain:
       *linelen = lsize;
    rv = (int)lsize;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 #endif /* HAVE_SOCKETS */

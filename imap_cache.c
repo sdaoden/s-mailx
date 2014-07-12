@@ -95,7 +95,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
    char *cachedir, *eaccount, *ename, *res;
    char const *emailbox;
    int resz;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
@@ -121,7 +121,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
             (*ename ? "/" : ""), ename);
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return res;
 }
 
@@ -129,11 +129,11 @@ static char *
 encuid(struct mailbox *mp, unsigned long uid)
 {
    char buf[30], *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    snprintf(buf, sizeof buf, "%lu", uid);
    cp = encname(mp, buf, 1, NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return cp;
 }
 
@@ -148,7 +148,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    off_t offset;
    void *zp;
    enum okay rv = STOP;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
@@ -248,7 +248,7 @@ jflags:
 jfail:
    Fclose(fp);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 

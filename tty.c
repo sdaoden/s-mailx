@@ -830,7 +830,7 @@ static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 static void
 _ncl_sigs_up(void)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (_ncl_oint.sint == -1)
       _ncl_oint.shdl = safe_signal(SIGINT, &tty_signal);
    if (_ncl_oquit.sint == -1)
@@ -845,7 +845,7 @@ _ncl_sigs_up(void)
       _ncl_ottin.shdl = safe_signal(SIGTTIN, &tty_signal);
    if (_ncl_ottou.sint == -1)
       _ncl_ottou.shdl  = safe_signal(SIGTTOU, &tty_signal);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -853,7 +853,7 @@ _ncl_sigs_down(void)
 {
    /* aaah.. atomic cas would be nice (but isn't it all redundant?) */
    sighandler_type st;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (_ncl_ottou.sint != -1) {
       st = _ncl_ottou.shdl, _ncl_ottou.sint = -1;
@@ -883,14 +883,14 @@ _ncl_sigs_down(void)
       st = _ncl_oint.shdl, _ncl_oint.sint = -1;
       safe_signal(SIGINT, st);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_term_mode(bool_t raw)
 {
    struct termios *tiosp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    tiosp = &_ncl_tios.told;
    if (!raw)
@@ -907,14 +907,14 @@ _ncl_term_mode(bool_t raw)
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
    tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
 {
    size_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
    if (i > *l->x_bufsize) {
@@ -923,14 +923,14 @@ _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
       l->line.cbuf =
       *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_bs_eof_dvup(struct cell *cap, size_t i)
 {
    size_t j;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (i > 0)
       memmove(cap, cap + 1, i * sizeof(*cap));
@@ -941,7 +941,7 @@ _ncl_bs_eof_dvup(struct cell *cap, size_t i)
    fputs(" \b", stdout);
    for (j = 0; j < i; ++j)
       putchar('\b');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static ssize_t
@@ -950,7 +950,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
    size_t c, t, i;
    struct cell *cap;
    bool_t anynon;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = l->cursor;
    t = l->topins;
@@ -980,7 +980,7 @@ _ncl_wboundary(struct line *l, ssize_t dir)
          break;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (ssize_t)i;
 }
 
@@ -988,7 +988,7 @@ static ssize_t
 _ncl_cell2dat(struct line *l)
 {
    size_t len = 0, i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (l->topins > 0)
       for (i = 0; i < l->topins; ++i) {
@@ -997,7 +997,7 @@ _ncl_cell2dat(struct line *l)
          len += cap->count;
       }
    l->line.cbuf[len] = '\0';
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (ssize_t)len;
 }
 
@@ -1007,7 +1007,7 @@ _ncl_cell2save(struct line *l)
 {
    size_t len, i;
    struct cell *cap;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    l->savec.s = NULL, l->savec.l = 0;
    if (l->topins == 0)
@@ -1025,7 +1025,7 @@ _ncl_cell2save(struct line *l)
    }
    l->savec.s[len] = '\0';
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 # endif
 
@@ -1033,7 +1033,7 @@ static void
 _ncl_khome(struct line *l, bool_t dobell)
 {
    size_t c;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = l->cursor;
    if (c > 0) {
@@ -1042,14 +1042,14 @@ _ncl_khome(struct line *l, bool_t dobell)
          putchar('\b');
    } else if (dobell)
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_kend(struct line *l)
 {
    ssize_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (ssize_t)(l->topins - l->cursor);
 
@@ -1059,14 +1059,14 @@ _ncl_kend(struct line *l)
          fputs(l->nd, stdout);
    } else
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_kbs(struct line *l)
 {
    ssize_t c, t;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = l->cursor;
    t = l->topins;
@@ -1079,14 +1079,14 @@ _ncl_kbs(struct line *l)
       _ncl_bs_eof_dvup(l->line.cells + c, t);
    } else
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_kkill(struct line *l, bool_t dobell)
 {
    size_t j, c, i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = l->cursor;
    i = (size_t)(l->topins - c);
@@ -1099,7 +1099,7 @@ _ncl_kkill(struct line *l, bool_t dobell)
          putchar('\b');
    } else if (dobell)
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static ssize_t
@@ -1107,7 +1107,7 @@ _ncl_keof(struct line *l)
 {
    size_t c, t;
    ssize_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    c = l->cursor;
    t = l->topins;
@@ -1124,32 +1124,32 @@ _ncl_keof(struct line *l)
       putchar('\a');
       i = 0;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
 static void
 _ncl_kleft(struct line *l)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (l->cursor > 0) {
       --l->cursor;
       putchar('\b');
    } else
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_kright(struct line *l)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (l->cursor < l->topins) {
       ++l->cursor;
       fputs(l->nd, stdout);
    } else
       putchar('\a');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -1157,7 +1157,7 @@ _ncl_krefresh(struct line *l)
 {
    struct cell *cap;
    size_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    putchar('\r');
    if (l->prompt != NULL && *l->prompt != '\0')
@@ -1166,7 +1166,7 @@ _ncl_krefresh(struct line *l)
       fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
    for (i = l->topins - l->cursor; i > 0; --i)
       putchar('\b');
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -1175,7 +1175,7 @@ _ncl_kbwddelw(struct line *l)
    ssize_t i;
    size_t c, t, j;
    struct cell *cap;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = _ncl_wboundary(l, -1);
    if (i <= 0) {
@@ -1204,14 +1204,14 @@ _ncl_kbwddelw(struct line *l)
    for (j = t - c; j > 0; --j)
       putchar('\b');
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ncl_kgow(struct line *l, ssize_t dir)
 {
    ssize_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = _ncl_wboundary(l, dir);
    if (i <= 0) {
@@ -1230,7 +1230,7 @@ _ncl_kgow(struct line *l, ssize_t dir)
          fputs(l->nd, stdout);
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -1241,7 +1241,7 @@ _ncl_kother(struct line *l, wchar_t wc)
    mbstate_t ps;
    struct cell cell, *cap;
    size_t i, c;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* First init a cell and see wether we'll really handle this wc */
    cell.wc = wc;
@@ -1276,7 +1276,7 @@ _ncl_kother(struct line *l, wchar_t wc)
    while (c-- != 0)
       putchar('\b');
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
@@ -1284,7 +1284,7 @@ static size_t
 __ncl_khist_shared(struct line *l, struct hist *hp)
 {
    size_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((l->hist = hp) != NULL) {
       l->defc.s = savestrbuf(hp->dat, hp->len);
@@ -1298,7 +1298,7 @@ __ncl_khist_shared(struct line *l, struct hist *hp)
       putchar('\a');
       rv = 0;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1307,7 +1307,7 @@ _ncl_khist(struct line *l, bool_t backwd)
 {
    struct hist *hp;
    size_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* If we're not in history mode yet, save line content;
     * also, disallow forward search, then, and, of course, bail unless we
@@ -1324,7 +1324,7 @@ _ncl_khist(struct line *l, bool_t backwd)
    hp = backwd ? hp->older : hp->younger;
 jleave:
    rv = __ncl_khist_shared(l, hp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1334,7 +1334,7 @@ _ncl_krhist(struct line *l)
    struct str orig_savec;
    struct hist *hp = NULL;
    size_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* We cannot complete an empty line */
    if (l->topins == 0) {
@@ -1363,7 +1363,7 @@ _ncl_krhist(struct line *l)
       l->savec = orig_savec;
 jleave:
    rv = __ncl_khist_shared(l, hp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 # endif
@@ -1376,7 +1376,7 @@ _ncl_kht(struct line *l)
    struct cell *cword, *ctop, *cx;
    bool_t set_savec = FAL0;
    size_t rv = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* We cannot expand an empty line */
    if (l->topins == 0)
@@ -1492,7 +1492,7 @@ jredo:
    _ncl_khome(l, FAL0);
    _ncl_kkill(l, FAL0);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 jnope:
    /* If we've provided a default content, but failed to expand, there is

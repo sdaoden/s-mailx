@@ -122,7 +122,7 @@ static ui32_t
 _mhash(char const *cp, ui32_t mprime)
 {
    ui32_t h = 0, g, at = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (--cp; *++cp != '\0';) {
       /* Pay attention not to hash characters which are irrelevant for
@@ -142,7 +142,7 @@ _mhash(char const *cp, ui32_t mprime)
          h = h ^ g;
       }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (at ? h % mprime : mprime);
 }
 
@@ -568,7 +568,7 @@ FL struct message *
 next_in_thread(struct message *mp)
 {
    struct message *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((rv = mp->m_child) != NULL)
       goto jleave;
@@ -581,7 +581,7 @@ next_in_thread(struct message *mp)
          goto jleave;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -589,7 +589,7 @@ FL struct message *
 prev_in_thread(struct message *mp)
 {
    struct message *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((rv = mp->m_elder) != NULL) {
       for (mp = rv; (rv = mp->m_child) != NULL;) {
@@ -602,7 +602,7 @@ prev_in_thread(struct message *mp)
    }
    rv = mp->m_parent;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -610,7 +610,7 @@ FL struct message *
 this_in_thread(struct message *mp, long n)
 {
    struct message *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (n == -1) { /* find end of thread */
       while (mp != NULL) {
@@ -638,7 +638,7 @@ this_in_thread(struct message *mp, long n)
    }
    rv = (mp != NULL && mp->m_threadpos == n) ? mp : NULL;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
