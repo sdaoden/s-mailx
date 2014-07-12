@@ -1,7 +1,7 @@
 #--MKRC-START--
 # /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
-# S-nail(1): v14.7.1 / 2014-06-24
+# S-nail(1): v14.7.2 / 2014-07-12
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
