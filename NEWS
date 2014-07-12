@@ -15,6 +15,95 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.2, 2014-07-12
+-------------------
+
+Thank you: Gavin Troy, Bob Tennent (rdt AT cs DOT queensu DOT ca),
+Tarqi Kazan.
+
+NOTES:
+^^^^^^
+
+v14.7.2 brings incompatible credential lookup changes when *v15-compat*
+is set; the lookup order now is:
+
+- *user-HOST*, *user*, [.netrc] ...
+
+- *password-USER@HOST*, *password-HOST*, *password*, [.netrc] ..
+
+Changelog in reverse order, oldest first.
+
+ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- New configuration option WANT_AGENT to support *agent-shell-lookup*
+  (, -HOST, -USER@HOST) lookups of potentially encrypted password
+  storage (inspired by Gavin Troy) [b2d41d3,516a7f0]
+
+- MAILSPOOL is now automatically set to /var/spool/mail if that
+  directory exists, only otherwise we use /var/mail [4a83018]
+
+- WANT_GSSAPI is again enabled by default - Tarqi Kazan has correctly
+  pointed out that the system environment at compilation time is likely
+  to reflect the politics and/or preferred configuration of packagers,
+  and self-compilers have always the chance to configure themselves
+  (Tarqi Kazan) [398eb29]
+
+ChangeLog
+^^^^^^^^^
+
+- `un{,save,fwd}{ignore,retain}': let '*' mean 'all fields' [a1f1da9]
+
+- Bugfix: `setenv' takes 1-1000 arguments, not exactly 2 [daf2ea8]
+
+- New command: `varedit' edits the value of an existing variable in
+  $EDITOR [93070d2]
+
+- New commands: `File' (and `Folder') explicitly open a mailbox in
+  readonly mode, thus finally offering the possibility to avoid flag
+  updates etc. whenever so desired [b1f5f2d]
+
+- Bugfix: since May the header display would display tabulators in an
+  UTF-8 environment as replacement characters [870b314]
+
+- *mime-counter-evidence* now is a valued option.  Set bit two (value
+  two) and the detected real MIME type is carried along with the MIME
+  part so that it is used instead of `application/octet-stream' to
+  lookup possibly registered *pipe-CONTENT/SUBCONTENT* handlers.
+  (Bob Tennent) [81473f8]
+
+  Also pipe handlers will now be passed several MIME informations via
+  environment variables, please see the manual for more.
+  (inspired by Bob Tennent)
+
+- Resource file loading now prints a diagnostic when loading was stopped
+  due to a processing error.  This behaviour is also required by POSIX.
+  (Bob Tennent) [fd42684]
+
+- Incompatible changes in credential handling, as above.
+  [25d7735,3cdb6a3]
+
+- *netrc-lookup* is now a real chain and has -HOST and -USER@HOST
+  variants (though the latter only for password lookups) [59fc226]
+
+- .netrc machine names are now lowercased before use [28c6fee]
+
+- The manual has seen some reorderings, a TOC will be shown if you
+  '-dWANT_TOC=1' when using *roff(1) (as has been done for the online
+  manual)
+
+- There is a new file `THANKS' [6b5cb3e]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- IMAP and IMAP cache now use string relaxation which *drastically*
+  reduces memory usage on large mailboxes [e5598ce]
+
+- Fixed compilation on old OpenBSD installations without wordexp(3) as
+  well as with GSS-API and WANT_AMALGAMATION and now using #pragma's to
+  get rid of some warnings [topic/ccstuff]
+
 v14.7.1, 2014-06-24
 -------------------
 
@@ -2296,3 +2385,5 @@ The full history can be inspected by issuing the git(1) command
 
 A new TODO has been introduced, and it is getting longer and longer.
 Thanks.
+
+# s-ts-mode
