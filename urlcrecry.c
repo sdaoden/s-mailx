@@ -39,12 +39,6 @@ enum nrc_token {
    NRC_INPUT
 };
 
-enum nrc_result {
-   NRC_RESERROR   = -1,
-   NRC_RESOK,
-   NRC_RESNONE
-};
-
 struct nrc_node {
    struct nrc_node   *nrc_next;
    struct nrc_node   *nrc_result;   /* In match phase, former possible one */
@@ -72,7 +66,7 @@ static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN]);
 /* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
  * only_pass is true then the lookup is for the password only, otherwise we
  * look for a user (and add password only if we have an exact machine match) */
-static enum nrc_result  _nrc_lookup(struct url *urlp, bool_t only_pass);
+static bool_t           _nrc_lookup(struct url *urlp, bool_t only_pass);
 
 /* 0=no match; 1=exact match; -1=wildcard match */
 static int              __nrc_host_match(struct nrc_node const *nrc,
@@ -146,13 +140,22 @@ jnext:
    default: /* Doesn't happen (but on error?), keep CC happy */
    case NRC_DEFAULT:
 jdef:
+      /* We ignore the default entry (require an exact host match), and we also
+       * ignore anything after such an entry (faulty syntax) */
       seen_default = TRU1;
       /* FALLTHRU */
    case NRC_MACHINE:
 jm_h:
+      /* Normalize HOST to lowercase */
       *host = '\0';
       if (!seen_default && (t = __nrc_token(fi, host)) != NRC_INPUT)
          goto jerr;
+      else {
+         char *cp;
+         for (cp = host; *cp != '\0'; ++cp)
+            *cp = lowerconv(*cp);
+      }
+
       *user = *pass = '\0';
       while ((t = __nrc_token(fi, buffer)) != NRC_NONE && t != NRC_MACHINE &&
             t != NRC_DEFAULT) {
@@ -252,9 +255,13 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
       goto jleave;
 
    cp = buffer;
-   if (c == '"') {
-      /* Not requiring the closing QM is the portable way */
-      while ((c = getc(fi)) != EOF && c != '"') {
+   /* Is it a quoted token?  At least IBM syntax also supports ' quotes */
+   if (c == '"' || c == '\'') {
+      int quotec = c;
+
+      /* Not requiring the closing QM is (Net)BSD syntax */
+      while ((c = getc(fi)) != EOF && c != quotec) {
+         /* Backslash escaping the next character is (Net)BSD syntax */
          if (c == '\\')
             if ((c = getc(fi)) == EOF)
                break;
@@ -267,6 +274,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
    } else {
       *cp++ = c;
       while ((c = getc(fi)) != EOF && !whitechar(c)) {
+         /* Backslash escaping the next character is (Net)BSD syntax */
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
@@ -301,11 +309,11 @@ jleave:
    return rv;
 }
 
-static enum nrc_result
+static bool_t
 _nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! */
 {
    struct nrc_node *nrc, *nrc_wild, *nrc_exact;
-   enum nrc_result rv = NRC_RESNONE;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
    assert(!only_pass || urlp->url_user.s != NULL);
@@ -344,7 +352,7 @@ _nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! *
          !only_pass ||
          __nrc_find_pass(urlp, FAL0, nrc_exact) ||
          __nrc_find_pass(urlp, FAL0, nrc_wild))
-      rv = NRC_RESOK;
+      rv = TRU1;
 jleave:
    NYD_LEAVE;
    return rv;
@@ -358,7 +366,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    int rv = 0;
    NYD2_ENTER;
 
-   /* Find a matching machine entry -- entries are lowercase normalized */
+   /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
       if (LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
@@ -677,14 +685,15 @@ juser:
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
    if (!urlp->url_had_user) {
-      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_H_P)) == NULL) {
-         /* No *user-HOST*, check wether .netrc lookup is desired */
+      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
+            == NULL) {
+         /* No, check wether .netrc lookup is desired */
 #ifdef HAVE_NETRC
-         if (!ok_blook(v15_compat) || !ok_blook(netrc_lookup) ||
-               _nrc_lookup(urlp, FAL0) != NRC_RESOK)
+         if (!ok_blook(v15_compat) ||
+               !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
+               !_nrc_lookup(urlp, FAL0))
 #endif
-            if ((urlp->url_user.s = ok_vlook(user)) == NULL)
-               urlp->url_user.s = UNCONST(myname);
+            urlp->url_user.s = UNCONST(myname);
       }
 
       urlp->url_user.l = strlen(urlp->url_user.s);
@@ -964,8 +973,8 @@ FL bool_t
 ccred_lookup(struct ccred *ccp, struct url *urlp)
 {
    char const *pstr, *authdef;
-   size_t plen, i;
-   char *vbuf, *s;
+   char *s;
+   enum okeys authokey;
    ui8_t authmask;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware = NONE;
@@ -978,42 +987,28 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    default:
    case CPROTO_SMTP:
       pstr = "smtp";
-      plen = sizeof("smtp") -1;
+      authokey = ok_v_smtp_auth;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
             AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
       authdef = "none";
       break;
    case CPROTO_POP3:
       pstr = "pop3";
-      plen = sizeof("pop3") -1;
+      authokey = ok_v_pop3_auth;
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
       break;
    case CPROTO_IMAP:
       pstr = "imap";
-      plen = sizeof("imap") -1;
+      authokey = ok_v_imap_auth;
       authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
       authdef = "login";
       break;
    }
 
-   /* Note: "password-" is longer than "-auth-", .url_u_h_p and .url_h_p */
-   vbuf = ac_alloc(plen + sizeof("password-")-1 + urlp->url_u_h_p.l +1);
-   memcpy(vbuf, pstr, plen);
-
    /* Authentication type */
-   memcpy(vbuf + plen, "-auth-", i = sizeof("-auth-") -1);
-   i += plen;
-   /* -USER@HOST, -HOST, '' */
-   memcpy(vbuf + i, urlp->url_u_h_p.s, urlp->url_u_h_p.l +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
-      memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
-      if ((s = vok_vlook(vbuf)) == NULL) {
-         vbuf[plen + sizeof("-auth") -1] = '\0';
-         if ((s = vok_vlook(vbuf)) == NULL)
-            s = UNCONST(authdef);
-      }
-   }
+   if ((s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NULL)
+      s = UNCONST(authdef);
 
    if (!asccasecmp(s, "none")) {
       ccp->cc_auth = "NONE";
@@ -1062,44 +1057,26 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    if ((ccp->cc_pass = urlp->url_pass).s != NULL)
       goto jleave;
 
-   memcpy(vbuf, "password-", i = sizeof("password-") -1);
-   /* -USER@HOST, -HOST, '' */
-   memcpy(vbuf + i, urlp->url_u_h_p.s, urlp->url_u_h_p.l +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
-      memcpy(vbuf + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
-      if ((s = vok_vlook(vbuf)) == NULL) {
-         /* But before we go and deal with the absolute fallbacks, check wether
-          * we may look into .netrc */
+   if ((s = xok_vlook(password, urlp, OXM_ALL)) != NULL)
+      goto js2pass;
 # ifdef HAVE_NETRC
-         if (ok_blook(netrc_lookup))
-            switch (_nrc_lookup(urlp, TRU1)) {
-            default:
-               break;
-            case NRC_RESOK:
-               ccp->cc_pass = urlp->url_pass;
-               goto jleave;
-            case NRC_RESERROR:
-               fprintf(stderr, _(".netrc authentification failed "
-                  "(missing password or user mismatch)\n"));
-               ccp = NULL;
-               goto jleave;
-            }
+   if (xok_blook(netrc_lookup, urlp, OXM_ALL) && _nrc_lookup(urlp, TRU1)) {
+      ccp->cc_pass = urlp->url_pass;
+      goto jleave;
+   }
 # endif
-         vbuf[--i] = '\0';
-         if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_PASS) &&
-               (s = getpassword(NULL)) == NULL) {
-            fprintf(stderr,
-               _("A password is necessary for %s authentication.\n"), pstr);
-            ccp = NULL;
-            goto jleave;
-         }
+   if (ware & REQ_PASS) {
+      if ((s = getpassword(NULL)) != NULL)
+js2pass:
+         ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
+      else {
+         fprintf(stderr, _("A password is necessary for %s authentication.\n"),
+            pstr);
+         ccp = NULL;
       }
    }
-   if (s != NULL)
-      ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
-   ac_free(vbuf);
    if (ccp != NULL && (options & OPT_D_VV))
       fprintf(stderr, _("Credentials: host `%s', user `%s', pass `%s'\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
