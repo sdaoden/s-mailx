@@ -66,9 +66,7 @@ WANT_SMTP=1
 
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
-# This is disabled by default because it brings in a bunch of dependencies,
-# and most people don't need it.
-WANT_GSSAPI=0
+WANT_GSSAPI=1
 
 # Support for parsing of user and password credentials from ~/.netrc ($NETRC)
 # can optionally be supported (see *netrc-lookup*)
