@@ -175,7 +175,8 @@ DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
 # (Only of interest if the local mail system is used)
-MAILSPOOL=/var/mail
+# xxx Should we `dirname ${MAIL}` if -n ${MAIL} first / instead?
+MAILSPOOL=`[ -d /var/spool/mail ] && echo /var/spool/mail || echo /var/mail`
 
 # Path to the local MTA (Mail Transport Agent).
 # (Only of interest if the local mail system is used)

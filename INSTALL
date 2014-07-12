@@ -95,9 +95,6 @@ systems, including all BSD systems, Linux, Solaris ...
 2. Notes for S-nail(1) v14.7*
 -----------------------------
 
-Note first that MAILSPOOL is by default `/var/mail' (see `conf.rc').
-Running `make test' should succeed always and everywhere.
-
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
 Also, i'm (compile) testing manually with WANT_AUTOCC=1, WANT_DEBUG=[01]
 and WANT_AMALGAMATION=[01] (and WANT_GSSAPI=1), which is what is
