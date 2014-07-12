@@ -154,6 +154,12 @@
 #define NETRC           "~/.netrc"
 #define TMPDIR_FALLBACK "/tmp"
 
+/* Some environment variables for pipe hooks */
+#define AGENT_USER      "NAIL_USER"
+#define AGENT_USER_ENC  "NAIL_USER_ENC"
+#define AGENT_HOST      "NAIL_HOST"
+#define AGENT_HOST_PORT "NAIL_HOST_PORT"
+
 #undef COLOUR
 #ifdef HAVE_COLOUR
 # define COLOUR(X)      X
@@ -840,6 +846,7 @@ enum okeys {
    ok_b_writebackedited,
 
    /* Option keys for values options */
+   ok_v_agent_shell_lookup,
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,

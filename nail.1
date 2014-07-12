@@ -942,8 +942,7 @@ or
 .Va netrc-lookup ,
 search the users
 .Pa .netrc
-file for a `HOST' specific entry which provides a `login' name
-(this source may also provide a `password').
+file for a `HOST' specific entry which provides a `login' name.
 .Pp
 If after all these steps there is still no `USER' then \*(UA will
 fall back to the user who is supposed to run \*(UA:
@@ -956,14 +955,12 @@ or `getpwuid(getuid())' a.k.a. the current user.
 The identity of this user has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .It
-Authentication: unless otherwise noted this will first look for
+Authentication: unless otherwise noted this will lookup the
 .Va PROTOCOL-auth-USER@HOST ,
-then
-.Va PROTOCOL-auth-HOST
-and finally
-.Va PROTOCOL-auth ,
-which has a protocol-specific default should none of the variables be
-set.
+.Va PROTOCOL-auth-HOST ,
+.Va PROTOCOL-auth
+variable chain, falling back to a protocol-specific default should this
+have no success.
 .It
 If no `PASSWORD' has been given in the URL \(en it should be noted once
 that specifying the password in the URL is only syntactic sugar for the
@@ -971,23 +968,31 @@ user, it'll never be part of an URL that \*(UA uses itself \(en,
 then if the `USER' has been found through
 .Pa .netrc
 then that may have provided the password, too.
-Otherwise the variables
+Otherwise the variable chain
 .Va password-USER@HOST ,
-.Va password-HOST
-and
+.Va password-HOST ,
 .Va password
-are looked up.
+is looked up.
 .Pp
-The chain is \*(OPionally continued via the described
-.Pa .netrc
-lookup when enabled via
+\*(OP Then if any of the variables of the chain
+.Va agent-shell-lookup-USER@HOST ,
+.Va agent-shell-lookup-HOST
+and
+.Va agent-shell-lookup
+is set the shell command specified therein is run and the output (less
+newline characters) will be used as the password;
+note that any command failure is treated as a hard error, whereas it is
+perfectly valid for such an agent to simply not return any data, in
+which case the password lookup is continued somewhere else.
+.Pp
+The next variable chain that is inspected is the \*(OP
+.Pa .netrc :
 .Va netrc-lookup-USER@HOST ,
-.Va netrc-lookup-HOST
-or
+.Va netrc-lookup-HOST ,
 .Va netrc-lookup ,
-this time looking only for the password (multiple user accounts
-for a single machine may exist as well as a fallback entry without user
-but with a password).
+but this time looking only for the password (multiple user accounts
+for a single machine may exist as well as a fallback entry without
+user but with a password).
 .Pp
 If at that point there is still no password available, but the
 (protocols') chosen authentication type requires a password, then in
@@ -3366,6 +3371,39 @@ also left as an excercise to the user.
 .\" .Ss "Value options" {{{
 .Ss "Value options"
 .Bl -tag -width ".Va autoprint"
+.It Va agent-shell-lookup-USER@HOST , \
+  Va agent-shell-lookup-HOST , \
+  Va agent-shell-lookup
+\*(IN \*(OP Account passwords can be fetched via an external agent
+program in order to permit encrypted password storage \(en see
+.Sx "URL syntax and credential lookup"
+for more on credential lookup.
+If this is set then the content is interpreted as a shell command the
+output of which (with newline characters removed) is treated as the
+account password shall the command succeed; e.g., via
+.Xr gpg 1 :
+.Bd -literal -offset indent
+$ echo PASSWORD > .pass
+$ gpg -e .pass
+$ eval `gpg-agent --daemon \e
+    --pinentry-program=/usr/bin/pinentry-curses \e
+    --max-cache-ttl 99999 --default-cache-ttl 99999`
+$ echo 'set agent-shell-lookup="gpg -d .pass.gpg"' \e
+    >> \*(ur
+.Ed
+.Pp
+A couple of environment variables will be set for the agent:
+.Bl -tag -width ".It Ev NAIL_HOST_PORT"
+.It Ev NAIL_USER
+The user (`USER') for which the password is looked up.
+.It Ev NAIL_USER_ENC
+The URL percent-encoded variant of
+.Ev NAIL_USER .
+.It Ev NAIL_HOST
+The plain machine hostname of the user account.
+.It Ev NAIL_HOST_PORT
+The `HOST' (hostname possibly including port) of the user account.
+.El
 .It Va attrlist
 A sequence of characters to print in the `attribute' column of a header
 summary,
@@ -5351,6 +5389,8 @@ env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
 .Xr bzip2 1 ,
 .Xr file 1 ,
 .Xr fmt 1 ,
+.Xr gpg-agent 1 ,
+.Xr gpg 1 ,
 .Xr gzip 1 ,
 .Xr less 1 ,
 .Xr more 1 ,

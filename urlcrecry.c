@@ -77,6 +77,11 @@ static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
                            struct nrc_node const *nrc);
 #endif /* HAVE_NETRC */
 
+/* The password can also be gained through external agents */
+#ifdef HAVE_AGENT
+static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
+#endif
+
 #ifdef HAVE_SOCKETS
 static char *
 _url_last_at_before_slash(char const *sp)
@@ -443,6 +448,70 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
    return (nrc != NULL);
 }
 #endif /* HAVE_NETRC */
+
+#ifdef HAVE_AGENT
+static bool_t
+_agent_shell_lookup(struct url *urlp, char const *comm)
+{
+   char buf[128];
+   char const *env_addon[8];
+   struct str s;
+   FILE *pbuf;
+   union {char const *cp; int c; sighandler_type sht;} u;
+   size_t cl, l;
+   bool_t rv = FAL0;
+   NYD2_ENTER;
+
+   env_addon[0] = str_concat_csvl(&s, AGENT_USER, "=", urlp->url_user.s,
+         NULL)->s;
+   env_addon[1] = str_concat_csvl(&s, AGENT_USER_ENC, "=", urlp->url_user_enc.s,
+         NULL)->s;
+   env_addon[2] = str_concat_csvl(&s, AGENT_HOST, "=", urlp->url_host.s,
+         NULL)->s;
+   env_addon[3] = str_concat_csvl(&s, AGENT_HOST_PORT, "=", urlp->url_h_p.s,
+         NULL)->s;
+   env_addon[4] = NULL;
+
+   if ((u.cp = ok_vlook(SHELL)) == NULL)
+      u.cp = XSHELL;
+   if ((pbuf = Popen(comm, "r", u.cp, env_addon, -1)) == NULL) {
+      fprintf(stderr, _("*agent-shell-lookup* startup failed (`%s')\n"),
+         comm);
+      goto jleave;
+   }
+
+   for (s.s = NULL, s.l = cl = l = 0; (u.c = getc(pbuf)) != EOF; ++cl) {
+      if (u.c == '\n') /* xxx */
+         continue;
+      buf[l++] = u.c;
+      if (l == sizeof(buf) - 1) {
+         n_str_add_buf(&s, buf, l);
+         l = 0;
+      }
+   }
+   if (l > 0)
+      n_str_add_buf(&s, buf, l);
+
+   if (!Pclose(pbuf, TRU1)) {
+      if (options & OPT_D_V)
+         fprintf(stderr, _("*agent-shell-lookup* execution failure (`%s')\n"),
+            comm);
+      goto jleave;
+   }
+
+   /* We are responsible for duplicating this buffer! */
+   if (s.s != NULL)
+      urlp->url_pass.s = savestrbuf(s.s, urlp->url_pass.l = s.l);
+   else if (cl > 0)
+      urlp->url_pass.s = UNCONST(""), urlp->url_pass.l = 0;
+   rv = TRU1;
+jleave:
+   if (s.s != NULL)
+      free(s.s);
+   NYD2_LEAVE;
+   return rv;
+}
+#endif
 
 FL char *
 (urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS)
@@ -1059,6 +1128,17 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    if ((s = xok_vlook(password, urlp, OXM_ALL)) != NULL)
       goto js2pass;
+# ifdef HAVE_AGENT
+   if ((s = xok_vlook(agent_shell_lookup, urlp, OXM_ALL)) != NULL) {
+      if (!_agent_shell_lookup(urlp, s)) {
+         ccp = NULL;
+         goto jleave;
+      } else if (urlp->url_pass.s != NULL) {
+         ccp->cc_pass = urlp->url_pass;
+         goto jleave;
+      }
+   }
+# endif
 # ifdef HAVE_NETRC
    if (xok_blook(netrc_lookup, urlp, OXM_ALL) && _nrc_lookup(urlp, TRU1)) {
       ccp->cc_pass = urlp->url_pass;
