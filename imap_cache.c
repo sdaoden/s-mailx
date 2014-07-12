@@ -613,10 +613,15 @@ cache_setptr(enum fedit_mode fm, int transparent)
       abort();
    }
    cwrelse(&cw);
+
+   srelax_hold();
    for (i = 0; i < msgCount; i++) {
       message[i].m_uid = contents[i];
       getcache1(&mb, &message[i], NEED_UNSPEC, 3);
+      srelax();
    }
+   srelax_rele();
+
    if (contents != NULL)
       free(contents);
    mb.mb_type = MB_CACHE;

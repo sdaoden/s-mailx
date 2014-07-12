@@ -1056,8 +1056,12 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
       }
    }
 
-   for (n = X; n <= Y; n++)
+   srelax_hold();
+   for (n = X; n <= Y; ++n) {
       putcache(mp, &message[n-1]);
+      srelax();
+   }
+   srelax_rele();
    return OKAY;
 }
 
@@ -1723,6 +1727,8 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          tag(1), bot, topp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
+
+   srelax_hold();
    for (;;) {
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER)
@@ -1769,7 +1775,10 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
             n = 0;
          }
       }
+      srelax();
    }
+   srelax_rele();
+
    while (mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);
    return ok;
@@ -1779,7 +1788,7 @@ FL void
 imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 {
    sighandler_type saveint, savepipe;
-   /* enum okay ok = STOP;*/
+   /*enum okay ok = STOP;*/
    int i, chunk = 256;
    NYD_X;
 
@@ -1986,6 +1995,7 @@ jbypass:
          putcache(mp, m);
          modflags++;
       }
+
    if ((gotcha || modflags) && edit) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
@@ -3513,11 +3523,15 @@ c_cache(void *vp)
       goto jleave;
    }
 
+   srelax_hold();
    for (ip = msgvec; *ip; ++ip) {
       mp = &message[*ip - 1];
-      if (!(mp->m_have & HAVE_BODY))
+      if (!(mp->m_have & HAVE_BODY)) {
          get_body(mp);
+         srelax();
+      }
    }
+   srelax_rele();
    rv = 0;
 jleave:
    NYD_LEAVE;
