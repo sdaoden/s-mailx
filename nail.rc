@@ -64,7 +64,7 @@ set emptybox
 # Startup into interactive mode even if the (given) mailbox is empty
 #set emptystart
 
-# [OPTION] Add more entries to the history as is done by default
+# [OPTION] Add more entries to the history as is done by default
 set history-gabby
 
 # Do not forward to mbox by default since this is likely to be
