@@ -301,8 +301,9 @@ FL int         argcount(char **argv);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is check wether we know about
- * some environment variable that supports colour+ */
+/* Get our $PAGER; if env_addon is not NULL it is checked wether we know about
+ * some environment variable that supports colour+ and set *env_addon to that,
+ * e.g., "LESS=FRSXi" */
 FL char const *get_pager(char const **env_addon);
 
 /* Check wether using a pager is possible/makes sense and is desired by user
@@ -1184,13 +1185,17 @@ FL char *      mime_create_boundary(void);
 FL int         mime_classify_file(FILE *fp, char const **contenttype,
                   char const **charset, int *do_iconv);
 
-/* */
-FL enum mimecontent mime_classify_content_of_part(struct mimepart const *mip);
+/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
+ * but otherwise mpp is const */
+FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
 
 /* Return the Content-Type matching the extension of name */
 FL char *      mime_classify_content_type_by_fileext(char const *name);
 
-/* "mimetypes" command */
+/* Get the (pipe) handler for a part, or NULL if there is none known */
+FL char *      mimepart_get_handler(struct mimepart const *mpp);
+
+/* `mimetypes' command */
 FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */
@@ -1428,8 +1433,11 @@ FL void        Ftmp_free(char **fn);
 /* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
 FL bool_t      pipe_cloexec(int fd[2]);
 
+/*
+ * env_addon may be NULL, otherwise it is expected to be a NULL terminated
+ * array of "K=V" strings to be placed into the childs environment */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  char const *env_addon, int newfd1);
+                  char const **env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
@@ -1442,9 +1450,12 @@ FL void        close_all_files(void);
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2);
 
+/*
+ * env_addon may be NULL, otherwise it is expected to be a NULL terminated
+ * array of "K=V" strings to be placed into the childs environment */
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
-                  char const *env_addon);
+                  char const **env_addon);
 
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 

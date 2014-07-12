@@ -871,6 +871,13 @@ getrandstring(size_t length)
    ac_free(data);
    assert(length < b64.l);
    b64.s[length] = '\0';
+
+   /* Base64 includes + and /, replace them with _ and - */
+   for (data = b64.s; length-- > 0; ++data)
+      if (*data == '+')
+         *data = '_';
+      else if (*data == '/')
+         *data = '-';
    NYD_LEAVE;
    return b64.s;
 }

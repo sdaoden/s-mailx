@@ -765,9 +765,10 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* `>=' not `<': we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         char const *envadd = NULL;
-         pager = get_pager(&envadd);
-         obuf = Popen(pager, "w", NULL, envadd, 1);
+         char const *env_add[2];
+         pager = get_pager(env_add + 0);
+         env_add[1] = NULL;
+         obuf = Popen(pager, "w", NULL, env_add, 1);
          if (obuf == NULL) {
             perror(pager);
             obuf = stdout;

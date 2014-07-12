@@ -1120,26 +1120,32 @@ jleave:
 }
 
 FL enum mimecontent
-mime_classify_content_of_part(struct mimepart const *mip)
+mime_classify_content_of_part(struct mimepart *mpp)
 {
    enum mimecontent mc;
    char const *ct;
+   union {char const *cp; long l;} mce;
    NYD_ENTER;
 
    mc = MIME_UNKNOWN;
-   ct = mip->m_ct_type_plain;
+   ct = mpp->m_ct_type_plain;
 
-   if (!asccasecmp(ct, "application/octet-stream") &&
-         mip->m_filename != NULL && ok_blook(mime_counter_evidence)) {
-      ct = mime_classify_content_type_by_fileext(mip->m_filename);
+   if (!asccasecmp(ct, "application/octet-stream") && mpp->m_filename != NULL &&
+         (mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
+      ct = mime_classify_content_type_by_fileext(mpp->m_filename);
       if (ct == NULL)
-         /* TODO how about let *mime-counter-evidence* have
-          * TODO a value, and if set, saving the attachment in
+         /* TODO add bit 1 to possible *mime-counter-evidence* value
+          * TODO and let it mean to save the attachment in
           * TODO a temporary file that mime_classify_file() can
           * TODO examine, and using MIME_TEXT if that gives us
           * TODO something that seems to be human readable?! */
          goto jleave;
+
+      mce.l = strtol(mce.cp, NULL, 0);
+      if (mce.l & MIMECE_USR_OVWR)
+         mpp->m_ct_type_usr_ovwr = UNCONST(ct);
    }
+
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
    else if (!asccasecmp(ct, "text/plain"))
@@ -1176,6 +1182,8 @@ mime_classify_content_type_by_fileext(char const *name)
 
    /* TODO mime_classify(): mime.types(5) has *-gz but we search dot!
     * TODO i.e., we cannot handle files like dubidu.tar-gz; need globs! */
+   /* TODO even better: regex, with fast lists for (README|INSTALL|NEWS) etc,
+    * TODO that, also add some mechanism for filenames without extension */
    if ((name = strrchr(name, '.')) == NULL || *++name == '\0')
       goto jleave;
 
@@ -1205,6 +1213,60 @@ mime_classify_content_type_by_fileext(char const *name)
 jleave:
    NYD_LEAVE;
    return content;
+}
+
+FL char *
+mimepart_get_handler(struct mimepart const *mpp)
+{
+#define __S    "pipe-"
+#define __L    (sizeof(__S) -1)
+   char const *es, *cs;
+   size_t el, cl, l;
+   char *buf, *rv;
+   NYD_ENTER;
+
+   /* TODO some mechanism for filenames without extension */
+   el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
+         *++es != '\0') ? strlen(es) : 0;
+   cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
+         (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
+   if ((l = MAX(el, cl)) == 0) {
+      rv = NULL;
+      goto jleave;
+   }
+
+   buf = ac_alloc(__L + l +1);
+   memcpy(buf, __S, __L);
+
+   /* File-extension handlers take precedence.
+    * Yes, we really "fail" here for file extensions which clash MIME types */
+   if (el > 0) {
+      memcpy(buf + __L, es, el +1);
+      for (rv = buf + __L; *rv != '\0'; ++rv)
+         *rv = lowerconv(*rv);
+
+      if ((rv = vok_vlook(buf)) != NULL)
+         goto jok;
+   }
+
+   /* Then MIME Content-Type: */
+   if (cl > 0) {
+      memcpy(buf + __L, cs, cl +1);
+      for (rv = buf + __L; *rv != '\0'; ++rv)
+         *rv = lowerconv(*rv);
+
+      if ((rv = vok_vlook(buf)) != NULL)
+         goto jok;
+   }
+
+   rv = NULL;
+jok:
+   ac_free(buf);
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef __L
+#undef __S
 }
 
 FL int

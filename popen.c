@@ -655,8 +655,8 @@ jleave:
 }
 
 FL FILE *
-Popen(char const *cmd, char const *mode, char const *sh, char const *env_addon,
-   int newfd1)
+Popen(char const *cmd, char const *mode, char const *sh,
+   char const **env_addon, int newfd1)
 {
    int p[2], myside, hisside, fd0, fd1, pid;
    char mod[2] = {'0', '\0'};
@@ -761,11 +761,10 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 FL int
 start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2,
-   char const *env_addon)
+   char const **env_addon)
 {
    int rv;
    NYD_ENTER;
-   UNUSED(env_addon);
 
    if ((rv = fork()) == -1) {
       perror("fork");
@@ -776,40 +775,48 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 
       if (env_addon != NULL) { /* TODO env_addon; should have struct child */
          extern char **environ;
-         size_t e, vl;
+         size_t ei, ei_orig, ai, ai_orig;
          char **env;
-         char const *nv;
 
          /* TODO note we don't check the POSIX limit:
           * the total space used to store the environment and the arguments to
           * the process is limited to {ARG_MAX} bytes */
-         for (e = 0; environ[e] != NULL; ++e)
+         for (ei = 0; environ[ei] != NULL; ++ei)
             ;
+         ei_orig = ei;
+         for (ai = 0; env_addon[ai] != NULL; ++ai)
+            ;
+         ai_orig = ai;
+         env = ac_alloc(sizeof(*env) * (ei + ai +1));
+         memcpy(env, environ, sizeof(*env) * ei);
 
-         env = ac_alloc(sizeof(*env) * (e + 1 +1));
-         nv = strchr(env_addon, '=');
-         vl = PTR2SIZE(nv - env_addon);
+         /* Replace all those keys that yet exist */
+         while (ai-- > 0) {
+            char const *ee, *kvs;
+            size_t kl;
 
-         for (e = 0; environ[e] != NULL; ++e) {
-            if (env_addon == NULL)
-               env[e] = environ[e];
-            else {
-               char const *ov = strchr(environ[e], '=');
-               if (ov != NULL) {
-                  if (vl == PTR2SIZE(ov - environ[e]) &&
-                        !memcmp(env_addon, environ[e], vl)) {
-                     env[e] = UNCONST(env_addon);
-                     env_addon = NULL;
-                     continue;
-                  }
+            ee = env_addon[ai];
+            kvs = strchr(ee, '=');
+            assert(kvs != NULL);
+            kl = PTR2SIZE(kvs - ee);
+            assert(kl > 0);
+            for (ei = ei_orig; ei-- > 0;) {
+               char const *ekvs = strchr(env[ei], '=');
+               if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
+                     !memcmp(ee, env[ei], kl)) {
+                  env[ei] = UNCONST(ee);
+                  env_addon[ai] = NULL;
+                  break;
                }
-               env[e] = environ[e];
             }
          }
-         if (env_addon != NULL)
-            env[e++] = UNCONST(env_addon);
-         env[e] = NULL;
 
+         /* And append the rest */
+         for (ei = ei_orig, ai = ai_orig; ai-- > 0;)
+            if (env_addon[ai] != NULL)
+               env[ei++] = UNCONST(env_addon[ai]);
+
+         env[ei] = NULL;
          environ = env;
       }
 
