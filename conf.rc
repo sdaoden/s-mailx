@@ -64,15 +64,19 @@ WANT_POP3=1
 # Support for SMTP protocol?  (Directly sending mails over the network)
 WANT_SMTP=1
 
-# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
-# can optionally be supported (see *netrc-lookup*)
-WANT_NETRC=1
-
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
 # This is disabled by default because it brings in a bunch of dependencies,
 # and most people don't need it.
 WANT_GSSAPI=0
+
+# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
+# can optionally be supported (see *netrc-lookup*)
+WANT_NETRC=1
+
+# Passwords can also be looked up through an external "agent" in order to allow
+# for encrypted password storage (see *agent-shell-lookup*)
+WANT_AGENT=1
 
 # Several facilities use the MD5 message digest, but for some of them it is
 # only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
