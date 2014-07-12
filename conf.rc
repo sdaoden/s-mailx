@@ -66,9 +66,7 @@ WANT_SMTP=1
 
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
-# This is disabled by default because it brings in a bunch of dependencies,
-# and most people don't need it.
-WANT_GSSAPI=0
+WANT_GSSAPI=1
 
 # Support for parsing of user and password credentials from ~/.netrc ($NETRC)
 # can optionally be supported (see *netrc-lookup*)
@@ -175,7 +173,8 @@ DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
 # (Only of interest if the local mail system is used)
-MAILSPOOL=/var/mail
+# xxx Should we `dirname ${MAIL}` if -n ${MAIL} first / instead?
+MAILSPOOL=`[ -d /var/spool/mail ] && echo /var/spool/mail || echo /var/mail`
 
 # Path to the local MTA (Mail Transport Agent).
 # (Only of interest if the local mail system is used)

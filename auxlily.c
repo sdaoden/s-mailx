@@ -1132,7 +1132,7 @@ jnobidi:
       {
          n = sz = 1;
          istab = (*cp == '\t');
-         isrepl = !(istab || isprint(*cp));
+         isrepl = !(istab || isprint((uc_it)*cp));
       }
 
       if (n > col)
