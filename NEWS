@@ -15,6 +15,20 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.3, 2014-07-14
+-------------------
+
+Thanks to Mantas Mikulėnas (grawity AT gmail DOT com).
+
+This is a bugfix release which fixes a regression in the handling of
+user credentials when *v15-compat* is not set, introduced in v14.7.1,
+quoting Mantas:
+
+  In other words, $folder *requires* the @ to be percent-encoded, but
+  $password requires the *opposite*.
+
+And that is not valid when *v15-compat* is not set.
+
 v14.7.2, 2014-07-12
 -------------------
 

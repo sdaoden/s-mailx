@@ -1165,14 +1165,15 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
    if (ok_blook(v15_compat))
       rv = ccred_lookup(ccredp, urlp);
    else {
-      char *var, *old;
+      char *var, *old,
+         *xuhp = (urlp->url_had_user ? urlp->url_eu_h_p.s : urlp->url_u_h_p.s);
 
       if ((var = mbp->mb_imap_pass) != NULL) {
-         var = savecat("password-", urlp->url_u_h_p.s);
+         var = savecat("password-", xuhp);
          old = vok_vlook(var);
          vok_vset(var, mbp->mb_imap_pass);
       }
-      rv = ccred_lookup_old(ccredp, CPROTO_IMAP, urlp->url_u_h_p.s);
+      rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
          if (old != NULL)
             vok_vset(var, old);

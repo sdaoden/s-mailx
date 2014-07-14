@@ -28,8 +28,8 @@ if [ -n "${CONFIG}" ]; then
       WANT_COLOUR=0
       ;;
    NETSEND)
-      WANT_IMAP=0
       WANT_POP3=0
+      WANT_IMAP=0
       WANT_READLINE=0 WANT_EDITLINE=0
       WANT_IMAP_SEARCH=0
       WANT_SPAM=0
@@ -50,13 +50,13 @@ fi
 option_update() {
    if nwantfeat SOCKETS; then
       WANT_IPV6=0 WANT_SSL=0
-      WANT_IMAP=0 WANT_POP3=0 WANT_SMTP=0 WANT_GSSAPI=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
-   if nwantfeat IMAP && nwantfeat POP3 && nwantfeat SMTP; then
+   if nwantfeat SMTP && nwantfeat POP3 && nwantfeat IMAP; then
       WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
    fi
-   if nwantfeat IMAP && nwantfeat SMTP; then
+   if nwantfeat SMTP && nwantfeat IMAP; then
       WANT_GSSAPI=0
    fi
    # If we don't need MD5 except for producing boundary and message-id strings,
@@ -780,24 +780,6 @@ else
    echo '/* WANT_IPV6=0 */' >> ${h}
 fi # wantfeat IPV6
 
-if wantfeat IMAP; then
-   echo '#define HAVE_IMAP' >> ${h}
-else
-   echo '/* WANT_IMAP=0 */' >> ${h}
-fi
-
-if wantfeat POP3; then
-   echo '#define HAVE_POP3' >> ${h}
-else
-   echo '/* WANT_POP3=0 */' >> ${h}
-fi
-
-if wantfeat SMTP; then
-   echo '#define HAVE_SMTP' >> ${h}
-else
-   echo '/* WANT_SMTP=0 */' >> ${h}
-fi
-
 if wantfeat SSL; then
    link_check openssl 'for sufficiently recent OpenSSL' \
       '#define HAVE_SSL
@@ -894,6 +876,24 @@ else
    echo '/* WANT_SSL=0 */' >> ${h}
 fi # wantfeat SSL
 
+if wantfeat SMTP; then
+   echo '#define HAVE_SMTP' >> ${h}
+else
+   echo '/* WANT_SMTP=0 */' >> ${h}
+fi
+
+if wantfeat POP3; then
+   echo '#define HAVE_POP3' >> ${h}
+else
+   echo '/* WANT_POP3=0 */' >> ${h}
+fi
+
+if wantfeat IMAP; then
+   echo '#define HAVE_IMAP' >> ${h}
+else
+   echo '/* WANT_IMAP=0 */' >> ${h}
+fi
+
 if wantfeat GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
@@ -986,6 +986,12 @@ int main(void)
 !
 else
    echo '/* WANT_IDNA=0 */' >> ${h}
+fi
+
+if wantfeat IMAP_SEARCH; then
+   echo '#define HAVE_IMAP_SEARCH' >> ${h}
+else
+   echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
 fi
 
 if wantfeat REGEX; then
@@ -1097,16 +1103,16 @@ if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
    have_cle=1
 fi
 
-if [ -n "${have_cle}" ] && wantfeat TABEXPAND; then
-   echo '#define HAVE_TABEXPAND' >> ${h}
-else
-   echo '/* WANT_TABEXPAND=0 */' >> ${h}
-fi
-
 if [ -n "${have_cle}" ] && wantfeat HISTORY; then
    echo '#define HAVE_HISTORY' >> ${h}
 else
    echo '/* WANT_HISTORY=0 */' >> ${h}
+fi
+
+if [ -n "${have_cle}" ] && wantfeat TABEXPAND; then
+   echo '#define HAVE_TABEXPAND' >> ${h}
+else
+   echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
 if wantfeat SPAM; then
@@ -1137,12 +1143,6 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
-if wantfeat IMAP_SEARCH; then
-   echo '#define HAVE_IMAP_SEARCH' >> ${h}
-else
-   echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
-fi
-
 if wantfeat MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
@@ -1171,19 +1171,19 @@ printf '\n/* The "feature string", for "simplicity" and lex.c */\n' >> ${h}
 printf '#ifdef _MAIN_SOURCE\n' >> ${h}
 printf '# ifdef HAVE_AMALGAMATION\nstatic\n# endif\n' >> ${h}
 printf 'char const features[] = "MIME"\n' >> ${h}
-printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-searches"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
@@ -1191,7 +1191,9 @@ printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_HISTORY\n   ",HISTORY MANAGEMENT"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
@@ -1236,9 +1238,6 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :The following optional features are enabled:
-#ifdef HAVE_ICONV
-: + Character set conversion using iconv()
-#endif
 #ifdef HAVE_SETLOCALE
 : + Locale support: Printable characters depend on the environment
 # ifdef HAVE_C90AMEND1
@@ -1248,6 +1247,9 @@ ${cat} > ${tmp2}.c << \!
 : + Automatic detection of terminal character set
 # endif
 #endif
+#ifdef HAVE_ICONV
+: + Character set conversion using iconv()
+#endif
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
@@ -1256,8 +1258,14 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifdef HAVE_SSL
 # ifdef HAVE_OPENSSL
-: + S/MIME and SSL/TLS using OpenSSL
+: + S/MIME and SSL/TLS (OpenSSL)
 # endif
+#endif
+#ifdef HAVE_SMTP
+: + SMTP protocol
+#endif
+#ifdef HAVE_POP3
+: + POP3 protocol
 #endif
 #ifdef HAVE_IMAP
 : + IMAP protocol
@@ -1265,14 +1273,11 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_GSSAPI
 : + GSS-API authentication
 #endif
-#ifdef HAVE_POP3
-: + POP3 protocol
+#ifdef HAVE_NETRC
+: + .netrc file support
 #endif
-#ifdef HAVE_SMTP
-: + SMTP protocol
-#endif
-#ifdef HAVE_SPAM
-: + Interaction with spam filters
+#ifdef HAVE_AGENT
+: + Password query through agent
 #endif
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
@@ -1292,6 +1297,12 @@ ${cat} > ${tmp2}.c << \!
 : + + History management
 # endif
 #endif
+#ifdef HAVE_SPAM
+: + Interaction with spam filters
+#endif
+#ifdef HAVE_DOCSTRINGS
+: + Documentation summary strings
+#endif
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
@@ -1300,9 +1311,6 @@ ${cat} > ${tmp2}.c << \!
 #endif
 :
 :The following optional features are disabled:
-#ifndef HAVE_ICONV
-: - Character set conversion using iconv()
-#endif
 #ifndef HAVE_SETLOCALE
 : - Locale support: Only ASCII characters are recognized
 #endif
@@ -1312,14 +1320,23 @@ ${cat} > ${tmp2}.c << \!
 # ifndef HAVE_NL_LANGINFO
 : - Automatic detection of terminal character set
 # endif
+#ifndef HAVE_ICONV
+: - Character set conversion using iconv()
+#endif
 #ifndef HAVE_SOCKETS
 : - Network support
 #endif
 #ifndef HAVE_IPV6
 : - Support for Internet Protocol v6 (IPv6)
 #endif
-#if !defined HAVE_SSL
-: - SSL/TLS (network transport authentication and encryption)
+#ifndef HAVE_SSL
+: - S/MIME and SSL/TLS
+#endif
+#ifndef HAVE_SMTP
+: - SMTP protocol
+#endif
+#ifndef HAVE_POP3
+: - POP3 protocol
 #endif
 #ifndef HAVE_IMAP
 : - IMAP protocol
@@ -1327,14 +1344,11 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_GSSAPI
 : - GSS-API authentication
 #endif
-#ifndef HAVE_POP3
-: - POP3 protocol
+#ifndef HAVE_NETRC
+: - .netrc file support
 #endif
-#ifndef HAVE_SMTP
-: - SMTP protocol
-#endif
-#ifndef HAVE_SPAM
-: - Interaction with spam filters
+#ifndef HAVE_AGENT
+: - Password query through agent
 #endif
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support
@@ -1348,6 +1362,12 @@ ${cat} > ${tmp2}.c << \!
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
+#ifndef HAVE_SPAM
+: - Interaction with spam filters
+#endif
+#ifndef HAVE_DOCSTRINGS
+: - Documentation summary strings
+#endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
 #endif
@@ -1357,14 +1377,14 @@ ${cat} > ${tmp2}.c << \!
 :
 :Remarks:
 #ifndef HAVE_SNPRINTF
-: . The function snprintf() could not be found. mailx will be compiled to use
+: . The function snprintf() could not be found. We will use and internal
 : sprintf() instead. This might overflow buffers if input values are larger
 : than expected. Use the resulting binary with care or update your system
 : environment and start the configuration process again.
 #endif
 #ifndef HAVE_FCHDIR
-: . The function fchdir() could not be found. mailx will be compiled to use
-: chdir() instead. This is not a problem unless the current working
+: . The function fchdir() could not be found. We will use chdir()
+: instead. This is not a problem unless the current working
 : directory of mailx is moved while the IMAP cache is used.
 #endif
 #ifdef HAVE_DEBUG

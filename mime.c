@@ -414,8 +414,9 @@ mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
             break;
          }
 
-   if (quoteany << 1 > in->l) {
-      /* Print the entire field in base64 */
+   /* Use base64 encoding if more than 25% of the line must be quoted,
+    * otherwise step over the data and encode quoted-printable as necessary */
+   if (quoteany << 2 > in->l) {
       for (wbeg = in->s; wbeg < upper; wbeg = wend) {
          wend = upper;
          cin.s = UNCONST(wbeg);
@@ -447,7 +448,6 @@ mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
          }
       }
    } else {
-      /* Print the field word-wise in quoted-printable */
       broken = FAL0;
       for (wbeg = in->s; wbeg < upper; wbeg = wend) {
          lastspc = NULL;

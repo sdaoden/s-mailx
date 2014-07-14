@@ -17,14 +17,9 @@
 # Only a `set' variable will cause the possibly necessary feature tests to be
 # performed, so as to detect wether the wanted feature really can be used
 
-# S-nail automatically detects compilers and has a set of known compiler flags
-# which work well.  Since users should be able to define their own $CC, $CFLAGS
-# and $LDFLAGS, however, it only uses the detected environment if the user
-# forces their usage via setting WANT_AUTOCC=1.  (Except for $CC, which is
-# always set if it's empty or set to "cc".)
-# Note: it is possible to add to the detected values by setting ADDCFLAGS="xy"
-# and/or ADDLDFLAGS="xy" -- "configuration-has-changed" detection will work on
-# the final $CC / $CFLAGS / $LDFLAGS, and thus will include those additions
+# Shall S-nail try to automatically detect a compiler and provide a set of
+# known-good compiler flags?  If so additions may still be provided by setting
+# $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
 # Thus: set this to 0 and use your normal $CC / $CFLAGS / $LDFLAGS, set this to
 # 1 and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
 # Whatever you do, the configuration is fixated and updates will force rebuilds
@@ -34,8 +29,13 @@ WANT_AUTOCC=1
 # source files are injected into a single compilation unit, which is then
 # compiled.  This allows the compiler to perform much more optimizations, and
 # also reduces the management overhead that is used for / needed by the linker.
-# Of course compiling such a large source requires a lot of memory by itself
 WANT_AMALGAMATION=0
+
+# Character set conversion enables reading and sending of mails in multiple
+# character sets through usage of the iconv(3) library.
+# Please read the manual section "Character sets" for the complete picture.
+# This should usually be enabled
+WANT_ICONV=1
 
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
 # related/dependent stuff (GSS-API,SSL)
@@ -55,14 +55,14 @@ WANT_IPV6=1
 # installed by default on practically all operating systems today, though)
 WANT_SSL=1
 
-# Support for IMAP protocol?  (Reading of mails directly on the server)
-WANT_IMAP=1
+# Support for SMTP protocol?  (Directly sending mails over the network)
+WANT_SMTP=1
 
 # Support for POP3 protocol?  (Download of mails via POP over the network)
 WANT_POP3=1
 
-# Support for SMTP protocol?  (Directly sending mails over the network)
-WANT_SMTP=1
+# Support for IMAP protocol?  (Reading of mails directly on the server)
+WANT_IMAP=1
 
 # Support for GSS-API (Generic Security Services Application Programming
 # Interface) based authentication, e.g., Kerberos v5?
@@ -75,20 +75,6 @@ WANT_NETRC=1
 # Passwords can also be looked up through an external "agent" in order to allow
 # for encrypted password storage (see *agent-shell-lookup*)
 WANT_AGENT=1
-
-# Several facilities use the MD5 message digest, but for some of them it is
-# only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
-# authentification, SMTP: CRAM-MD5 authentification).
-# If you don't need those, you may exclude MD5 from S-nail.
-# Note that WANT_MD5 is automatically turned off if its exclusion will only
-# affect MIME boundary strings and Message-Id: fields
-WANT_MD5=1
-
-# Character set conversion enables reading and sending of mails in multiple
-# character sets through usage of the iconv(3) library.
-# Please read the manual section "Character sets" for the complete picture.
-# This should usually be enabled
-WANT_ICONV=1
 
 # IDNA (internationalized domain names for applications) offers users the
 # possibility to use domain names in their native language, i.e., to use
@@ -150,6 +136,14 @@ WANT_QUOTE_FOLD=1
 
 # A simple form of coloured output can optionally be produced (see manual)
 WANT_COLOUR=1
+
+# Several facilities use the MD5 message digest, but for some of them it is
+# only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
+# authentification, SMTP: CRAM-MD5 authentification).
+# If you don't need those, you may exclude MD5 from S-nail.
+# Note that WANT_MD5 is automatically turned off if its exclusion will only
+# affect MIME boundary strings and Message-Id: fields
+WANT_MD5=1
 
 ## PATHS AND PROGRAMS ##
 
