@@ -4,6 +4,7 @@
 # S-nail(1): v14.7.3 / 2014-07-14
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
+# (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
