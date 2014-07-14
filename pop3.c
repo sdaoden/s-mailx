@@ -838,7 +838,9 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
-         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3, sc.sc_url.url_u_h_p.s)))
+         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3,
+            (sc.sc_url.url_had_user ? sc.sc_url.url_eu_h_p.s
+             : sc.sc_url.url_u_h_p.s))))
       goto jleave;
 
    if (!sopen(&sc.sc_sock, &sc.sc_url))
