@@ -15,6 +15,15 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.4, 2014-07-15
+-------------------
+
+Fixes maildir code which was broken in May (too).
+Readds auto-detection of compressed boxes (i.e., if `$ Fi mybox' is
+executed and `mybox' doesn't exist, but `mybox.bz2' does, then the name
+is automatically expanded and `mybox.bz2' is used instead).
+Sorry for the inconvience.
+
 v14.7.3, 2014-07-14
 -------------------
 

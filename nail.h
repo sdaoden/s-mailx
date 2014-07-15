@@ -545,7 +545,7 @@ enum user_options {
    OPT_R_FLAG     = 1u<< 9,   /* -R */
    OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
    OPT_t_FLAG     = 1u<<11,   /* -t */
-   OPT_u_FLAG     = 1u<<12,   /* -u given, or USER != getpwnam(3) */
+   OPT_u_FLAG     = 1u<<12,   /* -u / $USER and pw->pw_uid != getuid(2) */
    OPT_TILDE_FLAG = 1u<<13,   /* -~ */
    OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
@@ -1562,6 +1562,8 @@ VL sighandler_type handlerstacktop;
  * TODO carrier structs instead of locals */
 VL char        *temporary_arg_v_store;
 VL void        *temporary_localopts_store;
+/* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
+VL char const  *temporary_protocol_ext;
 
 /* The remaining variables need initialization */
 

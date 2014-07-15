@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" S-nail(1): v14.7.3 / 2014-07-14
-.Dd Jul 14, 2014
-.ds VV \\%v14.7.3
+.\" S-nail(1): v14.7.4 / 2014-07-15
+.Dd Jul 15, 2014
+.ds VV \\%v14.7.4
 .\"
 .ds UV \\*(UA\ \\*(XX
 .\"--MKMAN-START--
@@ -1664,6 +1664,9 @@ or
 respectively, and transparently handled through an intermediate
 (un)compression step (using a temporary file) with the respective
 utility, which thus must be available in the path.
+Likewise, if the named file doesn't exist, but a file with one of the
+mentioned compression extensions does, then the name is automatically
+expanded and the compressed file is used.
 If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form
@@ -2780,6 +2783,7 @@ Beside those internal variables \*(UA uses several
 variables, too.
 .\"
 .\" .Ss "Initial settings" {{{
+.\" (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
 .Ss "Initial Settings"
 The standard POSIX 2008/Cor 1-2013 mandates the following initial
 variable settings:
