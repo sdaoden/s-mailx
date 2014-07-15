@@ -1664,6 +1664,9 @@ or
 respectively, and transparently handled through an intermediate
 (un)compression step (using a temporary file) with the respective
 utility, which thus must be available in the path.
+Likewise, if the named file doesn't exist, but a file with one of the
+mentioned compression extensions does, then the name is automatically
+expanded and the compressed file is used.
 If `name' refers to a directory with the subdirectories `tmp', `new',
 and `cur', then it is treated as a folder in `maildir' format.
 A name of the form

@@ -500,6 +500,8 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
    enum protocol rv = PROTO_UNKNOWN;
    NYD_ENTER;
 
+   temporary_protocol_ext = NULL;
+
    if (name[0] == '%' && name[1] == ':')
       name += 2;
    for (cp = name; *cp && *cp != ':'; cp++)
@@ -554,12 +556,18 @@ jfile:
    memcpy(np, name, sz + 1);
    if (!stat(name, &st)) {
       if (S_ISDIR(st.st_mode) &&
-            (memcpy(np+sz, "/tmp", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (memcpy(np+sz, "/new", 4), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (memcpy(np+sz, "/cur", 4), !stat(np, &st) && S_ISDIR(st.st_mode)))
+            (memcpy(np+sz, "/tmp", 5), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/new", 5), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
+            (memcpy(np+sz, "/cur", 5), !stat(np, &st) && S_ISDIR(st.st_mode)))
           rv = PROTO_MAILDIR;
-   } else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
-      rv = PROTO_MAILDIR;
+   } else {
+      if (memcpy(np+sz, cp=".gz", 4), !stat(np, &st) && S_ISREG(st.st_mode) ||
+            memcpy(np+sz, cp=".xz", 4), !stat(np, &st) && S_ISREG(st.st_mode) ||
+            memcpy(np+sz, cp=".bz2", 5), !stat(np, &st) && S_ISREG(st.st_mode))
+         temporary_protocol_ext = cp;
+      else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
+         rv = PROTO_MAILDIR;
+   }
    ac_free(np);
 jleave:
    NYD_LEAVE;

@@ -455,6 +455,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    switch (which_protocol(name)) {
    case PROTO_FILE:
+      if (temporary_protocol_ext != NULL)
+         name = savecat(name, temporary_protocol_ext);
       break;
    case PROTO_MAILDIR:
       rv = maildir_setfile(name, fm);

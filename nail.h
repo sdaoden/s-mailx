@@ -1562,6 +1562,8 @@ VL sighandler_type handlerstacktop;
  * TODO carrier structs instead of locals */
 VL char        *temporary_arg_v_store;
 VL void        *temporary_localopts_store;
+/* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
+VL char const  *temporary_protocol_ext;
 
 /* The remaining variables need initialization */
 
