@@ -541,10 +541,12 @@ text) with either of the text-mode browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
+to view shell scripts as plain text
 and to open PDF attachments in an external PDF viewer, asynchronously:
 .Bd -literal -offset indent
   #set pipe-text/html="elinks -force-html -dump 1"
   set pipe-text/html="lynx -stdin -dump -force_html"
+  set pipe-application/x-sh=@
   set pipe-application/pdf="@&cat > \e"/tmp/${NAIL_FILENAME}\e";\e
       acroread \e"/tmp/${NAIL_FILENAME}\e";\e
       rm \e"/tmp/${NAIL_FILENAME}\e""
@@ -557,7 +559,7 @@ were blindly filtered through the shell, for example, a message sender
 could easily execute arbitrary code on the system \*(UA is running on.
 For more on MIME, also in respect to sending of messages, see the
 section
-.Sx "The mime.types files"
+.Sx "THE mime.types FILES"
 and the command
 .Ic mimetypes .
 .\" }}}
