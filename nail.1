@@ -1980,10 +1980,11 @@ sender address of the first message.
 .Ns ( Ar show
 or)
 .Ar clear
-the
+the current
 .Pa .netrc
-cache.
-In the former case the file is loaded first as necessary.
+cache, loading the file first as necessary in the former case.
+Note that \*(UA will try to read the file only once, use `netrc clear'
+to unlock the next attempt.
 See
 .Va netrc-lookup
 and the section

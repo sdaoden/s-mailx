@@ -119,11 +119,11 @@ _nrc_init(void)
    if ((netrc_load = getenv("NETRC")/* TODO */) == NULL)
       netrc_load = UNCONST(NETRC);
    if ((netrc_load = file_expand(netrc_load)) == NULL)
-      goto jleave;
+      goto j_leave;
 
    if ((fi = Fopen(netrc_load, "r")) == NULL) {
       fprintf(stderr, _("Cannot open `%s'\n"), netrc_load);
-      goto jleave;
+      goto j_leave;
    }
 
    /* Be simple and apply rigid (permission) check(s) */
@@ -138,8 +138,6 @@ _nrc_init(void)
    seen_default = FAL0;
 jnext:
    switch((t = __nrc_token(fi, buffer))) {
-   case NRC_ERROR:
-      goto jerr;
    case NRC_NONE:
       break;
    default: /* Doesn't happen (but on error?), keep CC happy */
@@ -222,22 +220,25 @@ jm_h:
       if (t != NRC_NONE)
          goto jnext;
       break;
+   case NRC_ERROR:
+jerr:
+      if (options & OPT_D_V)
+         fprintf(stderr, _("Errors occurred while parsing `%s'\n"), netrc_load);
+      assert(nrc == NRC_NODE_ERR);
+      goto jleave;
    }
 
    if (nhead != NULL)
       nrc = nhead;
-   else
-jerr:
-      if (options & OPT_D_V)
-         fprintf(stderr, _("Errors occurred while parsing `%s'\n"), netrc_load);
-   Fclose(fi);
 jleave:
+   Fclose(fi);
    if (nrc == NRC_NODE_ERR)
       while (nhead != NULL) {
          ntail = nhead;
          nhead = nhead->nrc_next;
          free(ntail);
       }
+j_leave:
    _nrc_list = nrc;
    NYD_LEAVE;
 }
