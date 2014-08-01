@@ -365,10 +365,10 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
 
    if (v15) {
       if (shost == NULL) {
-         assert(from != NULL);
+         if (from == NULL)
+            goto jenofrom;
          sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
-      }
-      else
+      } else
          __sendout_ident = sbp->sb_url.url_u_h.s;
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
          goto jleave;
@@ -377,7 +377,13 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
          goto jleave;
       }
-      assert(from != NULL);
+      /* TODO part of the entire myorigin() disaster, get rid of this! */
+      if (from == NULL) {
+jenofrom:
+         fprintf(stderr, _("Your configuration requires a *from* address, "
+            "but none was given\n"));
+         goto jleave;
+      }
       if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
          goto jleave;
       sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
