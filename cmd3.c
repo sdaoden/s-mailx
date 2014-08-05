@@ -74,10 +74,10 @@ static int        respond_internal(int *msgvec, int recipient_record);
 static int        Respond_internal(int *msgvec, int recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
-static int        forward1(char *str, int recipient_record);
+static int        _fwd(char *str, int recipient_record);
 
 /* Modify the subject we are replying to to begin with Fwd: */
-static char *     fwdedit(char *subj);
+static char *     __fwdedit(char *subj);
 
 /* Sort the passed string vecotor into ascending dictionary order */
 static void       asort(char **list);
@@ -357,7 +357,7 @@ jleave:
 }
 
 static int
-forward1(char *str, int recipient_record)
+_fwd(char *str, int recipient_record)
 {
    struct header head;
    int *msgvec, rv = 1;
@@ -366,7 +366,7 @@ forward1(char *str, int recipient_record)
    bool_t f, forward_as_attachment;
    NYD_ENTER;
 
-   if ((recipient = laststring(str, &f, FAL0)) == NULL) {
+   if ((recipient = laststring(str, &f, TRU1)) == NULL) {
       puts(_("No recipient specified."));
       goto jleave;
    }
@@ -417,7 +417,7 @@ forward1(char *str, int recipient_record)
       setdot(mp);
    }
    head.h_subject = hfield1("subject", mp);
-   head.h_subject = fwdedit(head.h_subject);
+   head.h_subject = __fwdedit(head.h_subject);
    mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL, recipient_record,
       1);
    rv = 0;
@@ -427,7 +427,7 @@ jleave:
 }
 
 static char *
-fwdedit(char *subj)
+__fwdedit(char *subj)
 {
    struct str in, out;
    char *newsubj = NULL;
@@ -442,7 +442,7 @@ fwdedit(char *subj)
 
    newsubj = salloc(out.l + 6);
    memcpy(newsubj, "Fwd: ", 5); /* XXX localizable */
-   memcpy(newsubj + 5, out.s, out.l + 1);
+   memcpy(newsubj + 5, out.s, out.l +1);
    free(out.s);
 jleave:
    NYD_LEAVE;
@@ -830,7 +830,7 @@ c_forward(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = forward1(v, 0);
+   rv = _fwd(v, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -841,7 +841,7 @@ c_Forward(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = forward1(v, 1);
+   rv = _fwd(v, 1);
    NYD_LEAVE;
    return rv;
 }
