@@ -171,9 +171,17 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
 {
    char datebuf[FROM_DATEBUF], *cp, *subjline;
    char const *datefmt, *date, *name, *fp;
-   int B, c, i, n, s, wleft, subjlen, isto = 0, isaddr = 0;
+   int i, n, s, wleft, subjlen;
    struct message *mp;
    time_t datet;
+   enum {
+      _NONE       = 0,
+      _ISADDR     = 1<<0,
+      _ISTO       = 1<<1,
+      _IFMT       = 1<<2,
+      _LOOP_MASK  = (1<<3) - 1,
+      _SFMT       = 1<<3
+   } flags = _NONE;
    NYD_ENTER;
 
    mp = message + msgno - 1;
@@ -224,19 +232,19 @@ jredo:
    } else
       date = fakedate(datet);
 
-   isaddr = 1;
+   flags |= _ISADDR;
    name = name1(mp, 0);
    if (name != NULL && ok_blook(showto) && is_myname(skin(name))) {
       if ((cp = hfield1("to", mp)) != NULL) {
          name = cp;
-         isto = 1;
+         flags |= _ISTO;
       }
    }
    if (name == NULL) {
       name = "";
-      isaddr = 0;
+      flags &= ~_ISADDR;
    }
-   if (isaddr)
+   if (flags & _ISADDR)
       name = ok_blook(showname) ? realname(name) : prstr(skin(name));
 
    subjline = NULL;
@@ -259,6 +267,8 @@ jredo:
             while (++fp, digitchar(*fp));
             subjlen -= n;
          }
+         if (*fp == 'i')
+            flags |= _IFMT;
 
          if (*fp == '\0')
             break;
@@ -282,10 +292,11 @@ jredo:
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
    for (fp = fmt; *fp != '\0'; ++fp) {
+      char c;
       if ((c = *fp & 0xFF) != '%')
          putc(c, f);
       else {
-         B = 0;
+         flags &= _LOOP_MASK;
          n = 0;
          s = 1;
          if (*++fp == '-') {
@@ -372,13 +383,13 @@ jputc:
                i = wleft;
                n = (n < 0) ? -wleft : wleft;
             }
-            if (isto) /* XXX tr()! */
+            if (flags & _ISTO) /* XXX tr()! */
                i -= 3;
-            n = fprintf(f, "%s%s", (isto ? "To " : ""),
+            n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : ""),
                   colalign(name, i, n, &wleft));
             if (n < 0)
                wleft = 0;
-            else if (isto)
+            else if (flags & _ISTO)
                wleft -= 3;
             break;
          case 'i':
@@ -423,7 +434,7 @@ jputc:
             wleft = (n >= 0) ? wleft - n : 0;
             break;
          case 'S':
-            B = 1;
+            flags |= _SFMT;
             /*FALLTHRU*/
          case 's':
             if (n == 0)
@@ -434,17 +445,18 @@ jputc:
                subjlen = wleft;
             if (UICMP(32, ABS(n), >, subjlen))
                n = (n < 0) ? -subjlen : subjlen;
-            if (B)
+            if (flags & _SFMT)
                n -= (n < 0) ? -2 : 2;
             if (n == 0)
                break;
             if (subjline == NULL)
-               subjline = __subject(mp, threaded, yetprinted);
+               subjline = __subject(mp, (threaded && (flags & _IFMT)),
+                     yetprinted);
             if (subjline == (char*)-1) {
                n = fprintf(f, "%*s", n, "");
                wleft = (n >= 0) ? wleft - n : 0;
             } else {
-               n = fprintf(f, (B ? "\"%s\"" : "%s"),
+               n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
                      colalign(subjline, ABS(n), n, &wleft));
                if (n < 0)
                   wleft = 0;
