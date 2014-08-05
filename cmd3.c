@@ -105,23 +105,21 @@ _reedit(char *subj)
    NYD_ENTER;
 
    if (subj == NULL || *subj == '\0')
-      goto j_leave;
+      goto jleave;
 
    in.s = subj;
    in.l = strlen(subj);
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
-   /* TODO _reedit: should be localizable (see cmd1.c:__subject_trim()!) */
-   if ((out.s[0] == 'r' || out.s[0] == 'R') &&
-         (out.s[1] == 'e' || out.s[1] == 'E') && out.s[2] == ':') {
+   if ((newsubj = subject_re_trim(out.s)) != out.s)
       newsubj = savestr(out.s);
-      goto jleave;
+   else {
+      newsubj = salloc(out.l + 4 +1);
+      sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
    }
-   newsubj = salloc(out.l + 4 +1);
-   sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
-jleave:
+
    free(out.s);
-j_leave:
+jleave:
    NYD_LEAVE;
    return newsubj;
 }
