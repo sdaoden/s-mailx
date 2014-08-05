@@ -838,7 +838,7 @@ _pipe1(char *str, int doign)
    bool_t needs_list;
    NYD_ENTER;
 
-   if ((cmd = laststring(str, &needs_list, 1)) == NULL) {
+   if ((cmd = laststring(str, &needs_list, TRU1)) == NULL) {
       cmd = ok_vlook(cmd);
       if (cmd == NULL || *cmd == '\0') {
          fputs(_("variable cmd not set\n"), stderr);

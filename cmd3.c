@@ -366,7 +366,7 @@ forward1(char *str, int recipient_record)
    bool_t f, forward_as_attachment;
    NYD_ENTER;
 
-   if ((recipient = laststring(str, &f, 0)) == NULL) {
+   if ((recipient = laststring(str, &f, FAL0)) == NULL) {
       puts(_("No recipient specified."));
       goto jleave;
    }
@@ -485,7 +485,7 @@ _resend1(void *v, bool_t add_resent)
 
    str = v;
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
-   name = laststring(str, &f, 1);
+   name = laststring(str, &f, TRU1);
    if (name == NULL) {
       puts(_("No recipient specified."));
       goto jleave;
