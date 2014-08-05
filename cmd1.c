@@ -64,7 +64,6 @@ static void    __hprf(size_t yetprinted, char const *fmt, size_t msgno,
                   FILE *f, bool_t threaded, char const *attrlist);
 static char *  __subject(struct message *mp, bool_t threaded,
                   size_t yetprinted);
-static char *  __subject_trim(char *s);
 static int     __putindent(FILE *fp, struct message *mp, int maxwidth);
 
 static int     _dispc(struct message *mp, char const *a);
@@ -502,36 +501,6 @@ jputc:
 }
 
 static char *
-__subject_trim(char *s)
-{
-   struct {
-      ui8_t len;
-      char  dat[7];
-   } const *pp, ignored[] = { /* TODO make ignore list configurable */
-      { 3, "re:" }, { 4, "fwd:" },
-      { 3, "aw:" }, { 5, "antw:" },
-      { 0, "" }
-   };
-   NYD_ENTER;
-
-jouter:
-   while (*s != '\0') {
-      while (spacechar(*s))
-         ++s;
-      /* TODO While it is maybe ok not to MIME decode these (for purpose), we
-       * TODO should skip =?..?= at the beginning? */
-      for (pp = ignored; pp->len > 0; ++pp)
-         if (is_asccaseprefix(pp->dat, s)) {
-            s += pp->len;
-            goto jouter;
-         }
-      break;
-   }
-   NYD_LEAVE;
-   return s;
-}
-
-static char *
 __subject(struct message *mp, bool_t threaded, size_t yetprinted)
 {
    /* XXX NOTE: because of efficiency reasons we simply ignore any encoded
@@ -551,10 +520,10 @@ __subject(struct message *mp, bool_t threaded, size_t yetprinted)
     * Subject: as it's parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
-   mso = __subject_trim(ms);
+   mso = subject_re_trim(ms);
    for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL && yetprinted-- > 0;)
       if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
-            !asccasecmp(mso, __subject_trim(os)))
+            !asccasecmp(mso, subject_re_trim(os)))
          goto jleave;
 jconv:
    in.s = ms;
