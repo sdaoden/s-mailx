@@ -923,6 +923,9 @@ FL char *      realname(char const *name);
  * 2 -- get sender's name for Reply */
 FL char *      name1(struct message *mp, int reptype);
 
+/* Trim away all leading Re: etc., return pointer to plain subject */
+FL char *      subject_re_trim(char *cp);
+
 FL int         msgidcmp(char const *s1, char const *s2);
 
 /* See if the given header field is supposed to be ignored */

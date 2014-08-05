@@ -1256,6 +1256,36 @@ jleave:
    return cp;
 }
 
+FL char *
+subject_re_trim(char *s)
+{
+   struct {
+      ui8_t len;
+      char  dat[7];
+   } const *pp, ignored[] = { /* TODO make ignore list configurable */
+      { 3, "re:" }, { 4, "fwd:" },
+      { 3, "aw:" }, { 5, "antw:" },
+      { 0, "" }
+   };
+   NYD_ENTER;
+
+jouter:
+   while (*s != '\0') {
+      while (spacechar(*s))
+         ++s;
+      /* TODO While it is maybe ok not to MIME decode these (for purpose), we
+       * TODO should skip =?..?= at the beginning? */
+      for (pp = ignored; pp->len > 0; ++pp)
+         if (is_asccaseprefix(pp->dat, s)) {
+            s += pp->len;
+            goto jouter;
+         }
+      break;
+   }
+   NYD_LEAVE;
+   return s;
+}
+
 FL int
 msgidcmp(char const *s1, char const *s2)
 {
