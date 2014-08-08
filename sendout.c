@@ -865,7 +865,7 @@ sendmail_internal(void *v, int recipient_record)
    head.h_to = lextract(str, GTO | GFULL);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
-   return rv;
+   return (rv == 0);
 }
 
 static bool_t
