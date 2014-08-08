@@ -450,6 +450,10 @@ msgidnextc(char const **cp, int *status)
    int c;
    NYD_ENTER;
 
+   assert(cp != NULL);
+   assert(*cp != NULL);
+   assert(status != NULL);
+
    for (;;) {
       if (*status & 01) {
          if (**cp == '"') {

@@ -111,7 +111,7 @@ VL uc_it const       class_char[] = {
    C_LOWER, C_LOWER, C_LOWER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_CNTRL
 };
 
-/* getopt(3) fallback implementation */
+/* Our own little getopt(3) */
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
 
