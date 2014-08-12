@@ -907,7 +907,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             colour_reset(obuf); /* XXX reset after \n!! */
             if (colour_stripped)
                fputc('\n', obuf);
-            pipecomm = NULL;
          }
          }
 #endif
@@ -921,6 +920,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    quoteflt_flush(qf);
    free(line);
    line = NULL;
+   pipecomm = NULL;
 
 jskip:
    switch (ip->m_mimecontent) {
