@@ -1736,8 +1736,10 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          break;
       if (response_other != MESSAGE_DATA_FETCH)
          continue;
-      if (ok == STOP || (cp=strrchr(responded_other_text, '{')) == 0)
+      if (ok == STOP || (cp=strrchr(responded_other_text, '{')) == 0) {
+         srelax_rele();
          return STOP;
+      }
       if (asccasestr(responded_other_text, "RFC822.HEADER") == NULL)
          continue;
       expected = atol(&cp[1]);
