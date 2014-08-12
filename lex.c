@@ -670,6 +670,8 @@ commands(void)
 
    setexit();
    for (;;) {
+      char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
+
       interrupts = 0;
       handlerstacktop = NULL;
 
@@ -749,6 +751,8 @@ jreadline:
          break;
       }
 
+      temporary_orig_line = (sourcing || !(options & OPT_INTERACTIVE))
+            ? NULL : savestrbuf(ev.ev_line.s, ev.ev_line.l);
       inhook = 0;
       if (evaluate(&ev)) {
          if (loading) /* TODO mess; join with exec_last_comm_error etc.. */
@@ -768,7 +772,7 @@ jreadline:
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
-         tty_addhist(ev.ev_line.s, !ev.ev_add_history);
+         tty_addhist(temporary_orig_line, !ev.ev_add_history);
       }
    }
 
@@ -787,6 +791,7 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
 #ifdef HAVE_COLOUR
    struct colour_table *ct_save;
 #endif
+   char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
    int rv;
    NYD_ENTER;
 
@@ -802,10 +807,11 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    ev.ev_line.s = linebuf;
    ev.ev_line.l = linesize;
    ev.ev_is_recursive = (contxt != 0);
+   temporary_orig_line = contxt ? savestr(linebuf) : NULL;
    rv = evaluate(&ev);
 
    if (contxt)
-      tty_addhist(ev.ev_line.s, TRU1);
+      tty_addhist(temporary_orig_line, TRU1);
 
 #ifdef HAVE_COLOUR
    colour_table = ct_save;
