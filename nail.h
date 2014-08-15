@@ -190,8 +190,15 @@
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
  * the real limit we go for */
-#define MIME_LINELEN_MAX   1000
-#define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 50)
+#define MIME_LINELEN_MAX   998   /* Plus CRLF */
+#define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 48)
+
+/* Ditto, SHOULD */
+#define MIME_LINELEN_NORM  78    /* Plus CRLF */
+
+/* And in headers which contain an encoded word according to RFC 2047 there is
+ * yet another limit */
+#define MIME_LINELEN_HEADER_WITH_ENCODED_WORD_MAX 76
 
 /* Locations of mime.types(5) */
 #define MIME_TYPES_USR  "~/.mime.types"
