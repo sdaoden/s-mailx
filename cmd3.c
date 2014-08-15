@@ -688,7 +688,7 @@ c_help(void *v)
 "cd <directory>              chdir to directory or home if none given\n"
 "list                        list names of all available commands\n"));
    printf(_(
-"\nA <message list> consists of integers, ranges of same, or other criteria\n"
+"A <message list> consists of integers, ranges of same, or other criteria\n"
 "separated by spaces.  If omitted, %s uses the last message typed.\n"),
       progname);
 
