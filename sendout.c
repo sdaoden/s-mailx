@@ -106,7 +106,7 @@ static bool_t        start_mta(struct sendbundle *sbp);
 static bool_t        mightrecord(FILE *fp, struct name *to);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
-static void          _message_id(FILE *fo, struct header *hp);
+static char *        _message_id(struct header *hp);
 
 /* Format the given header line to not exceed 72 characters */
 static int           fmt(char const *str, struct name *np, FILE *fo, int comma,
@@ -865,7 +865,7 @@ sendmail_internal(void *v, int recipient_record)
    head.h_to = lextract(str, GTO | GFULL);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
-   return rv;
+   return (rv == 0);
 }
 
 static bool_t
@@ -1070,9 +1070,10 @@ jbail:
    return rv;
 }
 
-static void
-_message_id(FILE *fo, struct header *hp)
+static char *
+_message_id(struct header *hp)
 {
+   char *rv = NULL;
    char const *h;
    size_t rl;
    struct tm *tmp;
@@ -1092,13 +1093,16 @@ _message_id(FILE *fo, struct header *hp)
       goto jleave;
 
    tmp = &time_current.tc_gm;
-   fprintf(fo, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>\n",
+   rv = salloc(sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>")-1 +
+         rl + strlen(h) +1);
+   snprintf(rv, UI32_MAX, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
       getrandstring(rl), (rl == 8 ? '%' : '@'), h);
 jleave:
    __sendout_ident = NULL;
    NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -1190,6 +1194,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
                &fromfield))
             goto jleave;
       }
+      /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
       if ((cp = ok_vlook(sender)) != NULL) {
          if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-Sender:", fo,
                &senderfield))
@@ -1197,10 +1202,9 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       }
       if (fmt("Resent-To:", to, fo, 1, 1, 0))
          goto jleave;
-      if ((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) {
-         fputs("Resent-", fo);
-         _message_id(fo, NULL);
-      }
+      if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
+            (cp = _message_id(NULL)) != NULL)
+         fprintf(fo, "Resent-%s\n", cp);
    }
 
    if ((mdn = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
@@ -1624,8 +1628,11 @@ do {\
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
       FMT_CC_AND_BCC();
 
-   if ((w & GMSGID) && stealthmua <= 0)
-      _message_id(fo, hp), ++gotcha;
+   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
+      fputs(addr, fo);
+      fputc('\n', fo);
+      ++gotcha;
+   }
 
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
       fmt("References:", np, fo, 0, 1, 0);

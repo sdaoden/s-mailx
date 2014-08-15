@@ -74,10 +74,10 @@ static int        respond_internal(int *msgvec, int recipient_record);
 static int        Respond_internal(int *msgvec, int recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
-static int        forward1(char *str, int recipient_record);
+static int        _fwd(char *str, int recipient_record);
 
 /* Modify the subject we are replying to to begin with Fwd: */
-static char *     fwdedit(char *subj);
+static char *     __fwdedit(char *subj);
 
 /* Sort the passed string vecotor into ascending dictionary order */
 static void       asort(char **list);
@@ -105,23 +105,21 @@ _reedit(char *subj)
    NYD_ENTER;
 
    if (subj == NULL || *subj == '\0')
-      goto j_leave;
+      goto jleave;
 
    in.s = subj;
    in.l = strlen(subj);
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
-   /* TODO _reedit: should be localizable (see cmd1.c:__subject_trim()!) */
-   if ((out.s[0] == 'r' || out.s[0] == 'R') &&
-         (out.s[1] == 'e' || out.s[1] == 'E') && out.s[2] == ':') {
+   if ((newsubj = subject_re_trim(out.s)) != out.s)
       newsubj = savestr(out.s);
-      goto jleave;
+   else {
+      newsubj = salloc(out.l + 4 +1);
+      sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
    }
-   newsubj = salloc(out.l + 4 +1);
-   sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
-jleave:
+
    free(out.s);
-j_leave:
+jleave:
    NYD_LEAVE;
    return newsubj;
 }
@@ -357,7 +355,7 @@ jleave:
 }
 
 static int
-forward1(char *str, int recipient_record)
+_fwd(char *str, int recipient_record)
 {
    struct header head;
    int *msgvec, rv = 1;
@@ -366,7 +364,7 @@ forward1(char *str, int recipient_record)
    bool_t f, forward_as_attachment;
    NYD_ENTER;
 
-   if ((recipient = laststring(str, &f, 0)) == NULL) {
+   if ((recipient = laststring(str, &f, TRU1)) == NULL) {
       puts(_("No recipient specified."));
       goto jleave;
    }
@@ -417,7 +415,7 @@ forward1(char *str, int recipient_record)
       setdot(mp);
    }
    head.h_subject = hfield1("subject", mp);
-   head.h_subject = fwdedit(head.h_subject);
+   head.h_subject = __fwdedit(head.h_subject);
    mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL, recipient_record,
       1);
    rv = 0;
@@ -427,7 +425,7 @@ jleave:
 }
 
 static char *
-fwdedit(char *subj)
+__fwdedit(char *subj)
 {
    struct str in, out;
    char *newsubj = NULL;
@@ -442,7 +440,7 @@ fwdedit(char *subj)
 
    newsubj = salloc(out.l + 6);
    memcpy(newsubj, "Fwd: ", 5); /* XXX localizable */
-   memcpy(newsubj + 5, out.s, out.l + 1);
+   memcpy(newsubj + 5, out.s, out.l +1);
    free(out.s);
 jleave:
    NYD_LEAVE;
@@ -485,7 +483,7 @@ _resend1(void *v, bool_t add_resent)
 
    str = v;
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
-   name = laststring(str, &f, 1);
+   name = laststring(str, &f, TRU1);
    if (name == NULL) {
       puts(_("No recipient specified."));
       goto jleave;
@@ -690,7 +688,7 @@ c_help(void *v)
 "cd <directory>              chdir to directory or home if none given\n"
 "list                        list names of all available commands\n"));
    printf(_(
-"\nA <message list> consists of integers, ranges of same, or other criteria\n"
+"A <message list> consists of integers, ranges of same, or other criteria\n"
 "separated by spaces.  If omitted, %s uses the last message typed.\n"),
       progname);
 
@@ -830,7 +828,7 @@ c_forward(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = forward1(v, 0);
+   rv = _fwd(v, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -841,7 +839,7 @@ c_Forward(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = forward1(v, 1);
+   rv = _fwd(v, 1);
    NYD_LEAVE;
    return rv;
 }

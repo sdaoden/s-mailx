@@ -276,7 +276,7 @@
    { "disconnect", &c_disconnect, (A | NDMLIST), 0, 0
      DS(N_("If connected, disconnect from IMAP mailbox")) },
    { "sort", &c_sort, (A | RAWLIST), 0, 1
-     DS(N_("Change sorting criteria (and addressing modes)")) },
+     DS(N_("Change sorting: date,from,size,spam,status,subject,thread,to")) },
    { "unsort", &c_unthread, (A | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
    { "cache", &c_cache, (A | MSGLIST), 0, 0

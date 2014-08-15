@@ -284,7 +284,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
    char *cp;
    NYD_ENTER;
 
-   if ((cp = laststring(linebuf, flag, 0)) == NULL) {
+   if ((cp = laststring(linebuf, flag, FAL0)) == NULL) {
       if (usembox) {
          *flag = FAL0;
          cp = expand("&");

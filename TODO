@@ -647,6 +647,10 @@ TODO S-nail 14.8:
     Add a -T flag for that.  Drop -q, let -T mean the same if no header
     fields are given (i.e., header fields are not mandatory as with -t).
     ANYWAY: -t and -q are mutual, enforce that (yet done?)
+    While there, it should be possible to send non text/plain for
+    -q/-t, i.e., perform MIME classification; v15.0 and not only this,
+    why not simply sucking in complete MIME messages via -t?
+    (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
   . mutt list handling (`~') is very powerful
   . Check what happens if an account switch or a network connection is
     done while we are loading the resource files...
@@ -750,5 +754,8 @@ TODO S-nail 14.8:
     *agent-shell-lookup* we don't do just about anything.  Even though
     it work (due to stacking of handlers all over the place etc.), but
     we need to have a clean design at some later time.
+  . With very long input Heirloom mailx(1) / S-nail(1) can produce
+    encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
+    non self-contained encoded-words).
 
 # s-ts-mode

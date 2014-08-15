@@ -533,20 +533,21 @@ _pipecmd(char **result, struct mimepart const *mpp)
    char *cp;
    NYD_ENTER;
 
+   *result = NULL;
+
    /* Do we have any handler for this part? */
-   if ((cp = mimepart_get_handler(mpp)) == NULL) {
+   if ((cp = mimepart_get_handler(mpp)) == NULL)
       ret = PIPE_NULL;
-      *result = NULL;
-   }
    /* User specified a command, inspect for special cases */
    else if (cp[0] != '@') {
       /* Normal command line */
       ret = PIPE_COMM;
       *result = cp;
-   } else if (*++cp == '\0') {
+   }
+   else if (*++cp == '\0')
       /* Treat as plain text */
       ret = PIPE_TEXT;
-   } else if (!msglist_is_single) {
+   else if (!msglist_is_single) {
       /* Viewing multiple messages in one go, don't block system */
       ret = PIPE_MSG;
       *result = UNCONST(_("[Directly address message only to display this]\n"));
@@ -836,8 +837,12 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             }
          } else {
             ignoring = 0;
+            /* For colourization we need the complete line, so save it */
+            /* XXX This is all temporary (colour belongs into backend), so
+             * XXX use pipecomm as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
-            pipecomm = savestrbuf(line, PTR2SIZE(cp2 - line));
+            if (colour_table != NULL)
+               pipecomm = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
          *cp2 = c;
@@ -915,6 +920,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    quoteflt_flush(qf);
    free(line);
    line = NULL;
+   pipecomm = NULL;
 
 jskip:
    switch (ip->m_mimecontent) {

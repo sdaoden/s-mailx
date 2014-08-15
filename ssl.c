@@ -407,7 +407,7 @@ c_certsave(void *v)
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    val = 1;
 
-   if ((file = laststring(str, &f, 1)) == NULL ||
+   if ((file = laststring(str, &f, TRU1)) == NULL ||
          (file = file_expand(file)) == NULL) {
       fprintf(stderr, "No file to save certificate given.\n");
       goto jleave;

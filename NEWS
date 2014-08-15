@@ -15,6 +15,65 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.6, 2014-08-15
+-------------------
+
+Thanks to Georg Schlisio.
+
+Several bugfixes: it's definitely more than enough now, v14.7.8 in mid
+2015 will have to and will definetely ship with a test series.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The global default nail.rc file now sets *sendcharsets* to
+  'utf-8,iso-8859-1', i.e., the order has been reversed.
+  (Georg Schlisio)
+
+  Also *bsdflags* is no longer set by default. [e39679b]
+
+ChangeLog
+^^^^^^^^^
+
+- Fix: in some configurations a `resend' message would end up with two
+  'Resend-Date:', instead of one such and a 'Resend-Message-Id:' field.
+  [21b9218]
+
+- The internal exit status of a `mail' command will now be 0 upon
+  success and 1 on failure, not vice versa. [1112375]
+
+- FIX: dependend on the set of retained / ignored etc. headers a MIME
+  part with a *pipe-CONTENT/SUBTYPE* set to the special '@' plain-text
+  command would try to execute a command equal to the name of the last
+  header of the MIME part, most often 'Content-Disposition:'.
+  [dee1fed,686a383]
+
+- Detected that the `fwd' / `forward' command(s) used the false (imho)
+  mode to strip the address from the command line, now it's possible to:
+
+    ? fwd MSG-SPEC "my friend <his@addr>"
+  [1c4e164]
+
+- New variable *reply-strings*.  It's more unlikely now to end up with
+  threads which read 'Re: Aw: Re: Aw:' etc. [topic/retrim]
+
+- Because of user inconvenience, introduce a temporary hack not to mince
+  user input lines in history entries, even if this means that each and
+  every line is first duplicated before it is used.  So now the `fwd'
+  command as above will enter history in the given form. [f1ded4c]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Fixed one missing IMAP / IMAP-cache string relaxation restore.  (In
+  about six weeks or so this condition hit me once). [66ef04f]
+
+P.S.: I still see an occasional IMAP-cache crash that occasionally
+  happens after several connects and diconnects without intervening
+  folder changes; after being bitten once by that even after commit
+  [cf7f63d] it seems this is a deeper structural problem, but i'll try
+  to track that down for v14.8.
+
 v14.7.5, 2014-08-01
 -------------------
 
@@ -1738,7 +1797,7 @@ Thank you very much, and best from Germany!
   produced.  [faa65c40]
 
 - An algorithmic error could cause overlong lines which wrapped around
-  to the next display line.  [ade52660] 
+  to the next display line.  [ade52660]
   (Dirk Peters.)
 
 v14.2, 2013-03-15 [v14.1, 2013-03-12]
