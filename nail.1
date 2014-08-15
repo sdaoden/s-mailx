@@ -231,10 +231,10 @@ Read in the contents of the user's
 .Ev MBOX
 (or the specified file) for processing;
 when \*(UA is quit, it writes undeleted messages back to this file.
-The string
+Some special conventions are recognized for the string
 .Ar file
-is interpreted as described for the
-.Ic folder
+which are documented for the
+.Ic file
 command below.
 Note that
 .Ar file
@@ -371,11 +371,48 @@ E.g., the following should send an email message to `alias'.
 .\" .Sh "USAGE INTRODUCTION" {{{
 .Sh "USAGE INTRODUCTION"
 .\"
+.\" .Ss "A starter" {{{
+.Ss "A starter"
+The following sections will give a short usage introduction.
+Because \*(UA strives for compliance with POSIX
+.Xr mailx 1
+it is likely that some configuration settings have to be adjusted before
+using it is a smooth experience.
+The default global \*(UR file already bends those standard settings
+a bit towards more user friendliness and safety, e.g., it sets the
+.Va hold
+option in order to suppress the automatic moving of messages to
+.Ev MBOX
+that otherwise would occur (see
+.Sx MESSAGE STATES )
+and
+.Va emptybox
+as well as
+.Va keep
+to not remove empty files in order not to mangle file permissions when
+files eventually get recreated.
+It does not set the
+.Va folder
+option so that by default file grouping (via the `+' prefix as
+documented also for
+.Ic file )
+is not enabled.
+The section
+.Sx "EXAMPLES"
+contains some further suggestions.
+.\" }}}
+.\"
 .\" .Ss "Sending mail" {{{
 .Ss "Sending mail"
 To send a message to one or more people,
 \*(UA can be invoked with arguments which are the names of people to
-whom the mail will be sent.
+whom the mail will be sent, e.g., it can be as simple as
+.Bd -literal -offset indent
+$ \*(ua bill@host1.x1 bob@host2.y1
+# But... try it in an almost dry-run mode first
+$ \*(ua -dvv bill@host1.x1 bob@host2.y1
+.Ed
+.Pp
 The user is then expected to type in the message contents.
 In this compose mode \*(UA treats lines beginning with the character `~'
 specially \(en these are so-called
@@ -385,10 +422,12 @@ attachments and more; e.g., the tilde escape `~e' will start the text
 editor to revise the message in it's current state and `~h' allows
 editing of the message recipients.
 Typing `control-D' (`^D') at the beginning of an empty line leaves
-compose mode and causes the message to be send.
+compose mode and causes the message to be send, whereas typing
+`control-C' (`^C') twice will abort the current letter (saving the
+contents which yet have been collected in
+.Ev DEAD Ns . Ns )
 .Pp
-\*(UA has a number of options which can be set in the \*(ur file
-to alter its behavior, also in respect to sending; e.g.,
+A number of options can be used to alter default behavior; e.g.,
 .Ic "set editalong"
 will automatically startup a text editor when compose mode is entered,
 .Va askcc
@@ -397,6 +436,21 @@ and the
 .Va dot
 option will allow leaving compose mode by writing a line consisting
 solely of a dot (`.').
+Very importantly, though, is to define which
+.Sx "CHARACTER SETS"
+may be used when sending messages, usually by setting the option
+.Va sendcharsets
+accordingly.
+Saving a copy of the sent messages in a
+.Va record
+may also be desireable \(en as for most mailbox file targets some
+special conventions are recognized, see the
+.Ic file
+command for the documentation.
+The section
+.Sx "EXAMPLES"
+contains an example configuration for sending messages via some of the
+well-known public mail providers.
 .Pp
 Message recipients (as specified in `To:', `Cc:' or `Bcc:') may not only
 be email addressees but can also be names of mailboxes and even
@@ -448,6 +502,23 @@ Unless the
 .Va emptystart
 option is set \*(UA will only print a notification message and exit if
 the mailbox is empty.
+.Pp
+At the
+.Va prompt
+the command
+.Ic list
+will give a listing of all available commands and
+.Ic help
+will give a summary of the most useful ones.
+If the \*(OPal documentation strings are available one can type `?X'
+to see to which command `X' expands to and what it's purpose is,
+i.e., commands can be abbreviated (note that POSIX defines some
+abbreviations, so that the alphabetical order of commands doesn't
+necessarily relate to the abbreviations; it is possible to define
+overwrites with the
+.Ic ghost
+command, however).
+.Pp
 Messages are given numbers (starting at 1) which uniquely identify
 messages; the current message \(en the dot \(en will either be the first
 new message, or the first unread message, or the first message of the
@@ -484,9 +555,11 @@ active mailbox or by quitting \*(UA (also see
 .Pp
 After examining a message the user can also
 .Ic delete
-(`d') the message or
+(`d') the message,
 .Ic reply
-(`r') to it.
+(`r') to it or
+.Ic Reply
+(`R') to exclusively to it's originator.
 Deletion causes the \*(UA program to forget about the message.
 This is not irreversible;
 one can
@@ -1203,7 +1276,7 @@ The same as `backspace': backward delete one character.
 \*(OP The same as `horizontal tabulator': try to expand the "word"
 before the cursor.
 Here "expansion" refers to the \*(UA expansion, as documented for
-.Ic folder ,
+.Ic file ,
 and thus includes shell word expansion (as a last step).
 I.e., this is \*(UA "expansion", not what one usually expects from
 "tab-completion".
@@ -1405,7 +1478,7 @@ and the following lines create a group of commands for that account
 until a line containing a single `}' appears.
 With one argument the previously created group of commands for the
 account name is executed, and a
-.Ic folder
+.Ic file
 command is executed for the system mailbox or inbox of that account.
 Without arguments the list of accounts and their contents are printed.
 As an example,
@@ -1489,7 +1562,7 @@ variable for more information.
 does except that it does not mark the given messages for deletion when
 the user quits.
 Compressed files and IMAP mailboxes are handled as described for the
-.Ic folder
+.Ic file
 command.
 .It Ic Copy
 (C) Similar to
@@ -1562,7 +1635,7 @@ and makes them specially addressable.
 .It Ic echo
 Echoes its arguments,
 resolving special names as documented for the command
-.Ic folder .
+.Ic file .
 The escape sequences `\ea', `\eb', `\ec', `\ef', `\en', `\er', `\et',
 `\ev', `\e\e', and `\e0octal-num\fR' are interpreted just as they are by
 .Xr printf 1
@@ -1611,13 +1684,15 @@ file, or his edit file in
 as well as a possibly tracked command line editor history file.
 .It Ic features
 Print the list of features that have been compiled into \*(UA.
+.It Ic File
+Like
+.Ic file ,
+but open the mailbox readonly.
 .It Ic file
 (fi) The file command switches to a new mailbox.
 With no arguments, it tells the user which mailbox is the active one.
 If an argument is given, it will write out changes (such as deletions)
-the user has made and open a new mailbox; the command
-.Ic File
-can be used to open a mailbox and make it readonly.
+the user has made and open a new mailbox.
 Some special conventions are recognized for the
 .Ar name
 argument:
@@ -2241,7 +2316,7 @@ Also see
 .It Ic shortcut
 Defines a shortcut name and its string for expansion,
 as described for the
-.Ic folder
+.Ic file
 command.
 If used without arguments the currently defined shortcuts are printed.
 .It Ic show
@@ -2909,7 +2984,7 @@ completes one operation (returns to the command prompt); if it is set
 then \*(UA will terminate if the last operation generated an error.
 .It Va bsdannounce
 Causes automatic display of a header summary after executing a
-.Ic folder
+.Ic file
 command.
 .It Va bsdcompat
 Sets some cosmetical features to traditional BSD style;
@@ -3584,7 +3659,7 @@ gives the character to use in place of `~' to denote
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
 The same special conventions as documented for the
-.Ic folder
+.Ic file
 command may be used when specifying a new value for
 .Va folder ,
 but be aware that the expansion is fully performed immediately.
@@ -3818,7 +3893,7 @@ Is used as the user's mailbox, if set.
 Otherwise, a system-dependent default is used.
 Supports a logical subset of the special conventions that are documented
 for the
-.Ic folder
+.Ic file
 command and the
 .Va folder
 option.
@@ -4563,7 +4638,7 @@ Default is
 The name of the user's mbox file.
 Supports a logical subset of the special conventions that are documented
 for the
-.Ic folder
+.Ic file
 command and the
 .Va folder
 option.
@@ -4767,243 +4842,148 @@ This is merely for FTP purposes.
 .\" .Sh EXAMPLES {{{
 .Sh EXAMPLES
 .\"
-.\" .Ss "Getting started" {{{
-.Ss "Getting started"
-The \*(UA command has two distinct usages, according to whether one
-wants to send or receive mail.
-Sending mail is simple: to send a message to a user whose email address
-is, say, `<bill@host.example>', use the shell command:
-.Pp
-.Dl $ \*(ua bill@host.example
-.Pp
-then type your message.
-\*(UA will prompt you for a message `Subject:' first;
-after that, lines typed by you form the body of the message.
-When you reach the end of the message,
-type an EOT (`control\-D') at the beginning of a line,
-which will cause \*(UA to echo `EOT' and return you to the shell.
-.Pp
-If, while you are composing the message you decide that you do not wish
-to send it after all, you can abort the letter by typing two `RUBOUT'
-(interrupt, `control-C') characters.
-Typing a single `RUBOUT' causes \*(UA to print
-.Ns ` Ns Li (Interrupt -- one more to kill letter) Ns '.
-Typing a second `RUBOUT' causes \*(UA to save your partial letter on the
-file
-.Ev DEAD
-and abort the letter.
-Once you have sent mail to someone, there is no way to undo the act, so
-be careful.
-.Pp
-If you want to send the same message to several other people,
-you can list their email addresses on the command line.
+.\" .Ss "An example configuration" {{{
+.Ss "An example configuration"
 .Bd -literal -offset indent
-$ \*(ua sam@workstation.example bob@server.example
-Subject: Fees
-Tuition fees are due next Friday.  Don't forget!
-<control\-D>
-EOT
-$
-.Ed
-.Pp
-will sendout to `<sam@workstation.example>' and `<bob@server.example>'.
-To read your mail, simply type
-.Pp
-.Dl $ \*(ua
-.Pp
-\*(UA will respond by typing its version number and date and then
-listing the messages you have waiting.
-Then it will type a prompt and await your command.
-The messages are assigned numbers starting with 1 \(en you refer to the
-messages with these numbers.
-\*(UA keeps track of which messages are `new' (have been sent since you
-last read your mail) and `read' (have been read by you).
-New messages have an `N' next to them in the header listing and old,
-but unread messages have a `U' next to them.
-\*(UA keeps track of new/old and read/unread messages by putting a
-header field called `Status' into your messages.
-.Pp
-To look at a specific message, use the
-.Ic type
-command, which may be abbreviated to simply `t'.
-For example, if you had the following messages:
-.Bd -literal -offset indent
-O 1 drfoo@myhost.example Wed Sep  1 19:52   5/421 "Fees"
-O 2 sam@friends.example  Thu Sep  2 00:08  30/895
-.Ed
-.Pp
-you could examine the first message by giving the command:
-.Pp
-.Dl type 1
-.Pp
-which might cause \*(UA to respond with, for example:
-.Bd -literal -offset indent
-[-- Message  1 -- 5 lines, 421 bytes --]:
-From drfoo@myhost.example Wed Sep  1 19:52:25 2004
-Subject: Fees
-Status: R
+# This example assumes v15.0 compatibility mode
+set v15-compat
 
-Tuition fees are due next Wednesday.  Don't forget!
+# Where are the SSL certificates?
+set ssl-ca-dir=/etc/ssl/certs
+set ssl-verify=strict
+
+# Essential setting: select allowed character sets
+set sendcharsets=utf-8,iso-8859-1
+
+# Don't try to load any external mime.types(5) descriptions
+set mimetypes-load-control
+
+# Default directory where we act in (relative to $HOME)
+set folder=mail MBOX=+mbox.mbox record=+sent.mbox \e
+    DEAD=+dead.mbox
+
+# Not really optional, e.g., for S/MIME
+set from="Your Name <youremail@domain>"
+
+# It may be necessary to set hostname and/or smtp-hostname
+# if the "SERVER" of smtp and "domain" of from don't match.
+# The `urlencode' command can be used to encode USER and PASS
+set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
+    smtp-auth=login/plain... \e
+    smtp-use-starttls
+
+# Never refuse to start into interactive mode, and more
+set emptystart \e
+    colour-pager history-gabby mime-counter-evidence=2 \e
+    prompt="\033[31m?\?[\$ \@]\& \033[0m" \e
+    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1
+
+# When `p'rinting messages, show only these headers
+# (use `P'rint for all headers and `S'how for raw message)
+retain date from to cc subject
+
+# A real life example of a very huge free mail provider
+account XooglX {
+   localopts 1
+   # (The plain smtp:// proto is optional)
+   set smtp=USER:PASS@smtp.gmXil.com \e
+       smtp-auth=plain smtp-use-starttls
+   set from="Your Name <youremail@domain>"
+}
+
+# Here is a pretty large one which does not allow sending mails
+# if there is a domain name mismatch on the SMTP protocol level,
+# which would bite us if the value of from does not match, e.g.,
+# for people who have a sXXXXeforge project and want to speak
+# with the mailing list under their project account (in from),
+# still sending the message through their normal mail provider
+account XandeX {
+   localopts 1
+   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 smtp-auth=plain \e
+       hostname=yaXXex.com smtp-hostname=
+   set from="Your Name <youremail@domain>"
+}
 .Ed
 .Pp
-Many \*(UA commands that operate on messages take a message number as an
-argument, just as the shown
-.Ic type
-command.
-For these commands, there is a notion of a current message.
-When you enter the \*(UA program,
-the current message is initially the first (or the first recent) one.
-Thus, you can often omit the message number and use, for example, `t` to
-type the current message.
-As a further shorthand, you can type a message by simply giving its
-message number \(en hence `1` would type the first message.
+When storing passwords in \*(ur appropriate permissions should be set on
+this file with `$ chmod 0600 \*(ur'.
+If the \*(OPal
+.Va netrc-lookup
+is available user credentials can be stored in the central
+.Pa .netrc
+file instead; e.g., here is a different version of the example account
+that sets up SMTP and POP3:
+.Bd -literal -offset indent
+account XandeX {
+   localopts 1
+   set netrc-lookup
+   #set agent-shell-lookup="gpg -d .pass.gpg"
+
+   set smtp=smtps://smtp.yXXXXx.ru:465 smtp-auth=plain \e
+       smtp-hostname= hostname=yXXXXx.com
+   set pop3-keepalive=240
+   ghost xp 'fi pop3s://pop.yXXXXx.ru'
+}
+.Ed
 .Pp
-Frequently, it is useful to read the messages in your mailbox in order,
-one after another.
-You can read the next message in \*(UA by simply typing a newline.
-As a special case, you can type a newline as your first command to
-\*(UA to type the first message.
+and, in the
+.Pa .netrc
+file:
+.Bd -literal -offset indent
+machine *.yXXXXx.ru login USER password PASS
+.Ed
 .Pp
-If, after typing a message, you wish to immediately send a reply,
-you can do so with the command
-.Ic reply .
-This command, like
-.Ic type ,
-takes a message number as an argument.
-\*(UA then begins a message addressed to the user who sent you the
-message and let you type in your letter in reply, followed by
-a `control-D' (`^D') at the beginning of a line, as before.
+If the also \*(OPal
+.Va agent-shell-lookup
+is available things could be diversified further by using encrypted
+password storage: for this, don't specify `password PASS' in the
+.Pa .netrc
+file and instead uncomment the line that defines agent lookup in the
+example
+.Ic account
+above, then create the encrypted password storage file
+.Pa .pass.gpg :
+.Bd -literal -offset indent
+$ echo PASS > .pass
+$ gpg -e .pass
+$ eval `gpg-agent --daemon \e
+        --pinentry-program=/usr/bin/pinentry-curses \e
+        --max-cache-ttl 99999 --default-cache-ttl 99999`
+.Ed
 .Pp
-Note that \*(UA copies the subject header from the original message.
-This is useful in that correspondence about a particular matter will
-tend to retain the same subject heading, making it easy to recognize.
-If there are other header fields in the message, like `Cc:',
-the information found will also be used.
+This configuration should now work just fine (use the
+.Fl d
+command line option for a(n almost) dry-run):
 .Pp
-Sometimes you will receive a message that has been sent to several
-people and wish to reply only to the person who sent it.
-.Ic Reply
-(with a capital `R') replies to a message, but sends a copy to the
-sender only.
+.Dl $ echo text | \*(ua -vv -AXandeX -s Subject some@where
+.\" }}}
+.\"
+.\" .Ss "Sending mail from scripts" {{{
+.Ss "Sending mail from scripts"
+If you want to send mail from scripts, you must be aware that \*(UA
+reads the user's configuration files by default.
+So unless your script is only intended for your own personal use
+(as, e.g., a cron job), you need to circumvent this:
 .Pp
-If you wish, while reading your mail, to send a message to someone,
-but not as a reply to one of your messages, you can send the message
-directly with the
-.Ic mail
-command, which takes as arguments the names of the recipients you wish
-to send to.
-For example, to send a message to `<frank@machine.example>':
+.Dl MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
 .Pp
-.Dl mail frank@machine.example
-.Pp
-To delete a message from the mail folder, you can use the command
-.Ic delete .
-In addition to not saving deleted messages,
-\*(UA will not let you type them, either.
-The effect is to make the message disappear altogether, along with its
-number.
-.Pp
-Many features of \*(UA can be tailored to your liking with the
-.Ic set
-command; it has two forms, depending on whether you are setting
-a `binary' or a `valued' option.
-Binary options are either on or off \(en for example, the
-.Va askcc
-option informs \*(UA that each time you send a message, you want it to
-prompt you for a `Cc:' header to be included in the message.
-To set the
-.Va askcc
-option, you would type
-.Pp
-.Dl set askcc
-.Pp
-Valued options are values which \*(UA uses to adapt to your tastes.
-For example, the
-.Va record
-option tells \*(UA where to save messages sent by you,
-and is specified by, e.g.,
-.Pp
-.Dl set record=Sent
-.Pp
-Note that no spaces are allowed in `set record=Sent'.
-.Pp
-\*(UA includes a simple facility for maintaining groups of messages
-together in folders.
-To use the folder facility, you must tell \*(UA where you wish to keep
-your folders.
-Each folder of messages will be a single file.
-For convenience, all of your folders are kept in a single directory of
-your choosing.
-To tell \*(UA where your folder directory is, put a line of the form
-.Pp
-.Dl set folder=letters
-.Pp
-in your \*(ur file.
-If, as in the example above, your folder directory does not begin with
-a `/', \*(UA will assume that your folder directory is to be found
-starting from your home directory.
-.Pp
-Anywhere a file name is expected, you can use a folder name, preceded
-with `+'.
-For example, to put a message into a folder with the
-.Ic save
-command, you can use:
-.Pp
-.Dl save +classwork
-.Pp
-to save the current message in the `classwork' folder.
-If the `classwork' folder does not yet exist, it will be created.
-Note that messages which are saved with the
-.Ic save
-command are automatically removed from your system mailbox.
-.Pp
-In order to make a copy of a message in a folder without causing
-that message to be removed from your system mailbox, use the
-.Ic copy
-command, which is identical in all other respects to the
-.Ic save
-command.
-.Pp
-The
-.Ic folder
-command
-can be used to direct \*(UA to the contents of a different folder.
-For example,
-.Pp
-.Dl folder +classwork
-.Pp
-directs \*(UA to read the contents of the `classwork' folder.
-All of the commands that you can use on your system mailbox are also
-applicable to folders, including
-.Ic type ,
-.Ic delete ,
-and
-.Ic reply .
-To inquire which folder you are currently editing, use `folder' without
-arguments.
-And to list your current set of folders, use the
-.Ic folders
-command.
-.Pp
-Finally, the
-.Ic help
-command is available to print out a brief summary of the most important
-\*(UA commands.
-.Pp
-While typing in a message to be sent to others it is often useful to be
-able to invoke the text editor on the partial message, print the
-message, execute a shell command, or do some other auxiliary function.
-\*(UA provides these capabilities through
-.Sx "TILDE ESCAPES" ,
-which consist of a tilde (`~') at the beginning of a line, followed by
-a single character which indicates the function to be performed.
-For example, to print the text of the message so far, use:
-.Pp
-.Dl ~p
-.Pp
-which will print a line of dashes, the recipients of your message, and
-the text of the message so far.
-A list of the most important tilde escapes is available with `~?'.
+You then need to create a script-local configuration for \*(UA.
+This can be done by either pointing the
+.Ev MAILRC
+variable to a custom configuration file,
+by passing the configuration in environment variables,
+or by using the
+.Fl S
+command line option to specify options.
+Since many configuration options are not valid shell variables, the
+.Xr env 1
+command is useful if the approach via environment variables is used:
+.Bd -literal -offset indent
+env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
+    -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
+    -S 'from=scriptreply@domain' \e
+    -s 'subject' -a attachment_file recipient@domain < content_file
+.Ed
 .\" }}}
 .\"
 .\" .Ss "IMAP or POP3 client setup" {{{
@@ -5015,7 +4995,7 @@ and a notice whether the server uses SSL/TLS encryption.
 Assuming the SSL/TLS secured host name of your IMAP account is
 `server.myisp.example' and your user name for that server is `mylogin',
 you could refer to this account using the
-.Ic folder
+.Ic file
 command or the
 .Fl f
 command line option with
@@ -5430,34 +5410,6 @@ See also the documentation for the variables
 .Va spam-user
 and
 .Va spam-maxsize .
-.\" }}}
-.\"
-.\" .Ss "Sending mail from scripts" {{{
-.Ss "Sending mail from scripts"
-If you want to send mail from scripts, you must be aware that \*(UA
-reads the user's configuration files by default.
-So unless your script is only intended for your own personal use
-(as, e.g., a cron job), you need to circumvent this:
-.Pp
-.Dl MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
-.Pp
-You then need to create a script-local configuration for \*(UA.
-This can be done by either pointing the
-.Ev MAILRC
-variable to a custom configuration file,
-by passing the configuration in environment variables,
-or by using the
-.Fl S
-command line option to specify options.
-Since many configuration options are not valid shell variables, the
-.Xr env 1
-command is useful if the approach via environment variables is used:
-.Bd -literal -offset indent
-env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
-    -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
-    -S 'from=scriptreply@domain' \e
-    -s 'subject' -a attachment_file recipient@domain < content_file
-.Ed
 .\" }}}
 .\" }}} (Examples)
 .\"
