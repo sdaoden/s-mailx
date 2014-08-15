@@ -1257,22 +1257,31 @@ jleave:
 }
 
 FL char *
-subject_re_trim(char *s)
+subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
 {
    struct {
       ui8_t len;
       char  dat[7];
-   } const *pp, ignored[] = { /* TODO make ignore list configurable */
-      { 3, "re:" }, { 4, "fwd:" },
-      { 3, "aw:" }, { 5, "antw:" },
+   } const *pp, ignored[] = { /* Update *reply-strings* manual upon change! */
+      { 3, "re:" },
+      { 3, "aw:" }, { 5, "antw:" }, /* de */
       { 0, "" }
    };
+   char *re_st, *re_st_x;
+   size_t re_l;
    NYD_ENTER;
+
+   if ((re_st = re_st_x = ok_vlook(reply_strings)) != NULL &&
+         (re_l = strlen(re_st_x)) > 0) {
+      re_st = ac_alloc(++re_l * 2);
+      memcpy(re_st, re_st_x, re_l);
+   }
 
 jouter:
    while (*s != '\0') {
       while (spacechar(*s))
          ++s;
+
       /* TODO While it is maybe ok not to MIME decode these (for purpose), we
        * TODO should skip =?..?= at the beginning? */
       for (pp = ignored; pp->len > 0; ++pp)
@@ -1280,8 +1289,22 @@ jouter:
             s += pp->len;
             goto jouter;
          }
+
+      if (re_st != NULL) {
+         char *cp;
+
+         memcpy(re_st_x = re_st + re_l, re_st, re_l);
+         while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
+            if (is_asccaseprefix(cp, s)) {
+               s += strlen(cp);
+               goto jouter;
+            }
+      }
       break;
    }
+
+   if (re_st != NULL)
+      ac_free(re_st);
    NYD_LEAVE;
    return s;
 }
