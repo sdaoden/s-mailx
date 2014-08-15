@@ -113,7 +113,6 @@ static int              _mcharlt(void const *a, void const *b);
 static void             _lookup(struct message *m, struct mitem *mi,
                            ui32_t mprime);
 static void             _makethreads(struct message *m, ui32_t cnt, int nmail);
-static char const *     _skipre(char const *cp);
 static int              _colpt(int *msgvec, int cl);
 static void             _colps(struct message *b, int cl);
 static void             _colpm(struct message *m, int cl, int *cc, int *uc);
@@ -417,20 +416,6 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
    mb.mb_threaded = 1;
 jleave:
    NYD_LEAVE;
-}
-
-static char const *
-_skipre(char const *cp)
-{
-   NYD_ENTER;
-   if (lowerconv(cp[0]) == 'r' && lowerconv(cp[1]) == 'e' && cp[2] == ':' &&
-         spacechar(cp[3])) {
-      cp = cp + 4;
-      while (spacechar(*cp))
-         ++cp;
-   }
-   NYD_LEAVE;
-   return cp;
 }
 
 static int
@@ -770,7 +755,7 @@ jmethok:
                in.s = cp;
                in.l = strlen(in.s);
                mime_fromhdr(&in, &out, TD_ICONV);
-               ms[n].ms_u.ms_char = sstrdup(_skipre(out.s));
+               ms[n].ms_u.ms_char = sstrdup(subject_re_trim(out.s));
                free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else

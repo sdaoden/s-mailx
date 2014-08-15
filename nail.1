@@ -4074,6 +4074,12 @@ If not defined, then outgoing mail is not saved.
 When saving to this folder fails the message is not sent,
 but instead saved to
 .Va DEAD .
+.It Va reply_strings
+Can be set to a comma-separated list of (case-insensitive according to
+ASCII rules) strings which shall be recognized in addition to the
+builtin strings as reply message indicators.
+Builtin are `Re:', which is mandated by RFC 5322, as well as the german
+`aw:'.
 .It Va replyto
 A list of addresses to put into the `Reply-To:' field of the message
 header.

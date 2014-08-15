@@ -927,6 +927,7 @@ enum okeys {
    ok_v_quote,
    ok_v_quote_fold,
    ok_v_record,
+   ok_v_reply_strings,
    ok_v_replyto,
    ok_v_screen,
    ok_v_sendcharsets,
