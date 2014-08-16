@@ -2,6 +2,8 @@
 #@ You should have read `INSTALL' first.
 #@ Notes:
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
+#@   Evaluation occurs *after* it has been read, so command line overwrites
+#@   take effect.  The parsing is linewise, sorry for that.
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
 #@   that can be set in here
 #@ . Specifying settings on the command line will take precedence over the
@@ -168,11 +170,12 @@ DESTDIR=
 # The directory where the local mail system stores user mail (mbox) files.
 # (Only of interest if the local mail system is used)
 # xxx Should we `dirname ${MAIL}` if -n ${MAIL} first / instead?
-MAILSPOOL=`[ -d /var/spool/mail ] && echo /var/spool/mail || echo /var/mail`
+MAILSPOOL=`if [ -d /var/spool/mail ]; then echo /var/spool/mail; else echo /var/mail; fi`
 
 # Path to the local MTA (Mail Transport Agent).
+# Test is: /usr/sbin/sendmail -> /usr/lib/sendmail -> /usr/bin/sendmail
 # (Only of interest if the local mail system is used)
-SENDMAIL=/usr/sbin/sendmail
+SENDMAIL=`if [ -x /usr/sbin/sendmail ]; then echo /usr/sbin/sendmail; elif [ -x /usr/lib/sendmail ]; then echo /usr/lib/sendmail; else echo /usr/bin/sendmail; fi`
 
 # Today a lot of systems no longer use sendmail(1), but a different MTA.
 # To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
@@ -182,21 +185,16 @@ SENDMAIL=/usr/sbin/sendmail
 # (Only of interest if the local mail system is used)
 SENDMAIL_PROGNAME=sendmail
 
-# Fallback sh(1) path.
-# Note that it is not guaranteed that *all* uses of the shell use this, but it
-# may actually happen that execlp(2) will need to fallback to its own one.
-# (Note: this is named XSHELL so that it doesn't clash with the POSIX
-# standard $SHELL, which would effectively cause this setting to be ignored)
+# Default *SHELL* (sh(1) path).
+# Sometimes we simply invoke a command directly via execlp(2) instead of
+# indirectly through *SHELL* -- in these cases execlp(2) may fallback to it's
+# own builtin sh(1) path (most likely `bin/sh'), effectively bypassing *XSHELL*
 XSHELL=/bin/sh
 
 # The default *LISTER* (in the $PATH).
-# (Note: this is named XLISTER so that it doesn't clash with the POSIX
-# standard $LISTER, which would effectively cause this setting to be ignored)
 XLISTER=ls
 
 # The default *PAGER* (in the $PATH).
-# (Note: this is named XPAGER so that it doesn't clash with the POSIX standard
-# $PAGER, which would effectively cause this setting to be ignored)
 XPAGER=more
 
 # The following tools may be provided a.k.a. overwritten, `command -v NAME`
@@ -205,10 +203,11 @@ XPAGER=more
 #  rm=, sed=
 # Note that rm(1) and sed(1) are needed before this file is read, all other
 # utilities will be checked afterwards only.
-# For cross-compilation setting MAKE= and STRIP= may be necessary
+# For cross-compilation setting MAKE= and STRIP= may be necessary.
+# P.S.: normally you would simply adjust $PATH, $C_INCLUDE_PATH and
+# $LD_LIBARY_PATH (or similar) etc. to perform cross-compilation
 
 ##  --  >8  --  8<  --  ##
-
 ## Normal users should not need to read any further
 
 ## PATHS AND PROGRAMS, DEVELOPMENT ##
@@ -217,18 +216,19 @@ XPAGER=more
 # The name is build by concatenating $SID and $NAIL, i.e., $(SID)$(NAIL).
 # Note that the final string must be longer than two characters and may not
 # contain any whitespace
-NAIL=nail
 SID=s-
+NAIL=nail
 
 # The location of the exemplary resource template.
 # Note 1: it's not overwritten if it yet exists!
-# Note 2: `make install' assumes it's under $SYSCONFDIR!
+# Note 2: it MUST be within $SYSCONFDIR!
+# Note 3: nonetheless ${SYSCONFDIR}/ must be part of this!
 SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
 # Use debug compiler flags, enable some additional commands (like `sstats',
-# `smemtrace'), some code assertions, possibly experimental code etc.
+# `smemtrace') and some code assertions.
 # Note that setting this also enables our own memory canaries, which require
 # a rather large amount of runtime memory, and forcefully disables alloca(3)
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
@@ -245,6 +245,7 @@ WANT_NOEXTMD5=0
 # Note: this will be forcefully set (again) if WANT_DEBUG=1
 WANT_NOALLOCA="${WANT_DEBUG}"
 
+# Experimental code etc.
 # Note: this will be forcefully set (again) if WANT_DEBUG=1
 WANT_DEVEL=0
 
