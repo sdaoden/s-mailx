@@ -5,35 +5,35 @@
 .PHONY: all install uninstall clean distclean config build test
 
 all: config
-	@LC_ALL=C $(MAKE) -f mk.mk all
+	@LC_ALL=C $(MAKE) -f ./mk.mk all
 install: all
-	@LC_ALL=C $(MAKE) -f mk.mk install
+	@LC_ALL=C $(MAKE) -f ./mk.mk install
 uninstall:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk uninstall
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk uninstall
 clean:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk clean
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk clean
 distclean:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk distclean
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk distclean
 
 config:
 	@$(_prego)
 build:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk all
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk all
 test:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk test
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk test
 packager-install:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f mk.mk install
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk install
 
 devel:
-	@WANT_GSSAPI=1 WANT_DEBUG=1 WANT_DEVEL=1;\
-	export WANT_GSSAPI WANT_DEBUG WANT_DEVEL;\
-	$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f mk.mk all
+	@WANT_DEBUG=1 WANT_DEVEL=1;\
+	export WANT_DEBUG WANT_DEVEL;\
+	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
+	LC_ALL=C $(MAKE) -f ./mk.mk all
 odevel:
-	@WANT_GSSAPI=1 WANT_DEVEL=1;\
-	export WANT_GSSAPI WANT_DEVEL;\
-	$(_prego) && LC_ALL=C $(MAKE) -f mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f mk.mk all
+	@WANT_DEVEL=1;\
+	export WANT_DEVEL;\
+	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
+	LC_ALL=C $(MAKE) -f ./mk.mk all
 
 _prego = $(SHELL) ./mk-conf.sh
 _prestop = if [ -f ./mk.mk ]; then :; else \
