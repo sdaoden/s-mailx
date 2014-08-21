@@ -438,8 +438,11 @@ FL bool_t      _smemcheck(char const *file, int line);
 
 FL int         c_cmdnotsupp(void *v);
 
-/* Show header group */
+/* `headers' (show header group, possibly after setting dot) */
 FL int         c_headers(void *v);
+
+/* Like c_headers(), but pre-prepared message vector */
+FL int         print_header_group(int *vector);
 
 /* Scroll to the next/previous screen */
 FL int         c_scroll(void *v);

@@ -1866,9 +1866,12 @@ Also see
 .Dl ? ghost ls '!ls -latro'
 .Dl ? ls /usr/local
 .It Ic headers
-(h) Lists the current range of headers, which is an 18-message group.
-If a `+' argument is given the next 18-message group is printed,
-likewise the previous is printed if the argument was `-'.
+(h) Show the current group of headers, the size of which depends on
+the variable
+.Va screen .
+If a message-specification is given the group of headers containing the
+first message therein is shown and the message at the top of the screen
+becomes the new dot.
 .It Ic help
 A synonym for
 .Ic \&? .

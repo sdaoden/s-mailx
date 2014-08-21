@@ -67,7 +67,12 @@ static char *  __subject(struct message *mp, bool_t threaded,
 static int     __putindent(FILE *fp, struct message *mp, int maxwidth);
 
 static int     _dispc(struct message *mp, char const *a);
+
+/* Shared `z' implementation */
 static int     _scroll1(char *arg, int onlynew);
+
+/* Shared `headers' implementation */
+static int     _headers(int msgspec);
 
 /* Show the requested messages */
 static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
@@ -642,11 +647,14 @@ _dispc(struct message *mp, char const *a)
 static int
 _scroll1(char *arg, int onlynew)
 {
-   int cur[1], size;
+   int msgspec, size;
    NYD_ENTER;
 
-   cur[0] = onlynew ? -1 : 0;
+   msgspec = onlynew ? -1 : 0;
    size = screensize();
+
+   if (arg[0] != '\0' && arg[1] != '\0')
+      goto jerr;
    switch (*arg) {
    case '1': case '2': case '3': case '4': case '5':
    case '6': case '7': case '8': case '9': case '0':
@@ -669,7 +677,6 @@ jscroll_forward:
          printf(_("On last screenful of messages\n"));
       }
       break;
-
    case '-':
       if (arg[1] == '\0')
          --_screen;
@@ -679,19 +686,152 @@ jscroll_forward:
          _screen = 0;
          printf(_("On first screenful of messages\n"));
       }
-      if (cur[0] == -1)
-         cur[0] = -2;
+      if (msgspec == -1)
+         msgspec = -2;
       break;
-
    default:
+jerr:
       fprintf(stderr, _("Unrecognized scrolling command \"%s\"\n"), arg);
       size = 1;
       goto jleave;
    }
-   size = c_headers(cur);
+
+   size = _headers(msgspec);
 jleave:
    NYD_LEAVE;
    return size;
+}
+
+static int
+_headers(int msgspec) /* FIXME rework v14.8; also: Neitzel mail, 2014-08-21 */
+{
+   ui32_t flag;
+   int g, k, mesg, size, lastg = 1;
+   struct message *mp, *mq, *lastmq = NULL;
+   enum mflag fl = MNEW | MFLAGGED;
+   NYD_ENTER;
+
+   time_current_update(&time_current, FAL0);
+
+   flag = 0;
+   size = screensize();
+   if (_screen < 0)
+      _screen = 0;
+#if 0 /* FIXME original code path */
+      k = _screen * size;
+#else
+   if (msgspec <= 0)
+      k = _screen * size;
+   else
+      k = msgspec;
+#endif
+   if (k >= msgCount)
+      k = msgCount - size;
+   if (k < 0)
+      k = 0;
+
+   if (mb.mb_threaded == 0) {
+      g = 0;
+      mq = message;
+      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         if (visible(mp)) {
+            if (g % size == 0)
+               mq = mp;
+            if (mp->m_flag & fl) {
+               lastg = g;
+               lastmq = mq;
+            }
+            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+                  (msgspec == 0 && g == k) ||
+                  (msgspec == -2 && g == k + size && lastmq) ||
+                  (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
+               break;
+            g++;
+         }
+      if (lastmq && (msgspec == -2 ||
+            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+         g = lastg;
+         mq = lastmq;
+      }
+      _screen = g / size;
+      mp = mq;
+      mesg = (int)PTR2SIZE(mp - message);
+      if (PTRCMP(dot, !=, message + msgspec - 1)) { /* TODO really?? */
+         for (mq = mp; PTRCMP(mq, <, message + msgCount); ++mq)
+            if (visible(mq)) {
+               setdot(mq);
+               break;
+            }
+      }
+#ifdef HAVE_IMAP
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(mesg + 1, mesg + size);
+#endif
+      srelax_hold();
+      for (; PTRCMP(mp, <, message + msgCount); ++mp) {
+         ++mesg;
+         if (!visible(mp))
+            continue;
+         if (UICMP(32, flag++, >=, size))
+            break;
+         _print_head(0, mesg, stdout, 0);
+         srelax();
+      }
+      srelax_rele();
+   } else { /* threaded */
+      g = 0;
+      mq = threadroot;
+      for (mp = threadroot; mp; mp = next_in_thread(mp))
+         if (visible(mp) &&
+               (mp->m_collapsed <= 0 ||
+                PTRCMP(mp, ==, message + msgspec - 1))) {
+            if (g % size == 0)
+               mq = mp;
+            if (mp->m_flag & fl) {
+               lastg = g;
+               lastmq = mq;
+            }
+            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+                  (msgspec == 0 && g == k) ||
+                  (msgspec == -2 && g == k + size && lastmq) ||
+                  (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
+               break;
+            g++;
+         }
+      if (lastmq && (msgspec == -2 ||
+            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+         g = lastg;
+         mq = lastmq;
+      }
+      _screen = g / size;
+      mp = mq;
+      if (PTRCMP(dot, !=, message + msgspec - 1)) { /* TODO really?? */
+         for (mq = mp; mq; mq = next_in_thread(mq))
+            if (visible(mq) && mq->m_collapsed <= 0) {
+               setdot(mq);
+               break;
+            }
+      }
+      srelax_hold();
+      while (mp) {
+         if (visible(mp) &&
+               (mp->m_collapsed <= 0 ||
+                PTRCMP(mp, ==, message + msgspec - 1))) {
+            if (UICMP(32, flag++, >=, size))
+               break;
+            _print_head(flag - 1, PTR2SIZE(mp - message + 1), stdout,
+               mb.mb_threaded);
+            srelax();
+         }
+         mp = next_in_thread(mp);
+      }
+      srelax_rele();
+   }
+
+   if (!flag)
+      printf(_("No more mail.\n"));
+   NYD_LEAVE;
+   return !flag;
 }
 
 static int
@@ -879,123 +1019,24 @@ c_cmdnotsupp(void *v) /* TODO -> lex.c */
 FL int
 c_headers(void *v)
 {
-   ui32_t flag;
-   int *msgvec = v, g, k, n, mesg, size, lastg = 1;
-   struct message *mp, *mq, *lastmq = NULL;
-   enum mflag fl = MNEW | MFLAGGED;
+   int rv;
    NYD_ENTER;
 
-   time_current_update(&time_current, FAL0);
-
-   flag = 0;
-   size = screensize();
-   n = msgvec[0]; /* n == {-2, -1, 0}: called from scroll() */
-   if (_screen < 0)
-      _screen = 0;
-   k = _screen * size;
-   if (k >= msgCount)
-      k = msgCount - size;
-   if (k < 0)
-      k = 0;
-
-   if (mb.mb_threaded == 0) {
-      g = 0;
-      mq = message;
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
-         if (visible(mp)) {
-            if (g % size == 0)
-               mq = mp;
-            if (mp->m_flag & fl) {
-               lastg = g;
-               lastmq = mq;
-            }
-            if ((n > 0 && PTRCMP(mp, ==, message + n - 1)) ||
-                  (n == 0 && g == k) || (n == -2 && g == k + size && lastmq) ||
-                  (n < 0 && g >= k && (mp->m_flag & fl) != 0))
-               break;
-            g++;
-         }
-      if (lastmq && (n == -2 ||
-            (n == -1 && PTRCMP(mp, ==, message + msgCount)))) {
-         g = lastg;
-         mq = lastmq;
-      }
-      _screen = g / size;
-      mp = mq;
-      mesg = (int)PTR2SIZE(mp - message);
-      if (PTRCMP(dot, !=, message + n - 1)) {
-         for (mq = mp; PTRCMP(mq, <, message + msgCount); ++mq)
-            if (visible(mq)) {
-               setdot(mq);
-               break;
-            }
-      }
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(mesg + 1, mesg + size);
-#endif
-      srelax_hold();
-      for (; PTRCMP(mp, <, message + msgCount); ++mp) {
-         ++mesg;
-         if (!visible(mp))
-            continue;
-         if (UICMP(32, flag++, >=, size))
-            break;
-         _print_head(0, mesg, stdout, 0);
-         srelax();
-      }
-      srelax_rele();
-   } else { /* threaded */
-      g = 0;
-      mq = threadroot;
-      for (mp = threadroot; mp; mp = next_in_thread(mp))
-         if (visible(mp) &&
-               (mp->m_collapsed <= 0 || PTRCMP(mp, ==, message + n - 1))) {
-            if (g % size == 0)
-               mq = mp;
-            if (mp->m_flag & fl) {
-               lastg = g;
-               lastmq = mq;
-            }
-            if ((n > 0 && PTRCMP(mp, ==, message + n - 1)) ||
-                  (n == 0 && g == k) || (n == -2 && g == k + size && lastmq) ||
-                  (n < 0 && g >= k && (mp->m_flag & fl) != 0))
-               break;
-            g++;
-         }
-      if (lastmq && (n == -2 ||
-            (n == -1 && PTRCMP(mp, ==, message + msgCount)))) {
-         g = lastg;
-         mq = lastmq;
-      }
-      _screen = g / size;
-      mp = mq;
-      if (PTRCMP(dot, !=, message + n - 1)) {
-         for (mq = mp; mq; mq = next_in_thread(mq))
-            if (visible(mq) && mq->m_collapsed <= 0) {
-               setdot(mq);
-               break;
-            }
-      }
-      srelax_hold();
-      while (mp) {
-         if (visible(mp) &&
-               (mp->m_collapsed <= 0 || PTRCMP(mp, ==, message + n - 1))) {
-            if (UICMP(32, flag++, >=, size))
-               break;
-            _print_head(flag - 1, PTR2SIZE(mp - message + 1), stdout,
-               mb.mb_threaded);
-            srelax();
-         }
-         mp = next_in_thread(mp);
-      }
-      srelax_rele();
-   }
-
-   if (!flag)
-      printf(_("No more mail.\n"));
+   rv = print_header_group((int*)v);
    NYD_LEAVE;
-   return !flag;
+   return rv;
+}
+
+FL int
+print_header_group(int *vector)
+{
+   int rv;
+   NYD_ENTER;
+
+   assert(vector != NULL && vector != (void*)-1);
+   rv = _headers(vector[0]);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int
