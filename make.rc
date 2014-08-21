@@ -3,97 +3,100 @@
 #@ Notes:
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
 #@   Evaluation occurs *after* it has been read, so command line overwrites
-#@   take effect.  The parsing is linewise, sorry for that.
-#@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
-#@   that can be set in here
+#@   take effect.  The parsing is linewise, sorry for that
 #@ . Specifying settings on the command line will take precedence over the
 #@   variables in here (correctly triggering build updates as necessary)
-#@ . Using one of the predefined CONFIG= sets overrides anything else
+#@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
+#@   that can be set in here
+#@ . Boolean values can be set via 1/0, true/false and yes/no (case doesn't
+#@   matter), other values result in an error
+#@ . However, the value "require" is also a true boolean, but will in addition
+#@   cause configuration to fail if the requested feature is missing.  This
+#@   special behaviour is only tested by a logical subset of feature tests
 #@ . You may NOT comment out anything in here -- if you want to disable a
-#@   feature, simply set it to `0'.  (It won't work properly otherwise!)
+#@   feature, set it to a false boolean
 
 ## FEATURE SET ##
-#
-# The variables in here can be used to adjust the feature set of S-nail.
-# Only if a variable is set to `1' it is treated as being `set'.
-# Only a `set' variable will cause the possibly necessary feature tests to be
-# performed, so as to detect wether the wanted feature really can be used
 
 # Shall S-nail try to automatically detect a compiler and provide a set of
 # known-good compiler flags?  If so additions may still be provided by setting
 # $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
-# Thus: set this to 0 and use your normal $CC / $CFLAGS / $LDFLAGS, set this to
-# 1 and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
+# Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS, set
+# this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
 # Whatever you do, the configuration is fixated and updates will force rebuilds
-WANT_AUTOCC=1
+WANT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that all
 # source files are injected into a single compilation unit, which is then
 # compiled.  This allows the compiler to perform much more optimizations, and
 # also reduces the management overhead that is used for / needed by the linker.
-WANT_AMALGAMATION=0
+WANT_AMALGAMATION=no
 
 # Character set conversion enables reading and sending of mails in multiple
 # character sets through usage of the iconv(3) library.
 # Please read the manual section "Character sets" for the complete picture.
-# This should usually be enabled
-WANT_ICONV=1
+# This should usually be enabled; it can be "require"d
+WANT_ICONV=yes
 
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
-# related/dependent stuff (GSS-API,SSL)
-WANT_SOCKETS=1
+# related/dependent stuff (GSS-API,SSL); can be "require"d
+WANT_SOCKETS=yes
 
-# If WANT_SOCKETS, should the IPv6 family of functions be searched for and
-# compiled into the program if found?
+# If $WANT_SOCKETS: should the IPv6 internet protocol family be searched
+# for and enabled if found?  Can be "require"d
 # TODO NOTE:
 # TODO S-nail does not yet support IPv6 address notation, as in, e.g.,
 # TODO imaps://user1@::1 (or @[::1]), but it will happily establish a
 # TODO connection to imaps://user1@host1 if host1 listens via IPv6
-WANT_IPV6=1
+WANT_IPV6=yes
 
-# Support for SecureSocketLayer (TransportLayerSecurity, TLS), i.e.,
-# encrypted socket connections.
-# This needs OpenSSL libraries (<http://www.openssl.org>; these should be
-# installed by default on practically all operating systems today, though)
-WANT_SSL=1
+# If $WANT_SOCKETS: support for SecureSocketLayer (TransportLayerSecurity,
+# TLS), i.e., encrypted socket connections; can be "require"d.
+# This needs OpenSSL libraries (<http://www.openssl.org>)
+WANT_SSL=yes
 
-# Support for SMTP protocol?  (Directly sending mails over the network)
-WANT_SMTP=1
+# If $WANT_SOCKETS: support for SMTP protocol?
+# (Directly sending mails over the network)  Can be "require"d
+WANT_SMTP=yes
 
-# Support for POP3 protocol?  (Download of mails via POP over the network)
-WANT_POP3=1
+# If $WANT_SOCKETS: support for POP3 protocol?
+# (Download of mails via POP protocol)  Can be "require"d
+WANT_POP3=yes
 
-# Support for IMAP protocol?  (Reading of mails directly on the server)
-WANT_IMAP=1
+# If $WANT_SOCKETS: support for IMAP protocol?
+# (Reading of mails directly on the server)  Can be "require"d.
+WANT_IMAP=yes
 
-# Support for GSS-API (Generic Security Services Application Programming
-# Interface) based authentication, e.g., Kerberos v5?
-WANT_GSSAPI=1
+# If $WANT_SOCKETS: support for GSS-API (Generic Security Services Application
+# Programming Interface) based authentication, e.g., Kerberos v5?
+# Currently available for SMTP and IMAP; can be "require"d
+WANT_GSSAPI=yes
 
-# Support for parsing of user and password credentials from ~/.netrc ($NETRC)
-# can optionally be supported (see *netrc-lookup*)
-WANT_NETRC=1
+# If $WANT_SOCKETS: support for parsing of user and password credentials from
+# the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry)
+WANT_NETRC=yes
 
-# Passwords can also be looked up through an external "agent" in order to allow
-# for encrypted password storage (see *agent-shell-lookup*)
-WANT_AGENT=1
+# If $WANT_SOCKETS: passwords can also be looked up through an external "agent"
+# in order to allow for encrypted password storage (see *agent-shell-lookup*)
+WANT_AGENT=yes
 
 # IDNA (internationalized domain names for applications) offers users the
 # possibility to use domain names in their native language, i.e., to use
 # non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>, which the IDNA
 # algorithm would convert to <www.xn--rksmrgsa-0zap8p.example>.  :)
-# This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>)
-WANT_IDNA=1
+# This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>).
+# It can be "require"d
+WANT_IDNA=yes
 
 # IMAP-style SEARCH expressions can be supported.
 # This addressing mode is available with all types of folders; for folders not
 # located on IMAP servers, or for servers unable to execute the SEARCH command,
 # the search is performed locally
-WANT_IMAP_SEARCH=1
+WANT_IMAP_SEARCH=yes
 
 # Regular expression (re_format(7)) support for searches, conditional
-# expressions etc.
-WANT_REGEX=1
+# expressions etc.; can be "require"d
+WANT_REGEX=yes
 
 # Command line editing and -history.
 # S-nail actually supports three different command line editors, one builtin
@@ -103,41 +106,42 @@ WANT_REGEX=1
 # Note that these are tested in shown order, and each desired one must be
 # enabled by itself!
 # . WANT_READLINE
-#   The GNU readline(3) compatible interface
+#   The GNU readline(3) compatible interface; can be "require"d
 # . WANT_EDITLINE
-#   Command line editing via BSD editline(3)
+#   Command line editing via BSD editline(3); can be "require"d
 # . WANT_NCL
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
 #   then our builtin NCL (Nail Command Line editor) version can be used.
-#   It is documented in the manual section "Command line editor" (in ./nail.1)
-WANT_READLINE=0
-WANT_EDITLINE=0
-WANT_NCL=1
+#   It is documented in the manual section "Command line editor".
+#   It can be "require"d
+WANT_READLINE=no
+WANT_EDITLINE=no
+WANT_NCL=yes
 # For all command line editors we optionally support history management
-WANT_HISTORY=1
+WANT_HISTORY=yes
 # For the NCL command line editor we optionally support "expand-on-tabulator".
 # Turning it off shrinks the binary.  Please see the respective manual entry
-WANT_TABEXPAND=1
+WANT_TABEXPAND=yes
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands with a `spam' prefix, and see the manual section
 # "Handling spam" (`./nail.1')
-WANT_SPAM=1
+WANT_SPAM=yes
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may
 # disable this feature
-WANT_DOCSTRINGS=1
+WANT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
 # *quote-fold* mechanism.
 # This will be turned off automatically if the required character
 # classification is not available on the host.
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
-WANT_QUOTE_FOLD=1
+WANT_QUOTE_FOLD=yes
 
 # A simple form of coloured output can optionally be produced (see manual)
-WANT_COLOUR=1
+WANT_COLOUR=yes
 
 # Several facilities use the MD5 message digest, but for some of them it is
 # only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
@@ -145,7 +149,7 @@ WANT_COLOUR=1
 # If you don't need those, you may exclude MD5 from S-nail.
 # Note that WANT_MD5 is automatically turned off if its exclusion will only
 # affect MIME boundary strings and Message-Id: fields
-WANT_MD5=1
+WANT_MD5=yes
 
 ## PATHS AND PROGRAMS ##
 
@@ -168,8 +172,6 @@ SYSCONFDIR="${PREFIX}/etc"
 DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
-# (Only of interest if the local mail system is used)
-# xxx Should we `dirname ${MAIL}` if -n ${MAIL} first / instead?
 MAILSPOOL=`if [ -d /var/spool/mail ]; then echo /var/spool/mail; else echo /var/mail; fi`
 
 # Path to the local MTA (Mail Transport Agent).
@@ -205,7 +207,7 @@ XPAGER=more
 # utilities will be checked afterwards only.
 # For cross-compilation setting MAKE= and STRIP= may be necessary.
 # P.S.: normally you would simply adjust $PATH, $C_INCLUDE_PATH and
-# $LD_LIBARY_PATH (or similar) etc. to perform cross-compilation
+# $LD_LIBARY_PATH (or similar) etc. instead to perform cross-compilation
 
 ##  --  >8  --  8<  --  ##
 ## Normal users should not need to read any further
@@ -233,27 +235,27 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # a rather large amount of runtime memory, and forcefully disables alloca(3)
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
 # of stack memory via our memory canaries
-WANT_DEBUG=0
+WANT_DEBUG=no
 
 # We use the crypto libraries' MD5 implementation if possible unless this one
-WANT_NOEXTMD5=0
+WANT_NOEXTMD5=no
 
 # The codebase makes a lot of use of alloca(3), and this will remain since
 # S-nail will continue to be compliant to ISO C89, which has no variable
 # arrays, etc.  For testing purposes it is however nice to use the much slower
 # normal S-nail heap memory allocator instead.
-# Note: this will be forcefully set (again) if WANT_DEBUG=1
+# Note: this will be forcefully set (again) if WANT_DEBUG=yes
 WANT_NOALLOCA="${WANT_DEBUG}"
 
 # Experimental code etc.
-# Note: this will be forcefully set (again) if WANT_DEBUG=1
-WANT_DEVEL=0
+# Note: this will be forcefully set (again) if WANT_DEBUG=yes
+WANT_DEVEL=no
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print
 # a function call trace when the program crashes.  Whereas NYD will be used
 # automatically when either of WANT_DEBUG and WANT_DEVEL is defined, an
 # extended level of NYD is compiled in only on explicit request
 # TODO Separation in between NYD and NYD2 not yet fully done
-WANT_NYD2=0
+WANT_NYD2=no
 
 # s-it-mode
