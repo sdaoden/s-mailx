@@ -19,39 +19,36 @@ line, overriding those made in `make.rc' (if any):
 
 With adjustments:
 
-  $ make WANT_IMAP=0 install
-  $ make WANT_NCL=0 PREFIX=/some/nasty/prefix install
+  $ make WANT_IMAP=no WANT_SMTP=require install
+  $ make WANT_NCL=false PREFIX=/some/nasty/prefix install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
 
 . CONFIG=MINIMAL
-  little is left but some air to breathe; no internet connectivity, no
-  internationalized domain names, no IMAP-searches, no regular
-  expression searches, no command line editor, no documentation strings.
-
   This is the most plain mailx(1)-alike mode, but with MIME support and
-  (if available) character set conversion builtin.
+  (if available) character set conversion builtin.  That's it.
 
 . CONFIG=MEDIUM
   Like MINIMAL, but with documentation strings, and regular expression
   support as well as the builtin command line editor will be included if
-  that is possible.
+  that is possible, the latter with history but without tabulator
+  expansion support.
 
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
   occasions.
 
 . CONFIG=NETSEND
-  WANT_SMTP and WANT_SSL settings are enabled, internationalized domain
-  names will be supported if the necessary libraries are available,
-  otherwise identical to MEDIUM.
+  WANT_SMTP as a requirement.
+  NETSEND also tries to add SSL/TLS, GSSAPI, IDNA, .netrc file parsing
+  as well as external password *agent-lookup*.
 
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
 
 . CONFIG=MAXIMAL
-  Anything on.
+  Anything on (though none of which as a requirement).
 
   S-nail(1) gains mail fetching capabilities and heads more toward being
   a full-featured mail-user-agent (MUA) with this.
@@ -64,7 +61,7 @@ would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
 The following make(1) target exists, and note that you can use
-a VERBOSE=1 command line option to gain more (or a different kind of)
+a VERBOSE=true command line option to gain more (or a different kind of)
 verbosity:
 
 . all         Create / check and update configuration, build.
@@ -104,6 +101,9 @@ The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
+And if all else fails you can also pass in prefilled $LIBS and $INCS:
+
+  $ INCS=-I/mypath/lib LIBS=-l/mypath/iconv make install
 
 2. Notes for S-nail(1) v14.7*
 -----------------------------
