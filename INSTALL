@@ -9,9 +9,9 @@ I n s t a l l i n g  S - n a i l
 --------------
 
 System specific notes can be found in the next section.
-Any (optional) feature is adjustable and documented in `conf.rc'.
+Any (optional) feature is adjustable and documented in `make.rc'.
 Adjustments may also take place, and are usually done, from the command
-line, overriding those made in `conf.rc' (if any):
+line, overriding those made in `make.rc' (if any):
 
   $ [make &&] make install
   $ make uninstall          # Won't remove the system wide startup file!

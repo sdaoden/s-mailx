@@ -1,5 +1,5 @@
 #@ Makefile for S-nail.
-#@ Adjustments have to be made in `conf.rc' (or on the command line).
+#@ Adjustments have to be made in `make.rc' -- or on the command line.
 #@ See the file `INSTALL' if you need help.
 
 .PHONY: all install uninstall clean distclean config build test

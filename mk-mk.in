@@ -1,5 +1,5 @@
 #@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
-#@ Please see `INSTALL' and `conf.rc' instead.
+#@ Please see `INSTALL' and `make.rc' instead.
 
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y

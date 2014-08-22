@@ -1,5 +1,5 @@
 #!/bin/sh -
-#@ Please see `INSTALL' and `conf.rc' instead.
+#@ Please see `INSTALL' and `make.rc' instead.
 
 LC_ALL=C
 export LC_ALL
@@ -163,7 +163,7 @@ compiler_flags() {
 
 ## First of all, create new configuration and check wether it changed ##
 
-conf=./conf.rc
+rc=./make.rc
 lst=./config.lst
 h=./config.h
 mk=./mk.mk
@@ -189,16 +189,18 @@ check_tool() {
    return 0
 }
 
-# Check those tools right now that we need before including ${conf}
+# Check those tools right now that we need before including $rc
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
 
-# Only incorporate what wasn't overwritten from command line / CONFIG
+# Include $rc, but only take from it what wasn't overwritten by the user from
+# within the command line or from a chosen fixed CONFIG=
+# Note we leave alone the values
 trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
 ${rm} -f ${tmp}
 
-< ${conf} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
+< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
 while read line; do
    i="`echo ${line} | ${sed} -e 's/=.*$//'`"
    eval j="\$${i}" jx="\${${i}+x}"

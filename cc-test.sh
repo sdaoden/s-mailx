@@ -2,7 +2,7 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
-CONF=./conf.rc
+CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 
