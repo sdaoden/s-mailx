@@ -181,4 +181,4 @@ _update-version:
 	mv ./version.tmp ./version.h;\
 	trap - 0 1 2 15
 
-# vim:set ft=make:s-mk-mode
+# s-mk-mode
