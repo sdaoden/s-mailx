@@ -85,7 +85,7 @@ union sptr {
 union __align__ {
    char     *cp;
    size_t   sz;
-   ul_it    ul;
+   ul_i     ul;
 };
 #define SALIGN    (sizeof(union __align__) - 1)
 
@@ -218,7 +218,7 @@ FL void *
    size += _SHOPE_SIZE;
 
    if (size >= SDYN_SIZE - 1)
-      alert("salloc() of %" ZFMT " bytes from `%s', line %d\n",
+      alert("salloc() of %" PRIuZ " bytes from `%s', line %d\n",
          size, mdbg_file, mdbg_line);
 #endif
 
@@ -461,18 +461,18 @@ c_sstats(void *v)
    excess = (excess >= _all_cysize_max) ? 0 : _all_cysize_max - excess;
 
    printf("String usage statistics (cycle means one sreset() cycle):\n"
-      "  Buffer allocs ever/max simultan. : %lu/%lu\n"
-      "  Buffer size of builtin(1)/dynamic: %lu/%lu\n"
-      "  Overall alloc count/bytes        : %lu/%lu\n"
-      "  Alloc bytes min/max/align wastage: %lu/%lu/%lu\n"
-      "  sreset() cycles                  : %lu (%lu performed)\n"
-      "  Cycle maximums: alloc count/bytes: %lu/%lu+%lu\n",
-      (ul_it)_all_bufcnt, (ul_it)_all_cybufcnt_max,
-      (ul_it)SBLTIN_SIZE, (ul_it)SDYN_SIZE,
-      (ul_it)_all_cnt, (ul_it)_all_size,
-      (ul_it)_all_min, (ul_it)_all_max, (ul_it)_all_wast,
-      (ul_it)_all_resetreqs, (ul_it)_all_resets,
-      (ul_it)_all_cycnt_max, (ul_it)_all_cysize_max, (ul_it)excess);
+      "  Buffer allocs ever/max a time : %" PRIuZ "/%" PRIuZ "\n"
+      "  .. size of the builtin/dynamic: %" PRIuZ "/%" PRIuZ "\n"
+      "  Overall alloc count/bytes     : %" PRIuZ "/%" PRIuZ "\n"
+      "  .. bytes min/max/align wastage: %" PRIuZ "/%" PRIuZ "/%" PRIuZ "\n"
+      "  sreset() cycles               : %" PRIuZ " (%" PRIuZ " performed)\n"
+      "  Cycle max.: alloc count/bytes : %" PRIuZ "/%" PRIuZ "+%" PRIuZ "\n",
+      _all_bufcnt, _all_cybufcnt_max,
+      SBLTIN_SIZE, SDYN_SIZE,
+      _all_cnt, _all_size,
+      _all_min, _all_max, _all_wast,
+      _all_resetreqs, _all_resets,
+      _all_cycnt_max, _all_cysize_max, excess);
    NYD_LEAVE;
    return 0;
 }
@@ -820,7 +820,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
 #endif
    {
       do
-         *cp = tolower((uc_it)*cp);
+         *cp = tolower((uc_i)*cp);
       while (*cp++ != '\0');
    }
    NYD_LEAVE;

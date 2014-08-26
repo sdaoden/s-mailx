@@ -60,9 +60,9 @@
 
 /* ASCII char classification */
 #define __ischarof(C, FLAGS)  \
-   (asciichar(C) && (class_char[(uc_it)(C)] & (FLAGS)) != 0)
+   (asciichar(C) && (class_char[(uc_i)(C)] & (FLAGS)) != 0)
 
-#define asciichar(c)    ((uc_it)(c) <= 0177)
+#define asciichar(c)    ((uc_i)(c) <= 0177)
 #define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
 #define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
 #define blankchar(c)    __ischarof(c, C_BLANK)
@@ -76,8 +76,8 @@
 #define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
 #define octalchar(c)    __ischarof(c, C_OCTAL)
 
-#define upperconv(c)    (lowerchar(c) ? (char)((uc_it)(c) - 'a' + 'A') : (c))
-#define lowerconv(c)    (upperchar(c) ? (char)((uc_it)(c) - 'A' + 'a') : (c))
+#define upperconv(c)    (lowerchar(c) ? (char)((uc_i)(c) - 'a' + 'A') : (c))
+#define lowerconv(c)    (upperchar(c) ? (char)((uc_i)(c) - 'A' + 'a') : (c))
 /* RFC 822, 3.2. */
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')

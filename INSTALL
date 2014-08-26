@@ -117,8 +117,13 @@ It is assumed that S-nail(1) should work practically everywhere.
       unsigned int', but argument 3 has type 'size_t'
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
     However, `nail.h' tries hard to detect the real type size and
-    defines the `ZFMT' macro which ends up with the correct real size,
-    which is compile-time asserted via __ZFMT_CTA() in main.c.
+    defines the `PRI[du]Z' macro which ends up with the correct size,
+    which is also compile-time asserted via PRIxZ_FMT_CTA() in main.c.
+
+    You can completely overcome this situation by forcing ISO C99 mode
+    when compiling, e.g., with gcc(1) and clang(1): if you use
+    WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
+    -std=c99 is set in your $CFLAGS.
 
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 i386

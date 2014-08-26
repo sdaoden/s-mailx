@@ -1177,7 +1177,7 @@ c_varedit(void *v)
                *val = ' ';
                ++l;
             } else {
-               *val = (char)(uc_it)c;
+               *val = (char)(uc_i)c;
                l = 0;
             }
          val -= l;

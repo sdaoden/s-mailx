@@ -555,7 +555,7 @@ FL char *
 
    np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
 
-   while ((c = (uc_it)*cp++) != '\0') {
+   while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
          si32_t o = c;
          if (LIKELY((c = mime_hexseq_to_char(cp)) >= '\0'))
@@ -1272,7 +1272,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
    b64_decode(&out, &in, NULL);
    assert(out.s != NULL);
 
-   hmac_md5((uc_it*)out.s, out.l, (uc_it*)pass->s, pass->l, digest);
+   hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
    free(out.s);
    cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 

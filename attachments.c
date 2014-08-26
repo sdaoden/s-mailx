@@ -134,7 +134,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
       ap = csalloc(1, sizeof *ap);
    else if (ap->a_msgno) {
       char *ecp = salloc(24);
-      snprintf(ecp, 24, "#%u", (ui_it)ap->a_msgno);
+      snprintf(ecp, 24, "#%" PRIu32, (ui32_t)ap->a_msgno);
       ap->a_msgno = 0;
       ap->a_content_description = NULL;
       ap->a_name = ecp;
@@ -145,7 +145,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    }
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
-   snprintf(prefix, sizeof prefix, _("#%u\tfilename: "), number);
+   snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tfilename: "), number);
    for (;;) {
       if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
          ap = NULL;
@@ -162,7 +162,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
                   ap->a_content_id = NULL;
             ap->a_content_description = _("Attached message content");
             if (options & OPT_INTERACTIVE)
-               printf(_("~@: added message #%u\n"), msgno);
+               printf(_("~@: added message #%" PRIu32 "\n"), (ui32_t)msgno);
             goto jleave;
          }
       }
@@ -194,7 +194,8 @@ jcs_restart:
    charset_iter_reset(NULL);
 jcs:
 #endif
-   snprintf(prefix, sizeof prefix, _("#%u\tinput charset: "), number);
+   snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tinput charset: "),
+      number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
    cp = ap->a_input_charset = readstr_input(prefix, defcs);
@@ -206,8 +207,8 @@ jcs:
       goto jleave;
    }
 
-   snprintf(prefix, sizeof prefix, _("#%u\toutput (send) charset: "),
-      number);
+   snprintf(prefix, sizeof prefix,
+      _("#%" PRIu32 "\toutput (send) charset: "), number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
    defcs = ap->a_charset = readstr_input(prefix, defcs);

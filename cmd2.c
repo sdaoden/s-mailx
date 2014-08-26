@@ -76,7 +76,7 @@ static int
 save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    int convert, int sender_record, int domove)
 {
-   off_t mstats[2], tstats[2];
+   off_t mstats[2], tstats[2]; /* Stats should be ui64_t or so */
    struct stat st;
    int newfile = 0, compressed = 0, last = 0, *msgvec, *ip;
    struct message *mp;
@@ -251,10 +251,10 @@ jferr:
       }
       printf("\"%s\" %s ", file, disp);
       if (tstats[0] >= 0)
-         printf("%lu", (ul_it)tstats[0]);
+         printf("%" PRIu64, (ui64_t)tstats[0]);
       else
          printf(_("binary"));
-      printf("/%lu\n", (ul_it)tstats[1]);
+      printf("/%" PRIu64 "\n", (ui64_t)tstats[1]);
    } else if (domark) {
       newfile = ~MSAVED;
       goto jiterand;
