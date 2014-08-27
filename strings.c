@@ -52,11 +52,15 @@
  * performed and the underlaying allocator should have the possibility to
  * reorder stuff and possibly even madvise(2), so that S-nail(1) integrates
  * neatly into the system.
+ *
  * To relax stuff further, especially in non-interactive, i.e., send mode, do
  * not even allocate the first buffer, but let that be a builtin DATA section
  * one that is rather small, yet sufficient for send mode to *never* even
  * perform a single dynamic allocation (from our stringdope point of view).
- * Encapsulate user chunks with canaries if HAVE_DEBUG */
+ * Encapsulate user chunks with canaries if HAVE_DEBUG.
+ *
+ * To deal with huge allocations which would overflow those buffers we offer
+ * a simple bypass that relies upon smalloc() (which panic()s as necessary) */
 
 #ifdef HAVE_DEBUG
 # define _SHOPE_SIZE       (2u * 8 * sizeof(char) + sizeof(struct schunk))
@@ -107,15 +111,21 @@ struct b_dyn {
    struct b_base  b_base;
    char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
 };
-#define SDYN_SIZE SIZEOF_FIELD(struct b_dyn, b_buf)
+#define SDYN_SIZE    SIZEOF_FIELD(struct b_dyn, b_buf)
 
 struct buffer {
    struct b_base  b;
    char           b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
+struct hugebuf {
+   struct hugebuf *hb_next;
+   char           hb_buf[VFIELD_SIZE(SALIGN + 1)];
+};
+
 static struct b_bltin   _builtin_buf;
 static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
+static struct hugebuf   *_huge_list;
 #ifdef HAVE_DEBUG
 static size_t           _all_cnt, _all_cycnt, _all_cycnt_max,
                         _all_size, _all_cysize, _all_cysize_max, _all_min,
@@ -185,7 +195,7 @@ FL void *
 (salloc)(size_t size SALLOC_DEBUG_ARGS)
 {
    DBG( size_t orig_size = size; )
-   union {struct buffer *b; char *cp;} u;
+   union {struct buffer *b; struct hugebuf *hb; char *cp;} u;
    char *x, *y, *z;
    NYD2_ENTER;
 
@@ -207,10 +217,14 @@ FL void *
 
    size += _SHOPE_SIZE;
 
-   if (size >= 2048)
-      alert("salloc() of %" ZFMT " bytes from `%s', line %u\n",
+   if (size >= SDYN_SIZE - 1)
+      alert("salloc() of %" ZFMT " bytes from `%s', line %d\n",
          size, mdbg_file, mdbg_line);
 #endif
+
+   /* Huge allocations are special */
+   if (UNLIKELY(size >= SDYN_SIZE - 1))
+      goto jhuge;
 
    /* Search for a buffer with enough free space to serve request */
    if ((u.b = _buf_server) != NULL)
@@ -247,7 +261,7 @@ jumpin:
    /* Need a new buffer */
    if (_buf_head == NULL) {
       struct b_bltin *b = &_builtin_buf;
-      b->b_base._max = b->b_buf + sizeof(b->b_buf) - 1;
+      b->b_base._max = b->b_buf + SBLTIN_SIZE - 1;
       _buf_head = (struct buffer*)b;
       u.b = _buf_head;
    } else {
@@ -292,6 +306,14 @@ jleave:
 #endif
    NYD2_LEAVE;
    return u.cp;
+
+jhuge:
+   u.hb = smalloc(sizeof(*u.hb) - VFIELD_SIZEOF(struct hugebuf, hb_buf) +
+         size +1);
+   u.hb->hb_next = _huge_list;
+   _huge_list = u.hb;
+   u.cp = u.hb->hb_buf;
+   goto jleave;
 }
 
 FL void *
@@ -349,6 +371,15 @@ sreset(bool_t only_if_relaxed)
       b->b._next = NULL;
       _buf_relax = NULL;
    }
+
+   /* We'll only free huge allocations when not in relaxed mode, because they
+    * know nothing about relaxation (as above) */
+   if (_buf_relax == NULL)
+      while (_huge_list != NULL) {
+         struct hugebuf *hb = _huge_list;
+         _huge_list = hb->hb_next;
+         free(hb);
+      }
 
    DBG( smemreset(); )
 jleave:

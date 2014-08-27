@@ -235,7 +235,7 @@
 #define SPAM_MAXSIZE    420000
 
 /* String dope: dynamic buffer size, and size of the single builtin one that's
- * used first */
+ * used first; note that these value include the size of the structure */
 #define SBUFFER_SIZE    0x18000u
 #define SBUFFER_BUILTIN 0x2000u
 
