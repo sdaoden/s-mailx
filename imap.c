@@ -2898,6 +2898,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    enum okay rv;
    NYD_ENTER;
 
+   xmb.mb_imap_mailbox = NULL;
    rv = STOP;
    if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
@@ -2906,7 +2907,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_mailbox = savestr(name);
+   xmb.mb_imap_mailbox = sstrdup(name);
    xmb.mb_uidvalidity = uidvalidity;
    initcache(&xmb);
    if (m == NULL) {
@@ -2927,6 +2928,8 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    xm.m_flag &= ~MFULLYCACHED;
    putcache(&xmb, &xm);
 jleave:
+   if (xmb.mb_imap_mailbox != NULL)
+      free(xmb.mb_imap_mailbox);
    NYD_LEAVE;
    return rv;
 }
@@ -2942,6 +2945,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    enum okay rv;
    NYD_ENTER;
 
+   xmb.mb_imap_mailbox = NULL;
    rv = STOP;
    if ((cp = asccasestr(responded_text, "[APPENDUID ")) == NULL ||
          imap_appenduid_parse(&cp[11], &uidvalidity, &uid) == STOP)
@@ -2950,7 +2954,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_mailbox = savestr(name);
+   xmb.mb_imap_mailbox = sstrdup(name);
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
@@ -2966,6 +2970,8 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xm.m_have = HAVE_HEADER | HAVE_BODY;
    putcache(&xmb, &xm);
 jleave:
+   if (xmb.mb_imap_mailbox != NULL)
+      free(xmb.mb_imap_mailbox);
    NYD_LEAVE;
    return rv;
 }
