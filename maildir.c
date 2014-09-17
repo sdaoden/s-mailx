@@ -622,7 +622,7 @@ mktable(void)
 
    _maildir_prime = nextprime(msgCount);
    _maildir_table = scalloc(_maildir_prime, sizeof *_maildir_table);
-   for (mp = message, i = msgCount; i-- != 0;)
+   for (mp = message, i = msgCount; i-- != 0; ++mp)
       mdlook(mp->m_maildir_file + 4, mp);
    NYD_LEAVE;
 }
