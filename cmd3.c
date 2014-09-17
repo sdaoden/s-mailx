@@ -1324,7 +1324,9 @@ c_newmail(void *v)
 #ifdef HAVE_IMAP
          (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
-         (val = setfile(mailname, FEDIT_NEWMAIL)) == 0) {
+         (val = setfile(mailname,
+            FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? FEDIT_RDONLY : 0))
+         ) == 0) {
       mdot = getmdot(1);
       setdot(message + mdot - 1);
    }
