@@ -692,7 +692,7 @@ commands(void)
                size_t odot = PTR2SIZE(dot - message);
                bool_t odid = did_print_dot;
 
-               setfile(mailname, 1);
+               setfile(mailname, FEDIT_NEWMAIL);
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
                   did_print_dot = odid;
