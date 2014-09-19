@@ -693,7 +693,7 @@ commands(void)
                bool_t odid = did_print_dot;
 
                setfile(mailname,
-                  FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? FEDIT_RDONLY : 0));
+                  FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
                   did_print_dot = odid;
