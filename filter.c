@@ -224,11 +224,13 @@ _qf_state_prefix(struct qf_vc *vc)
 
       /* The quote is parsed and compressed; dump it */
 jfin:
-      self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_state = _QF_DATA;
-      /* Overtake WS (xxx but we de-facto "normalize" to ASCII SP here) */
+      /* Overtake WS to the current quote in order to preserve it for eventual
+       * necessary follow lines, too */
+      /* TODO we de-facto "normalize" to ASCII SP here which MESSES tabs!! */
       while (self->qf_wscnt-- > 0 && self->qf_currq.l < QUOTE_MAX)
          self->qf_currq.s[self->qf_currq.l++] = ' ';
+      self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_wscnt = 0;
       rv = _qf_add_data(self, wc);
       break;
