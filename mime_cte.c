@@ -330,9 +330,21 @@ mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
 FL size_t
 qp_encode_calc_size(size_t len)
 {
+   size_t i;
    NYD_ENTER;
-   /* Worst case: 'CRLF' -> '=0D=0A=\n\0' */
-   len = (len * 3) + 1/* soft NL */ + 1/* visual NL */ + 1/* NUL */;
+   /* The worst case sequence is 'CRLF' -> '=0D=0A=\n\0'.
+    * However, we must be aware that (a) the output may span multiple lines
+    * and (b) the input does not end with a newline itself (nonetheless):
+    *    LC_ALL=C PERL5OPT= perl -CS -e 'print "\x{101D0}" x 100' |
+    *    MAILRC=/dev/null LC_ALL=en_US.UTF-8 s-nail -nvvd \
+    *       -Ssendcharsets=utf8 -s testsub ./LETTER */
+   /* TODO This example shows two things: 1. as stated in TODO this must
+    * TODO be sequentialised! and 2. this shouldn't end up QP-encoded! */
+   len *= 3;
+   i = (len / QP_LINESIZE) + 1;
+   i <<= 1; /* Double: soft and embedded NL.. */
+   ++i; /* \0 */
+   len += ++i; /* ..and \0 */
    NYD_LEAVE;
    return len;
 }
