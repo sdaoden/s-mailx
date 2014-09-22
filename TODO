@@ -232,6 +232,9 @@ Low-Level
   RFC 2183 - The Content-Disposition Header
   RFC 2231 - Encoding of character set and language information in MIME
     parameter values.
+    REALLY!  We currently use RFC 2047 encoded words to encode
+    filename="" stuff which is plain wrong.
+    also we don't decode this at all!
   SMTP (Simple Mail Transfer Protocol)
   RFC 5321 - Simple Mail Transfer Protocol.
   RFC 6409 - Message Submission for Mail
@@ -757,5 +760,10 @@ TODO S-nail 14.8:
   . With very long input Heirloom mailx(1) / S-nail(1) can produce
     encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
     non self-contained encoded-words).
+  . How hard would it be adding support for mixmaster?
+  . We need to ensure that pipe hooks can access $TMPDIR in their
+    environment and that $TMPDIR is a valid accessible directory.
+    While here we could also create a temporary name that doesn't exist
+    in $TMPDIR at the time we test and pass that to pipe handlers, too.
 
 # s-ts-mode
