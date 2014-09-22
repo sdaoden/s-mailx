@@ -490,6 +490,15 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:6 "${MBOX}" '1520300594 138'
 
+   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
+   ${rm} -f "${MBOX}"
+   LC_ALL=C ${awk} 'BEGIN{
+      for(i = 0; i < 100; ++i)
+         printf "\xF0\x90\x87\x90"
+      }' |
+   MAILRC=/dev/null "${SNAIL}" -nSstealthmua -s TestSubject "${MBOX}"
+   cksum_test content:7 "${MBOX}" '395042486 1361'
+
    ${rm} -f "${BODY}" "${MBOX}"
 }
 
