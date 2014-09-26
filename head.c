@@ -1275,7 +1275,8 @@ subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
    size_t re_l;
    NYD_ENTER;
 
-   if ((re_st = re_st_x = ok_vlook(reply_strings)) != NULL &&
+   re_st = NULL;
+   if ((re_st_x = ok_vlook(reply_strings)) != NULL &&
          (re_l = strlen(re_st_x)) > 0) {
       re_st = ac_alloc(++re_l * 2);
       memcpy(re_st, re_st_x, re_l);
