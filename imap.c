@@ -3163,7 +3163,7 @@ FL enum okay
 imap_remove(const char * volatile name)
 {
    sighandler_type volatile saveint, savepipe;
-   enum okay rv = STOP;
+   enum okay volatile rv = STOP;
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP) {
