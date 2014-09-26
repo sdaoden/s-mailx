@@ -123,8 +123,7 @@ t_behave() {
 
    __behave_ifelse
 
-   have_feat DEBUG && have_feat SSL/TLS && have_feat S/MIME &&
-      __behave_smime
+   have_feat SSL/TLS && have_feat S/MIME && __behave_smime
 }
 
 __behave_ifelse() {
@@ -284,7 +283,6 @@ __behave_ifelse() {
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
-   echo WARNING: behave_smime is yet debug only and not generalized
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
    ${cat} <<-_EOT > ./t.conf
 		[ req ]
