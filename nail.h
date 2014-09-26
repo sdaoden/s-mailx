@@ -194,11 +194,11 @@
 #define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 48)
 
 /* Ditto, SHOULD */
-#define MIME_LINELEN_NORM  78    /* Plus CRLF */
+#define MIME_LINELEN    78    /* Plus CRLF */
 
 /* And in headers which contain an encoded word according to RFC 2047 there is
- * yet another limit */
-#define MIME_LINELEN_HEADER_WITH_ENCODED_WORD_MAX 76
+ * yet another limit; also RFC 2045: 6.7, (5). */
+#define MIME_LINELEN_RFC2047 76
 
 /* Locations of mime.types(5) */
 #define MIME_TYPES_USR  "~/.mime.types"
@@ -759,7 +759,7 @@ enum mimecontent {
 #define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
 
 /* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
-enum __mimecte_flags {
+enum mimecte_flags {
    MIMECTE_NONE,
    MIMECTE_SALLOC = 1<<0,     /* Use salloc(), not srealloc().. */
    /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
@@ -769,15 +769,23 @@ enum __mimecte_flags {
    /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
     * inject the desired line-ending whenever a linewrap is desired */
    MIMECTE_MULTILINE = 1<<4,
-   /* (encode) Quote with header rules, do not generate soft NL breaks? */
-   MIMECTE_ISHEAD = 1<<5
+   /* (encode) Quote with header rules, do not generate soft NL breaks?
+    * For mustquote(), specifies wether special RFC 2047 header rules
+    * should be used instead */
+   MIMECTE_ISHEAD = 1<<5,
+   /* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in
+    * that characters which would not be reported as "must-quote" when
+    * detecting wether quoting is necessary at all will be reported as
+    * "must-quote" if they have to be encoded in an encoded word */
+   MIMECTE_ISENCWORD = 1<<6
 };
 
 enum qpflags {
    QP_NONE        = MIMECTE_NONE,
    QP_SALLOC      = MIMECTE_SALLOC,
    QP_BUF         = MIMECTE_BUF,
-   QP_ISHEAD      = MIMECTE_ISHEAD
+   QP_ISHEAD      = MIMECTE_ISHEAD,
+   QP_ISENCWORD   = MIMECTE_ISENCWORD
 };
 
 enum b64flags {
@@ -786,7 +794,10 @@ enum b64flags {
    B64_BUF        = MIMECTE_BUF,
    B64_CRLF       = MIMECTE_CRLF,
    B64_LF         = MIMECTE_LF,
-   B64_MULTILINE  = MIMECTE_MULTILINE
+   B64_MULTILINE  = MIMECTE_MULTILINE,
+   /* Not used, but for clarity only */
+   B64_ISHEAD     = MIMECTE_ISHEAD,
+   B64_ISENCWORD  = MIMECTE_ISENCWORD
 };
 
 enum oflags {

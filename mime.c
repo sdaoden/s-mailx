@@ -379,180 +379,286 @@ jleave:
 }
 
 static ssize_t
-mime_write_tohdr(struct str *in, FILE *fo) /* TODO rewrite - FAST! */
+mime_write_tohdr(struct str *in, FILE *fo)
 {
-   struct str cin, cout;
-   char buf[B64_LINESIZE +1]; /* (No CR/LF used) */
-   char const *charset7, *charset, *upper, *wbeg, *wend, *lastspc,
-      *lastwordend = NULL;
-   size_t col = 0, quoteany, wr, charsetlen,
-      maxcol = 65 /* there is the header field's name, too */;
-   ssize_t sz = 0;
-   bool_t highbit, mustquote, broken;
+   /* TODO mime_write_tohdr(): we don't know the name of our header->maxcol..
+    * TODO  MIME/send layer rewrite: more available state!!
+    * TODO   Because of this we cannot make a difference in between structured
+    * TODO   and unstructured headers (RFC 2047, 5. (2))
+    * TODO NOT MULTIBYTE SAFE IF AN ENCODED WORD HAS TO BE SPLITTED!
+    * TODO  To be better we had to mbtowc_l() (non-std! and no locale!!) and
+    * TODO   work char-wise!  ->  S-CText..
+    * TODO  The real problem for STD compatibility is however that "in" is
+    * TODO   already iconv(3) encoded to the target character set!  We could
+    * TODO   also solve it (very expensively!) if we would narrow down to an
+    * TODO   encoded word and then iconv(3)+CTencode in one go, in which case
+    * TODO   multibyte errors could be catched!
+    * TODO All this doesn't take any care about RFC 2231, but simply and
+    * TODO   falsely applies RFC 2047 and normal RFC 822/5322 folding to values
+    * TODO   of parameters; part of the problem is that we just don't make a
+    * TODO   difference in structured and unstructed headers, as long in TODO!
+    * TODO   See also RFC 2047, 5., .." These are the ONLY locations"..
+    * TODO   So, for now we require mutt(1)s "rfc2047_parameters=yes" support!!
+    * TODO BTW.: the purpose of QP is to allow non MIME-aware ASCII guys to
+    * TODO read the field nonetheless... */
+   enum {
+      /* Maximum line length *//* XXX we are too inflexible and could use
+       * XXX MIME_LINELEN unless an RFC 2047 encoding was actually used */
+      _MAXCOL  = MIME_LINELEN_RFC2047
+   };
+   enum {
+      _FIRST      = 1<<0,  /* Nothing written yet, start of string */
+      _NO_QP      = 1<<1,  /* No quoted-printable allowed */
+      _NO_B64     = 1<<2,  /* Ditto, base64 */
+      _ENC_LAST   = 1<<3,  /* Last round generated encoded word */
+      _SHOULD_BEE = 1<<4,  /* Avoid lines longer than SHOULD via encoding */
+      _RND_SHIFT  = 5,
+      _RND_MASK   = (1<<_RND_SHIFT) - 1,
+      _SPACE      = 1<<(_RND_SHIFT+1),    /* Leading whitespace */
+      _8BIT       = 1<<(_RND_SHIFT+2),    /* High bit set */
+      _ENCODE     = 1<<(_RND_SHIFT+3),    /* Need encoding */
+      _ENC_B64    = 1<<(_RND_SHIFT+4),    /* - let it be base64 */
+      _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily rised limit */
+   } flags = _FIRST;
+
+   struct str cout, cin;
+   char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
+   ui32_t cset7_len, cset8_len;
+   size_t col, i, j;
+   ssize_t sz;
    NYD_ENTER;
 
-   charset7 = charset_get_7bit();
-   charset = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
-   wr = strlen(charset7);
-   charsetlen = strlen(charset);
-   charsetlen = MAX(charsetlen, wr);
-   upper = in->s + in->l;
+   cout.s = NULL, cout.l = 0;
+   cset7 = charset_get_7bit();
+   cset7_len = (ui32_t)strlen(cset7);
+   cset8 = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
+   cset8_len = (ui32_t)strlen(cset8);
 
-   /* xxx note this results in too much hits since =/? force quoting even
-    * xxx if they don't form =? etc. */
-   quoteany = mime_cte_mustquote(in->s, in->l, TRU1);
+   /* RFC 1468, "MIME Considerations":
+    *     ISO-2022-JP may also be used in MIME Part 2 headers.  The "B"
+    *     encoding should be used with ISO-2022-JP text. */
+   /* TODO of course, our current implementation won't deal properly with
+    * TODO any stateful encoding at all... (the standard says each encoded
+    * TODO word must include all necessary reset sequences..., i.e., each
+    * TODO encoded word must be a self-contained iconv(3) life cycle) */
+   if (!asccasecmp(cset8, "iso-2022-jp"))
+      flags |= _NO_QP;
 
-   highbit = FAL0;
-   if (quoteany != 0)
-      for (wbeg = in->s; wbeg < upper; ++wbeg)
-         if ((ui8_t)*wbeg & 0x80) {
-            highbit = TRU1;
-            if (charset == NULL) {
-               sz = -1;
-               goto jleave;
-            }
-            break;
-         }
+   wbot = in->s;
+   upper = wbot + in->l;
+   col = sizeof("Content-Transfer-Encoding: ") -1; /* dreadful thing */
 
-   /* Use base64 encoding if more than 25% of the line must be quoted,
-    * otherwise step over the data and encode quoted-printable as necessary */
-   if (quoteany << 2 > in->l) {
-      for (wbeg = in->s; wbeg < upper; wbeg = wend) {
-         wend = upper;
-         cin.s = UNCONST(wbeg);
-         for (;;) {
-            cin.l = PTR2SIZE(wend - wbeg);
-            if (cin.l * 4/3 + 7 + charsetlen < maxcol - col) {
-               cout.s = buf;
-               cout.l = sizeof buf;
-               wr = fprintf(fo, "=?%s?B?%s?=", (highbit ? charset : charset7),
-                     b64_encode(&cout, &cin, B64_BUF)->s);
-               sz += wr;
-               col += wr;
-               if (wend < upper) {
-                  fwrite("\n ", sizeof(char), 2, fo);
-                  sz += 2;
-                  col = 0;
-                  maxcol = 76;
-               }
-               break;
-            } else {
-               if (col) {
-                  fprintf(fo, "\n ");
-                  sz += 2;
-                  col = 0;
-                  maxcol = 76;
-               } else
-                  wend -= 4;
-            }
-         }
+   for (sz = 0; wbot < upper; flags &= ~_FIRST, wbot = wend) {
+      flags &= _RND_MASK;
+      wcur = wbot;
+      while (wcur < upper && whitechar(*wcur)) {
+         flags |= _SPACE;
+         ++wcur;
       }
-   } else {
-      broken = FAL0;
-      for (wbeg = in->s; wbeg < upper; wbeg = wend) {
-         lastspc = NULL;
-         while (wbeg < upper && whitechar(*wbeg)) {
-            lastspc = lastspc ? lastspc : wbeg;
-            ++wbeg;
-            ++col;
-            broken = FAL0;
-         }
-         if (wbeg == upper) {
-            if (lastspc)
-               while (lastspc < wbeg) {
-                  putc(*lastspc&0377, fo);
-                  ++lastspc;
-                  ++sz;
-               }
+
+      /* Any occurrence of whitespace resets prevention of lines >SHOULD via
+       * enforced encoding (xxx SHOULD, but.. encoding is expensive!!) */
+      if (flags & _SPACE)
+         flags &= ~_SHOULD_BEE;
+
+     /* Data ends with WS - dump it and done.
+      * Also, if we have seen multiple successive whitespace characters, then
+      * if there was no encoded word last, i.e., if we can simply take them
+      * over to the output as-is, keep one WS for possible later separation
+      * purposes and simply print the others as-is, directly! */
+      if (wcur == upper) {
+         wend = wcur;
+         goto jnoenc_putws;
+      }
+      if ((flags & (_ENC_LAST | _SPACE)) == _SPACE && wcur - wbot > 1) {
+         wend = wcur - 1;
+         goto jnoenc_putws;
+      }
+
+      /* Skip over a word to next non-whitespace, keep track along the way
+       * wether our 7-bit charset suffices to represent the data */
+      for (wend = wcur; wend < upper; ++wend) {
+         if (whitechar(*wend))
             break;
-         }
+         if ((uc_i)*wend & 0x80)
+            flags |= _8BIT;
+      }
 
-         if (lastspc != NULL)
-            broken = FAL0;
-         highbit = FAL0;
-         for (wend = wbeg; wend < upper && !whitechar(*wend); ++wend)
-            if ((ui8_t)*wend & 0x80)
-               highbit = TRU1;
-         mustquote = (mime_cte_mustquote(wbeg, PTR2SIZE(wend - wbeg), TRU1)
-               != 0);
+      /* Decide wether the range has to become encoded or not */
+      i = PTR2SIZE(wend - wcur);
+      j = mime_cte_mustquote(wcur, i, MIMECTE_ISHEAD);
+      /* If it just cannot fit on a SHOULD line length, force encode */
+      if (i >= _MAXCOL) {
+         flags |= _SHOULD_BEE; /* (Sigh: SHOULD only, not MUST..) */
+         goto j_beejump;
+      }
+      if ((flags & _SHOULD_BEE) || j > 0) {
+j_beejump:
+         flags |= _ENCODE;
+         /* Use base64 if requested or more than 50% -37.5-% of the bytes of
+          * the string need to be encoded */
+         if ((flags & _NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
+            flags |= _ENC_B64;
+      }
+      DBG( if (flags & _8BIT) assert(flags & _ENCODE); )
 
-         if (mustquote || broken ||
-               (PTR2SIZE(wend - wbeg) >= 76-5 && quoteany)) {
-            for (cout.s = NULL;;) {
-               cin.s = UNCONST(lastwordend ?  lastwordend : wbeg);
-               cin.l = PTR2SIZE(wend - cin.s);
-               qp_encode(&cout, &cin, QP_ISHEAD);
-               wr = cout.l + charsetlen + 7;
-jqp_retest:
-               if (col <= maxcol && wr <= maxcol - col) {
-                  if (lastspc) {
-                     /* TODO because we included the WS in the encoded str,
-                      * TODO put SP only??
-                      * TODO RFC: "any 'linear-white-space' that separates
-                      * TODO a pair of adjacent 'encoded-word's is ignored" */
-                     putc(' ', fo);
-                     ++sz;
-                     ++col;
-                  }
-                  fprintf(fo, "=?%s?Q?%.*s?=",
-                     (highbit ? charset : charset7), (int)cout.l, cout.s);
-                  sz += wr;
-                  col += wr;
-                  break;
-               } else if (col > 1) {
-                  /* TODO assuming SP separator, ignore *lastspc* !?? */
-                  broken = TRU1;
-                  if (lastspc != NULL) {
-                     putc('\n', fo);
-                     ++sz;
-                     col = 0;
-                  } else {
-                     fputs("\n ", fo);
-                     sz += 2;
-                     col = 1;
-                  }
-                  maxcol = 76;
-                  goto jqp_retest;
-               } else {
-                  for (;;) { /* XXX */
-                     wend -= 4;
-                     assert(wend > wbeg);
-                     if (wr - 4 < maxcol)
-                        break;
-                     wr -= 4;
-                  }
-               }
-            }
-            if (cout.s != NULL)
-               free(cout.s);
-            lastwordend = wend;
-         } else {
-            if (col && PTR2SIZE(wend - wbeg) > maxcol - col) {
+      if (!(flags & _ENCODE)) {
+         /* Encoded word produced, but no linear whitespace for necessary RFC
+          * 2047 separation?  Generate artificial data (bad standard!) */
+         if ((flags & (_ENC_LAST | _SPACE)) == _ENC_LAST) {
+            if (col >= _MAXCOL) {
                putc('\n', fo);
                ++sz;
                col = 0;
-               maxcol = 76;
-               if (lastspc == NULL) {
-                  putc(' ', fo);
-                  ++sz;
-                  --maxcol;
-               } else
-                  maxcol -= PTR2SIZE(wbeg - lastspc);
             }
-            if (lastspc)
-               while (lastspc < wbeg) {
-                  putc(*lastspc&0377, fo);
-                  ++lastspc;
-                  ++sz;
-               }
-            wr = fwrite(wbeg, sizeof *wbeg, PTR2SIZE(wend - wbeg), fo);
-            sz += wr;
-            col += wr;
-            lastwordend = NULL;
+            putc(' ', fo);
+            ++sz;
+            ++col;
          }
+
+jnoenc_putws:
+         flags &= ~_ENC_LAST;
+
+         /* todo No effort here: (1) v15.0 has to bring complete rewrite,
+          * todo (2) the standard is braindead and (3) usually this is one
+          * todo word only, and why be smarter than the standard? */
+jnoenc_retry:
+         i = PTR2SIZE(wend - wbot);
+         if (i + col <= (flags & _OVERLONG ? MIME_LINELEN_MAX : _MAXCOL)) {
+            i = fwrite(wbot, sizeof *wbot, i, fo);
+            sz += i;
+            col += i;
+            continue;
+         }
+
+         /* Doesn't fit, try to break the line first; */
+         if (col > 1) {
+            putc('\n', fo);
+            if (whitechar(*wbot)) {
+               putc((uc_i)*wbot, fo);
+               ++wbot;
+            } else
+               putc(' ', fo); /* Bad standard: artificial data! */
+            sz += 2;
+            col = 1;
+            flags |= _OVERLONG;
+            goto jnoenc_retry;
+         }
+
+         /* It is so long that it needs to be broken, effectively causing
+          * artificial spaces to be inserted (bad standard), yuck */
+         /* todo This is not multibyte safe, as above; and completely stupid
+          * todo P.S.: our _SHOULD_BEE prevents these cases in the meanwhile */
+         wcur = wbot + MIME_LINELEN_MAX - 8;
+         while (wend > wcur)
+            wend -= 4;
+         goto jnoenc_retry;
+      } else {
+         /* Encoding to encoded word(s); deal with leading whitespace, place
+          * a separator first as necessary: encoded words must always be
+          * separated from text and other encoded words with linear WS.
+          * And if an encoded word was last, intermediate whitespace must
+          * also be encoded, otherwise it would get stripped away! */
+         wcur = UNCONST("");
+         if ((flags & (_ENC_LAST | _SPACE)) != _SPACE) {
+            /* Reinclude whitespace */
+            flags &= ~_SPACE;
+            /* We don't need to place a separator at the very beginning */
+            if (!(flags & _FIRST))
+               wcur = UNCONST(" ");
+         } else
+            wcur = wbot++;
+
+         flags |= _ENC_LAST;
+
+         /* RFC 2047:
+          *    An 'encoded-word' may not be more than 75 characters long,
+          *    including 'charset', 'encoding', 'encoded-text', and
+          *    delimiters.  If it is desirable to encode more text than will
+          *    fit in an 'encoded-word' of 75 characters, multiple
+          *    'encoded-word's (separated by CRLF SPACE) may be used.
+          *
+          *    While there is no limit to the length of a multiple-line
+          *    header field, each line of a header field that contains one
+          *    or more 'encoded-word's is limited to 76 characters */
+jenc_retry:
+         cin.s = UNCONST(wbot);
+         cin.l = PTR2SIZE(wend - wbot);
+
+         if (flags & _ENC_B64)
+            j = b64_encode(&cout, &cin, B64_ISHEAD | B64_ISENCWORD)->l;
+         else
+            j = qp_encode(&cout, &cin, QP_ISHEAD | QP_ISENCWORD)->l;
+         /* (Avoid trigraphs in the RFC 2047 placeholder..) */
+         i = j + (flags & _8BIT ? cset8_len : cset7_len) + sizeof("=!!B!!=") -1;
+         if (*wcur != '\0')
+            ++i;
+
+jenc_retry_same:
+         /* Unfortunately RFC 2047 explicitly disallows encoded words to be
+          * longer (just like RFC 5322's "a line SHOULD fit in 78 but MAY be
+          * 998 characters long"), so we cannot use the _OVERLONG mechanism,
+          * even though all tested mailers seem to support it */
+         if (i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ _MAXCOL)) {
+            fprintf(fo, "%.1s=?%s?%c?%.*s?=",
+               wcur, (flags & _8BIT ? cset8 : cset7),
+               (flags & _ENC_B64 ? 'B' : 'Q'),
+               (int)cout.l, cout.s);
+            sz += i;
+            col += i;
+            continue;
+         }
+
+         /* Doesn't fit, try to break the line first */
+         /* TODO I've commented out the _FIRST test since we (1) cannot do
+          * TODO _OVERLONG since (MUAs support but) the standard disallows,
+          * TODO and because of our iconv problem i prefer an empty first line
+          * TODO in favour of a possibly messed up multibytes character. :-( */
+         if (col > 1 /* TODO && !(flags & _FIRST)*/) {
+            putc('\n', fo);
+            sz += 2;
+            col = 1;
+            if (!(flags & _SPACE)) {
+               putc(' ', fo);
+               wcur = UNCONST("");
+               /*flags |= _OVERLONG;*/
+               goto jenc_retry_same;
+            } else {
+               putc((uc_i)*wcur, fo);
+               if (whitechar(*(wcur = wbot)))
+                  ++wbot;
+               else {
+                  flags &= ~_SPACE;
+                  wcur = UNCONST("");
+               }
+               /*flags &= ~_OVERLONG;*/
+               goto jenc_retry;
+            }
+         }
+
+         /* It is so long that it needs to be broken, effectively causing
+          * artificial data to be inserted (bad standard), yuck */
+         /* todo This is not multibyte safe, as above */
+         /*if (!(flags & _OVERLONG)) {
+            flags |= _OVERLONG;
+            goto jenc_retry;
+         }*/
+         i = PTR2SIZE(wend - wbot) + !!(flags & _SPACE);
+         j = 3 + !(flags & _ENC_B64);
+         for (;;) {
+            wend -= j;
+            i -= j;
+            /* (Note the problem most likely is the transfer-encoding blow,
+             * which is why we test this *after* the decrements.. */
+            if (i <= _MAXCOL)
+               break;
+         }
+         goto jenc_retry;
       }
    }
-jleave:
+
+   if (cout.s != NULL)
+      free(cout.s);
    NYD_LEAVE;
    return sz;
 }

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Content-Transfer-Encodings as defined in RFC 2045:
+ *@ Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  *@ - Quoted-Printable, section 6.7
  *@ - Base64, section 6.8
  *
@@ -47,10 +47,11 @@ enum _qact {
    SP =   2,   /* sp */
    XF =   3,   /* Special character 'F' - maybe quoted */
    XD =   4,   /* Special character '.' - maybe quoted */
-   US = '_',   /* In header, special character ' ' quoted as '_' */
+   UU =   5,   /* In header, _ must be quoted in encoded word */
+   US = '_',   /* In header, ' ' must be quoted as _ in encoded word */
    QM = '?',   /* In header, special character ? not always quoted */
-   EQ =   Q,   /* '=' must be quoted */
-   TB =  SP,   /* Treat '\t' as a space */
+   EQ = '=',   /* In header, '=' must be quoted in encoded word */
+   HT ='\t',   /* In body HT=SP, in head HT=HT, but quote in encoded word */
    NL =   N,   /* Don't quote '\n' (NL) */
    CR =   Q    /* Always quote a '\r' (CR) */
 };
@@ -60,10 +61,10 @@ enum _qact {
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
  * - don't care about the special ^F[rom] and ^.$ */
 static ui8_t const   _qtab_body[] = {
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,TB,NL, Q,  Q,CR, Q, Q,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,SP,NL, Q,  Q,CR, Q, Q,
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
    SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N, N,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, Q, N, N,
 
     N, N, N, N,  N, N,XF, N,  N, N, N, N,  N, N, N, N,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
@@ -71,43 +72,44 @@ static ui8_t const   _qtab_body[] = {
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
 },
                      _qtab_head[] = {
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
+    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,HT, Q, Q,  Q, Q, Q, Q,
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
    US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N,QM,
 
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N,UU,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
 };
 
-/* Check wether **s* must be quoted according to *ishead*, else body rules;
- * *sol* indicates wether we are at the first character of a line/field */
+/* Check wether *s must be quoted according to flags, else body rules;
+ * sol indicates wether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
-                        bool_t ishead);
+                        enum mimecte_flags flags);
 
 /* Convert c to/from a hexadecimal character string */
 SINLINE char *       _qp_ctohex(char *store, char c);
 SINLINE si32_t       _qp_cfromhex(char const *hex);
 
-/* Trim WS and make *work* point to the decodable range of *in*.
+/* Trim WS and make work point to the decodable range of in*
  * Return the amount of bytes a b64_decode operation on that buffer requires */
 static size_t        _b64_decode_prepare(struct str *work,
                         struct str const *in);
 
-/* Perform b64_decode on sufficiently spaced & multiple-of-4 base *in*put.
- * Return number of useful bytes in *out* or -1 on error */
+/* Perform b64_decode on sufficiently spaced & multiple-of-4 base in(put).
+ * Return number of useful bytes in out or -1 on error */
 static ssize_t       _b64_decode(struct str *out, struct str *in);
 
 SINLINE enum _qact
-_mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
+_mustquote(char const *s, char const *e, bool_t sol, enum mimecte_flags flags)
 {
    ui8_t const *qtab;
    enum _qact a, r;
    NYD2_ENTER;
 
-   qtab = ishead ? _qtab_head : _qtab_body;
+   qtab = (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD))
+         ? _qtab_head : _qtab_body;
    a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
 
    if ((r = a) == N || (r = a) == Q)
@@ -115,12 +117,22 @@ _mustquote(char const *s, char const *e, bool_t sol, bool_t ishead)
    r = Q;
 
    /* Special header fields */
-   if (ishead) {
-      /* ' ' -> '_' */
-      if (a == US) {
-         r = US;
-         goto jleave;
+   if (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD)) {
+      /* Special massage for encoded words */
+      if (flags & MIMECTE_ISENCWORD) {
+         switch (a) {
+         case HT:
+         case US:
+         case EQ:
+            r = a;
+            /* FALLTHRU */
+         case UU:
+            goto jleave;
+         default:
+            break;
+         }
       }
+
       /* Treat '?' only special if part of '=?' .. '?=' (still too much quoting
        * since it's '=?CHARSET?CTE?stuff?=', and especially the trailing ?=
        * should be hard too match */
@@ -315,16 +327,26 @@ mime_hexseq_to_char(char const *hex)
 }
 
 FL size_t
-mime_cte_mustquote(char const *ln, size_t lnlen, bool_t ishead)
+mime_cte_mustquote(char const *ln, size_t lnlen, enum mimecte_flags flags)
 {
-   size_t ret;
+   size_t rv;
    bool_t sol;
    NYD_ENTER;
 
-   for (ret = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
-      ret += (_mustquote(ln, ln + lnlen, sol, ishead) != N);
+   for (rv = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
+      switch (_mustquote(ln, ln + lnlen, sol, flags)) {
+      case US:
+      case EQ:
+      case HT:
+         assert(flags & MIMECTE_ISENCWORD);
+         /* FALLTHRU */
+      case N:
+         continue;
+      default:
+         ++rv;
+      }
    NYD_LEAVE;
-   return ret;
+   return rv;
 }
 
 FL size_t
@@ -405,8 +427,11 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 
    /* QP_ISHEAD? */
    if (!sol) {
+      enum mimecte_flags ctef = MIMECTE_ISHEAD |
+            (flags & QP_ISENCWORD ? MIMECTE_ISENCWORD : 0);
+
       for (seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp) {
-         enum _qact mq = _mustquote(is, ie, sol, TRU1);
+         enum _qact mq = _mustquote(is, ie, sol, ctef);
          char c = *is++;
 
          if (mq == N) {
@@ -429,7 +454,7 @@ jheadq:
 
    /* The body needs to take care for soft line breaks etc. */
    for (lnlen = 0, seenx = FAL0; is < ie; sol = FAL0) {
-      enum _qact mq = _mustquote(is, ie, sol, FAL0);
+      enum _qact mq = _mustquote(is, ie, sol, MIMECTE_NONE);
       char c = *is++;
 
       if (mq == N && (c != '\n' || !seenx)) {
@@ -526,7 +551,7 @@ jehead:
                */ *oc++ = '?';
             }
          } else
-            *oc++ = (c == '_') ? ' ' : (char)c;
+            *oc++ = (c == '_' /* US */) ? ' ' : (char)c;
       }
       goto jleave; /* XXX QP decode, header: errors not reported */
    }
