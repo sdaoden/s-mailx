@@ -3,7 +3,7 @@ I n s t a l l i n g  S - n a i l
 
 1.  Compilation
 1.1 How can i enable debugging?
-2.  Notes for S-nail(1) v14.7*
+2.  Special notes for the latest release
 3.  Current codebase state
 
 1. Compilation
@@ -130,8 +130,8 @@ Should you really discover any problems with S-nail it would be very
 useful for development if you would contact s-nail-users@!
 Thank you!
 
-2. Notes for S-nail(1) v14.7*
------------------------------
+2. Special notes for the latest release
+---------------------------------------
 
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
 It is assumed that S-nail(1) should work practically everywhere.
@@ -150,6 +150,44 @@ It is assumed that S-nail(1) should work practically everywhere.
     WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
     -std=c99 is set in your $CFLAGS.
 
+. ArchLinux <https://www.archlinux.org/>
+  Linux 3.16.3-1-ARCH x86_64
+  - gcc (GCC) 4.9.1 20140903 (prerelease) [gcc-4.9.1-2-x86_64]
+    + I think faulty message on longjmp() clobbering on a const variable?
+    + The known -Wstrict-overflow warning(s) (this code is address of
+      change in v14.8)
+
+. CRUX Linux <http://www.crux.nu/>
+  CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
+  - gcc (CRUX) 4.8.2.
+    + :)
+
+. Void Linux <http://www.voidlinux.eu/>
+  Void GNU/Linux 3.14.15_2 i686
+  - gcc (GCC) 4.9.1 [gcc-4.9.1_8]
+    + Same notes as for ArchLinux (but with libressl-devel etc.)
+
+. FreeBSD <https://www.freebsd.org/>
+  FreeBSD 10.0-STABLE #0 r268038: Mon Jun 30 17:00:39 UTC 2014
+  - FreeBSD clang version 3.4.1 (tags/RELEASE_34/dot1-final 208032) 20140512
+    + :)
+
+. OpenBSD <http://www.openbsd.org/>
+  OpenBSD 5.6 GENERIC#337 (~2014-09-26) i386
+  - gcc (GCC) 4.2.1 20070719.
+    + Faulty message on longjmp() clobbering (on a const variable).
+    + Wrong message on potentially uninitialized variable.
+
+. DragonFly BSD <https://www.dragonflybsd.org/>
+  DragonFly 3.6-RELEASE x86_64
+  - gcc 4.7.3 [DragonFly] Release/2013-04-11.
+    + One -Wstrict-overflow warning.
+    + Warning on bad cast for iconv(3); yes, this is DragonFly.
+
+  DragonFly 3.4.1-RELEASE i386
+  - gcc 4.7.2 [DragonFly] Release/2012-09-20
+    + One -Wstrict-overflow warning.
+
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 i386
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
@@ -163,76 +201,36 @@ It is assumed that S-nail(1) should work practically everywhere.
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
 
-. ArchLinux <https://www.archlinux.org/>
-  Linux 3.15.5-1-ARCH x86_64
-  - gcc (GCC) 4.9.0 20140604 (prerelease) [gcc 4.9.0-5]
-    + I think faulty message on longjmp() clobbering on a const variable?
-    + The known -Wstrict-overflow warnings (this code is address of
-      change in v14.8)
-
-. CRUX Linux <http://www.crux.nu/>
-  CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
-  - gcc (CRUX) 4.8.2.
-    + The known -Wstrict-overflow warnings (this code is address of
-      change in v14.8)
-    + (The HOT BEVERAGE error doesn't occur, even today.)
-
-  CRUX 3.0 Linux 3.6.11 #1 SMP Sun Sep 15 17:47:31 UTC 2013 x86_64.
-  - gcc (CRUX-x86_64-multilib) 4.7.2.
-    + For rememberance:
-      In a very special test mailbox the character `☕' (U+2615 HOT
-      BEVERAGE) is displayed as `[3m<98><95>' (`set PAGER='cat -vet''
-      prints `M-bM-^XM-^U').  Because this is the only system i have
-      seen this, and only in this single mailbox, i suspect a problem
-      in the character conversion environment.  (I hope v14.888888888ngs
-      sole usage of mbrtowc(3) instead of mbtowc(3) and per-message
-      multibyte states.  Let's see if that fixes this problem.  I'll
-      keep the VM around.)
-
-. Void Linux <http://www.voidlinux.eu/>
-  Linux 3.10.19_1 i686.
-  - gcc (GCC) 4.7.3.
-    + A single warning on 'signed overflow'.
-    + `devel'opment target: warnings on format strings -- as above.
+. UnixWare 7.1.4.
+  + Not tested with v14.7.7.
+  + Note: it is no longer possible to use the `install' rule -- mk-mk.in
+    uses shell functions to ease the task of directory creation etc.
+    (especially useful due to VERBOSE=), and that won't work due to bugs
+    (in the system make(1) program i presume).
+  + You'll see some harmless and ignorable warnings (the problematic
+    looking warning `"openssl.c", line 88: initialization type mismatch'
+    refers to a cast from non-const to const, which shouldn't matter).
 
 . NetBSD <https://www.netbsd.org/>
   NetBSD 6.99.40 i386 (201404092030Z)
   - gcc (NetBSD nb2 20140304) 4.8.3
-    + Warnings on format strings -- as above.
-    + Faulty message on longjmp() clobbering (on a const variable).
+    + S/MIME test verification fails (OpenSSL 1.0.1g 7 Apr 2014):
+      the generated test mail is empty for unknown reason, resulting in
+      "Error reading PKCS#7 object for message 1: error:0D0D40D1:asn1
+      encoding routines:SMIME_read_ASN1:no content type".
+    ++ It actually turns out this has to be a bug in the NetBSD StdIO
+       library!!  I'll have to track this down...
 
-  NetBSD 6.99.24 NetBSD 6.99.24 (GENERIC) #0: Tue Oct 29 08:23:21 UTC
-  2013 amd64.
-  - gcc (NetBSD nb1 20120916) 4.5.4.
-    + Faulty message on longjmp() clobbering (on a const variable).
+  NetBSD 6.99.24 amd64
+  - gcc (NetBSD nb1 20120916) 4.5.4
+    + I think faulty message on longjmp() clobbering on a const variable?
+    + Wrong message on potentially uninitialized variable.
+    + Same S/MIME issue!
 
-  NetBSD 6.?
-  - Ok.
-
-. FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.0-STABLE #0 r268038: Mon Jun 30 17:00:39 UTC 2014
-  - FreeBSD clang version 3.4.1 (tags/RELEASE_34/dot1-final 208032) 20140512
-
-. DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 3.6-RELEASE x86_64
-  - gcc 4.7.3 [DragonFly] Release/2013-04-11.
-    + A single warning on 'signed overflow'.
-    + Harmless iconv(3) warning again (as if we didn't have had to
-      treat it specially already).
-
-. OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.6 (current as of 2014-05-25) i386,
-  OpenBSD 5.4 i386.
-  - gcc (GCC) 4.2.1 20070719.
-    + Faulty message on longjmp() clobbering (on a const variable).
-
-. UnixWare 7.1.4.
-  + Note: it is no longer possible to use the `install' rule -- mk-mk.in
-    uses shell functions to ease the task of directory creation etc.
-    (especially useful due to VERBOSE=), and that won't work due to bugs.
-  + You'll see some harmless and ignorable warnings (the problematic
-    looking warning `"openssl.c", line 88: initialization type mismatch'
-    refers to a cast from non-const to const, which shouldn't matter).
+  NetBSD 6.0 i386
+  - gcc (NetBSD nb2 20110806) 4.5.3
+    + Same as 6.99.24 amd64.
+    + Same S/MIME issue!
 
 3. Current codebase state
 -------------------------
