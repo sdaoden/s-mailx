@@ -357,11 +357,12 @@ _setup_vars(void)
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
       panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
-   if (cp == NULL)
+   if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
-   else if ((pw = getpwnam(cp)) == NULL)
-      panic(_("`%s' is not a user of this system"), cp);
-   else {
+   else if ((pw = getpwnam(cp)) == NULL) {
+      alert(_("`%s' is not a user of this system"), cp);
+      exit(67); /* XXX BSD EX_NOUSER */
+   } else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
          options |= OPT_u_FLAG;
