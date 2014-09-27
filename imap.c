@@ -1514,7 +1514,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    FILE *queuefp;
    long volatile headlines;
    long n;
-   ul_it volatile u;
+   ul_i volatile u;
    enum okay ok;
    NYD_X;
 

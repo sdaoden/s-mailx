@@ -439,7 +439,7 @@ mkname(time_t t, enum mflag f, char const *pref)
       size = 60 + strlen(node);
       cp = salloc(size);
       n = snprintf(cp, size, "%lu.%06lu_%06lu.%s:2,",
-            (ul_it)t, (ul_it)mypid, ++cnt, node);
+            (ul_i)t, (ul_i)mypid, ++cnt, node);
    } else {
       size = (n = strlen(pref)) + 13;
       cp = salloc(size);

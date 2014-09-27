@@ -113,7 +113,7 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
    }
 #endif
    fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-      cpre, msg_no, (ul_it)mp->m_lines, (ul_it)mp->m_size, csuf);
+      cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf);
    NYD_LEAVE;
 }
 
@@ -358,7 +358,7 @@ jputc:
                else
                   fprintf(stderr, _(
                      "Ignored date format, it excesses the target buffer "
-                     "(%lu bytes)\n"), (ul_it)sizeof datebuf);
+                     "(%" PRIuZ " bytes)\n"), sizeof datebuf);
                datefmt = NULL;
             }
             if (n == 0)
@@ -426,7 +426,7 @@ jputc:
             }
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, (ul_it)msgno);
+            n = fprintf(f, "%*lu", n, (ul_i)msgno);
             wleft = (n >= 0) ? wleft - n : 0;
             break;
          case 'o':
@@ -476,7 +476,7 @@ jputc:
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
             n = fprintf(f, "%*lu", n,
-                  (threaded ? (ul_it)mp->m_threadpos : (ul_it)msgno));
+                  (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
             wleft = (n >= 0) ? wleft - n : 0;
             break;
          case 'U':

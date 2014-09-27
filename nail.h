@@ -254,7 +254,7 @@
  * CC support, generic macros etc.
  */
 
-#if defined __clang__
+#ifdef __clang__
 # define CC_CLANG          1
 # define PREREQ_CLANG(X,Y) \
    (__clang_major__ + 0 > (X) || \
@@ -279,12 +279,16 @@
 # define __EXTEN
 #endif
 
-/* XXX Suppress unused return values via #pragma's;
+/* Suppress some technical warnings via #pragma's unless developing.
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
-#if PREREQ_CLANG(3, 4)
-# pragma clang diagnostic ignored "-Wunused-result"
-#elif PREREQ_GCC(4, 7)
-# pragma GCC diagnostic ignored "-Wunused-result"
+#if !defined HAVE_DEBUG && !defined HAVE_DEVEL
+# if PREREQ_CLANG(3, 4)
+#  pragma clang diagnostic ignored "-Wunused-result"
+#  pragma clang diagnostic ignored "-Wformat"
+# elif PREREQ_GCC(4, 7)
+#  pragma GCC diagnostic ignored "-Wunused-result"
+#  pragma GCC diagnostic ignored "-Wformat"
+# endif
 #endif
 
 /* For injection macros like DBG(), NATCH_CHAR() */
@@ -416,16 +420,6 @@
  * Types
  */
 
-typedef unsigned long   ul_it;
-typedef unsigned int    ui_it;
-typedef unsigned short  us_it;
-typedef unsigned char   uc_it;
-
-typedef signed long     sl_it;
-typedef signed int      si_it;
-typedef signed short    ss_it;
-typedef signed char     sc_it;
-
 #ifdef UINT8_MAX
 # define UI8_MAX        UINT8_MAX
 # define SI8_MIN        INT8_MIN
@@ -442,6 +436,13 @@ typedef unsigned char   ui8_t;
 typedef signed char     si8_t;
 #endif
 
+#if !defined PRIu8 || !defined PRId8
+# undef PRIu8
+# undef PRId8
+# define PRIu8          "hhu"
+# define PRId8          "hhd"
+#endif
+
 #ifdef UINT16_MAX
 # define UI16_MAX       UINT16_MAX
 # define SI16_MIN       INT16_MIN
@@ -456,6 +457,18 @@ typedef int16_t         si16_t;
 # define SI16_MAX       SHRT_MAX
 typedef unsigned short  ui16_t;
 typedef signed short    si16_t;
+#endif
+
+#if !defined PRIu16 || !defined PRId16
+# undef PRIu16
+# undef PRId16
+# if UI16_MAX == UINT_MAX
+#  define PRIu16        "u"
+#  define PRId16        "d"
+# else
+#  define PRIu16        "hu"
+#  define PRId16        "hd"
+# endif
 #endif
 
 #ifdef UINT32_MAX
@@ -480,13 +493,26 @@ typedef unsigned int    ui32_t;
 typedef signed int      si32_t;
 #endif
 
+#if !defined PRIu32 || !defined PRId32
+# undef PRIu32
+# undef PRId32
+# if UI32_MAX == ULONG_MAX
+#  define PRIu32        "lu"
+#  define PRId32        "ld"
+# else
+#  define PRIu32        "u"
+#  define PRId32        "d"
+# endif
+#endif
+
 #ifdef UINT64_MAX
 # define UI64_MAX       UINT64_MAX
 # define SI64_MIN       INT64_MIN
 # define SI64_MAX       INT64_MAX
 typedef uint64_t        ui64_t;
+typedef int64_t         si64_t;
 #elif ULONG_MAX <= 0xFFFFFFFFu
-# if !defined ULLONG_MAX || ULLONG_MAX != 0xFFFFFFFFFFFFFFFFu
+# if !defined ULLONG_MAX || (ULLONG_MAX >> 31) < 0xFFFFFFFFu
 #  error We need a 64 bit integer
 # else
 #  define UI64_MAX      ULLONG_MAX
@@ -503,9 +529,47 @@ typedef unsigned long   ui64_t;
 typedef signed long     si64_t;
 #endif
 
+#if !defined PRIu64 || !defined PRId64 || !defined PRIX64
+# undef PRIu64
+# undef PRId64
+# undef PRIX64
+# if defined ULLONG_MAX && UI64_MAX == ULLONG_MAX
+#  define PRIu64        "llu"
+#  define PRId64        "lld"
+#  define PRIX64        "llX"
+# else
+#  define PRIu64        "lu"
+#  define PRId64        "ld"
+#  define PRIX64        "lX"
+# endif
+#endif
+
 /* (So that we can use UICMP() for size_t comparison, too) */
 typedef size_t          uiz_t;
 typedef ssize_t         siz_t;
+
+#undef PRIuZ
+#undef PRIdZ
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define PRIuZ          "zu"
+# define PRIdZ          "zd"
+# define PRIxZ_FMT_CTA() CTA(1 == 1)
+#elif defined SIZE_MAX
+# if SIZE_MAX == UI64_MAX
+#  define PRIuZ         PRIu64
+#  define PRIdZ         PRId64
+#  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui64_t))
+# elif SIZE_MAX == UI32_MAX
+#  define PRIuZ         PRIu32
+#  define PRIdZ         PRId32
+#  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui32_t))
+# endif
+#endif
+#ifndef PRIuZ
+# define PRIuZ          "lu"
+# define PRIdZ          "ld"
+# define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(unsigned long))
+#endif
 
 #ifndef UINTPTR_MAX
 # ifdef SIZE_MAX
@@ -517,23 +581,31 @@ typedef ssize_t         siz_t;
 # endif
 #endif
 
-/* XXX Note we don't really deal with that the right way in that we pass size_t
- * XXX arguments without casting; should do, because above we assert UINT_MAX
- * XXX is indeed ui32_t -- CTAsserted in main.c */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define ZFMT           "zu"
-# define __ZFMT_CTA()   CTA(1 == 1)
-#elif defined SIZE_MAX && SIZE_MAX == 0xFFFFFFFFu && ULONG_MAX != UINT_MAX
-# define ZFMT           "u"
-# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned int))
-#endif
-#ifndef ZFMT
-# define ZFMT           "lu"
-# define __ZFMT_CTA()   CTA(sizeof(size_t) == sizeof(unsigned long))
+#if !defined PRIuPTR || !defined PRIXPTR
+# undef PRIuPTR
+# undef PRIXPTR
+# if UINTPTR_MAX == ULONG_MAX
+#  define PRIuPTR       "lu"
+#  define PRIXPTR       "lX"
+# else
+#  define PRIuPTR       "u"
+#  define PRIXPTR       "X"
+# endif
 #endif
 
 enum {FAL0, TRU1};
 typedef si8_t           bool_t;
+
+/* Add shorter aliases for "normal" integers */
+typedef unsigned long   ul_i;
+typedef unsigned int    ui_i;
+typedef unsigned short  us_i;
+typedef unsigned char   uc_i;
+
+typedef signed long     sl_i;
+typedef signed int      si_i;
+typedef signed short    ss_i;
+typedef signed char     sc_i;
 
 typedef void (          *sighandler_type)(int);
 
@@ -1583,7 +1655,7 @@ VL char const  uagent[];            /* User agent */
 VL char const  version[];           /* The version string */
 VL char const  features[];          /* The "feature string" */
 
-VL uc_it const class_char[];
+VL uc_i const  class_char[];
 #endif
 
 /*

@@ -1039,7 +1039,7 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
    char const *cp;
    int c;
    FILE *dbuf;
-   ul_it lines, bytes;
+   ul_i lines, bytes;
    NYD_ENTER;
 
    if (fflush_rewind_first) {

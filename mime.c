@@ -965,8 +965,8 @@ mime_create_boundary(void)
    NYD_ENTER;
 
    bp = salloc(48);
-   snprintf(bp, 48, "=_%011lu=-%s=_", (ul_it)time_current.tc_time,
-      getrandstring(47 - (11 + 6)));
+   snprintf(bp, 48, "=_%011" PRIu64 "=-%s=_",
+      (ui64_t)time_current.tc_time, getrandstring(47 - (11 + 6)));
    NYD_LEAVE;
    return bp;
 }

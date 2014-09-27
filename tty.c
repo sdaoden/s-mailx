@@ -428,7 +428,7 @@ jlist: {
    FILE *fp;
    HISTORY_STATE *hs;
    HIST_ENTRY **hl;
-   ul_it i, b;
+   ul_i i, b;
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
@@ -439,7 +439,7 @@ jlist: {
 
    hs = history_get_history_state();
 
-   for (i = (ul_it)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
+   for (i = (ul_i)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
       char *cp = (*--hl)->line;
       size_t sl = strlen(cp);
       fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n", i, cp, b, sl);
@@ -664,7 +664,7 @@ jlist: {
          x = history(_el_hcom, &he, H_NEXT)) {
       size_t sl = strlen(he.str);
       fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
-         (ul_it)i, he.str, (ul_it)b, (ul_it)sl);
+         (ul_i)i, he.str, (ul_i)b, (ul_i)sl);
       --i;
       b += sl;
    }
@@ -735,9 +735,9 @@ jentry: {
 
 union xsighdl {
    sighandler_type   shdl; /* Try avoid races by setting */
-   sl_it             sint; /* .sint=-1 when inactive */
+   sl_i              sint; /* .sint=-1 when inactive */
 };
-CTA(sizeof(sl_it) >= sizeof(sighandler_type));
+CTA(sizeof(sl_i) >= sizeof(sighandler_type));
 
 struct xtios {
    struct termios told;
@@ -1251,13 +1251,13 @@ _ncl_kother(struct line *l, wchar_t wc)
    i = wcrtomb(cell.cbuf, wc, &ps);
    if (i > MB_LEN_MAX)
       goto jleave;
-   cell.count = (ui_it)i;
+   cell.count = (ui32_t)i;
    if (enc_has_state) {
       i = wcrtomb(cell.cbuf + i, L'\0', &ps);
       if (i == 1)
          ;
       else if (--i < MB_LEN_MAX)
-         cell.count += (ui_it)i;
+         cell.count += (ui32_t)i;
       else
          goto jleave;
    }
@@ -2047,7 +2047,8 @@ jlist: {
    i = _ncl_hist_size;
    b = 0;
    for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
-      fprintf(fp, "%c%4" ZFMT ". %-50.50s (%4" ZFMT "+%2u bytes)\n",
+      fprintf(fp,
+         "%c%4" PRIuZ ". %-50.50s (%4" PRIuZ "+%2" PRIu32 " bytes)\n",
          (h->isgabby ? '*' : ' '), i, h->dat, b, h->len);
 
    page_or_print(fp, i);

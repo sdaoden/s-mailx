@@ -512,7 +512,7 @@ _print_part_info(struct str *out, struct mimepart *mip,
    out->l = snprintf(out->s, out->l, __msg,
          (level || (ps[0] != '1' && ps[1] == '\0') ? "\n" : ""),
             (cpre != NULL ? cpre->s : ""),
-         ps, (ul_it)mip->m_lines, (ul_it)mip->m_size,
+         ps, (ul_i)mip->m_lines, (ul_i)mip->m_size,
             (ct.s != NULL ? ct.s : ""),
             (cd.s != NULL ? cd.s : ""),
          (csuf != NULL ? csuf->s : ""));

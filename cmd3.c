@@ -942,7 +942,7 @@ c_messize(void *v)
          printf("%ld", mp->m_xlines);
       else
          putchar(' ');
-      printf("/%lu\n", (ul_it)mp->m_xsize);
+      printf("/%lu\n", (ul_i)mp->m_xsize);
    }
    NYD_LEAVE;
    return 0;
@@ -1714,7 +1714,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxenc(in, FAL0);
 
-      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;
@@ -1730,7 +1730,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxdec(in);
 
-      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;
