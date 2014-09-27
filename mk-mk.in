@@ -1,5 +1,5 @@
 #@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
-#@ Please see `INSTALL' and `conf.rc' instead.
+#@ Please see `INSTALL' and `make.rc' instead.
 
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
@@ -181,4 +181,4 @@ _update-version:
 	mv ./version.tmp ./version.h;\
 	trap - 0 1 2 15
 
-# vim:set ft=make:s-mk-mode
+# s-mk-mode

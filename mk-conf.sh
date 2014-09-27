@@ -1,5 +1,5 @@
 #!/bin/sh -
-#@ Please see `INSTALL' and `conf.rc' instead.
+#@ Please see `INSTALL' and `make.rc' instead.
 
 LC_ALL=C
 export LC_ALL
@@ -8,36 +8,59 @@ export LC_ALL
 if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
    MINIMAL)
+      WANT_ICONV=1
       WANT_SOCKETS=0
       WANT_IDNA=0
-      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
       WANT_IMAP_SEARCH=0
       WANT_REGEX=0
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
       WANT_SPAM=0
       WANT_DOCSTRINGS=0
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
       ;;
    MEDIUM)
+      WANT_ICONV=1
       WANT_SOCKETS=0
       WANT_IDNA=0
-      WANT_READLINE=0 WANT_EDITLINE=0
       WANT_IMAP_SEARCH=0
+      WANT_REGEX=1
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
+         WANT_HISTORY=1 WANT_TABEXPAND=0
       WANT_SPAM=0
+      WANT_DOCSTRINGS=1
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
       ;;
    NETSEND)
-      WANT_POP3=0
-      WANT_IMAP=0
-      WANT_READLINE=0 WANT_EDITLINE=0
+      WANT_ICONV=1
+      WANT_SOCKETS=1
+         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=require WANT_POP3=0 WANT_IMAP=0
+         WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+      WANT_IDNA=1
       WANT_IMAP_SEARCH=0
+      WANT_REGEX=1
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
+         WANT_HISTORY=1 WANT_TABEXPAND=0
       WANT_SPAM=0
+      WANT_DOCSTRINGS=1
       WANT_QUOTE_FOLD=0
       WANT_COLOUR=0
       ;;
    MAXIMAL)
-      WANT_GSSAPI=1
+      WANT_ICONV=1
+      WANT_SOCKETS=1
+         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+         WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+      WANT_IDNA=1
+      WANT_IMAP_SEARCH=1
+      WANT_REGEX=1
+      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
+         WANT_HISTORY=1 WANT_TABEXPAND=1
+      WANT_SPAM=1
+      WANT_DOCSTRINGS=1
+      WANT_QUOTE_FOLD=1
+      WANT_COLOUR=1
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
@@ -48,23 +71,38 @@ fi
 
 # Inter-relationships
 option_update() {
-   if nwantfeat SOCKETS; then
+   if feat_no SOCKETS; then
+      if feat_require SMTP; then
+         msg "ERROR: need SOCKETS for required feature SMTP\\n"
+         config_exit 13
+      fi
+      if feat_require POP3; then
+         msg "ERROR: need SOCKETS for required feature POP3\\n"
+         config_exit 13
+      fi
+      if feat_require IMAP; then
+         msg "ERROR: need SOCKETS for required feature IMAP\\n"
+         config_exit 13
+      fi
       WANT_IPV6=0 WANT_SSL=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
-   if nwantfeat SMTP && nwantfeat POP3 && nwantfeat IMAP; then
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
    fi
-   if nwantfeat SMTP && nwantfeat IMAP; then
+   if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
+   fi
+   if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
+      WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
    # If we don't need MD5 except for producing boundary and message-id strings,
    # leave it off, plain old srand(3) should be enough for that purpose.
-   if nwantfeat SOCKETS; then
+   if feat_no SOCKETS; then
       WANT_MD5=0
    fi
-   if wantfeat DEBUG; then
+   if feat_yes DEBUG; then
       WANT_NOALLOCA=1 WANT_DEVEL=1
    fi
 }
@@ -83,11 +121,11 @@ compiler_flags() {
       elif { CC="`command -v c99`"; }; then
          :
       else
-         echo >&2 'ERROR'
-         echo >&2 ' I cannot find a compiler!'
-         echo >&2 ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
-         echo >&2 ' Please set the CC environment variable, maybe CFLAGS also.'
-         exit 1
+         msg 'ERROR'
+         msg ' I cannot find a compiler!'
+         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         msg ' Please set the CC environment variable, maybe CFLAGS also.'
+         config_exit 1
       fi
    fi
    export CC
@@ -109,28 +147,28 @@ compiler_flags() {
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
          _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
-         if wantfeat AMALGAMATION && nwantfeat DEBUG; then
+         if feat_yes AMALGAMATION && feat_no DEBUG; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
          if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
-      if wantfeat AMALGAMATION; then
+      if feat_yes AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
 #   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
 #      optim=-O3 dbgoptim=-O
 #      stackprot=yes
 #      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
-#      if wantfeat AMALGAMATION; then
+#      if feat_yes AMALGAMATION; then
 #         _CFLAGS="${_CFLAGS} -pipe"
 #      fi
    elif [ -z "${optim}" ]; then
       optim=-O1 dbgoptim=-O
    fi
 
-   if nwantfeat DEBUG; then
+   if feat_no DEBUG; then
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
       _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
@@ -145,7 +183,7 @@ compiler_flags() {
    export _CFLAGS _LDFLAGS
 
    # $CFLAGS and $LDFLAGS are only overwritten if explicitly wanted
-   if wantfeat AUTOCC; then
+   if feat_yes AUTOCC; then
       CFLAGS=$_CFLAGS
       LDFLAGS=$_LDFLAGS
       export CFLAGS LDFLAGS
@@ -155,15 +193,28 @@ compiler_flags() {
 ##  --  >8  --  8<  --  ##
 
 ## Notes:
-## - Heirloom sh(1) (and same origin) have problems with ': >' redirection,
-##   so use "printf '' >" instead
-## - Heirloom sh(1) and maybe more execute loops with redirection in a subshell
-##   (but don't export eval's from within), therefore we need to (re)include
-##   variable assignments at toplevel instead (via reading temporary files)
+## - Heirloom sh(1) (and same origin) have _sometimes_ problems with ': >'
+##   redirection, so use "printf '' >" instead
+
+## Very first: we undergo several states regarding I/O redirection etc.,
+## but need to deal with option updates from within all.  Since all the
+## option stuff should be above the scissor line, define utility functions
+## and redefine them as necessary.
+## And, since we have those functions, simply use them for whatever
+
+config_exit() {
+   exit ${1}
+}
+
+msg() {
+   fmt=${1}
+   shift
+   printf >&2 "${fmt}\\n" "${@}"
+}
 
 ## First of all, create new configuration and check wether it changed ##
 
-conf=./conf.rc
+rc=./make.rc
 lst=./config.lst
 h=./config.h
 mk=./mk.mk
@@ -177,36 +228,43 @@ tmp=./${tmp0}1$$
 # We need some standard utilities
 unset -f command
 check_tool() {
-   n=$1 i=$2 opt=${3:-0}
+   n=${1} i=${2} opt=${3:-0}
+   # Evaluate, just in case user comes in with shell snippets (..well..)
+   eval i="${i}"
    if type "${i}" >/dev/null 2>&1; then
       eval ${n}=${i}
-      return 1
+      return 0
    fi
    if [ ${opt} -eq 0 ]; then
-      echo >&2 "ERROR: no trace of the utility \`${n}'"
-      exit 1
+      msg "ERROR: no trace of the utility \`${n}'\\n"
+      config_exit 1
    fi
    return 0
 }
 
-# Check those tools right now that we need before including ${conf}
+# Check those tools right now that we need before including $rc
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
 
-# Only incorporate what wasn't overwritten from command line / CONFIG
+# Include $rc, but only take from it what wasn't overwritten by the user from
+# within the command line or from a chosen fixed CONFIG=
+# Note we leave alone the values
 trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
-${rm} -f ${tmp}
 
-< ${conf} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
+${rm} -f ${tmp}
+< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
 while read line; do
    i="`echo ${line} | ${sed} -e 's/=.*$//'`"
    eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
-      line="${i}=\"${j}\""
+      : # Yet present
+   else
+      j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
    fi
-   echo ${line}
+   echo "${i}=\"${j}\""
 done > ${tmp}
+# Reread the mixed version right now
 . ./${tmp}
 
 check_tool awk "${awk:-`command -v awk`}"
@@ -224,37 +282,86 @@ check_tool make "${MAKE:-`command -v make`}"
 check_tool strip "${STRIP:-`command -v strip`}" 1
 HAVE_STRIP=${?}
 
-wantfeat() {
-   eval i=\$WANT_${1}
-   [ "${i}" = "1" ]
+# Update WANT_ options now, in order to get possible inter-dependencies right
+
+feat_val_no() {
+   [ "x${1}" = x0 ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ]
 }
-nwantfeat() {
+
+feat_val_yes() {
+   [ "x${1}" = x1 ] || [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] ||
+         [ "x${1}" = xrequire ]
+}
+
+feat_val_require() {
+   [ "x${1}" = xrequire ]
+}
+
+_feat_check() {
    eval i=\$WANT_${1}
-   [ "${i}" != "1" ]
+   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   if feat_val_no "${i}"; then
+      return 1
+   elif feat_val_yes "${i}"; then
+      return 0
+   else
+      msg "ERROR: ${1}: allowed: 0/false/no or 1/true/yes/require, got: ${i}\\n"
+      config_exit 11
+   fi
+}
+
+feat_yes() {
+   _feat_check ${1}
+}
+
+feat_no() {
+   _feat_check ${1} && return 1
+   return 0
+}
+
+feat_require() {
+   eval i=\$WANT_${1}
+   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   [ "x${i}" = xrequire ]
 }
 
 option_update
 
-# (No function since some shells loose non-exported variables in traps)
+# (No functions since some shells loose non-exported variables in traps)
 trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
 trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
-${rm} -f ${newlst} ${newmk} ${newh}
 
-# (Could: use FD redirection, add eval(1) and don't re-'. ./${newlst}')
+# Our configuration options may at this point still contain shell snippets,
+# we need to evaluate them in order to get them expanded, and we need those
+# evaluated values not only in our new configuration file, but also at hand..
+${rm} -f ${newlst} ${newmk} ${newh}
+exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   if [ -z "${j}" ] || [ "${j}" = 0 ]; then
-      printf "/*#define ${i}*/\n" >> ${newh}
-   elif [ "${j}" = 1 ]; then
-      printf "#define ${i}\n" >> ${newh}
+   if echo "${i}" | grep -e '^WANT_' >/dev/null 2>&1; then
+      if [ -z "${j}" ] || feat_val_no "${j}"; then
+         j=0
+         printf "/*#define ${i}*/\n" >> ${newh}
+      elif feat_val_yes "${j}"; then
+         if feat_val_require "${j}"; then
+            j=require
+         else
+            j=1
+         fi
+         printf "#define ${i}\n" >> ${newh}
+      else
+         msg "ERROR: internal error -42\\n"
+         config_exit 1
+      fi
    else
       printf "#define ${i} \"${j}\"\n" >> ${newh}
    fi
    printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=\"${j}\"\n"
-done < ${tmp} > ${newlst}
-. ./${newlst}
+   printf "${i}=${j}\n"
+   eval "${i}=\"${j}\""
+done
+exec 0<&5 1<&6 5<&- 6<&-
 
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
@@ -262,24 +369,68 @@ printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 compiler_flags
 
 printf "CC = ${CC}\n" >> ${newmk}
+printf "CC=${CC}\n" >> ${newlst}
+
 printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
+printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
+
 printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
+printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
+
 printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
+printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
+
 printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
    >> ${newmk}
-printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
-# (We include the cc(1)/ld(1) environment only for update detection..)
-printf "CC=\"${CC}\"\n" >> ${newlst}
-printf "_CFLAGS=\"${_CFLAGS}\"\nCFLAGS=\"${CFLAGS}\"\n" >> ${newlst}
-printf "_LDFLAGS=\"${_LDFLAGS}\"\nLDFLAGS=\"${LDFLAGS}\"\n" >> ${newlst}
-printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
 printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+
+printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
 printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
+# Build a basic set of INCS and LIBS according to user environment.
+# On pkgsrc(7) systems automatically add /usr/pkg/*
+if [ -n "${C_INCLUDE_PATH}" ]; then
+   i=${IFS}
+   IFS=:
+   set -- ${C_INCLUDE_PATH}
+   IFS=${i}
+   # for i; do -- new in POSIX Issue 7 + TC1
+   for i
+   do
+      [ "${i}" = /usr/pkg/include ] && continue
+      INCS="${INCS} -I${i}"
+   done
+fi
+[ -d /usr/pkg/include ] && INCS="${INCS} -I/usr/pkg/include"
+printf "INCS=${INCS}\n" >> ${newlst}
+
+if [ -n "${LD_LIBRARY_PATH}" ]; then
+   i=${IFS}
+   IFS=:
+   set -- ${LD_LIBRARY_PATH}
+   IFS=${i}
+   # for i; do -- new in POSIX Issue 7 + TC1
+   for i
+   do
+      [ "${i}" = /usr/pkg/lib ] && continue
+      LIBS="${LIBS} -L${i}"
+   done
+fi
+[ -d /usr/pkg/lib ] && LIBS="${LIBS} -L/usr/pkg/lib"
+printf "LIBS=${LIBS}\n" >> ${newlst}
+
+# Now finally check wether we already have a configuration and if so, wether
+# all those parameters are still the same.. or something has actually changed
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
 fi
 [ -f ${lst} ] && echo 'configuration updated..' || echo 'shiny configuration..'
+
+# Time to redefine helper 1
+config_exit() {
+   ${rm} -f ${lst} ${h} ${mk}
+   exit ${1}
+}
 
 ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newh} ${h}
@@ -297,11 +448,20 @@ makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
+trap "${rm} -f ${tmp0}.* ${tmp0}* ${makefile}" 0
+
+# Time to redefine helper 2
+msg() {
+   fmt=${1}
+   shift
+   printf "*** ${fmt}\\n" "${@}"
+   printf "${fmt}" "${@}" >&5
+}
 
 exec 5>&2 > ${log} 2>&1
-printf '' > ${lib}
-printf '' > ${inc}
+
+echo "${LIBS}" > ${lib}
+echo "${INCS}" > ${inc}
 # ${src} is only created if WANT_AMALGAMATION
 ${rm} -f ${src}
 ${cat} > ${makefile} << \!
@@ -314,14 +474,6 @@ ${cat} > ${makefile} << \!
 	$(CC) $(XINCS) -o $@ $< $(XLIBS)
 .y: ;
 !
-
-msg() {
-   fmt=$1
-
-   shift
-   printf "*** ${fmt}\\n" "${@}"
-   printf "${fmt}" "${@}" >&5
-}
 
 _check_preface() {
    variable=$1 topic=$2 define=$3
@@ -391,41 +543,18 @@ run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
-# Build a basic set of INCS and LIBS according to user environment.
-# On pkgsrc(7) systems automatically add /usr/pkg/*
-if [ -n "${C_INCLUDE_PATH}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${C_INCLUDE_PATH}
-   IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
-   for i
-   do
-      [ "${i}" = '/usr/pkg/include' ] && continue
-      INCS="${INCS} -I${i}"
-   done
-fi
-[ -d /usr/pkg/include ] && INCS="${INCS} -I/usr/pkg/include"
-echo "${INCS}" >> ${inc}
-
-if [ -n "${LD_LIBRARY_PATH}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${LD_LIBRARY_PATH}
-   IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
-   for i
-   do
-      [ "${i}" = '/usr/pkg/lib' ] && continue
-      LIBS="${LIBS} -L${i}"
-   done
-fi
-[ -d /usr/pkg/lib ] && LIBS="${LIBS} -L/usr/pkg/lib"
-echo "${LIBS}" >> ${lib}
+feat_bail_required() {
+   if feat_require ${1}; then
+      msg "ERROR: feature WANT_${1} is required but not available\\n"
+      config_exit 13
+   fi
+   eval WANT_${1}=0
+   option_update # XXX this is rather useless here (dependency chain..)
+}
 
 ##
 
-# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without
+# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without!
 echo '#define _GNU_SOURCE' >> ${h}
 
 if link_check hello 'if a hello world program can be built' << \!
@@ -444,8 +573,7 @@ then
 else
    echo >&5 'This oooops is most certainly not related to me.'
    echo >&5 "Read the file ${log} and check your compiler environment."
-   ${rm} -f ${lst} ${h} ${mk}
-   exit 1
+   config_exit 1
 fi
 
 if link_check termios 'for termios.h and tc*() family' << \!
@@ -463,8 +591,7 @@ then
 else
    echo >&5 'We require termios.h and the tc*() family of functions.'
    echo >&5 "That much Unix we indulge ourselfs."
-   ${rm} -f ${lst} ${h} ${mk}
-   exit 1
+   config_exit 1
 fi
 
 link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
@@ -481,7 +608,7 @@ link_check snprintf 'for snprintf()' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
 {
-   char	b[20];
+   char b[20];
    snprintf(b, sizeof b, "%s", "string");
    return 0;
 }
@@ -554,13 +681,13 @@ if [ "${have_setlocale}" = yes ]; then
 #include <wctype.h>
 int main(void)
 {
-	char mbb[MB_LEN_MAX + 1];
-   wchar_t	wc;
+   char mbb[MB_LEN_MAX + 1];
+   wchar_t wc;
    iswprint(L'c');
    towupper(L'c');
    mbtowc(&wc, "x", 1);
    mbrtowc(&wc, "x", 1, NULL);
-	(void)wctomb(mbb, wc);
+   wctomb(mbb, wc);
    return (mblen("\0", 1) == 0);
 }
 !
@@ -610,22 +737,22 @@ link_check wordexp 'for wordexp()' '#define HAVE_WORDEXP' << \!
 #include <wordexp.h>
 int main(void)
 {
-   wordexp((char *)0, (wordexp_t *)0, 0);
+   wordexp((char*)0, (wordexp_t*)0, 0);
    return 0;
 }
 !
 
 ##
 
-if wantfeat DEBUG; then
+if feat_yes DEBUG; then
    echo '#define HAVE_DEBUG' >> ${h}
 fi
 
-if wantfeat AMALGAMATION; then
+if feat_yes AMALGAMATION; then
    echo '#define HAVE_AMALGAMATION' >> ${h}
 fi
 
-if nwantfeat NOALLOCA; then
+if feat_no NOALLOCA; then
    # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
    # versions of alloca(3) since modern compilers just can't be trusted
    # not to overoptimize and silently break some code
@@ -634,27 +761,27 @@ if nwantfeat NOALLOCA; then
 int main(void)
 {
    void *vp = __builtin_alloca(1);
-   return (!! vp);
+   return (vp != NULL);
 }
 !
 fi
 
-if wantfeat DEVEL; then
+if feat_yes DEVEL; then
    echo '#define HAVE_DEVEL' >> ${h}
 fi
 
-if wantfeat NYD2; then
+if feat_yes NYD2; then
    echo '#define HAVE_NYD2' >> ${h}
 fi
 
 ##
 
-if wantfeat ICONV; then
+if feat_yes ICONV; then
    ${cat} > ${tmp2}.c << \!
 #include <iconv.h>
 int main(void)
 {
-   iconv_t	id;
+   iconv_t id;
 
    id = iconv_open("foo", "bar");
    return 0;
@@ -664,12 +791,13 @@ int main(void)
          '#define HAVE_ICONV' ||
       < ${tmp2}.c link_check iconv \
          'for iconv functionality in libiconv' \
-         '#define HAVE_ICONV' '-liconv'
+         '#define HAVE_ICONV' '-liconv' ||
+      feat_bail_required ICONV
 else
    echo '/* WANT_ICONV=0 */' >> ${h}
-fi # wantfeat ICONV
+fi # feat_yes ICONV
 
-if wantfeat SOCKETS; then
+if feat_yes SOCKETS; then
    compile_check arpa_inet_h 'for <arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
 #include "config.h"
@@ -692,7 +820,7 @@ if wantfeat SOCKETS; then
 
 int main(void)
 {
-   struct sockaddr	s;
+   struct sockaddr s;
    socket(AF_INET, SOCK_STREAM, 0);
    connect(0, &s, 0);
    gethostbyname("foo");
@@ -707,15 +835,12 @@ int main(void)
       < ${tmp2}.c link_check sockets \
          'for sockets in libsocket and libnsl' \
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
-      WANT_SOCKETS=0
-
-   # XXX Shouldn't it be a hard error if there is no socket support, then?
-   option_update
+      feat_bail_required SOCKETS
 else
    echo '/* WANT_SOCKETS=0 */' >> ${h}
-fi # wantfeat SOCKETS
+fi # feat_yes SOCKETS
 
-wantfeat SOCKETS &&
+feat_yes SOCKETS &&
 link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -727,7 +852,7 @@ int main(void)
 }
 !
 
-wantfeat SOCKETS && [ -n "${have_setsockopt}" ] &&
+feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_sndtimeo 'for SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -743,7 +868,7 @@ int main(void)
 }
 !
 
-wantfeat SOCKETS && [ -n "${have_setsockopt}" ] &&
+feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_linger 'for SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -758,8 +883,8 @@ int main(void)
 }
 !
 
-if wantfeat IPV6; then
-   link_check ipv6 'for IPv6 functionality' '#define HAVE_IPV6' << \!
+if feat_yes IPV6; then
+   if link_check ipv6 'for IPv6 functionality' '#define HAVE_IPV6' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -771,17 +896,22 @@ if wantfeat IPV6; then
 
 int main(void)
 {
-   struct addrinfo	a, *ap;
+   struct addrinfo a, *ap;
    getaddrinfo("foo", "0", &a, &ap);
    return 0;
 }
 !
+   then
+      :
+   else
+      feat_bail_required IPV6
+   fi
 else
    echo '/* WANT_IPV6=0 */' >> ${h}
-fi # wantfeat IPV6
+fi # feat_yes IPV6
 
-if wantfeat SSL; then
-   link_check openssl 'for sufficiently recent OpenSSL' \
+if feat_yes SSL; then
+   if link_check openssl 'for sufficiently recent OpenSSL' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -814,6 +944,11 @@ int main(void)
    return 0;
 }
 !
+   then
+      :
+   else
+      feat_bail_required SSL
+   fi
 
    if [ "${have_openssl}" = 'yes' ]; then
       compile_check stack_of 'for OpenSSL STACK_OF()' \
@@ -827,7 +962,7 @@ int main(void)
 int main(void)
 {
    STACK_OF(GENERAL_NAME) *gens = NULL;
-   printf("%p", gens);	/* to make it used */
+   printf("%p", gens); /* to make it used */
    return 0;
 }
 !
@@ -842,7 +977,7 @@ int main(void)
 }
 !
 
-      if wantfeat MD5 && nwantfeat NOEXTMD5; then
+      if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
          '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
@@ -870,31 +1005,31 @@ int main(void)
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
-      fi # wantfeat MD5 && nwantfeat NOEXTMD5
+      fi # feat_yes MD5 && feat_no NOEXTMD5
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
-fi # wantfeat SSL
+fi # feat_yes SSL
 
-if wantfeat SMTP; then
+if feat_yes SMTP; then
    echo '#define HAVE_SMTP' >> ${h}
 else
    echo '/* WANT_SMTP=0 */' >> ${h}
 fi
 
-if wantfeat POP3; then
+if feat_yes POP3; then
    echo '#define HAVE_POP3' >> ${h}
 else
    echo '/* WANT_POP3=0 */' >> ${h}
 fi
 
-if wantfeat IMAP; then
+if feat_yes IMAP; then
    echo '#define HAVE_IMAP' >> ${h}
 else
    echo '/* WANT_IMAP=0 */' >> ${h}
 fi
 
-if wantfeat GSSAPI; then
+if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
 
@@ -917,7 +1052,7 @@ int main(void)
       GSS_INCS=
       i='for GSS-API in gssapi/gssapi.h, libgssapi'
    fi
-   < ${tmp2}.c link_check gss \
+   if < ${tmp2}.c link_check gss \
          "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
       < ${tmp3}.c link_check gss \
          'for GSS-API in gssapi.h, libgssapi' \
@@ -950,24 +1085,29 @@ int main(void)
    return 0;
 }
 !
+   then
+      :
+   else
+      feat_bail_required GSSAPI
+   fi
 else
    echo '/* WANT_GSSAPI=0 */' >> ${h}
-fi # wantfeat GSSAPI
+fi # feat_yes GSSAPI
 
-if wantfeat NETRC; then
+if feat_yes NETRC; then
    echo '#define HAVE_NETRC' >> ${h}
 else
    echo '/* WANT_NETRC=0 */' >> ${h}
 fi
 
-if wantfeat AGENT; then
+if feat_yes AGENT; then
    echo '#define HAVE_AGENT' >> ${h}
 else
    echo '/* WANT_AGENT=0 */' >> ${h}
 fi
 
-if wantfeat IDNA; then
-   link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
+if feat_yes IDNA; then
+   if link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
@@ -984,18 +1124,23 @@ int main(void)
    return 0;
 }
 !
+   then
+      :
+   else
+      feat_bail_required IDNA
+   fi
 else
    echo '/* WANT_IDNA=0 */' >> ${h}
 fi
 
-if wantfeat IMAP_SEARCH; then
+if feat_yes IMAP_SEARCH; then
    echo '#define HAVE_IMAP_SEARCH' >> ${h}
 else
    echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
 fi
 
-if wantfeat REGEX; then
-   link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
+if feat_yes REGEX; then
+   if link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
 int main(void)
@@ -1009,11 +1154,16 @@ int main(void)
    return !(status == REG_NOMATCH);
 }
 !
+   then
+      :
+   else
+      feat_bail_required REGEX
+   fi
 else
    echo '/* WANT_REGEX=0 */' >> ${h}
 fi
 
-if wantfeat READLINE; then
+if feat_yes READLINE; then
    __edrdlib() {
       link_check readline "for readline(3) (${1})" \
          '#define HAVE_READLINE' "${1}" << \!
@@ -1052,11 +1202,11 @@ int main(void)
    }
 
    __edrdlib -lreadline ||
-      __edrdlib '-lreadline -ltermcap'
+      __edrdlib '-lreadline -ltermcap' || feat_bail_required READLINE
    [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
-if wantfeat EDITLINE && [ -z "${have_readline}" ]; then
+if feat_yes EDITLINE && [ -z "${have_readline}" ]; then
    __edlib() {
       link_check editline "for editline(3) (${1})" \
          '#define HAVE_EDITLINE' "${1}" << \!
@@ -1085,15 +1235,16 @@ int main(void)
    }
 
    __edlib -ledit ||
-      __edlib '-ledit -ltermcap'
+      __edlib '-ledit -ltermcap' || feat_bail_required EDITLINE
    [ -n "${have_editline}" ] && WANT_TABEXPAND=0
 fi
 
-if wantfeat NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
+if feat_yes NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
       [ -n "${have_c90amend1}" ]; then
    have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
 else
+   feat_bail_required NCL
    echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
 fi
 
@@ -1103,19 +1254,19 @@ if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
    have_cle=1
 fi
 
-if [ -n "${have_cle}" ] && wantfeat HISTORY; then
+if [ -n "${have_cle}" ] && feat_yes HISTORY; then
    echo '#define HAVE_HISTORY' >> ${h}
 else
    echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
-if [ -n "${have_cle}" ] && wantfeat TABEXPAND; then
+if [ -n "${have_cle}" ] && feat_yes TABEXPAND; then
    echo '#define HAVE_TABEXPAND' >> ${h}
 else
    echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
-if wantfeat SPAM; then
+if feat_yes SPAM; then
    echo '#define HAVE_SPAM' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
       echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
@@ -1124,26 +1275,26 @@ else
    echo '/* WANT_SPAM=0 */' >> ${h}
 fi
 
-if wantfeat DOCSTRINGS; then
+if feat_yes DOCSTRINGS; then
    echo '#define HAVE_DOCSTRINGS' >> ${h}
 else
    echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
-if wantfeat QUOTE_FOLD &&\
+if feat_yes QUOTE_FOLD &&\
       [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
-if wantfeat COLOUR; then
+if feat_yes COLOUR; then
    echo '#define HAVE_COLOUR' >> ${h}
 else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
-if wantfeat MD5; then
+if feat_yes MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
    echo '/* WANT_MD5=0 */' >> ${h}
@@ -1205,7 +1356,7 @@ ${rm} -f ${tmp}
 # Create the real mk.mk
 ${rm} -rf ${tmp0}.* ${tmp0}*
 printf 'OBJ_SRC = ' >> ${mk}
-if nwantfeat AMALGAMATION; then
+if feat_no AMALGAMATION; then
    echo *.c >> ${mk}
    echo 'OBJ_DEP =' >> ${mk}
 else
