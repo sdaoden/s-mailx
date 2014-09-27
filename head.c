@@ -1271,11 +1271,13 @@ subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
       { 3, "aw:" }, { 5, "antw:" }, /* de */
       { 0, "" }
    };
-   char *re_st, *re_st_x;
+
+   bool_t any = FAL0;
+   char *orig_s = s, *re_st = NULL, *re_st_x;
    size_t re_l;
    NYD_ENTER;
 
-   if ((re_st = re_st_x = ok_vlook(reply_strings)) != NULL &&
+   if ((re_st_x = ok_vlook(reply_strings)) != NULL &&
          (re_l = strlen(re_st_x)) > 0) {
       re_st = ac_alloc(++re_l * 2);
       memcpy(re_st, re_st_x, re_l);
@@ -1291,6 +1293,7 @@ jouter:
       for (pp = ignored; pp->len > 0; ++pp)
          if (is_asccaseprefix(pp->dat, s)) {
             s += pp->len;
+            any = TRU1;
             goto jouter;
          }
 
@@ -1301,6 +1304,7 @@ jouter:
          while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
             if (is_asccaseprefix(cp, s)) {
                s += strlen(cp);
+               any = TRU1;
                goto jouter;
             }
       }
@@ -1310,7 +1314,7 @@ jouter:
    if (re_st != NULL)
       ac_free(re_st);
    NYD_LEAVE;
-   return s;
+   return any ? s : orig_s;
 }
 
 FL int

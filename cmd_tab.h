@@ -158,11 +158,12 @@
    { "folders", &c_folders, (T | M | RAWLIST), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
-     DS(N_("Scroll to next/previous window of headers")) },
+     DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
    { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
      DS(N_("Like \"z\", but continues to the next flagged message")) },
-   { "headers", &c_headers, (A | MSGLIST), 0, MMNDEL
-     DS(N_("Show the current(/last/next) 18-message group of headers")) },
+   { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
+     DS(N_("Show the current group of headers "
+         "(according to <message>, if specified)")) },
    { "help", &c_help, (H | M | RAWLIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "?", &c_help, (H | M | RAWLIST), 0, 1

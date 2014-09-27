@@ -692,7 +692,8 @@ commands(void)
                size_t odot = PTR2SIZE(dot - message);
                bool_t odid = did_print_dot;
 
-               setfile(mailname, 1);
+               setfile(mailname,
+                  FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
                   did_print_dot = odid;
@@ -1142,7 +1143,7 @@ announce(int printheaders)
    dot = message + mdot - 1;
    if (printheaders && msgCount > 0 && ok_blook(header)) {
       ++_lex_inithdr;
-      c_headers(vec); /* XXX errors? */
+      print_header_group(vec); /* XXX errors? */
       _lex_inithdr = 0;
    }
    NYD_LEAVE;

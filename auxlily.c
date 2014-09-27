@@ -217,7 +217,8 @@ _nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
    char buf[80];
    union {int i; size_t z;} u;
 
-   u.i = snprintf(buf, sizeof buf, "%c [%2u] %.25s (%.16s:%u)\n",
+   u.i = snprintf(buf, sizeof buf,
+         "%c [%2" PRIu32 "] %.25s (%.16s:%" PRIu32 ")\n",
          "=><"[(nip->ni_chirp_line >> 29) & 0x3], nip->ni_level, nip->ni_fun,
          nip->ni_file, (nip->ni_chirp_line & 0x1FFFFFFFu));
    if (u.i > 0) {
@@ -1140,7 +1141,7 @@ jnobidi:
       {
          n = sz = 1;
          istab = (*cp == '\t');
-         isrepl = !(istab || isprint((uc_it)*cp));
+         isrepl = !(istab || isprint((uc_i)*cp));
       }
 
       if (n > col)
@@ -1676,7 +1677,7 @@ do {\
    if (__xl.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt lower canary: 0x%02X: %s, line %u",\
+      alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    __xu.p_p = __xc;\
@@ -1692,11 +1693,11 @@ do {\
    if (__xu.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt upper canary: 0x%02X: %s, line %u",\
+      alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    if (BAD)\
-      alert("   ..canary last seen: %s, line %u",\
+      alert("   ..canary last seen: %s, line %" PRIu16 "",\
          __xc->mc_file, __xc->mc_line);\
 } while (0)
 
@@ -1748,7 +1749,7 @@ FL void *
    --p.p_c;
    if (p.p_c->mc_isfree) {
       fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
-         "\tLast seen: %s, line %d\n",
+         "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
    }
@@ -1842,7 +1843,7 @@ FL void
    --p.p_c;
    if (p.p_c->mc_isfree) {
       fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
-         "\tLast seen: %s, line %d\n",
+         "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jleave;
    }
@@ -1884,7 +1885,7 @@ smemreset(void)
    _mem_free = NULL;
 
    if (options & OPT_DEBUG)
-      fprintf(stderr, "smemreset(): freed %" ZFMT " chunks/%" ZFMT " bytes\n",
+      fprintf(stderr, "smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n",
          c, s);
    NYD_LEAVE;
 }
@@ -1909,8 +1910,8 @@ c_smemtrace(void *v)
    }
 
    fprintf(fp, "Memory statistics:\n"
-      "  Count cur/peek/all: %7" ZFMT "/%7" ZFMT "/%10" ZFMT "\n"
-      "  Bytes cur/peek/all: %7" ZFMT "/%7" ZFMT "/%10" ZFMT "\n\n",
+      "  Count cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "  Bytes cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n\n",
       _mem_acur, _mem_amax, _mem_aall, _mem_mcur, _mem_mmax, _mem_mall);
 
    fprintf(fp, "Currently allocated memory chunks:\n");
@@ -1919,7 +1920,7 @@ c_smemtrace(void *v)
       xp = p;
       ++xp.p_c;
       _HOPE_GET_TRACE(xp, isbad);
-      fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+      fprintf(fp, "%s%p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
          (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
          (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)), p.p_c->mc_file,
          p.p_c->mc_line);
@@ -1931,7 +1932,7 @@ c_smemtrace(void *v)
          xp = p;
          ++xp.p_c;
          _HOPE_GET_TRACE(xp, isbad);
-         fprintf(fp, "%s%p (%5" ZFMT " bytes): %s, line %u\n",
+         fprintf(fp, "%s%p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
             (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
             (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
             p.p_c->mc_file, p.p_c->mc_line);
@@ -1963,7 +1964,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
       if (isbad) {
          anybad = TRU1;
          fprintf(stderr,
-            "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+            "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
             xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
             p.p_c->mc_file, p.p_c->mc_line);
       }
@@ -1977,7 +1978,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
          if (isbad) {
             anybad = TRU1;
             fprintf(stderr,
-               "! CANARY ERROR: %p (%5" ZFMT " bytes): %s, line %u\n",
+               "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
                xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
                p.p_c->mc_file, p.p_c->mc_line);
          }

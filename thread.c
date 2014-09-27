@@ -520,7 +520,7 @@ c_thread(void *vp)
    }
 
    if (vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
-      rv = c_headers(vp);
+      rv = print_header_group(vp);
    else
       rv = 0;
    NYD_LEAVE;
@@ -542,7 +542,7 @@ c_unthread(void *vp)
       m->m_collapsed = 0;
 
    if (vp && !inhook && ok_blook(header))
-      rv = c_headers(vp);
+      rv = print_header_group(vp);
    else
       rv = 0;
    NYD_LEAVE;
@@ -795,7 +795,7 @@ jmethok:
    }
    ac_free(ms);
    i = ((vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
-         ? c_headers(msgvec) : 0);
+         ? print_header_group(msgvec) : 0);
 jleave:
    NYD_LEAVE;
    return i;

@@ -1607,22 +1607,23 @@ do {\
       FMT_CC_AND_BCC();
 
    if (hp->h_subject != NULL && (w & GSUBJECT)) {
-      fwrite("Subject: ", sizeof (char), 9, fo);
-      if (!ascncasecmp(hp->h_subject, "re: ", 4)) {/* TODO localizable */
-         fwrite("Re: ", sizeof(char), 4, fo);
-         if (strlen(hp->h_subject + 4) > 0 &&
-               xmime_write(hp->h_subject + 4, strlen(hp->h_subject + 4), fo,
-                  (!nodisp ? CONV_NONE : CONV_TOHDR),
+      char *sub = subject_re_trim(hp->h_subject);
+      size_t sublen = strlen(sub);
+
+      fwrite("Subject: ", sizeof(char), 9, fo);
+      if (sub != hp->h_subject) {
+         fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
+         if (sublen > 0 &&
+               xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
                   (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
             goto jleave;
-      } else if (*hp->h_subject != '\0') {
-         if (xmime_write(hp->h_subject, strlen(hp->h_subject), fo,
-               (!nodisp ? CONV_NONE : CONV_TOHDR),
+      } else if (*sub != '\0') {
+         if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
                (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
             goto jleave;
       }
       ++gotcha;
-      fwrite("\n", sizeof (char), 1, fo);
+      putc('\n', fo);
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))

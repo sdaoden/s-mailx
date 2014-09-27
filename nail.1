@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" S-nail(1): v14.7.6 / 2014-08-15
-.Dd Aug 15, 2014
-.ds VV \\%v14.7.6
+.\" S-nail(1): v14.7.7 / 2014-09-27
+.Dd Sep 27, 2014
+.ds VV \\%v14.7.7
 .\"
 .ds UV \\*(UA\ \\*(XX
 .\"--MKMAN-START--
@@ -101,7 +101,8 @@
 .\" }}}
 .\"
 .\" TOC {{{
-.if d WANT_TOC \{
+.\"if d WT : '\*[.T]'html' : '\*[.T]'xhtml' \{
+.if 0 \{
 .Sh "TABLE OF CONTENTS"
 .Bl -item
 .It
@@ -113,7 +114,7 @@
 .It
 . Sx SPECIFYING MESSAGES
 .It
-. Sx URL SYNTAX AND CREDENTIAL LOOKUP
+. Sx ON URL SYNTAX AND CREDENTIAL LOOKUP
 .It
 . Sx CHARACTER SETS
 .It
@@ -230,7 +231,10 @@ first recipient's address.
 Read in the contents of the user's
 .Ev MBOX
 (or the specified file) for processing;
-when \*(UA is quit, it writes undeleted messages back to this file.
+when \*(UA is quit, it writes undeleted messages back to this file
+(but be aware of the
+.Va hold
+option).
 Some special conventions are recognized for the string
 .Ar file
 which are documented for the
@@ -256,21 +260,19 @@ Print a header summary of only those messages that match the given
 .Ar spec-list ,
 then exit.
 See the section
-.Sx "Specifying messages"
+.Sx "SPECIFYING MESSAGES"
 for the format of
 .Ar spec-list .
 If the
 .Fl H
-option has been given in addition to
-.Fl L ,
-then printing of the header summary is suppressed,
-and \*(UA will instead indicate via its exit status wether
+option has been given in addition no header summary is produced,
+but \*(UA will instead indicate via its exit status wether
 .Ar spec-list
 matched any messages (`0') or not (`1');
-note that messages are forcefully suppressed, then, and unless verbosity
-is explicitly enabled (e.g., by using the
-.Fl v
-option).
+note that any verbose output is suppressed in this mode and must instead
+be enabled explicitly (e.g., by using the option
+.Fl v Ns
+\&.)
 .It Fl N
 Unset the
 .Va header
@@ -381,7 +383,7 @@ using it is a smooth experience.
 The default global \*(UR file already bends those standard settings
 a bit towards more user friendliness and safety, e.g., it sets the
 .Va hold
-option in order to suppress the automatic moving of messages to
+option in order to suppress the automatic move of messages to
 .Ev MBOX
 that otherwise would occur (see
 .Sx MESSAGE STATES )
@@ -398,8 +400,24 @@ documented also for
 .Ic file )
 is not enabled.
 The section
-.Sx "EXAMPLES"
+.Sx EXAMPLES
 contains some further suggestions.
+.Pp
+.\" TODO v15-compat
+Please note that \*(UA is a program in a transition phase.
+E.g., until v15.0 \*(UA will continue to generate messages that do
+not comply to the paired RFC 2047 / RFC 2231 MIME encoding rules but
+instead to only RFC 2047 (but without obeying the clarifications added
+on top of the older RFC 1522).
+This means that, e.g., users of
+.Xr mutt 1
+will have to set their
+.Va rfc2047_parameters
+option to `yes' in order to be able to see, e.g., attachment filenames
+in international character sets.
+That is \(em using attachment filenames in whatever language is
+possible, but a modern MUA may need some hints in order to be able to
+decode the name to its original form.
 .\" }}}
 .\"
 .\" .Ss "Sending mail" {{{
@@ -425,7 +443,8 @@ Typing `control-D' (`^D') at the beginning of an empty line leaves
 compose mode and causes the message to be send, whereas typing
 `control-C' (`^C') twice will abort the current letter (saving the
 contents which yet have been collected in
-.Ev DEAD Ns . Ns )
+.Ev DEAD Ns
+).
 .Pp
 A number of options can be used to alter default behavior; e.g.,
 .Ic "set editalong"
@@ -436,7 +455,7 @@ and the
 .Va dot
 option will allow leaving compose mode by writing a line consisting
 solely of a dot (`.').
-Very importantly, though, is to define which
+Very important, though, is to define which
 .Sx "CHARACTER SETS"
 may be used when sending messages, usually by setting the option
 .Va sendcharsets
@@ -448,13 +467,13 @@ special conventions are recognized, see the
 .Ic file
 command for the documentation.
 The section
-.Sx "EXAMPLES"
+.Sx EXAMPLES
 contains an example configuration for sending messages via some of the
 well-known public mail providers.
 .Pp
-Message recipients (as specified in `To:', `Cc:' or `Bcc:') may not only
-be email addressees but can also be names of mailboxes and even
-complete pipe-command specifications.
+Message recipients (as specified on the command line or defined in
+`To:', `Cc:' or `Bcc:') may not only be email addressees but can also be
+names of mailboxes and even complete shell command pipe specifications.
 Proper quoting may be necessary, e.g., to embed whitespace characters.
 The rules are:
 Any name which starts with a `|' (vertical bar) character
@@ -496,12 +515,11 @@ itself.
 .Ss "Reading mail"
 When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
-When used like that \*(UA checks mail out of the user's system mailbox,
-then prints out a one line header of each message found.
-Unless the
+When used like that the user's system mailbox is read in and a one line
+header of each message found therein is printed.
+Note that if the mailbox is empty and the
 .Va emptystart
-option is set \*(UA will only print a notification message and exit if
-the mailbox is empty.
+option is not set, then only a message is printed and \*(UA exits.
 .Pp
 At the
 .Va prompt
@@ -538,7 +556,7 @@ e.g., `p:u' will display all unread messages, `p.' will print the dot,
 `p 1 5' will print the messages 1 and 5 and `p-' and `p+' will print the
 last and the next message, respectively.
 Dependent upon the configuration a
-.Sx "Command line editor"
+.Sx "COMMAND LINE EDITOR"
 aims at making user experience with the many
 .Sx "COMMANDS"
 a bit nicer.
@@ -557,9 +575,9 @@ After examining a message the user can also
 .Ic delete
 (`d') the message,
 .Ic reply
-(`r') to it or
+(`r') to the sender and all recipients or
 .Ic Reply
-(`R') to exclusively to it's originator.
+(`R') exclusively to the sender.
 Deletion causes the \*(UA program to forget about the message.
 This is not irreversible;
 one can
@@ -573,13 +591,13 @@ again.
 .Pp
 To end a mail processing session one may either issue
 .Ic quit
-(`q') to cause a full program exit, which includes the possible
-automatic move of read messages to
+(`q') to cause a full program exit, which possibly includes
+automatic moving of read messages to
 .Ev MBOX
 as well as updating the \*(OPal command line editor history file,
-or perform the command
+or use the command
 .Ic exit
-(`x') instead, which will not perform any of these actions.
+(`x') instead in order to prevent any of these actions.
 .\" }}}
 .\"
 .\" .Ss "Viewing HTML mail and MIME attachments" {{{
@@ -993,9 +1011,9 @@ criterion then the last of those criteria is used.
 .El
 .\" }}}
 .\"
-.\" .Sh URL SYNTAX AND CREDENTIAL LOOKUP {{{
-.Sh URL SYNTAX AND CREDENTIAL LOOKUP
-\*(IN For accessing protocol-specific resources, like an IMAP mailbox,
+.\" .Sh ON URL SYNTAX AND CREDENTIAL LOOKUP {{{
+.Sh ON URL SYNTAX AND CREDENTIAL LOOKUP
+\*(IN For accessing protocol-specific resources, like a POP3 mailbox,
 usage of compact and standardized Uniform Resource Locators
 (URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
@@ -1020,7 +1038,7 @@ On the other hand, values given in variables are expected not to be URL
 percent encoded.
 .Pp
 Many variable options of \*(UA exist in multiple versions, called
-variable-chains for the rest of this document: the plain `variable' as
+variable chains for the rest of this document: the plain `variable' as
 well as `variable-HOST' and `variable-USER@HOST'.
 Here `HOST' indeed means `server:port' if a `port' had been specified in
 the respective URL, otherwise it refers to the plain `server'.
@@ -1036,11 +1054,11 @@ the user had been found differently, to lookup the variable chain
 is defined, then wether `smtp-use-starttls-our.house' exists before
 finally ending up looking at the plain variable itself.
 .Pp
-\*(UA adheres to the following logic scheme when dealing with the
+\*(UA obeys the following logic scheme when dealing with the
 necessary credential informations of an account:
 .Bl -bullet -offset indent
 .It
-If no `USER' is given the variables
+If no `USER' has been given in the URL the variables
 .Va user-HOST
 and
 .Va user
@@ -1075,7 +1093,7 @@ that specifying the password in the URL is only syntactic sugar for the
 user, it'll never be part of an URL that \*(UA uses itself \(en,
 then if the `USER' has been found through the \*(OPal
 .Pa .netrc
-then that may have already provided the password, too.
+file lookup then that may have already provided the password, too.
 Otherwise the variable chain
 .Va password-USER@HOST ,
 .Va password-HOST ,
@@ -1120,12 +1138,14 @@ found in `From:' (or `Sender:').
 In unusual cases multiple and different `USER' and `HOST' combinations
 may therefore be involved when looking up values that make up an SMTP
 account; on the other hand those unusual cases become possible.
-The usual case may be as short as:
+The usual case may be as short as (the section
+.Sx EXAMPLES
+may also be worth reading):
 .Pp
-.Dl set smtp=USER:PASS@HOST smtp-auth=plain smtp-use-starttls \e
+.Dl set smtp=smtp://USER:PASS@HOST smtp-auth=plain smtp-use-starttls \e
 .Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
 .\" }}}
-.\"
+.\" TODO reviewed until here TODO for v14.8, first..
 .\" .Sh CHARACTER SETS {{{
 .Sh CHARACTER SETS
 \*(OP \*(UA detects the character set of the terminal by using
@@ -1137,8 +1157,10 @@ locale setting
 should give an overview); the \*(UA internal variable
 .Va ttycharset
 will be set to the detected terminal character set accordingly
-and will thus show up in the output of the command
-.Ic set .
+and will thus show up in the output of the commands
+.Ic set
+and
+.Ic varshow .
 .Pp
 However, a user supplied
 .Va ttycharset
@@ -1240,6 +1262,7 @@ therefore not be available.
 For more information see the documentation of the options
 .Va emptystart ,
 .Va history-gabby ,
+.Va history-gabby-persist ,
 .Va line-editor-disable ,
 .Va NAIL_HISTFILE
 and
@@ -1757,7 +1780,7 @@ The \*(OPally supported protocols are `imap' (IMAP v4r1), `imaps'
 with SSL/TLS encrypted transport).
 The `[/path]' part is valid only for IMAP; there it defaults to `INBOX'.
 Also see the section
-.Sx "URL SYNTAX AND CREDENTIAL LOOKUP" .
+.Sx "ON URL SYNTAX AND CREDENTIAL LOOKUP" .
 .Pp
 \*(OU If `user' contains special characters, in particular `/' or `%',
 they must be escaped in URL notation \(en the command
@@ -1866,9 +1889,12 @@ Also see
 .Dl ? ghost ls '!ls -latro'
 .Dl ? ls /usr/local
 .It Ic headers
-(h) Lists the current range of headers, which is an 18-message group.
-If a `+' argument is given the next 18-message group is printed,
-likewise the previous is printed if the argument was `-'.
+(h) Show the current group of headers, the size of which depends on
+the variable
+.Va screen .
+If a message-specification is given the group of headers containing the
+first message therein is shown and the message at the top of the screen
+becomes the new dot.
 .It Ic help
 A synonym for
 .Ic \&? .
@@ -2065,7 +2091,7 @@ to unlock the next attempt.
 See
 .Va netrc-lookup
 and the section
-.Sx "URL SYNTAX AND CREDENTIAL LOOKUP" ;
+.Sx "ON URL SYNTAX AND CREDENTIAL LOOKUP" ;
 the section
 .Sx THE .netrc FILE
 documents the file format in detail.
@@ -3240,7 +3266,7 @@ original `Content-Type:' will not be overwritten.
 \*(IN \*(OP Used to control usage of the users
 .Pa .netrc
 file for lookup of account credentials, as documented in the section
-.Sx "URL SYNTAX AND CREDENTIAL LOOKUP"
+.Sx "ON URL SYNTAX AND CREDENTIAL LOOKUP"
 and for the command
 .Ic netrc ;
 the section
@@ -3488,7 +3514,7 @@ also left as an excercise to the user.
   Va agent-shell-lookup
 \*(IN \*(OP Account passwords can be fetched via an external agent
 program in order to permit encrypted password storage \(en see
-.Sx "URL SYNTAX AND CREDENTIAL LOOKUP"
+.Sx "ON URL SYNTAX AND CREDENTIAL LOOKUP"
 for more on credential lookup.
 If this is set then the content is interpreted as a shell command the
 output of which (with newline characters removed) is treated as the
@@ -4012,6 +4038,20 @@ When a MIME message part of type `CONTENT/SUBCONTENT' (normalized to
 lowercase) type is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
+The special value `@' can be used to force interpretation of the message
+part as plain text, e.g., `set pipe-application/pgp-signature=@' will
+henceforth treat signatures as plain text and display them "as is".
+.Pp
+Also, if a shell command is prefixed with `@', then the command will
+only be used to prepare the MIME message part if the message is displayed
+by itself, but not when multiple messages are displayed at once.
+.Pp
+Finally, if a shell command is prefixed with `@&', then, in addition
+to what has been described for the plain `@' shell command prefix, the
+command will be run asynchronously, i.e., without blocking \*(UA, which
+may be a handy way to display a, e.g., PDF file while also continuing
+to read the mail message.
+.Pp
 Some information about the MIME part to be displayed is embedded into
 the environment of the shell command:
 .Bl -tag -width ".It Ev NAIL_FILENAME_GENERATED"
@@ -4032,21 +4072,6 @@ MIME content-type; not only then identical to
 .Ev NAIL_CONTENT
 otherwise.
 .El
-.Pp
-The special value `@' can be used to force interpretation of the message
-part as plain text, e.g., `set pipe-application/pgp-signature=@' will
-henceforth treat signatures as plain text and display them "as is".
-.Pp
-Also, if a normal shell command is prefixed with `@', then the command
-will only be used to prepare the MIME message part if the message is
-displayed by itself, but not when multiple messages are displayed at
-once.
-.Pp
-Finally, if a normal shell command is prefixed with `@&', then, in
-addition to what has been described for the plain `@' shell command
-prefix, the command will be run asynchronously, i.e., without blocking
-\*(UA, which may be a handy way to display a, e.g., PDF file while also
-continuing to read the mail message.
 .It Va pipe-EXTENSION
 This is identical to
 .Va pipe-CONTENT/SUBCONTENT
@@ -4855,6 +4880,11 @@ set ssl-verify=strict
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
 
+# When sending messages, wait until the Mail-Transfer-Agent finishs.
+# Only like this you'll be able to see errors reported through the
+# exit status of the MTA (including the builtin SMTP one)!
+set sendwait
+
 # Don't try to load any external mime.types(5) descriptions
 set mimetypes-load-control
 
@@ -4874,8 +4904,8 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager history-gabby mime-counter-evidence=2 \e
-    prompt="\033[31m?\?[\$ \@]\& \033[0m" \e
+    colour-pager crt= history-gabby mime-counter-evidence=2 \e
+    prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
     NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1
 
 # When `p'rinting messages, show only these headers
@@ -4903,6 +4933,10 @@ account XandeX {
        hostname=yaXXex.com smtp-hostname=
    set from="Your Name <youremail@domain>"
 }
+
+# Create some new commands so that, e.g., `ls /tmp' will..
+ghost ls '!ls -latr'
+ghost ps '!ps -xo user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args'
 .Ed
 .Pp
 When storing passwords in \*(ur appropriate permissions should be set on

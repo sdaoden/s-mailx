@@ -820,11 +820,16 @@ cache_dequeue(struct mailbox *mp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      mp->mb_imap_mailbox = urlxdec(dp->d_name);
+      /* FIXME MUST BLOCK SIGNALS IN ORDER TO ENSURE PROPER RESTORE!
+       * (but wuuuuh, what a shit!) */
+      mp->mb_imap_mailbox = sstrdup(urlxdec(dp->d_name));
       dequeue1(mp);
+      {  char *x = mp->mb_imap_mailbox;
+         mp->mb_imap_mailbox = oldbox;
+         free(x);
+      }
    }
    closedir(dirp);
-   mp->mb_imap_mailbox = oldbox;
 jleave:
    NYD_LEAVE;
    return rv;

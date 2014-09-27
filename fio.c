@@ -1293,7 +1293,7 @@ sopen(struct sock *sp, struct url *urlp)
       if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
-            strcpy(hbuf, "unknown host");
+            memcpy(hbuf, "unknown host", sizeof("unknown host"));
          fprintf(stderr, _("%sConnecting to %s:%s ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }

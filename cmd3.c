@@ -942,7 +942,7 @@ c_messize(void *v)
          printf("%ld", mp->m_xlines);
       else
          putchar(' ');
-      printf("/%lu\n", (ul_it)mp->m_xsize);
+      printf("/%lu\n", (ul_i)mp->m_xsize);
    }
    NYD_LEAVE;
    return 0;
@@ -1324,7 +1324,9 @@ c_newmail(void *v)
 #ifdef HAVE_IMAP
          (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
 #endif
-         (val = setfile(mailname, FEDIT_NEWMAIL)) == 0) {
+         (val = setfile(mailname,
+            FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
+         ) == 0) {
       mdot = getmdot(1);
       setdot(message + mdot - 1);
    }
@@ -1712,7 +1714,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxenc(in, FAL0);
 
-      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;
@@ -1728,7 +1730,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxdec(in);
 
-      printf(" in: <%s> (%" ZFMT " bytes)\nout: <%s> (%" ZFMT " bytes)\n",
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;

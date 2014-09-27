@@ -7,12 +7,11 @@ functionality of the POSIX mailx(1) command and offers (mostly optional)
 extensions for line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
 It is usable as a mail batch language.
 S-nail is a derivative of Heirloom mailx, formerly known as nail, which
-itself is based upon Berkeley that has a history back to the year 1978.
+itself is based upon Berkeley Mail that has a history back to the 70s.
 
-Please refer to the file INSTALL for build, install and codebase state
-remarks, and to NEWS for release update information.
-The file THANKS mentions people who have helped improving S-nail -
-thank you!
+Please refer to the file INSTALL for build and installation remarks,
+and to NEWS for release update information.  The file THANKS mentions
+people who have helped improving S-nail and deserve acknowledgement.
 
 S-nail has a git(1) repository [1] (browsable [2]) and regulary produces
 release tarballs [3], which can be addressed directly (e.g., via `curl
@@ -24,7 +23,7 @@ and GMANE.org added s-nail-users@ to their archive [8] -- thank you!
   [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
   [2] <http://sourceforge.net/p/s-nail/code/>
   [3] <https://sourceforge.net/projects/s-nail/files/?source=navbar>
-  [4] <https://downloads.sourceforge.net/project/s-nail/s-nail-MAJ_MIN_SUB.tar.?z>
+  [4] <https://downloads.sourceforge.net/project/s-nail/s-nail-VERSION.tar.xz>
   [5] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
   [6] <mailto:s-nail-users@lists.sourceforge.net>
   [7] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
@@ -32,14 +31,14 @@ and GMANE.org added s-nail-users@ to their archive [8] -- thank you!
 
 The S-nail(1) git(1) repository consists of five branches:
 
-- master: rooted on top of *heirloom*, this adapts Heirloom mailx(1) as
+- master: rooted on top of [heirloom], this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
   It is updated once a release is made, and will otherwise only see
   cherry-picked bugfixes or very stable improvements.
 
-- next: rooted on top of *master*, this consists of a furious mixture of
-  commits that eventually end up in *master*; it is a snapshot of the
-  *crawl* branch, taken once that seems to be quite stable.
+- next: rooted on top of [master], this consists of a furious mixture of
+  commits that eventually end up in [master]; it is a snapshot of the
+  [crawl] branch, taken once that seems to be quite stable.
 
 - crawl: developer chaos, nothing for normal people.
 
@@ -57,13 +56,14 @@ likely is interested in, can be accomplished like that:
   $ git remote add origin -t master git://git.code.sf.net/p/s-nail/code
   $ git fetch -v
   $ git checkout master
+  $ make CONFIG=MAXIMAL install
 
 The S-nail(1) heraldic animal `snailmail.jpg' has been found at
 <http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg>.
 Thank you!
 
-AUTHORS (file content)
-======================
+AUTHORS
+=======
 
 Berkeley Mail was (according to def.h) developed by Kurt Shoens, dated
 March 25, 1978. I very much regret that it seems impossible to include

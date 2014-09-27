@@ -173,8 +173,8 @@ jlearn:
          if (options & OPT_VERB)
             fprintf(stderr,
                _("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
-               _spam_comms[sa], (ul_it)vc.mno + 1,
-               (ul_it)vc.mp->m_size, (ul_it)maxsize);
+               _spam_comms[sa], (ul_i)vc.mno + 1,
+               (ul_i)vc.mp->m_size, (ul_i)maxsize);
          continue;
       }
       if ((ok = _spam_interact(&vc)) == FAL0)

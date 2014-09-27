@@ -57,8 +57,8 @@
 
 #include "version.h"
 
-/* Verify that our size_t ZFMT format string has the correct type size */
-__ZFMT_CTA();
+/* Verify that our size_t PRI[du]Z format string has the correct type size */
+PRIxZ_FMT_CTA();
 
 struct a_arg {
    struct a_arg   *aa_next;
@@ -76,7 +76,7 @@ VL char const        month_names[12 + 1][4] = {
 VL char const        uagent[] = UAGENT;
 VL char const        version[] = VERSION;
 /*VL char const        features[]; The "feature string" comes from config.h */
-VL uc_it const       class_char[] = {
+VL uc_i const        class_char[] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
@@ -356,12 +356,13 @@ _setup_vars(void)
    cp = (myname == NULL) ? getenv("USER") : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(_("Cannot associate a name with uid %lu"), (ul_it)uid);
-   if (cp == NULL)
+      panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
+   if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
-   else if ((pw = getpwnam(cp)) == NULL)
-      panic(_("`%s' is not a user of this system"), cp);
-   else {
+   else if ((pw = getpwnam(cp)) == NULL) {
+      alert(_("`%s' is not a user of this system"), cp);
+      exit(67); /* XXX BSD EX_NOUSER */
+   } else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
          options |= OPT_u_FLAG;
