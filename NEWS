@@ -56,6 +56,14 @@ NOTES, ChangeLog (packager-affine)
   (A few tests have been added, to test the QP issue and to test the RFC
   2047 MIME rewrite; which is still intermediate though.)
 
+- 2014-09-27: add-on:
+  you may see more warnings for format strings which use the
+  "size_t" integer type, and in the future even more of these will
+  happen -- please read `INSTALL' again for more on that, but be
+  ensured that we still compile-time-assert that the format
+  strings fits the type size.  (Enable ISO C99 mode for your
+  compiler will cause any warnings to vanish.)
+
 ChangeLog
 ^^^^^^^^^
 
