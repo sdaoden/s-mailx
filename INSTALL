@@ -1,9 +1,10 @@
 I n s t a l l i n g  S - n a i l
 ================================
 
-1. Compilation
-2. Notes for S-nail(1) v14.7*
-3. Current codebase state
+1.  Compilation
+1.1 How can i enable debugging?
+2.  Notes for S-nail(1) v14.7*
+3.  Current codebase state
 
 1. Compilation
 --------------
@@ -104,6 +105,30 @@ systems, including all BSD systems, Linux, Solaris ...
 And if all else fails you can also pass in prefilled $LIBS and $INCS:
 
   $ INCS=-I/mypath/lib LIBS=-l/mypath/iconv make install
+
+1.1 How can i enable debugging?
+-------------------------------
+
+Please ensure WANT_DEBUG=yes is enabled during compilation, as in
+
+  $ make CONFIG=MAXIMAL WANT_DEBUG=yes
+
+If WANT_AUTOCC is enabled then the build system should automatically
+adjust the compiler flags accordingly, please see `make.rc' for more.
+There is also a `devel'opment target which does most of this by itself:
+
+  $ make devel
+
+WANT_DEBUG (`devel') will enable memory bound debug canaries and
+Not-Yet-Dead function graph listings etc., all of which would give their
+appearance on the standard error channel; because this can be a quite
+long output, then, it is possibly a good idea to redirect it to a file:
+
+  $ s-nail -vv 2> error.log
+
+Should you really discover any problems with S-nail it would be very
+useful for development if you would contact s-nail-users@!
+Thank you!
 
 2. Notes for S-nail(1) v14.7*
 -----------------------------
