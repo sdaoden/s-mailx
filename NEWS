@@ -15,6 +15,95 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.7, 2014-09-27
+-------------------
+
+Thanks to Jan Chaloupka, Frantisek Holop, Matthias Kilian and
+Peter Hofmann.  We welcome Frantisek, Matthias and Peter in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- 1. No need to change anything.
+
+  2.1. The build system has been reworked a bit, `conf.rc' has been
+       renamed to `make.rc'.
+  2.2. It is now possible to say 1/yes/true 0/no/false,
+       case-insensitive, e.g., "WANT_ICONV=yes".
+  2.3. Some options can be "require"d: a failure to fulfill the request
+       causes the configuration step to fail, e.g.,
+
+        $ make WANT_ICONV=require WANT_SMTP=require WANT_SSL=require all
+
+       Should fail unless all of iconv(3), BSD sockets and OpenSSL
+       are available.
+  2.4. This can be improved.  (E.g., there should be warnings if an
+       option is required that doesn't support this mode.  Or -- all
+       options should be requireable.  Hm.)
+  [topic/mandconf]
+
+- The build system should now correctly auto-detect $MAILSPOOL and
+  $SENDMAIL!?! [c1a51bb]
+
+  P.S.: why are you guys setting those explicitly?
+  It is a BUG if that doesn't work automatically!
+
+  P.P.S.: Packager heroes! Packager heroes!! Packager heroes!!!
+
+  P.P.P.S.: .. and a nice weekend ;)
+
+- "make test" will now regulary test S/MIME when available.
+  (A few tests have been added, to test the QP issue and to test the RFC
+  2047 MIME rewrite; which is still intermediate though.)
+
+ChangeLog
+^^^^^^^^^
+
+- FIXES: Maildir folders will now display correct content even after
+  `newmail'.  (Matthias Kilian; Frantisek Holop for nudging!) [158cfb6]
+
+  Also *newmail* was somewhat broken since introduction of `File'
+  command (missed updating a function argument back then). [58017a8]
+
+  And unfortunately the readonly state of a folder could be forgotten
+  after `newmail', too. [0cd5c9e, 0679ee4]
+
+- *quote-fold*: fix faulty line length calculation when a line started
+  with a lot of leading whitespace. [731b8c9]
+
+- Fix: calculation of required memory for quoted-printable encoding was
+  faulty for very long input that forces soft newline insertions.
+  (Peter Hofmann) [c299c45, b043cfc, d105d80]
+
+- `headers' was falsely documented. (Jan Chaloupka) [ee76a42]
+
+- Complete rewrite of RFC 2047 header encoding.
+  (Credit to Peter Hofmann because he peeked shitty MIME handling)
+  [0add96e]
+
+  Remark:
+  S-nail doesn't yet support RFC 2231 and thus our RFC 2047 support is
+  incomplete; also stateful character encodings, like ISO-2022-JP, are
+  still not supported and thus we're in fact non-compliant.
+  The same that it ever was.
+  Well, we're not alone, and e.g. mutt(1) offers
+  a "rfc2047_parameters=yes" option to deal..., also with us.
+  I really hate to say that.
+  But of course we all know that the mail standards are inherently
+  braindead anyway, right?  O-ho, yes, they are like that.
+  I hope S-nail isn't part of the problem no more in 2016.
+
+- Oh, the [topic/retrim] in v14.7.6 actually missed a single occurance
+  of fixed Re: checking! [ed1c865]
+
+- Allow $USER to be set to the empty string and no longer abort(3) if
+  the user is not known, but instead exit(3) with value 67 (BSD
+  EX_NOUSER constant from /usr/include/sysexits.h).
+
+    $ USER= LC_ALL=C s-nail ...
+
+  [a846fdb]
+
 v14.7.6, 2014-08-15
 -------------------
 
