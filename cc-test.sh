@@ -87,7 +87,7 @@ cc_all_configs() {
 # Read mailbox $2, strip non-constant headers and MIME boundaries, query the
 # cksum(1) of the resulting data and compare against the checksum $3
 cksum_test() {
-   tid=$1 f=$2 s=$3
+   tid=${1} f=${2} s=${3}
    printf "${tid}: "
    csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
          -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" \
@@ -115,7 +115,7 @@ t_behave() {
    ${rm} -f "${MBOX}"
    printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
       MAILRC=/dev/null "${SNAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
-   cksum_test behave:1 "${MBOX}" '4214021069 15'
+   cksum_test behave:001 "${MBOX}" '4214021069 15'
 
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
    # TODO for this to be testable we need a way to echo a variable
@@ -286,7 +286,7 @@ __behave_ifelse() {
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    echo WARNING: behave_smime is yet debug only and not generalized
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
-   ${cat} <<-_EOT > t.conf
+   ${cat} <<-_EOT > ./t.conf
 		[ req ]
 		default_bits           = 1024
 		default_keyfile        = keyfile.pem
@@ -307,21 +307,21 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 		[ req_attributes ]
 		challengePassword =
 	_EOT
-   openssl req -x509 -nodes -days 3650 -config t.conf \
-      -newkey rsa:1024 -keyout tkey.pem -out tcert.pem >/dev/null 2>&1
-   ${rm} -f t.conf
-   ${cat} tkey.pem tcert.pem > tpair.pem
+   openssl req -x509 -nodes -days 3650 -config ./t.conf \
+      -newkey rsa:1024 -keyout ./tkey.pem -out ./tcert.pem >/dev/null 2>&1
+   ${rm} -f ./t.conf
+   ${cat} ./tkey.pem ./tcert.pem > ./tpair.pem
 
    printf "behave:s/mime:sign/verify: "
    echo bla |
    MAILRC=/dev/null ./s-nail -n# \
-      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./VERIFY
    # TODO CHECK
    printf 'verify\nx\n' |
    MAILRC=/dev/null ./s-nail -n# \
-      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
       -f ./VERIFY >/dev/null 2>&1
@@ -330,33 +330,33 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    else
       ESTAT=1
       printf 'error: verification failed\n'
-      ${rm} -f ./VERIFY tkey.pem tcert.pem tpair.pem
+      ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
       return
    fi
    ${rm} -rf ./VERIFY
 
    printf "behave:s/mime:encrypt/decrypt: "
-   ${cat} <<-_EOT > tsendmail.sh
+   ${cat} <<-_EOT > ./tsendmail.sh
 		#!/bin/sh -
 		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
 	_EOT
-   chmod 0755 tsendmail.sh
+   chmod 0755 ./tsendmail.sh
 
    echo bla |
    MAILRC=/dev/null ./s-nail -n# \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    # TODO CHECK
    printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
    MAILRC=/dev/null ./s-nail -n# \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=tcert.pem -Ssmime-sign-cert=tpair.pem \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
       -f ./ENCRYPT >/dev/null 2>&1
@@ -366,7 +366,8 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
-   ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT tkey.pem tcert.pem tpair.pem
+   ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
+      ./tkey.pem ./tcert.pem ./tpair.pem
 }
 
 # t_content()
@@ -433,44 +434,44 @@ printf \
  > "${BODY}"
 
    # MIME CTE (QP) stress message subject
-SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
-'adadaddsssssssddddddddddddddddddddd'\
-'ddddddddddddddddddddddddddddddddddd'\
-'ddddddddddddddddddddddddddddddddddd'\
-'dddddddddddddddddddd Hallelulja? Od'\
-'er?? eeeeeeeeeeeeeeeeeeeeeeeeeeeeee'\
-'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'\
-'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee f'\
-'fffffffffffffffffffffffffffffffffff'\
-'fffffffffffffffffffff ggggggggggggg'\
-'ggggggggggggggggggggggggggggggggggg'\
-'ggggggggggggggggggggggggggggggggggg'\
-'ggggggggggggggggggggggggggggggggggg'\
-'gggggggggggggggg'
+SUB="Äbrä  Kä?dä=brö 	 Fü?di=bus? \
+adadaddsssssssddddddddddddddddddddd\
+ddddddddddddddddddddddddddddddddddd\
+ddddddddddddddddddddddddddddddddddd\
+dddddddddddddddddddd Hallelulja? Od\
+er?? eeeeeeeeeeeeeeeeeeeeeeeeeeeeee\
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee f\
+fffffffffffffffffffffffffffffffffff\
+fffffffffffffffffffff ggggggggggggg\
+ggggggggggggggggggggggggggggggggggg\
+ggggggggggggggggggggggggggggggggggg\
+ggggggggggggggggggggggggggggggggggg\
+gggggggggggggggg"
 
    # Three tests for MIME-CTE and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:1 "${MBOX}" '2606934084 5649'
+   cksum_test content:001 "${MBOX}" '2289641826 5632'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" -n#Sstealthmua -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:2 "${MBOX}" '2606934084 5649'
+   cksum_test content:002 "${MBOX}" '2289641826 5632'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" -nSstealthmua -a "${BODY}" -t
-   cksum_test content:3 "${MBOX}" '799758423 5648'
+   cksum_test content:003 "${MBOX}" '2898659780 5631'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua "${MBOX}"
-   cksum_test content:4 "${MBOX}" '506144051 104'
+   cksum_test content:004 "${MBOX}" '506144051 104'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
@@ -478,7 +479,7 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua
-   cksum_test content:5 "${MBOX}" '2028749685 277'
+   cksum_test content:005 "${MBOX}" '2028749685 277'
 
    ## $BODY CHANGED
 
@@ -488,16 +489,79 @@ SUB='Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
    MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua \
       -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:6 "${MBOX}" '1520300594 138'
+   cksum_test content:006 "${MBOX}" '1520300594 138'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    ${rm} -f "${MBOX}"
    LC_ALL=C ${awk} 'BEGIN{
-      for(i = 0; i < 100; ++i)
-         printf "\xF0\x90\x87\x90"
+      for(i = 0; i < 10000; ++i)
+         printf "\xC3\xBC"
+         #printf "\xF0\x90\x87\x90"
       }' |
    MAILRC=/dev/null "${SNAIL}" -nSstealthmua -s TestSubject "${MBOX}"
-   cksum_test content:7 "${MBOX}" '395042486 1361'
+   cksum_test content:007 "${MBOX}" '2747333583 61729'
+
+   ## Test some more corner cases for header bodies (as good as we can today) ##
+
+   #
+   ${rm} -f "${MBOX}"
+   echo |
+   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+      -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
+      "${MBOX}"
+   cksum_test content:008 "${MBOX}" '1428748699 320'
+
+   # Single word (overlong line split -- bad standard! Requires injection of
+   # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
+   ${rm} -f "${MBOX}"
+   i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
+   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua -s "${i}" "${MBOX}"
+   cksum_test content:009 "${MBOX}" '141403131 1663'
+
+   # Combination of encoded words, space and tabs of varying sort
+   ${rm} -f "${MBOX}"
+   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+      -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
+3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
+6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
+9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
+12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
+      "${MBOX}"
+   cksum_test content:010 "${MBOX}" '2324198710 536'
+
+   # Overlong multibyte sequence that must be forcefully split
+   # todo This works even before v15.0, but only by accident
+   ${rm} -f "${MBOX}"
+   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+      -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
+✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
+✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
+      "${MBOX}"
+   cksum_test content:011 "${MBOX}" '3085014590 604'
+
+   # Trailing WS
+   ${rm} -f "${MBOX}"
+   echo |
+   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+      -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
+      "${MBOX}"
+   cksum_test content:012 "${MBOX}" '2868799725 303'
+
+   # Leading and trailing WS
+   ${rm} -f "${MBOX}"
+   echo |
+   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+      -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
+      "${MBOX}"
+   cksum_test content:013 "${MBOX}" '3962521045 243'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }
@@ -516,4 +580,4 @@ fi
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
 
 exit ${ESTAT}
-# s-it-mode
+# s-sh-mode
