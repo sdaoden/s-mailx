@@ -1094,8 +1094,8 @@ _message_id(struct header *hp)
 
    tmp = &time_current.tc_gm;
    i = sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>") -1 +
-         rl + strlen(h) +1;
-   rv = salloc(i);
+         rl + strlen(h);
+   rv = salloc(i +1);
    snprintf(rv, i, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
