@@ -188,6 +188,20 @@ It is assumed that S-nail(1) should work practically everywhere.
   - gcc 4.7.2 [DragonFly] Release/2012-09-20
     + One -Wstrict-overflow warning.
 
+. NetBSD <https://www.netbsd.org/>
+  NetBSD 6.99.40 i386 (201404092030Z)
+  - gcc (NetBSD nb2 20140304) 4.8.3
+    - Works.
+
+  NetBSD 6.99.24 amd64
+  - gcc (NetBSD nb1 20120916) 4.5.4
+    + I think faulty message on longjmp() clobbering on a const variable?
+    + Wrong message on potentially uninitialized variable.
+
+  NetBSD 6.0 i386
+  - gcc (NetBSD nb2 20110806) 4.5.3
+    - Ditto.
+
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 i386
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
@@ -210,27 +224,6 @@ It is assumed that S-nail(1) should work practically everywhere.
   + You'll see some harmless and ignorable warnings (the problematic
     looking warning `"openssl.c", line 88: initialization type mismatch'
     refers to a cast from non-const to const, which shouldn't matter).
-
-. NetBSD <https://www.netbsd.org/>
-  NetBSD 6.99.40 i386 (201404092030Z)
-  - gcc (NetBSD nb2 20140304) 4.8.3
-    + S/MIME test verification fails (OpenSSL 1.0.1g 7 Apr 2014):
-      the generated test mail is empty for unknown reason, resulting in
-      "Error reading PKCS#7 object for message 1: error:0D0D40D1:asn1
-      encoding routines:SMIME_read_ASN1:no content type".
-    ++ It actually turns out this has to be a bug in the NetBSD StdIO
-       library!!  I'll have to track this down...
-
-  NetBSD 6.99.24 amd64
-  - gcc (NetBSD nb1 20120916) 4.5.4
-    + I think faulty message on longjmp() clobbering on a const variable?
-    + Wrong message on potentially uninitialized variable.
-    + Same S/MIME issue!
-
-  NetBSD 6.0 i386
-  - gcc (NetBSD nb2 20110806) 4.5.3
-    + Same as 6.99.24 amd64.
-    + Same S/MIME issue!
 
 3. Current codebase state
 -------------------------
