@@ -1075,7 +1075,7 @@ _message_id(struct header *hp)
 {
    char *rv = NULL;
    char const *h;
-   size_t rl;
+   size_t rl, i;
    struct tm *tmp;
    NYD_ENTER;
 
@@ -1093,12 +1093,14 @@ _message_id(struct header *hp)
       goto jleave;
 
    tmp = &time_current.tc_gm;
-   rv = salloc(sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>")-1 +
-         rl + strlen(h) +1);
-   snprintf(rv, UI32_MAX, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
+   i = sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>") -1 +
+         rl + strlen(h);
+   rv = salloc(i +1);
+   snprintf(rv, i, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
       getrandstring(rl), (rl == 8 ? '%' : '@'), h);
+   rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    __sendout_ident = NULL;
    NYD_LEAVE;

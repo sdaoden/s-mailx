@@ -15,6 +15,23 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.8, 2014-09-29
+-------------------
+
+I would like to give prominence to Gaetan Bisson.
+
+- Fix: "make test" works when no "s-nail" binary is produced, as via
+  "make SID= NAIL=mail all".  (Gaetan Bisson) [d704599]
+
+- Fix: on NetBSD and FreeBSD snprintf(3) follows POSIX and fails to work
+  if the "size_t n" argument is larger than INT_MAX.  Linux systems
+  don't have this problem (presumably the function fails if buffer runs
+  out, but who knows, this is GNU software ;), and OpenBSD reduces any
+  "n" >INT_MAX to INT_MAX.
+  But anyhow, what S-nail did is not standard conforming, and since this
+  version is hopefully used for many months i think this -- actually
+  a bug -- is worth fixing with a subminor release. [3b19639, cb674bd]
+
 v14.7.7, 2014-09-27
 -------------------
 
@@ -55,6 +72,14 @@ NOTES, ChangeLog (packager-affine)
 - "make test" will now regulary test S/MIME when available.
   (A few tests have been added, to test the QP issue and to test the RFC
   2047 MIME rewrite; which is still intermediate though.)
+
+- 2014-09-27: add-on:
+  you may see more warnings for format strings which use the
+  "size_t" integer type, and in the future even more of these will
+  happen -- please read `INSTALL' again for more on that, but be
+  ensured that we still compile-time-assert that the format
+  strings fits the type size.  (Enable ISO C99 mode for your
+  compiler will cause any warnings to vanish.)
 
 ChangeLog
 ^^^^^^^^^
