@@ -1542,6 +1542,12 @@ ${cat} > ${tmp2}.c << \!
 : . Debug enabled binary: not meant to be used by end-users: THANKS!
 #endif
 :
+:Setup:
+: . System-wide resource file: SYSCONFRC
+: . bindir: BINDIR, mandir: MANDIR
+: . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
+: . $MAILSPOOL: MAILSPOOL
+:
 !
 
 ${make} -f ${makefile} ${tmp2}.x
