@@ -312,13 +312,13 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 
    printf "behave:s/mime:sign/verify: "
    echo bla |
-   MAILRC=/dev/null ./s-nail -n# \
+   MAILRC=/dev/null "${SNAIL}" -n# \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./VERIFY
    # TODO CHECK
    printf 'verify\nx\n' |
-   MAILRC=/dev/null ./s-nail -n# \
+   MAILRC=/dev/null "${SNAIL}" -n# \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
@@ -341,7 +341,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    chmod 0755 ./tsendmail.sh
 
    echo bla |
-   MAILRC=/dev/null ./s-nail -n# \
+   MAILRC=/dev/null "${SNAIL}" -n# \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
@@ -350,7 +350,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       -s 'S/MIME test' recei@ver.com
    # TODO CHECK
    printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
-   MAILRC=/dev/null ./s-nail -n# \
+   MAILRC=/dev/null "${SNAIL}" -n# \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
