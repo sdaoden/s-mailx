@@ -953,7 +953,12 @@ jusage:
    mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
    if (options & OPT_INTERACTIVE)
       tty_destroy();
+
 jleave:
+#ifdef HAVE_DEBUG
+   sreset(FAL0);
+   smemcheck();
+#endif
    NYD_LEAVE;
    return exit_status;
 }

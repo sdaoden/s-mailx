@@ -420,10 +420,7 @@ FL void        smemreset(void);
 
 FL int         c_smemtrace(void *v);
 /* For immediate debugging purposes, it is possible to check on request */
-# if 0
-#  define _HAVE_MEMCHECK
 FL bool_t      _smemcheck(char const *file, int line);
-# endif
 
 # define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
 # define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)

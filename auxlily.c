@@ -1891,6 +1891,8 @@ smemreset(void)
    size_t c = 0, s = 0;
    NYD_ENTER;
 
+   smemcheck();
+
    for (p.p_c = _mem_free; p.p_c != NULL;) {
       void *vp = p.p_c;
       ++c;
@@ -1963,7 +1965,7 @@ jleave:
    return (v != NULL);
 }
 
-# ifdef _HAVE_MEMCHECK
+# ifdef HAVE_DEVEL
 FL bool_t
 _smemcheck(char const *mdbg_file, int mdbg_line)
 {
@@ -2003,7 +2005,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
    NYD_LEAVE;
    return anybad;
 }
-# endif /* _HAVE_MEMCHECK */
+# endif /* HAVE_DEVEL */
 
 # undef _HOPE_SIZE
 # undef _HOPE_SET
