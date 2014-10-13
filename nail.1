@@ -2097,8 +2097,8 @@ Can only be used inside of a macro definition block introduced by
 .Ic account
 or
 .Ic define ,
-and is interpreted as a boolean (value `0' means false, everything
-else true).
+and is interpreted as a boolean ("no", "false" and "0" are false,
+"yes", "true", "1" and everything else are true, case-insensitively).
 Any option that had been set while `localopts' was in effect will be
 reverted to its former value once the block is left / the `account'
 is switched.
