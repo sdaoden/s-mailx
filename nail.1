@@ -1900,17 +1900,13 @@ Similar to
 .Ic followup ,
 but responds to all recipients regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic followupsender
 Similar to
 .Ic Followup ,
 but responds to the sender only regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic forward
 (fwd) Takes a message and the address of a recipient
 and forwards the message to him.
@@ -2306,17 +2302,13 @@ Similar to
 .Ic reply ,
 but responds to all recipients regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic replysender
 Similar to
 .Ic Reply ,
 but responds to the sender only regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic Resend
 Like
 .Ic resend ,
@@ -3266,11 +3258,27 @@ If the mailbox is empty \*(UA normally prints `No mail for user' and
 exits immediately.
 If this option is set \*(UA starts even with an empty mailbox.
 .It Va flipr
-Exchanges the
-.Ic Respond
-with the
-.Ic respond
-commands and vice-versa.
+This option reverses the meanings of a set of reply commands,
+turning the lowercase variants, which by default address all recipients
+included in the header of a message
+.Ns ( Ns Ic reply ,
+.Ic respond ,
+.Ic followup )
+into the uppercase variants, which by default address the sender only
+.Ns ( Ns Ic Reply ,
+.Ic Respond ,
+.Ic Followup ) Ns ,
+and vice versa.
+The commands
+.Ic replysender /
+.Ic respondsender /
+.Ic followupsender
+as well as
+.Ic replyall /
+.Ic respondall /
+.Ic followupall
+are not affected by the current setting of
+.Va flipr .
 .It Va forward-as-attachment
 Original messages are normally sent as inline text with the
 .Ic forward
@@ -3500,12 +3508,6 @@ of the original message for replies.
 If this fails, the mechanism described in
 .Sx CHARACTER SETS
 is evaluated as usual.
-.It Va Replyall
-Reverses the sense of
-.Ic reply
-and
-.Ic Reply
-commands.
 .It Va rfc822-body-from_
 This variable can be used to force the display of a so-called `From_'
 line for messages that are embedded into an envelope mail via the

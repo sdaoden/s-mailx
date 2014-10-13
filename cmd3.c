@@ -62,16 +62,16 @@ static void       _bangexp(char **str, size_t *size);
 
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
-/* Get PTF to implementation of command `c' (i.e., take care for *flipr*) */
-static int (*     respond_or_Respond(int c))(int *, int);
+/* Get PTF to implementation of command c (i.e., take care for *flipr*) */
+static int (*     _reply_or_Reply(char c))(int *, bool_t);
 
 /* Reply to a single message.  Extract each name from the message header and
  * send them off to mail1() */
-static int        respond_internal(int *msgvec, int recipient_record);
+static int        _reply(int *msgvec, bool_t recipient_record);
 
 /* Reply to a series of messages by simply mailing to the senders and not
  * messing around with the To: and Cc: lists as in normal reply */
-static int        Respond_internal(int *msgvec, int recipient_record);
+static int        _Reply(int *msgvec, bool_t recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
 static int        _fwd(char *str, int recipient_record);
@@ -218,21 +218,18 @@ jleave:
 }
 
 static int
-(*respond_or_Respond(int c))(int *, int)
+(*_reply_or_Reply(char c))(int *, bool_t)
 {
-   int opt;
-   int (*rv)(int*, int);
+   int (*rv)(int*, bool_t);
    NYD_ENTER;
 
-   opt = ok_blook(Replyall);
-   opt += ok_blook(flipr);
-   rv = ((opt == 1) ^ (c == 'R')) ? &Respond_internal : &respond_internal;
+   rv = (ok_blook(flipr) ^ (c == 'R')) ? &_Reply : &_reply;
    NYD_LEAVE;
    return rv;
 }
 
 static int
-respond_internal(int *msgvec, int recipient_record)
+_reply(int *msgvec, bool_t recipient_record)
 {
    struct header head;
    struct message *mp;
@@ -242,14 +239,13 @@ respond_internal(int *msgvec, int recipient_record)
    int rv = 1;
    NYD_ENTER;
 
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
-
    if (msgvec[1] != 0) {
-      fprintf(stderr, _(
-         "Sorry, can't reply to multiple messages at once\n"));
+      fprintf(stderr,
+         _("Sorry, can't reply to multiple messages at once\n"));
       goto jleave;
    }
 
+   gf = ok_blook(fullnames) ? GFULL : GSKIN;
    mp = message + msgvec[0] - 1;
    touch(mp);
    setdot(mp);
@@ -284,8 +280,8 @@ respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-            "Original message content");
+      head.h_attach->a_content_description =
+            _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
@@ -298,7 +294,7 @@ jleave:
 }
 
 static int
-Respond_internal(int *msgvec, int recipient_record)
+_Reply(int *msgvec, bool_t recipient_record)
 {
    struct header head;
    struct message *mp;
@@ -330,8 +326,8 @@ Respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-         "Original message content");
+      head.h_attach->a_content_description =
+            _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
@@ -367,7 +363,7 @@ _fwd(char *str, int recipient_record)
             rv = 0;
             goto jleave;
          }
-         printf("No messages to forward.\n");
+         printf(_("No messages to forward.\n"));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -379,11 +375,11 @@ _fwd(char *str, int recipient_record)
          rv = 0;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      printf(_("No applicable messages.\n"));
       goto jleave;
    }
    if (msgvec[1] != 0) {
-      printf("Cannot forward multiple messages at once\n");
+      printf(_("Cannot forward multiple messages at once\n"));
       goto jleave;
    }
 
@@ -663,45 +659,45 @@ jleave:
 }
 
 FL int
-c_respond(void *v)
+c_reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 0);
+   rv = (*_reply_or_Reply('r'))(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondall(void *v)
+c_replyall(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 0);
+   rv = _reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondsender(void *v)
+c_replysender(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 0);
+   rv = _Reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Respond(void *v)
+c_Reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 0);
+   rv = (*_reply_or_Reply('R'))(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -712,7 +708,7 @@ c_followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 1);
+   rv = (*_reply_or_Reply('r'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -723,7 +719,7 @@ c_followupall(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 1);
+   rv = _reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -734,7 +730,7 @@ c_followupsender(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 1);
+   rv = _Reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -745,7 +741,7 @@ c_Followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 1);
+   rv = (*_reply_or_Reply('R'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }

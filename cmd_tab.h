@@ -148,11 +148,11 @@
    { "file", &c_file, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox or show the current one")) },
    { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"respond\", but derive filename from first sender")) },
+     DS(N_("Like \"reply\", but derive filename from first sender")) },
    { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"respond\", but derive filename from first sender")) },
+     DS(N_("Like \"reply\", but derive filename from first sender")) },
    { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Followup\", but always respond to the sender only")) },
+     DS(N_("Like \"Followup\", but always reply to the sender only")) },
    { "folder", &c_file, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox or show the current one")) },
    { "folders", &c_folders, (T | M | RAWLIST), 0, 1
@@ -170,23 +170,23 @@
      DS(N_("Show command help (for the given one)")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
-   { "Reply", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Reply", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "Respond", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Respond", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Followup", &c_Followup, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Respond\", but derive filename from first sender")) },
-   { "reply", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
+     DS(N_("Like \"Reply\", but derive filename from first sender")) },
+   { "reply", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replyall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replyall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replysender", &c_respondsender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replysender", &c_replysender, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "respond", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respond", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respondall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondsender", &c_respondsender, (A | R | I | MSGLIST),0, MMNDEL
+   { "respondsender", &c_replysender, (A | R | I | MSGLIST),0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Resend", &c_Resend, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Like \"resend\", but don't add Resent-* headers")) },

@@ -965,7 +965,6 @@ enum okeys {
    ok_b_recipients_in_cc,
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
-   ok_b_Replyall,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
    ok_b_save,
    ok_b_searchheaders,
