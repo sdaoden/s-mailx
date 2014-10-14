@@ -54,6 +54,9 @@ struct group {
 
 static struct grouphead *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
 
+/* List of alternate names of user */
+static char             **_altnames;
+
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
 
@@ -777,8 +780,8 @@ delete_alternates(struct name *np)
    NYD_ENTER;
 
    np = delname(np, myname);
-   if (altnames)
-      for (ap = altnames; *ap != '\0'; ++ap)
+   if (_altnames != NULL)
+      for (ap = _altnames; *ap != '\0'; ++ap)
          np = delname(np, *ap);
 
    if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
@@ -812,8 +815,8 @@ is_myname(char const *name)
 
    if (_same_name(myname, name))
       goto jleave;
-   if (altnames)
-      for (ap = altnames; *ap != NULL; ++ap)
+   if (_altnames != NULL)
+      for (ap = _altnames; *ap != NULL; ++ap)
          if (_same_name(*ap, name))
             goto jleave;
 
@@ -1116,6 +1119,42 @@ c_unalias(void *v)
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+FL int
+c_alternates(void *v)
+{
+   size_t l;
+   char **namelist = v, **ap, **ap2, *cp;
+   NYD_ENTER;
+
+   l = argcount(namelist) + 1;
+   if (l == 1) {
+      if (_altnames == NULL)
+         goto jleave;
+      for (ap = _altnames; *ap != NULL; ++ap)
+         printf("%s ", *ap);
+      printf("\n");
+      goto jleave;
+   }
+
+   if (_altnames != NULL) {
+      for (ap = _altnames; *ap != NULL; ++ap)
+         free(*ap);
+      free(_altnames);
+   }
+
+   _altnames = smalloc(l * sizeof *_altnames);
+   for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
+      l = strlen(*ap) +1;
+      cp = smalloc(l);
+      memcpy(cp, *ap, l);
+      *ap2 = cp;
+   }
+   *ap2 = NULL;
+jleave:
+   NYD_LEAVE;
+   return 0;
 }
 
 /* s-it-mode */

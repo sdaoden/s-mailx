@@ -1585,7 +1585,6 @@ VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
 VL int         enc_has_state;       /* Encoding has shift states */
 
-VL char        **altnames;          /* List of alternate names of user */
 VL char const  *homedir;            /* Path name of home directory */
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */

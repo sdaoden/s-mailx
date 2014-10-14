@@ -639,9 +639,6 @@ FL bool_t      condstack_isskip(void);
 FL void *      condstack_release(void);
 FL bool_t      condstack_take(void *self);
 
-/* Set the list of alternate names */
-FL int         c_alternates(void *v);
-
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
 
@@ -1363,6 +1360,9 @@ FL int         c_alias(void *v);
 
 /* Delete the passed aliases */
 FL int         c_unalias(void *v);
+
+/* Set the list of alternate names */
+FL int         c_alternates(void *v);
 
 /*
  * openssl.c

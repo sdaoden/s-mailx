@@ -1209,41 +1209,6 @@ condstack_take(void *self)
 }
 
 FL int
-c_alternates(void *v)
-{
-   size_t l;
-   char **namelist = v, **ap, **ap2, *cp;
-   NYD_ENTER;
-
-   l = argcount(namelist) + 1;
-   if (l == 1) {
-      if (altnames == NULL)
-         goto jleave;
-      for (ap = altnames; *ap != NULL; ++ap)
-         printf("%s ", *ap);
-      printf("\n");
-      goto jleave;
-   }
-
-   if (altnames != NULL) {
-      for (ap = altnames; *ap != NULL; ++ap)
-         free(*ap);
-      free(altnames);
-   }
-   altnames = smalloc(l * sizeof(char*));
-   for (ap = namelist, ap2 = altnames; *ap != NULL; ++ap, ++ap2) {
-      l = strlen(*ap) + 1;
-      cp = smalloc(l);
-      memcpy(cp, *ap, l);
-      *ap2 = cp;
-   }
-   *ap2 = NULL;
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
 c_newmail(void *v)
 {
    int val = 1, mdot;
