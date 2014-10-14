@@ -1534,17 +1534,6 @@ struct sendbundle {
    struct ccred   sb_ccred;
 };
 
-struct group {
-   struct group *ge_link;     /* Next person in this group */
-   char        *ge_name;      /* This person's user name */
-};
-
-struct grouphead {
-   struct grouphead *g_link;  /* Next grouphead in list */
-   char        *g_name;       /* Name of this group */
-   struct group *g_list;      /* Users in group. */
-};
-
 /* Structure of the hash table of ignored header fields */
 struct ignoretab {
    int         i_count;       /* Number of entries */
@@ -1637,7 +1626,6 @@ VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
 
-VL struct grouphead  *groups[HSHSIZE]; /* Pointer to active groups */
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */
 VL struct ignoretab  saveignore[2];    /* ignored and retained fields

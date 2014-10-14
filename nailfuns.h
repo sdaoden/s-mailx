@@ -618,12 +618,6 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Without arguments print all aliases, otherwise add users to a specific one */
-FL int         c_alias(void *v);
-
-/* Delete the passed aliases */
-FL int         c_unalias(void *v);
-
 /* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
 FL int         c_File(void *v);
@@ -1364,15 +1358,11 @@ FL int         is_myname(char const *name);
 /* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
 FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
 
-/* Handling of alias groups */
+/* Without arguments print all aliases, otherwise add users to a specific one */
+FL int         c_alias(void *v);
 
-/* Locate a group name and return it */
-FL struct grouphead * findgroup(char *name);
-
-/* Print a group out on stdout */
-FL void        printgroup(char *name);
-
-FL void        remove_group(char const *name);
+/* Delete the passed aliases */
+FL int         c_unalias(void *v);
 
 /*
  * openssl.c

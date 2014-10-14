@@ -79,12 +79,6 @@ static int        _fwd(char *str, int recipient_record);
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *     __fwdedit(char *subj);
 
-/* Sort the passed string vecotor into ascending dictionary order */
-static void       asort(char **list);
-
-/* Do a dictionary order comparison of the arguments from qsort */
-static int        diction(void const *a, void const *b);
-
 /* Do the real work of resending */
 static int        _resend1(void *v, bool_t add_resent);
 
@@ -445,31 +439,6 @@ __fwdedit(char *subj)
 jleave:
    NYD_LEAVE;
    return newsubj;
-}
-
-static void
-asort(char **list)
-{
-   char **ap;
-   size_t i;
-   NYD_ENTER;
-
-   for (ap = list; *ap != NULL; ++ap)
-      ;
-   if ((i = PTR2SIZE(ap - list)) >= 2)
-      qsort(list, i, sizeof *list, diction);
-   NYD_LEAVE;
-}
-
-static int
-diction(void const *a, void const *b)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b));
-   NYD_LEAVE;
-   return rv;
 }
 
 static int
@@ -958,82 +927,6 @@ c_rexit(void *v)
       exit(0);
    NYD_LEAVE;
    return 1;
-}
-
-FL int
-c_alias(void *v)
-{
-   char **argv = v, **ap, *gname, **p;
-   struct grouphead *gh;
-   struct group *gp;
-   int h, s;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      for (h = 0, s = 1; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            ++s;
-      ap = salloc(s * sizeof *ap);
-
-      for (h = 0, p = ap; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            *p++ = gh->g_name;
-      *p = NULL;
-
-      asort(ap);
-
-      for (p = ap; *p != NULL; ++p)
-         printgroup(*p);
-      goto jleave;
-   }
-
-   if (argv[1] == NULL) {
-      printgroup(*argv);
-      goto jleave;
-   }
-
-   gname = *argv;
-   h = hash(gname);
-   if ((gh = findgroup(gname)) == NULL) {
-      gh = scalloc(1, sizeof *gh);
-      gh->g_name = sstrdup(gname);
-      gh->g_list = NULL;
-      gh->g_link = groups[h];
-      groups[h] = gh;
-   }
-
-   /* Insert names from the command list into the group.  Who cares if there
-    * are duplicates?  They get tossed later anyway */
-   for (ap = argv + 1; *ap != NULL; ++ap) {
-      gp = scalloc(1, sizeof *gp);
-      gp->ge_name = sstrdup(*ap);
-      gp->ge_link = gh->g_list;
-      gh->g_list = gp;
-   }
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_unalias(void *v)
-{
-   char **argv = v;
-   int rv = 1;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      fprintf(stderr, _("Must specify alias to remove\n"));
-      goto jleave;
-   }
-
-   do
-      remove_group(*argv);
-   while (*++argv != NULL);
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
