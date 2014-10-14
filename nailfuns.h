@@ -618,11 +618,11 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Without arguments print all groups, otherwise add users to a group */
-FL int         c_group(void *v);
+/* Without arguments print all aliases, otherwise add users to a specific one */
+FL int         c_alias(void *v);
 
-/* Delete the passed groups */
-FL int         c_ungroup(void *v);
+/* Delete the passed aliases */
+FL int         c_unalias(void *v);
 
 /* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);

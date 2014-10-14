@@ -961,7 +961,7 @@ c_rexit(void *v)
 }
 
 FL int
-c_group(void *v)
+c_alias(void *v)
 {
    char **argv = v, **ap, *gname, **p;
    struct grouphead *gh;
@@ -1016,7 +1016,7 @@ jleave:
 }
 
 FL int
-c_ungroup(void *v)
+c_unalias(void *v)
 {
    char **argv = v;
    int rv = 1;

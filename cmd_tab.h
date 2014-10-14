@@ -65,7 +65,7 @@
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
-   { "alias", &c_group, (M | RAWLIST), 0, 1000
+   { "alias", &c_alias, (M | RAWLIST), 0, 1000
      DS(N_("Show all or the specified alias(es), or (re)define one")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type each message of <message-list> on the terminal")) },
@@ -139,7 +139,7 @@
      DS(N_("Set (a) variable(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_ungroup, (M | RAWLIST), 0, 1000
+   { "unalias", &c_unalias, (M | RAWLIST), 0, 1000
      DS(N_("Un\"alias\" <name-list>")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
