@@ -403,6 +403,12 @@ FL struct str const * colour_get(enum colourspec cs);
 # define colour_reset(FP)
 #endif
 
+/* Check wether the argument string is a true (1) or false (0) boolean, or an
+ * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
+ * treated as a boolean, is used as the return value shall inbuf be empty.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);

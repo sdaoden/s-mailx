@@ -1563,6 +1563,35 @@ colour_get(enum colourspec cs)
 }
 #endif /* HAVE_COLOUR */
 
+FL si8_t
+boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
+{
+   si8_t rv;
+   NYD_ENTER;
+
+   assert(inlen == 0 || inbuf != NULL);
+
+   if (inlen == UIZ_MAX)
+      inlen = strlen(inbuf);
+
+   if (inlen == 0)
+      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
+   else {
+      if ((inlen == 1 && *inbuf == '1') ||
+            !ascncasecmp(inbuf, "yes", inlen) ||
+            !ascncasecmp(inbuf, "true", inlen))
+         rv = 1;
+      else if ((inlen == 1 && *inbuf == '0') ||
+            !ascncasecmp(inbuf, "no", inlen) ||
+            !ascncasecmp(inbuf, "false", inlen))
+         rv = 0;
+      else
+         rv = -1;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
