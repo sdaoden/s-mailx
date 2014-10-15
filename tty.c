@@ -153,7 +153,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    rv = FAL0;
 
    if (prompt == NULL)
-      prompt = _("Continue (y/n)? ");
+      prompt = noninteract_default ? _(" ([yes]/no)? ") : _(" ([no]/yes)? ");
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
    if (sigsetjmp(__tty_actjmp, 1) != 0) {
@@ -164,10 +164,8 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
 
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
-      switch (termios_state.ts_linebuf[0]) {
-      case 'N': case 'n':  rv = FAL0; break ;
-      default:             rv = TRU1; break;
-      }
+      rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
+            noninteract_default) > 0);
 jrestore:
    termios_state_reset();
    safe_signal(SIGINT, ohdl);

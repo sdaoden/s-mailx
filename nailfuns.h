@@ -1847,9 +1847,10 @@ FL void        uncollapse1(struct message *mp, int always);
  * tty.c
  */
 
-/* Return wether user says yes.  If prompt is NULL, "Continue (y/n)? " is used
- * instead.  If interactive, asks on STDIN, anything but [0]==[Nn] is true.
- * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
+/* Return wether user says yes, on STDIN if interactive.
+ * Uses noninteract_default, the return value for non-interactive use cases,
+ * also to choose a default prompt if that is NULL as well as a hint for
+ * boolify().  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
 #ifdef HAVE_SOCKETS
