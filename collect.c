@@ -183,6 +183,8 @@ _include_file(char const *name, int *linecount, int *charcount,
    }
    if (fflush(_coll_fp))
       goto jleave;
+   if ((options & OPT_INTERACTIVE) && doecho)
+      fflush(stdout);
 
    ret = 0;
 jleave:
