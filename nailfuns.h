@@ -782,7 +782,7 @@ FL void        message_reset(void);
  * NULLify the entry at &[msgCount-1] */
 FL void        message_append(struct message *mp);
 
-/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
 * true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);
@@ -973,7 +973,7 @@ FL char *      getsender(struct message *m);
 FL int         grab_headers(struct header *hp, enum gfield gflags,
                   int subjfirst);
 
-/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches any header of mp */
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*

@@ -505,7 +505,7 @@ number:
 #ifdef HAVE_REGEX
             if (is_maybe_regex(x)) {
                sep[j].ss_sexpr = NULL;
-               if (regcomp(&sep[j].ss_reexpr, x,
+               if (regcomp(&sep[j].ss_regex, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {
                   fprintf(stderr, _(
                      "Invalid regular expression: >>> %s <<<\n"), x);
@@ -579,7 +579,7 @@ jnamesearch_sepfree:
 #ifdef HAVE_REGEX
          for (j = PTR2SIZE(np - namelist); j-- != 0;)
             if (sep[j].ss_sexpr == NULL)
-               regfree(&sep[j].ss_reexpr);
+               regfree(&sep[j].ss_regex);
 #endif
          free(sep);
       }
@@ -979,7 +979,7 @@ jmsg:
          mime_fromhdr(&in, &out, TD_ICONV);
 #ifdef HAVE_REGEX
          if (sep->ss_sexpr == NULL)
-            rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+            rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
          else
 #endif
             rv = substr(out.s, sep->ss_sexpr);

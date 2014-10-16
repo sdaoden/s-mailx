@@ -794,7 +794,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    while (fgetline(line, linesize, &cnt, NULL, fp, 0)) {
 #ifdef HAVE_REGEX
       if (sep->ss_sexpr == NULL) {
-         if (regexec(&sep->ss_reexpr, *line, 0,NULL, 0) == REG_NOMATCH)
+         if (regexec(&sep->ss_regex, *line, 0,NULL, 0) == REG_NOMATCH)
             continue;
       } else
 #endif

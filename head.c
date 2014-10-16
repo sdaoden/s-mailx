@@ -1752,7 +1752,7 @@ header_match(struct message *mp, struct search_expr const *sep)
       mime_fromhdr(&in, &out, TD_ICONV);
 #ifdef HAVE_REGEX
       if (sep->ss_sexpr == NULL)
-         rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+         rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
       else
 #endif
          rv = substr(out.s, sep->ss_sexpr);

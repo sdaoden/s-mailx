@@ -1185,9 +1185,9 @@ struct quoteflt {
 
 struct search_expr {
    char const  *ss_where;  /* to search for the expression (not always used) */
-   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_reexpr */
+   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_regex */
 #ifdef HAVE_REGEX
-   regex_t     ss_reexpr;
+   regex_t     ss_regex;
 #endif
 };
 
