@@ -43,18 +43,8 @@
 
 #include <sys/wait.h>
 
-#include <fcntl.h>
-
 #define READ               0
 #define WRITE              1
-
-#ifndef O_CLOEXEC
-# define _OUR_CLOEXEC
-# define O_CLOEXEC         0
-# define _SET_CLOEXEC(FD)  do fcntl((FD), F_SETFD, FD_CLOEXEC); while (0)
-#else
-# define _SET_CLOEXEC(FD)  do {} while (0)
-#endif
 
 struct fp {
    FILE        *fp;
@@ -384,13 +374,13 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
-   osflags |= O_CLOEXEC;
+   osflags |= _O_CLOEXEC;
    if (xflags != NULL)
       *xflags = osflags;
 
    if ((fd = open(file, osflags, 0666)) == -1)
       goto jleave;
-   _SET_CLOEXEC(fd);
+   _CLOEXEC_SET(fd);
 
    fp = fdopen(fd, oflags);
 jleave:
@@ -419,7 +409,7 @@ Fdopen(int fd, char const *oflags)
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= O_CLOEXEC;
+   osflags |= _O_CLOEXEC;
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L);
@@ -576,11 +566,11 @@ jclose:
 #else
    if (mktemp(cp_base) == NULL)
       goto jfree;
-   if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC |
+   if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | _O_CLOEXEC |
          (oflags & OF_APPEND ? O_APPEND : 0), mode)) == -1)
       goto junlink;
    if (!(oflags & OF_REGISTER))
-      _SET_CLOEXEC(fd);
+      _CLOEXEC_SET(fd);
 #endif
 
    fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
@@ -909,11 +899,5 @@ wait_child(int pid, int *wait_status)
    NYD_LEAVE;
    return rv;
 }
-
-#ifdef _OUR_CLOEXEC
-# undef O_CLOEXEC
-# undef _OUR_CLOEXEC
-#endif
-#undef _SET_CLOEXEC
 
 /* s-it-mode */

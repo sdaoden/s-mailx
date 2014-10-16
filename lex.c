@@ -41,8 +41,6 @@
 # include "nail.h"
 #endif
 
-#include <fcntl.h>
-
 struct cmd {
    char const     *name;         /* Name of command */
    int            (*func)(void*); /* Implementor of command */

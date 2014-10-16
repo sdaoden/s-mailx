@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ File I/O.
+ *@ File I/O, including resource file loading etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -42,8 +42,6 @@
 #endif
 
 #include <sys/wait.h>
-
-#include <fcntl.h>
 
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>

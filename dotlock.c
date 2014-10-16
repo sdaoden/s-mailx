@@ -39,8 +39,6 @@
 
 #include <sys/utsname.h>
 
-#include <fcntl.h>
-
 #define APID_SZ         40 /* sufficient for 128 bits pids XXX nail.h */
 #define CREATE_RETRIES  5  /* XXX nail.h */
 #define DOTLOCK_RETRIES 15 /* XXX nail.h */

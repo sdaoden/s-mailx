@@ -45,7 +45,6 @@
 
 #include <sys/ioctl.h>
 
-#include <fcntl.h>
 #include <pwd.h>
 
 #ifdef HAVE_NL_LANGINFO

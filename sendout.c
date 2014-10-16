@@ -41,8 +41,6 @@
 # include "nail.h"
 #endif
 
-#include <fcntl.h>
-
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)

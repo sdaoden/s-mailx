@@ -45,7 +45,6 @@
 
 #include <ctype.h>
 #include <dirent.h>
-#include <fcntl.h>
 
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_IPV6

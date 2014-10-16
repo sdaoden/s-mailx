@@ -41,7 +41,6 @@
 # include "nail.h"
 #endif
 
-#include <fcntl.h>
 #include <utime.h>
 
 enum quitflags {

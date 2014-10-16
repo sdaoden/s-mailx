@@ -41,16 +41,6 @@
 # include "nail.h"
 #endif
 
-#include <fcntl.h>
-
-#ifndef O_CLOEXEC
-# define _OUR_CLOEXEC
-# define O_CLOEXEC         0
-# define _SET_CLOEXEC(FD)  fcntl((FD), F_SETFD, FD_CLOEXEC)
-#else
-# define _SET_CLOEXEC(FD)
-#endif
-
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
 
@@ -833,10 +823,10 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
             *senderror = TRU1;
             goto jcant;
          }
-         if ((image = open(tempEdit, O_RDWR | O_CLOEXEC)) >= 0) {
-            _SET_CLOEXEC(image);
+         if ((image = open(tempEdit, O_RDWR | _O_CLOEXEC)) >= 0) {
+            _CLOEXEC_SET(image);
             for (i = 0; i < pipecnt; ++i) {
-               int fd = open(tempEdit, O_RDONLY | O_CLOEXEC);
+               int fd = open(tempEdit, O_RDONLY | _O_CLOEXEC);
                if (fd < 0) {
                   close(image);
                   image = -1;
@@ -844,7 +834,7 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
                   break;
                }
                fda[i] = fd;
-               _SET_CLOEXEC(fd);
+               _CLOEXEC_SET(fd);
             }
          }
          Ftmp_release(&tempEdit);
@@ -1015,11 +1005,5 @@ remove_group(char const *name)
    }
    NYD_LEAVE;
 }
-
-#ifdef _OUR_CLOEXEC
-# undef O_CLOEXEC
-# undef _OUR_CLOEXEC
-#endif
-#undef _SET_CLOEXEC
 
 /* s-it-mode */

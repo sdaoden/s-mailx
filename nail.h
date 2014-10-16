@@ -49,6 +49,7 @@
 #include <sys/types.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -116,6 +117,14 @@
 # define NSIG           NSIG_MAX
 #elif !defined NSIG
 # define NSIG           ((sizeof(sigset_t) * 8) - 1)
+#endif
+
+#ifdef O_CLOEXEC
+# define _O_CLOEXEC        O_CLOEXEC
+# define _CLOEXEC_SET(FD)  do {;} while(0)
+#else
+# define _O_CLOEXEC        0
+# define _CLOEXEC_SET(FD)  do { fcntl((FD), F_SETFD, FD_CLOEXEC); } while (0)
 #endif
 
 /*  */
