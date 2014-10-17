@@ -305,6 +305,9 @@
  * Note: doesn't sign-extend correctly, that's still up to the caller */
 #define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
 
+/* Align something to a size/boundary that cannot cause just any problem */
+#define ALIGN(X)        (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+
 /* Members in constant array */
 #ifndef NELEM
 # define NELEM(A)       (sizeof(A) / sizeof(A[0]))
