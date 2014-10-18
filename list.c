@@ -503,7 +503,7 @@ number:
                continue;
             }
 #ifdef HAVE_REGEX
-            if (anyof("^.[]*+?(){}|$", x)) {
+            if (is_maybe_regex(x)) {
                sep[j].ss_sexpr = NULL;
                if (regcomp(&sep[j].ss_reexpr, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {

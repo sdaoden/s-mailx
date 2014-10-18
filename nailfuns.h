@@ -82,6 +82,13 @@
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
+/* Could the string contain a regular expression? */
+#if 0
+# define is_maybe_regex(S) anyof("^.[]*+?()|$", S)
+#else
+# define is_maybe_regex(S) anyof("^[]*+?|$", S)
+#endif
+
 /* Try to use alloca() for some function-local buffers and data, fall back to
  * smalloc()/free() if not available */
 #ifdef HAVE_ALLOCA
