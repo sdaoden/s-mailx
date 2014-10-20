@@ -52,8 +52,8 @@ enum group_type {
    GT_REGEX       = 1<< 5,
 
    /* Extended type mask to be able to reflect what we really have; i.e., mlist
-    * can have GT_REGEX if they are subscribed or not, but `subscribe' should
-    * print out only GT_MLIST which are GT_SUBSCRIBE, too */
+    * can have GT_REGEX if they are subscribed or not, but `mlsubscribe' should
+    * print out only GT_MLIST which have the GT_SUBSCRIBE attribute set */
    GT_PRINT_MASK  = GT_MASK | GT_SUBSCRIBE
 };
 
@@ -86,10 +86,8 @@ struct grp_names {
 struct grp_regex {
    struct grp_regex  *gr_last;
    struct grp_regex  *gr_next;
-   struct group      *gr_mygroup;
-   /* TODO size_t    gr_qos; then: static _mlx_qos_cnt, _mlx_qos_treshold
-    * TODO and don't auto-relink to front matches with a QOS<treshold,
-    * TODO where treshold is some 10% of the global _qos_cnt */
+   struct group      *gr_mygroup;   /* xxx because lists use grp_regex*! ?? */
+   size_t            gr_hits;       /* Number of times this group matched */
    regex_t           gr_regex;
 };
 #endif
@@ -103,14 +101,20 @@ struct group_lookup {
 /* `alias' */
 static struct group     *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
 
-/* `mlist', `mlsubscribe'.  Anything is stored in the hashmap, but entries
- * which have GT_REGEX set are false lookups and will be looked up via the
- * sequential lists instead, which are type-specific for better performance,
- * but also to make it possible to have ".*@xy.org" as a mlist and
- * "(one|two)@xy.org" as a mlsubscription */
+/* `mlist', `mlsubscribe'.  Anything is stored in the hashmap.. */
 static struct group     *_mlist_heads[HSHSIZE]; /* TODO dynamic hash */
+
+/* ..but entries which have GT_REGEX set are false lookups and will really be
+ * accessed via sequential lists instead, which are type-specific for better
+ * performance, but also to make it possible to have ".*@xy.org" as a mlist
+ * and "(one|two)@xy.org" as a mlsubscription.
+ * These lists use a bit of QOS optimization in that a matching group will
+ * become relinked as the new list head if its hit count is
+ *    (>= ((xy_hits / _xy_size) >> 2))
+ * Note that the hit counts only count currently linked in nodes.. */
 #ifdef HAVE_REGEX
 static struct grp_regex *_mlist_regex, *_mlsub_regex;
+static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 #endif
 
 /* List of alternate names of user */
@@ -652,15 +656,30 @@ _group_print_all(enum group_type gt)
    /* Because of interest, print the list match order */
 #ifdef HAVE_REGEX
    if (gt & GT_MLIST) {
-      struct grp_regex *lp = (gt & GT_SUBSCRIBE) ? _mlsub_regex : _mlist_regex,
-         *grp = lp;
+      struct grp_regex *lp, *grp;
 
-      if (grp != NULL) {
-         printf(_("\n%s lists regular expression match order:\n\t"),
-            (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")));
-         do
-            printf(" %s", grp->gr_mygroup->g_id);
-         while ((grp = grp->gr_next) != lp);
+      if (gt & GT_SUBSCRIBE) {
+         lp = _mlsub_regex;
+         i = (ui32_t)_mlsub_size;
+         h = (ui32_t)_mlsub_hits;
+      } else {
+         lp = _mlist_regex;
+         i = (ui32_t)_mlist_size;
+         h = (ui32_t)_mlist_hits;
+      }
+
+      if ((grp = lp) != NULL) {
+         printf(_("\n%s lists regex order (%u entries; [%u] hits):\n  "),
+            (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")), i, h);
+         i = 2;
+         do {
+            h = (ui32_t)strlen(grp->gr_mygroup->g_id) + 8;
+            if ((i += h) > 79) {
+               fputs("\n  ", stdout);
+               i = 2 + h;
+            }
+            printf(" %s [%lu]", grp->gr_mygroup->g_id, (ul_i)grp->gr_hits);
+         } while ((grp = grp->gr_next) != lp);
          putc('\n', stdout);
       }
    }
@@ -682,17 +701,18 @@ __group_print_qsorter(void const *a, void const *b)
 static void
 _group_print(struct group const *gp)
 {
-   char const *sep = "\t";
+   char const *sep;
    NYD_ENTER;
-
-   printf("%s", gp->g_id);
 
    if (gp->g_type & GT_ALIAS) {
       struct grp_names_head *gnhp;
       struct grp_names *gnp;
 
+      printf("%s", gp->g_id);
+
       GP_TO_SUBCLASS(gnhp, gp);
       if ((gnp = gnhp->gnh_head) != NULL) {
+         sep = "\t\t";
          do {
             struct grp_names *x = gnp;
             gnp = gnp->gn_next;
@@ -701,16 +721,23 @@ _group_print(struct group const *gp)
          } while (gnp != NULL);
       }
    } else if (gp->g_type & GT_MLIST) {
+      printf("%-42.60s", gp->g_id);
+
+      sep = " [";
       if (gp->g_type & GT_SUBSCRIBE) {
-         printf("%s%s", sep, _("[subscribed]"));
-         sep = " ";
+         printf("%ssub", sep);
+         sep = NULL;
       }
 #ifdef HAVE_REGEX
       if (gp->g_type & GT_REGEX) {
-         printf("%s%s", sep, _("[regular expression]"));
-         /*sep = " ";*/
+         struct grp_regex *grp;
+         GP_TO_SUBCLASS(grp, gp);
+         printf("%sregex, %lu", (sep != NULL ? sep : ", "), grp->gr_hits);
+         sep = NULL;
       }
 #endif
+      if (sep == NULL)
+         putc(']', stdout);
    }
 
    putc('\n', stdout);
@@ -808,17 +835,24 @@ jaster_entry:
 static void
 _mlmux_linkin(struct group *gp)
 {
-   struct grp_regex *grp, **lpp, *lhp;
+   struct grp_regex **lpp, *grp, *lhp;
    NYD_ENTER;
 
-   GP_TO_SUBCLASS(grp, gp);
-   lpp = (gp->g_type & GT_SUBSCRIBE) ? &_mlsub_regex : &_mlist_regex;
+   if (gp->g_type & GT_SUBSCRIBE) {
+      lpp = &_mlsub_regex;
+      ++_mlsub_size;
+   } else {
+      lpp = &_mlist_regex;
+      ++_mlist_size;
+   }
 
+   GP_TO_SUBCLASS(grp, gp);
    if ((lhp = *lpp) != NULL) {
       (grp->gr_last = lhp->gr_last)->gr_next = grp;
       (grp->gr_next = lhp)->gr_last = grp;
    } else
       *lpp = grp->gr_last = grp->gr_next = grp;
+   grp->gr_hits = 0;
    NYD_LEAVE;
 }
 
@@ -829,7 +863,16 @@ _mlmux_linkout(struct group *gp)
    NYD_ENTER;
 
    GP_TO_SUBCLASS(grp, gp);
-   lpp = (gp->g_type & GT_SUBSCRIBE) ? &_mlsub_regex : &_mlist_regex;
+
+   if (gp->g_type & GT_SUBSCRIBE) {
+      lpp = &_mlsub_regex;
+      --_mlsub_size;
+      _mlsub_hits -= grp->gr_hits;
+   } else {
+      lpp = &_mlist_regex;
+      --_mlist_size;
+      _mlist_hits -= grp->gr_hits;
+   }
 
    if (grp->gr_next == grp)
       *lpp = NULL;
@@ -1434,8 +1477,16 @@ is_mlist(char const *name, bool_t subscribed_only)
 jregex_redo:
    if ((grp = *lpp) != NULL) {
       do if (regexec(&grp->gr_regex, name, 0,NULL, 0) != REG_NOMATCH) {
-         /* Relink as the head of this list TODO better QOS */
-         if (*lpp != grp && grp->gr_next != grp) {
+         /* Relink as the head of this list if the hit count of this group is
+          * >= 25% of the average hit count */
+         size_t i;
+         if (!re2)
+            i = ++_mlsub_hits / _mlsub_size;
+         else
+            i = ++_mlist_hits / _mlist_size;
+         i >>= 2;
+
+         if (++grp->gr_hits >= i && *lpp != grp && grp->gr_next != grp) {
             grp->gr_last->gr_next = grp->gr_next;
             grp->gr_next->gr_last = grp->gr_last;
             (grp->gr_last = (*lpp)->gr_last)->gr_next = grp;
