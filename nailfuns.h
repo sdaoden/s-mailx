@@ -1352,10 +1352,8 @@ FL struct name * delete_alternates(struct name *np);
 
 FL int         is_myname(char const *name);
 
-/* Without arguments print all aliases, otherwise add users to a specific one */
+/* `(un)?alias' */
 FL int         c_alias(void *v);
-
-/* Delete the passed aliases */
 FL int         c_unalias(void *v);
 
 /* Set the list of alternate names */

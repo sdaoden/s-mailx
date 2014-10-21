@@ -1610,7 +1610,7 @@ Accounts can be deleted via
 (a) With no arguments, prints out all currently-defined aliases.
 With one argument, prints out that alias.
 With more than one argument,
-creates a new alias or changes an old one.
+creates a new alias or appends to an existing one.
 .Ic unalias
 can be used to delete aliases.
 .It Ic alternates
@@ -2552,6 +2552,7 @@ Attempts to delete the currently active account are rejected.
 .It Ic unalias
 Takes a list of names defined by alias commands
 and discards the remembered groups of users.
+The special name `*' will discard all existing aliases.
 .It Ic unanswered
 Takes a message list and marks each message as not having been answered.
 .It Ic uncollapse

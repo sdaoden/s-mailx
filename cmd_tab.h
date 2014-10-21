@@ -140,7 +140,7 @@
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 0, 1000
-     DS(N_("Un\"alias\" <name-list>")) },
+     DS(N_("Un\"alias\" <name-list> (\"*\" removes all aliases)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM

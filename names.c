@@ -41,21 +41,40 @@
 # include "nail.h"
 #endif
 
-struct grouphead {
-   struct grouphead  *gh_next;   /* Singly linked list */
-   char              *gh_ident;  /* Name or ident */
-   struct group      *gh_list;   /* Group entry list */
-};
-
 struct group {
-   struct group      *g_next;    /* Singly linked list */
-   char              *g_ident;   /* Name or ident */
+   struct group   *g_next;
+   size_t         g_subclass_off;   /* of "subclass" in .g_id */
+   /* Identifying name, of variable size.  Dependent on actual "subtype" more
+    * data follows thereafter */
+   char           g_id[VFIELD_SIZE(8)];
+};
+#define GP_TO_SUBCLASS(X,G) \
+do {\
+   union __group_subclass {void *gs_vp; char *gs_cp;} __gs__;\
+   __gs__.gs_cp = (char*)UNCONST(G) + (G)->g_subclass_off;\
+   (X) = __gs__.gs_vp;\
+} while (0)
+
+struct grp_names_head {
+   struct grp_names  *gnh_head;
 };
 
-static struct grouphead *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
+struct grp_names {
+   struct grp_names  *gn_next;
+   char              gn_id[VFIELD_SIZE(8)];
+};
+
+struct group_lookup {
+   struct group   **gl_slot;
+   struct group   *gl_slot_last;
+   struct group   *gl_group;
+};
+
+/* `alias' */
+static struct group  *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
 
 /* List of alternate names of user */
-static char             **_altnames;
+static char          **_altnames;
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -77,20 +96,44 @@ static struct name * _extract1(char const *line, enum gfield ntype,
 /* Recursively expand a alias name.  Limit expansion to some fixed level.
  * Direct recursion is not expanded for convenience */
 static struct name * _gexpand(size_t level, struct name *nlist,
-                        struct grouphead *ghp, bool_t metoo, int ntype);
+                        struct group *gp, bool_t metoo, int ntype);
 
-/* Locate a alias name and return it */
-static struct grouphead * _group_find(char const *name);
+/* Locate a group fast, return it or NULL */
+static struct group * _group_find(struct group * const *gpa, char const *name);
 
-/* Print a alias out on stdout */
-static void          _group_print(char const *name);
+/* Lookup a group, return it or NULL, fill in glp anyway */
+static struct group * _group_lookup(struct group_lookup *glp,
+                        struct group **gpa, char const *name);
 
-/*  */
-static void          _group_del(char const *name);
-static void          __grouphead_del(struct grouphead *ghp);
+/* Iteration: go to the first group, which also inits the iterator.  A valid
+ * iterator can be stepped via _next().  A NULL return means no (more) groups
+ * to be iterated exist, in which case only glp->gl_group is set (NULL) */
+static struct group * _group_go_first(struct group_lookup *glp,
+                        struct group **gpa);
+static struct group * _group_go_next(struct group_lookup *glp,
+                        struct group **gpa);
 
-/* Do a dictionary order comparison of the arguments from qsort */
-static int           __group_qsort_cpp_cpp(void const *a, void const *b);
+/* Fetch the group id, create it as necessary, reserving add_size additional
+ * bytes for possible subclass space */
+static struct group * _group_fetch(struct group **gpa, ui32_t add_size,
+                        char const *id);
+
+/* Delete a group superclass */
+static void          _group_del(struct group_lookup *glp);
+
+/* "Intelligent" delete which handles a "*" id and knows how to delete kids;
+ * returns a true boolean if a group was deleted, and always succeeds for "*" */
+static bool_t        _group_dispatch_del(struct group **gpa, char const *id);
+
+static void          __names_del(struct group *gp);
+
+/* Print all groups in gpa, alphasorted */
+static void          _group_print_all(struct group * const *gpa);
+
+static int           __group_print_qsorter(void const *a, void const *b);
+
+/* Print group "intelligently" */
+static void          _group_dispatch_print(struct group const *gp);
 
 static bool_t
 _same_name(char const *n1, char const *n2)
@@ -260,13 +303,11 @@ jleave:
 }
 
 static struct name *
-_gexpand(size_t level, struct name *nlist, struct grouphead *ghp, bool_t metoo,
+_gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
    int ntype)
 {
-   struct group *gp;
-   struct grouphead *nghp;
-   struct name *np;
-   char *cp;
+   struct grp_names_head *gnhp;
+   struct grp_names *gnp;
    NYD_ENTER;
 
    if (UICMP(z, level++, >, MAXEXP)) {
@@ -274,111 +315,218 @@ _gexpand(size_t level, struct name *nlist, struct grouphead *ghp, bool_t metoo,
       goto jleave;
    }
 
-   for (gp = ghp->gh_list; gp != NULL; gp = gp->g_next) {
-      cp = gp->g_ident;
-      if (*cp == '\\')
+   GP_TO_SUBCLASS(gnhp, gp);
+   for (gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next) {
+      char *cp;
+      struct group *ngp;
+
+      /* FIXME we do not really support leading backslash quoting do we??? */
+      if (*(cp = gnp->gn_id) == '\\' || !strcmp(cp, gp->g_id))
          goto jquote;
-      if (!strcmp(cp, ghp->gh_ident))
-         goto jquote;
-      if ((nghp = _group_find(cp)) != NULL) {
+
+      if ((ngp = _group_find(GT_ALIAS, cp)) != NULL) {
          /* For S-nail(1), the "alias" may *be* the sender in that a name maps
-          * to a full address specification */
-         if (!metoo && nghp->gh_list->g_next == NULL && _same_name(cp, myname))
-            continue;
-         nlist = _gexpand(level, nlist, nghp, metoo, ntype);
+          * to a full address specification; aliases cannot be empty */
+         struct grp_names_head *ngnhp;
+         GP_TO_SUBCLASS(ngnhp, ngp);
+
+         assert(ngnhp->gnh_head != NULL);
+         if (metoo || ngnhp->gnh_head->gn_next != NULL ||
+               !_same_name(cp, myname))
+            nlist = _gexpand(level, nlist, ngp, metoo, ntype);
          continue;
       }
+
+      /* Here we should allow to expand to itself if only person in alias */
 jquote:
-      np = nalloc(cp, ntype | GFULL);
-      /* At this point should allow to expand itself if only person in alias */
-      if (gp == ghp->gh_list && gp->g_next == NULL)
-         goto jskip;
-      if (!metoo && _same_name(cp, myname))
-         np->n_type |= GDEL;
-jskip:
-      nlist = put(nlist, np);
+      if (metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, myname))
+         nlist = put(nlist, nalloc(cp, ntype | GFULL));
    }
 jleave:
    NYD_LEAVE;
    return nlist;
 }
 
-static struct grouphead *
-_group_find(char const *name)
+static struct group *
+_group_find(struct group * const *gpa, char const *name)
 {
-   struct grouphead *ghp;
-   NYD_ENTER;
-
-   for (ghp = _alias_heads[hash(name)]; ghp != NULL; ghp = ghp->gh_next)
-      if (*ghp->gh_ident == *name && !strcmp(ghp->gh_ident, name))
-         break;
-   NYD_LEAVE;
-   return ghp;
-}
-
-static void
-_group_print(char const *name)
-{
-   struct grouphead *ghp;
    struct group *gp;
    NYD_ENTER;
 
-   if ((ghp = _group_find(name)) == NULL) {
-      fprintf(stderr, _("\"%s\": no such alias\n"), name);
-      goto jleave;
-   }
+   for (gp = gpa[hash(name)]; gp != NULL; gp = gp->g_next)
+      if (*gp->g_id == *name && !strcmp(gp->g_id, name))
+         break;
+   NYD_LEAVE;
+   return gp;
+}
 
-   printf("%s\t", ghp->gh_ident);
-   for (gp = ghp->gh_list; gp != NULL; gp = gp->g_next)
-      printf(" %s", gp->g_ident);
-   putchar('\n');
+static struct group *
+_group_lookup(struct group_lookup *glp, struct group **gpa, char const *name)
+{
+   struct group *lgp, *gp;
+   NYD_ENTER;
+
+   lgp = NULL;
+   gp = *(glp->gl_slot = (gpa + torek_hash(name) % HSHSIZE));
+
+   while (gp != NULL) {
+      if (*gp->g_id == *name && !strcmp(gp->g_id, name))
+         break;
+      lgp = gp;
+      gp = gp->g_next;
+   }
+   glp->gl_slot_last = lgp;
+   glp->gl_group = gp;
+   NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_go_first(struct group_lookup *glp, struct group **gpa)
+{
+   struct group *gp;
+   size_t i;
+   NYD_ENTER;
+
+   for (i = 0; i < HSHSIZE; ++gpa, ++i)
+      if ((gp = *gpa) != NULL) {
+         glp->gl_slot = gpa;
+         glp->gl_slot_last = NULL;
+         glp->gl_group = gp;
+         goto jleave;
+      }
+   glp->gl_group = gp = NULL;
 jleave:
    NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_go_next(struct group_lookup *glp, struct group **gpa)
+{
+   struct group *gp;
+   NYD_ENTER;
+
+   if ((gp = glp->gl_group->g_next) != NULL)
+      glp->gl_group = gp;
+   else {
+      for (gpa += HSHSIZE; glp->gl_slot < gpa; ++glp->gl_slot)
+         if ((gp = *glp->gl_slot) != NULL)
+            break;
+      glp->gl_group = gp;
+   }
+   NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_fetch(struct group **gpa, ui32_t add_size, char const *id)
+{
+   struct group_lookup gl;
+   struct group *gp;
+   size_t l, i;
+   NYD_ENTER;
+
+   if ((gp = _group_lookup(&gl, gpa, id)) != NULL)
+      goto jleave;
+
+   l = strlen(id) +1;
+   i = ALIGN(sizeof(*gp) - VFIELD_SIZEOF(struct group, g_id) + l);
+   gp = smalloc(i + add_size);
+   gp->g_next = *gl.gl_slot;
+   *gl.gl_slot = gp;
+   gp->g_subclass_off = i;
+   memcpy(gp->g_id, id, l);
+   if (add_size > 0)
+      memset(gp->g_id + i, 0, add_size);
+jleave:
+   NYD_LEAVE;
+   return gp;
 }
 
 static void
-_group_del(char const *name)
+_group_del(struct group_lookup *glp)
 {
-   ui32_t h;
-   struct grouphead *ghp, *gp;
+   struct group *gp, *x;
    NYD_ENTER;
 
-   h = hash(name);
+   gp = glp->gl_group;
 
-   for (gp = NULL, ghp = _alias_heads[h]; ghp != NULL; ghp = ghp->gh_next) {
-      if (*ghp->gh_ident == *name && !strcmp(ghp->gh_ident, name)) {
-         __grouphead_del(ghp);
-         free(ghp->gh_ident);
-         if (gp != NULL)
-            gp->gh_next = ghp->gh_next;
-         else
-            _alias_heads[h] = NULL;
-         free(ghp);
-         break;
+   if ((x = glp->gl_slot_last) != NULL)
+      x->g_next = gp->g_next;
+   else
+      *glp->gl_slot = gp->g_next;
+   free(gp);
+   NYD_LEAVE;
+}
+
+static bool_t
+_group_dispatch_del(struct group **gpa, char const *id)
+{
+   struct group_lookup gl;
+   struct group *gp;
+   NYD_ENTER;
+
+   if (id[0] == '*' && id[1] == '\0') {
+      for (gp = _group_go_first(&gl, gpa); gp != NULL;
+            gp = _group_go_next(&gl, gpa)) {
+         __names_del(gp);
+         _group_del(&gl);
       }
-      gp = ghp;
+      gp = (struct group*)TRU1;
+   } else if ((gp = _group_lookup(&gl, gpa, id)) != NULL) {
+      __names_del(gp);
+      _group_del(&gl);
+   }
+   NYD_LEAVE;
+   return (gp != NULL);
+}
+
+static void
+__names_del(struct group *gp)
+{
+   struct grp_names_head *gnhp;
+   struct grp_names *gnp, *x;
+   NYD_ENTER;
+
+   GP_TO_SUBCLASS(gnhp, gp);
+
+   for (gnp = gnhp->gnh_head; gnp != NULL;) {
+      x = gnp;
+      gnp = gnp->gn_next;
+      free(x);
    }
    NYD_LEAVE;
 }
 
 static void
-__grouphead_del(struct grouphead *ghp)
+_group_print_all(struct group * const *gpa)
 {
-   struct group *gp;
+   char const **ida;
+   struct group const *gp;
+   ui32_t h, i;
    NYD_ENTER;
 
-   if ((gp = ghp->gh_list) != NULL)
-      do {
-         struct group *x = gp;
-         gp = gp->g_next;
-         free(x->g_ident);
-         free(x);
-      } while (gp != NULL);
+   for (h = 0, i = 1; h < HSHSIZE; ++h)
+      for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
+         ++i;
+   ida = salloc(i * sizeof *ida);
+
+   for (i = h = 0; h < HSHSIZE; ++h)
+      for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
+         ida[i++] = gp->g_id;
+   ida[i] = NULL;
+
+   if (i > 1)
+      qsort(ida, i, sizeof *ida, &__group_print_qsorter);
+
+   for (i = 0; ida[i] != NULL; ++i)
+      _group_dispatch_print(_group_find(gpa, ida[i]));
    NYD_LEAVE;
 }
 
 static int
-__group_qsort_cpp_cpp(void const *a, void const *b)
+__group_print_qsorter(void const *a, void const *b)
 {
    int rv;
    NYD_ENTER;
@@ -386,6 +534,30 @@ __group_qsort_cpp_cpp(void const *a, void const *b)
    rv = strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b));
    NYD_LEAVE;
    return rv;
+}
+
+static void
+_group_dispatch_print(struct group const *gp)
+{
+   struct grp_names_head *gnhp;
+   struct grp_names *gnp;
+   NYD_ENTER;
+
+   printf("%s", gp->g_id);
+
+   GP_TO_SUBCLASS(gnhp, gp);
+
+   if ((gnp = gnhp->gnh_head) != NULL) {
+      putc('\t', stdout);
+      do {
+         struct grp_names *x = gnp;
+         gnp = gnp->gn_next;
+         printf("%s%s", x->gn_id, (gnp != NULL ? " " : ""));
+      } while (gnp != NULL);
+   }
+
+   putc('\n', stdout);
+   NYD_LEAVE;
 }
 
 FL struct name *
@@ -653,7 +825,7 @@ FL struct name *
 usermap(struct name *names, bool_t force_metoo)
 {
    struct name *new, *np, *cp;
-   struct grouphead *ghp;
+   struct group *gp;
    int metoo;
    NYD_ENTER;
 
@@ -668,10 +840,10 @@ usermap(struct name *names, bool_t force_metoo)
          np = cp;
          continue;
       }
-      ghp = _group_find(np->n_name);
+      gp = _group_find(_alias_heads, np->n_name);
       cp = np->n_flink;
-      if (ghp != NULL)
-         new = _gexpand(0, new, ghp, metoo, np->n_type);
+      if (gp != NULL)
+         new = _gexpand(0, new, gp, metoo, np->n_type);
       else
          new = put(new, np);
       np = cp;
@@ -849,78 +1021,55 @@ jleave:
 FL int
 c_alias(void *v)
 {
-   char **argv = v, *aname;
-   struct grouphead *ghp;
+   char **argv = v;
    struct group *gp;
-   int h, i;
    NYD_ENTER;
 
    if (*argv == NULL) {
-      for (h = 0, i = 1; h < HSHSIZE; ++h)
-         for (ghp = _alias_heads[h]; ghp != NULL; ghp = ghp->gh_next)
-            ++i;
-      argv = salloc(i * sizeof *argv);
+      _group_print_all(_alias_heads);
+      gp = (struct group*)TRU1;
+   } else if (argv[1] == NULL) {
+      if ((gp = _group_find(_alias_heads, *argv)) != NULL)
+      else
+         fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+   } else {
+      struct grp_names_head *gnhp;
 
-      for (i = h = 0; h < HSHSIZE; ++h)
-         for (ghp = _alias_heads[h]; ghp != NULL; ghp = ghp->gh_next)
-            argv[i++] = ghp->gh_ident;
-      argv[i] = NULL;
+      gp = _group_fetch(_alias_heads, sizeof(struct grp_names_head), *argv);
+      GP_TO_SUBCLASS(gnhp, gp);
 
-      if (i > 1)
-         qsort(argv, i, sizeof *argv, &__group_qsort_cpp_cpp);
-
-      for (i = 0; (aname = argv[i]) != NULL; ++i)
-         _group_print(aname);
-      goto jleave;
+      for (++argv; *argv != NULL; ++argv) {
+         size_t l = strlen(*argv) +1;
+         struct grp_names *gnp = smalloc(sizeof(*gnp) -
+               VFIELD_SIZEOF(struct grp_names, gn_id) + l);
+         gnp->gn_next = gnhp->gnh_head;
+         gnhp->gnh_head = gnp;
+         memcpy(gnp->gn_id, *argv, l);
+      }
    }
-
-   if (argv[1] == NULL) {
-      _group_print(*argv);
-      goto jleave;
-   }
-
-   aname = *argv;
-   h = hash(aname);
-   if ((ghp = _group_find(aname)) == NULL) {
-      ghp = scalloc(1, sizeof *ghp);
-      ghp->gh_next = _alias_heads[h];
-      _alias_heads[h] = ghp;
-      ghp->gh_ident = sstrdup(aname);
-      ghp->gh_list = NULL;
-   }
-
-   /* Insert names from the command list into the alias.  Who cares if there
-    * are duplicates?  They get tossed later anyway */
-   while (*(++argv) != NULL) {
-      gp = scalloc(1, sizeof *gp);
-      gp->g_next = ghp->gh_list;
-      ghp->gh_list = gp;
-      gp->g_ident = sstrdup(*argv);
-   }
-jleave:
    NYD_LEAVE;
-   return 0;
+   return !(gp != NULL);
 }
 
 FL int
 c_unalias(void *v)
 {
    char **argv = v;
-   int rv = 1;
    NYD_ENTER;
 
-   if (*argv == NULL) {
-      fprintf(stderr, _("Must specify alias to remove\n"));
-      goto jleave;
-   }
+   if (*argv != NULL) {
+      bool_t errors = FAL0;
 
-   do
-      _group_del(*argv);
-   while (*++argv != NULL);
-   rv = 0;
-jleave:
+      do if (!_group_del(_alias_heads, *argv)) {
+         errors = TRU1;
+         fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+      } while (*++argv != NULL);
+      if (errors)
+         argv = NULL;
+   } else
+      fprintf(stderr, _("Must specify an alias to remove\n"));
    NYD_LEAVE;
-   return rv;
+   return !(argv != NULL);
 }
 
 FL int
