@@ -1400,6 +1400,65 @@ c_unmlsubscribe(void *v)
    return rv;
 }
 
+FL si8_t
+is_mlist(char const *name, bool_t subscribed_only)
+{
+   struct group *gp;
+#ifdef HAVE_REGEX
+   struct grp_regex **lpp, *grp;
+   bool_t re2;
+#endif
+   si8_t rv;
+   NYD_ENTER;
+
+   gp = _group_find(GT_MLIST, name);
+
+   if ((rv = (gp != NULL))) {
+      if (gp->g_type & GT_SUBSCRIBE)
+         rv = -rv;
+      else if (subscribed_only)
+         rv ^= rv;
+      /* Of course, if that is a regular expression it doesn't mean a thing */
+#ifdef HAVE_REGEX
+      if (gp->g_type & GT_REGEX)
+         rv = 0;
+      else
+#endif
+         goto jleave;
+   }
+
+   /* Not in the hashmap (as something matchable), walk the lists */
+#ifdef HAVE_REGEX
+   re2 = FAL0;
+   lpp = &_mlsub_regex;
+jregex_redo:
+   if ((grp = *lpp) != NULL) {
+      do if (regexec(&grp->gr_regex, name, 0,NULL, 0) != REG_NOMATCH) {
+         /* Relink as the head of this list TODO better QOS */
+         if (*lpp != grp && grp->gr_next != grp) {
+            grp->gr_last->gr_next = grp->gr_next;
+            grp->gr_next->gr_last = grp->gr_last;
+            (grp->gr_last = (*lpp)->gr_last)->gr_next = grp;
+            (grp->gr_next = *lpp)->gr_last = grp;
+            *lpp = grp;
+         }
+         rv = !re2 ? -1 : 1;
+         goto jleave;
+      } while ((grp = grp->gr_next) != *lpp);
+   }
+   if (!re2 && !subscribed_only) {
+      re2 = TRU1;
+      lpp = &_mlist_regex;
+      goto jregex_redo;
+   }
+   assert(rv == 0);
+#endif
+
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL int
 c_alternates(void *v)
 {
