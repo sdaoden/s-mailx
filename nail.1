@@ -2293,16 +2293,27 @@ and must be located on the current server for IMAP.
 .It Ic Reply
 (R) Reply to originator.
 Does not reply to other recipients of the original message.
+.Va flipr
+will exchange this command with
+.Ic reply .
 .It Ic reply
-(r) Takes a message list and sends mail to the sender and all recipients
-of the specified messages.
-The default message must not be deleted.
+(r) Take a message and group-responds to it by addressing the sender
+and all recipients.
+.Va followup-to-honour
+as well as
+.Va recipients-in-cc
+influence responding behaviour.
+If
+.Va flipr
+is set the commands
+.Ic Reply
+and
+.Ic reply are exchanged.
 .It Ic replyall
 Similar to
 .Ic reply ,
-but responds to all recipients regardless of the
-.Va flipr
-variable.
+but initiates a group-reply of the value of
+.Va flipr .
 .It Ic replysender
 Similar to
 .Ic Reply ,
@@ -3895,6 +3906,15 @@ is not executed if this variable is effective for a folder
 (but it can be
 .Ic call Ns
 ed from within the actually executed macro).
+.It Va followup-to-honour
+Controls wether a `Mail-Followup-To:' header is honoured when
+group-replying to a message via
+.Ic reply .
+This is a quadoption; if set without value it defaults to `yes'.
+Also see the commands
+.Ic mlist
+and
+.Ic mlsubscribe .
 .It Va from
 The address (or a list of addresses) to put into the `From:' field of
 the message header, quoting RFC 5322:

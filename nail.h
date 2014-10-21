@@ -1010,6 +1010,7 @@ enum okeys {
    ok_v_expandaddr,
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
+   ok_v_followup_to_honour,
    ok_v_from,
    ok_v_fwdheading,
    ok_v_headline,
