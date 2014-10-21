@@ -437,11 +437,9 @@ _prepare_mta_args(struct name *to, struct header *hp)
    if (options & OPT_r_FLAG) {
       if (option_r_arg[0] != '\0')
          cp = option_r_arg;
-      else if (hp != NULL) {
-         /* puthead() did it, then */
-         assert(hp->h_from != NULL);
+      else if (hp != NULL && hp->h_from != NULL)
          cp = hp->h_from->n_name;
-      } else
+      else
          cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
       if (cp != NULL) { /* XXX ugh! */
          args[i++] = "-f";
