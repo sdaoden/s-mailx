@@ -933,6 +933,7 @@ enum okeys {
    ok_b_emptybox,
    ok_b_emptystart,
    ok_b_flipr,
+   ok_b_followup_to,
    ok_b_forward_as_attachment,
    ok_b_fullnames,
    ok_b_header,                        /* {special=1} */
@@ -1418,25 +1419,25 @@ enum argtype {
 };
 
 enum gfield {
-   GTO            = 1,        /* Grab To: line */
-   GSUBJECT       = 2,        /* Likewise, Subject: line */
-   GCC            = 4,        /* And the Cc: line */
-   GBCC           = 8,        /* And also the Bcc: line */
+   GTO            = 1<< 0,    /* Grab To: line */
+   GSUBJECT       = 1<< 1,    /* Likewise, Subject: line */
+   GCC            = 1<< 2,    /* And the Cc: line */
+   GBCC           = 1<< 3,    /* And also the Bcc: line */
 
-   GNL            = 16,       /* Print blank line after */
-   GDEL           = 32,       /* Entity removed from list */
-   GCOMMA         = 64,       /* detract puts in commas */
-   GUA            = 128,      /* User-Agent field */
-   GMIME          = 256,      /* MIME 1.0 fields */
-   GMSGID         = 512,      /* a Message-ID */
-   /* 1024 */
-   GIDENT         = 2048,     /* From:, Reply-To: and Organization: field */
-   GREF           = 4096,     /* References: field */
-   GDATE          = 8192,     /* Date: field */
-   GFULL          = 16384,    /* include full names */
-   GSKIN          = 32768,    /* skin names */
-   GEXTRA         = 65536,    /* extra fields */
-   GFILES         = 131072    /* include filename addresses */
+   GNL            = 1<< 4,    /* Print blank line after */
+   GDEL           = 1<< 5,    /* Entity removed from list */
+   GCOMMA         = 1<< 6,    /* detract puts in commas */
+   GUA            = 1<< 7,    /* User-Agent field */
+   GMIME          = 1<< 8,    /* MIME 1.0 fields */
+   GMSGID         = 1<< 9,    /* a Message-ID */
+
+   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: field */
+   GREF           = 1<<12,    /* References: field */
+   GDATE          = 1<<13,    /* Date: field */
+   GFULL          = 1<<14,    /* include full names */
+   GSKIN          = 1<<15,    /* skin names */
+   GEXTRA         = 1<<16,    /* extra fields */
+   GFILES         = 1<<17     /* include filename addresses */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
@@ -1450,8 +1451,9 @@ struct header {
    struct attachment *h_attach; /* MIME attachments */
    char        *h_charset;    /* preferred charset */
    struct name *h_from;       /* overridden "From:" field */
-   struct name *h_replyto;    /* overridden "Reply-To:" field */
    struct name *h_sender;     /* overridden "Sender:" field */
+   struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_mft;        /* Mail-Followup-To */
    char        *h_organization; /* overridden "Organization:" field */
 };
 

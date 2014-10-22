@@ -2163,6 +2163,8 @@ newly creating them as necessary (as via
 .Ic mlist ) Ns .
 Subscription attributes may be removed via the command
 .Ic unmlsubscribe .
+Also see
+.Va followup-to .
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2299,6 +2301,7 @@ will exchange this command with
 .It Ic reply
 (r) Take a message and group-responds to it by addressing the sender
 and all recipients.
+.Va followup-to ,
 .Va followup-to-honour
 as well as
 .Va recipients-in-cc
@@ -3290,6 +3293,19 @@ as well as
 .Ic followupall
 are not affected by the current setting of
 .Va flipr .
+.It Va followup-to
+Controls wether a `Mail-Followup-To:' header is generated when sending
+messages to a known mailing list.
+If the list is being subscribed to then only the list address will be
+placed in this header, but otherwise the address found in
+.Va from
+will be added to it.
+Also see
+.Va followup-to-honour
+and the commands
+.Ic mlist
+and
+.Ic mlsubscribe .
 .It Va forward-as-attachment
 Original messages are normally sent as inline text with the
 .Ic forward
@@ -3911,7 +3927,9 @@ Controls wether a `Mail-Followup-To:' header is honoured when
 group-replying to a message via
 .Ic reply .
 This is a quadoption; if set without value it defaults to `yes'.
-Also see the commands
+Also see
+.Va followup-to
+and the commands
 .Ic mlist
 and
 .Ic mlsubscribe .
