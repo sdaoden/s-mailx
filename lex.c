@@ -908,7 +908,11 @@ jrestart:
    }
 
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
-      fprintf(stderr, _("Unknown command: `%s'\n"), word);
+      bool_t s = condstack_isskip();
+      if (!s || (options & OPT_D_V))
+         fprintf(stderr, _("Unknown command: `%s'\n"), word);
+      if (s)
+         goto jleave0;
       if (com != NULL) {
          c_cmdnotsupp(NULL);
          com = NULL;
