@@ -233,7 +233,7 @@ print_collf(FILE *cf, struct header *hp)
    struct attachment *ap;
    char const *cp;
    enum gfield gf;
-   size_t linecnt, maxlines, linesize = 0, linelen, cnt, cnt2;
+   size_t linesize = 0, linelen, cnt, cnt2;
    NYD_ENTER;
 
    fflush(cf);
@@ -241,26 +241,34 @@ print_collf(FILE *cf, struct header *hp)
    cnt = cnt2 = fsize(cf);
 
    if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
-      for (linecnt = 0; fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0);
-         ++linecnt);
+      size_t l, m;
+
+      m = 4;
+      if (hp->h_to != NULL)
+         ++m;
+      if (hp->h_subject != NULL)
+         ++m;
+      if (hp->h_cc != NULL)
+         ++m;
+      if (hp->h_bcc != NULL)
+         ++m;
+      if (hp->h_attach != NULL)
+         ++m;
+      m += (myaddrs(hp) != NULL || hp->h_from != NULL);
+      m += (ok_vlook(sender) != NULL || hp->h_sender != NULL);
+      m += (ok_vlook(replyto) != NULL || hp->h_replyto != NULL);
+      m += (ok_vlook(ORGANIZATION) != NULL || hp->h_organization !=NULL);
+
+      l = (*cp == '\0') ? screensize() : atoi(cp);
+      if (m > l)
+         goto jpager;
+      l -= m;
+
+      for (m = 0; fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0); ++m)
+         ;
       rewind(cf);
-      maxlines = (*cp == '\0' ? screensize() : atoi(cp));
-      maxlines -= 4;
-      if (hp->h_to)
-         --maxlines;
-      if (hp->h_subject)
-         --maxlines;
-      if (hp->h_cc)
-         --maxlines;
-      if (hp->h_bcc)
-         --maxlines;
-      if (hp->h_attach)
-         --maxlines;
-      maxlines -= (myaddrs(hp) != NULL || hp->h_from != NULL);
-      maxlines -= (ok_vlook(ORGANIZATION) !=NULL || hp->h_organization !=NULL);
-      maxlines -= (ok_vlook(replyto) != NULL || hp->h_replyto != NULL);
-      maxlines -= (ok_vlook(sender) != NULL || hp->h_sender != NULL);
-      if ((ssize_t)maxlines < 0 || linecnt > maxlines) {
+      if (l < m) {
+jpager:
          cp = get_pager(NULL);
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
@@ -302,6 +310,7 @@ print_collf(FILE *cf, struct header *hp)
          }
       }
    }
+
 jendpipe:
    if (obuf != stdout) {
       safe_signal(SIGPIPE, SIG_IGN);
@@ -660,7 +669,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          if (hp->h_cc == NULL && ok_blook(askcc))
             t &= ~GNL, getfields |= GCC;
       }
-      if (printheaders) {
+      if (printheaders && !ok_blook(editalong)) {
          puthead(hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
          fflush(stdout);
       }
@@ -702,12 +711,16 @@ collect(struct header *hp, int printheaders, struct message *mp,
          goto jerr;
    }
 
-   /* Print what we have sofar also on the terminal */
-   rewind(_coll_fp);
-   while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-      putc(c, stdout);
-   if (fseek(_coll_fp, 0, SEEK_END))
-      goto jerr;
+   /* Print what we have sofar also on the terminal (if useful) */
+   if ((options & OPT_INTERACTIVE) && !ok_blook(editalong)) {
+      rewind(_coll_fp);
+      while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
+         putc(c, stdout);
+      if (fseek(_coll_fp, 0, SEEK_END))
+         goto jerr;
+      /* Ensure this is clean xxx not really necessary? */
+      fflush(stdout);
+   }
 
    escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
    _coll_hadintr = 0;
