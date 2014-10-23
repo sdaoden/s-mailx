@@ -233,9 +233,9 @@ _reply(int *msgvec, bool_t recipient_record)
 {
    struct header head;
    struct message *mp;
-   char *cp, *rcv;
-   struct name *np = NULL;
+   char *rcv, *cp;
    enum gfield gf;
+   struct name *np;
    int rv = 1;
    NYD_ENTER;
 
@@ -245,27 +245,32 @@ _reply(int *msgvec, bool_t recipient_record)
       goto jleave;
    }
 
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
    mp = message + msgvec[0] - 1;
    touch(mp);
    setdot(mp);
 
-   if ((rcv = hfield1("reply-to", mp)) == NULL)
-      if ((rcv = hfield1("from", mp)) == NULL)
-         rcv = nameof(mp, 1);
-   if (rcv != NULL)
-      np = lextract(rcv, GTO | gf);
-   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
-      np = cat(np, lextract(cp, GTO | gf));
-   /* Delete my name from reply list, and with it, all my alternate names */
-   np = elide(delete_alternates(np));
-   if (np == NULL)
-      np = lextract(rcv, GTO | gf);
-
    memset(&head, 0, sizeof head);
-   head.h_to = np;
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = _reedit(head.h_subject);
+   head.h_subject = _reedit(hfield1("subject", mp));
+   gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   if ((rcv = hfield1("reply-to", mp)) == NULL &&
+         (rcv = hfield1("from", mp)) == NULL)
+      rcv = nameof(mp, 1);
+
+   /* Reuse plain To: setter code for MFT if possible */
+   if (ok_vlook(followup_to_honour) != NULL &&
+         (cp = hfield1("mail-followup-to", mp)) != NULL &&
+         (np = lextract(cp, GTO | gf)) != NULL) {
+      char const *tr = _("Followup-To `%s%s'");
+      size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
+      char *sp = ac_alloc(l);
+
+      snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
+      l = (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0);
+
+      ac_free(sp);
+      if (l != 0)
+         goto jto_from_mft; /* TODO *followup-to-honour*: *recipients-in-cc*? */
+   }
 
    /* Cc: */
    np = NULL;
@@ -275,6 +280,20 @@ _reply(int *msgvec, bool_t recipient_record)
       np = cat(np, lextract(cp, GCC | gf));
    if (np != NULL)
       head.h_cc = elide(delete_alternates(np));
+
+   /* To: */
+   np = NULL;
+   if (rcv != NULL)
+      np = lextract(rcv, GTO | gf);
+   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
+      np = cat(np, lextract(cp, GTO | gf));
+   /* Delete my name from reply list, and with it, all my alternate names */
+jto_from_mft:
+   np = elide(delete_alternates(np));
+   if (np == NULL)
+      np = lextract(rcv, GTO | gf);
+   head.h_to = np;
+
    make_ref_and_cs(mp, &head);
 
    if (ok_blook(quote_as_attachment)) {
