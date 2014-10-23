@@ -781,7 +781,8 @@ do {\
          if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
             goto jleave;
 
-      _check_mft(np, hp, w); /* Place it later in the output.. */
+      if (alias_expand)
+         _check_mft(np, hp, w); /* Place it later in the output.. */
    }
 
    if (hp->h_to != NULL && w & GTO) {
@@ -898,29 +899,41 @@ jleave:
 static void
 _check_mft(struct name *np, struct header *hp, enum gfield w)
 {
-   /* Mail-Followup-To: TODO terribly expensive for now
+   /* Mail-Followup-To: TODO terribly expensive and messy for now
     * TODO also: in v15.0 with the object based approach this should be
-    * TODO more transparent and much better.  what i hope */
+    * TODO more transparent and much better  (what i hope) */
    enum {_SEEN_TO=1<<0, _SEEN_SUB=1<<1, _SEEN_LIST=1<<2, _HAD_MFT=1<<3} flags;
    struct name *sender, *x;
    NYD_ENTER;
 
-   /* Note hp->h_mft may already be set nonetheless */
-   if (!ok_blook(followup_to) || !(w & (GTO | GCC)))
-      goto jleave;
-
+   flags = 0;
    sender = np;
    np = NULL;
+
+   /* hp->h_mft may be set nonetheless, ensure we expand possible aliases when
+    * we are about to finally send the message! */
+   if (!ok_blook(followup_to) || !(w & (GTO | GCC))) {
+      if (hp->h_mft != NULL)
+        goto join;
+      goto jleave;
+   }
 
    x = !(flags = !(w & GCC)) ? hp->h_cc : hp->h_to;
 j_ft_redo:
    for (; x != NULL; x = x->n_flink) {
-      switch (is_mlist(x->n_name, FAL0)) {
-      default: break;
-      case -1: flags |= _SEEN_SUB;  break;
-      case  1: flags |= _SEEN_LIST; break;
+      struct name *z, *nx = namelist_dup(x, GEXTRA | GFULL, TRU1, TRU1);
+
+      while (nx != NULL) {
+         switch (is_mlist(nx->n_name, FAL0)) {
+         default: break;
+         case -1: flags |= _SEEN_SUB;  break;
+         case  1: flags |= _SEEN_LIST; break;
+         }
+         z = nx;
+         nx = nx->n_flink;
+         z->n_flink = np;
+         np = z;
       }
-      np = cat(np, ndup(x, (x->n_type & ~GMASK) | GEXTRA | GFULL));
    }
    if (!(flags & _SEEN_TO) && (w & GTO)) {
       flags |= _SEEN_TO;
@@ -929,15 +942,17 @@ j_ft_redo:
    }
 
    /* We have created a copy of all recipients TODO, now join them with
-    * the already existing MFT, and reduce them when subscribed etc. */
+    * the already existing MFT, and reduce them when subscribed etc.
+    * Also we have to perform alias expansion in here */
    if ((flags & (_SEEN_SUB | _SEEN_LIST)) || hp->h_mft != NULL) {
       if (hp->h_mft != NULL) {
          flags |= _HAD_MFT;
-         np = cat(hp->h_mft, np);
+join:
+         np = cat(np, usermap(hp->h_mft, TRU1));
       }
       np = elide(delete_alternates(np));
 
-      if (flags & _SEEN_LIST) { /* TODO SHOULDN'T THIS BEEN !_SEEN_SUB?? */
+      if (flags & _SEEN_LIST) { /* XXX SHOULDN'T THIS BEEN !_SEEN_SUB?? */
          if (sender == NULL || sender == (struct name*)0x1)
             sender = nalloc(UNCONST(myorigin(hp)), GEXTRA | GFULL);
          else
@@ -945,13 +960,7 @@ j_ft_redo:
          if (sender != NULL)
             np = cat(np, sender);
       }
-
-      for (hp->h_mft = NULL; np != NULL;) {
-         x = np;
-         np = np->n_flink;
-         x->n_flink = NULL;
-         hp->h_mft = cat(hp->h_mft, x);
-      }
+      hp->h_mft = np;
    }
 jleave:
    NYD_LEAVE;
