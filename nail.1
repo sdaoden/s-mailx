@@ -3324,6 +3324,13 @@ a `Message-ID'.)
 Usually, when a group is expanded that contains the sender,
 the sender is removed from the expansion.
 Setting this option causes the sender to be included in the group.
+Note that a set
+.Va metoo
+also causes a
+.Fl m
+option to be passed to Mail-Transfer-Agents (MTAs);
+though most of the modern MTAs don't (no longer) document this flag, no
+MTA is known which doesn't support it (for historical compatibility).
 .It Va mime-allow-text-controls
 When sending messages, each part of the message is MIME-inspected in
 order to classify the `Content-Type:' and `Content-Transfer-Encoding:'
