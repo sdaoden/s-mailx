@@ -2112,6 +2112,15 @@ define temporary_settings {
 Note that these options stack upon each other, i.e., if macro1 sets
 `localopts' and calls macro2, which explicitly resets `localopts', then
 any values set within macro2 will still be cleaned up by macro1.
+.It Ic Lreply
+(L) Reply to messages that come in via known or subscribed mailing lists
+\(en see
+.Ic mlist
+and
+.Ic mlsubscribe \(en
+adding a special massage of the addressee lists on top of the usual
+.Ic reply
+functionality.
 .It Ic Mail
 (M) Similar to
 .Ic mail ,
@@ -2306,6 +2315,9 @@ and all recipients.
 as well as
 .Va recipients-in-cc
 influence responding behaviour.
+The command
+.Ic Lreply
+offers special support for replying to mailing lists.
 If
 .Va flipr
 is set the commands

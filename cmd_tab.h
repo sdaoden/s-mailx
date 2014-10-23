@@ -392,6 +392,8 @@
      DS(N_("Show all mailing list subscriptions or define some")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
      DS(N_("Un\"mlsubscribe\" <name-list>, \"*\" removes all subscriptions"))},
+   { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
+     DS(N_("Mailing-list reply to the given message")) },
    { "features", &_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
    { "version", &_version, (H | M | NOLIST), 0, 0
