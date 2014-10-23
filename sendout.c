@@ -81,6 +81,12 @@ static int           make_multipart(struct header *hp, int convert, FILE *fi,
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
 
+/* Dump many many headers to fo */
+static int           _puthead(bool_t alias_expand, struct header *hp, FILE *fo,
+                        enum gfield w, enum sendaction action,
+                        enum conversion convert, char const *contenttype,
+                        char const *charset);
+
 /* Check wether Disposition-Notification-To: is desired */
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
                         FILE *fo);
@@ -594,7 +600,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          goto jiconv_err;
    }
 #endif
-   if (puthead(hp, nfo,
+   if (_puthead(TRU1, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset))
       goto jerr;
@@ -685,6 +691,180 @@ jerr:
 jleave:
    NYD_LEAVE;
    return nfi;
+}
+
+static int
+_puthead(bool_t alias_expand, struct header *hp, FILE *fo, enum gfield w,
+   enum sendaction action, enum conversion convert, char const *contenttype,
+   char const *charset)
+{
+#define FMT_CC_AND_BCC()   \
+do {\
+   if (hp->h_cc != NULL && (w & GCC)) {\
+      if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
+            (action != SEND_TODISP)))\
+         goto jleave;\
+      ++gotcha;\
+   }\
+   if (hp->h_bcc != NULL && (w & GBCC)) {\
+      if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
+            (action != SEND_TODISP)))\
+         goto jleave;\
+      ++gotcha;\
+   }\
+} while (0)
+
+   char const *addr;
+   size_t gotcha, l;
+   struct name *np, *fromfield = NULL, *senderfield = NULL;
+   int stealthmua, rv = 1;
+   bool_t nodisp;
+   NYD_ENTER;
+
+   if ((addr = ok_vlook(stealthmua)) != NULL)
+      stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
+   else
+      stealthmua = 0;
+   gotcha = 0;
+   nodisp = (action != SEND_TODISP);
+
+   if (w & GDATE)
+      mkdate(fo, "Date"), ++gotcha;
+   if (w & GIDENT) {
+      if (hp->h_from != NULL) {
+         if (fmt("From:", hp->h_from, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+            goto jleave;
+         ++gotcha;
+         fromfield = hp->h_from;
+      } else if ((addr = myaddrs(hp)) != NULL) {
+         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromfield))
+            goto jleave;
+         hp->h_from = fromfield;
+      }
+
+      if (((addr = hp->h_organization) != NULL ||
+            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
+            (l = strlen(addr)) > 0) {
+         fwrite("Organization: ", sizeof(char), 14, fo);
+         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+         ++gotcha;
+         putc('\n', fo);
+      }
+
+      if (hp->h_sender != NULL) {
+         if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
+            goto jleave;
+         ++gotcha;
+         senderfield = hp->h_sender;
+      } else if ((addr = ok_vlook(sender)) != NULL)
+         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
+            goto jleave;
+
+      if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+         goto jleave;
+      /* Note that np is NULL, 0x1 or real sender */
+
+      /* TODO not here.. not so.. au */
+      if (alias_expand && !_check_dispo_notif(np, hp, fo))
+         goto jleave;
+
+      /* TODO see the ONCE TODO note somewhere around this file;
+       * TODO but anyway, do NOT perform alias expansion UNLESS
+       * TODO we are actually sending out! */
+      if (hp->h_replyto != NULL) {
+         if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0, nodisp))
+            goto jleave;
+         ++gotcha;
+      } else if ((addr = ok_vlook(replyto)) != NULL)
+         if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
+            goto jleave;
+
+      _check_mft(np, hp, w); /* Place it later in the output.. */
+   }
+
+   if (hp->h_to != NULL && w & GTO) {
+      if (fmt("To:", hp->h_to, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+         goto jleave;
+      ++gotcha;
+   }
+
+   if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
+      FMT_CC_AND_BCC();
+
+   if (hp->h_subject != NULL && (w & GSUBJECT)) {
+      char *sub = subject_re_trim(hp->h_subject);
+      size_t sublen = strlen(sub);
+
+      fwrite("Subject: ", sizeof(char), 9, fo);
+      if (sub != hp->h_subject) {
+         fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
+         if (sublen > 0 &&
+               xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+      } else if (*sub != '\0') {
+         if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+      }
+      ++gotcha;
+      putc('\n', fo);
+   }
+
+   if (ok_blook(bsdcompat) || ok_blook(bsdorder))
+      FMT_CC_AND_BCC();
+
+   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
+      fputs(addr, fo);
+      fputc('\n', fo);
+      ++gotcha;
+   }
+
+   if ((np = hp->h_ref) != NULL && (w & GREF)) {
+      fmt("References:", np, fo, 0, 1, 0);
+      if (np->n_name != NULL) {
+         while (np->n_flink != NULL)
+            np = np->n_flink;
+         if (!is_addr_invalid(np, 0)) {
+            fprintf(fo, "In-Reply-To: %s\n", np->n_name);
+            ++gotcha;
+         }
+      }
+   }
+
+   if ((w & GIDENT) && alias_expand && hp->h_mft != NULL) {
+      if (fmt("Mail-Followup-To:", hp->h_mft, fo, w & GCOMMA, 0, nodisp))
+         goto jleave;
+      ++gotcha;
+   }
+
+   if ((w & GUA) && stealthmua == 0)
+      fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
+
+   if (w & GMIME) {
+      fputs("MIME-Version: 1.0\n", fo), ++gotcha;
+      if (hp->h_attach != NULL) {
+         _sendout_boundary = mime_create_boundary();/*TODO carrier*/
+         fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
+            _sendout_boundary);
+      } else {
+         fprintf(fo, "Content-Type: %s", contenttype);
+         if (charset != NULL)
+            fprintf(fo, "; charset=%s", charset);
+         fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
+            _get_encoding(convert));
+      }
+   }
+
+   if (gotcha && (w & GNL))
+      putc('\n', fo);
+   rv = 0;
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef FMT_CC_AND_BCC
 }
 
 static bool_t
@@ -1781,172 +1961,12 @@ FL int
 puthead(struct header *hp, FILE *fo, enum gfield w, enum sendaction action,
    enum conversion convert, char const *contenttype, char const *charset)
 {
-#define FMT_CC_AND_BCC()   \
-do {\
-   if (hp->h_cc != NULL && (w & GCC)) {\
-      if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
-         goto jleave;\
-      ++gotcha;\
-   }\
-   if (hp->h_bcc != NULL && (w & GBCC)) {\
-      if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
-         goto jleave;\
-      ++gotcha;\
-   }\
-} while (0)
-
-   char const *addr;
-   size_t gotcha, l;
-   struct name *np, *fromfield = NULL, *senderfield = NULL;
-   int stealthmua, rv = 1;
-   bool_t nodisp;
+   int rv;
    NYD_ENTER;
 
-   if ((addr = ok_vlook(stealthmua)) != NULL)
-      stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
-   else
-      stealthmua = 0;
-   gotcha = 0;
-   nodisp = (action != SEND_TODISP);
-
-   if (w & GDATE)
-      mkdate(fo, "Date"), ++gotcha;
-   if (w & GIDENT) {
-      if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
-            goto jleave;
-         ++gotcha;
-         fromfield = hp->h_from;
-      } else if ((addr = myaddrs(hp)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromfield))
-            goto jleave;
-         hp->h_from = fromfield;
-      }
-
-      if (((addr = hp->h_organization) != NULL ||
-            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
-            (l = strlen(addr)) > 0) {
-         fwrite("Organization: ", sizeof(char), 14, fo);
-         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-         ++gotcha;
-         putc('\n', fo);
-      }
-
-      if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
-            goto jleave;
-         ++gotcha;
-         senderfield = hp->h_sender;
-      } else if ((addr = ok_vlook(sender)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
-            goto jleave;
-
-      if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
-         goto jleave;
-      /* Note that np is NULL, 0x1 or real sender */
-
-      if (!_check_dispo_notif(np, hp, fo)) /* XXX not here.. not so.. au */
-         goto jleave;
-
-      /* TODO see the ONCE TODO note somewhere around this file;
-       * TODO but anyway, do NOT perform alias expansion UNLESS
-       * TODO we are actually sending out! */
-      if (hp->h_replyto != NULL) {
-         if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0, nodisp))
-            goto jleave;
-         ++gotcha;
-      } else if ((addr = ok_vlook(replyto)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
-            goto jleave;
-
-      _check_mft(np, hp, w); /* But place it later in the output.. */
-   }
-
-   if (hp->h_to != NULL && w & GTO) {
-      if (fmt("To:", hp->h_to, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
-         goto jleave;
-      ++gotcha;
-   }
-
-   if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
-
-   if (hp->h_subject != NULL && (w & GSUBJECT)) {
-      char *sub = subject_re_trim(hp->h_subject);
-      size_t sublen = strlen(sub);
-
-      fwrite("Subject: ", sizeof(char), 9, fo);
-      if (sub != hp->h_subject) {
-         fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
-         if (sublen > 0 &&
-               xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-      } else if (*sub != '\0') {
-         if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-      }
-      ++gotcha;
-      putc('\n', fo);
-   }
-
-   if (ok_blook(bsdcompat) || ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
-
-   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
-      fputs(addr, fo);
-      fputc('\n', fo);
-      ++gotcha;
-   }
-
-   if ((np = hp->h_ref) != NULL && (w & GREF)) {
-      fmt("References:", np, fo, 0, 1, 0);
-      if (np->n_name != NULL) {
-         while (np->n_flink != NULL)
-            np = np->n_flink;
-         if (!is_addr_invalid(np, 0)) {
-            fprintf(fo, "In-Reply-To: %s\n", np->n_name);
-            ++gotcha;
-         }
-      }
-   }
-
-   if ((w & GIDENT) && hp->h_mft != NULL) {
-      if (fmt("Mail-Followup-To:", hp->h_mft, fo, w & GCOMMA, 0, nodisp))
-         goto jleave;
-      ++gotcha;
-   }
-
-   if ((w & GUA) && stealthmua == 0)
-      fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
-
-   if (w & GMIME) {
-      fputs("MIME-Version: 1.0\n", fo), ++gotcha;
-      if (hp->h_attach != NULL) {
-         _sendout_boundary = mime_create_boundary();/*TODO carrier*/
-         fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
-            _sendout_boundary);
-      } else {
-         fprintf(fo, "Content-Type: %s", contenttype);
-         if (charset != NULL)
-            fprintf(fo, "; charset=%s", charset);
-         fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
-            _get_encoding(convert));
-      }
-   }
-
-   if (gotcha && (w & GNL))
-      putc('\n', fo);
-   rv = 0;
-jleave:
+   rv = _puthead(FAL0, hp, fo, w, action, convert, contenttype, charset);
    NYD_LEAVE;
    return rv;
-#undef FMT_CC_AND_BCC
 }
 
 FL enum okay
