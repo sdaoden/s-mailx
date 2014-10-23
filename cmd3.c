@@ -290,18 +290,32 @@ _list_reply(int *msgvec, bool_t list_reply, bool_t recipient_record)
 
    /* When this is a list reply, we keep anything that yet is in (.h_)mft, and
     * append all list-only addresses in .h_to and .h_cc */
-   if (list_reply) {
-      struct name *lp = namelist_dup(head.h_to, GEXTRA | GFULL, FAL0, FAL0);
+   if (list_reply) { /* XXX improve that */
+      struct name *oto, *occ,
+         *lp = namelist_dup(head.h_to, GEXTRA | GFULL, FAL0, FAL0);
       lp = cat(lp, namelist_dup(head.h_cc, GEXTRA | GFULL, FAL0, FAL0));
       lp = elide(delete_alternates(lp));
 
+      oto = head.h_to;
+      occ = head.h_cc;
       if ((list_reply = (mft == NULL)))
          head.h_to = head.h_cc = NULL;
 
+      /* Learn about a possibly sending mailing */
+      if ((cp = hfield1("list-post", mp)) != NULL && (cp = skin(cp)) != NULL) {
+         if (is_prefix("mailto:", cp))
+            cp += sizeof("mailto:") -1;
+         else
+            cp = NULL;
+      }
+
+      /* */
       while (lp != NULL) {
          struct name *x = lp;
          lp = lp->n_flink;
-         if (is_mlist(x->n_name, FAL0)) {
+
+         if ((cp != NULL && !asccasecmp(cp, x->n_name)) ||
+               is_mlist(x->n_name, FAL0)) {
             if (list_reply) {
                x->n_flink = NULL;
                head.h_to = cat(head.h_to,
@@ -312,11 +326,19 @@ _list_reply(int *msgvec, bool_t list_reply, bool_t recipient_record)
          }
       }
       head.h_mft = mft;
+
+      /* No-go?  XXX improve that */
+      if (oto != NULL) {
+         if (head.h_to == NULL) {
+            head.h_to = oto;
+            head.h_cc = occ;
+         }
+      }
    }
    /* Else forcefully overwrite addressees, possible expansion occurs later */
    else if (mft != NULL) {
       head.h_cc = NULL;
-      head.h_to = namelist_dup(mft, GTO | GFULL, FAL0, FAL0);
+      head.h_to = namelist_change_type(mft, GTO | GFULL);
    }
 
    make_ref_and_cs(mp, &head);
