@@ -409,6 +409,14 @@ FL struct str const * colour_get(enum colourspec cs);
  * inlen may be UIZ_MAX to force strlen() detection */
 FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
 
+/* Dig a "quadoption" in inbuf (possibly going through getapproval() in
+ * interactive mode).  Returns a boolean or -1 if inbuf content is invalid;
+ * if emptyrv is not -1 then it,  treated as a boolean, is used as the return
+ * value shall inbuf be empty.  If prompt is set it is printed first if intera.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
+                  si8_t emptyrv);
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);

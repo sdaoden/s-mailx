@@ -2953,16 +2953,16 @@ can also be accomplished by prefixing a variable name with the string
 "no" and calling
 .Ic set ,
 e.g., "unset crt" will have the same effect as "set nocrt".
-.Pp
 An option is also set if it has been passed to \*(UA as part of the
-program environment or when it has been set explicitly via the
+program environment or when set explicitly via the
 .Fl S
 command line option.
 .Pp
 \*(UA differentiates in between different kind of options:
 binary options, which can only be in the two states set and unset,
-as well as value options which have an assigned string value.
-(For the latter kind proper quoting is important upon assignment time.)
+as well as value options which have an assigned string value, for which
+proper quoting may be important upon assignment time.
+.Pp
 The command
 .Ic varshow
 will show informations about all given variables and
@@ -3602,6 +3602,27 @@ also left as an excercise to the user.
 .\"
 .\" .Ss "Value options" {{{
 .Ss "Value options"
+Valued options have string values.
+To embed whitespace (space and tabulator) in a value it either needs to
+be escaped with a backslash character, or the entire value must be
+enclosed in quotation marks;
+To use quotation marks identical to those used to enclose the value,
+escape them with a backslash character.
+The backslash character has no special meaning except in these cases.
+.Bd -literal -offset indent
+set 1=val\e one 2="val two" 3='val "three"' 4='val \e'four\e''
+var 1 2 3 4
+unset 1 2 3 4
+.Ed
+.Pp
+There exists a special value string, the `quadoption':
+this is expected to either name a boolean (`0' / `false' / `no' or `1'
+/ `true' / `yes') or one of the strings `ask-yes' and `ask-no' (in fact:
+`ask-' followed by a valid boolean);
+if one of the latter is set then in interactive mode the user will be
+prompted with the prompt (and an empty user input) defaulting to `yes'
+in the former and `no' in the latter case, whereas in non-interactive
+the given default will be taken immediately.
 .Bl -tag -width ".Va autoprint"
 .It Va agent-shell-lookup-USER@HOST , \
   Va agent-shell-lookup-HOST , \
@@ -5113,7 +5134,7 @@ reads the user's configuration files by default.
 So unless your script is only intended for your own personal use
 (as, e.g., a cron job), you need to circumvent this:
 .Pp
-.Dl MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
+.Dl $ MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
 .Pp
 You then need to create a script-local configuration for \*(UA.
 This can be done by either pointing the
@@ -5127,7 +5148,7 @@ Since many configuration options are not valid shell variables, the
 .Xr env 1
 command is useful if the approach via environment variables is used:
 .Bd -literal -offset indent
-env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
+$ env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n -Sv15-compat \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file recipient@domain < content_file
@@ -5184,7 +5205,7 @@ in \*(ur and create a file
 containing all the commands that are specific to \*(UA.
 You can then access your remote mailbox by invoking
 .Pp
-.Dl \*(ua \-f myisp
+.Dl $ \*(ua \-f myisp
 .Pp
 on the command line, or by executing
 .Pp

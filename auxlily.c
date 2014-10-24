@@ -1592,6 +1592,31 @@ boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
    return rv;
 }
 
+FL si8_t
+quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
+{
+   si8_t rv;
+   NYD_ENTER;
+
+   assert(inlen == 0 || inbuf != NULL);
+
+   if (inlen == UIZ_MAX)
+      inlen = strlen(inbuf);
+
+   if (inlen == 0)
+      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
+   else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
+         !ascncasecmp(inbuf, "ask-", 4) &&
+         (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
+         (options & OPT_INTERACTIVE)) {
+      if (prompt != NULL)
+         fputs(prompt, stdout);
+      rv = getapproval(NULL, rv);
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
