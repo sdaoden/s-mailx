@@ -1009,6 +1009,7 @@ enum okeys {
    ok_v_encoding,
    ok_v_escape,
    ok_v_expandaddr,
+   ok_v_features,                      /* {rdonly=1,virtual=features} */
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
    ok_v_followup_to_honour,
