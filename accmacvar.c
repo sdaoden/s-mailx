@@ -38,6 +38,7 @@
  */
 
 #ifndef HAVE_AMALGAMATION
+# define _ACCMACVAR_SOURCE /* For _features[] */
 # include "nail.h"
 #endif
 

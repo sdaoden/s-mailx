@@ -1009,7 +1009,7 @@ enum okeys {
    ok_v_encoding,
    ok_v_escape,
    ok_v_expandaddr,
-   ok_v_features,                      /* {rdonly=1,virtual=features} */
+   ok_v_features,                      /* {rdonly=1,virtual=_features} */
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
    ok_v_followup_to_honour,
@@ -1686,7 +1686,6 @@ VL char const  month_names[12 + 1][4];
 VL char const  weekday_names[7 + 1][4];
 
 VL char const  uagent[];            /* User agent */
-VL char const  features[];          /* The "feature string" */
 
 VL uc_i const  class_char[];
 #endif

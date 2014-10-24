@@ -71,7 +71,6 @@ VL char const        month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const        uagent[] = UAGENT;
-/*VL char const        features[]; The "feature string" comes from config.h */
 VL uc_i const        class_char[] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
