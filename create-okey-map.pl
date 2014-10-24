@@ -68,7 +68,8 @@ sub parse_nail_h {
             $x = $2;
             $1 =~ /([^=]+)=(.+)/;
             die "Unsupported special directive: $1"
-               if ($1 ne 'name' && $1 ne 'special');
+               if ($1 ne 'name' && $1 ne 'rdonly' &&
+                   $1 ne 'special' && $1 ne 'virtual');
             $vals{$1} = $2
          }
       }
@@ -87,6 +88,7 @@ sub create_c_tool {
    print F '#define MAX_DISTANCE_PENALTY ', $MAXDISTANCE_PENALTY, "\n";
 # >>>>>>>>>>>>>>>>>>>
    print F <<'__EOT';
+#define __CREATE_OKEY_MAP_PL
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -100,15 +102,33 @@ sub create_c_tool {
 #define ui16_t    uint16_t
 #define ui8_t     uint8_t
 
+enum var_map_flags {
+   VM_NONE     = 0,
+   VM_BINARY   = 1<<0,           /* ok_b_* */
+   VM_RDONLY   = 1<<1,           /* May not be set by user */
+   VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
+   VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
+};
+
+/* Binary compatible with struct var! (xxx make it superclass?) */
+struct var_vx {
+   struct var     *v_link;
+   char           *v_value;
+};
+
+struct var_virtual {
+   ui32_t         vv_okey;
+   struct var_vx  vv_var;
+};
+
 struct var_map {
-   ui32_t      vm_hash;
-   ui16_t      vm_keyoff;
-   ui8_t       vm_binary;
-   ui8_t       vm_special;
+   ui32_t         vm_hash;
+   ui16_t         vm_keyoff;
+   ui16_t         vm_flags;      /* var_map_flags bits */
 };
 
 #ifdef HASH_MODE
-/* NOTE: copied over from auxlily.c */
+/* NOTE: copied over verbatim from auxlily.c */
 static ui32_t
 torek_hash(char const *name)
 {
@@ -227,13 +247,22 @@ sub dump_keydat_varmap {
 
    print F 'static char const _var_keydat[] = {', "\n";
    my ($i, $alen) = (0, 0);
+   my %virts;
    foreach my $e (@ENTS) {
       $e->{keyoff} = $alen;
       my $k = $e->{name};
       my $l = length $k;
       my $a = join '\',\'', split(//, $k);
-      print F "   /* $i. [$alen]+$l $k, binary=$e->{binary} */\n",
-         "   '$a','\\0',\n";
+      my ($f, $s) = ('', ', ');
+      if ($e->{binary})  {$f .= $s . 'VM_BINARY'; $s = ' | '}
+      if ($e->{rdonly})  {$f .= $s . 'VM_RDONLY'; $s = ' | '}
+      if ($e->{special}) {$f .= $s . 'VM_SPECIAL'; $s = ' | '}
+      if ($e->{virtual}) {
+         die("*$k*: virtual MUST be rdonly, too!") unless $e->{rdonly};
+         $f .= $s . 'VM_VIRTUAL'; $s = ' | ';
+         $virts{$k} = $e;
+      }
+      print F "   /* $i. [$alen]+$l $k$f */\n", "   '$a','\\0',\n";
       ++$i;
       $alen += $l + 1
    }
@@ -241,10 +270,40 @@ sub dump_keydat_varmap {
 
    print F 'static struct var_map const _var_map[] = {', "\n";
    foreach my $e (@ENTS) {
-      print F "   /* $e->{enum} */ {$e->{hash}u, $e->{keyoff}u, ",
-         ($e->{binary} ? '1' : '0'), ', ', ($e->{special} ? '1' : '0'), "},\n"
+      my $f = 'VM_NONE';
+      $f .= ' | VM_BINARY'  if $e->{binary};
+      $f .= ' | VM_RDONLY'  if $e->{rdonly};
+      $f .= ' | VM_SPECIAL' if $e->{special};
+      $f .= ' | VM_VIRTUAL' if $e->{virtual};
+      my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
+      print F "   {$e->{hash}u, $e->{keyoff}u, $f}, /* $n */\n"
    }
    print F '};', "\n\n";
+
+   # We have at least version stuff in here
+   # The problem is that struct var uses a variable sized character buffer
+   # which cannot be initialized in a conforming way :(
+   print F "#ifndef __CREATE_OKEY_MAP_PL\n";
+   print F " /* Unfortunately init of varsized buffer won't work */\n";
+   foreach my $k (keys %virts) {
+      my $e = $virts{$k};
+      $e->{vname} = $1 if $e->{enum} =~ /ok_._(.*)/;
+      $e->{vstruct} = "var_virt_$e->{vname}";
+      print F "static struct {\n";
+      print F "   struct var *v_link;\n";
+      print F "   char const *v_value;\n";
+      print F "   char const v_name[", length($e->{name}), " +1];\n";
+      print F "} const _$e->{vstruct} = ",
+         "{NULL, $e->{virtual}, \"$e->{name}\"};\n\n";
+   }
+
+   print F 'static struct var_virtual const _var_virtuals[] = {', "\n";
+   foreach my $k (keys %virts) {
+      my $e = $virts{$k};
+      my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
+      print F "   {$e->{enum}, (void const*)&_$e->{vstruct}},\n";
+   }
+   print F "};\n#endif /* __CREATE_OKEY_MAP_PL */\n\n";
 
    die "$OUT: close: $^E" unless close F
 }
