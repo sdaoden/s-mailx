@@ -232,13 +232,8 @@ _list_reply(int *msgvec, bool_t list_reply, bool_t recipient_record)
    int rv = 1;
    NYD_ENTER;
 
-   if (msgvec[1] != 0) {
-      fprintf(stderr,
-         _("Sorry, can't reply to multiple messages at once\n"));
-      goto jleave;
-   }
-
-   mp = message + msgvec[0] - 1;
+jnext_msg:
+   mp = message + *msgvec - 1;
    touch(mp);
    setdot(mp);
 
@@ -353,8 +348,10 @@ _list_reply(int *msgvec, bool_t list_reply, bool_t recipient_record)
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+
+   if (*++msgvec != 0)
+      goto jnext_msg;
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
