@@ -1436,7 +1436,7 @@ enum gfield {
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* include full names */
    GSKIN          = 1<<15,    /* skin names */
-   GEXTRA         = 1<<16,    /* extra fields */
+   GEXTRA         = 1<<16,    /* extra fields (mostly like GIDENT XXX) */
    GFILES         = 1<<17     /* include filename addresses */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)

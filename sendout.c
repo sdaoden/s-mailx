@@ -85,6 +85,10 @@ static FILE *        infix(struct header *hp, FILE *fi);
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
                         FILE *fo);
 
+/* Check wether Mail-Followup-To: is to be generated (place it in hp->h_mft) */
+static void          _check_mft(struct name *mdn, struct header *hp,
+                        enum gfield w);
+
 /* Send mail to a bunch of user names.  The interface is through mail() */
 static int           sendmail_internal(void *v, int recipient_record);
 
@@ -711,6 +715,68 @@ jleave:
    return rv;
 }
 
+static void
+_check_mft(struct name *np, struct header *hp, enum gfield w)
+{
+   /* Mail-Followup-To: TODO terribly expensive for now
+    * TODO also: in v15.0 with the object based approach this should be
+    * TODO more transparent and much better.  what i hope */
+   enum {_SEEN_TO=1<<0, _SEEN_SUB=1<<1, _SEEN_LIST=1<<2, _HAD_MFT=1<<3} flags;
+   struct name *sender, *x;
+   NYD_ENTER;
+
+   /* Note hp->h_mft may already be set nonetheless */
+   if (!ok_blook(followup_to) || !(w & (GTO | GCC)))
+      goto jleave;
+
+   sender = np;
+   np = NULL;
+
+   x = !(flags = !(w & GCC)) ? hp->h_cc : hp->h_to;
+j_ft_redo:
+   for (; x != NULL; x = x->n_flink) {
+      switch (is_mlist(x->n_name, FAL0)) {
+      default: break;
+      case -1: flags |= _SEEN_SUB;  break;
+      case  1: flags |= _SEEN_LIST; break;
+      }
+      np = cat(np, ndup(x, (x->n_type & ~GMASK) | GEXTRA | GFULL));
+   }
+   if (!(flags & _SEEN_TO) && (w & GTO)) {
+      flags |= _SEEN_TO;
+      x = hp->h_to;
+      goto j_ft_redo;
+   }
+
+   /* We have created a copy of all recipients TODO, now join them with
+    * the already existing MFT, and reduce them when subscribed etc. */
+   if ((flags & (_SEEN_SUB | _SEEN_LIST)) || hp->h_mft != NULL) {
+      if (hp->h_mft != NULL) {
+         flags |= _HAD_MFT;
+         np = cat(hp->h_mft, np);
+      }
+      np = elide(delete_alternates(np));
+
+      if (flags & _SEEN_LIST) { /* TODO SHOULDN'T THIS BEEN !_SEEN_SUB?? */
+         if (sender == NULL || sender == (struct name*)0x1)
+            sender = nalloc(UNCONST(myorigin(hp)), GEXTRA | GFULL);
+         else
+            sender = ndup(sender, (sender->n_type & ~GMASK) | GEXTRA | GFULL);
+         if (sender != NULL)
+            np = cat(np, sender);
+      }
+
+      for (hp->h_mft = NULL; np != NULL;) {
+         x = np;
+         np = np->n_flink;
+         x->n_flink = NULL;
+         hp->h_mft = cat(hp->h_mft, x);
+      }
+   }
+jleave:
+   NYD_LEAVE;
+}
+
 static int
 sendmail_internal(void *v, int recipient_record)
 {
@@ -1323,16 +1389,16 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
       fwrite(str, sizeof *str, col, fo);
       if (flags & GFILES)
          goto jstep;
-      if (col == 9 && !asccasecmp(str, "reply-to:")) {
+#define __X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
+      if (__X("reply-to:") || __X("mail-followup-to:")) {
          m |= m_NOPF;
          goto jstep;
       }
       if (ok_blook(add_file_recipients))
          goto jstep;
-      if ((col == 3 && (!asccasecmp(str, "to:") || !asccasecmp(str, "cc:"))) ||
-            (col == 4 && !asccasecmp(str, "bcc:")) ||
-            (col == 10 && !asccasecmp(str, "Resent-To:")))
+      if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
          m |= m_NOPF;
+#undef __X
    }
 jstep:
    for (; np != NULL; np = np->n_flink) {
@@ -1770,17 +1836,6 @@ do {\
          putc('\n', fo);
       }
 
-      /* TODO see the ONCE TODO note somewhere around this file;
-       * TODO but anyway, do NOT perform alias expansion UNLESS
-       * TODO we are actually sending out! */
-      if (hp->h_replyto != NULL) {
-         if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0, nodisp))
-            goto jleave;
-         ++gotcha;
-      } else if ((addr = ok_vlook(replyto)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
-            goto jleave;
-
       if (hp->h_sender != NULL) {
          if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
             goto jleave;
@@ -1792,8 +1847,23 @@ do {\
 
       if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
          goto jleave;
-      if (!_check_dispo_notif(np, hp, fo))
+      /* Note that np is NULL, 0x1 or real sender */
+
+      if (!_check_dispo_notif(np, hp, fo)) /* XXX not here.. not so.. au */
          goto jleave;
+
+      /* TODO see the ONCE TODO note somewhere around this file;
+       * TODO but anyway, do NOT perform alias expansion UNLESS
+       * TODO we are actually sending out! */
+      if (hp->h_replyto != NULL) {
+         if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0, nodisp))
+            goto jleave;
+         ++gotcha;
+      } else if ((addr = ok_vlook(replyto)) != NULL)
+         if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
+            goto jleave;
+
+      _check_mft(np, hp, w); /* But place it later in the output.. */
    }
 
    if (hp->h_to != NULL && w & GTO) {
@@ -1844,6 +1914,12 @@ do {\
             ++gotcha;
          }
       }
+   }
+
+   if ((w & GIDENT) && hp->h_mft != NULL) {
+      if (fmt("Mail-Followup-To:", hp->h_mft, fo, w & GCOMMA, 0, nodisp))
+         goto jleave;
+      ++gotcha;
    }
 
    if ((w & GUA) && stealthmua == 0)
