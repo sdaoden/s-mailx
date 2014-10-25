@@ -1299,7 +1299,7 @@ FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /*
- * names.c
+ * nam_a_grp.c
  */
 
 /* Allocate a single element of a name list, initialize its name field to the
