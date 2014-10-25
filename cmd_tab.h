@@ -139,7 +139,7 @@
      DS(N_("Set (a) variable(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_unalias, (M | RAWLIST), 0, 1000
+   { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
      DS(N_("Un\"alias\" <name-list> (\"*\" removes all aliases)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
@@ -386,11 +386,11 @@
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "mlist", &c_mlist, (M | RAWLIST), 0, 1000
      DS(N_("Show all known mailing lists or define some")) },
-   { "unmlist", &c_unmlist, (M | RAWLIST), 0, 1000
+   { "unmlist", &c_unmlist, (M | RAWLIST), 1, 1000
      DS(N_("Un\"mlist\" <name-list>, \"*\" removes all known lists")) },
    { "mlsubscribe", &c_mlsubscribe, (M | RAWLIST), 0, 1000
      DS(N_("Show all mailing list subscriptions or define some")) },
-   { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 0, 1000
+   { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
      DS(N_("Un\"mlsubscribe\" <name-list>, \"*\" removes all subscriptions"))},
    { "features", &_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },

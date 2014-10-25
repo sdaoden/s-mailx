@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Name lists, aliases, mailing lists.
+ *@ Name lists, alternates and groups: aliases, mailing lists.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -59,7 +59,7 @@ enum group_type {
 
 struct group {
    struct group   *g_next;
-   size_t         g_subclass_off;   /* of "subclass" in .g_id */
+   size_t         g_subclass_off;   /* of "subclass" in .g_id (if any) */
    ui8_t          g_type;           /* enum group_type */
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
     * data follows thereafter, but note this is always used (i.e., for regular
@@ -93,10 +93,14 @@ struct grp_regex {
 #endif
 
 struct group_lookup {
+   struct group   **gl_htable;
    struct group   **gl_slot;
    struct group   *gl_slot_last;
    struct group   *gl_group;
 };
+
+/* List of alternate names of user */
+static char             **_altnames;
 
 /* `alias' */
 static struct group     *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
@@ -117,8 +121,6 @@ static struct grp_regex *_mlist_regex, *_mlsub_regex;
 static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 #endif
 
-/* List of alternate names of user */
-static char             **_altnames;
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -412,7 +414,7 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
 
    gt &= GT_MASK;
    lgp = NULL;
-   gp = *(glp->gl_slot =
+   gp = *(glp->gl_htable = glp->gl_slot =
           ((gt & GT_ALIAS ? _alias_heads : _mlist_heads) +
            torek_hash(id) % HSHSIZE));
 
@@ -445,7 +447,7 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
    size_t i;
    NYD_ENTER;
 
-   for (gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads), i = 0;
+   for (gp->gl-htable = gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -470,8 +472,7 @@ _group_go_next(enum group_type gt, struct group_lookup *glp)
       glp->gl_slot_last = glp->gl_group;
    else {
       glp->gl_slot_last = NULL;
-      for (gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads) + HSHSIZE;
-            ++glp->gl_slot < gpa;)
+      for (gpa = glp->gl_htable + HSHSIZE; ++glp->gl_slot < gpa;)
          if ((gp = *glp->gl_slot) != NULL)
             break;
    }
@@ -580,8 +581,8 @@ __group_del(struct group_lookup *glp)
       gp = (*glp->gl_slot = x->g_next);
 
       if (gp == NULL) {
-         struct group **gpa = ((x->g_type & GT_ALIAS) ? _alias_heads
-               : _mlist_heads) + HSHSIZE;
+         struct group **gpa = glp->gl_htable + HSHSIZE;
+
          while (++glp->gl_slot < gpa)
             if ((gp = *glp->gl_slot) != NULL)
                break;
@@ -795,52 +796,45 @@ _mlmux(enum group_type gt, char **argv)
 static int
 _unmlmux(enum group_type gt, char **argv)
 {
+   struct group *gp;
    int rv = 0;
    NYD_ENTER;
 
-   if (*argv != NULL) {
-      struct group *gp;
+   for (; *argv != NULL; ++argv) {
+      if (gt & GT_SUBSCRIBE) {
+         struct group_lookup gl;
 
-      for (; *argv != NULL; ++argv) {
-         if (gt & GT_SUBSCRIBE) {
-            struct group_lookup gl;
-
-            if (**argv != '*')
-               gp = _group_find(gt, *argv);
-            else if ((gp = _group_go_first(gt, &gl)) == NULL)
-               continue;
-            else if (gp != NULL && !(gp->g_type & GT_SUBSCRIBE))
-               goto jaster_entry;
-
-            if (gp != NULL) {
-jaster_redo:
-               if (gp->g_type & GT_SUBSCRIBE) {
-                  _MLMUX_LINKOUT(gp);
-                  gp->g_type &= ~GT_SUBSCRIBE;
-                  _MLMUX_LINKIN(gp);
-                  if (**argv == '*') {
-jaster_entry:
-                     while ((gp = _group_go_next(gt, &gl)) != NULL &&
-                           !(gp->g_type & GT_SUBSCRIBE))
-                        ;
-                     if (gp != NULL)
-                        goto jaster_redo;
-                  }
-               } else {
-                  fprintf(stderr, _("Mailing-list not `mlsubscribe'd: `%s'\n"),
-                     *argv);
-                  rv = 1;
-               }
-               continue;
-            }
-         } else if (_group_del(gt, *argv))
+         if (**argv != '*')
+            gp = _group_find(gt, *argv);
+         else if ((gp = _group_go_first(gt, &gl)) == NULL)
             continue;
-         fprintf(stderr, _("No such mailing-list: `%s'\n"), *argv);
-         rv = 1;
-      }
-   } else {
-      fprintf(stderr, _("Must specify a mailing list to `%s'\n"),
-         (gt & GT_SUBSCRIBE ? _("unmlsubscribe") : _("unmlist")));
+         else if (gp != NULL && !(gp->g_type & GT_SUBSCRIBE))
+            goto jaster_entry;
+
+         if (gp != NULL) {
+jaster_redo:
+            if (gp->g_type & GT_SUBSCRIBE) {
+               _MLMUX_LINKOUT(gp);
+               gp->g_type &= ~GT_SUBSCRIBE;
+               _MLMUX_LINKIN(gp);
+               if (**argv == '*') {
+jaster_entry:
+                  while ((gp = _group_go_next(gt, &gl)) != NULL &&
+                        !(gp->g_type & GT_SUBSCRIBE))
+                     ;
+                  if (gp != NULL)
+                     goto jaster_redo;
+               }
+            } else {
+               fprintf(stderr, _("Mailing-list not `mlsubscribe'd: `%s'\n"),
+                  *argv);
+               rv = 1;
+            }
+            continue;
+         }
+      } else if (_group_del(gt, *argv))
+         continue;
+      fprintf(stderr, _("No such mailing-list: `%s'\n"), *argv);
       rv = 1;
    }
    NYD_LEAVE;
@@ -1285,6 +1279,42 @@ jleave:
    return newn;
 }
 
+FL int
+c_alternates(void *v)
+{
+   size_t l;
+   char **namelist = v, **ap, **ap2, *cp;
+   NYD_ENTER;
+
+   l = argcount(namelist) + 1;
+   if (l == 1) {
+      if (_altnames == NULL)
+         goto jleave;
+      for (ap = _altnames; *ap != NULL; ++ap)
+         printf("%s ", *ap);
+      printf("\n");
+      goto jleave;
+   }
+
+   if (_altnames != NULL) {
+      for (ap = _altnames; *ap != NULL; ++ap)
+         free(*ap);
+      free(_altnames);
+   }
+
+   _altnames = smalloc(l * sizeof *_altnames);
+   for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
+      l = strlen(*ap) +1;
+      cp = smalloc(l);
+      memcpy(cp, *ap, l);
+      *ap2 = cp;
+   }
+   *ap2 = NULL;
+jleave:
+   NYD_LEAVE;
+   return 0;
+}
+
 FL struct name *
 delete_alternates(struct name *np)
 {
@@ -1402,15 +1432,10 @@ c_unalias(void *v)
    int rv = 0;
    NYD_ENTER;
 
-   if (*argv != NULL) {
-      do if (!_group_del(GT_ALIAS, *argv)) {
-         fprintf(stderr, _("No such alias: `%s'\n"), *argv);
-         rv = 1;
-      } while (*++argv != NULL);
-   } else {
-      fprintf(stderr, _("Must specify an alias to remove\n"));
+   do if (!_group_del(GT_ALIAS, *argv)) {
+      fprintf(stderr, _("No such alias: `%s'\n"), *argv);
       rv = 1;
-   }
+   } while (*++argv != NULL);
    NYD_LEAVE;
    return rv;
 }
@@ -1524,42 +1549,6 @@ jregex_redo:
 jleave:
    NYD_LEAVE;
    return rv;
-}
-
-FL int
-c_alternates(void *v)
-{
-   size_t l;
-   char **namelist = v, **ap, **ap2, *cp;
-   NYD_ENTER;
-
-   l = argcount(namelist) + 1;
-   if (l == 1) {
-      if (_altnames == NULL)
-         goto jleave;
-      for (ap = _altnames; *ap != NULL; ++ap)
-         printf("%s ", *ap);
-      printf("\n");
-      goto jleave;
-   }
-
-   if (_altnames != NULL) {
-      for (ap = _altnames; *ap != NULL; ++ap)
-         free(*ap);
-      free(_altnames);
-   }
-
-   _altnames = smalloc(l * sizeof *_altnames);
-   for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
-      l = strlen(*ap) +1;
-      cp = smalloc(l);
-      memcpy(cp, *ap, l);
-      *ap2 = cp;
-   }
-   *ap2 = NULL;
-jleave:
-   NYD_LEAVE;
-   return 0;
 }
 
 /* s-it-mode */

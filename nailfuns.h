@@ -1348,6 +1348,9 @@ FL struct name * usermap(struct name *names, bool_t force_metoo);
  * them, then checking for dups.  Return the head of the new list */
 FL struct name * elide(struct name *names);
 
+/* `alternates' deal with the list of alternate names */
+FL int         c_alternates(void *v);
+
 FL struct name * delete_alternates(struct name *np);
 
 FL int         is_myname(char const *name);
@@ -1365,8 +1368,6 @@ FL int         c_unmlsubscribe(void *v);
 
 FL si8_t       is_mlist(char const *name, bool_t subscribed_only);
 
-/* Set the list of alternate names */
-FL int         c_alternates(void *v);
 
 /*
  * openssl.c
