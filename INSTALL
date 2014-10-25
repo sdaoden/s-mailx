@@ -28,13 +28,13 @@ which take precedence over anything else:
 
 . CONFIG=MINIMAL
   This is the most plain mailx(1)-alike mode, but with MIME support and
-  (if available) character set conversion builtin.  That's it.
+  (if available) character set conversion and regular expressions
+  builtin (here mostly ment for mailing list matching).  That's it.
 
 . CONFIG=MEDIUM
-  Like MINIMAL, but with documentation strings, and regular expression
-  support as well as the builtin command line editor will be included if
-  that is possible, the latter with history but without tabulator
-  expansion support.
+  Like MINIMAL, but with documentation strings, the builtin command line
+  editor with history support (if possible), basic colour support and
+  IDNA addresses.
 
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
@@ -42,8 +42,8 @@ which take precedence over anything else:
 
 . CONFIG=NETSEND
   WANT_SMTP as a requirement.
-  NETSEND also tries to add SSL/TLS, GSSAPI, IDNA, .netrc file parsing
-  as well as external password *agent-lookup*.
+  NETSEND also tries to add SSL/TLS, GSSAPI, .netrc file parsing as well
+  as external password *agent-lookup* on top of MEDIUM.
 
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
