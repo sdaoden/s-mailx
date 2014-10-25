@@ -1537,10 +1537,10 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
-   if (prompt != NULL && *prompt != '\0') {
+   if (prompt != NULL && *prompt != '\0')
       fputs(prompt, stdout);
-      fflush(stdout);
-   }
+   fflush(stdout);
+
 jrestart:
    memset(ps, 0, sizeof ps);
    cursor_maybe = cursor_store = 0;
@@ -2122,21 +2122,16 @@ FL int
 {
    /* TODO The nothing-at-all tty layer even forces re-entering all the
     * TODO original data when re-editing a field */
-   bool_t doffl = FAL0;
    int rv;
    NYD_ENTER;
 
-   if (prompt != NULL && *prompt != '\0') {
+   if (prompt != NULL && *prompt != '\0')
       fputs(prompt, stdout);
-      doffl = TRU1;
-   }
    if (n > 0) {
       fprintf(stdout, _("{former content: %.*s} "), (int)n, *linebuf);
       n = 0;
-      doffl = TRU1;
    }
-   if (doffl)
-      fflush(stdout);
+   fflush(stdout);
    rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
    NYD_LEAVE;
    return rv;
