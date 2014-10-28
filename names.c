@@ -1035,6 +1035,21 @@ jleave:
    return tail;
 }
 
+FL struct name *
+namelist_dup(struct name const *np, enum gfield ntype)
+{
+   struct name *nnp;
+   NYD_ENTER;
+
+   for (nnp = NULL; np != NULL; np = np->n_flink) {
+      struct name *x = ndup(UNCONST(np), (np->n_type & ~GMASK) | ntype);
+      x->n_flink = nnp;
+      nnp = x;
+   }
+   NYD_LEAVE;
+   return nnp;
+}
+
 FL ui32_t
 count(struct name const *np)
 {
