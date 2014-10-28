@@ -1533,7 +1533,7 @@ c_unmlsubscribe(void *v)
    return rv;
 }
 
-FL si8_t
+FL enum mlist_state
 is_mlist(char const *name, bool_t subscribed_only)
 {
    struct group *gp;
@@ -1541,20 +1541,20 @@ is_mlist(char const *name, bool_t subscribed_only)
    struct grp_regex **lpp, *grp;
    bool_t re2;
 #endif
-   si8_t rv;
+   enum mlist_state rv;
    NYD_ENTER;
 
    gp = _group_find(GT_MLIST, name);
-
-   if ((rv = (gp != NULL))) {
+   rv = (gp != NULL) ? MLIST_KNOWN : MLIST_OTHER;
+   if (rv == MLIST_KNOWN) {
       if (gp->g_type & GT_SUBSCRIBE)
-         rv = -rv;
+         rv = MLIST_SUBSCRIBED;
       else if (subscribed_only)
-         rv ^= rv;
+         rv = MLIST_OTHER;
       /* Of course, if that is a regular expression it doesn't mean a thing */
 #ifdef HAVE_REGEX
       if (gp->g_type & GT_REGEX)
-         rv = 0;
+         rv = MLIST_OTHER;
       else
 #endif
          goto jleave;
@@ -1583,7 +1583,7 @@ jregex_redo:
             (grp->gr_next = *lpp)->gr_last = grp;
             *lpp = grp;
          }
-         rv = !re2 ? -1 : 1;
+         rv = !re2 ? MLIST_SUBSCRIBED : MLIST_KNOWN;
          goto jleave;
       } while ((grp = grp->gr_next) != *lpp);
    }
@@ -1592,7 +1592,7 @@ jregex_redo:
       lpp = &_mlist_regex;
       goto jregex_redo;
    }
-   assert(rv == 0);
+   assert(rv == MLIST_OTHER);
 #endif
 
 jleave:

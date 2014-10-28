@@ -773,6 +773,12 @@ enum mime_counter_evidence {
    MIMECE_USR_OVWR   = 1<<1
 };
 
+enum mlist_state {
+   MLIST_OTHER       = 0,    /* Normal address */
+   MLIST_KNOWN       = 1,  /* A known `mlist' */
+   MLIST_SUBSCRIBED  = -1  /* A `mlsubscribe'd list */
+};
+
 enum oflags {
    OF_RDONLY      = 1<<0,
    OF_WRONLY      = 1<<1,

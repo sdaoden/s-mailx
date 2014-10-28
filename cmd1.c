@@ -473,9 +473,10 @@ jputc:
 j_A_redo:
             for (; np != NULL; np = np->n_flink) {
                switch (is_mlist(np->n_name, FAL0)) {
-               case -1: c = 'S'; goto jputc;
-               case  1: c = 'L'; goto jputc;
-               default: break;
+               case MLIST_SUBSCRIBED:  c = 'S'; goto jputc;
+               case MLIST_KNOWN:       c = 'L'; goto jputc;
+               case MLIST_OTHER:
+               default:                break;
                }
             }
             if (i != 0)

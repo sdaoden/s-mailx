@@ -1363,14 +1363,13 @@ FL int         is_myname(char const *name);
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);
 
-/* `(un)?ml(ist|subscribe)', and a check wether a name is a list: returns 0 if
- * not a (wanted) list, >0 if plain (!subscribed_only) and <0 if subscribed */
+/* `(un)?ml(ist|subscribe)', and a check wether a name is a (wanted) list */
 FL int         c_mlist(void *v);
 FL int         c_unmlist(void *v);
 FL int         c_mlsubscribe(void *v);
 FL int         c_unmlsubscribe(void *v);
 
-FL si8_t       is_mlist(char const *name, bool_t subscribed_only);
+FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
 
 /* `(un)?shortcut', and check if str is one, return expansion or NULL */
 FL int         c_shortcut(void *v);
