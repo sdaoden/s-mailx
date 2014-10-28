@@ -627,37 +627,42 @@ typedef signed char     sc_i;
 
 typedef void (          *sighandler_type)(int);
 
-enum user_options {
-   OPT_NONE,
-   OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
-   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
-   OPT_VERBVERB   = 1u<<19,   /* .. even more verbosity */
-   OPT_EXISTONLY  = 1u<< 2,   /* -e */
-   OPT_HEADERSONLY = 1u<< 3,  /* -H */
-   OPT_HEADERLIST = 1u<< 4,   /* -L */
-   OPT_NOSRC      = 1u<< 5,   /* -n */
-   OPT_E_FLAG     = 1u<< 6,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 7,   /* -F */
-   OPT_N_FLAG     = 1u<< 8,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<< 9,   /* -R */
-   OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<11,   /* -t */
-   OPT_u_FLAG     = 1u<<12,   /* -u / $USER and pw->pw_uid != getuid(2) */
-   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<14,   /* -# */
-
-   OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
-   OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<17,
-   OPT_UNICODE    = 1u<<18,   /* We're in an UTF-8 environment */
-
-   /* Some easy-access shortcuts */
-   OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
+enum authtype {
+   AUTHTYPE_NONE     = 1<<0,
+   AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
+   AUTHTYPE_LOGIN    = 1<<2,
+   AUTHTYPE_CRAM_MD5 = 1<<3,
+   AUTHTYPE_GSSAPI   = 1<<4
 };
-#define IS_TTY_SESSION() \
-   ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
+
+enum colourspec {
+   COLOURSPEC_MSGINFO,
+   COLOURSPEC_PARTINFO,
+   COLOURSPEC_FROM_,
+   COLOURSPEC_HEADER,
+   COLOURSPEC_UHEADER,
+   COLOURSPEC_RESET
+};
+
+enum conversion {
+   CONV_NONE,        /* no conversion */
+   CONV_7BIT,        /* no conversion, is 7bit */
+   CONV_FROMQP,      /* convert from quoted-printable */
+   CONV_TOQP,        /* convert to quoted-printable */
+   CONV_8BIT,        /* convert to 8bit (iconv) */
+   CONV_FROMB64,     /* convert from base64 */
+   CONV_FROMB64_T,   /* convert from base64/text */
+   CONV_TOB64,       /* convert to base64 */
+   CONV_FROMHDR,     /* convert from RFC1522 format */
+   CONV_TOHDR,       /* convert to RFC1522 format */
+   CONV_TOHDR_A      /* convert addresses for header */
+};
+
+enum cproto {
+   CPROTO_SMTP,
+   CPROTO_POP3,
+   CPROTO_IMAP
+};
 
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
@@ -687,70 +692,6 @@ enum flock_type {
    FLOCK_READ,
    FLOCK_WRITE,
    FLOCK_UNLOCK
-};
-
-/* <0 means "stop" unless *prompt* extensions are enabled. */
-enum prompt_exp {
-   PROMPT_STOP    = -1,       /* \c */
-   /* *prompt* extensions: \$, \@ etc. */
-   PROMPT_DOLLAR  = -2,
-   PROMPT_AT      = -3
-};
-
-enum colourspec {
-   COLOURSPEC_MSGINFO,
-   COLOURSPEC_PARTINFO,
-   COLOURSPEC_FROM_,
-   COLOURSPEC_HEADER,
-   COLOURSPEC_UHEADER,
-   COLOURSPEC_RESET
-};
-
-enum okay {
-   STOP = 0,
-   OKAY = 1
-};
-
-enum mimeenc {
-   MIME_NONE,        /* message is not in MIME format */
-   MIME_BIN,         /* message is in binary encoding */
-   MIME_8B,          /* message is in 8bit encoding */
-   MIME_7B,          /* message is in 7bit encoding */
-   MIME_QP,          /* message is quoted-printable */
-   MIME_B64          /* message is in base64 encoding */
-};
-
-enum mime_counter_evidence {
-   MIMECE_NONE,
-   MIMECE_USR_OVWR   = 1<<1
-};
-
-enum conversion {
-   CONV_NONE,        /* no conversion */
-   CONV_7BIT,        /* no conversion, is 7bit */
-   CONV_FROMQP,      /* convert from quoted-printable */
-   CONV_TOQP,        /* convert to quoted-printable */
-   CONV_8BIT,        /* convert to 8bit (iconv) */
-   CONV_FROMB64,     /* convert from base64 */
-   CONV_FROMB64_T,   /* convert from base64/text */
-   CONV_TOB64,       /* convert to base64 */
-   CONV_FROMHDR,     /* convert from RFC1522 format */
-   CONV_TOHDR,       /* convert to RFC1522 format */
-   CONV_TOHDR_A      /* convert addresses for header */
-};
-
-enum sendaction {
-   SEND_MBOX,        /* no conversion to perform */
-   SEND_RFC822,      /* no conversion, no From_ line */
-   SEND_TODISP,      /* convert to displayable form */
-   SEND_TODISP_ALL,  /* same, include all MIME parts */
-   SEND_SHOW,        /* convert to 'show' command form */
-   SEND_TOSRCH,      /* convert for IMAP SEARCH */
-   SEND_TOFILE,      /* convert for saving body to a file */
-   SEND_TOPIPE,      /* convert for pipe-content/subc. */
-   SEND_QUOTE,       /* convert for quoting */
-   SEND_QUOTE_ALL,   /* same, include all MIME parts */
-   SEND_DECRYPT      /* decrypt */
 };
 
 enum mimecontent {
@@ -818,6 +759,20 @@ enum b64flags {
    B64_ISENCWORD  = MIMECTE_ISENCWORD
 };
 
+enum mimeenc {
+   MIME_NONE,        /* message is not in MIME format */
+   MIME_BIN,         /* message is in binary encoding */
+   MIME_8B,          /* message is in 8bit encoding */
+   MIME_7B,          /* message is in 7bit encoding */
+   MIME_QP,          /* message is quoted-printable */
+   MIME_B64          /* message is in base64 encoding */
+};
+
+enum mime_counter_evidence {
+   MIMECE_NONE,
+   MIMECE_USR_OVWR   = 1<<1
+};
+
 enum oflags {
    OF_RDONLY      = 1<<0,
    OF_WRONLY      = 1<<1,
@@ -831,6 +786,57 @@ enum oflags {
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
    OF_REGISTER    = 1<<10     /* Register file in our file table */
 };
+
+enum okay {
+   STOP = 0,
+   OKAY = 1
+};
+
+enum okey_xlook_mode {
+   OXM_PLAIN      = 1<<0,  /* Plain key always tested */
+   OXM_H_P        = 1<<1,  /* Check PLAIN-.url_h_p */
+   OXM_U_H_P      = 1<<2,  /* Check PLAIN-.url_u_h_p */
+   OXM_ALL        = 0x7
+};
+
+/* <0 means "stop" unless *prompt* extensions are enabled. */
+enum prompt_exp {
+   PROMPT_STOP    = -1,       /* \c */
+   /* *prompt* extensions: \$, \@ etc. */
+   PROMPT_DOLLAR  = -2,
+   PROMPT_AT      = -3
+};
+
+enum protocol {
+   PROTO_FILE,       /* refers to a local file */
+   PROTO_POP3,       /* is a pop3 server string */
+   PROTO_IMAP,       /* is an imap server string */
+   PROTO_MAILDIR,    /* refers to a maildir folder */
+   PROTO_UNKNOWN     /* unknown protocol */
+};
+
+enum sendaction {
+   SEND_MBOX,        /* no conversion to perform */
+   SEND_RFC822,      /* no conversion, no From_ line */
+   SEND_TODISP,      /* convert to displayable form */
+   SEND_TODISP_ALL,  /* same, include all MIME parts */
+   SEND_SHOW,        /* convert to 'show' command form */
+   SEND_TOSRCH,      /* convert for IMAP SEARCH */
+   SEND_TOFILE,      /* convert for saving body to a file */
+   SEND_TOPIPE,      /* convert for pipe-content/subc. */
+   SEND_QUOTE,       /* convert for quoting */
+   SEND_QUOTE_ALL,   /* same, include all MIME parts */
+   SEND_DECRYPT      /* decrypt */
+};
+
+#ifdef HAVE_SSL
+enum ssl_verify_level {
+   SSL_VERIFY_IGNORE,
+   SSL_VERIFY_WARN,
+   SSL_VERIFY_ASK,
+   SSL_VERIFY_STRICT
+};
+#endif
 
 enum tdflags {
    TD_NONE,                   /* no display conversion */
@@ -846,36 +852,37 @@ enum tdflags {
    _TD_BUFCOPY    = 1<<15     /* Buffer may be constant, copy it */
 };
 
-enum protocol {
-   PROTO_FILE,       /* refers to a local file */
-   PROTO_POP3,       /* is a pop3 server string */
-   PROTO_IMAP,       /* is an imap server string */
-   PROTO_MAILDIR,    /* refers to a maildir folder */
-   PROTO_UNKNOWN     /* unknown protocol */
-};
+enum user_options {
+   OPT_NONE,
+   OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
+   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
+   OPT_VERBVERB   = 1u<<19,   /* .. even more verbosity */
+   OPT_EXISTONLY  = 1u<< 2,   /* -e */
+   OPT_HEADERSONLY = 1u<< 3,  /* -H */
+   OPT_HEADERLIST = 1u<< 4,   /* -L */
+   OPT_NOSRC      = 1u<< 5,   /* -n */
+   OPT_E_FLAG     = 1u<< 6,   /* -E / *skipemptybody* */
+   OPT_F_FLAG     = 1u<< 7,   /* -F */
+   OPT_N_FLAG     = 1u<< 8,   /* -N / *header* */
+   OPT_R_FLAG     = 1u<< 9,   /* -R */
+   OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
+   OPT_t_FLAG     = 1u<<11,   /* -t */
+   OPT_u_FLAG     = 1u<<12,   /* -u / $USER and pw->pw_uid != getuid(2) */
+   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
-enum cproto {
-   CPROTO_SMTP,
-   CPROTO_POP3,
-   CPROTO_IMAP
-};
+   OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
+   OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
+   OPT_TTYIN      = OPT_INTERACTIVE,
+   OPT_TTYOUT     = 1u<<17,
+   OPT_UNICODE    = 1u<<18,   /* We're in an UTF-8 environment */
 
-enum authtype {
-   AUTHTYPE_NONE     = 1<<0,
-   AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
-   AUTHTYPE_LOGIN    = 1<<2,
-   AUTHTYPE_CRAM_MD5 = 1<<3,
-   AUTHTYPE_GSSAPI   = 1<<4
+   /* Some easy-access shortcuts */
+   OPT_D_V        = OPT_DEBUG | OPT_VERB,
+   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
 };
-
-#ifdef HAVE_SSL
-enum ssl_verify_level {
-   SSL_VERIFY_IGNORE,
-   SSL_VERIFY_WARN,
-   SSL_VERIFY_ASK,
-   SSL_VERIFY_STRICT
-};
-#endif
+#define IS_TTY_SESSION() \
+   ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
 
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
@@ -1082,13 +1089,6 @@ enum okeys {
    ok_v_ttycharset,
    ok_v_user,
    ok_v_VISUAL
-};
-
-enum okey_xlook_mode {
-   OXM_PLAIN      = 1<<0,  /* Plain key always tested */
-   OXM_H_P        = 1<<1,  /* Check PLAIN-.url_h_p */
-   OXM_U_H_P      = 1<<2,  /* Check PLAIN-.url_u_h_p */
-   OXM_ALL        = 0x7
 };
 
 /* Locale-independent character classes */
