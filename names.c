@@ -1167,7 +1167,7 @@ checkaddrs(struct name *np)
    NYD_ENTER;
 
    for (n = np; n != NULL;) {
-      if (is_addr_invalid(n, 1)) {
+      if (is_addr_invalid(n, TRU1)) {
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
          if (n->n_flink)
@@ -1179,6 +1179,30 @@ checkaddrs(struct name *np)
    }
    NYD_LEAVE;
    return np;
+}
+
+FL struct name *
+namelist_vaporise_head(struct header *hp, bool_t metoo)
+{
+   struct name *tolist, *np, **npp;
+   NYD_ENTER;
+
+   tolist = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), metoo);
+   hp->h_to = hp->h_cc = hp->h_bcc = NULL;
+
+   tolist = elide(checkaddrs(/*metoo ? tolist : delete_alternates*/(tolist)));
+
+   for (np = tolist; np != NULL; np = np->n_flink) {
+      switch (np->n_type & (GDEL | GMASK)) {
+      case GTO:   npp = &hp->h_to; break;
+      case GCC:   npp = &hp->h_cc; break;
+      case GBCC:  npp = &hp->h_bcc; break;
+      default:    continue;
+      }
+      *npp = cat(*npp, ndup(np, np->n_type | GFULL));
+   }
+   NYD_LEAVE;
+   return tolist;
 }
 
 FL struct name *

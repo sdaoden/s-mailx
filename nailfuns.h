@@ -1338,6 +1338,12 @@ FL struct name * grab_names(char const *field, struct name *np, int comma,
 /* Check all addresses in np and delete invalid ones */
 FL struct name * checkaddrs(struct name *np);
 
+/* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
+ * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
+ * aliases, dropping alternates etc.  After updating hp to the new state this
+ * returns a flat list of all addressees, which may be NULL */
+FL struct name * namelist_vaporise_head(struct header *hp, bool_t metoo);
+
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */
 FL struct name * usermap(struct name *names, bool_t force_metoo);
