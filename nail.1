@@ -437,6 +437,7 @@ in international character sets.
 That is \(em using attachment filenames in whatever language is
 possible, but a modern MUA may need some hints in order to be able to
 decode the name to its original form.
+Note that \*(UA is not alone.
 .\" }}}
 .\"
 .\" .Ss "Sending mail" {{{
@@ -678,6 +679,69 @@ section
 .Sx "THE mime.types FILES"
 and the command
 .Ic mimetypes .
+.\" }}}
+.\"
+.\" .Ss "Mailing lists" {{{
+.Ss "Mailing lists"
+\*(UA offers special support for interacting with mailing lists.
+The command
+.Ic mlist
+promotes all given arguments to known mailing lists, and
+.Ic mlsubscribe
+sets their subscription attribute, creating them first as necessary.
+(On the other hand
+.Ic unmlsubscribe
+doesn't
+.Ic unmlist
+automatically, but only resets the subscription attribute.)
+Using the commands without arguments will print out (a subset of) all
+currently defined mailing lists.
+The
+.Va headline
+`%T' format can be used to mark out messages with configured list
+addresses in the header display.
+.Pp
+\*(OPally mailing lists may also be specified as regular expressions,
+which allows matching of many addresses with a single expression.
+However, all fully qualified list addresses are matched via a fast
+dictionary, whereas expressions are placed in (a) list(s) which is (are)
+matched sequentially.
+.Bd -literal -offset indent
+set followup-to followup-to-honour=ask-yes
+mlist a1@b1.c1 a2@b2.c2 .*@lists.c3
+mlsubscribe a4@b4.c4 exact@lists.c3
+.Ed
+.Pp
+The variable
+.Va followup-to-honour
+will ensure that a `Mail-Followup-To:' header is honoured when the
+message is being replied to (via
+.Ic reply
+and
+.Ic Lreply )
+and
+.Va followup-to
+controls wether this header is created when sending mails; it will be
+created automatically for a couple of reasons, too, like when the
+special "mailing list specific" respond command
+.Ic Lreply
+is used, when
+.Ic reply
+is used to respond to a message with its `Mail-Followup-To:' being
+honoured etc.
+.Pp
+A difference in between the handling of known and subscribed lists is
+that the senders address is usually not part of a generated
+`Mail-Followup-To:' when addressing the latter, whereas it is for the
+former kind of lists.
+Usually because there are exceptions: say, if multiple lists are
+addressed and not all of them are subscribed lists.
+For convenience \*(UA will, temporarily, automatically add a list
+address that is presented in the `List-To:' header of a message that is
+being respondend to to the list of known mailing lists; shall that
+header have existed \*(UA will instead use an also set `Reply-To:' for
+this purpose in order to accept the list administrators wish (but only
+if this header provides a single address).
 .\" }}}
 .\"
 .\" }}} (Usage introduction)
@@ -2118,11 +2182,14 @@ any values set within macro2 will still be cleaned up by macro1.
 .Ic mlist
 and
 .Ic mlsubscribe \(en
-adding a special massage of the addressee lists on top of the usual
+on top of the usual
 .Ic reply
-functionality.
-Should the message contain a `List-Post:' header then the address
-therein is automatically treated as a known mailing list.
+functionality this will actively resort and even remove message
+recipients in order to generate a message that is supposed to be send to
+a mailing list.
+For example it will also implicitly generate a `Mail-Followup-To:'
+header if that seems useful, regardless of the setting of the variable
+.Va followup-to .
 .It Ic Mail
 (M) Similar to
 .Ic mail ,
@@ -3309,17 +3376,15 @@ are not affected by the current setting of
 .Va flipr .
 .It Va followup-to
 Controls wether a `Mail-Followup-To:' header is generated when sending
-messages to a known mailing list.
-If the list is being subscribed to then only the list address will be
-placed in this header, but otherwise the address found in
-.Va from
-will be added to it.
+messages to known mailing lists.
 Also see
 .Va followup-to-honour
 and the commands
-.Ic mlist
+.Ic mlist ,
+.Ic mlsubscribe ,
+.Ic reply
 and
-.Ic mlsubscribe .
+.Ic Lreply .
 .It Va forward-as-attachment
 Original messages are normally sent as inline text with the
 .Ic forward
@@ -3939,8 +4004,10 @@ ed from within the actually executed macro).
 .It Va followup-to-honour
 Controls wether a `Mail-Followup-To:' header is honoured when
 group-replying to a message via
-.Ic reply .
-This is a quadoption; if set without value it defaults to `yes'.
+.Ic reply
+or
+.Ic Lreply .
+This is a quadoption; if set without a value it defaults to `yes'.
 Also see
 .Va followup-to
 and the commands
@@ -5133,7 +5200,8 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager crt= history-gabby mime-counter-evidence=2 \e
+    colour-pager crt= followup-to followup-to-honour \e
+    history-gabby mime-counter-evidence=2 \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
     NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1
 
