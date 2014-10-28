@@ -400,7 +400,9 @@ using it is a smooth experience.
 The default global \*(UR file already bends those standard settings
 a bit towards more user friendliness and safety, e.g., it sets the
 .Va hold
-option in order to suppress the automatic move of messages to
+and
+.Va keepsave
+options in order to suppress the automatic moving of messages to
 .Ev MBOX
 that otherwise would occur (see
 .Sx MESSAGE STATES )
@@ -727,7 +729,19 @@ set debug \e
 .\"
 .\" .Sh "MESSAGE STATES" {{{
 .Sh "MESSAGE STATES"
-\*(UA differentiates in between the following message states:
+\*(UA differentiates in between several different message states;
+the current state will be reflected in the header display if
+.Va headline
+is configured to do so.
+In \*(UA message states are inspected when leaving a mailbox and may
+cause messages to be automatically moved to the special
+.Ev MBOX
+mailbox \(en because this may be irritating to users which are used
+to "more modern" mail-user-agents, the default global \*(UR sets the
+.Va hold
+and
+.Va keepsave
+variables in order to suppress this behaviour.
 .Bl -tag -width ".It Ar preserved"
 .It Ar new
 Message has neither been viewed nor moved to any other state.

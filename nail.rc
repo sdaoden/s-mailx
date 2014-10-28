@@ -68,7 +68,7 @@ set emptybox
 set history-gabby
 
 # Do not forward to mbox by default since this is likely to be
-# irritating for most users today
+# irritating for most users today; also see *keepsave*
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
@@ -91,6 +91,10 @@ set mime-counter-evidence
 # This may be relevant for privacy since other users could otherwise create
 # them with different permissions
 set keep
+
+# Do not move `save'd or `write'n message to mbox by default since this is
+# likely to be irritating for most users today; also see *hold*
+set keepsave
 
 # When writing mailbox files we strip Content-Length: and Lines: header fields
 # from edited / changed messages, because S-nail doesn't deal with these
