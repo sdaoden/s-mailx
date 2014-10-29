@@ -161,8 +161,10 @@ static bool_t        _var_set(struct var_carrier *vcp, char const *value);
  * return success */
 static bool_t        _var_clear(struct var_carrier *vcp);
 
-/* var_list_all(): qsort(3) helper */
-static int           _var_list_all_cmp(void const *s1, void const *s2);
+/* List all variables */
+static void          _var_list_all(void);
+
+static int           __var_list_all_cmp(void const *s1, void const *s2);
 
 /* Shared c_set() and c_setenv() impl, return success */
 static bool_t        _var_set_env(char **ap, bool_t issetenv);
@@ -470,8 +472,53 @@ _var_clear(struct var_carrier *vcp)
    return ok;
 }
 
+static void
+_var_list_all(void)
+{
+   FILE *fp;
+   size_t no, i;
+   struct var *vp;
+   char const **vacp, **cap, *fmt;
+   NYD_ENTER;
+
+   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
+      perror("tmpfile");
+      goto jleave;
+   }
+
+   for (no = i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         ++no;
+   vacp = salloc(no * sizeof(*vacp));
+   for (cap = vacp, i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         *cap++ = vp->v_name;
+
+   if (no > 1)
+      qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
+
+   i = (ok_blook(bsdcompat) || ok_blook(bsdset));
+   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
+
+   for (cap = vacp; no != 0; ++cap, --no) {
+      char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin... */
+      if (cp == NULL)
+         cp = "";
+      if (i || *cp != '\0')
+         fprintf(fp, fmt, *cap, cp);
+      else
+         fprintf(fp, "%s\n", *cap);
+   }
+
+   page_or_print(fp, PTR2SIZE(cap - vacp));
+   Fclose(fp);
+jleave:
+   NYD_LEAVE;
+}
+
 static int
-_var_list_all_cmp(void const *s1, void const *s2)
+__var_list_all_cmp(void const *s1, void const *s2)
 {
    int rv;
    NYD_ENTER;
@@ -996,51 +1043,6 @@ jleave:
 }
 #endif /* HAVE_SOCKETS */
 
-FL void
-var_list_all(void)
-{
-   FILE *fp;
-   size_t no, i;
-   struct var *vp;
-   char const **vacp, **cap, *fmt;
-   NYD_ENTER;
-
-   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
-      perror("tmpfile");
-      goto jleave;
-   }
-
-   for (no = i = 0; i < MA_PRIME; ++i)
-      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
-         ++no;
-   vacp = salloc(no * sizeof(*vacp));
-   for (cap = vacp, i = 0; i < MA_PRIME; ++i)
-      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
-         *cap++ = vp->v_name;
-
-   if (no > 1)
-      qsort(vacp, no, sizeof *vacp, &_var_list_all_cmp);
-
-   i = (ok_blook(bsdcompat) || ok_blook(bsdset));
-   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
-
-   for (cap = vacp; no != 0; ++cap, --no) {
-      char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin, change */
-      if (cp == NULL)
-         cp = "";
-      if (i || *cp != '\0')
-         fprintf(fp, fmt, *cap, cp);
-      else
-         fprintf(fp, "%s\n", *cap);
-   }
-
-   page_or_print(fp, PTR2SIZE(cap - vacp));
-   Fclose(fp);
-jleave:
-   NYD_LEAVE;
-}
-
 FL int
 c_varshow(void *v)
 {
@@ -1094,7 +1096,7 @@ c_set(void *v)
    NYD_ENTER;
 
    if (*ap == NULL) {
-      var_list_all();
+      _var_list_all();
       err = 0;
    } else
       err = !_var_set_env(ap, FAL0);
