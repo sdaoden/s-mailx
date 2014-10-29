@@ -490,10 +490,15 @@ _var_list_all(void)
    for (no = i = 0; i < MA_PRIME; ++i)
       for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
          ++no;
+   no += NELEM(_var_virtuals);
+
    vacp = salloc(no * sizeof(*vacp));
+
    for (cap = vacp, i = 0; i < MA_PRIME; ++i)
       for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
          *cap++ = vp->v_name;
+   for (i = 0; i < NELEM(_var_virtuals); ++i)
+      *cap++ = _var_virtuals[i].vv_var->v_name;
 
    if (no > 1)
       qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
