@@ -1101,8 +1101,13 @@ c_from(void *v)
       }
    }
 
-   for (n = 0, ip = msgvec; *ip != 0; ++ip) /* TODO join into _print_head() */
+   srelax_hold();
+   for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
+      srelax();
+   }
+   srelax_rele();
+
    if (--ip >= msgvec)
       setdot(message + *ip - 1);
 
@@ -1128,6 +1133,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 #endif
    time_current_update(&time_current, FAL0);
 
+   srelax_hold();
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1136,7 +1142,9 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       } else if (!visible(mp))
          continue;
       _print_head(printed++, bottom, stdout, FAL0);
+      srelax();
    }
+   srelax_rele();
    NYD_LEAVE;
 }
 
