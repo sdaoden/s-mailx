@@ -209,48 +209,24 @@ _ssl_init(void)
 static bool_t
 _ssl_parse_asn1_time(ASN1_TIME *atp, char *bdat, size_t blen)
 {
-   /* Shamelessly stolen from CURL */
-   char const *db, *gm;
-   int Y, M, d, h, m, s;
-   bool_t rv;
+   BIO *mbp;
+   char *mcp;
+   long l;
    NYD_ENTER;
 
-   db = (char const*)atp->data;
-   if (atp->length < 10)
-      goto jerr;
+   mbp = BIO_new(BIO_s_mem());
 
-   for (s = 0; s < 10; ++s)
-      if (!digitchar(db[s]))
-         goto jerr;
+   if (ASN1_TIME_print(mbp, atp) && (l = BIO_get_mem_data(mbp, &mcp)) > 0)
+      snprintf(bdat, blen, "%.*s", (int)l, mcp);
+   else {
+      snprintf(bdat, blen, _("Bogus certificate date: %.*s"),
+         /*is (int)*/atp->length, (char const*)atp->data);
+      mcp = NULL;
+   }
 
-   gm = (db[atp->length - 1] == 'Z') ? "GMT" : "";
-
-   Y = (db[0] - '0') * 10 + (db[1] - '0');
-   if (Y < 50)
-      Y += 100;
-   Y += 1900;
-
-   M = (db[2] - '0') * 10 + (db[3] - '0');
-   if (M > 12 || M < 1)
-      goto jerr;
-
-   d = (db[4] - '0') * 10 + (db[5] - '0');
-   h = (db[6] - '0') * 10 + (db[7] - '0');
-   m = (db[8] - '0') * 10 + (db[9] - '0');
-   s = (db[10] >= '0' && db[10] <= '9' && db[11] >= '0' && db[11] <= '9')
-         ? ((db[10] - '0') * 10 + (db[11] - '0')) : 0;
-
-   snprintf(bdat, blen, "%04d-%02d-%02d %02d:%02d:%02d %s",
-      Y, M, d, h, m, s, gm);
-   rv = TRU1;
-jleave:
+   BIO_free(mbp);
    NYD_LEAVE;
-   return rv;
-jerr:
-   snprintf(bdat, blen, _("Bogus certificate date: %.*s\n"),
-      atp->length, db);
-   rv = FAL0;
-   goto jleave;
+   return (mcp != NULL);
 }
 
 static int
