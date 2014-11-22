@@ -680,6 +680,51 @@ and the command
 .\"
 .\" }}} (Usage introduction)
 .\"
+.\" .Sh "RESOURCE FILES" {{{
+.Sh "RESOURCE FILES"
+Upon startup \*(UA reads in several resource files:
+.Bl -tag -width ".It Pa \*(UR"
+.It Pa \*(UR
+System wide initialization file.
+Reading of this file can be suppressed, either by using the
+.Fl n
+command line option, or by setting the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable.
+.It Pa \*(ur
+File giving initial commands.
+A different file can be chosen by setting the
+.Ev MAILRC
+environment variable.
+.It Ev NAIL_EXTRA_RC
+Can be used to define an optional startup file to be read after
+.Pa \*(ur .
+This variable is only honoured in certain circumstances (see its
+documentation for more).
+.El
+.Pp
+The content of these files is interpreted as follows:
+.Bl -bullet -offset indent
+.It
+Possibly existing leading whitespace is skipped.
+.It
+An empty line is ignored.
+.It
+If the line starts with the number sign (`#') then it is a null command
+(comment) and also ignored.
+The null command is the only form of comment that is understood.
+.It
+A line can be "continued" on the next line if the newline character is
+"escaped" by a preceding backslash character (`\e'), as in
+.Bd -literal -offset indent
+# This line is a null command (comment). \e
+  And yes, it is really continued here.
+set debug \e
+    verbose
+.Ed
+.El
+.\" }}}
+.\"
 .\" .Sh "MESSAGE STATES" {{{
 .Sh "MESSAGE STATES"
 \*(UA differentiates in between the following message states:
@@ -4707,7 +4752,9 @@ command and the
 option.
 The fallback default is `mbox' in the user's home directory.
 .It Ev MAILRC
-Is used as a startup file instead of \*(ur if set.
+Is used as a startup file instead of
+.Pa \*(ur
+if set.
 When \*(UA scripts are invoked on behalf of other users,
 this variable should be set to
 .Pa /dev/null
