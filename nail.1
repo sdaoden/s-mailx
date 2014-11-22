@@ -3690,9 +3690,10 @@ The plain machine hostname of the user account.
 The `HOST' (hostname possibly including port) of the user account.
 .El
 .It Va attrlist
-A sequence of characters to print in the `attribute' column of a header
-summary,
-each for one type of messages in the following order:
+A sequence of characters to print in the `attribute' column of the
+.Va headline
+as shown in the header display; each for one type of messages in the
+following order:
 new (N), unread but old (U), new but read (R), read and old (O), saved
 (S), preserved (P), mboxed (M), flagged (F), answered (A), draft (T),
 start of a collapsed thread (+), collapsed (\-), classified as spam ($).
@@ -3928,8 +3929,21 @@ If the (possibly implicitly implied) field width is negative, the field
 is to be left-aligned.
 Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
+.It %%
+A `%' character.
+.It %>
+A `>' for the current message, otherwise ` '.
+.It %<
+A `<' for the current message, otherwise ` '.
+.It %$
+\*(OP The spam score of the message, as has been classified via the
+command
+.Ic spamrate .
+Prints only a replacement character if there is no spam support.
 .It %a
-Message attributes.
+Message attribute character (status flag); the actual content can be
+adjusted by setting
+.Va attrlist .
 .It %d
 The date when the message was received.
 .It %e
@@ -3949,17 +3963,14 @@ The number of octets (bytes) in the message.
 Message subject (if any).
 .It %S
 Message subject (if any) in double quotes.
+.It \&%T
+Message recipient flags: is the addressee of the message a known or
+subscribed mailing list \(en see
+.Ic mlist
+and
+.Ic mlsubscribe .
 .It %t
 The position in threaded/sorted order.
-.It %>
-A `>' for the current message, otherwise ` '.
-.It %<
-A `<' for the current message, otherwise ` '.
-.It %$
-The spam score of the message, as has been classified via the command
-.Ic spamrate .
-.It %%
-A `%' character.
 .El
 .Pp
 The default is `%>\&%a\&%m\ %-18f\ %16d\ %4l/%\-5o\ %i%-s',
@@ -5576,7 +5587,7 @@ The commands offered are
 and
 .Ic spamset ,
 which simply set an `is-spam' flag that can be used for, e.g., message
-selection,
+selection (v,
 .Ic spamrate ,
 which passes messages through to the spam detector in order to gain
 a spam score and conditionally set the `is-spam' flag accordingly,
@@ -5585,6 +5596,9 @@ as well as the Bayesian filter related
 .Ic spamham
 and
 .Ic spamspam .
+The
+.Va headline
+format `%$' will show the spam score in the header display.
 .Pp
 Because messages must exist on local storage in order to be scored (or
 used for Bayesian filter training), it is possibly a good idea to

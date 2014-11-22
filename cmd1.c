@@ -173,7 +173,7 @@ static void
 __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, char const *attrlist)
 {
-   char datebuf[FROM_DATEBUF], *cp, *subjline;
+   char buf[16], datebuf[FROM_DATEBUF], *cp, *subjline;
    char const *datefmt, *date, *name, *fp;
    int i, n, s, wleft, subjlen;
    struct message *mp;
@@ -187,6 +187,7 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _SFMT       = 1<<3
    } flags = _NONE;
    NYD_ENTER;
+   UNUSED(buf);
 
    mp = message + msgno - 1;
    datet = mp->m_time;
@@ -331,12 +332,10 @@ jredo:
                n = 4;
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            {  char buf[16];
-               snprintf(buf, sizeof buf, "%u.%u",
-                  (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
-               n = fprintf(f, "%*s", n, buf);
-               wleft = (n >= 0) ? wleft - n : 0;
-            }
+            snprintf(buf, sizeof buf, "%u.%u",
+               (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
+            n = fprintf(f, "%*s", n, buf);
+            wleft = (n >= 0) ? wleft - n : 0;
 #else
             c = '?';
             goto jputc;
@@ -466,6 +465,25 @@ jputc:
                   wleft = 0;
             }
             break;
+         case 'T': { /* Message recipient flags */
+            /* We never can reuse "name" since it's the full name */
+            struct name const *np = lextract(hfield1("to", mp), GTO | GSKIN);
+            c = ' ';
+            i = 0;
+j_A_redo:
+            for (; np != NULL; np = np->n_flink) {
+               switch (is_mlist(np->n_name, FAL0)) {
+               case -1: c = 'S'; goto jputc;
+               case  1: c = 'L'; goto jputc;
+               default: break;
+               }
+            }
+            if (i != 0)
+               goto jputc;
+            ++i;
+            np = lextract(hfield1("cc", mp), GCC | GSKIN);
+            goto j_A_redo;
+         }
          case 't':
             if (n == 0) {
                n = 3;
