@@ -68,7 +68,7 @@ ssl_set_verify_level(struct url const *urlp)
 
    if (cp != NULL) {
       for (i = 0; i < NELEM(_ssl_verify_levels); ++i)
-         if (!strcmp(_ssl_verify_levels[i].sv_name, cp)) {
+         if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
          }

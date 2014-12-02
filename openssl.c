@@ -561,7 +561,7 @@ _smime_cipher(char const *name)
    if (cp != NULL) {
       cipher = NULL;
       for (i = 0; i < NELEM(_smime_ciphers); ++i)
-         if (!strcmp(_smime_ciphers[i].sc_name, cp)) {
+         if (!asccasecmp(_smime_ciphers[i].sc_name, cp)) {
             cipher = (*_smime_ciphers[i].sc_fun)();
             goto jleave;
          }

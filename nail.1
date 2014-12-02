@@ -4562,8 +4562,8 @@ messages for the specified account.
 RFC 5751 mandates a default of `aes-128' (AES-128 CBC).
 .Pp
 The actually available cipher algorithms depend on the cryptographic
-library that \*(UA uses; possible values are, in decreasing cipher
-strength:
+library that \*(UA uses; possible values are, (case-insensitive and)
+in decreasing cipher strength:
 `aes-256' (AES-256 CBC), `aes-192' (AES-192 CBC), `aes-128' (AES-128 CBC),
 `des3' (DES EDE3 CBC, 168 bits; default if `aes-128' isn't available)
 and `des' (DES CBC, 56 bits).
@@ -4859,7 +4859,7 @@ new data is written to it after it has been loaded.
 .It Va ssl-verify-USER@HOST , ssl-verify-HOST , ssl-verify
 \*(OP Variable chain that sets the action to be performed if an error
 occurs during SSL/TLS server certificate validation.
-Valid values are
+Valid (case-insensitive) values are
 `strict' (fail and close connection immediately),
 `ask' (ask whether to continue on standard input),
 `warn' (print a warning and continue),
