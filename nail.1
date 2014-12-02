@@ -1070,6 +1070,7 @@ or
 search the users
 .Pa .netrc
 file for a `HOST' specific entry which provides a `login' name.
+This lookup will only succeed if unambiguous (one entry for `HOST').
 .Pp
 If there is still no `USER' then \*(UA will fall back to the user who is
 supposed to run \*(UA: either the name that has been given with the
@@ -1077,7 +1078,7 @@ supposed to run \*(UA: either the name that has been given with the
 command line option (or, equivalent, but with less precedence, the
 environment variable
 .Ev USER ) Ns ,
-or `getpwuid(getuid())' a.k.a. the current user.
+or `getpwuid(getuid())' a.k.a. the current login user.
 The identity of this user has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .It
