@@ -1074,7 +1074,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       authokey = ok_v_smtp_auth;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
             AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
-      authdef = "none";
+      authdef = "plain";
       break;
    case CPROTO_POP3:
       pstr = "pop3";

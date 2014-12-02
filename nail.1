@@ -1217,7 +1217,8 @@ or
 search the users
 .Pa .netrc
 file for a `HOST' specific entry which provides a `login' name.
-This lookup will only succeed if unambiguous (one entry for `HOST').
+This lookup will only succeed if unambiguous (one possible matching
+entry for `HOST').
 .Pp
 If there is still no `USER' then \*(UA will fall back to the user who is
 supposed to run \*(UA: either the name that has been given with the
@@ -1272,26 +1273,27 @@ If at that point there is still no password available, but the
 interactive mode the user will be prompted on the terminal.
 .El
 .Pp
-Note:
-For SMTP the rules are a bit more complicated, since \*(UA will always
-work relative to
-.Va from
-instead of a given SMTP account in respect to S/MIME
-.Ns ( Va smime-sign ,
+.Sy Note:
+S/MIME verification works relative to the values found in the `From:'
+(or `Sender:') header field, which means that the values of
+.Va smime-sign ,
 .Va smime-sign-cert
 and
-.Va smime-sign-include-certs )
-\(en this is because S/MIME verification works relative to the values
-found in `From:' (or `Sender:').
+.Va smime-sign-include-certs
+will not be looked up using the `USER' and `HOST' from above chains
+but instead use corresponding values from the message(s) that is being
+worked on.
 In unusual cases multiple and different `USER' and `HOST' combinations
-may therefore be involved when looking up values that make up an SMTP
-account; on the other hand those unusual cases become possible.
-The usual case may be as short as (the section
-.Sx EXAMPLES
-may also be worth reading):
+may therefore be involved \(en on the other hand those unusual cases
+become possible.
+The usual case is as short as:
 .Pp
-.Dl set smtp=smtp://USER:PASS@HOST smtp-auth=plain smtp-use-starttls \e
+.Dl set smtp=smtp://USER:PASS@HOST smtp-use-starttls \e
 .Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
+.Pp
+The section
+.Sx EXAMPLES
+contains complete example configurations.
 .\" }}}
 .\" TODO reviewed until here TODO for v14.8, first..
 .\" .Sh CHARACTER SETS {{{
@@ -4708,7 +4710,7 @@ If it receives a TERM signal, it will abort and save the message to
 .Va DEAD .
 .It Va smtp-auth
 \*(OP Sets the SMTP authentication method.
-Possible values are `none' (the default), `plain', `login'
+Possible values are `none' (\*(OU default), `plain' (\*(IN default), `login'
 as well as the \*(OPal methods `cram-md5' and `gssapi'.
 The `none' method doesn't need any user credentials,
 `gssapi' requires a user name
@@ -5234,8 +5236,7 @@ retain date from to cc subject
 account XooglX {
    localopts 1
    # (The plain smtp:// proto is optional)
-   set smtp=USER:PASS@smtp.gmXil.com \e
-       smtp-auth=plain smtp-use-starttls
+   set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
    set from="Your Name <youremail@domain>"
 }
 
@@ -5247,7 +5248,7 @@ account XooglX {
 # still sending the message through their normal mail provider
 account XandeX {
    localopts 1
-   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 smtp-auth=plain \e
+   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
        hostname=yaXXex.com smtp-hostname=
    set from="Your Name <youremail@domain>"
 }
@@ -5281,7 +5282,7 @@ account XandeX {
    set netrc-lookup
    #set agent-shell-lookup="gpg -d .pass.gpg"
 
-   set smtp=smtps://smtp.yXXXXx.ru:465 smtp-auth=plain \e
+   set smtp=smtps://smtp.yXXXXx.ru:465 \e
        smtp-hostname= hostname=yXXXXx.com
    set pop3-keepalive=240
    ghost xp 'fi pop3s://pop.yXXXXx.ru'
