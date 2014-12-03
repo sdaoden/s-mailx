@@ -1356,6 +1356,12 @@ FL int         is_myname(char const *name);
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);
 
+/* `(un)?ml(ist|subscribe)' */
+FL int         c_mlist(void *v);
+FL int         c_unmlist(void *v);
+FL int         c_mlsubscribe(void *v);
+FL int         c_unmlsubscribe(void *v);
+
 /* Set the list of alternate names */
 FL int         c_alternates(void *v);
 

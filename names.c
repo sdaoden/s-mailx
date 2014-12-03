@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Handle name lists, alias expansion, group handling.
+ *@ Name lists, aliases, mailing lists.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -41,12 +41,30 @@
 # include "nail.h"
 #endif
 
+enum group_type {
+   /* Main types (bits not values for easier testing only) */
+   GT_ALIAS       = 1<< 0,
+   GT_MLIST       = 1<< 1,
+   GT_MASK        = GT_ALIAS | GT_MLIST,
+
+   /* Subtype bits and flags */
+   GT_SUBSCRIBE   = 1<< 4,
+   GT_REGEX       = 1<< 5,
+
+   /* Extended type mask to be able to reflect what we really have; i.e., mlist
+    * can have GT_REGEX if they are subscribed or not, but `subscribe' should
+    * print out only GT_MLIST which are GT_SUBSCRIBE, too */
+   GT_PRINT_MASK  = GT_MASK | GT_SUBSCRIBE
+};
+
 struct group {
    struct group   *g_next;
    size_t         g_subclass_off;   /* of "subclass" in .g_id */
+   ui8_t          g_type;           /* enum group_type */
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
-    * data follows thereafter */
-   char           g_id[VFIELD_SIZE(8)];
+    * data follows thereafter, but note this is always used (i.e., for regular
+    * expression entries this is still set to the plain string) */
+   char           g_id[VFIELD_SIZE(7)];
 };
 #define GP_TO_SUBCLASS(X,G) \
 do {\
@@ -64,6 +82,18 @@ struct grp_names {
    char              gn_id[VFIELD_SIZE(8)];
 };
 
+#ifdef HAVE_REGEX
+struct grp_regex {
+   struct grp_regex  *gr_last;
+   struct grp_regex  *gr_next;
+   struct group      *gr_mygroup;
+   /* TODO size_t    gr_qos; then: static _mlx_qos_cnt, _mlx_qos_treshold
+    * TODO and don't auto-relink to front matches with a QOS<treshold,
+    * TODO where treshold is some 10% of the global _qos_cnt */
+   regex_t           gr_regex;
+};
+#endif
+
 struct group_lookup {
    struct group   **gl_slot;
    struct group   *gl_slot_last;
@@ -71,10 +101,20 @@ struct group_lookup {
 };
 
 /* `alias' */
-static struct group  *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
+static struct group     *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
+
+/* `mlist', `mlsubscribe'.  Anything is stored in the hashmap, but entries
+ * which have GT_REGEX set are false lookups and will be looked up via the
+ * sequential lists instead, which are type-specific for better performance,
+ * but also to make it possible to have ".*@xy.org" as a mlist and
+ * "(one|two)@xy.org" as a mlsubscription */
+static struct group     *_mlist_heads[HSHSIZE]; /* TODO dynamic hash */
+#ifdef HAVE_REGEX
+static struct grp_regex *_mlist_regex, *_mlsub_regex;
+#endif
 
 /* List of alternate names of user */
-static char          **_altnames;
+static char             **_altnames;
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -98,42 +138,55 @@ static struct name * _extract1(char const *line, enum gfield ntype,
 static struct name * _gexpand(size_t level, struct name *nlist,
                         struct group *gp, bool_t metoo, int ntype);
 
-/* Locate a group fast, return it or NULL */
-static struct group * _group_find(struct group * const *gpa, char const *name);
-
 /* Lookup a group, return it or NULL, fill in glp anyway */
-static struct group * _group_lookup(struct group_lookup *glp,
-                        struct group **gpa, char const *name);
+static struct group * _group_lookup(enum group_type gt,
+                        struct group_lookup *glp, char const *id);
+
+/* Easier-to-use wrapper around _group_lookup() */
+static struct group * _group_find(enum group_type gt, char const *id);
 
 /* Iteration: go to the first group, which also inits the iterator.  A valid
  * iterator can be stepped via _next().  A NULL return means no (more) groups
  * to be iterated exist, in which case only glp->gl_group is set (NULL) */
-static struct group * _group_go_first(struct group_lookup *glp,
-                        struct group **gpa);
-static struct group * _group_go_next(struct group_lookup *glp,
-                        struct group **gpa);
+static struct group * _group_go_first(enum group_type gt,
+                        struct group_lookup *glp);
+static struct group * _group_go_next(enum group_type gt,
+                        struct group_lookup *glp);
 
-/* Fetch the group id, create it as necessary, reserving add_size additional
- * bytes for possible subclass space */
-static struct group * _group_fetch(struct group **gpa, ui32_t add_size,
-                        char const *id);
+/* Fetch the group id, create it as necessary */
+static struct group * _group_fetch(enum group_type gt, char const *id);
 
-/* Delete a group superclass */
-static void          _group_del(struct group_lookup *glp);
-
-/* "Intelligent" delete which handles a "*" id and knows how to delete kids;
+/* "Intelligent" delete which handles a "*" id, too;
  * returns a true boolean if a group was deleted, and always succeeds for "*" */
-static bool_t        _group_dispatch_del(struct group **gpa, char const *id);
+static bool_t        _group_del(enum group_type gt, char const *id);
 
+static struct group * __group_del(struct group_lookup *glp);
 static void          __names_del(struct group *gp);
 
-/* Print all groups in gpa, alphasorted */
-static void          _group_print_all(struct group * const *gpa);
+/* Print all groups of the given type, alphasorted */
+static void          _group_print_all(enum group_type gt);
 
 static int           __group_print_qsorter(void const *a, void const *b);
 
-/* Print group "intelligently" */
-static void          _group_dispatch_print(struct group const *gp);
+/* Really print a group, actually */
+static void          _group_print(struct group const *gp);
+
+/* Multiplexers for list and subscribe commands */
+static int           _mlmux(enum group_type gt, char **argv);
+static int           _unmlmux(enum group_type gt, char **argv);
+
+/* Relinkers for the sequential match lists */
+#ifdef HAVE_REGEX
+static void          _mlmux_linkin(struct group *gp);
+static void          _mlmux_linkout(struct group *gp);
+# define _MLMUX_LINKIN(GP) \
+   do if ((GP)->g_type & GT_REGEX) _mlmux_linkin(GP); while (0)
+# define _MLMUX_LINKOUT(GP) \
+   do if ((GP)->g_type & GT_REGEX) _mlmux_linkout(GP); while (0)
+#else
+# define _MLMUX_LINKIN(GP)
+# define _MLMUX_LINKOUT(GP)
+#endif
 
 static bool_t
 _same_name(char const *n1, char const *n2)
@@ -348,33 +401,21 @@ jleave:
 }
 
 static struct group *
-_group_find(struct group * const *gpa, char const *name)
-{
-   struct group *gp;
-   NYD_ENTER;
-
-   for (gp = gpa[hash(name)]; gp != NULL; gp = gp->g_next)
-      if (*gp->g_id == *name && !strcmp(gp->g_id, name))
-         break;
-   NYD_LEAVE;
-   return gp;
-}
-
-static struct group *
-_group_lookup(struct group_lookup *glp, struct group **gpa, char const *name)
+_group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
 {
    struct group *lgp, *gp;
    NYD_ENTER;
 
+   gt &= GT_MASK;
    lgp = NULL;
-   gp = *(glp->gl_slot = (gpa + torek_hash(name) % HSHSIZE));
+   gp = *(glp->gl_slot =
+          ((gt & GT_ALIAS ? _alias_heads : _mlist_heads) +
+           torek_hash(id) % HSHSIZE));
 
-   while (gp != NULL) {
-      if (*gp->g_id == *name && !strcmp(gp->g_id, name))
+   for (; gp != NULL; lgp = gp, gp = gp->g_next)
+      if ((gp->g_type & gt) && *gp->g_id == *id && !strcmp(gp->g_id, id))
          break;
-      lgp = gp;
-      gp = gp->g_next;
-   }
+
    glp->gl_slot_last = lgp;
    glp->gl_group = gp;
    NYD_LEAVE;
@@ -382,117 +423,195 @@ _group_lookup(struct group_lookup *glp, struct group **gpa, char const *name)
 }
 
 static struct group *
-_group_go_first(struct group_lookup *glp, struct group **gpa)
-{
-   struct group *gp;
-   size_t i;
-   NYD_ENTER;
-
-   for (i = 0; i < HSHSIZE; ++gpa, ++i)
-      if ((gp = *gpa) != NULL) {
-         glp->gl_slot = gpa;
-         glp->gl_slot_last = NULL;
-         glp->gl_group = gp;
-         goto jleave;
-      }
-   glp->gl_group = gp = NULL;
-jleave:
-   NYD_LEAVE;
-   return gp;
-}
-
-static struct group *
-_group_go_next(struct group_lookup *glp, struct group **gpa)
-{
-   struct group *gp;
-   NYD_ENTER;
-
-   if ((gp = glp->gl_group->g_next) != NULL)
-      glp->gl_group = gp;
-   else {
-      for (gpa += HSHSIZE; glp->gl_slot < gpa; ++glp->gl_slot)
-         if ((gp = *glp->gl_slot) != NULL)
-            break;
-      glp->gl_group = gp;
-   }
-   NYD_LEAVE;
-   return gp;
-}
-
-static struct group *
-_group_fetch(struct group **gpa, ui32_t add_size, char const *id)
+_group_find(enum group_type gt, char const *id)
 {
    struct group_lookup gl;
    struct group *gp;
-   size_t l, i;
    NYD_ENTER;
 
-   if ((gp = _group_lookup(&gl, gpa, id)) != NULL)
+   gp = _group_lookup(gt, &gl, id);
+   NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_go_first(enum group_type gt, struct group_lookup *glp)
+{
+   struct group **gpa, *gp;
+   size_t i;
+   NYD_ENTER;
+
+   for (gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads), i = 0;
+         i < HSHSIZE; ++gpa, ++i)
+      if ((gp = *gpa) != NULL) {
+         glp->gl_slot = gpa;
+         glp->gl_group = gp;
+         goto jleave;
+      }
+
+   glp->gl_group = gp = NULL;
+jleave:
+   glp->gl_slot_last = NULL;
+   NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_go_next(enum group_type gt, struct group_lookup *glp)
+{
+   struct group *gp, **gpa;
+   NYD_ENTER;
+
+   if ((gp = glp->gl_group->g_next) != NULL)
+      glp->gl_slot_last = glp->gl_group;
+   else {
+      glp->gl_slot_last = NULL;
+      for (gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads) + HSHSIZE;
+            ++glp->gl_slot < gpa;)
+         if ((gp = *glp->gl_slot) != NULL)
+            break;
+   }
+   glp->gl_group = gp;
+   NYD_LEAVE;
+   return gp;
+}
+
+static struct group *
+_group_fetch(enum group_type gt, char const *id)
+{
+   struct group_lookup gl;
+   struct group *gp;
+   size_t l, i, addsz;
+   NYD_ENTER;
+
+   if ((gp = _group_lookup(gt, &gl, id)) != NULL)
       goto jleave;
 
    l = strlen(id) +1;
    i = ALIGN(sizeof(*gp) - VFIELD_SIZEOF(struct group, g_id) + l);
-   gp = smalloc(i + add_size);
+   switch (gt & GT_MASK) {
+   case GT_ALIAS:
+      addsz = sizeof(struct grp_names_head);
+      break;
+   case GT_MLIST:
+#ifdef HAVE_REGEX
+      if (is_maybe_regex(id)) {
+         addsz = sizeof(struct grp_regex);
+         gt |= GT_REGEX;
+      } else
+#endif
+   default:
+         addsz = 0;
+      break;
+   }
+
+   gp = smalloc(i + addsz);
+   gp->g_subclass_off = i;
+   gp->g_type = gt;
+   memcpy(gp->g_id, id, l);
+
+   if (gt & GT_ALIAS) {
+      struct grp_names_head *gnhp;
+      GP_TO_SUBCLASS(gnhp, gp);
+      gnhp->gnh_head = NULL;
+   }
+#ifdef HAVE_REGEX
+   else if (gt & GT_REGEX) {
+      struct grp_regex *grp;
+      GP_TO_SUBCLASS(grp, gp);
+
+      if (regcomp(&grp->gr_regex, id, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
+         fprintf(stderr, _("Invalid regular expression: `%s'\n"), id);
+         free(gp);
+         gp = NULL;
+         goto jleave;
+      }
+      grp->gr_mygroup = gp;
+      _mlmux_linkin(gp);
+   }
+#endif
+
    gp->g_next = *gl.gl_slot;
    *gl.gl_slot = gp;
-   gp->g_subclass_off = i;
-   memcpy(gp->g_id, id, l);
-   if (add_size > 0)
-      memset(gp->g_id + i, 0, add_size);
 jleave:
    NYD_LEAVE;
    return gp;
 }
 
-static void
-_group_del(struct group_lookup *glp)
-{
-   struct group *gp, *x;
-   NYD_ENTER;
-
-   gp = glp->gl_group;
-
-   if ((x = glp->gl_slot_last) != NULL)
-      x->g_next = gp->g_next;
-   else
-      *glp->gl_slot = gp->g_next;
-   free(gp);
-   NYD_LEAVE;
-}
-
 static bool_t
-_group_dispatch_del(struct group **gpa, char const *id)
+_group_del(enum group_type gt, char const *id)
 {
+   enum group_type xgt = gt & GT_MASK;
    struct group_lookup gl;
    struct group *gp;
    NYD_ENTER;
 
+   /* Delete 'em all? */
    if (id[0] == '*' && id[1] == '\0') {
-      for (gp = _group_go_first(&gl, gpa); gp != NULL;
-            gp = _group_go_next(&gl, gpa)) {
-         __names_del(gp);
-         _group_del(&gl);
-      }
+      for (gp = _group_go_first(gt, &gl); gp != NULL;)
+         gp = (gp->g_type & xgt) ? __group_del(&gl) : _group_go_next(gt, &gl);
       gp = (struct group*)TRU1;
-   } else if ((gp = _group_lookup(&gl, gpa, id)) != NULL) {
-      __names_del(gp);
-      _group_del(&gl);
+   } else if ((gp = _group_lookup(gt, &gl, id)) != NULL) {
+      if (gp->g_type & xgt)
+         __group_del(&gl);
+      else
+         gp = NULL;
    }
    NYD_LEAVE;
    return (gp != NULL);
+}
+
+static struct group *
+__group_del(struct group_lookup *glp)
+{
+   struct group *x, *gp;
+   NYD_ENTER;
+
+   /* Overly complicated: link off this node, step ahead to next.. */
+   x = glp->gl_group;
+   if ((gp = glp->gl_slot_last) != NULL) {
+      gp = (gp->g_next = x->g_next);
+   } else {
+      glp->gl_slot_last = NULL;
+      gp = (*glp->gl_slot = x->g_next);
+
+      if (gp == NULL) {
+         struct group **gpa = ((x->g_type & GT_ALIAS) ? _alias_heads
+               : _mlist_heads) + HSHSIZE;
+         while (++glp->gl_slot < gpa)
+            if ((gp = *glp->gl_slot) != NULL)
+               break;
+      }
+   }
+   glp->gl_group = gp;
+
+   if (x->g_type & GT_ALIAS)
+      __names_del(x);
+#ifdef HAVE_REGEX
+   else if (x->g_type & GT_REGEX) {
+      struct grp_regex *grp;
+      GP_TO_SUBCLASS(grp, x);
+
+      regfree(&grp->gr_regex);
+      _mlmux_linkout(x);
+   }
+#endif
+
+   free(x);
+   NYD_LEAVE;
+   return gp;
 }
 
 static void
 __names_del(struct group *gp)
 {
    struct grp_names_head *gnhp;
-   struct grp_names *gnp, *x;
+   struct grp_names *gnp;
    NYD_ENTER;
 
    GP_TO_SUBCLASS(gnhp, gp);
-
    for (gnp = gnhp->gnh_head; gnp != NULL;) {
-      x = gnp;
+      struct grp_names *x = gnp;
       gnp = gnp->gn_next;
       free(x);
    }
@@ -500,28 +619,52 @@ __names_del(struct group *gp)
 }
 
 static void
-_group_print_all(struct group * const *gpa)
+_group_print_all(enum group_type gt)
 {
-   char const **ida;
+   enum group_type xgt;
+   struct group **gpa;
    struct group const *gp;
    ui32_t h, i;
+   char const **ida;
    NYD_ENTER;
+
+   xgt = gt & GT_PRINT_MASK;
+   gpa = (xgt & GT_ALIAS) ? _alias_heads : _mlist_heads;
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
-         ++i;
+         if ((gp->g_type & xgt) == xgt)
+            ++i;
    ida = salloc(i * sizeof *ida);
 
    for (i = h = 0; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
-         ida[i++] = gp->g_id;
+         if ((gp->g_type & xgt) == xgt)
+            ida[i++] = gp->g_id;
    ida[i] = NULL;
 
    if (i > 1)
       qsort(ida, i, sizeof *ida, &__group_print_qsorter);
 
    for (i = 0; ida[i] != NULL; ++i)
-      _group_dispatch_print(_group_find(gpa, ida[i]));
+      _group_print(_group_find(gt, ida[i]));
+
+   /* Because of interest, print the list match order */
+#ifdef HAVE_REGEX
+   if (gt & GT_MLIST) {
+      struct grp_regex *lp = (gt & GT_SUBSCRIBE) ? _mlsub_regex : _mlist_regex,
+         *grp = lp;
+
+      if (grp != NULL) {
+         printf(_("\n%s lists regular expression match order:\n\t"),
+            (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")));
+         do
+            printf(" %s", grp->gr_mygroup->g_id);
+         while ((grp = grp->gr_next) != lp);
+         putc('\n', stdout);
+      }
+   }
+#endif
    NYD_LEAVE;
 }
 
@@ -537,28 +680,167 @@ __group_print_qsorter(void const *a, void const *b)
 }
 
 static void
-_group_dispatch_print(struct group const *gp)
+_group_print(struct group const *gp)
 {
-   struct grp_names_head *gnhp;
-   struct grp_names *gnp;
+   char const *sep = "\t";
    NYD_ENTER;
 
    printf("%s", gp->g_id);
 
-   GP_TO_SUBCLASS(gnhp, gp);
+   if (gp->g_type & GT_ALIAS) {
+      struct grp_names_head *gnhp;
+      struct grp_names *gnp;
 
-   if ((gnp = gnhp->gnh_head) != NULL) {
-      putc('\t', stdout);
-      do {
-         struct grp_names *x = gnp;
-         gnp = gnp->gn_next;
-         printf("%s%s", x->gn_id, (gnp != NULL ? " " : ""));
-      } while (gnp != NULL);
+      GP_TO_SUBCLASS(gnhp, gp);
+      if ((gnp = gnhp->gnh_head) != NULL) {
+         do {
+            struct grp_names *x = gnp;
+            gnp = gnp->gn_next;
+            printf("%s%s", sep, x->gn_id);
+            sep = " ";
+         } while (gnp != NULL);
+      }
+   } else if (gp->g_type & GT_MLIST) {
+      if (gp->g_type & GT_SUBSCRIBE) {
+         printf("%s%s", sep, _("[subscribed]"));
+         sep = " ";
+      }
+#ifdef HAVE_REGEX
+      if (gp->g_type & GT_REGEX) {
+         printf("%s%s", sep, _("[regular expression]"));
+         /*sep = " ";*/
+      }
+#endif
    }
 
    putc('\n', stdout);
    NYD_LEAVE;
 }
+
+static int
+_mlmux(enum group_type gt, char **argv)
+{
+   struct group *gp;
+   int rv = 0;
+   NYD_ENTER;
+
+   if (*argv == NULL)
+      _group_print_all(gt);
+   else do {
+      if ((gp = _group_find(gt, *argv)) != NULL) {
+         if (gt & GT_SUBSCRIBE) {
+            if (!(gp->g_type & GT_SUBSCRIBE)) {
+               _MLMUX_LINKOUT(gp);
+               gp->g_type |= GT_SUBSCRIBE;
+               _MLMUX_LINKIN(gp);
+            } else {
+               printf(_("Mailing-list already `mlsubscribe'd: `%s'\n"), *argv);
+               rv = 1;
+            }
+         } else {
+            printf(_("Mailing-list already `mlist'ed: `%s'\n"), *argv);
+            rv = 1;
+         }
+      } else
+         _group_fetch(gt, *argv);
+   } while (*++argv != NULL);
+
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_unmlmux(enum group_type gt, char **argv)
+{
+   int rv = 0;
+   NYD_ENTER;
+
+   if (*argv != NULL) {
+      struct group *gp;
+
+      for (; *argv != NULL; ++argv) {
+         if (gt & GT_SUBSCRIBE) {
+            struct group_lookup gl;
+
+            if (**argv != '*')
+               gp = _group_find(gt, *argv);
+            else if ((gp = _group_go_first(gt, &gl)) == NULL)
+               continue;
+            else if (gp != NULL && !(gp->g_type & GT_SUBSCRIBE))
+               goto jaster_entry;
+
+            if (gp != NULL) {
+jaster_redo:
+               if (gp->g_type & GT_SUBSCRIBE) {
+                  _MLMUX_LINKOUT(gp);
+                  gp->g_type &= ~GT_SUBSCRIBE;
+                  _MLMUX_LINKIN(gp);
+                  if (**argv == '*') {
+jaster_entry:
+                     while ((gp = _group_go_next(gt, &gl)) != NULL &&
+                           !(gp->g_type & GT_SUBSCRIBE))
+                        ;
+                     if (gp != NULL)
+                        goto jaster_redo;
+                  }
+               } else {
+                  fprintf(stderr, _("Mailing-list not `mlsubscribe'd: `%s'\n"),
+                     *argv);
+                  rv = 1;
+               }
+               continue;
+            }
+         } else if (_group_del(gt, *argv))
+            continue;
+         fprintf(stderr, _("No such mailing-list: `%s'\n"), *argv);
+         rv = 1;
+      }
+   } else {
+      fprintf(stderr, _("Must specify a mailing list to `%s'\n"),
+         (gt & GT_SUBSCRIBE ? _("unmlsubscribe") : _("unmlist")));
+      rv = 1;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+#ifdef HAVE_REGEX
+static void
+_mlmux_linkin(struct group *gp)
+{
+   struct grp_regex *grp, **lpp, *lhp;
+   NYD_ENTER;
+
+   GP_TO_SUBCLASS(grp, gp);
+   lpp = (gp->g_type & GT_SUBSCRIBE) ? &_mlsub_regex : &_mlist_regex;
+
+   if ((lhp = *lpp) != NULL) {
+      (grp->gr_last = lhp->gr_last)->gr_next = grp;
+      (grp->gr_next = lhp)->gr_last = grp;
+   } else
+      *lpp = grp->gr_last = grp->gr_next = grp;
+   NYD_LEAVE;
+}
+
+static void
+_mlmux_linkout(struct group *gp)
+{
+   struct grp_regex *grp, **lpp;
+   NYD_ENTER;
+
+   GP_TO_SUBCLASS(grp, gp);
+   lpp = (gp->g_type & GT_SUBSCRIBE) ? &_mlsub_regex : &_mlist_regex;
+
+   if (grp->gr_next == grp)
+      *lpp = NULL;
+   else {
+      (grp->gr_last->gr_next = grp->gr_next)->gr_last = grp->gr_last;
+      if (*lpp == grp)
+         *lpp = grp->gr_next;
+   }
+   NYD_LEAVE;
+}
+#endif /* HAVE_REGEX */
 
 FL struct name *
 nalloc(char *str, enum gfield ntype)
@@ -840,7 +1122,7 @@ usermap(struct name *names, bool_t force_metoo)
          np = cp;
          continue;
       }
-      gp = _group_find(_alias_heads, np->n_name);
+      gp = _group_find(GT_ALIAS, np->n_name);
       cp = np->n_flink;
       if (gp != NULL)
          new = _gexpand(0, new, gp, metoo, np->n_type);
@@ -1023,19 +1305,22 @@ c_alias(void *v)
 {
    char **argv = v;
    struct group *gp;
+   int rv = 0;
    NYD_ENTER;
 
-   if (*argv == NULL) {
-      _group_print_all(_alias_heads);
-      gp = (struct group*)TRU1;
-   } else if (argv[1] == NULL) {
-      if ((gp = _group_find(_alias_heads, *argv)) != NULL)
-      else
+   if (*argv == NULL)
+      _group_print_all(GT_ALIAS);
+   else if (argv[1] == NULL) {
+      if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
+         _group_print(gp);
+      else {
          fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+         rv = 1;
+      }
    } else {
       struct grp_names_head *gnhp;
 
-      gp = _group_fetch(_alias_heads, sizeof(struct grp_names_head), *argv);
+      gp = _group_fetch(GT_ALIAS, *argv);
       GP_TO_SUBCLASS(gnhp, gp);
 
       for (++argv; *argv != NULL; ++argv) {
@@ -1048,28 +1333,71 @@ c_alias(void *v)
       }
    }
    NYD_LEAVE;
-   return !(gp != NULL);
+   return rv;
 }
 
 FL int
 c_unalias(void *v)
 {
    char **argv = v;
+   int rv = 0;
    NYD_ENTER;
 
    if (*argv != NULL) {
-      bool_t errors = FAL0;
-
-      do if (!_group_del(_alias_heads, *argv)) {
-         errors = TRU1;
+      do if (!_group_del(GT_ALIAS, *argv)) {
          fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+         rv = 1;
       } while (*++argv != NULL);
-      if (errors)
-         argv = NULL;
-   } else
+   } else {
       fprintf(stderr, _("Must specify an alias to remove\n"));
+      rv = 1;
+   }
    NYD_LEAVE;
-   return !(argv != NULL);
+   return rv;
+}
+
+FL int
+c_mlist(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _mlmux(GT_MLIST, v);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unmlist(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _unmlmux(GT_MLIST, v);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_mlsubscribe(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _mlmux(GT_MLIST | GT_SUBSCRIBE, v);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unmlsubscribe(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _unmlmux(GT_MLIST | GT_SUBSCRIBE, v);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int

@@ -2147,6 +2147,26 @@ In the former case all sources are loaded first as necessary.
 The
 .Va mimetypes-load-control
 option can be used to fine-tune which sources are loaded.
+.It Ic mlist
+Without arguments the list of all currently defined mailing lists
+(and their attributes, if any) is printed.
+Otherwise all given arguments (which need not be quoted except for
+whitespace) will be added and henceforth be recognized as mailing lists.
+Mailing lists may be removed via the command
+.Ic unmlist .
+.Pp
+If the \*(OPal regular expression support is available then mailing
+lists may also be specified as regular expressions (see
+.Xr re_format 7
+for more on those).
+.It Ic mlsubscribe
+Without arguments the list of all currently defined mailing lists which
+have a subscription attribute is printed.
+Otherwise this attribute will be set for all given mailing lists,
+newly creating them as necessary (as via
+.Ic mlist ) Ns .
+Subscription attributes may be removed via the command
+.Ic unmlsubscribe .
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2591,6 +2611,17 @@ Remove an existing command
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 The special name `*' will remove all fields.
+.It Ic unmlist
+Forget about all the given mailing lists.
+The special name `*' will remove all lists.
+Also see
+.Ic mlist .
+.It Ic unmlsubscribe
+Remove the subscription attribute from all given mailing lists.
+The special name `*' will clear the attribute from all lists which have
+it set.
+Also see
+.Ic mlsubscribe .
 .It Ic Unread
 Same as
 .Ic unread .
