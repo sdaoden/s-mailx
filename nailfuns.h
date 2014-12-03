@@ -642,11 +642,6 @@ FL bool_t      condstack_take(void *self);
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
 
-/* Shortcuts */
-FL int         c_shortcut(void *v);
-FL struct shortcut *get_shortcut(char const *str);
-FL int         c_unshortcut(void *v);
-
 /* Message flag manipulation */
 FL int         c_flag(void *v);
 FL int         c_unflag(void *v);
@@ -1368,6 +1363,11 @@ FL int         c_unmlsubscribe(void *v);
 
 FL si8_t       is_mlist(char const *name, bool_t subscribed_only);
 
+/* `(un)?shortcut', and check if str is one, return expansion or NULL */
+FL int         c_shortcut(void *v);
+FL int         c_unshortcut(void *v);
+
+FL char const * shortcut_expand(char const *str);
 
 /*
  * openssl.c

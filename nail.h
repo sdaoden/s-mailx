@@ -1543,13 +1543,6 @@ struct ignoretab {
    }           *i_head[HSHSIZE];
 };
 
-/* For the 'shortcut' and 'unshortcut' functionality */
-struct shortcut {
-   struct shortcut *sh_next;  /* next shortcut in list */
-   char        *sh_short;     /* shortcut string */
-   char        *sh_long;      /* expanded form */
-};
-
 /* For saving the current directory and later returning */
 struct cw {
 #ifdef HAVE_FCHDIR
@@ -1631,7 +1624,6 @@ VL struct ignoretab  saveignore[2];    /* ignored and retained fields
                                         * on save to folder */
 VL struct ignoretab  allignore[2];     /* special, ignore all headers */
 VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
-VL struct shortcut   *shortcuts;       /* list of shortcuts */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

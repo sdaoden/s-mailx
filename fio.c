@@ -862,9 +862,9 @@ fsize(FILE *iob)
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
-   char cbuf[PATH_MAX], *res;
+   char cbuf[PATH_MAX];
+   char const *res;
    struct str s;
-   struct shortcut *sh;
    bool_t dyn;
    NYD_ENTER;
 
@@ -872,9 +872,8 @@ fexpand(char const *name, enum fexp_mode fexpm)
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   res = UNCONST(name);
-   if (!(fexpm & FEXP_NSHORTCUT) && (sh = get_shortcut(res)) != NULL)
-      res = sh->sh_long;
+   if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
+      res = UNCONST(name);
 
    if (fexpm & FEXP_SHELL) {
       dyn = FAL0;
@@ -962,7 +961,7 @@ jleave:
    if (res && !dyn)
       res = savestr(res);
    NYD_LEAVE;
-   return res;
+   return UNCONST(res);
 }
 
 FL void

@@ -261,9 +261,9 @@
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Define a <shortcut> and <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Delete <shortcut-list>")) },
+     DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
+   { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
+     DS(N_("Delete <shortcut-list> (\"*\" deletes all shortcuts)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000

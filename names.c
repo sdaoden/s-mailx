@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Name lists, alternates and groups: aliases, mailing lists.
+ *@ Name lists, alternates and groups: aliases, mailing lists, shortcuts.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -45,7 +45,8 @@ enum group_type {
    /* Main types (bits not values for easier testing only) */
    GT_ALIAS       = 1<< 0,
    GT_MLIST       = 1<< 1,
-   GT_MASK        = GT_ALIAS | GT_MLIST,
+   GT_SHORTCUT    = 1<< 2,
+   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT,
 
    /* Subtype bits and flags */
    GT_SUBSCRIBE   = 1<< 4,
@@ -121,6 +122,8 @@ static struct grp_regex *_mlist_regex, *_mlsub_regex;
 static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 #endif
 
+/* `shortcut' */
+static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hash */
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -156,11 +159,11 @@ static struct group * _group_find(enum group_type gt, char const *id);
  * to be iterated exist, in which case only glp->gl_group is set (NULL) */
 static struct group * _group_go_first(enum group_type gt,
                         struct group_lookup *glp);
-static struct group * _group_go_next(enum group_type gt,
-                        struct group_lookup *glp);
+static struct group * _group_go_next(struct group_lookup *glp);
 
 /* Fetch the group id, create it as necessary */
-static struct group * _group_fetch(enum group_type gt, char const *id);
+static struct group * _group_fetch(enum group_type gt, char const *id,
+                        size_t addsz);
 
 /* "Intelligent" delete which handles a "*" id, too;
  * returns a true boolean if a group was deleted, and always succeeds for "*" */
@@ -415,7 +418,8 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
    gt &= GT_MASK;
    lgp = NULL;
    gp = *(glp->gl_htable = glp->gl_slot =
-          ((gt & GT_ALIAS ? _alias_heads : _mlist_heads) +
+          ((gt & GT_ALIAS ? _alias_heads :
+            (gt & GT_MLIST ? _mlist_heads : _shortcut_heads)) +
            torek_hash(id) % HSHSIZE));
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
@@ -447,7 +451,8 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
    size_t i;
    NYD_ENTER;
 
-   for (gp->gl-htable = gpa = (gt & GT_ALIAS ? _alias_heads : _mlist_heads), i = 0;
+   for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads :
+            (gt & GT_MLIST ? _mlist_heads : _shortcut_heads)), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -463,7 +468,7 @@ jleave:
 }
 
 static struct group *
-_group_go_next(enum group_type gt, struct group_lookup *glp)
+_group_go_next(struct group_lookup *glp)
 {
    struct group *gp, **gpa;
    NYD_ENTER;
@@ -482,11 +487,11 @@ _group_go_next(enum group_type gt, struct group_lookup *glp)
 }
 
 static struct group *
-_group_fetch(enum group_type gt, char const *id)
+_group_fetch(enum group_type gt, char const *id, size_t addsz)
 {
    struct group_lookup gl;
    struct group *gp;
-   size_t l, i, addsz;
+   size_t l, i;
    NYD_ENTER;
 
    if ((gp = _group_lookup(gt, &gl, id)) != NULL)
@@ -505,8 +510,8 @@ _group_fetch(enum group_type gt, char const *id)
          gt |= GT_REGEX;
       } else
 #endif
+   case GT_SHORTCUT:
    default:
-         addsz = 0;
       break;
    }
 
@@ -521,7 +526,7 @@ _group_fetch(enum group_type gt, char const *id)
       gnhp->gnh_head = NULL;
    }
 #ifdef HAVE_REGEX
-   else if (gt & GT_REGEX) {
+   else if (/*(gt & GT_MLIST) &&*/ gt & GT_REGEX) {
       struct grp_regex *grp;
       GP_TO_SUBCLASS(grp, gp);
 
@@ -554,7 +559,7 @@ _group_del(enum group_type gt, char const *id)
    /* Delete 'em all? */
    if (id[0] == '*' && id[1] == '\0') {
       for (gp = _group_go_first(gt, &gl); gp != NULL;)
-         gp = (gp->g_type & xgt) ? __group_del(&gl) : _group_go_next(gt, &gl);
+         gp = (gp->g_type & xgt) ? __group_del(&gl) : _group_go_next(&gl);
       gp = (struct group*)TRU1;
    } else if ((gp = _group_lookup(gt, &gl, id)) != NULL) {
       if (gp->g_type & xgt)
@@ -593,7 +598,7 @@ __group_del(struct group_lookup *glp)
    if (x->g_type & GT_ALIAS)
       __names_del(x);
 #ifdef HAVE_REGEX
-   else if (x->g_type & GT_REGEX) {
+   else if (/*(x->g_type & GT_MLIST) &&*/ x->g_type & GT_REGEX) {
       struct grp_regex *grp;
       GP_TO_SUBCLASS(grp, x);
 
@@ -636,7 +641,8 @@ _group_print_all(enum group_type gt)
    NYD_ENTER;
 
    xgt = gt & GT_PRINT_MASK;
-   gpa = (xgt & GT_ALIAS) ? _alias_heads : _mlist_heads;
+   gpa = (xgt & GT_ALIAS ? _alias_heads
+         : (xgt & GT_MLIST ? _mlist_heads : _shortcut_heads));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -755,6 +761,10 @@ _group_print(struct group const *gp, FILE *fo)
 #endif
       if (sep == NULL)
          putc(']', fo);
+   } else if (gp->g_type & GT_SHORTCUT) {
+      char const *cp;
+      GP_TO_SUBCLASS(cp, gp);
+      fprintf(fo, "%s=%s", gp->g_id, cp);
    }
 
    putc('\n', fo);
@@ -786,7 +796,7 @@ _mlmux(enum group_type gt, char **argv)
             rv = 1;
          }
       } else
-         _group_fetch(gt, *argv);
+         _group_fetch(gt, *argv, 0);
    } while (*++argv != NULL);
 
    NYD_LEAVE;
@@ -819,7 +829,7 @@ jaster_redo:
                _MLMUX_LINKIN(gp);
                if (**argv == '*') {
 jaster_entry:
-                  while ((gp = _group_go_next(gt, &gl)) != NULL &&
+                  while ((gp = _group_go_next(&gl)) != NULL &&
                         !(gp->g_type & GT_SUBSCRIBE))
                      ;
                   if (gp != NULL)
@@ -1409,7 +1419,7 @@ c_alias(void *v)
    } else {
       struct grp_names_head *gnhp;
 
-      gp = _group_fetch(GT_ALIAS, *argv);
+      gp = _group_fetch(GT_ALIAS, *argv, 0);
       GP_TO_SUBCLASS(gnhp, gp);
 
       for (++argv; *argv != NULL; ++argv) {
@@ -1549,6 +1559,67 @@ jregex_redo:
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+FL int
+c_shortcut(void *v)
+{
+   char **argv = v;
+   int rv = 0;
+   NYD_ENTER;
+
+   if (*argv == NULL)
+      _group_print_all(GT_SHORTCUT);
+   else for (; *argv != NULL; argv += 2) {
+      /* Because one hardly ever redefines, anything is stored in one chunk */
+      size_t l;
+      struct group *gp;
+      char *cp;
+
+      if (argv[1] == NULL) {
+         fprintf(stderr, _("`%s': shortcut expansion is missing\n"), *argv);
+         rv = 1;
+         break;
+      }
+      if (_group_find(GT_SHORTCUT, *argv) != NULL)
+         _group_del(GT_SHORTCUT, *argv);
+
+      l = strlen(argv[1]) +1;
+      gp = _group_fetch(GT_SHORTCUT, *argv, l);
+      GP_TO_SUBCLASS(cp, gp);
+      memcpy(cp, argv[1], l);
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unshortcut(void *v)
+{
+   char **argv = v;
+   int rv = 0;
+   NYD_ENTER;
+
+   do if (!_group_del(GT_SHORTCUT, *argv)) {
+      fprintf(stderr, _("No such shortcut: `%s'\n"), *argv);
+      rv = 1;
+   } while (*++argv != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL char const *
+shortcut_expand(char const *str)
+{
+   struct group *gp;
+   NYD_ENTER;
+
+   if ((gp = _group_find(GT_SHORTCUT, str)) != NULL)
+      GP_TO_SUBCLASS(str, gp);
+   else
+      str = NULL;
+   NYD_LEAVE;
+   return str;
 }
 
 /* s-it-mode */

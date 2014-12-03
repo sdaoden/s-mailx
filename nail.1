@@ -2447,11 +2447,17 @@ Also see
 .It Ic shell
 (sh) Invokes an interactive version of the shell.
 .It Ic shortcut
-Defines a shortcut name and its string for expansion,
-as described for the
+Without arguments the list of all currently defined shortcuts is
+printed.
+Otherwise all given arguments (which need not be quoted except for
+whitespace) are treated as pairs of shortcuts and their expansions,
+creating new or changing already existing shortcuts, as necessary.
+Shortcuts may be removed via the command
+.Ic unshortcut .
+The expansion strings should be in the syntax that has been described
+for the
 .Ic file
 command.
-If used without arguments the currently defined shortcuts are printed.
 .It Ic show
 (Sh) Like
 .Ic print ,
@@ -2655,6 +2661,7 @@ Also see
 .Ic setenv .
 .It Ic unshortcut
 Deletes the shortcut names given as arguments.
+The special name `*' will remove all shortcuts.
 .It Ic unsort
 Disable sorted or threaded mode
 (see the
@@ -5231,7 +5238,7 @@ The
 command can be used to avoid typing that many characters every time you
 want to connect:
 .Pp
-.Dl shortcut myisp %:imaps://mylogin@server.myisp.example
+.Dl shortcut yi %:imaps://USER@server.xxx yp %:pop3s://USER@server.xxx
 .Pp
 You might want to put this string into a startup file.
 .Ic shortcut

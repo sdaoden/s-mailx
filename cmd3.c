@@ -85,12 +85,6 @@ static int        _resend1(void *v, bool_t add_resent);
 /* c_file, c_File */
 static int        _c_file(void *v, enum fedit_mode fm);
 
-/* ..to stdout */
-static void       list_shortcuts(void);
-
-/* */
-static enum okay  delete_shortcut(char const *str);
-
 static char *
 _reedit(char *subj)
 {
@@ -529,41 +523,6 @@ _c_file(void *v, enum fedit_mode fm)
 jleave:
    NYD2_LEAVE;
    return i;
-}
-
-static void
-list_shortcuts(void)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      printf("%s=%s\n", s->sh_short, s->sh_long);
-   NYD_LEAVE;
-}
-
-static enum okay
-delete_shortcut(char const *str)
-{
-   struct shortcut *sp, *sq;
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   for (sp = shortcuts, sq = NULL; sp != NULL; sq = sp, sp = sp->sh_next) {
-      if (!strcmp(sp->sh_short, str)) {
-         free(sp->sh_short);
-         free(sp->sh_long);
-         if (sq != NULL)
-            sq->sh_next = sp->sh_next;
-         if (sp == shortcuts)
-            shortcuts = sp->sh_next;
-         free(sp);
-         rv = OKAY;
-         break;
-      }
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
@@ -1227,84 +1186,6 @@ c_newmail(void *v)
    }
    NYD_LEAVE;
    return val;
-}
-
-FL int
-c_shortcut(void *v)
-{
-   char **args = v;
-   struct shortcut *s;
-   int rv;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      list_shortcuts();
-      rv = 0;
-      goto jleave;
-   }
-
-   rv = 1;
-   if (args[1] == NULL) {
-      fprintf(stderr, _("expansion name for shortcut missing\n"));
-      goto jleave;
-   }
-   if (args[2] != NULL) {
-      fprintf(stderr, _("too many arguments\n"));
-      goto jleave;
-   }
-
-   if ((s = get_shortcut(args[0])) != NULL) {
-      free(s->sh_long);
-      s->sh_long = sstrdup(args[1]);
-   } else {
-      s = scalloc(1, sizeof *s);
-      s->sh_short = sstrdup(args[0]);
-      s->sh_long = sstrdup(args[1]);
-      s->sh_next = shortcuts;
-      shortcuts = s;
-   }
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL struct shortcut *
-get_shortcut(char const *str)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      if (!strcmp(str, s->sh_short))
-         break;
-   NYD_LEAVE;
-   return s;
-}
-
-FL int
-c_unshortcut(void *v)
-{
-   char **args = v;
-   bool_t errs = FAL0;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      fprintf(stderr, _("need shortcut names to remove\n"));
-      errs = TRU1;
-      goto jleave;
-   }
-
-   while (*args != NULL) {
-      if (delete_shortcut(*args) != OKAY) {
-         errs = TRU1;
-         fprintf(stderr, _("%s: no such shortcut\n"), *args);
-      }
-      ++args;
-   }
-jleave:
-   NYD_LEAVE;
-   return errs;
 }
 
 FL int
