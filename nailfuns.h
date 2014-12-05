@@ -1384,7 +1384,7 @@ FL char const * shortcut_expand(char const *str);
 
 #ifdef HAVE_OPENSSL
 /*  */
-FL enum okay   ssl_open(char const *server, struct sock *sp, char const *uhp);
+FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);
@@ -1609,13 +1609,10 @@ FL int         c_spam_spam(void *v);
 
 #ifdef HAVE_SSL
 /*  */
-FL void        ssl_set_verify_level(char const *uhp);
+FL void        ssl_set_verify_level(struct url const *urlp);
 
 /*  */
 FL enum okay   ssl_verify_decide(void);
-
-/*  */
-FL char *      ssl_method_string(char const *uhp);
 
 /*  */
 FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,

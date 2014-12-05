@@ -928,26 +928,14 @@ if feat_yes SSL; then
 #include <openssl/x509.h>
 #include <openssl/rand.h>
 
-#if defined OPENSSL_NO_SSL2 && defined OPENSSL_NO_SSL3 &&\
-      defined OPENSSL_NO_TLS1
-# error We need one of (SSLv2 and) SSLv3 and TLS1.
+#if defined OPENSSL_NO_SSL3 && defined OPENSSL_NO_TLS1
+# error We need one of SSLv3 and TLSv1.
 #endif
 
 int main(void)
 {
-   SSLv23_client_method();
-#ifndef OPENSSL_NO_SSL3
-   SSLv3_client_method();
-#endif
-#ifndef OPENSSL_NO_TLS1
-   TLSv1_client_method();
-# ifdef TLS1_1_VERSION
-   TLSv1_1_client_method();
-# endif
-# ifdef TLS1_2_VERSION
-   TLSv1_2_client_method();
-# endif
-#endif
+   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+   SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
 }

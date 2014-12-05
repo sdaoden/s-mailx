@@ -82,11 +82,6 @@ static enum okay  _pop3_login(struct mailbox *mp, struct sockconn *scp);
 static char *     _pop3_lookup_apop_timestamp(char const *bp);
 #endif
 
-static bool_t     _pop3_use_starttls(struct sockconn const *scp);
-
-/* APOP: shall we use it? */
-static bool_t     _pop3_no_apop(struct sockconn const *scp);
-
 /* Several authentication methods */
 #ifdef HAVE_MD5
 static enum okay  _pop3_auth_apop(struct mailbox *mp,
@@ -119,8 +114,11 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
    char *ts;
 #endif
+   enum okey_xlook_mode oxm;
    enum okay rv;
    NYD_ENTER;
+
+   oxm = ok_blook(v15_compat) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
    /* Get the greeting, check wether APOP is advertised */
    POP3_ANSWER(rv, goto jleave);
@@ -130,15 +128,15 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    /* If not yet secured, can we upgrade to TLS? */
 #ifdef HAVE_SSL
-   if (!scp->sc_url.url_needs_tls && _pop3_use_starttls(scp)) {
+   if (!scp->sc_url.url_needs_tls &&
+         xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
-      if ((rv = ssl_open(scp->sc_url.url_host.s, &scp->sc_sock,
-            scp->sc_url.url_u_h_p.s)) != OKAY)
+      if ((rv = ssl_open(&scp->sc_url, &scp->sc_sock)) != OKAY)
          goto jleave;
    }
 #else
-   if (_pop3_use_starttls(scp->sc_url.url_u_h_p.s)) {
+   if (xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       rv = STOP;
       goto jleave;
@@ -146,7 +144,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* Use the APOP single roundtrip? */
-   if (!_pop3_no_apop(scp)) {
+   if (!xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
 #ifdef HAVE_MD5
       if (ts != NULL) {
          if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
@@ -210,35 +208,6 @@ jleave:
    return rp;
 }
 #endif
-
-static bool_t
-_pop3_use_starttls(struct sockconn const *scp)
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   if (!(rv = ok_blook(pop3_use_starttls)))
-      if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-use-starttls-",
-                  scp->sc_url.url_h_p.s))))
-         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_u_h_p.s));
-   NYD_LEAVE;
-   return rv;
-}
-
-static bool_t
-_pop3_no_apop(struct sockconn const *scp)
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   if (!(rv = ok_blook(pop3_no_apop)))
-      if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_h_p.s))))
-         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_u_h_p.s));
-   NYD_LEAVE;
-   return rv;
-}
 
 #ifdef HAVE_MD5
 static enum okay

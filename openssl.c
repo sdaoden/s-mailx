@@ -67,15 +67,31 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
+#ifndef SSL_OP_NO_SSLv2
+# define SSL_OP_NO_SSLv2      0
+#endif
+#ifndef SSL_OP_NO_SSLv3
+# define SSL_OP_NO_SSLv3      0
+#endif
+#ifndef SSL_OP_NO_TLSv1
+# define SSL_OP_NO_TLSv1      0
+#endif
+#ifndef SSL_OP_NO_TLSv1_1
+# define SSL_OP_NO_TLSv1_1    0
+#endif
+#ifndef SSL_OP_NO_TLSv1_2
+# define SSL_OP_NO_TLSv1_2    0
+#endif
+
 #ifdef HAVE_OPENSSL_STACK_OF
-# define _STACKOF(X)    STACK_OF(X)
+# define _STACKOF(X)          STACK_OF(X)
 #else
-# define _STACKOF(X)    /*X*/STACK
+# define _STACKOF(X)          /*X*/STACK
 #endif
 
 struct ssl_method {
    char const           sm_name[8];
-   SSL_METHOD const *   (*sm_fun)(void);
+   long                 sm_opts;
 };
 
 struct smime_cipher {
@@ -84,27 +100,27 @@ struct smime_cipher {
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
+
+/* Note: "auto" must be at [0] and exclude SSLv2.
+ * Update manual on any changes! */
 static struct ssl_method const   _ssl_methods[] = {
-   {"auto", &SSLv23_client_method},
-#define _SSL_DEFAULT_METHOD      SSLv23_client_method
+   {"auto", SSL_OP_NO_SSLv2},
 #ifndef OPENSSL_NO_TLS1
 # ifdef TLS1_2_VERSION
-   {"tls1.2", &TLSv1_2_client_method},
+   {"tls1.2", SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1 |
+      SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2},
 # endif
 # ifdef TLS1_1_VERSION
-   {"tls1.1", &TLSv1_1_client_method},
+   {"tls1.1", SSL_OP_NO_TLSv1 | SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2},
 # endif
-   {"tls1", &TLSv1_client_method},
+   {"tls1", SSL_OP_NO_SSLv3 | SSL_OP_NO_SSLv2},
 #endif
 #ifndef OPENSSL_NO_SSL3
-   {"ssl3", &SSLv3_client_method},
-#endif
-#ifndef OPENSSL_NO_SSL2
-   {"ssl2", &SSLv2_client_method}
+   {"ssl3", SSL_OP_NO_SSLv2},
 #endif
 };
 
-/* Supported S/MIME cipher algorithms: update manual on change! */
+/* Supported S/MIME cipher algorithms.  Update manual on any changes! */
 static struct smime_cipher const _smime_ciphers[] = {
 #ifndef OPENSSL_NO_AES
 # define _SMIME_DEFAULT_CIPHER   EVP_aes_128_cbc   /* According to RFC 5751 */
@@ -139,10 +155,9 @@ static void       _ssl_init(void);
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
-static const SSL_METHOD *ssl_select_method(char const *uhp);
 static void       ssl_load_verifications(struct sock *sp);
-static void       ssl_certificate(struct sock *sp, char const *uhp);
-static enum okay  ssl_check_host(char const *server, struct sock *sp);
+static void       ssl_certificate(struct url const *urlp, struct sock *sp);
+static enum okay  ssl_check_host(struct url const *urlp, struct sock *sp);
 static int        smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
                         X509_STORE *store);
 static EVP_CIPHER const * _smime_cipher(char const *name);
@@ -168,7 +183,7 @@ _ssl_rand_init(void)
 #ifdef HAVE_OPENSSL_RAND_EGD
    if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
-         fprintf(stderr, _("entropy daemon at \"%s\" not available\n"),
+         fprintf(stderr, _("Entropy daemon at \"%s\" not available\n"),
             cp);
       else
          state = 1;
@@ -176,14 +191,14 @@ _ssl_rand_init(void)
 #endif
    if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
-         fprintf(stderr, _("entropy file at \"%s\" not available\n"), cp);
+         fprintf(stderr, _("Entropy file at \"%s\" not available\n"), cp);
       else {
          struct stat st;
 
          if (!stat(cp, &st) && S_ISREG(st.st_mode) && !access(cp, W_OK)) {
             if (RAND_write_file(cp) == -1) {
                fprintf(stderr, _(
-                  "writing entropy data to \"%s\" failed\n"), cp);
+                  "Writing entropy data to \"%s\" failed\n"), cp);
             }
          }
          state = 1;
@@ -275,29 +290,6 @@ jleave:
    return rv;
 }
 
-static SSL_METHOD const *
-ssl_select_method(char const *uhp)
-{
-   SSL_METHOD const *method;
-   char *cp;
-   size_t i;
-   NYD_ENTER;
-
-   if ((cp = ssl_method_string(uhp)) != NULL) {
-      method = NULL;
-      for (i = 0; i < NELEM(_ssl_methods); ++i)
-         if (!strcmp(_ssl_methods[i].sm_name, cp)) {
-            method = (*_ssl_methods[i].sm_fun)();
-            goto jleave;
-         }
-      fprintf(stderr, _("Invalid SSL method \"%s\"\n"), cp);
-   }
-   method = _SSL_DEFAULT_METHOD();
-jleave:
-   NYD_LEAVE;
-   return method;
-}
-
 static void
 ssl_load_verifications(struct sock *sp)
 {
@@ -342,74 +334,70 @@ jleave:
 }
 
 static void
-ssl_certificate(struct sock *sp, char const *uhp)
+ssl_certificate(struct url const *urlp, struct sock *sp)
 {
-   size_t i;
-   char *certvar, *keyvar, *cert, *key, *x;
+   char *cert, *key, *x;
    NYD_ENTER;
 
-   i = strlen(uhp);
-   certvar = ac_alloc(i + 9 +1);
-   memcpy(certvar, "ssl-cert-", 9);
-   memcpy(certvar + 9, uhp, i +1);
-
-   if ((cert = vok_vlook(certvar)) != NULL ||
-         (cert = ok_vlook(ssl_cert)) != NULL) {
+   if ((cert = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-cert* \"%s\"", cert);
       x = cert;
       if ((cert = file_expand(cert)) == NULL) {
          cert = x;
          goto jbcert;
       } else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
-         keyvar = ac_alloc(strlen(uhp) + 8 +1);
-         memcpy(keyvar, "ssl-key-", 8);
-         memcpy(keyvar + 8, uhp, i +1);
-         if ((key = vok_vlook(keyvar)) == NULL &&
-               (key = ok_vlook(ssl_key)) == NULL)
+         if ((key = xok_vlook(ssl_key, urlp, OXM_ALL)) == NULL)
             key = cert;
-         else if ((x = key, key = file_expand(key)) == NULL) {
-            key = x;
-            goto jbkey;
+         else {
+            if (options & OPT_VERB)
+               fprintf(stderr, "*ssl-key* \"%s\"", key);
+            x = key;
+            if ((key = file_expand(key)) == NULL) {
+               key = x;
+               goto jbkey;
+            }
          }
          if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1)
 jbkey:
-            fprintf(stderr, _("cannot load private key from file %s\n"),
+            fprintf(stderr, _("Cannot load private key from file %s\n"),
                key);
-         ac_free(keyvar);
       } else
 jbcert:
-         fprintf(stderr, _("cannot load certificate from file %s\n"),
+         fprintf(stderr, _("Cannot load certificate from file %s\n"),
             cert);
    }
-   ac_free(certvar);
    NYD_LEAVE;
 }
 
 static enum okay
-ssl_check_host(char const *server, struct sock *sp)
+ssl_check_host(struct url const *urlp, struct sock *sp)
 {
    char data[256];
    X509 *cert;
-   X509_NAME *subj;
    _STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
-   int i;
+   X509_NAME *subj;
    enum okay rv = STOP;
    NYD_ENTER;
 
    if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-      fprintf(stderr, _("no certificate from \"%s\"\n"), server);
+      fprintf(stderr, _("No certificate from \"%s\"\n"), urlp->url_h_p.s);
       goto jleave;
    }
 
    gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
    if (gens != NULL) {
+      int i;
+
       for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
             if (options & OPT_VERB)
-               fprintf(stderr, "Comparing DNS: <%s>; should <%s>\n",
-                  server, (char*)gen->d.ia5->data);
-            rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
+               fprintf(stderr, "Comparing subject_alt_name: need<%s> is<%s>\n",
+                  urlp->url_host.s, (char*)gen->d.ia5->data);
+            rv = rfc2595_hostname_match(urlp->url_host.s,
+                  (char*)gen->d.ia5->data);
             if (rv == OKAY)
                goto jdone;
          }
@@ -421,10 +409,11 @@ ssl_check_host(char const *server, struct sock *sp)
             > 0) {
       data[sizeof data - 1] = '\0';
       if (options & OPT_VERB)
-         fprintf(stderr, "Comparing commonName: <%s>; should <%s>\n",
-            server, data);
-      rv = rfc2595_hostname_match(server, data);
+         fprintf(stderr, "Comparing commonName: need<%s> is<%s>\n",
+            urlp->url_host.s, data);
+      rv = rfc2595_hostname_match(urlp->url_host.s, data);
    }
+
 jdone:
    X509_free(cert);
 jleave:
@@ -521,7 +510,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             if (gen->type == GEN_EMAIL) {
                if (options & OPT_VERB)
                   fprintf(stderr,
-                     "Comparing subject_alt_name: <%s>; should <%s>\n",
+                     "Comparing subject_alt_name: need<%s> is<%s>\n",
                      sender, (char*)gen->d.ia5->data);
                if (!asccasecmp((char*)gen->d.ia5->data, sender))
                   goto jfound;
@@ -534,7 +523,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
          if (options & OPT_VERB)
-            fprintf(stderr, "Comparing emailAddress: <%s>; should <%s>\n",
+            fprintf(stderr, "Comparing emailAddress: need<%s> is<%s>\n",
                sender, data);
          if (!asccasecmp(data, sender))
             goto jfound;
@@ -648,12 +637,10 @@ jleave:
    NYD_LEAVE;
    return fp;
 jerr:
-   if (dowarn) {
-      fprintf(stderr, _("Could not find a certificate for %s"), xname);
-      if (xname2)
-         fprintf(stderr, _("or %s"), xname2);
-      fputc('\n', stderr);
-   }
+   if (dowarn)
+      fprintf(stderr, _("Could not find a certificate for %s%s%s\n"),
+         xname, (xname2 != NULL ? _("or ") : ""),
+         (xname2 != NULL ? xname2 : ""));
    goto jleave;
 }
 
@@ -710,7 +697,7 @@ _smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
    }
 
    if (sk_X509_num(*chain) == 0) {
-      fprintf(stderr, _("smime-sign-include-certs defined but empty\n"));
+      fprintf(stderr, _("*smime-sign-include-certs* defined but empty\n"));
       goto jerr;
    }
 jleave:
@@ -731,7 +718,7 @@ load_crl1(X509_STORE *store, char const *name)
    NYD_ENTER;
 
    if (options & OPT_VERB)
-      printf("Loading CRL from \"%s\".\n", name);
+      fprintf(stderr, "Loading CRL from \"%s\".\n", name);
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(_("Error creating X509 lookup object"));
       goto jleave;
@@ -820,31 +807,56 @@ jleave:
 }
 
 FL enum okay
-ssl_open(char const *server, struct sock *sp, char const *uhp)
+ssl_open(struct url const *urlp, struct sock *sp)
 {
-   char *cp;
    long opts;
+   char *cp;
    enum okay rv = STOP;
    NYD_ENTER;
 
    _ssl_init();
-   ssl_set_verify_level(uhp);
-   if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
+
+   ssl_set_verify_level(urlp);
+
+   if ((sp->s_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
 
+   /* Available with OpenSSL 0.9.6 or later */
 #ifdef SSL_MODE_AUTO_RETRY
-   /* available with OpenSSL 0.9.6 or later */
    SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
-#endif /* SSL_MODE_AUTO_RETRY */
+#endif
+
+   /* Adjust options */
    opts = SSL_OP_ALL;
-   if (!ok_blook(ssl_v2_allow))
-      opts |= SSL_OP_NO_SSLv2;
+
+   if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
+      size_t i;
+
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-method*: \"%s\"\n", cp);
+      for (i = 0;;) {
+         if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
+            opts |= _ssl_methods[i].sm_opts;
+            break;
+         }
+         if (++i == NELEM(_ssl_methods)) {
+            fprintf(stderr, _("Invalid SSL method \"%s\"\n"), cp);
+            goto jbadmeth;
+         }
+      }
+   } else
+jbadmeth:
+      opts |= _ssl_methods[0].sm_opts;
+
    SSL_CTX_set_options(sp->s_ctx, opts);
+
+   /*  */
    ssl_load_verifications(sp);
-   ssl_certificate(sp, uhp);
-   if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
+   ssl_certificate(urlp, sp);
+
+   if ((cp = ok_vlook(ssl_cipher_list)) != NULL) { /* TODO OXM_* */
       if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
          fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
    }
@@ -853,19 +865,23 @@ ssl_open(char const *server, struct sock *sp, char const *uhp)
       ssl_gen_err(_("SSL_new() failed"));
       goto jleave;
    }
+
    SSL_set_fd(sp->s_ssl, sp->s_fd);
+
    if (SSL_connect(sp->s_ssl) < 0) {
       ssl_gen_err(_("could not initiate SSL/TLS connection"));
       goto jleave;
    }
+
    if (ssl_verify_level != SSL_VERIFY_IGNORE) {
-      if (ssl_check_host(server, sp) != OKAY) {
-         fprintf(stderr, _("host certificate does not match \"%s\"\n"),
-            server);
+      if (ssl_check_host(urlp, sp) != OKAY) {
+         fprintf(stderr, _("Host certificate does not match \"%s\"\n"),
+            urlp->url_h_p.s);
          if (ssl_verify_decide() != OKAY)
             goto jleave;
       }
    }
+
    sp->s_use_ssl = 1;
    rv = OKAY;
 jleave:
@@ -882,6 +898,7 @@ ssl_gen_err(char const *fmt, ...)
    va_start(ap, fmt);
    vfprintf(stderr, fmt, ap);
    va_end(ap);
+
    SSL_load_error_strings();
    fprintf(stderr, ": %s\n", ERR_error_string(ERR_get_error(), NULL));
    NYD_LEAVE;
@@ -953,7 +970,7 @@ smime_sign(FILE *ip, char const *addr)
    _ssl_init();
 
    if (addr == NULL) {
-      fprintf(stderr, _("No \"from\" address for signing specified\n"));
+      fprintf(stderr, _("No *from* address for signing specified\n"));
       goto jleave;
    }
    if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)

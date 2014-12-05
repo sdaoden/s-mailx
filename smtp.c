@@ -177,9 +177,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       _OUT(LINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if (!(options & OPT_DEBUG) &&
-            ssl_open(sbp->sb_url.url_host.s, sp, sbp->sb_url.url_u_h_p.s
-               ) != OKAY)
+      if (!(options & OPT_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
          goto jleave;
    }
 #else
