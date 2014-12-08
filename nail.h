@@ -1004,6 +1004,7 @@ enum okeys {
    ok_v_autosort,
    ok_v_charset_7bit,
    ok_v_charset_8bit,
+   ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_v_colour_from_,                  /* {name=colour-from_} */
    ok_v_colour_header,

@@ -3837,6 +3837,17 @@ for the complete picture of character set conversion in \*(UA.
 The default value for the
 .Ic pipe
 command.
+.It Va charset-unknown-8bit
+\*(OP RFC 1428 specifies conditions in which internet mail gateways
+shall "upgrade" the content of a mail message by using a character set
+with the name `unknown-8bit'.
+Because of the unclassified nature of this character set \*(UA will not
+be capable to convert this character set to any other character set.
+If this variable is set any message part which uses the character set
+`unknown-8bit' is assumed to really be in the character set given in the
+value, otherwise the (final) value of
+.Va charset-8bit
+is used for this purpose.
 .It Va colour-from_
 \*(OP The colour specification for so-called `From_' lines.
 See the section
