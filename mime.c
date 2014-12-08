@@ -1644,14 +1644,14 @@ jleave:
 
 FL ssize_t
 xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
-   enum tdflags dflags, struct str *rest)
+   enum tdflags dflags)
 {
    ssize_t rv;
    struct quoteflt *qf;
    NYD_ENTER;
 
    quoteflt_reset(qf = quoteflt_dummy(), f);
-   rv = mime_write(ptr, size, f, convert, dflags, qf, rest);
+   rv = mime_write(ptr, size, f, convert, dflags, qf, NULL);
    assert(quoteflt_flush(qf) == 0);
    NYD_LEAVE;
    return rv;

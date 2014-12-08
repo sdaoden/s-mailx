@@ -257,7 +257,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
             "Content-Disposition: %s;\n filename=\"",
             _get_encoding(convert), ap->a_content_disposition) == -1)
          goto jerr_header;
-      if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE, NULL) < 0)
+      if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE) < 0)
          goto jerr_header;
       if (fwrite("\"\n", sizeof(char), 2, fo) != 2 * sizeof(char))
          goto jerr_header;
@@ -312,7 +312,7 @@ jerr_header:
             break;
       } else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
-      if (xmime_write(buf, inlen, fo, convert, TD_ICONV, NULL) < 0) {
+      if (xmime_write(buf, inlen, fo, convert, TD_ICONV) < 0) {
          err = errno;
          goto jerr;
       }
@@ -422,7 +422,7 @@ put_signature(FILE *fo, int convert)
    }
    while ((sz = fread(buf, sizeof *buf, SEND_LINESIZE, fsig)) != 0) {
       c = buf[sz - 1];
-      if (xmime_write(buf, sz, fo, convert, TD_NONE, NULL) < 0)
+      if (xmime_write(buf, sz, fo, convert, TD_NONE) < 0)
          goto jerr;
    }
    if (ferror(fsig)) {
@@ -502,7 +502,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
          } else if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
             break;
 
-         if (xmime_write(buf, sz, fo, convert, TD_ICONV, NULL) < 0) {
+         if (xmime_write(buf, sz, fo, convert, TD_ICONV) < 0) {
             free(buf);
             goto jleave;
          }
@@ -621,7 +621,7 @@ jiconv_err:
                break;
          } else if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
             break;
-         if (xmime_write(buf, sz, nfo, convert, TD_ICONV, NULL) < 0) {
+         if (xmime_write(buf, sz, nfo, convert, TD_ICONV) < 0) {
             err = 1;
             break;
          }
@@ -733,7 +733,7 @@ do {\
             (l = strlen(addr)) > 0) {
          fwrite("Organization: ", sizeof(char), 14, fo);
          if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
             goto jleave;
          ++gotcha;
          putc('\n', fo);
@@ -758,11 +758,11 @@ do {\
          fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
          if (sublen > 0 &&
                xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
             goto jleave;
       } else if (*sub != '\0') {
          if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
             goto jleave;
       }
       ++gotcha;
@@ -1583,7 +1583,7 @@ jstep:
          putc(' ', fo);
       m = (m & ~m_CSEEN) | m_INIT;
       len = xmime_write(np->n_fullname, len, fo,
-            (domime ? CONV_TOHDR_A : CONV_NONE), TD_ICONV, NULL);
+            (domime ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
       if (len < 0)
          goto jleave;
       col += len;
