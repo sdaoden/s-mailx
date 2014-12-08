@@ -1702,17 +1702,18 @@ FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
 # define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
 #endif
 
-/* Make copy of argument incorporating old one, if set, separated by space */
-FL char *      save2str(char const *str, char const *old SALLOC_DEBUG_ARGS);
+/* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
+FL char *      savecatsep(char const *cp1, char sep, char const *cp2
+                  SALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define save2str(S,O)           save2str(S, O, __FILE__, __LINE__)
+# define savecatsep(S1,SEP,S2)   savecatsep(S1, SEP, S2, __FILE__, __LINE__)
 #endif
 
+/* Make copy of argument incorporating old one, if set, separated by space */
+#define save2str(S,O)            savecatsep(O, ' ', S)
+
 /* strcat */
-FL char *      savecat(char const *s1, char const *s2 SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define savecat(S1,S2)          savecat(S1, S2, __FILE__, __LINE__)
-#endif
+#define savecat(S1,S2)           savecatsep(S1, '\0', S2)
 
 /* Create duplicate, lowercasing all characters along the way */
 FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);

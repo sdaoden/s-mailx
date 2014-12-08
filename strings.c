@@ -506,35 +506,20 @@ FL char *
 }
 
 FL char *
-(save2str)(char const *str, char const *old SALLOC_DEBUG_ARGS)
-{
-   size_t newsize, oldsize;
-   char *news;
-   NYD_ENTER;
-
-   newsize = strlen(str) +1;
-   oldsize = (old != NULL) ? strlen(old) + 1 : 0;
-   news = (salloc)(newsize + oldsize SALLOC_DEBUG_ARGSCALL);
-   if (oldsize) {
-      memcpy(news, old, oldsize);
-      news[oldsize - 1] = ' ';
-   }
-   memcpy(news + oldsize, str, newsize);
-   NYD_LEAVE;
-   return news;
-}
-
-FL char *
-(savecat)(char const *s1, char const *s2 SALLOC_DEBUG_ARGS)
+(savecatsep)(char const *s1, char sep, char const *s2 SALLOC_DEBUG_ARGS)
 {
    size_t l1, l2;
    char *news;
    NYD_ENTER;
 
-   l1 = strlen(s1);
+   l1 = (s1 != NULL) ? strlen(s1) : 0;
    l2 = strlen(s2);
-   news = (salloc)(l1 + l2 +1 SALLOC_DEBUG_ARGSCALL);
-   memcpy(news + 0, s1, l1);
+   news = (salloc)(l1 + (sep != '\0') + l2 +1 SALLOC_DEBUG_ARGSCALL);
+   if (l1 > 0) {
+      memcpy(news + 0, s1, l1);
+      if (sep != '\0')
+         news[l1++] = sep;
+   }
    memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
    NYD_LEAVE;
