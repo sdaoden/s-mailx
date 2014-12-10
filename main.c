@@ -502,8 +502,8 @@ _rcv_mode(char const *folder, char const *Larg)
          print_header_summary(Larg);
       goto jleave;
    }
+   check_folder_hook(FAL0);
 
-   callhook(mailname, 0);
    if (i > 0 && !ok_blook(emptystart)) {
       exit_status = EXIT_ERR;
       goto jleave;

@@ -652,7 +652,9 @@ _c_file(void *v, enum fedit_mode fm)
       i = 1;
       goto jleave;
    }
-   callhook(mailname, 0);
+   assert(!(fm & FEDIT_NEWMAIL));
+   check_folder_hook(FAL0);
+
    if (i > 0 && !ok_blook(emptystart)) {
       i = 1;
       goto jleave;

@@ -1305,30 +1305,51 @@ jerr:
    goto jleave;
 }
 
-FL int
-callhook(char const *name, int nmail)
+FL bool_t
+check_folder_hook(bool_t nmail)
 {
-   int len, rv;
-   struct macro *mp;
+   size_t len;
    char *var, *cp;
+   struct macro *mp;
+   bool_t rv = TRU1;
    NYD_ENTER;
 
-   var = ac_alloc(len = strlen(name) + 12 +1);
-   snprintf(var, len, "folder-hook-%s", name);
-   if ((cp = vok_vlook(var)) == NULL && (cp = ok_vlook(folder_hook)) == NULL) {
-      rv = 0;
-      goto jleave;
+   var = ac_alloc(len = strlen(mailname) + sizeof("folder-hook-") -1  +1);
+
+   /* First try the fully resolved path */
+   snprintf(var, len, "folder-hook-%s", mailname);
+   if ((cp = vok_vlook(var)) != NULL)
+      goto jmac;
+
+   /* If we are under *folder*, try the usual +NAME syntax, too */
+   if (displayname[0] == '+') {
+      char *x = mailname + len;
+
+      for (; x > mailname; --x)
+         if (x[-1] == '/') {
+            snprintf(var, len, "folder-hook-+%s", x);
+            if ((cp = vok_vlook(var)) != NULL)
+               goto jmac;
+            break;
+         }
    }
+
+   /* Plain *folder-hook* is our last try */
+   if ((cp = ok_vlook(folder_hook)) == NULL)
+      goto jleave;
+
+jmac:
    if ((mp = _ma_look(cp, NULL, MA_NONE)) == NULL) {
-      fprintf(stderr, _("Cannot call hook for folder \"%s\": "
-         "Macro \"%s\" does not exist.\n"), name, cp);
-      rv = 1;
+      fprintf(stderr, _("Cannot call *folder-hook* for \"%s\": "
+         "macro \"%s\" does not exist.\n"), displayname, cp);
+      rv = FAL0;
       goto jleave;
    }
 
    inhook = nmail ? 3 : 1; /* XXX enum state machine */
-   rv = _ma_exec(mp, NULL);
+   rv = (_ma_exec(mp, NULL) == 0);
    inhook = 0;
+
 jleave:
    ac_free(var);
    NYD_LEAVE;
@@ -1393,7 +1414,7 @@ c_account(void *v)
       restorequitflags(oqf);
       if ((i = setfile("%", 0)) < 0)
          goto jleave;
-      callhook(mailname, 0);
+      check_folder_hook(FAL0);
       if (i > 0 && !ok_blook(emptystart))
          goto jleave;
       announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));

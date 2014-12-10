@@ -217,7 +217,8 @@ FL int         c_define(void *v);
 FL int         c_undefine(void *v);
 FL int         c_call(void *v);
 
-FL int         callhook(char const *name, int nmail);
+/* Check wether a *folder-hook* exists for the currently active mailbox */
+FL bool_t      check_folder_hook(bool_t nmail);
 
 /* Accounts: `account', `unaccount' */
 FL int         c_account(void *v);

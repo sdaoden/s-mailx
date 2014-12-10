@@ -4001,6 +4001,14 @@ the macro corresponding to the value of this variable is executed.
 Unlike other folder specifications,
 the fully expanded name of a folder, without metacharacters,
 is used to avoid ambiguities.
+However, if the mailbox resides under
+.Va folder
+then the usual `+' specification is tried in addition, e.g., if
+.Va folder
+is `mail' (and thus relative to the user's home directory) then
+.Pa /home/usr1/mail/sent
+will be tried as `folder-hook-/home/usr1/mail/sent' first, but then
+followed by `folder-hook-+sent'.
 The macro specified with
 .Va folder-hook
 is not executed if this variable is effective for a folder

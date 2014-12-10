@@ -623,6 +623,7 @@ newmailinfo(int omsgCount)
 
    for (i = 0; i < omsgCount; ++i)
       message[i].m_flag &= ~MNEWEST;
+
    if (msgCount > omsgCount) {
       for (i = omsgCount; i < msgCount; ++i)
          message[i].m_flag |= MNEWEST;
@@ -633,8 +634,11 @@ newmailinfo(int omsgCount)
          printf(_("Loaded %d new messages.\n"), i);
    } else
       printf(_("Loaded %d messages.\n"), msgCount);
-   callhook(mailname, 1);
+
+   check_folder_hook(TRU1);
+
    mdot = getmdot(1);
+
    if (ok_blook(header))
       print_headers(omsgCount + 1, msgCount, FAL0);
    NYD_LEAVE;
