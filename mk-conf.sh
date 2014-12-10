@@ -376,20 +376,21 @@ compiler_flags
 printf "CC = ${CC}\n" >> ${newmk}
 printf "CC=${CC}\n" >> ${newlst}
 
-printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
+printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newmk}
 printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
 
-printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
+printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
 
-printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
+printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newmk}
 printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
 
-printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
-   >> ${newmk}
-printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newmk}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newlst}
 
-printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
 printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 # Build a basic set of INCS and LIBS according to user environment.

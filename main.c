@@ -265,6 +265,8 @@ _startup(void)
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 
+   /*  --  >8  --  8<  --  */
+
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* (Keep in sync:
     * ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings") */
@@ -301,6 +303,8 @@ _startup(void)
    /* nosign */
    /* noSign */
    /* ok_vset(toplines, "5"); XXX somewhat hmm */
+
+   /*  --  >8  --  8<  --  */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");

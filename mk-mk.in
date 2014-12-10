@@ -38,7 +38,8 @@ config.o smtp.o: smtp_gssapi.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	< ./mime.types > $(@) $(SED) -e '/^#/d; /^$$/d; s/^/	"/; s/$$/",/'
+	< ./mime.types > $(@) \
+		$(SED) -e '/^#/d' -e '/^$$/d' -e 's/^/	"/' -e 's/$$/",/'
 
 test: all
 	@echo 'Running test, please wait';\
@@ -46,10 +47,11 @@ test: all
 
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
-	_VERSION=`< version.h \
-		$(SED) -e 's/^\#define VERSION "\\(.\\{1,\\}\\)"$$/\\1/'` \
-	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.1 > $(@) $(AWK) '\
+	_VERSION="`< version.h $(SED) \
+		-e '/ VERSION /b X' -e d \
+		-e ':X' -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/'`" \
+		_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+		< ./nail.1 > $(@) $(AWK) '\
 	BEGIN {\
 		written = 0;\
 		i = ENVIRON["_VERSION"];\
@@ -166,20 +168,35 @@ distclean: clean
 	[ -n "$(VERBOSE)" ] && echo '  $$ $(RM) -f ./config.* ./*.mk';\
 	$(RM) -f ./config.* ./*.mk
 
+# MUST work with "GREP=grep SED=sed CMP=cmp MV=mv", otherwise modify makefile
 _update-version:
 	@if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
-		if [ -z "$${VERSION}" ]; then \
-			VERSION="`$(SED) -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/' \
-				version.h`";\
+		if [ -n "$${VERSION}" ]; then \
+			VERSION="$${VERSION##v}";\
+		else \
+			VERSION="`< version.h $(SED) \
+				-e '/ VERSION /b X' -e d -e ':X' \
+				-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
 			echo "$${VERSION}" | $(GREP) -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
 		fi;\
 	fi;\
+	vmaj="`echo \"$${VERSION}\" |\
+		$(SED) -e 's/^\([^.]\{1,\}\).*/\1/'`";\
+	vmin="`echo \"$${VERSION}\" |\
+		$(SED) -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/'`";\
+	[ "$${vmin}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vmin=0;\
+	vupd="`echo \"$${VERSION}\" |\
+		$(SED) -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
+	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
 	trap "$(RM) ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define VERSION \"$${VERSION}\"\n";\
+	printf > ./version.tmp "#define VERSION \"v$${VERSION}\"\n";\
+	printf >> ./version.tmp "#define VERSION_MAJOR \"$${vmaj}\"\n";\
+	printf >> ./version.tmp "#define VERSION_MINOR \"$${vmin}\"\n";\
+	printf >> ./version.tmp "#define VERSION_UPDATE \"$${vupd}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	mv ./version.tmp ./version.h;\
+	$(MV) ./version.tmp ./version.h;\
 	trap - 0 1 2 15
 
 # s-mk-mode

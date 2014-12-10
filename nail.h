@@ -1096,6 +1096,10 @@ enum okeys {
    ok_v_toplines,
    ok_v_ttycharset,
    ok_v_user,
+   ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
+   ok_v_version_major,                 /* {rdonly=1,virtual=VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {rdonly=1,virtual=VERSION_MINOR} */
+   ok_v_version_update,                /* {rdonly=1,virtual=VERSION_UPDATE} */
    ok_v_VISUAL
 };
 
