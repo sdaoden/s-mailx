@@ -269,9 +269,9 @@
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Creates, selects or lists an email account")) },
-   { "thread", &c_thread, (A | MSGLIST), 0, 0
+   { "thread", &c_thread, (A | O | MSGLIST), 0, 0
      DS(N_("Create threaded view of current \"folder\"")) },
-   { "unthread", &c_unthread, (A | MSGLIST), 0, 0
+   { "unthread", &c_unthread, (A | O | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
    { "connect", &c_connect, (A | NOLIST), 0, 0
      DS(N_("If disconnected, connect to IMAP mailbox")) },

@@ -2631,6 +2631,7 @@ for the complete picture of spam handling in \*(UA.
 being `spam'.
 This also sets the `is-spam' flag of the messages in question.
 .It Ic thread
+\*(OB The same as `sort thread' (consider using a `ghost' as necessary).
 (th) Create a threaded representation of the current folder,
 i.\|e. indent messages that are replies to other messages in the header
 display and change the
@@ -2766,6 +2767,7 @@ if the
 variable is set,
 print a header summary.
 .It Ic unthread
+\*(OB
 (unth) Same as
 .Ic unsort .
 .It Ic urldecode
@@ -3213,9 +3215,11 @@ command).
 Causes the delete command to behave like `dp -';
 thus, after deleting a message the next one will be typed automatically.
 .It Va autothread
-Causes threaded mode (see the
+\*(OB Causes threaded mode (see the
 .Ic thread
 command) to be entered automatically when a folder is opened.
+The same as `autosort=thread'.
+.
 .It Va bang
 Enables the substitution of `!' by the contents of the last command line
 in shell escapes.

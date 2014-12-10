@@ -28,7 +28,7 @@
 set autocollapse
 
 # Enter threaded mode automatically
-#set autothread autosort=thread
+#set autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
 # This has no effect unless *hold* is unset (it is set below)
