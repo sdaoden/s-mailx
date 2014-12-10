@@ -952,6 +952,8 @@ jexec:
          com->name);
       goto jleave;
    }
+   if (com->argtype & ARG_O)
+      OBSOLETE2(_("this command will be removed"), com->name);
 
    if (com->argtype & ARG_V)
       temporary_arg_v_store = NULL;

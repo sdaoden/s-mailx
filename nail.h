@@ -887,8 +887,20 @@ enum user_options {
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
    OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
 };
+
 #define IS_TTY_SESSION() \
    ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
+
+#define OBSOLETE(X) \
+do {\
+   if (options & OPT_D_V)\
+      fprintf(stderr, "%s: %s\n", _("Obsoletion warning"), X);\
+} while (0)
+#define OBSOLETE2(X,Y) \
+do {\
+   if (options & OPT_D_V)\
+      fprintf(stderr, "%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+} while (0)
 
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
@@ -1421,7 +1433,8 @@ enum argtype {
    ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
    ARG_T          = 1u<<11,   /* Is a transparent command */
    ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13    /* Invalid when read only bit */
+   ARG_W          = 1u<<13,   /* Invalid when read only bit */
+   ARG_O          = 1u<<14    /* OBSOLETE()d command */
 };
 
 enum gfield {

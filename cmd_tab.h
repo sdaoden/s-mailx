@@ -55,6 +55,7 @@
 #define T            ARG_T
 #define V            ARG_V
 #define W            ARG_W
+#define O            ARG_O
 
 #ifdef HAVE_DOCSTRINGS
 # define DS(S)       , S
@@ -433,5 +434,6 @@
 #undef T
 #undef V
 #undef W
+#undef O
 
 /* s-it-mode */
