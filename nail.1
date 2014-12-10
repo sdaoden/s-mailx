@@ -1777,7 +1777,7 @@ or
 or it can be implicitly invoked by setting the
 .Va folder-hook
 or
-.Va folder-hook-fullname
+.Va folder-hook-FULLNAME
 variables.
 Macros can be deleted via
 .Ic undefine .
@@ -3995,8 +3995,13 @@ the macro corresponding to the value of this variable is executed.
 The macro is also invoked when new mail arrives,
 but message lists for commands executed from the macro
 only include newly arrived messages then.
-.It Va folder-hook-fullname
-When a folder named `fullname' is opened,
+If
+.Ic localopts
+are activated in a folder hook, then the covered settings will be
+reverted once the folder is left again.
+.
+.It Va folder-hook-FULLNAME
+When a folder named `FULLNAME' is opened,
 the macro corresponding to the value of this variable is executed.
 Unlike other folder specifications,
 the fully expanded name of a folder, without metacharacters,

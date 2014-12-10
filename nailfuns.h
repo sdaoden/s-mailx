@@ -228,6 +228,7 @@ FL int         c_unaccount(void *v);
 FL int         c_localopts(void *v);
 
 FL void        temporary_localopts_free(void); /* XXX intermediate hack */
+FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
 
 /*
  * attachments.c

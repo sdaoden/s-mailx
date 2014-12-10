@@ -123,6 +123,10 @@ struct lostack {
 
 static struct macro  *_acc_curr;    /* Currently active account */
 static struct lostack *_localopts;  /* Currently executing macro unroll list */
+/* TODO We really deserve localopts support for *folder-hook*s, so hack it in
+ * TODO today via a static lostack, it should be a field in mailbox, once that
+ * TODO is a real multi-instance object */
+static struct var    *_folder_hook_localopts;
 
 /* TODO once we have a dynamically sized hashtable we could unite _macros and
  * TODO _variables into a single hashtable, stripping down fun interface;
@@ -1311,6 +1315,7 @@ check_folder_hook(bool_t nmail)
    size_t len;
    char *var, *cp;
    struct macro *mp;
+   struct var **unroller;
    bool_t rv = TRU1;
    NYD_ENTER;
 
@@ -1346,8 +1351,14 @@ jmac:
       goto jleave;
    }
 
-   inhook = nmail ? 3 : 1; /* XXX enum state machine */
-   rv = (_ma_exec(mp, NULL) == 0);
+   if (nmail) {
+      inhook = 3; /* XXX enum state machine */
+      unroller = NULL;
+   } else {
+      inhook = 1;
+      unroller = &_folder_hook_localopts;
+   }
+   rv = (_ma_exec(mp, unroller) == 0);
    inhook = 0;
 
 jleave:
@@ -1485,7 +1496,21 @@ temporary_localopts_free(void) /* XXX intermediate hack */
    while (x != NULL) {
       struct lostack *losp = x->lo;
       x = x->up;
-      _localopts_unroll(&losp->s_localopts);
+      if (losp->s_localopts != NULL)
+         _localopts_unroll(&losp->s_localopts);
+   }
+   NYD_LEAVE;
+}
+
+FL void
+temporary_localopts_folder_hook_unroll(void) /* XXX intermediate hack */
+{
+   NYD_ENTER;
+   if (_folder_hook_localopts != NULL) {
+      void *save = _localopts;
+      _localopts = NULL;
+      _localopts_unroll(&_folder_hook_localopts);
+      _localopts = save;
    }
    NYD_LEAVE;
 }

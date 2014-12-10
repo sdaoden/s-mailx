@@ -273,6 +273,8 @@ quit(void)
    struct stat minfo;
    NYD_ENTER;
 
+   temporary_localopts_folder_hook_unroll();
+
    /* If we are read only, we can't do anything, so just return quickly. IMAP
     * can set some flags (e.g. "\\Seen") so imap_quit must be called anyway */
    if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
