@@ -1284,7 +1284,8 @@ getmdot(int nmail)
       }
    }
 
-   if ((mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
+   if (nmail &&
+         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
       mdot = (int)PTR2SIZE(mp - message + 1);
    else if (ok_blook(showlast)) {
       if (mb.mb_threaded) {
@@ -1299,7 +1300,10 @@ getmdot(int nmail)
                break;
          mdot = (mp >= message) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
       }
-   } else if (mb.mb_threaded) {
+   } else if (!nmail &&
+         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
+      mdot = (int)PTR2SIZE(mp - message + 1);
+   else if (mb.mb_threaded) {
       for (mp = threadroot; mp; mp = next_in_thread(mp))
          if (!(mp->m_flag & avoid))
             break;
