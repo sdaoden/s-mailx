@@ -1227,7 +1227,8 @@ getmdot(int nmail)
       if (ok_blook(autothread))
          c_thread(NULL);
       else if ((cp = ok_vlook(autosort)) != NULL) {
-         free(mb.mb_sorted);
+         if (mb.mb_sorted != NULL)
+            free(mb.mb_sorted);
          mb.mb_sorted = sstrdup(cp);
          c_sort(NULL);
       }

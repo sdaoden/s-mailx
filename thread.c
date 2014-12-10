@@ -535,7 +535,8 @@ c_unthread(void *vp)
    NYD_ENTER;
 
    mb.mb_threaded = 0;
-   free(mb.mb_sorted);
+   if (mb.mb_sorted != NULL)
+      free(mb.mb_sorted);
    mb.mb_sorted = NULL;
 
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -650,10 +651,10 @@ c_sort(void *vp)
    };
 
    struct str in, out;
-   char **args = (char**)vp, *cp, *_args[2];
+   char *_args[2], *cp, **args = vp;
+   int msgvec[2], i, n;
    int (*func)(void const *, void const *);
    struct msort *ms;
-   int i, n, msgvec[2];
    struct message *mp;
    bool_t showname;
    NYD_ENTER;
@@ -663,12 +664,12 @@ c_sort(void *vp)
    msgvec[1] = 0;
 
    if (vp == NULL || vp == (void*)-1) {
-      _args[0] = savestr(mb.mb_sorted);
+      _args[0] = savestr((mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       _args[1] = NULL;
       args = _args;
    } else if (args[0] == NULL) {
       printf("Current sorting criterion is: %s\n",
-            (mb.mb_sorted ? mb.mb_sorted : "unsorted"));
+            (mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       i = 0;
       goto jleave;
    }
@@ -683,7 +684,8 @@ c_sort(void *vp)
 jmethok:
    method = methnames[i].me_method;
    func = methnames[i].me_func;
-   free(mb.mb_sorted);
+   if (mb.mb_sorted != NULL)
+      free(mb.mb_sorted);
    mb.mb_sorted = sstrdup(args[0]);
 
    if (method == SORT_THREAD) {
@@ -795,6 +797,7 @@ jmethok:
       break;
    }
    ac_free(ms);
+
    i = ((vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
          ? print_header_group(msgvec) : 0);
 jleave:
