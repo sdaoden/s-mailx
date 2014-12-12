@@ -1000,11 +1000,10 @@ ssl_open(struct url const *urlp, struct sock *sp)
    if (!_ssl_certificate(sp, urlp))
       goto jerr1;
 
-   if ((cp = ok_vlook(ssl_cipher_list)) != NULL) { /* TODO OXM_* */
-      if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1) {
-         ssl_gen_err(_("Invalid cipher(s): %s\n"), cp);
-         goto jerr1;
-      }
+   if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
+         SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1) {
+      ssl_gen_err(_("Invalid cipher(s): %s\n"), cp);
+      goto jerr1;
    }
 
    if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
