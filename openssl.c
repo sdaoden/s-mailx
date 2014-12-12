@@ -104,6 +104,16 @@ EMPTY_FILE(openssl)
 # define _STACKOF(X)          /*X*/STACK
 #endif
 
+enum ssl_state {
+   SS_INIT           = 1<<0,
+   SS_RAND_INIT      = 1<<1,
+   SS_EXIT_HDL       = 1<<2,
+   SS_CONF_LOAD      = 1<<3,
+   SS_ALGO_LOAD      = 1<<4,
+
+   SS_VERIFY_ERROR   = 1<<7
+};
+
 struct ssl_method { /* TODO obsolete */
    char const  sm_name[8];
    char const  sm_map[16];
@@ -168,14 +178,12 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 # error cipher algorithms that are required to support S/MIME
 #endif
 
-static int        _ssl_isinit;
-static int        _ssl_rand_isinit;
-static int        _ssl_msgno;
-static int        _ssl_verify_error;
+static enum ssl_state   _ssl_state;
+static size_t           _ssl_msgno;
 
 static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
-#ifdef HAVE_OPENSSL_CONFIG
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
 static void       _ssl_atexit(void);
 #endif
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
@@ -246,39 +254,51 @@ _ssl_init(void)
 #endif
    NYD_ENTER;
 
-   if (_ssl_isinit == 0) {
+   if (!(_ssl_state & SS_INIT)) {
       SSL_library_init();
       SSL_load_error_strings();
-      _ssl_isinit = 1;
-
-      /* Load openssl.cnf or whatever was given in *ssl-config-file* */
-#ifdef HAVE_OPENSSL_CONFIG
-      if ((cp = ok_vlook(ssl_config_file)) != NULL) {
-         ul_it flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
-
-         if (*cp == '\0') {
-            cp = NULL;
-            flags = 0;
-         }
-         if (CONF_modules_load_file(cp, uagent, flags) == 1) {
-            atexit(&_ssl_atexit); /* TODO generic program-wide event mechanism */
-         } else
-            ssl_gen_err(_("Ignoring CONF_modules_load_file() load error"));
-      }
-#endif
+      _ssl_state |= SS_INIT;
    }
 
-   if (_ssl_rand_isinit == 0)
-      _ssl_rand_isinit = _ssl_rand_init();
+   /* Load openssl.cnf or whatever was given in *ssl-config-file* */
+#ifdef HAVE_OPENSSL_CONFIG
+   if (!(_ssl_state & SS_CONF_LOAD) &&
+         (cp = ok_vlook(ssl_config_file)) != NULL) {
+      ul_i flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
+
+      if (*cp == '\0') {
+         cp = NULL;
+         flags = 0;
+      }
+      if (CONF_modules_load_file(cp, uagent, flags) == 1) {
+         _ssl_state |= SS_CONF_LOAD;
+         if (!(_ssl_state & SS_EXIT_HDL)) {
+            _ssl_state |= SS_EXIT_HDL;
+            atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
+         }
+      } else
+         ssl_gen_err(_("Ignoring CONF_modules_load_file() load error"));
+   }
+#endif
+
+   if (!(_ssl_state & SS_RAND_INIT) && _ssl_rand_init())
+      _ssl_state |= SS_RAND_INIT;
    NYD_LEAVE;
 }
 
-#ifdef HAVE_OPENSSL_CONFIG
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
 static void
 _ssl_atexit(void)
 {
    NYD_ENTER;
-   CONF_modules_free();
+# ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+   if (_ssl_state & SS_ALGO_LOAD)
+      EVP_cleanup();
+# endif
+# ifdef HAVE_OPENSSL_CONFIG
+   if (_ssl_state & SS_CONF_LOAD)
+      CONF_modules_free();
+# endif
    NYD_LEAVE;
 }
 #endif
@@ -318,7 +338,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       goto jleave;
 
    if (_ssl_msgno != 0) {
-      fprintf(stderr, "Message %d:\n", _ssl_msgno);
+      fprintf(stderr, "Message %" PRIuZ ":\n", _ssl_msgno);
       _ssl_msgno = 0;
    }
    fprintf(stderr, _(" Certificate depth %d %s\n"),
@@ -339,7 +359,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       int err = X509_STORE_CTX_get_error(store);
       fprintf(stderr, _("  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
-      _ssl_verify_error = 1;
+      _ssl_state |= SS_VERIFY_ERROR;
    }
 
    X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
@@ -514,7 +534,7 @@ _ssl_load_verifications(struct sock *sp)
       goto jleave;
    }
 
-   _ssl_verify_error = 0;
+   _ssl_state &= ~SS_VERIFY_ERROR;
    _ssl_msgno = 0;
    SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(sp->s_ctx);
@@ -646,8 +666,8 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
    rv = 1;
    fp = NULL;
    fb = NULL;
-   _ssl_verify_error = 0;
-   _ssl_msgno = n;
+   _ssl_state &= ~SS_VERIFY_ERROR;
+   _ssl_msgno = (size_t)n;
 
    for (;;) {
       sender = getsender(m);
@@ -738,9 +758,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       n, sender);
    goto jleave;
 jfound:
-   if (_ssl_verify_error == 0)
+   rv = ((_ssl_state & SS_VERIFY_ERROR) != 0);
+   if (!rv)
       printf(_("Message %d was verified successfully.\n"), n);
-   rv = _ssl_verify_error;
 jleave:
    if (fb != NULL)
       BIO_free(fb);
@@ -754,25 +774,44 @@ static EVP_CIPHER const *
 _smime_cipher(char const *name)
 {
    EVP_CIPHER const *cipher;
-   char *vn, *cp;
+   char *vn;
+   char const *cp;
    size_t i;
    NYD_ENTER;
 
-   vn = ac_alloc(i = strlen(name) + 13 +1);
+   vn = ac_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = vok_vlook(vn);
    ac_free(vn);
 
-   if (cp != NULL) {
-      cipher = NULL;
-      for (i = 0; i < NELEM(_smime_ciphers); ++i)
-         if (!asccasecmp(_smime_ciphers[i].sc_name, cp)) {
-            cipher = (*_smime_ciphers[i].sc_fun)();
-            goto jleave;
-         }
-      fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
-   } else
+   if (cp == NULL) {
       cipher = _SMIME_DEFAULT_CIPHER();
+      goto jleave;
+   }
+   cipher = NULL;
+
+   for (i = 0; i < NELEM(_smime_ciphers); ++i)
+      if (!asccasecmp(_smime_ciphers[i].sc_name, cp)) {
+         cipher = (*_smime_ciphers[i].sc_fun)();
+         goto jleave;
+      }
+
+   /* Not a builtin algorithm, but we may have dynamic support for more */
+#ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+   if (!(_ssl_state & SS_ALGO_LOAD)) {
+      _ssl_state |= SS_ALGO_LOAD;
+      OpenSSL_add_all_algorithms();
+      if (!(_ssl_state & SS_EXIT_HDL)) {
+         _ssl_state |= SS_EXIT_HDL;
+         atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
+      }
+   }
+
+   if ((cipher = EVP_get_cipherbyname(cp)) != NULL)
+      goto jleave;
+#endif
+
+   fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
 jleave:
    NYD_LEAVE;
    return cipher;
@@ -1454,7 +1493,7 @@ smime_certsave(struct message *m, int n, FILE *op)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   _ssl_msgno = n;
+   _ssl_msgno = (size_t)n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);

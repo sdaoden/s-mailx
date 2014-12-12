@@ -8,6 +8,9 @@ export LC_ALL
 if [ -n "${CONFIG}" ]; then
    WANT_ICONV=0
    WANT_SOCKETS=0
+      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
@@ -16,6 +19,7 @@ if [ -n "${CONFIG}" ]; then
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
+   #WANT_MD5=0
 
    case ${CONFIG} in
    NULLTEST)
@@ -48,7 +52,8 @@ if [ -n "${CONFIG}" ]; then
    MAXIMAL)
       WANT_ICONV=1
       WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+         WANT_IPV6=1 WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
+         WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
       WANT_IMAP_SEARCH=1
@@ -82,12 +87,13 @@ option_update() {
          msg "ERROR: need SOCKETS for required feature IMAP\\n"
          config_exit 13
       fi
-      WANT_IPV6=0 WANT_SSL=0
+      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
+      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
@@ -1005,9 +1011,24 @@ int main(void)
 }
 !
 
+      if feat_yes ALL_SSL_ALGORITHMS; then
+         link_check ossl_allalgo 'for OpenSSL all-algorithms support' \
+            '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+
+int main(void)
+{
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+      fi # ALL_SSL_ALGORITHMS
+
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
-         '#define HAVE_OPENSSL_MD5' << \!
+            '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
 
