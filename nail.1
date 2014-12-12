@@ -4816,6 +4816,15 @@ certificate required by some servers.
 See
 .Xr ciphers 1
 for more information.
+.It Va ssl-config-file
+\*(OP If this variable is set \*(UA will call
+.Xr CONF_modules_load_file 3
+to allow OpenSSL to be configured according to the host system wide
+security settings.
+If a non-empty value is given then this will be used to specify the
+configuration file to be used instead of the global OpenSSL default;
+note that in this case it is an error if the file cannot be loaded.
+The application name will always be passed as `\*(ua'.
 .It Va ssl-crl-file
 \*(OP Specifies a file that contains a CRL in PEM format to use when
 verifying SSL/TLS server certificates.

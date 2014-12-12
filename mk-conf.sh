@@ -963,6 +963,18 @@ int main(void)
 }
 !
 
+      link_check ossl_conf 'for OpenSSL_modules_load_file() support' \
+         '#define HAVE_OPENSSL_CONFIG' << \!
+#include <openssl/conf.h>
+
+int main(void)
+{
+   CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
+   CONF_modules_free();
+   return 0;
+}
+!
+
       link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
          '#define HAVE_OPENSSL_CONF_CTX' << \!
 #include <openssl/ssl.h>

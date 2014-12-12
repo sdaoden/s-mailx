@@ -1097,6 +1097,7 @@ enum okeys {
    ok_v_ssl_ca_file,
    ok_v_ssl_cert,
    ok_v_ssl_cipher_list,
+   ok_v_ssl_config_file,
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
    ok_v_ssl_key,

@@ -63,6 +63,10 @@ EMPTY_FILE(openssl)
 # include <arpa/inet.h>
 #endif
 
+#ifdef HAVE_OPENSSL_CONFIG
+# include <openssl/conf.h>
+#endif
+
 /*
  * OpenSSL client implementation according to: John Viega, Matt Messier,
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
@@ -171,6 +175,9 @@ static int        _ssl_verify_error;
 
 static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
+#ifdef HAVE_OPENSSL_CONFIG
+static void       _ssl_atexit(void);
+#endif
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
@@ -234,15 +241,47 @@ _ssl_rand_init(void)
 static void
 _ssl_init(void)
 {
+#ifdef HAVE_OPENSSL_CONFIG
+   char const *cp;
+#endif
    NYD_ENTER;
+
    if (_ssl_isinit == 0) {
       SSL_library_init();
+      SSL_load_error_strings();
       _ssl_isinit = 1;
+
+      /* Load openssl.cnf or whatever was given in *ssl-config-file* */
+#ifdef HAVE_OPENSSL_CONFIG
+      if ((cp = ok_vlook(ssl_config_file)) != NULL) {
+         ul_it flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
+
+         if (*cp == '\0') {
+            cp = NULL;
+            flags = 0;
+         }
+         if (CONF_modules_load_file(cp, uagent, flags) == 1) {
+            atexit(&_ssl_atexit); /* TODO generic program-wide event mechanism */
+         } else
+            ssl_gen_err(_("Ignoring CONF_modules_load_file() load error"));
+      }
+#endif
    }
+
    if (_ssl_rand_isinit == 0)
       _ssl_rand_isinit = _ssl_rand_init();
    NYD_LEAVE;
 }
+
+#ifdef HAVE_OPENSSL_CONFIG
+static void
+_ssl_atexit(void)
+{
+   NYD_ENTER;
+   CONF_modules_free();
+   NYD_LEAVE;
+}
+#endif
 
 static bool_t
 _ssl_parse_asn1_time(ASN1_TIME *atp, char *bdat, size_t blen)
@@ -1051,7 +1090,6 @@ ssl_gen_err(char const *fmt, ...)
    vfprintf(stderr, fmt, ap);
    va_end(ap);
 
-   SSL_load_error_strings();
    fprintf(stderr, ": %s\n", ERR_error_string(ERR_get_error(), NULL));
    NYD_LEAVE;
 }
