@@ -168,10 +168,6 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
    {"des3", &EVP_des_ede3_cbc},
    {"des", &EVP_des_cbc},
 #endif
-#ifndef OPENSSL_NO_RC2
-   {"rc2-40", &EVP_rc2_40_cbc},
-   {"rc2-64", &EVP_rc2_64_cbc},
-#endif
 };
 #ifndef _SMIME_DEFAULT_CIPHER
 # error Your OpenSSL library does not include the necessary
