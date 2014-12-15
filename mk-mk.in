@@ -134,13 +134,13 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	};\
 	if [ -n "$(DESTDIR)" ]; then __mkdir "$(DESTDIR)"; fi;\
 	__mkdir "$(DESTDIR)$(BINDIR)";\
-	__copyfile 0755 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__copyfile 0555 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	__stripfile "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
-	__copyfile 0644 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
 	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
-		__copyfile 0644 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
+		__copyfile 0444 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
 	fi
 
 uninstall:
