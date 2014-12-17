@@ -244,8 +244,8 @@
 
 /* String dope: dynamic buffer size, and size of the single builtin one that's
  * used first; note that these value include the size of the structure */
-#define SBUFFER_SIZE    0x18000u
-#define SBUFFER_BUILTIN 0x2000u
+#define SBUFFER_SIZE    ((0x10000u >> 1u) - 0x400)
+#define SBUFFER_BUILTIN (0x10000u >> 1u)
 
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
