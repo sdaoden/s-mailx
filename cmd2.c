@@ -76,7 +76,7 @@ static int
 save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    int convert, int sender_record, int domove)
 {
-   off_t mstats[2], tstats[2]; /* Stats should be ui64_t or so */
+   ui64_t mstats[1], tstats[2];
    struct stat st;
    int newfile = 0, compressed = 0, last = 0, *msgvec, *ip;
    struct message *mp;
@@ -198,6 +198,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    success = TRU1;
    tstats[0] = tstats[1] = 0;
    imap_created_mailbox = 0;
+
    srelax_hold();
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
@@ -213,14 +214,14 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 #endif
             goto jferr;
 #ifdef HAVE_IMAP
-         mstats[0] = -1;
-         mstats[1] = mp->m_xsize;
+         mstats[0] = mp->m_xsize;
 #endif
       } else if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
          perror(file);
          goto jferr;
       }
       srelax();
+
       touch(mp);
       if (domark)
          mp->m_flag |= MSAVED;
@@ -228,8 +229,9 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          mp->m_flag |= MDELETED | MSAVED;
          last = *ip;
       }
+
       tstats[0] += mstats[0];
-      tstats[1] += mstats[1];
+      tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
    fflush(obuf);
    if (ferror(obuf)) {
@@ -249,12 +251,8 @@ jferr:
 #endif
             (imap_created_mailbox ? "[New file]" : "[Appended]"));
       }
-      printf("\"%s\" %s ", file, disp);
-      if (tstats[0] >= 0)
-         printf("%" PRIu64, (ui64_t)tstats[0]);
-      else
-         printf(_("binary"));
-      printf("/%" PRIu64 "\n", (ui64_t)tstats[1]);
+      printf("\"%s\" %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
+         file, disp, /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
       newfile = ~MSAVED;
       goto jiterand;

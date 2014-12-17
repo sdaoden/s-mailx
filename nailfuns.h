@@ -1515,7 +1515,7 @@ FL void        restorequitflags(int);
  * stats[1] is character count.  stats may be NULL.  Note that stats[0] is
  * valid for SEND_MBOX only */
 FL int         sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
-                  char const *prefix, enum sendaction action, off_t *stats);
+                  char const *prefix, enum sendaction action, ui64_t *stats);
 
 /*
  * sendout.c

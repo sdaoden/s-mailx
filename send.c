@@ -85,14 +85,10 @@ static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
 static FILE *        _pipefile(char const *pipecomm, struct mimepart const *mpp,
                         FILE **qbuf, bool_t quote, bool_t async);
 
-/* Adjust output statistics */
-SINLINE void         _addstats(off_t *stats, off_t lines, off_t bytes);
-
 /* Call mime_write() as approbiate and adjust statistics */
 SINLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         enum conversion convert, enum sendaction action,
-                        struct quoteflt *qf, off_t *stats,
-                        struct str *rest);
+                        struct quoteflt *qf, ui64_t *stats, struct str *rest);
 
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
@@ -101,21 +97,21 @@ static void          _send_onpipe(int signo);
 static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct ignoretab *doign,
                         struct quoteflt *qf, enum sendaction action,
-                        off_t *stats, int level);
+                        ui64_t *stats, int level);
 
 /* Get a file for an attachment */
 static FILE *        newfile(struct mimepart *ip, int *ispipe);
 
 static void          pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
-                        struct quoteflt *qf, off_t *stats);
+                        struct quoteflt *qf, ui64_t *stats);
 
 /* Output a reasonable looking status field */
 static void          statusput(const struct message *mp, FILE *obuf,
-                        struct quoteflt *qf, off_t *stats);
+                        struct quoteflt *qf, ui64_t *stats);
 static void          xstatusput(const struct message *mp, FILE *obuf,
-                        struct quoteflt *qf, off_t *stats);
+                        struct quoteflt *qf, ui64_t *stats);
 
-static void          put_from_(FILE *fp, struct mimepart *ip, off_t *stats);
+static void          put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats);
 
 static struct mimepart *
 parsemsg(struct message *mp, enum parseflags pf)
@@ -636,25 +632,12 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    return rbuf;
 }
 
-SINLINE void
-_addstats(off_t *stats, off_t lines, off_t bytes)
-{
-   NYD_ENTER;
-   if (stats != NULL) {
-      if (stats[0] >= 0)
-         stats[0] += lines;
-      stats[1] += bytes;
-   }
-   NYD_LEAVE;
-}
-
 SINLINE ssize_t
 _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
-   sendaction action, struct quoteflt *qf, off_t *stats, struct str *rest)
+   sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *rest)
 {
    ssize_t sz = 0, n;
    int flags;
-   char const *cp;
    NYD_ENTER;
 
 #if 0
@@ -692,13 +675,9 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
    if (n < 0)
       sz = n;
    else if (n > 0) {
-      sz = (ssize_t)((size_t)sz + n);
-      n = 0;
-      if (stats != NULL && stats[0] != -1)
-         for (cp = buf; PTRCMP(cp, <, buf + sz); ++cp)
-            if (*cp == '\n')
-               ++n;
-      _addstats(stats, n, sz);
+      sz += n;
+      if (stats != NULL)
+         *stats += sz;
    }
    NYD_LEAVE;
    return sz;
@@ -715,7 +694,7 @@ _send_onpipe(int signo)
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
-   enum sendaction volatile action, off_t *volatile stats, int level)
+   enum sendaction volatile action, ui64_t * volatile stats, int level)
 {
    int volatile ispipe, rv = 0;
    struct str rest;
@@ -934,8 +913,8 @@ jskip:
             if (qf->qf_pfix_len > 0) {
                size_t i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
                      qf->qf_pfix_len, obuf);
-               if (i == qf->qf_pfix_len)
-                  _addstats(stats, 0, i);
+               if (i == qf->qf_pfix_len && stats != NULL)
+                  *stats += i;
             }
             put_from_(obuf, ip->m_multipart, stats);
          }
@@ -1150,9 +1129,6 @@ jcopyout:
       --cnt;
    switch (ip->m_mimeenc) {
    case MIME_BIN:
-      if (stats != NULL)
-         stats[0] = -1;
-      /* FALLTHRU */
    case MIME_7B:
    case MIME_8B:
       convert = CONV_NONE;
@@ -1238,7 +1214,7 @@ jcopyout:
    {
    bool_t eof;
    ui32_t save_qf_pfix_len = qf->qf_pfix_len;
-   off_t *save_stats = stats;
+   ui64_t *save_stats = stats;
 
    if (pbuf != origobuf) {
       qf->qf_pfix_len = 0; /* XXX legacy (remove filter instead) */
@@ -1355,7 +1331,7 @@ jleave:
 
 static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
-   off_t *stats)
+   ui64_t *stats)
 {
    char *line = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
@@ -1378,15 +1354,15 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    if (line)
       free(line);
 
-   if (all_sz > 0 && outbuf == origobuf)
-      _addstats(stats, 1, all_sz);
+   if (all_sz > 0 && outbuf == origobuf && stats != NULL)
+      *stats += all_sz;
    fclose(pipebuf);
    NYD_LEAVE;
 }
 
 static void
 statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
-   off_t *stats)
+   ui64_t *stats)
 {
    char statout[3], *cp = statout;
    NYD_ENTER;
@@ -1399,15 +1375,15 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    if (statout[0]) {
       int i = fprintf(obuf, "%.*sStatus: %s\n", (int)qf->qf_pfix_len,
             (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), statout);
-      if (i > 0)
-         _addstats(stats, 1, i);
+      if (i > 0 && stats != NULL)
+         *stats += i;
    }
    NYD_LEAVE;
 }
 
 static void
 xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
-   off_t *stats)
+   ui64_t *stats)
 {
    char xstatout[4];
    char *xp = xstatout;
@@ -1423,14 +1399,14 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    if (xstatout[0]) {
       int i = fprintf(obuf, "%.*sX-Status: %s\n", (int)qf->qf_pfix_len,
             (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), xstatout);
-      if (i > 0)
-         _addstats(stats, 1, i);
+      if (i > 0 && stats != NULL)
+         *stats += i;
    }
    NYD_LEAVE;
 }
 
 static void
-put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
+put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
 {
    char const *froma, *date, *nl;
    int i;
@@ -1449,14 +1425,14 @@ put_from_(FILE *fp, struct mimepart *ip, off_t *stats)
    colour_put(fp, COLOURSPEC_FROM_);
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
    colour_reset(fp);
-   if (i > 0)
-      _addstats(stats, (*nl != '\0'), i);
+   if (i > 0 && stats != NULL)
+      *stats += i;
    NYD_LEAVE;
 }
 
 FL int
 sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
-   char const *prefix, enum sendaction action, off_t *stats)
+   char const *prefix, enum sendaction action, ui64_t *stats)
 {
    struct quoteflt qf;
    size_t cnt, sz, i;
@@ -1469,7 +1445,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    if (mp == dot && action != SEND_TOSRCH)
       did_print_dot = 1;
    if (stats != NULL)
-      stats[0] = stats[1] = 0;
+      *stats = 0;
    quoteflt_init(&qf, prefix);
 
    /* First line is the From_ line, so no headers there to worry about */
@@ -1532,8 +1508,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
 #endif
    }
    }
-   if (sz > 0)
-      _addstats(stats, 1, sz);
+   if (sz > 0 && stats != NULL)
+      *stats += sz;
 
    pf = 0;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)

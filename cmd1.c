@@ -76,7 +76,7 @@ static int     _headers(int msgspec);
 
 /* Show the requested messages */
 static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-                  bool_t dodecode, char *cmd, off_t *tstats);
+                  bool_t dodecode, char *cmd, ui64_t *tstats);
 
 /* Pipe the requested messages */
 static int     _pipe1(char *str, int doign);
@@ -836,9 +836,9 @@ _headers(int msgspec) /* FIXME rework v14.8; also: Neitzel mail, 2014-08-21 */
 
 static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-   bool_t dodecode, char *cmd, off_t *tstats)
+   bool_t dodecode, char *cmd, ui64_t *tstats)
 {
-   off_t mstats[2];
+   ui64_t mstats[1];
    int rv, *ip;
    struct message *mp;
    char const *cp;
@@ -925,10 +925,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       srelax();
       if (formfeed) /* TODO a nicer way to separate piped messages! */
          putc('\f', obuf);
-      if (tstats) {
+      if (tstats != NULL)
          tstats[0] += mstats[0];
-         tstats[1] += mstats[1];
-      }
    }
    srelax_rele();
    isrelax = FAL0;
@@ -953,7 +951,7 @@ jleave:
 static int
 _pipe1(char *str, int doign)
 {
-   off_t stats[2];
+   ui64_t stats[1];
    char *cmd;
    int *msgvec, rv = 1;
    bool_t needs_list;
@@ -992,15 +990,9 @@ _pipe1(char *str, int doign)
    }
 
    printf(_("Pipe to: \"%s\"\n"), cmd);
-   stats[0] = stats[1] = 0;
-   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0) {
-      printf("\"%s\" ", cmd);
-      if (stats[0] >= 0)
-         printf("%lu", (long)stats[0]);
-      else
-         printf(_("binary"));
-      printf("/%lu\n", (long)stats[1]);
-   }
+   stats[0] = 0;
+   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0)
+      printf("\"%s\" %" PRIu64 " bytes\n", cmd, stats[0]);
 jleave:
    NYD_LEAVE;
    return rv;
