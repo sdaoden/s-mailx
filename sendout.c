@@ -64,9 +64,6 @@ static int           __attach_file(struct attachment *ap, FILE *fo);
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         bool_t signing_caps);
 
-/* Prepare arguments for the MTA (non *smtp* mode) */
-static char const ** _prepare_mta_args(struct name *to, struct header *hp);
-
 /* Fix the header by glopping all of the expanded names from the distribution
  * list into the appropriate fields */
 static struct name * fixhead(struct header *hp, struct name *tolist);
@@ -88,20 +85,22 @@ static FILE *        infix(struct header *hp, FILE *fi);
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
                         FILE *fo);
 
-/* Save the outgoing mail on the passed file */
-static int           savemail(char const *name, FILE *fi);
-
 /* Send mail to a bunch of user names.  The interface is through mail() */
 static int           sendmail_internal(void *v, int recipient_record);
+
+/* Deal with file and pipe addressees */
+static struct name * _outof(struct name *names, FILE *fo, bool_t *senderror);
+
+/* Record outgoing mail if instructed to do so; in *record* unless to is set */
+static bool_t        mightrecord(FILE *fp, struct name *to);
+
+static int           __savemail(char const *name, FILE *fp);
 
 /*  */
 static bool_t        _transfer(struct sendbundle *sbp);
 
-/* Start the MTA mailing */
-static bool_t        start_mta(struct sendbundle *sbp);
-
-/* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static bool_t        mightrecord(FILE *fp, struct name *to);
+static bool_t        __start_mta(struct sendbundle *sbp);
+static char const ** __prepare_mta_args(struct name *to, struct header *hp);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
 static char *        _message_id(struct header *hp);
@@ -394,73 +393,6 @@ jleave:
 #endif
    NYD_LEAVE;
    return rv;
-}
-
-static char const **
-_prepare_mta_args(struct name *to, struct header *hp)
-{
-   size_t vas_count, i, j;
-   char **vas, *cp;
-   char const **args;
-   NYD_ENTER;
-
-   if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
-      vas_count = 0;
-      vas = NULL;
-   } else {
-      /* Don't assume anything on the content but do allocate exactly j slots */
-      j = strlen(cp);
-      vas = ac_alloc(sizeof(*vas) * j);
-      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, TRU1);
-   }
-
-   i = 4 + smopts_count + vas_count + 2 + 1 + count(to) + 1;
-   args = salloc(i * sizeof(char*));
-
-   args[0] = ok_vlook(sendmail_progname);
-   if (args[0] == NULL || *args[0] == '\0')
-      args[0] = SENDMAIL_PROGNAME;
-   args[1] = "-i";
-   i = 2;
-   if (ok_blook(metoo))
-      args[i++] = "-m";
-   if (options & OPT_VERB)
-      args[i++] = "-v";
-
-   for (j = 0; j < smopts_count; ++j, ++i)
-      args[i] = smopts[j];
-
-   for (j = 0; j < vas_count; ++j, ++i)
-      args[i] = vas[j];
-
-   /* -r option?  We may only pass skinned addresses */
-   if (options & OPT_r_FLAG) {
-      if (option_r_arg[0] != '\0')
-         cp = option_r_arg;
-      else if (hp != NULL && hp->h_from != NULL)
-         cp = hp->h_from->n_name;
-      else
-         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
-      if (cp != NULL) { /* XXX ugh! */
-         args[i++] = "-f";
-         args[i++] = cp;
-      }
-   }
-
-   /* Terminate option list to avoid false interpretation of system-wide
-    * aliases that start with hyphen */
-   args[i++] = "--";
-
-   /* Receivers follow */
-   for (; to != NULL; to = to->n_flink)
-      if (!(to->n_type & GDEL))
-         args[i++] = to->n_name;
-   args[i] = NULL;
-
-   if (vas != NULL)
-      ac_free(vas);
-   NYD_LEAVE;
-   return args;
 }
 
 static struct name *
@@ -780,7 +712,268 @@ jleave:
 }
 
 static int
-savemail(char const *name, FILE *fi)
+sendmail_internal(void *v, int recipient_record)
+{
+   struct header head;
+   char *str = v;
+   int rv;
+   NYD_ENTER;
+
+   memset(&head, 0, sizeof head);
+   head.h_to = lextract(str, GTO | GFULL);
+   rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
+   NYD_LEAVE;
+   return (rv == 0);
+}
+
+static struct name *
+_outof(struct name *names, FILE *fo, bool_t *senderror)
+{
+   ui32_t pipecnt, xcnt, i;
+   int *fda;
+   char const *sh;
+   struct name *np;
+   FILE *fin = NULL, *fout;
+   NYD_ENTER;
+
+   /* Look through all recipients and do a quick return if no file or pipe
+    * addressee is found */
+   fda = NULL; /* Silence cc */
+   for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink) {
+      if (np->n_type & GDEL)
+         continue;
+      switch (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) {
+      case NAME_ADDRSPEC_ISFILE:
+         ++xcnt;
+         break;
+      case NAME_ADDRSPEC_ISPIPE:
+         ++pipecnt;
+         break;
+      }
+   }
+   if (pipecnt == 0 && xcnt == 0)
+      goto jleave;
+
+   /* But are file and pipe addressees allowed? */
+   if ((sh = ok_vlook(expandaddr)) == NULL ||
+         (!(options & OPT_INTERACTIVE) &&
+          (!(options & OPT_TILDE_FLAG) && !asccasecmp(sh, "restrict")))) {
+      fprintf(stderr,
+         _("File or pipe addressees disallowed according to *expandaddr*\n"));
+      *senderror = TRU1;
+      pipecnt = 0; /* Avoid we close FDs we don't own in this path.. */
+      goto jdelall;
+   }
+
+   /* Otherwise create an array of file descriptors for each found pipe
+    * addressee to get around the dup(2)-shared-file-offset problem, i.e.,
+    * each pipe subprocess needs its very own file descriptor, and we need
+    * to deal with that.
+    * To make our life a bit easier let's just use the auto-reclaimed
+    * string storage */
+   if (pipecnt == 0) {
+      fda = NULL;
+      sh = NULL;
+   } else {
+      fda = salloc(sizeof(int) * pipecnt);
+      for (i = 0; i < pipecnt; ++i)
+         fda[i] = -1;
+      if ((sh = ok_vlook(SHELL)) == NULL)
+         sh = XSHELL;
+   }
+
+   for (np = names; np != NULL;) {
+      if (!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)) {
+         np = np->n_flink;
+         continue;
+      }
+
+      /* See if we have copied the complete message out yet.  If not, do so */
+      if (image < 0) {
+         int c;
+         char *tempEdit;
+
+         if ((fout = Ftmp(&tempEdit, "outof",
+               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
+            perror(_("Creation of temporary image"));
+            *senderror = TRU1;
+            goto jcant;
+         }
+         if ((image = open(tempEdit, O_RDWR | _O_CLOEXEC)) >= 0) {
+            _CLOEXEC_SET(image);
+            for (i = 0; i < pipecnt; ++i) {
+               int fd = open(tempEdit, O_RDONLY | _O_CLOEXEC);
+               if (fd < 0) {
+                  close(image);
+                  image = -1;
+                  pipecnt = i;
+                  break;
+               }
+               fda[i] = fd;
+               _CLOEXEC_SET(fd);
+            }
+         }
+         Ftmp_release(&tempEdit);
+
+         if (image < 0) {
+            perror(_("Creating descriptor duplicate of temporary image"));
+            *senderror = TRU1;
+            Fclose(fout);
+            goto jcant;
+         }
+
+         fprintf(fout, "From %s %s", myname, time_current.tc_ctime);
+         c = EOF;
+         while (i = c, (c = getc(fo)) != EOF)
+            putc(c, fout);
+         rewind(fo);
+         if ((int)i != '\n')
+            putc('\n', fout);
+         putc('\n', fout);
+         fflush(fout);
+         if (ferror(fout)) {
+            perror(_("Finalizing write of temporary image"));
+            Fclose(fout);
+            goto jcantfout;
+         }
+         Fclose(fout);
+
+         /* If we have to serve file addressees, open reader */
+         if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
+            perror(_(
+               "Failed to open a duplicate of the temporary image"));
+jcantfout:
+            *senderror = TRU1;
+            close(image);
+            image = -1;
+            goto jcant;
+         }
+
+         /* From now on use xcnt as a counter for pipecnt */
+         xcnt = 0;
+      }
+
+      /* Now either copy "image" to the desired file or give it as the standard
+       * input to the desired program as appropriate */
+      if (np->n_flags & NAME_ADDRSPEC_ISPIPE) {
+         int pid;
+         sigset_t nset;
+
+         sigemptyset(&nset);
+         sigaddset(&nset, SIGHUP);
+         sigaddset(&nset, SIGINT);
+         sigaddset(&nset, SIGQUIT);
+         pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
+               np->n_name + 1, NULL, NULL);
+         if (pid < 0) {
+            fprintf(stderr, _("Message piping to <%s> failed\n"),
+               np->n_name);
+            *senderror = TRU1;
+            goto jcant;
+         }
+         free_child(pid);
+      } else {
+         char c, *fname = file_expand(np->n_name);
+         if (fname == NULL) {
+            *senderror = TRU1;
+            goto jcant;
+         }
+
+         if ((fout = Zopen(fname, "a", NULL)) == NULL) {
+            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
+               fname, strerror(errno));
+            *senderror = TRU1;
+            goto jcant;
+         }
+         rewind(fin);
+         while ((c = getc(fin)) != EOF)
+            putc(c, fout);
+         if (ferror(fout)) {
+            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
+               fname, _("write error"));
+            *senderror = TRU1;
+         }
+         Fclose(fout);
+      }
+jcant:
+      /* In days of old we removed the entry from the the list; now for sake of
+       * header expansion we leave it in and mark it as deleted */
+      np->n_type |= GDEL;
+      np = np->n_flink;
+      if (image < 0)
+         goto jdelall;
+   }
+jleave:
+   if (fin != NULL)
+      Fclose(fin);
+   for (i = 0; i < pipecnt; ++i)
+      close(fda[i]);
+   if (image >= 0) {
+      close(image);
+      image = -1;
+   }
+   NYD_LEAVE;
+   return names;
+
+jdelall:
+   while (np != NULL) {
+      if (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
+         np->n_type |= GDEL;
+      np = np->n_flink;
+   }
+   goto jleave;
+}
+
+static bool_t
+mightrecord(FILE *fp, struct name *to)
+{
+   char *cp, *cq;
+   char const *ep;
+   bool_t rv = TRU1;
+   NYD_ENTER;
+
+   if (to != NULL) {
+      cp = savestr(skinned_name(to));
+      for (cq = cp; *cq != '\0' && *cq != '@'; ++cq)
+         ;
+      *cq = '\0';
+   } else
+      cp = ok_vlook(record);
+
+   if (cp != NULL) {
+      if ((ep = expand(cp)) == NULL) {
+         ep = "NULL";
+         goto jbail;
+      }
+
+      if (*ep != '/' && *ep != '+' && ok_blook(outfolder) &&
+            which_protocol(ep) == PROTO_FILE) {
+         size_t i = strlen(cp);
+         cq = salloc(i + 1 +1);
+         cq[0] = '+';
+         memcpy(cq + 1, cp, i +1);
+         cp = cq;
+         if ((ep = file_expand(cp)) == NULL) {
+            ep = "NULL";
+            goto jbail;
+         }
+      }
+
+      if (__savemail(ep, fp) != 0) {
+jbail:
+         fprintf(stderr, _("Failed to save message in %s - message not sent\n"),
+            ep);
+         exit_status |= EXIT_ERR;
+         savedeadletter(fp, 1);
+         rv = FAL0;
+      }
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+__savemail(char const *name, FILE *fp)
 {
    FILE *fo;
    char *buf;
@@ -822,10 +1015,10 @@ savemail(char const *name, FILE *fi)
    }
 
    fprintf(fo, "From %s %s", myname, time_current.tc_ctime);
-   fflush_rewind(fi);
-   cnt = fsize(fi);
+   fflush_rewind(fp);
+   cnt = fsize(fp);
    buflen = 0;
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, fi, 0) != NULL) {
+   while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL) {
 #ifdef HAVE_DEBUG /* TODO assert legacy */
       assert(!is_head(buf, buflen));
 #else
@@ -846,26 +1039,11 @@ savemail(char const *name, FILE *fi)
    }
    if (Fclose(fo) != 0)
       rv = -1;
-   fflush_rewind(fi);
+   fflush_rewind(fp);
 jleave:
    free(buf);
    NYD_LEAVE;
    return rv;
-}
-
-static int
-sendmail_internal(void *v, int recipient_record)
-{
-   struct header head;
-   char *str = v;
-   int rv;
-   NYD_ENTER;
-
-   memset(&head, 0, sizeof head);
-   head.h_to = lextract(str, GTO | GFULL);
-   rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
-   NYD_LEAVE;
-   return (rv == 0);
 }
 
 static bool_t
@@ -893,7 +1071,7 @@ _transfer(struct sendbundle *sbp)
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
             sbp->sb_input = ef;
-            if (!start_mta(sbp))
+            if (!__start_mta(sbp))
                rv = FAL0;
             sbp->sb_to = nsave;
             sbp->sb_input = fisave;
@@ -925,14 +1103,14 @@ _transfer(struct sendbundle *sbp)
       ac_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) || !start_mta(sbp)))
+   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__start_mta(sbp)))
       rv = FAL0;
    NYD_LEAVE;
    return rv;
 }
 
 static bool_t
-start_mta(struct sendbundle *sbp)
+__start_mta(struct sendbundle *sbp)
 {
    char const **args = NULL, **t, *mta;
    char *smtp;
@@ -948,7 +1126,7 @@ start_mta(struct sendbundle *sbp)
       } else
          mta = SENDMAIL;
 
-      args = _prepare_mta_args(sbp->sb_to, sbp->sb_hp);
+      args = __prepare_mta_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
          printf(_("Sendmail arguments:"));
          for (t = args; *t != NULL; ++t)
@@ -1022,52 +1200,71 @@ jleave:
    return rv;
 }
 
-static bool_t
-mightrecord(FILE *fp, struct name *to)
+static char const **
+__prepare_mta_args(struct name *to, struct header *hp)
 {
-   char *cp, *cq;
-   char const *ep;
-   bool_t rv = TRU1;
+   size_t vas_count, i, j;
+   char **vas, *cp;
+   char const **args;
    NYD_ENTER;
 
-   if (to != NULL) {
-      cp = savestr(skinned_name(to));
-      for (cq = cp; *cq != '\0' && *cq != '@'; ++cq)
-         ;
-      *cq = '\0';
-   } else
-      cp = ok_vlook(record);
+   if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
+      vas_count = 0;
+      vas = NULL;
+   } else {
+      /* Don't assume anything on the content but do allocate exactly j slots */
+      j = strlen(cp);
+      vas = ac_alloc(sizeof(*vas) * j);
+      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, TRU1);
+   }
 
-   if (cp != NULL) {
-      if ((ep = expand(cp)) == NULL) {
-         ep = "NULL";
-         goto jbail;
-      }
+   i = 4 + smopts_count + vas_count + 2 + 1 + count(to) + 1;
+   args = salloc(i * sizeof(char*));
 
-      if (*ep != '/' && *ep != '+' && ok_blook(outfolder) &&
-            which_protocol(ep) == PROTO_FILE) {
-         size_t i = strlen(cp);
-         cq = salloc(i + 1 +1);
-         cq[0] = '+';
-         memcpy(cq + 1, cp, i +1);
-         cp = cq;
-         if ((ep = file_expand(cp)) == NULL) {
-            ep = "NULL";
-            goto jbail;
-         }
-      }
+   args[0] = ok_vlook(sendmail_progname);
+   if (args[0] == NULL || *args[0] == '\0')
+      args[0] = SENDMAIL_PROGNAME;
+   args[1] = "-i";
+   i = 2;
+   if (ok_blook(metoo))
+      args[i++] = "-m";
+   if (options & OPT_VERB)
+      args[i++] = "-v";
 
-      if (savemail(ep, fp) != 0) {
-jbail:
-         fprintf(stderr, _("Failed to save message in %s - message not sent\n"),
-            ep);
-         exit_status |= EXIT_ERR;
-         savedeadletter(fp, 1);
-         rv = FAL0;
+   for (j = 0; j < smopts_count; ++j, ++i)
+      args[i] = smopts[j];
+
+   for (j = 0; j < vas_count; ++j, ++i)
+      args[i] = vas[j];
+
+   /* -r option?  We may only pass skinned addresses */
+   if (options & OPT_r_FLAG) {
+      if (option_r_arg[0] != '\0')
+         cp = option_r_arg;
+      else if (hp != NULL && hp->h_from != NULL)
+         cp = hp->h_from->n_name;
+      else
+         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      if (cp != NULL) { /* XXX ugh! */
+         args[i++] = "-f";
+         args[i++] = cp;
       }
    }
+
+   /* Terminate option list to avoid false interpretation of system-wide
+    * aliases that start with hyphen */
+   args[i++] = "--";
+
+   /* Receivers follow */
+   for (; to != NULL; to = to->n_flink)
+      if (!(to->n_type & GDEL))
+         args[i++] = to->n_name;
+   args[i] = NULL;
+
+   if (vas != NULL)
+      ac_free(vas);
    NYD_LEAVE;
-   return rv;
+   return args;
 }
 
 static char *
@@ -1403,7 +1600,7 @@ jaskeot:
     * TODO a duplicated list with expanded aliases, then this list is
     * TODO splitted again into the three individual recipient lists (with
     * TODO duplicates removed).
-    * TODO later on we use the merged list for outof() pipe/file saving,
+    * TODO later on we use the merged list for _outof() pipe/file saving,
     * TODO then we eliminate duplicates (again) and then we use that one
     * TODO for mightrecord() and _transfer(), and again.  ... Please ... */
 
@@ -1462,11 +1659,11 @@ jfail_dead:
     * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
 
    /* Deliver pipe and file addressees */
-   to = outof(to, mtf, &_sendout_error);
+   to = _outof(to, mtf, &_sendout_error);
    if (_sendout_error)
       savedeadletter(mtf, FAL0);
 
-   to = elide(to); /* XXX needed only to drop GDELs due to outof()! */
+   to = elide(to); /* XXX needed only to drop GDELs due to _outof()! */
    {  ui32_t cnt = count(to);
       if ((!recipient_record || cnt > 0) &&
             !mightrecord(mtf, (recipient_record ? to : NULL)))
@@ -1732,7 +1929,7 @@ jerr_o:
    Fclose(nfo);
    rewind(nfi);
 
-   to = outof(to, nfi, &_sendout_error);
+   to = _outof(to, nfi, &_sendout_error);
    if (_sendout_error)
       savedeadletter(nfi, FAL0);
 
