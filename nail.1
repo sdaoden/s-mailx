@@ -485,7 +485,15 @@ Message recipients (as specified on the command line or defined in
 `To:', `Cc:' or `Bcc:') may not only be email addressees but can also be
 names of mailboxes and even complete shell command pipe specifications.
 Proper quoting may be necessary, e.g., to embed whitespace characters.
-The rules are:
+If the variable
+.Va expandaddr
+is not set then only network addresses (see
+.Xr mailaddr 7
+for a description of mail addresses) and mailbox names may be used.
+.Pp
+If the variable
+.Va expandaddr
+is set the following rules are used to classify recipient addresses:
 Any name which starts with a `|' (vertical bar) character
 specifies a pipe \(en the command string following the `|' is executed
 and the message is sent to its standard input;
@@ -496,9 +504,7 @@ a mailbox name;
 Any other name which contains a `/' (slash) character but no `!'
 (exclamation mark) or `%' (percent sign) character before also specifies
 a mailbox name;
-What remains is treated as a network address (see
-.Xr mailaddr 7
-for a description of mail addresses).
+What remains is treated as a network address.
 .Pp
 It is possible to create personal distribution lists via the
 .Ic alias
@@ -3692,6 +3698,18 @@ Binary data is always encoded as `base64'.
 If defined, the first character of this option
 gives the character to use in place of `~' to denote
 .Sx "TILDE ESCAPES" .
+.It Va expandaddr
+If set then an extended way of interpreting recipient address
+specifications is used \(en see the section
+.Sx Sending mail
+for more on this.
+To disallow any extended interpretation only in non-interactive mode,
+unless tilde commands were enabled explicitly by using one of the
+command line options
+.Fl ~
+or
+.Fl # ,
+set this to the (case-insensitive) value `restrict'.
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
