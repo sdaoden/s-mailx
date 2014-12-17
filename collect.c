@@ -777,7 +777,8 @@ jcont:
             !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
          /* TODO calls putline(), which *always* appends LF;
           * TODO thus, STDIN with -t will ALWAYS end with LF,
-          * TODO even if no trailing LF and QP CTE */
+          * TODO even if no trailing LF and QP CTE.
+          * TODO when finally changed, update cc-test.sh */
          if (putline(_coll_fp, linebuf, cnt) < 0)
             goto jerr;
          continue;
