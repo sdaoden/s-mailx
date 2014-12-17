@@ -1099,6 +1099,9 @@ c_if(void *v)
    csp->c_else = FAL0;
    _cond_stack = csp;
 
+   if (csp->c_noop)
+      goto jdone;
+
    cp = argv[0];
    if (*cp != '$' && argv[1] != NULL) {
 jesyn:
@@ -1172,6 +1175,8 @@ jesyn:
       csp->c_go = TRU1;
       goto jleave;
    }
+
+jdone:
    rv = 0;
 jleave:
    NYD_LEAVE;
