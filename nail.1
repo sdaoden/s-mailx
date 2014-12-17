@@ -1893,9 +1893,9 @@ option is set.
 .It Ic ghost
 Without arguments it lists all currently defined command aliases,
 so-called ghosts.
-With two arguments it defines a new command alias: the first argument is
-the name under which the second should be accessible.
-The content of the second argument can be just about anything.
+With two or more arguments it defines a new command alias: the first
+argument is the name under which the remaining command line should be
+accessible, the content of which can be just about anything.
 A ghost can be used everywhere a normal command can be used, but always
 takes precedence; any arguments that are given to the command alias are
 joined onto the alias content, and the resulting string forms the
@@ -1903,7 +1903,7 @@ command line that is, in effect, executed.
 Also see
 .Ic unghost .
 .Pp
-.Dl ? ghost ls '!ls -latro'
+.Dl ? ghost ls !ls -Flatr
 .Dl ? ls /usr/local
 .It Ic headers
 (h) Show the current group of headers, the size of which depends on
@@ -4964,8 +4964,18 @@ account XandeX {
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-ghost ls '!ls -latr'
-ghost ps '!ps -xo user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args'
+ghost ls !ls -Fa
+ghost lsr !ls -Far
+ghost ll !ls -Fla
+ghost llr !ls -Flar
+ghost lt !ls -Fat
+ghost ltr !ls -Fatr
+ghost llt !ls -Flat
+ghost lltr !ls -Flatr
+ghost pl !ps -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost plw !ps -ww -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost pla !ps -A -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost plaw !ps -A -ww -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
 .Ed
 .Pp
 When storing passwords in \*(ur appropriate permissions should be set on
