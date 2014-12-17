@@ -152,12 +152,22 @@ _globname(char const *name, enum fexp_mode fexpm)
    sigemptyset(&nset);
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, NULL);
-   i = wordexp(name, &we, 0);
+# ifndef WRDE_NOCMD
+#  define WRDE_NOCMD 0
+# endif
+   i = wordexp(name, &we, WRDE_NOCMD);
    sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
    switch (i) {
    case 0:
       break;
+#ifdef WRDE_CMDSUB
+   case WRDE_CMDSUB:
+      if (!(fexpm & FEXP_SILENT))
+         fprintf(stderr, _("\"%s\": Command substitution not allowed.\n"),
+            name);
+      goto jleave;
+#endif
    case WRDE_NOSPACE:
       if (!(fexpm & FEXP_SILENT))
          fprintf(stderr, _("\"%s\": Expansion buffer overflow.\n"), name);
