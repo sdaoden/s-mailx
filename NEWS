@@ -15,6 +15,71 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.9, 2014-12-17
+-------------------
+
+This is a subminor release to address CVEs 2004-2771 and 2014-7844 [1].
+
+These CVEs address decade old documented behaviour that was supposed to
+be classifieable under "feature" rather than "bug": it is possible to
+use file and pipe addresses, as in "./out.mbox" or "|cat > out.mbox" and
+have the mail delivered accordingly.
+They enforce a new option *expandaddr*, unset by default, which
+specifies wether such special addresses shall be supported or not.
+
+Thanks to Jürgen Daubert and Peter Hofmann.
+
+  [1] http://seclists.org/oss-sec/2014/q4/1066
+
+ChangeLog
+^^^^^^^^^
+
+- In -v / *verbose* mode SSL/TLS certificate date and time information
+  will be printed; until now we only supported UTC times which could
+  result in false messages stating that the datetime is bogus. [16ef155]
+
+- *netrc-lookup* could have matched ambiguous entries. [debbf98]
+
+- *sendmail-arguments* works without "allocating" more destination space
+  by adding space characters to the string. [1c7daaf]
+
+- Always terminate MTA option processing with "--".
+  Part of addressing the CVEs as above: prevent system-wide aliases that
+  start with a hyphen to be interpreted as arguments to the MTA. [597249b]
+
+- New value: *expandaddr*, as above.
+  Extending the CVE S-nail's *expandaddr* can be set to the value
+  "restrict" in which case even a set *expandaddr* doesn't enable file
+  and pipe addresses in non-interactive mode unless -~ or -# command
+  line options were given. [ba8c596]
+
+- fio.c:_globname(): use WRDE_NOCMD if available.
+  Part of addressing the CVEs as above: prevent command substitutions
+  when expand() strings (mailbox names). [7c7134b]
+
+- Drop the "line" statistics counter that could be seen when `copy'ing
+  or `save'ing messages, only keep the "byte" counter.  The former was
+  a lie since it counted the lines of the source- rather than of the
+  destination message.  Bug introduced on 2007-07-16 (in [670ea1c]).
+  We'll reintroduce correct statistics once we can generate them.
+  Could crash S-nail because it assumed false (readonly) buffer sizes.
+
+  I give the credit to Peter Hofmann since i think this is why he
+  insisted on very long, soft-newline continued quoted-printable lines
+  back in the day.  Wasn't seen since the stdio buffer sizes on
+  practically all operating systems are pretty large, and the access in
+  the buffers was read-only (so no canary cheep). [effb676]
+
+- Until now blocks inside of `if' etc. were evaluated (as noops) even if
+  the conditional block was as such a noop.  Therefore non-existing
+  commands etc. would have been recognized as errors.  From now on this
+  is no longer true. [c41d564, dc15be6]
+
+- `ghost's can now defined without quoting. [f183818] E.g.:
+
+    -? ghost ls '!ls -latro'
+    +? ghost ls !ls -Flatr
+
 v14.7.8, 2014-09-29
 -------------------
 

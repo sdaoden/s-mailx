@@ -229,42 +229,46 @@ _ghost(void *v)
 {
    char const **argv = v;
    struct cmd_ghost *lcg, *cg;
-   size_t nl, cl;
+   size_t i, cl, nl;
+   char *cp;
    NYD_ENTER;
 
    /* Show the list? */
    if (*argv == NULL) {
-      printf(_("Command ghosts are:\n"));
-      for (nl = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next) {
-         cl = strlen(cg->name) + 5 + cg->cmd.l + 3;
-         nl += cl;
-         if (UICMP(z, nl, >=, scrnwidth)) {
-            nl = cl;
-            printf("\n");
-         }
-         printf((cg->next != NULL ? "%s -> <%s>, " : "%s -> <%s>\n"),
-            cg->name, cg->cmd.s);
+      FILE *fp;
+
+      if ((fp = Ftmp(NULL, "ghost", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+            NULL)
+         fp = stdout;
+      for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+         fprintf(fp, "%-11s -> %s\n", cg->name, cg->cmd.s);
+      if (fp != stdout) {
+         page_or_print(fp, i);
+         Fclose(fp);
       }
       v = NULL;
       goto jleave;
    }
 
-   /* Request to add new ghost */
-   if (argv[1] == NULL || argv[1][0] == '\0' || argv[2] != NULL) {
-      fprintf(stderr, _("Usage: %s\n"),
-         _("Define a <ghost> of <command>, or list all ghosts"));
-      v = NULL;
-      goto jleave;
-   }
-
-   /* Check that we can deal with this one */
+   /* Request to add a new ghost.  Verify it's a valid name.. */
    if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
-      fprintf(stderr, _("Can't canonicalize `%s'\n"), argv[0]);
+      fprintf(stderr, _("`ghost': can't canonicalize `%s'\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
 
-   /* Always recreate */
+   /* ..and has a command */
+   for (cl = 0, i = 1; (cp = UNCONST(argv[i])) != NULL; ++i)
+      if (*cp != '\0')
+         cl += strlen(cp) + 1; /* SP or NUL */
+   if (cl == 0) {
+      fprintf(stderr, _("`ghost' synopsis: define <ghost> of <command>, "
+         "or list all ghosts\n"));
+      v = NULL;
+      goto jleave;
+   }
+
+   /* If the ghost already exists, recreate */
    for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
       if (!strcmp(cg->name, argv[0])) {
          if (lcg != NULL)
@@ -275,17 +279,22 @@ _ghost(void *v)
          break;
       }
 
-   /* Need a new one */
    nl = strlen(argv[0]) +1;
-   cl = strlen(argv[1]) +1;
    cg = smalloc(sizeof(*cg) - VFIELD_SIZEOF(struct cmd_ghost, name) + nl + cl);
    cg->next = _cmd_ghosts;
+      _cmd_ghosts = cg;
    memcpy(cg->name, argv[0], nl);
-   cg->cmd.s = cg->name + nl;
-   cg->cmd.l = cl -1;
-   memcpy(cg->cmd.s, argv[1], cl);
-
-   _cmd_ghosts = cg;
+   cp = cg->cmd.s = cg->name + nl;
+   cg->cmd.l = cl;
+   while (*++argv != NULL) {
+      i = strlen(*argv);
+      if (i > 0) {
+         memcpy(cp, *argv, i);
+         cp += i;
+         *cp++ = ' ';
+      }
+   }
+   *--cp = '\0';
 jleave:
    NYD_LEAVE;
    return (v == NULL);
@@ -908,7 +917,11 @@ jrestart:
    }
 
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
-      fprintf(stderr, _("Unknown command: `%s'\n"), word);
+      bool_t s = condstack_isskip();
+      if (!s || (options & OPT_D_V))
+         fprintf(stderr, _("Unknown command: `%s'\n"), word);
+      if (s)
+         goto jleave0;
       if (com != NULL) {
          c_cmdnotsupp(NULL);
          com = NULL;

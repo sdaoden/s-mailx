@@ -316,7 +316,7 @@ jleave:
 }
 
 static bool_t
-_nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! */
+_nrc_lookup(struct url *urlp, bool_t only_pass)
 {
    struct nrc_node *nrc, *nrc_wild, *nrc_exact;
    bool_t rv = FAL0;
@@ -345,11 +345,20 @@ _nrc_lookup(struct url *urlp, bool_t only_pass) /* TODO optimize; too tricky!! *
          continue;
       }
 
-   /* TODO _nrc_lookup(): PAIN! init: build sorted tree, single walk that!!
-    * TODO then: verify .netrc (unique fallback entries etc.) */
-   if (!only_pass && !__nrc_find_user(urlp, nrc_exact) &&
-         !__nrc_find_user(urlp, nrc_wild))
-      goto jleave;
+   if (!only_pass && urlp->url_user.s == NULL) {
+      /* Must be an unambiguous entry of its kind */
+      if (nrc_exact != NULL && nrc_exact->nrc_result != NULL)
+         goto jleave;
+      if (__nrc_find_user(urlp, nrc_exact))
+         goto j_user;
+
+      if (nrc_wild != NULL && nrc_wild->nrc_result != NULL)
+         goto jleave;
+      if (!__nrc_find_user(urlp, nrc_wild))
+         goto jleave;
+j_user:
+      ;
+   }
 
    if (__nrc_find_pass(urlp, TRU1, nrc_exact) ||
          __nrc_find_pass(urlp, TRU1, nrc_wild) ||
@@ -413,7 +422,7 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
    NYD2_ENTER;
 
    for (; nrc != NULL; nrc = nrc->nrc_result)
-      if (nrc->nrc_ulen > 0 && urlp->url_user.s == NULL) {
+      if (nrc->nrc_ulen > 0) {
          /* Fake it was part of URL otherwise XXX */
          urlp->url_had_user = TRU1;
          /* That buffer will be duplicated by url_parse() in this case! */
@@ -432,9 +441,14 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
    NYD2_ENTER;
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
-      if (user_match && (nrc->nrc_ulen != urlp->url_user.l ||
-            memcmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
-               urlp->url_user.l)))
+      bool_t um = (nrc->nrc_ulen == urlp->url_user.l &&
+            !memcmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
+               urlp->url_user.l));
+
+      if (user_match) {
+         if (!um)
+            continue;
+      } else if (!um && nrc->nrc_ulen > 0)
          continue;
       if (nrc->nrc_plen == 0)
          continue;

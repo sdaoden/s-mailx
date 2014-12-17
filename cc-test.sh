@@ -2,6 +2,7 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
+ARGS='-n# -Sstealthmua -Sexpandaddr=restrict'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
@@ -17,7 +18,7 @@ grep=${grep:-`command -v grep`}
 
 ##  --  >8  --  8<  --  ##
 
-export SNAIL CONF BODY MBOX MAKE awk cat cksum rm sed grep
+export SNAIL ARGS CONF BODY MBOX MAKE awk cat cksum rm sed grep
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -103,7 +104,7 @@ cksum_test() {
 have_feat() {
    (
    echo 'feat' |
-   MAILRC=/dev/null "${SNAIL}" -n -# |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} |
    ${grep} ${1}
    ) >/dev/null 2>&1
 }
@@ -114,7 +115,7 @@ t_behave() {
    # Test for [d1f1a19]
    ${rm} -f "${MBOX}"
    printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
-      MAILRC=/dev/null "${SNAIL}" -n -# -SPAGER="${cat}" > "${MBOX}"
+      MAILRC=/dev/null "${SNAIL}" ${ARGS} -SPAGER="${cat}" > "${MBOX}"
    cksum_test behave:001 "${MBOX}" '4214021069 15'
 
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
@@ -129,7 +130,7 @@ t_behave() {
 __behave_ifelse() {
    # Nestable conditions test
    ${rm} -f "${MBOX}"
-   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
 		if 0
 		   echo 1.err
 		else
@@ -255,7 +256,7 @@ __behave_ifelse() {
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
-      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" -n -# > "${MBOX}"
+      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
@@ -312,13 +313,13 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 
    printf "behave:s/mime:sign/verify: "
    echo bla |
-   MAILRC=/dev/null "${SNAIL}" -n# \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./VERIFY
    # TODO CHECK
    printf 'verify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" -n# \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
@@ -341,7 +342,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    chmod 0755 ./tsendmail.sh
 
    echo bla |
-   MAILRC=/dev/null "${SNAIL}" -n# \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
@@ -350,7 +351,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       -s 'S/MIME test' recei@ver.com
    # TODO CHECK
    printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" -n# \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
       -Ssendmail=./tsendmail.sh \
@@ -449,26 +450,33 @@ gggggggggggggggg"
 
    # Three tests for MIME-CTE and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
+
+   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" -nSstealthmua -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '2289641826 5632'
+   "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
+   cksum_test content:001-0 "${MBOX}" '2289641826 5632'
+
+   ${rm} -f "${MBOX}"
+   < "${BODY}" MAILRC=/dev/null \
+   "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
+   cksum_test content:001 "${MBOX}" '2898659780 5631'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
-   "${SNAIL}" -n#Sstealthmua -a "${BODY}" -s "${SUB}" \
+   "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
    cksum_test content:002 "${MBOX}" '2289641826 5632'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | MAILRC=/dev/null "${SNAIL}" -nSstealthmua -a "${BODY}" -t
+   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
    cksum_test content:003 "${MBOX}" '2898659780 5631'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua "${MBOX}"
+   echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
    cksum_test content:004 "${MBOX}" '506144051 104'
 
    # Sending of multiple mails in a single invocation
@@ -476,7 +484,7 @@ gggggggggggggggg"
    (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
-   ) | MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua
+   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
    cksum_test content:005 "${MBOX}" '2028749685 277'
 
    ## $BODY CHANGED
@@ -484,27 +492,38 @@ gggggggggggggggg"
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
-   MAILRC=/dev/null "${SNAIL}" -n#Sstealthmua \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:006 "${MBOX}" '1520300594 138'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
+   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
    LC_ALL=C ${awk} 'BEGIN{
       for(i = 0; i < 10000; ++i)
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
       }' |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua -s TestSubject "${MBOX}"
-   cksum_test content:007 "${MBOX}" '2747333583 61729'
+   MAILRC=/dev/null "${SNAIL}" -nSstealthmua -Sexpandaddr \
+      -s TestSubject "${MBOX}"
+   cksum_test content:007-0 "${MBOX}" '2747333583 61729'
+
+   ${rm} -f "${MBOX}"
+   LC_ALL=C ${awk} 'BEGIN{
+      for(i = 0; i < 10000; ++i)
+         printf "\xC3\xBC"
+         #printf "\xF0\x90\x87\x90"
+      }' |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} -s TestSubject "${MBOX}"
+   cksum_test content:007 "${MBOX}" '3343002941 61728'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
 
    #
    ${rm} -f "${MBOX}"
    echo |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
    cksum_test content:008 "${MBOX}" '1428748699 320'
@@ -513,12 +532,12 @@ gggggggggggggggg"
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
-   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua -s "${i}" "${MBOX}"
+   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
    cksum_test content:009 "${MBOX}" '141403131 1663'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
 3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
 6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
@@ -530,7 +549,7 @@ gggggggggggggggg"
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
@@ -540,7 +559,7 @@ gggggggggggggggg"
    # Trailing WS
    ${rm} -f "${MBOX}"
    echo |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -553,7 +572,7 @@ gggggggggggggggg"
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
    echo |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua \
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\

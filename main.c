@@ -396,9 +396,11 @@ _setscreensize(int is_sighdl)
       char *cp;
       long i;
 
-      if ((cp = getenv("LINES")) != NULL && (i = strtol(cp, NULL, 10)) > 0)
+      if ((cp = getenv("LINES")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
+            i < INT_MAX)
          scrnheight = realscreenheight = (int)i;
-      if ((cp = getenv("COLUMNS")) != NULL && (i = strtol(cp, NULL, 10)) > 0)
+      if ((cp = getenv("COLUMNS")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
+            i < INT_MAX)
          scrnwidth = (int)i;
 
       if (scrnwidth != 0 && scrnheight != 0)

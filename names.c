@@ -773,7 +773,9 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */
    fda = NULL; /* Silence cc */
-   for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink)
+   for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink) {
+      if (np->n_type & GDEL)
+         continue;
       switch (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) {
       case NAME_ADDRSPEC_ISFILE:
          ++xcnt;
@@ -782,8 +784,20 @@ outof(struct name *names, FILE *fo, bool_t *senderror)
          ++pipecnt;
          break;
       }
+   }
    if (pipecnt == 0 && xcnt == 0)
       goto jleave;
+
+   /* But are file and pipe addressees allowed? */
+   if ((sh = ok_vlook(expandaddr)) == NULL ||
+         (!(options & OPT_INTERACTIVE) &&
+          (!(options & OPT_TILDE_FLAG) && !asccasecmp(sh, "restrict")))) {
+      fprintf(stderr,
+         _("File or pipe addressees disallowed according to *expandaddr*\n"));
+      *senderror = TRU1;
+      pipecnt = 0; /* Avoid we close FDs we don't own in this path.. */
+      goto jdelall;
+   }
 
    /* Otherwise create an array of file descriptors for each found pipe
     * addressee to get around the dup(2)-shared-file-offset problem, i.e.,

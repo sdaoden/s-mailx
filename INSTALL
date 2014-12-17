@@ -136,6 +136,11 @@ Thank you!
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
 It is assumed that S-nail(1) should work practically everywhere.
 
+Note: for the v14.7.9 subminor that had to be quick only ArchLinux, CRUX
+Linux, Void Linux and NetBSD were updated and tested.  With the specific
+subminor that is, [crawl] is continually on the run, say, and we're
+shortly before a next minor release.
+
 . All 32-bit systems:
   - There _may_ be warnings about format strings, like, e.g.,
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
@@ -151,11 +156,11 @@ It is assumed that S-nail(1) should work practically everywhere.
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux 3.16.3-1-ARCH x86_64
-  - gcc (GCC) 4.9.1 20140903 (prerelease) [gcc-4.9.1-2-x86_64]
+  Linux 3.17.6-1-ARCH x86_64
+  - gcc (GCC) 4.9.2 [gcc-4.9.2-1-x86_64]
     + I think faulty message on longjmp() clobbering on a const variable?
     + The known -Wstrict-overflow warning(s) (this code is address of
-      change in v14.8)
+      change in v14.9)
 
 . CRUX Linux <http://www.crux.nu/>
   CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
@@ -164,8 +169,10 @@ It is assumed that S-nail(1) should work practically everywhere.
 
 . Void Linux <http://www.voidlinux.eu/>
   Void GNU/Linux 3.14.15_2 i686
-  - gcc (GCC) 4.9.1 [gcc-4.9.1_8]
-    + Same notes as for ArchLinux (but with libressl-devel etc.)
+  - gcc (GCC) 4.9.2 [gcc-4.9.2_1]
+    + I think faulty message on longjmp() clobbering on a const variable?
+    + The known -Wstrict-overflow warning(s) (this code is address of
+      change in v14.9)
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.0-STABLE #0 r268038: Mon Jun 30 17:00:39 UTC 2014

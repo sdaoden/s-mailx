@@ -977,6 +977,7 @@ enum okeys {
    ok_v_EDITOR,
    ok_v_encoding,
    ok_v_escape,
+   ok_v_expandaddr,
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
    ok_v_from,

@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" S-nail(1): v14.7.8 / 2014-09-29
-.Dd Sep 29, 2014
-.ds VV \\%v14.7.8
+.\" S-nail(1): v14.7.9 / 2014-12-17
+.Dd Dec 17, 2014
+.ds VV \\%v14.7.9
 .\"
 .ds UV \\*(UA\ \\*(XX
 .\"--MKMAN-START--
@@ -185,6 +185,16 @@ separator persist for an entire (interactive) session and will be passed
 through unchanged to the mail-transfer-agent (MTA).
 Additional MTA arguments can be specified via the option
 .Va sendmail-arguments .
+(The `-i' option will always be passed to the MTA, the option `-m' only
+if the
+.Va metoo
+variable and `-v' only if the
+.Va verbose
+variable are set.
+In conjunction with the
+.Fl r
+command line option \*(UA may pass `-f'.
+Option processing of the MTA will be terminated via a `--' separator.)
 All of these are ignored when mail is send via SMTP data transfer.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
@@ -475,7 +485,15 @@ Message recipients (as specified on the command line or defined in
 `To:', `Cc:' or `Bcc:') may not only be email addressees but can also be
 names of mailboxes and even complete shell command pipe specifications.
 Proper quoting may be necessary, e.g., to embed whitespace characters.
-The rules are:
+If the variable
+.Va expandaddr
+is not set then only network addresses (see
+.Xr mailaddr 7
+for a description of mail addresses) and mailbox names may be used.
+.Pp
+If the variable
+.Va expandaddr
+is set the following rules are used to classify recipient addresses:
 Any name which starts with a `|' (vertical bar) character
 specifies a pipe \(en the command string following the `|' is executed
 and the message is sent to its standard input;
@@ -486,9 +504,7 @@ a mailbox name;
 Any other name which contains a `/' (slash) character but no `!'
 (exclamation mark) or `%' (percent sign) character before also specifies
 a mailbox name;
-What remains is treated as a network address (see
-.Xr mailaddr 7
-for a description of mail addresses).
+What remains is treated as a network address.
 .Pp
 It is possible to create personal distribution lists via the
 .Ic alias
@@ -1070,6 +1086,7 @@ or
 search the users
 .Pa .netrc
 file for a `HOST' specific entry which provides a `login' name.
+This lookup will only succeed if unambiguous (one entry for `HOST').
 .Pp
 If there is still no `USER' then \*(UA will fall back to the user who is
 supposed to run \*(UA: either the name that has been given with the
@@ -1077,7 +1094,7 @@ supposed to run \*(UA: either the name that has been given with the
 command line option (or, equivalent, but with less precedence, the
 environment variable
 .Ev USER ) Ns ,
-or `getpwuid(getuid())' a.k.a. the current user.
+or `getpwuid(getuid())' a.k.a. the current login user.
 The identity of this user has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .It
@@ -1876,9 +1893,9 @@ option is set.
 .It Ic ghost
 Without arguments it lists all currently defined command aliases,
 so-called ghosts.
-With two arguments it defines a new command alias: the first argument is
-the name under which the second should be accessible.
-The content of the second argument can be just about anything.
+With two or more arguments it defines a new command alias: the first
+argument is the name under which the remaining command line should be
+accessible, the content of which can be just about anything.
 A ghost can be used everywhere a normal command can be used, but always
 takes precedence; any arguments that are given to the command alias are
 joined onto the alias content, and the resulting string forms the
@@ -1886,7 +1903,7 @@ command line that is, in effect, executed.
 Also see
 .Ic unghost .
 .Pp
-.Dl ? ghost ls '!ls -latro'
+.Dl ? ghost ls !ls -Flatr
 .Dl ? ls /usr/local
 .It Ic headers
 (h) Show the current group of headers, the size of which depends on
@@ -3681,6 +3698,18 @@ Binary data is always encoded as `base64'.
 If defined, the first character of this option
 gives the character to use in place of `~' to denote
 .Sx "TILDE ESCAPES" .
+.It Va expandaddr
+If set then an extended way of interpreting recipient address
+specifications is used \(en see the section
+.Sx Sending mail
+for more on this.
+To disallow any extended interpretation only in non-interactive mode,
+unless tilde commands were enabled explicitly by using one of the
+command line options
+.Fl ~
+or
+.Fl # ,
+set this to the (case-insensitive) value `restrict'.
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
@@ -4935,8 +4964,18 @@ account XandeX {
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-ghost ls '!ls -latr'
-ghost ps '!ps -xo user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args'
+ghost ls !ls -Fa
+ghost lsr !ls -Far
+ghost ll !ls -Fla
+ghost llr !ls -Flar
+ghost lt !ls -Fat
+ghost ltr !ls -Fatr
+ghost llt !ls -Flat
+ghost lltr !ls -Flatr
+ghost pl !ps -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost plw !ps -ww -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost pla !ps -A -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
+ghost plaw !ps -A -ww -o user,pid,ppid,pcpu,pmem,rss,stat,tty,time,args
 .Ed
 .Pp
 When storing passwords in \*(ur appropriate permissions should be set on
