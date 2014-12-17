@@ -185,6 +185,16 @@ separator persist for an entire (interactive) session and will be passed
 through unchanged to the mail-transfer-agent (MTA).
 Additional MTA arguments can be specified via the option
 .Va sendmail-arguments .
+(The `-i' option will always be passed to the MTA, the option `-m' only
+if the
+.Va metoo
+variable and `-v' only if the
+.Va verbose
+variable are set.
+In conjunction with the
+.Fl r
+command line option \*(UA may pass `-f'.
+Option processing of the MTA will be terminated via a `--' separator.)
 All of these are ignored when mail is send via SMTP data transfer.
 .\" ---
 .Bl -tag -width ".Fl A Ar account"
