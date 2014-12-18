@@ -285,7 +285,7 @@ _ghost(void *v)
       _cmd_ghosts = cg;
    memcpy(cg->name, argv[0], nl);
    cp = cg->cmd.s = cg->name + nl;
-   cg->cmd.l = cl;
+   cg->cmd.l = --cl;
    while (*++argv != NULL) {
       i = strlen(*argv);
       if (i > 0) {
