@@ -191,11 +191,14 @@ static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 
 /* Configure sp->s_ctx via SSL_CONF_CTX if possible, _set_option otherwise */
-static bool_t     _ssl_ctx_conf(struct sock *sp, struct url const *urlp);
+static bool_t     _ssl_ctx_conf(SSL_CTX *ctxp, struct url const *urlp);
 
-static bool_t     _ssl_load_verifications(struct sock *sp);
-static bool_t     _ssl_certificate(struct sock *sp, struct url const *urlp);
+static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
+
+static bool_t     _ssl_certificate(SSL_CTX *ctxp, struct url const *urlp);
+
 static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
+
 static int        smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
                         X509_STORE *store);
 static EVP_CIPHER const * _smime_cipher(char const *name);
@@ -391,7 +394,7 @@ jleave:
 }
 
 static bool_t
-_ssl_ctx_conf(struct sock *sp, struct url const *urlp)
+_ssl_ctx_conf(SSL_CTX *ctxp, struct url const *urlp)
 {
    union {size_t i; int s; sl_i opts;} u;
    char *cp;
@@ -435,7 +438,7 @@ _ssl_ctx_conf(struct sock *sp, struct url const *urlp)
    }
    SSL_CONF_CTX_set_flags(sslccp,
       SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT | SSL_CONF_FLAG_SHOW_ERRORS);
-   SSL_CONF_CTX_set_ssl_ctx(sslccp, sp->s_ctx);
+   SSL_CONF_CTX_set_ssl_ctx(sslccp, ctxp);
 
    u.s = SSL_CONF_cmd(sslccp, "Options", "Bugs");/* TODO *ssl-options* */
    if (u.s != 2)
@@ -504,7 +507,7 @@ jcmderr:
          }
       }
    }
-   SSL_CTX_set_options(sp->s_ctx, u.opts);
+   SSL_CTX_set_options(ctxp, u.opts);
 
 #endif /* !HAVE_OPENSSL_CONF_CTX */
 
@@ -515,7 +518,7 @@ jleave:
 }
 
 static bool_t
-_ssl_load_verifications(struct sock *sp)
+_ssl_load_verifications(SSL_CTX *ctxp)
 {
    char *ca_dir, *ca_file;
    X509_STORE *store;
@@ -533,7 +536,7 @@ _ssl_load_verifications(struct sock *sp)
       ca_file = file_expand(ca_file);
 
    if ((ca_dir != NULL || ca_file != NULL) &&
-         SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
+         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1) {
       char const *m1, *m2, *m3;
 
       if (ca_dir != NULL) {
@@ -547,15 +550,15 @@ _ssl_load_verifications(struct sock *sp)
    }
 
    if (!ok_blook(ssl_no_default_ca) &&
-         SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1) {
+         SSL_CTX_set_default_verify_paths(ctxp) != 1) {
       ssl_gen_err(_("Error loading default CA locations\n"));
       goto jleave;
    }
 
    _ssl_state &= ~SS_VERIFY_ERROR;
    _ssl_msgno = 0;
-   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
-   store = SSL_CTX_get_cert_store(sp->s_ctx);
+   SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
+   store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
 
    rv = TRU1;
@@ -565,7 +568,7 @@ jleave:
 }
 
 static bool_t
-_ssl_certificate(struct sock *sp, struct url const *urlp)
+_ssl_certificate(SSL_CTX *ctxp, struct url const *urlp)
 {
    char *cert, *key, *cp;
    bool_t rv = FAL0;
@@ -584,7 +587,7 @@ _ssl_certificate(struct sock *sp, struct url const *urlp)
    }
    cert = cp;
 
-   if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) != 1) {
+   if (SSL_CTX_use_certificate_chain_file(ctxp, cert) != 1) {
       ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), cert);
       goto jleave;
    }
@@ -602,7 +605,7 @@ _ssl_certificate(struct sock *sp, struct url const *urlp)
       key = cp;
    }
 
-   if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1) {
+   if (SSL_CTX_use_PrivateKey_file(ctxp, key, SSL_FILETYPE_PEM) != 1) {
       ssl_gen_err(_("Can't load private key from file \"%s\"\n"), key);
       goto jleave;
    }
@@ -1071,6 +1074,7 @@ jleave:
 FL enum okay
 ssl_open(struct url const *urlp, struct sock *sp)
 {
+   SSL_CTX *ctxp;
    char *cp;
    enum okay rv = STOP;
    NYD_ENTER;
@@ -1079,30 +1083,30 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    ssl_set_verify_level(urlp);
 
-   if ((sp->s_ctx = SSL_CTX_new(SSLv23_client_method())) == NULL) {
+   if ((ctxp = SSL_CTX_new(SSLv23_client_method())) == NULL) {
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
 
    /* Available with OpenSSL 0.9.6 or later */
 #ifdef SSL_MODE_AUTO_RETRY
-   SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
+   SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
 #endif
 
-   if (!_ssl_ctx_conf(sp, urlp))
+   if (!_ssl_ctx_conf(ctxp, urlp))
       goto jerr1;
-   if (!_ssl_load_verifications(sp))
+   if (!_ssl_load_verifications(ctxp))
       goto jerr1;
-   if (!_ssl_certificate(sp, urlp))
+   if (!_ssl_certificate(ctxp, urlp))
       goto jerr1;
 
    if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
-         SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1) {
+         SSL_CTX_set_cipher_list(ctxp, cp) != 1) {
       ssl_gen_err(_("Invalid cipher(s): %s\n"), cp);
       goto jerr1;
    }
 
-   if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
+   if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
       ssl_gen_err(_("SSL_new() failed"));
       goto jerr1;
    }
@@ -1123,6 +1127,9 @@ ssl_open(struct url const *urlp, struct sock *sp)
       }
    }
 
+   /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
+    * and free it right now -- it is reference counted by sp->s_ssl.. */
+   SSL_CTX_free(ctxp);
    sp->s_use_ssl = 1;
    rv = OKAY;
 jleave:
@@ -1132,8 +1139,7 @@ jerr2:
    SSL_free(sp->s_ssl);
    sp->s_ssl = NULL;
 jerr1:
-   SSL_CTX_free(sp->s_ctx);
-   sp->s_ctx = NULL;
+   SSL_CTX_free(ctxp);
    goto jleave;
 }
 

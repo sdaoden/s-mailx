@@ -1134,27 +1134,13 @@ sclose(struct sock *sp)
          free(sp->s_wbuf);
 # ifdef HAVE_OPENSSL
       if (sp->s_use_ssl) {
-         /* XXX Don't wonder: as of v14.6 there is a problem in the IMAP code in
-          * XXX that if i connect via `file' to an IMAP account, that connection
-          * XXX breaks, and i simply re-`file' to the same account, then it may
-          * XXX happen that the OpenSSL library crashes, in SSL_CTX_free()?,
-          * XXX but more checking is needed.  That is true for 0* as well as for
-          * XXX `OpenSSL 1.0.1f 6 Jan 2014'; i've reported that on @openssl-user
-          * XXX somewhen in november 2013, i.e., the wrong list.  What i still
-          * XXX don't understand, and the reason for why all this NYD_X is here
-          * XXX etc.: the socket is has not been closed, so these SSL_* funs
-          * XXX below have not yet been called on the SSL objects */
-         void *s_ssl = sp->s_ssl, *s_ctx = sp->s_ctx;
-         sp->s_ssl = sp->s_ctx = NULL;
+         void *s_ssl = sp->s_ssl;
+
+         sp->s_ssl = NULL;
          sp->s_use_ssl = 0;
-         NYD_X;
-         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling */
+         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
             ;
-         NYD_X;
          SSL_free(s_ssl);
-         NYD_X;
-         SSL_CTX_free(s_ctx);
-         NYD_X;
       }
 # endif
       i = close(i);

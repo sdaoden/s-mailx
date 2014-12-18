@@ -1247,7 +1247,6 @@ struct sock {                 /* data associated with a socket */
    int         s_use_ssl;     /* SSL is used */
 # ifdef HAVE_OPENSSL
    void        *s_ssl;        /* SSL object */
-   void        *s_ctx;        /* SSL context object */
 # endif
 #endif
    char        *s_wbuf;       /* for buffered writes */
