@@ -179,9 +179,13 @@ static size_t           _ssl_msgno;
 
 static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
+static void       _ssl_free(void *vp);
+#endif
 #if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
 static void       _ssl_atexit(void);
 #endif
+
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
@@ -251,6 +255,13 @@ _ssl_init(void)
    NYD_ENTER;
 
    if (!(_ssl_state & SS_INIT)) {
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS
+# ifdef HAVE_DEBUG
+      CRYPTO_set_mem_ex_functions(&smalloc, &srealloc, &_ssl_free);
+# else
+      CRYPTO_set_mem_functions(&smalloc, &srealloc, &free);
+# endif
+#endif
       SSL_library_init();
       SSL_load_error_strings();
       _ssl_state |= SS_INIT;
@@ -281,6 +292,17 @@ _ssl_init(void)
       _ssl_state |= SS_RAND_INIT;
    NYD_LEAVE;
 }
+
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
+static void
+_ssl_free(void *vp)
+{
+   NYD_ENTER;
+   if (vp != NULL)
+      free(vp);
+   NYD_LEAVE;
+}
+#endif
 
 #if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
 static void

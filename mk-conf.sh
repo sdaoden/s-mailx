@@ -1055,6 +1055,20 @@ int main(void)
 }
 !
       fi # feat_yes MD5 && feat_no NOEXTMD5
+
+      if feat_yes DEVEL; then
+         link_check ossl_memhooks 'for OpenSSL memory hooks' \
+            '#define HAVE_OPENSSL_MEMHOOKS' << \!
+#include <openssl/crypto.h>
+
+int main(void)
+{
+   CRYPTO_set_mem_ex_functions(NULL, NULL, NULL);
+   CRYPTO_set_mem_functions(NULL, NULL, NULL);
+   return 0;
+}
+!
+      fi
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
