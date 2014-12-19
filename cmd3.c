@@ -63,8 +63,7 @@ static void       _bangexp(char **str, size_t *size);
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
 /* `reply' and `Lreply' workhorse */
-static int        _list_reply(int *msgvec, bool_t list_reply,
-                     bool_t recipient_record);
+static int        _list_reply(int *msgvec, enum header_flags hf);
 
 /* Get PTF to implementation of command c (i.e., take care for *flipr*) */
 static int (*     _reply_or_Reply(char c))(int *, bool_t);
@@ -222,11 +221,11 @@ jleave:
 }
 
 static int
-_list_reply(int *msgvec, bool_t list_reply, bool_t recipient_record)
+_list_reply(int *msgvec, enum header_flags hf)
 {
    struct header head;
    struct message *mp;
-   char *rcv, *cp;
+   char const *reply_to, *rcv, *cp;
    enum gfield gf;
    struct name *mft, *np;
    int rv = 1;
@@ -238,9 +237,12 @@ jnext_msg:
    setdot(mp);
 
    memset(&head, 0, sizeof head);
+   head.h_flags = hf;
+
    head.h_subject = _reedit(hfield1("subject", mp));
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
-   if ((rcv = hfield1("reply-to", mp)) == NULL &&
+
+   if ((reply_to = rcv = hfield1("reply-to", mp)) == NULL &&
          (rcv = hfield1("from", mp)) == NULL)
       rcv = nameof(mp, 1);
 
@@ -251,7 +253,7 @@ jnext_msg:
    if ((cp = hfield1("cc", mp)) != NULL)
       np = cat(np, lextract(cp, GCC | gf));
    if (np != NULL)
-      head.h_cc = elide(delete_alternates(np));
+      head.h_cc = delete_alternates(np);
 
    /* To: */
    np = NULL;
@@ -260,80 +262,84 @@ jnext_msg:
    if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = cat(np, lextract(cp, GTO | gf));
    /* Delete my name from reply list, and with it, all my alternate names */
-   np = elide(delete_alternates(np));
-   if (np == NULL)
+   np = delete_alternates(np);
+   if (count(np) == 0)
       np = lextract(rcv, GTO | gf);
-   head.h_to = np;
+   head.h_to = mft = np;
+
+   np = namelist_vaporise_head(&head, FAL0);
+
+   /* The user may have send this to himself, don't ignore that TODO sloppy */
+   if (head.h_to == NULL)
+      head.h_to = mft;
 
    /* Mail-Followup-To: */
    mft = NULL;
    if (ok_vlook(followup_to_honour) != NULL &&
          (cp = hfield1("mail-followup-to", mp)) != NULL &&
-         (mft = np = lextract(cp, GTO | gf)) != NULL) {
+         (mft = np = checkaddrs(lextract(cp, GTO | gf))) != NULL) {
       char const *tr = _("Followup-To `%s%s'");
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
       char *sp = ac_alloc(l);
 
       snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
-      if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0)
-         mft = elide(delete_alternates(np));
-      else
+      if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
+         head.h_cc = NULL;
+         head.h_to = np;
+         head.h_mft = mft = namelist_vaporise_head(&head, FAL0);
+      } else
          mft = NULL;
 
       ac_free(sp);
    }
 
-   /* When this is a list reply, we keep anything that yet is in (.h_)mft, and
-    * append all list-only addresses in .h_to and .h_cc */
-   if (list_reply) { /* XXX improve that */
-      struct name *oto, *occ,
-         *lp = namelist_dup(head.h_to, GEXTRA | GFULL, FAL0, FAL0);
-      lp = cat(lp, namelist_dup(head.h_cc, GEXTRA | GFULL, FAL0, FAL0));
-      lp = elide(delete_alternates(lp));
-
-      oto = head.h_to;
-      occ = head.h_cc;
-      if ((list_reply = (mft == NULL)))
-         head.h_to = head.h_cc = NULL;
-
-      /* Learn about a possibly sending mailing */
+   /* Special massage for list (follow-up) messages */
+   if (mft != NULL || (hf & HF_LIST_REPLY) || ok_blook(followup_to)) {
+      /* Learn about a possibly sending mailing list */
       if ((cp = hfield1("list-post", mp)) != NULL && (cp = skin(cp)) != NULL) {
-         if (is_prefix("mailto:", cp))
+         if (is_prefix("mailto:", cp)) {
             cp += sizeof("mailto:") -1;
-         else
+            /* A special case has been seen on e.g. ietf-announce@ietf.org:
+             * these usually post to multiple groups, with ietf-announce@
+             * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
+             * -announce@ is only used for announcements, say).
+             * So our desire is to honour this request and actively overwrite
+             * List-Post: for our purpose; but only if its a single address */
+            if (reply_to != NULL && asccasecmp(cp, reply_to)) {
+               struct name *x = lextract(reply_to, GEXTRA | gf);
+               if (x != NULL && x->n_flink == NULL)
+                  cp = reply_to;
+            }
+            /* "Automatically `mlist'" the List-Post: address temporarily */
+            if (is_mlist(cp, FAL0) == MLIST_OTHER)
+               head.h_list_post = cp;
+         } else
             cp = NULL;
       }
 
-      /* */
-      while (lp != NULL) {
-         struct name *x = lp;
-         lp = lp->n_flink;
+      /* In case of list replies we actively sort out any non-list recipient,
+       * but _only_ if we did not honour a MFT:, assuming that members of MFT
+       * were there for a reason */
+      if ((hf & HF_LIST_REPLY) && mft == NULL) {
+         struct name *nhp = head.h_to;
+         head.h_to = NULL;
+j_lt_redo:
+         while (nhp != NULL) {
+            np = nhp;
+            nhp = nhp->n_flink;
 
-         if ((cp != NULL && !asccasecmp(cp, x->n_name)) ||
-               is_mlist(x->n_name, FAL0)) {
-            if (list_reply) {
-               x->n_flink = NULL;
-               head.h_to = cat(head.h_to,
-                     namelist_dup(x, GTO | GFULL, FAL0, FAL0));
+            if ((cp != NULL && !asccasecmp(cp, np->n_name)) ||
+                  is_mlist(np->n_name, FAL0) != MLIST_OTHER) {
+               np->n_type = (np->n_type & ~GMASK) | GTO;
+               np->n_flink = head.h_to;
+               head.h_to = np;
             }
-            x->n_flink = mft;
-            mft = x;
+         }
+         if ((nhp = head.h_cc) != NULL) {
+            head.h_cc = NULL;
+            goto j_lt_redo;
          }
       }
-      head.h_mft = mft;
-
-      /* No-go?  XXX improve that */
-      if (oto != NULL) {
-         if (head.h_to == NULL) {
-            head.h_to = oto;
-            head.h_cc = occ;
-         }
-      }
-   }
-   /* Else forcefully overwrite addressees, possible expansion occurs later */
-   else if (mft != NULL) {
-      head.h_cc = NULL;
-      head.h_to = namelist_change_type(mft, GTO | GFULL);
    }
 
    make_ref_and_cs(mp, &head);
@@ -345,12 +351,17 @@ jnext_msg:
             _("Original message content");
    }
 
-   if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
+   if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) == OKAY &&
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 
-   if (*++msgvec != 0)
+   if (*++msgvec != 0) {
+      /* TODO message (error) ring.., less sleep */
+      printf(_("Waiting a second before proceeding to the next message..\n"));
+      fflush(stdout);
+      sleep(1);
       goto jnext_msg;
+   }
    rv = 0;
    NYD_LEAVE;
    return rv;
@@ -373,7 +384,7 @@ _reply(int *msgvec, bool_t recipient_record)
    int rv;
    NYD_ENTER;
 
-   rv = _list_reply(msgvec, FAL0, recipient_record);
+   rv = _list_reply(msgvec, recipient_record ? HF_RECIPIENT_RECORD : HF_NONE);
    NYD_LEAVE;
    return rv;
 }
@@ -793,7 +804,7 @@ c_Lreply(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = _list_reply(v, TRU1, FAL0);
+   rv = _list_reply(v, HF_LIST_REPLY);
    NYD_LEAVE;
    return rv;
 }

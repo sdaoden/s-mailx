@@ -1441,8 +1441,18 @@ enum gfield {
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
+enum header_flags {
+   HF_NONE        = 0,
+   HF_LIST_REPLY  = 1<< 0,
+   HF_MFT_SENDER  = 1<< 1,    /* Add ourselves to Mail-Followup-To: */
+   HF_RECIPIENT_RECORD = 1<<10, /* Save message in file named after rec. */
+   HF__NEXT_SHIFT = 11
+};
+
 /* Structure used to pass about the current state of a message (header) */
 struct header {
+   ui32_t      h_flags;       /* enum header_flags bits */
+   ui32_t      h_dummy;
    struct name *h_to;         /* Dynamic "To:" string */
    char        *h_subject;    /* Subject string */
    struct name *h_cc;         /* Carbon copies string */
@@ -1454,6 +1464,7 @@ struct header {
    struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
+   char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    char        *h_organization; /* overridden "Organization:" field */
 };
 
