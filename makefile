@@ -35,7 +35,9 @@ odevel:
 	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
 	LC_ALL=C $(MAKE) -f ./mk.mk all
 
-_prego = $(SHELL) ./mk-conf.sh
+_prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
+	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
+	$(SHELL) ./mk-conf.sh
 _prestop = if [ -f ./mk.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'The following targets will work: install, all, config';\
