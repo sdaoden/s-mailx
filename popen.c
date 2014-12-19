@@ -546,12 +546,27 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    sstpcpy(cp, ".XXXXXX");
 
    hold_all_sigs();
-#ifdef HAVE_MKSTEMP
+#ifdef HAVE_MKOSTEMP
+   fd = 0;
+   if (!(oflags & OF_REGISTER))
+      /* O_CLOEXEC note: <-> support check included in mk-conf.sh */
+      fd |= O_CLOEXEC;
+   if (oflags & OF_APPEND)
+      fd |= O_APPEND;
+   if ((fd = mkostemp(cp_base, fd)) == -1)
+      goto jfree;
+
+   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1) {
+      close(fd);
+      goto junlink;
+   }
+
+#elif defined HAVE_MKSTEMP
    if ((fd = mkstemp(cp_base)) == -1)
       goto jfree;
-   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1)
-      goto jclose;
-   if (oflags & OF_APPEND) {
+   if (!(oflags & OF_REGISTER))
+      fcntl(fd, F_SETFD, FD_CLOEXEC);
+   if (oflags & OF_APPEND) { /* XXX include CLOEXEC here, drop above, then */
       int f;
 
       if ((f = fcntl(fd, F_GETFL)) == -1 ||
@@ -561,8 +576,9 @@ jclose:
          goto junlink;
       }
    }
-   if (!(oflags & OF_REGISTER))
-      fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1)
+      goto jclose;
 #else
    if (mktemp(cp_base) == NULL)
       goto jfree;
