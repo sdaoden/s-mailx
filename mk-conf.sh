@@ -728,7 +728,19 @@ int main(void)
 !
 fi # have_setlocale
 
-link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
+link_check mkostemp 'for mkostemp()' '#define HAVE_MKOSTEMP' << \!
+#include <stdlib.h>
+#include <fcntl.h>
+int main(void)
+{
+   /* O_CLOEXEC note: <-> support assumed in popen.c */
+   mkostemp("x", O_CLOEXEC | O_APPEND);
+   return 0;
+}
+!
+
+if [ "${have_mkostemp}" != yes ]; then
+   link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -736,6 +748,7 @@ int main(void)
    return 0;
 }
 !
+   fi
 
 # Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
