@@ -835,9 +835,8 @@ jcont:
          goto jcont;
       case 't':
          /* Add to the To list */
-         while ((hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(linebuf + 2, GTO | GFULL)))) == NULL)
-            ;
+         hp->h_to = cat(hp->h_to,
+               checkaddrs(lextract(linebuf + 2, GTO | GFULL)));
          break;
       case 's':
          /* Set the Subject list */
