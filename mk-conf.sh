@@ -8,7 +8,7 @@ export LC_ALL
 if [ -n "${CONFIG}" ]; then
    WANT_ICONV=0
    WANT_SOCKETS=0
-      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
    WANT_IDNA=0
@@ -40,7 +40,8 @@ if [ -n "${CONFIG}" ]; then
    NETSEND)
       WANT_ICONV=1
       WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=require
+         WANT_SSL=1
+         WANT_SMTP=require
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
       WANT_REGEX=1
@@ -52,7 +53,7 @@ if [ -n "${CONFIG}" ]; then
    MAXIMAL)
       WANT_ICONV=1
       WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
+         WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
          WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
@@ -87,12 +88,12 @@ option_update() {
          msg "ERROR: need SOCKETS for required feature IMAP\\n"
          config_exit 13
       fi
-      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SOCKETS=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no IMAP; then
@@ -910,8 +911,9 @@ int main(void)
 }
 !
 
-if feat_yes IPV6; then
-   if link_check ipv6 'for IPv6 functionality' '#define HAVE_IPV6' << \!
+if feat_yes SOCKETS; then
+   link_check getaddrinfo 'for getaddrinfo(3)' \
+      '#define HAVE_GETADDRINFO' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -928,14 +930,7 @@ int main(void)
    return 0;
 }
 !
-   then
-      :
-   else
-      feat_bail_required IPV6
-   fi
-else
-   echo '/* WANT_IPV6=0 */' >> ${h}
-fi # feat_yes IPV6
+fi
 
 if feat_yes SSL; then
    if link_check openssl 'for sufficiently recent OpenSSL' \
@@ -1403,7 +1398,6 @@ printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
@@ -1481,9 +1475,6 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
-#ifdef HAVE_IPV6
-: + Support for Internet Protocol v6 (IPv6)
-#endif
 #ifdef HAVE_SSL
 # ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS (OpenSSL)
@@ -1553,9 +1544,6 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_SOCKETS
 : - Network support
-#endif
-#ifndef HAVE_IPV6
-: - Support for Internet Protocol v6 (IPv6)
 #endif
 #ifndef HAVE_SSL
 : - S/MIME and SSL/TLS

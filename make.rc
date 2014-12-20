@@ -42,14 +42,6 @@ WANT_ICONV=yes
 # related/dependent stuff (GSS-API,SSL); can be "require"d
 WANT_SOCKETS=yes
 
-# If $WANT_SOCKETS: should the IPv6 internet protocol family be searched
-# for and enabled if found?  Can be "require"d
-# TODO NOTE:
-# TODO S-nail does not yet support IPv6 address notation, as in, e.g.,
-# TODO imaps://user1@::1 (or @[::1]), but it will happily establish a
-# TODO connection to imaps://user1@host1 if host1 listens via IPv6
-WANT_IPV6=yes
-
 # If $WANT_SOCKETS: support for SecureSocketLayer (TransportLayerSecurity,
 # TLS), i.e., encrypted socket connections; can be "require"d.
 # This needs OpenSSL libraries (<http://www.openssl.org>)

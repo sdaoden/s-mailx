@@ -1254,7 +1254,7 @@ sopen(struct sock *sp, struct url *urlp)
 # ifdef HAVE_SO_LINGER
    struct linger li;
 # endif
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0, *res;
 # else
@@ -1278,7 +1278,7 @@ sopen(struct sock *sp, struct url *urlp)
       fprintf(stderr, _("Resolving host %s:%s ..."),
          urlp->url_host.s, serv);
 
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    memset(&hints, 0, sizeof hints);
    hints.ai_socktype = SOCK_STREAM;
    if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
@@ -1312,7 +1312,7 @@ sopen(struct sock *sp, struct url *urlp)
       goto jleave;
    }
 
-# else /* HAVE_IPV6 */
+# else /* HAVE_GETADDRINFO */
    if (urlp->url_port == NULL && urlp->url_portno == 0) {
       if ((ep = getservbyname(UNCONST(urlp->url_proto), "tcp")) != NULL)
          urlp->url_portno = ep->s_port;
@@ -1350,7 +1350,7 @@ sopen(struct sock *sp, struct url *urlp)
       sofd = -1;
       goto jleave;
    }
-# endif /* !HAVE_IPV6 */
+# endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
       fputs(_(" connected.\n"), stderr);

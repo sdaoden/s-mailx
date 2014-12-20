@@ -47,7 +47,7 @@
 #include <dirent.h>
 
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
 #  include <sys/socket.h>
 # endif
 
@@ -783,7 +783,7 @@ nodename(int mayoverride)
    struct utsname ut;
    char *hn;
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    struct addrinfo hints, *res;
 # else
    struct hostent *hent;
@@ -797,7 +797,7 @@ nodename(int mayoverride)
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_socktype = SOCK_DGRAM; /* (dummy) */
@@ -817,7 +817,7 @@ nodename(int mayoverride)
 # endif
 #endif
       sys_hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined HAVE_IPV6
+#if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
       if (hn != ut.nodename)
          ac_free(hn);
 #endif
