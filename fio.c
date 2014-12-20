@@ -1245,8 +1245,20 @@ jleave:
    return rv;
 }
 
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
+static int        __sopen_sig; /* TODO someday, we won't need it no more */
+static void
+__sopen_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __sopen_sig = sig;
+   siglongjmp(__sopen_actjmp, 1);
+}
+# endif
+
 FL bool_t
-sopen(struct sock *sp, struct url *urlp)
+sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 {
 # ifdef HAVE_SO_SNDTIMEO
    struct timeval tv;
@@ -1263,8 +1275,14 @@ sopen(struct sock *sp, struct url *urlp)
    struct hostent *hp;
    struct servent *ep;
 # endif
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+   sighandler_type ohup, oint;
+   char const * volatile serv;
+   int volatile sofd = -1;
+# else
    char const *serv;
-   int sofd = -1;
+   int sofd = -1; /* TODO may leak without getaddrinfo(3) support (pre v15.0) */
+# endif
    NYD_ENTER;
 
    /* Connect timeouts after 30 seconds XXX configurable */
@@ -1281,6 +1299,23 @@ sopen(struct sock *sp, struct url *urlp)
 # ifdef HAVE_GETADDRINFO
    memset(&hints, 0, sizeof hints);
    hints.ai_socktype = SOCK_STREAM;
+   res0 = NULL;
+
+   hold_sigs();
+   __sopen_sig = 0;
+   ohup = safe_signal(SIGHUP, &__sopen_onsig);
+   oint = safe_signal(SIGINT, &__sopen_onsig);
+   if (sigsetjmp(__sopen_actjmp, 0)) {
+      fprintf(stderr, "%s\n",
+         (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+      if (sofd >= 0) {
+         close(sofd);
+         sofd = -1;
+         goto jjumped;
+      }
+   }
+   rele_sigs();
+
    if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
       fprintf(stderr, _(" lookup of `%s' failed.\n"), urlp->url_host.s);
       goto jleave;
@@ -1295,6 +1330,7 @@ sopen(struct sock *sp, struct url *urlp)
          fprintf(stderr, _("%sConnecting to %s:%s ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
+
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (sofd >= 0) {
 #  ifdef HAVE_SO_SNDTIMEO
@@ -1306,7 +1342,16 @@ sopen(struct sock *sp, struct url *urlp)
          }
       }
    }
-   freeaddrinfo(res0);
+
+jjumped:
+   if (res0 != NULL)
+      freeaddrinfo(res0);
+
+   hold_sigs();
+   safe_signal(SIGINT, oint);
+   safe_signal(SIGHUP, ohup);
+   rele_sigs();
+
    if (sofd < 0) {
       perror(_(" could not connect"));
       goto jleave;
@@ -1370,13 +1415,44 @@ sopen(struct sock *sp, struct url *urlp)
 
    memset(sp, 0, sizeof *sp);
    sp->s_fd = sofd;
+
+   /* SSL/TLS upgrade? */
 # ifdef HAVE_SSL
-   if (urlp->url_needs_tls && ssl_open(urlp, sp) != OKAY) {
-      sclose(sp);
-      sofd = -1;
+   if (urlp->url_needs_tls) {
+      hold_sigs();
+      ohup = safe_signal(SIGHUP, &__sopen_onsig);
+      oint = safe_signal(SIGINT, &__sopen_onsig);
+      if (sigsetjmp(__sopen_actjmp, 0)) {
+         fprintf(stderr, _("%s during SSL/TLS handshake\n"),
+            (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+         goto jsclose;
+      }
+      rele_sigs();
+
+      if (ssl_open(urlp, sp) != OKAY) {
+jsclose:
+         sclose(sp);
+         sofd = -1;
+      }
+
+      hold_sigs();
+      safe_signal(SIGINT, oint);
+      safe_signal(SIGHUP, ohup);
+      rele_sigs();
    }
-# endif
+# endif /* HAVE_SSL */
+
 jleave:
+   /* May need to bounce the signal to the lex.c trampoline (or wherever) */
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+   if (__sopen_sig != 0) {
+      sigset_t cset;
+      sigemptyset(&cset);
+      sigaddset(&cset, __sopen_sig);
+      sigprocmask(SIG_UNBLOCK, &cset, NULL);
+      kill(0, __sopen_sig);
+   }
+#endif
    NYD_LEAVE;
    return (sofd >= 0);
 }
