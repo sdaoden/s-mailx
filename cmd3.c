@@ -227,7 +227,7 @@ _list_reply(int *msgvec, enum header_flags hf)
    struct message *mp;
    char const *reply_to, *rcv, *cp;
    enum gfield gf;
-   struct name *mft, *np;
+   struct name *rt, *mft, *np;
    int rv = 1;
    NYD_ENTER;
 
@@ -241,9 +241,24 @@ jnext_msg:
 
    head.h_subject = _reedit(hfield1("subject", mp));
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   rt = mft = NULL;
 
-   if ((reply_to = rcv = hfield1("reply-to", mp)) == NULL &&
-         (rcv = hfield1("from", mp)) == NULL)
+   rcv = NULL;
+   if ((reply_to = hfield1("reply-to", mp)) != NULL &&
+         (cp = ok_vlook(reply_to_honour)) != NULL &&
+         (rt = lextract(reply_to, GTO | gf)) != NULL) {
+      char const *tr = _("Reply-To `%s%s'");
+      size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+      char *sp = ac_alloc(l);
+
+      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+      if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
+         rcv = reply_to;
+
+      ac_free(sp);
+   }
+
+   if (rcv == NULL && (rcv = hfield1("from", mp)) == NULL)
       rcv = nameof(mp, 1);
 
    /* Cc: */
@@ -258,7 +273,8 @@ jnext_msg:
    /* To: */
    np = NULL;
    if (rcv != NULL)
-      np = lextract(rcv, GTO | gf);
+      np = (rcv == reply_to) ? namelist_dup(rt, GTO | gf)
+            : lextract(rcv, GTO | gf);
    if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = cat(np, lextract(cp, GTO | gf));
    /* Delete my name from reply list, and with it, all my alternate names */
@@ -298,20 +314,30 @@ jnext_msg:
       /* Learn about a possibly sending mailing list */
       if ((cp = hfield1("list-post", mp)) != NULL && (cp = skin(cp)) != NULL) {
          if (is_prefix("mailto:", cp)) {
-            cp += sizeof("mailto:") -1;
+            struct name *x;
+
             /* A special case has been seen on e.g. ietf-announce@ietf.org:
              * these usually post to multiple groups, with ietf-announce@
              * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
              * -announce@ is only used for announcements, say).
              * So our desire is to honour this request and actively overwrite
              * List-Post: for our purpose; but only if its a single address */
+            cp += sizeof("mailto:") -1;
+
             if (reply_to != NULL && asccasecmp(cp, reply_to)) {
                struct name *x = lextract(reply_to, GEXTRA | gf);
                if (x != NULL && x->n_flink == NULL)
                   cp = reply_to;
             }
+
+            if (cp != reply_to) {
+               x = lextract(cp, GEXTRA | gf);
+               if (x == NULL || x->n_flink != NULL)
+                  cp = NULL;
+            }
+
             /* "Automatically `mlist'" the List-Post: address temporarily */
-            if (is_mlist(cp, FAL0) == MLIST_OTHER)
+            if (cp != NULL && is_mlist(cp, FAL0) == MLIST_OTHER)
                head.h_list_post = cp;
          } else
             cp = NULL;
@@ -403,12 +429,33 @@ _Reply(int *msgvec, bool_t recipient_record)
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
    for (ap = msgvec; *ap != 0; ++ap) {
+      char const *rp;
+      struct name *rt;
+
       mp = message + *ap - 1;
       touch(mp);
       setdot(mp);
-      if ((cp = hfield1("reply-to", mp)) == NULL)
-         if ((cp = hfield1("from", mp)) == NULL)
-            cp = nameof(mp, 2);
+
+      if ((rp = hfield1("reply-to", mp)) != NULL &&
+            (cp = ok_vlook(reply_to_honour)) != NULL &&
+            (rt = lextract(rp, GTO | gf)) != NULL) {
+         char const *tr = _("Reply-To `%s%s'");
+         size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+
+         char *sp = ac_alloc(l);
+         si8_t rv;
+         snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+         rv = quadify(cp, UIZ_MAX, sp, TRU1);
+         ac_free(sp);
+
+         if (rv > FAL0) {
+            head.h_to = cat(head.h_to, rt);
+            continue;
+         }
+      }
+
+      if ((cp = hfield1("from", mp)) == NULL)
+         cp = nameof(mp, 2);
       head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
    }
    if (head.h_to == NULL)

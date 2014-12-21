@@ -707,7 +707,7 @@ However, all fully qualified list addresses are matched via a fast
 dictionary, whereas expressions are placed in (a) list(s) which is (are)
 matched sequentially.
 .Bd -literal -offset indent
-set followup-to followup-to-honour=ask-yes
+set followup-to followup-to-honour=ask-yes reply-to-honour=ask-yes
 mlist a1@b1.c1 a2@b2.c2 .*@lists.c3
 mlsubscribe a4@b4.c4 exact@lists.c3
 .Ed
@@ -739,9 +739,10 @@ addressed and not all of them are subscribed lists.
 For convenience \*(UA will, temporarily, automatically add a list
 address that is presented in the `List-To:' header of a message that is
 being respondend to to the list of known mailing lists; shall that
-header have existed \*(UA will instead use an also set `Reply-To:' for
-this purpose in order to accept the list administrators wish (but only
-if this header provides a single address).
+header have existed \*(UA will instead, dependend on the variable
+.Va reply-to-honour ,
+use an also set `Reply-To:' for this purpose in order to accept the list
+administrators wish (but only if this header provides a single address).
 .\" }}}
 .\"
 .\" }}} (Usage introduction)
@@ -2380,7 +2381,8 @@ will exchange this command with
 (r) Take a message and group-responds to it by addressing the sender
 and all recipients.
 .Va followup-to ,
-.Va followup-to-honour
+.Va followup-to-honour ,
+.Va reply-to-honour
 as well as
 .Va recipients-in-cc
 influence responding behaviour.
@@ -4484,6 +4486,13 @@ header.
 Members of this list are handled as if they were in the
 .Ic alternates
 list.
+.It Va reply-to-honour
+Controls wether a `Reply-To:' header is honoured when replying to
+a message via
+.Ic reply
+or
+.Ic Lreply .
+This is a quadoption; if set without a value it defaults to `yes'.
 .It Va screen
 When \*(UA initially prints the message headers it determines the number
 to print by looking at the speed of the terminal.
@@ -5200,10 +5209,11 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager crt= followup-to followup-to-honour \e
+    colour-pager crt= followup-to followup-to-honour=ask-yes \e
     history-gabby mime-counter-evidence=2 \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
-    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1
+    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
+    reply-to-honour=ask-yes
 
 # When `p'rinting messages, show only these headers
 # (use `P'rint for all headers and `S'how for raw message)

@@ -1052,6 +1052,7 @@ enum okeys {
    ok_v_record,
    ok_v_reply_strings,
    ok_v_replyto,
+   ok_v_reply_to_honour,
    ok_v_screen,
    ok_v_sendcharsets,
    ok_v_sender,
