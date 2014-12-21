@@ -246,7 +246,7 @@ jnext_msg:
    rcv = NULL;
    if ((reply_to = hfield1("reply-to", mp)) != NULL &&
          (cp = ok_vlook(reply_to_honour)) != NULL &&
-         (rt = lextract(reply_to, GTO | gf)) != NULL) {
+         (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT)) != NULL) {
       char const *tr = _("Reply-To `%s%s'");
       size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
       char *sp = ac_alloc(l);
@@ -283,9 +283,8 @@ jnext_msg:
       np = lextract(rcv, GTO | gf);
    head.h_to = mft = np;
 
-   np = namelist_vaporise_head(&head, FAL0);
-
-   /* The user may have send this to himself, don't ignore that TODO sloppy */
+   /* The user may have send this to himself, don't ignore that */
+   namelist_vaporise_head(&head, EACM_NORMAL, FAL0);
    if (head.h_to == NULL)
       head.h_to = mft;
 
@@ -293,7 +292,7 @@ jnext_msg:
    mft = NULL;
    if (ok_vlook(followup_to_honour) != NULL &&
          (cp = hfield1("mail-followup-to", mp)) != NULL &&
-         (mft = np = checkaddrs(lextract(cp, GTO | gf))) != NULL) {
+         (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT)) != NULL) {
       char const *tr = _("Followup-To `%s%s'");
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
       char *sp = ac_alloc(l);
@@ -302,7 +301,7 @@ jnext_msg:
       if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
          head.h_cc = NULL;
          head.h_to = np;
-         head.h_mft = mft = namelist_vaporise_head(&head, FAL0);
+         head.h_mft = mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0);
       } else
          mft = NULL;
 
@@ -325,13 +324,13 @@ jnext_msg:
             cp += sizeof("mailto:") -1;
 
             if (reply_to != NULL && asccasecmp(cp, reply_to)) {
-               struct name *x = lextract(reply_to, GEXTRA | gf);
+               x = checkaddrs(lextract(reply_to, GEXTRA | gf), EACM_STRICT);
                if (x != NULL && x->n_flink == NULL)
                   cp = reply_to;
             }
 
             if (cp != reply_to) {
-               x = lextract(cp, GEXTRA | gf);
+               x = checkaddrs(lextract(cp, GEXTRA | gf), EACM_STRICT);
                if (x == NULL || x->n_flink != NULL)
                   cp = NULL;
             }
@@ -438,7 +437,7 @@ _Reply(int *msgvec, bool_t recipient_record)
 
       if ((rp = hfield1("reply-to", mp)) != NULL &&
             (cp = ok_vlook(reply_to_honour)) != NULL &&
-            (rt = lextract(rp, GTO | gf)) != NULL) {
+            (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT)) != NULL) {
          char const *tr = _("Reply-To `%s%s'");
          size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
 

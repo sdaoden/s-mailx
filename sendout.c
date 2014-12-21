@@ -45,6 +45,14 @@
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
+enum fmt_flags {
+   FMT_DOMIME  = 1<<0,
+   FMT_COMMA   = GCOMMA,
+   FMT_FILES   = GFILES,
+   _FMT_GMASK  = FMT_COMMA | FMT_FILES
+};
+CTA(!(_FMT_GMASK & FMT_DOMIME));
+
 static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
 static bool_t  _sendout_error;
@@ -109,8 +117,8 @@ static char const ** __prepare_mta_args(struct name *to, struct header *hp);
 static char *        _message_id(struct header *hp);
 
 /* Format the given header line to not exceed 72 characters */
-static int           fmt(char const *str, struct name *np, FILE *fo, int comma,
-                        int dropinvalid, int domime);
+static int           fmt(char const *str, struct name *np, FILE *fo,
+                        enum fmt_flags ff);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
 static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
@@ -129,7 +137,8 @@ _putname(char const *line, enum gfield w, enum sendaction action,
       *xp = np;
    if (np == NULL)
       ;
-   else if (fmt(prefix, np, fo, w & GCOMMA, 0, (action != SEND_TODISP)))
+   else if (fmt(prefix, np, fo, ((w & GCOMMA) |
+         ((action != SEND_TODISP) ? FMT_DOMIME : 0))))
       rv = OKAY;
    else if (gotcha != NULL)
       ++(*gotcha);
@@ -672,14 +681,12 @@ _puthead(bool_t gen_message, struct header *hp, FILE *fo, enum gfield w,
 #define FMT_CC_AND_BCC()   \
 do {\
    if (hp->h_cc != NULL && (w & GCC)) {\
-      if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
+      if (fmt("Cc:", hp->h_cc, fo, ff))\
          goto jleave;\
       ++gotcha;\
    }\
    if (hp->h_bcc != NULL && (w & GBCC)) {\
-      if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
+      if (fmt("Bcc:", hp->h_bcc, fo, ff))\
          goto jleave;\
       ++gotcha;\
    }\
@@ -690,6 +697,7 @@ do {\
    struct name *np, *fromasender = NULL;
    int stealthmua, rv = 1;
    bool_t nodisp;
+   enum fmt_flags ff;
    NYD_ENTER;
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
@@ -698,6 +706,7 @@ do {\
       stealthmua = 0;
    gotcha = 0;
    nodisp = (action != SEND_TODISP);
+   ff = (w & (GCOMMA | GFILES)) | (nodisp ? FMT_DOMIME : 0);
 
    if (w & GDATE)
       mkdate(fo, "Date"), ++gotcha;
@@ -705,7 +714,7 @@ do {\
       struct name *fromf = NULL, *senderf = NULL;
 
       if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+         if (fmt("From:", hp->h_from, fo, ff))
             goto jleave;
          ++gotcha;
          fromf = hp->h_from;
@@ -716,7 +725,7 @@ do {\
       }
 
       if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
+         if (fmt("Sender:", hp->h_sender, fo, ff))
             goto jleave;
          ++gotcha;
          senderf = hp->h_sender;
@@ -741,7 +750,7 @@ do {\
    }
 
    if (hp->h_to != NULL && w & GTO) {
-      if (fmt("To:", hp->h_to, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+      if (fmt("To:", hp->h_to, fo, ff))
          goto jleave;
       ++gotcha;
    }
@@ -779,13 +788,17 @@ do {\
    }
 
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
-      fmt("References:", np, fo, 0, 1, 0);
+      fmt("References:", np, fo, 0);
       if (np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np, 0)) {
-            fprintf(fo, "In-Reply-To: %s\n", np->n_name);
+         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOLOG)) {
+            fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
+         } else {
+            fprintf(stderr, _("Invalid address in mail header: \"%s\"\n"),
+               np->n_name);
+            goto jleave;
          }
       }
    }
@@ -797,8 +810,10 @@ do {\
          np = namelist_dup(np, np->n_type);
       else if ((addr = ok_vlook(replyto)) != NULL)
          np = lextract(addr, GEXTRA | GFULL);
-      if (np != NULL && (np = elide(checkaddrs(usermap(np, TRU1)))) != NULL) {
-         if (fmt("Reply-To:", np, fo, w & GCOMMA, 0, nodisp))
+      if (np != NULL &&
+            (np = elide(checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG))
+               ) != NULL) {
+         if (fmt("Reply-To:", np, fo, ff))
             goto jleave;
          ++gotcha;
       }
@@ -844,8 +859,10 @@ do {\
             case MLIST_OTHER:
                if (!(f & HF_LIST_REPLY)) {
 j_mft_add:
-                  x->n_flink = mft;
-                  mft = x;
+                  if (!is_addr_invalid(x, EACM_STRICT | EACM_NOLOG)) {
+                     x->n_flink = mft;
+                     mft = x;
+                  } /* XXX write some warning?  if verbose?? */
                   continue;
                }
                /* And if this is a reply that honoured a MFT: header then we'll
@@ -870,7 +887,7 @@ j_mft_add:
                mft = np;
             }
 
-            if (fmt("Mail-Followup-To:", mft, fo, w & GCOMMA, 0, nodisp))
+            if (fmt("Mail-Followup-To:", mft, fo, ff))
                goto jleave;
             ++gotcha;
          }
@@ -927,8 +944,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
       goto jleave;
    }
 
-   if (fmt("Disposition-Notification-To:", nalloc(UNCONST(from), 0), fo,
-         GFILES, TRU1, 0))
+   if (fmt("Disposition-Notification-To:", nalloc(UNCONST(from), 0), fo, 0))
       rv = FAL0;
 jleave:
    NYD_LEAVE;
@@ -978,24 +994,14 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
    if (pipecnt == 0 && xcnt == 0)
       goto jleave;
 
-   /* But are file and pipe addressees allowed? */
-   if ((sh = ok_vlook(expandaddr)) == NULL ||
-         (!(options & OPT_INTERACTIVE) &&
-          (!(options & OPT_TILDE_FLAG) && !asccasecmp(sh, "restrict")))) {
-      fprintf(stderr,
-         _("File or pipe addressees disallowed according to *expandaddr*\n"));
-      *senderror = TRU1;
-      pipecnt = 0; /* Avoid we close FDs we don't own in this path.. */
-      goto jdelall;
-   }
-
    /* Otherwise create an array of file descriptors for each found pipe
     * addressee to get around the dup(2)-shared-file-offset problem, i.e.,
     * each pipe subprocess needs its very own file descriptor, and we need
     * to deal with that.
     * To make our life a bit easier let's just use the auto-reclaimed
     * string storage */
-   if (pipecnt == 0) {
+   if (pipecnt == 0 || (options & OPT_DEBUG)) {
+      pipecnt = 0;
       fda = NULL;
       sh = NULL;
    } else {
@@ -1006,11 +1012,20 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          sh = XSHELL;
    }
 
-   for (np = names; np != NULL;) {
-      if (!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)) {
-         np = np->n_flink;
+   for (np = names; np != NULL; np = np->n_flink) {
+      if (!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE))
+         continue;
+
+      /* In days of old we removed the entry from the the list; now for sake of
+       * header expansion we leave it in and mark it as deleted */
+      np->n_type |= GDEL;
+
+      if (options & OPT_DEBUG) {
+         fprintf(stderr, _(">>> Would write message via \"%s\"\n"), np->n_name);
          continue;
       }
+      if (options & OPT_VERBVERB)
+         fprintf(stderr, _(">>> Writing message via \"%s\"\n"), np->n_name);
 
       /* See if we have copied the complete message out yet.  If not, do so */
       if (image < 0) {
@@ -1119,14 +1134,12 @@ jcantfout:
          }
          Fclose(fout);
       }
+
 jcant:
-      /* In days of old we removed the entry from the the list; now for sake of
-       * header expansion we leave it in and mark it as deleted */
-      np->n_type |= GDEL;
-      np = np->n_flink;
       if (image < 0)
          goto jdelall;
    }
+
 jleave:
    if (fin != NULL)
       Fclose(fin);
@@ -1529,15 +1542,14 @@ jleave:
 }
 
 static int
-fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
-   int domime)
+fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
 {
    enum {
       m_INIT   = 1<<0,
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
-      m_CSEEN  = 1<<3
-   } m = (flags & GCOMMA) ? m_COMMA : 0;
+      m_CSEEN  = 2<<3
+   } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
    int rv = 1;
    NYD_ENTER;
@@ -1545,51 +1557,51 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
    col = strlen(str);
    if (col) {
       fwrite(str, sizeof *str, col, fo);
-      if (flags & GFILES)
-         goto jstep;
 #define __X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
-      if (__X("reply-to:") || __X("mail-followup-to:")) {
+      if (ff & GFILES) {
+         ;
+      } else if (__X("reply-to:") || __X("mail-followup-to:") ||
+            __X("references:") || __X("disposition-notification-to:"))
          m |= m_NOPF;
-         goto jstep;
-      }
-      if (ok_blook(add_file_recipients))
-         goto jstep;
-      if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
+      else if (ok_blook(add_file_recipients)) {
+         ;
+      } else if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
          m |= m_NOPF;
 #undef __X
    }
-jstep:
+
    for (; np != NULL; np = np->n_flink) {
+      if (is_addr_invalid(np, EACM_NONE | EACM_NOLOG))
+         continue;
+      /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
          continue;
-      if (is_addr_invalid(np, !dropinvalid)) {
-         if (dropinvalid)
-            continue;
-         else
-            goto jleave;
-      }
+
       if ((m & (m_INIT | m_COMMA)) == (m_INIT | m_COMMA)) {
-         putc(',', fo);
+         if (putc(',', fo) == EOF)
+            goto jleave;
          m |= m_CSEEN;
          ++col;
       }
       len = strlen(np->n_fullname);
       ++col; /* The separating space */
       if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
-         fputs("\n ", fo);
+         if (fputs("\n ", fo) == EOF)
+            goto jleave;
          col = 1;
          m &= ~m_CSEEN;
       } else
          putc(' ', fo);
       m = (m & ~m_CSEEN) | m_INIT;
       len = xmime_write(np->n_fullname, len, fo,
-            (domime ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+            ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
       if (len < 0)
          goto jleave;
       col += len;
    }
-   putc('\n', fo);
-   rv = 0;
+
+   if (putc('\n', fo) != EOF)
+      rv = 0;
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1623,7 +1635,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
                &senderfield))
             goto jleave;
       }
-      if (fmt("Resent-To:", to, fo, 1, 1, 0))
+      if (fmt("Resent-To:", to, fo, FMT_COMMA))
          goto jleave;
       if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
             (cp = _message_id(NULL)) != NULL)
@@ -1742,9 +1754,11 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    /*  */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
-      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL)));
+      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
+            EACM_NORMAL));
    if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
-      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL)));
+      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
+            EACM_NORMAL));
 
    /* Collect user's mail from standard input.  Get the result as mtf */
    mtf = collect(hp, printheaders, quote, quotefile, doprefix);
@@ -1812,7 +1826,7 @@ jaskeot:
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   to = namelist_vaporise_head(hp, TRU1);
+   to = namelist_vaporise_head(hp, EACM_NORMAL, TRU1);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
       _sendout_error = TRU1;
@@ -1941,7 +1955,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if ((to = checkaddrs(to)) == NULL) {
+   if ((to = checkaddrs(to, EACM_NORMAL)) == NULL) {
       _sendout_error = TRU1;
       goto jleave;
    }

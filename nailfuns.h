@@ -903,7 +903,8 @@ FL char const * skip_comment(char const *cp);
 FL char const * routeaddr(char const *name);
 
 /* Check if a name's address part contains invalid characters */
-FL int         is_addr_invalid(struct name *np, int putmsg);
+FL bool_t      is_addr_invalid(struct name *np,
+                  enum expand_addr_check_mode eacm);
 
 /* Does *NP* point to a file or pipe addressee? */
 #define is_fileorpipe_addr(NP)   \
@@ -1338,13 +1339,15 @@ FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
 /* Check all addresses in np and delete invalid ones */
-FL struct name * checkaddrs(struct name *np);
+FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm);
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases, dropping alternates etc.  After updating hp to the new state this
- * returns a flat list of all addressees, which may be NULL */
-FL struct name * namelist_vaporise_head(struct header *hp, bool_t metoo);
+ * aliases etc.  eacm is passed to checkaddrs(), metoo is passed to usermap().
+ * After updating hp to the new state this returns a flat list of all
+ * addressees, which may be NULL */
+FL struct name * namelist_vaporise_head(struct header *hp,
+                  enum expand_addr_check_mode eacm, bool_t metoo);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */

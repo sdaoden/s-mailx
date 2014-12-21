@@ -668,25 +668,28 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
    while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
-         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL)));
+         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
+               EACM_NORMAL));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
-         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL)));
+         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
+               EACM_NORMAL));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
-         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL)));
+         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
+               EACM_NORMAL));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          ++seenfields;
          hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
          ++seenfields;
          hq->h_sender = cat(hq->h_sender,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)
@@ -871,42 +874,62 @@ jleave:
    return rp;
 }
 
-FL int
-is_addr_invalid(struct name *np, int putmsg)
+FL bool_t
+is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 {
-   char cbuf[sizeof "'\\U12340'"], *name;
-   int f, ok8bit;
-   ui32_t c;
-   char const *fmt, *cs;
+   char cbuf[sizeof "'\\U12340'"];
+   char const *cs;
+   int f;
+   bool_t rv;
    NYD_ENTER;
 
-   name = np->n_name;
    f = np->n_flags;
-   ok8bit = 1;
-   fmt = "'\\x%02X'";
+   rv = ((f & NAME_ADDRSPEC_INVALID) != 0);
 
-   if (!(f & NAME_ADDRSPEC_INVALID) || !putmsg || (f & NAME_ADDRSPEC_ERR_EMPTY))
-      goto jleave;
+   if (!rv) {
+      if ((eacm & EACM_MODE_MASK) != EACM_NONE &&
+            (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
+            ((eacm & EACM_STRICT) || (cs = ok_vlook(expandaddr)) == NULL ||
+             (!(options & OPT_INTERACTIVE) && !(options & OPT_TILDE_FLAG) &&
+              !asccasecmp(cs, "restrict")))) {
+         cs = ((eacm & EACM_STRICT)
+            ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
+            : _("\"%s\"%s: *expandaddr* doesn't allow file or pipe address\n"));
+         cbuf[0] = '\0';
+         rv = TRU1;
+         if (!(eacm & EACM_NOLOG))
+            goto jprint;
+      }
+   }
+   /* Not a file or pipe */
+   else if ((eacm & EACM_NOLOG) || (f & NAME_ADDRSPEC_ERR_EMPTY)) {
+      ;
+   } else {
+      ui32_t c;
+      char const *fmt = "'\\x%02X'";
+      bool_t ok8bit = TRU1;
 
-   if (f & NAME_ADDRSPEC_ERR_IDNA)
-      cs = _("Invalid domain name: \"%s\", character %s\n"),
-      fmt = "'\\U%04X'",
-      ok8bit = 0;
-   else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-      cs = _("\"%s\" contains invalid %s sequence\n");
-   else
-      cs = _("\"%s\" contains invalid character %s\n");
+      if (f & NAME_ADDRSPEC_ERR_IDNA)
+         cs = _("Invalid domain name: \"%s\", character %s\n"),
+         fmt = "'\\U%04X'",
+         ok8bit = FAL0;
+      else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
+         cs = _("\"%s\" contains invalid %s sequence\n");
+      else
+         cs = _("\"%s\" contains invalid character %s\n");
 
-   c = NAME_ADDRSPEC_ERR_GETWC(f);
-   if (ok8bit && c >= 040 && c <= 0177)
-      snprintf(cbuf, sizeof cbuf, "'%c'", c);
-   else
-      snprintf(cbuf, sizeof cbuf, fmt, c);
+      c = NAME_ADDRSPEC_ERR_GETWC(f);
+      if (ok8bit && c >= 040 && c <= 0177)
+         snprintf(cbuf, sizeof cbuf, "'%c'", c);
+      else
+         snprintf(cbuf, sizeof cbuf, fmt, c);
 
-   fprintf(stderr, cs, name, cbuf);
-jleave:
+jprint:
+      fprintf(stderr, cs, np->n_name, cbuf);
+   }
+
    NYD_LEAVE;
-   return ((f & NAME_ADDRSPEC_INVALID) != 0);
+   return rv;
 }
 
 FL char *

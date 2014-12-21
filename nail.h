@@ -635,6 +635,15 @@ enum authtype {
    AUTHTYPE_GSSAPI   = 1<<4
 };
 
+enum expand_addr_check_mode {
+   EACM_NONE      = 0,        /* Don't care about *expandaddr* */
+   EACM_NORMAL    = 1<<0,     /* Use our normal *expandaddr* checking */
+   EACM_STRICT    = 1<<1,     /* Never allow any file or pipe addresse */
+   EACM_MODE_MASK = 3,        /* Note the modes are mutual */
+
+   EACM_NOLOG     = 1<<2      /* Don't log check errors */
+};
+
 enum colourspec {
    COLOURSPEC_MSGINFO,
    COLOURSPEC_PARTINFO,

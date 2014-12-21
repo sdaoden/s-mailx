@@ -1136,20 +1136,20 @@ grab_names(char const *field, struct name *np, int comma, enum gfield gflags)
 jloop:
    np = lextract(readstr_input(field, detract(np, comma)), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
-      if (is_addr_invalid(nq, 1))
+      if (is_addr_invalid(nq, EACM_NONE))
          goto jloop;
    NYD_LEAVE;
    return np;
 }
 
 FL struct name *
-checkaddrs(struct name *np)
+checkaddrs(struct name *np, enum expand_addr_check_mode eacm)
 {
    struct name *n;
    NYD_ENTER;
 
    for (n = np; n != NULL;) {
-      if (is_addr_invalid(n, TRU1)) {
+      if (is_addr_invalid(n, eacm)) {
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
          if (n->n_flink)
@@ -1164,7 +1164,8 @@ checkaddrs(struct name *np)
 }
 
 FL struct name *
-namelist_vaporise_head(struct header *hp, bool_t metoo)
+namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
+   bool_t metoo)
 {
    struct name *tolist, *np, **npp;
    NYD_ENTER;
@@ -1172,7 +1173,7 @@ namelist_vaporise_head(struct header *hp, bool_t metoo)
    tolist = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), metoo);
    hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 
-   tolist = elide(checkaddrs(/*metoo ? tolist : delete_alternates*/(tolist)));
+   tolist = elide(checkaddrs(tolist, eacm));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
       switch (np->n_type & (GDEL | GMASK)) {

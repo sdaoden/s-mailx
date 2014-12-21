@@ -618,12 +618,12 @@ main(int argc, char *argv[])
       case 'b':
          /* Get Blind Carbon Copy Recipient list */
          options |= OPT_SENDMODE;
-         bcc = cat(bcc, checkaddrs(lextract(_oarg, GBCC | GFULL)));
+         bcc = cat(bcc, lextract(_oarg, GBCC | GFULL));
          break;
       case 'c':
          /* Get Carbon Copy Recipient list */
          options |= OPT_SENDMODE;
-         cc = cat(cc, checkaddrs(lextract(_oarg, GCC | GFULL)));
+         cc = cat(cc, lextract(_oarg, GCC | GFULL));
          break;
       case 'D':
 #ifdef HAVE_IMAP
@@ -704,7 +704,7 @@ main(int argc, char *argv[])
          if ((option_r_arg = _oarg)[0] != '\0') {
             struct name *fa = nalloc(_oarg, GFULL);
 
-            if (is_addr_invalid(fa, 1) || is_fileorpipe_addr(fa)) {
+            if (is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)) {
                fprintf(stderr, _("Invalid address argument with -r\n"));
                goto jusage;
             }
@@ -807,7 +807,7 @@ jusage:
       }
    } else {
       for (;;) {
-         to = cat(to, checkaddrs(lextract(cp, GTO | GFULL)));
+         to = cat(to, lextract(cp, GTO | GFULL));
          if ((cp = argv[++i]) == NULL)
             break;
          if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0') {
