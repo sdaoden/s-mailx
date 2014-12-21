@@ -61,6 +61,8 @@
 .\" .Sh SYNOPSIS {{{
 .Sh SYNOPSIS
 .Nm \*(ua
+.Fl h | -help
+.Nm \*(ua
 .Op Fl BDdEFintv~
 .Op Fl A Ar account
 .Op Fl a Ar attachment
@@ -261,6 +263,11 @@ Print a header summary of all messages and exit.
 A configurable summary view is available via the
 .Fl L
 option.
+.It Fl h
+Print a short usage summary.
+Because of widespread use a
+.Fl -help
+argument will have the same effect.
 .It Fl i
 Set the
 .Va ignore
