@@ -1338,6 +1338,10 @@ FL char *      detract(struct name *np, enum gfield ntype);
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
+/* Check wether n1 n2 share the domain name */
+FL bool_t      name_is_same_domain(struct name const *n1,
+                  struct name const *n2);
+
 /* Check all addresses in np and delete invalid ones */
 FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm);
 

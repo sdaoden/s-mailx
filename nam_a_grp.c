@@ -1142,6 +1142,22 @@ jloop:
    return np;
 }
 
+FL bool_t
+name_is_same_domain(struct name const *n1, struct name const *n2)
+{
+   char const *d1, *d2;
+   bool_t rv;
+   NYD_ENTER;
+
+   d1 = strrchr(n1->n_name, '@');
+   d2 = strrchr(n2->n_name, '@');
+
+   rv = (d1 != NULL && d2 != NULL) ? !asccasecmp(++d1, ++d2) : FAL0;
+
+   NYD_LEAVE;
+   return rv;
+}
+
 FL struct name *
 checkaddrs(struct name *np, enum expand_addr_check_mode eacm)
 {
