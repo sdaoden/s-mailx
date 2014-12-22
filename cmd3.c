@@ -281,12 +281,12 @@ jnext_msg:
    np = delete_alternates(np);
    if (count(np) == 0)
       np = lextract(rcv, GTO | gf);
-   head.h_to = mft = np;
+   head.h_to = np;
 
    /* The user may have send this to himself, don't ignore that */
    namelist_vaporise_head(&head, EACM_NORMAL, FAL0);
    if (head.h_to == NULL)
-      head.h_to = mft;
+      head.h_to = np;
 
    /* Mail-Followup-To: */
    mft = NULL;
@@ -310,41 +310,49 @@ jnext_msg:
 
    /* Special massage for list (follow-up) messages */
    if (mft != NULL || (hf & HF_LIST_REPLY) || ok_blook(followup_to)) {
-      /* Learn about a possibly sending mailing list */
-      if ((cp = hfield1("list-post", mp)) != NULL && (cp = skin(cp)) != NULL) {
-         if (is_prefix("mailto:", cp)) {
-            struct name *x;
-
-            /* A special case has been seen on e.g. ietf-announce@ietf.org:
-             * these usually post to multiple groups, with ietf-announce@
-             * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
-             * -announce@ is only used for announcements, say).
-             * So our desire is to honour this request and actively overwrite
-             * List-Post: for our purpose; but only if its a single address */
-            cp += sizeof("mailto:") -1;
-
-            if (reply_to != NULL && asccasecmp(cp, reply_to)) {
-               x = checkaddrs(lextract(reply_to, GEXTRA | gf), EACM_STRICT);
-               if (x != NULL && x->n_flink == NULL)
-                  cp = reply_to;
-            }
-
-            if (cp != reply_to) {
-               x = checkaddrs(lextract(cp, GEXTRA | gf), EACM_STRICT);
-               if (x == NULL || x->n_flink != NULL)
-                  cp = NULL;
-            }
-
-            /* "Automatically `mlist'" the List-Post: address temporarily */
-            if (cp != NULL && is_mlist(cp, FAL0) == MLIST_OTHER)
-               head.h_list_post = cp;
-         } else
+      /* Learn about a possibly sending mailing list; use do for break; */
+      if ((cp = hfield1("list-post", mp)) != NULL) do {
+         struct name *x = lextract(cp, GEXTRA | GSKIN);
+         if (x == NULL || x->n_flink != NULL ||
+               !is_prefix("mailto:", x->n_name) ||
+               /* XXX the mailto: prefix causes failure (":" invalid character)
+                * XXX which is why need to recreate a struct name with an
+                * XXX updated name; this is terribly wasteful and can't we find
+                * XXX a way to mitigate that?? */
+               is_addr_invalid(x = nalloc(x->n_name + sizeof("mailto:") -1,
+                  GEXTRA | GSKIN), EACM_STRICT)) {
+            if (options & OPT_D_V)
+               fprintf(stderr,
+                  _("Message contains invalid List-Post: header\n"));
             cp = NULL;
-      }
+            break;
+         }
+         cp = x->n_name;
+
+         /* A special case has been seen on e.g. ietf-announce@ietf.org:
+          * these usually post to multiple groups, with ietf-announce@
+          * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
+          * -announce@ is only used for announcements, say).
+          * So our desire is to honour this request and actively overwrite
+          * List-Post: for our purpose; but only if its a single address.
+          * However, to avoid ambiguities with users that place themselve in
+          * Reply-To: and mailing lists which don't overwrite this (or only
+          * extend this, shall such exist), only do so if reply_to exists of
+          * a single address which points to the same domain as List-Post: */
+         if (reply_to != NULL && rt->n_flink == NULL &&
+               name_is_same_domain(x, rt))
+            cp = rt->n_name; /* rt is EACM_STRICT tested */
+
+         /* "Automatically `mlist'" the List-Post: address temporarily */
+         if (is_mlist(cp, FAL0) == MLIST_OTHER)
+            head.h_list_post = cp;
+         else
+            cp = NULL;
+      } while (0);
 
       /* In case of list replies we actively sort out any non-list recipient,
        * but _only_ if we did not honour a MFT:, assuming that members of MFT
-       * were there for a reason */
+       * were there for a reason; cp is still List-Post:/eqivalent */
       if ((hf & HF_LIST_REPLY) && mft == NULL) {
          struct name *nhp = head.h_to;
          head.h_to = NULL;
