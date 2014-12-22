@@ -318,7 +318,7 @@ _unghost(void *v)
             free(cg);
             goto jouter;
          }
-      fprintf(stderr, _("Unknown command: `%s'\n"), cp);
+      fprintf(stderr, _("No such `ghost': `%s'\n"), cp);
       rv = 1;
 jouter:
       ;
@@ -919,7 +919,8 @@ jrestart:
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
       bool_t s = condstack_isskip();
       if (!s || (options & OPT_D_V))
-         fprintf(stderr, _("Unknown command: `%s'\n"), word);
+         fprintf(stderr, _("Unknown command%s: `%s'\n"),
+            (s ? _(" (conditionally ignored)") : ""), word);
       if (s)
          goto jleave0;
       if (com != NULL) {
