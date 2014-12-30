@@ -411,9 +411,9 @@
 #undef _
 #undef N_
 #undef V_
-#define _(S)            (S)
-#define N_(S)           (S)
-#define V_(S)           (S)
+#define _(S)            S
+#define N_(S)           S
+#define V_(S)           S
 
 /*
  * Types
