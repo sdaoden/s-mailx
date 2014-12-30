@@ -173,7 +173,7 @@ static void          _group_print_all(enum group_type gt);
 static int           __group_print_qsorter(void const *a, void const *b);
 
 /* Really print a group, actually */
-static void          _group_print(struct group const *gp);
+static void          _group_print(struct group const *gp, FILE *fo);
 
 /* Multiplexers for list and subscribe commands */
 static int           _mlmux(enum group_type gt, char **argv);
@@ -630,6 +630,8 @@ _group_print_all(enum group_type gt)
    struct group const *gp;
    ui32_t h, i;
    char const **ida;
+   FILE *fp;
+   size_t lines;
    NYD_ENTER;
 
    xgt = gt & GT_PRINT_MASK;
@@ -650,8 +652,13 @@ _group_print_all(enum group_type gt)
    if (i > 1)
       qsort(ida, i, sizeof *ida, &__group_print_qsorter);
 
-   for (i = 0; ida[i] != NULL; ++i)
-      _group_print(_group_find(gt, ida[i]));
+   if ((fp = Ftmp(NULL, "prgroup", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL)
+      fp = stdout;
+   lines = 0;
+
+   for (i = 0; ida[i] != NULL; ++lines, ++i)
+      _group_print(_group_find(gt, ida[i]), fp);
 
    /* Because of interest, print the list match order */
 #ifdef HAVE_REGEX
@@ -669,21 +676,29 @@ _group_print_all(enum group_type gt)
       }
 
       if ((grp = lp) != NULL) {
-         printf(_("\n%s lists regex order (%u entries; [%u] hits):\n  "),
+         fprintf(fp, _("\n%s lists regex order (%u entries; [%u] hits):\n  "),
             (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")), i, h);
-         i = 2;
+         lines += (i = 2);
          do {
             h = (ui32_t)strlen(grp->gr_mygroup->g_id) + 8;
             if ((i += h) > 79) {
-               fputs("\n  ", stdout);
+               fputs("\n  ", fp);
+               ++lines;
                i = 2 + h;
             }
-            printf(" %s [%lu]", grp->gr_mygroup->g_id, (ul_i)grp->gr_hits);
+            fprintf(fp, " %s [%" PRIuZ "]",
+               grp->gr_mygroup->g_id, grp->gr_hits);
          } while ((grp = grp->gr_next) != lp);
-         putc('\n', stdout);
+         putc('\n', fp);
+         ++lines;
       }
    }
 #endif
+
+   if (fp != stdout) {
+      page_or_print(fp, lines);
+      Fclose(fp);
+   }
    NYD_LEAVE;
 }
 
@@ -699,7 +714,7 @@ __group_print_qsorter(void const *a, void const *b)
 }
 
 static void
-_group_print(struct group const *gp)
+_group_print(struct group const *gp, FILE *fo)
 {
    char const *sep;
    NYD_ENTER;
@@ -708,7 +723,7 @@ _group_print(struct group const *gp)
       struct grp_names_head *gnhp;
       struct grp_names *gnp;
 
-      printf("%s", gp->g_id);
+      fprintf(fo, "%s", gp->g_id);
 
       GP_TO_SUBCLASS(gnhp, gp);
       if ((gnp = gnhp->gnh_head) != NULL) {
@@ -716,31 +731,32 @@ _group_print(struct group const *gp)
          do {
             struct grp_names *x = gnp;
             gnp = gnp->gn_next;
-            printf("%s%s", sep, x->gn_id);
+            fprintf(fo, "%s%s", sep, x->gn_id);
             sep = " ";
          } while (gnp != NULL);
       }
    } else if (gp->g_type & GT_MLIST) {
-      printf("%-42.60s", gp->g_id);
+      fprintf(fo, "%-42s", gp->g_id);
 
       sep = " [";
       if (gp->g_type & GT_SUBSCRIBE) {
-         printf("%ssub", sep);
+         fprintf(fo, "%ssub", sep);
          sep = NULL;
       }
 #ifdef HAVE_REGEX
       if (gp->g_type & GT_REGEX) {
          struct grp_regex *grp;
          GP_TO_SUBCLASS(grp, gp);
-         printf("%sregex, %lu", (sep != NULL ? sep : ", "), grp->gr_hits);
+         fprintf(fo, "%sregex, %" PRIuZ,
+            (sep != NULL ? sep : ", "), grp->gr_hits);
          sep = NULL;
       }
 #endif
       if (sep == NULL)
-         putc(']', stdout);
+         putc(']', fo);
    }
 
-   putc('\n', stdout);
+   putc('\n', fo);
    NYD_LEAVE;
 }
 
@@ -1355,7 +1371,7 @@ c_alias(void *v)
       _group_print_all(GT_ALIAS);
    else if (argv[1] == NULL) {
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
-         _group_print(gp);
+         _group_print(gp, stdout);
       else {
          fprintf(stderr, _("No such alias: `%s'\n"), *argv);
          rv = 1;
