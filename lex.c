@@ -1348,8 +1348,7 @@ initbox(char const *name)
 #ifdef HAVE_IMAP
    mb.mb_flags = MB_NOFLAGS;
 #endif
-   prevdot = NULL;
-   dot = NULL;
+   dot = prevdot = threadroot = NULL;
    did_print_dot = FAL0;
    NYD_LEAVE;
 }
