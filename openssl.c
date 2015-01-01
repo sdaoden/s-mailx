@@ -51,12 +51,13 @@ EMPTY_FILE(openssl)
 #include <netinet/in.h>
 
 #include <openssl/crypto.h>
-#include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
+#include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
@@ -177,8 +178,8 @@ static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 /* Configure sp->s_ctx via SSL_CONF_CTX if possible, _set_option otherwise */
 static bool_t     _ssl_ctx_conf(struct sock *sp, struct url const *urlp);
 
-static void       ssl_load_verifications(struct sock *sp);
-static void       ssl_certificate(struct sock *sp, struct url const *urlp);
+static bool_t     _ssl_load_verifications(struct sock *sp);
+static bool_t     _ssl_certificate(struct sock *sp, struct url const *urlp);
 static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
 static int        smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
                         X509_STORE *store);
@@ -436,38 +437,42 @@ jleave:
    return rv;
 }
 
-static void
-ssl_load_verifications(struct sock *sp)
+static bool_t
+_ssl_load_verifications(struct sock *sp)
 {
    char *ca_dir, *ca_file;
    X509_STORE *store;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
-   if (ssl_verify_level == SSL_VERIFY_IGNORE)
+   if (ssl_verify_level == SSL_VERIFY_IGNORE) {
+      rv = TRU1;
       goto jleave;
+   }
 
    if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
       ca_dir = file_expand(ca_dir);
    if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
       ca_file = file_expand(ca_file);
 
-   if (ca_dir != NULL || ca_file != NULL) {
-      if (SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
-         fprintf(stderr, _("Error loading "));
-         if (ca_dir) {
-            fputs(ca_dir, stderr);
-            if (ca_file)
-               fputs(_(" or "), stderr);
-         }
-         if (ca_file)
-            fputs(ca_file, stderr);
-         fputs("\n", stderr);
-      }
+   if ((ca_dir != NULL || ca_file != NULL) &&
+         SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
+      char const *m1, *m2, *m3;
+
+      if (ca_dir != NULL) {
+         m1 = ca_dir;
+         m2 = (ca_file != NULL) ? _(" or ") : "";
+      } else
+         m1 = m2 = "";
+      m3 = (ca_file != NULL) ? ca_file : "";
+      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+      goto jleave;
    }
 
-   if (!ok_blook(ssl_no_default_ca)) {
-      if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
-         fprintf(stderr, _("Error loading default CA locations\n"));
+   if (!ok_blook(ssl_no_default_ca) &&
+         SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1) {
+      ssl_gen_err(_("Error loading default CA locations\n"));
+      goto jleave;
    }
 
    _ssl_verify_error = 0;
@@ -475,45 +480,60 @@ ssl_load_verifications(struct sock *sp)
    SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(sp->s_ctx);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
+
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
+   return rv;
 }
 
-static void
-ssl_certificate(struct sock *sp, struct url const *urlp)
+static bool_t
+_ssl_certificate(struct sock *sp, struct url const *urlp)
 {
-   char *cert, *key, *x;
+   char *cert, *key, *cp;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
-   if ((cert = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
-      if (options & OPT_VERB)
-         fprintf(stderr, "*ssl-cert* \"%s\"", cert);
-      x = cert;
-      if ((cert = file_expand(cert)) == NULL) {
-         cert = x;
-         goto jbcert;
-      } else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
-         if ((key = xok_vlook(ssl_key, urlp, OXM_ALL)) == NULL)
-            key = cert;
-         else {
-            if (options & OPT_VERB)
-               fprintf(stderr, "*ssl-key* \"%s\"", key);
-            x = key;
-            if ((key = file_expand(key)) == NULL) {
-               key = x;
-               goto jbkey;
-            }
-         }
-         if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1)
-jbkey:
-            fprintf(stderr, _("Cannot load private key from file %s\n"),
-               key);
-      } else
-jbcert:
-         fprintf(stderr, _("Cannot load certificate from file %s\n"),
-            cert);
+   if ((cert = xok_vlook(ssl_cert, urlp, OXM_ALL)) == NULL) {
+      rv = TRU1;
+      goto jleave;
    }
+   if (options & OPT_VERB)
+      fprintf(stderr, "*ssl-cert* \"%s\"", cert);
+
+   if ((cp = file_expand(cert)) == NULL) {
+      fprintf(stderr, _("*ssl-cert* value expansion failed: \"%s\"\n"), cert);
+      goto jleave;
+   }
+   cert = cp;
+
+   if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) != 1) {
+      ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), cert);
+      goto jleave;
+   }
+
+   if ((key = xok_vlook(ssl_key, urlp, OXM_ALL)) == NULL)
+      key = cert;
+   else {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-key* \"%s\"", key);
+
+      if ((cp = file_expand(key)) == NULL) {
+         fprintf(stderr, _("*ssl-key* value expansion failed: \"%s\"\n"), key);
+         goto jleave;
+      }
+      key = cp;
+   }
+
+   if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1) {
+      ssl_gen_err(_("Can't load private key from file \"%s\"\n"), key);
+      goto jleave;
+   }
+
+   rv = TRU1;
+jleave:
    NYD_LEAVE;
+   return rv;
 }
 
 static enum okay
@@ -975,13 +995,16 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    if (!_ssl_ctx_conf(sp, urlp))
       goto jerr1;
-
-   ssl_load_verifications(sp);
-   ssl_certificate(sp, urlp);
+   if (!_ssl_load_verifications(sp))
+      goto jerr1;
+   if (!_ssl_certificate(sp, urlp))
+      goto jerr1;
 
    if ((cp = ok_vlook(ssl_cipher_list)) != NULL) { /* TODO OXM_* */
-      if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
-         fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
+      if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1) {
+         ssl_gen_err(_("Invalid cipher(s): %s\n"), cp);
+         goto jerr1;
+      }
    }
 
    if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
