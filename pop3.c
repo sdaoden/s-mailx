@@ -153,9 +153,16 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
          goto jleave;
       } else
 #endif
-      if (options & OPT_VERB)
-         fprintf(stderr, _("No POP3 `APOP' support "
-            "available, sending password in clear text\n"));
+             if (options & OPT_D_V) {
+         char const *ccp = "";
+
+#ifdef HAVE_SSL
+         if (scp->sc_sock.s_use_ssl)
+            ccp = _(" (over encrypted connection)");
+#endif
+         fprintf(stderr,
+            _("No POP3 `APOP' support, plain text authentication%s\n"), ccp);
+      }
    }
 
    rv = _pop3_auth_plain(mp, scp);
