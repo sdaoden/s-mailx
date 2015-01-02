@@ -88,8 +88,7 @@
  * Constants, some nail-specific macros
  */
 
-#if !defined NI_MAXHOST || NI_MAXHOST < 1025
-# undef NI_MAXHOST
+#if !defined NI_MAXHOST
 # define NI_MAXHOST     1025
 #endif
 
