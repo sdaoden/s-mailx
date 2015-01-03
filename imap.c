@@ -1170,14 +1170,16 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
-         old = vok_vlook(var);
+         if ((old = vok_vlook(var)) != NULL)
+            old = sstrdup(old);
          vok_vset(var, mbp->mb_imap_pass);
       }
       rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
-         if (old != NULL)
+         if (old != NULL) {
             vok_vset(var, old);
-         else
+            free(old);
+         } else
             vok_vclear(var);
       }
    }
