@@ -3,7 +3,7 @@
  *@ TODO GSS-API should also be joined into "a VFS".  TODO LEAKS (error path)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004 Gunnar Ritter.
