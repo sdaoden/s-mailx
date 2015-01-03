@@ -1346,6 +1346,7 @@ printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
