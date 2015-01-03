@@ -1928,7 +1928,7 @@ FL void
    --_mem_acur;
    _mem_mcur -= p.p_c->mc_size;
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       p.p_c->mc_next = _mem_free;
       _mem_free = p.p_c;
    } else
@@ -1955,7 +1955,7 @@ smemreset(void)
    }
    _mem_free = NULL;
 
-   if (options & OPT_DEBUG)
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG))
       fprintf(stderr, "smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n",
          c, s);
    NYD_LEAVE;
@@ -1997,7 +1997,7 @@ c_smemtrace(void *v)
          p.p_c->mc_line);
    }
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       fprintf(fp, "sfree()d memory chunks awaiting free():\n");
       for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
@@ -2041,7 +2041,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
       }
    }
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
          ++xp.p_c;

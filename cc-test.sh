@@ -661,6 +661,10 @@ gggggggggggggggg"
 }
 
 t_all() {
+   if have_feat DEVEL; then
+      ARGS="${ARGS} -Smemdebug"
+      export ARGS
+   fi
    t_behave
    t_content
 }

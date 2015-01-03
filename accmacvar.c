@@ -239,6 +239,9 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
       flag = OPT_N_FLAG;
       enable = !enable;
       break;
+   case ok_b_memdebug:
+      flag = OPT_MEMDEBUG;
+      break;
    case ok_b_skipemptybody:
       flag = OPT_E_FLAG;
       break;

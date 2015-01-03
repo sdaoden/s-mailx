@@ -871,26 +871,30 @@ enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
    OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
-   OPT_VERBVERB   = 1u<<19,   /* .. even more verbosity */
-   OPT_EXISTONLY  = 1u<< 2,   /* -e */
-   OPT_HEADERSONLY = 1u<< 3,  /* -H */
-   OPT_HEADERLIST = 1u<< 4,   /* -L */
-   OPT_NOSRC      = 1u<< 5,   /* -n */
-   OPT_E_FLAG     = 1u<< 6,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 7,   /* -F */
-   OPT_N_FLAG     = 1u<< 8,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<< 9,   /* -R */
-   OPT_r_FLAG     = 1u<<10,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<11,   /* -t */
-   OPT_u_FLAG     = 1u<<12,   /* -u / $USER and pw->pw_uid != getuid(2) */
-   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<14,   /* -# */
+   OPT_VERBVERB   = 1u<< 2,   /* .. even more verbosity */
+   OPT_EXISTONLY  = 1u<< 3,   /* -e */
+   OPT_HEADERSONLY = 1u<<4,   /* -H */
+   OPT_HEADERLIST = 1u<< 5,   /* -L */
+   OPT_NOSRC      = 1u<< 6,   /* -n */
+   OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
+   OPT_F_FLAG     = 1u<< 8,   /* -F */
+   OPT_N_FLAG     = 1u<< 9,   /* -N / *header* */
+   OPT_R_FLAG     = 1u<<10,   /* -R */
+   OPT_r_FLAG     = 1u<<11,   /* -r (plus option_r_arg) */
+   OPT_t_FLAG     = 1u<<12,   /* -t */
+   OPT_u_FLAG     = 1u<<13,   /* -u / $USER and pw->pw_uid != getuid(2) */
+   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<15,   /* -# */
 
-   OPT_SENDMODE   = 1u<<15,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<16,  /* isatty(0) */
+   /*  */
+   OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
+
+   /*  */
+   OPT_SENDMODE   = 1u<<17,   /* Usage case forces send mode */
+   OPT_INTERACTIVE = 1u<<18,  /* isatty(0) */
    OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<17,
-   OPT_UNICODE    = 1u<<18,   /* We're in an UTF-8 environment */
+   OPT_TTYOUT     = 1u<<19,
+   OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
@@ -1004,6 +1008,7 @@ enum okeys {
    ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
    ok_b_writebackedited,
+   ok_b_memdebug,                      /* {special=1} */
 
    /* Option keys for values options */
    ok_v_agent_shell_lookup,
