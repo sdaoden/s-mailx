@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" S-nail(1): v14.7.10 / 2014-12-18
-.Dd Dec 18, 2014
-.ds VV \\%v14.7.10
+.\" S-nail(1): v14.7.11 / 2015-01-04
+.Dd Jan 04, 2015
+.ds VV \\%v14.7.11
 .\"
 .ds UV \\*(UA\ \\*(XX
 .\"--MKMAN-START--
@@ -60,6 +60,8 @@
 .\"
 .\" .Sh SYNOPSIS {{{
 .Sh SYNOPSIS
+.Nm \*(ua
+.Fl h | -help
 .Nm \*(ua
 .Op Fl BDdEFintv~
 .Op Fl A Ar account
@@ -261,6 +263,11 @@ Print a header summary of all messages and exit.
 A configurable summary view is available via the
 .Fl L
 option.
+.It Fl h
+Print a short usage summary.
+Because of widespread use a
+.Fl -help
+argument will have the same effect.
 .It Fl i
 Set the
 .Va ignore
@@ -393,7 +400,9 @@ using it is a smooth experience.
 The default global \*(UR file already bends those standard settings
 a bit towards more user friendliness and safety, e.g., it sets the
 .Va hold
-option in order to suppress the automatic move of messages to
+and
+.Va keepsave
+options in order to suppress the automatic moving of messages to
 .Ev MBOX
 that otherwise would occur (see
 .Sx MESSAGE STATES )
@@ -673,9 +682,66 @@ and the command
 .\"
 .\" }}} (Usage introduction)
 .\"
+.\" .Sh "RESOURCE FILES" {{{
+.Sh "RESOURCE FILES"
+Upon startup \*(UA reads in several resource files:
+.Bl -tag -width ".It Pa \*(UR"
+.It Pa \*(UR
+System wide initialization file.
+Reading of this file can be suppressed, either by using the
+.Fl n
+command line option, or by setting the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable.
+.It Pa \*(ur
+File giving initial commands.
+A different file can be chosen by setting the
+.Ev MAILRC
+environment variable.
+.It Ev NAIL_EXTRA_RC
+Can be used to define an optional startup file to be read after
+.Pa \*(ur .
+This variable is only honoured in certain circumstances (see its
+documentation for more).
+.El
+.Pp
+The content of these files is interpreted as follows:
+.Bl -bullet -offset indent
+.It
+Possibly existing leading whitespace is skipped.
+.It
+An empty line is ignored.
+.It
+If the line starts with the number sign (`#') then it is a null command
+(comment) and also ignored.
+The null command is the only form of comment that is understood.
+.It
+A line can be "continued" on the next line if the newline character is
+"escaped" by a preceding backslash character (`\e'), as in
+.Bd -literal -offset indent
+# This line is a null command (comment). \e
+  And yes, it is really continued here.
+set debug \e
+    verbose
+.Ed
+.El
+.\" }}}
+.\"
 .\" .Sh "MESSAGE STATES" {{{
 .Sh "MESSAGE STATES"
-\*(UA differentiates in between the following message states:
+\*(UA differentiates in between several different message states;
+the current state will be reflected in the header display if
+.Va headline
+is configured to do so.
+In \*(UA message states are inspected when leaving a mailbox and may
+cause messages to be automatically moved to the special
+.Ev MBOX
+mailbox \(en because this may be irritating to users which are used
+to "more modern" mail-user-agents, the default global \*(UR sets the
+.Va hold
+and
+.Va keepsave
+variables in order to suppress this behaviour.
 .Bl -tag -width ".It Ar preserved"
 .It Ar new
 Message has neither been viewed nor moved to any other state.
@@ -1491,6 +1557,8 @@ is a shorter synonym for
 Print out the preceding message.
 If given a numeric argument n,
 goes to the n'th previous message and prints it.
+.It Ic =
+Show the current message number.
 .It Ic \&?
 Prints a brief summary of commands.
 \*(OP Given an argument a synopsis for the command in question is
@@ -3256,6 +3324,13 @@ a `Message-ID'.)
 Usually, when a group is expanded that contains the sender,
 the sender is removed from the expansion.
 Setting this option causes the sender to be included in the group.
+Note that a set
+.Va metoo
+also causes a
+.Fl m
+option to be passed to Mail-Transfer-Agents (MTAs);
+though most of the modern MTAs don't (no longer) document this flag, no
+MTA is known which doesn't support it (for historical compatibility).
 .It Va mime-allow-text-controls
 When sending messages, each part of the message is MIME-inspected in
 order to classify the `Content-Type:' and `Content-Transfer-Encoding:'
@@ -4698,7 +4773,9 @@ command and the
 option.
 The fallback default is `mbox' in the user's home directory.
 .It Ev MAILRC
-Is used as a startup file instead of \*(ur if set.
+Is used as a startup file instead of
+.Pa \*(ur
+if set.
 When \*(UA scripts are invoked on behalf of other users,
 this variable should be set to
 .Pa /dev/null

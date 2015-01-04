@@ -115,7 +115,7 @@ VL uc_i const        class_char[] = {
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
 
-/* Our own little getopt(3) */
+/* Our own little getopt(3); note --help is special treated as 'h' */
 static int     _getopt(int argc, char * const argv[], char const *optstring);
 
 /* Perform basic startup initialization */
@@ -168,6 +168,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = &argv[_oind][1];
    }
 
+   _oarg = NULL;
    _oopt = curp[0];
    while (optstring[0] != '\0') {
       if (optstring[0] == ':' || optstring[0] != _oopt) {
@@ -195,12 +196,19 @@ _getopt(int argc, char * const argv[], char const *optstring)
             lastp = curp + 1;
          else
             ++_oind;
-         _oarg = NULL;
       }
       rv = _oopt;
       goto jleave;
    }
 
+   /* Special support for --help, which is quite common */
+   if (_oopt == '-' && !strcmp(curp, "-help")) {
+      ++_oind;
+      rv = 'h';
+      goto jleave;
+   }
+
+   /* Definitive error */
    if (!colon /*&& opterr*/)
       fprintf(stderr, _("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
@@ -548,9 +556,10 @@ _hdrstop(int signo)
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHiL:NnO:q:Rr:S:s:tu:Vv~#",
-      usagestr[] =
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#",
+      usagestr[] = N_(
          " Synopsis:\n"
+         "  %s -h | --help\n"
          "  %s [-BDdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
@@ -559,7 +568,8 @@ main(int argc, char *argv[])
          "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n"
-      ;
+      );
+#define _USAGE_ARGS , progname, progname, progname, progname
 
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
@@ -648,6 +658,9 @@ main(int argc, char *argv[])
       case 'H':
          options |= OPT_HEADERSONLY;
          break;
+      case 'h':
+         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+         goto jleave;
       case 'i':
          /* Ignore interrupts */
          ok_bset(ignore, TRU1);
@@ -771,7 +784,8 @@ joarg:
          break;
       case '?':
 jusage:
-         fprintf(stderr, _(usagestr), progname, progname, progname);
+         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+#undef _USAGE_ARGS
          exit_status = EXIT_USE;
          goto jleave;
       }
@@ -939,7 +953,12 @@ jusage:
    mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
    if (options & OPT_INTERACTIVE)
       tty_destroy();
+
 jleave:
+#ifdef HAVE_DEBUG
+   sreset(FAL0);
+   smemcheck();
+#endif
    NYD_LEAVE;
    return exit_status;
 }

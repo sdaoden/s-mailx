@@ -1526,21 +1526,34 @@ ${cat} > ${tmp2}.c << \!
 : - Coloured message display (simple)
 #endif
 :
+#if !defined HAVE_WORDEXP || !defined HAVE_SNPRINTF || !defined HAVE_FCHDIR ||\
+      defined HAVE_DEBUG || defined HAVE_DEVEL
 :Remarks:
-#ifndef HAVE_SNPRINTF
-: . The function snprintf() could not be found. We will use and internal
-: sprintf() instead. This might overflow buffers if input values are larger
-: than expected. Use the resulting binary with care or update your system
-: environment and start the configuration process again.
-#endif
-#ifndef HAVE_FCHDIR
-: . The function fchdir() could not be found. We will use chdir()
-: instead. This is not a problem unless the current working
-: directory of mailx is moved while the IMAP cache is used.
-#endif
-#ifdef HAVE_DEBUG
+# ifndef HAVE_WORDEXP
+: . WARNING: the function wordexp(3) could not be found.
+: _ This means that echo(1) will be used via the sh(1)ell in order
+: _ to expand shell meta characters in filenames, which is a potential
+: _ security hole.  Consider to either upgrade your system or set the
+: _ *SHELL* variable to some safe(r) wrapper script.
+# endif
+# ifndef HAVE_SNPRINTF
+: . The function snprintf(3) could not be found. We will use an internal
+: _ sprintf() instead. This might overflow buffers if input values are
+: _ larger than expected. Use the resulting binary with care or update
+: _ your system environment and start the configuration process again.
+# endif
+# ifndef HAVE_FCHDIR
+: . The function fchdir(2) could not be found. We will use chdir(2)
+: _ instead. This is not a problem unless the current working
+: _ directory of mailx is moved while the IMAP cache is used.
+# endif
+# ifdef HAVE_DEBUG
 : . Debug enabled binary: not meant to be used by end-users: THANKS!
-#endif
+# endif
+# ifdef HAVE_DEVEL
+: . Computers don't blunder.
+# endif
+#endif /* Remarks */
 :
 :Setup:
 : . System-wide resource file: SYSCONFRC

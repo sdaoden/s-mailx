@@ -1709,6 +1709,9 @@ FL void *
 
    if (s == 0)
       s = 1;
+   if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
+      panic("smalloc(): allocation too large: %s, line %d\n",
+         mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (malloc)(s)) == NULL)
@@ -1720,6 +1723,7 @@ FL void *
    p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_isfree = FAL0;
    p.p_c->mc_size = (ui32_t)s;
+
    _mem_list = p.p_c++;
    _HOPE_SET(p);
 
@@ -1766,6 +1770,9 @@ FL void *
 jforce:
    if (s == 0)
       s = 1;
+   if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
+      panic("srealloc(): allocation too large: %s, line %d\n",
+         mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (realloc)(p.p_c, s)) == NULL)
@@ -1801,6 +1808,13 @@ FL void *
       size = 1;
    if (nmemb == 0)
       nmemb = 1;
+   if (size > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
+      panic("scalloc(): allocation size too large: %s, line %d\n",
+         mdbg_file, mdbg_line);
+   if ((UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE) / nmemb < size)
+      panic("scalloc(): allocation count too large: %s, line %d\n",
+         mdbg_file, mdbg_line);
+
    size *= nmemb;
    size += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
@@ -1855,6 +1869,8 @@ FL void
    if (p.p_c->mc_next != NULL)
       p.p_c->mc_next->mc_prev = p.p_c->mc_prev;
    p.p_c->mc_isfree = TRU1;
+   /* Trash contents (also see [21c05f8]) */
+   memset(v, 0377, p.p_c->mc_size - sizeof(struct mem_chunk) - _HOPE_SIZE);
 
    --_mem_acur;
    _mem_mcur -= p.p_c->mc_size;
@@ -1874,6 +1890,8 @@ smemreset(void)
    union mem_ptr p;
    size_t c = 0, s = 0;
    NYD_ENTER;
+
+   smemcheck();
 
    for (p.p_c = _mem_free; p.p_c != NULL;) {
       void *vp = p.p_c;
@@ -1947,7 +1965,7 @@ jleave:
    return (v != NULL);
 }
 
-# ifdef _HAVE_MEMCHECK
+# ifdef HAVE_DEVEL
 FL bool_t
 _smemcheck(char const *mdbg_file, int mdbg_line)
 {
@@ -1987,7 +2005,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
    NYD_LEAVE;
    return anybad;
 }
-# endif /* _HAVE_MEMCHECK */
+# endif /* HAVE_DEVEL */
 
 # undef _HOPE_SIZE
 # undef _HOPE_SET

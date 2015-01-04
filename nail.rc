@@ -1,7 +1,7 @@
 #--MKRC-START--
 # /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
-# S-nail(1): v14.7.10 / 2014-12-18
+# S-nail(1): v14.7.11 / 2015-01-04
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
 # (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
@@ -68,7 +68,7 @@ set emptybox
 set history-gabby
 
 # Do not forward to mbox by default since this is likely to be
-# irritating for most users today
+# irritating for most users today; also see *keepsave*
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
@@ -91,6 +91,10 @@ set mime-counter-evidence
 # This may be relevant for privacy since other users could otherwise create
 # them with different permissions
 set keep
+
+# Do not move `save'd or `write'n message to mbox by default since this is
+# likely to be irritating for most users today; also see *hold*
+set keepsave
 
 # When writing mailbox files we strip Content-Length: and Lines: header fields
 # from edited / changed messages, because S-nail doesn't deal with these

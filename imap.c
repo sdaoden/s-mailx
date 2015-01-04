@@ -1170,14 +1170,16 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
-         old = vok_vlook(var);
+         if ((old = vok_vlook(var)) != NULL)
+            old = sstrdup(old);
          vok_vset(var, mbp->mb_imap_pass);
       }
       rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
-         if (old != NULL)
+         if (old != NULL) {
             vok_vset(var, old);
-         else
+            free(old);
+         } else
             vok_vclear(var);
       }
    }
@@ -1218,14 +1220,21 @@ _imap_setfile1(struct url *urlp, enum fedit_mode fm, int volatile transparent)
             disconnected(mb.mb_imap_account) == 0) {
          same_imap_account = 1;
          if (urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
+/*
             goto jduppass;
       } else if ((transparent || mb.mb_type == MB_CACHE) &&
             !strcmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
             urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
 jduppass:
+*/
          urlp->url_pass.l = strlen(urlp->url_pass.s = savestr(mb.mb_imap_pass));
+      }
    }
 
+   if (!same_imap_account && mb.mb_imap_pass != NULL) {
+      free(mb.mb_imap_pass);
+      mb.mb_imap_pass = NULL;
+   }
    if (!_imap_getcred(&mb, &ccred, urlp)) {
       rv = -1;
       goto jleave;
@@ -2898,7 +2907,8 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    enum okay rv;
    NYD_ENTER;
 
-   xmb.mb_imap_mailbox = NULL;
+   memset(&xmb, 0, sizeof xmb);
+
    rv = STOP;
    if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
@@ -2907,9 +2917,14 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
+   xmb.mb_imap_account = sstrdup(mp->mb_imap_account);
+   xmb.mb_imap_pass = sstrdup(mp->mb_imap_pass);
    xmb.mb_imap_mailbox = sstrdup(name);
+   if (mp->mb_cache_directory != NULL)
+      xmb.mb_cache_directory = sstrdup(mp->mb_cache_directory);
    xmb.mb_uidvalidity = uidvalidity;
    initcache(&xmb);
+
    if (m == NULL) {
       memset(&xm, 0, sizeof xm);
       xm.m_uid = olduid;
@@ -2928,8 +2943,14 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    xm.m_flag &= ~MFULLYCACHED;
    putcache(&xmb, &xm);
 jleave:
+   if (xmb.mb_cache_directory != NULL)
+      free(xmb.mb_cache_directory);
    if (xmb.mb_imap_mailbox != NULL)
       free(xmb.mb_imap_mailbox);
+   if (xmb.mb_imap_pass != NULL)
+      free(xmb.mb_imap_pass);
+   if (xmb.mb_imap_account != NULL)
+      free(xmb.mb_imap_account);
    NYD_LEAVE;
    return rv;
 }

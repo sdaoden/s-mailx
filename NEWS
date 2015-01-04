@@ -15,6 +15,56 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.7.11, 2015-01-04
+--------------------
+
+A cumulative bugfix update release.
+
+Credits to Marius Nestor, Tim and Johannes Löthberg.
+Apologies to Ypnose, Mantas Mikulėnas for not really listening.  Thanks!
+Special apologies to Mantas: i forgot to credit him in commit [fda7acd].
+We welcome Marius Nestor and Tim in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Our nail.rc now sets *keepsave* by default. [38fdacb]
+
+ChangeLog
+^^^^^^^^^
+
+- ~t will no longer loop infinitely.
+  Bug introduced nail "[9.27] released 5/13/01". [a105121]
+
+- We now support -h and --help command line options. [7409040]
+  (Marius Nestor)
+
+- Fix autosort crash in non-thread mode.
+  Bug introduced together with threaded display in
+  nail "[11.2] released 8/15/04". [4064771]
+
+- Two fixes for IMAP credential lookup without a set *v15-compat*:
+  1. Faulty password reuse. [fda7acd]
+  2. Missing duplication of a string could crash S-nail. [21c05f8]
+  3. The latter was not detected during my (anyway too shallow) testing
+     because a long time back i didn't implement memory trashing for our
+     HAVE_DEBUG memory wrapper: caught up. [6ef2c13]
+  (Tim, Ypnose, Mantas Mikulėnas)
+
+v14.7.10, 2014-12-18
+--------------------
+
+A bugfix release of v14.7.9 which fixes `ghost' processing
+and reenables further command line arguments of ghosts, as in
+
+  ? gh ll !ls -Flar
+  ? ll | grep nail
+
+In v14.7.9 the " | grep nail" part would not be recognized since
+a terminating NUL character would be placed before it (which in
+the C programming language means "end of string").
+It is a one line patch, commit [f86f7aa].
+
 v14.7.9, 2014-12-17
 -------------------
 

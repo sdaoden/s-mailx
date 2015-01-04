@@ -254,7 +254,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
          m[ms[i].ms_n].m_elder = m + ms[i - 1].ms_n;
       }
    } else
-      root = m;
+      root = NULL;
 
    free(ms);
    NYD_LEAVE;
@@ -779,7 +779,8 @@ jmethok:
          message[ms[i].ms_n].m_elder = message + ms[i - 1].ms_n;
       }
    } else
-      threadroot = message;
+      threadroot = NULL;
+
    _finalize(threadroot);
    mb.mb_threaded = 2;
 
