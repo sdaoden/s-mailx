@@ -1452,7 +1452,7 @@ __prepare_mta_args(struct name *to, struct header *hp)
       /* Don't assume anything on the content but do allocate exactly j slots */
       j = strlen(cp);
       vas = ac_alloc(sizeof(*vas) * j);
-      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, TRU1);
+      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
    }
 
    i = 4 + smopts_count + vas_count + 2 + 1 + count(to) + 1;
