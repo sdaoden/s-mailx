@@ -969,28 +969,28 @@ jcont:
 "-------------------- ~ ESCAPES ----------------------------\n"
 "~~             Quote a single tilde\n"
 "~@ [file ...]  Edit attachment list\n"
-"~b users       Add users to \"blind\" cc list\n"
-"~c users       Add users to cc list\n"
+"~b users       Add users to \"blind\" Bcc: list\n"
+"~c users       Add users to Cc: list\n"
 "~d             Read in dead.letter\n"
 "~e             Edit the message buffer\n"
-"~F messages    Read in messages, keep all header lines, don't indent lines\n"
-"~f messages    Like ~F, but keep only selected header lines\n"
-"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
+"~F messages    Read in messages including all headers, don't indent lines\n"
+"~f messages    Like ~F, but honour the `ignore' / `retain' configuration\n"
+"~h             Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
          puts(_(
 "~R file        Read in a file, indent lines\n"
-"~r file        Read in a file, don't indent lines\n"
+"~r file        Read in a file\n"
 "~p             Print the message buffer\n"
-"~q             Abort message composition and save text to dead.letter\n"
+"~q             Abort message composition and save text to DEAD\n"
 "~M messages    Read in messages, keep all header lines, indent lines\n"
-"~m messages    Like ~F, but keep only selected header lines\n"
-"~s subject     Set subject\n"
-"~t users       Add users to to list\n"));
+"~m messages    Like ~M, but honour the `ignore' / `retain' configuration\n"
+"~s subject     Set Subject:\n"
+"~t users       Add users to To: list\n"));
          puts(_(
-"~U messages    Same as ~m, but without any headers\n"
-"~u messages    Same as ~f, but without any headers\n"
-"~v             Invoke display editor on message\n"
+"~U messages    Read in message(s) without any headers, indent lines\n"
+"~u messages    Read in message(s) without any headers\n"
+"~v             Invoke alternate editor ($VISUAL) on message\n"
 "~w file        Write message onto file\n"
-"~x             Abort message composition and discard text written so far\n"
+"~x             Abort message composition and discard message\n"
 "~!command      Invoke the shell\n"
 "~:command      Execute a regular command\n"
 "-----------------------------------------------------------\n"));
