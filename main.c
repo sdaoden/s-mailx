@@ -147,6 +147,8 @@ _getopt(int argc, char * const argv[], char const *optstring)
    char const *curp;
    NYD_ENTER;
 
+   _oarg = NULL;
+
    if ((colon = (optstring[0] == ':')))
       ++optstring;
    if (lastp != NULL) {
@@ -163,7 +165,6 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = &argv[_oind][1];
    }
 
-   _oarg = NULL;
    _oopt = curp[0];
    while (optstring[0] != '\0') {
       if (optstring[0] == ':' || optstring[0] != _oopt) {
