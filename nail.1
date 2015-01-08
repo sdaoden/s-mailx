@@ -79,6 +79,7 @@
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl s Ar subject
+.Op Fl \&.
 .Bk
 .Ar to-addr ...
 .Ek
@@ -411,6 +412,13 @@ E.g., the following should send an email message to
 .Pp
 .Dl printf 'm alias\en~s Subject\enBody\en.\enx\en' | \
    MAILRC=/dev/null s-nail -n -#
+.
+.Mx
+.It Fl .
+This flag, which implies send mode, forces the termination of option
+processing, i.e., to make
+.Dq option injection
+impossible.
 .El
 .\" }}}
 .

@@ -556,14 +556,14 @@ _hdrstop(int signo)
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
          "  %s [-BDdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
-         "\t [-s subject] to-address... [-- mta-option...]\n"
+         "\t [-s subject] [-.] to-address... [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
@@ -781,6 +781,9 @@ joarg:
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
          break;
+      case '.':
+         options |= OPT_SENDMODE;
+         goto jgetopt_done;
       case '?':
 jusage:
          fprintf(stderr, V_(usagestr) _USAGE_ARGS);
@@ -789,6 +792,8 @@ jusage:
          goto jleave;
       }
    }
+jgetopt_done:
+   ;
 
    /* The normal arguments may be followed by MTA arguments after `--';
     * however, -f may take off an argument, too, and before that */
