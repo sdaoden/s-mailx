@@ -75,29 +75,30 @@ _update-release:
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	\
 	< nail.1 > nail.1x awk '\
-	/^\.\\" '"$${UUAGENT}"'\(1\):/ {\
-		print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
-			" / '"$${DATE_ISO}"'";\
-		next;\
-	}\
-	/^\.Dd / {\
-		print ".Dd '"$${DATE_MAN}"'";\
-		next;\
-	}\
-	/^\.ds VV / {\
-		print ".ds VV \\\\%v'"$${REL}"'";\
-		next;\
-	}\
-	{print}\
+		/^\.\\" '"$${UUAGENT}"'\(1\):/ {\
+			print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
+				" / '"$${DATE_ISO}"'";\
+			next;\
+		}\
+		/^\.Dd / {\
+			print ".Dd '"$${DATE_MAN}"'";\
+			next;\
+		}\
+		/^\.ds VV / {\
+			print ".ds VV \\\\%v'"$${REL}"'";\
+			next;\
+		}\
+		{print}\
 	' &&\
 	mv -f nail.1x nail.1 &&\
 	\
 	< nail.rc > nail.rcx awk '\
-	/^# '$${UUAGENT}'\(1\):/ {\
-		print "# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
-		next;\
-	}\
-	{print}\
+		/^# '$${UUAGENT}'\(1\):/ {\
+			print \
+		"# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
+			next;\
+		}\
+		{print}\
 	' && \
 	mv -f nail.rcx nail.rc &&\
 	\
@@ -125,12 +126,19 @@ _update-release:
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
+	cd "$${UAGENT}-$${REL}" &&\
+		sed -e '/--BEGINSTRIP--/,$$ {' \
+				-e '/^\.$/d' -e '/^\.\\"/d' \
+			-e '}' \
+			-e '/^\.$/d' < nail.1 > nail.1x &&\
+		mv -f nail.1x nail.1 &&\
+		cd .. &&\
 	if command -v mdocmx.sh >/dev/null 2>&1; then \
 		cd "$${UAGENT}-$${REL}" &&\
 		mdocmx.sh < nail.1 > nail.1x &&\
 		mv -f nail.1x nail.1 &&\
 		cd ..;\
-	fi;\
+	fi &&\
 	tar -c -f "$${UAGENT}-$${FREL}.tar" "$${UAGENT}-$${REL}" &&\
 	\
 	< "$${UAGENT}-$${FREL}.tar" gzip > "$${UAGENT}-$${FREL}.tar.gz" &&\
