@@ -61,9 +61,7 @@ E.g.:
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
 binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
-The following make(1) target exists, and note that you can use
-a VERBOSE=true command line option to gain more (or a different kind of)
-verbosity:
+The following make(1) target exists:
 
 . all         Create / check and update configuration, build.
 . install     Create / check and update configuration, build, install.
@@ -80,6 +78,9 @@ verbosity:
               using this target nonetheless (a following `uninstall'
               won't know about that overwritten value, however).
 
+Setting the make(1) variable `VERBOSE' to an arbitrary value, as in
+"$ make VERBOSE=xy install", will change the output of the build,
+install etc. processes to a different, more verbose one.
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable `C_INCLUDE_PATH'
