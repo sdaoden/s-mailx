@@ -152,11 +152,14 @@ are implemented by means of setting the respective option, as via
 .Bk
 .Op Ar mta-option ...
 .Ek
-arguments that are given at the end of the command line after an
+arguments that are given at the end of the command line after a
 .Ql --
 separator will be passed through unchanged to the mail-transfer-agent
-(MTA) and persist for an entire (interactive) session.
-Additional MTA arguments can also be specified via the option
+(MTA) and persist for an entire (interactive) session \(en
+for safety reasons this behaviour must be chosen by setting
+.Va expandargv
+as desired, however.
+MTA arguments can always (or also) be specified via the option
 .Va sendmail-arguments
 \(en please see the description of
 .Va sendmail
@@ -4939,6 +4942,24 @@ or
 set this to the (case-insensitive) value `restrict'.
 .
 .Mx
+.It Va expandargv
+Unless this variable is set additional Mail-Transfer-Agent arguments
+from the command line, as can be given after a
+.Dq --
+separator, are ignored due to safety reasons.
+However, if set to the special value
+.Dq fail ,
+then the presence of additional MTA arguments is treated as a hard
+error that causes \*(UA to exit with failure status.
+A lesser strict variant is the otherwise identical
+.Dq restrict ,
+which does accept such arguments in interactive mode, or if tilde
+commands were enabled explicitly by using one of the command line options
+.Fl ~
+or
+.Fl # .
+.
+.Mx
 .It Va features
 Information on the features compiled into \*(UA \(en the content of
 this variable is identical to the output of the command
@@ -5607,7 +5628,13 @@ It may be necessary to set
 .Va sendmail-progname
 in addition.
 .Pp
-The program will always be passed the `-i' option, the option `-m' only
+The MTA will be passed command line arguments from several possible
+sources: from the variable
+.Va sendmail-arguments
+if set, from the command line if given and the variable
+.Va expandargv
+allows their use.
+It'll always be passed the `-i' option, the option `-m' only
 if the
 .Va metoo
 variable and `-v' only if the
@@ -5615,15 +5642,18 @@ variable and `-v' only if the
 variable are set.
 In conjunction with the
 .Fl r
-command line option \*(UA may pass `-f'.
-Option processing of the MTA will be terminated via a `--' separator.
+command line option \*(UA may pass
+.Fl f .
+Option processing of the MTA will be terminated via a
+.Fl -
+separator.
 .
 .Mx
 .It Va sendmail-arguments
 Arguments to pass through to the Mail-Transfer-Agent can be given via
 this option.
-These will be joined onto MTA options that have been given on the
-command line.
+The content of this variable will be split up in a vector of arguments
+which will be joined onto other possible MTA options:
 .Pp
 .Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
 .
