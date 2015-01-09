@@ -4939,7 +4939,12 @@ command line options
 .Fl ~
 or
 .Fl # ,
-set this to the (case-insensitive) value `restrict'.
+set this to the (case-insensitive) value
+.Dq restrict .
+If set to the value
+.Dq fail
+then the existence of extended recipient addresses is treated as a hard
+send error.
 .
 .Mx
 .It Va expandargv

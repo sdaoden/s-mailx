@@ -892,7 +892,8 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
       if ((eacm & EACM_MODE_MASK) != EACM_NONE &&
             (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
             ((eacm & EACM_STRICT) || (cs = ok_vlook(expandaddr)) == NULL ||
-             (!(options & OPT_INTERACTIVE) && !(options & OPT_TILDE_FLAG) &&
+             !asccasecmp(cs, "fail") ||
+             (!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
               !asccasecmp(cs, "restrict")))) {
          cs = ((eacm & EACM_STRICT)
             ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
