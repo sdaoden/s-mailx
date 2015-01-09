@@ -1342,16 +1342,19 @@ FL struct name * grab_names(char const *field, struct name *np, int comma,
 FL bool_t      name_is_same_domain(struct name const *n1,
                   struct name const *n2);
 
-/* Check all addresses in np and delete invalid ones */
-FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm);
+/* Check all addresses in np and delete invalid ones; if set_on_error is not
+ * NULL it'll be set to TRU1 if an error is detected */
+FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
+                  bool_t *set_on_error);
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases etc.  eacm is passed to checkaddrs(), metoo is passed to usermap().
- * After updating hp to the new state this returns a flat list of all
- * addressees, which may be NULL */
+ * aliases etc.  eacm and set_on_error are passed to checkaddrs(), metoo is
+ * passed to usermap().  After updating hp to the new state this returns
+ * a flat list of all addressees, which may be NULL */
 FL struct name * namelist_vaporise_head(struct header *hp,
-                  enum expand_addr_check_mode eacm, bool_t metoo);
+                  enum expand_addr_check_mode eacm, bool_t metoo,
+                  bool_t *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */

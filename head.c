@@ -669,27 +669,27 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
-               EACM_NORMAL));
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
          hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
-               EACM_NORMAL));
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
-               EACM_NORMAL));
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          ++seenfields;
          hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
          ++seenfields;
          hq->h_sender = cat(hq->h_sender,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)

@@ -811,8 +811,9 @@ do {\
       else if ((addr = ok_vlook(replyto)) != NULL)
          np = lextract(addr, GEXTRA | GFULL);
       if (np != NULL &&
-            (np = elide(checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG))
-               ) != NULL) {
+            (np = elide(
+               checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG,
+                  NULL))) != NULL) {
          if (fmt("Reply-To:", np, fo, ff))
             goto jleave;
          ++gotcha;
@@ -1755,10 +1756,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    /*  */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
       hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
-            EACM_NORMAL));
+            EACM_NORMAL, &_sendout_error));
    if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
       hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
-            EACM_NORMAL));
+            EACM_NORMAL, &_sendout_error));
 
    /* Collect user's mail from standard input.  Get the result as mtf */
    mtf = collect(hp, printheaders, quote, quotefile, doprefix);
@@ -1826,10 +1827,10 @@ jaskeot:
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   to = namelist_vaporise_head(hp, EACM_NORMAL, TRU1);
+   to = namelist_vaporise_head(hp, EACM_NORMAL, TRU1, &_sendout_error);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
-      _sendout_error = TRU1;
+      goto jfail_dead;
    }
 
    /* */
@@ -1955,10 +1956,8 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if ((to = checkaddrs(to, EACM_NORMAL)) == NULL) {
-      _sendout_error = TRU1;
+   if ((to = checkaddrs(to, EACM_NORMAL, &_sendout_error)) == NULL)
       goto jleave;
-   }
 
    if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
