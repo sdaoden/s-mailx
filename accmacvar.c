@@ -393,7 +393,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    _var_lookup(vcp);
 
    if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
-      fprintf(stderr, _("`%s': readonly variable\n"), vcp->vc_name);
+      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
       ok = FAL0;
       goto jleave;
    }
@@ -721,7 +721,7 @@ _ma_define1(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_ma_look(mp->ma_name, mp, mafl) != NULL) {
-      fprintf(stderr, _("A %s named `%s' already exists.\n"),
+      fprintf(stderr, _("A %s named \"%s\" already exists.\n"),
          (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
       lst = mp->ma_contents;
       goto jerr;
@@ -753,7 +753,7 @@ _ma_undef1(char const *name, enum ma_flags mafl)
       free(mp->ma_name);
       free(mp);
    } else
-      fprintf(stderr, _("%s `%s' is not defined\n"),
+      fprintf(stderr, _("%s \"%s\" is not defined\n"),
          (mafl & MA_ACC ? "Account" : "Macro"), name);
    NYD_LEAVE;
 }
@@ -1070,15 +1070,15 @@ c_varshow(void *v)
          ui16_t f = vc.vc_vmap->vm_flags;
 
          if (f & VM_BINARY)
-            printf(_("%s: (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
+            printf(_("\"%s\": (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
                vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
                (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv);
          else
-            printf(_("%s: (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
+            printf(_("\"%s\": (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
                vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
                (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv, val);
       } else
-         printf("%s: (assembled) set=%d (ENVIRON=%d) value<%s>\n",
+         printf("\"%s\": (assembled): set=%d (ENVIRON=%d) value<%s>\n",
             vc.vc_name, isset, isenv, val);
    }
 jleave:
@@ -1175,12 +1175,13 @@ c_varedit(void *v)
 
       if (vc.vc_vmap != NULL) {
          if (vc.vc_vmap->vm_flags & VM_BINARY) {
-            fprintf(stderr, _("`varedit' cannot edit binary variable `%s'\n"),
+            fprintf(stderr, _("`varedit': can't edit binary variable \"%s\"\n"),
                vc.vc_name);
             continue;
          }
          if (vc.vc_vmap->vm_flags & VM_RDONLY) {
-            fprintf(stderr, _("`varedit' cannot edit readonly variable `%s'\n"),
+            fprintf(stderr,
+               _("`varedit': can't edit readonly variable \"%s\"\n"),
                vc.vc_name);
             continue;
          }
@@ -1269,8 +1270,7 @@ c_undefine(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`%s': required arguments are missing\n"),
-         "undefine");
+      fprintf(stderr, _("`undefine': required arguments are missing\n"));
       goto jleave;
    }
    do
@@ -1298,7 +1298,7 @@ c_call(void *v)
    }
 
    if ((mp = _ma_look(*args, NULL, MA_NONE)) == NULL) {
-      errs = _("Undefined macro called: `%s'\n");
+      errs = _("Undefined macro called: \"%s\"\n");
       name = *args;
       goto jerr;
    }
@@ -1361,7 +1361,7 @@ c_account(void *v)
          goto jleave;
       }
       if (!asccasecmp(args[0], ACCOUNT_NULL)) {
-         fprintf(stderr, _("Error: `%s' is a reserved name.\n"),
+         fprintf(stderr, _("Error: \"%s\" is a reserved name.\n"),
             ACCOUNT_NULL);
          goto jleave;
       }
@@ -1379,7 +1379,7 @@ c_account(void *v)
    mp = NULL;
    if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
          (mp = _ma_look(args[0], NULL, MA_ACC)) == NULL) {
-      fprintf(stderr, _("Account `%s' does not exist.\n"), args[0]);
+      fprintf(stderr, _("Account \"%s\" does not exist.\n"), args[0]);
       goto jleave;
    }
 
@@ -1391,7 +1391,7 @@ c_account(void *v)
 
    if (mp != NULL && _ma_exec(mp, &mp->ma_localopts) == CBAD) {
       /* XXX account switch incomplete, unroll? */
-      fprintf(stderr, _("Switching to account `%s' failed.\n"), args[0]);
+      fprintf(stderr, _("Switching to account \"%s\" failed.\n"), args[0]);
       goto jleave;
    }
 
@@ -1420,8 +1420,7 @@ c_unaccount(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`%s': required arguments are missing\n"),
-         "unaccount");
+      fprintf(stderr, _("`unaccount': required arguments are missing\n"));
       goto jleave;
    }
 
@@ -1429,7 +1428,7 @@ c_unaccount(void *v)
    do {
       if (account_name != NULL && !strcmp(account_name, *args)) {
          fprintf(stderr,
-            _("Rejecting deletion of currently active account `%s'\n"), *args);
+            _("Rejecting deletion of active account \"%s\"\n"), *args);
          continue;
       }
       _ma_undef1(*args, MA_ACC);
