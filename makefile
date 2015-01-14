@@ -118,14 +118,21 @@ _update-release:
 	git branch &&\
 	echo "Push git(1) repo?  ENTER continues";\
 	read i;\
-	\
 	git push &&\
+	\
 	git archive --format=tar.gz --prefix="$${UAGENT}-$${REL}/" \
 		-o "$${TMPDIR}/$${UAGENT}-$${FREL}.tar.gz" "v$${REL}" &&\
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
+	if command -v mdocmx.sh >/dev/null 2>&1; then \
+		cd "$${UAGENT}-$${REL}" &&\
+		mdocmx.sh < nail.1 > nail.1x &&\
+		mv -f nail.1x nail.1 &&\
+		cd ..;\
+	fi;\
 	tar -c -f "$${UAGENT}-$${FREL}.tar" "$${UAGENT}-$${REL}" &&\
+	\
 	< "$${UAGENT}-$${FREL}.tar" gzip > "$${UAGENT}-$${FREL}.tar.gz" &&\
 	< "$${UAGENT}-$${FREL}.tar" xz -e -C sha256 > \
 		"$${UAGENT}-$${FREL}.tar.xz" &&\
