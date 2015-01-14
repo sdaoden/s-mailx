@@ -262,6 +262,17 @@ _conversion_by_encoding(void)
    return ret;
 }
 
+static sigjmp_buf       __mimefwtd_actjmp; /* TODO someday.. */
+static int              __mimefwtd_sig; /* TODO someday.. */
+static sighandler_type  __mimefwtd_opipe;
+static void
+__mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __mimefwtd_sig = sig;
+   siglongjmp(__mimefwtd_actjmp, 1);
+}
+
 static ssize_t
 _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
    struct quoteflt *qf)
@@ -330,12 +341,23 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
    if (flags & TD_DELCTRL)
       out.l = delctrl(out.s, out.l);
 
+   __mimefwtd_sig = 0;
+   __mimefwtd_opipe = safe_signal(SIGPIPE, &__mimefwtd_onsig);
+   if (sigsetjmp(__mimefwtd_actjmp, 1)) {
+      rv = 0;
+      goto j__sig;
+   }
+
    rv = quoteflt_push(qf, out.s, out.l);
 
+j__sig:
    if (out.s != in.s)
       free(out.s);
    if (in.s != input->s)
       free(in.s);
+   safe_signal(SIGPIPE, __mimefwtd_opipe);
+   if (__mimefwtd_sig != 0)
+      kill(0, __mimefwtd_sig);
    NYD_LEAVE;
    return rv;
 }
@@ -1657,10 +1679,21 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
    return rv;
 }
 
+static sigjmp_buf       __mimemw_actjmp; /* TODO someday.. */
+static int              __mimemw_sig; /* TODO someday.. */
+static sighandler_type  __mimemw_opipe;
+static void
+__mimemw_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __mimemw_sig = sig;
+   siglongjmp(__mimemw_actjmp, 1);
+}
+
 FL ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
    enum conversion convert, enum tdflags dflags,
-   struct quoteflt *qf, struct str *rest)
+   struct quoteflt *qf, struct str * volatile rest)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
     * TODO so that memory allocation count drops down massively; for now,
@@ -1698,6 +1731,11 @@ mime_write(char const *ptr, size_t size, FILE *f,
 #endif
 
 jconvert:
+   __mimemw_sig = 0;
+   __mimemw_opipe = safe_signal(SIGPIPE, &__mimemw_onsig);
+   if (sigsetjmp(__mimemw_actjmp, 1))
+      goto jleave;
+
    switch (convert) {
    case CONV_FROMQP:
       state = qp_decode(&out, &in, rest);
@@ -1750,6 +1788,9 @@ jleave:
       free(out.s);
    if (in.s != ptr)
       free(in.s);
+   safe_signal(SIGPIPE, __mimemw_opipe);
+   if (__mimemw_sig != 0)
+      kill(0, __mimemw_sig);
    NYD_LEAVE;
    return sz;
 }

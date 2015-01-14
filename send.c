@@ -691,6 +691,17 @@ _send_onpipe(int signo)
    siglongjmp(_send_pipejmp, 1);
 }
 
+static sigjmp_buf       __sendp_actjmp; /* TODO someday.. */
+static int              __sendp_sig; /* TODO someday.. */
+static sighandler_type  __sendp_opipe;
+static void
+__sendp_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __sendp_sig = sig;
+   siglongjmp(__sendp_actjmp, 1);
+}
+
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
@@ -1224,6 +1235,22 @@ jcopyout:
    rest.s = NULL;
    rest.l = 0;
 
+   if (pbuf == qbuf) {
+      __sendp_sig = 0;
+      __sendp_opipe = safe_signal(SIGPIPE, &__sendp_onsig);
+      if (sigsetjmp(__sendp_actjmp, 1)) {
+         if (rest.s != NULL)
+            free(rest.s);
+         free(line);
+#ifdef HAVE_ICONV
+         if (iconvd != (iconv_t)-1)
+            n_iconv_close(iconvd);
+#endif
+         safe_signal(SIGPIPE, __sendp_opipe);
+         kill(0, __sendp_sig);
+      }
+   }
+
    quoteflt_reset(qf, pbuf);
    while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
@@ -1239,6 +1266,9 @@ joutln:
       action |= _TD_EOF;
       goto joutln;
    }
+   if (pbuf == qbuf)
+      safe_signal(SIGPIPE, __sendp_opipe);
+
    quoteflt_flush(qf);
    if (rest.s != NULL)
       free(rest.s);
