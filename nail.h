@@ -1478,10 +1478,11 @@ enum gfield {
    GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: field */
    GREF           = 1<<12,    /* References: field */
    GDATE          = 1<<13,    /* Date: field */
-   GFULL          = 1<<14,    /* include full names */
-   GSKIN          = 1<<15,    /* skin names */
-   GEXTRA         = 1<<16,    /* extra fields (mostly like GIDENT XXX) */
-   GFILES         = 1<<17     /* include filename addresses */
+   GFULL          = 1<<14,    /* Include full names, comments etc. */
+   GSKIN          = 1<<15,    /* Skin names */
+   GEXTRA         = 1<<16,    /* Extra fields (mostly like GIDENT XXX) */
+   GFILES         = 1<<17,    /* Include filename and pipe addresses */
+   GFULLEXTRA     = 1<<18     /* Only with GFULL: GFULL less address */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
@@ -1554,8 +1555,9 @@ struct name {
    struct name *n_blink;      /* Backward list link */
    enum gfield n_type;        /* From which list it came */
    enum nameflags n_flags;    /* enum nameflags */
-   char        *n_name;       /* This fella's name */
-   char        *n_fullname;   /* Sometimes, name including comment */
+   char        *n_name;       /* This fella's address */
+   char        *n_fullname;   /* Ditto, unless GFULL including comment */
+   char        *n_fullextra;  /* GFULL, without address */
 };
 
 struct addrguts {
@@ -1652,7 +1654,7 @@ VL char const  *tempdir;            /* The temporary directory */
 
 VL int         exit_status;         /* Exit status */
 VL int         options;             /* Bits of enum user_options */
-VL char        *option_r_arg;       /* Argument to -r option */
+VL struct name *option_r_arg;       /* Argument to -r option */
 VL char const  **smopts;            /* sendmail(1) opts from commline */
 VL size_t      smopts_count;        /* Entries in smopts */
 

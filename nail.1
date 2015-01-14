@@ -319,10 +319,16 @@ Any folder opened will be in read-only mode.
 Sets the envelope sender address by passing a
 .Ql Fl f Ar address
 option to the MTA when a message is send.
-If a non-empty
+Shall
 .Ar address
-argument is given it'll be checked for validity and then fixated to
-the given value, but otherwise the content of the variable
+include a user name, comments etc. then the components will be separated
+and the name part will be passed to the MTA individually via
+.Ql Fl F Ar name .
+.Pp
+The
+.Ar address
+will first be checked for validity and then fixated to the given value,
+but otherwise the content of the variable
 .Va from
 will be used for that purpose \(en i.e., it'll be passed through to
 the MTA via the
@@ -5659,7 +5665,9 @@ variable are set.
 In conjunction with the
 .Fl r
 command line option \*(UA may pass
-.Fl f .
+.Fl f
+as well as
+.Fl F .
 Option processing of the MTA will be terminated via a
 .Fl -
 separator.

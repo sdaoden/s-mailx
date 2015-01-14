@@ -894,6 +894,7 @@ nalloc(char *str, enum gfield ntype)
    struct str in, out;
    struct name *np;
    NYD_ENTER;
+   assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
    np = salloc(sizeof *np);
    np->n_flink = NULL;
@@ -907,6 +908,7 @@ nalloc(char *str, enum gfield ntype)
       ag.ag_skinned = savestrbuf(ag.ag_skinned, ag.ag_slen);
    }
    np->n_fullname = np->n_name = ag.ag_skinned;
+   np->n_fullextra = NULL;
    np->n_flags = ag.ag_n_flags;
 
    if (ntype & GFULL) {
@@ -918,6 +920,36 @@ nalloc(char *str, enum gfield ntype)
          goto jleave;
       if (ag.ag_n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
          goto jleave;
+
+      /* n_fullextra is only the complete name part without address.
+       * Beware of "-r '<abc@def>'", don't treat that as FULLEXTRA */
+      if ((ntype & GFULLEXTRA) && ag.ag_ilen > ag.ag_slen + 2) {
+         size_t s = ag.ag_iaddr_start, e = ag.ag_iaddr_aend, i;
+         char const *cp;
+
+         if (s == 0 || str[--s] != '<' || str[e++] != '>')
+            goto jskipfullextra;
+         i = ag.ag_ilen - e;
+         in.s = ac_alloc(s + i +1);
+         memcpy(in.s, str, s);
+         if (i > 0)
+            memcpy(in.s + s, str + e, i);
+         s += i;
+         in.s[in.l = s] = '\0';
+         mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+
+         for (cp = out.s, i = out.l; i > 0 && spacechar(*cp); --i, ++cp)
+            ;
+         while (i > 0 && spacechar(cp[i - 1]))
+            --i;
+         np->n_fullextra = savestrbuf(cp, i);
+
+         free(out.s);
+         ac_free(in.s);
+      }
+jskipfullextra:
+
+      /* n_fullname depends on IDNA conversion */
 #ifdef HAVE_IDNA
       if (!(ag.ag_n_flags & NAME_IDNA)) {
 #endif
@@ -983,11 +1015,14 @@ ndup(struct name *np, enum gfield ntype)
    nnp->n_flags = (np->n_flags & ~(NAME_NAME_SALLOC | NAME_FULLNAME_SALLOC)) |
          NAME_NAME_SALLOC;
    nnp->n_name = savestr(np->n_name);
-   if (np->n_name == np->n_fullname || !(ntype & (GFULL | GSKIN)))
+   if (np->n_name == np->n_fullname || !(ntype & (GFULL | GSKIN))) {
       nnp->n_fullname = nnp->n_name;
-   else {
+      nnp->n_fullextra = NULL;
+   } else {
       nnp->n_flags |= NAME_FULLNAME_SALLOC;
       nnp->n_fullname = savestr(np->n_fullname);
+      nnp->n_fullextra = (np->n_fullextra == NULL) ? NULL
+            : savestr(np->n_fullextra);
    }
 jleave:
    NYD_LEAVE;

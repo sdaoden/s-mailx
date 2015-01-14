@@ -995,7 +995,8 @@ skin(char const *name)
    return ret;
 }
 
-/* TODO addrspec_with_guts: RFC 5322 */
+/* TODO addrspec_with_guts: RFC 5322
+ * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
 FL int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {

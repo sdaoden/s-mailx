@@ -1457,7 +1457,7 @@ __prepare_mta_args(struct name *to, struct header *hp)
       vas_count = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
    }
 
-   i = 4 + smopts_count + vas_count + 2 + 1 + count(to) + 1;
+   i = 4 + smopts_count + vas_count + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
    args[0] = ok_vlook(sendmail_progname);
@@ -1478,13 +1478,18 @@ __prepare_mta_args(struct name *to, struct header *hp)
 
    /* -r option?  We may only pass skinned addresses */
    if (options & OPT_r_FLAG) {
-      if (option_r_arg[0] != '\0')
-         cp = option_r_arg;
-      else if (hp != NULL && hp->h_from != NULL)
+      if (option_r_arg != NULL) {
+         if (option_r_arg->n_fullextra != NULL) {
+            args[i++] = "-F";
+            args[i++] = option_r_arg->n_fullextra;
+         }
+         cp = option_r_arg->n_name;
+      } else if (hp != NULL && hp->h_from != NULL)
          cp = hp->h_from->n_name;
       else
          cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
-      if (cp != NULL) { /* XXX ugh! */
+
+      if (cp != NULL) {
          args[i++] = "-f";
          args[i++] = cp;
       }

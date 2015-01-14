@@ -702,14 +702,14 @@ main(int argc, char *argv[])
       case 'r':
          /* Set From address. */
          options |= OPT_r_FLAG;
-         if ((option_r_arg = _oarg)[0] != '\0') {
-            struct name *fa = nalloc(_oarg, GFULL);
+         if (_oarg[0] != '\0') {
+            struct name *fa = nalloc(_oarg, GSKIN | GFULL | GFULLEXTRA);
 
             if (is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)) {
                fprintf(stderr, _("Invalid address argument with -r\n"));
                goto jusage;
             }
-            option_r_arg = fa->n_name;
+            option_r_arg = fa;
             /* TODO -r options is set in smopts, but may
              * TODO be overwritten by setting from= in
              * TODO an interactive session!
@@ -717,7 +717,6 @@ main(int argc, char *argv[])
              * TODO Warn user?  Update manual!! */
             okey = savecat("from=", fa->n_fullname);
             goto joarg;
-            /* ..and fa goes even though it is ready :/ */
          }
          break;
       case 'S':
