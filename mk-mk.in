@@ -25,6 +25,7 @@ $(UAGENT): $(OBJ)
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
 	fi;\
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
+	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
 config.o accmacvar.o: okeys.h
