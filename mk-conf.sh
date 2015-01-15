@@ -1551,7 +1551,7 @@ ${cat} > ${tmp2}.c << \!
 : . Debug enabled binary: not meant to be used by end-users: THANKS!
 # endif
 # ifdef HAVE_DEVEL
-: . Computers don't blunder.
+: . Computers do not blunder.
 # endif
 #endif /* Remarks */
 :
