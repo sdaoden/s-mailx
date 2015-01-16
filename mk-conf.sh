@@ -110,27 +110,34 @@ compiler_flags() {
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
    optim= dbgoptim= _CFLAGS=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      if { CC="`command -v clang`"; }; then
-         :
-      elif { CC="`command -v gcc`"; }; then
-         :
-      elif { CC="`command -v c89`"; }; then
-         [ "`uname -s`" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
-      elif { CC="`command -v c99`"; }; then
-         :
+      if { i="`command -v clang`"; }; then
+         CC=${i}
+      elif { i="`command -v gcc`"; }; then
+         CC=${i}
+      elif { i="`command -v c99`"; }; then
+         CC=${i}
       else
-         msg 'ERROR'
-         msg ' I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
-         msg ' Please set the CC environment variable, maybe CFLAGS also.'
-         config_exit 1
+         if [ "${CC}" = cc ]; then
+            :
+         elif { i="`command -v c89`"; }; then
+            CC=${i}
+         else
+            msg 'ERROR'
+            msg ' I cannot find a compiler!'
+            msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+            msg ' Please set the CC environment variable, maybe CFLAGS also.'
+            config_exit 1
+         fi
       fi
+      export CC
    fi
-   export CC
+   [ "`uname -s`" = UnixWare ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
 
-   ccver=`${CC} --version 2>/dev/null`
    stackprot=no
-   if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
+   ccver=`${CC} --version 2>/dev/null`
+   if [ ${?} -ne 0 ]; then
+      [ -z "${optim}" ] && optim=-O1
+   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
    #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
@@ -554,6 +561,8 @@ feat_bail_required() {
 
 # Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without!
 echo '#define _GNU_SOURCE' >> ${h}
+#echo '#define _POSIX_C_SOURCE 200809L' >> ${h}
+#echo '#define _XOPEN_SOURCE 700' >> ${h}
 
 if link_check hello 'if a hello world program can be built' << \!
 #include <stdio.h>
