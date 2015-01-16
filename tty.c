@@ -234,7 +234,6 @@ getpassword(char const *query)
       termios_state.ts_needs_reset = TRU1;
       tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
    ohdl = safe_signal(SIGINT, SIG_IGN);
@@ -245,6 +244,9 @@ getpassword(char const *query)
       goto jrestore;
    }
    safe_signal(SIGINT, &__tty_acthdl);
+
+   if (options & OPT_TTYIN)
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
 
    if (readline_restart(stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
