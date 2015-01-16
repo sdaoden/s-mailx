@@ -249,20 +249,6 @@ jleave:
       reset(0);
 }
 
-FL int
-c_quit(void *v)
-{
-   int rv;
-   NYD_ENTER;
-   UNUSED(v);
-
-   /* If we are sourcing, then return 1 so evaluate() can handle it.
-    * Otherwise return -1 to abort command loop */
-   rv = sourcing ? 1 : -1;
-   NYD_LEAVE;
-   return rv;
-}
-
 FL void
 quit(void)
 {

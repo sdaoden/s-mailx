@@ -90,6 +90,9 @@ static int     _c_pcmdlist(void *v);
 
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
+/* `quit' command */
+static int     _c_quit(void *v);
+
 /* Print the binaries compiled-in features */
 static int     _c_features(void *v);
 
@@ -373,6 +376,20 @@ _c_pcmdlist(void *v)
    ac_free(cpa);
    NYD_LEAVE;
    return 0;
+}
+
+static int
+_c_quit(void *v)
+{
+   int rv;
+   NYD_ENTER;
+   UNUSED(v);
+
+   /* If we are sourcing, then return 1 so evaluate() can handle it.
+    * Otherwise return -1 to abort command loop */
+   rv = sourcing ? 1 : -1;
+   NYD_LEAVE;
+   return rv;
 }
 
 static int

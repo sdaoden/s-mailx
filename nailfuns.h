@@ -1081,14 +1081,15 @@ FL int         newmailinfo(int omsgCount);
  * return wether the last processed command returned error */
 FL bool_t      commands(void);
 
+/* TODO drop execute() is the legacy version of evaluate().
+ * Contxt is non-zero if called while composing mail */
+FL int         execute(char *linebuf, int contxt, size_t linesize);
+
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.
  * Command functions return 0 for success, 1 for error, and -1 for abort.
  * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
 FL int         evaluate(struct eval_ctx *evp);
-/* TODO drop execute() is the legacy version of evaluate().
- * Contxt is non-zero if called while composing mail */
-FL int         execute(char *linebuf, int contxt, size_t linesize);
 
 /* Set the size of the message vector used to construct argument lists to
  * message list functions */
@@ -1519,9 +1520,6 @@ FL bool_t      wait_child(int pid, int *wait_status);
 /*
  * quit.c
  */
-
-/* The `quit' command */
-FL int         c_quit(void *v);
 
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,

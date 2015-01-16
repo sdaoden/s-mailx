@@ -209,7 +209,7 @@
      DS(N_("Edit <message-list>")) },
    { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
      DS(N_("Echo given arguments")) },
-   { "quit", &c_quit, NOLIST, 0, 0
+   { "quit", &_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
    { "list", &_c_pcmdlist, (H | M | NOLIST), 0, 0
      DS(N_("List all available commands")) },
