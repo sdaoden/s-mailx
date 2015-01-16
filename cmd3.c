@@ -1040,18 +1040,6 @@ c_messize(void *v)
 }
 
 FL int
-c_rexit(void *v)
-{
-   UNUSED(v);
-   NYD_ENTER;
-
-   if (!sourcing)
-      exit(0);
-   NYD_LEAVE;
-   return 1;
-}
-
-FL int
 c_file(void *v)
 {
    int rv;

@@ -985,4 +985,17 @@ jleave:
    return exit_status;
 }
 
+FL int
+c_rexit(void *v) /* TODO program state machine */
+{
+   UNUSED(v);
+   NYD_ENTER;
+
+   if (!sourcing) {
+      exit(0);
+   }
+   NYD_LEAVE;
+   return 1;
+}
+
 /* s-it-mode */

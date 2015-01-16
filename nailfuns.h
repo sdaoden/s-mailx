@@ -618,9 +618,6 @@ FL int         c_seen(void *v);
 /* Print the size of each message */
 FL int         c_messize(void *v);
 
-/* Quit quickly.  If sourcing, just pop the input level by returning error */
-FL int         c_rexit(void *v);
-
 /* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
 FL int         c_File(void *v);
@@ -1159,6 +1156,13 @@ FL void        maildir_quit(void);
 FL enum okay   maildir_append(char const *name, FILE *fp);
 
 FL enum okay   maildir_remove(char const *name);
+
+/*
+ * main.c
+ */
+
+/* Quit quickly.  If sourcing, just pop the input level by returning error */
+FL int         c_rexit(void *v);
 
 /*
  * mime.c
