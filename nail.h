@@ -553,21 +553,28 @@ typedef ssize_t         siz_t;
 # define PRIuZ          "zu"
 # define PRIdZ          "zd"
 # define PRIxZ_FMT_CTA() CTA(1 == 1)
+# define UIZ_MAX        SIZE_MAX
 #elif defined SIZE_MAX
-# if SIZE_MAX == UI64_MAX
+  /* UnixWare has size_t as unsigned as required but uses a signed limit
+   * constant (which is thus false!) */
+# if SIZE_MAX == UI64_MAX || SIZE_MAX == SI64_MAX
 #  define PRIuZ         PRIu64
 #  define PRIdZ         PRId64
 #  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui64_t))
-# elif SIZE_MAX == UI32_MAX
+# elif SIZE_MAX == UI32_MAX || SIZE_MAX == SI32_MAX
 #  define PRIuZ         PRIu32
 #  define PRIdZ         PRId32
 #  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui32_t))
+# else
+#  error SIZE_MAX is neither UI64_MAX nor UI32_MAX (please report this)
 # endif
+# define UIZ_MAX        SIZE_MAX
 #endif
 #ifndef PRIuZ
 # define PRIuZ          "lu"
 # define PRIdZ          "ld"
 # define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(unsigned long))
+# define UIZ_MAX        ULONG_MAX
 #endif
 
 #ifndef UINTPTR_MAX
