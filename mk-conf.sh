@@ -4,8 +4,7 @@
 LC_ALL=C
 export LC_ALL
 
-# Predefined CONFIG= urations take precedence over anything else
-if [ -n "${CONFIG}" ]; then
+option_reset() {
    WANT_ICONV=0
    WANT_SOCKETS=0
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
@@ -21,15 +20,39 @@ if [ -n "${CONFIG}" ]; then
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
    #WANT_MD5=0
+}
 
+option_maximal() {
+   WANT_ICONV=1
+   WANT_SOCKETS=1
+      WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
+      WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+      WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+   WANT_IDNA=1
+   WANT_IMAP_SEARCH=1
+   WANT_REGEX=1
+   WANT_NCL=1
+      WANT_HISTORY=1 WANT_TABEXPAND=1
+   WANT_TERMCAP=1
+   WANT_SPAM=1
+   WANT_DOCSTRINGS=1
+   WANT_QUOTE_FOLD=1
+   WANT_COLOUR=1
+}
+
+# Predefined CONFIG= urations take precedence over anything else
+if [ -n "${CONFIG}" ]; then
    case ${CONFIG} in
    NULLTEST)
+      option_reset
       ;;
    MINIMAL)
+      option_reset
       WANT_ICONV=1
       WANT_REGEX=1
       ;;
    MEDIUM)
+      option_reset
       WANT_ICONV=1
       WANT_IDNA=1
       WANT_REGEX=1
@@ -39,6 +62,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_COLOUR=1
       ;;
    NETSEND)
+      option_reset
       WANT_ICONV=1
       WANT_SOCKETS=1
          WANT_SSL=1
@@ -52,26 +76,22 @@ if [ -n "${CONFIG}" ]; then
       WANT_COLOUR=1
       ;;
    MAXIMAL)
-      WANT_ICONV=1
-      WANT_SOCKETS=1
-         WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
-         WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
-         WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
-      WANT_IDNA=1
-      WANT_IMAP_SEARCH=1
-      WANT_REGEX=1
-      WANT_NCL=1
-         WANT_HISTORY=1 WANT_TABEXPAND=1
-      WANT_TERMCAP=1
-      WANT_SPAM=1
-      WANT_DOCSTRINGS=1
-      WANT_QUOTE_FOLD=1
-      WANT_COLOUR=1
+      option_reset
+      option_maximal
+      ;;
+   DEVEL)
+      WANT_DEVEL=1 WANT_DEBUG=1
+      option_maximal
+      ;;
+   ODEVEL)
+      WANT_DEVEL=1
+      option_maximal
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
       echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
+      ;;
    esac
 fi
 
