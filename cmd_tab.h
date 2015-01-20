@@ -67,7 +67,7 @@
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
    { "alias", &c_alias, (M | RAWLIST), 0, 1000
-     DS(N_("Show all or the specified alias(es), or (re)define one")) },
+     DS(N_("Show all or the specified <alias>(es), or (re)define one")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type each message of <message-list> on the terminal")) },
    { "type", &c_type, (A | MSGLIST), 0, MMNDEL
@@ -135,9 +135,9 @@
    { "source", &c_source, (M | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
    { "set", &c_set, (H | M | RAWLIST), 0, 1000
-     DS(N_("Print all variables, or set (a) variable(s)")) },
+     DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
-     DS(N_("Set (a) variable(s) and export into the program environment")) },
+     DS(N_("Set (a) <variable>(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
@@ -147,7 +147,7 @@
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Show message headers of <message-list>")) },
    { "file", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Open a new mailbox or show the current one")) },
+     DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Like \"reply\", but derive filename from first sender")) },
    { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
@@ -155,7 +155,7 @@
    { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Like \"Followup\", but always reply to the sender only")) },
    { "folder", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Open a new mailbox or show the current one")) },
+     DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (T | M | RAWLIST), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
@@ -163,8 +163,8 @@
    { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
      DS(N_("Like \"z\", but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
-     DS(N_("Show the current group of headers "
-         "(according to <message>, if specified)")) },
+     DS(N_("Print a page of headers "
+         "(containing the first of <message>, if given)")) },
    { "help", &c_help, (H | M | RAWLIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "?", &c_help, (H | M | RAWLIST), 0, 1
@@ -268,7 +268,7 @@
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
-     DS(N_("Creates, selects or lists an email account")) },
+     DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0
      DS(N_("Create threaded view of current \"folder\"")) },
    { "unthread", &c_unthread, (A | O | MSGLIST), 0, 0
@@ -296,9 +296,9 @@
    { "undraft", &c_undraft, (A | M | MSGLIST), 0, 0
      DS(N_("Un\"draft\" <message-list>")) },
    { "define", &c_define, (M | RAWLIST), 0, 2
-     DS(N_("Define a macro")) },
+     DS(N_("Define a <macro> or show the currently defined ones")) },
    { "undefine", &c_undefine, (M | RAWLIST), 0, 1000
-     DS(N_("Un\"define\" all <macros>")) },
+     DS(N_("Un\"define\" all given <macros>")) },
    { "unaccount", &c_unaccount, (M | RAWLIST), 0, 1000
      DS(N_("Delete all given <accounts>")) },
    { "call", &c_call, (M | RAWLIST), 0, 1
