@@ -618,7 +618,7 @@ __putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
       else
          indw += (int)putuc(0x21B8, '^', fp);
    }
-   indw += (/*putuc(0x261E, fp)*/putc('>', fp) != EOF);
+   indw += putuc(0x25B8, '>', fp);
 
    ac_free(us);
    ac_free(cs);
