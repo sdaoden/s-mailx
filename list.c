@@ -1148,106 +1148,63 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
    int echolist)
 {
    char c, *cp2, quotec, *linebuf;
-   char const *cp;
    int argn;
    NYD_ENTER;
 
    list_saw_numbers = FAL0;
 
-   argn = 0;
-   cp = line;
-   linebuf = ac_alloc(linesize +1);
-   for (;;) {
-      for (; blankchar(*cp); ++cp)
-         ;
-      if (*cp == '\0')
-         break;
+   linebuf = ac_alloc(linesize);
+
+   for (argn = 0;;) {
+      if (!argn || !echolist) {
+         for (; blankchar(*line); ++line)
+            ;
+         if (*line == '\0')
+            break;
+      }
       if (argn >= argc - 1) {
-         fprintf(stderr, _(
-            "Too many elements in the list; excess discarded.\n"));
+         fprintf(stderr,
+            _("Too many elements in the list; excess discarded.\n"));
          break;
       }
+
       cp2 = linebuf;
-      quotec = '\0';
-      while ((c = *cp) != '\0') {
-         cp++;
+      for (quotec = '\0'; ((c = *line++) != '\0');) {
          if (quotec != '\0') {
             if (c == quotec) {
                quotec = '\0';
                if (echolist)
                   *cp2++ = c;
-            } else if (c == '\\')
-               switch (c = *cp++) {
+            } else if (c == '\\') {
+               switch (c = *line++) {
                case '\0':
                   *cp2++ = '\\';
-                  cp--;
+                  --line;
                   break;
-               /*
-               case '0': case '1': case '2': case '3':
-               case '4': case '5': case '6': case '7':
-                  c -= '0';
-                  if (*cp >= '0' && *cp <= '7')
-                     c = c * 8 + *cp++ - '0';
-                  if (*cp >= '0' && *cp <= '7')
-                     c = c * 8 + *cp++ - '0';
-                  *cp2++ = c;
-                  break;
-               case 'b':
-                  *cp2++ = '\b';
-                  break;
-               case 'f':
-                  *cp2++ = '\f';
-                  break;
-               case 'n':
-                  *cp2++ = '\n';
-                  break;
-               case 'r':
-                  *cp2++ = '\r';
-                  break;
-               case 't':
-                  *cp2++ = '\t';
-                  break;
-               case 'v':
-                  *cp2++ = '\v';
-                  break;
-               */
                default:
-                  if (cp[-1] != quotec || echolist)
+                  if (line[-1] != quotec || echolist)
                      *cp2++ = '\\';
                   *cp2++ = c;
                }
-            /*else if (c == '^') {
-               c = *cp++;
-               if (c == '?')
-                  *cp2++ = '\177';
-               /\* null doesn't show up anyway *\/
-               else if ((c >= 'A' && c <= '_') ||
-                   (c >= 'a' && c <= 'z'))
-                  *cp2++ = c & 037;
-               else {
-                  *cp2++ = '^';
-                  cp--;
-               }
-            }*/ else
+            } else
                *cp2++ = c;
          } else if (c == '"' || c == '\'') {
             if (echolist)
                *cp2++ = c;
             quotec = c;
-         } else if (c == '\\' && !echolist) {
-            if (*cp)
-               *cp2++ = *cp++;
-            else
-               *cp2++ = c;
-         } else if (blankchar(c))
+         } else if (c == '\\' && !echolist)
+            *cp2++ = (*line != '\0') ? *line++ : c;
+         else if (blankchar(c))
             break;
          else
             *cp2++ = c;
       }
-      *cp2 = '\0';
-      argv[argn++] = savestr(linebuf);
+      argv[argn++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
+      if (c == '\0')
+         break;
    }
    argv[argn] = NULL;
+
    ac_free(linebuf);
    NYD_LEAVE;
    return argn;
