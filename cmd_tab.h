@@ -364,7 +364,7 @@
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
    { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
-     DS(N_("Define a <ghost> for <arguments>, or list all ghosts")) },
+     DS(N_("Print or create <ghost> (<command>), or list all ghosts")) },
    { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1

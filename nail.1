@@ -2482,20 +2482,29 @@ option is set.
 .
 .Mx
 .It Ic ghost
-Without arguments it lists all currently defined command aliases,
-so-called ghosts.
-With two or more arguments it defines a new command alias: the first
-argument is the name under which the remaining command line should be
-accessible, the content of which can be just about anything.
+Define or list command aliases, so-called ghosts.
+Without arguments a list of all currently known aliases is printed.
+With one argument the expansion of the given alias is shown.
+With two or more arguments a command alias is defined or updated: the
+first argument is the name under which the remaining command line should
+be accessible, the content of which can be just about anything.
 A ghost can be used everywhere a normal command can be used, but always
 takes precedence; any arguments that are given to the command alias are
 joined onto the alias content, and the resulting string forms the
 command line that is, in effect, executed.
 Also see
 .Ic unghost .
-.Pp
-.Dl ? ghost ls !ls -Flatr
-.Dl ? ls /usr/local
+.Bd -literal -offset indent
+? gh xx
+`ghost': no such alias: `xx'
+? gh xx echo hello,
+? gh xx
+xx       <echo hello,>
+? xx
+hello,
+? xx world
+hello, world
+.Ed
 .
 .Mx
 .It Ic headers

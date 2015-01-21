@@ -243,7 +243,7 @@ _c_ghost(void *v)
             NULL)
          fp = stdout;
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-         fprintf(fp, "%-11s -> %s\n", cg->name, cg->cmd.s);
+         fprintf(fp, "%-8s <%s>\n", cg->name, cg->cmd.s);
       if (fp != stdout) {
          page_or_print(fp, i);
          Fclose(fp);
@@ -252,20 +252,32 @@ _c_ghost(void *v)
       goto jleave;
    }
 
-   /* Request to add a new ghost.  Verify it's a valid name.. */
+   /* Verify the ghost name is a valid one */
    if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
       fprintf(stderr, _("`ghost': can't canonicalize `%s'\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
 
-   /* ..and has a command */
+   /* Show command of single ghost? */
+   if (argv[1] == NULL) {
+      for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+         if (!strcmp(argv[0], cg->name)) {
+            printf("%-8s <%s>\n", cg->name, cg->cmd.s);
+            goto jleave;
+         }
+      fprintf(stderr, _("`ghost': no such alias: `%s'\n"), argv[0]);
+      v = NULL;
+      goto jleave;
+   }
+
+   /* Define command for ghost: verify command content */
    for (cl = 0, i = 1; (cp = UNCONST(argv[i])) != NULL; ++i)
       if (*cp != '\0')
          cl += strlen(cp) + 1; /* SP or NUL */
    if (cl == 0) {
-      fprintf(stderr, _("`ghost' synopsis: define <ghost> of <command>, "
-         "or list all ghosts\n"));
+      fprintf(stderr, _("`ghost': empty command arguments after `%s'\n"),
+         argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -320,7 +332,7 @@ _c_unghost(void *v)
             free(cg);
             goto jouter;
          }
-      fprintf(stderr, _("No such `ghost': `%s'\n"), cp);
+      fprintf(stderr, _("`unghost': no such alias: `%s'\n"), cp);
       rv = 1;
 jouter:
       ;
@@ -913,9 +925,8 @@ jrestart:
          if (!strcmp(word, cg->name)) {
             if (line.l > 0) {
                size_t i = cg->cmd.l;
-               line.s = salloc(i + 1 + line.l +1);
+               line.s = salloc(i + line.l +1);
                memcpy(line.s, cg->cmd.s, i);
-               line.s[i++] = ' ';
                memcpy(line.s + i, cp, line.l);
                line.s[i += line.l] = '\0';
                line.l = i;
