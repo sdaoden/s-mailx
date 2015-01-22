@@ -70,6 +70,7 @@
 .Nm \*(ua
 .Fl h | -help
 .Nm \*(ua
+.Bk
 .Op Fl BDdEFintv~
 .Op Fl A Ar account
 .Op Fl a Ar attachment
@@ -80,32 +81,27 @@
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl s Ar subject
 .Op Fl \&.
-.Bk
 .Ar to-addr ...
-.Ek
-.Bk
 .Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
+.Bk
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
-.Bk
+.Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
-.Ek
-.Bk
 .Fl f Op Ar file
-.Ek
-.Bk
 .Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
+.Bk
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
+.Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
-.Bk
 .Op Fl - Ar mta-option ...
 .Ek
 .\" }}}

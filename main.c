@@ -565,9 +565,11 @@ main(int argc, char *argv[])
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
          "\t [-s subject] [-.] to-address... [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
-         "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
+         "\t -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
-         "\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
+         "\t [-u user] [-- mta-option...]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
