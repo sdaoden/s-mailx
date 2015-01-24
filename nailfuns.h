@@ -625,20 +625,6 @@ FL int         c_File(void *v);
 /* Expand file names like echo */
 FL int         c_echo(void *v);
 
-/* if.elif.else.endif conditional execution.
- * condstack_isskip() returns wether the current condition state doesn't allow
- * execution of commands.
- * condstack_release() and condstack_take() are used when sourcing files, they
- * rotate the current condition stack; condstack_take() returns a false boolean
- * if the current condition stack has unclosed conditionals */
-FL int         c_if(void *v);
-FL int         c_elif(void *v);
-FL int         c_else(void *v);
-FL int         c_endif(void *v);
-FL bool_t      condstack_isskip(void);
-FL void *      condstack_release(void);
-FL bool_t      condstack_take(void *self);
-
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
 
@@ -662,6 +648,24 @@ FL int         c_rename(void *v);
 /* `urlencode' and `urldecode' */
 FL int         c_urlencode(void *v);
 FL int         c_urldecode(void *v);
+
+/*
+ * cmd_cnd.c
+ */
+
+/* if.elif.else.endif conditional execution.
+ * condstack_isskip() returns wether the current condition state doesn't allow
+ * execution of commands.
+ * condstack_release() and condstack_take() are used when sourcing files, they
+ * rotate the current condition stack; condstack_take() returns a false boolean
+ * if the current condition stack has unclosed conditionals */
+FL int         c_if(void *v);
+FL int         c_elif(void *v);
+FL int         c_else(void *v);
+FL int         c_endif(void *v);
+FL bool_t      condstack_isskip(void);
+FL void *      condstack_release(void);
+FL bool_t      condstack_take(void *self);
 
 /*
  * collect.c
