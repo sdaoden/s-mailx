@@ -173,6 +173,14 @@ _update-version:
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="$${VERSION##v}";\
+			[ "`git status --porcelain |\
+				awk '\
+					BEGIN {n=0}\
+					/version\.h/ {next}\
+					{++n}\
+					END {print n}\
+				'`" -ne 0 ] &&\
+				VERSION="$${VERSION}-dirty";\
 		else \
 			VERSION="`< version.h $(SED) \
 				-e '/ VERSION /b X' -e d -e ':X' \
