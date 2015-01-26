@@ -80,7 +80,7 @@ if [ -n "${CONFIG}" ]; then
       option_maximal
       ;;
    DEVEL)
-      WANT_DEVEL=1 WANT_DEBUG=1
+      WANT_DEVEL=1 WANT_DEBUG=1 WANT_NYD2=1
       option_maximal
       ;;
    ODEVEL)
