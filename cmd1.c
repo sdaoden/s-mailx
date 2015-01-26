@@ -336,6 +336,7 @@ jredo:
                (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
             n = fprintf(f, "%*s", n, buf);
             wleft = (n >= 0) ? wleft - n : 0;
+            break;
 #else
             c = '?';
             goto jputc;
