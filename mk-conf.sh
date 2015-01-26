@@ -385,7 +385,7 @@ while read line; do
          fi
          printf "#define ${i}\n" >> ${newh}
       else
-         msg "ERROR: internal error -42\\n"
+         msg "ERROR: cannot parse <${line}>\\n"
          config_exit 1
       fi
    else
