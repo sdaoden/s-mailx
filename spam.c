@@ -284,8 +284,11 @@ _spam_interact(struct spam_vc *vc)
    state &= ~_SIGHOLD;
 
    sigemptyset(&cset);
-   pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1], NULL, NULL, NULL,
-         NULL);
+   if ((pid = start_command(vc->comm_s, &cset, p2c[0], c2p[1],
+            NULL, NULL, NULL, NULL)) < 0) {
+      state |= _ERRORS;
+      goto jleave;
+   }
    state |= _RUNNING;
    close(p2c[0]);
    state &= ~_P2C_0;
@@ -339,7 +342,8 @@ jleave:
     * XXX everything until EOF on input, then (2) work, then (3) output
     * XXX a single result line; otherwise we could deadlock here, but since
     * TODO this is rather intermediate, go with it */
-   if (vc->action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
+   if (!(state & _ERRORS) &&
+         vc->action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
       ssize_t i = read(c2p[0], vc->buffer, BUFFER_SIZE - 1);
       if (i > 0) {
          vc->buffer[i] = '\0';
