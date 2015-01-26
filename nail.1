@@ -3359,7 +3359,9 @@ command.
 .It Ic unaccount
 Delete all given accounts.
 An error message is printed if a given account is not defined.
-Attempts to delete the currently active account are rejected.
+The special name
+.Ql *
+will discard all existing accounts.
 .
 .Mx
 .It Ic unalias
@@ -3385,6 +3387,9 @@ all of these are automatically uncollapsed.
 .It Ic undefine
 Undefine all given macros.
 An error message is printed if a given macro is not defined.
+The special name
+.Ql *
+will discard all existing macros.
 .
 .Mx
 .It Ic undelete

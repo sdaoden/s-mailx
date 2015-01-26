@@ -58,7 +58,8 @@ enum ma_flags {
    MA_NONE        = 0,
    MA_ACC         = 1<<0,
    MA_TYPE_MASK   = MA_ACC,
-   MA_UNDEF       = 1<<1         /* Unlink after lookup */
+   MA_UNDEF       = 1<<1,        /* Unlink after lookup */
+   MA_DELETED     = 1<<13        /* Only for _acc_curr: deleted while active */
 };
 
 enum var_map_flags {
@@ -187,8 +188,8 @@ static int           _ma_exec(struct macro const *mp, struct var **unroller);
 static int           _ma_list(enum ma_flags mafl);
 
 /* */
-static bool_t        _ma_define1(char const *name, enum ma_flags mafl);
-static void          _ma_undef1(char const *name, enum ma_flags mafl);
+static bool_t        _ma_define(char const *name, enum ma_flags mafl);
+static void          _ma_undefine(char const *name, enum ma_flags mafl);
 static void          _ma_freelines(struct mline *lp);
 
 /* Update replay-log */
@@ -617,6 +618,18 @@ _ma_look(char const *name, struct macro *data, enum ma_flags mafl)
                _macros[h] = mp->ma_next;
             else
                lmp->ma_next = mp->ma_next;
+
+            /* TODO it should also be possible to delete running macros */
+            if ((mafl & MA_ACC) &&
+                  account_name != NULL && !strcmp(account_name, name)) {
+               mp->ma_flags |= MA_DELETED;
+               fprintf(stderr, _("Delayed deletion of active account \"%s\"\n"),
+                  name);
+            } else {
+               _ma_freelines(mp->ma_contents);
+               free(mp->ma_name);
+               free(mp);
+            }
          }
          goto jleave;
       }
@@ -713,7 +726,7 @@ jleave:
 }
 
 static bool_t
-_ma_define1(char const *name, enum ma_flags mafl)
+_ma_define(char const *name, enum ma_flags mafl)
 {
    bool_t rv = FAL0;
    struct macro *mp;
@@ -792,18 +805,30 @@ jerr:
 }
 
 static void
-_ma_undef1(char const *name, enum ma_flags mafl)
+_ma_undefine(char const *name, enum ma_flags mafl)
 {
    struct macro *mp;
    NYD_ENTER;
 
-   if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) != NULL) {
-      _ma_freelines(mp->ma_contents);
-      free(mp->ma_name);
-      free(mp);
-   } else
-      fprintf(stderr, _("%s \"%s\" is not defined\n"),
-         (mafl & MA_ACC ? "Account" : "Macro"), name);
+   if (LIKELY(name[0] != '*' || name[1] != '\0')) {
+      if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) == NULL)
+         fprintf(stderr, _("%s \"%s\" is not defined\n"),
+            (mafl & MA_ACC ? "Account" : "Macro"), name);
+   } else {
+      struct macro **mpp, *lmp;
+
+      for (mpp = _macros; PTRCMP(mpp, <, _macros + NELEM(_macros)); ++mpp)
+         for (lmp = NULL, mp = *mpp; mp != NULL;) {
+            if ((mp->ma_flags & MA_TYPE_MASK) == mafl) {
+               /* xxx Expensive but rare: be simple */
+               _ma_look(mp->ma_name, NULL, mafl | MA_UNDEF);
+               mp = (lmp == NULL) ? *mpp : lmp->ma_next;
+            } else {
+               lmp = mp;
+               mp = mp->ma_next;
+            }
+         }
+   }
    NYD_LEAVE;
 }
 
@@ -1256,7 +1281,7 @@ c_define(void *v)
       goto jleave;
    }
 
-   rv = !_ma_define1(args[0], MA_NONE);
+   rv = !_ma_define(args[0], MA_NONE);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1274,7 +1299,7 @@ c_undefine(void *v)
       goto jleave;
    }
    do
-      _ma_undef1(*args, MA_NONE);
+      _ma_undefine(*args, MA_NONE);
    while (*++args != NULL);
    rv = 0;
 jleave:
@@ -1393,7 +1418,7 @@ c_account(void *v)
             ACCOUNT_NULL);
          goto jleave;
       }
-      rv = !_ma_define1(args[0], MA_ACC);
+      rv = !_ma_define(args[0], MA_ACC);
       goto jleave;
    }
 
@@ -1412,8 +1437,17 @@ c_account(void *v)
    }
 
    oqf = savequitflags();
-   if (_acc_curr != NULL && _acc_curr->ma_localopts != NULL)
-      _localopts_unroll(&_acc_curr->ma_localopts);
+
+   if (_acc_curr != NULL) {
+      if (_acc_curr->ma_localopts != NULL)
+         _localopts_unroll(&_acc_curr->ma_localopts);
+      if (_acc_curr->ma_flags & MA_DELETED) { /* xxx can be made generic? */
+         _ma_freelines(_acc_curr->ma_contents);
+         free(_acc_curr->ma_name);
+         free(_acc_curr);
+      }
+   }
+
    account_name = (mp != NULL) ? mp->ma_name : NULL;
    _acc_curr = mp;
 
@@ -1451,16 +1485,10 @@ c_unaccount(void *v)
       fprintf(stderr, _("`unaccount': required arguments are missing\n"));
       goto jleave;
    }
-
+   do
+      _ma_undefine(*args, MA_ACC);
+   while (*++args != NULL);
    rv = 0;
-   do {
-      if (account_name != NULL && !strcmp(account_name, *args)) {
-         fprintf(stderr,
-            _("Rejecting deletion of active account \"%s\"\n"), *args);
-         continue;
-      }
-      _ma_undef1(*args, MA_ACC);
-   } while (*++args != NULL);
 jleave:
    NYD_LEAVE;
    return rv;
