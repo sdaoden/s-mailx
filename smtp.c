@@ -55,11 +55,6 @@ EMPTY_FILE(smtp)
 # include <arpa/inet.h>
 #endif
 
-#undef NL
-#undef LINE
-#define NL        "\015\012"
-#define LINE(X)   X NL
-
 struct smtp_line {
    char     *dat;    /* Actual data */
    size_t   datlen;
@@ -170,11 +165,11 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 
 #ifdef HAVE_SSL
    if (!sp->s_use_ssl && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
-      snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
+      snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
 
-      _OUT(LINE("STARTTLS"));
+      _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
       if (!(options & OPT_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
@@ -189,14 +184,14 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 
    /* Shorthand: no authentication, plain HELO? */
    if (sbp->sb_ccred.cc_authtype == AUTHTYPE_NONE) {
-      snprintf(o, sizeof o, LINE("HELO %s"), hostname);
+      snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
       goto jsend;
    }
 
    /* We'll have to deal with authentication */
-   snprintf(o, sizeof o, LINE("EHLO %s"), hostname);
+   snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
@@ -204,7 +199,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    default:
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
-      _OUT(LINE("AUTH PLAIN"));
+      _OUT(NETLINE("AUTH PLAIN"));
       _ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
@@ -216,7 +211,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       _ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
-      _OUT(LINE("AUTH LOGIN"));
+      _OUT(NETLINE("AUTH LOGIN"));
       _ANSWER(3, FAL0, FAL0);
 
       b64_encode_cp(&b64, sbp->sb_ccred.cc_user.s, B64_SALLOC | B64_CRLF);
@@ -229,7 +224,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       break;
 #ifdef HAVE_MD5
    case AUTHTYPE_CRAM_MD5:
-      _OUT(LINE("AUTH CRAM-MD5"));
+      _OUT(NETLINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
       {  char *cp = cram_md5_string(&sbp->sb_ccred.cc_user,
                &sbp->sb_ccred.cc_pass, slp->dat);
@@ -247,19 +242,19 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    }
 
 jsend:
-   snprintf(o, sizeof o, LINE("MAIL FROM:<%s>"), sbp->sb_url.url_u_h.s);
+   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_url.url_u_h.s);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
    for (n = sbp->sb_to; n != NULL; n = n->n_flink) {
       if (!(n->n_type & GDEL)) {
-         snprintf(o, sizeof o, LINE("RCPT TO:<%s>"), skinned_name(n));
+         snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), skinned_name(n));
          _OUT(o);
          _ANSWER(2, FAL0, FAL0);
       }
    }
 
-   _OUT(LINE("DATA"));
+   _OUT(NETLINE("DATA"));
    _ANSWER(3, FAL0, FAL0);
 
    fflush_rewind(sbp->sb_input);
@@ -290,14 +285,14 @@ jsend:
          fprintf(stderr, ">>> %s", slp->buf);
          continue;
       }
-      slp->buf[blen - 1] = NL[0];
-      slp->buf[blen] = NL[1];
+      slp->buf[blen - 1] = NETNL[0];
+      slp->buf[blen] = NETNL[1];
       swrite1(sp, slp->buf, blen + 1, 1);
    }
-   _OUT(LINE("."));
+   _OUT(NETLINE("."));
    _ANSWER(2, FAL0, FAL0);
 
-   _OUT(LINE("QUIT"));
+   _OUT(NETLINE("QUIT"));
    _ANSWER(2, TRU1, FAL0);
    rv = TRU1;
 jleave:
@@ -342,9 +337,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-
-#undef LINE
-#undef NL
 #endif /* HAVE_SMTP */
 
 /* s-it-mode */

@@ -136,6 +136,10 @@
 #endif
 #define BUFFER_SIZE     (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
+/* Network protocol newline */
+#define NETNL           "\015\012"
+#define NETLINE(X)      X NETNL
+
 /* Number of Not-Yet-Dead calls that are remembered */
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
 # ifdef HAVE_NYD2

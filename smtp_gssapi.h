@@ -162,7 +162,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
       goto jleave;
    }
 
-   _OUT(LINE("AUTH GSSAPI"));
+   _OUT(NETLINE("AUTH GSSAPI"));
    _ANSWER(3, FAL0, FAL0);
    while (maj_stat == GSS_S_CONTINUE_NEEDED) {
       /* Pass token obtained from first gss_init_sec_context() call */

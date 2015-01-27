@@ -44,11 +44,6 @@
 EMPTY_FILE(pop3)
 #ifdef HAVE_POP3
 
-#undef NL
-#undef LINE
-#define NL        "\015\012"
-#define LINE(X)   X NL
-
 #define POP3_ANSWER(RV,ACTIONSTOP) \
 do if (((RV) = pop3_answer(mp)) == STOP) {\
    ACTIONSTOP;\
@@ -130,7 +125,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_SSL
    if (!scp->sc_url.url_needs_tls &&
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
-      POP3_OUT(rv, "STLS" NL, MB_COMD, goto jleave);
+      POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
       if ((rv = ssl_open(&scp->sc_url, &scp->sc_sock)) != OKAY)
          goto jleave;
@@ -234,7 +229,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NL)-1 +1);
+   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "APOP ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
@@ -242,7 +237,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    cp[i++] = ' ';
    memcpy(cp + i, hex, MD5TOHEX_SIZE);
    i += MD5TOHEX_SIZE;
-   memcpy(cp + i, NL, sizeof(NL));
+   memcpy(cp + i, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -263,17 +258,17 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 
    /* The USER/PASS plain text version */
    cp = ac_alloc(MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
-         sizeof(NL)-1 +1);
+         sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_user.l, NL, sizeof(NL));
+   memcpy(cp + 5 + scp->sc_cred.cc_user.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
    memcpy(cp, "PASS ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_pass.l, NL, sizeof(NL));
+   memcpy(cp + 5 + scp->sc_cred.cc_pass.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -322,8 +317,8 @@ jretry:
          /* If the answer starts neither with '+' nor with '-', it must be part
           * of a multiline response.  Get lines until a single dot appears */
 jmultiline:
-         while (_pop3_buf[0] != '.' || _pop3_buf[1] != NL[0] ||
-               _pop3_buf[2] != NL[1] || _pop3_buf[3] != '\0') {
+         while (_pop3_buf[0] != '.' || _pop3_buf[1] != NETNL[0] ||
+               _pop3_buf[2] != NETNL[1] || _pop3_buf[3] != '\0') {
             sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock);
             if (sz <= 0)
                goto jeof;
@@ -384,7 +379,7 @@ pop3_noop1(struct mailbox *mp)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "NOOP" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "NOOP" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_LEAVE;
@@ -430,7 +425,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "STAT" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
    for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
@@ -465,7 +460,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    enum okay rv;
    NYD_ENTER;
 
-   snprintf(o, sizeof o, "LIST %u" NL, n);
+   snprintf(o, sizeof o, "LIST %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -584,10 +579,10 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 jretry:
    switch (need) {
    case NEED_HEADER:
-      snprintf(o, sizeof o, "TOP %u 0" NL, number);
+      snprintf(o, sizeof o, "TOP %u 0" NETNL, number);
       break;
    case NEED_BODY:
-      snprintf(o, sizeof o, "RETR %u" NL, number);
+      snprintf(o, sizeof o, "RETR %u" NETNL, number);
       break;
    case NEED_UNSPEC:
       abort(); /* XXX */
@@ -606,7 +601,7 @@ jretry:
    size = 0;
    lines = 0;
    while (sgetline(&line, &linesize, &linelen, &mp->mb_sock) > 0) {
-      if (line[0] == '.' && line[1] == NL[0] && line[2] == NL[1] &&
+      if (line[0] == '.' && line[1] == NETNL[0] && line[2] == NETNL[1] &&
             line[3] == '\0') {
          mp->mb_active &= ~MB_MULT;
          break;
@@ -642,7 +637,8 @@ jretry:
          ++size;
       }
       lines++;
-      if (lp[linelen-1] == NL[1] && (linelen == 1 || lp[linelen-2] == NL[0])) {
+      if (lp[linelen-1] == NETNL[1] &&
+            (linelen == 1 || lp[linelen-2] == NETNL[0])) {
          emptyline = linelen <= 2;
          if (linelen > 2)
             fwrite(lp, 1, linelen - 2, mp->mb_otf);
@@ -656,7 +652,7 @@ jretry:
    }
    if (!emptyline) {
       /* This is very ugly; but some POP3 daemons don't end a
-       * message with NL NL, and we need \n\n for mbox format */
+       * message with NETNL NETNL, and we need \n\n for mbox format */
       putc('\n', mp->mb_otf);
       ++lines;
       ++size;
@@ -701,7 +697,7 @@ pop3_exit(struct mailbox *mp)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "QUIT" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "QUIT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_LEAVE;
@@ -715,7 +711,7 @@ pop3_delete(struct mailbox *mp, int n)
    enum okay rv;
    NYD_ENTER;
 
-   snprintf(o, sizeof o, "DELE %u" NL, n);
+   snprintf(o, sizeof o, "DELE %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
@@ -949,9 +945,6 @@ pop3_quit(void)
 jleave:
    NYD_LEAVE;
 }
-
-#undef LINE
-#undef NL
 #endif /* HAVE_POP3 */
 
 /* s-it-mode */
