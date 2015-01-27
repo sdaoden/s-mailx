@@ -99,14 +99,6 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 
    if (!f) {
       *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
-         if (inhook) {
-            success = TRU1;
-            goto jleave;
-         }
-         printf(_("No messages to %s.\n"), cmd);
-         goto jleave;
-      }
       msgvec[1] = 0;
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
@@ -115,7 +107,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          success = TRU1;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      printf(_("No messages to %s.\n"), cmd);
       goto jleave;
    }
 
