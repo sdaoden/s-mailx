@@ -709,7 +709,7 @@ _ma_list(enum ma_flags mafl)
       for (mq = _macros[ti]; mq; mq = mq->ma_next)
          if ((mq->ma_flags & MA_TYPE_MASK) == mafl) {
             if (++mc > 1)
-               fputc('\n', fp);
+               putc('\n', fp);
             fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
             for (lp = mq->ma_contents; lp != NULL; lp = lp->l_next)
                fprintf(fp, "  %s\n", lp->l_line);

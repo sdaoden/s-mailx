@@ -462,7 +462,7 @@ attach_message(struct attachment *ap, FILE *fo)
        "Content-Disposition: inline\n", _sendout_boundary);
    if ((ccp = ap->a_content_description) != NULL)
       fprintf(fo, "Content-Description: %s\n", ccp);
-   fputc('\n', fo);
+   putc('\n', fo);
 
    mp = message + ap->a_msgno - 1;
    touch(mp);
@@ -783,7 +783,7 @@ do {\
 
    if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
       fputs(addr, fo);
-      fputc('\n', fo);
+      putc('\n', fo);
       ++gotcha;
    }
 

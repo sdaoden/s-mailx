@@ -638,7 +638,7 @@ jretry:
          DBG( fprintf(stderr, "!! POP3 really needs to quote From?\n"); )
          if (lines == 0)
             continue;
-         fputc('>', mp->mb_otf);
+         putc('>', mp->mb_otf);
          ++size;
       }
       lines++;
@@ -646,7 +646,7 @@ jretry:
          emptyline = linelen <= 2;
          if (linelen > 2)
             fwrite(lp, 1, linelen - 2, mp->mb_otf);
-         fputc('\n', mp->mb_otf);
+         putc('\n', mp->mb_otf);
          size += linelen - 1;
       } else {
          emptyline = 0;
@@ -657,7 +657,7 @@ jretry:
    if (!emptyline) {
       /* This is very ugly; but some POP3 daemons don't end a
        * message with NL NL, and we need \n\n for mbox format */
-      fputc('\n', mp->mb_otf);
+      putc('\n', mp->mb_otf);
       ++lines;
       ++size;
    }

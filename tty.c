@@ -250,7 +250,7 @@ jrestore:
    termios_state_reset();
    safe_signal(SIGINT, ohdl);
    if (options & OPT_TTYIN)
-      fputc('\n', stdout);
+      putc('\n', stdout);
    NYD_LEAVE;
 # if 0
    if (hadsig && ohdl != SIG_IGN)

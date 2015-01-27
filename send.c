@@ -896,7 +896,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          if (pipecomm != NULL) {
             colour_reset(obuf); /* XXX reset after \n!! */
             if (colour_stripped)
-               fputc('\n', obuf);
+               putc('\n', obuf);
          }
          }
 #endif
