@@ -137,7 +137,12 @@ WANT_TERMCAP=no
 # "Handling spam" (`./nail.1').
 # . WANT_SPAM_SPAMC:
 #   Support for interaction with spamassassin(1)s spamc(1).
+# . WANT_SPAM_SPAMD:
+#   Direct communication with spamassassin(1)s spamd(1).
+#   Needs WANT_SOCKETS support and unix(4) domain sockets (checked).
+#   This can be "require"d.
 WANT_SPAM_SPAMC=no
+WANT_SPAM_SPAMD=no
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may
