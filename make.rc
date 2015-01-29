@@ -134,8 +134,10 @@ WANT_TERMCAP=no
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands with a `spam' prefix, and see the manual section
-# "Handling spam" (`./nail.1')
-WANT_SPAM=yes
+# "Handling spam" (`./nail.1').
+# . WANT_SPAM_SPAMC:
+#   Support for interaction with spamassassin(1)s spamc(1).
+WANT_SPAM_SPAMC=no
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may

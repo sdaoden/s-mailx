@@ -15,7 +15,7 @@ option_reset() {
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
-   WANT_SPAM=0
+   WANT_SPAM_SPAMC=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
@@ -34,7 +34,7 @@ option_maximal() {
    WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
-   WANT_SPAM=1
+   WANT_SPAM_SPAMC=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
    WANT_COLOUR=1
@@ -121,9 +121,11 @@ option_update() {
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
    fi
+
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
+
    # If we don't need MD5 except for producing boundary and message-id strings,
    # leave it off, plain old srand(3) should be enough for that purpose.
    if feat_no SOCKETS; then
@@ -1407,13 +1409,19 @@ else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
 
-if feat_yes SPAM; then
-   echo '#define HAVE_SPAM' >> ${h}
+if feat_yes SPAM_SPAMC; then
+   echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+      echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
 else
-   echo '/* WANT_SPAM=0 */' >> ${h}
+   echo '/* WANT_SPAM_SPAMC=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMC; then
+   echo '#define HAVE_SPAM' >> ${h}
+else
+   echo '/* HAVE_SPAM */' >> ${h}
 fi
 
 if feat_yes DOCSTRINGS; then
@@ -1483,7 +1491,7 @@ printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
@@ -1590,7 +1598,10 @@ ${cat} > ${tmp2}.c << \!
 : + Terminal capability queries
 #endif
 #ifdef HAVE_SPAM
-: + Interaction with spam filters
+: + Spam management
+# ifdef HAVE_SPAM_SPAMC
+: + + Via spamc(1) (of spamassassin(1))
+# endif
 #endif
 #ifdef HAVE_DOCSTRINGS
 : + Documentation summary strings
@@ -1655,7 +1666,7 @@ ${cat} > ${tmp2}.c << \!
 : - Terminal capability queries
 #endif
 #ifndef HAVE_SPAM
-: - Interaction with spam filters
+: - Spam management
 #endif
 #ifndef HAVE_DOCSTRINGS
 : - Documentation summary strings
