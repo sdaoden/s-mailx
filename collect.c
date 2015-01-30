@@ -746,13 +746,20 @@ jcont:
       goto jout;
    }
 
-   /* The interactive collect loop */
+   /* The interactive collect loop.
+    * All commands which come here are forbidden when sourcing! */
    for (;;) {
       _coll_jmp_p = 1;
       cnt = readline_input("", FAL0, &linebuf, &linesize, NULL);
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
+         /* Since readline_input() transparently switches to `source'd files
+          * and `~:source FILE' may enter this, ensure we quit again! */
+         if (sourcing) {
+            unstack();
+            continue;
+         }
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
             printf(_("Use \".\" to terminate letter\n"));
             continue;

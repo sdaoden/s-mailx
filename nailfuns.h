@@ -740,7 +740,8 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
  * nl_escape defines wether user can escape newlines via backslash (POSIX).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
- * Return number of octets or a value <0 on error */
+ * Return number of octets or a value <0 on error.
+ * Note: may use the currently `source'd file stream instead of stdin! */
 FL int         readline_input(char const *prompt, bool_t nl_escape,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);
