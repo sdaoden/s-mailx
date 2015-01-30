@@ -28,7 +28,7 @@ $(UAGENT): $(OBJ)
 	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
-config.o accmacvar.o: okeys.h
+config.o accmacvar.o: okeys.h version.h
 config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h

@@ -60,6 +60,14 @@ enum ma_flags {
    MA_UNDEF       = 1<<1         /* Unlink after lookup */
 };
 
+enum var_map_flags {
+   VM_NONE     = 0,
+   VM_BINARY   = 1<<0,           /* ok_b_* */
+   VM_RDONLY   = 1<<1,           /* May not be set by user */
+   VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
+   VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
+};
+
 struct macro {
    struct macro   *ma_next;
    char           *ma_name;
@@ -81,11 +89,15 @@ struct var {
    char           v_name[VFIELD_SIZE(sizeof(size_t))];
 };
 
+struct var_virtual {
+   ui32_t         vv_okey;
+   struct var const *vv_var;
+};
+
 struct var_map {
    ui32_t         vm_hash;
    ui16_t         vm_keyoff;
-   ui8_t          vm_binary;
-   ui8_t          vm_special;
+   ui16_t         vm_flags;      /* var_map_flags bits */
 };
 
 struct var_carrier {
@@ -105,6 +117,7 @@ struct lostack {
 };
 
 /* Include the constant create-okey-map.pl output */
+#include "version.h"
 #include "okeys.h"
 
 static struct macro  *_acc_curr;    /* Currently active account */
@@ -326,6 +339,20 @@ _var_lookup(struct var_carrier *vcp)
    struct var **vap, *lvp, *vp;
    NYD_ENTER;
 
+   /* XXX _So_ unlikely that it should be checked if normal lookup fails! */
+   if (UNLIKELY(vcp->vc_vmap != NULL &&
+         (vcp->vc_vmap->vm_flags & VM_VIRTUAL) != 0)) {
+      struct var_virtual const *vvp;
+
+      for (vvp = _var_virtuals;
+            PTRCMP(vvp, <, _var_virtuals + NELEM(_var_virtuals)); ++vvp)
+         if (vvp->vv_okey == vcp->vc_okey) {
+            vp = UNCONST(vvp->vv_var);
+            goto jleave;
+         }
+      assert(0);
+   }
+
    vap = _vars + (vcp->vc_prime = MA_HASH2PRIME(vcp->vc_hash));
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
@@ -364,6 +391,12 @@ _var_set(struct var_carrier *vcp, char const *value)
 
    _var_lookup(vcp);
 
+   if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
+      fprintf(stderr, _("`%s': readonly variable\n"), vcp->vc_name);
+      err = TRU1;
+      goto jleave;
+   }
+
    /* Don't care what happens later on, store this in the unroll list */
    if (_localopts != NULL)
       _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
@@ -385,12 +418,12 @@ _var_set(struct var_carrier *vcp, char const *value)
    else {
       /* Via `set' etc. the user may give even binary options non-binary
        * values, ignore that and force binary xxx error log? */
-      if (vcp->vc_vmap->vm_binary)
+      if (vcp->vc_vmap->vm_flags & VM_BINARY)
          value = UNCONST("");
       vp->v_value = _var_vcopy(value);
 
       /* Check if update allowed XXX wasteful on error! */
-      if (vcp->vc_vmap->vm_special &&
+      if ((vcp->vc_vmap->vm_flags & VM_SPECIAL) &&
             (err = !_var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
          char *cp = vp->v_value;
          vp->v_value = oval;
@@ -417,6 +450,9 @@ _var_clear(struct var_carrier *vcp)
          fprintf(stderr, _("`%s': undefined variable\n"), vcp->vc_name);
          goto jleave;
       }
+   } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
+      fprintf(stderr, _("`%s': readonly variable\n"), vcp->vc_name);
+      goto jleave;
    } else {
       if (_localopts != NULL)
          _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
@@ -427,7 +463,7 @@ _var_clear(struct var_carrier *vcp)
       free(vcp->vc_var);
       vcp->vc_var = NULL;
 
-      if (vcp->vc_vmap != NULL && vcp->vc_vmap->vm_special &&
+      if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_SPECIAL) &&
             !_var_check_specials(vcp->vc_okey, FAL0, NULL))
          goto jleave;
    }
@@ -967,10 +1003,9 @@ FL void
 var_list_all(void)
 {
    FILE *fp;
-   char **vacp, **cap;
-   struct var *vp;
    size_t no, i;
-   char const *fmt;
+   struct var *vp;
+   char const **vacp, **cap, *fmt;
    NYD_ENTER;
 
    if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
@@ -994,9 +1029,9 @@ var_list_all(void)
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
 
    for (cap = vacp; no != 0; ++cap, --no) {
-      char *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin, change */
+      char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin, change */
       if (cp == NULL)
-         cp = UNCONST("");
+         cp = "";
       if (i || *cp != '\0')
          fprintf(fp, fmt, *cap, cp);
       else
@@ -1013,7 +1048,7 @@ FL int
 c_varshow(void *v)
 {
    struct var_carrier vc;
-   char **argv = v, *val;
+   char const **argv = v, *val;
    bool_t isenv, isset;
    NYD_ENTER;
 
@@ -1035,14 +1070,18 @@ c_varshow(void *v)
       isset = (vc.vc_var != NULL);
 
       if (vc.vc_vmap != NULL) {
-         if (vc.vc_vmap->vm_binary)
-            printf("%s: binary option (%d): isset=%d/environ=%d\n",
-               vc.vc_name, vc.vc_okey, isset, isenv);
+         ui16_t f = vc.vc_vmap->vm_flags;
+
+         if (f & VM_BINARY)
+            printf(_("%s: (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
+               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv);
          else
-            printf("%s: value option (%d): isset=%d/environ=%d value<%s>\n",
-               vc.vc_name, vc.vc_okey, isset, isenv, val);
+            printf(_("%s: (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
+               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv, val);
       } else
-         printf("%s: isset=%d/environ=%d value<%s>\n",
+         printf("%s: (assembled) set=%d (ENVIRON=%d) value<%s>\n",
             vc.vc_name, isset, isenv, val);
    }
 jleave:
@@ -1141,10 +1180,17 @@ c_varedit(void *v)
             vc.vc_name);
          rv = 1;
          continue;
-      } else if (vc.vc_vmap != NULL && vc.vc_vmap->vm_binary) {
-         fprintf(stderr, _("`varedit' cannot edit binary value `%s'\n"),
-            vc.vc_name);
-         continue;
+      } else if (vc.vc_vmap != NULL) {
+         if (vc.vc_vmap->vm_flags & VM_BINARY) {
+            fprintf(stderr, _("`varedit' cannot edit binary variable `%s'\n"),
+               vc.vc_name);
+            continue;
+         }
+         if (vc.vc_vmap->vm_flags & VM_RDONLY) {
+            fprintf(stderr, _("`varedit' cannot edit readonly variable `%s'\n"),
+               vc.vc_name);
+            continue;
+         }
       }
 
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
