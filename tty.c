@@ -2120,18 +2120,14 @@ FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
-   /* TODO The nothing-at-all tty layer even forces re-entering all the
-    * TODO original data when re-editing a field */
    int rv;
    NYD_ENTER;
 
-   if (prompt != NULL && *prompt != '\0')
-      fputs(prompt, stdout);
-   if (n > 0) {
-      fprintf(stdout, _("{former content: %.*s} "), (int)n, *linebuf);
-      n = 0;
+   if (prompt != NULL) {
+      if (*prompt != '\0')
+         fputs(prompt, stdout);
+      fflush(stdout);
    }
-   fflush(stdout);
    rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
    NYD_LEAVE;
    return rv;
