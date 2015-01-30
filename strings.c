@@ -47,21 +47,8 @@
 
 #include <ctype.h>
 
-/* Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
- * release all except the first two in sreset(), because other allocations are
- * performed and the underlaying allocator should have the possibility to
- * reorder stuff and possibly even madvise(2), so that S-nail(1) integrates
- * neatly into the system.
- *
- * To relax stuff further, especially in non-interactive, i.e., send mode, do
- * not even allocate the first buffer, but let that be a builtin DATA section
- * one that is rather small, yet sufficient for send mode to *never* even
- * perform a single dynamic allocation (from our stringdope point of view).
- * Encapsulate user chunks with canaries if HAVE_DEBUG.
- *
- * To deal with huge allocations which would overflow those buffers we offer
- * a simple bypass that relies upon smalloc() (which panic()s as necessary) */
-
+/* In debug mode the "string dope" allocations are enwrapped in canaries, just
+ * as we do with our normal memory allocator */
 #ifdef HAVE_DEBUG
 # define _SHOPE_SIZE       (2u * 8 * sizeof(char) + sizeof(struct schunk))
 
@@ -99,25 +86,31 @@ struct b_base {
    char           *_caster;   /* NULL if full */
 };
 
-/* Single instance builtin buffer, DATA */
+/* Single instance builtin buffer.  Room for anything, most of the time */
 struct b_bltin {
    struct b_base  b_base;
    char           b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
 };
 #define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
 
-/* Dynamically allocated buffers */
+/* Dynamically allocated buffers to overcome shortage, always released again
+ * once the command loop ticks (without relaxation or during sourcing) */
 struct b_dyn {
    struct b_base  b_base;
    char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
 };
 #define SDYN_SIZE    SIZEOF_FIELD(struct b_dyn, b_buf)
 
+/* The multiplexer of the several real b_* */
 struct buffer {
    struct b_base  b;
    char           b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
+/* Requests that exceed SDYN_SIZE-1 and thus cannot be handled by string dope
+ * are always served by the normal memory allocator (which panics if memory
+ * cannot be served).  Note such an allocation has not yet occurred, it is only
+ * included as a security fallback bypass */
 struct hugebuf {
    struct hugebuf *hb_next;
    char           hb_buf[VFIELD_SIZE(SALIGN + 1)];
@@ -332,7 +325,7 @@ FL void *
 FL void
 sreset(bool_t only_if_relaxed)
 {
-   struct buffer *bh;
+   struct buffer *blh, *bh;
    NYD_ENTER;
 
    DBG( ++_all_resetreqs; )
@@ -345,41 +338,44 @@ sreset(bool_t only_if_relaxed)
    ++_all_resets;
 #endif
 
+   /* In relaxed mode we only reset casters and don't care about anything else
+    * since we are in the middle of being hot */
+   if (_buf_relax != NULL) {
+      srelax_rele();
+      goto jleave;
+   }
+
+   blh = NULL;
    if ((bh = _buf_head) != NULL) {
-      struct buffer *b = bh;
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = b->b._bot;
-      b->b._relax = NULL;
-      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
-      _buf_server = b;
+      do {
+         struct buffer *x = bh;
+         bh = x->b._next;
+         DBG( _salloc_bcheck(x); )
 
-      if ((bh = bh->b._next) != NULL) {
-         b = bh;
-         DBG( _salloc_bcheck(b); )
-         b->b._caster = b->b._bot;
-         b->b._relax = NULL;
-         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
-
-         for (bh = bh->b._next; bh != NULL;) {
-            struct buffer *b2 = bh->b._next;
-            DBG( _salloc_bcheck(bh); )
-            free(bh);
-            bh = b2;
+         /* Give away all buffers that are not covered by sreset().
+          * _buf_head is builtin and thus cannot be free()d */
+         if (blh != NULL && x->b._bot == x->b_buf) {
+            blh->b._next = bh;
+            free(x);
+         } else {
+            blh = x;
+            x->b._caster = x->b._bot;
+            x->b._relax = NULL;
+            DBG( memset(x->b._caster, 0377,
+               PTR2SIZE(x->b._max - x->b._caster)); )
          }
-      }
-      _buf_list = b;
-      b->b._next = NULL;
+      } while (bh != NULL);
+
+      _buf_server = _buf_head;
+      _buf_list = blh;
       _buf_relax = NULL;
    }
 
-   /* We'll only free huge allocations when not in relaxed mode, because they
-    * know nothing about relaxation (as above) */
-   if (_buf_relax == NULL)
-      while (_huge_list != NULL) {
-         struct hugebuf *hb = _huge_list;
-         _huge_list = hb->hb_next;
-         free(hb);
-      }
+   while (_huge_list != NULL) {
+      struct hugebuf *hb = _huge_list;
+      _huge_list = hb->hb_next;
+      free(hb);
+   }
 
    DBG( smemreset(); )
 jleave:
@@ -407,9 +403,11 @@ srelax_rele(void)
    struct buffer *b;
    NYD_ENTER;
 
+   /* Note this should never hit the silly case that relaxation was started
+    * without string dope having seen a single allocation: because of main.c */
    assert(_buf_relax != NULL);
 
-   for (b = _buf_relax; b != NULL; b = b->b._next) {
+   for (b = _buf_head; b != NULL; b = b->b._next) {
       DBG( _salloc_bcheck(b); )
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
       b->b._relax = NULL;
@@ -430,7 +428,7 @@ srelax(void)
 
    assert(_buf_relax != NULL);
 
-   for (b = _buf_relax; b != NULL; b = b->b._next) {
+   for (b = _buf_head; b != NULL; b = b->b._next) {
       DBG( _salloc_bcheck(b); )
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
       DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
