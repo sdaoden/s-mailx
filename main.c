@@ -583,8 +583,7 @@ main(int argc, char *argv[])
     * Start our lengthy setup
     */
 
-   starting =
-   var_clear_allow_undefined = TRU1;
+   starting = TRU1;
 
    progname = argv[0];
    _startup();
@@ -918,8 +917,7 @@ jusage:
     * We're finally completely setup and ready to go
     */
 
-   starting =
-   var_clear_allow_undefined = FAL0;
+   starting = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);

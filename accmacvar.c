@@ -385,10 +385,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    NYD_ENTER;
 
    if (value == NULL) {
-      bool_t vcau_save = var_clear_allow_undefined;
-      var_clear_allow_undefined = TRU1;
       ok = _var_clear(vcp);
-      var_clear_allow_undefined = vcau_save;
       goto jleave;
    }
 
@@ -448,10 +445,8 @@ _var_clear(struct var_carrier *vcp)
    NYD_ENTER;
 
    if (!_var_lookup(vcp)) {
-      if (!sourcing && !var_clear_allow_undefined) {
+      if (!sourcing && (options & OPT_D_V))
          fprintf(stderr, _("Variable undefined: \"%s\"\n"), vcp->vc_name);
-         ok = FAL0;
-      }
    } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
       fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
       ok = FAL0;
@@ -634,7 +629,6 @@ static int
 _ma_exec(struct macro const *mp, struct var **unroller)
 {
    struct lostack los;
-   bool_t vcau_save;
    char *buf;
    struct n2 {struct n2 *up; struct lostack *lo;} *x; /* FIXME hack (sigman+) */
    struct mline const *lp;
@@ -646,9 +640,6 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    los.s_localopts = NULL;
    los.s_unroll = FAL0;
    _localopts = &los;
-
-   vcau_save = var_clear_allow_undefined;
-   var_clear_allow_undefined = TRU1;
 
    x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
    x->up = temporary_localopts_store;
@@ -663,7 +654,6 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    ac_free(buf);
 
    temporary_localopts_store = x->up;  /* FIXME intermediate hack */
-   var_clear_allow_undefined = vcau_save;
 
    _localopts = los.s_up;
    if (unroller == NULL) {
@@ -1143,8 +1133,6 @@ c_unsetenv(void *v)
 
    if (!(err = starting)) {
       char **ap;
-      bool_t vcau_save = var_clear_allow_undefined;
-      var_clear_allow_undefined = TRU1;
 
       for (ap = v; *ap != NULL; ++ap) {
          bool_t bad = !_var_vokclear(*ap);
@@ -1156,8 +1144,6 @@ c_unsetenv(void *v)
          )
             err = 1;
       }
-
-      var_clear_allow_undefined = vcau_save;
    }
    NYD_LEAVE;
    return err;
@@ -1471,7 +1457,6 @@ temporary_localopts_free(void) /* XXX intermediate hack */
    struct n2 {struct n2 *up; struct lostack *lo;} *x;
    NYD_ENTER;
 
-   var_clear_allow_undefined = FAL0;
    x = temporary_localopts_store;
    temporary_localopts_store = NULL;
    _localopts = NULL;

@@ -1625,7 +1625,6 @@ VL bool_t      loading;             /* Loading user definitions */
 VL bool_t      sourcing;            /* Currently reading variant file */
 VL bool_t      sawcom;              /* Set after first command */
 VL bool_t      starting;            /* Still in startup code */
-VL bool_t      var_clear_allow_undefined; /* v?ok_[bv]clear(): no complain */
 VL int         noreset;             /* String resets suspended */
 
 /* XXX stylish sorting */

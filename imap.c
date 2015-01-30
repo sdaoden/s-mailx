@@ -3479,10 +3479,8 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       rv = 1;
       goto jleave;
    }
-   var_clear_allow_undefined = TRU1;
    ok_bclear(disconnected);
    vok_bclear(savecat("disconnected-", url.url_u_h_p.s));
-   var_clear_allow_undefined = FAL0;
 
    if (mb.mb_type == MB_CACHE) {
       enum fedit_mode fm = FEDIT_NONE;
