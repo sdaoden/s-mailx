@@ -734,7 +734,7 @@ commands(void)
          if (ev.ev_line.l > LINESIZE * 3) {
             free(ev.ev_line.s); /* TODO pool! but what? */
             ev.ev_line.s = NULL;
-            ev.ev_line.l = 0;
+            ev.ev_line.l = ev.ev_line_size = 0;
          }
       }
 
@@ -820,7 +820,7 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    temporary_orig_line = contxt ? savestr(linebuf) : NULL;
    rv = evaluate(&ev);
 
-   if (contxt)
+   if (contxt && temporary_orig_line != NULL)
       tty_addhist(temporary_orig_line, TRU1);
 
 #ifdef HAVE_COLOUR
