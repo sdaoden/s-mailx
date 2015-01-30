@@ -753,7 +753,7 @@ jreadline:
             continue;
          }
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("Use `quit' to quit.\n"));
+            printf(_("*ignoreeof* set, use `quit' to quit.\n"));
             continue;
          }
          break;
