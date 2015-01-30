@@ -154,17 +154,17 @@ static bool_t        _var_revlookup(struct var_carrier *vcp, char const *name);
  * Sets vcp.vc_prime; vcp.vc_var is NULL if not found */
 static bool_t        _var_lookup(struct var_carrier *vcp);
 
-/* Set variable from vcp.vc_(vmap|name|hash), return wether error occurred */
+/* Set variable from vcp.vc_(vmap|name|hash), return success */
 static bool_t        _var_set(struct var_carrier *vcp, char const *value);
 
 /* Clear variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var to NULL,
- * return wether error occurred */
+ * return success */
 static bool_t        _var_clear(struct var_carrier *vcp);
 
 /* var_list_all(): qsort(3) helper */
 static int           _var_list_all_cmp(void const *s1, void const *s2);
 
-/* Shared c_set() and c_setenv() impl, return wether error(s) occurred */
+/* Shared c_set() and c_setenv() impl, return success */
 static bool_t        _var_set_env(char **ap, bool_t issetenv);
 
 /* Does cp consist solely of WS and a } */
@@ -221,7 +221,7 @@ static bool_t
 _var_check_specials(enum okeys okey, bool_t enable, char **val)
 {
    char *cp = NULL;
-   bool_t rv = TRU1;
+   bool_t ok = TRU1;
    int flag = 0;
    NYD_ENTER;
 
@@ -241,8 +241,8 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             ? OPT_VERB : OPT_VERB | OPT_VERBVERB;
       break;
    case ok_v_folder:
-      rv = (val == NULL || var_folder_updated(*val, &cp));
-      if (rv && cp != NULL) {
+      ok = (val != NULL && var_folder_updated(*val, &cp));
+      if (ok && cp != NULL) {
          _var_vfree(*val);
          /* It's smalloc()ed, but ensure we don't leak */
          if (*cp == '\0') {
@@ -254,7 +254,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
       break;
 #ifdef HAVE_NCL
    case ok_v_line_editor_cursor_right:
-      if ((rv = (val != NULL && *val != NULL))) {
+      if ((ok = (val != NULL && *val != NULL))) {
          /* Set with no value? TODO very guly */
          if (*(cp = *val) != '\0') {
             char const *x = cp;
@@ -281,7 +281,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
          options &= ~flag;
    }
    NYD_LEAVE;
-   return rv;
+   return ok;
 }
 
 static char const *
@@ -377,15 +377,15 @@ jleave:
 static bool_t
 _var_set(struct var_carrier *vcp, char const *value)
 {
-   bool_t err;
    struct var *vp;
    char *oval;
+   bool_t ok = TRU1;
    NYD_ENTER;
 
    if (value == NULL) {
       bool_t vcau_save = var_clear_allow_undefined;
       var_clear_allow_undefined = TRU1;
-      err = _var_clear(vcp);
+      ok = _var_clear(vcp);
       var_clear_allow_undefined = vcau_save;
       goto jleave;
    }
@@ -394,7 +394,7 @@ _var_set(struct var_carrier *vcp, char const *value)
 
    if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
       fprintf(stderr, _("`%s': readonly variable\n"), vcp->vc_name);
-      err = TRU1;
+      ok = FAL0;
       goto jleave;
    }
 
@@ -425,7 +425,7 @@ _var_set(struct var_carrier *vcp, char const *value)
 
       /* Check if update allowed XXX wasteful on error! */
       if ((vcp->vc_vmap->vm_flags & VM_SPECIAL) &&
-            (err = !_var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
+            !(ok = _var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
          char *cp = vp->v_value;
          vp->v_value = oval;
          oval = cp;
@@ -434,26 +434,25 @@ _var_set(struct var_carrier *vcp, char const *value)
 
    if (*oval != '\0')
       _var_vfree(oval);
-   err = FAL0;
 jleave:
    NYD_LEAVE;
-   return err;
+   return ok;
 }
 
 static bool_t
 _var_clear(struct var_carrier *vcp)
 {
-   bool_t err = TRU1;
+   bool_t ok = TRU1;
    NYD_ENTER;
 
    if (!_var_lookup(vcp)) {
       if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, _("`%s': undefined variable\n"), vcp->vc_name);
-         goto jleave;
+         fprintf(stderr, _("Variable undefined: \"%s\"\n"), vcp->vc_name);
+         ok = FAL0;
       }
    } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
-      fprintf(stderr, _("`%s': readonly variable\n"), vcp->vc_name);
-      goto jleave;
+      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
+      ok = FAL0;
    } else {
       if (_localopts != NULL)
          _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
@@ -464,14 +463,11 @@ _var_clear(struct var_carrier *vcp)
       free(vcp->vc_var);
       vcp->vc_var = NULL;
 
-      if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_SPECIAL) &&
-            !_var_check_specials(vcp->vc_okey, FAL0, NULL))
-         goto jleave;
+      if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_SPECIAL))
+         ok = _var_check_specials(vcp->vc_okey, FAL0, NULL);
    }
-   err = FAL0;
-jleave:
    NYD_LEAVE;
-   return err;
+   return ok;
 }
 
 static int
@@ -510,9 +506,9 @@ _var_set_env(char **ap, bool_t issetenv)
       }
 
       if (!issetenv && varbuf[0] == 'n' && varbuf[1] == 'o')
-         errs += _var_vokclear(varbuf + 2);
+         errs += !_var_vokclear(varbuf + 2);
       else {
-         errs += _var_vokset(varbuf, (uintptr_t)cp);
+         errs += !_var_vokset(varbuf, (uintptr_t)cp);
          if (issetenv) {
 #ifdef HAVE_SETENV
             errs += (setenv(varbuf, cp, 1) != 0);
@@ -526,7 +522,7 @@ jnext:
    }
 
    NYD_LEAVE;
-   return (errs != 0);
+   return (errs == 0);
 }
 
 static bool_t
@@ -864,7 +860,7 @@ FL bool_t
 _var_okset(enum okeys okey, uintptr_t val)
 {
    struct var_carrier vc;
-   bool_t rv;
+   bool_t ok;
    NYD_ENTER;
 
    vc.vc_vmap = _var_map + okey;
@@ -872,9 +868,9 @@ _var_okset(enum okeys okey, uintptr_t val)
    vc.vc_hash = _var_map[okey].vm_hash;
    vc.vc_okey = okey;
 
-   rv = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   ok = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
    NYD_LEAVE;
-   return rv;
+   return ok;
 }
 
 FL bool_t
@@ -920,14 +916,14 @@ FL bool_t
 _var_vokset(char const *vokey, uintptr_t val)
 {
    struct var_carrier vc;
-   bool_t err;
+   bool_t ok;
    NYD_ENTER;
 
    _var_revlookup(&vc, vokey);
 
-   err = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   ok = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
    NYD_LEAVE;
-   return err;
+   return ok;
 }
 
 FL bool_t
@@ -939,9 +935,9 @@ _var_vokclear(char const *vokey)
 
    _var_revlookup(&vc, vokey);
 
-   err = _var_clear(&vc);
+   err = !_var_clear(&vc);
    NYD_LEAVE;
-   return err;
+   return !err;
 }
 
 #ifdef HAVE_SOCKETS
@@ -1101,7 +1097,7 @@ c_set(void *v)
       var_list_all();
       err = 0;
    } else
-      err = _var_set_env(ap, FAL0);
+      err = !_var_set_env(ap, FAL0);
    NYD_LEAVE;
    return err;
 }
@@ -1114,7 +1110,7 @@ c_setenv(void *v)
    NYD_ENTER;
 
    if (!(err = starting))
-      err = _var_set_env(ap, TRU1);
+      err = !_var_set_env(ap, TRU1);
    NYD_LEAVE;
    return err;
 }
@@ -1127,7 +1123,7 @@ c_unset(void *v)
    NYD_ENTER;
 
    while (*ap != NULL)
-      err |= _var_vokclear(*ap++);
+      err |= !_var_vokclear(*ap++);
    NYD_LEAVE;
    return err;
 }
@@ -1144,7 +1140,7 @@ c_unsetenv(void *v)
       var_clear_allow_undefined = TRU1;
 
       for (ap = v; *ap != NULL; ++ap) {
-         bool_t bad = _var_vokclear(*ap);
+         bool_t bad = !_var_vokclear(*ap);
          if (
 #ifdef HAVE_SETENV
                unsetenv(*ap) != 0 &&
@@ -1167,7 +1163,7 @@ c_varedit(void *v)
    sighandler_type sigint;
    FILE *of, *nf;
    char *val, **argv = v;
-   int rv = 0;
+   int err = 0;
    NYD_ENTER;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
@@ -1179,7 +1175,7 @@ c_varedit(void *v)
       if (!_var_lookup(&vc)) {
          fprintf(stderr, _("`varedit': variable `%s' is not set\n"),
             vc.vc_name);
-         rv = 1;
+         err = 1;
          continue;
       } else if (vc.vc_vmap != NULL) {
          if (vc.vc_vmap->vm_flags & VM_BINARY) {
@@ -1197,13 +1193,13 @@ c_varedit(void *v)
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
             NULL) {
          perror(_("`varedit': cannot create temporary file"));
-         rv = 1;
+         err = 1;
          break;
       } else if (*(val = vc.vc_var->v_value) != '\0' &&
             sizeof *val != fwrite(val, strlen(val), sizeof *val, of)) {
          perror(_("`varedit' failed to write an old value to temporary file"));
          Fclose(of);
-         rv = 1;
+         err = 1;
          continue;
       }
 
@@ -1231,7 +1227,7 @@ c_varedit(void *v)
          *val = '\0';
 
          if (!vok_vset(vc.vc_name, base))
-            rv = 1;
+            err = 1;
 
          free(base);
       }
@@ -1240,7 +1236,7 @@ c_varedit(void *v)
 
    safe_signal(SIGINT, sigint);
    NYD_LEAVE;
-   return rv;
+   return err;
 }
 
 FL int
