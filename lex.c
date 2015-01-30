@@ -389,7 +389,7 @@ _version(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(_("Version %s\n"), version);
+   printf(_("Version %s\n"), ok_vlook(version));
    NYD_LEAVE;
    return 0;
 }

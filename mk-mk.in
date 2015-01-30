@@ -32,7 +32,6 @@ config.o accmacvar.o: okeys.h version.h
 config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
-config.o main.o: version.h
 config.o mime.o: mime_types.h
 config.o smtp.o: smtp_gssapi.h
 

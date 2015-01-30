@@ -881,7 +881,7 @@ j_mft_add:
    }
 
    if ((w & GUA) && stealthmua == 0)
-      fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
+      fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
    if (w & GMIME) {
       fputs("MIME-Version: 1.0\n", fo), ++gotcha;
