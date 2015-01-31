@@ -782,7 +782,9 @@ jreadline:
       if (!sourcing && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
-         tty_addhist(temporary_orig_line, !ev.ev_add_history);
+         /* That *can* happen since evaluate() unstack()s on error! */
+         if (temporary_orig_line != NULL)
+            tty_addhist(temporary_orig_line, !ev.ev_add_history);
       }
    }
 
