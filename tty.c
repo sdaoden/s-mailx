@@ -1676,7 +1676,7 @@ j_n:
          cbuf_base[0] = 'd';
          cbuf_base[1] = 'p';
          cbuf_base[2] = '\0';
-         inhook = 0;
+         pstate &= ~PS_IN_HOOK;
          execute(cbuf_base, TRU1, 2);
          goto j_l;
       case 'P' ^ 0x40: /* history previous */

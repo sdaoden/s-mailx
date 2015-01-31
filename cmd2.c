@@ -103,7 +103,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_IN_HOOK) {
          success = TRU1;
          goto jleave;
       }
@@ -492,7 +492,7 @@ c_next(void *v)
 
    /* If this is the first command, select message 1.  Note that this must
     * exist for us to get here at all */
-   if (!sawcom) {
+   if (!(pstate & PS_SAW_COMMAND)) {
       if (msgCount == 0)
          goto jateof;
       goto jhitit;
@@ -500,12 +500,13 @@ c_next(void *v)
 
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
-      for (mp = dot + did_print_dot; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = dot + !!(pstate & PS_DID_PRINT_DOT);
+            PTRCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
       mp = dot;
-      if (did_print_dot)
+      if (pstate & PS_DID_PRINT_DOT)
          mp = next_in_thread(mp);
       while (mp && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);

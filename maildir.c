@@ -327,7 +327,7 @@ maildir_update(void)
    if (mb.mb_perm == 0)
       goto jfree;
 
-   if (!edit) {
+   if (!(pstate & PS_EDIT)) {
       holdbits();
       for (m = message, c = 0; PTRCMP(m, <, message + msgCount); ++m) {
          if (m->m_flag & MBOX)
@@ -339,7 +339,7 @@ maildir_update(void)
    }
    for (m = message, gotcha = 0, held = 0; PTRCMP(m, <, message + msgCount);
          ++m) {
-      if (edit)
+      if (pstate & PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -361,11 +361,11 @@ maildir_update(void)
       }
    }
 jbypass:
-   if ((gotcha || modflags) && edit) {
+   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit && mb.mb_perm != 0) {
+   } else if (held && !(pstate & PS_EDIT) && mb.mb_perm != 0) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -701,7 +701,10 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    saveint = safe_signal(SIGINT, SIG_IGN);
 
    if (!(fm & FEDIT_NEWMAIL)) {
-      edit = !(fm & FEDIT_SYSBOX);
+      if (fm & FEDIT_SYSBOX)
+         pstate &= ~PS_EDIT;
+      else
+         pstate |= PS_EDIT;
       if (mb.mb_itf) {
          fclose(mb.mb_itf);
          mb.mb_itf = NULL;
@@ -753,7 +756,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       c_sort((void*)-1);
    }
    if (!(fm & FEDIT_NEWMAIL))
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), name);

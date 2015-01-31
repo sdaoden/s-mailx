@@ -543,7 +543,7 @@ _pipecmd(char **result, struct mimepart const *mpp)
    else if (*++cp == '\0')
       /* Treat as plain text */
       ret = PIPE_TEXT;
-   else if (!msglist_is_single) {
+   else if (!(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
       ret = PIPE_MSG;
       *result = UNCONST(_("[Directly address message only to display this]\n"));
@@ -1473,7 +1473,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    NYD_ENTER;
 
    if (mp == dot && action != SEND_TOSRCH)
-      did_print_dot = 1;
+      pstate |= PS_DID_PRINT_DOT;
    if (stats != NULL)
       *stats = 0;
    quoteflt_init(&qf, prefix);

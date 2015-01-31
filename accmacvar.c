@@ -453,7 +453,7 @@ _var_clear(struct var_carrier *vcp)
    NYD_ENTER;
 
    if (!_var_lookup(vcp)) {
-      if (!sourcing && (options & OPT_D_V))
+      if (!(pstate & PS_IN_LOAD) && (options & OPT_D_V))
          fprintf(stderr, _("Variable undefined: \"%s\"\n"), vcp->vc_name);
    } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
       fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
@@ -747,7 +747,7 @@ _ma_define(char const *name, enum ma_flags mafl)
       if (n < 0) {
          fprintf(stderr, _("Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
-         if (sourcing && !loading)
+         if ((pstate & PS_IN_LOAD) == PS_SOURCING)
             unstack();
          goto jerr;
       }
@@ -1138,7 +1138,7 @@ c_setenv(void *v)
    int err;
    NYD_ENTER;
 
-   if (!(err = starting))
+   if (!(err = !!(pstate & PS_STARTING)))
       err = !_var_set_env(ap, TRU1);
    NYD_LEAVE;
    return err;
@@ -1163,7 +1163,7 @@ c_unsetenv(void *v)
    int err;
    NYD_ENTER;
 
-   if (!(err = starting)) {
+   if (!(err = !!(pstate & PS_STARTING))) {
       char **ap;
 
       for (ap = v; *ap != NULL; ++ap) {
@@ -1379,15 +1379,16 @@ jmac:
       goto jleave;
    }
 
+   pstate &= ~PS_IN_HOOK;
    if (nmail) {
-      inhook = 3; /* XXX enum state machine */
+      pstate |= PS_HOOK_NEWMAIL;
       unroller = NULL;
    } else {
-      inhook = 1;
+      pstate |= PS_HOOK;
       unroller = &_folder_hook_localopts;
    }
    rv = (_ma_exec(mp, unroller) == 0);
-   inhook = 0;
+   pstate &= ~PS_IN_HOOK;
 
 jleave:
    ac_free(var);
@@ -1422,7 +1423,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if (inhook) {
+   if (pstate & PS_IN_HOOK) {
       fprintf(stderr, _("Cannot change account from within a hook.\n"));
       goto jleave;
    }
@@ -1457,7 +1458,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if (!starting && !inhook) {
+   if (!(pstate & (PS_STARTING | PS_IN_HOOK))) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if ((i = setfile("%", 0)) < 0)

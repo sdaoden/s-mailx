@@ -130,7 +130,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
       }
    while ((ap = ap->a_flink) != NULL);
 
-   inhook = 0;
+   pstate &= ~PS_IN_HOOK;
    execute(linebuf, TRU1, linesize);
 
    if (mnbuf != NULL) {
@@ -496,6 +496,7 @@ forward(char *ms, FILE *fp, int f)
 
       touch(mp);
       printf(" %d", *msgvec);
+      fflush(stdout);
       if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
          perror(_("temporary mail file"));
          rv = -1;
@@ -740,10 +741,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
        * won't be printed because the write is aborted if we get a SIGTTOU */
-jcont:
       if (_coll_hadintr) {
          fprintf(stderr, _("\n(Interrupt -- one more to kill letter)\n"));
       } else {
+jcont:
          printf(_("(continue)\n"));
          fflush(stdout);
       }
@@ -763,6 +764,7 @@ jcont:
 
    /* The interactive collect loop.
     * All commands which come here are forbidden when sourcing! */
+   assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for (;;) {
       _coll_jmp_p = 1;
       cnt = readline_input("", FAL0, &linebuf, &linesize, NULL);
@@ -771,7 +773,7 @@ jcont:
       if (cnt < 0) {
          /* Since readline_input() transparently switches to `source'd files
           * and `~:source FILE' may enter this, ensure we quit again! */
-         if (sourcing) {
+         if (pstate & PS_SOURCING) {
             unstack();
             continue;
          }

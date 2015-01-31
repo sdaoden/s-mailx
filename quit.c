@@ -299,7 +299,7 @@ quit(void)
    }
 
    /* If editing (not reading system mail box), then do the work in edstop() */
-   if (edit) {
+   if (pstate & PS_EDIT) {
       edstop();
       goto jleave;
    }

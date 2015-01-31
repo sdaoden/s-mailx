@@ -586,7 +586,7 @@ main(int argc, char *argv[])
     * Start our lengthy setup
     */
 
-   starting = TRU1;
+   pstate = PS_STARTING;
 
    progname = argv[0];
    _startup();
@@ -952,7 +952,7 @@ jgetopt_done:
     * We're finally completely setup and ready to go
     */
 
-   starting = FAL0;
+   pstate &= ~PS_STARTING;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
@@ -1005,7 +1005,7 @@ c_rexit(void *v) /* TODO program state machine */
    UNUSED(v);
    NYD_ENTER;
 
-   if (!sourcing) {
+   if (!(pstate & PS_SOURCING)) {
 #ifdef HAVE_TERMCAP
       if (options & OPT_INTERACTIVE)
          termcap_destroy();

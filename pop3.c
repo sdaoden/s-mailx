@@ -726,7 +726,7 @@ pop3_update(struct mailbox *mp)
    int dodel, c, gotcha, held;
    NYD_ENTER;
 
-   if (!edit) {
+   if (!(pstate & PS_EDIT)) {
       holdbits();
       c = 0;
       for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -738,7 +738,7 @@ pop3_update(struct mailbox *mp)
 
    gotcha = held = 0;
    for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
-      if (edit)
+      if (pstate & PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -748,11 +748,11 @@ pop3_update(struct mailbox *mp)
       } else
          ++held;
    }
-   if (gotcha && edit) {
+   if (gotcha && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit) {
+   } else if (held && !(pstate & PS_EDIT)) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -820,7 +820,10 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    rv = 1;
    quit();
 
-   edit = !(fm & FEDIT_SYSBOX);
+   if (fm & FEDIT_SYSBOX)
+      pstate &= ~PS_EDIT;
+   else
+      pstate |= PS_EDIT;
    if (mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock);
    if (mb.mb_itf) {
@@ -873,12 +876,12 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    pop3_setptr(&mb);
    setmsize(msgCount);
-   sawcom = FAL0;
+   pstate &= ~PS_SAW_COMMAND;
 
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
-   if (!edit && msgCount == 0) {
+   if (!(pstate & PS_EDIT) && msgCount == 0) {
       if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), server);
       goto jleave;

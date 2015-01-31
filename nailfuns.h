@@ -656,7 +656,7 @@ FL int         c_urldecode(void *v);
 /* if.elif.else.endif conditional execution.
  * condstack_isskip() returns wether the current condition state doesn't allow
  * execution of commands.
- * condstack_release() and condstack_take() are used when sourcing files, they
+ * condstack_release() and condstack_take() are used when PS_SOURCING files, they
  * rotate the current condition stack; condstack_take() returns a false boolean
  * if the current condition stack has unclosed conditionals */
 FL int         c_if(void *v);
@@ -762,7 +762,7 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
 
 /* Read a line of input, with editing if interactive and possible, return it
  * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during sourcing).
+ * This may only be called from toplevel (not during PS_SOURCING).
  * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility */
@@ -851,11 +851,11 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
- * *sourcing* so that others will realize that they are no longer reading from
+ * PS_SOURCING so that others will realize that they are no longer reading from
  * a tty (in all probability) */
 FL int         c_source(void *v);
 
-/* Pop the current input back to the previous level.  Update the *sourcing*
+/* Pop the current input back to the previous level.  Update the PS_SOURCING
  * flag as appropriate */
 FL int         unstack(void);
 
@@ -1165,7 +1165,7 @@ FL enum okay   maildir_remove(char const *name);
  * main.c
  */
 
-/* Quit quickly.  If sourcing, just pop the input level by returning error */
+/* Quit quickly.  If PS_SOURCING, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
 /*

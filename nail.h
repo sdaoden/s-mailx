@@ -928,6 +928,29 @@ do {\
       fprintf(stderr, "%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 } while (0)
 
+enum program_state {
+   PS_STARTING       = 1<< 0,       /* In main.c startup code */
+
+   PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
+   PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */
+   PS_IN_LOAD        = PS_LOADING | PS_SOURCING,
+
+   PS_EVAL_ERROR     = 1<< 4,       /* Last evaluate() command failed */
+
+   PS_HOOK_NEWMAIL   = 1<< 6,
+   PS_HOOK           = 1<< 7,
+   PS_IN_HOOK        = PS_HOOK_NEWMAIL | PS_HOOK,
+
+   PS_EDIT           = 1<< 8,       /* Current mailbox not a "system mailbox" */
+   PS_SAW_COMMAND    = 1<< 9,       /* ..after mailbox switch */
+
+   PS_DID_PRINT_DOT  = 1<<16,       /* Current message has been printed */
+
+   PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
+   PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
+   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT
+};
+
 /* A large enum with all the binary and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
@@ -1658,23 +1681,13 @@ VL char const  *progname;           /* Our name */
 VL char const  *tempdir;            /* The temporary directory */
 
 VL int         exit_status;         /* Exit status */
-VL int         options;             /* Bits of enum user_options */
+VL ui32_t      options;             /* Bits of enum user_options */
 VL struct name *option_r_arg;       /* Argument to -r option */
 VL char const  **smopts;            /* sendmail(1) opts from commline */
 VL size_t      smopts_count;        /* Entries in smopts */
 
-/* TODO Join as many of these state machine bits into a single carrier! */
-VL int         inhook;              /* Currently executing a hook */
-VL bool_t      exec_last_comm_error; /* Last execute() command failed */
-VL bool_t      edit;                /* Indicates editing a file */
-VL bool_t      did_print_dot;       /* Current message has been printed */
-VL bool_t      list_saw_numbers;    /* Last *LIST saw numerics */
-VL bool_t      msglist_is_single;   /* Last NDMLIST/MSGLIST chose 1 msg */
-VL bool_t      loading;             /* Loading user definitions */
-VL bool_t      sourcing;            /* Currently reading variant file */
-VL bool_t      sawcom;              /* Set after first command */
-VL bool_t      starting;            /* Still in startup code */
-VL int         noreset;             /* String resets suspended */
+VL ui32_t      pstate;              /* Bits of enum program_state */
+VL size_t      noreset;             /* String resets suspended (recursive) */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */

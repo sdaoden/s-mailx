@@ -387,7 +387,7 @@ c_certsave(void *v)
    } else
       getmsglist(str, msgvec, 0);
    if (*msgvec == 0) {
-      if (inhook)
+      if (pstate & PS_IN_HOOK)
          val = 0;
       else
          fprintf(stderr, "No applicable messages.\n");

@@ -504,7 +504,7 @@ _fwd(char *str, int recipient_record)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_IN_HOOK) {
             rv = 0;
             goto jleave;
          }
@@ -516,7 +516,7 @@ _fwd(char *str, int recipient_record)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_IN_HOOK) {
          rv = 0;
          goto jleave;
       }
@@ -596,7 +596,7 @@ _resend1(void *v, bool_t add_resent)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_IN_HOOK) {
             f = FAL0;
             goto jleave;
          }
@@ -608,7 +608,7 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_IN_HOOK) {
          f = FAL0;
          goto jleave;
       }
@@ -641,7 +641,7 @@ _c_file(void *v, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (inhook) {
+   if (pstate & PS_IN_HOOK) {
       fprintf(stderr, _("Cannot change folder from within a hook.\n"));
       i = 1;
       goto jleave;
@@ -955,8 +955,8 @@ c_preserve(void *v)
    struct message *mp;
    NYD_ENTER;
 
-   if (edit) {
-      printf(_("Cannot \"preserve\" in edit mode\n"));
+   if (pstate & PS_EDIT) {
+      printf(_("Cannot \"preserve\" in a system mailbox\n"));
       goto jleave;
    }
 
@@ -966,7 +966,7 @@ c_preserve(void *v)
       mp->m_flag |= MPRESERVE;
       mp->m_flag &= ~MBOX;
       setdot(mp);
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    rv = 0;
 jleave:
@@ -988,7 +988,7 @@ c_unread(void *v)
       if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
          imap_unread(message + *ip - 1, *ip); /* TODO return? */
 #endif
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;

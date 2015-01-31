@@ -989,7 +989,7 @@ _pipe1(char *str, int doign)
    if (!needs_list) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_IN_HOOK) {
             rv = 0;
             goto jleave;
          }
@@ -1000,7 +1000,7 @@ _pipe1(char *str, int doign)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_IN_HOOK) {
          rv = 0;
          goto jleave;
       }
@@ -1265,7 +1265,7 @@ c_top(void *v)
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
       if (!empty_last)
          printf("\n");
       _show_msg_overview(stdout, mp, *ip);
@@ -1304,7 +1304,7 @@ c_stouch(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH;
       dot->m_flag &= ~MPRESERVE;
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;
@@ -1320,7 +1320,7 @@ c_mboxit(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;

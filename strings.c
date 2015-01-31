@@ -94,7 +94,7 @@ struct b_bltin {
 #define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
 
 /* Dynamically allocated buffers to overcome shortage, always released again
- * once the command loop ticks (without relaxation or during sourcing) */
+ * once the command loop ticks (without relaxation or during PS_SOURCING) */
 struct b_dyn {
    struct b_base  b_base;
    char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];

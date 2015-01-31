@@ -672,10 +672,10 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
    case '@':
       if (use_nail_extensions) {
          switch (c) {
-         case '&':   c = ok_blook(bsdcompat) ? '&' : '?';   break;
-         case '?':   c = exec_last_comm_error ? '1' : '0';  break;
-         case '$':   c = PROMPT_DOLLAR;                     break;
-         case '@':   c = PROMPT_AT;                         break;
+         case '&':   c = ok_blook(bsdcompat)       ? '&' : '?';   break;
+         case '?':   c = (pstate & PS_EVAL_ERROR)  ? '1' : '0';   break;
+         case '$':   c = PROMPT_DOLLAR;                           break;
+         case '@':   c = PROMPT_AT;                               break;
          }
          break;
       }

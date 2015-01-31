@@ -515,7 +515,7 @@ FL int
    int n, nold;
    NYD2_ENTER;
 
-   doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+   doprompt = (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE));
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if (!doprompt)
       prompt = NULL;
@@ -836,7 +836,7 @@ setdot(struct message *mp)
    NYD_ENTER;
    if (dot != mp) {
       prevdot = dot;
-      did_print_dot = FAL0;
+      pstate &= ~PS_DID_PRINT_DOT;
    }
    dot = mp;
    uncollapse1(dot, 0);
@@ -1562,8 +1562,7 @@ load(char const *name)
 
    oldin = _fio_input;
    _fio_input = in;
-   loading = TRU1;
-   sourcing = TRU1;
+   pstate |= PS_IN_LOAD;
    /* commands() may sreset(), copy over file name */
    n.l = strlen(name);
    n.s = ac_alloc(n.l +1);
@@ -1573,8 +1572,7 @@ load(char const *name)
       fprintf(stderr, _("Stopped loading `%s' due to errors\n"), n.s);
 
    ac_free(n.s);
-   loading = FAL0;
-   sourcing = FAL0;
+   pstate &= ~PS_IN_LOAD;
    _fio_input = oldin;
    Fclose(in);
 jleave:
@@ -1604,11 +1602,11 @@ c_source(void *v)
 
    _fio_stack[_fio_stack_size].s_file = _fio_input;
    _fio_stack[_fio_stack_size].s_cond = condstack_release();
-   _fio_stack[_fio_stack_size].s_loading = loading;
+   _fio_stack[_fio_stack_size].s_loading = !!(pstate & PS_LOADING);
    ++_fio_stack_size;
-   loading = FAL0;
+   pstate &= ~PS_LOADING;
+   pstate |= PS_SOURCING;
    _fio_input = fi;
-   sourcing = TRU1;
    rv = 0;
 jleave:
    NYD_LEAVE;
@@ -1623,7 +1621,7 @@ unstack(void)
 
    if (_fio_stack_size == 0) {
       fprintf(stderr, _("\"Source\" stack over-pop.\n"));
-      sourcing = FAL0;
+      pstate &= ~PS_SOURCING;
       goto jleave;
    }
 
@@ -1632,10 +1630,17 @@ unstack(void)
    --_fio_stack_size;
    if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
       fprintf(stderr, _("Unmatched \"if\"\n"));
-   loading = _fio_stack[_fio_stack_size].s_loading;
+   if (_fio_stack[_fio_stack_size].s_loading)
+      pstate |= PS_LOADING;
+   else
+      pstate &= ~PS_LOADING;
    _fio_input = _fio_stack[_fio_stack_size].s_file;
-   if (_fio_stack_size == 0)
-      sourcing = loading;
+   if (_fio_stack_size == 0) {
+      if (pstate & PS_LOADING)
+         pstate |= PS_SOURCING;
+      else
+         pstate &= ~PS_SOURCING;
+   }
    rv = 0;
 jleave:
    NYD_LEAVE;

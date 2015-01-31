@@ -1228,7 +1228,10 @@ jduppass:
    if (!transparent)
       quit();
 
-   edit = !(fm & FEDIT_SYSBOX);
+   if (fm & FEDIT_SYSBOX)
+      pstate &= ~PS_EDIT;
+   else
+      pstate |= PS_EDIT;
    if (mb.mb_imap_account != NULL)
       free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
@@ -1332,7 +1335,7 @@ jnmail:
 jdone:
    setmsize(msgCount);
    if (!(fm & FEDIT_NEWMAIL) && !transparent)
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
@@ -1344,7 +1347,7 @@ jdone:
       c_sort((void*)-1);
    }
 
-   if (!(fm & FEDIT_NEWMAIL) && !edit && msgCount == 0) {
+   if (!(fm & FEDIT_NEWMAIL) && !(pstate & PS_EDIT) && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
@@ -1898,7 +1901,7 @@ imap_update(struct mailbox *mp)
    int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
    NYD_ENTER;
 
-   if (!edit && mp->mb_perm != 0) {
+   if (!(pstate & PS_EDIT) && mp->mb_perm != 0) {
       holdbits();
       c = 0;
       for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -1913,7 +1916,7 @@ imap_update(struct mailbox *mp)
    for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
       if (mp->mb_perm == 0)
          dodel = 0;
-      else if (edit)
+      else if (pstate & PS_EDIT)
          dodel = ((m->m_flag & MDELETED) != 0);
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -1963,9 +1966,11 @@ imap_update(struct mailbox *mp)
          stored++;
          gotcha++;
       } else if (mp->mb_type != MB_CACHE ||
-            (!edit && !(m->m_flag & (MBOXED | MSAVED | MDELETED))) ||
+            (!(pstate & PS_EDIT) &&
+             !(m->m_flag & (MBOXED | MSAVED | MDELETED))) ||
             (m->m_flag & (MBOXED | MPRESERVE | MTOUCH)) ==
-               (MPRESERVE | MTOUCH) || (edit && !(m->m_flag & MDELETED)))
+               (MPRESERVE | MTOUCH) ||
+               ((pstate & PS_EDIT) && !(m->m_flag & MDELETED)))
          held++;
       if (m->m_flag & MNEW) {
          m->m_flag &= ~MNEW;
@@ -1984,11 +1989,11 @@ jbypass:
          modflags++;
       }
 
-   if ((gotcha || modflags) && edit) {
+   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit && mp->mb_perm != 0) {
+   } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -3462,7 +3467,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       enum fedit_mode fm = FEDIT_NONE;
       if (_imap_rdonly)
          fm |= FEDIT_RDONLY;
-      if (!edit)
+      if (!(pstate & PS_EDIT))
          fm |= FEDIT_SYSBOX;
       _imap_setfile1(&url, fm, 1);
       if (msgCount > omsgCount)
@@ -3500,7 +3505,7 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       enum fedit_mode fm = FEDIT_NONE;
       if (_imap_rdonly)
          fm |= FEDIT_RDONLY;
-      if (!edit)
+      if (!(pstate & PS_EDIT))
          fm |= FEDIT_SYSBOX;
       sclose(&mb.mb_sock);
       _imap_setfile1(&url, fm, 1);

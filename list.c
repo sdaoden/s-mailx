@@ -244,7 +244,7 @@ number:
             fprintf(stderr, _("No numbers mixed with *\n"));
             markall_ret(-1)
          }
-         list_saw_numbers = TRU1;
+         pstate |= PS_MSGLIST_SAW_NO;
          mc = TRU1;
          ++other;
          if (beg != 0) {
@@ -280,7 +280,7 @@ number:
          break;
 
       case TPLUS:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg != 0) {
             printf(_("Non-numeric second argument\n"));
             markall_ret(-1)
@@ -302,7 +302,7 @@ number:
          break;
 
       case TDASH:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg == 0) {
             i = valdot;
             do {
@@ -322,7 +322,7 @@ number:
          break;
 
       case TSTRING:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg != 0) {
             fprintf(stderr, _("Non-numeric second argument\n"));
             markall_ret(-1)
@@ -343,7 +343,7 @@ number:
 
       case TOPEN:
 #ifdef HAVE_IMAP_SEARCH
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (imap_search(lexstring, f) == STOP)
             markall_ret(-1)
          topen = TRU1;
@@ -359,14 +359,14 @@ number:
       case TUP:
       case TDOT:
       case TSEMI:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          lexnumber = metamess(lexstring[0], f);
          if (lexnumber == -1)
             markall_ret(-1)
          goto number;
 
       case TBACK:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          tback = TRU1;
          for (i = 1; i <= msgCount; i++) {
             if ((message[i - 1].m_flag & MHIDDEN) ||
@@ -378,7 +378,7 @@ number:
          break;
 
       case TSTAR:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (other) {
             fprintf(stderr, _("Can't mix \"*\" with anything\n"));
             markall_ret(-1)
@@ -387,7 +387,7 @@ number:
          break;
 
       case TCOMMA:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
 #ifdef HAVE_IMAP
          if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
             imap_getheaders(1, msgCount);
@@ -414,8 +414,8 @@ number:
          break;
 
       case TERROR:
-         list_saw_numbers = TRU1;
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
+         pstate |= PS_MSGLIST_SAW_NO;
          markall_ret(-1)
       }
       threadflag = 0;
@@ -435,7 +435,7 @@ number:
          }
       }
       if (!mc) {
-         if (!inhook)
+         if (!(pstate & PS_IN_HOOK))
             printf(_("No applicable messages.\n"));
          markall_ret(-1)
       }
@@ -447,7 +447,7 @@ number:
          if (message[i].m_flag & MMARK)
             mc = TRU1;
       if (!mc) {
-         if (!inhook) {
+         if (!(pstate & PS_IN_HOOK)) {
             if (tback)
                fprintf(stderr, _("No previously marked messages.\n"));
             else
@@ -459,12 +459,13 @@ number:
 
    /* If no numbers were given, mark all messages, so that we can unmark
     * any whose sender was not selected if any user names were given */
-   if ((np > namelist || colmod != 0 || id) && !mc)
+   if ((np > namelist || colmod != 0 || id) && !mc) {
       for (i = 1; i <= msgCount; ++i) {
          if (!(message[i - 1].m_flag & MHIDDEN) &&
                (message[i - 1].m_flag & MDELETED) == (unsigned)f)
             mark(i, f);
       }
+   }
 
    /* If any names were given, eliminate any messages which don't match */
    if (np > namelist || id) {
@@ -563,7 +564,7 @@ number:
             break;
          }
       if (j == 0) {
-         if (!inhook && np > namelist) {
+         if (!(pstate & PS_IN_HOOK) && np > namelist) {
             printf(_("No applicable messages from {%s"), namelist[0]);
             for (nq = namelist + 1; *nq != NULL; ++nq)
                printf(_(", %s"), *nq);
@@ -608,7 +609,7 @@ jnamesearch_sepfree:
       if (PTRCMP(mp, >=, message + msgCount)) {
          struct coltab const *colp;
 
-         if (!inhook) {
+         if (!(pstate & PS_IN_HOOK)) {
             printf(_("No messages satisfy"));
             for (colp = _coltab; colp->co_char != '\0'; ++colp)
                if (colp->co_bit & colmod)
@@ -1028,7 +1029,7 @@ metamess(int meta, int f)
          } else
             ++mp;
       }
-      if (!inhook)
+      if (!(pstate & PS_IN_HOOK))
          printf(_("No applicable messages\n"));
       goto jem1;
 
@@ -1047,7 +1048,7 @@ metamess(int meta, int f)
          } else
             --mp;
       }
-      if (!inhook)
+      if (!(pstate & PS_IN_HOOK))
          printf(_("No applicable messages\n"));
       goto jem1;
 
@@ -1095,8 +1096,7 @@ getmsglist(char *buf, int *vector, int flags)
    struct message *mp;
    NYD_ENTER;
 
-   list_saw_numbers =
-   msglist_is_single = FAL0;
+   pstate &= ~PS_MSGLIST_MASK;
 
    if (msgCount == 0) {
       *vector = 0;
@@ -1104,14 +1104,15 @@ getmsglist(char *buf, int *vector, int flags)
       goto jleave;
    }
 
-   msglist_is_single = TRU1;
+   pstate |= PS_MSGLIST_DIRECT;
+
    if (markall(buf, flags) < 0) {
       mc = -1;
       goto jleave;
    }
 
    ip = vector;
-   if (inhook & 2) {
+   if (pstate & PS_HOOK_NEWMAIL) {
       mc = 0;
       for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
          if (mp->m_flag & MMARK) {
@@ -1137,7 +1138,8 @@ getmsglist(char *buf, int *vector, int flags)
    }
    *ip = 0;
    mc = (int)PTR2SIZE(ip - vector);
-   msglist_is_single = (mc == 1);
+   if (mc != 1)
+      pstate &= ~PS_MSGLIST_DIRECT;
 jleave:
    NYD_LEAVE;
    return mc;
@@ -1151,7 +1153,7 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
    int argn;
    NYD_ENTER;
 
-   list_saw_numbers = FAL0;
+   pstate &= ~PS_MSGLIST_MASK;
 
    linebuf = ac_alloc(linesize);
 

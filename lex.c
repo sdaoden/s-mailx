@@ -397,9 +397,9 @@ _c_quit(void *v)
    NYD_ENTER;
    UNUSED(v);
 
-   /* If we are sourcing, then return 1 so evaluate() can handle it.
+   /* If we are PS_SOURCING, then return 1 so evaluate() can handle it.
     * Otherwise return -1 to abort command loop */
-   rv = sourcing ? 1 : -1;
+   rv = (pstate & PS_SOURCING) ? 1 : -1;
    NYD_LEAVE;
    return rv;
 }
@@ -581,22 +581,27 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          }
       }
       shudclob = 1;
-      edit = !(fm & FEDIT_SYSBOX);
+      if (fm & FEDIT_SYSBOX)
+         pstate &= ~PS_EDIT;
+      else
+         pstate |= PS_EDIT;
       initbox(name);
       offset = 0;
       flp.l_len = 0;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
+      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         /*TODO dotlock!*/
          perror("Unable to lock mailbox");
          rele_sigs();
          goto jem1;
       }
-   } else /* FEDIT_NEWMAIL */{
+   } else {
       fseek(mb.mb_otf, 0L, SEEK_END);
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
       omsgCount = msgCount;
       flp.l_len = offset;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
+      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         /*TODO dotlock!*/
          rele_sigs();
          goto jnonmail;
       }
@@ -618,9 +623,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    ibuf = NULL;
    rele_sigs();
    if (!(fm & FEDIT_NEWMAIL))
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
 
-   if ((!edit || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
+   if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
 jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {
          if (!ok_blook(emptystart))
@@ -682,7 +687,7 @@ commands(void)
    bool_t volatile rv = TRU1;
    NYD_ENTER;
 
-   if (!sourcing) {
+   if (!(pstate & PS_SOURCING)) {
       if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
          safe_signal(SIGINT, onintr);
       if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
@@ -710,8 +715,8 @@ commands(void)
 #endif
       if (temporary_localopts_store != NULL) /* XXX intermediate hack */
          temporary_localopts_free(); /* XXX intermediate hack */
-      sreset(sourcing);
-      if (!sourcing) {
+      sreset((pstate & PS_SOURCING) != 0);
+      if (!(pstate & PS_SOURCING)) {
          char *cp;
 
          /* TODO Note: this buffer may contain a password.  We should redefine
@@ -729,7 +734,7 @@ commands(void)
          }
       }
 
-      if (!sourcing && (options & OPT_INTERACTIVE)) {
+      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
          char *cp;
 
          cp = ok_vlook(newmail);
@@ -744,13 +749,13 @@ commands(void)
 #endif
                   (mb.mb_type == MB_MAILDIR && n != 0)) {
                size_t odot = PTR2SIZE(dot - message);
-               bool_t odid = did_print_dot;
+               ui32_t odid = (pstate & PS_DID_PRINT_DOT);
 
                setfile(mailname,
                   FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
-                  did_print_dot = odid;
+                  pstate |= odid;
                }
             }
          }
@@ -769,9 +774,9 @@ jreadline:
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */
-         if (loading)
+         if (pstate & PS_LOADING)
             break;
-         if (sourcing) {
+         if (pstate & PS_SOURCING) {
             unstack();
             continue;
          }
@@ -782,25 +787,24 @@ jreadline:
          break;
       }
 
-      temporary_orig_line = (sourcing || !(options & OPT_INTERACTIVE))
-            ? NULL : savestrbuf(ev.ev_line.s, ev.ev_line.l);
-      inhook = 0;
+      temporary_orig_line = ((pstate & PS_SOURCING) ||
+         !(options & OPT_INTERACTIVE)) ? NULL
+          : savestrbuf(ev.ev_line.s, ev.ev_line.l);
+      pstate &= ~PS_IN_HOOK;
       if (evaluate(&ev)) {
-         if (loading) /* TODO mess; join with exec_last_comm_error etc.. */
+         if (pstate & PS_LOADING) /* TODO mess; join PS_EVAL_ERROR.. */
             rv = FAL0;
          break;
       }
       if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
          if (exit_status != EXIT_OK)
             break;
-         /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
-          * TODO the current behaviour is suboptimal AT BEST! */
-         if (exec_last_comm_error != 0 && !sourcing && !loading) {
+         if ((pstate & (PS_IN_LOAD | PS_EVAL_ERROR)) == PS_EVAL_ERROR) {
             exit_status = EXIT_ERR;
             break;
          }
       }
-      if (!sourcing && (options & OPT_INTERACTIVE)) {
+      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
          /* That *can* happen since evaluate() unstack()s on error! */
@@ -811,7 +815,7 @@ jreadline:
 
    if (ev.ev_line.s != NULL)
       free(ev.ev_line.s);
-   if (sourcing)
+   if (pstate & PS_SOURCING)
       sreset(FAL0);
    NYD_LEAVE;
    return rv;
@@ -881,7 +885,7 @@ jrestart:
 
    /* Handle ! differently to get the correct lexical conventions */
    if (*cp == '!') {
-      if (sourcing) {
+      if (pstate & PS_SOURCING) {
          fprintf(stderr, _("Can't `!' while sourcing\n"));
          goto jleave;
       }
@@ -906,10 +910,10 @@ jrestart:
 
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
-    * table; while sourcing, however, we ignore blank lines to eliminate
+    * table; while PS_SOURCING, however, we ignore blank lines to eliminate
     * confusion; act just the same for ghosts */
    if (*word == '\0') {
-      if (sourcing || cg != NULL)
+      if ((pstate & PS_SOURCING) || cg != NULL)
          goto jleave0;
       com = _cmd_tab + 0;
       goto jexec;
@@ -959,13 +963,13 @@ jexec:
       goto jleave0;
 
    /* Process the arguments to the command, depending on the type it expects,
-    * default to error.  If we're sourcing an interactive command: error */
+    * default to error.  If we're PS_SOURCING an interactive command: error */
    if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
       fprintf(stderr, _("May not execute `%s' while sending\n"),
          com->name);
       goto jleave;
    }
-   if (sourcing && (com->argtype & ARG_I)) {
+   if ((pstate & PS_SOURCING) && (com->argtype & ARG_I)) {
       fprintf(stderr, _("May not execute `%s' while sourcing\n"),
          com->name);
       goto jleave;
@@ -1003,7 +1007,7 @@ jexec:
             _msgvec[1] = 0;
       }
       if (*_msgvec == 0) {
-         if (!inhook)
+         if (!(pstate & PS_IN_HOOK))
             printf(_("No applicable messages\n"));
          break;
       }
@@ -1063,17 +1067,20 @@ je96:
       evp->ev_new_content = cp;
       goto jleave0;
    }
-   if (!(com->argtype & ARG_H) && !list_saw_numbers)
+   if (!(com->argtype & ARG_H) && !(pstate & PS_MSGLIST_SAW_NO))
       evp->ev_add_history = TRU1;
 
 jleave:
    /* Exit the current source file on error TODO what a mess! */
-   if ((exec_last_comm_error = (e != 0))) {
-      if (e < 0 || loading) {
+   if (e == 0)
+      pstate &= ~PS_EVAL_ERROR;
+   else {
+      pstate |= PS_EVAL_ERROR;
+      if (e < 0 || (pstate & PS_LOADING)) {
          e = 1;
          goto jret;
       }
-      if (sourcing)
+      if (pstate & PS_SOURCING)
          unstack();
       goto jret0;
    }
@@ -1085,10 +1092,10 @@ jleave:
          muvec[1] = 0;
          c_type(muvec); /* TODO what if error?  re-eval! */
       }
-   if (!sourcing && !inhook && !(com->argtype & ARG_T))
-      sawcom = TRU1;
+   if (!(pstate & (PS_SOURCING | PS_IN_HOOK)) && !(com->argtype & ARG_T))
+      pstate |= PS_SAW_COMMAND;
 jleave0:
-   exec_last_comm_error = 0;
+   pstate &= ~PS_EVAL_ERROR;
 jret0:
    e = 0;
 jret:
@@ -1151,9 +1158,9 @@ onintr(int s)
    safe_signal(SIGINT, onintr);
    noreset = 0;
    if (!_lex_inithdr)
-      sawcom = TRU1;
+      pstate |= PS_SAW_COMMAND;
    _lex_inithdr = 0;
-   while (sourcing)
+   while (pstate & PS_SOURCING)
       unstack();
 
    termios_state_reset();
@@ -1380,7 +1387,7 @@ initbox(char const *name)
    mb.mb_flags = MB_NOFLAGS;
 #endif
    dot = prevdot = threadroot = NULL;
-   did_print_dot = FAL0;
+   pstate &= ~PS_DID_PRINT_DOT;
    NYD_LEAVE;
 }
 
