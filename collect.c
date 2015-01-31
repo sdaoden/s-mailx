@@ -229,6 +229,7 @@ static void
 print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf = NULL; /* TODO line pool */
+   sighandler_type sigint;
    FILE *volatile obuf = stdout;
    struct attachment *ap;
    char const *cp;
@@ -236,9 +237,10 @@ print_collf(FILE *cf, struct header *hp)
    size_t linesize = 0, linelen, cnt, cnt2;
    NYD_ENTER;
 
-   fflush(cf);
-   rewind(cf);
+   fflush_rewind(cf);
    cnt = cnt2 = fsize(cf);
+
+   sigint = safe_signal(SIGINT, SIG_IGN);
 
    if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
       size_t l, m;
@@ -319,6 +321,7 @@ jendpipe:
    }
    if (lbuf != NULL)
       free(lbuf);
+   safe_signal(SIGINT, sigint);
    NYD_LEAVE;
 }
 
