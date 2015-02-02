@@ -576,6 +576,12 @@ FL int
       if (prompt != NULL && *prompt != '\0')
          prompt = ".. "; /* XXX PS2 .. */
    }
+
+   if (n >= 0 && (options & OPT_D_VV))
+      fprintf(stderr, _("%s %d bytes <%.*s>\n"),
+         ((pstate & PS_LOADING) ? "LOAD"
+          : (pstate & PS_SOURCING) ? "SOURCE" : "READ"),
+         n, n, *linebuf);
    NYD2_LEAVE;
    return n;
 }
@@ -1569,7 +1575,9 @@ load(char const *name)
    memcpy(n.s, name, n.l +1);
 
    if (!commands())
-      fprintf(stderr, _("Stopped loading `%s' due to errors\n"), n.s);
+      fprintf(stderr,
+         _("Stopped loading `%s' due to errors (enable *debug* for trace)\n"),
+         n.s);
 
    ac_free(n.s);
    pstate &= ~PS_IN_LOAD;
