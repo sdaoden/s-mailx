@@ -1068,6 +1068,8 @@ variable).
 All messages marked as draft.
 .It Ar :s
 \*(OP All messages classified as spam.
+.It Ar :S
+\*(OP All messages with unsure spam classification.
 .It Ar \&.
 The current message.
 .It Ar \&;
@@ -4869,21 +4871,52 @@ The `HOST' (hostname possibly including port) of the user account.
 .
 .Mx
 .It Va attrlist
-A sequence of characters to print in the `attribute' column of the
+A sequence of characters to print in the
+.Ql attribute
+column of the
 .Va headline
-as shown in the header display; each for one type of messages in the
-following order:
-new (N), unread but old (U), new but read (R), read and old (O), saved
-(S), preserved (P), mboxed (M), flagged (F), answered (A), draft (T),
-start of a collapsed thread (+), collapsed (\-), classified as spam ($).
-The default is `NUROSPMFAT+\-$',
-or `NU\ \ *HMFAT+\-$' if
+as shown in the header display; each for one type of messages (see
+.Sx "MESSAGE STATES" ) ,
+with the default being
+.Ql NUROSPMFAT+\-$~
+or
+.Ql NU\ \ *HMFAT+\-$~
+if
 .Va bsdflags
 or the
-.Va SYSV3
-environment variable are set.
-Also see
-.Sx "MESSAGE STATES" .
+.Ev SYSV3
+environment variable are set, in the following order:
+.Pp
+.Bl -tag -compact -width ".It Ql M"
+.It N
+new
+.It U
+unread but old
+.It R
+new but read
+.It O
+read and old
+.It S
+saved
+.It P
+preserved
+.It M
+mboxed
+.It F
+flagged
+.It A
+answered
+.It T
+draft
+.It +
+start of a collapsed thread
+.It -
+collapsed
+.It $
+classified as spam
+.It ~
+classified with unsure spam state.
+.El
 .
 .Mx
 .It Va autobcc
@@ -7242,6 +7275,8 @@ Once messages have been identified as spam their (volatile)
 .Ql is-spam
 state can be prompted: the
 .Ar :s
+and
+.Ar :S
 message specification will address respective messages and the
 .Va attrlist
 of
@@ -7322,13 +7357,15 @@ perform the local spam check last:
 .
 .Bd -literal -offset indent
 define spamdelhook {
-	# Server side DCC
-	spamset (header x-dcc-brand-metrics "bulk")
-	# Server-side spamassassin(1)
-	spamset (header x-spam-flag "YES")
-	del :s # TODO we HAVE to be able to do `spamrate :u ! :s'
-	spamrate :u
-	del :s
+  # Server side DCC
+  spamset (header x-dcc-brand-metrics "bulk")
+  # Server-side spamassassin(1)
+  spamset (header x-spam-flag "YES")
+  del :s # TODO we HAVE to be able to do `spamrate :u ! :sS'
+  move :S +maybe-spam
+  spamrate :u
+  del :s
+  move :S +maybe-spam
 }
 set folder-hook-FOLDER=spamdelhook
 .Ed

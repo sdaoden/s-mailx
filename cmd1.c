@@ -137,7 +137,7 @@ _parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
 static void
 _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
 {
-   enum {attrlen = 13};
+   enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
    NYD_ENTER;
@@ -147,17 +147,19 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
-      fprintf(stderr, _(
-         "The value of *attrlist* is not of the correct length\n"));
+      fprintf(stderr,
+         _("*attrlist* is not of the correct length, using builtin\n"));
    }
+
    if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
          getenv("SYSV3") != NULL) {
-      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$";
+      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
    } else {
-      char const pattr[attrlen +1] = "NUROSPMFAT+-$";
+      char const pattr[attrlen +1]   = "NUROSPMFAT+-$~";
       memcpy(attrlist, pattr, sizeof pattr);
    }
+
 jattrok:
    if ((fmt = ok_vlook(headline)) == NULL) {
       fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
@@ -648,6 +650,8 @@ _dispc(struct message *mp, char const *a)
       i = a[1];
    if (mp->m_flag & MSPAM)
       i = a[12];
+   if (mp->m_flag & MSPAMUNSURE)
+      i = a[13];
    if (mp->m_flag & MSAVED)
       i = a[4];
    if (mp->m_flag & MPRESERVE)

@@ -1412,7 +1412,8 @@ enum mflag {
    MUNDRAFT       = (1<<24),  /* message has been undrafted */
    MDRAFTED       = (1<<25),  /* message is marked as `draft' */
    MOLDMARK       = (1<<26),  /* messages was marked previously */
-   MSPAM          = (1<<27)   /* message is classified as spam */
+   MSPAM          = (1<<27),  /* message is classified as spam */
+   MSPAMUNSURE    = (1<<28)   /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
