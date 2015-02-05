@@ -1155,6 +1155,7 @@ enum okeys {
    ok_v_smtp_hostname,
    ok_v_spam_command,
    ok_v_spam_host,
+   ok_v_spam_interface,
    ok_v_spam_maxsize,
    ok_v_spam_port,
    ok_v_spam_socket,

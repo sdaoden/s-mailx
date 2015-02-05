@@ -3279,39 +3279,63 @@ The source command reads commands from a file.
 .
 .Mx
 .It Ic spamclear
-\*(OP Takes a list of messages and clears their `is-spam' flag.
+\*(OP Takes a list of messages and clears their
+.Ql is-spam
+flag.
 .
 .Mx
 .It Ic spamforget
-\*(OP Takes a list of messages and forces the spam detector to forget it
-has ever used them to train its Bayesian filter, wether as `ham' or
-`spam'.
+\*(OP Takes a list of messages and causes the
+.Va spam-interface
+to forget it has ever used them to train its Bayesian filter.
+Except for the
+.Ql spamc
+.Va spam-interface
+the current
+.Ql is-spam
+flag of the message is inspected to chose wether a message shall be
+forgotten to be
+.Dq ham
+or
+.Dq spam .
 .
 .Mx
 .It Ic spamham
-\*(OP Takes a list of messages and teaches them to the spam detector as
-being `ham'.
-This also clears the `is-spam' flag of the messages in question.
+\*(OP Takes a list of messages and informs the Bayesian filter of the
+.Va spam-interface
+that they are
+.Dq ham .
+This also clears the
+.Ql is-spam
+flag of the messages in question.
 .
 .Mx
 .It Ic spamrate
-\*(OP Takes a list of messages and rates them using the configured spam
-detector, setting their `is-spam' flag as appropriate.
-Note that the messages are not modified, and due to that the rating will
-get lost once the mailbox is left.
+\*(OP Takes a list of messages and rates them using the configured
+.Va spam-interface ,
+without modifying the messages, but setting their
+.Ql is-spam
+flag as appropriate; because the spam rating headers are lost the rate
+will be forgotten once the mailbox is left.
 Refer to the manual section
 .Sx "Handling spam"
 for the complete picture of spam handling in \*(UA.
 .
 .Mx
 .It Ic spamset
-\*(OP Takes a list of messages and sets their `is-spam' flag.
+\*(OP Takes a list of messages and sets their
+.Ql is-spam
+flag.
 .
 .Mx
 .It Ic spamspam
-\*(OP Takes a list of messages and teaches them to the spam detector as
-being `spam'.
-This also sets the `is-spam' flag of the messages in question.
+\*(OP Takes a list of messages and informs the Bayesian filter of the
+.Va spam-interface
+that they are
+.Dq spam .
+This also sets the
+.Ql is-spam
+flag of the messages in question.
 .
 .Mx
 .It Ic thread
@@ -6074,46 +6098,63 @@ Setting this variable also influences the generated `Message-Id:'.
 .
 .Mx
 .It Va spam-command
-\*(OP The path to the spam detector.
-Note that the path is not expanded, but used "as is".
-A fallback path will have been compiled into the \*(UA binary if the
+\*(OP The path to the spam interface progam.
+Note that the path is not expanded, but used
+.Dq as is .
+For the \*(OP
 .Xr spamc 1
-executable had been found during compilation.
+interaction a fallback path will have been compiled into the \*(UA
+binary if the executable had been found during compilation.
 .
 .Mx
 .It Va spam-host
-\*(OP Can be used to specify the host on which
-.Xr spamd 1
-listens for connections; if not set, defaults to `localhost'.
+\*(OP Can be used to specify a hostname on which a spam interface
+listens for connections.
+.
+.Mx
+.It Va spam-interface
+\*(OP In order to use any of the spam-related commands (like, e.g.,
+.Ic spamrate )
+the desired spam interface must be defined by setting this variable.
+All or none of the following interfaces may be available:
+.Ql spamc
+(interaction with
+.Xr spamc 1
+from the
+.Xr spamassassin 1
+suite \(en see
+.Lk http://spamassassin.apache.org SpamAssassin ) .
+Please refer to the manual section
+.Sx "Handling spam"
+for the complete picture of spam handling in \*(UA.
 .
 .Mx
 .It Va spam-maxsize
-\*(OP Spam detectors like
-.Xr spamc 1
-decline to work with messages which exceed a specific size;
-if this variable is set then \*(UA won't even try to pass messages which
-exceed the given limit.
+\*(OP Messages that exceed this size won't be checked for wether they
+are spam are not.
 The default is 420000 bytes.
 .
 .Mx
 .It Va spam-port
-\*(OP Can be used to explicitly specify the port on which
-.Xr spamd 1
-listens for connections.
+\*(OP Can be used to specify a port on which a spam interface listens
+for connections.
 .
 .Mx
 .It Va spam-socket
-\*(OP If the spam detector listens on a path-based UNIX domain socket,
-then setting this variable to the fully qualified path will force its
-usage for communication.
+\*(OP Can be used to specify a path-based (local) UNIX domain socket on
+which a spam interface listens for connections; defining such a local
+path will take precedence over other spam interfaces.
+Note that the path is not expanded, but used
+.Dq as is .
 .
 .Mx
 .It Va spam-user
 \*(OP This can be used to support multiple, per-used configuration files
-of the spam detector.
-Note that \*(UA doesn't automatically set this to reflect a possibly set
-.Fl u
-option.
+of the spam interface.
+If this is set to the empty string then \*(UA will use the name of the
+current user (see
+.Ev USER ) ,
+otherwise no user identification is used.
 .
 .Mx
 .It Va ssl-ca-dir
@@ -7188,24 +7229,68 @@ to verify a certificate.
 .\" .Ss "Handling spam" {{{
 .Ss "Handling spam"
 .
-\*(OP \*(UA can make use of spam detection and learning facilities \(en
-more precisely,
-.Lk http://spamassassin.apache.org SpamAssassin .
-A very comprehensive documentation of
-.Xr spamassassin 1
-can be found at the
-.Lk http://commons.oreilly.com/wiki/index.php/SpamAssassin "O'Reilly Commons" .
+\*(OP \*(UA can make use of several spam interfaces for the purpose of
+identification of, and, in general, dealing with spam messages.
+A precondition of most commands in order to function is that the
+.Va spam-interface
+variable is set to one of the supported interfaces.
+Once messages have been identified as spam their (volatile)
+.Ql is-spam
+state can be prompted: the
+.Ar :s
+message specification will address respective messages and the
+.Va attrlist
+of
+.Va headline
+will mark them out in the header display.
 .
 .Pp
-Currently \*(UA supports interaction with
+.Bl -bullet -compact
+.It
+.Ic spamrate
+rates the given messages and sets their
+.Ql is-spam
+flag accordingly.
+If the spam interface offers spam scores those can also be displayed in
+the header listing by including the
+.Ql %$
+format in the
+.Va headline
+variable.
+.It
+.Ic spamham ,
+.Ic spamspam
+and
+.Ic spamforget
+will interact with the Bayesian filter of the chosen interface and learn
+the given messages as
+.Dq ham
+or
+.Dq spam ,
+respectively; the last command can be used to cause
+.Dq unlearning
+and thus to revert a previous teaching.
+.It
+.Ic spamclear
+and
+.Ic spamset
+will simply set and clear, respectively, the mentioned volatile
+.Ql is-spam
+message flag, without any interaction with an interface.
+.El
+.
+.Pp
+The
 .Xr spamassassin 1
-only via its daemonized
-.Xr spamd 1 /
-.Xr spamc 1
-server / client pair, which means that, in order to detect and work
-with spam through \*(UA, an instance of the
+based
+.Va spam-interface
+.Ql spamc
+requires a running instance of the
 .Xr spamd 1
-daemon must be running (the examples are equivalent):
+server in order to function, started with the option
+.Fl -allow-tell
+shall Bayesian filter learning be possible.
+The following will be equivalently fine:
 .
 .Bd -literal -offset indent
 $ spamd -i localhost:2142 -i /tmp/.spamsock -d [-L] [-l]
@@ -7214,50 +7299,12 @@ $ spamd --listen=localhost:2142 --listen=/tmp/.spamsock \e
 .Ed
 .
 .Pp
-Note that if
-.Xr spamd 1
-should only listen on a local, path-based UNIX domain socket instead of
-offering its service over the network, it maybe necessary to use
-a single
-.Li --socketpath
-option instead of the shown
-.Li --listen .
-In order to support training of the Bayesian classifier through \*(UA,
-.Xr spamd 1
-must have been started with the
-.Li --allow-tell
-option.
-.
-.Pp
-Once
-.Xr spamd 1
-is running \*(UA can classify messages by using the client side program,
-.Xr spamc 1 ,
-as in:
+Thereafter \*(UA can make use of these interfaces:
 .
 .Bd -literal -offset indent
 $ \*(ua -Sspam-command=/usr/local/bin/spamc \e
-    -Sspam-socket=/tmp/.spamsock -Sspam-maxsize=500000
+    -Sspam-socket=/tmp/.spamsock -Sspam-user= -Sspam-maxsize=500000
 .Ed
-.
-.Pp
-The commands offered are
-.Ic spamclear
-and
-.Ic spamset ,
-which simply set an `is-spam' flag that can be used for, e.g., message
-selection (v,
-.Ic spamrate ,
-which passes messages through to the spam detector in order to gain
-a spam score and conditionally set the `is-spam' flag accordingly,
-as well as the Bayesian filter related
-.Ic spamforget ,
-.Ic spamham
-and
-.Ic spamspam .
-The
-.Va headline
-format `%$' will show the spam score in the header display.
 .
 .Pp
 Because messages must exist on local storage in order to be scored (or
@@ -7271,7 +7318,6 @@ define spamdelhook {
 	# Server-side spamassassin(1)
 	spamset (header x-spam-flag "YES")
 	del :s # TODO we HAVE to be able to do `spamrate :u ! :s'
-	# And finally the local spamc(1)
 	spamrate :u
 	del :s
 }
@@ -7282,6 +7328,7 @@ set folder-hook-FOLDER=spamdelhook
 See also the documentation for the variables
 .Va spam-command ,
 .Va spam-host ,
+.Va spam-interface ,
 .Va spam-port ,
 .Va spam-socket ,
 .Va spam-user
