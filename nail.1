@@ -6122,7 +6122,11 @@ All or none of the following interfaces may be available:
 .Xr spamc 1
 from the
 .Xr spamassassin 1
-suite \(en see
+suite), and
+.Ql spamd
+(direct communication with
+.Xr spamd 1
+from the same suite \(en see
 .Lk http://spamassassin.apache.org SpamAssassin ) .
 Please refer to the manual section
 .Sx "Handling spam"
@@ -7283,14 +7287,19 @@ message flag, without any interaction with an interface.
 The
 .Xr spamassassin 1
 based
-.Va spam-interface
+.Va spam-interface Ns s
 .Ql spamc
-requires a running instance of the
+and
+.Ql spamd
+require a running instance of the
 .Xr spamd 1
 server in order to function, started with the option
 .Fl -allow-tell
 shall Bayesian filter learning be possible.
-The following will be equivalently fine:
+.Ql spamd
+only works via a local path-based
+.Xr unix 4
+socket, but otherwise the following will be equivalently fine:
 .
 .Bd -literal -offset indent
 $ spamd -i localhost:2142 -i /tmp/.spamsock -d [-L] [-l]
