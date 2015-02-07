@@ -1745,8 +1745,8 @@ ${cat} > ${tmp2}.c << \!
 # ifdef HAVE_DEVEL
 : . Computers do not blunder.
 # endif
-#endif /* Remarks */
 :
+#endif /* Remarks */
 :Setup:
 : . System-wide resource file: SYSCONFRC
 : . bindir: BINDIR, mandir: MANDIR
