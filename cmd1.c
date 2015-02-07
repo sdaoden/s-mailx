@@ -331,10 +331,10 @@ jredo:
          case '$':
 #ifdef HAVE_SPAM
             if (n == 0)
-               n = 4;
+               n = 5;
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            snprintf(buf, sizeof buf, "%u.%u",
+            snprintf(buf, sizeof buf, "%u.%02u",
                (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
             n = fprintf(f, "%*s", n, buf);
             wleft = (n >= 0) ? wleft - n : 0;
