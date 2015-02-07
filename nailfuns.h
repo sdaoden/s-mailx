@@ -1829,12 +1829,6 @@ FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);
 # define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
 #endif
 
-/* Extract the protocol base and return a duplicate */
-FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define protbase(CP)            protbase(CP, __FILE__, __LINE__)
-#endif
-
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
