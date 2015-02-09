@@ -3290,10 +3290,7 @@ flag.
 \*(OP Takes a list of messages and causes the
 .Va spam-interface
 to forget it has ever used them to train its Bayesian filter.
-Except for the
-.Ql spamc
-.Va spam-interface
-the current
+Unless otherwise noted the
 .Ql is-spam
 flag of the message is inspected to chose wether a message shall be
 forgotten to be
@@ -6129,69 +6126,181 @@ a provider other than which is about to send the message in
 .Va from .
 Setting this variable also influences the generated `Message-Id:'.
 .
-.Mx
-.It Va spam-command
-\*(OP The path to the spam interface progam.
-Note that the path is not expanded, but used
-.Dq as is .
-For the \*(OP
-.Xr spamc 1
-interaction a fallback path will have been compiled into the \*(UA
-binary if the executable had been found during compilation.
-.
-.Mx
-.It Va spam-host
-\*(OP Can be used to specify a hostname on which a spam interface
-listens for connections.
 .
 .Mx
 .It Va spam-interface
 \*(OP In order to use any of the spam-related commands (like, e.g.,
 .Ic spamrate )
 the desired spam interface must be defined by setting this variable.
-All or none of the following interfaces may be available:
-.Ql spamc
-(interaction with
-.Xr spamc 1
-from the
-.Xr spamassassin 1
-suite), and
-.Ql spamd
-(direct communication with
-.Xr spamd 1
-from the same suite \(en see
-.Lk http://spamassassin.apache.org SpamAssassin ) .
 Please refer to the manual section
 .Sx "Handling spam"
 for the complete picture of spam handling in \*(UA.
+All or none of the following interfaces may be available:
+.
+.Pp
+.Bl -tag -compact -width ".It Ql filter"
+.It Ql spamc
+Interaction with
+.Xr spamc 1
+from the
+.Xr spamassassin 1
+.Pf ( Lk http://spamassassin.apache.org SpamAssassin )
+suite.
+Different to the generic filter interface \*(UA will automatically add
+the correct arguments for a given command and has the necessary
+knowledge to parse the program's output.
+A default value for
+.Va spamc-command
+will have been compiled into the \*(UA binary if
+.Xr spamc 1
+has been found in
+.Ev PATH
+during compilation.
+Shall it be necessary to define a specific connection type (rather than
+using a configuration file for that), the variable
+.Va spamc-arguments
+can be used as in, e.g.,
+.Ql -d server.example.com -p 783 .
+It is also possible to specify a per-user configuration via
+.Va spamc-user .
+Note that this interface doesn't inspect the
+.Ql is-spam
+flag of a message for the command
+.Ic spamforget .
+.
+.It Ql spamd
+\*(UA will directly communicate with the
+.Xr spamassassin 1
+daemon
+.Xr spamd 1
+via a path-based
+.Xr unix 4
+stream socket as specified in
+.Va spamd-socket .
+It is possible to specify a per-user configuration via
+.Va spamd-user .
+.
+.It Ql filter
+generic spam filter support via freely configurable hooks.
+This interface is ment for programs like
+.Xr bogofilter 1
+and
+.Xr sylfilter 1
+and requires according behaviour in respect to the hooks' exit
+status for at least the command
+.Ic spamrate
+.Pf ( Ql 0
+meaning a message is spam,
+.Ql 1
+for non-spam and
+.Ql 2
+for unsure); since the hooks can include shell code snippets
+diverting behaviour can be intercepted as necessary.
+The hooks are
+.Va spamfilter-ham , spamfilter-noham , spamfilter-nospam , \
+  spamfilter-rate
+and
+.Va spamfilter-spam ;
+the manual section
+.Sx "Handling spam"
+contains examples for some programs.
+Note that spam score support for
+.Ic spamrate
+isn't supported unless the \*(OPtional regular expression support is
+available and the
+.Va spamfilter-scanscore
+variable is set.
+.El
+.
 .
 .Mx
 .It Va spam-maxsize
-\*(OP Messages that exceed this size won't be checked for wether they
-are spam are not.
+\*(OP Messages that exceed this size won't be passed through to the
+configured
+.Va spam-interface .
 The default is 420000 bytes.
 .
 .Mx
-.It Va spam-port
-\*(OP Can be used to specify a port on which a spam interface listens
-for connections.
+.It Va spamc-command
+\*(OP The path to the
+.Xr spamc 1
+program for the
+.Ql spamc
+.Va spam-interface .
+Note that the path is not expanded, but used
+.Dq as is .
+A fallback path will have been compiled into the \*(UA binary if the
+executable had been found during compilation.
 .
 .Mx
-.It Va spam-socket
-\*(OP Can be used to specify a path-based (local) UNIX domain socket on
-which a spam interface listens for connections; defining such a local
-path will take precedence over other spam interfaces.
+.It Va spamc-arguments
+\*(OP Even though \*(UA deals with most arguments for the
+.Ql spamc
+.Va spam-interface
+automatically, it may at least sometimes be desirable to specifiy
+connection-related ones via this variable, e.g.,
+.Ql -d server.example.com -p 783 .
+.
+.Mx
+.It Va spamc-user
+\*(OP Specify a username for per-user configuration files for the
+.Ql spamc
+.Va spam-interface .
+If this is set to the empty string then \*(UA will use the name of the
+current user (see
+.Ev USER ) .
+.
+.Mx
+.It Va spamd-socket
+\*(OP Specify the path of the
+.Xr unix 4
+domain socket on which
+.Xr spamd 1
+listens for connections for the
+.Ql spamd
+.Va spam-interface .
 Note that the path is not expanded, but used
 .Dq as is .
 .
 .Mx
-.It Va spam-user
-\*(OP This can be used to support multiple, per-used configuration files
-of the spam interface.
+.It Va spamd-user
+\*(OP Specify a username for per-user configuration files for the
+.Ql spamd
+.Va spam-interface .
 If this is set to the empty string then \*(UA will use the name of the
 current user (see
-.Ev USER ) ,
-otherwise no user identification is used.
+.Ev USER ) .
+.
+.Mx
+.Mx
+.Mx
+.Mx
+.Mx
+.It Va spamfilter-ham , spamfilter-noham , \
+  spamfilter-nospam , spamfilter-rate , spamfilter-spam
+\*(OP Command and argument hooks for the
+.Ql filter
+.Va spam-interface .
+The manual section
+.Sx "Handling spam"
+contains examples for some programs.
+.
+.Mx
+.It Va spamfilter-rate-scanscore
+\*(OP Because of the generic nature of the
+.Ql filter
+.Va spam-interface
+spam scores are not supported for it by default, but if the \*(OPtional
+regular expression support is available then setting this variable can
+be used to overcome this restriction.
+It is interpreted as follows: first a number (digits) is parsed that
+must be followed by a semicolon
+.Ql \&;
+and a regular expression.
+Then the latter is used to parse the first output line of the
+.Va spamfilter-rate
+hook, and, in case the evaluation is successful, the group that has been
+specified via the number is interpreted as a floating point scan score.
 .
 .Mx
 .It Va ssl-ca-dir
@@ -7277,21 +7386,20 @@ state can be prompted: the
 .Ar :s
 and
 .Ar :S
-message specification will address respective messages and the
+message specifications will address respective messages and their
 .Va attrlist
-of
+entries will be used when displaying the
 .Va headline
-will mark them out in the header display.
+in the header display.
 .
-.Pp
-.Bl -bullet -compact
+.Bl -bullet
 .It
 .Ic spamrate
 rates the given messages and sets their
 .Ql is-spam
 flag accordingly.
 If the spam interface offers spam scores those can also be displayed in
-the header listing by including the
+the header display by including the
 .Ql %$
 format in the
 .Va headline
@@ -7308,7 +7416,9 @@ or
 .Dq spam ,
 respectively; the last command can be used to cause
 .Dq unlearning
-and thus to revert a previous teaching.
+of messages; it adheres to their current
+.Ql is-spam
+state and thus reverts previous teachings.
 .It
 .Ic spamclear
 and
@@ -7346,8 +7456,34 @@ $ spamd --listen=localhost:2142 --listen=/tmp/.spamsock \e
 Thereafter \*(UA can make use of these interfaces:
 .
 .Bd -literal -offset indent
-$ \*(ua -Sspam-command=/usr/local/bin/spamc \e
-    -Sspam-socket=/tmp/.spamsock -Sspam-user= -Sspam-maxsize=500000
+$ \*(ua -Sspam-interface=spamd -Sspam-maxsize=500000 \e
+    -Sspamd-socket=/tmp/.spamsock -Sspamd-user=
+
+$ \*(ua -Sspam-interface=spamc -Sspam-maxsize=500000 \e
+    -Sspamc-command=/usr/local/bin/spamc \e
+    -Sspamc-arguments="-U /tmp/.spamsock" -Sspamc-user=
+or
+$ \*(ua -Sspam-interface=spamc -Sspam-maxsize=500000 \e
+    -Sspamc-command=/usr/local/bin/spamc \e
+    -Sspamc-arguments="-d localhost -p 2142" -Sspamc-user=
+.Ed
+.
+.Pp
+Using the generic filter approach allows usage of programs like
+.Xr bogofilter 1
+and
+.Xr sylfilter 1 .
+Here is an example for the former, requiring it to be accessible via
+.Ev PATH :
+.
+.Bd -literal -offset indent
+$ \*(ua -Sspam-interface=filter -Sspam-maxsize=500000 \e
+    -Sspamfilter-ham="bogofilter -n" \e
+    -Sspamfilter-noham="bogofilter -N" \e
+    -Sspamfilter-nospam="bogofilter -S" \e
+    -Sspamfilter-rate="bogofilter -TTu 2>/dev/null" \e
+    -Sspamfilter-spam="bogofilter -s" \e
+    -Sspamfilter-rate-scanscore="1;^(.+)$"
 .Ed
 .
 .Pp
@@ -7372,14 +7508,13 @@ set folder-hook-FOLDER=spamdelhook
 .
 .Pp
 See also the documentation for the variables
-.Va spam-command ,
-.Va spam-host ,
-.Va spam-interface ,
-.Va spam-port ,
-.Va spam-socket ,
-.Va spam-user
+.Va spam-interface , spam-maxsize ,
+.Va spamc-command , spamc-arguments , spamc-user ,
+.Va spamd-socket , spamd-user ,
+.Va spamfilter-ham , spamfilter-noham , spamfilter-nospam , \
+  spamfilter-rate
 and
-.Va spam-maxsize .
+.Va spamfilter-rate-scanscore .
 .\" }}}
 .\" }}} (Examples)
 .
@@ -7387,6 +7522,7 @@ and
 .\" .Sh "SEE ALSO" {{{
 .Sh "SEE ALSO"
 .
+.Xr bogofilter 1 ,
 .Xr bzip2 1 ,
 .Xr file 1 ,
 .Xr fmt 1 ,
@@ -7403,6 +7539,7 @@ and
 .Xr spamassassin 1 ,
 .Xr spamc 1 ,
 .Xr spamd 1 ,
+.Xr sylfilter 1 ,
 .Xr vacation 1 ,
 .Xr xterm 1 ,
 .Xr xz 1 ,
