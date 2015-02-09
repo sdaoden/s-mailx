@@ -15,7 +15,7 @@ option_reset() {
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
-   WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0
+   WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
@@ -34,7 +34,7 @@ option_maximal() {
    WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
-   WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1
+   WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
    WANT_COLOUR=1
@@ -58,6 +58,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=1
       WANT_NCL=1
          WANT_HISTORY=1
+      WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       ;;
@@ -1443,7 +1444,13 @@ else
    echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
 fi
 
-if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD; then
+if feat_yes SPAM_FILTER; then
+   echo '#define HAVE_SPAM_FILTER' >> ${h}
+else
+   echo '/* WANT_SPAM_FILTER=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
    echo '#define HAVE_SPAM' >> ${h}
 else
    echo '/* HAVE_SPAM */' >> ${h}
@@ -1518,6 +1525,7 @@ printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
@@ -1630,6 +1638,9 @@ ${cat} > ${tmp2}.c << \!
 # endif
 # ifdef HAVE_SPAM_SPAMD
 : + + Directly via spamd(1) (of spamassassin(1))
+# endif
+# ifdef HAVE_SPAM_FILTER
+: + + Via freely configurable *spam-filter-XY*s
 # endif
 #endif
 #ifdef HAVE_DOCSTRINGS

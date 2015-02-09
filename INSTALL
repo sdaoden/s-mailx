@@ -34,7 +34,7 @@ which take precedence over anything else:
 . CONFIG=MEDIUM
   Like MINIMAL, but with documentation strings, the builtin command line
   editor with history support (if possible), basic colour support and
-  IDNA addresses.
+  IDNA addresses.  Also adds in generic spam filter support.
 
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
@@ -43,7 +43,8 @@ which take precedence over anything else:
 . CONFIG=NETSEND
   WANT_SMTP as a requirement.
   NETSEND also tries to add SSL/TLS, GSSAPI, .netrc file parsing as well
-  as external password *agent-lookup* on top of MEDIUM.
+  as external password *agent-lookup* on top of MEDIUM, on the other
+  hand spam filter support is removed.
 
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
