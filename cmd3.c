@@ -241,13 +241,11 @@ jnext_msg:
          ) != NULL) {
       char const *tr = _("Reply-To `%s%s'");
       size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
-      char *sp = ac_alloc(l);
+      char *sp = salloc(l);
 
       snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
       if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
          rcv = reply_to;
-
-      ac_free(sp);
    }
 
    if (rcv == NULL && (rcv = hfield1("from", mp)) == NULL)
@@ -288,7 +286,7 @@ jnext_msg:
          ) != NULL) {
       char const *tr = _("Followup-To `%s%s'");
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
-      char *sp = ac_alloc(l);
+      char *sp = salloc(l);
 
       snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
       if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
@@ -298,8 +296,6 @@ jnext_msg:
          mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0, NULL);
       } else
          mft = NULL;
-
-      ac_free(sp);
    }
 
    /* Special massage for list (follow-up) messages */
@@ -443,14 +439,10 @@ _Reply(int *msgvec, bool_t recipient_record)
             ) != NULL) {
          char const *tr = _("Reply-To `%s%s'");
          size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+         char *sp = salloc(l);
 
-         char *sp = ac_alloc(l);
-         si8_t rv;
          snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
-         rv = quadify(cp, UIZ_MAX, sp, TRU1);
-         ac_free(sp);
-
-         if (rv > FAL0) {
+         if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0) {
             head.h_to = cat(head.h_to, rt);
             continue;
          }
