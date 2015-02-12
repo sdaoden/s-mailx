@@ -98,10 +98,9 @@ static ssize_t          convhdra(char const *str, size_t len, FILE *fp);
 static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f);
 
 /* Append to buf, handling resizing */
-static void             addstr(char **buf, size_t *sz, size_t *pos,
+static void             _append_str(char **buf, size_t *sz, size_t *pos,
                            char const *str, size_t len);
-
-static void             addconv(char **buf, size_t *sz, size_t *pos,
+static void             _append_conv(char **buf, size_t *sz, size_t *pos,
                            char const *str, size_t len);
 
 static void
@@ -767,7 +766,7 @@ jleave:
 }
 
 static void
-addstr(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
+_append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    NYD_ENTER;
    *buf = srealloc(*buf, *sz += len);
@@ -777,7 +776,7 @@ addstr(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 }
 
 static void
-addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
+_append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    struct str in, out;
    NYD_ENTER;
@@ -785,7 +784,7 @@ addconv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
    in.s = UNCONST(str);
    in.l = len;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-   addstr(buf, sz, pos, out.s, out.l);
+   _append_str(buf, sz, pos, out.s, out.l);
    free(out.s);
    NYD_LEAVE;
 }
@@ -1623,7 +1622,7 @@ mime_fromaddr(char const *name)
    }
 
    if ((cp = routeaddr(name)) != NULL && cp > name) {
-      addconv(&res, &ressz, &rescur, name, PTR2SIZE(cp - name));
+      _append_conv(&res, &ressz, &rescur, name, PTR2SIZE(cp - name));
       lastcp = cp;
    } else
       cp = lastcp = name;
@@ -1631,11 +1630,11 @@ mime_fromaddr(char const *name)
    for ( ; *cp; ++cp) {
       switch (*cp) {
       case '(':
-         addstr(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp + 1));
+         _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp + 1));
          lastcp = ++cp;
          cp = skip_comment(cp);
          if (--cp > lastcp)
-            addconv(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
+            _append_conv(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
          lastcp = cp;
          break;
       case '"':
@@ -1649,7 +1648,7 @@ mime_fromaddr(char const *name)
       }
    }
    if (cp > lastcp)
-      addstr(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
+      _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
    /* TODO rescur==0: inserted to silence Coverity ...; check that */
    if (rescur == 0)
       res = UNCONST("");
