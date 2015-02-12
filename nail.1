@@ -660,12 +660,12 @@ or
 to view shell scripts as plain text
 and to open PDF attachments in an external PDF viewer, asynchronously:
 .Bd -literal -offset indent
-  #set pipe-text/html="elinks -force-html -dump 1"
-  set pipe-text/html="lynx -stdin -dump -force_html"
-  set pipe-application/x-sh=@
-  set pipe-application/pdf="@&cat > \e"/tmp/${NAIL_FILENAME}\e";\e
-      acroread \e"/tmp/${NAIL_FILENAME}\e";\e
-      rm \e"/tmp/${NAIL_FILENAME}\e""
+#set pipe-text/html="elinks -force-html -dump 1"
+set pipe-text/html="lynx -stdin -dump -force_html"
+set pipe-application/x-sh=@
+set pipe-application/pdf="@&cat > \e"/tmp/${NAIL_FILENAME}\e";\e
+    acroread \e"/tmp/${NAIL_FILENAME}\e";\e
+    rm \e"/tmp/${NAIL_FILENAME}\e""
 .Ed
 .Pp
 Note: special care must be taken when using such commands as mail
@@ -1591,12 +1591,12 @@ command is executed for the system mailbox or inbox of that account.
 Without arguments the list of accounts and their contents are printed.
 As an example,
 .Bd -literal -offset indent
-   account myisp {
-      set folder=imaps://mylogin@imap.myisp.example
-      set record=+Sent
-      set from="myname@myisp.example (My Name)"
-      set smtp=smtp://mylogin@smtp.myisp.example
-   }
+account myisp {
+  set folder=imaps://mylogin@imap.myisp.example
+  set record=+Sent
+  set from="myname@myisp.example (My Name)"
+  set smtp=smtp://mylogin@smtp.myisp.example
+}
 .Ed
 .Pp
 creates an account named `myisp' which can later be selected by
@@ -1695,12 +1695,12 @@ content, is printed.
 If arguments are given this command defines a macro.
 A macro definition is a sequence of commands in the following form:
 .Bd -literal -offset indent
-   define name {
-      command1
-      command2
-      ...
-      commandN
-   }
+define name {
+  command1
+  command2
+  ...
+  commandN
+}
 .Ed
 .Pp
 A defined macro can be explicitly invoked using
@@ -1755,20 +1755,14 @@ Modified contents are discarded unless the
 variable is set.
 .It Ic elif
 Part of the
-.Ic if /
-.Ic elif /
-.Ic else /
-.Ic endif
+.Ic if / Ic elif / Ic else / Ic endif
 conditional \(em if the condition of a preceeding
 .Ic if
 was false, check the following condition and execute the following block
 if it evaluates true.
 .It Ic else
 Part of the
-.Ic if /
-.Ic elif /
-.Ic else /
-.Ic endif
+.Ic if / Ic elif / Ic else / Ic endif
 conditional \(em if none of the conditions of the preceeding
 .Ic if
 and
@@ -1778,10 +1772,7 @@ commands was true, the
 block is executed.
 .It Ic endif
 Marks the end of an
-.Ic if /
-.Ic elif /
-.Ic else /
-.Ic endif
+.Ic if / Ic elif / Ic else / Ic endif
 conditional execution block.
 .It Ic exit
 (ex or x) Effects an immediate return to the Shell without modifying the
@@ -2011,45 +2002,56 @@ command issued after
 will display the following message, not the current one.
 .It Ic if
 Part of the nestable
-.Ic if /
-.Ic elif /
-.Ic else /
-.Ic endif
-conditional execution construct \(em if the given condition is false
-execute the following block.
+.Ic if / Ic elif / Ic else / Ic endif
+conditional execution construct \(em if the given condition is true then
+the encapsulated block is executed.
 .Bd -literal -offset indent
-   if receive
-      commands ...
-   else
-      commands ...
-   endif
+if receive
+  commands ...
+else
+  commands ...
+endif
 .Ed
 .Pp
 Note that POSIX only supports the conditions `[Rr]eceive', `[Ss]end'
 and `[Tt]erm' (execute if standard input is a tty).
-Extensions are `0' (never execute) and `1' (always execute);
-it is also possible to conditionalize upon wether an option is set,
-or set to a specific value, by using the `$' conditional trigger, e.g.:
+Extensions are `0' (never execute) and `1' (always execute).
+It is possible to check a user given value against the content of
+a variable by using the `$' conditional trigger.
+In the following example the first form only checks wether an option is
+set, whereas the others also perform value content comparison:
 .Bd -literal -offset indent
-   if $debug
-      commands ...
-   endif
-   if $encoding == "UTF-8"
-      commands ...
-   endif
-   if $encoding != "UTF-8"
-      commands ...
-   endif
+if $debug
+  commands ...
+endif
+if $encoding == "UTF-8"
+  commands ...
+endif
+if $encoding != "UTF-8"
+  if $version-major >= 15
+    commands ...
+  endif
+endif
 .Ed
 .Pp
-The first form simply checks wether an option is set, the other two also
-perform value content comparison (equality and non-equality,
-respectively); an unset value is treated as the empty string, then.
-The \*(OPal regular expression support adds `=~' and `!~' tests, which
-treat the right hand side as a regular expression that is matched
-case-insensitively, e.g., `^UTF.*' (see
-.Xr re_format 7 Ns
-).
+The available comparison operators are `<' (less than), `<=' (less than
+or equal to), `==' (equal), `!=' (not equal), `>=' (greater than or
+equal to) and `>' (greater than).
+If the user given value can be parsed as a number (integer), then if the
+variable value content can, too, then the comparison is performed
+arithmetically.
+Otherwise both values are treated as strings and are compared 8-bit
+byte-wise, ignoring case according to the rules of the US-ASCII encoding
+(therefore, dependend on the active locale, possibly producing false
+results for strings in the locale encoding).
+An unset variable is treated as the empty string.
+.Pp
+When the \*(OPal regular expression support is available, the additional
+`=~' and `!~' test cases can be used.
+They treat the right hand side as a regular expression that is matched
+case-insensitively and according to the active `LC_CTYPE' locale,
+meaning that strings in the locale encoding should be matched correctly.
+An example of such a test would be `if $TERM =~ "^xterm.*"'.
 .It Ic ignore
 Add the list of header fields named to the ignored list.
 Header fields in the ignore list are not printed on the terminal when

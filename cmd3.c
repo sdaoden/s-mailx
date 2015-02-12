@@ -1089,7 +1089,7 @@ c_if(void *v)
 {
    struct cond_stack *csp;
    int rv = 1;
-   char **argv = v, *cp, *op;
+   char **argv = v, *cp, *op, c;
    NYD_ENTER;
 
    csp = smalloc(sizeof *csp);
@@ -1134,15 +1134,25 @@ jesyn:
          break;
       }
 
-      /* Three argument comparison form? */
-      if (argv[2] == NULL || op[0] == '\0' ||
-#ifdef HAVE_REGEX
-            (op[1] != '=' && op[1] != '~') ||
-#else
-            op[1] != '=' ||
-#endif
-            op[2] != '\0')
+      /* Three argument comparison form required, check syntax */
+      if (argv[2] == NULL || (c = op[0]) == '\0')
          goto jesyn;
+      if (op[1] == '\0') {
+         if (c != '<' && c != '>')
+            goto jesyn;
+      } else if (op[2] != '\0')
+         goto jesyn;
+      else if (c == '<' || c == '>') {
+         if (op[1] != '=')
+            goto jesyn;
+      } else if (c == '=' || c == '!') {
+         if (op[1] != '='
+#ifdef HAVE_REGEX
+               && op[1] != '~'
+#endif
+         )
+            goto jesyn;
+      }
 
       /* A null value is treated as the empty string */
       if (v == NULL)
@@ -1153,20 +1163,42 @@ jesyn:
 
          if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
             goto jesyn;
-         if (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH)
-            v = NULL;
+         csp->c_go = (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
          regfree(&re);
       } else
 #endif
-      if (strcmp(v, argv[2]))
-         v = NULL;
-      switch (op[0]) {
-      case '!':
-      case '=':
-         csp->c_go = ((op[0] == '=') ^ (v == NULL));
-         break;
-      default:
-         goto jesyn;
+      {
+         /* Try to interpret as integers, prefer those, then */
+         char *argv2 = argv[2];
+         sl_i sli2, sli1;
+
+         sli2 = strtol(argv2, argv, 0);
+         if (*argv2 != '\0' && **argv == '\0') {
+            sli1 = strtol((cp = v), argv, 0);
+            if (*cp != '\0' && **argv == '\0') {
+               sli1 -= sli2;
+               switch (c) {
+               default:
+               case '=': c = (sli1 == 0); break;
+               case '!': c = (sli1 != 0); break;
+               case '<': c = (op[1] == '\0') ? sli1 < 0 : sli1 <= 0; break;
+               case '>': c = (op[1] == '\0') ? sli1 > 0 : sli1 >= 0; break;
+               }
+               csp->c_go = (bool_t)c;
+               break;
+            }
+         }
+
+         /* It is not an integer, perform string comparison */
+         sli1 = asccasecmp(v, argv2);
+         switch (c) {
+         default:
+         case '=': c = (sli1 == 0); break;
+         case '!': c = (sli1 != 0); break;
+         case '<': c = (op[1] == '\0') ? sli1 < 0 : sli1 <= 0; break;
+         case '>': c = (op[1] == '\0') ? sli1 > 0 : sli1 >= 0; break;
+         }
+         csp->c_go = (bool_t)c;
       }
       break;
    default:

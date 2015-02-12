@@ -251,8 +251,81 @@ __behave_ifelse() {
 		else
 		   echo 10.err12
 		endif
+		# integer conversion, <..>..
+		set dietcurd=10
+		if $dietcurd < 11
+		   echo 11.ok1
+		   if $dietcurd > 9
+		      echo 11.ok2
+		   else
+		      echo 11.err2
+		   endif
+		   if $dietcurd == 10
+		      echo 11.ok3
+		   else
+		      echo 11.err3
+		   endif
+		   if $dietcurd >= 10
+		      echo 11.ok4
+		   else
+		      echo 11.err4
+		   endif
+		   if $dietcurd <= 10
+		      echo 11.ok5
+		   else
+		      echo 11.err5
+		   endif
+		   if $dietcurd >= 11
+		      echo 11.err6
+		   else
+		      echo 11.ok6
+		   endif
+		   if $dietcurd <= 9
+		      echo 11.err7
+		   else
+		      echo 11.ok7
+		   endif
+		else
+		   echo 11.err1
+		endif
+		set dietcurd=Abc
+		if $dietcurd < aBd
+		   echo 12.ok1
+		   if $dietcurd > abB
+		      echo 12.ok2
+		   else
+		      echo 12.err2
+		   endif
+		   if $dietcurd == aBC
+		      echo 12.ok3
+		   else
+		      echo 12.err3
+		   endif
+		   if $dietcurd >= AbC
+		      echo 12.ok4
+		   else
+		      echo 12.err4
+		   endif
+		   if $dietcurd <= ABc
+		      echo 12.ok5
+		   else
+		      echo 12.err5
+		   endif
+		   if $dietcurd >= abd
+		      echo 12.err6
+		   else
+		      echo 12.ok6
+		   endif
+		   if $dietcurd <= abb
+		      echo 12.err7
+		   else
+		      echo 12.ok7
+		   endif
+		else
+		   echo 12.err1
+		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '2760114576 119'
+   cksum_test behave:if-normal "${MBOX}" '2487694811 217'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
