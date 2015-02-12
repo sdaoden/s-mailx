@@ -661,10 +661,6 @@ c_sort(void *vp)
    bool_t showname;
    NYD_ENTER;
 
-   showname = ok_blook(showname);
-   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
-   msgvec[1] = 0;
-
    if (vp == NULL || vp == (void*)-1) {
       _args[0] = savestr((mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       _args[1] = NULL;
@@ -676,25 +672,32 @@ c_sort(void *vp)
       goto jleave;
    }
 
-   for (i = 0; UICMP(z, i, <, NELEM(methnames)); ++i)
+   i = 0;
+   for (;;) {
       if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
-         goto jmethok;
-   fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
-   i = 1;
-   goto jleave;
+         break;
+      if (UICMP(z, ++i, >=, NELEM(methnames))) {
+         fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
+         i = 1;
+         goto jleave;
+      }
+   }
 
-jmethok:
-   method = methnames[i].me_method;
-   func = methnames[i].me_func;
    if (mb.mb_sorted != NULL)
       free(mb.mb_sorted);
    mb.mb_sorted = sstrdup(args[0]);
+
+   method = methnames[i].me_method;
+   func = methnames[i].me_func;
+   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
+   msgvec[1] = 0;
 
    if (method == SORT_THREAD) {
       i = c_thread((vp != NULL && vp != (void*)-1) ? msgvec : vp);
       goto jleave;
    }
 
+   showname = ok_blook(showname);
    ms = ac_alloc(sizeof *ms * msgCount);
 #ifdef HAVE_IMAP
    switch (method) {
