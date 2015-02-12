@@ -4828,29 +4828,43 @@ a SSL/TLS client certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
 .It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
-\*(OP Variable chain that selects a lower treshold on the used TLS/SSL
-protocol version.
-The actually available protocol versions depend on the TLS/SSL
-library that \*(UA uses.
-Beside the default value `auto' other possible values are, (also case
-insensitive and) from newest to oldest:
-`tls1.2', `tls1.1', `tls1' and `ssl3'.
+\*(OP
+\*(OB Please use the newer and more flexible
+.Va ssl-protocol
+instead: if both values are set,
+.Va ssl-protocol
+will take precedence!
+Can be set to the following values, the actually used
+.Va ssl-protocol
+specification to which it is mapped is shown in parenthesis:
+`tls1.2' ("-ALL, TLSv1.2"), `tls1.1' ("-ALL, TLSv1.1"), `tls1'
+("-ALL, TLSv1") and `ssl3' ("-ALL, SSLv3");
+the special value `auto' is mapped to "ALL, -SSLv2" and thus includes
+the SSLv3 protocol.
 Note that SSLv2 is no longer supported at all.
-E.g., if `tls1.1' is selected then only TLSv1.1 or above are acceptable
-protocols when creating an encrypted connection.
-.Pp
-The default value `auto' leaves the task of choosing the protocol
-version up to the used TLS/SSL library, usually negotiating the highest
-protocol version that the server announces automatically.
-`auto' will also be chosen automatically when the actual setting of
-.Va ssl-method
-isn't supported by the used TLS/SSL library \(em in this case an error
-message will be printed first, however.
+.It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
+\*(OP Specify the used SSL/TLS protocol.
+This is a direct interface to the `Protocol' slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available;
+otherwise an \*(UA internal parser is used which understands the
+following subset of (case-insensitive) command strings:
+`SSLv3', `TLSv1', `TLSv1.1' and `TLSv1.2',
+as well as the special value `ALL'.
+Multiple specifications may be given via a comma-separated list which
+ignores any whitespace.
+An optional `+' plus prefix will enable a protocol, a `-' minus prefix
+will disable it, so that "-ALL, TLSv1.2" will enable only the TLSv1.2
+protocol.
+It depends upon the used TLS/SSL library which protocols are actually
+supported and which protocols are used if
+.Va ssl-protocol
+is not set, but note that SSLv2 is no longer supported at all and
+actively disabled.
 .It Va ssl-rand-egd
 \*(OP Gives the pathname to an entropy daemon socket, see
 .Xr RAND_egd 3 .
-Note that (as of 2014) not all OpenSSL installations include this
-functionality.
+Not all SSL/TLS libraries support this.
 .It Va ssl-rand-file
 \*(OP Gives the pathname to a file with entropy data, see
 .Xr RAND_load_file 3 .
@@ -5161,7 +5175,7 @@ set ssl-verify=strict
 # Don't use protocols olders than TLS v1.2.
 # (Change this [best on a per-account base only]
 # when the remote server doesn't support new protocols!)
-set ssl-method=tls1.2
+set ssl-protocol="ALL,-VULNERABLE"
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
@@ -5489,7 +5503,7 @@ and
 .Va ssl-rand-file
 variables (see the OpenSSL FAQ for more information) or specify the
 protocol version with
-.Va ssl-method .
+.Va ssl-protocol .
 Contact your ISP if you need a client certificate or if verification of
 the server certificate fails.
 If the failed certificate is indeed valid,

@@ -1101,6 +1101,7 @@ enum okeys {
    ok_v_ssl_crl_file,
    ok_v_ssl_key,
    ok_v_ssl_method,
+   ok_v_ssl_protocol,
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,
