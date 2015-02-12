@@ -328,8 +328,103 @@ __behave_ifelse() {
 		else
 		   echo 12.err1
 		endif
+		# Shitty grouping capabilities as of today
+		if [ [ false ] || [ false ] || [ true ] ] && [ [ false ] || [ true ] ] && \
+		      [ yes ]
+		   echo 20.ok
+		else
+		   echo 20.err
+		endif
+		if [ [ [ [ 0 ] || [ 1 ] ] && [ [ 1 ] || [ 0 ] ] ] && [ 1 ] ] && [ yes ]
+		   echo 21.ok
+		else
+		   echo 21.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] ]
+		   echo 22.ok
+		else
+		   echo 22.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] ]
+		   echo 23.ok
+		else
+		   echo 23.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] && [ no ]
+		   echo 24.err
+		else
+		   echo 24.ok
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
+		&& [ no ] || [ yes ]
+		   echo 25.ok
+		else
+		   echo 25.err
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 26.ok
+		else
+		   echo 26.err
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 0 ] ]
+		   echo 27.err
+		else
+		   echo 27.ok
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 0 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 28.err
+		else
+		   echo 28.ok
+		endif
+		if [ [ [ [ [ [ [ 0 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 29.err
+		else
+		   echo 29.ok
+		endif
+		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 0 ]
+		   echo 30.err
+		else
+		   echo 30.ok
+		endif
+		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 1 ]
+		   echo 31.ok
+		else
+		   echo 31.err
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ]
+		   echo 32.err
+		else
+		   echo 32.ok
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 1 ]
+		   echo 33.ok
+		else
+		   echo 33.err
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 0 ]
+		   echo 34.err
+		else
+		   echo 34.ok
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 1 ]
+		   echo 35.ok
+		else
+		   echo 35.err
+		endif
+		set diet=yo curd=ho
+		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
+		   echo 36.err
+		else
+		   echo 36.ok
+		endif
+		set ndefined
+		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
+		   echo 37.ok
+		else
+		   echo 37.err
+		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '2487694811 217'
+   cksum_test behave:if-normal "${MBOX}" '1529103056 325'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
@@ -355,8 +450,13 @@ __behave_ifelse() {
 			else
 			   echo 4.err
 			endif
+			if [ $dietcurd !~ '.+yoho$' ]
+			   echo 5.ok
+			else
+			   echo 5.err
+			endif
 		__EOT
-      cksum_test behave:if-regex "${MBOX}" '3930005258 20'
+      cksum_test behave:if-regex "${MBOX}" '4280687462 25'
    fi
 }
 

@@ -37,17 +37,25 @@ struct if_cmd {
 
 static struct cond_stack   *_cond_stack;
 
-static void    _if_error(struct if_cmd const *icp);
+static void    _if_error(struct if_cmd const *icp, char const *msg_or_null);
+
+/* noop and (1) don't work for real, only syntax-check and
+ * (2) non-error return is ignored */
 static si8_t   _if_test(struct if_cmd *icp, bool_t noop);
+static si8_t   _if_group(struct if_cmd *icp, size_t level, bool_t noop);
 
 static void
-_if_error(struct if_cmd const *icp)
+_if_error(struct if_cmd const *icp, char const *msg_or_null)
 {
    struct str s;
    NYD2_ENTER;
 
+   if (msg_or_null == NULL)
+      msg_or_null = _("invalid expression syntax");
+
    str_concat_cpa(&s, icp->ic_argv_base, (icp->ic_argc_base > 0 ? " " : ""));
-   fprintf(stderr, _("Invalid conditional expression \"%s\"\n"), s.s);
+
+   fprintf(stderr, _("`if' conditional: %s: \"%s\"\n"), msg_or_null, s.s);
    NYD2_LEAVE;
 }
 
@@ -60,9 +68,7 @@ _if_test(struct if_cmd *icp, bool_t noop)
    si8_t rv = -1;
    NYD2_ENTER;
 
-   argv = icp->ic_argv;
-   argc = icp->ic_argc;
-   cp = argv[0];
+   argv = icp->ic_argv; argc = icp->ic_argc; cp = argv[0];
 
    if (*cp != '$') {
       if (argc > 1)
@@ -71,7 +77,7 @@ _if_test(struct if_cmd *icp, bool_t noop)
       goto jesyn;
    else if (argc > 3) {
 jesyn:
-      _if_error(icp);
+      _if_error(icp, NULL);
       goto jleave;
    }
 
@@ -99,7 +105,8 @@ jesyn:
       break;
    case '$':
       /* Look up the value in question, we need it anyway */
-      v = vok_vlook(++cp);
+      ++cp;
+      v = noop ? NULL : vok_vlook(cp);
 
       /* Single argument, "implicit boolean" form? */
       if (argc == 1) {
@@ -137,11 +144,12 @@ jesyn:
 
          if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
             goto jesyn;
-         rv = (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
+         if (!noop)
+            rv = (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
          regfree(&re);
       } else
 #endif
-      {
+      if (!noop) {
          /* Try to interpret as integers, prefer those, then */
          char const *argv2 = argv[2];
          char *eptr;
@@ -175,6 +183,103 @@ jesyn:
       }
       break;
    }
+
+   if (noop && rv < 0)
+      rv = TRU1;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static si8_t
+_if_group(struct if_cmd *icp, size_t level, bool_t noop)
+{
+   bool_t mynoop;
+   char const *emsg = NULL, *arg0, * const *argv;
+   size_t argc, i;
+   char c;
+   si8_t rv = -1, xrv;
+   NYD2_ENTER;
+
+   mynoop = noop;
+
+   /* AND-OR lists on same grouping level are iterated without recursion */
+jnext_list:
+   arg0 = icp->ic_argv[0];
+   if (arg0[0] != '[' || arg0[1] != '\0' || --icp->ic_argc < 2) {
+jesyn:
+      if (emsg == NULL)
+         emsg = _("invalid bracket grouping");
+      _if_error(icp, emsg);
+      rv = -1;
+      goto jleave;
+   }
+   arg0 = *(++icp->ic_argv);
+
+   /* Does this group consist of inner groups?  Else it is a condition. */
+   if (arg0[0] == '[') {
+      if ((xrv = _if_group(icp, level + 1, mynoop)) < 0) {
+         rv = xrv;
+         goto jleave;
+      } else if (!mynoop)
+         rv = xrv;
+
+      arg0 = *(argv = icp->ic_argv);
+      argc = icp->ic_argc;
+      if (argc == 0 || *arg0 != ']')
+         goto jesyn;
+   } else {
+      argv = icp->ic_argv;
+      argc = icp->ic_argc;
+
+      for (i = 0;; ++i)
+         if (i == argc)
+            goto jesyn;
+         else if (argv[i][0] == ']')
+            break;
+      if (i == 0) {
+         emsg = "empty bracket group";
+         goto jesyn;
+      }
+
+      icp->ic_argc = i;
+      arg0 = *(argv += i);
+      argc -= i;
+      if ((xrv = _if_test(icp, mynoop)) < 0) {
+         rv = xrv;
+         goto jleave;
+      } else if (!mynoop)
+         rv = xrv;
+   }
+
+   /* At the closing ] bracket of this level */
+   assert(argc > 0);
+   assert(arg0[0] == ']');
+   if (arg0[1] != '\0')
+      goto jesyn;
+
+   /* Done?  Closing ] bracket of outer level?  Otherwise must be AND-OR list */
+   arg0 = *(icp->ic_argv = ++argv);
+   if ((icp->ic_argc = --argc) == 0)
+      ;
+   else if ((c = arg0[0]) == ']') {
+      if (level == 0) {
+         emsg = _("excessive closing brackets");
+         goto jesyn;
+      }
+   } else {
+      if ((c != '&' && c != '|') || arg0[1] != c || arg0[2] != '\0') {
+         emsg = _("expected AND-OR list after closing bracket");
+         goto jesyn;
+      }
+      mynoop = ((c == '&') ^ (rv == TRU1));
+      icp->ic_argv = ++argv;
+      icp->ic_argc = --argc;
+      goto jnext_list;
+   }
+
+   if (mynoop && rv < 0)
+      rv = TRU1;
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -206,7 +311,7 @@ c_if(void *v)
       ;
    ic.ic_argv_base = ic.ic_argv = argv;
    ic.ic_argc_base = ic.ic_argc = argc;
-   xrv = _if_test(&ic, FAL0);
+   xrv = (**argv != '[') ? _if_test(&ic, FAL0) : _if_group(&ic, 0, FAL0);
    if (xrv >= 0) {
       csp->c_go = (bool_t)xrv;
       rv = 0;

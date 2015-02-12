@@ -2546,12 +2546,19 @@ command issued after
 .Ic hold
 will display the following message, not the current one.
 .
+.
 .Mx
 .It Ic if
 Part of the nestable
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
 conditional execution construct \(em if the given condition is true then
 the encapsulated block is executed.
+POSIX only supports the conditions
+.Ql [Rr]eceive ,
+.Ql [Ss]end
+and
+.Ql [Tt]erm
+(execute if standard input is a tty).
 .Bd -literal -offset indent
 if receive
   commands ...
@@ -2559,20 +2566,15 @@ else
   commands ...
 endif
 .Ed
+.
 .Pp
-Note that POSIX only supports the conditions
-.Ql [Rr]eceive ,
-.Ql [Ss]end
-and
-.Ql [Tt]erm
-(execute if standard input is a tty).
-Any boolean value (see the section
+The rest are non-portable extension.
+For one any boolean value (see the section
 .Sx "VARIABLE OPTIONS"
 for booleans) may be given to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
-.Pp
 It is possible to check a variable for existence or compare its
 expansion against a user given value via the
 .Ql $
@@ -2598,6 +2600,7 @@ byte-wise, ignoring case according to the rules of the US-ASCII encoding
 (therefore, dependend on the active locale, possibly producing false
 results for strings in the locale encoding).
 An unset variable is treated as the empty string.
+.
 .Pp
 When the \*(OPal regular expression support is available, the additional
 .Ql =~
@@ -2609,6 +2612,20 @@ case-insensitively and according to the active
 .Ev LC_CTYPE
 locale, meaning that strings in the locale encoding should be matched
 correctly.
+.
+.Pp
+Forming condition lists can be accomplished by using bracket groups
+.Ql [\ \&.\&.\&.\ ] ,
+which may be interlocked within each other,
+eventually joining them via AND-OR lists (where the AND operator is
+.Ql &&
+and the OR operator is
+.Ql || )
+which have equal precedence and will be evaluated with left
+associativity.
+The syntax requires that each bracket and each list operator is
+surrounded by whitespace.
+.
 .Bd -literal -offset indent
 if $debug
   echo *debug* is set
@@ -2621,8 +2638,12 @@ if $version-major >= 15
   if $TERM =~ "^xterm\&.*"
     echo ..in an X terminal
   endif
+  if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
+    echo noisy, noisy
+  endif
 endif
 .Ed
+.
 .
 .Mx
 .It Ic ignore
