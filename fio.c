@@ -512,7 +512,7 @@ FL int
    /* TODO readline: linebuf pool! */
    FILE *ifile = (_fio_input != NULL) ? _fio_input : stdin;
    bool_t doprompt, dotty;
-   int n;
+   int n, nold;
    NYD2_ENTER;
 
    doprompt = (!sourcing && (options & OPT_INTERACTIVE));
@@ -526,7 +526,7 @@ FL int
    if (!dotty && prompt == NULL)
       fflush(stdout);
 
-   for (n = 0;;) {
+   for (nold = n = 0;;) {
       if (dotty) {
          assert(ifile == stdin);
          if (string != NULL && (n = (int)strlen(string)) > 0) {
@@ -538,6 +538,8 @@ FL int
             memcpy(*linebuf, string, (size_t)n +1);
          }
          string = NULL;
+         /* TODO if nold>0, don't redisplay the entire line!
+          * TODO needs complete redesign ... */
          n = (tty_readline)(prompt, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
       } else {
@@ -548,19 +550,31 @@ FL int
          }
          n = (readline_restart)(ifile, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
+
+         if (n > 0 && nold > 0) {
+            int i = 0;
+            char const *cp = *linebuf + nold;
+
+            while (blankspacechar(*cp) && nold + i < n)
+               ++cp, ++i;
+            if (i > 0) {
+               memmove(*linebuf + nold, cp, n - nold - i);
+               n -= i;
+               (*linebuf)[n] = '\0';
+            }
+         }
       }
       if (n <= 0)
          break;
+
       /* POSIX says:
        * An unquoted <backslash> at the end of a command line shall
        * be discarded and the next line shall continue the command */
-      if (nl_escape && (*linebuf)[n - 1] == '\\') {
-         (*linebuf)[--n] = '\0';
-         if (prompt != NULL && *prompt != '\0')
-            prompt = ".. "; /* XXX PS2 .. */
-         continue;
-      }
-      break;
+      if (!nl_escape || n == 0 || (*linebuf)[n - 1] != '\\')
+         break;
+      (*linebuf)[nold = --n] = '\0';
+      if (prompt != NULL && *prompt != '\0')
+         prompt = ".. "; /* XXX PS2 .. */
    }
    NYD2_LEAVE;
    return n;

@@ -907,11 +907,15 @@ then it is a null command (comment) and also ignored.
 The null command is the only form of comment that is understood.
 .It
 A line can be "continued" on the next line if the newline character is
-"escaped" by a preceding backslash character (`\e'), as in
+"escaped" by a preceding backslash character
+.Ql \e .
+Note that any leading whitespace of follow lines is removed; if
+whitespace is desired it must be placed before the backslash.
+For example:
 .
 .Bd -literal -offset indent
-# This line is a null command (comment). \e
-  And yes, it is really continued here.
+# This line is a null command (comment).  And y\e
+  es, it is really continued here.
 set debug \e
     verbose
 .Ed
