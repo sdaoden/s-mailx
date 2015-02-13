@@ -109,7 +109,7 @@ static char *  _colour_iso6429(char const *wish);
 #endif
 
 #ifdef HAVE_NYD
-static void    _nyd_print(struct nyd_info *nip);
+static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
 
 #ifdef HAVE_COLOUR
@@ -211,7 +211,7 @@ jiter_colour:
 
 #ifdef HAVE_NYD
 static void
-_nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
+_nyd_print(int fd, struct nyd_info *nip)
 {
    char buf[80];
    union {int i; size_t z;} u;
@@ -224,7 +224,7 @@ _nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
       u.z = u.i;
       if (u.z > sizeof buf)
          u.z = sizeof buf - 1; /* (Skip \0) */
-      write(STDERR_FILENO, buf, u.z);
+      write(fd, buf, u.z);
    }
 }
 #endif
@@ -355,22 +355,64 @@ _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 FL void
 _nyd_oncrash(int signo)
 {
+   char s2ibuf[32], *fname, *cp;
    struct sigaction xact;
    sigset_t xset;
+   size_t fnl, i;
+   int fd;
    struct nyd_info *nip;
-   size_t i;
 
    xact.sa_handler = SIG_DFL;
    sigemptyset(&xact.sa_mask);
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   fprintf(stderr, "\n\nNYD: program dying due to signal %d:\n", signo);
+   fnl = strlen(UAGENT);
+   i = strlen(tempdir);
+   cp =
+   fname = ac_alloc(i + 1 + fnl + 1 + sizeof(".dat"));
+   memcpy(cp , tempdir, i);
+   cp[i++] = '/'; /* xxx pathsep */
+   memcpy(cp += i, UAGENT, fnl);
+   i += fnl;
+   memcpy(cp += fnl, ".dat", sizeof(".dat"));
+   fnl = i + sizeof(".dat") -1;
+
+   if ((fd = open(fname, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+      fd = STDERR_FILENO;
+
+# define _X(X) (X), sizeof(X) -1
+   write(fd, _X("\n\nNYD: program dying due to signal "));
+
+   cp = s2ibuf + sizeof(s2ibuf) -1;
+	*cp = '\0';
+   i = signo;
+	do {
+		*--cp = "0123456789"[i % 10];
+		i /= 10;
+	} while (i != 0);
+   write(fd, cp, PTR2SIZE((s2ibuf + sizeof(s2ibuf) -1) - cp));
+
+   write(fd, _X(":\n"));
+
    if (_nyd_infos[NELEM(_nyd_infos) - 1].ni_file != NULL)
       for (i = _nyd_curr, nip = _nyd_infos + i; i < NELEM(_nyd_infos); ++i)
-         _nyd_print(nip++);
+         _nyd_print(fd, nip++);
    for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
-      _nyd_print(nip++);
+      _nyd_print(fd, nip++);
+
+   write(fd, _X("----------\nYou'd see a disappointed man.  Sorry.\n"));
+
+   if (fd != STDERR_FILENO) {
+      write(STDERR_FILENO, _X("Crash NYD listing written to "));
+      write(STDERR_FILENO, fname, fnl);
+      write(STDERR_FILENO, _X("\n"));
+# undef _X
+
+      close(fd);
+   }
+
+   ac_free(fname);
 
    sigemptyset(&xset);
    sigaddset(&xset, signo);

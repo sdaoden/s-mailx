@@ -244,7 +244,7 @@ _startup(void)
 
    /* Set up a reasonable environment */
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &_nyd_oncrash);

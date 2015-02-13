@@ -121,9 +121,12 @@ There is also a `devel'opment target which does most of this by itself:
   $ make devel
 
 WANT_DEBUG (`devel') will enable memory bound debug canaries and
-Not-Yet-Dead function graph listings etc., all of which would give their
-appearance on the standard error channel; because this can be a quite
-long output, then, it is possibly a good idea to redirect it to a file:
+Not-Yet-Dead function graph listings etc.  Whereas the latter will try
+to write its listing into a file named after your favourite MUA in your
+$TMPDIR, only falling back to STDERR shall such a file already exist,
+the debug facilities in general make their appearance on the standard
+error channel; because this can be a quite long output, then, it is
+possibly a good idea to redirect it to a file:
 
   $ s-nail -vv 2> error.log
 
