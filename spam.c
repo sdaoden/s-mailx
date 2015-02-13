@@ -22,28 +22,24 @@
 
 EMPTY_FILE(spam)
 #ifdef HAVE_SPAM
-/*
- * TODO - We cannot use the spamc library because of our jumping behaviour.
- * TODO   We could nonetheless if we'd start a fork(2)ed child which would
- * TODO   use the spamc library.
- * TODO -- In fact using a child process that is immune from the terrible
- * TODO    signal and jumping mess, and that controls further childs, and
- * TODO    gains file descriptors via sendmsg(2), and is started once it is
- * TODO    needed first, i have in mind for quite some time, for the transition
- * TODO    to a select(2) based implementation: we could slowly convert SMTP,
- * TODO    etc., finally IMAP, at which case we could rejoin back into a single
- * TODO    process program (unless we want to isolate the UI at that time, to
- * TODO    allow for some xUI protocol).
- * TODO    :: That is to say -- it's a horrible signal and jump mess ::
- * TODO - We do not yet handle direct communication with spamd(1).
- * TODO   I.e., this could be a lean alternative to the first item;
- * TODO   the protocol is easy and we could support ALL operations easily.
- * TODO - We do not yet update mails in place, i.e., replace the original
- * TODO   message with the updated one; we could easily do it as if `edit' has
- * TODO   been used, but the nail codebase doesn't truly support that for IMAP.
- * TODO   (And it seems a bit grazy to download a message, update it and upload
- * TODO   it again.)
- */
+#ifdef HAVE_SPAM_SPAMD
+# include <sys/socket.h>
+# include <sys/un.h>
+#endif
+
+#ifdef HAVE_SPAM_SPAMD
+  /* This is rather arbitrary chosen to swallow an entire CHECK/TELL response */
+# if BUFFER_SIZE < 1024
+#  error SpamAssassin interaction BUFFER_SIZE constraints are not matched
+# endif
+
+# define SPAMD_IDENT "SPAMC/1.5"
+
+# ifndef SUN_LEN
+#  define SUN_LEN(SUP) \
+        (sizeof(*(SUP)) - sizeof((SUP)->sun_path) + strlen((SUP)->sun_path))
+# endif
+#endif
 
 enum spam_action {
    _SPAM_RATE,
@@ -68,6 +64,20 @@ struct spam_spamc {
 };
 #endif
 
+#ifdef HAVE_SPAM_SPAMD
+struct spam_spamd {
+   struct str           spamd_user;
+   sighandler_type      spamd_otstp;
+   sighandler_type      spamd_ottin;
+   sighandler_type      spamd_ottou;
+   sighandler_type      spamd_ohup;
+   sighandler_type      spamd_opipe;
+   sighandler_type      spamd_oint;
+   sighandler_type      spamd_oquit;
+   struct sockaddr_un   spamd_sun;
+};
+#endif
+
 struct spam_vc {
    enum spam_action     vc_action;
    bool_t               vc_verbose;    /* Verbose output */
@@ -81,6 +91,9 @@ struct spam_vc {
    union {
 #ifdef HAVE_SPAM_SPAMC
       struct spam_spamc c;
+#endif
+#ifdef HAVE_SPAM_SPAMD
+      struct spam_spamd d;
 #endif
    }                    vc_type;
    char const           *vc_esep;      /* Error separator for progress mode */
@@ -98,6 +111,12 @@ static bool_t  _spam_action(enum spam_action sa, int *ip);
 #ifdef HAVE_SPAM_SPAMC
 static bool_t  _spamc_setup(struct spam_vc *vcp);
 static bool_t  _spamc_interact(struct spam_vc *vcp);
+#endif
+
+/* *spam-interface*=spamd: initialize, communicate */
+#ifdef HAVE_SPAM_SPAMD
+static bool_t  _spamd_setup(struct spam_vc *vcp);
+static bool_t  _spamd_interact(struct spam_vc *vcp);
 #endif
 
 /* Convert a 2[.x]/whatever spam rate into message.m_spamscore */
@@ -125,6 +144,11 @@ _spam_action(enum spam_action sa, int *ip)
 #ifdef HAVE_SPAM_SPAMC
    } else if (!asccasecmp(cp, "spamc")) {
        if (!_spamc_setup(&vc))
+         goto jleave;
+#endif
+#ifdef HAVE_SPAM_SPAMD
+   } else if (!asccasecmp(cp, "spamd")) {
+      if (!_spamd_setup(&vc))
          goto jleave;
 #endif
    } else {
@@ -166,7 +190,7 @@ _spam_action(enum spam_action sa, int *ip)
          }
       } else {
          if (vc.vc_verbose)
-            fprintf(stderr, _("`%s': checking message %" PRIuZ "\n"),
+            fprintf(stderr, _("`%s': message %" PRIuZ "\n"),
                _spam_comms[sa], vc.vc_mno);
          else if (vc.vc_progress) {
             putc('.', stdout);
@@ -455,6 +479,312 @@ jtail:
    return !(state & _ERRORS);
 }
 #endif /* HAVE_SPAM_SPAMC */
+
+#ifdef HAVE_SPAM_SPAMD
+static bool_t
+_spamd_setup(struct spam_vc *vcp)
+{
+   char const *cp;
+   size_t l;
+   bool_t rv = FAL0;
+   NYD2_ENTER;
+
+   if ((cp = ok_vlook(spam_user)) != NULL) {
+      if (*cp == '\0')
+         cp = UNCONST(myname);
+      vcp->vc_type.d.spamd_user.l = strlen(vcp->vc_type.d.spamd_user.s = cp);
+   }
+
+   if ((cp = ok_vlook(spam_socket)) == NULL) {
+      fprintf(stderr, _("`%s': required *spam-socket* is not set\n"),
+         _spam_comms[vcp->vc_action]);
+      goto jleave;
+   }
+
+   if ((l = strlen(cp) +1) >= sizeof(vcp->vc_type.d.spamd_sun.sun_path)) {
+      fprintf(stderr, _("`%s': *spam-socket* too long: `%s'\n"),
+         _spam_comms[vcp->vc_action], cp);
+      goto jleave;
+   }
+   vcp->vc_type.d.spamd_sun.sun_family = AF_UNIX;
+   memcpy(vcp->vc_type.d.spamd_sun.sun_path, cp, l);
+
+   vcp->vc_act = &_spamd_interact;
+   rv = TRU1;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static sigjmp_buf __spamd_actjmp; /* TODO someday, we won't need it no more */
+static int        __spamd_sig; /* TODO someday, we won't need it no more */
+static void
+__spamd_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __spamd_sig = sig;
+   siglongjmp(__spamd_actjmp, 1);
+}
+
+static bool_t
+_spamd_interact(struct spam_vc *vcp)
+{
+   size_t size, i;
+   char *lp, *cp, * volatile headbuf = NULL;
+   int volatile dsfd = -1;
+   bool_t volatile rv = FAL0;
+   NYD2_ENTER;
+
+   __spamd_sig = 0;
+   hold_sigs();
+   vcp->vc_type.d.spamd_otstp = safe_signal(SIGTSTP, SIG_DFL);
+   vcp->vc_type.d.spamd_ottin = safe_signal(SIGTTIN, SIG_DFL);
+   vcp->vc_type.d.spamd_ottou = safe_signal(SIGTTOU, SIG_DFL);
+   vcp->vc_type.d.spamd_opipe = safe_signal(SIGPIPE, SIG_IGN);
+   vcp->vc_type.d.spamd_ohup = safe_signal(SIGHUP, &__spamd_onsig);
+   vcp->vc_type.d.spamd_oint = safe_signal(SIGINT, &__spamd_onsig);
+   vcp->vc_type.d.spamd_oquit = safe_signal(SIGQUIT, &__spamd_onsig);
+   if (sigsetjmp(__spamd_actjmp, 1)) {
+      if (*vcp->vc_esep != '\0')
+         fputs(vcp->vc_esep, stderr);
+      goto jleave;
+   }
+   rele_sigs();
+
+   if ((dsfd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
+      fprintf(stderr, _("%s`%s': can't create unix(4) socket: %s\n"),
+         vcp->vc_esep, _spam_comms[vcp->vc_action], strerror(errno));
+      goto jleave;
+   }
+
+   if (connect(dsfd, (struct sockaddr*)&vcp->vc_type.d.spamd_sun,
+         SUN_LEN(&vcp->vc_type.d.spamd_sun)) == -1) {
+      fprintf(stderr, _("%s`%s': can't connect to *spam-socket*: %s\n"),
+         vcp->vc_esep, _spam_comms[vcp->vc_action], strerror(errno));
+      close(dsfd);
+      goto jleave;
+   }
+
+   /* The command header, finalized with an empty line.
+    * This needs to be written in a single write(2)! */
+# define _X(X) do {memcpy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;} while (0)
+
+   i = ((cp = vcp->vc_type.d.spamd_user.s) != NULL)
+         ? vcp->vc_type.d.spamd_user.l : 0;
+   lp = headbuf = ac_alloc(
+         sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
+         sizeof(NETLINE("Content-length: 9223372036854775807")) +
+         ((cp != NULL) ? sizeof("User: ") + i + sizeof(NETNL) : 0) +
+         sizeof(NETLINE("Message-class: spam")) +
+         sizeof(NETLINE("Set: local")) +
+         sizeof(NETLINE("Remove: local")) +
+         sizeof(NETNL) /*+1*/);
+
+   switch (vcp->vc_action) {
+   case _SPAM_RATE:
+      _X(NETLINE("CHECK " SPAMD_IDENT));
+      break;
+   case _SPAM_HAM:
+   case _SPAM_SPAM:
+   case _SPAM_FORGET:
+      _X(NETLINE("TELL " SPAMD_IDENT));
+      break;
+   }
+
+   lp += snprintf(lp, 0x7FFF, NETLINE("Content-length: %" PRIuZ),
+         (size_t)vcp->vc_mp->m_size);
+
+   if (cp != NULL) {
+      _X("User: ");
+      memcpy(lp, cp, i);
+      lp += i;
+      _X(NETNL);
+   }
+
+   switch (vcp->vc_action) {
+   case _SPAM_RATE:
+      _X(NETNL);
+      break;
+   case _SPAM_HAM:
+      _X(NETLINE("Message-class: ham")
+         NETLINE("Set: local")
+         NETNL);
+      break;
+   case _SPAM_SPAM:
+      _X(NETLINE("Message-class: spam")
+         NETLINE("Set: local")
+         NETNL);
+      break;
+   case _SPAM_FORGET:
+      if (vcp->vc_mp->m_flag & MSPAM)
+         _X(NETLINE("Message-class: spam"));
+      else
+         _X(NETLINE("Message-class: ham"));
+      _X(NETLINE("Remove: local")
+         NETNL);
+      break;
+   }
+# undef _X
+
+   i = PTR2SIZE(lp - headbuf);
+   if (options & OPT_VERBVERB)
+      fprintf(stderr, ">>> %.*s <<<\n", (int)i, headbuf);
+   if (i != (size_t)write(dsfd, headbuf, i))
+      goto jeso;
+
+   /* Then simply pass through the message "as-is" */
+   for (size = vcp->vc_mp->m_size; size > 0;) {
+      i = fread(vcp->vc_buffer, sizeof *vcp->vc_buffer,
+            MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      if (i == 0) {
+         if (ferror(vcp->vc_ifp))
+            goto jeso;
+         break;
+      }
+      size -= i;
+
+      if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
+jeso:
+         fprintf(stderr, _("%s`%s': I/O on *spam-socket* failed: %s\n"),
+            vcp->vc_esep, _spam_comms[vcp->vc_action], strerror(errno));
+         goto jleave;
+      }
+   }
+
+   /* Shutdown our write end */
+   shutdown(dsfd, SHUT_WR);
+
+   /* Be aware on goto: i will be a line counter after this loop! */
+   for (size = 0, i = BUFFER_SIZE -1;;) {
+      ssize_t j = read(dsfd, vcp->vc_buffer + size, i);
+      if (j == -1)
+         goto jeso;
+      if (j == 0)
+         break;
+      size += j;
+      i -= j;
+      /* For the current way of doing things a single read will suffice.
+       * Note we'll be "penaltized" when awaiting EOF on the socket, at least
+       * in blocking mode, so do avoid that and break off */
+      break;
+   }
+   i = 0;
+   vcp->vc_buffer[size] = '\0';
+
+   if (size == 0 || size == BUFFER_SIZE) {
+jebogus:
+      fprintf(stderr,
+         _("%s`%s': bogus spamd(1) I/O interaction (%" PRIuZ ")\n"),
+         vcp->vc_esep, _spam_comms[vcp->vc_action], i);
+# ifdef HAVE_DEVEL
+      if (options & OPT_VERBVERB)
+         fprintf(stderr, ">>> BUFFER: %s <<<\n", vcp->vc_buffer);
+# endif
+      goto jleave;
+   }
+
+   /* From the response, read those lines that interest us */
+   for (lp = vcp->vc_buffer; size > 0; ++i) {
+      cp = lp;
+      lp = strchr(lp, NETNL[0]);
+      if (lp == NULL)
+         goto jebogus;
+      lp[0] = '\0';
+      if (lp[1] != NETNL[1])
+         goto jebogus;
+      lp += 2;
+      size -= PTR2SIZE(lp - cp);
+
+      if (i == 0) {
+         if (!strncmp(cp, "SPAMD/1.1 0 EX_OK", sizeof("SPAMD/1.1 0 EX_OK") -1))
+            continue;
+         if (vcp->vc_action != _SPAM_RATE ||
+               strstr(cp, "Service Unavailable") == NULL)
+            goto jebogus;
+         else {
+            /* Unfortunately a missing --allow-tell drops connection.. */
+            fprintf(stderr,
+               _("%s`%s': service not available in spamd(1) instance\n"),
+               vcp->vc_esep, _spam_comms[vcp->vc_action]);
+            goto jleave;
+         }
+      } else if (i == 1) {
+         switch (vcp->vc_action) {
+         case _SPAM_RATE:
+            if (strncmp(cp, "Spam: ", sizeof("Spam: ") -1))
+               goto jebogus;
+            cp += sizeof("Spam: ") -1;
+
+            if (!strncmp(cp, "False", sizeof("False") -1)) {
+               cp += sizeof("False") -1;
+               vcp->vc_mp->m_flag &= ~MSPAM;
+            } else if (!strncmp(cp, "True", sizeof("True") -1)) {
+               cp += sizeof("True") -1;
+               vcp->vc_mp->m_flag |= MSPAM;
+            } else
+               goto jebogus;
+
+            while (blankspacechar(*cp))
+               ++cp;
+
+            if (*cp++ != ';')
+               goto jebogus;
+            _spam_rate2score(vcp, cp);
+            goto jdone;
+
+         case _SPAM_HAM:
+         case _SPAM_SPAM:
+            /* Empty response means ok but "did nothing" */
+            if (*cp != '\0' &&
+                  strncmp(cp, "DidSet: local", sizeof("DidSet: local") -1))
+               goto jebogus;
+            if (*cp == '\0' && vcp->vc_verbose)
+               fputs(_("\tBut spamd(1) \"did nothing\" for message\n"), stderr);
+            vcp->vc_mp->m_flag &= ~(MSPAM | MSPAMUNSURE);
+            if (vcp->vc_action == _SPAM_SPAM)
+               vcp->vc_mp->m_flag |= MSPAM;
+            goto jdone;
+
+         case _SPAM_FORGET:
+            if (*cp != '\0' &&
+                  strncmp(cp, "DidRemove: local", sizeof("DidSet: local") -1))
+               goto jebogus;
+            if (*cp == '\0' && vcp->vc_verbose)
+               fputs(_("\tBut spamd(1) \"did nothing\" for message\n"), stderr);
+            vcp->vc_mp->m_flag &= ~(MSPAM | MSPAMUNSURE);
+            goto jdone;
+         }
+      }
+   }
+
+jdone:
+   rv = TRU1;
+jleave:
+   if (headbuf != NULL)
+      ac_free(headbuf);
+   if (dsfd >= 0)
+      close(dsfd);
+
+   safe_signal(SIGQUIT, vcp->vc_type.d.spamd_oquit);
+   safe_signal(SIGINT, vcp->vc_type.d.spamd_oint);
+   safe_signal(SIGHUP, vcp->vc_type.d.spamd_ohup);
+   safe_signal(SIGPIPE, vcp->vc_type.d.spamd_opipe);
+   safe_signal(SIGTSTP, vcp->vc_type.d.spamd_otstp);
+   safe_signal(SIGTTIN, vcp->vc_type.d.spamd_ottin);
+   safe_signal(SIGTTOU, vcp->vc_type.d.spamd_ottou);
+
+   NYD2_LEAVE;
+   if (__spamd_sig != 0) {
+      sigset_t cset;
+      sigemptyset(&cset);
+      sigaddset(&cset, __spamd_sig);
+      sigprocmask(SIG_UNBLOCK, &cset, NULL);
+      kill(0, __spamd_sig);
+      assert(rv == FAL0);
+   }
+   return rv;
+}
+#endif /* HAVE_SPAM_SPAMD */
 
 static void
 _spam_rate2score(struct spam_vc *vcp, char *buf)
