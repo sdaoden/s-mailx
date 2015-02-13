@@ -1227,7 +1227,7 @@ jcopyout:
       pbuf = qbuf = obuf;
 
    {
-   bool_t eof;
+   bool_t volatile eof;
    ui32_t save_qf_pfix_len = qf->qf_pfix_len;
    ui64_t *save_stats = stats;
 

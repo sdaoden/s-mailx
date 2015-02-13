@@ -1691,7 +1691,7 @@ __mimemw_onsig(int sig) /* TODO someday, we won't need it no more */
 
 FL ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
-   enum conversion convert, enum tdflags dflags,
+   enum conversion convert, enum tdflags volatile dflags,
    struct quoteflt *qf, struct str * volatile rest)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool

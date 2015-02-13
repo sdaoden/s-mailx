@@ -1296,7 +1296,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    struct servent *ep;
 # endif
 # if defined HAVE_GETADDRINFO || defined HAVE_SSL
-   sighandler_type ohup, oint;
+   sighandler_type volatile ohup, oint;
    char const * volatile serv;
    int volatile sofd = -1;
 # else
