@@ -104,11 +104,11 @@ option_update() {
    fi
    if feat_no SOCKETS; then
       if feat_require SMTP; then
-         msg "ERROR: need SOCKETS for required feature SMTP\\n"
+         msg 'ERROR: need SOCKETS for required feature SMTP'
          config_exit 13
       fi
       if feat_require POP3; then
-         msg "ERROR: need SOCKETS for required feature POP3\\n"
+         msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
       if feat_require IMAP; then
@@ -155,8 +155,7 @@ compiler_flags() {
          elif { i="`command -v c89`"; }; then
             CC=${i}
          else
-            msg 'ERROR'
-            msg ' I cannot find a compiler!'
+            msg 'ERROR: I cannot find a compiler!'
             msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
             msg ' Please set the CC environment variable, maybe CFLAGS also.'
             config_exit 1
@@ -274,7 +273,7 @@ check_tool() {
       return 0
    fi
    if [ ${opt} -eq 0 ]; then
-      msg "ERROR: no trace of the utility \`${n}'\\n"
+      msg 'ERROR: no trace of utility "%s"' "${n}"
       config_exit 1
    fi
    return 0
@@ -343,7 +342,8 @@ _feat_check() {
    elif feat_val_yes "${i}"; then
       return 0
    else
-      msg "ERROR: ${1}: allowed: 0/false/no or 1/true/yes/require, got: ${i}\\n"
+      msg "ERROR: %s: allowed: 0/false/no or 1/true/yes/require, got: %s" \
+         "${1}" "${i}"
       config_exit 11
    fi
 }
@@ -360,7 +360,7 @@ feat_no() {
 feat_require() {
    eval i=\$WANT_${1}
    i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
-   [ "x${i}" = xrequire ]
+   [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
 }
 
 option_update
@@ -389,7 +389,7 @@ while read line; do
          fi
          printf "#define ${i}\n" >> ${newh}
       else
-         msg "ERROR: cannot parse <${line}>\\n"
+         msg 'ERROR: cannot parse <%s>' "${line}"
          config_exit 1
       fi
    else
@@ -494,6 +494,12 @@ msg() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
+   printf "${fmt}\\n" "${@}" >&5
+}
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf "*** ${fmt}\\n" "${@}"
    printf "${fmt}" "${@}" >&5
 }
 
@@ -518,7 +524,7 @@ _check_preface() {
    variable=$1 topic=$2 define=$3
 
    echo '**********'
-   msg "checking ${topic} ... "
+   msg_nonl 'checking %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
@@ -536,13 +542,13 @@ compile_check() {
 
    if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
-      msg "yes\\n"
+      msg 'yes'
       echo "${define}" >> ${h}
       eval have_${variable}=yes
       return 0
    else
       echo "/* ${define} */" >> ${h}
-      msg "no\\n"
+      msg 'no'
       eval unset have_${variable}
       return 1
    fi
@@ -558,7 +564,7 @@ _link_mayrun() {
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
       echo "*** adding INCS<${incs}> LIBS<${libs}>"
-      msg "yes\\n"
+      msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
@@ -567,7 +573,7 @@ _link_mayrun() {
       eval have_${variable}=yes
       return 0
    else
-      msg "no\\n"
+      msg 'no'
       echo "/* ${define} */" >> ${h}
       eval unset have_${variable}
       return 1
@@ -584,7 +590,7 @@ run_check() {
 
 feat_bail_required() {
    if feat_require ${1}; then
-      msg "ERROR: feature WANT_${1} is required but not available\\n"
+      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
       config_exit 13
    fi
    eval WANT_${1}=0
@@ -612,8 +618,8 @@ int main(int argc, char *argv[])
 then
    :
 else
-   echo >&5 'This oooops is most certainly not related to me.'
-   echo >&5 "Read the file ${log} and check your compiler environment."
+   msg 'ERROR: but this oooops is most certainly not related to me.'
+   msg 'Read the file %s and check your compiler environment.' "${log}"
    config_exit 1
 fi
 
@@ -630,8 +636,8 @@ int main(void)
 then
    :
 else
-   echo >&5 'We require termios.h and the tc*() family of functions.'
-   echo >&5 "That much Unix we indulge ourselfs."
+   msg 'ERROR: we require termios.h and the tc*() family of functions.'
+   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
 
@@ -662,8 +668,8 @@ int main(void)
 then
    :
 else
-   msg 'ERROR One of clock_gettime(2) and gettimeofday(1) is required.\n' \
-      'That much Unix we indulge ourselfs.\n'
+   msg 'ERROR: one of clock_gettime(2) and gettimeofday(1) is required.'
+   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
 
