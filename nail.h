@@ -48,6 +48,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#ifdef HAVE_GETTIMEOFDAY
+# include <sys/time.h>
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>

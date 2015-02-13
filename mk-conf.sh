@@ -635,6 +635,38 @@ else
    config_exit 1
 fi
 
+if link_check clock_gettime 'for clock_gettime(2)' \
+   '#define HAVE_CLOCK_GETTIME' << \!
+#include <time.h>
+int main(void)
+{
+   struct timespec ts;
+
+   clock_gettime(CLOCK_REALTIME, &ts);
+   return 0;
+}
+!
+then
+   :
+elif link_check gettimeofday 'for gettimeofday(2)' \
+   '#define HAVE_GETTIMEOFDAY' << \!
+#include <sys/time.h>
+int main(void)
+{
+   struct timeval tv;
+
+   gettimeofday(&tv, NULL);
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR One of clock_gettime(2) and gettimeofday(1) is required.\n' \
+      'That much Unix we indulge ourselfs.\n'
+   config_exit 1
+fi
+
 link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
 int main(void)
