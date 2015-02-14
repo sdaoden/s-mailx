@@ -758,9 +758,10 @@ and to open PDF attachments in an external PDF viewer, asynchronously:
 #set pipe-text/html="elinks -force-html -dump 1"
 set pipe-text/html="lynx -stdin -dump -force_html"
 set pipe-application/x-sh=@
-set pipe-application/pdf="@&cat > \e"/tmp/${NAIL_FILENAME}\e";\e
-    acroread \e"/tmp/${NAIL_FILENAME}\e";\e
-    rm \e"/tmp/${NAIL_FILENAME}\e""
+set pipe-application/pdf="@&cat > \e
+      \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
+    acroread \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
+    rm \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e""
 .Ed
 .
 .Pp
@@ -5547,15 +5548,28 @@ Some information about the MIME part to be displayed is embedded into
 the environment of the shell command:
 .Pp
 .Bl -tag -compact -width ".It Ev NAIL_FILENAME_GENERATED"
+.Mx
+.It Ev NAIL_TMPDIR
+The temporary directory that \*(UA uses.
+Usually identical to
+.Ev TMPDIR ,
+but guaranteed to be set and usable by child processes;
+to ensure the latter condition for
+.Ev TMPDIR
+also, it'll be set.
+.Mx
 .It Ev NAIL_FILENAME
 The filename, if any is set, the empty string otherwise.
+.Mx
 .It Ev NAIL_FILENAME_GENERATED
 Set to
 .Ev NAIL_FILENAME
 if that isn't empty, but otherwise a combination of a random string
 (always) and the `SUBCONTENT' of the MIME part, if the latter is known.
+.Mx
 .It Ev NAIL_CONTENT
 The MIME content-type of the part, if known, the empty string otherwise.
+.Mx
 .It Ev NAIL_CONTENT_EVIDENCE
 If
 .Va mime-counter-evidence

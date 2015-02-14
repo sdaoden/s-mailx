@@ -102,6 +102,17 @@
 # endif
 #endif
 
+#ifndef NAME_MAX
+# ifdef _POSIX_NAME_MAX
+#   define NAME_MAX     _POSIX_NAME_MAX
+# else
+#   define NAME_MAX     14
+# endif
+#endif
+#if NAME_MAX < 8
+# error NAME_MAX too small
+#endif
+
 #ifndef STDIN_FILENO
 # define STDIN_FILENO   0
 #endif
@@ -226,11 +237,12 @@
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
-/* Some environment variables for pipe hooks */
-#define PIPEHOOK_FILENAME           "NAIL_FILENAME"
-#define PIPEHOOK_FILENAME_GENERATED "NAIL_FILENAME_GENERATED"
-#define PIPEHOOK_CONTENT            "NAIL_CONTENT"
-#define PIPEHOOK_CONTENT_EVIDENCE   "NAIL_CONTENT_EVIDENCE"
+/* Some environment variables for pipe hooks etc. */
+#define NAILENV_TMPDIR              "NAIL_TMPDIR"
+#define NAILENV_FILENAME            "NAIL_FILENAME"
+#define NAILENV_FILENAME_GENERATED  "NAIL_FILENAME_GENERATED"
+#define NAILENV_CONTENT             "NAIL_CONTENT"
+#define NAILENV_CONTENT_EVIDENCE    "NAIL_CONTENT_EVIDENCE"
 
 /* Is *W* a quoting (ASCII only) character? */
 #define ISQUOTE(W)      \
@@ -293,11 +305,12 @@
 
 /* Suppress some technical warnings via #pragma's unless developing.
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
-#if !defined HAVE_DEBUG && !defined HAVE_DEVEL
+#ifndef HAVE_DEVEL
 # if PREREQ_CLANG(3, 4)
 #  pragma clang diagnostic ignored "-Wunused-result"
 #  pragma clang diagnostic ignored "-Wformat"
 # elif PREREQ_GCC(4, 7)
+#  pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #  pragma GCC diagnostic ignored "-Wunused-result"
 #  pragma GCC diagnostic ignored "-Wformat"
 # endif

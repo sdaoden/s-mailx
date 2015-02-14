@@ -80,7 +80,7 @@ static void          _print_part_info(struct str *out, struct mimepart *mip,
 /* Query possible pipe command for MIME part */
 static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
 
-/* Create a pipe; if mpp is not NULL, place some PIPEHOOK_* environment
+/* Create a pipe; if mpp is not NULL, place some NAILENV_* environment
  * variables accordingly */
 static FILE *        _pipefile(char const *pipecomm, struct mimepart const *mpp,
                         FILE **qbuf, bool_t quote, bool_t async);
@@ -587,10 +587,10 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
       cp = UNCONST("");
-   env_addon[0] = str_concat_csvl(&s, PIPEHOOK_FILENAME, "=", cp, NULL)->s;
+   env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
    /* NAIL_FILENAME_GENERATED */
-   s.s = getrandstring(8);
+   s.s = getrandstring(NAME_MAX);
    if (mpp == NULL)
       cp = s.s;
    else if (*cp == '\0') {
@@ -599,24 +599,28 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
             ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0'))
          cp = s.s;
       else {
+         CTA(NAME_MAX >= 8);
          (cp = s.s)[7] = '.';
          cp = savecat(cp, sh);
       }
    }
-   env_addon[1] = str_concat_csvl(&s, PIPEHOOK_FILENAME_GENERATED, "=", cp,
+   env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 
    /* NAIL_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
       cp = UNCONST("");
-   env_addon[2] = str_concat_csvl(&s, PIPEHOOK_CONTENT, "=", cp, NULL)->s;
+   env_addon[2] = str_concat_csvl(&s, NAILENV_CONTENT, "=", cp, NULL)->s;
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
       cp = mpp->m_ct_type_usr_ovwr;
-   env_addon[3] = str_concat_csvl(&s, PIPEHOOK_CONTENT_EVIDENCE, "=", cp,
+   env_addon[3] = str_concat_csvl(&s, NAILENV_CONTENT_EVIDENCE, "=", cp,
          NULL)->s;
 
-   env_addon[4] = NULL;
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
+   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
+
+   env_addon[6] = NULL;
 
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
