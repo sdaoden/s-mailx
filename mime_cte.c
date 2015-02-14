@@ -60,7 +60,7 @@ enum _qact {
  * Email header differences according to RFC 2047, section 4.2:
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
  * - don't care about the special ^F[rom] and ^.$ */
-static ui8_t const   _qtab_body[] = {
+static ui8_t const         _qtab_body[] = {
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q,SP,NL, Q,  Q,CR, Q, Q,
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
    SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
@@ -71,7 +71,7 @@ static ui8_t const   _qtab_body[] = {
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
 },
-                     _qtab_head[] = {
+                           _qtab_head[] = {
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q,HT, Q, Q,  Q, Q, Q, Q,
     Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
    US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
@@ -82,6 +82,36 @@ static ui8_t const   _qtab_body[] = {
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
 };
+
+/* For decoding be robust and allow lowercase letters, too */
+static char const          _qp_itoa16[] = "0123456789ABCDEF";
+static ui8_t const         _qp_atoi16[] = {
+   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 0x30-0x37 */
+   0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x38-0x3F */
+   0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, /* 0x40-0x47 */
+   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x48-0x4f */
+   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x50-0x57 */
+   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x58-0x5f */
+   0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF  /* 0x60-0x67 */
+};
+
+/* The decoding table is only accessed via _B64_DECUI8() */
+static char const          _b64_enctbl[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static signed char const   _b64__dectbl[] = {
+   -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+   -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
+   -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, -1,-1,-1,63,
+   52,53,54,55, 56,57,58,59, 60,61,-1,-1, -1,-2,-1,-1,
+   -1, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
+   15,16,17,18, 19,20,21,22, 23,24,25,-1, -1,-1,-1,-1,
+   -1,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
+   41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1
+};
+#define _B64_EQU           (ui32_t)-2
+#define _B64_BAD           (ui32_t)-1
+#define _B64_DECUI8(C)     \
+   ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
 
 /* Check wether *s must be quoted according to flags, else body rules;
  * sol indicates wether we are at the first character of a line/field */
@@ -173,13 +203,11 @@ jleave:
 SINLINE char *
 _qp_ctohex(char *store, char c)
 {
-   static char const hexmap[] = "0123456789ABCDEF";
    NYD2_ENTER;
-
    store[2] = '\0';
-   store[1] = hexmap[(ui8_t)c & 0x0F];
+   store[1] = _qp_itoa16[(ui8_t)c & 0x0F];
    c = ((ui8_t)c >> 4) & 0x0F;
-   store[0] = hexmap[(ui8_t)c];
+   store[0] = _qp_itoa16[(ui8_t)c];
    NYD2_LEAVE;
    return store;
 }
@@ -187,26 +215,15 @@ _qp_ctohex(char *store, char c)
 SINLINE si32_t
 _qp_cfromhex(char const *hex)
 {
-   /* Be robust, allow lowercase hexadecimal letters, too */
-   static ui8_t const atoi16[] = {
-      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 0x30-0x37 */
-      0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x38-0x3F */
-      0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, /* 0x40-0x47 */
-      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x48-0x4f */
-      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x50-0x57 */
-      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x58-0x5f */
-      0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF  /* 0x60-0x67 */
-   };
-
    ui8_t i1, i2;
    si32_t r;
    NYD2_ENTER;
 
-   if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(atoi16) ||
-         (i2 = (ui8_t)hex[1] - '0') >= NELEM(atoi16))
+   if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(_qp_atoi16) ||
+         (i2 = (ui8_t)hex[1] - '0') >= NELEM(_qp_atoi16))
       goto jerr;
-   i1 = atoi16[i1];
-   i2 = atoi16[i2];
+   i1 = _qp_atoi16[i1];
+   i2 = _qp_atoi16[i2];
    if ((i1 | i2) & 0xF0u)
       goto jerr;
    r = i1;
@@ -250,20 +267,6 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 static ssize_t
 _b64_decode(struct str *out, struct str *in)
 {
-   static signed char const b64index[] = {
-      -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-      -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-      -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, -1,-1,-1,63,
-      52,53,54,55, 56,57,58,59, 60,61,-1,-1, -1,-2,-1,-1,
-      -1, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
-      15,16,17,18, 19,20,21,22, 23,24,25,-1, -1,-1,-1,-1,
-      -1,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
-      41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1
-   };
-#define EQU          (ui32_t)-2
-#define BAD          (ui32_t)-1
-#define uchar64(c)   ((c) >= sizeof(b64index) ? BAD : (ui32_t)b64index[(c)])
-
    ssize_t ret = -1;
    ui8_t *p;
    ui8_t const *q, *end;
@@ -274,26 +277,23 @@ _b64_decode(struct str *out, struct str *in)
    out->l = 0;
 
    for (end = q + in->l; PTRCMP(q + 4, <=, end); q += 4) {
-      ui32_t a = uchar64(q[0]), b = uchar64(q[1]), c = uchar64(q[2]),
-         d = uchar64(q[3]);
+      ui32_t a = _B64_DECUI8(q[0]), b = _B64_DECUI8(q[1]),
+         c = _B64_DECUI8(q[2]), d = _B64_DECUI8(q[3]);
 
-      if (a >= EQU || b >= EQU || c == BAD || d == BAD)
+      if (a >= _B64_EQU || b >= _B64_EQU || c == _B64_BAD || d == _B64_BAD)
          goto jleave;
 
       *p++ = ((a << 2) | ((b & 0x30) >> 4));
-      if (c == EQU)  { /* got '=' */
-         if (d != EQU)
+      if (c == _B64_EQU)  { /* got '=' */
+         if (d != _B64_EQU)
             goto jleave;
          break;
       }
       *p++ = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
-      if (d == EQU) /* got '=' */
+      if (d == _B64_EQU) /* got '=' */
          break;
       *p++ = (((c & 0x03) << 6) | d);
    }
-#undef uchar64
-#undef EQU
-#undef BAD
 
    ret = PTR2SIZE((char*)p - out->s);
    out->l = (size_t)ret;
@@ -644,9 +644,6 @@ b64_encode_calc_size(size_t len)
 FL struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
-   static char const b64table[] =
-       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
    ui8_t const *p;
    ssize_t i, lnlen;
    char *b64;
@@ -666,25 +663,25 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    for (lnlen = 0, i = (ssize_t)in->l; i > 0; p += 3, i -= 3) {
       ui32_t a = p[0], b, c;
 
-      b64[0] = b64table[a >> 2];
+      b64[0] = _b64_enctbl[a >> 2];
       switch (i) {
       case 1:
-         b64[1] = b64table[((a & 0x3) << 4)];
+         b64[1] = _b64_enctbl[((a & 0x3) << 4)];
          b64[2] =
          b64[3] = '=';
          break;
       case 2:
          b = p[1];
-         b64[1] = b64table[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
-         b64[2] = b64table[((b & 0x0F) << 2)];
+         b64[1] = _b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = _b64_enctbl[((b & 0x0F) << 2)];
          b64[3] = '=';
          break;
       default:
          b = p[1];
          c = p[2];
-         b64[1] = b64table[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
-         b64[2] = b64table[((b & 0x0F) << 2) | ((c & 0xC0u) >> 6)];
-         b64[3] = b64table[c & 0x3F];
+         b64[1] = _b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = _b64_enctbl[((b & 0x0F) << 2) | ((c & 0xC0u) >> 6)];
+         b64[3] = _b64_enctbl[c & 0x3F];
          break;
       }
 
