@@ -54,6 +54,17 @@
 # include <netdb.h>
 #endif
 
+union rand_state {
+   struct rand_arc4 {
+      ui8_t    __pad[6];
+      ui8_t    _i;
+      ui8_t    _j;
+      ui8_t    _dat[256];
+   }        a;
+   ui8_t    b8[sizeof(struct rand_arc4)];
+   ui32_t   b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
+};
+
 #ifdef HAVE_NYD
 struct nyd_info {
    char const  *ni_file;
@@ -82,6 +93,16 @@ union mem_ptr {
 };
 #endif
 
+static union rand_state *_rand;
+
+/* {hold,rele}_all_sigs() */
+static size_t           _alls_depth;
+static sigset_t         _alls_nset, _alls_oset;
+
+/* {hold,rele}_sigs() */
+static size_t           _hold_sigdepth;
+static sigset_t         _hold_nset, _hold_oset;
+
 /* NYD, memory pool debug */
 #ifdef HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
@@ -95,13 +116,11 @@ static size_t           _mem_aall, _mem_acur, _mem_amax,
 static struct mem_chunk *_mem_list, *_mem_free;
 #endif
 
-/* {hold,rele}_all_sigs() */
-static size_t           _alls_depth;
-static sigset_t         _alls_nset, _alls_oset;
-
-/* {hold,rele}_sigs() */
-static size_t           _hold_sigdepth;
-static sigset_t         _hold_nset, _hold_oset;
+/* Our ARC4 random generator with its completely unacademical pseudo
+ * initialization (shall /dev/urandom fail) */
+static void    _rand_init(void);
+static ui32_t  _rand_weak(ui32_t seed);
+SINLINE ui8_t  _rand_get8(void);
 
 /* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence */
 #ifdef HAVE_COLOUR
@@ -111,6 +130,90 @@ static char *  _colour_iso6429(char const *wish);
 #ifdef HAVE_NYD
 static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
+
+static void
+_rand_init(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+   struct timespec ts;
+#else
+   struct timeval ts;
+#endif
+   union {int fd; size_t i;} u;
+   ui32_t seed, rnd;
+   NYD2_ENTER;
+
+   _rand = smalloc(sizeof *_rand);
+
+   if ((u.fd = open("/dev/urandom", O_RDONLY)) != -1) {
+      bool_t ok = (sizeof *_rand == (size_t)read(u.fd, _rand, sizeof *_rand));
+
+      close(u.fd);
+      if (ok)
+         goto jleave;
+   }
+
+   for (seed = (uintptr_t)_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd) {
+      for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
+         size_t t, k;
+
+#ifdef HAVE_CLOCK_GETTIME
+         clock_gettime(CLOCK_REALTIME, &ts);
+         t = (ui32_t)ts.tv_nsec;
+#else
+         gettimeofday(&ts, NULL);
+         t = (ui32_t)ts.tv_usec;
+#endif
+         if (rnd & 1)
+            t = (t >> 16) | (t << 16);
+         _rand->b32[u.i] ^= _rand_weak(seed ^ t);
+         _rand->b32[t % NELEM(_rand->b32)] ^= seed;
+         if (rnd == 7 || rnd == 17)
+            _rand->b32[u.i] ^= _rand_weak(seed ^ (ui32_t)ts.tv_sec);
+         k = _rand->b32[u.i] % NELEM(_rand->b32);
+         _rand->b32[k] ^= _rand->b32[u.i];
+         seed ^= _rand_weak(_rand->b32[k]);
+         if ((rnd & 3) == 3)
+            seed ^= nextprime(seed);
+      }
+   }
+
+   for (u.i = 11 * sizeof(_rand->b8); u.i != 0; --u.i)
+      _rand_get8();
+jleave:
+   NYD2_LEAVE;
+}
+
+static ui32_t
+_rand_weak(ui32_t seed)
+{
+   /* From "Random number generators: good ones are hard to find",
+    * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+    * October 1988, p. 1195.
+    * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
+   ui32_t hi;
+
+   if (seed == 0)
+      seed = 123459876;
+   hi =  seed /  127773;
+         seed %= 127773;
+   seed = (seed * 16807) - (hi * 2836);
+   if ((si32_t)seed < 0)
+      seed += SI32_MAX;
+   return seed;
+}
+
+SINLINE ui8_t
+_rand_get8(void)
+{
+   ui8_t si, sj;
+
+   si = _rand->a._dat[++_rand->a._i];
+   sj = _rand->a._dat[_rand->a._j += si];
+   _rand->a._dat[_rand->a._i] = sj;
+   _rand->a._dat[_rand->a._j] = si;
+   return _rand->a._dat[(ui8_t)(si + sj)];
+}
 
 #ifdef HAVE_COLOUR
 static char *
@@ -876,58 +979,28 @@ nodename(int mayoverride)
 FL char *
 getrandstring(size_t length)
 {
-   static unsigned char nodedigest[16];
-   static pid_t pid;
-
    struct str b64;
-   char *data, *cp;
+   char *data;
    size_t i;
-   int fd = -1;
-#ifdef HAVE_MD5
-   md5_ctx ctx;
-#else
-   size_t j;
-#endif
    NYD_ENTER;
 
+   if (_rand == NULL)
+      _rand_init();
+
    data = ac_alloc(length);
-
-   if ((fd = open("/dev/urandom", O_RDONLY)) == -1 ||
-         length != (size_t)read(fd, data, length)) {
-      if (pid == 0) {
-         pid = getpid();
-         srand(pid);
-         cp = nodename(0);
-#ifdef HAVE_MD5
-         md5_init(&ctx);
-         md5_update(&ctx, (unsigned char*)cp, strlen(cp));
-         md5_final(nodedigest, &ctx);
-#else
-         /* In that case it's only used for boundaries and Message-Id:s so that
-          * srand(3) should suffice */
-         j = strlen(cp) + 1;
-         for (i = 0; i < sizeof(nodedigest); ++i)
-            nodedigest[i] = (unsigned char)(cp[i % j] ^ rand());
-#endif
-      }
-      for (i = 0; i < length; i++)
-         data[i] = (char)((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
-               nodedigest[i % sizeof nodedigest]);
-   }
-   if (fd >= 0)
-      close(fd);
-
+   for (i = length; i-- > 0;)
+      data[i] = (char)_rand_get8();
    b64_encode_buf(&b64, data, length, B64_SALLOC);
    ac_free(data);
-   assert(length < b64.l);
-   b64.s[length] = '\0';
 
    /* Base64 includes + and /, replace them with _ and - */
-   for (data = b64.s; length-- > 0; ++data)
-      if (*data == '+')
-         *data = '_';
-      else if (*data == '/')
-         *data = '-';
+   *(data = b64.s + length) = '\0';
+   while (length-- != 0)
+      switch (*--data) {
+      case '+':   *data = '_'; break;
+      case '/':   *data = '-'; break;
+      default:    break;
+      }
    NYD_LEAVE;
    return b64.s;
 }
