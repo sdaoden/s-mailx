@@ -2568,7 +2568,11 @@ endif
 .Ed
 .
 .Pp
-The rest are non-portable extension.
+The remaining conditions are non-portable extensions;
+note that falsely specified conditions cause the evaluation / execution
+of the entire conditional construct until the closing command
+.Ic endif
+to be suppressed.
 For one any boolean value (see the section
 .Sx "VARIABLE OPTIONS"
 for booleans) may be given to mark an enwrapped block as

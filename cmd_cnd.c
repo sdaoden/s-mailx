@@ -22,10 +22,11 @@
 
 struct cond_stack {
    struct cond_stack *c_outer;
+   bool_t            c_error; /* Bad expression, skip entire if..endif */
    bool_t            c_noop;  /* Outer stack !c_go, entirely no-op */
    bool_t            c_go;    /* Green light */
    bool_t            c_else;  /* In `else' clause */
-   ui8_t             __dummy[5];
+   ui8_t             __dummy[4];
 };
 
 struct if_cmd {
@@ -297,6 +298,7 @@ c_if(void *v)
 
    csp = smalloc(sizeof *csp);
    csp->c_outer = _cond_stack;
+   csp->c_error = FAL0;
    csp->c_noop = condstack_isskip();
    csp->c_go = TRU1;
    csp->c_else = FAL0;
@@ -315,7 +317,8 @@ c_if(void *v)
    if (xrv >= 0) {
       csp->c_go = (bool_t)xrv;
       rv = 0;
-   }
+   } else
+      csp->c_error = csp->c_noop = TRU1;
 jleave:
    NYD_LEAVE;
    return rv;
@@ -331,12 +334,13 @@ c_elif(void *v)
    if ((csp = _cond_stack) == NULL || csp->c_else) {
       fprintf(stderr, _("`elif' without matching `if'\n"));
       rv = 1;
-   } else {
+   } else if (!csp->c_error) {
       csp->c_go = !csp->c_go;
       rv = c_if(v);
       _cond_stack->c_outer = csp->c_outer;
       free(csp);
-   }
+   } else
+      rv = 0;
    NYD_LEAVE;
    return rv;
 }
@@ -352,8 +356,8 @@ c_else(void *v)
       fprintf(stderr, _("`else' without matching `if'\n"));
       rv = 1;
    } else {
-      _cond_stack->c_go = !_cond_stack->c_go;
       _cond_stack->c_else = TRU1;
+      _cond_stack->c_go = !_cond_stack->c_go;
       rv = 0;
    }
    NYD_LEAVE;
