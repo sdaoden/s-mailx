@@ -72,7 +72,9 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-/* Update manual on changes! */
+/* Update manual on changes (for all those)! */
+#define SSL_DISABLED_PROTOCOLS "-SSLv2"
+
 #ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2     0
@@ -114,6 +116,17 @@ enum ssl_state {
    SS_VERIFY_ERROR   = 1<<7
 };
 
+/* We go for the OpenSSL v1.0.2+ SSL_CONF_CTX if available even if that means
+ * that the library does internally what we'd otherwise do ourselfs.
+ * Eventually we can drop the direct use cases */
+enum ssl_conf_type {
+   SCT_CERTIFICATE,
+   SCT_CIPHER_STRING,
+   SCT_PRIVATE_KEY,
+   SCT_OPTIONS,
+   SCT_PROTOCOL
+};
+
 struct ssl_method { /* TODO obsolete */
    char const  sm_name[8];
    char const  sm_map[16];
@@ -127,8 +140,8 @@ struct ssl_protocol {
 #endif
 
 struct smime_cipher {
-   char const           sc_name[8];
-   EVP_CIPHER const *   (*sc_fun)(void);
+   char const  sc_name[8];
+   EVP_CIPHER const * (*sc_fun)(void);
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
@@ -144,12 +157,12 @@ static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
 /* Update manual on change! */
 #ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
 static struct ssl_protocol const _ssl_protocols[] = {
-   {"ALL",        SSL_OP_NO_SSL_MASK},
-   {"TLSv1.2",    SSL_OP_NO_TLSv1_2},
-   {"TLSv1.1",    SSL_OP_NO_TLSv1_1},
-   {"TLSv1",      SSL_OP_NO_TLSv1},
-   {"SSLv3",      SSL_OP_NO_SSLv3},
-   {"SSLv2",      0}
+   {"ALL",     SSL_OP_NO_SSL_MASK},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1},
+   {"TLSv1",   SSL_OP_NO_TLSv1},
+   {"SSLv3",   SSL_OP_NO_SSLv3},
+   {"SSLv2",   0}
 };
 #endif
 
@@ -165,8 +178,8 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 # ifndef _SMIME_DEFAULT_CIPHER
 #  define _SMIME_DEFAULT_CIPHER  EVP_des_ede3_cbc
 # endif
-   {"des3", &EVP_des_ede3_cbc},
-   {"des", &EVP_des_cbc},
+   {"des3",    &EVP_des_ede3_cbc},
+   {"des",     &EVP_des_cbc},
 #endif
 };
 #ifndef _SMIME_DEFAULT_CIPHER
@@ -190,12 +203,13 @@ static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 
-/* Configure sp->s_ctx via SSL_CONF_CTX if possible, _set_option otherwise */
-static bool_t     _ssl_ctx_conf(SSL_CTX *ctxp, struct url const *urlp);
+/* SSL_CTX configuration */
+static void *     _ssl_conf_setup(SSL_CTX *ctxp);
+static bool_t     _ssl_conf(void *confp, enum ssl_conf_type sct,
+                     char const *value);
+static bool_t     _ssl_conf_finish(void *confp, bool_t error);
 
 static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
-
-static bool_t     _ssl_certificate(SSL_CTX *ctxp, struct url const *urlp);
 
 static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
 
@@ -393,89 +407,133 @@ jleave:
    return rv;
 }
 
-static bool_t
-_ssl_ctx_conf(SSL_CTX *ctxp, struct url const *urlp)
-{
-   union {size_t i; int s; sl_i opts;} u;
-   char *cp;
-   char const *proto;
 #ifdef HAVE_OPENSSL_CONF_CTX
-   SSL_CONF_CTX *sslccp;
-#endif
-   bool_t rv = FAL0;
+static void *
+_ssl_conf_setup(SSL_CTX *ctxp)
+{
+   SSL_CONF_CTX *sccp;
    NYD_ENTER;
 
-   proto = NULL;
+   if ((sccp = SSL_CONF_CTX_new()) != NULL) {
+      SSL_CONF_CTX_set_flags(sccp,
+         SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
+         SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
 
-   /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
-   if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
-      OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
-      if (options & OPT_VERB)
-         fprintf(stderr, "*ssl-method*: \"%s\"\n", cp);
-      for (u.i = 0;;) {
-         if (!asccasecmp(_ssl_methods[u.i].sm_name, cp)) {
-            proto = _ssl_methods[u.i].sm_map;
-            break;
-         }
-         if (++u.i == NELEM(_ssl_methods)) {
-            fprintf(stderr, _("Unsupported TLS/SSL method \"%s\"\n"), cp);
-            goto jleave;
-         }
-      }
-   }
-
-   /* *ssl-protocol* */
-   if ((cp = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
-      if (options & OPT_VERB)
-         fprintf(stderr, "*ssl-protocol*: \"%s\"\n", cp);
-      proto = cp;
-   }
-
-#ifdef HAVE_OPENSSL_CONF_CTX
-   if ((sslccp = SSL_CONF_CTX_new()) == NULL) {
+      SSL_CONF_CTX_set_ssl_ctx(sccp, ctxp);
+   } else
       ssl_gen_err(_("SSL_CONF_CTX_new() failed"));
-      goto jleave;
+
+   NYD_LEAVE;
+   return sccp;
+}
+
+static bool_t
+_ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
+{
+   int rv;
+   char const *cmsg;
+   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   NYD_ENTER;
+
+   switch (sct) {
+   case SCT_CERTIFICATE:
+      cmsg = "ssl-cert";
+      rv = SSL_CONF_cmd(sccp, "Certificate", value);
+      break;
+   case SCT_CIPHER_STRING:
+      cmsg = "ssl-cipher-list";
+      rv = SSL_CONF_cmd(sccp, "CipherString", value);
+      break;
+   case SCT_PRIVATE_KEY:
+      cmsg = "ssl-key";
+      rv = SSL_CONF_cmd(sccp, "PrivateKey", value);
+      break;
+   default:
+   case SCT_OPTIONS:
+      cmsg = "ssl-options";
+      rv = SSL_CONF_cmd(sccp, "Options", "Bugs");
+      break;
+   case SCT_PROTOCOL:
+      cmsg = "ssl-protocol";
+      rv = SSL_CONF_cmd(sccp, "Protocol", value);
+      break;
    }
-   SSL_CONF_CTX_set_flags(sslccp,
-      SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT | SSL_CONF_FLAG_SHOW_ERRORS);
-   SSL_CONF_CTX_set_ssl_ctx(sslccp, ctxp);
 
-   u.s = SSL_CONF_cmd(sslccp, "Options", "Bugs");/* TODO *ssl-options* */
-   if (u.s != 2)
-      goto jcmderr;
-
-   u.s = SSL_CONF_cmd(sslccp, "Protocol",
-         (proto != NULL ? savecatsep(proto, ',', "-SSLv2") : "-SSLv2"));
-   if (u.s == 2)
-      u.s = 0;
+   if (rv == 2)
+      rv = 0;
    else {
-jcmderr:
-      if (u.s == 0)
-         ssl_gen_err(_("SSL_CONF_CTX_cmd() failed"));
+      if (rv == 0)
+         ssl_gen_err(_("SSL_CONF_CTX_cmd() failed for *%s*"), cmsg);
       else
          fprintf(stderr,
-            "%s: *ssl-protocol* implementation error, please report this\n",
-            uagent);
-      u.s = 2;
+            _("%s: *%s* implementation error, please report this\n"),
+            uagent, cmsg);
+      rv = 1;
    }
 
-   u.s |= !SSL_CONF_CTX_finish(sslccp);
-   SSL_CONF_CTX_free(sslccp);
+   NYD_LEAVE;
+   return (rv == 0);
+}
 
-   if (u.s != 0) {
-      if (u.s & 1)
-         ssl_gen_err(_("SSL_CONF_CTX_finish() failed"));
-      goto jleave;
-   }
+static bool_t
+_ssl_conf_finish(void *confp, bool_t error)
+{
+   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   bool_t rv;
+   NYD_ENTER;
+
+   if (!(rv = error))
+      rv = (SSL_CONF_CTX_finish(sccp) != 0);
+
+   SSL_CONF_CTX_free(sccp);
+
+   NYD_LEAVE;
+   return rv;
+}
 
 #else /* HAVE_OPENSSL_CONF_CTX */
-   u.opts = SSL_OP_ALL | SSL_OP_NO_SSLv2; /* == "Options" = "Bugs" */
+static void *
+_ssl_conf_setup(SSL_CTX* ctxp)
+{
+   return ctxp;
+}
 
-   if (proto != NULL) {
-      char *iolist, addin;
+static bool_t
+_ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
+{
+   SSL_CTX *ctxp = (SSL_CTX*)confp;
+   NYD_ENTER;
+
+   switch (sct) {
+   case SCT_CERTIFICATE:
+      if (SSL_CTX_use_certificate_chain_file(ctxp, value) != 1) {
+         ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_CIPHER_STRING:
+      if (SSL_CTX_set_cipher_list(ctxp, value) != 1) {
+         ssl_gen_err(_("Invalid cipher string: \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_PRIVATE_KEY:
+      if (SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1) {
+         ssl_gen_err(_("Can't load private key from file \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_OPTIONS:
+      /* "Options"="Bugs" TODO *ssl-options* */
+      SSL_CTX_set_options(ctxp, SSL_OP_ALL);
+      break;
+   case SCT_PROTOCOL: {
+      char *iolist, *cp, addin;
       size_t i;
+      sl_i opts = 0;
 
-      for (iolist = cp = savestr(proto);
+      confp = NULL;
+      for (iolist = cp = savestr(value);
             (cp = n_strsep(&iolist, ',', FAL0)) != NULL;) {
          if (*cp == '\0') {
             fprintf(stderr,
@@ -494,9 +552,9 @@ jcmderr:
             if (!asccasecmp(cp, _ssl_protocols[i].sp_name)) {
                /* We need to inverse the meaning of the _NO_s */
                if (!addin)
-                  u.opts |= _ssl_protocols[i].sp_flag;
+                  opts |= _ssl_protocols[i].sp_flag;
                else
-                  u.opts &= ~_ssl_protocols[i].sp_flag;
+                  opts &= ~_ssl_protocols[i].sp_flag;
                break;
             }
             if (++i < NELEM(_ssl_protocols))
@@ -506,16 +564,24 @@ jcmderr:
             goto jleave;
          }
       }
+      confp = ctxp;
+      SSL_CTX_set_options(ctxp, opts);
+      break;
    }
-   SSL_CTX_set_options(ctxp, u.opts);
-
-#endif /* !HAVE_OPENSSL_CONF_CTX */
-
-   rv = TRU1;
+   }
 jleave:
    NYD_LEAVE;
-   return rv;
+   return (confp != NULL);
 }
+
+static bool_t
+_ssl_conf_finish(void *confp, bool_t error)
+{
+   UNUSED(confp);
+   UNUSED(error);
+   return TRU1;
+}
+#endif /* !HAVE_OPENSSL_CONF_CTX */
 
 static bool_t
 _ssl_load_verifications(SSL_CTX *ctxp)
@@ -560,55 +626,6 @@ _ssl_load_verifications(SSL_CTX *ctxp)
    SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
-
-   rv = TRU1;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-static bool_t
-_ssl_certificate(SSL_CTX *ctxp, struct url const *urlp)
-{
-   char *cert, *key, *cp;
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   if ((cert = xok_vlook(ssl_cert, urlp, OXM_ALL)) == NULL) {
-      rv = TRU1;
-      goto jleave;
-   }
-   if (options & OPT_VERB)
-      fprintf(stderr, "*ssl-cert* \"%s\"", cert);
-
-   if ((cp = file_expand(cert)) == NULL) {
-      fprintf(stderr, _("*ssl-cert* value expansion failed: \"%s\"\n"), cert);
-      goto jleave;
-   }
-   cert = cp;
-
-   if (SSL_CTX_use_certificate_chain_file(ctxp, cert) != 1) {
-      ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), cert);
-      goto jleave;
-   }
-
-   if ((key = xok_vlook(ssl_key, urlp, OXM_ALL)) == NULL)
-      key = cert;
-   else {
-      if (options & OPT_VERB)
-         fprintf(stderr, "*ssl-key* \"%s\"", key);
-
-      if ((cp = file_expand(key)) == NULL) {
-         fprintf(stderr, _("*ssl-key* value expansion failed: \"%s\"\n"), key);
-         goto jleave;
-      }
-      key = cp;
-   }
-
-   if (SSL_CTX_use_PrivateKey_file(ctxp, key, SSL_FILETYPE_PEM) != 1) {
-      ssl_gen_err(_("Can't load private key from file \"%s\"\n"), key);
-      goto jleave;
-   }
 
    rv = TRU1;
 jleave:
@@ -1075,7 +1092,9 @@ FL enum okay
 ssl_open(struct url const *urlp, struct sock *sp)
 {
    SSL_CTX *ctxp;
-   char *cp;
+   void *confp;
+   char const *cp, *cp_base;
+   size_t i;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -1093,18 +1112,75 @@ ssl_open(struct url const *urlp, struct sock *sp)
    SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
 #endif
 
-   if (!_ssl_ctx_conf(ctxp, urlp))
-      goto jerr1;
-   if (!_ssl_load_verifications(ctxp))
-      goto jerr1;
-   if (!_ssl_certificate(ctxp, urlp))
+   if ((confp = _ssl_conf_setup(ctxp)) == NULL)
       goto jerr1;
 
-   if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
-         SSL_CTX_set_cipher_list(ctxp, cp) != 1) {
-      ssl_gen_err(_("Invalid cipher(s): %s\n"), cp);
-      goto jerr1;
+   /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
+   if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
+      OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-method*: \"%s\"\n", cp);
+      for (i = 0;;) {
+         if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
+            cp = _ssl_methods[i].sm_map;
+            break;
+         }
+         if (++i == NELEM(_ssl_methods)) {
+            fprintf(stderr, _("Unsupported TLS/SSL method \"%s\"\n"), cp);
+            goto jerr1;
+         }
+      }
    }
+   /* *ssl-protocol* */
+   if ((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-protocol*: \"%s\"\n", cp_base);
+      cp = cp_base;
+   }
+   cp = (cp != NULL ? savecatsep(cp, ',', SSL_DISABLED_PROTOCOLS)
+         : SSL_DISABLED_PROTOCOLS);
+   if (!_ssl_conf(confp, SCT_PROTOCOL, cp))
+      goto jerr1;
+
+   /* *ssl-cert* */
+   if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-cert* \"%s\"", cp);
+      if ((cp_base = file_expand(cp)) == NULL) {
+         fprintf(stderr, _("*ssl-cert* value expansion failed: \"%s\"\n"), cp);
+         goto jerr1;
+      }
+      cp = cp_base;
+      if (!_ssl_conf(confp, SCT_CERTIFICATE, cp))
+         goto jerr1;
+
+      /* *ssl-key* */
+      if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
+         if (options & OPT_VERB)
+            fprintf(stderr, "*ssl-key* \"%s\"", cp_base);
+         if ((cp = file_expand(cp_base)) == NULL) {
+            fprintf(stderr, _("*ssl-key* value expansion failed: \"%s\"\n"),
+               cp_base);
+            goto jerr1;
+         }
+      }
+      if (!_ssl_conf(confp, SCT_PRIVATE_KEY, cp))
+         goto jerr1;
+   }
+
+   if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
+         !_ssl_conf(confp, SCT_CIPHER_STRING, cp))
+      goto jerr1;
+
+   if (!_ssl_load_verifications(ctxp))
+      goto jerr1;
+
+   if (!_ssl_conf(confp, SCT_OPTIONS, NULL)) /* TODO *ssl-options* */
+      goto jerr1;
+
+   /* Done with context setup, create our new per-connection structure */
+   if (!_ssl_conf_finish(confp, FAL0))
+      goto jerr1;
 
    if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
       ssl_gen_err(_("SSL_new() failed"));
@@ -1139,6 +1215,8 @@ jerr2:
    SSL_free(sp->s_ssl);
    sp->s_ssl = NULL;
 jerr1:
+   if (confp != NULL)
+      _ssl_conf_finish(confp, TRU1);
    SSL_CTX_free(ctxp);
    goto jleave;
 }

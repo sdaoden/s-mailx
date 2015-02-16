@@ -991,7 +991,8 @@ int main(void)
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
    SSL_CONF_CTX_set_flags(cctx,
-      SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT | SSL_CONF_FLAG_SHOW_ERRORS);
+      SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
+      SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
    SSL_CONF_CTX_set_ssl_ctx(cctx, ctx);
    SSL_CONF_cmd(cctx, "Protocol", "ALL");
    SSL_CONF_CTX_finish(cctx);

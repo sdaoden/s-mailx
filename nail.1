@@ -4811,9 +4811,18 @@ for more information.
 .It Va ssl-cert-USER@HOST , ssl-cert-HOST , ssl-cert
 \*(OP Variable chain that sets the file name for a SSL/TLS client
 certificate required by some servers.
+This is a direct interface to the
+.Ql Certificate
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available.
 .It Va ssl-cipher-list-USER@HOST , ssl-cipher-list-HOST , ssl-cipher-list
 \*(OP Specifies a list of ciphers for SSL/TLS connections.
-See
+This is a direct interface to the
+.Ql CipherString
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available; see
 .Xr ciphers 1
 for more information.
 .It Va ssl-config-file
@@ -4836,6 +4845,11 @@ to use when verifying SSL/TLS server certificates.
 a SSL/TLS client certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
+This is a direct interface to the
+.Ql PrivateKey
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available.
 .It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
 \*(OP
 \*(OB Please use the newer and more flexible
@@ -4853,7 +4867,9 @@ the SSLv3 protocol.
 Note that SSLv2 is no longer supported at all.
 .It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
 \*(OP Specify the used SSL/TLS protocol.
-This is a direct interface to the `Protocol' slot of the
+This is a direct interface to the
+.Ql Protocol
+slot of the
 .Xr SSL_CONF_cmd 3
 function of the OpenSSL library, if available;
 otherwise an \*(UA internal parser is used which understands the
