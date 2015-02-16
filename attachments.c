@@ -103,8 +103,8 @@ jcdis:
    return ap;
 }
 
-static sigjmp_buf __atticonv_jmp; /* TODO someday, we won't need it no more */
-static int __atticonv_sig; /* TODO someday, we won't need it no more */
+static sigjmp_buf    __atticonv_jmp; /* TODO oneday, we won't need it no more */
+static int volatile  __atticonv_sig; /* TODO oneday, we won't need it no more */
 static void
 __atticonv_onsig(int sig) /* TODO someday, we won't need it no more */
 {
