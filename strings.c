@@ -118,6 +118,7 @@ struct hugebuf {
 
 static struct b_bltin   _builtin_buf;
 static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
+static size_t           _relax_recur_no;
 static struct hugebuf   *_huge_list;
 #ifdef HAVE_DEBUG
 static size_t           _all_cnt, _all_cycnt, _all_cycnt_max,
@@ -329,7 +330,13 @@ sreset(bool_t only_if_relaxed)
    NYD_ENTER;
 
    DBG( ++_all_resetreqs; )
-   if (noreset || (only_if_relaxed && _buf_relax == NULL))
+   if (noreset) {
+      /* Reset relaxation after any jump is a MUST */
+      if (_relax_recur_no > 0)
+         srelax_rele();
+      goto jleave;
+   }
+   if (only_if_relaxed && _relax_recur_no == 0)
       goto jleave;
 
 #ifdef HAVE_DEBUG
@@ -338,11 +345,10 @@ sreset(bool_t only_if_relaxed)
    ++_all_resets;
 #endif
 
-   /* In relaxed mode we only reset casters and don't care about anything else
-    * since we are in the middle of being hot */
-   if (_buf_relax != NULL) {
+   /* Reset relaxation after jump */
+   if (_relax_recur_no > 0) {
       srelax_rele();
-      goto jleave;
+      assert(_relax_recur_no == 0);
    }
 
    blh = NULL;
@@ -388,12 +394,11 @@ srelax_hold(void)
    struct buffer *b;
    NYD_ENTER;
 
-   assert(_buf_relax == NULL);
-
-   for (b = _buf_head; b != NULL; b = b->b._next)
-      b->b._relax = b->b._caster;
-   _buf_relax = _buf_server;
-   assert(_buf_relax != NULL);
+   if (_relax_recur_no++ == 0) {
+      for (b = _buf_head; b != NULL; b = b->b._next)
+         b->b._relax = b->b._caster;
+      _buf_relax = _buf_server;
+   }
    NYD_LEAVE;
 }
 
@@ -403,16 +408,20 @@ srelax_rele(void)
    struct buffer *b;
    NYD_ENTER;
 
-   /* Note this should never hit the silly case that relaxation was started
-    * without string dope having seen a single allocation: because of main.c */
-   assert(_buf_relax != NULL);
+   assert(_relax_recur_no > 0);
+#ifdef HAVE_DEVEL
+   if (_relax_recur_no > 1)
+      fprintf(stderr, "srelax_rele(): recursion >0 after jumps\n");
+#endif
 
    for (b = _buf_head; b != NULL; b = b->b._next) {
       DBG( _salloc_bcheck(b); )
       b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
       b->b._relax = NULL;
    }
+
    _buf_relax = NULL;
+   _relax_recur_no = 0;
    NYD_LEAVE;
 }
 
@@ -426,12 +435,14 @@ srelax(void)
    struct buffer *b;
    NYD_ENTER;
 
-   assert(_buf_relax != NULL);
+   assert(_relax_recur_no > 0);
 
-   for (b = _buf_head; b != NULL; b = b->b._next) {
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
+   if (_relax_recur_no == 1) {
+      for (b = _buf_head; b != NULL; b = b->b._next) {
+         DBG( _salloc_bcheck(b); )
+         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
+      }
    }
    NYD_LEAVE;
 }
