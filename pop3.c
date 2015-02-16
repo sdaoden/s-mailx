@@ -94,9 +94,8 @@ static enum okay  pop3_noop1(struct mailbox *mp);
 static void       pop3alarm(int s);
 static enum okay  pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
 static enum okay  pop3_list(struct mailbox *mp, int n, size_t *size);
-static void       pop3_init(struct mailbox *mp, int n);
-static void       pop3_dates(struct mailbox *mp);
-static void       pop3_setptr(struct mailbox *mp);
+static void       pop3_setptr(struct mailbox *mp,
+                     struct sockconn const *scp);
 static enum okay  pop3_get(struct mailbox *mp, struct message *m,
                      enum needspec need);
 static enum okay  pop3_exit(struct mailbox *mp);
@@ -352,7 +351,8 @@ pop3catch(int s)
    NYD_X; /* Signal handler */
    switch (s) {
    case SIGINT:
-      fprintf(stderr, _("Interrupt\n"));
+      /*fprintf(stderr, "Interrupt during POP3 operation\n");*/
+      interrupts = 2; /* Force "Interrupt" message shall we onintr(0) */
       siglongjmp(_pop3_jmp, 1);
       break;
    case SIGPIPE:
@@ -366,9 +366,8 @@ _pop3_maincatch(int s)
 {
    NYD_X; /* Signal handler */
    UNUSED(s);
-
    if (interrupts++ == 0)
-      fprintf(stderr, _("Interrupt\n"));
+      fprintf(stderr, _("\n(Interrupt -- one more to abort operation)\n"));
    else
       onintr(0);
 }
@@ -398,6 +397,7 @@ pop3alarm(int s)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
       if (sigsetjmp(_pop3_jmp, 1)) {
+         interrupts = 0;
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
          goto jbrk;
@@ -474,64 +474,63 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
       ++cp;
    if (*cp != '\0')
       *size = (size_t)strtol(cp, NULL, 10);
-   else
-      *size = 0;
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static void
-pop3_init(struct mailbox *mp, int n)
-{
-   struct message *m;
-   char *cp;
-   NYD_ENTER;
-
-   m =  message + n;
-   m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
-   m->m_block = 0;
-   m->m_offset = 0;
-   pop3_list(mp, PTR2SIZE(m - message + 1), &m->m_xsize);
-
-   if ((cp = hfield1("status", m)) != NULL) {
-      while (*cp != '\0') {
-         if (*cp == 'R')
-            m->m_flag |= MREAD;
-         else if (*cp == 'O')
-            m->m_flag &= ~MNEW;
-         ++cp;
-      }
-   }
-   NYD_LEAVE;
-}
-
-static void
-pop3_dates(struct mailbox *mp)
+pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
 {
    size_t i;
-   NYD_ENTER;
-   UNUSED(mp);
-
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
-      substdate(message + i);
-   NYD_LEAVE;
-}
-
-static void
-pop3_setptr(struct mailbox *mp)
-{
-   size_t i;
+   enum needspec ns;
    NYD_ENTER;
 
    message = scalloc(msgCount + 1, sizeof *message);
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
-      pop3_init(mp, i);
-
-   setdot(message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
-   pop3_dates(mp);
+   dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */
+
+   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+      struct message *m = message + i;
+      m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
+      m->m_block = 0;
+      m->m_offset = 0;
+      m->m_size = m->m_xsize = 0;
+   }
+
+   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+      if (!pop3_list(mp, i + 1, &message[i].m_xsize))
+         goto jleave;
+
+   /* Force the load of all messages right now */
+   ns = xok_blook(pop3_bulk_load, &scp->sc_url, OXM_ALL)
+         ? NEED_BODY : NEED_HEADER;
+   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+      if (!pop3_get(mp, message + i, ns))
+         goto jleave;
+
+   srelax_hold();
+   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+      struct message *m = message + i;
+      char const *cp;
+
+      if ((cp = hfield1("status", m)) != NULL)
+         while (*cp != '\0') {
+            if (*cp == 'R')
+               m->m_flag |= MREAD;
+            else if (*cp == 'O')
+               m->m_flag &= ~MNEW;
+            ++cp;
+         }
+
+      substdate(m);
+      srelax();
+   }
+   srelax_rele();
+
+   setdot(message);
+jleave:
    NYD_LEAVE;
 }
 
@@ -564,12 +563,8 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
-      if (sigsetjmp(_pop3_jmp, 1)) {
-         safe_signal(SIGINT, saveint);
-         safe_signal(SIGPIPE, savepipe);
-         --_pop3_lock;
+      if (sigsetjmp(_pop3_jmp, 1))
          goto jleave;
-      }
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
    }
@@ -844,9 +839,13 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
       sclose(&mb.mb_sock);
+      fprintf(stderr, _("POP3 connection closed.\n"));
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
       _pop3_lock = 0;
+      rv = -1;
+      if (interrupts > 0)
+         onintr(0);
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -872,10 +871,11 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       _pop3_lock = 0;
       goto jleave;
    }
+
+   setmsize(msgCount);
    mb.mb_type = MB_POP3;
    mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
-   pop3_setptr(&mb);
-   setmsize(msgCount);
+   pop3_setptr(&mb, &sc);
    pstate &= ~PS_SAW_COMMAND;
 
    safe_signal(SIGINT, saveint);
@@ -933,6 +933,7 @@ pop3_quit(void)
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, saveint);
       _pop3_lock = 0;
+      interrupts = 0;
       goto jleave;
    }
    if (saveint != SIG_IGN)

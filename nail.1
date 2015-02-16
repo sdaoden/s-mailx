@@ -4541,18 +4541,14 @@ Send messages to the
 command without performing MIME and character set conversions.
 .
 .Mx
-.It Va pop3-bulk-load
+.Mx Va pop3-bulk-load
+.It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
 \*(OP When accessing a POP3 server \*(UA loads the headers of the
 messages, and only requests the message bodies on user request.
 For the POP3 protocol this means that the message headers will be
 downloaded twice.
 If this option is set then \*(UA will download only complete messages
-from POP3 servers instead.
-It may be useful to
-.Ic define
-a macro that temporarily sets this option, then accesses a POP3 account
-that is known to only get small text messages, and then unsets this
-variable again.
+from the given POP3 server(s) instead.
 .
 .Mx Va pop3-no-apop
 .It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
