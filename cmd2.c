@@ -41,8 +41,6 @@
 # include "nail.h"
 #endif
 
-#include <sys/wait.h>
-
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int     save1(char *str, int domark, char const *cmd,
