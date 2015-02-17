@@ -1560,6 +1560,7 @@ FL void
 load(char const *name)
 {
    struct str n;
+   void *cond;
    FILE *in, *oldin;
    NYD_ENTER;
 
@@ -1574,10 +1575,12 @@ load(char const *name)
    n.s = ac_alloc(n.l +1);
    memcpy(n.s, name, n.l +1);
 
+   cond = condstack_release();
    if (!commands())
       fprintf(stderr,
          _("Stopped loading `%s' due to errors (enable *debug* for trace)\n"),
          n.s);
+   condstack_take(cond);
 
    ac_free(n.s);
    pstate &= ~PS_IN_LOAD;
