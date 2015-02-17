@@ -1427,8 +1427,7 @@ jstop:
       fputs(_("... message not sent.\n"), stderr);
       _exit(1);
    }
-   if ((options & (OPT_DEBUG | OPT_VERB | OPT_BATCH_FLAG)) ||
-         ok_blook(sendwait)) {
+   if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
          rv = TRU1;
       else
