@@ -742,6 +742,7 @@ enum mimecontent {
    MIME_TEXT_HTML,   /* text/html content */
    MIME_TEXT,        /* other text/ content */
    MIME_ALTERNATIVE, /* multipart/alternative content */
+   MIME_RELATED,     /* mime/related (RFC 2387) */
    MIME_DIGEST,      /* multipart/digest content */
    MIME_MULTI,       /* other multipart/ content */
    MIME_PKCS7,       /* PKCS7 content */

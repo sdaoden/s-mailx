@@ -196,6 +196,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
          break;
       case MIME_MULTI:
       case MIME_ALTERNATIVE:
+      case MIME_RELATED: /* TODO /related yet handled like /alternative */
       case MIME_DIGEST:
          _parsemultipart(zmp, ip, pf, level);
          break;
@@ -1054,6 +1055,7 @@ jskip:
       /* FALLTHRU */
    case MIME_MULTI:
    case MIME_DIGEST:
+   case MIME_RELATED: /* TODO /related yet treated as /alternative */
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
@@ -1097,6 +1099,7 @@ jmulti:
             case SEND_QUOTE_ALL:
                if (ip->m_mimecontent != MIME_MULTI &&
                      ip->m_mimecontent != MIME_ALTERNATIVE &&
+                     ip->m_mimecontent != MIME_RELATED &&
                      ip->m_mimecontent != MIME_DIGEST)
                   break;
                _print_part_info(&rest, np, doign, level);

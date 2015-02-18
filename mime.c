@@ -1289,13 +1289,17 @@ mime_classify_content_of_part(struct mimepart *mpp)
       mc = MIME_822;
    else if (!ascncasecmp(ct, "message/", 8))
       mc = MIME_MESSAGE;
-   else if (!asccasecmp(ct, "multipart/alternative"))
-      mc = MIME_ALTERNATIVE;
-   else if (!asccasecmp(ct, "multipart/digest"))
-      mc = MIME_DIGEST;
-   else if (!ascncasecmp(ct, "multipart/", 10))
-      mc = MIME_MULTI;
-   else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
+   else if (!ascncasecmp(ct, "multipart/", 10)) {
+      ct += sizeof("multipart/") -1;
+      if (!asccasecmp(ct, "alternative"))
+         mc = MIME_ALTERNATIVE;
+      else if (!asccasecmp(ct, "related"))
+         mc = MIME_RELATED;
+      else if (!asccasecmp(ct, "digest"))
+         mc = MIME_DIGEST;
+      else
+         mc = MIME_MULTI;
+   } else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
          !asccasecmp(ct, "application/pkcs7-mime"))
       mc = MIME_PKCS7;
 jleave:
