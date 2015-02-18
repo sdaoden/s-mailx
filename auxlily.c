@@ -1681,6 +1681,8 @@ colour_get(enum colourspec cs)
 FL si8_t
 boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
 {
+   char *dat, *eptr;
+   sl_i sli;
    si8_t rv;
    NYD_ENTER;
 
@@ -1700,8 +1702,19 @@ boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
             !ascncasecmp(inbuf, "no", inlen) ||
             !ascncasecmp(inbuf, "false", inlen))
          rv = 0;
-      else
-         rv = -1;
+      else {
+         dat = ac_alloc(inlen +1);
+         memcpy(dat, inbuf, inlen);
+         dat[inlen] = '\0';
+
+         sli = strtol(dat, &eptr, 0);
+         if (*dat != '\0' && *eptr == '\0')
+            rv = (sli != 0);
+         else
+            rv = -1;
+
+         ac_free(dat);
+      }
    }
    NYD_LEAVE;
    return rv;

@@ -3978,14 +3978,17 @@ binary options, which can only be in the two states set and unset,
 as well as value options which have an assigned string value, for which
 proper quoting may be important upon assignment time.
 .Dq boolean
-is a special string value that must be set to any of
-.Ql no ,
-.Ql false ,
+is a special string that either must be set to a decimal integer
+(in which case
 .Ql 0
+is false and any other value true) or to any of
+.Ql no
+and
+.Ql false
 for a false boolean and
-.Ql yes ,
-.Ql true ,
-.Ql 1
+.Ql yes
+and
+.Ql true
 for a true boolean; matching is performed case-insensitively.
 .
 .Pp
