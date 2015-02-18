@@ -314,10 +314,6 @@ FL int         screensize(void);
  * e.g., "LESS=FRSXi" */
 FL char const *get_pager(char const **env_addon);
 
-/* Check wether using a pager is possible/makes sense and is desired by user
- * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
-FL size_t      paging_seems_sensible(void);
-
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
 

@@ -598,36 +598,35 @@ get_pager(char const **env_addon)
    return cp;
 }
 
-FL size_t
-paging_seems_sensible(void)
-{
-   size_t rv = 0;
-   char const *cp;
-   NYD_ENTER;
-
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL)
-      rv = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
-   NYD_LEAVE;
-   return rv;
-}
-
 FL void
 page_or_print(FILE *fp, size_t lines)
 {
-   size_t rows;
    int c;
+   size_t rows;
    NYD_ENTER;
 
    fflush_rewind(fp);
 
-   if ((rows = paging_seems_sensible()) != 0 && lines == 0) {
-      while ((c = getc(fp)) != EOF)
-         if (c == '\n' && ++lines > rows)
-            break;
-      really_rewind(fp);
+   rows = 0;
+   if (IS_TTY_SESSION()) {
+      char const *cp;
+
+      if ((cp = ok_vlook(crt)) != NULL) {
+         char *eptr;
+         sl_i sli = strtol(cp, &eptr, 0);
+         rows = (*cp != '\0' && *eptr == '\0')
+               ? (size_t)sli : (size_t)scrnheight;
+      }
+
+      if (rows > 0 && lines == 0) {
+         while ((c = getc(fp)) != EOF)
+            if (c == '\n' && ++lines > rows)
+               break;
+         really_rewind(fp);
+      }
    }
 
-   if (rows != 0 && lines >= rows)
+   if (lines >= rows)
       run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
    else
       while ((c = getc(fp)) != EOF)
