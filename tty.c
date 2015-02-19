@@ -869,7 +869,12 @@ _ncl_term_mode(bool_t raw)
 
    /* Always requery the attributes, in case we've been moved from background
     * to foreground or however else in between sessions */
+   /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
+    * XXX as we don't handle terminal stuff when starting commands and don't
+    * XXX properly deal with TTIN and TTOU from all that */
    tcgetattr(STDIN_FILENO, tiosp);
+   tiosp->c_lflag |= ECHO | ICANON;
+
    memcpy(&_ncl_tios.tnew, tiosp, sizeof *tiosp);
    tiosp = &_ncl_tios.tnew;
    tiosp->c_cc[VMIN] = 1;
