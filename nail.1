@@ -2558,7 +2558,17 @@ POSIX only supports the conditions
 .Ql [Ss]end
 and
 .Ql [Tt]erm
-(execute if standard input is a tty).
+(execute if standard input is a tty), all remaining conditions are
+non-portable extensions; note that falsely specified conditions cause
+the execution of the entire conditional construct until the
+(matching) closing
+.Ic endif
+command to be suppressed.
+The syntax of the nestable
+.Ic if
+conditional execution construct requires that each condition and syntax
+element is surrounded by whitespace.
+.
 .Bd -literal -offset indent
 if receive
   commands ...
@@ -2568,11 +2578,6 @@ endif
 .Ed
 .
 .Pp
-The remaining conditions are non-portable extensions;
-note that falsely specified conditions cause the evaluation / execution
-of the entire conditional construct until the closing command
-.Ic endif
-to be suppressed.
 For one any boolean value (see the section
 .Sx "VARIABLE OPTIONS"
 for booleans) may be given to mark an enwrapped block as
@@ -2607,10 +2612,11 @@ An unset variable is treated as the empty string.
 .
 .Pp
 When the \*(OPal regular expression support is available, the additional
+test cases
 .Ql =~
 and
 .Ql !~
-test cases can be used.
+can be used.
 They treat the right hand side as a regular expression that is matched
 case-insensitively and according to the active
 .Ev LC_CTYPE
@@ -2618,17 +2624,24 @@ locale, meaning that strings in the locale encoding should be matched
 correctly.
 .
 .Pp
-Forming condition lists can be accomplished by using bracket groups
-.Ql [\ \&.\&.\&.\ ] ,
-which may be interlocked within each other,
-eventually joining them via AND-OR lists (where the AND operator is
+Conditions can be joined via AND-OR lists (where the AND operator is
 .Ql &&
 and the OR operator is
-.Ql || )
+.Ql || ) ,
 which have equal precedence and will be evaluated with left
-associativity.
-The syntax requires that each bracket and each list operator is
-surrounded by whitespace.
+associativity, thus using the same syntax that is known for the
+.Xr sh 1 .
+It is also possible to form groups of conditions and lists by enclosing
+them in pairs of brackets
+.Ql [\ \&.\&.\&.\ ] ,
+which may be interlocked within each other, and also be joined via
+AND-OR lists.
+.
+.Pp
+The results of individual conditions and entire groups may be modified
+via unary operators: the unary operator
+.Ql \&!
+will reverse the result.
 .
 .Bd -literal -offset indent
 if $debug
@@ -2644,6 +2657,12 @@ if $version-major >= 15
   endif
   if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
     echo noisy, noisy
+  endif
+  if true && [ $debug || $verbose ]
+    echo left associativity, as is known from the shell
+  endif
+  if ! ! true && ! [ ! $debug && ! $verbose ]
+    echo unary support
   endif
 endif
 .Ed

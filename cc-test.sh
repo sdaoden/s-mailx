@@ -328,7 +328,8 @@ __behave_ifelse() {
 		else
 		   echo 12.err1
 		endif
-		# Shitty grouping capabilities as of today
+		# 1. Shitty grouping capabilities as of today
+		unset diet curd ndefined
 		if [ [ false ] || [ false ] || [ true ] ] && [ [ false ] || [ true ] ] && \
 		      [ yes ]
 		   echo 20.ok
@@ -356,7 +357,7 @@ __behave_ifelse() {
 		   echo 24.ok
 		endif
 		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
-		&& [ no ] || [ yes ]
+		      && [ no ] || [ yes ]
 		   echo 25.ok
 		else
 		   echo 25.err
@@ -423,8 +424,209 @@ __behave_ifelse() {
 		else
 		   echo 37.err
 		endif
+		# 2. Shitty grouping capabilities as of today
+		unset diet curd ndefined
+		if [ false || false || true ] && [ false || true ] && yes
+		   echo 40.ok
+		else
+		   echo 40.err
+		endif
+		if [ [ [ 0 || 1 ] && [ 1 || 0 ] ] && 1 ] && [ yes ]
+		   echo 41.ok
+		else
+		   echo 41.err
+		endif
+		if [ 1 || 0 || 0 || 0 ]
+		   echo 42.ok
+		else
+		   echo 42.err
+		endif
+		if [ 1 || 0 || 0 || 0 || [ 1 ] ]
+		   echo 43.ok
+		else
+		   echo 43.err
+		endif
+		if [ 1 || 0 || 0 || 0 || [ 1 ] || 1 ] && no
+		   echo 44.err
+		else
+		   echo 44.ok
+		endif
+		if [ 1 || 0 || 0 || 0 || 1 || [ 1 ] ] && no || [ yes ]
+		   echo 45.ok
+		else
+		   echo 45.err
+		endif
+		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && 1 ] ] && [ 1 ] ]
+		   echo 46.ok
+		else
+		   echo 46.err
+		endif
+		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && [ 1 ] ] ] && 0 ]
+		   echo 47.err
+		else
+		   echo 47.ok
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && 1 ] && 0 ] && [ 1 ] ] ] && 1 ]
+		   echo 48.err
+		else
+		   echo 48.ok
+		endif
+		if [ [ [ [ [ [ 0 ] && 1 ] && 1 ] && 1 ] ] && 1 ]
+		   echo 49.err
+		else
+		   echo 49.ok
+		endif
+		if 1 || 0 || 0 || 0 && 0
+		   echo 50.err
+		else
+		   echo 50.ok
+		endif
+		if 1 || 0 || 0 || 0 && 1
+		   echo 51.ok
+		else
+		   echo 51.err
+		endif
+		if 0 || 0 || 0 || 1 && 0
+		   echo 52.err
+		else
+		   echo 52.ok
+		endif
+		if 0 || 0 || 0 || 1 && 1
+		   echo 53.ok
+		else
+		   echo 53.err
+		endif
+		if 0 || 0 || 0 || 1 && 0 || 1 && 0
+		   echo 54.err
+		else
+		   echo 54.ok
+		endif
+		if 0 || 0 || 0 || 1 && 0 || 1 && 1
+		   echo 55.ok
+		else
+		   echo 55.err
+		endif
+		set diet=yo curd=ho
+		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
+		   echo 56.err
+		else
+		   echo 56.ok
+		endif
+		if $diet == 'yo' && $curd == 'ho' && $ndefined
+		   echo 57.err
+		else
+		   echo 57.ok
+		endif
+		set ndefined
+		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
+		   echo 57.ok
+		else
+		   echo 57.err
+		endif
+		if $diet == 'yo' && $curd == 'ho' && $ndefined
+		   echo 58.ok
+		else
+		   echo 58.err
+		endif
+		if [ [ [ [ [ [ $diet == 'yo' && $curd == 'ho' && $ndefined ] ] ] ] ] ]
+		   echo 59.ok
+		else
+		   echo 59.err
+		endif
+      # Unary !
+		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
+		   echo 80.ok
+		else
+		   echo 80.err
+		endif
+		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ ! 2 ] ] ] && 3
+		   echo 81.ok
+		else
+		   echo 81.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 82.ok
+		else
+		   echo 82.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+		   echo 83.err
+		else
+		   echo 83.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+		   echo 84.err
+		else
+		   echo 84.ok
+		endif
+		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 85.err
+		else
+		   echo 85.ok
+		endif
+		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 86.err
+		else
+		   echo 86.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] || 3
+		   echo 87.ok
+		else
+		   echo 87.err
+		endif
+		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! ! [ 2 ] ] ] ] ]
+		   echo 88.ok
+		else
+		   echo 88.err
+		endif
+      # Unary !, odd
+		if ! 0 && ! ! 1 && ! ! ! 0 && 3
+		   echo 90.ok
+		else
+		   echo 90.err
+		endif
+		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ 0 ] ] ] && 3
+		   echo 91.ok
+		else
+		   echo 91.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ [ 0 ] ] ] ] ] && 3
+		   echo 92.ok
+		else
+		   echo 92.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! ! [ ! [ ! 0 ] ] ] ] && ! 3
+		   echo 93.err
+		else
+		   echo 93.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ ! [ ! [ ! [ ! 0 ] ] ] ] && 3
+		   echo 94.ok
+		else
+		   echo 94.err
+		endif
+		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! ! [ ! [ ! [ ! [ 0 ] ] ] ] ] && 3
+		   echo 95.err
+		else
+		   echo 95.ok
+		endif
+		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! ! 0 ] ] ] ] && 3
+		   echo 96.err
+		else
+		   echo 96.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ ! 0 ] ] ] ] ] || 3
+		   echo 97.ok
+		else
+		   echo 97.err
+		endif
+		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! [ 0 ] ] ] ] ]
+		   echo 98.ok
+		else
+		   echo 98.err
+		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '1529103056 325'
+   cksum_test behave:if-normal "${MBOX}" '1492919042 559'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
@@ -455,8 +657,48 @@ __behave_ifelse() {
 			else
 			   echo 5.err
 			endif
+			if ! [ $dietcurd =~ '.+yoho$' ]
+			   echo 6.ok
+			else
+			   echo 6.err
+			endif
+			if ! ! [ $dietcurd !~ '.+yoho$' ]
+			   echo 7.ok
+			else
+			   echo 7.err
+			endif
+			if ! [ ! [ $dietcurd !~ '.+yoho$' ] ]
+			   echo 8.ok
+			else
+			   echo 8.err
+			endif
+			if [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 9.ok
+			else
+			   echo 9.err
+			endif
+			if ! [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 10.err
+			else
+			   echo 10.ok
+			endif
+			if !  ! ! $dietcurd !~ '.+yoho$'
+			   echo 11.err
+			else
+			   echo 11.ok
+			endif
+			if !  ! ! $dietcurd =~ '.+yoho$'
+			   echo 12.ok
+			else
+			   echo 12.err
+			endif
+			if ! [ ! ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 13.ok
+			else
+			   echo 13.err
+			endif
 		__EOT
-      cksum_test behave:if-regex "${MBOX}" '4280687462 25'
+      cksum_test behave:if-regex "${MBOX}" '2777826385 69'
    fi
 }
 

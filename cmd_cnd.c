@@ -31,14 +31,15 @@ struct cond_stack {
 
 struct if_cmd {
    char const  * const *ic_argv_base;
-   size_t      ic_argc_base;           /* Redundant: NULL terminated */
+   char const  * const *ic_argv_max;
    char const  * const *ic_argv;
-   size_t      ic_argc;
 };
 
 static struct cond_stack   *_cond_stack;
 
-static void    _if_error(struct if_cmd const *icp, char const *msg_or_null);
+/* */
+static void    _if_error(struct if_cmd const *icp, char const *msg_or_null,
+                  char const *nearby_or_null);
 
 /* noop and (1) don't work for real, only syntax-check and
  * (2) non-error return is ignored */
@@ -46,7 +47,8 @@ static si8_t   _if_test(struct if_cmd *icp, bool_t noop);
 static si8_t   _if_group(struct if_cmd *icp, size_t level, bool_t noop);
 
 static void
-_if_error(struct if_cmd const *icp, char const *msg_or_null)
+_if_error(struct if_cmd const *icp, char const *msg_or_null,
+   char const *nearby_or_null)
 {
    struct str s;
    NYD2_ENTER;
@@ -54,9 +56,21 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null)
    if (msg_or_null == NULL)
       msg_or_null = _("invalid expression syntax");
 
-   str_concat_cpa(&s, icp->ic_argv_base, (icp->ic_argc_base > 0 ? " " : ""));
+   if (nearby_or_null != NULL)
+      fprintf(stderr, _("`if' conditional: %s -- near \"%s\"\n"),
+         msg_or_null, nearby_or_null);
+   else
+      fprintf(stderr, _("`if' conditional: %s\n"), msg_or_null);
 
-   fprintf(stderr, _("`if' conditional: %s: \"%s\"\n"), msg_or_null, s.s);
+   if (options & (OPT_INTERACTIVE | OPT_D_V)) {
+      str_concat_cpa(&s, icp->ic_argv_base,
+         (*icp->ic_argv_base != NULL ? " " : ""));
+      fprintf(stderr, _("   Expression: %s\n"), s.s);
+
+      str_concat_cpa(&s, icp->ic_argv, (icp->ic_argv != NULL ? " " : ""));
+      fprintf(stderr, _("   Left to parse: %s\n"), s.s);
+   }
+
    NYD2_LEAVE;
 }
 
@@ -69,7 +83,9 @@ _if_test(struct if_cmd *icp, bool_t noop)
    si8_t rv = -1;
    NYD2_ENTER;
 
-   argv = icp->ic_argv; argc = icp->ic_argc; cp = argv[0];
+   argv = icp->ic_argv;
+   argc = PTR2SIZE(icp->ic_argv_max - icp->ic_argv);
+   cp = argv[0];
 
    if (*cp != '$') {
       if (argc > 1)
@@ -78,7 +94,7 @@ _if_test(struct if_cmd *icp, bool_t noop)
       goto jesyn;
    else if (argc > 3) {
 jesyn:
-      _if_error(icp, NULL);
+      _if_error(icp, NULL, cp);
       goto jleave;
    }
 
@@ -195,95 +211,153 @@ jleave:
 static si8_t
 _if_group(struct if_cmd *icp, size_t level, bool_t noop)
 {
-   bool_t mynoop;
-   char const *emsg = NULL, *arg0, * const *argv;
-   size_t argc, i;
-   char c;
+   char const *emsg = NULL, *arg0, * const *argv, * const *argv_max_save;
+   size_t i;
+   char unary = '\0', c;
+   enum {
+      _FIRST         = 1<<0,
+      _END_OK        = 1<<1,
+      _NEED_LIST     = 1<<2,
+
+      _CANNOT_UNARY  = _NEED_LIST,
+      _CANNOT_OBRACK = _NEED_LIST,
+      _CANNOT_CBRACK = _FIRST,
+      _CANNOT_LIST   = _FIRST,
+      _CANNOT_COND   = _NEED_LIST
+   } state = _FIRST;
    si8_t rv = -1, xrv;
    NYD2_ENTER;
 
-   mynoop = noop;
-
-   /* AND-OR lists on same grouping level are iterated without recursion */
-jnext_list:
-   arg0 = icp->ic_argv[0];
-   if (arg0[0] != '[' || arg0[1] != '\0' || --icp->ic_argc < 2) {
-jesyn:
-      if (emsg == NULL)
-         emsg = _("invalid bracket grouping");
-      _if_error(icp, emsg);
-      rv = -1;
-      goto jleave;
-   }
-   arg0 = *(++icp->ic_argv);
-
-   /* Does this group consist of inner groups?  Else it is a condition. */
-   if (arg0[0] == '[') {
-      if ((xrv = _if_group(icp, level + 1, mynoop)) < 0) {
-         rv = xrv;
-         goto jleave;
-      } else if (!mynoop)
-         rv = xrv;
-
+   for (;;) {
       arg0 = *(argv = icp->ic_argv);
-      argc = icp->ic_argc;
-      if (argc == 0 || *arg0 != ']')
-         goto jesyn;
-   } else {
-      argv = icp->ic_argv;
-      argc = icp->ic_argc;
-
-      for (i = 0;; ++i)
-         if (i == argc)
+      if (arg0 == NULL) {
+         if (!(state & _END_OK)) {
+            emsg = N_("missing expression (premature end)");
             goto jesyn;
-         else if (argv[i][0] == ']')
-            break;
-      if (i == 0) {
-         emsg = "empty bracket group";
-         goto jesyn;
+         }
+         if (noop && rv < 0)
+            rv = TRU1;
+         break; /* goto jleave; */
       }
 
-      icp->ic_argc = i;
-      arg0 = *(argv += i);
-      argc -= i;
-      if ((xrv = _if_test(icp, mynoop)) < 0) {
-         rv = xrv;
-         goto jleave;
-      } else if (!mynoop)
-         rv = xrv;
+      switch ((c = *arg0)) {
+      case '!':
+         if (arg0[1] != '\0')
+            goto jneed_cond;
+
+         if (state & _CANNOT_UNARY) {
+            emsg = N_("cannot use a unary operator here");
+            goto jesyn;
+         }
+
+         unary = (unary != '\0') ? '\0' : c;
+         state &= ~(_FIRST | _END_OK);
+         icp->ic_argv = ++argv;
+         continue;
+
+      case '[':
+      case ']':
+         if (arg0[1] != '\0')
+            goto jneed_cond;
+
+         if (c == '[') {
+            if (state & _CANNOT_OBRACK) {
+               emsg = N_("cannot open a group here");
+               goto jesyn;
+            }
+
+            icp->ic_argv = ++argv;
+            if ((xrv = _if_group(icp, level + 1, noop)) < 0) {
+               rv = xrv;
+               goto jleave;
+            } else if (!noop)
+               rv = (unary != '\0') ? !xrv : xrv;
+
+            unary = '\0';
+            state &= ~(_FIRST | _END_OK);
+            state |= (level == 0 ? _END_OK : 0) | _NEED_LIST;
+            continue;
+         } else {
+            if (state & _CANNOT_CBRACK) {
+               emsg = N_("cannot use closing bracket here");
+               goto jesyn;
+            }
+
+            if (level == 0) {
+               emsg = N_("no open groups to be closed here");
+               goto jesyn;
+            }
+
+            icp->ic_argv = ++argv;
+            if (noop && rv < 0)
+               rv = TRU1;
+            goto jleave;/* break;break; */
+         }
+
+      case '|':
+      case '&':
+         if (c != arg0[1] || arg0[2] != '\0')
+            goto jneed_cond;
+
+         if (state & _CANNOT_LIST) {
+            emsg = N_("cannot use a AND-OR list here");
+            goto jesyn;
+         }
+
+         noop = ((c == '&') ^ (rv == TRU1));
+         state &= ~(_FIRST | _END_OK | _NEED_LIST);
+         icp->ic_argv = ++argv;
+         continue;
+
+      default:
+   jneed_cond:
+         if (state & _CANNOT_COND) {
+            emsg = N_("cannot use a `if' condition here");
+            goto jesyn;
+         }
+
+         for (i = 0;; ++i) {
+            if ((arg0 = argv[i]) == NULL)
+               break;
+            c = *arg0;
+            if (c == '!' && arg0[1] == '\0')
+               break;
+            if ((c == '[' || c == ']') && arg0[1] == '\0')
+               break;
+            if ((c == '&' || c == '|') && c == arg0[1] && arg0[2] == '\0')
+               break;
+         }
+         if (i == 0) {
+            emsg = N_("empty conditional group");
+            goto jesyn;
+         }
+
+         argv_max_save = icp->ic_argv_max;
+         icp->ic_argv_max = argv + i;
+         if ((xrv = _if_test(icp, noop)) < 0) {
+            rv = xrv;
+            goto jleave;
+         } else if (!noop)
+            rv = (unary != '\0') ? !xrv : xrv;
+         icp->ic_argv_max = argv_max_save;
+
+         icp->ic_argv = (argv += i);
+         unary = '\0';
+         state &= ~_FIRST;
+         state |= _END_OK | _NEED_LIST;
+         break;
+      }
    }
 
-   /* At the closing ] bracket of this level */
-   assert(argc > 0);
-   assert(arg0[0] == ']');
-   if (arg0[1] != '\0')
-      goto jesyn;
-
-   /* Done?  Closing ] bracket of outer level?  Otherwise must be AND-OR list */
-   arg0 = *(icp->ic_argv = ++argv);
-   if ((icp->ic_argc = --argc) == 0)
-      ;
-   else if ((c = arg0[0]) == ']') {
-      if (level == 0) {
-         emsg = _("excessive closing brackets");
-         goto jesyn;
-      }
-   } else {
-      if ((c != '&' && c != '|') || arg0[1] != c || arg0[2] != '\0') {
-         emsg = _("expected AND-OR list after closing bracket");
-         goto jesyn;
-      }
-      mynoop = ((c == '&') ^ (rv == TRU1));
-      icp->ic_argv = ++argv;
-      icp->ic_argc = --argc;
-      goto jnext_list;
-   }
-
-   if (mynoop && rv < 0)
-      rv = TRU1;
 jleave:
    NYD2_LEAVE;
    return rv;
+jesyn:
+   if (emsg == NULL)
+      emsg = N_("invalid grouping");
+   _if_error(icp, V_(emsg), arg0);
+   rv = -1;
+   goto jleave;
 }
 
 FL int
@@ -311,9 +385,11 @@ c_if(void *v)
 
    for (argc = 0; argv[argc] != NULL; ++argc)
       ;
+   assert(argc > 0); /* (Minimum argument count for command) */
    ic.ic_argv_base = ic.ic_argv = argv;
-   ic.ic_argc_base = ic.ic_argc = argc;
-   xrv = (**argv != '[') ? _if_test(&ic, FAL0) : _if_group(&ic, 0, FAL0);
+   ic.ic_argv_max = argv + argc;
+   xrv = _if_group(&ic, 0, FAL0);
+
    if (xrv >= 0) {
       csp->c_go = (bool_t)xrv;
       rv = 0;
