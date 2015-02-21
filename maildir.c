@@ -144,8 +144,14 @@ _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
    if ((i = _maildir_subdir(name, "new", fm)) != 0)
       goto jleave;
    _maildir_append(name, NULL, NULL);
-   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i)
+
+   srelax_hold();
+   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i) {
       readin(name, message + i);
+      srelax();
+   }
+   srelax_rele();
+
    if (fm & FEDIT_NEWMAIL) {
       if (msgCount > omsgCount)
          qsort(&message[omsgCount], msgCount - omsgCount, sizeof *message,
