@@ -716,11 +716,6 @@ jentry: {
  * To simplify our live, use savestr() buffers for all other needed memory
  */
 
-/*
- * TODO NCL: don't use that stupid .sint=-1 stuff, but simply block all signals
- * TODO NCL: during handler de-/installation handling.
- */
-
 #ifdef HAVE_NCL
 # ifndef MAX_INPUT
 #  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
@@ -731,12 +726,6 @@ jentry: {
    * of MAX_INPUT and our desire to have room for some error message left */
 # define _PROMPT_VLEN(P)   (strlen(P) * 2)
 # define _PROMPT_MAX       ((MAX_INPUT / 2) + (MAX_INPUT / 4))
-
-union xsighdl {
-   sighandler_type   shdl; /* Try avoid races by setting */
-   sl_i              sint; /* .sint=-1 when inactive */
-};
-CTA(sizeof(sl_i) >= sizeof(sighandler_type));
 
 struct xtios {
    struct termios told;
@@ -777,20 +766,20 @@ struct hist {
 };
 # endif
 
-static union xsighdl _ncl_oint;
-static union xsighdl _ncl_oquit;
-static union xsighdl _ncl_oterm;
-static union xsighdl _ncl_ohup;
-static union xsighdl _ncl_otstp;
-static union xsighdl _ncl_ottin;
-static union xsighdl _ncl_ottou;
-static struct xtios  _ncl_tios;
+static sighandler_type  _ncl_oint;
+static sighandler_type  _ncl_oquit;
+static sighandler_type  _ncl_oterm;
+static sighandler_type  _ncl_ohup;
+static sighandler_type  _ncl_otstp;
+static sighandler_type  _ncl_ottin;
+static sighandler_type  _ncl_ottou;
+static struct xtios     _ncl_tios;
 # ifdef HAVE_HISTORY
-static struct hist  *_ncl_hist;
-static struct hist  *_ncl_hist_tail;
-static size_t        _ncl_hist_size;
-static size_t        _ncl_hist_size_max;
-static bool_t        _ncl_hist_load;
+static struct hist      *_ncl_hist;
+static struct hist      *_ncl_hist_tail;
+static size_t           _ncl_hist_size;
+static size_t           _ncl_hist_size_max;
+static bool_t           _ncl_hist_load;
 # endif
 
 static void    _ncl_sigs_up(void);
@@ -831,59 +820,40 @@ static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 static void
 _ncl_sigs_up(void)
 {
+   sigset_t nset, oset;
    NYD2_ENTER;
-   if (_ncl_oint.sint == -1)
-      _ncl_oint.shdl = safe_signal(SIGINT, &tty_signal);
-   if (_ncl_oquit.sint == -1)
-      _ncl_oquit.shdl = safe_signal(SIGQUIT, &tty_signal);
-   if (_ncl_oterm.sint == -1)
-      _ncl_oterm.shdl = safe_signal(SIGTERM, &tty_signal);
-   if (_ncl_ohup.sint == -1)
-      _ncl_ohup.shdl = safe_signal(SIGHUP, &tty_signal);
-   if (_ncl_otstp.sint == -1)
-      _ncl_otstp.shdl = safe_signal(SIGTSTP, &tty_signal);
-   if (_ncl_ottin.sint == -1)
-      _ncl_ottin.shdl = safe_signal(SIGTTIN, &tty_signal);
-   if (_ncl_ottou.sint == -1)
-      _ncl_ottou.shdl  = safe_signal(SIGTTOU, &tty_signal);
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   _ncl_oint = safe_signal(SIGINT, &tty_signal);
+   _ncl_oquit = safe_signal(SIGQUIT, &tty_signal);
+   _ncl_oterm = safe_signal(SIGTERM, &tty_signal);
+   _ncl_ohup = safe_signal(SIGHUP, &tty_signal);
+   _ncl_otstp = safe_signal(SIGTSTP, &tty_signal);
+   _ncl_ottin = safe_signal(SIGTTIN, &tty_signal);
+   _ncl_ottou = safe_signal(SIGTTOU, &tty_signal);
+   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
    NYD2_LEAVE;
 }
 
 static void
 _ncl_sigs_down(void)
 {
-   /* aaah.. atomic cas would be nice (but isn't it all redundant?) */
-   sighandler_type st;
+   sigset_t nset, oset;
    NYD2_ENTER;
 
-   if (_ncl_ottou.sint != -1) {
-      st = _ncl_ottou.shdl, _ncl_ottou.sint = -1;
-      safe_signal(SIGTTOU, st);
-   }
-   if (_ncl_ottin.sint != -1) {
-      st = _ncl_ottin.shdl, _ncl_ottin.sint = -1;
-      safe_signal(SIGTTIN, st);
-   }
-   if (_ncl_otstp.sint != -1) {
-      st = _ncl_otstp.shdl, _ncl_otstp.sint = -1;
-      safe_signal(SIGTSTP, st);
-   }
-   if (_ncl_ohup.sint != -1) {
-      st = _ncl_ohup.shdl, _ncl_ohup.sint = -1;
-      safe_signal(SIGHUP, st);
-   }
-   if (_ncl_oterm.sint != -1) {
-      st = _ncl_oterm.shdl, _ncl_oterm.sint = -1;
-      safe_signal(SIGTERM, st);
-   }
-   if (_ncl_oquit.sint != -1) {
-      st = _ncl_oquit.shdl, _ncl_oquit.sint = -1;
-      safe_signal(SIGQUIT, st);
-   }
-   if (_ncl_oint.sint != -1) {
-      st = _ncl_oint.shdl, _ncl_oint.sint = -1;
-      safe_signal(SIGINT, st);
-   }
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGINT, _ncl_oint);
+   safe_signal(SIGQUIT, _ncl_oquit);
+   safe_signal(SIGTERM, _ncl_oterm);
+   safe_signal(SIGHUP, _ncl_ohup);
+   safe_signal(SIGTSTP, _ncl_otstp);
+   safe_signal(SIGTTIN, _ncl_ottin);
+   safe_signal(SIGTTOU, _ncl_ottou);
+   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
    NYD2_LEAVE;
 }
 
@@ -1808,10 +1778,6 @@ tty_init(void)
    size_t lsize, cnt, llen;
 # endif
    NYD_ENTER;
-
-   _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
-   _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
-   _ncl_ottou.sint = -1;
 
 # ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
