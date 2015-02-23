@@ -139,11 +139,13 @@ __tty_acthdl(int s) /* TODO someday, we won't need it no more */
 FL bool_t
 getapproval(char const * volatile prompt, bool_t noninteract_default)
 {
-   sighandler_type volatile ohdl;
-   bool_t volatile hadsig = FAL0, rv;
+   sighandler_type volatile oint, ohup;
+   bool_t volatile rv;
+   int volatile sig;
    NYD_ENTER;
 
    if (!(options & OPT_INTERACTIVE)) {
+      sig = 0;
       rv = noninteract_default;
       goto jleave;
    }
@@ -152,12 +154,12 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    if (prompt == NULL)
       prompt = noninteract_default ? _(" ([yes]/no)? ") : _(" ([no]/yes)? ");
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-      hadsig  = TRU1;
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
 
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
@@ -165,11 +167,13 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
             noninteract_default) > 0);
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
+
+   safe_signal(SIGINT, ohup);
+   safe_signal(SIGINT, oint);
 jleave:
    NYD_LEAVE;
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
+   if (sig != 0)
+      kill(0, sig);
    return rv;
 }
 
@@ -177,42 +181,42 @@ jleave:
 FL char *
 getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
-   sighandler_type volatile ohdl;
+   sighandler_type volatile oint, ohup;
    char * volatile user = NULL;
-   bool_t volatile hadsig = FAL0;
+   int volatile sig;
    NYD_ENTER;
 
    if (query == NULL)
       query = _("User: ");
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-      hadsig  = TRU1;
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
 
    if (readline_input(query, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
+
+   safe_signal(SIGHUP, ohup);
+   safe_signal(SIGINT, oint);
    NYD_LEAVE;
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
+   if (sig != 0)
+      kill(0, sig);
    return user;
 }
 
 FL char *
 getpassword(char const *query)
 {
-   sighandler_type volatile ohdl;
+   sighandler_type volatile oint, ohup;
    struct termios tios;
    char * volatile pass = NULL;
-# if 0
-   bool_t hadsig = FAL0; /* TODO getpassword() no longer reraises SIGINT */
-# endif
+   int volatile sig;
    NYD_ENTER;
 
    if (query == NULL)
@@ -231,14 +235,12 @@ getpassword(char const *query)
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
    }
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-# if 0
-      hadsig = TRU1;
-# endif
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
 
    if (options & OPT_TTYIN)
       tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
@@ -248,14 +250,14 @@ getpassword(char const *query)
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
    if (options & OPT_TTYIN)
       putc('\n', stdout);
+
+   safe_signal(SIGHUP, ohup);
+   safe_signal(SIGINT, oint);
    NYD_LEAVE;
-# if 0
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
-# endif
+   if (sig != 0)
+      kill(0, sig);
    return pass;
 }
 #endif /* HAVE_SOCKETS */
