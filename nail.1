@@ -6192,10 +6192,11 @@ status for at least the command
 .Pf ( Ql 0
 meaning a message is spam,
 .Ql 1
-for non-spam and
+for non-spam,
 .Ql 2
-for unsure); since the hooks can include shell code snippets
-diverting behaviour can be intercepted as necessary.
+for unsure and any other return value indicating a hard error);
+since the hooks can include shell code snippets diverting behaviour
+can be intercepted as necessary.
 The hooks are
 .Va spamfilter-ham , spamfilter-noham , spamfilter-nospam , \
   spamfilter-rate
@@ -6204,6 +6205,11 @@ and
 the manual section
 .Sx "Handling spam"
 contains examples for some programs.
+The process environment of the hooks will have the variables
+.Ev NAIL_TMPDIR , TMPDIR
+and
+.Ev NAIL_FILENAME_GENERATED
+set.
 Note that spam score support for
 .Ic spamrate
 isn't supported unless the \*(OPtional regular expression support is
