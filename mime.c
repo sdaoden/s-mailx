@@ -68,7 +68,8 @@ static char          *_cs_iter_base, *_cs_iter;
 
 /* Initialize MIME type list */
 static void             _mt_init(void);
-static void             __mt_add_line(char const *line, struct mtnode **tail);
+static void             __mt_add_line(char const *line, size_t len,
+                           struct mtnode **tail);
 
 /* Is 7-bit enough? */
 #ifdef HAVE_ICONV
@@ -108,7 +109,7 @@ _mt_init(void)
 {
    struct mtnode *tail = NULL;
    char *line = NULL; /* TODO line pool */
-   size_t linesize = 0;
+   size_t linesize = 0, linelen;
    ui32_t idx, idx_ok;
    char const *ccp, * const *srcs;
    FILE *fp;
@@ -138,51 +139,57 @@ _mt_init(void)
          /*fprintf(stderr, _("Cannot open `%s'\n"), fn);*/
          continue;
       }
-      while (fgetline(&line, &linesize, NULL, NULL, fp, 0))
-         __mt_add_line(line, &tail);
+      while (fgetline(&line, &linesize, &linelen, NULL, fp, 0))
+         __mt_add_line(line, linelen, &tail);
       Fclose(fp);
    }
    if (line != NULL)
       free(line);
 
    for (srcs = _mt_bltin; *srcs != NULL; ++srcs)
-      __mt_add_line(*srcs, &tail);
+      __mt_add_line(*srcs, strlen(*srcs), &tail);
    NYD_LEAVE;
 }
 
 static void
-__mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
+__mt_add_line(char const *line, size_t len, struct mtnode **tail)
 {
    char const *typ;
-   size_t tlen, elen;
+   size_t tlen;
    struct mtnode *mtn;
    NYD_ENTER;
 
-   if (!alphachar(*line))
-      goto jleave;
+   /* Drop anything after a comment */
+   if ((typ = memchr(line, '#', len)) != NULL)
+      len = PTR2SIZE(typ - line);
 
+   /* Isolate MIME type, trim any whitespace */
+   while (len > 0 && blankspacechar(*line))
+      ++line, --len;
    typ = line;
-   while (!blankchar(*line) && *line != '\0')
-      ++line;
-   if (*line == '\0')
+   while (len > 0 && !blankspacechar(*line))
+      ++line, --len;
+   if (len == 0)
       goto jleave;
    tlen = PTR2SIZE(line - typ);
-
-   while (blankchar(*line) && *line != '\0')
-      ++line;
-
-   if (*line == '\0')
+   if (memchr(typ, '/', tlen) == NULL) {
+      if (options & OPT_D_V)
+         fprintf(stderr, "mime.types(5): invalid MIME type: %s\n", typ);
       goto jleave;
-   elen = strlen(line);
-   if (line[elen - 1] == '\n') {
-      if (--elen > 0 && line[elen - 1] == '\r')
-         --elen;
-      if (elen == 0)
-         goto jleave;
    }
 
+   /* Isolate list of extensions, trim any whitespace */
+   while (len > 0 && blankspacechar(*line))
+      ++line, --len;
+   if (len == 0)
+      goto jleave;
+   while (len > 0 && blankspacechar(line[len - 1]))
+      --len;
+   if (len == 0)
+      goto jleave;
+
    mtn = smalloc(sizeof(struct mtnode) -
-         VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 + elen +1);
+         VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 + len +1);
    if (*tail != NULL)
       (*tail)->mt_next = mtn;
    else
@@ -193,8 +200,8 @@ __mt_add_line(char const *line, struct mtnode **tail) /* XXX diag? dups!*/
    memcpy(mtn->mt_line, typ, tlen);
    mtn->mt_line[tlen] = '\0';
    ++tlen;
-   memcpy(mtn->mt_line + tlen, line, elen);
-   tlen += elen;
+   memcpy(mtn->mt_line + tlen, line, len);
+   tlen += len;
    mtn->mt_line[tlen] = '\0';
 jleave:
    NYD_LEAVE;
