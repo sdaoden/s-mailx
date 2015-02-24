@@ -248,7 +248,6 @@ _c_ghost(void *v)
          page_or_print(fp, i);
          Fclose(fp);
       }
-      v = NULL;
       goto jleave;
    }
 
