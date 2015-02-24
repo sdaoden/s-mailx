@@ -1,117 +1,117 @@
 # mime.types(5)
-# This is the set of MIME types that will become compiled into S-nail;
-# they are used as a fallback registry in case that there is no ~/.mime.types
-# or /etc/mime.types.
-# Lines starting with the number sign '#' are comments and ignored, empty lines
-# are ignored, others must look like 'TYPEwhitespaceEXTENSION'.
-# Note that these lines will be compiled AS IS, so each byte counts!
+# This is the set of MIME types that will become compiled into S-nail.
+# Anything after a number sign (#) is a comment and discarded, empty lines
+# are ignored, remaining ones are interpreted according to the scheme
+#	MIMETYPE whitespace EXTENSION(S, whitespace separated)
+# MIMETYPE may occur several times, values are joined.
+# Official MIME types are registered at and managed by IANA.
+# A more complete list of actually used MIME types can be found at
 # <http://svn.apache.org/viewvc/tika/trunk/tika-core/src/main/resources/\
-# org/apache/tika/mime/tika-mimetypes.xml> is a good place to look for a rather
-# complete list of IANA registered and unregistered MIME types.
-# XXX Maybe write an extractor that converts the tika content to our own
-# XXX mime.types?  Maybe extend our parser to support the extension that adds
-# XXX function() rules.  Then, fully map the tika DB and S-nail woul have its
-# XXX own magic detection!!
-# XXX Anyway, it would be nice to an additional "is-text" flag, so that S-nail
-# XXX could itself choose wether something is text / displayable or not; yet
-# XXX text/ is used to decide, but sh,json,js,tex etc. are all application/..
-# XXX And: do we need alias support?
+# org/apache/tika/mime/tika-mimetypes.xml>.
+# S-nail adds some more, search EXTENSION comments below.
+# S-nail changes some TIKA things, search CHANGE comments below.
 
-application/cbor	cbor
-application/gzip	tgz gz emz
-application/javascript	js
-application/json	json
-application/mbox	mbox
-application/pdf	pdf
+application/cbor		cbor
+application/gzip		tgz gz emz
+application/javascript		js
+application/json		json
+application/mbox		mbox
+application/pdf			pdf
 application/pgp-encrypted	pgp
 application/pgp-signature	sig asc
-application/pkcs7-mime	p7m p7c
+application/pkcs7-mime		p7m p7c
 application/pkcs7-signature	p7s
-application/postscript	ps eps epsf epsi
-application/rdf+xml	rdf owl
-application/rss+xml	rss
-application/x-bcpio	bcpio
+application/postscript		ps eps epsf epsi
+application/rdf+xml		rdf owl
+application/rss+xml		rss
+application/x-bcpio		bcpio
 application/x-bittorrent	torrent
-application/x-bzip	bz tbz
-application/x-bzip2	bz2 tbz2 boz
-application/x-compress	z
-application/x-cpio	cpio
-application/x-csh	csh tcsh
-application/x-dvi	dvi
-application/x-latex	latex
-application/x-perl	pl pm perl
-application/x-sh	sh bash
-application/x-shar	shar
-application/x-tar	tar
-application/x-tex	tex
-application/x-texinfo	texinfo texi
+application/x-bzip		bz tbz
+application/x-bzip2		bz2 tbz2 boz
+application/x-compress		z
+application/x-cpio		cpio
+application/x-csh		csh tcsh
+application/x-dvi		dvi
+application/x-latex		latex
+application/x-perl		pl pm perl
+application/x-sh		sh bash
+application/x-shar		shar
+application/x-tar		tar
+application/x-tex		tex
+application/x-texinfo		texinfo texi
 application/x-x509-ca-cert	der crt
-application/x-xfig	fig
-application/x-xz	xz
-application/xhtml+xml	xhtml xht
-application/xml	xml xsl xsd
-application/xml-dtd	dtd
-application/xquery	xq xquery
-application/xslt+xml	xslt
-application/zip		zip
-audio/basic	au snd
-audio/midi	mid midi kar rmi
-audio/mp4	mp4a m4a m4b
-audio/mpeg	mpga mp2 mp2a mp3 m2a m3a
-audio/ogg	oga ogg
-audio/speex	spx
-audio/x-flac	flac
-audio/x-mpegurl	m3u
-audio/x-ms-wma	wma
-audio/x-pn-realaudio	ram ra
-audio/x-wav	wav
-image/gif	gif
-image/jp2	jp2
-image/jpeg	jpg jpeg jpe jif jfif jfi
-image/png	png
-image/svg+xml	svg svgz
-image/tiff	tiff tif
-image/x-ms-bmp	bmp dib
-image/x-rgb	rgb
-image/x-xbitmap	xbm
-image/x-xpixmap	xpm
-image/x-xwindowdump	xwd
-message/rfc822	eml mime mht mhtml
-text/calendar	ics ifb
-text/css	css
-text/csv	csv
-text/html	html htm
-text/plain	txt text conf cfg def list log in  m4 pod MF properties
-text/sgml	sgml sgm
-text/troff	t tr roff man me ms
-text/x-assembly	s S asm
-text/x-asciidoc	asciidoc adoc ad ad.txt adoc.txt
-text/x-awk	awk
-text/x-c++hdr	hpp hxx hh h++ hp
-text/x-c++src	cpp cxx cc c++
-text/x-chdr	h
-text/x-csrc	c
-text/x-csharp	cs
-text/x-cgi	cgi
-text/x-d	d
-text/x-diff	diff patch
-text/x-go	go
-text/x-ini	ini
-text/x-java	java
-text/x-jsp	jsp
-text/x-lex	l
-# Extension of mine
-text/x-nimrod	nim
-text/x-objcsrc	m
-text/x-perl	pl pm al perl
-text/x-php	php php3 php4
-text/x-python	py
-text/x-rst	rst rest restx
-text/x-ruby	rb
-text/x-sql	sql
-text/x-uuencode	uu
-text/x-vcalendar	vcs
-text/x-vcard	vcf
-text/x-web-markdown	md mdtext mkd markdown
-text/x-yacc	y
-text/x-yaml	yaml
+application/x-xfig		fig
+# EXTENSION .tbz
+application/x-xz		xz tbz
+application/xhtml+xml		xhtml xht
+application/xml			xml xsl xsd
+application/xml-dtd		dtd
+application/xquery		xq xquery
+application/xslt+xml		xslt
+application/zip			zip
+audio/basic			au snd
+audio/midi			mid midi kar rmi
+audio/mp4			mp4a m4a m4b
+audio/mpeg			mpga mp2 mp2a mp3 m2a m3a
+audio/ogg			oga ogg
+audio/speex			spx
+audio/x-flac			flac
+audio/x-mpegurl			m3u
+audio/x-ms-wma			wma
+audio/x-pn-realaudio		ram ra
+audio/x-wav			wav
+image/gif			gif
+image/jp2			jp2
+image/jpeg			jpg jpeg jpe jif jfif jfi
+image/png			png
+image/svg+xml			svg svgz
+image/tiff			tiff tif
+image/x-ms-bmp			bmp dib
+image/x-rgb			rgb
+image/x-xbitmap			xbm
+image/x-xpixmap			xpm
+image/x-xwindowdump		xwd
+message/rfc822			eml mime mht mhtml
+text/calendar			ics ifb
+text/css			css
+text/csv			csv
+text/html			html htm
+# text/plain CHANGE: m4->text/x-m4, pod->text/x-pod
+text/plain			txt text conf cfg def list log in properties
+text/sgml			sgml sgm
+text/troff			t tr roff man me ms
+text/x-assembly			s S asm
+text/x-asciidoc			asciidoc adoc ad ad.txt adoc.txt
+text/x-awk			awk
+text/x-c++hdr			hpp hxx hh h++ hp
+text/x-c++src			cpp cxx cc c++
+text/x-chdr			h
+text/x-csrc			c
+text/x-csharp			cs
+text/x-cgi			cgi
+text/x-d			d
+text/x-diff			diff patch
+text/x-go			go
+text/x-ini			ini
+text/x-java			java
+text/x-jsp			jsp
+text/x-lex			l
+# EXTENSION nim
+text/x-nimrod			nim
+# CHANGE (tika: text/plain)
+text/x-m4			m4
+text/x-objcsrc			m
+text/x-perl			pl pm al perl
+text/x-php			php php3 php4
+# CHANGE (tika: text/plain)
+text/x-pod			pod
+text/x-python			py
+text/x-rst			rst rest restx
+text/x-ruby			rb
+text/x-sql			sql
+text/x-uuencode			uu
+text/x-vcalendar		vcs
+text/x-vcard			vcf
+text/x-web-markdown		md mdtext mkd markdown
+text/x-yacc			y
+text/x-yaml			yaml
