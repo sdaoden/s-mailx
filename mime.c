@@ -1677,7 +1677,7 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
 
    quoteflt_reset(qf = quoteflt_dummy(), f);
    rv = mime_write(ptr, size, f, convert, dflags, qf, NULL);
-   assert(quoteflt_flush(qf) == 0);
+   quoteflt_flush(qf);
    NYD_LEAVE;
    return rv;
 }
