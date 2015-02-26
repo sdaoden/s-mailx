@@ -144,7 +144,7 @@ jesyn:
          if (op[1] != '=')
             goto jesyn;
       } else if (c == '=' || c == '!') {
-         if (op[1] != '='
+         if (op[1] != '=' && op[1] != '@'
 #ifdef HAVE_REGEX
                && op[1] != '~'
 #endif
@@ -166,7 +166,11 @@ jesyn:
          regfree(&re);
       } else
 #endif
-      if (!noop) {
+      if (noop)
+         break;
+      else if (op[1] == '@')
+         rv = (asccasestr(v, argv[2]) == NULL) ^ (c == '=');
+      else {
          /* Try to interpret as integers, prefer those, then */
          char const *argv2 = argv[2];
          char *eptr;

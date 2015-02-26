@@ -2598,16 +2598,20 @@ The available comparison operators are
 .Ql !=
 (not equal),
 .Ql >=
-(greater than or equal to) and
+(greater than or equal to),
 .Ql >
-(greater than).
-If the user given value can be parsed as a number (integer), then if the
-variable value content can, too, then the comparison is performed
-arithmetically.
-Otherwise both values are treated as strings and are compared 8-bit
-byte-wise, ignoring case according to the rules of the US-ASCII encoding
-(therefore, dependend on the active locale, possibly producing false
-results for strings in the locale encoding).
+(greater than),
+.Ql =@
+(is substring of) and
+.Ql !@
+(is not substring of).
+The values of the left and right hand side are treated as strings and
+are compared 8-bit byte-wise, ignoring case according to the rules of
+the US-ASCII encoding (therefore, dependend on the active locale,
+possibly producing false results for strings in the locale encoding).
+Except for the substring checks the comparison will instead be performed
+arithmetically if both, the user given value as well as the variable
+content, can be parsed as numbers (integers).
 An unset variable is treated as the empty string.
 .
 .Pp
@@ -2652,8 +2656,10 @@ if $ttycharset == "UTF-8"
 endif
 if $version-major >= 15
   echo running a new version..
-  if $TERM =~ "^xterm\&.*"
-    echo ..in an X terminal
+  if $features =@ "regex"
+    if $TERM =~ "^xterm\&.*"
+      echo ..in an X terminal
+    endif
   endif
   if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
     echo noisy, noisy
