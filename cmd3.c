@@ -96,6 +96,7 @@ _reedit(char *subj)
    if ((newsubj = subject_re_trim(out.s)) != out.s)
       newsubj = savestr(out.s);
    else {
+      /* RFC mandates english "Re: " */
       newsubj = salloc(out.l + 4 +1);
       sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
    }

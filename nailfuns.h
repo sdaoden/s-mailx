@@ -941,7 +941,8 @@ FL char *      realname(char const *name);
  * 2 -- get sender's name for Reply */
 FL char *      name1(struct message *mp, int reptype);
 
-/* Trim away all leading Re: etc., return pointer to plain subject */
+/* Trim away all leading Re: etc., return pointer to plain subject.
+ * Note it doesn't perform any MIME decoding by itself */
 FL char *      subject_re_trim(char *cp);
 
 FL int         msgidcmp(char const *s1, char const *s2);

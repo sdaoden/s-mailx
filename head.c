@@ -1331,7 +1331,7 @@ jleave:
 }
 
 FL char *
-subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
+subject_re_trim(char *s)
 {
    struct {
       ui8_t len;
@@ -1358,8 +1358,6 @@ jouter:
       while (spacechar(*s))
          ++s;
 
-      /* TODO While it is maybe ok not to MIME decode these (for purpose), we
-       * TODO should skip =?..?= at the beginning? */
       for (pp = ignored; pp->len > 0; ++pp)
          if (is_asccaseprefix(s, pp->dat)) {
             s += pp->len;

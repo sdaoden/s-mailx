@@ -763,13 +763,16 @@ do {\
       size_t sublen = strlen(sub);
 
       fwrite("Subject: ", sizeof(char), 9, fo);
+      /* Trimmed something, (re-)add Re: */
       if (sub != hp->h_subject) {
          fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
          if (sublen > 0 &&
                xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
                   (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
             goto jleave;
-      } else if (*sub != '\0') {
+      }
+      /* This may be, e.g., a Fwd: XXX yes, unfortunately we do like that */
+      else if (*sub != '\0') {
          if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
                (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
             goto jleave;

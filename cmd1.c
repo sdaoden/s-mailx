@@ -56,7 +56,7 @@ static void    _parse_from_(struct message *mp, char date[FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * __hprf: handle *headline*
- * __subject: Subject:, but return NULL if threaded and Subject: yet seen
+ * __subject: return -1 if Subject: yet seen, otherwise smalloc()d Subject:
  * __putindent: print out the indenting in threaded display */
 static void    _print_head(size_t yetprinted, size_t msgno, FILE *f,
                   bool_t threaded);
@@ -530,33 +530,45 @@ j_A_redo:
 static char *
 __subject(struct message *mp, bool_t threaded, size_t yetprinted)
 {
-   /* XXX NOTE: because of efficiency reasons we simply ignore any encoded
-    * XXX parts and use ASCII case-insensitive comparison */
    struct str in, out;
-   struct message *xmp;
-   char *rv = (char*)-1, *ms, *mso, *os;
+   char *rv = (char*)-1, *ms;
    NYD_ENTER;
 
    if ((ms = hfield1("subject", mp)) == NULL)
       goto jleave;
 
+   in.l = strlen(in.s = ms);
+   mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
+   rv = ms = out.s;
+
    if (!threaded || mp->m_level == 0)
-      goto jconv;
+      goto jleave;
 
    /* In a display thread - check wether this message uses the same
     * Subject: as it's parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
-   mso = subject_re_trim(ms);
-   for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL && yetprinted-- > 0;)
-      if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
-            !asccasecmp(mso, subject_re_trim(os)))
-         goto jleave;
-jconv:
-   in.s = ms;
-   in.l = strlen(ms);
-   mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
-   rv = out.s;
+   ms = subject_re_trim(ms);
+
+   for (; (mp = prev_in_thread(mp)) != NULL && yetprinted-- > 0;) {
+      char *os;
+
+      if (visible(mp) && (os = hfield1("subject", mp)) != NULL) {
+         struct str oout;
+         int x;
+
+         in.l = strlen(in.s = os);
+         mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
+         x = asccasecmp(ms, subject_re_trim(oout.s));
+         free(oout.s);
+
+         if (!x) {
+            free(out.s);
+            rv = (char*)-1;
+         }
+         break;
+      }
+   }
 jleave:
    NYD_LEAVE;
    return rv;
