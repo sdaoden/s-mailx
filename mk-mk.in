@@ -105,29 +105,16 @@ test: all
 
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
-	_VERSION="`< version.h $(SED) \
-		-e '/ VERSION /b X' -e d \
-		-e ':X' -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/'`" \
 	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.1 > $(@) $(AWK) '\
-	BEGIN {\
-		written = 0;\
-		i = ENVIRON["_VERSION"];\
-		j = index(i, "-");\
-		if (j != 0)\
-			XX = ".ds XX \\\\%[\\\\*(VV-" substr(i, j + 1) "]";\
-		else\
-			XX = ".ds XX \\\\%[\\\\*(VV]";\
-	}\
+	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
-		if (written == 1)\
+		if (written++ != 0)\
 			next;\
-		written = 1;\
 		OFS = "";\
 		un = toupper(ENVIRON["_UAGENT"]);\
 		ln = tolower(un);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print XX;\
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
 		print ".ds ua \\\\%", ln;\

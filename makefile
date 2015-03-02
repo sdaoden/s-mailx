@@ -73,28 +73,28 @@ _update-release:
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
 	\
 	< nail.1 > nail.1x awk '\
-		/^\.\\" '"$${UUAGENT}"'\(1\):/ {\
+		BEGIN { written = 0 }\
+		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
+			if (written++ != 0)\
+				next;\
 			print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
 				" / '"$${DATE_ISO}"'";\
-			next;\
-		}\
-		/^\.Dd / {\
 			print ".Dd '"$${DATE_MAN}"'";\
-			next;\
-		}\
-		/^\.ds VV / {\
 			print ".ds VV \\\\%v'"$${REL}"'";\
-			next;\
+			next\
 		}\
 		{print}\
 	' &&\
 	mv -f nail.1x nail.1 &&\
 	\
 	< nail.rc > nail.rcx awk '\
-		/^# '$${UUAGENT}'\(1\):/ {\
+		BEGIN { written = 0 }\
+		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
+			if (written++ != 0)\
+				next;\
 			print \
 		"# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
-			next;\
+			next\
 		}\
 		{print}\
 	' && \
