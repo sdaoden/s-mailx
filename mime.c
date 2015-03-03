@@ -41,24 +41,65 @@
 # include "nail.h"
 #endif
 
+enum mime_type {
+   /* Note that the _mt_typnames[] order */
+   _MT_APPLICATION,
+   _MT_AUDIO,
+   _MT_IMAGE,
+   _MT_MESSAGE,
+   _MT_MULTIPART,
+   _MT_TEXT,
+   _MT_VIDEO,
+   _MT_OTHER,
+   __MT_TMIN   = 0,
+   __MT_TMAX   = _MT_OTHER,
+   __MT_TMASK  = 0x07,
+
+   _MT_REGEX   = 1<< 3,       /* Line contains regex */
+   _MT_LOADED  = 1<< 4,       /* Not struct mtbltin */
+   _MT_USR     = 1<< 5,       /* MIME_TYPES_USR */
+   _MT_SYS     = 1<< 6        /* MIME_TYPES_SYS */
+};
+
+struct mtbltin {
+   ui32_t      mtb_flags;
+   ui32_t      mtb_mtlen;
+   char const  *mtb_line;
+};
+
+struct mtloaded {
+   char        mtl_line[VFIELD_SIZE(8)];
+};
+
 struct mtnode {
    struct mtnode  *mt_next;
-   size_t         mt_mtlen;   /* Length of MIME type string */
-   char           mt_line[VFIELD_SIZE(8)];
+   ui32_t         mt_flags;
+   ui32_t         mt_mtlen;   /* Length of MIME type string, rest thereafter */
+#ifdef HAVE_REGEX
+   regex_t        *mt_regex;
+#endif
+   union {
+      struct mtbltin const *_bltin;
+      struct mtloaded      _loaded;
+   }              mt;
 };
 
-static char const * const _mt_sources[] = {
-   /* XXX Order fixed due to *mimetypes-load-control* handling! */
-   MIME_TYPES_USR, MIME_TYPES_SYS, NULL
-},
-                  * const _mt_bltin[] = {
+static struct mtbltin const   _mt_bltin[] = {
 #include "mime_types.h"
-   NULL
 };
 
-static struct mtnode *_mt_list;
-static char          *_cs_iter_base, *_cs_iter;
+static char const             _mt_typnames[][16] = {
+   "application/", "audio/", "image/",
+   "message/", "multipart/", "text/",
+   "video/"
+};
+CTA(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
+   _MT_MESSAGE == 3 && _MT_MULTIPART == 4 && _MT_TEXT == 5 &&
+   _MT_VIDEO == 6);
 
+static struct mtnode          *_mt_list;
+
+static char                   *_cs_iter_base, *_cs_iter;
 #ifdef HAVE_ICONV
 # define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
 #else
@@ -66,10 +107,17 @@ static char          *_cs_iter_base, *_cs_iter;
 #endif
 #define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
 
-/* Initialize MIME type list */
+/* Initialize MIME type list / (lazy) create regular expression.
+ * __mt_load_file will prepend all entries of file onto *inject in order.
+ * Note: _mt_regcomp() will destruct mtnp if regex can't be compiled! */
 static void             _mt_init(void);
-static void             __mt_add_line(char const *line, size_t len,
-                           struct mtnode **tail);
+static bool_t           __mt_load_file(ui32_t orflags,
+                           char const *file, char **line, size_t *linesize);
+static struct mtnode *  __mt_add_line(ui32_t orflags,
+                           char const *line, size_t len);
+#ifdef HAVE_REGEX
+static bool_t           _mt_regcomp(struct mtnode *mtnp);
+#endif
 
 /* Is 7-bit enough? */
 #ifdef HAVE_ICONV
@@ -107,105 +155,284 @@ static void             _append_conv(char **buf, size_t *sz, size_t *pos,
 static void
 _mt_init(void)
 {
-   struct mtnode *tail = NULL;
-   char *line = NULL; /* TODO line pool */
-   size_t linesize = 0, linelen;
-   ui32_t idx, idx_ok;
-   char const *ccp, * const *srcs;
-   FILE *fp;
+   struct mtnode *tail;
+   char c, *line; /* TODO line pool (below) */
+   size_t linesize;
+   ui32_t i, j;
+   char const *srcs_arr[10], *ccp, **srcs;
    NYD_ENTER;
 
+   /* Always load our builtins */
+   for (tail = NULL, i = 0; i < NELEM(_mt_bltin); ++i) {
+      struct mtbltin const *mtbp = _mt_bltin + i;
+      struct mtnode *mtnp = smalloc(sizeof *mtnp);
+
+      if (tail != NULL)
+         tail->mt_next = mtnp;
+      else
+         _mt_list = mtnp;
+      tail = mtnp;
+      mtnp->mt_next = NULL;
+      mtnp->mt_flags = mtbp->mtb_flags;
+      mtnp->mt_mtlen = mtbp->mtb_mtlen;
+#ifdef HAVE_REGEX
+      mtnp->mt_regex = NULL;
+#endif
+      mtnp->mt._bltin = mtbp;
+   }
+
+   /*  */
    if ((ccp = ok_vlook(mimetypes_load_control)) == NULL)
-      idx_ok = (ui32_t)-1;
-   else for (idx_ok = 0; *ccp != '\0'; ++ccp)
-      switch (*ccp) {
-      case 'S':
-      case 's':
-         idx_ok |= 1 << 1;
-         break;
-      case 'U':
-      case 'u':
-         idx_ok |= 1 << 0;
-         break;
+      ccp = "US";
+   else if (*ccp == '\0')
+      goto jpolish;
+
+   srcs = srcs_arr + 2;
+   srcs[-1] = srcs[-2] = NULL;
+
+#ifdef HAVE_REGEX
+   if (strchr(ccp, '=') != NULL) {
+      line = savestr(ccp);
+
+      while ((ccp = n_strsep(&line, ',', TRU1)) != NULL) {
+         switch ((c = *ccp)) {
+         case 'S': case 's':
+            srcs_arr[1] = MIME_TYPES_SYS;
+            if (0) {
+               /* FALLTHRU */
+         case 'U': case 'u':
+               srcs_arr[0] = MIME_TYPES_USR;
+            }
+            if (ccp[1] != '\0')
+               goto jecontent;
+            break;
+         case 'F': case 'f':
+            if (*++ccp == '=' && *++ccp != '\0') {
+               if (PTR2SIZE(srcs - srcs_arr) < NELEM(srcs_arr))
+                  *srcs++ = ccp;
+               else if (options & OPT_D_V)
+                  fprintf(stderr,
+                     _("*mimetypes-load-control*: too many sources, "
+                        "skipping \"%s\"\n"), ccp);
+               continue;
+            }
+            /* FALLTHRU */
+         default:
+            if (options & OPT_D_V)
+jecontent:
+               fprintf(stderr,
+                  _("*mimetypes-load-control*: unsupported content: \"%s\"\n"),
+                  ccp);
+            break;
+         }
+      }
+   } else
+#endif /* HAVE_REGEX */
+   for (i = 0; (c = ccp[i]) != '\0'; ++i)
+      switch (c) {
+      case 'S': case 's': srcs_arr[1] = MIME_TYPES_SYS; break;
+      case 'U': case 'u': srcs_arr[0] = MIME_TYPES_USR; break;
       default:
-         /* XXX bad *mimetypes-load-control*; log error? */
+         if (options & OPT_D_V)
+            fprintf(stderr,
+               _("*mimetypes-load-control*: unsupported content: \"%s\"\n"),
+               ccp);
          break;
       }
 
-   for (idx = 1, srcs = _mt_sources; *srcs != NULL; idx <<= 1, ++srcs) {
-      if (!(idx & idx_ok) || (ccp = file_expand(*srcs)) == NULL)
+   /* Load all desired sources in order */
+   line = NULL;
+   linesize = 0;
+   for (j = 0, i = (ui32_t)PTR2SIZE(srcs - srcs_arr), srcs = srcs_arr; i > 0;
+         ++j, ++srcs, --i)
+      if (*srcs == NULL)
          continue;
-      if ((fp = Fopen(ccp, "r")) == NULL) {
-         /*fprintf(stderr, _("Cannot open `%s'\n"), fn);*/
-         continue;
+      else if (!__mt_load_file(
+            (j == 0 ? _MT_USR : (j == 1 ? _MT_SYS : _MT_REGEX)),
+            *srcs, &line, &linesize)) {
+         if ((options & OPT_D_V) || j > 1)
+            fprintf(stderr,
+               _("*mimetypes-load-control*: can't open or load \"%s\"\n"),
+               *srcs);
       }
-      while (fgetline(&line, &linesize, &linelen, NULL, fp, 0))
-         __mt_add_line(line, linelen, &tail);
-      Fclose(fp);
-   }
    if (line != NULL)
       free(line);
 
-   for (srcs = _mt_bltin; *srcs != NULL; ++srcs)
-      __mt_add_line(*srcs, strlen(*srcs), &tail);
+   /* Finally, in debug or very verbose mode, compile regular expressions right
+    * away in order to be able to produce compact block of info messages */
+jpolish:
+#ifdef HAVE_REGEX
+   if (options & OPT_D_VV)
+      for (tail = _mt_list; tail != NULL;) {
+         struct mtnode *xnp = tail;
+         tail = tail->mt_next;
+         if (xnp->mt_flags & _MT_REGEX)
+            _mt_regcomp(xnp);
+      }
+#endif
    NYD_LEAVE;
 }
 
-static void
-__mt_add_line(char const *line, size_t len, struct mtnode **tail)
+static bool_t
+__mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
 {
-   char const *typ;
-   size_t tlen;
-   struct mtnode *mtn;
+   char const *cp;
+   FILE *fp;
+   struct mtnode *head, *tail, *mtnp;
+   size_t len;
    NYD_ENTER;
 
-   /* Drop anything after a comment */
+   if ((cp = file_expand(file)) == NULL || (fp = Fopen(cp, "r")) == NULL) {
+      cp = NULL;
+      goto jleave;
+   }
+
+   for (head = tail = NULL; fgetline(line, linesize, NULL, &len, fp, 0) != 0;)
+      if ((mtnp = __mt_add_line(orflags, *line, len)) != NULL) {
+         if (head == NULL)
+            head = tail = mtnp;
+         else
+            tail->mt_next = mtnp;
+         tail = mtnp;
+      }
+   if (head != NULL) {
+      tail->mt_next = _mt_list;
+      _mt_list = head;
+   }
+
+   Fclose(fp);
+jleave:
+   NYD_LEAVE;
+   return (cp != NULL);
+}
+
+static struct mtnode *
+__mt_add_line(ui32_t orflags, char const *line, size_t len)
+{
+   struct mtnode *mtnp = NULL;
+   char const *typ, *subtyp;
+   size_t tlen, i;
+   NYD_ENTER;
+
+   /* Drop anything after a comment first */
    if ((typ = memchr(line, '#', len)) != NULL)
       len = PTR2SIZE(typ - line);
 
-   /* Isolate MIME type, trim any whitespace */
-   while (len > 0 && blankspacechar(*line))
+   /* Then trim any trailing whitespace from line (including NL/CR) */
+   while (len > 0 && spacechar(line[len - 1]))
+      --len;
+
+   /* Isolate MIME type, trim any whitespace from it */
+   while (len > 0 && blankchar(*line))
       ++line, --len;
    typ = line;
-   while (len > 0 && !blankspacechar(*line))
+   while (len > 0 && !blankchar(*line))
       ++line, --len;
    if (len == 0)
       goto jleave;
    tlen = PTR2SIZE(line - typ);
-   if (memchr(typ, '/', tlen) == NULL) {
+   /* Ignore empty lines */
+   if (tlen == 0)
+      goto jleave;
+
+   if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
       if (options & OPT_D_V)
-         fprintf(stderr, "mime.types(5): invalid MIME type: %s\n", typ);
+         fprintf(stderr, "mime.types(5): invalid MIME type: \"%s\"\n", typ);
       goto jleave;
    }
+   ++subtyp;
 
-   /* Isolate list of extensions, trim any whitespace */
-   while (len > 0 && blankspacechar(*line))
+   /* Map to mime_type */
+   tlen = PTR2SIZE(subtyp - typ);
+   for (i = __MT_TMIN;;) {
+      if (!ascncasecmp(_mt_typnames[i], typ, tlen)) {
+         orflags |= i;
+         tlen = PTR2SIZE(line - subtyp);
+         typ = subtyp;
+         break;
+      }
+      if (++i == __MT_TMAX) {
+         orflags |= _MT_OTHER;
+         tlen = PTR2SIZE(line - typ);
+         break;
+      }
+   }
+
+   /* Strip leading whitespace from the list of extensions / the regex;
+    * trailing WS has already been trimmed away above.
+    * Be silent on slots which define a mimetype without any value */
+   while (len > 0 && blankchar(*line))
       ++line, --len;
    if (len == 0)
       goto jleave;
-   while (len > 0 && blankspacechar(line[len - 1]))
-      --len;
-   if (len == 0)
-      goto jleave;
 
-   mtn = smalloc(sizeof(struct mtnode) -
-         VFIELD_SIZEOF(struct mtnode, mt_line) + tlen + 1 + len +1);
-   if (*tail != NULL)
-      (*tail)->mt_next = mtn;
-   else
-      _mt_list = mtn;
-   *tail = mtn;
-   mtn->mt_next = NULL;
-   mtn->mt_mtlen = tlen;
-   memcpy(mtn->mt_line, typ, tlen);
-   mtn->mt_line[tlen] = '\0';
-   ++tlen;
-   memcpy(mtn->mt_line + tlen, line, len);
+   /*  */
+   mtnp = smalloc(sizeof(*mtnp) -
+         VFIELD_SIZEOF(struct mtloaded, mtl_line) + tlen + len +1);
+   mtnp->mt_next = NULL;
+   mtnp->mt_flags = (orflags |= _MT_LOADED);
+   mtnp->mt_mtlen = (ui32_t)tlen;
+#ifdef HAVE_REGEX
+   mtnp->mt_regex = NULL;
+#endif
+   memcpy(mtnp->mt._loaded.mtl_line, typ, tlen);
+   memcpy(mtnp->mt._loaded.mtl_line + tlen, line, len);
    tlen += len;
-   mtn->mt_line[tlen] = '\0';
+   mtnp->mt._loaded.mtl_line[tlen] = '\0';
+
 jleave:
    NYD_LEAVE;
+   return mtnp;
 }
+
+#ifdef HAVE_REGEX
+static bool_t
+_mt_regcomp(struct mtnode *mtnp)
+{
+   regex_t *rep;
+   char const *line;
+   NYD2_ENTER;
+
+   assert(mtnp->mt_flags & _MT_REGEX);
+
+   /* Lines of the dynamically loaded f=FILE will only be compiled as regular
+    * expressions if any "magical" regular expression characters are seen */
+   if ((mtnp->mt_flags & (_MT_LOADED | _MT_USR | _MT_SYS)) == _MT_LOADED) {
+      line = mtnp->mt._loaded.mtl_line + mtnp->mt_mtlen;
+
+      if (!is_maybe_regex(line)) {
+         mtnp->mt_flags &= ~_MT_REGEX;
+         goto jleave;
+      }
+   } else
+      line = mtnp->mt._bltin->mtb_line + mtnp->mt_mtlen;
+
+   rep = smalloc(sizeof *rep);
+
+   if (regcomp(rep, line, REG_EXTENDED | REG_ICASE | REG_NOSUB) == 0)
+      mtnp->mt_regex = rep;
+   else {
+      free(rep);
+      fprintf(stderr, _("Invalid regular expression: \"%s\"\n"), line);
+
+      if (mtnp == _mt_list)
+         _mt_list = mtnp->mt_next;
+      else {
+         struct mtnode *x = _mt_list;
+         while (x->mt_next != mtnp)
+            x = x->mt_next;
+         x->mt_next = mtnp->mt_next;
+      }
+
+      free(mtnp);
+      mtnp = NULL;
+   }
+
+jleave:
+   NYD2_LEAVE;
+   return (mtnp != NULL);
+}
+#endif /* HAVE_REGEX */
 
 #ifdef HAVE_ICONV
 static bool_t
@@ -1270,7 +1497,7 @@ mime_classify_content_of_part(struct mimepart *mpp)
 
    if (!asccasecmp(ct, "application/octet-stream") && mpp->m_filename != NULL &&
          (mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
-      ct = mime_classify_content_type_by_fileext(mpp->m_filename);
+      ct = mime_classify_content_type_by_filename(mpp->m_filename);
       if (ct == NULL)
          /* TODO add bit 1 to possible *mime-counter-evidence* value
           * TODO and let it mean to save the attachment in
@@ -1315,42 +1542,82 @@ jleave:
 }
 
 FL char *
-mime_classify_content_type_by_fileext(char const *name)
+mime_classify_content_type_by_filename(char const *name)
 {
    char *content = NULL;
-   struct mtnode *mtn;
-   size_t nlen;
+   struct mtnode *mtnp;
+   char const *n_ext;
+   size_t nlen, elen, i;
    NYD_ENTER;
-
-   /* TODO mime_classify(): mime.types(5) has *-gz but we search dot!
-    * TODO i.e., we cannot handle files like dubidu.tar-gz; need globs! */
-   /* TODO even better: regex, with fast lists for (README|INSTALL|NEWS) etc,
-    * TODO that, also add some mechanism for filenames without extension */
-   if ((name = strrchr(name, '.')) == NULL || *++name == '\0')
-      goto jleave;
 
    if (_mt_list == NULL)
       _mt_init();
    if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
       goto jleave;
 
-   nlen = strlen(name);
-   for (mtn = _mt_list; mtn != NULL; mtn = mtn->mt_next) {
-      char const *ext = mtn->mt_line + mtn->mt_mtlen + 1,
-         *cp = ext;
-      do {
+   if ((nlen = strlen(name)) == 0)
+      goto jleave;
+
+   /* Try to isolate an extension */
+   for (n_ext = name + nlen, elen = 0;; ++elen)
+      if (n_ext[-1] == '.')
+         break;
+      else if (--n_ext == name) {
+         elen = 0;
+         DBG( n_ext = name + nlen; )
+         break;
+      }
+
+   /* And then check all the MIME types.  Though it seems rather odd and not
+    * all checked implementations do it, */
+   for (mtnp = _mt_list; mtnp != NULL;) {
+      char const *line, *m_ext, *cp;
+      struct mtnode *xnp = mtnp;
+
+      mtnp = mtnp->mt_next;
+      line = (xnp->mt_flags & _MT_LOADED)
+            ? xnp->mt._loaded.mtl_line : xnp->mt._bltin->mtb_line;
+
+#ifdef HAVE_REGEX
+      if (xnp->mt_flags & _MT_REGEX) {
+         if ((xnp->mt_regex == NULL && !_mt_regcomp(xnp)) ||
+               regexec(xnp->mt_regex, name, 0,NULL, 0) == REG_NOMATCH)
+            continue;
+         goto jfound;
+      } else
+#endif
+      for (m_ext = line + xnp->mt_mtlen;; m_ext = cp) {
+         cp = m_ext;
+         while (whitechar(*cp))
+            ++cp;
+         m_ext = cp;
          while (!whitechar(*cp) && *cp != '\0')
             ++cp;
-         /* Better to do case-insensitive comparison on extension, since the
-          * RFC doesn't specify case of attribute values? */
-         if (nlen == PTR2SIZE(cp - ext) && !ascncasecmp(name, ext, nlen)) {
-            content = savestrbuf(mtn->mt_line, mtn->mt_mtlen);
-            goto jleave;
+
+         if ((i = PTR2SIZE(cp - m_ext)) == 0)
+            break;
+         else if (elen != i || ascncasecmp(n_ext, m_ext, elen))
+            continue;
+
+         /* Found it */
+#ifdef HAVE_REGEX
+jfound:
+#endif
+         i = xnp->mt_mtlen;
+         if ((xnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
+            name = "";
+            elen = 0;
+         } else {
+            name = _mt_typnames[xnp->mt_flags & __MT_TMASK];
+            elen = strlen(name);
          }
-         while (whitechar(*cp) && *cp != '\0')
-            ++cp;
-         ext = cp;
-      } while (*ext != '\0');
+         content = salloc(i + elen +1);
+         if (elen)
+            memcpy(content, name, elen);
+         memcpy(content + elen, line, i);
+         content[elen += i] = '\0';
+         goto jleave;
+      }
    }
 jleave:
    NYD_LEAVE;
@@ -1367,12 +1634,14 @@ mimepart_get_handler(struct mimepart const *mpp)
    char *buf, *rv;
    NYD_ENTER;
 
-   /* TODO some mechanism for filenames without extension */
    el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
          *++es != '\0') ? strlen(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
          (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
    if ((l = MAX(el, cl)) == 0) {
+
+/* FIXME here and below : another mime-counter-evidence bit, content check */
+
       rv = NULL;
       goto jleave;
    }
@@ -1415,7 +1684,7 @@ FL int
 c_mimetypes(void *v)
 {
    char **argv = v;
-   struct mtnode *mtn;
+   struct mtnode *mtnp;
    NYD_ENTER;
 
    if (*argv == NULL)
@@ -1441,20 +1710,34 @@ jlist:   {
    if (_mt_list == NULL)
       _mt_init();
    if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
-      fprintf(stderr, _("Interpolate what file?\n"));
+      fprintf(stderr, _("*mimetypes-load-control*: interpolate what file?\n"));
       v = NULL;
       goto jleave;
    }
 
-   if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
+         == NULL) {
       perror("tmpfile");
       v = NULL;
       goto jleave;
    }
 
-   for (l = 0, mtn = _mt_list; mtn != NULL; ++l, mtn = mtn->mt_next)
-      fprintf(fp, "%s\t%s\n", mtn->mt_line, mtn->mt_line + mtn->mt_mtlen + 1);
+   for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
+      char const *typ, *xtyp, *val;
+
+      typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
+            ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+      xtyp = (mtnp->mt_flags & _MT_LOADED)
+            ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
+      val = xtyp + mtnp->mt_mtlen;
+
+      fprintf(fp, "%c%c %s%.*s <%s>\n",
+         (mtnp->mt_flags & _MT_REGEX ? '*' : ' '),
+         (mtnp->mt_flags & _MT_USR ? 'U'
+            : (mtnp->mt_flags & _MT_SYS ? 'S'
+            : (mtnp->mt_flags & _MT_LOADED ? 'F' : '@'))),
+         typ, (int)mtnp->mt_mtlen, xtyp, val);
+   }
 
    page_or_print(fp, l);
    Fclose(fp);
@@ -1464,9 +1747,15 @@ jlist:   {
 jclear:
    if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
       _mt_list = NULL;
-   while ((mtn = _mt_list) != NULL) {
-      _mt_list = mtn->mt_next;
-      free(mtn);
+   while ((mtnp = _mt_list) != NULL) {
+      _mt_list = mtnp->mt_next;
+#ifdef HAVE_REGEX
+      if ((mtnp->mt_flags & _MT_REGEX) && mtnp->mt_regex != NULL) {
+         regfree(mtnp->mt_regex);
+         free(mtnp->mt_regex);
+      }
+#endif
+      free(mtnp);
    }
    goto jleave;
 }

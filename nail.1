@@ -530,11 +530,21 @@ and the
 option will allow leaving compose mode by writing a line consisting
 solely of a dot
 .Pf ( Ql . Ns ) .
+.
+.Pp
 Very important, though, is to define which
 .Sx "CHARACTER SETS"
 may be used when sending messages, usually by setting the option
 .Va sendcharsets
-accordingly.
+accordingly,
+having read the section
+.Sx "THE mime.types FILES"
+to understand how outgoing attachments are MIME-type classified and the
+knowledge that messages are sent asynchronously unless the variable
+.Va sendwait
+is set: only with it MTA delivery errors will be recognizable.
+.
+.Pp
 Saving a copy of the sent messages in a
 .Va record
 may also be desireable \(en as for most mailbox file targets some
@@ -2810,6 +2820,8 @@ In the former case all sources are loaded first as necessary.
 The
 .Va mimetypes-load-control
 option can be used to fine-tune which sources are loaded.
+Also see the section on
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Ic mlist
@@ -5480,16 +5492,39 @@ overridden content-type by showing a plus-sign (`+').
 .It Va mimetypes-load-control
 This option can be used to control which of the
 .Xr mime.types 5
-MIME type databases are loaded by \*(UA.
-If the letter `u' (or `U') is part of this options value, then the
-user's personal
+databases are loaded by \*(UA, as furtherly described in the section
+.Sx "THE mime.types FILES" .
+If the letter
+.Ql u
+is part of the option value, then the user's personal
 .Pa ~/.mime.types
-file will be loaded (if it exists);
-likewise the letter `s' (or `S') controls loading of the system wide
-.Pa /etc/mime.types .
+file will be loaded (if it exists); likewise the letter
+.Ql s
+controls loading of the system wide
+.Pa /etc/mime.types ;
+the user file is always loaded first, matching is case-insensitive.
 If this option is not set \*(UA will try to load both files instead.
-Incorporation of the MIME types that are compiled into \*(UA cannot be
-suppressed.
+Incorporation of the MIME types that are compiled into \*(UA cannot
+be suppressed, but they will always be matched last.
+.Pp
+If the \*(OPal regular expression support is available (see
+.Xr re_format 7
+for more on that) then a different syntax can be used:
+if the option value contains an equals sign
+.Ql =
+then it is instead parsed as a comma-separated list of the described
+letters plus
+.Ql f=FILENAME
+pairs; the given filenames will be expanded and loaded, their content
+will be optionally interpreted as regular expressions as furtherly
+described in the section
+.Sx "THE mime.types FILES" .
+Whereas regular expressions are lazy compiled by default \*(UA will
+bulk compile all regular expressions of all sources when in
+.Va debug
+or very
+.Va verbose
+mode.
 .
 .Mx
 .It Va NAIL_EXTRA_RC
@@ -6672,20 +6707,44 @@ syntax:
 .Dl type/subtype	extension [extension ...]
 .
 .Pp
-where `type/subtype' are strings describing the file contents,
-and `extension' is the part of a filename starting after the last dot.
-Any line not immediately beginning with an ASCII alphabetical character
-is ignored by \*(UA.
+where
+.Ql type/subtype
+are strings describing the file contents, and one or multiple
+.Ql extension
+name the part of a filename starting after the last dot.
+Comments may be introduced anywhere on a line with a number sign
+.Ql # ,
+causing the remaining line to be discarded.
+\*(OPally \*(UA supports an extended, non-portable syntax in specially
+crafted files which possibly (if any
+.Dq magical
+.Xr re_format 7
+regular expression character is seen) use a single regular expression
+instead of a list of extensions:
+.
+.Bd -literal -offset indent
+type/subtype regular-expression
+# E.g.
+text/plain   ^(README|.*\e.txt)$
+.Ed
+.
+.Pp
 The variable
 .Va mimetypes-load-control
 can be used to control the sources of MIME types, and the
 .Ic mimetypes
 command can be used to show the list of mime types known to \*(UA.
-If there is a match with the `extension' of the file to attach,
-the given `type/subtype' pair is used.
+If there is a match with any
+.Ql extension
+or
+.Ql regular-expression
+of the file to attach, the given mimetype pair is used.
 Otherwise, or if the filename has no extension,
-the content types `text/plain' or `application/octet-stream' are used,
-dependent upon file content inspection.
+the content types
+.Ql text/plain
+or
+.Ql application/octet-stream
+are used, dependent upon file content inspection.
 Also see
 .Va mime-allow-text-controls .
 .\" }}}
@@ -6825,7 +6884,7 @@ set sendcharsets=utf-8,iso-8859-1
 # exit status of the MTA (including the builtin SMTP one)!
 set sendwait
 
-# Don't try to load any external mime.types(5) descriptions
+# Only use builtin MIME types, no mime.types(5) files
 set mimetypes-load-control
 
 # Default directory where we act in (relative to $HOME)
