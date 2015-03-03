@@ -67,10 +67,6 @@ struct mtbltin {
    char const  *mtb_line;
 };
 
-struct mtloaded {
-   char        mtl_line[VFIELD_SIZE(8)];
-};
-
 struct mtnode {
    struct mtnode  *mt_next;
    ui32_t         mt_flags;
@@ -78,10 +74,9 @@ struct mtnode {
 #ifdef HAVE_REGEX
    regex_t        *mt_regex;
 #endif
-   union {
-      struct mtbltin const *_bltin;
-      struct mtloaded      _loaded;
-   }              mt;
+   /* C99 forbids flexible arrays in union, so unfortunately we waste a pointer
+    * that could already store character data here */
+   char const     *mt_line;
 };
 
 static struct mtbltin const   _mt_bltin[] = {
@@ -179,7 +174,7 @@ _mt_init(void)
 #ifdef HAVE_REGEX
       mtnp->mt_regex = NULL;
 #endif
-      mtnp->mt._bltin = mtbp;
+      mtnp->mt_line = mtbp->mtb_line;
    }
 
    /*  */
@@ -368,18 +363,20 @@ __mt_add_line(ui32_t orflags, char const *line, size_t len)
       goto jleave;
 
    /*  */
-   mtnp = smalloc(sizeof(*mtnp) -
-         VFIELD_SIZEOF(struct mtloaded, mtl_line) + tlen + len +1);
+   mtnp = smalloc(sizeof(*mtnp) + tlen + len +1);
    mtnp->mt_next = NULL;
    mtnp->mt_flags = (orflags |= _MT_LOADED);
    mtnp->mt_mtlen = (ui32_t)tlen;
 #ifdef HAVE_REGEX
    mtnp->mt_regex = NULL;
 #endif
-   memcpy(mtnp->mt._loaded.mtl_line, typ, tlen);
-   memcpy(mtnp->mt._loaded.mtl_line + tlen, line, len);
-   tlen += len;
-   mtnp->mt._loaded.mtl_line[tlen] = '\0';
+   {  char *l = (char*)(mtnp + 1);
+      mtnp->mt_line = l;
+      memcpy(l, typ, tlen);
+      memcpy(l + tlen, line, len);
+      tlen += len;
+      l[tlen] = '\0';
+   }
 
 jleave:
    NYD_LEAVE;
@@ -398,15 +395,12 @@ _mt_regcomp(struct mtnode *mtnp)
 
    /* Lines of the dynamically loaded f=FILE will only be compiled as regular
     * expressions if any "magical" regular expression characters are seen */
-   if ((mtnp->mt_flags & (_MT_LOADED | _MT_USR | _MT_SYS)) == _MT_LOADED) {
-      line = mtnp->mt._loaded.mtl_line + mtnp->mt_mtlen;
-
-      if (!is_maybe_regex(line)) {
-         mtnp->mt_flags &= ~_MT_REGEX;
-         goto jleave;
-      }
-   } else
-      line = mtnp->mt._bltin->mtb_line + mtnp->mt_mtlen;
+   line = mtnp->mt_line + mtnp->mt_mtlen;
+   if ((mtnp->mt_flags & (_MT_LOADED | _MT_USR | _MT_SYS)) == _MT_LOADED &&
+         !is_maybe_regex(line)) {
+      mtnp->mt_flags &= ~_MT_REGEX;
+      goto jleave;
+   }
 
    rep = smalloc(sizeof *rep);
 
@@ -1590,8 +1584,7 @@ mime_classify_content_type_by_filename(char const *name)
       struct mtnode *xnp = mtnp;
 
       mtnp = mtnp->mt_next;
-      line = (xnp->mt_flags & _MT_LOADED)
-            ? xnp->mt._loaded.mtl_line : xnp->mt._bltin->mtb_line;
+      line = xnp->mt_line;
 
 #ifdef HAVE_REGEX
       if (xnp->mt_flags & _MT_REGEX) {
@@ -1707,15 +1700,13 @@ c_mimetypes(void *v)
       FILE *fp;
       size_t l;
 
-      if (argv[1] != NULL)
+      if (argv[0] != NULL && argv[1] != NULL)
          goto jerr;
 
       if (_mt_list == NULL)
          _mt_init();
-      if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
-         fprintf(stderr,
-            _("*mimetypes-load-control*: interpolate what file?\n"));
-         v = NULL;
+      if (_mt_list == (struct mtnode*)-1) {
+         printf(_("*mimetypes-load-control*: no mime.types(5) available\n"));
          goto jleave;
       }
 
@@ -1727,20 +1718,17 @@ c_mimetypes(void *v)
       }
 
       for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
-         char const *typ, *xtyp, *val;
-
-         typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
+         char const *typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
                ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-         xtyp = (mtnp->mt_flags & _MT_LOADED)
-               ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
-         val = xtyp + mtnp->mt_mtlen;
 
          fprintf(fp, "%c%c %s%.*s <%s>\n",
-            (mtnp->mt_flags & _MT_REGEX ? '*' : ' '),
+            (mtnp->mt_flags & _MT_REGEX
+               ? (mtnp->mt_regex != NULL ? '*' : '?') : ' '),
             (mtnp->mt_flags & _MT_USR ? 'U'
                : (mtnp->mt_flags & _MT_SYS ? 'S'
                : (mtnp->mt_flags & _MT_LOADED ? 'F' : '@'))),
-            typ, (int)mtnp->mt_mtlen, xtyp, val);
+            typ, (int)mtnp->mt_mtlen, mtnp->mt_line,
+            mtnp->mt_line + mtnp->mt_mtlen);
       }
 
       page_or_print(fp, l);
@@ -1782,7 +1770,7 @@ c_mimetypes(void *v)
       if (_mt_list == NULL || _mt_list == (struct mtnode*)-1)
          ;
       else for (++argv, lnp = NULL, mtnp = _mt_list; mtnp != NULL;) {
-         char const *typ, *xtyp;
+         char const *typ;
          char *val;
          size_t i;
 
@@ -1793,12 +1781,10 @@ c_mimetypes(void *v)
             typ = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
             i = strlen(typ);
          }
-         xtyp = (mtnp->mt_flags & _MT_LOADED)
-               ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
 
          val = ac_alloc(i + mtnp->mt_mtlen +1);
          memcpy(val, typ, i);
-         memcpy(val + i, xtyp, mtnp->mt_mtlen);
+         memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';
          i = asccasecmp(val, *argv);
          ac_free(val);
