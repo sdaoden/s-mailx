@@ -1218,14 +1218,8 @@ FL int         mime_classify_file(FILE *fp, char const **contenttype,
  * but otherwise mpp is const */
 FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
 
-/* Return a Content-Type matching the name, or NULL if none could be found */
-FL char *      mime_classify_content_type_by_filename(char const *name);
-
 /* Get the (pipe) handler for a part, or NULL if there is none known */
 FL char *      mimepart_get_handler(struct mimepart const *mpp);
-
-/* `mimetypes' command */
-FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
@@ -1311,6 +1305,16 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * message); caller is responsible to free buffers */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
+
+/*
+ * mime_types.c
+ */
+
+/* `mimetypes' command */
+FL int         c_mimetypes(void *v);
+
+/* Return a Content-Type matching the name, or NULL if none could be found */
+FL char *      mime_classify_content_type_by_filename(char const *name);
 
 /*
  * nam_a_grp.c
