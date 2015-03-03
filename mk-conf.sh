@@ -42,7 +42,7 @@ option_maximal() {
 
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
-   case ${CONFIG} in
+   case `echo ${CONFIG} | tr '[a-z]' '[A-Z]'` in
    NULLTEST)
       option_reset
       ;;
@@ -378,6 +378,7 @@ while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
    if echo "${i}" | grep -e '^WANT_' >/dev/null 2>&1; then
+      j="`echo ${j} | tr '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
          printf "/*#define ${i}*/\n" >> ${newh}
