@@ -118,6 +118,7 @@ static struct mtnode *  __mt_add_line(ui32_t orflags,
 #ifdef HAVE_REGEX
 static bool_t           _mt_regcomp(struct mtnode *mtnp);
 #endif
+static void             _mtnode_free(struct mtnode *mtnp);
 
 /* Is 7-bit enough? */
 #ifdef HAVE_ICONV
@@ -433,6 +434,20 @@ jleave:
    return (mtnp != NULL);
 }
 #endif /* HAVE_REGEX */
+
+static void
+_mtnode_free(struct mtnode *mtnp)
+{
+   NYD2_ENTER;
+#ifdef HAVE_REGEX
+   if ((mtnp->mt_flags & _MT_REGEX) && mtnp->mt_regex != NULL) {
+      regfree(mtnp->mt_regex);
+      free(mtnp->mt_regex);
+   }
+#endif
+   free(mtnp);
+   NYD2_LEAVE;
+}
 
 #ifdef HAVE_ICONV
 static bool_t
@@ -1684,80 +1699,133 @@ FL int
 c_mimetypes(void *v)
 {
    char **argv = v;
-   struct mtnode *mtnp;
+   struct mtnode *lnp, *mtnp;
    NYD_ENTER;
 
-   if (*argv == NULL)
-      goto jlist;
-   if (argv[1] != NULL)
+   /* Null or one argument forms */
+   if (*argv == NULL || !asccasecmp(*argv, "show")) {
+      FILE *fp;
+      size_t l;
+
+      if (argv[1] != NULL)
+         goto jerr;
+
+      if (_mt_list == NULL)
+         _mt_init();
+      if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
+         fprintf(stderr,
+            _("*mimetypes-load-control*: interpolate what file?\n"));
+         v = NULL;
+         goto jleave;
+      }
+
+      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
+            == NULL) {
+         perror("tmpfile");
+         v = NULL;
+         goto jleave;
+      }
+
+      for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
+         char const *typ, *xtyp, *val;
+
+         typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
+               ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+         xtyp = (mtnp->mt_flags & _MT_LOADED)
+               ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
+         val = xtyp + mtnp->mt_mtlen;
+
+         fprintf(fp, "%c%c %s%.*s <%s>\n",
+            (mtnp->mt_flags & _MT_REGEX ? '*' : ' '),
+            (mtnp->mt_flags & _MT_USR ? 'U'
+               : (mtnp->mt_flags & _MT_SYS ? 'S'
+               : (mtnp->mt_flags & _MT_LOADED ? 'F' : '@'))),
+            typ, (int)mtnp->mt_mtlen, xtyp, val);
+      }
+
+      page_or_print(fp, l);
+      Fclose(fp);
+   } else if (!asccasecmp(*argv, "clear")) {
+      if (argv[1] != NULL)
+         goto jerr;
+
+      if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
+         _mt_list = NULL;
+      while ((mtnp = _mt_list) != NULL) {
+         _mt_list = mtnp->mt_next;
+         _mtnode_free(mtnp);
+      }
+   }
+   /* Two argument forms */
+   else if (argv[1] == NULL)
       goto jerr;
-   if (!asccasecmp(*argv, "show"))
-      goto jlist;
-   if (!asccasecmp(*argv, "clear"))
-      goto jclear;
+   else if (!asccasecmp(*argv, "add")) {
+      if (_mt_list == NULL)
+         _mt_init();
+      if (_mt_list == (struct mtnode*)-1)
+         _mt_list = NULL;
+
+      ++argv;
+      mtnp = __mt_add_line(_MT_LOADED | _MT_REGEX, *argv, strlen(*argv));
+      if ((v = mtnp) != NULL) {
+         mtnp->mt_next = _mt_list;
+         _mt_list = mtnp;
+#ifdef HAVE_REGEX
+         if (!_mt_regcomp(mtnp))
+            v = NULL;
+#endif
+      }
+   } else if (!asccasecmp(*argv, "delete") || !asccasecmp(*argv, "deleteall")) {
+      bool_t delall = (argv[0][6] != '\0');
+
+      v = NULL;
+      if (_mt_list == NULL || _mt_list == (struct mtnode*)-1)
+         ;
+      else for (++argv, lnp = NULL, mtnp = _mt_list; mtnp != NULL;) {
+         char const *typ, *xtyp;
+         char *val;
+         size_t i;
+
+         if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
+            typ = "";
+            i = 0;
+         } else {
+            typ = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+            i = strlen(typ);
+         }
+         xtyp = (mtnp->mt_flags & _MT_LOADED)
+               ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
+
+         val = ac_alloc(i + mtnp->mt_mtlen +1);
+         memcpy(val, typ, i);
+         memcpy(val + i, xtyp, mtnp->mt_mtlen);
+         val[i += mtnp->mt_mtlen] = '\0';
+         i = asccasecmp(val, *argv);
+         ac_free(val);
+
+         if (!i) {
+            struct mtnode *nnp = mtnp->mt_next;
+            if (lnp == NULL)
+               _mt_list = nnp;
+            else
+               lnp->mt_next = nnp;
+            _mtnode_free(mtnp);
+            mtnp = nnp;
+            v = (void*)0x1;
+            if (!delall)
+               break;
+         } else
+            lnp = mtnp, mtnp = mtnp->mt_next;
+      }
+   } else {
 jerr:
-   fprintf(stderr, "Synopsis: mimetypes: %s\n",
-      _("Either <show> (default) or <clear> the mime.types cache"));
-   v = NULL;
+      fprintf(stderr, "Synopsis: mimetypes: %s\n",
+         _("<show> or <clear> type list; <add> or <delete[all]> <type>s"));
+      v = NULL;
+   }
 jleave:
    NYD_LEAVE;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
-
-jlist:   {
-   FILE *fp;
-   size_t l;
-
-   if (_mt_list == NULL)
-      _mt_init();
-   if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1) {
-      fprintf(stderr, _("*mimetypes-load-control*: interpolate what file?\n"));
-      v = NULL;
-      goto jleave;
-   }
-
-   if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
-         == NULL) {
-      perror("tmpfile");
-      v = NULL;
-      goto jleave;
-   }
-
-   for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
-      char const *typ, *xtyp, *val;
-
-      typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
-            ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-      xtyp = (mtnp->mt_flags & _MT_LOADED)
-            ? mtnp->mt._loaded.mtl_line : mtnp->mt._bltin->mtb_line;
-      val = xtyp + mtnp->mt_mtlen;
-
-      fprintf(fp, "%c%c %s%.*s <%s>\n",
-         (mtnp->mt_flags & _MT_REGEX ? '*' : ' '),
-         (mtnp->mt_flags & _MT_USR ? 'U'
-            : (mtnp->mt_flags & _MT_SYS ? 'S'
-            : (mtnp->mt_flags & _MT_LOADED ? 'F' : '@'))),
-         typ, (int)mtnp->mt_mtlen, xtyp, val);
-   }
-
-   page_or_print(fp, l);
-   Fclose(fp);
-   }
-   goto jleave;
-
-jclear:
-   if (NELEM(_mt_bltin) == 0 && _mt_list == (struct mtnode*)-1)
-      _mt_list = NULL;
-   while ((mtnp = _mt_list) != NULL) {
-      _mt_list = mtnp->mt_next;
-#ifdef HAVE_REGEX
-      if ((mtnp->mt_flags & _MT_REGEX) && mtnp->mt_regex != NULL) {
-         regfree(mtnp->mt_regex);
-         free(mtnp->mt_regex);
-      }
-#endif
-      free(mtnp);
-   }
-   goto jleave;
 }
 
 FL void

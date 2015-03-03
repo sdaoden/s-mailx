@@ -2809,19 +2809,36 @@ will display the following message, not the current one.
 .
 .Mx
 .It Ic mimetypes
-Either
-.No \&( Ns Ar show
-or)
+In the null or one argument form this command will
+.Ar show
+(default without arguments) or
 .Ar clear
 the
 .Xr mime.types 5
-cache.
-In the former case all sources are loaded first as necessary.
-The
+cache; all sources are loaded first as necessary in the former case;
 .Va mimetypes-load-control
-option can be used to fine-tune which sources are loaded.
-Also see the section on
+can be used to fine-tune which sources are actually loaded.
+Refer to the section on
+.Sx "THE mime.types FILES"
+for more on this topic.
+.Pp
+With two arguments individual MIME types can be added or deleted via the
+subcommands
+.Ar add 'LINE' ,
+.Ar delete MIME-type
+and
+.Ar deleteall MIME-type .
+For the
+.Ar add 'LINE'
+case
+.Ql LINE
+is a complete MIME type specification, \*(OPally supporting regular
+expressions, as is furtherly described in the section
 .Sx "THE mime.types FILES" .
+Because MIME type specifications are not merged but only prepended to
+the list of searched specifications multiple specifications may exist
+for a single MIME type, which explains the existence of the subcommand
+.Ql deleteall .
 .
 .Mx
 .It Ic mlist
