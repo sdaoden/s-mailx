@@ -49,7 +49,7 @@ _update-release:
 	: $${UPLOAD:=sdaoden@frs.sourceforge.net:/home/frs/project/s-nail};\
 	: $${ACCOUNT:=sn_sf};\
 	DATE_MAN="`LC_ALL=C date -u +'%b %d, %Y'`";\
-	DATE_ISO="`date -u +%Y-%m-%d`";\
+	DATE_ISO="`LC_ALL=C date -u +%Y-%m-%d`";\
 	if [ "`git rev-parse --verify HEAD`" != \
 			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
@@ -67,12 +67,12 @@ _update-release:
 	\
 	GREP=grep SED=sed CMP=cmp MV=mv \
 		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
-	REL="`< version.h sed \
+	REL="`LC_ALL=C < version.h sed \
 		-e '/ VERSION /b X' -e d \
 		-e ':X' -e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
-	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
+	FREL=`echo $${REL} | LC_ALL=C sed -e 's/\./_/g'` &&\
 	\
-	< nail.1 > nail.1x awk '\
+	LC_ALL=C < nail.1 > nail.1x awk '\
 		BEGIN { written = 0 }\
 		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
 			if (written++ != 0)\
@@ -87,7 +87,7 @@ _update-release:
 	' &&\
 	mv -f nail.1x nail.1 &&\
 	\
-	< nail.rc > nail.rcx awk '\
+	LC_ALL=C < nail.rc > nail.rcx awk '\
 		BEGIN { written = 0 }\
 		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
 			if (written++ != 0)\
@@ -125,7 +125,7 @@ _update-release:
 	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	cd "$${UAGENT}-$${REL}" &&\
-		sed -e '/--BEGINSTRIP--/,$$ {' \
+		LC_ALL=C sed -e '/--BEGINSTRIP--/,$$ {' \
 				-e '/^\.$/d' -e '/^\.\\"/d' \
 			-e '}' \
 			-e '/^\.$/d' < nail.1 > nail.1x &&\

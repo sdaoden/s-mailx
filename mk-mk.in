@@ -37,7 +37,7 @@ config.o smtp.o: smtp_gssapi.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	< ./mime.types > $(@) $(AWK) '\
+	LC_ALL=C < ./mime.types > $(@) $(AWK) '\
 	function add(mt, ln) {\
 		gsub(/[[:space:]]+/, " ", ln);\
 		i = split(ln, i_a);\
@@ -105,7 +105,7 @@ test: all
 
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
-	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.1 > $(@) $(AWK) '\
 	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
@@ -128,7 +128,7 @@ mkman.1: nail.1 mk.mk
 mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
-	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
@@ -215,7 +215,8 @@ distclean: clean
 
 # MUST work with "GREP=grep SED=sed CMP=cmp MV=mv", otherwise modify makefile
 _update-version:
-	@if [ -z "$(VERSION)" ]; then \
+	@LC_ALL=C; export LC_ALL;\
+	if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="$${VERSION##v}";\
