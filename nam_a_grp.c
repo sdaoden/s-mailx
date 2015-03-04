@@ -533,7 +533,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       GP_TO_SUBCLASS(grp, gp);
 
       if (regcomp(&grp->gr_regex, id, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-         fprintf(stderr, _("Invalid regular expression: `%s'\n"), id);
+         fprintf(stderr, _("Invalid regular expression: \"%s\"\n"), id);
          free(gp);
          gp = NULL;
          goto jleave;
@@ -770,11 +770,12 @@ _mlmux(enum group_type gt, char **argv)
                gp->g_type |= GT_SUBSCRIBE;
                _MLMUX_LINKIN(gp);
             } else {
-               printf(_("Mailing-list already `mlsubscribe'd: `%s'\n"), *argv);
+               printf(_("Mailing-list already `mlsubscribe'd: \"%s\"\n"),
+                  *argv);
                rv = 1;
             }
          } else {
-            printf(_("Mailing-list already `mlist'ed: `%s'\n"), *argv);
+            printf(_("Mailing-list already `mlist'ed: \"%s\"\n"), *argv);
             rv = 1;
          }
       } else
@@ -818,7 +819,7 @@ jaster_entry:
                      goto jaster_redo;
                }
             } else {
-               fprintf(stderr, _("Mailing-list not `mlsubscribe'd: `%s'\n"),
+               fprintf(stderr, _("Mailing-list not `mlsubscribe'd: \"%s\"\n"),
                   *argv);
                rv = 1;
             }
@@ -826,7 +827,7 @@ jaster_entry:
          }
       } else if (_group_del(gt, *argv))
          continue;
-      fprintf(stderr, _("No such mailing-list: `%s'\n"), *argv);
+      fprintf(stderr, _("No such mailing-list: \"%s\"\n"), *argv);
       rv = 1;
    }
    NYD_LEAVE;
@@ -1491,7 +1492,7 @@ c_alias(void *v)
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
          _group_print(gp, stdout);
       else {
-         fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+         fprintf(stderr, _("No such alias: \"%s\"\n"), *argv);
          rv = 1;
       }
    } else {
@@ -1522,7 +1523,7 @@ c_unalias(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_ALIAS, *argv)) {
-      fprintf(stderr, _("No such alias: `%s'\n"), *argv);
+      fprintf(stderr, _("No such alias: \"%s\"\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;
@@ -1656,7 +1657,7 @@ c_shortcut(void *v)
       char *cp;
 
       if (argv[1] == NULL) {
-         fprintf(stderr, _("`%s': shortcut expansion is missing\n"), *argv);
+         fprintf(stderr, _("Shortcut expansion is missing: \"%s\"\n"), *argv);
          rv = 1;
          break;
       }
@@ -1680,7 +1681,7 @@ c_unshortcut(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_SHORTCUT, *argv)) {
-      fprintf(stderr, _("No such shortcut: `%s'\n"), *argv);
+      fprintf(stderr, _("No such shortcut: \"%s\"\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;
