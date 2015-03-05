@@ -349,8 +349,9 @@
      DS(N_("Un\"fwdignore\" <header-fields>")) },
    { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
      DS(N_("Un\"fwdretain\" <header-fields>")) },
-   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 2
-     DS(N_("<show> or <clear> type list; <add> or <delete[all]> <type>s")) },
+   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1000
+     DS(N_(
+     "<show>/<load>/<clear> list; <add>/<delete> <type>s; <match> <name>s")) },
    { "spamrate", &c_spam_rate, (A | M | R | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
    { "spamham", &c_spam_ham, (A | M | R | MSGLIST), 0, 0

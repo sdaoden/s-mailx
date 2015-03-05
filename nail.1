@@ -2811,7 +2811,9 @@ will display the following message, not the current one.
 .It Ic mimetypes
 In the null or one argument form this command will
 .Ar show
-(default without arguments) or
+(default without arguments),
+.Ar load
+or
 .Ar clear
 the
 .Xr mime.types 5
@@ -2822,23 +2824,16 @@ Refer to the section on
 .Sx "THE mime.types FILES"
 for more on this topic.
 .Pp
-With two arguments individual MIME types can be added or deleted via the
-subcommands
-.Ar add 'LINE' ,
-.Ar delete MIME-type
-and
-.Ar deleteall MIME-type .
+With two or more arguments individual MIME types can be added
+(prepended) or deleted via the subcommands
+.Ar add SPEC...
+.Ar delete TYPE... .
 For the
-.Ar add 'LINE'
+.Ar add SPEC
 case
-.Ql LINE
-is a complete MIME type specification, \*(OPally supporting regular
-expressions, as is furtherly described in the section
+.Ql SPEC
+is a complete MIME type specification as described in the section
 .Sx "THE mime.types FILES" .
-Because MIME type specifications are not merged but only prepended to
-the list of searched specifications multiple specifications may exist
-for a single MIME type, which explains the existence of the subcommand
-.Ql deleteall .
 .
 .Mx
 .It Ic mlist
@@ -5524,24 +5519,15 @@ If this option is not set \*(UA will try to load both files instead.
 Incorporation of the MIME types that are compiled into \*(UA cannot
 be suppressed, but they will always be matched last.
 .Pp
-If the \*(OPal regular expression support is available (see
-.Xr re_format 7
-for more on that) then a different syntax can be used:
-if the option value contains an equals sign
+More sources can be used by using a different syntax: if the value
+string contains an equals sign
 .Ql =
 then it is instead parsed as a comma-separated list of the described
 letters plus
 .Ql f=FILENAME
-pairs; the given filenames will be expanded and loaded, their content
-will be optionally interpreted as regular expressions as furtherly
-described in the section
+pairs; the given filenames will be expanded and loaded, and their
+content may use the extended syntax that is described in the section
 .Sx "THE mime.types FILES" .
-Whereas regular expressions are lazy compiled by default \*(UA will
-bulk compile all regular expressions of all sources when in
-.Va debug
-or very
-.Va verbose
-mode.
 .
 .Mx
 .It Va NAIL_EXTRA_RC
@@ -6732,36 +6718,13 @@ name the part of a filename starting after the last dot.
 Comments may be introduced anywhere on a line with a number sign
 .Ql # ,
 causing the remaining line to be discarded.
-\*(OPally \*(UA supports an extended, non-portable syntax in specially
-crafted files which possibly (if any
-.Dq magical
-.Xr re_format 7
-regular expression character is seen) use a single regular expression
-instead of a list of extensions:
-.
-.Bd -literal -offset indent
-type/subtype regular-expression
-# E.g.
-text/plain   ^(README|.*\e.txt)$
-.Ed
-.
-.Pp
-The variable
-.Va mimetypes-load-control
-can be used to control the sources of MIME types, and the
-.Ic mimetypes
-command can be used to show the list of mime types known to \*(UA.
-If there is a match with any
-.Ql extension
-or
-.Ql regular-expression
-of the file to attach, the given mimetype pair is used.
-Otherwise, or if the filename has no extension,
-the content types
-.Ql text/plain
-or
-.Ql application/octet-stream
-are used, dependent upon file content inspection.
+\*(UA also supports an extended, non-portable syntax in specially
+crafted files (like the one used for the builtin set of MIME types),
+which can be loaded via the alternative syntax in the value of
+.Va mimetypes-load-control ;
+the difference is that a special pipe handling indicator is placed at
+the beginning of the line, see
+.Va pipe-CONTENT/SUBCONTENT .
 Also see
 .Va mime-allow-text-controls .
 .\" }}}
