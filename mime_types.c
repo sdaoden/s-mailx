@@ -485,4 +485,60 @@ jleave:
    return content;
 }
 
+FL char *
+mime_type_mimepart_handler(struct mimepart const *mpp)
+{
+#define __S    "pipe-"
+#define __L    (sizeof(__S) -1)
+   char const *es, *cs;
+   size_t el, cl, l;
+   char *buf, *rv;
+   NYD_ENTER;
+
+   el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
+         *++es != '\0') ? strlen(es) : 0;
+   cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
+         (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
+   if ((l = MAX(el, cl)) == 0) {
+
+/* FIXME here and below : another mime-counter-evidence bit, content check */
+
+      rv = NULL;
+      goto jleave;
+   }
+
+   buf = ac_alloc(__L + l +1);
+   memcpy(buf, __S, __L);
+
+   /* File-extension handlers take precedence.
+    * Yes, we really "fail" here for file extensions which clash MIME types */
+   if (el > 0) {
+      memcpy(buf + __L, es, el +1);
+      for (rv = buf + __L; *rv != '\0'; ++rv)
+         *rv = lowerconv(*rv);
+
+      if ((rv = vok_vlook(buf)) != NULL)
+         goto jok;
+   }
+
+   /* Then MIME Content-Type: */
+   if (cl > 0) {
+      memcpy(buf + __L, cs, cl +1);
+      for (rv = buf + __L; *rv != '\0'; ++rv)
+         *rv = lowerconv(*rv);
+
+      if ((rv = vok_vlook(buf)) != NULL)
+         goto jok;
+   }
+
+   rv = NULL;
+jok:
+   ac_free(buf);
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef __L
+#undef __S
+}
+
 /* s-it-mode */

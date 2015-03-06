@@ -533,7 +533,7 @@ _pipecmd(char **result, struct mimepart const *mpp)
    *result = NULL;
 
    /* Do we have any handler for this part? */
-   if ((cp = mimepart_get_handler(mpp)) == NULL)
+   if ((cp = mime_type_mimepart_handler(mpp)) == NULL)
       ret = PIPE_NULL;
    /* User specified a command, inspect for special cases */
    else if (cp[0] != '@') {

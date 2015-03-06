@@ -1218,9 +1218,6 @@ FL int         mime_classify_file(FILE *fp, char const **contenttype,
  * but otherwise mpp is const */
 FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
 
-/* Get the (pipe) handler for a part, or NULL if there is none known */
-FL char *      mimepart_get_handler(struct mimepart const *mpp);
-
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);
@@ -1316,6 +1313,9 @@ FL int         c_unmimetype(void *v);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
 FL char *      mime_type_by_filename(char const *name);
+
+/* Get the (pipe) handler for a part, or NULL if there is none known */
+FL char *      mime_type_mimepart_handler(struct mimepart const *mpp);
 
 /*
  * nam_a_grp.c
