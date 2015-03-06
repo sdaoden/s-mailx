@@ -1138,7 +1138,7 @@ c_setenv(void *v)
    int err;
    NYD_ENTER;
 
-   if (!(err = !!(pstate & PS_STARTING)))
+   if (!(err = !(pstate & PS_STARTED)))
       err = !_var_set_env(ap, TRU1);
    NYD_LEAVE;
    return err;
@@ -1163,7 +1163,7 @@ c_unsetenv(void *v)
    int err;
    NYD_ENTER;
 
-   if (!(err = !!(pstate & PS_STARTING))) {
+   if (!(err = !(pstate & PS_STARTED))) {
       char **ap;
 
       for (ap = v; *ap != NULL; ++ap) {
@@ -1458,7 +1458,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if (!(pstate & (PS_STARTING | PS_IN_HOOK))) {
+   if ((pstate & (PS_STARTED | PS_IN_HOOK)) == PS_STARTED) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if ((i = setfile("%", 0)) < 0)

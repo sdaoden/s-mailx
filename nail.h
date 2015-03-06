@@ -954,7 +954,7 @@ do {\
 } while (0)
 
 enum program_state {
-   PS_STARTING       = 1<< 0,       /* In main.c startup code */
+   PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
 
    PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
    PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */

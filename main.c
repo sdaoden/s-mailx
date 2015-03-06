@@ -583,10 +583,8 @@ main(int argc, char *argv[])
    NYD_ENTER;
 
    /*
-    * Start our lengthy setup
+    * Start our lengthy setup, finalize by setting PS_STARTED
     */
-
-   pstate = PS_STARTING;
 
    progname = argv[0];
    _startup();
@@ -952,7 +950,7 @@ jgetopt_done:
     * We're finally completely setup and ready to go
     */
 
-   pstate &= ~PS_STARTING;
+   pstate |= PS_STARTED;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
