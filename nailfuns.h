@@ -1310,8 +1310,9 @@ FL int         b64_decode(struct str *out, struct str const *in,
  * mime_types.c
  */
 
-/* `mimetypes' command */
-FL int         c_mimetypes(void *v);
+/* `(un)?mimetype' commands */
+FL int         c_mimetype(void *v);
+FL int         c_unmimetype(void *v);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
 FL char *      mime_classify_content_type_by_filename(char const *name);

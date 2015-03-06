@@ -761,13 +761,14 @@ text) with either of the text-mode browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
-to view shell scripts as plain text
+teach \*(UA about MathML documents and make it display them as plain text
 and to open PDF attachments in an external PDF viewer, asynchronously:
 .
 .Bd -literal -offset indent
 #set pipe-text/html="elinks -force-html -dump 1"
 set pipe-text/html="lynx -stdin -dump -force_html"
-set pipe-application/x-sh=@
+mimetype 'application/mathml+xml mathml'
+set pipe-application/mathml+xml=@
 set pipe-application/pdf="@&cat > \e
       \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
     acroread \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
@@ -787,7 +788,7 @@ For more on MIME, also in respect to sending of messages, see the
 section
 .Sx "THE mime.types FILES"
 and the command
-.Ic mimetypes .
+.Ic mimetype .
 .\" }}}
 .
 .\" .Ss "Mailing lists" {{{
@@ -2808,32 +2809,18 @@ command issued after
 will display the following message, not the current one.
 .
 .Mx
-.It Ic mimetypes
-In the null or one argument form this command will
-.Ar show
-(default without arguments),
-.Ar load
-or
-.Ar clear
-the
-.Xr mime.types 5
-cache; all sources are loaded first as necessary in the former case;
+.It Ic mimetype
+Without any arguments the content of the MIME type cache will displayed.
+Otherwise each argument defines a complete MIME type specification of
+a type that shall be added (prepended) to the cache.
+In any event MIME type sources are loaded first as necessary \(en
 .Va mimetypes-load-control
 can be used to fine-tune which sources are actually loaded.
 Refer to the section on
 .Sx "THE mime.types FILES"
-for more on this topic.
-.Pp
-With two or more arguments individual MIME types can be added
-(prepended) or deleted via the subcommands
-.Ar add SPEC...
-.Ar delete TYPE... .
-For the
-.Ar add SPEC
-case
-.Ql SPEC
-is a complete MIME type specification as described in the section
-.Sx "THE mime.types FILES" .
+for more on MIME type specifications and this topic in general.
+MIME type unregistration and cache resets can be triggered with
+.Ic unmimetype .
 .
 .Mx
 .It Ic mlist
@@ -3477,6 +3464,20 @@ Remove an existing command
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 The special name `*' will remove all fields.
+.
+.Mx
+.It Ic unmimetype
+Delete all given MIME types, e.g.,
+.Ql unmimetype text/plain
+will remove all registered specifications for the MIME type
+.Ql text/plain .
+The special name
+.Ql *
+will discard all existing MIME types, and the special name
+.Ql reset
+will act the same but also reset internal state, causing a complete
+cache reinitialization
+.Dq next .
 .
 .Mx
 .It Ic unmlist
@@ -5514,13 +5515,13 @@ file will be loaded (if it exists); likewise the letter
 .Ql s
 controls loading of the system wide
 .Pa /etc/mime.types ;
-the user file is always loaded first, matching is case-insensitive.
+the user file is loaded first, letter matching is case-insensitive.
 If this option is not set \*(UA will try to load both files instead.
-Incorporation of the MIME types that are compiled into \*(UA cannot
-be suppressed, but they will always be matched last.
+Incorporation of the \*(UA-builtin MIME types cannot be suppressed,
+but they will be matched last.
 .Pp
-More sources can be used by using a different syntax: if the value
-string contains an equals sign
+More sources can be specified by using a different syntax: if the
+value string contains an equals sign
 .Ql =
 then it is instead parsed as a comma-separated list of the described
 letters plus
@@ -6714,18 +6715,25 @@ where
 .Ql type/subtype
 are strings describing the file contents, and one or multiple
 .Ql extension
-name the part of a filename starting after the last dot.
+name the part of a filename starting after the last dot (of interest).
 Comments may be introduced anywhere on a line with a number sign
 .Ql # ,
 causing the remaining line to be discarded.
-\*(UA also supports an extended, non-portable syntax in specially
-crafted files (like the one used for the builtin set of MIME types),
-which can be loaded via the alternative syntax in the value of
-.Va mimetypes-load-control ;
-the difference is that a special pipe handling indicator is placed at
-the beginning of the line, see
+\*(UA supports an extended, non-portable syntax in specially crafted
+files, which can be loaded via the alternative value syntax of
+.Va mimetypes-load-control
+and prepends a
+.Ql type-marker :
+.
+.Pp
+.Dl [type-marker ]type/subtype extension [extension ...]
+.
+.Pp
+Currently only the plain-text indicating
+.Ql @
+marker is supported; also see
 .Va pipe-CONTENT/SUBCONTENT .
-Also see
+And
 .Va mime-allow-text-controls .
 .\" }}}
 .

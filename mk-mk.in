@@ -60,14 +60,18 @@ mime_types.h: mime.types
 		add(ltype, $$0);\
 		next\
 	}\
-	/^@?[[:alpha:]]/ {\
-		if ($$1 !~ /^@?([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
+	/^(@ )?[[:alpha:]]/ {\
+		if ($$1 ~ /^@$$/) {\
+			pa = 1;\
+			$$1 = $$2;\
+			$$2 = ""\
+		} else\
+			pa = 0;\
+		if ($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
 			print "FAULTY MIME TYPE: <" $$1 ">" >> "/dev/stderr";\
 		ltype = $$1; $$1 = "";\
-		if (ltype ~ /^@/) {\
-			ltype = substr(ltype, 2);\
-			p_a[ltype] = 1\
-		}\
+		if (pa)\
+			p_a[ltype] = pa;\
 		if (!nt_a[ltype])\
 			no_a[++no_ai] = nt_a[ltype] = ltype;\
 		add(ltype, $$0)\
