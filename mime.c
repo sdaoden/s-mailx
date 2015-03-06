@@ -128,14 +128,14 @@ _conversion_by_encoding(void)
 
    if ((cp = ok_vlook(encoding)) == NULL)
       ret = MIME_DEFAULT_ENCODING;
-   else if (!strcmp(cp, "quoted-printable"))
+   else if (!asccasecmp(cp, "quoted-printable"))
       ret = CONV_TOQP;
-   else if (!strcmp(cp, "8bit"))
+   else if (!asccasecmp(cp, "8bit"))
       ret = CONV_8BIT;
-   else if (!strcmp(cp, "base64"))
+   else if (!asccasecmp(cp, "base64"))
       ret = CONV_TOB64;
    else {
-      fprintf(stderr, _("Warning: invalid encoding %s, using base64\n"),
+      fprintf(stderr, _("Warning: invalid *encoding* \"%s\", using Base64\n"),
          cp);
       ret = CONV_TOB64;
    }
