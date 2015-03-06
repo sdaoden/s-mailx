@@ -433,7 +433,7 @@ jdelall:
 }
 
 FL char *
-mime_classify_content_type_by_filename(char const *name)
+mime_type_by_filename(char const *name)
 {
    char *content = NULL;
    struct mtnode *mtnp;

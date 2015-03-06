@@ -1145,7 +1145,7 @@ mime_classify_content_of_part(struct mimepart *mpp)
 
    if (!asccasecmp(ct, "application/octet-stream") && mpp->m_filename != NULL &&
          (mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
-      ct = mime_classify_content_type_by_filename(mpp->m_filename);
+      ct = mime_type_by_filename(mpp->m_filename);
       if (ct == NULL)
          /* TODO add bit 1 to possible *mime-counter-evidence* value
           * TODO and let it mean to save the attachment in
