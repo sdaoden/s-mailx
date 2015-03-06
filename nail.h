@@ -757,55 +757,55 @@ enum mimecontent {
 #define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
 #define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
 
-/* xxx QP came later, maybe rewrite all to use mimecte_flags directly? */
-enum mimecte_flags {
-   MIMECTE_NONE,
-   MIMECTE_SALLOC = 1<<0,     /* Use salloc(), not srealloc().. */
+/* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
+enum mime_enc_flags {
+   MIMEEF_NONE,
+   MIMEEF_SALLOC     = 1<<0,  /* Use salloc(), not srealloc().. */
    /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
-   MIMECTE_BUF    = 1<<1,
-   MIMECTE_CRLF   = 1<<2,     /* (encode) Append "\r\n" to lines */
-   MIMECTE_LF     = 1<<3,     /* (encode) Append "\n" to lines */
+   MIMEEF_BUF        = 1<<1,
+   MIMEEF_CRLF       = 1<<2,  /* (encode) Append "\r\n" to lines */
+   MIMEEF_LF         = 1<<3,  /* (encode) Append "\n" to lines */
    /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
     * inject the desired line-ending whenever a linewrap is desired */
-   MIMECTE_MULTILINE = 1<<4,
+   MIMEEF_MULTILINE  = 1<<4,
    /* (encode) Quote with header rules, do not generate soft NL breaks?
     * For mustquote(), specifies wether special RFC 2047 header rules
     * should be used instead */
-   MIMECTE_ISHEAD = 1<<5,
+   MIMEEF_ISHEAD     = 1<<5,
    /* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in
     * that characters which would not be reported as "must-quote" when
     * detecting wether quoting is necessary at all will be reported as
     * "must-quote" if they have to be encoded in an encoded word */
-   MIMECTE_ISENCWORD = 1<<6
+   MIMEEF_ISENCWORD  = 1<<6
 };
 
 enum qpflags {
-   QP_NONE        = MIMECTE_NONE,
-   QP_SALLOC      = MIMECTE_SALLOC,
-   QP_BUF         = MIMECTE_BUF,
-   QP_ISHEAD      = MIMECTE_ISHEAD,
-   QP_ISENCWORD   = MIMECTE_ISENCWORD
+   QP_NONE        = MIMEEF_NONE,
+   QP_SALLOC      = MIMEEF_SALLOC,
+   QP_BUF         = MIMEEF_BUF,
+   QP_ISHEAD      = MIMEEF_ISHEAD,
+   QP_ISENCWORD   = MIMEEF_ISENCWORD
 };
 
 enum b64flags {
-   B64_NONE       = MIMECTE_NONE,
-   B64_SALLOC     = MIMECTE_SALLOC,
-   B64_BUF        = MIMECTE_BUF,
-   B64_CRLF       = MIMECTE_CRLF,
-   B64_LF         = MIMECTE_LF,
-   B64_MULTILINE  = MIMECTE_MULTILINE,
+   B64_NONE       = MIMEEF_NONE,
+   B64_SALLOC     = MIMEEF_SALLOC,
+   B64_BUF        = MIMEEF_BUF,
+   B64_CRLF       = MIMEEF_CRLF,
+   B64_LF         = MIMEEF_LF,
+   B64_MULTILINE  = MIMEEF_MULTILINE,
    /* Not used, but for clarity only */
-   B64_ISHEAD     = MIMECTE_ISHEAD,
-   B64_ISENCWORD  = MIMECTE_ISENCWORD
+   B64_ISHEAD     = MIMEEF_ISHEAD,
+   B64_ISENCWORD  = MIMEEF_ISENCWORD
 };
 
-enum mimeenc {
-   MIME_NONE,        /* message is not in MIME format */
-   MIME_BIN,         /* message is in binary encoding */
-   MIME_8B,          /* message is in 8bit encoding */
-   MIME_7B,          /* message is in 7bit encoding */
-   MIME_QP,          /* message is quoted-printable */
-   MIME_B64          /* message is in base64 encoding */
+enum mime_enc {
+   MIMEE_NONE,       /* message is not in MIME format */
+   MIMEE_BIN,        /* message is in binary encoding */
+   MIMEE_8B,         /* message is in 8bit encoding */
+   MIMEE_7B,         /* message is in 7bit encoding */
+   MIMEE_QP,         /* message is quoted-printable */
+   MIMEE_B64         /* message is in base64 encoding */
 };
 
 enum mime_counter_evidence {
@@ -814,9 +814,9 @@ enum mime_counter_evidence {
 };
 
 enum mlist_state {
-   MLIST_OTHER       = 0,    /* Normal address */
-   MLIST_KNOWN       = 1,  /* A known `mlist' */
-   MLIST_SUBSCRIBED  = -1  /* A `mlsubscribe'd list */
+   MLIST_OTHER       = 0,     /* Normal address */
+   MLIST_KNOWN       = 1,     /* A known `mlist' */
+   MLIST_SUBSCRIBED  = -1     /* A `mlsubscribe'd list */
 };
 
 enum oflags {
@@ -839,9 +839,9 @@ enum okay {
 };
 
 enum okey_xlook_mode {
-   OXM_PLAIN      = 1<<0,  /* Plain key always tested */
-   OXM_H_P        = 1<<1,  /* Check PLAIN-.url_h_p */
-   OXM_U_H_P      = 1<<2,  /* Check PLAIN-.url_u_h_p */
+   OXM_PLAIN      = 1<<0,     /* Plain key always tested */
+   OXM_H_P        = 1<<1,     /* Check PLAIN-.url_h_p */
+   OXM_U_H_P      = 1<<2,     /* Check PLAIN-.url_u_h_p */
    OXM_ALL        = 0x7
 };
 
@@ -1453,8 +1453,8 @@ struct mimepart {
    char        *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    enum mimecontent m_mimecontent;  /* same in enum */
    char const  *m_charset;    /* charset */
-   char        *m_ct_transfer_enc;  /* content-transfer-encoding */
-   enum mimeenc m_mimeenc;     /* same in enum */
+   char        *m_ct_enc;     /* content-transfer-encoding */
+   enum mime_enc m_mime_enc;     /* same in enum */
    char        *m_partstring; /* part level string */
    char        *m_filename;   /* attachment filename */
 };

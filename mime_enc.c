@@ -116,7 +116,7 @@ static signed char const   _b64__dectbl[] = {
 /* Check wether *s must be quoted according to flags, else body rules;
  * sol indicates wether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
-                        enum mimecte_flags flags);
+                        enum mime_enc_flags flags);
 
 /* Convert c to/from a hexadecimal character string */
 SINLINE char *       _qp_ctohex(char *store, char c);
@@ -132,13 +132,13 @@ static size_t        _b64_decode_prepare(struct str *work,
 static ssize_t       _b64_decode(struct str *out, struct str *in);
 
 SINLINE enum _qact
-_mustquote(char const *s, char const *e, bool_t sol, enum mimecte_flags flags)
+_mustquote(char const *s, char const *e, bool_t sol, enum mime_enc_flags flags)
 {
    ui8_t const *qtab;
    enum _qact a, r;
    NYD2_ENTER;
 
-   qtab = (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD))
+   qtab = (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD))
          ? _qtab_head : _qtab_body;
    a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
 
@@ -147,9 +147,9 @@ _mustquote(char const *s, char const *e, bool_t sol, enum mimecte_flags flags)
    r = Q;
 
    /* Special header fields */
-   if (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD)) {
+   if (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD)) {
       /* Special massage for encoded words */
-      if (flags & MIMECTE_ISENCWORD) {
+      if (flags & MIMEEF_ISENCWORD) {
          switch (a) {
          case HT:
          case US:
@@ -327,7 +327,7 @@ mime_hexseq_to_char(char const *hex)
 }
 
 FL size_t
-mime_cte_mustquote(char const *ln, size_t lnlen, enum mimecte_flags flags)
+mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags)
 {
    size_t rv;
    bool_t sol;
@@ -338,7 +338,7 @@ mime_cte_mustquote(char const *ln, size_t lnlen, enum mimecte_flags flags)
       case US:
       case EQ:
       case HT:
-         assert(flags & MIMECTE_ISENCWORD);
+         assert(flags & MIMEEF_ISENCWORD);
          /* FALLTHRU */
       case N:
          continue;
@@ -427,11 +427,11 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 
    /* QP_ISHEAD? */
    if (!sol) {
-      enum mimecte_flags ctef = MIMECTE_ISHEAD |
-            (flags & QP_ISENCWORD ? MIMECTE_ISENCWORD : 0);
+      enum mime_enc_flags ef = MIMEEF_ISHEAD |
+            (flags & QP_ISENCWORD ? MIMEEF_ISENCWORD : 0);
 
       for (seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp) {
-         enum _qact mq = _mustquote(is, ie, sol, ctef);
+         enum _qact mq = _mustquote(is, ie, sol, ef);
          char c = *is++;
 
          if (mq == N) {
@@ -454,7 +454,7 @@ jheadq:
 
    /* The body needs to take care for soft line breaks etc. */
    for (lnlen = 0, seenx = FAL0; is < ie; sol = FAL0) {
-      enum _qact mq = _mustquote(is, ie, sol, MIMECTE_NONE);
+      enum _qact mq = _mustquote(is, ie, sol, MIMEEF_NONE);
       char c = *is++;
 
       if (mq == N && (c != '\n' || !seenx)) {

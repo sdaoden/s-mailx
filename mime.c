@@ -294,8 +294,8 @@ mime_write_tohdr(struct str *in, FILE *fo)
     * TODO  The real problem for STD compatibility is however that "in" is
     * TODO   already iconv(3) encoded to the target character set!  We could
     * TODO   also solve it (very expensively!) if we would narrow down to an
-    * TODO   encoded word and then iconv(3)+CTencode in one go, in which case
-    * TODO   multibyte errors could be catched!
+    * TODO   encoded word and then iconv(3)+MIME encode in one go, in which
+    * TODO   case multibyte errors could be catched!
     * TODO All this doesn't take any care about RFC 2231, but simply and
     * TODO   falsely applies RFC 2047 and normal RFC 822/5322 folding to values
     * TODO   of parameters; part of the problem is that we just don't make a
@@ -389,7 +389,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
 
       /* Decide wether the range has to become encoded or not */
       i = PTR2SIZE(wend - wcur);
-      j = mime_cte_mustquote(wcur, i, MIMECTE_ISHEAD);
+      j = mime_enc_mustquote(wcur, i, MIMEEF_ISHEAD);
       /* If it just cannot fit on a SHOULD line length, force encode */
       if (i >= _MAXCOL) {
          flags |= _SHOULD_BEE; /* (Sigh: SHOULD only, not MUST..) */
@@ -862,24 +862,24 @@ jneeds:
 }
 #endif /* HAVE_ICONV */
 
-FL enum mimeenc
-mime_getenc(char *p)
+FL enum mime_enc
+mime_get_encoding(char *p)
 {
-   enum mimeenc rv;
+   enum mime_enc rv;
    NYD_ENTER;
 
    if (is_this_enc(p, "7bit"))
-      rv = MIME_7B;
+      rv = MIMEE_7B;
    else if (is_this_enc(p, "8bit"))
-      rv = MIME_8B;
+      rv = MIMEE_8B;
    else if (is_this_enc(p, "base64"))
-      rv = MIME_B64;
+      rv = MIMEE_B64;
    else if (is_this_enc(p, "binary"))
-      rv = MIME_BIN;
+      rv = MIMEE_BIN;
    else if (is_this_enc(p, "quoted-printable"))
-      rv = MIME_QP;
+      rv = MIMEE_QP;
    else
-      rv = MIME_NONE;
+      rv = MIMEE_NONE;
    NYD_LEAVE;
    return rv;
 }

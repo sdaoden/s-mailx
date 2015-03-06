@@ -1197,7 +1197,7 @@ FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
 
 /* Get the mime encoding from a Content-Transfer-Encoding header field */
-FL enum mimeenc mime_getenc(char *h);
+FL enum mime_enc mime_get_encoding(char *h);
 
 /* Get a mime style parameter from a header line */
 FL char *      mime_getparam(char const *param, char *h);
@@ -1229,7 +1229,7 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
                   FILE *f, enum conversion convert, enum tdflags dflags);
 
 /*
- * mime_cte.c
+ * mime_enc.c
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
@@ -1243,9 +1243,9 @@ FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
 
 /* How many characters of (the complete body) ln need to be quoted.
- * Only MIMECTE_ISHEAD and MIMECTE_ISENCWORD are understood */
-FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen,
-                  enum mimecte_flags flags);
+ * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
+FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,
+                  enum mime_enc_flags flags);
 
 /* How much space is necessary to encode len bytes in QP, worst case.
  * Includes room for terminator */

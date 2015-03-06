@@ -163,10 +163,9 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    if (ip->m_charset == NULL)
       ip->m_charset = charset_get_7bit();
 
-   ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
-         (struct message*)ip);
-   ip->m_mimeenc = (ip->m_ct_transfer_enc != NULL)
-         ? mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
+   ip->m_ct_enc = hfield1("content-transfer-encoding", (struct message*)ip);
+   ip->m_mime_enc = (ip->m_ct_enc != NULL)
+         ? mime_get_encoding(ip->m_ct_enc) : MIMEE_7B;
 
    if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||
          (ip->m_filename = mime_getparam("filename", cp)) == NULL) &&
@@ -1230,16 +1229,16 @@ jpipe_close:
 jcopyout:
    if (doign == allignore && level == 0) /* skip final blank line */
       --cnt;
-   switch (ip->m_mimeenc) {
-   case MIME_BIN:
-   case MIME_7B:
-   case MIME_8B:
+   switch (ip->m_mime_enc) {
+   case MIMEE_BIN:
+   case MIMEE_7B:
+   case MIMEE_8B:
       convert = CONV_NONE;
       break;
-   case MIME_QP:
+   case MIMEE_QP:
       convert = CONV_FROMQP;
       break;
-   case MIME_B64:
+   case MIMEE_B64:
       switch (ip->m_mimecontent) {
       case MIME_TEXT:
       case MIME_TEXT_PLAIN:
