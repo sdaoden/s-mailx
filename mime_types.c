@@ -485,6 +485,63 @@ jleave:
    return content;
 }
 
+FL enum mimecontent
+mime_type_mimepart_content(struct mimepart *mpp)
+{
+   enum mimecontent mc;
+   char const *ct;
+   union {char const *cp; long l;} mce;
+   NYD_ENTER;
+
+   mc = MIME_UNKNOWN;
+   ct = mpp->m_ct_type_plain;
+
+   if (!asccasecmp(ct, "application/octet-stream") && mpp->m_filename != NULL &&
+         (mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
+      ct = mime_type_by_filename(mpp->m_filename);
+      if (ct == NULL)
+         /* TODO add bit 1 to possible *mime-counter-evidence* value
+          * TODO and let it mean to save the attachment in
+          * TODO a temporary file that mime_classify_file() can
+          * TODO examine, and using MIME_TEXT if that gives us
+          * TODO something that seems to be human readable?! */
+         goto jleave;
+
+      mce.l = strtol(mce.cp, NULL, 0);
+      if (mce.l & MIMECE_USR_OVWR)
+         mpp->m_ct_type_usr_ovwr = UNCONST(ct);
+   }
+
+   if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
+      mc = MIME_TEXT;
+   else if (!asccasecmp(ct, "text/plain"))
+      mc = MIME_TEXT_PLAIN;
+   else if (!asccasecmp(ct, "text/html"))
+      mc = MIME_TEXT_HTML;
+   else if (!ascncasecmp(ct, "text/", 5))
+      mc = MIME_TEXT;
+   else if (!asccasecmp(ct, "message/rfc822"))
+      mc = MIME_822;
+   else if (!ascncasecmp(ct, "message/", 8))
+      mc = MIME_MESSAGE;
+   else if (!ascncasecmp(ct, "multipart/", 10)) {
+      ct += sizeof("multipart/") -1;
+      if (!asccasecmp(ct, "alternative"))
+         mc = MIME_ALTERNATIVE;
+      else if (!asccasecmp(ct, "related"))
+         mc = MIME_RELATED;
+      else if (!asccasecmp(ct, "digest"))
+         mc = MIME_DIGEST;
+      else
+         mc = MIME_MULTI;
+   } else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
+         !asccasecmp(ct, "application/pkcs7-mime"))
+      mc = MIME_PKCS7;
+jleave:
+   NYD_LEAVE;
+   return mc;
+}
+
 FL char *
 mime_type_mimepart_handler(struct mimepart const *mpp)
 {

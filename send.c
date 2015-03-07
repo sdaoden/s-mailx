@@ -173,7 +173,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
          ip->m_ct_type != NULL)
       ip->m_filename = mime_getparam("name", ip->m_ct_type);
 
-   ip->m_mimecontent = mime_classify_content_of_part(ip);
+   ip->m_mimecontent = mime_type_mimepart_content(ip);
 
    if (pf & PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */
