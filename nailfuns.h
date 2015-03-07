@@ -1189,6 +1189,10 @@ FL bool_t      charset_iter_next(void);
 FL bool_t      charset_iter_is_valid(void);
 FL char const * charset_iter(void);
 
+/* And this is (xxx temporary?) which returns the iterator if that is valid and
+ * otherwise either charset_get_8bit() or charset_get_lc() dep. on HAVE_ICONV */
+FL char const * charset_iter_or_fallback(void);
+
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 

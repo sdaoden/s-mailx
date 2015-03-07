@@ -745,6 +745,17 @@ charset_iter(void)
    return rv;
 }
 
+FL char const *
+charset_iter_or_fallback(void)
+{
+   char const *rv;
+   NYD_ENTER;
+
+   rv = _CS_ITER_GET();
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 charset_iter_recurse(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 {
