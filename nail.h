@@ -212,8 +212,8 @@
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"
 
-/* Default *encoding* as enum conversion below */
-#define MIME_DEFAULT_ENCODING CONV_TOQP
+/* Default *encoding* as enum mime_enc below */
+#define MIME_DEFAULT_ENCODING MIMEE_QP
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
  * the real limit we go for */

@@ -359,6 +359,30 @@ mime_hexseq_to_char(char const *hex)
 }
 
 FL enum mime_enc
+mime_enc_target(void)
+{
+   char const *cp;
+   enum mime_enc rv;
+   NYD2_ENTER;
+
+   if ((cp = ok_vlook(encoding)) == NULL)
+      rv = MIME_DEFAULT_ENCODING;
+   else if (!asccasecmp(cp, "quoted-printable"))
+      rv = MIMEE_QP;
+   else if (!asccasecmp(cp, "8bit"))
+      rv = MIMEE_8B;
+   else if (!asccasecmp(cp, "base64"))
+      rv = MIMEE_B64;
+   else {
+      fprintf(stderr, _("Warning: invalid *encoding*, using Base64: \"%s\"\n"),
+         cp);
+      rv = MIMEE_B64;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL enum mime_enc
 mime_enc_from_ctehead(char const *hbody)
 {
    enum mime_enc rv;

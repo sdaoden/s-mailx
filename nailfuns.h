@@ -1239,6 +1239,9 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
 FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
 
+/* Default MIME Content-Transfer-Encoding: as via *encoding* */
+FL enum mime_enc mime_enc_target(void);
+
 /* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
 FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
 

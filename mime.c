@@ -55,9 +55,6 @@ static bool_t           _has_highbit(char const *s);
 static bool_t           _name_highbit(struct name *np);
 #endif
 
-/* Get the conversion that matches *encoding* */
-static enum conversion  _conversion_by_encoding(void);
-
 /* fwrite(3) while checking for displayability */
 static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
                            struct str *rest, struct quoteflt *qf);
@@ -116,30 +113,6 @@ jleave:
    return rv;
 }
 #endif /* HAVE_ICONV */
-
-static enum conversion
-_conversion_by_encoding(void)
-{
-   char const *cp;
-   enum conversion ret;
-   NYD_ENTER;
-
-   if ((cp = ok_vlook(encoding)) == NULL)
-      ret = MIME_DEFAULT_ENCODING;
-   else if (!asccasecmp(cp, "quoted-printable"))
-      ret = CONV_TOQP;
-   else if (!asccasecmp(cp, "8bit"))
-      ret = CONV_8BIT;
-   else if (!asccasecmp(cp, "base64"))
-      ret = CONV_TOB64;
-   else {
-      fprintf(stderr, _("Warning: invalid *encoding* \"%s\", using Base64\n"),
-         cp);
-      ret = CONV_TOB64;
-   }
-   NYD_LEAVE;
-   return ret;
-}
 
 static sigjmp_buf       __mimefwtd_actjmp; /* TODO someday.. */
 static int              __mimefwtd_sig; /* TODO someday.. */
@@ -975,7 +948,13 @@ mime_classify_file(FILE *fp, char const **contenttype, char const **charset,
       ctt = _NCTT;
    else if (!ascncasecmp(*contenttype, "text/", 5))
       ctt = ok_blook(mime_allow_text_controls) ? _ISTXT | _ISTXTCOK : _ISTXT;
-   convert = _conversion_by_encoding();
+
+   switch (mime_enc_target()) {
+   case MIMEE_8B:    convert = CONV_8BIT;    break;
+   case MIMEE_QP:    convert = CONV_TOQP;    break;
+   default:
+   case MIMEE_B64:   convert = CONV_TOB64;   break;
+   }
 
    if (fsize(fp) == 0)
       goto j7bit;
