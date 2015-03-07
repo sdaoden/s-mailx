@@ -454,7 +454,7 @@ qp_encode_calc_size(size_t len)
     * However, we must be aware that (a) the output may span multiple lines
     * and (b) the input does not end with a newline itself (nonetheless):
     *    LC_ALL=C awk 'BEGIN{
-    *       for(i = 0; i < 100000; ++i) printf "\xC3\xBC"
+    *       for (i = 1; i < 100000; ++i) printf "\xC3\xBC"
     *    }' |
     *    MAILRC=/dev/null LC_ALL=en_US.UTF-8 s-nail -nvvd \
     *       -Ssendcharsets=utf8 -s testsub ./LETTER */

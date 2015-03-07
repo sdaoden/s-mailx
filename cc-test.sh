@@ -61,14 +61,14 @@ cc_all_configs() {
          data[i++] = $1
       }
       END {
-         for (j = 0; j < i; ++j) {
-            for (k = 0; k < j; ++k)
+         for (j = 1; j < i; ++j) {
+            for (k = 1; k < j; ++k)
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
             printf "WANT_AUTOCC=1\n"
 
-            for (k = 0; k < j; ++k)
+            for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
