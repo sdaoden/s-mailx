@@ -113,6 +113,10 @@ static signed char const   _b64__dectbl[] = {
 #define _B64_DECUI8(C)     \
    ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
 
+/* ASCII case-insensitve check wether Content-Transfer-Encoding: header body
+ * hbody defined this encoding type */
+static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
+
 /* Check wether *s must be quoted according to flags, else body rules;
  * sol indicates wether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
@@ -130,6 +134,34 @@ static size_t        _b64_decode_prepare(struct str *work,
 /* Perform b64_decode on sufficiently spaced & multiple-of-4 base in(put).
  * Return number of useful bytes in out or -1 on error */
 static ssize_t       _b64_decode(struct str *out, struct str *in);
+
+static bool_t
+_is_ct_enc(char const *hbody, char const *encoding)
+{
+   bool_t quoted, rv;
+   int c;
+   NYD2_ENTER;
+
+   if (*hbody == '"')
+      quoted = TRU1, ++hbody;
+   else
+      quoted = FAL0;
+   rv = FAL0;
+
+   while (*hbody != '\0' && *encoding != '\0')
+      if ((c = *hbody++, lowerconv(c) != *encoding++))
+         goto jleave;
+   rv = TRU1;
+
+   if (quoted && *hbody == '"')
+      goto jleave;
+   if (*hbody == '\0' || whitechar(*hbody))
+      goto jleave;
+   rv = FAL0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
 
 SINLINE enum _qact
 _mustquote(char const *s, char const *e, bool_t sol, enum mime_enc_flags flags)
@@ -322,6 +354,28 @@ mime_hexseq_to_char(char const *hex)
    NYD2_ENTER;
 
    rv = _qp_cfromhex(hex);
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL enum mime_enc
+mime_enc_from_ctehead(char const *hbody)
+{
+   enum mime_enc rv;
+   NYD2_ENTER;
+
+   if (hbody == NULL || _is_ct_enc(hbody, "7bit"))
+      rv = MIMEE_7B;
+   else if (_is_ct_enc(hbody, "8bit"))
+      rv = MIMEE_8B;
+   else if (_is_ct_enc(hbody, "base64"))
+      rv = MIMEE_B64;
+   else if (_is_ct_enc(hbody, "binary"))
+      rv = MIMEE_BIN;
+   else if (_is_ct_enc(hbody, "quoted-printable"))
+      rv = MIMEE_QP;
+   else
+      rv = MIMEE_NONE;
    NYD2_LEAVE;
    return rv;
 }

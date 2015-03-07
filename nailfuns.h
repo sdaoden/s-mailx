@@ -1196,9 +1196,6 @@ FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
 
-/* Get the mime encoding from a Content-Transfer-Encoding header field */
-FL enum mime_enc mime_get_encoding(char *h);
-
 /* Get a mime style parameter from a header line */
 FL char *      mime_getparam(char const *param, char *h);
 
@@ -1241,6 +1238,9 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * on error */
 FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
+
+/* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
+FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
 
 /* How many characters of (the complete body) ln need to be quoted.
  * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */

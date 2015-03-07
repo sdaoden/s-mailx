@@ -164,8 +164,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       ip->m_charset = charset_get_7bit();
 
    ip->m_ct_enc = hfield1("content-transfer-encoding", (struct message*)ip);
-   ip->m_mime_enc = (ip->m_ct_enc != NULL)
-         ? mime_get_encoding(ip->m_ct_enc) : MIMEE_7B;
+   ip->m_mime_enc = mime_enc_from_ctehead(ip->m_ct_enc);
 
    if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||
          (ip->m_filename = mime_getparam("filename", cp)) == NULL) &&

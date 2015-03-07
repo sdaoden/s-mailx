@@ -64,8 +64,6 @@ static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
 
 static size_t           delctrl(char *cp, size_t sz);
 
-static int              is_this_enc(char const *line, char const *encoding);
-
 /* Convert header fields to RFC 1522 format and write to the file fo */
 static ssize_t          mime_write_tohdr(struct str *in, FILE *fo);
 
@@ -256,29 +254,6 @@ delctrl(char *cp, size_t sz)
    }
    NYD_LEAVE;
    return y;
-}
-
-static int
-is_this_enc(char const *line, char const *encoding)
-{
-   int rv, c, quoted = 0;
-   NYD_ENTER;
-
-   if (*line == '"')
-      quoted = 1, ++line;
-   rv = 0;
-   while (*line != '\0' && *encoding)
-      if ((c = *line++, lowerconv(c) != *encoding++))
-         goto jleave;
-   rv = 1;
-   if (quoted && *line == '"')
-      goto jleave;
-   if (*line == '\0' || whitechar(*line))
-      goto jleave;
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
 }
 
 static ssize_t
@@ -861,28 +836,6 @@ jneeds:
    return ret;
 }
 #endif /* HAVE_ICONV */
-
-FL enum mime_enc
-mime_get_encoding(char *p)
-{
-   enum mime_enc rv;
-   NYD_ENTER;
-
-   if (is_this_enc(p, "7bit"))
-      rv = MIMEE_7B;
-   else if (is_this_enc(p, "8bit"))
-      rv = MIMEE_8B;
-   else if (is_this_enc(p, "base64"))
-      rv = MIMEE_B64;
-   else if (is_this_enc(p, "binary"))
-      rv = MIMEE_BIN;
-   else if (is_this_enc(p, "quoted-printable"))
-      rv = MIMEE_QP;
-   else
-      rv = MIMEE_NONE;
-   NYD_LEAVE;
-   return rv;
-}
 
 FL char *
 mime_getparam(char const *param, char *h)
