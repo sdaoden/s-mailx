@@ -167,11 +167,11 @@ __behave_ifelse() {
 		   echo 6.ok
 		endif
 		# Nesting
-		if 0
+		if faLse
 		   echo 7.err1
-		   if 1
+		   if tRue
 		      echo 7.err2
-		      if 1
+		      if yEs
 		         echo 7.err3
 		      else
 		         echo 7.err4
@@ -181,9 +181,9 @@ __behave_ifelse() {
 		   echo 7.err6
 		else
 		   echo 7.ok7
-		   if 1
+		   if YeS
 		      echo 7.ok8
-		      if 0
+		      if No
 		         echo 7.err9
 		      else
 		         echo 7.ok9
@@ -191,7 +191,7 @@ __behave_ifelse() {
 		      echo 7.ok10
 		   else
 		      echo 7.err11
-		      if 1
+		      if yeS
 		         echo 7.err12
 		      else
 		         echo 7.err13

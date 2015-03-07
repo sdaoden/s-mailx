@@ -1115,9 +1115,6 @@ jesyn:
    }
 
    switch (*cp) {
-   case '0':
-      csp->c_go = FAL0;
-      break;
    case 'R': case 'r':
       csp->c_go = !(options & OPT_SENDMODE);
       break;
@@ -1125,7 +1122,10 @@ jesyn:
       csp->c_go = ((options & OPT_SENDMODE) != 0);
       break;
    case 'T': case 't':
-      csp->c_go = ((options & OPT_TTYIN) != 0);
+      if (!asccasecmp(cp, "true")) /* Beware! */
+         csp->c_go = TRU1;
+      else
+         csp->c_go = ((options & OPT_TTYIN) != 0);
       break;
    case '$':
       /* Look up the value in question, we need it anyway */
@@ -1205,10 +1205,14 @@ jesyn:
       }
       break;
    default:
-      fprintf(stderr, _("Unrecognized if-keyword: \"%s\"\n"), cp);
-   case '1':
-      csp->c_go = TRU1;
-      goto jleave;
+      switch (boolify(cp, UIZ_MAX, -1)) {
+      case 0: csp->c_go = FAL0; break;
+      case 1: csp->c_go = TRU1; break;
+      default:
+         fprintf(stderr, _("Unrecognized if-keyword: \"%s\"\n"), cp);
+         goto jleave;
+      }
+      break;
    }
 
 jdone:

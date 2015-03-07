@@ -2560,27 +2560,23 @@ else
 endif
 .Ed
 .Pp
-Note that POSIX only supports the conditions `[Rr]eceive', `[Ss]end'
-and `[Tt]erm' (execute if standard input is a tty).
-Extensions are `0' (never execute) and `1' (always execute).
-It is possible to check a user given value against the content of
-a variable by using the `$' conditional trigger.
-In the following example the first form only checks wether an option is
-set, whereas the others also perform value content comparison:
-.Bd -literal -offset indent
-if $debug
-  commands ...
-endif
-if $encoding == "UTF-8"
-  commands ...
-endif
-if $encoding != "UTF-8"
-  if $version-major >= 15
-    commands ...
-  endif
-endif
-.Ed
+Note that POSIX only supports the conditions
+.Ql [Rr]eceive ,
+.Ql [Ss]end
+and
+.Ql [Tt]erm
+(execute if standard input is a tty).
+Any boolean value (see the section
+.Sx "VARIABLE OPTIONS"
+for booleans) may be given to mark an enwrapped block as
+.Dq never execute
+or
+.Dq always execute .
 .Pp
+It is possible to check a variable for existence or compare its
+expansion against a user given value via the
+.Ql $
+conditional trigger character.
 The available comparison operators are
 .Ql <
 (less than),
@@ -2610,11 +2606,23 @@ and
 test cases can be used.
 They treat the right hand side as a regular expression that is matched
 case-insensitively and according to the active
-.Ql LC_CTYPE
+.Ev LC_CTYPE
 locale, meaning that strings in the locale encoding should be matched
 correctly.
-An example of such a test would be
-.Ql if $TERM =~ "^xterm\&.*" .
+.Bd -literal -offset indent
+if $debug
+  echo *debug* is set
+endif
+if $ttycharset == "UTF-8"
+  echo *ttycharset* is set to UTF-8, case-insensitively
+endif
+if $version-major >= 15
+  echo running a new version..
+  if $TERM =~ "^xterm\&.*"
+    echo ..in an X terminal
+  endif
+endif
+.Ed
 .
 .Mx
 .It Ic ignore
@@ -3885,6 +3893,16 @@ command line option.
 binary options, which can only be in the two states set and unset,
 as well as value options which have an assigned string value, for which
 proper quoting may be important upon assignment time.
+.Dq boolean
+is a special string value that must be set to any of
+.Ql no ,
+.Ql false ,
+.Ql 0
+for a false boolean and
+.Ql yes ,
+.Ql true ,
+.Ql 1
+for a true boolean; matching is performed case-insensitively.
 .
 .Pp
 The command
