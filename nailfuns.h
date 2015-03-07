@@ -1249,6 +1249,9 @@ FL enum mime_enc mime_enc_target(void);
 /* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
 FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
 
+/* XXX Try to get rid of that */
+FL char const * mime_enc_from_conversion(enum conversion const convert);
+
 /* How many characters of (the complete body) ln need to be quoted.
  * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
 FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,

@@ -404,6 +404,23 @@ mime_enc_from_ctehead(char const *hbody)
    return rv;
 }
 
+FL char const *
+mime_enc_from_conversion(enum conversion const convert) /* TODO booom */
+{
+   char const *rv;
+   NYD_ENTER;
+
+   switch (convert) {
+   case CONV_7BIT:   rv = "7bit"; break;
+   case CONV_8BIT:   rv = "8bit"; break;
+   case CONV_TOQP:   rv = "quoted-printable"; break;
+   case CONV_TOB64:  rv = "base64"; break;
+   default:          rv = ""; break;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL size_t
 mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags)
 {

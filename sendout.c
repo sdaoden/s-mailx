@@ -61,9 +61,6 @@ static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
                         char const *prefix, FILE *fo, struct name **xp);
 
-/* Get an encoding flag based on the given string */
-static char const *  _get_encoding(const enum conversion convert);
-
 /* Write an attachment to the file buffer, converting to MIME */
 static int           _attach_file(struct attachment *ap, FILE *fo);
 static int           __attach_file(struct attachment *ap, FILE *fo);
@@ -142,23 +139,6 @@ _putname(char const *line, enum gfield w, enum sendaction action,
       rv = OKAY;
    else if (gotcha != NULL)
       ++(*gotcha);
-   NYD_LEAVE;
-   return rv;
-}
-
-static char const *
-_get_encoding(enum conversion const convert)
-{
-   char const *rv;
-   NYD_ENTER;
-
-   switch (convert) {
-   case CONV_7BIT:   rv = "7bit"; break;
-   case CONV_8BIT:   rv = "8bit"; break;
-   case CONV_TOQP:   rv = "quoted-printable"; break;
-   case CONV_TOB64:  rv = "base64"; break;
-   default:          rv = NULL; break;
-   }
    NYD_LEAVE;
    return rv;
 }
@@ -264,7 +244,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 
       if (fprintf(fo, "Content-Transfer-Encoding: %s\n"
             "Content-Disposition: %s;\n filename=\"",
-            _get_encoding(convert), ap->a_content_disposition) == -1)
+            mime_enc_from_conversion(convert), ap->a_content_disposition)
+            == -1)
          goto jerr_header;
       if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE) < 0)
          goto jerr_header;
@@ -489,7 +470,8 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       if (charset != NULL)
          fprintf(fo, "; charset=%s", charset);
       fprintf(fo, "\nContent-Transfer-Encoding: %s\n"
-         "Content-Disposition: inline\n\n", _get_encoding(convert));
+         "Content-Disposition: inline\n\n",
+         mime_enc_from_conversion(convert));
 
       buf = smalloc(bufsize = SEND_LINESIZE);
       if (convert == CONV_TOQP
@@ -916,7 +898,7 @@ j_mft_add:
          if (charset != NULL)
             fprintf(fo, "; charset=%s", charset);
          fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
-            _get_encoding(convert));
+            mime_enc_from_conversion(convert));
       }
    }
 
