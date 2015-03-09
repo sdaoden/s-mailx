@@ -1406,8 +1406,7 @@ _transfer(struct sendbundle *sbp)
 static bool_t
 __start_mta(struct sendbundle *sbp)
 {
-   char const **args = NULL, **t, *mta;
-   char *smtp;
+   char const **args = NULL, **t, *mta, *smtp;
    pid_t pid;
    sigset_t nset;
    bool_t rv = FAL0;
@@ -1422,7 +1421,7 @@ __start_mta(struct sendbundle *sbp)
 
       args = __prepare_mta_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
-         printf(_("Sendmail arguments:"));
+         printf(_("\"%s\" arguments:"), mta);
          for (t = args; *t != NULL; ++t)
             printf(" \"%s\"", *t);
          printf("\n");
@@ -1462,8 +1461,11 @@ jstop:
          prepare_child(&nset, 0, 1);
          if (smtp_mta(sbp))
             _exit(0);
-      } else {
+      } else
 #endif
+      {
+         int e;
+
          prepare_child(&nset, fileno(sbp->sb_input), -1);
          /* If *record* is set then savemail() will move the file position;
           * it'll call rewind(), but that may optimize away the systemcall if
@@ -1471,10 +1473,11 @@ jstop:
           * the MTA may end up reading nothing */
          lseek(0, 0, SEEK_SET);
          execv(mta, UNCONST(args));
-         perror(mta);
-#ifdef HAVE_SMTP
+         e = errno;
+         smtp = (e != ENOENT) ? strerror(e)
+               : _("executable not found (adjust *sendmail* variable)");
+         fprintf(stderr, _("Cannot start \"%s\": %s\n"), mta, smtp);
       }
-#endif
       savedeadletter(sbp->sb_input, 1);
       fputs(_("... message not sent.\n"), stderr);
       _exit(1);
