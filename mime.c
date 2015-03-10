@@ -822,9 +822,10 @@ jneeds:
 #endif /* HAVE_ICONV */
 
 FL char *
-mime_getparam(char const *param, char *h)
+mime_getparam(char const *param, char const *h)
 {
-   char *p = h, *q, *rv = NULL;
+   char *rv = NULL;
+   char const *p = h, *q;
    int c;
    size_t sz;
    NYD_ENTER;
@@ -879,6 +880,7 @@ mime_getparam(char const *param, char *h)
       while (*q != '\0' && !whitechar(*q) && *q != ';')
          ++q;
    }
+
    sz = PTR2SIZE(q - p);
    rv = salloc(q - p +1);
    memcpy(rv, p, sz);

@@ -1201,7 +1201,7 @@ FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
 
 /* Get a mime style parameter from a header line */
-FL char *      mime_getparam(char const *param, char *h);
+FL char *      mime_getparam(char const *param, char const *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */
