@@ -144,7 +144,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL) {
-      cp_b = ip->m_ct_type_plain = savestr(ip->m_ct_type);
+      ip->m_ct_type_plain = cp_b = savestr(ip->m_ct_type);
       if ((cp = strchr(cp_b, ';')) != NULL)
          *cp = '\0';
       cp = cp_b + strlen(cp_b);
@@ -153,9 +153,9 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       *cp = '\0';
    } else if (ip->m_parent != NULL &&
          ip->m_parent->m_mimecontent == MIME_DIGEST)
-      ip->m_ct_type_plain = UNCONST("message/rfc822");
+      ip->m_ct_type_plain = "message/rfc822";
    else
-      ip->m_ct_type_plain = UNCONST("text/plain");
+      ip->m_ct_type_plain = "text/plain";
    ip->m_ct_type_usr_ovwr = NULL;
 
    if (ip->m_ct_type != NULL)
@@ -437,11 +437,11 @@ _print_part_info(struct str *out, struct mimepart *mip,
    if (is_ign("content-type", 12, doign)) {
       size_t addon;
 
-      if ((out->s = mip->m_ct_type_usr_ovwr) != NULL)
+      if ((out->s = UNCONST(mip->m_ct_type_usr_ovwr)) != NULL)
          addon = 2;
       else {
          addon = 0;
-         out->s = mip->m_ct_type_plain;
+         out->s = UNCONST(mip->m_ct_type_plain);
       }
       out->l = strlen(out->s);
 
@@ -567,9 +567,8 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    bool_t quote, bool_t async)
 {
    struct str s;
-   char const *env_addon[8], *sh;
+   char const *env_addon[8], *cp, *sh;
    FILE *rbuf;
-   char *cp;
    NYD_ENTER;
 
    rbuf = *qbuf;
@@ -585,7 +584,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
-      cp = UNCONST("");
+      cp = "";
    env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
    /* NAIL_FILENAME_GENERATED */
@@ -599,8 +598,8 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
          cp = s.s;
       else {
          CTA(NAME_MAX >= 8);
-         (cp = s.s)[7] = '.';
-         cp = savecat(cp, sh);
+         s.s[7] = '.';
+         cp = savecat(s.s, sh);
       }
    }
    env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=", cp,
@@ -608,7 +607,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
-      cp = UNCONST("");
+      cp = "";
    env_addon[2] = str_concat_csvl(&s, NAILENV_CONTENT, "=", cp, NULL)->s;
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)

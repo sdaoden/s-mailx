@@ -1448,12 +1448,12 @@ struct mimepart {
    struct mimepart *m_nextpart;     /* next part at same level */
    struct mimepart *m_multipart;    /* parts of multipart */
    struct mimepart *m_parent;       /* enclosing multipart part */
-   char        *m_ct_type;          /* content-type */
-   char        *m_ct_type_plain;    /* content-type without specs */
-   char        *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
+   char const  *m_ct_type;          /* content-type */
+   char const  *m_ct_type_plain;    /* content-type without specs */
+   char const  *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    enum mimecontent m_mimecontent;  /* same in enum */
    char const  *m_charset;    /* charset */
-   char        *m_ct_enc;     /* content-transfer-encoding */
+   char const  *m_ct_enc;     /* content-transfer-encoding */
    enum mime_enc m_mime_enc;     /* same in enum */
    char        *m_partstring; /* part level string */
    char        *m_filename;   /* attachment filename */
