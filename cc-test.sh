@@ -91,7 +91,7 @@ cksum_test() {
    tid=${1} f=${2} s=${3}
    printf "${tid}: "
    csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" \
+         -e '/^ boundary=/d' -e '/^--=-=/d' < \"${f}\" \
          -e '/^\[-- Message/d' | ${cksum}`";
    if [ "${csum}" = "${s}" ]; then
       printf 'ok\n'

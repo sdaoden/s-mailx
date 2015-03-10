@@ -916,9 +916,11 @@ mime_create_boundary(void)
    char *bp;
    NYD_ENTER;
 
-   bp = salloc(48);
-   snprintf(bp, 48, "=_%011" PRIu64 "=-%s=_",
-      (ui64_t)time_current.tc_time, getrandstring(47 - (11 + 6)));
+   bp = salloc(36 + 6 +1);
+   bp[0] = bp[2] = bp[39] = bp[41] = '=';
+   bp[1] = bp[40] = '-';
+   memcpy(bp + 3, getrandstring(36), 36);
+   bp[42] = '\0';
    NYD_LEAVE;
    return bp;
 }
