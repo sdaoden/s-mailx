@@ -1210,11 +1210,6 @@ FL char *      mime_get_boundary(char *h, size_t *len);
 /* Create a salloc()ed MIME boundary */
 FL char *      mime_create_boundary(void);
 
-/* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * left alone unless it's non-NULL */
-FL int         mime_classify_file(FILE *fp, char const **contenttype,
-                  char const **charset, int *do_iconv);
-
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);
@@ -1319,6 +1314,11 @@ FL int         c_unmimetype(void *v);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
 FL char *      mime_type_by_filename(char const *name);
+
+/* Classify content of *fp* as necessary and fill in arguments; **charset* is
+ * left alone unless it's non-NULL */
+FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
+                     char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
  * but otherwise mpp is const */

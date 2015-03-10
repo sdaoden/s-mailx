@@ -228,7 +228,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
          bn = ++ct;
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = mime_classify_file(fi, (char const**)&ct, &charset, &do_iconv);
+      convert = mime_type_file_classify(fi, (char const**)&ct,
+         &charset, &do_iconv);
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
          do_iconv = 0;
@@ -549,7 +550,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
       goto jleave;
 
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
-   convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
+   convert = mime_type_file_classify(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
    tcs = charset_get_lc();
@@ -572,7 +573,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 
 #ifdef HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
+   if (do_iconv && charset != NULL) { /*TODO charset->mime_type_file_classify*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = errno) != 0) {
