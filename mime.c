@@ -891,7 +891,7 @@ jleave:
 }
 
 FL char *
-mime_get_boundary(char *h, size_t *len)
+mime_get_boundary(char const *h, size_t *len)
 {
    char *q = NULL, *p;
    size_t sz;

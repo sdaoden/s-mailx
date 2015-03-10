@@ -1205,7 +1205,7 @@ FL char *      mime_getparam(char const *param, char const *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */
-FL char *      mime_get_boundary(char *h, size_t *len);
+FL char *      mime_get_boundary(char const *h, size_t *len);
 
 /* Create a salloc()ed MIME boundary */
 FL char *      mime_create_boundary(void);
