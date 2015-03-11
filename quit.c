@@ -261,10 +261,12 @@ quit(void)
 
    temporary_localopts_folder_hook_unroll();
 
-   /* If we are read only, we can't do anything, so just return quickly. IMAP
-    * can set some flags (e.g. "\\Seen") so imap_quit must be called anyway */
-   if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
-      goto jleave;
+   /* If we are read only, we can't do anything, so just return quickly */
+   /* TODO yet we cannot return quickly if resources have to be released!
+    * TODO somewhen it'll be mailbox->quit() anyway, for now do it by hand
+    *if (mb.mb_perm == 0)
+    *   goto jleave;*/
+   p = (mb.mb_perm == 0);
 
    /* TODO lex.c:setfile() has just called hold_sigs(); before it called
     * TODO us, but this causes uninterruptible hangs due to blocked sigs
@@ -297,6 +299,7 @@ quit(void)
    default:
       goto jleave;
    }
+   if (p) goto jleave; /* TODO */
 
    /* If editing (not reading system mail box), then do the work in edstop() */
    if (pstate & PS_EDIT) {

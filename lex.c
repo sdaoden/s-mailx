@@ -484,6 +484,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          name = savecat(name, temporary_protocol_ext);
       break;
    case PROTO_MAILDIR:
+      shudclob = 1;
       rv = maildir_setfile(name, fm);
       goto jleave;
 #ifdef HAVE_POP3

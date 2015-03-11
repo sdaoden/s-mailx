@@ -54,6 +54,7 @@ static ui32_t        _maildir_prime;
 static sigjmp_buf    _maildir_jmp;
 
 static void             __maildircatch(int s);
+static void             __maildircatch_hold(int s);
 
 /* Do some cleanup in the tmp/ subdir */
 static void             _cleantmp(void);
@@ -99,6 +100,18 @@ __maildircatch(int s)
 {
    NYD_X; /* Signal handler */
    siglongjmp(_maildir_jmp, s);
+}
+
+static void
+__maildircatch_hold(int s)
+{
+   NYD_X; /* Signal handler */
+   UNUSED(s);
+   /* TODO no STDIO in signal handler, no _() tr's -- pre-translate interrupt
+    * TODO globally; */
+   fprintf(stderr, _("\nImportant operation in progress: "
+      "interrupt again to forcefully abort\n"));
+   safe_signal(SIGINT, &__maildircatch);
 }
 
 static void
@@ -351,9 +364,9 @@ maildir_update(void)
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
       if (dodel) {
          if (unlink(m->m_maildir_file) < 0)
-            fprintf(stderr, /* TODO tr */
-               "Cannot delete file \"%s/%s\" for message %d.\n",
-               mailname, m->m_maildir_file, (int)PTR2SIZE(m - message + 1));
+            fprintf(stderr,
+               _("Cannot delete file \"%s/%s\" for message %" PRIuZ ".\n"),
+               mailname, m->m_maildir_file, PTR2SIZE(m - message + 1));
          else
             ++gotcha;
       } else {
@@ -801,7 +814,7 @@ maildir_quit(void)
 
    if (sigsetjmp(_maildir_jmp, 1) == 0) {
       if (saveint != SIG_IGN)
-         safe_signal(SIGINT, &__maildircatch);
+         safe_signal(SIGINT, &__maildircatch_hold);
       maildir_update();
    }
 
