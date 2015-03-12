@@ -650,20 +650,36 @@ mime_type_mimepart_content(struct mimepart *mpp)
    mc = MIME_UNKNOWN;
    ct = mpp->m_ct_type_plain;
 
-   if (!asccasecmp(ct, "application/octet-stream") && mpp->m_filename != NULL &&
-         (mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
-      ct = mime_type_by_filename(mpp->m_filename);
-      if (ct == NULL)
-         /* TODO add bit 1 to possible *mime-counter-evidence* value
-          * TODO and let it mean to save the attachment in
-          * TODO a temporary file that mime_type_file_classify() can
-          * TODO examine, and using MIME_TEXT if that gives us
-          * TODO something that seems to be human readable?! */
-         goto jleave;
+   if ((mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
+      char *eptr;
+      long l;
 
-      mce.l = strtol(mce.cp, NULL, 0);
-      if (mce.l & MIMECE_USR_OVWR)
-         mpp->m_ct_type_usr_ovwr = UNCONST(ct);
+      l = strtol(mce.cp, &eptr, 0); /* XXX strtol */
+      mce.l = (*mce.cp == '\0' || *eptr != '\0' || l < 0) ? 0 : l | MIMECE_SET;
+   }
+
+   if (mce.l != 0 && mpp->m_filename != NULL) {
+      bool_t is_os = !asccasecmp(ct, "application/octet-stream");
+
+      if (is_os || (mce.l & MIMECE_ALL_OVWR)) {
+         char *ct2 = mime_type_by_filename(mpp->m_filename);
+
+         if (ct2 == NULL) {
+            /* TODO add bit 1 to possible *mime-counter-evidence* value
+             * TODO and let it mean to save the attachment in
+             * TODO a temporary file that mime_type_file_classify() can
+             * TODO examine, and using MIME_TEXT if that gives us
+             * TODO something that seems to be human readable?! */
+            if (is_os)
+               goto jleave;
+
+         } else {
+            if (mce.l & MIMECE_ALL_OVWR)
+               mpp->m_ct_type_plain = ct2;
+            if (mce.l & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
+               mpp->m_ct_type_usr_ovwr = ct2;
+         }
+      }
    }
 
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */

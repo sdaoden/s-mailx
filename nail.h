@@ -810,7 +810,9 @@ enum mime_enc {
 
 enum mime_counter_evidence {
    MIMECE_NONE,
-   MIMECE_USR_OVWR   = 1<<1
+   MIMECE_SET        = 1<<0,  /* *mime-counter-evidence* was set */
+   MIMECE_BIN_OVWR   = 1<<1,  /* appli../octet-stream: check, ovw if possible */
+   MIMECE_ALL_OVWR   = 1<<2   /* all: check, ovw if possible */
 };
 
 enum mlist_state {
