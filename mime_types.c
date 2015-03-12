@@ -54,6 +54,13 @@ struct mtnode {
    char const     *mt_line;
 };
 
+struct mtlookup {
+   char const           *mtl_name;
+   size_t               mtl_nlen;
+   struct mtnode const  *mtl_node;
+   char                 *mtl_result;   /* If requested, salloc()ed MIME type */
+};
+
 static struct mtbltin const   _mt_bltin[] = {
 #include "mime_types.h"
 };
@@ -80,6 +87,11 @@ static bool_t           __mt_load_file(ui32_t orflags,
  * for `mimetype' */
 static struct mtnode *  _mt_create(bool_t cmdcalled, ui32_t orflags,
                            char const *line, size_t len);
+
+/* Try to find MIME type by filename (after zeroing mtlp), return NULL if not
+ * found; if with_result mtlp->mtl_result will be created upon success */
+static struct mtlookup * _mt_by_filename(struct mtlookup *mtlp,
+                           char const *name, bool_t with_result);
 
 static void
 _mt_init(void)
@@ -307,6 +319,68 @@ jleave:
    return mtnp;
 }
 
+static struct mtlookup *
+_mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
+{
+   struct mtnode *mtnp;
+   size_t nlen, i, j;
+   char const *ext, *cp;
+   NYD2_ENTER;
+
+   memset(mtlp, 0, sizeof *mtlp);
+
+   if ((mtlp->mtl_nlen = nlen = strlen(mtlp->mtl_name = name)) == 0 ||
+         memchr(name, '.', nlen) == NULL)
+      goto jnull_leave;
+
+   if (!_mt_is_init)
+      _mt_init();
+
+   /* ..all the MIME types */
+   for (mtnp = _mt_list; mtnp != NULL; mtnp = mtnp->mt_next)
+      for (ext = mtnp->mt_line + mtnp->mt_mtlen;; ext = cp) {
+         cp = ext;
+         while (whitechar(*cp))
+            ++cp;
+         ext = cp;
+         while (!whitechar(*cp) && *cp != '\0')
+            ++cp;
+
+         if ((i = PTR2SIZE(cp - ext)) == 0)
+            break;
+         /* Don't allow neither of ".txt" or "txt" to match "txt" */
+         else if (i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
+               ascncasecmp(name + j, ext, i))
+            continue;
+
+         /* Found it */
+         mtlp->mtl_node = mtnp;
+
+         if (!with_result)
+            goto jleave;
+
+         if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
+            name = "";
+            j = 0;
+         } else {
+            name = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+            j = strlen(name);
+         }
+         i = mtnp->mt_mtlen;
+         mtlp->mtl_result = salloc(i + j +1);
+         if (j > 0)
+            memcpy(mtlp->mtl_result, name, j);
+         memcpy(mtlp->mtl_result + j, mtnp->mt_line, i);
+         mtlp->mtl_result[j += i] = '\0';
+         goto jleave;
+      }
+jnull_leave:
+   mtlp = NULL;
+jleave:
+   NYD2_LEAVE;
+   return mtlp;
+}
+
 FL int
 c_mimetype(void *v)
 {
@@ -435,54 +509,12 @@ jdelall:
 FL char *
 mime_type_by_filename(char const *name)
 {
-   char *content = NULL;
-   struct mtnode *mtnp;
-   size_t nlen, i, j;
-   char const *line, *ext, *cp;
+   struct mtlookup mtl;
    NYD_ENTER;
 
-   if (!_mt_is_init)
-      _mt_init();
-
-   if ((nlen = strlen(name)) == 0)
-      goto jleave;
-
-   /* And then check all the MIME types */
-   for (mtnp = _mt_list; mtnp != NULL; mtnp = mtnp->mt_next)
-      for (ext = (line = mtnp->mt_line) + mtnp->mt_mtlen;; ext = cp) {
-         cp = ext;
-         while (whitechar(*cp))
-            ++cp;
-         ext = cp;
-         while (!whitechar(*cp) && *cp != '\0')
-            ++cp;
-
-         if ((i = PTR2SIZE(cp - ext)) == 0)
-            break;
-         /* Don't allow neither of ".txt" or "txt" to match "txt" */
-         else if (i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
-               ascncasecmp(name + j, ext, i))
-            continue;
-
-         /* Found it */
-         i = mtnp->mt_mtlen;
-         if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
-            name = "";
-            j = 0;
-         } else {
-            name = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-            j = strlen(name);
-         }
-         content = salloc(i + j +1);
-         if (j > 0)
-            memcpy(content, name, j);
-         memcpy(content + j, line, i);
-         content[j += i] = '\0';
-         goto jleave;
-      }
-jleave:
+   _mt_by_filename(&mtl, name, TRU1);
    NYD_LEAVE;
-   return content;
+   return mtl.mtl_result;
 }
 
 FL enum conversion
@@ -642,6 +674,7 @@ jleave:
 FL enum mimecontent
 mime_type_mimepart_content(struct mimepart *mpp)
 {
+   struct mtlookup mtl;
    enum mimecontent mc;
    char const *ct;
    union {char const *cp; long l;} mce;
@@ -662,9 +695,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
       bool_t is_os = !asccasecmp(ct, "application/octet-stream");
 
       if (is_os || (mce.l & MIMECE_ALL_OVWR)) {
-         char *ct2 = mime_type_by_filename(mpp->m_filename);
-
-         if (ct2 == NULL) {
+         if (_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL) {
             /* TODO add bit 1 to possible *mime-counter-evidence* value
              * TODO and let it mean to save the attachment in
              * TODO a temporary file that mime_type_file_classify() can
@@ -675,9 +706,9 @@ mime_type_mimepart_content(struct mimepart *mpp)
 
          } else {
             if (mce.l & MIMECE_ALL_OVWR)
-               mpp->m_ct_type_plain = ct2;
+               mpp->m_ct_type_plain = mtl.mtl_result;
             if (mce.l & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
-               mpp->m_ct_type_usr_ovwr = ct2;
+               mpp->m_ct_type_usr_ovwr = mtl.mtl_result;
          }
       }
    }
