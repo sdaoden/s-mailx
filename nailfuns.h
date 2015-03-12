@@ -1325,7 +1325,7 @@ FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
 FL enum mimecontent mime_type_mimepart_content(struct mimepart *mpp);
 
 /* Get the (pipe) handler for a part, or NULL if there is none known */
-FL char *      mime_type_mimepart_handler(struct mimepart const *mpp);
+FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
 
 /*
  * nam_a_grp.c

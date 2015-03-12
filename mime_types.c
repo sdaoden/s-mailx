@@ -743,14 +743,15 @@ jleave:
    return mc;
 }
 
-FL char *
+FL char const *
 mime_type_mimepart_handler(struct mimepart const *mpp)
 {
 #define __S    "pipe-"
 #define __L    (sizeof(__S) -1)
-   char const *es, *cs;
+   struct mtlookup mtl;
+   char const *es, *cs, *rv;
    size_t el, cl, l;
-   char *buf, *rv;
+   char *buf, *cp;
    NYD_ENTER;
 
    el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
@@ -772,8 +773,8 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
     * Yes, we really "fail" here for file extensions which clash MIME types */
    if (el > 0) {
       memcpy(buf + __L, es, el +1);
-      for (rv = buf + __L; *rv != '\0'; ++rv)
-         *rv = lowerconv(*rv);
+      for (cp = buf + __L; *cp != '\0'; ++cp)
+         *cp = lowerconv(*cp);
 
       if ((rv = vok_vlook(buf)) != NULL)
          goto jok;
@@ -782,8 +783,8 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
    /* Then MIME Content-Type: */
    if (cl > 0) {
       memcpy(buf + __L, cs, cl +1);
-      for (rv = buf + __L; *rv != '\0'; ++rv)
-         *rv = lowerconv(*rv);
+      for (cp = buf + __L; *cp != '\0'; ++cp)
+         *cp = lowerconv(*cp);
 
       if ((rv = vok_vlook(buf)) != NULL)
          goto jok;

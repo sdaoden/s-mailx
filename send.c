@@ -78,7 +78,7 @@ static void          _print_part_info(struct str *out, struct mimepart *mip,
                            struct ignoretab *doign, int level);
 
 /* Query possible pipe command for MIME part */
-static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
+static enum pipeflags _pipecmd(char const **result, struct mimepart const *mpp);
 
 /* Create a pipe; if mpp is not NULL, place some NAILENV_* environment
  * variables accordingly */
@@ -522,10 +522,10 @@ _print_part_info(struct str *out, struct mimepart *mip,
 }
 
 static enum pipeflags
-_pipecmd(char **result, struct mimepart const *mpp)
+_pipecmd(char const **result, struct mimepart const *mpp)
 {
    enum pipeflags ret;
-   char *cp;
+   char const *cp;
    NYD_ENTER;
 
    *result = NULL;
@@ -545,7 +545,7 @@ _pipecmd(char **result, struct mimepart const *mpp)
    else if (!(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
       ret = PIPE_MSG;
-      *result = UNCONST(_("[Directly address message only to display this]\n"));
+      *result = _("[Directly address message only to display this]\n");
    } else {
       /* Viewing a single message only */
       /* TODO send/MIME layer rewrite: when we have a single-pass parser
@@ -721,7 +721,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 {
    int volatile ispipe, rv = 0;
    struct str rest;
-   char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
+   char *line = NULL, *cp, *cp2, *start;
+   char const *pipecomm = NULL;
    size_t linesize = 0, linelen, cnt;
    int dostat, infld = 0, ignoring = 1, isenc, c;
    struct mimepart *volatile np;
