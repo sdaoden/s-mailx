@@ -733,7 +733,8 @@ mime_type_mimepart_content(struct mimepart *mpp)
    NYD_ENTER;
 
    mc = MIME_UNKNOWN;
-   ct = mpp->m_ct_type_plain;
+   if ((ct = mpp->m_ct_type_plain) == NULL) /* TODO may not */
+      ct = "";
 
    if ((mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
       char *eptr;
@@ -756,7 +757,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
             if (is_os)
                goto jleave;
 
-         } else {
+         } else if (is_os || asccasecmp(ct, mtl.mtl_result)) {
             if (mce.l & MIMECE_ALL_OVWR)
                mpp->m_ct_type_plain = mtl.mtl_result;
             if (mce.l & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
