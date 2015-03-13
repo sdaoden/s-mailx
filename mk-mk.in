@@ -224,6 +224,7 @@ _update-version:
 				awk '\
 					BEGIN {n=0}\
 					/version\.h/ {next}\
+					/^\?\?/ {next}\
 					{++n}\
 					END {print n}\
 				'`" -ne 0 ] &&\
