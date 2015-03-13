@@ -5516,6 +5516,11 @@ overridden content-type by showing a plus-sign
 If bit three is set (4) then the counter-evidence is always produced
 and a positive result will be used as the MIME type, even forcefully
 overriding the parts given MIME type.
+.\".It
+.\"If bit four is set (8) then as a last resort the content of
+.\".Ql application/octet-stream
+.\"parts will be inspected, so that data that looks like (english) plain
+.\"text can be treated as such.
 .El
 .
 .Mx
@@ -6909,7 +6914,7 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 # Never refuse to start into interactive mode, and more
 set emptystart \e
     colour-pager crt= followup-to followup-to-honour=ask-yes \e
-    history-gabby mime-counter-evidence=2 \e
+    history-gabby mime-counter-evidence=6 \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
     NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
     reply-to-honour=ask-yes

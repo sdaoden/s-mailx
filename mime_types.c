@@ -749,13 +749,15 @@ mime_type_mimepart_content(struct mimepart *mpp)
 
       if (is_os || (mce.l & MIMECE_ALL_OVWR)) {
          if (_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL) {
-            /* TODO add bit 1 to possible *mime-counter-evidence* value
-             * TODO and let it mean to save the attachment in
-             * TODO a temporary file that mime_type_file_classify() can
-             * TODO examine, and using MIME_TEXT if that gives us
-             * TODO something that seems to be human readable?! */
-            if (is_os)
+            if (is_os) {
+               if (mce.l & MIMECE_BIN_PARSE) {
+                  /* TODO Code MIMECE_BIN_PARSE (*mime-counter-evidence* bit 4)
+                   * TODO This requires v15 framework since we must decode the
+                   * TODO single mimepart mpp to a temporary file in order to
+                   * TODO inspect the content! */
+               }
                goto jleave;
+            }
 
          } else if (is_os || asccasecmp(ct, mtl.mtl_result)) {
             if (mce.l & MIMECE_ALL_OVWR)
