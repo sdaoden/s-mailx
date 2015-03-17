@@ -1386,6 +1386,20 @@ jleave:
    NYD_LEAVE;
 }
 
+FL size_t
+delctrl(char *cp, size_t len)
+{
+   size_t x, y;
+   NYD_ENTER;
+
+   for (x = y = 0; x < len; ++x)
+      if (!cntrlchar(cp[x]))
+         cp[y++] = cp[x];
+   cp[y] = '\0';
+   NYD_LEAVE;
+   return y;
+}
+
 FL char *
 prstr(char const *s)
 {

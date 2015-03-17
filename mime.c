@@ -59,8 +59,6 @@ static bool_t           _name_highbit(struct name *np);
 static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
                            struct str *rest, struct quoteflt *qf);
 
-static size_t           delctrl(char *cp, size_t sz);
-
 /* Convert header fields to RFC 1522 format and write to the file fo */
 static ssize_t          mime_write_tohdr(struct str *in, FILE *fo);
 
@@ -212,21 +210,6 @@ j__sig:
       kill(0, __mimefwtd_sig);
    NYD_LEAVE;
    return rv;
-}
-
-static size_t
-delctrl(char *cp, size_t sz)
-{
-   size_t x = 0, y = 0;
-   NYD_ENTER;
-
-   while (x < sz) {
-      if (!cntrlchar(cp[x]))
-         cp[y++] = cp[x];
-      ++x;
-   }
-   NYD_LEAVE;
-   return y;
 }
 
 static ssize_t
