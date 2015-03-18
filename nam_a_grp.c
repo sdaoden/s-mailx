@@ -666,39 +666,15 @@ _group_print_all(enum group_type gt)
 
    for (i = 0; ida[i] != NULL; ++lines, ++i)
       _group_print(_group_find(gt, ida[i]), fp);
-
-   /* Because of interest, print the list match order */
 #ifdef HAVE_REGEX
    if (gt & GT_MLIST) {
-      struct grp_regex *lp, *grp;
-
-      if (gt & GT_SUBSCRIBE) {
-         lp = _mlsub_regex;
-         i = (ui32_t)_mlsub_size;
-         h = (ui32_t)_mlsub_hits;
-      } else {
-         lp = _mlist_regex;
-         i = (ui32_t)_mlist_size;
-         h = (ui32_t)_mlist_hits;
-      }
-
-      if ((grp = lp) != NULL) {
-         fprintf(fp, _("\n%s lists regex order (%u entries; [%u] hits):\n  "),
-            (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")), i, h);
-         lines += (i = 2);
-         do {
-            h = (ui32_t)strlen(grp->gr_mygroup->g_id) + 8;
-            if ((i += h) > 79) {
-               fputs("\n  ", fp);
-               ++lines;
-               i = 2 + h;
-            }
-            fprintf(fp, " %s [%" PRIuZ "]",
-               grp->gr_mygroup->g_id, grp->gr_hits);
-         } while ((grp = grp->gr_next) != lp);
-         putc('\n', fp);
-         ++lines;
-      }
+      if (gt & GT_SUBSCRIBE)
+         i = (ui32_t)_mlsub_size, h = (ui32_t)_mlsub_hits;
+      else
+         i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
+      fprintf(fp, _("\n%s list total: %u entries, %u hits\n"),
+         (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
+         i, h);
    }
 #endif
 
@@ -752,10 +728,16 @@ _group_print(struct group const *gp, FILE *fo)
       }
 #ifdef HAVE_REGEX
       if (gp->g_type & GT_REGEX) {
-         struct grp_regex *grp;
+         size_t i;
+         struct grp_regex *grp,
+            *lp = (gp->g_type & GT_SUBSCRIBE ? _mlsub_regex : _mlist_regex);
+
          GP_TO_SUBCLASS(grp, gp);
-         fprintf(fo, "%sregex, %" PRIuZ,
-            (sep != NULL ? sep : ", "), grp->gr_hits);
+         for (i = 0; lp != grp; lp = lp->gr_next)
+            ++i;
+
+         fprintf(fo, "%srx: %" PRIuZ "/%" PRIuZ ". hits/sort",
+            (sep != NULL ? sep : ", "), grp->gr_hits, i);
          sep = NULL;
       }
 #endif
