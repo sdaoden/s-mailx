@@ -1219,7 +1219,7 @@ n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
    ol = in->l;
 
    ol = (ol << 1) - (ol >> 4);
-   if (olb < ol) {
+   if (olb <= ol) {
       olb = ol;
       goto jrealloc;
    }
@@ -1235,7 +1235,7 @@ n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
       err = 0;
       olb += in->l;
 jrealloc:
-      obb = srealloc(obb, olb);
+      obb = srealloc(obb, olb +1);
    }
 
    if (in_rest_or_null != NULL) {
@@ -1243,7 +1243,7 @@ jrealloc:
       in_rest_or_null->l = il;
    }
    out->s = obb;
-   out->l = olb - ol;
+   out->s[out->l = olb - ol] = '\0';
    NYD2_LEAVE;
    return err;
 }
