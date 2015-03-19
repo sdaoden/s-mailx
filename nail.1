@@ -435,7 +435,37 @@ impossible.
 .\" .Ss "A starter" {{{
 .Ss "A starter"
 .
+\*(UA is a direct descendant of the BSD Mail program that was introduced
+in 1978 (itself superceeding the simpler UNIX mail program) and used
+to introduce itself (in the Mail reference manual) as follows:
+.
+.Bd -ragged -offset indent
+Mail provides a simple and friendly environment for sending and
+receiving mail.
+It divides incoming mail into its constituent messages and allows the
+user to deal with them in any order.
+In addition, it provides a set of
+.Xr ed 1 Ns
+-like commands for manipulating messages and sending mail.
+Mail offers the user simple editing capabilities to ease the composition
+of outgoing messages, as well as providing the ability to define and
+send to names which address groups of users.
+.Ed
+.
+.Pp
+\*(UA is thus the user side of the Unix mail system, whereas the system
+side (mail-transfer-agent, MTA) was traditionally taken by
+.Xr sendmail 8 ;
+today
+.Xr postfix 1
+or
+.Xr exim 8
+are often used for this purpose instead.
+If the \*(OPal SMTP feature has been built into \*(UA then the
+system side is not a mandatory precondition for mail delivery.
 The following sections will give a short usage introduction.
+.
+.Pp
 Because \*(UA strives for compliance with POSIX
 .Xr mailx 1
 it is likely that some configuration settings have to be adjusted before
@@ -488,13 +518,17 @@ decode the name to its original form.
 .\" .Ss "Sending mail" {{{
 .Ss "Sending mail"
 .
-To send a message to one or more people,
-\*(UA can be invoked with arguments which are the names of people to
-whom the mail will be sent, e.g., it can be as simple as
+To send a message to one or more people, using a local
+mail-transfer-agent (MTA; the path is builtin but can be set via
+.Va sendmail )
+or the \*(OPal builtin SMTP transport to actually deliver the generated
+mail message, \*(UA can be invoked with arguments which are the names of
+people to whom the mail will be sent:
+.
 .Bd -literal -offset indent
-$ \*(ua bill@host1.x1 bob@host2.y1
+$ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an almost dry-run mode first
-$ \*(ua -dvv bill@host1.x1 bob@host2.y1
+$ \*(ua -dvv "(Lovely) Bob <bob@host2>"
 .Ed
 .
 .Pp
@@ -596,6 +630,11 @@ Any other name which contains a
 (percent sign) character before also specifies a mailbox name;
 What remains is treated as a network address.
 .
+.Bd -literal -offset indent
+$ echo bla | \*(ua -Sexpandaddr -s test ./mbox.mbox
+$ echo bla | \*(ua -Sexpandaddr -s test '|cat >> ./mbox.mbox'
+.Ed
+.
 .Pp
 It is possible to create personal distribution lists via the
 .Ic alias
@@ -618,6 +657,27 @@ and
 Personal aliases will be expanded by \*(UA before the message is sent.
 They are a convenient alternative to specifying each addressee by
 itself.
+.
+.Pp
+To avoid environmental noise scripts should
+.Dq detach
+\*(ua from any configuration files and create a script-local
+environment, either by pointing the
+.Ev MAILRC
+variable to a custom configuration file, by passing the configuration in
+environment variables, or by using the
+.Fl S
+command line option to specify options:
+.
+.Bd -literal -offset indent
+$ env LC_ALL=C MAILRC=/dev/null password=SECRET \*(ua -n \e
+    -Sv15-compat \e
+    -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
+    -S 'from=scriptreply@domain' \e
+    -s 'subject' -a attachment_file \e
+    "Recipient 1 <recipient1@domain>" recipient2@domain \e
+    < content_file
+.Ed
 .\" }}}
 .
 .\" .Ss "Reading mail" {{{
@@ -7070,39 +7130,6 @@ command line option for a(n almost) dry-run):
 .Dl $ echo text | \*(ua -vv -AXandeX -s Subject some@where
 .\" }}}
 .
-.\" .Ss "Sending mail from scripts" {{{
-.Ss "Sending mail from scripts"
-.
-If you want to send mail from scripts, you must be aware that \*(UA
-reads the user's configuration files by default.
-So unless your script is only intended for your own personal use
-(as, e.g., a cron job), you need to circumvent this:
-.
-.Pp
-.Dl $ MAILRC=/dev/null LC_ALL=en_US.UTF-8 \*(ua \-n
-.
-.Pp
-You then need to create a script-local configuration for \*(UA.
-This can be done by either pointing the
-.Ev MAILRC
-variable to a custom configuration file,
-by passing the configuration in environment variables,
-or by using the
-.Fl S
-command line option to specify options.
-Since many configuration options are not valid shell variables, the
-.Xr env 1
-command is useful if the approach via environment variables is used:
-.
-.Bd -literal -offset indent
-$ env MAILRC=/dev/null LC_ALL=C password=secret \*(ua -n \e
-    -Sv15-compat \e
-    -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
-    -S 'from=scriptreply@domain' \e
-    -s 'subject' -a attachment_file recipient@domain < content_file
-.Ed
-.\" }}}
-.
 .\" .Ss "IMAP or POP3 client setup" {{{
 .Ss "IMAP or POP3 client setup"
 .
@@ -7672,7 +7699,9 @@ and
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
 .Xr re_format 7 ,
-.Xr mailwrapper 8
+.Xr exim 8 ,
+.Xr mailwrapper 8 ,
+.Xr sendmail 8
 .\" }}}
 .
 .
