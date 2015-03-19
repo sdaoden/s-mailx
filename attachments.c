@@ -349,7 +349,7 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
 
-   if ((file = file_expand(file)) == NULL)
+   if ((file = fexpand(file, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
       goto jleave;
    if (access(file, R_OK) != 0)
       goto jleave;
