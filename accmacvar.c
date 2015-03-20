@@ -560,9 +560,16 @@ _var_set_env(char **ap, bool_t issetenv)
          goto jnext;
       }
 
-      if (!issetenv && varbuf[0] == 'n' && varbuf[1] == 'o')
+      if (varbuf[0] == 'n' && varbuf[1] == 'o') {
          errs += !_var_vokclear(varbuf + 2);
-      else {
+         if (issetenv) {
+#ifdef HAVE_SETENV
+            errs += (unsetenv(varbuf + 2) != 0);
+#else
+            ++errs;
+#endif
+         }
+      } else {
          errs += !_var_vokset(varbuf, (uintptr_t)cp);
          if (issetenv) {
 #ifdef HAVE_SETENV
@@ -1170,7 +1177,7 @@ c_unsetenv(void *v)
          bool_t bad = !_var_vokclear(*ap);
          if (
 #ifdef HAVE_SETENV
-               unsetenv(*ap) != 0 &&
+               unsetenv(*ap) != 0 ||
 #endif
                bad
          )
