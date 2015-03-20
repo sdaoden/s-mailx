@@ -562,10 +562,20 @@ _var_set_env(char **ap, bool_t issetenv)
       }
 
       if (varbuf[0] == 'n' && varbuf[1] == 'o') {
-         errs += !_var_vokclear(varbuf + 2);
+         char const *k = varbuf + 2;
+
+         if (issetenv && (!strcmp(k, "HOME") || /* TODO generic */
+               !strcmp(k, "USER") || !strcmp(k, "TMPDIR"))) {/* TODO approach */
+            if (options & OPT_D_V)
+               fprintf(stderr, _("Cannot `unsetenv' \"%s\"\n"), k);
+            ++errs;
+            goto jnext;
+         }
+
+         errs += !_var_vokclear(k);
          if (issetenv) {
 #ifdef HAVE_SETENV
-            errs += (unsetenv(varbuf + 2) != 0);
+            errs += (unsetenv(k) != 0);
 #else
             ++errs;
 #endif
@@ -573,6 +583,24 @@ _var_set_env(char **ap, bool_t issetenv)
       } else {
          errs += !_var_vokset(varbuf, (uintptr_t)cp);
          if (issetenv) {
+            do {
+            static char const *cp_buf[3];
+            char const **pl, **pe;
+
+            if (!strcmp(varbuf, "HOME")) /* TODO generic */
+               pl = cp_buf + 0, pe = &homedir;
+            else if (!strcmp(varbuf, "USER")) /* TODO approach */
+               pl = cp_buf + 1, pe = &myname;
+            else if (!strcmp(varbuf, "TMPDIR")) /* TODO also here */
+               pl = cp_buf + 2, pe = &tempdir;
+            else
+               break;
+
+            if (*pl != NULL)
+               free(UNCONST(*pl));
+            *pe = *pl = sstrdup(cp);
+            } while (0);
+
 #ifdef HAVE_SETENV
             errs += (setenv(varbuf, cp, 1) != 0);
 #else
@@ -1189,7 +1217,17 @@ c_unsetenv(void *v)
       char **ap;
 
       for (ap = v; *ap != NULL; ++ap) {
-         bool_t bad = !_var_vokclear(*ap);
+         bool_t bad;
+
+         if (!strcmp(*ap, "HOME") || !strcmp(*ap, "USER") || /* TODO generic */
+               !strcmp(*ap, "TMPDIR")) { /* TODO approach */
+            if (options & OPT_D_V)
+               fprintf(stderr, _("Cannot `unsetenv' \"%s\"\n"), *ap);
+            err = 1;
+            continue;
+         }
+
+         bad = !_var_vokclear(*ap);
          if (
 #ifdef HAVE_SETENV
                unsetenv(*ap) != 0 ||
