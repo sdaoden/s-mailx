@@ -189,16 +189,22 @@ FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
 
+/* Environment lookup, if envonly is TRU1 then variable must come from the
+ * process environment (and if via `setenv') */
+FL char *      _env_look(char const *envkey, bool_t envonly);
+#define env_blook(S,EXCL)        (_env_look(S, EXCL) != NULL)
+#define env_vlook(S,EXCL)        _env_look(S, EXCL)
+
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
 #ifdef HAVE_SOCKETS
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
+# define xok_BLOOK(C,URL,M)      (_var_xoklook(C, URL, M) != NULL)
+# define xok_VLOOK(C,URL,M)      _var_xoklook(C, URL, M)
+# define xok_blook(C,URL,M)      xok_BLOOK(CONCAT(ok_b_, C), URL, M)
+# define xok_vlook(C,URL,M)      xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 #endif
-#define xok_BLOOK(C,URL,M)       (_var_xoklook(C, URL, M) != NULL)
-#define xok_VLOOK(C,URL,M)       _var_xoklook(C, URL, M)
-#define xok_blook(C,URL,M)       xok_BLOOK(CONCAT(ok_b_, C), URL, M)
-#define xok_vlook(C,URL,M)       xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 
 /* `varshow' */
 FL int         c_varshow(void *v);

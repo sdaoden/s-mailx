@@ -151,8 +151,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          _("*attrlist* is not of the correct length, using builtin\n"));
    }
 
-   if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
-         getenv("SYSV3") != NULL) {
+   if (ok_blook(bsdcompat) || ok_blook(bsdflags) || env_blook("SYSV3", FAL0)) {
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
    } else {

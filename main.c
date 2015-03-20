@@ -370,9 +370,10 @@ _setup_vars(void)
    struct passwd *pwuid, *pw;
    NYD_ENTER;
 
-   tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : TMPDIR_FALLBACK;
+   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
+         ? savestr(cp) : TMPDIR_FALLBACK;
 
-   cp = (myname == NULL) ? getenv("USER") : myname;
+   cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
       panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
@@ -389,7 +390,7 @@ _setup_vars(void)
    myname = savestr(myname);
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
-   if ((cp = getenv("HOME")) == NULL)
+   if ((cp = env_vlook("HOME", TRU1)) == NULL)
       cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
    homedir = savestr(cp);
    NYD_LEAVE;
@@ -415,11 +416,11 @@ _setscreensize(int is_sighdl)
       char *cp;
       long i;
 
-      if ((cp = getenv("LINES")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
-            i < INT_MAX)
+      if ((cp = env_vlook("LINES", FAL0)) != NULL &&
+            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnheight = realscreenheight = (int)i;
-      if ((cp = getenv("COLUMNS")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
-            i < INT_MAX)
+      if ((cp = env_vlook("COLUMNS", FAL0)) != NULL &&
+            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnwidth = (int)i;
 
       if (scrnwidth != 0 && scrnheight != 0)
@@ -898,14 +899,14 @@ jgetopt_done:
    /* Snapshot our string pools.  Memory is auto-reclaimed from now on */
    spreserve();
 
-   if (!(options & OPT_NOSRC) && getenv("NAIL_NO_SYSTEM_RC") == NULL)
+   if (!(options & OPT_NOSRC) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
       load(SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
-   if ((cp = getenv("MAILRC")) == NULL)
+   if ((cp = env_vlook("MAILRC", TRU1)) == NULL)
       cp = UNCONST(MAILRC);
    load(file_expand(cp));
-   if (getenv("NAIL_EXTRA_RC") == NULL &&
+   if (env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
          (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 

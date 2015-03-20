@@ -46,11 +46,9 @@ termcap_init(void)
    if (!(options & OPT_TTYOUT))
       goto jleave;
 
-   /* Don't use getenv(), but force copy-in into our own tables.. (we need
-    * that one pretty often for our colour support) */
    if (!ok_blook(term_ca_mode))
       goto jleave;
-   if ((cp = _var_voklook("TERM")) == NULL)
+   if ((cp = env_vlook("TERM", FAL0)) == NULL)
       goto jleave;
 
    if (!tgetent(buf, cp))

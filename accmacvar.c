@@ -509,6 +509,7 @@ _var_list_all(void)
    i = (ok_blook(bsdcompat) || ok_blook(bsdset));
    fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
 
+   /* TODO rework _var_list_all() output a la mimetypes (in i==0 mode) */
    for (cap = vacp; no != 0; ++cap, --no) {
       char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin... */
       if (cp == NULL)
@@ -1021,6 +1022,20 @@ _var_vokclear(char const *vokey)
    return !err;
 }
 
+FL char *
+_env_look(char const *envkey, bool_t envonly) /* TODO rather dummy yet!! */
+{
+   char *rv;
+   NYD_ENTER;
+
+   if (envonly)
+      rv = getenv(envkey); /* TODO rework vars: cache, output a la mimetypes */
+   else
+      rv = _var_voklook(envkey);
+   NYD_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_SOCKETS
 FL char *
 _var_xoklook(enum okeys okey, struct url const *urlp, enum okey_xlook_mode oxm)
@@ -1097,7 +1112,7 @@ c_varshow(void *v)
          val = vc.vc_var->v_value;
          isenv = FAL0;
       } else
-         isenv = ((val = getenv(vc.vc_name)) != NULL);
+         isenv = ((val = getenv(vc.vc_name)) != NULL);/* TODO should be flag! */
       if (val == NULL)
          val = UNCONST("NULL");
       isset = (vc.vc_var != NULL);

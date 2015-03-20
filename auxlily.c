@@ -587,10 +587,10 @@ get_pager(char const **env_addon)
    if (env_addon != NULL) {
       *env_addon = NULL;
       if (strstr(cp, "less") != NULL) {
-         if (getenv("LESS") == NULL)
+         if (!env_blook("LESS", TRU1))
             *env_addon = "LESS=FRSXi";
       } else if (strstr(cp, "lv") != NULL) {
-         if (getenv("LV") == NULL)
+         if (!env_blook("LV", TRU1))
             *env_addon = "LV=-c";
       }
    }
@@ -1557,8 +1557,7 @@ colour_table_create(bool_t pager_used)
    else {
       char *term, *okterms;
 
-      /* Don't use getenv(), but force copy-in into our own tables.. */
-      if ((term = _var_voklook("TERM")) == NULL)
+      if ((term = env_vlook("TERM", FAL0)) == NULL)
          goto jleave;
       /* terminfo rocks: if we find "color", assume it's right */
       if (strstr(term, "color") != NULL)

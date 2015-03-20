@@ -116,7 +116,7 @@ _nrc_init(void)
       *nrc = NRC_NODE_ERR;
    NYD_ENTER;
 
-   if ((netrc_load = getenv("NETRC")/* TODO */) == NULL)
+   if ((netrc_load = env_vlook("NETRC", FAL0)) == NULL)
       netrc_load = UNCONST(NETRC);
    if ((netrc_load = file_expand(netrc_load)) == NULL)
       goto j_leave;
