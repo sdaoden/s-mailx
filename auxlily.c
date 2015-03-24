@@ -1315,7 +1315,7 @@ makeprint(struct str const *in, struct str *out)
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max);
+   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 
