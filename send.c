@@ -163,7 +163,9 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    if (ip->m_charset == NULL)
       ip->m_charset = charset_get_7bit();
 
-   ip->m_ct_enc = hfield1("content-transfer-encoding", (struct message*)ip);
+   if ((ip->m_ct_enc = hfield1("content-transfer-encoding",
+         (struct message*)ip)) == NULL)
+      ip->m_ct_enc = mime_enc_from_conversion(CONV_7BIT);
    ip->m_mime_enc = mime_enc_from_ctehead(ip->m_ct_enc);
 
    if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||

@@ -65,7 +65,7 @@ static enum okay     _putname(char const *line, enum gfield w,
  * headers, respectively */
 static int           _put_ct(FILE *fo, char const *contenttype,
                         char const *charset);
-static int           _put_cte(FILE *fo, enum conversion conv);
+SINLINE int          _put_cte(FILE *fo, enum conversion conv);
 static int           _put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Write an attachment to the file buffer, converting to MIME */
@@ -188,14 +188,20 @@ jerr:
    goto jleave;
 }
 
-static int
+SINLINE int
 _put_cte(FILE *fo, enum conversion conv)
 {
    int rv;
    NYD2_ENTER;
 
-   rv = fprintf(fo, "Content-Transfer-Encoding: %s\n",
-         mime_enc_from_conversion(conv));
+   /* RFC 2045, 6.1.:
+    *    This is the default value -- that is,
+    *    "Content-Transfer-Encoding: 7BIT" is assumed if the
+    *     Content-Transfer-Encoding header field is not present.
+    */
+   rv = (conv == CONV_7BIT) ? 0
+         : fprintf(fo, "Content-Transfer-Encoding: %s\n",
+            mime_enc_from_conversion(conv));
    NYD2_LEAVE;
    return rv;
 }
