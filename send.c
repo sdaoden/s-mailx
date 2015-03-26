@@ -1404,8 +1404,8 @@ jgetname:
       } else if (*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
-      else if ((f3 = file_expand(f2)) == NULL)
-         /* (Error message written by file_expand()) */
+      else if ((f3 = fexpand(f2, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
+         /* (Error message written by fexpand()) */
          goto jgetname;
       else
          f = f3;
