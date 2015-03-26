@@ -413,11 +413,22 @@
 # define NATCH_CHAR(X)
 #endif
 
-/* Compile-Time-Assert */
+/* Compile-Time-Assert
+ * Problem is that some compilers warn on unused local typedefs, so add
+ * a special local CTA to overcome this */
 #define CTA(TEST)       _CTA_1(TEST, __LINE__)
+#define LCTA(TEST)      _LCTA_1(TEST, __LINE__)
+
 #define _CTA_1(TEST,L)  _CTA_2(TEST, L)
 #define _CTA_2(TEST,L)  \
    typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
+#define _LCTA_1(TEST,L) _LCTA_2(TEST, L)
+#define _LCTA_2(TEST,L) \
+do {\
+   typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1];\
+   COMPILE_TIME_ASSERT_failed_at_line_ ## L __i_am_unused__;\
+   UNUSED(__i_am_unused__);\
+} while (0)
 
 #undef ISPOW2
 #define ISPOW2(X)       ((((X) - 1) & (X)) == 0)

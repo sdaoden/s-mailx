@@ -594,7 +594,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
             ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0'))
          cp = s.s;
       else {
-         CTA(NAME_MAX >= 8);
+         LCTA(NAME_MAX >= 8);
          s.s[7] = '.';
          cp = savecat(s.s, sh);
       }

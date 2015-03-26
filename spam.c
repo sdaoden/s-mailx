@@ -923,8 +923,8 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
    struct str s;
    struct spam_cf *scfp;
    char const *cp;
-   CTA(3 < NELEM(scfp->cf_env));
    NYD2_ENTER;
+   LCTA(3 < NELEM(scfp->cf_env));
 
    scfp = &vcp->vc_t.cf;
 
