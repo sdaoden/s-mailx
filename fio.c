@@ -955,7 +955,7 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>~{}()[]*?$`'\"\\"))
+   if (!(fexpm & FEXP_NSHELL) && anyof(res, "|&;<>~{}()[]*?$`'\"\\"))
       switch (which_protocol(res)) {
       case PROTO_FILE:
       case PROTO_MAILDIR:
