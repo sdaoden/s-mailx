@@ -1099,6 +1099,32 @@ jleave:
    return UNCONST(res);
 }
 
+FL char *
+fexpand_nshell_quote(char const *name)
+{
+   size_t i, j;
+   char *rv, c;
+   NYD_ENTER;
+
+   for (i = j = 0; (c = name[i]) != '\0'; ++i)
+      if (c == '\\')
+         ++j;
+
+   if (j == 0)
+      rv = savestrbuf(name, i);
+   else {
+      rv = salloc(i + j +1);
+      for (i = j = 0; (c = name[i]) != '\0'; ++i) {
+         rv[j++] = c;
+         if (c == '\\')
+            rv[j++] = c;
+      }
+      rv[j] = '\0';
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 demail(void)
 {
