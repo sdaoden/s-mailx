@@ -88,10 +88,12 @@ static bool_t           __mt_load_file(ui32_t orflags,
 static struct mtnode *  _mt_create(bool_t cmdcalled, ui32_t orflags,
                            char const *line, size_t len);
 
-/* Try to find MIME type by filename (after zeroing mtlp), return NULL if not
- * found; if with_result mtlp->mtl_result will be created upon success */
+/* Try to find MIME type by X (after zeroing mtlp), return NULL if not found;
+ * if with_result >mtl_result will be created upon success for the former */
 static struct mtlookup * _mt_by_filename(struct mtlookup *mtlp,
                            char const *name, bool_t with_result);
+static struct mtlookup * _mt_by_mtname(struct mtlookup *mtlp,
+                           char const *mtname);
 
 static void
 _mt_init(void)
@@ -373,6 +375,56 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
          memcpy(mtlp->mtl_result + j, mtnp->mt_line, i);
          mtlp->mtl_result[j += i] = '\0';
          goto jleave;
+      }
+jnull_leave:
+   mtlp = NULL;
+jleave:
+   NYD2_LEAVE;
+   return mtlp;
+}
+
+static struct mtlookup *
+_mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
+{
+   struct mtnode *mtnp;
+   size_t nlen, i, j;
+   char const *cp;
+   NYD2_ENTER;
+
+   memset(mtlp, 0, sizeof *mtlp);
+
+   if ((mtlp->mtl_nlen = nlen = strlen(mtlp->mtl_name = mtname)) == 0)
+      goto jnull_leave;
+
+   if (!_mt_is_init)
+      _mt_init();
+
+   /* ..all the MIME types */
+   for (mtnp = _mt_list; mtnp != NULL; mtnp = mtnp->mt_next) {
+         if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
+            cp = "";
+            j = 0;
+         } else {
+            cp = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+            j = strlen(cp);
+         }
+         i = mtnp->mt_mtlen;
+
+         if (i + j == mtlp->mtl_nlen) {
+            char *xmt = ac_alloc(i + j +1);
+            if (j > 0)
+               memcpy(xmt, cp, j);
+            memcpy(xmt + j, mtnp->mt_line, i);
+            xmt[j += i] = '\0';
+            i = asccasecmp(mtname, xmt);
+            ac_free(xmt);
+
+            if (!i) {
+               /* Found it */
+               mtlp->mtl_node = mtnp;
+               goto jleave;
+            }
+         }
       }
 jnull_leave:
    mtlp = NULL;
@@ -788,6 +840,12 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
 
       if ((rv = vok_vlook(buf)) != NULL)
          goto jok;
+
+      if (_mt_by_mtname(&mtl, cs) != NULL &&
+            (mtl.mtl_node->mt_flags & _MT_PLAIN)) {
+         rv = "@";
+         goto jok;
+      }
    }
 
    rv = NULL;
