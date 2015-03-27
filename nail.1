@@ -177,7 +177,9 @@ after the startup files have been read.
 Attach the given file to the message.
 The same filename conventions as described in the section
 .Sx Commands
-apply.
+apply; shell word expansion is restricted to the tilde
+.Ql ~
+and (shell) variables (see the quoted section for more).
 .
 .Mx
 .It Fl B
@@ -2011,8 +2013,40 @@ variable is unset or is set to null, the filename will be unchanged.
 .
 .It
 Shell word expansions are applied to the filename.
+.\" TODO shell word expansion shell expand fexpand FEXP_NSHELL
+.Sy Compatibility note:
+on the long run support for complete shell word expansion will be
+replaced by an internally implemented restricted expansion mechanism in
+order to circumvent possible security impacts through shell expansion.
+Expect that a growing number of program parts only support this
+restricted syntax:
+.Pp
+Meta expansions are applied to the filename: leading tilde characters
+.Pf ( Ql ~/ )
+will be replaced by the expansion of
+.Ev HOME ,
+and any occurrence of
+.Ql $VARIABLE
+(or
+.Ql ${VARIABLE} )
+will be replaced by the expansion of the variable, if possible;
+\*(UA internal as well as environmental (shell) variables can be
+accessed through this mechanism.
+In order to include a raw
+.Ql $
+character precede it with a backslash
+.Ql \e ,
+to include a backslash double it.
 If more than a single pathname results from this expansion and the
 command is expecting one file, an error results.
+.Pp
+Note that in interactive display context backslash quoting is
+automatically performed as necessary, e.g., a file named
+.Ql diet\e is \ecurd.txt
+will be displayed as
+.Ql diet\e\e is \e\ecurd.txt
+in order to allow simple acceptance (by typing
+.Dq ENTER ) .
 .El
 .
 .Pp
