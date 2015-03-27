@@ -1344,7 +1344,7 @@ subject_re_trim(char *s)
 
    bool_t any = FAL0;
    char *orig_s = s, *re_st = NULL, *re_st_x;
-   size_t re_l;
+   size_t re_l = 0 /* pacify CC */;
    NYD_ENTER;
 
    if ((re_st_x = ok_vlook(reply_strings)) != NULL &&
