@@ -484,6 +484,7 @@ _nyd_oncrash(int signo)
    if ((fd = open(fname, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
       fd = STDERR_FILENO;
 
+# undef _X
 # define _X(X) (X), sizeof(X) -1
    write(fd, _X("\n\nNYD: program dying due to signal "));
 

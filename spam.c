@@ -505,6 +505,7 @@ _spamd_interact(struct spam_vc *vcp)
 
    /* The command header, finalized with an empty line.
     * This needs to be written in a single write(2)! */
+# undef _X
 # define _X(X) do {memcpy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;} while (0)
 
    i = ((cp = ssdp->d_user.s) != NULL) ? ssdp->d_user.l : 0;

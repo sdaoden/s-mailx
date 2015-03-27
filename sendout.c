@@ -1634,7 +1634,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
    col = strlen(str);
    if (col) {
       fwrite(str, sizeof *str, col, fo);
-#define _X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
+#undef _X
+#define _X(S)  (col == sizeof(S) -1 && !asccasecmp(str, S))
       if (ff & GFILES) {
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
