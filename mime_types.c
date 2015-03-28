@@ -33,10 +33,14 @@ enum mime_type {
    __MT_TMAX   = _MT_OTHER,
    __MT_TMASK  = 0x07,
 
-   _MT_LOADED  = 1<< 4,       /* Not struct mtbltin */
-   _MT_USR     = 1<< 5,       /* MIME_TYPES_USR */
-   _MT_SYS     = 1<< 6,       /* MIME_TYPES_SYS */
-   _MT_PLAIN   = 1<< 7        /* Without pipe handler display as text */
+   _MT_LOADED  = 1<< 8,       /* Not struct mtbltin */
+   _MT_USR     = 1<< 9,       /* MIME_TYPES_USR */
+   _MT_SYS     = 1<<10,       /* MIME_TYPES_SYS */
+
+   _MT_PLAIN   = 1<<16,       /* Without pipe handler display as text */
+   _MT_SOUP_h  = 2<<16,       /* Ditto, but HTML tagsoup parser if possible */
+   _MT_SOUP_H  = 3<<16,       /* HTML tagsoup parser, else NOT plain text */
+   __MT_MARKMASK = _MT_SOUP_H
 };
 
 struct mtbltin {
@@ -251,12 +255,28 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
    /* (But wait - is there a type marker?) */
    if (!(orflags & (_MT_USR | _MT_SYS)) && *typ == '@') {
-      if (len < 2 || typ[1] != ' ')
+      if (len < 2)
          goto jeinval;
-      orflags |= _MT_PLAIN;
-      typ += 2;
-      len -= 2;
-      line += 2;
+      if (typ[1] == ' ') {
+         orflags |= _MT_PLAIN;
+         typ += 2;
+         len -= 2;
+         line += 2;
+      } else if (len > 4 && typ[2] == '@' && typ[3] == ' ') {
+         switch (typ[1]) {
+         case 't':   orflags |= _MT_PLAIN;   goto jexttypmar;
+         case 'h':   orflags |= _MT_SOUP_h;  goto jexttypmar;
+         case 'H':   orflags |= _MT_SOUP_H;
+jexttypmar:
+            typ += 4;
+            len -= 4;
+            line += 4;
+            break;
+         default:
+            goto jeinval;
+         }
+      } else
+         goto jeinval;
    }
 
    while (len > 0 && !blankchar(*line))
@@ -460,15 +480,22 @@ c_mimetype(void *v)
       }
 
       for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
-         char const *typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
+         char const *tmark, *typ;
+
+         switch (mtnp->mt_flags & __MT_MARKMASK) {
+         case _MT_PLAIN:   tmark = "/t"; break;
+         case _MT_SOUP_h:  tmark = "/h"; break;
+         case _MT_SOUP_H:  tmark = "/H"; break;
+         default:          tmark = "  "; break;
+         }
+         typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
                ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
 
-         fprintf(fp, "%c%c %s%.*s <%s>\n",
+         fprintf(fp, "%c%s %s%.*s <%s>\n",
             (mtnp->mt_flags & _MT_USR ? 'U'
                : (mtnp->mt_flags & _MT_SYS ? 'S'
                : (mtnp->mt_flags & _MT_LOADED ? 'F' : 'B'))),
-            (mtnp->mt_flags & _MT_PLAIN ? '@' : ' '),
-            typ, (int)mtnp->mt_mtlen, mtnp->mt_line,
+            tmark, typ, (int)mtnp->mt_mtlen, mtnp->mt_line,
             mtnp->mt_line + mtnp->mt_mtlen);
       }
 
@@ -844,11 +871,17 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
       if ((rv = vok_vlook(buf)) != NULL)
          goto jok;
 
-      if (_mt_by_mtname(&mtl, cs) != NULL &&
-            (mtl.mtl_node->mt_flags & _MT_PLAIN)) {
-         rv = "@";
-         goto jok;
-      }
+      if (_mt_by_mtname(&mtl, cs) != NULL)
+         switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
+         case _MT_SOUP_H:
+            /* FALLTHRU */
+         default:
+            break;
+         case _MT_SOUP_h:
+         case _MT_PLAIN:
+            rv = MIME_TYPE_HANDLER_TEXT;
+            goto jok;
+         }
    }
 
    rv = NULL;

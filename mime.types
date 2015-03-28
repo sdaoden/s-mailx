@@ -12,11 +12,19 @@
 # interpreted according to the scheme
 #    [TYPEMARKER ]MIMETYPE whitespace EXTENSION(S, whitespace separated)
 # MIMETYPE may occur several times, values are joined.
+#
 # Syntax extensions:
 # - Follow lines may be used: instead of repeating MIMETYPE, start the next
 #   line with whitespace.  (Intervening comment lines may be used.)
 # - TYPEMARKER: an at sign (@) will tag the MIME type as plain text (unless
 #   the user installs a specific pipe handler for the type in question).
+#   . "@t@" is identical to plain "@".
+#   . "@h@" will tag the MIME type as HTML tagsoup.
+#   . "@H@" is identical to "@h@", but won't treat the MIME type as plain
+#      text if the builtin HTML tagsoup parser isn't available, i.e., it
+#      requires an explicit pipe-MIMETYPE (or pipe-EXTENSION) handler.
+#   [Maybe later: . "@x@" and "@X@" are like h/H, but for XML tagsoup.]
+#
 # Syntax restrictions:
 # - Comments must be lines of their own.
 # - Only MIME types for which we have mime.c:enum mime_type constants are
@@ -33,9 +41,9 @@
 @ text/troff                  t tr roff man me ms
                               1 2 3 4 5 6 7 8 9
 application/pdf               pdf
-@ application/xhtml+xml       xhtml xht
-@ text/html                   html htm
-@ application/xml             xml xsl xsd
+@h@ application/xhtml+xml     xhtml xht
+@h@ text/html                 html htm
+application/xml               xml xsl xsd
 
 @ application/x-sh            sh bash
 @ text/x-awk                  awk

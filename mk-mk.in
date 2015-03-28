@@ -60,13 +60,13 @@ mime_types.h: mime.types
 		add(ltype, $$0);\
 		next\
 	}\
-	/^(@ )?[[:alpha:]]/ {\
-		if ($$1 ~ /^@$$/) {\
-			pa = 1;\
+	/^(@([thH]@)? )?[[:alpha:]]/ {\
+		if ($$1 ~ /^@([thH]@)?$$/) {\
+			pa = $$1;\
 			$$1 = $$2;\
 			$$2 = ""\
 		} else\
-			pa = 0;\
+			pa = "";\
 		if ($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
 			print "FAULTY MIME TYPE: <" $$1 ">" >> "/dev/stderr";\
 		ltype = $$1; $$1 = "";\
@@ -83,7 +83,17 @@ mime_types.h: mime.types
 			mt = toupper(substr(t, 1, j - 1));\
 			j = substr(t, j + 1);\
 			l = length(j);\
-			mt = p_a[t] ? "_MT_" mt " | _MT_PLAIN" : "_MT_" mt;\
+			if (!p_a[t])\
+				mt = "_MT_" mt;\
+			else {\
+				tm = p_a[t];\
+				if (tm == "@" || tm == "@t@")\
+					mt = "_MT_" mt " | _MT_PLAIN";\
+				else if (tm == "@h@")\
+					mt = "_MT_" mt " | _MT_SOUP_h";\
+				else if (tm == "@H@")\
+					mt = "_MT_" mt " | _MT_SOUP_H";\
+			}\
 			print "   {" mt ", " l ", \"" j e_a[t] "\"},"\
 		}\
 	}\

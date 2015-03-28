@@ -749,6 +749,14 @@ enum mimecontent {
    MIME_DISCARD      /* content is discarded */
 };
 
+enum mime_counter_evidence {
+   MIMECE_NONE,
+   MIMECE_SET        = 1<<0,  /* *mime-counter-evidence* was set */
+   MIMECE_BIN_OVWR   = 1<<1,  /* appli../octet-stream: check, ovw if possible */
+   MIMECE_ALL_OVWR   = 1<<2,  /* all: check, ovw if possible */
+   MIMECE_BIN_PARSE  = 1<<3   /* appli../octet-stream: classify contents last */
+};
+
 /* Content-Transfer-Encodings as defined in RFC 2045:
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8 */
@@ -756,6 +764,15 @@ enum mimecontent {
 
 #define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
 #define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
+
+enum mime_enc {
+   MIMEE_NONE,       /* message is not in MIME format */
+   MIMEE_BIN,        /* message is in binary encoding */
+   MIMEE_8B,         /* message is in 8bit encoding */
+   MIMEE_7B,         /* message is in 7bit encoding */
+   MIMEE_QP,         /* message is quoted-printable */
+   MIMEE_B64         /* message is in base64 encoding */
+};
 
 /* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
 enum mime_enc_flags {
@@ -799,22 +816,9 @@ enum b64flags {
    B64_ISENCWORD  = MIMEEF_ISENCWORD
 };
 
-enum mime_enc {
-   MIMEE_NONE,       /* message is not in MIME format */
-   MIMEE_BIN,        /* message is in binary encoding */
-   MIMEE_8B,         /* message is in 8bit encoding */
-   MIMEE_7B,         /* message is in 7bit encoding */
-   MIMEE_QP,         /* message is quoted-printable */
-   MIMEE_B64         /* message is in base64 encoding */
-};
-
-enum mime_counter_evidence {
-   MIMECE_NONE,
-   MIMECE_SET        = 1<<0,  /* *mime-counter-evidence* was set */
-   MIMECE_BIN_OVWR   = 1<<1,  /* appli../octet-stream: check, ovw if possible */
-   MIMECE_ALL_OVWR   = 1<<2,  /* all: check, ovw if possible */
-   MIMECE_BIN_PARSE  = 1<<3   /* appli../octet-stream: classify contents last */
-};
+/* Special handler return values for mime_type_mimepart_handler() */
+#define MIME_TYPE_HANDLER_TEXT   (char*)-1
+#define MIME_TYPE_HANDLER_HTML   (char*)-2
 
 enum mlist_state {
    MLIST_OTHER       = 0,     /* Normal address */

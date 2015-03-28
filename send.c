@@ -524,42 +524,39 @@ _print_part_info(struct str *out, struct mimepart *mip,
 static enum pipeflags
 _pipecmd(char const **result, struct mimepart const *mpp)
 {
-   enum pipeflags ret;
+   enum pipeflags rv;
    char const *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    *result = NULL;
 
    /* Do we have any handler for this part? */
-   if ((cp = mime_type_mimepart_handler(mpp)) == NULL)
-      ret = PIPE_NULL;
-   /* User specified a command, inspect for special cases */
-   else if (cp[0] != '@') {
-      /* Normal command line */
-      ret = PIPE_COMM;
+   if ((cp = mime_type_mimepart_handler(mpp)) == NULL ||
+         cp == MIME_TYPE_HANDLER_HTML)
+      rv = PIPE_NULL;
+   else if (cp == MIME_TYPE_HANDLER_TEXT)
+      rv = PIPE_TEXT;
+   else if (*cp != '@') {
       *result = cp;
-   }
-   else if (*++cp == '\0')
-      /* Treat as plain text */
-      ret = PIPE_TEXT;
-   else if (!(pstate & PS_MSGLIST_DIRECT)) {
+      rv = PIPE_COMM;
+   } else if (!(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
-      ret = PIPE_MSG;
       *result = _("[Directly address message only to display this]\n");
+      rv = PIPE_MSG;
    } else {
       /* Viewing a single message only */
       /* TODO send/MIME layer rewrite: when we have a single-pass parser
        * TODO then the parsing phase and the send phase will be separated;
        * TODO that allows us to ask a user *before* we start the send, i.e.,
        * TODO *before* a pager pipe is setup */
-      if (cp[0] == '&')
+      if (*++cp == '&')
          /* Asynchronous command, normal command line */
-         ret = PIPE_ASYNC, *result = ++cp;
+         *result = ++cp, rv = PIPE_ASYNC;
       else
-         ret = PIPE_COMM, *result = cp;
+         *result = cp, rv = PIPE_COMM;
    }
-   NYD_LEAVE;
-   return ret;
+   NYD2_LEAVE;
+   return rv;
 }
 
 static FILE *

@@ -6779,6 +6779,18 @@ The following type markers are supported:
 .Bl -tag -compact -offset indent -width ".It Ar _n_u"
 .It Ar @
 Treat message parts with this content as plain text.
+.It Ar @t@
+The same as plain
+.Ar @ .
+.It Ar @h@
+Treat message parts with this content as HTML tagsoup.
+If the (primitive) HTML-tagsoup-to-text converter is not available treat
+the content as plain text instead.
+.It Ar @H@
+Likewise
+.Ar @h@
+but instead of falling back to plain text require an explicit content
+handler to be defined.
 .El
 .
 .Pp
