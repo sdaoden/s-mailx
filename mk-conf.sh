@@ -1704,6 +1704,7 @@ ${cat} > ${tmp2}.c << \!
 # endif
 #ifndef HAVE_ICONV
 : - Character set conversion using iconv()
+: _ (Ooooh, no iconv(3), NO character set conversion possible!  Really...)
 #endif
 #ifndef HAVE_SOCKETS
 : - Network support
