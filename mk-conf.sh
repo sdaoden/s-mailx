@@ -18,6 +18,7 @@ option_reset() {
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
+   WANT_FILTER_HTML_TAGSOUP=0
    WANT_COLOUR=0
    #WANT_MD5=0
 }
@@ -37,7 +38,9 @@ option_maximal() {
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
+   WANT_FILTER_HTML_TAGSOUP=1
    WANT_COLOUR=1
+   #WANT_MD5=1
 }
 
 # Predefined CONFIG= urations take precedence over anything else
@@ -1508,6 +1511,12 @@ else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
+if feat_yes FILTER_HTML_TAGSOUP; then
+   echo '#define HAVE_FILTER_HTML_TAGSOUP' >> ${h}
+else
+   echo '/* WANT_FILTER_HTML_TAGSOUP=0 */' >> ${h}
+fi
+
 if feat_yes COLOUR; then
    echo '#define HAVE_COLOUR' >> ${h}
 else
@@ -1554,7 +1563,7 @@ printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-searches"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
@@ -1567,6 +1576,7 @@ printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
@@ -1688,6 +1698,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
 #endif
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+: + Builtin HTML-to-text filter (for display purposes, primitive)
+#endif
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
 #endif
@@ -1753,6 +1766,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
+#endif
+#ifndef HAVE_FILTER_HTML_TAGSOUP
+: - Builtin HTML-to-text filter (for display purposes, primitive)
 #endif
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
