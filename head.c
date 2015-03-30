@@ -348,6 +348,7 @@ jaddr_check:
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
+         agp->ag_n_flags |= NAME_ADDRSPEC_ISMAIL; /* TODO .. really? */
          in_domain = (*p == '[') ? 2 : 1;
          continue;
       } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
@@ -887,6 +888,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    rv = ((f & NAME_ADDRSPEC_INVALID) != 0);
 
    if (!rv) {
+      /* *expandaddr* stuff */
       if ((eacm & EACM_MODE_MASK) != EACM_NONE &&
             (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
             ((eacm & EACM_STRICT) || (cs = ok_vlook(expandaddr)) == NULL ||
@@ -895,6 +897,17 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
          cs = ((eacm & EACM_STRICT)
             ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
             : _("\"%s\"%s: *expandaddr* doesn't allow file or pipe address\n"));
+         cbuf[0] = '\0';
+         rv = TRU1;
+         if (!(eacm & EACM_NOLOG))
+            goto jprint;
+      }
+
+      /* Special *smtp*: non-network addresses (MTA aliases) may not be used as
+       * addressees when sending via SMTP */
+      if ((eacm & EACM_NOALIAS) &&
+            !(f & (NAME_ADDRSPEC_ISFILEORPIPE | NAME_ADDRSPEC_ISMAIL))) {
+         cs = _("\"%s\"%s: MTA aliases are not allowed over *smtp* transfer\n");
          cbuf[0] = '\0';
          rv = TRU1;
          if (!(eacm & EACM_NOLOG))
@@ -927,7 +940,6 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 jprint:
       fprintf(stderr, cs, np->n_name, cbuf);
    }
-
    NYD_LEAVE;
    return rv;
 }

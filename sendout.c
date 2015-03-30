@@ -792,7 +792,7 @@ do {\
       if (np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOLOG)) {
+         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
             fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
@@ -860,7 +860,8 @@ do {\
             case MLIST_OTHER:
                if (!(f & HF_LIST_REPLY)) {
 j_mft_add:
-                  if (!is_addr_invalid(x, EACM_STRICT | EACM_NOLOG)) {
+                  if (!is_addr_invalid(x,
+                        EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
                      x->n_flink = mft;
                      mft = x;
                   } /* XXX write some warning?  if verbose?? */
@@ -1572,7 +1573,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
    }
 
    for (; np != NULL; np = np->n_flink) {
-      if (is_addr_invalid(np, EACM_NONE | EACM_NOLOG))
+      if (is_addr_invalid(np,
+            (m & m_NOMTA ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
          continue;
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
@@ -1827,7 +1829,9 @@ jaskeot:
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   to = namelist_vaporise_head(hp, EACM_NORMAL, TRU1, &_sendout_error);
+   to = namelist_vaporise_head(hp,
+         EACM_NORMAL | (ok_vlook(smtp) != NULL ? EACM_NOALIAS : EACM_NONE),
+         TRU1, &_sendout_error);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
       goto jfail_dead;
@@ -1956,7 +1960,9 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if ((to = checkaddrs(to, EACM_NORMAL, &_sendout_error)) == NULL)
+   if ((to = checkaddrs(to,
+         EACM_NORMAL | (ok_vlook(smtp) != NULL ? EACM_NOALIAS : EACM_NONE),
+         &_sendout_error)) == NULL)
       goto jleave;
 
    if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,

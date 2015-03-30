@@ -639,9 +639,10 @@ enum expand_addr_check_mode {
    EACM_NONE      = 0,        /* Don't care about *expandaddr* */
    EACM_NORMAL    = 1<<0,     /* Use our normal *expandaddr* checking */
    EACM_STRICT    = 1<<1,     /* Never allow any file or pipe addresse */
-   EACM_MODE_MASK = 3,        /* Note the modes are mutual */
+   EACM_MODE_MASK = 0x3,      /* _NORMAL and _STRICT are mutual! */
 
-   EACM_NOLOG     = 1<<2      /* Don't log check errors */
+   EACM_NOALIAS   = 1<<2,     /* Don't allow MTA aliases (non-addresses) */
+   EACM_NOLOG     = 1<<3      /* Don't log check errors */
 };
 
 enum colourspec {
@@ -1510,20 +1511,24 @@ enum nameflags {
    NAME_FULLNAME_SALLOC    = 1<< 1, /* .n_fullname is doped */
    NAME_SKINNED            = 1<< 2, /* Is actually skin()ned */
    NAME_IDNA               = 1<< 3, /* IDNA was applied */
+
    NAME_ADDRSPEC_CHECKED   = 1<< 4, /* Address has been .. and */
    NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
    NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ERR_EMPTY = 1<< 7, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1<< 8, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR  = 1<< 9, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA  = 1<<10, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ISMAIL    = 1<< 7, /* ..is a valid mail address */
+
+   NAME_ADDRSPEC_ERR_EMPTY = 1<< 8, /* An empty string (or NULL) */
+   NAME_ADDRSPEC_ERR_ATSEQ = 1<< 9, /* Weird @ sequence */
+   NAME_ADDRSPEC_ERR_CHAR  = 1<<10, /* Invalid character */
+   NAME_ADDRSPEC_ERR_IDNA  = 1<<11, /* IDNA convertion failed */
    NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
          NAME_ADDRSPEC_ERR_IDNA,
 
-   _NAME_SHIFTWC  = 11,
-   _NAME_MAXWC    = 0xFFFFF,
+   /* Error storage (we must fit in 31-bit) */
+   _NAME_SHIFTWC  = 12,
+   _NAME_MAXWC    = 0x7FFFF,
    _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
 };
 
