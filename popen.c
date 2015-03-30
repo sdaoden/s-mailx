@@ -572,7 +572,6 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
       close(fd);
       goto junlink;
    }
-
 #elif defined HAVE_MKSTEMP
    if ((fd = mkstemp(cp_base)) == -1)
       goto jfree;
@@ -701,8 +700,25 @@ Popen(char const *cmd, char const *mode, char const *sh,
       fd1 = -1;
       mod[0] = 'w';
    }
+
    sigemptyset(&nset);
-   if (sh == NULL) {
+
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+   if (cmd == MIME_TYPE_HANDLER_HTML) { /* TODO Temporary ugly hack */
+      if ((pid = fork_child()) == -1)
+         perror("fork");
+      else if (pid == 0) {
+         union {char const *ccp; int (*ptf)(void); int es;} u;
+         prepare_child(&nset, fd0, fd1);
+         close(p[READ]);
+         close(p[WRITE]);
+         u.ccp = sh;
+         u.es = (*u.ptf)();
+         _exit(u.es);
+      }
+   } else
+#endif
+          if (sh == NULL) {
       pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
       pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);

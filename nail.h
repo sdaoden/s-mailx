@@ -1306,9 +1306,21 @@ struct quoteflt {
 #endif
 };
 
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+struct htmlflt {
+   FILE        *hf_os;        /* Output stream */
+   ui32_t      hf_flags;
+   ui32_t      hf_len;        /* Current output line length */
+   char        *hf_curr;      /* Current cursor into .hf_bdat */
+   char        *hf_bmax;      /* Maximum byte in .hf_bdat +1 */
+   char        *hf_bdat;      /* (Temporary) Data storage (inside tagsoup) */
+   struct htmlflt_href *hf_hrefs;
+};
+#endif
+
 struct search_expr {
-   char const  *ss_where;  /* to search for the expression (not always used) */
-   char const  *ss_sexpr;  /* String search expression; NULL: use .ss_regex */
+   char const  *ss_where;     /* ..to search for the expr. (not always used) */
+   char const  *ss_sexpr;     /* String search expr.; NULL: use .ss_regex */
 #ifdef HAVE_REGEX
    regex_t     ss_regex;
 #endif

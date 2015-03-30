@@ -873,11 +873,17 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
 
       if (_mt_by_mtname(&mtl, cs) != NULL)
          switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
+#ifndef HAVE_FILTER_HTML_TAGSOUP
          case _MT_SOUP_H:
-            /* FALLTHRU */
+#endif
          default:
             break;
          case _MT_SOUP_h:
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+         case _MT_SOUP_H:
+            rv = MIME_TYPE_HANDLER_HTML;
+            goto jok;
+#endif
          case _MT_PLAIN:
             rv = MIME_TYPE_HANDLER_TEXT;
             goto jok;
