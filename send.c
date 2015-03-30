@@ -159,7 +159,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    ip->m_ct_type_usr_ovwr = NULL;
 
    if (ip->m_ct_type != NULL)
-      ip->m_charset = mime_getparam("charset", ip->m_ct_type);
+      ip->m_charset = mime_param_get("charset", ip->m_ct_type);
    if (ip->m_charset == NULL)
       ip->m_charset = charset_get_7bit();
 
@@ -167,9 +167,9 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    ip->m_mime_enc = mime_enc_from_ctehead(ip->m_ct_enc);
 
    if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||
-         (ip->m_filename = mime_getparam("filename", cp)) == NULL) &&
+         (ip->m_filename = mime_param_get("filename", cp)) == NULL) &&
          ip->m_ct_type != NULL)
-      ip->m_filename = mime_getparam("name", ip->m_ct_type);
+      ip->m_filename = mime_param_get("name", ip->m_ct_type);
 
    ip->m_mimecontent = mime_type_mimepart_content(ip);
 
@@ -311,7 +311,7 @@ _parsemultipart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    long lines = 0;
    NYD_ENTER;
 
-   if ((boundary = mime_get_boundary(ip->m_ct_type, &linelen)) == NULL)
+   if ((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NULL)
       goto jleave;
 
    boundlen = linelen;
@@ -471,8 +471,11 @@ _print_part_info(struct str *out, struct mimepart *mip,
    if (is_ign("content-disposition", 19, doign) && mip->m_filename != NULL) {
       struct str ti, to;
 
-      ti.l = strlen(ti.s = mip->m_filename);
-      mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
+      ti.s = NULL;
+      ti.l = 0;
+      makeprint(n_str_add_cp(&ti, mip->m_filename), &to);
+      free(ti.s);
+      to.l = delctrl(to.s, to.l);
 
       cd.s = ac_alloc(2 + 32 +1); /* FIXME was 25.. UNI: USE VISUAL WIDTH!!! */
       cd.s[0] = ',';
@@ -1398,9 +1401,9 @@ newfile(struct mimepart *ip, int *ispipe)
    if (f != NULL && f != (char*)-1) {
       in.s = f;
       in.l = strlen(f);
-      mime_fromhdr(&in, &out, TD_ISPR);
-      memcpy(f, out.s, out.l);
-      *(f + out.l) = '\0';
+      makeprint(&in, &out);
+      out.l = delctrl(out.s, out.l);
+      f = sbufdup(out.s, out.l);
       free(out.s);
    }
 

@@ -963,7 +963,7 @@ j_mft_add:
       ++gotcha;
       fputs("MIME-Version: 1.0\n", fo);
       if (hp->h_attach != NULL) {
-         _sendout_boundary = mime_create_boundary();/*TODO carrier*/
+         _sendout_boundary = mime_param_boundary_create();/*TODO carrier*/
          fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
             _sendout_boundary);
       } else {

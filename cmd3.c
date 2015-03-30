@@ -207,7 +207,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
    head->h_ref = n;
    if (ok_blook(reply_in_same_charset) &&
          (cp = hfield1("content-type", mp)) != NULL)
-      head->h_charset = mime_getparam("charset", cp);
+      head->h_charset = mime_param_get("charset", cp);
 jleave:
    NYD_LEAVE;
 }

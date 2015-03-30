@@ -198,7 +198,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
       lastc = c;
    }
 
-   boundary = mime_create_boundary();
+   boundary = mime_param_boundary_create();
    fprintf(op, "Content-Type: multipart/signed;\n"
       " protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\n"
       " boundary=\"%s\"\n\n", boundary);

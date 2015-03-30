@@ -226,15 +226,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
     * TODO   already iconv(3) encoded to the target character set!  We could
     * TODO   also solve it (very expensively!) if we would narrow down to an
     * TODO   encoded word and then iconv(3)+MIME encode in one go, in which
-    * TODO   case multibyte errors could be catched!
-    * TODO All this doesn't take any care about RFC 2231, but simply and
-    * TODO   falsely applies RFC 2047 and normal RFC 822/5322 folding to values
-    * TODO   of parameters; part of the problem is that we just don't make a
-    * TODO   difference in structured and unstructed headers, as long in TODO!
-    * TODO   See also RFC 2047, 5., .." These are the ONLY locations"..
-    * TODO   So, for now we require mutt(1)s "rfc2047_parameters=yes" support!!
-    * TODO BTW.: the purpose of QP is to allow non MIME-aware ASCII guys to
-    * TODO read the field nonetheless... */
+    * TODO   case multibyte errors could be catched! */
    enum {
       /* Maximum line length *//* XXX we are too inflexible and could use
        * XXX MIME_LINELEN unless an RFC 2047 encoding was actually used */
@@ -804,110 +796,6 @@ jneeds:
 }
 #endif /* HAVE_ICONV */
 
-FL char *
-mime_getparam(char const *param, char const *h)
-{
-   char *rv = NULL;
-   char const *p = h, *q;
-   int c;
-   size_t sz;
-   NYD_ENTER;
-
-   sz = strlen(param);
-   if (!whitechar(*p)) {
-      c = '\0';
-      while (*p && (*p != ';' || c == '\\')) {
-         c = (c == '\\') ? '\0' : *p;
-         ++p;
-      }
-      if (*p++ == '\0')
-         goto jleave;
-   }
-
-   for (;;) {
-      while (whitechar(*p))
-         ++p;
-      if (!ascncasecmp(p, param, sz)) {
-         p += sz;
-         while (whitechar(*p))
-            ++p;
-         if (*p++ == '=')
-            break;
-      }
-      c = '\0';
-      while (*p != '\0' && (*p != ';' || c == '\\')) {
-         if (*p == '"' && c != '\\') {
-            ++p;
-            while (*p != '\0' && (*p != '"' || c == '\\')) {
-               c = (c == '\\') ? '\0' : *p;
-               ++p;
-            }
-            ++p;
-         } else {
-            c = (c == '\\') ? '\0' : *p;
-            ++p;
-         }
-      }
-      if (*p++ == '\0')
-         goto jleave;
-   }
-   while (whitechar(*p))
-      ++p;
-
-   q = p;
-   if (*p == '"') {
-      p++;
-      if ((q = strchr(p, '"')) == NULL)
-         goto jleave;
-   } else {
-      while (*q != '\0' && !whitechar(*q) && *q != ';')
-         ++q;
-   }
-
-   sz = PTR2SIZE(q - p);
-   rv = salloc(q - p +1);
-   memcpy(rv, p, sz);
-   rv[sz] = '\0';
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL char *
-mime_get_boundary(char const *h, size_t *len)
-{
-   char *q = NULL, *p;
-   size_t sz;
-   NYD_ENTER;
-
-   if ((p = mime_getparam("boundary", h)) != NULL) {
-      sz = strlen(p);
-      if (len != NULL)
-         *len = sz + 2;
-      q = salloc(sz + 2 +1);
-      q[0] = q[1] = '-';
-      memcpy(q + 2, p, sz);
-      *(q + sz + 2) = '\0';
-   }
-   NYD_LEAVE;
-   return q;
-}
-
-FL char *
-mime_create_boundary(void)
-{
-   char *bp;
-   NYD_ENTER;
-
-   bp = salloc(36 + 6 +1);
-   bp[0] = bp[2] = bp[39] = bp[41] = '=';
-   bp[1] = bp[40] = '-';
-   memcpy(bp + 3, getrandstring(36), 36);
-   bp[42] = '\0';
-   NYD_LEAVE;
-   return bp;
-}
-
 FL void
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 {
@@ -926,7 +814,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
     * TODO á la RFC 2047 is discarded; i.e.: this function should deal with
     * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode() */
    struct str cin, cout;
-   char *p, *op, *upper, *cs, *cbeg;
+   char *p, *op, *upper, *cbeg;
    ui32_t convert, lastenc, lastoutl;
 #ifdef HAVE_ICONV
    char const *tcs;
@@ -957,13 +845,23 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             ++p;  /* strip charset */
          if (p >= upper)
             goto jnotmime;
-         cs = salloc(PTR2SIZE(++p - cbeg));
-         memcpy(cs, cbeg, PTR2SIZE(p - cbeg - 1));
-         cs[p - cbeg - 1] = '\0';
+         ++p;
 #ifdef HAVE_ICONV
-         if (fhicd != (iconv_t)-1)
-            n_iconv_close(fhicd);
-         fhicd = asccasecmp(cs, tcs) ? n_iconv_open(tcs, cs) : (iconv_t)-1;
+         {  size_t i = PTR2SIZE(p - cbeg);
+            char *ltag, *cs = ac_alloc(i);
+
+            memcpy(cs, cbeg, --i);
+            cs[i] = '\0';
+            /* RFC 2231 extends the RFC 2047 character set definition in
+             * encoded words by language tags - silently strip those off */
+            if ((ltag = strchr(cs, '*')) != NULL)
+               *ltag = '\0';
+
+            if (fhicd != (iconv_t)-1)
+               n_iconv_close(fhicd);
+            fhicd = asccasecmp(cs, tcs) ? n_iconv_open(tcs, cs) : (iconv_t)-1;
+            ac_free(cs);
+         }
 #endif
          switch (*p) {
          case 'B': case 'b':
