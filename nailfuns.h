@@ -1800,13 +1800,15 @@ FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 
 FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 
-/* Locale-independent character class functions */
+/* Case-independent ASCII comparisons */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
+
+/* Case-independent ASCII string find s2 in s1, return it or NULL */
+FL char const *asccasestr(char const *s1, char const *s2);
+
+/* Case-independent ASCII check wether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
-#ifdef HAVE_IMAP
-FL char const * asccasestr(char const *haystack, char const *xneedle);
-#endif
 
 /* struct str related support funs */
 
