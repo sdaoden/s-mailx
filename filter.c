@@ -498,8 +498,6 @@ quoteflt_flush(struct quoteflt *self)
 /*
  * HTML tagsoup filter
  * TODO . update manual regarding HTML mails
- * TODO . try to break at whitespace: add indirect buffer; try not to break MB-
- * TODO   sequences by avoiding breakup of 8-bit characters
  * TODO . Add HREF support via struct htmlflt_href
  * TODO . Print [IMG=ALT-TEXT] if alt="" attribute given
  * TODO . convert &#NO; numeric entities to characters
@@ -508,13 +506,14 @@ quoteflt_flush(struct quoteflt *self)
 #ifdef HAVE_FILTER_HTML_TAGSOUP
 
 enum hf_flags {
-   _HF_ERROR   = 1<<0,  /* A hard error occurred, bail as soon as possible */
-   _HF_NOPUT   = 1<<1,  /* (In a tag,) Don't generate output */
-   _HF_IGN     = 1<<2,  /* Ignore mode on */
-   _HF_ANY     = 1<<3,  /* Yet seen just any output */
-   _HF_PRE     = 1<<4,  /* In <pre>formatted mode */
-   _HF_ENT     = 1<<5,  /* Currently parsing an entity */
-   _HF_BLANK   = 1<<6,  /* Whitespace last */
+   _HF_UTF8    = 1<<0,  /* Data is in UTF-8 */
+   _HF_ERROR   = 1<<1,  /* A hard error occurred, bail as soon as possible */
+   _HF_NOPUT   = 1<<2,  /* (In a tag,) Don't generate output */
+   _HF_IGN     = 1<<3,  /* Ignore mode on */
+   _HF_ANY     = 1<<4,  /* Yet seen just any output */
+   _HF_PRE     = 1<<5,  /* In <pre>formatted mode */
+   _HF_ENT     = 1<<6,  /* Currently parsing an entity */
+   _HF_BLANK   = 1<<7,  /* Whitespace last */
 
    _HF_NL_1    = 1<<8,  /* One \n seen */
    _HF_NL_2    = 2<<8,  /* Two consecutive \n seen */
@@ -619,16 +618,101 @@ static struct hf_ent const _hf_ents[] = {
 # undef _XSU
 };
 
-static void    _hf_nl(struct htmlflt *self);
-static void    _hf_nl_force(struct htmlflt *self);
-static void    _hf_putc(struct htmlflt *self, char c);
-static void    _hf_putc_premode(struct htmlflt *self, char c);
-static void    _hf_puts(struct htmlflt *self, char const *cp);
-static void    _hf_check_tag(struct htmlflt *self, char const *s);
-static void    _hf_check_ent(struct htmlflt *self, char const *s);
-static ssize_t _hf_add_data(struct htmlflt *self, char const *dat, size_t len);
+/* Real output */
+static struct htmlflt * _hf_dump(struct htmlflt *self);
+static struct htmlflt * _hf_store(struct htmlflt *self, char c);
 
-static void
+/* Virtual output */
+static struct htmlflt * _hf_nl(struct htmlflt *self);
+static struct htmlflt * _hf_nl_force(struct htmlflt *self);
+static struct htmlflt * _hf_putc(struct htmlflt *self, char c);
+static struct htmlflt * _hf_putc_premode(struct htmlflt *self, char c);
+static struct htmlflt * _hf_puts(struct htmlflt *self, char const *cp);
+
+/* Completely parsed over a tag / an entity, interpret that */
+static struct htmlflt * _hf_check_tag(struct htmlflt *self, char const *s);
+static struct htmlflt * _hf_check_ent(struct htmlflt *self, char const *s);
+
+/* Input handler */
+static ssize_t          _hf_add_data(struct htmlflt *self,
+                           char const *dat, size_t len);
+
+static struct htmlflt *
+_hf_dump(struct htmlflt *self)
+{
+   char c, *cp;
+   ui32_t i;
+   NYD2_ENTER;
+
+   cp = self->hf_line;
+   i = self->hf_len;
+   self->hf_last_ws = self->hf_len = 0;
+
+   for (c = '\0'; i > 0; --i) {
+      c = *cp++;
+jput:
+      if (fputc(c, self->hf_os) == EOF) {
+         self->hf_flags |= _HF_ERROR;
+         goto jleave;
+      }
+   }
+
+   if (c != '\n') {
+      i = 1;
+      c = '\n';
+      goto jput;
+   }
+jleave:
+   NYD2_LEAVE;
+   return self;
+}
+
+static struct htmlflt *
+_hf_store(struct htmlflt *self, char c)
+{
+   ui32_t l, i, f;
+   NYD2_ENTER;
+
+   assert(c != '\n');
+
+   l = self->hf_len;
+   self->hf_line[l] = c;
+   self->hf_len = ++l;
+   if (blankspacechar(c))
+      self->hf_last_ws = l;
+
+   /* Do we need to break the line? */
+   if (l >= NELEM(self->hf_line)/4 - 8) {
+      /* Let's hope we saw a sane place to break this line! */
+      if (self->hf_last_ws >= NELEM(self->hf_line)/4 >> 1) {
+jput:
+         i = self->hf_len = self->hf_last_ws;
+         self = _hf_dump(self);
+         self->hf_len = (l -= i);
+         memmove(self->hf_line, self->hf_line + i, l);
+         goto jleave;
+      }
+
+      /* Any 7-bit characters?   TODO HTMLFLT-CHARSET */
+      for (f = self->hf_flags, i = l; i-- >= NELEM(self->hf_line)/4 >> 1;)
+         if (asciichar((c = self->hf_line[i]))) {
+            self->hf_last_ws = ++i;
+            goto jput;
+         } else if ((f & _HF_UTF8) && ((ui8_t)c & 0xC0) != 0x80) {
+            self->hf_last_ws = i;
+            goto jput;
+         }
+
+      /* Hard break necessary!*/
+      if (l >= NELEM(self->hf_line)/4 - 1)
+         self = _hf_dump(self);
+   }
+jleave:
+   NYD2_LEAVE;
+   return self;
+}
+
+static struct htmlflt *
 _hf_nl(struct htmlflt *self)
 {
    ui32_t f;
@@ -647,15 +731,18 @@ _hf_nl(struct htmlflt *self)
          else
             f |= _HF_NL_1;
          self->hf_flags = (f &= ~_HF_BLANK);
-         self->hf_len = 0;
-         if ((f & _HF_ANY) && fputc('\n', self->hf_os) == EOF)
-            self->hf_flags = (f |= _HF_ERROR);
+
+         if (f & _HF_ANY) {
+            self->hf_line[self->hf_len++] = '\n';
+            self = _hf_dump(self);
+         }
          break;
       }
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_nl_force(struct htmlflt *self)
 {
    ui32_t f;
@@ -664,14 +751,17 @@ _hf_nl_force(struct htmlflt *self)
    if (!((f = self->hf_flags) & _HF_ERROR)) {
       f &= ~(_HF_BLANK | _HF_NL_MASK);
       self->hf_flags = (f |= _HF_NL_1);
-      self->hf_len = 0;
-      if ((f & _HF_ANY) && fputc('\n', self->hf_os) == EOF)
-         self->hf_flags = (f |= _HF_ERROR);
+
+      if (f & _HF_ANY) {
+         self->hf_line[self->hf_len++] = '\n';
+         self = _hf_dump(self);
+      }
    }
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_putc(struct htmlflt *self, char c)
 {
    ui32_t f;
@@ -681,7 +771,7 @@ _hf_putc(struct htmlflt *self, char c)
       goto jleave;
 
    if (c == '\n') {
-      _hf_nl(self);
+      self = _hf_nl(self);
       goto jleave;
    } else if (c == ' ' || c == '\t') {
       if (f & _HF_BLANK)
@@ -691,16 +781,13 @@ _hf_putc(struct htmlflt *self, char c)
       f &= ~_HF_BLANK;
    f &= ~_HF_NL_MASK;
    self->hf_flags = (f |= _HF_ANY);
-   if (fputc(c, self->hf_os) == EOF)
-      self->hf_flags = (f |= _HF_ERROR);
-
-   if (++self->hf_len > 72)
-      _hf_nl(self);
+   self = _hf_store(self, c);
 jleave:
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_putc_premode(struct htmlflt *self, char c)
 {
    ui32_t f;
@@ -709,29 +796,29 @@ _hf_putc_premode(struct htmlflt *self, char c)
    if ((f = self->hf_flags) & _HF_ERROR) {
       ;
    } else if (c == '\n')
-      _hf_nl_force(self);
+      self = _hf_nl_force(self);
    else {
       f &= ~_HF_NL_MASK;
       self->hf_flags = (f |= _HF_ANY);
-      ++self->hf_len;
-      if (fputc(c, self->hf_os) == EOF)
-         self->hf_flags = (f |= _HF_ERROR);
+      self = _hf_store(self, c);
    }
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_puts(struct htmlflt *self, char const *cp)
 {
    char c;
    NYD2_ENTER;
 
    while ((c = *cp++) != '\0')
-      _hf_putc(self, c);
+      self = _hf_putc(self, c);
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_check_tag(struct htmlflt *self, char const *s)
 {
    struct hf_tag const *hftp;
@@ -748,14 +835,25 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    f = self->hf_flags;
 
    switch (hftp->hft_act) {
+   case _HFSA_PRE_END:
+      f &= ~_HF_PRE;
+      if (0) {
+         /* FALLTHRU */
+   case _HFSA_PRE:
+         f |= _HF_PRE;
+      }
+      self->hf_flags = f;
+      /* FALLTHRU */
+
    case _HFSA_NEEDSEP:
       if (!(self->hf_flags & _HF_NL_2))
-         _hf_nl(self);
+         self = _hf_nl(self);
       /* FALLTHRU */
    case _HFSA_NEEDNL:
       if (!(f & _HF_NL_1))
-         _hf_nl(self);
+         self = _hf_nl(self);
       break;
+
    case _HFSA_IGN_END:
       f &= ~(_HF_IGN | _HF_NOPUT);
       if (0) {
@@ -765,35 +863,26 @@ _hf_check_tag(struct htmlflt *self, char const *s)
       }
       self->hf_flags = f;
       break;
-   case _HFSA_PRE_END:
-      f &= ~_HF_PRE;
-      if (0) {
-         /* FALLTHRU */
-   case _HFSA_PRE:
-         f |= _HF_PRE;
-      }
-      self->hf_flags = f;
-      _hf_nl(self);
-      _hf_nl(self);
-      break;
+
    case _HFSA_IMG:
-      _hf_puts(self, "[IMG]");
+      self = _hf_puts(self, "[IMG]");
       c = ' ';
       if (0) {
          /* FALLTHRU */
    default:
          c = (char)(hftp->hft_act & 0xFF);
       }
-      _hf_putc(self, c);
+      self = _hf_putc(self, c);
       break;
    case '\0':
       break;
    }
 jleave:
    NYD2_LEAVE;
+   return self;
 }
 
-static void
+static struct htmlflt *
 _hf_check_ent(struct htmlflt *self, char const *s)
 {
    struct hf_ent const *hfep;
@@ -811,12 +900,13 @@ _hf_check_ent(struct htmlflt *self, char const *s)
             !strncmp(s, hfep->hfe_ent, l)) {
          /* TODO use hfe_uni if HFE_HAVE_UNI and Unicode output */
          if (hfep->hfe_flags & _HFE_HAVE_CSTR)
-            _hf_puts(self, hfep->hfe_cstr);
+            self = _hf_puts(self, hfep->hfe_cstr);
          else
-            _hf_putc(self, hfep->hfe_c);
+            self = _hf_putc(self, hfep->hfe_c);
          break;
       }
    NYD2_LEAVE;
+   return self;
 }
 
 static ssize_t
@@ -829,7 +919,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    /* Final put request? */
    if (dat == NULL) {
       if (self->hf_len > 0) {
-         _hf_nl_force(self);
+         self = _hf_nl_force(self);
          rv = 1;
       }
       goto jleave;
@@ -855,7 +945,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
             f ^= _HF_ENT;
             self->hf_flags = f;
             *cp = '\0';
-            _hf_puts(self, self->hf_bdat);
+            self = _hf_puts(self, self->hf_bdat);
             f = self->hf_flags;
          }
          cp = self->hf_curr = self->hf_bdat;
@@ -868,7 +958,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
          cp[1] = '\0';
          f &= ~_HF_NOPUT;
          self->hf_flags = f;
-         _hf_check_tag(self, self->hf_bdat);
+         self = _hf_check_tag(self, self->hf_bdat);
          break;
 
       case '\n':
@@ -876,9 +966,9 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
          if (f & _HF_IGN)
             break;
          if (f & _HF_PRE)
-            _hf_nl_force(self);
+            self = _hf_nl_force(self);
          else if (self->hf_len > 0)
-            _hf_putc(self, ' ');
+            self = _hf_putc(self, ' ');
          break;
 
       default:
@@ -891,16 +981,16 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
                f |= _HF_NOPUT | _HF_ENT;
                self->hf_flags = f;
             } else if (f & _HF_PRE) {
-               _hf_putc_premode(self, c);
+               self = _hf_putc_premode(self, c);
                self->hf_flags &= ~_HF_BLANK;
             } else
-              _hf_putc(self, c);
+              self = _hf_putc(self, c);
          } else if ((f & _HF_ENT) && c == ';') {
             cp[0] = c;
             cp[1] = '\0';
             f &= ~(_HF_NOPUT | _HF_ENT);
             self->hf_flags = f;
-           _hf_check_ent(self, self->hf_bdat);
+           self = _hf_check_ent(self, self->hf_bdat);
          } else {
             /* We may need to grow the buffer */
             if (PTRCMP(cp + 42/2, >=, cp_max)) {
@@ -976,7 +1066,8 @@ FL void
 htmlflt_init(struct htmlflt *self)
 {
    NYD_ENTER;
-   memset(self, 0, sizeof *self);
+   /* Rather redundant though */
+   memset(self, 0, sizeof(*self) - SIZEOF_FIELD(struct htmlflt, hf_line));
    NYD_LEAVE;
 }
 
@@ -1002,7 +1093,10 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    if (self->hf_bdat != NULL)
       free(self->hf_bdat);
 
-   memset(self, 0, sizeof *self);
+   memset(self, 0, sizeof(*self) - SIZEOF_FIELD(struct htmlflt, hf_line));
+
+   if (options & OPT_UNICODE) /* TODO not truly generic */
+      self->hf_flags = _HF_UTF8;
    self->hf_os = f;
    NYD_LEAVE;
 }

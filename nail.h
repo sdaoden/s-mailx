@@ -1310,11 +1310,15 @@ struct quoteflt {
 struct htmlflt {
    FILE        *hf_os;        /* Output stream */
    ui32_t      hf_flags;
-   ui32_t      hf_len;        /* Current output line length */
+   ui32_t      hf_len;        /* Current bytes in .hf_line */
+   ui32_t      hf_cnt;        /* In UTF-8 mode we count characters */
+   ui32_t      hf_last_ws;    /* Last whitespace on line (fold purposes) */
+   struct htmlflt_href *hf_hrefs;
+   /* When parsing tags we write into a temporary buffer until we see '>' */
    char        *hf_curr;      /* Current cursor into .hf_bdat */
    char        *hf_bmax;      /* Maximum byte in .hf_bdat +1 */
-   char        *hf_bdat;      /* (Temporary) Data storage (inside tagsoup) */
-   struct htmlflt_href *hf_hrefs;
+   char        *hf_bdat;      /* Tag content (parameters) data storage */
+   char        hf_line[80*4]; /* Line buffer - MUST be last field! */
 };
 #endif
 
