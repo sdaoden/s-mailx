@@ -1895,6 +1895,11 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
 #endif
 
+/* buf must be large enough also for NUL, it's new length will be returned */
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
+#endif
+
 /* Our iconv(3) wrappers */
 
 #ifdef HAVE_ICONV

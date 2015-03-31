@@ -1097,6 +1097,64 @@ jerr:
 }
 #endif /* HAVE_NATCH_CHAR */
 
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+FL size_t
+n_utf32_to_utf8(ui32_t c, char *buf)
+{
+   struct {
+      ui32_t   lower_bound;
+      ui32_t   upper_bound;
+      ui8_t    enc_leader;
+      ui8_t    enc_lval;
+      ui8_t    dec_leader_mask;
+      ui8_t    dec_leader_val_mask;
+      ui8_t    dec_bytes_togo;
+      ui8_t    cat_index;
+      ui8_t    __dummy[2];
+   } const _cat[] = {
+      {0x00000000, 0x00000000, 0x00, 0, 0x00,      0x00,   0, 0, {0,}},
+      {0x00000000, 0x0000007F, 0x00, 1, 0x80,      0x7F, 1-1, 1, {0,}},
+      {0x00000080, 0x000007FF, 0xC0, 2, 0xE0, 0xFF-0xE0, 2-1, 2, {0,}},
+      /* We assume surrogates are U+D800 - U+DFFF, _cat index 3 */
+      /* xxx _from_utf32() simply assumes magic code points for surrogates!
+       * xxx (However, should we ever get yet another surrogate range we
+       * xxx need to deal with that all over the place anyway? */
+      {0x00000800, 0x0000FFFF, 0xE0, 3, 0xF0, 0xFF-0xF0, 3-1, 3, {0,}},
+      {0x00010000, 0x001FFFFF, 0xF0, 4, 0xF8, 0xFF-0xF8, 4-1, 4, {0,}},
+   }, *cat = _cat;
+   size_t l;
+
+   if (c <= _cat[0].upper_bound) { cat += 0; goto j0; }
+   if (c <= _cat[1].upper_bound) { cat += 1; goto j1; }
+   if (c <= _cat[2].upper_bound) { cat += 2; goto j2; }
+   if (c <= _cat[3].upper_bound) {
+      /* Surrogates may not be converted (Compatibility rule C10) */
+      if (c >= 0xD800u && c <= 0xDFFFu)
+         goto jerr;
+      cat += 3;
+      goto j3;
+   }
+   if (c <= _cat[4].upper_bound) { cat += 4; goto j4; }
+jerr:
+   c = 0xFFFDu; /* Unicode replacement character */
+   cat += 3;
+   goto j3;
+j4:
+   buf[3] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j3:
+   buf[2] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j2:
+   buf[1] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j1:
+   buf[0] = (char)cat->enc_leader | (char)(c);
+j0:
+   buf[cat->enc_lval] = '\0';
+   l = cat->enc_lval;
+   NYD2_LEAVE;
+   return l;
+}
+#endif /* HAVE_FILTER_HTML_TAGSOUP */
+
 /*
  * Our iconv(3) wrapper
  */
