@@ -499,7 +499,6 @@ quoteflt_flush(struct quoteflt *self)
  * HTML tagsoup filter
  * TODO . update manual regarding HTML mails
  * TODO . Add HREF support via struct htmlflt_href
- * TODO . Print [IMG=ALT-TEXT] if alt="" attribute given
  * TODO . convert &#NO; numeric entities to characters
  * TODO Interlocking and non-well-formed data will break us down
  */
@@ -563,25 +562,26 @@ static struct hf_tag const _hf_tags[] = {
 # undef _X
 # define _X(S,A)  { A, {0,}, sizeof(S) -1, S }
 
-  _X("<P", _HFSA_NEEDSEP),       /*_X("</P", '\n'),*/
-  _X("<DIV", _HFSA_NEEDSEP),     /*_X("</DIV", '\n'),*/
-  _X("<TR", _HFSA_NEEDNL),
+   _X("<P", _HFSA_NEEDSEP),      /*_X("</P", '\n'),*/
+   _X("<DIV", _HFSA_NEEDSEP),    /*_X("</DIV", '\n'),*/
+   _X("<TR", _HFSA_NEEDNL),
                                  _X("</TH", '\t'),
                                  _X("</TD", '\t'),
-  _X("<IT", _HFSA_NEEDNL),
-  _X("<BR", '\n'),
-  _X("<PRE", _HFSA_PRE),         _X("</PRE", _HFSA_PRE_END),
-  _X("<DT", _HFSA_NEEDSEP),
-  _X("<TITLE", _HFSA_NEEDSEP),   /*_X("</TITLE", '\n'),*/
-  _X("<H1", _HFSA_NEEDSEP),      /*_X("</H1", '\n'),*/
-  _X("<H2", _HFSA_NEEDSEP),      /*_X("</H2", '\n'),*/
-  _X("<H3", _HFSA_NEEDSEP),      /*_X("</H3", '\n'),*/
-  _X("<H4", _HFSA_NEEDSEP),      /*_X("</H4", '\n'),*/
-  _X("<H5", _HFSA_NEEDSEP),      /*_X("</H5", '\n'),*/
-  _X("<H6", _HFSA_NEEDSEP),      /*_X("</H6", '\n'),*/
-  _X("<STYLE", _HFSA_IGN),       _X("</STYLE", _HFSA_IGN_END),
-  _X("<SCRIPT", _HFSA_IGN),      _X("</SCRIPT", _HFSA_IGN_END),
-  _X("<IMG", _HFSA_IMG)
+   _X("<IMG", _HFSA_IMG),
+   _X("<IT", _HFSA_NEEDNL),
+   _X("<BR", '\n'),
+   _X("<PRE", _HFSA_PRE),        _X("</PRE", _HFSA_PRE_END),
+   _X("<DL", _HFSA_NEEDSEP),
+   _X("<DT", _HFSA_NEEDNL),
+   _X("<TITLE", _HFSA_NEEDSEP),  /*_X("</TITLE", '\n'),*/
+   _X("<H1", _HFSA_NEEDSEP),     /*_X("</H1", '\n'),*/
+   _X("<H2", _HFSA_NEEDSEP),     /*_X("</H2", '\n'),*/
+   _X("<H3", _HFSA_NEEDSEP),     /*_X("</H3", '\n'),*/
+   _X("<H4", _HFSA_NEEDSEP),     /*_X("</H4", '\n'),*/
+   _X("<H5", _HFSA_NEEDSEP),     /*_X("</H5", '\n'),*/
+   _X("<H6", _HFSA_NEEDSEP),     /*_X("</H6", '\n'),*/
+   _X("<STYLE", _HFSA_IGN),      _X("</STYLE", _HFSA_IGN_END),
+   _X("<SCRIPT", _HFSA_IGN),     _X("</SCRIPT", _HFSA_IGN_END),
 
 # undef _X
 };
@@ -628,6 +628,12 @@ static struct htmlflt * _hf_nl_force(struct htmlflt *self);
 static struct htmlflt * _hf_putc(struct htmlflt *self, char c);
 static struct htmlflt * _hf_putc_premode(struct htmlflt *self, char c);
 static struct htmlflt * _hf_puts(struct htmlflt *self, char const *cp);
+static struct htmlflt * _hf_putbuf(struct htmlflt *self,
+                           char const *cp, size_t len);
+
+/* Try to locate a param'eter in >hf_bdat, store it or NULL */
+static struct htmlflt * _hf_param(struct htmlflt *self, struct str *store,
+                           char const *param);
 
 /* Completely parsed over a tag / an entity, interpret that */
 static struct htmlflt * _hf_check_tag(struct htmlflt *self, char const *s);
@@ -732,10 +738,8 @@ _hf_nl(struct htmlflt *self)
             f |= _HF_NL_1;
          self->hf_flags = (f &= ~_HF_BLANK);
 
-         if (f & _HF_ANY) {
-            self->hf_line[self->hf_len++] = '\n';
+         if (f & _HF_ANY)
             self = _hf_dump(self);
-         }
          break;
       }
    NYD2_LEAVE;
@@ -752,10 +756,8 @@ _hf_nl_force(struct htmlflt *self)
       f &= ~(_HF_BLANK | _HF_NL_MASK);
       self->hf_flags = (f |= _HF_NL_1);
 
-      if (f & _HF_ANY) {
-         self->hf_line[self->hf_len++] = '\n';
+      if (f & _HF_ANY)
          self = _hf_dump(self);
-      }
    }
    NYD2_LEAVE;
    return self;
@@ -819,8 +821,64 @@ _hf_puts(struct htmlflt *self, char const *cp)
 }
 
 static struct htmlflt *
+_hf_putbuf(struct htmlflt *self, char const *cp, size_t len)
+{
+   NYD2_ENTER;
+
+   while (len-- > 0)
+      self = _hf_putc(self, *cp++);
+   NYD2_LEAVE;
+   return self;
+}
+
+static struct htmlflt *
+_hf_param(struct htmlflt *self, struct str *store, char const *param)
+{
+   char *cp, c;
+   NYD2_ENTER;
+
+   store->s = NULL;
+   store->l = 0;
+
+   if ((cp = UNCONST(asccasestr(self->hf_bdat, param))) == NULL)
+      goto jleave;
+   cp += strlen(param);
+
+   for (;;) {
+      if ((c = *cp++) == '\0')
+         goto jleave;
+      if (c == '=')
+         break;
+   }
+   if ((c = *cp) == '\0')
+      goto jleave;
+
+   if (c == '"') {
+      /* TODO oops i have forgotten wether backslash quoting is allowed in
+       * TODO quoted HTML parameter values?  not supporting that for now.. */
+      if ((c = *++cp) == '\0' || c == '"')
+         goto jleave;
+      store->s = cp;
+
+      while ((c = *++cp) != '\0' && c != '"')
+         ;
+      /* XXX ... and we simply ignore missing trailing " :> */
+   } else if (!whitechar(c)) {
+      store->s = cp;
+
+      while ((c = *++cp) != '\0' && !whitechar(c))
+         ;
+   }
+   store->l = PTR2SIZE(cp - store->s);
+jleave:
+   NYD2_LEAVE;
+   return self;
+}
+
+static struct htmlflt *
 _hf_check_tag(struct htmlflt *self, char const *s)
 {
+   struct str param;
    struct hf_tag const *hftp;
    ui32_t f;
    char c;
@@ -865,13 +923,16 @@ _hf_check_tag(struct htmlflt *self, char const *s)
       break;
 
    case _HFSA_IMG:
-      self = _hf_puts(self, "[IMG]");
-      c = ' ';
-      if (0) {
-         /* FALLTHRU */
-   default:
-         c = (char)(hftp->hft_act & 0xFF);
+      self = _hf_param(self, &param, "alt");
+      if (param.s != NULL) {
+         self = _hf_puts(self, "[IMG=");
+         self = _hf_putbuf(self, param.s, param.l);
+         self = _hf_putc(self, ']');
       }
+      break;
+
+   default:
+      c = (char)(hftp->hft_act & 0xFF);
       self = _hf_putc(self, c);
       break;
    case '\0':
