@@ -1870,6 +1870,14 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
+/* UTF-8 stuff */
+
+/* ..and update arguments to point after range; returns UI32_MAX on error, in
+ * which case the arguments will have been stepped one byte */
+#ifdef HAVE_NATCH_CHAR
+FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
+#endif
+
 /* Our iconv(3) wrappers */
 
 #ifdef HAVE_ICONV

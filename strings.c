@@ -1037,6 +1037,67 @@ FL struct str *
 }
 
 /*
+ * UTF-8
+ */
+
+#ifdef HAVE_NATCH_CHAR
+FL ui32_t
+n_utf8_to_utf32(char const **bdat, size_t *blen)
+{
+   char const *cp;
+   size_t l;
+   ui32_t c, x;
+   NYD2_ENTER;
+
+   cp = *bdat;
+   l = *blen - 1;
+   x = (ui8_t)*cp++;
+
+   if (x <= 0x7F)
+      c = x;
+   else {
+      if ((x & 0xE0) == 0xC0) {
+         if (l < 2)
+            goto jerr;
+         l -= 1;
+         c = x & ~0xC0;
+      } else if ((x & 0xF0) == 0xE0) {
+         if (l < 3)
+            goto jerr;
+         l -= 2;
+         c = x & ~0xE0;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+      } else {
+         if (l < 4)
+            goto jerr;
+         l -= 3;
+         c = x & ~0xF0;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+      }
+      c <<= 6;
+      x = (ui8_t)*cp++;
+      c |= x & 0x7F;
+   }
+
+jleave:
+   *bdat = cp;
+   *blen = l;
+   NYD2_LEAVE;
+   return c;
+jerr:
+   c = UI32_MAX;
+   goto jleave;
+}
+#endif /* HAVE_NATCH_CHAR */
+
+/*
  * Our iconv(3) wrapper
  */
 #ifdef HAVE_ICONV
