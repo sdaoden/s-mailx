@@ -207,7 +207,7 @@ j__sig:
       free(in.s);
    safe_signal(SIGPIPE, __mimefwtd_opipe);
    if (__mimefwtd_sig != 0)
-      kill(0, __mimefwtd_sig);
+      n_raise(__mimefwtd_sig);
    NYD_LEAVE;
    return rv;
 }
@@ -1138,7 +1138,7 @@ jleave:
       free(in.s);
    safe_signal(SIGPIPE, __mimemw_opipe);
    if (__mimemw_sig != 0)
-      kill(0, __mimemw_sig);
+      n_raise(__mimemw_sig);
    NYD_LEAVE;
    return sz;
 }

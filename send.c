@@ -1135,7 +1135,7 @@ jalter_unroll:
          safe_signal(SIGINT, oish);
          safe_signal(SIGPIPE, opsh);
          if (__sndalter_sig != 0)
-            kill(0, __sndalter_sig);
+            n_raise(__sndalter_sig);
          goto jleave;
       }
       /* FALLTHRU */
@@ -1346,7 +1346,7 @@ jcopyout:
             n_iconv_close(iconvd);
 #endif
          safe_signal(SIGPIPE, __sendp_opipe);
-         kill(0, __sendp_sig);
+         n_raise(__sendp_sig);
       }
    }
 

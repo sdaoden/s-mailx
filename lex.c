@@ -435,7 +435,7 @@ stop(int s)
    sigemptyset(&nset);
    sigaddset(&nset, s);
    sigprocmask(SIG_UNBLOCK, &nset, NULL);
-   kill(0, s);
+   n_raise(s);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    safe_signal(s, old_action);
    if (_reset_on_stop) {

@@ -725,7 +725,7 @@ jleave:
       sigemptyset(&cset);
       sigaddset(&cset, __spamd_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      kill(0, __spamd_sig);
+      n_raise(__spamd_sig);
       assert(rv == FAL0);
    }
    return rv;
@@ -1122,7 +1122,7 @@ jtail:
       sigemptyset(&cset);
       sigaddset(&cset, __spam_cf_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      kill(0, __spam_cf_sig);
+      n_raise(__spam_cf_sig);
    }
    return !(state & (_JUMPED | _ERRORS));
 }

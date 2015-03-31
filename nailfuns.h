@@ -256,6 +256,8 @@ FL void        edit_attachments(struct attachment **aphead);
  * auxlily.c
  */
 
+FL void        n_raise(int signo);
+
 /* Announce a fatal error (and die) */
 FL void        panic(char const *format, ...);
 FL void        alert(char const *format, ...);

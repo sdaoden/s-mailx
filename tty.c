@@ -173,7 +173,7 @@ jrestore:
 jleave:
    NYD_LEAVE;
    if (sig != 0)
-      kill(0, sig);
+      n_raise(sig);
    return rv;
 }
 
@@ -206,7 +206,7 @@ jrestore:
    safe_signal(SIGINT, oint);
    NYD_LEAVE;
    if (sig != 0)
-      kill(0, sig);
+      n_raise(sig);
    return user;
 }
 
@@ -257,7 +257,7 @@ jrestore:
    safe_signal(SIGINT, oint);
    NYD_LEAVE;
    if (sig != 0)
-      kill(0, sig);
+      n_raise(sig);
    return pass;
 }
 #endif /* HAVE_SOCKETS */
@@ -350,7 +350,7 @@ tty_signal(int sig)
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      kill(0, sig);
+      n_raise(sig);
       /* XXX When we come here we'll continue editing, so reestablish
        * XXX cannot happen */
       sigprocmask(SIG_BLOCK, &oset, NULL);
@@ -1893,7 +1893,7 @@ tty_signal(int sig)
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      kill(0, sig);
+      n_raise(sig);
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
       _ncl_sigs_up();

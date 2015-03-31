@@ -1611,7 +1611,7 @@ jleave:
       sigemptyset(&cset);
       sigaddset(&cset, __sopen_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      kill(0, __sopen_sig);
+      n_raise(__sopen_sig);
    }
 #endif
    NYD_LEAVE;

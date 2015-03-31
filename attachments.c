@@ -422,7 +422,7 @@ edit_attachments(struct attachment **aphead)
          fap->a_blink = bap;
       /*else*//* TODO until we have signal manager (see TODO) */
       if (__atticonv_sig != 0)
-         kill(0, SIGINT);
+         n_raise(SIGINT);
       if (fap == NULL)
          goto jleave;
    }
@@ -442,7 +442,7 @@ edit_attachments(struct attachment **aphead)
       ++attno;
    }
    if (__atticonv_sig != 0) /* TODO until we have signal manager (see TODO) */
-      kill(0, SIGINT);
+      n_raise(SIGINT);
 jleave:
    NYD_LEAVE;
 }

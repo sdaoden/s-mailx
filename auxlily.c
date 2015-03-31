@@ -333,6 +333,14 @@ _nyd_print(int fd, struct nyd_info *nip)
 #endif
 
 FL void
+n_raise(int signo)
+{
+   NYD2_ENTER;
+   kill(getpid(), signo);
+   NYD2_LEAVE;
+}
+
+FL void
 panic(char const *format, ...)
 {
    va_list ap;
@@ -521,7 +529,7 @@ _nyd_oncrash(int signo)
    sigemptyset(&xset);
    sigaddset(&xset, signo);
    sigprocmask(SIG_UNBLOCK, &xset, NULL);
-   kill(0, signo);
+   n_raise(signo);
    for (;;)
       _exit(EXIT_ERR);
 }
