@@ -505,29 +505,31 @@ quoteflt_flush(struct quoteflt *self)
 #ifdef HAVE_FILTER_HTML_TAGSOUP
 
 enum hf_flags {
-   _HF_UTF8    = 1<<0,  /* Data is in UTF-8 */
-   _HF_ERROR   = 1<<1,  /* A hard error occurred, bail as soon as possible */
-   _HF_NOPUT   = 1<<2,  /* (In a tag,) Don't generate output */
-   _HF_IGN     = 1<<3,  /* Ignore mode on */
-   _HF_ANY     = 1<<4,  /* Yet seen just any output */
-   _HF_PRE     = 1<<5,  /* In <pre>formatted mode */
-   _HF_ENT     = 1<<6,  /* Currently parsing an entity */
-   _HF_BLANK   = 1<<7,  /* Whitespace last */
+   _HF_UTF8    = 1<<0,     /* Data is in UTF-8 */
+   _HF_ERROR   = 1<<1,     /* A hard error occurred, bail as soon as possible */
+   _HF_NOPUT   = 1<<2,     /* (In a tag,) Don't generate output */
+   _HF_IGN     = 1<<3,     /* Ignore mode on */
+   _HF_ANY     = 1<<4,     /* Yet seen just any output */
+   _HF_PRE     = 1<<5,     /* In <pre>formatted mode */
+   _HF_ENT     = 1<<6,     /* Currently parsing an entity */
+   _HF_BLANK   = 1<<7,     /* Whitespace last */
+   _HF_HREF    = 1<<8,     /* External <a href=> was the last href seen */
 
-   _HF_NL_1    = 1<<8,  /* One \n seen */
-   _HF_NL_2    = 2<<8,  /* Two consecutive \n seen */
+   _HF_NL_1    = 1<<9,     /* One \n seen */
+   _HF_NL_2    = 2<<9,     /* We have produced an all empty line */
    _HF_NL_MASK = _HF_NL_1 | _HF_NL_2
 };
 
 enum hf_special_actions {
-   _HFSA_NEEDSEP  = -1, /* Need an empty line (paragraph separator) */
-   _HFSA_NEEDNL   = -2, /* Need a new line start (table row) */
-   _HFSA_IGN      = -3, /* Things like <style>, <script>.. */
+   _HFSA_NEEDSEP  = -1,    /* Need an empty line (paragraph separator) */
+   _HFSA_NEEDNL   = -2,    /* Need a new line start (table row) */
+   _HFSA_IGN      = -3,    /* Things like <style>, <script>.. */
    _HFSA_IGN_END  = -4,
-   _HFSA_PRE      = -5, /* <pre>.. */
+   _HFSA_PRE      = -5,    /* <pre>.. */
    _HFSA_PRE_END  = -6,
-   _HFSA_IMG      = -7, /* <img> */
-   _HFSA_HREF     = -8  /* <a> */
+   _HFSA_IMG      = -7,    /* <img> */
+   _HFSA_HREF     = -8,    /* <a>.. */
+   _HFSA_HREF_END = -9
 };
 
 enum hf_entity_flags {
@@ -539,8 +541,8 @@ enum hf_entity_flags {
 
 struct htmlflt_href {
    struct htmlflt_href *hfh_next;
-   ui32_t      hfh_no;
-   ui32_t      hfh_len;
+   ui32_t      hfh_no;     /* Running sequence */
+   ui32_t      hfh_len;    /* of .hfh_dat */
    char        hfh_dat[VFIELD_SIZE(8)];
 };
 
@@ -554,9 +556,9 @@ struct hf_tag {
 struct hf_ent {
    ui8_t       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
    char        hfe_c;      /* Plain replacement character */
-   ui16_t      hfe_uni;    /* Unicode codepoint */
-   char        hfe_cstr[4]; /* Other replacement (e.g., &hellip; -> ...) */
-   char const  hfe_ent[8]; /* Entity less & and ; */
+   ui16_t      hfe_uni;    /* Unicode codepoint if _HFE_HAVE_UNI */
+   char        hfe_cstr[4]; /* _HFE_HAVE_CSTR (e.g., &hellip; -> ...) */
+   char const  hfe_ent[8]; /* Entity less & and ; surroundings */
 };
 
 /* Tag list; not binary searched :(, so try to take care a bit */
@@ -569,7 +571,7 @@ static struct hf_tag const _hf_tags[] = {
    _X("<TR", _HFSA_NEEDNL),
                                  _X("</TH", '\t'),
                                  _X("</TD", '\t'),
-   _X("<A", _HFSA_HREF),
+   _X("<A", _HFSA_HREF),         _X("</A", _HFSA_HREF_END),
    _X("<IMG", _HFSA_IMG),
    _X("<IT", _HFSA_NEEDNL),
    _X("<BR", '\n'),
@@ -604,10 +606,20 @@ static struct hf_ent const _hf_ents[] = {
    _X("amp", '&'),
    _X("lt", '<'),                _X("gt", '>'),
 
-   _XU("nbsp", ' ', 0x00A0),
-
+   _XU("nbsp", ' ', 0x0020 /* Note: not 0x00A0 seems to be better for us */),
    _XSU("hellip", "...", 0x2026),
+   _XSU("mdash", "---", 0x2014), _XSU("ndash", "--", 0x2013),
+   _XSU("laquo", "<<", 0x00AB),  _XSU("raquo", ">>", 0x00BB),
+   _XSU("lsaquo", "<", 0x2039),  _XSU("rsaquo", ">", 0x203A),
+   _XSU("lsquo", "'", 0x2018),   _XSU("rsquo", "'", 0x2019),
+   _XSU("ldquo", "\"", 0x201C),  _XSU("rdquo", "\"", 0x201D),
+   _XSU("cent", "CENT", 0x00A2),
+   _XSU("copy", "(C)", 0x00A9),
+   _XSU("euro", "EUR", 0x20AC),
    _XSU("infin", "INF", 0x221E),
+   _XSU("pound", "GBP", 0x00A3),
+   _XSU("reg", "(R)", 0x00AE),
+   _XSU("yen", "JPY", 0x00A5),
 
    /* German umlauts */
    _XSU("Auml", "Ae", 0x00C4),   _XSU("auml", "ae", 0x00E4),
@@ -705,7 +717,7 @@ jput:
       }
 
       self->hf_flags |= (fputc('\n', self->hf_os) == EOF)
-            ?  _HF_ERROR : _HF_NL_1 | _HF_NL_1;
+            ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
       self->hf_href_dist = (ui32_t)realscreenheight >> 1;
    }
 jleave:
@@ -816,7 +828,7 @@ _hf_putc(struct htmlflt *self, char c)
       self = _hf_nl(self);
       goto jleave;
    } else if (c == ' ' || c == '\t') {
-      if (f & _HF_BLANK)
+      if ((f & _HF_BLANK) || self->hf_len == 0)
          goto jleave;
       f |= _HF_BLANK;
    } else
@@ -964,11 +976,11 @@ _hf_check_tag(struct htmlflt *self, char const *s)
 
    case _HFSA_IMG:
       self = _hf_param(self, &param, "alt");
-      if (param.s != NULL) {
-         self = _hf_puts(self, "[IMG=");
-         self = _hf_putbuf(self, param.s, param.l);
-         self = _hf_putc(self, ']');
-      }
+      self = _hf_putc(self, '[');
+      if (param.s == NULL)
+         param.s = UNCONST("IMG"), param.l = 3;
+      self = _hf_putbuf(self, param.s, param.l);
+      self = _hf_putc(self, ']');
       break;
 
    case _HFSA_HREF:
@@ -979,12 +991,20 @@ _hf_check_tag(struct htmlflt *self, char const *s)
                VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
-         self->hf_hrefs = hhp;
          hhp->hfh_no = ++self->hf_href_cnt;
          hhp->hfh_len = (ui32_t)param.l;
          memcpy(hhp->hfh_dat, param.s, param.l);
+         snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
 
-         snprintf(nobuf, sizeof nobuf, "[HREF=%u]", hhp->hfh_no);
+         self->hf_flags = (f |= _HF_HREF);
+         self->hf_hrefs = hhp;
+         self = _hf_puts(self, nobuf);
+      } else
+         self->hf_flags = (f &= ~_HF_HREF);
+      break;
+   case _HFSA_HREF_END:
+      if (f & _HF_HREF) {
+         snprintf(nobuf, sizeof nobuf, "[/%u]", self->hf_href_cnt);
          self = _hf_puts(self, nobuf);
       }
       break;
@@ -1008,6 +1028,7 @@ _hf_check_ent(struct htmlflt *self, char const *s)
    char const *s_save;
    struct hf_ent const *hfep;
    size_t l;
+   long i;
    NYD2_ENTER;
 
    s_save = s;
@@ -1017,8 +1038,9 @@ _hf_check_ent(struct htmlflt *self, char const *s)
    assert(s[l - 1] == ';');
    --l;
 
+   /* Numeric entity, or try named search */
    if (*s == '#') {
-      long i = (*++s == 'x' ? 16 : 10);
+      i = (*++s == 'x' ? 16 : 10);
 
       if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
          memcpy(nobuf, s, l);
@@ -1027,6 +1049,7 @@ _hf_check_ent(struct htmlflt *self, char const *s)
          if (i <= 0x7F)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {
+jputuni:
             l = n_utf32_to_utf8((ui32_t)i, nobuf);
             self = _hf_putbuf(self, nobuf, l);
          } else
@@ -1037,8 +1060,11 @@ _hf_check_ent(struct htmlflt *self, char const *s)
       for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + NELEM(_hf_ents)); ++hfep)
          if (l == (hfep->hfe_flags & _HFE_LENGTH_MASK) &&
                !strncmp(s, hfep->hfe_ent, l)) {
-            /* TODO use hfe_uni if HFE_HAVE_UNI and Unicode output */
-            if (hfep->hfe_flags & _HFE_HAVE_CSTR)
+            if ((hfep->hfe_flags & _HFE_HAVE_UNI) &&
+                  (self->hf_flags & _HF_UTF8)) {
+               i = hfep->hfe_uni;
+               goto jputuni;
+            } else if (hfep->hfe_flags & _HFE_HAVE_CSTR)
                self = _hf_puts(self, hfep->hfe_cstr);
             else
                self = _hf_putc(self, hfep->hfe_c);
@@ -1109,13 +1135,11 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
          /* End of line is not considered unless we are in PRE section */
          if (f & _HF_IGN)
             break;
-         if (f & _HF_PRE)
-            self = _hf_nl_force(self);
-         else if (self->hf_len > 0)
-            self = _hf_putc(self, ' ');
+         self = (f & _HF_PRE) ? _hf_nl_force(self) : _hf_putc(self, ' ');
          break;
 
       default:
+         /* If not currently parsing a tag and bypassing normal output.. */
          if (!(f & _HF_NOPUT)) {
             if (cntrlchar(c))
                break;
