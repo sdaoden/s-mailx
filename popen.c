@@ -291,7 +291,7 @@ _sigchld(int signo)
 
       if ((cp = _findchild(pid, FAL0)) != NULL) {
          if (cp->free)
-            _delchild(cp);
+            cp->pid = -1; /* XXX Was _delchild(cp);# */
          else {
             cp->done = 1;
             cp->status = status;
@@ -680,6 +680,25 @@ Popen(char const *cmd, char const *mode, char const *sh,
    sigset_t nset;
    FILE *rv = NULL;
    NYD_ENTER;
+
+   /* First clean up child structures */
+   {  sigset_t oset;
+      struct child **cpp, *cp;
+
+      sigfillset(&nset);
+      sigprocmask(SIG_BLOCK, &nset, &oset);
+
+      for (cpp = &_popen_child; *cpp != NULL;) {
+         if ((*cpp)->pid == -1) {
+            cp = *cpp;
+            *cpp = cp->link;
+            free(cp);
+         } else
+            cpp = &(*cpp)->link;
+      }
+
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
 
    if (!pipe_cloexec(p))
       goto jleave;
