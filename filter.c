@@ -709,7 +709,7 @@ _hf_dump(struct htmlflt *self)
    f = self->hf_flags & ~_HF_BLANK;
    l = self->hf_len;
    cp = self->hf_line;
-   self->hf_last_ws = self->hf_len = 0;
+   self->hf_cnt = self->hf_last_ws = self->hf_len = 0;
 
    for (c = '\0'; l > 0; --l) {
       c = *cp++;
@@ -741,19 +741,27 @@ jleave:
 static struct htmlflt *
 _hf_store(struct htmlflt *self, char c)
 {
-   ui32_t l, i, f;
+   ui32_t f, l, i;
    NYD2_ENTER;
 
    assert(c != '\n');
 
+   f = self->hf_flags;
    l = self->hf_len;
    self->hf_line[l] = c;
    self->hf_len = ++l;
    if (blankspacechar(c))
       self->hf_last_ws = l;
 
+   i = l;
+   if (f & _HF_UTF8) {
+      i = self->hf_cnt;
+      if ((ui8_t)c <= 0x7F || ((ui8_t)c & 0xC0) != 0x80)
+         self->hf_cnt = ++i; /* TODO use S-CText charwidth! */
+   }
+
    /* Do we need to break the line? */
-   if (l >= NELEM(self->hf_line)/4 - 8) {
+   if (i >= NELEM(self->hf_line)/4 - 8) {
       /* Let's hope we saw a sane place to break this line! */
       if (self->hf_last_ws >= NELEM(self->hf_line)/4 >> 1) {
 jput:
@@ -765,8 +773,8 @@ jput:
          goto jleave;
       }
 
-      /* Any 7-bit characters?   TODO HTMLFLT-CHARSET */
-      for (f = self->hf_flags, i = l; i-- >= NELEM(self->hf_line)/4 >> 1;)
+      /* Any 7-bit characters? */
+      for (i = l; i-- >= NELEM(self->hf_line)/4 >> 1;)
          if (asciichar((c = self->hf_line[i]))) {
             self->hf_last_ws = ++i;
             goto jput;
