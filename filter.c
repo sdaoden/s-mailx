@@ -498,7 +498,8 @@ quoteflt_flush(struct quoteflt *self)
 /*
  * HTML tagsoup filter
  * TODO . update manual regarding HTML mails
- * TODO . convert &#NO; numeric entities to characters
+ * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
+ * TODO . Parameters may contain entities, and thus should be expanded
  * TODO Interlocking and non-well-formed data will break us down
  */
 #ifdef HAVE_FILTER_HTML_TAGSOUP
@@ -1003,26 +1004,50 @@ jleave:
 static struct htmlflt *
 _hf_check_ent(struct htmlflt *self, char const *s)
 {
+   char nobuf[32];
+   char const *s_save;
    struct hf_ent const *hfep;
    size_t l;
    NYD2_ENTER;
 
+   s_save = s;
    assert(*s == '&');
    l = strlen(++s);
    assert(l > 0);
    assert(s[l - 1] == ';');
    --l;
 
-   for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + NELEM(_hf_ents)); ++hfep)
-      if (l == (hfep->hfe_flags & _HFE_LENGTH_MASK) &&
-            !strncmp(s, hfep->hfe_ent, l)) {
-         /* TODO use hfe_uni if HFE_HAVE_UNI and Unicode output */
-         if (hfep->hfe_flags & _HFE_HAVE_CSTR)
-            self = _hf_puts(self, hfep->hfe_cstr);
-         else
-            self = _hf_putc(self, hfep->hfe_c);
-         break;
-      }
+   if (*s == '#') {
+      long i = (*++s == 'x' ? 16 : 10);
+
+      if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
+         memcpy(nobuf, s, l);
+         nobuf[l] = '\0';
+         i = strtol(nobuf, NULL, i);
+         if (i <= 0x7F)
+            self = _hf_putc(self, (char)i);
+         else if (self->hf_flags & _HF_UTF8) {
+            l = n_utf32_to_utf8((ui32_t)i, nobuf);
+            self = _hf_putbuf(self, nobuf, l);
+         } else
+            goto jeent;
+      } else
+         goto jeent;
+   } else {
+      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + NELEM(_hf_ents)); ++hfep)
+         if (l == (hfep->hfe_flags & _HFE_LENGTH_MASK) &&
+               !strncmp(s, hfep->hfe_ent, l)) {
+            /* TODO use hfe_uni if HFE_HAVE_UNI and Unicode output */
+            if (hfep->hfe_flags & _HFE_HAVE_CSTR)
+               self = _hf_puts(self, hfep->hfe_cstr);
+            else
+               self = _hf_putc(self, hfep->hfe_c);
+            goto jleave;
+         }
+jeent:
+      self = _hf_puts(self, s_save);
+   }
+jleave:
    NYD2_LEAVE;
    return self;
 }
