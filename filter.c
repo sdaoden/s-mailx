@@ -498,7 +498,6 @@ quoteflt_flush(struct quoteflt *self)
 /*
  * HTML tagsoup filter
  * TODO . update manual regarding HTML mails
- * TODO . Add HREF support via struct htmlflt_href
  * TODO . convert &#NO; numeric entities to characters
  * TODO Interlocking and non-well-formed data will break us down
  */
@@ -526,7 +525,8 @@ enum hf_special_actions {
    _HFSA_IGN_END  = -4,
    _HFSA_PRE      = -5, /* <pre>.. */
    _HFSA_PRE_END  = -6,
-   _HFSA_IMG      = -7  /* <img> */
+   _HFSA_IMG      = -7, /* <img> */
+   _HFSA_HREF     = -8  /* <a> */
 };
 
 enum hf_entity_flags {
@@ -537,9 +537,10 @@ enum hf_entity_flags {
 };
 
 struct htmlflt_href {
-   struct htmlflt_href  *hfh_next;
-   char const           *hfh_dat;
-   size_t               hfh_len;
+   struct htmlflt_href *hfh_next;
+   ui32_t      hfh_no;
+   ui32_t      hfh_len;
+   char        hfh_dat[VFIELD_SIZE(8)];
 };
 
 struct hf_tag {
@@ -567,6 +568,7 @@ static struct hf_tag const _hf_tags[] = {
    _X("<TR", _HFSA_NEEDNL),
                                  _X("</TH", '\t'),
                                  _X("</TD", '\t'),
+   _X("<A", _HFSA_HREF),
    _X("<IMG", _HFSA_IMG),
    _X("<IT", _HFSA_NEEDNL),
    _X("<BR", '\n'),
@@ -667,6 +669,43 @@ jput:
       i = 1;
       c = '\n';
       goto jput;
+   }
+
+   /* Check wether there are HREFs to dump; there is so much messy tagsoup out
+    * there that it seems best not to simply dump HREFs in each _dump(), but
+    * only with some gap, let's say half the real screen height */
+   if (--self->hf_href_dist < 0 && self->hf_hrefs != NULL) {
+      struct htmlflt_href *hhp;
+
+      if (fputc('\n', self->hf_os) == EOF) {
+         self->hf_flags |= _HF_ERROR;
+         goto jleave;
+      }
+
+      /* Reverse the list */
+      for (hhp = self->hf_hrefs, self->hf_hrefs = NULL; hhp != NULL;) {
+         struct htmlflt_href *tmp = hhp->hfh_next;
+         hhp->hfh_next = self->hf_hrefs;
+         self->hf_hrefs = hhp;
+         hhp = tmp;
+      }
+
+      /* Then dump it */
+      while ((hhp = self->hf_hrefs) != NULL) {
+         self->hf_hrefs = hhp->hfh_next;
+
+         if (!(self->hf_flags & _HF_ERROR)) {
+            int w = fprintf(self->hf_os, "   [%u] %.*s\n",
+                  hhp->hfh_no, (int)hhp->hfh_len, hhp->hfh_dat);
+            if (w < 0)
+               self->hf_flags |= _HF_ERROR;
+         }
+         free(hhp);
+      }
+
+      self->hf_flags |= (fputc('\n', self->hf_os) == EOF)
+            ?  _HF_ERROR : _HF_NL_1 | _HF_NL_1;
+      self->hf_href_dist = (ui32_t)realscreenheight >> 1;
    }
 jleave:
    NYD2_LEAVE;
@@ -878,10 +917,10 @@ jleave:
 static struct htmlflt *
 _hf_check_tag(struct htmlflt *self, char const *s)
 {
+   char nobuf[32], c;
    struct str param;
    struct hf_tag const *hftp;
    ui32_t f;
-   char c;
    NYD2_ENTER;
 
    for (hftp = _hf_tags;;)
@@ -928,6 +967,24 @@ _hf_check_tag(struct htmlflt *self, char const *s)
          self = _hf_puts(self, "[IMG=");
          self = _hf_putbuf(self, param.s, param.l);
          self = _hf_putc(self, ']');
+      }
+      break;
+
+   case _HFSA_HREF:
+      self = _hf_param(self, &param, "href");
+      /* Ignore non-external links */
+      if (param.s != NULL && *param.s != '#') {
+         struct htmlflt_href *hhp = smalloc(sizeof(*hhp) -
+               VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
+
+         hhp->hfh_next = self->hf_hrefs;
+         self->hf_hrefs = hhp;
+         hhp->hfh_no = ++self->hf_href_cnt;
+         hhp->hfh_len = (ui32_t)param.l;
+         memcpy(hhp->hfh_dat, param.s, param.l);
+
+         snprintf(nobuf, sizeof nobuf, "[HREF=%u]", hhp->hfh_no);
+         self = _hf_puts(self, nobuf);
       }
       break;
 
@@ -979,7 +1036,8 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
 
    /* Final put request? */
    if (dat == NULL) {
-      if (self->hf_len > 0) {
+      if (self->hf_len > 0 || self->hf_hrefs != NULL) {
+         self->hf_href_dist = 0; /* Force dump */
          self = _hf_nl_force(self);
          rv = 1;
       }

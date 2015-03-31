@@ -1313,6 +1313,8 @@ struct htmlflt {
    ui32_t      hf_len;        /* Current bytes in .hf_line */
    ui32_t      hf_cnt;        /* In UTF-8 mode we count characters */
    ui32_t      hf_last_ws;    /* Last whitespace on line (fold purposes) */
+   si32_t      hf_href_dist;  /* Count of lines since last HREF flush */
+   ui32_t      hf_href_cnt;
    struct htmlflt_href *hf_hrefs;
    /* When parsing tags we write into a temporary buffer until we see '>' */
    char        *hf_curr;      /* Current cursor into .hf_bdat */
