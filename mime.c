@@ -375,6 +375,7 @@ jnoenc_retry:
           * artificial spaces to be inserted (bad standard), yuck */
          /* todo This is not multibyte safe, as above; and completely stupid
           * todo P.S.: our _SHOULD_BEE prevents these cases in the meanwhile */
+/* FIXME OPT_UNICODE and parse using UTF-8 sync possibility! */
          wcur = wbot + MIME_LINELEN_MAX - 8;
          while (wend > wcur)
             wend -= 4;
@@ -465,10 +466,12 @@ jenc_retry_same:
          /* It is so long that it needs to be broken, effectively causing
           * artificial data to be inserted (bad standard), yuck */
          /* todo This is not multibyte safe, as above */
-         /*if (!(flags & _OVERLONG)) {
+         /*if (!(flags & _OVERLONG)) { Mechanism explicitly forbidden by 2047
             flags |= _OVERLONG;
             goto jenc_retry;
          }*/
+
+/* FIXME OPT_UNICODE and parse using UTF-8 sync possibility! */
          i = PTR2SIZE(wend - wbot) + !!(flags & _SPACE);
          j = 3 + !(flags & _ENC_B64);
          for (;;) {

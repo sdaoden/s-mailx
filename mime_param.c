@@ -31,6 +31,37 @@ struct rfc2231_joiner {
    char const  *rj_dat;
 };
 
+struct mime_param_builder {
+   struct mime_param_builder *mpb_next;
+   struct str  *mpb_result;
+   ui32_t      mpb_level;        /* of recursion (<-> continuation number) */
+   ui32_t      mpb_name_len;     /* of the parameter .mpb_name */
+   ui32_t      mpb_value_len;    /* of remaining value */
+   ui32_t      mpb_charset_len;  /* of .mpb_charset (only in outermost level) */
+   ui32_t      mpb_buf_len;      /* Usable result of this level in .mpb_buf */
+   bool_t      mpb_is_enc;       /* Level requires encoding */
+   ui8_t       __dummy[1];
+   bool_t      mpb_is_utf8;      /* Encoding is UTF-8 */
+   si8_t       mpb_rv;
+   char const  *mpb_name;
+   char const  *mpb_value;       /* Remains of, once the level was entered */
+   char const  *mpb_charset;     /* charset_get_lc() */
+   char        *mpb_buf;         /* Pointer to on-stack buffer */
+};
+
+/* All ASCII characters which cause RFC 2231 to be applied XXX check -1 slots*/
+static bool_t const        _rfc2231_etab[] = {
+    1, 1, 1, 1,  1, 1, 1, 1,  1, 1,-1,-1,  1,-1, 1, 1,   /* NUL..SI */
+    1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,   /* DLE..US */
+    1, 0, 1, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 1,   /* CAN.. / */
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 1, 1,  1, 1, 1, 1,   /*   0.. ? */
+
+    1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,   /*   @.. O */
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,  1, 1, 0, 0,   /*   P.. _ */
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,   /*   `.. o */
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,   /*   p..DEL */
+};
+
 /* In a headerbody, at a "param=XY" that we're not interested in, skip over the
  * entire construct, return pointer to the first byte thereafter or to NUL */
 static char const * _mime_param_skip(char const *hbp);
@@ -39,7 +70,7 @@ static char const * _mime_param_skip(char const *hbp);
  * On successful return (1,-1; -1 is returned if the value was quoted via
  * double quotation marks) a set end_or_null points to after the value and any
  * possible separator and result->s is the salloc()d normalized value */
-static si8_t     _mime_param_value_trim(struct str *result, char const *start,
+static si8_t      _mime_param_value_trim(struct str *result, char const *start,
                      char const **end_or_null);
 
 /* mime_param_get() found the desired parameter but it seems to use RFC 2231
@@ -49,6 +80,13 @@ static char *     _rfc2231_param_parse(char const *param, size_t plen,
                      char const *hbp);
 static bool_t     __rfc2231_join(struct rfc2231_joiner *head, char **result,
                      char const **emsg);
+
+/* Recursive parameter builder.  Note we have a magic limit of 999 levels.
+ * Prepares a portion of output in self->mpb_buf;
+ * once >mpb_value is worked completely the deepmost level joins the result
+ * into >mpb_result and unrolls the stack. */
+static void       _mime_param_create(struct mime_param_builder *self);
+static void       __mime_param_join(struct mime_param_builder *head);
 
 static char const *
 _mime_param_skip(char const *hbp)
@@ -478,6 +516,282 @@ jhex_putc:
    return ((f & _ERRORS) != 0);
 }
 
+static void
+_mime_param_create(struct mime_param_builder *self)
+{
+   struct mime_param_builder next;
+   /* Don't use MIME_LINELEN_(MAX|LIMIT) stack buffer sizes: normally we won't
+    * exceed plain MIME_LINELEN, so that this would be a factor 10 wastage.
+    * On the other hand we may excess _LINELEN to avoid breaking up possible
+    * multibyte sequences until sizeof(buf) is reached, but since we (a) don't
+    * support stateful encodings and (b) will try to synchronize on UTF-8 this
+    * problem is scarce, possibly even artificial */
+   char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
+      *bp, *bp_max, *bp_xmax, *bp_lanoenc;
+   char const *vb, *vb_lanoenc;
+   size_t vl;
+   enum {
+      _NONE    = 0,
+      _ISENC   = 1<<0,
+      _HADRAW  = 1<<1,
+      _RAW     = 1<<2
+   } f = _NONE;
+   NYD2_ENTER;
+   LCTA(sizeof(buf) >= MIME_LINELEN * 2);
+
+jneed_enc:
+   self->mpb_buf = bp = bp_lanoenc = buf;
+   self->mpb_buf_len = 0;
+   self->mpb_is_enc = ((f & _ISENC) != 0);
+   vb_lanoenc = vb = self->mpb_value;
+   vl = self->mpb_value_len;
+
+   /* Configure bp_max to fit in SHOULD, bp_xmax to extent */
+   bp_max = (buf + MIME_LINELEN) -
+         (1 + self->mpb_name_len + sizeof("*999*='';") -1 + 2);
+   bp_xmax = (buf + sizeof(buf)) -
+         (1 + self->mpb_name_len + sizeof("*999*='';") -1 + 2);
+   if ((f & _ISENC) && self->mpb_level == 0) {
+      bp_max -= self->mpb_charset_len;
+      bp_xmax -= self->mpb_charset_len;
+   }
+   if (PTRCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
+      DBG( alert("_mime_param_create(): Hunky Dory!"); )
+      bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
+   }
+   assert(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
+
+   f &= _ISENC;
+   while (vl > 0) {
+      union {char c; ui8_t uc;} u; u.c = *vb;
+
+      f |= _RAW;
+      if (!(f & _ISENC)) {
+         if (u.uc > 0x7F || cntrlchar(u.c)) { /* XXX reject cntrlchar? */
+            /* We need to percent encode this character, possibly changing
+             * overall strategy, but anyway the one of this level, possibly
+             * rendering invalid any output byte we yet have produced here.
+             * Instead of throwing away that work just recurse if some fancy
+             * magic condition is true */
+             /* *However*, many tested MUAs fail to deal with parameters that
+              * are splitted across "too many" fields, including ones that
+              * misread RFC 2231 to allow only one digit, i.e., a maximum of
+              * ten.  This is plain wrong, but that won't help their users */
+            if (PTR2SIZE(bp - buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
+               goto jrecurse;
+            f |= _ISENC;
+            goto jneed_enc;
+         }
+
+         if (u.uc == '"' || u.uc == '\\') {
+            f ^= _RAW;
+            bp[0] = '\\';
+            bp[1] = u.c;
+            bp += 2;
+         }
+      } else if (u.uc > 0x7F || _rfc2231_etab[u.uc]) {
+         f ^= _RAW;
+         bp[0] = '%';
+         mime_char_to_hexseq(bp + 1, u.c);
+         bp += 3;
+      }
+
+      ++vb;
+      --vl;
+      if (f & _RAW) {
+         f |= _HADRAW;
+         vb_lanoenc = vb;
+         *bp++ = u.c;
+         bp_lanoenc = bp;
+      }
+
+      /* If all available space has been consumed we must split.
+       * Due to compatibility reasons we must take care not to break up
+       * multibyte sequences -- even though RFC 2231 rather implies that the
+       * splitted value should be joined (after percent encoded fields have
+       * been percent decoded) and the resulting string be treated in the
+       * specified character set / language, MUAs have been seen which apply
+       * the RFC 2047 encoded-words-are-atomic even to RFC 2231 values, even
+       * if stateful encodings cannot truly be supported like that?!..
+       *
+       * So split at 7-bit character if we have seen any and the wastage isn't
+       * too large; recall that we need to keep the overall number of P=V
+       * values as low as possible due to compatibility reasons.
+       * If we haven't seen any plain bytes be laxe and realize that bp_max
+       * reflects SHOULD lines, and try to extend this as long as possible.
+       * However, with UTF-8, try to backward synchronize on sequence start */
+      if (bp <= bp_max)
+         continue;
+
+      if ((f & _HADRAW) && (PTRCMP(bp - bp_lanoenc, <=, bp_lanoenc - buf) ||
+            (!self->mpb_is_utf8 &&
+             PTR2SIZE(bp_lanoenc - buf) >= (MIME_LINELEN >> 2)))) {
+         bp = bp_lanoenc;
+         vl += PTR2SIZE(vb - vb_lanoenc);
+         vb = vb_lanoenc;
+         goto jrecurse;
+      }
+
+      if (self->mpb_is_utf8 && ((ui8_t)(vb[-1]) & 0xC0) != 0x80) {
+         bp -= 3;
+         --vb;
+         ++vl;
+         goto jrecurse;
+      }
+
+      if (bp <= bp_xmax)
+         continue;
+      /* (Shit.) */
+      goto jrecurse;
+   }
+
+   /* That level made the great and completed encoding.  Build result */
+   self->mpb_is_enc = ((f & _ISENC) != 0);
+   self->mpb_buf_len = PTR2SIZE(bp - buf);
+   __mime_param_join(self);
+jleave:
+   NYD2_LEAVE;
+   return;
+
+   /* Need to recurse, take care not to excess magical limit of 999 levels */
+jrecurse:
+   if (self->mpb_level == 999) {
+      if (options & OPT_D_VV)
+         fprintf(stderr, _("Message RFC 2231 parameters nested too deeply!\n"));
+      goto jleave;
+   }
+
+   self->mpb_is_enc = ((f & _ISENC) != 0);
+   self->mpb_buf_len = PTR2SIZE(bp - buf);
+
+   memset(&next, 0, sizeof next);
+   next.mpb_next = self;
+   next.mpb_level = self->mpb_level + 1;
+   next.mpb_name_len = self->mpb_name_len;
+   next.mpb_value_len = vl;
+   next.mpb_is_utf8 = self->mpb_is_utf8;
+   next.mpb_name = self->mpb_name;
+   next.mpb_value = vb;
+   _mime_param_create(&next);
+   goto jleave;
+}
+
+static void
+__mime_param_join(struct mime_param_builder *head)
+{
+   char nobuf[16];
+   struct mime_param_builder *np;
+   size_t i, ll;  DBG( size_t len_max; )
+   struct str *result;
+   char *cp;
+   enum {
+      _NONE    = 0,
+      _ISENC   = 1<<0,
+      _ISQUOTE = 1<<1,
+      _ISCONT  = 1<<2
+   } f = _NONE;
+   NYD2_ENTER;
+
+   /* Traverse the stack upwards to find out result length (worst case).
+    * Reverse the list while doing so */
+   for (i = 0, np = head, head = NULL; np != NULL;) {
+      struct mime_param_builder *tmp;
+
+      i += np->mpb_buf_len + np->mpb_name_len + sizeof(" *999*=\"\";\n") -1;
+      if (np->mpb_is_enc)
+         f |= _ISENC;
+
+      tmp = np->mpb_next;
+      np->mpb_next = head;
+      head = np;
+      np = tmp;
+   }
+   if (f & _ISENC)
+      i += head->mpb_charset_len; /* sizeof("''") -1 covered by \"\" above */
+   DBG( len_max = i; )
+   head->mpb_rv = TRU1;
+
+   result = head->mpb_result;
+   if (head->mpb_next != NULL)
+      f |= _ISCONT;
+   cp = result->s = salloc(i +1);
+
+   for (ll = 0, np = head;;) {
+      /* Name part */
+      memcpy(cp, np->mpb_name, i = np->mpb_name_len);
+      cp += i;
+      ll += i;
+
+      if (f & _ISCONT) {
+         char *cpo = cp, *nop = nobuf + sizeof(nobuf);
+         ui32_t noi = np->mpb_level;
+
+         *--nop = '\0';
+         do
+            *--nop = "0123456789"[noi % 10];
+         while ((noi /= 10) != 0);
+
+         *cp++ = '*';
+         while (*nop != '\0')
+            *cp++ = *nop++;
+
+         ll += PTR2SIZE(cp - cpo);
+      }
+
+      if ((f & _ISENC) || np->mpb_is_enc) {
+         *cp++ = '*';
+         ++ll;
+      }
+      *cp++ = '=';
+      ++ll;
+
+      /* Value part */
+      if (f & _ISENC) {
+         f &= ~_ISENC;
+         memcpy(cp, np->mpb_charset, i = np->mpb_charset_len);
+         cp += i;
+         cp[0] = '\'';
+         cp[1] = '\'';
+         cp += 2;
+         ll += i + 2;
+      } else if (!np->mpb_is_enc) {
+         f |= _ISQUOTE;
+         *cp++ = '"';
+         ++ll;
+      }
+
+      memcpy(cp, np->mpb_buf, i = np->mpb_buf_len);
+      cp += i;
+      ll += i;
+
+      if (f & _ISQUOTE) {
+         f ^= _ISQUOTE;
+         *cp++ = '"';
+         ++ll;
+      }
+
+      if ((np = np->mpb_next) == NULL)
+         break;
+      *cp++ = ';';
+      ++ll;
+
+      i = ll;
+      i += np->mpb_name_len + np->mpb_buf_len + sizeof(" *999*=\"\";\n") -1;
+      if (i >= MIME_LINELEN) {
+         head->mpb_rv = -TRU1;
+         *cp++ = '\n';
+         ll = 0;
+      }
+
+      *cp++ = ' ';
+      ++ll;
+   }
+   *cp = '\0';
+   result->l = PTR2SIZE(cp - result->s);
+   assert(result->l < len_max);
+   NYD2_LEAVE;
+}
+
 FL char *
 mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
 {
@@ -540,6 +854,36 @@ jskip1st:
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+FL si8_t
+mime_param_create(struct str *result, char const *name, char const *value)
+{
+   /* TODO All this needs rework when we have (1) a real string and even more
+    * TODO (2) use objects instead of stupid string concat; it's temporary
+    * TODO I.e., this function should return a HeaderBodyParam */
+   struct mime_param_builder top;
+   size_t i;
+   NYD_ENTER;
+
+   memset(result, 0, sizeof *result);
+
+   memset(&top, 0, sizeof top);
+   top.mpb_result = result;
+   if ((i = strlen(top.mpb_name = name)) > UI32_MAX)
+      goto jleave;
+   top.mpb_name_len = (ui32_t)i;
+   if ((i = strlen(top.mpb_value = value)) > UI32_MAX)
+      goto jleave;
+   top.mpb_value_len = (ui32_t)i;
+   top.mpb_charset_len = (ui32_t)strlen(top.mpb_charset = charset_get_lc());
+   top.mpb_is_utf8 = !ascncasecmp(top.mpb_charset, "utf-8",
+         top.mpb_charset_len);
+
+   _mime_param_create(&top);
+jleave:
+   NYD_LEAVE;
+   return top.mpb_rv;
 }
 
 FL char *

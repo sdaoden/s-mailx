@@ -1308,6 +1308,15 @@ FL int         b64_decode(struct str *out, struct str const *in,
 /* Get a mime style parameter from a header body */
 FL char *      mime_param_get(char const *param, char const *headerbody);
 
+/* Format parameter name to have value, salloc() it or NULL (error) in result.
+ * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
+ * which it will if the created param requires more than MIME_LINELEN bytes;
+ * there is never a trailing newline character */
+/* TODO mime_param_create() should return a StrList<> or something.
+ * TODO in fact it should take a HeaderField* and append a HeaderFieldParam*! */
+FL si8_t       mime_param_create(struct str *result, char const *name,
+                  char const *value);
+
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */
 FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);

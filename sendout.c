@@ -209,23 +209,28 @@ _put_cte(FILE *fo, enum conversion conv)
 static int
 _put_cd(FILE *fo, char const *cd, char const *filename)
 {
+   struct str f;
+   si8_t mpc;
    int rv;
-   ssize_t l;
    NYD2_ENTER;
 
-   /* XXX For now _put_cd() always places filename on own line since that is
-    * XXX specially xmime_write()ten :( */
-   if ((rv = fprintf(fo, "Content-Disposition: %s;\n filename=\"", cd)) < 0)
+   f.s = NULL;
+
+   /* xxx Ugly with the trailing space in case of wrap! */
+   if ((rv = fprintf(fo, "Content-Disposition: %s; ", cd)) < 0)
       goto jerr;
 
-   if ((l = xmime_write(filename, strlen(filename), fo, CONV_TOHDR, TD_NONE))
-         < 0)
+   if (!(mpc = mime_param_create(&f, "filename", filename)))
       goto jerr;
-   rv += (int)l;
-
-   if (putc('"', fo) == EOF || putc('\n', fo) == EOF)
+   /* Always fold if result contains newlines */
+   if (mpc < 0 || f.l + rv > MIME_LINELEN) { /* FIXME MIME_LINELEN_MAX */
+      if (putc('\n', fo) == EOF || putc(' ', fo) == EOF)
+         goto jerr;
+      rv += 2;
+   }
+   if (fputs(f.s, fo) == EOF || putc('\n', fo) == EOF)
       goto jerr;
-   rv += 2;
+   rv += (int)++f.l;
 
 jleave:
    NYD2_LEAVE;
@@ -337,7 +342,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
          goto jerr_header;
 
       if ((bn = ap->a_content_description) != NULL &&
-            fprintf(fo, "Content-Description: %s\n", bn) == -1)
+            fprintf(fo, "Content-Description: %s\n", bn) == -1) /* TODO MIME! */
          goto jerr_header;
 
       if (putc('\n', fo) == EOF) {
@@ -522,7 +527,7 @@ attach_message(struct attachment *ap, FILE *fo)
    fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
        "Content-Disposition: inline\n", _sendout_boundary);
    if ((ccp = ap->a_content_description) != NULL)
-      fprintf(fo, "Content-Description: %s\n", ccp);
+      fprintf(fo, "Content-Description: %s\n", ccp);/* TODO MIME! */
    putc('\n', fo);
 
    mp = message + ap->a_msgno - 1;
@@ -1933,7 +1938,7 @@ jaskeot:
          continue;
       }
 
-      perror("");
+      perror(_("Failed to create encoded message"));
 jfail_dead:
       _sendout_error = TRU1;
       savedeadletter(mtf, TRU1);
