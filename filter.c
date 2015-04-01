@@ -497,7 +497,6 @@ quoteflt_flush(struct quoteflt *self)
 
 /*
  * HTML tagsoup filter
- * TODO . update manual regarding HTML mails
  * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
  * TODO . Parameters may contain entities, and thus should be expanded
  * TODO Interlocking and non-well-formed data will break us down
