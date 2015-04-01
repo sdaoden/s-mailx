@@ -15,12 +15,14 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#undef n_FILE
+#define n_FILE spam
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(spam)
+EMPTY_FILE()
 #ifdef HAVE_SPAM
 #if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
 # include <sys/wait.h>

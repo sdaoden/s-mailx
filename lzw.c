@@ -60,12 +60,14 @@
  *
  * Adopted for Heirloom mailx by Gunnar Ritter.
  */
+#undef n_FILE
+#define n_FILE lzw
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(lzw)
+EMPTY_FILE()
 #ifdef HAVE_IMAP
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
 #undef u_int

@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE accmacvar
 
 #ifndef HAVE_AMALGAMATION
 # define _ACCMACVAR_SOURCE /* For _features[] */

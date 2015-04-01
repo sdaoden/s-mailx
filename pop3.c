@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE pop3
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(pop3)
+EMPTY_FILE()
 #ifdef HAVE_POP3
 
 #define POP3_ANSWER(RV,ACTIONSTOP) \

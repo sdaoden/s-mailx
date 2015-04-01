@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE ssl
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(ssl)
+EMPTY_FILE()
 #ifdef HAVE_SSL
 struct ssl_verify_levels {
    char const              sv_name[8];

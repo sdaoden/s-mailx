@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE list
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"

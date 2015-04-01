@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE imap_cache
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(imap_cache)
+EMPTY_FILE()
 #ifdef HAVE_IMAP
 # include <dirent.h>
 

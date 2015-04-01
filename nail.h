@@ -323,7 +323,7 @@
 /* For injection macros like DBG(), NATCH_CHAR() */
 #define COMMA           ,
 
-#define EMPTY_FILE(F)   typedef int CONCAT(avoid_empty_file__, F);
+#define EMPTY_FILE()    typedef int CONCAT(avoid_empty_file__, n_FILE);
 
 /* Pointer to size_t */
 #define PTR2SIZE(X)     ((size_t)(uintptr_t)(X))
@@ -416,17 +416,17 @@
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#define CTA(TEST)       _CTA_1(TEST, __LINE__)
-#define LCTA(TEST)      _LCTA_1(TEST, __LINE__)
+#define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
+#define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
 
-#define _CTA_1(TEST,L)  _CTA_2(TEST, L)
-#define _CTA_2(TEST,L)  \
-   typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1]
-#define _LCTA_1(TEST,L) _LCTA_2(TEST, L)
-#define _LCTA_2(TEST,L) \
+#define _CTA_1(T,F,L)   _CTA_2(T, F, L)
+#define _CTA_2(T,F,L)  \
+   typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1]
+#define _LCTA_1(T,F,L)  _LCTA_2(T, F, L)
+#define _LCTA_2(T,F,L) \
 do {\
-   typedef char COMPILE_TIME_ASSERT_failed_at_line_ ## L[(TEST) ? 1 : -1];\
-   COMPILE_TIME_ASSERT_failed_at_line_ ## L __i_am_unused__;\
+   typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1];\
+   ASSERTION_failed_in_file_## F ## _at_line_ ## L __i_am_unused__;\
    UNUSED(__i_am_unused__);\
 } while (0)
 

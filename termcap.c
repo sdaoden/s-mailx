@@ -15,12 +15,14 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#undef n_FILE
+#define n_FILE termcap
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(termcap)
+EMPTY_FILE()
 #ifdef HAVE_TERMCAP
 /* If available, curses.h must be included before term.h! */
 #ifdef HAVE_TERMCAP_CURSES
