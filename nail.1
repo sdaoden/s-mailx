@@ -7861,5 +7861,17 @@ i.e., to advise it to do that from a network startup script.
 .
 .Sh BUGS
 .
-Too many (see the file `TODO' from the distribution or the repository).
+With IMAP, at least if the IMAP cache is used, if multiple
+.Ic connect
+and
+.Ic disconnect
+cycles happen without an intervening change of the active mailbox then
+\*(UA will at some time loose the ability to keep the local state
+up-to-date, meaning that, e.g., messages show up with false numbers, and
+including the possibility that messages are accessed via numbers that
+are no(t longer) valid, resulting in program crashes.
+The solution is to change the active mailbox before that happens :).
+Also see the file
+.Pa TODO
+from the distribution or the repository.
 .\" s-ts-mode
