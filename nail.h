@@ -1314,13 +1314,13 @@ struct htmlflt {
    ui32_t      hf_cnt;        /* In UTF-8 mode we count characters */
    ui32_t      hf_last_ws;    /* Last whitespace on line (fold purposes) */
    si32_t      hf_href_dist;  /* Count of lines since last HREF flush */
-   ui32_t      hf_href_cnt;
+   ui32_t      hf_href_no;    /* HREF sequence number */
    struct htmlflt_href *hf_hrefs;
-   /* When parsing tags we write into a temporary buffer until we see '>' */
+   struct htmlflt_tag const *hf_ign_tag; /* Tag that will end ignore mode */
    char        *hf_curr;      /* Current cursor into .hf_bdat */
    char        *hf_bmax;      /* Maximum byte in .hf_bdat +1 */
-   char        *hf_bdat;      /* Tag content (parameters) data storage */
-   char        hf_line[80*4]; /* Line buffer - MUST be last field! */
+   char        *hf_bdat;      /* (Temporary) Tag content data storage */
+   char        hf_line[80*4]; /* Output line buffer - MUST be last field! */
 };
 #endif
 

@@ -522,13 +522,12 @@ enum hf_flags {
 enum hf_special_actions {
    _HFSA_NEEDSEP  = -1,    /* Need an empty line (paragraph separator) */
    _HFSA_NEEDNL   = -2,    /* Need a new line start (table row) */
-   _HFSA_IGN      = -3,    /* Things like <style>, <script>.. */
-   _HFSA_IGN_END  = -4,
-   _HFSA_PRE      = -5,    /* <pre>.. */
-   _HFSA_PRE_END  = -6,
-   _HFSA_IMG      = -7,    /* <img> */
-   _HFSA_HREF     = -8,    /* <a>.. */
-   _HFSA_HREF_END = -9
+   _HFSA_IGN      = -3,    /* Things like <style>..</style>, <script>.. */
+   _HFSA_PRE      = -4,    /* <pre>.. */
+   _HFSA_PRE_END  = -5,
+   _HFSA_IMG      = -6,    /* <img> */
+   _HFSA_HREF     = -7,    /* <a>.. */
+   _HFSA_HREF_END = -8
 };
 
 enum hf_entity_flags {
@@ -545,25 +544,25 @@ struct htmlflt_href {
    char        hfh_dat[VFIELD_SIZE(8)];
 };
 
-struct hf_tag {
+struct htmlflt_tag {
    si32_t      hft_act;    /* char or hf_special_actions */
-   ui8_t       __pad[3];
-   ui8_t       hft_len;    /* Useful bytes in .hft_tag */
-   char const  hft_tag[8]; /* Tag less < and > surroundings (TR, /TR, ..) */
+   ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
+   char const  hft_tag[11]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
+CTA(SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE); /* .hf_ign_tag */
 
 struct hf_ent {
    ui8_t       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
    char        hfe_c;      /* Plain replacement character */
    ui16_t      hfe_uni;    /* Unicode codepoint if _HFE_HAVE_UNI */
-   char        hfe_cstr[4]; /* _HFE_HAVE_CSTR (e.g., &hellip; -> ...) */
-   char const  hfe_ent[8]; /* Entity less & and ; surroundings */
+   char        hfe_cstr[5]; /* _HFE_HAVE_CSTR (e.g., &hellip; -> ...) */
+   char const  hfe_ent[7]; /* Entity less & and ; surroundings */
 };
 
 /* Tag list; not binary searched :(, so try to take care a bit */
-static struct hf_tag const _hf_tags[] = {
+static struct htmlflt_tag const  _hf_tags[] = {
 # undef _X
-# define _X(S,A)  { A, {0,}, sizeof(S) -1, S }
+# define _X(S,A)  { A, sizeof(S) -1, S }
 
    _X("P", _HFSA_NEEDSEP),       /*_X("/P", '\n'),*/
    _X("DIV", _HFSA_NEEDSEP),     /*_X("/DIV", '\n'),*/
@@ -584,22 +583,24 @@ static struct hf_tag const _hf_tags[] = {
    _X("H4", _HFSA_NEEDSEP),      /*_X("/H4", '\n'),*/
    _X("H5", _HFSA_NEEDSEP),      /*_X("/H5", '\n'),*/
    _X("H6", _HFSA_NEEDSEP),      /*_X("/H6", '\n'),*/
-   _X("STYLE", _HFSA_IGN),       _X("/STYLE", _HFSA_IGN_END),
-   _X("SCRIPT", _HFSA_IGN),      _X("/SCRIPT", _HFSA_IGN_END),
+
+   _X("STYLE", _HFSA_IGN),
+   _X("SCRIPT", _HFSA_IGN),
 
 # undef _X
 };
 
 /* Entity list; not binary searched.. */
-static struct hf_ent const _hf_ents[] = {
+static struct hf_ent const       _hf_ents[] = {
 # undef _X
 # undef _XU
 # undef _XS
 # undef _XUS
-# define _X(E,C)     {(sizeof(E) -1),C,0x0u,"",E}
-# define _XU(E,C,U)  {(sizeof(E) -1)|_HFE_HAVE_UNI,C,U,"",E}
-# define _XS(E,S)    {(sizeof(E) -1)|_HFE_HAVE_CSTR,'\0',0x0u,S,E}
-# define _XSU(E,S,U) {(sizeof(E) -1)|_HFE_HAVE_UNI|_HFE_HAVE_CSTR,'\0',U,S,E}
+# define _X(E,C)     {(sizeof(E) -1), C, 0x0u, "", E}
+# define _XU(E,C,U)  {(sizeof(E) -1) | _HFE_HAVE_UNI, C, U, "", E}
+# define _XS(E,S)    {(sizeof(E) -1) | _HFE_HAVE_CSTR, '\0', 0x0u, S "\0", E}
+# define _XSU(E,S,U) \
+   {(sizeof(E) -1) | _HFE_HAVE_UNI | _HFE_HAVE_CSTR, '\0', U, S "\0", E}
 
    _X("quot", '"'),
    _X("amp", '&'),
@@ -935,15 +936,24 @@ _hf_check_tag(struct htmlflt *self, char const *s)
 {
    char nobuf[32], c;
    struct str param;
-   struct hf_tag const *hftp;
+   size_t i;
+   struct htmlflt_tag const *hftp;
    ui32_t f;
    NYD2_ENTER;
 
-   assert(s != NULL && *s == '<');
-   ++s;
+   /* Extra check only */
+   if (s == NULL || *s != '<') {
+      DBG( alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
+jput_as_is:
+      self = _hf_puts(self, self->hf_bdat);
+      goto jleave;
+   }
+
+   for (++s, i = 0; (c = s[i]) != '\0' && c != '>' && !whitechar(c); ++i)
+      ;
 
    for (hftp = _hf_tags;;) {
-      if (!ascncasecmp(s, hftp->hft_tag, hftp->hft_len)) {
+      if (i == hftp->hft_len && !ascncasecmp(s, hftp->hft_tag, i)) {
          c = s[hftp->hft_len];
          if (c == '>' || whitechar(c))
             break;
@@ -952,7 +962,10 @@ _hf_check_tag(struct htmlflt *self, char const *s)
          goto jnotknown;
    }
 
-   f = self->hf_flags;
+   if (((f = self->hf_flags) & _HF_PRE) && hftp->hft_act != _HFSA_PRE_END) {
+      self = _hf_puts(self, self->hf_bdat);
+      goto jleave;
+   }
 
    switch (hftp->hft_act) {
    case _HFSA_PRE_END:
@@ -974,14 +987,9 @@ _hf_check_tag(struct htmlflt *self, char const *s)
          self = _hf_nl(self);
       break;
 
-   case _HFSA_IGN_END:
-      f &= ~(_HF_IGN | _HF_NOPUT);
-      if (0) {
-         /* FALLTHRU */
    case _HFSA_IGN:
-         f |= _HF_IGN | _HF_NOPUT;
-      }
-      self->hf_flags = f;
+      self->hf_ign_tag = hftp;
+      self->hf_flags = (f |= _HF_IGN | _HF_NOPUT);
       break;
 
    case _HFSA_IMG:
@@ -1001,7 +1009,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
                VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
-         hhp->hfh_no = ++self->hf_href_cnt;
+         hhp->hfh_no = ++self->hf_href_no;
          hhp->hfh_len = (ui32_t)param.l;
          memcpy(hhp->hfh_dat, param.s, param.l);
          snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
@@ -1014,7 +1022,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
       break;
    case _HFSA_HREF_END:
       if (f & _HF_HREF) {
-         snprintf(nobuf, sizeof nobuf, "[/%u]", self->hf_href_cnt);
+         snprintf(nobuf, sizeof nobuf, "[/%u]", self->hf_href_no);
          self = _hf_puts(self, nobuf);
       }
       break;
@@ -1034,12 +1042,27 @@ jleave:
     * searching i have seen e-mail address in <N@H.D> notation, and more.
     * To protect us a bit look around and possibly write the content as such */
 jnotknown:
-   /* Ignore <!DOCTYPE, <!-- comments, <? PIs.. */
-   if (*s == '!' || *s == '?')
+   switch (*s) {
+   case '!':
+   case '?':
+      /* Ignore <!DOCTYPE, <!-- comments, <? PIs.. */
       goto jleave;
-   if (*s == '/')
+   case '>':
+      /* Print out an empty tag as such */
+      if (s[1] == '\0') {
+         --s;
+         goto jput_as_is;
+      }
+      break;
+   case '/':
       ++s;
-   while ((c = *s++) != '\0' && c != '>' && !whitechar(c))
+      break;
+   default:
+      break;
+   }
+
+   /* Also skip over : in order to suppress v:roundrect, w:anchorlock.. */
+   while ((c = *s++) != '\0' && c != '>' && !whitechar(c) && c != ':')
       if (!asciichar(c) || punctchar(c)) {
          self = _hf_puts(self, self->hf_bdat);
          break;
@@ -1109,6 +1132,7 @@ static ssize_t
 _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
 {
    char c, *cp, *cp_max;
+   bool_t hot;
    ssize_t rv = 0;
    NYD_ENTER;
 
@@ -1123,54 +1147,84 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
       goto jleave;
    }
 
-   /* Always ensure some buffer */
+   /* Always ensure some initial buffer */
    if ((cp = self->hf_curr) != NULL)
       cp_max = self->hf_bmax;
    else {
       cp = self->hf_curr = self->hf_bdat = smalloc(LINESIZE);
       cp_max = self->hf_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
    }
+   hot = (cp != self->hf_bdat);
 
    for (rv = (ssize_t)len; len > 0; --len) {
       ui32_t f = self->hf_flags;
 
       if (f & _HF_ERROR)
          break;
+      c = *dat++;
 
-      switch ((c = *dat++)) {
-      case '<':
-         /* People are using & without escaping it as &amp;, be aware */
-         if (f & _HF_ENT) {
-            f ^= _HF_ENT;
-            self->hf_flags = f;
-            *cp = '\0';
-            self = _hf_puts(self, self->hf_bdat);
-            f = self->hf_flags;
+      /* Soup is really weird, and scripts may contain almost anything (and
+       * newer CSS standards are also cryptic): therefore prefix the _HF_IGN
+       * test and walk until we see the required end tag */
+      /* TODO For real safety _HF_IGN soup condome would also need to know
+       * TODO about quoted strings so that 'var i = "</script>";' couldn't
+       * TODO fool it!   We really want this mode also for _HF_NOPUT to be
+       * TODO able to *gracefully* detect the tag-closing '>', but then if
+       * TODO that is a single mechanism we should have made it! */
+      if (f & _HF_IGN) {
+         struct htmlflt_tag const *hftp = self->hf_ign_tag;
+         size_t i;
+
+         if (c == '<') {
+            hot = TRU1;
+jcp_reset:
+            cp = self->hf_bdat;
+         } else if (c == '>') {
+            if (hot) {
+               if ((i = PTR2SIZE(cp - self->hf_bdat)) > 1 &&
+                     --i == hftp->hft_len &&
+                     !ascncasecmp(self->hf_bdat + 1, hftp->hft_tag, i))
+                  self->hf_flags = (f &= ~(_HF_IGN | _HF_NOPUT));
+               hot = FAL0;
+               goto jcp_reset;
+            }
+         } else if (hot) {
+            *cp++ = c;
+            i = PTR2SIZE(cp - self->hf_bdat);
+            if ((i == 1 && c != '/') || --i > hftp->hft_len) {
+               hot = FAL0;
+               goto jcp_reset;
+            }
          }
-         cp = self->hf_curr = self->hf_bdat;
+      } else switch (c) {
+      case '<':
+         /* People are using & without &amp;ing it, ditto <; be aware */
+         if (f & (_HF_NOPUT | _HF_ENT)) {
+            f &= ~_HF_ENT;
+            /* Special case "<!--" buffer content to deal with really weird
+             * things that can be done with "<!--[if gte mso 9]>" syntax */
+            if (PTR2SIZE(cp - self->hf_bdat) != 4 ||
+                  memcmp(self->hf_bdat, "<!--", 4)) {
+               self->hf_flags = f;
+               *cp = '\0';
+               self = _hf_puts(self, self->hf_bdat);
+               f = self->hf_flags;
+            }
+         }
+         cp = self->hf_bdat;
          *cp++ = c;
-         f |= _HF_NOPUT;
-         self->hf_flags = f;
+         self->hf_flags = (f |= _HF_NOPUT);
          break;
       case '>':
          /* Weird tagsoup around, do we actually parse a tag? */
          if (!(f & _HF_NOPUT))
-            goto jdo_c;
-         /* In ignored mode lone > may also occur, so extra check then.
-          * Of course this parser is extremely simple minded, just think about
-          * "</script>" occurring in a string of a script, and similar ...
-          * A little help could come from _HF_IGN being a counter not a flag,
-          * TODO but then again the only real healing would be to (also) pimp
-          * TODO this parser to also deal with strings etc. and SAXify a bit */
-         if (*cp == '\0')
             goto jdo_c;
          cp[0] = c;
          cp[1] = '\0';
          f &= ~(_HF_NOPUT | _HF_ENT);
          self->hf_flags = f;
          self = _hf_check_tag(self, self->hf_bdat);
-         /* Enable next extra check */
-         *(cp = self->hf_bdat) = '\0';
+         *(cp = self->hf_bdat) = '\0'; /* xxx extra safety */
          /* Quick hack to get rid of redundant newline after <pre> XXX */
          if (!(f & _HF_PRE) && (self->hf_flags & _HF_PRE) &&
                len > 1 && *dat == '\n')
@@ -1179,8 +1233,6 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
 
       case '\n':
          /* End of line is not considered unless we are in PRE section */
-         if (f & _HF_IGN)
-            break;
          self = (f & _HF_PRE) ? _hf_nl_force(self) : _hf_putc(self, ' ');
          break;
 
@@ -1194,7 +1246,7 @@ jdo_c:
                self = _hf_putc_premode(self, c);
                self->hf_flags &= ~_HF_BLANK;
             } else if (c == '&') {
-               cp = self->hf_curr = self->hf_bdat;
+               cp = self->hf_bdat;
                *cp++ = c;
                f |= _HF_NOPUT | _HF_ENT;
                self->hf_flags = f;
@@ -1263,12 +1315,12 @@ htmlflt_process_main(void)
       if ((rv = __hf_hadpipesig))
          break;
       /* Just use this directly.. */
-      if (_hf_add_data(&hf, buf, i) < 0) {
+      if (htmlflt_push(&hf, buf, i) < 0) {
          rv = 1;
          break;
       }
    }
-   if (rv == 0 && _hf_add_data(&hf, NULL, 0) < 0)
+   if (rv == 0 && htmlflt_flush(&hf) < 0)
       rv = 1;
 
    DBG( htmlflt_destroy(&hf); )
