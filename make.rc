@@ -73,6 +73,11 @@ WANT_IMAP=yes
 # Currently available for SMTP and IMAP; can be "require"d
 WANT_GSSAPI=yes
 
+# Enabling the MD5 message digest adds support for several authentication
+# possibilities: IMAP (CRAM-MD5), POP3 (APOP), SMTP (CRAM-MD5).
+# If you don't need those, you may turn them off by excluding MD5.
+WANT_MD5=yes
+
 # If $WANT_SOCKETS: support for parsing of user and password credentials from
 # the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry)
 WANT_NETRC=yes
@@ -124,17 +129,18 @@ WANT_HISTORY=yes
 # Turning it off shrinks the binary.  Please see the respective manual entry
 WANT_TABEXPAND=yes
 
-# NOTE:  EXPERIMENTAL!  DON'T ENABLE IN SHIPOUT VERSIONS!  Read the manual.
 # Use termcap(3) for terminal control; can be "require"d.
 # - When *term-ca-mode* is set:
 #   . On startup emit "ti" (smcup / enter_ca_mode)
 #   . On exit emit "te" (rmcup / exit_ca_mode)
+# NOTE: requires $PAGER etc. to also support and use ca-mode, otherwise the
+# screen looks really, really ugly.  Read the manual.
 # TODO use TERMCAP for key detection, implement NCL2 based on it
 WANT_TERMCAP=no
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands and variables with a "spam" prefix, and see the manual
-# example section "Handling spam" (`./nail.1').
+# example section "Handling spam".
 # . WANT_SPAM_SPAMC:
 #   Support for interaction with spamassassin(1)s spamc(1).
 # . WANT_SPAM_SPAMD:
@@ -171,14 +177,6 @@ WANT_FILTER_HTML_TAGSOUP=yes
 # A simple form of coloured output can optionally be produced (see manual)
 WANT_COLOUR=yes
 
-# Several facilities use the MD5 message digest, but for some of them it is
-# only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
-# authentification, SMTP: CRAM-MD5 authentification).
-# If you don't need those, you may exclude MD5 from S-nail.
-# Note that WANT_MD5 is automatically turned off if its exclusion will only
-# affect MIME boundary strings and Message-Id: fields
-WANT_MD5=yes
-
 ## PATHS AND PROGRAMS ##
 
 # General prefix where S-nail should be installed
@@ -211,7 +209,7 @@ SENDMAIL=`if [ -x /usr/sbin/sendmail ]; then echo /usr/sbin/sendmail; elif [ -x 
 # To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
 # used, which selects the required service by looking at the name by which the
 # program actually has been invoked.
-# This variable can be used to adjust this name as necessary
+# This variable can be used to adjust this name as necessary.
 # (Only of interest if the local mail system is used)
 SENDMAIL_PROGNAME=sendmail
 
@@ -262,7 +260,7 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # Note that setting this also enables our own memory canaries, which require
 # a rather large amount of runtime memory, and forcefully disables alloca(3)
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
-# of stack memory via our memory canaries
+# of "stack memory" via our memory canaries
 WANT_DEBUG=no
 
 # We use the crypto libraries' MD5 implementation if possible unless this one
