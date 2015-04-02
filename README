@@ -52,7 +52,7 @@ The S-nail(1) git(1) repository consists of five branches:
   repository.
 
 To clone only the [master] branch, which is what a normal user most
-likely is interested in, can be accomplished like that:
+likely is interested in:
 
   $ mkdir s-nail.git
   $ cd s-nail.git
