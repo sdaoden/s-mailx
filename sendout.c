@@ -1550,7 +1550,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       m_INIT   = 1<<0,
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
-      m_NOMTA  = 1<<3,
+      m_NOALI  = 1<<3,
       m_CSEEN  = 2<<3
    } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
@@ -1560,22 +1560,22 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
    col = strlen(str);
    if (col) {
       fwrite(str, sizeof *str, col, fo);
-#define __X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
+#define _X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
       if (ff & GFILES) {
          ;
-      } else if (__X("reply-to:") || __X("mail-followup-to:") ||
-            __X("references:") || __X("disposition-notification-to:"))
-         m |= m_NOPF | m_NOMTA;
+      } else if (_X("reply-to:") || _X("mail-followup-to:") ||
+            _X("references:") || _X("disposition-notification-to:"))
+         m |= m_NOPF | m_NOALI;
       else if (ok_blook(add_file_recipients)) {
          ;
-      } else if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
+      } else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
          m |= m_NOPF;
-#undef __X
+#undef _X
    }
 
    for (; np != NULL; np = np->n_flink) {
       if (is_addr_invalid(np,
-            (m & m_NOMTA ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
+            (m & m_NOALI ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
          continue;
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
@@ -1831,7 +1831,8 @@ jaskeot:
     * disputable anyway.  Go for user friendliness */
 
    to = namelist_vaporise_head(hp,
-         EACM_NORMAL | (ok_vlook(smtp) != NULL ? EACM_NOALIAS : EACM_NONE),
+         (EACM_NORMAL |
+          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
          TRU1, &_sendout_error);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
@@ -1967,7 +1968,8 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    time_current_update(&time_current, TRU1);
 
    if ((to = checkaddrs(to,
-         EACM_NORMAL | (ok_vlook(smtp) != NULL ? EACM_NOALIAS : EACM_NONE),
+         (EACM_NORMAL |
+          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
          &_sendout_error)) == NULL)
       goto jleave;
    /* For the _sendout_error<0 case we want to wait until we can write DEAD! */

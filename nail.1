@@ -4945,6 +4945,17 @@ If set to the value
 .Dq fail
 then the existence of extended recipient addresses is treated as a hard
 send error.
+.Pp
+In fact the value is interpreted as a comma-separated list of strings.
+To forbit that anything that is not a file or pipe addressee (and thus
+labelled as
+.Dq extended recipient address
+around here) will be treated as a network address, but to filter out
+aliases, too, include the value
+.Dq noalias ;
+note this applies to system aliases only, \*(UA internal ones
+.Pf ( Ic alias )
+are not affected by this setting (only their content, as appropriate).
 .
 .Mx
 .It Va expandargv

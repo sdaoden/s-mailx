@@ -635,6 +635,14 @@ enum authtype {
    AUTHTYPE_GSSAPI   = 1<<4
 };
 
+enum expand_addr_flags {
+   EAF_NONE       = 0,
+   EAF_SET        = 1<<0,     /* *expandaddr* set */
+   EAF_RESTRICT   = 1<<1,     /* "restrict" */
+   EAF_FAIL       = 1<<2,     /* "fail" */
+   EAF_NOALIAS    = 1<<3      /* "noalias" */
+};
+
 enum expand_addr_check_mode {
    EACM_NONE      = 0,        /* Don't care about *expandaddr* */
    EACM_NORMAL    = 1<<0,     /* Use our normal *expandaddr* checking */

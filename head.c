@@ -875,10 +875,42 @@ jleave:
    return rp;
 }
 
+FL enum expand_addr_flags
+expandaddr_flags(void)
+{
+   char *buf;
+   char const *cp;
+   enum expand_addr_flags rv = EAF_NONE;
+   NYD2_ENTER;
+
+   if ((cp = ok_vlook(expandaddr)) != NULL) {
+      rv = EAF_SET;
+
+      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;)
+         if (!asccasecmp(cp, "restrict"))
+            rv |= EAF_RESTRICT;
+         else if (!asccasecmp(cp, "fail"))
+            rv |= EAF_FAIL;
+         else if (!asccasecmp(cp, "noalias"))
+            rv |= EAF_NOALIAS;
+         else if (options & OPT_D_V)
+            fprintf(stderr, _("Unknown *expandaddr* value: \"%s\"\n"), cp);
+
+      if ((rv & (EAF_FAIL | EAF_RESTRICT)) == (EAF_FAIL | EAF_RESTRICT)) {
+         rv &= ~EAF_RESTRICT;
+         fprintf(stderr,
+            _("*expandaddr*: \"restrict\" and \"fail\" are mutual!\n"));
+      }
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL si8_t
 is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 {
    char cbuf[sizeof "'\\U12340'"];
+   enum expand_addr_flags eaf;
    char const *cs;
    int f;
    si8_t rv;
@@ -908,14 +940,18 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
             (ok8bit && c >= 040 && c <= 0177 ? "'%c'" : fmt), c);
          goto jprint;
       }
+      goto jleave;
    }
+
    /* *expandaddr* stuff */
-   else if ((rv = (eacm & EACM_MODE_MASK) != EACM_NONE) &&
+   eaf = expandaddr_flags();
+
+   if ((rv = (eacm & EACM_MODE_MASK) != EACM_NONE) &&
          (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
-         ((eacm & EACM_STRICT) || (cs = ok_vlook(expandaddr)) == NULL ||
-          (!asccasecmp(cs, "fail") ? (rv = -rv) : 0) ||
+          ((eacm & EACM_STRICT) || !(eaf & EAF_SET) ||
+          ((eaf & EAF_FAIL) ? (rv = -rv) : 0) ||
           (!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
-           !asccasecmp(cs, "restrict")))) {
+           (eaf & EAF_RESTRICT)))) {
       cs = ((eacm & EACM_STRICT)
          ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
          : _("\"%s\"%s: *expandaddr* doesn't allow file or pipe address\n"));

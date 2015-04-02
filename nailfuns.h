@@ -902,6 +902,9 @@ FL char const * skip_comment(char const *cp);
 /* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
 
+/* Query *expandaddr*, parse it and return flags */
+FL enum expand_addr_flags expandaddr_flags(void);
+
 /* Check if an address is invalid, either because it is malformed or, if not,
  * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
  * but the error condition wasn't covered by a 'hard "fail"ure', -1 otherwise */
