@@ -707,6 +707,16 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
    siglongjmp(__sendp_actjmp, 1);
 }
 
+static sigjmp_buf       __sndalter_actjmp; /* TODO someday.. */
+static int              __sndalter_sig; /* TODO someday.. */
+static void
+__sndalter_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __sndalter_sig = sig;
+   siglongjmp(__sndalter_actjmp, 1);
+}
+
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
@@ -1026,36 +1036,110 @@ jskip:
       }
       break;
    case MIME_ALTERNATIVE:
+   case MIME_RELATED:
       if ((action == SEND_TODISP || action == SEND_QUOTE) &&
             !ok_blook(print_alternatives)) {
-         bool_t doact = FAL0;
+         /* XXX This (a) should not remain (b) should be own fun */
+         struct mpstack {
+            struct mpstack    *outer;
+            struct mimepart   *mp;
+         } outermost, * volatile curr = &outermost, * volatile mpsp;
+         sighandler_type volatile opsh, oish, ohsh;
+         size_t volatile partcnt = 0/* silence CC */;
+         bool_t volatile neednl = FAL0;
 
-         for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
-            if (np->m_mimecontent == MIME_TEXT_PLAIN)
-               doact = TRU1;
-         if (doact) {
-            for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
-               if (np->m_ct_type_plain != NULL && action != SEND_QUOTE) {
+         curr->outer = NULL;
+         curr->mp = ip;
+
+         __sndalter_sig = 0;
+         opsh = safe_signal(SIGPIPE, &__sndalter_onsig);
+         oish = safe_signal(SIGINT, &__sndalter_onsig);
+         ohsh = safe_signal(SIGHUP, &__sndalter_onsig);
+         if (sigsetjmp(__sndalter_actjmp, 1)) {
+            rv = -1;
+            goto jalter_unroll;
+         }
+
+         for (np = ip->m_multipart;;) {
+            partcnt = 0;
+jalter_redo:
+            for (; np != NULL; np = np->m_nextpart) {
+               if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
+                  if (neednl)
+                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
                   _print_part_info(&rest, np, doign, level);
                   _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
                      NULL);
                }
-               if (doact && np->m_mimecontent == MIME_TEXT_PLAIN) {
-                  doact = FAL0;
+               neednl = TRU1;
+
+               switch (np->m_mimecontent) {
+               case MIME_ALTERNATIVE:
+               case MIME_RELATED:
+               case MIME_MULTI:
+               case MIME_DIGEST:
+                  mpsp = ac_alloc(sizeof *mpsp);
+                  mpsp->outer = curr;
+                  mpsp->mp = np->m_multipart;
+                  curr->mp = np;
+                  curr = mpsp;
+                  np = mpsp->mp;
+                  neednl = FAL0;
+                  goto jalter_redo;
+               default:
+                  switch (_pipecmd(&pipecomm, np)) {
+                  default:
+                     continue;
+                  case PIPE_TEXT:
+                     break;
+                  }
+                  /* FALLTHRU */
+               case MIME_TEXT_PLAIN:
+                  ++partcnt;
+                  if (action == SEND_QUOTE && partcnt > 1 &&
+                        ip->m_mimecontent == MIME_ALTERNATIVE)
+                     break;
+                  quoteflt_flush(qf);
+                  if (action == SEND_QUOTE && partcnt > 1) {
+                     struct quoteflt *dummy = quoteflt_dummy();
+                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
+                        NULL);
+                     quoteflt_flush(dummy);
+                  }
+                  neednl = FAL0;
                   rv = sendpart(zmp, np, obuf, doign, qf, action, stats,
                         level + 1);
                   quoteflt_reset(qf, origobuf);
-                  if (rv < 0)
-                     break;
+
+                  if (rv < 0) {
+jalter_unroll:
+                     for (;; curr = mpsp) {
+                        if ((mpsp = curr->outer) == NULL)
+                           break;
+                        ac_free(curr);
+                     }
+                  }
+                  break;
                }
             }
-            goto jleave;
+
+            mpsp = curr->outer;
+            if (mpsp == NULL)
+               break;
+            ac_free(curr);
+            curr = mpsp;
+            np = curr->mp->m_nextpart;
          }
+         safe_signal(SIGHUP, ohsh);
+         safe_signal(SIGINT, oish);
+         safe_signal(SIGPIPE, opsh);
+         if (__sndalter_sig != 0)
+            kill(0, __sndalter_sig);
+         goto jleave;
       }
       /* FALLTHRU */
    case MIME_MULTI:
    case MIME_DIGEST:
-   case MIME_RELATED: /* TODO /related yet treated as /alternative */
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
@@ -1120,6 +1204,7 @@ jmulti:
             if (sendpart(zmp, np, obuf, doign, qf, action, stats, level+1) < 0)
                rv = -1;
             quoteflt_reset(qf, origobuf);
+
             if (action == SEND_QUOTE)
                break;
             if (action == SEND_TOFILE && obuf != origobuf) {
