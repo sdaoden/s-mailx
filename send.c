@@ -1396,7 +1396,8 @@ jgetname:
       printf(_("Enter filename for part %s (%s)"),
          (ip->m_partstring != NULL) ? ip->m_partstring : "?",
          ip->m_ct_type_plain);
-      f2 = readstr_input(": ", (f != (char*)-1) ? f : NULL);
+      f2 = readstr_input(": ", (f != (char*)-1 && f != NULL)
+            ? fexpand_nshell_quote(f) : NULL);
       if (f2 == NULL || *f2 == '\0') {
          fprintf(stderr, _("... skipping this\n"));
          fp = NULL;
