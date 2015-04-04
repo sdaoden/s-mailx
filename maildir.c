@@ -692,7 +692,6 @@ subdir_remove(char const *name, char const *sub)
    path[pathend] = '\0';
    if (rmdir(path) == -1) {
       perror(path);
-      free(path);
       goto jleave;
    }
    rv = OKAY;
