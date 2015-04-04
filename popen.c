@@ -216,9 +216,9 @@ _decompress(int compression, int infd, int outfd)
    case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
    case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
+   case FP_MAILDIR:  assert(0); /* FALLTHRU */
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
    case FP_IMAP:
-   case FP_MAILDIR:
       rv = 0;
       goto jleave;
    }
