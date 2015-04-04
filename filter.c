@@ -748,9 +748,20 @@ _hf_store(struct htmlflt *self, char c)
 
    f = self->hf_flags;
    l = self->hf_len;
-   self->hf_line[l] = c;
+   self->hf_line[l] = (c == '\t' ? ' ' : c);
    self->hf_len = ++l;
-   if (blankspacechar(c))
+   if (blankspacechar(c)) {
+      if (c == '\t') {
+         i = 8 - ((l - 1) & 7); /* xxx magic tab width of 8 */
+         if (i > 0) {
+            do
+               self = _hf_store(self, ' ');
+            while (--i > 0);
+            goto jleave;
+         }
+      }
+      self->hf_last_ws = l;
+   } else if (/*c == '.' ||*/ c == ',' || c == ';' || c == '-')
       self->hf_last_ws = l;
 
    i = l;
@@ -1248,6 +1259,10 @@ jcp_reset:
          self = (f & _HF_PRE) ? _hf_nl_force(self) : _hf_putc(self, ' ');
          break;
 
+      case '\t':
+         if (!(f & _HF_PRE))
+            c = ' ';
+         /* FALLTHRU */
       default:
 jdo_c:
          /* If not currently parsing a tag and bypassing normal output.. */
