@@ -767,9 +767,21 @@ _hf_store(struct htmlflt *self, char c)
 jput:
          i = self->hf_len = self->hf_last_ws;
          self = _hf_dump(self);
-         if ((self->hf_len = (l -= i)) > 0)
+         if ((self->hf_len = (l -= i)) > 0) {
             self->hf_flags &= ~_HF_NL_MASK;
-         memmove(self->hf_line, self->hf_line + i, l);
+            memmove(self->hf_line, self->hf_line + i, l);
+
+            if (f & _HF_UTF8) {
+               ui32_t j;
+
+               for (j = i = 0; i < l; ++i) {
+                  c = self->hf_line[i];
+                  if ((ui8_t)c <= 0x7F || ((ui8_t)c & 0xC0) != 0x80)
+                     ++j;
+               }
+               self->hf_cnt = j;
+            }
+         }
          goto jleave;
       }
 
