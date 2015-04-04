@@ -1588,29 +1588,34 @@ rfctime(char const *date)
       second = strtol(cp, &x, 10);
    } else
       second = 0;
+
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
       goto jinvalid;
    if ((cp = nexttoken(x)) != NULL) {
-      int sign = -1;
       char buf[3];
+      int sign = 1;
 
       switch (*cp) {
-      case '-':
-         sign = 1;
-         /*FALLTHRU*/
       case '+':
+         sign = -1;
+         /* FALLTHRU */
+      case '-':
          ++cp;
          break;
       }
       if (digitchar(cp[0]) && digitchar(cp[1]) && digitchar(cp[2]) &&
             digitchar(cp[3])) {
+         long tadj;
          buf[2] = '\0';
          buf[0] = cp[0];
          buf[1] = cp[1];
-         t += strtol(buf, NULL, 10) * sign * 3600;/*XXX strtrol*/
+         tadj = strtol(buf, NULL, 10) * 3600;/*XXX strtrol*/
          buf[0] = cp[2];
          buf[1] = cp[3];
-         t += strtol(buf, NULL, 10) * sign * 60; /* XXX strtol*/
+         tadj += strtol(buf, NULL, 10) * 60; /* XXX strtol*/
+         if (sign < 0)
+            tadj = -tadj;
+         t += tadj;
       }
       /* TODO WE DO NOT YET PARSE (OBSOLETE) ZONE NAMES
        * TODO once again, Christos Zoulas and NetBSD Mail have done
