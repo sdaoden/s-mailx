@@ -1448,9 +1448,8 @@ jredo:
       if (rv + bot.l + exp.l >= MAX_INPUT)
          bot.l = 0;
       if (rv + exp.l >= MAX_INPUT) {
-         char const e2[] = "[ERR]";
-         exp.s = UNCONST(e2);
-         exp.l = sizeof(e2) - 1;
+         exp.s = UNCONST("[ERR]");
+         exp.l = sizeof("[ERR]") - 1;
       }
    }
 
