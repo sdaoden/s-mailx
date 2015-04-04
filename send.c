@@ -1415,7 +1415,7 @@ newfile(struct mimepart *ip, int *ispipe)
       in.l = strlen(f);
       makeprint(&in, &out);
       out.l = delctrl(out.s, out.l);
-      f = sbufdup(out.s, out.l);
+      f = savestrbuf(out.s, out.l);
       free(out.s);
    }
 
