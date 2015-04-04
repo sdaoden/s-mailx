@@ -612,6 +612,8 @@ junlink:
 
    if (fn != NULL)
       *fn = cp_base;
+   else
+      free(cp_base);
 jleave:
    if (fp == NULL || !(oflags & OF_HOLDSIGS))
       rele_all_sigs();
