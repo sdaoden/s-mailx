@@ -1123,23 +1123,23 @@ n_utf32_to_utf8(ui32_t c, char *buf)
        * xxx need to deal with that all over the place anyway? */
       {0x00000800, 0x0000FFFF, 0xE0, 3, 0xF0, 0xFF-0xF0, 3-1, 3, {0,}},
       {0x00010000, 0x001FFFFF, 0xF0, 4, 0xF8, 0xFF-0xF8, 4-1, 4, {0,}},
-   }, *cat = _cat;
+   }, *catp = _cat;
    size_t l;
 
-   if (c <= _cat[0].upper_bound) { cat += 0; goto j0; }
-   if (c <= _cat[1].upper_bound) { cat += 1; goto j1; }
-   if (c <= _cat[2].upper_bound) { cat += 2; goto j2; }
+   if (c <= _cat[0].upper_bound) { catp += 0; goto j0; }
+   if (c <= _cat[1].upper_bound) { catp += 1; goto j1; }
+   if (c <= _cat[2].upper_bound) { catp += 2; goto j2; }
    if (c <= _cat[3].upper_bound) {
       /* Surrogates may not be converted (Compatibility rule C10) */
       if (c >= 0xD800u && c <= 0xDFFFu)
          goto jerr;
-      cat += 3;
+      catp += 3;
       goto j3;
    }
-   if (c <= _cat[4].upper_bound) { cat += 4; goto j4; }
+   if (c <= _cat[4].upper_bound) { catp += 4; goto j4; }
 jerr:
    c = 0xFFFDu; /* Unicode replacement character */
-   cat += 3;
+   catp += 3;
    goto j3;
 j4:
    buf[3] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
@@ -1148,10 +1148,10 @@ j3:
 j2:
    buf[1] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
 j1:
-   buf[0] = (char)cat->enc_leader | (char)(c);
+   buf[0] = (char)catp->enc_leader | (char)(c);
 j0:
-   buf[cat->enc_lval] = '\0';
-   l = cat->enc_lval;
+   buf[catp->enc_lval] = '\0';
+   l = catp->enc_lval;
    NYD2_LEAVE;
    return l;
 }

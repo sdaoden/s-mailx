@@ -187,7 +187,7 @@ static bool_t
 _spam_action(enum spam_action sa, int *ip)
 {
    struct spam_vc vc;
-   size_t maxsize, skipped, count, curr;
+   size_t maxsize, skipped, cnt, curr;
    char const *cp;
    bool_t ok = FAL0;
    NYD_ENTER;
@@ -234,12 +234,12 @@ _spam_action(enum spam_action sa, int *ip)
    /* Finally get an I/O buffer */
    vc.vc_buffer = salloc(BUFFER_SIZE);
 
-   skipped = count = 0;
+   skipped = cnt = 0;
    if (vc.vc_progress) {
-      while (ip[count] != 0)
-         ++count;
+      while (ip[cnt] != 0)
+         ++cnt;
    }
-   for (curr = 0, ok = TRU1; *ip != 0; --count, ++curr, ++ip) {
+   for (curr = 0, ok = TRU1; *ip != 0; --cnt, ++curr, ++ip) {
       vc.vc_mno = (size_t)*ip;
       vc.vc_mp = message + vc.vc_mno - 1;
       if (sa == _SPAM_RATE)
@@ -254,7 +254,7 @@ _spam_action(enum spam_action sa, int *ip)
                maxsize);
          else if (vc.vc_progress) {
             fprintf(stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
-               _spam_cmds[sa], vc.vc_mno, count, curr);
+               _spam_cmds[sa], vc.vc_mno, cnt, curr);
             fflush(stdout);
          }
          ++skipped;
@@ -264,7 +264,7 @@ _spam_action(enum spam_action sa, int *ip)
                _spam_cmds[sa], vc.vc_mno);
          else if (vc.vc_progress) {
             fprintf(stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
-               _spam_cmds[sa], vc.vc_mno, count, curr);
+               _spam_cmds[sa], vc.vc_mno, cnt, curr);
             fflush(stdout);
          }
 
