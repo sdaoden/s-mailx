@@ -69,7 +69,7 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
          (*icp->ic_argv_base != NULL ? " " : ""));
       fprintf(stderr, _("   Expression: %s\n"), s.s);
 
-      str_concat_cpa(&s, icp->ic_argv, (icp->ic_argv != NULL ? " " : ""));
+      str_concat_cpa(&s, icp->ic_argv, (*icp->ic_argv != NULL ? " " : ""));
       fprintf(stderr, _("   Left to parse: %s\n"), s.s);
    }
 
