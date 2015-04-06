@@ -515,7 +515,7 @@ _nyd_oncrash(int signo)
    for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
       _nyd_print(fd, nip++);
 
-   write(fd, _X("----------\nYou'd see a disappointed man.  Sorry.\n"));
+   write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
 
    if (fd != STDERR_FILENO) {
       write(STDERR_FILENO, _X("Crash NYD listing written to "));
