@@ -182,7 +182,10 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    if (mp != NULL) {
-      sendmp(mp, nf, 0, NULL, action, NULL);
+      if (sendmp(mp, nf, 0, NULL, action, NULL) < 0) {
+         fprintf(stderr, _("Failed to prepare editable message"));
+         goto jleave;
+      }
    } else {
       if (size >= 0)
          while (--size >= 0 && (t = getc(fp)) != EOF)
