@@ -711,6 +711,27 @@ is_prefix(char const *as1, char const *as2)
 }
 
 FL char *
+string_quote(char const *v)
+{
+   char const *cp;
+   size_t i;
+   char c, *rv;
+   NYD2_ENTER;
+
+   for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
+      if (c == '"' || c == '\\')
+         ++i;
+   rv = salloc(i +1);
+
+   for (i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
+      if (c == '"' || c == '\\')
+         rv[i++] = '\\';
+   rv[i] = '\0';
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char *
 laststring(char *linebuf, bool_t *needs_list, bool_t strip)
 {
    char *cp, *p, quoted;
