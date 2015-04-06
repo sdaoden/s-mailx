@@ -375,7 +375,9 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
    if (cnt == 0)
       goto jleave;
 
-   mprime = nextprime(cnt);
+   /* It is performance crucial to space this large enough in order to minimize
+    * bucket sharing */
+   mprime = nextprime((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
    mt = scalloc(mprime, sizeof *mt);
 
    srelax_hold();

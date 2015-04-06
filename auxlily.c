@@ -772,21 +772,23 @@ FL ui32_t
 nextprime(ui32_t n)
 {
    static ui32_t const primes[] = {
+      5, 11, 23, 47, 97, 157, 283,
       509, 1021, 2039, 4093, 8191, 16381, 32749, 65521,
       131071, 262139, 524287, 1048573, 2097143, 4194301,
       8388593, 16777213, 33554393, 67108859, 134217689,
       268435399, 536870909, 1073741789, 2147483647
    };
 
-   ui32_t mprime = 7, cutlim;
-   size_t i;
+   ui32_t i, mprime;
    NYD_ENTER;
 
-   cutlim = (n < 65536 ? n << 2 : (n < 262144 ? n << 1 : n));
-
-   for (i = 0; i < NELEM(primes); i++)
-      if ((mprime = primes[i]) >= cutlim)
+   i = (n < primes[NELEM(primes) / 4] ? 0
+         : (n < primes[NELEM(primes) / 2] ? NELEM(primes) / 4
+         : NELEM(primes) / 2));
+   do
+      if ((mprime = primes[i]) > n)
          break;
+   while (++i < NELEM(primes));
    if (i == NELEM(primes) && mprime < n)
       mprime = n;
    NYD_LEAVE;
