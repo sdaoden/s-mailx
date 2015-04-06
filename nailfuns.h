@@ -685,9 +685,13 @@ FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
  * dotlock.c
  */
 
-FL int         fcntl_lock(int fd, enum flock_type ft);
-FL int         dot_lock(char const *fname, int fd, int pollinterval, FILE *fp,
-                  char const *msg);
+/* Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      fcntl_lock(int fd, enum flock_type ft, size_t pollmsecs);
+
+/* Aquire a FLOCK_WRITE lock and create a dotlock file; upon success
+ * dot_unlock() must be called for cleanup of the dotlock file.
+ * Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
 FL void        dot_unlock(char const *fname);
 
 /*
