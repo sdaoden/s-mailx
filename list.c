@@ -249,7 +249,6 @@ number:
             markall_ret(-1)
          }
          pstate |= PS_MSGLIST_SAW_NO;
-         mc = TRU1;
          ++other;
          if (beg != 0) {
             if (check(lexnumber, f))
