@@ -753,8 +753,13 @@ commands(void)
                size_t odot = PTR2SIZE(dot - message);
                ui32_t odid = (pstate & PS_DID_PRINT_DOT);
 
-               setfile(mailname,
-                  FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
+               if (setfile(mailname,
+                     FEDIT_NEWMAIL |
+                     ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)) < 0) {
+                  exit_status |= EXIT_ERR;
+                  rv = FAL0;
+                  break;
+               }
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
                   pstate |= odid;
