@@ -858,7 +858,8 @@ do {\
    }
 
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
-      fmt("References:", np, fo, 0);
+      if (fmt("References:", np, fo, 0))
+         goto jleave;
       if (np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
