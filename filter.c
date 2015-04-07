@@ -564,8 +564,8 @@ static struct htmlflt_tag const  _hf_tags[] = {
 # undef _X
 # define _X(S,A)  { A, sizeof(S) -1, S }
 
-   _X("P", _HFSA_NEEDSEP),       /*_X("/P", '\n'),*/
-   _X("DIV", _HFSA_NEEDSEP),     /*_X("/DIV", '\n'),*/
+   _X("P", _HFSA_NEEDSEP),       _X("/P", _HFSA_NEEDNL),
+   _X("DIV", _HFSA_NEEDSEP),     _X("/DIV", _HFSA_NEEDNL),
    _X("TR", _HFSA_NEEDNL),
                                  _X("/TH", '\t'),
                                  _X("/TD", '\t'),
@@ -1255,7 +1255,11 @@ jcp_reset:
          break;
 
       case '\n':
-         /* End of line is not considered unless we are in PRE section */
+         /* End of line is not considered unless we are in PRE section.
+          * However, in _HF_NOPUT mode we must be aware of tagsoup which uses
+          * newlines for separating parameters */
+         if (f & _HF_NOPUT)
+            goto jdo_c;
          self = (f & _HF_PRE) ? _hf_nl_force(self) : _hf_putc(self, ' ');
          break;
 
