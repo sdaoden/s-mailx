@@ -77,10 +77,12 @@ _update-release:
 		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
 			if (written++ != 0)\
 				next;\
+			print ".\\\"--MKREL-START--";\
 			print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
 				" / '"$${DATE_ISO}"'";\
 			print ".Dd '"$${DATE_MAN}"'";\
 			print ".ds VV \\\\%v'"$${REL}"'";\
+			print ".\\\"--MKREL-END--";\
 			next\
 		}\
 		{print}\
@@ -89,11 +91,13 @@ _update-release:
 	\
 	LC_ALL=C < nail.rc > nail.rcx awk '\
 		BEGIN { written = 0 }\
-		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
+		/^#--MKREL-START--/, /^#--MKREL-END--/ {\
 			if (written++ != 0)\
 				next;\
+			print "#--MKREL-START--";\
 			print \
 		"# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
+			print "#--MKREL-END--";\
 			next\
 		}\
 		{print}\
@@ -124,19 +128,22 @@ _update-release:
 	cd "$${TMPDIR}" &&\
 	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
+	( \
 	cd "$${UAGENT}-$${REL}" &&\
-		LC_ALL=C sed -e '/--BEGINSTRIP--/,$$ {' \
-				-e '/^\.$/d' -e '/^\.\\"/d' \
-			-e '}' \
-			-e '/^\.$/d' < nail.1 > nail.1x &&\
-		mv -f nail.1x nail.1 &&\
-		cd .. &&\
+	LC_ALL=C sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
+		-e '/--BEGINSTRIP--/,$$ {' \
+			-e '/^\.$$/d' -e '/^\.\\"/d' \
+		-e '}' \
+		-e '/^\.$$/d' < nail.1 > nail.1x &&\
+	mv -f nail.1x nail.1 &&\
 	if command -v mdocmx.sh >/dev/null 2>&1; then \
-		cd "$${UAGENT}-$${REL}" &&\
 		mdocmx.sh < nail.1 > nail.1x &&\
-		mv -f nail.1x nail.1 &&\
-		cd ..;\
-	fi &&\
+		mv -f nail.1x nail.1;\
+	fi; \
+	LC_ALL=C sed -Ee '/^#--MKREL-(START|END)--/d' \
+		< nail.rc > nail.rcx &&\
+	mv -f nail.rcx nail.rc \
+	) &&\
 	tar -c -f "$${UAGENT}-$${FREL}.tar" "$${UAGENT}-$${REL}" &&\
 	\
 	< "$${UAGENT}-$${FREL}.tar" gzip > "$${UAGENT}-$${FREL}.tar.gz" &&\
