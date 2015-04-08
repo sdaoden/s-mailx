@@ -330,16 +330,17 @@ number:
             markall_ret(-1)
          }
          ++other;
-         if (lexstring[0] == ':') {
-            colresult = evalcol(lexstring[1]);
-            if (colresult == 0) {
-               fprintf(stderr, _("Unknown colon modifier \"%s\"\n"),
-                  lexstring);
-               markall_ret(-1)
+         if ((cp = lexstring)[0] == ':') {
+            while (*++cp != '\0') {
+               colresult = evalcol(*cp);
+               if (colresult == 0) {
+                  fprintf(stderr, _("Unknown colon modifier \"%s\"\n"),
+                     lexstring);
+                  markall_ret(-1)
+               }
+               colmod |= colresult;
             }
-            colmod |= colresult;
-         }
-         else
+         } else
             np = add_to_namelist(&namelist, &nmlsize, np, savestr(lexstring));
          break;
 
@@ -605,9 +606,11 @@ jnamesearch_sepfree:
          if (bad)
             unmark(i);
       }
+
       for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
          if (mp->m_flag & MMARK)
             break;
+
       if (PTRCMP(mp, >=, message + msgCount)) {
          struct coltab const *colp;
 
