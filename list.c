@@ -153,7 +153,7 @@ static int     check(int mesg, int f);
 /* Scan out a single lexical item and return its token number, updating the
  * string pointer passed **sp.  Also, store the value of the number or string
  * scanned in lexnumber or lexstring as appropriate.  In any event, store the
- * scanned `thing' in lexstring */
+ * scanned "thing" in lexstring */
 static int     scan(char **sp);
 
 /* Unscan the named token by pushing it onto the regret stack */
@@ -169,12 +169,12 @@ static bool_t  _matchmid(struct message *mp, char *id, enum idfield idfield);
 
 /* See if the given string matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `/' search */
+ * This is the engine behind the "/" search */
 static bool_t  _match_dash(struct message *mp, char const *str);
 
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `@[..]@' search */
+ * This is the engine behind the "@[..]@" search */
 static bool_t  _match_at(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
@@ -352,8 +352,7 @@ number:
             markall_ret(-1)
          topen = TRU1;
 #else
-         fprintf(stderr, _(
-            "`%s': the used selector is optional and not available\n"),
+         fprintf(stderr, _("Optional selector is not available: \"%s\"\n"),
             lexstring);
          markall_ret(-1)
 #endif
@@ -476,7 +475,7 @@ number:
       struct search_expr *sep = NULL;
       bool_t allnet;
 
-      /* The `@' search works with struct search_expr, so build an array.
+      /* The @ search works with struct search_expr, so build an array.
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       if (np > namelist) {
@@ -503,7 +502,7 @@ number:
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               fprintf(stderr, _("Empty `[@..]@' search expression\n"));
+               fprintf(stderr, _("Empty \"[@..]@\" search expression\n"));
                rv = -1;
                continue;
             }
