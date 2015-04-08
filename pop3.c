@@ -144,7 +144,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
       if (ts != NULL) {
          if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
-            fprintf(stderr, _("POP3 `APOP' authentication failed, "
+            fprintf(stderr, _("POP3 \"APOP\" authentication failed, "
                "maybe try setting *pop3-no-apop*\n"));
          goto jleave;
       } else
@@ -157,7 +157,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
             ccp = _(" (over encrypted connection)");
 #endif
          fprintf(stderr,
-            _("No POP3 `APOP' support, plain text authentication%s\n"), ccp);
+            _("No POP3 \"APOP\" support, plain text authentication%s\n"), ccp);
       }
    }
 
@@ -174,7 +174,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    /* RFC 1939:
     * A POP3 server which implements the APOP command will include
     * a timestamp in its banner greeting.  The syntax of the timestamp
-    * corresponds to the `msg-id' in [RFC822]
+    * corresponds to the "msg-id" in [RFC822]
     * RFC 822:
     * msg-id   = "<" addr-spec ">"
     * addr-spec   = local-part "@" domain */
