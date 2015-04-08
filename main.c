@@ -382,7 +382,7 @@ _setup_vars(void)
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
-      alert(_("`%s' is not a user of this system"), cp);
+      alert(_("\"%s\" is not a user of this system"), cp);
       exit(67); /* XXX BSD EX_NOUSER */
    } else {
       myname = pw->pw_name;
@@ -808,9 +808,9 @@ jusage:
 jgetopt_done:
    ;
 
-   /* The normal arguments may be followed by MTA arguments after a `--';
+   /* The normal arguments may be followed by MTA arguments after a "--";
     * however, -f may take off an argument, too, and before that.
-    * Since MTA arguments after `--' require *expandargv*, delay parsing off
+    * Since MTA arguments after "--" require *expandargv*, delay parsing off
     * those options until after the resource files are loaded... */
    if ((cp = argv[i = _oind]) == NULL)
       ;
