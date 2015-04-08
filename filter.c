@@ -1433,7 +1433,7 @@ htmlflt_process_main(void)
    htmlflt_init(&hf);
    htmlflt_reset(&hf, stdout);
 
-   for (rv = 0;;) {
+   for (;;) {
       if ((i = fread(buf, sizeof(buf[0]), NELEM(buf), stdin)) == 0) {
          rv = !feof(stdin);
          break;

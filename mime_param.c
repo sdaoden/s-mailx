@@ -367,7 +367,6 @@ jerr:
          _("Faulty \"%s\" RFC 2231 MIME parameter value: %s\n   Near: %s\n"),
          param, V_(emsg), hbp_base);
    }
-   errors = TRU1;
    rv = NULL;
    goto jleave;
 }

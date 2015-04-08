@@ -845,7 +845,7 @@ jgetopt_done:
    while (argv[i] != NULL)
       ++i;
    if (smopts_count + i > smopts_size)
-      smopts_size = _grow_cpp(&smopts, smopts_count + i + 1, smopts_count);
+      DBG(smopts_size =) _grow_cpp(&smopts, smopts_count + i + 1, smopts_count);
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {

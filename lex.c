@@ -262,7 +262,7 @@ _c_ghost(void *v)
 
    /* Show command of single ghost? */
    if (argv[1] == NULL) {
-      for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+      for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
          if (!strcmp(argv[0], cg->name)) {
             printf("ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
             goto jleave;

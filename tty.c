@@ -2028,6 +2028,7 @@ jlist: {
 
 jclear: {
    struct hist *h;
+
    while ((h = _ncl_hist) != NULL) {
       _ncl_hist = h->older;
       free(h);
@@ -2038,7 +2039,8 @@ jclear: {
    goto jleave;
 
 jentry: {
-   struct hist *h = _ncl_hist;
+   struct hist *h;
+
    if (UICMP(z, entry, <=, _ncl_hist_size)) {
       entry = (long)_ncl_hist_size - entry;
       for (h = _ncl_hist;; h = h->older)
