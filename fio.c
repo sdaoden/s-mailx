@@ -1089,8 +1089,7 @@ jislocal:
       case PROTO_MAILDIR:
          break;
       default:
-         fprintf(stderr, _(
-            "`%s': only a local file or directory may be used\n"), name);
+         fprintf(stderr, _("Not a local file or directory: \"%s\"\n"), name);
          res = NULL;
          break;
       }
@@ -1149,7 +1148,7 @@ var_folder_updated(char const *name, char **store)
    if ((folder = UNCONST(name)) == NULL)
       goto jleave;
 
-   /* Expand the *folder*; skip `%:' prefix for simplicity of use */
+   /* Expand the *folder*; skip %: prefix for simplicity of use */
    /* XXX This *only* works because we do NOT
     * XXX update environment variables via the "set" mechanism */
    if (folder[0] == '%' && folder[1] == ':')
@@ -1160,7 +1159,7 @@ var_folder_updated(char const *name, char **store)
    switch (which_protocol(folder)) {
    case PROTO_POP3:
       fprintf(stderr, _(
-         "`folder' cannot be set to a flat, readonly POP3 account\n"));
+         "*folder* cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
       goto jleave;
    case PROTO_IMAP:
@@ -1192,7 +1191,7 @@ var_folder_updated(char const *name, char **store)
 #ifdef HAVE_REALPATH
    res = ac_alloc(PATH_MAX +1);
    if (realpath(folder, res) == NULL)
-      fprintf(stderr, _("Can't canonicalize `%s'\n"), folder);
+      fprintf(stderr, _("Can't canonicalize \"%s\"\n"), folder);
    else
       folder = res;
 #endif
@@ -1285,7 +1284,7 @@ sclose(struct sock *sp)
 
    i = sp->s_fd;
    sp->s_fd = -1;
-   /* TODO NOTE: we MUST NOT close the descriptor `0' here...
+   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
     * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
     * TODO but unfortunately it isn't yet */
    if (i <= 0)
@@ -1480,7 +1479,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    rele_sigs();
 
    if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
-      fprintf(stderr, _(" lookup of `%s' failed.\n"), urlp->url_host.s);
+      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
       goto jleave;
    } else if (options & OPT_VERB)
       fprintf(stderr, _(" done.\n"));
@@ -1531,7 +1530,7 @@ jjumped:
    }
 
    if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
-      fprintf(stderr, _(" lookup of `%s' failed.\n"), urlp->url_host.s);
+      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
       goto jleave;
    } else if (options & OPT_VERB)
       fprintf(stderr, _(" done.\n"));
@@ -1721,7 +1720,7 @@ load(char const *name)
    cond = condstack_release();
    if (!commands())
       fprintf(stderr,
-         _("Stopped loading `%s' due to errors (enable *debug* for trace)\n"),
+         _("Stopped loading \"%s\" due to errors (enable *debug* for trace)\n"),
          n.s);
    condstack_take(cond);
 
