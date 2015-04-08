@@ -214,7 +214,7 @@ FL void *
    size += _SHOPE_SIZE;
 
    if (size >= SDYN_SIZE - 1)
-      alert("salloc() of %" PRIuZ " bytes from `%s', line %d\n",
+      alert("salloc() of %" PRIuZ " bytes from \"%s\", line %d\n",
          size, mdbg_file, mdbg_line);
 #endif
 
