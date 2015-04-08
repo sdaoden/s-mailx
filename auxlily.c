@@ -1006,17 +1006,8 @@ getrandstring(size_t length)
    data = ac_alloc(length);
    for (i = length; i-- > 0;)
       data[i] = (char)_rand_get8();
-   b64_encode_buf(&b64, data, length, B64_SALLOC);
+   b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
    ac_free(data);
-
-   /* Base64 includes + and /, replace them with _ and - */
-   *(data = b64.s + length) = '\0';
-   while (length-- != 0)
-      switch (*--data) {
-      case '+':   *data = '_'; break;
-      case '/':   *data = '-'; break;
-      default:    break;
-      }
    NYD_LEAVE;
    return b64.s;
 }

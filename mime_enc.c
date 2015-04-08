@@ -805,6 +805,20 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    }
    out->l = PTR2SIZE(b64 - out->s);
    out->s[out->l] = '\0';
+
+   /* Base64 includes + and /, replace them with _ and -.
+    * This is base64url according to RFC 4648, then.  Since we only support
+    * that for encoding and it is only used for boundary strings, this is
+    * yet a primitive implementation; xxx use tables; support decoding */
+   if (flags & B64_RFC4648URL) {
+      char c;
+
+      for (b64 = out->s; (c = *b64) != '\0'; ++b64)
+         if (c == '+')
+            *b64 = '-';
+         else if (c == '/')
+            *b64 = '_';
+   }
    NYD_LEAVE;
    return out;
 }

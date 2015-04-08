@@ -806,7 +806,8 @@ enum mime_enc_flags {
     * that characters which would not be reported as "must-quote" when
     * detecting wether quoting is necessary at all will be reported as
     * "must-quote" if they have to be encoded in an encoded word */
-   MIMEEF_ISENCWORD  = 1<<6
+   MIMEEF_ISENCWORD  = 1<<6,
+   __MIMEEF_LAST     = MIMEEF_ISENCWORD
 };
 
 enum qpflags {
@@ -826,7 +827,10 @@ enum b64flags {
    B64_MULTILINE  = MIMEEF_MULTILINE,
    /* Not used, but for clarity only */
    B64_ISHEAD     = MIMEEF_ISHEAD,
-   B64_ISENCWORD  = MIMEEF_ISENCWORD
+   B64_ISENCWORD  = MIMEEF_ISENCWORD,
+   /* Special version of Base64, "Base64URL", according to RFC 4648.
+    * Only supported for encoding! */
+   B64_RFC4648URL = __MIMEEF_LAST<<1
 };
 
 /* Special handler return values for mime_type_mimepart_handler() */
