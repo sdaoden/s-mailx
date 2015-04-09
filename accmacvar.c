@@ -1170,14 +1170,10 @@ c_varedit(void *v)
 
    while (*argv != NULL) {
       memset(&vc, 0, sizeof vc);
+
       _var_revlookup(&vc, *argv++);
 
-      if (!_var_lookup(&vc)) {
-         fprintf(stderr, _("`varedit': variable `%s' is not set\n"),
-            vc.vc_name);
-         err = 1;
-         continue;
-      } else if (vc.vc_vmap != NULL) {
+      if (vc.vc_vmap != NULL) {
          if (vc.vc_vmap->vm_flags & VM_BINARY) {
             fprintf(stderr, _("`varedit' cannot edit binary variable `%s'\n"),
                vc.vc_name);
@@ -1190,12 +1186,14 @@ c_varedit(void *v)
          }
       }
 
+      _var_lookup(&vc);
+
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
             NULL) {
          perror(_("`varedit': cannot create temporary file"));
          err = 1;
          break;
-      } else if (*(val = vc.vc_var->v_value) != '\0' &&
+      } else if (vc.vc_var != NULL && *(val = vc.vc_var->v_value) != '\0' &&
             sizeof *val != fwrite(val, strlen(val), sizeof *val, of)) {
          perror(_("`varedit' failed to write an old value to temporary file"));
          Fclose(of);

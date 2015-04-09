@@ -375,7 +375,7 @@
    { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
-     DS(N_("Edit the value(s) of (an) existing variable(s)")) },
+     DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
