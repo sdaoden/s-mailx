@@ -747,7 +747,7 @@ continue to display the message and remain responsive.
 .Pp
 To install an external handler program for a specific MIME type set an
 according
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 variable.
 To define a handler for a specific file extension set the respective
 .Va pipe-EXTENSION
@@ -4767,7 +4767,7 @@ mode, which will cause a screen clearance once \*(UA is terminated again.
 even when supported for this to produce appealing results the used
 .Ev PAGER
 and possibly configured
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 applications that take control over the terminal need to have
 corresponding support too, e.g., the
 .Xr less 1
@@ -5507,7 +5507,7 @@ If bit two is set (2) then the detected
 .Qd real
 content-type will be carried along with the message and be used for
 deciding which
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 is responsible for the MIME part, shall that question arise;
 when displaying such a MIME part the part-info will indicate the
 overridden content-type by showing a plus-sign
@@ -5640,9 +5640,10 @@ Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .
 .Mx
-.It Va pipe-CONTENT/SUBCONTENT
-When a MIME message part of type `CONTENT/SUBCONTENT' (normalized to
-lowercase) type is displayed or quoted,
+.It Va pipe-TYPE/SUBTYPE
+When a MIME message part of type
+.Ql TYPE/SUBTYPE
+(normalized to lowercase) type is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
 The special value `@' can be used to force interpretation of the message
@@ -5679,7 +5680,7 @@ The filename, if any is set, the empty string otherwise.
 Set to
 .Ev NAIL_FILENAME
 if that isn't empty, but otherwise a combination of a random string
-(always) and the `SUBCONTENT' of the MIME part, if the latter is known.
+(always) and the `SUBTYPE' of the MIME part, if the latter is known.
 .Mx
 .It Ev NAIL_CONTENT
 The MIME content-type of the part, if known, the empty string otherwise.
@@ -5696,7 +5697,7 @@ otherwise.
 .Mx
 .It Va pipe-EXTENSION
 This is identical to
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 except that `EXTENSION' (normalized to lowercase using character
 mappings of the ASCII charset) names a file extension, e.g., `xhtml'.
 Handlers registered using this method take precedence.
@@ -6705,11 +6706,13 @@ System wide initialization file.
 .
 .Mx
 .It Pa ~/.mime.types
-Personal MIME types.
+Personal MIME types, see
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Pa /etc/mime.types
-System wide MIME types.
+System wide MIME types, see
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Pa ~/.netrc
@@ -6725,9 +6728,26 @@ documents the file format.
 .\" .Sh "THE mime.types FILES" {{{
 .Sh "THE mime.types FILES"
 .
-For any outgoing attachment \*(UA tries to determine the content type.
-It does this by reading MIME type files whose lines have the following
-syntax:
+When sending messages \*(UA tries to determine the content type of all
+attachments.
+When displaying message content or attachments \*(UA uses the content
+type to decide wether it can directly display data or wether it needs to
+deal with content handlers, as can be defined via
+.Va pipe-TYPE/SUBTYPE
+(and
+.Va pipe-EXTENSION )
+variables, to do so.
+.
+.Pp
+It learns about MIME types and how to treat them by reading
+.Pa mime.types
+files, the loading of which can be controlled by setting the variable
+.Va mimetypes-load-control .
+(The command
+.Ic mimetype
+can also be used to deal with MIME types.)
+.Pa mime.types
+files have the following syntax:
 .
 .Pp
 .Dl type/subtype	extension [extension ...]
@@ -6736,13 +6756,15 @@ syntax:
 where
 .Ql type/subtype
 are strings describing the file contents, and one or multiple
-.Ql extension
-name the part of a filename starting after the last dot (of interest).
+.Ql extension Ns
+s, separated by whitespace, name the part of a filename starting after
+the last dot (of interest).
 Comments may be introduced anywhere on a line with a number sign
 .Ql # ,
 causing the remaining line to be discarded.
-\*(UA supports an extended, non-portable syntax in specially crafted
-files, which can be loaded via the alternative value syntax of
+.
+\*(UA also supports an extended, non-portable syntax in specially
+crafted files, which can be loaded via the alternative value syntax of
 .Va mimetypes-load-control
 and prepends a
 .Ql type-marker :
@@ -6751,12 +6773,23 @@ and prepends a
 .Dl [type-marker ]type/subtype extension [extension ...]
 .
 .Pp
-Currently only the plain-text indicating
-.Ql @
-marker is supported; also see
-.Va pipe-CONTENT/SUBCONTENT .
-And
+The following type markers are supported:
+.
+.Pp
+.Bl -tag -compact -offset indent -width ".It Ar _n_u"
+.It Ar @
+Treat message parts with this content as plain text.
+.El
+.
+.Pp
+Further reading:
+for sending messages:
 .Va mime-allow-text-controls .
+For reading etc. messages:
+.Sx "Viewing HTML mail and MIME attachments" ,
+.Va mime-counter-evidence ,
+.Va pipe-TYPE/SUBTYPE ,
+.Va pipe-EXTENSION .
 .\" }}}
 .
 .
