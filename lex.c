@@ -245,7 +245,7 @@ _c_ghost(void *v)
             NULL)
          fp = stdout;
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-         fprintf(fp, "%-8s <%s>\n", cg->name, cg->cmd.s);
+         fprintf(fp, "ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
       if (fp != stdout) {
          page_or_print(fp, i);
          Fclose(fp);
@@ -264,7 +264,7 @@ _c_ghost(void *v)
    if (argv[1] == NULL) {
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
          if (!strcmp(argv[0], cg->name)) {
-            printf("%-8s <%s>\n", cg->name, cg->cmd.s);
+            printf("ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
             goto jleave;
          }
       fprintf(stderr, _("`ghost': no such alias: `%s'\n"), argv[0]);

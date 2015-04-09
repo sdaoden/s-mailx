@@ -708,16 +708,14 @@ _group_print(struct group const *gp, FILE *fo)
       struct grp_names_head *gnhp;
       struct grp_names *gnp;
 
-      fprintf(fo, "%s", gp->g_id);
+      fprintf(fo, "alias %s", gp->g_id);
 
       GP_TO_SUBCLASS(gnhp, gp);
-      if ((gnp = gnhp->gnh_head) != NULL) {
-         sep = "\t\t";
+      if ((gnp = gnhp->gnh_head) != NULL) { /* xxx always 1+ entries */
          do {
             struct grp_names *x = gnp;
             gnp = gnp->gn_next;
-            fprintf(fo, "%s%s", sep, x->gn_id);
-            sep = " ";
+            fprintf(fo, " \"%s\"", string_quote(x->gn_id));
          } while (gnp != NULL);
       }
    } else if (gp->g_type & GT_MLIST) {
@@ -748,7 +746,7 @@ _group_print(struct group const *gp, FILE *fo)
    } else if (gp->g_type & GT_SHORTCUT) {
       char const *cp;
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "%s=%s", gp->g_id, cp);
+      fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
    }
 
    putc('\n', fo);
@@ -1510,6 +1508,7 @@ c_alias(void *v)
          gnhp->gnh_head = gnp;
          memcpy(gnp->gn_id, *argv, l);
       }
+      assert(gnhp->gnh_head != NULL);
    }
    NYD_LEAVE;
    return rv;
