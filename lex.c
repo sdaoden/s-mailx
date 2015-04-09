@@ -324,19 +324,26 @@ _c_unghost(void *v)
    NYD_ENTER;
 
    while ((cp = *argv++) != NULL) {
-      for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
-         if (!strcmp(cg->name, cp)) {
-            if (lcg != NULL)
-               lcg->next = cg->next;
-            else
-               _cmd_ghosts = cg->next;
+      if (cp[0] == '*' && cp[1] == '\0') {
+         while ((cg = _cmd_ghosts) != NULL) {
+            _cmd_ghosts = cg->next;
             free(cg);
-            goto jouter;
          }
-      fprintf(stderr, _("`unghost': no such alias: \"%s\"\n"), cp);
-      rv = 1;
+      } else {
+         for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
+            if (!strcmp(cg->name, cp)) {
+               if (lcg != NULL)
+                  lcg->next = cg->next;
+               else
+                  _cmd_ghosts = cg->next;
+               free(cg);
+               goto jouter;
+            }
+         fprintf(stderr, _("`unghost': no such alias: \"%s\"\n"), cp);
+         rv = 1;
 jouter:
-      ;
+         ;
+      }
    }
    NYD_LEAVE;
    return rv;
