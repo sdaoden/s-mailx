@@ -862,7 +862,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       }
    }
 
-   mb.mb_sock.s_desc = sc.sc_url.url_proto;
+   mb.mb_sock.s_desc = sc.sc_url.url_needs_tls ? "POP3S" : "POP3";
    mb.mb_sock.s_onclose = pop3_timer_off;
    if (_pop3_login(&mb, &sc) != OKAY ||
          pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {
