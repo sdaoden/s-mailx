@@ -60,9 +60,6 @@ set dot
 # Immediately start $EDITOR (or $VISUAL) when composing a message
 #set editalong
 
-# Do not remove empty private mail folders
-set emptybox
-
 # Startup into interactive mode even if the (given) mailbox is empty
 #set emptystart
 
@@ -90,7 +87,7 @@ set mime-counter-evidence
 # An extended syntax is available if the value contains a comma, see the manual
 #set mimetypes-load-control
 
-# Do not remove empty mail folders in the spool directory.
+# Do not remove empty mail folders.
 # This may be relevant for privacy since other users could otherwise create
 # them with different permissions
 set keep

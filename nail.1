@@ -479,11 +479,9 @@ and
 .Va keepsave
 options in order to suppress the automatic moving of messages to
 .Ev MBOX
-that otherwise would occur (see
+that would occur otherwise (see
 .Sx "MESSAGE STATES" )
 and
-.Va emptybox
-as well as
 .Va keep
 to not remove empty files in order not to mangle file permissions when
 files eventually get recreated.
@@ -4424,12 +4422,6 @@ and 'Organization:' fields are accepted within the header,
 other fields are ignored.
 .
 .Mx
-.It Va emptybox
-If set, an empty mailbox file is not removed.
-This may improve the interoperability with other mail user agents
-when using a common folder directory.
-.
-.Mx
 .It Va emptystart
 If the mailbox is empty \*(UA normally prints `No mail for user' and
 exits immediately.
@@ -4545,10 +4537,12 @@ and is not used if the session is already encrypted by the IMAPS method.
 .
 .Mx
 .It Va keep
-This option causes \*(UA to truncate the user's system mailbox instead
-of deleting it when it is empty.
-This should always be set since it prevents malicious users from
-creating fake mail folders in a world-writable spool directory.
+If set, an empty mailbox file is not removed.
+This may improve the interoperability with other mail user agents
+when using a common folder directory, and prevents malicious users
+from creating fake mailboxes in a world-writable spool directory.
+Note this only applies to local regular (MBOX) files, other mailbox
+types will never be removed.
 .
 .Mx
 .It Va keepsave

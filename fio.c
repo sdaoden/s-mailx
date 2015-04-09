@@ -1126,18 +1126,6 @@ fexpand_nshell_quote(char const *name)
    return rv;
 }
 
-FL void
-demail(void)
-{
-   NYD_ENTER;
-   if (ok_blook(keep) || rm(mailname) < 0) {
-      int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-      if (fd >= 0)
-         close(fd);
-   }
-   NYD_LEAVE;
-}
-
 FL bool_t
 var_folder_updated(char const *name, char **store)
 {

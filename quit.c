@@ -46,10 +46,11 @@
 #include <utime.h>
 
 enum quitflags {
-   QUITFLAG_HOLD      = 001,
-   QUITFLAG_KEEPSAVE  = 002,
-   QUITFLAG_APPEND    = 004,
-   QUITFLAG_EMPTYBOX  = 010
+   QUITFLAG_HOLD      = 1<<0,
+   QUITFLAG_KEEP      = 1<<1,
+   QUITFLAG_KEEPSAVE  = 1<<2,
+   QUITFLAG_APPEND    = 1<<3,
+   QUITFLAG_EMPTYBOX  = 1<<4
 };
 
 struct quitnames {
@@ -59,9 +60,10 @@ struct quitnames {
 
 static struct quitnames const _quitnames[] = {
    {QUITFLAG_HOLD, ok_b_hold},
+   {QUITFLAG_KEEP, ok_b_keep},
    {QUITFLAG_KEEPSAVE, ok_b_keepsave},
    {QUITFLAG_APPEND, ok_b_append},
-   {QUITFLAG_EMPTYBOX, ok_b_emptybox}
+   {QUITFLAG_EMPTYBOX, ok_b_emptybox} /* TODO obsolete emptybox */
 };
 
 static char _mboxname[PATH_MAX];  /* Name of mbox */
@@ -77,6 +79,9 @@ static int  writeback(FILE *res, FILE *obuf);
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
 static void edstop(void);
+
+/* Remove "mailname", unless *keep* says otherwise; force truncation, then */
+static void _demail(void);
 
 static void
 _alter(char const *name)
@@ -234,7 +239,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    doreset = FAL0;
 
-   if (gotcha && !ok_blook(emptybox)) {
+   if (gotcha && !ok_blook(keep) && !ok_blook(emptybox)/* TODO obsolete eb*/) {
       rm(mailname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("removed\n") : _("removed.\n"));
@@ -249,6 +254,19 @@ jleave:
    NYD_LEAVE;
    if (doreset)
       reset(0);
+}
+
+static void
+_demail(void)
+{
+   NYD2_ENTER;
+   if (ok_blook(keep) || rm(mailname) < 0) {
+      /* TODO demail(): try use f?truncate(2) instead?! */
+      int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+      if (fd >= 0)
+         close(fd);
+   }
+   NYD2_LEAVE;
 }
 
 FL void
@@ -400,7 +418,7 @@ jcream:
       _alter(mailname);
       goto jleave;
    }
-   demail();
+   _demail();
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);

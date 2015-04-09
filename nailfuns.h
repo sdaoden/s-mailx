@@ -840,9 +840,6 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
  * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
 FL char *      fexpand_nshell_quote(char const *name);
 
-/* Get rid of queued mail */
-FL void        demail(void);
-
 /* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
  * be replaced by something else leave store alone, otherwise smalloc() the
  * desired value (ownership will be taken) */
