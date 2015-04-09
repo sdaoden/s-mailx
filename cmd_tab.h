@@ -83,7 +83,7 @@
    { "touch", &c_stouch, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> for saving in *mbox*")) },
    { "preserve", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
-     DS(N_("Save <message-list> in system mailbox instead of *mbox*")) },
+     DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
    { "delete", &c_delete, (A | W | P | MSGLIST), 0, MMNDEL
      DS(N_("Delete <message-list>")) },
    { "dp", &c_deltype, (A | W | MSGLIST), 0, MMNDEL
@@ -141,7 +141,7 @@
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
-     DS(N_("Un\"alias\" <name-list> (\"*\" removes all aliases)")) },
+     DS(N_("Un\"alias\" <name-list> (\"*\" for all)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
@@ -163,8 +163,7 @@
    { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
      DS(N_("Like \"z\", but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
-     DS(N_("Print a page of headers "
-         "(containing the first of <message>, if given)")) },
+     DS(N_("Print a page of headers (with the first of <message> if given)")) },
    { "help", &c_help, (H | M | RAWLIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "?", &c_help, (H | M | RAWLIST), 0, 1
@@ -226,7 +225,7 @@
    { "size", &c_messize, (A | MSGLIST), 0, MMNDEL
      DS(N_("Show size in characters for <message-list>")) },
    { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
-     DS(N_("Save <message-list> in system mailbox instead of *mbox*")) },
+     DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
    { "if", &c_if, (F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "else", &c_else, (F | M | RAWLIST), 0, 0
@@ -264,7 +263,7 @@
    { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
    { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
-     DS(N_("Delete <shortcut-list> (\"*\" deletes all shortcuts)")) },
+     DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
@@ -370,7 +369,7 @@
    { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
-     DS(N_("Inside `define' / `account': insulate modifications? <0> / <1>"))},
+     DS(N_("Inside `define' / `account': insulate modifications? <boolean>"))},
    { "cwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
@@ -390,11 +389,11 @@
    { "mlist", &c_mlist, (M | RAWLIST), 0, 1000
      DS(N_("Show all known mailing lists or define some")) },
    { "unmlist", &c_unmlist, (M | RAWLIST), 1, 1000
-     DS(N_("Un\"mlist\" <name-list>, \"*\" removes all known lists")) },
+     DS(N_("Un\"mlist\" <name-list> (\"*\" for all)")) },
    { "mlsubscribe", &c_mlsubscribe, (M | RAWLIST), 0, 1000
      DS(N_("Show all mailing list subscriptions or define some")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
-     DS(N_("Un\"mlsubscribe\" <name-list>, \"*\" removes all subscriptions"))},
+     DS(N_("Un\"mlsubscribe\" <name-list> (\"*\" for all)"))},
    { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given message")) },
    { "features", &_c_features, (H | M | NOLIST), 0, 0
