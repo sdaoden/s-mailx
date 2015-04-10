@@ -1375,13 +1375,15 @@ c_alternates(void *v)
    char **namelist = v, **ap, **ap2, *cp;
    NYD_ENTER;
 
-   l = argcount(namelist) + 1;
+   l = argcount(namelist) +1;
+
    if (l == 1) {
-      if (_altnames == NULL)
-         goto jleave;
-      for (ap = _altnames; *ap != NULL; ++ap)
-         printf("%s ", *ap);
-      printf("\n");
+      if (_altnames != NULL) {
+         printf("alternates ");
+         for (ap = _altnames; *ap != NULL; ++ap)
+            printf("%s ", *ap);
+         printf("\n");
+      }
       goto jleave;
    }
 
@@ -1391,7 +1393,7 @@ c_alternates(void *v)
       free(_altnames);
    }
 
-   _altnames = smalloc(l * sizeof *_altnames);
+   _altnames = smalloc(l * sizeof(*_altnames));
    for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
       l = strlen(*ap) +1;
       cp = smalloc(l);
