@@ -647,7 +647,7 @@ static struct htmlflt * _hf_puts(struct htmlflt *self, char const *cp);
 static struct htmlflt * _hf_putbuf(struct htmlflt *self,
                            char const *cp, size_t len);
 
-/* Try to locate a param'eter in >hf_bdat, store it or NULL */
+/* Try to locate a param'eter in >hf_bdat, store it (non-terminated!) or NULL */
 static struct htmlflt * _hf_param(struct htmlflt *self, struct str *store,
                            char const *param);
 
@@ -914,6 +914,7 @@ static struct htmlflt *
 _hf_param(struct htmlflt *self, struct str *store, char const *param)
 {
    char *cp, c;
+   size_t i;
    NYD2_ENTER;
 
    store->s = NULL;
@@ -948,7 +949,18 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       while ((c = *++cp) != '\0' && !whitechar(c))
          ;
    }
-   store->l = PTR2SIZE(cp - store->s);
+   i = PTR2SIZE(cp - store->s);
+
+   /* Terrible tagsoup out there, e.g., groups.google.com produces href=""
+    * parameter values prefixed and suffixed by newlines!  Therefore trim the
+    * value content TODO join into the parse step above! */
+   for (cp = store->s; i > 0 && spacechar(*cp); ++cp, --i)
+      ;
+   store->s = cp;
+   for (cp += i - 1; i > 0 && spacechar(*cp); --cp, --i)
+      ;
+   if ((store->l = i) == 0)
+      store->s = NULL;
 jleave:
    NYD2_LEAVE;
    return self;
@@ -1035,8 +1047,8 @@ jput_as_is:
          hhp->hfh_no = ++self->hf_href_no;
          hhp->hfh_len = (ui32_t)param.l;
          memcpy(hhp->hfh_dat, param.s, param.l);
-         snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
 
+         snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
          self->hf_flags = (f |= _HF_HREF);
          self->hf_hrefs = hhp;
          self = _hf_puts(self, nobuf);
