@@ -172,8 +172,12 @@ compiler_flags() {
    ccver=`${CC} --version 2>/dev/null`
    if [ ${?} -ne 0 ]; then
       [ -z "${optim}" ] && optim=-O1
-   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
-   #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
+   elif { i=${ccver}; echo "${i}"; } | ${grep} -q \
+'gcc
+clang'; then
+   #if echo "${i}" | ${grep} -q \
+#'gcc
+#clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
       _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
@@ -183,21 +187,21 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
+      if { i=${ccver}; echo "${i}"; } | ${grep} -q 'clang version 1'; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
          _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
          if feat_yes AMALGAMATION && feat_no DEBUG; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
-         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
+         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
       if feat_yes AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
+#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
 #      optim=-O3 dbgoptim=-O
 #      stackprot=yes
 #      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
@@ -380,7 +384,7 @@ exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   if echo "${i}" | grep -e '^WANT_' >/dev/null 2>&1; then
+   if echo "${i}" | grep '^WANT_' >/dev/null 2>&1; then
       j="`echo ${j} | tr '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
