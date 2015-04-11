@@ -113,6 +113,14 @@ struct var_carrier {
    enum okeys     vc_okey;
 };
 
+struct var_show {
+   struct var_carrier vs_vc;     /* _var_revlookup() */
+   char const     *vs_value;     /* Value (from wherever it came) or NULL */
+   bool_t         vs_isset;      /* Managed by us and existent */
+   bool_t         vs_isenv;      /* Set, but managed by environ */
+   ui8_t          __pad[6];
+};
+
 struct lostack {
    struct lostack *s_up;         /* Outer context */
    struct macro   *s_mac;        /* Context (`account' or `define') */
@@ -161,6 +169,10 @@ static bool_t        _var_revlookup(struct var_carrier *vcp, char const *name);
  * Sets vcp.vc_prime; vcp.vc_var is NULL if not found */
 static bool_t        _var_lookup(struct var_carrier *vcp);
 
+/* Completely fill vsp with data for name, return wether it was set as an
+ * internal variable (it may still have been set as an environment variable) */
+static bool_t        _var_broadway(struct var_show *vsp, char const *name);
+
 /* Set variable from vcp.vc_(vmap|name|hash), return success */
 static bool_t        _var_set(struct var_carrier *vcp, char const *value);
 
@@ -172,6 +184,7 @@ static bool_t        _var_clear(struct var_carrier *vcp);
 static void          _var_list_all(void);
 
 static int           __var_list_all_cmp(void const *s1, void const *s2);
+static char *        __var_simple_quote(char const *cp);
 
 /* Shared c_set() and c_setenv() impl, return success */
 static bool_t        _var_set_env(char **ap, bool_t issetenv);
@@ -387,6 +400,26 @@ jleave:
 }
 
 static bool_t
+_var_broadway(struct var_show *vsp, char const *name)
+{
+   bool_t rv;
+   NYD2_ENTER;
+
+   memset(vsp, 0, sizeof *vsp);
+
+   _var_revlookup(&vsp->vs_vc, name);
+
+   if ((vsp->vs_isset = rv = _var_lookup(&vsp->vs_vc))) {
+      vsp->vs_value = vsp->vs_vc.vc_var->v_value;
+      vsp->vs_isenv = FAL0;
+   } else
+      vsp->vs_isenv = ((vsp->vs_value = getenv(vsp->vs_vc.vc_name)) != NULL);
+
+   NYD2_LEAVE;
+   return rv;
+}
+
+static bool_t
 _var_set(struct var_carrier *vcp, char const *value)
 {
    struct var *vp;
@@ -480,10 +513,11 @@ _var_clear(struct var_carrier *vcp)
 static void
 _var_list_all(void)
 {
+   struct var_show vs;
    FILE *fp;
    size_t no, i;
    struct var *vp;
-   char const **vacp, **cap, *fmt;
+   char const **vacp, **cap;
    NYD2_ENTER;
 
    if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
@@ -509,17 +543,28 @@ _var_list_all(void)
       qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
 
    i = (ok_blook(bsdcompat) || ok_blook(bsdset));
-   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
-
-   /* TODO rework _var_list_all() output a la mimetypes (in i==0 mode) */
    for (cap = vacp; no != 0; ++cap, --no) {
-      char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin... */
-      if (cp == NULL)
-         cp = "";
-      if (i || *cp != '\0')
-         fprintf(fp, fmt, *cap, cp);
-      else
-         fprintf(fp, "%s\n", *cap);
+      char const *fmt;
+
+      if (!_var_broadway(&vs, *cap))
+         continue;
+      if (vs.vs_value == NULL)
+         vs.vs_value = "";
+
+      if (i)
+         fmt = "%s\t%s\n";
+      else {
+         if (vs.vs_vc.vc_vmap != NULL &&
+               (vs.vs_vc.vc_vmap->vm_flags & VM_BINARY))
+            fmt = "set %s\n";
+         else {
+            fmt = "set %s=\"%s\"\n";
+            if (*vs.vs_value != '\0')
+               vs.vs_value = __var_simple_quote(vs.vs_value);
+         }
+      }
+      /* Shall a code checker complain on that, i'm in holiday */
+      fprintf(fp, fmt, *cap, vs.vs_value);
    }
 
    page_or_print(fp, PTR2SIZE(cap - vacp));
@@ -535,6 +580,27 @@ __var_list_all_cmp(void const *s1, void const *s2)
    NYD2_ENTER;
 
    rv = strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char *
+__var_simple_quote(char const *cp) /* TODO "unite" with string_quote(), etc.. */
+{
+   size_t i;
+   char const *cp_base;
+   char c, *rv;
+   NYD2_ENTER;
+
+   for (i = 0, cp_base = cp; (c = *cp) != '\0'; ++i, ++cp)
+      if (c == '"')
+         ++i;
+   rv = salloc(i +1);
+
+   for (i = 0, cp = cp_base; (c = *cp) != '\0'; rv[i++] = c, ++cp)
+      if (c == '"')
+         rv[i++] = '\\';
+   rv[i] = '\0';
    NYD2_LEAVE;
    return rv;
 }
@@ -1126,44 +1192,35 @@ jleave:
 FL int
 c_varshow(void *v)
 {
-   struct var_carrier vc;
-   char const **argv = v, *val;
-   bool_t isenv, isset;
+   struct var_show vs;
+   char const **argv = v;
    NYD_ENTER;
 
-   if (*argv == NULL) {
+   if (*argv == NULL)
       v = NULL;
-      goto jleave;
-   }
+   else for (; *argv != NULL; ++argv) {
+      _var_broadway(&vs, *argv);
+      if (vs.vs_value == NULL)
+         vs.vs_value = "NULL";
 
-   for (; *argv != NULL; ++argv) {
-      memset(&vc, 0, sizeof vc);
-      _var_revlookup(&vc, *argv);
-      if (_var_lookup(&vc)) {
-         val = vc.vc_var->v_value;
-         isenv = FAL0;
-      } else
-         isenv = ((val = getenv(vc.vc_name)) != NULL);/* TODO should be flag! */
-      if (val == NULL)
-         val = UNCONST("NULL");
-      isset = (vc.vc_var != NULL);
-
-      if (vc.vc_vmap != NULL) {
-         ui16_t f = vc.vc_vmap->vm_flags;
+      if (vs.vs_vc.vc_vmap != NULL) {
+         ui16_t f = vs.vs_vc.vc_vmap->vm_flags;
 
          if (f & VM_BINARY)
             printf(_("\"%s\": (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
-               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
-               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv);
+               vs.vs_vc.vc_name, vs.vs_vc.vc_okey,
+               (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), vs.vs_isset, vs.vs_isenv);
          else
             printf(_("\"%s\": (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
-               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
-               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv, val);
+               vs.vs_vc.vc_name, vs.vs_vc.vc_okey,
+               (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), vs.vs_isset, vs.vs_isenv,
+               vs.vs_value);
       } else
          printf("\"%s\": (assembled): set=%d (ENVIRON=%d) value<%s>\n",
-            vc.vc_name, isset, isenv, val);
+            vs.vs_vc.vc_name, vs.vs_isset, vs.vs_isenv, vs.vs_value);
    }
-jleave:
    NYD_LEAVE;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }

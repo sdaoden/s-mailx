@@ -711,7 +711,7 @@ is_prefix(char const *as1, char const *as2)
 }
 
 FL char *
-string_quote(char const *v)
+string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
 {
    char const *cp;
    size_t i;
