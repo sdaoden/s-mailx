@@ -4961,6 +4961,14 @@ $ echo 'set agent-shell-lookup="gpg -d .pass.gpg"' \e
 A couple of environment variables will be set for the agent:
 .Pp
 .Bl -tag -compact -width ".It Ev _AIL_HOST_POR_"
+.It Ev NAIL_TMPDIR
+The temporary directory that \*(UA uses.
+Usually identical to
+.Ev TMPDIR ,
+but guaranteed to be set and usable by child processes;
+to ensure the latter condition for
+.Ev TMPDIR
+also, it'll be set.
 .It Ev NAIL_USER
 The user (`USER') for which the password is looked up.
 .It Ev NAIL_USER_ENC
