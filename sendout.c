@@ -1549,15 +1549,17 @@ __prepare_mta_args(struct name *to, struct header *hp)
 
    /* -r option?  We may only pass skinned addresses */
    if (options & OPT_r_FLAG) {
-      if (option_r_arg != NULL) {
-         if (option_r_arg->n_fullextra != NULL) {
+      struct name const *np;
+
+      if ((np = option_r_arg) != NULL ||
+            (hp != NULL && (np = hp->h_from) != NULL)) {
+         if (np->n_fullextra != NULL) {
             args[i++] = "-F";
-            args[i++] = option_r_arg->n_fullextra;
+            args[i++] = np->n_fullextra;
          }
-         cp = option_r_arg->n_name;
-      } else if (hp != NULL && hp->h_from != NULL)
-         cp = hp->h_from->n_name;
-      else
+
+         cp = np->n_name;
+      } else
          cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
 
       if (cp != NULL) {

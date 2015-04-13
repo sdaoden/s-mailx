@@ -684,7 +684,8 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          ++seenfields;
          hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
+               checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                  EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
@@ -1777,8 +1778,9 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 
    if (gflags & GEXTRA) {
       if (hp->h_from == NULL)
-         hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL);
-      hp->h_from = grab_names("From: ", hp->h_from, comma, GEXTRA | GFULL);
+         hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
+      hp->h_from = grab_names("From: ", hp->h_from, comma,
+            GEXTRA | GFULL | GFULLEXTRA);
       if (hp->h_replyto == NULL)
          hp->h_replyto = lextract(ok_vlook(replyto), GEXTRA | GFULL);
       hp->h_replyto = grab_names("Reply-To: ", hp->h_replyto, comma,
