@@ -933,14 +933,16 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    if ((c = *cp) == '\0')
       goto jleave;
 
-   if (c == '"') {
+   if (c == '"' || c == '\'') {
+      char quote = c;
+
       /* TODO oops i have forgotten wether backslash quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
-      if ((c = *++cp) == '\0' || c == '"')
+      if ((c = *++cp) == '\0' || c == quote)
          goto jleave;
       store->s = cp;
 
-      while ((c = *++cp) != '\0' && c != '"')
+      while ((c = *++cp) != '\0' && c != quote)
          ;
       /* XXX ... and we simply ignore missing trailing " :> */
    } else if (!whitechar(c)) {
