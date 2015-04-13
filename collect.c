@@ -286,9 +286,7 @@ jpager:
    }
 
    fprintf(obuf, _("-------\nMessage contains:\n"));
-   gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES;
-   if (ok_blook(fullnames))
-      gf |= GCOMMA;
+   gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA;
    puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
    while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
