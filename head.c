@@ -965,6 +965,8 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    /* And any non-network addresses (MTA aliases) may be disallowed, too */
    else if ((rv = (eacm & EACM_NOALIAS) != 0) &&
          !(f & (NAME_ADDRSPEC_ISFILEORPIPE | NAME_ADDRSPEC_ISMAIL))) {
+      if (eaf & EAF_FAIL)
+         rv = -rv;
       cs = _("\"%s\"%s: non-network address / MTA alias w(h)ere not allowed\n");
       cbuf[0] = '\0';
       if (!(eacm & EACM_NOLOG))
