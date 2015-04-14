@@ -166,6 +166,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
 
       if (n_iconv_str(iconvd, &out, &in, &in, TRU1) != 0 && rest != NULL &&
             in.l > 0) {
+         n_iconv_reset(iconvd);
          /* Incomplete multibyte at EOF is special */
          if (flags & _TD_EOF) {
             out.s = srealloc(out.s, out.l + 4);
@@ -176,6 +177,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
             n_str_add(rest, &in);
       }
       in = out;
+      out.l = 0;
       out.s = NULL;
       flags &= ~_TD_BUFCOPY;
 
@@ -510,8 +512,10 @@ convhdra(char const *str, size_t len, FILE *fp)
    ciconv.s = NULL;
    if (iconvd != (iconv_t)-1) {
       ciconv.l = 0;
-      if (n_iconv_str(iconvd, &ciconv, &cin, NULL, FAL0) != 0)
+      if (n_iconv_str(iconvd, &ciconv, &cin, NULL, FAL0) != 0) {
+         n_iconv_reset(iconvd);
          goto jleave;
+      }
       cin = ciconv;
    }
 #endif
@@ -909,8 +913,10 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
             convert = n_iconv_str(fhicd, &cin, &cout, NULL, TRU1);
             out = n_str_add(out, &cin);
-            if (convert) /* EINVAL at EOS */
+            if (convert) {/* EINVAL at EOS */
+               n_iconv_reset(fhicd);
                out = n_str_add_buf(out, "?", 1);
+            }
             free(cin.s);
          } else
 #endif
@@ -1071,6 +1077,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
       if (n_iconv_str(iconvd, &out, &in, NULL, FAL0) != 0) {
          /* XXX report conversion error? */;
+         n_iconv_reset(iconvd);
          sz = -1;
          goto jleave;
       }

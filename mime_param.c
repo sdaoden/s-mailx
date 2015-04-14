@@ -493,6 +493,7 @@ jhex_putc:
          struct str sio = {NULL, 0}; /* TODO string pool */
 
          if (n_iconv_str(fhicd, &sio, &sin, NULL, TRU1) != 0) {
+            n_iconv_reset(fhicd);
             if (!(f & _ERRORS))
                *emsg = N_("character set conversion failed on value");
             f |= _ERRORS;

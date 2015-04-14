@@ -1919,9 +1919,7 @@ FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 FL void        n_iconv_close(iconv_t cd);
 
 /* Reset encoding state */
-#ifdef notyet
 FL void        n_iconv_reset(iconv_t cd);
-#endif
 
 /* iconv(3), but return *errno* or 0; *skipilseq* forces step over invalid byte
  * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*

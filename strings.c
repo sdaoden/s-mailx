@@ -1277,7 +1277,6 @@ n_iconv_close(iconv_t cd)
    NYD_LEAVE;
 }
 
-#ifdef notyet
 FL void
 n_iconv_reset(iconv_t cd)
 {
@@ -1285,7 +1284,6 @@ n_iconv_reset(iconv_t cd)
    iconv(cd, NULL, NULL, NULL, NULL);
    NYD_LEAVE;
 }
-#endif
 
 /* (2012-09-24: export and use it exclusively to isolate prototype problems
  * (*inb* is 'char const **' except in POSIX) in a single place.
