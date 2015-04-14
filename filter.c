@@ -1023,11 +1023,11 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       while ((c = *++cp) != '\0' && c != quote)
          ;
       /* XXX ... and we simply ignore missing trailing " :> */
-   } else if (!whitechar(c)) {
+   } else {
+      if (!whitechar(c))
+         while ((c = *++cp) != '\0' && !whitechar(c))
+            ;
       store->s = cp;
-
-      while ((c = *++cp) != '\0' && !whitechar(c))
-         ;
    }
    i = PTR2SIZE(cp - store->s);
 
