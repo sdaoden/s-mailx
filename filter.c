@@ -987,12 +987,21 @@ jput_as_is:
    }
 
    for (++s, i = 0; (c = s[i]) != '\0' && c != '>' && !whitechar(c); ++i)
-      ;
+      /* Special massage for things like <br/>: after the slash only whitespace
+       * may separate us from the closing right angle! */
+      if (c == '/') {
+         size_t j = i + 1;
+
+         while ((c = s[j]) != '\0' && c != '>' && whitechar(c))
+            ++j;
+         if (c == '>')
+            break;
+      }
 
    for (hftp = _hf_tags;;) {
       if (i == hftp->hft_len && !ascncasecmp(s, hftp->hft_tag, i)) {
          c = s[hftp->hft_len];
-         if (c == '>' || whitechar(c))
+         if (c == '>' || c == '/' || whitechar(c))
             break;
       }
       if (PTRCMP(++hftp, >=, _hf_tags + NELEM(_hf_tags)))
