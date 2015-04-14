@@ -2585,8 +2585,9 @@ for booleans) may be given to mark an enwrapped block as
 or
 .Dq always execute .
 It is possible to check a variable for existence or compare its
-expansion against a user given value via the
+expansion against a user given value or another variable via the
 .Ql $
+.Pf ( Dq variable next )
 conditional trigger character.
 The available comparison operators are
 .Ql <
@@ -2654,21 +2655,25 @@ endif
 if $ttycharset == "UTF-8"
   echo *ttycharset* is set to UTF-8, case-insensitively
 endif
+set t1=one t2=one
+if $t1 == $t2
+  echo These two variables are equal
+endif
 if $version-major >= 15
-  echo running a new version..
+  echo Running a new version..
   if $features =@ "regex"
     if $TERM =~ "^xterm\&.*"
       echo ..in an X terminal
     endif
   endif
   if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
-    echo noisy, noisy
+    echo Noisy, noisy
   endif
-  if true && [ $debug || $verbose ]
-    echo left associativity, as is known from the shell
+  if true && $debug || $verbose
+    echo Left associativity, as is known from the shell
   endif
   if ! ! true && ! [ ! $debug && ! $verbose ]
-    echo unary support
+    echo Unary operator support
   endif
 endif
 .Ed

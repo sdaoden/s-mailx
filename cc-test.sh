@@ -358,6 +358,18 @@ __behave_ifelse() {
 		else
 		   echo 17.err
 		endif
+		set diet=abc curd=abc
+		if $diet == $curd
+		   echo 18.ok
+		else
+		   echo 18.err
+		endif
+		set diet=abc curd=abcd
+		if $diet != $curd
+		   echo 19.ok
+		else
+		   echo 19.err
+		endif
 		# 1. Shitty grouping capabilities as of today
 		unset diet curd ndefined
 		if [ [ false ] || [ false ] || [ true ] ] && [ [ false ] || [ true ] ] && \
@@ -656,7 +668,7 @@ __behave_ifelse() {
 		   echo 98.err
 		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '2064743381 595'
+   cksum_test behave:if-normal "${MBOX}" '3542193361 607'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
@@ -727,8 +739,20 @@ __behave_ifelse() {
 			else
 			   echo 13.err
 			endif
+			set diet=abc curd='^abc$'
+			if $diet =~ $curd
+			   echo 14.ok
+			else
+			   echo 14.err
+			endif
+			set diet=abc curd='^abcd$'
+			if $diet !~ $curd
+			   echo 15.ok
+			else
+			   echo 15.err
+			endif
 		__EOT
-      cksum_test behave:if-regex "${MBOX}" '2777826385 69'
+      cksum_test behave:if-regex "${MBOX}" '439960016 81'
    fi
 }
 

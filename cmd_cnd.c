@@ -77,7 +77,7 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
 static si8_t
 _if_test(struct if_cmd *icp, bool_t noop)
 {
-   char const * const *argv, *cp, *v, *op;
+   char const * const *argv, *cp, *lhv, *op, *rhv;
    size_t argc;
    char c;
    si8_t rv = -1;
@@ -123,11 +123,11 @@ jesyn:
    case '$':
       /* Look up the value in question, we need it anyway */
       ++cp;
-      v = noop ? NULL : vok_vlook(cp);
+      lhv = noop ? NULL : vok_vlook(cp);
 
       /* Single argument, "implicit boolean" form? */
       if (argc == 1) {
-         rv = (v != NULL);
+         rv = (lhv != NULL);
          break;
       }
       op = argv[1];
@@ -152,33 +152,44 @@ jesyn:
             goto jesyn;
       }
 
+      /* The right hand side may also be a variable, more syntax checking */
+      if ((rhv = argv[2]) == NULL /* Can't happen */)
+         goto jesyn;
+      if (*rhv == '$') {
+         if (*++rhv == '\0')
+            goto jesyn;
+         rhv = noop ? NULL : vok_vlook(rhv);
+      }
+
       /* A null value is treated as the empty string */
-      if (v == NULL)
-         v = UNCONST("");
+      if (lhv == NULL)
+         lhv = UNCONST("");
+      if (rhv == NULL)
+         rhv = UNCONST("");
+
 #ifdef HAVE_REGEX
       if (op[1] == '~') {
          regex_t re;
 
-         if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
+         if (regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB))
             goto jesyn;
          if (!noop)
-            rv = (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
+            rv = (regexec(&re, lhv, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
          regfree(&re);
       } else
 #endif
       if (noop)
          break;
       else if (op[1] == '@')
-         rv = (asccasestr(v, argv[2]) == NULL) ^ (c == '=');
+         rv = (asccasestr(lhv, rhv) == NULL) ^ (c == '=');
       else {
          /* Try to interpret as integers, prefer those, then */
-         char const *argv2 = argv[2];
          char *eptr;
          sl_i sli2, sli1;
 
-         sli2 = strtol(argv2, &eptr, 0);
-         if (*argv2 != '\0' && *eptr == '\0') {
-            sli1 = strtol((cp = v), &eptr, 0);
+         sli2 = strtol(rhv, &eptr, 0);
+         if (*rhv != '\0' && *eptr == '\0') {
+            sli1 = strtol((cp = lhv), &eptr, 0);
             if (*cp != '\0' && *eptr == '\0') {
                sli1 -= sli2;
                switch (c) {
@@ -193,7 +204,7 @@ jesyn:
          }
 
          /* It is not an integer, perform string comparison */
-         sli1 = asccasecmp(v, argv2);
+         sli1 = asccasecmp(lhv, rhv);
          switch (c) {
          default:
          case '=': rv = (sli1 == 0); break;
