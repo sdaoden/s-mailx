@@ -250,7 +250,7 @@ SINLINE si32_t
 _qp_cfromhex(char const *hex)
 {
    ui8_t i1, i2;
-   si32_t r;
+   si32_t rv;
    NYD2_ENTER;
 
    if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(_qp_atoi16) ||
@@ -260,14 +260,14 @@ _qp_cfromhex(char const *hex)
    i2 = _qp_atoi16[i2];
    if ((i1 | i2) & 0xF0u)
       goto jerr;
-   r = i1;
-   r <<= 4;
-   r += i2;
+   rv = i1;
+   rv <<= 4;
+   rv += i2;
 jleave:
    NYD2_LEAVE;
-   return r;
+   return rv;
 jerr:
-   r = -1;
+   rv = -1;
    goto jleave;
 }
 
@@ -301,14 +301,13 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 static ssize_t
 _b64_decode(struct str *out, struct str *in)
 {
-   ssize_t ret = -1;
+   ssize_t rv = -1;
    ui8_t *p;
    ui8_t const *q, *end;
    NYD2_ENTER;
 
-   p = (ui8_t*)out->s;
+   p = (ui8_t*)out->s + out->l;
    q = (ui8_t const*)in->s;
-   out->l = 0;
 
    for (end = q + in->l; PTRCMP(q + 4, <=, end); q += 4) {
       ui32_t a = _B64_DECUI8(q[0]), b = _B64_DECUI8(q[1]),
@@ -328,14 +327,18 @@ _b64_decode(struct str *out, struct str *in)
          break;
       *p++ = (((c & 0x03) << 6) | d);
    }
+   rv ^= rv;
 
-   ret = PTR2SIZE((char*)p - out->s);
-   out->l = (size_t)ret;
-jleave:
+jleave: {
+      size_t i = PTR2SIZE((char*)p - out->s);
+      out->l = i;
+      if (rv == 0)
+         rv = (ssize_t)i;
+   }
    in->l -= PTR2SIZE((char*)UNCONST(q) - in->s);
    in->s = UNCONST(q);
    NYD2_LEAVE;
-   return ret;
+   return rv;
 }
 
 FL char *
@@ -608,7 +611,7 @@ jleave:
 FL int
 qp_decode(struct str *out, struct str const *in, struct str *rest)
 {
-   int ret = STOP;
+   int rv = STOP;
    char *os, *oc;
    char const *is, *ie;
    NYD_ENTER;
@@ -722,9 +725,9 @@ jsoftnl:
    /* XXX RFC: QP decode should check no trailing WS on line */
 jleave:
    out->l = PTR2SIZE(oc - os);
-   ret = OKAY;
+   rv = OKAY;
    NYD_LEAVE;
-   return ret;
+   return rv;
 }
 
 FL size_t
@@ -857,52 +860,106 @@ b64_decode(struct str *out, struct str const *in, struct str *rest)
 {
    struct str work;
    char *x;
-   int ret = STOP;
    size_t len;
+   int rv; /* XXX -> bool_t */
    NYD_ENTER;
 
    len = _b64_decode_prepare(&work, in);
+   out->l = 0;
+
+   /* TODO B64_T is different since we must not fail for errors; in v15.0 this
+    * TODO will be filter based and B64_T will have a different one than B64,
+    * TODO for now special treat this all-horror */
+   if (rest != NULL) {
+      /* With B64_T there may be leftover decoded data for iconv(3), even if
+       * that means it's incomplete multibyte character we have to copy over */
+      /* TODO strictly speaking this should not be handled in here,
+       * TODO since its leftover decoded data from an iconv(3);
+       * TODO In v15.0 this path will be filter based, each filter having its
+       * TODO own buffer for such purpose; for now we are BUSTED since for
+       * TODO Base64 rest is owned by iconv(3) */
+      if (rest->l > 0) {
+         x = out->s;
+         *out = *rest;
+         rest->s = x; /* Just for ownership reasons (all TODO in here..) */
+         rest->l = 0;
+         len += out->l;
+      }
+
+      out->s = srealloc(out->s, len +1);
+
+      for (;;) {
+         if (_b64_decode(out, &work) >= 0) {
+            if (work.l == 0)
+               break;
+         }
+         x = out->s + out->l;
+
+         /* Partial/False last sequence.  TODO not solvable for non-EOF;
+          * TODO yes, invalid, but seen in the wild and should be handled,
+          * TODO but for that we had to have our v15.0 filter which doesn't
+          * TODO work line based but content buffer based */
+         if ((len = work.l) <= 4) {
+            switch (len) {
+            case 4:  /* FALLTHRU */
+            case 3:  x[2] = '?'; /* FALLTHRU */
+            case 2:  x[1] = '?'; /* FALLTHRU */
+            default: x[0] = '?'; break;
+            }
+            out->l += len;
+            break;
+         }
+
+         /* TODO Bad content: this problem is not solvable!  I've seen
+          * TODO messages which broke lines in the middle of a Base64
+          * TODO tuple, followed by an invalid character ("!"), the follow
+          * TODO line starting with whitespace and the remaining sequence.
+          * TODO OpenSSL bailed, mutt(1) got it right (silently..).
+          * TODO Since "rest" is not usable by us, we cannot continue
+          * TODO sequences.  We will be able to do so with the v15.0 filter
+          * TODO approach, if we */
+         /* Bad content: skip over a single sequence */
+         for (;;) {
+            *x++ = '?';
+            ++out->l;
+            if (--work.l == 0)
+               break;
+            else {
+               ui8_t bc = (ui8_t)*++work.s;
+               ui32_t state = _B64_DECUI8(bc);
+
+               if (state != _B64_EQU && state != _B64_BAD)
+                  break;
+            }
+         }
+      }
+      rv = OKAY;
+      goto jleave;
+   }
 
    /* Ignore an empty input, as may happen for an empty final line */
    if (work.l == 0) {
-      /* With B64_T there may be leftover decoded data for iconv(3), even if
-       * that means it's incomplete multibyte character we have to copy over */
-      /* XXX strictly speaking this should not be handled in here,
-       * XXX since its leftover decoded data from an iconv(3);
-       * XXX like this we shared the prototype with QP, though?? */
-      if (rest != NULL && rest->l > 0) {
-         x = out->s;
-         *out = *rest;
-         rest->s = x;
-         rest->l = 0;
-      } else
-         out->l = 0;
-      ret = OKAY;
-      goto jleave;
-   }
-   if (work.l >= 4 && !(work.l & 3)) {
-      out->s = srealloc(out->s, len);
-      ret = OKAY;
-   }
-   if (ret != OKAY || (ssize_t)(len = _b64_decode(out, &work)) < 0)
+      out->s = srealloc(out->s, 1);
+      rv = OKAY;
+   } else if (work.l >= 4 && !(work.l & 3)) {
+      out->s = srealloc(out->s, len +1);
+      if ((ssize_t)(len = _b64_decode(out, &work)) < 0)
+         goto jerr;
+      rv = OKAY;
+   } else
       goto jerr;
+
 jleave:
+   out->s[out->l] = '\0';
    NYD_LEAVE;
-   return ret;
+   return rv;
 
 jerr: {
-   char const *err = _("[Invalid Base64 encoding ignored]\n");
-   len = strlen(err);
-   x = out->s = srealloc(out->s, len + 1 +1);
-   if (rest != NULL && rest->l)
-      *x++ = '\n';
-   memcpy(x, err, len);
-   x += len;
-   *x = '\0';
-   out->l = PTR2SIZE(x - out->s);
-   if (rest != NULL)
-      rest->l = 0;
-   ret = STOP;
+   char const *err = _("[Invalid Base64 encoding]\n");
+   out->l = len = strlen(err);
+   out->s = srealloc(out->s, len +1);
+   memcpy(out->s, err, len);
+   rv = STOP;
    goto jleave;
    }
 }

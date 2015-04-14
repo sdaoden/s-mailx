@@ -1248,6 +1248,9 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
+ * TODO for now this is pretty mixed up regarding this external interface.
+ * TODO in v15.0 CTE will be filter based, and explicit conversion will
+ * TODO gain clear error codes
  */
 
 /* Utilities: the former converts the byte c into a (NUL terminated)
@@ -1319,7 +1322,9 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
  * Returns OKAY or STOP on error (in which case out is set to an error
- * message); caller is responsible to free buffers */
+ * message); caller is responsible to free buffers.
+ * XXX STOP is effectively not returned for text input (rest!=NULL), instead
+ * XXX replacement characters are produced for invalid data */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
