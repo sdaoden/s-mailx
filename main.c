@@ -399,7 +399,7 @@ _setup_vars(void)
 }
 
 static void
-_setscreensize(int is_sighdl)
+_setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
 {
    struct termios tbuf;
 #ifdef TIOCGWINSZ
