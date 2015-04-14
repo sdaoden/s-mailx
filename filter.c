@@ -503,6 +503,11 @@ quoteflt_flush(struct quoteflt *self)
  */
 #ifdef HAVE_FILTER_HTML_TAGSOUP
 
+enum hf_limits {
+   _HF_MINLEN  = 10,       /* Minimum line length (can't really be smaller) */
+   _HF_BRKSUB  = 8         /* Start considering line break MAX - BRKSUB */
+};
+
 enum hf_flags {
    _HF_UTF8    = 1<<0,     /* Data is in UTF-8 */
    _HF_ERROR   = 1<<1,     /* A hard error occurred, bail as soon as possible */
@@ -637,6 +642,9 @@ static struct hf_ent const       _hf_ents[] = {
 static struct htmlflt * _hf_dump_hrefs(struct htmlflt *self);
 static struct htmlflt * _hf_dump(struct htmlflt *self);
 static struct htmlflt * _hf_store(struct htmlflt *self, char c);
+# ifdef HAVE_NATCH_CHAR
+static struct htmlflt * __hf_sync_mbstuff(struct htmlflt *self);
+# endif
 
 /* Virtual output */
 static struct htmlflt * _hf_nl(struct htmlflt *self);
@@ -709,7 +717,7 @@ _hf_dump(struct htmlflt *self)
    f = self->hf_flags & ~_HF_BLANK;
    l = self->hf_len;
    cp = self->hf_line;
-   self->hf_cnt = self->hf_last_ws = self->hf_len = 0;
+   self->hf_mbwidth = self->hf_mboff = self->hf_last_ws = self->hf_len = 0;
 
    for (c = '\0'; l > 0; --l) {
       c = *cp++;
@@ -765,39 +773,52 @@ _hf_store(struct htmlflt *self, char c)
       self->hf_last_ws = l;
 
    i = l;
-   if (f & _HF_UTF8) {
-      i = self->hf_cnt;
-      if ((ui8_t)c <= 0x7F || ((ui8_t)c & 0xC0) != 0x80)
-         self->hf_cnt = ++i; /* TODO use S-CText charwidth! */
+# ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
+   if (mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
+      wchar_t wc;
+      int x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
+
+      if (x > 0) {
+         self->hf_mboff += x;
+         if ((x = wcwidth(wc)) == -1)
+            x = 1;
+         else if (iswspace(wc))
+            self->hf_last_ws = l;
+         i = (self->hf_mbwidth += x);
+      } else {
+         if (x < 0) {
+            mbtowc(&wc, NULL, mb_cur_max);
+            if (UICMP(32, l - self->hf_mboff, >=, mb_cur_max)) { /* XXX */
+               ++self->hf_mboff;
+               ++self->hf_mbwidth;
+            }
+         }
+         i = self->hf_mbwidth;
+      }
    }
+# endif
 
    /* Do we need to break the line? */
-   if (i >= NELEM(self->hf_line)/4 - 8) {
+   if (i >= self->hf_lmax - _HF_BRKSUB) {
+      ui32_t lim = self->hf_lmax >> 1;
+
       /* Let's hope we saw a sane place to break this line! */
-      if (self->hf_last_ws >= NELEM(self->hf_line)/4 >> 1) {
+      if (self->hf_last_ws >= lim) {
 jput:
          i = self->hf_len = self->hf_last_ws;
          self = _hf_dump(self);
          if ((self->hf_len = (l -= i)) > 0) {
             self->hf_flags &= ~_HF_NL_MASK;
             memmove(self->hf_line, self->hf_line + i, l);
-
-            if (f & _HF_UTF8) {
-               ui32_t j;
-
-               for (j = i = 0; i < l; ++i) {
-                  c = self->hf_line[i];
-                  if ((ui8_t)c <= 0x7F || ((ui8_t)c & 0xC0) != 0x80)
-                     ++j;
-               }
-               self->hf_cnt = j;
-            }
+# ifdef HAVE_NATCH_CHAR
+            __hf_sync_mbstuff(self);
+# endif
          }
          goto jleave;
       }
 
       /* Any 7-bit characters? */
-      for (i = l; i-- >= NELEM(self->hf_line)/4 >> 1;)
+      for (i = l; i-- >= lim;)
          if (asciichar((c = self->hf_line[i]))) {
             self->hf_last_ws = ++i;
             goto jput;
@@ -806,14 +827,61 @@ jput:
             goto jput;
          }
 
-      /* Hard break necessary!*/
-      if (l >= NELEM(self->hf_line)/4 - 1)
+      /* Hard break necessary!  xxx really badly done */
+      if (l >= self->hf_lmax - 1)
          self = _hf_dump(self);
    }
 jleave:
    NYD2_LEAVE;
    return self;
 }
+
+# ifdef HAVE_NATCH_CHAR
+static struct htmlflt *
+__hf_sync_mbstuff(struct htmlflt *self)
+{
+   wchar_t wc;
+   char const *b;
+   ui32_t o, w, l;
+   NYD2_ENTER;
+
+   b = self->hf_line;
+   o = w = 0;
+   l = self->hf_len;
+   goto jumpin;
+
+   while (l > 0) {
+      int x = mbtowc(&wc, b, l);
+
+      if (x == 0)
+         break;
+
+      if (x > 0) {
+         b += x;
+         l -= x;
+         o += x;
+         if ((x = wcwidth(wc)) == -1)
+            x = 1;
+         w += x;
+         continue;
+      }
+
+      /* Bad, skip over a single character.. XXX very bad indeed */
+      ++b;
+      ++o;
+      ++w;
+      --l;
+jumpin:
+      mbtowc(&wc, NULL, mb_cur_max);
+   }
+
+   self->hf_mboff = o;
+   self->hf_mbwidth = w;
+
+   NYD2_LEAVE;
+   return self;
+}
+# endif /* HAVE_NATCH_CHAR */
 
 static struct htmlflt *
 _hf_nl(struct htmlflt *self)
@@ -1388,8 +1456,8 @@ FL void
 htmlflt_init(struct htmlflt *self)
 {
    NYD_ENTER;
-   /* Rather redundant though */
-   memset(self, 0, sizeof(*self) - SIZEOF_FIELD(struct htmlflt, hf_line));
+   /* (Rather redundant though) */
+   memset(self, 0, sizeof *self);
    NYD_LEAVE;
 }
 
@@ -1414,12 +1482,21 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
 
    if (self->hf_bdat != NULL)
       free(self->hf_bdat);
+   if (self->hf_line != NULL)
+      free(self->hf_line);
 
-   memset(self, 0, sizeof(*self) - SIZEOF_FIELD(struct htmlflt, hf_line));
+   memset(self, 0, sizeof *self);
 
-   if (options & OPT_UNICODE) /* TODO not truly generic */
-      self->hf_flags = _HF_UTF8;
-   self->hf_os = f;
+   if (f != NULL) {
+      ui32_t sw = MAX(_HF_MINLEN, (ui32_t)scrnwidth);
+
+      self->hf_line = smalloc((size_t)sw * mb_cur_max +1);
+      self->hf_lmax = sw;
+
+      if (options & OPT_UNICODE) /* TODO not truly generic */
+         self->hf_flags = _HF_UTF8;
+      self->hf_os = f;
+   }
    NYD_LEAVE;
 }
 

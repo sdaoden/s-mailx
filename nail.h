@@ -1310,9 +1310,12 @@ struct quoteflt {
 struct htmlflt {
    FILE        *hf_os;        /* Output stream */
    ui32_t      hf_flags;
+   ui32_t      hf_lmax;       /* Maximum byte +1 in .hf_line/4 */
    ui32_t      hf_len;        /* Current bytes in .hf_line */
-   ui32_t      hf_cnt;        /* In UTF-8 mode we count characters */
    ui32_t      hf_last_ws;    /* Last whitespace on line (fold purposes) */
+   ui32_t      hf_mboff;      /* Last offset for "mbtowc" */
+   ui32_t      hf_mbwidth;    /* We count characters not bytes if possible */
+   char        *hf_line;      /* Output line buffer - MUST be last field! */
    si32_t      hf_href_dist;  /* Count of lines since last HREF flush */
    ui32_t      hf_href_no;    /* HREF sequence number */
    struct htmlflt_href *hf_hrefs;
@@ -1320,7 +1323,6 @@ struct htmlflt {
    char        *hf_curr;      /* Current cursor into .hf_bdat */
    char        *hf_bmax;      /* Maximum byte in .hf_bdat +1 */
    char        *hf_bdat;      /* (Temporary) Tag content data storage */
-   char        hf_line[80*4]; /* Output line buffer - MUST be last field! */
 };
 #endif
 
