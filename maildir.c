@@ -312,7 +312,7 @@ readin(char const *name, struct message *m)
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(buf, buflen)) {
+      if (emptyline && is_head(buf, buflen)) {
          putc('>', mb.mb_otf);
          ++size;
       }
@@ -834,74 +834,88 @@ maildir_append(char const *name, FILE *fp)
    char *buf, *bp, *lp;
    size_t bufsize, buflen, cnt;
    off_t off1 = -1, offs;
-   int inhead = 1, flag = MNEW | MNEWEST;
-   long size = 0;
+   long size;
+   int flag;
+   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
    enum okay rv;
    NYD_ENTER;
 
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = smalloc(bufsize = LINESIZE); /* TODO line pool; signals */
    buflen = 0;
    cnt = fsize(fp);
    offs = ftell(fp);
-   do /* while (bp != NULL); */ {
+   size = 0;
+
+   for (flag = MNEW, state = _NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
-      if (bp == NULL || !strncmp(buf, "From ", 5)) {
+
+      if (bp == NULL ||
+            ((state & (_INHEAD | _NLSEP)) == _NLSEP && is_head(buf, buflen))) {
          if (off1 != (off_t)-1) {
-            rv = maildir_append1(name, fp, off1, size, flag);
-            if (rv == STOP)
-               goto jleave;
+            if ((rv = maildir_append1(name, fp, off1, size, flag)) == STOP)
+               goto jfree;
             if (fseek(fp, offs + buflen, SEEK_SET) == -1) {
                rv = STOP;
-               goto jleave;
+               goto jfree;
             }
          }
          off1 = offs + buflen;
          size = 0;
-         inhead = 1;
+         state = _INHEAD;
          flag = MNEW;
+
+         if (bp == NULL)
+            break;
       } else
          size += buflen;
       offs += buflen;
-      if (bp && buf[0] == '\n')
-         inhead = 0;
-      else if (bp && inhead && !ascncasecmp(buf, "status", 6)) {
-         lp = buf + 6;
-         while (whitechar(*lp))
-            ++lp;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'R':
-                  flag |= MREAD;
-                  break;
-               case 'O':
-                  flag &= ~MNEW;
-                  break;
-               }
-      } else if (bp && inhead && !ascncasecmp(buf, "x-status", 8)) {
-         lp = buf + 8;
-         while (whitechar(*lp))
-            ++lp;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'F':
-                  flag |= MFLAGGED;
-                  break;
-               case 'A':
-                  flag |= MANSWERED;
-                  break;
-               case 'T':
-                  flag |= MDRAFTED;
-                  break;
-               }
+
+      state &= ~_NLSEP;
+      if (buf[0] == '\n') {
+         state &= ~_INHEAD;
+         state |= _NLSEP;
+      } else if (state & _INHEAD) {
+         if (!ascncasecmp(buf, "status", 6)) {
+            lp = buf + 6;
+            while (whitechar(*lp))
+               ++lp;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'R':
+                     flag |= MREAD;
+                     break;
+                  case 'O':
+                     flag &= ~MNEW;
+                     break;
+                  }
+         } else if (!ascncasecmp(buf, "x-status", 8)) {
+            lp = buf + 8;
+            while (whitechar(*lp))
+               ++lp;
+            if (*lp == ':') {
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'F':
+                     flag |= MFLAGGED;
+                     break;
+                  case 'A':
+                     flag |= MANSWERED;
+                     break;
+                  case 'T':
+                     flag |= MDRAFTED;
+                     break;
+                  }
+            }
+         }
       }
-   } while (bp != NULL);
-   free(buf);
+   }
    assert(rv == OKAY);
+jfree:
+   free(buf);
 jleave:
    NYD_LEAVE;
    return rv;
