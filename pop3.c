@@ -626,10 +626,7 @@ jretry:
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(lp, linelen)) {
-         DBG( fprintf(stderr, "!! POP3 really needs to quote From?\n"); )
-         if (lines == 0)
-            continue;
+      if (emptyline && is_head(lp, linelen)) {
          putc('>', mp->mb_otf);
          ++size;
       }
