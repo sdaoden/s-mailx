@@ -1402,27 +1402,25 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(lp, linelen)) {
-         if (lines + headlines == 0)
-            goto jskip;
+      if (emptyline && is_head(lp, linelen)) {
          fputc('>', mp->mb_otf);
          ++size;
       }
+      emptyline = 0;
       if (lp[linelen-1] == '\n' && (linelen == 1 || lp[linelen-2] == '\r')) {
-         emptyline = linelen <= 2;
          if (linelen > 2) {
             fwrite(lp, 1, linelen - 2, mp->mb_otf);
             size += linelen - 1;
-         } else
+         } else {
+            emptyline = 1;
             ++size;
+         }
          fputc('\n', mp->mb_otf);
       } else {
-         emptyline = 0;
          fwrite(lp, 1, linelen, mp->mb_otf);
          size += linelen;
       }
       ++lines;
-jskip:
       if ((expected -= linelen) <= 0)
          break;
    }
@@ -2370,9 +2368,10 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
    char *buf, *bp, *lp;
    size_t bufsize, buflen, cnt;
    off_t off1 = -1, offs;
-   int inhead = 1, flag = MNEW | MNEWEST;
-   long size = 0;
+   int flag;
+   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
    time_t tim;
+   long size;
    enum okay rv;
    NYD_ENTER;
 
@@ -2381,10 +2380,13 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
    cnt = fsize(fp);
    offs = ftell(fp);
    time(&tim);
+   size = 0;
 
-   do {
+   for (flag = MNEW, state = _NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
-      if (bp == NULL || strncmp(buf, "From ", 5) == 0) {
+
+      if (bp == NULL ||
+            ((state & (_INHEAD | _NLSEP)) == _NLSEP && is_head(buf, buflen))) {
          if (off1 != (off_t)-1) {
             rv = imap_append1(mp, name, fp, off1, size, flag, tim);
             if (rv == STOP)
@@ -2393,49 +2395,54 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
          }
          off1 = offs + buflen;
          size = 0;
-         inhead = 1;
          flag = MNEW;
-         if (bp != NULL)
-            tim = unixtime(buf);
+         state = _INHEAD;
+         if (bp == NULL)
+            break;
+         tim = unixtime(buf);
       } else
          size += buflen+1;
       offs += buflen;
 
-      if (bp && buf[0] == '\n')
-         inhead = 0;
-      else if (bp && inhead && ascncasecmp(buf, "status", 6) == 0) {
-         lp = &buf[6];
-         while (whitechar(*lp))
-            lp++;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'R':
-                  flag |= MREAD;
-                  break;
-               case 'O':
-                  flag &= ~MNEW;
-                  break;
-               }
-      } else if (bp && inhead && ascncasecmp(buf, "x-status", 8) == 0) {
-         lp = &buf[8];
-         while (whitechar(*lp))
-            lp++;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'F':
-                  flag |= MFLAGGED;
-                  break;
-               case 'A':
-                  flag |= MANSWERED;
-                  break;
-               case 'T':
-                  flag |= MDRAFTED;
-                  break;
-               }
+      state &= ~_NLSEP;
+      if (buf[0] == '\n') {
+         state &= ~_INHEAD;
+         state |= _NLSEP;
+      } else if (state & _INHEAD) {
+         if (ascncasecmp(buf, "status", 6) == 0) {
+            lp = &buf[6];
+            while (whitechar(*lp))
+               lp++;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'R':
+                     flag |= MREAD;
+                     break;
+                  case 'O':
+                     flag &= ~MNEW;
+                     break;
+                  }
+         } else if (ascncasecmp(buf, "x-status", 8) == 0) {
+            lp = &buf[8];
+            while (whitechar(*lp))
+               lp++;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'F':
+                     flag |= MFLAGGED;
+                     break;
+                  case 'A':
+                     flag |= MANSWERED;
+                     break;
+                  case 'T':
+                     flag |= MDRAFTED;
+                     break;
+                  }
+         }
       }
-   } while (bp != NULL);
+   }
    rv = OKAY;
 jleave:
    free(buf);
