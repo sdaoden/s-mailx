@@ -961,11 +961,11 @@ nodename(int mayoverride)
 # ifdef HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
-      hints.ai_socktype = SOCK_DGRAM; /* (dummy) */
       hints.ai_flags = AI_CANONNAME;
-      if (getaddrinfo(hn, "0", &hints, &res) == 0) {
+      if (getaddrinfo(hn, NULL, &hints, &res) == 0) {
          if (res->ai_canonname != NULL) {
             size_t l = strlen(res->ai_canonname) +1;
+
             hn = ac_alloc(l);
             memcpy(hn, res->ai_canonname, l);
          }
