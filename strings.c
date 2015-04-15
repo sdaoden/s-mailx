@@ -411,19 +411,20 @@ srelax_rele(void)
    NYD_ENTER;
 
    assert(_relax_recur_no > 0);
-#ifdef HAVE_DEVEL
-   if (_relax_recur_no > 1)
-      fprintf(stderr, "srelax_rele(): recursion >0 after jumps\n");
-#endif
 
-   for (b = _buf_head; b != NULL; b = b->b._next) {
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-      b->b._relax = NULL;
+   if (--_relax_recur_no == 0) {
+      for (b = _buf_head; b != NULL; b = b->b._next) {
+         DBG( _salloc_bcheck(b); )
+         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+         b->b._relax = NULL;
+      }
+
+      _buf_relax = NULL;
    }
-
-   _buf_relax = NULL;
-   _relax_recur_no = 0;
+#ifdef HAVE_DEVEL
+   else
+      fprintf(stderr, "srelax_rele(): recursion >0!\n");
+#endif
    NYD_LEAVE;
 }
 
