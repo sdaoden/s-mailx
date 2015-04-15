@@ -204,12 +204,24 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 #ifdef HAVE_IMAP
          if (imap_copy(mp, *ip, file) == STOP)
 #endif
+         {
+#ifndef HAVE_IMAP
+# ifdef ENOSYS
+            errno = ENOSYS;
+# elif defined EOPNOTSUPP
+            errno = EOPNOTSUPP;
+# else
+            errno = EINVAL;
+# endif
+#endif
+            success = FAL0;
             goto jferr;
+         }
 #ifdef HAVE_IMAP
          mstats[0] = mp->m_xsize;
 #endif
       } else if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
-         perror(file);
+         success = FAL0;
          goto jferr;
       }
       srelax();
@@ -225,15 +237,18 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       tstats[0] += mstats[0];
       tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
+   srelax_rele();
+
    fflush(obuf);
    if (ferror(obuf)) {
-      perror(file);
 jferr:
+      perror(file);
+      if (!success)
+         srelax_rele();
       success = FAL0;
    }
    if (Fclose(obuf) != 0)
       success = FAL0;
-   srelax_rele();
 
    if (success) {
       if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {

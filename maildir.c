@@ -849,6 +849,7 @@ maildir_append(char const *name, FILE *fp)
    offs = ftell(fp);
    size = 0;
 
+   srelax_hold();
    for (flag = MNEW, state = _NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
 
@@ -857,6 +858,7 @@ maildir_append(char const *name, FILE *fp)
          if (off1 != (off_t)-1) {
             if ((rv = maildir_append1(name, fp, off1, size, flag)) == STOP)
                goto jfree;
+            srelax();
             if (fseek(fp, offs + buflen, SEEK_SET) == -1) {
                rv = STOP;
                goto jfree;
@@ -915,6 +917,7 @@ maildir_append(char const *name, FILE *fp)
    }
    assert(rv == OKAY);
 jfree:
+   srelax_rele();
    free(buf);
 jleave:
    NYD_LEAVE;

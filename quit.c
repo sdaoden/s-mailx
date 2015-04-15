@@ -118,6 +118,7 @@ writeback(FILE *res, FILE *obuf)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
          ++p;
          if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+            perror(mailname);
             srelax_rele();
             goto jerror;
          }
@@ -132,8 +133,8 @@ writeback(FILE *res, FILE *obuf)
    ftrunc(obuf);
 
    if (ferror(obuf)) {
-jerror:
       perror(mailname);
+jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
    }
@@ -530,10 +531,10 @@ makembox(void) /* TODO oh my god */
          } else if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
             perror(mbox);
 jerr:
+            srelax_rele();
             if (ibuf != NULL)
                Fclose(ibuf);
             Fclose(obuf);
-            srelax_rele();
             goto jleave;
          }
          mp->m_flag |= MBOXED;
