@@ -765,7 +765,7 @@ setptr(FILE *ibuf, off_t offset)
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
-      if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt)) {
+      if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt, FAL0)) {
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */

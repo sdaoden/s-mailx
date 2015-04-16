@@ -589,16 +589,16 @@ myorigin(struct header *hp)
 }
 
 FL int
-is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
+is_head(char const *linebuf, size_t linelen, bool_t compat)
 {
    char date[FROM_DATEBUF];
    int rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   rv = ((linelen <= 5 || strncmp(linebuf, "From ", 5) != 0 ||
-         !extract_date_from_from_(linebuf, linelen, date) ||
-         !_is_date(date)) ? 0 : 1);
-   NYD_LEAVE;
+   rv = (linelen >= 5 && !strncmp(linebuf, "From ", 5) &&
+         (compat || (extract_date_from_from_(linebuf, linelen, date) &&
+          _is_date(date))));
+   NYD2_LEAVE;
    return rv;
 }
 

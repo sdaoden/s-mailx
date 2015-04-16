@@ -1287,6 +1287,7 @@ __savemail(char const *name, FILE *fp)
    char *buf;
    size_t bufsize, buflen, cnt;
    int prependnl = 0, rv = -1;
+   bool_t emptyline;
    NYD_ENTER;
 
    buf = smalloc(bufsize = LINESIZE);
@@ -1326,13 +1327,16 @@ __savemail(char const *name, FILE *fp)
    fflush_rewind(fp);
    cnt = fsize(fp);
    buflen = 0;
+   emptyline = FAL0;
    while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL) {
 #ifdef HAVE_DEBUG /* TODO assert legacy */
-      assert(!is_head(buf, buflen));
+      assert(!is_head(buf, buflen, TRU1));
+      UNUSED(emptyline);
 #else
-      if (is_head(buf, buflen))
+      if (emptyline && is_head(buf, buflen, TRU1))
          putc('>', fo);
 #endif
+      emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
    }
    if (buflen && *(buf + buflen - 1) != '\n')
@@ -1737,7 +1741,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          break;
       /* XXX more checks: The From_ line may be seen when resending */
       /* During headers is_head() is actually overkill, so ^From_ is sufficient
-       * && !is_head(buf, c) */
+       * && !is_head(buf, c, TRU1) */
       if (ascncasecmp("status:", buf, 7) && strncmp("From ", buf, 5) &&
             ascncasecmp("disposition-notification-to:", buf, 28))
          fwrite(buf, sizeof *buf, c, fo);

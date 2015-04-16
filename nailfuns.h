@@ -895,8 +895,9 @@ FL char const * myaddrs(struct header *hp);
 FL char const * myorigin(struct header *hp);
 
 /* See if the passed line buffer, which may include trailing newline (sequence)
- * is a mail From_ header line according to RFC 4155 */
-FL int         is_head(char const *linebuf, size_t linelen);
+ * is a mail From_ header line according to RFC 4155.
+ * If compat is true laxe POSIX syntax is instead sufficient to match From_ */
+FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).

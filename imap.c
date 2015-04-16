@@ -1402,7 +1402,7 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(lp, linelen)) {
+      if (emptyline && is_head(lp, linelen, TRU1)) {
          fputc('>', mp->mb_otf);
          ++size;
       }
@@ -2386,7 +2386,8 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
 
       if (bp == NULL ||
-            ((state & (_INHEAD | _NLSEP)) == _NLSEP && is_head(buf, buflen))) {
+            ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
+             is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
             rv = imap_append1(mp, name, fp, off1, size, flag, tim);
             if (rv == STOP)
