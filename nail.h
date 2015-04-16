@@ -1052,6 +1052,7 @@ enum okeys {
    ok_b_keepsave,
    ok_b_line_editor_disable,
    ok_b_markanswered,
+   ok_b_mbox_rfc4155,
    ok_b_message_id_disable,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,

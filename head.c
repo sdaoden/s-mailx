@@ -595,9 +595,9 @@ is_head(char const *linebuf, size_t linelen, bool_t compat)
    int rv;
    NYD2_ENTER;
 
-   rv = (linelen >= 5 && !strncmp(linebuf, "From ", 5) &&
-         (compat || (extract_date_from_from_(linebuf, linelen, date) &&
-          _is_date(date))));
+   if ((rv = (linelen >= 5 && !strncmp(linebuf, "From ", 5))) &&
+         (!compat || ok_blook(mbox_rfc4155)))
+      rv = (extract_date_from_from_(linebuf, linelen, date) && _is_date(date));
    NYD2_LEAVE;
    return rv;
 }

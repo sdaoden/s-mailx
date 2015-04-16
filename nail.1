@@ -2525,6 +2525,9 @@ facility, sufficient support provided.
 Likewise, if the named file doesn't exist, but a file with one of the
 mentioned compression extensions does, then the name is automatically
 expanded and the compressed file is used.
+Also see
+.Va mbox-rfc4155
+for fine-tuning handling of MBOX files.
 If
 .Ar name
 refers to a directory with the subdirectories
@@ -4775,6 +4778,30 @@ it just causes messages to be marked in the header summary,
 and makes them specially addressable.
 .
 .Mx
+.It Va mbox-rfc4155
+\*(UA produces and expects fully RFC 4155 compliant MBOX text mailboxes.
+Messages which are fetched over the network or from within already
+existing Maildir (or any non-MBOX) mailboxes may require so-called
+.Ql From_
+quoting (insertion of additional
+.Ql >
+characters to prevent line content misinterpretation) to be applied in
+order to be storable in MBOX mailboxes, however, dependent on the
+circumspection of the message producer.
+(E.g., \*(UA itself will, when newly generating messages, choose a
+.Pf Content-Transfer- Va encoding
+that prevents the necessity for such quoting \(en a necessary
+precondition to ensure message checksums won't change.)
+.Pp
+By default \*(UA will perform this
+.Ql From_
+quoting so that the final MBOX file is compatible with POSIX MBOX layout
+in order not to exceed the capabilities of simple applications, possibly
+resulting in the injection of more artificial quote characters.
+Set this option to generate MBOX files for RFC 4155 compliant
+applications only.
+.
+.Mx
 .It Va message-id-disable
 By setting this option the generation of
 .Ql Message-ID:
@@ -4804,6 +4831,8 @@ order to classify the
 .Ql Content-Type:
 and
 .Ql Content-Transfer-Encoding:
+(see
+.Va encoding )
 that is required to send this part over mail transport, i.e.,
 a computation rather similar to what the
 .Xr file 1
