@@ -74,8 +74,9 @@ static void          __newpart(struct mimepart *ip, struct mimepart **np,
 static void          __endpart(struct mimepart **np, off_t xoffs, long lines);
 
 /* Going for user display, print Part: info string */
-static void          _print_part_info(struct str *out, struct mimepart *mip,
-                           struct ignoretab *doign, int level);
+static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
+                        struct ignoretab *doign, int level,
+                        struct quoteflt *qf, ui64_t *stats);
 
 /* Query possible pipe command for MIME part */
 static enum pipeflags _pipecmd(char const **result, struct mimepart const *mpp);
@@ -427,69 +428,14 @@ __endpart(struct mimepart **np, off_t xoffs, long lines)
 }
 
 static void
-_print_part_info(struct str *out, struct mimepart *mip,
-   struct ignoretab *doign, int level)
+_print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
+   struct ignoretab *doign, int level, struct quoteflt *qf, ui64_t *stats)
 {
-   struct str ct = {NULL, 0}, cd = {NULL, 0};
-   char const *ps;
+   char buf[64];
+   struct str ti = {NULL, 0}, to;
    struct str const *cpre, *csuf;
-   NYD_ENTER;
-
-   /* Max. 24 */
-   if (is_ign("content-type", 12, doign)) {
-      size_t addon;
-
-      if ((out->s = UNCONST(mip->m_ct_type_usr_ovwr)) != NULL)
-         addon = 2;
-      else {
-         addon = 0;
-         out->s = UNCONST(mip->m_ct_type_plain);
-      }
-      out->l = strlen(out->s);
-
-      ct.s = ac_alloc(out->l + 2 + addon +1);
-      ct.s[0] = ',';
-      ct.s[1] = ' ';
-      ct.l = 2;
-      if (addon) {
-         ct.s[ct.l++] = '+';
-         ct.s[ct.l++] = ' ';
-      }
-
-      if (is_prefix("application/", out->s)) {
-         memcpy(ct.s + ct.l, "appl../", 7);
-         ct.l += 7;
-         out->l -= 12;
-         out->s += 12;
-         out->l = MIN(out->l, 17 - addon);
-      } else
-         out->l = MIN(out->l, 24 - addon);
-      memcpy(ct.s + ct.l, out->s, out->l);
-      ct.l += out->l;
-      ct.s[ct.l] = '\0';
-   }
-
-   /* Max. 32 */
-   if (is_ign("content-disposition", 19, doign) && mip->m_filename != NULL) {
-      struct str ti, to;
-
-      ti.s = NULL;
-      ti.l = 0;
-      makeprint(n_str_add_cp(&ti, mip->m_filename), &to);
-      free(ti.s);
-      to.l = delctrl(to.s, to.l);
-
-      cd.s = ac_alloc(2 + 32 +1); /* FIXME was 25.. UNI: USE VISUAL WIDTH!!! */
-      cd.s[0] = ',';
-      cd.s[1] = ' ';
-      cd.l = 2 + field_put_bidi_clip(cd.s + 2, 32 +1, to.s, to.l);
-
-      free(to.s);
-   }
-
-   /* Take care of "99.99", i.e., 5 */
-   if ((ps = mip->m_partstring) == NULL || ps[0] == '\0')
-      ps = "?";
+   char const *cp;
+   NYD2_ENTER;
 
 #ifdef HAVE_COLOUR
    cpre = colour_get(COLOURSPEC_PARTINFO);
@@ -498,32 +444,71 @@ _print_part_info(struct str *out, struct mimepart *mip,
    cpre = csuf = NULL;
 #endif
 
-   /* Assume maximum possible sizes for 64 bit integers here to avoid any
-    * buffer overflows just in case we have a bug somewhere and / or the
-    * snprintf() is our internal version that doesn't really provide hard
-    * buffer cuts TODO ensure upper bound on numbers, use 9999999 else */
-#define __msg   "%s%s[-- #%s : %lu/%lu%s%s --]%s\n"
-   out->l = sizeof(__msg) +
-#ifdef HAVE_COLOUR
-         (cpre != NULL ? cpre->l + csuf->l : 0) +
-#endif
-         strlen(ps) + 2*21 + ct.l + cd.l +1;
-   out->s = salloc(out->l);
-   out->l = snprintf(out->s, out->l, __msg,
-         (level || (ps[0] != '1' && ps[1] == '\0') ? "\n" : ""),
-            (cpre != NULL ? cpre->s : ""),
-         ps, (ul_i)mip->m_lines, (ul_i)mip->m_size,
-            (ct.s != NULL ? ct.s : ""),
-            (cd.s != NULL ? cd.s : ""),
-         (csuf != NULL ? csuf->s : ""));
-   out->s[out->l] = '\0';
-#undef __msg
+   /* Take care of "99.99", i.e., 5 */
+   if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
+      cp = "?";
+   if (level || (cp[0] != '1' && cp[1] == '\0'))
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   if (cpre != NULL)
+      _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
 
-   if (cd.s != NULL)
-      ac_free(cd.s);
-   if (ct.s != NULL)
-      ac_free(ct.s);
-   NYD_LEAVE;
+   to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
+         (uiz_t)mpp->m_lines, (uiz_t)mpp->m_size);
+   _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+
+    if ((cp = mpp->m_ct_type_usr_ovwr) != NULL)
+      _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   else
+      cp = mpp->m_ct_type_plain;
+   if ((to.l = strlen(cp)) > 30 && is_asccaseprefix(cp, "application/")) {
+      size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
+      size_t i = to.l - fl;
+      char *x = salloc(al + i +1);
+
+      memcpy(x, "appl../", al);
+      memcpy(x + al, cp + fl, i +1);
+      cp = x;
+      to.l = al + i;
+   }
+   _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+
+   if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL) {
+      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      if (to.l > 25 && !asccasecmp(cp, "quoted-printable"))
+         cp = "qu.-pr.";
+      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   }
+
+   if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_charset) != NULL) {
+      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   }
+
+   _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   if (csuf != NULL)
+      _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+
+   if (is_ign("content-disposition", 19, doign) && mpp->m_filename != NULL &&
+         *mpp->m_filename != '\0') {
+      makeprint(n_str_add_cp(&ti, mpp->m_filename), &to);
+      free(ti.s);
+      to.l = delctrl(to.s, to.l);
+
+      if (cpre != NULL)
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      if (csuf != NULL)
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+
+      free(to.s);
+   }
+   NYD2_LEAVE;
 }
 
 static enum pipeflags
@@ -1067,9 +1052,7 @@ jalter_redo:
                if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
                   if (neednl)
                      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-                  _print_part_info(&rest, np, doign, level);
-                  _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-                     NULL);
+                  _print_part_info(obuf, np, doign, level, qf, stats);
                }
                neednl = TRU1;
 
@@ -1186,9 +1169,7 @@ jmulti:
                      ip->m_mimecontent != MIME_RELATED &&
                      ip->m_mimecontent != MIME_DIGEST)
                   break;
-               _print_part_info(&rest, np, doign, level);
-               _out(rest.s, rest.l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-                  NULL);
+               _print_part_info(obuf, np, doign, level, qf, stats);
                break;
             case SEND_MBOX:
             case SEND_RFC822:
