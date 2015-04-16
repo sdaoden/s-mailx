@@ -1689,12 +1689,14 @@ boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
       rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
    else {
       if ((inlen == 1 && *inbuf == '1') ||
+            !ascncasecmp(inbuf, "true", inlen) ||
             !ascncasecmp(inbuf, "yes", inlen) ||
-            !ascncasecmp(inbuf, "true", inlen))
+            !ascncasecmp(inbuf, "on", inlen))
          rv = 1;
       else if ((inlen == 1 && *inbuf == '0') ||
+            !ascncasecmp(inbuf, "false", inlen) ||
             !ascncasecmp(inbuf, "no", inlen) ||
-            !ascncasecmp(inbuf, "false", inlen))
+            !ascncasecmp(inbuf, "off", inlen))
          rv = 0;
       else {
          dat = ac_alloc(inlen +1);

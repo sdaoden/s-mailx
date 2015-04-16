@@ -8,8 +8,8 @@
 #@   variables in here (correctly triggering build updates as necessary)
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
 #@   that can be set in here
-#@ . Boolean values can be set via 1/0, true/false and yes/no (case doesn't
-#@   matter), other values result in an error
+#@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
+#@   (case doesn't matter), other values result in an error
 #@ . However, the value "require" is also a true boolean, but will in addition
 #@   cause configuration to fail if the requested feature is missing.  This
 #@   special behaviour is only tested by a logical subset of feature tests

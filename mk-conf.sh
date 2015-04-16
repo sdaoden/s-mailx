@@ -329,11 +329,13 @@ HAVE_STRIP=${?}
 # Update WANT_ options now, in order to get possible inter-dependencies right
 
 feat_val_no() {
-   [ "x${1}" = x0 ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ]
+   [ "x${1}" = x0 ] ||
+   [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
 feat_val_yes() {
-   [ "x${1}" = x1 ] || [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] ||
+   [ "x${1}" = x1 ] ||
+   [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
 
@@ -349,7 +351,7 @@ _feat_check() {
    elif feat_val_yes "${i}"; then
       return 0
    else
-      msg "ERROR: %s: allowed: 0/false/no or 1/true/yes/require, got: %s" \
+      msg "ERROR: %s: any of 0/false/no/off or 1/true/yes/on/require, got: %s" \
          "${1}" "${i}"
       config_exit 11
    fi
