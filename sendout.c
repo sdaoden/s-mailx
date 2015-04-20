@@ -2003,11 +2003,12 @@ j_leave:
 FL int
 mkdate(FILE *fo, char const *field)
 {
-   struct tm *tmptr;
+   struct tm tmpgm, *tmptr;
    int tzdiff, tzdiff_hour, tzdiff_min, rv;
    NYD_ENTER;
 
-   tzdiff = time_current.tc_time - mktime(&time_current.tc_gm);
+   memcpy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
+   tzdiff = time_current.tc_time - mktime(&tmpgm);
    tzdiff_hour = (int)(tzdiff / 60);
    tzdiff_min = tzdiff_hour % 60;
    tzdiff_hour /= 60;
