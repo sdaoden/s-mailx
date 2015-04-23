@@ -733,7 +733,7 @@ _group_print(struct group const *gp, FILE *fo)
             *lp = (gp->g_type & GT_SUBSCRIBE ? _mlsub_regex : _mlist_regex);
 
          GP_TO_SUBCLASS(grp, gp);
-         for (i = 0; lp != grp; lp = lp->gr_next)
+         for (i = 1; lp != grp; lp = lp->gr_next)
             ++i;
 
          fprintf(fo, "%srx: %" PRIuZ "/%" PRIuZ ". hits/sort",
