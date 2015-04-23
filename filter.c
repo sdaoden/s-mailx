@@ -499,6 +499,11 @@ quoteflt_flush(struct quoteflt *self)
  * HTML tagsoup filter
  * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
  * TODO . Parameters may contain entities, and thus should be expanded
+ * TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
+ * TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
+ * TODO   nonstandard) and tracking a stack of such elements (to be popped
+ * TODO   once the closing element is seen).  Then, after writing a newline,
+ * TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
  * TODO Interlocking and non-well-formed data will break us down
  */
 #ifdef HAVE_FILTER_HTML_TAGSOUP
@@ -618,12 +623,15 @@ static struct hf_ent const       _hf_ents[] = {
    _XSU("lsaquo", "<", 0x2039),  _XSU("rsaquo", ">", 0x203A),
    _XSU("lsquo", "'", 0x2018),   _XSU("rsquo", "'", 0x2019),
    _XSU("ldquo", "\"", 0x201C),  _XSU("rdquo", "\"", 0x201D),
+   _XSU("uarr", "^|", 0x2191),   _XSU("darr", "|v", 0x2193),
+
    _XSU("cent", "CENT", 0x00A2),
    _XSU("copy", "(C)", 0x00A9),
    _XSU("euro", "EUR", 0x20AC),
-   _XSU("infin", "INF", 0x221E),
+   _XSU("infin", "INFY", 0x221E),
    _XSU("pound", "GBP", 0x00A3),
    _XSU("reg", "(R)", 0x00AE),
+   _XSU("sect", "S:", 0x00A7),
    _XSU("yen", "JPY", 0x00A5),
 
    /* German umlauts */
