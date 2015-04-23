@@ -1076,11 +1076,7 @@ jput_as_is:
          goto jnotknown;
    }
 
-   if (((f = self->hf_flags) & _HF_PRE) && hftp->hft_act != _HFSA_PRE_END) {
-      self = _hf_puts(self, self->hf_bdat);
-      goto jleave;
-   }
-
+   f = self->hf_flags;
    switch (hftp->hft_act) {
    case _HFSA_PRE_END:
       f &= ~_HF_PRE;
@@ -1364,14 +1360,13 @@ jdo_c:
          if (!(f & _HF_NOPUT)) {
             if (cntrlchar(c))
                break;
-            if (f & _HF_PRE) {
-               self = _hf_putc_premode(self, c);
-               self->hf_flags &= ~_HF_BLANK;
-            } else if (c == '&') {
+            if (c == '&') {
                cp = self->hf_bdat;
                *cp++ = c;
-               f |= _HF_NOPUT | _HF_ENT;
-               self->hf_flags = f;
+               self->hf_flags = (f |= _HF_NOPUT | _HF_ENT);
+            } else if (f & _HF_PRE) {
+               self = _hf_putc_premode(self, c);
+               self->hf_flags &= ~_HF_BLANK;
             } else
               self = _hf_putc(self, c);
          } else if ((f & _HF_ENT) && c == ';') {
