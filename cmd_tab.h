@@ -352,17 +352,17 @@
      DS(N_("(Load and) show all known MIME types or define some")) },
    { "unmimetype", &c_unmimetype, (M | RAWLIST), 1, 1000
      DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
-   { "spamrate", &c_spam_rate, (A | M | R | MSGLIST), 0, 0
+   { "spamrate", &c_spam_rate, (A | M | I | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
-   { "spamham", &c_spam_ham, (A | M | R | MSGLIST), 0, 0
+   { "spamham", &c_spam_ham, (A | M | I | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is ham")) },
-   { "spamspam", &c_spam_spam, (A | M | R | MSGLIST), 0, 0
+   { "spamspam", &c_spam_spam, (A | M | I | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is spam")) },
-   { "spamforget", &c_spam_forget, (A | M | R | MSGLIST), 0, 0
+   { "spamforget", &c_spam_forget, (A | M | I | MSGLIST), 0, 0
      DS(N_("Force the spam detector to \"unlearn\" <message-list>")) },
-   { "spamset", &c_spam_set, (A | M | MSGLIST), 0, 0
+   { "spamset", &c_spam_set, (A | M | I | MSGLIST), 0, 0
      DS(N_("Set the spam flag for each message in <message-list>")) },
-   { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
+   { "spamclear", &c_spam_clear, (A | M | I | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
    { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
      DS(N_("Print or create <ghost> (<command>), or list all ghosts")) },
