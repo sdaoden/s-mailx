@@ -301,6 +301,17 @@ _startup(void)
    /* noSign */
    /* ok_vset(toplines, "5"); XXX somewhat hmm */
 
+   /* TODO until we have an automatic mechanism for that, set some more
+    * TODO variables so that users see the internal fallback settings
+    * TODO (something like "defval=X,notempty=1") */
+   {
+   ok_vset(SHELL, XSHELL);
+   ok_vset(LISTER, XLISTER);
+   ok_vset(PAGER, XPAGER);
+   ok_vset(sendmail, SENDMAIL);
+   ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+   }
+
    /*  --  >8  --  8<  --  */
 
 #ifdef HAVE_SETLOCALE
