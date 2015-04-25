@@ -389,7 +389,7 @@ c_certsave(void *v)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & PS_IN_HOOK)
+      if (pstate & PS_HOOK_MASK)
          val = 0;
       else
          fprintf(stderr, "No applicable messages.\n");

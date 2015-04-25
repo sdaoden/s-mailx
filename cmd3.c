@@ -497,7 +497,7 @@ _fwd(char *str, int recipient_record)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_IN_HOOK) {
+         if (pstate & PS_HOOK_MASK) {
             rv = 0;
             goto jleave;
          }
@@ -509,7 +509,7 @@ _fwd(char *str, int recipient_record)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & PS_IN_HOOK) {
+      if (pstate & PS_HOOK_MASK) {
          rv = 0;
          goto jleave;
       }
@@ -589,7 +589,7 @@ _resend1(void *v, bool_t add_resent)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_IN_HOOK) {
+         if (pstate & PS_HOOK_MASK) {
             f = FAL0;
             goto jleave;
          }
@@ -601,7 +601,7 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & PS_IN_HOOK) {
+      if (pstate & PS_HOOK_MASK) {
          f = FAL0;
          goto jleave;
       }
@@ -634,7 +634,7 @@ _c_file(void *v, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (pstate & PS_IN_HOOK) {
+   if (pstate & PS_HOOK_MASK) {
       fprintf(stderr, _("Cannot change folder from within a hook.\n"));
       i = 1;
       goto jleave;

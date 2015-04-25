@@ -981,7 +981,7 @@ enum program_state {
 
    PS_HOOK_NEWMAIL   = 1<< 6,
    PS_HOOK           = 1<< 7,
-   PS_IN_HOOK        = PS_HOOK_NEWMAIL | PS_HOOK,
+   PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
 
    PS_EDIT           = 1<< 8,       /* Current mailbox not a "system mailbox" */
    PS_SAW_COMMAND    = 1<< 9,       /* ..after mailbox switch */

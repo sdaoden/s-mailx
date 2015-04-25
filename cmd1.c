@@ -1012,7 +1012,7 @@ _pipe1(char *str, int doign)
    if (!needs_list) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_IN_HOOK) {
+         if (pstate & PS_HOOK_MASK) {
             rv = 0;
             goto jleave;
          }
@@ -1023,7 +1023,7 @@ _pipe1(char *str, int doign)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & PS_IN_HOOK) {
+      if (pstate & PS_HOOK_MASK) {
          rv = 0;
          goto jleave;
       }

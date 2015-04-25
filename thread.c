@@ -524,7 +524,7 @@ c_thread(void *vp)
       mb.mb_sorted = sstrdup("thread");
    }
 
-   if (vp != NULL && vp != (void*)-1 && !(pstate & PS_IN_HOOK) &&
+   if (vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
          ok_blook(header))
       rv = print_header_group(vp);
    else
@@ -548,7 +548,7 @@ c_unthread(void *vp)
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
       m->m_collapsed = 0;
 
-   if (vp && !(pstate & PS_IN_HOOK) && ok_blook(header))
+   if (vp && !(pstate & PS_HOOK_MASK) && ok_blook(header))
       rv = print_header_group(vp);
    else
       rv = 0;
@@ -807,7 +807,7 @@ c_sort(void *vp)
    }
    ac_free(ms);
 
-   i = ((vp != NULL && vp != (void*)-1 && !(pstate & PS_IN_HOOK) &&
+   i = ((vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);
 jleave:
    NYD_LEAVE;

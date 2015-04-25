@@ -804,7 +804,7 @@ jreadline:
       temporary_orig_line = ((pstate & PS_SOURCING) ||
          !(options & OPT_INTERACTIVE)) ? NULL
           : savestrbuf(ev.ev_line.s, ev.ev_line.l);
-      pstate &= ~PS_IN_HOOK;
+      pstate &= ~PS_HOOK_MASK;
       if (evaluate(&ev)) {
          if (pstate & PS_LOADING) /* TODO mess; join PS_EVAL_ERROR.. */
             rv = FAL0;
@@ -1021,7 +1021,7 @@ jexec:
             _msgvec[1] = 0;
       }
       if (*_msgvec == 0) {
-         if (!(pstate & PS_IN_HOOK))
+         if (!(pstate & PS_HOOK_MASK))
             printf(_("No applicable messages\n"));
          break;
       }
@@ -1106,7 +1106,7 @@ jleave:
          muvec[1] = 0;
          c_type(muvec); /* TODO what if error?  re-eval! */
       }
-   if (!(pstate & (PS_SOURCING | PS_IN_HOOK)) && !(com->argtype & ARG_T))
+   if (!(pstate & (PS_SOURCING | PS_HOOK_MASK)) && !(com->argtype & ARG_T))
       pstate |= PS_SAW_COMMAND;
 jleave0:
    pstate &= ~PS_EVAL_ERROR;

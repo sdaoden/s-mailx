@@ -103,7 +103,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & PS_IN_HOOK) {
+      if (pstate & PS_HOOK_MASK) {
          success = TRU1;
          goto jleave;
       }

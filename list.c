@@ -438,7 +438,7 @@ number:
          }
       }
       if (!mc) {
-         if (!(pstate & PS_IN_HOOK))
+         if (!(pstate & PS_HOOK_MASK))
             printf(_("No applicable messages.\n"));
          markall_ret(-1)
       }
@@ -450,7 +450,7 @@ number:
          if (message[i].m_flag & MMARK)
             mc = TRU1;
       if (!mc) {
-         if (!(pstate & PS_IN_HOOK)) {
+         if (!(pstate & PS_HOOK_MASK)) {
             if (tback)
                fprintf(stderr, _("No previously marked messages.\n"));
             else
@@ -567,7 +567,7 @@ number:
             break;
          }
       if (j == 0) {
-         if (!(pstate & PS_IN_HOOK) && np > namelist) {
+         if (!(pstate & PS_HOOK_MASK) && np > namelist) {
             printf(_("No applicable messages from {%s"), namelist[0]);
             for (nq = namelist + 1; *nq != NULL; ++nq)
                printf(_(", %s"), *nq);
@@ -614,7 +614,7 @@ jnamesearch_sepfree:
       if (PTRCMP(mp, >=, message + msgCount)) {
          struct coltab const *colp;
 
-         if (!(pstate & PS_IN_HOOK)) {
+         if (!(pstate & PS_HOOK_MASK)) {
             printf(_("No messages satisfy"));
             for (colp = _coltab; colp->co_char != '\0'; ++colp)
                if (colp->co_bit & colmod)
@@ -1034,7 +1034,7 @@ metamess(int meta, int f)
          } else
             ++mp;
       }
-      if (!(pstate & PS_IN_HOOK))
+      if (!(pstate & PS_HOOK_MASK))
          printf(_("No applicable messages\n"));
       goto jem1;
 
@@ -1053,7 +1053,7 @@ metamess(int meta, int f)
          } else
             --mp;
       }
-      if (!(pstate & PS_IN_HOOK))
+      if (!(pstate & PS_HOOK_MASK))
          printf(_("No applicable messages\n"));
       goto jem1;
 

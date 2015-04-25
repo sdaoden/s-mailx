@@ -132,7 +132,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
       }
    while ((ap = ap->a_flink) != NULL);
 
-   pstate &= ~PS_IN_HOOK;
+   pstate &= ~PS_HOOK_MASK;
    execute(linebuf, TRU1, linesize);
 
    if (mnbuf != NULL) {

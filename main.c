@@ -594,7 +594,7 @@ _X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
       ev.ev_line.s = xp->xa_cmd_buf;
       ev.ev_line.l = xp->xa_cmd_len;
       ev.ev_is_recursive = TRU1;
-      pstate &= ~PS_IN_HOOK;
+      pstate &= ~PS_HOOK_MASK;
       rv = (evaluate(&ev) == 0);
       free(xp);
 

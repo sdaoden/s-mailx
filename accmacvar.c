@@ -1499,7 +1499,7 @@ jmac:
       goto jleave;
    }
 
-   pstate &= ~PS_IN_HOOK;
+   pstate &= ~PS_HOOK_MASK;
    if (nmail) {
       pstate |= PS_HOOK_NEWMAIL;
       unroller = NULL;
@@ -1508,7 +1508,7 @@ jmac:
       unroller = &_folder_hook_localopts;
    }
    rv = (_ma_exec(mp, unroller) == 0);
-   pstate &= ~PS_IN_HOOK;
+   pstate &= ~PS_HOOK_MASK;
 
 jleave:
    ac_free(var);
@@ -1543,7 +1543,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if (pstate & PS_IN_HOOK) {
+   if (pstate & PS_HOOK_MASK) {
       fprintf(stderr, _("Cannot change account from within a hook.\n"));
       goto jleave;
    }
@@ -1578,7 +1578,7 @@ c_account(void *v)
       goto jleave;
    }
 
-   if ((pstate & (PS_STARTED | PS_IN_HOOK)) == PS_STARTED) {
+   if ((pstate & (PS_STARTED | PS_HOOK_MASK)) == PS_STARTED) {
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if ((i = setfile("%", 0)) < 0)
