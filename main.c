@@ -615,7 +615,7 @@ main(int argc, char *argv[])
          break;
       case 'a':
          options |= OPT_SENDMODE;
-         {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
+         {  struct a_arg *nap = salloc(sizeof(struct a_arg));
             if (a_head == NULL)
                a_head = nap;
             else
@@ -983,7 +983,6 @@ jgetopt_done:
       if (attach != NULL) {
          a_curr = a_head;
          a_head = a_head->aa_next;
-         ac_free(a_curr);
       } else {
          perror(a_head->aa_file);
          exit_status = EXIT_ERR;
