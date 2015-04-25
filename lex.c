@@ -60,7 +60,7 @@ struct cmd {
 struct cmd_ghost {
    struct cmd_ghost  *next;
    struct str        cmd;        /* Data follows after .name */
-   char              name[VFIELD_SIZE(sizeof(size_t))];
+   char              name[VFIELD_SIZE(0)];
 };
 
 static int              *_msgvec;

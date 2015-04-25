@@ -67,7 +67,7 @@ struct group {
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
     * data follows thereafter, but note this is always used (i.e., for regular
     * expression entries this is still set to the plain string) */
-   char           g_id[VFIELD_SIZE(7)];
+   char           g_id[VFIELD_SIZE(-1)];
 };
 #define GP_TO_SUBCLASS(X,G) \
 do {\
@@ -82,7 +82,7 @@ struct grp_names_head {
 
 struct grp_names {
    struct grp_names  *gn_next;
-   char              gn_id[VFIELD_SIZE(8)];
+   char              gn_id[VFIELD_SIZE(0)];
 };
 
 #ifdef HAVE_REGEX

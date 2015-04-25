@@ -553,7 +553,7 @@ struct htmlflt_href {
    struct htmlflt_href *hfh_next;
    ui32_t      hfh_no;     /* Running sequence */
    ui32_t      hfh_len;    /* of .hfh_dat */
-   char        hfh_dat[VFIELD_SIZE(8)];
+   char        hfh_dat[VFIELD_SIZE(0)];
 };
 
 struct htmlflt_tag {

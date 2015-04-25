@@ -374,7 +374,9 @@
 # define INLINE         inline
 # define SINLINE        static inline
 #else
-# define VFIELD_SIZE(X) (X)
+# define VFIELD_SIZE(X) \
+  ((X) == 0 ? sizeof(size_t) \
+   : ((ssize_t)(X) < 0 ? sizeof(size_t) - (X) : (size_t)(X)))
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
 # if CC_CLANG || PREREQ_GCC(2, 9)
 #   define INLINE       static __inline

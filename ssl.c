@@ -108,7 +108,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    struct myline {
       struct myline  *ml_next;
       size_t         ml_len;
-      char           ml_buf[VFIELD_SIZE(sizeof(uiz_t))];
+      char           ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
    size_t bufsize, buflen, cnt;

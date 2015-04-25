@@ -47,7 +47,7 @@ struct nrc_node {
    ui32_t            nrc_mlen;      /* Length of machine name */
    ui32_t            nrc_ulen;      /* Length of user name */
    ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[VFIELD_SIZE(4)];
+   char              nrc_dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 

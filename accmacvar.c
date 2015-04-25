@@ -84,13 +84,13 @@ struct macro {
 struct mline {
    struct mline   *l_next;
    size_t         l_length;
-   char           l_line[VFIELD_SIZE(sizeof(size_t))];
+   char           l_line[VFIELD_SIZE(0)];
 };
 
 struct var {
    struct var     *v_link;
    char           *v_value;
-   char           v_name[VFIELD_SIZE(sizeof(size_t))];
+   char           v_name[VFIELD_SIZE(0)];
 };
 
 struct var_virtual {
