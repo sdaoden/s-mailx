@@ -34,6 +34,7 @@ With a clean, conforming and efficient codebase, then.
 
 - We should maybe turn -~ into the meaning "force interactive".
   We should extend cc-test.sh, then, to test some interactive things.
+  E.g., via (tcl(1) or, better.., perl(1) (CPAN)) expect.
 
 - We need a "void" box that can be jumped to, i.e., a state in which no box
   at all is active.
@@ -48,11 +49,7 @@ With a clean, conforming and efficient codebase, then.
    in an interactive session, prompt the user what to do.
 
 - IDNA decoding.  Needs a complete design change.
-
-- Mail-Followup-To:.
-
-- mutt(1) quotes all text parts of a message, not only the first one!
-  This should at least be optionally available.
+  (Unless wants to brute force decode anything before display, of course.)
 
 - If pipes fail for part viewers then at least the usual PART X.Y should be
   shown, maybe even including some error message.
@@ -115,6 +112,7 @@ With a clean, conforming and efficient codebase, then.
 - In the very end it is not that hard to add (optional) MTA
   functionality at a most simple level.
   Use sqlite for aliases (and possibly cache), then.
+  (Though a nice dynamic cpdict should also be sufficient.)
 
 - We should support IMAP compression over the wire.
 
@@ -196,20 +194,9 @@ Low-Level
   output goes to stdout and scrolls it off the screen.
   Note that yet some errors messages still go to stdout.
 
-- It would be very nice if it would be possible to have
-  account-specific macros that will be lost when a user switches off
-  an account.
-
--- It would also be very nice if we could define macros while defining
-   account, i.e., recursive definition of macros...
-
 - At some later time extend the logic behind -# -- it should not have
   a current folder, but start in VOID mode (...), and unless one is
   explicitly chosen..  We need a reliable batch mode.
-
-- (Support for mailcap files?  As of RFC 1524?  Unlikely.  Though the
-  % expansions would be very helpful, especially once we can address
-  individuals parts as of v15.0!)
 
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
@@ -219,6 +206,19 @@ Low-Level
   dummies and still use S-nail to look into the separated feeds as if
   they were mail messages; anyway i would like to save me from using too
   many tools -- three seems reasonable.
+
+-- `sync'hronize commando -- robin@stjerndorff.org (Robin Stjerndorff):
+    Wondering how to update back to my Maildir, moving new read mails
+    in ~/Maildir from new to cur, without exiting the application.
+    Automation available?  [And simply re-`[Ff]i' involves a lot of
+    unnecessary work]
+
+-- Provide sync'ing options -- Jacob Gelbman <gelbman@gmail.com>:
+    If I open two instances of mailx, I then delete a message and then
+    quit in one. Then in the other one I read a message and quit, mailx
+    saves the status of the read message and the fact that a message was
+    deleted, even though it was opened before the other instance deleted
+    it. How is it doing that?  [Of course he was using Maildir]
 
 - Add TODO notes for those RFCs:
   RFC 5322 - The basic format of email messages.
@@ -230,12 +230,6 @@ Low-Level
     text (format=flowed).   (Martin Neitzel)
   RFC 2407 - Encoding of non-ASCII text in message headers.
   RFC 2183 - The Content-Disposition Header
-  RFC 2231 - Encoding of character set and language information in MIME
-    parameter values.
-    REALLY!  We currently use RFC 2047 encoded words to encode
-    filename="" stuff which is plain wrong.
-    also we don't decode this at all!
-  SMTP (Simple Mail Transfer Protocol)
   RFC 5321 - Simple Mail Transfer Protocol.
   RFC 6409 - Message Submission for Mail
   RFC 4954 - SMTP Authentication
@@ -252,7 +246,7 @@ Low-Level
   RFC 977 -> 3977 - Network News Transfer Protocol
   RFC 1036 - Standard for USENET Messages
   RFC 2980 - Common NNTP Extensions
-  RFC 2387 - multipart/related
+  RFC 2387 - multipart/related  -- yet handled like /alternative
   RFC 2384,1738 - I.e., Much better URL support
   RFC 5751 - Secure/Multipurpose Internet Mail Extensions (S/MIME)
   RFC 6125 - Representation and Verification of Domain-Based Application
@@ -263,6 +257,12 @@ Low-Level
     Simple Mail Transfer Protocol (SMTP) Service Extension for Delivery
       Status Notifications (DSNs),
     An Extensible Message Format for Delivery Status Notifications
+ RFC 5598 - Internet Mail Architecture
+ RFC 1524 - True support for mailcap files?
+ draft-ietf-uta-email-tls-certs-01.txt
+ SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
+ draft-melnikov-smime-header-signing
+ Considerations for protecting Email header with S/MIME
 
 - This is how the codebase has to be reworked in respect to signals and
   jumping:
@@ -307,6 +307,8 @@ Low-Level
      take favour of reusing that buffer.)
      + Macro execution then no longer needs to clone the macro content
      lines before executing then.
+     + The temporary hack which duplicates the line buffer in order to
+     place the original content in history can be removed again.
  11. Macro execution is potentially recursive.  Meaning that
      `undefine', etc. can occur while macros are executing.
      The simplemost approach would be to have some recursion counter for
@@ -319,6 +321,8 @@ Low-Level
      + The same is true for `account's.  Here things are complicated by
      the global `account_name', i.e., the account could be the current
      one.
+     + That also is: redefinition of names that have yet-pending
+     deletion requests are possible.
  12. It is annoying that you cannot `source' your MAILRC multiple times.
      Defining a macro/account/xy should overwrite the current thing,
      just as it does anyway for normal variables!
@@ -338,8 +342,6 @@ Low-Level
  31. Flag updates of individual messages must find their way through to
      the protocol.
  32. Use deque (on partial views).
- 33. It must be possible to open individual boxes read-only, new command
-     `cfile' (and `cfolder') as a last resort.
  34. We need a new abstraction: `vie[ws]'.  I.e, viewset, viewclear,
      view(show|look)?  We will have (possibly readonly) boxes, a summary
      cache file, which is created when a mailbox is read in, and all
@@ -369,14 +371,10 @@ Low-Level
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
      quit the current mailbox [first -- this not yet]), which is why we
-     either need new trigger characters or new commands (then also in
-     a readonly version, again, it gets lengthy).
+     either need new trigger characters or new commands.
      The absolute sensation would be joinable operations over multiple
      open mailboxes, e.g., views over multiple such!
 100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
-
-TODO S-nail 14.8:
------------------
 
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
@@ -430,9 +428,6 @@ TODO S-nail 14.8:
     clone header _x
     unset _x
 
-- Add a boolify() function, so that things like `localopts' and yorn()
-  may be less strict on user input
-
 - Ensure that `.' and EOF on a line works with all TTY modes (*ignoreeof*
   relationship, too)!  EOF conditions in general!
 
@@ -467,12 +462,9 @@ TODO S-nail 14.8:
     elide/delete_alternates/gexpand/is_myname etc. handling.
     We REALLY need an object based rework of all that.
   . It would be cool if ghosts, shortcuts, alternates could
-    (optionally?) be tracked via localopts.
+    (optionally?) be tracked via localopts.  And macros.  And inner macros.
     (Additional entry on xy-local xy somewhere above)
     And / or local to a macro/account if defined in one.
-  . The spam* series (spam.c:_spam_action()) should abort if the command
-    execution failed, instead of iterating the entire list.  Look into
-    that.
   . DESTDIR= should not be taken into account when deciding wether
     a rebuild is necessary (not wrong to give that to Gaetan Bisson).
   . Just like the RFC 3676 link above, it would be nice if it would be
@@ -523,23 +515,21 @@ TODO S-nail 14.8:
       was actually present on the command line, but i refrained from
       hacking a solution since that buffer must end up as a constant
       (TODOs or so in the source).
+      P.S.: i have hacked that in in [f1ded4c] (as a temporary user
+      goodie because of inconvenience for v14.7.6).
   . getprompt() could reserve for each dynamic entry at least one
     visible offset, so that at least a `?' could be written if the room
     is otherwise insufficient; in addition, if there were 3 such
     dynamics, but all in all two visible offsets would be left, a single
     entry with as much `?' as possible c/should be written, so as to
     indicate the user anything visually.
-  . Make S/MIME an option separate of SSL/TLS
   . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
   . which_protocol(), *newmail* mechanism, displayname, mailname: all of
-    this <rude>SHIT</rude> must be rewritten completely and can be
-    overcome by an object-based mailbox implementation that carries all
-    the necessary state (user given path, expanded realpath(3),
-    abbreviated display path, box-protocol, etc.).  Once we have this,
-    we may as well also re-introduce automatic detection of compressed
-    file-based folders based upon .gz/.bz2/.xz extension.
+    this <rude>SHIT</rude> must vanish and be replaced by a URL, and
+    a nice "VFS" mailbox object that carries all necessary state so that
+    one can work with it.
 
-    If not mentioned somehwere else: struct message should be splitted
+    If not mentioned somewhere else: struct message should be splitted
     into a tree of objects, with a base class that has as few fields as
     possible; the global *message should be a deque, only accessible via
     iterator; it should store pointers to (the actually used subtype of)
@@ -553,14 +543,14 @@ TODO S-nail 14.8:
     support a reusable single temporary file, as in singletmp_take() and
     singletmp_release(), where singletmp_release() would close and thus
     drop the file if it excesses a specific (configurable) size, and the
-    mainloop tick would close it (after X (configurable) ticks))
+    mainloop tick would close it (after X (configurable) unused ticks))
     otherwise.  I guess this would improve performance for searching
     etc. etc.
   . Searching code *could* perform a prepass, joining stuff together,
     dropping useless cases etc.
     But anyway: if there are multiple search expressions, it shouldn't
     be an error if at least one of them matches at least one message.
-  . catset(3) is plain shit, and ever was.  Remove IDs from all tr()s,
+  . _(), N_(), V_():
     use GNU tools for extraction etc., and write a simple helper program
     which converts these files to a serialized hashmap, just like we did
     for the okeys (and *exactly* so); add a config check wether the ({})
@@ -573,8 +563,6 @@ TODO S-nail 14.8:
     *after* the headers have been loaded.
   .      /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
           * TODO the current behaviour is suboptimal AT BEST! */
-  . There MUST be a way to specify that a single SPECIFIC box has to be
-    opened readonly.  only the global -R flag is NOT ENOUGH!
   . The "nifty" unregister_file()->_compress() mechanism that even
     shovels '-Sfolder=imaps://user1@localhost -Srecord="+Sent Items"'
     *records* calls clearerr() on the descriptor before performing it's
@@ -602,8 +590,8 @@ TODO S-nail 14.8:
       2. user compose mode
       3. fully initialize send carrier according to what is "final"
       4. run trigger macros WHICH MAY MODIFY THE MESSAGE AGAIN, so
-      5. fully reinitialize the send carrier
-      6. pass the final message down the send/mime chain
+      5. fully reinitialize the send carrier (as necessary)
+      6. pass the _final_ message down the send/mime chain
   . SMTPS never became a standard and :465 was already reassigned
     (thanks, carriers), but if a user says SMTPS and doesn't specify
     a port also then we could simply assume :465 because except NetBSD
@@ -613,8 +601,6 @@ TODO S-nail 14.8:
     (Ooops - i think this should go to Gianluca Ramunno!)
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
-  . [-- #2 : 41/2761, text/plain, 0001-Israel-DST-transitio --]
-    If not fit, it should do `...'
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
     then the composed mail is lost completely, it seems we jump to the
     very main loop!
@@ -633,8 +619,6 @@ TODO S-nail 14.8:
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
-  . In my ~xother with *nohold* if at the begin i have many large
-    messages i ended up with a truncated *mbox*? what was that?
   . Things like colalign(), makeprint(), colour*, as well as
     possibly even cmd1.c:(__hprf|putindent)(), etc. belong into a cui.c,
     display.c or the like, but not into auxlily.c etc. for sure.
@@ -644,7 +628,7 @@ TODO S-nail 14.8:
     iterator setup function!
   .. Unite
       defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
-     into HAVE_NATCH_CHAR, solely keep that
+     into HAVE_NATCH_CHAR, solely keep that.  But improve the name
   . Using -t should still optionally offer an option to enter editing.
     Also we should support command line arguments on top.
     Add a -T flag for that.  Drop -q, let -T mean the same if no header
@@ -666,7 +650,7 @@ TODO S-nail 14.8:
   . The :d modifier is extremely useless even though POSIX compliant (No
     deleted message or deleted message header shall be displayed by any
     mailx command other than undelete.)
-    If i say p:d or f:d it should work.
+    If i explicitly say p:d or f:d or c:d it should work.
   . The RFC 3798 *disposition-notification-send* mechanism is yet not
     truly conforming (and works with *from*).  Also, this is only the
     sender side, there should be support for creating the MDN response.
@@ -685,8 +669,11 @@ TODO S-nail 14.8:
     makes me think that we should possibly iterate over environ(3) and
     explicitly overtake all values therein, or at least those which have
     a meaning for S-nail; this needn't be as expensive as it sounds.
-  . The *sendmail** variables should have been replaced by *mta** in
-    v15.0!?!
+  .. Some things need to be tracked, e.g. HOME (homedir), TMPDIR
+     (tempdir) or must not be settable (USER).  We should be able to
+     do so (currently "USER" etc. are "assembled") and error out as
+     necessary (currently "setenv USER=goof" just works!)
+  .. More on variables below!
   . We should support more named colours, enabled via a, e.g.,
     *colour-plus*, but provide downgrade colours for given colour names
     if that isn't set. (Gavin Troy)
@@ -741,29 +728,145 @@ TODO S-nail 14.8:
           sh = XSHELL;
       but be done automatically -- why not have yet another enum okeys
       flag that names a preprocessor macro, as in fallback=NAME?
+  ... More on variables above!
   ... fexpand() the 2nd: it should return structure because we need to
       check for FEDIT_SYSBOX, which currently only checks wether the first
       character of a file name is '%', not wether it is '%', '%:FILEPATH'
       or '%VALIDUSER', because that is impossible to do!
+  ... ALL OF THAT: another fexpand() thing below!!
   . On the long run in-memory password storage should be zeroed after
     use, possibly even encoded *during* use.  After v15.
   . Add direct support of gpg-agent(1) and add *agent-lookup* (requires
     libassuan, but is so much more performant than *agent-shell-lookup*).
+    Then again, how about either adding a special config variable or
+    interpreting the very first character of *agent-shell-lookup*
+    specially in order to support caching of looked up passwords?
+    Let it be a number in seconds as necessary?
   . Try to deal with invalid MBOXes: if a final MIME boundary is seen,
     don't require the separating newline before the from (when reading
     the mailbox).
+  . We need a `spamcheck' command that is like `spamrate' but updates
+    the mail in-place, i.e., with the headers that the spam engine adds.
   . My signal handling is pretty messy, too.  E.g., for the new spam
     handling we even reset TTIN etc. etc., whereas for
     *agent-shell-lookup* we don't do just about anything.  Even though
     it work (due to stacking of handlers all over the place etc.), but
     we need to have a clean design at some later time.
+  . How hard would it be adding support for mixmaster?
+  . lex.c:__narrow_suffix() is wrong (for stateful encodings that we
+    don't support yet) and should inject a reset sequence if it shortens
+    the string.
+  .. Ditto field_put_bidi_clip() and possibly more.
+  .. THAT IS TO SAY: the entire codebase doesn't really support stateful
+    encodings, including the bidi_ things that i've done (but the NCL
+    does iirc?  what is this??).  We should have a global string that
+    has the multibyte reset sequence plus length available for easy
+    access.
+  . Note (for v15.0 most likely): when quoting an original message then
+    if that doesn't end with a newline we should automatically add one.
+    I thought about hacking it in via quoteflt in the meanwhile??
+  .. We want this stuff also for message specification btw., look at
+    NetBSD Mail in particular.  (I.e., the parenthesis are yet taken by
+    IMAP searches, but if sole parens are separated by WS, maybe?)
+  . When a user edits a specific header, it should no longer be
+    modified.  This unfortunately requires v15.0 infrastructure.
+  . Regular expression list resorting is no good; the user should be
+    able to specify a match order weight, as in:
+      mlist 10 a@b.org 8 c@d.org .*@else@org 0 almost@never.com
+    So: optional digit 0-10, where 0-4 are never relinked and always
+    placed at the tail, 6-10 are never relinked and always placed at
+    head (all in decreasing order, head to tail), and 5 is the implicit
+    value, placed in between and automatically resorted just as is the
+    sole algorithm we currently have.
+  .. And maybe we should have an event mechanism with one-shot etc..
+     Then install a resorter function when we actually have lookups and
+     one-shot sort the entire thing once (when the loop ticks).
+     Instead of busy resorting, that is.
+  . Some pieces of cake (e.g. usermap()) don't perform actions on
+    addresse(e)s if the first character is a backslash.  Others do.
+    And do we really support that notion all through the codebase.
+    And, even more: should we support that at all?
+  . The var_* series should return "const char*" not "char*".
+    This should already work today because otherwise we would get SEGV
+    all through the way.
+  .. Now that we have flags and VIRTUAL variables we can very well
+     extend that and provide an additional set of DEFVAL.  On the one
+     hand it doesn't make sense to do all those first-time-inits due
+     comply to POSIX compliance, because many get vanished again when
+     the resource(s) is (are) loaded; many others are never ever needed,
+     but still require dynamic memory.  Better to have DEFVAL and
+     a init-on-first-use for those which have this set.
+  .. I think it would really be better if localopts handling is replaced
+     by an "environment" with copy-on-change adjustments via reference
+     counting.  (But not before we have a signal manager.)
+  . We need more hooks: on-leave, on-connect.. whatever
+  . callforeachexec MACRO SHELL..STUFF..
+     -> MACRO called with each line read (in $1 ...)
+  . fio.c:_globname() is a security risk, but anyway the current POSIX
+    definition of wordexp(3) is a joke (Rich Felker,
+    gmane.comp.security.oss.general-15785).  Beside that.
+    What can be encapsulated in the v15.0 URL object (scheme:// prefix).
+    Otherwise and in addition: change semantics in v15.0, support POSIX:
+      Several unquoted special characters shall be recognized when used
+      as file names, with the following substitutions:
+      %       The system mailbox for the invoking user.
+      %user   The system mailbox for user.
+      #       The previous file.
+      &       The current mbox.
+      +file   The named file in the folder directory. (See the folder variable.)
+    --> Transition to internal mechanism started with topic/fexpand.2.
+    .. The new internal expansion mechanism should possibly get support
+       for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
+       There is no real way to get the functionality otherwise...
+  . struct ignoretab and handling can be merged with the new generic
+    struct group stuff (with some effort) and localized in nam_a_grp.c,
+    then.  Then -- rename that file to grpignnam.c??  :-)
+  . run_command()++: when we change TTY modes then if we "release" the
+    terminal to child processes (note STDERR...) then we should
+    proactively reset before exec and reinstantiate once the child has
+    finished.  Maybe the former anyway.  I.e.: don't rely on the shell.
+    Also, if our stdin is a pipe we possibly want to adjust that for the
+    child instead of simply leaving the fd alone, which isn't an
+    impossible case as of today.
+  . Make S/MIME an option separate of SSL/TLS, i.e., optional.
+  . Read https://tools.ietf.org/html/draft-ietf-uta-tls-bcp-07.
+    Can we implement OCSP (see RFC 6066)????
   . With very long input Heirloom mailx(1) / S-nail(1) can produce
     encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
     non self-contained encoded-words).
-  . How hard would it be adding support for mixmaster?
-  . We need to ensure that pipe hooks can access $TMPDIR in their
-    environment and that $TMPDIR is a valid accessible directory.
-    While here we could also create a temporary name that doesn't exist
-    in $TMPDIR at the time we test and pass that to pipe handlers, too.
+  . Group addresses, especially the undisclosed recipients but also
+    "Bla": addresses; are missing.
+  . The interface must be straight.  "history clear" -> "unhistory".
+    Ugly but straight.  And ditto all the stuff in equal spirit.
+  . ~@: comma-separated list input should be possible even for filenames
+    which include commas, proper quoting provided.  Adjust manual
+  . It is terrible that -S sets variables twice, at once and after the
+    resource files have been loaded.  Instead we should look for
+    PS_LOADING and simply don't overwrite variables that are yet set; of
+    course this interferes with the plain basic settings which we yet
+    establish for POSIX compliance -- i.e., first we need a compile-time
+    automatism for those, thereafter... Ok we still need a bit to mark
+    them, but isn't it worth the effort.
+  . The Base64 decoder must become a filter with its own buffer, so that
+    we can join splitted sequences etc.; yes, that is invalid, but we
+    should be tolerant (tolerant on input, strict on output - right?).
+    mutt(1), e.g., even tolerates characters that are invalid ($,!,?++)
+    and simply ignores them.  This is great on the one and shit on the
+    other hand -- if like that, the error ring should at least mention
+    that the message WAS FAULTY.  E.g., mutt(1) ignores long,long
+    sequences of those bytes, which i don't consider a good thing..
+    And then, should we (really, see mime_enc.c) make a difference in
+    B64_T and B64, ... and regarding this??
+  . OPT_INTERACTIVE and ARG_I are two different kinds of
+    "interactivity".  The latter should be "non-loading/sourcing".
+
+--
+
+  . We can "steal" features from msmtp(1) that make sense: SOCKS support
+    (primitive) and /etc/aliases ($mta_alias_file).  At least postfix(1)
+    supports file and pipe addressees in the latter...  It also
+    supports include files via :include:/filename but which i think
+    should be supported in a second step.  Ditto caching (timestamp
+    check and a mechanism to support/disable caching.)
 
 # s-ts-mode
