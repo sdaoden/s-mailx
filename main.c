@@ -64,6 +64,12 @@ struct a_arg {
    char           *aa_file;
 };
 
+struct X_arg {
+   struct X_arg   *xa_next;
+   size_t         xa_cmd_len;
+   char           xa_cmd_buf[VFIELD_SIZE(sizeof(size_t))];
+};
+
 /* (extern, but not with amalgamation, so define here) */
 VL char const        weekday_names[7 + 1][4] = {
    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
@@ -135,10 +141,14 @@ static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int     _rcv_mode(char const *folder, char const *Larg);
+static int     _rcv_mode(char const *folder, char const *Larg,
+                  struct X_arg *xhp);
 
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
+
+/* -X arg given at least once, evaluate the list in order */
+static bool_t  _X_arg_eval(struct X_arg *xhp);
 
 static int
 _getopt(int argc, char * const argv[], char const *optstring)
@@ -487,7 +497,7 @@ jleave:
 static sigjmp_buf __hdrjmp; /* XXX */
 
 static int
-_rcv_mode(char const *folder, char const *Larg)
+_rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
 {
    char *cp;
    int i;
@@ -538,11 +548,13 @@ _rcv_mode(char const *folder, char const *Larg)
    }
 
    /* Enter the command loop */
-   if (options & OPT_INTERACTIVE)
-      tty_init();
-   commands();
-   if (options & OPT_INTERACTIVE)
-      tty_destroy();
+   if (xhp == NULL || _X_arg_eval(xhp)) {
+      if (options & OPT_INTERACTIVE)
+         tty_init();
+      commands();
+      if (options & OPT_INTERACTIVE)
+         tty_destroy();
+   }
 
    if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
       safe_signal(SIGHUP, SIG_IGN);
@@ -567,26 +579,64 @@ _hdrstop(int signo)
    siglongjmp(__hdrjmp, 1);
 }
 
+static bool_t
+_X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
+{
+   struct eval_ctx ev;
+   struct X_arg *xp;
+   bool_t rv = TRU1;
+   NYD_ENTER;
+
+   while ((xp = xhp) != NULL) {
+      xhp = xp->xa_next;
+
+      memset(&ev, 0, sizeof ev);
+      ev.ev_line.s = xp->xa_cmd_buf;
+      ev.ev_line.l = xp->xa_cmd_len;
+      ev.ev_is_recursive = TRU1;
+      pstate &= ~PS_IN_HOOK;
+      rv = (evaluate(&ev) == 0);
+      free(xp);
+
+      if (!rv) {
+         if (exit_status == EXIT_OK)
+            exit_status = EXIT_ERR;
+         break;
+      }
+      if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
+         if (exit_status != EXIT_OK)
+            break;
+         if (pstate & PS_EVAL_ERROR) {
+            exit_status = EXIT_ERR;
+            break;
+         }
+      }
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#.",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
          "  %s [-BDdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
-         "\t [-s subject] [-.] to-address... [-- mta-option...]\n"
+         "\t [-s subject] [-X cmd] [-.] to-address... [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
-         "\t -f [file] [-- mta-option...]\n"
+         "\t [-X cmd] -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
-         "\t [-u user] [-- mta-option...]\n"
+         "\t [-u user] [-X cmd] [-- mta-option...]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
+   struct X_arg *X_head = NULL, *X_curr = /* silence CC */ NULL;
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
@@ -768,6 +818,20 @@ joarg:
          ok_bset(verbose, TRU1);
          okey = "verbose";
          goto joarg;
+      case 'X': {
+            size_t l = strlen(_oarg);
+            struct X_arg *nxp = smalloc(sizeof(*nxp) -
+                  VFIELD_SIZEOF(struct X_arg, xa_cmd_buf) + l +1);
+            if (X_head == NULL)
+               X_head = nxp;
+            else
+               X_curr->xa_next = nxp;
+            X_curr = nxp;
+            nxp->xa_next = NULL;
+            nxp->xa_cmd_len = l;
+            memcpy(nxp->xa_cmd_buf, _oarg, l +1);
+         }
+         break;
       case '~':
          /* Enable tilde escapes even in non-interactive mode */
          options |= OPT_TILDE_FLAG;
@@ -970,7 +1034,7 @@ jgetopt_done:
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
-      exit_status = _rcv_mode(folder, Larg);
+      exit_status = _rcv_mode(folder, Larg, X_head);
       goto jleave;
    }
 
@@ -991,11 +1055,13 @@ jgetopt_done:
    }
 
    /* xxx exit_status = EXIT_OK; */
-   if (options & OPT_INTERACTIVE)
-      tty_init();
-   mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-   if (options & OPT_INTERACTIVE)
-      tty_destroy();
+   if (X_head == NULL || _X_arg_eval(X_head)) {
+      if (options & OPT_INTERACTIVE)
+         tty_init();
+      mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+      if (options & OPT_INTERACTIVE)
+         tty_destroy();
+   }
 
 jleave:
 #ifdef HAVE_TERMCAP

@@ -53,6 +53,7 @@
 .ds OP [Option]
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
+.ds EX (EXPERIMENTAL)
 .
 .Dt "\*(UU" 1
 .Os
@@ -80,6 +81,7 @@
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl s Ar subject
+.Op Fl X Ar cmd
 .Op Fl \&.
 .Ar to-addr ...
 .Op Fl - Ar mta-option ...
@@ -91,6 +93,7 @@
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl X Ar cmd
 .Fl f Op Ar file
 .Op Fl - Ar mta-option ...
 .Ek
@@ -102,6 +105,7 @@
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
+.Op Fl X Ar cmd
 .Op Fl - Ar mta-option ...
 .Ek
 .\" }}}
@@ -399,6 +403,18 @@ Setting the
 .Va verbose
 option causes some verbosity (like printing of certificate chains).
 Using it twice increases the level of verbosity.
+.
+.Mx
+.It Fl X Ar cmd
+\*(EX Add the given
+.Ar cmd
+to the list of commands to be executed before normal operation starts.
+Correlates with
+.Fl #
+and
+.Va batch-exit-on-error ;
+the only possibility to execute commands in non-interactive mode when
+reading startup files is actively prohibited.
 .
 .Mx
 .It Fl ~
