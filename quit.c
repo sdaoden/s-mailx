@@ -324,8 +324,7 @@ jnewmail:
       goto jleave;
    }
 
-   if (fcntl_lock(fileno(fbuf), FLOCK_WRITE) == -1 ||
-         dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1) {
+   if (!dot_lock(mailname, fileno(fbuf), 1)) {
       perror(_("Unable to lock mailbox"));
       Fclose(fbuf);
       fbuf = NULL;

@@ -386,8 +386,8 @@ c_certsave(void *v)
    if (!f) {
       msgvec[1] = 0;
       *msgvec = first(0, MMNORM);
-   } else
-      getmsglist(str, msgvec, 0);
+   } else if (getmsglist(str, msgvec, 0) < 0)
+      goto jleave;
    if (*msgvec == 0) {
       if (pstate & PS_IN_HOOK)
          val = 0;

@@ -551,11 +551,15 @@ FL bool_t
 is_dir(char const *name)
 {
    struct stat sbuf;
-   bool_t rv = FAL0;
+   bool_t rv;
    NYD_ENTER;
 
-   if (!stat(name, &sbuf))
-      rv = (S_ISDIR(sbuf.st_mode) != 0);
+   for (rv = FAL0;;)
+      if (!stat(name, &sbuf)) {
+         rv = (S_ISDIR(sbuf.st_mode) != 0);
+         break;
+      } else if (errno != EINTR)
+         break;
    NYD_LEAVE;
    return rv;
 }

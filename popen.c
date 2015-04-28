@@ -578,7 +578,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    if ((fd = mkstemp(cp_base)) == -1)
       goto jfree;
    if (!(oflags & OF_REGISTER))
-      fcntl(fd, F_SETFD, FD_CLOEXEC);
+      (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
    if (oflags & OF_APPEND) { /* XXX include CLOEXEC here, drop above, then */
       int f;
 
@@ -666,8 +666,8 @@ pipe_cloexec(int fd[2])
 #else
    if (pipe(fd) == -1)
       goto jleave;
-   fcntl(fd[0], F_SETFD, FD_CLOEXEC);
-   fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+   (void)fcntl(fd[0], F_SETFD, FD_CLOEXEC);
+   (void)fcntl(fd[1], F_SETFD, FD_CLOEXEC);
 #endif
    rv = TRU1;
 jleave:

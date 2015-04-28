@@ -1497,7 +1497,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (sofd >= 0) {
 #  ifdef HAVE_SO_SNDTIMEO
-         setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+         (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
          if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
             close(sofd);
@@ -1550,7 +1550,7 @@ jjumped:
       fprintf(stderr, _("%sConnecting to %s:%d ..."),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
-   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
       perror(_(" could not connect"));
@@ -1567,13 +1567,13 @@ jjumped:
 # ifdef HAVE_SO_SNDTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
-   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-   setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 # endif
 # ifdef HAVE_SO_LINGER
    li.l_onoff = 1;
    li.l_linger = 42;
-   setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
    memset(sp, 0, sizeof *sp);
