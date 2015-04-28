@@ -1386,7 +1386,7 @@ __start_mta(struct sendbundle *sbp)
 
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
-   if ((pid = fork()) == -1) {
+   if ((pid = fork_child()) == -1) {
       perror("fork");
 jstop:
       savedeadletter(sbp->sb_input, 0);

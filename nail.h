@@ -1153,12 +1153,19 @@ enum okeys {
    ok_v_smtp_auth_password,
    ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
-   ok_v_spam_command,
-   ok_v_spam_host,
+   ok_v_spam_interface,
    ok_v_spam_maxsize,
-   ok_v_spam_port,
-   ok_v_spam_socket,
-   ok_v_spam_user,
+   ok_v_spamc_command,
+   ok_v_spamc_arguments,
+   ok_v_spamc_user,
+   ok_v_spamd_socket,
+   ok_v_spamd_user,
+   ok_v_spamfilter_ham,
+   ok_v_spamfilter_noham,
+   ok_v_spamfilter_nospam,
+   ok_v_spamfilter_rate,
+   ok_v_spamfilter_rate_scanscore,
+   ok_v_spamfilter_spam,
    ok_v_ssl_ca_dir,
    ok_v_ssl_ca_file,
    ok_v_ssl_cert,
@@ -1411,7 +1418,8 @@ enum mflag {
    MUNDRAFT       = (1<<24),  /* message has been undrafted */
    MDRAFTED       = (1<<25),  /* message is marked as `draft' */
    MOLDMARK       = (1<<26),  /* messages was marked previously */
-   MSPAM          = (1<<27)   /* message is classified as spam */
+   MSPAM          = (1<<27),  /* message is classified as spam */
+   MSPAMUNSURE    = (1<<28)   /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)

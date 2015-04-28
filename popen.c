@@ -89,8 +89,8 @@ static int           file_pid(FILE *fp);
 static void          _sigchld(int signo);
 
 static int           wait_command(int pid);
-static struct child *findchild(int pid);
-static void          delchild(struct child *cp);
+static struct child *_findchild(int pid, bool_t create);
+static void          _delchild(struct child *cp);
 
 static int
 scan_mode(char const *mode, int *omode)
@@ -275,24 +275,27 @@ file_pid(FILE *fp)
 static void
 _sigchld(int signo)
 {
-   int pid, status;
+   pid_t pid;
+   int status;
    struct child *cp;
    NYD_X; /* Signal handler */
    UNUSED(signo);
 
    for (;;) {
-      pid = (int)waitpid((pid_t)-1, &status, WNOHANG);
+      pid = waitpid(-1, &status, WNOHANG);
       if (pid <= 0) {
          if (pid == -1 && errno == EINTR)
             continue;
          break;
       }
-      cp = findchild(pid);
-      if (cp->free)
-         delchild(cp);
-      else {
-         cp->done = 1;
-         cp->status = status;
+
+      if ((cp = _findchild(pid, FAL0)) != NULL) {
+         if (cp->free)
+            _delchild(cp);
+         else {
+            cp->done = 1;
+            cp->status = status;
+         }
       }
    }
 }
@@ -313,7 +316,7 @@ wait_command(int pid)
 }
 
 static struct child *
-findchild(int pid)
+_findchild(int pid, bool_t create)
 {
    struct child **cpp;
    NYD_ENTER;
@@ -321,7 +324,8 @@ findchild(int pid)
    for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
          cpp = &(*cpp)->link)
       ;
-   if (*cpp == NULL) {
+
+   if (*cpp == NULL && create) {
       *cpp = smalloc(sizeof **cpp);
       (*cpp)->pid = pid;
       (*cpp)->done = (*cpp)->free = 0;
@@ -332,15 +336,23 @@ findchild(int pid)
 }
 
 static void
-delchild(struct child *cp)
+_delchild(struct child *cp)
 {
    struct child **cpp;
    NYD_ENTER;
 
-   for (cpp = &_popen_child; *cpp != cp; cpp = &(*cpp)->link)
-      ;
-   *cpp = cp->link;
-   free(cp);
+   cpp = &_popen_child;
+   for (;;) {
+      if (*cpp == cp) {
+         *cpp = cp->link;
+         free(cp);
+         break;
+      }
+      if (*(cpp = &(*cpp)->link) == NULL) {
+         DBG( fputs("! popen.c:_delchild(): implementation error\n", stderr); )
+         break;
+      }
+   }
    NYD_LEAVE;
 }
 
@@ -750,6 +762,24 @@ close_all_files(void)
 }
 
 FL int
+fork_child(void)
+{
+   struct child *cp;
+   int pid;
+   NYD_ENTER;
+
+   cp = _findchild(0, TRU1);
+
+   if ((cp->pid = pid = fork()) == -1) {
+      _delchild(cp);
+      perror("fork");
+   }
+
+   NYD_LEAVE;
+   return pid;
+}
+
+FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2)
 {
@@ -772,7 +802,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    int rv;
    NYD_ENTER;
 
-   if ((rv = fork()) == -1) {
+   if ((rv = fork_child()) == -1) {
       perror("fork");
       rv = -1;
    } else if (rv == 0) {
@@ -878,11 +908,12 @@ free_child(int pid)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = findchild(pid);
-   if (cp->done)
-      delchild(cp);
-   else
-      cp->free = 1;
+   if ((cp = _findchild(pid, FAL0)) != NULL) {
+      if (cp->done)
+         _delchild(cp);
+      else
+         cp->free = 1;
+   }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
    NYD_LEAVE;
@@ -901,11 +932,14 @@ wait_child(int pid, int *wait_status)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = findchild(pid);
-   while (!cp->done)
-      sigsuspend(&oset);
-   ws = cp->status;
-   delchild(cp);
+   cp = _findchild(pid, FAL0);
+   if (cp != NULL) {
+      while (!cp->done)
+         sigsuspend(&oset);
+      ws = cp->status;
+      _delchild(cp);
+   } else
+      ws = 0;
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
 

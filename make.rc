@@ -133,9 +133,21 @@ WANT_TABEXPAND=yes
 WANT_TERMCAP=no
 
 # Interaction with a spam email filter is possible.
-# Refer to all commands with a `spam' prefix, and see the manual section
-# "Handling spam" (`./nail.1')
-WANT_SPAM=yes
+# Refer to all commands and variables with a "spam" prefix, and see the manual
+# example section "Handling spam" (`./nail.1').
+# . WANT_SPAM_SPAMC:
+#   Support for interaction with spamassassin(1)s spamc(1).
+# . WANT_SPAM_SPAMD:
+#   Direct communication with spamassassin(1)s spamd(1).
+#   Needs WANT_SOCKETS support and unix(4) domain sockets (checked).
+#   This can be "require"d.
+# . WANT_SPAM_FILTER:
+#   Generic filter hook which can be used with e.g. bogofilter(1) and
+#   sylfilter(1): see documentation for the *spam-filter-** variables for
+#   expected application behaviour.
+WANT_SPAM_SPAMC=no
+WANT_SPAM_SPAMD=no
+WANT_SPAM_FILTER=yes
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may

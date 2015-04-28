@@ -1502,6 +1502,9 @@ FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
 FL void        close_all_files(void);
 
+/* Fork a child process, enable use of the *child() series below */
+FL int         fork_child(void);
+
 /* Run a command without a shell, with optional arguments and splicing of stdin
  * and stdout.  The command name can be a sequence of words.  Signals must be
  * handled by the caller.  "Mask" contains the signals to ignore in the new
@@ -1516,9 +1519,10 @@ FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
                   char const **env_addon);
 
+/* In-child process */
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 
-/* Mark a child as don't care */
+/* Mark a child as don't care - pid */
 FL void        free_child(int pid);
 
 /* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.

@@ -77,7 +77,8 @@ enum {
    CMFLAG   = 1<<5,  /* Flagged messages */
    CMANSWER = 1<<6,  /* Answered messages */
    CMDRAFT  = 1<<7,  /* Draft messages */
-   CMSPAM   = 1<<8   /* Spam messages */
+   CMSPAM   = 1<<8,  /* Spam messages */
+   CMSPAMUN = 1<<9   /* Maybe spam messages (unsure) */
 };
 
 struct coltab {
@@ -102,6 +103,7 @@ static struct coltab const _coltab[] = {
    { 'a',   CMANSWER,   MANSWERED,  MANSWERED },
    { 't',   CMDRAFT,    MDRAFTED,   MDRAFTED },
    { 's',   CMSPAM,     MSPAM,      MSPAM },
+   { 'S',   CMSPAMUN,   MSPAMUNSURE, MSPAMUNSURE },
    { '\0',  0,          0,          0 }
 };
 

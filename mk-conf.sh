@@ -15,7 +15,7 @@ option_reset() {
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
-   WANT_SPAM=0
+   WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
@@ -34,7 +34,7 @@ option_maximal() {
    WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
-   WANT_SPAM=1
+   WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
    WANT_COLOUR=1
@@ -58,6 +58,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=1
       WANT_NCL=1
          WANT_HISTORY=1
+      WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       ;;
@@ -97,6 +98,10 @@ fi
 
 # Inter-relationships
 option_update() {
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&\
+         feat_no SPAM_SPAMD; then
+      WANT_SOCKETS=0
+   fi
    if feat_no SOCKETS; then
       if feat_require SMTP; then
          msg "ERROR: need SOCKETS for required feature SMTP\\n"
@@ -111,19 +116,18 @@ option_update() {
          config_exit 13
       fi
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
-      WANT_NETRC=0 WANT_AGENT=0
-   fi
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      WANT_SOCKETS=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_NETRC=0 WANT_AGENT=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+      WANT_SPAM_SPAMD=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
    fi
+
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
+
    # If we don't need MD5 except for producing boundary and message-id strings,
    # leave it off, plain old srand(3) should be enough for that purpose.
    if feat_no SOCKETS; then
@@ -890,6 +894,23 @@ else
    echo '/* WANT_SOCKETS=0 */' >> ${h}
 fi # feat_yes SOCKETS
 
+if feat_yes SOCKETS && feat_yes SPAM_SPAMD; then
+   link_check af_unix 'for UNIX-domain sockets' \
+      '#define HAVE_UNIX_SOCKETS' << \!
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+int main(void)
+{
+   struct sockaddr_un sun;
+   socket(AF_UNIX, SOCK_STREAM, 0);
+   connect(0, (struct sockaddr*)&sun, 0);
+   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+   return 0;
+}
+!
+fi
+
 feat_yes SOCKETS &&
 link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
@@ -1407,13 +1428,32 @@ else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
 
-if feat_yes SPAM; then
-   echo '#define HAVE_SPAM' >> ${h}
+if feat_yes SPAM_SPAMC; then
+   echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+      echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
 else
-   echo '/* WANT_SPAM=0 */' >> ${h}
+   echo '/* WANT_SPAM_SPAMC=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMD && [ -n "${have_af_unix}" ]; then
+   echo '#define HAVE_SPAM_SPAMD' >> ${h}
+else
+   feat_bail_required SPAM_SPAMD
+   echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_FILTER; then
+   echo '#define HAVE_SPAM_FILTER' >> ${h}
+else
+   echo '/* WANT_SPAM_FILTER=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
+   echo '#define HAVE_SPAM' >> ${h}
+else
+   echo '/* HAVE_SPAM */' >> ${h}
 fi
 
 if feat_yes DOCSTRINGS; then
@@ -1483,7 +1523,9 @@ printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
@@ -1590,7 +1632,16 @@ ${cat} > ${tmp2}.c << \!
 : + Terminal capability queries
 #endif
 #ifdef HAVE_SPAM
-: + Interaction with spam filters
+: + Spam management
+# ifdef HAVE_SPAM_SPAMC
+: + + Via spamc(1) (of spamassassin(1))
+# endif
+# ifdef HAVE_SPAM_SPAMD
+: + + Directly via spamd(1) (of spamassassin(1))
+# endif
+# ifdef HAVE_SPAM_FILTER
+: + + Via freely configurable *spam-filter-XY*s
+# endif
 #endif
 #ifdef HAVE_DOCSTRINGS
 : + Documentation summary strings
@@ -1655,7 +1706,7 @@ ${cat} > ${tmp2}.c << \!
 : - Terminal capability queries
 #endif
 #ifndef HAVE_SPAM
-: - Interaction with spam filters
+: - Spam management
 #endif
 #ifndef HAVE_DOCSTRINGS
 : - Documentation summary strings
