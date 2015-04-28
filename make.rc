@@ -124,6 +124,14 @@ WANT_HISTORY=yes
 # Turning it off shrinks the binary.  Please see the respective manual entry
 WANT_TABEXPAND=yes
 
+# NOTE:  EXPERIMENTAL!  DON'T ENABLE IN SHIPOUT VERSIONS!  Read the manual.
+# Use termcap(3) for terminal control; can be "require"d.
+# - When *term-ca-mode* is set:
+#   . On startup emit "ti" (smcup / enter_ca_mode)
+#   . On exit emit "te" (rmcup / exit_ca_mode)
+# TODO use TERMCAP for key detection, implement NCL2 based on it
+WANT_TERMCAP=no
+
 # Interaction with a spam email filter is possible.
 # Refer to all commands with a `spam' prefix, and see the manual section
 # "Handling spam" (`./nail.1')

@@ -898,6 +898,14 @@ jgetopt_done:
          (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 
+   /* We had to wait until the resource files are loaded but it is time to get
+    * the termcap going, so that *term-ca-mode* won't hide our output for us */
+#ifdef HAVE_TERMCAP
+   if ((options & (OPT_INTERACTIVE | OPT_HEADERSONLY | OPT_HEADERLIST))
+         == OPT_INTERACTIVE)
+      termcap_init(); /* TODO program state machine */
+#endif
+
    /* Now we can set the account */
    if (Aarg != NULL) {
       char const *a[2];
@@ -977,6 +985,10 @@ jgetopt_done:
       tty_destroy();
 
 jleave:
+#ifdef HAVE_TERMCAP
+   if (options & OPT_INTERACTIVE)
+      termcap_destroy();
+#endif
 #ifdef HAVE_DEBUG
    sreset(FAL0);
    smemcheck();
@@ -992,6 +1004,10 @@ c_rexit(void *v) /* TODO program state machine */
    NYD_ENTER;
 
    if (!sourcing) {
+#ifdef HAVE_TERMCAP
+      if (options & OPT_INTERACTIVE)
+         termcap_destroy();
+#endif
       exit(0);
    }
    NYD_LEAVE;

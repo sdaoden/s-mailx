@@ -15,6 +15,7 @@ if [ -n "${CONFIG}" ]; then
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
+   WANT_TERMCAP=0
    WANT_SPAM=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
@@ -61,6 +62,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=1
       WANT_NCL=1
          WANT_HISTORY=1 WANT_TABEXPAND=1
+      WANT_TERMCAP=1
       WANT_SPAM=1
       WANT_DOCSTRINGS=1
       WANT_QUOTE_FOLD=1
@@ -1338,6 +1340,53 @@ else
    echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
+if feat_yes TERMCAP; then
+   __termlib() {
+      link_check termcap "for termcap(3) (via ${4})" \
+         "#define HAVE_TERMCAP${3}" "${1}" << _EOT
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+${2}
+#include <term.h>
+#define PTR2SIZE(X)     ((unsigned long)(X))
+#define UNCONST(P)      ((void*)(unsigned long)(void const*)(P))
+static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
+int main(void)
+{
+   char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+   tgetent(buf, getenv("TERM"));
+   cpb = cmdbuf;
+   cpti = cpb;
+   if ((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
+      goto jleave;
+   cpte = cpb;
+   if ((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
+      goto jleave;
+   _termcap_buffer = malloc(PTR2SIZE(cpb - cmdbuf));
+   memcpy(_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
+   _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
+   _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
+   tputs(_termcap_ti, 1, &putchar);
+   tputs(_termcap_te, 1, &putchar);
+jleave:
+   return (cp == NULL);
+}
+_EOT
+   }
+
+   __termlib -ltermcap '' '' termcap ||
+      __termlib -ltermcap '#include <curses.h>' '
+         #define HAVE_TERMCAP_CURSES' \
+         'curses.h / -ltermcap' ||
+      __termlib -lcurses '#include <curses.h>' '
+         #define HAVE_TERMCAP_CURSES' \
+         'curses.h / -lcurses' ||
+      feat_bail_required TERMCAP
+else
+   echo '/* WANT_TERMCAP=0 */' >> ${h}
+fi
+
 if feat_yes SPAM; then
    echo '#define HAVE_SPAM' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
@@ -1413,6 +1462,7 @@ printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
@@ -1516,6 +1566,9 @@ ${cat} > ${tmp2}.c << \!
 : + + History management
 # endif
 #endif
+#ifdef HAVE_TERMCAP
+: + Terminal capability queries
+#endif
 #ifdef HAVE_SPAM
 : + Interaction with spam filters
 #endif
@@ -1577,6 +1630,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
+#endif
+#ifndef HAVE_TERMCAP
+: - Terminal capability queries
 #endif
 #ifndef HAVE_SPAM
 : - Interaction with spam filters

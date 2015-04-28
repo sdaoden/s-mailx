@@ -77,7 +77,7 @@ static void             readin(char const *name, struct message *m);
 
 static void             maildir_update(void);
 
-static void             move(struct message *m);
+static void             _maildir_move(struct message *m);
 
 static char *           mkname(time_t t, enum mflag f, char const *pref);
 
@@ -354,7 +354,7 @@ maildir_update(void)
          if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS) ||
                (m->m_flag & (MNEW | MBOXED | MSAVED | MSTATUS | MFLAG |
                MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))) {
-            move(m);
+            _maildir_move(m);
             ++modflags;
          }
          ++held;
@@ -379,7 +379,7 @@ jfree:
 }
 
 static void
-move(struct message *m)
+_maildir_move(struct message *m)
 {
    char *fn, *new;
    NYD_ENTER;

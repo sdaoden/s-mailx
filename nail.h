@@ -1014,6 +1014,7 @@ enum okeys {
    ok_b_smime_sign,
    ok_b_smtp_use_starttls,
    ok_b_ssl_no_default_ca,
+   ok_b_term_ca_mode,
    ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
    ok_b_writebackedited,
