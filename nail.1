@@ -776,11 +776,14 @@ instead in order to prevent any of these actions.
 .
 Messages which are HTML-only get more and more common and of course many
 messages come bundled with a bouquet of MIME attachments.
-\*(UA can't deal with any of these itself, but instead programs need to
-become registered to deal with specific MIME types or file extensions;
-these programs may either prepare a plain text version of its input,
-i.e., in order to enable \*(UA to display the content on the terminal
-(or, as necessary and desired, through
+Whereas \*(UA \*(OPally supports a simple HTML-to-text converter to deal
+with HTML message (see
+.Sx "THE mime.types FILES" ) ,
+\*(UA normally can't deal with any of these itself, but instead programs
+need to become registered to deal with specific MIME types or file
+extensions; these programs may either prepare a plain text version of
+its input, i.e., in order to enable \*(UA to display the content on the
+terminal (or, as necessary and desired, through
 .Ev PAGER Ns
 ), or display the content themselves, for example in a graphical window.
 The latter type of programs by default
@@ -801,8 +804,9 @@ The variable
 .Va mime-counter-evidence
 can be set to improve dealing with faulty MIME part declarations as are
 often seen in real-life messages.
-E.g., to display a HTML message inline (that is, converted to plain
-text) with either of the text-mode browsers
+E.g., to display a HTML message inline (that is, converted to a more
+fancy plain text representation than the builtin converter is capable to
+produce) with either of the text-mode browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
@@ -810,8 +814,10 @@ teach \*(UA about MathML documents and make it display them as plain text
 and to open PDF attachments in an external PDF viewer, asynchronously:
 .
 .Bd -literal -offset indent
-#set pipe-text/html="elinks -force-html -dump 1"
-set pipe-text/html="lynx -stdin -dump -force_html"
+if $features !@ HTML-FILTER
+  #set pipe-text/html="elinks -force-html -dump 1"
+  set pipe-text/html="lynx -stdin -dump -force_html"
+endif
 mimetype 'application/mathml+xml mathml'
 set pipe-application/mathml+xml=@
 set pipe-application/pdf="@&cat > \e
@@ -6863,7 +6869,7 @@ The same as plain
 .Ar @ .
 .It Ar @h@
 Treat message parts with this content as HTML tagsoup.
-If the (primitive) HTML-tagsoup-to-text converter is not available treat
+If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
 .It Ar @H@
 Likewise

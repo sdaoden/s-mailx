@@ -161,6 +161,13 @@ WANT_DOCSTRINGS=yes
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
 WANT_QUOTE_FOLD=yes
 
+# We do have a very primitive HTML tagsoup filter which can be used to
+# convert HTML to plain text for display purposes.  If enabled it'll be used
+# for all MIME types which have the @h@ or @H@ type markers (more on this in
+# the manual section "THE mime.types FILES").
+# And which don't have any user defined MIME type handler, of course.
+WANT_FILTER_HTML_TAGSOUP=yes
+
 # A simple form of coloured output can optionally be produced (see manual)
 WANT_COLOUR=yes
 

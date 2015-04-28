@@ -521,12 +521,15 @@ _pipecmd(char const **result, struct mimepart const *mpp)
    *result = NULL;
 
    /* Do we have any handler for this part? */
-   if ((cp = mime_type_mimepart_handler(mpp)) == NULL ||
-         cp == MIME_TYPE_HANDLER_HTML)
+   if ((cp = mime_type_mimepart_handler(mpp)) == NULL)
       rv = PIPE_NULL;
    else if (cp == MIME_TYPE_HANDLER_TEXT)
       rv = PIPE_TEXT;
-   else if (*cp != '@') {
+   else if (
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+         cp == MIME_TYPE_HANDLER_HTML ||
+#endif
+         *cp != '@') {
       *result = cp;
       rv = PIPE_COMM;
    } else if (!(pstate & PS_MSGLIST_DIRECT)) {
@@ -569,6 +572,16 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
       async = FAL0;
    }
 
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+   if (pipecomm == MIME_TYPE_HANDLER_HTML) {
+      union {int (*ptf)(void); char const *sh;} u;
+      u.ptf = &htmlflt_process_main;
+      rbuf = Popen(MIME_TYPE_HANDLER_HTML, "W", u.sh, NULL, fileno(*qbuf));
+      pipecomm = "Builtin HTML tagsoup filter";
+      goto jafter_tagsoup_hack;
+   }
+#endif
+
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
       cp = "";
@@ -609,9 +622,14 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
-   if ((rbuf = Popen(pipecomm, "W", sh, env_addon, (async ? -1 : fileno(*qbuf)))
-         ) == NULL)
-      perror(pipecomm);
+
+   rbuf = Popen(pipecomm, "W", sh, env_addon, (async ? -1 : fileno(*qbuf)));
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+jafter_tagsoup_hack:
+#endif
+   if (rbuf == NULL)
+      fprintf(stderr, _("Cannot run MIME type handler \"%s\": %s\n"),
+         pipecomm, strerror(errno));
    else {
       fflush(*qbuf);
       if (*qbuf != stdout)
@@ -1286,6 +1304,14 @@ jcopyout:
       qbuf = obuf;
       pbuf = _pipefile(pipecomm, ip, UNVOLATILE(&qbuf),
             (action == SEND_QUOTE || action == SEND_QUOTE_ALL), !ispipe);
+      if (pbuf == NULL) {
+#ifdef HAVE_ICONV
+         if (iconvd != (iconv_t)-1)
+            n_iconv_close(iconvd);
+#endif
+         rv = -1;
+         goto jleave;
+      }
       action = SEND_TOPIPE;
       if (pbuf != qbuf) {
          oldpipe = safe_signal(SIGPIPE, &_send_onpipe);
@@ -1353,12 +1379,13 @@ joutln:
    }
 
 jend:
-   free(line);
+   if (line != NULL)
+      free(line);
    if (pbuf != qbuf) {
       safe_signal(SIGPIPE, SIG_IGN);
       Pclose(pbuf, ispipe);
       safe_signal(SIGPIPE, oldpipe);
-      if (qbuf != obuf)
+      if (qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);
    }
 #ifdef HAVE_ICONV

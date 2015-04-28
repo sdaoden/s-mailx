@@ -719,6 +719,19 @@ FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
                   size_t len);
 FL ssize_t     quoteflt_flush(struct quoteflt *self);
 
+/* (Primitive) HTML tagsoup filter */
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+/* TODO Because we don't support filter chains yet this filter will be run
+ * TODO in a dedicated subprocess, driven via a special Popen() mode */
+FL int         htmlflt_process_main(void);
+
+FL void        htmlflt_init(struct htmlflt *self);
+FL void        htmlflt_destroy(struct htmlflt *self);
+FL void        htmlflt_reset(struct htmlflt *self, FILE *f);
+FL ssize_t     htmlflt_push(struct htmlflt *self, char const *dat, size_t len);
+FL ssize_t     htmlflt_flush(struct htmlflt *self);
+#endif
+
 /*
  * fio.c
  */
@@ -1534,6 +1547,10 @@ FL bool_t      pipe_cloexec(int fd[2]);
 /*
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment */
+/* TODO Because we don't support filter chains yet some filter will be run
+ * TODO in dedicated subprocesses: for this mode of operation cmd must be one
+ * TODO of the MIME_TYPE_HANDLER_*, and shell effectively transports the
+ * TODO pointer to the int(*)(void) main function.  This is temporary */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
 
@@ -1876,6 +1893,11 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
  * which case the arguments will have been stepped one byte */
 #ifdef HAVE_NATCH_CHAR
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
+#endif
+
+/* buf must be large enough also for NUL, it's new length will be returned */
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 #endif
 
 /* Our iconv(3) wrappers */
