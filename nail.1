@@ -495,24 +495,6 @@ is not enabled.
 The section
 .Sx EXAMPLES
 contains some further suggestions.
-.
-.Pp
-.\" TODO v15-compat
-Please note that \*(UA is a program in a transition phase.
-E.g., until v15.0 \*(UA will continue to generate messages that do
-not comply to the paired RFC 2047 / RFC 2231 MIME encoding rules but
-instead to only RFC 2047 (but without obeying the clarifications added
-on top of the older RFC 1522).
-This means that, e.g., users of
-.Xr mutt 1
-will have to set their
-.Va rfc2047_parameters
-option in order to be able to see, e.g., attachment filenames
-in international character sets.
-That is \(em using attachment filenames in whatever language is
-possible, but a modern MUA may need some hints in order to be able to
-decode the name to its original form.
-\*(UA is not alone, however.
 .\" }}}
 .
 .\" .Ss "Sending mail" {{{

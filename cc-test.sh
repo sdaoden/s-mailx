@@ -928,29 +928,29 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '2289641826 5632'
+   cksum_test content:001-0 "${MBOX}" '3929720514 5631'
 
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '2898659780 5631'
+   cksum_test content:001 "${MBOX}" '2425578375 5630'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '2289641826 5632'
+   cksum_test content:002 "${MBOX}" '3929720514 5631'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '2898659780 5631'
+   cksum_test content:003 "${MBOX}" '2425578375 5630'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '506144051 104'
+   cksum_test content:004 "${MBOX}" '4140682175 72'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
@@ -958,7 +958,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '2028749685 277'
+   cksum_test content:005 "${MBOX}" '3503215815 245'
 
    ## $BODY CHANGED
 
@@ -968,7 +968,7 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '1520300594 138'
+   cksum_test content:006 "${MBOX}" '11112309 106'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    # TODO Note: because of our weird putline() handling in <-> collect.c
@@ -999,14 +999,14 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   cksum_test content:008 "${MBOX}" '1428748699 320'
+   cksum_test content:008 "${MBOX}" '3872015771 288'
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
-   cksum_test content:009 "${MBOX}" '141403131 1663'
+   cksum_test content:009 "${MBOX}" '2048460448 1631'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
@@ -1017,7 +1017,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '2324198710 536'
+   cksum_test content:010 "${MBOX}" '675735751 504'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
@@ -1027,7 +1027,7 @@ gggggggggggggggg"
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   cksum_test content:011 "${MBOX}" '3085014590 604'
+   cksum_test content:011 "${MBOX}" '2972351879 572'
 
    # Trailing WS
    ${rm} -f "${MBOX}"
@@ -1040,7 +1040,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '2868799725 303'
+   cksum_test content:012 "${MBOX}" '3314841967 271'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -1051,7 +1051,37 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '3962521045 243'
+   cksum_test content:013 "${MBOX}" '3478758317 211'
+
+   # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
+   # have a (better) test framework materialize a quick shot
+   ${rm} -f "${MBOX}"
+   : > "ma'ger.txt"
+   : > "mä'ger.txt"
+   : > 'diet\ is \curd.txt'
+   : > diet \"is\" curd.txt
+   : > höde-tröge.txt
+   : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+   : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+   : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+   : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   echo bla |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot \
+      -a "ma'ger.txt" -a "mä'ger.txt" \
+      -a 'diet\\\ is\ \\curd.txt' -a diet \"is\" curd.txt \
+      -a höde-tröge.txt \
+      -a höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      -a höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      -a hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+      "${MBOX}"
+   ${rm} -f "ma'ger.txt" "mä'ger.txt" 'diet\ is \curd.txt' \
+      diet \"is\" curd.txt höde-tröge.txt \
+      höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   cksum_test content:14 "${MBOX}" '1106643854 2453'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }

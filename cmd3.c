@@ -207,7 +207,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
    head->h_ref = n;
    if (ok_blook(reply_in_same_charset) &&
          (cp = hfield1("content-type", mp)) != NULL)
-      head->h_charset = mime_getparam("charset", cp);
+      head->h_charset = mime_param_get("charset", cp);
 jleave:
    NYD_LEAVE;
 }
@@ -371,8 +371,7 @@ j_lt_redo:
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description =
-            _("Original message content");
+      head.h_attach->a_content_description = _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) == OKAY &&
@@ -464,8 +463,7 @@ _Reply(int *msgvec, bool_t recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description =
-            _("Original message content");
+      head.h_attach->a_content_description = _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
@@ -531,7 +529,7 @@ _fwd(char *str, int recipient_record)
    if (forward_as_attachment) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = "Forwarded message";
+      head.h_attach->a_content_description = _("Forwarded message");
    } else {
       touch(mp);
       setdot(mp);

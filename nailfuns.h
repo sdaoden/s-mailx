@@ -376,6 +376,7 @@ FL char *      colalign(char const *cp, int col, int fill,
 /* Convert a string to a displayable one;
  * prstr() returns the result savestr()d, prout() writes it */
 FL void        makeprint(struct str const *in, struct str *out);
+FL size_t      delctrl(char *cp, size_t len);
 FL char *      prstr(char const *s);
 FL int         prout(char const *s, size_t sz, FILE *fp);
 
@@ -1206,16 +1207,6 @@ FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
 
-/* Get a mime style parameter from a header line */
-FL char *      mime_getparam(char const *param, char const *h);
-
-/* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * salloc()ed copy of it; store strlen() in *len if set */
-FL char *      mime_get_boundary(char const *h, size_t *len);
-
-/* Create a salloc()ed MIME boundary */
-FL char *      mime_create_boundary(void);
-
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
                   enum tdflags flags);
@@ -1240,7 +1231,7 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
 /* Utilities: the former converts the byte c into a (NUL terminated)
  * hexadecimal string as is used in URL percent- and quoted-printable encoding,
  * the latter performs the backward conversion and returns the character or -1
- * on error */
+ * on error; both don't deal with the sequence-introducing percent "%" */
 FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
 
@@ -1309,6 +1300,29 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * message); caller is responsible to free buffers */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
+
+/*
+ * mime_param.c
+ */
+
+/* Get a mime style parameter from a header body */
+FL char *      mime_param_get(char const *param, char const *headerbody);
+
+/* Format parameter name to have value, salloc() it or NULL (error) in result.
+ * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
+ * which it will if the created param requires more than MIME_LINELEN bytes;
+ * there is never a trailing newline character */
+/* TODO mime_param_create() should return a StrList<> or something.
+ * TODO in fact it should take a HeaderField* and append a HeaderFieldParam*! */
+FL si8_t       mime_param_create(struct str *result, char const *name,
+                  char const *value);
+
+/* Get the boundary out of a Content-Type: multipart/xyz header field, return
+ * salloc()ed copy of it; store strlen() in *len if set */
+FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
+
+/* Create a salloc()ed MIME boundary */
+FL char *      mime_param_boundary_create(void);
 
 /*
  * mime_types.c
