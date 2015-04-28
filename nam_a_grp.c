@@ -1159,13 +1159,18 @@ name_is_same_domain(struct name const *n1, struct name const *n2)
 }
 
 FL struct name *
-checkaddrs(struct name *np, enum expand_addr_check_mode eacm)
+checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
+   si8_t *set_on_error)
 {
    struct name *n;
    NYD_ENTER;
 
    for (n = np; n != NULL;) {
-      if (is_addr_invalid(n, eacm)) {
+      si8_t rv;
+
+      if ((rv = is_addr_invalid(n, eacm)) != 0) {
+         if (set_on_error != NULL)
+            *set_on_error = rv;
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
          if (n->n_flink)
@@ -1181,7 +1186,7 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm)
 
 FL struct name *
 namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
-   bool_t metoo)
+   bool_t metoo, si8_t *set_on_error)
 {
    struct name *tolist, *np, **npp;
    NYD_ENTER;
@@ -1189,7 +1194,7 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    tolist = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), metoo);
    hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 
-   tolist = elide(checkaddrs(tolist, eacm));
+   tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
       switch (np->n_type & (GDEL | GMASK)) {

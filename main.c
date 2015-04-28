@@ -147,6 +147,8 @@ _getopt(int argc, char * const argv[], char const *optstring)
    char const *curp;
    NYD_ENTER;
 
+   _oarg = NULL;
+
    if ((colon = (optstring[0] == ':')))
       ++optstring;
    if (lastp != NULL) {
@@ -163,7 +165,6 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = &argv[_oind][1];
    }
 
-   _oarg = NULL;
    _oopt = curp[0];
    while (optstring[0] != '\0') {
       if (optstring[0] == ':' || optstring[0] != _oopt) {
@@ -555,14 +556,14 @@ _hdrstop(int signo)
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
          "  %s [-BDdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
-         "\t [-s subject] to-address... [-- mta-option...]\n"
+         "\t [-s subject] [-.] to-address... [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
@@ -780,6 +781,9 @@ joarg:
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
          break;
+      case '.':
+         options |= OPT_SENDMODE;
+         goto jgetopt_done;
       case '?':
 jusage:
          fprintf(stderr, V_(usagestr) _USAGE_ARGS);
@@ -788,13 +792,17 @@ jusage:
          goto jleave;
       }
    }
+jgetopt_done:
+   ;
 
-   /* The normal arguments may be followed by MTA arguments after `--';
-    * however, -f may take off an argument, too, and before that */
+   /* The normal arguments may be followed by MTA arguments after a `--';
+    * however, -f may take off an argument, too, and before that.
+    * Since MTA arguments after `--' require *expandargv*, delay parsing off
+    * those options until after the resource files are loaded... */
    if ((cp = argv[i = _oind]) == NULL)
       ;
    else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
-      cp = argv[++i];
+      ++i;
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
    else if (folder != NULL && folder[1] == '\0') {
       folder = cp;
@@ -803,30 +811,28 @@ jusage:
             fprintf(stderr, _("More than one file given with -f\n"));
             goto jusage;
          }
-         cp = argv[++i];
+         ++i;
       }
    } else {
+      options |= OPT_SENDMODE;
       for (;;) {
          to = cat(to, lextract(cp, GTO | GFULL));
          if ((cp = argv[++i]) == NULL)
             break;
          if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0') {
-            cp = argv[++i];
+            ++i;
             break;
          }
       }
-      if (to != NULL)
-         options |= OPT_SENDMODE;
    }
+   _oind = i;
 
-   /* Additional options to pass-through to MTA? */
-   while (cp != NULL) {
-      if (smopts_count == (size_t)smopts_size)
-         smopts_size = _grow_cpp(&smopts, smopts_size + 8,
-               smopts_count);
-      smopts[smopts_count++] = cp;
-      cp = argv[++i];
-   }
+   /* ...BUT, since we use salloc() for the MTA smopts storage we need to
+    * allocate the necessary space for them before we call spreserve()! */
+   while (argv[i] != NULL)
+      ++i;
+   if (smopts_count + i > smopts_size)
+      smopts_size = _grow_cpp(&smopts, smopts_count + i + 1, smopts_count);
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
@@ -895,7 +901,7 @@ jusage:
 
    /* Now we can set the account */
    if (Aarg != NULL) {
-      char *a[2];
+      char const *a[2];
       a[0] = Aarg;
       a[1] = NULL;
       c_account(a);
@@ -911,6 +917,26 @@ jusage:
       a[0] = oargs[i];
       a[1] = NULL;
       c_set(a);
+   }
+
+   /* Additional options to pass-through to MTA, and allowed to do so? */
+   if ((cp = ok_vlook(expandargv)) != NULL) {
+      bool_t isfail = !asccasecmp(cp, "fail"),
+         isrestrict = (!isfail && !asccasecmp(cp, "restrict"));
+
+      if ((cp = argv[i = _oind]) != NULL) {
+         if (isfail ||
+               (isrestrict && !(options & (OPT_INTERACTIVE |OPT_TILDE_FLAG)))) {
+            fprintf(stderr,
+               _("*expandargv* doesn't allow additional MTA argument\n"));
+            exit_status = EXIT_USE | EXIT_SEND_ERROR;
+            goto jleave;
+         }
+         do {
+            assert(smopts_count + 1 <= smopts_size);
+            smopts[smopts_count++] = cp;
+         } while ((cp = argv[++i]) != NULL);
+      }
    }
 
    /*

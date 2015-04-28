@@ -902,8 +902,13 @@ FL char const * skip_comment(char const *cp);
 /* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
 
-/* Check if a name's address part contains invalid characters */
-FL bool_t      is_addr_invalid(struct name *np,
+/* Query *expandaddr*, parse it and return flags */
+FL enum expand_addr_flags expandaddr_flags(void);
+
+/* Check if an address is invalid, either because it is malformed or, if not,
+ * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
+ * but the error condition wasn't covered by a 'hard "fail"ure', -1 otherwise */
+FL si8_t       is_addr_invalid(struct name *np,
                   enum expand_addr_check_mode eacm);
 
 /* Does *NP* point to a file or pipe addressee? */
@@ -1342,16 +1347,19 @@ FL struct name * grab_names(char const *field, struct name *np, int comma,
 FL bool_t      name_is_same_domain(struct name const *n1,
                   struct name const *n2);
 
-/* Check all addresses in np and delete invalid ones */
-FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm);
+/* Check all addresses in np and delete invalid ones; if set_on_error is not
+ * NULL it'll be set to TRU1 for error or -1 for "hard fail" error */
+FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
+                  si8_t *set_on_error);
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases etc.  eacm is passed to checkaddrs(), metoo is passed to usermap().
- * After updating hp to the new state this returns a flat list of all
- * addressees, which may be NULL */
+ * aliases etc.  eacm and set_on_error are passed to checkaddrs(), metoo is
+ * passed to usermap().  After updating hp to the new state this returns
+ * a flat list of all addressees, which may be NULL */
 FL struct name * namelist_vaporise_head(struct header *hp,
-                  enum expand_addr_check_mode eacm, bool_t metoo);
+                  enum expand_addr_check_mode eacm, bool_t metoo,
+                  si8_t *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */

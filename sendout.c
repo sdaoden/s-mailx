@@ -55,7 +55,7 @@ CTA(!(_FMT_GMASK & FMT_DOMIME));
 
 static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
-static bool_t  _sendout_error;
+static si8_t   _sendout_error;
 
 static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
@@ -792,7 +792,7 @@ do {\
       if (np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOLOG)) {
+         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
             fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
@@ -811,8 +811,9 @@ do {\
       else if ((addr = ok_vlook(replyto)) != NULL)
          np = lextract(addr, GEXTRA | GFULL);
       if (np != NULL &&
-            (np = elide(checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG))
-               ) != NULL) {
+            (np = elide(
+               checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG,
+                  NULL))) != NULL) {
          if (fmt("Reply-To:", np, fo, ff))
             goto jleave;
          ++gotcha;
@@ -859,7 +860,8 @@ do {\
             case MLIST_OTHER:
                if (!(f & HF_LIST_REPLY)) {
 j_mft_add:
-                  if (!is_addr_invalid(x, EACM_STRICT | EACM_NOLOG)) {
+                  if (!is_addr_invalid(x,
+                        EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
                      x->n_flink = mft;
                      mft = x;
                   } /* XXX write some warning?  if verbose?? */
@@ -1452,7 +1454,7 @@ __prepare_mta_args(struct name *to, struct header *hp)
       /* Don't assume anything on the content but do allocate exactly j slots */
       j = strlen(cp);
       vas = ac_alloc(sizeof(*vas) * j);
-      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, TRU1);
+      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
    }
 
    i = 4 + smopts_count + vas_count + 2 + 1 + count(to) + 1;
@@ -1548,6 +1550,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       m_INIT   = 1<<0,
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
+      m_NOALI  = 1<<3,
       m_CSEEN  = 2<<3
    } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
@@ -1557,21 +1560,22 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
    col = strlen(str);
    if (col) {
       fwrite(str, sizeof *str, col, fo);
-#define __X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
+#define _X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
       if (ff & GFILES) {
          ;
-      } else if (__X("reply-to:") || __X("mail-followup-to:") ||
-            __X("references:") || __X("disposition-notification-to:"))
-         m |= m_NOPF;
+      } else if (_X("reply-to:") || _X("mail-followup-to:") ||
+            _X("references:") || _X("disposition-notification-to:"))
+         m |= m_NOPF | m_NOALI;
       else if (ok_blook(add_file_recipients)) {
          ;
-      } else if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
+      } else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
          m |= m_NOPF;
-#undef __X
+#undef _X
    }
 
    for (; np != NULL; np = np->n_flink) {
-      if (is_addr_invalid(np, EACM_NONE | EACM_NOLOG))
+      if (is_addr_invalid(np,
+            (m & m_NOALI ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
          continue;
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
@@ -1755,10 +1759,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    /*  */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
       hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
-            EACM_NORMAL));
+            EACM_NORMAL, &_sendout_error));
    if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
       hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
-            EACM_NORMAL));
+            EACM_NORMAL, &_sendout_error));
 
    /* Collect user's mail from standard input.  Get the result as mtf */
    mtf = collect(hp, printheaders, quote, quotefile, doprefix);
@@ -1826,10 +1830,17 @@ jaskeot:
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   to = namelist_vaporise_head(hp, EACM_NORMAL, TRU1);
+   to = namelist_vaporise_head(hp,
+         (EACM_NORMAL |
+          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+         TRU1, &_sendout_error);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
-      _sendout_error = TRU1;
+      goto jfail_dead;
+   }
+   if (_sendout_error < 0) {
+      fprintf(stderr, _("Some addressees were classified as \"hard error\"\n"));
+      goto jfail_dead;
    }
 
    /* */
@@ -1882,6 +1893,7 @@ jfail_dead:
       savedeadletter(mtf, FAL0);
 
    to = elide(to); /* XXX needed only to drop GDELs due to _outof()! */
+
    {  ui32_t cnt = count(to);
       if ((!recipient_record || cnt > 0) &&
             !mightrecord(mtf, (recipient_record ? to : NULL)))
@@ -1955,10 +1967,14 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if ((to = checkaddrs(to, EACM_NORMAL)) == NULL) {
-      _sendout_error = TRU1;
+   if ((to = checkaddrs(to,
+         (EACM_NORMAL |
+          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+         &_sendout_error)) == NULL)
       goto jleave;
-   }
+   /* For the _sendout_error<0 case we want to wait until we can write DEAD! */
+   if (_sendout_error < 0)
+      fprintf(stderr, _("Some addressees were classified as \"hard error\"\n"));
 
    if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
@@ -1966,44 +1982,45 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
       perror(_("temporary mail file"));
       goto jleave;
    }
-   if ((nfi = Fopen(tempMail, "r")) == NULL) {
-      _sendout_error = TRU1;
+   if ((nfi = Fopen(tempMail, "r")) == NULL)
       perror(tempMail);
-   }
    Ftmp_release(&tempMail);
    if (nfi == NULL)
       goto jerr_o;
 
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
-      goto jerr_all;
-
-   memset(&sb, 0, sizeof sb);
-   sb.sb_to = to;
-   sb.sb_input = nfi;
-   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
-      /* TODO saving $DEAD and recovering etc is not yet well defined */
-      goto jerr_all;
+      goto jerr_io;
 
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
+jfail_dead:
       savedeadletter(nfi, TRU1);
       fputs(_("... message not sent.\n"), stderr);
-jerr_all:
+jerr_io:
       Fclose(nfi);
 jerr_o:
       Fclose(nfo);
       _sendout_error = TRU1;
       goto jleave;
    }
+
+   if (_sendout_error < 0)
+      goto jfail_dead;
+
+   memset(&sb, 0, sizeof sb);
+   sb.sb_to = to;
+   sb.sb_input = nfi;
+   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
+      goto jfail_dead;
+
    Fclose(nfo);
    rewind(nfi);
 
    to = _outof(to, nfi, &_sendout_error);
+
    if (_sendout_error)
       savedeadletter(nfi, FAL0);
 
-   to = elide(to);
-
-   if (count(to) != 0) {
+   if (count(to = elide(to)) != 0) {
       if (!ok_blook(record_resent) || mightrecord(nfi, to)) {
          sb.sb_to = to;
          /*sb.sb_input = nfi;*/

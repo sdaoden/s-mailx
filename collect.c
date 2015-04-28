@@ -858,7 +858,8 @@ jcont:
       case 't':
          /* Add to the To list */
          hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(linebuf + 2, GTO | GFULL), EACM_NORMAL));
+               checkaddrs(lextract(linebuf + 2, GTO | GFULL), EACM_NORMAL,
+                  NULL));
          break;
       case 's':
          /* Set the Subject list */
@@ -882,12 +883,14 @@ jcont:
       case 'c':
          /* Add to the CC list */
          hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(linebuf + 2, GCC | GFULL), EACM_NORMAL));
+               checkaddrs(lextract(linebuf + 2, GCC | GFULL), EACM_NORMAL,
+               NULL));
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
          hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(linebuf + 2, GBCC | GFULL), EACM_NORMAL));
+               checkaddrs(lextract(linebuf + 2, GBCC | GFULL), EACM_NORMAL,
+                  NULL));
          break;
       case 'd':
          strncpy(linebuf + 2, getdeadletter(), linesize - 2);

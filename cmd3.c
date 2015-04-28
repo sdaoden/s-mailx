@@ -246,7 +246,8 @@ jnext_msg:
    rcv = NULL;
    if ((reply_to = hfield1("reply-to", mp)) != NULL &&
          (cp = ok_vlook(reply_to_honour)) != NULL &&
-         (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT)) != NULL) {
+         (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT, NULL)
+         ) != NULL) {
       char const *tr = _("Reply-To `%s%s'");
       size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
       char *sp = ac_alloc(l);
@@ -284,7 +285,7 @@ jnext_msg:
    head.h_to = np;
 
    /* The user may have send this to himself, don't ignore that */
-   namelist_vaporise_head(&head, EACM_NORMAL, FAL0);
+   namelist_vaporise_head(&head, EACM_NORMAL, FAL0, NULL);
    if (head.h_to == NULL)
       head.h_to = np;
 
@@ -292,7 +293,8 @@ jnext_msg:
    mft = NULL;
    if (ok_vlook(followup_to_honour) != NULL &&
          (cp = hfield1("mail-followup-to", mp)) != NULL &&
-         (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT)) != NULL) {
+         (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NULL)
+         ) != NULL) {
       char const *tr = _("Followup-To `%s%s'");
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
       char *sp = ac_alloc(l);
@@ -301,7 +303,8 @@ jnext_msg:
       if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
          head.h_cc = NULL;
          head.h_to = np;
-         head.h_mft = mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0);
+         head.h_mft =
+         mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0, NULL);
       } else
          mft = NULL;
 
@@ -445,7 +448,8 @@ _Reply(int *msgvec, bool_t recipient_record)
 
       if ((rp = hfield1("reply-to", mp)) != NULL &&
             (cp = ok_vlook(reply_to_honour)) != NULL &&
-            (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT)) != NULL) {
+            (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT, NULL)
+            ) != NULL) {
          char const *tr = _("Reply-To `%s%s'");
          size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
 
