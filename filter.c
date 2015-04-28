@@ -1450,7 +1450,7 @@ htmlflt_process_main(void)
    if (rv == 0 && htmlflt_flush(&hf) < 0)
       rv = 1;
 
-   DBG( htmlflt_destroy(&hf); )
+   htmlflt_destroy(&hf);
 
    rv |= __hf_hadpipesig;
    NYD_LEAVE;
