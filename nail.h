@@ -391,7 +391,7 @@
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define __FUN__        __func__
 #elif CC_CLANG || PREREQ_GCC(3, 4)
-# define __FUN__        __FUNCTION__
+# define __FUN__        __extension__ __FUNCTION__
 #else
 # define __FUN__        uagent   /* Something that is not a literal */
 #endif
