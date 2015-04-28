@@ -200,9 +200,6 @@ FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
 #define xok_blook(C,URL,M)       xok_BLOOK(CONCAT(ok_b_, C), URL, M)
 #define xok_vlook(C,URL,M)       xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 
-/* List all variables */
-FL void        var_list_all(void);
-
 /* `varshow' */
 FL int         c_varshow(void *v);
 

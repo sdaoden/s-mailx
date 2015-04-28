@@ -376,20 +376,21 @@ compiler_flags
 printf "CC = ${CC}\n" >> ${newmk}
 printf "CC=${CC}\n" >> ${newlst}
 
-printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
+printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newmk}
 printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
 
-printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
+printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
 
-printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
+printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newmk}
 printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
 
-printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
-   >> ${newmk}
-printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newmk}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newlst}
 
-printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
 printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -1325,10 +1326,9 @@ ${mv} ${h} ${tmp}
 printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
 ${cat} ${tmp} >> ${h}
 
-printf '\n/* The "feature string", for "simplicity" and lex.c */\n' >> ${h}
-printf '#ifdef _MAIN_SOURCE\n' >> ${h}
-printf '# ifdef HAVE_AMALGAMATION\nstatic\n# endif\n' >> ${h}
-printf 'char const features[] = "MIME"\n' >> ${h}
+printf '\n/* The "feature string" */\n' >> ${h}
+printf '#if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
+printf 'static char const _features[] = "MIME"\n' >> ${h}
 printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
@@ -1356,7 +1356,7 @@ printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
-printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
+printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
 ${rm} -f ${tmp}

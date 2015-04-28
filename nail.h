@@ -1009,6 +1009,7 @@ enum okeys {
    ok_v_encoding,
    ok_v_escape,
    ok_v_expandaddr,
+   ok_v_features,                      /* {rdonly=1,virtual=_features} */
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
    ok_v_followup_to_honour,
@@ -1096,6 +1097,10 @@ enum okeys {
    ok_v_toplines,
    ok_v_ttycharset,
    ok_v_user,
+   ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
+   ok_v_version_major,                 /* {rdonly=1,virtual=VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {rdonly=1,virtual=VERSION_MINOR} */
+   ok_v_version_update,                /* {rdonly=1,virtual=VERSION_UPDATE} */
    ok_v_VISUAL
 };
 
@@ -1620,7 +1625,6 @@ VL bool_t      loading;             /* Loading user definitions */
 VL bool_t      sourcing;            /* Currently reading variant file */
 VL bool_t      sawcom;              /* Set after first command */
 VL bool_t      starting;            /* Still in startup code */
-VL bool_t      var_clear_allow_undefined; /* v?ok_[bv]clear(): no complain */
 VL int         noreset;             /* String resets suspended */
 
 /* XXX stylish sorting */
@@ -1681,8 +1685,6 @@ VL char const  month_names[12 + 1][4];
 VL char const  weekday_names[7 + 1][4];
 
 VL char const  uagent[];            /* User agent */
-VL char const  version[];           /* The version string */
-VL char const  features[];          /* The "feature string" */
 
 VL uc_i const  class_char[];
 #endif

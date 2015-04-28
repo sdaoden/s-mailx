@@ -66,8 +66,14 @@ _update-release:
 	read REL;\
 	echo "Is $${UAGENT} <v$${REL}> correct?  ENTER continues";\
 	read i;\
+	\
+	GREP=grep SED=sed CMP=cmp MV=mv \
+		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
+	REL="`< version.h sed \
+		-e '/ VERSION /b X' -e d \
+		-e ':X' -e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
 	FREL=`echo $${REL} | sed -e 's/\./_/g'` &&\
-	printf > ./version.h "#define VERSION \"v$${REL}\"\n" &&\
+	\
 	< nail.1 > nail.1x awk '\
 	/^\.\\" '"$${UUAGENT}"'\(1\):/ {\
 		print ".\\\" '"$${UUAGENT}"'(1): v'"$${REL}"'" \
@@ -85,6 +91,7 @@ _update-release:
 	{print}\
 	' &&\
 	mv -f nail.1x nail.1 &&\
+	\
 	< nail.rc > nail.rcx awk '\
 	/^# '$${UUAGENT}'\(1\):/ {\
 		print "# '"$${UUAGENT}"'(1): v'"$${REL}"' / '"$${DATE_ISO}"'";\
@@ -93,20 +100,25 @@ _update-release:
 	{print}\
 	' && \
 	mv -f nail.rcx nail.rc &&\
+	\
 	git add version.h nail.1 nail.rc &&\
 	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
 	git tag -f "v$${REL}" &&\
+	\
 	git update-ref refs/heads/next master &&\
+	\
 	git checkout timeline &&\
 	git rm -rf '*' &&\
 	git archive --format=tar.gz "v$${REL}" | tar -x -z -f - &&\
 	git add --all &&\
 	git commit -m "$${UAGENT} v$${REL}, $${DATE_ISO}" &&\
+	\
 	git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
 	git branch &&\
 	echo "Push git(1) repo?  ENTER continues";\
 	read i;\
+	\
 	git push &&\
 	git archive --format=tar.gz --prefix="$${UAGENT}-$${REL}/" \
 		-o "$${TMPDIR}/$${UAGENT}-$${FREL}.tar.gz" "v$${REL}" &&\
@@ -130,10 +142,12 @@ _update-release:
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$${UAGENT}-$${FREL}.tar.xz" >> \
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	\
 	( echo "-put $${UAGENT}-$${FREL}.tar.gz";\
 	  echo "-put $${UAGENT}-$${FREL}.tar.xz" ) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
+	\
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
@@ -141,6 +155,7 @@ _update-release:
 	./$${UAGENT} -A $${ACCOUNT} \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" nail-announce &&\
 	cd .. &&\
+	\
 	echo "Really remove $${UAGENT}-$${REL} build dir?  ENTER continues";\
 	read i;\
 	rm -rf "$${UAGENT}-$${REL}" &&\

@@ -38,6 +38,7 @@
  */
 
 #ifndef HAVE_AMALGAMATION
+# define _ACCMACVAR_SOURCE /* For _features[] */
 # include "nail.h"
 #endif
 
@@ -58,6 +59,14 @@ enum ma_flags {
    MA_ACC         = 1<<0,
    MA_TYPE_MASK   = MA_ACC,
    MA_UNDEF       = 1<<1         /* Unlink after lookup */
+};
+
+enum var_map_flags {
+   VM_NONE     = 0,
+   VM_BINARY   = 1<<0,           /* ok_b_* */
+   VM_RDONLY   = 1<<1,           /* May not be set by user */
+   VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
+   VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
 };
 
 struct macro {
@@ -81,11 +90,15 @@ struct var {
    char           v_name[VFIELD_SIZE(sizeof(size_t))];
 };
 
+struct var_virtual {
+   ui32_t         vv_okey;
+   struct var const *vv_var;
+};
+
 struct var_map {
    ui32_t         vm_hash;
    ui16_t         vm_keyoff;
-   ui8_t          vm_binary;
-   ui8_t          vm_special;
+   ui16_t         vm_flags;      /* var_map_flags bits */
 };
 
 struct var_carrier {
@@ -105,6 +118,7 @@ struct lostack {
 };
 
 /* Include the constant create-okey-map.pl output */
+#include "version.h"
 #include "okeys.h"
 
 static struct macro  *_acc_curr;    /* Currently active account */
@@ -140,17 +154,19 @@ static bool_t        _var_revlookup(struct var_carrier *vcp, char const *name);
  * Sets vcp.vc_prime; vcp.vc_var is NULL if not found */
 static bool_t        _var_lookup(struct var_carrier *vcp);
 
-/* Set variable from vcp.vc_(vmap|name|hash), return wether error occurred */
+/* Set variable from vcp.vc_(vmap|name|hash), return success */
 static bool_t        _var_set(struct var_carrier *vcp, char const *value);
 
 /* Clear variable from vcp.vc_(vmap|name|hash); sets vcp.vc_var to NULL,
- * return wether error occurred */
+ * return success */
 static bool_t        _var_clear(struct var_carrier *vcp);
 
-/* var_list_all(): qsort(3) helper */
-static int           _var_list_all_cmp(void const *s1, void const *s2);
+/* List all variables */
+static void          _var_list_all(void);
 
-/* Shared c_set() and c_setenv() impl, return wether error(s) occurred */
+static int           __var_list_all_cmp(void const *s1, void const *s2);
+
+/* Shared c_set() and c_setenv() impl, return success */
 static bool_t        _var_set_env(char **ap, bool_t issetenv);
 
 /* Does cp consist solely of WS and a } */
@@ -207,7 +223,7 @@ static bool_t
 _var_check_specials(enum okeys okey, bool_t enable, char **val)
 {
    char *cp = NULL;
-   bool_t rv = TRU1;
+   bool_t ok = TRU1;
    int flag = 0;
    NYD_ENTER;
 
@@ -227,8 +243,8 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             ? OPT_VERB : OPT_VERB | OPT_VERBVERB;
       break;
    case ok_v_folder:
-      rv = (val == NULL || var_folder_updated(*val, &cp));
-      if (rv && cp != NULL) {
+      ok = (val != NULL && var_folder_updated(*val, &cp));
+      if (ok && cp != NULL) {
          _var_vfree(*val);
          /* It's smalloc()ed, but ensure we don't leak */
          if (*cp == '\0') {
@@ -240,7 +256,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
       break;
 #ifdef HAVE_NCL
    case ok_v_line_editor_cursor_right:
-      if ((rv = (val != NULL && *val != NULL))) {
+      if ((ok = (val != NULL && *val != NULL))) {
          /* Set with no value? TODO very guly */
          if (*(cp = *val) != '\0') {
             char const *x = cp;
@@ -267,7 +283,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
          options &= ~flag;
    }
    NYD_LEAVE;
-   return rv;
+   return ok;
 }
 
 static char const *
@@ -326,6 +342,20 @@ _var_lookup(struct var_carrier *vcp)
    struct var **vap, *lvp, *vp;
    NYD_ENTER;
 
+   /* XXX _So_ unlikely that it should be checked if normal lookup fails! */
+   if (UNLIKELY(vcp->vc_vmap != NULL &&
+         (vcp->vc_vmap->vm_flags & VM_VIRTUAL) != 0)) {
+      struct var_virtual const *vvp;
+
+      for (vvp = _var_virtuals;
+            PTRCMP(vvp, <, _var_virtuals + NELEM(_var_virtuals)); ++vvp)
+         if (vvp->vv_okey == vcp->vc_okey) {
+            vp = UNCONST(vvp->vv_var);
+            goto jleave;
+         }
+      assert(0);
+   }
+
    vap = _vars + (vcp->vc_prime = MA_HASH2PRIME(vcp->vc_hash));
 
    for (lvp = NULL, vp = *vap; vp != NULL; lvp = vp, vp = vp->v_link)
@@ -349,20 +379,23 @@ jleave:
 static bool_t
 _var_set(struct var_carrier *vcp, char const *value)
 {
-   bool_t err;
    struct var *vp;
    char *oval;
+   bool_t ok = TRU1;
    NYD_ENTER;
 
    if (value == NULL) {
-      bool_t vcau_save = var_clear_allow_undefined;
-      var_clear_allow_undefined = TRU1;
-      err = _var_clear(vcp);
-      var_clear_allow_undefined = vcau_save;
+      ok = _var_clear(vcp);
       goto jleave;
    }
 
    _var_lookup(vcp);
+
+   if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
+      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
+      ok = FAL0;
+      goto jleave;
+   }
 
    /* Don't care what happens later on, store this in the unroll list */
    if (_localopts != NULL)
@@ -385,13 +418,13 @@ _var_set(struct var_carrier *vcp, char const *value)
    else {
       /* Via `set' etc. the user may give even binary options non-binary
        * values, ignore that and force binary xxx error log? */
-      if (vcp->vc_vmap->vm_binary)
+      if (vcp->vc_vmap->vm_flags & VM_BINARY)
          value = UNCONST("");
       vp->v_value = _var_vcopy(value);
 
       /* Check if update allowed XXX wasteful on error! */
-      if (vcp->vc_vmap->vm_special &&
-            (err = !_var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
+      if ((vcp->vc_vmap->vm_flags & VM_SPECIAL) &&
+            !(ok = _var_check_specials(vcp->vc_okey, TRU1, &vp->v_value))) {
          char *cp = vp->v_value;
          vp->v_value = oval;
          oval = cp;
@@ -400,23 +433,23 @@ _var_set(struct var_carrier *vcp, char const *value)
 
    if (*oval != '\0')
       _var_vfree(oval);
-   err = FAL0;
 jleave:
    NYD_LEAVE;
-   return err;
+   return ok;
 }
 
 static bool_t
 _var_clear(struct var_carrier *vcp)
 {
-   bool_t err = TRU1;
+   bool_t ok = TRU1;
    NYD_ENTER;
 
    if (!_var_lookup(vcp)) {
-      if (!sourcing && !var_clear_allow_undefined) {
-         fprintf(stderr, _("`%s': undefined variable\n"), vcp->vc_name);
-         goto jleave;
-      }
+      if (!sourcing && (options & OPT_D_V))
+         fprintf(stderr, _("Variable undefined: \"%s\"\n"), vcp->vc_name);
+   } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
+      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
+      ok = FAL0;
    } else {
       if (_localopts != NULL)
          _localopts_add(_localopts, vcp->vc_name, vcp->vc_var);
@@ -427,18 +460,65 @@ _var_clear(struct var_carrier *vcp)
       free(vcp->vc_var);
       vcp->vc_var = NULL;
 
-      if (vcp->vc_vmap != NULL && vcp->vc_vmap->vm_special &&
-            !_var_check_specials(vcp->vc_okey, FAL0, NULL))
-         goto jleave;
+      if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_SPECIAL))
+         ok = _var_check_specials(vcp->vc_okey, FAL0, NULL);
    }
-   err = FAL0;
+   NYD_LEAVE;
+   return ok;
+}
+
+static void
+_var_list_all(void)
+{
+   FILE *fp;
+   size_t no, i;
+   struct var *vp;
+   char const **vacp, **cap, *fmt;
+   NYD_ENTER;
+
+   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+         NULL) {
+      perror("tmpfile");
+      goto jleave;
+   }
+
+   for (no = i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         ++no;
+   no += NELEM(_var_virtuals);
+
+   vacp = salloc(no * sizeof(*vacp));
+
+   for (cap = vacp, i = 0; i < MA_PRIME; ++i)
+      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
+         *cap++ = vp->v_name;
+   for (i = 0; i < NELEM(_var_virtuals); ++i)
+      *cap++ = _var_virtuals[i].vv_var->v_name;
+
+   if (no > 1)
+      qsort(vacp, no, sizeof *vacp, &__var_list_all_cmp);
+
+   i = (ok_blook(bsdcompat) || ok_blook(bsdset));
+   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
+
+   for (cap = vacp; no != 0; ++cap, --no) {
+      char const *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin... */
+      if (cp == NULL)
+         cp = "";
+      if (i || *cp != '\0')
+         fprintf(fp, fmt, *cap, cp);
+      else
+         fprintf(fp, "%s\n", *cap);
+   }
+
+   page_or_print(fp, PTR2SIZE(cap - vacp));
+   Fclose(fp);
 jleave:
    NYD_LEAVE;
-   return err;
 }
 
 static int
-_var_list_all_cmp(void const *s1, void const *s2)
+__var_list_all_cmp(void const *s1, void const *s2)
 {
    int rv;
    NYD_ENTER;
@@ -473,9 +553,9 @@ _var_set_env(char **ap, bool_t issetenv)
       }
 
       if (!issetenv && varbuf[0] == 'n' && varbuf[1] == 'o')
-         errs += _var_vokclear(varbuf + 2);
+         errs += !_var_vokclear(varbuf + 2);
       else {
-         errs += _var_vokset(varbuf, (uintptr_t)cp);
+         errs += !_var_vokset(varbuf, (uintptr_t)cp);
          if (issetenv) {
 #ifdef HAVE_SETENV
             errs += (setenv(varbuf, cp, 1) != 0);
@@ -489,7 +569,7 @@ jnext:
    }
 
    NYD_LEAVE;
-   return (errs != 0);
+   return (errs == 0);
 }
 
 static bool_t
@@ -549,7 +629,6 @@ static int
 _ma_exec(struct macro const *mp, struct var **unroller)
 {
    struct lostack los;
-   bool_t vcau_save;
    char *buf;
    struct n2 {struct n2 *up; struct lostack *lo;} *x; /* FIXME hack (sigman+) */
    struct mline const *lp;
@@ -561,9 +640,6 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    los.s_localopts = NULL;
    los.s_unroll = FAL0;
    _localopts = &los;
-
-   vcau_save = var_clear_allow_undefined;
-   var_clear_allow_undefined = TRU1;
 
    x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
    x->up = temporary_localopts_store;
@@ -578,7 +654,6 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    ac_free(buf);
 
    temporary_localopts_store = x->up;  /* FIXME intermediate hack */
-   var_clear_allow_undefined = vcau_save;
 
    _localopts = los.s_up;
    if (unroller == NULL) {
@@ -688,7 +763,7 @@ _ma_define1(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_ma_look(mp->ma_name, mp, mafl) != NULL) {
-      fprintf(stderr, _("A %s named `%s' already exists.\n"),
+      fprintf(stderr, _("A %s named \"%s\" already exists.\n"),
          (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
       lst = mp->ma_contents;
       goto jerr;
@@ -720,7 +795,7 @@ _ma_undef1(char const *name, enum ma_flags mafl)
       free(mp->ma_name);
       free(mp);
    } else
-      fprintf(stderr, _("%s `%s' is not defined\n"),
+      fprintf(stderr, _("%s \"%s\" is not defined\n"),
          (mafl & MA_ACC ? "Account" : "Macro"), name);
    NYD_LEAVE;
 }
@@ -827,7 +902,7 @@ FL bool_t
 _var_okset(enum okeys okey, uintptr_t val)
 {
    struct var_carrier vc;
-   bool_t rv;
+   bool_t ok;
    NYD_ENTER;
 
    vc.vc_vmap = _var_map + okey;
@@ -835,9 +910,9 @@ _var_okset(enum okeys okey, uintptr_t val)
    vc.vc_hash = _var_map[okey].vm_hash;
    vc.vc_okey = okey;
 
-   rv = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   ok = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
    NYD_LEAVE;
-   return rv;
+   return ok;
 }
 
 FL bool_t
@@ -883,14 +958,14 @@ FL bool_t
 _var_vokset(char const *vokey, uintptr_t val)
 {
    struct var_carrier vc;
-   bool_t err;
+   bool_t ok;
    NYD_ENTER;
 
    _var_revlookup(&vc, vokey);
 
-   err = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
+   ok = _var_set(&vc, (val == 0x1 ? "" : (char const*)val));
    NYD_LEAVE;
-   return err;
+   return ok;
 }
 
 FL bool_t
@@ -902,9 +977,9 @@ _var_vokclear(char const *vokey)
 
    _var_revlookup(&vc, vokey);
 
-   err = _var_clear(&vc);
+   err = !_var_clear(&vc);
    NYD_LEAVE;
-   return err;
+   return !err;
 }
 
 #ifdef HAVE_SOCKETS
@@ -963,57 +1038,11 @@ jleave:
 }
 #endif /* HAVE_SOCKETS */
 
-FL void
-var_list_all(void)
-{
-   FILE *fp;
-   char **vacp, **cap;
-   struct var *vp;
-   size_t no, i;
-   char const *fmt;
-   NYD_ENTER;
-
-   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
-      perror("tmpfile");
-      goto jleave;
-   }
-
-   for (no = i = 0; i < MA_PRIME; ++i)
-      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
-         ++no;
-   vacp = salloc(no * sizeof(*vacp));
-   for (cap = vacp, i = 0; i < MA_PRIME; ++i)
-      for (vp = _vars[i]; vp != NULL; vp = vp->v_link)
-         *cap++ = vp->v_name;
-
-   if (no > 1)
-      qsort(vacp, no, sizeof *vacp, &_var_list_all_cmp);
-
-   i = (ok_blook(bsdcompat) || ok_blook(bsdset));
-   fmt = (i != 0) ? "%s\t%s\n" : "%s=\"%s\"\n";
-
-   for (cap = vacp; no != 0; ++cap, --no) {
-      char *cp = vok_vlook(*cap); /* XXX when lookup checks val/bin, change */
-      if (cp == NULL)
-         cp = UNCONST("");
-      if (i || *cp != '\0')
-         fprintf(fp, fmt, *cap, cp);
-      else
-         fprintf(fp, "%s\n", *cap);
-   }
-
-   page_or_print(fp, PTR2SIZE(cap - vacp));
-   Fclose(fp);
-jleave:
-   NYD_LEAVE;
-}
-
 FL int
 c_varshow(void *v)
 {
    struct var_carrier vc;
-   char **argv = v, *val;
+   char const **argv = v, *val;
    bool_t isenv, isset;
    NYD_ENTER;
 
@@ -1035,14 +1064,18 @@ c_varshow(void *v)
       isset = (vc.vc_var != NULL);
 
       if (vc.vc_vmap != NULL) {
-         if (vc.vc_vmap->vm_binary)
-            printf("%s: binary option (%d): isset=%d/environ=%d\n",
-               vc.vc_name, vc.vc_okey, isset, isenv);
+         ui16_t f = vc.vc_vmap->vm_flags;
+
+         if (f & VM_BINARY)
+            printf(_("\"%s\": (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
+               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv);
          else
-            printf("%s: value option (%d): isset=%d/environ=%d value<%s>\n",
-               vc.vc_name, vc.vc_okey, isset, isenv, val);
+            printf(_("\"%s\": (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
+               vc.vc_name, vc.vc_okey, (f & VM_RDONLY ? ", read-only" : ""),
+               (f & VM_VIRTUAL ? ", virtual" : ""), isset, isenv, val);
       } else
-         printf("%s: isset=%d/environ=%d value<%s>\n",
+         printf("\"%s\": (assembled): set=%d (ENVIRON=%d) value<%s>\n",
             vc.vc_name, isset, isenv, val);
    }
 jleave:
@@ -1058,10 +1091,10 @@ c_set(void *v)
    NYD_ENTER;
 
    if (*ap == NULL) {
-      var_list_all();
+      _var_list_all();
       err = 0;
    } else
-      err = _var_set_env(ap, FAL0);
+      err = !_var_set_env(ap, FAL0);
    NYD_LEAVE;
    return err;
 }
@@ -1074,7 +1107,7 @@ c_setenv(void *v)
    NYD_ENTER;
 
    if (!(err = starting))
-      err = _var_set_env(ap, TRU1);
+      err = !_var_set_env(ap, TRU1);
    NYD_LEAVE;
    return err;
 }
@@ -1087,7 +1120,7 @@ c_unset(void *v)
    NYD_ENTER;
 
    while (*ap != NULL)
-      err |= _var_vokclear(*ap++);
+      err |= !_var_vokclear(*ap++);
    NYD_LEAVE;
    return err;
 }
@@ -1100,11 +1133,9 @@ c_unsetenv(void *v)
 
    if (!(err = starting)) {
       char **ap;
-      bool_t vcau_save = var_clear_allow_undefined;
-      var_clear_allow_undefined = TRU1;
 
       for (ap = v; *ap != NULL; ++ap) {
-         bool_t bad = _var_vokclear(*ap);
+         bool_t bad = !_var_vokclear(*ap);
          if (
 #ifdef HAVE_SETENV
                unsetenv(*ap) != 0 &&
@@ -1113,8 +1144,6 @@ c_unsetenv(void *v)
          )
             err = 1;
       }
-
-      var_clear_allow_undefined = vcau_save;
    }
    NYD_LEAVE;
    return err;
@@ -1127,36 +1156,42 @@ c_varedit(void *v)
    sighandler_type sigint;
    FILE *of, *nf;
    char *val, **argv = v;
-   int rv = 0;
+   int err = 0;
    NYD_ENTER;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
    while (*argv != NULL) {
       memset(&vc, 0, sizeof vc);
+
       _var_revlookup(&vc, *argv++);
 
-      if (!_var_lookup(&vc)) {
-         fprintf(stderr, _("`varedit': variable `%s' is not set\n"),
-            vc.vc_name);
-         rv = 1;
-         continue;
-      } else if (vc.vc_vmap != NULL && vc.vc_vmap->vm_binary) {
-         fprintf(stderr, _("`varedit' cannot edit binary value `%s'\n"),
-            vc.vc_name);
-         continue;
+      if (vc.vc_vmap != NULL) {
+         if (vc.vc_vmap->vm_flags & VM_BINARY) {
+            fprintf(stderr, _("`varedit': can't edit binary variable \"%s\"\n"),
+               vc.vc_name);
+            continue;
+         }
+         if (vc.vc_vmap->vm_flags & VM_RDONLY) {
+            fprintf(stderr,
+               _("`varedit': can't edit readonly variable \"%s\"\n"),
+               vc.vc_name);
+            continue;
+         }
       }
+
+      _var_lookup(&vc);
 
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
             NULL) {
          perror(_("`varedit': cannot create temporary file"));
-         rv = 1;
+         err = 1;
          break;
-      } else if (*(val = vc.vc_var->v_value) != '\0' &&
+      } else if (vc.vc_var != NULL && *(val = vc.vc_var->v_value) != '\0' &&
             sizeof *val != fwrite(val, strlen(val), sizeof *val, of)) {
          perror(_("`varedit' failed to write an old value to temporary file"));
          Fclose(of);
-         rv = 1;
+         err = 1;
          continue;
       }
 
@@ -1184,7 +1219,7 @@ c_varedit(void *v)
          *val = '\0';
 
          if (!vok_vset(vc.vc_name, base))
-            rv = 1;
+            err = 1;
 
          free(base);
       }
@@ -1193,7 +1228,7 @@ c_varedit(void *v)
 
    safe_signal(SIGINT, sigint);
    NYD_LEAVE;
-   return rv;
+   return err;
 }
 
 FL int
@@ -1228,8 +1263,7 @@ c_undefine(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`%s': required arguments are missing\n"),
-         "undefine");
+      fprintf(stderr, _("`undefine': required arguments are missing\n"));
       goto jleave;
    }
    do
@@ -1257,7 +1291,7 @@ c_call(void *v)
    }
 
    if ((mp = _ma_look(*args, NULL, MA_NONE)) == NULL) {
-      errs = _("Undefined macro called: `%s'\n");
+      errs = _("Undefined macro called: \"%s\"\n");
       name = *args;
       goto jerr;
    }
@@ -1320,7 +1354,7 @@ c_account(void *v)
          goto jleave;
       }
       if (!asccasecmp(args[0], ACCOUNT_NULL)) {
-         fprintf(stderr, _("Error: `%s' is a reserved name.\n"),
+         fprintf(stderr, _("Error: \"%s\" is a reserved name.\n"),
             ACCOUNT_NULL);
          goto jleave;
       }
@@ -1338,7 +1372,7 @@ c_account(void *v)
    mp = NULL;
    if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
          (mp = _ma_look(args[0], NULL, MA_ACC)) == NULL) {
-      fprintf(stderr, _("Account `%s' does not exist.\n"), args[0]);
+      fprintf(stderr, _("Account \"%s\" does not exist.\n"), args[0]);
       goto jleave;
    }
 
@@ -1350,7 +1384,7 @@ c_account(void *v)
 
    if (mp != NULL && _ma_exec(mp, &mp->ma_localopts) == CBAD) {
       /* XXX account switch incomplete, unroll? */
-      fprintf(stderr, _("Switching to account `%s' failed.\n"), args[0]);
+      fprintf(stderr, _("Switching to account \"%s\" failed.\n"), args[0]);
       goto jleave;
    }
 
@@ -1379,8 +1413,7 @@ c_unaccount(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`%s': required arguments are missing\n"),
-         "unaccount");
+      fprintf(stderr, _("`unaccount': required arguments are missing\n"));
       goto jleave;
    }
 
@@ -1388,7 +1421,7 @@ c_unaccount(void *v)
    do {
       if (account_name != NULL && !strcmp(account_name, *args)) {
          fprintf(stderr,
-            _("Rejecting deletion of currently active account `%s'\n"), *args);
+            _("Rejecting deletion of active account \"%s\"\n"), *args);
          continue;
       }
       _ma_undef1(*args, MA_ACC);
@@ -1424,7 +1457,6 @@ temporary_localopts_free(void) /* XXX intermediate hack */
    struct n2 {struct n2 *up; struct lostack *lo;} *x;
    NYD_ENTER;
 
-   var_clear_allow_undefined = FAL0;
    x = temporary_localopts_store;
    temporary_localopts_store = NULL;
    _localopts = NULL;

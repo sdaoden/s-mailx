@@ -3958,6 +3958,10 @@ command line options
 or
 .Fl # ,
 set this to the (case-insensitive) value `restrict'.
+.It Va features
+Information on the features compiled into \*(UA \(en the content of
+this variable is identical to the output of the command
+.Ic features .
 .It Va folder
 The name of the directory to use for storing folders of messages.
 All folder names that begin with `+' refer to files below it.
@@ -4930,6 +4934,13 @@ This variable defaults to the value of
 \*(IN Overrides
 .Va user
 for a specific host.
+.It Va version , Va version-major , Va version-minor , Va version-update
+\*(UA version information: the first variable contains a string
+containing the complete version identification \(en this is identical to
+the output of the command
+.Ic version .
+The latter three contain only digits: the major, minor and update
+version numbers.
 .El
 .\" }}}
 .\" }}} (Variable options)

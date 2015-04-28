@@ -82,18 +82,19 @@ static char *  _lex_isolate(char const *comm);
 static struct cmd const * _lex(char const *comm);
 
 /* Command ghost handling */
-static int     _ghost(void *v);
-static int     _unghost(void *v);
+static int     _c_ghost(void *v);
+static int     _c_unghost(void *v);
 
 /* Print a list of all commands */
-static int     _pcmdlist(void *v);
+static int     _c_pcmdlist(void *v);
+
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
 /* Print the binaries compiled-in features */
-static int     _features(void *v);
+static int     _c_features(void *v);
 
 /* Print the binaries version number */
-static int     _version(void *v);
+static int     _c_version(void *v);
 
 /* When we wake up after ^Z, reprint the prompt */
 static void    stop(int s);
@@ -223,7 +224,7 @@ jleave:
 }
 
 static int
-_ghost(void *v)
+_c_ghost(void *v)
 {
    char const **argv = v;
    struct cmd_ghost *lcg, *cg;
@@ -299,7 +300,7 @@ jleave:
 }
 
 static int
-_unghost(void *v)
+_c_unghost(void *v)
 {
    int rv = 0;
    char const **argv = v, *cp;
@@ -338,7 +339,7 @@ __pcmd_cmp(void const *s1, void const *s2)
 }
 
 static int
-_pcmdlist(void *v)
+_c_pcmdlist(void *v)
 {
    struct cmd const **cpa, *cp, **cursor;
    size_t i;
@@ -375,21 +376,21 @@ _pcmdlist(void *v)
 }
 
 static int
-_features(void *v)
+_c_features(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(_("Features: %s\n"), features);
+   printf(_("Features: %s\n"), ok_vlook(features));
    NYD_LEAVE;
    return 0;
 }
 
 static int
-_version(void *v)
+_c_version(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(_("Version %s\n"), version);
+   printf(_("Version %s\n"), ok_vlook(version));
    NYD_LEAVE;
    return 0;
 }

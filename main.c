@@ -54,8 +54,6 @@
 # include <locale.h>
 #endif
 
-#include "version.h"
-
 /* Verify that our size_t PRI[du]Z format string has the correct type size */
 PRIxZ_FMT_CTA();
 
@@ -73,8 +71,6 @@ VL char const        month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const        uagent[] = UAGENT;
-VL char const        version[] = VERSION;
-/*VL char const        features[]; The "feature string" comes from config.h */
 VL uc_i const        class_char[] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
@@ -265,6 +261,8 @@ _startup(void)
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 
+   /*  --  >8  --  8<  --  */
+
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* (Keep in sync:
     * ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings") */
@@ -301,6 +299,8 @@ _startup(void)
    /* nosign */
    /* noSign */
    /* ok_vset(toplines, "5"); XXX somewhat hmm */
+
+   /*  --  >8  --  8<  --  */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
@@ -515,7 +515,7 @@ _rcv_mode(char const *folder, char const *Larg)
       if (!(options & OPT_N_FLAG)) {
          if (!ok_blook(quiet))
             printf(_("%s version %s.  Type ? for help.\n"),
-               (ok_blook(bsdcompat) ? "Mail" : uagent), version);
+               (ok_blook(bsdcompat) ? "Mail" : uagent), ok_vlook(version));
          announce(1);
          fflush(stdout);
       }
@@ -583,8 +583,7 @@ main(int argc, char *argv[])
     * Start our lengthy setup
     */
 
-   starting =
-   var_clear_allow_undefined = TRU1;
+   starting = TRU1;
 
    progname = argv[0];
    _startup();
@@ -747,7 +746,7 @@ joarg:
          myname = _oarg;
          break;
       case 'V':
-         puts(version);
+         puts(ok_vlook(version));
          exit(0);
          /* NOTREACHED */
       case 'v':
@@ -918,8 +917,7 @@ jusage:
     * We're finally completely setup and ready to go
     */
 
-   starting =
-   var_clear_allow_undefined = FAL0;
+   starting = FAL0;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);

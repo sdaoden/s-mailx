@@ -210,7 +210,7 @@
      DS(N_("Echo given arguments")) },
    { "quit", &c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &_pcmdlist, (H | M | NOLIST), 0, 0
+   { "list", &_c_pcmdlist, (H | M | NOLIST), 0, 0
      DS(N_("List all available commands")) },
    { "xit", &c_rexit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
@@ -362,9 +362,9 @@
      DS(N_("Set the spam flag for each message in <message-list>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
-   { "ghost", &_ghost, (M | RAWLIST), 0, 1000
+   { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
      DS(N_("Define a <ghost> for <arguments>, or list all ghosts")) },
-   { "unghost", &_unghost, (M | RAWLIST), 1, 1000
+   { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
      DS(N_("Inside `define' / `account': insulate modifications? <0> / <1>"))},
@@ -375,7 +375,7 @@
    { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
-     DS(N_("Edit the value(s) of (an) existing variable(s)")) },
+     DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
@@ -394,9 +394,9 @@
      DS(N_("Un\"mlsubscribe\" <name-list>, \"*\" removes all subscriptions"))},
    { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given message")) },
-   { "features", &_features, (H | M | NOLIST), 0, 0
+   { "features", &_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
-   { "version", &_version, (H | M | NOLIST), 0, 0
+   { "version", &_c_version, (H | M | NOLIST), 0, 0
      DS(N_("Print the MUA version")) },
 #ifdef HAVE_HISTORY
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
