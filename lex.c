@@ -156,7 +156,7 @@ _update_mailname(char const *name)
       enum protocol p = which_protocol(name);
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL) {
-            fprintf(stderr, _("Can't canonicalize `%s'\n"), name);
+            fprintf(stderr, _("Can't canonicalize \"%s\"\n"), name);
             rv = FAL0;
             goto jdocopy;
          }
@@ -255,7 +255,7 @@ _c_ghost(void *v)
 
    /* Verify the ghost name is a valid one */
    if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
-      fprintf(stderr, _("`ghost': can't canonicalize `%s'\n"), argv[0]);
+      fprintf(stderr, _("`ghost': can't canonicalize \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -267,7 +267,7 @@ _c_ghost(void *v)
             printf("ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
             goto jleave;
          }
-      fprintf(stderr, _("`ghost': no such alias: `%s'\n"), argv[0]);
+      fprintf(stderr, _("`ghost': no such alias: \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -277,7 +277,7 @@ _c_ghost(void *v)
       if (*cp != '\0')
          cl += strlen(cp) + 1; /* SP or NUL */
    if (cl == 0) {
-      fprintf(stderr, _("`ghost': empty command arguments after `%s'\n"),
+      fprintf(stderr, _("`ghost': empty command arguments after \"%s\"\n"),
          argv[0]);
       v = NULL;
       goto jleave;
@@ -333,7 +333,7 @@ _c_unghost(void *v)
             free(cg);
             goto jouter;
          }
-      fprintf(stderr, _("`unghost': no such alias: `%s'\n"), cp);
+      fprintf(stderr, _("`unghost': no such alias: \"%s\"\n"), cp);
       rv = 1;
 jouter:
       ;
@@ -1025,7 +1025,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if (_msgvec == NULL) {
 je96:
-         fprintf(stderr, _("Invalid use of `message list'\n"));
+         fprintf(stderr, _("Invalid use of \"message list\"\n"));
          break;
       }
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)

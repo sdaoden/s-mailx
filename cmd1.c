@@ -515,6 +515,11 @@ j_A_redo:
             c = '?';
             goto jputc;
 #endif
+         default:
+            if (options & OPT_D_V)
+               fprintf(stderr, _("Unkown *headline* format: \"%%%c\"\n"), c);
+            c = '?';
+            goto jputc;
          }
 
          if (wleft <= 0)
@@ -920,7 +925,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          }
       }
 
-      /* `>=' not `<': we return to the prompt */
+      /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          char const *env_add[2];
