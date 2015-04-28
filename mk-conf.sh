@@ -190,8 +190,12 @@ clang'; then
       if { i=${ccver}; echo "${i}"; } | ${grep} -q 'clang version 1'; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
-         _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
-         if feat_yes AMALGAMATION && feat_no DEBUG; then
+         _CFLAGS="${_CFLAGS} -fstrict-overflow"
+         # Too many warnings without having seen a benefit yet
+         if feat_yes DEVEL; then
+            _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
+         fi
+         if feat_yes AMALGAMATION && feat_no DEVEL; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
          if { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
