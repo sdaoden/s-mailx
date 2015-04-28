@@ -61,8 +61,12 @@ static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
                         char const *prefix, FILE *fo, struct name **xp);
 
-/* Get an encoding flag based on the given string */
-static char const *  _get_encoding(const enum conversion convert);
+/* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
+ * headers, respectively */
+static int           _put_ct(FILE *fo, char const *contenttype,
+                        char const *charset);
+static int           _put_cte(FILE *fo, enum conversion conv);
+static int           _put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Write an attachment to the file buffer, converting to MIME */
 static int           _attach_file(struct attachment *ap, FILE *fo);
@@ -146,21 +150,84 @@ _putname(char const *line, enum gfield w, enum sendaction action,
    return rv;
 }
 
-static char const *
-_get_encoding(enum conversion const convert)
+static int
+_put_ct(FILE *fo, char const *contenttype, char const *charset)
 {
-   char const *rv;
-   NYD_ENTER;
+   int rv, i;
+   NYD2_ENTER;
 
-   switch (convert) {
-   case CONV_7BIT:   rv = "7bit"; break;
-   case CONV_8BIT:   rv = "8bit"; break;
-   case CONV_TOQP:   rv = "quoted-printable"; break;
-   case CONV_TOB64:  rv = "base64"; break;
-   default:          rv = NULL; break;
+   if ((rv = fprintf(fo, "Content-Type: %s", contenttype)) < 0)
+      goto jerr;
+
+   if (charset == NULL)
+      goto jend;
+
+   if (putc(';', fo) == EOF)
+      goto jerr;
+   ++rv;
+
+   if (strlen(contenttype) + sizeof("Content-Type: ;")-1 > 50) {
+      if (putc('\n', fo) == EOF)
+         goto jerr;
+      ++rv;
    }
-   NYD_LEAVE;
+
+   if ((i = fprintf(fo, " charset=%s", charset)) < 0)
+      goto jerr;
+   rv += i;
+
+jend:
+   if (putc('\n', fo) == EOF)
+      goto jerr;
+   ++rv;
+jleave:
+   NYD2_LEAVE;
    return rv;
+jerr:
+   rv = -1;
+   goto jleave;
+}
+
+static int
+_put_cte(FILE *fo, enum conversion conv)
+{
+   int rv;
+   NYD2_ENTER;
+
+   rv = fprintf(fo, "Content-Transfer-Encoding: %s\n",
+         mime_enc_from_conversion(conv));
+   NYD2_LEAVE;
+   return rv;
+}
+
+static int
+_put_cd(FILE *fo, char const *cd, char const *filename)
+{
+   int rv;
+   ssize_t l;
+   NYD2_ENTER;
+
+   /* XXX For now _put_cd() always places filename on own line since that is
+    * XXX specially xmime_write()ten :( */
+   if ((rv = fprintf(fo, "Content-Disposition: %s;\n filename=\"", cd)) < 0)
+      goto jerr;
+
+   if ((l = xmime_write(filename, strlen(filename), fo, CONV_TOHDR, TD_NONE))
+         < 0)
+      goto jerr;
+   rv += (int)l;
+
+   if (putc('"', fo) == EOF || putc('\n', fo) == EOF)
+      goto jerr;
+   rv += 2;
+
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   rv = -1;
+   goto jleave;
+
 }
 
 static int
@@ -248,27 +315,15 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
          bn = ++ct;
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = mime_classify_file(fi, (char const**)&ct, &charset, &do_iconv);
+      convert = mime_type_file_classify(fi, (char const**)&ct,
+         &charset, &do_iconv);
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
          do_iconv = 0;
 
-      if (fprintf(fo, "\n--%s\nContent-Type: %s", _sendout_boundary, ct) == -1)
-         goto jerr_header;
-
-      if (charset == NULL) {
-         if (putc('\n', fo) == EOF)
-            goto jerr_header;
-      } else if (fprintf(fo, "; charset=%s\n", charset) == -1)
-         goto jerr_header;
-
-      if (fprintf(fo, "Content-Transfer-Encoding: %s\n"
-            "Content-Disposition: %s;\n filename=\"",
-            _get_encoding(convert), ap->a_content_disposition) == -1)
-         goto jerr_header;
-      if (xmime_write(bn, strlen(bn), fo, CONV_TOHDR, TD_NONE) < 0)
-         goto jerr_header;
-      if (fwrite("\"\n", sizeof(char), 2, fo) != 2 * sizeof(char))
+      if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
+            _put_ct(fo, ct, charset) < 0 || _put_cte(fo, convert) < 0 ||
+            _put_cd(fo, ap->a_content_disposition, bn) < 0)
          goto jerr_header;
 
       if ((bn = ap->a_content_id) != NULL &&
@@ -484,12 +539,11 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       char *buf;
       size_t sz, bufsize, cnt;
 
-      fprintf(fo, "\n--%s\n", _sendout_boundary);
-      fprintf(fo, "Content-Type: %s", contenttype);
-      if (charset != NULL)
-         fprintf(fo, "; charset=%s", charset);
-      fprintf(fo, "\nContent-Transfer-Encoding: %s\n"
-         "Content-Disposition: inline\n\n", _get_encoding(convert));
+      if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
+            _put_ct(fo, contenttype, charset) < 0 ||
+            _put_cte(fo, convert) < 0 ||
+            fprintf(fo, "Content-Disposition: inline\n\n") < 0)
+         goto jleave;
 
       buf = smalloc(bufsize = SEND_LINESIZE);
       if (convert == CONV_TOQP
@@ -567,7 +621,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
       goto jleave;
 
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
-   convert = mime_classify_file(fi, &contenttype, &charset, &do_iconv);
+   convert = mime_type_file_classify(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
    tcs = charset_get_lc();
@@ -590,7 +644,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 
 #ifdef HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->mime_classify_file*/
+   if (do_iconv && charset != NULL) { /*TODO charset->mime_type_file_classify*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = errno) != 0) {
@@ -906,17 +960,15 @@ j_mft_add:
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
    if (w & GMIME) {
-      fputs("MIME-Version: 1.0\n", fo), ++gotcha;
+      ++gotcha;
+      fputs("MIME-Version: 1.0\n", fo);
       if (hp->h_attach != NULL) {
          _sendout_boundary = mime_create_boundary();/*TODO carrier*/
          fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
             _sendout_boundary);
       } else {
-         fprintf(fo, "Content-Type: %s", contenttype);
-         if (charset != NULL)
-            fprintf(fo, "; charset=%s", charset);
-         fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
-            _get_encoding(convert));
+         if (_put_ct(fo, contenttype, charset) < 0 || _put_cte(fo, convert) < 0)
+            goto jleave;
       }
    }
 

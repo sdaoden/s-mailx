@@ -78,7 +78,7 @@ static void          _print_part_info(struct str *out, struct mimepart *mip,
                            struct ignoretab *doign, int level);
 
 /* Query possible pipe command for MIME part */
-static enum pipeflags _pipecmd(char **result, struct mimepart const *mpp);
+static enum pipeflags _pipecmd(char const **result, struct mimepart const *mpp);
 
 /* Create a pipe; if mpp is not NULL, place some NAILENV_* environment
  * variables accordingly */
@@ -144,7 +144,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL) {
-      cp_b = ip->m_ct_type_plain = savestr(ip->m_ct_type);
+      ip->m_ct_type_plain = cp_b = savestr(ip->m_ct_type);
       if ((cp = strchr(cp_b, ';')) != NULL)
          *cp = '\0';
       cp = cp_b + strlen(cp_b);
@@ -153,9 +153,9 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
       *cp = '\0';
    } else if (ip->m_parent != NULL &&
          ip->m_parent->m_mimecontent == MIME_DIGEST)
-      ip->m_ct_type_plain = UNCONST("message/rfc822");
+      ip->m_ct_type_plain = "message/rfc822";
    else
-      ip->m_ct_type_plain = UNCONST("text/plain");
+      ip->m_ct_type_plain = "text/plain";
    ip->m_ct_type_usr_ovwr = NULL;
 
    if (ip->m_ct_type != NULL)
@@ -163,17 +163,15 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
    if (ip->m_charset == NULL)
       ip->m_charset = charset_get_7bit();
 
-   ip->m_ct_transfer_enc = hfield1("content-transfer-encoding",
-         (struct message*)ip);
-   ip->m_mimeenc = (ip->m_ct_transfer_enc != NULL)
-         ? mime_getenc(ip->m_ct_transfer_enc) : MIME_7B;
+   ip->m_ct_enc = hfield1("content-transfer-encoding", (struct message*)ip);
+   ip->m_mime_enc = mime_enc_from_ctehead(ip->m_ct_enc);
 
    if (((cp = hfield1("content-disposition", (struct message*)ip)) == NULL ||
          (ip->m_filename = mime_getparam("filename", cp)) == NULL) &&
          ip->m_ct_type != NULL)
       ip->m_filename = mime_getparam("name", ip->m_ct_type);
 
-   ip->m_mimecontent = mime_classify_content_of_part(ip);
+   ip->m_mimecontent = mime_type_mimepart_content(ip);
 
    if (pf & PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */
@@ -439,11 +437,11 @@ _print_part_info(struct str *out, struct mimepart *mip,
    if (is_ign("content-type", 12, doign)) {
       size_t addon;
 
-      if ((out->s = mip->m_ct_type_usr_ovwr) != NULL)
+      if ((out->s = UNCONST(mip->m_ct_type_usr_ovwr)) != NULL)
          addon = 2;
       else {
          addon = 0;
-         out->s = mip->m_ct_type_plain;
+         out->s = UNCONST(mip->m_ct_type_plain);
       }
       out->l = strlen(out->s);
 
@@ -524,44 +522,41 @@ _print_part_info(struct str *out, struct mimepart *mip,
 }
 
 static enum pipeflags
-_pipecmd(char **result, struct mimepart const *mpp)
+_pipecmd(char const **result, struct mimepart const *mpp)
 {
-   enum pipeflags ret;
-   char *cp;
-   NYD_ENTER;
+   enum pipeflags rv;
+   char const *cp;
+   NYD2_ENTER;
 
    *result = NULL;
 
    /* Do we have any handler for this part? */
-   if ((cp = mimepart_get_handler(mpp)) == NULL)
-      ret = PIPE_NULL;
-   /* User specified a command, inspect for special cases */
-   else if (cp[0] != '@') {
-      /* Normal command line */
-      ret = PIPE_COMM;
+   if ((cp = mime_type_mimepart_handler(mpp)) == NULL ||
+         cp == MIME_TYPE_HANDLER_HTML)
+      rv = PIPE_NULL;
+   else if (cp == MIME_TYPE_HANDLER_TEXT)
+      rv = PIPE_TEXT;
+   else if (*cp != '@') {
       *result = cp;
-   }
-   else if (*++cp == '\0')
-      /* Treat as plain text */
-      ret = PIPE_TEXT;
-   else if (!(pstate & PS_MSGLIST_DIRECT)) {
+      rv = PIPE_COMM;
+   } else if (!(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
-      ret = PIPE_MSG;
-      *result = UNCONST(_("[Directly address message only to display this]\n"));
+      *result = _("[Directly address message only to display this]\n");
+      rv = PIPE_MSG;
    } else {
       /* Viewing a single message only */
       /* TODO send/MIME layer rewrite: when we have a single-pass parser
        * TODO then the parsing phase and the send phase will be separated;
        * TODO that allows us to ask a user *before* we start the send, i.e.,
        * TODO *before* a pager pipe is setup */
-      if (cp[0] == '&')
+      if (*++cp == '&')
          /* Asynchronous command, normal command line */
-         ret = PIPE_ASYNC, *result = ++cp;
+         *result = ++cp, rv = PIPE_ASYNC;
       else
-         ret = PIPE_COMM, *result = cp;
+         *result = cp, rv = PIPE_COMM;
    }
-   NYD_LEAVE;
-   return ret;
+   NYD2_LEAVE;
+   return rv;
 }
 
 static FILE *
@@ -569,9 +564,8 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    bool_t quote, bool_t async)
 {
    struct str s;
-   char const *env_addon[8], *sh;
+   char const *env_addon[8], *cp, *sh;
    FILE *rbuf;
-   char *cp;
    NYD_ENTER;
 
    rbuf = *qbuf;
@@ -587,7 +581,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
-      cp = UNCONST("");
+      cp = "";
    env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
    /* NAIL_FILENAME_GENERATED */
@@ -601,8 +595,8 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
          cp = s.s;
       else {
          CTA(NAME_MAX >= 8);
-         (cp = s.s)[7] = '.';
-         cp = savecat(cp, sh);
+         s.s[7] = '.';
+         cp = savecat(s.s, sh);
       }
    }
    env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=", cp,
@@ -610,7 +604,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
-      cp = UNCONST("");
+      cp = "";
    env_addon[2] = str_concat_csvl(&s, NAILENV_CONTENT, "=", cp, NULL)->s;
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
@@ -724,7 +718,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 {
    int volatile ispipe, rv = 0;
    struct str rest;
-   char *line = NULL, *cp, *cp2, *start, *pipecomm = NULL;
+   char *line = NULL, *cp, *cp2, *start;
+   char const *pipecomm = NULL;
    size_t linesize = 0, linelen, cnt;
    int dostat, infld = 0, ignoring = 1, isenc, c;
    struct mimepart *volatile np;
@@ -1230,16 +1225,16 @@ jpipe_close:
 jcopyout:
    if (doign == allignore && level == 0) /* skip final blank line */
       --cnt;
-   switch (ip->m_mimeenc) {
-   case MIME_BIN:
-   case MIME_7B:
-   case MIME_8B:
+   switch (ip->m_mime_enc) {
+   case MIMEE_BIN:
+   case MIMEE_7B:
+   case MIMEE_8B:
       convert = CONV_NONE;
       break;
-   case MIME_QP:
+   case MIMEE_QP:
       convert = CONV_FROMQP;
       break;
-   case MIME_B64:
+   case MIMEE_B64:
       switch (ip->m_mimecontent) {
       case MIME_TEXT:
       case MIME_TEXT_PLAIN:

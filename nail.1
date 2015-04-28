@@ -530,11 +530,21 @@ and the
 option will allow leaving compose mode by writing a line consisting
 solely of a dot
 .Pf ( Ql . Ns ) .
+.
+.Pp
 Very important, though, is to define which
 .Sx "CHARACTER SETS"
 may be used when sending messages, usually by setting the option
 .Va sendcharsets
-accordingly.
+accordingly,
+having read the section
+.Sx "THE mime.types FILES"
+to understand how outgoing attachments are MIME-type classified and the
+knowledge that messages are sent asynchronously unless the variable
+.Va sendwait
+is set: only with it MTA delivery errors will be recognizable.
+.
+.Pp
 Saving a copy of the sent messages in a
 .Va record
 may also be desireable \(en as for most mailbox file targets some
@@ -737,7 +747,7 @@ continue to display the message and remain responsive.
 .Pp
 To install an external handler program for a specific MIME type set an
 according
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 variable.
 To define a handler for a specific file extension set the respective
 .Va pipe-EXTENSION
@@ -751,13 +761,14 @@ text) with either of the text-mode browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
-to view shell scripts as plain text
+teach \*(UA about MathML documents and make it display them as plain text
 and to open PDF attachments in an external PDF viewer, asynchronously:
 .
 .Bd -literal -offset indent
 #set pipe-text/html="elinks -force-html -dump 1"
 set pipe-text/html="lynx -stdin -dump -force_html"
-set pipe-application/x-sh=@
+mimetype 'application/mathml+xml mathml'
+set pipe-application/mathml+xml=@
 set pipe-application/pdf="@&cat > \e
       \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
     acroread \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
@@ -777,7 +788,7 @@ For more on MIME, also in respect to sending of messages, see the
 section
 .Sx "THE mime.types FILES"
 and the command
-.Ic mimetypes .
+.Ic mimetype .
 .\" }}}
 .
 .\" .Ss "Mailing lists" {{{
@@ -2798,18 +2809,18 @@ command issued after
 will display the following message, not the current one.
 .
 .Mx
-.It Ic mimetypes
-Either
-.No \&( Ns Ar show
-or)
-.Ar clear
-the
-.Xr mime.types 5
-cache.
-In the former case all sources are loaded first as necessary.
-The
+.It Ic mimetype
+Without any arguments the content of the MIME type cache will displayed.
+Otherwise each argument defines a complete MIME type specification of
+a type that shall be added (prepended) to the cache.
+In any event MIME type sources are loaded first as necessary \(en
 .Va mimetypes-load-control
-option can be used to fine-tune which sources are loaded.
+can be used to fine-tune which sources are actually loaded.
+Refer to the section on
+.Sx "THE mime.types FILES"
+for more on MIME type specifications and this topic in general.
+MIME type unregistration and cache resets can be triggered with
+.Ic unmimetype .
 .
 .Mx
 .It Ic mlist
@@ -3453,6 +3464,20 @@ Remove an existing command
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 The special name `*' will remove all fields.
+.
+.Mx
+.It Ic unmimetype
+Delete all given MIME types, e.g.,
+.Ql unmimetype text/plain
+will remove all registered specifications for the MIME type
+.Ql text/plain .
+The special name
+.Ql *
+will discard all existing MIME types, and the special name
+.Ql reset
+will act the same but also reset internal state, causing a complete
+cache reinitialization
+.Dq next .
 .
 .Mx
 .It Ic unmlist
@@ -4742,7 +4767,7 @@ mode, which will cause a screen clearance once \*(UA is terminated again.
 even when supported for this to produce appealing results the used
 .Ev PAGER
 and possibly configured
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 applications that take control over the terminal need to have
 corresponding support too, e.g., the
 .Xr less 1
@@ -5457,39 +5482,75 @@ option.
 .
 .Mx
 .It Va mime-counter-evidence
-Normally the `Content-Type:' field is used to decide how to treat
-a messages MIME part.
+Normally the
+.Ql Content-Type:
+field is used to decide how to handle MIME parts.
 Some MUAs however don't use
 .Xr mime.types 5
-or a similar mechanism to correctly classify content,
-but simply specify `application/octet-stream',
-even for plain text attachments like `text/diff'.
-If this variable is set then \*(UA will use the file extension of
-attachments to classify such MIME message parts, if possible.
+or a similar mechanism to correctly classify content, but simply specify
+.Ql application/octet-stream ,
+even for plain text attachments like
+.Ql text/diff .
+If this variable is set then \*(UA will try to classify such MIME
+message parts on its own, if possible, and through their file name.
+This variable can also be given a non-empty value, in which case the
+value is expected to be a number, actually a carrier of bits.
+Creating the bit-carrying number is actually a simple addition:
+.Bd -literal -offset indent
+$ echo Value should be set to $((2 + 4))
+Value should be set to 6
+.Ed
 .Pp
-This can also be given a non-empty value: in this case the value is
-expected to be a number, actually a carrier of bits.
-If bit two is set (0x2) then the detected "real" content-type will be
-carried along with the message and be used for detecting which
-.Va pipe-CONTENT/SUBCONTENT
+.Bl -bullet -compact
+.It
+If bit two is set (2) then the detected
+.Qd real
+content-type will be carried along with the message and be used for
+deciding which
+.Va pipe-TYPE/SUBTYPE
 is responsible for the MIME part, shall that question arise;
 when displaying such a MIME part the part-info will indicate the
-overridden content-type by showing a plus-sign (`+').
+overridden content-type by showing a plus-sign
+.Pf ( Ql + ) .
+.It
+If bit three is set (4) then the counter-evidence is always produced
+and a positive result will be used as the MIME type, even forcefully
+overriding the parts given MIME type.
+.\".It
+.\"If bit four is set (8) then as a last resort the content of
+.\".Ql application/octet-stream
+.\"parts will be inspected, so that data that looks like (english) plain
+.\"text can be treated as such.
+.El
 .
 .Mx
 .It Va mimetypes-load-control
 This option can be used to control which of the
 .Xr mime.types 5
-MIME type databases are loaded by \*(UA.
-If the letter `u' (or `U') is part of this options value, then the
-user's personal
+databases are loaded by \*(UA, as furtherly described in the section
+.Sx "THE mime.types FILES" .
+If the letter
+.Ql u
+is part of the option value, then the user's personal
 .Pa ~/.mime.types
-file will be loaded (if it exists);
-likewise the letter `s' (or `S') controls loading of the system wide
-.Pa /etc/mime.types .
+file will be loaded (if it exists); likewise the letter
+.Ql s
+controls loading of the system wide
+.Pa /etc/mime.types ;
+the user file is loaded first, letter matching is case-insensitive.
 If this option is not set \*(UA will try to load both files instead.
-Incorporation of the MIME types that are compiled into \*(UA cannot be
-suppressed.
+Incorporation of the \*(UA-builtin MIME types cannot be suppressed,
+but they will be matched last.
+.Pp
+More sources can be specified by using a different syntax: if the
+value string contains an equals sign
+.Ql =
+then it is instead parsed as a comma-separated list of the described
+letters plus
+.Ql f=FILENAME
+pairs; the given filenames will be expanded and loaded, and their
+content may use the extended syntax that is described in the section
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Va NAIL_EXTRA_RC
@@ -5579,9 +5640,10 @@ Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .
 .Mx
-.It Va pipe-CONTENT/SUBCONTENT
-When a MIME message part of type `CONTENT/SUBCONTENT' (normalized to
-lowercase) type is displayed or quoted,
+.It Va pipe-TYPE/SUBTYPE
+When a MIME message part of type
+.Ql TYPE/SUBTYPE
+(normalized to lowercase) type is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
 The special value `@' can be used to force interpretation of the message
@@ -5618,7 +5680,7 @@ The filename, if any is set, the empty string otherwise.
 Set to
 .Ev NAIL_FILENAME
 if that isn't empty, but otherwise a combination of a random string
-(always) and the `SUBCONTENT' of the MIME part, if the latter is known.
+(always) and the `SUBTYPE' of the MIME part, if the latter is known.
 .Mx
 .It Ev NAIL_CONTENT
 The MIME content-type of the part, if known, the empty string otherwise.
@@ -5635,7 +5697,7 @@ otherwise.
 .Mx
 .It Va pipe-EXTENSION
 This is identical to
-.Va pipe-CONTENT/SUBCONTENT
+.Va pipe-TYPE/SUBTYPE
 except that `EXTENSION' (normalized to lowercase using character
 mappings of the ASCII charset) names a file extension, e.g., `xhtml'.
 Handlers registered using this method take precedence.
@@ -6644,11 +6706,13 @@ System wide initialization file.
 .
 .Mx
 .It Pa ~/.mime.types
-Personal MIME types.
+Personal MIME types, see
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Pa /etc/mime.types
-System wide MIME types.
+System wide MIME types, see
+.Sx "THE mime.types FILES" .
 .
 .Mx
 .It Pa ~/.netrc
@@ -6664,30 +6728,80 @@ documents the file format.
 .\" .Sh "THE mime.types FILES" {{{
 .Sh "THE mime.types FILES"
 .
-For any outgoing attachment \*(UA tries to determine the content type.
-It does this by reading MIME type files whose lines have the following
-syntax:
+When sending messages \*(UA tries to determine the content type of all
+attachments.
+When displaying message content or attachments \*(UA uses the content
+type to decide wether it can directly display data or wether it needs to
+deal with content handlers, as can be defined via
+.Va pipe-TYPE/SUBTYPE
+(and
+.Va pipe-EXTENSION )
+variables, to do so.
+.
+.Pp
+It learns about MIME types and how to treat them by reading
+.Pa mime.types
+files, the loading of which can be controlled by setting the variable
+.Va mimetypes-load-control .
+(The command
+.Ic mimetype
+can also be used to deal with MIME types.)
+.Pa mime.types
+files have the following syntax:
 .
 .Pp
 .Dl type/subtype	extension [extension ...]
 .
 .Pp
-where `type/subtype' are strings describing the file contents,
-and `extension' is the part of a filename starting after the last dot.
-Any line not immediately beginning with an ASCII alphabetical character
-is ignored by \*(UA.
-The variable
+where
+.Ql type/subtype
+are strings describing the file contents, and one or multiple
+.Ql extension Ns
+s, separated by whitespace, name the part of a filename starting after
+the last dot (of interest).
+Comments may be introduced anywhere on a line with a number sign
+.Ql # ,
+causing the remaining line to be discarded.
+.
+\*(UA also supports an extended, non-portable syntax in specially
+crafted files, which can be loaded via the alternative value syntax of
 .Va mimetypes-load-control
-can be used to control the sources of MIME types, and the
-.Ic mimetypes
-command can be used to show the list of mime types known to \*(UA.
-If there is a match with the `extension' of the file to attach,
-the given `type/subtype' pair is used.
-Otherwise, or if the filename has no extension,
-the content types `text/plain' or `application/octet-stream' are used,
-dependent upon file content inspection.
-Also see
+and prepends a
+.Ql type-marker :
+.
+.Pp
+.Dl [type-marker ]type/subtype extension [extension ...]
+.
+.Pp
+The following type markers are supported:
+.
+.Pp
+.Bl -tag -compact -offset indent -width ".It Ar _n_u"
+.It Ar @
+Treat message parts with this content as plain text.
+.It Ar @t@
+The same as plain
+.Ar @ .
+.It Ar @h@
+Treat message parts with this content as HTML tagsoup.
+If the (primitive) HTML-tagsoup-to-text converter is not available treat
+the content as plain text instead.
+.It Ar @H@
+Likewise
+.Ar @h@
+but instead of falling back to plain text require an explicit content
+handler to be defined.
+.El
+.
+.Pp
+Further reading:
+for sending messages:
 .Va mime-allow-text-controls .
+For reading etc. messages:
+.Sx "Viewing HTML mail and MIME attachments" ,
+.Va mime-counter-evidence ,
+.Va pipe-TYPE/SUBTYPE ,
+.Va pipe-EXTENSION .
 .\" }}}
 .
 .
@@ -6825,7 +6939,7 @@ set sendcharsets=utf-8,iso-8859-1
 # exit status of the MTA (including the builtin SMTP one)!
 set sendwait
 
-# Don't try to load any external mime.types(5) descriptions
+# Only use builtin MIME types, no mime.types(5) files
 set mimetypes-load-control
 
 # Default directory where we act in (relative to $HOME)
@@ -6845,7 +6959,7 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 # Never refuse to start into interactive mode, and more
 set emptystart \e
     colour-pager crt= followup-to followup-to-honour=ask-yes \e
-    history-gabby mime-counter-evidence=2 \e
+    history-gabby mime-counter-evidence=6 \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
     NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
     reply-to-honour=ask-yes

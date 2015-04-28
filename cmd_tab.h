@@ -349,8 +349,10 @@
      DS(N_("Un\"fwdignore\" <header-fields>")) },
    { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
      DS(N_("Un\"fwdretain\" <header-fields>")) },
-   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1
-     DS(N_("Either <show> (default) or <clear> the mime.types cache")) },
+   { "mimetype", &c_mimetype, (M | RAWLIST), 0, 1000
+     DS(N_("(Load and) show all known MIME types or define some")) },
+   { "unmimetype", &c_unmimetype, (M | RAWLIST), 1, 1000
+     DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
    { "spamrate", &c_spam_rate, (A | M | R | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
    { "spamham", &c_spam_ham, (A | M | R | MSGLIST), 0, 0

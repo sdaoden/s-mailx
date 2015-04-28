@@ -1189,6 +1189,10 @@ FL bool_t      charset_iter_next(void);
 FL bool_t      charset_iter_is_valid(void);
 FL char const * charset_iter(void);
 
+/* And this is (xxx temporary?) which returns the iterator if that is valid and
+ * otherwise either charset_get_8bit() or charset_get_lc() dep. on HAVE_ICONV */
+FL char const * charset_iter_or_fallback(void);
+
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
@@ -1196,36 +1200,15 @@ FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
 
-/* Get the mime encoding from a Content-Transfer-Encoding header field */
-FL enum mimeenc mime_getenc(char *h);
-
 /* Get a mime style parameter from a header line */
-FL char *      mime_getparam(char const *param, char *h);
+FL char *      mime_getparam(char const *param, char const *h);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * salloc()ed copy of it; store strlen() in *len if set */
-FL char *      mime_get_boundary(char *h, size_t *len);
+FL char *      mime_get_boundary(char const *h, size_t *len);
 
 /* Create a salloc()ed MIME boundary */
 FL char *      mime_create_boundary(void);
-
-/* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * left alone unless it's non-NULL */
-FL int         mime_classify_file(FILE *fp, char const **contenttype,
-                  char const **charset, int *do_iconv);
-
-/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const */
-FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
-
-/* Return the Content-Type matching the extension of name */
-FL char *      mime_classify_content_type_by_fileext(char const *name);
-
-/* Get the (pipe) handler for a part, or NULL if there is none known */
-FL char *      mimepart_get_handler(struct mimepart const *mpp);
-
-/* `mimetypes' command */
-FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
@@ -1242,7 +1225,7 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
                   FILE *f, enum conversion convert, enum tdflags dflags);
 
 /*
- * mime_cte.c
+ * mime_enc.c
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
@@ -1255,10 +1238,19 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
 FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
 
+/* Default MIME Content-Transfer-Encoding: as via *encoding* */
+FL enum mime_enc mime_enc_target(void);
+
+/* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
+FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
+
+/* XXX Try to get rid of that */
+FL char const * mime_enc_from_conversion(enum conversion const convert);
+
 /* How many characters of (the complete body) ln need to be quoted.
- * Only MIMECTE_ISHEAD and MIMECTE_ISENCWORD are understood */
-FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen,
-                  enum mimecte_flags flags);
+ * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
+FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,
+                  enum mime_enc_flags flags);
 
 /* How much space is necessary to encode len bytes in QP, worst case.
  * Includes room for terminator */
@@ -1311,6 +1303,30 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * message); caller is responsible to free buffers */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
+
+/*
+ * mime_types.c
+ */
+
+/* `(un)?mimetype' commands */
+FL int         c_mimetype(void *v);
+FL int         c_unmimetype(void *v);
+
+/* Return a Content-Type matching the name, or NULL if none could be found */
+FL char *      mime_type_by_filename(char const *name);
+
+/* Classify content of *fp* as necessary and fill in arguments; **charset* is
+ * left alone unless it's non-NULL */
+FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
+                     char const **charset, int *do_iconv);
+
+/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
+ * but otherwise mpp is const */
+FL enum mimecontent mime_type_mimepart_content(struct mimepart *mpp);
+
+/* Get the (pipe) handler for a part (may be MIME_TYPE_HANDLER_*),
+ * or NULL if there is none known */
+FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
 
 /*
  * nam_a_grp.c

@@ -85,6 +85,7 @@ set mime-counter-evidence
 # letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
 # "s" adds /etc/mime.types, if available; setting this without any value uses
 # only a set of builtin mimetypes; the default behaviour equals "us".
+# An extended syntax is available if the value contains a comma, see the manual
 #set mimetypes-load-control
 
 # Do not remove empty mail folders in the spool directory.
@@ -138,29 +139,7 @@ ignore mime-version content-transfer-encoding
 # Only include selected header fields when forwarding messages.
 fwdretain subject date from to
 
-# Unfortunately some mime.types(5) that are really text were assigned to
-# `application/xy' rather than to `text/xy'.
-# The special pipe command `@' will force treatment of an attachment as plain
-# text, so add some rather useful of those
-set pipe-application/javascript=@
-set pipe-application/json=@
-set pipe-application/mbox=@
-set pipe-application/pgp-signature=@
-set pipe-application/x-csh=@
-set pipe-application/x-latex=@
-set pipe-application/x-perl=@
-set pipe-application/x-sh=@
-set pipe-application/x-shar=@
-set pipe-application/x-tex=@
-set pipe-application/x-texinfo=@
-set pipe-application/x-xfig=@
-set pipe-application/xhtml+xml=@
-set pipe-application/xml=@
-set pipe-application/xml-dtd=@
-set pipe-application/xslt+xml=@
-set pipe-image/svg+xml=@
-
-# Other pipe-CONTENT/SUBCONTENT entries
+# Some pipe-TYPE/SUBTYPE entries
 #set pipe-text/html="lynx -stdin -dump -force_html"
 
 # s-it-mode

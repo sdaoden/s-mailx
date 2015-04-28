@@ -32,13 +32,72 @@ config.o accmacvar.o: okeys.h version.h
 config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
-config.o mime.o: mime_types.h
+config.o mime_types.o: mime_types.h
 config.o smtp.o: smtp_gssapi.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	< ./mime.types > $(@) \
-		$(SED) -e '/^#/d' -e '/^$$/d' -e 's/^/	"/' -e 's/$$/",/'
+	< ./mime.types > $(@) $(AWK) '\
+	function add(mt, ln) {\
+		gsub(/[[:space:]]+/, " ", ln);\
+		i = split(ln, i_a);\
+		e = "";\
+		for (j = 1; j <= i; ++j) {\
+			k = i_a[j];\
+			e = (e ? e " " : "") k\
+		}\
+		if (e) {\
+			if (e_a[mt])\
+				e_a[mt] = e_a[mt] " ";\
+			e_a[mt] = e_a[mt] e\
+		}\
+	}\
+	/^[[:space:]]*#/ {next}\
+	/^[[:space:]]*$$/ {ltype = ""; next}\
+	/^[[:space:]]/ {\
+		if (!ltype)\
+			print "FAULTY CONTINUATION: " $$0 >> "/dev/stderr";\
+		add(ltype, $$0);\
+		next\
+	}\
+	/^(@([thH]@)? )?[[:alpha:]]/ {\
+		if ($$1 ~ /^@([thH]@)?$$/) {\
+			pa = $$1;\
+			$$1 = $$2;\
+			$$2 = ""\
+		} else\
+			pa = "";\
+		if ($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
+			print "FAULTY MIME TYPE: <" $$1 ">" >> "/dev/stderr";\
+		ltype = $$1; $$1 = "";\
+		if (pa)\
+			p_a[ltype] = pa;\
+		if (!nt_a[ltype])\
+			no_a[++no_ai] = nt_a[ltype] = ltype;\
+		add(ltype, $$0)\
+	}\
+	END {\
+		for (z = 1; z <= no_ai; ++z) {\
+			t = no_a[z];\
+			j = index(t, "/");\
+			mt = toupper(substr(t, 1, j - 1));\
+			j = substr(t, j + 1);\
+			l = length(j);\
+			if (!p_a[t])\
+				mt = "_MT_" mt;\
+			else {\
+				tm = p_a[t];\
+				if (tm == "@" || tm == "@t@")\
+					mt = "_MT_" mt " | _MT_PLAIN";\
+				else if (tm == "@h@")\
+					mt = "_MT_" mt " | _MT_SOUP_h";\
+				else if (tm == "@H@")\
+					mt = "_MT_" mt " | _MT_SOUP_H";\
+			}\
+			print "   {" mt ", " l ", \"" j e_a[t] "\"},"\
+		}\
+	}\
+	'
 
 test: all
 	@echo 'Running test, please wait';\
@@ -49,8 +108,8 @@ mkman.1: nail.1 mk.mk
 	_VERSION="`< version.h $(SED) \
 		-e '/ VERSION /b X' -e d \
 		-e ':X' -e 's/[^\"]*\"\([^\"]\{1,\}\)\"/\1/'`" \
-		_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-		< ./nail.1 > $(@) $(AWK) '\
+	_SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+	< ./nail.1 > $(@) $(AWK) '\
 	BEGIN {\
 		written = 0;\
 		i = ENVIRON["_VERSION"];\

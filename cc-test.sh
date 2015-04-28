@@ -850,7 +850,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 t_content() {
    ${rm} -f "${BODY}" "${MBOX}"
 
-   # MIME CTE (QP) stress message body
+   # MIME encoding (QP) stress message body
 printf \
 'Ich bin eine DÖS-Datäi mit sehr langen Zeilen und auch '\
 'sonst bin ich ganz schön am Schleudern, da kannste denke '\
@@ -905,7 +905,7 @@ printf \
 ' '\
  > "${BODY}"
 
-   # MIME CTE (QP) stress message subject
+   # MIME encoding (QP) stress message subject
 SUB="Äbrä  Kä?dä=brö 	 Fü?di=bus? \
 adadaddsssssssddddddddddddddddddddd\
 ddddddddddddddddddddddddddddddddddd\
@@ -921,7 +921,7 @@ ggggggggggggggggggggggggggggggggggg\
 ggggggggggggggggggggggggggggggggggg\
 gggggggggggggggg"
 
-   # Three tests for MIME-CTE and (a bit) content classification.
+   # Three tests for MIME encodign and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
 
    # TODO Note: because of our weird putline() handling in <-> collect.c

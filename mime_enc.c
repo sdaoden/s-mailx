@@ -113,10 +113,14 @@ static signed char const   _b64__dectbl[] = {
 #define _B64_DECUI8(C)     \
    ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
 
+/* ASCII case-insensitve check wether Content-Transfer-Encoding: header body
+ * hbody defined this encoding type */
+static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
+
 /* Check wether *s must be quoted according to flags, else body rules;
  * sol indicates wether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
-                        enum mimecte_flags flags);
+                        enum mime_enc_flags flags);
 
 /* Convert c to/from a hexadecimal character string */
 SINLINE char *       _qp_ctohex(char *store, char c);
@@ -131,14 +135,42 @@ static size_t        _b64_decode_prepare(struct str *work,
  * Return number of useful bytes in out or -1 on error */
 static ssize_t       _b64_decode(struct str *out, struct str *in);
 
+static bool_t
+_is_ct_enc(char const *hbody, char const *encoding)
+{
+   bool_t quoted, rv;
+   int c;
+   NYD2_ENTER;
+
+   if (*hbody == '"')
+      quoted = TRU1, ++hbody;
+   else
+      quoted = FAL0;
+   rv = FAL0;
+
+   while (*hbody != '\0' && *encoding != '\0')
+      if ((c = *hbody++, lowerconv(c) != *encoding++))
+         goto jleave;
+   rv = TRU1;
+
+   if (quoted && *hbody == '"')
+      goto jleave;
+   if (*hbody == '\0' || whitechar(*hbody))
+      goto jleave;
+   rv = FAL0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
 SINLINE enum _qact
-_mustquote(char const *s, char const *e, bool_t sol, enum mimecte_flags flags)
+_mustquote(char const *s, char const *e, bool_t sol, enum mime_enc_flags flags)
 {
    ui8_t const *qtab;
    enum _qact a, r;
    NYD2_ENTER;
 
-   qtab = (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD))
+   qtab = (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD))
          ? _qtab_head : _qtab_body;
    a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
 
@@ -147,9 +179,9 @@ _mustquote(char const *s, char const *e, bool_t sol, enum mimecte_flags flags)
    r = Q;
 
    /* Special header fields */
-   if (flags & (MIMECTE_ISHEAD | MIMECTE_ISENCWORD)) {
+   if (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD)) {
       /* Special massage for encoded words */
-      if (flags & MIMECTE_ISENCWORD) {
+      if (flags & MIMEEF_ISENCWORD) {
          switch (a) {
          case HT:
          case US:
@@ -326,8 +358,71 @@ mime_hexseq_to_char(char const *hex)
    return rv;
 }
 
+FL enum mime_enc
+mime_enc_target(void)
+{
+   char const *cp;
+   enum mime_enc rv;
+   NYD2_ENTER;
+
+   if ((cp = ok_vlook(encoding)) == NULL)
+      rv = MIME_DEFAULT_ENCODING;
+   else if (!asccasecmp(cp, "quoted-printable"))
+      rv = MIMEE_QP;
+   else if (!asccasecmp(cp, "8bit"))
+      rv = MIMEE_8B;
+   else if (!asccasecmp(cp, "base64"))
+      rv = MIMEE_B64;
+   else {
+      fprintf(stderr, _("Warning: invalid *encoding*, using Base64: \"%s\"\n"),
+         cp);
+      rv = MIMEE_B64;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL enum mime_enc
+mime_enc_from_ctehead(char const *hbody)
+{
+   enum mime_enc rv;
+   NYD2_ENTER;
+
+   if (hbody == NULL || _is_ct_enc(hbody, "7bit"))
+      rv = MIMEE_7B;
+   else if (_is_ct_enc(hbody, "8bit"))
+      rv = MIMEE_8B;
+   else if (_is_ct_enc(hbody, "base64"))
+      rv = MIMEE_B64;
+   else if (_is_ct_enc(hbody, "binary"))
+      rv = MIMEE_BIN;
+   else if (_is_ct_enc(hbody, "quoted-printable"))
+      rv = MIMEE_QP;
+   else
+      rv = MIMEE_NONE;
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char const *
+mime_enc_from_conversion(enum conversion const convert) /* TODO booom */
+{
+   char const *rv;
+   NYD_ENTER;
+
+   switch (convert) {
+   case CONV_7BIT:   rv = "7bit"; break;
+   case CONV_8BIT:   rv = "8bit"; break;
+   case CONV_TOQP:   rv = "quoted-printable"; break;
+   case CONV_TOB64:  rv = "base64"; break;
+   default:          rv = ""; break;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL size_t
-mime_cte_mustquote(char const *ln, size_t lnlen, enum mimecte_flags flags)
+mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags)
 {
    size_t rv;
    bool_t sol;
@@ -338,7 +433,7 @@ mime_cte_mustquote(char const *ln, size_t lnlen, enum mimecte_flags flags)
       case US:
       case EQ:
       case HT:
-         assert(flags & MIMECTE_ISENCWORD);
+         assert(flags & MIMEEF_ISENCWORD);
          /* FALLTHRU */
       case N:
          continue;
@@ -427,11 +522,11 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 
    /* QP_ISHEAD? */
    if (!sol) {
-      enum mimecte_flags ctef = MIMECTE_ISHEAD |
-            (flags & QP_ISENCWORD ? MIMECTE_ISENCWORD : 0);
+      enum mime_enc_flags ef = MIMEEF_ISHEAD |
+            (flags & QP_ISENCWORD ? MIMEEF_ISENCWORD : 0);
 
       for (seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp) {
-         enum _qact mq = _mustquote(is, ie, sol, ctef);
+         enum _qact mq = _mustquote(is, ie, sol, ef);
          char c = *is++;
 
          if (mq == N) {
@@ -454,7 +549,7 @@ jheadq:
 
    /* The body needs to take care for soft line breaks etc. */
    for (lnlen = 0, seenx = FAL0; is < ie; sol = FAL0) {
-      enum _qact mq = _mustquote(is, ie, sol, MIMECTE_NONE);
+      enum _qact mq = _mustquote(is, ie, sol, MIMEEF_NONE);
       char c = *is++;
 
       if (mq == N && (c != '\n' || !seenx)) {
