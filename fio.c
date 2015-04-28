@@ -522,6 +522,10 @@ FL int
    else if (prompt == NULL)
       prompt = getprompt();
 
+   /* Ensure stdout is flushed first anyway */
+   if (!dotty && prompt == NULL)
+      fflush(stdout);
+
    for (n = 0;;) {
       if (dotty) {
          assert(ifile == stdin);
@@ -537,8 +541,9 @@ FL int
          n = (tty_readline)(prompt, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
       } else {
-         if (prompt != NULL && *prompt != '\0') {
-            fputs(prompt, stdout);
+         if (prompt != NULL) {
+            if (*prompt != '\0')
+               fputs(prompt, stdout);
             fflush(stdout);
          }
          n = (readline_restart)(ifile, linebuf, linesize, n
