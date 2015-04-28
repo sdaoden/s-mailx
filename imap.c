@@ -185,9 +185,7 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static int        imap_use_starttls(const char *uhp);
-static enum okay  imap_preauth(struct mailbox *mp, const char *xserver,
-                     const char *uhp);
+static enum okay  imap_preauth(struct mailbox *mp, struct url const *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
 #ifdef HAVE_MD5
@@ -805,53 +803,32 @@ jleave:
    --imaplock;
 }
 
-static int
-imap_use_starttls(const char *uhp)
-{
-   int rv;
-   NYD_ENTER;
-
-   if (ok_blook(imap_use_starttls))
-      rv = 1;
-   else {
-      char *var = savecat("imap-use-starttls-", uhp);
-      rv = vok_blook(var);
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
 static enum okay
-imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
+imap_preauth(struct mailbox *mp, struct url const *urlp)
 {
-   char *cp;
    NYD_X;
 
    mp->mb_active |= MB_PREAUTH;
    imap_answer(mp, 1);
-   if ((cp = strchr(xserver, ':')) != NULL) {
-      char *x = salloc(cp - xserver + 1);
-      memcpy(x, xserver, cp - xserver);
-      x[cp - xserver] = '\0';
-      xserver = x;
-   }
+
 #ifdef HAVE_SSL
-   if (mp->mb_sock.s_use_ssl == 0 && imap_use_starttls(uhp)) {
+   if (!mp->mb_sock.s_use_ssl && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       FILE *queuefp = NULL;
       char o[LINESIZE];
 
       snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
       IMAP_OUT(o, MB_COMD, return STOP)
       IMAP_ANSWER()
-      if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
+      if (ssl_open(urlp, &mp->mb_sock) != OKAY)
          return STOP;
    }
 #else
-   if (imap_use_starttls(uhp)) {
+   if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       return STOP;
    }
 #endif
+
    imap_capability(mp);
    return OKAY;
 }
@@ -1322,8 +1299,7 @@ jduppass:
       mb.mb_sock = so;
       mb.mb_sock.s_desc = "IMAP";
       mb.mb_sock.s_onclose = imap_timer_off;
-      if (imap_preauth(&mb, urlp->url_h_p.s, urlp->url_u_h_p.s) != OKAY ||
-            imap_auth(&mb, &ccred) != OKAY) {
+      if (imap_preauth(&mb, urlp) != OKAY || imap_auth(&mb, &ccred) != OKAY) {
          sclose(&mb.mb_sock);
          imap_timer_off();
          safe_signal(SIGINT, saveint);
@@ -2512,7 +2488,7 @@ imap_append(const char *xserver, FILE *fp)
           * TODO i changed this to sstrdup() sofar, as is used
           * TODO somewhere else in this file for this! */
          mx.mb_imap_mailbox = sstrdup(mbx);
-         if (imap_preauth(&mx, url.url_h_p.s, url.url_u_h_p.s) != OKAY ||
+         if (imap_preauth(&mx, &url) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
             sclose(&mx.mb_sock);
             goto jfail;

@@ -3555,29 +3555,23 @@ It may be useful to
 a macro that temporarily sets this option, then accesses a POP3 account
 that is known to only get small text messages, and then unsets this
 variable again.
-.It Va pop3-no-apop
+.It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
 \*(OP Unless this variable is set the `APOP' authentication method
 will be used when connecting to a POP3 server that advertises support.
 The advantage of APOP over `USER/PASS' authentication is that the
 password is not sent in clear text over the wire and that only a single
 packet is sent for the user/password tuple.
-.It Va pop3-no-apop-HOST
-\*(IN Disables the `APOP' authentication method for a specific host.
-.It Va pop3-no-apop-USER@HOST
-Disables the `APOP' authentication method for a specific account.
-.It Va pop3-use-starttls
+Note that
+.Va pop3-no-apop-HOST
+requires \*(IN.
+.It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
 \*(OP Causes \*(UA to issue a `STLS' command to make an unencrypted POP3
 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
-.It Va pop3-use-starttls-HOST
-\*(IN Activates
-.Va pop3-use-starttls
-for a specific host.
-.It Va pop3-use-starttls-USER@HOST
-Activates
-.Va pop3-use-starttls
-for a specific account.
+Note that
+.Va pop3-use-starttls-HOST
+requires \*(IN.
 .It Va print-all-chars
 This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
@@ -3689,23 +3683,12 @@ and
 .It Va smime-no-default-ca
 \*(OP Don't load default CA locations when verifying S/MIME signed
 messages.
-.It Va smtp-use-starttls
+.It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
 \*(OP Causes \*(UA to issue a `STARTTLS' command to make an SMTP session
 SSL/TLS encrypted.
-.It Va smtp-use-starttls-HOST
-Overrides
-.Va smtp-use-starttls
-for SMTP accounts on a specific host.
-.It Va smtp-use-starttls-USER@HOST
-Overrides
-.Va smtp-use-starttls
-for a specific account.
 .It Va ssl-no-default-ca
 \*(OP Don't load default CA locations to verify SSL/TLS server
 certificates.
-.It Va ssl-v2-allow
-\*(OP Accept SSLv2 connections.
-These are normally not allowed because this protocol version is insecure.
 .It Va keep-content-length
 When (editing messages and) writing
 .Ev MBOX
@@ -4577,17 +4560,17 @@ verification of S/MIME signed messages.
 \*(OP Specifies a cipher to use when generating S/MIME encrypted
 messages for the specified account.
 RFC 5751 mandates a default of `aes-128' (AES-128 CBC).
-.Pp
-The actually available cipher algorithms depend on the cryptographic
-library that \*(UA uses; possible values are, in decreasing cipher
-strength:
+Possible values are (case-insensitive and) in decreasing cipher strength:
 `aes-256' (AES-256 CBC), `aes-192' (AES-192 CBC), `aes-128' (AES-128 CBC),
 `des3' (DES EDE3 CBC, 168 bits; default if `aes-128' isn't available)
 and `des' (DES CBC, 56 bits).
 .Pp
-The following ciphers have been obsoleted and are no longer mentioned by
-the S/MIME specification (RFC 5751), but may be selected if available:
-`rc2-64' (RC2 CBC, 64 bits) and `rc2-40' (RC2 CBC, 40 bits).
+The actually available cipher algorithms depend on the cryptographic
+library that \*(UA uses.
+\*(OP Support for more cipher algorithms may be available through
+dynamic loading via, e.g.,
+.Xr EVP_get_cipherbyname 3
+(OpenSSL) if \*(UA has been compiled to support this.
 .It Va smime-crl-file
 \*(OP Specifies a file that contains a CRL in PEM format to use when
 verifying S/MIME messages.
@@ -4825,83 +4808,102 @@ verification of SSL/TLS server certificates.
 See
 .Xr SSL_CTX_load_verify_locations 3
 for more information.
-.It Va ssl-cert
-\*(OP Sets the file name for a SSL/TLS client certificate required by
-some servers.
-.It Va ssl-cert-USER@HOST
-Sets an account-specific file name for a SSL/TLS client certificate
-required by some servers.
-Overrides
-.Va ssl-cert
-for the specified account.
-.It Va ssl-cipher-list
+.It Va ssl-cert-USER@HOST , ssl-cert-HOST , ssl-cert
+\*(OP Variable chain that sets the file name for a SSL/TLS client
+certificate required by some servers.
+This is a direct interface to the
+.Ql Certificate
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available.
+.It Va ssl-cipher-list-USER@HOST , ssl-cipher-list-HOST , ssl-cipher-list
 \*(OP Specifies a list of ciphers for SSL/TLS connections.
-See
+This is a direct interface to the
+.Ql CipherString
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available; see
 .Xr ciphers 1
 for more information.
+.It Va ssl-config-file
+\*(OP If this variable is set \*(UA will call
+.Xr CONF_modules_load_file 3
+to allow OpenSSL to be configured according to the host system wide
+security settings.
+If a non-empty value is given then this will be used to specify the
+configuration file to be used instead of the global OpenSSL default;
+note that in this case it is an error if the file cannot be loaded.
+The application name will always be passed as `\*(ua'.
 .It Va ssl-crl-file
 \*(OP Specifies a file that contains a CRL in PEM format to use when
 verifying SSL/TLS server certificates.
 .It Va ssl-crl-dir
 \*(OP Specifies a directory that contains files with CRLs in PEM format
 to use when verifying SSL/TLS server certificates.
-.It Va ssl-key
-\*(OP Sets the file name for the private key of a SSL/TLS client
-certificate.
+.It Va ssl-key-USER@HOST , ssl-key-HOST , ssl-key
+\*(OP Variable chain that sets the file name for the private key of
+a SSL/TLS client certificate.
 If unset, the name of the certificate file is used.
 The file is expected to be in PEM format.
-.It Va ssl-key-USER@HOST
-Sets an account-specific file name for the private key of a SSL/TLS
-client certificate.
-Overrides
-.Va ssl-key
-for the specified account.
-.It Va ssl-method
-\*(OP Selects the used TLS/SSL protocol version.
-The actually available protocol versions depend on the TLS/SSL
-library that \*(UA uses; possible values are, from newest to oldest:
-`tls1.2', `tls1.1', `tls1', `ssl3' and `ssl2'.
-.Pp
-Setting
-.Va ssl-method
-to any of these values will fixate the used protocol, which means that
-connections will fail if the server doesn't support it.
-The value `auto', which is the default, chooses a compatibility method
-that automatically uses the newest protocol version that the server
-is capable to understand.
-.Pp
-It has to be noted that `auto' is used as a fallback method if
-the actual setting of
-.Va ssl-method
-isn't supported by the used TLS/SSL library \(em in this case an error
-message will be printed first, however.
-.It Va ssl-method-USER@HOST
-Overrides
-.Va ssl-method
-for a specific account.
+This is a direct interface to the
+.Ql PrivateKey
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available.
+.It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
+\*(OP
+\*(OB Please use the newer and more flexible
+.Va ssl-protocol
+instead: if both values are set,
+.Va ssl-protocol
+will take precedence!
+Can be set to the following values, the actually used
+.Va ssl-protocol
+specification to which it is mapped is shown in parenthesis:
+`tls1.2' ("-ALL, TLSv1.2"), `tls1.1' ("-ALL, TLSv1.1"), `tls1'
+("-ALL, TLSv1") and `ssl3' ("-ALL, SSLv3");
+the special value `auto' is mapped to "ALL, -SSLv2" and thus includes
+the SSLv3 protocol.
+Note that SSLv2 is no longer supported at all.
+.It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
+\*(OP Specify the used SSL/TLS protocol.
+This is a direct interface to the
+.Ql Protocol
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available;
+otherwise an \*(UA internal parser is used which understands the
+following subset of (case-insensitive) command strings:
+`SSLv3', `TLSv1', `TLSv1.1' and `TLSv1.2',
+as well as the special value `ALL'.
+Multiple specifications may be given via a comma-separated list which
+ignores any whitespace.
+An optional `+' plus prefix will enable a protocol, a `-' minus prefix
+will disable it, so that "-ALL, TLSv1.2" will enable only the TLSv1.2
+protocol.
+It depends upon the used TLS/SSL library which protocols are actually
+supported and which protocols are used if
+.Va ssl-protocol
+is not set, but note that SSLv2 is no longer supported at all and
+actively disabled.
 .It Va ssl-rand-egd
 \*(OP Gives the pathname to an entropy daemon socket, see
 .Xr RAND_egd 3 .
-Note that (as of 2014) not all OpenSSL installations include this
-functionality.
+Not all SSL/TLS libraries support this.
 .It Va ssl-rand-file
 \*(OP Gives the pathname to a file with entropy data, see
 .Xr RAND_load_file 3 .
 If the file is a regular file writable by the invoking user,
 new data is written to it after it has been loaded.
-.It Va ssl-verify
-\*(OP Sets the action to be performed if an error occurs during SSL/TLS
-server certificate validation.
-Valid values are
+.It Va ssl-verify-USER@HOST , ssl-verify-HOST , ssl-verify
+\*(OP Variable chain that sets the action to be performed if an error
+occurs during SSL/TLS server certificate validation.
+Valid (case-insensitive) values are
 `strict' (fail and close connection immediately),
 `ask' (ask whether to continue on standard input),
 `warn' (print a warning and continue),
 `ignore' (do not perform validation).
 The default is `ask'.
-.It Va ssl-verify-USER@HOST
-Overrides
-.Va ssl-verify
-for a specific account.
 .It Va stealthmua
 If only set without an assigned value, then this option inhibits the
 generation of the `Message-Id:' and `User-Agent:' header fields that
@@ -5194,6 +5196,11 @@ set v15-compat
 # Where are the SSL certificates?
 set ssl-ca-dir=/etc/ssl/certs
 set ssl-verify=strict
+
+# Don't use protocols olders than TLS v1.2.
+# (Change this [best on a per-account base only]
+# when the remote server doesn't support new protocols!)
+set ssl-protocol="ALL,-VULNERABLE"
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
@@ -5521,7 +5528,7 @@ and
 .Va ssl-rand-file
 variables (see the OpenSSL FAQ for more information) or specify the
 protocol version with
-.Va ssl-method .
+.Va ssl-protocol .
 Contact your ISP if you need a client certificate or if verification of
 the server certificate fails.
 If the failed certificate is indeed valid,
@@ -5793,7 +5800,7 @@ and
 .Xr openssl 1 ,
 .Xr printf 1 ,
 .Xr sendmail 1 ,
-.Xr sh 1,
+.Xr sh 1 ,
 .Xr spamassassin 1 ,
 .Xr spamc 1 ,
 .Xr spamd 1 ,

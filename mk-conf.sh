@@ -8,6 +8,9 @@ export LC_ALL
 if [ -n "${CONFIG}" ]; then
    WANT_ICONV=0
    WANT_SOCKETS=0
+      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
@@ -16,6 +19,7 @@ if [ -n "${CONFIG}" ]; then
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
    WANT_COLOUR=0
+   #WANT_MD5=0
 
    case ${CONFIG} in
    NULLTEST)
@@ -48,7 +52,8 @@ if [ -n "${CONFIG}" ]; then
    MAXIMAL)
       WANT_ICONV=1
       WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+         WANT_IPV6=1 WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
+         WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
       WANT_IMAP_SEARCH=1
@@ -82,12 +87,13 @@ option_update() {
          msg "ERROR: need SOCKETS for required feature IMAP\\n"
          config_exit 13
       fi
-      WANT_IPV6=0 WANT_SSL=0
+      WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
       WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
+      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_NETRC=0 WANT_AGENT=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
@@ -928,26 +934,14 @@ if feat_yes SSL; then
 #include <openssl/x509.h>
 #include <openssl/rand.h>
 
-#if defined OPENSSL_NO_SSL2 && defined OPENSSL_NO_SSL3 &&\
-      defined OPENSSL_NO_TLS1
-# error We need one of (SSLv2 and) SSLv3 and TLS1.
+#if defined OPENSSL_NO_SSL3 && defined OPENSSL_NO_TLS1
+# error We need one of SSLv3 and TLSv1.
 #endif
 
 int main(void)
 {
-   SSLv23_client_method();
-#ifndef OPENSSL_NO_SSL3
-   SSLv3_client_method();
-#endif
-#ifndef OPENSSL_NO_TLS1
-   TLSv1_client_method();
-# ifdef TLS1_1_VERSION
-   TLSv1_1_client_method();
-# endif
-# ifdef TLS1_2_VERSION
-   TLSv1_2_client_method();
-# endif
-#endif
+   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+   SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
 }
@@ -975,6 +969,39 @@ int main(void)
 }
 !
 
+      link_check ossl_conf 'for OpenSSL_modules_load_file() support' \
+         '#define HAVE_OPENSSL_CONFIG' << \!
+#include <openssl/conf.h>
+
+int main(void)
+{
+   CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
+   CONF_modules_free();
+   return 0;
+}
+!
+
+      link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
+         '#define HAVE_OPENSSL_CONF_CTX' << \!
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+int main(void)
+{
+   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+   SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
+   SSL_CONF_CTX_set_flags(cctx,
+      SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
+      SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
+   SSL_CONF_CTX_set_ssl_ctx(cctx, ctx);
+   SSL_CONF_cmd(cctx, "Protocol", "ALL");
+   SSL_CONF_CTX_finish(cctx);
+   SSL_CONF_CTX_free(cctx);
+   SSL_CTX_free(ctx);
+   return 0;
+}
+!
+
       link_check rand_egd 'for OpenSSL RAND_egd()' \
          '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
 #include <openssl/rand.h>
@@ -985,9 +1012,24 @@ int main(void)
 }
 !
 
+      if feat_yes ALL_SSL_ALGORITHMS; then
+         link_check ossl_allalgo 'for OpenSSL all-algorithms support' \
+            '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+
+int main(void)
+{
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+      fi # ALL_SSL_ALGORITHMS
+
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
-         '#define HAVE_OPENSSL_MD5' << \!
+            '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
 
@@ -1014,6 +1056,20 @@ int main(void)
 }
 !
       fi # feat_yes MD5 && feat_no NOEXTMD5
+
+      if feat_yes DEVEL; then
+         link_check ossl_memhooks 'for OpenSSL memory hooks' \
+            '#define HAVE_OPENSSL_MEMHOOKS' << \!
+#include <openssl/crypto.h>
+
+int main(void)
+{
+   CRYPTO_set_mem_ex_functions(NULL, NULL, NULL);
+   CRYPTO_set_mem_functions(NULL, NULL, NULL);
+   return 0;
+}
+!
+      fi
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}

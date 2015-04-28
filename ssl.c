@@ -57,36 +57,24 @@ static struct ssl_verify_levels const  _ssl_verify_levels[] = {
 };
 
 FL void
-ssl_set_verify_level(char const *uhp)
+ssl_set_verify_level(struct url const *urlp)
 {
    size_t i;
-   char *cp, *vrvar;
+   char *cp;
    NYD_ENTER;
 
    ssl_verify_level = SSL_VERIFY_ASK;
-
-   i = strlen(uhp);
-   vrvar = ac_alloc(11u + i +1);
-
-   memcpy(vrvar, "ssl-verify-", 11);
-   memcpy(vrvar + 11, uhp, i +1);
-   cp = vok_vlook(vrvar);
-
-   if (cp == NULL) {
-      vrvar[10] = '\0';
-      cp = ok_vlook(ssl_verify);
-   }
+   cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
 
    if (cp != NULL) {
       for (i = 0; i < NELEM(_ssl_verify_levels); ++i)
-         if (!strcmp(_ssl_verify_levels[i].sv_name, cp)) {
+         if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
          }
-      fprintf(stderr, _("Invalid value of %s: %s\n"), vrvar, cp);
+      fprintf(stderr, _("Invalid value of *ssl-verify*: %s\n"), cp);
    }
 jleave:
-   ac_free(vrvar);
    NYD_LEAVE;
 }
 
@@ -110,26 +98,6 @@ ssl_verify_decide(void)
    }
    NYD_LEAVE;
    return rv;
-}
-
-FL char *
-ssl_method_string(char const *uhp)
-{
-   size_t l;
-   char *cp, *mtvar;
-   NYD_ENTER;
-
-   l = strlen(uhp);
-   mtvar = ac_alloc(11 + l +1);
-
-   memcpy(mtvar, "ssl-method-", 11);
-   memcpy(mtvar + 11, uhp, l +1);
-   if ((cp = vok_vlook(mtvar)) == NULL)
-      cp = ok_vlook(ssl_method);
-
-   ac_free(mtvar);
-   NYD_LEAVE;
-   return cp;
 }
 
 FL enum okay

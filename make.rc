@@ -55,6 +55,15 @@ WANT_IPV6=yes
 # This needs OpenSSL libraries (<http://www.openssl.org>)
 WANT_SSL=yes
 
+# If $WANT_SSL: shall S-nail (try to) use mechanisms to support more digest and
+# cipher algorithms than the few that are documented?
+# For S/MIME *smime-cipher* for example this will cause
+# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) builtin knowledge not
+# suffice to understand the user request.
+# Will create a large statically linked binary; dynamically linked the costs
+# only arise once the extended lookup is actually needed (the first time).
+WANT_ALL_SSL_ALGORITHMS=yes
+
 # If $WANT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d
 WANT_SMTP=yes

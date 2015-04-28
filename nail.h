@@ -992,7 +992,6 @@ enum okeys {
    ok_b_smime_sign,
    ok_b_smtp_use_starttls,
    ok_b_ssl_no_default_ca,
-   ok_b_ssl_v2_allow,
    ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
    ok_b_writebackedited,
@@ -1098,10 +1097,12 @@ enum okeys {
    ok_v_ssl_ca_file,
    ok_v_ssl_cert,
    ok_v_ssl_cipher_list,
+   ok_v_ssl_config_file,
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
    ok_v_ssl_key,
    ok_v_ssl_method,
+   ok_v_ssl_protocol,
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,
@@ -1246,7 +1247,6 @@ struct sock {                 /* data associated with a socket */
    int         s_use_ssl;     /* SSL is used */
 # ifdef HAVE_OPENSSL
    void        *s_ssl;        /* SSL object */
-   void        *s_ctx;        /* SSL context object */
 # endif
 #endif
    char        *s_wbuf;       /* for buffered writes */
