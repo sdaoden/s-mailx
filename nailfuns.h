@@ -403,6 +403,20 @@ FL struct str const * colour_get(enum colourspec cs);
 # define colour_reset(FP)
 #endif
 
+/* Check wether the argument string is a true (1) or false (0) boolean, or an
+ * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
+ * treated as a boolean, is used as the return value shall inbuf be empty.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
+
+/* Dig a "quadoption" in inbuf (possibly going through getapproval() in
+ * interactive mode).  Returns a boolean or -1 if inbuf content is invalid;
+ * if emptyrv is not -1 then it,  treated as a boolean, is used as the return
+ * value shall inbuf be empty.  If prompt is set it is printed first if intera.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
+                  si8_t emptyrv);
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
@@ -1841,9 +1855,10 @@ FL void        uncollapse1(struct message *mp, int always);
  * tty.c
  */
 
-/* Return wether user says yes.  If prompt is NULL, "Continue (y/n)? " is used
- * instead.  If interactive, asks on STDIN, anything but [0]==[Nn] is true.
- * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
+/* Return wether user says yes, on STDIN if interactive.
+ * Uses noninteract_default, the return value for non-interactive use cases,
+ * also to choose a default prompt if that is NULL as well as a hint for
+ * boolify().  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
 #ifdef HAVE_SOCKETS

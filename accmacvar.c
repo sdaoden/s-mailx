@@ -1411,7 +1411,7 @@ c_localopts(void *v)
       goto jleave;
    }
 
-   _localopts->s_unroll = (**c == '0') ? FAL0 : TRU1;
+   _localopts->s_unroll = (boolify(*c, UIZ_MAX, FAL0) > 0);
    rv = 0;
 jleave:
    NYD_LEAVE;
