@@ -62,16 +62,19 @@ static void       _bangexp(char **str, size_t *size);
 
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
-/* Get PTF to implementation of command `c' (i.e., take care for *flipr*) */
-static int (*     respond_or_Respond(int c))(int *, int);
+/* `reply' and `Lreply' workhorse */
+static int        _list_reply(int *msgvec, enum header_flags hf);
+
+/* Get PTF to implementation of command c (i.e., take care for *flipr*) */
+static int (*     _reply_or_Reply(char c))(int *, bool_t);
 
 /* Reply to a single message.  Extract each name from the message header and
  * send them off to mail1() */
-static int        respond_internal(int *msgvec, int recipient_record);
+static int        _reply(int *msgvec, bool_t recipient_record);
 
 /* Reply to a series of messages by simply mailing to the senders and not
  * messing around with the To: and Cc: lists as in normal reply */
-static int        Respond_internal(int *msgvec, int recipient_record);
+static int        _Reply(int *msgvec, bool_t recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
 static int        _fwd(char *str, int recipient_record);
@@ -218,58 +221,45 @@ jleave:
 }
 
 static int
-(*respond_or_Respond(int c))(int *, int)
-{
-   int opt;
-   int (*rv)(int*, int);
-   NYD_ENTER;
-
-   opt = ok_blook(Replyall);
-   opt += ok_blook(flipr);
-   rv = ((opt == 1) ^ (c == 'R')) ? &Respond_internal : &respond_internal;
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
-respond_internal(int *msgvec, int recipient_record)
+_list_reply(int *msgvec, enum header_flags hf)
 {
    struct header head;
    struct message *mp;
-   char *cp, *rcv;
-   struct name *np = NULL;
+   char const *reply_to, *rcv, *cp;
    enum gfield gf;
+   struct name *rt, *mft, *np;
    int rv = 1;
    NYD_ENTER;
 
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
-
-   if (msgvec[1] != 0) {
-      fprintf(stderr, _(
-         "Sorry, can't reply to multiple messages at once\n"));
-      goto jleave;
-   }
-
-   mp = message + msgvec[0] - 1;
+jnext_msg:
+   mp = message + *msgvec - 1;
    touch(mp);
    setdot(mp);
 
-   if ((rcv = hfield1("reply-to", mp)) == NULL)
-      if ((rcv = hfield1("from", mp)) == NULL)
-         rcv = nameof(mp, 1);
-   if (rcv != NULL)
-      np = lextract(rcv, GTO | gf);
-   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
-      np = cat(np, lextract(cp, GTO | gf));
-   /* Delete my name from reply list, and with it, all my alternate names */
-   np = elide(delete_alternates(np));
-   if (np == NULL)
-      np = lextract(rcv, GTO | gf);
-
    memset(&head, 0, sizeof head);
-   head.h_to = np;
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = _reedit(head.h_subject);
+   head.h_flags = hf;
+
+   head.h_subject = _reedit(hfield1("subject", mp));
+   gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   rt = mft = NULL;
+
+   rcv = NULL;
+   if ((reply_to = hfield1("reply-to", mp)) != NULL &&
+         (cp = ok_vlook(reply_to_honour)) != NULL &&
+         (rt = lextract(reply_to, GTO | gf)) != NULL) {
+      char const *tr = _("Reply-To `%s%s'");
+      size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+      char *sp = ac_alloc(l);
+
+      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+      if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
+         rcv = reply_to;
+
+      ac_free(sp);
+   }
+
+   if (rcv == NULL && (rcv = hfield1("from", mp)) == NULL)
+      rcv = nameof(mp, 1);
 
    /* Cc: */
    np = NULL;
@@ -278,27 +268,155 @@ respond_internal(int *msgvec, int recipient_record)
    if ((cp = hfield1("cc", mp)) != NULL)
       np = cat(np, lextract(cp, GCC | gf));
    if (np != NULL)
-      head.h_cc = elide(delete_alternates(np));
+      head.h_cc = delete_alternates(np);
+
+   /* To: */
+   np = NULL;
+   if (rcv != NULL)
+      np = (rcv == reply_to) ? namelist_dup(rt, GTO | gf)
+            : lextract(rcv, GTO | gf);
+   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
+      np = cat(np, lextract(cp, GTO | gf));
+   /* Delete my name from reply list, and with it, all my alternate names */
+   np = delete_alternates(np);
+   if (count(np) == 0)
+      np = lextract(rcv, GTO | gf);
+   head.h_to = mft = np;
+
+   np = namelist_vaporise_head(&head, FAL0);
+
+   /* The user may have send this to himself, don't ignore that TODO sloppy */
+   if (head.h_to == NULL)
+      head.h_to = mft;
+
+   /* Mail-Followup-To: */
+   mft = NULL;
+   if (ok_vlook(followup_to_honour) != NULL &&
+         (cp = hfield1("mail-followup-to", mp)) != NULL &&
+         (mft = np = checkaddrs(lextract(cp, GTO | gf))) != NULL) {
+      char const *tr = _("Followup-To `%s%s'");
+      size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
+      char *sp = ac_alloc(l);
+
+      snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
+      if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
+         head.h_cc = NULL;
+         head.h_to = np;
+         head.h_mft = mft = namelist_vaporise_head(&head, FAL0);
+      } else
+         mft = NULL;
+
+      ac_free(sp);
+   }
+
+   /* Special massage for list (follow-up) messages */
+   if (mft != NULL || (hf & HF_LIST_REPLY) || ok_blook(followup_to)) {
+      /* Learn about a possibly sending mailing list */
+      if ((cp = hfield1("list-post", mp)) != NULL && (cp = skin(cp)) != NULL) {
+         if (is_prefix("mailto:", cp)) {
+            struct name *x;
+
+            /* A special case has been seen on e.g. ietf-announce@ietf.org:
+             * these usually post to multiple groups, with ietf-announce@
+             * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
+             * -announce@ is only used for announcements, say).
+             * So our desire is to honour this request and actively overwrite
+             * List-Post: for our purpose; but only if its a single address */
+            cp += sizeof("mailto:") -1;
+
+            if (reply_to != NULL && asccasecmp(cp, reply_to)) {
+               struct name *x = lextract(reply_to, GEXTRA | gf);
+               if (x != NULL && x->n_flink == NULL)
+                  cp = reply_to;
+            }
+
+            if (cp != reply_to) {
+               x = lextract(cp, GEXTRA | gf);
+               if (x == NULL || x->n_flink != NULL)
+                  cp = NULL;
+            }
+
+            /* "Automatically `mlist'" the List-Post: address temporarily */
+            if (cp != NULL && is_mlist(cp, FAL0) == MLIST_OTHER)
+               head.h_list_post = cp;
+         } else
+            cp = NULL;
+      }
+
+      /* In case of list replies we actively sort out any non-list recipient,
+       * but _only_ if we did not honour a MFT:, assuming that members of MFT
+       * were there for a reason */
+      if ((hf & HF_LIST_REPLY) && mft == NULL) {
+         struct name *nhp = head.h_to;
+         head.h_to = NULL;
+j_lt_redo:
+         while (nhp != NULL) {
+            np = nhp;
+            nhp = nhp->n_flink;
+
+            if ((cp != NULL && !asccasecmp(cp, np->n_name)) ||
+                  is_mlist(np->n_name, FAL0) != MLIST_OTHER) {
+               np->n_type = (np->n_type & ~GMASK) | GTO;
+               np->n_flink = head.h_to;
+               head.h_to = np;
+            }
+         }
+         if ((nhp = head.h_cc) != NULL) {
+            head.h_cc = NULL;
+            goto j_lt_redo;
+         }
+      }
+   }
+
    make_ref_and_cs(mp, &head);
 
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-            "Original message content");
+      head.h_attach->a_content_description =
+            _("Original message content");
    }
 
-   if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
+   if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) == OKAY &&
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+
+   if (*++msgvec != 0) {
+      /* TODO message (error) ring.., less sleep */
+      printf(_("Waiting a second before proceeding to the next message..\n"));
+      fflush(stdout);
+      sleep(1);
+      goto jnext_msg;
+   }
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static int
-Respond_internal(int *msgvec, int recipient_record)
+(*_reply_or_Reply(char c))(int *, bool_t)
+{
+   int (*rv)(int*, bool_t);
+   NYD_ENTER;
+
+   rv = (ok_blook(flipr) ^ (c == 'R')) ? &_Reply : &_reply;
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_reply(int *msgvec, bool_t recipient_record)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _list_reply(msgvec, recipient_record ? HF_RECIPIENT_RECORD : HF_NONE);
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_Reply(int *msgvec, bool_t recipient_record)
 {
    struct header head;
    struct message *mp;
@@ -311,12 +429,33 @@ Respond_internal(int *msgvec, int recipient_record)
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
    for (ap = msgvec; *ap != 0; ++ap) {
+      char const *rp;
+      struct name *rt;
+
       mp = message + *ap - 1;
       touch(mp);
       setdot(mp);
-      if ((cp = hfield1("reply-to", mp)) == NULL)
-         if ((cp = hfield1("from", mp)) == NULL)
-            cp = nameof(mp, 2);
+
+      if ((rp = hfield1("reply-to", mp)) != NULL &&
+            (cp = ok_vlook(reply_to_honour)) != NULL &&
+            (rt = lextract(rp, GTO | gf)) != NULL) {
+         char const *tr = _("Reply-To `%s%s'");
+         size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+
+         char *sp = ac_alloc(l);
+         si8_t rv;
+         snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+         rv = quadify(cp, UIZ_MAX, sp, TRU1);
+         ac_free(sp);
+
+         if (rv > FAL0) {
+            head.h_to = cat(head.h_to, rt);
+            continue;
+         }
+      }
+
+      if ((cp = hfield1("from", mp)) == NULL)
+         cp = nameof(mp, 2);
       head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
    }
    if (head.h_to == NULL)
@@ -330,8 +469,8 @@ Respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-         "Original message content");
+      head.h_attach->a_content_description =
+            _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
@@ -367,7 +506,7 @@ _fwd(char *str, int recipient_record)
             rv = 0;
             goto jleave;
          }
-         printf("No messages to forward.\n");
+         printf(_("No messages to forward.\n"));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -379,11 +518,11 @@ _fwd(char *str, int recipient_record)
          rv = 0;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      printf(_("No applicable messages.\n"));
       goto jleave;
    }
    if (msgvec[1] != 0) {
-      printf("Cannot forward multiple messages at once\n");
+      printf(_("Cannot forward multiple messages at once\n"));
       goto jleave;
    }
 
@@ -663,45 +802,56 @@ jleave:
 }
 
 FL int
-c_respond(void *v)
+c_reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 0);
+   rv = (*_reply_or_Reply('r'))(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondall(void *v)
+c_replyall(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 0);
+   rv = _reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondsender(void *v)
+c_replysender(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 0);
+   rv = _Reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Respond(void *v)
+c_Reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 0);
+   rv = (*_reply_or_Reply('R'))(v, FAL0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_Lreply(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _list_reply(v, HF_LIST_REPLY);
    NYD_LEAVE;
    return rv;
 }
@@ -712,7 +862,7 @@ c_followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 1);
+   rv = (*_reply_or_Reply('r'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -723,7 +873,7 @@ c_followupall(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 1);
+   rv = _reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -734,7 +884,7 @@ c_followupsender(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 1);
+   rv = _Reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -745,7 +895,7 @@ c_Followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 1);
+   rv = (*_reply_or_Reply('R'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }

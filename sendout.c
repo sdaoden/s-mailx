@@ -64,10 +64,6 @@ static int           __attach_file(struct attachment *ap, FILE *fo);
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         bool_t signing_caps);
 
-/* Fix the header by glopping all of the expanded names from the distribution
- * list into the appropriate fields */
-static struct name * fixhead(struct header *hp, struct name *tolist);
-
 /* Put the signature file at fo. TODO layer rewrite: *integrate in body*!! */
 static int           put_signature(FILE *fo, int convert);
 
@@ -80,6 +76,13 @@ static int           make_multipart(struct header *hp, int convert, FILE *fi,
 
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
+
+/* Dump many many headers to fo; gen_message says wether this will generate the
+ * final message to be send TODO puthead() must be rewritten ASAP! */
+static int           _puthead(bool_t gen_message, struct header *hp, FILE *fo,
+                        enum gfield w, enum sendaction action,
+                        enum conversion convert, char const *contenttype,
+                        char const *charset);
 
 /* Check wether Disposition-Notification-To: is desired */
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
@@ -395,28 +398,6 @@ jleave:
    return rv;
 }
 
-static struct name *
-fixhead(struct header *hp, struct name *tolist)
-{
-   struct name **npp, *np;
-   NYD_ENTER;
-
-   tolist = elide(tolist);
-
-   hp->h_to = hp->h_cc = hp->h_bcc = NULL;
-   for (np = tolist; np != NULL; np = np->n_flink) {
-      switch (np->n_type & (GDEL | GMASK)) {
-      case GTO:   npp = &hp->h_to; break;
-      case GCC:   npp = &hp->h_cc; break;
-      case GBCC:  npp = &hp->h_bcc; break;
-      default:    continue;
-      }
-      *npp = cat(*npp, ndup(np, np->n_type | GFULL));
-   }
-   NYD_LEAVE;
-   return tolist;
-}
-
 static int
 put_signature(FILE *fo, int convert)
 {
@@ -590,7 +571,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          goto jiconv_err;
    }
 #endif
-   if (puthead(hp, nfo,
+   if (_puthead(TRU1, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset))
       goto jerr;
@@ -681,6 +662,249 @@ jerr:
 jleave:
    NYD_LEAVE;
    return nfi;
+}
+
+static int
+_puthead(bool_t gen_message, struct header *hp, FILE *fo, enum gfield w,
+   enum sendaction action, enum conversion convert, char const *contenttype,
+   char const *charset)
+{
+#define FMT_CC_AND_BCC()   \
+do {\
+   if (hp->h_cc != NULL && (w & GCC)) {\
+      if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
+            (action != SEND_TODISP)))\
+         goto jleave;\
+      ++gotcha;\
+   }\
+   if (hp->h_bcc != NULL && (w & GBCC)) {\
+      if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
+            (action != SEND_TODISP)))\
+         goto jleave;\
+      ++gotcha;\
+   }\
+} while (0)
+
+   char const *addr;
+   size_t gotcha, l;
+   struct name *np, *fromasender = NULL;
+   int stealthmua, rv = 1;
+   bool_t nodisp;
+   NYD_ENTER;
+
+   if ((addr = ok_vlook(stealthmua)) != NULL)
+      stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
+   else
+      stealthmua = 0;
+   gotcha = 0;
+   nodisp = (action != SEND_TODISP);
+
+   if (w & GDATE)
+      mkdate(fo, "Date"), ++gotcha;
+   if (w & GIDENT) {
+      struct name *fromf = NULL, *senderf = NULL;
+
+      if (hp->h_from != NULL) {
+         if (fmt("From:", hp->h_from, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+            goto jleave;
+         ++gotcha;
+         fromf = hp->h_from;
+      } else if ((addr = myaddrs(hp)) != NULL) {
+         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf))
+            goto jleave;
+         hp->h_from = fromf;
+      }
+
+      if (hp->h_sender != NULL) {
+         if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
+            goto jleave;
+         ++gotcha;
+         senderf = hp->h_sender;
+      } else if ((addr = ok_vlook(sender)) != NULL)
+         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf))
+            goto jleave;
+
+      if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
+         goto jleave;
+      /* Note that fromasender is NULL, 0x1 or real sender here */
+
+      if (((addr = hp->h_organization) != NULL ||
+            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
+            (l = strlen(addr)) > 0) {
+         fwrite("Organization: ", sizeof(char), 14, fo);
+         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+         ++gotcha;
+         putc('\n', fo);
+      }
+   }
+
+   if (hp->h_to != NULL && w & GTO) {
+      if (fmt("To:", hp->h_to, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
+         goto jleave;
+      ++gotcha;
+   }
+
+   if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
+      FMT_CC_AND_BCC();
+
+   if (hp->h_subject != NULL && (w & GSUBJECT)) {
+      char *sub = subject_re_trim(hp->h_subject);
+      size_t sublen = strlen(sub);
+
+      fwrite("Subject: ", sizeof(char), 9, fo);
+      if (sub != hp->h_subject) {
+         fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
+         if (sublen > 0 &&
+               xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+      } else if (*sub != '\0') {
+         if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
+            goto jleave;
+      }
+      ++gotcha;
+      putc('\n', fo);
+   }
+
+   if (ok_blook(bsdcompat) || ok_blook(bsdorder))
+      FMT_CC_AND_BCC();
+
+   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
+      fputs(addr, fo);
+      fputc('\n', fo);
+      ++gotcha;
+   }
+
+   if ((np = hp->h_ref) != NULL && (w & GREF)) {
+      fmt("References:", np, fo, 0, 1, 0);
+      if (np->n_name != NULL) {
+         while (np->n_flink != NULL)
+            np = np->n_flink;
+         if (!is_addr_invalid(np, 0)) {
+            fprintf(fo, "In-Reply-To: %s\n", np->n_name);
+            ++gotcha;
+         }
+      }
+   }
+
+   if (w & GIDENT) {
+      /* Reply-To:.  Be careful not to destroy a possible user input, duplicate
+       * the list first.. TODO it is a terrible codebase.. */
+      if ((np = hp->h_replyto) != NULL)
+         np = namelist_dup(np, np->n_type);
+      else if ((addr = ok_vlook(replyto)) != NULL)
+         np = lextract(addr, GEXTRA | GFULL);
+      if (np != NULL && (np = elide(checkaddrs(usermap(np, TRU1)))) != NULL) {
+         if (fmt("Reply-To:", np, fo, w & GCOMMA, 0, nodisp))
+            goto jleave;
+         ++gotcha;
+      }
+   }
+
+   if ((w & GIDENT) && gen_message) {
+      /* Mail-Followup-To: TODO factor out this huge block of code */
+      /* Place ourselfs in there if any non-subscribed list is an addressee */
+      if ((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NULL ||
+            ok_blook(followup_to)) {
+         enum {_ANYLIST=1<<(HF__NEXT_SHIFT+0), _HADMFT=1<<(HF__NEXT_SHIFT+1)};
+
+         ui32_t f = hp->h_flags | (hp->h_mft != NULL ? _HADMFT : 0);
+         struct name *mft, *x;
+
+         /* But for that, we have to remove all incarnations of ourselfs first.
+          * TODO It is total crap that we have delete_alternates(), is_myname()
+          * TODO or whatever; these work only with variables, not with data
+          * TODO that is _currently_ in some header fields!!!  v15.0: complete
+          * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
+          * TODO then this should be a really cheap thing in here... */
+         np = elide(delete_alternates(cat(
+               namelist_dup(hp->h_to, GEXTRA | GFULL),
+               namelist_dup(hp->h_cc, GEXTRA | GFULL))));
+         addr = hp->h_list_post;
+
+         for (mft = NULL; (x = np) != NULL;) {
+            si8_t ml;
+            np = np->n_flink;
+
+            if ((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
+                  addr != NULL && !asccasecmp(addr, x->n_name))
+               ml = MLIST_KNOWN;
+
+            /* Any non-subscribed list?  Add ourselves */
+            switch (ml) {
+            case MLIST_KNOWN:
+               f |= HF_MFT_SENDER;
+               /* FALLTHRU */
+            case MLIST_SUBSCRIBED:
+               f |= _ANYLIST;
+               goto j_mft_add;
+            case MLIST_OTHER:
+               if (!(f & HF_LIST_REPLY)) {
+j_mft_add:
+                  x->n_flink = mft;
+                  mft = x;
+                  continue;
+               }
+               /* And if this is a reply that honoured a MFT: header then we'll
+                * also add all members of the original MFT: that are still
+                * addressed by us, regardless of all other circumstances */
+               else if (f & _HADMFT) {
+                  struct name *ox;
+                  for (ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
+                     if (!asccasecmp(ox->n_name, x->n_name))
+                        goto j_mft_add;
+               }
+               break;
+            }
+         }
+
+         if (f & (_ANYLIST | _HADMFT) && mft != NULL) {
+            if (((f & HF_MFT_SENDER) ||
+                  ((f & (_ANYLIST | _HADMFT)) == _HADMFT)) &&
+                  (np = fromasender) != NULL && np != (struct name*)0x1) {
+               np = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
+               np->n_flink = mft;
+               mft = np;
+            }
+
+            if (fmt("Mail-Followup-To:", mft, fo, w & GCOMMA, 0, nodisp))
+               goto jleave;
+            ++gotcha;
+         }
+      }
+
+      if (!_check_dispo_notif(fromasender, hp, fo))
+         goto jleave;
+   }
+
+   if ((w & GUA) && stealthmua == 0)
+      fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
+
+   if (w & GMIME) {
+      fputs("MIME-Version: 1.0\n", fo), ++gotcha;
+      if (hp->h_attach != NULL) {
+         _sendout_boundary = mime_create_boundary();/*TODO carrier*/
+         fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
+            _sendout_boundary);
+      } else {
+         fprintf(fo, "Content-Type: %s", contenttype);
+         if (charset != NULL)
+            fprintf(fo, "; charset=%s", charset);
+         fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
+            _get_encoding(convert));
+      }
+   }
+
+   if (gotcha && (w & GNL))
+      putc('\n', fo);
+   rv = 0;
+jleave:
+   NYD_LEAVE;
+   return rv;
+#undef FMT_CC_AND_BCC
 }
 
 static bool_t
@@ -1323,16 +1547,16 @@ fmt(char const *str, struct name *np, FILE *fo, int flags, int dropinvalid,
       fwrite(str, sizeof *str, col, fo);
       if (flags & GFILES)
          goto jstep;
-      if (col == 9 && !asccasecmp(str, "reply-to:")) {
+#define __X(S) (col == sizeof(S) -1 && !asccasecmp(str, S))
+      if (__X("reply-to:") || __X("mail-followup-to:")) {
          m |= m_NOPF;
          goto jstep;
       }
       if (ok_blook(add_file_recipients))
          goto jstep;
-      if ((col == 3 && (!asccasecmp(str, "to:") || !asccasecmp(str, "cc:"))) ||
-            (col == 4 && !asccasecmp(str, "bcc:")) ||
-            (col == 10 && !asccasecmp(str, "Resent-To:")))
+      if (__X("to:") || __X("cc:") || __X("bcc:") || __X("resent-to:"))
          m |= m_NOPF;
+#undef __X
    }
 jstep:
    for (; np != NULL; np = np->n_flink) {
@@ -1588,31 +1812,11 @@ jaskeot:
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   /* Do alias expansion on Reply-To: members, too */
-   /* TODO puthead() YET (!!! see ONCE note above) expands the value, but
-    * TODO doesn't perform alias expansion; encapsulate in the ONCE-o */
-   if (hp->h_replyto == NULL && (cp = ok_vlook(replyto)) != NULL)
-      hp->h_replyto = checkaddrs(lextract(cp, GEXTRA | GFULL));
-   if (hp->h_replyto != NULL)
-      hp->h_replyto = elide(usermap(hp->h_replyto, TRU1));
-
-   /* TODO what happens now is that all recipients are merged into
-    * TODO a duplicated list with expanded aliases, then this list is
-    * TODO splitted again into the three individual recipient lists (with
-    * TODO duplicates removed).
-    * TODO later on we use the merged list for _outof() pipe/file saving,
-    * TODO then we eliminate duplicates (again) and then we use that one
-    * TODO for mightrecord() and _transfer(), and again.  ... Please ... */
-
-   /* NOTE: Due to elide() in fixhead(), ENSURE to,cc,bcc order of to!,
-    * because otherwise the recipients will be "degraded" if they occur
-    * multiple times */
-   to = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), FAL0);
+   to = namelist_vaporise_head(hp, TRU1);
    if (to == NULL) {
       fprintf(stderr, _("No recipients specified\n"));
       _sendout_error = TRU1;
    }
-   to = fixhead(hp, to);
 
    /* */
    memset(&sb, 0, sizeof sb);
@@ -1715,162 +1919,12 @@ FL int
 puthead(struct header *hp, FILE *fo, enum gfield w, enum sendaction action,
    enum conversion convert, char const *contenttype, char const *charset)
 {
-#define FMT_CC_AND_BCC()   \
-do {\
-   if (hp->h_cc != NULL && (w & GCC)) {\
-      if (fmt("Cc:", hp->h_cc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
-         goto jleave;\
-      ++gotcha;\
-   }\
-   if (hp->h_bcc != NULL && (w & GBCC)) {\
-      if (fmt("Bcc:", hp->h_bcc, fo, (w & (GCOMMA | GFILES)), 0,\
-            (action != SEND_TODISP)))\
-         goto jleave;\
-      ++gotcha;\
-   }\
-} while (0)
-
-   char const *addr;
-   size_t gotcha, l;
-   struct name *np, *fromfield = NULL, *senderfield = NULL;
-   int stealthmua, rv = 1;
-   bool_t nodisp;
+   int rv;
    NYD_ENTER;
 
-   if ((addr = ok_vlook(stealthmua)) != NULL)
-      stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
-   else
-      stealthmua = 0;
-   gotcha = 0;
-   nodisp = (action != SEND_TODISP);
-
-   if (w & GDATE)
-      mkdate(fo, "Date"), ++gotcha;
-   if (w & GIDENT) {
-      if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
-            goto jleave;
-         ++gotcha;
-         fromfield = hp->h_from;
-      } else if ((addr = myaddrs(hp)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromfield))
-            goto jleave;
-         hp->h_from = fromfield;
-      }
-
-      if (((addr = hp->h_organization) != NULL ||
-            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
-            (l = strlen(addr)) > 0) {
-         fwrite("Organization: ", sizeof(char), 14, fo);
-         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-         ++gotcha;
-         putc('\n', fo);
-      }
-
-      /* TODO see the ONCE TODO note somewhere around this file;
-       * TODO but anyway, do NOT perform alias expansion UNLESS
-       * TODO we are actually sending out! */
-      if (hp->h_replyto != NULL) {
-         if (fmt("Reply-To:", hp->h_replyto, fo, w & GCOMMA, 0, nodisp))
-            goto jleave;
-         ++gotcha;
-      } else if ((addr = ok_vlook(replyto)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Reply-To:", fo, NULL))
-            goto jleave;
-
-      if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, w & GCOMMA, 0, nodisp))
-            goto jleave;
-         ++gotcha;
-         senderfield = hp->h_sender;
-      } else if ((addr = ok_vlook(sender)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderfield))
-            goto jleave;
-
-      if ((np = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
-         goto jleave;
-      if (!_check_dispo_notif(np, hp, fo))
-         goto jleave;
-   }
-
-   if (hp->h_to != NULL && w & GTO) {
-      if (fmt("To:", hp->h_to, fo, (w & (GCOMMA | GFILES)), 0, nodisp))
-         goto jleave;
-      ++gotcha;
-   }
-
-   if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
-
-   if (hp->h_subject != NULL && (w & GSUBJECT)) {
-      char *sub = subject_re_trim(hp->h_subject);
-      size_t sublen = strlen(sub);
-
-      fwrite("Subject: ", sizeof(char), 9, fo);
-      if (sub != hp->h_subject) {
-         fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
-         if (sublen > 0 &&
-               xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-      } else if (*sub != '\0') {
-         if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL) < 0)
-            goto jleave;
-      }
-      ++gotcha;
-      putc('\n', fo);
-   }
-
-   if (ok_blook(bsdcompat) || ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
-
-   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
-      fputs(addr, fo);
-      fputc('\n', fo);
-      ++gotcha;
-   }
-
-   if ((np = hp->h_ref) != NULL && (w & GREF)) {
-      fmt("References:", np, fo, 0, 1, 0);
-      if (np->n_name != NULL) {
-         while (np->n_flink != NULL)
-            np = np->n_flink;
-         if (!is_addr_invalid(np, 0)) {
-            fprintf(fo, "In-Reply-To: %s\n", np->n_name);
-            ++gotcha;
-         }
-      }
-   }
-
-   if ((w & GUA) && stealthmua == 0)
-      fprintf(fo, "User-Agent: %s %s\n", uagent, version), ++gotcha;
-
-   if (w & GMIME) {
-      fputs("MIME-Version: 1.0\n", fo), ++gotcha;
-      if (hp->h_attach != NULL) {
-         _sendout_boundary = mime_create_boundary();/*TODO carrier*/
-         fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
-            _sendout_boundary);
-      } else {
-         fprintf(fo, "Content-Type: %s", contenttype);
-         if (charset != NULL)
-            fprintf(fo, "; charset=%s", charset);
-         fprintf(fo, "\nContent-Transfer-Encoding: %s\n",
-            _get_encoding(convert));
-      }
-   }
-
-   if (gotcha && (w & GNL))
-      putc('\n', fo);
-   rv = 0;
-jleave:
+   rv = _puthead(FAL0, hp, fo, w, action, convert, contenttype, charset);
    NYD_LEAVE;
    return rv;
-#undef FMT_CC_AND_BCC
 }
 
 FL enum okay
@@ -1933,7 +1987,8 @@ jerr_o:
    if (_sendout_error)
       savedeadletter(nfi, FAL0);
 
-   to = elide(to); /* TODO should have been done in fixhead()? */
+   to = elide(to);
+
    if (count(to) != 0) {
       if (!ok_blook(record_resent) || mightrecord(nfi, to)) {
          sb.sb_to = to;

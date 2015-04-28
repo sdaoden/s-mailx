@@ -933,6 +933,7 @@ enum okeys {
    ok_b_emptybox,
    ok_b_emptystart,
    ok_b_flipr,
+   ok_b_followup_to,
    ok_b_forward_as_attachment,
    ok_b_fullnames,
    ok_b_header,                        /* {special=1} */
@@ -965,7 +966,6 @@ enum okeys {
    ok_b_recipients_in_cc,
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
-   ok_b_Replyall,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
    ok_b_save,
    ok_b_searchheaders,
@@ -1011,6 +1011,7 @@ enum okeys {
    ok_v_expandaddr,
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
+   ok_v_followup_to_honour,
    ok_v_from,
    ok_v_fwdheading,
    ok_v_headline,
@@ -1051,6 +1052,7 @@ enum okeys {
    ok_v_record,
    ok_v_reply_strings,
    ok_v_replyto,
+   ok_v_reply_to_honour,
    ok_v_screen,
    ok_v_sendcharsets,
    ok_v_sender,
@@ -1418,30 +1420,40 @@ enum argtype {
 };
 
 enum gfield {
-   GTO            = 1,        /* Grab To: line */
-   GSUBJECT       = 2,        /* Likewise, Subject: line */
-   GCC            = 4,        /* And the Cc: line */
-   GBCC           = 8,        /* And also the Bcc: line */
+   GTO            = 1<< 0,    /* Grab To: line */
+   GSUBJECT       = 1<< 1,    /* Likewise, Subject: line */
+   GCC            = 1<< 2,    /* And the Cc: line */
+   GBCC           = 1<< 3,    /* And also the Bcc: line */
 
-   GNL            = 16,       /* Print blank line after */
-   GDEL           = 32,       /* Entity removed from list */
-   GCOMMA         = 64,       /* detract puts in commas */
-   GUA            = 128,      /* User-Agent field */
-   GMIME          = 256,      /* MIME 1.0 fields */
-   GMSGID         = 512,      /* a Message-ID */
-   /* 1024 */
-   GIDENT         = 2048,     /* From:, Reply-To: and Organization: field */
-   GREF           = 4096,     /* References: field */
-   GDATE          = 8192,     /* Date: field */
-   GFULL          = 16384,    /* include full names */
-   GSKIN          = 32768,    /* skin names */
-   GEXTRA         = 65536,    /* extra fields */
-   GFILES         = 131072    /* include filename addresses */
+   GNL            = 1<< 4,    /* Print blank line after */
+   GDEL           = 1<< 5,    /* Entity removed from list */
+   GCOMMA         = 1<< 6,    /* detract puts in commas */
+   GUA            = 1<< 7,    /* User-Agent field */
+   GMIME          = 1<< 8,    /* MIME 1.0 fields */
+   GMSGID         = 1<< 9,    /* a Message-ID */
+
+   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: field */
+   GREF           = 1<<12,    /* References: field */
+   GDATE          = 1<<13,    /* Date: field */
+   GFULL          = 1<<14,    /* include full names */
+   GSKIN          = 1<<15,    /* skin names */
+   GEXTRA         = 1<<16,    /* extra fields (mostly like GIDENT XXX) */
+   GFILES         = 1<<17     /* include filename addresses */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
+enum header_flags {
+   HF_NONE        = 0,
+   HF_LIST_REPLY  = 1<< 0,
+   HF_MFT_SENDER  = 1<< 1,    /* Add ourselves to Mail-Followup-To: */
+   HF_RECIPIENT_RECORD = 1<<10, /* Save message in file named after rec. */
+   HF__NEXT_SHIFT = 11
+};
+
 /* Structure used to pass about the current state of a message (header) */
 struct header {
+   ui32_t      h_flags;       /* enum header_flags bits */
+   ui32_t      h_dummy;
    struct name *h_to;         /* Dynamic "To:" string */
    char        *h_subject;    /* Subject string */
    struct name *h_cc;         /* Carbon copies string */
@@ -1450,8 +1462,10 @@ struct header {
    struct attachment *h_attach; /* MIME attachments */
    char        *h_charset;    /* preferred charset */
    struct name *h_from;       /* overridden "From:" field */
-   struct name *h_replyto;    /* overridden "Reply-To:" field */
    struct name *h_sender;     /* overridden "Sender:" field */
+   struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_mft;        /* Mail-Followup-To */
+   char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    char        *h_organization; /* overridden "Organization:" field */
 };
 

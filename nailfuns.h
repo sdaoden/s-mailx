@@ -581,14 +581,18 @@ FL int         c_cwd(void *v);
 /* Change user's working directory */
 FL int         c_chdir(void *v);
 
-FL int         c_respond(void *v);
-FL int         c_respondall(void *v);
-FL int         c_respondsender(void *v);
-FL int         c_Respond(void *v);
+/* All thinkable sorts of `reply' / `respond' and `followup'.. */
+FL int         c_reply(void *v);
+FL int         c_replyall(void *v);
+FL int         c_replysender(void *v);
+FL int         c_Reply(void *v);
 FL int         c_followup(void *v);
 FL int         c_followupall(void *v);
 FL int         c_followupsender(void *v);
 FL int         c_Followup(void *v);
+
+/* ..and a mailing-list reply */
+FL int         c_Lreply(void *v);
 
 /* The 'forward' command */
 FL int         c_forward(void *v);

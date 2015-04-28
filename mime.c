@@ -920,6 +920,10 @@ need_hdrconv(struct header *hp, enum gfield w) /* TODO once only, then iter */
    NYD_ENTER;
 
    if (w & GIDENT) {
+      if (hp->h_mft != NULL) {
+         if (_name_highbit(hp->h_mft))
+            goto jneeds;
+      }
       if (hp->h_from != NULL) {
          if (_name_highbit(hp->h_from))
             goto jneeds;

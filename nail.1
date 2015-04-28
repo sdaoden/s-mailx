@@ -437,6 +437,7 @@ in international character sets.
 That is \(em using attachment filenames in whatever language is
 possible, but a modern MUA may need some hints in order to be able to
 decode the name to its original form.
+Note that \*(UA is not alone.
 .\" }}}
 .\"
 .\" .Ss "Sending mail" {{{
@@ -678,6 +679,70 @@ section
 .Sx "THE mime.types FILES"
 and the command
 .Ic mimetypes .
+.\" }}}
+.\"
+.\" .Ss "Mailing lists" {{{
+.Ss "Mailing lists"
+\*(UA offers special support for interacting with mailing lists.
+The command
+.Ic mlist
+promotes all given arguments to known mailing lists, and
+.Ic mlsubscribe
+sets their subscription attribute, creating them first as necessary.
+(On the other hand
+.Ic unmlsubscribe
+doesn't
+.Ic unmlist
+automatically, but only resets the subscription attribute.)
+Using the commands without arguments will print out (a subset of) all
+currently defined mailing lists.
+The
+.Va headline
+`%T' format can be used to mark out messages with configured list
+addresses in the header display.
+.Pp
+\*(OPally mailing lists may also be specified as regular expressions,
+which allows matching of many addresses with a single expression.
+However, all fully qualified list addresses are matched via a fast
+dictionary, whereas expressions are placed in (a) list(s) which is (are)
+matched sequentially.
+.Bd -literal -offset indent
+set followup-to followup-to-honour=ask-yes reply-to-honour=ask-yes
+mlist a1@b1.c1 a2@b2.c2 .*@lists.c3
+mlsubscribe a4@b4.c4 exact@lists.c3
+.Ed
+.Pp
+The variable
+.Va followup-to-honour
+will ensure that a `Mail-Followup-To:' header is honoured when the
+message is being replied to (via
+.Ic reply
+and
+.Ic Lreply )
+and
+.Va followup-to
+controls wether this header is created when sending mails; it will be
+created automatically for a couple of reasons, too, like when the
+special "mailing list specific" respond command
+.Ic Lreply
+is used, when
+.Ic reply
+is used to respond to a message with its `Mail-Followup-To:' being
+honoured etc.
+.Pp
+A difference in between the handling of known and subscribed lists is
+that the senders address is usually not part of a generated
+`Mail-Followup-To:' when addressing the latter, whereas it is for the
+former kind of lists.
+Usually because there are exceptions: say, if multiple lists are
+addressed and not all of them are subscribed lists.
+For convenience \*(UA will, temporarily, automatically add a list
+address that is presented in the `List-To:' header of a message that is
+being respondend to to the list of known mailing lists; shall that
+header have existed \*(UA will instead, dependend on the variable
+.Va reply-to-honour ,
+use an also set `Reply-To:' for this purpose in order to accept the list
+administrators wish (but only if this header provides a single address).
 .\" }}}
 .\"
 .\" }}} (Usage introduction)
@@ -1900,17 +1965,13 @@ Similar to
 .Ic followup ,
 but responds to all recipients regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic followupsender
 Similar to
 .Ic Followup ,
 but responds to the sender only regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic forward
 (fwd) Takes a message and the address of a recipient
 and forwards the message to him.
@@ -2116,6 +2177,20 @@ define temporary_settings {
 Note that these options stack upon each other, i.e., if macro1 sets
 `localopts' and calls macro2, which explicitly resets `localopts', then
 any values set within macro2 will still be cleaned up by macro1.
+.It Ic Lreply
+(L) Reply to messages that come in via known or subscribed mailing lists
+\(en see
+.Ic mlist
+and
+.Ic mlsubscribe \(en
+on top of the usual
+.Ic reply
+functionality this will actively resort and even remove message
+recipients in order to generate a message that is supposed to be send to
+a mailing list.
+For example it will also implicitly generate a `Mail-Followup-To:'
+header if that seems useful, regardless of the setting of the variable
+.Va followup-to .
 .It Ic Mail
 (M) Similar to
 .Ic mail ,
@@ -2167,6 +2242,8 @@ newly creating them as necessary (as via
 .Ic mlist ) Ns .
 Subscription attributes may be removed via the command
 .Ic unmlsubscribe .
+Also see
+.Va followup-to .
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2297,26 +2374,38 @@ and must be located on the current server for IMAP.
 .It Ic Reply
 (R) Reply to originator.
 Does not reply to other recipients of the original message.
+.Va flipr
+will exchange this command with
+.Ic reply .
 .It Ic reply
-(r) Takes a message list and sends mail to the sender and all recipients
-of the specified messages.
-The default message must not be deleted.
+(r) Take a message and group-responds to it by addressing the sender
+and all recipients.
+.Va followup-to ,
+.Va followup-to-honour ,
+.Va reply-to-honour
+as well as
+.Va recipients-in-cc
+influence responding behaviour.
+The command
+.Ic Lreply
+offers special support for replying to mailing lists.
+If
+.Va flipr
+is set the commands
+.Ic Reply
+and
+.Ic reply are exchanged.
 .It Ic replyall
 Similar to
 .Ic reply ,
-but responds to all recipients regardless of the
-.Va flipr
-and
-.Va Replyall
-variables.
+but initiates a group-reply of the value of
+.Va flipr .
 .It Ic replysender
 Similar to
 .Ic Reply ,
 but responds to the sender only regardless of the
 .Va flipr
-and
-.Va Replyall
-variables.
+variable.
 .It Ic Resend
 Like
 .Ic resend ,
@@ -3266,11 +3355,38 @@ If the mailbox is empty \*(UA normally prints `No mail for user' and
 exits immediately.
 If this option is set \*(UA starts even with an empty mailbox.
 .It Va flipr
-Exchanges the
-.Ic Respond
-with the
-.Ic respond
-commands and vice-versa.
+This option reverses the meanings of a set of reply commands,
+turning the lowercase variants, which by default address all recipients
+included in the header of a message
+.Ns ( Ns Ic reply ,
+.Ic respond ,
+.Ic followup )
+into the uppercase variants, which by default address the sender only
+.Ns ( Ns Ic Reply ,
+.Ic Respond ,
+.Ic Followup ) Ns ,
+and vice versa.
+The commands
+.Ic replysender /
+.Ic respondsender /
+.Ic followupsender
+as well as
+.Ic replyall /
+.Ic respondall /
+.Ic followupall
+are not affected by the current setting of
+.Va flipr .
+.It Va followup-to
+Controls wether a `Mail-Followup-To:' header is generated when sending
+messages to known mailing lists.
+Also see
+.Va followup-to-honour
+and the commands
+.Ic mlist ,
+.Ic mlsubscribe ,
+.Ic reply
+and
+.Ic Lreply .
 .It Va forward-as-attachment
 Original messages are normally sent as inline text with the
 .Ic forward
@@ -3500,12 +3616,6 @@ of the original message for replies.
 If this fails, the mechanism described in
 .Sx CHARACTER SETS
 is evaluated as usual.
-.It Va Replyall
-Reverses the sense of
-.Ic reply
-and
-.Ic Reply
-commands.
 .It Va rfc822-body-from_
 This variable can be used to force the display of a so-called `From_'
 line for messages that are embedded into an envelope mail via the
@@ -3893,6 +4003,19 @@ is not executed if this variable is effective for a folder
 (but it can be
 .Ic call Ns
 ed from within the actually executed macro).
+.It Va followup-to-honour
+Controls wether a `Mail-Followup-To:' header is honoured when
+group-replying to a message via
+.Ic reply
+or
+.Ic Lreply .
+This is a quadoption; if set without a value it defaults to `yes'.
+Also see
+.Va followup-to
+and the commands
+.Ic mlist
+and
+.Ic mlsubscribe .
 .It Va from
 The address (or a list of addresses) to put into the `From:' field of
 the message header, quoting RFC 5322:
@@ -4363,6 +4486,13 @@ header.
 Members of this list are handled as if they were in the
 .Ic alternates
 list.
+.It Va reply-to-honour
+Controls wether a `Reply-To:' header is honoured when replying to
+a message via
+.Ic reply
+or
+.Ic Lreply .
+This is a quadoption; if set without a value it defaults to `yes'.
 .It Va screen
 When \*(UA initially prints the message headers it determines the number
 to print by looking at the speed of the terminal.
@@ -5079,9 +5209,11 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager crt= history-gabby mime-counter-evidence=2 \e
+    colour-pager crt= followup-to followup-to-honour=ask-yes \e
+    history-gabby mime-counter-evidence=2 \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
-    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1
+    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
+    reply-to-honour=ask-yes
 
 # When `p'rinting messages, show only these headers
 # (use `P'rint for all headers and `S'how for raw message)
