@@ -65,7 +65,7 @@
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
-   { "alias", &c_group, (M | RAWLIST), 0, 1000
+   { "alias", &c_alias, (M | RAWLIST), 0, 1000
      DS(N_("Show all or the specified alias(es), or (re)define one")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type each message of <message-list> on the terminal")) },
@@ -139,8 +139,8 @@
      DS(N_("Set (a) variable(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_ungroup, (M | RAWLIST), 0, 1000
-     DS(N_("Un\"alias\" <name-list>")) },
+   { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"alias\" <name-list> (\"*\" removes all aliases)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
@@ -261,9 +261,9 @@
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Define a <shortcut> and <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Delete <shortcut-list>")) },
+     DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
+   { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
+     DS(N_("Delete <shortcut-list> (\"*\" deletes all shortcuts)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
@@ -384,6 +384,14 @@
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "Folder", &c_File, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
+   { "mlist", &c_mlist, (M | RAWLIST), 0, 1000
+     DS(N_("Show all known mailing lists or define some")) },
+   { "unmlist", &c_unmlist, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"mlist\" <name-list>, \"*\" removes all known lists")) },
+   { "mlsubscribe", &c_mlsubscribe, (M | RAWLIST), 0, 1000
+     DS(N_("Show all mailing list subscriptions or define some")) },
+   { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"mlsubscribe\" <name-list>, \"*\" removes all subscriptions"))},
    { "features", &_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
    { "version", &_version, (H | M | NOLIST), 0, 0

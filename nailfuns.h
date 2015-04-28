@@ -618,12 +618,6 @@ FL int         c_messize(void *v);
 /* Quit quickly.  If sourcing, just pop the input level by returning error */
 FL int         c_rexit(void *v);
 
-/* Without arguments print all groups, otherwise add users to a group */
-FL int         c_group(void *v);
-
-/* Delete the passed groups */
-FL int         c_ungroup(void *v);
-
 /* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
 FL int         c_File(void *v);
@@ -645,16 +639,8 @@ FL bool_t      condstack_isskip(void);
 FL void *      condstack_release(void);
 FL bool_t      condstack_take(void *self);
 
-/* Set the list of alternate names */
-FL int         c_alternates(void *v);
-
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
-
-/* Shortcuts */
-FL int         c_shortcut(void *v);
-FL struct shortcut *get_shortcut(char const *str);
-FL int         c_unshortcut(void *v);
 
 /* Message flag manipulation */
 FL int         c_flag(void *v);
@@ -1313,7 +1299,7 @@ FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /*
- * names.c
+ * nam_a_grp.c
  */
 
 /* Allocate a single element of a name list, initialize its name field to the
@@ -1325,6 +1311,9 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 
 /* Concatenate the two passed name lists, return the result */
 FL struct name * cat(struct name *n1, struct name *n2);
+
+/* Duplicate np */
+FL struct name * namelist_dup(struct name const *np, enum gfield ntype);
 
 /* Determine the number of undeleted elements in a name list and return it;
  * the latter also doesn't count file and pipe addressees in addition */
@@ -1349,6 +1338,12 @@ FL struct name * grab_names(char const *field, struct name *np, int comma,
 /* Check all addresses in np and delete invalid ones */
 FL struct name * checkaddrs(struct name *np);
 
+/* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
+ * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
+ * aliases, dropping alternates etc.  After updating hp to the new state this
+ * returns a flat list of all addressees, which may be NULL */
+FL struct name * namelist_vaporise_head(struct header *hp, bool_t metoo);
+
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */
 FL struct name * usermap(struct name *names, bool_t force_metoo);
@@ -1357,22 +1352,30 @@ FL struct name * usermap(struct name *names, bool_t force_metoo);
  * them, then checking for dups.  Return the head of the new list */
 FL struct name * elide(struct name *names);
 
+/* `alternates' deal with the list of alternate names */
+FL int         c_alternates(void *v);
+
 FL struct name * delete_alternates(struct name *np);
 
 FL int         is_myname(char const *name);
 
-/* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
-FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
+/* `(un)?alias' */
+FL int         c_alias(void *v);
+FL int         c_unalias(void *v);
 
-/* Handling of alias groups */
+/* `(un)?ml(ist|subscribe)', and a check wether a name is a (wanted) list */
+FL int         c_mlist(void *v);
+FL int         c_unmlist(void *v);
+FL int         c_mlsubscribe(void *v);
+FL int         c_unmlsubscribe(void *v);
 
-/* Locate a group name and return it */
-FL struct grouphead * findgroup(char *name);
+FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
 
-/* Print a group out on stdout */
-FL void        printgroup(char *name);
+/* `(un)?shortcut', and check if str is one, return expansion or NULL */
+FL int         c_shortcut(void *v);
+FL int         c_unshortcut(void *v);
 
-FL void        remove_group(char const *name);
+FL char const * shortcut_expand(char const *str);
 
 /*
  * openssl.c

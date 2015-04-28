@@ -79,23 +79,11 @@ static int        _fwd(char *str, int recipient_record);
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *     __fwdedit(char *subj);
 
-/* Sort the passed string vecotor into ascending dictionary order */
-static void       asort(char **list);
-
-/* Do a dictionary order comparison of the arguments from qsort */
-static int        diction(void const *a, void const *b);
-
 /* Do the real work of resending */
 static int        _resend1(void *v, bool_t add_resent);
 
 /* c_file, c_File */
 static int        _c_file(void *v, enum fedit_mode fm);
-
-/* ..to stdout */
-static void       list_shortcuts(void);
-
-/* */
-static enum okay  delete_shortcut(char const *str);
 
 static char *
 _reedit(char *subj)
@@ -447,31 +435,6 @@ jleave:
    return newsubj;
 }
 
-static void
-asort(char **list)
-{
-   char **ap;
-   size_t i;
-   NYD_ENTER;
-
-   for (ap = list; *ap != NULL; ++ap)
-      ;
-   if ((i = PTR2SIZE(ap - list)) >= 2)
-      qsort(list, i, sizeof *list, diction);
-   NYD_LEAVE;
-}
-
-static int
-diction(void const *a, void const *b)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b));
-   NYD_LEAVE;
-   return rv;
-}
-
 static int
 _resend1(void *v, bool_t add_resent)
 {
@@ -560,41 +523,6 @@ _c_file(void *v, enum fedit_mode fm)
 jleave:
    NYD2_LEAVE;
    return i;
-}
-
-static void
-list_shortcuts(void)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      printf("%s=%s\n", s->sh_short, s->sh_long);
-   NYD_LEAVE;
-}
-
-static enum okay
-delete_shortcut(char const *str)
-{
-   struct shortcut *sp, *sq;
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   for (sp = shortcuts, sq = NULL; sp != NULL; sq = sp, sp = sp->sh_next) {
-      if (!strcmp(sp->sh_short, str)) {
-         free(sp->sh_short);
-         free(sp->sh_long);
-         if (sq != NULL)
-            sq->sh_next = sp->sh_next;
-         if (sp == shortcuts)
-            shortcuts = sp->sh_next;
-         free(sp);
-         rv = OKAY;
-         break;
-      }
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
@@ -961,82 +889,6 @@ c_rexit(void *v)
 }
 
 FL int
-c_group(void *v)
-{
-   char **argv = v, **ap, *gname, **p;
-   struct grouphead *gh;
-   struct group *gp;
-   int h, s;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      for (h = 0, s = 1; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            ++s;
-      ap = salloc(s * sizeof *ap);
-
-      for (h = 0, p = ap; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            *p++ = gh->g_name;
-      *p = NULL;
-
-      asort(ap);
-
-      for (p = ap; *p != NULL; ++p)
-         printgroup(*p);
-      goto jleave;
-   }
-
-   if (argv[1] == NULL) {
-      printgroup(*argv);
-      goto jleave;
-   }
-
-   gname = *argv;
-   h = hash(gname);
-   if ((gh = findgroup(gname)) == NULL) {
-      gh = scalloc(1, sizeof *gh);
-      gh->g_name = sstrdup(gname);
-      gh->g_list = NULL;
-      gh->g_link = groups[h];
-      groups[h] = gh;
-   }
-
-   /* Insert names from the command list into the group.  Who cares if there
-    * are duplicates?  They get tossed later anyway */
-   for (ap = argv + 1; *ap != NULL; ++ap) {
-      gp = scalloc(1, sizeof *gp);
-      gp->ge_name = sstrdup(*ap);
-      gp->ge_link = gh->g_list;
-      gh->g_list = gp;
-   }
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_ungroup(void *v)
-{
-   char **argv = v;
-   int rv = 1;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      fprintf(stderr, _("Must specify alias to remove\n"));
-      goto jleave;
-   }
-
-   do
-      remove_group(*argv);
-   while (*++argv != NULL);
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
 c_file(void *v)
 {
    int rv;
@@ -1316,41 +1168,6 @@ condstack_take(void *self)
 }
 
 FL int
-c_alternates(void *v)
-{
-   size_t l;
-   char **namelist = v, **ap, **ap2, *cp;
-   NYD_ENTER;
-
-   l = argcount(namelist) + 1;
-   if (l == 1) {
-      if (altnames == NULL)
-         goto jleave;
-      for (ap = altnames; *ap != NULL; ++ap)
-         printf("%s ", *ap);
-      printf("\n");
-      goto jleave;
-   }
-
-   if (altnames != NULL) {
-      for (ap = altnames; *ap != NULL; ++ap)
-         free(*ap);
-      free(altnames);
-   }
-   altnames = smalloc(l * sizeof(char*));
-   for (ap = namelist, ap2 = altnames; *ap != NULL; ++ap, ++ap2) {
-      l = strlen(*ap) + 1;
-      cp = smalloc(l);
-      memcpy(cp, *ap, l);
-      *ap2 = cp;
-   }
-   *ap2 = NULL;
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
 c_newmail(void *v)
 {
    int val = 1, mdot;
@@ -1369,84 +1186,6 @@ c_newmail(void *v)
    }
    NYD_LEAVE;
    return val;
-}
-
-FL int
-c_shortcut(void *v)
-{
-   char **args = v;
-   struct shortcut *s;
-   int rv;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      list_shortcuts();
-      rv = 0;
-      goto jleave;
-   }
-
-   rv = 1;
-   if (args[1] == NULL) {
-      fprintf(stderr, _("expansion name for shortcut missing\n"));
-      goto jleave;
-   }
-   if (args[2] != NULL) {
-      fprintf(stderr, _("too many arguments\n"));
-      goto jleave;
-   }
-
-   if ((s = get_shortcut(args[0])) != NULL) {
-      free(s->sh_long);
-      s->sh_long = sstrdup(args[1]);
-   } else {
-      s = scalloc(1, sizeof *s);
-      s->sh_short = sstrdup(args[0]);
-      s->sh_long = sstrdup(args[1]);
-      s->sh_next = shortcuts;
-      shortcuts = s;
-   }
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL struct shortcut *
-get_shortcut(char const *str)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      if (!strcmp(str, s->sh_short))
-         break;
-   NYD_LEAVE;
-   return s;
-}
-
-FL int
-c_unshortcut(void *v)
-{
-   char **args = v;
-   bool_t errs = FAL0;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      fprintf(stderr, _("need shortcut names to remove\n"));
-      errs = TRU1;
-      goto jleave;
-   }
-
-   while (*args != NULL) {
-      if (delete_shortcut(*args) != OKAY) {
-         errs = TRU1;
-         fprintf(stderr, _("%s: no such shortcut\n"), *args);
-      }
-      ++args;
-   }
-jleave:
-   NYD_LEAVE;
-   return errs;
 }
 
 FL int

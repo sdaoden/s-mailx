@@ -773,6 +773,12 @@ enum mime_counter_evidence {
    MIMECE_USR_OVWR   = 1<<1
 };
 
+enum mlist_state {
+   MLIST_OTHER       = 0,    /* Normal address */
+   MLIST_KNOWN       = 1,  /* A known `mlist' */
+   MLIST_SUBSCRIBED  = -1  /* A `mlsubscribe'd list */
+};
+
 enum oflags {
    OF_RDONLY      = 1<<0,
    OF_WRONLY      = 1<<1,
@@ -1534,17 +1540,6 @@ struct sendbundle {
    struct ccred   sb_ccred;
 };
 
-struct group {
-   struct group *ge_link;     /* Next person in this group */
-   char        *ge_name;      /* This person's user name */
-};
-
-struct grouphead {
-   struct grouphead *g_link;  /* Next grouphead in list */
-   char        *g_name;       /* Name of this group */
-   struct group *g_list;      /* Users in group. */
-};
-
 /* Structure of the hash table of ignored header fields */
 struct ignoretab {
    int         i_count;       /* Number of entries */
@@ -1552,13 +1547,6 @@ struct ignoretab {
       struct ignore  *i_link;    /* Next ignored field in bucket */
       char           *i_field;   /* This ignored field */
    }           *i_head[HSHSIZE];
-};
-
-/* For the 'shortcut' and 'unshortcut' functionality */
-struct shortcut {
-   struct shortcut *sh_next;  /* next shortcut in list */
-   char        *sh_short;     /* shortcut string */
-   char        *sh_long;      /* expanded form */
 };
 
 /* For saving the current directory and later returning */
@@ -1596,7 +1584,6 @@ VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
 VL int         enc_has_state;       /* Encoding has shift states */
 
-VL char        **altnames;          /* List of alternate names of user */
 VL char const  *homedir;            /* Path name of home directory */
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
@@ -1637,14 +1624,12 @@ VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
 
-VL struct grouphead  *groups[HSHSIZE]; /* Pointer to active groups */
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */
 VL struct ignoretab  saveignore[2];    /* ignored and retained fields
                                         * on save to folder */
 VL struct ignoretab  allignore[2];     /* special, ignore all headers */
 VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
-VL struct shortcut   *shortcuts;       /* list of shortcuts */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

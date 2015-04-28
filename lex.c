@@ -435,28 +435,17 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    int rv, i, compressed = 0, omsgCount = 0;
    char const *who;
    size_t offset;
-   struct shortcut *sh;
    NYD_ENTER;
 
    /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
     * necessary to make a mailbox accessible by a different user, and if that
     * has happened, let's just let the usual file perms decide */
+
+   if (name[0] == '%' || ((who = shortcut_expand(name)) != NULL && *who == '%'))
+      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
+
    who = (name[1] != '\0') ? name + 1 : myname;
 
-#if 1
-   if (name[0] == '%' ||
-         ((sh = get_shortcut(name)) != NULL && *sh->sh_long == '%'))
-      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
-#else
-   if (name[0] == '%' && (name[1] == '\0' || name[1] == ':'))
-      fm |= FEDIT_SYSBOX;
-   else if ((sh = get_shortcut(name)) != NULL) {
-      char const *x = sh->sh_long;
-
-      if (x[0] == '%' && (x[1] == '\0' || x[1] == ':'))
-         fm |= FEDIT_SYSBOX;
-   }
-#endif
    if ((name = expand(name)) == NULL)
       goto jem1;
 

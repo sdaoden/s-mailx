@@ -124,6 +124,10 @@ t_behave() {
 
    __behave_ifelse
 
+   # FIXME __behave_alias
+
+   # FIXME __behave_mlist
+
    have_feat SSL/TLS && have_feat S/MIME && __behave_smime
 }
 

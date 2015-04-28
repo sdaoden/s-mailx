@@ -1610,7 +1610,7 @@ Accounts can be deleted via
 (a) With no arguments, prints out all currently-defined aliases.
 With one argument, prints out that alias.
 With more than one argument,
-creates a new alias or changes an old one.
+creates a new alias or appends to an existing one.
 .Ic unalias
 can be used to delete aliases.
 .It Ic alternates
@@ -2147,6 +2147,26 @@ In the former case all sources are loaded first as necessary.
 The
 .Va mimetypes-load-control
 option can be used to fine-tune which sources are loaded.
+.It Ic mlist
+Without arguments the list of all currently defined mailing lists
+(and their attributes, if any) is printed.
+Otherwise all given arguments (which need not be quoted except for
+whitespace) will be added and henceforth be recognized as mailing lists.
+Mailing lists may be removed via the command
+.Ic unmlist .
+.Pp
+If the \*(OPal regular expression support is available then mailing
+lists may also be specified as regular expressions (see
+.Xr re_format 7
+for more on those).
+.It Ic mlsubscribe
+Without arguments the list of all currently defined mailing lists which
+have a subscription attribute is printed.
+Otherwise this attribute will be set for all given mailing lists,
+newly creating them as necessary (as via
+.Ic mlist ) Ns .
+Subscription attributes may be removed via the command
+.Ic unmlsubscribe .
 .It Ic move
 (mv) Acts like
 .Ic copy
@@ -2427,11 +2447,17 @@ Also see
 .It Ic shell
 (sh) Invokes an interactive version of the shell.
 .It Ic shortcut
-Defines a shortcut name and its string for expansion,
-as described for the
+Without arguments the list of all currently defined shortcuts is
+printed.
+Otherwise all given arguments (which need not be quoted except for
+whitespace) are treated as pairs of shortcuts and their expansions,
+creating new or changing already existing shortcuts, as necessary.
+Shortcuts may be removed via the command
+.Ic unshortcut .
+The expansion strings should be in the syntax that has been described
+for the
 .Ic file
 command.
-If used without arguments the currently defined shortcuts are printed.
 .It Ic show
 (Sh) Like
 .Ic print ,
@@ -2552,6 +2578,7 @@ Attempts to delete the currently active account are rejected.
 .It Ic unalias
 Takes a list of names defined by alias commands
 and discards the remembered groups of users.
+The special name `*' will discard all existing aliases.
 .It Ic unanswered
 Takes a message list and marks each message as not having been answered.
 .It Ic uncollapse
@@ -2590,6 +2617,17 @@ Remove an existing command
 .It Ic unignore
 Removes the header field names from the list of ignored fields.
 The special name `*' will remove all fields.
+.It Ic unmlist
+Forget about all the given mailing lists.
+The special name `*' will remove all lists.
+Also see
+.Ic mlist .
+.It Ic unmlsubscribe
+Remove the subscription attribute from all given mailing lists.
+The special name `*' will clear the attribute from all lists which have
+it set.
+Also see
+.Ic mlsubscribe .
 .It Ic Unread
 Same as
 .Ic unread .
@@ -2623,6 +2661,7 @@ Also see
 .Ic setenv .
 .It Ic unshortcut
 Deletes the shortcut names given as arguments.
+The special name `*' will remove all shortcuts.
 .It Ic unsort
 Disable sorted or threaded mode
 (see the
@@ -3658,9 +3697,10 @@ The plain machine hostname of the user account.
 The `HOST' (hostname possibly including port) of the user account.
 .El
 .It Va attrlist
-A sequence of characters to print in the `attribute' column of a header
-summary,
-each for one type of messages in the following order:
+A sequence of characters to print in the `attribute' column of the
+.Va headline
+as shown in the header display; each for one type of messages in the
+following order:
 new (N), unread but old (U), new but read (R), read and old (O), saved
 (S), preserved (P), mboxed (M), flagged (F), answered (A), draft (T),
 start of a collapsed thread (+), collapsed (\-), classified as spam ($).
@@ -3896,8 +3936,21 @@ If the (possibly implicitly implied) field width is negative, the field
 is to be left-aligned.
 Valid format specifiers are:
 .Bl -tag -offset indent -width "%%"
+.It %%
+A `%' character.
+.It %>
+A `>' for the current message, otherwise ` '.
+.It %<
+A `<' for the current message, otherwise ` '.
+.It %$
+\*(OP The spam score of the message, as has been classified via the
+command
+.Ic spamrate .
+Prints only a replacement character if there is no spam support.
 .It %a
-Message attributes.
+Message attribute character (status flag); the actual content can be
+adjusted by setting
+.Va attrlist .
 .It %d
 The date when the message was received.
 .It %e
@@ -3917,17 +3970,14 @@ The number of octets (bytes) in the message.
 Message subject (if any).
 .It %S
 Message subject (if any) in double quotes.
+.It \&%T
+Message recipient flags: is the addressee of the message a known or
+subscribed mailing list \(en see
+.Ic mlist
+and
+.Ic mlsubscribe .
 .It %t
 The position in threaded/sorted order.
-.It %>
-A `>' for the current message, otherwise ` '.
-.It %<
-A `<' for the current message, otherwise ` '.
-.It %$
-The spam score of the message, as has been classified via the command
-.Ic spamrate .
-.It %%
-A `%' character.
 .El
 .Pp
 The default is `%>\&%a\&%m\ %-18f\ %16d\ %4l/%\-5o\ %i%-s',
@@ -5188,7 +5238,7 @@ The
 command can be used to avoid typing that many characters every time you
 want to connect:
 .Pp
-.Dl shortcut myisp %:imaps://mylogin@server.myisp.example
+.Dl shortcut yi %:imaps://USER@server.xxx yp %:pop3s://USER@server.xxx
 .Pp
 You might want to put this string into a startup file.
 .Ic shortcut
@@ -5544,7 +5594,7 @@ The commands offered are
 and
 .Ic spamset ,
 which simply set an `is-spam' flag that can be used for, e.g., message
-selection,
+selection (v,
 .Ic spamrate ,
 which passes messages through to the spam detector in order to gain
 a spam score and conditionally set the `is-spam' flag accordingly,
@@ -5553,6 +5603,9 @@ as well as the Bayesian filter related
 .Ic spamham
 and
 .Ic spamspam .
+The
+.Va headline
+format `%$' will show the spam score in the header display.
 .Pp
 Because messages must exist on local storage in order to be scored (or
 used for Bayesian filter training), it is possibly a good idea to
