@@ -1441,16 +1441,14 @@ jredo:
     * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
    rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
    if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
-      char const e1[] = "[ERR_TOO_LONG]";
-      exp.s = UNCONST(e1);
-      exp.l = sizeof(e1) - 1;
+      exp.s = UNCONST("[ERR_TOO_LONG]");
+      exp.l = sizeof("[ERR_TOO_LONG]") - 1;
       topp.l = 0;
       if (rv + bot.l + exp.l >= MAX_INPUT)
          bot.l = 0;
       if (rv + exp.l >= MAX_INPUT) {
-         char const e2[] = "[ERR]";
-         exp.s = UNCONST(e2);
-         exp.l = sizeof(e2) - 1;
+         exp.s = UNCONST("[ERR]");
+         exp.l = sizeof("[ERR]") - 1;
       }
    }
 

@@ -257,7 +257,6 @@ quit(void)
    int p, modify, anystat, c;
    FILE *fbuf = NULL, *rbuf, *abuf;
    struct message *mp;
-   char *tempResid;
    struct stat minfo;
    NYD_ENTER;
 
@@ -336,7 +335,7 @@ jnewmail:
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
       printf(_("New mail has arrived.\n"));
-      rbuf = Ftmp(&tempResid, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
+      rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
 #ifdef APPEND

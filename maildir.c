@@ -496,61 +496,61 @@ static enum okay
 maildir_append1(char const *name, FILE *fp, off_t off1, long size,
    enum mflag flag)
 {
-   int const attempts = 43200; /* XXX no magic */
-   char buf[4096], *fn, *tmp, *new;
+   char buf[4096], *fn, *tfn, *nfn;
    struct stat st;
    FILE *op;
-   long n, z;
-   int i;
    time_t now;
+   size_t nlen, flen, n;
    enum okay rv = STOP;
    NYD_ENTER;
 
+   nlen = strlen(name);
+
    /* Create a unique temporary file */
-   for (i = 0;; sleep(1), ++i) {
-      if (i >= attempts) {
-         fprintf(stderr, _(
-            "Can't create an unique file name in \"%s/tmp\".\n"), name);
+   for (nfn = (char*)0xA /* XXX no magic */;; sleep(1)) {
+      time(&now);
+      flen = strlen(fn = mkname(now, flag, NULL));
+      tfn = salloc(n = nlen + flen + 6);
+      snprintf(tfn, n, "%s/tmp/%s", name, fn);
+
+      /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
+      if ((!stat(tfn, &st) || errno == ENOENT) &&
+            (op = Fopen(tfn, "wx")) != NULL)
+         break;
+
+      nfn = (char*)(PTR2SIZE(nfn) - 1);
+      if (nfn == NULL) {
+         fprintf(stderr, _("Can't create an unique file name in \"%s/tmp\".\n"),
+            name);
          goto jleave;
       }
-
-      time(&now);
-      fn = mkname(now, flag, NULL);
-      tmp = salloc(n = strlen(name) + strlen(fn) + 6);
-      snprintf(tmp, n, "%s/tmp/%s", name, fn);
-      if (stat(tmp, &st) >= 0 || errno != ENOENT)
-         continue;
-
-      /* Use "wx" for O_EXCL */
-      if ((op = Fopen(tmp, "wx")) != NULL)
-         break;
    }
 
    if (fseek(fp, off1, SEEK_SET) == -1)
       goto jtmperr;
    while (size > 0) {
-      z = size > (long)sizeof buf ? (long)sizeof buf : size;
-      if ((n = fread(buf, 1, z, fp)) != z ||
-            (size_t)n != fwrite(buf, 1, n, op)) {
+      size_t z = UICMP(z, size, >, sizeof buf) ? sizeof buf : (size_t)size;
+
+      if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
-         fprintf(stderr, "Error writing to \"%s\".\n", tmp); /* TODO tr */
+         fprintf(stderr, _("Error writing to \"%s\".\n"), tfn);
          Fclose(op);
-         unlink(tmp);
-         goto jleave;
+         goto jerr;
       }
       size -= n;
    }
    Fclose(op);
 
-   new = salloc(n = strlen(name) + strlen(fn) + 6);
-   snprintf(new, n, "%s/new/%s", name, fn);
-   if (link(tmp, new) == -1) {
-      fprintf(stderr, "Cannot link \"%s\" to \"%s\".\n", tmp, new);/* TODO tr */
-      goto jleave;
+   nfn = salloc(n = nlen + flen + 6);
+   snprintf(nfn, n, "%s/new/%s", name, fn);
+   if (link(tfn, nfn) == -1) {
+      fprintf(stderr, _("Cannot link \"%s\" to \"%s\".\n"), tfn, nfn);
+      goto jerr;
    }
-   if (unlink(tmp) == -1)
-      fprintf(stderr, "Cannot unlink \"%s\".\n", tmp); /* TODO tr */
    rv = OKAY;
+jerr:
+   if (unlink(tfn) == -1)
+      fprintf(stderr, _("Cannot unlink \"%s\".\n"), tfn);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -692,7 +692,6 @@ subdir_remove(char const *name, char const *sub)
    path[pathend] = '\0';
    if (rmdir(path) == -1) {
       perror(path);
-      free(path);
       goto jleave;
    }
    rv = OKAY;

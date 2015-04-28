@@ -100,8 +100,8 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
          if (len >= 0 && !ign_eof)
             fprintf(stderr, _("Unexpected EOF on SMTP connection\n"));
-            rv = -1;
-            goto jleave;
+         rv = -1;
+         goto jleave;
       }
       if (options & OPT_VERBVERB)
          fputs(slp->buf, stderr);

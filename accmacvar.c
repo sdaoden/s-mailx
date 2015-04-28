@@ -667,6 +667,7 @@ _ma_look(char const *name, struct macro *data, enum ma_flags mafl)
                _ma_freelines(mp->ma_contents);
                free(mp->ma_name);
                free(mp);
+               mp = (struct macro*)-1;
             }
          }
          goto jleave;
