@@ -796,8 +796,9 @@ _unmlmux(enum group_type gt, char **argv)
    for (; *argv != NULL; ++argv) {
       if (gt & GT_SUBSCRIBE) {
          struct group_lookup gl;
+         bool_t isaster;
 
-         if (**argv != '*')
+         if (!(isaster = (**argv == '*')))
             gp = _group_find(gt, *argv);
          else if ((gp = _group_go_first(gt, &gl)) == NULL)
             continue;
@@ -810,7 +811,7 @@ jaster_redo:
                _MLMUX_LINKOUT(gp);
                gp->g_type &= ~GT_SUBSCRIBE;
                _MLMUX_LINKIN(gp);
-               if (**argv == '*') {
+               if (isaster) {
 jaster_entry:
                   while ((gp = _group_go_next(&gl)) != NULL &&
                         !(gp->g_type & GT_SUBSCRIBE))
