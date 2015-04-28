@@ -129,7 +129,7 @@ the debug facilities in general make their appearance on the standard
 error channel; because this can be a quite long output, then, it is
 possibly a good idea to redirect it to a file:
 
-  $ s-nail -vv 2> error.log
+  $ s-nail -dvv 2> error.log
 
 Should you really discover any problems with S-nail it would be very
 useful for development if you would contact s-nail-users@!
@@ -140,11 +140,20 @@ Thank you!
 
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
 It is assumed that S-nail(1) should work practically everywhere.
+Unless otherwise noted the following applies to saying "$ make".
+(But on the developer branch without IMAP.  IMAP won't get any better
+until it will be readded after v15.0.)
 
-Note: for the v14.7.9 subminor that had to be quick only ArchLinux, CRUX
-Linux, Void Linux and NetBSD were updated and tested.  With the specific
-subminor that is, [crawl] is continually on the run, say, and we're
-shortly before a next minor release.
+. All systems:
+  - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
+    defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
+    number of warnings exploded (for no user benefit).
+  - You may see warnings on unused returns from write(2), ftruncate(2)
+    and a few other I/O functions.  These will vanish after the large
+    I/O and MIME rewrite that comes next.  These mostly refer to debug
+    dumping, truncating a(n open) file to zero size and freopen(3)ing
+    one of the standard channels.  I refrained from adding abort(3)
+    calls as return value checks.
 
 . All 32-bit systems:
   - There _may_ be warnings about format strings, like, e.g.,
@@ -152,7 +161,7 @@ shortly before a next minor release.
       unsigned int', but argument 3 has type 'size_t'
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
     However, `nail.h' tries hard to detect the real type size and
-    defines the `PRI[du]Z' macro which ends up with the correct size,
+    defines the `PRI[du]Z' macros which end up with the correct size,
     which is also compile-time asserted via PRIxZ_FMT_CTA() in main.c.
 
     You can completely overcome this situation by forcing ISO C99 mode
@@ -162,63 +171,48 @@ shortly before a next minor release.
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc (GCC) 4.9.2 [gcc-4.9.2-1-x86_64]
-    + I think faulty message on longjmp() clobbering on a const variable?
-    + The known -Wstrict-overflow warning(s) (this code is address of
-      change in v14.9)
+  - gcc (GCC) 4.9.2 20150304 (prerelease) [gcc-4.9.2-4-x86_64]
+    + I think faulty message on longjmp() clobbering of a const variable?
+  - gcc 5.1.0 [gcc 5.1.0-1 from testing]
+    + False warning on "'gl.gl_group' may be used uninitialized".
+      I had explicitly committed "Clarify condition (hopefully fix
+      -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
+      help.
+  - clang version 3.6.0 (tags/RELEASE_360/final) [clang-3.6.0-4]
+    + :)
+
+. Void Linux <http://www.voidlinux.eu/>
+  Void GNU/Linux 3.19.3_1 i686
+  - gcc (GCC) 4.9.2 [gcc-4.9.2_2]
+    + Faulty message on longjmp() clobbering (of a const variable).
 
 . CRUX Linux <http://www.crux.nu/>
   CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
   - gcc (CRUX) 4.8.2.
     + :)
 
-. Void Linux <http://www.voidlinux.eu/>
-  Void GNU/Linux 3.14.15_2 i686
-  - gcc (GCC) 4.9.2 [gcc-4.9.2_1]
-    + I think faulty message on longjmp() clobbering on a const variable?
-    + The known -Wstrict-overflow warning(s) (this code is address of
-      change in v14.9)
-
 . FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.0-STABLE #0 r268038: Mon Jun 30 17:00:39 UTC 2014
+  FreeBSD 10.1-RELEASE amd64
   - FreeBSD clang version 3.4.1 (tags/RELEASE_34/dot1-final 208032) 20140512
     + :)
 
 . OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.6 GENERIC#337 (~2014-09-26) i386
+  OpenBSD 5.7-current (GENERIC) #753: Thu Mar 26 14:56:52 MDT 2015
   - gcc (GCC) 4.2.1 20070719.
-    + Faulty message on longjmp() clobbering (on a const variable).
-    + Wrong message on potentially uninitialized variable.
+    + Faulty message on longjmp() clobbering (of a const variable).
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 3.6-RELEASE x86_64
-  - gcc 4.7.3 [DragonFly] Release/2013-04-11.
-    + One -Wstrict-overflow warning.
-    + Warning on bad cast for iconv(3); yes, this is DragonFly.
-
-  DragonFly 3.4.1-RELEASE i386
-  - gcc 4.7.2 [DragonFly] Release/2012-09-20
-    + One -Wstrict-overflow warning.
+  DragonFly 4.0-RELEASE x86_64 [4.0.5]
+  - gcc 4.7.4 [DragonFly] Release/2014-06-12
+    + I will never get iconv(3) right for DragonFly it seems.
 
 . NetBSD <https://www.netbsd.org/>
-  NetBSD 6.99.40 i386 (201404092030Z)
-  - gcc (NetBSD nb2 20140304) 4.8.3
-    - Works.
-
-  NetBSD 6.99.24 amd64
-  - gcc (NetBSD nb1 20120916) 4.5.4
-    + I think faulty message on longjmp() clobbering on a const variable?
-    + Wrong message on potentially uninitialized variable.
-
-  NetBSD 6.0 i386
-  - gcc (NetBSD nb2 20110806) 4.5.3
-    - Ditto.
+  + Show work.
 
 . Mac OS X <https://www.apple.com/>
   (Snow Leopard) Darwin 10.8.0 i386
+  + Worked a thousand hours.
   - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-    + The known -Wstrict-overflow warnings (this code is address of
-      change in v14.8)
   - clang version 3.4 (branches/release_34 197314)
     Target: x86_64-apple-darwin10.8.0
     Thread model: posix.
@@ -228,26 +222,23 @@ shortly before a next minor release.
     2.9svn).
 
 . UnixWare 7.1.4.
-  + Not tested with v14.7.7.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in
     uses shell functions to ease the task of directory creation etc.
     (especially useful due to VERBOSE=), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + You'll see some harmless and ignorable warnings (the problematic
-    looking warning `"openssl.c", line 88: initialization type mismatch'
-    refers to a cast from non-const to const, which shouldn't matter).
+  + You'll see some harmless and ignorable warnings.
 
 3. Current codebase state
 -------------------------
 
-Since i've forked Heirloom mailx(1) (for real) as S-nail(1) on
-2012-09-18 i make my way through the codebase, and i'm getting more
-and more used to it as time goes by -- of course, i'm thinking object
-and thus this codebase and i are antipodes.
+Since i've forked Heirloom mailx(1) (the former "nail" for real) as
+S-nail(1) on 2012-09-18 i make my way through the codebase, and i'm
+getting more and more used to it as time goes by -- of course, i'm
+thinking object and thus this codebase and i are antipodes.
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Berkeley Mail, as a good one.  Also see `TODO'.
 
-For S-nail, v15.0 (not before 2016) is dedicated to a Send- and
+For S-nail, v15.0 (not before 2017) is dedicated to a Send- and
 MIME-layer rewrite that will bring the possibility to access each
 message part individually. Because the Berkeley codebase and its nail
 fork have design flaws in respect to mailbox handling and non-local code
