@@ -2546,12 +2546,29 @@ command issued after
 .Ic hold
 will display the following message, not the current one.
 .
+.
 .Mx
 .It Ic if
 Part of the nestable
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
 conditional execution construct \(em if the given condition is true then
 the encapsulated block is executed.
+POSIX only supports the conditions
+.Ql [Rr]eceive ,
+.Ql [Ss]end
+and
+.Ql [Tt]erm
+(execute if standard input is a tty), all remaining conditions are
+non-portable extensions; note that falsely specified conditions cause
+the execution of the entire conditional construct until the
+(matching) closing
+.Ic endif
+command to be suppressed.
+The syntax of the nestable
+.Ic if
+conditional execution construct requires that each condition and syntax
+element is surrounded by whitespace.
+.
 .Bd -literal -offset indent
 if receive
   commands ...
@@ -2559,28 +2576,19 @@ else
   commands ...
 endif
 .Ed
+.
 .Pp
-Note that POSIX only supports the conditions `[Rr]eceive', `[Ss]end'
-and `[Tt]erm' (execute if standard input is a tty).
-Extensions are `0' (never execute) and `1' (always execute).
-It is possible to check a user given value against the content of
-a variable by using the `$' conditional trigger.
-In the following example the first form only checks wether an option is
-set, whereas the others also perform value content comparison:
-.Bd -literal -offset indent
-if $debug
-  commands ...
-endif
-if $encoding == "UTF-8"
-  commands ...
-endif
-if $encoding != "UTF-8"
-  if $version-major >= 15
-    commands ...
-  endif
-endif
-.Ed
-.Pp
+For one any boolean value (see the section
+.Sx "VARIABLE OPTIONS"
+for booleans) may be given to mark an enwrapped block as
+.Dq never execute
+or
+.Dq always execute .
+It is possible to check a variable for existence or compare its
+expansion against a user given value or another variable via the
+.Ql $
+.Pf ( Dq variable next )
+conditional trigger character.
 The available comparison operators are
 .Ql <
 (less than),
@@ -2591,30 +2599,85 @@ The available comparison operators are
 .Ql !=
 (not equal),
 .Ql >=
-(greater than or equal to) and
+(greater than or equal to),
 .Ql >
-(greater than).
-If the user given value can be parsed as a number (integer), then if the
-variable value content can, too, then the comparison is performed
-arithmetically.
-Otherwise both values are treated as strings and are compared 8-bit
-byte-wise, ignoring case according to the rules of the US-ASCII encoding
-(therefore, dependend on the active locale, possibly producing false
-results for strings in the locale encoding).
+(greater than),
+.Ql =@
+(is substring of) and
+.Ql !@
+(is not substring of).
+The values of the left and right hand side are treated as strings and
+are compared 8-bit byte-wise, ignoring case according to the rules of
+the US-ASCII encoding (therefore, dependend on the active locale,
+possibly producing false results for strings in the locale encoding).
+Except for the substring checks the comparison will instead be performed
+arithmetically if both, the user given value as well as the variable
+content, can be parsed as numbers (integers).
 An unset variable is treated as the empty string.
+.
 .Pp
 When the \*(OPal regular expression support is available, the additional
+test cases
 .Ql =~
 and
 .Ql !~
-test cases can be used.
+can be used.
 They treat the right hand side as a regular expression that is matched
 case-insensitively and according to the active
-.Ql LC_CTYPE
+.Ev LC_CTYPE
 locale, meaning that strings in the locale encoding should be matched
 correctly.
-An example of such a test would be
-.Ql if $TERM =~ "^xterm\&.*" .
+.
+.Pp
+Conditions can be joined via AND-OR lists (where the AND operator is
+.Ql &&
+and the OR operator is
+.Ql || ) ,
+which have equal precedence and will be evaluated with left
+associativity, thus using the same syntax that is known for the
+.Xr sh 1 .
+It is also possible to form groups of conditions and lists by enclosing
+them in pairs of brackets
+.Ql [\ \&.\&.\&.\ ] ,
+which may be interlocked within each other, and also be joined via
+AND-OR lists.
+.
+.Pp
+The results of individual conditions and entire groups may be modified
+via unary operators: the unary operator
+.Ql \&!
+will reverse the result.
+.
+.Bd -literal -offset indent
+if $debug
+  echo *debug* is set
+endif
+if $ttycharset == "UTF-8"
+  echo *ttycharset* is set to UTF-8, case-insensitively
+endif
+set t1=one t2=one
+if $t1 == $t2
+  echo These two variables are equal
+endif
+if $version-major >= 15
+  echo Running a new version..
+  if $features =@ "regex"
+    if $TERM =~ "^xterm\&.*"
+      echo ..in an X terminal
+    endif
+  endif
+  if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
+    echo Noisy, noisy
+  endif
+  if true && $debug || $verbose
+    echo Left associativity, as is known from the shell
+  endif
+  if ! ! true && ! [ ! $debug && ! $verbose ]
+    echo Unary operator support
+  endif
+endif
+.Ed
+.
 .
 .Mx
 .It Ic ignore
@@ -3885,6 +3948,16 @@ command line option.
 binary options, which can only be in the two states set and unset,
 as well as value options which have an assigned string value, for which
 proper quoting may be important upon assignment time.
+.Dq boolean
+is a special string value that must be set to any of
+.Ql no ,
+.Ql false ,
+.Ql 0
+for a false boolean and
+.Ql yes ,
+.Ql true ,
+.Ql 1
+for a true boolean; matching is performed case-insensitively.
 .
 .Pp
 The command

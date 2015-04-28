@@ -1361,7 +1361,7 @@ jouter:
       /* TODO While it is maybe ok not to MIME decode these (for purpose), we
        * TODO should skip =?..?= at the beginning? */
       for (pp = ignored; pp->len > 0; ++pp)
-         if (is_asccaseprefix(pp->dat, s)) {
+         if (is_asccaseprefix(s, pp->dat)) {
             s += pp->len;
             any = TRU1;
             goto jouter;
@@ -1372,7 +1372,7 @@ jouter:
 
          memcpy(re_st_x = re_st + re_l, re_st, re_l);
          while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
-            if (is_asccaseprefix(cp, s)) {
+            if (is_asccaseprefix(s, cp)) {
                s += strlen(cp);
                any = TRU1;
                goto jouter;

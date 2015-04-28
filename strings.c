@@ -597,7 +597,6 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    return self;
 }
 
-#ifdef HAVE_SPAM
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
    char const *sep_o_null SALLOC_DEBUG_ARGS)
@@ -627,7 +626,6 @@ FL struct str *
    NYD_LEAVE;
    return self;
 }
-#endif
 
 /*
  * Routines that are not related to auto-reclaimed storage follow.
@@ -959,6 +957,26 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
    return cmp;
 }
 
+FL char const *
+asccasestr(char const *s1, char const *s2)
+{
+   char c2, c1;
+   NYD2_ENTER;
+
+   for (c2 = *s2++, c2 = lowerconv(c2);;) {
+      if ((c1 = *s1++) == '\0') {
+         s1 = NULL;
+         break;
+      }
+      if (lowerconv(c1) == c2 && is_asccaseprefix(s1, s2)) {
+         --s1;
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return s1;
+}
+
 FL bool_t
 is_asccaseprefix(char const *as1, char const *as2)
 {
@@ -967,54 +985,15 @@ is_asccaseprefix(char const *as1, char const *as2)
 
    for (;; ++as1, ++as2) {
       char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
-      if ((rv = (c1 == '\0')))
+
+      if ((rv = (c2 == '\0')))
          break;
-      if (c1 != c2 || c2 == '\0')
+      if (c1 != c2)
          break;
    }
    NYD2_LEAVE;
    return rv;
 }
-
-#ifdef HAVE_IMAP
-FL char const *
-asccasestr(char const *haystack, char const *xneedle)
-{
-   char *needle = NULL, *NEEDLE;
-   size_t i, sz;
-   NYD2_ENTER;
-
-   sz = strlen(xneedle);
-   if (sz == 0)
-      goto jleave;
-
-   needle = ac_alloc(sz);
-   NEEDLE = ac_alloc(sz);
-   for (i = 0; i < sz; i++) {
-      needle[i] = lowerconv(xneedle[i]);
-      NEEDLE[i] = upperconv(xneedle[i]);
-   }
-
-   while (*haystack != '\0') {
-      if (*haystack == *needle || *haystack == *NEEDLE) {
-         for (i = 1; i < sz; ++i)
-            if (haystack[i] != needle[i] && haystack[i] != NEEDLE[i])
-               break;
-         if (i == sz)
-            goto jleave;
-      }
-      ++haystack;
-   }
-   haystack = NULL;
-jleave:
-   if (needle != NULL) {
-      ac_free(NEEDLE);
-      ac_free(needle);
-   }
-   NYD2_LEAVE;
-   return haystack;
-}
-#endif
 
 FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)

@@ -227,14 +227,14 @@
      DS(N_("Show size in characters for <message-list>")) },
    { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <message-list> in system mailbox instead of *mbox*")) },
-   { "if", &c_if, (F | M | RAWLIST), 1, 3
-     DS(N_("Part of the if .. then .. endif statement")) },
+   { "if", &c_if, (F | M | RAWLIST), 1, 1000
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "else", &c_else, (F | M | RAWLIST), 0, 0
-     DS(N_("Part of the if .. then .. endif statement")) },
-   { "elif", &c_elif, (F | M | RAWLIST), 1, 3
-     DS(N_("Part of the if .. then .. endif statement")) },
+     DS(N_("Part of the if..elif..else..endif statement")) },
+   { "elif", &c_elif, (F | M | RAWLIST), 1, 1000
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "endif", &c_endif, (F | M | RAWLIST), 0, 0
-     DS(N_("Part of the if .. then .. endif statement")) },
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate list for the invoking user")) },
    { "ignore", &c_igfield, (M | RAWLIST), 0, 1000

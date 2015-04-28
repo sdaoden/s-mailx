@@ -625,20 +625,6 @@ FL int         c_File(void *v);
 /* Expand file names like echo */
 FL int         c_echo(void *v);
 
-/* if.elif.else.endif conditional execution.
- * condstack_isskip() returns wether the current condition state doesn't allow
- * execution of commands.
- * condstack_release() and condstack_take() are used when sourcing files, they
- * rotate the current condition stack; condstack_take() returns a false boolean
- * if the current condition stack has unclosed conditionals */
-FL int         c_if(void *v);
-FL int         c_elif(void *v);
-FL int         c_else(void *v);
-FL int         c_endif(void *v);
-FL bool_t      condstack_isskip(void);
-FL void *      condstack_release(void);
-FL bool_t      condstack_take(void *self);
-
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
 
@@ -662,6 +648,24 @@ FL int         c_rename(void *v);
 /* `urlencode' and `urldecode' */
 FL int         c_urlencode(void *v);
 FL int         c_urldecode(void *v);
+
+/*
+ * cmd_cnd.c
+ */
+
+/* if.elif.else.endif conditional execution.
+ * condstack_isskip() returns wether the current condition state doesn't allow
+ * execution of commands.
+ * condstack_release() and condstack_take() are used when sourcing files, they
+ * rotate the current condition stack; condstack_take() returns a false boolean
+ * if the current condition stack has unclosed conditionals */
+FL int         c_if(void *v);
+FL int         c_elif(void *v);
+FL int         c_else(void *v);
+FL int         c_endif(void *v);
+FL bool_t      condstack_isskip(void);
+FL void *      condstack_release(void);
+FL bool_t      condstack_take(void *self);
 
 /*
  * collect.c
@@ -1745,12 +1749,11 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
-#ifdef HAVE_SPAM
+/*  */
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-# ifdef HAVE_DEBUG
+#ifdef HAVE_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
-# endif
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -1797,13 +1800,15 @@ FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 
 FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 
-/* Locale-independent character class functions */
+/* Case-independent ASCII comparisons */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
+
+/* Case-independent ASCII string find s2 in s1, return it or NULL */
+FL char const *asccasestr(char const *s1, char const *s2);
+
+/* Case-independent ASCII check wether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
-#ifdef HAVE_IMAP
-FL char const * asccasestr(char const *haystack, char const *xneedle);
-#endif
 
 /* struct str related support funs */
 
