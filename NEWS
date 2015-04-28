@@ -1,9 +1,14 @@
 S - n a i l  N e w s
 ====================
 
+In the following numbers in [] reference either the commit SHA1 hash or
+the name of a topic branch which relate to the NEWS entry;
+Likewise, numbers after an at-sign @ are mdocmx(7) manual anchor
+references which allow directly jumping to the given anchor.
+
 The complete changelog of commits in between two versions can be
-inspected by using the git(1) `log' command as shown below, where `OLD'
-and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
+inspected by using the git(1) `log' command as shown below, where "OLD"
+and "NEW" are the two versions to be compared.
 
   # All commits:
   $ git log --reverse --topo-order --abbrev-commit OLD..NEW
@@ -14,6 +19,457 @@ and `NEW' are the two versions to be compared, e.g., v14.6 and v14.7:
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.8 ("Albatros"), 2015-04-30
+------------------------------
+
+Puuuh!
+I'm glad and happy to announce "Albatros" after about seven months of
+development.  Development that brought many new features, bugfixes,
+technical overhauling and behaviour tweaking.  Shall you ever have been
+interested in BSD Mail or its deriviatives you might want to give it
+a try.
+
+Note there are incompatible changes, documented below.  And it is also
+advisable to try out existing configurations with enabled *debug* and/or
+*verbose* (-d, -vv) in order to check for "obsoletion" warnings.
+(Here "obsolete" would refer to v15, of course.)
+
+Credits and Thanks go to Ypnose, Jérémie Courrèges-Anglas, Josef Jurek,
+Gavin Troy, Rich Salz, Martin Brandenburg, Bob Tennent, Dominic Meskys
+and Peter Bray.
+
+We welcome Jérémie Courrèges-Anglas, Josef Jurek, Rich Salz,
+Dominic Meskys, Peter Bray, Dirk-Wilhelm Peters and Martin Brandenburg
+in THANKS.
+Apologies to Dirk-Wilhelm Peters and Martin Brandenburg whom i had
+forgotten to add to THANKS at first glance once i've added this file; it
+was nothing but an oversight.
+
+I also say «Thank you» to GitLab.com – i've mirrored the S-nail git(1)
+repository (alongside others) to this free service.
+
+Credits finally also have to go to Coverity.com [1] which helped to find
+some bugs; the claim of a 0.00 defect density after a Friday 13th test
+must have been an error from their side, though, as well as that the
+page [1] still remains at a test with a defect density of 0.01, since
+i've posted yet another run that must have ended with 0.00.  (Note the
+codebase was tested without IMAP code, i.e. my _next_ developer branch.)
+
+  [1] https://scan.coverity.com/projects/444
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+$ In all the following noticable changes to the release candidate are
+$ marked with a $ in the first column
+
++ Crawling along the path of CVE [topic/cve-2014-7844.2]: to enable MTA
+  arguments after -- the new *expandargv* @372 must be set.  More below.
+
++ Even more crawling along the path of the CVE i decided to replace the
+  wordexp(3) based shell word expansion mechanism with an entirely new,
+  internally implemented restricted one, but complete mitigation will
+  take time.  This has consequences in respect to backslash escaping in
+  file names (shall you ever have used such a filename with S-nail and
+  its predecessors, of course, and only ...).
+  Please see [topic/fexpand.2] below.
+
++ A new member for the *attrlist* @351 variable (for unsure spam status).
+  Since a user setting with a false length will be ignored yet causes an
+  error message this is a backward incompatible change. [topic/spam.2]
+
+- New make.rc option: WANT_ALL_SSL_ALGORITHMS (enabled).
+  See make.rc and *smime-cipher-USER@host* @427 below. [topic/ssl.1]
+
+- The make.rc option WANT_IPV6 is gone; we use the respective standard
+  library facilities automatically whenever possible. [999e79a]
+
+- New make.rc option: WANT_TERMCAP (disabled).
+  See *term-ca-mode* @345 below.  [topic/termcap]
+
+- The make.rc option WANT_SPAM has been dropped.  Instead we have (see
+  [topic/spam.2] below for more):
+
+  . WANT_SPAM_SPAMC (default off):
+    Rather identical to the former WANT_SPAM (interaction with spamc(1)
+    from spamassassin(1)), but internally improved.
+  . WANT_SPAM_SPAMD (default off):
+    Direct interaction with spamd(1) from spamassassin(1) via a local
+    unix(4) domain socket.
+  . WANT_SPAM_FILTER (default on):
+    Freely configurable hook programs, e.g., bogofilter(1).
+
+- It turned out that the manual wasn't mandb(1) compatible. [f5ab838]
+
+- New make.rc option: WANT_FILTER_HTML_TAGSOUP (enabled).
+  S-nail now ships with a very primitive HTML-to-text converter.
+  It'll be used for HTML parts automatically if no pipe handler is
+  installed (and the builtin mime.types haven't been changed).
+  This works because of the new TYPEMARKER extension to mime.types(5) as
+  documented for [topic/mime.types.2] below.
+  (It is quite experimental but i think it rocks except it can be fooled
+  since it doesn't know about double quoted strings, e.g., <a href=""
+  onmouseover='javascript:alert("> This is plain text you see, oops");'>.
+$ Yet it is ment for displaying HTML mails, and it works really well.
+$ It doesn't support non-standard type="quote" attributes nor even-more
+$ non-standard CSS classes "gmail_quote" or whatever it's name was --
+$ these are used in the wild to generate automatic mail quoting, which
+$ has resulted in an immense amount of top-posting; but maybe there will
+$ be a S-nail v14.8.1 which will implement those, to ease the pain.
+  [topic/html-tagsoup]
+
+$- List output of `alias' @78, `ghost' @123 and `shortcut' @181
+$ uses a new syntax that should (in theory) make it possible to feed
+$ the output back into S-nail. [2913df3]
+$ Ditto `set' @178 unless *bsdcompat* or *bsdset* are set. [373cc8a]
+
+$- *keep* @308 will also affect secondary mailboxes (because *emptybox*
+$ has been obsoleted, see below). [5fa5f8b]
+
+$- New make.rc option: WANT_FORCED_STACKPROT (enabled with WANT_DEVEL or
+$ WANT_DEBUG).
+$ In conjunction with WANT_AUTOCC this will trigger stack protectors
+$ if the detected compiler does support them.  (Before they were only
+$ enabled if WANT_DEBUG was set, automatically.)
+
++ v14.8 is the last release with IMAP support, which has been removed
+  from the developer's [crawl] branch for quite some time already.
+  He really hopes he can affort to readd support sometime after v15.0.
+
+ChangeLog
+^^^^^^^^^
+
+- S-nail now knows about named booleans (e.g., `localopts' @133 or
+  interactive approval prompts can now be given any of 1/yes/true/on or
+  0/no/false/off, case-insensitively; note this is true for the make.rc
+$ system, too) and so-called "quad" options (either normal boolean or
+$ "ask-BOOLEAN", which, in interactive context, will be prompted with
+$ default values; the default value is chosen in non-interactive mode).
+$ (on/off support not in the RC.)
+  [topic/xify]
+
+- The `if' @128 combo:
+
+  . gained <, >, <= and >= tests;
+    ==, !=, <, <=, >=, > will try to convert their arguments to numbers
+    and perform their test numerically, if possible, [143d409]
+  . `if' supports boolean (as above) arguments, [topic/ifpimp]
+  . `if 1'+ return value fixed, [topic/ifpimp]
+  . `if'+: on syntax error, NOOP anything 'till `endif', [topic/ifpimp]
+  . `if'+ now support bracket groups, AND-OR lists and unary ! (not),
+    note that the separating spaces are required: [topic/ifpimp]
+
+      if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
+        echo Noisy, noisy
+      endif
+      if true && $debug || $verbose
+        echo Left associativity, as is known from the shell
+      endif
+      if ! ! true && ! [ ! $debug && ! $verbose ]
+        echo Unary operator support
+      endif
+
+  . `if'+ now support new case-insensitive (ASCII) substring operators
+    =@ and !@: [topic/ifpimp]
+
+      if $features =@ "regex"
+        if $TERM =~ "^xterm.*"
+          echo ..in an X terminal
+        endif
+      endif
+
+$ . `if'+: the three argument forms can now be given variables also on
+$   the right hand side: [topic/ifpimp]
+$
+$     set xtest='^xterm.*'
+$     if $TERM =~ $xtest
+$       echo Variables as right hand value
+$     endif
+
+- `unalias' @198 learned that * means "all aliases".
+  Fixed: faulty list-head relinking caused "dead" aliases (since ever)
+  [topic/names]
+
+- `unshortcut' @219 learned that * means "all shortcuts".
+  `shortcut' @181 in turn can now define multiple shortcuts in one go
+  [topic/names]:
+
+    ?0[ /var/mail/steffen]? sho you 'any one' me 'no "one"'
+    ?0[ /var/mail/steffen]? sho
+    shortcut me "no \"one\""
+    shortcut you "any one"
+    ?0[ /var/mail/steffen]? unsho*
+    ?0[ /var/mail/steffen]? sho
+    ?0[ /var/mail/steffen]?
+
+- S-nail learned how to deal with mailing-lists in respect to
+  Mail-Followup-To headers etc. (manual: "Mailing lists" @21):
+
+  . new commands `(un)?ml(list|subscribe)' to let S-nail decide which
+    addresses are mailing-lists, [topic/names]
+  . *headline* learned %T format to display message recipient flags:
+    "L" for a mailing-list, "S" for a subscribed one, [topic/names]
+  . new variable *followup-to-honour*, [topic/mft]
+  . new variable *reply-to-honour*, [topic/mft]
+  . new command `Lreply', forcing a list-only `reply' if possible.
+    When `Lreply'ing to messages which seem to originate from
+    mailing-lists (contain a "List-Post:" header), then S-nail will
+    treat the list address as a known mailing list (as via `mlist').
+
+    (It is advisable to try out several different combinations of non-/
+    subscribed mailing-lists in conjunction with `reply', `Reply' and
+    `Lreply' with *debug* set in order to get used to how S-nail will
+    modify the address lists; the results should be quite logical
+    though.) [topic/mft]
+  . For convenience `reply' and `Lreply' can now be used to reply to
+    multiple messages in one go (each message will still be handled by
+    itself, we simply start over internally). [topic/mft]
+
+- `unset' @217 no longer "fails" for unset variables, but only prints
+  a message in *debug* or *verbose* mode.  This changes traditional,
+  decade-old behaviour, but shells don't even say something in (*debug*
+  or) *verbose* mode, and it really simplifies things. [topic/okeys-attr]
+
+- SSL/TLS changes: [topic/ssl.1]
+
+  . new variables: *ssl-cert-HOST* @451, *ssl-key-HOST* @456,
+    *ssl-method-HOST* @457, *ssl-verify-HOST* @461,
+  . *ssl-v2-allow* has been dropped,
+  . *ssl-verify* @461 and *smime-cipher-USER@HOST* @427 use
+    case-insensitive matching for value checks,
+  . new variable-chain: *ssl-protocol* @458 (the introduction of which
+    obsoletes *ssl-method* @457, see below),
+  . new variants of *ssl-cipher-list* @452: *ssl-cipher-list-USER@HOST*,
+    *ssl-cipher-list-HOST*,
+  . new variable: *ssl-config-file* @453,
+  . *smime-cipher-USER@HOST* @427 dropped builtin support for the
+    obsolete RC2-40 and RC2-64 ciphers -- use the make.rc option
+    WANT_ALL_SSL_ALGORITHMS to readd support,
+  . with SSL_CONF_CTX support (OpenSSL v1.0.2+) the values of the
+    following variables (and variants) will be parsed by OpenSSL instead
+    of S-nail, offering more user and packager flexibility:
+    *ssl-cert* @451, *ssl-cipher-list* @452, *ssl-key* @456,
+    *ssl-protocol* @458.
+
+    E.g., shall a new OpenSSL ship with TLS v1.3 S-nail doesn't need to
+    be adjusted in order to support TLS v1.3, all there is to do is that
+    the user has to adjust her *ssl-protocol* setting.
+    This is at least the theory. :)
+    And maybe OpenSSL (will) offer(s) symbolic constants like "NEWEST"
+    or "SAFEST".
+
+- Folder hooks have been extended:
+
+  . if there was no *folder-hook-FULLNAME* @376 we'll try
+    *folder-hook-+NAME* if the mailbox NAME resides in *folder*, e.g.,
+    the author has "folder-hook-+sent=MACRO" and all his *record*
+    variables are "record=+sent", therefore MACRO can be shared in
+    between all accounts with a single hook definition. [a5a4d89]
+  . `localopts' @133 can now be used in folder hooks: the covered
+    settings will be reverted once the folder is left again.
+$   (I know for sure someone asked for this long ago, directly after
+$   `localopts' came up first, but i couldn't find the corresponding
+$   message.  Sorry!) [2c67091]
+
+- More security control à la CVE 2014-7844, possibly for the first time
+  enabling safe usage of S-nail via CGI: [topic/cve-2014-7844.2]
+
+  . fixed *sendmail-arguments* @420 parsing:
+    *sendmail-arguments*='-F "Dubi Da"' will now result in <"-F" "Dubi
+    Da"> not <"-F" ""Dubi Da"">,
+  . new command line argument "-." @67 forcefully terminates options
+    and enters send mode.  I.e., using this option avoids possible
+    misinterpretation of the following arguments.
+
+    This operation is usually reserved for --, but since S-nail passes
+    anything after -- to the MTA (but read on) i had to invent something
+$   else.  Also, -. forcefully enters send mode, which -- couldn't have
+$   been overloaded to do.
+  . New variable: *expandargv* @372: in equal spirit to *expandaddr* @371
+    this one is required in order to pass arguments after -- to the MTA.
+    If set to "fail" existence of such arguments is a hard error,
+    "restrict" likewise except in interactive mode or in conjunction
+    with the -~ or -# options.
+  . *expandaddr* @371: new special value "fail" causes presence of
+    extended recipient addresses to be treated as a hard error.
+$   In fact this is now interpreted as a comma separated list and may
+$   also include the string "noalias", disallowing non-network-addresses
+$   in the remaining (non-"extended") recipient addresses -- note this
+$   applies to system global aliases only, not to those of `alias'
+$   (except for their content, of course); "noalias" is a hard error in
+$   combination with "fail".
+
+- `unaccount' @197 and `undefine' @201 learned that * means "all
+  accounts" and "all macros", respectively. [4c09114]
+
+- Spam handling has been rewritten completely, revealing a very old
+  misbehaviour in nail's subprocess handling (malloc in signal handler).
+  Please reread the manual section "Handling spam" @37 for more.
+  The motivation was also that bogofilter(1), sylfilter(1) etc. can
+  export their databases, so should the author ever find time to
+  implement spam handling in C like his predecessor it will be possible
+  to continue to use those databases: [topic/spam.2]
+
+  . *headline* @380 format %$ has been fixed,
+  . when working on multiple messages the operation is cancelled if an
+    error occurs,
+  . new variables: *spam-interface* @436 chooses the, well, ...
+    This one has extensive documentation.  Plus the interface dependent
+    *spamc-command* @438, *spamc-arguments* @439, *spamc-user* @440,
+    *spamd-socket* @441, *spamd-user* @442,
+    *spamfilter-ham* @443, *spamfilter-noham* @444,
+    *spamfilter-nospam* @445, *spamfilter-rate* @446,
+    *spamfilter-spam* @447 and *spamfilter-rate-spamscore* @448.
+  . The *attrlist* @351 variable gained a new slot for an unsure-spam
+    status (default character is ~).
+    Messages with that flag can be specified via the :S colon modifier.
+
+- Fix: even though -# @66 implies *sendwait* @335 a user should have the
+  option to turn *sendwait* off again. [4274bed]
+
+- Completely reworked mime.types(5) handling, note the backward
+  incompatible drop of `mimetypes': [topic/mime.types.2]
+
+  . dropped the `mimetypes' command,
+  . new commands: `mimetype' @138 and `unmimetype' @209,
+  . *encoding* @369 is now parsed case-insensitively,
+  . *mime-counter-evidence* @390 gained new bit 3 to indicate the desire
+    to forcefully overwrite MIME types if we think we know it better,
+  . *mimetypes-load-control* @391 gained an extension that can be used to
+    load more and specific files, which in addition may make use of
+    a new non-portable S-nail-specific TYPEMARKER extension.  The manual
+    section "The mime.types files" @32 has been rewritten accordingly.
+    (In short: mime.types(5) lines can be prefixed by @, @h@ or @H@, for
+    plain text, builtin HTML filter (plain text fallback), ditto
+    (without fallback).)
+$ . The builtin MIME types now make a lot of use of the @ and @h@
+$   TYPEMARKER extensions, so that you possibly can get rid of a lot of
+$   pipe-TYPE/SUBTYPE=@ plain-text type hooks, shall you have used them.
+
+- Support for RFC 2231 has been added.  This means that S-nail generates
+  truly MIME compliant messages and no longer requires help from other
+  MUAs!  In fact MIME parameter handling has been rewritten completely.
+  [topic/rfc2231]
+
+- On the long run shell word expansion (via wordexp(3)) will be replaced
+  by a new, restricted (and thus (hopefully) safer), internally
+  implemented path expansion mechanism that only supports ~/ -> HOMEDIR
+  and $SHELLVAR / ${SHELLVAR}.
+  Since the original expansion is *so* hardwired that'll take time, for
+  now it is used for attachments only, but here all through the way.
+
+  But where it is used already it has consequences regarding backslash
+  escaping; to improve user experience a bit `~@' @239 will display the
+  escaped filename so that users only have to hit ENTER to accept paths:
+  e.g., "diet\ is \curd.txt" will show up as "diet\\ is \\curd.txt".
+  And, e.g., the test script does the following for RFC 2231 (excerpt):
+
+    MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot \
+      -a "ma'ger.txt" -a "mä'ger.txt" \
+      -a 'diet\\\ is\ \\curd.txt' -a diet \"is\" curd.txt \
+                                         ^      ^ NOTE: 0x00A0, NBSP
+      -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+
+  The introduction of the manual section "COMMANDS" @5 has been updated
+  accordingly.  Also see -a @39.  [topic/fexpand.2]
+
+- Assorted changes:
+
+  . Multiple crash-causing bugs regarding `source' @185, also if used
+    via `~:source', have been fixed. [aafb688,6979c73,4c6dfc2]
+  . The NAILRC environment variable is no longer supported. [104c254]
+  . The *Replyall* variable has been dropped as it was only an alias
+    for the POSIX standard *flipr* @296 variable. [topic/mft]
+  . New variables: *version*, *version-(major|minor|update)*,
+    *features*. [topic/okeys-attr]
+  . `varedit' @224 can be used to create variables. [topic/okeys-attr]
+  . New variable: *charset-unknown-8bit* @357. [9b672f6]
+  . *smtp-auth* @434 now defaults to "plain" (if *v15-compat* is set).
+    (Josef Jurek, Gavin Troy) [dcbb31a]
+  . All obsoleted: *autothread*, `thread' and `unthread'.
+    Use *autosort*=thread, `sort thread' etc. instead. [ef16f43]
+  . *showlast* @336 should have gained meaning. [4213d52]  (Gavin Troy)
+  . If the -r @57 option is given a full name specification (rather
+    than only an address), pass the MTA the respective address parts
+    via -F and -f. [dd90c14]
+$   Also try to pass -F _and_ -f if an empty argument was given to -r
+$   but *from* @378 (or, say, "From:") includes a full name. [5f68921]
+  . New variable: *term-ca-mode* @345 (for WANT_TERMCAP).  In
+    interactive mode S-nail can now be forced to use ti and te termcap
+    entries; in conjunction with a PAGER that does too ... [topic/termcap]
+  . `ghost' @123 gained a new mode and tweaks (see manual). [8a49b12]
+  . -r @57 option: fixed -h output and manual. [9a1a303]
+    (Martin Brandenburg)
+  . With *debug* or 2x *verbose* command lines (including those read
+    from files) are now traced. [06042c4]  (Bob Tennent)
+  . NAIL_TMPDIR (new) and TMPDIR environment variables are now
+    (guaranteed to be) set in pipe hooks. [a1cfb02]
+  . "Subject:" Re: trimming: MIME decoding is now performed. [ede7c7d]
+  . New variants of *pop3-bulk-load* @320: *-[USER@]HOST*. [5f5ae10]
+  . *crt*=0 @366 now really works. [22f1477]
+  . Maildir code now uses string relaxation which drastically reduced
+    memory usage for large mailboxes. [d1c945f]
+    And for the first time it performs real memory cleanup. [e549110]
+  . Improved error message on MTA exec failure.  (Dominic Meskys)
+  . Fix: "setenv noVAR" would have set noVAR. [3c1f886]
+  . When `setenv' is used to set any of HOME, USER, TMPDIR it'll be
+    reflected by our internal variables.  (Still hacky as special code
+    is needed to do so; also "set HOME=x" shadows HOME for "varshow
+    HOME" instead of being rejected.  Future cleanup work.) [3f03b80]
+  . Colon modifiers can now be joined, as in "f :uas". [8b6c259]
+$ . Maildir code did faulty From_ line detection, resulting in any
+$   non-quoted "From " line to start a new message (e.g., when doing
+$   things like "copy * MAILDIR" we could have f...ed up completely).
+$   Seems to have been added with Heirloom mailx 11.6 ([faf4b65],
+$   2004-09-07).  Neither goes credit to Jacob Gelbman nor to Robin
+$   Stjerndorff for messages to nail-devel@ on 2015-01-21 and
+$   2015-02-20, respectively.  :-)) [ae539c9]
+$ . *emptybox* has been obsoleted.  *keep* @308 will also affect
+$   secondary mailboxes, and then both only deal with local regular
+$   MBOXes anyway, not to e.g., maildir files nor IMAP boxes. [d747c0a]
+$ . `unghost' @207 learned that * has to drop all ghosts. [34a92a5]
+$ . NAIL_TMPDIR (new) and TMPDIR environment variables are now
+$   (guaranteed to be) set for *agent-shell-lookup* @350. [5c3d7b5]
+$ . Things like "copy * MAILDIR" from within an IMAP (or POP3?) mailbox
+$   to a Maildir mailbox should now work again. [d747c0a]
+$ . IMAP code did faulty From_ line detection, resulting in some
+$   non-quoted "From " line to start a new message (e.g., when doing
+$   things like "copy * MAILDIR" we could have f...ed up completely).
+$   Present in Heirloom mailx since ever ([^b4ad9f2]). [66e3c93]
+$ . New variable: *mbox-rfc4155* @312: because of all the bugs in From_
+$   quoting etc., err, no.  "Albatros" will last.  I've just touched
+$   a lot of stuff regarding MBOX writing: From_ quoting (which may
+$   happen whenever we save already existent data in a MBOX, shall
+$   the original generator not have taken appropriate steps to ensure
+$   "false" From_ lines can't happen (S-nail does)) is now definitely
+$   POSIX compliant, meaning that we may quote much too much lines.
+$   So set *mbox-rfc4155* and we generate RFC 4155 compliant MBOX files,
+$   possibly leaving behind backward POSIX-only software. [70ba3ef]
+$ . New command line option: "-X cmd" @64 will execute "cmd" right
+$   before normal operation starts.  The only option to execute commands
+$   in non-interactive mode when reading of resource files has been
+$   actively suppressed.  This is an experimental feature. [d202869]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+. Improved output flushing, avoidance of printing of useless
+  output (especially smoothens *editalong*). [topic/stdout-fflush]
+. String relaxation is now everywhere (but IMAP), the builtin buffer
+  sizes were reduced to 1/3.
+. Again a manual review.  The manual now supports mdocmx(7).
+. Using builtin ARC4 pseudo-random for random generation.
+. Better signal handling here and there.
+. Fixed most "unpluggable memory leaks" by plugging them via chains of
+  signal handlers and longjmps.  Terrible.  But no more leaks.
+. A lot of this and that.  (Really.)
+$. Slightly more tolerance for faulty Base64 encoding in message text
+$ parts.  No real healing possible today, but requires v15.0 environment.
+$ This, however, only affects invalid data that, e.g., OpenSSL doesn't
+$ even give any output for! [54137fd]
+
+I didn't make it to improved message selection.
 
 v14.7.11, 2015-01-04
 --------------------
@@ -2577,15 +3033,15 @@ Well, a version number 13 is anyway an ugly thing...
   Date:   2012-10-25 20:46:07 +0200
 
       FIX MIME quoted-printable encoding (char cast)..
-      
+
       (;-{
       Auauauauau!!
-      
+
       Well, one of the things that have already been started in v13 is
       the turn from using "int" when working with 8-bit characters to
       "unsigned char" (and as long as we do not support wide
       characters).
-      
+
       Unfortunately one very important piece of code, that is handling
       encoding to quoted-printable, still used integer instead of
       unsigned char, which caused an automatic extension cast to take
