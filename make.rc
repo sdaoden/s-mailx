@@ -4,6 +4,8 @@
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
 #@   Evaluation occurs *after* it has been read, so command line overwrites
 #@   take effect.  The parsing is linewise, sorry for that
+#@   The parsing is also sequential top-to-bottom (nonetheless) so that
+#@   any shell snippet in a value can refer only to stuff above it.
 #@ . Specifying settings on the command line will take precedence over the
 #@   variables in here (correctly triggering build updates as necessary)
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
@@ -23,7 +25,9 @@
 # $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
 # Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS, set
 # this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
-# Whatever you do, the configuration is fixated and updates will force rebuilds
+# Whatever you do, the config. is fixated and updates will force rebuilds.
+# And at the bottom there is WANT_FORCED_STACKPROT, too, which can be used to
+# cause injection of stack protectors
 WANT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that all
@@ -283,5 +287,11 @@ WANT_DEVEL=no
 # extended level of NYD is compiled in only on explicit request
 # TODO Separation in between NYD and NYD2 not yet fully done
 WANT_NYD2=no
+
+# With $WANT_AUTOCC we will use stack protector guards shall the detected
+# compiler support them; this goes in line with our own (heap) memory canaries
+# and will detect buffer overflows.  It is usually only useful during
+# development, i.e., in a debug environment that tests all aspects of a program
+WANT_FORCED_STACKPROT=`feat_yes DEVEL || feat_yes DEBUG && echo yes || echo no`
 
 # s-it-mode

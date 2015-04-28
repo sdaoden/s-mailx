@@ -220,10 +220,10 @@ clang'; then
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
       _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
-      if [ "${stackprot}" = yes ]; then
-         _CFLAGS="${_CFLAGS} -ftrapv -fstack-protector-all "
-            _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
-      fi
+   fi
+   if feat_yes FORCED_STACKPROT && [ "${stackprot}" = yes ]; then
+      _CFLAGS="${_CFLAGS} -fstack-protector-all "
+         _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
    fi
    _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
    # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
@@ -294,44 +294,7 @@ check_tool() {
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
 
-# Include $rc, but only take from it what wasn't overwritten by the user from
-# within the command line or from a chosen fixed CONFIG=
-# Note we leave alone the values
-trap "${rm} -f ${tmp}; exit" 1 2 15
-trap "${rm} -f ${tmp}" 0
-
-${rm} -f ${tmp}
-< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
-while read line; do
-   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
-   eval j="\$${i}" jx="\${${i}+x}"
-   if [ -n "${j}" ] || [ "${jx}" = x ]; then
-      : # Yet present
-   else
-      j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
-   fi
-   echo "${i}=\"${j}\""
-done > ${tmp}
-# Reread the mixed version right now
-. ./${tmp}
-
-check_tool awk "${awk:-`command -v awk`}"
-check_tool cat "${cat:-`command -v cat`}"
-check_tool chmod "${chmod:-`command -v chmod`}"
-check_tool cp "${cp:-`command -v cp`}"
-check_tool cmp "${cmp:-`command -v cmp`}"
-check_tool grep "${grep:-`command -v grep`}"
-check_tool mkdir "${mkdir:-`command -v mkdir`}"
-check_tool mv "${mv:-`command -v mv`}"
-# rm(1), sed(1) above
-check_tool tee "${tee:-`command -v tee`}"
-
-check_tool make "${MAKE:-`command -v make`}"
-check_tool strip "${STRIP:-`command -v strip`}" 1
-HAVE_STRIP=${?}
-
-# Update WANT_ options now, in order to get possible inter-dependencies right
-
+# Our feature check environment
 feat_val_no() {
    [ "x${1}" = x0 ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
@@ -376,6 +339,43 @@ feat_require() {
    [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
 }
 
+# Include $rc, but only take from it what wasn't overwritten by the user from
+# within the command line or from a chosen fixed CONFIG=
+# Note we leave alone the values
+trap "${rm} -f ${tmp}; exit" 1 2 15
+trap "${rm} -f ${tmp}" 0
+
+${rm} -f ${tmp}
+< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
+while read line; do
+   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
+   eval j="\$${i}" jx="\${${i}+x}"
+   if [ -n "${j}" ] || [ "${jx}" = x ]; then
+      : # Yet present
+   else
+      j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
+   fi
+   echo "${i}=\"${j}\""
+done > ${tmp}
+# Reread the mixed version right now
+. ./${tmp}
+
+check_tool awk "${awk:-`command -v awk`}"
+check_tool cat "${cat:-`command -v cat`}"
+check_tool chmod "${chmod:-`command -v chmod`}"
+check_tool cp "${cp:-`command -v cp`}"
+check_tool cmp "${cmp:-`command -v cmp`}"
+check_tool grep "${grep:-`command -v grep`}"
+check_tool mkdir "${mkdir:-`command -v mkdir`}"
+check_tool mv "${mv:-`command -v mv`}"
+# rm(1), sed(1) above
+check_tool tee "${tee:-`command -v tee`}"
+
+check_tool make "${MAKE:-`command -v make`}"
+check_tool strip "${STRIP:-`command -v strip`}" 1
+HAVE_STRIP=${?}
+
+# Update WANT_ options now, in order to get possible inter-dependencies right
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
