@@ -377,7 +377,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
    int c, isenc;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (*linebuf == NULL)
       *linebuf = srealloc(*linebuf, *linesize = 1);
@@ -441,7 +441,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
          free(line2);
       break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rem;
 }
 
@@ -449,7 +449,7 @@ static int
 msgidnextc(char const **cp, int *status)
 {
    int c;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    assert(cp != NULL);
    assert(*cp != NULL);
@@ -493,7 +493,7 @@ jdfl:
       }
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return c;
 }
 
@@ -777,7 +777,7 @@ FL char const *
 thisfield(char const *linebuf, char const *field)
 {
    char const *rv = NULL;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    while (lowerconv(*linebuf) == lowerconv(*field)) {
       ++linebuf;
@@ -795,7 +795,7 @@ thisfield(char const *linebuf, char const *field)
       ++linebuf;
    rv = linebuf;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 

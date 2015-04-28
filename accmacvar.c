@@ -202,7 +202,7 @@ _var_vcopy(char const *str)
 {
    char *news;
    size_t len;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (*str == '\0')
       news = UNCONST("");
@@ -211,17 +211,17 @@ _var_vcopy(char const *str)
       news = smalloc(len);
       memcpy(news, str, len);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return news;
 }
 
 static void
 _var_vfree(char *cp)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (*cp != '\0')
       free(cp);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static bool_t
@@ -230,7 +230,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
    char *cp = NULL;
    bool_t ok = TRU1;
    int flag = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    switch (okey) {
    case ok_b_debug:
@@ -290,14 +290,14 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
       else
          options &= ~flag;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ok;
 }
 
 static char const *
 _var_canonify(char const *vn)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (!upperchar(*vn)) {
       char const *vp;
 
@@ -305,7 +305,7 @@ _var_canonify(char const *vn)
          ;
       vn = (*vp == '@') ? i_strdup(vn) : vn;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return vn;
 }
 
@@ -314,7 +314,7 @@ _var_revlookup(struct var_carrier *vcp, char const *name)
 {
    ui32_t hash, i, j;
    struct var_map const *vmp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    vcp->vc_name = name = _var_canonify(name);
    vcp->vc_hash = hash = MA_NAME2HASH(name);
@@ -340,7 +340,7 @@ _var_revlookup(struct var_carrier *vcp, char const *name)
    vcp->vc_vmap = NULL;
    vcp = NULL;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (vcp != NULL);
 }
 
@@ -348,7 +348,7 @@ static bool_t
 _var_lookup(struct var_carrier *vcp)
 {
    struct var **vap, *lvp, *vp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* XXX _So_ unlikely that it should be checked if normal lookup fails! */
    if (UNLIKELY(vcp->vc_vmap != NULL &&
@@ -380,7 +380,7 @@ _var_lookup(struct var_carrier *vcp)
    vp = NULL;
 jleave:
    vcp->vc_var = vp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (vp != NULL);
 }
 
@@ -390,7 +390,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    struct var *vp;
    char *oval;
    bool_t ok = TRU1;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (value == NULL) {
       ok = _var_clear(vcp);
@@ -442,7 +442,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    if (*oval != '\0')
       _var_vfree(oval);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ok;
 }
 
@@ -450,7 +450,7 @@ static bool_t
 _var_clear(struct var_carrier *vcp)
 {
    bool_t ok = TRU1;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (!_var_lookup(vcp)) {
       if (!(pstate & PS_IN_LOAD) && (options & OPT_D_V))
@@ -471,7 +471,7 @@ _var_clear(struct var_carrier *vcp)
       if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_SPECIAL))
          ok = _var_check_specials(vcp->vc_okey, FAL0, NULL);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return ok;
 }
 
@@ -482,7 +482,7 @@ _var_list_all(void)
    size_t no, i;
    struct var *vp;
    char const **vacp, **cap, *fmt;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
@@ -522,17 +522,17 @@ _var_list_all(void)
    page_or_print(fp, PTR2SIZE(cap - vacp));
    Fclose(fp);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static int
 __var_list_all_cmp(void const *s1, void const *s2)
 {
    int rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -541,7 +541,7 @@ _var_set_env(char **ap, bool_t issetenv)
 {
    char *cp, *cp2, *varbuf, c;
    size_t errs = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (; *ap != NULL; ++ap) {
       /* Isolate key */
@@ -576,7 +576,7 @@ jnext:
       ac_free(varbuf);
    }
 
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (errs == 0);
 }
 
@@ -584,7 +584,7 @@ static bool_t
 _is_closing_angle(char const *cp)
 {
    bool_t rv = FAL0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    while (spacechar(*cp))
       ++cp;
@@ -594,7 +594,7 @@ _is_closing_angle(char const *cp)
       ++cp;
    rv = (*cp == '\0');
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -604,7 +604,7 @@ _ma_look(char const *name, struct macro *data, enum ma_flags mafl)
    enum ma_flags save_mafl;
    ui32_t h;
    struct macro *lmp, *mp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    save_mafl = mafl;
    mafl &= MA_TYPE_MASK;
@@ -641,7 +641,7 @@ _ma_look(char const *name, struct macro *data, enum ma_flags mafl)
       mp = NULL;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return mp;
 }
 
@@ -653,7 +653,7 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    struct n2 {struct n2 *up; struct lostack *lo;} *x; /* FIXME hack (sigman+) */
    struct mline const *lp;
    int rv = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    los.s_up = _localopts;
    los.s_mac = UNCONST(mp);
@@ -681,7 +681,7 @@ _ma_exec(struct macro const *mp, struct var **unroller)
          _localopts_unroll(&los.s_localopts);
    } else
       *unroller = los.s_localopts;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -693,7 +693,7 @@ _ma_list(enum ma_flags mafl)
    struct macro *mq;
    ui32_t ti, mc;
    struct mline *lp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if ((fp = Ftmp(NULL, "listmacs", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
@@ -721,7 +721,7 @@ _ma_list(enum ma_flags mafl)
    mc = (ui32_t)ferror(fp);
    Fclose(fp);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (int)mc;
 }
 
@@ -734,7 +734,7 @@ _ma_define(char const *name, enum ma_flags mafl)
    char *linebuf = NULL, *cp;
    size_t linesize = 0, maxlen = 0;
    int n, i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    mp = scalloc(1, sizeof *mp);
    mp->ma_name = sstrdup(name);
@@ -793,7 +793,7 @@ _ma_define(char const *name, enum ma_flags mafl)
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 
 jerr:
@@ -808,7 +808,7 @@ static void
 _ma_undefine(char const *name, enum ma_flags mafl)
 {
    struct macro *mp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (LIKELY(name[0] != '*' || name[1] != '\0')) {
       if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) == NULL)
@@ -829,14 +829,14 @@ _ma_undefine(char const *name, enum ma_flags mafl)
             }
          }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _ma_freelines(struct mline *lp)
 {
    struct mline *lq;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (lq = NULL; lp != NULL; ) {
       if (lq != NULL)
@@ -846,7 +846,7 @@ _ma_freelines(struct mline *lp)
    }
    if (lq)
       free(lq);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -854,7 +854,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
 {
    struct var *vap;
    size_t nl, vl;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* Propagate unrolling up the stack, as necessary */
    while (!losp->s_unroll && (losp = losp->s_up) != NULL)
@@ -880,7 +880,7 @@ _localopts_add(struct lostack *losp, char const *name, struct var *ovap)
       memcpy(vap->v_value, ovap->v_value, vl);
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -888,7 +888,7 @@ _localopts_unroll(struct var **vapp)
 {
    struct lostack *save_los;
    struct var *x, *vap;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    vap = *vapp;
    *vapp = NULL;
@@ -902,7 +902,7 @@ _localopts_unroll(struct var **vapp)
       free(x);
    }
    _localopts = save_los;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL char *
