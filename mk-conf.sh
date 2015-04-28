@@ -1766,6 +1766,9 @@ ${cat} > ${tmp2}.c << \!
 : _ to expand shell meta characters in filenames, which is a potential
 : _ security hole.  Consider to either upgrade your system or set the
 : _ *SHELL* variable to some safe(r) wrapper script.
+: _ P.S.: the codebase is in transition away from wordexp(3) to some
+: _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
+: _ about shell word expression in its introduction for more on that.
 # endif
 # ifndef HAVE_SNPRINTF
 : . The function snprintf(3) could not be found. We will use an internal

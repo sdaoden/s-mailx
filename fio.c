@@ -73,6 +73,13 @@ struct fio_stack {
    int   s_loading;  /* Loading .mailrc, etc. */
 };
 
+struct shvar_stack {
+   struct shvar_stack *shs_next;
+   char const  *shs_value; /* Remaining value to expand */
+   size_t      shs_len;    /* gth of .shs_dat this level */
+   char const  *shs_dat;   /* Result data of this level */
+};
+
 static size_t           _message_space;   /* Slots in ::message */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
@@ -82,7 +89,11 @@ static FILE *           _fio_input;
 static void       _findmail(char *buf, size_t bufsize, char const *user,
                      bool_t force);
 
-/* Perform shell meta character expansion */
+/* Perform shell variable expansion */
+static char *     _shvar_exp(char const *name);
+static char *     __shvar_exp(struct shvar_stack *shsp);
+
+/* Perform shell meta character expansion TODO obsolete (INSECURE!) */
 static char *     _globname(char const *name, enum fexp_mode fexpm);
 
 /* line is a buffer with the result of fgets(). Returns the first newline or
@@ -129,6 +140,110 @@ jcopy:
       n_strlcpy(buf, cp, bufsize);
 jleave:
    NYD_LEAVE;
+}
+
+static char *
+_shvar_exp(char const *name)
+{
+   struct shvar_stack top;
+   char *rv;
+   NYD2_ENTER;
+
+   memset(&top, 0, sizeof top);
+   top.shs_value = name;
+   rv = __shvar_exp(&top);
+
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char *
+__shvar_exp(struct shvar_stack *shsp)
+{
+   struct shvar_stack next, *np, *tmp;
+   char const *vp;
+   char lc, c, *cp, *rv;
+   size_t i;
+   NYD2_ENTER;
+
+   if (*(vp = shsp->shs_value) != '$') {
+      union {bool_t hadbs; char c;} u = {FAL0};
+
+      shsp->shs_dat = vp;
+      for (lc = '\0', i = 0; ((c = *vp) != '\0'); ++i, ++vp) {
+         if (c == '$' && lc != '\\')
+            break;
+         lc = (lc == '\\') ? (u.hadbs = TRU1, '\0') : c;
+      }
+      shsp->shs_len = i;
+
+      if (u.hadbs) {
+         shsp->shs_dat = cp = savestrbuf(shsp->shs_dat, i);
+
+         for (lc = '\0', rv = cp; (u.c = *cp++) != '\0';) {
+            if (u.c != '\\' || lc == '\\')
+               *rv++ = u.c;
+            lc = (lc == '\\') ? '\0' : u.c;
+         }
+         *rv = '\0';
+
+         shsp->shs_len = PTR2SIZE(rv - shsp->shs_dat);
+      }
+   } else {
+      if ((lc = (*++vp == '{')))
+         ++vp;
+
+      shsp->shs_dat = vp;
+      for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
+         if (!alnumchar(c) && c != '_')
+            break;
+
+      if (lc) {
+         if (c != '}') {
+            fprintf(stderr, _("Variable name misses closing \"}\": \"%s\"\n"),
+               shsp->shs_value);
+            shsp->shs_len = strlen(shsp->shs_value);
+            shsp->shs_dat = shsp->shs_value;
+            goto junroll;
+         }
+         c = *++vp;
+      }
+
+      shsp->shs_len = i;
+      if ((cp = vok_vlook(savestrbuf(shsp->shs_dat, i))) != NULL)
+         shsp->shs_len = strlen(shsp->shs_dat = cp);
+   }
+   if (c != '\0')
+      goto jrecurse;
+
+   /* That level made the great and completed encoding.  Build result */
+junroll:
+   for (i = 0, np = shsp, shsp = NULL; np != NULL;) {
+      i += np->shs_len;
+      tmp = np->shs_next;
+      np->shs_next = shsp;
+      shsp = np;
+      np = tmp;
+   }
+
+   cp = rv = salloc(i +1);
+   while (shsp != NULL) {
+      np = shsp;
+      shsp = shsp->shs_next;
+      memcpy(cp, np->shs_dat, np->shs_len);
+      cp += np->shs_len;
+   }
+   *cp = '\0';
+
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jrecurse:
+   memset(&next, 0, sizeof next);
+   next.shs_next = shsp;
+   next.shs_value = vp;
+   rv = __shvar_exp(&next);
+   goto jleave;
 }
 
 static char *
@@ -955,11 +1070,11 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>~{}()[]*?$`'\"\\"))
+   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
       switch (which_protocol(res)) {
       case PROTO_FILE:
       case PROTO_MAILDIR:
-         res = _globname(res, fexpm);
+         res = (fexpm & FEXP_NSHELL) ? _shvar_exp(res) : _globname(res, fexpm);
          dyn = TRU1;
          goto jleave;
       default:
@@ -982,6 +1097,32 @@ jleave:
       res = savestr(res);
    NYD_LEAVE;
    return UNCONST(res);
+}
+
+FL char *
+fexpand_nshell_quote(char const *name)
+{
+   size_t i, j;
+   char *rv, c;
+   NYD_ENTER;
+
+   for (i = j = 0; (c = name[i]) != '\0'; ++i)
+      if (c == '\\')
+         ++j;
+
+   if (j == 0)
+      rv = savestrbuf(name, i);
+   else {
+      rv = salloc(i + j +1);
+      for (i = j = 0; (c = name[i]) != '\0'; ++i) {
+         rv[j++] = c;
+         if (c == '\\')
+            rv[j++] = c;
+      }
+      rv[j] = '\0';
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 FL void

@@ -147,16 +147,21 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
    snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tfilename: "), number);
    for (;;) {
-      if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
+      if ((cp = ap->a_name) != NULL)
+         cp = fexpand_nshell_quote(cp);
+      if ((cp = readstr_input(prefix, cp)) == NULL) {
+         ap->a_name = NULL;
          ap = NULL;
          goto jleave;
       }
 
       /* May be a message number (XXX add "AC_MSG", use that not .a_msgno) */
-      if (ap->a_name[0] == '#') {
+      if (cp[0] == '#') {
          char *ecp;
-         int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
+         int msgno = (int)strtol(cp + 1, &ecp, 10);
+
          if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
+            ap->a_name = cp;
             ap->a_msgno = msgno;
             ap->a_content_type = ap->a_content_disposition =
                   ap->a_content_id = NULL;
@@ -167,7 +172,8 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
          }
       }
 
-      if ((cp = file_expand(ap->a_name)) != NULL && !access(cp, R_OK)) {
+      if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NSHELL)) != NULL &&
+            !access(cp, R_OK)) {
          ap->a_name = cp;
          break;
       }
@@ -349,7 +355,7 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
 
-   if ((file = file_expand(file)) == NULL)
+   if ((file = fexpand(file, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
       goto jleave;
    if (access(file, R_OK) != 0)
       goto jleave;
@@ -380,7 +386,8 @@ append_attachments(struct attachment **aphead, char *names)
    NYD_ENTER;
 
    while ((cp = n_strsep(&names, ',', 1)) != NULL) {
-      if ((xaph = add_attachment(*aphead, cp, &nap)) != NULL) {
+      xaph = add_attachment(*aphead, fexpand_nshell_quote(cp), &nap);
+      if (xaph != NULL) {
          *aphead = xaph;
          if (options & OPT_INTERACTIVE)
             printf(_("~@: added attachment \"%s\"\n"), nap->a_name);
@@ -396,6 +403,8 @@ edit_attachments(struct attachment **aphead)
    struct attachment *ap, *fap, *bap;
    ui32_t attno = 1;
    NYD_ENTER;
+
+   printf(_("# Be aware that \"\\\" must be escaped: \"\\\\\", \"\\$HOME\"\n"));
 
    /* Modify already present ones? */
    for (ap = *aphead; ap != NULL; ap = fap) {

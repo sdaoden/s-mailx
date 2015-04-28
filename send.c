@@ -1396,7 +1396,8 @@ jgetname:
       printf(_("Enter filename for part %s (%s)"),
          (ip->m_partstring != NULL) ? ip->m_partstring : "?",
          ip->m_ct_type_plain);
-      f2 = readstr_input(": ", (f != (char*)-1) ? f : NULL);
+      f2 = readstr_input(": ", (f != (char*)-1 && f != NULL)
+            ? fexpand_nshell_quote(f) : NULL);
       if (f2 == NULL || *f2 == '\0') {
          fprintf(stderr, _("... skipping this\n"));
          fp = NULL;
@@ -1404,8 +1405,8 @@ jgetname:
       } else if (*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
-      else if ((f3 = file_expand(f2)) == NULL)
-         /* (Error message written by file_expand()) */
+      else if ((f3 = fexpand(f2, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
+         /* (Error message written by fexpand()) */
          goto jgetname;
       else
          f = f3;

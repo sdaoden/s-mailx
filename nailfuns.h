@@ -803,17 +803,23 @@ FL int         rm(char const *name);
 FL off_t       fsize(FILE *iob);
 
 /* Evaluate the string given as a new mailbox name. Supported meta characters:
- * %  for my system mail box
- * %user for user's system mail box
- * #  for previous file
- * &  invoker's mbox file
- * +file file in folder directory
- * any shell meta character
+ * . %  for my system mail box
+ * . %user for user's system mail box
+ * . #  for previous file
+ * . &  invoker's mbox file
+ * . +file file in folder directory
+ * . any shell meta character (except for FEXP_NSHELL).
+ * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
+ * a poor man's vis(3), on name before calling this (and showing the user).
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
+
+/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
+ * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
+FL char *      fexpand_nshell_quote(char const *name);
 
 /* Get rid of queued mail */
 FL void        demail(void);
