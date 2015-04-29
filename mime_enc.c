@@ -309,9 +309,10 @@ _b64_decode(struct str *out, struct str *in)
    p = (ui8_t*)out->s + out->l;
    q = (ui8_t const*)in->s;
 
-   for (end = q + in->l; PTRCMP(q + 4, <=, end); q += 4) {
+   for (end = q + in->l; PTRCMP(q + 4, <=, end);) {
       ui32_t a = _B64_DECUI8(q[0]), b = _B64_DECUI8(q[1]),
          c = _B64_DECUI8(q[2]), d = _B64_DECUI8(q[3]);
+      q += 4;
 
       if (a >= _B64_EQU || b >= _B64_EQU || c == _B64_BAD || d == _B64_BAD)
          goto jleave;
