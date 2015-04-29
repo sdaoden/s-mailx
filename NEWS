@@ -33,7 +33,7 @@ a try.
 "Albatros" is indeed the first version of the codebase as such that
 should allow IMAP->Maildir->MBOX->Maildir->IMAP message roundtripping
 without causing possible message splitting due to faulty From_
-detection / encoding.
+detection / encoding.  It also generates compliant MIME parameters.
 
 Note there are incompatible changes, documented below.  And it is also
 advisable to try out existing configurations with enabled *debug* and/or
