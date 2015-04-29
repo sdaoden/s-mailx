@@ -30,6 +30,11 @@ technical overhauling and behaviour tweaking.  Shall you ever have been
 interested in BSD Mail or its deriviatives you might want to give it
 a try.
 
+"Albatros" is indeed the first version of the codebase as such that
+should allow IMAP->Maildir->MBOX->Maildir->IMAP message roundtripping
+without causing possible message splitting due to faulty From_
+detection / encoding.
+
 Note there are incompatible changes, documented below.  And it is also
 advisable to try out existing configurations with enabled *debug* and/or
 *verbose* (-d, -vv) in order to check for "obsoletion" warnings.
@@ -467,9 +472,12 @@ ChangeLog (purely technical)
 $. Slightly more tolerance for faulty Base64 encoding in message text
 $ parts.  No real healing possible today, but requires v15.0 environment.
 $ This, however, only affects invalid data that, e.g., OpenSSL doesn't
-$ even give any output for! [54137fd]
+$ even give any output for! [54137fd,4d59cca]
 
 I didn't make it to improved message selection.
+And i also can't seem to find the necessary peace of mind to do a real
+review with this codebase, it's always that i start off doing something
+non-reviewish; but i'll see the day (what i hope).
 
 v14.7.11, 2015-01-04
 --------------------
