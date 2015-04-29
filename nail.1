@@ -529,9 +529,11 @@ contains some further suggestions.
 To send a message to one or more people, using a local
 mail-transfer-agent (MTA; the executable path can be set via
 .Va sendmail )
-or the \*(OPal builtin SMTP transport to actually deliver the generated
-mail message, \*(UA can be invoked with arguments which are the names of
-people to whom the mail will be sent:
+or the \*(OPal builtin SMTP (set and see the variable
+.Va smtp )
+transport to actually deliver the generated mail message, \*(UA can be
+invoked with arguments which are the names of people to whom the mail
+will be sent:
 .
 .Bd -literal -offset indent
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
@@ -6622,14 +6624,16 @@ Also see
 .It Va smtp
 \*(OP Normally \*(UA invokes the program defined via
 .Va sendmail
-to transfer messages.
+to transfer messages, as described in
+.Sx "Sending mail" .
 Setting the
-.Va smtp
+.Va \&\&smtp
 variable will instead cause SMTP network connections be made to the
 server specified therein in order to directly submit the message.
 \*(UA knows about three different
 .Dq SMTP protocols :
-.Bl -bullet
+.Pp
+.Bl -bullet -compact
 .It
 The plain SMTP protocol (RFC 5321) that normally lives on the
 server port 25 and requires setting the
@@ -6669,6 +6673,8 @@ Assign a value like \*(IN
 .Ql submission://server[:port] ) .
 .El
 .Pp
+For more on credentials etc. please see
+.Sx "On URL syntax and credential lookup" .
 The SMTP transfer is executed in a child process, which runs
 asynchronously unless either the
 .Va sendwait
