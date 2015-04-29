@@ -1232,16 +1232,15 @@ jlist:   {
    }
 
    for (l = 0, nrc = _nrc_list; nrc != NULL; ++l, nrc = nrc->nrc_next) {
-      fprintf(fp, _("Host %s: "), nrc->nrc_dat);
+      fprintf(fp, _("machine %s "), nrc->nrc_dat);
       if (nrc->nrc_ulen > 0)
-         fprintf(fp, _("user %s, "), nrc->nrc_dat + nrc->nrc_mlen +1);
-      else
-         fputs(_("no user, "), fp);
+         fprintf(fp, _("login \"%s\" "),
+            string_quote(nrc->nrc_dat + nrc->nrc_mlen +1));
       if (nrc->nrc_plen > 0)
-         fprintf(fp, _("password %s.\n"),
-            nrc->nrc_dat + nrc->nrc_mlen +1 + nrc->nrc_ulen +1);
+         fprintf(fp, _("password \"%s\"\n"),
+            string_quote(nrc->nrc_dat + nrc->nrc_mlen +1 + nrc->nrc_ulen +1));
       else
-         fputs(_("no password.\n"), fp);
+         fputc('\n', fp);
    }
 
    page_or_print(fp, l);
