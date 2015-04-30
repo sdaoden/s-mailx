@@ -61,14 +61,14 @@ cc_all_configs() {
          data[i++] = $1
       }
       END {
-         for (j = 0; j < i; ++j) {
-            for (k = 0; k < j; ++k)
+         for (j = 1; j < i; ++j) {
+            for (k = 1; k < j; ++k)
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
             printf "WANT_AUTOCC=1\n"
 
-            for (k = 0; k < j; ++k)
+            for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
@@ -91,7 +91,7 @@ cksum_test() {
    tid=${1} f=${2} s=${3}
    printf "${tid}: "
    csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e '/^--=_/d' < \"${f}\" \
+         -e '/^ boundary=/d' -e '/^--=-=/d' < \"${f}\" \
          -e '/^\[-- Message/d' | ${cksum}`";
    if [ "${csum}" = "${s}" ]; then
       printf 'ok\n'
@@ -123,6 +123,10 @@ t_behave() {
    # TODO or to force echo of the prompt
 
    __behave_ifelse
+
+   # FIXME __behave_alias
+
+   # FIXME __behave_mlist
 
    have_feat SSL/TLS && have_feat S/MIME && __behave_smime
 }
@@ -163,11 +167,11 @@ __behave_ifelse() {
 		   echo 6.ok
 		endif
 		# Nesting
-		if 0
+		if faLse
 		   echo 7.err1
-		   if 1
+		   if tRue
 		      echo 7.err2
-		      if 1
+		      if yEs
 		         echo 7.err3
 		      else
 		         echo 7.err4
@@ -177,9 +181,9 @@ __behave_ifelse() {
 		   echo 7.err6
 		else
 		   echo 7.ok7
-		   if 1
+		   if YeS
 		      echo 7.ok8
-		      if 0
+		      if No
 		         echo 7.err9
 		      else
 		         echo 7.ok9
@@ -187,7 +191,7 @@ __behave_ifelse() {
 		      echo 7.ok10
 		   else
 		      echo 7.err11
-		      if 1
+		      if yeS
 		         echo 7.err12
 		      else
 		         echo 7.err13
@@ -251,8 +255,420 @@ __behave_ifelse() {
 		else
 		   echo 10.err12
 		endif
+		# integer conversion, <..>..
+		set dietcurd=10
+		if $dietcurd < 11
+		   echo 11.ok1
+		   if $dietcurd > 9
+		      echo 11.ok2
+		   else
+		      echo 11.err2
+		   endif
+		   if $dietcurd == 10
+		      echo 11.ok3
+		   else
+		      echo 11.err3
+		   endif
+		   if $dietcurd >= 10
+		      echo 11.ok4
+		   else
+		      echo 11.err4
+		   endif
+		   if $dietcurd <= 10
+		      echo 11.ok5
+		   else
+		      echo 11.err5
+		   endif
+		   if $dietcurd >= 11
+		      echo 11.err6
+		   else
+		      echo 11.ok6
+		   endif
+		   if $dietcurd <= 9
+		      echo 11.err7
+		   else
+		      echo 11.ok7
+		   endif
+		else
+		   echo 11.err1
+		endif
+		set dietcurd=Abc
+		if $dietcurd < aBd
+		   echo 12.ok1
+		   if $dietcurd > abB
+		      echo 12.ok2
+		   else
+		      echo 12.err2
+		   endif
+		   if $dietcurd == aBC
+		      echo 12.ok3
+		   else
+		      echo 12.err3
+		   endif
+		   if $dietcurd >= AbC
+		      echo 12.ok4
+		   else
+		      echo 12.err4
+		   endif
+		   if $dietcurd <= ABc
+		      echo 12.ok5
+		   else
+		      echo 12.err5
+		   endif
+		   if $dietcurd >= abd
+		      echo 12.err6
+		   else
+		      echo 12.ok6
+		   endif
+		   if $dietcurd <= abb
+		      echo 12.err7
+		   else
+		      echo 12.ok7
+		   endif
+		else
+		   echo 12.err1
+		endif
+		if $dietcurd =@ aB
+		   echo 13.ok
+		else
+		   echo 13.err
+		endif
+		if $dietcurd =@ bC
+		   echo 14.ok
+		else
+		   echo 14.err
+		endif
+		if $dietcurd !@ aB
+		   echo 15.err
+		else
+		   echo 15.ok
+		endif
+		if $dietcurd !@ bC
+		   echo 15.err
+		else
+		   echo 15.ok
+		endif
+		if $dietcurd =@ Cd
+		   echo 16.err
+		else
+		   echo 16.ok
+		endif
+		if $dietcurd !@ Cd
+		   echo 17.ok
+		else
+		   echo 17.err
+		endif
+		set diet=abc curd=abc
+		if $diet == $curd
+		   echo 18.ok
+		else
+		   echo 18.err
+		endif
+		set diet=abc curd=abcd
+		if $diet != $curd
+		   echo 19.ok
+		else
+		   echo 19.err
+		endif
+		# 1. Shitty grouping capabilities as of today
+		unset diet curd ndefined
+		if [ [ false ] || [ false ] || [ true ] ] && [ [ false ] || [ true ] ] && \
+		      [ yes ]
+		   echo 20.ok
+		else
+		   echo 20.err
+		endif
+		if [ [ [ [ 0 ] || [ 1 ] ] && [ [ 1 ] || [ 0 ] ] ] && [ 1 ] ] && [ yes ]
+		   echo 21.ok
+		else
+		   echo 21.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] ]
+		   echo 22.ok
+		else
+		   echo 22.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] ]
+		   echo 23.ok
+		else
+		   echo 23.err
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] && [ no ]
+		   echo 24.err
+		else
+		   echo 24.ok
+		endif
+		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
+		      && [ no ] || [ yes ]
+		   echo 25.ok
+		else
+		   echo 25.err
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 26.ok
+		else
+		   echo 26.err
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 0 ] ]
+		   echo 27.err
+		else
+		   echo 27.ok
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 0 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 28.err
+		else
+		   echo 28.ok
+		endif
+		if [ [ [ [ [ [ [ 0 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+		   echo 29.err
+		else
+		   echo 29.ok
+		endif
+		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 0 ]
+		   echo 30.err
+		else
+		   echo 30.ok
+		endif
+		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 1 ]
+		   echo 31.ok
+		else
+		   echo 31.err
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ]
+		   echo 32.err
+		else
+		   echo 32.ok
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 1 ]
+		   echo 33.ok
+		else
+		   echo 33.err
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 0 ]
+		   echo 34.err
+		else
+		   echo 34.ok
+		endif
+		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 1 ]
+		   echo 35.ok
+		else
+		   echo 35.err
+		endif
+		set diet=yo curd=ho
+		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
+		   echo 36.err
+		else
+		   echo 36.ok
+		endif
+		set ndefined
+		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
+		   echo 37.ok
+		else
+		   echo 37.err
+		endif
+		# 2. Shitty grouping capabilities as of today
+		unset diet curd ndefined
+		if [ false || false || true ] && [ false || true ] && yes
+		   echo 40.ok
+		else
+		   echo 40.err
+		endif
+		if [ [ [ 0 || 1 ] && [ 1 || 0 ] ] && 1 ] && [ yes ]
+		   echo 41.ok
+		else
+		   echo 41.err
+		endif
+		if [ 1 || 0 || 0 || 0 ]
+		   echo 42.ok
+		else
+		   echo 42.err
+		endif
+		if [ 1 || 0 || 0 || 0 || [ 1 ] ]
+		   echo 43.ok
+		else
+		   echo 43.err
+		endif
+		if [ 1 || 0 || 0 || 0 || [ 1 ] || 1 ] && no
+		   echo 44.err
+		else
+		   echo 44.ok
+		endif
+		if [ 1 || 0 || 0 || 0 || 1 || [ 1 ] ] && no || [ yes ]
+		   echo 45.ok
+		else
+		   echo 45.err
+		endif
+		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && 1 ] ] && [ 1 ] ]
+		   echo 46.ok
+		else
+		   echo 46.err
+		endif
+		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && [ 1 ] ] ] && 0 ]
+		   echo 47.err
+		else
+		   echo 47.ok
+		endif
+		if [ [ [ [ [ [ [ 1 ] ] && 1 ] && 0 ] && [ 1 ] ] ] && 1 ]
+		   echo 48.err
+		else
+		   echo 48.ok
+		endif
+		if [ [ [ [ [ [ 0 ] && 1 ] && 1 ] && 1 ] ] && 1 ]
+		   echo 49.err
+		else
+		   echo 49.ok
+		endif
+		if 1 || 0 || 0 || 0 && 0
+		   echo 50.err
+		else
+		   echo 50.ok
+		endif
+		if 1 || 0 || 0 || 0 && 1
+		   echo 51.ok
+		else
+		   echo 51.err
+		endif
+		if 0 || 0 || 0 || 1 && 0
+		   echo 52.err
+		else
+		   echo 52.ok
+		endif
+		if 0 || 0 || 0 || 1 && 1
+		   echo 53.ok
+		else
+		   echo 53.err
+		endif
+		if 0 || 0 || 0 || 1 && 0 || 1 && 0
+		   echo 54.err
+		else
+		   echo 54.ok
+		endif
+		if 0 || 0 || 0 || 1 && 0 || 1 && 1
+		   echo 55.ok
+		else
+		   echo 55.err
+		endif
+		set diet=yo curd=ho
+		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
+		   echo 56.err
+		else
+		   echo 56.ok
+		endif
+		if $diet == 'yo' && $curd == 'ho' && $ndefined
+		   echo 57.err
+		else
+		   echo 57.ok
+		endif
+		set ndefined
+		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
+		   echo 57.ok
+		else
+		   echo 57.err
+		endif
+		if $diet == 'yo' && $curd == 'ho' && $ndefined
+		   echo 58.ok
+		else
+		   echo 58.err
+		endif
+		if [ [ [ [ [ [ $diet == 'yo' && $curd == 'ho' && $ndefined ] ] ] ] ] ]
+		   echo 59.ok
+		else
+		   echo 59.err
+		endif
+      # Unary !
+		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
+		   echo 80.ok
+		else
+		   echo 80.err
+		endif
+		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ ! 2 ] ] ] && 3
+		   echo 81.ok
+		else
+		   echo 81.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 82.ok
+		else
+		   echo 82.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+		   echo 83.err
+		else
+		   echo 83.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+		   echo 84.err
+		else
+		   echo 84.ok
+		endif
+		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 85.err
+		else
+		   echo 85.ok
+		endif
+		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+		   echo 86.err
+		else
+		   echo 86.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] || 3
+		   echo 87.ok
+		else
+		   echo 87.err
+		endif
+		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! ! [ 2 ] ] ] ] ]
+		   echo 88.ok
+		else
+		   echo 88.err
+		endif
+      # Unary !, odd
+		if ! 0 && ! ! 1 && ! ! ! 0 && 3
+		   echo 90.ok
+		else
+		   echo 90.err
+		endif
+		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ 0 ] ] ] && 3
+		   echo 91.ok
+		else
+		   echo 91.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ [ 0 ] ] ] ] ] && 3
+		   echo 92.ok
+		else
+		   echo 92.err
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! ! [ ! [ ! 0 ] ] ] ] && ! 3
+		   echo 93.err
+		else
+		   echo 93.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ ! [ ! [ ! [ ! 0 ] ] ] ] && 3
+		   echo 94.ok
+		else
+		   echo 94.err
+		endif
+		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! ! [ ! [ ! [ ! [ 0 ] ] ] ] ] && 3
+		   echo 95.err
+		else
+		   echo 95.ok
+		endif
+		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! ! 0 ] ] ] ] && 3
+		   echo 96.err
+		else
+		   echo 96.ok
+		endif
+		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ ! 0 ] ] ] ] ] || 3
+		   echo 97.ok
+		else
+		   echo 97.err
+		endif
+		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! [ 0 ] ] ] ] ]
+		   echo 98.ok
+		else
+		   echo 98.err
+		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '2760114576 119'
+   cksum_test behave:if-normal "${MBOX}" '3542193361 607'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
@@ -278,8 +694,65 @@ __behave_ifelse() {
 			else
 			   echo 4.err
 			endif
+			if [ $dietcurd !~ '.+yoho$' ]
+			   echo 5.ok
+			else
+			   echo 5.err
+			endif
+			if ! [ $dietcurd =~ '.+yoho$' ]
+			   echo 6.ok
+			else
+			   echo 6.err
+			endif
+			if ! ! [ $dietcurd !~ '.+yoho$' ]
+			   echo 7.ok
+			else
+			   echo 7.err
+			endif
+			if ! [ ! [ $dietcurd !~ '.+yoho$' ] ]
+			   echo 8.ok
+			else
+			   echo 8.err
+			endif
+			if [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 9.ok
+			else
+			   echo 9.err
+			endif
+			if ! [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 10.err
+			else
+			   echo 10.ok
+			endif
+			if !  ! ! $dietcurd !~ '.+yoho$'
+			   echo 11.err
+			else
+			   echo 11.ok
+			endif
+			if !  ! ! $dietcurd =~ '.+yoho$'
+			   echo 12.ok
+			else
+			   echo 12.err
+			endif
+			if ! [ ! ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			   echo 13.ok
+			else
+			   echo 13.err
+			endif
+			set diet=abc curd='^abc$'
+			if $diet =~ $curd
+			   echo 14.ok
+			else
+			   echo 14.err
+			endif
+			set diet=abc curd='^abcd$'
+			if $diet !~ $curd
+			   echo 15.ok
+			else
+			   echo 15.err
+			endif
 		__EOT
-      cksum_test behave:if-regex "${MBOX}" '3930005258 20'
+      cksum_test behave:if-regex "${MBOX}" '439960016 81'
    fi
 }
 
@@ -377,7 +850,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 t_content() {
    ${rm} -f "${BODY}" "${MBOX}"
 
-   # MIME CTE (QP) stress message body
+   # MIME encoding (QP) stress message body
 printf \
 'Ich bin eine DÖS-Datäi mit sehr langen Zeilen und auch '\
 'sonst bin ich ganz schön am Schleudern, da kannste denke '\
@@ -432,7 +905,7 @@ printf \
 ' '\
  > "${BODY}"
 
-   # MIME CTE (QP) stress message subject
+   # MIME encoding (QP) stress message subject
 SUB="Äbrä  Kä?dä=brö 	 Fü?di=bus? \
 adadaddsssssssddddddddddddddddddddd\
 ddddddddddddddddddddddddddddddddddd\
@@ -448,36 +921,36 @@ ggggggggggggggggggggggggggggggggggg\
 ggggggggggggggggggggggggggggggggggg\
 gggggggggggggggg"
 
-   # Three tests for MIME-CTE and (a bit) content classification.
+   # Three tests for MIME encodign and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
 
    # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '2289641826 5632'
+   cksum_test content:001-0 "${MBOX}" '3929720514 5631'
 
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '2898659780 5631'
+   cksum_test content:001 "${MBOX}" '2425578375 5630'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '2289641826 5632'
+   cksum_test content:002 "${MBOX}" '3929720514 5631'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '2898659780 5631'
+   cksum_test content:003 "${MBOX}" '2425578375 5630'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '506144051 104'
+   cksum_test content:004 "${MBOX}" '4140682175 72'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
@@ -485,7 +958,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '2028749685 277'
+   cksum_test content:005 "${MBOX}" '3503215815 245'
 
    ## $BODY CHANGED
 
@@ -495,7 +968,7 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '1520300594 138'
+   cksum_test content:006 "${MBOX}" '11112309 106'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    # TODO Note: because of our weird putline() handling in <-> collect.c
@@ -526,14 +999,14 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   cksum_test content:008 "${MBOX}" '1428748699 320'
+   cksum_test content:008 "${MBOX}" '3872015771 288'
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
-   cksum_test content:009 "${MBOX}" '141403131 1663'
+   cksum_test content:009 "${MBOX}" '2048460448 1631'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
@@ -544,7 +1017,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '2324198710 536'
+   cksum_test content:010 "${MBOX}" '675735751 504'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
@@ -554,7 +1027,7 @@ gggggggggggggggg"
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   cksum_test content:011 "${MBOX}" '3085014590 604'
+   cksum_test content:011 "${MBOX}" '2972351879 572'
 
    # Trailing WS
    ${rm} -f "${MBOX}"
@@ -567,7 +1040,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '2868799725 303'
+   cksum_test content:012 "${MBOX}" '3314841967 271'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -578,12 +1051,46 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '3962521045 243'
+   cksum_test content:013 "${MBOX}" '3478758317 211'
+
+   # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
+   # have a (better) test framework materialize a quick shot
+   ${rm} -f "${MBOX}"
+   : > "ma'ger.txt"
+   : > "mä'ger.txt"
+   : > 'diet\ is \curd.txt'
+   : > diet \"is\" curd.txt
+   : > höde-tröge.txt
+   : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+   : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+   : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+   : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   echo bla |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot \
+      -a "ma'ger.txt" -a "mä'ger.txt" \
+      -a 'diet\\\ is\ \\curd.txt' -a diet \"is\" curd.txt \
+      -a höde-tröge.txt \
+      -a höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      -a höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      -a hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+      "${MBOX}"
+   ${rm} -f "ma'ger.txt" "mä'ger.txt" 'diet\ is \curd.txt' \
+      diet \"is\" curd.txt höde-tröge.txt \
+      höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   cksum_test content:14 "${MBOX}" '1106643854 2453'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }
 
 t_all() {
+   if have_feat DEVEL; then
+      ARGS="${ARGS} -Smemdebug"
+      export ARGS
+   fi
    t_behave
    t_content
 }

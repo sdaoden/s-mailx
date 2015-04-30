@@ -2,7 +2,7 @@
  *@ Termination processing.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,19 +36,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE quit
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-#include <fcntl.h>
 #include <utime.h>
 
 enum quitflags {
-   QUITFLAG_HOLD      = 001,
-   QUITFLAG_KEEPSAVE  = 002,
-   QUITFLAG_APPEND    = 004,
-   QUITFLAG_EMPTYBOX  = 010
+   QUITFLAG_HOLD      = 1<<0,
+   QUITFLAG_KEEP      = 1<<1,
+   QUITFLAG_KEEPSAVE  = 1<<2,
+   QUITFLAG_APPEND    = 1<<3,
+   QUITFLAG_EMPTYBOX  = 1<<4
 };
 
 struct quitnames {
@@ -58,9 +60,10 @@ struct quitnames {
 
 static struct quitnames const _quitnames[] = {
    {QUITFLAG_HOLD, ok_b_hold},
+   {QUITFLAG_KEEP, ok_b_keep},
    {QUITFLAG_KEEPSAVE, ok_b_keepsave},
    {QUITFLAG_APPEND, ok_b_append},
-   {QUITFLAG_EMPTYBOX, ok_b_emptybox}
+   {QUITFLAG_EMPTYBOX, ok_b_emptybox} /* TODO obsolete emptybox */
 };
 
 static char _mboxname[PATH_MAX];  /* Name of mbox */
@@ -76,6 +79,9 @@ static int  writeback(FILE *res, FILE *obuf);
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
 static void edstop(void);
+
+/* Remove "mailname", unless *keep* says otherwise; force truncation, then */
+static void _demail(void);
 
 static void
 _alter(char const *name)
@@ -112,6 +118,7 @@ writeback(FILE *res, FILE *obuf)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
          ++p;
          if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+            perror(mailname);
             srelax_rele();
             goto jerror;
          }
@@ -126,8 +133,8 @@ writeback(FILE *res, FILE *obuf)
    ftrunc(obuf);
 
    if (ferror(obuf)) {
-jerror:
       perror(mailname);
+jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
    }
@@ -233,7 +240,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    doreset = FAL0;
 
-   if (gotcha && !ok_blook(emptybox)) {
+   if (gotcha && !ok_blook(keep) && !ok_blook(emptybox)/* TODO obsolete eb*/) {
       rm(mailname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("removed\n") : _("removed.\n"));
@@ -250,18 +257,17 @@ jleave:
       reset(0);
 }
 
-FL int
-c_quit(void *v)
+static void
+_demail(void)
 {
-   int rv;
-   NYD_ENTER;
-   UNUSED(v);
-
-   /* If we are sourcing, then return 1 so evaluate() can handle it.
-    * Otherwise return -1 to abort command loop */
-   rv = sourcing ? 1 : -1;
-   NYD_LEAVE;
-   return rv;
+   NYD2_ENTER;
+   if (ok_blook(keep) || rm(mailname) < 0) {
+      /* TODO demail(): try use f?truncate(2) instead?! */
+      int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+      if (fd >= 0)
+         close(fd);
+   }
+   NYD2_LEAVE;
 }
 
 FL void
@@ -270,14 +276,17 @@ quit(void)
    int p, modify, anystat, c;
    FILE *fbuf = NULL, *rbuf, *abuf;
    struct message *mp;
-   char *tempResid;
    struct stat minfo;
    NYD_ENTER;
 
-   /* If we are read only, we can't do anything, so just return quickly. IMAP
-    * can set some flags (e.g. "\\Seen") so imap_quit must be called anyway */
-   if (mb.mb_perm == 0 && mb.mb_type != MB_IMAP)
-      goto jleave;
+   temporary_localopts_folder_hook_unroll();
+
+   /* If we are read only, we can't do anything, so just return quickly */
+   /* TODO yet we cannot return quickly if resources have to be released!
+    * TODO somewhen it'll be mailbox->quit() anyway, for now do it by hand
+    *if (mb.mb_perm == 0)
+    *   goto jleave;*/
+   p = (mb.mb_perm == 0);
 
    /* TODO lex.c:setfile() has just called hold_sigs(); before it called
     * TODO us, but this causes uninterruptible hangs due to blocked sigs
@@ -310,9 +319,10 @@ quit(void)
    default:
       goto jleave;
    }
+   if (p) goto jleave; /* TODO */
 
    /* If editing (not reading system mail box), then do the work in edstop() */
-   if (edit) {
+   if (pstate & PS_EDIT) {
       edstop();
       goto jleave;
    }
@@ -333,8 +343,7 @@ jnewmail:
       goto jleave;
    }
 
-   if (fcntl_lock(fileno(fbuf), FLOCK_WRITE) == -1 ||
-         dot_lock(mailname, fileno(fbuf), 1, stdout, ".") == -1) {
+   if (!dot_lock(mailname, fileno(fbuf), 1)) {
       perror(_("Unable to lock mailbox"));
       Fclose(fbuf);
       fbuf = NULL;
@@ -344,7 +353,7 @@ jnewmail:
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
       printf(_("New mail has arrived.\n"));
-      rbuf = Ftmp(&tempResid, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
+      rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
 #ifdef APPEND
@@ -410,7 +419,7 @@ jcream:
       _alter(mailname);
       goto jleave;
    }
-   demail();
+   _demail();
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);
@@ -522,10 +531,10 @@ makembox(void) /* TODO oh my god */
          } else if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
             perror(mbox);
 jerr:
+            srelax_rele();
             if (ibuf != NULL)
                Fclose(ibuf);
             Fclose(obuf);
-            srelax_rele();
             goto jleave;
          }
          mp->m_flag |= MBOXED;

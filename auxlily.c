@@ -2,7 +2,7 @@
  *@ Auxiliary functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE auxlily
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -45,15 +47,25 @@
 
 #include <ctype.h>
 #include <dirent.h>
-#include <fcntl.h>
 
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
 #  include <sys/socket.h>
 # endif
 
 # include <netdb.h>
 #endif
+
+union rand_state {
+   struct rand_arc4 {
+      ui8_t    __pad[6];
+      ui8_t    _i;
+      ui8_t    _j;
+      ui8_t    _dat[256];
+   }        a;
+   ui8_t    b8[sizeof(struct rand_arc4)];
+   ui32_t   b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
+};
 
 #ifdef HAVE_NYD
 struct nyd_info {
@@ -83,6 +95,16 @@ union mem_ptr {
 };
 #endif
 
+static union rand_state *_rand;
+
+/* {hold,rele}_all_sigs() */
+static size_t           _alls_depth;
+static sigset_t         _alls_nset, _alls_oset;
+
+/* {hold,rele}_sigs() */
+static size_t           _hold_sigdepth;
+static sigset_t         _hold_nset, _hold_oset;
+
 /* NYD, memory pool debug */
 #ifdef HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
@@ -96,13 +118,11 @@ static size_t           _mem_aall, _mem_acur, _mem_amax,
 static struct mem_chunk *_mem_list, *_mem_free;
 #endif
 
-/* {hold,rele}_all_sigs() */
-static size_t           _alls_depth;
-static sigset_t         _alls_nset, _alls_oset;
-
-/* {hold,rele}_sigs() */
-static size_t           _hold_sigdepth;
-static sigset_t         _hold_nset, _hold_oset;
+/* Our ARC4 random generator with its completely unacademical pseudo
+ * initialization (shall /dev/urandom fail) */
+static void    _rand_init(void);
+static ui32_t  _rand_weak(ui32_t seed);
+SINLINE ui8_t  _rand_get8(void);
 
 /* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence */
 #ifdef HAVE_COLOUR
@@ -110,8 +130,92 @@ static char *  _colour_iso6429(char const *wish);
 #endif
 
 #ifdef HAVE_NYD
-static void    _nyd_print(struct nyd_info *nip);
+static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
+
+static void
+_rand_init(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+   struct timespec ts;
+#else
+   struct timeval ts;
+#endif
+   union {int fd; size_t i;} u;
+   ui32_t seed, rnd;
+   NYD2_ENTER;
+
+   _rand = smalloc(sizeof *_rand);
+
+   if ((u.fd = open("/dev/urandom", O_RDONLY)) != -1) {
+      bool_t ok = (sizeof *_rand == (size_t)read(u.fd, _rand, sizeof *_rand));
+
+      close(u.fd);
+      if (ok)
+         goto jleave;
+   }
+
+   for (seed = (uintptr_t)_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd) {
+      for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
+         size_t t, k;
+
+#ifdef HAVE_CLOCK_GETTIME
+         clock_gettime(CLOCK_REALTIME, &ts);
+         t = (ui32_t)ts.tv_nsec;
+#else
+         gettimeofday(&ts, NULL);
+         t = (ui32_t)ts.tv_usec;
+#endif
+         if (rnd & 1)
+            t = (t >> 16) | (t << 16);
+         _rand->b32[u.i] ^= _rand_weak(seed ^ t);
+         _rand->b32[t % NELEM(_rand->b32)] ^= seed;
+         if (rnd == 7 || rnd == 17)
+            _rand->b32[u.i] ^= _rand_weak(seed ^ (ui32_t)ts.tv_sec);
+         k = _rand->b32[u.i] % NELEM(_rand->b32);
+         _rand->b32[k] ^= _rand->b32[u.i];
+         seed ^= _rand_weak(_rand->b32[k]);
+         if ((rnd & 3) == 3)
+            seed ^= nextprime(seed);
+      }
+   }
+
+   for (u.i = 11 * sizeof(_rand->b8); u.i != 0; --u.i)
+      _rand_get8();
+jleave:
+   NYD2_LEAVE;
+}
+
+static ui32_t
+_rand_weak(ui32_t seed)
+{
+   /* From "Random number generators: good ones are hard to find",
+    * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+    * October 1988, p. 1195.
+    * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
+   ui32_t hi;
+
+   if (seed == 0)
+      seed = 123459876;
+   hi =  seed /  127773;
+         seed %= 127773;
+   seed = (seed * 16807) - (hi * 2836);
+   if ((si32_t)seed < 0)
+      seed += SI32_MAX;
+   return seed;
+}
+
+SINLINE ui8_t
+_rand_get8(void)
+{
+   ui8_t si, sj;
+
+   si = _rand->a._dat[++_rand->a._i];
+   sj = _rand->a._dat[_rand->a._j += si];
+   _rand->a._dat[_rand->a._i] = sj;
+   _rand->a._dat[_rand->a._j] = si;
+   return _rand->a._dat[(ui8_t)(si + sj)];
+}
 
 #ifdef HAVE_COLOUR
 static char *
@@ -212,7 +316,7 @@ jiter_colour:
 
 #ifdef HAVE_NYD
 static void
-_nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
+_nyd_print(int fd, struct nyd_info *nip)
 {
    char buf[80];
    union {int i; size_t z;} u;
@@ -225,10 +329,18 @@ _nyd_print(struct nyd_info *nip) /* XXX like SFSYS;no magics;jumps:lvl wrong */
       u.z = u.i;
       if (u.z > sizeof buf)
          u.z = sizeof buf - 1; /* (Skip \0) */
-      write(STDERR_FILENO, buf, u.z);
+      write(fd, buf, u.z);
    }
 }
 #endif
+
+FL void
+n_raise(int signo)
+{
+   NYD2_ENTER;
+   kill(getpid(), signo);
+   NYD2_LEAVE;
+}
 
 FL void
 panic(char const *format, ...)
@@ -356,27 +468,70 @@ _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 FL void
 _nyd_oncrash(int signo)
 {
+   char s2ibuf[32], *fname, *cp;
    struct sigaction xact;
    sigset_t xset;
+   size_t fnl, i;
+   int fd;
    struct nyd_info *nip;
-   size_t i;
 
    xact.sa_handler = SIG_DFL;
    sigemptyset(&xact.sa_mask);
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   fprintf(stderr, "\n\nNYD: program dying due to signal %d:\n", signo);
+   fnl = strlen(UAGENT);
+   i = strlen(tempdir);
+   cp =
+   fname = ac_alloc(i + 1 + fnl + 1 + sizeof(".dat"));
+   memcpy(cp , tempdir, i);
+   cp[i++] = '/'; /* xxx pathsep */
+   memcpy(cp += i, UAGENT, fnl);
+   i += fnl;
+   memcpy(cp += fnl, ".dat", sizeof(".dat"));
+   fnl = i + sizeof(".dat") -1;
+
+   if ((fd = open(fname, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+      fd = STDERR_FILENO;
+
+# undef _X
+# define _X(X) (X), sizeof(X) -1
+   write(fd, _X("\n\nNYD: program dying due to signal "));
+
+   cp = s2ibuf + sizeof(s2ibuf) -1;
+	*cp = '\0';
+   i = signo;
+	do {
+		*--cp = "0123456789"[i % 10];
+		i /= 10;
+	} while (i != 0);
+   write(fd, cp, PTR2SIZE((s2ibuf + sizeof(s2ibuf) -1) - cp));
+
+   write(fd, _X(":\n"));
+
    if (_nyd_infos[NELEM(_nyd_infos) - 1].ni_file != NULL)
       for (i = _nyd_curr, nip = _nyd_infos + i; i < NELEM(_nyd_infos); ++i)
-         _nyd_print(nip++);
+         _nyd_print(fd, nip++);
    for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
-      _nyd_print(nip++);
+      _nyd_print(fd, nip++);
+
+   write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
+
+   if (fd != STDERR_FILENO) {
+      write(STDERR_FILENO, _X("Crash NYD listing written to "));
+      write(STDERR_FILENO, fname, fnl);
+      write(STDERR_FILENO, _X("\n"));
+# undef _X
+
+      close(fd);
+   }
+
+   ac_free(fname);
 
    sigemptyset(&xset);
    sigaddset(&xset, signo);
    sigprocmask(SIG_UNBLOCK, &xset, NULL);
-   kill(0, signo);
+   n_raise(signo);
    for (;;)
       _exit(EXIT_ERR);
 }
@@ -396,11 +551,15 @@ FL bool_t
 is_dir(char const *name)
 {
    struct stat sbuf;
-   bool_t rv = FAL0;
+   bool_t rv;
    NYD_ENTER;
 
-   if (!stat(name, &sbuf))
-      rv = (S_ISDIR(sbuf.st_mode) != 0);
+   for (rv = FAL0;;)
+      if (!stat(name, &sbuf)) {
+         rv = (S_ISDIR(sbuf.st_mode) != 0);
+         break;
+      } else if (errno != EINTR)
+         break;
    NYD_LEAVE;
    return rv;
 }
@@ -443,10 +602,10 @@ get_pager(char const **env_addon)
    if (env_addon != NULL) {
       *env_addon = NULL;
       if (strstr(cp, "less") != NULL) {
-         if (getenv("LESS") == NULL)
+         if (!env_blook("LESS", TRU1))
             *env_addon = "LESS=FRSXi";
       } else if (strstr(cp, "lv") != NULL) {
-         if (getenv("LV") == NULL)
+         if (!env_blook("LV", TRU1))
             *env_addon = "LV=-c";
       }
    }
@@ -454,36 +613,35 @@ get_pager(char const **env_addon)
    return cp;
 }
 
-FL size_t
-paging_seems_sensible(void)
-{
-   size_t rv = 0;
-   char const *cp;
-   NYD_ENTER;
-
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL)
-      rv = (*cp != '\0') ? (size_t)atol(cp) : (size_t)scrnheight;
-   NYD_LEAVE;
-   return rv;
-}
-
 FL void
 page_or_print(FILE *fp, size_t lines)
 {
-   size_t rows;
    int c;
+   size_t rows;
    NYD_ENTER;
 
    fflush_rewind(fp);
 
-   if ((rows = paging_seems_sensible()) != 0 && lines == 0) {
-      while ((c = getc(fp)) != EOF)
-         if (c == '\n' && ++lines > rows)
-            break;
-      really_rewind(fp);
+   rows = 0;
+   if (IS_TTY_SESSION()) {
+      char const *cp;
+
+      if ((cp = ok_vlook(crt)) != NULL) {
+         char *eptr;
+         sl_i sli = strtol(cp, &eptr, 0);
+         rows = (*cp != '\0' && *eptr == '\0')
+               ? (size_t)sli : (size_t)scrnheight;
+      }
+
+      if (rows > 0 && lines == 0) {
+         while ((c = getc(fp)) != EOF)
+            if (c == '\n' && ++lines > rows)
+               break;
+         really_rewind(fp);
+      }
    }
 
-   if (rows != 0 && lines >= rows)
+   if (lines >= rows)
       run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
    else
       while ((c = getc(fp)) != EOF)
@@ -614,21 +772,23 @@ FL ui32_t
 nextprime(ui32_t n)
 {
    static ui32_t const primes[] = {
+      5, 11, 23, 47, 97, 157, 283,
       509, 1021, 2039, 4093, 8191, 16381, 32749, 65521,
       131071, 262139, 524287, 1048573, 2097143, 4194301,
       8388593, 16777213, 33554393, 67108859, 134217689,
       268435399, 536870909, 1073741789, 2147483647
    };
 
-   ui32_t mprime = 7, cutlim;
-   size_t i;
+   ui32_t i, mprime;
    NYD_ENTER;
 
-   cutlim = (n < 65536 ? n << 2 : (n < 262144 ? n << 1 : n));
-
-   for (i = 0; i < NELEM(primes); i++)
-      if ((mprime = primes[i]) >= cutlim)
+   i = (n < primes[NELEM(primes) / 4] ? 0
+         : (n < primes[NELEM(primes) / 2] ? NELEM(primes) / 4
+         : NELEM(primes) / 2));
+   do
+      if ((mprime = primes[i]) > n)
          break;
+   while (++i < NELEM(primes));
    if (i == NELEM(primes) && mprime < n)
       mprime = n;
    NYD_LEAVE;
@@ -673,10 +833,10 @@ expand_shell_escape(char const **s, bool_t use_nail_extensions)
    case '@':
       if (use_nail_extensions) {
          switch (c) {
-         case '&':   c = ok_blook(bsdcompat) ? '&' : '?';   break;
-         case '?':   c = exec_last_comm_error ? '1' : '0';  break;
-         case '$':   c = PROMPT_DOLLAR;                     break;
-         case '@':   c = PROMPT_AT;                         break;
+         case '&':   c = ok_blook(bsdcompat)       ? '&' : '?';   break;
+         case '?':   c = (pstate & PS_EVAL_ERROR)  ? '1' : '0';   break;
+         case '$':   c = PROMPT_DOLLAR;                           break;
+         case '@':   c = PROMPT_AT;                               break;
          }
          break;
       }
@@ -784,7 +944,7 @@ nodename(int mayoverride)
    struct utsname ut;
    char *hn;
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    struct addrinfo hints, *res;
 # else
    struct hostent *hent;
@@ -798,14 +958,14 @@ nodename(int mayoverride)
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
-      hints.ai_socktype = SOCK_DGRAM; /* (dummy) */
       hints.ai_flags = AI_CANONNAME;
-      if (getaddrinfo(hn, "0", &hints, &res) == 0) {
+      if (getaddrinfo(hn, NULL, &hints, &res) == 0) {
          if (res->ai_canonname != NULL) {
             size_t l = strlen(res->ai_canonname) +1;
+
             hn = ac_alloc(l);
             memcpy(hn, res->ai_canonname, l);
          }
@@ -818,7 +978,7 @@ nodename(int mayoverride)
 # endif
 #endif
       sys_hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined HAVE_IPV6
+#if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
       if (hn != ut.nodename)
          ac_free(hn);
 #endif
@@ -835,58 +995,19 @@ nodename(int mayoverride)
 FL char *
 getrandstring(size_t length)
 {
-   static unsigned char nodedigest[16];
-   static pid_t pid;
-
    struct str b64;
-   char *data, *cp;
+   char *data;
    size_t i;
-   int fd = -1;
-#ifdef HAVE_MD5
-   md5_ctx ctx;
-#else
-   size_t j;
-#endif
    NYD_ENTER;
 
+   if (_rand == NULL)
+      _rand_init();
+
    data = ac_alloc(length);
-
-   if ((fd = open("/dev/urandom", O_RDONLY)) == -1 ||
-         length != (size_t)read(fd, data, length)) {
-      if (pid == 0) {
-         pid = getpid();
-         srand(pid);
-         cp = nodename(0);
-#ifdef HAVE_MD5
-         md5_init(&ctx);
-         md5_update(&ctx, (unsigned char*)cp, strlen(cp));
-         md5_final(nodedigest, &ctx);
-#else
-         /* In that case it's only used for boundaries and Message-Id:s so that
-          * srand(3) should suffice */
-         j = strlen(cp) + 1;
-         for (i = 0; i < sizeof(nodedigest); ++i)
-            nodedigest[i] = (unsigned char)(cp[i % j] ^ rand());
-#endif
-      }
-      for (i = 0; i < length; i++)
-         data[i] = (char)((int)(255 * (rand() / (RAND_MAX + 1.0))) ^
-               nodedigest[i % sizeof nodedigest]);
-   }
-   if (fd >= 0)
-      close(fd);
-
-   b64_encode_buf(&b64, data, length, B64_SALLOC);
+   for (i = length; i-- > 0;)
+      data[i] = (char)_rand_get8();
+   b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
    ac_free(data);
-   assert(length < b64.l);
-   b64.s[length] = '\0';
-
-   /* Base64 includes + and /, replace them with _ and - */
-   for (data = b64.s; length-- > 0; ++data)
-      if (*data == '+')
-         *data = '_';
-      else if (*data == '/')
-         *data = '-';
    NYD_LEAVE;
    return b64.s;
 }
@@ -1202,7 +1323,7 @@ makeprint(struct str const *in, struct str *out)
    if (print_all_chars == -1)
       print_all_chars = ok_blook(print_all_chars);
 
-   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max);
+   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -1271,6 +1392,20 @@ makeprint(struct str const *in, struct str *out)
 jleave:
    out->s[out->l] = '\0';
    NYD_LEAVE;
+}
+
+FL size_t
+delctrl(char *cp, size_t len)
+{
+   size_t x, y;
+   NYD_ENTER;
+
+   for (x = y = 0; x < len; ++x)
+      if (!cntrlchar(cp[x]))
+         cp[y++] = cp[x];
+   cp[y] = '\0';
+   NYD_LEAVE;
+   return y;
 }
 
 FL char *
@@ -1343,49 +1478,23 @@ bidi_info_needed(char const *bdat, size_t blen)
 
 #ifdef HAVE_NATCH_CHAR
    if (options & OPT_UNICODE)
-      for (; blen > 0; ++bdat, --blen) {
-         if ((ui8_t)*bdat > 0x7F) {
-            /* TODO Checking for BIDI character: use S-CText fromutf8
-             * TODO plus isrighttoleft (or whatever there will be)! */
-            ui32_t c, x = (ui8_t)*bdat;
+      while (blen > 0) {
+         /* TODO Checking for BIDI character: use S-CText fromutf8
+          * TODO plus isrighttoleft (or whatever there will be)! */
+         ui32_t c = n_utf8_to_utf32(&bdat, &blen);
+         if (c == UI32_MAX)
+            break;
 
-            if ((x & 0xE0) == 0xC0) {
-               if (blen < 2)
-                  break;
-               blen -= 1;
-               c = x & ~0xC0;
-            } else if ((x & 0xF0) == 0xE0) {
-               if (blen < 3)
-                  break;
-               blen -= 2;
-               c = x & ~0xE0;
-               c <<= 6;
-               x = (ui8_t)*++bdat;
-               c |= x & 0x7F;
-            } else {
-               if (blen < 4)
-                  break;
-               blen -= 3;
-               c = x & ~0xF0;
-               c <<= 6;
-               x = (ui8_t)*++bdat;
-               c |= x & 0x7F;
-               c <<= 6;
-               x = (ui8_t)*++bdat;
-               c |= x & 0x7F;
-            }
-            c <<= 6;
-            x = (ui8_t)*++bdat;
-            c |= x & 0x7F;
+         if (c <= 0x05BE)
+            continue;
 
-            /* (Very very fuzzy, awaiting S-CText for good) */
-            if ((c >= 0x05BE && c <= 0x08E3) ||
-                  (c >= 0xFB1D && c <= 0xFEFC) ||
-                  (c >= 0x10800 && c <= 0x10C48) ||
-                  (c >= 0x1EE00 && c <= 0x1EEF1)) {
-               rv = TRU1;
-               break;
-            }
+         /* (Very very fuzzy, awaiting S-CText for good) */
+         if ((c >= 0x05BE && c <= 0x08E3) ||
+               (c >= 0xFB1D && c <= 0xFEFC) ||
+               (c >= 0x10800 && c <= 0x10C48) ||
+               (c >= 0x1EE00 && c <= 0x1EEF1)) {
+            rv = TRU1;
+            break;
          }
       }
 #endif /* HAVE_NATCH_CHAR */
@@ -1444,8 +1553,7 @@ colour_table_create(bool_t pager_used)
    else {
       char *term, *okterms;
 
-      /* Don't use getenv(), but force copy-in into our own tables.. */
-      if ((term = _var_voklook("TERM")) == NULL)
+      if ((term = env_vlook("TERM", FAL0)) == NULL)
          goto jleave;
       /* terminfo rocks: if we find "color", assume it's right */
       if (strstr(term, "color") != NULL)
@@ -1563,6 +1671,75 @@ colour_get(enum colourspec cs)
    return rv;
 }
 #endif /* HAVE_COLOUR */
+
+FL si8_t
+boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
+{
+   char *dat, *eptr;
+   sl_i sli;
+   si8_t rv;
+   NYD_ENTER;
+
+   assert(inlen == 0 || inbuf != NULL);
+
+   if (inlen == UIZ_MAX)
+      inlen = strlen(inbuf);
+
+   if (inlen == 0)
+      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
+   else {
+      if ((inlen == 1 && *inbuf == '1') ||
+            !ascncasecmp(inbuf, "true", inlen) ||
+            !ascncasecmp(inbuf, "yes", inlen) ||
+            !ascncasecmp(inbuf, "on", inlen))
+         rv = 1;
+      else if ((inlen == 1 && *inbuf == '0') ||
+            !ascncasecmp(inbuf, "false", inlen) ||
+            !ascncasecmp(inbuf, "no", inlen) ||
+            !ascncasecmp(inbuf, "off", inlen))
+         rv = 0;
+      else {
+         dat = ac_alloc(inlen +1);
+         memcpy(dat, inbuf, inlen);
+         dat[inlen] = '\0';
+
+         sli = strtol(dat, &eptr, 0);
+         if (*dat != '\0' && *eptr == '\0')
+            rv = (sli != 0);
+         else
+            rv = -1;
+
+         ac_free(dat);
+      }
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL si8_t
+quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
+{
+   si8_t rv;
+   NYD_ENTER;
+
+   assert(inlen == 0 || inbuf != NULL);
+
+   if (inlen == UIZ_MAX)
+      inlen = strlen(inbuf);
+
+   if (inlen == 0)
+      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
+   else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
+         !ascncasecmp(inbuf, "ask-", 4) &&
+         (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
+         (options & OPT_INTERACTIVE)) {
+      if (prompt != NULL)
+         fputs(prompt, stdout);
+      rv = getapproval(NULL, rv);
+   }
+   NYD_LEAVE;
+   return rv;
+}
 
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
@@ -1875,7 +2052,7 @@ FL void
    --_mem_acur;
    _mem_mcur -= p.p_c->mc_size;
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       p.p_c->mc_next = _mem_free;
       _mem_free = p.p_c;
    } else
@@ -1902,7 +2079,7 @@ smemreset(void)
    }
    _mem_free = NULL;
 
-   if (options & OPT_DEBUG)
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG))
       fprintf(stderr, "smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n",
          c, s);
    NYD_LEAVE;
@@ -1944,7 +2121,7 @@ c_smemtrace(void *v)
          p.p_c->mc_line);
    }
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       fprintf(fp, "sfree()d memory chunks awaiting free():\n");
       for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
@@ -1988,7 +2165,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
       }
    }
 
-   if (options & OPT_DEBUG) {
+   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
       for (p.p_c = _mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
          xp = p;
          ++xp.p_c;

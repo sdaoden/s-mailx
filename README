@@ -13,21 +13,25 @@ Please refer to the file INSTALL for build and installation remarks,
 and to NEWS for release update information.  The file THANKS mentions
 people who have helped improving S-nail and deserve acknowledgement.
 
-S-nail has a git(1) repository [1] (browsable [2]) and regulary produces
-release tarballs [3], which can be addressed directly (e.g., via `curl
--v -L') [4].  There is also something visual on the web that includes
-the online version of the manual [5].  A mailing list exists [6;
-listinfo: 7] which doesn't require subscription (moderator approves),
-and GMANE.org added s-nail-users@ to their archive [8] -- thank you!
+S-nail has git(1) repositories at Sourceforge[1] (browsable[2]) and
+GitLab.com[3] (browsable[4]), and regulary produces release tarballs[5],
+which can also be addressed directly[6] (e.g., via `curl -v -L').
+There is also something visual on the web that includes the latest
+version of the manual online[7].
+And we have a mailing list[8] with moderated unsubscribed posting
+possibilities; subscriptions can be managed via webinterface[9];
+GMANE.org added s-nail-users@ to their archive[10] -- thank you!
 
-  [1] <git.code.sf.net/p/s-nail/code> (HTTP / GIT)
-  [2] <http://sourceforge.net/p/s-nail/code/>
-  [3] <https://sourceforge.net/projects/s-nail/files/?source=navbar>
-  [4] <https://downloads.sourceforge.net/project/s-nail/s-nail-VERSION.tar.xz>
-  [5] <http://sdaoden.users.sourceforge.net/code.html#s-nail>
-  [6] <mailto:s-nail-users@lists.sourceforge.net>
-  [7] <https://lists.sourceforge.net/lists/listinfo/s-nail-users/>
-  [8] <news://news.gmane.org/gmane.mail.s-nail.user>
+  [1] git.code.sf.net/p/s-nail/code (HTTP / GIT)
+  [2] http://sourceforge.net/p/s-nail/code/
+  [3] https://gitlab.com/s-nail/s-nail.git
+  [4] https://gitlab.com/s-nail/s-nail
+  [5] https://sourceforge.net/projects/s-nail/files/?source=navbar
+  [6] https://downloads.sourceforge.net/project/s-nail/s-nail-VERSION.tar.xz
+  [7] http://sdaoden.users.sourceforge.net/code.html#s-nail
+  [8] mailto:s-nail-users@lists.sourceforge.net
+  [9] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
+  [10] news://news.gmane.org/gmane.mail.s-nail.user
 
 The S-nail(1) git(1) repository consists of five branches:
 
@@ -48,12 +52,14 @@ The S-nail(1) git(1) repository consists of five branches:
   repository.
 
 To clone only the [master] branch, which is what a normal user most
-likely is interested in, can be accomplished like that:
+likely is interested in:
 
   $ mkdir s-nail.git
   $ cd s-nail.git
   $ git init
   $ git remote add origin -t master git://git.code.sf.net/p/s-nail/code
+alternatively
+  $ git remote add origin -t master https://gitlab.com/s-nail/s-nail.git
   $ git fetch -v
   $ git checkout master
   $ make CONFIG=MAXIMAL install

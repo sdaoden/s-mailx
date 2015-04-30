@@ -2,7 +2,7 @@
  *@ Routines for processing and detecting headlines.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE head
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -348,6 +350,7 @@ jaddr_check:
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
+         agp->ag_n_flags |= NAME_ADDRSPEC_ISMAIL; /* TODO .. really? */
          in_domain = (*p == '[') ? 2 : 1;
          continue;
       } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
@@ -376,7 +379,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
    int c, isenc;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (*linebuf == NULL)
       *linebuf = srealloc(*linebuf, *linesize = 1);
@@ -440,7 +443,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
          free(line2);
       break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rem;
 }
 
@@ -448,7 +451,7 @@ static int
 msgidnextc(char const **cp, int *status)
 {
    int c;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    assert(cp != NULL);
    assert(*cp != NULL);
@@ -492,7 +495,7 @@ jdfl:
       }
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return c;
 }
 
@@ -586,16 +589,16 @@ myorigin(struct header *hp)
 }
 
 FL int
-is_head(char const *linebuf, size_t linelen) /* XXX verbose WARN */
+is_head(char const *linebuf, size_t linelen, bool_t compat)
 {
    char date[FROM_DATEBUF];
    int rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   rv = ((linelen <= 5 || strncmp(linebuf, "From ", 5) != 0 ||
-         !extract_date_from_from_(linebuf, linelen, date) ||
-         !_is_date(date)) ? 0 : 1);
-   NYD_LEAVE;
+   if ((rv = (linelen >= 5 && !strncmp(linebuf, "From ", 5))) &&
+         (!compat || ok_blook(mbox_rfc4155)))
+      rv = (extract_date_from_from_(linebuf, linelen, date) && _is_date(date));
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -668,25 +671,29 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
    while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
-         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL)));
+         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
-         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL)));
+         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
-         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL)));
+         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
+               EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          ++seenfields;
          hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                  EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
          ++seenfields;
          hq->h_sender = cat(hq->h_sender,
-               checkaddrs(lextract(val, GEXTRA | GFULL)));
+               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)
@@ -773,7 +780,7 @@ FL char const *
 thisfield(char const *linebuf, char const *field)
 {
    char const *rv = NULL;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    while (lowerconv(*linebuf) == lowerconv(*field)) {
       ++linebuf;
@@ -791,7 +798,7 @@ thisfield(char const *linebuf, char const *field)
       ++linebuf;
    rv = linebuf;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -871,42 +878,109 @@ jleave:
    return rp;
 }
 
-FL int
-is_addr_invalid(struct name *np, int putmsg)
+FL enum expand_addr_flags
+expandaddr_flags(void)
 {
-   char cbuf[sizeof "'\\U12340'"], *name;
-   int f, ok8bit;
-   ui32_t c;
-   char const *fmt, *cs;
+   char *buf;
+   char const *cp;
+   enum expand_addr_flags rv = EAF_NONE;
+   NYD2_ENTER;
+
+   if ((cp = ok_vlook(expandaddr)) != NULL) {
+      rv = EAF_SET;
+
+      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;)
+         if (!asccasecmp(cp, "restrict"))
+            rv |= EAF_RESTRICT;
+         else if (!asccasecmp(cp, "fail"))
+            rv |= EAF_FAIL;
+         else if (!asccasecmp(cp, "noalias"))
+            rv |= EAF_NOALIAS;
+         else if (options & OPT_D_V)
+            fprintf(stderr, _("Unknown *expandaddr* value: \"%s\"\n"), cp);
+
+      if ((rv & (EAF_FAIL | EAF_RESTRICT)) == (EAF_FAIL | EAF_RESTRICT)) {
+         rv &= ~EAF_RESTRICT;
+         fprintf(stderr,
+            _("*expandaddr*: \"restrict\" and \"fail\" are mutual!\n"));
+      }
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL si8_t
+is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
+{
+   char cbuf[sizeof "'\\U12340'"];
+   enum expand_addr_flags eaf;
+   char const *cs;
+   int f;
+   si8_t rv;
    NYD_ENTER;
 
-   name = np->n_name;
    f = np->n_flags;
-   ok8bit = 1;
-   fmt = "'\\x%02X'";
 
-   if (!(f & NAME_ADDRSPEC_INVALID) || !putmsg || (f & NAME_ADDRSPEC_ERR_EMPTY))
+   if ((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))) {
+      if ((eacm & EACM_NOLOG) || (f & NAME_ADDRSPEC_ERR_EMPTY)) {
+         ;
+      } else {
+         ui32_t c;
+         char const *fmt = "'\\x%02X'";
+         bool_t ok8bit = TRU1;
+
+         if (f & NAME_ADDRSPEC_ERR_IDNA) {
+            cs = _("Invalid domain name: \"%s\", character %s\n");
+            fmt = "'\\U%04X'";
+            ok8bit = FAL0;
+         } else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
+            cs = _("\"%s\" contains invalid %s sequence\n");
+         else
+            cs = _("\"%s\" contains invalid character %s\n");
+
+         c = NAME_ADDRSPEC_ERR_GETWC(f);
+         snprintf(cbuf, sizeof cbuf,
+            (ok8bit && c >= 040 && c <= 0177 ? "'%c'" : fmt), c);
+         goto jprint;
+      }
       goto jleave;
+   }
 
-   if (f & NAME_ADDRSPEC_ERR_IDNA)
-      cs = _("Invalid domain name: \"%s\", character %s\n"),
-      fmt = "'\\U%04X'",
-      ok8bit = 0;
-   else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-      cs = _("\"%s\" contains invalid %s sequence\n");
-   else
-      cs = _("\"%s\" contains invalid character %s\n");
+   /* *expandaddr* stuff */
+   eaf = expandaddr_flags();
 
-   c = NAME_ADDRSPEC_ERR_GETWC(f);
-   if (ok8bit && c >= 040 && c <= 0177)
-      snprintf(cbuf, sizeof cbuf, "'%c'", c);
-   else
-      snprintf(cbuf, sizeof cbuf, fmt, c);
+   if ((rv = (eacm & EACM_MODE_MASK) != EACM_NONE) &&
+         (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
+          ((eacm & EACM_STRICT) || !(eaf & EAF_SET) ||
+          ((eaf & EAF_FAIL) ? (rv = -rv) : 0) ||
+          (!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
+           (eaf & EAF_RESTRICT)))) {
+      cs = ((eacm & EACM_STRICT)
+         ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
+         : _("\"%s\"%s: *expandaddr* doesn't allow file or pipe address\n"));
+      cbuf[0] = '\0';
+      if (!(eacm & EACM_NOLOG))
+         goto jprint;
+   }
+   /* And any non-network addresses (MTA aliases) may be disallowed, too */
+   else if ((rv = (eacm & EACM_NOALIAS) != 0) &&
+         !(f & (NAME_ADDRSPEC_ISFILEORPIPE | NAME_ADDRSPEC_ISMAIL))) {
+      if (eaf & EAF_FAIL)
+         rv = -rv;
+      cs = _("\"%s\"%s: non-network address / MTA alias w(h)ere not allowed\n");
+      cbuf[0] = '\0';
+      if (!(eacm & EACM_NOLOG))
+         goto jprint;
+   } else
+      rv = FAL0;
 
-   fprintf(stderr, cs, name, cbuf);
 jleave:
    NYD_LEAVE;
-   return ((f & NAME_ADDRSPEC_INVALID) != 0);
+   return rv;
+
+jprint:
+   fprintf(stderr, cs, np->n_name, cbuf);
+   goto jleave;
 }
 
 FL char *
@@ -926,7 +1000,8 @@ skin(char const *name)
    return ret;
 }
 
-/* TODO addrspec_with_guts: RFC 5322 */
+/* TODO addrspec_with_guts: RFC 5322
+ * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
 FL int
 addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
 {
@@ -1261,7 +1336,7 @@ jleave:
 }
 
 FL char *
-subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
+subject_re_trim(char *s)
 {
    struct {
       ui8_t len;
@@ -1274,7 +1349,7 @@ subject_re_trim(char *s) /* XXX add bool_t mime_decode argument?! */
 
    bool_t any = FAL0;
    char *orig_s = s, *re_st = NULL, *re_st_x;
-   size_t re_l;
+   size_t re_l = 0 /* pacify CC */;
    NYD_ENTER;
 
    if ((re_st_x = ok_vlook(reply_strings)) != NULL &&
@@ -1288,10 +1363,8 @@ jouter:
       while (spacechar(*s))
          ++s;
 
-      /* TODO While it is maybe ok not to MIME decode these (for purpose), we
-       * TODO should skip =?..?= at the beginning? */
       for (pp = ignored; pp->len > 0; ++pp)
-         if (is_asccaseprefix(pp->dat, s)) {
+         if (is_asccaseprefix(s, pp->dat)) {
             s += pp->len;
             any = TRU1;
             goto jouter;
@@ -1302,7 +1375,7 @@ jouter:
 
          memcpy(re_st_x = re_st + re_l, re_st, re_l);
          while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
-            if (is_asccaseprefix(cp, s)) {
+            if (is_asccaseprefix(s, cp)) {
                s += strlen(cp);
                any = TRU1;
                goto jouter;
@@ -1518,29 +1591,34 @@ rfctime(char const *date)
       second = strtol(cp, &x, 10);
    } else
       second = 0;
+
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
       goto jinvalid;
    if ((cp = nexttoken(x)) != NULL) {
-      int sign = -1;
       char buf[3];
+      int sign = 1;
 
       switch (*cp) {
-      case '-':
-         sign = 1;
-         /*FALLTHRU*/
       case '+':
+         sign = -1;
+         /* FALLTHRU */
+      case '-':
          ++cp;
          break;
       }
       if (digitchar(cp[0]) && digitchar(cp[1]) && digitchar(cp[2]) &&
             digitchar(cp[3])) {
+         long tadj;
          buf[2] = '\0';
          buf[0] = cp[0];
          buf[1] = cp[1];
-         t += strtol(buf, NULL, 10) * sign * 3600;/*XXX strtrol*/
+         tadj = strtol(buf, NULL, 10) * 3600;/*XXX strtrol*/
          buf[0] = cp[2];
          buf[1] = cp[3];
-         t += strtol(buf, NULL, 10) * sign * 60; /* XXX strtol*/
+         tadj += strtol(buf, NULL, 10) * 60; /* XXX strtol*/
+         if (sign < 0)
+            tadj = -tadj;
+         t += tadj;
       }
       /* TODO WE DO NOT YET PARSE (OBSOLETE) ZONE NAMES
        * TODO once again, Christos Zoulas and NetBSD Mail have done
@@ -1702,8 +1780,9 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
 
    if (gflags & GEXTRA) {
       if (hp->h_from == NULL)
-         hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL);
-      hp->h_from = grab_names("From: ", hp->h_from, comma, GEXTRA | GFULL);
+         hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
+      hp->h_from = grab_names("From: ", hp->h_from, comma,
+            GEXTRA | GFULL | GFULLEXTRA);
       if (hp->h_replyto == NULL)
          hp->h_replyto = lextract(ok_vlook(replyto), GEXTRA | GFULL);
       hp->h_replyto = grab_names("Reply-To: ", hp->h_replyto, comma,
@@ -1752,7 +1831,7 @@ header_match(struct message *mp, struct search_expr const *sep)
       mime_fromhdr(&in, &out, TD_ICONV);
 #ifdef HAVE_REGEX
       if (sep->ss_sexpr == NULL)
-         rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+         rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
       else
 #endif
          rv = substr(out.s, sep->ss_sexpr);

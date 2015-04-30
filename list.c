@@ -2,7 +2,7 @@
  *@ Message (search a.k.a. argument) list handling.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE list
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -77,7 +79,8 @@ enum {
    CMFLAG   = 1<<5,  /* Flagged messages */
    CMANSWER = 1<<6,  /* Answered messages */
    CMDRAFT  = 1<<7,  /* Draft messages */
-   CMSPAM   = 1<<8   /* Spam messages */
+   CMSPAM   = 1<<8,  /* Spam messages */
+   CMSPAMUN = 1<<9   /* Maybe spam messages (unsure) */
 };
 
 struct coltab {
@@ -102,6 +105,7 @@ static struct coltab const _coltab[] = {
    { 'a',   CMANSWER,   MANSWERED,  MANSWERED },
    { 't',   CMDRAFT,    MDRAFTED,   MDRAFTED },
    { 's',   CMSPAM,     MSPAM,      MSPAM },
+   { 'S',   CMSPAMUN,   MSPAMUNSURE, MSPAMUNSURE },
    { '\0',  0,          0,          0 }
 };
 
@@ -149,7 +153,7 @@ static int     check(int mesg, int f);
 /* Scan out a single lexical item and return its token number, updating the
  * string pointer passed **sp.  Also, store the value of the number or string
  * scanned in lexnumber or lexstring as appropriate.  In any event, store the
- * scanned `thing' in lexstring */
+ * scanned "thing" in lexstring */
 static int     scan(char **sp);
 
 /* Unscan the named token by pushing it onto the regret stack */
@@ -165,12 +169,12 @@ static bool_t  _matchmid(struct message *mp, char *id, enum idfield idfield);
 
 /* See if the given string matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `/' search */
+ * This is the engine behind the "/" search */
 static bool_t  _match_dash(struct message *mp, char const *str);
 
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
- * This is the engine behind the `@[..]@' search */
+ * This is the engine behind the "@[..]@" search */
 static bool_t  _match_at(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
@@ -244,8 +248,7 @@ number:
             fprintf(stderr, _("No numbers mixed with *\n"));
             markall_ret(-1)
          }
-         list_saw_numbers = TRU1;
-         mc = TRU1;
+         pstate |= PS_MSGLIST_SAW_NO;
          ++other;
          if (beg != 0) {
             if (check(lexnumber, f))
@@ -280,7 +283,7 @@ number:
          break;
 
       case TPLUS:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg != 0) {
             printf(_("Non-numeric second argument\n"));
             markall_ret(-1)
@@ -302,7 +305,7 @@ number:
          break;
 
       case TDASH:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg == 0) {
             i = valdot;
             do {
@@ -322,34 +325,34 @@ number:
          break;
 
       case TSTRING:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (beg != 0) {
             fprintf(stderr, _("Non-numeric second argument\n"));
             markall_ret(-1)
          }
          ++other;
-         if (lexstring[0] == ':') {
-            colresult = evalcol(lexstring[1]);
-            if (colresult == 0) {
-               fprintf(stderr, _("Unknown colon modifier \"%s\"\n"),
-                  lexstring);
-               markall_ret(-1)
+         if ((cp = lexstring)[0] == ':') {
+            while (*++cp != '\0') {
+               colresult = evalcol(*cp);
+               if (colresult == 0) {
+                  fprintf(stderr, _("Unknown colon modifier \"%s\"\n"),
+                     lexstring);
+                  markall_ret(-1)
+               }
+               colmod |= colresult;
             }
-            colmod |= colresult;
-         }
-         else
+         } else
             np = add_to_namelist(&namelist, &nmlsize, np, savestr(lexstring));
          break;
 
       case TOPEN:
 #ifdef HAVE_IMAP_SEARCH
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (imap_search(lexstring, f) == STOP)
             markall_ret(-1)
          topen = TRU1;
 #else
-         fprintf(stderr, _(
-            "`%s': the used selector is optional and not available\n"),
+         fprintf(stderr, _("Optional selector is not available: \"%s\"\n"),
             lexstring);
          markall_ret(-1)
 #endif
@@ -359,14 +362,14 @@ number:
       case TUP:
       case TDOT:
       case TSEMI:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          lexnumber = metamess(lexstring[0], f);
          if (lexnumber == -1)
             markall_ret(-1)
          goto number;
 
       case TBACK:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          tback = TRU1;
          for (i = 1; i <= msgCount; i++) {
             if ((message[i - 1].m_flag & MHIDDEN) ||
@@ -378,7 +381,7 @@ number:
          break;
 
       case TSTAR:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
          if (other) {
             fprintf(stderr, _("Can't mix \"*\" with anything\n"));
             markall_ret(-1)
@@ -387,7 +390,7 @@ number:
          break;
 
       case TCOMMA:
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
 #ifdef HAVE_IMAP
          if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
             imap_getheaders(1, msgCount);
@@ -414,8 +417,8 @@ number:
          break;
 
       case TERROR:
-         list_saw_numbers = TRU1;
-         msglist_is_single = FAL0;
+         pstate &= ~PS_MSGLIST_DIRECT;
+         pstate |= PS_MSGLIST_SAW_NO;
          markall_ret(-1)
       }
       threadflag = 0;
@@ -435,7 +438,7 @@ number:
          }
       }
       if (!mc) {
-         if (!inhook)
+         if (!(pstate & PS_HOOK_MASK))
             printf(_("No applicable messages.\n"));
          markall_ret(-1)
       }
@@ -447,7 +450,7 @@ number:
          if (message[i].m_flag & MMARK)
             mc = TRU1;
       if (!mc) {
-         if (!inhook) {
+         if (!(pstate & PS_HOOK_MASK)) {
             if (tback)
                fprintf(stderr, _("No previously marked messages.\n"));
             else
@@ -459,19 +462,20 @@ number:
 
    /* If no numbers were given, mark all messages, so that we can unmark
     * any whose sender was not selected if any user names were given */
-   if ((np > namelist || colmod != 0 || id) && !mc)
+   if ((np > namelist || colmod != 0 || id) && !mc) {
       for (i = 1; i <= msgCount; ++i) {
          if (!(message[i - 1].m_flag & MHIDDEN) &&
                (message[i - 1].m_flag & MDELETED) == (unsigned)f)
             mark(i, f);
       }
+   }
 
    /* If any names were given, eliminate any messages which don't match */
    if (np > namelist || id) {
       struct search_expr *sep = NULL;
       bool_t allnet;
 
-      /* The `@' search works with struct search_expr, so build an array.
+      /* The @ search works with struct search_expr, so build an array.
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       if (np > namelist) {
@@ -498,14 +502,14 @@ number:
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               fprintf(stderr, _("Empty `[@..]@' search expression\n"));
+               fprintf(stderr, _("Empty \"[@..]@\" search expression\n"));
                rv = -1;
                continue;
             }
 #ifdef HAVE_REGEX
-            if (anyof("^.[]*+?(){}|$", x)) {
+            if (is_maybe_regex(x)) {
                sep[j].ss_sexpr = NULL;
-               if (regcomp(&sep[j].ss_reexpr, x,
+               if (regcomp(&sep[j].ss_regex, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {
                   fprintf(stderr, _(
                      "Invalid regular expression: >>> %s <<<\n"), x);
@@ -563,7 +567,7 @@ number:
             break;
          }
       if (j == 0) {
-         if (!inhook && np > namelist) {
+         if (!(pstate & PS_HOOK_MASK) && np > namelist) {
             printf(_("No applicable messages from {%s"), namelist[0]);
             for (nq = namelist + 1; *nq != NULL; ++nq)
                printf(_(", %s"), *nq);
@@ -579,7 +583,7 @@ jnamesearch_sepfree:
 #ifdef HAVE_REGEX
          for (j = PTR2SIZE(np - namelist); j-- != 0;)
             if (sep[j].ss_sexpr == NULL)
-               regfree(&sep[j].ss_reexpr);
+               regfree(&sep[j].ss_regex);
 #endif
          free(sep);
       }
@@ -602,13 +606,15 @@ jnamesearch_sepfree:
          if (bad)
             unmark(i);
       }
+
       for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
          if (mp->m_flag & MMARK)
             break;
+
       if (PTRCMP(mp, >=, message + msgCount)) {
          struct coltab const *colp;
 
-         if (!inhook) {
+         if (!(pstate & PS_HOOK_MASK)) {
             printf(_("No messages satisfy"));
             for (colp = _coltab; colp->co_char != '\0'; ++colp)
                if (colp->co_bit & colmod)
@@ -979,7 +985,7 @@ jmsg:
          mime_fromhdr(&in, &out, TD_ICONV);
 #ifdef HAVE_REGEX
          if (sep->ss_sexpr == NULL)
-            rv = (regexec(&sep->ss_reexpr, out.s, 0,NULL, 0) != REG_NOMATCH);
+            rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
          else
 #endif
             rv = substr(out.s, sep->ss_sexpr);
@@ -1028,7 +1034,7 @@ metamess(int meta, int f)
          } else
             ++mp;
       }
-      if (!inhook)
+      if (!(pstate & PS_HOOK_MASK))
          printf(_("No applicable messages\n"));
       goto jem1;
 
@@ -1047,7 +1053,7 @@ metamess(int meta, int f)
          } else
             --mp;
       }
-      if (!inhook)
+      if (!(pstate & PS_HOOK_MASK))
          printf(_("No applicable messages\n"));
       goto jem1;
 
@@ -1095,8 +1101,7 @@ getmsglist(char *buf, int *vector, int flags)
    struct message *mp;
    NYD_ENTER;
 
-   list_saw_numbers =
-   msglist_is_single = FAL0;
+   pstate &= ~PS_MSGLIST_MASK;
 
    if (msgCount == 0) {
       *vector = 0;
@@ -1104,14 +1109,15 @@ getmsglist(char *buf, int *vector, int flags)
       goto jleave;
    }
 
-   msglist_is_single = TRU1;
+   pstate |= PS_MSGLIST_DIRECT;
+
    if (markall(buf, flags) < 0) {
       mc = -1;
       goto jleave;
    }
 
    ip = vector;
-   if (inhook & 2) {
+   if (pstate & PS_HOOK_NEWMAIL) {
       mc = 0;
       for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
          if (mp->m_flag & MMARK) {
@@ -1137,7 +1143,8 @@ getmsglist(char *buf, int *vector, int flags)
    }
    *ip = 0;
    mc = (int)PTR2SIZE(ip - vector);
-   msglist_is_single = (mc == 1);
+   if (mc != 1)
+      pstate &= ~PS_MSGLIST_DIRECT;
 jleave:
    NYD_LEAVE;
    return mc;
@@ -1148,106 +1155,63 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
    int echolist)
 {
    char c, *cp2, quotec, *linebuf;
-   char const *cp;
    int argn;
    NYD_ENTER;
 
-   list_saw_numbers = FAL0;
+   pstate &= ~PS_MSGLIST_MASK;
 
-   argn = 0;
-   cp = line;
-   linebuf = ac_alloc(linesize +1);
-   for (;;) {
-      for (; blankchar(*cp); ++cp)
-         ;
-      if (*cp == '\0')
-         break;
+   linebuf = ac_alloc(linesize);
+
+   for (argn = 0;;) {
+      if (!argn || !echolist) {
+         for (; blankchar(*line); ++line)
+            ;
+         if (*line == '\0')
+            break;
+      }
       if (argn >= argc - 1) {
-         fprintf(stderr, _(
-            "Too many elements in the list; excess discarded.\n"));
+         fprintf(stderr,
+            _("Too many elements in the list; excess discarded.\n"));
          break;
       }
+
       cp2 = linebuf;
-      quotec = '\0';
-      while ((c = *cp) != '\0') {
-         cp++;
+      for (quotec = '\0'; ((c = *line++) != '\0');) {
          if (quotec != '\0') {
             if (c == quotec) {
                quotec = '\0';
                if (echolist)
                   *cp2++ = c;
-            } else if (c == '\\')
-               switch (c = *cp++) {
+            } else if (c == '\\') {
+               switch (c = *line++) {
                case '\0':
                   *cp2++ = '\\';
-                  cp--;
+                  --line;
                   break;
-               /*
-               case '0': case '1': case '2': case '3':
-               case '4': case '5': case '6': case '7':
-                  c -= '0';
-                  if (*cp >= '0' && *cp <= '7')
-                     c = c * 8 + *cp++ - '0';
-                  if (*cp >= '0' && *cp <= '7')
-                     c = c * 8 + *cp++ - '0';
-                  *cp2++ = c;
-                  break;
-               case 'b':
-                  *cp2++ = '\b';
-                  break;
-               case 'f':
-                  *cp2++ = '\f';
-                  break;
-               case 'n':
-                  *cp2++ = '\n';
-                  break;
-               case 'r':
-                  *cp2++ = '\r';
-                  break;
-               case 't':
-                  *cp2++ = '\t';
-                  break;
-               case 'v':
-                  *cp2++ = '\v';
-                  break;
-               */
                default:
-                  if (cp[-1] != quotec || echolist)
+                  if (line[-1] != quotec || echolist)
                      *cp2++ = '\\';
                   *cp2++ = c;
                }
-            /*else if (c == '^') {
-               c = *cp++;
-               if (c == '?')
-                  *cp2++ = '\177';
-               /\* null doesn't show up anyway *\/
-               else if ((c >= 'A' && c <= '_') ||
-                   (c >= 'a' && c <= 'z'))
-                  *cp2++ = c & 037;
-               else {
-                  *cp2++ = '^';
-                  cp--;
-               }
-            }*/ else
+            } else
                *cp2++ = c;
          } else if (c == '"' || c == '\'') {
             if (echolist)
                *cp2++ = c;
             quotec = c;
-         } else if (c == '\\' && !echolist) {
-            if (*cp)
-               *cp2++ = *cp++;
-            else
-               *cp2++ = c;
-         } else if (blankchar(c))
+         } else if (c == '\\' && !echolist)
+            *cp2++ = (*line != '\0') ? *line++ : c;
+         else if (blankchar(c))
             break;
          else
             *cp2++ = c;
       }
-      *cp2 = '\0';
-      argv[argn++] = savestr(linebuf);
+      argv[argn++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
+      if (c == '\0')
+         break;
    }
    argv[argn] = NULL;
+
    ac_free(linebuf);
    NYD_LEAVE;
    return argn;

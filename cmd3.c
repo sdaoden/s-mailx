@@ -2,7 +2,7 @@
  *@ Still more user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,20 +36,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE cmd3
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-struct cond_stack {
-   struct cond_stack *c_outer;
-   bool_t            c_noop;  /* Outer stack !c_go, entirely no-op */
-   bool_t            c_go;    /* Green light */
-   bool_t            c_else;  /* In `else' clause */
-   ui8_t             __dummy[5];
-};
-
-static struct cond_stack   *_cond_stack;
 static char                *_bang_buf;
 static size_t              _bang_size;
 
@@ -62,16 +55,19 @@ static void       _bangexp(char **str, size_t *size);
 
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
-/* Get PTF to implementation of command `c' (i.e., take care for *flipr*) */
-static int (*     respond_or_Respond(int c))(int *, int);
+/* `reply' and `Lreply' workhorse */
+static int        _list_reply(int *msgvec, enum header_flags hf);
+
+/* Get PTF to implementation of command c (i.e., take care for *flipr*) */
+static int (*     _reply_or_Reply(char c))(int *, bool_t);
 
 /* Reply to a single message.  Extract each name from the message header and
  * send them off to mail1() */
-static int        respond_internal(int *msgvec, int recipient_record);
+static int        _reply(int *msgvec, bool_t recipient_record);
 
 /* Reply to a series of messages by simply mailing to the senders and not
  * messing around with the To: and Cc: lists as in normal reply */
-static int        Respond_internal(int *msgvec, int recipient_record);
+static int        _Reply(int *msgvec, bool_t recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
 static int        _fwd(char *str, int recipient_record);
@@ -79,23 +75,11 @@ static int        _fwd(char *str, int recipient_record);
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *     __fwdedit(char *subj);
 
-/* Sort the passed string vecotor into ascending dictionary order */
-static void       asort(char **list);
-
-/* Do a dictionary order comparison of the arguments from qsort */
-static int        diction(void const *a, void const *b);
-
 /* Do the real work of resending */
 static int        _resend1(void *v, bool_t add_resent);
 
 /* c_file, c_File */
 static int        _c_file(void *v, enum fedit_mode fm);
-
-/* ..to stdout */
-static void       list_shortcuts(void);
-
-/* */
-static enum okay  delete_shortcut(char const *str);
 
 static char *
 _reedit(char *subj)
@@ -114,6 +98,7 @@ _reedit(char *subj)
    if ((newsubj = subject_re_trim(out.s)) != out.s)
       newsubj = savestr(out.s);
    else {
+      /* RFC mandates english "Re: " */
       newsubj = salloc(out.l + 4 +1);
       sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
    }
@@ -224,64 +209,50 @@ make_ref_and_cs(struct message *mp, struct header *head)
    head->h_ref = n;
    if (ok_blook(reply_in_same_charset) &&
          (cp = hfield1("content-type", mp)) != NULL)
-      head->h_charset = mime_getparam("charset", cp);
+      head->h_charset = mime_param_get("charset", cp);
 jleave:
    NYD_LEAVE;
 }
 
 static int
-(*respond_or_Respond(int c))(int *, int)
-{
-   int opt;
-   int (*rv)(int*, int);
-   NYD_ENTER;
-
-   opt = ok_blook(Replyall);
-   opt += ok_blook(flipr);
-   rv = ((opt == 1) ^ (c == 'R')) ? &Respond_internal : &respond_internal;
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
-respond_internal(int *msgvec, int recipient_record)
+_list_reply(int *msgvec, enum header_flags hf)
 {
    struct header head;
    struct message *mp;
-   char *cp, *rcv;
-   struct name *np = NULL;
+   char const *reply_to, *rcv, *cp;
    enum gfield gf;
+   struct name *rt, *mft, *np;
    int rv = 1;
    NYD_ENTER;
 
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
-
-   if (msgvec[1] != 0) {
-      fprintf(stderr, _(
-         "Sorry, can't reply to multiple messages at once\n"));
-      goto jleave;
-   }
-
-   mp = message + msgvec[0] - 1;
+jnext_msg:
+   mp = message + *msgvec - 1;
    touch(mp);
    setdot(mp);
 
-   if ((rcv = hfield1("reply-to", mp)) == NULL)
-      if ((rcv = hfield1("from", mp)) == NULL)
-         rcv = nameof(mp, 1);
-   if (rcv != NULL)
-      np = lextract(rcv, GTO | gf);
-   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
-      np = cat(np, lextract(cp, GTO | gf));
-   /* Delete my name from reply list, and with it, all my alternate names */
-   np = elide(delete_alternates(np));
-   if (np == NULL)
-      np = lextract(rcv, GTO | gf);
-
    memset(&head, 0, sizeof head);
-   head.h_to = np;
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = _reedit(head.h_subject);
+   head.h_flags = hf;
+
+   head.h_subject = _reedit(hfield1("subject", mp));
+   gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   rt = mft = NULL;
+
+   rcv = NULL;
+   if ((reply_to = hfield1("reply-to", mp)) != NULL &&
+         (cp = ok_vlook(reply_to_honour)) != NULL &&
+         (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT, NULL)
+         ) != NULL) {
+      char const *tr = _("Reply-To \"%s%s\"");
+      size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+      char *sp = salloc(l);
+
+      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+      if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
+         rcv = reply_to;
+   }
+
+   if (rcv == NULL && (rcv = hfield1("from", mp)) == NULL)
+      rcv = nameof(mp, 1);
 
    /* Cc: */
    np = NULL;
@@ -290,27 +261,161 @@ respond_internal(int *msgvec, int recipient_record)
    if ((cp = hfield1("cc", mp)) != NULL)
       np = cat(np, lextract(cp, GCC | gf));
    if (np != NULL)
-      head.h_cc = elide(delete_alternates(np));
+      head.h_cc = delete_alternates(np);
+
+   /* To: */
+   np = NULL;
+   if (rcv != NULL)
+      np = (rcv == reply_to) ? namelist_dup(rt, GTO | gf)
+            : lextract(rcv, GTO | gf);
+   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
+      np = cat(np, lextract(cp, GTO | gf));
+   /* Delete my name from reply list, and with it, all my alternate names */
+   np = delete_alternates(np);
+   if (count(np) == 0)
+      np = lextract(rcv, GTO | gf);
+   head.h_to = np;
+
+   /* The user may have send this to himself, don't ignore that */
+   namelist_vaporise_head(&head, EACM_NORMAL, FAL0, NULL);
+   if (head.h_to == NULL)
+      head.h_to = np;
+
+   /* Mail-Followup-To: */
+   mft = NULL;
+   if (ok_vlook(followup_to_honour) != NULL &&
+         (cp = hfield1("mail-followup-to", mp)) != NULL &&
+         (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NULL)
+         ) != NULL) {
+      char const *tr = _("Followup-To \"%s%s\"");
+      size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
+      char *sp = salloc(l);
+
+      snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
+      if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
+         head.h_cc = NULL;
+         head.h_to = np;
+         head.h_mft =
+         mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0, NULL);
+      } else
+         mft = NULL;
+   }
+
+   /* Special massage for list (follow-up) messages */
+   if (mft != NULL || (hf & HF_LIST_REPLY) || ok_blook(followup_to)) {
+      /* Learn about a possibly sending mailing list; use do for break; */
+      if ((cp = hfield1("list-post", mp)) != NULL) do {
+         struct name *x = lextract(cp, GEXTRA | GSKIN);
+         if (x == NULL || x->n_flink != NULL ||
+               !is_prefix("mailto:", x->n_name) ||
+               /* XXX the mailto: prefix causes failure (":" invalid character)
+                * XXX which is why need to recreate a struct name with an
+                * XXX updated name; this is terribly wasteful and can't we find
+                * XXX a way to mitigate that?? */
+               is_addr_invalid(x = nalloc(x->n_name + sizeof("mailto:") -1,
+                  GEXTRA | GSKIN), EACM_STRICT)) {
+            if (options & OPT_D_V)
+               fprintf(stderr,
+                  _("Message contains invalid List-Post: header\n"));
+            cp = NULL;
+            break;
+         }
+         cp = x->n_name;
+
+         /* A special case has been seen on e.g. ietf-announce@ietf.org:
+          * these usually post to multiple groups, with ietf-announce@
+          * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
+          * -announce@ is only used for announcements, say).
+          * So our desire is to honour this request and actively overwrite
+          * List-Post: for our purpose; but only if its a single address.
+          * However, to avoid ambiguities with users that place themselve in
+          * Reply-To: and mailing lists which don't overwrite this (or only
+          * extend this, shall such exist), only do so if reply_to exists of
+          * a single address which points to the same domain as List-Post: */
+         if (reply_to != NULL && rt->n_flink == NULL &&
+               name_is_same_domain(x, rt))
+            cp = rt->n_name; /* rt is EACM_STRICT tested */
+
+         /* "Automatically `mlist'" the List-Post: address temporarily */
+         if (is_mlist(cp, FAL0) == MLIST_OTHER)
+            head.h_list_post = cp;
+         else
+            cp = NULL;
+      } while (0);
+
+      /* In case of list replies we actively sort out any non-list recipient,
+       * but _only_ if we did not honour a MFT:, assuming that members of MFT
+       * were there for a reason; cp is still List-Post:/eqivalent */
+      if ((hf & HF_LIST_REPLY) && mft == NULL) {
+         struct name *nhp = head.h_to;
+         head.h_to = NULL;
+j_lt_redo:
+         while (nhp != NULL) {
+            np = nhp;
+            nhp = nhp->n_flink;
+
+            if ((cp != NULL && !asccasecmp(cp, np->n_name)) ||
+                  is_mlist(np->n_name, FAL0) != MLIST_OTHER) {
+               np->n_type = (np->n_type & ~GMASK) | GTO;
+               np->n_flink = head.h_to;
+               head.h_to = np;
+            }
+         }
+         if ((nhp = head.h_cc) != NULL) {
+            head.h_cc = NULL;
+            goto j_lt_redo;
+         }
+      }
+   }
+
    make_ref_and_cs(mp, &head);
 
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-            "Original message content");
+      head.h_attach->a_content_description = _("Original message content");
    }
 
-   if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
+   if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) == OKAY &&
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+
+   if (*++msgvec != 0) {
+      /* TODO message (error) ring.., less sleep */
+      printf(_("Waiting a second before proceeding to the next message..\n"));
+      fflush(stdout);
+      sleep(1);
+      goto jnext_msg;
+   }
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static int
-Respond_internal(int *msgvec, int recipient_record)
+(*_reply_or_Reply(char c))(int *, bool_t)
+{
+   int (*rv)(int*, bool_t);
+   NYD_ENTER;
+
+   rv = (ok_blook(flipr) ^ (c == 'R')) ? &_Reply : &_reply;
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_reply(int *msgvec, bool_t recipient_record)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _list_reply(msgvec, recipient_record ? HF_RECIPIENT_RECORD : HF_NONE);
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_Reply(int *msgvec, bool_t recipient_record)
 {
    struct header head;
    struct message *mp;
@@ -323,12 +428,30 @@ Respond_internal(int *msgvec, int recipient_record)
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
 
    for (ap = msgvec; *ap != 0; ++ap) {
+      char const *rp;
+      struct name *rt;
+
       mp = message + *ap - 1;
       touch(mp);
       setdot(mp);
-      if ((cp = hfield1("reply-to", mp)) == NULL)
-         if ((cp = hfield1("from", mp)) == NULL)
-            cp = nameof(mp, 2);
+
+      if ((rp = hfield1("reply-to", mp)) != NULL &&
+            (cp = ok_vlook(reply_to_honour)) != NULL &&
+            (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT, NULL)
+            ) != NULL) {
+         char const *tr = _("Reply-To \"%s%s\"");
+         size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+         char *sp = salloc(l);
+
+         snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+         if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0) {
+            head.h_to = cat(head.h_to, rt);
+            continue;
+         }
+      }
+
+      if ((cp = hfield1("from", mp)) == NULL)
+         cp = nameof(mp, 2);
       head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
    }
    if (head.h_to == NULL)
@@ -342,8 +465,7 @@ Respond_internal(int *msgvec, int recipient_record)
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _(
-         "Original message content");
+      head.h_attach->a_content_description = _("Original message content");
    }
 
    if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
@@ -375,11 +497,11 @@ _fwd(char *str, int recipient_record)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_HOOK_MASK) {
             rv = 0;
             goto jleave;
          }
-         printf("No messages to forward.\n");
+         printf(_("No messages to forward.\n"));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -387,15 +509,15 @@ _fwd(char *str, int recipient_record)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_HOOK_MASK) {
          rv = 0;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      printf(_("No applicable messages.\n"));
       goto jleave;
    }
    if (msgvec[1] != 0) {
-      printf("Cannot forward multiple messages at once\n");
+      printf(_("Cannot forward multiple messages at once\n"));
       goto jleave;
    }
 
@@ -409,7 +531,7 @@ _fwd(char *str, int recipient_record)
    if (forward_as_attachment) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = "Forwarded message";
+      head.h_attach->a_content_description = _("Forwarded message");
    } else {
       touch(mp);
       setdot(mp);
@@ -447,31 +569,6 @@ jleave:
    return newsubj;
 }
 
-static void
-asort(char **list)
-{
-   char **ap;
-   size_t i;
-   NYD_ENTER;
-
-   for (ap = list; *ap != NULL; ++ap)
-      ;
-   if ((i = PTR2SIZE(ap - list)) >= 2)
-      qsort(list, i, sizeof *list, diction);
-   NYD_LEAVE;
-}
-
-static int
-diction(void const *a, void const *b)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b));
-   NYD_LEAVE;
-   return rv;
-}
-
 static int
 _resend1(void *v, bool_t add_resent)
 {
@@ -492,7 +589,7 @@ _resend1(void *v, bool_t add_resent)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_HOOK_MASK) {
             f = FAL0;
             goto jleave;
          }
@@ -504,7 +601,7 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_HOOK_MASK) {
          f = FAL0;
          goto jleave;
       }
@@ -537,7 +634,7 @@ _c_file(void *v, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (inhook) {
+   if (pstate & PS_HOOK_MASK) {
       fprintf(stderr, _("Cannot change folder from within a hook.\n"));
       i = 1;
       goto jleave;
@@ -550,7 +647,9 @@ _c_file(void *v, enum fedit_mode fm)
       i = 1;
       goto jleave;
    }
-   callhook(mailname, 0);
+   assert(!(fm & FEDIT_NEWMAIL));
+   check_folder_hook(FAL0);
+
    if (i > 0 && !ok_blook(emptystart)) {
       i = 1;
       goto jleave;
@@ -560,41 +659,6 @@ _c_file(void *v, enum fedit_mode fm)
 jleave:
    NYD2_LEAVE;
    return i;
-}
-
-static void
-list_shortcuts(void)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      printf("%s=%s\n", s->sh_short, s->sh_long);
-   NYD_LEAVE;
-}
-
-static enum okay
-delete_shortcut(char const *str)
-{
-   struct shortcut *sp, *sq;
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   for (sp = shortcuts, sq = NULL; sp != NULL; sq = sp, sp = sp->sh_next) {
-      if (!strcmp(sp->sh_short, str)) {
-         free(sp->sh_short);
-         free(sp->sh_long);
-         if (sq != NULL)
-            sq->sh_next = sp->sh_next;
-         if (sp == shortcuts)
-            shortcuts = sp->sh_next;
-         free(sp);
-         rv = OKAY;
-         break;
-      }
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
@@ -735,45 +799,56 @@ jleave:
 }
 
 FL int
-c_respond(void *v)
+c_reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 0);
+   rv = (*_reply_or_Reply('r'))(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondall(void *v)
+c_replyall(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 0);
+   rv = _reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_respondsender(void *v)
+c_replysender(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 0);
+   rv = _Reply(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Respond(void *v)
+c_Reply(void *v)
 {
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 0);
+   rv = (*_reply_or_Reply('R'))(v, FAL0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_Lreply(void *v)
+{
+   int rv;
+   NYD_ENTER;
+
+   rv = _list_reply(v, HF_LIST_REPLY);
    NYD_LEAVE;
    return rv;
 }
@@ -784,7 +859,7 @@ c_followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('r'))(v, 1);
+   rv = (*_reply_or_Reply('r'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -795,7 +870,7 @@ c_followupall(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = respond_internal(v, 1);
+   rv = _reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -806,7 +881,7 @@ c_followupsender(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = Respond_internal(v, 1);
+   rv = _Reply(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -817,7 +892,7 @@ c_Followup(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = (*respond_or_Respond('R'))(v, 1);
+   rv = (*_reply_or_Reply('R'))(v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -873,8 +948,8 @@ c_preserve(void *v)
    struct message *mp;
    NYD_ENTER;
 
-   if (edit) {
-      printf(_("Cannot \"preserve\" in edit mode\n"));
+   if (pstate & PS_EDIT) {
+      printf(_("Cannot \"preserve\" in a system mailbox\n"));
       goto jleave;
    }
 
@@ -884,7 +959,7 @@ c_preserve(void *v)
       mp->m_flag |= MPRESERVE;
       mp->m_flag &= ~MBOX;
       setdot(mp);
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    rv = 0;
 jleave:
@@ -906,7 +981,7 @@ c_unread(void *v)
       if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
          imap_unread(message + *ip - 1, *ip); /* TODO return? */
 #endif
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;
@@ -946,94 +1021,6 @@ c_messize(void *v)
    }
    NYD_LEAVE;
    return 0;
-}
-
-FL int
-c_rexit(void *v)
-{
-   UNUSED(v);
-   NYD_ENTER;
-
-   if (!sourcing)
-      exit(0);
-   NYD_LEAVE;
-   return 1;
-}
-
-FL int
-c_group(void *v)
-{
-   char **argv = v, **ap, *gname, **p;
-   struct grouphead *gh;
-   struct group *gp;
-   int h, s;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      for (h = 0, s = 1; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            ++s;
-      ap = salloc(s * sizeof *ap);
-
-      for (h = 0, p = ap; h < HSHSIZE; ++h)
-         for (gh = groups[h]; gh != NULL; gh = gh->g_link)
-            *p++ = gh->g_name;
-      *p = NULL;
-
-      asort(ap);
-
-      for (p = ap; *p != NULL; ++p)
-         printgroup(*p);
-      goto jleave;
-   }
-
-   if (argv[1] == NULL) {
-      printgroup(*argv);
-      goto jleave;
-   }
-
-   gname = *argv;
-   h = hash(gname);
-   if ((gh = findgroup(gname)) == NULL) {
-      gh = scalloc(1, sizeof *gh);
-      gh->g_name = sstrdup(gname);
-      gh->g_list = NULL;
-      gh->g_link = groups[h];
-      groups[h] = gh;
-   }
-
-   /* Insert names from the command list into the group.  Who cares if there
-    * are duplicates?  They get tossed later anyway */
-   for (ap = argv + 1; *ap != NULL; ++ap) {
-      gp = scalloc(1, sizeof *gp);
-      gp->ge_name = sstrdup(*ap);
-      gp->ge_link = gh->g_list;
-      gh->g_list = gp;
-   }
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_ungroup(void *v)
-{
-   char **argv = v;
-   int rv = 1;
-   NYD_ENTER;
-
-   if (*argv == NULL) {
-      fprintf(stderr, _("Must specify alias to remove\n"));
-      goto jleave;
-   }
-
-   do
-      remove_group(*argv);
-   while (*++argv != NULL);
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
@@ -1085,240 +1072,6 @@ jleave:
 }
 
 FL int
-c_if(void *v)
-{
-   struct cond_stack *csp;
-   int rv = 1;
-   char **argv = v, *cp, *op;
-   NYD_ENTER;
-
-   csp = smalloc(sizeof *csp);
-   csp->c_outer = _cond_stack;
-   csp->c_noop = condstack_isskip();
-   csp->c_go = TRU1;
-   csp->c_else = FAL0;
-   _cond_stack = csp;
-
-   if (csp->c_noop)
-      goto jdone;
-
-   cp = argv[0];
-   if (*cp != '$' && argv[1] != NULL) {
-jesyn:
-      fprintf(stderr, _("Invalid conditional expression \"%s %s %s\"\n"),
-         argv[0], (argv[1] != NULL ? argv[1] : ""),
-         (argv[2] != NULL ? argv[2] : ""));
-      goto jleave;
-   }
-
-   switch (*cp) {
-   case '0':
-      csp->c_go = FAL0;
-      break;
-   case 'R': case 'r':
-      csp->c_go = !(options & OPT_SENDMODE);
-      break;
-   case 'S': case 's':
-      csp->c_go = ((options & OPT_SENDMODE) != 0);
-      break;
-   case 'T': case 't':
-      csp->c_go = ((options & OPT_TTYIN) != 0);
-      break;
-   case '$':
-      /* Look up the value in question, we need it anyway */
-      v = vok_vlook(++cp);
-
-      /* Single argument, "implicit boolean" form? */
-      if ((op = argv[1]) == NULL) {
-         csp->c_go = (v != NULL);
-         break;
-      }
-
-      /* Three argument comparison form? */
-      if (argv[2] == NULL || op[0] == '\0' ||
-#ifdef HAVE_REGEX
-            (op[1] != '=' && op[1] != '~') ||
-#else
-            op[1] != '=' ||
-#endif
-            op[2] != '\0')
-         goto jesyn;
-
-      /* A null value is treated as the empty string */
-      if (v == NULL)
-         v = UNCONST("");
-#ifdef HAVE_REGEX
-      if (op[1] == '~') {
-         regex_t re;
-
-         if (regcomp(&re, argv[2], REG_EXTENDED | REG_ICASE | REG_NOSUB))
-            goto jesyn;
-         if (regexec(&re, v, 0,NULL, 0) == REG_NOMATCH)
-            v = NULL;
-         regfree(&re);
-      } else
-#endif
-      if (strcmp(v, argv[2]))
-         v = NULL;
-      switch (op[0]) {
-      case '!':
-      case '=':
-         csp->c_go = ((op[0] == '=') ^ (v == NULL));
-         break;
-      default:
-         goto jesyn;
-      }
-      break;
-   default:
-      fprintf(stderr, _("Unrecognized if-keyword: \"%s\"\n"), cp);
-   case '1':
-      csp->c_go = TRU1;
-      goto jleave;
-   }
-
-jdone:
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_elif(void *v)
-{
-   struct cond_stack *csp;
-   int rv;
-   NYD_ENTER;
-
-   if ((csp = _cond_stack) == NULL || csp->c_else) {
-      fprintf(stderr, _("`elif' without matching `if'\n"));
-      rv = 1;
-   } else {
-      csp->c_go = !csp->c_go;
-      rv = c_if(v);
-      _cond_stack->c_outer = csp->c_outer;
-      free(csp);
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_else(void *v)
-{
-   int rv;
-   NYD_ENTER;
-   UNUSED(v);
-
-   if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, _("`else' without matching `if'\n"));
-      rv = 1;
-   } else {
-      _cond_stack->c_go = !_cond_stack->c_go;
-      _cond_stack->c_else = TRU1;
-      rv = 0;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_endif(void *v)
-{
-   struct cond_stack *csp;
-   int rv;
-   NYD_ENTER;
-   UNUSED(v);
-
-   if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, _("`endif' without matching `if'\n"));
-      rv = 1;
-   } else {
-      _cond_stack = csp->c_outer;
-      free(csp);
-      rv = 0;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-FL bool_t
-condstack_isskip(void)
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   rv = (_cond_stack != NULL && (_cond_stack->c_noop || !_cond_stack->c_go));
-   NYD_LEAVE;
-   return rv;
-}
-
-FL void *
-condstack_release(void)
-{
-   void *rv;
-   NYD_ENTER;
-
-   rv = _cond_stack;
-   _cond_stack = NULL;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL bool_t
-condstack_take(void *self)
-{
-   struct cond_stack *csp;
-   bool_t rv;
-   NYD_ENTER;
-
-   if (!(rv = ((csp = _cond_stack) == NULL)))
-      do {
-         _cond_stack = csp->c_outer;
-         free(csp);
-      } while ((csp = _cond_stack) != NULL);
-
-   _cond_stack = self;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_alternates(void *v)
-{
-   size_t l;
-   char **namelist = v, **ap, **ap2, *cp;
-   NYD_ENTER;
-
-   l = argcount(namelist) + 1;
-   if (l == 1) {
-      if (altnames == NULL)
-         goto jleave;
-      for (ap = altnames; *ap != NULL; ++ap)
-         printf("%s ", *ap);
-      printf("\n");
-      goto jleave;
-   }
-
-   if (altnames != NULL) {
-      for (ap = altnames; *ap != NULL; ++ap)
-         free(*ap);
-      free(altnames);
-   }
-   altnames = smalloc(l * sizeof(char*));
-   for (ap = namelist, ap2 = altnames; *ap != NULL; ++ap, ++ap2) {
-      l = strlen(*ap) + 1;
-      cp = smalloc(l);
-      memcpy(cp, *ap, l);
-      *ap2 = cp;
-   }
-   *ap2 = NULL;
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
 c_newmail(void *v)
 {
    int val = 1, mdot;
@@ -1337,84 +1090,6 @@ c_newmail(void *v)
    }
    NYD_LEAVE;
    return val;
-}
-
-FL int
-c_shortcut(void *v)
-{
-   char **args = v;
-   struct shortcut *s;
-   int rv;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      list_shortcuts();
-      rv = 0;
-      goto jleave;
-   }
-
-   rv = 1;
-   if (args[1] == NULL) {
-      fprintf(stderr, _("expansion name for shortcut missing\n"));
-      goto jleave;
-   }
-   if (args[2] != NULL) {
-      fprintf(stderr, _("too many arguments\n"));
-      goto jleave;
-   }
-
-   if ((s = get_shortcut(args[0])) != NULL) {
-      free(s->sh_long);
-      s->sh_long = sstrdup(args[1]);
-   } else {
-      s = scalloc(1, sizeof *s);
-      s->sh_short = sstrdup(args[0]);
-      s->sh_long = sstrdup(args[1]);
-      s->sh_next = shortcuts;
-      shortcuts = s;
-   }
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL struct shortcut *
-get_shortcut(char const *str)
-{
-   struct shortcut *s;
-   NYD_ENTER;
-
-   for (s = shortcuts; s != NULL; s = s->sh_next)
-      if (!strcmp(str, s->sh_short))
-         break;
-   NYD_LEAVE;
-   return s;
-}
-
-FL int
-c_unshortcut(void *v)
-{
-   char **args = v;
-   bool_t errs = FAL0;
-   NYD_ENTER;
-
-   if (args[0] == NULL) {
-      fprintf(stderr, _("need shortcut names to remove\n"));
-      errs = TRU1;
-      goto jleave;
-   }
-
-   while (*args != NULL) {
-      if (delete_shortcut(*args) != OKAY) {
-         errs = TRU1;
-         fprintf(stderr, _("%s: no such shortcut\n"), *args);
-      }
-      ++args;
-   }
-jleave:
-   NYD_LEAVE;
-   return errs;
 }
 
 FL int

@@ -2,7 +2,7 @@
  *@ Handling of attachments.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE attachments
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -73,7 +75,7 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    else
       file = ap->a_name;
 
-   ap->a_content_type = mime_classify_content_type_by_fileext(file);
+   ap->a_content_type = mime_type_by_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
       ap->a_content_type = readstr_input(prefix, ap->a_content_type);
@@ -103,8 +105,8 @@ jcdis:
    return ap;
 }
 
-static sigjmp_buf __atticonv_jmp; /* TODO someday, we won't need it no more */
-static int __atticonv_sig; /* TODO someday, we won't need it no more */
+static sigjmp_buf    __atticonv_jmp; /* TODO oneday, we won't need it no more */
+static int volatile  __atticonv_sig; /* TODO oneday, we won't need it no more */
 static void
 __atticonv_onsig(int sig) /* TODO someday, we won't need it no more */
 {
@@ -147,16 +149,21 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
    snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tfilename: "), number);
    for (;;) {
-      if ((ap->a_name = readstr_input(prefix, ap->a_name)) == NULL) {
+      if ((cp = ap->a_name) != NULL)
+         cp = fexpand_nshell_quote(cp);
+      if ((cp = readstr_input(prefix, cp)) == NULL) {
+         ap->a_name = NULL;
          ap = NULL;
          goto jleave;
       }
 
       /* May be a message number (XXX add "AC_MSG", use that not .a_msgno) */
-      if (ap->a_name[0] == '#') {
+      if (cp[0] == '#') {
          char *ecp;
-         int msgno = (int)strtol(ap->a_name + 1, &ecp, 10);
+         int msgno = (int)strtol(cp + 1, &ecp, 10);
+
          if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
+            ap->a_name = cp;
             ap->a_msgno = msgno;
             ap->a_content_type = ap->a_content_disposition =
                   ap->a_content_id = NULL;
@@ -167,7 +174,8 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
          }
       }
 
-      if ((cp = file_expand(ap->a_name)) != NULL && !access(cp, R_OK)) {
+      if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NSHELL)) != NULL &&
+            !access(cp, R_OK)) {
          ap->a_name = cp;
          break;
       }
@@ -349,7 +357,7 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
 
-   if ((file = file_expand(file)) == NULL)
+   if ((file = fexpand(file, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
       goto jleave;
    if (access(file, R_OK) != 0)
       goto jleave;
@@ -380,7 +388,8 @@ append_attachments(struct attachment **aphead, char *names)
    NYD_ENTER;
 
    while ((cp = n_strsep(&names, ',', 1)) != NULL) {
-      if ((xaph = add_attachment(*aphead, cp, &nap)) != NULL) {
+      xaph = add_attachment(*aphead, fexpand_nshell_quote(cp), &nap);
+      if (xaph != NULL) {
          *aphead = xaph;
          if (options & OPT_INTERACTIVE)
             printf(_("~@: added attachment \"%s\"\n"), nap->a_name);
@@ -396,6 +405,8 @@ edit_attachments(struct attachment **aphead)
    struct attachment *ap, *fap, *bap;
    ui32_t attno = 1;
    NYD_ENTER;
+
+   printf(_("# Be aware that \"\\\" must be escaped: \"\\\\\", \"\\$HOME\"\n"));
 
    /* Modify already present ones? */
    for (ap = *aphead; ap != NULL; ap = fap) {
@@ -413,7 +424,7 @@ edit_attachments(struct attachment **aphead)
          fap->a_blink = bap;
       /*else*//* TODO until we have signal manager (see TODO) */
       if (__atticonv_sig != 0)
-         kill(0, SIGINT);
+         n_raise(SIGINT);
       if (fap == NULL)
          goto jleave;
    }
@@ -433,7 +444,7 @@ edit_attachments(struct attachment **aphead)
       ++attno;
    }
    if (__atticonv_sig != 0) /* TODO until we have signal manager (see TODO) */
-      kill(0, SIGINT);
+      n_raise(SIGINT);
 jleave:
    NYD_LEAVE;
 }

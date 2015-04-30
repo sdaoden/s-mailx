@@ -2,7 +2,7 @@
  *@ OpenSSL functions. TODO this needs an overhaul -- there _are_ stack leaks!?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE openssl
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(openssl)
+EMPTY_FILE()
 #ifdef HAVE_OPENSSL
 #include <sys/socket.h>
 
@@ -51,15 +53,20 @@ EMPTY_FILE(openssl)
 #include <netinet/in.h>
 
 #include <openssl/crypto.h>
-#include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
+#include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
+#endif
+
+#ifdef HAVE_OPENSSL_CONFIG
+# include <openssl/conf.h>
 #endif
 
 /*
@@ -67,45 +74,102 @@ EMPTY_FILE(openssl)
  * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  */
 
-#ifdef HAVE_OPENSSL_STACK_OF
-# define _STACKOF(X)    STACK_OF(X)
-#else
-# define _STACKOF(X)    /*X*/STACK
+/* Update manual on changes (for all those)! */
+#define SSL_DISABLED_PROTOCOLS "-SSLv2"
+
+#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+# ifndef SSL_OP_NO_SSLv2
+#  define SSL_OP_NO_SSLv2     0
+# endif
+# ifndef SSL_OP_NO_SSLv3
+#  define SSL_OP_NO_SSLv3     0
+# endif
+# ifndef SSL_OP_NO_TLSv1
+#  define SSL_OP_NO_TLSv1     0
+# endif
+# ifndef SSL_OP_NO_TLSv1_1
+#  define SSL_OP_NO_TLSv1_1   0
+# endif
+# ifndef SSL_OP_NO_TLSv1_2
+#  define SSL_OP_NO_TLSv1_2   0
+# endif
+
+  /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
+# ifndef SSL_OP_NO_SSL_MASK
+#  define SSL_OP_NO_SSL_MASK  \
+   (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
+   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2)
+# endif
 #endif
 
-struct ssl_method {
-   char const           sm_name[8];
-   SSL_METHOD const *   (*sm_fun)(void);
+#ifdef HAVE_OPENSSL_STACK_OF
+# define _STACKOF(X)          STACK_OF(X)
+#else
+# define _STACKOF(X)          /*X*/STACK
+#endif
+
+enum ssl_state {
+   SS_INIT           = 1<<0,
+   SS_RAND_INIT      = 1<<1,
+   SS_EXIT_HDL       = 1<<2,
+   SS_CONF_LOAD      = 1<<3,
+   SS_ALGO_LOAD      = 1<<4,
+
+   SS_VERIFY_ERROR   = 1<<7
 };
 
+/* We go for the OpenSSL v1.0.2+ SSL_CONF_CTX if available even if that means
+ * that the library does internally what we'd otherwise do ourselfs.
+ * Eventually we can drop the direct use cases */
+enum ssl_conf_type {
+   SCT_CERTIFICATE,
+   SCT_CIPHER_STRING,
+   SCT_PRIVATE_KEY,
+   SCT_OPTIONS,
+   SCT_PROTOCOL
+};
+
+struct ssl_method { /* TODO obsolete */
+   char const  sm_name[8];
+   char const  sm_map[16];
+};
+
+#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+struct ssl_protocol {
+   char const  *sp_name;
+   sl_i        sp_flag;
+};
+#endif
+
 struct smime_cipher {
-   char const           sc_name[8];
-   EVP_CIPHER const *   (*sc_fun)(void);
+   char const  sc_name[8];
+   EVP_CIPHER const * (*sc_fun)(void);
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
-static struct ssl_method const   _ssl_methods[] = {
-   {"auto", &SSLv23_client_method},
-#define _SSL_DEFAULT_METHOD      SSLv23_client_method
-#ifndef OPENSSL_NO_TLS1
-# ifdef TLS1_2_VERSION
-   {"tls1.2", &TLSv1_2_client_method},
-# endif
-# ifdef TLS1_1_VERSION
-   {"tls1.1", &TLSv1_1_client_method},
-# endif
-   {"tls1", &TLSv1_client_method},
-#endif
-#ifndef OPENSSL_NO_SSL3
-   {"ssl3", &SSLv3_client_method},
-#endif
-#ifndef OPENSSL_NO_SSL2
-   {"ssl2", &SSLv2_client_method}
-#endif
+
+static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
+   {"auto",    "ALL,-SSLv2"},
+   {"ssl3",    "-ALL,SSLv3"},
+   {"tls1",    "-ALL,TLSv1"},
+   {"tls1.1",  "-ALL,TLSv1.1"},
+   {"tls1.2",  "-ALL,TLSv1.2"}
 };
 
-/* Supported S/MIME cipher algorithms: update manual on change! */
-static struct smime_cipher const _smime_ciphers[] = {
+/* Update manual on change! */
+#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+static struct ssl_protocol const _ssl_protocols[] = {
+   {"ALL",     SSL_OP_NO_SSL_MASK},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1},
+   {"TLSv1",   SSL_OP_NO_TLSv1},
+   {"SSLv3",   SSL_OP_NO_SSLv3},
+   {"SSLv2",   0}
+};
+#endif
+
+/* Supported S/MIME cipher algorithms */
+static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 #ifndef OPENSSL_NO_AES
 # define _SMIME_DEFAULT_CIPHER   EVP_aes_128_cbc   /* According to RFC 5751 */
    {"aes-128", &EVP_aes_128_cbc},
@@ -116,12 +180,8 @@ static struct smime_cipher const _smime_ciphers[] = {
 # ifndef _SMIME_DEFAULT_CIPHER
 #  define _SMIME_DEFAULT_CIPHER  EVP_des_ede3_cbc
 # endif
-   {"des3", &EVP_des_ede3_cbc},
-   {"des", &EVP_des_cbc},
-#endif
-#ifndef OPENSSL_NO_RC2
-   {"rc2-40", &EVP_rc2_40_cbc},
-   {"rc2-64", &EVP_rc2_64_cbc},
+   {"des3",    &EVP_des_ede3_cbc},
+   {"des",     &EVP_des_cbc},
 #endif
 };
 #ifndef _SMIME_DEFAULT_CIPHER
@@ -129,20 +189,32 @@ static struct smime_cipher const _smime_ciphers[] = {
 # error cipher algorithms that are required to support S/MIME
 #endif
 
-static int        _ssl_isinit;
-static int        _ssl_rand_isinit;
-static int        _ssl_msgno;
-static int        _ssl_verify_error;
+static enum ssl_state   _ssl_state;
+static size_t           _ssl_msgno;
 
 static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
+static void       _ssl_free(void *vp);
+#endif
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
+static void       _ssl_atexit(void);
+#endif
+
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
-static const SSL_METHOD *ssl_select_method(char const *uhp);
-static void       ssl_load_verifications(struct sock *sp);
-static void       ssl_certificate(struct sock *sp, char const *uhp);
-static enum okay  ssl_check_host(char const *server, struct sock *sp);
+
+/* SSL_CTX configuration */
+static void *     _ssl_conf_setup(SSL_CTX *ctxp);
+static bool_t     _ssl_conf(void *confp, enum ssl_conf_type sct,
+                     char const *value);
+static bool_t     _ssl_conf_finish(void *confp, bool_t error);
+
+static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
+
+static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
+
 static int        smime_verify(struct message *m, int n, _STACKOF(X509) *chain,
                         X509_STORE *store);
 static EVP_CIPHER const * _smime_cipher(char const *name);
@@ -168,7 +240,7 @@ _ssl_rand_init(void)
 #ifdef HAVE_OPENSSL_RAND_EGD
    if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
-         fprintf(stderr, _("entropy daemon at \"%s\" not available\n"),
+         fprintf(stderr, _("Entropy daemon at \"%s\" not available\n"),
             cp);
       else
          state = 1;
@@ -176,14 +248,14 @@ _ssl_rand_init(void)
 #endif
    if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
       if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
-         fprintf(stderr, _("entropy file at \"%s\" not available\n"), cp);
+         fprintf(stderr, _("Entropy file at \"%s\" not available\n"), cp);
       else {
          struct stat st;
 
          if (!stat(cp, &st) && S_ISREG(st.st_mode) && !access(cp, W_OK)) {
             if (RAND_write_file(cp) == -1) {
                fprintf(stderr, _(
-                  "writing entropy data to \"%s\" failed\n"), cp);
+                  "Writing entropy data to \"%s\" failed\n"), cp);
             }
          }
          state = 1;
@@ -196,15 +268,77 @@ _ssl_rand_init(void)
 static void
 _ssl_init(void)
 {
+#ifdef HAVE_OPENSSL_CONFIG
+   char const *cp;
+#endif
    NYD_ENTER;
-   if (_ssl_isinit == 0) {
+
+   if (!(_ssl_state & SS_INIT)) {
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS
+# ifdef HAVE_DEBUG
+      CRYPTO_set_mem_ex_functions(&smalloc, &srealloc, &_ssl_free);
+# else
+      CRYPTO_set_mem_functions(&smalloc, &srealloc, &free);
+# endif
+#endif
       SSL_library_init();
-      _ssl_isinit = 1;
+      SSL_load_error_strings();
+      _ssl_state |= SS_INIT;
    }
-   if (_ssl_rand_isinit == 0)
-      _ssl_rand_isinit = _ssl_rand_init();
+
+   /* Load openssl.cnf or whatever was given in *ssl-config-file* */
+#ifdef HAVE_OPENSSL_CONFIG
+   if (!(_ssl_state & SS_CONF_LOAD) &&
+         (cp = ok_vlook(ssl_config_file)) != NULL) {
+      ul_i flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
+
+      if (*cp == '\0') {
+         cp = NULL;
+         flags = 0;
+      }
+      if (CONF_modules_load_file(cp, uagent, flags) == 1) {
+         _ssl_state |= SS_CONF_LOAD;
+         if (!(_ssl_state & SS_EXIT_HDL)) {
+            _ssl_state |= SS_EXIT_HDL;
+            atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
+         }
+      } else
+         ssl_gen_err(_("Ignoring CONF_modules_load_file() load error"));
+   }
+#endif
+
+   if (!(_ssl_state & SS_RAND_INIT) && _ssl_rand_init())
+      _ssl_state |= SS_RAND_INIT;
    NYD_LEAVE;
 }
+
+#if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
+static void
+_ssl_free(void *vp)
+{
+   NYD_ENTER;
+   if (vp != NULL)
+      free(vp);
+   NYD_LEAVE;
+}
+#endif
+
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
+static void
+_ssl_atexit(void)
+{
+   NYD_ENTER;
+# ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+   if (_ssl_state & SS_ALGO_LOAD)
+      EVP_cleanup();
+# endif
+# ifdef HAVE_OPENSSL_CONFIG
+   if (_ssl_state & SS_CONF_LOAD)
+      CONF_modules_free();
+# endif
+   NYD_LEAVE;
+}
+#endif
 
 static bool_t
 _ssl_parse_asn1_time(ASN1_TIME *atp, char *bdat, size_t blen)
@@ -241,7 +375,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       goto jleave;
 
    if (_ssl_msgno != 0) {
-      fprintf(stderr, "Message %d:\n", _ssl_msgno);
+      fprintf(stderr, "Message %" PRIuZ ":\n", _ssl_msgno);
       _ssl_msgno = 0;
    }
    fprintf(stderr, _(" Certificate depth %d %s\n"),
@@ -262,7 +396,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       int err = X509_STORE_CTX_get_error(store);
       fprintf(stderr, _("  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
-      _ssl_verify_error = 1;
+      _ssl_state |= SS_VERIFY_ERROR;
    }
 
    X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
@@ -275,141 +409,260 @@ jleave:
    return rv;
 }
 
-static SSL_METHOD const *
-ssl_select_method(char const *uhp)
+#ifdef HAVE_OPENSSL_CONF_CTX
+static void *
+_ssl_conf_setup(SSL_CTX *ctxp)
 {
-   SSL_METHOD const *method;
-   char *cp;
-   size_t i;
+   SSL_CONF_CTX *sccp;
    NYD_ENTER;
 
-   if ((cp = ssl_method_string(uhp)) != NULL) {
-      method = NULL;
-      for (i = 0; i < NELEM(_ssl_methods); ++i)
-         if (!strcmp(_ssl_methods[i].sm_name, cp)) {
-            method = (*_ssl_methods[i].sm_fun)();
-            goto jleave;
-         }
-      fprintf(stderr, _("Invalid SSL method \"%s\"\n"), cp);
-   }
-   method = _SSL_DEFAULT_METHOD();
-jleave:
+   if ((sccp = SSL_CONF_CTX_new()) != NULL) {
+      SSL_CONF_CTX_set_flags(sccp,
+         SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
+         SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
+
+      SSL_CONF_CTX_set_ssl_ctx(sccp, ctxp);
+   } else
+      ssl_gen_err(_("SSL_CONF_CTX_new() failed"));
+
    NYD_LEAVE;
-   return method;
+   return sccp;
 }
 
-static void
-ssl_load_verifications(struct sock *sp)
+static bool_t
+_ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
+{
+   int rv;
+   char const *cmsg;
+   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   NYD_ENTER;
+
+   switch (sct) {
+   case SCT_CERTIFICATE:
+      cmsg = "ssl-cert";
+      rv = SSL_CONF_cmd(sccp, "Certificate", value);
+      break;
+   case SCT_CIPHER_STRING:
+      cmsg = "ssl-cipher-list";
+      rv = SSL_CONF_cmd(sccp, "CipherString", value);
+      break;
+   case SCT_PRIVATE_KEY:
+      cmsg = "ssl-key";
+      rv = SSL_CONF_cmd(sccp, "PrivateKey", value);
+      break;
+   default:
+   case SCT_OPTIONS:
+      cmsg = "ssl-options";
+      rv = SSL_CONF_cmd(sccp, "Options", "Bugs");
+      break;
+   case SCT_PROTOCOL:
+      cmsg = "ssl-protocol";
+      rv = SSL_CONF_cmd(sccp, "Protocol", value);
+      break;
+   }
+
+   if (rv == 2)
+      rv = 0;
+   else {
+      if (rv == 0)
+         ssl_gen_err(_("SSL_CONF_CTX_cmd() failed for *%s*"), cmsg);
+      else
+         fprintf(stderr,
+            _("%s: *%s* implementation error, please report this\n"),
+            uagent, cmsg);
+      rv = 1;
+   }
+
+   NYD_LEAVE;
+   return (rv == 0);
+}
+
+static bool_t
+_ssl_conf_finish(void *confp, bool_t error)
+{
+   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   bool_t rv;
+   NYD_ENTER;
+
+   if (!(rv = error))
+      rv = (SSL_CONF_CTX_finish(sccp) != 0);
+
+   SSL_CONF_CTX_free(sccp);
+
+   NYD_LEAVE;
+   return rv;
+}
+
+#else /* HAVE_OPENSSL_CONF_CTX */
+static void *
+_ssl_conf_setup(SSL_CTX* ctxp)
+{
+   return ctxp;
+}
+
+static bool_t
+_ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
+{
+   SSL_CTX *ctxp = (SSL_CTX*)confp;
+   NYD_ENTER;
+
+   switch (sct) {
+   case SCT_CERTIFICATE:
+      if (SSL_CTX_use_certificate_chain_file(ctxp, value) != 1) {
+         ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_CIPHER_STRING:
+      if (SSL_CTX_set_cipher_list(ctxp, value) != 1) {
+         ssl_gen_err(_("Invalid cipher string: \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_PRIVATE_KEY:
+      if (SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1) {
+         ssl_gen_err(_("Can't load private key from file \"%s\"\n"), value);
+         confp = NULL;
+      }
+      break;
+   case SCT_OPTIONS:
+      /* "Options"="Bugs" TODO *ssl-options* */
+      SSL_CTX_set_options(ctxp, SSL_OP_ALL);
+      break;
+   case SCT_PROTOCOL: {
+      char *iolist, *cp, addin;
+      size_t i;
+      sl_i opts = 0;
+
+      confp = NULL;
+      for (iolist = cp = savestr(value);
+            (cp = n_strsep(&iolist, ',', FAL0)) != NULL;) {
+         if (*cp == '\0') {
+            fprintf(stderr,
+               _("*ssl-protocol*: empty arguments are not supported\n"));
+            goto jleave;
+         }
+
+         addin = TRU1;
+         switch (cp[0]) {
+         case '-': addin = FAL0; /* FALLTHRU */
+         case '+': ++cp; /* FALLTHRU */
+         default : break;
+         }
+
+         for (i = 0;;) {
+            if (!asccasecmp(cp, _ssl_protocols[i].sp_name)) {
+               /* We need to inverse the meaning of the _NO_s */
+               if (!addin)
+                  opts |= _ssl_protocols[i].sp_flag;
+               else
+                  opts &= ~_ssl_protocols[i].sp_flag;
+               break;
+            }
+            if (++i < NELEM(_ssl_protocols))
+               continue;
+            fprintf(stderr, _("*ssl-protocol*: unsupported value \"%s\"\n"),
+               cp);
+            goto jleave;
+         }
+      }
+      confp = ctxp;
+      SSL_CTX_set_options(ctxp, opts);
+      break;
+   }
+   }
+jleave:
+   NYD_LEAVE;
+   return (confp != NULL);
+}
+
+static bool_t
+_ssl_conf_finish(void *confp, bool_t error)
+{
+   UNUSED(confp);
+   UNUSED(error);
+   return TRU1;
+}
+#endif /* !HAVE_OPENSSL_CONF_CTX */
+
+static bool_t
+_ssl_load_verifications(SSL_CTX *ctxp)
 {
    char *ca_dir, *ca_file;
    X509_STORE *store;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
-   if (ssl_verify_level == SSL_VERIFY_IGNORE)
+   if (ssl_verify_level == SSL_VERIFY_IGNORE) {
+      rv = TRU1;
       goto jleave;
+   }
 
    if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
       ca_dir = file_expand(ca_dir);
    if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
       ca_file = file_expand(ca_file);
 
-   if (ca_dir != NULL || ca_file != NULL) {
-      if (SSL_CTX_load_verify_locations(sp->s_ctx, ca_file, ca_dir) != 1) {
-         fprintf(stderr, _("Error loading "));
-         if (ca_dir) {
-            fputs(ca_dir, stderr);
-            if (ca_file)
-               fputs(_(" or "), stderr);
-         }
-         if (ca_file)
-            fputs(ca_file, stderr);
-         fputs("\n", stderr);
-      }
+   if ((ca_dir != NULL || ca_file != NULL) &&
+         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1) {
+      char const *m1, *m2, *m3;
+
+      if (ca_dir != NULL) {
+         m1 = ca_dir;
+         m2 = (ca_file != NULL) ? _(" or ") : "";
+      } else
+         m1 = m2 = "";
+      m3 = (ca_file != NULL) ? ca_file : "";
+      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+      goto jleave;
    }
 
-   if (!ok_blook(ssl_no_default_ca)) {
-      if (SSL_CTX_set_default_verify_paths(sp->s_ctx) != 1)
-         fprintf(stderr, _("Error loading default CA locations\n"));
+   if (!ok_blook(ssl_no_default_ca) &&
+         SSL_CTX_set_default_verify_paths(ctxp) != 1) {
+      ssl_gen_err(_("Error loading default CA locations\n"));
+      goto jleave;
    }
 
-   _ssl_verify_error = 0;
+   _ssl_state &= ~SS_VERIFY_ERROR;
    _ssl_msgno = 0;
-   SSL_CTX_set_verify(sp->s_ctx, SSL_VERIFY_PEER, &_ssl_verify_cb);
-   store = SSL_CTX_get_cert_store(sp->s_ctx);
+   SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
+   store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
+
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
-}
-
-static void
-ssl_certificate(struct sock *sp, char const *uhp)
-{
-   size_t i;
-   char *certvar, *keyvar, *cert, *key, *x;
-   NYD_ENTER;
-
-   i = strlen(uhp);
-   certvar = ac_alloc(i + 9 +1);
-   memcpy(certvar, "ssl-cert-", 9);
-   memcpy(certvar + 9, uhp, i +1);
-
-   if ((cert = vok_vlook(certvar)) != NULL ||
-         (cert = ok_vlook(ssl_cert)) != NULL) {
-      x = cert;
-      if ((cert = file_expand(cert)) == NULL) {
-         cert = x;
-         goto jbcert;
-      } else if (SSL_CTX_use_certificate_chain_file(sp->s_ctx, cert) == 1) {
-         keyvar = ac_alloc(strlen(uhp) + 8 +1);
-         memcpy(keyvar, "ssl-key-", 8);
-         memcpy(keyvar + 8, uhp, i +1);
-         if ((key = vok_vlook(keyvar)) == NULL &&
-               (key = ok_vlook(ssl_key)) == NULL)
-            key = cert;
-         else if ((x = key, key = file_expand(key)) == NULL) {
-            key = x;
-            goto jbkey;
-         }
-         if (SSL_CTX_use_PrivateKey_file(sp->s_ctx, key, SSL_FILETYPE_PEM) != 1)
-jbkey:
-            fprintf(stderr, _("cannot load private key from file %s\n"),
-               key);
-         ac_free(keyvar);
-      } else
-jbcert:
-         fprintf(stderr, _("cannot load certificate from file %s\n"),
-            cert);
-   }
-   ac_free(certvar);
-   NYD_LEAVE;
+   return rv;
 }
 
 static enum okay
-ssl_check_host(char const *server, struct sock *sp)
+ssl_check_host(struct sock *sp, struct url const *urlp)
 {
    char data[256];
    X509 *cert;
-   X509_NAME *subj;
    _STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
-   int i;
+   X509_NAME *subj;
    enum okay rv = STOP;
    NYD_ENTER;
 
    if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-      fprintf(stderr, _("no certificate from \"%s\"\n"), server);
+      fprintf(stderr, _("No certificate from \"%s\"\n"), urlp->url_h_p.s);
       goto jleave;
    }
 
    gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
    if (gens != NULL) {
+      int i;
+
       for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
             if (options & OPT_VERB)
-               fprintf(stderr, "Comparing DNS: <%s>; should <%s>\n",
-                  server, (char*)gen->d.ia5->data);
-            rv = rfc2595_hostname_match(server, (char*)gen->d.ia5->data);
+               fprintf(stderr, "Comparing subject_alt_name: need<%s> is<%s>\n",
+                  urlp->url_host.s, (char*)gen->d.ia5->data);
+            rv = rfc2595_hostname_match(urlp->url_host.s,
+                  (char*)gen->d.ia5->data);
             if (rv == OKAY)
                goto jdone;
          }
@@ -421,10 +674,11 @@ ssl_check_host(char const *server, struct sock *sp)
             > 0) {
       data[sizeof data - 1] = '\0';
       if (options & OPT_VERB)
-         fprintf(stderr, "Comparing commonName: <%s>; should <%s>\n",
-            server, data);
-      rv = rfc2595_hostname_match(server, data);
+         fprintf(stderr, "Comparing commonName: need<%s> is<%s>\n",
+            urlp->url_host.s, data);
+      rv = rfc2595_hostname_match(urlp->url_host.s, data);
    }
+
 jdone:
    X509_free(cert);
 jleave:
@@ -452,8 +706,8 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
    rv = 1;
    fp = NULL;
    fb = NULL;
-   _ssl_verify_error = 0;
-   _ssl_msgno = n;
+   _ssl_state &= ~SS_VERIFY_ERROR;
+   _ssl_msgno = (size_t)n;
 
    for (;;) {
       sender = getsender(m);
@@ -521,7 +775,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             if (gen->type == GEN_EMAIL) {
                if (options & OPT_VERB)
                   fprintf(stderr,
-                     "Comparing subject_alt_name: <%s>; should <%s>\n",
+                     "Comparing subject_alt_name: need<%s> is<%s>\n",
                      sender, (char*)gen->d.ia5->data);
                if (!asccasecmp((char*)gen->d.ia5->data, sender))
                   goto jfound;
@@ -534,7 +788,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
          if (options & OPT_VERB)
-            fprintf(stderr, "Comparing emailAddress: <%s>; should <%s>\n",
+            fprintf(stderr, "Comparing emailAddress: need<%s> is<%s>\n",
                sender, data);
          if (!asccasecmp(data, sender))
             goto jfound;
@@ -544,9 +798,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       n, sender);
    goto jleave;
 jfound:
-   if (_ssl_verify_error == 0)
+   rv = ((_ssl_state & SS_VERIFY_ERROR) != 0);
+   if (!rv)
       printf(_("Message %d was verified successfully.\n"), n);
-   rv = _ssl_verify_error;
 jleave:
    if (fb != NULL)
       BIO_free(fb);
@@ -560,25 +814,44 @@ static EVP_CIPHER const *
 _smime_cipher(char const *name)
 {
    EVP_CIPHER const *cipher;
-   char *vn, *cp;
+   char *vn;
+   char const *cp;
    size_t i;
    NYD_ENTER;
 
-   vn = ac_alloc(i = strlen(name) + 13 +1);
+   vn = ac_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = vok_vlook(vn);
    ac_free(vn);
 
-   if (cp != NULL) {
-      cipher = NULL;
-      for (i = 0; i < NELEM(_smime_ciphers); ++i)
-         if (!strcmp(_smime_ciphers[i].sc_name, cp)) {
-            cipher = (*_smime_ciphers[i].sc_fun)();
-            goto jleave;
-         }
-      fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
-   } else
+   if (cp == NULL) {
       cipher = _SMIME_DEFAULT_CIPHER();
+      goto jleave;
+   }
+   cipher = NULL;
+
+   for (i = 0; i < NELEM(_smime_ciphers); ++i)
+      if (!asccasecmp(_smime_ciphers[i].sc_name, cp)) {
+         cipher = (*_smime_ciphers[i].sc_fun)();
+         goto jleave;
+      }
+
+   /* Not a builtin algorithm, but we may have dynamic support for more */
+#ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+   if (!(_ssl_state & SS_ALGO_LOAD)) {
+      _ssl_state |= SS_ALGO_LOAD;
+      OpenSSL_add_all_algorithms();
+      if (!(_ssl_state & SS_EXIT_HDL)) {
+         _ssl_state |= SS_EXIT_HDL;
+         atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
+      }
+   }
+
+   if ((cipher = EVP_get_cipherbyname(cp)) != NULL)
+      goto jleave;
+#endif
+
+   fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
 jleave:
    NYD_LEAVE;
    return cipher;
@@ -648,12 +921,10 @@ jleave:
    NYD_LEAVE;
    return fp;
 jerr:
-   if (dowarn) {
-      fprintf(stderr, _("Could not find a certificate for %s"), xname);
-      if (xname2)
-         fprintf(stderr, _("or %s"), xname2);
-      fputc('\n', stderr);
-   }
+   if (dowarn)
+      fprintf(stderr, _("Could not find a certificate for %s%s%s\n"),
+         xname, (xname2 != NULL ? _("or ") : ""),
+         (xname2 != NULL ? xname2 : ""));
    goto jleave;
 }
 
@@ -710,7 +981,7 @@ _smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
    }
 
    if (sk_X509_num(*chain) == 0) {
-      fprintf(stderr, _("smime-sign-include-certs defined but empty\n"));
+      fprintf(stderr, _("*smime-sign-include-certs* defined but empty\n"));
       goto jerr;
    }
 jleave:
@@ -731,7 +1002,7 @@ load_crl1(X509_STORE *store, char const *name)
    NYD_ENTER;
 
    if (options & OPT_VERB)
-      printf("Loading CRL from \"%s\".\n", name);
+      fprintf(stderr, "Loading CRL from \"%s\".\n", name);
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(_("Error creating X509 lookup object"));
       goto jleave;
@@ -820,57 +1091,136 @@ jleave:
 }
 
 FL enum okay
-ssl_open(char const *server, struct sock *sp, char const *uhp)
+ssl_open(struct url const *urlp, struct sock *sp)
 {
-   char *cp;
-   long opts;
+   SSL_CTX *ctxp;
+   void *confp;
+   char const *cp, *cp_base;
+   size_t i;
    enum okay rv = STOP;
    NYD_ENTER;
 
    _ssl_init();
-   ssl_set_verify_level(uhp);
-   if ((sp->s_ctx = SSL_CTX_new(UNCONST(ssl_select_method(uhp)))) == NULL) {
+
+   ssl_set_verify_level(urlp);
+
+   if ((ctxp = SSL_CTX_new(SSLv23_client_method())) == NULL) {
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
 
+   /* Available with OpenSSL 0.9.6 or later */
 #ifdef SSL_MODE_AUTO_RETRY
-   /* available with OpenSSL 0.9.6 or later */
-   SSL_CTX_set_mode(sp->s_ctx, SSL_MODE_AUTO_RETRY);
-#endif /* SSL_MODE_AUTO_RETRY */
-   opts = SSL_OP_ALL;
-   if (!ok_blook(ssl_v2_allow))
-      opts |= SSL_OP_NO_SSLv2;
-   SSL_CTX_set_options(sp->s_ctx, opts);
-   ssl_load_verifications(sp);
-   ssl_certificate(sp, uhp);
-   if ((cp = ok_vlook(ssl_cipher_list)) != NULL) {
-      if (SSL_CTX_set_cipher_list(sp->s_ctx, cp) != 1)
-         fprintf(stderr, _("Invalid cipher(s): %s\n"), cp);
-   }
+   SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
+#endif
 
-   if ((sp->s_ssl = SSL_new(sp->s_ctx)) == NULL) {
-      ssl_gen_err(_("SSL_new() failed"));
-      goto jleave;
-   }
-   SSL_set_fd(sp->s_ssl, sp->s_fd);
-   if (SSL_connect(sp->s_ssl) < 0) {
-      ssl_gen_err(_("could not initiate SSL/TLS connection"));
-      goto jleave;
-   }
-   if (ssl_verify_level != SSL_VERIFY_IGNORE) {
-      if (ssl_check_host(server, sp) != OKAY) {
-         fprintf(stderr, _("host certificate does not match \"%s\"\n"),
-            server);
-         if (ssl_verify_decide() != OKAY)
-            goto jleave;
+   if ((confp = _ssl_conf_setup(ctxp)) == NULL)
+      goto jerr1;
+
+   /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
+   if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
+      OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-method*: \"%s\"\n", cp);
+      for (i = 0;;) {
+         if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
+            cp = _ssl_methods[i].sm_map;
+            break;
+         }
+         if (++i == NELEM(_ssl_methods)) {
+            fprintf(stderr, _("Unsupported TLS/SSL method \"%s\"\n"), cp);
+            goto jerr1;
+         }
       }
    }
+   /* *ssl-protocol* */
+   if ((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-protocol*: \"%s\"\n", cp_base);
+      cp = cp_base;
+   }
+   cp = (cp != NULL ? savecatsep(cp, ',', SSL_DISABLED_PROTOCOLS)
+         : SSL_DISABLED_PROTOCOLS);
+   if (!_ssl_conf(confp, SCT_PROTOCOL, cp))
+      goto jerr1;
+
+   /* *ssl-cert* */
+   if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
+      if (options & OPT_VERB)
+         fprintf(stderr, "*ssl-cert* \"%s\"", cp);
+      if ((cp_base = file_expand(cp)) == NULL) {
+         fprintf(stderr, _("*ssl-cert* value expansion failed: \"%s\"\n"), cp);
+         goto jerr1;
+      }
+      cp = cp_base;
+      if (!_ssl_conf(confp, SCT_CERTIFICATE, cp))
+         goto jerr1;
+
+      /* *ssl-key* */
+      if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
+         if (options & OPT_VERB)
+            fprintf(stderr, "*ssl-key* \"%s\"", cp_base);
+         if ((cp = file_expand(cp_base)) == NULL) {
+            fprintf(stderr, _("*ssl-key* value expansion failed: \"%s\"\n"),
+               cp_base);
+            goto jerr1;
+         }
+      }
+      if (!_ssl_conf(confp, SCT_PRIVATE_KEY, cp))
+         goto jerr1;
+   }
+
+   if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
+         !_ssl_conf(confp, SCT_CIPHER_STRING, cp))
+      goto jerr1;
+
+   if (!_ssl_load_verifications(ctxp))
+      goto jerr1;
+
+   if (!_ssl_conf(confp, SCT_OPTIONS, NULL)) /* TODO *ssl-options* */
+      goto jerr1;
+
+   /* Done with context setup, create our new per-connection structure */
+   if (!_ssl_conf_finish(confp, FAL0))
+      goto jerr1;
+
+   if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
+      ssl_gen_err(_("SSL_new() failed"));
+      goto jerr1;
+   }
+
+   SSL_set_fd(sp->s_ssl, sp->s_fd);
+
+   if (SSL_connect(sp->s_ssl) < 0) {
+      ssl_gen_err(_("could not initiate SSL/TLS connection"));
+      goto jerr2;
+   }
+
+   if (ssl_verify_level != SSL_VERIFY_IGNORE) {
+      if (ssl_check_host(sp, urlp) != OKAY) {
+         fprintf(stderr, _("Host certificate does not match \"%s\"\n"),
+            urlp->url_h_p.s);
+         if (ssl_verify_decide() != OKAY)
+            goto jerr2;
+      }
+   }
+
+   /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
+    * and free it right now -- it is reference counted by sp->s_ssl.. */
+   SSL_CTX_free(ctxp);
    sp->s_use_ssl = 1;
    rv = OKAY;
 jleave:
    NYD_LEAVE;
    return rv;
+jerr2:
+   SSL_free(sp->s_ssl);
+   sp->s_ssl = NULL;
+jerr1:
+   if (confp != NULL)
+      _ssl_conf_finish(confp, TRU1);
+   SSL_CTX_free(ctxp);
+   goto jleave;
 }
 
 FL void
@@ -882,7 +1232,7 @@ ssl_gen_err(char const *fmt, ...)
    va_start(ap, fmt);
    vfprintf(stderr, fmt, ap);
    va_end(ap);
-   SSL_load_error_strings();
+
    fprintf(stderr, ": %s\n", ERR_error_string(ERR_get_error(), NULL));
    NYD_LEAVE;
 }
@@ -953,7 +1303,7 @@ smime_sign(FILE *ip, char const *addr)
    _ssl_init();
 
    if (addr == NULL) {
-      fprintf(stderr, _("No \"from\" address for signing specified\n"));
+      fprintf(stderr, _("No *from* address for signing specified\n"));
       goto jleave;
    }
    if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
@@ -983,10 +1333,8 @@ smime_sign(FILE *ip, char const *addr)
    }
 
    rewind(ip);
-   if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
-      bail = TRU1;
+   if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
       goto jerr1;
-   }
 
    sb = NULL;
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
@@ -1247,7 +1595,7 @@ smime_certsave(struct message *m, int n, FILE *op)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   _ssl_msgno = n;
+   _ssl_msgno = (size_t)n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);

@@ -2,7 +2,7 @@
  *@ More user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,12 +36,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE cmd2
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
-
-#include <sys/wait.h>
 
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
@@ -99,23 +99,15 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 
    if (!f) {
       *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
-         if (inhook) {
-            success = TRU1;
-            goto jleave;
-         }
-         printf(_("No messages to %s.\n"), cmd);
-         goto jleave;
-      }
       msgvec[1] = 0;
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_HOOK_MASK) {
          success = TRU1;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      printf(_("No messages to %s.\n"), cmd);
       goto jleave;
    }
 
@@ -212,12 +204,24 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 #ifdef HAVE_IMAP
          if (imap_copy(mp, *ip, file) == STOP)
 #endif
+         {
+#ifndef HAVE_IMAP
+# ifdef ENOSYS
+            errno = ENOSYS;
+# elif defined EOPNOTSUPP
+            errno = EOPNOTSUPP;
+# else
+            errno = EINVAL;
+# endif
+#endif
+            success = FAL0;
             goto jferr;
+         }
 #ifdef HAVE_IMAP
          mstats[0] = mp->m_xsize;
 #endif
       } else if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
-         perror(file);
+         success = FAL0;
          goto jferr;
       }
       srelax();
@@ -233,15 +237,18 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       tstats[0] += mstats[0];
       tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
+   srelax_rele();
+
    fflush(obuf);
    if (ferror(obuf)) {
-      perror(file);
 jferr:
+      perror(file);
+      if (!success)
+         srelax_rele();
       success = FAL0;
    }
    if (Fclose(obuf) != 0)
       success = FAL0;
-   srelax_rele();
 
    if (success) {
       if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
@@ -500,7 +507,7 @@ c_next(void *v)
 
    /* If this is the first command, select message 1.  Note that this must
     * exist for us to get here at all */
-   if (!sawcom) {
+   if (!(pstate & PS_SAW_COMMAND)) {
       if (msgCount == 0)
          goto jateof;
       goto jhitit;
@@ -508,12 +515,13 @@ c_next(void *v)
 
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
-      for (mp = dot + did_print_dot; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = dot + !!(pstate & PS_DID_PRINT_DOT);
+            PTRCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
       mp = dot;
-      if (did_print_dot)
+      if (pstate & PS_DID_PRINT_DOT)
          mp = next_in_thread(mp);
       while (mp && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);

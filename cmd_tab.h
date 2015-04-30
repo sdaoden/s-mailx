@@ -2,7 +2,7 @@
  *@ This header is included by ./lex.c and defines the command array content.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -55,6 +55,7 @@
 #define T            ARG_T
 #define V            ARG_V
 #define W            ARG_W
+#define O            ARG_O
 
 #ifdef HAVE_DOCSTRINGS
 # define DS(S)       , S
@@ -65,8 +66,8 @@
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
-   { "alias", &c_group, (M | RAWLIST), 0, 1000
-     DS(N_("Show all or the specified alias(es), or (re)define one")) },
+   { "alias", &c_alias, (M | RAWLIST), 0, 1000
+     DS(N_("Show all or the specified <alias>(es), or (re)define one")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type each message of <message-list> on the terminal")) },
    { "type", &c_type, (A | MSGLIST), 0, MMNDEL
@@ -82,7 +83,7 @@
    { "touch", &c_stouch, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> for saving in *mbox*")) },
    { "preserve", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
-     DS(N_("Save <message-list> in system mailbox instead of *mbox*")) },
+     DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
    { "delete", &c_delete, (A | W | P | MSGLIST), 0, MMNDEL
      DS(N_("Delete <message-list>")) },
    { "dp", &c_deltype, (A | W | MSGLIST), 0, MMNDEL
@@ -134,27 +135,27 @@
    { "source", &c_source, (M | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
    { "set", &c_set, (H | M | RAWLIST), 0, 1000
-     DS(N_("Print all variables, or set (a) variable(s)")) },
+     DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
-     DS(N_("Set (a) variable(s) and export into the program environment")) },
+     DS(N_("Set (a) <variable>(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_ungroup, (M | RAWLIST), 0, 1000
-     DS(N_("Un\"alias\" <name-list>")) },
+   { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"alias\" <name-list> (\"*\" for all)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Show message headers of <message-list>")) },
    { "file", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Open a new mailbox or show the current one")) },
+     DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"respond\", but derive filename from first sender")) },
+     DS(N_("Like \"reply\", but derive filename from first sender")) },
    { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"respond\", but derive filename from first sender")) },
+     DS(N_("Like \"reply\", but derive filename from first sender")) },
    { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Followup\", but always respond to the sender only")) },
+     DS(N_("Like \"Followup\", but always reply to the sender only")) },
    { "folder", &c_file, (T | M | RAWLIST), 0, 1
-     DS(N_("Open a new mailbox or show the current one")) },
+     DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (T | M | RAWLIST), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
@@ -162,31 +163,30 @@
    { "Z", &c_Scroll, (A | M | STRLIST), 0, 0
      DS(N_("Like \"z\", but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
-     DS(N_("Show the current group of headers "
-         "(according to <message>, if specified)")) },
+     DS(N_("Print a page of headers (with the first of <message> if given)")) },
    { "help", &c_help, (H | M | RAWLIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "?", &c_help, (H | M | RAWLIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
-   { "Reply", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Reply", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "Respond", &c_Respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Respond", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Followup", &c_Followup, (A | R | I | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Respond\", but derive filename from first sender")) },
-   { "reply", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
+     DS(N_("Like \"Reply\", but derive filename from first sender")) },
+   { "reply", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replyall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replyall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replysender", &c_respondsender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replysender", &c_replysender, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "respond", &c_respond, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respond", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondall", &c_respondall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respondall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondsender", &c_respondsender, (A | R | I | MSGLIST),0, MMNDEL
+   { "respondsender", &c_replysender, (A | R | I | MSGLIST),0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Resend", &c_Resend, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Like \"resend\", but don't add Resent-* headers")) },
@@ -208,9 +208,9 @@
      DS(N_("Edit <message-list>")) },
    { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
      DS(N_("Echo given arguments")) },
-   { "quit", &c_quit, NOLIST, 0, 0
+   { "quit", &_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &_pcmdlist, (H | M | NOLIST), 0, 0
+   { "list", &_c_pcmdlist, (H | M | NOLIST), 0, 0
      DS(N_("List all available commands")) },
    { "xit", &c_rexit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
@@ -225,15 +225,15 @@
    { "size", &c_messize, (A | MSGLIST), 0, MMNDEL
      DS(N_("Show size in characters for <message-list>")) },
    { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
-     DS(N_("Save <message-list> in system mailbox instead of *mbox*")) },
-   { "if", &c_if, (F | M | RAWLIST), 1, 3
-     DS(N_("Part of the if .. then .. endif statement")) },
+     DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
+   { "if", &c_if, (F | M | RAWLIST), 1, 1000
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "else", &c_else, (F | M | RAWLIST), 0, 0
-     DS(N_("Part of the if .. then .. endif statement")) },
-   { "elif", &c_elif, (F | M | RAWLIST), 1, 3
-     DS(N_("Part of the if .. then .. endif statement")) },
+     DS(N_("Part of the if..elif..else..endif statement")) },
+   { "elif", &c_elif, (F | M | RAWLIST), 1, 1000
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "endif", &c_endif, (F | M | RAWLIST), 0, 0
-     DS(N_("Part of the if .. then .. endif statement")) },
+     DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate list for the invoking user")) },
    { "ignore", &c_igfield, (M | RAWLIST), 0, 1000
@@ -261,16 +261,16 @@
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Define a <shortcut> and <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | RAWLIST), 0, 1000
-     DS(N_("Delete <shortcut-list>")) },
+     DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
+   { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
+     DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
-     DS(N_("Creates, selects or lists an email account")) },
-   { "thread", &c_thread, (A | MSGLIST), 0, 0
+     DS(N_("Create or select <account>, or list all accounts")) },
+   { "thread", &c_thread, (A | O | MSGLIST), 0, 0
      DS(N_("Create threaded view of current \"folder\"")) },
-   { "unthread", &c_unthread, (A | MSGLIST), 0, 0
+   { "unthread", &c_unthread, (A | O | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
    { "connect", &c_connect, (A | NOLIST), 0, 0
      DS(N_("If disconnected, connect to IMAP mailbox")) },
@@ -295,9 +295,9 @@
    { "undraft", &c_undraft, (A | M | MSGLIST), 0, 0
      DS(N_("Un\"draft\" <message-list>")) },
    { "define", &c_define, (M | RAWLIST), 0, 2
-     DS(N_("Define a macro")) },
+     DS(N_("Define a <macro> or show the currently defined ones")) },
    { "undefine", &c_undefine, (M | RAWLIST), 0, 1000
-     DS(N_("Un\"define\" all <macros>")) },
+     DS(N_("Un\"define\" all given <macros>")) },
    { "unaccount", &c_unaccount, (M | RAWLIST), 0, 1000
      DS(N_("Delete all given <accounts>")) },
    { "call", &c_call, (M | RAWLIST), 0, 1
@@ -348,26 +348,28 @@
      DS(N_("Un\"fwdignore\" <header-fields>")) },
    { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
      DS(N_("Un\"fwdretain\" <header-fields>")) },
-   { "mimetypes", &c_mimetypes, (M | RAWLIST), 0, 1
-     DS(N_("Either <show> (default) or <clear> the mime.types cache")) },
-   { "spamrate", &c_spam_rate, (A | M | R | MSGLIST), 0, 0
+   { "mimetype", &c_mimetype, (M | RAWLIST), 0, 1000
+     DS(N_("(Load and) show all known MIME types or define some")) },
+   { "unmimetype", &c_unmimetype, (M | RAWLIST), 1, 1000
+     DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
+   { "spamrate", &c_spam_rate, (A | M | I | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
-   { "spamham", &c_spam_ham, (A | M | R | MSGLIST), 0, 0
+   { "spamham", &c_spam_ham, (A | M | I | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is ham")) },
-   { "spamspam", &c_spam_spam, (A | M | R | MSGLIST), 0, 0
+   { "spamspam", &c_spam_spam, (A | M | I | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is spam")) },
-   { "spamforget", &c_spam_forget, (A | M | R | MSGLIST), 0, 0
+   { "spamforget", &c_spam_forget, (A | M | I | MSGLIST), 0, 0
      DS(N_("Force the spam detector to \"unlearn\" <message-list>")) },
-   { "spamset", &c_spam_set, (A | M | MSGLIST), 0, 0
+   { "spamset", &c_spam_set, (A | M | I | MSGLIST), 0, 0
      DS(N_("Set the spam flag for each message in <message-list>")) },
-   { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
+   { "spamclear", &c_spam_clear, (A | M | I | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
-   { "ghost", &_ghost, (M | RAWLIST), 0, 1000
-     DS(N_("Define a <ghost> for <arguments>, or list all ghosts")) },
-   { "unghost", &_unghost, (M | RAWLIST), 1, 1000
+   { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
+     DS(N_("Print or create <ghost> (<command>), or list all ghosts")) },
+   { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
-     DS(N_("Inside `define' / `account': insulate modifications? <0> / <1>"))},
+     DS(N_("Inside `define' / `account': insulate modifications? <boolean>"))},
    { "cwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
@@ -375,7 +377,7 @@
    { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
-     DS(N_("Edit the value(s) of (an) existing variable(s)")) },
+     DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
@@ -384,9 +386,19 @@
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "Folder", &c_File, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
-   { "features", &_features, (H | M | NOLIST), 0, 0
+   { "mlist", &c_mlist, (M | RAWLIST), 0, 1000
+     DS(N_("Show all known mailing lists or define some")) },
+   { "unmlist", &c_unmlist, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"mlist\" <name-list> (\"*\" for all)")) },
+   { "mlsubscribe", &c_mlsubscribe, (M | RAWLIST), 0, 1000
+     DS(N_("Show all mailing list subscriptions or define some")) },
+   { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
+     DS(N_("Un\"mlsubscribe\" <name-list> (\"*\" for all)"))},
+   { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
+     DS(N_("Mailing-list reply to the given message")) },
+   { "features", &_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
-   { "version", &_version, (H | M | NOLIST), 0, 0
+   { "version", &_c_version, (H | M | NOLIST), 0, 0
      DS(N_("Print the MUA version")) },
 #ifdef HAVE_HISTORY
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
@@ -423,5 +435,6 @@
 #undef T
 #undef V
 #undef W
+#undef O
 
 /* s-it-mode */

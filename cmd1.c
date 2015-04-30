@@ -2,7 +2,7 @@
  *@ User commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE cmd1
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -56,7 +58,7 @@ static void    _parse_from_(struct message *mp, char date[FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * __hprf: handle *headline*
- * __subject: Subject:, but return NULL if threaded and Subject: yet seen
+ * __subject: return -1 if Subject: yet seen, otherwise smalloc()d Subject:
  * __putindent: print out the indenting in threaded display */
 static void    _print_head(size_t yetprinted, size_t msgno, FILE *f,
                   bool_t threaded);
@@ -137,7 +139,7 @@ _parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
 static void
 _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
 {
-   enum {attrlen = 13};
+   enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
    NYD_ENTER;
@@ -147,17 +149,18 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
-      fprintf(stderr, _(
-         "The value of *attrlist* is not of the correct length\n"));
+      fprintf(stderr,
+         _("*attrlist* is not of the correct length, using builtin\n"));
    }
-   if (ok_blook(bsdcompat) || ok_blook(bsdflags) ||
-         getenv("SYSV3") != NULL) {
-      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$";
+
+   if (ok_blook(bsdcompat) || ok_blook(bsdflags) || env_blook("SYSV3", FAL0)) {
+      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
    } else {
-      char const pattr[attrlen +1] = "NUROSPMFAT+-$";
+      char const pattr[attrlen +1]   = "NUROSPMFAT+-$~";
       memcpy(attrlist, pattr, sizeof pattr);
    }
+
 jattrok:
    if ((fmt = ok_vlook(headline)) == NULL) {
       fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
@@ -173,7 +176,7 @@ static void
 __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, char const *attrlist)
 {
-   char datebuf[FROM_DATEBUF], *cp, *subjline;
+   char buf[16], datebuf[FROM_DATEBUF], *cp, *subjline;
    char const *datefmt, *date, *name, *fp;
    int i, n, s, wleft, subjlen;
    struct message *mp;
@@ -187,6 +190,7 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _SFMT       = 1<<3
    } flags = _NONE;
    NYD_ENTER;
+   UNUSED(buf);
 
    mp = message + msgno - 1;
    datet = mp->m_time;
@@ -328,15 +332,14 @@ jredo:
          case '$':
 #ifdef HAVE_SPAM
             if (n == 0)
-               n = 4;
+               n = 5;
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            {  char buf[16];
-               snprintf(buf, sizeof buf, "%u.%u",
-                  (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
-               n = fprintf(f, "%*s", n, buf);
-               wleft = (n >= 0) ? wleft - n : 0;
-            }
+            snprintf(buf, sizeof buf, "%u.%02u",
+               (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
+            n = fprintf(f, "%*s", n, buf);
+            wleft = (n >= 0) ? wleft - n : 0;
+            break;
 #else
             c = '?';
             goto jputc;
@@ -466,6 +469,26 @@ jputc:
                   wleft = 0;
             }
             break;
+         case 'T': { /* Message recipient flags */
+            /* We never can reuse "name" since it's the full name */
+            struct name const *np = lextract(hfield1("to", mp), GTO | GSKIN);
+            c = ' ';
+            i = 0;
+j_A_redo:
+            for (; np != NULL; np = np->n_flink) {
+               switch (is_mlist(np->n_name, FAL0)) {
+               case MLIST_SUBSCRIBED:  c = 'S'; goto jputc;
+               case MLIST_KNOWN:       c = 'L'; goto jputc;
+               case MLIST_OTHER:
+               default:                break;
+               }
+            }
+            if (i != 0)
+               goto jputc;
+            ++i;
+            np = lextract(hfield1("cc", mp), GCC | GSKIN);
+            goto j_A_redo;
+         }
          case 't':
             if (n == 0) {
                n = 3;
@@ -492,6 +515,11 @@ jputc:
             c = '?';
             goto jputc;
 #endif
+         default:
+            if (options & OPT_D_V)
+               fprintf(stderr, _("Unkown *headline* format: \"%%%c\"\n"), c);
+            c = '?';
+            goto jputc;
          }
 
          if (wleft <= 0)
@@ -508,33 +536,45 @@ jputc:
 static char *
 __subject(struct message *mp, bool_t threaded, size_t yetprinted)
 {
-   /* XXX NOTE: because of efficiency reasons we simply ignore any encoded
-    * XXX parts and use ASCII case-insensitive comparison */
    struct str in, out;
-   struct message *xmp;
-   char *rv = (char*)-1, *ms, *mso, *os;
+   char *rv = (char*)-1, *ms;
    NYD_ENTER;
 
    if ((ms = hfield1("subject", mp)) == NULL)
       goto jleave;
 
+   in.l = strlen(in.s = ms);
+   mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
+   rv = ms = out.s;
+
    if (!threaded || mp->m_level == 0)
-      goto jconv;
+      goto jleave;
 
    /* In a display thread - check wether this message uses the same
     * Subject: as it's parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
-   mso = subject_re_trim(ms);
-   for (xmp = mp; (xmp = prev_in_thread(xmp)) != NULL && yetprinted-- > 0;)
-      if (visible(xmp) && (os = hfield1("subject", xmp)) != NULL &&
-            !asccasecmp(mso, subject_re_trim(os)))
-         goto jleave;
-jconv:
-   in.s = ms;
-   in.l = strlen(ms);
-   mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
-   rv = out.s;
+   ms = subject_re_trim(ms);
+
+   for (; (mp = prev_in_thread(mp)) != NULL && yetprinted-- > 0;) {
+      char *os;
+
+      if (visible(mp) && (os = hfield1("subject", mp)) != NULL) {
+         struct str oout;
+         int x;
+
+         in.l = strlen(in.s = os);
+         mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
+         x = asccasecmp(ms, subject_re_trim(oout.s));
+         free(oout.s);
+
+         if (!x) {
+            free(out.s);
+            rv = (char*)-1;
+         }
+         break;
+      }
+   }
 jleave:
    NYD_LEAVE;
    return rv;
@@ -599,7 +639,7 @@ __putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX no magic consts */
       else
          indw += (int)putuc(0x21B8, '^', fp);
    }
-   indw += (/*putuc(0x261E, fp)*/putc('>', fp) != EOF);
+   indw += putuc(0x25B8, '>', fp);
 
    ac_free(us);
    ac_free(cs);
@@ -628,6 +668,8 @@ _dispc(struct message *mp, char const *a)
       i = a[1];
    if (mp->m_flag & MSPAM)
       i = a[12];
+   if (mp->m_flag & MSPAMUNSURE)
+      i = a[13];
    if (mp->m_flag & MSAVED)
       i = a[4];
    if (mp->m_flag & MPRESERVE)
@@ -883,7 +925,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          }
       }
 
-      /* `>=' not `<': we return to the prompt */
+      /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
          char const *env_add[2];
@@ -970,7 +1012,7 @@ _pipe1(char *str, int doign)
    if (!needs_list) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (inhook) {
+         if (pstate & PS_HOOK_MASK) {
             rv = 0;
             goto jleave;
          }
@@ -981,7 +1023,7 @@ _pipe1(char *str, int doign)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (inhook) {
+      if (pstate & PS_HOOK_MASK) {
          rv = 0;
          goto jleave;
       }
@@ -1082,8 +1124,13 @@ c_from(void *v)
       }
    }
 
-   for (n = 0, ip = msgvec; *ip != 0; ++ip) /* TODO join into _print_head() */
+   srelax_hold();
+   for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
+      srelax();
+   }
+   srelax_rele();
+
    if (--ip >= msgvec)
       setdot(message + *ip - 1);
 
@@ -1109,6 +1156,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 #endif
    time_current_update(&time_current, FAL0);
 
+   srelax_hold();
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1117,7 +1165,9 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       } else if (!visible(mp))
          continue;
       _print_head(printed++, bottom, stdout, FAL0);
+      srelax();
    }
+   srelax_rele();
    NYD_LEAVE;
 }
 
@@ -1238,7 +1288,7 @@ c_top(void *v)
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
       if (!empty_last)
          printf("\n");
       _show_msg_overview(stdout, mp, *ip);
@@ -1277,7 +1327,7 @@ c_stouch(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH;
       dot->m_flag &= ~MPRESERVE;
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;
@@ -1293,7 +1343,7 @@ c_mboxit(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;

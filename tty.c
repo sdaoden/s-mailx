@@ -2,12 +2,9 @@
  *@ TTY interaction.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /* The NCL version is
- *
- * Copyright (c) 2013 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
- *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -52,6 +49,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE tty
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -142,39 +141,41 @@ __tty_acthdl(int s) /* TODO someday, we won't need it no more */
 FL bool_t
 getapproval(char const * volatile prompt, bool_t noninteract_default)
 {
-   sighandler_type volatile ohdl;
-   bool_t volatile hadsig = FAL0, rv;
+   sighandler_type volatile oint, ohup;
+   bool_t volatile rv;
+   int volatile sig;
    NYD_ENTER;
 
    if (!(options & OPT_INTERACTIVE)) {
+      sig = 0;
       rv = noninteract_default;
       goto jleave;
    }
    rv = FAL0;
 
    if (prompt == NULL)
-      prompt = _("Continue (y/n)? ");
+      prompt = noninteract_default ? _(" ([yes]/no)? ") : _(" ([no]/yes)? ");
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-      hadsig  = TRU1;
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
 
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
-      switch (termios_state.ts_linebuf[0]) {
-      case 'N': case 'n':  rv = FAL0; break ;
-      default:             rv = TRU1; break;
-      }
+      rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
+            noninteract_default) > 0);
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
+
+   safe_signal(SIGINT, ohup);
+   safe_signal(SIGINT, oint);
 jleave:
    NYD_LEAVE;
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
+   if (sig != 0)
+      n_raise(sig);
    return rv;
 }
 
@@ -182,42 +183,42 @@ jleave:
 FL char *
 getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
-   sighandler_type volatile ohdl;
+   sighandler_type volatile oint, ohup;
    char * volatile user = NULL;
-   bool_t volatile hadsig = FAL0;
+   int volatile sig;
    NYD_ENTER;
 
    if (query == NULL)
       query = _("User: ");
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-      hadsig  = TRU1;
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
 
    if (readline_input(query, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
+
+   safe_signal(SIGHUP, ohup);
+   safe_signal(SIGINT, oint);
    NYD_LEAVE;
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
+   if (sig != 0)
+      n_raise(sig);
    return user;
 }
 
 FL char *
 getpassword(char const *query)
 {
-   sighandler_type volatile ohdl;
+   sighandler_type volatile oint, ohup;
    struct termios tios;
    char * volatile pass = NULL;
-# if 0
-   bool_t hadsig = FAL0; /* TODO getpassword() no longer reraises SIGINT */
-# endif
+   int volatile sig;
    NYD_ENTER;
 
    if (query == NULL)
@@ -234,31 +235,31 @@ getpassword(char const *query)
       termios_state.ts_needs_reset = TRU1;
       tios.c_iflag &= ~(ISTRIP);
       tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    }
 
-   ohdl = safe_signal(SIGINT, SIG_IGN);
-   if (sigsetjmp(__tty_actjmp, 1) != 0) {
-# if 0
-      hadsig = TRU1;
-# endif
+   oint = safe_signal(SIGINT, SIG_IGN);
+   ohup = safe_signal(SIGHUP, SIG_IGN);
+   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
       goto jrestore;
-   }
    safe_signal(SIGINT, &__tty_acthdl);
+   safe_signal(SIGHUP, &__tty_acthdl);
+
+   if (options & OPT_TTYIN)
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
 
    if (readline_restart(stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   safe_signal(SIGINT, ohdl);
    if (options & OPT_TTYIN)
-      fputc('\n', stdout);
+      putc('\n', stdout);
+
+   safe_signal(SIGHUP, ohup);
+   safe_signal(SIGINT, oint);
    NYD_LEAVE;
-# if 0
-   if (hadsig && ohdl != SIG_IGN)
-      kill(0, SIGINT);
-# endif
+   if (sig != 0)
+      n_raise(sig);
    return pass;
 }
 #endif /* HAVE_SOCKETS */
@@ -351,7 +352,7 @@ tty_signal(int sig)
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      kill(0, sig);
+      n_raise(sig);
       /* XXX When we come here we'll continue editing, so reestablish
        * XXX cannot happen */
       sigprocmask(SIG_BLOCK, &oset, NULL);
@@ -717,11 +718,6 @@ jentry: {
  * To simplify our live, use savestr() buffers for all other needed memory
  */
 
-/*
- * TODO NCL: don't use that stupid .sint=-1 stuff, but simply block all signals
- * TODO NCL: during handler de-/installation handling.
- */
-
 #ifdef HAVE_NCL
 # ifndef MAX_INPUT
 #  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
@@ -732,12 +728,6 @@ jentry: {
    * of MAX_INPUT and our desire to have room for some error message left */
 # define _PROMPT_VLEN(P)   (strlen(P) * 2)
 # define _PROMPT_MAX       ((MAX_INPUT / 2) + (MAX_INPUT / 4))
-
-union xsighdl {
-   sighandler_type   shdl; /* Try avoid races by setting */
-   sl_i              sint; /* .sint=-1 when inactive */
-};
-CTA(sizeof(sl_i) >= sizeof(sighandler_type));
 
 struct xtios {
    struct termios told;
@@ -778,20 +768,20 @@ struct hist {
 };
 # endif
 
-static union xsighdl _ncl_oint;
-static union xsighdl _ncl_oquit;
-static union xsighdl _ncl_oterm;
-static union xsighdl _ncl_ohup;
-static union xsighdl _ncl_otstp;
-static union xsighdl _ncl_ottin;
-static union xsighdl _ncl_ottou;
-static struct xtios  _ncl_tios;
+static sighandler_type  _ncl_oint;
+static sighandler_type  _ncl_oquit;
+static sighandler_type  _ncl_oterm;
+static sighandler_type  _ncl_ohup;
+static sighandler_type  _ncl_otstp;
+static sighandler_type  _ncl_ottin;
+static sighandler_type  _ncl_ottou;
+static struct xtios     _ncl_tios;
 # ifdef HAVE_HISTORY
-static struct hist  *_ncl_hist;
-static struct hist  *_ncl_hist_tail;
-static size_t        _ncl_hist_size;
-static size_t        _ncl_hist_size_max;
-static bool_t        _ncl_hist_load;
+static struct hist      *_ncl_hist;
+static struct hist      *_ncl_hist_tail;
+static size_t           _ncl_hist_size;
+static size_t           _ncl_hist_size_max;
+static bool_t           _ncl_hist_load;
 # endif
 
 static void    _ncl_sigs_up(void);
@@ -832,59 +822,40 @@ static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
 static void
 _ncl_sigs_up(void)
 {
+   sigset_t nset, oset;
    NYD2_ENTER;
-   if (_ncl_oint.sint == -1)
-      _ncl_oint.shdl = safe_signal(SIGINT, &tty_signal);
-   if (_ncl_oquit.sint == -1)
-      _ncl_oquit.shdl = safe_signal(SIGQUIT, &tty_signal);
-   if (_ncl_oterm.sint == -1)
-      _ncl_oterm.shdl = safe_signal(SIGTERM, &tty_signal);
-   if (_ncl_ohup.sint == -1)
-      _ncl_ohup.shdl = safe_signal(SIGHUP, &tty_signal);
-   if (_ncl_otstp.sint == -1)
-      _ncl_otstp.shdl = safe_signal(SIGTSTP, &tty_signal);
-   if (_ncl_ottin.sint == -1)
-      _ncl_ottin.shdl = safe_signal(SIGTTIN, &tty_signal);
-   if (_ncl_ottou.sint == -1)
-      _ncl_ottou.shdl  = safe_signal(SIGTTOU, &tty_signal);
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   _ncl_oint = safe_signal(SIGINT, &tty_signal);
+   _ncl_oquit = safe_signal(SIGQUIT, &tty_signal);
+   _ncl_oterm = safe_signal(SIGTERM, &tty_signal);
+   _ncl_ohup = safe_signal(SIGHUP, &tty_signal);
+   _ncl_otstp = safe_signal(SIGTSTP, &tty_signal);
+   _ncl_ottin = safe_signal(SIGTTIN, &tty_signal);
+   _ncl_ottou = safe_signal(SIGTTOU, &tty_signal);
+   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
    NYD2_LEAVE;
 }
 
 static void
 _ncl_sigs_down(void)
 {
-   /* aaah.. atomic cas would be nice (but isn't it all redundant?) */
-   sighandler_type st;
+   sigset_t nset, oset;
    NYD2_ENTER;
 
-   if (_ncl_ottou.sint != -1) {
-      st = _ncl_ottou.shdl, _ncl_ottou.sint = -1;
-      safe_signal(SIGTTOU, st);
-   }
-   if (_ncl_ottin.sint != -1) {
-      st = _ncl_ottin.shdl, _ncl_ottin.sint = -1;
-      safe_signal(SIGTTIN, st);
-   }
-   if (_ncl_otstp.sint != -1) {
-      st = _ncl_otstp.shdl, _ncl_otstp.sint = -1;
-      safe_signal(SIGTSTP, st);
-   }
-   if (_ncl_ohup.sint != -1) {
-      st = _ncl_ohup.shdl, _ncl_ohup.sint = -1;
-      safe_signal(SIGHUP, st);
-   }
-   if (_ncl_oterm.sint != -1) {
-      st = _ncl_oterm.shdl, _ncl_oterm.sint = -1;
-      safe_signal(SIGTERM, st);
-   }
-   if (_ncl_oquit.sint != -1) {
-      st = _ncl_oquit.shdl, _ncl_oquit.sint = -1;
-      safe_signal(SIGQUIT, st);
-   }
-   if (_ncl_oint.sint != -1) {
-      st = _ncl_oint.shdl, _ncl_oint.sint = -1;
-      safe_signal(SIGINT, st);
-   }
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGINT, _ncl_oint);
+   safe_signal(SIGQUIT, _ncl_oquit);
+   safe_signal(SIGTERM, _ncl_oterm);
+   safe_signal(SIGHUP, _ncl_ohup);
+   safe_signal(SIGTSTP, _ncl_otstp);
+   safe_signal(SIGTTIN, _ncl_ottin);
+   safe_signal(SIGTTOU, _ncl_ottou);
+   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
    NYD2_LEAVE;
 }
 
@@ -900,7 +871,12 @@ _ncl_term_mode(bool_t raw)
 
    /* Always requery the attributes, in case we've been moved from background
     * to foreground or however else in between sessions */
+   /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
+    * XXX as we don't handle terminal stuff when starting commands and don't
+    * XXX properly deal with TTIN and TTOU from all that */
    tcgetattr(STDIN_FILENO, tiosp);
+   tiosp->c_lflag |= ECHO | ICANON;
+
    memcpy(&_ncl_tios.tnew, tiosp, sizeof *tiosp);
    tiosp = &_ncl_tios.tnew;
    tiosp->c_cc[VMIN] = 1;
@@ -1118,13 +1094,13 @@ _ncl_keof(struct line *l)
    if (i > 0) {
       l->topins = --t;
       _ncl_bs_eof_dvup(l->line.cells + c, --i);
-   } else if (t == 0 && !ok_blook(ignoreeof)) {
-      fputs("^D", stdout);
-      fflush(stdout);
+   } else if (t == 0 /*&& !ok_blook(ignoreeof)*/) {
+      /*fputs("^D", stdout);
+      fflush(stdout);*/
       i = -1;
-   } else {
+   /*} else {
       putchar('\a');
-      i = 0;
+      i = 0;*/
    }
    NYD2_LEAVE;
    return i;
@@ -1465,16 +1441,14 @@ jredo:
     * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
    rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
    if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
-      char const e1[] = "[ERR_TOO_LONG]";
-      exp.s = UNCONST(e1);
-      exp.l = sizeof(e1) - 1;
+      exp.s = UNCONST("[ERR_TOO_LONG]");
+      exp.l = sizeof("[ERR_TOO_LONG]") - 1;
       topp.l = 0;
       if (rv + bot.l + exp.l >= MAX_INPUT)
          bot.l = 0;
       if (rv + exp.l >= MAX_INPUT) {
-         char const e2[] = "[ERR]";
-         exp.s = UNCONST(e2);
-         exp.l = sizeof(e2) - 1;
+         exp.s = UNCONST("[ERR]");
+         exp.l = sizeof("[ERR]") - 1;
       }
    }
 
@@ -1535,10 +1509,10 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    l.x_buf = buf;
    l.x_bufsize = bufsize;
 
-   if (prompt != NULL && *prompt != '\0') {
+   if (prompt != NULL && *prompt != '\0')
       fputs(prompt, stdout);
-      fflush(stdout);
-   }
+   fflush(stdout);
+
 jrestart:
    memset(ps, 0, sizeof ps);
    cursor_maybe = cursor_store = 0;
@@ -1679,7 +1653,7 @@ j_n:
          cbuf_base[0] = 'd';
          cbuf_base[1] = 'p';
          cbuf_base[2] = '\0';
-         inhook = 0;
+         pstate &= ~PS_HOOK_MASK;
          execute(cbuf_base, TRU1, 2);
          goto j_l;
       case 'P' ^ 0x40: /* history previous */
@@ -1810,10 +1784,6 @@ tty_init(void)
 # endif
    NYD_ENTER;
 
-   _ncl_oint.sint = _ncl_oquit.sint = _ncl_oterm.sint =
-   _ncl_ohup.sint = _ncl_otstp.sint = _ncl_ottin.sint =
-   _ncl_ottou.sint = -1;
-
 # ifdef HAVE_HISTORY
    _CL_HISTSIZE(hs);
    _ncl_hist_size = 0;
@@ -1829,7 +1799,7 @@ tty_init(void)
    f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
    if (f == NULL)
       goto jdone;
-   fcntl_lock(fileno(f), FLOCK_READ); /* TODO ouch, retval check, etc. */
+   (void)fcntl_lock(fileno(f), FLOCK_READ, 500);
 
    lbuf = NULL;
    lsize = 0;
@@ -1886,7 +1856,7 @@ tty_destroy(void)
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
-   fcntl_lock(fileno(f), FLOCK_WRITE); /* TODO ouch, retval check, etc. */
+   (void)fcntl_lock(fileno(f), FLOCK_WRITE, 500);
    if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
       goto jclose;
 
@@ -1923,7 +1893,7 @@ tty_signal(int sig)
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      kill(0, sig);
+      n_raise(sig);
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
       _ncl_sigs_up();
@@ -2058,6 +2028,7 @@ jlist: {
 
 jclear: {
    struct hist *h;
+
    while ((h = _ncl_hist) != NULL) {
       _ncl_hist = h->older;
       free(h);
@@ -2068,7 +2039,8 @@ jclear: {
    goto jleave;
 
 jentry: {
-   struct hist *h = _ncl_hist;
+   struct hist *h;
+
    if (UICMP(z, entry, <=, _ncl_hist_size)) {
       entry = (long)_ncl_hist_size - entry;
       for (h = _ncl_hist;; h = h->older)
@@ -2118,23 +2090,14 @@ FL int
 (tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
-   /* TODO The nothing-at-all tty layer even forces re-entering all the
-    * TODO original data when re-editing a field */
-   bool_t doffl = FAL0;
    int rv;
    NYD_ENTER;
 
-   if (prompt != NULL && *prompt != '\0') {
-      fputs(prompt, stdout);
-      doffl = TRU1;
-   }
-   if (n > 0) {
-      fprintf(stdout, _("{former content: %.*s} "), (int)n, *linebuf);
-      n = 0;
-      doffl = TRU1;
-   }
-   if (doffl)
+   if (prompt != NULL) {
+      if (*prompt != '\0')
+         fputs(prompt, stdout);
       fflush(stdout);
+   }
    rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
    NYD_LEAVE;
    return rv;

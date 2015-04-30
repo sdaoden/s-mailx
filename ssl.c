@@ -2,7 +2,7 @@
  *@ Generic SSL / S/MIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE ssl
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(ssl)
+EMPTY_FILE()
 #ifdef HAVE_SSL
 struct ssl_verify_levels {
    char const              sv_name[8];
@@ -57,36 +59,24 @@ static struct ssl_verify_levels const  _ssl_verify_levels[] = {
 };
 
 FL void
-ssl_set_verify_level(char const *uhp)
+ssl_set_verify_level(struct url const *urlp)
 {
    size_t i;
-   char *cp, *vrvar;
+   char *cp;
    NYD_ENTER;
 
    ssl_verify_level = SSL_VERIFY_ASK;
-
-   i = strlen(uhp);
-   vrvar = ac_alloc(11u + i +1);
-
-   memcpy(vrvar, "ssl-verify-", 11);
-   memcpy(vrvar + 11, uhp, i +1);
-   cp = vok_vlook(vrvar);
-
-   if (cp == NULL) {
-      vrvar[10] = '\0';
-      cp = ok_vlook(ssl_verify);
-   }
+   cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
 
    if (cp != NULL) {
       for (i = 0; i < NELEM(_ssl_verify_levels); ++i)
-         if (!strcmp(_ssl_verify_levels[i].sv_name, cp)) {
+         if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
          }
-      fprintf(stderr, _("Invalid value of %s: %s\n"), vrvar, cp);
+      fprintf(stderr, _("Invalid value of *ssl-verify*: %s\n"), cp);
    }
 jleave:
-   ac_free(vrvar);
    NYD_LEAVE;
 }
 
@@ -112,33 +102,13 @@ ssl_verify_decide(void)
    return rv;
 }
 
-FL char *
-ssl_method_string(char const *uhp)
-{
-   size_t l;
-   char *cp, *mtvar;
-   NYD_ENTER;
-
-   l = strlen(uhp);
-   mtvar = ac_alloc(11 + l +1);
-
-   memcpy(mtvar, "ssl-method-", 11);
-   memcpy(mtvar + 11, uhp, l +1);
-   if ((cp = vok_vlook(mtvar)) == NULL)
-      cp = ok_vlook(ssl_method);
-
-   ac_free(mtvar);
-   NYD_LEAVE;
-   return cp;
-}
-
 FL enum okay
 smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
    struct myline {
       struct myline  *ml_next;
       size_t         ml_len;
-      char           ml_buf[VFIELD_SIZE(sizeof(uiz_t))];
+      char           ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
    size_t bufsize, buflen, cnt;
@@ -230,7 +200,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
       lastc = c;
    }
 
-   boundary = mime_create_boundary();
+   boundary = mime_param_boundary_create();
    fprintf(op, "Content-Type: multipart/signed;\n"
       " protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\n"
       " boundary=\"%s\"\n\n", boundary);
@@ -416,10 +386,10 @@ c_certsave(void *v)
    if (!f) {
       msgvec[1] = 0;
       *msgvec = first(0, MMNORM);
-   } else
-      getmsglist(str, msgvec, 0);
+   } else if (getmsglist(str, msgvec, 0) < 0)
+      goto jleave;
    if (*msgvec == 0) {
-      if (inhook)
+      if (pstate & PS_HOOK_MASK)
          val = 0;
       else
          fprintf(stderr, "No applicable messages.\n");

@@ -2,7 +2,7 @@
  *@ Perform message editing functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE edit
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -79,7 +81,7 @@ edit1(int *msgvec, int viored)
       }
       mp = message + msgvec[i] - 1;
       setdot(mp);
-      did_print_dot = TRU1;
+      pstate |= PS_DID_PRINT_DOT;
       touch(mp);
 
       sigint = safe_signal(SIGINT, SIG_IGN);
@@ -170,14 +172,20 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (hp != NULL) {
       t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
-      if (hp->h_from != NULL || hp->h_replyto != NULL ||
-            hp->h_sender != NULL || hp->h_organization != NULL)
+      if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
+            (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
+            (hp->h_replyto != NULL || ok_vlook(replyto) != NULL) ||
+            (hp->h_organization != NULL || ok_vlook(ORGANIZATION) != NULL) ||
+            hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
          t |= GIDENT;
       puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    }
 
    if (mp != NULL) {
-      sendmp(mp, nf, 0, NULL, action, NULL);
+      if (sendmp(mp, nf, 0, NULL, action, NULL) < 0) {
+         fprintf(stderr, _("Failed to prepare editable message"));
+         goto jleave;
+      }
    } else {
       if (size >= 0)
          while (--size >= 0 && (t = getc(fp)) != EOF)

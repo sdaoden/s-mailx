@@ -2,7 +2,7 @@
  *@ Mailbox file locking.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -32,14 +32,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE dotlock
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 #include <sys/utsname.h>
-
-#include <fcntl.h>
 
 #define APID_SZ         40 /* sufficient for 128 bits pids XXX nail.h */
 #define CREATE_RETRIES  5  /* XXX nail.h */
@@ -70,7 +70,7 @@ do if (realgid != effectivegid && setgid(realgid) == -1) {\
 static bool_t  _maybe_setgid(char const *name, gid_t gid);
 
 /* Check if we can write a lock file at all */
-static int     maildir_access(char const *fname);
+static bool_t  _dot_dir_access(char const *fname);
 
 /* Create a unique file. O_EXCL does not really work over NFS so we follow
  * the following trick (inspired by  S.R. van den Berg):
@@ -80,6 +80,12 @@ static int     maildir_access(char const *fname);
  * - unlink the mostly unique filename
  * - if the link count was 2, then we are ok; else we've failed */
 static int     create_exclusive(char const *fname);
+
+/* fcntl(2) plus error handling */
+static bool_t  _dot_fcntl_lock(int fd, enum flock_type ft);
+
+/* Print a message :) */
+static void    _dot_lock_msg(char const *fname);
 
 static bool_t
 _maybe_setgid(char const *name, gid_t gid)
@@ -97,15 +103,17 @@ _maybe_setgid(char const *name, gid_t gid)
    return rv;
 }
 
-static int
-maildir_access(char const *fname)
+static bool_t
+_dot_dir_access(char const *fname)
 {
+   size_t i;
    char *path, *p;
-   int i;
+   bool_t rv;
    NYD_ENTER;
 
-   i = (int)strlen(fname);
+   i = strlen(fname);
    path = ac_alloc(i + 1 +1);
+
    memcpy(path, fname, i +1);
    p = strrchr(path, '/');
    if (p != NULL)
@@ -114,10 +122,19 @@ maildir_access(char const *fname)
       path[0] = '.';
       path[1] = '\0';
    }
-   i = access(path, R_OK | W_OK | X_OK);
+
+   if ((rv = is_dir(path))) {
+      for (;;)
+         if (!access(path, R_OK | W_OK | X_OK)) {
+            rv = TRU1;
+            break;
+         } else if (errno != EINTR)
+            break;
+   }
+
    ac_free(path);
    NYD_LEAVE;
-   return i;
+   return rv;
 }
 
 static int
@@ -200,12 +217,12 @@ jbad:
    goto jleave;
 }
 
-FL int
-fcntl_lock(int fd, enum flock_type ft) /* TODO check callees */
+static bool_t
+_dot_fcntl_lock(int fd, enum flock_type ft)
 {
    struct flock flp;
-   int rv;
-   NYD_ENTER;
+   bool_t rv;
+   NYD2_ENTER;
 
    switch (ft) {
    case FLOCK_READ:     rv = F_RDLCK;  break;
@@ -214,27 +231,85 @@ fcntl_lock(int fd, enum flock_type ft) /* TODO check callees */
    case FLOCK_UNLOCK:   rv = F_UNLCK;  break;
    }
 
+   /* (For now we restart, but in the future we may not */
    flp.l_type = rv;
    flp.l_start = 0;
    flp.l_whence = SEEK_SET;
    flp.l_len = 0;
-   rv = fcntl(fd, F_SETLKW, &flp);
+   while (!(rv = (fcntl(fd, F_SETLKW, &flp) != -1)) && errno == EINTR)
+      ;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static void
+_dot_lock_msg(char const *fname)
+{
+   NYD2_ENTER;
+   fprintf(stdout, _("Creating dot lock for \"%s\""), fname);
+   NYD2_LEAVE;
+}
+
+FL bool_t
+fcntl_lock(int fd, enum flock_type ft, size_t pollmsecs)
+{
+   size_t retries;
+   bool_t rv;
+   NYD_ENTER;
+
+   for (rv = FAL0, retries = 0; retries < DOTLOCK_RETRIES; ++retries)
+      if ((rv = _dot_fcntl_lock(fd, ft)) || pollmsecs == 0)
+         break;
+      else
+         sleep(1); /* TODO pollmsecs -> use finer grain */
    NYD_LEAVE;
    return rv;
 }
 
-FL int
-dot_lock(char const *fname, int fd, int pollival, FILE *fp, char const *msg)
+FL bool_t
+dot_lock(char const *fname, int fd, size_t pollmsecs)
 {
    char path[PATH_MAX];
    sigset_t nset, oset;
-   int i, olderrno, rv;
+   int olderrno;
+   size_t retries = 0;
+   bool_t didmsg = FAL0, rv = FAL0;
    NYD_ENTER;
 
-   rv = 0;
-   if (maildir_access(fname) != 0)
+   if (options & OPT_D_VV) {
+      _dot_lock_msg(fname);
+      putchar('\n');
+      didmsg = TRU1;
+   }
+
+   while (!_dot_fcntl_lock(fd, FLOCK_WRITE))
+      switch (errno) {
+      case EACCES:
+      case EAGAIN:
+      case ENOLCK:
+         if (pollmsecs > 0 && ++retries < DOTLOCK_RETRIES) {
+            if (!didmsg)
+               _dot_lock_msg(fname);
+            putchar('.');
+            didmsg = -TRU1;
+            sleep(1); /* TODO pollmsecs -> use finer grain */
+            continue;
+         }
+         /* FALLTHRU */
+      default:
+         goto jleave;
+      }
+
+   /* If we can't deal with dot-lock files in there, go with the FLOCK lock and
+    * don't fail otherwise */
+   if (!_dot_dir_access(fname)) {
+      if (options & OPT_D_V) /* TODO Really? dotlock's are crucial! Always!?! */
+         fprintf(stderr,
+            _("Can't manage lock files in \"%s\", please check permissions\n"),
+            fname);
+      rv = TRU1;
       goto jleave;
-   rv = -1;
+   }
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGHUP);
@@ -248,34 +323,49 @@ dot_lock(char const *fname, int fd, int pollival, FILE *fp, char const *msg)
 
    snprintf(path, sizeof(path), "%s.lock", fname);
 
-   for (i = 0; i < DOTLOCK_RETRIES; ++i) {
+   while (retries++ < DOTLOCK_RETRIES) {
       sigprocmask(SIG_BLOCK, &nset, &oset);
-      rv = create_exclusive(path);
+      rv = (create_exclusive(path) == 0);
       olderrno = errno;
       sigprocmask(SIG_SETMASK, &oset, NULL);
       if (!rv)
          goto jleave;
-      assert(rv == -1);
 
-      fcntl_lock(fd, FLOCK_UNLOCK);
+      while (!_dot_fcntl_lock(fd, FLOCK_UNLOCK))
+         if (pollmsecs == 0 || retries++ >= DOTLOCK_RETRIES)
+            goto jleave;
+         else {
+            if (!didmsg)
+               _dot_lock_msg(fname);
+            putchar('.');
+            didmsg = -TRU1;
+            sleep(1); /* TODO pollmsecs -> use finer grain */
+         }
+
       if (olderrno != EEXIST)
          goto jleave;
-
-      if (fp != NULL && msg != NULL)
-          fputs(msg, fp);
-
-      if (pollival) {
-         if (pollival == -1) {
-            errno = EEXIST;
-            goto jleave;
-         }
-         sleep(pollival);
+      if (pollmsecs == 0) {
+         errno = EEXIST;
+         goto jleave;
       }
-      fcntl_lock(fd, FLOCK_WRITE);
+
+      while (!_dot_fcntl_lock(fd, FLOCK_WRITE))
+         if (pollmsecs == 0 || retries++ >= DOTLOCK_RETRIES)
+            goto jleave;
+         else {
+            if (!didmsg)
+               _dot_lock_msg(fname);
+            putchar('.');
+            didmsg = -TRU1;
+            sleep(1); /* TODO pollmsecs -> use finer grain */
+         }
    }
-   fprintf(stderr, _(
-      "%s seems a stale lock? Need to be removed by hand?\n"), path);
+
+   fprintf(stderr, _("Is \"%s\" a stale lock?  Please remove file manually.\n"),
+      path);
 jleave:
+   if (didmsg < FAL0)
+      putchar('\n');
    NYD_LEAVE;
    return rv;
 }
@@ -286,7 +376,7 @@ dot_unlock(char const *fname)
    char path[PATH_MAX];
    NYD_ENTER;
 
-   if (maildir_access(fname) != 0)
+   if (!_dot_dir_access(fname))
       goto jleave;
 
    snprintf(path, sizeof(path), "%s.lock", fname);

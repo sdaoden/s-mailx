@@ -2,7 +2,7 @@
  *@ Message threading.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE thread
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -150,7 +152,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
 {
    struct mitem *mp = NULL;
    ui32_t h, c, n = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
       goto jleave;
@@ -184,7 +186,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
    if (mp->mi_id == NULL)
       mp = NULL;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return mp;
 }
 
@@ -192,7 +194,7 @@ static void
 _adopt(struct message *parent, struct message *child, int dist)
 {
    struct message *mp, *mq;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (mp = parent; mp != NULL; mp = mp->m_parent)
       if (mp == child)
@@ -221,7 +223,7 @@ _adopt(struct message *parent, struct message *child, int dist)
    } else
       parent->m_child = child;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static struct message *
@@ -231,9 +233,10 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    ui32_t n;
    struct msort *ms;
    int i, autocollapse;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   autocollapse = (!nmail && !(inhook & 2) && ok_blook(autocollapse));
+   autocollapse = (!nmail && !(pstate & PS_HOOK_NEWMAIL) &&
+         ok_blook(autocollapse));
    ms = smalloc(sizeof *ms * cnt);
 
    for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
@@ -257,7 +260,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
       root = NULL;
 
    free(ms);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return root;
 }
 
@@ -265,13 +268,13 @@ static void
 _finalize(struct message *mp)
 {
    long n;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for (n = 0; mp; mp = next_in_thread(mp)) {
       mp->m_threadpos = ++n;
       mp->m_level = mp->m_parent ? mp->m_level + mp->m_parent->m_level : 0;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 #ifdef HAVE_SPAM
@@ -280,12 +283,12 @@ _mui32lt(void const *a, void const *b)
 {
    struct msort const *xa = a, *xb = b;
    int i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (int)(xa->ms_u.ms_ui - xb->ms_u.ms_ui);
    if (i == 0)
       i = xa->ms_n - xb->ms_n;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 #endif
@@ -295,12 +298,12 @@ _mlonglt(void const *a, void const *b)
 {
    struct msort const *xa = a, *xb = b;
    int i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (int)(xa->ms_u.ms_long - xb->ms_u.ms_long);
    if (i == 0)
       i = xa->ms_n - xb->ms_n;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
@@ -309,12 +312,12 @@ _mcharlt(void const *a, void const *b)
 {
    struct msort const *xa = a, *xb = b;
    int i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = strcoll(xa->ms_u.ms_char, xb->ms_u.ms_char);
    if (i == 0)
       i = xa->ms_n - xb->ms_n;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return i;
 }
 
@@ -325,7 +328,7 @@ _lookup(struct message *m, struct mitem *mi, ui32_t mprime)
    struct mitem *ip;
    char *cp;
    long dist;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (m->m_flag & MHIDDEN)
       goto jleave;
@@ -358,7 +361,7 @@ _lookup(struct message *m, struct mitem *mi, ui32_t mprime)
       }
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -367,12 +370,14 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
    struct mitem *mt;
    char *cp;
    ui32_t i, mprime;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (cnt == 0)
       goto jleave;
 
-   mprime = nextprime(cnt);
+   /* It is performance crucial to space this large enough in order to minimize
+    * bucket sharing */
+   mprime = nextprime((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
    mt = scalloc(mprime, sizeof *mt);
 
    srelax_hold();
@@ -387,7 +392,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
       }
       m[i].m_child = m[i].m_younger = m[i].m_elder = m[i].m_parent = NULL;
       m[i].m_level = 0;
-      if (!nmail && !(inhook & 2))
+      if (!nmail && !(pstate & PS_HOOK_NEWMAIL))
          m[i].m_collapsed = 0;
       srelax();
    }
@@ -415,14 +420,14 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
    free(mt);
    mb.mb_threaded = 1;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static int
 _colpt(int *msgvec, int cl)
 {
    int *ip, rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (mb.mb_threaded != 1) {
       puts("Not in threaded mode.");
@@ -432,7 +437,7 @@ _colpt(int *msgvec, int cl)
          _colps(message + *ip - 1, cl);
       rv = 0;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -441,7 +446,7 @@ _colps(struct message *b, int cl)
 {
    struct message *m;
    int cc = 0, uc = 0;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    if (cl && (b->m_collapsed > 0 || (b->m_flag & (MNEW | MREAD)) == MNEW))
       goto jleave;
@@ -472,13 +477,13 @@ _colps(struct message *b, int cl)
          }
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
 _colpm(struct message *m, int cl, int *cc, int *uc)
 {
-   NYD_ENTER;
+   NYD2_ENTER;
    if (cl) {
       if (m->m_collapsed > 0)
          ++(*uc);
@@ -499,7 +504,7 @@ _colpm(struct message *m, int cl, int *cc, int *uc)
       for (m = m->m_younger; m != NULL; m = m->m_younger)
          _colpm(m, cl, cc, uc);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL int
@@ -519,7 +524,8 @@ c_thread(void *vp)
       mb.mb_sorted = sstrdup("thread");
    }
 
-   if (vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
+   if (vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+         ok_blook(header))
       rv = print_header_group(vp);
    else
       rv = 0;
@@ -535,13 +541,14 @@ c_unthread(void *vp)
    NYD_ENTER;
 
    mb.mb_threaded = 0;
-   free(mb.mb_sorted);
+   if (mb.mb_sorted != NULL)
+      free(mb.mb_sorted);
    mb.mb_sorted = NULL;
 
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
       m->m_collapsed = 0;
 
-   if (vp && !inhook && ok_blook(header))
+   if (vp && !(pstate & PS_HOOK_MASK) && ok_blook(header))
       rv = print_header_group(vp);
    else
       rv = 0;
@@ -650,47 +657,51 @@ c_sort(void *vp)
    };
 
    struct str in, out;
-   char **args = (char**)vp, *cp, *_args[2];
+   char *_args[2], *cp, **args = vp;
+   int msgvec[2], i, n;
    int (*func)(void const *, void const *);
    struct msort *ms;
-   int i, n, msgvec[2];
    struct message *mp;
    bool_t showname;
    NYD_ENTER;
 
-   showname = ok_blook(showname);
-   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
-   msgvec[1] = 0;
-
    if (vp == NULL || vp == (void*)-1) {
-      _args[0] = savestr(mb.mb_sorted);
+      _args[0] = savestr((mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       _args[1] = NULL;
       args = _args;
    } else if (args[0] == NULL) {
       printf("Current sorting criterion is: %s\n",
-            (mb.mb_sorted ? mb.mb_sorted : "unsorted"));
+            (mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       i = 0;
       goto jleave;
    }
 
-   for (i = 0; UICMP(z, i, <, NELEM(methnames)); ++i)
+   i = 0;
+   for (;;) {
       if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
-         goto jmethok;
-   fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
-   i = 1;
-   goto jleave;
+         break;
+      if (UICMP(z, ++i, >=, NELEM(methnames))) {
+         fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
+         i = 1;
+         goto jleave;
+      }
+   }
 
-jmethok:
+   if (mb.mb_sorted != NULL)
+      free(mb.mb_sorted);
+   mb.mb_sorted = sstrdup(args[0]);
+
    method = methnames[i].me_method;
    func = methnames[i].me_func;
-   free(mb.mb_sorted);
-   mb.mb_sorted = sstrdup(args[0]);
+   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
+   msgvec[1] = 0;
 
    if (method == SORT_THREAD) {
       i = c_thread((vp != NULL && vp != (void*)-1) ? msgvec : vp);
       goto jleave;
    }
 
+   showname = ok_blook(showname);
    ms = ac_alloc(sizeof *ms * msgCount);
 #ifdef HAVE_IMAP
    switch (method) {
@@ -795,8 +806,9 @@ jmethok:
       break;
    }
    ac_free(ms);
-   i = ((vp != NULL && vp != (void*)-1 && !inhook && ok_blook(header))
-         ? print_header_group(msgvec) : 0);
+
+   i = ((vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+      ok_blook(header)) ? print_header_group(msgvec) : 0);
 jleave:
    NYD_LEAVE;
    return i;

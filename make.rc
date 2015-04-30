@@ -4,12 +4,14 @@
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
 #@   Evaluation occurs *after* it has been read, so command line overwrites
 #@   take effect.  The parsing is linewise, sorry for that
+#@   The parsing is also sequential top-to-bottom (nonetheless) so that
+#@   any shell snippet in a value can refer only to stuff above it.
 #@ . Specifying settings on the command line will take precedence over the
 #@   variables in here (correctly triggering build updates as necessary)
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
 #@   that can be set in here
-#@ . Boolean values can be set via 1/0, true/false and yes/no (case doesn't
-#@   matter), other values result in an error
+#@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
+#@   (case doesn't matter), other values result in an error
 #@ . However, the value "require" is also a true boolean, but will in addition
 #@   cause configuration to fail if the requested feature is missing.  This
 #@   special behaviour is only tested by a logical subset of feature tests
@@ -23,7 +25,9 @@
 # $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
 # Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS, set
 # this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
-# Whatever you do, the configuration is fixated and updates will force rebuilds
+# Whatever you do, the config. is fixated and updates will force rebuilds.
+# And at the bottom there is WANT_FORCED_STACKPROT, too, which can be used to
+# cause injection of stack protectors
 WANT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that all
@@ -42,18 +46,19 @@ WANT_ICONV=yes
 # related/dependent stuff (GSS-API,SSL); can be "require"d
 WANT_SOCKETS=yes
 
-# If $WANT_SOCKETS: should the IPv6 internet protocol family be searched
-# for and enabled if found?  Can be "require"d
-# TODO NOTE:
-# TODO S-nail does not yet support IPv6 address notation, as in, e.g.,
-# TODO imaps://user1@::1 (or @[::1]), but it will happily establish a
-# TODO connection to imaps://user1@host1 if host1 listens via IPv6
-WANT_IPV6=yes
-
 # If $WANT_SOCKETS: support for SecureSocketLayer (TransportLayerSecurity,
 # TLS), i.e., encrypted socket connections; can be "require"d.
 # This needs OpenSSL libraries (<http://www.openssl.org>)
 WANT_SSL=yes
+
+# If $WANT_SSL: shall S-nail (try to) use mechanisms to support more digest and
+# cipher algorithms than the few that are documented?
+# For S/MIME *smime-cipher* for example this will cause
+# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) builtin knowledge not
+# suffice to understand the user request.
+# Will create a large statically linked binary; dynamically linked the costs
+# only arise once the extended lookup is actually needed (the first time).
+WANT_ALL_SSL_ALGORITHMS=yes
 
 # If $WANT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d
@@ -71,6 +76,11 @@ WANT_IMAP=yes
 # Programming Interface) based authentication, e.g., Kerberos v5?
 # Currently available for SMTP and IMAP; can be "require"d
 WANT_GSSAPI=yes
+
+# Enabling the MD5 message digest adds support for several authentication
+# possibilities: IMAP (CRAM-MD5), POP3 (APOP), SMTP (CRAM-MD5).
+# If you don't need those, you may turn them off by excluding MD5.
+WANT_MD5=yes
 
 # If $WANT_SOCKETS: support for parsing of user and password credentials from
 # the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry)
@@ -123,10 +133,31 @@ WANT_HISTORY=yes
 # Turning it off shrinks the binary.  Please see the respective manual entry
 WANT_TABEXPAND=yes
 
+# Use termcap(3) for terminal control; can be "require"d.
+# - When *term-ca-mode* is set:
+#   . On startup emit "ti" (smcup / enter_ca_mode)
+#   . On exit emit "te" (rmcup / exit_ca_mode)
+# NOTE: requires $PAGER etc. to also support and use ca-mode, otherwise the
+# screen looks really, really ugly.  Read the manual.
+# TODO use TERMCAP for key detection, implement NCL2 based on it
+WANT_TERMCAP=no
+
 # Interaction with a spam email filter is possible.
-# Refer to all commands with a `spam' prefix, and see the manual section
-# "Handling spam" (`./nail.1')
-WANT_SPAM=yes
+# Refer to all commands and variables with a "spam" prefix, and see the manual
+# example section "Handling spam".
+# . WANT_SPAM_SPAMC:
+#   Support for interaction with spamassassin(1)s spamc(1).
+# . WANT_SPAM_SPAMD:
+#   Direct communication with spamassassin(1)s spamd(1).
+#   Needs WANT_SOCKETS support and unix(4) domain sockets (checked).
+#   This can be "require"d.
+# . WANT_SPAM_FILTER:
+#   Generic filter hook which can be used with e.g. bogofilter(1) and
+#   sylfilter(1): see documentation for the *spam-filter-** variables for
+#   expected application behaviour.
+WANT_SPAM_SPAMC=no
+WANT_SPAM_SPAMD=no
+WANT_SPAM_FILTER=yes
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may
@@ -140,16 +171,15 @@ WANT_DOCSTRINGS=yes
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
 WANT_QUOTE_FOLD=yes
 
+# We do have a very primitive HTML tagsoup filter which can be used to
+# convert HTML to plain text for display purposes.  If enabled it'll be used
+# for all MIME types which have the @h@ or @H@ type markers (more on this in
+# the manual section "THE mime.types FILES").
+# And which don't have any user defined MIME type handler, of course.
+WANT_FILTER_HTML_TAGSOUP=yes
+
 # A simple form of coloured output can optionally be produced (see manual)
 WANT_COLOUR=yes
-
-# Several facilities use the MD5 message digest, but for some of them it is
-# only used for optional features (POP3: APOP authentification, IMAP: CRAM-MD5
-# authentification, SMTP: CRAM-MD5 authentification).
-# If you don't need those, you may exclude MD5 from S-nail.
-# Note that WANT_MD5 is automatically turned off if its exclusion will only
-# affect MIME boundary strings and Message-Id: fields
-WANT_MD5=yes
 
 ## PATHS AND PROGRAMS ##
 
@@ -183,7 +213,7 @@ SENDMAIL=`if [ -x /usr/sbin/sendmail ]; then echo /usr/sbin/sendmail; elif [ -x 
 # To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
 # used, which selects the required service by looking at the name by which the
 # program actually has been invoked.
-# This variable can be used to adjust this name as necessary
+# This variable can be used to adjust this name as necessary.
 # (Only of interest if the local mail system is used)
 SENDMAIL_PROGNAME=sendmail
 
@@ -234,7 +264,7 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # Note that setting this also enables our own memory canaries, which require
 # a rather large amount of runtime memory, and forcefully disables alloca(3)
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
-# of stack memory via our memory canaries
+# of "stack memory" via our memory canaries
 WANT_DEBUG=no
 
 # We use the crypto libraries' MD5 implementation if possible unless this one
@@ -257,5 +287,11 @@ WANT_DEVEL=no
 # extended level of NYD is compiled in only on explicit request
 # TODO Separation in between NYD and NYD2 not yet fully done
 WANT_NYD2=no
+
+# With $WANT_AUTOCC we will use stack protector guards shall the detected
+# compiler support them; this goes in line with our own (heap) memory canaries
+# and will detect buffer overflows.  It is usually only useful during
+# development, i.e., in a debug environment that tests all aspects of a program
+WANT_FORCED_STACKPROT=`feat_yes DEVEL || feat_yes DEBUG && echo yes || echo no`
 
 # s-it-mode

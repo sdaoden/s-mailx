@@ -2,7 +2,7 @@
  *@ (Lexical processing of) Commands, and the (blocking) "event mainloop".
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,12 +36,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE lex
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
-
-#include <fcntl.h>
 
 struct cmd {
    char const     *name;         /* Name of command */
@@ -60,7 +60,7 @@ struct cmd {
 struct cmd_ghost {
    struct cmd_ghost  *next;
    struct str        cmd;        /* Data follows after .name */
-   char              name[VFIELD_SIZE(sizeof(size_t))];
+   char              name[VFIELD_SIZE(0)];
 };
 
 static int              *_msgvec;
@@ -84,18 +84,22 @@ static char *  _lex_isolate(char const *comm);
 static struct cmd const * _lex(char const *comm);
 
 /* Command ghost handling */
-static int     _ghost(void *v);
-static int     _unghost(void *v);
+static int     _c_ghost(void *v);
+static int     _c_unghost(void *v);
 
 /* Print a list of all commands */
-static int     _pcmdlist(void *v);
+static int     _c_pcmdlist(void *v);
+
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
+/* `quit' command */
+static int     _c_quit(void *v);
+
 /* Print the binaries compiled-in features */
-static int     _features(void *v);
+static int     _c_features(void *v);
 
 /* Print the binaries version number */
-static int     _version(void *v);
+static int     _c_version(void *v);
 
 /* When we wake up after ^Z, reprint the prompt */
 static void    stop(int s);
@@ -152,7 +156,7 @@ _update_mailname(char const *name)
       enum protocol p = which_protocol(name);
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL) {
-            fprintf(stderr, _("Can't canonicalize `%s'\n"), name);
+            fprintf(stderr, _("Can't canonicalize \"%s\"\n"), name);
             rv = FAL0;
             goto jdocopy;
          }
@@ -225,7 +229,7 @@ jleave:
 }
 
 static int
-_ghost(void *v)
+_c_ghost(void *v)
 {
    char const **argv = v;
    struct cmd_ghost *lcg, *cg;
@@ -241,29 +245,40 @@ _ghost(void *v)
             NULL)
          fp = stdout;
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
-         fprintf(fp, "%-11s -> %s\n", cg->name, cg->cmd.s);
+         fprintf(fp, "ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
       if (fp != stdout) {
          page_or_print(fp, i);
          Fclose(fp);
       }
-      v = NULL;
       goto jleave;
    }
 
-   /* Request to add a new ghost.  Verify it's a valid name.. */
+   /* Verify the ghost name is a valid one */
    if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
-      fprintf(stderr, _("`ghost': can't canonicalize `%s'\n"), argv[0]);
+      fprintf(stderr, _("`ghost': can't canonicalize \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
 
-   /* ..and has a command */
+   /* Show command of single ghost? */
+   if (argv[1] == NULL) {
+      for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
+         if (!strcmp(argv[0], cg->name)) {
+            printf("ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
+            goto jleave;
+         }
+      fprintf(stderr, _("`ghost': no such alias: \"%s\"\n"), argv[0]);
+      v = NULL;
+      goto jleave;
+   }
+
+   /* Define command for ghost: verify command content */
    for (cl = 0, i = 1; (cp = UNCONST(argv[i])) != NULL; ++i)
       if (*cp != '\0')
          cl += strlen(cp) + 1; /* SP or NUL */
    if (cl == 0) {
-      fprintf(stderr, _("`ghost' synopsis: define <ghost> of <command>, "
-         "or list all ghosts\n"));
+      fprintf(stderr, _("`ghost': empty command arguments after \"%s\"\n"),
+         argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -301,7 +316,7 @@ jleave:
 }
 
 static int
-_unghost(void *v)
+_c_unghost(void *v)
 {
    int rv = 0;
    char const **argv = v, *cp;
@@ -309,19 +324,26 @@ _unghost(void *v)
    NYD_ENTER;
 
    while ((cp = *argv++) != NULL) {
-      for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
-         if (!strcmp(cg->name, cp)) {
-            if (lcg != NULL)
-               lcg->next = cg->next;
-            else
-               _cmd_ghosts = cg->next;
+      if (cp[0] == '*' && cp[1] == '\0') {
+         while ((cg = _cmd_ghosts) != NULL) {
+            _cmd_ghosts = cg->next;
             free(cg);
-            goto jouter;
          }
-      fprintf(stderr, _("Unknown command: `%s'\n"), cp);
-      rv = 1;
+      } else {
+         for (lcg = NULL, cg = _cmd_ghosts; cg != NULL; lcg = cg, cg = cg->next)
+            if (!strcmp(cg->name, cp)) {
+               if (lcg != NULL)
+                  lcg->next = cg->next;
+               else
+                  _cmd_ghosts = cg->next;
+               free(cg);
+               goto jouter;
+            }
+         fprintf(stderr, _("`unghost': no such alias: \"%s\"\n"), cp);
+         rv = 1;
 jouter:
-      ;
+         ;
+      }
    }
    NYD_LEAVE;
    return rv;
@@ -340,7 +362,7 @@ __pcmd_cmp(void const *s1, void const *s2)
 }
 
 static int
-_pcmdlist(void *v)
+_c_pcmdlist(void *v)
 {
    struct cmd const **cpa, *cp, **cursor;
    size_t i;
@@ -377,21 +399,35 @@ _pcmdlist(void *v)
 }
 
 static int
-_features(void *v)
+_c_quit(void *v)
+{
+   int rv;
+   NYD_ENTER;
+   UNUSED(v);
+
+   /* If we are PS_SOURCING, then return 1 so evaluate() can handle it.
+    * Otherwise return -1 to abort command loop */
+   rv = (pstate & PS_SOURCING) ? 1 : -1;
+   NYD_LEAVE;
+   return rv;
+}
+
+static int
+_c_features(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(_("Features: %s\n"), features);
+   printf(_("Features: %s\n"), ok_vlook(features));
    NYD_LEAVE;
    return 0;
 }
 
 static int
-_version(void *v)
+_c_version(void *v)
 {
    NYD_ENTER;
    UNUSED(v);
-   printf(_("Version %s\n"), version);
+   printf(_("Version %s\n"), ok_vlook(version));
    NYD_LEAVE;
    return 0;
 }
@@ -408,7 +444,7 @@ stop(int s)
    sigemptyset(&nset);
    sigaddset(&nset, s);
    sigprocmask(SIG_UNBLOCK, &nset, NULL);
-   kill(0, s);
+   n_raise(s);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    safe_signal(s, old_action);
    if (_reset_on_stop) {
@@ -437,28 +473,17 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    int rv, i, compressed = 0, omsgCount = 0;
    char const *who;
    size_t offset;
-   struct shortcut *sh;
    NYD_ENTER;
 
    /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
     * necessary to make a mailbox accessible by a different user, and if that
     * has happened, let's just let the usual file perms decide */
+
+   if (name[0] == '%' || ((who = shortcut_expand(name)) != NULL && *who == '%'))
+      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
+
    who = (name[1] != '\0') ? name + 1 : myname;
 
-#if 1
-   if (name[0] == '%' ||
-         ((sh = get_shortcut(name)) != NULL && *sh->sh_long == '%'))
-      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
-#else
-   if (name[0] == '%' && (name[1] == '\0' || name[1] == ':'))
-      fm |= FEDIT_SYSBOX;
-   else if ((sh = get_shortcut(name)) != NULL) {
-      char const *x = sh->sh_long;
-
-      if (x[0] == '%' && (x[1] == '\0' || x[1] == ':'))
-         fm |= FEDIT_SYSBOX;
-   }
-#endif
    if ((name = expand(name)) == NULL)
       goto jem1;
 
@@ -468,6 +493,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          name = savecat(name, temporary_protocol_ext);
       break;
    case PROTO_MAILDIR:
+      shudclob = 1;
       rv = maildir_setfile(name, fm);
       goto jleave;
 #ifdef HAVE_POP3
@@ -564,22 +590,27 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          }
       }
       shudclob = 1;
-      edit = !(fm & FEDIT_SYSBOX);
+      if (fm & FEDIT_SYSBOX)
+         pstate &= ~PS_EDIT;
+      else
+         pstate |= PS_EDIT;
       initbox(name);
       offset = 0;
       flp.l_len = 0;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
+      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         /*TODO dotlock!*/
          perror("Unable to lock mailbox");
          rele_sigs();
          goto jem1;
       }
-   } else /* FEDIT_NEWMAIL */{
+   } else {
       fseek(mb.mb_otf, 0L, SEEK_END);
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
       omsgCount = msgCount;
       flp.l_len = offset;
-      if (!edit && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {/*TODO dotlock!*/
+      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+         /*TODO dotlock!*/
          rele_sigs();
          goto jnonmail;
       }
@@ -601,9 +632,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    ibuf = NULL;
    rele_sigs();
    if (!(fm & FEDIT_NEWMAIL))
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
 
-   if ((!edit || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
+   if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
 jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {
          if (!ok_blook(emptystart))
@@ -635,6 +666,7 @@ newmailinfo(int omsgCount)
 
    for (i = 0; i < omsgCount; ++i)
       message[i].m_flag &= ~MNEWEST;
+
    if (msgCount > omsgCount) {
       for (i = omsgCount; i < msgCount; ++i)
          message[i].m_flag |= MNEWEST;
@@ -645,8 +677,11 @@ newmailinfo(int omsgCount)
          printf(_("Loaded %d new messages.\n"), i);
    } else
       printf(_("Loaded %d messages.\n"), msgCount);
-   callhook(mailname, 1);
+
+   check_folder_hook(TRU1);
+
    mdot = getmdot(1);
+
    if (ok_blook(header))
       print_headers(omsgCount + 1, msgCount, FAL0);
    NYD_LEAVE;
@@ -661,7 +696,7 @@ commands(void)
    bool_t volatile rv = TRU1;
    NYD_ENTER;
 
-   if (!sourcing) {
+   if (!(pstate & PS_SOURCING)) {
       if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
          safe_signal(SIGINT, onintr);
       if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
@@ -684,7 +719,31 @@ commands(void)
       interrupts = 0;
       handlerstacktop = NULL;
 
-      if (!sourcing && (options & OPT_INTERACTIVE)) {
+#ifdef HAVE_COLOUR
+      colour_table = NULL; /* XXX intermediate hack */
+#endif
+      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
+         temporary_localopts_free(); /* XXX intermediate hack */
+      sreset((pstate & PS_SOURCING) != 0);
+      if (!(pstate & PS_SOURCING)) {
+         char *cp;
+
+         /* TODO Note: this buffer may contain a password.  We should redefine
+          * TODO the code flow which has to do that */
+         if ((cp = termios_state.ts_linebuf) != NULL) {
+            termios_state.ts_linebuf = NULL;
+            termios_state.ts_linesize = 0;
+            free(cp); /* TODO pool give-back */
+         }
+         /* TODO Due to expand-on-tab of NCL the buffer may grow */
+         if (ev.ev_line.l > LINESIZE * 3) {
+            free(ev.ev_line.s); /* TODO pool! but what? */
+            ev.ev_line.s = NULL;
+            ev.ev_line.l = ev.ev_line_size = 0;
+         }
+      }
+
+      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
          char *cp;
 
          cp = ok_vlook(newmail);
@@ -699,43 +758,24 @@ commands(void)
 #endif
                   (mb.mb_type == MB_MAILDIR && n != 0)) {
                size_t odot = PTR2SIZE(dot - message);
-               bool_t odid = did_print_dot;
+               ui32_t odid = (pstate & PS_DID_PRINT_DOT);
 
-               setfile(mailname,
-                  FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
+               if (setfile(mailname,
+                     FEDIT_NEWMAIL |
+                     ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)) < 0) {
+                  exit_status |= EXIT_ERR;
+                  rv = FAL0;
+                  break;
+               }
                if (mb.mb_type != MB_IMAP) {
                   dot = message + odot;
-                  did_print_dot = odid;
+                  pstate |= odid;
                }
             }
          }
 
          _reset_on_stop = 1;
          exit_status = EXIT_OK;
-      }
-
-#ifdef HAVE_COLOUR
-      colour_table = NULL; /* XXX intermediate hack */
-#endif
-      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
-         temporary_localopts_free(); /* XXX intermediate hack */
-      sreset(sourcing);
-      if (!sourcing) {
-         char *cp;
-
-         /* TODO Note: this buffer may contain a password.  We should redefine
-          * TODO the code flow which has to do that */
-         if ((cp = termios_state.ts_linebuf) != NULL) {
-            termios_state.ts_linebuf = NULL;
-            termios_state.ts_linesize = 0;
-            free(cp); /* TODO pool give-back */
-         }
-         /* TODO Due to expand-on-tab of NCL the buffer may grow */
-         if (ev.ev_line.l > LINESIZE * 3) {
-            free(ev.ev_line.s); /* TODO pool! but what? */
-            ev.ev_line.s = NULL;
-            ev.ev_line.l = 0;
-         }
       }
 
       /* Read a line of commands and handle end of file specially */
@@ -748,47 +788,48 @@ jreadline:
       _reset_on_stop = 0;
       if (n < 0) {
          /* EOF */
-         if (loading)
+         if (pstate & PS_LOADING)
             break;
-         if (sourcing) {
+         if (pstate & PS_SOURCING) {
             unstack();
             continue;
          }
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("Use `quit' to quit.\n"));
+            printf(_("*ignoreeof* set, use `quit' to quit.\n"));
             continue;
          }
          break;
       }
 
-      temporary_orig_line = (sourcing || !(options & OPT_INTERACTIVE))
-            ? NULL : savestrbuf(ev.ev_line.s, ev.ev_line.l);
-      inhook = 0;
+      temporary_orig_line = ((pstate & PS_SOURCING) ||
+         !(options & OPT_INTERACTIVE)) ? NULL
+          : savestrbuf(ev.ev_line.s, ev.ev_line.l);
+      pstate &= ~PS_HOOK_MASK;
       if (evaluate(&ev)) {
-         if (loading) /* TODO mess; join with exec_last_comm_error etc.. */
+         if (pstate & PS_LOADING) /* TODO mess; join PS_EVAL_ERROR.. */
             rv = FAL0;
          break;
       }
       if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
          if (exit_status != EXIT_OK)
             break;
-         /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
-          * TODO the current behaviour is suboptimal AT BEST! */
-         if (exec_last_comm_error != 0 && !sourcing && !loading) {
+         if ((pstate & (PS_IN_LOAD | PS_EVAL_ERROR)) == PS_EVAL_ERROR) {
             exit_status = EXIT_ERR;
             break;
          }
       }
-      if (!sourcing && (options & OPT_INTERACTIVE)) {
+      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
          if (ev.ev_new_content != NULL)
             goto jreadline;
-         tty_addhist(temporary_orig_line, !ev.ev_add_history);
+         /* That *can* happen since evaluate() unstack()s on error! */
+         if (temporary_orig_line != NULL)
+            tty_addhist(temporary_orig_line, !ev.ev_add_history);
       }
    }
 
    if (ev.ev_line.s != NULL)
       free(ev.ev_line.s);
-   if (sourcing)
+   if (pstate & PS_SOURCING)
       sreset(FAL0);
    NYD_LEAVE;
    return rv;
@@ -820,7 +861,7 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    temporary_orig_line = contxt ? savestr(linebuf) : NULL;
    rv = evaluate(&ev);
 
-   if (contxt)
+   if (contxt && temporary_orig_line != NULL)
       tty_addhist(temporary_orig_line, TRU1);
 
 #ifdef HAVE_COLOUR
@@ -858,7 +899,7 @@ jrestart:
 
    /* Handle ! differently to get the correct lexical conventions */
    if (*cp == '!') {
-      if (sourcing) {
+      if (pstate & PS_SOURCING) {
          fprintf(stderr, _("Can't `!' while sourcing\n"));
          goto jleave;
       }
@@ -883,10 +924,10 @@ jrestart:
 
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
-    * table; while sourcing, however, we ignore blank lines to eliminate
+    * table; while PS_SOURCING, however, we ignore blank lines to eliminate
     * confusion; act just the same for ghosts */
    if (*word == '\0') {
-      if (sourcing || cg != NULL)
+      if ((pstate & PS_SOURCING) || cg != NULL)
          goto jleave0;
       com = _cmd_tab + 0;
       goto jexec;
@@ -902,9 +943,8 @@ jrestart:
          if (!strcmp(word, cg->name)) {
             if (line.l > 0) {
                size_t i = cg->cmd.l;
-               line.s = salloc(i + 1 + line.l +1);
+               line.s = salloc(i + line.l +1);
                memcpy(line.s, cg->cmd.s, i);
-               line.s[i++] = ' ';
                memcpy(line.s + i, cp, line.l);
                line.s[i += line.l] = '\0';
                line.l = i;
@@ -919,7 +959,8 @@ jrestart:
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
       bool_t s = condstack_isskip();
       if (!s || (options & OPT_D_V))
-         fprintf(stderr, _("Unknown command: `%s'\n"), word);
+         fprintf(stderr, _("Unknown command%s: `%s'\n"),
+            (s ? _(" (conditionally ignored)") : ""), word);
       if (s)
          goto jleave0;
       if (com != NULL) {
@@ -936,13 +977,13 @@ jexec:
       goto jleave0;
 
    /* Process the arguments to the command, depending on the type it expects,
-    * default to error.  If we're sourcing an interactive command: error */
+    * default to error.  If we're PS_SOURCING an interactive command: error */
    if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
       fprintf(stderr, _("May not execute `%s' while sending\n"),
          com->name);
       goto jleave;
    }
-   if (sourcing && (com->argtype & ARG_I)) {
+   if ((pstate & PS_SOURCING) && (com->argtype & ARG_I)) {
       fprintf(stderr, _("May not execute `%s' while sourcing\n"),
          com->name);
       goto jleave;
@@ -961,6 +1002,8 @@ jexec:
          com->name);
       goto jleave;
    }
+   if (com->argtype & ARG_O)
+      OBSOLETE2(_("this command will be removed"), com->name);
 
    if (com->argtype & ARG_V)
       temporary_arg_v_store = NULL;
@@ -978,7 +1021,7 @@ jexec:
             _msgvec[1] = 0;
       }
       if (*_msgvec == 0) {
-         if (!inhook)
+         if (!(pstate & PS_HOOK_MASK))
             printf(_("No applicable messages\n"));
          break;
       }
@@ -989,7 +1032,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if (_msgvec == NULL) {
 je96:
-         fprintf(stderr, _("Invalid use of `message list'\n"));
+         fprintf(stderr, _("Invalid use of \"message list\"\n"));
          break;
       }
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
@@ -1038,17 +1081,20 @@ je96:
       evp->ev_new_content = cp;
       goto jleave0;
    }
-   if (!(com->argtype & ARG_H) && !list_saw_numbers)
+   if (!(com->argtype & ARG_H) && !(pstate & PS_MSGLIST_SAW_NO))
       evp->ev_add_history = TRU1;
 
 jleave:
    /* Exit the current source file on error TODO what a mess! */
-   if ((exec_last_comm_error = (e != 0))) {
-      if (e < 0 || loading) {
+   if (e == 0)
+      pstate &= ~PS_EVAL_ERROR;
+   else {
+      pstate |= PS_EVAL_ERROR;
+      if (e < 0 || (pstate & PS_LOADING)) {
          e = 1;
          goto jret;
       }
-      if (sourcing)
+      if (pstate & PS_SOURCING)
          unstack();
       goto jret0;
    }
@@ -1060,10 +1106,10 @@ jleave:
          muvec[1] = 0;
          c_type(muvec); /* TODO what if error?  re-eval! */
       }
-   if (!sourcing && !inhook && !(com->argtype & ARG_T))
-      sawcom = TRU1;
+   if (!(pstate & (PS_SOURCING | PS_HOOK_MASK)) && !(com->argtype & ARG_T))
+      pstate |= PS_SAW_COMMAND;
 jleave0:
-   exec_last_comm_error = 0;
+   pstate &= ~PS_EVAL_ERROR;
 jret0:
    e = 0;
 jret:
@@ -1126,9 +1172,9 @@ onintr(int s)
    safe_signal(SIGINT, onintr);
    noreset = 0;
    if (!_lex_inithdr)
-      sawcom = TRU1;
+      pstate |= PS_SAW_COMMAND;
    _lex_inithdr = 0;
-   while (sourcing)
+   while (pstate & PS_SOURCING)
       unstack();
 
    termios_state_reset();
@@ -1231,10 +1277,12 @@ getmdot(int nmail)
    NYD_ENTER;
 
    if (!nmail) {
-      if (ok_blook(autothread))
+      if (ok_blook(autothread)) {
+         OBSOLETE(_("please use *autosort=thread* instead of *autothread*"));
          c_thread(NULL);
-      else if ((cp = ok_vlook(autosort)) != NULL) {
-         free(mb.mb_sorted);
+      } else if ((cp = ok_vlook(autosort)) != NULL) {
+         if (mb.mb_sorted != NULL)
+            free(mb.mb_sorted);
          mb.mb_sorted = sstrdup(cp);
          c_sort(NULL);
       }
@@ -1285,7 +1333,8 @@ getmdot(int nmail)
       }
    }
 
-   if ((mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
+   if (nmail &&
+         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
       mdot = (int)PTR2SIZE(mp - message + 1);
    else if (ok_blook(showlast)) {
       if (mb.mb_threaded) {
@@ -1300,7 +1349,10 @@ getmdot(int nmail)
                break;
          mdot = (mp >= message) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
       }
-   } else if (mb.mb_threaded) {
+   } else if (!nmail &&
+         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
+      mdot = (int)PTR2SIZE(mp - message + 1);
+   else if (mb.mb_threaded) {
       for (mp = threadroot; mp; mp = next_in_thread(mp))
          if (!(mp->m_flag & avoid))
             break;
@@ -1349,7 +1401,7 @@ initbox(char const *name)
    mb.mb_flags = MB_NOFLAGS;
 #endif
    dot = prevdot = threadroot = NULL;
-   did_print_dot = FAL0;
+   pstate &= ~PS_DID_PRINT_DOT;
    NYD_LEAVE;
 }
 

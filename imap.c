@@ -3,7 +3,7 @@
  *@ CRAM-MD5 as of RFC 2195.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -185,9 +185,7 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static int        imap_use_starttls(const char *uhp);
-static enum okay  imap_preauth(struct mailbox *mp, const char *xserver,
-                     const char *uhp);
+static enum okay  imap_preauth(struct mailbox *mp, struct url const *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
 #ifdef HAVE_MD5
@@ -805,53 +803,32 @@ jleave:
    --imaplock;
 }
 
-static int
-imap_use_starttls(const char *uhp)
-{
-   int rv;
-   NYD_ENTER;
-
-   if (ok_blook(imap_use_starttls))
-      rv = 1;
-   else {
-      char *var = savecat("imap-use-starttls-", uhp);
-      rv = vok_blook(var);
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
 static enum okay
-imap_preauth(struct mailbox *mp, const char *xserver, const char *uhp)
+imap_preauth(struct mailbox *mp, struct url const *urlp)
 {
-   char *cp;
    NYD_X;
 
    mp->mb_active |= MB_PREAUTH;
    imap_answer(mp, 1);
-   if ((cp = strchr(xserver, ':')) != NULL) {
-      char *x = salloc(cp - xserver + 1);
-      memcpy(x, xserver, cp - xserver);
-      x[cp - xserver] = '\0';
-      xserver = x;
-   }
+
 #ifdef HAVE_SSL
-   if (mp->mb_sock.s_use_ssl == 0 && imap_use_starttls(uhp)) {
+   if (!mp->mb_sock.s_use_ssl && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       FILE *queuefp = NULL;
       char o[LINESIZE];
 
       snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
       IMAP_OUT(o, MB_COMD, return STOP)
       IMAP_ANSWER()
-      if (ssl_open(xserver, &mp->mb_sock, uhp) != OKAY)
+      if (ssl_open(urlp, &mp->mb_sock) != OKAY)
          return STOP;
    }
 #else
-   if (imap_use_starttls(uhp)) {
+   if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       return STOP;
    }
 #endif
+
    imap_capability(mp);
    return OKAY;
 }
@@ -1251,7 +1228,10 @@ jduppass:
    if (!transparent)
       quit();
 
-   edit = !(fm & FEDIT_SYSBOX);
+   if (fm & FEDIT_SYSBOX)
+      pstate &= ~PS_EDIT;
+   else
+      pstate |= PS_EDIT;
    if (mb.mb_imap_account != NULL)
       free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
@@ -1322,8 +1302,7 @@ jduppass:
       mb.mb_sock = so;
       mb.mb_sock.s_desc = "IMAP";
       mb.mb_sock.s_onclose = imap_timer_off;
-      if (imap_preauth(&mb, urlp->url_h_p.s, urlp->url_u_h_p.s) != OKAY ||
-            imap_auth(&mb, &ccred) != OKAY) {
+      if (imap_preauth(&mb, urlp) != OKAY || imap_auth(&mb, &ccred) != OKAY) {
          sclose(&mb.mb_sock);
          imap_timer_off();
          safe_signal(SIGINT, saveint);
@@ -1356,7 +1335,7 @@ jnmail:
 jdone:
    setmsize(msgCount);
    if (!(fm & FEDIT_NEWMAIL) && !transparent)
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
@@ -1368,7 +1347,7 @@ jdone:
       c_sort((void*)-1);
    }
 
-   if (!(fm & FEDIT_NEWMAIL) && !edit && msgCount == 0) {
+   if (!(fm & FEDIT_NEWMAIL) && !(pstate & PS_EDIT) && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
@@ -1423,27 +1402,25 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(lp, linelen)) {
-         if (lines + headlines == 0)
-            goto jskip;
+      if (emptyline && is_head(lp, linelen, TRU1)) {
          fputc('>', mp->mb_otf);
          ++size;
       }
+      emptyline = 0;
       if (lp[linelen-1] == '\n' && (linelen == 1 || lp[linelen-2] == '\r')) {
-         emptyline = linelen <= 2;
          if (linelen > 2) {
             fwrite(lp, 1, linelen - 2, mp->mb_otf);
             size += linelen - 1;
-         } else
+         } else {
+            emptyline = 1;
             ++size;
+         }
          fputc('\n', mp->mb_otf);
       } else {
-         emptyline = 0;
          fwrite(lp, 1, linelen, mp->mb_otf);
          size += linelen;
       }
       ++lines;
-jskip:
       if ((expected -= linelen) <= 0)
          break;
    }
@@ -1922,7 +1899,7 @@ imap_update(struct mailbox *mp)
    int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
    NYD_ENTER;
 
-   if (!edit && mp->mb_perm != 0) {
+   if (!(pstate & PS_EDIT) && mp->mb_perm != 0) {
       holdbits();
       c = 0;
       for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -1937,7 +1914,7 @@ imap_update(struct mailbox *mp)
    for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
       if (mp->mb_perm == 0)
          dodel = 0;
-      else if (edit)
+      else if (pstate & PS_EDIT)
          dodel = ((m->m_flag & MDELETED) != 0);
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -1987,9 +1964,11 @@ imap_update(struct mailbox *mp)
          stored++;
          gotcha++;
       } else if (mp->mb_type != MB_CACHE ||
-            (!edit && !(m->m_flag & (MBOXED | MSAVED | MDELETED))) ||
+            (!(pstate & PS_EDIT) &&
+             !(m->m_flag & (MBOXED | MSAVED | MDELETED))) ||
             (m->m_flag & (MBOXED | MPRESERVE | MTOUCH)) ==
-               (MPRESERVE | MTOUCH) || (edit && !(m->m_flag & MDELETED)))
+               (MPRESERVE | MTOUCH) ||
+               ((pstate & PS_EDIT) && !(m->m_flag & MDELETED)))
          held++;
       if (m->m_flag & MNEW) {
          m->m_flag &= ~MNEW;
@@ -2008,11 +1987,11 @@ jbypass:
          modflags++;
       }
 
-   if ((gotcha || modflags) && edit) {
+   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit && mp->mb_perm != 0) {
+   } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -2389,9 +2368,10 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
    char *buf, *bp, *lp;
    size_t bufsize, buflen, cnt;
    off_t off1 = -1, offs;
-   int inhead = 1, flag = MNEW | MNEWEST;
-   long size = 0;
+   int flag;
+   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
    time_t tim;
+   long size;
    enum okay rv;
    NYD_ENTER;
 
@@ -2400,10 +2380,14 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
    cnt = fsize(fp);
    offs = ftell(fp);
    time(&tim);
+   size = 0;
 
-   do {
+   for (flag = MNEW, state = _NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
-      if (bp == NULL || strncmp(buf, "From ", 5) == 0) {
+
+      if (bp == NULL ||
+            ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
+             is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
             rv = imap_append1(mp, name, fp, off1, size, flag, tim);
             if (rv == STOP)
@@ -2412,49 +2396,54 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
          }
          off1 = offs + buflen;
          size = 0;
-         inhead = 1;
          flag = MNEW;
-         if (bp != NULL)
-            tim = unixtime(buf);
+         state = _INHEAD;
+         if (bp == NULL)
+            break;
+         tim = unixtime(buf);
       } else
          size += buflen+1;
       offs += buflen;
 
-      if (bp && buf[0] == '\n')
-         inhead = 0;
-      else if (bp && inhead && ascncasecmp(buf, "status", 6) == 0) {
-         lp = &buf[6];
-         while (whitechar(*lp))
-            lp++;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'R':
-                  flag |= MREAD;
-                  break;
-               case 'O':
-                  flag &= ~MNEW;
-                  break;
-               }
-      } else if (bp && inhead && ascncasecmp(buf, "x-status", 8) == 0) {
-         lp = &buf[8];
-         while (whitechar(*lp))
-            lp++;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'F':
-                  flag |= MFLAGGED;
-                  break;
-               case 'A':
-                  flag |= MANSWERED;
-                  break;
-               case 'T':
-                  flag |= MDRAFTED;
-                  break;
-               }
+      state &= ~_NLSEP;
+      if (buf[0] == '\n') {
+         state &= ~_INHEAD;
+         state |= _NLSEP;
+      } else if (state & _INHEAD) {
+         if (ascncasecmp(buf, "status", 6) == 0) {
+            lp = &buf[6];
+            while (whitechar(*lp))
+               lp++;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'R':
+                     flag |= MREAD;
+                     break;
+                  case 'O':
+                     flag &= ~MNEW;
+                     break;
+                  }
+         } else if (ascncasecmp(buf, "x-status", 8) == 0) {
+            lp = &buf[8];
+            while (whitechar(*lp))
+               lp++;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'F':
+                     flag |= MFLAGGED;
+                     break;
+                  case 'A':
+                     flag |= MANSWERED;
+                     break;
+                  case 'T':
+                     flag |= MDRAFTED;
+                     break;
+                  }
+         }
       }
-   } while (bp != NULL);
+   }
    rv = OKAY;
 jleave:
    free(buf);
@@ -2512,7 +2501,7 @@ imap_append(const char *xserver, FILE *fp)
           * TODO i changed this to sstrdup() sofar, as is used
           * TODO somewhere else in this file for this! */
          mx.mb_imap_mailbox = sstrdup(mbx);
-         if (imap_preauth(&mx, url.url_h_p.s, url.url_u_h_p.s) != OKAY ||
+         if (imap_preauth(&mx, &url) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
             sclose(&mx.mb_sock);
             goto jfail;
@@ -3479,16 +3468,14 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       rv = 1;
       goto jleave;
    }
-   var_clear_allow_undefined = TRU1;
    ok_bclear(disconnected);
    vok_bclear(savecat("disconnected-", url.url_u_h_p.s));
-   var_clear_allow_undefined = FAL0;
 
    if (mb.mb_type == MB_CACHE) {
       enum fedit_mode fm = FEDIT_NONE;
       if (_imap_rdonly)
          fm |= FEDIT_RDONLY;
-      if (!edit)
+      if (!(pstate & PS_EDIT))
          fm |= FEDIT_SYSBOX;
       _imap_setfile1(&url, fm, 1);
       if (msgCount > omsgCount)
@@ -3526,7 +3513,7 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       enum fedit_mode fm = FEDIT_NONE;
       if (_imap_rdonly)
          fm |= FEDIT_RDONLY;
-      if (!edit)
+      if (!(pstate & PS_EDIT))
          fm |= FEDIT_SYSBOX;
       sclose(&mb.mb_sock);
       _imap_setfile1(&url, fm, 1);

@@ -1,8 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ File I/O.
+ *@ File I/O, including resource file loading etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,14 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE fio
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 #include <sys/wait.h>
-
-#include <fcntl.h>
 
 #ifdef HAVE_WORDEXP
 # include <wordexp.h>
@@ -75,6 +75,13 @@ struct fio_stack {
    int   s_loading;  /* Loading .mailrc, etc. */
 };
 
+struct shvar_stack {
+   struct shvar_stack *shs_next;
+   char const  *shs_value; /* Remaining value to expand */
+   size_t      shs_len;    /* gth of .shs_dat this level */
+   char const  *shs_dat;   /* Result data of this level */
+};
+
 static size_t           _message_space;   /* Slots in ::message */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
@@ -84,7 +91,11 @@ static FILE *           _fio_input;
 static void       _findmail(char *buf, size_t bufsize, char const *user,
                      bool_t force);
 
-/* Perform shell meta character expansion */
+/* Perform shell variable expansion */
+static char *     _shvar_exp(char const *name);
+static char *     __shvar_exp(struct shvar_stack *shsp);
+
+/* Perform shell meta character expansion TODO obsolete (INSECURE!) */
 static char *     _globname(char const *name, enum fexp_mode fexpm);
 
 /* line is a buffer with the result of fgets(). Returns the first newline or
@@ -131,6 +142,110 @@ jcopy:
       n_strlcpy(buf, cp, bufsize);
 jleave:
    NYD_LEAVE;
+}
+
+static char *
+_shvar_exp(char const *name)
+{
+   struct shvar_stack top;
+   char *rv;
+   NYD2_ENTER;
+
+   memset(&top, 0, sizeof top);
+   top.shs_value = name;
+   rv = __shvar_exp(&top);
+
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char *
+__shvar_exp(struct shvar_stack *shsp)
+{
+   struct shvar_stack next, *np, *tmp;
+   char const *vp;
+   char lc, c, *cp, *rv;
+   size_t i;
+   NYD2_ENTER;
+
+   if (*(vp = shsp->shs_value) != '$') {
+      union {bool_t hadbs; char c;} u = {FAL0};
+
+      shsp->shs_dat = vp;
+      for (lc = '\0', i = 0; ((c = *vp) != '\0'); ++i, ++vp) {
+         if (c == '$' && lc != '\\')
+            break;
+         lc = (lc == '\\') ? (u.hadbs = TRU1, '\0') : c;
+      }
+      shsp->shs_len = i;
+
+      if (u.hadbs) {
+         shsp->shs_dat = cp = savestrbuf(shsp->shs_dat, i);
+
+         for (lc = '\0', rv = cp; (u.c = *cp++) != '\0';) {
+            if (u.c != '\\' || lc == '\\')
+               *rv++ = u.c;
+            lc = (lc == '\\') ? '\0' : u.c;
+         }
+         *rv = '\0';
+
+         shsp->shs_len = PTR2SIZE(rv - shsp->shs_dat);
+      }
+   } else {
+      if ((lc = (*++vp == '{')))
+         ++vp;
+
+      shsp->shs_dat = vp;
+      for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
+         if (!alnumchar(c) && c != '_')
+            break;
+
+      if (lc) {
+         if (c != '}') {
+            fprintf(stderr, _("Variable name misses closing \"}\": \"%s\"\n"),
+               shsp->shs_value);
+            shsp->shs_len = strlen(shsp->shs_value);
+            shsp->shs_dat = shsp->shs_value;
+            goto junroll;
+         }
+         c = *++vp;
+      }
+
+      shsp->shs_len = i;
+      if ((cp = vok_vlook(savestrbuf(shsp->shs_dat, i))) != NULL)
+         shsp->shs_len = strlen(shsp->shs_dat = cp);
+   }
+   if (c != '\0')
+      goto jrecurse;
+
+   /* That level made the great and completed encoding.  Build result */
+junroll:
+   for (i = 0, np = shsp, shsp = NULL; np != NULL;) {
+      i += np->shs_len;
+      tmp = np->shs_next;
+      np->shs_next = shsp;
+      shsp = np;
+      np = tmp;
+   }
+
+   cp = rv = salloc(i +1);
+   while (shsp != NULL) {
+      np = shsp;
+      shsp = shsp->shs_next;
+      memcpy(cp, np->shs_dat, np->shs_len);
+      cp += np->shs_len;
+   }
+   *cp = '\0';
+
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jrecurse:
+   memset(&next, 0, sizeof next);
+   next.shs_next = shsp;
+   next.shs_value = vp;
+   rv = __shvar_exp(&next);
+   goto jleave;
 }
 
 static char *
@@ -514,17 +629,21 @@ FL int
    /* TODO readline: linebuf pool! */
    FILE *ifile = (_fio_input != NULL) ? _fio_input : stdin;
    bool_t doprompt, dotty;
-   int n;
+   int n, nold;
    NYD2_ENTER;
 
-   doprompt = (!sourcing && (options & OPT_INTERACTIVE));
+   doprompt = (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE));
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if (!doprompt)
       prompt = NULL;
    else if (prompt == NULL)
       prompt = getprompt();
 
-   for (n = 0;;) {
+   /* Ensure stdout is flushed first anyway */
+   if (!dotty && prompt == NULL)
+      fflush(stdout);
+
+   for (nold = n = 0;;) {
       if (dotty) {
          assert(ifile == stdin);
          if (string != NULL && (n = (int)strlen(string)) > 0) {
@@ -536,29 +655,50 @@ FL int
             memcpy(*linebuf, string, (size_t)n +1);
          }
          string = NULL;
+         /* TODO if nold>0, don't redisplay the entire line!
+          * TODO needs complete redesign ... */
          n = (tty_readline)(prompt, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
       } else {
-         if (prompt != NULL && *prompt != '\0') {
-            fputs(prompt, stdout);
+         if (prompt != NULL) {
+            if (*prompt != '\0')
+               fputs(prompt, stdout);
             fflush(stdout);
          }
          n = (readline_restart)(ifile, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
+
+         if (n > 0 && nold > 0) {
+            int i = 0;
+            char const *cp = *linebuf + nold;
+
+            while (blankspacechar(*cp) && nold + i < n)
+               ++cp, ++i;
+            if (i > 0) {
+               memmove(*linebuf + nold, cp, n - nold - i);
+               n -= i;
+               (*linebuf)[n] = '\0';
+            }
+         }
       }
       if (n <= 0)
          break;
+
       /* POSIX says:
        * An unquoted <backslash> at the end of a command line shall
        * be discarded and the next line shall continue the command */
-      if (nl_escape && (*linebuf)[n - 1] == '\\') {
-         (*linebuf)[--n] = '\0';
-         if (prompt != NULL && *prompt != '\0')
-            prompt = ".. "; /* XXX PS2 .. */
-         continue;
-      }
-      break;
+      if (!nl_escape || n == 0 || (*linebuf)[n - 1] != '\\')
+         break;
+      (*linebuf)[nold = --n] = '\0';
+      if (prompt != NULL && *prompt != '\0')
+         prompt = ".. "; /* XXX PS2 .. */
    }
+
+   if (n >= 0 && (options & OPT_D_VV))
+      fprintf(stderr, _("%s %d bytes <%.*s>\n"),
+         ((pstate & PS_LOADING) ? "LOAD"
+          : (pstate & PS_SOURCING) ? "SOURCE" : "READ"),
+         n, n, *linebuf);
    NYD2_LEAVE;
    return n;
 }
@@ -625,7 +765,7 @@ setptr(FILE *ibuf, off_t offset)
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
-      if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt)) {
+      if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt, FAL0)) {
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
@@ -796,7 +936,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    while (fgetline(line, linesize, &cnt, NULL, fp, 0)) {
 #ifdef HAVE_REGEX
       if (sep->ss_sexpr == NULL) {
-         if (regexec(&sep->ss_reexpr, *line, 0,NULL, 0) == REG_NOMATCH)
+         if (regexec(&sep->ss_regex, *line, 0,NULL, 0) == REG_NOMATCH)
             continue;
       } else
 #endif
@@ -819,7 +959,7 @@ setdot(struct message *mp)
    NYD_ENTER;
    if (dot != mp) {
       prevdot = dot;
-      did_print_dot = FAL0;
+      pstate &= ~PS_DID_PRINT_DOT;
    }
    dot = mp;
    uncollapse1(dot, 0);
@@ -859,9 +999,9 @@ fsize(FILE *iob)
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
-   char cbuf[PATH_MAX], *res;
+   char cbuf[PATH_MAX];
+   char const *res;
    struct str s;
-   struct shortcut *sh;
    bool_t dyn;
    NYD_ENTER;
 
@@ -869,9 +1009,8 @@ fexpand(char const *name, enum fexp_mode fexpm)
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   res = UNCONST(name);
-   if (!(fexpm & FEXP_NSHORTCUT) && (sh = get_shortcut(res)) != NULL)
-      res = sh->sh_long;
+   if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
+      res = UNCONST(name);
 
    if (fexpm & FEXP_SHELL) {
       dyn = FAL0;
@@ -933,11 +1072,11 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>~{}()[]*?$`'\"\\"))
+   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
       switch (which_protocol(res)) {
       case PROTO_FILE:
       case PROTO_MAILDIR:
-         res = _globname(res, fexpm);
+         res = (fexpm & FEXP_NSHELL) ? _shvar_exp(res) : _globname(res, fexpm);
          dyn = TRU1;
          goto jleave;
       default:
@@ -950,8 +1089,7 @@ jislocal:
       case PROTO_MAILDIR:
          break;
       default:
-         fprintf(stderr, _(
-            "`%s': only a local file or directory may be used\n"), name);
+         fprintf(stderr, _("Not a local file or directory: \"%s\"\n"), name);
          res = NULL;
          break;
       }
@@ -959,19 +1097,33 @@ jleave:
    if (res && !dyn)
       res = savestr(res);
    NYD_LEAVE;
-   return res;
+   return UNCONST(res);
 }
 
-FL void
-demail(void)
+FL char *
+fexpand_nshell_quote(char const *name)
 {
+   size_t i, j;
+   char *rv, c;
    NYD_ENTER;
-   if (ok_blook(keep) || rm(mailname) < 0) {
-      int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-      if (fd >= 0)
-         close(fd);
+
+   for (i = j = 0; (c = name[i]) != '\0'; ++i)
+      if (c == '\\')
+         ++j;
+
+   if (j == 0)
+      rv = savestrbuf(name, i);
+   else {
+      rv = salloc(i + j +1);
+      for (i = j = 0; (c = name[i]) != '\0'; ++i) {
+         rv[j++] = c;
+         if (c == '\\')
+            rv[j++] = c;
+      }
+      rv[j] = '\0';
    }
    NYD_LEAVE;
+   return rv;
 }
 
 FL bool_t
@@ -984,7 +1136,7 @@ var_folder_updated(char const *name, char **store)
    if ((folder = UNCONST(name)) == NULL)
       goto jleave;
 
-   /* Expand the *folder*; skip `%:' prefix for simplicity of use */
+   /* Expand the *folder*; skip %: prefix for simplicity of use */
    /* XXX This *only* works because we do NOT
     * XXX update environment variables via the "set" mechanism */
    if (folder[0] == '%' && folder[1] == ':')
@@ -995,7 +1147,7 @@ var_folder_updated(char const *name, char **store)
    switch (which_protocol(folder)) {
    case PROTO_POP3:
       fprintf(stderr, _(
-         "`folder' cannot be set to a flat, readonly POP3 account\n"));
+         "*folder* cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
       goto jleave;
    case PROTO_IMAP:
@@ -1027,7 +1179,7 @@ var_folder_updated(char const *name, char **store)
 #ifdef HAVE_REALPATH
    res = ac_alloc(PATH_MAX +1);
    if (realpath(folder, res) == NULL)
-      fprintf(stderr, _("Can't canonicalize `%s'\n"), folder);
+      fprintf(stderr, _("Can't canonicalize \"%s\"\n"), folder);
    else
       folder = res;
 #endif
@@ -1120,7 +1272,7 @@ sclose(struct sock *sp)
 
    i = sp->s_fd;
    sp->s_fd = -1;
-   /* TODO NOTE: we MUST NOT close the descriptor `0' here...
+   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
     * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
     * TODO but unfortunately it isn't yet */
    if (i <= 0)
@@ -1132,27 +1284,13 @@ sclose(struct sock *sp)
          free(sp->s_wbuf);
 # ifdef HAVE_OPENSSL
       if (sp->s_use_ssl) {
-         /* XXX Don't wonder: as of v14.6 there is a problem in the IMAP code in
-          * XXX that if i connect via `file' to an IMAP account, that connection
-          * XXX breaks, and i simply re-`file' to the same account, then it may
-          * XXX happen that the OpenSSL library crashes, in SSL_CTX_free()?,
-          * XXX but more checking is needed.  That is true for 0* as well as for
-          * XXX `OpenSSL 1.0.1f 6 Jan 2014'; i've reported that on @openssl-user
-          * XXX somewhen in november 2013, i.e., the wrong list.  What i still
-          * XXX don't understand, and the reason for why all this NYD_X is here
-          * XXX etc.: the socket is has not been closed, so these SSL_* funs
-          * XXX below have not yet been called on the SSL objects */
-         void *s_ssl = sp->s_ssl, *s_ctx = sp->s_ctx;
-         sp->s_ssl = sp->s_ctx = NULL;
+         void *s_ssl = sp->s_ssl;
+
+         sp->s_ssl = NULL;
          sp->s_use_ssl = 0;
-         NYD_X;
-         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling */
+         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
             ;
-         NYD_X;
          SSL_free(s_ssl);
-         NYD_X;
-         SSL_CTX_free(s_ctx);
-         NYD_X;
       }
 # endif
       i = close(i);
@@ -1257,8 +1395,20 @@ jleave:
    return rv;
 }
 
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
+static int        __sopen_sig; /* TODO someday, we won't need it no more */
+static void
+__sopen_onsig(int sig) /* TODO someday, we won't need it no more */
+{
+   NYD_X; /* Signal handler */
+   __sopen_sig = sig;
+   siglongjmp(__sopen_actjmp, 1);
+}
+# endif
+
 FL bool_t
-sopen(struct sock *sp, struct url *urlp)
+sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 {
 # ifdef HAVE_SO_SNDTIMEO
    struct timeval tv;
@@ -1266,7 +1416,7 @@ sopen(struct sock *sp, struct url *urlp)
 # ifdef HAVE_SO_LINGER
    struct linger li;
 # endif
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0, *res;
 # else
@@ -1275,8 +1425,14 @@ sopen(struct sock *sp, struct url *urlp)
    struct hostent *hp;
    struct servent *ep;
 # endif
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+   sighandler_type volatile ohup, oint;
+   char const * volatile serv;
+   int volatile sofd = -1;
+# else
    char const *serv;
-   int sofd = -1;
+   int sofd = -1; /* TODO may leak without getaddrinfo(3) support (pre v15.0) */
+# endif
    NYD_ENTER;
 
    /* Connect timeouts after 30 seconds XXX configurable */
@@ -1290,11 +1446,28 @@ sopen(struct sock *sp, struct url *urlp)
       fprintf(stderr, _("Resolving host %s:%s ..."),
          urlp->url_host.s, serv);
 
-# ifdef HAVE_IPV6
+# ifdef HAVE_GETADDRINFO
    memset(&hints, 0, sizeof hints);
    hints.ai_socktype = SOCK_STREAM;
+   res0 = NULL;
+
+   hold_sigs();
+   __sopen_sig = 0;
+   ohup = safe_signal(SIGHUP, &__sopen_onsig);
+   oint = safe_signal(SIGINT, &__sopen_onsig);
+   if (sigsetjmp(__sopen_actjmp, 0)) {
+      fprintf(stderr, "%s\n",
+         (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+      if (sofd >= 0) {
+         close(sofd);
+         sofd = -1;
+         goto jjumped;
+      }
+   }
+   rele_sigs();
+
    if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
-      fprintf(stderr, _(" lookup of `%s' failed.\n"), urlp->url_host.s);
+      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
       goto jleave;
    } else if (options & OPT_VERB)
       fprintf(stderr, _(" done.\n"));
@@ -1307,10 +1480,11 @@ sopen(struct sock *sp, struct url *urlp)
          fprintf(stderr, _("%sConnecting to %s:%s ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
+
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (sofd >= 0) {
 #  ifdef HAVE_SO_SNDTIMEO
-         setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+         (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
          if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
             close(sofd);
@@ -1318,13 +1492,22 @@ sopen(struct sock *sp, struct url *urlp)
          }
       }
    }
-   freeaddrinfo(res0);
+
+jjumped:
+   if (res0 != NULL)
+      freeaddrinfo(res0);
+
+   hold_sigs();
+   safe_signal(SIGINT, oint);
+   safe_signal(SIGHUP, ohup);
+   rele_sigs();
+
    if (sofd < 0) {
       perror(_(" could not connect"));
       goto jleave;
    }
 
-# else /* HAVE_IPV6 */
+# else /* HAVE_GETADDRINFO */
    if (urlp->url_port == NULL && urlp->url_portno == 0) {
       if ((ep = getservbyname(UNCONST(urlp->url_proto), "tcp")) != NULL)
          urlp->url_portno = ep->s_port;
@@ -1335,7 +1518,7 @@ sopen(struct sock *sp, struct url *urlp)
    }
 
    if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
-      fprintf(stderr, _(" lookup of `%s' failed.\n"), urlp->url_host.s);
+      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
       goto jleave;
    } else if (options & OPT_VERB)
       fprintf(stderr, _(" done.\n"));
@@ -1354,7 +1537,7 @@ sopen(struct sock *sp, struct url *urlp)
       fprintf(stderr, _("%sConnecting to %s:%d ..."),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
-   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
       perror(_(" could not connect"));
@@ -1362,7 +1545,7 @@ sopen(struct sock *sp, struct url *urlp)
       sofd = -1;
       goto jleave;
    }
-# endif /* !HAVE_IPV6 */
+# endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
       fputs(_(" connected.\n"), stderr);
@@ -1371,25 +1554,55 @@ sopen(struct sock *sp, struct url *urlp)
 # ifdef HAVE_SO_SNDTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
-   setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-   setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 # endif
 # ifdef HAVE_SO_LINGER
    li.l_onoff = 1;
    li.l_linger = 42;
-   setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
+   (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
    memset(sp, 0, sizeof *sp);
    sp->s_fd = sofd;
+
+   /* SSL/TLS upgrade? */
 # ifdef HAVE_SSL
-   if (urlp->url_needs_tls &&
-         ssl_open(urlp->url_host.s, sp, urlp->url_u_h_p.s) != OKAY) {
-      sclose(sp);
-      sofd = -1;
+   if (urlp->url_needs_tls) {
+      hold_sigs();
+      ohup = safe_signal(SIGHUP, &__sopen_onsig);
+      oint = safe_signal(SIGINT, &__sopen_onsig);
+      if (sigsetjmp(__sopen_actjmp, 0)) {
+         fprintf(stderr, _("%s during SSL/TLS handshake\n"),
+            (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+         goto jsclose;
+      }
+      rele_sigs();
+
+      if (ssl_open(urlp, sp) != OKAY) {
+jsclose:
+         sclose(sp);
+         sofd = -1;
+      }
+
+      hold_sigs();
+      safe_signal(SIGINT, oint);
+      safe_signal(SIGHUP, ohup);
+      rele_sigs();
    }
-# endif
+# endif /* HAVE_SSL */
+
 jleave:
+   /* May need to bounce the signal to the lex.c trampoline (or wherever) */
+# if defined HAVE_GETADDRINFO || defined HAVE_SSL
+   if (__sopen_sig != 0) {
+      sigset_t cset;
+      sigemptyset(&cset);
+      sigaddset(&cset, __sopen_sig);
+      sigprocmask(SIG_UNBLOCK, &cset, NULL);
+      n_raise(__sopen_sig);
+   }
+#endif
    NYD_LEAVE;
    return (sofd >= 0);
 }
@@ -1477,6 +1690,7 @@ FL void
 load(char const *name)
 {
    struct str n;
+   void *cond;
    FILE *in, *oldin;
    NYD_ENTER;
 
@@ -1485,19 +1699,21 @@ load(char const *name)
 
    oldin = _fio_input;
    _fio_input = in;
-   loading = TRU1;
-   sourcing = TRU1;
+   pstate |= PS_IN_LOAD;
    /* commands() may sreset(), copy over file name */
    n.l = strlen(name);
    n.s = ac_alloc(n.l +1);
    memcpy(n.s, name, n.l +1);
 
+   cond = condstack_release();
    if (!commands())
-      fprintf(stderr, _("Stopped loading `%s' due to errors\n"), n.s);
+      fprintf(stderr,
+         _("Stopped loading \"%s\" due to errors (enable *debug* for trace)\n"),
+         n.s);
+   condstack_take(cond);
 
    ac_free(n.s);
-   loading = FAL0;
-   sourcing = FAL0;
+   pstate &= ~PS_IN_LOAD;
    _fio_input = oldin;
    Fclose(in);
 jleave:
@@ -1527,11 +1743,11 @@ c_source(void *v)
 
    _fio_stack[_fio_stack_size].s_file = _fio_input;
    _fio_stack[_fio_stack_size].s_cond = condstack_release();
-   _fio_stack[_fio_stack_size].s_loading = loading;
+   _fio_stack[_fio_stack_size].s_loading = !!(pstate & PS_LOADING);
    ++_fio_stack_size;
-   loading = FAL0;
+   pstate &= ~PS_LOADING;
+   pstate |= PS_SOURCING;
    _fio_input = fi;
-   sourcing = TRU1;
    rv = 0;
 jleave:
    NYD_LEAVE;
@@ -1546,7 +1762,7 @@ unstack(void)
 
    if (_fio_stack_size == 0) {
       fprintf(stderr, _("\"Source\" stack over-pop.\n"));
-      sourcing = FAL0;
+      pstate &= ~PS_SOURCING;
       goto jleave;
    }
 
@@ -1555,10 +1771,17 @@ unstack(void)
    --_fio_stack_size;
    if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
       fprintf(stderr, _("Unmatched \"if\"\n"));
-   loading = _fio_stack[_fio_stack_size].s_loading;
+   if (_fio_stack[_fio_stack_size].s_loading)
+      pstate |= PS_LOADING;
+   else
+      pstate &= ~PS_LOADING;
    _fio_input = _fio_stack[_fio_stack_size].s_file;
-   if (_fio_stack_size == 0)
-      sourcing = loading;
+   if (_fio_stack_size == 0) {
+      if (pstate & PS_LOADING)
+         pstate |= PS_SOURCING;
+      else
+         pstate &= ~PS_SOURCING;
+   }
    rv = 0;
 jleave:
    NYD_LEAVE;

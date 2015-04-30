@@ -2,7 +2,7 @@
  *@ Function prototypes and function-alike macros.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*-
  * Copyright (c) 1992, 1993
@@ -81,6 +81,13 @@
 /* RFC 822, 3.2. */
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
+
+/* Could the string contain a regular expression? */
+#if 0
+# define is_maybe_regex(S) anyof("^.[]*+?()|$", S)
+#else
+# define is_maybe_regex(S) anyof("^[]*+?|$", S)
+#endif
 
 /* Try to use alloca() for some function-local buffers and data, fall back to
  * smalloc()/free() if not available */
@@ -182,19 +189,22 @@ FL bool_t      _var_vokclear(char const *vokey);
 #define vok_bclear(S)            _var_vokclear(S)
 #define vok_vclear(S)            _var_vokclear(S)
 
+/* Environment lookup, if envonly is TRU1 then variable must come from the
+ * process environment (and if via `setenv') */
+FL char *      _env_look(char const *envkey, bool_t envonly);
+#define env_blook(S,EXCL)        (_env_look(S, EXCL) != NULL)
+#define env_vlook(S,EXCL)        _env_look(S, EXCL)
+
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
 #ifdef HAVE_SOCKETS
 FL char *      _var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
+# define xok_BLOOK(C,URL,M)      (_var_xoklook(C, URL, M) != NULL)
+# define xok_VLOOK(C,URL,M)      _var_xoklook(C, URL, M)
+# define xok_blook(C,URL,M)      xok_BLOOK(CONCAT(ok_b_, C), URL, M)
+# define xok_vlook(C,URL,M)      xok_VLOOK(CONCAT(ok_v_, C), URL, M)
 #endif
-#define xok_BLOOK(C,URL,M)       (_var_xoklook(C, URL, M) != NULL)
-#define xok_VLOOK(C,URL,M)       _var_xoklook(C, URL, M)
-#define xok_blook(C,URL,M)       xok_BLOOK(CONCAT(ok_b_, C), URL, M)
-#define xok_vlook(C,URL,M)       xok_VLOOK(CONCAT(ok_v_, C), URL, M)
-
-/* List all variables */
-FL void        var_list_all(void);
 
 /* `varshow' */
 FL int         c_varshow(void *v);
@@ -213,7 +223,8 @@ FL int         c_define(void *v);
 FL int         c_undefine(void *v);
 FL int         c_call(void *v);
 
-FL int         callhook(char const *name, int nmail);
+/* Check wether a *folder-hook* exists for the currently active mailbox */
+FL bool_t      check_folder_hook(bool_t nmail);
 
 /* Accounts: `account', `unaccount' */
 FL int         c_account(void *v);
@@ -223,6 +234,7 @@ FL int         c_unaccount(void *v);
 FL int         c_localopts(void *v);
 
 FL void        temporary_localopts_free(void); /* XXX intermediate hack */
+FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
 
 /*
  * attachments.c
@@ -243,6 +255,8 @@ FL void        edit_attachments(struct attachment **aphead);
 /*
  * auxlily.c
  */
+
+FL void        n_raise(int signo);
 
 /* Announce a fatal error (and die) */
 FL void        panic(char const *format, ...);
@@ -308,10 +322,6 @@ FL int         screensize(void);
  * e.g., "LESS=FRSXi" */
 FL char const *get_pager(char const **env_addon);
 
-/* Check wether using a pager is possible/makes sense and is desired by user
- * (*crt* set); return number of screen lines (or *crt*) if so, 0 otherwise */
-FL size_t      paging_seems_sensible(void);
-
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
 
@@ -368,6 +378,7 @@ FL char *      colalign(char const *cp, int col, int fill,
 /* Convert a string to a displayable one;
  * prstr() returns the result savestr()d, prout() writes it */
 FL void        makeprint(struct str const *in, struct str *out);
+FL size_t      delctrl(char *cp, size_t len);
 FL char *      prstr(char const *s);
 FL int         prout(char const *s, size_t sz, FILE *fp);
 
@@ -395,6 +406,20 @@ FL struct str const * colour_get(enum colourspec cs);
 # define colour_put_header(FP,N)
 # define colour_reset(FP)
 #endif
+
+/* Check wether the argument string is a true (1) or false (0) boolean, or an
+ * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
+ * treated as a boolean, is used as the return value shall inbuf be empty.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
+
+/* Dig a "quadoption" in inbuf (possibly going through getapproval() in
+ * interactive mode).  Returns a boolean or -1 if inbuf content is invalid;
+ * if emptyrv is not -1 then it,  treated as a boolean, is used as the return
+ * value shall inbuf be empty.  If prompt is set it is printed first if intera.
+ * inlen may be UIZ_MAX to force strlen() detection */
+FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
+                  si8_t emptyrv);
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
@@ -560,14 +585,18 @@ FL int         c_cwd(void *v);
 /* Change user's working directory */
 FL int         c_chdir(void *v);
 
-FL int         c_respond(void *v);
-FL int         c_respondall(void *v);
-FL int         c_respondsender(void *v);
-FL int         c_Respond(void *v);
+/* All thinkable sorts of `reply' / `respond' and `followup'.. */
+FL int         c_reply(void *v);
+FL int         c_replyall(void *v);
+FL int         c_replysender(void *v);
+FL int         c_Reply(void *v);
 FL int         c_followup(void *v);
 FL int         c_followupall(void *v);
 FL int         c_followupsender(void *v);
 FL int         c_Followup(void *v);
+
+/* ..and a mailing-list reply */
+FL int         c_Lreply(void *v);
 
 /* The 'forward' command */
 FL int         c_forward(void *v);
@@ -594,15 +623,6 @@ FL int         c_seen(void *v);
 /* Print the size of each message */
 FL int         c_messize(void *v);
 
-/* Quit quickly.  If sourcing, just pop the input level by returning error */
-FL int         c_rexit(void *v);
-
-/* Without arguments print all groups, otherwise add users to a group */
-FL int         c_group(void *v);
-
-/* Delete the passed groups */
-FL int         c_ungroup(void *v);
-
 /* `file' (`folder') and `File' (`Folder') */
 FL int         c_file(void *v);
 FL int         c_File(void *v);
@@ -610,30 +630,8 @@ FL int         c_File(void *v);
 /* Expand file names like echo */
 FL int         c_echo(void *v);
 
-/* if.elif.else.endif conditional execution.
- * condstack_isskip() returns wether the current condition state doesn't allow
- * execution of commands.
- * condstack_release() and condstack_take() are used when sourcing files, they
- * rotate the current condition stack; condstack_take() returns a false boolean
- * if the current condition stack has unclosed conditionals */
-FL int         c_if(void *v);
-FL int         c_elif(void *v);
-FL int         c_else(void *v);
-FL int         c_endif(void *v);
-FL bool_t      condstack_isskip(void);
-FL void *      condstack_release(void);
-FL bool_t      condstack_take(void *self);
-
-/* Set the list of alternate names */
-FL int         c_alternates(void *v);
-
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
-
-/* Shortcuts */
-FL int         c_shortcut(void *v);
-FL struct shortcut *get_shortcut(char const *str);
-FL int         c_unshortcut(void *v);
 
 /* Message flag manipulation */
 FL int         c_flag(void *v);
@@ -657,6 +655,24 @@ FL int         c_urlencode(void *v);
 FL int         c_urldecode(void *v);
 
 /*
+ * cmd_cnd.c
+ */
+
+/* if.elif.else.endif conditional execution.
+ * condstack_isskip() returns wether the current condition state doesn't allow
+ * execution of commands.
+ * condstack_release() and condstack_take() are used when PS_SOURCING files, they
+ * rotate the current condition stack; condstack_take() returns a false boolean
+ * if the current condition stack has unclosed conditionals */
+FL int         c_if(void *v);
+FL int         c_elif(void *v);
+FL int         c_else(void *v);
+FL int         c_endif(void *v);
+FL bool_t      condstack_isskip(void);
+FL void *      condstack_release(void);
+FL bool_t      condstack_take(void *self);
+
+/*
  * collect.c
  */
 
@@ -669,9 +685,13 @@ FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
  * dotlock.c
  */
 
-FL int         fcntl_lock(int fd, enum flock_type ft);
-FL int         dot_lock(char const *fname, int fd, int pollinterval, FILE *fp,
-                  char const *msg);
+/* Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      fcntl_lock(int fd, enum flock_type ft, size_t pollmsecs);
+
+/* Aquire a FLOCK_WRITE lock and create a dotlock file; upon success
+ * dot_unlock() must be called for cleanup of the dotlock file.
+ * Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
 FL void        dot_unlock(char const *fname);
 
 /*
@@ -704,6 +724,19 @@ FL void        quoteflt_reset(struct quoteflt *self, FILE *f);
 FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
                   size_t len);
 FL ssize_t     quoteflt_flush(struct quoteflt *self);
+
+/* (Primitive) HTML tagsoup filter */
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+/* TODO Because we don't support filter chains yet this filter will be run
+ * TODO in a dedicated subprocess, driven via a special Popen() mode */
+FL int         htmlflt_process_main(void);
+
+FL void        htmlflt_init(struct htmlflt *self);
+FL void        htmlflt_destroy(struct htmlflt *self);
+FL void        htmlflt_reset(struct htmlflt *self, FILE *f);
+FL ssize_t     htmlflt_push(struct htmlflt *self, char const *dat, size_t len);
+FL ssize_t     htmlflt_flush(struct htmlflt *self);
+#endif
 
 /*
  * fio.c
@@ -740,7 +773,8 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
  * nl_escape defines wether user can escape newlines via backslash (POSIX).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
- * Return number of octets or a value <0 on error */
+ * Return number of octets or a value <0 on error.
+ * Note: may use the currently `source'd file stream instead of stdin! */
 FL int         readline_input(char const *prompt, bool_t nl_escape,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);
@@ -750,7 +784,7 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
 
 /* Read a line of input, with editing if interactive and possible, return it
  * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during sourcing).
+ * This may only be called from toplevel (not during PS_SOURCING).
  * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility */
@@ -774,7 +808,7 @@ FL void        message_reset(void);
  * NULLify the entry at &[msgCount-1] */
 FL void        message_append(struct message *mp);
 
-/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches mp.  If with_headers is
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
 * true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);
@@ -788,20 +822,23 @@ FL int         rm(char const *name);
 FL off_t       fsize(FILE *iob);
 
 /* Evaluate the string given as a new mailbox name. Supported meta characters:
- * %  for my system mail box
- * %user for user's system mail box
- * #  for previous file
- * &  invoker's mbox file
- * +file file in folder directory
- * any shell meta character
+ * . %  for my system mail box
+ * . %user for user's system mail box
+ * . #  for previous file
+ * . &  invoker's mbox file
+ * . +file file in folder directory
+ * . any shell meta character (except for FEXP_NSHELL).
+ * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
+ * a poor man's vis(3), on name before calling this (and showing the user).
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
 
-/* Get rid of queued mail */
-FL void        demail(void);
+/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
+ * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
+FL char *      fexpand_nshell_quote(char const *name);
 
 /* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
  * be replaced by something else leave store alone, otherwise smalloc() the
@@ -839,11 +876,11 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
- * *sourcing* so that others will realize that they are no longer reading from
+ * PS_SOURCING so that others will realize that they are no longer reading from
  * a tty (in all probability) */
 FL int         c_source(void *v);
 
-/* Pop the current input back to the previous level.  Update the *sourcing*
+/* Pop the current input back to the previous level.  Update the PS_SOURCING
  * flag as appropriate */
 FL int         unstack(void);
 
@@ -858,8 +895,9 @@ FL char const * myaddrs(struct header *hp);
 FL char const * myorigin(struct header *hp);
 
 /* See if the passed line buffer, which may include trailing newline (sequence)
- * is a mail From_ header line according to RFC 4155 */
-FL int         is_head(char const *linebuf, size_t linelen);
+ * is a mail From_ header line according to RFC 4155.
+ * If compat is true laxe POSIX syntax is instead sufficient to match From_ */
+FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
@@ -891,8 +929,14 @@ FL char const * skip_comment(char const *cp);
 /* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
 
-/* Check if a name's address part contains invalid characters */
-FL int         is_addr_invalid(struct name *np, int putmsg);
+/* Query *expandaddr*, parse it and return flags */
+FL enum expand_addr_flags expandaddr_flags(void);
+
+/* Check if an address is invalid, either because it is malformed or, if not,
+ * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
+ * but the error condition wasn't covered by a 'hard "fail"ure', -1 otherwise */
+FL si8_t       is_addr_invalid(struct name *np,
+                  enum expand_addr_check_mode eacm);
 
 /* Does *NP* point to a file or pipe addressee? */
 #define is_fileorpipe_addr(NP)   \
@@ -923,7 +967,8 @@ FL char *      realname(char const *name);
  * 2 -- get sender's name for Reply */
 FL char *      name1(struct message *mp, int reptype);
 
-/* Trim away all leading Re: etc., return pointer to plain subject */
+/* Trim away all leading Re: etc., return pointer to plain subject.
+ * Note it doesn't perform any MIME decoding by itself */
 FL char *      subject_re_trim(char *cp);
 
 FL int         msgidcmp(char const *s1, char const *s2);
@@ -965,7 +1010,7 @@ FL char *      getsender(struct message *m);
 FL int         grab_headers(struct header *hp, enum gfield gflags,
                   int subjfirst);
 
-/* Check wether sep->ss_sexpr (or ->ss_reexpr) matches any header of mp */
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*
@@ -1064,14 +1109,15 @@ FL int         newmailinfo(int omsgCount);
  * return wether the last processed command returned error */
 FL bool_t      commands(void);
 
+/* TODO drop execute() is the legacy version of evaluate().
+ * Contxt is non-zero if called while composing mail */
+FL int         execute(char *linebuf, int contxt, size_t linesize);
+
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.
  * Command functions return 0 for success, 1 for error, and -1 for abort.
  * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
 FL int         evaluate(struct eval_ctx *evp);
-/* TODO drop execute() is the legacy version of evaluate().
- * Contxt is non-zero if called while composing mail */
-FL int         execute(char *linebuf, int contxt, size_t linesize);
 
 /* Set the size of the message vector used to construct argument lists to
  * message list functions */
@@ -1143,6 +1189,13 @@ FL enum okay   maildir_append(char const *name, FILE *fp);
 FL enum okay   maildir_remove(char const *name);
 
 /*
+ * main.c
+ */
+
+/* Quit quickly.  If PS_SOURCING, just pop the input level by returning error */
+FL int         c_rexit(void *v);
+
+/*
  * mime.c
  */
 
@@ -1166,43 +1219,16 @@ FL bool_t      charset_iter_next(void);
 FL bool_t      charset_iter_is_valid(void);
 FL char const * charset_iter(void);
 
+/* And this is (xxx temporary?) which returns the iterator if that is valid and
+ * otherwise either charset_get_8bit() or charset_get_lc() dep. on HAVE_ICONV */
+FL char const * charset_iter_or_fallback(void);
+
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
 #ifdef HAVE_ICONV
 FL char const * need_hdrconv(struct header *hp, enum gfield w);
 #endif
-
-/* Get the mime encoding from a Content-Transfer-Encoding header field */
-FL enum mimeenc mime_getenc(char *h);
-
-/* Get a mime style parameter from a header line */
-FL char *      mime_getparam(char const *param, char *h);
-
-/* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * salloc()ed copy of it; store strlen() in *len if set */
-FL char *      mime_get_boundary(char *h, size_t *len);
-
-/* Create a salloc()ed MIME boundary */
-FL char *      mime_create_boundary(void);
-
-/* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * left alone unless it's non-NULL */
-FL int         mime_classify_file(FILE *fp, char const **contenttype,
-                  char const **charset, int *do_iconv);
-
-/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const */
-FL enum mimecontent mime_classify_content_of_part(struct mimepart *mpp);
-
-/* Return the Content-Type matching the extension of name */
-FL char *      mime_classify_content_type_by_fileext(char const *name);
-
-/* Get the (pipe) handler for a part, or NULL if there is none known */
-FL char *      mimepart_get_handler(struct mimepart const *mpp);
-
-/* `mimetypes' command */
-FL int         c_mimetypes(void *v);
 
 /* Convert header fields from RFC 1522 format */
 FL void        mime_fromhdr(struct str const *in, struct str *out,
@@ -1216,27 +1242,38 @@ FL ssize_t     mime_write(char const *ptr, size_t size, FILE *f,
                   enum conversion convert, enum tdflags dflags,
                   struct quoteflt *qf, struct str *rest);
 FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
-                  FILE *f, enum conversion convert, enum tdflags dflags,
-                  struct str *rest);
+                  FILE *f, enum conversion convert, enum tdflags dflags);
 
 /*
- * mime_cte.c
+ * mime_enc.c
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
+ * TODO for now this is pretty mixed up regarding this external interface.
+ * TODO in v15.0 CTE will be filter based, and explicit conversion will
+ * TODO gain clear error codes
  */
 
 /* Utilities: the former converts the byte c into a (NUL terminated)
  * hexadecimal string as is used in URL percent- and quoted-printable encoding,
  * the latter performs the backward conversion and returns the character or -1
- * on error */
+ * on error; both don't deal with the sequence-introducing percent "%" */
 FL char *      mime_char_to_hexseq(char store[3], char c);
 FL si32_t      mime_hexseq_to_char(char const *hex);
 
+/* Default MIME Content-Transfer-Encoding: as via *encoding* */
+FL enum mime_enc mime_enc_target(void);
+
+/* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
+FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
+
+/* XXX Try to get rid of that */
+FL char const * mime_enc_from_conversion(enum conversion const convert);
+
 /* How many characters of (the complete body) ln need to be quoted.
- * Only MIMECTE_ISHEAD and MIMECTE_ISENCWORD are understood */
-FL size_t      mime_cte_mustquote(char const *ln, size_t lnlen,
-                  enum mimecte_flags flags);
+ * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
+FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,
+                  enum mime_enc_flags flags);
 
 /* How much space is necessary to encode len bytes in QP, worst case.
  * Includes room for terminator */
@@ -1286,12 +1323,61 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
  * Returns OKAY or STOP on error (in which case out is set to an error
- * message); caller is responsible to free buffers */
+ * message); caller is responsible to free buffers.
+ * XXX STOP is effectively not returned for text input (rest!=NULL), instead
+ * XXX replacement characters are produced for invalid data */
 FL int         b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /*
- * names.c
+ * mime_param.c
+ */
+
+/* Get a mime style parameter from a header body */
+FL char *      mime_param_get(char const *param, char const *headerbody);
+
+/* Format parameter name to have value, salloc() it or NULL (error) in result.
+ * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
+ * which it will if the created param requires more than MIME_LINELEN bytes;
+ * there is never a trailing newline character */
+/* TODO mime_param_create() should return a StrList<> or something.
+ * TODO in fact it should take a HeaderField* and append a HeaderFieldParam*! */
+FL si8_t       mime_param_create(struct str *result, char const *name,
+                  char const *value);
+
+/* Get the boundary out of a Content-Type: multipart/xyz header field, return
+ * salloc()ed copy of it; store strlen() in *len if set */
+FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
+
+/* Create a salloc()ed MIME boundary */
+FL char *      mime_param_boundary_create(void);
+
+/*
+ * mime_types.c
+ */
+
+/* `(un)?mimetype' commands */
+FL int         c_mimetype(void *v);
+FL int         c_unmimetype(void *v);
+
+/* Return a Content-Type matching the name, or NULL if none could be found */
+FL char *      mime_type_by_filename(char const *name);
+
+/* Classify content of *fp* as necessary and fill in arguments; **charset* is
+ * left alone unless it's non-NULL */
+FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
+                     char const **charset, int *do_iconv);
+
+/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
+ * but otherwise mpp is const */
+FL enum mimecontent mime_type_mimepart_content(struct mimepart *mpp);
+
+/* Get the (pipe) handler for a part (may be MIME_TYPE_HANDLER_*),
+ * or NULL if there is none known */
+FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
+
+/*
+ * nam_a_grp.c
  */
 
 /* Allocate a single element of a name list, initialize its name field to the
@@ -1303,6 +1389,9 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 
 /* Concatenate the two passed name lists, return the result */
 FL struct name * cat(struct name *n1, struct name *n2);
+
+/* Duplicate np */
+FL struct name * namelist_dup(struct name const *np, enum gfield ntype);
 
 /* Determine the number of undeleted elements in a name list and return it;
  * the latter also doesn't count file and pipe addressees in addition */
@@ -1324,8 +1413,23 @@ FL char *      detract(struct name *np, enum gfield ntype);
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
-/* Check all addresses in np and delete invalid ones */
-FL struct name * checkaddrs(struct name *np);
+/* Check wether n1 n2 share the domain name */
+FL bool_t      name_is_same_domain(struct name const *n1,
+                  struct name const *n2);
+
+/* Check all addresses in np and delete invalid ones; if set_on_error is not
+ * NULL it'll be set to TRU1 for error or -1 for "hard fail" error */
+FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
+                  si8_t *set_on_error);
+
+/* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
+ * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
+ * aliases etc.  eacm and set_on_error are passed to checkaddrs(), metoo is
+ * passed to usermap().  After updating hp to the new state this returns
+ * a flat list of all addressees, which may be NULL */
+FL struct name * namelist_vaporise_head(struct header *hp,
+                  enum expand_addr_check_mode eacm, bool_t metoo,
+                  si8_t *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */
@@ -1335,22 +1439,30 @@ FL struct name * usermap(struct name *names, bool_t force_metoo);
  * them, then checking for dups.  Return the head of the new list */
 FL struct name * elide(struct name *names);
 
+/* `alternates' deal with the list of alternate names */
+FL int         c_alternates(void *v);
+
 FL struct name * delete_alternates(struct name *np);
 
 FL int         is_myname(char const *name);
 
-/* Dispatch a message to all pipe and file addresses TODO -> sendout.c */
-FL struct name * outof(struct name *names, FILE *fo, bool_t *senderror);
+/* `(un)?alias' */
+FL int         c_alias(void *v);
+FL int         c_unalias(void *v);
 
-/* Handling of alias groups */
+/* `(un)?ml(ist|subscribe)', and a check wether a name is a (wanted) list */
+FL int         c_mlist(void *v);
+FL int         c_unmlist(void *v);
+FL int         c_mlsubscribe(void *v);
+FL int         c_unmlsubscribe(void *v);
 
-/* Locate a group name and return it */
-FL struct grouphead * findgroup(char *name);
+FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
 
-/* Print a group out on stdout */
-FL void        printgroup(char *name);
+/* `(un)?shortcut', and check if str is one, return expansion or NULL */
+FL int         c_shortcut(void *v);
+FL int         c_unshortcut(void *v);
 
-FL void        remove_group(char const *name);
+FL char const * shortcut_expand(char const *str);
 
 /*
  * openssl.c
@@ -1358,7 +1470,7 @@ FL void        remove_group(char const *name);
 
 #ifdef HAVE_OPENSSL
 /*  */
-FL enum okay   ssl_open(char const *server, struct sock *sp, char const *uhp);
+FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);
@@ -1444,12 +1556,19 @@ FL bool_t      pipe_cloexec(int fd[2]);
 /*
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment */
+/* TODO Because we don't support filter chains yet some filter will be run
+ * TODO in dedicated subprocesses: for this mode of operation cmd must be one
+ * TODO of the MIME_TYPE_HANDLER_*, and shell effectively transports the
+ * TODO pointer to the int(*)(void) main function.  This is temporary */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
 
 FL bool_t      Pclose(FILE *ptr, bool_t dowait);
 
 FL void        close_all_files(void);
+
+/* Fork a child process, enable use of the *child() series below */
+FL int         fork_child(void);
 
 /* Run a command without a shell, with optional arguments and splicing of stdin
  * and stdout.  The command name can be a sequence of words.  Signals must be
@@ -1465,9 +1584,10 @@ FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
                   char const **env_addon);
 
+/* In-child process */
 FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 
-/* Mark a child as don't care */
+/* Mark a child as don't care - pid */
 FL void        free_child(int pid);
 
 /* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.
@@ -1477,9 +1597,6 @@ FL bool_t      wait_child(int pid, int *wait_status);
 /*
  * quit.c
  */
-
-/* The `quit' command */
-FL int         c_quit(void *v);
 
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,
@@ -1583,13 +1700,10 @@ FL int         c_spam_spam(void *v);
 
 #ifdef HAVE_SSL
 /*  */
-FL void        ssl_set_verify_level(char const *uhp);
+FL void        ssl_set_verify_level(struct url const *urlp);
 
 /*  */
 FL enum okay   ssl_verify_decide(void);
-
-/*  */
-FL char *      ssl_method_string(char const *uhp);
 
 /*  */
 FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
@@ -1676,17 +1790,18 @@ FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
 # define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
 #endif
 
-/* Make copy of argument incorporating old one, if set, separated by space */
-FL char *      save2str(char const *str, char const *old SALLOC_DEBUG_ARGS);
+/* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
+FL char *      savecatsep(char const *cp1, char sep, char const *cp2
+                  SALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define save2str(S,O)           save2str(S, O, __FILE__, __LINE__)
+# define savecatsep(S1,SEP,S2)   savecatsep(S1, SEP, S2, __FILE__, __LINE__)
 #endif
 
+/* Make copy of argument incorporating old one, if set, separated by space */
+#define save2str(S,O)            savecatsep(O, ' ', S)
+
 /* strcat */
-FL char *      savecat(char const *s1, char const *s2 SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define savecat(S1,S2)          savecat(S1, S2, __FILE__, __LINE__)
-#endif
+#define savecat(S1,S2)           savecatsep(S1, '\0', S2)
 
 /* Create duplicate, lowercasing all characters along the way */
 FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);
@@ -1703,12 +1818,11 @@ FL char *      protbase(char const *cp SALLOC_DEBUG_ARGS);
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
-#ifdef HAVE_SPAM
+/*  */
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-# ifdef HAVE_DEBUG
+#ifdef HAVE_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
-# endif
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -1728,6 +1842,9 @@ FL void        i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
 FL int         is_prefix(char const *as1, char const *as2);
+
+/* Backslash quote (" and \) v'alue, and return salloc()ed result */
+FL char *      string_quote(char const *v);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
  * to indicate wether getmsglist() et al need to be called to collect
@@ -1755,13 +1872,15 @@ FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 
 FL char *      n_strlcpy(char *dst, char const *src, size_t len);
 
-/* Locale-independent character class functions */
+/* Case-independent ASCII comparisons */
 FL int         asccasecmp(char const *s1, char const *s2);
 FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
+
+/* Case-independent ASCII string find s2 in s1, return it or NULL */
+FL char const *asccasestr(char const *s1, char const *s2);
+
+/* Case-independent ASCII check wether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
-#ifdef HAVE_IMAP
-FL char const * asccasestr(char const *haystack, char const *xneedle);
-#endif
 
 /* struct str related support funs */
 
@@ -1780,6 +1899,19 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
+/* UTF-8 stuff */
+
+/* ..and update arguments to point after range; returns UI32_MAX on error, in
+ * which case the arguments will have been stepped one byte */
+#ifdef HAVE_NATCH_CHAR
+FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
+#endif
+
+/* buf must be large enough also for NUL, it's new length will be returned */
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
+#endif
+
 /* Our iconv(3) wrappers */
 
 #ifdef HAVE_ICONV
@@ -1788,9 +1920,7 @@ FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 FL void        n_iconv_close(iconv_t cd);
 
 /* Reset encoding state */
-#ifdef notyet
 FL void        n_iconv_reset(iconv_t cd);
-#endif
 
 /* iconv(3), but return *errno* or 0; *skipilseq* forces step over invalid byte
  * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
@@ -1801,6 +1931,21 @@ FL int         n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
                   char **outb, size_t *outbleft, bool_t skipilseq);
 FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
                   struct str *in_rest_or_null, bool_t skipilseq);
+#endif
+
+/*
+ * termcap.c
+ */
+
+/* termcap(3) / xy lifetime handling -- only to be called if OPT_INTERACTIVE
+ * is true, and may internally decline to initialize itself; note that
+ * termcap_destroy() can always be called */
+/* TODO Maybe drop TTYOUT/etc. and only set INTERACTIVE when input and output
+ * TODO are a terminal, or ensure via I/O stuff that we use the input+output
+ * TODO terminal FD accordingly */
+#ifdef HAVE_TERMCAP
+FL void        termcap_init(void);
+FL void        termcap_destroy(void);
 #endif
 
 /*
@@ -1833,9 +1978,10 @@ FL void        uncollapse1(struct message *mp, int always);
  * tty.c
  */
 
-/* Return wether user says yes.  If prompt is NULL, "Continue (y/n)? " is used
- * instead.  If interactive, asks on STDIN, anything but [0]==[Nn] is true.
- * If noninteractive, returns noninteract_default.  Handles+reraises SIGINT */
+/* Return wether user says yes, on STDIN if interactive.
+ * Uses noninteract_default, the return value for non-interactive use cases,
+ * also to choose a default prompt if that is NULL as well as a hint for
+ * boolify().  Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
 #ifdef HAVE_SOCKETS

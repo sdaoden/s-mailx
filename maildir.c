@@ -3,7 +3,7 @@
  *@ FIXME indeed - my S-Postman Python (!) is faster dealing with maildir!!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -37,6 +37,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE maildir
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -54,6 +56,7 @@ static ui32_t        _maildir_prime;
 static sigjmp_buf    _maildir_jmp;
 
 static void             __maildircatch(int s);
+static void             __maildircatch_hold(int s);
 
 /* Do some cleanup in the tmp/ subdir */
 static void             _cleantmp(void);
@@ -77,7 +80,7 @@ static void             readin(char const *name, struct message *m);
 
 static void             maildir_update(void);
 
-static void             move(struct message *m);
+static void             _maildir_move(struct message *m);
 
 static char *           mkname(time_t t, enum mflag f, char const *pref);
 
@@ -99,6 +102,18 @@ __maildircatch(int s)
 {
    NYD_X; /* Signal handler */
    siglongjmp(_maildir_jmp, s);
+}
+
+static void
+__maildircatch_hold(int s)
+{
+   NYD_X; /* Signal handler */
+   UNUSED(s);
+   /* TODO no STDIO in signal handler, no _() tr's -- pre-translate interrupt
+    * TODO globally; */
+   fprintf(stderr, _("\nImportant operation in progress: "
+      "interrupt again to forcefully abort\n"));
+   safe_signal(SIGINT, &__maildircatch);
 }
 
 static void
@@ -144,8 +159,14 @@ _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
    if ((i = _maildir_subdir(name, "new", fm)) != 0)
       goto jleave;
    _maildir_append(name, NULL, NULL);
-   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i)
+
+   srelax_hold();
+   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i) {
       readin(name, message + i);
+      srelax();
+   }
+   srelax_rele();
+
    if (fm & FEDIT_NEWMAIL) {
       if (msgCount > omsgCount)
          qsort(&message[omsgCount], msgCount - omsgCount, sizeof *message,
@@ -291,7 +312,7 @@ readin(char const *name, struct message *m)
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(buf, buflen)) {
+      if (emptyline && is_head(buf, buflen, TRU1)) {
          putc('>', mb.mb_otf);
          ++size;
       }
@@ -327,7 +348,7 @@ maildir_update(void)
    if (mb.mb_perm == 0)
       goto jfree;
 
-   if (!edit) {
+   if (!(pstate & PS_EDIT)) {
       holdbits();
       for (m = message, c = 0; PTRCMP(m, <, message + msgCount); ++m) {
          if (m->m_flag & MBOX)
@@ -339,33 +360,33 @@ maildir_update(void)
    }
    for (m = message, gotcha = 0, held = 0; PTRCMP(m, <, message + msgCount);
          ++m) {
-      if (edit)
+      if (pstate & PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
       if (dodel) {
          if (unlink(m->m_maildir_file) < 0)
-            fprintf(stderr, /* TODO tr */
-               "Cannot delete file \"%s/%s\" for message %d.\n",
-               mailname, m->m_maildir_file, (int)PTR2SIZE(m - message + 1));
+            fprintf(stderr,
+               _("Cannot delete file \"%s/%s\" for message %" PRIuZ ".\n"),
+               mailname, m->m_maildir_file, PTR2SIZE(m - message + 1));
          else
             ++gotcha;
       } else {
          if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS) ||
                (m->m_flag & (MNEW | MBOXED | MSAVED | MSTATUS | MFLAG |
                MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))) {
-            move(m);
+            _maildir_move(m);
             ++modflags;
          }
          ++held;
       }
    }
 jbypass:
-   if ((gotcha || modflags) && edit) {
+   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit && mb.mb_perm != 0) {
+   } else if (held && !(pstate & PS_EDIT) && mb.mb_perm != 0) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -379,7 +400,7 @@ jfree:
 }
 
 static void
-move(struct message *m)
+_maildir_move(struct message *m)
 {
    char *fn, *new;
    NYD_ENTER;
@@ -475,61 +496,61 @@ static enum okay
 maildir_append1(char const *name, FILE *fp, off_t off1, long size,
    enum mflag flag)
 {
-   int const attempts = 43200; /* XXX no magic */
-   char buf[4096], *fn, *tmp, *new;
+   char buf[4096], *fn, *tfn, *nfn;
    struct stat st;
    FILE *op;
-   long n, z;
-   int i;
    time_t now;
+   size_t nlen, flen, n;
    enum okay rv = STOP;
    NYD_ENTER;
 
+   nlen = strlen(name);
+
    /* Create a unique temporary file */
-   for (i = 0;; sleep(1), ++i) {
-      if (i >= attempts) {
-         fprintf(stderr, _(
-            "Can't create an unique file name in \"%s/tmp\".\n"), name);
+   for (nfn = (char*)0xA /* XXX no magic */;; sleep(1)) {
+      time(&now);
+      flen = strlen(fn = mkname(now, flag, NULL));
+      tfn = salloc(n = nlen + flen + 6);
+      snprintf(tfn, n, "%s/tmp/%s", name, fn);
+
+      /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
+      if ((!stat(tfn, &st) || errno == ENOENT) &&
+            (op = Fopen(tfn, "wx")) != NULL)
+         break;
+
+      nfn = (char*)(PTR2SIZE(nfn) - 1);
+      if (nfn == NULL) {
+         fprintf(stderr, _("Can't create an unique file name in \"%s/tmp\".\n"),
+            name);
          goto jleave;
       }
-
-      time(&now);
-      fn = mkname(now, flag, NULL);
-      tmp = salloc(n = strlen(name) + strlen(fn) + 6);
-      snprintf(tmp, n, "%s/tmp/%s", name, fn);
-      if (stat(tmp, &st) >= 0 || errno != ENOENT)
-         continue;
-
-      /* Use "wx" for O_EXCL */
-      if ((op = Fopen(tmp, "wx")) != NULL)
-         break;
    }
 
    if (fseek(fp, off1, SEEK_SET) == -1)
       goto jtmperr;
    while (size > 0) {
-      z = size > (long)sizeof buf ? (long)sizeof buf : size;
-      if ((n = fread(buf, 1, z, fp)) != z ||
-            (size_t)n != fwrite(buf, 1, n, op)) {
+      size_t z = UICMP(z, size, >, sizeof buf) ? sizeof buf : (size_t)size;
+
+      if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
-         fprintf(stderr, "Error writing to \"%s\".\n", tmp); /* TODO tr */
+         fprintf(stderr, _("Error writing to \"%s\".\n"), tfn);
          Fclose(op);
-         unlink(tmp);
-         goto jleave;
+         goto jerr;
       }
       size -= n;
    }
    Fclose(op);
 
-   new = salloc(n = strlen(name) + strlen(fn) + 6);
-   snprintf(new, n, "%s/new/%s", name, fn);
-   if (link(tmp, new) == -1) {
-      fprintf(stderr, "Cannot link \"%s\" to \"%s\".\n", tmp, new);/* TODO tr */
-      goto jleave;
+   nfn = salloc(n = nlen + flen + 6);
+   snprintf(nfn, n, "%s/new/%s", name, fn);
+   if (link(tfn, nfn) == -1) {
+      fprintf(stderr, _("Cannot link \"%s\" to \"%s\".\n"), tfn, nfn);
+      goto jerr;
    }
-   if (unlink(tmp) == -1)
-      fprintf(stderr, "Cannot unlink \"%s\".\n", tmp); /* TODO tr */
    rv = OKAY;
+jerr:
+   if (unlink(tfn) == -1)
+      fprintf(stderr, _("Cannot unlink \"%s\".\n"), tfn);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -671,7 +692,6 @@ subdir_remove(char const *name, char const *sub)
    path[pathend] = '\0';
    if (rmdir(path) == -1) {
       perror(path);
-      free(path);
       goto jleave;
    }
    rv = OKAY;
@@ -701,7 +721,10 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    saveint = safe_signal(SIGINT, SIG_IGN);
 
    if (!(fm & FEDIT_NEWMAIL)) {
-      edit = !(fm & FEDIT_SYSBOX);
+      if (fm & FEDIT_SYSBOX)
+         pstate &= ~PS_EDIT;
+      else
+         pstate |= PS_EDIT;
       if (mb.mb_itf) {
          fclose(mb.mb_itf);
          mb.mb_itf = NULL;
@@ -753,7 +776,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       c_sort((void*)-1);
    }
    if (!(fm & FEDIT_NEWMAIL))
-      sawcom = FAL0;
+      pstate &= ~PS_SAW_COMMAND;
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), name);
@@ -792,7 +815,7 @@ maildir_quit(void)
 
    if (sigsetjmp(_maildir_jmp, 1) == 0) {
       if (saveint != SIG_IGN)
-         safe_signal(SIGINT, &__maildircatch);
+         safe_signal(SIGINT, &__maildircatch_hold);
       maildir_update();
    }
 
@@ -811,74 +834,92 @@ maildir_append(char const *name, FILE *fp)
    char *buf, *bp, *lp;
    size_t bufsize, buflen, cnt;
    off_t off1 = -1, offs;
-   int inhead = 1, flag = MNEW | MNEWEST;
-   long size = 0;
+   long size;
+   int flag;
+   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
    enum okay rv;
    NYD_ENTER;
 
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = smalloc(bufsize = LINESIZE); /* TODO line pool; signals */
    buflen = 0;
    cnt = fsize(fp);
    offs = ftell(fp);
-   do /* while (bp != NULL); */ {
+   size = 0;
+
+   srelax_hold();
+   for (flag = MNEW, state = _NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
-      if (bp == NULL || !strncmp(buf, "From ", 5)) {
+
+      if (bp == NULL ||
+            ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
+             is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
-            rv = maildir_append1(name, fp, off1, size, flag);
-            if (rv == STOP)
-               goto jleave;
+            if ((rv = maildir_append1(name, fp, off1, size, flag)) == STOP)
+               goto jfree;
+            srelax();
             if (fseek(fp, offs + buflen, SEEK_SET) == -1) {
                rv = STOP;
-               goto jleave;
+               goto jfree;
             }
          }
          off1 = offs + buflen;
          size = 0;
-         inhead = 1;
+         state = _INHEAD;
          flag = MNEW;
+
+         if (bp == NULL)
+            break;
       } else
          size += buflen;
       offs += buflen;
-      if (bp && buf[0] == '\n')
-         inhead = 0;
-      else if (bp && inhead && !ascncasecmp(buf, "status", 6)) {
-         lp = buf + 6;
-         while (whitechar(*lp))
-            ++lp;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'R':
-                  flag |= MREAD;
-                  break;
-               case 'O':
-                  flag &= ~MNEW;
-                  break;
-               }
-      } else if (bp && inhead && !ascncasecmp(buf, "x-status", 8)) {
-         lp = buf + 8;
-         while (whitechar(*lp))
-            ++lp;
-         if (*lp == ':')
-            while (*++lp != '\0')
-               switch (*lp) {
-               case 'F':
-                  flag |= MFLAGGED;
-                  break;
-               case 'A':
-                  flag |= MANSWERED;
-                  break;
-               case 'T':
-                  flag |= MDRAFTED;
-                  break;
-               }
+
+      state &= ~_NLSEP;
+      if (buf[0] == '\n') {
+         state &= ~_INHEAD;
+         state |= _NLSEP;
+      } else if (state & _INHEAD) {
+         if (!ascncasecmp(buf, "status", 6)) {
+            lp = buf + 6;
+            while (whitechar(*lp))
+               ++lp;
+            if (*lp == ':')
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'R':
+                     flag |= MREAD;
+                     break;
+                  case 'O':
+                     flag &= ~MNEW;
+                     break;
+                  }
+         } else if (!ascncasecmp(buf, "x-status", 8)) {
+            lp = buf + 8;
+            while (whitechar(*lp))
+               ++lp;
+            if (*lp == ':') {
+               while (*++lp != '\0')
+                  switch (*lp) {
+                  case 'F':
+                     flag |= MFLAGGED;
+                     break;
+                  case 'A':
+                     flag |= MANSWERED;
+                     break;
+                  case 'T':
+                     flag |= MDRAFTED;
+                     break;
+                  }
+            }
+         }
       }
-   } while (bp != NULL);
-   free(buf);
+   }
    assert(rv == OKAY);
+jfree:
+   srelax_rele();
+   free(buf);
 jleave:
    NYD_LEAVE;
    return rv;

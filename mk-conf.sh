@@ -4,99 +4,133 @@
 LC_ALL=C
 export LC_ALL
 
+option_reset() {
+   WANT_ICONV=0
+   WANT_SOCKETS=0
+      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+   WANT_IDNA=0
+   WANT_IMAP_SEARCH=0
+   WANT_REGEX=0
+   WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
+   WANT_TERMCAP=0
+   WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
+   WANT_DOCSTRINGS=0
+   WANT_QUOTE_FOLD=0
+   WANT_FILTER_HTML_TAGSOUP=0
+   WANT_COLOUR=0
+   #WANT_MD5=0
+}
+
+option_maximal() {
+   WANT_ICONV=1
+   WANT_SOCKETS=1
+      WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
+      WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+      WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+   WANT_IDNA=1
+   WANT_IMAP_SEARCH=1
+   WANT_REGEX=1
+   WANT_NCL=1
+      WANT_HISTORY=1 WANT_TABEXPAND=1
+   WANT_TERMCAP=1
+   WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
+   WANT_DOCSTRINGS=1
+   WANT_QUOTE_FOLD=1
+   WANT_FILTER_HTML_TAGSOUP=1
+   WANT_COLOUR=1
+   #WANT_MD5=1
+}
+
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
-   case ${CONFIG} in
+   case `echo ${CONFIG} | tr '[a-z]' '[A-Z]'` in
+   NULLTEST)
+      option_reset
+      ;;
    MINIMAL)
+      option_reset
       WANT_ICONV=1
-      WANT_SOCKETS=0
-      WANT_IDNA=0
-      WANT_IMAP_SEARCH=0
-      WANT_REGEX=0
-      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
-      WANT_SPAM=0
-      WANT_DOCSTRINGS=0
-      WANT_QUOTE_FOLD=0
-      WANT_COLOUR=0
+      WANT_REGEX=1
       ;;
    MEDIUM)
+      option_reset
       WANT_ICONV=1
-      WANT_SOCKETS=0
-      WANT_IDNA=0
-      WANT_IMAP_SEARCH=0
+      WANT_IDNA=1
       WANT_REGEX=1
-      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
-         WANT_HISTORY=1 WANT_TABEXPAND=0
-      WANT_SPAM=0
+      WANT_NCL=1
+         WANT_HISTORY=1
+      WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
-      WANT_QUOTE_FOLD=0
-      WANT_COLOUR=0
+      WANT_COLOUR=1
       ;;
    NETSEND)
+      option_reset
       WANT_ICONV=1
       WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=require WANT_POP3=0 WANT_IMAP=0
+         WANT_SSL=1
+         WANT_SMTP=require
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
-      WANT_IMAP_SEARCH=0
       WANT_REGEX=1
-      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
-         WANT_HISTORY=1 WANT_TABEXPAND=0
-      WANT_SPAM=0
+      WANT_NCL=1
+         WANT_HISTORY=1
       WANT_DOCSTRINGS=1
-      WANT_QUOTE_FOLD=0
-      WANT_COLOUR=0
+      WANT_COLOUR=1
       ;;
    MAXIMAL)
-      WANT_ICONV=1
-      WANT_SOCKETS=1
-         WANT_IPV6=1 WANT_SSL=1 WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
-         WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
-      WANT_IDNA=1
-      WANT_IMAP_SEARCH=1
-      WANT_REGEX=1
-      WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=1
-         WANT_HISTORY=1 WANT_TABEXPAND=1
-      WANT_SPAM=1
-      WANT_DOCSTRINGS=1
-      WANT_QUOTE_FOLD=1
-      WANT_COLOUR=1
+      option_reset
+      option_maximal
+      ;;
+   DEVEL)
+      WANT_DEVEL=1 WANT_DEBUG=1 WANT_NYD2=1
+      option_maximal
+      ;;
+   ODEVEL)
+      WANT_DEVEL=1
+      option_maximal
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
       echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
+      ;;
    esac
 fi
 
 # Inter-relationships
 option_update() {
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&\
+         feat_no SPAM_SPAMD; then
+      WANT_SOCKETS=0
+   fi
    if feat_no SOCKETS; then
       if feat_require SMTP; then
-         msg "ERROR: need SOCKETS for required feature SMTP\\n"
+         msg 'ERROR: need SOCKETS for required feature SMTP'
          config_exit 13
       fi
       if feat_require POP3; then
-         msg "ERROR: need SOCKETS for required feature POP3\\n"
+         msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
       if feat_require IMAP; then
          msg "ERROR: need SOCKETS for required feature IMAP\\n"
          config_exit 13
       fi
-      WANT_IPV6=0 WANT_SSL=0
-      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0 WANT_GSSAPI=0
-      WANT_NETRC=0 WANT_AGENT=0
-   fi
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      WANT_SOCKETS=0 WANT_IPV6=0 WANT_SSL=0 WANT_NETRC=0 WANT_AGENT=0
+      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
+      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+      WANT_SPAM_SPAMD=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
    fi
+
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
+
    # If we don't need MD5 except for producing boundary and message-id strings,
    # leave it off, plain old srand(3) should be enough for that purpose.
    if feat_no SOCKETS; then
@@ -112,28 +146,38 @@ compiler_flags() {
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
    optim= dbgoptim= _CFLAGS=
    if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      if { CC="`command -v clang`"; }; then
-         :
-      elif { CC="`command -v gcc`"; }; then
-         :
-      elif { CC="`command -v c89`"; }; then
-         [ "`uname -s`" = UnixWare ] && _CFLAGS=-v optim=-O dbgoptim=
-      elif { CC="`command -v c99`"; }; then
-         :
+      if { i="`command -v clang`"; }; then
+         CC=${i}
+      elif { i="`command -v gcc`"; }; then
+         CC=${i}
+      elif { i="`command -v c99`"; }; then
+         CC=${i}
       else
-         msg 'ERROR'
-         msg ' I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
-         msg ' Please set the CC environment variable, maybe CFLAGS also.'
-         config_exit 1
+         if [ "${CC}" = cc ]; then
+            :
+         elif { i="`command -v c89`"; }; then
+            CC=${i}
+         else
+            msg 'ERROR: I cannot find a compiler!'
+            msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+            msg ' Please set the CC environment variable, maybe CFLAGS also.'
+            config_exit 1
+         fi
       fi
+      export CC
    fi
-   export CC
+   [ "`uname -s`" = UnixWare ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
 
-   ccver=`${CC} --version 2>/dev/null`
    stackprot=no
-   if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e gcc -e clang; then
-   #if echo "${i}" | ${grep} -q -i -e gcc -e 'clang version 1'; then
+   ccver=`${CC} --version 2>/dev/null`
+   if [ ${?} -ne 0 ]; then
+      [ -z "${optim}" ] && optim=-O1
+   elif { i=${ccver}; echo "${i}"; } | ${grep} -q \
+'gcc
+clang'; then
+   #if echo "${i}" | ${grep} -q \
+#'gcc
+#clang version 1'; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
       _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
@@ -143,21 +187,25 @@ compiler_flags() {
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      if { i=${ccver}; echo "${i}"; } | ${grep} -q -e 'clang version 1'; then
+      if { i=${ccver}; echo "${i}"; } | ${grep} -q 'clang version 1'; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
-         _CFLAGS="${_CFLAGS} -fstrict-overflow -Wstrict-overflow=5"
-         if feat_yes AMALGAMATION && feat_no DEBUG; then
+         _CFLAGS="${_CFLAGS} -fstrict-overflow"
+         # Too many warnings without having seen a benefit yet
+         if feat_yes DEVEL; then
+            _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
+         fi
+         if feat_yes AMALGAMATION && feat_no DEVEL; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
-         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
+         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
       if feat_yes AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i -e clang; then
+#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
 #      optim=-O3 dbgoptim=-O
 #      stackprot=yes
 #      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
@@ -172,10 +220,10 @@ compiler_flags() {
       _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
    else
       _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
-      if [ "${stackprot}" = yes ]; then
-         _CFLAGS="${_CFLAGS} -ftrapv -fstack-protector-all "
-            _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
-      fi
+   fi
+   if feat_yes FORCED_STACKPROT && [ "${stackprot}" = yes ]; then
+      _CFLAGS="${_CFLAGS} -fstack-protector-all "
+         _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
    fi
    _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
    # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
@@ -236,7 +284,7 @@ check_tool() {
       return 0
    fi
    if [ ${opt} -eq 0 ]; then
-      msg "ERROR: no trace of the utility \`${n}'\\n"
+      msg 'ERROR: no trace of utility "%s"' "${n}"
       config_exit 1
    fi
    return 0
@@ -245,6 +293,51 @@ check_tool() {
 # Check those tools right now that we need before including $rc
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
+
+# Our feature check environment
+feat_val_no() {
+   [ "x${1}" = x0 ] ||
+   [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
+}
+
+feat_val_yes() {
+   [ "x${1}" = x1 ] ||
+   [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
+         [ "x${1}" = xrequire ]
+}
+
+feat_val_require() {
+   [ "x${1}" = xrequire ]
+}
+
+_feat_check() {
+   eval i=\$WANT_${1}
+   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   if feat_val_no "${i}"; then
+      return 1
+   elif feat_val_yes "${i}"; then
+      return 0
+   else
+      msg "ERROR: %s: any of 0/false/no/off or 1/true/yes/on/require, got: %s" \
+         "${1}" "${i}"
+      config_exit 11
+   fi
+}
+
+feat_yes() {
+   _feat_check ${1}
+}
+
+feat_no() {
+   _feat_check ${1} && return 1
+   return 0
+}
+
+feat_require() {
+   eval i=\$WANT_${1}
+   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+}
 
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
@@ -283,48 +376,6 @@ check_tool strip "${STRIP:-`command -v strip`}" 1
 HAVE_STRIP=${?}
 
 # Update WANT_ options now, in order to get possible inter-dependencies right
-
-feat_val_no() {
-   [ "x${1}" = x0 ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ]
-}
-
-feat_val_yes() {
-   [ "x${1}" = x1 ] || [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] ||
-         [ "x${1}" = xrequire ]
-}
-
-feat_val_require() {
-   [ "x${1}" = xrequire ]
-}
-
-_feat_check() {
-   eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
-   if feat_val_no "${i}"; then
-      return 1
-   elif feat_val_yes "${i}"; then
-      return 0
-   else
-      msg "ERROR: ${1}: allowed: 0/false/no or 1/true/yes/require, got: ${i}\\n"
-      config_exit 11
-   fi
-}
-
-feat_yes() {
-   _feat_check ${1}
-}
-
-feat_no() {
-   _feat_check ${1} && return 1
-   return 0
-}
-
-feat_require() {
-   eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
-   [ "x${i}" = xrequire ]
-}
-
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
@@ -339,7 +390,8 @@ exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   if echo "${i}" | grep -e '^WANT_' >/dev/null 2>&1; then
+   if echo "${i}" | grep '^WANT_' >/dev/null 2>&1; then
+      j="`echo ${j} | tr '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
          printf "/*#define ${i}*/\n" >> ${newh}
@@ -351,7 +403,7 @@ while read line; do
          fi
          printf "#define ${i}\n" >> ${newh}
       else
-         msg "ERROR: internal error -42\\n"
+         msg 'ERROR: cannot parse <%s>' "${line}"
          config_exit 1
       fi
    else
@@ -371,20 +423,21 @@ compiler_flags
 printf "CC = ${CC}\n" >> ${newmk}
 printf "CC=${CC}\n" >> ${newlst}
 
-printf "_CFLAGS = ${_CFLAGS}\nCFLAGS = ${CFLAGS}\n" >> ${newmk}
+printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newmk}
 printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
 
-printf "_LDFLAGS = ${_LDFLAGS}\nLDFLAGS = ${LDFLAGS}\n" >> ${newmk}
+printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newmk}
 printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
 
-printf "AWK = ${awk}\nCMP = ${cmp}\nCHMOD = ${chmod}\nCP = ${cp}\n" >> ${newmk}
+printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newmk}
 printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
 
-printf "GREP = ${grep}\nMKDIR = ${mkdir}\nRM = ${rm}\nSED = ${sed}\n" \
-   >> ${newmk}
-printf "GREP=${grep}\nMKDIR=${mkdir}\nRM=${rm}\nSED=${sed}\n" >> ${newlst}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newmk}
+printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
+   ${newlst}
 
-printf "STRIP = ${strip}\nHAVE_STRIP = ${HAVE_STRIP}\n" >> ${newmk}
+printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
 printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -455,6 +508,12 @@ msg() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
+   printf "${fmt}\\n" "${@}" >&5
+}
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf "*** ${fmt}\\n" "${@}"
    printf "${fmt}" "${@}" >&5
 }
 
@@ -479,7 +538,7 @@ _check_preface() {
    variable=$1 topic=$2 define=$3
 
    echo '**********'
-   msg "checking ${topic} ... "
+   msg_nonl 'checking %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
@@ -497,13 +556,13 @@ compile_check() {
 
    if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
-      msg "yes\\n"
+      msg 'yes'
       echo "${define}" >> ${h}
       eval have_${variable}=yes
       return 0
    else
       echo "/* ${define} */" >> ${h}
-      msg "no\\n"
+      msg 'no'
       eval unset have_${variable}
       return 1
    fi
@@ -519,7 +578,7 @@ _link_mayrun() {
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
       echo "*** adding INCS<${incs}> LIBS<${libs}>"
-      msg "yes\\n"
+      msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
       echo "${libs}" >> ${lib}
@@ -528,7 +587,7 @@ _link_mayrun() {
       eval have_${variable}=yes
       return 0
    else
-      msg "no\\n"
+      msg 'no'
       echo "/* ${define} */" >> ${h}
       eval unset have_${variable}
       return 1
@@ -545,7 +604,7 @@ run_check() {
 
 feat_bail_required() {
    if feat_require ${1}; then
-      msg "ERROR: feature WANT_${1} is required but not available\\n"
+      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
       config_exit 13
    fi
    eval WANT_${1}=0
@@ -556,6 +615,8 @@ feat_bail_required() {
 
 # Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without!
 echo '#define _GNU_SOURCE' >> ${h}
+#echo '#define _POSIX_C_SOURCE 200809L' >> ${h}
+#echo '#define _XOPEN_SOURCE 700' >> ${h}
 
 if link_check hello 'if a hello world program can be built' << \!
 #include <stdio.h>
@@ -571,8 +632,8 @@ int main(int argc, char *argv[])
 then
    :
 else
-   echo >&5 'This oooops is most certainly not related to me.'
-   echo >&5 "Read the file ${log} and check your compiler environment."
+   msg 'ERROR: but this oooops is most certainly not related to me.'
+   msg 'Read the file %s and check your compiler environment.' "${log}"
    config_exit 1
 fi
 
@@ -589,8 +650,40 @@ int main(void)
 then
    :
 else
-   echo >&5 'We require termios.h and the tc*() family of functions.'
-   echo >&5 "That much Unix we indulge ourselfs."
+   msg 'ERROR: we require termios.h and the tc*() family of functions.'
+   msg 'That much Unix we indulge ourselfs.'
+   config_exit 1
+fi
+
+if link_check clock_gettime 'for clock_gettime(2)' \
+   '#define HAVE_CLOCK_GETTIME' << \!
+#include <time.h>
+int main(void)
+{
+   struct timespec ts;
+
+   clock_gettime(CLOCK_REALTIME, &ts);
+   return 0;
+}
+!
+then
+   :
+elif link_check gettimeofday 'for gettimeofday(2)' \
+   '#define HAVE_GETTIMEOFDAY' << \!
+#include <sys/time.h>
+int main(void)
+{
+   struct timeval tv;
+
+   gettimeofday(&tv, NULL);
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: one of clock_gettime(2) and gettimeofday(1) is required.'
+   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
 
@@ -714,7 +807,19 @@ int main(void)
 !
 fi # have_setlocale
 
-link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
+link_check mkostemp 'for mkostemp()' '#define HAVE_MKOSTEMP' << \!
+#include <stdlib.h>
+#include <fcntl.h>
+int main(void)
+{
+   /* O_CLOEXEC note: <-> support assumed in popen.c */
+   mkostemp("x", O_CLOEXEC | O_APPEND);
+   return 0;
+}
+!
+
+if [ "${have_mkostemp}" != yes ]; then
+   link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -722,6 +827,7 @@ int main(void)
    return 0;
 }
 !
+   fi
 
 # Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
@@ -840,6 +946,23 @@ else
    echo '/* WANT_SOCKETS=0 */' >> ${h}
 fi # feat_yes SOCKETS
 
+if feat_yes SOCKETS && feat_yes SPAM_SPAMD; then
+   link_check af_unix 'for UNIX-domain sockets' \
+      '#define HAVE_UNIX_SOCKETS' << \!
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+int main(void)
+{
+   struct sockaddr_un sun;
+   socket(AF_UNIX, SOCK_STREAM, 0);
+   connect(0, (struct sockaddr*)&sun, 0);
+   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+   return 0;
+}
+!
+fi
+
 feat_yes SOCKETS &&
 link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
@@ -883,8 +1006,9 @@ int main(void)
 }
 !
 
-if feat_yes IPV6; then
-   if link_check ipv6 'for IPv6 functionality' '#define HAVE_IPV6' << \!
+if feat_yes SOCKETS; then
+   link_check getaddrinfo 'for getaddrinfo(3)' \
+      '#define HAVE_GETADDRINFO' << \!
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -901,14 +1025,7 @@ int main(void)
    return 0;
 }
 !
-   then
-      :
-   else
-      feat_bail_required IPV6
-   fi
-else
-   echo '/* WANT_IPV6=0 */' >> ${h}
-fi # feat_yes IPV6
+fi
 
 if feat_yes SSL; then
    if link_check openssl 'for sufficiently recent OpenSSL' \
@@ -920,26 +1037,14 @@ if feat_yes SSL; then
 #include <openssl/x509.h>
 #include <openssl/rand.h>
 
-#if defined OPENSSL_NO_SSL2 && defined OPENSSL_NO_SSL3 &&\
-      defined OPENSSL_NO_TLS1
-# error We need one of (SSLv2 and) SSLv3 and TLS1.
+#if defined OPENSSL_NO_SSL3 && defined OPENSSL_NO_TLS1
+# error We need one of SSLv3 and TLSv1.
 #endif
 
 int main(void)
 {
-   SSLv23_client_method();
-#ifndef OPENSSL_NO_SSL3
-   SSLv3_client_method();
-#endif
-#ifndef OPENSSL_NO_TLS1
-   TLSv1_client_method();
-# ifdef TLS1_1_VERSION
-   TLSv1_1_client_method();
-# endif
-# ifdef TLS1_2_VERSION
-   TLSv1_2_client_method();
-# endif
-#endif
+   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+   SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
 }
@@ -967,6 +1072,39 @@ int main(void)
 }
 !
 
+      link_check ossl_conf 'for OpenSSL_modules_load_file() support' \
+         '#define HAVE_OPENSSL_CONFIG' << \!
+#include <openssl/conf.h>
+
+int main(void)
+{
+   CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
+   CONF_modules_free();
+   return 0;
+}
+!
+
+      link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
+         '#define HAVE_OPENSSL_CONF_CTX' << \!
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+int main(void)
+{
+   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+   SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
+   SSL_CONF_CTX_set_flags(cctx,
+      SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
+      SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
+   SSL_CONF_CTX_set_ssl_ctx(cctx, ctx);
+   SSL_CONF_cmd(cctx, "Protocol", "ALL");
+   SSL_CONF_CTX_finish(cctx);
+   SSL_CONF_CTX_free(cctx);
+   SSL_CTX_free(ctx);
+   return 0;
+}
+!
+
       link_check rand_egd 'for OpenSSL RAND_egd()' \
          '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
 #include <openssl/rand.h>
@@ -977,9 +1115,24 @@ int main(void)
 }
 !
 
+      if feat_yes ALL_SSL_ALGORITHMS; then
+         link_check ossl_allalgo 'for OpenSSL all-algorithms support' \
+            '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+
+int main(void)
+{
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+      fi # ALL_SSL_ALGORITHMS
+
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'for MD5 digest in OpenSSL' \
-         '#define HAVE_OPENSSL_MD5' << \!
+            '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
 
@@ -1006,6 +1159,20 @@ int main(void)
 }
 !
       fi # feat_yes MD5 && feat_no NOEXTMD5
+
+      if feat_yes DEVEL; then
+         link_check ossl_memhooks 'for OpenSSL memory hooks' \
+            '#define HAVE_OPENSSL_MEMHOOKS' << \!
+#include <openssl/crypto.h>
+
+int main(void)
+{
+   CRYPTO_set_mem_ex_functions(NULL, NULL, NULL);
+   CRYPTO_set_mem_functions(NULL, NULL, NULL);
+   return 0;
+}
+!
+      fi
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
@@ -1266,13 +1433,79 @@ else
    echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
-if feat_yes SPAM; then
-   echo '#define HAVE_SPAM' >> ${h}
+if feat_yes TERMCAP; then
+   __termlib() {
+      link_check termcap "for termcap(3) (via ${4})" \
+         "#define HAVE_TERMCAP${3}" "${1}" << _EOT
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+${2}
+#include <term.h>
+#define PTR2SIZE(X)     ((unsigned long)(X))
+#define UNCONST(P)      ((void*)(unsigned long)(void const*)(P))
+static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
+int main(void)
+{
+   char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+   tgetent(buf, getenv("TERM"));
+   cpb = cmdbuf;
+   cpti = cpb;
+   if ((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
+      goto jleave;
+   cpte = cpb;
+   if ((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
+      goto jleave;
+   _termcap_buffer = malloc(PTR2SIZE(cpb - cmdbuf));
+   memcpy(_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
+   _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
+   _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
+   tputs(_termcap_ti, 1, &putchar);
+   tputs(_termcap_te, 1, &putchar);
+jleave:
+   return (cp == NULL);
+}
+_EOT
+   }
+
+   __termlib -ltermcap '' '' termcap ||
+      __termlib -ltermcap '#include <curses.h>' '
+         #define HAVE_TERMCAP_CURSES' \
+         'curses.h / -ltermcap' ||
+      __termlib -lcurses '#include <curses.h>' '
+         #define HAVE_TERMCAP_CURSES' \
+         'curses.h / -lcurses' ||
+      feat_bail_required TERMCAP
+else
+   echo '/* WANT_TERMCAP=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMC; then
+   echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+      echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
 else
-   echo '/* WANT_SPAM=0 */' >> ${h}
+   echo '/* WANT_SPAM_SPAMC=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMD && [ -n "${have_af_unix}" ]; then
+   echo '#define HAVE_SPAM_SPAMD' >> ${h}
+else
+   feat_bail_required SPAM_SPAMD
+   echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_FILTER; then
+   echo '#define HAVE_SPAM_FILTER' >> ${h}
+else
+   echo '/* WANT_SPAM_FILTER=0 */' >> ${h}
+fi
+
+if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
+   echo '#define HAVE_SPAM' >> ${h}
+else
+   echo '/* HAVE_SPAM */' >> ${h}
 fi
 
 if feat_yes DOCSTRINGS; then
@@ -1286,6 +1519,12 @@ if feat_yes QUOTE_FOLD &&\
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+fi
+
+if feat_yes FILTER_HTML_TAGSOUP; then
+   echo '#define HAVE_FILTER_HTML_TAGSOUP' >> ${h}
+else
+   echo '/* WANT_FILTER_HTML_TAGSOUP=0 */' >> ${h}
 fi
 
 if feat_yes COLOUR; then
@@ -1318,16 +1557,14 @@ ${mv} ${h} ${tmp}
 printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
 ${cat} ${tmp} >> ${h}
 
-printf '\n/* The "feature string", for "simplicity" and lex.c */\n' >> ${h}
-printf '#ifdef _MAIN_SOURCE\n' >> ${h}
-printf '# ifdef HAVE_AMALGAMATION\nstatic\n# endif\n' >> ${h}
-printf 'char const features[] = "MIME"\n' >> ${h}
+printf '\n/* The "feature string" */\n' >> ${h}
+printf '#if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
+printf 'static char const _features[] = "MIME"\n' >> ${h}
 printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IPV6\n   ",IPv6"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
@@ -1336,19 +1573,24 @@ printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-searches"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM\n   ",SPAM"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
-printf ';\n#endif /* _MAIN_SOURCE */\n' >> ${h}
+printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
+printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
 ${rm} -f ${tmp}
@@ -1404,9 +1646,6 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_SOCKETS
 : + Network support
 #endif
-#ifdef HAVE_IPV6
-: + Support for Internet Protocol v6 (IPv6)
-#endif
 #ifdef HAVE_SSL
 # ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS (OpenSSL)
@@ -1448,14 +1687,29 @@ ${cat} > ${tmp2}.c << \!
 : + + History management
 # endif
 #endif
+#ifdef HAVE_TERMCAP
+: + Terminal capability queries
+#endif
 #ifdef HAVE_SPAM
-: + Interaction with spam filters
+: + Spam management
+# ifdef HAVE_SPAM_SPAMC
+: + + Via spamc(1) (of spamassassin(1))
+# endif
+# ifdef HAVE_SPAM_SPAMD
+: + + Directly via spamd(1) (of spamassassin(1))
+# endif
+# ifdef HAVE_SPAM_FILTER
+: + + Via freely configurable *spam-filter-XY*s
+# endif
 #endif
 #ifdef HAVE_DOCSTRINGS
 : + Documentation summary strings
 #endif
 #ifdef HAVE_QUOTE_FOLD
 : + Extended *quote-fold*ing
+#endif
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+: + Builtin HTML-to-text filter (for display purposes, primitive)
 #endif
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
@@ -1473,12 +1727,10 @@ ${cat} > ${tmp2}.c << \!
 # endif
 #ifndef HAVE_ICONV
 : - Character set conversion using iconv()
+: _ (Ooooh, no iconv(3), NO character set conversion possible!  Really...)
 #endif
 #ifndef HAVE_SOCKETS
 : - Network support
-#endif
-#ifndef HAVE_IPV6
-: - Support for Internet Protocol v6 (IPv6)
 #endif
 #ifndef HAVE_SSL
 : - S/MIME and SSL/TLS
@@ -1513,14 +1765,20 @@ ${cat} > ${tmp2}.c << \!
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
+#ifndef HAVE_TERMCAP
+: - Terminal capability queries
+#endif
 #ifndef HAVE_SPAM
-: - Interaction with spam filters
+: - Spam management
 #endif
 #ifndef HAVE_DOCSTRINGS
 : - Documentation summary strings
 #endif
 #ifndef HAVE_QUOTE_FOLD
 : - Extended *quote-fold*ing
+#endif
+#ifndef HAVE_FILTER_HTML_TAGSOUP
+: - Builtin HTML-to-text filter (for display purposes, primitive)
 #endif
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
@@ -1535,6 +1793,9 @@ ${cat} > ${tmp2}.c << \!
 : _ to expand shell meta characters in filenames, which is a potential
 : _ security hole.  Consider to either upgrade your system or set the
 : _ *SHELL* variable to some safe(r) wrapper script.
+: _ P.S.: the codebase is in transition away from wordexp(3) to some
+: _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
+: _ about shell word expression in its introduction for more on that.
 # endif
 # ifndef HAVE_SNPRINTF
 : . The function snprintf(3) could not be found. We will use an internal
@@ -1551,10 +1812,10 @@ ${cat} > ${tmp2}.c << \!
 : . Debug enabled binary: not meant to be used by end-users: THANKS!
 # endif
 # ifdef HAVE_DEVEL
-: . Computers don't blunder.
+: . Computers do not blunder.
 # endif
-#endif /* Remarks */
 :
+#endif /* Remarks */
 :Setup:
 : . System-wide resource file: SYSCONFRC
 : . bindir: BINDIR, mandir: MANDIR

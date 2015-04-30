@@ -2,7 +2,7 @@
  *@ A cache for IMAP.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -36,12 +36,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE imap_cache
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(imap_cache)
+EMPTY_FILE()
 #ifdef HAVE_IMAP
 # include <dirent.h>
 
@@ -156,7 +158,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
       goto jleave;
 
-   fcntl_lock(fileno(fp), FLOCK_READ);
+   fcntl_lock(fileno(fp), FLOCK_READ, 0);
    if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
          (unsigned long*)&xtime, &xlines) < 4)
       goto jfail;
@@ -289,9 +291,9 @@ putcache(struct mailbox *mp, struct message *m)
    if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
       if ((obuf = Fopen(name, "w")) == NULL)
          goto jleave;
-      fcntl_lock(fileno(obuf), FLOCK_WRITE); /* XXX err hdl */
+      fcntl_lock(fileno(obuf), FLOCK_WRITE, 0); /* XXX err hdl */
    } else {
-      fcntl_lock(fileno(obuf), FLOCK_READ); /* XXX err hdl */
+      fcntl_lock(fileno(obuf), FLOCK_READ, 0); /* XXX err hdl */
       if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
             (unsigned long*)&otime, &olines) >= 4 && ob != '\0' &&
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
@@ -377,7 +379,7 @@ initcache(struct mailbox *mp)
    if (cwget(&cw) == STOP)
       goto jleave;
    if ((uvfp = Fopen(uvname, "r+")) == NULL ||
-         (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
+         (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
@@ -385,7 +387,7 @@ initcache(struct mailbox *mp)
       fflush(uvfp);
       rewind(uvfp);
    }
-   fcntl_lock(fileno(uvfp), FLOCK_WRITE);
+   fcntl_lock(fileno(uvfp), FLOCK_WRITE, 0);
    fprintf(uvfp, "%lu\n", mp->mb_uidvalidity);
    if (ferror(uvfp) || Fclose(uvfp) != 0) {
       unlink(uvname);
@@ -757,7 +759,7 @@ cached_uidvalidity(struct mailbox *mp)
       goto jleave;
    }
    if ((uvfp = Fopen(uvname, "r")) == NULL ||
-         (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
+         (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1)
       uv = 0;
    if (uvfp != NULL)
@@ -777,7 +779,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
    if ((fp = Fopen(name, mode)) != NULL)
-      fcntl_lock(fileno(fp), FLOCK_WRITE);
+      fcntl_lock(fileno(fp), FLOCK_WRITE, 0);
    if (xname)
       *xname = name;
 jleave:
@@ -855,7 +857,7 @@ dequeue1(struct mailbox *mp)
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
-            (fcntl_lock(fileno(uvfp), FLOCK_READ), 0) ||
+            (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
             fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
          fprintf(stderr, "Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n", mp->mb_imap_mailbox);

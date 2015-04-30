@@ -2,7 +2,7 @@
  *@ POP3 (RFCs 1939, 2595) client.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2002
@@ -36,18 +36,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE pop3
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-EMPTY_FILE(pop3)
+EMPTY_FILE()
 #ifdef HAVE_POP3
-
-#undef NL
-#undef LINE
-#define NL        "\015\012"
-#define LINE(X)   X NL
 
 #define POP3_ANSWER(RV,ACTIONSTOP) \
 do if (((RV) = pop3_answer(mp)) == STOP) {\
@@ -82,11 +79,6 @@ static enum okay  _pop3_login(struct mailbox *mp, struct sockconn *scp);
 static char *     _pop3_lookup_apop_timestamp(char const *bp);
 #endif
 
-static bool_t     _pop3_use_starttls(struct sockconn const *scp);
-
-/* APOP: shall we use it? */
-static bool_t     _pop3_no_apop(struct sockconn const *scp);
-
 /* Several authentication methods */
 #ifdef HAVE_MD5
 static enum okay  _pop3_auth_apop(struct mailbox *mp,
@@ -104,9 +96,8 @@ static enum okay  pop3_noop1(struct mailbox *mp);
 static void       pop3alarm(int s);
 static enum okay  pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
 static enum okay  pop3_list(struct mailbox *mp, int n, size_t *size);
-static void       pop3_init(struct mailbox *mp, int n);
-static void       pop3_dates(struct mailbox *mp);
-static void       pop3_setptr(struct mailbox *mp);
+static void       pop3_setptr(struct mailbox *mp,
+                     struct sockconn const *scp);
 static enum okay  pop3_get(struct mailbox *mp, struct message *m,
                      enum needspec need);
 static enum okay  pop3_exit(struct mailbox *mp);
@@ -119,8 +110,11 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
    char *ts;
 #endif
+   enum okey_xlook_mode oxm;
    enum okay rv;
    NYD_ENTER;
+
+   oxm = ok_blook(v15_compat) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
    /* Get the greeting, check wether APOP is advertised */
    POP3_ANSWER(rv, goto jleave);
@@ -130,15 +124,15 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    /* If not yet secured, can we upgrade to TLS? */
 #ifdef HAVE_SSL
-   if (!scp->sc_url.url_needs_tls && _pop3_use_starttls(scp)) {
-      POP3_OUT(rv, "STLS" NL, MB_COMD, goto jleave);
+   if (!scp->sc_url.url_needs_tls &&
+         xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
+      POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
-      if ((rv = ssl_open(scp->sc_url.url_host.s, &scp->sc_sock,
-            scp->sc_url.url_u_h_p.s)) != OKAY)
+      if ((rv = ssl_open(&scp->sc_url, &scp->sc_sock)) != OKAY)
          goto jleave;
    }
 #else
-   if (_pop3_use_starttls(scp->sc_url.url_u_h_p.s)) {
+   if (xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       fprintf(stderr, "No SSL support compiled in.\n");
       rv = STOP;
       goto jleave;
@@ -146,18 +140,25 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* Use the APOP single roundtrip? */
-   if (!_pop3_no_apop(scp)) {
+   if (!xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
 #ifdef HAVE_MD5
       if (ts != NULL) {
          if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
-            fprintf(stderr, _("POP3 `APOP' authentication failed, "
+            fprintf(stderr, _("POP3 \"APOP\" authentication failed, "
                "maybe try setting *pop3-no-apop*\n"));
          goto jleave;
       } else
 #endif
-      if (options & OPT_VERB)
-         fprintf(stderr, _("No POP3 `APOP' support "
-            "available, sending password in clear text\n"));
+             if (options & OPT_D_V) {
+         char const *ccp = "";
+
+#ifdef HAVE_SSL
+         if (scp->sc_sock.s_use_ssl)
+            ccp = _(" (over encrypted connection)");
+#endif
+         fprintf(stderr,
+            _("No POP3 \"APOP\" support, plain text authentication%s\n"), ccp);
+      }
    }
 
    rv = _pop3_auth_plain(mp, scp);
@@ -173,7 +174,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    /* RFC 1939:
     * A POP3 server which implements the APOP command will include
     * a timestamp in its banner greeting.  The syntax of the timestamp
-    * corresponds to the `msg-id' in [RFC822]
+    * corresponds to the "msg-id" in [RFC822]
     * RFC 822:
     * msg-id   = "<" addr-spec ">"
     * addr-spec   = local-part "@" domain */
@@ -211,35 +212,6 @@ jleave:
 }
 #endif
 
-static bool_t
-_pop3_use_starttls(struct sockconn const *scp)
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   if (!(rv = ok_blook(pop3_use_starttls)))
-      if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-use-starttls-",
-                  scp->sc_url.url_h_p.s))))
-         rv = vok_blook(savecat("pop3-use-starttls-", scp->sc_url.url_u_h_p.s));
-   NYD_LEAVE;
-   return rv;
-}
-
-static bool_t
-_pop3_no_apop(struct sockconn const *scp)
-{
-   bool_t rv;
-   NYD_ENTER;
-
-   if (!(rv = ok_blook(pop3_no_apop)))
-      if (!ok_blook(v15_compat) ||
-            !(rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_h_p.s))))
-         rv = vok_blook(savecat("pop3-no-apop-", scp->sc_url.url_u_h_p.s));
-   NYD_LEAVE;
-   return rv;
-}
-
 #ifdef HAVE_MD5
 static enum okay
 _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
@@ -258,7 +230,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NL)-1 +1);
+   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "APOP ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
@@ -266,7 +238,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    cp[i++] = ' ';
    memcpy(cp + i, hex, MD5TOHEX_SIZE);
    i += MD5TOHEX_SIZE;
-   memcpy(cp + i, NL, sizeof(NL));
+   memcpy(cp + i, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -287,17 +259,17 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 
    /* The USER/PASS plain text version */
    cp = ac_alloc(MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
-         sizeof(NL)-1 +1);
+         sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_user.l, NL, sizeof(NL));
+   memcpy(cp + 5 + scp->sc_cred.cc_user.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
    memcpy(cp, "PASS ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_pass.l, NL, sizeof(NL));
+   memcpy(cp + 5 + scp->sc_cred.cc_pass.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -346,8 +318,8 @@ jretry:
          /* If the answer starts neither with '+' nor with '-', it must be part
           * of a multiline response.  Get lines until a single dot appears */
 jmultiline:
-         while (_pop3_buf[0] != '.' || _pop3_buf[1] != NL[0] ||
-               _pop3_buf[2] != NL[1] || _pop3_buf[3] != '\0') {
+         while (_pop3_buf[0] != '.' || _pop3_buf[1] != NETNL[0] ||
+               _pop3_buf[2] != NETNL[1] || _pop3_buf[3] != '\0') {
             sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock);
             if (sz <= 0)
                goto jeof;
@@ -381,7 +353,8 @@ pop3catch(int s)
    NYD_X; /* Signal handler */
    switch (s) {
    case SIGINT:
-      fprintf(stderr, _("Interrupt\n"));
+      /*fprintf(stderr, "Interrupt during POP3 operation\n");*/
+      interrupts = 2; /* Force "Interrupt" message shall we onintr(0) */
       siglongjmp(_pop3_jmp, 1);
       break;
    case SIGPIPE:
@@ -395,9 +368,8 @@ _pop3_maincatch(int s)
 {
    NYD_X; /* Signal handler */
    UNUSED(s);
-
    if (interrupts++ == 0)
-      fprintf(stderr, _("Interrupt\n"));
+      fprintf(stderr, _("\n(Interrupt -- one more to abort operation)\n"));
    else
       onintr(0);
 }
@@ -408,7 +380,7 @@ pop3_noop1(struct mailbox *mp)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "NOOP" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "NOOP" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_LEAVE;
@@ -427,6 +399,7 @@ pop3alarm(int s)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
       if (sigsetjmp(_pop3_jmp, 1)) {
+         interrupts = 0;
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
          goto jbrk;
@@ -454,7 +427,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "STAT" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
    for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
@@ -489,7 +462,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    enum okay rv;
    NYD_ENTER;
 
-   snprintf(o, sizeof o, "LIST %u" NL, n);
+   snprintf(o, sizeof o, "LIST %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -503,64 +476,63 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
       ++cp;
    if (*cp != '\0')
       *size = (size_t)strtol(cp, NULL, 10);
-   else
-      *size = 0;
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static void
-pop3_init(struct mailbox *mp, int n)
-{
-   struct message *m;
-   char *cp;
-   NYD_ENTER;
-
-   m =  message + n;
-   m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
-   m->m_block = 0;
-   m->m_offset = 0;
-   pop3_list(mp, PTR2SIZE(m - message + 1), &m->m_xsize);
-
-   if ((cp = hfield1("status", m)) != NULL) {
-      while (*cp != '\0') {
-         if (*cp == 'R')
-            m->m_flag |= MREAD;
-         else if (*cp == 'O')
-            m->m_flag &= ~MNEW;
-         ++cp;
-      }
-   }
-   NYD_LEAVE;
-}
-
-static void
-pop3_dates(struct mailbox *mp)
+pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
 {
    size_t i;
-   NYD_ENTER;
-   UNUSED(mp);
-
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
-      substdate(message + i);
-   NYD_LEAVE;
-}
-
-static void
-pop3_setptr(struct mailbox *mp)
-{
-   size_t i;
+   enum needspec ns;
    NYD_ENTER;
 
    message = scalloc(msgCount + 1, sizeof *message);
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
-      pop3_init(mp, i);
-
-   setdot(message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
-   pop3_dates(mp);
+   dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */
+
+   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+      struct message *m = message + i;
+      m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
+      m->m_block = 0;
+      m->m_offset = 0;
+      m->m_size = m->m_xsize = 0;
+   }
+
+   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+      if (!pop3_list(mp, i + 1, &message[i].m_xsize))
+         goto jleave;
+
+   /* Force the load of all messages right now */
+   ns = xok_blook(pop3_bulk_load, &scp->sc_url, OXM_ALL)
+         ? NEED_BODY : NEED_HEADER;
+   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+      if (!pop3_get(mp, message + i, ns))
+         goto jleave;
+
+   srelax_hold();
+   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+      struct message *m = message + i;
+      char const *cp;
+
+      if ((cp = hfield1("status", m)) != NULL)
+         while (*cp != '\0') {
+            if (*cp == 'R')
+               m->m_flag |= MREAD;
+            else if (*cp == 'O')
+               m->m_flag &= ~MNEW;
+            ++cp;
+         }
+
+      substdate(m);
+      srelax();
+   }
+   srelax_rele();
+
+   setdot(message);
+jleave:
    NYD_LEAVE;
 }
 
@@ -593,12 +565,8 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
-      if (sigsetjmp(_pop3_jmp, 1)) {
-         safe_signal(SIGINT, saveint);
-         safe_signal(SIGPIPE, savepipe);
-         --_pop3_lock;
+      if (sigsetjmp(_pop3_jmp, 1))
          goto jleave;
-      }
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
    }
@@ -608,10 +576,10 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 jretry:
    switch (need) {
    case NEED_HEADER:
-      snprintf(o, sizeof o, "TOP %u 0" NL, number);
+      snprintf(o, sizeof o, "TOP %u 0" NETNL, number);
       break;
    case NEED_BODY:
-      snprintf(o, sizeof o, "RETR %u" NL, number);
+      snprintf(o, sizeof o, "RETR %u" NETNL, number);
       break;
    case NEED_UNSPEC:
       abort(); /* XXX */
@@ -630,7 +598,7 @@ jretry:
    size = 0;
    lines = 0;
    while (sgetline(&line, &linesize, &linelen, &mp->mb_sock) > 0) {
-      if (line[0] == '.' && line[1] == NL[0] && line[2] == NL[1] &&
+      if (line[0] == '.' && line[1] == NETNL[0] && line[2] == NETNL[1] &&
             line[3] == '\0') {
          mp->mb_active &= ~MB_MULT;
          break;
@@ -658,19 +626,17 @@ jretry:
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (is_head(lp, linelen)) {
-         DBG( fprintf(stderr, "!! POP3 really needs to quote From?\n"); )
-         if (lines == 0)
-            continue;
-         fputc('>', mp->mb_otf);
+      if (emptyline && is_head(lp, linelen, TRU1)) {
+         putc('>', mp->mb_otf);
          ++size;
       }
       lines++;
-      if (lp[linelen-1] == NL[1] && (linelen == 1 || lp[linelen-2] == NL[0])) {
+      if (lp[linelen-1] == NETNL[1] &&
+            (linelen == 1 || lp[linelen-2] == NETNL[0])) {
          emptyline = linelen <= 2;
          if (linelen > 2)
             fwrite(lp, 1, linelen - 2, mp->mb_otf);
-         fputc('\n', mp->mb_otf);
+         putc('\n', mp->mb_otf);
          size += linelen - 1;
       } else {
          emptyline = 0;
@@ -680,8 +646,8 @@ jretry:
    }
    if (!emptyline) {
       /* This is very ugly; but some POP3 daemons don't end a
-       * message with NL NL, and we need \n\n for mbox format */
-      fputc('\n', mp->mb_otf);
+       * message with NETNL NETNL, and we need \n\n for mbox format */
+      putc('\n', mp->mb_otf);
       ++lines;
       ++size;
    }
@@ -725,7 +691,7 @@ pop3_exit(struct mailbox *mp)
    enum okay rv;
    NYD_ENTER;
 
-   POP3_OUT(rv, "QUIT" NL, MB_COMD, goto jleave);
+   POP3_OUT(rv, "QUIT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_LEAVE;
@@ -739,7 +705,7 @@ pop3_delete(struct mailbox *mp, int n)
    enum okay rv;
    NYD_ENTER;
 
-   snprintf(o, sizeof o, "DELE %u" NL, n);
+   snprintf(o, sizeof o, "DELE %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
@@ -754,7 +720,7 @@ pop3_update(struct mailbox *mp)
    int dodel, c, gotcha, held;
    NYD_ENTER;
 
-   if (!edit) {
+   if (!(pstate & PS_EDIT)) {
       holdbits();
       c = 0;
       for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -766,7 +732,7 @@ pop3_update(struct mailbox *mp)
 
    gotcha = held = 0;
    for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
-      if (edit)
+      if (pstate & PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -776,11 +742,11 @@ pop3_update(struct mailbox *mp)
       } else
          ++held;
    }
-   if (gotcha && edit) {
+   if (gotcha && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !edit) {
+   } else if (held && !(pstate & PS_EDIT)) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -848,7 +814,10 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    rv = 1;
    quit();
 
-   edit = !(fm & FEDIT_SYSBOX);
+   if (fm & FEDIT_SYSBOX)
+      pstate &= ~PS_EDIT;
+   else
+      pstate |= PS_EDIT;
    if (mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock);
    if (mb.mb_itf) {
@@ -869,9 +838,13 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
       sclose(&mb.mb_sock);
+      fprintf(stderr, _("POP3 connection closed.\n"));
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
       _pop3_lock = 0;
+      rv = -1;
+      if (interrupts > 0)
+         onintr(0);
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -886,7 +859,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       }
    }
 
-   mb.mb_sock.s_desc = sc.sc_url.url_proto;
+   mb.mb_sock.s_desc = sc.sc_url.url_needs_tls ? "POP3S" : "POP3";
    mb.mb_sock.s_onclose = pop3_timer_off;
    if (_pop3_login(&mb, &sc) != OKAY ||
          pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {
@@ -897,16 +870,17 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       _pop3_lock = 0;
       goto jleave;
    }
+
+   setmsize(msgCount);
    mb.mb_type = MB_POP3;
    mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
-   pop3_setptr(&mb);
-   setmsize(msgCount);
-   sawcom = FAL0;
+   pop3_setptr(&mb, &sc);
+   pstate &= ~PS_SAW_COMMAND;
 
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
-   if (!edit && msgCount == 0) {
+   if (!(pstate & PS_EDIT) && msgCount == 0) {
       if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), server);
       goto jleave;
@@ -958,6 +932,7 @@ pop3_quit(void)
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, saveint);
       _pop3_lock = 0;
+      interrupts = 0;
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -973,9 +948,6 @@ pop3_quit(void)
 jleave:
    NYD_LEAVE;
 }
-
-#undef LINE
-#undef NL
 #endif /* HAVE_POP3 */
 
 /* s-it-mode */

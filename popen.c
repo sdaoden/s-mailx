@@ -2,7 +2,7 @@
  *@ Handling of pipes, child processes, temporary files, file enwrapping.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE popen
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -43,18 +45,8 @@
 
 #include <sys/wait.h>
 
-#include <fcntl.h>
-
 #define READ               0
 #define WRITE              1
-
-#ifndef O_CLOEXEC
-# define _OUR_CLOEXEC
-# define O_CLOEXEC         0
-# define _SET_CLOEXEC(FD)  do fcntl((FD), F_SETFD, FD_CLOEXEC); while (0)
-#else
-# define _SET_CLOEXEC(FD)  do {} while (0)
-#endif
 
 struct fp {
    FILE        *fp;
@@ -99,8 +91,8 @@ static int           file_pid(FILE *fp);
 static void          _sigchld(int signo);
 
 static int           wait_command(int pid);
-static struct child *findchild(int pid);
-static void          delchild(struct child *cp);
+static struct child *_findchild(int pid, bool_t create);
+static void          _delchild(struct child *cp);
 
 static int
 scan_mode(char const *mode, int *omode)
@@ -225,8 +217,8 @@ _decompress(int compression, int infd, int outfd)
    case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
-   case FP_IMAP:
    case FP_MAILDIR:
+   case FP_IMAP:
       rv = 0;
       goto jleave;
    }
@@ -285,24 +277,27 @@ file_pid(FILE *fp)
 static void
 _sigchld(int signo)
 {
-   int pid, status;
+   pid_t pid;
+   int status;
    struct child *cp;
    NYD_X; /* Signal handler */
    UNUSED(signo);
 
    for (;;) {
-      pid = (int)waitpid((pid_t)-1, &status, WNOHANG);
+      pid = waitpid(-1, &status, WNOHANG);
       if (pid <= 0) {
          if (pid == -1 && errno == EINTR)
             continue;
          break;
       }
-      cp = findchild(pid);
-      if (cp->free)
-         delchild(cp);
-      else {
-         cp->done = 1;
-         cp->status = status;
+
+      if ((cp = _findchild(pid, FAL0)) != NULL) {
+         if (cp->free)
+            cp->pid = -1; /* XXX Was _delchild(cp);# */
+         else {
+            cp->done = 1;
+            cp->status = status;
+         }
       }
    }
 }
@@ -323,7 +318,7 @@ wait_command(int pid)
 }
 
 static struct child *
-findchild(int pid)
+_findchild(int pid, bool_t create)
 {
    struct child **cpp;
    NYD_ENTER;
@@ -331,7 +326,8 @@ findchild(int pid)
    for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
          cpp = &(*cpp)->link)
       ;
-   if (*cpp == NULL) {
+
+   if (*cpp == NULL && create) {
       *cpp = smalloc(sizeof **cpp);
       (*cpp)->pid = pid;
       (*cpp)->done = (*cpp)->free = 0;
@@ -342,15 +338,23 @@ findchild(int pid)
 }
 
 static void
-delchild(struct child *cp)
+_delchild(struct child *cp)
 {
    struct child **cpp;
    NYD_ENTER;
 
-   for (cpp = &_popen_child; *cpp != cp; cpp = &(*cpp)->link)
-      ;
-   *cpp = cp->link;
-   free(cp);
+   cpp = &_popen_child;
+   for (;;) {
+      if (*cpp == cp) {
+         *cpp = cp->link;
+         free(cp);
+         break;
+      }
+      if (*(cpp = &(*cpp)->link) == NULL) {
+         DBG( fputs("! popen.c:_delchild(): implementation error\n", stderr); )
+         break;
+      }
+   }
    NYD_LEAVE;
 }
 
@@ -384,13 +388,13 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
-   osflags |= O_CLOEXEC;
+   osflags |= _O_CLOEXEC;
    if (xflags != NULL)
       *xflags = osflags;
 
    if ((fd = open(file, osflags, 0666)) == -1)
       goto jleave;
-   _SET_CLOEXEC(fd);
+   _CLOEXEC_SET(fd);
 
    fp = fdopen(fd, oflags);
 jleave:
@@ -419,7 +423,7 @@ Fdopen(int fd, char const *oflags)
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= O_CLOEXEC;
+   osflags |= _O_CLOEXEC;
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L);
@@ -556,12 +560,26 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    sstpcpy(cp, ".XXXXXX");
 
    hold_all_sigs();
-#ifdef HAVE_MKSTEMP
+#ifdef HAVE_MKOSTEMP
+   fd = 0;
+   if (!(oflags & OF_REGISTER))
+      /* O_CLOEXEC note: <-> support check included in mk-conf.sh */
+      fd |= O_CLOEXEC;
+   if (oflags & OF_APPEND)
+      fd |= O_APPEND;
+   if ((fd = mkostemp(cp_base, fd)) == -1)
+      goto jfree;
+
+   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1) {
+      close(fd);
+      goto junlink;
+   }
+#elif defined HAVE_MKSTEMP
    if ((fd = mkstemp(cp_base)) == -1)
       goto jfree;
-   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1)
-      goto jclose;
-   if (oflags & OF_APPEND) {
+   if (!(oflags & OF_REGISTER))
+      (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
+   if (oflags & OF_APPEND) { /* XXX include CLOEXEC here, drop above, then */
       int f;
 
       if ((f = fcntl(fd, F_GETFL)) == -1 ||
@@ -571,16 +589,17 @@ jclose:
          goto junlink;
       }
    }
-   if (!(oflags & OF_REGISTER))
-      fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1)
+      goto jclose;
 #else
    if (mktemp(cp_base) == NULL)
       goto jfree;
-   if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC |
+   if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | _O_CLOEXEC |
          (oflags & OF_APPEND ? O_APPEND : 0), mode)) == -1)
       goto junlink;
    if (!(oflags & OF_REGISTER))
-      _SET_CLOEXEC(fd);
+      _CLOEXEC_SET(fd);
 #endif
 
    fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
@@ -593,6 +612,8 @@ junlink:
 
    if (fn != NULL)
       *fn = cp_base;
+   else
+      free(cp_base);
 jleave:
    if (fp == NULL || !(oflags & OF_HOLDSIGS))
       rele_all_sigs();
@@ -645,8 +666,8 @@ pipe_cloexec(int fd[2])
 #else
    if (pipe(fd) == -1)
       goto jleave;
-   fcntl(fd[0], F_SETFD, FD_CLOEXEC);
-   fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+   (void)fcntl(fd[0], F_SETFD, FD_CLOEXEC);
+   (void)fcntl(fd[1], F_SETFD, FD_CLOEXEC);
 #endif
    rv = TRU1;
 jleave:
@@ -663,6 +684,25 @@ Popen(char const *cmd, char const *mode, char const *sh,
    sigset_t nset;
    FILE *rv = NULL;
    NYD_ENTER;
+
+   /* First clean up child structures */
+   {  sigset_t oset;
+      struct child **cpp, *cp;
+
+      sigfillset(&nset);
+      sigprocmask(SIG_BLOCK, &nset, &oset);
+
+      for (cpp = &_popen_child; *cpp != NULL;) {
+         if ((*cpp)->pid == -1) {
+            cp = *cpp;
+            *cpp = cp->link;
+            free(cp);
+         } else
+            cpp = &(*cpp)->link;
+      }
+
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
 
    if (!pipe_cloexec(p))
       goto jleave;
@@ -683,8 +723,25 @@ Popen(char const *cmd, char const *mode, char const *sh,
       fd1 = -1;
       mod[0] = 'w';
    }
+
    sigemptyset(&nset);
-   if (sh == NULL) {
+
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+   if (cmd == MIME_TYPE_HANDLER_HTML) { /* TODO Temporary ugly hack */
+      if ((pid = fork_child()) == -1)
+         perror("fork");
+      else if (pid == 0) {
+         union {char const *ccp; int (*ptf)(void); int es;} u;
+         prepare_child(&nset, fd0, fd1);
+         close(p[READ]);
+         close(p[WRITE]);
+         u.ccp = sh;
+         u.es = (*u.ptf)();
+         _exit(u.es);
+      }
+   } else
+#endif
+          if (sh == NULL) {
       pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
       pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
@@ -744,6 +801,24 @@ close_all_files(void)
 }
 
 FL int
+fork_child(void)
+{
+   struct child *cp;
+   int pid;
+   NYD_ENTER;
+
+   cp = _findchild(0, TRU1);
+
+   if ((cp->pid = pid = fork()) == -1) {
+      _delchild(cp);
+      perror("fork");
+   }
+
+   NYD_LEAVE;
+   return pid;
+}
+
+FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2)
 {
@@ -766,7 +841,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    int rv;
    NYD_ENTER;
 
-   if ((rv = fork()) == -1) {
+   if ((rv = fork_child()) == -1) {
       perror("fork");
       rv = -1;
    } else if (rv == 0) {
@@ -872,11 +947,12 @@ free_child(int pid)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = findchild(pid);
-   if (cp->done)
-      delchild(cp);
-   else
-      cp->free = 1;
+   if ((cp = _findchild(pid, FAL0)) != NULL) {
+      if (cp->done)
+         _delchild(cp);
+      else
+         cp->free = 1;
+   }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
    NYD_LEAVE;
@@ -895,11 +971,14 @@ wait_child(int pid, int *wait_status)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = findchild(pid);
-   while (!cp->done)
-      sigsuspend(&oset);
-   ws = cp->status;
-   delchild(cp);
+   cp = _findchild(pid, FAL0);
+   if (cp != NULL) {
+      while (!cp->done)
+         sigsuspend(&oset);
+      ws = cp->status;
+      _delchild(cp);
+   } else
+      ws = 0;
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
 
@@ -909,11 +988,5 @@ wait_child(int pid, int *wait_status)
    NYD_LEAVE;
    return rv;
 }
-
-#ifdef _OUR_CLOEXEC
-# undef O_CLOEXEC
-# undef _OUR_CLOEXEC
-#endif
-#undef _SET_CLOEXEC
 
 /* s-it-mode */

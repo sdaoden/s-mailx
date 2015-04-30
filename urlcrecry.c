@@ -3,7 +3,7 @@
  *@ .netrc parser quite loosely based upon NetBSD usr.bin/ftp/
  *@   $NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $
  *
- * Copyright (c) 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2014 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,6 +17,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#undef n_FILE
+#define n_FILE urlcrecry
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -45,7 +47,7 @@ struct nrc_node {
    ui32_t            nrc_mlen;      /* Length of machine name */
    ui32_t            nrc_ulen;      /* Length of user name */
    ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[VFIELD_SIZE(4)];
+   char              nrc_dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
@@ -116,13 +118,13 @@ _nrc_init(void)
       *nrc = NRC_NODE_ERR;
    NYD_ENTER;
 
-   if ((netrc_load = getenv("NETRC")/* TODO */) == NULL)
+   if ((netrc_load = env_vlook("NETRC", FAL0)) == NULL)
       netrc_load = UNCONST(NETRC);
    if ((netrc_load = file_expand(netrc_load)) == NULL)
       goto j_leave;
 
    if ((fi = Fopen(netrc_load, "r")) == NULL) {
-      fprintf(stderr, _("Cannot open `%s'\n"), netrc_load);
+      fprintf(stderr, _("Cannot open \"%s\"\n"), netrc_load);
       goto j_leave;
    }
 
@@ -130,7 +132,7 @@ _nrc_init(void)
    if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
          (sb.st_mode & (S_IRWXG | S_IRWXO))) {
       fprintf(stderr,
-         _("Not a regular file, or accessible by non-user: `%s'\n"),
+         _("Not a regular file, or accessible by non-user: \"%s\"\n"),
          netrc_load);
       goto jleave;
    }
@@ -223,7 +225,8 @@ jm_h:
    case NRC_ERROR:
 jerr:
       if (options & OPT_D_V)
-         fprintf(stderr, _("Errors occurred while parsing `%s'\n"), netrc_load);
+         fprintf(stderr, _("Errors occurred while parsing \"%s\"\n"),
+            netrc_load);
       assert(nrc == NRC_NODE_ERR);
       goto jleave;
    }
@@ -389,7 +392,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    }
 
    /* Cannot be an exact match, but maybe the .netrc machine starts with
-    * a `*.' glob, which we recognize as an extension, meaning "skip
+    * a "*." glob, which we recognize as an extension, meaning "skip
     * a single subdomain, then match the rest" */
    d1 = nrc->nrc_dat + 2;
    l1 = nrc->nrc_mlen;
@@ -398,7 +401,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    l1 -= 2;
 
    /* Brute skipping over one subdomain, no RFC 1035 or RFC 1122 checks;
-    * in fact this even succeeds for `.host.com', but - why care, here? */
+    * in fact this even succeeds for ".host.com", but - why care, here? */
    d2 = urlp->url_host.s;
    l2 = urlp->url_host.l;
    while (l2 > 0) {
@@ -485,7 +488,11 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
          NULL)->s;
    env_addon[3] = str_concat_csvl(&s, AGENT_HOST_PORT, "=", urlp->url_h_p.s,
          NULL)->s;
-   env_addon[4] = NULL;
+
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
+   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
+
+   env_addon[6] = NULL;
 
    if ((u.cp = ok_vlook(SHELL)) == NULL)
       u.cp = XSHELL;
@@ -664,7 +671,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if !defined __ALLPROTO || !defined HAVE_SSL
 jeproto:
 #endif
-      fprintf(stderr, _("URL `proto://' prefix invalid: `%s'\n"),
+      fprintf(stderr, _("URL \"proto://\" prefix invalid: \"%s\"\n"),
          urlp->url_input);
       goto jleave;
    }
@@ -691,7 +698,7 @@ juser:
 
          if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
             fprintf(stderr,
-               _("String is not properly URL percent encoded: `%s'\n"), ub);
+               _("String is not properly URL percent encoded: \"%s\"\n"), ub);
             goto jleave;
          }
          l = i;
@@ -705,7 +712,7 @@ juser:
 
       if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
          fprintf(stderr,
-            _("String is not properly URL percent encoded: `%s'\n"), ub);
+            _("String is not properly URL percent encoded: \"%s\"\n"), ub);
          goto jleave;
       }
 
@@ -722,7 +729,7 @@ juser:
          *x = '\0';
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
-         fprintf(stderr, _("URL with invalid port number: `%s'\n"),
+         fprintf(stderr, _("URL with invalid port number: \"%s\"\n"),
             urlp->url_input);
          goto jleave;
       }
@@ -736,7 +743,7 @@ juser:
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && x[1] != '\0') {
       if (cproto != CPROTO_IMAP) {
-         fprintf(stderr, _("URL protocol doesn't support paths: `%s'\n"),
+         fprintf(stderr, _("URL protocol doesn't support paths: \"%s\"\n"),
             urlp->url_input);
          goto jleave;
       }
@@ -1005,8 +1012,8 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_USER)) {
          if ((s = getuser(NULL)) == NULL) {
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
-             * TODO even better: introduce `PROTO-user' and `PROTO-pass' and
-             * TODO check that first, then! change control flow, grow `vbuf' */
+             * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
+             * TODO check that first, then! change control flow, grow vbuf */
             fprintf(stderr, _("A user is necessary for %s authentication.\n"),
                pname);
             ccp = NULL;
@@ -1046,7 +1053,7 @@ jpass:
 jleave:
    ac_free(vbuf);
    if (ccp != NULL && (options & OPT_D_VV))
-      fprintf(stderr, _("Credentials: host `%s', user `%s', pass `%s'\n"),
+      fprintf(stderr, _("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
@@ -1074,7 +1081,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       authokey = ok_v_smtp_auth;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
             AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
-      authdef = "none";
+      authdef = "plain";
       break;
    case CPROTO_POP3:
       pstr = "pop3";
@@ -1173,7 +1180,7 @@ js2pass:
 
 jleave:
    if (ccp != NULL && (options & OPT_D_VV))
-      fprintf(stderr, _("Credentials: host `%s', user `%s', pass `%s'\n"),
+      fprintf(stderr, _("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;

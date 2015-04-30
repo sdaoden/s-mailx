@@ -6,7 +6,7 @@
  *@ in here, including those which use normal heap memory.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -40,6 +40,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE strings
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -47,21 +49,8 @@
 
 #include <ctype.h>
 
-/* Allocate SBUFFER_SIZE chunks and keep them in a singly linked list, but
- * release all except the first two in sreset(), because other allocations are
- * performed and the underlaying allocator should have the possibility to
- * reorder stuff and possibly even madvise(2), so that S-nail(1) integrates
- * neatly into the system.
- *
- * To relax stuff further, especially in non-interactive, i.e., send mode, do
- * not even allocate the first buffer, but let that be a builtin DATA section
- * one that is rather small, yet sufficient for send mode to *never* even
- * perform a single dynamic allocation (from our stringdope point of view).
- * Encapsulate user chunks with canaries if HAVE_DEBUG.
- *
- * To deal with huge allocations which would overflow those buffers we offer
- * a simple bypass that relies upon smalloc() (which panic()s as necessary) */
-
+/* In debug mode the "string dope" allocations are enwrapped in canaries, just
+ * as we do with our normal memory allocator */
 #ifdef HAVE_DEBUG
 # define _SHOPE_SIZE       (2u * 8 * sizeof(char) + sizeof(struct schunk))
 
@@ -99,25 +88,31 @@ struct b_base {
    char           *_caster;   /* NULL if full */
 };
 
-/* Single instance builtin buffer, DATA */
+/* Single instance builtin buffer.  Room for anything, most of the time */
 struct b_bltin {
    struct b_base  b_base;
    char           b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
 };
 #define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
 
-/* Dynamically allocated buffers */
+/* Dynamically allocated buffers to overcome shortage, always released again
+ * once the command loop ticks (without relaxation or during PS_SOURCING) */
 struct b_dyn {
    struct b_base  b_base;
    char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
 };
 #define SDYN_SIZE    SIZEOF_FIELD(struct b_dyn, b_buf)
 
+/* The multiplexer of the several real b_* */
 struct buffer {
    struct b_base  b;
    char           b_buf[VFIELD_SIZE(SALIGN + 1)];
 };
 
+/* Requests that exceed SDYN_SIZE-1 and thus cannot be handled by string dope
+ * are always served by the normal memory allocator (which panics if memory
+ * cannot be served).  Note such an allocation has not yet occurred, it is only
+ * included as a security fallback bypass */
 struct hugebuf {
    struct hugebuf *hb_next;
    char           hb_buf[VFIELD_SIZE(SALIGN + 1)];
@@ -125,6 +120,7 @@ struct hugebuf {
 
 static struct b_bltin   _builtin_buf;
 static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
+static size_t           _relax_recur_no;
 static struct hugebuf   *_huge_list;
 #ifdef HAVE_DEBUG
 static size_t           _all_cnt, _all_cycnt, _all_cycnt_max,
@@ -218,7 +214,7 @@ FL void *
    size += _SHOPE_SIZE;
 
    if (size >= SDYN_SIZE - 1)
-      alert("salloc() of %" PRIuZ " bytes from `%s', line %d\n",
+      alert("salloc() of %" PRIuZ " bytes from \"%s\", line %d\n",
          size, mdbg_file, mdbg_line);
 #endif
 
@@ -332,11 +328,17 @@ FL void *
 FL void
 sreset(bool_t only_if_relaxed)
 {
-   struct buffer *bh;
+   struct buffer *blh, *bh;
    NYD_ENTER;
 
    DBG( ++_all_resetreqs; )
-   if (noreset || (only_if_relaxed && _buf_relax == NULL))
+   if (noreset) {
+      /* Reset relaxation after any jump is a MUST */
+      if (_relax_recur_no > 0)
+         srelax_rele();
+      goto jleave;
+   }
+   if (only_if_relaxed && _relax_recur_no == 0)
       goto jleave;
 
 #ifdef HAVE_DEBUG
@@ -345,41 +347,43 @@ sreset(bool_t only_if_relaxed)
    ++_all_resets;
 #endif
 
+   /* Reset relaxation after jump */
+   if (_relax_recur_no > 0) {
+      srelax_rele();
+      assert(_relax_recur_no == 0);
+   }
+
+   blh = NULL;
    if ((bh = _buf_head) != NULL) {
-      struct buffer *b = bh;
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = b->b._bot;
-      b->b._relax = NULL;
-      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
-      _buf_server = b;
+      do {
+         struct buffer *x = bh;
+         bh = x->b._next;
+         DBG( _salloc_bcheck(x); )
 
-      if ((bh = bh->b._next) != NULL) {
-         b = bh;
-         DBG( _salloc_bcheck(b); )
-         b->b._caster = b->b._bot;
-         b->b._relax = NULL;
-         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
-
-         for (bh = bh->b._next; bh != NULL;) {
-            struct buffer *b2 = bh->b._next;
-            DBG( _salloc_bcheck(bh); )
-            free(bh);
-            bh = b2;
+         /* Give away all buffers that are not covered by sreset().
+          * _buf_head is builtin and thus cannot be free()d */
+         if (blh != NULL && x->b._bot == x->b_buf) {
+            blh->b._next = bh;
+            free(x);
+         } else {
+            blh = x;
+            x->b._caster = x->b._bot;
+            x->b._relax = NULL;
+            DBG( memset(x->b._caster, 0377,
+               PTR2SIZE(x->b._max - x->b._caster)); )
          }
-      }
-      _buf_list = b;
-      b->b._next = NULL;
+      } while (bh != NULL);
+
+      _buf_server = _buf_head;
+      _buf_list = blh;
       _buf_relax = NULL;
    }
 
-   /* We'll only free huge allocations when not in relaxed mode, because they
-    * know nothing about relaxation (as above) */
-   if (_buf_relax == NULL)
-      while (_huge_list != NULL) {
-         struct hugebuf *hb = _huge_list;
-         _huge_list = hb->hb_next;
-         free(hb);
-      }
+   while (_huge_list != NULL) {
+      struct hugebuf *hb = _huge_list;
+      _huge_list = hb->hb_next;
+      free(hb);
+   }
 
    DBG( smemreset(); )
 jleave:
@@ -392,12 +396,11 @@ srelax_hold(void)
    struct buffer *b;
    NYD_ENTER;
 
-   assert(_buf_relax == NULL);
-
-   for (b = _buf_head; b != NULL; b = b->b._next)
-      b->b._relax = b->b._caster;
-   _buf_relax = _buf_server;
-   assert(_buf_relax != NULL);
+   if (_relax_recur_no++ == 0) {
+      for (b = _buf_head; b != NULL; b = b->b._next)
+         b->b._relax = b->b._caster;
+      _buf_relax = _buf_server;
+   }
    NYD_LEAVE;
 }
 
@@ -407,14 +410,21 @@ srelax_rele(void)
    struct buffer *b;
    NYD_ENTER;
 
-   assert(_buf_relax != NULL);
+   assert(_relax_recur_no > 0);
 
-   for (b = _buf_relax; b != NULL; b = b->b._next) {
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-      b->b._relax = NULL;
+   if (--_relax_recur_no == 0) {
+      for (b = _buf_head; b != NULL; b = b->b._next) {
+         DBG( _salloc_bcheck(b); )
+         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+         b->b._relax = NULL;
+      }
+
+      _buf_relax = NULL;
    }
-   _buf_relax = NULL;
+#ifdef HAVE_DEVEL
+   else
+      fprintf(stderr, "srelax_rele(): recursion >0!\n");
+#endif
    NYD_LEAVE;
 }
 
@@ -428,12 +438,14 @@ srelax(void)
    struct buffer *b;
    NYD_ENTER;
 
-   assert(_buf_relax != NULL);
+   assert(_relax_recur_no > 0);
 
-   for (b = _buf_relax; b != NULL; b = b->b._next) {
-      DBG( _salloc_bcheck(b); )
-      b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-      DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
+   if (_relax_recur_no == 1) {
+      for (b = _buf_head; b != NULL; b = b->b._next) {
+         DBG( _salloc_bcheck(b); )
+         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
+         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
+      }
    }
    NYD_LEAVE;
 }
@@ -506,35 +518,20 @@ FL char *
 }
 
 FL char *
-(save2str)(char const *str, char const *old SALLOC_DEBUG_ARGS)
-{
-   size_t newsize, oldsize;
-   char *news;
-   NYD_ENTER;
-
-   newsize = strlen(str) +1;
-   oldsize = (old != NULL) ? strlen(old) + 1 : 0;
-   news = (salloc)(newsize + oldsize SALLOC_DEBUG_ARGSCALL);
-   if (oldsize) {
-      memcpy(news, old, oldsize);
-      news[oldsize - 1] = ' ';
-   }
-   memcpy(news + oldsize, str, newsize);
-   NYD_LEAVE;
-   return news;
-}
-
-FL char *
-(savecat)(char const *s1, char const *s2 SALLOC_DEBUG_ARGS)
+(savecatsep)(char const *s1, char sep, char const *s2 SALLOC_DEBUG_ARGS)
 {
    size_t l1, l2;
    char *news;
    NYD_ENTER;
 
-   l1 = strlen(s1);
+   l1 = (s1 != NULL) ? strlen(s1) : 0;
    l2 = strlen(s2);
-   news = (salloc)(l1 + l2 +1 SALLOC_DEBUG_ARGSCALL);
-   memcpy(news + 0, s1, l1);
+   news = (salloc)(l1 + (sep != '\0') + l2 +1 SALLOC_DEBUG_ARGSCALL);
+   if (l1 > 0) {
+      memcpy(news + 0, s1, l1);
+      if (sep != '\0')
+         news[l1++] = sep;
+   }
    memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
    NYD_LEAVE;
@@ -614,7 +611,6 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    return self;
 }
 
-#ifdef HAVE_SPAM
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
    char const *sep_o_null SALLOC_DEBUG_ARGS)
@@ -644,7 +640,6 @@ FL struct str *
    NYD_LEAVE;
    return self;
 }
-#endif
 
 /*
  * Routines that are not related to auto-reclaimed storage follow.
@@ -714,6 +709,27 @@ is_prefix(char const *as1, char const *as2)
          break;
    NYD2_LEAVE;
    return (c == '\0');
+}
+
+FL char *
+string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
+{
+   char const *cp;
+   size_t i;
+   char c, *rv;
+   NYD2_ENTER;
+
+   for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
+      if (c == '"' || c == '\\')
+         ++i;
+   rv = salloc(i +1);
+
+   for (i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
+      if (c == '"' || c == '\\')
+         rv[i++] = '\\';
+   rv[i] = '\0';
+   NYD2_LEAVE;
+   return rv;
 }
 
 FL char *
@@ -976,6 +992,26 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
    return cmp;
 }
 
+FL char const *
+asccasestr(char const *s1, char const *s2)
+{
+   char c2, c1;
+   NYD2_ENTER;
+
+   for (c2 = *s2++, c2 = lowerconv(c2);;) {
+      if ((c1 = *s1++) == '\0') {
+         s1 = NULL;
+         break;
+      }
+      if (lowerconv(c1) == c2 && is_asccaseprefix(s1, s2)) {
+         --s1;
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return s1;
+}
+
 FL bool_t
 is_asccaseprefix(char const *as1, char const *as2)
 {
@@ -984,54 +1020,15 @@ is_asccaseprefix(char const *as1, char const *as2)
 
    for (;; ++as1, ++as2) {
       char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
-      if ((rv = (c1 == '\0')))
+
+      if ((rv = (c2 == '\0')))
          break;
-      if (c1 != c2 || c2 == '\0')
+      if (c1 != c2)
          break;
    }
    NYD2_LEAVE;
    return rv;
 }
-
-#ifdef HAVE_IMAP
-FL char const *
-asccasestr(char const *haystack, char const *xneedle)
-{
-   char *needle = NULL, *NEEDLE;
-   size_t i, sz;
-   NYD2_ENTER;
-
-   sz = strlen(xneedle);
-   if (sz == 0)
-      goto jleave;
-
-   needle = ac_alloc(sz);
-   NEEDLE = ac_alloc(sz);
-   for (i = 0; i < sz; i++) {
-      needle[i] = lowerconv(xneedle[i]);
-      NEEDLE[i] = upperconv(xneedle[i]);
-   }
-
-   while (*haystack != '\0') {
-      if (*haystack == *needle || *haystack == *NEEDLE) {
-         for (i = 1; i < sz; ++i)
-            if (haystack[i] != needle[i] && haystack[i] != NEEDLE[i])
-               break;
-         if (i == sz)
-            goto jleave;
-      }
-      ++haystack;
-   }
-   haystack = NULL;
-jleave:
-   if (needle != NULL) {
-      ac_free(NEEDLE);
-      ac_free(needle);
-   }
-   NYD2_LEAVE;
-   return haystack;
-}
-#endif
 
 FL struct str *
 (n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
@@ -1062,6 +1059,125 @@ FL struct str *
    NYD_LEAVE;
    return self;
 }
+
+/*
+ * UTF-8
+ */
+
+#ifdef HAVE_NATCH_CHAR
+FL ui32_t
+n_utf8_to_utf32(char const **bdat, size_t *blen)
+{
+   char const *cp;
+   size_t l;
+   ui32_t c, x;
+   NYD2_ENTER;
+
+   cp = *bdat;
+   l = *blen - 1;
+   x = (ui8_t)*cp++;
+
+   if (x <= 0x7F)
+      c = x;
+   else {
+      if ((x & 0xE0) == 0xC0) {
+         if (l < 2)
+            goto jerr;
+         l -= 1;
+         c = x & ~0xC0;
+      } else if ((x & 0xF0) == 0xE0) {
+         if (l < 3)
+            goto jerr;
+         l -= 2;
+         c = x & ~0xE0;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+      } else {
+         if (l < 4)
+            goto jerr;
+         l -= 3;
+         c = x & ~0xF0;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+         c <<= 6;
+         x = (ui8_t)*cp++;
+         c |= x & 0x7F;
+      }
+      c <<= 6;
+      x = (ui8_t)*cp++;
+      c |= x & 0x7F;
+   }
+
+jleave:
+   *bdat = cp;
+   *blen = l;
+   NYD2_LEAVE;
+   return c;
+jerr:
+   c = UI32_MAX;
+   goto jleave;
+}
+#endif /* HAVE_NATCH_CHAR */
+
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+FL size_t
+n_utf32_to_utf8(ui32_t c, char *buf)
+{
+   struct {
+      ui32_t   lower_bound;
+      ui32_t   upper_bound;
+      ui8_t    enc_leader;
+      ui8_t    enc_lval;
+      ui8_t    dec_leader_mask;
+      ui8_t    dec_leader_val_mask;
+      ui8_t    dec_bytes_togo;
+      ui8_t    cat_index;
+      ui8_t    __dummy[2];
+   } const _cat[] = {
+      {0x00000000, 0x00000000, 0x00, 0, 0x00,      0x00,   0, 0, {0,}},
+      {0x00000000, 0x0000007F, 0x00, 1, 0x80,      0x7F, 1-1, 1, {0,}},
+      {0x00000080, 0x000007FF, 0xC0, 2, 0xE0, 0xFF-0xE0, 2-1, 2, {0,}},
+      /* We assume surrogates are U+D800 - U+DFFF, _cat index 3 */
+      /* xxx _from_utf32() simply assumes magic code points for surrogates!
+       * xxx (However, should we ever get yet another surrogate range we
+       * xxx need to deal with that all over the place anyway? */
+      {0x00000800, 0x0000FFFF, 0xE0, 3, 0xF0, 0xFF-0xF0, 3-1, 3, {0,}},
+      {0x00010000, 0x001FFFFF, 0xF0, 4, 0xF8, 0xFF-0xF8, 4-1, 4, {0,}},
+   }, *catp = _cat;
+   size_t l;
+
+   if (c <= _cat[0].upper_bound) { catp += 0; goto j0; }
+   if (c <= _cat[1].upper_bound) { catp += 1; goto j1; }
+   if (c <= _cat[2].upper_bound) { catp += 2; goto j2; }
+   if (c <= _cat[3].upper_bound) {
+      /* Surrogates may not be converted (Compatibility rule C10) */
+      if (c >= 0xD800u && c <= 0xDFFFu)
+         goto jerr;
+      catp += 3;
+      goto j3;
+   }
+   if (c <= _cat[4].upper_bound) { catp += 4; goto j4; }
+jerr:
+   c = 0xFFFDu; /* Unicode replacement character */
+   catp += 3;
+   goto j3;
+j4:
+   buf[3] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j3:
+   buf[2] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j2:
+   buf[1] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+j1:
+   buf[0] = (char)catp->enc_leader | (char)(c);
+j0:
+   buf[catp->enc_lval] = '\0';
+   l = catp->enc_lval;
+   NYD2_LEAVE;
+   return l;
+}
+#endif /* HAVE_FILTER_HTML_TAGSOUP */
 
 /*
  * Our iconv(3) wrapper
@@ -1100,6 +1216,10 @@ n_iconv_open(char const *tocode, char const *fromcode)
    iconv_t id;
    char *t, *f;
    NYD_ENTER;
+
+   if (!asccasecmp(fromcode, "unknown-8bit") &&
+         (fromcode = ok_vlook(charset_unknown_8bit)) == NULL)
+      fromcode = charset_get_8bit();
 
    if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
       goto jleave;
@@ -1158,7 +1278,6 @@ n_iconv_close(iconv_t cd)
    NYD_LEAVE;
 }
 
-#ifdef notyet
 FL void
 n_iconv_reset(iconv_t cd)
 {
@@ -1166,7 +1285,6 @@ n_iconv_reset(iconv_t cd)
    iconv(cd, NULL, NULL, NULL, NULL);
    NYD_LEAVE;
 }
-#endif
 
 /* (2012-09-24: export and use it exclusively to isolate prototype problems
  * (*inb* is 'char const **' except in POSIX) in a single place.
@@ -1242,7 +1360,7 @@ n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
    ol = in->l;
 
    ol = (ol << 1) - (ol >> 4);
-   if (olb < ol) {
+   if (olb <= ol) {
       olb = ol;
       goto jrealloc;
    }
@@ -1258,7 +1376,7 @@ n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
       err = 0;
       olb += in->l;
 jrealloc:
-      obb = srealloc(obb, olb);
+      obb = srealloc(obb, olb +1);
    }
 
    if (in_rest_or_null != NULL) {
@@ -1266,7 +1384,7 @@ jrealloc:
       in_rest_or_null->l = il;
    }
    out->s = obb;
-   out->l = olb - ol;
+   out->s[out->l = olb - ol] = '\0';
    NYD2_LEAVE;
    return err;
 }

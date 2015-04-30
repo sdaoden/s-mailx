@@ -2,7 +2,7 @@
  *@ Collect input from standard input, handling ~ escapes.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -36,6 +36,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE collect
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -130,7 +132,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
       }
    while ((ap = ap->a_flink) != NULL);
 
-   inhook = 0;
+   pstate &= ~PS_HOOK_MASK;
    execute(linebuf, TRU1, linesize);
 
    if (mnbuf != NULL) {
@@ -183,6 +185,8 @@ _include_file(char const *name, int *linecount, int *charcount,
    }
    if (fflush(_coll_fp))
       goto jleave;
+   if ((options & OPT_INTERACTIVE) && doecho)
+      fflush(stdout);
 
    ret = 0;
 jleave:
@@ -227,38 +231,48 @@ static void
 print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf = NULL; /* TODO line pool */
+   sighandler_type sigint;
    FILE *volatile obuf = stdout;
    struct attachment *ap;
    char const *cp;
    enum gfield gf;
-   size_t linecnt, maxlines, linesize = 0, linelen, cnt, cnt2;
+   size_t linesize = 0, linelen, cnt, cnt2;
    NYD_ENTER;
 
-   fflush(cf);
-   rewind(cf);
+   fflush_rewind(cf);
    cnt = cnt2 = fsize(cf);
 
+   sigint = safe_signal(SIGINT, SIG_IGN);
+
    if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
-      for (linecnt = 0; fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0);
-         ++linecnt);
+      size_t l, m;
+
+      m = 4;
+      if (hp->h_to != NULL)
+         ++m;
+      if (hp->h_subject != NULL)
+         ++m;
+      if (hp->h_cc != NULL)
+         ++m;
+      if (hp->h_bcc != NULL)
+         ++m;
+      if (hp->h_attach != NULL)
+         ++m;
+      m += (hp->h_from != NULL || myaddrs(hp) != NULL);
+      m += (hp->h_sender != NULL || ok_vlook(sender) != NULL);
+      m += (hp->h_replyto != NULL || ok_vlook(replyto) != NULL);
+      m += (hp->h_organization != NULL || ok_vlook(ORGANIZATION) != NULL);
+
+      l = (*cp == '\0') ? screensize() : atoi(cp);
+      if (m > l)
+         goto jpager;
+      l -= m;
+
+      for (m = 0; fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0); ++m)
+         ;
       rewind(cf);
-      maxlines = (*cp == '\0' ? screensize() : atoi(cp));
-      maxlines -= 4;
-      if (hp->h_to)
-         --maxlines;
-      if (hp->h_subject)
-         --maxlines;
-      if (hp->h_cc)
-         --maxlines;
-      if (hp->h_bcc)
-         --maxlines;
-      if (hp->h_attach)
-         --maxlines;
-      maxlines -= (myaddrs(hp) != NULL || hp->h_from != NULL);
-      maxlines -= (ok_vlook(ORGANIZATION) !=NULL || hp->h_organization !=NULL);
-      maxlines -= (ok_vlook(replyto) != NULL || hp->h_replyto != NULL);
-      maxlines -= (ok_vlook(sender) != NULL || hp->h_sender != NULL);
-      if ((ssize_t)maxlines < 0 || linecnt > maxlines) {
+      if (l < m) {
+jpager:
          cp = get_pager(NULL);
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
@@ -272,9 +286,7 @@ print_collf(FILE *cf, struct header *hp)
    }
 
    fprintf(obuf, _("-------\nMessage contains:\n"));
-   gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES;
-   if (ok_blook(fullnames))
-      gf |= GCOMMA;
+   gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA;
    puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
    while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
@@ -300,6 +312,7 @@ print_collf(FILE *cf, struct header *hp)
          }
       }
    }
+
 jendpipe:
    if (obuf != stdout) {
       safe_signal(SIGPIPE, SIG_IGN);
@@ -308,6 +321,7 @@ jendpipe:
    }
    if (lbuf != NULL)
       free(lbuf);
+   safe_signal(SIGINT, sigint);
    NYD_LEAVE;
 }
 
@@ -485,6 +499,7 @@ forward(char *ms, FILE *fp, int f)
 
       touch(mp);
       printf(" %d", *msgvec);
+      fflush(stdout);
       if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
          perror(_("temporary mail file"));
          rv = -1;
@@ -509,7 +524,7 @@ collstop(int s)
    sigemptyset(&nset);
    sigaddset(&nset, s);
    sigprocmask(SIG_UNBLOCK, &nset, NULL);
-   kill(0, s);
+   n_raise(s);
    sigprocmask(SIG_BLOCK, &nset, NULL);
 
    safe_signal(s, old_action);
@@ -658,7 +673,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          if (hp->h_cc == NULL && ok_blook(askcc))
             t &= ~GNL, getfields |= GCC;
       }
-      if (printheaders) {
+      if (printheaders && !ok_blook(editalong)) {
          puthead(hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
          fflush(stdout);
       }
@@ -684,7 +699,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       } else {
          cp = hfield1("from", mp);
          if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-            if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE,NULL) < 0)
+            if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
                goto jerr;
             if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
                goto jerr;
@@ -700,12 +715,16 @@ collect(struct header *hp, int printheaders, struct message *mp,
          goto jerr;
    }
 
-   /* Print what we have sofar also on the terminal */
-   rewind(_coll_fp);
-   while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-      putc(c, stdout);
-   if (fseek(_coll_fp, 0, SEEK_END))
-      goto jerr;
+   /* Print what we have sofar also on the terminal (if useful) */
+   if ((options & OPT_INTERACTIVE) && !ok_blook(editalong)) {
+      rewind(_coll_fp);
+      while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
+         putc(c, stdout);
+      if (fseek(_coll_fp, 0, SEEK_END))
+         goto jerr;
+      /* Ensure this is clean xxx not really necessary? */
+      fflush(stdout);
+   }
 
    escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
    _coll_hadintr = 0;
@@ -725,10 +744,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
        * won't be printed because the write is aborted if we get a SIGTTOU */
-jcont:
       if (_coll_hadintr) {
          fprintf(stderr, _("\n(Interrupt -- one more to kill letter)\n"));
       } else {
+jcont:
          printf(_("(continue)\n"));
          fflush(stdout);
       }
@@ -746,15 +765,23 @@ jcont:
       goto jout;
    }
 
-   /* The interactive collect loop */
+   /* The interactive collect loop.
+    * All commands which come here are forbidden when sourcing! */
+   assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for (;;) {
       _coll_jmp_p = 1;
       cnt = readline_input("", FAL0, &linebuf, &linesize, NULL);
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
+         /* Since readline_input() transparently switches to `source'd files
+          * and `~:source FILE' may enter this, ensure we quit again! */
+         if (pstate & PS_SOURCING) {
+            unstack();
+            continue;
+         }
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("Use \".\" to terminate letter\n"));
+            printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
             continue;
          }
          break;
@@ -777,7 +804,7 @@ jcont:
             !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
          /* TODO calls putline(), which *always* appends LF;
           * TODO thus, STDIN with -t will ALWAYS end with LF,
-          * TODO even if no trailing LF and QP CTE.
+          * TODO even if no trailing LF and QP encoding.
           * TODO when finally changed, update cc-test.sh */
          if (putline(_coll_fp, linebuf, cnt) < 0)
             goto jerr;
@@ -836,7 +863,8 @@ jcont:
       case 't':
          /* Add to the To list */
          hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(linebuf + 2, GTO | GFULL)));
+               checkaddrs(lextract(linebuf + 2, GTO | GFULL), EACM_NORMAL,
+                  NULL));
          break;
       case 's':
          /* Set the Subject list */
@@ -860,12 +888,14 @@ jcont:
       case 'c':
          /* Add to the CC list */
          hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(linebuf + 2, GCC | GFULL)));
+               checkaddrs(lextract(linebuf + 2, GCC | GFULL), EACM_NORMAL,
+               NULL));
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
          hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(linebuf + 2, GBCC | GFULL)));
+               checkaddrs(lextract(linebuf + 2, GBCC | GFULL), EACM_NORMAL,
+                  NULL));
          break;
       case 'd':
          strncpy(linebuf + 2, getdeadletter(), linesize - 2);
@@ -969,28 +999,28 @@ jcont:
 "-------------------- ~ ESCAPES ----------------------------\n"
 "~~             Quote a single tilde\n"
 "~@ [file ...]  Edit attachment list\n"
-"~b users       Add users to \"blind\" cc list\n"
-"~c users       Add users to cc list\n"
+"~b users       Add users to \"blind\" Bcc: list\n"
+"~c users       Add users to Cc: list\n"
 "~d             Read in dead.letter\n"
 "~e             Edit the message buffer\n"
-"~F messages    Read in messages, keep all header lines, don't indent lines\n"
-"~f messages    Like ~F, but keep only selected header lines\n"
-"~h             Prompt for to list, subject, cc, and \"blind\" cc list\n"));
+"~F messages    Read in messages including all headers, don't indent lines\n"
+"~f messages    Like ~F, but honour the `ignore' / `retain' configuration\n"
+"~h             Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
          puts(_(
 "~R file        Read in a file, indent lines\n"
-"~r file        Read in a file, don't indent lines\n"
+"~r file        Read in a file\n"
 "~p             Print the message buffer\n"
-"~q             Abort message composition and save text to dead.letter\n"
+"~q             Abort message composition and save text to DEAD\n"
 "~M messages    Read in messages, keep all header lines, indent lines\n"
-"~m messages    Like ~F, but keep only selected header lines\n"
-"~s subject     Set subject\n"
-"~t users       Add users to to list\n"));
+"~m messages    Like ~M, but honour the `ignore' / `retain' configuration\n"
+"~s subject     Set Subject:\n"
+"~t users       Add users to To: list\n"));
          puts(_(
-"~U messages    Same as ~m, but without any headers\n"
-"~u messages    Same as ~f, but without any headers\n"
-"~v             Invoke display editor on message\n"
+"~U messages    Read in message(s) without any headers, indent lines\n"
+"~u messages    Read in message(s) without any headers\n"
+"~v             Invoke alternate editor ($VISUAL) on message\n"
 "~w file        Write message onto file\n"
-"~x             Abort message composition and discard text written so far\n"
+"~x             Abort message composition and discard message\n"
 "~!command      Invoke the shell\n"
 "~:command      Execute a regular command\n"
 "-----------------------------------------------------------\n"));

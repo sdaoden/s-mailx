@@ -3,7 +3,7 @@
  *@ This file is also used to materialize externals.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2014 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -37,6 +37,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#undef n_FILE
+#define n_FILE main
 
 #ifndef HAVE_AMALGAMATION
 # define _MAIN_SOURCE
@@ -45,7 +47,6 @@
 
 #include <sys/ioctl.h>
 
-#include <fcntl.h>
 #include <pwd.h>
 
 #ifdef HAVE_NL_LANGINFO
@@ -55,14 +56,18 @@
 # include <locale.h>
 #endif
 
-#include "version.h"
-
 /* Verify that our size_t PRI[du]Z format string has the correct type size */
 PRIxZ_FMT_CTA();
 
 struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;
+};
+
+struct X_arg {
+   struct X_arg   *xa_next;
+   size_t         xa_cmd_len;
+   char           xa_cmd_buf[VFIELD_SIZE(sizeof(size_t))];
 };
 
 /* (extern, but not with amalgamation, so define here) */
@@ -74,8 +79,6 @@ VL char const        month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const        uagent[] = UAGENT;
-VL char const        version[] = VERSION;
-/*VL char const        features[]; The "feature string" comes from config.h */
 VL uc_i const        class_char[] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
@@ -138,10 +141,14 @@ static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int     _rcv_mode(char const *folder, char const *Larg);
+static int     _rcv_mode(char const *folder, char const *Larg,
+                  struct X_arg *xhp);
 
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
+
+/* -X arg given at least once, evaluate the list in order */
+static bool_t  _X_arg_eval(struct X_arg *xhp);
 
 static int
 _getopt(int argc, char * const argv[], char const *optstring)
@@ -151,6 +158,8 @@ _getopt(int argc, char * const argv[], char const *optstring)
    int rv = -1, colon;
    char const *curp;
    NYD_ENTER;
+
+   _oarg = NULL;
 
    if ((colon = (optstring[0] == ':')))
       ++optstring;
@@ -168,7 +177,6 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = &argv[_oind][1];
    }
 
-   _oarg = NULL;
    _oopt = curp[0];
    while (optstring[0] != '\0') {
       if (optstring[0] == ':' || optstring[0] != _oopt) {
@@ -248,7 +256,7 @@ _startup(void)
 
    /* Set up a reasonable environment */
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &_nyd_oncrash);
@@ -265,6 +273,8 @@ _startup(void)
       options |= OPT_TTYOUT;
    if (IS_TTY_SESSION())
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+
+   /*  --  >8  --  8<  --  */
 
    /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
    /* (Keep in sync:
@@ -302,6 +312,19 @@ _startup(void)
    /* nosign */
    /* noSign */
    /* ok_vset(toplines, "5"); XXX somewhat hmm */
+
+   /* TODO until we have an automatic mechanism for that, set some more
+    * TODO variables so that users see the internal fallback settings
+    * TODO (something like "defval=X,notempty=1") */
+   {
+   ok_vset(SHELL, XSHELL);
+   ok_vset(LISTER, XLISTER);
+   ok_vset(PAGER, XPAGER);
+   ok_vset(sendmail, SENDMAIL);
+   ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+   }
+
+   /*  --  >8  --  8<  --  */
 
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
@@ -359,16 +382,17 @@ _setup_vars(void)
    struct passwd *pwuid, *pw;
    NYD_ENTER;
 
-   tempdir = ((cp = getenv("TMPDIR")) != NULL) ? savestr(cp) : TMPDIR_FALLBACK;
+   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
+         ? savestr(cp) : TMPDIR_FALLBACK;
 
-   cp = (myname == NULL) ? getenv("USER") : myname;
+   cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
       panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
-      alert(_("`%s' is not a user of this system"), cp);
+      alert(_("\"%s\" is not a user of this system"), cp);
       exit(67); /* XXX BSD EX_NOUSER */
    } else {
       myname = pw->pw_name;
@@ -378,14 +402,14 @@ _setup_vars(void)
    myname = savestr(myname);
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
-   if ((cp = getenv("HOME")) == NULL)
+   if ((cp = env_vlook("HOME", TRU1)) == NULL)
       cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
    homedir = savestr(cp);
    NYD_LEAVE;
 }
 
 static void
-_setscreensize(int is_sighdl)
+_setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
 {
    struct termios tbuf;
 #ifdef TIOCGWINSZ
@@ -404,11 +428,11 @@ _setscreensize(int is_sighdl)
       char *cp;
       long i;
 
-      if ((cp = getenv("LINES")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
-            i < INT_MAX)
+      if ((cp = env_vlook("LINES", FAL0)) != NULL &&
+            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnheight = realscreenheight = (int)i;
-      if ((cp = getenv("COLUMNS")) != NULL && (i = strtol(cp, NULL, 10)) > 0 &&
-            i < INT_MAX)
+      if ((cp = env_vlook("COLUMNS", FAL0)) != NULL &&
+            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnwidth = (int)i;
 
       if (scrnwidth != 0 && scrnheight != 0)
@@ -473,7 +497,7 @@ jleave:
 static sigjmp_buf __hdrjmp; /* XXX */
 
 static int
-_rcv_mode(char const *folder, char const *Larg)
+_rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
 {
    char *cp;
    int i;
@@ -503,8 +527,8 @@ _rcv_mode(char const *folder, char const *Larg)
          print_header_summary(Larg);
       goto jleave;
    }
+   check_folder_hook(FAL0);
 
-   callhook(mailname, 0);
    if (i > 0 && !ok_blook(emptystart)) {
       exit_status = EXIT_ERR;
       goto jleave;
@@ -516,7 +540,7 @@ _rcv_mode(char const *folder, char const *Larg)
       if (!(options & OPT_N_FLAG)) {
          if (!ok_blook(quiet))
             printf(_("%s version %s.  Type ? for help.\n"),
-               (ok_blook(bsdcompat) ? "Mail" : uagent), version);
+               (ok_blook(bsdcompat) ? "Mail" : uagent), ok_vlook(version));
          announce(1);
          fflush(stdout);
       }
@@ -524,11 +548,13 @@ _rcv_mode(char const *folder, char const *Larg)
    }
 
    /* Enter the command loop */
-   if (options & OPT_INTERACTIVE)
-      tty_init();
-   commands();
-   if (options & OPT_INTERACTIVE)
-      tty_destroy();
+   if (xhp == NULL || _X_arg_eval(xhp)) {
+      if (options & OPT_INTERACTIVE)
+         tty_init();
+      commands();
+      if (options & OPT_INTERACTIVE)
+         tty_destroy();
+   }
 
    if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
       safe_signal(SIGHUP, SIG_IGN);
@@ -553,24 +579,64 @@ _hdrstop(int signo)
    siglongjmp(__hdrjmp, 1);
 }
 
+static bool_t
+_X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
+{
+   struct eval_ctx ev;
+   struct X_arg *xp;
+   bool_t rv = TRU1;
+   NYD_ENTER;
+
+   while ((xp = xhp) != NULL) {
+      xhp = xp->xa_next;
+
+      memset(&ev, 0, sizeof ev);
+      ev.ev_line.s = xp->xa_cmd_buf;
+      ev.ev_line.l = xp->xa_cmd_len;
+      ev.ev_is_recursive = TRU1;
+      pstate &= ~PS_HOOK_MASK;
+      rv = (evaluate(&ev) == 0);
+      free(xp);
+
+      if (!rv) {
+         if (exit_status == EXIT_OK)
+            exit_status = EXIT_ERR;
+         break;
+      }
+      if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
+         if (exit_status != EXIT_OK)
+            break;
+         if (pstate & PS_EVAL_ERROR) {
+            exit_status = EXIT_ERR;
+            break;
+         }
+      }
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:Vv~#",
+   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
          "  %s [-BDdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
-         "\t [-s subject] to-address... [-- mta-option...]\n"
+         "\t [-s subject] [-X cmd] [-.] to-address... [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
-         "\t [-L spec-list] [-S var[=value]...] -f [file] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
+         "\t [-X cmd] -f [file] [-- mta-option...]\n"
          "  %s [-BDdEeHiNnRv~#] [-A account]\n"
-         "\t [-L spec-list] [-S var[=value]...] [-u user] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
+         "\t [-u user] [-X cmd] [-- mta-option...]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
+   struct X_arg *X_head = NULL, *X_curr = /* silence CC */ NULL;
    struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
@@ -581,11 +647,8 @@ main(int argc, char *argv[])
    NYD_ENTER;
 
    /*
-    * Start our lengthy setup
+    * Start our lengthy setup, finalize by setting PS_STARTED
     */
-
-   starting =
-   var_clear_allow_undefined = TRU1;
 
    progname = argv[0];
    _startup();
@@ -602,7 +665,7 @@ main(int argc, char *argv[])
          break;
       case 'a':
          options |= OPT_SENDMODE;
-         {  struct a_arg *nap = ac_alloc(sizeof(struct a_arg));
+         {  struct a_arg *nap = salloc(sizeof(struct a_arg));
             if (a_head == NULL)
                a_head = nap;
             else
@@ -620,12 +683,12 @@ main(int argc, char *argv[])
       case 'b':
          /* Get Blind Carbon Copy Recipient list */
          options |= OPT_SENDMODE;
-         bcc = cat(bcc, checkaddrs(lextract(_oarg, GBCC | GFULL)));
+         bcc = cat(bcc, lextract(_oarg, GBCC | GFULL));
          break;
       case 'c':
          /* Get Carbon Copy Recipient list */
          options |= OPT_SENDMODE;
-         cc = cat(cc, checkaddrs(lextract(_oarg, GCC | GFULL)));
+         cc = cat(cc, lextract(_oarg, GCC | GFULL));
          break;
       case 'D':
 #ifdef HAVE_IMAP
@@ -703,14 +766,14 @@ main(int argc, char *argv[])
       case 'r':
          /* Set From address. */
          options |= OPT_r_FLAG;
-         if ((option_r_arg = _oarg)[0] != '\0') {
-            struct name *fa = nalloc(_oarg, GFULL);
+         if (_oarg[0] != '\0') {
+            struct name *fa = nalloc(_oarg, GSKIN | GFULL | GFULLEXTRA);
 
-            if (is_addr_invalid(fa, 1) || is_fileorpipe_addr(fa)) {
+            if (is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)) {
                fprintf(stderr, _("Invalid address argument with -r\n"));
                goto jusage;
             }
-            option_r_arg = fa->n_name;
+            option_r_arg = fa;
             /* TODO -r options is set in smopts, but may
              * TODO be overwritten by setting from= in
              * TODO an interactive session!
@@ -718,7 +781,6 @@ main(int argc, char *argv[])
              * TODO Warn user?  Update manual!! */
             okey = savecat("from=", fa->n_fullname);
             goto joarg;
-            /* ..and fa goes even though it is ready :/ */
          }
          break;
       case 'S':
@@ -748,7 +810,7 @@ joarg:
          myname = _oarg;
          break;
       case 'V':
-         puts(version);
+         puts(ok_vlook(version));
          exit(0);
          /* NOTREACHED */
       case 'v':
@@ -756,6 +818,20 @@ joarg:
          ok_bset(verbose, TRU1);
          okey = "verbose";
          goto joarg;
+      case 'X': {
+            size_t l = strlen(_oarg);
+            struct X_arg *nxp = smalloc(sizeof(*nxp) -
+                  VFIELD_SIZEOF(struct X_arg, xa_cmd_buf) + l +1);
+            if (X_head == NULL)
+               X_head = nxp;
+            else
+               X_curr->xa_next = nxp;
+            X_curr = nxp;
+            nxp->xa_next = NULL;
+            nxp->xa_cmd_len = l;
+            memcpy(nxp->xa_cmd_buf, _oarg, l +1);
+         }
+         break;
       case '~':
          /* Enable tilde escapes even in non-interactive mode */
          options |= OPT_TILDE_FLAG;
@@ -782,6 +858,9 @@ joarg:
          oargs[oargs_count + 5] = "MBOX=/dev/null";
          oargs_count += 6;
          break;
+      case '.':
+         options |= OPT_SENDMODE;
+         goto jgetopt_done;
       case '?':
 jusage:
          fprintf(stderr, V_(usagestr) _USAGE_ARGS);
@@ -790,13 +869,17 @@ jusage:
          goto jleave;
       }
    }
+jgetopt_done:
+   ;
 
-   /* The normal arguments may be followed by MTA arguments after `--';
-    * however, -f may take off an argument, too, and before that */
+   /* The normal arguments may be followed by MTA arguments after a "--";
+    * however, -f may take off an argument, too, and before that.
+    * Since MTA arguments after "--" require *expandargv*, delay parsing off
+    * those options until after the resource files are loaded... */
    if ((cp = argv[i = _oind]) == NULL)
       ;
    else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
-      cp = argv[++i];
+      ++i;
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
    else if (folder != NULL && folder[1] == '\0') {
       folder = cp;
@@ -805,30 +888,28 @@ jusage:
             fprintf(stderr, _("More than one file given with -f\n"));
             goto jusage;
          }
-         cp = argv[++i];
+         ++i;
       }
    } else {
+      options |= OPT_SENDMODE;
       for (;;) {
-         to = cat(to, checkaddrs(lextract(cp, GTO | GFULL)));
+         to = cat(to, lextract(cp, GTO | GFULL));
          if ((cp = argv[++i]) == NULL)
             break;
          if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0') {
-            cp = argv[++i];
+            ++i;
             break;
          }
       }
-      if (to != NULL)
-         options |= OPT_SENDMODE;
    }
+   _oind = i;
 
-   /* Additional options to pass-through to MTA? */
-   while (cp != NULL) {
-      if (smopts_count == (size_t)smopts_size)
-         smopts_size = _grow_cpp(&smopts, smopts_size + 8,
-               smopts_count);
-      smopts[smopts_count++] = cp;
-      cp = argv[++i];
-   }
+   /* ...BUT, since we use salloc() for the MTA smopts storage we need to
+    * allocate the necessary space for them before we call spreserve()! */
+   while (argv[i] != NULL)
+      ++i;
+   if (smopts_count + i > smopts_size)
+      DBG(smopts_size =) _grow_cpp(&smopts, smopts_count + i + 1, smopts_count);
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
@@ -884,20 +965,28 @@ jusage:
    /* Snapshot our string pools.  Memory is auto-reclaimed from now on */
    spreserve();
 
-   if (!(options & OPT_NOSRC) && getenv("NAIL_NO_SYSTEM_RC") == NULL)
+   if (!(options & OPT_NOSRC) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
       load(SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
-   if ((cp = getenv("MAILRC")) == NULL && (cp = getenv("NAILRC")) == NULL)
+   if ((cp = env_vlook("MAILRC", TRU1)) == NULL)
       cp = UNCONST(MAILRC);
    load(file_expand(cp));
-   if (getenv("NAIL_EXTRA_RC") == NULL &&
+   if (env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
          (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
       load(file_expand(cp));
 
+   /* We had to wait until the resource files are loaded but it is time to get
+    * the termcap going, so that *term-ca-mode* won't hide our output for us */
+#ifdef HAVE_TERMCAP
+   if ((options & (OPT_INTERACTIVE | OPT_HEADERSONLY | OPT_HEADERLIST))
+         == OPT_INTERACTIVE)
+      termcap_init(); /* TODO program state machine */
+#endif
+
    /* Now we can set the account */
    if (Aarg != NULL) {
-      char *a[2];
+      char const *a[2];
       a[0] = Aarg;
       a[1] = NULL;
       c_account(a);
@@ -915,18 +1004,37 @@ jusage:
       c_set(a);
    }
 
+   /* Additional options to pass-through to MTA, and allowed to do so? */
+   if ((cp = ok_vlook(expandargv)) != NULL) {
+      bool_t isfail = !asccasecmp(cp, "fail"),
+         isrestrict = (!isfail && !asccasecmp(cp, "restrict"));
+
+      if ((cp = argv[i = _oind]) != NULL) {
+         if (isfail ||
+               (isrestrict && !(options & (OPT_INTERACTIVE |OPT_TILDE_FLAG)))) {
+            fprintf(stderr,
+               _("*expandargv* doesn't allow additional MTA argument\n"));
+            exit_status = EXIT_USE | EXIT_SEND_ERROR;
+            goto jleave;
+         }
+         do {
+            assert(smopts_count + 1 <= smopts_size);
+            smopts[smopts_count++] = cp;
+         } while ((cp = argv[++i]) != NULL);
+      }
+   }
+
    /*
     * We're finally completely setup and ready to go
     */
 
-   starting =
-   var_clear_allow_undefined = FAL0;
+   pstate |= PS_STARTED;
 
    if (options & OPT_DEBUG)
       fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
-      exit_status = _rcv_mode(folder, Larg);
+      exit_status = _rcv_mode(folder, Larg, X_head);
       goto jleave;
    }
 
@@ -939,7 +1047,6 @@ jusage:
       if (attach != NULL) {
          a_curr = a_head;
          a_head = a_head->aa_next;
-         ac_free(a_curr);
       } else {
          perror(a_head->aa_file);
          exit_status = EXIT_ERR;
@@ -948,19 +1055,42 @@ jusage:
    }
 
    /* xxx exit_status = EXIT_OK; */
-   if (options & OPT_INTERACTIVE)
-      tty_init();
-   mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-   if (options & OPT_INTERACTIVE)
-      tty_destroy();
+   if (X_head == NULL || _X_arg_eval(X_head)) {
+      if (options & OPT_INTERACTIVE)
+         tty_init();
+      mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+      if (options & OPT_INTERACTIVE)
+         tty_destroy();
+   }
 
 jleave:
+#ifdef HAVE_TERMCAP
+   if (options & OPT_INTERACTIVE)
+      termcap_destroy();
+#endif
 #ifdef HAVE_DEBUG
    sreset(FAL0);
    smemcheck();
 #endif
    NYD_LEAVE;
    return exit_status;
+}
+
+FL int
+c_rexit(void *v) /* TODO program state machine */
+{
+   UNUSED(v);
+   NYD_ENTER;
+
+   if (!(pstate & PS_SOURCING)) {
+#ifdef HAVE_TERMCAP
+      if (options & OPT_INTERACTIVE)
+         termcap_destroy();
+#endif
+      exit(0);
+   }
+   NYD_LEAVE;
+   return 1;
 }
 
 /* s-it-mode */
