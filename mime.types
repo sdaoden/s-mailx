@@ -39,6 +39,7 @@
                               rc
 @ text/x-diff                 diff patch
 @ text/troff                  t tr roff man me ms
+                              tmac
                               1 2 3 4 5 6 7 8 9
 application/pdf               pdf
 @h@ application/xhtml+xml     xhtml xht
