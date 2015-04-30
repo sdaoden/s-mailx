@@ -132,7 +132,7 @@ _update-release:
 	cd "$${UAGENT}-$${REL}" &&\
 	LC_ALL=C sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
-			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]\\"/d' \
+			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
 		-e '}' \
 		-e '/^\.$$/d' < nail.1 > nail.1x &&\
 	mv -f nail.1x nail.1 &&\
