@@ -115,7 +115,7 @@ static signed char const   _b64__dectbl[] = {
 #define _B64_DECUI8(C)     \
    ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
 
-/* ASCII case-insensitve check wether Content-Transfer-Encoding: header body
+/* ASCII case-insensitive check wether Content-Transfer-Encoding: header body
  * hbody defined this encoding type */
 static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
 
