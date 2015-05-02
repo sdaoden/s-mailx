@@ -172,7 +172,7 @@ _update-release:
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
 	make CONFIG=MAXIMAL &&\
-	./$${UAGENT} -A $${ACCOUNT} \
+	./$${UAGENT} -A $${ACCOUNT} -b nail-announce-bcc \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" nail-announce &&\
 	cd .. &&\
 	\
