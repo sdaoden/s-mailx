@@ -316,13 +316,21 @@ _startup(void)
    /* TODO until we have an automatic mechanism for that, set some more
     * TODO variables so that users see the internal fallback settings
     * TODO (something like "defval=X,notempty=1") */
-   {
-   ok_vset(SHELL, XSHELL);
-   ok_vset(LISTER, XLISTER);
-   ok_vset(PAGER, XPAGER);
-   ok_vset(sendmail, SENDMAIL);
-   ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
-   }
+   do {
+      char const *vp;
+
+      vp = env_vlook("SHELL", TRU1);
+      ok_vset(SHELL, (vp != NULL ? vp : XSHELL));
+
+      vp = env_vlook("LISTER", TRU1);
+      ok_vset(LISTER, (vp != NULL ? vp : XLISTER));
+
+      vp = env_vlook("PAGER", TRU1);
+      ok_vset(PAGER, (vp != NULL ? vp : XPAGER));
+
+      ok_vset(sendmail, SENDMAIL);
+      ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+   } while (0);
 
    /*  --  >8  --  8<  --  */
 
