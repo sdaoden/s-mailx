@@ -1046,24 +1046,24 @@ jgetopt_done:
       goto jleave;
    }
 
-   /* Now that full mailx(1)-style file expansion is possible handle the
-    * attachments which we had delayed due to this.
-    * This may use savestr(), but since we won't enter the command loop we
-    * don't need to care about that */
-   while (a_head != NULL) {
-      attach = add_attachment(attach, a_head->aa_file, NULL);
-      if (attach != NULL) {
-         a_curr = a_head;
-         a_head = a_head->aa_next;
-      } else {
-         perror(a_head->aa_file);
-         exit_status = EXIT_ERR;
-         goto jleave;
-      }
-   }
-
    /* xxx exit_status = EXIT_OK; */
    if (X_head == NULL || _X_arg_eval(X_head)) {
+      /* Now that full mailx(1)-style file expansion is possible handle the
+       * attachments which we had delayed due to this.
+       * This may use savestr(), but since we won't enter the command loop we
+       * don't need to care about that */
+      while (a_head != NULL) {
+         attach = add_attachment(attach, a_head->aa_file, NULL);
+         if (attach != NULL) {
+            a_curr = a_head;
+            a_head = a_head->aa_next;
+         } else {
+            perror(a_head->aa_file);
+            exit_status = EXIT_ERR;
+            goto jleave;
+         }
+      }
+
       if (options & OPT_INTERACTIVE)
          tty_init();
       mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
