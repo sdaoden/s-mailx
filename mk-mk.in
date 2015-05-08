@@ -118,7 +118,9 @@ mkman.1: nail.1 mk.mk
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
 		print ".ds ua \\\\%", ln;\
-		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
+		path = ENVIRON["_SYSCONFRC"];\
+		gsub("/", "/\\:", path);\
+		print ".ds UR \\\\%", path;\
 		OFS = " ";\
 		next\
 	}\
