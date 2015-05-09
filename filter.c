@@ -1351,6 +1351,8 @@ jcp_reset:
             ++dat, --len;
          break;
 
+      case '\r': /* TODO CR should be stripped in lower level!! (Only B64!?!) */
+         break;
       case '\n':
          /* End of line is not considered unless we are in PRE section.
           * However, in _HF_NOPUT mode we must be aware of tagsoup which uses
