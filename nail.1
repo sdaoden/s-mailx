@@ -7643,6 +7643,10 @@ set ssl-verify=strict
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
 
+# A very kind option: when replying to a message, first try to
+# use the same encoding that the original poster used herself!
+set reply-in-same-charset
+
 # When sending messages, wait until the Mail-Transfer-Agent finishs.
 # Only like this you'll be able to see errors reported through the
 # exit status of the MTA (including the builtin SMTP one)!
