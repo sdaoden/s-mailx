@@ -4435,27 +4435,28 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-If set, \*(UA asks for files to attach at the end of each message.
+If set, \*(UA asks for files to attach at the end of each message, shall
+the list be found empty at that time.
 An empty line finalizes the list.
 .
 .Mx
 .It Va askcc
-Causes the user to be prompted for additional carbon copy recipients
+Causes the user to be prompted for carbon copy recipients
 (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
-are set).
+are set) shall the list be found empty (at that time).
 An empty line finalizes the list.
 .
 .Mx
 .It Va askbcc
-Causes the user to be prompted for additional blind carbon copy
+Causes the user to be prompted for blind carbon copy
 recipients (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
-are set).
+are set) shall the list be found empty (at that time).
 An empty line finalizes the list.
 .
 .Mx

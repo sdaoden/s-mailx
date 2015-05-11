@@ -1830,8 +1830,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    struct sendbundle sb;
    struct name *to;
    FILE *mtf, *nmtf;
-   int dosign = -1, err;
    char const *cp;
+   bool_t dosign;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -1853,20 +1853,25 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    if (mtf == NULL)
       goto j_leave;
 
+   dosign = TRUM1;
+
    if (options & OPT_INTERACTIVE) {
-      err = (ok_blook(bsdcompat) || ok_blook(askatend));
-      if (err == 0)
-         goto jaskeot;
-      if (ok_blook(askcc))
-         ++err, grab_headers(hp, GCC, 1);
-      if (ok_blook(askbcc))
-         ++err, grab_headers(hp, GBCC, 1);
-      if (ok_blook(askattach))
-         ++err, edit_attachments(&hp->h_attach);
+      bool_t eot = TRU1;
+
+      if ((eot = (ok_blook(bsdcompat) || ok_blook(askatend)))) {
+         if (hp->h_cc == NULL && ok_blook(askcc))
+            eot = FAL0, grab_headers(hp, GCC, 1);
+         if (hp->h_bcc == NULL && ok_blook(askbcc))
+            eot = FAL0, grab_headers(hp, GBCC, 1);
+      }
+
+      if (hp->h_attach == NULL && ok_blook(askattach))
+         eot = FAL0, edit_attachments(&hp->h_attach);
+
       if (ok_blook(asksign))
-         ++err, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
-      if (err == 1) {
-jaskeot:
+         eot = FAL0, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
+
+      if (eot) {
          printf(_("EOT\n"));
          fflush(stdout);
       }
@@ -1881,7 +1886,7 @@ jaskeot:
          printf(_("Null message body; hope that's ok\n"));
    }
 
-   if (dosign < 0)
+   if (dosign == TRUM1)
       dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
    if (dosign) {
@@ -1939,6 +1944,8 @@ jaskeot:
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
    for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
+      int err;
+
       if (!charset_iter_is_valid())
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
@@ -1949,11 +1956,7 @@ jaskeot:
       }
 
       perror(_("Failed to create encoded message"));
-jfail_dead:
-      _sendout_error = TRU1;
-      savedeadletter(mtf, TRU1);
-      fputs(_("... message not sent.\n"), stderr);
-      goto jleave;
+      goto jfail_dead;
    }
    mtf = nmtf;
 
@@ -1998,6 +2001,12 @@ j_leave:
       exit_status |= EXIT_SEND_ERROR;
    NYD_LEAVE;
    return rv;
+
+jfail_dead:
+   _sendout_error = TRU1;
+   savedeadletter(mtf, TRU1);
+   fputs(_("... message not sent.\n"), stderr);
+   goto jleave;
 }
 
 FL int
