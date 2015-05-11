@@ -1601,12 +1601,12 @@ _message_id(struct header *hp)
       goto jleave;
 
    if ((h = __sendout_ident) != NULL)
-      rl = 8;
+      rl = 9;
    else if (ok_vlook(hostname) != NULL) {
       h = nodename(1);
-      rl = 16;
+      rl = 15;
    } else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
-      rl = 8;
+      rl = 9;
    else
       /* Up to MTA */
       goto jleave;
