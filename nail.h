@@ -646,7 +646,7 @@ typedef ssize_t         siz_t;
 # endif
 #endif
 
-enum {FAL0, TRU1};
+enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
 /* Add shorter aliases for "normal" integers */
