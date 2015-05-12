@@ -491,6 +491,13 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    case PROTO_FILE:
       if (temporary_protocol_ext != NULL)
          name = savecat(name, temporary_protocol_ext);
+#ifdef HAVE_REALPATH
+      do { /* TODO we need objects, goes away then */
+         char ebuf[PATH_MAX];
+         if (realpath(name, ebuf) != NULL)
+            name = savestr(ebuf);
+      } while (0);
+#endif
       break;
    case PROTO_MAILDIR:
       shudclob = 1;
@@ -560,6 +567,20 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
 #endif
+
+   /* TODO There is no intermediate VOID box we've switched to: name may
+    * TODO point to the same box that we just have written, so any updates
+    * TODO we won't see!  Reopen again in this case.  RACY! Goes with VOID! */
+   if (!strcmp(name, mailname)) {
+      name = mailname;
+      Fclose(ibuf);
+
+      if ((ibuf = Zopen(name, "r")) == NULL) {
+         perror(name);
+         rele_sigs();
+         goto jem1;
+      }
+   }
 
    /* Copy the messages into /tmp and set pointers */
    flp.l_type = F_RDLCK;
@@ -1378,6 +1399,8 @@ initbox(char const *name)
    if (mb.mb_type != MB_VOID)
       n_strlcpy(prevfile, mailname, PATH_MAX);
 
+   /* TODO name always NE mailname (but goes away for objects anyway)
+    * TODO Well, not true no more except that in parens */
    _update_mailname((name != mailname) ? name : NULL);
 
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
