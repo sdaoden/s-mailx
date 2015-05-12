@@ -571,14 +571,18 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    /* TODO There is no intermediate VOID box we've switched to: name may
     * TODO point to the same box that we just have written, so any updates
     * TODO we won't see!  Reopen again in this case.  RACY! Goes with VOID! */
-   if (!strcmp(name, mailname)) {
+   /* TODO In addition: in case of compressed/hook boxes we lock a temporary! */
+   /* TODO We may uselessly open twice but quit() doesn't say wether we were
+    * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
+   if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !strcmp(name, mailname)) {
       name = mailname;
       Fclose(ibuf);
 
-      if ((ibuf = Zopen(name, "r")) == NULL) {
+      if ((ibuf = Zopen(name, "r")) == NULL ||
+            fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
          perror(name);
          rele_sigs();
-         goto jem1;
+         goto jem2;
       }
    }
 
@@ -674,6 +678,8 @@ jleave:
       Fclose(ibuf);
    NYD_LEAVE;
    return rv;
+jem2:
+   mb.mb_type = MB_VOID;
 jem1:
    rv = -1;
    goto jleave;
