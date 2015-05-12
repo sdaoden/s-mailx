@@ -53,6 +53,8 @@
 .ds OP [Option]
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
+.ds ID [v15 behaviour may differ]
+.ds RO (Read-only)
 .ds EX (EXPERIMENTAL)
 .
 .Dt "\*(UU" 1
@@ -5612,8 +5614,8 @@ or
 .
 .Mx
 .It Va features
-Information on the features compiled into \*(UA \(en the content of
-this variable is identical to the output of the command
+\*(RO Information on the features compiled into \*(UA \(en the content
+of this variable is identical to the output of the command
 .Ic features .
 .
 .Mx
@@ -7182,7 +7184,7 @@ This variable defaults to the value of
 .Mx
 .Mx
 .It Va version , version-major , version-minor , version-update
-\*(UA version information: the first variable contains a string
+\*(RO \*(UA version information: the first variable contains a string
 containing the complete version identification \(en this is identical to
 the output of the command
 .Ic version .
