@@ -152,7 +152,7 @@ _install_echoes:
 install: _install_echoes mk.mk mkman.1 mkrc.rc
 	@__mkdir() {\
 		_dir=$${1};\
-		if [ ! -d "$${_dir}" ]; then \
+		if [ -d "$${_dir}" ]; then :; else\
 			if [ -n "$(VERBOSE)" ]; then \
 				echo "  \$$ $(MKDIR) -m 0755 -p '$${_dir}'";\
 			fi;\
@@ -188,7 +188,7 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
-	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
+	if [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then :; else\
 		__copyfile 0444 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
 	fi
 
