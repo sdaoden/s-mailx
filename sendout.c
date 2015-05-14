@@ -1591,7 +1591,7 @@ __prepare_mta_args(struct name *to, struct header *hp)
 static char *
 _message_id(struct header *hp)
 {
-   char *rv = NULL;
+   char *rv = NULL, sep;
    char const *h;
    size_t rl, i;
    struct tm *tmp;
@@ -1600,17 +1600,22 @@ _message_id(struct header *hp)
    if (ok_blook(message_id_disable))
       goto jleave;
 
+   sep = '%';
+   rl = 9;
    if ((h = __sendout_ident) != NULL)
-      rl = 9;
-   else if (ok_vlook(hostname) != NULL) {
+      goto jgen;
+   if (ok_vlook(hostname) != NULL) {
       h = nodename(1);
+      sep = '@';
       rl = 15;
-   } else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
-      rl = 9;
-   else
-      /* Up to MTA */
-      goto jleave;
+      goto jgen;
+   }
+   if (hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+      goto jgen;
+   /* Up to MTA */
+   goto jleave;
 
+jgen:
    tmp = &time_current.tc_gm;
    i = sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>") -1 +
          rl + strlen(h);
@@ -1618,7 +1623,7 @@ _message_id(struct header *hp)
    snprintf(rv, i, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      getrandstring(rl), (rl == 8 ? '%' : '@'), h);
+      getrandstring(rl), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    __sendout_ident = NULL;
