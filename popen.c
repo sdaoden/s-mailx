@@ -52,6 +52,7 @@ struct fp {
    FILE        *fp;
    struct fp   *link;
    char        *realfile;
+   char        *save_cmd;
    long        offset;
    int         omode;
    int         pipe;
@@ -63,7 +64,8 @@ struct fp {
       FP_BZIP2    = 1<<2,
       FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
-      FP_MASK     = (1<<5) - 1
+      FP_HOOK     = 1<<5,
+      FP_MASK     = (1<<6) - 1
    }           flags;
 };
 
@@ -80,9 +82,11 @@ static struct child  *_popen_child;
 
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int ispipe, int pid,
-                        int flags, char const *realfile, long offset);
-static enum okay     _compress(struct fp *fpp);
-static int           _decompress(int flags, int infd, int outfd);
+                        int flags, char const *realfile, long offset,
+                        char const *save_cmd);
+static enum okay     _file_save(struct fp *fpp);
+static int           _file_load(int flags, int infd, int outfd,
+                        char const *load_cmd);
 static enum okay     unregister_file(FILE *fp);
 static int           file_pid(FILE *fp);
 
@@ -130,7 +134,7 @@ jleave:
 
 static void
 register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
-   char const *realfile, long offset)
+   char const *realfile, long offset, char const *save_cmd)
 {
    struct fp *fpp;
    NYD_ENTER;
@@ -143,15 +147,16 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
    fpp->link = fp_head;
    fpp->flags = flags;
    fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
+   fpp->save_cmd = (save_cmd != NULL) ? sstrdup(save_cmd) : NULL;
    fpp->offset = offset;
    fp_head = fpp;
    NYD_LEAVE;
 }
 
 static enum okay
-_compress(struct fp *fpp)
+_file_save(struct fp *fpp)
 {
-   char const *cmd[2];
+   char const *cmd[3];
    int outfd;
    enum okay rv;
    NYD_ENTER;
@@ -186,6 +191,8 @@ _compress(struct fp *fpp)
    }
    if (!(fpp->omode & O_APPEND))
       ftruncate(outfd, 0);
+
+   cmd[2] = NULL;
    switch (fpp->flags & FP_MASK) {
    case FP_GZIP:
       cmd[0] = "gzip";  cmd[1] = "-c"; break;
@@ -195,8 +202,14 @@ _compress(struct fp *fpp)
       cmd[0] = "xz";    cmd[1] = "-c"; break;
    default:
       cmd[0] = "cat";   cmd[1] = NULL; break;
+   case FP_HOOK:
+      if ((cmd[0] = ok_vlook(SHELL)) == NULL)
+         cmd[0] = XSHELL;
+      cmd[1] = "-c";
+      cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd, cmd[1], NULL, NULL) >= 0)
+   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd, cmd[1], cmd[2], NULL)
+         >= 0)
       rv = OKAY;
    close(outfd);
 jleave:
@@ -205,24 +218,31 @@ jleave:
 }
 
 static int
-_decompress(int flags, int infd, int outfd)
+_file_load(int flags, int infd, int outfd, char const *load_cmd)
 {
-   char const *cmd[2];
+   char const *cmd[3];
    int rv;
    NYD_ENTER;
 
+   cmd[2] = NULL;
    switch (flags & FP_MASK) {
    case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
    case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
+   case FP_HOOK:
+      if ((cmd[0] = ok_vlook(SHELL)) == NULL)
+         cmd[0] = XSHELL;
+      cmd[1] = "-c";
+      cmd[2] = load_cmd;
+      break;
    case FP_MAILDIR:
    case FP_IMAP:
       rv = 0;
       goto jleave;
    }
 
-   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], NULL, NULL);
+   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -238,8 +258,10 @@ unregister_file(FILE *fp)
    for (pp = &fp_head; (p = *pp) != NULL; pp = &p->link)
       if (p->fp == fp) {
          if ((p->flags & FP_MASK) != FP_RAW) /* TODO ;} */
-            rv = _compress(p);
+            rv = _file_save(p);
          *pp = p->link;
+         if (p->save_cmd != NULL)
+            free(p->save_cmd);
          if (p->realfile != NULL)
             free(p->realfile);
          free(p);
@@ -410,7 +432,7 @@ Fopen(char const *file, char const *oflags)
    NYD_ENTER;
 
    if ((fp = safe_fopen(file, oflags, &osflags)) != NULL)
-      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L);
+      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -426,7 +448,7 @@ Fdopen(int fd, char const *oflags)
    osflags |= _O_CLOEXEC;
 
    if ((fp = fdopen(fd, oflags)) != NULL)
-      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L);
+      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -449,6 +471,7 @@ FL FILE *
 Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 {
    FILE *rv = NULL;
+   char const *cload = NULL, *csave = NULL;
    int flags, osflags, mode, infd;
    enum oflags rof;
    long offset;
@@ -479,8 +502,35 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
             flags |= FP_XZ;
          else if (!strcmp(ext, ".bz2"))
             flags |= FP_BZIP2;
-         else
-            goto jraw;
+         else {
+#undef _X1
+#define _X1 "file-hook-load-"
+#undef _X2
+#define _X2 "file-hook-save-"
+            size_t l = strlen(++ext);
+            char *vbuf = ac_alloc(l + MAX(sizeof(_X1), sizeof(_X2)));
+
+            memcpy(vbuf, _X1, sizeof(_X1) -1);
+            memcpy(vbuf + sizeof(_X1) -1, ext, l);
+            vbuf[sizeof(_X1) -1 + l] = '\0';
+            cload = vok_vlook(vbuf);
+            memcpy(vbuf, _X2, sizeof(_X2) -1);
+            memcpy(vbuf + sizeof(_X2) -1, ext, l);
+            vbuf[sizeof(_X2) -1 + l] = '\0';
+            csave = vok_vlook(vbuf);
+#undef _X2
+#undef _X1
+            ac_free(vbuf);
+
+            if ((csave != NULL) && (cload != NULL))
+               flags |= FP_HOOK;
+            else if ((csave != NULL) | (cload != NULL)) {
+               alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
+                  "Treating as plain text!"), ext);
+               goto jraw;
+            } else
+               goto jraw;
+         }
       } else {
 jraw:
          /*flags |= FP_RAW;*/
@@ -501,7 +551,7 @@ jraw:
    if (flags & (FP_IMAP | FP_MAILDIR))
       ;
    else if (infd >= 0) {
-      if (_decompress(flags, infd, fileno(rv)) < 0) {
+      if (_file_load(flags, infd, fileno(rv), cload) < 0) {
 jerr:
          if (rv != NULL)
             Fclose(rv);
@@ -530,7 +580,7 @@ jerr:
       goto jleave;
    }
 
-   register_file(rv, osflags, 0, 0, flags, file, offset);
+   register_file(rv, osflags, 0, 0, flags, file, offset, csave);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -750,7 +800,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
    }
    close(hisside);
    if ((rv = fdopen(myside, mod)) != NULL)
-      register_file(rv, 0, 1, pid, FP_RAW, NULL, 0L);
+      register_file(rv, 0, 1, pid, FP_RAW, NULL, 0L, NULL);
    else
       close(myside);
 jleave:

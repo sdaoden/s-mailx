@@ -2548,6 +2548,14 @@ facility, sufficient support provided.
 Likewise, if the named file doesn't exist, but a file with one of the
 mentioned compression extensions does, then the name is automatically
 expanded and the compressed file is used.
+.Pp
+Otherwise, if the name ends with an extension for which
+.Va file-hook-load-EXTENSION
+and
+.Va file-hook-save-EXTENSION
+variables are set, then the given hooks will be used to load and save
+.Dq name ,
+and \*(UA will work with an intermediate temporary file.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
@@ -5617,6 +5625,25 @@ or
 \*(RO Information on the features compiled into \*(UA \(en the content
 of this variable is identical to the output of the command
 .Ic features .
+.
+.Mx
+.Mx
+.It Va file-hook-load-EXTENSION , file-hook-save-EXTENSION
+It is possible to install file hooks which will be used by the
+.Ic file
+command in order to be able to transparently handle (through an
+intermediate temporary file) files with specific
+.Ql EXTENSION Ns
+s: the variable values can include shell snippets and are expected to
+write data to standard output / read data from standard input,
+respectively.
+\*(ID The variables may not be changed while there is a mailbox
+attendant.
+.Bd -literal -offset indent
+set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
+    file-hook-save-xy='echo >&2 XY-SAVE; gzip -c' \e
+    record=+null-sent.xy
+.Ed
 .
 .Mx
 .It Va folder
