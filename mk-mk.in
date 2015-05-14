@@ -103,9 +103,15 @@ test: all
 	@echo 'Running test, please wait';\
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
+# Corresponds to same thing in makefile!
+_version_from_header = VERSION="`< version.h $(SED) \
+		-e '/ VERSION /b X' -e d -e ':X' \
+		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
+
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+		$(_version_from_header) \
 	< ./nail.1 > $(@) $(AWK) '\
 	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
@@ -118,6 +124,7 @@ mkman.1: nail.1 mk.mk
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
 		print ".ds ua \\\\%", ln;\
+		print ".ds VV \\\\%v", ENVIRON["VERSION"];\
 		path = ENVIRON["_SYSCONFRC"];\
 		gsub("/", "/\\:", path);\
 		print ".ds UR \\\\%", path;\
@@ -131,6 +138,7 @@ mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+		$(_version_from_header) \
 	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
@@ -139,8 +147,9 @@ mkrc.rc: nail.rc mk.mk
 		OFS = "";\
 		ln = tolower(ENVIRON["_UAGENT"]);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print "# ", ENVIRON["_SYSCONFRC"], \
-			" - configuration file for ", cn, "(1)";\
+		print "#@ ", ENVIRON["_SYSCONFRC"];\
+		print "#@ Configuration file for ", cn, "(1) v",\
+			ENVIRON["VERSION"];\
 		OFS = " ";\
 		next\
 	}\
@@ -232,9 +241,7 @@ _update-version:
 				'`" -ne 0 ] &&\
 				VERSION="$${VERSION}-dirty";\
 		else \
-			VERSION="`< version.h $(SED) \
-				-e '/ VERSION /b X' -e d -e ':X' \
-				-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
+			$(_version_from_header);\
 			echo "$${VERSION}" | $(GREP) -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
 		fi;\

@@ -42,14 +42,20 @@ _prestop = if [ -f ./mk.mk ]; then :; else \
 		exit 1;\
 	fi
 
+# Corresponds to same thing in mk-mk.in!
+_version_from_header = VERSION="`< version.h $(SED) \
+		-e '/ VERSION /b X' -e d -e ':X' \
+		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
+
 # This is pretty specific
 _update-release:
+	@LC_ALL=C; export LC_ALL;\
 	: $${UAGENT:=s-nail};\
 	: $${UUAGENT:=S-nail};\
 	: $${UPLOAD:=sdaoden@frs.sourceforge.net:/home/frs/project/s-nail};\
 	: $${ACCOUNT:=sn_sf};\
-	DATE_MAN="`LC_ALL=C date -u +'%b %d, %Y'`";\
-	DATE_ISO="`LC_ALL=C date -u +%Y-%m-%d`";\
+	DATE_MAN="`date -u +'%b %d, %Y'`";\
+	DATE_ISO="`date -u +%Y-%m-%d`";\
 	if [ "`git rev-parse --verify HEAD`" != \
 			"`git rev-parse --verify master`" ]; then \
 		echo >&2 'Not on the [master] branch';\
@@ -67,12 +73,11 @@ _update-release:
 	\
 	GREP=grep SED=sed CMP=cmp MV=mv \
 		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
-	REL="`LC_ALL=C < version.h sed \
-		-e '/ VERSION /b X' -e d \
-		-e ':X' -e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
-	FREL=`echo $${REL} | LC_ALL=C sed -e 's/\./_/g'` &&\
+	$(_version_from_header);\
+	REL="$${VERSION}";\
+	FREL=`echo $${REL} | sed -e 's/\./_/g'`;\
 	\
-	LC_ALL=C < nail.1 > nail.1x awk '\
+	< nail.1 > nail.1x awk '\
 		BEGIN { written = 0 }\
 		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {\
 			if (written++ != 0)\
@@ -89,7 +94,7 @@ _update-release:
 	' &&\
 	mv -f nail.1x nail.1 &&\
 	\
-	LC_ALL=C < nail.rc > nail.rcx awk '\
+	< nail.rc > nail.rcx awk '\
 		BEGIN { written = 0 }\
 		/^#--MKREL-START--/, /^#--MKREL-END--/ {\
 			if (written++ != 0)\
@@ -130,7 +135,7 @@ _update-release:
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	( \
 	cd "$${UAGENT}-$${REL}" &&\
-	LC_ALL=C sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
+	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
 			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
 		-e '}' \
@@ -140,7 +145,7 @@ _update-release:
 		mdocmx.sh < nail.1 > nail.1x &&\
 		mv -f nail.1x nail.1;\
 	fi; \
-	LC_ALL=C sed -Ee '/^#--MKREL-(START|END)--/d' \
+	sed -Ee '/^#--MKREL-(START|END)--/d' \
 		< nail.rc > nail.rcx &&\
 	mv -f nail.rcx nail.rc \
 	) &&\
