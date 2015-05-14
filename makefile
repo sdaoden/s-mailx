@@ -42,8 +42,8 @@ _prestop = if [ -f ./mk.mk ]; then :; else \
 		exit 1;\
 	fi
 
-# Corresponds to same thing in mk-mk.in!
-_version_from_header = VERSION="`< version.h $(SED) \
+# Corresponds to same thing in mk-mk.in! (Except it is sed not $(SED))
+_version_from_header = VERSION="`< version.h sed \
 		-e '/ VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
