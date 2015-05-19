@@ -1028,9 +1028,32 @@ int main(void)
 fi
 
 if feat_yes SSL; then
-   if link_check openssl 'for sufficiently recent OpenSSL' \
+   if link_check openssl 'for OpenSSL 1.1.0 and above' \
       '#define HAVE_SSL
-      #define HAVE_OPENSSL' '-lssl -lcrypto' << \!
+      #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
+#include <openssl/rand.h>
+
+#ifdef OPENSSL_NO_TLS1
+# error We need TLSv1.
+#endif
+
+int main(void)
+{
+   SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+   SSL_CTX_free(ctx);
+   PEM_read_PrivateKey(0, 0, 0, 0);
+   return 0;
+}
+!
+   then
+      :
+   elif link_check openssl 'for sufficiently recent OpenSSL' \
+      '#define HAVE_SSL
+      #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -1086,12 +1109,17 @@ int main(void)
 
       link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
          '#define HAVE_OPENSSL_CONF_CTX' << \!
+#include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
 int main(void)
 {
+#if HAVE_OPENSSL < 10100
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+#else
+   SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+#endif
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
    SSL_CONF_CTX_set_flags(cctx,
       SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
