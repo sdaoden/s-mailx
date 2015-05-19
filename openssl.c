@@ -102,6 +102,12 @@ EMPTY_FILE()
 # endif
 #endif
 
+#if HAVE_OPENSSL < 10100
+# define _SSL_CLIENT_METHOD() SSLv23_client_method()
+#else
+# define _SSL_CLIENT_METHOD() TLS_client_method()
+#endif
+
 #ifdef HAVE_OPENSSL_STACK_OF
 # define _STACKOF(X)          STACK_OF(X)
 #else
@@ -1104,7 +1110,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    ssl_set_verify_level(urlp);
 
-   if ((ctxp = SSL_CTX_new(SSLv23_client_method())) == NULL) {
+   if ((ctxp = SSL_CTX_new(_SSL_CLIENT_METHOD())) == NULL) {
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
