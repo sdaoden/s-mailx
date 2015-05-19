@@ -1626,7 +1626,6 @@ jgen:
       getrandstring(rl), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
-   __sendout_ident = NULL;
    NYD_LEAVE;
    return rv;
 }
@@ -1841,6 +1840,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    NYD_ENTER;
 
    _sendout_error = FAL0;
+   __sendout_ident = NULL;
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -2062,6 +2062,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    NYD_ENTER;
 
    _sendout_error = FAL0;
+   __sendout_ident = NULL;
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
