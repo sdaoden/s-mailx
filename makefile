@@ -22,7 +22,7 @@ build:
 test:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk test
 packager-install:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk install
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk DESTDIR="$(DESTDIR)" install
 
 devel:
 	@CONFIG=DEVEL; export CONFIG;\

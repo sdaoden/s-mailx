@@ -145,7 +145,7 @@ os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
 
    if [ ${OS} = sunos ]; then
-      [ -n "${awk}" ] && awk=/usr/xpg4/bin/awk
+      [ -n "${awk}" ] || awk=/usr/xpg4/bin/awk
       # -f?
       if [ -n "${cksum}" ]; then
          :
