@@ -172,12 +172,12 @@ compiler_flags() {
    ccver=`${CC} --version 2>/dev/null`
    if [ ${?} -ne 0 ]; then
       [ -z "${optim}" ] && optim=-O1
-   elif { i=${ccver}; echo "${i}"; } | ${grep} -q \
+   elif { i=${ccver}; echo "${i}"; } | ${grep} \
 'gcc
-clang'; then
-   #if echo "${i}" | ${grep} -q \
+clang' >/dev/null 2>&1; then
+   #if echo "${i}" | ${grep} \
 #'gcc
-#clang version 1'; then
+#clang version 1' >/dev/null 2>&1; then
       optim=-O2 dbgoptim=-O
       stackprot=yes
       _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
@@ -187,7 +187,8 @@ clang'; then
       _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
       _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
       _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      if { i=${ccver}; echo "${i}"; } | ${grep} -q 'clang version 1'; then
+      if { i=${ccver}; echo "${i}"; } |
+            ${grep} 'clang version 1' >/dev/null 2>&1; then
          _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
       else
          _CFLAGS="${_CFLAGS} -fstrict-overflow"
@@ -198,14 +199,15 @@ clang'; then
          if feat_yes AMALGAMATION && feat_no DEVEL; then
             _CFLAGS="${_CFLAGS} -Wno-unused-function"
          fi
-         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
+         if { i=${ccver}; echo "${i}"; } |
+               ${grep} -i clang >/dev/null 2>&1; then
             _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
          fi
       fi
       if feat_yes AMALGAMATION; then
          _CFLAGS="${_CFLAGS} -pipe"
       fi
-#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
+#   elif { i=${ccver}; echo "${i}"; } | ${grep} -i clang >/dev/null 2>&1; then
 #      optim=-O3 dbgoptim=-O
 #      stackprot=yes
 #      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
@@ -954,9 +956,9 @@ if feat_yes SOCKETS && feat_yes SPAM_SPAMD; then
 #include <sys/un.h>
 int main(void)
 {
-   struct sockaddr_un sun;
+   struct sockaddr_un soun;
    socket(AF_UNIX, SOCK_STREAM, 0);
-   connect(0, (struct sockaddr*)&sun, 0);
+   connect(0, (struct sockaddr*)&soun, 0);
    shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
    return 0;
 }
