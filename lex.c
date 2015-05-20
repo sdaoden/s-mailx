@@ -578,7 +578,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       name = mailname;
       Fclose(ibuf);
 
-      if ((ibuf = Zopen(name, "r")) == NULL ||
+      if ((ibuf = Zopen(name, "r", &compressed)) == NULL ||
             fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
          perror(name);
          rele_sigs();
