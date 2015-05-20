@@ -221,6 +221,10 @@ until it will be readded after v15.0.)
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
 
+. Solaris.
+  + Thanks to OpenCSW.org for offering SSH access to Solaris!
+  + You have to disable WANT_TERMCAP for now.
+
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in
     uses shell functions to ease the task of directory creation etc.
