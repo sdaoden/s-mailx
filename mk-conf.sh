@@ -287,7 +287,7 @@ check_tool() {
       msg 'ERROR: no trace of utility "%s"' "${n}"
       config_exit 1
    fi
-   return 0
+   return 1
 }
 
 # Check those tools right now that we need before including $rc
@@ -372,8 +372,8 @@ check_tool mv "${mv:-`command -v mv`}"
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool make "${MAKE:-`command -v make`}"
-check_tool strip "${STRIP:-`command -v strip`}" 1
-HAVE_STRIP=${?}
+HAVE_STRIP=0
+check_tool strip "${STRIP:-`command -v strip`}" 1 && HAVE_STRIP=1
 
 # Update WANT_ options now, in order to get possible inter-dependencies right
 option_update
@@ -1134,7 +1134,7 @@ int main(void)
 !
 
       link_check rand_egd 'for OpenSSL RAND_egd()' \
-         '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
+         '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 
 int main(void)
