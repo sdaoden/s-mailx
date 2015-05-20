@@ -231,7 +231,7 @@ _update-version:
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="`echo $${VERSION} |\
-				$(SED) -e 's/^v\{0,1\}\(.*\)/\1/`";\
+				$(SED) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
 			[ "`git status --porcelain |\
 				awk '\
 					BEGIN {n=0}\
