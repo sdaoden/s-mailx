@@ -230,7 +230,8 @@ _update-version:
 	if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
-			VERSION="$${VERSION##v}";\
+			VERSION="`echo $${VERSION} |\
+				$(SED) -e 's/^v\{0,1\}\(.*\)/\1/`";\
 			[ "`git status --porcelain |\
 				awk '\
 					BEGIN {n=0}\
