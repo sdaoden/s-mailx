@@ -262,6 +262,6 @@ _update-version:
 	printf >> ./version.tmp "#define VERSION_UPDATE \"$${vupd}\"\n";\
 	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
 	$(MV) ./version.tmp ./version.h;\
-	trap - 0 1 2 15
+	trap : 0 1 2 15
 
 # s-mk-mode
