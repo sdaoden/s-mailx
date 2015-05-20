@@ -143,6 +143,21 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+
+   if [ ${OS} = sunos ]; then
+      [ -n "${awk}" ] && awk=/usr/xpg4/bin/awk
+      # -f?
+      if [ -n "${cksum}" ]; then
+         :
+      elif [ -x /opt/csw/gnu/cksum ]; then
+         cksum=/opt/csw/gnu/cksum
+      else
+         msg 'ERROR: we need a CRC-32 cksum(1), as specified in POSIX.'
+         msg 'ERROR: However, we do so only for tests.'
+         msg 'ERROR: If you can live with that, define cksum=/bin/true'
+         config_exit 1
+      fi
+   fi
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
