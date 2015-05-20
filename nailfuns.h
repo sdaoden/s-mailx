@@ -1533,7 +1533,8 @@ FL FILE *      Fdopen(int fd, char const *oflags);
 
 FL int         Fclose(FILE *fp);
 
-FL FILE *      Zopen(char const *file, char const *oflags, int *compression);
+/* Open file according to oflags (see popen.c).  Handles compressed files */
+FL FILE *      Zopen(char const *file, char const *oflags);
 
 /* Create a temporary file in tempdir, use prefix for its name, store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio

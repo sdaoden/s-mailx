@@ -78,7 +78,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 {
    ui64_t mstats[1], tstats[2];
    struct stat st;
-   int newfile = 0, compressed = 0, last = 0, *msgvec, *ip;
+   int newfile = 0, last = 0, *msgvec, *ip;
    struct message *mp;
    char *file = NULL, *cp, *cq;
    char const *disp = "";
@@ -133,7 +133,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       goto jleave;
    prot = which_protocol(file);
    if (prot != PROTO_IMAP) {
-      if (access(file, 0) >= 0) {
+      if (access(file, F_OK) >= 0) {
          newfile = 0;
          disp = _("[Appended]");
       } else {
@@ -142,20 +142,14 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       }
    }
 
-   obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+")
-         : Zopen(file, "a+", &compressed));
+   obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
    if (obuf == NULL) {
-      obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx")
-            : Zopen(file, "wx", &compressed));
+      obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx") : Zopen(file, "wx"));
       if (obuf == NULL) {
          perror(file);
          goto jleave;
       }
    } else {
-      if (compressed) {
-         newfile = 0;
-         disp = _("[Appended]");
-      }
       if (!newfile && fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
             fseek(obuf, -2L, SEEK_END) == 0) {
          char buf[2];

@@ -1433,7 +1433,6 @@ struct mailbox {
       MB_DELE = 01,  /* may delete messages in mailbox */
       MB_EDIT = 02   /* may edit messages in mailbox */
    }           mb_perm;
-   int mb_compressed;         /* is a compressed mbox file */
    int mb_threaded;           /* mailbox has been threaded */
 #ifdef HAVE_IMAP
    enum mbflags {

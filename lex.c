@@ -469,10 +469,10 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    struct stat stb;
    struct flock flp;
-   FILE *ibuf = NULL;
-   int rv, i, compressed = 0, omsgCount = 0;
-   char const *who;
    size_t offset;
+   char const *who;
+   int rv, omsgCount = 0;
+   FILE *ibuf = NULL;
    NYD_ENTER;
 
    /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
@@ -523,12 +523,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jem1;
    }
 
-   /* FIXME this FILE leaks if quit()->edstop() reset()s!  This entire code
-    * FIXME here is total crap, below we open(2) the same name again just to
-    * FIXME close it right away etc.  The normal thing would be to (1) finalize
-    * FIXME the current box and (2) open the new box; yet, since (2) may fail
-    * FIXME we terribly need our VOID box to make this logic order possible! */
-   if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
+   if ((ibuf = Zopen(name, "r")) == NULL) {
       if (((fm & FEDIT_SYSBOX) && errno == ENOENT) || (fm & FEDIT_NEWMAIL)) {
          if (fm & FEDIT_NEWMAIL)
             goto jnonmail;
@@ -578,7 +573,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       name = mailname;
       Fclose(ibuf);
 
-      if ((ibuf = Zopen(name, "r", &compressed)) == NULL ||
+      if ((ibuf = Zopen(name, "r")) == NULL ||
             fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
          perror(name);
          rele_sigs();
@@ -592,18 +587,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    flp.l_whence = SEEK_SET;
    if (!(fm & FEDIT_NEWMAIL)) {
       mb.mb_type = MB_FILE;
-      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY))
-            ? 0 : MB_DELE | MB_EDIT);
-      mb.mb_compressed = compressed;
-      if (compressed) {
-         if (compressed & 0200)
-            mb.mb_perm = 0;
-      } else {
-         if ((i = open(name, O_WRONLY)) == -1)
-            mb.mb_perm = 0;
-         else
-            close(i);
-      }
+      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
+            access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
       if (shudclob) {
          if (mb.mb_itf) {
             fclose(mb.mb_itf);

@@ -1189,7 +1189,7 @@ jcantfout:
             goto jcant;
          }
 
-         if ((fout = Zopen(fname, "a", NULL)) == NULL) {
+         if ((fout = Zopen(fname, "a")) == NULL) {
             fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
                fname, strerror(errno));
             *senderror = TRU1;
@@ -1292,8 +1292,8 @@ __savemail(char const *name, FILE *fp)
 
    buf = smalloc(bufsize = LINESIZE);
 
-   if ((fo = Zopen(name, "a+", NULL)) == NULL) {
-      if ((fo = Zopen(name, "wx", NULL)) == NULL) {
+   if ((fo = Zopen(name, "a+")) == NULL) {
+      if ((fo = Zopen(name, "wx")) == NULL) {
          perror(name);
          goto jleave;
       }

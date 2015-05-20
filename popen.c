@@ -63,9 +63,8 @@ struct fp {
       FP_BZIP2    = 1<<2,
       FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
-      FP_MASK     = (1<<5) - 1,
-      FP_READONLY = 1<<5
-   }           compressed;
+      FP_MASK     = (1<<5) - 1
+   }           flags;
 };
 
 struct child {
@@ -81,9 +80,9 @@ static struct child  *_popen_child;
 
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int ispipe, int pid,
-                        int compressed, char const *realfile, long offset);
+                        int flags, char const *realfile, long offset);
 static enum okay     _compress(struct fp *fpp);
-static int           _decompress(int compression, int infd, int outfd);
+static int           _decompress(int flags, int infd, int outfd);
 static enum okay     unregister_file(FILE *fp);
 static int           file_pid(FILE *fp);
 
@@ -130,7 +129,7 @@ jleave:
 }
 
 static void
-register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
+register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
    char const *realfile, long offset)
 {
    struct fp *fpp;
@@ -142,7 +141,7 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int compressed,
    fpp->pipe = ispipe;
    fpp->pid = pid;
    fpp->link = fp_head;
-   fpp->compressed = compressed;
+   fpp->flags = flags;
    fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
    fpp->offset = offset;
    fp_head = fpp;
@@ -169,12 +168,12 @@ _compress(struct fp *fpp)
       goto jleave;
 
 #ifdef HAVE_IMAP
-   if ((fpp->compressed & FP_MASK) == FP_IMAP) {
+   if ((fpp->flags & FP_MASK) == FP_IMAP) {
       rv = imap_append(fpp->realfile, fpp->fp);
       goto jleave;
    }
 #endif
-   if ((fpp->compressed & FP_MASK) == FP_MAILDIR) {
+   if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       rv = maildir_append(fpp->realfile, fpp->fp);
       goto jleave;
    }
@@ -187,7 +186,7 @@ _compress(struct fp *fpp)
    }
    if (!(fpp->omode & O_APPEND))
       ftruncate(outfd, 0);
-   switch (fpp->compressed & FP_MASK) {
+   switch (fpp->flags & FP_MASK) {
    case FP_GZIP:
       cmd[0] = "gzip";  cmd[1] = "-c"; break;
    case FP_BZIP2:
@@ -206,13 +205,13 @@ jleave:
 }
 
 static int
-_decompress(int compression, int infd, int outfd)
+_decompress(int flags, int infd, int outfd)
 {
    char const *cmd[2];
    int rv;
    NYD_ENTER;
 
-   switch (compression & FP_MASK) {
+   switch (flags & FP_MASK) {
    case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
    case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
@@ -222,6 +221,7 @@ _decompress(int compression, int infd, int outfd)
       rv = 0;
       goto jleave;
    }
+
    rv = run_command(cmd[0], 0, infd, outfd, cmd[1], NULL, NULL);
 jleave:
    NYD_LEAVE;
@@ -237,7 +237,7 @@ unregister_file(FILE *fp)
 
    for (pp = &fp_head; (p = *pp) != NULL; pp = &p->link)
       if (p->fp == fp) {
-         if ((p->compressed & FP_MASK) != FP_RAW) /* TODO ;} */
+         if ((p->flags & FP_MASK) != FP_RAW) /* TODO ;} */
             rv = _compress(p);
          *pp = p->link;
          if (p->realfile != NULL)
@@ -446,35 +446,27 @@ Fclose(FILE *fp)
 }
 
 FL FILE *
-Zopen(char const *file, char const *oflags, int *compression) /* FIXME MESS! */
+Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 {
    FILE *rv = NULL;
-   int _compression, osflags, mode, infd;
+   int flags, osflags, mode, infd;
    enum oflags rof;
    long offset;
    enum protocol p;
    NYD_ENTER;
 
-   if (compression == NULL)
-      compression = &_compression;
-
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
+
+   flags = 0;
    rof = OF_RDWR | OF_UNLINK;
    if (osflags & O_APPEND)
       rof |= OF_APPEND;
-   if (osflags == O_RDONLY) {
-      mode = R_OK;
-      *compression = FP_READONLY;
-   } else {
-      mode = R_OK | W_OK;
-      *compression = 0;
-   }
+   mode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
 
-   /* TODO ???? */
    if ((osflags & O_APPEND) && ((p = which_protocol(file)) == PROTO_IMAP ||
          p == PROTO_MAILDIR)) {
-      *compression |= (p == PROTO_IMAP) ? FP_IMAP : FP_MAILDIR;
+      flags |= (p == PROTO_IMAP) ? FP_IMAP : FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT;
       infd = -1;
    } else {
@@ -482,19 +474,20 @@ Zopen(char const *file, char const *oflags, int *compression) /* FIXME MESS! */
 
       if ((ext = strrchr(file, '.')) != NULL) {
          if (!strcmp(ext, ".gz"))
-            *compression |= FP_GZIP;
+            flags |= FP_GZIP;
          else if (!strcmp(ext, ".xz"))
-            *compression |= FP_XZ;
+            flags |= FP_XZ;
          else if (!strcmp(ext, ".bz2"))
-            *compression |= FP_BZIP2;
+            flags |= FP_BZIP2;
          else
             goto jraw;
       } else {
 jraw:
-         *compression |= FP_RAW;
+         /*flags |= FP_RAW;*/
          rv = Fopen(file, oflags);
          goto jleave;
       }
+
       if ((infd = open(file, (mode & W_OK) ? O_RDWR : O_RDONLY)) == -1 &&
             (!(osflags & O_CREAT) || errno != ENOENT))
          goto jleave;
@@ -504,9 +497,11 @@ jraw:
       perror(_("tmpfile"));
       goto jerr;
    }
-   if (infd >= 0 || (*compression & FP_MASK) == FP_IMAP ||
-         (*compression & FP_MASK) == FP_MAILDIR) {
-      if (_decompress(*compression, infd, fileno(rv)) < 0) {
+
+   if (flags & (FP_IMAP | FP_MAILDIR))
+      ;
+   else if (infd >= 0) {
+      if (_decompress(flags, infd, fileno(rv)) < 0) {
 jerr:
          if (rv != NULL)
             Fclose(rv);
@@ -522,6 +517,7 @@ jerr:
          goto jleave;
       }
    }
+
    if (infd >= 0)
       close(infd);
    fflush(rv);
@@ -533,7 +529,8 @@ jerr:
       rv = NULL;
       goto jleave;
    }
-   register_file(rv, osflags, 0, 0, *compression, file, offset);
+
+   register_file(rv, osflags, 0, 0, flags, file, offset);
 jleave:
    NYD_LEAVE;
    return rv;
