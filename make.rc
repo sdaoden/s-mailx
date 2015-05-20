@@ -231,13 +231,13 @@ XPAGER=more
 
 # The following tools may be provided a.k.a. overwritten, `command -v NAME`
 # is used to query the utility otherwise:
-#  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, grep=, mkdir=, mv=, tee=
-#  rm=, sed=
-# Note that rm(1) and sed(1) are needed before this file is read, all other
-# utilities will be checked afterwards only.
+#  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=, grep=, mkdir=, mv=,
+#  tee=, rm=, sed=, tr=
+# Note that rm(1), sed(1) and tr(1) are needed before this file is read, all
+# other utilities will be checked afterwards only.
 # For cross-compilation setting MAKE= and STRIP= may be necessary.
-# P.S.: normally you would simply adjust $PATH, $C_INCLUDE_PATH and
-# $LD_LIBARY_PATH (or similar) etc. instead to perform cross-compilation
+# We require uname(1) -s, command(1) -v, echo(1), etc.
+# uname(1) can be circumvented by setting $OS.
 
 ##  --  >8  --  8<  --  ##
 ## Normal users should not need to read any further

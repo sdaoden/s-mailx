@@ -45,7 +45,7 @@ option_maximal() {
 
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
-   case `echo ${CONFIG} | tr '[a-z]' '[A-Z]'` in
+   case "${CONFIG}" in
    NULLTEST)
       option_reset
       ;;
@@ -141,6 +141,10 @@ option_update() {
    fi
 }
 
+os_setup() {
+   OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+}
+
 # Check out compiler ($CC) and -flags ($CFLAGS)
 compiler_flags() {
    # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
@@ -166,7 +170,7 @@ compiler_flags() {
       fi
       export CC
    fi
-   [ "`uname -s`" = UnixWare ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
+   [ "${OS}" = unixware ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
 
    stackprot=no
    ccver=`${CC} --version 2>/dev/null`
@@ -295,6 +299,7 @@ check_tool() {
 # Check those tools right now that we need before including $rc
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
+check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
 feat_val_no() {
@@ -314,7 +319,7 @@ feat_val_require() {
 
 _feat_check() {
    eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    if feat_val_no "${i}"; then
       return 1
    elif feat_val_yes "${i}"; then
@@ -337,7 +342,7 @@ feat_no() {
 
 feat_require() {
    eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
 }
 
@@ -362,6 +367,8 @@ done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 
+os_setup
+
 check_tool awk "${awk:-`command -v awk`}"
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
@@ -374,8 +381,12 @@ check_tool mv "${mv:-`command -v mv`}"
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool make "${MAKE:-`command -v make`}"
+MAKE=make
 HAVE_STRIP=0
 check_tool strip "${STRIP:-`command -v strip`}" 1 && HAVE_STRIP=1
+
+# For ./cc-test.sh only
+check_tool cksum "${cksum:-`command -v cksum`}"
 
 # Update WANT_ options now, in order to get possible inter-dependencies right
 option_update
@@ -393,7 +404,7 @@ while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
    if echo "${i}" | grep '^WANT_' >/dev/null 2>&1; then
-      j="`echo ${j} | tr '[A-Z]' '[a-z]'`"
+      j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
          printf "/*#define ${i}*/\n" >> ${newh}
@@ -422,25 +433,23 @@ printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 compiler_flags
 
-printf "CC = ${CC}\n" >> ${newmk}
-printf "CC=${CC}\n" >> ${newlst}
+for i in \
+      CC \
+      _CFLAGS CFLAGS \
+      _LDFLAGS LDFLAGS; do
+   eval j=\$${i}
+   printf "${i} = ${j}\n" >> ${newmk}
+   printf "${i}=${j}\n" >> ${newlst}
+done
 
-printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newmk}
-printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
-
-printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newmk}
-printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
-
-printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newmk}
-printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
-
-printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
-   ${newmk}
-printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
-   ${newlst}
-
-printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
-printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
+for i in \
+      awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
+      MAKE strip \
+      cksum; do
+   eval j=\$${i}
+   printf "${i} = ${j}\n" >> ${newmk}
+   printf "${i}=${j}\n" >> ${newlst}
+done
 
 # Build a basic set of INCS and LIBS according to user environment.
 # On pkgsrc(7) systems automatically add /usr/pkg/*

@@ -10,7 +10,6 @@ MBOX=./.cc-test.mbox
 MAKE="${MAKE:-`command -v make`}"
 awk=${awk:-`command -v awk`}
 cat=${cat:-`command -v cat`}
-# TODO cksum not fixated via mk-conf.sh, mk.mk should export variables!!
 cksum=${cksum:-`command -v cksum`}
 rm=${rm:-`command -v rm`}
 sed=${sed:-`command -v sed`}
