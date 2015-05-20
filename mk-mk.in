@@ -101,6 +101,8 @@ mime_types.h: mime.types
 
 test: all
 	@echo 'Running test, please wait';\
+	MAKE=$(MAKE) \
+	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
 # Corresponds to same thing in makefile!
