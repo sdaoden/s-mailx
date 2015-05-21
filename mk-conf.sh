@@ -145,6 +145,7 @@ os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
 
    if [ ${OS} = sunos ]; then
+      OS_DEFINES="${OS_DEFINES}#define SYSV\n"
       [ -n "${awk}" ] || awk=/usr/xpg4/bin/awk
       # -f?
       if [ -n "${cksum}" ]; then
@@ -158,6 +159,11 @@ os_setup() {
          config_exit 1
       fi
    fi
+
+   # Sledgehammer: better set _GNU_SOURCE
+   OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
+   #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
+   #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
@@ -639,10 +645,8 @@ feat_bail_required() {
 
 ##
 
-# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without!
-echo '#define _GNU_SOURCE' >> ${h}
-#echo '#define _POSIX_C_SOURCE 200809L' >> ${h}
-#echo '#define _XOPEN_SOURCE 700' >> ${h}
+# May be multiline..
+[ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
 if link_check hello 'if a hello world program can be built' << \!
 #include <stdio.h>
