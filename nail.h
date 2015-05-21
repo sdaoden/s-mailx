@@ -280,30 +280,50 @@
 #endif
 
 /*
- * CC support, generic macros etc.
+ * OS, CC support, generic macros etc.
  */
 
+/* OS: we're not a library, only set what needs special treatment somewhere */
+#define OS_DRAGONFLY    0
+#define OS_SOLARIS      0
+#define OS_SUNOS        0
+
+#ifdef __DragonFly__
+# undef OS_DRAGONFLY
+# define OS_DRAGONFLY   1
+#elif defined __solaris__ || defined __sun
+# if defined __SVR4 || defined __svr4__
+#  undef OS_SOLARIS
+#  define OS_SOLARIS    1
+# else
+#  undef OS_SUNOS
+#  define OS_SUNOS      1
+# endif
+#endif
+
+/* CC */
+#define CC_CLANG           0
+#define PREREQ_CLANG(X,Y)  0
+#define CC_GCC             0
+#define PREREQ_GCC(X,Y)    0
+
 #ifdef __clang__
+# undef CC_CLANG
+# undef PREREQ_CLANG
 # define CC_CLANG          1
 # define PREREQ_CLANG(X,Y) \
    (__clang_major__ + 0 > (X) || \
     (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
 # define __EXTEN           __extension__
 #elif defined __GNUC__
+# undef CC_GCC
+# undef PREREQ_GCC
 # define CC_GCC            1
 # define PREREQ_GCC(X,Y)   \
    (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
 # define __EXTEN           __extension__
 #endif
 
-#ifndef CC_CLANG
-# define CC_CLANG          0
-# define PREREQ_CLANG(X,Y) 0
-#endif
-#ifndef CC_GCC
-# define CC_GCC            0
-# define PREREQ_GCC(X,Y)   0
-#endif
 #ifndef __EXTEN
 # define __EXTEN
 #endif
