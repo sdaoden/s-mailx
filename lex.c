@@ -743,6 +743,14 @@ commands(void)
    for (;;) {
       char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
 
+      /* TODO Unless we have our signal manager (or however we do it) child
+       * TODO processes may have time slots where their execution isn't
+       * TODO protected by signal handlers (in between start and setup
+       * TODO completed).  close_all_files() is only called from onintr()
+       * TODO so those may linger possibly forever */
+      if (!(pstate & PS_SOURCING))
+         close_all_files();
+
       interrupts = 0;
       handlerstacktop = NULL;
 
