@@ -1294,7 +1294,7 @@ n_iconv_reset(iconv_t cd)
 /* Citrus project? */
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
-#  ifdef __DragonFly__
+#  if OS_DRAGONFLY
 #   define __INBCAST(S) (char ** __restrict__)UNCONST(S)
 #  else
 #   define __INBCAST(S) (char const **)UNCONST(S)
