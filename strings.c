@@ -1299,6 +1299,8 @@ n_iconv_reset(iconv_t cd)
 #  else
 #   define __INBCAST(S) (char const **)UNCONST(S)
 #  endif
+# elif OS_SUNOS || OS_SOLARIS
+#  define __INBCAST(S) (char const ** __restrict__)UNCONST(S)
 # endif
 # ifndef __INBCAST
 #  define __INBCAST(S)  (char **)UNCONST(S)
