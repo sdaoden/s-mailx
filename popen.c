@@ -919,9 +919,9 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
    if (infd >= 0)
-      dup2(infd, 0);
+      dup2(infd, STDIN_FILENO);
    if (outfd >= 0)
-      dup2(outfd, 1);
+      dup2(outfd, STDOUT_FILENO);
 
    if (nset) {
       for (i = 1; i < NSIG; ++i)
