@@ -145,25 +145,54 @@ os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
 
    if [ ${OS} = sunos ]; then
-      OS_DEFINES="${OS_DEFINES}#define SYSV\n"
-      [ -n "${awk}" ] || awk=/usr/xpg4/bin/awk
-      # -f?
-      if [ -n "${cksum}" ]; then
-         :
-      elif [ -x /opt/csw/gnu/cksum ]; then
-         cksum=/opt/csw/gnu/cksum
-      else
-         msg 'ERROR: we need a CRC-32 cksum(1), as specified in POSIX.'
-         msg 'ERROR: However, we do so only for tests.'
-         msg 'ERROR: If you can live with that, define cksum=/bin/true'
-         config_exit 1
-      fi
+      _os_setup_sunos
    fi
 
    # Sledgehammer: better set _GNU_SOURCE
    OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
    #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
+}
+
+_os_setup_sunos() {
+   # WANT_TERMCAP requires ncurses from /usr/xpg4.
+   # Also we need the awk(1) from there.
+   [ -d /usr/xpg4/bin ] && [ -d /usr/xpg4/lib ] &&
+      [ -d /usr/xpg4/include ] && have_xpg4=1 || have_xpg4=0
+
+   [ -n "${awk}" ] || awk=/usr/xpg4/bin/awk
+   if [ -x "${awk}" ]; then :; else
+      msg 'ERROR: Not an executable program: "%s"' "${awk}"
+      msg 'ERROR:   I need awk(1) from /usr/xpg4/bin, or compatible!'
+      msg 'ERROR:   Please set $awk= to a usable program, then rerun.'
+      config_exit 1
+   fi
+
+   [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
+   if [ -x "${cksum}" ]; then :; else
+      msg 'ERROR: Not an executable program: "%s"' "${cksum}"
+      msg 'ERROR:   We need a CRC-32 cksum(1), as specified in POSIX.'
+      msg 'ERROR:   However, we do so only for tests.'
+      msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
+      config_exit 1
+   fi
+
+   if feat_yes TERMCAP; then
+      if [ ${have_xpg4} -eq 1 ]; then
+         msg 'ERROR: WANT_TERMCAP requires ncurses(3) from /usr/xpg4,'
+         msg 'ERROR:   but i failed to detect a /usr/xpg4!'
+         feat_bail_required TERMCAP
+      else
+         { i=${C_INCLUDE_PATH}; echo "${i}"; } |
+               grep '/usr/xpg4/include' >/dev/null 2>&1 ||
+            C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
+         { i=${LD_LIBRARY_PATH}; echo "${i}"; } |
+               grep '/usr/xpg4/lib' >/dev/null 2>&1 ||
+            LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
+      fi
+   fi
+
+   #OS_DEFINES="${OS_DEFINES}#define SYSV\n"
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
@@ -365,6 +394,15 @@ feat_require() {
    eval i=\$WANT_${1}
    i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+}
+
+feat_bail_required() {
+   if feat_require ${1}; then
+      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
+      config_exit 13
+   fi
+   eval WANT_${1}=0
+   option_update # XXX this is rather useless here (dependency chain..)
 }
 
 # Include $rc, but only take from it what wasn't overwritten by the user from
@@ -632,15 +670,6 @@ link_check() {
 
 run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
-}
-
-feat_bail_required() {
-   if feat_require ${1}; then
-      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
-      config_exit 13
-   fi
-   eval WANT_${1}=0
-   option_update # XXX this is rather useless here (dependency chain..)
 }
 
 ##

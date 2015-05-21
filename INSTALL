@@ -23,6 +23,10 @@ With adjustments:
   $ make WANT_IMAP=no WANT_SMTP=require install
   $ make WANT_NCL=false PREFIX=/some/nasty/prefix install
 
+With utility program and feature adjustments:
+
+  $ awk=/usr/bin/nawk make WANT_SOCKETS=no DESTDIR=./zzz install
+
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
 
@@ -57,7 +61,7 @@ which take precedence over anything else:
 
 E.g.:
 
-  $ make CONFIG=MINIMAL DESTDIR=xtest install
+  $ make CONFIG=MINIMAL DESTDIR=./xtest install
 
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
@@ -231,8 +235,6 @@ until it will be readded after v15.0.)
     CRC-32).
   SunOS login 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
-    + You have to disable WANT_TERMCAP for now.
-    + I will never get iconv(3) right for Solaris.
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in
