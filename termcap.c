@@ -31,18 +31,12 @@ EMPTY_FILE()
 
 #include <term.h>
 
-#if OS_SOLARIS || OS_SUNOS
-typedef char   _termcap_putc_t;
-#else
-typedef int    _termcap_putc_t;
-#endif
-
 static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
 
-static int     _termcap_putc(_termcap_putc_t c);
+static int     _termcap_putc(int c);
 
 static int
-_termcap_putc(_termcap_putc_t c)
+_termcap_putc(int c)
 {
    return putchar(c);
 }
