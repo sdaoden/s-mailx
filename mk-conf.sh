@@ -168,6 +168,14 @@ _os_setup_sunos() {
       config_exit 1
    fi
 
+   [ -n "${grep}" ] || grep=/usr/xpg4/bin/grep
+   if [ -x "${grep}" ]; then :; else
+      msg 'ERROR: Not an executable program: "%s"' "${grep}"
+      msg 'ERROR:   I need grep(1) from /usr/xpg4/bin, or compatible!'
+      msg 'ERROR:   Please set $grep= to a usable program, then rerun.'
+      config_exit 1
+   fi
+
    [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
    if [ -x "${cksum}" ]; then :; else
       msg 'ERROR: Not an executable program: "%s"' "${cksum}"
@@ -178,7 +186,7 @@ _os_setup_sunos() {
    fi
 
    if feat_yes TERMCAP; then
-      if [ ${have_xpg4} -eq 1 ]; then
+      if [ ${have_xpg4} -eq 0 ]; then
          msg 'ERROR: WANT_TERMCAP requires ncurses(3) from /usr/xpg4,'
          msg 'ERROR:   but i failed to detect a /usr/xpg4!'
          feat_bail_required TERMCAP
@@ -190,6 +198,11 @@ _os_setup_sunos() {
                grep '/usr/xpg4/lib' >/dev/null 2>&1 ||
             LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
       fi
+   fi
+
+   if feat_yes AUTOCC; then
+      msg 'WARN: turning off WANT_AUTOCC for now, please set CFLAGS'
+      WANT_AUTOCC=0
    fi
 
    #OS_DEFINES="${OS_DEFINES}#define SYSV\n"
