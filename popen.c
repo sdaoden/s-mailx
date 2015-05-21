@@ -754,6 +754,8 @@ Popen(char const *cmd, char const *mode, char const *sh,
    close(hisside);
    if ((rv = fdopen(myside, mod)) != NULL)
       register_file(rv, 0, 1, pid, FP_RAW, NULL, 0L);
+   else
+      close(myside);
 jleave:
    NYD_LEAVE;
    return rv;
