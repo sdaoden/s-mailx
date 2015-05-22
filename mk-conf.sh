@@ -212,102 +212,126 @@ _os_setup_sunos() {
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
-compiler_flags() {
-   # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
-   optim= dbgoptim= _CFLAGS=
-   if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      if { i="`command -v clang`"; }; then
-         CC=${i}
-      elif { i="`command -v gcc`"; }; then
-         CC=${i}
-      elif { i="`command -v c99`"; }; then
-         CC=${i}
+cc_setup() {
+   if [ -n "${CC}" ] && [ "${CC}" != cc ]; then
+      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+         :
       else
-         if [ "${CC}" = cc ]; then
-            :
-         elif { i="`command -v c89`"; }; then
-            CC=${i}
-         else
-            msg 'ERROR: I cannot find a compiler!'
-            msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
-            msg ' Please set the CC environment variable, maybe CFLAGS also.'
-            config_exit 1
-         fi
+         msg 'Using C compiler $CC="%s"' "${CC}"
       fi
-      export CC
-   fi
-   [ "${OS}" = unixware ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
-
-   stackprot=no
-   ccver=`${CC} --version 2>/dev/null`
-   if [ ${?} -ne 0 ]; then
-      [ -z "${optim}" ] && optim=-O1
-   elif { i=${ccver}; echo "${i}"; } | ${grep} \
-'gcc
-clang' >/dev/null 2>&1; then
-   #if echo "${i}" | ${grep} \
-#'gcc
-#clang version 1' >/dev/null 2>&1; then
-      optim=-O2 dbgoptim=-O
-      stackprot=yes
-      _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
-      _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
-      _CFLAGS="${_CFLAGS} -fstrict-aliasing"
-      _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
-      _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
-      _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
-      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      if { i=${ccver}; echo "${i}"; } |
-            ${grep} 'clang version 1' >/dev/null 2>&1; then
-         _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
-      else
-         _CFLAGS="${_CFLAGS} -fstrict-overflow"
-         # Too many warnings without having seen a benefit yet
-         if feat_yes DEVEL; then
-            _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
-         fi
-         if feat_yes AMALGAMATION && feat_no DEVEL; then
-            _CFLAGS="${_CFLAGS} -Wno-unused-function"
-         fi
-         if { i=${ccver}; echo "${i}"; } |
-               ${grep} -i clang >/dev/null 2>&1; then
-            _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
-         fi
-      fi
-      if feat_yes AMALGAMATION; then
-         _CFLAGS="${_CFLAGS} -pipe"
-      fi
-#   elif { i=${ccver}; echo "${i}"; } | ${grep} -i clang >/dev/null 2>&1; then
-#      optim=-O3 dbgoptim=-O
-#      stackprot=yes
-#      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
-#      if feat_yes AMALGAMATION; then
-#         _CFLAGS="${_CFLAGS} -pipe"
-#      fi
-   elif [ -z "${optim}" ]; then
-      optim=-O1 dbgoptim=-O
+      return
    fi
 
-   if feat_no DEBUG; then
-      _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
+   printf >&2 'Searching for a usable C compiler .. $CC='
+   if { i="`command -v clang`"; }; then
+      CC=${i}
+   elif { i="`command -v gcc`"; }; then
+      CC=${i}
+   elif { i="`command -v c99`"; }; then
+      CC=${i}
    else
-      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
+      if [ "${CC}" = cc ]; then
+         :
+      elif { i="`command -v c89`"; }; then
+         CC=${i}
+      else
+         printf >&2 'boing booom tschak\n'
+         msg 'ERROR: I cannot find a compiler!'
+         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
+         config_exit 1
+      fi
    fi
-   if feat_yes FORCED_STACKPROT && [ "${stackprot}" = yes ]; then
-      _CFLAGS="${_CFLAGS} -fstack-protector-all "
-         _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
-   fi
-   _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-   # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
-   _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
-   export _CFLAGS _LDFLAGS
+   printf >&2 '"%s"\n' "${CC}"
+   export CC
+}
 
-   # $CFLAGS and $LDFLAGS are only overwritten if explicitly wanted
-   if feat_yes AUTOCC; then
-      CFLAGS=$_CFLAGS
-      LDFLAGS=$_LDFLAGS
-      export CFLAGS LDFLAGS
+cc_flags() {
+   feat_no DEBUG && _CFLAGS=-DNDEBUG || _CFLAGS=
+   _LDFLAGS=
+
+   if [ ${OS} = unixware ]; then
+      feat_yes DEBUG && _CFLAGS='-DNDEBUG -v -Xa -g' || _CFLAGS='-Xa -O'
+   elif feat_yes AUTOCC; then
+      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+         cc_check_silent=1
+         msg 'Detecting $CFLAGS for $CC="%s", just a second..' "${CC}"
+      else
+         cc_check_silent=
+         msg 'Testing usable $CFLAGS for $CC="%s"' "${CC}"
+      fi
+
+      if [ ${OS} = sunos ]; then
+         :
+         #_cc_flags_sunos
+      else
+         _cc_flags_generic
+      fi
    fi
+
+   if feat_yes AUTOCC; then
+      CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+   elif feat_no DEBUG; then
+      CFLAGS="-DNDEBUG ${CFLAGS}"
+   fi
+   msg ''
+   export CFLAGS LDFLAGS
+}
+
+_cc_flags_generic() {
+   # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
+   # # XXX -Wl,--sort-common,[-O1]
+   cc_check -Wall
+   cc_check -Wextra
+   cc_check -pedantic
+
+   cc_check -Wbad-function-cast
+   cc_check -Wcast-align
+   cc_check -Wcast-qual
+   cc_check -Winit-self
+   cc_check -Wmissing-prototypes
+   cc_check -Wshadow
+   cc_check -Wunused
+   cc_check -Wwrite-strings
+   cc_check -Wno-long-long
+
+   if feat_yes AMALGAMATION && feat_no DEVEL; then
+      cc_check -Wno-unused-function
+   fi
+   feat_no DEVEL && cc_check -Wno-unused-result # XXX do right way (pragma too)
+
+   cc_check -fno-unwind-tables
+   cc_check -fno-asynchronous-unwind-tables
+   cc_check -fstrict-aliasing
+   if cc_check -fstrict-overflow && feat_yes DEVEL; then
+      cc_check -Wstrict-overflow=5
+   fi
+
+   if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
+      if cc_check -fstack-protector-strong ||
+            cc_check -fstack-protector-all; then
+         cc_check -D_FORTIFY_SOURCE=2
+      fi
+   fi
+
+   if feat_yes AMALGAMATION; then
+      cc_check -pipe
+   fi
+   if feat_yes DEBUG; then
+      cc_check -O
+      cc_check -g
+   elif cc_check -O3; then
+      :
+   elif cc_check -O2; then
+      :
+   elif cc_check -O1; then
+      :
+   else
+      cc_check -O
+   fi
+
+   feat_yes DEVEL && cc_check -std=c89
 }
 
 ##  --  >8  --  8<  --  ##
@@ -344,6 +368,7 @@ newmk=./config.mk-new
 newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
+tmp2=./${tmp0}2$$
 
 # We need some standard utilities
 unset -f command
@@ -442,6 +467,7 @@ done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 
+# We need to know about that now, in order to provide utility overwrites etc.
 os_setup
 
 check_tool awk "${awk:-`command -v awk`}"
@@ -467,8 +493,8 @@ check_tool cksum "${cksum:-`command -v cksum`}"
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
-trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
-trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}; exit" 1 2 15
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" 0
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -503,12 +529,13 @@ while read line; do
 done
 exec 0<&5 1>&6 5<&- 6<&-
 
+# Add the known utility and some other variables
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 for i in \
       awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
-      MAKE strip \
+      MAKE make strip \
       cksum; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
@@ -521,6 +548,7 @@ if [ -n "${C_INCLUDE_PATH}" ]; then
    i=${IFS}
    IFS=:
    set -- ${C_INCLUDE_PATH}
+   C_INCLUDE_PATH=
    IFS=${i}
    # for i; do -- new in POSIX Issue 7 + TC1
    for i
@@ -528,14 +556,21 @@ if [ -n "${C_INCLUDE_PATH}" ]; then
       [ -d "${i}" ] || continue
       [ "${i}" = /usr/pkg/include ] && continue
       INCS="${INCS} -I${i}"
+      [ -n "${C_INCLUDE_PATH}" ] &&
+         C_INCLUDE_PATH="${C_INCLUDE_PATH}:${i}" || C_INCLUDE_PATH=${i}
    done
 fi
-[ -d /usr/pkg/include ] && INCS="${INCS} -I/usr/pkg/include"
+if [ -d /usr/pkg/include ]; then
+   INCS="${INCS} -I/usr/pkg/include"
+   C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
+fi
+export C_INCLUDE_PATH
 
 if [ -n "${LD_LIBRARY_PATH}" ]; then
    i=${IFS}
    IFS=:
    set -- ${LD_LIBRARY_PATH}
+   LD_LIBRARY_PATH=
    IFS=${i}
    # for i; do -- new in POSIX Issue 7 + TC1
    for i
@@ -543,23 +578,65 @@ if [ -n "${LD_LIBRARY_PATH}" ]; then
       [ -d "${i}" ] || continue
       [ "${i}" = /usr/pkg/lib ] && continue
       LIBS="${LIBS} -L${i}"
+      [ -n "${LD_LIBRARY_PATH}" ] &&
+         LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${i}" || LD_LIBRARY_PATH=${i}
    done
 fi
-[ -d /usr/pkg/lib ] && LIBS="${LIBS} -L/usr/pkg/lib"
+if [ -d /usr/pkg/lib ]; then
+   LIBS="${LIBS} -L/usr/pkg/lib"
+   LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
+fi
+export LD_LIBRARY_PATH
 
-compiler_flags
+## Detect CC, wether we can use it, and possibly which CFLAGS we can use
+
+cc_setup
+
+${cat} > ${tmp}.c << \!
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+   (void)argc;
+   (void)argv;
+   puts("Hello world");
+   return 0;
+}
+!
+
+if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} \
+      -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+   :
+else
+   msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
+   msg 'ERROR:   Please set $CC (and $CFLAGS) variable(s), rerun'
+   config_exit 1
+fi
+
+cc_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   if "${CC}" ${_CFLAGS} ${1} ${INCS} ${_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _CFLAGS="${_CFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+cc_flags
 
 for i in \
       INCS LIBS \
-      _CFLAGS \
-      _LDFLAGS; do
+      ; do
    eval j=\$${i}
    printf "${i}=${j}\n" >> ${newlst}
 done
 for i in \
       CC \
       CFLAGS \
-      LDFLAGS; do
+      LDFLAGS \
+      ; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
    printf "${i}=${j}\n" >> ${newlst}
@@ -568,9 +645,13 @@ done
 # Now finally check wether we already have a configuration and if so, wether
 # all those parameters are still the same.. or something has actually changed
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
+   echo 'Configuration is up-to-date'
    exit 0
+elif [ -f ${lst} ]; then
+   echo 'Configuration has been updated..'
+else
+   echo 'Shiny configuration..'
 fi
-[ -f ${lst} ] && echo 'configuration updated..' || echo 'shiny configuration..'
 
 # Time to redefine helper 1
 config_exit() {
@@ -584,7 +665,6 @@ ${mv} -f ${newmk} ${mk}
 
 ## Compile and link checking
 
-tmp2=./${tmp0}2$$
 tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
@@ -594,7 +674,7 @@ makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
-trap "${rm} -f ${tmp0}.* ${tmp0}* ${makefile}" 0
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 # Time to redefine helper 2
 msg() {
@@ -631,7 +711,7 @@ _check_preface() {
    variable=$1 topic=$2 define=$3
 
    echo '**********'
-   msg_nonl 'checking %s ... ' "${topic}"
+   msg_nonl ' . %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
@@ -699,25 +779,6 @@ run_check() {
 
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
-
-if link_check hello 'if a hello world program can be built' << \!
-#include <stdio.h>
-
-int main(int argc, char *argv[])
-{
-   (void)argc;
-   (void)argv;
-   puts("hello world");
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: but this oooops is most certainly not related to me.'
-   msg 'Read the file %s and check your compiler environment.' "${log}"
-   config_exit 1
-fi
 
 if link_check termios 'for termios.h and tc*() family' << \!
 #include <termios.h>
