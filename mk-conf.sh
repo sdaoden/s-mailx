@@ -230,12 +230,7 @@ cc_flags() {
          msg 'Testing usable $CFLAGS for $CC="%s"' "${CC}"
       fi
 
-      if [ ${OS} = sunos ]; then
-         :
-         #_cc_flags_sunos
-      else
-         _cc_flags_generic
-      fi
+      _cc_flags_generic
    fi
 
    if feat_yes AUTOCC; then
