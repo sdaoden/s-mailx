@@ -975,7 +975,7 @@ FL int         msgidcmp(char const *s1, char const *s2);
 
 /* See if the given header field is supposed to be ignored */
 FL int         is_ign(char const *field, size_t fieldlen,
-                  struct ignoretab ignore[2]);
+                  struct ignoretab igta[2]);
 
 FL int         member(char const *realfield, struct ignoretab *table);
 

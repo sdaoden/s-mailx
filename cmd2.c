@@ -327,7 +327,7 @@ static int
 ignore1(char **list, struct ignoretab *tab, char const *which)
 {
    int h;
-   struct ignore *igp;
+   struct ignored *igp;
    char **ap;
    NYD_ENTER;
 
@@ -367,7 +367,7 @@ static int
 igshow(struct ignoretab *tab, char const *which)
 {
    int h;
-   struct ignore *igp;
+   struct ignored *igp;
    char **ap, **ring;
    NYD_ENTER;
 
@@ -426,7 +426,7 @@ static void
 __unign_all(struct ignoretab *tab)
 {
    size_t i;
-   struct ignore *n, *x;
+   struct ignored *n, *x;
    NYD_ENTER;
 
    for (i = 0; i < NELEM(tab->i_head); ++i)
@@ -442,7 +442,7 @@ __unign_all(struct ignoretab *tab)
 static void
 __unign_one(struct ignoretab *tab, char const *name)
 {
-   struct ignore *ip, *iq;
+   struct ignored *ip, *iq;
    int h;
    NYD_ENTER;
 

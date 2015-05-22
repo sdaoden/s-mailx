@@ -1726,8 +1726,8 @@ struct sendbundle {
 /* Structure of the hash table of ignored header fields */
 struct ignoretab {
    int         i_count;       /* Number of entries */
-   struct ignore {
-      struct ignore  *i_link;    /* Next ignored field in bucket */
+   struct ignored {
+      struct ignored *i_link;    /* Next ignored field in bucket */
       char           *i_field;   /* This ignored field */
    }           *i_head[HSHSIZE];
 };

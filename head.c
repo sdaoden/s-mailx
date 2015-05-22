@@ -1407,26 +1407,26 @@ msgidcmp(char const *s1, char const *s2)
 }
 
 FL int
-is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab igta[2])
 {
    char *realfld;
    int rv;
    NYD_ENTER;
 
    rv = 0;
-   if (ignoret == NULL)
+   if (igta == NULL)
       goto jleave;
    rv = 1;
-   if (ignoret == allignore)
+   if (igta == allignore)
       goto jleave;
 
    /* Lowercase it so that "Status" and "status" will hash to the same place */
    realfld = ac_alloc(fieldlen +1);
    i_strcpy(realfld, field, fieldlen +1);
-   if (ignoret[1].i_count > 0)
-      rv = !member(realfld, ignoret + 1);
+   if (igta[1].i_count > 0)
+      rv = !member(realfld, igta + 1);
    else
-      rv = member(realfld, ignoret);
+      rv = member(realfld, igta);
    ac_free(realfld);
 jleave:
    NYD_LEAVE;
@@ -1436,7 +1436,7 @@ jleave:
 FL int
 member(char const *realfield, struct ignoretab *table)
 {
-   struct ignore *igp;
+   struct ignored *igp;
    int rv = 0;
    NYD_ENTER;
 
