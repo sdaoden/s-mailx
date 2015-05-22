@@ -101,7 +101,7 @@ fi
 
 # Inter-relationships
 option_update() {
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&\
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&
          feat_no SPAM_SPAMD; then
       WANT_SOCKETS=0
    fi
@@ -131,8 +131,7 @@ option_update() {
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
 
-   # If we don't need MD5 except for producing boundary and message-id strings,
-   # leave it off, plain old srand(3) should be enough for that purpose.
+   # If we don't need MD5 leave it alone
    if feat_no SOCKETS; then
       WANT_MD5=0
    fi
@@ -185,19 +184,23 @@ _os_setup_sunos() {
       config_exit 1
    fi
 
+   want_xpg4=0
    if feat_yes TERMCAP; then
       if [ ${have_xpg4} -eq 0 ]; then
          msg 'ERROR: WANT_TERMCAP requires ncurses(3) from /usr/xpg4,'
          msg 'ERROR:   but i failed to detect a /usr/xpg4!'
          feat_bail_required TERMCAP
-      else
-         { i=${C_INCLUDE_PATH}; echo "${i}"; } |
-               grep '/usr/xpg4/include' >/dev/null 2>&1 ||
-            C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
-         { i=${LD_LIBRARY_PATH}; echo "${i}"; } |
-               grep '/usr/xpg4/lib' >/dev/null 2>&1 ||
-            LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
       fi
+      want_xpg4=1
+   fi
+
+   if [ ${want_xpg4} -ne 0 ]; then
+      { i=${C_INCLUDE_PATH}; echo "${i}"; } |
+            ${grep} '/usr/xpg4/include' >/dev/null 2>&1 ||
+         C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
+      { i=${LD_LIBRARY_PATH}; echo "${i}"; } |
+            ${grep} '/usr/xpg4/lib' >/dev/null 2>&1 ||
+         LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
    fi
 
    if feat_yes AUTOCC; then
@@ -329,7 +332,7 @@ msg() {
    printf >&2 "${fmt}\\n" "${@}"
 }
 
-## First of all, create new configuration and check wether it changed ##
+## First of all, create new configuration and check wether it changed
 
 rc=./make.rc
 lst=./config.lst
@@ -348,7 +351,7 @@ check_tool() {
    n=${1} i=${2} opt=${3:-0}
    # Evaluate, just in case user comes in with shell snippets (..well..)
    eval i="${i}"
-   if type "${i}" >/dev/null 2>&1; then
+   if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
       eval ${n}=${i}
       return 0
    fi
@@ -453,9 +456,9 @@ check_tool mv "${mv:-`command -v mv`}"
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool make "${MAKE:-`command -v make`}"
-MAKE=make
-HAVE_STRIP=0
-check_tool strip "${STRIP:-`command -v strip`}" 1 && HAVE_STRIP=1
+MAKE=${make}
+check_tool strip "${STRIP:-`command -v strip`}" 1 &&
+   HAVE_STRIP=1 || HAVE_STRIP=0
 
 # For ./cc-test.sh only
 check_tool cksum "${cksum:-`command -v cksum`}"
@@ -475,7 +478,7 @@ exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   if echo "${i}" | grep '^WANT_' >/dev/null 2>&1; then
+   if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
       j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
@@ -498,21 +501,10 @@ while read line; do
    printf "${i}=${j}\n"
    eval "${i}=\"${j}\""
 done
-exec 0<&5 1<&6 5<&- 6<&-
+exec 0<&5 1>&6 5<&- 6<&-
 
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
-
-compiler_flags
-
-for i in \
-      CC \
-      _CFLAGS CFLAGS \
-      _LDFLAGS LDFLAGS; do
-   eval j=\$${i}
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n" >> ${newlst}
-done
 
 for i in \
       awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
@@ -533,12 +525,12 @@ if [ -n "${C_INCLUDE_PATH}" ]; then
    # for i; do -- new in POSIX Issue 7 + TC1
    for i
    do
+      [ -d "${i}" ] || continue
       [ "${i}" = /usr/pkg/include ] && continue
       INCS="${INCS} -I${i}"
    done
 fi
 [ -d /usr/pkg/include ] && INCS="${INCS} -I/usr/pkg/include"
-printf "INCS=${INCS}\n" >> ${newlst}
 
 if [ -n "${LD_LIBRARY_PATH}" ]; then
    i=${IFS}
@@ -548,12 +540,30 @@ if [ -n "${LD_LIBRARY_PATH}" ]; then
    # for i; do -- new in POSIX Issue 7 + TC1
    for i
    do
+      [ -d "${i}" ] || continue
       [ "${i}" = /usr/pkg/lib ] && continue
       LIBS="${LIBS} -L${i}"
    done
 fi
 [ -d /usr/pkg/lib ] && LIBS="${LIBS} -L/usr/pkg/lib"
-printf "LIBS=${LIBS}\n" >> ${newlst}
+
+compiler_flags
+
+for i in \
+      INCS LIBS \
+      _CFLAGS \
+      _LDFLAGS; do
+   eval j=\$${i}
+   printf "${i}=${j}\n" >> ${newlst}
+done
+for i in \
+      CC \
+      CFLAGS \
+      LDFLAGS; do
+   eval j=\$${i}
+   printf "${i} = ${j}\n" >> ${newmk}
+   printf "${i}=${j}\n" >> ${newlst}
+done
 
 # Now finally check wether we already have a configuration and if so, wether
 # all those parameters are still the same.. or something has actually changed
@@ -572,7 +582,7 @@ ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
 
-## Compile and link checking ##
+## Compile and link checking
 
 tmp2=./${tmp0}2$$
 tmp3=./${tmp0}3$$
@@ -1580,6 +1590,8 @@ else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
 
+##
+
 if feat_yes SPAM_SPAMC; then
    echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
@@ -1639,7 +1651,7 @@ else
    echo '/* WANT_MD5=0 */' >> ${h}
 fi
 
-## Summarizing ##
+## Summarizing
 
 # Since we cat(1) the content of those to cc/"ld", convert them to single line
 squeeze_em() {
@@ -1702,7 +1714,7 @@ if feat_no AMALGAMATION; then
    echo *.c >> ${mk}
    echo 'OBJ_DEP =' >> ${mk}
 else
-   j=`echo "${src}" | sed 's/^.\///'`
+   j=`echo "${src}" | ${sed} 's/^.\///'`
    echo "${j}" >> ${mk}
    printf 'OBJ_DEP = main.c ' >> ${mk}
    printf '#define _MAIN_SOURCE\n' >> ${src}
@@ -1722,13 +1734,10 @@ echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} ./mk-mk.in >> ${mk}
 
-## Finished! ##
+## Finished!
 
 ${cat} > ${tmp2}.c << \!
 #include "config.h"
-#ifdef HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
 :
 :The following optional features are enabled:
 #ifdef HAVE_SETLOCALE
