@@ -228,13 +228,19 @@ until it will be readded after v15.0.)
 . Solaris <http://opencsw.org/>
   * First of all: thanks to OpenCSW.org for offering SSH access to
     Solaris!
-  * Unix utility setup is a bit delicate.  The build system tries to
-    circumvent that by explicitly setting $awk to /usr/xpg4/bin/awk
-    (/usr/bin/awk is completely unsupported) and $cksum to
-    /opt/csw/gnu/cksum (if available; only for the tests, we need
-    CRC-32).
+  - According to standards(5) we require the /usr/xpg4 environment, and
+    will bail if we cannot find it.
+  - In order to be able to run the tests you will need a cksum that
+    supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
+    that is not there you have to adjust cksum (see above) to something
+    that works.  (A future version of S-nail will use different
+    testing, but until then: Sorry!)
   SunOS login 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
+    + A lot of warnings on longjmp() clobbering.
+    + When using OpenSSL you'll see some "cast increases required
+      alignment of target type" warnings, but which are out of our
+      control but are on the OpenSSL side.
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in

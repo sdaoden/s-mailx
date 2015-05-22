@@ -154,26 +154,21 @@ os_setup() {
 }
 
 _os_setup_sunos() {
-   # WANT_TERMCAP requires ncurses from /usr/xpg4.
-   # Also we need the awk(1) from there.
-   [ -d /usr/xpg4/bin ] && [ -d /usr/xpg4/lib ] &&
-      [ -d /usr/xpg4/include ] && have_xpg4=1 || have_xpg4=0
-
-   [ -n "${awk}" ] || awk=/usr/xpg4/bin/awk
-   if [ -x "${awk}" ]; then :; else
-      msg 'ERROR: Not an executable program: "%s"' "${awk}"
-      msg 'ERROR:   I need awk(1) from /usr/xpg4/bin, or compatible!'
-      msg 'ERROR:   Please set $awk= to a usable program, then rerun.'
+   # According to standards(5), this is what we need to do
+   if [ -d /usr/xpg4 ]; then :; else
+      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
       config_exit 1
    fi
+   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
+   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+   export PATH
 
-   [ -n "${grep}" ] || grep=/usr/xpg4/bin/grep
-   if [ -x "${grep}" ]; then :; else
-      msg 'ERROR: Not an executable program: "%s"' "${grep}"
-      msg 'ERROR:   I need grep(1) from /usr/xpg4/bin, or compatible!'
-      msg 'ERROR:   Please set $grep= to a usable program, then rerun.'
-      config_exit 1
-   fi
+   C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
+   LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
+
+   #_POSIX_C_SOURCE=200112L
+   OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
+   #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
    [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
    if [ -x "${cksum}" ]; then :; else
@@ -183,32 +178,6 @@ _os_setup_sunos() {
       msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
       config_exit 1
    fi
-
-   want_xpg4=0
-   if feat_yes TERMCAP; then
-      if [ ${have_xpg4} -eq 0 ]; then
-         msg 'ERROR: WANT_TERMCAP requires ncurses(3) from /usr/xpg4,'
-         msg 'ERROR:   but i failed to detect a /usr/xpg4!'
-         feat_bail_required TERMCAP
-      fi
-      want_xpg4=1
-   fi
-
-   if [ ${want_xpg4} -ne 0 ]; then
-      { i=${C_INCLUDE_PATH}; echo "${i}"; } |
-            ${grep} '/usr/xpg4/include' >/dev/null 2>&1 ||
-         C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
-      { i=${LD_LIBRARY_PATH}; echo "${i}"; } |
-            ${grep} '/usr/xpg4/lib' >/dev/null 2>&1 ||
-         LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
-   fi
-
-   if feat_yes AUTOCC; then
-      msg 'WARN: turning off WANT_AUTOCC for now, please set CFLAGS'
-      WANT_AUTOCC=0
-   fi
-
-   #OS_DEFINES="${OS_DEFINES}#define SYSV\n"
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
@@ -331,7 +300,7 @@ _cc_flags_generic() {
       cc_check -O
    fi
 
-   feat_yes DEVEL && cc_check -std=c89
+   [ ${OS} != sunos ] && feat_yes DEVEL && cc_check -std=c89
 }
 
 ##  --  >8  --  8<  --  ##
