@@ -592,6 +592,37 @@ FL char *
 }
 
 #ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
+FL char const *
+url_servbyname(struct url const *urlp, ui16_t *irv_or_null)
+{
+   static struct {
+      char const  name[14];
+      char const  port[8];
+      ui16_t      portno;
+   } const tbl[] = {
+      { "smtp",         "25",    25},
+      { "submission",   "587",   587},
+      { "smtps",        "465",   465},
+      { "pop3",         "110",   110},
+      { "pop3s",        "995",   995},
+      { "imap",         "143",   143},
+      { "imaps",        "993",   993}
+   };
+   char const *rv;
+   size_t i;
+   NYD_ENTER;
+
+   for (rv = NULL, i = 0; i < NELEM(tbl); ++i)
+      if (!asccasecmp(tbl[i].name, urlp->url_proto)) {
+         rv = tbl[i].port;
+         if (irv_or_null != NULL)
+            *irv_or_null = tbl[i].portno;
+         break;
+      }
+   NYD_LEAVE;
+   return rv;
+}
+
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
