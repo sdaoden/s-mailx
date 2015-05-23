@@ -49,14 +49,6 @@ EMPTY_FILE()
 #ifdef HAVE_SMTP
 #include <sys/socket.h>
 
-#include <netdb.h>
-
-#include <netinet/in.h>
-
-#ifdef HAVE_ARPA_INET_H
-# include <arpa/inet.h>
-#endif
-
 struct smtp_line {
    char     *dat;    /* Actual data */
    size_t   datlen;
