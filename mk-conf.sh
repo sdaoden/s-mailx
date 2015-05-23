@@ -140,6 +140,9 @@ option_update() {
    fi
 }
 
+# Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
+# via path_check() later on once possible
+
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
 
@@ -442,12 +445,45 @@ done > ${tmp}
 # We need to know about that now, in order to provide utility overwrites etc.
 os_setup
 
+check_tool grep "${grep:-`command -v grep`}"
+
+# Before we step ahead with the other utilities perform a path cleanup first.
+# We need this function also for C_INCLUDE_PATH and LD_LIBRARY_PATH
+# "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
+path_check() {
+   varname=${1} addflag=${2} flagvarname=${3}
+   j=${IFS} IFS=:
+   eval "set -- \$${1}"
+   IFS=$j
+   j= k= y= z=
+   for i
+   do
+      [ -z "${i}" ] && continue
+      [ -d "${i}" ] || continue
+      if [ -n "${j}" ]; then
+         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
+            :
+         else
+            y="${y} :${i}:"
+            j="${j}:${i}"
+            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
+         fi
+      else
+         y=" :${i}:"
+         j="${i}"
+         [ -n "${addflag}" ] && k="${addflag}${i}"
+      fi
+   done
+   eval "${varname}=\"${j}\""
+   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
+   unset varname
+}
+
 check_tool awk "${awk:-`command -v awk`}"
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
 check_tool cp "${cp:-`command -v cp`}"
 check_tool cmp "${cmp:-`command -v cmp`}"
-check_tool grep "${grep:-`command -v grep`}"
 check_tool mkdir "${mkdir:-`command -v mkdir`}"
 check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
@@ -516,49 +552,14 @@ done
 
 # Build a basic set of INCS and LIBS according to user environment.
 # On pkgsrc(7) systems automatically add /usr/pkg/*
-if [ -n "${C_INCLUDE_PATH}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${C_INCLUDE_PATH}
-   C_INCLUDE_PATH=
-   IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
-   for i
-   do
-      [ -d "${i}" ] || continue
-      [ "${i}" = /usr/pkg/include ] && continue
-      INCS="${INCS} -I${i}"
-      [ -n "${C_INCLUDE_PATH}" ] &&
-         C_INCLUDE_PATH="${C_INCLUDE_PATH}:${i}" || C_INCLUDE_PATH=${i}
-   done
-fi
-if [ -d /usr/pkg/include ]; then
-   INCS="${INCS} -I/usr/pkg/include"
-   C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
-fi
-export C_INCLUDE_PATH
 
-if [ -n "${LD_LIBRARY_PATH}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${LD_LIBRARY_PATH}
-   LD_LIBRARY_PATH=
-   IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
-   for i
-   do
-      [ -d "${i}" ] || continue
-      [ "${i}" = /usr/pkg/lib ] && continue
-      LIBS="${LIBS} -L${i}"
-      [ -n "${LD_LIBRARY_PATH}" ] &&
-         LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${i}" || LD_LIBRARY_PATH=${i}
-   done
-fi
-if [ -d /usr/pkg/lib ]; then
-   LIBS="${LIBS} -L/usr/pkg/lib"
+if [ -d /usr/pkg ]; then
+   C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
    LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
 fi
-export LD_LIBRARY_PATH
+path_check C_INCLUDE_PATH -I INCS
+path_check LD_LIBRARY_PATH -L LIBS
+export C_INCLUDE_PATH LD_LIBRARY_PATH
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
 
