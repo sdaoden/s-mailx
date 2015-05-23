@@ -765,7 +765,7 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check termios 'for termios.h and tc*() family' << \!
+if link_check termios 'termios.h and tc*() family' << \!
 #include <termios.h>
 int main(void)
 {
@@ -783,7 +783,7 @@ else
    config_exit 1
 fi
 
-if link_check clock_gettime 'for clock_gettime(2)' \
+if link_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
 int main(void)
@@ -796,7 +796,7 @@ int main(void)
 !
 then
    :
-elif link_check gettimeofday 'for gettimeofday(2)' \
+elif link_check gettimeofday 'gettimeofday(2)' \
    '#define HAVE_GETTIMEOFDAY' << \!
 #include <sys/time.h>
 int main(void)
@@ -815,7 +815,7 @@ else
    config_exit 1
 fi
 
-link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
+link_check setenv 'setenv()/unsetenv()' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -825,7 +825,7 @@ int main(void)
 }
 !
 
-link_check snprintf 'for snprintf()' '#define HAVE_SNPRINTF' << \!
+link_check snprintf 'snprintf()' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
 {
@@ -835,7 +835,7 @@ int main(void)
 }
 !
 
-link_check putc_unlocked 'for putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void)
 {
@@ -844,7 +844,7 @@ int main(void)
 }
 !
 
-link_check fchdir 'for fchdir()' '#define HAVE_FCHDIR' << \!
+link_check fchdir 'fchdir()' '#define HAVE_FCHDIR' << \!
 #include <unistd.h>
 int main(void)
 {
@@ -853,7 +853,7 @@ int main(void)
 }
 !
 
-link_check pipe2 'for pipe2()' '#define HAVE_PIPE2' << \!
+link_check pipe2 'pipe2()' '#define HAVE_PIPE2' << \!
 #include <fcntl.h>
 #include <unistd.h>
 int main(void)
@@ -864,7 +864,7 @@ int main(void)
 }
 !
 
-link_check mmap 'for mmap()' '#define HAVE_MMAP' << \!
+link_check mmap 'mmap()' '#define HAVE_MMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -874,7 +874,7 @@ int main(void)
 }
 !
 
-link_check mremap 'for mremap()' '#define HAVE_MREMAP' << \!
+link_check mremap 'mremap()' '#define HAVE_MREMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -884,7 +884,7 @@ int main(void)
 }
 !
 
-link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
+link_check setlocale 'setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
 {
@@ -894,7 +894,7 @@ int main(void)
 !
 
 if [ "${have_setlocale}" = yes ]; then
-   link_check c90amend1 'for ISO/IEC 9899:1990/Amendment 1:1995' \
+   link_check c90amend1 'ISO/IEC 9899:1990/Amendment 1:1995' \
       '#define HAVE_C90AMEND1' << \!
 #include <limits.h>
 #include <stdlib.h>
@@ -914,7 +914,7 @@ int main(void)
 !
 
    if [ "${have_c90amend1}" = yes ]; then
-      link_check wcwidth 'for wcwidth()' '#define HAVE_WCWIDTH' << \!
+      link_check wcwidth 'wcwidth()' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void)
 {
@@ -924,7 +924,7 @@ int main(void)
 !
    fi
 
-   link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
+   link_check nl_langinfo 'nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
 int main(void)
@@ -935,7 +935,7 @@ int main(void)
 !
 fi # have_setlocale
 
-link_check mkostemp 'for mkostemp()' '#define HAVE_MKOSTEMP' << \!
+link_check mkostemp 'mkostemp()' '#define HAVE_MKOSTEMP' << \!
 #include <stdlib.h>
 #include <fcntl.h>
 int main(void)
@@ -947,7 +947,7 @@ int main(void)
 !
 
 if [ "${have_mkostemp}" != yes ]; then
-   link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
+   link_check mkstemp 'mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -958,7 +958,7 @@ int main(void)
    fi
 
 # Note: run_check, thus we also get only the desired implementation...
-run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
+run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -967,7 +967,7 @@ int main(void)
 }
 !
 
-link_check wordexp 'for wordexp()' '#define HAVE_WORDEXP' << \!
+link_check wordexp 'wordexp()' '#define HAVE_WORDEXP' << \!
 #include <wordexp.h>
 int main(void)
 {
@@ -990,7 +990,7 @@ if feat_no NOALLOCA; then
    # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
    # versions of alloca(3) since modern compilers just can't be trusted
    # not to overoptimize and silently break some code
-   link_check alloca 'for __builtin_alloca()' \
+   link_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
 int main(void)
 {
@@ -1021,10 +1021,9 @@ int main(void)
    return 0;
 }
 !
-   < ${tmp2}.c link_check iconv 'for iconv functionality' \
+   < ${tmp2}.c link_check iconv 'iconv functionality' \
          '#define HAVE_ICONV' ||
-      < ${tmp2}.c link_check iconv \
-         'for iconv functionality in libiconv' \
+      < ${tmp2}.c link_check iconv 'iconv functionality (via -liconv)' \
          '#define HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 else
@@ -1032,7 +1031,7 @@ else
 fi # feat_yes ICONV
 
 if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
-   link_check af_unix 'for UNIX-domain sockets' \
+   link_check af_unix 'UNIX-domain sockets' \
       '#define HAVE_UNIX_SOCKETS' << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -1064,11 +1063,11 @@ int main(void)
 }
 !
 
-   < ${tmp2}.c link_check sockets 'for sockets' \
+   < ${tmp2}.c link_check sockets 'sockets' \
          '#define HAVE_SOCKETS' ||
-      < ${tmp2}.c link_check sockets 'for sockets (via -lnsl)' \
+      < ${tmp2}.c link_check sockets 'sockets (via -lnsl)' \
          '#define HAVE_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check sockets 'for sockets (via -lsocket -lnsl)' \
+      < ${tmp2}.c link_check sockets 'sockets (via -lsocket -lnsl)' \
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
@@ -1076,7 +1075,7 @@ else
 fi # feat_yes SOCKETS
 
 if feat_yes SOCKETS; then
-   link_check getaddrinfo 'for getaddrinfo(3)' \
+   link_check getaddrinfo 'getaddrinfo(3)' \
       '#define HAVE_GETADDRINFO' << \!
 #include "config.h"
 #include <sys/types.h>
@@ -1102,7 +1101,7 @@ int main(void)
 fi
 
 if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
-   compile_check arpa_inet_h 'for <arpa/inet.h>' \
+   compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
 #include "config.h"
 #include <sys/types.h>
@@ -1163,17 +1162,17 @@ int main(void)
 }
 !
 
-   < ${tmp2}.c link_check gethostbyname 'for get(serv|host)byname(3)' ||
+   < ${tmp2}.c link_check gethostbyname 'get(serv|host)byname(3)' ||
       < ${tmp2}.c link_check gethostbyname \
-         'for get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
+         'get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
       < ${tmp2}.c link_check gethostbyname \
-         'for get(serv|host)byname(3) (via -lsocket -nsl)' \
+         'get(serv|host)byname(3) (via -lsocket -nsl)' \
          '' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 fi
 
 feat_yes SOCKETS &&
-link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
+link_check setsockopt 'setsockopt()' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -1185,7 +1184,7 @@ int main(void)
 !
 
 feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_sndtimeo 'for SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
+link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -1201,7 +1200,7 @@ int main(void)
 !
 
 feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_linger 'for SO_LINGER' '#define HAVE_SO_LINGER' << \!
+link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -1216,7 +1215,7 @@ int main(void)
 !
 
 if feat_yes SSL; then
-   if link_check openssl 'for OpenSSL 1.1.0 and above' \
+   if link_check openssl 'OpenSSL 1.1.0 and above' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -1239,7 +1238,7 @@ int main(void)
 !
    then
       :
-   elif link_check openssl 'for sufficiently recent OpenSSL' \
+   elif link_check openssl 'sufficiently recent OpenSSL' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -1267,7 +1266,7 @@ int main(void)
    fi
 
    if [ "${have_openssl}" = 'yes' ]; then
-      compile_check stack_of 'for OpenSSL STACK_OF()' \
+      compile_check stack_of 'OpenSSL STACK_OF()' \
          '#define HAVE_OPENSSL_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1283,7 +1282,7 @@ int main(void)
 }
 !
 
-      link_check ossl_conf 'for OpenSSL_modules_load_file() support' \
+      link_check ossl_conf 'OpenSSL_modules_load_file() support' \
          '#define HAVE_OPENSSL_CONFIG' << \!
 #include <openssl/conf.h>
 
@@ -1295,7 +1294,7 @@ int main(void)
 }
 !
 
-      link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
+      link_check ossl_conf_ctx 'OpenSSL SSL_CONF_CTX support' \
          '#define HAVE_OPENSSL_CONF_CTX' << \!
 #include "config.h"
 #include <openssl/ssl.h>
@@ -1321,7 +1320,7 @@ int main(void)
 }
 !
 
-      link_check rand_egd 'for OpenSSL RAND_egd()' \
+      link_check rand_egd 'OpenSSL RAND_egd()' \
          '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 
@@ -1332,7 +1331,7 @@ int main(void)
 !
 
       if feat_yes ALL_SSL_ALGORITHMS; then
-         link_check ossl_allalgo 'for OpenSSL all-algorithms support' \
+         link_check ossl_allalgo 'OpenSSL all-algorithms support' \
             '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 
@@ -1347,7 +1346,7 @@ int main(void)
       fi # ALL_SSL_ALGORITHMS
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check openssl_md5 'for MD5 digest in OpenSSL' \
+         run_check openssl_md5 'MD5 digest in OpenSSL' \
             '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
@@ -1377,7 +1376,7 @@ int main(void)
       fi # feat_yes MD5 && feat_no NOEXTMD5
 
       if feat_yes DEVEL; then
-         link_check ossl_memhooks 'for OpenSSL memory hooks' \
+         link_check ossl_memhooks 'OpenSSL memory hooks' \
             '#define HAVE_OPENSSL_MEMHOOKS' << \!
 #include <openssl/crypto.h>
 
@@ -1429,32 +1428,32 @@ int main(void)
       i=`command -v krb5-config`
       GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
       GSS_INCS="`CFLAGS= ${i} --cflags`"
-      i='for GSS-API via krb5-config(1)'
+      i='GSS-API via krb5-config(1)'
    else
       GSS_LIBS='-lgssapi'
       GSS_INCS=
-      i='for GSS-API in gssapi/gssapi.h, libgssapi'
+      i='GSS-API in gssapi/gssapi.h, libgssapi'
    fi
    if < ${tmp2}.c link_check gss \
          "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
       < ${tmp3}.c link_check gss \
-         'for GSS-API in gssapi.h, libgssapi' \
+         'GSS-API in gssapi.h, libgssapi' \
          '#define HAVE_GSSAPI
          #define GSSAPI_REG_INCLUDE' \
          '-lgssapi' ||\
-      < ${tmp2}.c link_check gss 'for GSS-API in libgssapi_krb5' \
+      < ${tmp2}.c link_check gss 'GSS-API in libgssapi_krb5' \
          '#define HAVE_GSSAPI' \
          '-lgssapi_krb5' ||\
       < ${tmp3}.c link_check gss \
-         'for GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
+         'GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
          '#define HAVE_GSSAPI
          #define GSS_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
          '-I/usr/include/kerberosV' ||\
-      < ${tmp2}.c link_check gss 'for GSS-API in libgss' \
+      < ${tmp2}.c link_check gss 'GSS-API in libgss' \
          '#define HAVE_GSSAPI' \
          '-lgss' ||\
-      link_check gss 'for GSS-API in libgssapi_krb5, old-style' \
+      link_check gss 'GSS-API in libgssapi_krb5, old-style' \
          '#define HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
          '-lgssapi_krb5' << \!
@@ -1490,7 +1489,7 @@ else
 fi
 
 if feat_yes IDNA; then
-   if link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
+   if link_check idna 'GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
@@ -1523,7 +1522,7 @@ else
 fi
 
 if feat_yes REGEX; then
-   if link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
+   if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
 int main(void)
