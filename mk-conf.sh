@@ -101,8 +101,7 @@ fi
 
 # Inter-relationships
 option_update() {
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&
-         feat_no SPAM_SPAMD; then
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       WANT_SOCKETS=0
    fi
    if feat_no SOCKETS; then
@@ -121,7 +120,6 @@ option_update() {
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
-      WANT_SPAM_SPAMD=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
@@ -1031,6 +1029,23 @@ else
    echo '/* WANT_ICONV=0 */' >> ${h}
 fi # feat_yes ICONV
 
+if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
+   link_check af_unix 'for UNIX-domain sockets' \
+      '#define HAVE_UNIX_SOCKETS' << \!
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+int main(void)
+{
+   struct sockaddr_un soun;
+   socket(AF_UNIX, SOCK_STREAM, 0);
+   connect(0, (struct sockaddr*)&soun, 0);
+   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+   return 0;
+}
+!
+fi
+
 if feat_yes SOCKETS; then
    compile_check arpa_inet_h 'for <arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
@@ -1073,23 +1088,6 @@ int main(void)
 else
    echo '/* WANT_SOCKETS=0 */' >> ${h}
 fi # feat_yes SOCKETS
-
-if feat_yes SOCKETS && feat_yes SPAM_SPAMD; then
-   link_check af_unix 'for UNIX-domain sockets' \
-      '#define HAVE_UNIX_SOCKETS' << \!
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-int main(void)
-{
-   struct sockaddr_un soun;
-   socket(AF_UNIX, SOCK_STREAM, 0);
-   connect(0, (struct sockaddr*)&soun, 0);
-   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
-   return 0;
-}
-!
-fi
 
 feat_yes SOCKETS &&
 link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
