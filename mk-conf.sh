@@ -166,7 +166,6 @@ _os_setup_sunos() {
    C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
    LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
 
-   #_POSIX_C_SOURCE=200112L
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
@@ -183,7 +182,7 @@ _os_setup_sunos() {
 # Check out compiler ($CC) and -flags ($CFLAGS)
 cc_setup() {
    if [ -n "${CC}" ] && [ "${CC}" != cc ]; then
-      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+      if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
          :
       else
          msg 'Using C compiler $CC="%s"' "${CC}"
@@ -216,24 +215,24 @@ cc_setup() {
 }
 
 cc_flags() {
-   feat_no DEBUG && _CFLAGS=-DNDEBUG || _CFLAGS=
-   _LDFLAGS=
+   _CFLAGS= _LDFLAGS=
 
    if [ ${OS} = unixware ]; then
-      feat_yes DEBUG && _CFLAGS='-DNDEBUG -v -Xa -g' || _CFLAGS='-Xa -O'
+      feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
    elif feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
-         msg 'Detecting $CFLAGS for $CC="%s", just a second..' "${CC}"
+         msg 'Detecting $CFLAGS/$LDFLAGS for $CC="%s", just a second..' "${CC}"
       else
          cc_check_silent=
-         msg 'Testing usable $CFLAGS for $CC="%s"' "${CC}"
+         msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
       _cc_flags_generic
    fi
 
    if feat_yes AUTOCC; then
+      feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
       LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
    elif feat_no DEBUG; then
@@ -244,8 +243,6 @@ cc_flags() {
 }
 
 _cc_flags_generic() {
-   # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
-   # # XXX -Wl,--sort-common,[-O1]
    cc_check -Wall
    cc_check -Wextra
    cc_check -pedantic
@@ -296,6 +293,17 @@ _cc_flags_generic() {
    fi
 
    [ ${OS} != sunos ] && feat_yes DEVEL && cc_check -std=c89
+
+   ld_check -Wl,-z,relro
+   ld_check -Wl,-z,now
+   ld_check -Wl,-z,noexecstack
+
+   # Address randomization
+   _ccfg=${_CFLAGS}
+   if cc_check -fPIE || cc_check -fpie; then
+      ld_check -pie || _CFLAGS=${_ccfg}
+   fi
+   unset _ccfg
 }
 
 ##  --  >8  --  8<  --  ##
@@ -581,6 +589,18 @@ cc_check() {
    if "${CC}" ${_CFLAGS} ${1} ${INCS} ${_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+ld_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   if "${CC}" ${_CFLAGS} ${INCS} ${_LDFLAGS} ${1} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
       return 0
    fi
