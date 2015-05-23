@@ -291,20 +291,14 @@ _addrspec_check(int skinned, struct addrguts *agp)
    if (!skinned)
       goto jaddr_check;
 
-   /* Excerpt from nail.1:
-    * Recipient address specifications
-    * The rules are: Any name which starts with a `|' character specifies
-    * a pipe,  the  command  string  following  the `|' is executed and
-    * the message is sent to its standard input; any other name which
-    * contains a  `@' character  is treated as a mail address; any other
-    * name which starts with a `+' character specifies a folder name; any
-    * other name  which  contains  a  `/' character  but  no `!'  or `%'
-    * character before also specifies a folder name; what remains is
-    * treated as a mail  address */
+   /* When changing any of the following adjust any RECIPIENTADDRSPEC;
+    * grep the latter for the complete picture */
    if (*addr == '|') {
       agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
       goto jleave;
    }
+   if (addr[0] == '.' && addr[1] == '/')
+      goto jisfile;
    if (memchr(addr, '@', agp->ag_slen) == NULL) {
       if (*addr == '+')
          goto jisfile;

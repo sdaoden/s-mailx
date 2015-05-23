@@ -626,6 +626,8 @@ is not set then only network addresses (see
 .Xr mailaddr 7
 for a description of mail addresses) and aliases may be used, though.
 .
+\" When changing any of the following adjust any RECIPIENTADDRSPEC;
+\" grep the latter for the complete picture
 .Pp
 If the variable
 .Va expandaddr
@@ -635,6 +637,9 @@ Any name which starts with a vertical bar
 character specifies a pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
+Likewise, any name that starts with the character sequence
+.Ql ./
+(dot slash) is treated as a file, regardless of the remaining content.
 Any other name which contains an at sign
 .Ql @
 character is treated as a network address;
