@@ -47,11 +47,6 @@ EMPTY_FILE()
 #ifdef HAVE_OPENSSL
 #include <sys/socket.h>
 
-#include <dirent.h>
-#include <netdb.h>
-
-#include <netinet/in.h>
-
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -61,12 +56,12 @@ EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef HAVE_ARPA_INET_H
-# include <arpa/inet.h>
-#endif
-
 #ifdef HAVE_OPENSSL_CONFIG
 # include <openssl/conf.h>
+#endif
+
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+# include <dirent.h>
 #endif
 
 /*
