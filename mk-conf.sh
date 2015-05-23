@@ -1047,6 +1047,59 @@ int main(void)
 fi
 
 if feat_yes SOCKETS; then
+   ${cat} > ${tmp2}.c << \!
+#include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+int main(void)
+{
+   struct sockaddr s;
+   socket(AF_INET, SOCK_STREAM, 0);
+   connect(0, &s, 0);
+   return 0;
+}
+!
+
+   < ${tmp2}.c link_check sockets 'for sockets' \
+         '#define HAVE_SOCKETS' ||
+      < ${tmp2}.c link_check sockets 'for sockets (via -lnsl)' \
+         '#define HAVE_SOCKETS' '-lnsl' ||
+      < ${tmp2}.c link_check sockets 'for sockets (via -lsocket -lnsl)' \
+         '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+      feat_bail_required SOCKETS
+else
+   echo '/* WANT_SOCKETS=0 */' >> ${h}
+fi # feat_yes SOCKETS
+
+if feat_yes SOCKETS; then
+   link_check getaddrinfo 'for getaddrinfo(3)' \
+      '#define HAVE_GETADDRINFO' << \!
+#include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include <netdb.h>
+
+int main(void)
+{
+   struct addrinfo a, *ap;
+   int lrv;
+   switch ((lrv = getaddrinfo("foo", "0", &a, &ap))) {
+   case EAI_NONAME:
+   case EAI_SERVICE:
+   default:
+      fprintf(stderr, "%s\n", gai_strerror(lrv));
+   case 0:
+      break;
+   }
+   return 0;
+}
+!
+fi
+
+if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h 'for <arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
 #include "config.h"
@@ -1061,6 +1114,8 @@ if feat_yes SOCKETS; then
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdio.h>
+#include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #ifdef HAVE_ARPA_INET_H
@@ -1069,25 +1124,51 @@ if feat_yes SOCKETS; then
 
 int main(void)
 {
-   struct sockaddr s;
-   socket(AF_INET, SOCK_STREAM, 0);
-   connect(0, &s, 0);
-   gethostbyname("foo");
+   struct sockaddr_in servaddr;
+   unsigned short portno;
+   struct servent *ep;
+   struct hostent *hp;
+   struct in_addr **pptr;
+
+   portno = 0;
+   if ((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
+      portno = (unsigned short)ep->s_port;
+
+   if ((hp = gethostbyname("POPPY-HOST")) != NULL) {
+      pptr = (struct in_addr**)hp->h_addr_list;
+      if (hp->h_addrtype != AF_INET)
+         fprintf(stderr, "au\n");
+   } else {
+      switch (h_errno) {
+      case HOST_NOT_FOUND:
+      case TRY_AGAIN:
+      case NO_RECOVERY:
+      case NO_DATA:
+         break;
+      default:
+         fprintf(stderr, "au\n");
+         break;
+      }
+   }
+
+   memset(&servaddr, 0, sizeof servaddr);
+   servaddr.sin_family = AF_INET;
+   servaddr.sin_port = htons(portno);
+   memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
+   fprintf(stderr, "Would connect to %s:%d ...\n",
+      inet_ntoa(**pptr), (int)portno);
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check sockets 'for sockets in libc' \
-         '#define HAVE_SOCKETS' ||
-      < ${tmp2}.c link_check sockets 'for sockets in libnsl' \
-         '#define HAVE_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check sockets \
-         'for sockets in libsocket and libnsl' \
-         '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+   < ${tmp2}.c link_check gethostbyname 'for get(serv|host)byname(3)' ||
+      < ${tmp2}.c link_check gethostbyname \
+         'for get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
+      < ${tmp2}.c link_check gethostbyname \
+         'for get(serv|host)byname(3) (via -lsocket -nsl)' \
+         '' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
-else
-   echo '/* WANT_SOCKETS=0 */' >> ${h}
-fi # feat_yes SOCKETS
+fi
 
 feat_yes SOCKETS &&
 link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
@@ -1131,27 +1212,6 @@ int main(void)
    return 0;
 }
 !
-
-if feat_yes SOCKETS; then
-   link_check getaddrinfo 'for getaddrinfo(3)' \
-      '#define HAVE_GETADDRINFO' << \!
-#include "config.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
-int main(void)
-{
-   struct addrinfo a, *ap;
-   getaddrinfo("foo", "0", &a, &ap);
-   return 0;
-}
-!
-fi
 
 if feat_yes SSL; then
    if link_check openssl 'for OpenSSL 1.1.0 and above' \
