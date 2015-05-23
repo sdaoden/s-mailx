@@ -450,9 +450,10 @@ check_tool grep "${grep:-`command -v grep`}"
 # "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
 path_check() {
    varname=${1} addflag=${2} flagvarname=${3}
-   j=${IFS} IFS=:
+   j=${IFS}
+   IFS=:
    eval "set -- \$${1}"
-   IFS=$j
+   IFS=${j}
    j= k= y= z=
    for i
    do
@@ -476,6 +477,8 @@ path_check() {
    [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
    unset varname
 }
+
+path_check PATH
 
 check_tool awk "${awk:-`command -v awk`}"
 check_tool cat "${cat:-`command -v cat`}"
@@ -574,8 +577,7 @@ int main(int argc, char **argv)
 }
 !
 
-if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} \
-      -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+if eval "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
    msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
