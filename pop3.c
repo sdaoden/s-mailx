@@ -852,7 +852,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    if (savepipe != SIG_IGN)
       safe_signal(SIGPIPE, pop3catch);
 
-   if ((cp = ok_vlook(pop3_keepalive)) != NULL) {
+   if ((cp = xok_vlook(pop3_keepalive, &sc.sc_url, OXM_ALL)) != NULL) {
       if ((_pop3_keepalive = (int)strtol(cp, NULL, 10)) > 0) {
          _pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
          alarm(_pop3_keepalive);
@@ -898,6 +898,7 @@ pop3_header(struct message *m)
    enum okay rv;
    NYD_ENTER;
 
+   /* TODO no URL here, no OXM possible; (however it is used in setfile()..) */
    rv = pop3_get(&mb, m, (ok_blook(pop3_bulk_load) ? NEED_BODY : NEED_HEADER));
    NYD_LEAVE;
    return rv;
