@@ -783,6 +783,19 @@ else
    config_exit 1
 fi
 
+# XXX Move to below later when the time stuff is regulary needed.
+# XXX Add POSIX check once standardized
+link_check posix_random 'arc4random()' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void)
+{
+   arc4random();
+   return 0;
+}
+!
+
+# XXX Not indented for that - drop cond. when time stuff is regulary needed.
+if [ -z "${have_posix_random}" ]; then
 if link_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
@@ -814,6 +827,7 @@ else
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
+fi # -n ${have_posix_random}
 
 link_check setenv 'setenv()/unsetenv()' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
