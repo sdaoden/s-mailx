@@ -56,6 +56,7 @@
 # include <netdb.h>
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 union rand_state {
    struct rand_arc4 {
       ui8_t    __pad[6];
@@ -66,6 +67,7 @@ union rand_state {
    ui8_t    b8[sizeof(struct rand_arc4)];
    ui32_t   b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
 };
+#endif
 
 #ifdef HAVE_NYD
 struct nyd_info {
@@ -95,7 +97,9 @@ union mem_ptr {
 };
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 static union rand_state *_rand;
+#endif
 
 /* {hold,rele}_all_sigs() */
 static size_t           _alls_depth;
@@ -120,9 +124,11 @@ static struct mem_chunk *_mem_list, *_mem_free;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
+#ifndef HAVE_POSIX_RANDOM
 static void    _rand_init(void);
 static ui32_t  _rand_weak(ui32_t seed);
 SINLINE ui8_t  _rand_get8(void);
+#endif
 
 /* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence */
 #ifdef HAVE_COLOUR
@@ -133,14 +139,15 @@ static char *  _colour_iso6429(char const *wish);
 static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 static void
 _rand_init(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
    struct timespec ts;
-#else
+# else
    struct timeval ts;
-#endif
+# endif
    union {int fd; size_t i;} u;
    ui32_t seed, rnd;
    NYD2_ENTER;
@@ -159,13 +166,13 @@ _rand_init(void)
       for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
          size_t t, k;
 
-#ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
          t = (ui32_t)ts.tv_nsec;
-#else
+# else
          gettimeofday(&ts, NULL);
          t = (ui32_t)ts.tv_usec;
-#endif
+# endif
          if (rnd & 1)
             t = (t >> 16) | (t << 16);
          _rand->b32[u.i] ^= _rand_weak(seed ^ t);
@@ -216,6 +223,7 @@ _rand_get8(void)
    _rand->a._dat[_rand->a._j] = si;
    return _rand->a._dat[(ui8_t)(si + sj)];
 }
+#endif /* HAVE_POSIX_RANDOM */
 
 #ifdef HAVE_COLOUR
 static char *
@@ -1000,12 +1008,33 @@ getrandstring(size_t length)
    size_t i;
    NYD_ENTER;
 
+#ifndef HAVE_POSIX_RANDOM
    if (_rand == NULL)
       _rand_init();
+#endif
 
    data = ac_alloc(length);
+
+#ifndef HAVE_POSIX_RANDOM
    for (i = length; i-- > 0;)
       data[i] = (char)_rand_get8();
+#else
+   for (i = length; i > 0;) {
+      union {ui32_t i4; char c[4];} r;
+      size_t j;
+
+      r.i4 = (ui32_t)arc4random();
+      switch ((j = i & 3)) {
+      case 3:  data[3] = r.c[3];
+      case 2:  data[2] = r.c[2];
+      case 1:  data[1] = r.c[1];
+      default: data[0] = r.c[0]; break;
+      }
+      data += j;
+      i -= j;
+   }
+#endif
+
    b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
    ac_free(data);
    NYD_LEAVE;
