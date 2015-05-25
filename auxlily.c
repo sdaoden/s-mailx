@@ -1019,19 +1019,22 @@ getrandstring(size_t length)
    for (i = length; i-- > 0;)
       data[i] = (char)_rand_get8();
 #else
-   for (i = length; i > 0;) {
-      union {ui32_t i4; char c[4];} r;
-      size_t j;
+   {  char *cp = data;
 
-      r.i4 = (ui32_t)arc4random();
-      switch ((j = i & 3)) {
-      case 3:  data[3] = r.c[3];
-      case 2:  data[2] = r.c[2];
-      case 1:  data[1] = r.c[1];
-      default: data[0] = r.c[0]; break;
+      for (i = length; i > 0;) {
+         union {ui32_t i4; char c[4];} r;
+         size_t j;
+
+         r.i4 = (ui32_t)arc4random();
+         switch ((j = i & 3)) {
+         case 0:  cp[3] = r.c[3]; j = 4;
+         case 3:  cp[2] = r.c[2];
+         case 2:  cp[1] = r.c[1];
+         default: cp[0] = r.c[0]; break;
+         }
+         cp += j;
+         i -= j;
       }
-      data += j;
-      i -= j;
    }
 #endif
 
