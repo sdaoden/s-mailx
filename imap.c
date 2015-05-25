@@ -1292,7 +1292,7 @@ jduppass:
                urlp->url_p_eu_h_p_p);
          goto jdone;
       }
-      if ((cp = ok_vlook(imap_keepalive)) != NULL) {
+      if ((cp = xok_vlook(imap_keepalive, urlp, OXM_ALL)) != NULL) {
          if ((imapkeepalive = strtol(cp, NULL, 10)) > 0) {
             savealrm = safe_signal(SIGALRM, imapalarm);
             alarm(imapkeepalive);
