@@ -2121,7 +2121,7 @@ jerr_o:
       savedeadletter(nfi, FAL0);
 
    if (count(to = elide(to)) != 0) {
-      if (!ok_blook(record_resent) || mightrecord(nfi, to)) {
+      if (!ok_blook(record_resent) || mightrecord(nfi, NULL)) {
          sb.sb_to = to;
          /*sb.sb_input = nfi;*/
          if (_transfer(&sb))
