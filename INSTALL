@@ -143,10 +143,8 @@ Thank you!
 ---------------------------------------
 
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
-It is assumed that S-nail(1) should work practically everywhere.
-Unless otherwise noted the following applies to saying "$ make".
-(But on the developer branch without IMAP.  IMAP won't get any better
-until it will be readded after v15.0.)
+Unless otherwise noted the following applies to saying "$ make" and
+"$ make devel" followed by "$ make test".
 
 . All systems:
   - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
@@ -227,20 +225,55 @@ until it will be readded after v15.0.)
 
 . Solaris <http://opencsw.org/>
   * First of all: thanks to OpenCSW.org for offering SSH access to
-    Solaris!
+    their Solaris build cluster!
   - According to standards(5) we require the /usr/xpg4 environment, and
     will bail if we cannot find it.
+  - I couldn't get us going on SunOS 5.9: the build system had to be
+    extended to check for UINTPTR_MAX being defined as the empty string
+    and similar very special things.
+  - With WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+    If your gcc(1) installation is doing alright you have to turn
+    WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+  - I will never get iconv(3) right for Solaris it seems.
   - In order to be able to run the tests you will need a cksum that
     supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
     that is not there you have to adjust cksum (see above) to something
     that works.  (A future version of S-nail will use different
     testing, but until then: Sorry!)
-  SunOS login 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
+  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
     + A lot of warnings on longjmp() clobbering.
-    + When using OpenSSL you'll see some "cast increases required
-      alignment of target type" warnings, but which are out of our
-      control but are on the OpenSSL side.
+    + S/MIME tests fail with "OpenSSL 1.0.1j 15 Oct 2014 (Library:
+      OpenSSL 1.0.1m 19 Mar 2015)":
+        behave:s/mime:sign/verify:
+        Error creating the PKCS#7 signing object: \
+          error:21083097:lib(33):func(131):reason(151)
+  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
+  - cc: Sun C 5.9 SunOS_sparc Patch 124867-16 2010/08/11
+    + Some harmless warnings.
+    + S/MIME tests fail with "OpenSSL 1.0.1m 19 Mar 2015":
+        behave:s/mime:sign/verify:
+        Error creating the PKCS#7 signing object: \
+          error:21083097:lib(33):func(131):reason(151)
+  SunOS 5.10 Generic_147441-19 i86pc i386 i86pc
+  - cc: Sun C 5.9 SunOS_i386 Patch 124868-15 2010/08/11
+    + Some harmless warnings.
+  SunOS 5.11 11.2 sun4u sparc SUNW,SPARC-Enterprise
+  - (GCC) 4.9.2
+    + We forcefully disable stack protectors on SunOS/gcc because of
+      linking errors:
+        Undefined                       first referenced
+         symbol                             in file
+        __stack_chk_fail                    accmacvar.o
+        __stack_chk_guard                   accmacvar.o
+        ld: fatal: symbol referencing errors
+    + Quite some (false) warnings on maybe-uninitialized.
+  SunOS 5.11 11.0 i86pc i386 i86pc
+  - gcc (GCC) 4.9.2
+    + Couldn't link:
+      Undefined                       first referenced
+       symbol                             in file
+      __builtin_stdarg_start              auxlily.o
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in

@@ -143,15 +143,32 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+   _CFLAGS= _LDFLAGS=
 
    if [ ${OS} = sunos ]; then
       _os_setup_sunos
+   elif [ ${OS} = unixware ]; then
+      if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
+         CC=cc
+         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         export CC CFLAGS LDFLAGS
+         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+      fi
    fi
 
    # Sledgehammer: better set _GNU_SOURCE
    OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
    #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
+
+   # On pkgsrc(7) systems automatically add /usr/pkg/*
+   if [ -d /usr/pkg ]; then
+      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
+      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
+   fi
 }
 
 _os_setup_sunos() {
@@ -167,6 +184,12 @@ _os_setup_sunos() {
    C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
    LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
 
+   # Include packages
+   if [ -d /opt/csw ]; then
+      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/opt/csw/include"
+      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/csw/lib"
+   fi
+
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
@@ -178,18 +201,27 @@ _os_setup_sunos() {
       msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
       config_exit 1
    fi
+
+   if feat_yes AUTOCC; then
+      if command -v cc >/dev/null 2>&1; then
+         CC=cc
+         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         export CC CFLAGS LDFLAGS
+         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+      else
+         # Assume gcc(1)
+         force_no_stackprot=1 need_R_ldflags=-Wl,-R
+      fi
+   fi
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
 cc_setup() {
-   if [ -n "${CC}" ] && [ "${CC}" != cc ]; then
-      if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
-         :
-      else
-         msg 'Using C compiler $CC="%s"' "${CC}"
-      fi
-      return
-   fi
+   feat_no AUTOCC && { _cc_default; return; }
+   [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    printf >&2 'Searching for a usable C compiler .. $CC='
    if { i="`command -v clang`"; }; then
@@ -215,12 +247,21 @@ cc_setup() {
    export CC
 }
 
-cc_flags() {
-   _CFLAGS= _LDFLAGS=
+_cc_default() {
+   if [ -z "${CC}" ]; then
+      printf >&2 'To go on like you have chosen, please set $CC, rerun.'
+      config_exit 1
+   fi
 
-   if [ ${OS} = unixware ]; then
-      feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
-   elif feat_yes AUTOCC; then
+   if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
+      :
+   else
+      msg 'Using C compiler $CC="%s"' "${CC}"
+   fi
+}
+
+cc_flags() {
+   if feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting $CFLAGS/$LDFLAGS for $CC="%s", just a second..' "${CC}"
@@ -230,9 +271,7 @@ cc_flags() {
       fi
 
       _cc_flags_generic
-   fi
 
-   if feat_yes AUTOCC; then
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
       LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
@@ -244,6 +283,8 @@ cc_flags() {
 }
 
 _cc_flags_generic() {
+   feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
+
    cc_check -Wall
    cc_check -Wextra
    cc_check -pedantic
@@ -271,9 +312,15 @@ _cc_flags_generic() {
    fi
 
    if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
-      if cc_check -fstack-protector-strong ||
-            cc_check -fstack-protector-all; then
-         cc_check -D_FORTIFY_SOURCE=2
+      if [ -z "${force_no_stackprot}" ]; then
+         if cc_check -fstack-protector-strong ||
+               cc_check -fstack-protector-all; then
+            cc_check -D_FORTIFY_SOURCE=2
+         fi
+      else
+         msg 'Not checking for -fstack-protector compiler option,'
+         msg 'since that caused linker errors in a "similar" configuration.'
+         msg 'You may turn off WANT_AUTOCC and use your own settings, rerun'
       fi
    fi
 
@@ -292,8 +339,6 @@ _cc_flags_generic() {
    else
       cc_check -O
    fi
-
-   [ ${OS} != sunos ] && feat_yes DEVEL && cc_check -std=c89
 
    ld_check -Wl,-z,relro
    ld_check -Wl,-z,now
@@ -552,15 +597,22 @@ for i in \
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
-# On pkgsrc(7) systems automatically add /usr/pkg/*
-
-if [ -d /usr/pkg ]; then
-   C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
-   LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
-fi
 path_check C_INCLUDE_PATH -I INCS
 path_check LD_LIBRARY_PATH -L LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
+
+if [ -n "${need_R_ldflags}" ]; then
+   i=${IFS}
+   IFS=:
+   set -- ${LD_LIBRARY_PATH}
+   IFS=${i}
+   for i
+   do
+      LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
+      _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
+   done
+   export LDFLAGS _LDFLAGS
+fi
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
 
@@ -577,7 +629,7 @@ int main(int argc, char **argv)
 }
 !
 
-if eval "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
+if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
    msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
@@ -1045,8 +1097,7 @@ else
 fi # feat_yes ICONV
 
 if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
-   link_check af_unix 'UNIX-domain sockets' \
-      '#define HAVE_UNIX_SOCKETS' << \!
+   ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -1059,6 +1110,13 @@ int main(void)
    return 0;
 }
 !
+
+   < ${tmp2}.c link_check af_unix 'AF_UNIX sockets' \
+         '#define HAVE_UNIX_SOCKETS' ||
+      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lnsl)' \
+         '#define HAVE_UNIX_SOCKETS' '-lnsl' ||
+      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
+         '#define HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
 if feat_yes SOCKETS; then
@@ -1252,7 +1310,7 @@ int main(void)
 !
    then
       :
-   elif link_check openssl 'sufficiently recent OpenSSL' \
+   elif link_check openssl 'OpenSSL' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
