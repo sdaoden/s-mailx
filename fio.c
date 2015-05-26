@@ -1419,7 +1419,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 # ifdef HAVE_GETADDRINFO
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0, *res;
-   int errval = 0 /* pacify CC */;
+   int volatile errval = 0 /* pacify CC */;
 # else
    struct sockaddr_in servaddr;
    struct in_addr **pptr;
