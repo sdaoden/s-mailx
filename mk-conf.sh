@@ -143,7 +143,7 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
-   _CFLAGS= _LDFLAGS=
+   _CFLAGS=${ADDCFLAGS} _LDFLAGS=${ADDLDFLAGS}
 
    if [ ${OS} = sunos ]; then
       _os_setup_sunos
@@ -152,8 +152,8 @@ os_setup() {
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         CFLAGS=${_CFLAGS}
+         LDFLAGS=${_LDFLAGS}
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
@@ -205,10 +205,11 @@ _os_setup_sunos() {
    if feat_yes AUTOCC; then
       if command -v cc >/dev/null 2>&1; then
          CC=cc
-         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+         feat_yes DEBUG && _CFLAGS="-v -Xa -g ${_CFLAGS}" ||
+            _CFLAGS="-Xa -O ${_CFLAGS}"
 
-         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         CFLAGS=${_CFLAGS}
+         LDFLAGS=${_LDFLAGS}
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
@@ -273,8 +274,8 @@ cc_flags() {
       _cc_flags_generic
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-      LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+      CFLAGS=${_CFLAGS}
+      LDFLAGS=${_LDFLAGS}
    elif feat_no DEBUG; then
       CFLAGS="-DNDEBUG ${CFLAGS}"
    fi
