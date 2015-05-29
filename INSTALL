@@ -270,10 +270,13 @@ Unless otherwise noted the following applies to saying "$ make" and
     + Quite some (false) warnings on maybe-uninitialized.
   SunOS 5.11 11.0 i86pc i386 i86pc
   - gcc (GCC) 4.9.2
-    + Couldn't link:
-      Undefined                       first referenced
-       symbol                             in file
-      __builtin_stdarg_start              auxlily.o
+    + If you get the compiler / system header installation error
+        Undefined                       first referenced
+         symbol                             in file
+        __builtin_stdarg_start              auxlily.o
+      then you have to overwrite this symbol with __builtin_va_start,
+      e.g., in conjunction with WANT_AUTOCC add this:
+       ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in
