@@ -473,6 +473,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    char const *who;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL;
+   bool_t isdevnull = FAL0;
    NYD_ENTER;
 
    /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
@@ -491,6 +492,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    case PROTO_FILE:
       if (temporary_protocol_ext != NULL)
          name = savecat(name, temporary_protocol_ext);
+      isdevnull = ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"));
 #ifdef HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
          char ebuf[PATH_MAX];
@@ -540,8 +542,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jem1;
    }
 
-   if (S_ISREG(stb.st_mode) ||
-         ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"))) {
+   if (S_ISREG(stb.st_mode) || isdevnull) {
       /* EMPTY */
    } else {
       if (fm & FEDIT_NEWMAIL)
