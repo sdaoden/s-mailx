@@ -674,6 +674,7 @@ for i in \
       CC \
       CFLAGS \
       LDFLAGS \
+      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
       ; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
