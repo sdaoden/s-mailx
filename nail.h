@@ -740,7 +740,7 @@ enum cproto {
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
-   EXIT_USE       = 2,
+   EXIT_USE       = 64,       /* sysexits.h:EX_USAGE */
    EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
