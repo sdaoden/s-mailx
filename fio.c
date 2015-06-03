@@ -1460,8 +1460,8 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       if (sofd >= 0) {
          close(sofd);
          sofd = -1;
-         goto jjumped;
       }
+      goto jjumped;
    }
    rele_sigs();
 
@@ -1491,7 +1491,9 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
             fprintf(stderr, _("  Including a port number in the URL may "
                "circumvent this problem\n"));
       }
-      goto jleave;
+      assert(sofd == -1);
+      errval = 0;
+      goto jjumped;
    }
    if (options & OPT_VERB)
       fprintf(stderr, _("done.\n"));
@@ -1519,8 +1521,10 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    }
 
 jjumped:
-   if (res0 != NULL)
+   if (res0 != NULL) {
       freeaddrinfo(res0);
+      res0 = NULL;
+   }
 
    hold_sigs();
    safe_signal(SIGINT, oint);
@@ -1528,8 +1532,10 @@ jjumped:
    rele_sigs();
 
    if (sofd < 0) {
-      errno = errval;
-      perror(_("Could not connect"));
+      if (errval != 0) {
+         errno = errval;
+         perror(_("Could not connect"));
+      }
       goto jleave;
    }
 
@@ -1560,14 +1566,14 @@ jjumped:
       if (options & OPT_VERB)
          fprintf(stderr, _("failed\n"));
       switch (h_errno) {
-      case HOST_NOT_FOUND: emsg = "host not found"; break;
+      case HOST_NOT_FOUND: emsg = N_("host not found"); break;
       default:
-      case TRY_AGAIN:      emsg = "(maybe) try again later"; break;
-      case NO_RECOVERY:    emsg = "non-recoverable server error"; break;
-      case NO_DATA:        emsg = "valid name without IP address"; break;
+      case TRY_AGAIN:      emsg = N_("(maybe) try again later"); break;
+      case NO_RECOVERY:    emsg = N_("non-recoverable server error"); break;
+      case NO_DATA:        emsg = N_("valid name without IP address"); break;
       }
       fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
-         urlp->url_host.s, serv, emsg);
+         urlp->url_host.s, serv, V_(emsg));
       goto jleave;
    } else if (options & OPT_VERB)
       fprintf(stderr, _("done.\n"));
