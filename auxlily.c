@@ -476,30 +476,35 @@ _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 FL void
 _nyd_oncrash(int signo)
 {
-   char s2ibuf[32], *fname, *cp;
+   char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    struct sigaction xact;
    sigset_t xset;
-   size_t fnl, i;
+   size_t i, fnl;
    int fd;
    struct nyd_info *nip;
+
+   LCTA(sizeof("./") -1 + sizeof(UAGENT) -1 + sizeof(".dat") < PATH_MAX);
 
    xact.sa_handler = SIG_DFL;
    sigemptyset(&xact.sa_mask);
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   fnl = strlen(UAGENT);
    i = strlen(tempdir);
-   cp =
-   fname = ac_alloc(i + 1 + fnl + 1 + sizeof(".dat"));
-   memcpy(cp , tempdir, i);
+   fnl = sizeof(UAGENT) -1;
+
+   if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {
+      (cp = pathbuf)[0] = '.';
+      i = 1;
+   } else
+      memcpy(cp = pathbuf, tempdir, i);
    cp[i++] = '/'; /* xxx pathsep */
    memcpy(cp += i, UAGENT, fnl);
    i += fnl;
    memcpy(cp += fnl, ".dat", sizeof(".dat"));
    fnl = i + sizeof(".dat") -1;
 
-   if ((fd = open(fname, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+   if ((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
       fd = STDERR_FILENO;
 
 # undef _X
@@ -527,14 +532,12 @@ _nyd_oncrash(int signo)
 
    if (fd != STDERR_FILENO) {
       write(STDERR_FILENO, _X("Crash NYD listing written to "));
-      write(STDERR_FILENO, fname, fnl);
+      write(STDERR_FILENO, pathbuf, fnl);
       write(STDERR_FILENO, _X("\n"));
 # undef _X
 
       close(fd);
    }
-
-   ac_free(fname);
 
    sigemptyset(&xset);
    sigaddset(&xset, signo);
