@@ -669,9 +669,14 @@ static struct htmlflt * _hf_putbuf(struct htmlflt *self,
 static struct htmlflt * _hf_param(struct htmlflt *self, struct str *store,
                            char const *param);
 
+/* Expand all entities in the given parameter */
+static struct htmlflt * _hf_expand_all_ents(struct htmlflt *self,
+                           struct str const *param);
+
 /* Completely parsed over a tag / an entity, interpret that */
 static struct htmlflt * _hf_check_tag(struct htmlflt *self, char const *s);
-static struct htmlflt * _hf_check_ent(struct htmlflt *self, char const *s);
+static struct htmlflt * _hf_check_ent(struct htmlflt *self, char const *s,
+                           size_t l);
 
 /* Input handler */
 static ssize_t          _hf_add_data(struct htmlflt *self,
@@ -1047,6 +1052,32 @@ jleave:
 }
 
 static struct htmlflt *
+_hf_expand_all_ents(struct htmlflt *self, struct str const *param)
+{
+   char const *cp, *maxcp, *ep;
+   char c;
+   size_t i;
+   NYD2_ENTER;
+
+   for (cp = param->s, maxcp = cp + param->l; cp < maxcp;)
+      if ((c = *cp++) != '&')
+         self = _hf_putc(self, c);
+      else {
+         for (ep = cp--; ep < maxcp && (c = *ep++) != ';';)
+            if (c == '\0') {
+               self = _hf_puts(self, cp);
+               goto jleave;
+            }
+         if ((i = PTR2SIZE(ep - cp)) > 1)
+            self = _hf_check_ent(self, cp, i);
+         cp = ep;
+      }
+jleave:
+   NYD2_LEAVE;
+   return self;
+}
+
+static struct htmlflt *
 _hf_check_tag(struct htmlflt *self, char const *s)
 {
    char nobuf[32], c;
@@ -1057,7 +1088,8 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    NYD2_ENTER;
 
    /* Extra check only */
-   if (s == NULL || *s != '<') {
+   assert(s != NULL);
+   if (*s != '<') {
       DBG( alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
 jput_as_is:
       self = _hf_puts(self, self->hf_bdat);
@@ -1115,9 +1147,15 @@ jput_as_is:
    case _HFSA_IMG:
       self = _hf_param(self, &param, "alt");
       self = _hf_putc(self, '[');
-      if (param.s == NULL)
-         param.s = UNCONST("IMG"), param.l = 3;
-      self = _hf_putbuf(self, param.s, param.l);
+      if (param.s == NULL) {
+         param.s = UNCONST("IMG");
+         param.l = 3;
+         goto jimg_put;
+      } /* else */ if (memchr(param.s, '&', param.l) != NULL)
+         self = _hf_expand_all_ents(self, &param);
+      else
+jimg_put:
+         self = _hf_putbuf(self, param.s, param.l);
       self = _hf_putc(self, ']');
       break;
 
@@ -1191,21 +1229,22 @@ jnotknown:
 }
 
 static struct htmlflt *
-_hf_check_ent(struct htmlflt *self, char const *s)
+_hf_check_ent(struct htmlflt *self, char const *s, size_t l)
 {
    char nobuf[32];
    char const *s_save;
+   size_t l_save;
    struct hf_ent const *hfep;
-   size_t l;
    long i;
    NYD2_ENTER;
 
    s_save = s;
+   l_save = l;
    assert(*s == '&');
-   l = strlen(++s);
    assert(l > 0);
    assert(s[l - 1] == ';');
-   --l;
+   ++s;
+   l -= 2;
 
    /* Numeric entity, or try named search */
    if (*s == '#') {
@@ -1241,7 +1280,7 @@ jputuni:
             goto jleave;
          }
 jeent:
-      self = _hf_puts(self, s_save);
+      self = _hf_putbuf(self, s_save, l_save);
    }
 jleave:
    NYD2_LEAVE;
@@ -1386,7 +1425,8 @@ jdo_c:
             cp[1] = '\0';
             f &= ~(_HF_NOPUT | _HF_ENT);
             self->hf_flags = f;
-           self = _hf_check_ent(self, self->hf_bdat);
+           self = _hf_check_ent(self, self->hf_bdat,
+               PTR2SIZE(cp + 1 - self->hf_bdat));
          } else {
             /* We may need to grow the buffer */
             if (PTRCMP(cp + 42/2, >=, cp_max)) {
