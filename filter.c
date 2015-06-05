@@ -500,7 +500,6 @@ quoteflt_flush(struct quoteflt *self)
 /*
  * HTML tagsoup filter
  * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
- * TODO . Parameters may contain entities, and thus should be expanded
  * TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
  * TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
  * TODO   nonstandard) and tracking a stack of such elements (to be popped
