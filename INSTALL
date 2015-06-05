@@ -152,7 +152,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     number of warnings exploded (for no user benefit).
   - You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
-    I/O and MIME rewrite that comes next.  These mostly refer to debug
+    I/O and MIME rewrite that comes next.  They mostly refer to debug
     dumping, truncating a(n open) file to zero size and freopen(3)ing
     one of the standard channels.  I refrained from adding abort(3)
     calls as return value checks.
@@ -164,7 +164,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
     However, `nail.h' tries hard to detect the real type size and
     defines the `PRI[du]Z' macros which end up with the correct size,
-    which is also compile-time asserted via PRIxZ_FMT_CTA() in main.c.
+    which is compile-time asserted via PRIxZ_FMT_CTA() in `main.c'.
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
@@ -173,14 +173,12 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc (GCC) 4.9.2 20150304 (prerelease) [gcc-4.9.2-4-x86_64]
-    + I think faulty message on longjmp() clobbering of a const variable?
-  - gcc 5.1.0 [gcc 5.1.0-1 from testing]
+  - gcc 5.1.0 [gcc 5.1.0-4]
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
       help.
-  - clang version 3.6.0 (tags/RELEASE_360/final) [clang-3.6.0-4]
+  - clang version 3.6.1 (tags/RELEASE_361/final) [clang-3.6.1-1]
     + :)
 
 . Void Linux <http://www.voidlinux.eu/>
@@ -237,9 +235,9 @@ Unless otherwise noted the following applies to saying "$ make" and
   - I will never get iconv(3) right for Solaris it seems.
   - In order to be able to run the tests you will need a cksum that
     supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
-    that is not there you have to adjust cksum (see above) to something
-    that works.  (A future version of S-nail will use different
-    testing, but until then: Sorry!)
+    that cannot be found you have to adjust the $cksum variable (see
+    above) to something that works.  (A future version of S-nail will
+    use different testing, but until then: Sorry!)
   SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
     + A lot of warnings on longjmp() clobbering.
