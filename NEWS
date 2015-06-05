@@ -20,8 +20,121 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.8 ("Albatros"), 2015-04-30
-------------------------------
+v14.8.1 ("Tristan albatross"), 2015-06-??
+-----------------------------------------
+
+Kudos!
+Ypnose, Tarqi Kazan, Dagobert Michelsen and OpenCSW.org, Gianluca
+Ramunno, Bob Tennent.
+
+We welcome Dagobert Michelsen in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- We have been ported to Sun Solaris!
+  Thanks to Dagobert Michelsen for giving me an account on OpenCSW.org!
+
+- The build system will now really find strip(1). [54e91c4]
+
+- WANT_TERMCAP fix: we simply passed tputs(3) a pointer to putchar(3)
+  though that may be a macro etc. [cc65bc3]
+
+- The following variables can be used to overwrite utilities needed
+  during configuration and build:
+
+    MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=, grep=, mkdir=,
+    mv=, tee=, rm=, sed=, tr=
+
+  Note that rm(1), sed(1) and tr(1) are needed before `make.rc' is read.
+  Fix: these will now also affect "make test".
+
+- WANT_AUTOCC now no longer sets compiler flags as of experience, but
+  compiles a test program to actually detect wether the compiler will
+  swallow the flag.  This increases configuration time quite a bit.
+  Users who really did use "make devel" possibly want to use "make
+  CONFIG=DEVEL" followed by "make build" now.
+  Note we now also test for -fPIE as well as relro,now,noexecstack.
+
+- WANT_SPAM_SPAMD is now decoupled from WANT_SOCKETS. [d247d86]
+
+- The configuration now also detects any changes on PATH, C_INCLUDE_PATH
+  and LD_LIBRARY. [1038028]
+
+ChangeLog
+^^^^^^^^^
+
+- Fixed importing of SHELL/LISTER/PAGER variables from the program
+  environment. [940c7f1]  (Ypnose)
+
+- Moved -X @64 command line option handling before attachment
+  evaluation, so that, e.g., `mimetype's registered via it will already
+  be seen when classifying attachments. [5d9742f]
+
+- Honour *asksign* @274 again, even if *askatend* @270 or *bsdcompat* @281
+  are not set.  This also changes *askattach* @271 as we'll only ask for
+  addition of attachments if there are none yet. [e054d6a]  (Tarqi Kazan)
+
+- Support OpenSSL 1.1.0 and above: it obsoletes the more-than-a-decade
+  old SSLv23_client_method() in favour of a new TLS_client_method()
+  (instead of using some "magical" constant like, say, "SSL_METHOD_ANY",
+  but who am i). [c35b567]
+
+- Generic file (mailbox) load and save hooks have been introduced:
+  *file-hook-(load|save)-EXTENSION* @374,@375, e.g.:
+
+    set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \
+        file-hook-save-xy='echo >&2 XY-SAVE; gzip -c' \
+        record=+null-sent.xy
+
+  One could think about using all-encrypted mailboxes, or the like.
+  Note that before v15.0 these variables may not be changed while
+  a mailbox handled by these hooks is open. [b4c2c37]  (Tarqi Kazan)
+
+- When DNS resolving fails we now print error messages.
+  And then, if it fails because of an unknown service (protocol), we
+  check for the protocol and retry shall we have a well-known port
+  number builtin (smtp, submission, smtps, pop3, pop3s, imap, imaps).
+  [5f52370, (3f189f9)]  It is not wrong to credit (Gianluca Ramunno)
+
+- One may now force treatment of addresses as files with the new "./"
+  or "/" prefixes -- until now it wasn't possible to address files if
+  the addressee includes an at sign, now "./me@here.com" will do, just
+  as will "/me@here.com". [2cf5890,0da473f]  (Bob Tennent)
+
+- Fix *record-resent* @329, which never made it to *record* @414 since
+  [a11935b], but instead save the message in a file named after the
+  addressee! [a82af9f]  (Bob Tennent)
+
+- Fixed signal handler uninstallation in sopen() (DNS lookup and socket
+  creation): v14.8.0 could be forced in endless loop after failed DNS
+  lookups due to this. [3cca23b]
+
+- Assorted changes:
+
+  . The builtin HTML filter will now silently discard carriage-return
+    characters (looks better in e.g. less(1)). [cf4d800]
+  . When reopening the same box we now recognize if changes had been
+    written, forcing a reread of the box in order to display the actual
+    real content. [7dfbd38,0835212,a15dfed]
+  . `netrc' output changed, so that the output could (in theory) be fed
+    back into S-nail again in order to gain the same settings. [a9a2722]
+  . *pop3-keepalive* @410 gained (@USER)?-HOST forms [69cae68]
+  . *imap-keepalive* @387 gained (@USER)?-HOST forms [9a8c929]
+  . Do not use the builtin random generator if we find a suitable one in
+    the host environment. [0e01aeb,6bcb430,fc846c6]  (Bob Tennent)
+  . The builtin HTML filter will now also expand entities in parameter
+    names. [8d16dc0]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Solaris port resulted in a lot of changesets for the build system.
+- I didn't use git(1) rebasing and the [crawl] branch but only [master].
+  And see where that ended: S-nail would have 10000 fossil commits!
+
+v14.8.0 ("Albatros"), 2015-04-30
+--------------------------------
 
 Puuuh!
 I'm glad and happy to announce "Albatros" after about seven months of
