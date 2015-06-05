@@ -637,7 +637,9 @@ Any name which starts with a vertical bar
 character specifies a pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
-Likewise, any name that starts with the character sequence
+Likewise, any name that starts with the character
+.Ql /
+(slash) or the character sequence
 .Ql ./
 (dot slash) is treated as a file, regardless of the remaining content.
 Any other name which contains an at sign
