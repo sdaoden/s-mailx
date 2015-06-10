@@ -210,7 +210,7 @@ static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static void *     _ssl_conf_setup(SSL_CTX *ctxp);
 static bool_t     _ssl_conf(void *confp, enum ssl_conf_type sct,
                      char const *value);
-static bool_t     _ssl_conf_finish(void *confp, bool_t error);
+static bool_t     _ssl_conf_finish(void **confp, bool_t error);
 
 static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
 
@@ -479,17 +479,18 @@ _ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
 }
 
 static bool_t
-_ssl_conf_finish(void *confp, bool_t error)
+_ssl_conf_finish(void **confp, bool_t error)
 {
-   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   SSL_CONF_CTX **sccp = (SSL_CONF_CTX**)confp;
    bool_t rv;
    NYD_ENTER;
 
    if (!(rv = error))
-      rv = (SSL_CONF_CTX_finish(sccp) != 0);
+      rv = (SSL_CONF_CTX_finish(*sccp) != 0);
 
-   SSL_CONF_CTX_free(sccp);
+   SSL_CONF_CTX_free(*sccp);
 
+   *sccp = NULL;
    NYD_LEAVE;
    return rv;
 }
@@ -578,7 +579,7 @@ jleave:
 }
 
 static bool_t
-_ssl_conf_finish(void *confp, bool_t error)
+_ssl_conf_finish(void **confp, bool_t error)
 {
    UNUSED(confp);
    UNUSED(error);
@@ -1116,7 +1117,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 #endif
 
    if ((confp = _ssl_conf_setup(ctxp)) == NULL)
-      goto jerr1;
+      goto jerr0;
 
    /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
    if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
@@ -1182,12 +1183,12 @@ ssl_open(struct url const *urlp, struct sock *sp)
       goto jerr1;
 
    /* Done with context setup, create our new per-connection structure */
-   if (!_ssl_conf_finish(confp, FAL0))
-      goto jerr1;
+   if (!_ssl_conf_finish(&confp, FAL0))
+      goto jerr0;
 
    if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
       ssl_gen_err(_("SSL_new() failed"));
-      goto jerr1;
+      goto jerr0;
    }
 
    SSL_set_fd(sp->s_ssl, sp->s_fd);
@@ -1219,7 +1220,8 @@ jerr2:
    sp->s_ssl = NULL;
 jerr1:
    if (confp != NULL)
-      _ssl_conf_finish(confp, TRU1);
+      _ssl_conf_finish(&confp, TRU1);
+jerr0:
    SSL_CTX_free(ctxp);
    goto jleave;
 }
