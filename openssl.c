@@ -382,26 +382,27 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    fprintf(stderr, _(" Certificate depth %d %s\n"),
       X509_STORE_CTX_get_error_depth(store), (success ? "" : _("ERROR")));
 
-   cert = X509_STORE_CTX_get_current_cert(store);
+   if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
+      X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
+      fprintf(stderr, _("  subject = %s\n"), data);
 
-   X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-   fprintf(stderr, _("  subject = %s\n"), data);
+      _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
+      fprintf(stderr, _("  notBefore = %s\n"), data);
 
-   _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
-   fprintf(stderr, _("  notBefore = %s\n"), data);
+      _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
+      fprintf(stderr, _("  notAfter = %s\n"), data);
 
-   _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
-   fprintf(stderr, _("  notAfter = %s\n"), data);
+      X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
+      fprintf(stderr, _("  issuer = %s\n"), data);
+   }
 
    if (!success) {
       int err = X509_STORE_CTX_get_error(store);
+
       fprintf(stderr, _("  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
       _ssl_state |= SS_VERIFY_ERROR;
    }
-
-   X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-   fprintf(stderr, _("  issuer = %s\n"), data);
 
    if (!success && ssl_verify_decide() != OKAY)
       rv = FAL0;
