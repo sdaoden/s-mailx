@@ -113,6 +113,10 @@ ChangeLog
   creation): v14.8.0 could be forced in endless loop after failed DNS
   lookups due to this. [3cca23b]
 
+- Fixed possible double-free (causing a crash) after failed SSL
+  certificate verification (*ssl-verify*=strict etc.) with OpenSSL
+  versions that support SSL_CONF_CTX (1.0.2+). [c691726]
+
 - Assorted changes:
 
   . The builtin HTML filter will now silently discard carriage-return
@@ -137,6 +141,7 @@ ChangeLog (purely technical)
 - Solaris port resulted in a lot of changesets for the build system.
 - I didn't use git(1) rebasing and the [crawl] branch but only [master].
   And see where that ended: S-nail would have 10000 fossil commits!
+- Plugged some memory leaks.
 
 v14.8.0 ("Albatros"), 2015-04-30
 --------------------------------
