@@ -114,7 +114,7 @@ t_behave() {
    # Test for [d1f1a19]
    ${rm} -f "${MBOX}"
    printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
-      MAILRC=/dev/null "${SNAIL}" ${ARGS} -SPAGER="${cat}" > "${MBOX}"
+      MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
    cksum_test behave:001 "${MBOX}" '4214021069 15'
 
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
@@ -965,7 +965,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
+      -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:006 "${MBOX}" '11112309 106'
 
