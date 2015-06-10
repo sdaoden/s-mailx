@@ -1245,7 +1245,7 @@ c_verify(void *vp)
 {
    int *msgvec = vp, *ip, ec = 0, rv = 1;
    _STACKOF(X509) *chain = NULL;
-   X509_STORE *store;
+   X509_STORE *store = NULL;
    char *ca_dir, *ca_file;
    NYD_ENTER;
 
@@ -1279,6 +1279,7 @@ c_verify(void *vp)
 
    if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
       goto jleave;
+
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
@@ -1287,6 +1288,8 @@ c_verify(void *vp)
    if ((rv = ec) != 0)
       exit_status |= EXIT_ERR;
 jleave:
+   if (store != NULL)
+      X509_STORE_free(store);
    NYD_LEAVE;
    return rv;
 }
