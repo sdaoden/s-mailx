@@ -628,35 +628,35 @@ FL void
 page_or_print(FILE *fp, size_t lines)
 {
    int c;
-   size_t rows;
+   char const *cp;
    NYD_ENTER;
 
    fflush_rewind(fp);
 
-   rows = 0;
-   if (IS_TTY_SESSION()) {
-      char const *cp;
+   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
+      char *eptr;
+      union {sl_i sli; size_t rows;} u;
 
-      if ((cp = ok_vlook(crt)) != NULL) {
-         char *eptr;
-         sl_i sli = strtol(cp, &eptr, 0);
-         rows = (*cp != '\0' && *eptr == '\0')
-               ? (size_t)sli : (size_t)scrnheight;
-      }
+      u.sli = strtol(cp, &eptr, 0);
+      u.rows = (*cp != '\0' && *eptr == '\0')
+            ? (size_t)u.sli : (size_t)scrnheight;
 
-      if (rows > 0 && lines == 0) {
+      if (u.rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
-            if (c == '\n' && ++lines > rows)
+            if (c == '\n' && ++lines >= u.rows)
                break;
          really_rewind(fp);
       }
+
+      if (lines >= u.rows) {
+         run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
+         goto jleave;
+      }
    }
 
-   if (lines >= rows)
-      run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
-   else
-      while ((c = getc(fp)) != EOF)
-         putchar(c);
+   while ((c = getc(fp)) != EOF)
+      putchar(c);
+jleave:
    NYD_LEAVE;
 }
 

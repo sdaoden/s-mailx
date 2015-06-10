@@ -5506,16 +5506,16 @@ The default value is
 .
 .Mx
 .It Va crt
-The valued option crt is used as a threshold to determine how long
-a message must be before
+In a(n interactive) terminal session, then if this valued option is set
+it'll be used as a threshold to determine how many lines the given
+output has to span before it will be displayed via the configured
+.Ev PAGER ;
+Usage of the
 .Ev PAGER
-is used to read it, where the value
-.Ql 0
-means to always use it.
-If
-.Va crt
-is set without a value then the height of the terminal screen stored in
-the system is used to compute the threshold (see
+can be forced by setting this to the value
+.Ql 0 ,
+setting it without a value will deduce the current height of the
+terminal screen to compute the treshold (see
 .Ev LINES
 and
 .Xr stty 1 ) .
