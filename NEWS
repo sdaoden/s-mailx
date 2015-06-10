@@ -32,6 +32,9 @@ We welcome Dagobert Michelsen in THANKS.
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+$ In all the following noticable changes to the release candidate are
+$ marked with a $ in the first column
+
 - We have been ported to Sun Solaris!
   Thanks to Dagobert Michelsen for giving me an account on OpenCSW.org!
 
@@ -125,6 +128,8 @@ ChangeLog
     the host environment. [0e01aeb,6bcb430,fc846c6]  (Bob Tennent)
   . The builtin HTML filter will now also expand entities in parameter
     names. [8d16dc0]
+$ . *crt* will now only be checked when attached to a terminal device;
+$   and no*crt* will now be honoured. [2508c32]
 
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
