@@ -1384,17 +1384,17 @@ jleave:
 FL FILE *
 smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 {
-   char *certfile = UNCONST(xcertfile);
    FILE *rv = NULL, *yp, *fp, *bp, *hp;
    X509 *cert;
    PKCS7 *pkcs7;
    BIO *bb, *yb;
    _STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
+   char *certfile;
    bool_t bail = FAL0;
    NYD_ENTER;
 
-   if ((certfile = file_expand(certfile)) == NULL)
+   if ((certfile = file_expand(xcertfile)) == NULL)
       goto jleave;
 
    _ssl_init();
@@ -1422,13 +1422,13 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
       perror("tempfile");
-      goto jleave;
+      goto jerr1;
    }
 
    rewind(ip);
    if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
       Fclose(yp);
-      goto jleave;
+      goto jerr1;
    }
 
    yb = NULL;
@@ -1436,19 +1436,20 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
          (yb = BIO_new_fp(yp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err(_("Error creating BIO encryption objects"));
       bail = TRU1;
-      goto jerr;
+      goto jerr2;
    }
    if ((pkcs7 = PKCS7_encrypt(certs, bb, cipher, 0)) == NULL) {
       ssl_gen_err(_("Error creating the PKCS#7 encryption object"));
       bail = TRU1;
-      goto jerr;
+      goto jerr2;
    }
    if (PEM_write_bio_PKCS7(yb, pkcs7) == 0) {
       ssl_gen_err(_("Error writing encrypted S/MIME data"));
       bail = TRU1;
-      /* goto jerr */
+      /* goto jerr2 */
    }
-jerr:
+
+jerr2:
    if (bb != NULL)
       BIO_free(bb);
    if (yb != NULL)
@@ -1460,6 +1461,8 @@ jerr:
       fflush_rewind(yp);
       rv = smime_encrypt_assemble(hp, yp);
    }
+jerr1:
+   sk_X509_pop_free(certs, X509_free);
 jleave:
    NYD_LEAVE;
    return rv;
