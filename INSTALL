@@ -241,11 +241,6 @@ Unless otherwise noted the following applies to saying "$ make" and
   SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
     + A lot of warnings on longjmp() clobbering.
-    + S/MIME tests fail with "OpenSSL 1.0.1j 15 Oct 2014 (Library:
-      OpenSSL 1.0.1m 19 Mar 2015)":
-        behave:s/mime:sign/verify:
-        Error creating the PKCS#7 signing object: \
-          error:21083097:lib(33):func(131):reason(151)
   SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - cc: Sun C 5.9 SunOS_sparc Patch 124867-16 2010/08/11
     + Some harmless warnings.
