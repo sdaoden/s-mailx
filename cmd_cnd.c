@@ -152,7 +152,8 @@ jesyn:
 #endif
          )
             goto jesyn;
-      }
+      } else
+         goto jesyn;
 
       /* The right hand side may also be a variable, more syntax checking */
       if ((rhv = argv[2]) == NULL /* Can't happen */)
