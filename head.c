@@ -291,20 +291,14 @@ _addrspec_check(int skinned, struct addrguts *agp)
    if (!skinned)
       goto jaddr_check;
 
-   /* Excerpt from nail.1:
-    * Recipient address specifications
-    * The rules are: Any name which starts with a `|' character specifies
-    * a pipe,  the  command  string  following  the `|' is executed and
-    * the message is sent to its standard input; any other name which
-    * contains a  `@' character  is treated as a mail address; any other
-    * name which starts with a `+' character specifies a folder name; any
-    * other name  which  contains  a  `/' character  but  no `!'  or `%'
-    * character before also specifies a folder name; what remains is
-    * treated as a mail  address */
+   /* When changing any of the following adjust any RECIPIENTADDRSPEC;
+    * grep the latter for the complete picture */
    if (*addr == '|') {
       agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
       goto jleave;
    }
+   if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/'))
+      goto jisfile;
    if (memchr(addr, '@', agp->ag_slen) == NULL) {
       if (*addr == '+')
          goto jisfile;
@@ -1407,26 +1401,26 @@ msgidcmp(char const *s1, char const *s2)
 }
 
 FL int
-is_ign(char const *field, size_t fieldlen, struct ignoretab ignoret[2])
+is_ign(char const *field, size_t fieldlen, struct ignoretab igta[2])
 {
    char *realfld;
    int rv;
    NYD_ENTER;
 
    rv = 0;
-   if (ignoret == NULL)
+   if (igta == NULL)
       goto jleave;
    rv = 1;
-   if (ignoret == allignore)
+   if (igta == allignore)
       goto jleave;
 
    /* Lowercase it so that "Status" and "status" will hash to the same place */
    realfld = ac_alloc(fieldlen +1);
    i_strcpy(realfld, field, fieldlen +1);
-   if (ignoret[1].i_count > 0)
-      rv = !member(realfld, ignoret + 1);
+   if (igta[1].i_count > 0)
+      rv = !member(realfld, igta + 1);
    else
-      rv = member(realfld, ignoret);
+      rv = member(realfld, igta);
    ac_free(realfld);
 jleave:
    NYD_LEAVE;
@@ -1436,7 +1430,7 @@ jleave:
 FL int
 member(char const *realfield, struct ignoretab *table)
 {
-   struct ignore *igp;
+   struct ignored *igp;
    int rv = 0;
    NYD_ENTER;
 

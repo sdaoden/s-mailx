@@ -661,18 +661,22 @@ collect(struct header *hp, int printheaders, struct message *mp,
       t = GTO | GSUBJECT | GCC | GNL;
       if (ok_blook(fullnames))
          t |= GCOMMA;
-      if (hp->h_subject == NULL && (options & OPT_INTERACTIVE) &&
-             (ok_blook(ask) || ok_blook(asksub)))
-         t &= ~GNL, getfields |= GSUBJECT;
-      if (hp->h_to == NULL && (options & OPT_INTERACTIVE))
-         t &= ~GNL, getfields |= GTO;
-      if (!ok_blook(bsdcompat) && !ok_blook(askatend) &&
-            (options & OPT_INTERACTIVE)) {
-         if (hp->h_bcc == NULL && ok_blook(askbcc))
-            t &= ~GNL, getfields |= GBCC;
-         if (hp->h_cc == NULL && ok_blook(askcc))
-            t &= ~GNL, getfields |= GCC;
+
+      if (options & OPT_INTERACTIVE) {
+         if (hp->h_subject == NULL && (ok_blook(ask) || ok_blook(asksub)))
+            t &= ~GNL, getfields |= GSUBJECT;
+
+         if (hp->h_to == NULL)
+            t &= ~GNL, getfields |= GTO;
+
+         if (!ok_blook(bsdcompat) && !ok_blook(askatend)) {
+            if (hp->h_bcc == NULL && ok_blook(askbcc))
+               t &= ~GNL, getfields |= GBCC;
+            if (hp->h_cc == NULL && ok_blook(askcc))
+               t &= ~GNL, getfields |= GCC;
+         }
       }
+
       if (printheaders && !ok_blook(editalong)) {
          puthead(hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
          fflush(stdout);

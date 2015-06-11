@@ -859,6 +859,24 @@ Low-Level
     B64_T and B64, ... and regarding this??
   . OPT_INTERACTIVE and ARG_I are two different kinds of
     "interactivity".  The latter should be "non-loading/sourcing".
+  . Cleanup: mime_param.c uses _ALPHA_, urlcrecry.c uses ALPHA_.  Unify
+    that across all sources / headers, full recompile test anywhere
+    thereafter.
+  . Several facilities can use table-based settings: colour-stuff
+    (auxlily.c), ccred_lookup() (maybe including availability error
+    stuff!)
+  . *smime-sign* (*asksign*) i would like to see in all XOK forms, yet
+    today the credentials are looked up after variable check, in fact
+    even conditionalized on wether signing is desired or not.
+  . Per-folder (S/MIME) en- and decryption key (Tarqi Kazan): if a xy
+    variable is set (that points to a key) add a transparent en- and
+    decryption layer on top of any per-message operation (for boxes for
+    which the variable is set).
+  . For v15.0: remember private thread with Tarqi Kazan (2015-05) and
+    try to improve situation with *record*, so that only messages enter
+    it which have really been sent.  If we support postponing and have
+    a multi-process layout and add an intermediate *record-queue* we
+    may be able to improve the situation.
 
 --
 

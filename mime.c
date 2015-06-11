@@ -276,7 +276,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
 
    wbot = in->s;
    upper = wbot + in->l;
-   col = sizeof("Content-Transfer-Encoding: ") -1; /* dreadful thing */
+   col = sizeof("Mail-Followup-To: ") -1; /* dreadful thing */
 
    for (sz = 0; wbot < upper; flags &= ~_FIRST, wbot = wend) {
       flags &= _RND_MASK;

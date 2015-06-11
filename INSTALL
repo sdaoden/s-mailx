@@ -23,6 +23,10 @@ With adjustments:
   $ make WANT_IMAP=no WANT_SMTP=require install
   $ make WANT_NCL=false PREFIX=/some/nasty/prefix install
 
+With utility program and feature adjustments:
+
+  $ awk=/usr/bin/nawk make WANT_SOCKETS=no DESTDIR=./zzz install
+
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
 
@@ -57,7 +61,7 @@ which take precedence over anything else:
 
 E.g.:
 
-  $ make CONFIG=MINIMAL DESTDIR=xtest install
+  $ make CONFIG=MINIMAL DESTDIR=./xtest install
 
 would create a `s-nail' binary and install a `s-nail' manual etc.
 under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
@@ -139,10 +143,8 @@ Thank you!
 ---------------------------------------
 
 S-nail(1) has been or is used regulary on these systems (`uname -srm').
-It is assumed that S-nail(1) should work practically everywhere.
-Unless otherwise noted the following applies to saying "$ make".
-(But on the developer branch without IMAP.  IMAP won't get any better
-until it will be readded after v15.0.)
+Unless otherwise noted the following applies to saying "$ make" and
+"$ make devel" followed by "$ make test".
 
 . All systems:
   - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
@@ -150,7 +152,7 @@ until it will be readded after v15.0.)
     number of warnings exploded (for no user benefit).
   - You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
-    I/O and MIME rewrite that comes next.  These mostly refer to debug
+    I/O and MIME rewrite that comes next.  They mostly refer to debug
     dumping, truncating a(n open) file to zero size and freopen(3)ing
     one of the standard channels.  I refrained from adding abort(3)
     calls as return value checks.
@@ -162,7 +164,7 @@ until it will be readded after v15.0.)
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
     However, `nail.h' tries hard to detect the real type size and
     defines the `PRI[du]Z' macros which end up with the correct size,
-    which is also compile-time asserted via PRIxZ_FMT_CTA() in main.c.
+    which is compile-time asserted via PRIxZ_FMT_CTA() in `main.c'.
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
@@ -171,14 +173,12 @@ until it will be readded after v15.0.)
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc (GCC) 4.9.2 20150304 (prerelease) [gcc-4.9.2-4-x86_64]
-    + I think faulty message on longjmp() clobbering of a const variable?
-  - gcc 5.1.0 [gcc 5.1.0-1 from testing]
+  - gcc 5.1.0 [gcc 5.1.0-4]
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
       help.
-  - clang version 3.6.0 (tags/RELEASE_360/final) [clang-3.6.0-4]
+  - clang version 3.6.1 (tags/RELEASE_361/final) [clang-3.6.1-1]
     + :)
 
 . Void Linux <http://www.voidlinux.eu/>
@@ -220,6 +220,56 @@ until it will be readded after v15.0.)
     (dot 3).
   - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
     2.9svn).
+
+. Solaris <http://opencsw.org/>
+  * First of all: thanks to OpenCSW.org for offering SSH access to
+    their Solaris build cluster!
+  - According to standards(5) we require the /usr/xpg4 environment, and
+    will bail if we cannot find it.
+  - I couldn't get us going on SunOS 5.9: the build system had to be
+    extended to check for UINTPTR_MAX being defined as the empty string
+    and similar very special things.
+  - With WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+    If your gcc(1) installation is doing alright you have to turn
+    WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+  - I will never get iconv(3) right for Solaris it seems.
+  - In order to be able to run the tests you will need a cksum that
+    supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
+    that cannot be found you have to adjust the $cksum variable (see
+    above) to something that works.  (A future version of S-nail will
+    use different testing, but until then: Sorry!)
+  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
+  - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
+    + A lot of warnings on longjmp() clobbering.
+  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
+  - cc: Sun C 5.9 SunOS_sparc Patch 124867-16 2010/08/11
+    + Some harmless warnings.
+    + S/MIME tests fail with "OpenSSL 1.0.1m 19 Mar 2015":
+        behave:s/mime:sign/verify:
+        Error creating the PKCS#7 signing object: \
+          error:21083097:lib(33):func(131):reason(151)
+  SunOS 5.10 Generic_147441-19 i86pc i386 i86pc
+  - cc: Sun C 5.9 SunOS_i386 Patch 124868-15 2010/08/11
+    + Some harmless warnings.
+  SunOS 5.11 11.2 sun4u sparc SUNW,SPARC-Enterprise
+  - (GCC) 4.9.2
+    + We forcefully disable stack protectors on SunOS/gcc because of
+      linking errors:
+        Undefined                       first referenced
+         symbol                             in file
+        __stack_chk_fail                    accmacvar.o
+        __stack_chk_guard                   accmacvar.o
+        ld: fatal: symbol referencing errors
+    + Quite some (false) warnings on maybe-uninitialized.
+  SunOS 5.11 11.0 i86pc i386 i86pc
+  - gcc (GCC) 4.9.2
+    + If you get the compiler / system header installation error
+        Undefined                       first referenced
+         symbol                             in file
+        __builtin_stdarg_start              auxlily.o
+      then you have to overwrite this symbol with __builtin_va_start,
+      e.g., in conjunction with WANT_AUTOCC add this:
+       ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule -- mk-mk.in

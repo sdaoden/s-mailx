@@ -37,7 +37,7 @@ config.o smtp.o: smtp_gssapi.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
-	LC_ALL=C < ./mime.types > $(@) $(AWK) '\
+	LC_ALL=C < ./mime.types > $(@) $(awk) '\
 	function add(mt, ln) {\
 		gsub(/[[:space:]]+/, " ", ln);\
 		i = split(ln, i_a);\
@@ -101,12 +101,20 @@ mime_types.h: mime.types
 
 test: all
 	@echo 'Running test, please wait';\
+	MAKE=$(MAKE) \
+	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
+
+# Corresponds to same thing in makefile!
+_version_from_header = VERSION="`< version.h $(sed) \
+		-e '/ VERSION /b X' -e d -e ':X' \
+		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
 mkman.1: nail.1 mk.mk
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.1 > $(@) $(AWK) '\
+		$(_version_from_header) \
+	< ./nail.1 > $(@) $(awk) '\
 	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
 		if (written++ != 0)\
@@ -118,7 +126,10 @@ mkman.1: nail.1 mk.mk
 		print ".ds UU \\\\%", un;\
 		print ".ds UA \\\\%", cn;\
 		print ".ds ua \\\\%", ln;\
-		print ".ds UR \\\\%", ENVIRON["_SYSCONFRC"];\
+		print ".ds VV \\\\%v", ENVIRON["VERSION"];\
+		path = ENVIRON["_SYSCONFRC"];\
+		gsub("/", "/\\:", path);\
+		print ".ds UR \\\\%", path;\
 		OFS = " ";\
 		next\
 	}\
@@ -129,7 +140,8 @@ mkrc.rc: nail.rc mk.mk
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
-	< ./nail.rc > $(@) $(AWK) 'BEGIN {written = 0}\
+		$(_version_from_header) \
+	< ./nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -137,8 +149,9 @@ mkrc.rc: nail.rc mk.mk
 		OFS = "";\
 		ln = tolower(ENVIRON["_UAGENT"]);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print "# ", ENVIRON["_SYSCONFRC"], \
-			" - configuration file for ", cn, "(1)";\
+		print "#@ ", ENVIRON["_SYSCONFRC"];\
+		print "#@ Configuration file for ", cn, "(1) v",\
+			ENVIRON["VERSION"];\
 		OFS = " ";\
 		next\
 	}\
@@ -150,21 +163,21 @@ _install_echoes:
 install: _install_echoes mk.mk mkman.1 mkrc.rc
 	@__mkdir() {\
 		_dir=$${1};\
-		if [ ! -d "$${_dir}" ]; then \
+		if [ -d "$${_dir}" ]; then :; else\
 			if [ -n "$(VERBOSE)" ]; then \
-				echo "  \$$ $(MKDIR) -m 0755 -p '$${_dir}'";\
+				echo "  \$$ $(mkdir) -m 0755 -p '$${_dir}'";\
 			fi;\
-			$(MKDIR) -m 0755 -p "$${_dir}";\
+			$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _dst=$${3};\
 		if [ -n "$(VERBOSE)" ]; then \
-			echo "  \$$ $(CP) -f '$${_src}' '$${_dst}'";\
-			echo "  \$$ $(CHMOD) $${_mode} '$${_dst}'";\
+			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		fi;\
-		$(CP) -f "$${_src}" "$${_dst}";\
-		$(CHMOD) $${_mode} "$${_dst}";\
+		$(cp) -f "$${_src}" "$${_dst}";\
+		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__stripfile() {\
 		_file=$${1};\
@@ -176,7 +189,7 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 			if [ -n "$(VERBOSE)" ]; then \
 				echo "  \$$ $(STRIP) '$${_file}'";\
 			fi;\
-			$(STRIP) "$${_file}";\
+			$(strip) "$${_file}";\
 		fi;\
 	};\
 	if [ -n "$(DESTDIR)" ]; then __mkdir "$(DESTDIR)"; fi;\
@@ -186,16 +199,16 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
-	if [ ! -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
+	if [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then :; else\
 		__copyfile 0444 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
 	fi
 
 uninstall:
 	@echo 'Uninstalling..';\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+		echo '  $$ $(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
-	$(RM) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
+	$(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"';\
@@ -204,24 +217,25 @@ uninstall:
 clean:
 	@echo 'Cleaning up..';\
 	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
+		echo '  $$ $(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
 			./mkrc.rc';\
-	$(RM) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
+	$(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
 
 distclean: clean
 	@echo 'Deconfiguring..';\
-	[ -n "$(VERBOSE)" ] && echo '  $$ $(RM) -f ./config.* ./*.mk';\
-	$(RM) -f ./config.* ./*.mk
+	[ -n "$(VERBOSE)" ] && echo '  $$ $(rm) -f ./config.* ./*.mk';\
+	$(rm) -f ./config.* ./*.mk
 
-# MUST work with "GREP=grep SED=sed CMP=cmp MV=mv", otherwise modify makefile
+# MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise modify makefile
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
-			VERSION="$${VERSION##v}";\
+			VERSION="`echo $${VERSION} |\
+				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
 			[ "`git status --porcelain |\
-				awk '\
+				$(awk) '\
 					BEGIN {n=0}\
 					/version\.h/ {next}\
 					/^\?\?/ {next}\
@@ -230,28 +244,26 @@ _update-version:
 				'`" -ne 0 ] &&\
 				VERSION="$${VERSION}-dirty";\
 		else \
-			VERSION="`< version.h $(SED) \
-				-e '/ VERSION /b X' -e d -e ':X' \
-				-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`";\
-			echo "$${VERSION}" | $(GREP) -q -F dirty ||\
+			$(_version_from_header);\
+			echo "$${VERSION}" | $(grep) -q -F dirty ||\
 				VERSION="$${VERSION}-dirty";\
 		fi;\
 	fi;\
 	vmaj="`echo \"$${VERSION}\" |\
-		$(SED) -e 's/^\([^.]\{1,\}\).*/\1/'`";\
+		$(sed) -e 's/^\([^.]\{1,\}\).*/\1/'`";\
 	vmin="`echo \"$${VERSION}\" |\
-		$(SED) -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/'`";\
+		$(sed) -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/'`";\
 	[ "$${vmin}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vmin=0;\
 	vupd="`echo \"$${VERSION}\" |\
-		$(SED) -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
+		$(sed) -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
 	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
-	trap "$(RM) ./version.tmp" 0 1 2 15;\
+	trap "$(rm) ./version.tmp" 0 1 2 15;\
 	printf > ./version.tmp "#define VERSION \"v$${VERSION}\"\n";\
 	printf >> ./version.tmp "#define VERSION_MAJOR \"$${vmaj}\"\n";\
 	printf >> ./version.tmp "#define VERSION_MINOR \"$${vmin}\"\n";\
 	printf >> ./version.tmp "#define VERSION_UPDATE \"$${vupd}\"\n";\
-	$(CMP) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	$(MV) ./version.tmp ./version.h;\
-	trap - 0 1 2 15
+	$(cmp) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
+	$(mv) ./version.tmp ./version.h;\
+	trap : 0 1 2 15
 
 # s-mk-mode

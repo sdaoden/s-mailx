@@ -620,8 +620,7 @@ mime_type_file_classify(FILE *fp, char const **contenttype,
       _CTRLCHAR   = 1<<5,  /* Control characters seen */
       _HASNUL     = 1<<6,  /* Contains \0 characters */
       _NOTERMNL   = 1<<7,  /* Lacks a final newline */
-      _TRAILWS    = 1<<8,  /* Blanks before NL */
-      _FROM_      = 1<<9   /* ^From_ seen */
+      _FROM_      = 1<<8   /* ^From_ seen */
    } ctt = _CLEAN;
    enum mime_enc menc;
    ssize_t curlen;
@@ -658,8 +657,6 @@ mime_type_file_classify(FILE *fp, char const **contenttype,
             ctt |= _LONGLINES;
          if (c == EOF)
             break;
-         if (blankchar(lastc))
-            ctt |= _TRAILWS;
          f_p = f_buf;
          curlen = -1;
          continue;
@@ -721,7 +718,7 @@ mime_type_file_classify(FILE *fp, char const **contenttype,
       goto jleave;
    }
 
-   if (ctt & (_LONGLINES | _CTRLCHAR | _NOTERMNL | _TRAILWS | _FROM_)) {
+   if (ctt & (_LONGLINES | _CTRLCHAR | _NOTERMNL | _FROM_)) {
       if (menc != MIMEE_B64)
          menc = MIMEE_QP;
       goto jstepi;

@@ -1189,7 +1189,7 @@ jcantfout:
             goto jcant;
          }
 
-         if ((fout = Zopen(fname, "a", NULL)) == NULL) {
+         if ((fout = Zopen(fname, "a")) == NULL) {
             fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
                fname, strerror(errno));
             *senderror = TRU1;
@@ -1292,8 +1292,8 @@ __savemail(char const *name, FILE *fp)
 
    buf = smalloc(bufsize = LINESIZE);
 
-   if ((fo = Zopen(name, "a+", NULL)) == NULL) {
-      if ((fo = Zopen(name, "wx", NULL)) == NULL) {
+   if ((fo = Zopen(name, "a+")) == NULL) {
+      if ((fo = Zopen(name, "wx")) == NULL) {
          perror(name);
          goto jleave;
       }
@@ -1591,7 +1591,7 @@ __prepare_mta_args(struct name *to, struct header *hp)
 static char *
 _message_id(struct header *hp)
 {
-   char *rv = NULL;
+   char *rv = NULL, sep;
    char const *h;
    size_t rl, i;
    struct tm *tmp;
@@ -1600,17 +1600,22 @@ _message_id(struct header *hp)
    if (ok_blook(message_id_disable))
       goto jleave;
 
+   sep = '%';
+   rl = 9;
    if ((h = __sendout_ident) != NULL)
-      rl = 8;
-   else if (ok_vlook(hostname) != NULL) {
+      goto jgen;
+   if (ok_vlook(hostname) != NULL) {
       h = nodename(1);
-      rl = 16;
-   } else if ((h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
-      rl = 8;
-   else
-      /* Up to MTA */
-      goto jleave;
+      sep = '@';
+      rl = 15;
+      goto jgen;
+   }
+   if (hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+      goto jgen;
+   /* Up to MTA */
+   goto jleave;
 
+jgen:
    tmp = &time_current.tc_gm;
    i = sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>") -1 +
          rl + strlen(h);
@@ -1618,10 +1623,9 @@ _message_id(struct header *hp)
    snprintf(rv, i, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      getrandstring(rl), (rl == 8 ? '%' : '@'), h);
+      getrandstring(rl), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
-   __sendout_ident = NULL;
    NYD_LEAVE;
    return rv;
 }
@@ -1830,12 +1834,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    struct sendbundle sb;
    struct name *to;
    FILE *mtf, *nmtf;
-   int dosign = -1, err;
    char const *cp;
+   bool_t dosign;
    enum okay rv = STOP;
    NYD_ENTER;
 
    _sendout_error = FAL0;
+   __sendout_ident = NULL;
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -1853,20 +1858,25 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    if (mtf == NULL)
       goto j_leave;
 
+   dosign = TRUM1;
+
    if (options & OPT_INTERACTIVE) {
-      err = (ok_blook(bsdcompat) || ok_blook(askatend));
-      if (err == 0)
-         goto jaskeot;
-      if (ok_blook(askcc))
-         ++err, grab_headers(hp, GCC, 1);
-      if (ok_blook(askbcc))
-         ++err, grab_headers(hp, GBCC, 1);
-      if (ok_blook(askattach))
-         ++err, edit_attachments(&hp->h_attach);
+      bool_t eot = TRU1;
+
+      if ((eot = (ok_blook(bsdcompat) || ok_blook(askatend)))) {
+         if (hp->h_cc == NULL && ok_blook(askcc))
+            eot = FAL0, grab_headers(hp, GCC, 1);
+         if (hp->h_bcc == NULL && ok_blook(askbcc))
+            eot = FAL0, grab_headers(hp, GBCC, 1);
+      }
+
+      if (hp->h_attach == NULL && ok_blook(askattach))
+         eot = FAL0, edit_attachments(&hp->h_attach);
+
       if (ok_blook(asksign))
-         ++err, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
-      if (err == 1) {
-jaskeot:
+         eot = FAL0, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
+
+      if (eot) {
          printf(_("EOT\n"));
          fflush(stdout);
       }
@@ -1881,7 +1891,7 @@ jaskeot:
          printf(_("Null message body; hope that's ok\n"));
    }
 
-   if (dosign < 0)
+   if (dosign == TRUM1)
       dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
    if (dosign) {
@@ -1939,6 +1949,8 @@ jaskeot:
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
    for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
+      int err;
+
       if (!charset_iter_is_valid())
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
@@ -1949,11 +1961,7 @@ jaskeot:
       }
 
       perror(_("Failed to create encoded message"));
-jfail_dead:
-      _sendout_error = TRU1;
-      savedeadletter(mtf, TRU1);
-      fputs(_("... message not sent.\n"), stderr);
-      goto jleave;
+      goto jfail_dead;
    }
    mtf = nmtf;
 
@@ -1998,6 +2006,12 @@ j_leave:
       exit_status |= EXIT_SEND_ERROR;
    NYD_LEAVE;
    return rv;
+
+jfail_dead:
+   _sendout_error = TRU1;
+   savedeadletter(mtf, TRU1);
+   fputs(_("... message not sent.\n"), stderr);
+   goto jleave;
 }
 
 FL int
@@ -2048,6 +2062,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    NYD_ENTER;
 
    _sendout_error = FAL0;
+   __sendout_ident = NULL;
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -2106,7 +2121,7 @@ jerr_o:
       savedeadletter(nfi, FAL0);
 
    if (count(to = elide(to)) != 0) {
-      if (!ok_blook(record_resent) || mightrecord(nfi, to)) {
+      if (!ok_blook(record_resent) || mightrecord(nfi, NULL)) {
          sb.sb_to = to;
          /*sb.sb_input = nfi;*/
          if (_transfer(&sb))

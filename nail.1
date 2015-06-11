@@ -35,9 +35,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"--MKREL-START--
-.\" S-nail(1): v14.8.0 / 2015-04-30
-.Dd Apr 30, 2015
-.ds VV \\%v14.8.0
+.\" S-nail(1): v14.8.1 / 2015-06-11
+.Dd Jun 11, 2015
+.ds VV \\%v14.8.1
 .\"--MKREL-END--
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
@@ -53,6 +53,8 @@
 .ds OP [Option]
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
+.ds ID [v15 behaviour may differ]
+.ds RO (Read-only)
 .ds EX (EXPERIMENTAL)
 .
 .Dt "\*(UU" 1
@@ -71,7 +73,7 @@
 .Nm \*(ua
 .Fl h | -help
 .Nm \*(ua
-.Bk
+.Bk -words
 .Op Fl BDdEFintv~
 .Op Fl A Ar account
 .Op Fl a Ar attachment
@@ -87,7 +89,7 @@
 .Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
-.Bk
+.Bk -words
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
@@ -98,7 +100,7 @@
 .Op Fl - Ar mta-option ...
 .Ek
 .Nm \*(ua
-.Bk
+.Bk -words
 .Op Fl BDdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
@@ -148,7 +150,7 @@ and
 .Fl v
 are implemented by means of setting the respective option, as via
 .Fl S .
-.Bk
+.Bk -words
 .Op Ar mta-option ...
 .Ek
 arguments that are given at the end of the command line after a
@@ -582,7 +584,7 @@ and the
 .Va dot
 option will allow leaving compose mode by writing a line consisting
 solely of a dot
-.Pf ( Ql . ) .
+.Pf ( Ql \&. ) .
 .
 .Pp
 Very important, though, is to define which
@@ -624,6 +626,8 @@ is not set then only network addresses (see
 .Xr mailaddr 7
 for a description of mail addresses) and aliases may be used, though.
 .
+.\" When changing any of the following adjust any RECIPIENTADDRSPEC;
+.\" grep the latter for the complete picture
 .Pp
 If the variable
 .Va expandaddr
@@ -633,6 +637,11 @@ Any name which starts with a vertical bar
 character specifies a pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
+Likewise, any name that starts with the character
+.Ql /
+(slash) or the character sequence
+.Ql ./
+(dot slash) is treated as a file, regardless of the remaining content.
 Any other name which contains an at sign
 .Ql @
 character is treated as a network address;
@@ -2546,6 +2555,14 @@ facility, sufficient support provided.
 Likewise, if the named file doesn't exist, but a file with one of the
 mentioned compression extensions does, then the name is automatically
 expanded and the compressed file is used.
+.Pp
+Otherwise, if the name ends with an extension for which
+.Va file-hook-load-EXTENSION
+and
+.Va file-hook-save-EXTENSION
+variables are set, then the given hooks will be used to load and save
+.Dq name ,
+and \*(UA will work with an intermediate temporary file.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
@@ -4435,27 +4452,28 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-If set, \*(UA asks for files to attach at the end of each message.
+If set, \*(UA asks for files to attach at the end of each message, shall
+the list be found empty at that time.
 An empty line finalizes the list.
 .
 .Mx
 .It Va askcc
-Causes the user to be prompted for additional carbon copy recipients
+Causes the user to be prompted for carbon copy recipients
 (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
-are set).
+are set) shall the list be found empty (at that time).
 An empty line finalizes the list.
 .
 .Mx
 .It Va askbcc
-Causes the user to be prompted for additional blind carbon copy
+Causes the user to be prompted for blind carbon copy
 recipients (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
-are set).
+are set) shall the list be found empty (at that time).
 An empty line finalizes the list.
 .
 .Mx
@@ -5488,16 +5506,16 @@ The default value is
 .
 .Mx
 .It Va crt
-The valued option crt is used as a threshold to determine how long
-a message must be before
+In a(n interactive) terminal session, then if this valued option is set
+it'll be used as a threshold to determine how many lines the given
+output has to span before it will be displayed via the configured
+.Ev PAGER ;
+Usage of the
 .Ev PAGER
-is used to read it, where the value
-.Ql 0
-means to always use it.
-If
-.Va crt
-is set without a value then the height of the terminal screen stored in
-the system is used to compute the threshold (see
+can be forced by setting this to the value
+.Ql 0 ,
+setting it without a value will deduce the current height of the
+terminal screen to compute the treshold (see
 .Ev LINES
 and
 .Xr stty 1 ) .
@@ -5611,9 +5629,28 @@ or
 .
 .Mx
 .It Va features
-Information on the features compiled into \*(UA \(en the content of
-this variable is identical to the output of the command
+\*(RO Information on the features compiled into \*(UA \(en the content
+of this variable is identical to the output of the command
 .Ic features .
+.
+.Mx
+.Mx
+.It Va file-hook-load-EXTENSION , file-hook-save-EXTENSION
+It is possible to install file hooks which will be used by the
+.Ic file
+command in order to be able to transparently handle (through an
+intermediate temporary file) files with specific
+.Ql EXTENSION Ns
+s: the variable values can include shell snippets and are expected to
+write data to standard output / read data from standard input,
+respectively.
+\*(ID The variables may not be changed while there is a mailbox
+attendant.
+.Bd -literal -offset indent
+set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
+    file-hook-save-xy='echo >&2 XY-SAVE; gzip -c' \e
+    record=+null-sent.xy
+.Ed
 .
 .Mx
 .It Va folder
@@ -5896,8 +5933,8 @@ existent or can be created by \*(UA.
 All contents of the cache can be deleted by \*(UA at any time;
 it is not safe to make assumptions about them.
 .
-.Mx
-.It Va imap-keepalive
+.Mx Va imap-keepalive
+.It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive
 \*(OP IMAP servers may close the connection after a period of
 inactivity; the standard requires this to be at least 30 minutes,
 but practical experience may vary.
@@ -6224,8 +6261,8 @@ names a file extension, e.g.,
 .Ql xhtml .
 Handlers registered using this method take precedence.
 .
-.Mx
-.It Va pop3-keepalive
+.Mx Va pop3-keepalive
+.It Va pop3-keepalive-USER@HOST , pop3-keepalive-HOST , pop3-keepalive
 \*(OP POP3 servers close the connection after a period of inactivity;
 the standard requires this to be at least 10 minutes,
 but practical experience may vary.
@@ -7181,7 +7218,7 @@ This variable defaults to the value of
 .Mx
 .Mx
 .It Va version , version-major , version-minor , version-update
-\*(UA version information: the first variable contains a string
+\*(RO \*(UA version information: the first variable contains a string
 containing the complete version identification \(en this is identical to
 the output of the command
 .Ic version .
@@ -7641,6 +7678,10 @@ set ssl-verify=strict
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
+
+# A very kind option: when replying to a message, first try to
+# use the same encoding that the original poster used herself!
+set reply-in-same-charset
 
 # When sending messages, wait until the Mail-Transfer-Agent finishs.
 # Only like this you'll be able to see errors reported through the

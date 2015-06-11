@@ -46,7 +46,7 @@
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int     save1(char *str, int domark, char const *cmd,
-                  struct ignoretab *ignore, int convert, int sender_record,
+                  struct ignoretab *ignoret, int convert, int sender_record,
                   int domove);
 
 /* Snarf the file from the end of the command line and return a pointer to it.
@@ -78,7 +78,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 {
    ui64_t mstats[1], tstats[2];
    struct stat st;
-   int newfile = 0, compressed = 0, last = 0, *msgvec, *ip;
+   int newfile = 0, last = 0, *msgvec, *ip;
    struct message *mp;
    char *file = NULL, *cp, *cq;
    char const *disp = "";
@@ -133,7 +133,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       goto jleave;
    prot = which_protocol(file);
    if (prot != PROTO_IMAP) {
-      if (access(file, 0) >= 0) {
+      if (access(file, F_OK) >= 0) {
          newfile = 0;
          disp = _("[Appended]");
       } else {
@@ -142,20 +142,14 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       }
    }
 
-   obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+")
-         : Zopen(file, "a+", &compressed));
+   obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
    if (obuf == NULL) {
-      obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx")
-            : Zopen(file, "wx", &compressed));
+      obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx") : Zopen(file, "wx"));
       if (obuf == NULL) {
          perror(file);
          goto jleave;
       }
    } else {
-      if (compressed) {
-         newfile = 0;
-         disp = _("[Appended]");
-      }
       if (!newfile && fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
             fseek(obuf, -2L, SEEK_END) == 0) {
          char buf[2];
@@ -333,7 +327,7 @@ static int
 ignore1(char **list, struct ignoretab *tab, char const *which)
 {
    int h;
-   struct ignore *igp;
+   struct ignored *igp;
    char **ap;
    NYD_ENTER;
 
@@ -373,7 +367,7 @@ static int
 igshow(struct ignoretab *tab, char const *which)
 {
    int h;
-   struct ignore *igp;
+   struct ignored *igp;
    char **ap, **ring;
    NYD_ENTER;
 
@@ -432,7 +426,7 @@ static void
 __unign_all(struct ignoretab *tab)
 {
    size_t i;
-   struct ignore *n, *x;
+   struct ignored *n, *x;
    NYD_ENTER;
 
    for (i = 0; i < NELEM(tab->i_head); ++i)
@@ -448,7 +442,7 @@ __unign_all(struct ignoretab *tab)
 static void
 __unign_one(struct ignoretab *tab, char const *name)
 {
-   struct ignore *ip, *iq;
+   struct ignored *ip, *iq;
    int h;
    NYD_ENTER;
 

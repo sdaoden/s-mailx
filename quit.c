@@ -190,7 +190,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
          perror(_("tmpfile"));
          goto jleave;
       }
-      if ((ibuf = Zopen(mailname, "r", &mb.mb_compressed)) == NULL) {
+      if ((ibuf = Zopen(mailname, "r")) == NULL) {
          perror(mailname);
          Fclose(obuf);
          goto jleave;
@@ -205,7 +205,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    printf(_("\"%s\" "), displayname);
    fflush(stdout);
-   if ((obuf = Zopen(mailname, "r+", &mb.mb_compressed)) == NULL) {
+   if ((obuf = Zopen(mailname, "r+")) == NULL) {
       perror(mailname);
       goto jleave;
    }
@@ -334,7 +334,7 @@ quit(void)
     * Delete all untouched messages to keep them out of mbox.
     * If all the messages are to be preserved, just exit with
     * a message */
-   fbuf = Zopen(mailname, "r+", &mb.mb_compressed);
+   fbuf = Zopen(mailname, "r+");
    if (fbuf == NULL) {
       if (errno == ENOENT)
          goto jleave;
@@ -485,7 +485,7 @@ makembox(void) /* TODO oh my god */
          goto jleave;
       }
 
-      if ((abuf = Zopen(mbox, "r", NULL)) != NULL) {
+      if ((abuf = Zopen(mbox, "r")) != NULL) {
          while ((c = getc(abuf)) != EOF)
             putc(c, obuf);
          Fclose(abuf);
@@ -500,13 +500,13 @@ makembox(void) /* TODO oh my god */
 
       if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) != -1)
          close(c);
-      if ((obuf = Zopen(mbox, "r+", NULL)) == NULL) {
+      if ((obuf = Zopen(mbox, "r+")) == NULL) {
          perror(mbox);
          Fclose(ibuf);
          goto jleave;
       }
    } else {
-      if ((obuf = Zopen(mbox, "a", NULL)) == NULL) {
+      if ((obuf = Zopen(mbox, "a")) == NULL) {
          perror(mbox);
          goto jleave;
       }

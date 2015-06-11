@@ -47,11 +47,6 @@ EMPTY_FILE()
 #ifdef HAVE_OPENSSL
 #include <sys/socket.h>
 
-#include <dirent.h>
-#include <netdb.h>
-
-#include <netinet/in.h>
-
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -61,12 +56,12 @@ EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef HAVE_ARPA_INET_H
-# include <arpa/inet.h>
-#endif
-
 #ifdef HAVE_OPENSSL_CONFIG
 # include <openssl/conf.h>
+#endif
+
+#if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
+# include <dirent.h>
 #endif
 
 /*
@@ -100,6 +95,12 @@ EMPTY_FILE()
    (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
    SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2)
 # endif
+#endif
+
+#if HAVE_OPENSSL < 10100
+# define _SSL_CLIENT_METHOD() SSLv23_client_method()
+#else
+# define _SSL_CLIENT_METHOD() TLS_client_method()
 #endif
 
 #ifdef HAVE_OPENSSL_STACK_OF
@@ -209,7 +210,7 @@ static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static void *     _ssl_conf_setup(SSL_CTX *ctxp);
 static bool_t     _ssl_conf(void *confp, enum ssl_conf_type sct,
                      char const *value);
-static bool_t     _ssl_conf_finish(void *confp, bool_t error);
+static bool_t     _ssl_conf_finish(void **confp, bool_t error);
 
 static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
 
@@ -381,26 +382,27 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    fprintf(stderr, _(" Certificate depth %d %s\n"),
       X509_STORE_CTX_get_error_depth(store), (success ? "" : _("ERROR")));
 
-   cert = X509_STORE_CTX_get_current_cert(store);
+   if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
+      X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
+      fprintf(stderr, _("  subject = %s\n"), data);
 
-   X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
-   fprintf(stderr, _("  subject = %s\n"), data);
+      _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
+      fprintf(stderr, _("  notBefore = %s\n"), data);
 
-   _ssl_parse_asn1_time(X509_get_notBefore(cert), data, sizeof data);
-   fprintf(stderr, _("  notBefore = %s\n"), data);
+      _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
+      fprintf(stderr, _("  notAfter = %s\n"), data);
 
-   _ssl_parse_asn1_time(X509_get_notAfter(cert), data, sizeof data);
-   fprintf(stderr, _("  notAfter = %s\n"), data);
+      X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
+      fprintf(stderr, _("  issuer = %s\n"), data);
+   }
 
    if (!success) {
       int err = X509_STORE_CTX_get_error(store);
+
       fprintf(stderr, _("  err %i: %s\n"),
          err, X509_verify_cert_error_string(err));
       _ssl_state |= SS_VERIFY_ERROR;
    }
-
-   X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
-   fprintf(stderr, _("  issuer = %s\n"), data);
 
    if (!success && ssl_verify_decide() != OKAY)
       rv = FAL0;
@@ -478,17 +480,18 @@ _ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
 }
 
 static bool_t
-_ssl_conf_finish(void *confp, bool_t error)
+_ssl_conf_finish(void **confp, bool_t error)
 {
-   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
+   SSL_CONF_CTX **sccp = (SSL_CONF_CTX**)confp;
    bool_t rv;
    NYD_ENTER;
 
    if (!(rv = error))
-      rv = (SSL_CONF_CTX_finish(sccp) != 0);
+      rv = (SSL_CONF_CTX_finish(*sccp) != 0);
 
-   SSL_CONF_CTX_free(sccp);
+   SSL_CONF_CTX_free(*sccp);
 
+   *sccp = NULL;
    NYD_LEAVE;
    return rv;
 }
@@ -577,7 +580,7 @@ jleave:
 }
 
 static bool_t
-_ssl_conf_finish(void *confp, bool_t error)
+_ssl_conf_finish(void **confp, bool_t error)
 {
    UNUSED(confp);
    UNUSED(error);
@@ -1104,7 +1107,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    ssl_set_verify_level(urlp);
 
-   if ((ctxp = SSL_CTX_new(SSLv23_client_method())) == NULL) {
+   if ((ctxp = SSL_CTX_new(_SSL_CLIENT_METHOD())) == NULL) {
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
@@ -1115,7 +1118,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 #endif
 
    if ((confp = _ssl_conf_setup(ctxp)) == NULL)
-      goto jerr1;
+      goto jerr0;
 
    /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
    if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
@@ -1181,12 +1184,12 @@ ssl_open(struct url const *urlp, struct sock *sp)
       goto jerr1;
 
    /* Done with context setup, create our new per-connection structure */
-   if (!_ssl_conf_finish(confp, FAL0))
-      goto jerr1;
+   if (!_ssl_conf_finish(&confp, FAL0))
+      goto jerr0;
 
    if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
       ssl_gen_err(_("SSL_new() failed"));
-      goto jerr1;
+      goto jerr0;
    }
 
    SSL_set_fd(sp->s_ssl, sp->s_fd);
@@ -1218,7 +1221,8 @@ jerr2:
    sp->s_ssl = NULL;
 jerr1:
    if (confp != NULL)
-      _ssl_conf_finish(confp, TRU1);
+      _ssl_conf_finish(&confp, TRU1);
+jerr0:
    SSL_CTX_free(ctxp);
    goto jleave;
 }
@@ -1242,7 +1246,7 @@ c_verify(void *vp)
 {
    int *msgvec = vp, *ip, ec = 0, rv = 1;
    _STACKOF(X509) *chain = NULL;
-   X509_STORE *store;
+   X509_STORE *store = NULL;
    char *ca_dir, *ca_file;
    NYD_ENTER;
 
@@ -1276,6 +1280,7 @@ c_verify(void *vp)
 
    if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
       goto jleave;
+
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
@@ -1284,6 +1289,8 @@ c_verify(void *vp)
    if ((rv = ec) != 0)
       exit_status |= EXIT_ERR;
 jleave:
+   if (store != NULL)
+      X509_STORE_free(store);
    NYD_LEAVE;
    return rv;
 }
@@ -1383,17 +1390,17 @@ jleave:
 FL FILE *
 smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 {
-   char *certfile = UNCONST(xcertfile);
    FILE *rv = NULL, *yp, *fp, *bp, *hp;
    X509 *cert;
    PKCS7 *pkcs7;
    BIO *bb, *yb;
    _STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
+   char *certfile;
    bool_t bail = FAL0;
    NYD_ENTER;
 
-   if ((certfile = file_expand(certfile)) == NULL)
+   if ((certfile = file_expand(xcertfile)) == NULL)
       goto jleave;
 
    _ssl_init();
@@ -1421,13 +1428,13 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
       perror("tempfile");
-      goto jleave;
+      goto jerr1;
    }
 
    rewind(ip);
    if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
       Fclose(yp);
-      goto jleave;
+      goto jerr1;
    }
 
    yb = NULL;
@@ -1435,19 +1442,20 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
          (yb = BIO_new_fp(yp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err(_("Error creating BIO encryption objects"));
       bail = TRU1;
-      goto jerr;
+      goto jerr2;
    }
    if ((pkcs7 = PKCS7_encrypt(certs, bb, cipher, 0)) == NULL) {
       ssl_gen_err(_("Error creating the PKCS#7 encryption object"));
       bail = TRU1;
-      goto jerr;
+      goto jerr2;
    }
    if (PEM_write_bio_PKCS7(yb, pkcs7) == 0) {
       ssl_gen_err(_("Error writing encrypted S/MIME data"));
       bail = TRU1;
-      /* goto jerr */
+      /* goto jerr2 */
    }
-jerr:
+
+jerr2:
    if (bb != NULL)
       BIO_free(bb);
    if (yb != NULL)
@@ -1459,6 +1467,8 @@ jerr:
       fflush_rewind(yp);
       rv = smime_encrypt_assemble(hp, yp);
    }
+jerr1:
+   sk_X509_pop_free(certs, X509_free);
 jleave:
    NYD_LEAVE;
    return rv;

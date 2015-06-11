@@ -1419,6 +1419,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 # ifdef HAVE_GETADDRINFO
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0, *res;
+   int volatile errval = 0 /* pacify CC */;
 # else
    struct sockaddr_in servaddr;
    struct in_addr **pptr;
@@ -1443,12 +1444,10 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (options & OPT_VERB)
-      fprintf(stderr, _("Resolving host %s:%s ..."),
+      fprintf(stderr, _("Resolving host \"%s:%s\" ... "),
          urlp->url_host.s, serv);
 
 # ifdef HAVE_GETADDRINFO
-   memset(&hints, 0, sizeof hints);
-   hints.ai_socktype = SOCK_STREAM;
    res0 = NULL;
 
    hold_sigs();
@@ -1461,23 +1460,50 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       if (sofd >= 0) {
          close(sofd);
          sofd = -1;
-         goto jjumped;
       }
+      goto jjumped;
    }
    rele_sigs();
 
-   if (getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) {
-      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
-      goto jleave;
-   } else if (options & OPT_VERB)
-      fprintf(stderr, _(" done.\n"));
+   for (;;) {
+      memset(&hints, 0, sizeof hints);
+      hints.ai_socktype = SOCK_STREAM;
+      if ((errval = getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) == 0)
+         break;
+
+      if (options & OPT_VERB)
+         fprintf(stderr, _("failed\n"));
+      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+         urlp->url_host.s, serv, gai_strerror(errval));
+
+      /* Error seems to depend on how "smart" the /etc/service code is: is it
+       * "able" to state wether the service as such is NONAME or does it only
+       * check for the given ai_socktype.. */
+      if (errval == EAI_NONAME || errval == EAI_SERVICE) {
+         if (serv == urlp->url_proto &&
+               (serv = url_servbyname(urlp, NULL)) != NULL) {
+            fprintf(stderr, _("  Trying standard protocol port \"%s\".\n"
+               "  If that succeeds consider including the port in the URL!\n"),
+               serv);
+            continue;
+         }
+         if (serv != urlp->url_port)
+            fprintf(stderr, _("  Including a port number in the URL may "
+               "circumvent this problem\n"));
+      }
+      assert(sofd == -1);
+      errval = 0;
+      goto jjumped;
+   }
+   if (options & OPT_VERB)
+      fprintf(stderr, _("done.\n"));
 
    for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
       if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
-         fprintf(stderr, _("%sConnecting to %s:%s ..."),
+         fprintf(stderr, _("%sConnecting to \"%s:%s\" ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
 
@@ -1487,6 +1513,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
          (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
          if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
+            errval = errno;
             close(sofd);
             sofd = -1;
          }
@@ -1494,8 +1521,10 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    }
 
 jjumped:
-   if (res0 != NULL)
+   if (res0 != NULL) {
       freeaddrinfo(res0);
+      res0 = NULL;
+   }
 
    hold_sigs();
    safe_signal(SIGINT, oint);
@@ -1503,25 +1532,51 @@ jjumped:
    rele_sigs();
 
    if (sofd < 0) {
-      perror(_(" could not connect"));
+      if (errval != 0) {
+         errno = errval;
+         perror(_("Could not connect"));
+      }
       goto jleave;
    }
 
 # else /* HAVE_GETADDRINFO */
-   if (urlp->url_port == NULL && urlp->url_portno == 0) {
-      if ((ep = getservbyname(UNCONST(urlp->url_proto), "tcp")) != NULL)
+   if (serv == urlp->url_proto) {
+      if ((ep = getservbyname(UNCONST(serv), "tcp")) != NULL)
          urlp->url_portno = ep->s_port;
       else {
-         fprintf(stderr, _("Unknown service: %s\n"), urlp->url_proto);
-         goto jleave;
+         if (options & OPT_VERB)
+            fprintf(stderr, _("failed\n"));
+         if ((serv = url_servbyname(urlp, &urlp->url_portno)) != NULL)
+            fprintf(stderr, _("  Unknown service: \"%s\".\n"
+               "  Trying standard protocol port \"%s\".\n"
+               "  If that succeeds consider including the port in the URL!\n"),
+               urlp->url_proto, serv);
+         else {
+            fprintf(stderr, _("  Unknown service: \"%s\".\n"
+               "  Including a port in the URL may circumvent this problem\n"),
+               urlp->url_proto);
+            goto jleave;
+         }
       }
    }
 
    if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
-      fprintf(stderr, _(" lookup of \"%s\" failed.\n"), urlp->url_host.s);
+      char const *emsg;
+
+      if (options & OPT_VERB)
+         fprintf(stderr, _("failed\n"));
+      switch (h_errno) {
+      case HOST_NOT_FOUND: emsg = N_("host not found"); break;
+      default:
+      case TRY_AGAIN:      emsg = N_("(maybe) try again later"); break;
+      case NO_RECOVERY:    emsg = N_("non-recoverable server error"); break;
+      case NO_DATA:        emsg = N_("valid name without IP address"); break;
+      }
+      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+         urlp->url_host.s, serv, V_(emsg));
       goto jleave;
    } else if (options & OPT_VERB)
-      fprintf(stderr, _(" done.\n"));
+      fprintf(stderr, _("done.\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -1534,13 +1589,13 @@ jjumped:
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERB)
-      fprintf(stderr, _("%sConnecting to %s:%d ..."),
+      fprintf(stderr, _("%sConnecting to \"%s:%d\" ... "),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      perror(_(" could not connect"));
+      perror(_("could not connect"));
       close(sofd);
       sofd = -1;
       goto jleave;
@@ -1548,7 +1603,7 @@ jjumped:
 # endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
-      fputs(_(" connected.\n"), stderr);
+      fputs(_("connected.\n"), stderr);
 
    /* And the regular timeouts XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO

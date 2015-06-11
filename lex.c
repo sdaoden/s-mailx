@@ -469,10 +469,11 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    struct stat stb;
    struct flock flp;
-   FILE *ibuf = NULL;
-   int rv, i, compressed = 0, omsgCount = 0;
-   char const *who;
    size_t offset;
+   char const *who;
+   int rv, omsgCount = 0;
+   FILE *ibuf = NULL;
+   bool_t isdevnull = FAL0;
    NYD_ENTER;
 
    /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
@@ -491,6 +492,14 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    case PROTO_FILE:
       if (temporary_protocol_ext != NULL)
          name = savecat(name, temporary_protocol_ext);
+      isdevnull = ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"));
+#ifdef HAVE_REALPATH
+      do { /* TODO we need objects, goes away then */
+         char ebuf[PATH_MAX];
+         if (realpath(name, ebuf) != NULL)
+            name = savestr(ebuf);
+      } while (0);
+#endif
       break;
    case PROTO_MAILDIR:
       shudclob = 1;
@@ -516,12 +525,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jem1;
    }
 
-   /* FIXME this FILE leaks if quit()->edstop() reset()s!  This entire code
-    * FIXME here is total crap, below we open(2) the same name again just to
-    * FIXME close it right away etc.  The normal thing would be to (1) finalize
-    * FIXME the current box and (2) open the new box; yet, since (2) may fail
-    * FIXME we terribly need our VOID box to make this logic order possible! */
-   if ((ibuf = Zopen(name, "r", &compressed)) == NULL) {
+   if ((ibuf = Zopen(name, "r")) == NULL) {
       if (((fm & FEDIT_SYSBOX) && errno == ENOENT) || (fm & FEDIT_NEWMAIL)) {
          if (fm & FEDIT_NEWMAIL)
             goto jnonmail;
@@ -538,8 +542,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jem1;
    }
 
-   if (S_ISREG(stb.st_mode) ||
-         ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"))) {
+   if (S_ISREG(stb.st_mode) || isdevnull) {
       /* EMPTY */
    } else {
       if (fm & FEDIT_NEWMAIL)
@@ -561,24 +564,32 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
 #endif
 
+   /* TODO There is no intermediate VOID box we've switched to: name may
+    * TODO point to the same box that we just have written, so any updates
+    * TODO we won't see!  Reopen again in this case.  RACY! Goes with VOID! */
+   /* TODO In addition: in case of compressed/hook boxes we lock a temporary! */
+   /* TODO We may uselessly open twice but quit() doesn't say wether we were
+    * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
+   if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !strcmp(name, mailname)) {
+      name = mailname;
+      Fclose(ibuf);
+
+      if ((ibuf = Zopen(name, "r")) == NULL ||
+            fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
+         perror(name);
+         rele_sigs();
+         goto jem2;
+      }
+   }
+
    /* Copy the messages into /tmp and set pointers */
    flp.l_type = F_RDLCK;
    flp.l_start = 0;
    flp.l_whence = SEEK_SET;
    if (!(fm & FEDIT_NEWMAIL)) {
       mb.mb_type = MB_FILE;
-      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY))
-            ? 0 : MB_DELE | MB_EDIT);
-      mb.mb_compressed = compressed;
-      if (compressed) {
-         if (compressed & 0200)
-            mb.mb_perm = 0;
-      } else {
-         if ((i = open(name, O_WRONLY)) == -1)
-            mb.mb_perm = 0;
-         else
-            close(i);
-      }
+      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
+            access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
       if (shudclob) {
          if (mb.mb_itf) {
             fclose(mb.mb_itf);
@@ -653,6 +664,8 @@ jleave:
       Fclose(ibuf);
    NYD_LEAVE;
    return rv;
+jem2:
+   mb.mb_type = MB_VOID;
 jem1:
    rv = -1;
    goto jleave;
@@ -715,6 +728,14 @@ commands(void)
    setexit();
    for (;;) {
       char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
+
+      /* TODO Unless we have our signal manager (or however we do it) child
+       * TODO processes may have time slots where their execution isn't
+       * TODO protected by signal handlers (in between start and setup
+       * TODO completed).  close_all_files() is only called from onintr()
+       * TODO so those may linger possibly forever */
+      if (!(pstate & PS_SOURCING))
+         close_all_files();
 
       interrupts = 0;
       handlerstacktop = NULL;
@@ -1378,6 +1399,8 @@ initbox(char const *name)
    if (mb.mb_type != MB_VOID)
       n_strlcpy(prevfile, mailname, PATH_MAX);
 
+   /* TODO name always NE mailname (but goes away for objects anyway)
+    * TODO Well, not true no more except that in parens */
    _update_mailname((name != mailname) ? name : NULL);
 
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==

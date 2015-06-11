@@ -56,6 +56,7 @@
 # include <netdb.h>
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 union rand_state {
    struct rand_arc4 {
       ui8_t    __pad[6];
@@ -66,6 +67,7 @@ union rand_state {
    ui8_t    b8[sizeof(struct rand_arc4)];
    ui32_t   b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
 };
+#endif
 
 #ifdef HAVE_NYD
 struct nyd_info {
@@ -95,7 +97,9 @@ union mem_ptr {
 };
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 static union rand_state *_rand;
+#endif
 
 /* {hold,rele}_all_sigs() */
 static size_t           _alls_depth;
@@ -120,9 +124,11 @@ static struct mem_chunk *_mem_list, *_mem_free;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
+#ifndef HAVE_POSIX_RANDOM
 static void    _rand_init(void);
 static ui32_t  _rand_weak(ui32_t seed);
 SINLINE ui8_t  _rand_get8(void);
+#endif
 
 /* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence */
 #ifdef HAVE_COLOUR
@@ -133,14 +139,15 @@ static char *  _colour_iso6429(char const *wish);
 static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
 
+#ifndef HAVE_POSIX_RANDOM
 static void
 _rand_init(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
    struct timespec ts;
-#else
+# else
    struct timeval ts;
-#endif
+# endif
    union {int fd; size_t i;} u;
    ui32_t seed, rnd;
    NYD2_ENTER;
@@ -159,13 +166,13 @@ _rand_init(void)
       for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
          size_t t, k;
 
-#ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
          t = (ui32_t)ts.tv_nsec;
-#else
+# else
          gettimeofday(&ts, NULL);
          t = (ui32_t)ts.tv_usec;
-#endif
+# endif
          if (rnd & 1)
             t = (t >> 16) | (t << 16);
          _rand->b32[u.i] ^= _rand_weak(seed ^ t);
@@ -216,6 +223,7 @@ _rand_get8(void)
    _rand->a._dat[_rand->a._j] = si;
    return _rand->a._dat[(ui8_t)(si + sj)];
 }
+#endif /* HAVE_POSIX_RANDOM */
 
 #ifdef HAVE_COLOUR
 static char *
@@ -468,30 +476,35 @@ _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 FL void
 _nyd_oncrash(int signo)
 {
-   char s2ibuf[32], *fname, *cp;
+   char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    struct sigaction xact;
    sigset_t xset;
-   size_t fnl, i;
+   size_t i, fnl;
    int fd;
    struct nyd_info *nip;
+
+   LCTA(sizeof("./") -1 + sizeof(UAGENT) -1 + sizeof(".dat") < PATH_MAX);
 
    xact.sa_handler = SIG_DFL;
    sigemptyset(&xact.sa_mask);
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   fnl = strlen(UAGENT);
    i = strlen(tempdir);
-   cp =
-   fname = ac_alloc(i + 1 + fnl + 1 + sizeof(".dat"));
-   memcpy(cp , tempdir, i);
+   fnl = sizeof(UAGENT) -1;
+
+   if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {
+      (cp = pathbuf)[0] = '.';
+      i = 1;
+   } else
+      memcpy(cp = pathbuf, tempdir, i);
    cp[i++] = '/'; /* xxx pathsep */
    memcpy(cp += i, UAGENT, fnl);
    i += fnl;
    memcpy(cp += fnl, ".dat", sizeof(".dat"));
    fnl = i + sizeof(".dat") -1;
 
-   if ((fd = open(fname, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+   if ((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
       fd = STDERR_FILENO;
 
 # undef _X
@@ -519,14 +532,12 @@ _nyd_oncrash(int signo)
 
    if (fd != STDERR_FILENO) {
       write(STDERR_FILENO, _X("Crash NYD listing written to "));
-      write(STDERR_FILENO, fname, fnl);
+      write(STDERR_FILENO, pathbuf, fnl);
       write(STDERR_FILENO, _X("\n"));
 # undef _X
 
       close(fd);
    }
-
-   ac_free(fname);
 
    sigemptyset(&xset);
    sigaddset(&xset, signo);
@@ -617,35 +628,35 @@ FL void
 page_or_print(FILE *fp, size_t lines)
 {
    int c;
-   size_t rows;
+   char const *cp;
    NYD_ENTER;
 
    fflush_rewind(fp);
 
-   rows = 0;
-   if (IS_TTY_SESSION()) {
-      char const *cp;
+   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
+      char *eptr;
+      union {sl_i sli; size_t rows;} u;
 
-      if ((cp = ok_vlook(crt)) != NULL) {
-         char *eptr;
-         sl_i sli = strtol(cp, &eptr, 0);
-         rows = (*cp != '\0' && *eptr == '\0')
-               ? (size_t)sli : (size_t)scrnheight;
-      }
+      u.sli = strtol(cp, &eptr, 0);
+      u.rows = (*cp != '\0' && *eptr == '\0')
+            ? (size_t)u.sli : (size_t)scrnheight;
 
-      if (rows > 0 && lines == 0) {
+      if (u.rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
-            if (c == '\n' && ++lines > rows)
+            if (c == '\n' && ++lines >= u.rows)
                break;
          really_rewind(fp);
       }
+
+      if (lines >= u.rows) {
+         run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
+         goto jleave;
+      }
    }
 
-   if (lines >= rows)
-      run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
-   else
-      while ((c = getc(fp)) != EOF)
-         putchar(c);
+   while ((c = getc(fp)) != EOF)
+      putchar(c);
+jleave:
    NYD_LEAVE;
 }
 
@@ -1000,12 +1011,36 @@ getrandstring(size_t length)
    size_t i;
    NYD_ENTER;
 
+#ifndef HAVE_POSIX_RANDOM
    if (_rand == NULL)
       _rand_init();
+#endif
 
    data = ac_alloc(length);
+
+#ifndef HAVE_POSIX_RANDOM
    for (i = length; i-- > 0;)
       data[i] = (char)_rand_get8();
+#else
+   {  char *cp = data;
+
+      for (i = length; i > 0;) {
+         union {ui32_t i4; char c[4];} r;
+         size_t j;
+
+         r.i4 = (ui32_t)arc4random();
+         switch ((j = i & 3)) {
+         case 0:  cp[3] = r.c[3]; j = 4;
+         case 3:  cp[2] = r.c[2];
+         case 2:  cp[1] = r.c[1];
+         default: cp[0] = r.c[0]; break;
+         }
+         cp += j;
+         i -= j;
+      }
+   }
+#endif
+
    b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
    ac_free(data);
    NYD_LEAVE;

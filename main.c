@@ -316,13 +316,21 @@ _startup(void)
    /* TODO until we have an automatic mechanism for that, set some more
     * TODO variables so that users see the internal fallback settings
     * TODO (something like "defval=X,notempty=1") */
-   {
-   ok_vset(SHELL, XSHELL);
-   ok_vset(LISTER, XLISTER);
-   ok_vset(PAGER, XPAGER);
-   ok_vset(sendmail, SENDMAIL);
-   ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
-   }
+   do {
+      char const *vp;
+
+      vp = env_vlook("SHELL", TRU1);
+      ok_vset(SHELL, (vp != NULL ? vp : XSHELL));
+
+      vp = env_vlook("LISTER", TRU1);
+      ok_vset(LISTER, (vp != NULL ? vp : XLISTER));
+
+      vp = env_vlook("PAGER", TRU1);
+      ok_vset(PAGER, (vp != NULL ? vp : XPAGER));
+
+      ok_vset(sendmail, SENDMAIL);
+      ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+   } while (0);
 
    /*  --  >8  --  8<  --  */
 
@@ -1038,24 +1046,24 @@ jgetopt_done:
       goto jleave;
    }
 
-   /* Now that full mailx(1)-style file expansion is possible handle the
-    * attachments which we had delayed due to this.
-    * This may use savestr(), but since we won't enter the command loop we
-    * don't need to care about that */
-   while (a_head != NULL) {
-      attach = add_attachment(attach, a_head->aa_file, NULL);
-      if (attach != NULL) {
-         a_curr = a_head;
-         a_head = a_head->aa_next;
-      } else {
-         perror(a_head->aa_file);
-         exit_status = EXIT_ERR;
-         goto jleave;
-      }
-   }
-
    /* xxx exit_status = EXIT_OK; */
    if (X_head == NULL || _X_arg_eval(X_head)) {
+      /* Now that full mailx(1)-style file expansion is possible handle the
+       * attachments which we had delayed due to this.
+       * This may use savestr(), but since we won't enter the command loop we
+       * don't need to care about that */
+      while (a_head != NULL) {
+         attach = add_attachment(attach, a_head->aa_file, NULL);
+         if (attach != NULL) {
+            a_curr = a_head;
+            a_head = a_head->aa_next;
+         } else {
+            perror(a_head->aa_file);
+            exit_status = EXIT_ERR;
+            goto jleave;
+         }
+      }
+
       if (options & OPT_INTERACTIVE)
          tty_init();
       mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));

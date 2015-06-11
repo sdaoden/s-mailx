@@ -10,7 +10,6 @@ MBOX=./.cc-test.mbox
 MAKE="${MAKE:-`command -v make`}"
 awk=${awk:-`command -v awk`}
 cat=${cat:-`command -v cat`}
-# TODO cksum not fixated via mk-conf.sh, mk.mk should export variables!!
 cksum=${cksum:-`command -v cksum`}
 rm=${rm:-`command -v rm`}
 sed=${sed:-`command -v sed`}
@@ -115,7 +114,7 @@ t_behave() {
    # Test for [d1f1a19]
    ${rm} -f "${MBOX}"
    printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
-      MAILRC=/dev/null "${SNAIL}" ${ARGS} -SPAGER="${cat}" > "${MBOX}"
+      MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
    cksum_test behave:001 "${MBOX}" '4214021069 15'
 
    # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
@@ -928,24 +927,24 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '3929720514 5631'
+   cksum_test content:001-0 "${MBOX}" '3498258986 5631'
 
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '2425578375 5630'
+   cksum_test content:001 "${MBOX}" '3916146590 5630'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '3929720514 5631'
+   cksum_test content:002 "${MBOX}" '3498258986 5631'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '2425578375 5630'
+   cksum_test content:003 "${MBOX}" '3916146590 5630'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
@@ -966,7 +965,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -SPAGER="${cat}" -Spipe-text/plain="${cat}" > "${BODY}"
+      -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:006 "${MBOX}" '11112309 106'
 
@@ -1017,7 +1016,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '675735751 504'
+   cksum_test content:010 "${MBOX}" '1272213842 504'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
@@ -1040,7 +1039,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '3314841967 271'
+   cksum_test content:012 "${MBOX}" '1276108207 271'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -1051,7 +1050,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '3478758317 211'
+   cksum_test content:013 "${MBOX}" '3677630181 210'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot

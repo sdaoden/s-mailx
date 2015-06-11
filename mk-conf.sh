@@ -45,7 +45,7 @@ option_maximal() {
 
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
-   case `echo ${CONFIG} | tr '[a-z]' '[A-Z]'` in
+   case "${CONFIG}" in
    NULLTEST)
       option_reset
       ;;
@@ -101,8 +101,7 @@ fi
 
 # Inter-relationships
 option_update() {
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP &&\
-         feat_no SPAM_SPAMD; then
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       WANT_SOCKETS=0
    fi
    if feat_no SOCKETS; then
@@ -121,7 +120,6 @@ option_update() {
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
-      WANT_SPAM_SPAMD=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       WANT_GSSAPI=0
@@ -131,8 +129,7 @@ option_update() {
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
 
-   # If we don't need MD5 except for producing boundary and message-id strings,
-   # leave it off, plain old srand(3) should be enough for that purpose.
+   # If we don't need MD5 leave it alone
    if feat_no SOCKETS; then
       WANT_MD5=0
    fi
@@ -141,101 +138,219 @@ option_update() {
    fi
 }
 
-# Check out compiler ($CC) and -flags ($CFLAGS)
-compiler_flags() {
-   # $CC is overwritten when empty or a default "cc", even without WANT_AUTOCC
-   optim= dbgoptim= _CFLAGS=
-   if [ -z "${CC}" ] || [ "${CC}" = cc ]; then
-      if { i="`command -v clang`"; }; then
-         CC=${i}
-      elif { i="`command -v gcc`"; }; then
-         CC=${i}
-      elif { i="`command -v c99`"; }; then
-         CC=${i}
-      else
-         if [ "${CC}" = cc ]; then
-            :
-         elif { i="`command -v c89`"; }; then
-            CC=${i}
-         else
-            msg 'ERROR: I cannot find a compiler!'
-            msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
-            msg ' Please set the CC environment variable, maybe CFLAGS also.'
-            config_exit 1
-         fi
-      fi
-      export CC
-   fi
-   [ "`uname -s`" = UnixWare ] && _CFLAGS='-v -Xa' optim=-O dbgoptim=
+# Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
+# via path_check() later on once possible
 
-   stackprot=no
-   ccver=`${CC} --version 2>/dev/null`
-   if [ ${?} -ne 0 ]; then
-      [ -z "${optim}" ] && optim=-O1
-   elif { i=${ccver}; echo "${i}"; } | ${grep} -q \
-'gcc
-clang'; then
-   #if echo "${i}" | ${grep} -q \
-#'gcc
-#clang version 1'; then
-      optim=-O2 dbgoptim=-O
-      stackprot=yes
-      _CFLAGS="${_CFLAGS} -std=c89 -Wall -Wextra -pedantic"
-      _CFLAGS="${_CFLAGS} -fno-unwind-tables -fno-asynchronous-unwind-tables"
-      _CFLAGS="${_CFLAGS} -fstrict-aliasing"
-      _CFLAGS="${_CFLAGS} -Wbad-function-cast -Wcast-align -Wcast-qual"
-      _CFLAGS="${_CFLAGS} -Winit-self -Wmissing-prototypes"
-      _CFLAGS="${_CFLAGS} -Wshadow -Wunused -Wwrite-strings"
-      _CFLAGS="${_CFLAGS} -Wno-long-long" # ISO C89 has no 'long long'...
-      if { i=${ccver}; echo "${i}"; } | ${grep} -q 'clang version 1'; then
-         _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
-      else
-         _CFLAGS="${_CFLAGS} -fstrict-overflow"
-         # Too many warnings without having seen a benefit yet
-         if feat_yes DEVEL; then
-            _CFLAGS="${_CFLAGS} -Wstrict-overflow=5"
-         fi
-         if feat_yes AMALGAMATION && feat_no DEVEL; then
-            _CFLAGS="${_CFLAGS} -Wno-unused-function"
-         fi
-         if { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
-            _CFLAGS="${_CFLAGS} -Wno-unused-result" # TODO handle the right way
-         fi
+os_setup() {
+   OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+   _CFLAGS=${ADDCFLAGS} _LDFLAGS=${ADDLDFLAGS}
+
+   if [ ${OS} = sunos ]; then
+      _os_setup_sunos
+   elif [ ${OS} = unixware ]; then
+      if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
+         CC=cc
+         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+
+         CFLAGS=${_CFLAGS}
+         LDFLAGS=${_LDFLAGS}
+         export CC CFLAGS LDFLAGS
+         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
-      if feat_yes AMALGAMATION; then
-         _CFLAGS="${_CFLAGS} -pipe"
-      fi
-#   elif { i=${ccver}; echo "${i}"; } | ${grep} -q -i clang; then
-#      optim=-O3 dbgoptim=-O
-#      stackprot=yes
-#      _CFLAGS='-std=c89 -Weverything -Wno-long-long'
-#      if feat_yes AMALGAMATION; then
-#         _CFLAGS="${_CFLAGS} -pipe"
-#      fi
-   elif [ -z "${optim}" ]; then
-      optim=-O1 dbgoptim=-O
    fi
 
-   if feat_no DEBUG; then
-      _CFLAGS="${optim} -DNDEBUG ${_CFLAGS}"
-   else
-      _CFLAGS="${dbgoptim} -g ${_CFLAGS}";
-   fi
-   if feat_yes FORCED_STACKPROT && [ "${stackprot}" = yes ]; then
-      _CFLAGS="${_CFLAGS} -fstack-protector-all "
-         _CFLAGS="${_CFLAGS} -Wstack-protector -D_FORTIFY_SOURCE=2"
-   fi
-   _CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-   # XXX -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack: need detection
-   _LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}" # XXX -Wl,--sort-common,[-O1]
-   export _CFLAGS _LDFLAGS
+   # Sledgehammer: better set _GNU_SOURCE
+   OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
+   #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
+   #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
 
-   # $CFLAGS and $LDFLAGS are only overwritten if explicitly wanted
+   # On pkgsrc(7) systems automatically add /usr/pkg/*
+   if [ -d /usr/pkg ]; then
+      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
+      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
+   fi
+}
+
+_os_setup_sunos() {
+   # According to standards(5), this is what we need to do
+   if [ -d /usr/xpg4 ]; then :; else
+      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
+      config_exit 1
+   fi
+   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
+   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+   export PATH
+
+   C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
+   LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
+
+   # Include packages
+   if [ -d /opt/csw ]; then
+      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/opt/csw/include"
+      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/csw/lib"
+   fi
+
+   OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
+   #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
+
+   [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
+   if [ -x "${cksum}" ]; then :; else
+      msg 'ERROR: Not an executable program: "%s"' "${cksum}"
+      msg 'ERROR:   We need a CRC-32 cksum(1), as specified in POSIX.'
+      msg 'ERROR:   However, we do so only for tests.'
+      msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
+      config_exit 1
+   fi
+
    if feat_yes AUTOCC; then
-      CFLAGS=$_CFLAGS
-      LDFLAGS=$_LDFLAGS
-      export CFLAGS LDFLAGS
+      if command -v cc >/dev/null 2>&1; then
+         CC=cc
+         feat_yes DEBUG && _CFLAGS="-v -Xa -g ${_CFLAGS}" ||
+            _CFLAGS="-Xa -O ${_CFLAGS}"
+
+         CFLAGS=${_CFLAGS}
+         LDFLAGS=${_LDFLAGS}
+         export CC CFLAGS LDFLAGS
+         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+      else
+         # Assume gcc(1)
+         force_no_stackprot=1 need_R_ldflags=-Wl,-R
+      fi
    fi
+}
+
+# Check out compiler ($CC) and -flags ($CFLAGS)
+cc_setup() {
+   feat_no AUTOCC && { _cc_default; return; }
+   [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
+
+   printf >&2 'Searching for a usable C compiler .. $CC='
+   if { i="`command -v clang`"; }; then
+      CC=${i}
+   elif { i="`command -v gcc`"; }; then
+      CC=${i}
+   elif { i="`command -v c99`"; }; then
+      CC=${i}
+   else
+      if [ "${CC}" = cc ]; then
+         :
+      elif { i="`command -v c89`"; }; then
+         CC=${i}
+      else
+         printf >&2 'boing booom tschak\n'
+         msg 'ERROR: I cannot find a compiler!'
+         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
+         config_exit 1
+      fi
+   fi
+   printf >&2 '"%s"\n' "${CC}"
+   export CC
+}
+
+_cc_default() {
+   if [ -z "${CC}" ]; then
+      printf >&2 'To go on like you have chosen, please set $CC, rerun.'
+      config_exit 1
+   fi
+
+   if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
+      :
+   else
+      msg 'Using C compiler $CC="%s"' "${CC}"
+   fi
+}
+
+cc_flags() {
+   if feat_yes AUTOCC; then
+      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+         cc_check_silent=1
+         msg 'Detecting $CFLAGS/$LDFLAGS for $CC="%s", just a second..' "${CC}"
+      else
+         cc_check_silent=
+         msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
+      fi
+
+      _cc_flags_generic
+
+      feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
+      CFLAGS=${_CFLAGS}
+      LDFLAGS=${_LDFLAGS}
+   elif feat_no DEBUG; then
+      CFLAGS="-DNDEBUG ${CFLAGS}"
+   fi
+   msg ''
+   export CFLAGS LDFLAGS
+}
+
+_cc_flags_generic() {
+   feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
+
+   cc_check -Wall
+   cc_check -Wextra
+   cc_check -pedantic
+
+   cc_check -Wbad-function-cast
+   cc_check -Wcast-align
+   cc_check -Wcast-qual
+   cc_check -Winit-self
+   cc_check -Wmissing-prototypes
+   cc_check -Wshadow
+   cc_check -Wunused
+   cc_check -Wwrite-strings
+   cc_check -Wno-long-long
+
+   if feat_yes AMALGAMATION && feat_no DEVEL; then
+      cc_check -Wno-unused-function
+   fi
+   feat_no DEVEL && cc_check -Wno-unused-result # XXX do right way (pragma too)
+
+   cc_check -fno-unwind-tables
+   cc_check -fno-asynchronous-unwind-tables
+   cc_check -fstrict-aliasing
+   if cc_check -fstrict-overflow && feat_yes DEVEL; then
+      cc_check -Wstrict-overflow=5
+   fi
+
+   if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
+      if [ -z "${force_no_stackprot}" ]; then
+         if cc_check -fstack-protector-strong ||
+               cc_check -fstack-protector-all; then
+            cc_check -D_FORTIFY_SOURCE=2
+         fi
+      else
+         msg 'Not checking for -fstack-protector compiler option,'
+         msg 'since that caused linker errors in a "similar" configuration.'
+         msg 'You may turn off WANT_AUTOCC and use your own settings, rerun'
+      fi
+   fi
+
+   if feat_yes AMALGAMATION; then
+      cc_check -pipe
+   fi
+   if feat_yes DEBUG; then
+      cc_check -O
+      cc_check -g
+   elif cc_check -O3; then
+      :
+   elif cc_check -O2; then
+      :
+   elif cc_check -O1; then
+      :
+   else
+      cc_check -O
+   fi
+
+   ld_check -Wl,-z,relro
+   ld_check -Wl,-z,now
+   ld_check -Wl,-z,noexecstack
+
+   # Address randomization
+   _ccfg=${_CFLAGS}
+   if cc_check -fPIE || cc_check -fpie; then
+      ld_check -pie || _CFLAGS=${_ccfg}
+   fi
+   unset _ccfg
 }
 
 ##  --  >8  --  8<  --  ##
@@ -260,7 +375,7 @@ msg() {
    printf >&2 "${fmt}\\n" "${@}"
 }
 
-## First of all, create new configuration and check wether it changed ##
+## First of all, create new configuration and check wether it changed
 
 rc=./make.rc
 lst=./config.lst
@@ -272,6 +387,7 @@ newmk=./config.mk-new
 newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
+tmp2=./${tmp0}2$$
 
 # We need some standard utilities
 unset -f command
@@ -279,7 +395,7 @@ check_tool() {
    n=${1} i=${2} opt=${3:-0}
    # Evaluate, just in case user comes in with shell snippets (..well..)
    eval i="${i}"
-   if type "${i}" >/dev/null 2>&1; then
+   if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
       eval ${n}=${i}
       return 0
    fi
@@ -287,12 +403,13 @@ check_tool() {
       msg 'ERROR: no trace of utility "%s"' "${n}"
       config_exit 1
    fi
-   return 0
+   return 1
 }
 
 # Check those tools right now that we need before including $rc
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
+check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
 feat_val_no() {
@@ -312,7 +429,7 @@ feat_val_require() {
 
 _feat_check() {
    eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    if feat_val_no "${i}"; then
       return 1
    elif feat_val_yes "${i}"; then
@@ -335,8 +452,17 @@ feat_no() {
 
 feat_require() {
    eval i=\$WANT_${1}
-   i="`echo ${i} | tr '[A-Z]' '[a-z]'`"
+   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+}
+
+feat_bail_required() {
+   if feat_require ${1}; then
+      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
+      config_exit 13
+   fi
+   eval WANT_${1}=0
+   option_update # XXX this is rather useless here (dependency chain..)
 }
 
 # Include $rc, but only take from it what wasn't overwritten by the user from
@@ -360,27 +486,70 @@ done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 
+# We need to know about that now, in order to provide utility overwrites etc.
+os_setup
+
+check_tool grep "${grep:-`command -v grep`}"
+
+# Before we step ahead with the other utilities perform a path cleanup first.
+# We need this function also for C_INCLUDE_PATH and LD_LIBRARY_PATH
+# "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
+path_check() {
+   varname=${1} addflag=${2} flagvarname=${3}
+   j=${IFS}
+   IFS=:
+   eval "set -- \$${1}"
+   IFS=${j}
+   j= k= y= z=
+   for i
+   do
+      [ -z "${i}" ] && continue
+      [ -d "${i}" ] || continue
+      if [ -n "${j}" ]; then
+         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
+            :
+         else
+            y="${y} :${i}:"
+            j="${j}:${i}"
+            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
+         fi
+      else
+         y=" :${i}:"
+         j="${i}"
+         [ -n "${addflag}" ] && k="${addflag}${i}"
+      fi
+   done
+   eval "${varname}=\"${j}\""
+   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
+   unset varname
+}
+
+path_check PATH
+
 check_tool awk "${awk:-`command -v awk`}"
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
 check_tool cp "${cp:-`command -v cp`}"
 check_tool cmp "${cmp:-`command -v cmp`}"
-check_tool grep "${grep:-`command -v grep`}"
 check_tool mkdir "${mkdir:-`command -v mkdir`}"
 check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool make "${MAKE:-`command -v make`}"
-check_tool strip "${STRIP:-`command -v strip`}" 1
-HAVE_STRIP=${?}
+MAKE=${make}
+check_tool strip "${STRIP:-`command -v strip`}" 1 &&
+   HAVE_STRIP=1 || HAVE_STRIP=0
+
+# For ./cc-test.sh only
+check_tool cksum "${cksum:-`command -v cksum`}"
 
 # Update WANT_ options now, in order to get possible inter-dependencies right
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
-trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}; exit" 1 2 15
-trap "${rm} -f ${tmp} ${newlst} ${newmk} ${newh}" 0
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}; exit" 1 2 15
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" 0
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -390,8 +559,8 @@ exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
    i=`echo ${line} | ${sed} -e 's/=.*$//'`
    eval j=\$${i}
-   if echo "${i}" | grep '^WANT_' >/dev/null 2>&1; then
-      j="`echo ${j} | tr '[A-Z]' '[a-z]'`"
+   if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+      j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
          printf "/*#define ${i}*/\n" >> ${newh}
@@ -413,71 +582,115 @@ while read line; do
    printf "${i}=${j}\n"
    eval "${i}=\"${j}\""
 done
-exec 0<&5 1<&6 5<&- 6<&-
+exec 0<&5 1>&6 5<&- 6<&-
 
+# Add the known utility and some other variables
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
-compiler_flags
-
-printf "CC = ${CC}\n" >> ${newmk}
-printf "CC=${CC}\n" >> ${newlst}
-
-printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newmk}
-printf "_CFLAGS=${_CFLAGS}\nCFLAGS=${CFLAGS}\n" >> ${newlst}
-
-printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newmk}
-printf "_LDFLAGS=${_LDFLAGS}\nLDFLAGS=${LDFLAGS}\n" >> ${newlst}
-
-printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newmk}
-printf "AWK=${awk}\nCMP=${cmp}\nCHMOD=${chmod}\nCP=${cp}\n" >> ${newlst}
-
-printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
-   ${newmk}
-printf "GREP=${grep}\nMKDIR=${mkdir}\nMV=${mv}\nRM=${rm}\nSED=${sed}\n" >> \
-   ${newlst}
-
-printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newmk}
-printf "STRIP=${strip}\nHAVE_STRIP=${HAVE_STRIP}\n" >> ${newlst}
+for i in \
+      awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
+      MAKE make strip \
+      cksum; do
+   eval j=\$${i}
+   printf "${i} = ${j}\n" >> ${newmk}
+   printf "${i}=${j}\n" >> ${newlst}
+done
 
 # Build a basic set of INCS and LIBS according to user environment.
-# On pkgsrc(7) systems automatically add /usr/pkg/*
-if [ -n "${C_INCLUDE_PATH}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${C_INCLUDE_PATH}
-   IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
-   for i
-   do
-      [ "${i}" = /usr/pkg/include ] && continue
-      INCS="${INCS} -I${i}"
-   done
-fi
-[ -d /usr/pkg/include ] && INCS="${INCS} -I/usr/pkg/include"
-printf "INCS=${INCS}\n" >> ${newlst}
+path_check C_INCLUDE_PATH -I INCS
+path_check LD_LIBRARY_PATH -L LIBS
+export C_INCLUDE_PATH LD_LIBRARY_PATH
 
-if [ -n "${LD_LIBRARY_PATH}" ]; then
+if [ -n "${need_R_ldflags}" ]; then
    i=${IFS}
    IFS=:
    set -- ${LD_LIBRARY_PATH}
    IFS=${i}
-   # for i; do -- new in POSIX Issue 7 + TC1
    for i
    do
-      [ "${i}" = /usr/pkg/lib ] && continue
-      LIBS="${LIBS} -L${i}"
+      LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
+      _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
    done
+   export LDFLAGS _LDFLAGS
 fi
-[ -d /usr/pkg/lib ] && LIBS="${LIBS} -L/usr/pkg/lib"
-printf "LIBS=${LIBS}\n" >> ${newlst}
+
+## Detect CC, wether we can use it, and possibly which CFLAGS we can use
+
+cc_setup
+
+${cat} > ${tmp}.c << \!
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+   (void)argc;
+   (void)argv;
+   puts("Hello world");
+   return 0;
+}
+!
+
+if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
+   :
+else
+   msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
+   msg 'ERROR:   Please set $CC (and $CFLAGS) variable(s), rerun'
+   config_exit 1
+fi
+
+cc_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   if "${CC}" ${_CFLAGS} ${1} ${INCS} ${_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _CFLAGS="${_CFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+ld_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   if "${CC}" ${_CFLAGS} ${INCS} ${_LDFLAGS} ${1} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _LDFLAGS="${_LDFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+cc_flags
+
+for i in \
+      INCS LIBS \
+      ; do
+   eval j=\$${i}
+   printf "${i}=${j}\n" >> ${newlst}
+done
+for i in \
+      CC \
+      CFLAGS \
+      LDFLAGS \
+      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
+      ; do
+   eval j=\$${i}
+   printf "${i} = ${j}\n" >> ${newmk}
+   printf "${i}=${j}\n" >> ${newlst}
+done
 
 # Now finally check wether we already have a configuration and if so, wether
 # all those parameters are still the same.. or something has actually changed
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
+   echo 'Configuration is up-to-date'
    exit 0
+elif [ -f ${lst} ]; then
+   echo 'Configuration has been updated..'
+else
+   echo 'Shiny configuration..'
 fi
-[ -f ${lst} ] && echo 'configuration updated..' || echo 'shiny configuration..'
 
 # Time to redefine helper 1
 config_exit() {
@@ -489,9 +702,8 @@ ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
 
-## Compile and link checking ##
+## Compile and link checking
 
-tmp2=./${tmp0}2$$
 tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
@@ -501,7 +713,7 @@ makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
-trap "${rm} -f ${tmp0}.* ${tmp0}* ${makefile}" 0
+trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 # Time to redefine helper 2
 msg() {
@@ -538,7 +750,7 @@ _check_preface() {
    variable=$1 topic=$2 define=$3
 
    echo '**********'
-   msg_nonl 'checking %s ... ' "${topic}"
+   msg_nonl ' . %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
@@ -602,42 +814,12 @@ run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
-feat_bail_required() {
-   if feat_require ${1}; then
-      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
-      config_exit 13
-   fi
-   eval WANT_${1}=0
-   option_update # XXX this is rather useless here (dependency chain..)
-}
-
 ##
 
-# Better set _GNU_SOURCE (if we are on Linux only?); 'surprised it did without!
-echo '#define _GNU_SOURCE' >> ${h}
-#echo '#define _POSIX_C_SOURCE 200809L' >> ${h}
-#echo '#define _XOPEN_SOURCE 700' >> ${h}
+# May be multiline..
+[ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check hello 'if a hello world program can be built' << \!
-#include <stdio.h>
-
-int main(int argc, char *argv[])
-{
-   (void)argc;
-   (void)argv;
-   puts("hello world");
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: but this oooops is most certainly not related to me.'
-   msg 'Read the file %s and check your compiler environment.' "${log}"
-   config_exit 1
-fi
-
-if link_check termios 'for termios.h and tc*() family' << \!
+if link_check termios 'termios.h and tc*() family' << \!
 #include <termios.h>
 int main(void)
 {
@@ -655,7 +837,20 @@ else
    config_exit 1
 fi
 
-if link_check clock_gettime 'for clock_gettime(2)' \
+# XXX Move to below later when the time stuff is regulary needed.
+# XXX Add POSIX check once standardized
+link_check posix_random 'arc4random()' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void)
+{
+   arc4random();
+   return 0;
+}
+!
+
+# XXX Not indented for that - drop cond. when time stuff is regulary needed.
+if [ -z "${have_posix_random}" ]; then
+if link_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
 int main(void)
@@ -668,7 +863,7 @@ int main(void)
 !
 then
    :
-elif link_check gettimeofday 'for gettimeofday(2)' \
+elif link_check gettimeofday 'gettimeofday(2)' \
    '#define HAVE_GETTIMEOFDAY' << \!
 #include <sys/time.h>
 int main(void)
@@ -686,8 +881,9 @@ else
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
+fi # -n ${have_posix_random}
 
-link_check setenv 'for setenv()/unsetenv()' '#define HAVE_SETENV' << \!
+link_check setenv 'setenv()/unsetenv()' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -697,7 +893,7 @@ int main(void)
 }
 !
 
-link_check snprintf 'for snprintf()' '#define HAVE_SNPRINTF' << \!
+link_check snprintf 'snprintf()' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
 {
@@ -707,7 +903,7 @@ int main(void)
 }
 !
 
-link_check putc_unlocked 'for putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void)
 {
@@ -716,7 +912,7 @@ int main(void)
 }
 !
 
-link_check fchdir 'for fchdir()' '#define HAVE_FCHDIR' << \!
+link_check fchdir 'fchdir()' '#define HAVE_FCHDIR' << \!
 #include <unistd.h>
 int main(void)
 {
@@ -725,7 +921,7 @@ int main(void)
 }
 !
 
-link_check pipe2 'for pipe2()' '#define HAVE_PIPE2' << \!
+link_check pipe2 'pipe2()' '#define HAVE_PIPE2' << \!
 #include <fcntl.h>
 #include <unistd.h>
 int main(void)
@@ -736,7 +932,7 @@ int main(void)
 }
 !
 
-link_check mmap 'for mmap()' '#define HAVE_MMAP' << \!
+link_check mmap 'mmap()' '#define HAVE_MMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -746,7 +942,7 @@ int main(void)
 }
 !
 
-link_check mremap 'for mremap()' '#define HAVE_MREMAP' << \!
+link_check mremap 'mremap()' '#define HAVE_MREMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -756,7 +952,7 @@ int main(void)
 }
 !
 
-link_check setlocale 'for setlocale()' '#define HAVE_SETLOCALE' << \!
+link_check setlocale 'setlocale()' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
 {
@@ -766,7 +962,7 @@ int main(void)
 !
 
 if [ "${have_setlocale}" = yes ]; then
-   link_check c90amend1 'for ISO/IEC 9899:1990/Amendment 1:1995' \
+   link_check c90amend1 'ISO/IEC 9899:1990/Amendment 1:1995' \
       '#define HAVE_C90AMEND1' << \!
 #include <limits.h>
 #include <stdlib.h>
@@ -786,7 +982,7 @@ int main(void)
 !
 
    if [ "${have_c90amend1}" = yes ]; then
-      link_check wcwidth 'for wcwidth()' '#define HAVE_WCWIDTH' << \!
+      link_check wcwidth 'wcwidth()' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void)
 {
@@ -796,7 +992,7 @@ int main(void)
 !
    fi
 
-   link_check nl_langinfo 'for nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
+   link_check nl_langinfo 'nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
 int main(void)
@@ -807,7 +1003,7 @@ int main(void)
 !
 fi # have_setlocale
 
-link_check mkostemp 'for mkostemp()' '#define HAVE_MKOSTEMP' << \!
+link_check mkostemp 'mkostemp()' '#define HAVE_MKOSTEMP' << \!
 #include <stdlib.h>
 #include <fcntl.h>
 int main(void)
@@ -819,7 +1015,7 @@ int main(void)
 !
 
 if [ "${have_mkostemp}" != yes ]; then
-   link_check mkstemp 'for mkstemp()' '#define HAVE_MKSTEMP' << \!
+   link_check mkstemp 'mkstemp()' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -830,7 +1026,7 @@ int main(void)
    fi
 
 # Note: run_check, thus we also get only the desired implementation...
-run_check realpath 'for realpath()' '#define HAVE_REALPATH' << \!
+run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -839,7 +1035,7 @@ int main(void)
 }
 !
 
-link_check wordexp 'for wordexp()' '#define HAVE_WORDEXP' << \!
+link_check wordexp 'wordexp()' '#define HAVE_WORDEXP' << \!
 #include <wordexp.h>
 int main(void)
 {
@@ -862,7 +1058,7 @@ if feat_no NOALLOCA; then
    # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
    # versions of alloca(3) since modern compilers just can't be trusted
    # not to overoptimize and silently break some code
-   link_check alloca 'for __builtin_alloca()' \
+   link_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
 int main(void)
 {
@@ -893,18 +1089,93 @@ int main(void)
    return 0;
 }
 !
-   < ${tmp2}.c link_check iconv 'for iconv functionality' \
+   < ${tmp2}.c link_check iconv 'iconv functionality' \
          '#define HAVE_ICONV' ||
-      < ${tmp2}.c link_check iconv \
-         'for iconv functionality in libiconv' \
+      < ${tmp2}.c link_check iconv 'iconv functionality (via -liconv)' \
          '#define HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 else
    echo '/* WANT_ICONV=0 */' >> ${h}
 fi # feat_yes ICONV
 
+if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
+   ${cat} > ${tmp2}.c << \!
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+int main(void)
+{
+   struct sockaddr_un soun;
+   socket(AF_UNIX, SOCK_STREAM, 0);
+   connect(0, (struct sockaddr*)&soun, 0);
+   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+   return 0;
+}
+!
+
+   < ${tmp2}.c link_check af_unix 'AF_UNIX sockets' \
+         '#define HAVE_UNIX_SOCKETS' ||
+      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lnsl)' \
+         '#define HAVE_UNIX_SOCKETS' '-lnsl' ||
+      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
+         '#define HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
+fi
+
 if feat_yes SOCKETS; then
-   compile_check arpa_inet_h 'for <arpa/inet.h>' \
+   ${cat} > ${tmp2}.c << \!
+#include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+int main(void)
+{
+   struct sockaddr s;
+   socket(AF_INET, SOCK_STREAM, 0);
+   connect(0, &s, 0);
+   return 0;
+}
+!
+
+   < ${tmp2}.c link_check sockets 'sockets' \
+         '#define HAVE_SOCKETS' ||
+      < ${tmp2}.c link_check sockets 'sockets (via -lnsl)' \
+         '#define HAVE_SOCKETS' '-lnsl' ||
+      < ${tmp2}.c link_check sockets 'sockets (via -lsocket -lnsl)' \
+         '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+      feat_bail_required SOCKETS
+else
+   echo '/* WANT_SOCKETS=0 */' >> ${h}
+fi # feat_yes SOCKETS
+
+if feat_yes SOCKETS; then
+   link_check getaddrinfo 'getaddrinfo(3)' \
+      '#define HAVE_GETADDRINFO' << \!
+#include "config.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include <netdb.h>
+
+int main(void)
+{
+   struct addrinfo a, *ap;
+   int lrv;
+   switch ((lrv = getaddrinfo("foo", "0", &a, &ap))) {
+   case EAI_NONAME:
+   case EAI_SERVICE:
+   default:
+      fprintf(stderr, "%s\n", gai_strerror(lrv));
+   case 0:
+      break;
+   }
+   return 0;
+}
+!
+fi
+
+if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
+   compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
 #include "config.h"
 #include <sys/types.h>
@@ -918,6 +1189,8 @@ if feat_yes SOCKETS; then
 #include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdio.h>
+#include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #ifdef HAVE_ARPA_INET_H
@@ -926,45 +1199,54 @@ if feat_yes SOCKETS; then
 
 int main(void)
 {
-   struct sockaddr s;
-   socket(AF_INET, SOCK_STREAM, 0);
-   connect(0, &s, 0);
-   gethostbyname("foo");
+   struct sockaddr_in servaddr;
+   unsigned short portno;
+   struct servent *ep;
+   struct hostent *hp;
+   struct in_addr **pptr;
+
+   portno = 0;
+   if ((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
+      portno = (unsigned short)ep->s_port;
+
+   if ((hp = gethostbyname("POPPY-HOST")) != NULL) {
+      pptr = (struct in_addr**)hp->h_addr_list;
+      if (hp->h_addrtype != AF_INET)
+         fprintf(stderr, "au\n");
+   } else {
+      switch (h_errno) {
+      case HOST_NOT_FOUND:
+      case TRY_AGAIN:
+      case NO_RECOVERY:
+      case NO_DATA:
+         break;
+      default:
+         fprintf(stderr, "au\n");
+         break;
+      }
+   }
+
+   memset(&servaddr, 0, sizeof servaddr);
+   servaddr.sin_family = AF_INET;
+   servaddr.sin_port = htons(portno);
+   memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
+   fprintf(stderr, "Would connect to %s:%d ...\n",
+      inet_ntoa(**pptr), (int)portno);
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check sockets 'for sockets in libc' \
-         '#define HAVE_SOCKETS' ||
-      < ${tmp2}.c link_check sockets 'for sockets in libnsl' \
-         '#define HAVE_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check sockets \
-         'for sockets in libsocket and libnsl' \
-         '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+   < ${tmp2}.c link_check gethostbyname 'get(serv|host)byname(3)' ||
+      < ${tmp2}.c link_check gethostbyname \
+         'get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
+      < ${tmp2}.c link_check gethostbyname \
+         'get(serv|host)byname(3) (via -lsocket -nsl)' \
+         '' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
-else
-   echo '/* WANT_SOCKETS=0 */' >> ${h}
-fi # feat_yes SOCKETS
-
-if feat_yes SOCKETS && feat_yes SPAM_SPAMD; then
-   link_check af_unix 'for UNIX-domain sockets' \
-      '#define HAVE_UNIX_SOCKETS' << \!
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-int main(void)
-{
-   struct sockaddr_un sun;
-   socket(AF_UNIX, SOCK_STREAM, 0);
-   connect(0, (struct sockaddr*)&sun, 0);
-   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
-   return 0;
-}
-!
 fi
 
 feat_yes SOCKETS &&
-link_check setsockopt 'for setsockopt()' '#define HAVE_SETSOCKOPT' << \!
+link_check setsockopt 'setsockopt()' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -976,7 +1258,7 @@ int main(void)
 !
 
 feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_sndtimeo 'for SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
+link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -992,7 +1274,7 @@ int main(void)
 !
 
 feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_linger 'for SO_LINGER' '#define HAVE_SO_LINGER' << \!
+link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -1006,31 +1288,33 @@ int main(void)
 }
 !
 
-if feat_yes SOCKETS; then
-   link_check getaddrinfo 'for getaddrinfo(3)' \
-      '#define HAVE_GETADDRINFO' << \!
-#include "config.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+if feat_yes SSL; then
+   if link_check openssl 'OpenSSL 1.1.0 and above' \
+      '#define HAVE_SSL
+      #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
+#include <openssl/rand.h>
+
+#ifdef OPENSSL_NO_TLS1
+# error We need TLSv1.
 #endif
 
 int main(void)
 {
-   struct addrinfo a, *ap;
-   getaddrinfo("foo", "0", &a, &ap);
+   SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+   SSL_CTX_free(ctx);
+   PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
 }
 !
-fi
-
-if feat_yes SSL; then
-   if link_check openssl 'for sufficiently recent OpenSSL' \
+   then
+      :
+   elif link_check openssl 'OpenSSL' \
       '#define HAVE_SSL
-      #define HAVE_OPENSSL' '-lssl -lcrypto' << \!
+      #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -1056,7 +1340,7 @@ int main(void)
    fi
 
    if [ "${have_openssl}" = 'yes' ]; then
-      compile_check stack_of 'for OpenSSL STACK_OF()' \
+      compile_check stack_of 'OpenSSL STACK_OF()' \
          '#define HAVE_OPENSSL_STACK_OF' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1072,7 +1356,7 @@ int main(void)
 }
 !
 
-      link_check ossl_conf 'for OpenSSL_modules_load_file() support' \
+      link_check ossl_conf 'OpenSSL_modules_load_file() support' \
          '#define HAVE_OPENSSL_CONFIG' << \!
 #include <openssl/conf.h>
 
@@ -1084,14 +1368,19 @@ int main(void)
 }
 !
 
-      link_check ossl_conf_ctx 'for OpenSSL SSL_CONF_CTX support' \
+      link_check ossl_conf_ctx 'OpenSSL SSL_CONF_CTX support' \
          '#define HAVE_OPENSSL_CONF_CTX' << \!
+#include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
 int main(void)
 {
+#if HAVE_OPENSSL < 10100
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+#else
+   SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+#endif
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
    SSL_CONF_CTX_set_flags(cctx,
       SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
@@ -1105,8 +1394,8 @@ int main(void)
 }
 !
 
-      link_check rand_egd 'for OpenSSL RAND_egd()' \
-         '#define HAVE_OPENSSL_RAND_EGD' '-lssl -lcrypto' << \!
+      link_check rand_egd 'OpenSSL RAND_egd()' \
+         '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 
 int main(void)
@@ -1116,7 +1405,7 @@ int main(void)
 !
 
       if feat_yes ALL_SSL_ALGORITHMS; then
-         link_check ossl_allalgo 'for OpenSSL all-algorithms support' \
+         link_check ossl_allalgo 'OpenSSL all-algorithms support' \
             '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 
@@ -1131,7 +1420,7 @@ int main(void)
       fi # ALL_SSL_ALGORITHMS
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check openssl_md5 'for MD5 digest in OpenSSL' \
+         run_check openssl_md5 'MD5 digest in OpenSSL' \
             '#define HAVE_OPENSSL_MD5' << \!
 #include <string.h>
 #include <openssl/md5.h>
@@ -1161,7 +1450,7 @@ int main(void)
       fi # feat_yes MD5 && feat_no NOEXTMD5
 
       if feat_yes DEVEL; then
-         link_check ossl_memhooks 'for OpenSSL memory hooks' \
+         link_check ossl_memhooks 'OpenSSL memory hooks' \
             '#define HAVE_OPENSSL_MEMHOOKS' << \!
 #include <openssl/crypto.h>
 
@@ -1213,32 +1502,32 @@ int main(void)
       i=`command -v krb5-config`
       GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
       GSS_INCS="`CFLAGS= ${i} --cflags`"
-      i='for GSS-API via krb5-config(1)'
+      i='GSS-API via krb5-config(1)'
    else
       GSS_LIBS='-lgssapi'
       GSS_INCS=
-      i='for GSS-API in gssapi/gssapi.h, libgssapi'
+      i='GSS-API in gssapi/gssapi.h, libgssapi'
    fi
    if < ${tmp2}.c link_check gss \
          "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
       < ${tmp3}.c link_check gss \
-         'for GSS-API in gssapi.h, libgssapi' \
+         'GSS-API in gssapi.h, libgssapi' \
          '#define HAVE_GSSAPI
          #define GSSAPI_REG_INCLUDE' \
          '-lgssapi' ||\
-      < ${tmp2}.c link_check gss 'for GSS-API in libgssapi_krb5' \
+      < ${tmp2}.c link_check gss 'GSS-API in libgssapi_krb5' \
          '#define HAVE_GSSAPI' \
          '-lgssapi_krb5' ||\
       < ${tmp3}.c link_check gss \
-         'for GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
+         'GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
          '#define HAVE_GSSAPI
          #define GSS_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
          '-I/usr/include/kerberosV' ||\
-      < ${tmp2}.c link_check gss 'for GSS-API in libgss' \
+      < ${tmp2}.c link_check gss 'GSS-API in libgss' \
          '#define HAVE_GSSAPI' \
          '-lgss' ||\
-      link_check gss 'for GSS-API in libgssapi_krb5, old-style' \
+      link_check gss 'GSS-API in libgssapi_krb5, old-style' \
          '#define HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
          '-lgssapi_krb5' << \!
@@ -1274,7 +1563,7 @@ else
 fi
 
 if feat_yes IDNA; then
-   if link_check idna 'for GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
+   if link_check idna 'GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
@@ -1307,7 +1596,7 @@ else
 fi
 
 if feat_yes REGEX; then
-   if link_check regex 'for regular expressions' '#define HAVE_REGEX' << \!
+   if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
 int main(void)
@@ -1480,6 +1769,8 @@ else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
 
+##
+
 if feat_yes SPAM_SPAMC; then
    echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
@@ -1539,7 +1830,7 @@ else
    echo '/* WANT_MD5=0 */' >> ${h}
 fi
 
-## Summarizing ##
+## Summarizing
 
 # Since we cat(1) the content of those to cc/"ld", convert them to single line
 squeeze_em() {
@@ -1602,7 +1893,7 @@ if feat_no AMALGAMATION; then
    echo *.c >> ${mk}
    echo 'OBJ_DEP =' >> ${mk}
 else
-   j=`echo "${src}" | sed 's/^.\///'`
+   j=`echo "${src}" | ${sed} 's/^.\///'`
    echo "${j}" >> ${mk}
    printf 'OBJ_DEP = main.c ' >> ${mk}
    printf '#define _MAIN_SOURCE\n' >> ${src}
@@ -1622,13 +1913,10 @@ echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} ./mk-mk.in >> ${mk}
 
-## Finished! ##
+## Finished!
 
 ${cat} > ${tmp2}.c << \!
 #include "config.h"
-#ifdef HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
 :
 :The following optional features are enabled:
 #ifdef HAVE_SETLOCALE

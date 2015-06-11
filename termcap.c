@@ -33,6 +33,14 @@ EMPTY_FILE()
 
 static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
 
+static int     _termcap_putc(int c);
+
+static int
+_termcap_putc(int c)
+{
+   return putchar(c);
+}
+
 FL void
 termcap_init(void)
 {
@@ -70,7 +78,7 @@ termcap_init(void)
    _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
    _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
 
-   tputs(_termcap_ti, 1, &putchar);
+   tputs(_termcap_ti, 1, &_termcap_putc);
    fflush(stdout);
 jleave:
    NYD_LEAVE;
@@ -84,7 +92,7 @@ termcap_destroy(void)
    if (_termcap_buffer == NULL)
       goto jleave;
 
-   tputs(_termcap_te, 1, &putchar);
+   tputs(_termcap_te, 1, &_termcap_putc);
 
    free(_termcap_buffer);
 jleave:

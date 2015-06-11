@@ -975,7 +975,7 @@ FL int         msgidcmp(char const *s1, char const *s2);
 
 /* See if the given header field is supposed to be ignored */
 FL int         is_ign(char const *field, size_t fieldlen,
-                  struct ignoretab ignore[2]);
+                  struct ignoretab igta[2]);
 
 FL int         member(char const *realfield, struct ignoretab *table);
 
@@ -1533,7 +1533,8 @@ FL FILE *      Fdopen(int fd, char const *oflags);
 
 FL int         Fclose(FILE *fp);
 
-FL FILE *      Zopen(char const *file, char const *oflags, int *compression);
+/* Open file according to oflags (see popen.c).  Handles compressed files */
+FL FILE *      Zopen(char const *file, char const *oflags);
 
 /* Create a temporary file in tempdir, use prefix for its name, store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
@@ -2037,6 +2038,9 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 #endif
 
 #ifdef HAVE_SOCKETS
+/* Return port of urlp->url_proto (and set irv_or_null), or NULL if unknown */
+FL char const * url_servbyname(struct url const *urlp, ui16_t *irv_or_null);
+
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,

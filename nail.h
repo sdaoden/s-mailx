@@ -280,30 +280,50 @@
 #endif
 
 /*
- * CC support, generic macros etc.
+ * OS, CC support, generic macros etc.
  */
 
+/* OS: we're not a library, only set what needs special treatment somewhere */
+#define OS_DRAGONFLY    0
+#define OS_SOLARIS      0
+#define OS_SUNOS        0
+
+#ifdef __DragonFly__
+# undef OS_DRAGONFLY
+# define OS_DRAGONFLY   1
+#elif defined __solaris__ || defined __sun
+# if defined __SVR4 || defined __svr4__
+#  undef OS_SOLARIS
+#  define OS_SOLARIS    1
+# else
+#  undef OS_SUNOS
+#  define OS_SUNOS      1
+# endif
+#endif
+
+/* CC */
+#define CC_CLANG           0
+#define PREREQ_CLANG(X,Y)  0
+#define CC_GCC             0
+#define PREREQ_GCC(X,Y)    0
+
 #ifdef __clang__
+# undef CC_CLANG
+# undef PREREQ_CLANG
 # define CC_CLANG          1
 # define PREREQ_CLANG(X,Y) \
    (__clang_major__ + 0 > (X) || \
     (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
 # define __EXTEN           __extension__
 #elif defined __GNUC__
+# undef CC_GCC
+# undef PREREQ_GCC
 # define CC_GCC            1
 # define PREREQ_GCC(X,Y)   \
    (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
 # define __EXTEN           __extension__
 #endif
 
-#ifndef CC_CLANG
-# define CC_CLANG          0
-# define PREREQ_CLANG(X,Y) 0
-#endif
-#ifndef CC_GCC
-# define CC_GCC            0
-# define PREREQ_GCC(X,Y)   0
-#endif
 #ifndef __EXTEN
 # define __EXTEN
 #endif
@@ -646,7 +666,7 @@ typedef ssize_t         siz_t;
 # endif
 #endif
 
-enum {FAL0, TRU1};
+enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
 /* Add shorter aliases for "normal" integers */
@@ -720,7 +740,7 @@ enum cproto {
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
-   EXIT_USE       = 2,
+   EXIT_USE       = 64,       /* sysexits.h:EX_USAGE */
    EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
@@ -1413,7 +1433,6 @@ struct mailbox {
       MB_DELE = 01,  /* may delete messages in mailbox */
       MB_EDIT = 02   /* may edit messages in mailbox */
    }           mb_perm;
-   int mb_compressed;         /* is a compressed mbox file */
    int mb_threaded;           /* mailbox has been threaded */
 #ifdef HAVE_IMAP
    enum mbflags {
@@ -1707,8 +1726,8 @@ struct sendbundle {
 /* Structure of the hash table of ignored header fields */
 struct ignoretab {
    int         i_count;       /* Number of entries */
-   struct ignore {
-      struct ignore  *i_link;    /* Next ignored field in bucket */
+   struct ignored {
+      struct ignored *i_link;    /* Next ignored field in bucket */
       char           *i_field;   /* This ignored field */
    }           *i_head[HSHSIZE];
 };
