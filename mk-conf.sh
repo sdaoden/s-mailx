@@ -877,7 +877,7 @@ int main(void)
 then
    :
 else
-   msg 'ERROR: one of clock_gettime(2) and gettimeofday(1) is required.'
+   msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
