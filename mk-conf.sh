@@ -865,6 +865,7 @@ then
    :
 elif link_check gettimeofday 'gettimeofday(2)' \
    '#define HAVE_GETTIMEOFDAY' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
 int main(void)
 {
@@ -1060,6 +1061,7 @@ if feat_no NOALLOCA; then
    # not to overoptimize and silently break some code
    link_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
+#include <stdio.h> /* For C89 NULL */
 int main(void)
 {
    void *vp = __builtin_alloca(1);
@@ -1342,6 +1344,7 @@ int main(void)
    if [ "${have_openssl}" = 'yes' ]; then
       compile_check stack_of 'OpenSSL STACK_OF()' \
          '#define HAVE_OPENSSL_STACK_OF' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -1358,6 +1361,7 @@ int main(void)
 
       link_check ossl_conf 'OpenSSL_modules_load_file() support' \
          '#define HAVE_OPENSSL_CONFIG' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 
 int main(void)
@@ -1452,6 +1456,7 @@ int main(void)
       if feat_yes DEVEL; then
          link_check ossl_memhooks 'OpenSSL memory hooks' \
             '#define HAVE_OPENSSL_MEMHOOKS' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/crypto.h>
 
 int main(void)
@@ -1666,6 +1671,7 @@ if feat_yes EDITLINE && [ -z "${have_readline}" ]; then
    __edlib() {
       link_check editline "for editline(3) (${1})" \
          '#define HAVE_EDITLINE' "${1}" << \!
+#include <stdio.h> /* For C89 NULL */
 #include <histedit.h>
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)
