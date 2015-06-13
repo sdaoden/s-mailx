@@ -856,7 +856,18 @@ if link_check clock_gettime 'clock_gettime(2)' \
 int main(void)
 {
    struct timespec ts;
-
+   clock_gettime(CLOCK_REALTIME, &ts);
+   return 0;
+}
+!
+then
+   :
+elif link_check clock_gettime 'clock_gettime(2) (via -lrt)' \
+   '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
+#include <time.h>
+int main(void)
+{
+   struct timespec ts;
    clock_gettime(CLOCK_REALTIME, &ts);
    return 0;
 }
@@ -870,7 +881,6 @@ elif link_check gettimeofday 'gettimeofday(2)' \
 int main(void)
 {
    struct timeval tv;
-
    gettimeofday(&tv, NULL);
    return 0;
 }
