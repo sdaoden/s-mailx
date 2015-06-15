@@ -72,9 +72,14 @@ AUTHORS
 =======
 
 Berkeley Mail was (according to def.h) developed by Kurt Shoens, dated
-March 25, 1978. I very much regret that it seems impossible to include
-the people that contributed within the around fifteen years of history
-of BSD Mail. If you know more about this, contact me.
+March 25, 1978.  According to the CSRG commit log authors of BSD mail in
+the time spam 1980-10-08 to 1995-05-01 were, in order of appearance
+(commit count): Kurt Shoens (379), Kirk McKusick (50), Carl Smith (16),
+Bill Bush (2), Eric Allman (6), Craig Leres (43), Sam Leffler (51),
+Ralph Campbell (21), Serge Granik (28), Edward Wang (253),
+Donn Seeley (1), Jay Lepreau (3), Jim Bloom (1), Anne Hughes (2),
+Kevin Dunlap (34), Keith Bostic (253), Mike Karels (1), Cael Staelin (6)
+and Dave Borman (17).  One commit by Charlie Root, 36 by "dist".
 
 After the 4.4BSD release in 1993, Mail was not further developed
 officially.  The code that Heirloom mailx is based on contains
