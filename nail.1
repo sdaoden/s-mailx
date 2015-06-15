@@ -6199,6 +6199,9 @@ The special value
 can be used to force interpretation of the message part as plain text, e.g.,
 .Ql set pipe-application/pgp-signature=@
 will henceforth treat signatures as plain text and display them "as is".
+(The same can also be achieved, in a more useful context, by using the
+.Ic mimetype
+command in conjunction with a type marker.)
 .Pp
 Also, if a shell command is prefixed with
 .Ql @ ,
