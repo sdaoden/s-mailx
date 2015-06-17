@@ -1492,7 +1492,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
-   fclose(pipebuf);
+   Fclose(pipebuf);
    NYD_LEAVE;
 }
 
