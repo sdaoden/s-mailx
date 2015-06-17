@@ -79,7 +79,7 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
 static si8_t
 _if_test(struct if_cmd *icp, bool_t noop)
 {
-   char const * const *argv, *cp, *lhv, *op, *rhv;
+   char const *emsg = NULL, * const *argv, *cp, *lhv, *op, *rhv;
    size_t argc;
    char c;
    si8_t rv = -1;
@@ -96,7 +96,7 @@ _if_test(struct if_cmd *icp, bool_t noop)
       goto jesyn;
    else if (argc > 3) {
 jesyn:
-      _if_error(icp, NULL, cp);
+      _if_error(icp, emsg, cp);
       goto jleave;
    }
 
@@ -106,8 +106,8 @@ jesyn:
       case 0: rv = FAL0; break;
       case 1: rv = TRU1; break;
       default:
-         fprintf(stderr, _("Unrecognized if-keyword: \"%s\"\n"), cp);
-         break;
+         emsg = N_("Expected a boolean");
+         goto jesyn;
       }
       break;
    case 'R': case 'r':
@@ -135,6 +135,7 @@ jesyn:
       op = argv[1];
 
       /* Three argument comparison form required, check syntax */
+      emsg = N_("unrecognized condition");
       if (argc == 2 || (c = op[0]) == '\0')
          goto jesyn;
       if (op[1] == '\0') {
@@ -152,9 +153,11 @@ jesyn:
 #endif
          )
             goto jesyn;
-      }
+      } else
+         goto jesyn;
 
       /* The right hand side may also be a variable, more syntax checking */
+      emsg = N_("invalid right hand side");
       if ((rhv = argv[2]) == NULL /* Can't happen */)
          goto jesyn;
       if (*rhv == '$') {
@@ -164,6 +167,7 @@ jesyn:
       }
 
       /* A null value is treated as the empty string */
+      emsg = NULL;
       if (lhv == NULL)
          lhv = UNCONST("");
       if (rhv == NULL)
@@ -173,8 +177,10 @@ jesyn:
       if (op[1] == '~') {
          regex_t re;
 
-         if (regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB))
+         if (regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
+            emsg = N_("invalid regular expression");
             goto jesyn;
+         }
          if (!noop)
             rv = (regexec(&re, lhv, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
          regfree(&re);
@@ -327,7 +333,7 @@ _if_group(struct if_cmd *icp, size_t level, bool_t noop)
          continue;
 
       default:
-   jneed_cond:
+jneed_cond:
          if (state & _CANNOT_COND) {
             emsg = N_("cannot use a `if' condition here");
             goto jesyn;

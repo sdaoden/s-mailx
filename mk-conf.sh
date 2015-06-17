@@ -819,7 +819,7 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check termios 'termios.h and tc*() family' << \!
+if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void)
 {
@@ -839,7 +839,7 @@ fi
 
 # XXX Move to below later when the time stuff is regulary needed.
 # XXX Add POSIX check once standardized
-link_check posix_random 'arc4random()' '#define HAVE_POSIX_RANDOM 0' << \!
+link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -856,7 +856,18 @@ if link_check clock_gettime 'clock_gettime(2)' \
 int main(void)
 {
    struct timespec ts;
-
+   clock_gettime(CLOCK_REALTIME, &ts);
+   return 0;
+}
+!
+then
+   :
+elif link_check clock_gettime 'clock_gettime(2) (via -lrt)' \
+   '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
+#include <time.h>
+int main(void)
+{
+   struct timespec ts;
    clock_gettime(CLOCK_REALTIME, &ts);
    return 0;
 }
@@ -865,11 +876,11 @@ then
    :
 elif link_check gettimeofday 'gettimeofday(2)' \
    '#define HAVE_GETTIMEOFDAY' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
 int main(void)
 {
    struct timeval tv;
-
    gettimeofday(&tv, NULL);
    return 0;
 }
@@ -877,13 +888,13 @@ int main(void)
 then
    :
 else
-   msg 'ERROR: one of clock_gettime(2) and gettimeofday(1) is required.'
+   msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
 fi # -n ${have_posix_random}
 
-link_check setenv 'setenv()/unsetenv()' '#define HAVE_SETENV' << \!
+link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -893,7 +904,7 @@ int main(void)
 }
 !
 
-link_check snprintf 'snprintf()' '#define HAVE_SNPRINTF' << \!
+link_check snprintf 'snprintf(3)' '#define HAVE_SNPRINTF' << \!
 #include <stdio.h>
 int main(void)
 {
@@ -903,7 +914,7 @@ int main(void)
 }
 !
 
-link_check putc_unlocked 'putc_unlocked()' '#define HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void)
 {
@@ -912,7 +923,7 @@ int main(void)
 }
 !
 
-link_check fchdir 'fchdir()' '#define HAVE_FCHDIR' << \!
+link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
 #include <unistd.h>
 int main(void)
 {
@@ -921,7 +932,7 @@ int main(void)
 }
 !
 
-link_check pipe2 'pipe2()' '#define HAVE_PIPE2' << \!
+link_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
 #include <fcntl.h>
 #include <unistd.h>
 int main(void)
@@ -932,7 +943,7 @@ int main(void)
 }
 !
 
-link_check mmap 'mmap()' '#define HAVE_MMAP' << \!
+link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -942,7 +953,7 @@ int main(void)
 }
 !
 
-link_check mremap 'mremap()' '#define HAVE_MREMAP' << \!
+link_check mremap 'mremap(2)' '#define HAVE_MREMAP' << \!
 #include <sys/types.h>
 #include <sys/mman.h>
 int main(void)
@@ -952,7 +963,7 @@ int main(void)
 }
 !
 
-link_check setlocale 'setlocale()' '#define HAVE_SETLOCALE' << \!
+link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void)
 {
@@ -982,7 +993,7 @@ int main(void)
 !
 
    if [ "${have_c90amend1}" = yes ]; then
-      link_check wcwidth 'wcwidth()' '#define HAVE_WCWIDTH' << \!
+      link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void)
 {
@@ -992,7 +1003,7 @@ int main(void)
 !
    fi
 
-   link_check nl_langinfo 'nl_langinfo()' '#define HAVE_NL_LANGINFO' << \!
+   link_check nl_langinfo 'nl_langinfo(3)' '#define HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
 int main(void)
@@ -1003,7 +1014,7 @@ int main(void)
 !
 fi # have_setlocale
 
-link_check mkostemp 'mkostemp()' '#define HAVE_MKOSTEMP' << \!
+link_check mkostemp 'mkostemp(3)' '#define HAVE_MKOSTEMP' << \!
 #include <stdlib.h>
 #include <fcntl.h>
 int main(void)
@@ -1015,7 +1026,7 @@ int main(void)
 !
 
 if [ "${have_mkostemp}" != yes ]; then
-   link_check mkstemp 'mkstemp()' '#define HAVE_MKSTEMP' << \!
+   link_check mkstemp 'mkstemp(3)' '#define HAVE_MKSTEMP' << \!
 #include <stdlib.h>
 int main(void)
 {
@@ -1035,7 +1046,7 @@ int main(void)
 }
 !
 
-link_check wordexp 'wordexp()' '#define HAVE_WORDEXP' << \!
+link_check wordexp 'wordexp(3)' '#define HAVE_WORDEXP' << \!
 #include <wordexp.h>
 int main(void)
 {
@@ -1060,6 +1071,7 @@ if feat_no NOALLOCA; then
    # not to overoptimize and silently break some code
    link_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
+#include <stdio.h> /* For C89 NULL */
 int main(void)
 {
    void *vp = __builtin_alloca(1);
@@ -1089,9 +1101,9 @@ int main(void)
    return 0;
 }
 !
-   < ${tmp2}.c link_check iconv 'iconv functionality' \
+   < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
          '#define HAVE_ICONV' ||
-      < ${tmp2}.c link_check iconv 'iconv functionality (via -liconv)' \
+      < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
          '#define HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 else
@@ -1246,7 +1258,7 @@ int main(void)
 fi
 
 feat_yes SOCKETS &&
-link_check setsockopt 'setsockopt()' '#define HAVE_SETSOCKOPT' << \!
+link_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void)
@@ -1342,6 +1354,7 @@ int main(void)
    if [ "${have_openssl}" = 'yes' ]; then
       compile_check stack_of 'OpenSSL STACK_OF()' \
          '#define HAVE_OPENSSL_STACK_OF' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -1358,6 +1371,7 @@ int main(void)
 
       link_check ossl_conf 'OpenSSL_modules_load_file() support' \
          '#define HAVE_OPENSSL_CONFIG' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 
 int main(void)
@@ -1452,6 +1466,7 @@ int main(void)
       if feat_yes DEVEL; then
          link_check ossl_memhooks 'OpenSSL memory hooks' \
             '#define HAVE_OPENSSL_MEMHOOKS' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <openssl/crypto.h>
 
 int main(void)
@@ -1666,6 +1681,7 @@ if feat_yes EDITLINE && [ -z "${have_readline}" ]; then
    __edlib() {
       link_check editline "for editline(3) (${1})" \
          '#define HAVE_EDITLINE' "${1}" << \!
+#include <stdio.h> /* For C89 NULL */
 #include <histedit.h>
 static char * getprompt(void) { return (char*)"ok"; }
 int main(void)

@@ -35,9 +35,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"--MKREL-START--
-.\" S-nail(1): v14.8.1 / 2015-06-11
-.Dd Jun 11, 2015
-.ds VV \\%v14.8.1
+.\" S-nail(1): v14.8.2 / 2015-06-17
+.Dd Jun 17, 2015
+.ds VV \\%v14.8.2
 .\"--MKREL-END--
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
@@ -6199,6 +6199,9 @@ The special value
 can be used to force interpretation of the message part as plain text, e.g.,
 .Ql set pipe-application/pgp-signature=@
 will henceforth treat signatures as plain text and display them "as is".
+(The same can also be achieved, in a more useful context, by using the
+.Ic mimetype
+command in conjunction with a type marker.)
 .Pp
 Also, if a shell command is prefixed with
 .Ql @ ,

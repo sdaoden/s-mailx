@@ -49,7 +49,8 @@ _version_from_header = VERSION="`< version.h sed \
 
 # This is pretty specific
 _update-release:
-	@LC_ALL=C; export LC_ALL;\
+	@ORIG_LC_ALL=${LC_ALL};\
+	LC_ALL=C; export LC_ALL;\
 	: $${UAGENT:=s-nail};\
 	: $${UUAGENT:=S-nail};\
 	: $${UPLOAD:=sdaoden@frs.sourceforge.net:/home/frs/project/s-nail};\
@@ -177,8 +178,9 @@ _update-release:
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
 	make CONFIG=MAXIMAL &&\
-	./$${UAGENT} -A $${ACCOUNT} -b nail-announce-bcc \
-		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" nail-announce &&\
+	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
+		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
+		-b nail-announce-bcc nail-announce &&\
 	cd .. &&\
 	\
 	echo "Really remove $${UAGENT}-$${REL} build dir?  ENTER continues";\

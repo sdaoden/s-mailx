@@ -7,16 +7,16 @@
 #@   The parsing is also sequential top-to-bottom (nonetheless) so that
 #@   any shell snippet in a value can refer only to stuff above it.
 #@ . Specifying settings on the command line will take precedence over the
-#@   variables in here (correctly triggering build updates as necessary)
+#@   variables in here (correctly triggering build updates as necessary).
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
-#@   that can be set in here
+#@   that can be set in here.
 #@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
-#@   (case doesn't matter), other values result in an error
+#@   (case doesn't matter), other values result in an error.
 #@ . However, the value "require" is also a true boolean, but will in addition
 #@   cause configuration to fail if the requested feature is missing.  This
-#@   special behaviour is only tested by a logical subset of feature tests
+#@   special behaviour is only tested by a logical subset of feature tests.
 #@ . You may NOT comment out anything in here -- if you want to disable a
-#@   feature, set it to a false boolean
+#@   feature, set it to a false boolean.
 
 ## FEATURE SET ##
 
@@ -27,7 +27,7 @@
 # this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
 # Whatever you do, the config. is fixated and updates will force rebuilds.
 # And at the bottom there is WANT_FORCED_STACKPROT, too, which can be used to
-# cause injection of stack protectors
+# cause injection of stack protectors.
 WANT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that all
@@ -39,16 +39,16 @@ WANT_AMALGAMATION=no
 # Character set conversion enables reading and sending of mails in multiple
 # character sets through usage of the iconv(3) library.
 # Please read the manual section "Character sets" for the complete picture.
-# This should usually be enabled; it can be "require"d
+# This should usually be enabled; it can be "require"d.
 WANT_ICONV=yes
 
 # Major switch to toggle *all* network related protocols (IMAP,POP3,SMTP) and
-# related/dependent stuff (GSS-API,SSL); can be "require"d
+# related/dependent stuff (GSS-API,SSL); can be "require"d.
 WANT_SOCKETS=yes
 
 # If $WANT_SOCKETS: support for SecureSocketLayer (TransportLayerSecurity,
 # TLS), i.e., encrypted socket connections; can be "require"d.
-# This needs OpenSSL libraries (<http://www.openssl.org>)
+# This needs OpenSSL libraries (<http://www.openssl.org>).
 WANT_SSL=yes
 
 # If $WANT_SSL: shall S-nail (try to) use mechanisms to support more digest and
@@ -61,11 +61,11 @@ WANT_SSL=yes
 WANT_ALL_SSL_ALGORITHMS=yes
 
 # If $WANT_SOCKETS: support for SMTP protocol?
-# (Directly sending mails over the network)  Can be "require"d
+# (Directly sending mails over the network)  Can be "require"d.
 WANT_SMTP=yes
 
 # If $WANT_SOCKETS: support for POP3 protocol?
-# (Download of mails via POP protocol)  Can be "require"d
+# (Download of mails via POP protocol)  Can be "require"d.
 WANT_POP3=yes
 
 # If $WANT_SOCKETS: support for IMAP protocol?
@@ -74,7 +74,7 @@ WANT_IMAP=yes
 
 # If $WANT_SOCKETS: support for GSS-API (Generic Security Services Application
 # Programming Interface) based authentication, e.g., Kerberos v5?
-# Currently available for SMTP and IMAP; can be "require"d
+# Currently available for IMAP and SMTP; can be "require"d.
 WANT_GSSAPI=yes
 
 # Enabling the MD5 message digest adds support for several authentication
@@ -83,11 +83,11 @@ WANT_GSSAPI=yes
 WANT_MD5=yes
 
 # If $WANT_SOCKETS: support for parsing of user and password credentials from
-# the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry)
+# the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
 WANT_NETRC=yes
 
 # If $WANT_SOCKETS: passwords can also be looked up through an external "agent"
-# in order to allow for encrypted password storage (see *agent-shell-lookup*)
+# in order to allow for encrypted password storage (see *agent-shell-lookup*).
 WANT_AGENT=yes
 
 # IDNA (internationalized domain names for applications) offers users the
@@ -95,17 +95,17 @@ WANT_AGENT=yes
 # non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>, which the IDNA
 # algorithm would convert to <www.xn--rksmrgsa-0zap8p.example>.  :)
 # This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>).
-# It can be "require"d
+# It can be "require"d.
 WANT_IDNA=yes
 
 # IMAP-style SEARCH expressions can be supported.
 # This addressing mode is available with all types of folders; for folders not
 # located on IMAP servers, or for servers unable to execute the SEARCH command,
-# the search is performed locally
+# the search is performed locally.
 WANT_IMAP_SEARCH=yes
 
 # Regular expression (re_format(7)) support for searches, conditional
-# expressions etc.; can be "require"d
+# expressions etc.; can be "require"d.
 WANT_REGEX=yes
 
 # Command line editing and -history.
@@ -116,21 +116,21 @@ WANT_REGEX=yes
 # Note that these are tested in shown order, and each desired one must be
 # enabled by itself!
 # . WANT_READLINE
-#   The GNU readline(3) compatible interface; can be "require"d
+#   The GNU readline(3) compatible interface; can be "require"d.
 # . WANT_EDITLINE
-#   Command line editing via BSD editline(3); can be "require"d
+#   Command line editing via BSD editline(3); can be "require"d.
 # . WANT_NCL
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the system
 #   then our builtin NCL (Nail Command Line editor) version can be used.
 #   It is documented in the manual section "Command line editor".
-#   It can be "require"d
+#   It can be "require"d.
 WANT_READLINE=no
 WANT_EDITLINE=no
 WANT_NCL=yes
-# For all command line editors we optionally support history management
+# For all command line editors we optionally support history management.
 WANT_HISTORY=yes
 # For the NCL command line editor we optionally support "expand-on-tabulator".
-# Turning it off shrinks the binary.  Please see the respective manual entry
+# Turning it off shrinks the binary.  Please see the respective manual entry.
 WANT_TABEXPAND=yes
 
 # Use termcap(3) for terminal control; can be "require"d.
@@ -160,7 +160,7 @@ WANT_SPAM_FILTER=yes
 
 # If given an optional argument the `help' command will print a help string
 # only for the mentioned command; those strings take up space and so one may
-# disable this feature
+# disable this feature.
 WANT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
@@ -177,49 +177,49 @@ WANT_QUOTE_FOLD=yes
 # And which don't have any user defined MIME type handler, of course.
 WANT_FILTER_HTML_TAGSOUP=yes
 
-# A simple form of coloured output can optionally be produced (see manual)
+# A simple form of coloured output can optionally be produced (see manual).
 WANT_COLOUR=yes
 
 ## PATHS AND PROGRAMS ##
 
-# General prefix where S-nail should be installed
+# General prefix where S-nail should be installed.
 PREFIX=/usr/local
 
-# Fine tune individual locations, normally under $PREFIX
-# . the place of the S-nail program
+# Fine tune individual locations, normally under $PREFIX.
+# . the place of the S-nail program.
 BINDIR="${PREFIX}/bin"
-# . of the manual
-MANDIR="${PREFIX}/man"
-# . of the exemplary resource file
+# . of the manual.
+MANDIR="${PREFIX}/share/man"
+# . of the exemplary resource file.
 SYSCONFDIR="${PREFIX}/etc"
 
 # This variable is prepended to all the paths from above at installation time;
 # this feature can be used for, e.g., package building: if $PREFIX is
 # `/usr/local', but $DESTDIR is set to, say, `here', then S-nail will still
 # think its $PREFIX is `/usr/local' whereis the build system will instead use
-# `here/usr/local'
+# `here/usr/local'.
 DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
 MAILSPOOL=`if [ -d /var/spool/mail ]; then echo /var/spool/mail; else echo /var/mail; fi`
 
 # Path to the local MTA (Mail Transport Agent).
-# Test is: /usr/sbin/sendmail -> /usr/lib/sendmail -> /usr/bin/sendmail
-# (Only of interest if the local mail system is used)
+# Test is: /usr/sbin/sendmail -> /usr/lib/sendmail -> /usr/bin/sendmail.
+# (Only of interest if the local mail system is used).
 SENDMAIL=`if [ -x /usr/sbin/sendmail ]; then echo /usr/sbin/sendmail; elif [ -x /usr/lib/sendmail ]; then echo /usr/lib/sendmail; else echo /usr/bin/sendmail; fi`
 
 # Today a lot of systems no longer use sendmail(1), but a different MTA.
 # To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
-# used, which selects the required service by looking at the name by which the
-# program actually has been invoked.
+# often used, which selects the required service by looking at the name by
+# which the program actually has been invoked.
 # This variable can be used to adjust this name as necessary.
-# (Only of interest if the local mail system is used)
+# (Only of interest if the local mail system is used).
 SENDMAIL_PROGNAME=sendmail
 
 # Default *SHELL* (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to it's
-# own builtin sh(1) path (most likely `bin/sh'), effectively bypassing *XSHELL*
+# own builtin sh(1) path (most likely `bin/sh'), effectively bypassing *XSHELL*.
 XSHELL=/bin/sh
 
 # The default *LISTER* (in the $PATH).
@@ -246,7 +246,7 @@ XPAGER=more
 # To ease the life of forkers and packagers "our" name can be changed.
 # The name is build by concatenating $SID and $NAIL, i.e., $(SID)$(NAIL).
 # Note that the final string must be longer than two characters and may not
-# contain any whitespace
+# contain any whitespace.
 SID=s-
 NAIL=nail
 
@@ -263,34 +263,34 @@ SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
 # Note that setting this also enables our own memory canaries, which require
 # a rather large amount of runtime memory, and forcefully disables alloca(3)
 # stack memory usage (see WANT_NOALLOCA below), so as to be able to track usage
-# of "stack memory" via our memory canaries
+# of "stack memory" via our memory canaries.
 WANT_DEBUG=no
 
-# We use the crypto libraries' MD5 implementation if possible unless this one
+# We use the crypto libraries' MD5 implementation if possible unless this one.
 WANT_NOEXTMD5=no
 
 # The codebase makes a lot of use of alloca(3), and this will remain since
 # S-nail will continue to be compliant to ISO C89, which has no variable
 # arrays, etc.  For testing purposes it is however nice to use the much slower
 # normal S-nail heap memory allocator instead.
-# Note: this will be forcefully set (again) if WANT_DEBUG=yes
+# Note: this will be forcefully set (again) if WANT_DEBUG=yes.
 WANT_NOALLOCA="${WANT_DEBUG}"
 
 # Experimental code etc.
-# Note: this will be forcefully set (again) if WANT_DEBUG=yes
+# Note: this will be forcefully set (again) if WANT_DEBUG=yes.
 WANT_DEVEL=no
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print
 # a function call trace when the program crashes.  Whereas NYD will be used
 # automatically when either of WANT_DEBUG and WANT_DEVEL is defined, an
-# extended level of NYD is compiled in only on explicit request
-# TODO Separation in between NYD and NYD2 not yet fully done
+# extended level of NYD is compiled in only on explicit request.
+# TODO Separation in between NYD and NYD2 not yet fully done.
 WANT_NYD2=no
 
 # With $WANT_AUTOCC we will use stack protector guards shall the detected
 # compiler support them; this goes in line with our own (heap) memory canaries
 # and will detect buffer overflows.  It is usually only useful during
-# development, i.e., in a debug environment that tests all aspects of a program
+# development, i.e., in a debug environment that tests all aspects of a program.
 WANT_FORCED_STACKPROT=`feat_yes DEVEL || feat_yes DEBUG && echo yes || echo no`
 
 # s-it-mode

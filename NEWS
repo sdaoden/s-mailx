@@ -20,6 +20,49 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.2 ("Wandering albatross"), 2015-06-17
+-------------------------------------------
+
+Many thanks Bob Tennent, for reporting and testing!
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Configuration will now find clock_gettime(2) in -lrt and
+  gettimeofday(2) as such on Linux. [47c9ea7,5e248d2,df7d77f]
+  (Bob Tennent)
+
+- MANDIR now defaults to ${PREFIX}/share/man (not ${PREFIX}/man)
+  [6371740]
+
+ChangeLog
+^^^^^^^^^
+
+-  Added missing condition clause in `if' expression parsing
+   [74c7cac,5da6d4d]:
+
+    ?0[ +mbox]? if $du @@ hey
+    ?0[ +mbox]? endif
+    -->
+    ?0[ +mbox]? if $du @@ hey
+    `if' conditional: unrecognized condition -- near "du"
+       Expression: $du @@ hey
+       Left to parse: $du @@ hey
+    ?1[ +mbox]? endif
+
+- Ooops, fix pipe-TYPE/SUBTYPE @403 with value "@" (a.k.a. treat as
+  plain text and display "as is"): i've broken that once i've introduced
+  the extended type markers for the `mimetype' command.  Must have been
+  a Freudian error, sorry! [ea655de]
+
+- Fix a bug introduced in nail 9.29, 2001-12-10: a temporary buffer is
+  closed with fclose() even though it is a registered file that instead
+  needs to be closed via Fclose().  This effectively results in
+  a double-fclose(3) of the underlaying file descriptor once the
+  registered files are cleaned up next, which happens either after
+  signal interruption and, since [65e0510] as of 2015-05-21, whenever
+  the command loop ticks. [97fcb97]  (Bob Tennent)
+
 v14.8.1 ("Tristan albatross"), 2015-06-11
 -----------------------------------------
 

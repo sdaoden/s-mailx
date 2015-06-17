@@ -534,6 +534,9 @@ _pipecmd(char const **result, struct mimepart const *mpp)
          *cp != '@') {
       *result = cp;
       rv = PIPE_COMM;
+   } else if (*++cp == '\0') {
+      /* Treat as plain text */
+      rv = PIPE_TEXT;
    } else if (!(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
       *result = _("[Directly address message only to display this]\n");
@@ -544,7 +547,7 @@ _pipecmd(char const **result, struct mimepart const *mpp)
        * TODO then the parsing phase and the send phase will be separated;
        * TODO that allows us to ask a user *before* we start the send, i.e.,
        * TODO *before* a pager pipe is setup */
-      if (*++cp == '&')
+      if (*cp == '&')
          /* Asynchronous command, normal command line */
          *result = ++cp, rv = PIPE_ASYNC;
       else
@@ -1489,7 +1492,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
-   fclose(pipebuf);
+   Fclose(pipebuf);
    NYD_LEAVE;
 }
 
