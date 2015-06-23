@@ -687,7 +687,7 @@ _hf_dump_hrefs(struct htmlflt *self)
    struct htmlflt_href *hhp;
    NYD2_ENTER;
 
-   if (!(self->hf_flags & _HF_NL_2) && fputc('\n', self->hf_os) == EOF) {
+   if (!(self->hf_flags & _HF_NL_2) && putc('\n', self->hf_os) == EOF) {
       self->hf_flags |= _HF_ERROR;
       goto jleave;
    }
@@ -713,7 +713,7 @@ _hf_dump_hrefs(struct htmlflt *self)
       free(hhp);
    }
 
-   self->hf_flags |= (fputc('\n', self->hf_os) == EOF)
+   self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
    self->hf_href_dist = (ui32_t)realscreenheight >> 1;
 jleave:
@@ -736,7 +736,7 @@ _hf_dump(struct htmlflt *self)
    for (c = '\0'; l > 0; --l) {
       c = *cp++;
 jput:
-      if (fputc(c, self->hf_os) == EOF) {
+      if (putc(c, self->hf_os) == EOF) {
          self->hf_flags = (f |= _HF_ERROR);
          goto jleave;
       }

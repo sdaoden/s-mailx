@@ -1271,7 +1271,7 @@ jlist:   {
          fprintf(fp, _("password \"%s\"\n"),
             string_quote(nrc->nrc_dat + nrc->nrc_mlen +1 + nrc->nrc_ulen +1));
       else
-         fputc('\n', fp);
+         putc('\n', fp);
    }
 
    page_or_print(fp, l);
