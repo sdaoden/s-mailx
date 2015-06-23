@@ -598,8 +598,11 @@ for i in \
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
-path_check C_INCLUDE_PATH -I INCS
-path_check LD_LIBRARY_PATH -L LIBS
+path_check C_INCLUDE_PATH -I _INCS
+INCS="${INCS} ${_INCS}"
+path_check LD_LIBRARY_PATH -L _LIBS
+LIBS="${LIBS} ${_LIBS}"
+unset _INCS _LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
 
 if [ -n "${need_R_ldflags}" ]; then
@@ -612,7 +615,7 @@ if [ -n "${need_R_ldflags}" ]; then
       LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
       _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
    done
-   export LDFLAGS _LDFLAGS
+   export LDFLAGS
 fi
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
