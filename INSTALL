@@ -27,7 +27,7 @@ With adjustments:
 
 With utility program and feature adjustments:
 
-  $ awk=/usr/bin/nawk make WANT_SOCKETS=no DESTDIR=./zzz install
+  $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
@@ -110,9 +110,10 @@ The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
-And if all else fails you can also pass in prefilled $LIBS and $INCS:
+And if all else fails you can also forcefully pass in include directives
+and library paths by passing prefilled $INCS and $LIBS variables:
 
-  $ INCS=-I/mypath/lib LIBS=-l/mypath/iconv make install
+  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv install
 
 1.1 What if configuration fails?
 --------------------------------
@@ -308,10 +309,9 @@ Unless otherwise noted the following applies to saying "$ make" and
 3. Current codebase state
 -------------------------
 
-Since i've forked Heirloom mailx(1) (the former "nail" for real) as
-S-nail(1) on 2012-09-18 i make my way through the codebase, and i'm
-getting more and more used to it as time goes by -- of course, i'm
-thinking object and thus this codebase and i are antipodes.
+I claim that we have reached a stable state that should enable users
+a neatless mode of operation when running 24/7 (except for growing
+memory usage from the OpenSSL side of the road, when used).
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Berkeley Mail, as a good one.  Also see `TODO'.
 

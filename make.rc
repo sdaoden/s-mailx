@@ -1,15 +1,15 @@
 #@ make.rc can be used adjust the set of desired features, paths, etc.
 #@ You should have read `INSTALL' first.
 #@ Notes:
-#@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
-#@   Evaluation occurs *after* it has been read, so command line overwrites
-#@   take effect.  The parsing is linewise, sorry for that
-#@   The parsing is also sequential top-to-bottom (nonetheless) so that
-#@   any shell snippet in a value can refer only to stuff above it.
 #@ . Specifying settings on the command line will take precedence over the
 #@   variables in here (correctly triggering build updates as necessary).
 #@ . Choosing one of the predefined CONFIG= sets overwrites a lot of items
-#@   that can be set in here.
+#@   that can be set in here (and/or from the command line).
+#@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
+#@   Evaluation occurs *after* it has been read, so command line overwrites
+#@   take effect.  The parsing is linewise, sorry for that.
+#@   The parsing is also sequential top-to-bottom (nonetheless) so that
+#@   any shell snippet in a value can refer only to stuff above it.
 #@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
 #@   (case doesn't matter), other values result in an error.
 #@ . However, the value "require" is also a true boolean, but will in addition
@@ -24,8 +24,9 @@
 # known-good compiler flags?  If so additions may still be provided by setting
 # $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
 # Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS, set
-# this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS.
-# Whatever you do, the config. is fixated and updates will force rebuilds.
+# this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS, as in
+#     $ make ADDCFLAGS=-std=c99 install
+# Whatever you do, the configuration is fixated and updates will force rebuilds.
 # And at the bottom there is WANT_FORCED_STACKPROT, too, which can be used to
 # cause injection of stack protectors.
 WANT_AUTOCC=yes
