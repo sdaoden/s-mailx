@@ -143,7 +143,6 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
-   _CFLAGS=${ADDCFLAGS} _LDFLAGS=${ADDLDFLAGS}
 
    if [ ${OS} = sunos ]; then
       _os_setup_sunos
@@ -152,8 +151,8 @@ os_setup() {
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-         CFLAGS=${_CFLAGS}
-         LDFLAGS=${_LDFLAGS}
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
@@ -205,11 +204,10 @@ _os_setup_sunos() {
    if feat_yes AUTOCC; then
       if command -v cc >/dev/null 2>&1; then
          CC=cc
-         feat_yes DEBUG && _CFLAGS="-v -Xa -g ${_CFLAGS}" ||
-            _CFLAGS="-Xa -O ${_CFLAGS}"
+         feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-         CFLAGS=${_CFLAGS}
-         LDFLAGS=${_LDFLAGS}
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
@@ -221,7 +219,19 @@ _os_setup_sunos() {
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
 cc_setup() {
-   feat_no AUTOCC && { _cc_default; return; }
+   # Even though it belongs into cc_flags we will try to compile and link
+   # something, so ensure we have a clean state regarding CFLAGS/LDFLAGS or
+   # ADDCFLAGS/ADDLDFLAGS
+   if feat_no AUTOCC; then
+      _cc_default
+      # Ensure those don't do any harm
+      ADDCFLAGS= ADDLDFLAGS=
+      export ADDCFLAGS ADDLDFLAGS
+      return
+   else
+      CFLAGS= LDFLAGS=
+      export CFLAGS LDFLAGS
+   fi
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    printf >&2 'Searching for a usable C compiler .. $CC='
@@ -274,16 +284,19 @@ cc_flags() {
       _cc_flags_generic
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS=${_CFLAGS}
-      LDFLAGS=${_LDFLAGS}
-   elif feat_no DEBUG; then
-      CFLAGS="-DNDEBUG ${CFLAGS}"
+      CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+   else
+      if feat_no DEBUG; then
+         CFLAGS="-DNDEBUG ${CFLAGS}"
+      fi
    fi
    msg ''
    export CFLAGS LDFLAGS
 }
 
 _cc_flags_generic() {
+   _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
    cc_check -Wall
@@ -633,17 +646,20 @@ int main(int argc, char **argv)
 }
 !
 
-if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
+if "${CC}" ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} \
+      -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
-   msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
-   msg 'ERROR:   Please set $CC (and $CFLAGS) variable(s), rerun'
+   msg 'ERROR: i cannot compile a "Hello world" via'
+   msg '   %s' \
+      "${CC} ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} ${LIBS}"
+   msg 'ERROR:   Please read INSTALL, rerun'
    config_exit 1
 fi
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
-   if "${CC}" ${_CFLAGS} ${1} ${INCS} ${_LDFLAGS} \
+   if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
@@ -655,7 +671,7 @@ cc_check() {
 
 ld_check() {
    [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
-   if "${CC}" ${_CFLAGS} ${INCS} ${_LDFLAGS} ${1} \
+   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
@@ -741,11 +757,11 @@ ${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) $(XINCS) -c $<
+	$(CC) $(XINCS) $(CFLAGS) -c $<
 .c.x:
 	$(CC) $(XINCS) -E $< >$@
 .c:
-	$(CC) $(XINCS) -o $@ $< $(XLIBS)
+	$(CC) $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
 .y: ;
 !
 
