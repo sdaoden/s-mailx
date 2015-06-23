@@ -76,14 +76,15 @@ struct macro {
    struct macro   *ma_next;
    char           *ma_name;
    struct mline   *ma_contents;
-   size_t         ma_maxlen;     /* Maximum line length */
+   ui32_t         ma_maxlen;     /* Maximum line length */
    enum ma_flags  ma_flags;
    struct var     *ma_localopts; /* `account' unroll list, for `localopts' */
 };
 
 struct mline {
    struct mline   *l_next;
-   size_t         l_length;
+   ui32_t         l_length;
+   ui32_t         l_leadspaces;  /* Number of leading SPC characters */
    char           l_line[VFIELD_SIZE(0)];
 };
 
@@ -796,7 +797,7 @@ _ma_list(enum ma_flags mafl)
    FILE *fp;
    char const *typestr;
    struct macro *mq;
-   ui32_t ti, mc;
+   ui32_t ti, mc, i;
    struct mline *lp;
    NYD2_ENTER;
 
@@ -816,8 +817,12 @@ _ma_list(enum ma_flags mafl)
             if (++mc > 1)
                putc('\n', fp);
             fprintf(fp, "%s %s {\n", typestr, mq->ma_name);
-            for (lp = mq->ma_contents; lp != NULL; lp = lp->l_next)
-               fprintf(fp, "  %s\n", lp->l_line);
+            for (lp = mq->ma_contents; lp != NULL; lp = lp->l_next) {
+               for (i = lp->l_leadspaces; i > 0; --i)
+                  putc(' ', fp);
+               fputs(lp->l_line, fp);
+               putc('\n', fp);
+            }
             fputs("}\n", fp);
          }
    if (mc)
@@ -837,8 +842,9 @@ _ma_define(char const *name, enum ma_flags mafl)
    struct macro *mp;
    struct mline *lp, *lst = NULL, *lnd = NULL;
    char *linebuf = NULL, *cp;
-   size_t linesize = 0, maxlen = 0;
-   int n, i;
+   size_t linesize = 0;
+   ui32_t maxlen = 0, leaspc;
+   union {int i; ui32_t ui;} n;
    NYD2_ENTER;
 
    mp = scalloc(1, sizeof *mp);
@@ -846,10 +852,10 @@ _ma_define(char const *name, enum ma_flags mafl)
    mp->ma_flags = mafl;
 
    for (;;) {
-      n = readline_input("", TRU1, &linebuf, &linesize, NULL);
-      if (n == 0)
+      n.i = readline_input("", TRU1, &linebuf, &linesize, NULL);
+      if (n.ui == 0)
          continue;
-      if (n < 0) {
+      if (n.i < 0) {
          fprintf(stderr, _("Unterminated %s definition: \"%s\".\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
          if ((pstate & PS_IN_LOAD) == PS_SOURCING)
@@ -859,25 +865,25 @@ _ma_define(char const *name, enum ma_flags mafl)
       if (_is_closing_angle(linebuf))
          break;
 
-      /* Trim WS */
-      for (cp = linebuf, i = 0; i < n; ++cp, ++i)
-         if (!whitechar(*cp))
-            break;
-      if (i == n)
+      /* Trim WS xxx we count tabs as one space here */
+      for (cp = linebuf, leaspc = 0; n.ui > 0 && whitechar(*cp); ++cp, --n.ui)
+         if (*cp == '\t')
+            leaspc = (leaspc + 8) & ~7;
+         else
+            ++leaspc;
+      if (n.ui == 0)
          continue;
-      n -= i;
-      while (whitechar(cp[n - 1]))
-         if (--n == 0)
-            break;
-      if (n == 0)
-         continue;
+      for (; whitechar(cp[n.ui - 1]); --n.ui)
+         assert(n.ui > 0);
+      assert(n.ui > 0);
 
-      maxlen = MAX(maxlen, (size_t)n);
-      cp[n++] = '\0';
+      maxlen = MAX(maxlen, n.ui);
+      cp[n.ui++] = '\0';
+      lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct mline, l_line) + n.ui);
+      memcpy(lp->l_line, cp, n.ui);
+      lp->l_length = --n.ui;
+      lp->l_leadspaces = leaspc;
 
-      lp = scalloc(1, sizeof(*lp) - VFIELD_SIZEOF(struct mline, l_line) + n);
-      memcpy(lp->l_line, cp, n);
-      lp->l_length = (size_t)--n;
       if (lst != NULL) {
          lnd->l_next = lp;
          lnd = lp;
