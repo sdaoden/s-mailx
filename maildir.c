@@ -775,14 +775,22 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
+
    if (!(fm & FEDIT_NEWMAIL))
       pstate &= ~PS_SAW_COMMAND;
+
+   if (options & OPT_EXISTONLY) {
+      i = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), name);
       i = 1;
       goto jleave;
    }
+
    if ((fm & FEDIT_NEWMAIL) && msgCount > omsgCount)
       newmailinfo(omsgCount);
    i = 0;

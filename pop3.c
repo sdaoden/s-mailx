@@ -880,8 +880,14 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
+
+   if (options & OPT_EXISTONLY) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(pstate & PS_EDIT) && msgCount == 0) {
-      if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
+      if (!ok_blook(emptystart))
          fprintf(stderr, _("No mail at %s\n"), server);
       goto jleave;
    }

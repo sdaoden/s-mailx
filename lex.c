@@ -645,6 +645,11 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    if (!(fm & FEDIT_NEWMAIL))
       pstate &= ~PS_SAW_COMMAND;
 
+   if (options & OPT_EXISTONLY) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
 jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {

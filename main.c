@@ -521,19 +521,20 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
          n_strlcpy(mailname, cp, PATH_MAX);
    }
 
-   i = setfile(folder, FEDIT_NONE);
+   if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))
+      i = FEDIT_RDONLY;
+   else
+      i = FEDIT_NONE;
+   i = setfile(folder, i);
    if (i < 0) {
       exit_status = EXIT_ERR; /* error already reported */
-      goto jleave;
+      goto jquit;
    }
-   if (options & OPT_EXISTONLY) {
+   if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) {
       exit_status = i;
-      goto jleave;
-   }
-   if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-      if ((exit_status = i) == EXIT_OK)
+      if (!(options & OPT_EXISTONLY) && i == EXIT_OK)
          print_header_summary(Larg);
-      goto jleave;
+      goto jquit;
    }
    check_folder_hook(FAL0);
 
@@ -569,6 +570,7 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
       safe_signal(SIGINT, SIG_IGN);
       safe_signal(SIGQUIT, SIG_IGN);
    }
+jquit:
    save_mbox_for_possible_quitstuff();
    quit();
 jleave:

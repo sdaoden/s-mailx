@@ -1347,6 +1347,12 @@ jdone:
       c_sort((void*)-1);
    }
 
+   if ((options & OPT_EXISTONLY) && (mb.mb_type == MB_IMAP ||
+         mb.mb_type == MB_CACHE)) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(fm & FEDIT_NEWMAIL) && !(pstate & PS_EDIT) && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
@@ -1354,6 +1360,7 @@ jdone:
       rv = 1;
       goto jleave;
    }
+
    if (fm & FEDIT_NEWMAIL)
       newmailinfo(prevcount);
    rv = 0;
