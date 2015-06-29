@@ -125,11 +125,12 @@ _dot_dir_access(char const *fname)
 
    if ((rv = is_dir(path))) {
       for (;;)
-         if (!access(path, R_OK | W_OK | X_OK)) {
-            rv = TRU1;
+         if (!access(path, R_OK | W_OK | X_OK))
             break;
-         } else if (errno != EINTR)
+         else if (errno != EINTR) {
+            rv = FAL0;
             break;
+         }
    }
 
    ac_free(path);
@@ -328,7 +329,7 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
       rv = (create_exclusive(path) == 0);
       olderrno = errno;
       sigprocmask(SIG_SETMASK, &oset, NULL);
-      if (!rv)
+      if (rv)
          goto jleave;
 
       while (!_dot_fcntl_lock(fd, FLOCK_UNLOCK))
