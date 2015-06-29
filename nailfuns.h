@@ -1021,7 +1021,7 @@ FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
-                  const char *mbx);
+                  const char *mbx, enum fedit_mode fm);
 FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);

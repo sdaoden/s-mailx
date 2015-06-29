@@ -945,7 +945,8 @@ jleave:
 #endif
 
 FL enum okay
-imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx)
+imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
+   enum fedit_mode fm)
 {
    enum okay ok = OKAY;
    char const *cp;
@@ -955,7 +956,8 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx)
    UNUSED(size);
 
    mp->mb_uidvalidity = 0;
-   snprintf(o, sizeof o, "%s SELECT %s\r\n", tag(1), imap_quotestr(mbx));
+   snprintf(o, sizeof o, "%s %s %s\r\n", tag(1),
+      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), imap_quotestr(mbx));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -1318,7 +1320,7 @@ jduppass:
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
-         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX")) != OKAY) {
+         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX"), fm) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
       safe_signal(SIGINT, saveint);
@@ -1994,17 +1996,20 @@ jbypass:
          modflags++;
       }
 
-   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
-      printf(_("\"%s\" "), displayname);
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"));
-   } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
-      if (held == 1)
-         printf(_("Held 1 message in %s\n"), displayname);
-      else
-         printf(_("Held %d messages in %s\n"), held, displayname);
+   /* XXX should be readonly (but our IMAP code is weird...) */
+   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))) {
+      if ((gotcha || modflags) && (pstate & PS_EDIT)) {
+         printf(_("\"%s\" "), displayname);
+         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            ? _("complete\n") : _("updated.\n"));
+      } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
+         if (held == 1)
+            printf(_("Held 1 message in %s\n"), displayname);
+         else
+            printf(_("Held %d messages in %s\n"), held, displayname);
+      }
+      fflush(stdout);
    }
-   fflush(stdout);
    NYD_LEAVE;
    return OKAY;
 }

@@ -850,7 +850,8 @@ dequeue1(struct mailbox *mp)
 
    fp = cache_queue1(mp, "r+", &qname);
    if (fp != NULL && fsize(fp) > 0) {
-      if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox) != OKAY) {
+      if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
+            != OKAY) {
          fprintf(stderr, "Cannot select \"%s\" for dequeuing.\n",
             mp->mb_imap_mailbox);
          goto jsave;
