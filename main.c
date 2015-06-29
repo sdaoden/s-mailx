@@ -649,7 +649,7 @@ main(int argc, char *argv[])
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
    char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
-   char const *okey, **oargs = NULL, *folder = NULL;
+   char const *okey, **oargs = NULL, *folder = NULL, *emsg = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
    int i;
    NYD_ENTER;
@@ -778,7 +778,7 @@ main(int argc, char *argv[])
             struct name *fa = nalloc(_oarg, GSKIN | GFULL | GFULLEXTRA);
 
             if (is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)) {
-               fprintf(stderr, _("Invalid address argument with -r\n"));
+               emsg = N_("Invalid address argument with -r");
                goto jusage;
             }
             option_r_arg = fa;
@@ -871,6 +871,10 @@ joarg:
          goto jgetopt_done;
       case '?':
 jusage:
+         if (emsg != NULL) {
+            fputs(V_(emsg), stderr);
+            putc('\n', stderr);
+         }
          fprintf(stderr, V_(usagestr) _USAGE_ARGS);
 #undef _USAGE_ARGS
          exit_status = EXIT_USE;
@@ -893,7 +897,7 @@ jgetopt_done:
       folder = cp;
       if ((cp = argv[++i]) != NULL) {
          if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
-            fprintf(stderr, _("More than one file given with -f\n"));
+            emsg = N_("More than one file given with -f");
             goto jusage;
          }
          ++i;
@@ -922,33 +926,37 @@ jgetopt_done:
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
       if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
-         fprintf(stderr, _("Cannot give -f and people to send to.\n"));
+         emsg = N_("Cannot give -f and people to send to.");
          goto jusage;
       }
       if (myname != NULL) {
-         fprintf(stderr, _(
-            "The -u option cannot be used in send mode\n"));
+         emsg = N_("The -u option cannot be used in send mode");
          goto jusage;
       }
       if (!(options & OPT_t_FLAG) && to == NULL) {
-         fprintf(stderr, _(
-            "Send options without primary recipient specified.\n"));
+         emsg = N_("Send options without primary recipient specified.");
+         goto jusage;
+      }
+      if (options & OPT_EXISTONLY) {
+         emsg = N_("The -e option cannot be used in send mode.");
          goto jusage;
       }
       if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-         fprintf(stderr, _(
-            "The -H and -L options cannot be used in send mode.\n"));
+         emsg = N_("The -H and -L options cannot be used in send mode.");
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
-         fprintf(stderr,
-            _("The -R option is meaningless in send mode.\n"));
+         emsg = N_("The -R option is meaningless in send mode.");
          goto jusage;
       }
    } else {
       if (folder != NULL && myname != NULL) {
-         fprintf(stderr, _(
-            "The options -f and -u are mutually exclusive\n"));
+         emsg = N_("The options -f and -u are mutually exclusive");
+         goto jusage;
+      }
+      if ((options & OPT_EXISTONLY) &&
+            (options & (OPT_HEADERSONLY | OPT_HEADERLIST))) {
+         emsg = N_("The option -e is mutual exclusive with -H and -L");
          goto jusage;
       }
    }
