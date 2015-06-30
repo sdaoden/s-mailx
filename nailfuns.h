@@ -1526,9 +1526,10 @@ FL void        command_manager_start(void);
 /* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
 
-/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags */
+/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags!
+ * For Fdopen() this means that the fd creator has to take appropriate steps in
+ * order to ensure this is true! */
 FL FILE *      Fopen(char const *file, char const *oflags);
-
 FL FILE *      Fdopen(int fd, char const *oflags);
 
 FL int         Fclose(FILE *fp);

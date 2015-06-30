@@ -445,7 +445,7 @@ Fdopen(int fd, char const *oflags)
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= _O_CLOEXEC;
+   osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
@@ -862,7 +862,6 @@ fork_child(void)
       _delchild(cp);
       perror("fork");
    }
-
    NYD_LEAVE;
    return pid;
 }
