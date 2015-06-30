@@ -357,7 +357,7 @@
 #define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
 
 /* Align something to a size/boundary that cannot cause just any problem */
-#define ALIGN(X)        (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN(X)      (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
 
 /* Members in constant array */
 #ifndef NELEM
