@@ -229,6 +229,15 @@ _rand_get8(void)
 static char *
 _colour_iso6429(char const *wish)
 {
+   struct isodesc {
+      char  id_name[15];
+      char  id_modc;
+   } const fta[] = {
+      {"bold", '1'}, {"underline", '4'}, {"inverse", '7'}
+   }, ca[] = {
+      {"black", '0'}, {"red", '1'}, {"green", '2'}, {"brown", '3'},
+      {"blue", '4'}, {"magenta", '5'}, {"cyan", '6'}, {"white", '7'}
+   }, *idp;
    char const * const wish_orig = wish;
    char *xwish, *cp, cfg[3] = {0, 0, 0};
    NYD_ENTER;
@@ -254,40 +263,27 @@ jbail:
       }
       *x++ = '\0';
 
-      /* TODO convert the ft/fg/bg parser into a table-based one! */
       if (!asccasecmp(cp, "ft")) {
-         if (!asccasecmp(x, "bold"))
-            cfg[0] = '1';
-         else if (!asccasecmp(x, "inverse"))
-            cfg[0] = '7';
-         else if (!asccasecmp(x, "underline"))
-            cfg[0] = '4';
-         else
-            goto jbail;
+         for (idp = fta;; ++idp)
+            if (idp == fta + NELEM(fta))
+               goto jbail;
+            else if (!asccasecmp(x, idp->id_name)) {
+               cfg[0] = idp->id_modc;
+               break;
+            }
       } else if (!asccasecmp(cp, "fg")) {
          y = cfg + 1;
          goto jiter_colour;
       } else if (!asccasecmp(cp, "bg")) {
          y = cfg + 2;
 jiter_colour:
-         if (!asccasecmp(x, "black"))
-            *y = '0';
-         else if (!asccasecmp(x, "blue"))
-            *y = '4';
-         else if (!asccasecmp(x, "green"))
-            *y = '2';
-         else if (!asccasecmp(x, "red"))
-            *y = '1';
-         else if (!asccasecmp(x, "brown"))
-            *y = '3';
-         else if (!asccasecmp(x, "magenta"))
-            *y = '5';
-         else if (!asccasecmp(x, "cyan"))
-            *y = '6';
-         else if (!asccasecmp(x, "white"))
-            *y = '7';
-         else
-            goto jbail;
+         for (idp = ca;; ++idp)
+            if (idp == ca + NELEM(ca))
+               goto jbail;
+            else if (!asccasecmp(x, idp->id_name)) {
+               *y = idp->id_modc;
+               break;
+            }
       } else
          goto jbail;
    }
