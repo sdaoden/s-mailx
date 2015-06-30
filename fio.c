@@ -916,7 +916,7 @@ setptr(FILE *ibuf, off_t offset)
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if (ferror(mb.mb_otf)) {
          n_perr(_("/tmp"), 0);
-         exit(1);
+         exit(EXIT_ERR);
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';

@@ -566,7 +566,7 @@ collhup(int s)
    savedeadletter(_coll_fp, 1);
    /* Let's pretend nobody else wants to clean up, a true statement at
     * this time */
-   exit(1);
+   exit(EXIT_ERR);
 }
 
 static int
@@ -849,7 +849,7 @@ jcont:
          /* Force a quit, act like an interrupt had happened */
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
-         exit(1);
+         exit(EXIT_ERR);
          /*NOTREACHED*/
       case 'h':
          /* Grab a bunch of headers */

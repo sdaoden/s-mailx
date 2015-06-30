@@ -947,7 +947,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
       prepare_child(mask, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
-      _exit(1);
+      _exit(EXIT_ERR);
    }
    NYD_LEAVE;
    return rv;

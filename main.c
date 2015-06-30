@@ -393,7 +393,7 @@ _setup_vars(void)
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
       n_alert(_("\"%s\" is not a user of this system"), cp);
-      exit(67); /* XXX BSD EX_NOUSER */
+      exit(EXIT_NOUSER);
    } else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
@@ -813,7 +813,7 @@ joarg:
          break;
       case 'V':
          puts(ok_vlook(version));
-         exit(0);
+         exit(EXIT_OK);
          /* NOTREACHED */
       case 'v':
          /* Be verbose */
@@ -1094,7 +1094,7 @@ c_rexit(void *v) /* TODO program state machine */
       if (options & OPT_INTERACTIVE)
          termcap_destroy();
 #endif
-      exit(0);
+      exit(EXIT_OK);
    }
    NYD_LEAVE;
    return 1;

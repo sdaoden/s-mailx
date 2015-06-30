@@ -458,7 +458,7 @@ hangup(int s)
    NYD_X; /* Signal handler */
    UNUSED(s);
    /* nothing to do? */
-   exit(1);
+   exit(EXIT_ERR);
 }
 
 FL int
@@ -1402,11 +1402,11 @@ initbox(char const *name)
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
          NULL) {
       n_perr(_("temporary mail message file"), 0);
-      exit(1);
+      exit(EXIT_ERR);
    }
    if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
       n_perr(_("temporary mail message file"), 0);
-      exit(1);
+      exit(EXIT_ERR);
    }
    Ftmp_release(&tempMesg);
 

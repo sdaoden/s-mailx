@@ -1478,7 +1478,7 @@ jstop:
       if (smtp != NULL) {
          prepare_child(&nset, 0, 1);
          if (smtp_mta(sbp))
-            _exit(0);
+            _exit(EXIT_OK);
       } else
 #endif
       {
@@ -1498,7 +1498,7 @@ jstop:
       }
       savedeadletter(sbp->sb_input, 1);
       n_err(_("... message not sent\n"));
-      _exit(1);
+      _exit(EXIT_ERR);
    }
    if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
