@@ -469,9 +469,11 @@ do {\
 # define assert(X)      UNUSED(0)
 # define DBG(X)
 # define NDBG(X)        X
+# define DBGOR(X,Y)     Y
 #else
 # define DBG(X)         X
 # define NDBG(X)
+# define DBGOR(X,Y)     X
 #endif
 
 /* Translation (init in main.c) */
