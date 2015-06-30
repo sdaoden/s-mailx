@@ -123,7 +123,7 @@ scan_mode(char const *mode, int *omode)
          goto jleave;
       }
 
-   alert(_("Internal error: bad stdio open mode %s\n"), mode);
+   n_alert(_("Internal error: bad stdio open mode %s"), mode);
    errno = EINVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -267,12 +267,7 @@ unregister_file(FILE *fp)
          free(p);
          goto jleave;
       }
-#ifdef HAVE_DEBUG
-   panic
-#else
-   alert
-#endif
-      (_("Invalid file pointer"));
+   DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
    rv = STOP;
 jleave:
    NYD_LEAVE;
@@ -397,7 +392,7 @@ command_manager_start(void)
 #endif
          ;
    if (sigaction(SIGCHLD, &nact, &oact) != 0)
-      panic("Cannot install signal handler for child process management");
+      n_panic(_("Cannot install signal handler for child process management"));
    NYD_LEAVE;
 }
 
@@ -525,7 +520,7 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
             if ((csave != NULL) && (cload != NULL))
                flags |= FP_HOOK;
             else if ((csave != NULL) | (cload != NULL)) {
-               alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
+               n_alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
                   "Treating as plain text!"), ext);
                goto jraw;
             } else

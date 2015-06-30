@@ -708,7 +708,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 
    omsgCount = msgCount;
    if (cwget(&cw) == STOP) {
-      alert("Cannot open current directory");
+      n_alert(_("Cannot open current directory"));
       goto jleave;
    }
 
@@ -764,7 +764,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    }
 
    if (cwret(&cw) == STOP)
-      panic("Cannot change back to current directory.");/* TODO tr */
+      n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
 
    setmsize(msgCount);
@@ -804,7 +804,7 @@ maildir_quit(void)
    NYD_ENTER;
 
    if (cwget(&cw) == STOP) {
-      alert(_("Cannot open current directory"));
+      n_alert(_("Cannot open current directory"));
       goto jleave;
    }
 
@@ -826,7 +826,7 @@ maildir_quit(void)
    safe_signal(SIGINT, saveint);
 
    if (cwret(&cw) == STOP)
-      panic(_("Cannot change back to current directory."));
+      n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
 jleave:
    NYD_LEAVE;

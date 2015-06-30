@@ -1804,7 +1804,7 @@ n_perr(char const *msg, int errval)
 }
 
 FL void
-panic(char const *format, ...)
+n_panic(char const *format, ...)
 {
    va_list ap;
    NYD2_ENTER;
@@ -1822,7 +1822,7 @@ panic(char const *format, ...)
 }
 
 FL void
-alert(char const *format, ...)
+n_alert(char const *format, ...)
 {
    va_list ap;
    NYD2_ENTER;
@@ -1837,12 +1837,6 @@ alert(char const *format, ...)
    NYD2_LEAVE;
 }
 
-static void
-_out_of_memory(void)
-{
-   panic("no memory");
-}
-
 #ifndef HAVE_DEBUG
 FL void *
 smalloc(size_t s SMALLOC_DEBUG_ARGS)
@@ -1853,7 +1847,7 @@ smalloc(size_t s SMALLOC_DEBUG_ARGS)
    if (s == 0)
       s = 1;
    if ((rv = malloc(s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1869,7 +1863,7 @@ srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
    if (v == NULL)
       rv = smalloc(s);
    else if ((rv = realloc(v, s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1883,7 +1877,7 @@ scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
    if (size == 0)
       size = 1;
    if ((rv = calloc(nmemb, size)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1937,7 +1931,7 @@ do {\
    if (__xl.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
+      n_alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    __xu.p_p = __xc;\
@@ -1953,11 +1947,11 @@ do {\
    if (__xu.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
+      n_alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    if (BAD)\
-      alert("   ..canary last seen: %s, line %" PRIu16 "",\
+      n_alert("   ..canary last seen: %s, line %" PRIu16 "",\
          __xc->mc_file, __xc->mc_line);\
 } while (0)
 
@@ -1970,12 +1964,12 @@ FL void *
    if (s == 0)
       s = 1;
    if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("smalloc(): allocation too large: %s, line %d\n",
+      n_panic("smalloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (malloc)(s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)
       _mem_list->mc_prev = p.p_c;
@@ -2031,12 +2025,12 @@ jforce:
    if (s == 0)
       s = 1;
    if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("srealloc(): allocation too large: %s, line %d\n",
+      n_panic("srealloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (realloc)(p.p_c, s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)
       _mem_list->mc_prev = p.p_c;
@@ -2069,17 +2063,17 @@ FL void *
    if (nmemb == 0)
       nmemb = 1;
    if (size > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("scalloc(): allocation size too large: %s, line %d\n",
+      n_panic("scalloc(): allocation size too large: %s, line %d",
          mdbg_file, mdbg_line);
    if ((UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE) / nmemb < size)
-      panic("scalloc(): allocation count too large: %s, line %d\n",
+      n_panic("scalloc(): allocation count too large: %s, line %d",
          mdbg_file, mdbg_line);
 
    size *= nmemb;
    size += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (malloc)(size)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    memset(p.p_p, 0, size);
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)

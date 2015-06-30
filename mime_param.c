@@ -556,7 +556,7 @@ jneed_enc:
       bp_xmax -= self->mpb_charset_len;
    }
    if (PTRCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
-      DBG( alert("_mime_param_create(): Hunky Dory!"); )
+      DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
       bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
    }
    assert(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */

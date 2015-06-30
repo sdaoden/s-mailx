@@ -432,8 +432,8 @@ FL void        n_err_sighdl(char const *format, ...);
 FL void        n_perr(char const *msg, int errval);
 
 /* Announce a fatal error (and die) */
-FL void        panic(char const *format, ...);
-FL void        alert(char const *format, ...);
+FL void        n_panic(char const *format, ...);
+FL void        n_alert(char const *format, ...);
 
 /* Memory allocation routines */
 #ifdef HAVE_DEBUG

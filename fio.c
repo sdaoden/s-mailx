@@ -865,7 +865,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
    if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
          SEEK_SET) < 0) {
       n_perr(_("fseek"), 0);
-      panic(_("temporary file seek"));
+      n_panic(_("temporary file seek"));
    }
    rv = mp->mb_itf;
 jleave:

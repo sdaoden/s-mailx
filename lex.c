@@ -1094,7 +1094,7 @@ je96:
       break;
 
    default:
-      panic(_("Unknown argument type"));
+      n_panic(_("Unknown argument type"));
    }
 
    if (e == 0 && (com->argtype & ARG_V) &&

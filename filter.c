@@ -1089,7 +1089,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    /* Extra check only */
    assert(s != NULL);
    if (*s != '<') {
-      DBG( alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
+      DBG( n_alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
 jput_as_is:
       self = _hf_puts(self, self->hf_bdat);
       goto jleave;

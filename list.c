@@ -831,7 +831,7 @@ regret(int token)
 {
    NYD_ENTER;
    if (++regretp >= REGDEP)
-      panic(_("Too many regrets"));
+      n_panic(_("Too many regrets"));
    regretstack[regretp] = token;
    lexstring[STRINGLEN -1] = '\0';
    string_stack[regretp] = savestr(lexstring);
@@ -1004,7 +1004,7 @@ unmark(int mesg)
 
    i = (size_t)mesg;
    if (i < 1 || UICMP(z, i, >, msgCount))
-      panic(_("Bad message number to unmark"));
+      n_panic(_("Bad message number to unmark"));
    message[i - 1].m_flag &= ~MMARK;
    NYD_LEAVE;
 }
@@ -1261,7 +1261,7 @@ mark(int mesg, int f)
 
    i = mesg;
    if (i < 1 || i > msgCount)
-      panic(_("Bad message number to mark"));
+      n_panic(_("Bad message number to mark"));
    if (mb.mb_threaded == 1 && threadflag) {
       if (!(message[i - 1].m_flag & MHIDDEN)) {
          if (f == MDELETED || !(message[i - 1].m_flag & MDELETED))

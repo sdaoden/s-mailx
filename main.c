@@ -395,11 +395,11 @@ _setup_vars(void)
    cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
+      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
-      alert(_("\"%s\" is not a user of this system"), cp);
+      n_alert(_("\"%s\" is not a user of this system"), cp);
       exit(67); /* XXX BSD EX_NOUSER */
    } else {
       myname = pw->pw_name;
