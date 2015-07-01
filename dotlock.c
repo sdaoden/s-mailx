@@ -56,13 +56,13 @@
  * TODO Approach two, also optional: use a configurable setgid dotlock prog */
 #define GID_MAYBESET(P) \
 do if (realgid != effectivegid && !_maybe_setgid(P, effectivegid)) {\
-   perror("setgid");\
+   n_perr(_("setgid"), 0);\
    exit(1);\
 } while (0)
 
 #define GID_RESET() \
 do if (realgid != effectivegid && setgid(realgid) == -1) {\
-   perror("setgid");\
+   n_perr(_("setgid"), 0);\
    exit(1);\
 } while (0)
 
@@ -305,9 +305,8 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
     * don't fail otherwise */
    if (!_dot_dir_access(fname)) {
       if (options & OPT_D_V) /* TODO Really? dotlock's are crucial! Always!?! */
-         fprintf(stderr,
-            _("Can't manage lock files in \"%s\", please check permissions\n"),
-            fname);
+         n_err(_("Can't manage lock files in \"%s\", "
+            "please check permissions\n"), fname);
       rv = TRU1;
       goto jleave;
    }
@@ -362,8 +361,7 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
          }
    }
 
-   fprintf(stderr, _("Is \"%s\" a stale lock?  Please remove file manually.\n"),
-      path);
+   n_err(_("Is \"%s\" a stale lock?  Please remove file manually\n"), path);
 jleave:
    if (didmsg < FAL0)
       putchar('\n');

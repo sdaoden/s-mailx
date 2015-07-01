@@ -180,7 +180,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
 
    if (pf & PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */
-         fprintf(stderr, _("MIME content too deeply nested\n"));
+         n_err(_("MIME content too deeply nested\n"));
          goto jleave;
       }
       switch (ip->m_mimecontent) {
@@ -190,7 +190,7 @@ parsepart(struct message *zmp, struct mimepart *ip, enum parseflags pf,
             parsepkcs7(zmp, ip, pf, level);
             break;
 #else
-            fprintf(stderr, _("No SSL support compiled in.\n"));
+            n_err(_("No SSL support compiled in\n"));
             goto jleave;
 #endif
          }
@@ -571,7 +571,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    if (quote) {
       if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
-         perror(_("tmpfile"));
+         n_perr(_("tmpfile"), 0);
          *qbuf = rbuf;
       }
       async = FAL0;
@@ -633,7 +633,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 jafter_tagsoup_hack:
 #endif
    if (rbuf == NULL)
-      fprintf(stderr, _("Cannot run MIME type handler \"%s\": %s\n"),
+      n_err(_("Cannot run MIME type handler \"%s\": %s\n"),
          pipecomm, strerror(errno));
    else {
       fflush(*qbuf);
@@ -1295,8 +1295,7 @@ jcopyout:
           * TODO so that the user can look at the error buffer?
           */
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
-            fprintf(stderr, _("Cannot convert from %s to %s\n"),
-               ip->m_charset, tcs);
+            n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
          }
       }
@@ -1431,7 +1430,7 @@ jgetname:
       f2 = readstr_input(": ", (f != (char*)-1 && f != NULL)
             ? fexpand_nshell_quote(f) : NULL);
       if (f2 == NULL || *f2 == '\0') {
-         fprintf(stderr, _("... skipping this\n"));
+         n_err(_("... skipping this\n"));
          fp = NULL;
          goto jleave;
       } else if (*f2 == '|')
@@ -1455,10 +1454,10 @@ jgetname:
          cp = XSHELL;
       fp = Popen(f + 1, "w", cp, NULL, 1);
       if (!(*ispipe = (fp != NULL)))
-         perror(f);
+         n_perr(f, 0);
    } else {
       if ((fp = Fopen(f, "w")) == NULL)
-         fprintf(stderr, _("Cannot open \"%s\"\n"), f);
+         n_err(_("Cannot open \"%s\"\n"), f);
    }
 jleave:
    NYD_LEAVE;

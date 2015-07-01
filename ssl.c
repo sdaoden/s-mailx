@@ -74,7 +74,7 @@ ssl_set_verify_level(struct url const *urlp)
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
          }
-      fprintf(stderr, _("Invalid value of *ssl-verify*: %s\n"), cp);
+      n_err(_("Invalid value of *ssl-verify*: %s\n"), cp);
    }
 jleave:
    NYD_LEAVE;
@@ -123,7 +123,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
          NULL) {
       Fclose(*hp);
 jetmp:
-      perror("tempfile");
+      n_perr(_("tempfile"), 0);
       goto jleave;
    }
 
@@ -189,7 +189,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 
    if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tempfile");
+      n_perr(_("tempfile"), 0);
       goto jleave;
    }
 
@@ -204,7 +204,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
    fprintf(op, "Content-Type: multipart/signed;\n"
       " protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\n"
       " boundary=\"%s\"\n\n", boundary);
-   fprintf(op, "This is an S/MIME signed message.\n\n--%s\n", boundary);
+   fprintf(op, "This is a S/MIME signed message.\n\n--%s\n", boundary);
    while ((c = getc(bp)) != EOF)
       putc(c, op);
 
@@ -228,7 +228,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 
    fflush(op);
    if (ferror(op)) {
-      perror("signed output data");
+      n_perr(_("signed output data"), 0);
       Fclose(op);
       op = NULL;
       goto jleave;
@@ -248,7 +248,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 
    if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tempfile");
+      n_perr(_("tempfile"), 0);
       goto jleave;
    }
 
@@ -275,7 +275,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 
    fflush(op);
    if (ferror(op)) {
-      perror("encrypted output data");
+      n_perr(_("encrypted output data"), 0);
       Fclose(op);
       op = NULL;
       goto jleave;
@@ -352,7 +352,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 
    fflush(mb.mb_otf);
    if (ferror(mb.mb_otf)) {
-      perror("decrypted output data");
+      n_perr(_("decrypted output data"), 0);
       x = NULL;
       goto jleave;
    }
@@ -379,7 +379,7 @@ c_certsave(void *v)
 
    if ((file = laststring(str, &f, TRU1)) == NULL ||
          (file = file_expand(file)) == NULL) {
-      fprintf(stderr, "No file to save certificate given.\n");
+      n_err(_("No file to save certificate given\n"));
       goto jleave;
    }
 
@@ -392,12 +392,12 @@ c_certsave(void *v)
       if (pstate & PS_HOOK_MASK)
          val = 0;
       else
-         fprintf(stderr, "No applicable messages.\n");
+         n_err(_("No applicable messages\n"));
       goto jleave;
    }
 
    if ((fp = Fopen(file, "a")) == NULL) {
-      perror(file);
+      n_perr(file, 0);
       goto jleave;
    }
    for (val = 0, ip = msgvec;
@@ -407,7 +407,7 @@ c_certsave(void *v)
    Fclose(fp);
 
    if (val == 0)
-      printf("Certificate(s) saved.\n");
+      printf("Certificate(s) saved\n");
 jleave:
    NYD_LEAVE;
    return val;

@@ -317,7 +317,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
       err = errno;
-      perror(ap->a_name);
+      n_err(_("\"%s\": %s\n"), ap->a_name, strerror(errno));
       goto jleave;
    }
 
@@ -363,9 +363,9 @@ jerr_header:
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = errno) != 0) {
          if (err == EINVAL)
-            fprintf(stderr, _("Cannot convert from %s to %s\n"), tcs, charset);
+            n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
-            perror("iconv_open");
+            n_err(_("iconv_open: %s\n"), strerror(err));
          goto jerr_fclose;
       }
    }
@@ -424,7 +424,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    if (signing_caps) {
       if (from == NULL) {
 #ifdef HAVE_SSL
-         fprintf(stderr, _("No *from* address for signing specified\n"));
+         n_err(_("No *from* address for signing specified\n"));
          goto jleave;
 #endif
       } else
@@ -451,13 +451,13 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          goto jleave;
    } else {
       if (sbp->sb_url.url_had_user || sbp->sb_url.url_pass.s != NULL) {
-         fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
+         n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
       }
       /* TODO part of the entire myorigin() disaster, get rid of this! */
       if (from == NULL) {
 jenofrom:
-         fprintf(stderr, _("Your configuration requires a *from* address, "
+         n_err(_("Your configuration requires a *from* address, "
             "but none was given\n"));
          goto jleave;
       }
@@ -494,7 +494,7 @@ put_signature(FILE *fo, int convert)
       goto jleave;
 
    if ((fsig = Fopen(sig, "r")) == NULL) {
-      perror(sig);
+      n_perr(sig, 0);
       goto jleave;
    }
    while ((sz = fread(buf, sizeof *buf, SEND_LINESIZE, fsig)) != 0) {
@@ -504,7 +504,7 @@ put_signature(FILE *fo, int convert)
    }
    if (ferror(fsig)) {
 jerr:
-      perror(sig);
+      n_perr(sig, 0);
       Fclose(fsig);
       goto jleave;
    }
@@ -622,11 +622,11 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
-      perror(tempMail);
+      n_perr(tempMail, 0);
       Fclose(nfo);
    }
    Ftmp_release(&tempMail);
@@ -663,9 +663,9 @@ infix(struct header *hp, FILE *fi) /* TODO check */
             (err = errno) != 0) {
 jiconv_err:
          if (err == EINVAL)
-            fprintf(stderr, _("Cannot convert from %s to %s\n"), tcs, charset);
+            n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
-            perror("iconv_open");
+            n_perr("iconv_open", 0);
          goto jerr;
       }
    }
@@ -726,7 +726,7 @@ jerr:
 
    fflush(nfo);
    if ((err = ferror(nfo)))
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
    Fclose(nfo);
    if (!err) {
       fflush_rewind(nfi);
@@ -867,8 +867,7 @@ do {\
             fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
-            fprintf(stderr, _("Invalid address in mail header: \"%s\"\n"),
-               np->n_name);
+            n_err(_("Invalid address in mail header: \"%s\"\n"), np->n_name);
             goto jleave;
          }
       }
@@ -1011,7 +1010,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
       from = mdn->n_name;
    else if ((from = myorigin(hp)) == NULL) {
       if (options & OPT_D_V)
-         fprintf(stderr, _("*disposition-notification-send*: no *from* set\n"));
+         n_err(_("*disposition-notification-send*: no *from* set\n"));
       goto jleave;
    }
 
@@ -1092,11 +1091,11 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
       np->n_type |= GDEL;
 
       if (options & OPT_DEBUG) {
-         fprintf(stderr, _(">>> Would write message via \"%s\"\n"), np->n_name);
+         n_err(_(">>> Would write message via \"%s\"\n"), np->n_name);
          continue;
       }
       if (options & OPT_VERBVERB)
-         fprintf(stderr, _(">>> Writing message via \"%s\"\n"), np->n_name);
+         n_err(_(">>> Writing message via \"%s\"\n"), np->n_name);
 
       /* See if we have copied the complete message out yet.  If not, do so */
       if (image < 0) {
@@ -1105,7 +1104,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
 
          if ((fout = Ftmp(&tempEdit, "outof",
                OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
-            perror(_("Creation of temporary image"));
+            n_perr(_("Creation of temporary image"), 0);
             *senderror = TRU1;
             goto jcant;
          }
@@ -1126,7 +1125,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          Ftmp_release(&tempEdit);
 
          if (image < 0) {
-            perror(_("Creating descriptor duplicate of temporary image"));
+            n_perr(_("Creating descriptor duplicate of temporary image"), 0);
             *senderror = TRU1;
             Fclose(fout);
             goto jcant;
@@ -1142,7 +1141,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          putc('\n', fout);
          fflush(fout);
          if (ferror(fout)) {
-            perror(_("Finalizing write of temporary image"));
+            n_perr(_("Finalizing write of temporary image"), 0);
             Fclose(fout);
             goto jcantfout;
          }
@@ -1150,8 +1149,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
 
          /* If we have to serve file addressees, open reader */
          if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
-            perror(_(
-               "Failed to open a duplicate of the temporary image"));
+            n_perr(_("Failed to open a temporary image duplicate"), 0);
 jcantfout:
             *senderror = TRU1;
             close(image);
@@ -1176,8 +1174,7 @@ jcantfout:
          pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
-            fprintf(stderr, _("Message piping to <%s> failed\n"),
-               np->n_name);
+            n_err(_("Piping message to \"%s\" failed\n"), np->n_name);
             *senderror = TRU1;
             goto jcant;
          }
@@ -1190,7 +1187,7 @@ jcantfout:
          }
 
          if ((fout = Zopen(fname, "a")) == NULL) {
-            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
+            n_err(_("Writing message to \"%s\" failed: %s\n"),
                fname, strerror(errno));
             *senderror = TRU1;
             goto jcant;
@@ -1199,7 +1196,7 @@ jcantfout:
          while ((c = getc(fin)) != EOF)
             putc(c, fout);
          if (ferror(fout)) {
-            fprintf(stderr, _("Message writing to <%s> failed: %s\n"),
+            n_err(_("Writing message to \"%s\" failed: %s\n"),
                fname, _("write error"));
             *senderror = TRU1;
          }
@@ -1269,8 +1266,7 @@ mightrecord(FILE *fp, struct name *to)
 
       if (__savemail(ep, fp) != 0) {
 jbail:
-         fprintf(stderr, _("Failed to save message in %s - message not sent\n"),
-            ep);
+         n_err(_("Failed to save message in \"%s\" - message not sent\n"), ep);
          exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
@@ -1294,7 +1290,7 @@ __savemail(char const *name, FILE *fp)
 
    if ((fo = Zopen(name, "a+")) == NULL) {
       if ((fo = Zopen(name, "wx")) == NULL) {
-         perror(name);
+         n_perr(name, 0);
          goto jleave;
       }
    } else {
@@ -1312,7 +1308,7 @@ __savemail(char const *name, FILE *fp)
             break;
          default:
             if (ferror(fo)) {
-               perror(name);
+               n_perr(name, 0);
                goto jleave;
             }
          }
@@ -1346,7 +1342,7 @@ __savemail(char const *name, FILE *fp)
 
    rv = 0;
    if (ferror(fo)) {
-      perror(name);
+      n_perr(name, 0);
       rv = -1;
    }
    if (Fclose(fo) != 0)
@@ -1391,10 +1387,10 @@ _transfer(struct sendbundle *sbp)
             Fclose(ef);
          } else {
 #else
-            fprintf(stderr, _("No SSL support compiled in.\n"));
+            n_err(_("No SSL support compiled in\n"));
             rv = FAL0;
 #endif
-            fprintf(stderr, _("Message not sent to <%s>\n"), np->n_name);
+            n_err(_("Message not sent to \"%s\"\n"), np->n_name);
             _sendout_error = TRU1;
 #ifdef HAVE_SSL
          }
@@ -1449,7 +1445,7 @@ __start_mta(struct sendbundle *sbp)
    } else {
       mta = NULL; /* Silence cc */
 #ifndef HAVE_SMTP
-      fputs(_("No SMTP support compiled in.\n"), stderr);
+      n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
       /* XXX assert that sendbundle is setup? */
@@ -1459,7 +1455,7 @@ __start_mta(struct sendbundle *sbp)
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
    if ((pid = fork_child()) == -1) {
-      perror("fork");
+      n_perr("fork", 0);
 jstop:
       savedeadletter(sbp->sb_input, 0);
       _sendout_error = TRU1;
@@ -1494,10 +1490,10 @@ jstop:
          e = errno;
          smtp = (e != ENOENT) ? strerror(e)
                : _("executable not found (adjust *sendmail* variable)");
-         fprintf(stderr, _("Cannot start \"%s\": %s\n"), mta, smtp);
+         n_err(_("Cannot start \"%s\": %s\n"), mta, smtp);
       }
       savedeadletter(sbp->sb_input, 1);
-      fputs(_("... message not sent.\n"), stderr);
+      n_err(_("... message not sent\n"));
       _exit(1);
    }
    if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
@@ -1764,7 +1760,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    if (buf != NULL)
       free(buf);
    if (ferror(fo)) {
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
       goto jleave;
    }
    rv = 0;
@@ -1895,7 +1891,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       dosign = ok_blook(smime_sign);
 #ifndef HAVE_SSL
    if (dosign) {
-      fprintf(stderr, _("No SSL support compiled in.\n"));
+      n_err(_("No SSL support compiled in\n"));
       goto jleave;
    }
 #endif
@@ -1929,11 +1925,11 @@ mail1(struct header *hp, int printheaders, struct message *quote,
           (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
          TRU1, &_sendout_error);
    if (to == NULL) {
-      fprintf(stderr, _("No recipients specified\n"));
+      n_err(_("No recipients specified\n"));
       goto jfail_dead;
    }
    if (_sendout_error < 0) {
-      fprintf(stderr, _("Some addressees were classified as \"hard error\"\n"));
+      n_err(_("Some addressees were classified as \"hard error\"\n"));
       goto jfail_dead;
    }
 
@@ -1960,7 +1956,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          continue;
       }
 
-      perror(_("Failed to create encoded message"));
+      n_perr(_("Failed to create encoded message"), 0);
       goto jfail_dead;
    }
    mtf = nmtf;
@@ -2010,7 +2006,7 @@ j_leave:
 jfail_dead:
    _sendout_error = TRU1;
    savedeadletter(mtf, TRU1);
-   fputs(_("... message not sent.\n"), stderr);
+   n_err(_("... message not sent\n"));
    goto jleave;
 }
 
@@ -2074,16 +2070,16 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
       goto jleave;
    /* For the _sendout_error<0 case we want to wait until we can write DEAD! */
    if (_sendout_error < 0)
-      fprintf(stderr, _("Some addressees were classified as \"hard error\"\n"));
+      n_err(_("Some addressees were classified as \"hard error\"\n"));
 
    if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
          0600)) == NULL) {
       _sendout_error = TRU1;
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL)
-      perror(tempMail);
+      n_perr(tempMail, 0);
    Ftmp_release(&tempMail);
    if (nfi == NULL)
       goto jerr_o;
@@ -2094,7 +2090,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
 jfail_dead:
       savedeadletter(nfi, TRU1);
-      fputs(_("... message not sent.\n"), stderr);
+      n_err(_("... message not sent\n"));
 jerr_io:
       Fclose(nfi);
 jerr_o:

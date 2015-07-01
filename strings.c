@@ -423,7 +423,7 @@ srelax_rele(void)
    }
 #ifdef HAVE_DEVEL
    else
-      fprintf(stderr, "srelax_rele(): recursion >0!\n");
+      n_err("srelax_rele(): recursion >0!\n");
 #endif
    NYD_LEAVE;
 }

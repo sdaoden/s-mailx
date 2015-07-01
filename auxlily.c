@@ -256,9 +256,7 @@ _colour_iso6429(char const *wish)
       char *y, *x = strchr(cp, '=');
       if (x == NULL) {
 jbail:
-         fprintf(stderr, _(
-            "Invalid colour specification \"%s\": >>> %s <<<\n"),
-            wish_orig, cp);
+         n_err(_("Invalid colour specification \"%s\": %s\n"), wish_orig, cp);
          continue;
       }
       *x++ = '\0';
@@ -644,17 +642,17 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
-         fprintf(stderr, _("No POP3 support compiled in.\n"));
+         n_err(_("No POP3 support compiled in\n"));
 #endif
       } else if (!strncmp(name, "pop3s://", 8)) {
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
 # ifndef HAVE_POP3
-         fprintf(stderr, _("No POP3 support compiled in.\n"));
+         n_err(_("No POP3 support compiled in\n"));
 # endif
 # ifndef HAVE_SSL
-         fprintf(stderr, _("No SSL support compiled in.\n"));
+         n_err(_("No SSL support compiled in\n"));
 # endif
 #endif
       } else if (!strncmp(name, "imap://", 7)) {
@@ -2014,7 +2012,7 @@ FL void *
    _HOPE_GET(p, isbad);
    --p.p_c;
    if (p.p_c->mc_isfree) {
-      fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
+      n_err("srealloc(): region freed!  At %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
@@ -2111,14 +2109,14 @@ FL void
    NYD2_ENTER;
 
    if ((p.p_p = v) == NULL) {
-      fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+      n_err("sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
       goto jleave;
    }
 
    _HOPE_GET(p, isbad);
    --p.p_c;
    if (p.p_c->mc_isfree) {
-      fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
+      n_err("sfree(): double-free avoided at %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jleave;
@@ -2165,8 +2163,7 @@ smemreset(void)
    _mem_free = NULL;
 
    if (options & (OPT_DEBUG | OPT_MEMDEBUG))
-      fprintf(stderr, "smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n",
-         c, s);
+      n_err("smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
    NYD_LEAVE;
 }
 
@@ -2185,7 +2182,7 @@ c_smemtrace(void *v)
    v = (void*)0x1;
    if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr("tmpfile", 0);
       goto jleave;
    }
 
@@ -2243,7 +2240,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
       _HOPE_GET_TRACE(xp, isbad);
       if (isbad) {
          anybad = TRU1;
-         fprintf(stderr,
+         n_err(
             "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
             xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
             p.p_c->mc_file, p.p_c->mc_line);
@@ -2257,7 +2254,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
          _HOPE_GET_TRACE(xp, isbad);
          if (isbad) {
             anybad = TRU1;
-            fprintf(stderr,
+            n_err(
                "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
                xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
                p.p_c->mc_file, p.p_c->mc_line);

@@ -202,7 +202,7 @@ __shvar_exp(struct shvar_stack *shsp)
 
       if (lc) {
          if (c != '}') {
-            fprintf(stderr, _("Variable name misses closing \"}\": \"%s\"\n"),
+            n_err(_("Variable name misses closing \"}\": \"%s\"\n"),
                shsp->shs_value);
             shsp->shs_len = strlen(shsp->shs_value);
             shsp->shs_dat = shsp->shs_value;
@@ -279,19 +279,18 @@ _globname(char const *name, enum fexp_mode fexpm)
 #ifdef WRDE_CMDSUB
    case WRDE_CMDSUB:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Command substitution not allowed.\n"),
-            name);
+         n_err(_("\"%s\": Command substitution not allowed\n"), name);
       goto jleave;
 #endif
    case WRDE_NOSPACE:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion buffer overflow.\n"), name);
+         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
       goto jleave;
    case WRDE_BADCHAR:
    case WRDE_SYNTAX:
    default:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("Syntax error in \"%s\"\n"), name);
+         n_err(_("Syntax error in \"%s\"\n"), name);
       goto jleave;
    }
 
@@ -301,7 +300,7 @@ _globname(char const *name, enum fexp_mode fexpm)
       break;
    case 0:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": No match.\n"), name);
+         n_err(_("\"%s\": No match\n"), name);
       break;
    default:
       if (fexpm & FEXP_MULTIOK) {
@@ -319,7 +318,7 @@ _globname(char const *name, enum fexp_mode fexpm)
          }
          cp[l] = '\0';
       } else if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Ambiguous.\n"), name);
+         n_err(_("\"%s\": Ambiguous\n"), name);
       break;
    }
 jleave:
@@ -335,7 +334,7 @@ jleave:
    NYD_ENTER;
 
    if (pipe(pivec) < 0) {
-      perror("pipe");
+      n_perr(_("pipe"), 0);
       goto jleave;
    }
    snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
@@ -354,24 +353,24 @@ jagain:
    if (l < 0) {
       if (errno == EINTR)
          goto jagain;
-      perror("read");
+      n_perr(_("read"), 0);
       close(pivec[0]);
       goto jleave;
    }
    close(pivec[0]);
    if (!wait_child(pid, &waits) && WTERMSIG(waits) != SIGPIPE) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion failed.\n"), name);
+         n_err(_("\"%s\": Expansion failed\n"), name);
       goto jleave;
    }
    if (l == 0) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": No match.\n"), name);
+         n_err(_("\"%s\": No match\n"), name);
       goto jleave;
    }
    if (l == sizeof xname) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion buffer overflow.\n"), name);
+         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
       goto jleave;
    }
    xname[l] = 0;
@@ -381,7 +380,7 @@ jagain:
    if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') != NULL &&
          stat(xname, &sbuf) < 0) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Ambiguous.\n"), name);
+         n_err(_("\"%s\": Ambiguous\n"), name);
       cp = NULL;
       goto jleave;
    }
@@ -695,7 +694,7 @@ FL int
    }
 
    if (n >= 0 && (options & OPT_D_VV))
-      fprintf(stderr, _("%s %d bytes <%.*s>\n"),
+      n_err(_("%s %d bytes <%.*s>\n"),
          ((pstate & PS_LOADING) ? "LOAD"
           : (pstate & PS_SOURCING) ? "SOURCE" : "READ"),
          n, n, *linebuf);
@@ -760,7 +759,7 @@ setptr(FILE *ibuf, off_t offset)
          linebuf[--cnt - 1] = '\n';
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if (ferror(mb.mb_otf)) {
-         perror("/tmp");
+         n_perr(_("/tmp"), 0);
          exit(1);
       }
       if (linebuf[cnt - 1] == '\n')
@@ -865,7 +864,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
    fflush(mp->mb_otf);
    if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
          SEEK_SET) < 0) {
-      perror("fseek");
+      n_perr(_("fseek"), 0);
       panic(_("temporary file seek"));
    }
    rv = mp->mb_itf;
@@ -1032,7 +1031,7 @@ jnext:
       if (res[1] != '\0')
          break;
       if (prevfile[0] == '\0') {
-         fprintf(stderr, _("No previous file\n"));
+         n_err(_("No previous file\n"));
          res = NULL;
          goto jleave;
       }
@@ -1089,7 +1088,7 @@ jislocal:
       case PROTO_MAILDIR:
          break;
       default:
-         fprintf(stderr, _("Not a local file or directory: \"%s\"\n"), name);
+         n_err(_("Not a local file or directory: \"%s\"\n"), name);
          res = NULL;
          break;
       }
@@ -1146,8 +1145,7 @@ var_folder_updated(char const *name, char **store)
 
    switch (which_protocol(folder)) {
    case PROTO_POP3:
-      fprintf(stderr, _(
-         "*folder* cannot be set to a flat, readonly POP3 account\n"));
+      n_err(_("*folder* cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
       goto jleave;
    case PROTO_IMAP:
@@ -1179,7 +1177,7 @@ var_folder_updated(char const *name, char **store)
 #ifdef HAVE_REALPATH
    res = ac_alloc(PATH_MAX +1);
    if (realpath(folder, res) == NULL)
-      fprintf(stderr, _("Can't canonicalize \"%s\"\n"), folder);
+      n_err(_("Can't canonicalize \"%s\"\n"), folder);
    else
       folder = res;
 #endif
@@ -1380,10 +1378,11 @@ jssl_retry:
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
 # ifdef HAVE_OPENSSL
-      sp->s_use_ssl ? ssl_gen_err("%s", o) : perror(o);
-# else
-      perror(o);
+      if (sp->s_use_ssl)
+         ssl_gen_err("%s", o);
+      else
 # endif
+         n_perr(o, 0);
       if (x < 0)
          sclose(sp);
       rv = STOP;
@@ -1444,7 +1443,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (options & OPT_VERB)
-      fprintf(stderr, _("Resolving host \"%s:%s\" ... "),
+      n_err(_("Resolving host \"%s:%s\" ... "),
          urlp->url_host.s, serv);
 
 # ifdef HAVE_GETADDRINFO
@@ -1455,7 +1454,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    ohup = safe_signal(SIGHUP, &__sopen_onsig);
    oint = safe_signal(SIGINT, &__sopen_onsig);
    if (sigsetjmp(__sopen_actjmp, 0)) {
-      fprintf(stderr, "%s\n",
+      n_err("%s\n",
          (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
       if (sofd >= 0) {
          close(sofd);
@@ -1472,8 +1471,8 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
          break;
 
       if (options & OPT_VERB)
-         fprintf(stderr, _("failed\n"));
-      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+         n_err(_("failed\n"));
+      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
          urlp->url_host.s, serv, gai_strerror(errval));
 
       /* Error seems to depend on how "smart" the /etc/service code is: is it
@@ -1482,13 +1481,13 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
                (serv = url_servbyname(urlp, NULL)) != NULL) {
-            fprintf(stderr, _("  Trying standard protocol port \"%s\".\n"
+            n_err(_("  Trying standard protocol port \"%s\"\n"
                "  If that succeeds consider including the port in the URL!\n"),
                serv);
             continue;
          }
          if (serv != urlp->url_port)
-            fprintf(stderr, _("  Including a port number in the URL may "
+            n_err(_("  Including a port number in the URL may "
                "circumvent this problem\n"));
       }
       assert(sofd == -1);
@@ -1496,14 +1495,14 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       goto jjumped;
    }
    if (options & OPT_VERB)
-      fprintf(stderr, _("done.\n"));
+      n_err(_("done\n"));
 
    for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
       if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
-         fprintf(stderr, _("%sConnecting to \"%s:%s\" ..."),
+         n_err(_("%sConnecting to \"%s:%s\" ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
 
@@ -1534,7 +1533,7 @@ jjumped:
    if (sofd < 0) {
       if (errval != 0) {
          errno = errval;
-         perror(_("Could not connect"));
+         n_perr(_("Could not connect"), 0);
       }
       goto jleave;
    }
@@ -1545,14 +1544,14 @@ jjumped:
          urlp->url_portno = ep->s_port;
       else {
          if (options & OPT_VERB)
-            fprintf(stderr, _("failed\n"));
+            n_err(_("failed\n"));
          if ((serv = url_servbyname(urlp, &urlp->url_portno)) != NULL)
-            fprintf(stderr, _("  Unknown service: \"%s\".\n"
-               "  Trying standard protocol port \"%s\".\n"
+            n_err(_("  Unknown service: \"%s\"\n"
+               "  Trying standard protocol port \"%s\"\n"
                "  If that succeeds consider including the port in the URL!\n"),
                urlp->url_proto, serv);
          else {
-            fprintf(stderr, _("  Unknown service: \"%s\".\n"
+            n_err(_("  Unknown service: \"%s\"\n"
                "  Including a port in the URL may circumvent this problem\n"),
                urlp->url_proto);
             goto jleave;
@@ -1564,7 +1563,7 @@ jjumped:
       char const *emsg;
 
       if (options & OPT_VERB)
-         fprintf(stderr, _("failed\n"));
+         n_err(_("failed\n"));
       switch (h_errno) {
       case HOST_NOT_FOUND: emsg = N_("host not found"); break;
       default:
@@ -1572,15 +1571,15 @@ jjumped:
       case NO_RECOVERY:    emsg = N_("non-recoverable server error"); break;
       case NO_DATA:        emsg = N_("valid name without IP address"); break;
       }
-      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
          urlp->url_host.s, serv, V_(emsg));
       goto jleave;
    } else if (options & OPT_VERB)
-      fprintf(stderr, _("done.\n"));
+      n_err(_("done\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-      perror(_("could not create socket"));
+      n_perr(_("could not create socket"), 0);
       goto jleave;
    }
 
@@ -1589,13 +1588,13 @@ jjumped:
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERB)
-      fprintf(stderr, _("%sConnecting to \"%s:%d\" ... "),
+      n_err(_("%sConnecting to \"%s:%d\" ... "),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      perror(_("could not connect"));
+      n_perr(_("could not connect"), 0);
       close(sofd);
       sofd = -1;
       goto jleave;
@@ -1603,7 +1602,7 @@ jjumped:
 # endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
-      fputs(_("connected.\n"), stderr);
+      n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
@@ -1628,7 +1627,7 @@ jjumped:
       ohup = safe_signal(SIGHUP, &__sopen_onsig);
       oint = safe_signal(SIGINT, &__sopen_onsig);
       if (sigsetjmp(__sopen_actjmp, 0)) {
-         fprintf(stderr, _("%s during SSL/TLS handshake\n"),
+         n_err(_("%s during SSL/TLS handshake\n"),
             (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
          goto jsclose;
       }
@@ -1721,7 +1720,7 @@ jagain:
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sp->s_desc ?  sp->s_desc : "socket"));
-                  perror(o);
+                  n_perr(o, 0);
                }
                break;
             }
@@ -1762,9 +1761,8 @@ load(char const *name)
 
    cond = condstack_release();
    if (!commands())
-      fprintf(stderr,
-         _("Stopped loading \"%s\" due to errors (enable *debug* for trace)\n"),
-         n.s);
+      n_err(_("Stopped loading \"%s\" due to errors "
+         "(enable *debug* for trace)\n"), n.s);
    condstack_take(cond);
 
    ac_free(n.s);
@@ -1786,12 +1784,12 @@ c_source(void *v)
    if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
       goto jleave;
    if ((fi = Fopen(cp, "r")) == NULL) {
-      perror(cp);
+      n_perr(cp, 0);
       goto jleave;
    }
 
    if (_fio_stack_size >= NELEM(_fio_stack)) {
-      fprintf(stderr, _("Too much \"sourcing\" going on.\n"));
+      n_err(_("Too many `source' recursions\n"));
       Fclose(fi);
       goto jleave;
    }
@@ -1816,7 +1814,7 @@ unstack(void)
    NYD_ENTER;
 
    if (_fio_stack_size == 0) {
-      fprintf(stderr, _("\"Source\" stack over-pop.\n"));
+      n_err(_("`source' stack over-pop\n"));
       pstate &= ~PS_SOURCING;
       goto jleave;
    }
@@ -1825,7 +1823,7 @@ unstack(void)
 
    --_fio_stack_size;
    if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
-      fprintf(stderr, _("Unmatched \"if\"\n"));
+      n_err(_("Unmatched \"if\"\n"));
    if (_fio_stack[_fio_stack_size].s_loading)
       pstate |= PS_LOADING;
    else

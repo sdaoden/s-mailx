@@ -59,18 +59,18 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
       msg_or_null = _("invalid expression syntax");
 
    if (nearby_or_null != NULL)
-      fprintf(stderr, _("`if' conditional: %s -- near \"%s\"\n"),
+      n_err(_("`if' conditional: %s -- near \"%s\"\n"),
          msg_or_null, nearby_or_null);
    else
-      fprintf(stderr, _("`if' conditional: %s\n"), msg_or_null);
+      n_err(_("`if' conditional: %s\n"), msg_or_null);
 
    if (options & (OPT_INTERACTIVE | OPT_D_V)) {
       str_concat_cpa(&s, icp->ic_argv_base,
          (*icp->ic_argv_base != NULL ? " " : ""));
-      fprintf(stderr, _("   Expression: %s\n"), s.s);
+      n_err(_("   Expression: %s\n"), s.s);
 
       str_concat_cpa(&s, icp->ic_argv, (*icp->ic_argv != NULL ? " " : ""));
-      fprintf(stderr, _("   Left to parse: %s\n"), s.s);
+      n_err(_("   Stopped at: %s\n"), s.s);
    }
 
    NYD2_LEAVE;
@@ -431,7 +431,7 @@ c_elif(void *v)
    NYD_ENTER;
 
    if ((csp = _cond_stack) == NULL || csp->c_else) {
-      fprintf(stderr, _("`elif' without matching `if'\n"));
+      n_err(_("`elif' without matching `if'\n"));
       rv = 1;
    } else if (!csp->c_error) {
       csp->c_go = !csp->c_go;
@@ -452,7 +452,7 @@ c_else(void *v)
    UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
-      fprintf(stderr, _("`else' without matching `if'\n"));
+      n_err(_("`else' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack->c_else = TRU1;
@@ -472,7 +472,7 @@ c_endif(void *v)
    UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
-      fprintf(stderr, _("`endif' without matching `if'\n"));
+      n_err(_("`endif' without matching `if'\n"));
       rv = 1;
    } else {
       _cond_stack = csp->c_outer;

@@ -200,7 +200,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    /* Check and setup the desired spam interface */
    if ((cp = ok_vlook(spam_interface)) == NULL) {
-      fprintf(stderr, _("`%s': no *spam-interface* set\n"), _spam_cmds[sa]);
+      n_err(_("`%s': no *spam-interface* set\n"), _spam_cmds[sa]);
       goto jleave;
 #ifdef HAVE_SPAM_SPAMC
    } else if (!asccasecmp(cp, "spamc")) {
@@ -218,8 +218,7 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
    } else {
-      fprintf(stderr,
-         _("`%s': unknown / unsupported *spam-interface*: \"%s\"\n"),
+      n_err(_("`%s': unknown / unsupported *spam-interface*: \"%s\"\n"),
          _spam_cmds[sa], cp);
       goto jleave;
    }
@@ -247,11 +246,9 @@ _spam_action(enum spam_action sa, int *ip)
 
       if (vc.vc_mp->m_size > maxsize) {
          if (vc.vc_verbose)
-            fprintf(stderr,
-               _("`%s': message %" PRIuZ " exceeds maxsize (%" PRIuZ
-               " > %" PRIuZ "), skip\n"),
-               _spam_cmds[sa], vc.vc_mno, (size_t)vc.vc_mp->m_size,
-               maxsize);
+            n_err(_("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
+               _spam_cmds[sa], (ul_i)vc.vc_mno, (ul_i)(size_t)vc.vc_mp->m_size,
+               (ul_i)maxsize);
          else if (vc.vc_progress) {
             fprintf(stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
@@ -260,8 +257,7 @@ _spam_action(enum spam_action sa, int *ip)
          ++skipped;
       } else {
          if (vc.vc_verbose)
-            fprintf(stderr, _("`%s': message %" PRIuZ "\n"),
-               _spam_cmds[sa], vc.vc_mno);
+            n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul_i)vc.vc_mno);
          else if (vc.vc_progress) {
             fprintf(stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
@@ -270,9 +266,8 @@ _spam_action(enum spam_action sa, int *ip)
 
          setdot(vc.vc_mp);
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
-            fprintf(stderr,
-               _("%s`%s': cannot load message %" PRIuZ ": %s\n"),
-               vc.vc_esep, _spam_cmds[sa], vc.vc_mno, strerror(errno));
+            n_err(_("%s`%s': cannot load message %lu: %s\n"),
+               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno, strerror(errno));
             ok = FAL0;
             break;
          }
@@ -312,7 +307,7 @@ _spamc_setup(struct spam_vc *vcp)
 # ifdef SPAM_SPAMC_PATH
       cp = SPAM_SPAMC_PATH;
 # else
-      fprintf(stderr, _("`%s': *spamc-command* is not set\n"),
+      n_err(_("`%s': *spamc-command* is not set\n"),
          _spam_cmds[vcp->vc_action]);
       goto jleave;
 # endif
@@ -355,7 +350,7 @@ jlearn:
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
    if (vcp->vc_verbose)
-      fprintf(stderr, "spamc(1) via \"%s\"\n", sscp->c_super.cf_cmd);
+      n_err(_("spamc(1) via \"%s\"\n"), sscp->c_super.cf_cmd);
 
    _spam_cf_setup(vcp, FAL0);
 
@@ -434,12 +429,12 @@ _spamd_setup(struct spam_vc *vcp)
    }
 
    if ((cp = ok_vlook(spamd_socket)) == NULL) {
-      fprintf(stderr, _("`%s': required *spamd-socket* is not set\n"),
+      n_err(_("`%s': required *spamd-socket* is not set\n"),
          _spam_cmds[vcp->vc_action]);
       goto jleave;
    }
    if ((l = strlen(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
-      fprintf(stderr, _("`%s': *spamd-socket* too long: \"%s\"\n"),
+      n_err(_("`%s': *spamd-socket* too long: \"%s\"\n"),
          _spam_cmds[vcp->vc_action], cp);
       goto jleave;
    }
@@ -486,20 +481,20 @@ _spamd_interact(struct spam_vc *vcp)
    ssdp->d_oquit = safe_signal(SIGQUIT, &__spamd_onsig);
    if (sigsetjmp(__spamd_actjmp, 1)) {
       if (*vcp->vc_esep != '\0')
-         fputs(vcp->vc_esep, stderr);
+         n_err(vcp->vc_esep);
       goto jleave;
    }
    rele_sigs();
 
    if ((dsfd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
-      fprintf(stderr, _("%s`%s': can't create unix(4) socket: %s\n"),
+      n_err(_("%s`%s': can't create unix(4) socket: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
       goto jleave;
    }
 
    if (connect(dsfd, (struct sockaddr*)&ssdp->d_sun, SUN_LEN(&ssdp->d_sun)) ==
          -1) {
-      fprintf(stderr, _("%s`%s': can't connect to *spam-socket*: %s\n"),
+      n_err(_("%s`%s': can't connect to *spam-socket*: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
       close(dsfd);
       goto jleave;
@@ -568,7 +563,7 @@ _spamd_interact(struct spam_vc *vcp)
 
    i = PTR2SIZE(lp - headbuf);
    if (options & OPT_VERBVERB)
-      fprintf(stderr, ">>> %.*s <<<\n", (int)i, headbuf);
+      n_err(">>> %.*s <<<\n", (int)i, headbuf);
    if (i != (size_t)write(dsfd, headbuf, i))
       goto jeso;
 
@@ -585,7 +580,7 @@ _spamd_interact(struct spam_vc *vcp)
 
       if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
-         fprintf(stderr, _("%s`%s': I/O on *spamd-socket* failed: %s\n"),
+         n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
             vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
          goto jleave;
       }
@@ -613,12 +608,11 @@ jeso:
 
    if (size == 0 || size == BUFFER_SIZE) {
 jebogus:
-      fprintf(stderr,
-         _("%s`%s': bogus spamd(1) I/O interaction (%" PRIuZ ")\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], i);
+      n_err(_("%s`%s': bogus spamd(1) I/O interaction (%lu)\n"),
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul_i)i);
 # ifdef HAVE_DEVEL
       if (options & OPT_VERBVERB)
-         fprintf(stderr, ">>> BUFFER: %s <<<\n", vcp->vc_buffer);
+         n_err(">>> BUFFER: %s <<<\n", vcp->vc_buffer);
 # endif
       goto jleave;
    }
@@ -643,8 +637,7 @@ jebogus:
             goto jebogus;
          else {
             /* Unfortunately a missing --allow-tell drops connection.. */
-            fprintf(stderr,
-               _("%s`%s': service not available in spamd(1) instance\n"),
+            n_err(_("%s`%s': service not available in spamd(1) instance\n"),
                vcp->vc_esep, _spam_cmds[vcp->vc_action]);
             goto jleave;
          }
@@ -687,7 +680,7 @@ jebogus:
                   strncmp(cp, "DidSet: local", sizeof("DidSet: local") -1))
                goto jebogus;
             if (*cp == '\0' && vcp->vc_verbose)
-               fputs(_("\tBut spamd(1) \"did nothing\" for message\n"), stderr);
+               n_err(_("\tBut spamd(1) \"did nothing\" for message\n"));
             vcp->vc_mp->m_flag &= ~(MSPAM | MSPAMUNSURE);
             if (vcp->vc_action == _SPAM_SPAM)
                vcp->vc_mp->m_flag |= MSPAM;
@@ -698,7 +691,7 @@ jebogus:
                   strncmp(cp, "DidRemove: local", sizeof("DidSet: local") -1))
                goto jebogus;
             if (*cp == '\0' && vcp->vc_verbose)
-               fputs(_("\tBut spamd(1) \"did nothing\" for message\n"), stderr);
+               n_err(_("\tBut spamd(1) \"did nothing\" for message\n"));
             vcp->vc_mp->m_flag &= ~(MSPAM | MSPAMUNSURE);
             goto jdone;
          }
@@ -760,8 +753,7 @@ _spamfilter_setup(struct spam_vc *vcp)
 jonecmd:
       if (cp == NULL) {
 jecmd:
-         fprintf(stderr, _("`%s': *%s* is not set\n"),
-            _spam_cmds[vcp->vc_action], var);
+         n_err(_("`%s': *%s* is not set\n"), _spam_cmds[vcp->vc_action], var);
          goto jleave;
       }
       sfp->f_super.cf_cmd = savestr(cp);
@@ -785,8 +777,7 @@ jecmd:
 
       var = strchr(cp, ';');
       if (var == NULL) {
-         fprintf(stderr,
-            _("`%s': *spamfilter-rate-scanscore*: no `;' in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: no `;' in \"%s\"\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
@@ -795,30 +786,27 @@ jecmd:
       var = savestrbuf(cp, PTR2SIZE(var - cp));
       sfp->f_score_grpno = (ui32_t)strtoul(var, &ep, 0);
       if (var == ep || *ep != '\0') {
-         fprintf(stderr,
-            _("`%s': *spamfilter-rate-scanscore*: bad group in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group in \"%s\"\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
       if (sfp->f_score_grpno >= SPAM_FILTER_MATCHES) {
-         fprintf(stderr,
-            _("`%s': *spamfilter-rate-scanscore*: group %u "
-               "excesses limit %u\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: "
+            "group %u excesses limit %u\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno,
             SPAM_FILTER_MATCHES);
          goto jleave;
       }
 
       if (regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE)) {
-         fprintf(stderr,
-            _("`%s': invalid *spamfilter-rate-scanscore* regex: \"%s\"\n"),
+         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: \"%s\"\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
          regfree(&sfp->f_score_regex);
-         fprintf(stderr,
-            _("`%s': *spamfilter-rate-scanscore*: no group %u in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: "
+            "no group %u in \"%s\"\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno, cp);
          goto jleave;
       }
@@ -883,8 +871,8 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
-      fprintf(stderr,
-         _("`%s': *spamfilter-rate-scanscore* doesn't match filter output!\n"),
+      n_err(_("`%s': *spamfilter-rate-scanscore* "
+         "doesn't match filter output!\n"),
          _spam_cmds[vcp->vc_action]);
       sfp->f_score_grpno = 0;
       goto jleave;
@@ -1002,14 +990,14 @@ _spam_cf_interact(struct spam_vc *vcp)
    pid = 0; /* cc uninit */
 
    if (!pipe_cloexec(p2c)) {
-      fprintf(stderr, _("%s`%s': cannot create parent pipe: %s\n"),
+      n_err(_("%s`%s': cannot create parent pipe: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
       goto jtail;
    }
    state |= _P2C;
 
    if (!pipe_cloexec(c2p)) {
-      fprintf(stderr, _("%s`%s': cannot create child pipe: %s\n"),
+      n_err(_("%s`%s': cannot create child pipe: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
       goto jtail;
    }
@@ -1017,7 +1005,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    if (sigsetjmp(__spam_cf_actjmp, 1)) {
       if (*vcp->vc_esep != '\0')
-         fputs(vcp->vc_esep, stderr);
+         n_err(vcp->vc_esep);
       state |= _JUMPED;
       goto jtail;
    }
@@ -1084,8 +1072,7 @@ jtail:
             vcp->vc_buffer[i] = '\0';
             if ((cp = strchr(vcp->vc_buffer, NETNL[0])) == NULL &&
                   (cp = strchr(vcp->vc_buffer, NETNL[1])) == NULL) {
-               fprintf(stderr,
-                  _("%s`%s': this program generates too much output: \"%s\"\n"),
+               n_err(_("%s`%s': program generates too much output: \"%s\"\n"),
                   vcp->vc_esep, _spam_cmds[vcp->vc_action], scfp->cf_cmd);
                state |= _ERRORS;
             } else {
