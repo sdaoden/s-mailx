@@ -521,7 +521,7 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
          n_strlcpy(mailname, cp, PATH_MAX);
    }
 
-   if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))
+   if (options & OPT_QUICKRUN_MASK)
       i = FEDIT_RDONLY;
    else
       i = FEDIT_NONE;
@@ -530,7 +530,7 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
       exit_status = EXIT_ERR; /* error already reported */
       goto jquit;
    }
-   if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) {
+   if (options & OPT_QUICKRUN_MASK) {
       exit_status = i;
       if (!(options & OPT_EXISTONLY) && i == EXIT_OK)
          print_header_summary(Larg);
@@ -997,8 +997,7 @@ jgetopt_done:
    /* We had to wait until the resource files are loaded but it is time to get
     * the termcap going, so that *term-ca-mode* won't hide our output for us */
 #ifdef HAVE_TERMCAP
-   if ((options & (OPT_INTERACTIVE | OPT_HEADERSONLY | OPT_HEADERLIST))
-         == OPT_INTERACTIVE)
+   if ((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
       termcap_init(); /* TODO program state machine */
 #endif
 
