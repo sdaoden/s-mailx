@@ -346,41 +346,6 @@ n_raise(int signo)
    NYD2_LEAVE;
 }
 
-FL void
-panic(char const *format, ...)
-{
-   va_list ap;
-   NYD2_ENTER;
-
-   fprintf(stderr, _("Panic: "));
-
-   va_start(ap, format);
-   vfprintf(stderr, format, ap);
-   va_end(ap);
-
-   fputs("\n", stderr);
-   fflush(stderr);
-   NYD2_LEAVE;
-   abort(); /* Was exit(EXIT_ERR); for a while, but no */
-}
-
-FL void
-alert(char const *format, ...)
-{
-   va_list ap;
-   NYD2_ENTER;
-
-   fprintf(stderr, _("Panic: "));
-
-   va_start(ap, format);
-   vfprintf(stderr, format, ap);
-   va_end(ap);
-
-   fputs("\n", stderr);
-   fflush(stderr);
-   NYD2_LEAVE;
-}
-
 FL sighandler_type
 safe_signal(int signum, sighandler_type handler)
 {
@@ -1783,6 +1748,95 @@ time_current_update(struct time_current *tc, bool_t full_update)
       sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
    }
    NYD_LEAVE;
+}
+
+FL void
+n_err(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
+   if (strchr(format, '\n') != NULL) /* TODO */
+      fflush(stderr);
+   NYD2_LEAVE;
+}
+
+FL void
+n_verr(char const *format, va_list ap)
+{
+   NYD2_ENTER;
+   vfprintf(stderr, format, ap);
+   if (strchr(format, '\n') != NULL) /* TODO */
+      fflush(stderr);
+   NYD2_LEAVE;
+}
+
+FL void
+n_err_sighdl(char const *format, ...) /* TODO sigsafe; obsolete! */
+{
+   va_list ap;
+   NYD_X;
+
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
+   fflush(stderr);
+}
+
+FL void
+n_perr(char const *msg, int errval)
+{
+   char const *fmt;
+   NYD2_ENTER;
+
+   if (errval == 0)
+      errval = errno;
+
+   if (msg == NULL) {
+      fmt = "%s%s\n";
+      msg = "";
+   } else
+      fmt = "%s: %s\n",
+
+   fprintf(stderr, fmt, msg, strerror(errval));
+   NYD2_LEAVE;
+}
+
+FL void
+panic(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   fprintf(stderr, _("Panic: "));
+
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
+
+   putc('\n', stderr);
+   fflush(stderr);
+   NYD2_LEAVE;
+   abort(); /* Was exit(EXIT_ERR); for a while, but no */
+}
+
+FL void
+alert(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   n_err(_("Alert: "));
+
+   va_start(ap, format);
+   n_verr(format, ap);
+   va_end(ap);
+
+   n_errc('\n');
+   NYD2_LEAVE;
 }
 
 static void
