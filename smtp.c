@@ -229,7 +229,9 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (!_smtp_gssapi(sp, sbp, slp))
+      if (options & OPT_DEBUG)
+         n_err(">>> %s", _(">>>Would perform GSS-API authentication now\n"));
+      else if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
       break;
 #endif

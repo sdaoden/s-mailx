@@ -1435,10 +1435,10 @@ __start_mta(struct sendbundle *sbp)
 
       args = __prepare_mta_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
-         printf(_("\"%s\" arguments:"), mta);
+         n_err(_("\"%s\" arguments:"), mta);
          for (t = args; *t != NULL; ++t)
-            printf(" \"%s\"", *t);
-         printf("\n");
+            n_err(" \"%s\"", *t);
+         n_err("\n");
          rv = TRU1;
          goto jleave;
       }
@@ -1448,7 +1448,11 @@ __start_mta(struct sendbundle *sbp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-      /* XXX assert that sendbundle is setup? */
+      if (options & OPT_DEBUG) {
+         (void)smtp_mta(sbp);
+         rv = TRU1;
+         goto jleave;
+      }
 #endif
    }
 
