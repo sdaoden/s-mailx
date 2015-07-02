@@ -29,6 +29,14 @@ With utility program and feature adjustments:
 
   $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
 
+Note that no special user or group massaging happens during
+installation, so you should run the above either via su(1), sudo(1),
+super(1) or a similar identity switcher as necessary.  If necessary, you
+possibly want to separate the configuration / building and the
+installation tasks, e.g.:
+
+  $ make PREFIX=/usr config build && sudo make doinstall
+
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
 
