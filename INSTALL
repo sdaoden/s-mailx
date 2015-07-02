@@ -79,7 +79,7 @@ The following make(1) target exists:
 . config      Only create or check and update the configuration.
 . build       Only build (using the existing configuration).
 . test        Run ./cc-test.sh in --check-only mode on the built binary.
-. packager-install
+. doinstall or packager-install
               Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
               using this target nonetheless (a following `uninstall'
