@@ -699,19 +699,6 @@ FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
 /*
- * dotlock.c
- */
-
-/* Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      fcntl_lock(int fd, enum flock_type ft, size_t pollmsecs);
-
-/* Aquire a FLOCK_WRITE lock and create a dotlock file; upon success
- * dot_unlock() must be called for cleanup of the dotlock file.
- * Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
-FL void        dot_unlock(char const *fname);
-
-/*
  * edit.c
  */
 
@@ -869,6 +856,17 @@ FL bool_t      getfold(char *name, size_t size);
 FL char const * getdeadletter(void);
 
 FL enum okay   get_body(struct message *mp);
+
+/* File locking */
+
+/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      file_lock(int fd, enum file_lock_type flt, size_t pollmsecs);
+
+/* Aquire a FLT_WRITE lock and create a dotlock file; upon success
+ * dot_unlock() must be called for cleanup of the dotlock file.
+ * Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
+FL void        dot_unlock(char const *fname);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS

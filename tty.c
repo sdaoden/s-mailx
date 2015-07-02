@@ -1799,7 +1799,7 @@ tty_init(void)
    f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
    if (f == NULL)
       goto jdone;
-   (void)fcntl_lock(fileno(f), FLOCK_READ, 500);
+   (void)file_lock(fileno(f), FLT_READ, 500);
 
    lbuf = NULL;
    lsize = 0;
@@ -1856,7 +1856,7 @@ tty_destroy(void)
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
-   (void)fcntl_lock(fileno(f), FLOCK_WRITE, 500);
+   (void)file_lock(fileno(f), FLT_WRITE, 500);
    if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
       goto jclose;
 

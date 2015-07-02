@@ -45,10 +45,6 @@
 
 #include <sys/wait.h>
 
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
-#endif
-
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
 
@@ -61,6 +57,10 @@
 # endif
 #endif
 
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
+
 #ifdef HAVE_OPENSSL
 # include <openssl/err.h>
 # include <openssl/rand.h>
@@ -68,6 +68,8 @@
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
 #endif
+
+#include "dotlock.h"
 
 struct fio_stack {
    FILE  *s_file;    /* File we were in. */
@@ -111,6 +113,10 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 static void       makemessage(void);
 
 static enum okay  get_header(struct message *mp);
+
+/*  */
+static bool_t     _file_lock(int fd, enum file_lock_type ft);
+static void       _file_lock_msg(char const *fname);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
 #ifdef HAVE_SOCKETS
@@ -488,6 +494,39 @@ get_header(struct message *mp)
    }
    NYD_LEAVE;
    return rv;
+}
+
+static bool_t
+_file_lock(int fd, enum file_lock_type flt)
+{
+   struct flock flp;
+   bool_t rv;
+   NYD2_ENTER;
+
+   switch (flt) {
+   case FLT_READ:    rv = F_RDLCK;  break;
+   case FLT_WRITE:   rv = F_WRLCK;  break;
+   default:
+   case FLT_UNLOCK:  rv = F_UNLCK;  break;
+   }
+
+   /* (For now we restart, but in the future we may not */
+   flp.l_type = rv;
+   flp.l_start = 0;
+   flp.l_whence = SEEK_SET;
+   flp.l_len = 0;
+   while (!(rv = (fcntl(fd, F_SETLKW, &flp) != -1)) && errno == EINTR)
+      ;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static void
+_file_lock_msg(char const *fname)
+{
+   NYD2_ENTER;
+   fprintf(stdout, _("Creating dot lock for \"%s\""), fname);
+   NYD2_LEAVE;
 }
 
 #ifdef HAVE_SOCKETS
@@ -1259,6 +1298,121 @@ get_body(struct message *mp)
    }
    NYD_LEAVE;
    return rv;
+}
+
+FL bool_t
+file_lock(int fd, enum file_lock_type flt, size_t pollmsecs)
+{
+   size_t retries;
+   bool_t rv;
+   NYD_ENTER;
+
+   for (rv = FAL0, retries = 0; retries < FILE_LOCK_RETRIES; ++retries)
+      if ((rv = _file_lock(fd, flt)) || pollmsecs == 0)
+         break;
+      else
+         sleep(1); /* TODO pollmsecs -> use finer grain */
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+dot_lock(char const *fname, int fd, size_t pollmsecs)
+{
+   char path[PATH_MAX];
+   sigset_t nset, oset;
+   int olderrno;
+   size_t retries = 0;
+   bool_t didmsg = FAL0, rv = FAL0;
+   NYD_ENTER;
+
+   if (options & OPT_D_VV) {
+      _file_lock_msg(fname);
+      putchar('\n');
+      didmsg = TRU1;
+   }
+
+   while (!_file_lock(fd, FLT_WRITE))
+      switch (errno) {
+      case EACCES:
+      case EAGAIN:
+      case ENOLCK:
+         if (pollmsecs > 0 && ++retries < FILE_LOCK_RETRIES) {
+            if (!didmsg)
+               _file_lock_msg(fname);
+            putchar('.');
+            didmsg = -TRU1;
+            sleep(1); /* TODO pollmsecs -> use finer grain */
+            continue;
+         }
+         /* FALLTHRU */
+      default:
+         goto jleave;
+      }
+
+#if 0
+   /* If we can't deal with dot-lock files in there, go with the file_lock()
+    * and don't fail otherwise */
+   if (!_dot_dir_access(fname)) {
+      if (options & OPT_D_V) /* TODO Really? dotlock's are crucial! Always!?! */
+         n_err(_("Can't manage lock files in \"%s\", "
+            "please check permissions\n"), fname);
+      rv = TRU1;
+      goto jleave;
+   }
+#endif
+
+   sigemptyset(&nset);
+   sigaddset(&nset, SIGHUP);
+   sigaddset(&nset, SIGINT);
+   sigaddset(&nset, SIGQUIT);
+   sigaddset(&nset, SIGTERM);
+   sigaddset(&nset, SIGTTIN);
+   sigaddset(&nset, SIGTTOU);
+   sigaddset(&nset, SIGTSTP);
+   sigaddset(&nset, SIGCHLD);
+
+   snprintf(path, sizeof(path), "%s.lock", fname);
+
+   while (retries++ < FILE_LOCK_RETRIES) {
+      sigprocmask(SIG_BLOCK, &nset, &oset);
+      rv = (_dotlock_create_excl(path) == 0);
+      olderrno = errno;
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+      if (rv)
+         goto jleave;
+
+      if (olderrno != EEXIST)
+         goto jleave;
+      if (pollmsecs == 0) {
+         errno = EEXIST;
+         goto jleave;
+      }
+      sleep(1); /* TODO pollmsecs -> use finer grain */
+   }
+
+   n_err(_("Is \"%s\" a stale lock?  Please remove file manually\n"), path);
+jleave:
+   if (didmsg < FAL0)
+      putchar('\n');
+   NYD_LEAVE;
+   return rv;
+}
+
+FL void
+dot_unlock(char const *fname)
+{
+   char path[PATH_MAX];
+   NYD_ENTER;
+
+#if 0
+   if (!_dot_dir_access(fname))
+      goto jleave;
+#endif
+   snprintf(path, sizeof(path), "%s.lock", fname);
+   unlink(path);
+jleave:
+   NYD_LEAVE;
 }
 
 #ifdef HAVE_SOCKETS
