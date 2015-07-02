@@ -184,16 +184,6 @@ Low-Level
   statement somewhere else in this file that the structure should be
   slacked; simply use multiple thereof or so)
 
-- All error messages should not go to stderr but instead we should add our
-  own n_warn() family and use that.  In the background we should have
-  a ring of error messages (oldest fall off), and a command that is capable
-  to display the ring.  The command loop should recognize whenever an error
-  happened during the last command, and print something like "XY errors
-  occurred", followed by a (truncated as necessary) error report.
-  It simply doesn't make any sense to print errors on stderr if normal
-  output goes to stdout and scrolls it off the screen.
-  Note that yet some errors messages still go to stdout.
-
 - At some later time extend the logic behind -# -- it should not have
   a current folder, but start in VOID mode (...), and unless one is
   explicitly chosen..  We need a reliable batch mode.
@@ -482,6 +472,10 @@ Low-Level
     handled; setting also generates SIGTTOU when we're not in foreground
     pgrp, so we better deal with all that and ENSURE WE GET THROUGH when
     resetting terminal attributes!
+  .. "I guess it would be much better to create our own session via
+     setpgid(2) and then tcsetpgrp(3) any processes we run synchronously,
+     and properly deal with SIGTTOU, but it always has been like that and
+     i won't do that before other things have been changed.
   . Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
     global mbstate_t objects until the send / MIME layer rewrite is done and
     has the carrier.  Use flip states and add aux funs with only update the
@@ -877,6 +871,9 @@ Low-Level
     it which have really been sent.  If we support postponing and have
     a multi-process layout and add an intermediate *record-queue* we
     may be able to improve the situation.
+  . All of OPT_INTERACTIVE, (OPT_SENDMODE,) OPT_UNICODE, OPT_TTYIN,
+    OPT_TTYOUT should not be user_options but instead program_state
+    members.
 
 --
 
