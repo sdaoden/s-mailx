@@ -433,14 +433,15 @@ Fopen(char const *file, char const *oflags)
 }
 
 FL FILE *
-Fdopen(int fd, char const *oflags)
+Fdopen(int fd, char const *oflags, bool_t nocloexec)
 {
    FILE *fp;
    int osflags;
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
+   if (!nocloexec)
+      osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
@@ -644,8 +645,10 @@ jclose:
       _CLOEXEC_SET(fd);
 #endif
 
-   fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
-         (oflags & OF_RDWR ? "w+" : "w"));
+   if (oflags & OF_REGISTER)
+      fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
+   else
+      fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
    if (fp == NULL || (oflags & OF_UNLINK)) {
 junlink:
       unlink(cp_base);

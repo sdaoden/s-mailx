@@ -1148,7 +1148,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          Fclose(fout);
 
          /* If we have to serve file addressees, open reader */
-         if (xcnt != 0 && (fin = Fdopen(image, "r")) == NULL) {
+         if (xcnt != 0 && (fin = Fdopen(image, "r", FAL0)) == NULL) {
             n_perr(_("Failed to open a temporary image duplicate"), 0);
 jcantfout:
             *senderror = TRU1;
