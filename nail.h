@@ -1765,9 +1765,6 @@ struct cw {
 # define VL             extern
 #endif
 
-VL gid_t       effectivegid;        /* Saved from when we started up */
-VL gid_t       realgid;             /* Saved from when we started up */
-
 VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */

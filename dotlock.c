@@ -41,7 +41,6 @@
 
 #include <sys/utsname.h>
 
-#define APID_SZ         40 /* sufficient for 128 bits pids XXX nail.h */
 #define CREATE_RETRIES  5  /* XXX nail.h */
 #define DOTLOCK_RETRIES 15 /* XXX nail.h */
 
@@ -50,24 +49,6 @@
 #else
 # define O_BITS         (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL)
 #endif
-
-/* TODO Allow safe setgid, optional: check on startup wether in receive mode,
- * TODO start helper process that is setgid and only does dotlocking.
- * TODO Approach two, also optional: use a configurable setgid dotlock prog */
-#define GID_MAYBESET(P) \
-do if (realgid != effectivegid && !_maybe_setgid(P, effectivegid)) {\
-   n_perr(_("setgid"), 0);\
-   exit(1);\
-} while (0)
-
-#define GID_RESET() \
-do if (realgid != effectivegid && setgid(realgid) == -1) {\
-   n_perr(_("setgid"), 0);\
-   exit(1);\
-} while (0)
-
-/* GID_*() helper: set the gid if the path is in the normal mail spool */
-static bool_t  _maybe_setgid(char const *name, gid_t gid);
 
 /* Check if we can write a lock file at all */
 static bool_t  _dot_dir_access(char const *fname);
@@ -86,22 +67,6 @@ static bool_t  _dot_fcntl_lock(int fd, enum flock_type ft);
 
 /* Print a message :) */
 static void    _dot_lock_msg(char const *fname);
-
-static bool_t
-_maybe_setgid(char const *name, gid_t gid)
-{
-   char const safepath[] = MAILSPOOL;
-   bool_t rv;
-   NYD_ENTER;
-
-   if (strncmp(name, safepath, sizeof(safepath) -1) ||
-         strchr(name + sizeof(safepath), '/') != NULL)
-      rv = TRU1;
-   else
-      rv = (setgid(gid) != -1);
-   NYD_LEAVE;
-   return rv;
-}
 
 static bool_t
 _dot_dir_access(char const *fname)
@@ -141,7 +106,7 @@ _dot_dir_access(char const *fname)
 static int
 create_exclusive(char const *fname) /* TODO revisit! */
 {
-   char path[PATH_MAX], apid[APID_SZ], *hostname;
+   char path[PATH_MAX], *hostname;
    struct stat st;
    struct utsname ut;
    char const *ptr;
@@ -166,13 +131,9 @@ create_exclusive(char const *fname) /* TODO revisit! */
 
    /* We try to create the unique filename */
    for (ntries = 0; ntries < CREATE_RETRIES; ++ntries) {
-      GID_MAYBESET(path);
       fd = open(path, O_BITS, 0);
       serrno = errno;
-      GID_RESET();
       if (fd != -1) {
-         snprintf(apid, APID_SZ, "%d", pid);
-         write(fd, apid, strlen(apid));
          close(fd);
          break;
       } else if (serrno != EEXIST) {
@@ -182,10 +143,8 @@ create_exclusive(char const *fname) /* TODO revisit! */
    }
 
    /* We link the path to the name */
-   GID_MAYBESET(fname);
    cc = link(path, fname);
    serrno = errno;
-   GID_RESET();
    if (cc == -1)
       goto jbad;
 
@@ -196,9 +155,7 @@ create_exclusive(char const *fname) /* TODO revisit! */
       goto jbad;
    }
 
-   GID_MAYBESET(fname);
    unlink(path);
-   GID_RESET();
 
    /* If the number of links was two (one for the unique file and one for
     * the lock), we've won the race */
@@ -379,9 +336,7 @@ dot_unlock(char const *fname)
       goto jleave;
 
    snprintf(path, sizeof(path), "%s.lock", fname);
-   GID_MAYBESET(path);
    unlink(path);
-   GID_RESET();
 jleave:
    NYD_LEAVE;
 }
