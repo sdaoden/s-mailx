@@ -15,6 +15,7 @@ option_reset() {
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
+   WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
@@ -35,6 +36,7 @@ option_maximal() {
    WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
+   WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
@@ -61,6 +63,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=1
       WANT_NCL=1
          WANT_HISTORY=1
+      WANT_ERRORS=1
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
@@ -936,7 +939,7 @@ else
    msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
    config_exit 1
 fi
-fi # -n ${have_posix_random}
+fi # -z ${have_posix_random}
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
@@ -1817,6 +1820,12 @@ _EOT
       feat_bail_required TERMCAP
 else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
+fi
+
+if feat_yes ERRORS; then
+   echo '#define HAVE_ERRORS' >> ${h}
+else
+   echo '/* WANT_ERRORS=0 */' >> ${h}
 fi
 
 ##

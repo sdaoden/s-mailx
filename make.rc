@@ -143,6 +143,13 @@ WANT_TABEXPAND=yes
 # TODO use TERMCAP for key detection, implement NCL2 based on it
 WANT_TERMCAP=no
 
+# Enable the `errors' command; S-nail is a console-based application and thus
+# errors may fly by pretty fast as other operations are in progress; or $PAGERs
+# are started and clear errors off the screen.
+# If `errors' is enabled errors are saved away as they happen and using the
+# `errors' command will show them.
+WANT_ERRORS=yes
+
 # Interaction with a spam email filter is possible.
 # Refer to all commands and variables with a "spam" prefix, and see the manual
 # example section "Handling spam".
