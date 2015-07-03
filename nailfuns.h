@@ -1573,11 +1573,9 @@ FL bool_t      pipe_cloexec(int fd[2]);
 
 /*
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment */
-/* TODO Because we don't support filter chains yet some filter will be run
- * TODO in dedicated subprocesses: for this mode of operation cmd must be one
- * TODO of the MIME_TYPE_HANDLER_*, and shell effectively transports the
- * TODO pointer to the int(*)(void) main function.  This is temporary */
+ * array of "K=V" strings to be placed into the childs environment.
+ * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
+ * called from within the child process */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
 

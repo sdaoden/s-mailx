@@ -771,8 +771,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    sigemptyset(&nset);
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-   if (cmd == MIME_TYPE_HANDLER_HTML) { /* TODO Temporary ugly hack */
+   if (cmd == (char*)-1) {
       if ((pid = fork_child()) == -1)
          n_perr(_("fork"), 0);
       else if (pid == 0) {
@@ -784,9 +783,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          u.es = (*u.ptf)();
          _exit(u.es);
       }
-   } else
-#endif
-          if (sh == NULL) {
+   } else if (sh == NULL) {
       pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
       pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);

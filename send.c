@@ -581,7 +581,7 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
    if (pipecomm == MIME_TYPE_HANDLER_HTML) {
       union {int (*ptf)(void); char const *sh;} u;
       u.ptf = &htmlflt_process_main;
-      rbuf = Popen(MIME_TYPE_HANDLER_HTML, "W", u.sh, NULL, fileno(*qbuf));
+      rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf));
       pipecomm = "Builtin HTML tagsoup filter";
       goto jafter_tagsoup_hack;
    }
