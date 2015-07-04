@@ -423,7 +423,7 @@ jcream:
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);
-      if (lckfp != NULL)
+      if (lckfp != NULL && lckfp != (FILE*)-1)
          Pclose(lckfp, FAL0);
    }
    NYD_LEAVE;

@@ -1444,7 +1444,7 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
    enum dotlock_state dls;
    union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
    char const *emsg = NULL;
-   bool_t didmsg = FAL0;
+   bool_t flocked, didmsg = FAL0;
    FILE *rv = NULL;
    NYD_ENTER;
 
@@ -1453,6 +1453,7 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
       didmsg = TRUM1;
    }
 
+   flocked = FAL0;
    for (u.tries = 0; !_file_lock(fd, FLT_WRITE, 0, 0);)
       switch ((serrno = errno)) {
       case EACCES:
@@ -1470,6 +1471,7 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
       default:
          goto jleave;
       }
+   flocked = TRU1;
 
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
@@ -1585,8 +1587,13 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
 jleave:
    if (didmsg == TRUM1)
       n_err("\n");
-   if (rv == NULL)
-      errno = serrno;
+   if (rv == NULL) {
+      if (flocked && serrno != EAGAIN && serrno != EEXIST &&
+            ok_blook(dotlock_ignore_error))
+         rv = (FILE*)-1;
+      else
+         errno = serrno;
+   }
    NYD_LEAVE;
    return rv;
 jemsg:
