@@ -274,7 +274,7 @@ FL void
 quit(void)
 {
    int p, modify, anystat, c;
-   FILE *fbuf = NULL, *rbuf, *abuf;
+   FILE *fbuf = NULL, *lckfp = NULL, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
    NYD_ENTER;
@@ -343,8 +343,8 @@ jnewmail:
       goto jleave;
    }
 
-   if (!dot_lock(mailname, fileno(fbuf), 1)) {
-      n_perr(_("Unable to lock mailbox"), 0);
+   if ((lckfp = dotlock(mailname, fileno(fbuf), 1)) == NULL) {
+      n_perr(_("Unable to (dot) lock mailbox, aborting operation"), 0);
       Fclose(fbuf);
       fbuf = NULL;
       goto jleave;
@@ -423,7 +423,8 @@ jcream:
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);
-      dot_unlock(mailname);
+      if (lckfp != NULL && lckfp != (FILE*)-1)
+         Pclose(lckfp, FAL0);
    }
    NYD_LEAVE;
 }

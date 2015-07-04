@@ -235,17 +235,6 @@ _startup(void)
    char *cp;
    NYD_ENTER;
 
-   /* Absolutely the first thing we do is save our egid and set it to the rgid,
-    * so that we can safely run setgid.  We use the sgid (saved set-gid) to
-    * allow ourselves to revert to the egid if we want (temporarily) to become
-    * privileged XXX (s-nail-)*dotlock(-program)* [maybe forked<->Unix IPC?] */
-   effectivegid = getegid();
-   realgid = getgid();
-   if (setgid(realgid) == -1) {
-      n_perr(_("setgid"), 0);
-      exit(1);
-   }
-
    image = -1;
    dflpipe = SIG_DFL;
    _oind = /*_oerr =*/ 1;
@@ -329,6 +318,10 @@ _startup(void)
 
       ok_vset(sendmail, SENDMAIL);
       ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+
+#ifndef HAVE_PRIVSEP
+      ok_bset(dotlock_ignore_error, TRU1);
+#endif
    } while (0);
 
    /*  --  >8  --  8<  --  */

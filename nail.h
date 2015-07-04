@@ -169,6 +169,8 @@
 
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
+#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
+#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
@@ -740,6 +742,19 @@ enum cproto {
    CPROTO_IMAP
 };
 
+enum dotlock_state {
+   DLS_NONE,
+   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
+   DLS_NAMETOOLONG,           /* Lock file name would be too long */
+   DLS_NOPERM,                /* No permission to creat lock file */
+   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
+   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
+   DLS_EXIST,                 /* Lock file already exists, stale lock? */
+   DLS_DUNNO,                 /* Catch-all error */
+   DLS_PING,                  /* Not an error, but have to wait for lock */
+   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+};
+
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
@@ -765,10 +780,10 @@ enum fexp_mode {
    FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
-enum flock_type {
-   FLOCK_READ,
-   FLOCK_WRITE,
-   FLOCK_UNLOCK
+enum file_lock_type {
+   FLT_READ,
+   FLT_WRITE,
+   FLT_UNLOCK
 };
 
 enum mimecontent {
@@ -1060,6 +1075,7 @@ enum okeys {
    ok_b_disconnected,
    ok_b_disposition_notification_send,
    ok_b_dot,
+   ok_b_dotlock_ignore_error,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptybox,
@@ -1764,9 +1780,6 @@ struct cw {
 #else
 # define VL             extern
 #endif
-
-VL gid_t       effectivegid;        /* Saved from when we started up */
-VL gid_t       realgid;             /* Saved from when we started up */
 
 VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */

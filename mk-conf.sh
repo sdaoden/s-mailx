@@ -552,6 +552,10 @@ check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
 check_tool tee "${tee:-`command -v tee`}"
 
+check_tool chown "${chown:-`command -v chown`}" 1 ||
+   check_tool chown "/sbin/chown" 1 ||
+   check_tool chown "/usr/sbin/chown"
+
 check_tool make "${MAKE:-`command -v make`}"
 MAKE=${make}
 check_tool strip "${STRIP:-`command -v strip`}" 1 &&
@@ -604,8 +608,16 @@ exec 0<&5 1>&6 5<&- 6<&-
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
+printf "#define PRIVSEP \"${SID}${NAIL}-privsep\"\n" >> ${newh}
+printf "PRIVSEP = \$(UAGENT)-privsep\n" >> ${newmk}
+if feat_yes PRIVSEP; then
+   printf "OPTIONAL_PRIVSEP = \$(PRIVSEP)\n" >> ${newmk}
+else
+   printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
+fi
+
 for i in \
-      awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
+      awk cat chmod chown cp cmp grep mkdir mv rm sed tee tr \
       MAKE make strip \
       cksum; do
    eval j=\$${i}
@@ -1883,6 +1895,12 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
+if feat_yes PRIVSEP; then
+   echo '#define HAVE_PRIVSEP' >> ${h}
+else
+   echo '/* WANT_PRIVSEP=0 */' >> ${h}
+fi
+
 if feat_yes MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
@@ -1938,6 +1956,7 @@ printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_PRIVSEP\n   ",PRIVSEP-DOTLOCK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
@@ -1949,7 +1968,13 @@ ${rm} -f ${tmp}
 ${rm} -rf ${tmp0}.* ${tmp0}*
 printf 'OBJ_SRC = ' >> ${mk}
 if feat_no AMALGAMATION; then
-   echo *.c >> ${mk}
+   for i in *.c; do
+      if [ "${i}" = privsep.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+   done
+   echo >> ${mk}
    echo 'OBJ_DEP =' >> ${mk}
 else
    j=`echo "${src}" | ${sed} 's/^.\///'`
@@ -1958,7 +1983,7 @@ else
    printf '#define _MAIN_SOURCE\n' >> ${src}
    printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
    for i in *.c; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ]; then
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] [ "${i}" = privsep.c ]; then
          continue
       fi
       printf "${i} " >> ${mk}
@@ -2061,6 +2086,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
 #endif
+#ifdef HAVE_PRIVSEP
+: + Privilege-separated file dotlock program
+#endif
 :
 :The following optional features are disabled:
 #ifndef HAVE_SETLOCALE
@@ -2130,6 +2158,9 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
 #endif
+#ifndef HAVE_PRIVSEP
+: - Privilege-separated file dotlock program
+#endif
 :
 #if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
       defined HAVE_DEBUG || defined HAVE_DEVEL
@@ -2159,7 +2190,11 @@ ${cat} > ${tmp2}.c << \!
 #endif /* Remarks */
 :Setup:
 : . System-wide resource file: SYSCONFRC
-: . bindir: BINDIR, mandir: MANDIR
+: . bindir: BINDIR
+#ifdef HAVE_PRIVSEP
+: . libexecdir: LIBEXECDIR
+#endif
+: . mandir: MANDIR
 : . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
 : . $MAILSPOOL: MAILSPOOL
 :

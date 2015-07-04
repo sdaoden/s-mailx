@@ -29,6 +29,20 @@ With utility program and feature adjustments:
 
   $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
 
+Note that no special user or group massaging happens during
+installation, so you should run the above either via su(1), sudo(1),
+super(1) or a similar identity switcher as necessary.  If necessary, you
+possibly want to separate the configuration / building and the
+installation tasks, e.g.:
+
+  $ make PREFIX=/usr config build && sudo make doinstall
+
+If WANT_PRIVSEP has been enabled to include the minimal privilege-
+separated dotlock creation program that will however be installed with
+the group membership PRIVSEP_GROUP (default is "mail").
+In this case the user that executes the install/doinstall targets must
+be capable of changing the group ownership of the mini dotlock program.
+
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
 
@@ -178,7 +192,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 . All systems:
   - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
     defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
-    number of warnings exploded (for no user benefit).
+    number of warnings exploded.
   - You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
     I/O and MIME rewrite that comes next.  They mostly refer to debug
@@ -202,7 +216,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc 5.1.0 [gcc 5.1.0-4]
+  - gcc 5.1.0 [gcc 5.1.0-5]
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't

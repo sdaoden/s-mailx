@@ -433,14 +433,15 @@ Fopen(char const *file, char const *oflags)
 }
 
 FL FILE *
-Fdopen(int fd, char const *oflags)
+Fdopen(int fd, char const *oflags, bool_t nocloexec)
 {
    FILE *fp;
    int osflags;
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
+   if (!nocloexec)
+      osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
@@ -644,8 +645,10 @@ jclose:
       _CLOEXEC_SET(fd);
 #endif
 
-   fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
-         (oflags & OF_RDWR ? "w+" : "w"));
+   if (oflags & OF_REGISTER)
+      fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
+   else
+      fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
    if (fp == NULL || (oflags & OF_UNLINK)) {
 junlink:
       unlink(cp_base);
@@ -768,8 +771,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    sigemptyset(&nset);
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-   if (cmd == MIME_TYPE_HANDLER_HTML) { /* TODO Temporary ugly hack */
+   if (cmd == (char*)-1) {
       if ((pid = fork_child()) == -1)
          n_perr(_("fork"), 0);
       else if (pid == 0) {
@@ -781,9 +783,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          u.es = (*u.ptf)();
          _exit(u.es);
       }
-   } else
-#endif
-          if (sh == NULL) {
+   } else if (sh == NULL) {
       pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
       pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
