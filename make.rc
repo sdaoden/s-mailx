@@ -197,7 +197,9 @@ WANT_COLOUR=yes
 # directories, which means that a user can read and write any FILE that is
 # owned by him, but unless he is a member of the group the directory is SETGID
 # to, he will not be able to newly create (such lock) files.
-# Because locking fails due to this synchronization will not be performed.
+# Because locking fails due to this synchronization will not be performed
+# unless the user sets the *dotlock-ignore-error* variable (which is however by
+# default enabled if WANT_PRIVSEP is false).
 # However, installing S-nail SETGID to the owner of MAILSPOOLs is a security
 # threat --- the solution is to install a privilege-separated mini-program
 # SETGID that has the sole purpose and functionality of managing this dotlock.

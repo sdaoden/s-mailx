@@ -1075,6 +1075,7 @@ enum okeys {
    ok_b_disconnected,
    ok_b_disposition_notification_send,
    ok_b_dot,
+   ok_b_dotlock_ignore_error,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptybox,

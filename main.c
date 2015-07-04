@@ -318,6 +318,10 @@ _startup(void)
 
       ok_vset(sendmail, SENDMAIL);
       ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+
+#ifndef HAVE_PRIVSEP
+      ok_bset(dotlock_ignore_error, TRU1);
+#endif
    } while (0);
 
    /*  --  >8  --  8<  --  */

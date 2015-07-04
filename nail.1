@@ -4702,6 +4702,18 @@ is set
 is ignored and using a dot is the only method to terminate input mode.
 .
 .Mx
+.It Va dotlock_ignore_error
+Synchronization of mailboxes which \*(UA treats as system mailboxes
+(see the command
+.Ic file )
+will be protected with so-called dotlock files\(emthe traditional mail
+spool file locking method\(emin addition to system file locking.
+If the \*(OPal privilege-separated dotlock creation program is available
+then there is no good reason to ignore dotlock errors, and thus such
+errors are treated as fatal errors unless this variable is set.
+This variable is enabled by default if the dotlock helper is not builtin.
+.
+.Mx
 .It Va editalong
 If this variable is set then the editor is started automatically when
 a message is composed in interactive mode, as if the
