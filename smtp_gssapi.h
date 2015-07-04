@@ -97,11 +97,11 @@ _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
             &msg_ctx, &msg);
       if (maj_stat == GSS_S_COMPLETE) {
-         fprintf(stderr, "GSS error: %s / %s\n", s, (char*)msg.value);
+         n_err(_("GSS error: %s / %s\n"), s, (char*)msg.value);
          if (msg.length != 0)
             gss_release_buffer(&min_stat, &msg);
       } else {
-         fprintf(stderr, "GSS error: %s / unknown\n", s);
+         n_err(_("GSS error: %s / unknown\n"), s);
          break;
       }
    } while (msg_ctx);

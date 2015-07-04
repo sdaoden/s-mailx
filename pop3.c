@@ -57,7 +57,7 @@ do {\
       ACTIONSTOP;\
    }\
    if (options & OPT_VERBVERB)\
-      fprintf(stderr, ">>> %s", X);\
+      n_err(">>> %s", X);\
    mp->mb_active |= Y;\
    if (((RV) = swrite(&mp->mb_sock, X)) == STOP) {\
       ACTIONSTOP;\
@@ -133,7 +133,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
    }
 #else
    if (xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
-      fprintf(stderr, "No SSL support compiled in.\n");
+      n_err(_("No SSL support compiled in\n"));
       rv = STOP;
       goto jleave;
    }
@@ -144,7 +144,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
       if (ts != NULL) {
          if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
-            fprintf(stderr, _("POP3 \"APOP\" authentication failed, "
+            n_err(_("POP3 \"APOP\" authentication failed, "
                "maybe try setting *pop3-no-apop*\n"));
          goto jleave;
       } else
@@ -156,8 +156,8 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
          if (scp->sc_sock.s_use_ssl)
             ccp = _(" (over encrypted connection)");
 #endif
-         fprintf(stderr,
-            _("No POP3 \"APOP\" support, plain text authentication%s\n"), ccp);
+         n_err(_("No POP3 \"APOP\" support, plain text authentication%s\n"),
+            ccp);
       }
    }
 
@@ -303,7 +303,7 @@ jretry:
       if ((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
       if (options & OPT_VERBVERB)
-         fputs(_pop3_buf, stderr);
+         n_err(_pop3_buf);
       switch (*_pop3_buf) {
       case '+':
          rv = OKAY;
@@ -312,7 +312,7 @@ jretry:
       case '-':
          rv = STOP;
          mp->mb_active = MB_NONE;
-         fprintf(stderr, _("POP3 error: %s"), _pop3_buf);
+         n_err(_("POP3 error: %s"), _pop3_buf);
          break;
       default:
          /* If the answer starts neither with '+' nor with '-', it must be part
@@ -353,12 +353,12 @@ pop3catch(int s)
    NYD_X; /* Signal handler */
    switch (s) {
    case SIGINT:
-      /*fprintf(stderr, "Interrupt during POP3 operation\n");*/
+      /*n_err_sighdl(_("Interrupt during POP3 operation\n"));*/
       interrupts = 2; /* Force "Interrupt" message shall we onintr(0) */
       siglongjmp(_pop3_jmp, 1);
       break;
    case SIGPIPE:
-      fprintf(stderr, "Received SIGPIPE during POP3 operation\n");
+      n_err_sighdl(_("Received SIGPIPE during POP3 operation\n"));
       break;
    }
 }
@@ -369,7 +369,7 @@ _pop3_maincatch(int s)
    NYD_X; /* Signal handler */
    UNUSED(s);
    if (interrupts++ == 0)
-      fprintf(stderr, _("\n(Interrupt -- one more to abort operation)\n"));
+      n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
    else
       onintr(0);
 }
@@ -449,7 +449,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
       rv = STOP;
 
    if (rv == STOP)
-      fprintf(stderr, _("invalid POP3 STAT response: %s\n"), _pop3_buf);
+      n_err(_("Invalid POP3 STAT response: %s\n"), _pop3_buf);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -556,7 +556,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    rv = STOP;
 
    if (mp->mb_sock.s_fd < 0) {
-      fprintf(stderr, _("POP3 connection already closed.\n"));
+      n_err(_("POP3 connection already closed\n"));
       ++_pop3_lock;
       goto jleave;
    }
@@ -745,7 +745,7 @@ pop3_update(struct mailbox *mp)
    if (gotcha && (pstate & PS_EDIT)) {
       printf(_("\"%s\" "), displayname);
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"));
+         ? _("complete\n") : _("updated\n"));
    } else if (held && !(pstate & PS_EDIT)) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
@@ -798,7 +798,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       goto jleave;
    if (!ok_blook(v15_compat) &&
          (!sc.sc_url.url_had_user || sc.sc_url.url_pass.s != NULL)) {
-      fprintf(stderr, "New-style URL used without *v15-compat* being set\n");
+      n_err(_("New-style URL used without *v15-compat* being set\n"));
       goto jleave;
    }
 
@@ -838,7 +838,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
       sclose(&mb.mb_sock);
-      fprintf(stderr, _("POP3 connection closed.\n"));
+      n_err(_("POP3 connection closed\n"));
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
       _pop3_lock = 0;
@@ -880,9 +880,15 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
+
+   if (options & OPT_EXISTONLY) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(pstate & PS_EDIT) && msgCount == 0) {
-      if (mb.mb_type == MB_POP3 && !ok_blook(emptystart))
-         fprintf(stderr, _("No mail at %s\n"), server);
+      if (!ok_blook(emptystart))
+         n_err(_("No mail at %s\n"), server);
       goto jleave;
    }
 
@@ -922,7 +928,7 @@ pop3_quit(void)
    NYD_ENTER;
 
    if (mb.mb_sock.s_fd < 0) {
-      fprintf(stderr, _("POP3 connection already closed.\n"));
+      n_err(_("POP3 connection already closed\n"));
       goto jleave;
    }
 

@@ -258,10 +258,6 @@ FL void        edit_attachments(struct attachment **aphead);
 
 FL void        n_raise(int signo);
 
-/* Announce a fatal error (and die) */
-FL void        panic(char const *format, ...);
-FL void        alert(char const *format, ...);
-
 /* Provide BSD-like signal() on all (POSIX) systems */
 FL sighandler_type safe_signal(int signum, sighandler_type handler);
 
@@ -424,6 +420,27 @@ FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
+
+/* Our error print series.. */
+FL void        n_err(char const *format, ...);
+FL void        n_verr(char const *format, va_list ap);
+
+/* ..(for use in a signal handler; to be obsoleted..).. */
+FL void        n_err_sighdl(char const *format, ...);
+
+/* ..including replacement for perror(3); if errval is 0 errno(3) is used */
+FL void        n_perr(char const *msg, int errval);
+
+/* Announce a fatal error (and die) */
+FL void        n_alert(char const *format, ...);
+FL void        n_panic(char const *format, ...);
+
+/* `errors' */
+#ifdef HAVE_ERRORS
+FL int         c_errors(void *vp);
+#else
+# define c_errors                c_cmdnotsupp
+#endif
 
 /* Memory allocation routines */
 #ifdef HAVE_DEBUG
@@ -682,19 +699,6 @@ FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
 /*
- * dotlock.c
- */
-
-/* Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      fcntl_lock(int fd, enum flock_type ft, size_t pollmsecs);
-
-/* Aquire a FLOCK_WRITE lock and create a dotlock file; upon success
- * dot_unlock() must be called for cleanup of the dotlock file.
- * Will retry DOTLOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
-FL void        dot_unlock(char const *fname);
-
-/*
  * edit.c
  */
 
@@ -852,6 +856,20 @@ FL bool_t      getfold(char *name, size_t size);
 FL char const * getdeadletter(void);
 
 FL enum okay   get_body(struct message *mp);
+
+/* File locking */
+
+/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
+FL bool_t      file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
+                  size_t pollmsecs);
+
+/* Aquire a FLT_WRITE lock and create a dotlock file; upon success
+ * a registered control-pipe FILE* is returned; the lock file will be removed
+ * once the control pipe is closed, usually via Pclose() etc.
+ * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
+ * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
+ * normal file lock could be established */
+FL FILE *      dotlock(char const *fname, int fd, size_t pollmsecs);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS
@@ -1021,7 +1039,7 @@ FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
-                  const char *mbx);
+                  const char *mbx, enum fedit_mode fm);
 FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
@@ -1526,10 +1544,11 @@ FL void        command_manager_start(void);
 /* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
 
-/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags */
+/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags!
+ * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
+ * creator has to take appropriate steps in order to ensure this is true! */
 FL FILE *      Fopen(char const *file, char const *oflags);
-
-FL FILE *      Fdopen(int fd, char const *oflags);
+FL FILE *      Fdopen(int fd, char const *oflags, bool_t nocloexec);
 
 FL int         Fclose(FILE *fp);
 
@@ -1556,11 +1575,9 @@ FL bool_t      pipe_cloexec(int fd[2]);
 
 /*
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment */
-/* TODO Because we don't support filter chains yet some filter will be run
- * TODO in dedicated subprocesses: for this mode of operation cmd must be one
- * TODO of the MIME_TYPE_HANDLER_*, and shell effectively transports the
- * TODO pointer to the int(*)(void) main function.  This is temporary */
+ * array of "K=V" strings to be placed into the childs environment.
+ * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
+ * called from within the child process */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
 
@@ -1858,11 +1875,7 @@ FL void        makelow(char *cp);
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
 FL bool_t      substr(char const *str, char const *sub);
 
-/* Lazy vsprintf wrapper */
-#ifndef HAVE_SNPRINTF
-FL int         snprintf(char *str, size_t size, char const *format, ...);
-#endif
-
+/*  */
 FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);

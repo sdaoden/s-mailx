@@ -45,10 +45,6 @@
 
 #include <sys/wait.h>
 
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
-#endif
-
 #ifdef HAVE_SOCKETS
 # include <sys/socket.h>
 
@@ -61,6 +57,10 @@
 # endif
 #endif
 
+#ifdef HAVE_WORDEXP
+# include <wordexp.h>
+#endif
+
 #ifdef HAVE_OPENSSL
 # include <openssl/err.h>
 # include <openssl/rand.h>
@@ -68,6 +68,8 @@
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
 #endif
+
+#include "dotlock.h"
 
 struct fio_stack {
    FILE  *s_file;    /* File we were in. */
@@ -82,7 +84,17 @@ struct shvar_stack {
    char const  *shs_dat;   /* Result data of this level */
 };
 
-static size_t           _message_space;   /* Slots in ::message */
+/* Slots in ::message */
+static size_t           _message_space;
+
+/* XXX Our Popen() main() takes void, temporary global data store */
+static int              _dotlock_fd;
+static char const *     _dotlock_name;
+static char const *     _dotlock_hostname;
+static char const *     _dotlock_randstr;
+static size_t           _dotlock_pollmsecs;
+
+/* */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
 static FILE *           _fio_input;
@@ -111,6 +123,13 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 static void       makemessage(void);
 
 static enum okay  get_header(struct message *mp);
+
+/* Workhorse */
+static bool_t     _file_lock(int fd, enum file_lock_type ft,
+                     off_t off, off_t len);
+
+/* main() of fork(2)ed dot file locker */
+static int        _dotlock_main(void);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
 #ifdef HAVE_SOCKETS
@@ -202,7 +221,7 @@ __shvar_exp(struct shvar_stack *shsp)
 
       if (lc) {
          if (c != '}') {
-            fprintf(stderr, _("Variable name misses closing \"}\": \"%s\"\n"),
+            n_err(_("Variable name misses closing \"}\": \"%s\"\n"),
                shsp->shs_value);
             shsp->shs_len = strlen(shsp->shs_value);
             shsp->shs_dat = shsp->shs_value;
@@ -279,19 +298,18 @@ _globname(char const *name, enum fexp_mode fexpm)
 #ifdef WRDE_CMDSUB
    case WRDE_CMDSUB:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Command substitution not allowed.\n"),
-            name);
+         n_err(_("\"%s\": Command substitution not allowed\n"), name);
       goto jleave;
 #endif
    case WRDE_NOSPACE:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion buffer overflow.\n"), name);
+         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
       goto jleave;
    case WRDE_BADCHAR:
    case WRDE_SYNTAX:
    default:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("Syntax error in \"%s\"\n"), name);
+         n_err(_("Syntax error in \"%s\"\n"), name);
       goto jleave;
    }
 
@@ -301,7 +319,7 @@ _globname(char const *name, enum fexp_mode fexpm)
       break;
    case 0:
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": No match.\n"), name);
+         n_err(_("\"%s\": No match\n"), name);
       break;
    default:
       if (fexpm & FEXP_MULTIOK) {
@@ -319,7 +337,7 @@ _globname(char const *name, enum fexp_mode fexpm)
          }
          cp[l] = '\0';
       } else if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Ambiguous.\n"), name);
+         n_err(_("\"%s\": Ambiguous\n"), name);
       break;
    }
 jleave:
@@ -335,7 +353,7 @@ jleave:
    NYD_ENTER;
 
    if (pipe(pivec) < 0) {
-      perror("pipe");
+      n_perr(_("pipe"), 0);
       goto jleave;
    }
    snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
@@ -354,24 +372,24 @@ jagain:
    if (l < 0) {
       if (errno == EINTR)
          goto jagain;
-      perror("read");
+      n_perr(_("read"), 0);
       close(pivec[0]);
       goto jleave;
    }
    close(pivec[0]);
    if (!wait_child(pid, &waits) && WTERMSIG(waits) != SIGPIPE) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion failed.\n"), name);
+         n_err(_("\"%s\": Expansion failed\n"), name);
       goto jleave;
    }
    if (l == 0) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": No match.\n"), name);
+         n_err(_("\"%s\": No match\n"), name);
       goto jleave;
    }
    if (l == sizeof xname) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Expansion buffer overflow.\n"), name);
+         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
       goto jleave;
    }
    xname[l] = 0;
@@ -381,7 +399,7 @@ jagain:
    if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') != NULL &&
          stat(xname, &sbuf) < 0) {
       if (!(fexpm & FEXP_SILENT))
-         fprintf(stderr, _("\"%s\": Ambiguous.\n"), name);
+         n_err(_("\"%s\": Ambiguous\n"), name);
       cp = NULL;
       goto jleave;
    }
@@ -489,6 +507,143 @@ get_header(struct message *mp)
    }
    NYD_LEAVE;
    return rv;
+}
+
+static bool_t
+_file_lock(int fd, enum file_lock_type flt, off_t off, off_t len)
+{
+   struct flock flp;
+   bool_t rv;
+   NYD2_ENTER;
+
+   switch (flt) {
+   case FLT_READ:    rv = F_RDLCK;  break;
+   case FLT_WRITE:   rv = F_WRLCK;  break;
+   default:
+   case FLT_UNLOCK:  rv = F_UNLCK;  break;
+   }
+
+   /* (For now we restart, but in the future we may not */
+   flp.l_type = rv;
+   flp.l_start = off;
+   flp.l_whence = SEEK_SET;
+   flp.l_len = len;
+   while (!(rv = (fcntl(fd, F_SETLKW, &flp) != -1)) && errno == EINTR)
+      ;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static int
+_dotlock_main(void)
+{
+#ifdef HAVE_PRIVSEP
+   struct stat stb;
+#endif
+   char name[NAME_MAX];
+   enum dotlock_state dls;
+   size_t pollmsecs;
+   char const *cp_orig, *cp, *hostname, *randstr;
+   int fd;
+   NYD_ENTER;
+
+   /* Get the arguments "passed to us" */
+   fd = _dotlock_fd;
+   UNUSED(fd);
+   cp_orig = _dotlock_name;
+   hostname = _dotlock_hostname;
+   randstr = _dotlock_randstr;
+   pollmsecs = _dotlock_pollmsecs;
+
+   dls = DLS_CANT_CHDIR;
+
+   /* chdir(2)? */
+   if ((cp = strrchr(cp_orig, '/')) != NULL) {
+      char const *fname = cp + 1;
+
+      while (PTRCMP(cp - 1, >, cp_orig) && cp[-1] == '/')
+         --cp;
+      cp = savestrbuf(cp_orig, PTR2SIZE(cp - cp_orig));
+      if (chdir(cp))
+         goto jmsg;
+
+      cp = fname;
+   } else
+      cp = cp_orig;
+
+   /* Be aware, even if the error is false! */
+   {
+      int i = snprintf(name, sizeof name, "%s.lock", cp);
+      if (i < 0 || UICMP(z, NAME_MAX, <=, (uiz_t)i + 1 +1)) {
+         dls = DLS_NAMETOOLONG | DLS_ABANDON;
+         goto jmsg;
+      }
+   }
+
+   /* Ignore SIGPIPE, the child reacts upon EPIPE instead */
+   safe_signal(SIGPIPE, SIG_IGN);
+
+   dls = DLS_NOPERM;
+
+   /* We are in the directory of the mailbox for which we have to create
+    * a dotlock file for.  We don't know wether we have realpath(3) available,
+    * and manually resolving the path is due especially given that S-nail
+    * supports the special "%:" syntax to warp any file into a "system
+    * mailbox"; there may also be multiple system mailbox directories...
+    * So what we do is that we fstat(2) the mailbox and check its UID and
+    * GID against that of our own process: if any of those mismatch we must
+    * either assume a SETGID directory or that we run via -u/$USER as someone
+    * else, in which case we favour our privilege-separated dotlock process.
+    * A super-correct approach would be more complicated, and for no benefit in
+    * all real-life scenarios i ever encountered */
+#ifdef HAVE_PRIVSEP
+   if (fstat(fd, &stb) == -1)
+      goto jmsg;
+
+   if (stb.st_uid != getuid() || stb.st_gid != getgid()) {
+      char itoabuf[64];
+      char const *args[11];
+
+      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, pollmsecs);
+      args[0] = PRIVSEP;
+      args[1] = "dotlock";
+      args[2] = "name"; args[3] = name;
+      args[4] = "hostname"; args[5] = hostname;
+      args[6] = "randstr"; args[7] = randstr;
+      args[8] = "pollmsecs"; args[9] = itoabuf;
+      args[10] = NULL;
+      execv(LIBEXECDIR "/" UAGENT "-privsep", UNCONST(args));
+
+      dls = DLS_NOEXEC;
+      write(STDOUT_FILENO, &dls, sizeof dls);
+      /* But fall through and try it with normal privileges! */
+   }
+#endif
+
+   /* So let's try and call it ourselfs! */
+   safe_signal(SIGHUP, SIG_IGN);
+   safe_signal(SIGINT, SIG_IGN);
+   safe_signal(SIGQUIT, SIG_IGN);
+   safe_signal(SIGTERM, SIG_IGN);
+
+   NYD;
+   dls = _dotlock_create(name, hostname, randstr, pollmsecs);
+   NYD;
+
+   /* Finally: notify our parent about the actual lock state.. */
+jmsg:
+   write(STDOUT_FILENO, &dls, sizeof dls);
+   close(STDOUT_FILENO);
+
+   /* ..then eventually wait until we shall remove the lock again, which will
+    * be notified via the read returning */
+   if (dls == DLS_NONE) {
+      read(STDIN_FILENO, &dls, sizeof dls);
+
+      unlink(name);
+   }
+   NYD_LEAVE;
+   _exit(EXIT_OK);
 }
 
 #ifdef HAVE_SOCKETS
@@ -695,7 +850,7 @@ FL int
    }
 
    if (n >= 0 && (options & OPT_D_VV))
-      fprintf(stderr, _("%s %d bytes <%.*s>\n"),
+      n_err(_("%s %d bytes <%.*s>\n"),
          ((pstate & PS_LOADING) ? "LOAD"
           : (pstate & PS_SOURCING) ? "SOURCE" : "READ"),
          n, n, *linebuf);
@@ -760,8 +915,8 @@ setptr(FILE *ibuf, off_t offset)
          linebuf[--cnt - 1] = '\n';
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if (ferror(mb.mb_otf)) {
-         perror("/tmp");
-         exit(1);
+         n_perr(_("/tmp"), 0);
+         exit(EXIT_ERR);
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
@@ -865,8 +1020,8 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
    fflush(mp->mb_otf);
    if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
          SEEK_SET) < 0) {
-      perror("fseek");
-      panic(_("temporary file seek"));
+      n_perr(_("fseek"), 0);
+      n_panic(_("temporary file seek"));
    }
    rv = mp->mb_itf;
 jleave:
@@ -1032,7 +1187,7 @@ jnext:
       if (res[1] != '\0')
          break;
       if (prevfile[0] == '\0') {
-         fprintf(stderr, _("No previous file\n"));
+         n_err(_("No previous file\n"));
          res = NULL;
          goto jleave;
       }
@@ -1089,7 +1244,7 @@ jislocal:
       case PROTO_MAILDIR:
          break;
       default:
-         fprintf(stderr, _("Not a local file or directory: \"%s\"\n"), name);
+         n_err(_("Not a local file or directory: \"%s\"\n"), name);
          res = NULL;
          break;
       }
@@ -1146,8 +1301,7 @@ var_folder_updated(char const *name, char **store)
 
    switch (which_protocol(folder)) {
    case PROTO_POP3:
-      fprintf(stderr, _(
-         "*folder* cannot be set to a flat, readonly POP3 account\n"));
+      n_err(_("*folder* cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
       goto jleave;
    case PROTO_IMAP:
@@ -1179,7 +1333,7 @@ var_folder_updated(char const *name, char **store)
 #ifdef HAVE_REALPATH
    res = ac_alloc(PATH_MAX +1);
    if (realpath(folder, res) == NULL)
-      fprintf(stderr, _("Can't canonicalize \"%s\"\n"), folder);
+      n_err(_("Can't canonicalize \"%s\"\n"), folder);
    else
       folder = res;
 #endif
@@ -1261,6 +1415,195 @@ get_body(struct message *mp)
    }
    NYD_LEAVE;
    return rv;
+}
+
+FL bool_t
+file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
+   size_t pollmsecs)
+{
+   size_t tries;
+   bool_t rv;
+   NYD_ENTER;
+
+   for (tries = 0; tries <= FILE_LOCK_TRIES; ++tries)
+      if ((rv = _file_lock(fd, flt, off, len)) || pollmsecs == 0)
+         break;
+      else
+         sleep(1); /* TODO pollmsecs -> use finer grain */
+   NYD_LEAVE;
+   return rv;
+}
+
+FL FILE *
+dotlock(char const *fname, int fd, size_t pollmsecs)
+{
+# undef _DOMSG
+# define _DOMSG() n_err(_("Creating dotlock for \"%s\" "), fname)
+
+   int cpipe[2], serrno;
+   enum dotlock_state dls;
+   union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
+   char const *emsg = NULL;
+   bool_t flocked, didmsg = FAL0;
+   FILE *rv = NULL;
+   NYD_ENTER;
+
+   if (options & OPT_D_VV) {
+      _DOMSG();
+      didmsg = TRUM1;
+   }
+
+   flocked = FAL0;
+   for (u.tries = 0; !_file_lock(fd, FLT_WRITE, 0, 0);)
+      switch ((serrno = errno)) {
+      case EACCES:
+      case EAGAIN:
+      case ENOLCK:
+         if (pollmsecs > 0 && ++u.tries < FILE_LOCK_TRIES) {
+            if (!didmsg)
+               _DOMSG();
+            n_err(".");
+            didmsg = TRUM1;
+            sleep(1); /* TODO pollmsecs -> use finer grain */
+            continue;
+         }
+         /* FALLTHRU */
+      default:
+         goto jleave;
+      }
+   flocked = TRU1;
+
+   /* Create control-pipe for our dot file locker process, which will remove
+    * the lock and terminate once the pipe is closed, for whatever reason */
+   if (pipe_cloexec(cpipe) == -1) {
+      serrno = errno;
+      emsg = N_("  Can't create file lock control pipe\n");
+      goto jemsg;
+   }
+
+   /* And the locker process itself; it'll be a (rather cheap) thread only
+    * unless the lock has to be placed in the system spool and we have our
+    * privilege-separated dotlock program available, in which case that will be
+    * executed and do "it" with changed group-id */
+   _dotlock_fd = fd;
+   _dotlock_name = fname;
+   _dotlock_pollmsecs = pollmsecs;
+   /* Initialize some more stuff; query the two strings in the parent in order
+    * to cache the result of the former and anyway minimalize child page-ins */
+   _dotlock_hostname = nodename(FAL0);
+   _dotlock_randstr = getrandstring(16);
+
+   u.ptf = &_dotlock_main;
+   rv = Popen((char*)-1, "W", u.sh, NULL, cpipe[1]);
+   serrno = errno;
+
+   close(cpipe[1]);
+   if (rv == NULL) {
+      close(cpipe[0]);
+      emsg = N_("  Can't create file lock process\n");
+      goto jemsg;
+   }
+
+   /* Let's check wether we were able to create the dotlock file */
+   for (;;) {
+      u.r = read(cpipe[0], &dls, sizeof dls);
+      serrno = errno;
+
+      if (UICMP(z, u.r, !=, sizeof dls)) {
+         if (u.r != -1)
+            serrno = EAGAIN;
+         dls = DLS_DUNNO | DLS_ABANDON;
+      }
+
+      if (dls & DLS_ABANDON)
+         close(cpipe[0]);
+
+      switch (dls & ~DLS_ABANDON) {
+      case DLS_NONE:
+         goto jleave;
+      case DLS_CANT_CHDIR:
+         if (options & OPT_D_V)
+            emsg = N_("  Can't change to directory! Please check permissions\n");
+         serrno = EACCES;
+         break;
+      case DLS_NAMETOOLONG:
+         emsg = N_("Resulting dotlock filename would be too long\n");
+         serrno = EACCES;
+         break;
+      case DLS_NOPERM:
+         if (options & OPT_D_V)
+            emsg = N_("  Can't create a lock file! Please check permissions\n");
+         serrno = EACCES;
+         break;
+      case DLS_NOEXEC:
+         if (options & OPT_D_V)
+            emsg = N_("  Can't find privilege-separated file lock program\n");
+         serrno = ENOENT;
+         break;
+      case DLS_PRIVFAILED:
+         emsg = N_("  Privilege-separated file lock program can't change "
+               "privileges\n");
+         serrno = EPERM;
+         break;
+      case DLS_EXIST:
+         emsg = N_("  It seems there is a stale dotlock file?\n"
+               "  Please remove the lock file manually, then retry\n");
+         serrno = EEXIST;
+         break;
+      default:
+      case DLS_DUNNO:
+         emsg = N_("  Unspecified dotlock file control process error.\n"
+               "  Like broken I/O pipe; this one is unlikely to happen\n");
+         if (serrno != EAGAIN)
+            serrno = EINVAL;
+         break;
+      case DLS_PING:
+         if (!didmsg)
+            _DOMSG();
+         n_err(".");
+         didmsg = TRUM1;
+         continue;
+      }
+
+      if (emsg != NULL) {
+         if (!didmsg) {
+            _DOMSG();
+            didmsg = TRUM1;
+         }
+         if (didmsg == TRUM1)
+            n_err("\n");
+         didmsg = TRU1;
+         n_err(V_(emsg));
+         emsg = NULL;
+      }
+
+      if (dls & DLS_ABANDON) {
+         Pclose(rv, FAL0);
+         rv = NULL;
+         break;
+      }
+   }
+
+jleave:
+   if (didmsg == TRUM1)
+      n_err("\n");
+   if (rv == NULL) {
+      if (flocked && serrno != EAGAIN && serrno != EEXIST &&
+            ok_blook(dotlock_ignore_error))
+         rv = (FILE*)-1;
+      else
+         errno = serrno;
+   }
+   NYD_LEAVE;
+   return rv;
+jemsg:
+   if (!didmsg)
+      _DOMSG();
+   n_err("\n");
+   didmsg = TRU1;
+   n_err(V_(emsg));
+   goto jleave;
+#undef _DOMSG
 }
 
 #ifdef HAVE_SOCKETS
@@ -1380,10 +1723,11 @@ jssl_retry:
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
 # ifdef HAVE_OPENSSL
-      sp->s_use_ssl ? ssl_gen_err("%s", o) : perror(o);
-# else
-      perror(o);
+      if (sp->s_use_ssl)
+         ssl_gen_err("%s", o);
+      else
 # endif
+         n_perr(o, 0);
       if (x < 0)
          sclose(sp);
       rv = STOP;
@@ -1444,7 +1788,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (options & OPT_VERB)
-      fprintf(stderr, _("Resolving host \"%s:%s\" ... "),
+      n_err(_("Resolving host \"%s:%s\" ... "),
          urlp->url_host.s, serv);
 
 # ifdef HAVE_GETADDRINFO
@@ -1455,7 +1799,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    ohup = safe_signal(SIGHUP, &__sopen_onsig);
    oint = safe_signal(SIGINT, &__sopen_onsig);
    if (sigsetjmp(__sopen_actjmp, 0)) {
-      fprintf(stderr, "%s\n",
+      n_err("%s\n",
          (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
       if (sofd >= 0) {
          close(sofd);
@@ -1472,8 +1816,8 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
          break;
 
       if (options & OPT_VERB)
-         fprintf(stderr, _("failed\n"));
-      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+         n_err(_("failed\n"));
+      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
          urlp->url_host.s, serv, gai_strerror(errval));
 
       /* Error seems to depend on how "smart" the /etc/service code is: is it
@@ -1482,13 +1826,13 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
                (serv = url_servbyname(urlp, NULL)) != NULL) {
-            fprintf(stderr, _("  Trying standard protocol port \"%s\".\n"
+            n_err(_("  Trying standard protocol port \"%s\"\n"
                "  If that succeeds consider including the port in the URL!\n"),
                serv);
             continue;
          }
          if (serv != urlp->url_port)
-            fprintf(stderr, _("  Including a port number in the URL may "
+            n_err(_("  Including a port number in the URL may "
                "circumvent this problem\n"));
       }
       assert(sofd == -1);
@@ -1496,14 +1840,14 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       goto jjumped;
    }
    if (options & OPT_VERB)
-      fprintf(stderr, _("done.\n"));
+      n_err(_("done\n"));
 
    for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
       if (options & OPT_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
-         fprintf(stderr, _("%sConnecting to \"%s:%s\" ..."),
+         n_err(_("%sConnecting to \"%s:%s\" ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
 
@@ -1534,7 +1878,7 @@ jjumped:
    if (sofd < 0) {
       if (errval != 0) {
          errno = errval;
-         perror(_("Could not connect"));
+         n_perr(_("Could not connect"), 0);
       }
       goto jleave;
    }
@@ -1545,14 +1889,14 @@ jjumped:
          urlp->url_portno = ep->s_port;
       else {
          if (options & OPT_VERB)
-            fprintf(stderr, _("failed\n"));
+            n_err(_("failed\n"));
          if ((serv = url_servbyname(urlp, &urlp->url_portno)) != NULL)
-            fprintf(stderr, _("  Unknown service: \"%s\".\n"
-               "  Trying standard protocol port \"%s\".\n"
+            n_err(_("  Unknown service: \"%s\"\n"
+               "  Trying standard protocol port \"%s\"\n"
                "  If that succeeds consider including the port in the URL!\n"),
                urlp->url_proto, serv);
          else {
-            fprintf(stderr, _("  Unknown service: \"%s\".\n"
+            n_err(_("  Unknown service: \"%s\"\n"
                "  Including a port in the URL may circumvent this problem\n"),
                urlp->url_proto);
             goto jleave;
@@ -1564,7 +1908,7 @@ jjumped:
       char const *emsg;
 
       if (options & OPT_VERB)
-         fprintf(stderr, _("failed\n"));
+         n_err(_("failed\n"));
       switch (h_errno) {
       case HOST_NOT_FOUND: emsg = N_("host not found"); break;
       default:
@@ -1572,15 +1916,15 @@ jjumped:
       case NO_RECOVERY:    emsg = N_("non-recoverable server error"); break;
       case NO_DATA:        emsg = N_("valid name without IP address"); break;
       }
-      fprintf(stderr, _("Lookup of \"%s:%s\" failed: %s\n"),
+      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
          urlp->url_host.s, serv, V_(emsg));
       goto jleave;
    } else if (options & OPT_VERB)
-      fprintf(stderr, _("done.\n"));
+      n_err(_("done\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-      perror(_("could not create socket"));
+      n_perr(_("could not create socket"), 0);
       goto jleave;
    }
 
@@ -1589,13 +1933,13 @@ jjumped:
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERB)
-      fprintf(stderr, _("%sConnecting to \"%s:%d\" ... "),
+      n_err(_("%sConnecting to \"%s:%d\" ... "),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      perror(_("could not connect"));
+      n_perr(_("could not connect"), 0);
       close(sofd);
       sofd = -1;
       goto jleave;
@@ -1603,7 +1947,7 @@ jjumped:
 # endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
-      fputs(_("connected.\n"), stderr);
+      n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
@@ -1628,7 +1972,7 @@ jjumped:
       ohup = safe_signal(SIGHUP, &__sopen_onsig);
       oint = safe_signal(SIGINT, &__sopen_onsig);
       if (sigsetjmp(__sopen_actjmp, 0)) {
-         fprintf(stderr, _("%s during SSL/TLS handshake\n"),
+         n_err(_("%s during SSL/TLS handshake\n"),
             (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
          goto jsclose;
       }
@@ -1721,7 +2065,7 @@ jagain:
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sp->s_desc ?  sp->s_desc : "socket"));
-                  perror(o);
+                  n_perr(o, 0);
                }
                break;
             }
@@ -1762,9 +2106,8 @@ load(char const *name)
 
    cond = condstack_release();
    if (!commands())
-      fprintf(stderr,
-         _("Stopped loading \"%s\" due to errors (enable *debug* for trace)\n"),
-         n.s);
+      n_err(_("Stopped loading \"%s\" due to errors "
+         "(enable *debug* for trace)\n"), n.s);
    condstack_take(cond);
 
    ac_free(n.s);
@@ -1786,12 +2129,12 @@ c_source(void *v)
    if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
       goto jleave;
    if ((fi = Fopen(cp, "r")) == NULL) {
-      perror(cp);
+      n_perr(cp, 0);
       goto jleave;
    }
 
    if (_fio_stack_size >= NELEM(_fio_stack)) {
-      fprintf(stderr, _("Too much \"sourcing\" going on.\n"));
+      n_err(_("Too many `source' recursions\n"));
       Fclose(fi);
       goto jleave;
    }
@@ -1816,7 +2159,7 @@ unstack(void)
    NYD_ENTER;
 
    if (_fio_stack_size == 0) {
-      fprintf(stderr, _("\"Source\" stack over-pop.\n"));
+      n_err(_("`source' stack over-pop\n"));
       pstate &= ~PS_SOURCING;
       goto jleave;
    }
@@ -1825,7 +2168,7 @@ unstack(void)
 
    --_fio_stack_size;
    if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
-      fprintf(stderr, _("Unmatched \"if\"\n"));
+      n_err(_("Unmatched \"if\"\n"));
    if (_fio_stack[_fio_stack_size].s_loading)
       pstate |= PS_LOADING;
    else

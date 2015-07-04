@@ -169,6 +169,9 @@
 
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
+#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
+#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
+#define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
@@ -357,7 +360,7 @@
 #define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
 
 /* Align something to a size/boundary that cannot cause just any problem */
-#define ALIGN(X)        (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN(X)      (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
 
 /* Members in constant array */
 #ifndef NELEM
@@ -469,9 +472,11 @@ do {\
 # define assert(X)      UNUSED(0)
 # define DBG(X)
 # define NDBG(X)        X
+# define DBGOR(X,Y)     Y
 #else
 # define DBG(X)         X
 # define NDBG(X)
+# define DBGOR(X,Y)     X
 #endif
 
 /* Translation (init in main.c) */
@@ -737,10 +742,24 @@ enum cproto {
    CPROTO_IMAP
 };
 
+enum dotlock_state {
+   DLS_NONE,
+   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
+   DLS_NAMETOOLONG,           /* Lock file name would be too long */
+   DLS_NOPERM,                /* No permission to creat lock file */
+   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
+   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
+   DLS_EXIST,                 /* Lock file already exists, stale lock? */
+   DLS_DUNNO,                 /* Catch-all error */
+   DLS_PING,                  /* Not an error, but have to wait for lock */
+   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+};
+
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
    EXIT_USE       = 64,       /* sysexits.h:EX_USAGE */
+   EXIT_NOUSER    = 67,       /* :EX_NOUSER */
    EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
    EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
 };
@@ -762,10 +781,10 @@ enum fexp_mode {
    FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
-enum flock_type {
-   FLOCK_READ,
-   FLOCK_WRITE,
-   FLOCK_UNLOCK
+enum file_lock_type {
+   FLT_READ,
+   FLT_WRITE,
+   FLT_UNLOCK
 };
 
 enum mimecontent {
@@ -952,6 +971,7 @@ enum user_options {
    OPT_EXISTONLY  = 1u<< 3,   /* -e */
    OPT_HEADERSONLY = 1u<<4,   /* -H */
    OPT_HEADERLIST = 1u<< 5,   /* -L */
+   OPT_QUICKRUN_MASK = OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST,
    OPT_NOSRC      = 1u<< 6,   /* -n */
    OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
    OPT_F_FLAG     = 1u<< 8,   /* -F */
@@ -984,12 +1004,12 @@ enum user_options {
 #define OBSOLETE(X) \
 do {\
    if (options & OPT_D_V)\
-      fprintf(stderr, "%s: %s\n", _("Obsoletion warning"), X);\
+      n_err("%s: %s\n", _("Obsoletion warning"), X);\
 } while (0)
 #define OBSOLETE2(X,Y) \
 do {\
    if (options & OPT_D_V)\
-      fprintf(stderr, "%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+      n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 } while (0)
 
 enum program_state {
@@ -1012,7 +1032,10 @@ enum program_state {
 
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT
+   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+
+   /* Various first-time-init switches */
+   PS_ERRORS_NOTED   = 1<<24        /* Ring of `errors' content, print msg */
 };
 
 /* A large enum with all the binary and value options a.k.a their keys.
@@ -1053,6 +1076,7 @@ enum okeys {
    ok_b_disconnected,
    ok_b_disposition_notification_send,
    ok_b_dot,
+   ok_b_dotlock_ignore_error,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptybox,
@@ -1757,9 +1781,6 @@ struct cw {
 #else
 # define VL             extern
 #endif
-
-VL gid_t       effectivegid;        /* Saved from when we started up */
-VL gid_t       realgid;             /* Saved from when we started up */
 
 VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */

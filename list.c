@@ -245,7 +245,7 @@ markall(char *buf, int f)
       case TNUMBER:
 number:
          if (star) {
-            fprintf(stderr, _("No numbers mixed with *\n"));
+            n_err(_("No numbers mixed with *\n"));
             markall_ret(-1)
          }
          pstate |= PS_MSGLIST_SAW_NO;
@@ -296,7 +296,7 @@ number:
             } else
                ++i;
             if (i > msgCount) {
-               fprintf(stderr, _("Referencing beyond EOF\n"));
+               n_err(_("Referencing beyond EOF\n"));
                markall_ret(-1)
             }
          } while (message[i - 1].m_flag == MHIDDEN ||
@@ -315,7 +315,7 @@ number:
                } else
                   --i;
                if (i <= 0) {
-                  fprintf(stderr, _("Referencing before 1\n"));
+                  n_err(_("Referencing before 1\n"));
                   markall_ret(-1)
                }
             } while ((message[i - 1].m_flag & MHIDDEN) ||
@@ -327,7 +327,7 @@ number:
       case TSTRING:
          pstate &= ~PS_MSGLIST_DIRECT;
          if (beg != 0) {
-            fprintf(stderr, _("Non-numeric second argument\n"));
+            n_err(_("Non-numeric second argument\n"));
             markall_ret(-1)
          }
          ++other;
@@ -335,8 +335,7 @@ number:
             while (*++cp != '\0') {
                colresult = evalcol(*cp);
                if (colresult == 0) {
-                  fprintf(stderr, _("Unknown colon modifier \"%s\"\n"),
-                     lexstring);
+                  n_err(_("Unknown colon modifier \"%s\"\n"), lexstring);
                   markall_ret(-1)
                }
                colmod |= colresult;
@@ -352,7 +351,7 @@ number:
             markall_ret(-1)
          topen = TRU1;
 #else
-         fprintf(stderr, _("Optional selector is not available: \"%s\"\n"),
+         n_err(_("Optional selector is not available: \"%s\"\n"),
             lexstring);
          markall_ret(-1)
 #endif
@@ -383,7 +382,7 @@ number:
       case TSTAR:
          pstate &= ~PS_MSGLIST_DIRECT;
          if (other) {
-            fprintf(stderr, _("Can't mix \"*\" with anything\n"));
+            n_err(_("Can't mix \"*\" with anything\n"));
             markall_ret(-1)
          }
          star = TRU1;
@@ -452,9 +451,9 @@ number:
       if (!mc) {
          if (!(pstate & PS_HOOK_MASK)) {
             if (tback)
-               fprintf(stderr, _("No previously marked messages.\n"));
+               n_err(_("No previously marked messages\n"));
             else
-               printf("No messages satisfy (criteria).\n");/*TODO tr*/
+               printf(_("No messages satisfy (criteria)\n"));
          }
          markall_ret(-1)
       }
@@ -502,7 +501,7 @@ number:
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               fprintf(stderr, _("Empty \"[@..]@\" search expression\n"));
+               n_err(_("Empty \"[@..]@\" search expression\n"));
                rv = -1;
                continue;
             }
@@ -511,8 +510,7 @@ number:
                sep[j].ss_sexpr = NULL;
                if (regcomp(&sep[j].ss_regex, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0) {
-                  fprintf(stderr, _(
-                     "Invalid regular expression: >>> %s <<<\n"), x);
+                  n_err(_("Invalid regular expression: >>> %s <<<\n"), x);
                   rv = -1;
                   continue;
                }
@@ -669,7 +667,7 @@ check(int mesg, int f)
    mp = message + mesg - 1;
    if (mp->m_flag & MHIDDEN ||
          (f != MDELETED && (mp->m_flag & MDELETED) != 0)) {
-      fprintf(stderr, _("%d: Inappropriate message\n"), mesg);
+      n_err(_("%d: inappropriate message\n"), mesg);
       goto jem1;
    }
    f = 0;
@@ -752,7 +750,7 @@ scan(char **sp)
       do {
          if ((c = *cp++&0377) == '\0') {
 jmtop:
-            fprintf(stderr, "Missing \")\".\n");
+            n_err(_("Missing \")\"\n"));
             rv = TERROR;
             goto jleave;
          }
@@ -816,7 +814,7 @@ jmtop:
       c = *cp++;
    }
    if (quotec && c == 0) {
-      fprintf(stderr, _("Missing %c\n"), quotec);
+      n_err(_("Missing %c\n"), quotec);
       rv = TERROR;
       goto jleave;
    }
@@ -833,7 +831,7 @@ regret(int token)
 {
    NYD_ENTER;
    if (++regretp >= REGDEP)
-      panic(_("Too many regrets"));
+      n_panic(_("Too many regrets"));
    regretstack[regretp] = token;
    lexstring[STRINGLEN -1] = '\0';
    string_stack[regretp] = savestr(lexstring);
@@ -1006,7 +1004,7 @@ unmark(int mesg)
 
    i = (size_t)mesg;
    if (i < 1 || UICMP(z, i, >, msgCount))
-      panic(_("Bad message number to unmark"));
+      n_panic(_("Bad message number to unmark"));
    message[i - 1].m_flag &= ~MMARK;
    NYD_LEAVE;
 }
@@ -1061,7 +1059,7 @@ metamess(int meta, int f)
       /* Current message */
       m = dot - message + 1;
       if ((dot->m_flag & MHIDDEN) || (dot->m_flag & MDELETED) != (ui32_t)f) {
-         printf(_("%d: Inappropriate message\n"), m);
+         printf(_("%d: inappropriate message\n"), m);
          goto jem1;
       }
       c = m;
@@ -1070,20 +1068,20 @@ metamess(int meta, int f)
    case ';':
       /* Previously current message */
       if (prevdot == NULL) {
-         fprintf(stderr, _("No previously current message\n"));
+         n_err(_("No previously current message\n"));
          goto jem1;
       }
       m = prevdot - message + 1;
       if ((prevdot->m_flag & MHIDDEN) ||
             (prevdot->m_flag & MDELETED) != (ui32_t)f) {
-         fprintf(stderr, _("%d: Inappropriate message\n"), m);
+         n_err(_("%d: inappropriate message\n"), m);
          goto jem1;
       }
       c = m;
       break;
 
    default:
-      fprintf(stderr, _("Unknown metachar (%c)\n"), c);
+      n_err(_("Unknown metachar (%c)\n"), c);
       goto jem1;
    }
 jleave:
@@ -1170,8 +1168,7 @@ getrawlist(char const *line, size_t linesize, char **argv, int argc,
             break;
       }
       if (argn >= argc - 1) {
-         fprintf(stderr,
-            _("Too many elements in the list; excess discarded.\n"));
+         n_err(_("Too many elements in the list; excess discarded\n"));
          break;
       }
 
@@ -1264,7 +1261,7 @@ mark(int mesg, int f)
 
    i = mesg;
    if (i < 1 || i > msgCount)
-      panic(_("Bad message number to mark"));
+      n_panic(_("Bad message number to mark"));
    if (mb.mb_threaded == 1 && threadflag) {
       if (!(message[i - 1].m_flag & MHIDDEN)) {
          if (f == MDELETED || !(message[i - 1].m_flag & MDELETED))

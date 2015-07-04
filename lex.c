@@ -156,7 +156,7 @@ _update_mailname(char const *name)
       enum protocol p = which_protocol(name);
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL) {
-            fprintf(stderr, _("Can't canonicalize \"%s\"\n"), name);
+            n_err(_("Can't canonicalize \"%s\"\n"), name);
             rv = FAL0;
             goto jdocopy;
          }
@@ -255,7 +255,7 @@ _c_ghost(void *v)
 
    /* Verify the ghost name is a valid one */
    if (*argv[0] == '\0' || *_lex_isolate(argv[0]) != '\0') {
-      fprintf(stderr, _("`ghost': can't canonicalize \"%s\"\n"), argv[0]);
+      n_err(_("`ghost': can't canonicalize \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -267,7 +267,7 @@ _c_ghost(void *v)
             printf("ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
             goto jleave;
          }
-      fprintf(stderr, _("`ghost': no such alias: \"%s\"\n"), argv[0]);
+      n_err(_("`ghost': no such alias: \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -277,8 +277,7 @@ _c_ghost(void *v)
       if (*cp != '\0')
          cl += strlen(cp) + 1; /* SP or NUL */
    if (cl == 0) {
-      fprintf(stderr, _("`ghost': empty command arguments after \"%s\"\n"),
-         argv[0]);
+      n_err(_("`ghost': empty command arguments after \"%s\"\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -339,7 +338,7 @@ _c_unghost(void *v)
                free(cg);
                goto jouter;
             }
-         fprintf(stderr, _("`unghost': no such alias: \"%s\"\n"), cp);
+         n_err(_("`unghost': no such alias: \"%s\"\n"), cp);
          rv = 1;
 jouter:
          ;
@@ -459,7 +458,7 @@ hangup(int s)
    NYD_X; /* Signal handler */
    UNUSED(s);
    /* nothing to do? */
-   exit(1);
+   exit(EXIT_ERR);
 }
 
 FL int
@@ -468,7 +467,6 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    static int shudclob;
 
    struct stat stb;
-   struct flock flp;
    size_t offset;
    char const *who;
    int rv, omsgCount = 0;
@@ -521,7 +519,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jleave;
 #endif
    default:
-      fprintf(stderr, _("Cannot handle protocol: %s\n"), name);
+      n_err(_("Cannot handle protocol: %s\n"), name);
       goto jem1;
    }
 
@@ -531,14 +529,14 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
             goto jnonmail;
          goto jnomail;
       }
-      perror(name);
+      n_perr(name, 0);
       goto jem1;
    }
 
    if (fstat(fileno(ibuf), &stb) == -1) {
       if (fm & FEDIT_NEWMAIL)
          goto jnonmail;
-      perror("fstat");
+      n_perr(_("fstat"), 0);
       goto jem1;
    }
 
@@ -548,7 +546,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       if (fm & FEDIT_NEWMAIL)
          goto jnonmail;
       errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
-      perror(name);
+      n_perr(name, 0);
       goto jem1;
    }
 
@@ -576,16 +574,13 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
       if ((ibuf = Zopen(name, "r")) == NULL ||
             fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
-         perror(name);
+         n_perr(name, 0);
          rele_sigs();
          goto jem2;
       }
    }
 
    /* Copy the messages into /tmp and set pointers */
-   flp.l_type = F_RDLCK;
-   flp.l_start = 0;
-   flp.l_whence = SEEK_SET;
    if (!(fm & FEDIT_NEWMAIL)) {
       mb.mb_type = MB_FILE;
       mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
@@ -607,10 +602,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          pstate |= PS_EDIT;
       initbox(name);
       offset = 0;
-      flp.l_len = 0;
-      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!(pstate & PS_EDIT) && !file_lock(fileno(ibuf), FLT_READ, 0,0, 0)) {
          /*TODO dotlock!*/
-         perror("Unable to lock mailbox");
+         n_perr(_("Unable to lock mailbox"), 0);
          rele_sigs();
          goto jem1;
       }
@@ -619,8 +613,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
       omsgCount = msgCount;
-      flp.l_len = offset;
-      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!(pstate & PS_EDIT) &&
+            !file_lock(fileno(ibuf), FLT_READ, 0,offset, 0)) {
          /*TODO dotlock!*/
          rele_sigs();
          goto jnonmail;
@@ -645,12 +639,17 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    if (!(fm & FEDIT_NEWMAIL))
       pstate &= ~PS_SAW_COMMAND;
 
+   if (options & OPT_EXISTONLY) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
 jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {
          if (!ok_blook(emptystart))
 jnomail:
-            fprintf(stderr, _("No mail for %s\n"), who);
+            n_err(_("No mail for %s\n"), who);
       }
       rv = 1;
       goto jleave;
@@ -921,7 +920,7 @@ jrestart:
    /* Handle ! differently to get the correct lexical conventions */
    if (*cp == '!') {
       if (pstate & PS_SOURCING) {
-         fprintf(stderr, _("Can't `!' while sourcing\n"));
+         n_err(_("Can't `!' while `source'ing\n"));
          goto jleave;
       }
       c_shell(++cp);
@@ -980,7 +979,7 @@ jrestart:
    if ((com = _lex(word)) == NULL || com->func == &c_cmdnotsupp) {
       bool_t s = condstack_isskip();
       if (!s || (options & OPT_D_V))
-         fprintf(stderr, _("Unknown command%s: `%s'\n"),
+         n_err(_("Unknown command%s: `%s'\n"),
             (s ? _(" (conditionally ignored)") : ""), word);
       if (s)
          goto jleave0;
@@ -1000,27 +999,24 @@ jexec:
    /* Process the arguments to the command, depending on the type it expects,
     * default to error.  If we're PS_SOURCING an interactive command: error */
    if ((options & OPT_SENDMODE) && !(com->argtype & ARG_M)) {
-      fprintf(stderr, _("May not execute `%s' while sending\n"),
-         com->name);
+      n_err(_("May not execute `%s' while sending\n"), com->name);
       goto jleave;
    }
    if ((pstate & PS_SOURCING) && (com->argtype & ARG_I)) {
-      fprintf(stderr, _("May not execute `%s' while sourcing\n"),
-         com->name);
+      n_err(_("May not execute `%s' while `source'ing\n"), com->name);
       goto jleave;
    }
    if (!(mb.mb_perm & MB_DELE) && (com->argtype & ARG_W)) {
-      fprintf(stderr, _("May not execute `%s' -- "
-         "message file is read only\n"), com->name);
+      n_err(_("May not execute `%s' -- message file is read only\n"),
+         com->name);
       goto jleave;
    }
    if (evp->ev_is_recursive && (com->argtype & ARG_R)) {
-      fprintf(stderr, _("Cannot recursively invoke `%s'\n"), com->name);
+      n_err(_("Cannot recursively invoke `%s'\n"), com->name);
       goto jleave;
    }
    if (mb.mb_type == MB_VOID && (com->argtype & ARG_A)) {
-      fprintf(stderr, _("Cannot execute `%s' without active mailbox\n"),
-         com->name);
+      n_err(_("Cannot execute `%s' without active mailbox\n"), com->name);
       goto jleave;
    }
    if (com->argtype & ARG_O)
@@ -1053,7 +1049,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if (_msgvec == NULL) {
 je96:
-         fprintf(stderr, _("Invalid use of \"message list\"\n"));
+         n_err(_("Invalid use of \"message list\"\n"));
          break;
       }
       if ((c = getmsglist(cp, _msgvec, com->msgflag)) < 0)
@@ -1075,12 +1071,12 @@ je96:
             ((com->argtype & ARG_ARGMASK) == ARG_ECHOLIST))) < 0)
          break;
       if (c < com->minargs) {
-         fprintf(stderr, _("`%s' requires at least %d arg(s)\n"),
+         n_err(_("`%s' requires at least %d arg(s)\n"),
             com->name, com->minargs);
          break;
       }
       if (c > com->maxargs) {
-         fprintf(stderr, _("`%s' takes no more than %d arg(s)\n"),
+         n_err(_("`%s' takes no more than %d arg(s)\n"),
             com->name, com->maxargs);
          break;
       }
@@ -1093,7 +1089,7 @@ je96:
       break;
 
    default:
-      panic(_("Unknown argument type"));
+      n_panic(_("Unknown argument type"));
    }
 
    if (e == 0 && (com->argtype & ARG_V) &&
@@ -1206,7 +1202,7 @@ onintr(int s)
       image = -1;
    }
    if (interrupts != 1)
-      fprintf(stderr, _("Interrupt\n"));
+      n_err_sighdl(_("Interrupt\n"));
    safe_signal(SIGPIPE, _oldpipe);
    reset(0);
 }
@@ -1405,12 +1401,12 @@ initbox(char const *name)
 
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
          NULL) {
-      perror(_("temporary mail message file"));
-      exit(1);
+      n_perr(_("temporary mail message file"), 0);
+      exit(EXIT_ERR);
    }
    if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
-      perror(_("temporary mail message file"));
-      exit(1);
+      n_perr(_("temporary mail message file"), 0);
+      exit(EXIT_ERR);
    }
    Ftmp_release(&tempMesg);
 

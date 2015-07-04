@@ -97,6 +97,13 @@ union mem_ptr {
 };
 #endif
 
+#ifdef HAVE_ERRORS
+struct err_node {
+   struct err_node   *en_next;
+   struct str        en_str;
+};
+#endif
+
 #ifndef HAVE_POSIX_RANDOM
 static union rand_state *_rand;
 #endif
@@ -113,6 +120,12 @@ static sigset_t         _hold_nset, _hold_oset;
 #ifdef HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
 static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
+#endif
+
+/* Error ring, for `errors' */
+#ifdef HAVE_ERRORS
+static struct err_node  *_err_head, *_err_tail;
+static size_t           _err_cnt, _err_cnt_noted;
 #endif
 
 #ifdef HAVE_DEBUG
@@ -229,6 +242,15 @@ _rand_get8(void)
 static char *
 _colour_iso6429(char const *wish)
 {
+   struct isodesc {
+      char  id_name[15];
+      char  id_modc;
+   } const fta[] = {
+      {"bold", '1'}, {"underline", '4'}, {"inverse", '7'}
+   }, ca[] = {
+      {"black", '0'}, {"red", '1'}, {"green", '2'}, {"brown", '3'},
+      {"blue", '4'}, {"magenta", '5'}, {"cyan", '6'}, {"white", '7'}
+   }, *idp;
    char const * const wish_orig = wish;
    char *xwish, *cp, cfg[3] = {0, 0, 0};
    NYD_ENTER;
@@ -247,47 +269,32 @@ _colour_iso6429(char const *wish)
       char *y, *x = strchr(cp, '=');
       if (x == NULL) {
 jbail:
-         fprintf(stderr, _(
-            "Invalid colour specification \"%s\": >>> %s <<<\n"),
-            wish_orig, cp);
+         n_err(_("Invalid colour specification \"%s\": %s\n"), wish_orig, cp);
          continue;
       }
       *x++ = '\0';
 
-      /* TODO convert the ft/fg/bg parser into a table-based one! */
       if (!asccasecmp(cp, "ft")) {
-         if (!asccasecmp(x, "bold"))
-            cfg[0] = '1';
-         else if (!asccasecmp(x, "inverse"))
-            cfg[0] = '7';
-         else if (!asccasecmp(x, "underline"))
-            cfg[0] = '4';
-         else
-            goto jbail;
+         for (idp = fta;; ++idp)
+            if (idp == fta + NELEM(fta))
+               goto jbail;
+            else if (!asccasecmp(x, idp->id_name)) {
+               cfg[0] = idp->id_modc;
+               break;
+            }
       } else if (!asccasecmp(cp, "fg")) {
          y = cfg + 1;
          goto jiter_colour;
       } else if (!asccasecmp(cp, "bg")) {
          y = cfg + 2;
 jiter_colour:
-         if (!asccasecmp(x, "black"))
-            *y = '0';
-         else if (!asccasecmp(x, "blue"))
-            *y = '4';
-         else if (!asccasecmp(x, "green"))
-            *y = '2';
-         else if (!asccasecmp(x, "red"))
-            *y = '1';
-         else if (!asccasecmp(x, "brown"))
-            *y = '3';
-         else if (!asccasecmp(x, "magenta"))
-            *y = '5';
-         else if (!asccasecmp(x, "cyan"))
-            *y = '6';
-         else if (!asccasecmp(x, "white"))
-            *y = '7';
-         else
-            goto jbail;
+         for (idp = ca;; ++idp)
+            if (idp == ca + NELEM(ca))
+               goto jbail;
+            else if (!asccasecmp(x, idp->id_name)) {
+               *y = idp->id_modc;
+               break;
+            }
       } else
          goto jbail;
    }
@@ -347,41 +354,6 @@ n_raise(int signo)
 {
    NYD2_ENTER;
    kill(getpid(), signo);
-   NYD2_LEAVE;
-}
-
-FL void
-panic(char const *format, ...)
-{
-   va_list ap;
-   NYD2_ENTER;
-
-   fprintf(stderr, _("Panic: "));
-
-   va_start(ap, format);
-   vfprintf(stderr, format, ap);
-   va_end(ap);
-
-   fputs("\n", stderr);
-   fflush(stderr);
-   NYD2_LEAVE;
-   abort(); /* Was exit(EXIT_ERR); for a while, but no */
-}
-
-FL void
-alert(char const *format, ...)
-{
-   va_list ap;
-   NYD2_ENTER;
-
-   fprintf(stderr, _("Panic: "));
-
-   va_start(ap, format);
-   vfprintf(stderr, format, ap);
-   va_end(ap);
-
-   fputs("\n", stderr);
-   fflush(stderr);
    NYD2_LEAVE;
 }
 
@@ -683,17 +655,17 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
-         fprintf(stderr, _("No POP3 support compiled in.\n"));
+         n_err(_("No POP3 support compiled in\n"));
 #endif
       } else if (!strncmp(name, "pop3s://", 8)) {
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
 # ifndef HAVE_POP3
-         fprintf(stderr, _("No POP3 support compiled in.\n"));
+         n_err(_("No POP3 support compiled in\n"));
 # endif
 # ifndef HAVE_SSL
-         fprintf(stderr, _("No SSL support compiled in.\n"));
+         n_err(_("No SSL support compiled in\n"));
 # endif
 #endif
       } else if (!strncmp(name, "imap://", 7)) {
@@ -874,16 +846,42 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
    char *cp;
    char const *ccp_base, *ccp;
    size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
-   bool_t run2;
+   bool_t trigger; /* 1.: `errors' ring note?  2.: first loop tick done */
    NYD_ENTER;
 
+   /* No other place to place this */
+#ifdef HAVE_ERRORS
+   if (options & OPT_INTERACTIVE) {
+      if (!(pstate & PS_ERRORS_NOTED) && _err_head != NULL) {
+         pstate |= PS_ERRORS_NOTED;
+         fprintf(stderr, _("There are new messages in the error message ring "
+               "(denoted by \"#ERR#\")\n"
+            "  The `errors' command manages this message ring\n"));
+      }
+
+      if ((trigger = (_err_cnt_noted != _err_cnt)))
+         _err_cnt_noted = _err_cnt;
+   } else
+      trigger = FAL0;
+#endif
+
    cp = buf;
-   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0')
-      goto jleave;
+   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0') {
+#ifdef HAVE_ERRORS
+      if (trigger)
+         ccp_base = "";
+      else
+#endif
+         goto jleave;
+   }
+#ifdef HAVE_ERRORS
+   if (trigger)
+      ccp_base = savecatsep(_("#ERR#"), '\0', ccp_base);
+#endif
    NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
    dfmaxlen = 0; /* keep CC happy */
-   run2 = FAL0;
+   trigger = FAL0;
 jredo:
    ccp = ccp_base;
    NATCH_CHAR( cclen = cclen_base; )
@@ -906,7 +904,7 @@ jredo:
          }
          break;
       } else if ((l = c) > 1) {
-         if (run2) {
+         if (trigger) {
             memcpy(cp, ccp, l);
             cp += l;
          }
@@ -916,7 +914,7 @@ jredo:
       } else
 #endif
       if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
-            if (run2)
+            if (trigger)
                *cp++ = (char)c;
             --maxlen;
             continue;
@@ -924,7 +922,7 @@ jredo:
       if (c == 0 || c == PROMPT_STOP)
          break;
 
-      if (run2) {
+      if (trigger) {
          char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
          if (a == NULL)
             a = "";
@@ -936,8 +934,8 @@ jredo:
       }
    }
 
-   if (!run2) {
-      run2 = TRU1;
+   if (!trigger) {
+      trigger = TRU1;
       dfmaxlen = maxlen;
       goto jredo;
    }
@@ -1789,11 +1787,225 @@ time_current_update(struct time_current *tc, bool_t full_update)
    NYD_LEAVE;
 }
 
-static void
-_out_of_memory(void)
+FL void
+n_err(char const *format, ...)
 {
-   panic("no memory");
+   va_list ap;
+   NYD2_ENTER;
+
+   va_start(ap, format);
+#ifdef HAVE_ERRORS
+   if (options & OPT_INTERACTIVE)
+      n_verr(format, ap);
+   else
+#endif
+        {
+      vfprintf(stderr, format, ap);
+      if (strchr(format, '\n') != NULL) /* TODO */
+         fflush(stderr);
+   }
+   va_end(ap);
+   NYD2_LEAVE;
 }
+
+FL void
+n_verr(char const *format, va_list ap)
+{
+   /* Check use cases of PS_ERRORS_NOTED, too! */
+#ifdef HAVE_ERRORS
+   char buf[LINESIZE], *xbuf = buf;
+   int l = sizeof(buf) -1;
+   struct err_node *enp;
+
+   LCTA(ERRORS_MAX > 3);
+#endif
+   NYD2_ENTER;
+
+#ifdef HAVE_ERRORS
+   if (!(options & OPT_INTERACTIVE))
+#endif
+   {
+      vfprintf(stderr, format, ap);
+      goto jleave;
+   }
+
+#ifdef HAVE_ERRORS
+jredo:
+   l = vsnprintf(xbuf, l +1, format, ap);
+   if (l == 0) {
+      assert(xbuf == buf);
+      goto jleave;
+   }
+   if (UICMP(z, l, >=, sizeof buf)) {
+      if (xbuf == buf) {
+         xbuf = smalloc(l +1);
+         goto jredo;
+      }
+      l = sizeof(buf) -1;
+   }
+   xbuf[l] = '\0';
+
+   fwrite(xbuf, 1, l, stderr);
+
+   /* Link it into the `errors' message ring */
+   if ((enp = _err_tail) == NULL) {
+jcreat:
+      enp = scalloc(1, sizeof *enp);
+      if (_err_tail != NULL)
+         _err_tail->en_next = enp;
+      else
+         _err_head = enp;
+      _err_tail = enp;
+      ++_err_cnt;
+   } else if (enp->en_str.l > 0 && enp->en_str.s[enp->en_str.l - 1] == '\n') {
+      if (_err_cnt < ERRORS_MAX)
+         goto jcreat;
+
+      _err_head = (enp = _err_head)->en_next;
+      _err_tail->en_next = enp;
+      _err_tail = enp;
+      free(enp->en_str.s);
+      memset(enp, 0, sizeof *enp);
+   }
+
+   n_str_add_buf(&enp->en_str, xbuf, l);
+
+   if (xbuf != buf)
+      free(xbuf);
+#endif /* HAVE_ERRORS */
+
+jleave:
+   if (strchr(format, '\n') != NULL) /* TODO */
+      fflush(stderr);
+   NYD2_LEAVE;
+}
+
+FL void
+n_err_sighdl(char const *format, ...) /* TODO sigsafe; obsolete! */
+{
+   va_list ap;
+   NYD_X;
+
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
+   fflush(stderr);
+}
+
+FL void
+n_perr(char const *msg, int errval)
+{
+   char const *fmt;
+   NYD2_ENTER;
+
+   if (msg == NULL) {
+      fmt = "%s%s\n";
+      msg = "";
+   } else
+      fmt = "%s: %s\n";
+
+   if (errval == 0)
+      errval = errno;
+
+   n_err(fmt, msg, strerror(errval));
+   NYD2_LEAVE;
+}
+
+FL void
+n_alert(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   n_err(_("Alert: "));
+
+   va_start(ap, format);
+   n_verr(format, ap);
+   va_end(ap);
+
+   n_err("\n");
+   NYD2_LEAVE;
+}
+
+FL void
+n_panic(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   fprintf(stderr, _("Panic: "));
+
+   va_start(ap, format);
+   vfprintf(stderr, format, ap);
+   va_end(ap);
+
+   putc('\n', stderr);
+   fflush(stderr);
+   NYD2_LEAVE;
+   abort(); /* Was exit(EXIT_ERR); for a while, but no */
+}
+
+#ifdef HAVE_ERRORS
+FL int
+c_errors(void *v)
+{
+   char **argv = v;
+   struct err_node *enp;
+   NYD_ENTER;
+
+   if (*argv == NULL)
+      goto jlist;
+   if (argv[1] != NULL)
+      goto jerr;
+   if (!asccasecmp(*argv, "show"))
+      goto jlist;
+   if (!asccasecmp(*argv, "clear"))
+      goto jclear;
+jerr:
+   fprintf(stderr, _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
+   v = NULL;
+jleave:
+   NYD_LEAVE;
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+
+jlist: {
+      FILE *fp;
+      size_t i;
+
+      if (_err_head == NULL) {
+         fprintf(stderr, _("The error ring is empty\n"));
+         goto jleave;
+      }
+
+      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
+            ) == NULL) {
+         fprintf(stderr, _("tmpfile"));
+         v = NULL;
+         goto jleave;
+      }
+
+      for (i = 0, enp = _err_head; enp != NULL; enp = enp->en_next)
+         fprintf(fp, "- %4" PRIuZ ". %" PRIuZ " bytes: %s",
+            ++i, enp->en_str.l, enp->en_str.s);
+      /* We don't know wether last string ended with NL; be simple */
+      putc('\n', fp);
+
+      page_or_print(fp, 0);
+      Fclose(fp);
+   }
+   /* FALLTHRU */
+
+jclear:
+   _err_tail = NULL;
+   _err_cnt = _err_cnt_noted = 0;
+   while ((enp = _err_head) != NULL) {
+      _err_head = enp->en_next;
+      free(enp->en_str.s);
+      free(enp);
+   }
+   goto jleave;
+}
+#endif /* HAVE_ERRORS */
 
 #ifndef HAVE_DEBUG
 FL void *
@@ -1805,7 +2017,7 @@ smalloc(size_t s SMALLOC_DEBUG_ARGS)
    if (s == 0)
       s = 1;
    if ((rv = malloc(s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1821,7 +2033,7 @@ srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
    if (v == NULL)
       rv = smalloc(s);
    else if ((rv = realloc(v, s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1835,7 +2047,7 @@ scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
    if (size == 0)
       size = 1;
    if ((rv = calloc(nmemb, size)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
@@ -1889,7 +2101,7 @@ do {\
    if (__xl.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
+      n_alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    __xu.p_p = __xc;\
@@ -1905,11 +2117,11 @@ do {\
    if (__xu.p_ui8p[7] != 0xEF) __i |= 1<<7;\
    if (__i != 0) {\
       (BAD) = TRU1;\
-      alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
+      n_alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
          __xl.p_p, __i, mdbg_file, mdbg_line);\
    }\
    if (BAD)\
-      alert("   ..canary last seen: %s, line %" PRIu16 "",\
+      n_alert("   ..canary last seen: %s, line %" PRIu16 "",\
          __xc->mc_file, __xc->mc_line);\
 } while (0)
 
@@ -1922,12 +2134,12 @@ FL void *
    if (s == 0)
       s = 1;
    if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("smalloc(): allocation too large: %s, line %d\n",
+      n_panic("smalloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (malloc)(s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)
       _mem_list->mc_prev = p.p_c;
@@ -1964,7 +2176,7 @@ FL void *
    _HOPE_GET(p, isbad);
    --p.p_c;
    if (p.p_c->mc_isfree) {
-      fprintf(stderr, "srealloc(): region freed!  At %s, line %d\n"
+      n_err("srealloc(): region freed!  At %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
@@ -1983,12 +2195,12 @@ jforce:
    if (s == 0)
       s = 1;
    if (s > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("srealloc(): allocation too large: %s, line %d\n",
+      n_panic("srealloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
    s += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (realloc)(p.p_c, s)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)
       _mem_list->mc_prev = p.p_c;
@@ -2021,17 +2233,17 @@ FL void *
    if (nmemb == 0)
       nmemb = 1;
    if (size > UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE)
-      panic("scalloc(): allocation size too large: %s, line %d\n",
+      n_panic("scalloc(): allocation size too large: %s, line %d",
          mdbg_file, mdbg_line);
    if ((UI32_MAX - sizeof(struct mem_chunk) - _HOPE_SIZE) / nmemb < size)
-      panic("scalloc(): allocation count too large: %s, line %d\n",
+      n_panic("scalloc(): allocation count too large: %s, line %d",
          mdbg_file, mdbg_line);
 
    size *= nmemb;
    size += sizeof(struct mem_chunk) + _HOPE_SIZE;
 
    if ((p.p_p = (malloc)(size)) == NULL)
-      _out_of_memory();
+      n_panic(_("no memory"));
    memset(p.p_p, 0, size);
    p.p_c->mc_prev = NULL;
    if ((p.p_c->mc_next = _mem_list) != NULL)
@@ -2061,14 +2273,14 @@ FL void
    NYD2_ENTER;
 
    if ((p.p_p = v) == NULL) {
-      fprintf(stderr, "sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+      n_err("sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
       goto jleave;
    }
 
    _HOPE_GET(p, isbad);
    --p.p_c;
    if (p.p_c->mc_isfree) {
-      fprintf(stderr, "sfree(): double-free avoided at %s, line %d\n"
+      n_err("sfree(): double-free avoided at %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jleave;
@@ -2115,8 +2327,7 @@ smemreset(void)
    _mem_free = NULL;
 
    if (options & (OPT_DEBUG | OPT_MEMDEBUG))
-      fprintf(stderr, "smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n",
-         c, s);
+      n_err("smemreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
    NYD_LEAVE;
 }
 
@@ -2135,7 +2346,7 @@ c_smemtrace(void *v)
    v = (void*)0x1;
    if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr("tmpfile", 0);
       goto jleave;
    }
 
@@ -2193,7 +2404,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
       _HOPE_GET_TRACE(xp, isbad);
       if (isbad) {
          anybad = TRU1;
-         fprintf(stderr,
+         n_err(
             "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
             xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
             p.p_c->mc_file, p.p_c->mc_line);
@@ -2207,7 +2418,7 @@ _smemcheck(char const *mdbg_file, int mdbg_line)
          _HOPE_GET_TRACE(xp, isbad);
          if (isbad) {
             anybad = TRU1;
-            fprintf(stderr,
+            n_err(
                "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
                xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct mem_chunk)),
                p.p_c->mc_file, p.p_c->mc_line);

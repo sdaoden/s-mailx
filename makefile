@@ -21,7 +21,7 @@ build:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk all
 test:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk test
-packager-install:
+doinstall packager-install:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk DESTDIR="$(DESTDIR)" install
 
 devel:

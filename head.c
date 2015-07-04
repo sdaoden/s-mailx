@@ -226,8 +226,7 @@ _idna_apply(struct addrguts *agp)
 
       if (idna_utf8 == NULL) {
          if (i)
-            fprintf(stderr, _("Cannot convert from %s to %s\n"),
-               tcs, "UTF-8");
+            n_err(_("Cannot convert from %s to %s\n"), tcs, "UTF-8");
          agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
          goto jleave;
       }
@@ -702,7 +701,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
       } else
-         fprintf(stderr, _("Ignoring header field \"%s\"\n"), linebuf);
+         n_err(_("Ignoring header field \"%s\"\n"), linebuf);
    }
 
    /* In case the blank line after the header has been edited out.  Otherwise,
@@ -728,7 +727,7 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       hp->h_organization = hq->h_organization;
       hp->h_subject = hq->h_subject;
    } else
-      fprintf(stderr, _("Restoring deleted header lines\n"));
+      n_err(_("Restoring deleted header lines\n"));
 
    if (linebuf != NULL)
       free(linebuf);
@@ -891,12 +890,11 @@ expandaddr_flags(void)
          else if (!asccasecmp(cp, "noalias"))
             rv |= EAF_NOALIAS;
          else if (options & OPT_D_V)
-            fprintf(stderr, _("Unknown *expandaddr* value: \"%s\"\n"), cp);
+            n_err(_("Unknown *expandaddr* value: \"%s\"\n"), cp);
 
       if ((rv & (EAF_FAIL | EAF_RESTRICT)) == (EAF_FAIL | EAF_RESTRICT)) {
          rv &= ~EAF_RESTRICT;
-         fprintf(stderr,
-            _("*expandaddr*: \"restrict\" and \"fail\" are mutual!\n"));
+         n_err(_("*expandaddr*: \"restrict\" and \"fail\" are mutual!\n"));
       }
    }
    NYD2_LEAVE;
@@ -973,7 +971,7 @@ jleave:
    return rv;
 
 jprint:
-   fprintf(stderr, cs, np->n_name, cbuf);
+   n_err(cs, np->n_name, cbuf);
    goto jleave;
 }
 
@@ -1709,8 +1707,7 @@ check_from_and_sender(struct name const *fromfield,
 
    if (senderfield != NULL) {
       if (senderfield->n_flink != NULL) {
-         fprintf(stderr, _(
-            "The Sender: field may contain only one address.\n"));
+         n_err(_("The \"Sender:\" field may contain only one address\n"));
          goto jleave;
       }
       rv = senderfield;
@@ -1718,8 +1715,8 @@ check_from_and_sender(struct name const *fromfield,
 
    if (fromfield != NULL) {
       if (fromfield->n_flink != NULL && senderfield == NULL) {
-         fprintf(stderr, _("A Sender: field is required with multiple "
-            "addresses in From: field.\n"));
+         n_err(_("A \"Sender:\" field is required with multiple "
+            "addresses in \"From:\" field\n"));
          goto jleave;
       }
       if (rv == NULL)

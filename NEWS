@@ -20,6 +20,73 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.3 ("Startled chicken"), 2015-07-05
+----------------------------------------
+
+Credits go to Martin Neitzel!
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Prefilling INCS and LIBS is finally honoured by the build system, just
+  as documented. [9a34822]
+
+- In place of "packager-install" "doinstall" will also do.
+
+- New `make.rc' option: WANT_ERRORS, by default enabled.
+  Will enable the new command `errors' @105 (#_105) and an error message
+  queue ring: error messages will no longer get lost but duplicated into
+  the queue, to be displayed in interactive mode via `errors'.  This is
+  a finite ring which rotates oldest messages if it full.
+  [topic/errors]
+
+- S-nail no longer offers hooks for group identity switching: it no
+  longer makes sense to install it SETGID to a mail group (shall anyone
+  has done so). [ac42d24]
+
+- New `make.rc' option: WANT_PRIVSEP, by default enabled.
+  The dotlock'ing has been completely rewritten (see `make.rc' for
+  a longer explanation of traditional Unix mailspool locking, please).
+
+  In order to be able to create lock files in *any* SETGID mailspool
+  directory in which user system mailboxes may reside S-nail now ships
+  with a privilege-separated mini dotlock program (source in
+  `privsep.c'), which will be installed in the new also LIBEXECDIR (as
+  YOUR_MUA_NAME-privsep) SETGID to the group given by the also new
+  PRIVSEP_GROUP (default "mail").
+
+  This dotlock program will be used whenever a mailbox has to be
+  dotlocked which is owned by group that is not the group of the user
+  who is running S-nail, assuming that the file in question resides in
+  a SETGID mailspool directory.
+
+  The new variable *dotlock-ignore-error* @294 (#_294) now controls
+  wether it is a failure if creation of a dotlock file is not possible.
+  This variable is by default enabled if WANT_PRIVSEP is false.
+  [topic/dotlock]
+
+ChangeLog
+^^^^^^^^^
+
+- Fix file locking, which was broken since v14.8. [7f8ebc0]
+  (Martin Neitzel)
+
+- -e now works with given boxes; -e is mutual exclusive with -H and -L;
+  and then any of -e, -H and -L causes the mailbox opened in readonly
+  mode. [3bb05a2, 2cf15c1]
+
+- In *debug* mode no process will be started for a set *smtp*, but
+  instead the message will be directly generated (on the error channel).
+  Also GSS-API authentication will no longer be performed even with
+  enabled debug, oops. [3333d71]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- A readonly IMAP box is opened via EXAMINE not SELECT. [2d5259c]
+
+- snprintf(3) and vsnprintf(3) are now required preconditions. [c58c7e9]
+
 v14.8.2 ("Wandering albatross"), 2015-06-17
 -------------------------------------------
 

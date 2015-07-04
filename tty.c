@@ -113,8 +113,8 @@ do {\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
 jerr:\
-   fprintf(stderr, "Synopsis: history: %s\n",\
-      _("<show> (default), <clear> or select <NO> from editor history"));\
+   n_err(_("Synopsis: history: %s\n" \
+      "<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
    NYD_LEAVE;\
@@ -433,7 +433,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
@@ -654,7 +654,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
@@ -1799,7 +1799,7 @@ tty_init(void)
    f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
    if (f == NULL)
       goto jdone;
-   (void)fcntl_lock(fileno(f), FLOCK_READ, 500);
+   (void)file_lock(fileno(f), FLT_READ, 0,0, 500);
 
    lbuf = NULL;
    lsize = 0;
@@ -1856,7 +1856,7 @@ tty_destroy(void)
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if (f == NULL)
       goto jdone;
-   (void)fcntl_lock(fileno(f), FLOCK_WRITE, 500);
+   (void)file_lock(fileno(f), FLT_WRITE, 0,0, 500);
    if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
       goto jclose;
 
@@ -2009,7 +2009,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }

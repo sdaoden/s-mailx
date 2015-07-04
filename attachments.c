@@ -179,7 +179,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
          ap->a_name = cp;
          break;
       }
-      perror(cp);
+      n_perr(cp, 0);
    }
 
    ap = _fill_in(ap, cp, number);
@@ -291,19 +291,19 @@ _attach_iconv(struct attachment *ap)
       if (errno == EINVAL)
          goto jeconv;
       else
-         perror("iconv_open");
+         n_perr(_("iconv_open"), 0);
       goto jerr;
    }
 
    if ((fi = Fopen(ap->a_name, "r")) == NULL) {
-      perror(ap->a_name);
+      n_perr(ap->a_name, 0);
       goto jerr;
    }
    cnt = fsize(fi);
 
    if ((fo = Ftmp(NULL, "atic", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
       goto jerr;
    }
 
@@ -311,14 +311,14 @@ _attach_iconv(struct attachment *ap)
       if (fgetline(&inl.s, &lbsize, &cnt, &inl.l, fi, 0) == NULL) {
          if (!cnt)
             break;
-         perror(_("I/O read error occurred"));
+         n_perr(_("I/O read error occurred"), 0);
          goto jerr;
       }
 
       if (n_iconv_str(icp, &oul, &inl, NULL, FAL0) != 0)
          goto jeconv;
       if ((inl.l = fwrite(oul.s, sizeof *oul.s, oul.l, fo)) != oul.l) {
-         perror(_("I/O write error occurred"));
+         n_perr(_("I/O write error occurred"), 0);
          goto jerr;
       }
    }
@@ -340,7 +340,7 @@ jleave:
    return (fo != NULL);
 
 jeconv:
-   fprintf(stderr, _("Cannot convert from %s to %s\n"),
+   n_err(_("Cannot convert from %s to %s\n"),
       ap->a_input_charset, ap->a_charset);
 jerr:
    if (fo != NULL)
@@ -394,7 +394,7 @@ append_attachments(struct attachment **aphead, char *names)
          if (options & OPT_INTERACTIVE)
             printf(_("~@: added attachment \"%s\"\n"), nap->a_name);
       } else
-         perror(cp);
+         n_perr(cp, 0);
    }
    NYD_LEAVE;
 }

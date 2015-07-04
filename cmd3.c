@@ -315,8 +315,7 @@ jnext_msg:
                is_addr_invalid(x = nalloc(x->n_name + sizeof("mailto:") -1,
                   GEXTRA | GSKIN), EACM_STRICT)) {
             if (options & OPT_D_V)
-               fprintf(stderr,
-                  _("Message contains invalid List-Post: header\n"));
+               n_err(_("Message contains invalid \"List-Post:\" header\n"));
             cp = NULL;
             break;
          }
@@ -635,7 +634,7 @@ _c_file(void *v, enum fedit_mode fm)
    }
 
    if (pstate & PS_HOOK_MASK) {
-      fprintf(stderr, _("Cannot change folder from within a hook.\n"));
+      n_err(_("Cannot change folder from within a hook\n"));
       i = 1;
       goto jleave;
    }
@@ -720,7 +719,7 @@ c_help(void *v)
 #ifdef HAVE_DOCSTRINGS
       ret = !print_comm_docstr(arg);
       if (ret)
-         fprintf(stderr, _("Unknown command: `%s'\n"), arg);
+         n_err(_("Unknown command: `%s'\n"), arg);
 #else
       ret = c_cmdnotsupp(NULL);
 #endif
@@ -771,7 +770,7 @@ c_cwd(void *v)
       puts(buf);
       v = (void*)0x1;
    } else {
-      perror("getcwd");
+      n_perr(_("getcwd"), 0);
       v = NULL;
    }
    NYD_LEAVE;
@@ -790,7 +789,7 @@ c_chdir(void *v)
    else if ((cp = file_expand(*arglist)) == NULL)
       goto jleave;
    if (chdir(cp) == -1) {
-      perror(cp);
+      n_perr(cp, 0);
       cp = NULL;
    }
 jleave:
@@ -1239,7 +1238,7 @@ c_remove(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("Syntax is: remove mailbox ...\n"));
+      n_err(_("Synopsis: `remove' mailbox ...\n"));
       ec = 1;
       goto jleave;
    }
@@ -1251,8 +1250,7 @@ c_remove(void *v)
          continue;
 
       if (!strcmp(name, mailname)) {
-         fprintf(stderr, _("Cannot remove current mailbox \"%s\".\n"),
-            name);
+         n_err(_("Cannot remove current mailbox \"%s\"\n"), name);
          ec |= 1;
          continue;
       }
@@ -1270,12 +1268,12 @@ c_remove(void *v)
       switch (which_protocol(name)) {
       case PROTO_FILE:
          if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
-            perror(name);
+            n_perr(name, 0);
             ec |= 1;
          }
          break;
       case PROTO_POP3:
-         fprintf(stderr, _("Cannot remove POP3 mailbox \"%s\".\n"),name);
+         n_err(_("Cannot remove POP3 mailbox \"%s\"\n"),name);
          ec |= 1;
          break;
       case PROTO_IMAP:
@@ -1289,8 +1287,7 @@ c_remove(void *v)
             ec |= 1;
          break;
       case PROTO_UNKNOWN:
-         fprintf(stderr, _("Unknown protocol in \"%s\". Not removed.\n"),
-            name);
+         n_err(_("Unknown protocol in \"%s\"; not removed\n"), name);
          ec |= 1;
          break;
       }
@@ -1311,7 +1308,7 @@ c_rename(void *v)
    ec = 1;
 
    if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      fprintf(stderr, "Syntax: rename old new\n");
+      n_err(_("Synopsis: `rename' old new\n"));
       goto jleave;
    }
 
@@ -1323,7 +1320,7 @@ c_rename(void *v)
    newp = which_protocol(new);
 
    if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
-      fprintf(stderr, _("Cannot rename current mailbox \"%s\".\n"), old);
+      n_err(_("Cannot rename current mailbox \"%s\"\n"), old);
       goto jleave;
    }
    if ((oldp == PROTO_IMAP || newp == PROTO_IMAP) && oldp != newp) {
@@ -1345,26 +1342,27 @@ c_rename(void *v)
          case ENOENT:
          case ENOSPC:
          case EXDEV:
-            perror(new);
+            n_perr(new, 0);
             break;
          default:
-            perror(old);
+            n_perr(old, 0);
+            break;
          }
          ec |= 1;
       } else if (unlink(old) == -1) {
-         perror(old);
+         n_perr(old, 0);
          ec |= 1;
       }
       break;
    case PROTO_MAILDIR:
       if (rename(old, new) == -1) {
-         perror(old);
+         n_perr(old, 0);
          ec |= 1;
       }
       break;
    case PROTO_POP3:
 jnopop3:
-      fprintf(stderr, _("Cannot rename POP3 mailboxes.\n"));
+      n_err(_("Cannot rename POP3 mailboxes\n"));
       ec |= 1;
       break;
 #ifdef HAVE_IMAP
@@ -1375,8 +1373,8 @@ jnopop3:
 #endif
    case PROTO_UNKNOWN:
    default:
-      fprintf(stderr, _(
-         "Unknown protocol in \"%s\" and \"%s\".  Not renamed.\n"), old, new);
+      n_err(_("Unknown protocol in \"%s\" and \"%s\"; not renamed\n"),
+         old, new);
       ec |= 1;
       break;
    }

@@ -681,7 +681,7 @@ c_sort(void *vp)
       if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
          break;
       if (UICMP(z, ++i, >=, NELEM(methnames))) {
-         fprintf(stderr, "Unknown sorting method \"%s\"\n", args[0]);
+         n_err(_("Unknown sorting method \"%s\"\n"), args[0]);
          i = 1;
          goto jleave;
       }

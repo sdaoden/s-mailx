@@ -123,7 +123,7 @@ scan_mode(char const *mode, int *omode)
          goto jleave;
       }
 
-   alert(_("Internal error: bad stdio open mode %s\n"), mode);
+   n_alert(_("Internal error: bad stdio open mode %s"), mode);
    errno = EINVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -185,8 +185,8 @@ _file_save(struct fp *fpp)
 
    outfd = open(fpp->realfile, (fpp->omode | O_CREAT) & ~O_EXCL, 0666);
    if (outfd == -1) {
-      fprintf(stderr, "Fatal: cannot create ");
-      perror(fpp->realfile);
+      n_err(_("Fatal: cannot create \"%s\": %s\n"),
+         fpp->realfile, strerror(errno));
       goto jleave;
    }
    if (!(fpp->omode & O_APPEND))
@@ -267,12 +267,7 @@ unregister_file(FILE *fp)
          free(p);
          goto jleave;
       }
-#ifdef HAVE_DEBUG
-   panic
-#else
-   alert
-#endif
-      (_("Invalid file pointer"));
+   DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
    rv = STOP;
 jleave:
    NYD_LEAVE;
@@ -332,7 +327,7 @@ wait_command(int pid)
 
    if (!wait_child(pid, NULL)) {
       if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         fprintf(stderr, _("Fatal error in process.\n"));
+         n_err(_("Fatal error in process\n"));
       rv = -1;
    }
    NYD_LEAVE;
@@ -373,7 +368,7 @@ _delchild(struct child *cp)
          break;
       }
       if (*(cpp = &(*cpp)->link) == NULL) {
-         DBG( fputs("! popen.c:_delchild(): implementation error\n", stderr); )
+         DBG( n_err("! popen.c:_delchild(): implementation error\n"); )
          break;
       }
    }
@@ -397,7 +392,7 @@ command_manager_start(void)
 #endif
          ;
    if (sigaction(SIGCHLD, &nact, &oact) != 0)
-      panic("Cannot install signal handler for child process management");
+      n_panic(_("Cannot install signal handler for child process management"));
    NYD_LEAVE;
 }
 
@@ -438,14 +433,15 @@ Fopen(char const *file, char const *oflags)
 }
 
 FL FILE *
-Fdopen(int fd, char const *oflags)
+Fdopen(int fd, char const *oflags, bool_t nocloexec)
 {
    FILE *fp;
    int osflags;
    NYD_ENTER;
 
    scan_mode(oflags, &osflags);
-   osflags |= _O_CLOEXEC;
+   if (!nocloexec)
+      osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
       register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
@@ -525,7 +521,7 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
             if ((csave != NULL) && (cload != NULL))
                flags |= FP_HOOK;
             else if ((csave != NULL) | (cload != NULL)) {
-               alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
+               n_alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
                   "Treating as plain text!"), ext);
                goto jraw;
             } else
@@ -544,7 +540,7 @@ jraw:
    }
 
    if ((rv = Ftmp(NULL, "zopen", rof, 0600)) == NULL) {
-      perror(_("tmpfile"));
+      n_perr(_("tmpfile"), 0);
       goto jerr;
    }
 
@@ -649,8 +645,10 @@ jclose:
       _CLOEXEC_SET(fd);
 #endif
 
-   fp = (*((oflags & OF_REGISTER) ? &Fdopen : &fdopen))(fd,
-         (oflags & OF_RDWR ? "w+" : "w"));
+   if (oflags & OF_REGISTER)
+      fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
+   else
+      fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
    if (fp == NULL || (oflags & OF_UNLINK)) {
 junlink:
       unlink(cp_base);
@@ -773,10 +771,9 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    sigemptyset(&nset);
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-   if (cmd == MIME_TYPE_HANDLER_HTML) { /* TODO Temporary ugly hack */
+   if (cmd == (char*)-1) {
       if ((pid = fork_child()) == -1)
-         perror("fork");
+         n_perr(_("fork"), 0);
       else if (pid == 0) {
          union {char const *ccp; int (*ptf)(void); int es;} u;
          prepare_child(&nset, fd0, fd1);
@@ -786,9 +783,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          u.es = (*u.ptf)();
          _exit(u.es);
       }
-   } else
-#endif
-          if (sh == NULL) {
+   } else if (sh == NULL) {
       pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
       pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
@@ -860,9 +855,8 @@ fork_child(void)
 
    if ((cp->pid = pid = fork()) == -1) {
       _delchild(cp);
-      perror("fork");
+      n_perr(_("fork"), 0);
    }
-
    NYD_LEAVE;
    return pid;
 }
@@ -891,7 +885,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    NYD_ENTER;
 
    if ((rv = fork_child()) == -1) {
-      perror("fork");
+      n_perr(_("fork"), 0);
       rv = -1;
    } else if (rv == 0) {
       char *argv[128];
@@ -953,7 +947,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
       prepare_child(mask, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
-      _exit(1);
+      _exit(EXIT_ERR);
    }
    NYD_LEAVE;
    return rv;

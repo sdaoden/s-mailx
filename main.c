@@ -190,8 +190,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
          } else {
             if ((_oind += 2) > argc) {
                if (!colon /*&& _oerr*/) {
-                  fprintf(stderr,
-                     _("%s: option requires an argument -- %c\n"),
+                  n_err(_("%s: option requires an argument -- %c\n"),
                      argv[0], (char)_oopt);
                }
                rv = (colon ? ':' : '?');
@@ -218,7 +217,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
 
    /* Definitive error */
    if (!colon /*&& opterr*/)
-      fprintf(stderr, _("%s: invalid option -- %c\n"), argv[0], _oopt);
+      n_err(_("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else
@@ -235,17 +234,6 @@ _startup(void)
 {
    char *cp;
    NYD_ENTER;
-
-   /* Absolutely the first thing we do is save our egid and set it to the rgid,
-    * so that we can safely run setgid.  We use the sgid (saved set-gid) to
-    * allow ourselves to revert to the egid if we want (temporarily) to become
-    * privileged XXX (s-nail-)*dotlock(-program)* [maybe forked<->Unix IPC?] */
-   effectivegid = getegid();
-   realgid = getgid();
-   if (setgid(realgid) == -1) {
-      perror("setgid");
-      exit(1);
-   }
 
    image = -1;
    dflpipe = SIG_DFL;
@@ -330,6 +318,10 @@ _startup(void)
 
       ok_vset(sendmail, SENDMAIL);
       ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
+
+#ifndef HAVE_PRIVSEP
+      ok_bset(dotlock_ignore_error, TRU1);
+#endif
    } while (0);
 
    /*  --  >8  --  8<  --  */
@@ -396,12 +388,12 @@ _setup_vars(void)
    cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
+      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
-      alert(_("\"%s\" is not a user of this system"), cp);
-      exit(67); /* XXX BSD EX_NOUSER */
+      n_alert(_("\"%s\" is not a user of this system"), cp);
+      exit(EXIT_NOUSER);
    } else {
       myname = pw->pw_name;
       if (pw->pw_uid != uid)
@@ -521,19 +513,20 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
          n_strlcpy(mailname, cp, PATH_MAX);
    }
 
-   i = setfile(folder, FEDIT_NONE);
+   if (options & OPT_QUICKRUN_MASK)
+      i = FEDIT_RDONLY;
+   else
+      i = FEDIT_NONE;
+   i = setfile(folder, i);
    if (i < 0) {
       exit_status = EXIT_ERR; /* error already reported */
-      goto jleave;
+      goto jquit;
    }
-   if (options & OPT_EXISTONLY) {
+   if (options & OPT_QUICKRUN_MASK) {
       exit_status = i;
-      goto jleave;
-   }
-   if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-      if ((exit_status = i) == EXIT_OK)
+      if (!(options & OPT_EXISTONLY) && i == EXIT_OK)
          print_header_summary(Larg);
-      goto jleave;
+      goto jquit;
    }
    check_folder_hook(FAL0);
 
@@ -569,6 +562,7 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
       safe_signal(SIGINT, SIG_IGN);
       safe_signal(SIGQUIT, SIG_IGN);
    }
+jquit:
    save_mbox_for_possible_quitstuff();
    quit();
 jleave:
@@ -583,7 +577,7 @@ _hdrstop(int signo)
    UNUSED(signo);
 
    fflush(stdout);
-   fprintf(stderr, _("\nInterrupt\n"));
+   n_err_sighdl(_("\nInterrupt\n"));
    siglongjmp(__hdrjmp, 1);
 }
 
@@ -649,7 +643,7 @@ main(int argc, char *argv[])
    struct name *to = NULL, *cc = NULL, *bcc = NULL;
    struct attachment *attach = NULL;
    char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
-   char const *okey, **oargs = NULL, *folder = NULL;
+   char const *okey, **oargs = NULL, *folder = NULL, *emsg = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
    int i;
    NYD_ENTER;
@@ -730,7 +724,7 @@ main(int argc, char *argv[])
          options |= OPT_HEADERSONLY;
          break;
       case 'h':
-         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+         n_err(V_(usagestr) _USAGE_ARGS);
          goto jleave;
       case 'i':
          /* Ignore interrupts */
@@ -778,7 +772,7 @@ main(int argc, char *argv[])
             struct name *fa = nalloc(_oarg, GSKIN | GFULL | GFULLEXTRA);
 
             if (is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)) {
-               fprintf(stderr, _("Invalid address argument with -r\n"));
+               emsg = N_("Invalid address argument with -r");
                goto jusage;
             }
             option_r_arg = fa;
@@ -819,7 +813,7 @@ joarg:
          break;
       case 'V':
          puts(ok_vlook(version));
-         exit(0);
+         exit(EXIT_OK);
          /* NOTREACHED */
       case 'v':
          /* Be verbose */
@@ -871,7 +865,9 @@ joarg:
          goto jgetopt_done;
       case '?':
 jusage:
-         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+         if (emsg != NULL)
+            n_err("%s\n", V_(emsg));
+         n_err(V_(usagestr) _USAGE_ARGS);
 #undef _USAGE_ARGS
          exit_status = EXIT_USE;
          goto jleave;
@@ -893,7 +889,7 @@ jgetopt_done:
       folder = cp;
       if ((cp = argv[++i]) != NULL) {
          if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
-            fprintf(stderr, _("More than one file given with -f\n"));
+            emsg = N_("More than one file given with -f");
             goto jusage;
          }
          ++i;
@@ -922,33 +918,37 @@ jgetopt_done:
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
       if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
-         fprintf(stderr, _("Cannot give -f and people to send to.\n"));
+         emsg = N_("Cannot give -f and people to send to.");
          goto jusage;
       }
       if (myname != NULL) {
-         fprintf(stderr, _(
-            "The -u option cannot be used in send mode\n"));
+         emsg = N_("The -u option cannot be used in send mode");
          goto jusage;
       }
       if (!(options & OPT_t_FLAG) && to == NULL) {
-         fprintf(stderr, _(
-            "Send options without primary recipient specified.\n"));
+         emsg = N_("Send options without primary recipient specified.");
+         goto jusage;
+      }
+      if (options & OPT_EXISTONLY) {
+         emsg = N_("The -e option cannot be used in send mode.");
          goto jusage;
       }
       if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-         fprintf(stderr, _(
-            "The -H and -L options cannot be used in send mode.\n"));
+         emsg = N_("The -H and -L options cannot be used in send mode.");
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
-         fprintf(stderr,
-            _("The -R option is meaningless in send mode.\n"));
+         emsg = N_("The -R option is meaningless in send mode.");
          goto jusage;
       }
    } else {
       if (folder != NULL && myname != NULL) {
-         fprintf(stderr, _(
-            "The options -f and -u are mutually exclusive\n"));
+         emsg = N_("The options -f and -u are mutually exclusive");
+         goto jusage;
+      }
+      if ((options & OPT_EXISTONLY) &&
+            (options & (OPT_HEADERSONLY | OPT_HEADERLIST))) {
+         emsg = N_("The option -e is mutual exclusive with -H and -L");
          goto jusage;
       }
    }
@@ -987,8 +987,7 @@ jgetopt_done:
    /* We had to wait until the resource files are loaded but it is time to get
     * the termcap going, so that *term-ca-mode* won't hide our output for us */
 #ifdef HAVE_TERMCAP
-   if ((options & (OPT_INTERACTIVE | OPT_HEADERSONLY | OPT_HEADERLIST))
-         == OPT_INTERACTIVE)
+   if ((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
       termcap_init(); /* TODO program state machine */
 #endif
 
@@ -1020,8 +1019,8 @@ jgetopt_done:
       if ((cp = argv[i = _oind]) != NULL) {
          if (isfail ||
                (isrestrict && !(options & (OPT_INTERACTIVE |OPT_TILDE_FLAG)))) {
-            fprintf(stderr,
-               _("*expandargv* doesn't allow additional MTA argument\n"));
+            n_err(_("*expandargv* doesn't allow MTA arguments; consider "
+               "using *sendmail-arguments*\n"));
             exit_status = EXIT_USE | EXIT_SEND_ERROR;
             goto jleave;
          }
@@ -1039,7 +1038,7 @@ jgetopt_done:
    pstate |= PS_STARTED;
 
    if (options & OPT_DEBUG)
-      fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
+      n_err(_("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg, X_head);
@@ -1058,7 +1057,7 @@ jgetopt_done:
             a_curr = a_head;
             a_head = a_head->aa_next;
          } else {
-            perror(a_head->aa_file);
+            n_perr(a_head->aa_file, 0);
             exit_status = EXIT_ERR;
             goto jleave;
          }
@@ -1095,7 +1094,7 @@ c_rexit(void *v) /* TODO program state machine */
       if (options & OPT_INTERACTIVE)
          termcap_destroy();
 #endif
-      exit(0);
+      exit(EXIT_OK);
    }
    NYD_LEAVE;
    return 1;

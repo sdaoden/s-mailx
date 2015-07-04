@@ -111,7 +111,7 @@ __maildircatch_hold(int s)
    UNUSED(s);
    /* TODO no STDIO in signal handler, no _() tr's -- pre-translate interrupt
     * TODO globally; */
-   fprintf(stderr, _("\nImportant operation in progress: "
+   n_err_sighdl(_("\nImportant operation in progress: "
       "interrupt again to forcefully abort\n"));
    safe_signal(SIGINT, &__maildircatch);
 }
@@ -201,7 +201,7 @@ _maildir_subdir(char const *name, char const *sub, enum fedit_mode fm)
    NYD_ENTER;
 
    if ((dirp = opendir(sub)) == NULL) {
-      fprintf(stderr, "Cannot open directory \"%s/%s\".\n", name, sub);
+      n_err(_("Cannot open directory \"%s/%s\"\n"), name, sub);
       rv = -1;
       goto jleave;
    }
@@ -297,8 +297,8 @@ readin(char const *name, struct message *m)
    NYD_ENTER;
 
    if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
-      fprintf(stderr, "Cannot read \"%s/%s\" for message %d\n",
-         name, m->m_maildir_file, (int)PTR2SIZE(m - message + 1));
+      n_err(_("Cannot read \"%s/%s\" for message %lu\n"),
+         name, m->m_maildir_file, (ul_i)PTR2SIZE(m - message + 1));
       m->m_flag |= MHIDDEN;
       goto jleave;
    }
@@ -366,9 +366,8 @@ maildir_update(void)
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
       if (dodel) {
          if (unlink(m->m_maildir_file) < 0)
-            fprintf(stderr,
-               _("Cannot delete file \"%s/%s\" for message %" PRIuZ ".\n"),
-               mailname, m->m_maildir_file, PTR2SIZE(m - message + 1));
+            n_err(_("Cannot delete file \"%s/%s\" for message %lu\n"),
+               mailname, m->m_maildir_file, (ul_i)PTR2SIZE(m - message + 1));
          else
             ++gotcha;
       } else {
@@ -410,15 +409,14 @@ _maildir_move(struct message *m)
    if (!strcmp(m->m_maildir_file, new))
       goto jleave;
    if (link(m->m_maildir_file, new) == -1) {
-      fprintf(stderr, /* TODO tr */
-         "Cannot link \"%s/%s\" to \"%s/%s\": message %d not touched.\n",
+      n_err(_("Cannot link \"%s/%s\" to \"%s/%s\": "
+         "message %lu not touched\n"),
          mailname, m->m_maildir_file, mailname, new,
-         (int)PTR2SIZE(m - message + 1));
+         (ul_i)PTR2SIZE(m - message + 1));
       goto jleave;
    }
    if (unlink(m->m_maildir_file) == -1)
-      fprintf(stderr, /* TODO tr */"Cannot unlink \"%s/%s\".\n",
-         mailname, m->m_maildir_file);
+      n_err(_("Cannot unlink \"%s/%s\"\n"), mailname, m->m_maildir_file);
 jleave:
    NYD_LEAVE;
 }
@@ -520,8 +518,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
 
       nfn = (char*)(PTR2SIZE(nfn) - 1);
       if (nfn == NULL) {
-         fprintf(stderr, _("Can't create an unique file name in \"%s/tmp\".\n"),
-            name);
+         n_err(_("Can't create an unique file name in \"%s/tmp\"\n"), name);
          goto jleave;
       }
    }
@@ -533,7 +530,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
 
       if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
-         fprintf(stderr, _("Error writing to \"%s\".\n"), tfn);
+         n_err(_("Error writing to \"%s\"\n"), tfn);
          Fclose(op);
          goto jerr;
       }
@@ -544,13 +541,13 @@ jtmperr:
    nfn = salloc(n = nlen + flen + 6);
    snprintf(nfn, n, "%s/new/%s", name, fn);
    if (link(tfn, nfn) == -1) {
-      fprintf(stderr, _("Cannot link \"%s\" to \"%s\".\n"), tfn, nfn);
+      n_err(_("Cannot link \"%s\" to \"%s\"\n"), tfn, nfn);
       goto jerr;
    }
    rv = OKAY;
 jerr:
    if (unlink(tfn) == -1)
-      fprintf(stderr, _("Cannot unlink \"%s\".\n"), tfn);
+      n_err(_("Cannot unlink \"%s\"\n"), tfn);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -565,11 +562,11 @@ trycreate(char const *name)
 
    if (!stat(name, &st)) {
       if (!S_ISDIR(st.st_mode)) {
-         fprintf(stderr, "\"%s\" is not a directory.\n", name);/* TODO tr */
+         n_err(_("\"%s\" is not a directory\n"), name);
          goto jleave;
       }
    } else if (makedir(name) != OKAY) {
-      fprintf(stderr, "Cannot create directory \"%s\".\n", name);/* TODO tr */
+      n_err(_("Cannot create directory \"%s\"\n"), name);
       goto jleave;
    } else
       ++imap_created_mailbox;
@@ -668,7 +665,7 @@ subdir_remove(char const *name, char const *sub)
    path[pathend = namelen + sublen + 2] = '\0';
 
    if ((dirp = opendir(path)) == NULL) {
-      perror(path);
+      n_perr(path, 0);
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {
@@ -682,7 +679,7 @@ subdir_remove(char const *name, char const *sub)
          path = srealloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n +1);
       if (unlink(path) == -1) {
-         perror(path);
+         n_perr(path, 0);
          closedir(dirp);
          goto jleave;
       }
@@ -691,7 +688,7 @@ subdir_remove(char const *name, char const *sub)
 
    path[pathend] = '\0';
    if (rmdir(path) == -1) {
-      perror(path);
+      n_perr(path, 0);
       goto jleave;
    }
    rv = OKAY;
@@ -711,7 +708,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 
    omsgCount = msgCount;
    if (cwget(&cw) == STOP) {
-      alert("Cannot open current directory");
+      n_alert(_("Cannot open current directory"));
       goto jleave;
    }
 
@@ -738,7 +735,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    }
 
    if (chdir(name) < 0) {
-      fprintf(stderr, "Cannot change directory to \"%s\".\n", name);/*TODO tr*/
+      n_err(_("Cannot change directory to \"%s\"\n"), name);
       mb.mb_type = MB_VOID;
       *mailname = '\0';
       msgCount = 0;
@@ -767,7 +764,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    }
 
    if (cwret(&cw) == STOP)
-      panic("Cannot change back to current directory.");/* TODO tr */
+      n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
 
    setmsize(msgCount);
@@ -775,14 +772,22 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       mb.mb_threaded = 0;
       c_sort((void*)-1);
    }
+
    if (!(fm & FEDIT_NEWMAIL))
       pstate &= ~PS_SAW_COMMAND;
+
+   if (options & OPT_EXISTONLY) {
+      i = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
-         fprintf(stderr, _("No mail at %s\n"), name);
+         n_err(_("No mail at \"%s\"\n"), name);
       i = 1;
       goto jleave;
    }
+
    if ((fm & FEDIT_NEWMAIL) && msgCount > omsgCount)
       newmailinfo(omsgCount);
    i = 0;
@@ -799,15 +804,14 @@ maildir_quit(void)
    NYD_ENTER;
 
    if (cwget(&cw) == STOP) {
-      alert("Cannot open current directory");/* TODO tr */
+      n_alert(_("Cannot open current directory"));
       goto jleave;
    }
 
    saveint = safe_signal(SIGINT, SIG_IGN);
 
    if (chdir(mailname) == -1) {
-      fprintf(stderr, "Cannot change directory to \"%s\".\n",/* TODO tr */
-         mailname);
+      n_err(_("Cannot change directory to \"%s\"\n"), mailname);
       cwrelse(&cw);
       safe_signal(SIGINT, saveint);
       goto jleave;
@@ -822,7 +826,7 @@ maildir_quit(void)
    safe_signal(SIGINT, saveint);
 
    if (cwret(&cw) == STOP)
-      panic("Cannot change back to current directory."); /* TODO tr */
+      n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
 jleave:
    NYD_LEAVE;
@@ -936,7 +940,7 @@ maildir_remove(char const *name)
          subdir_remove(name, "cur") == STOP)
       goto jleave;
    if (rmdir(name) == -1) {
-      perror(name);
+      n_perr(name, 0);
       goto jleave;
    }
    rv = OKAY;

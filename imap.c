@@ -80,7 +80,7 @@ do {\
          ACTIONBAIL;\
       }\
       if (options & OPT_VERBVERB)\
-         fprintf(stderr, ">>> %s", X);\
+         n_err(">>> %s", X);\
       mp->mb_active |= Y;\
       if (swrite(&mp->mb_sock, X) == STOP) {\
          ACTIONERR;\
@@ -455,7 +455,7 @@ jstop:
          rv = STOP;
          complete |= 2;
          if (errprnt)
-            fprintf(stderr, _("IMAP error: %s"), responded_text);
+            n_err(_("IMAP error: %s"), responded_text);
          break;
       case RESPONSE_UNKNOWN:  /* does not happen */
       case RESPONSE_BYE:
@@ -470,7 +470,7 @@ jstop:
       }
       if (response_status != RESPONSE_OTHER &&
             ascncasecmp(responded_text, "[ALERT] ", 8) == 0)
-         fprintf(stderr, "IMAP alert: %s", &responded_text[8]);
+         n_err(_("IMAP alert: %s"), &responded_text[8]);
       if (complete == 3)
          mp->mb_active &= ~MB_COMD;
    } else {
@@ -570,11 +570,11 @@ imapcatch(int s)
    NYD_X; /*  Signal handler */
    switch (s) {
    case SIGINT:
-      fprintf(stderr, _("Interrupt\n"));
+      n_err_sighdl(_("Interrupt\n"));
       siglongjmp(imapjmp, 1);
       /*NOTREACHED*/
    case SIGPIPE:
-      fprintf(stderr, _("Received SIGPIPE during IMAP operation\n"));
+      n_err_sighdl(_("Received SIGPIPE during IMAP operation\n"));
       break;
    }
 }
@@ -585,7 +585,7 @@ _imap_maincatch(int s)
    NYD_X; /*  Signal handler */
    UNUSED(s);
    if (interrupts++ == 0) {
-      fprintf(stderr, _("Interrupt\n"));
+      n_err_sighdl(_("Interrupt\n"));
       return;
    }
    onintr(0);
@@ -824,7 +824,7 @@ imap_preauth(struct mailbox *mp, struct url const *urlp)
    }
 #else
    if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
-      fprintf(stderr, "No SSL support compiled in.\n");
+      n_err(_("No SSL support compiled in\n"));
       return STOP;
    }
 #endif
@@ -945,7 +945,8 @@ jleave:
 #endif
 
 FL enum okay
-imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx)
+imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
+   enum fedit_mode fm)
 {
    enum okay ok = OKAY;
    char const *cp;
@@ -955,7 +956,8 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx)
    UNUSED(size);
 
    mp->mb_uidvalidity = 0;
-   snprintf(o, sizeof o, "%s SELECT %s\r\n", tag(1), imap_quotestr(mbx));
+   snprintf(o, sizeof o, "%s %s %s\r\n", tag(1),
+      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), imap_quotestr(mbx));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -1124,7 +1126,7 @@ imap_setfile(const char *xserver, enum fedit_mode fm)
    }
    if (!ok_blook(v15_compat) &&
          (!url.url_had_user || url.url_pass.s != NULL))
-      fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
+      n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
    rv = _imap_setfile1(&url, fm, 0);
@@ -1288,8 +1290,7 @@ jduppass:
    if (mb.mb_sock.s_fd < 0) {
       if (disconnected(mb.mb_imap_account)) {
          if (cache_setptr(fm, transparent) == STOP)
-            fprintf(stderr, "Mailbox \"%s\" is not cached.\n",
-               urlp->url_p_eu_h_p_p);
+            n_err(_("Mailbox \"%s\" is not cached\n"), urlp->url_p_eu_h_p_p);
          goto jdone;
       }
       if ((cp = xok_vlook(imap_keepalive, urlp, OXM_ALL)) != NULL) {
@@ -1318,7 +1319,7 @@ jduppass:
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
-         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX")) != OKAY) {
+         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX"), fm) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
       safe_signal(SIGINT, saveint);
@@ -1347,13 +1348,20 @@ jdone:
       c_sort((void*)-1);
    }
 
+   if ((options & OPT_EXISTONLY) && (mb.mb_type == MB_IMAP ||
+         mb.mb_type == MB_CACHE)) {
+      rv = (msgCount == 0);
+      goto jleave;
+   }
+
    if (!(fm & FEDIT_NEWMAIL) && !(pstate & PS_EDIT) && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
             !ok_blook(emptystart))
-         fprintf(stderr, _("No mail at %s\n"), urlp->url_p_eu_h_p_p);
+         n_err(_("No mail at %s\n"), urlp->url_p_eu_h_p_p);
       rv = 1;
       goto jleave;
    }
+
    if (fm & FEDIT_NEWMAIL)
       newmailinfo(prevcount);
    rv = 0;
@@ -1518,12 +1526,12 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    if (getcache(mp, m, need) == OKAY)
       return OKAY;
    if (mp->mb_type == MB_CACHE) {
-      fprintf(stderr, "Message %u not available.\n", number);
+      n_err(_("Message %lu not available\n"), (ul_i)number);
       return STOP;
    }
 
    if (mp->mb_sock.s_fd < 0) {
-      fprintf(stderr, "IMAP connection closed.\n");
+      n_err(_("IMAP connection closed\n"));
       return STOP;
    }
 
@@ -1987,17 +1995,20 @@ jbypass:
          modflags++;
       }
 
-   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
-      printf(_("\"%s\" "), displayname);
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"));
-   } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
-      if (held == 1)
-         printf(_("Held 1 message in %s\n"), displayname);
-      else
-         printf(_("Held %d messages in %s\n"), held, displayname);
+   /* XXX should be readonly (but our IMAP code is weird...) */
+   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))) {
+      if ((gotcha || modflags) && (pstate & PS_EDIT)) {
+         printf(_("\"%s\" "), displayname);
+         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            ? _("complete\n") : _("updated.\n"));
+      } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
+         if (held == 1)
+            printf(_("Held 1 message in %s\n"), displayname);
+         else
+            printf(_("Held %d messages in %s\n"), held, displayname);
+      }
+      fflush(stdout);
    }
-   fflush(stdout);
    NYD_LEAVE;
    return OKAY;
 }
@@ -2014,7 +2025,7 @@ imap_quit(void)
    }
 
    if (mb.mb_sock.s_fd < 0) {
-      fprintf(stderr, "IMAP connection closed.\n");
+      n_err(_("IMAP connection closed\n"));
       goto jleave;
    }
 
@@ -2349,7 +2360,7 @@ jtrycreate:
          imap_created_mailbox++;
          goto jagain;
       } else if (rv != OKAY)
-         fprintf(stderr, _("IMAP error: %s"), responded_text);
+         n_err(_("IMAP error: %s"), responded_text);
       else if (response_status == RESPONSE_OK && (mp->mb_flags & MB_UIDPLUS))
          imap_appenduid(mp, fp, t, off1, xsize, ysize, lines, flag, name);
    }
@@ -2465,7 +2476,7 @@ imap_append(const char *xserver, FILE *fp)
       goto j_leave;
    if (!ok_blook(v15_compat) &&
          (!url.url_had_user || url.url_pass.s != NULL))
-      fprintf(stderr, "New-style URL used without *v15-compat* being set!\n");
+      n_err(_("New-style URL used without *v15-compat* being set!\n"));
    mbx = (url.url_path.s != NULL) ? url.url_path.s : "INBOX";
 
    imaplock = 1;
@@ -2630,10 +2641,10 @@ imap_folders(const char * volatile name, int strip)
    cp = protbase(name);
    sp = mb.mb_imap_account;
    if (sp == NULL || strcmp(cp, sp)) {
-      fprintf(stderr, _(
-         "Cannot perform `folders' but when on the very IMAP "
+      n_err(
+         _("Cannot perform `folders' but when on the very IMAP "
          "account; the current one is\n  `%s' -- "
-         "try `folders @'.\n"),
+         "try `folders @'\n"),
          (sp != NULL ? sp : _("[NONE]")));
       goto jleave;
    }
@@ -2642,7 +2653,7 @@ imap_folders(const char * volatile name, int strip)
    if (options & OPT_TTYOUT) {
       if ((fp = Ftmp(NULL, "imapfold", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
-         perror("tmpfile");
+         n_perr(_("tmpfile"), 0);
          goto jleave;
       }
    } else
@@ -2675,7 +2686,7 @@ imap_folders(const char * volatile name, int strip)
       if (fsize(fp) > 0)
          dopr(fp);
       else
-         fprintf(stderr, "Folder not found.\n");
+         n_err(_("Folder not found\n"));
    }
 junroll:
    safe_signal(SIGINT, saveint);
@@ -2699,7 +2710,7 @@ dopr(FILE *fp)
 
    if ((out = Ftmp(NULL, "imapdopr", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
          == NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       goto jleave;
    }
 
@@ -3177,14 +3188,13 @@ imap_remove(const char * volatile name)
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP) {
-      fprintf(stderr, "Refusing to remove \"%s\" in disconnected mode.\n",
-         name);
+      n_err(_("Refusing to remove \"%s\" in disconnected mode\n"), name);
       goto jleave;
    }
 
    if (!imap_thisaccount(name)) {
-      fprintf(stderr, "Can only remove mailboxes on current IMAP "
-            "server: \"%s\" not removed.\n", name);
+      n_err(_("Can only remove mailboxes on current IMAP server: "
+         "\"%s\" not removed\n"), name);
       goto jleave;
    }
 
@@ -3238,13 +3248,13 @@ imap_rename(const char *old, const char *new)
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP) {
-      fprintf(stderr, "Refusing to rename mailboxes in disconnected mode.\n");
+      n_err(_("Refusing to rename mailboxes in disconnected mode\n"));
       goto jleave;
    }
 
    if (!imap_thisaccount(old) || !imap_thisaccount(new)) {
-      fprintf(stderr, "Can only rename mailboxes on current IMAP "
-            "server: \"%s\" not renamed to \"%s\".\n", old, new);
+      n_err(_("Can only rename mailboxes on current IMAP "
+            "server: \"%s\" not renamed to \"%s\"\n"), old, new);
       goto jleave;
    }
 
@@ -3385,7 +3395,7 @@ again:
          }
       } else {
 fail:
-         fprintf(stderr, "Invalid command in IMAP cache queue: \"%s\"\n", bp);
+         n_err(_("Invalid command in IMAP cache queue: \"%s\"\n"), bp);
          rok = STOP;
       }
       continue;
@@ -3442,7 +3452,7 @@ check_expunged(void)
    NYD_ENTER;
 
    if (expunged_messages > 0) {
-      fprintf(stderr, "Command not executed - messages have been expunged\n");
+      n_err(_("Command not executed - messages have been expunged\n"));
       rv = STOP;
    } else
       rv = OKAY;
@@ -3459,7 +3469,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
    UNUSED(vp);
 
    if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd > 0) {
-      fprintf(stderr, "Already connected.\n");
+      n_err(_("Already connected\n"));
       rv = 1;
       goto jleave;
    }
@@ -3495,11 +3505,11 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
    NYD_ENTER;
 
    if (mb.mb_type == MB_CACHE) {
-      fprintf(stderr, "Not connected.\n");
+      n_err(_("Not connected\n"));
       goto jleave;
    }
    if (mb.mb_type != MB_IMAP || cached_uidvalidity(&mb) == 0) {
-      fprintf(stderr, "The current mailbox is not cached.\n");
+      n_err(_("The current mailbox is not cached\n"));
       goto jleave;
    }
 
@@ -3532,11 +3542,11 @@ c_cache(void *vp)
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP) {
-      fprintf(stderr, "Not connected to an IMAP server.\n");
+      n_err(_("Not connected to an IMAP server\n"));
       goto jleave;
    }
    if (cached_uidvalidity(&mb) == 0) {
-      fprintf(stderr, "The current mailbox is not cached.\n");
+      n_err(_("The current mailbox is not cached\n"));
       goto jleave;
    }
 

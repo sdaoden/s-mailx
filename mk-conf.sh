@@ -15,6 +15,7 @@ option_reset() {
    WANT_REGEX=0
    WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
+   WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
    WANT_QUOTE_FOLD=0
@@ -35,6 +36,7 @@ option_maximal() {
    WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
+   WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
    WANT_QUOTE_FOLD=1
@@ -61,6 +63,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_REGEX=1
       WANT_NCL=1
          WANT_HISTORY=1
+      WANT_ERRORS=1
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
@@ -143,7 +146,6 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
-   _CFLAGS=${ADDCFLAGS} _LDFLAGS=${ADDLDFLAGS}
 
    if [ ${OS} = sunos ]; then
       _os_setup_sunos
@@ -152,17 +154,19 @@ os_setup() {
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-         CFLAGS=${_CFLAGS}
-         LDFLAGS=${_LDFLAGS}
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
    fi
 
    # Sledgehammer: better set _GNU_SOURCE
+   # And in general: oh, boy!
    OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
    #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
+   #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
    if [ -d /usr/pkg ]; then
@@ -205,11 +209,10 @@ _os_setup_sunos() {
    if feat_yes AUTOCC; then
       if command -v cc >/dev/null 2>&1; then
          CC=cc
-         feat_yes DEBUG && _CFLAGS="-v -Xa -g ${_CFLAGS}" ||
-            _CFLAGS="-Xa -O ${_CFLAGS}"
+         feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-         CFLAGS=${_CFLAGS}
-         LDFLAGS=${_LDFLAGS}
+         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
@@ -221,7 +224,19 @@ _os_setup_sunos() {
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
 cc_setup() {
-   feat_no AUTOCC && { _cc_default; return; }
+   # Even though it belongs into cc_flags we will try to compile and link
+   # something, so ensure we have a clean state regarding CFLAGS/LDFLAGS or
+   # ADDCFLAGS/ADDLDFLAGS
+   if feat_no AUTOCC; then
+      _cc_default
+      # Ensure those don't do any harm
+      ADDCFLAGS= ADDLDFLAGS=
+      export ADDCFLAGS ADDLDFLAGS
+      return
+   else
+      CFLAGS= LDFLAGS=
+      export CFLAGS LDFLAGS
+   fi
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    printf >&2 'Searching for a usable C compiler .. $CC='
@@ -274,16 +289,19 @@ cc_flags() {
       _cc_flags_generic
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS=${_CFLAGS}
-      LDFLAGS=${_LDFLAGS}
-   elif feat_no DEBUG; then
-      CFLAGS="-DNDEBUG ${CFLAGS}"
+      CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+   else
+      if feat_no DEBUG; then
+         CFLAGS="-DNDEBUG ${CFLAGS}"
+      fi
    fi
    msg ''
    export CFLAGS LDFLAGS
 }
 
 _cc_flags_generic() {
+   _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
    cc_check -Wall
@@ -379,7 +397,7 @@ msg() {
 
 rc=./make.rc
 lst=./config.lst
-h=./config.h
+h=./config.h h_name=config.h
 mk=./mk.mk
 
 newlst=./config.lst-new
@@ -536,6 +554,10 @@ check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
 check_tool tee "${tee:-`command -v tee`}"
 
+check_tool chown "${chown:-`command -v chown`}" 1 ||
+   check_tool chown "/sbin/chown" 1 ||
+   check_tool chown "/usr/sbin/chown"
+
 check_tool make "${MAKE:-`command -v make`}"
 MAKE=${make}
 check_tool strip "${STRIP:-`command -v strip`}" 1 &&
@@ -588,8 +610,16 @@ exec 0<&5 1>&6 5<&- 6<&-
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
 printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
+printf "#define PRIVSEP \"${SID}${NAIL}-privsep\"\n" >> ${newh}
+printf "PRIVSEP = \$(UAGENT)-privsep\n" >> ${newmk}
+if feat_yes PRIVSEP; then
+   printf "OPTIONAL_PRIVSEP = \$(PRIVSEP)\n" >> ${newmk}
+else
+   printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
+fi
+
 for i in \
-      awk cat chmod cp cmp grep mkdir mv rm sed tee tr \
+      awk cat chmod chown cp cmp grep mkdir mv rm sed tee tr \
       MAKE make strip \
       cksum; do
    eval j=\$${i}
@@ -598,8 +628,11 @@ for i in \
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
-path_check C_INCLUDE_PATH -I INCS
-path_check LD_LIBRARY_PATH -L LIBS
+path_check C_INCLUDE_PATH -I _INCS
+INCS="${INCS} ${_INCS}"
+path_check LD_LIBRARY_PATH -L _LIBS
+LIBS="${LIBS} ${_LIBS}"
+unset _INCS _LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
 
 if [ -n "${need_R_ldflags}" ]; then
@@ -612,7 +645,7 @@ if [ -n "${need_R_ldflags}" ]; then
       LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
       _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
    done
-   export LDFLAGS _LDFLAGS
+   export LDFLAGS
 fi
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
@@ -630,17 +663,20 @@ int main(int argc, char **argv)
 }
 !
 
-if "${CC}" ${CFLAGS} ${INCS} ${LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS}; then
+if "${CC}" ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} \
+      -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
-   msg 'ERROR: i cannot compile a "Hello world" with "%s"!' "${CC}"
-   msg 'ERROR:   Please set $CC (and $CFLAGS) variable(s), rerun'
+   msg 'ERROR: i cannot compile a "Hello world" via'
+   msg '   %s' \
+      "${CC} ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} ${LIBS}"
+   msg 'ERROR:   Please read INSTALL, rerun'
    config_exit 1
 fi
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
-   if "${CC}" ${_CFLAGS} ${1} ${INCS} ${_LDFLAGS} \
+   if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
@@ -652,7 +688,7 @@ cc_check() {
 
 ld_check() {
    [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
-   if "${CC}" ${_CFLAGS} ${INCS} ${_LDFLAGS} ${1} \
+   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
@@ -738,11 +774,11 @@ ${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) $(XINCS) -c $<
+	$(CC) -I./ $(XINCS) $(CFLAGS) -c $<
 .c.x:
-	$(CC) $(XINCS) -E $< >$@
+	$(CC) -I./ $(XINCS) -E $< >$@
 .c:
-	$(CC) $(XINCS) -o $@ $< $(XLIBS)
+	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
 .y: ;
 !
 
@@ -754,7 +790,7 @@ _check_preface() {
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
-   ${tee} ${tmp}.c
+   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
    #echo '*** the preprocessor generates'
    #${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
@@ -837,6 +873,32 @@ else
    config_exit 1
 fi
 
+if link_check snprintf 'v?snprintf(3)' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome(char *buf, ...)
+{
+   va_list ap;
+   va_start(ap, buf);
+   vsnprintf(buf, 20, "%s", ap);
+   va_end(ap);
+   return;
+}
+int main(void)
+{
+   char b[20];
+   snprintf(b, sizeof b, "%s", "string");
+   dome(b, "string");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   config_exit 1
+fi
+
 # XXX Move to below later when the time stuff is regulary needed.
 # XXX Add POSIX check once standardized
 link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
@@ -889,10 +951,9 @@ then
    :
 else
    msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
-   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
-fi # -n ${have_posix_random}
+fi # -z ${have_posix_random}
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
@@ -900,16 +961,6 @@ int main(void)
 {
    setenv("s-nail", "to be made nifty!", 1);
    unsetenv("s-nail");
-   return 0;
-}
-!
-
-link_check snprintf 'snprintf(3)' '#define HAVE_SNPRINTF' << \!
-#include <stdio.h>
-int main(void)
-{
-   char b[20];
-   snprintf(b, sizeof b, "%s", "string");
    return 0;
 }
 !
@@ -1785,6 +1836,12 @@ else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
 
+if feat_yes ERRORS; then
+   echo '#define HAVE_ERRORS' >> ${h}
+else
+   echo '/* WANT_ERRORS=0 */' >> ${h}
+fi
+
 ##
 
 if feat_yes SPAM_SPAMC; then
@@ -1838,6 +1895,12 @@ if feat_yes COLOUR; then
    echo '#define HAVE_COLOUR' >> ${h}
 else
    echo '/* WANT_COLOUR=0 */' >> ${h}
+fi
+
+if feat_yes PRIVSEP; then
+   echo '#define HAVE_PRIVSEP' >> ${h}
+else
+   echo '/* WANT_PRIVSEP=0 */' >> ${h}
 fi
 
 if feat_yes MD5; then
@@ -1895,6 +1958,7 @@ printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_PRIVSEP\n   ",PRIVSEP-DOTLOCK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
@@ -1906,7 +1970,13 @@ ${rm} -f ${tmp}
 ${rm} -rf ${tmp0}.* ${tmp0}*
 printf 'OBJ_SRC = ' >> ${mk}
 if feat_no AMALGAMATION; then
-   echo *.c >> ${mk}
+   for i in *.c; do
+      if [ "${i}" = privsep.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+   done
+   echo >> ${mk}
    echo 'OBJ_DEP =' >> ${mk}
 else
    j=`echo "${src}" | ${sed} 's/^.\///'`
@@ -1915,7 +1985,7 @@ else
    printf '#define _MAIN_SOURCE\n' >> ${src}
    printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
    for i in *.c; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ]; then
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] [ "${i}" = privsep.c ]; then
          continue
       fi
       printf "${i} " >> ${mk}
@@ -2018,6 +2088,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
 #endif
+#ifdef HAVE_PRIVSEP
+: + Privilege-separated file dotlock program
+#endif
 :
 :The following optional features are disabled:
 #ifndef HAVE_SETLOCALE
@@ -2087,8 +2160,11 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
 #endif
+#ifndef HAVE_PRIVSEP
+: - Privilege-separated file dotlock program
+#endif
 :
-#if !defined HAVE_WORDEXP || !defined HAVE_SNPRINTF || !defined HAVE_FCHDIR ||\
+#if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
       defined HAVE_DEBUG || defined HAVE_DEVEL
 :Remarks:
 # ifndef HAVE_WORDEXP
@@ -2100,12 +2176,6 @@ ${cat} > ${tmp2}.c << \!
 : _ P.S.: the codebase is in transition away from wordexp(3) to some
 : _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
 : _ about shell word expression in its introduction for more on that.
-# endif
-# ifndef HAVE_SNPRINTF
-: . The function snprintf(3) could not be found. We will use an internal
-: _ sprintf() instead. This might overflow buffers if input values are
-: _ larger than expected. Use the resulting binary with care or update
-: _ your system environment and start the configuration process again.
 # endif
 # ifndef HAVE_FCHDIR
 : . The function fchdir(2) could not be found. We will use chdir(2)
@@ -2122,7 +2192,11 @@ ${cat} > ${tmp2}.c << \!
 #endif /* Remarks */
 :Setup:
 : . System-wide resource file: SYSCONFRC
-: . bindir: BINDIR, mandir: MANDIR
+: . bindir: BINDIR
+#ifdef HAVE_PRIVSEP
+: . libexecdir: LIBEXECDIR
+#endif
+: . mandir: MANDIR
 : . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
 : . $MAILSPOOL: MAILSPOOL
 :

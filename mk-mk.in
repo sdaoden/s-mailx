@@ -10,7 +10,7 @@ OBJ = $(OBJ_SRC:.c=.o)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $(<)
 .c .y: ;
 
-all: _all_echoes $(UAGENT)
+all: _all_echoes $(UAGENT) $(OPTIONAL_PRIVSEP)
 _all_echoes:
 	@echo 'Building..';\
 	if [ -z "$(VERBOSE)" ]; then \
@@ -29,11 +29,21 @@ $(UAGENT): $(OBJ)
 
 $(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
 config.o accmacvar.o: okeys.h version.h
+config.o fio.o: dotlock.h
 config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 config.o imap.o: imap_gssapi.h
 config.o lex.o: cmd_tab.h
 config.o mime_types.o: mime_types.h
 config.o smtp.o: smtp_gssapi.h
+
+$(PRIVSEP): privsep.o
+	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
+	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) privsep.o';\
+	fi;\
+	$(CC) $(LDFLAGS) -o $(@) privsep.o
+	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
+
+privsep.o: config.h nail.h dotlock.h
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
@@ -179,6 +189,17 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 		$(cp) -f "$${_src}" "$${_dst}";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
+	__copychownfile() {\
+		_mode=$${1} _ident=$${2} _src=$${3} _dst=$${4};\
+		if [ -n "$(VERBOSE)" ]; then \
+			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
+			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
+		fi;\
+		$(cp) -f "$${_src}" "$${_dst}";\
+		$(chown) $${_ident} "$${_dst}";\
+		$(chmod) $${_mode} "$${_dst}";\
+	};\
 	__stripfile() {\
 		_file=$${1};\
 		if [ "$(WANT_DEBUG)" != 0 ]; then \
@@ -196,6 +217,12 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	__mkdir "$(DESTDIR)$(BINDIR)";\
 	__stripfile "$(UAGENT)";\
 	__copyfile 0555 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
+		__mkdir "$(DESTDIR)$(LIBEXECDIR)";\
+		__stripfile "$(PRIVSEP)";\
+		__copychownfile 2555 ":$(PRIVSEP_GROUP)" "$(PRIVSEP)" \
+			"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+	fi;\
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
@@ -210,6 +237,12 @@ uninstall:
 			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
 	$(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
+			echo \
+			  '  $$ $(rm) -f "$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)"';\
+		$(rm) -f "$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+	fi;\
 	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"';\
 	fi
@@ -219,7 +252,12 @@ clean:
 	[ -n "$(VERBOSE)" ] &&\
 		echo '  $$ $(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
 			./mkrc.rc';\
-	$(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc
+	$(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc;\
+	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
+			echo '  $$ $(rm) -f ./privsep.o $(PRIVSEP)';\
+		$(rm) -f ./privsep.o $(PRIVSEP);\
+	fi
 
 distclean: clean
 	@echo 'Deconfiguring..';\

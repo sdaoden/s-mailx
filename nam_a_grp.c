@@ -500,7 +500,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       goto jleave;
 
    l = strlen(id) +1;
-   i = ALIGN(sizeof(*gp) - VFIELD_SIZEOF(struct group, g_id) + l);
+   i = n_ALIGN(sizeof(*gp) - VFIELD_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
       addsz = sizeof(struct grp_names_head);
@@ -533,7 +533,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       GP_TO_SUBCLASS(grp, gp);
 
       if (regcomp(&grp->gr_regex, id, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-         fprintf(stderr, _("Invalid regular expression: \"%s\"\n"), id);
+         n_err(_("Invalid regular expression: \"%s\"\n"), id);
          free(gp);
          gp = NULL;
          goto jleave;
@@ -820,15 +820,14 @@ jaster_entry:
                      goto jaster_redo;
                }
             } else {
-               fprintf(stderr, _("Mailing-list not `mlsubscribe'd: \"%s\"\n"),
-                  *argv);
+               n_err(_("Mailing-list not `mlsubscribe'd: \"%s\"\n"), *argv);
                rv = 1;
             }
             continue;
          }
       } else if (_group_del(gt, *argv))
          continue;
-      fprintf(stderr, _("No such mailing-list: \"%s\"\n"), *argv);
+      n_err(_("No such mailing-list: \"%s\"\n"), *argv);
       rv = 1;
    }
    NYD_LEAVE;
@@ -1134,7 +1133,7 @@ detract(struct name *np, enum gfield ntype)
    ntype &= ~GCOMMA;
    s = 0;
    if ((options & OPT_DEBUG) && comma)
-      fprintf(stderr, _("detract asked to insert commas\n"));
+      n_err(_("detract() asked to insert commas\n"));
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
@@ -1495,7 +1494,7 @@ c_alias(void *v)
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
          _group_print(gp, stdout);
       else {
-         fprintf(stderr, _("No such alias: \"%s\"\n"), *argv);
+         n_err(_("No such alias: \"%s\"\n"), *argv);
          rv = 1;
       }
    } else {
@@ -1526,7 +1525,7 @@ c_unalias(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_ALIAS, *argv)) {
-      fprintf(stderr, _("No such alias: \"%s\"\n"), *argv);
+      n_err(_("No such alias: \"%s\"\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;
@@ -1660,7 +1659,7 @@ c_shortcut(void *v)
       char *cp;
 
       if (argv[1] == NULL) {
-         fprintf(stderr, _("Shortcut expansion is missing: \"%s\"\n"), *argv);
+         n_err(_("Shortcut expansion is missing: \"%s\"\n"), *argv);
          rv = 1;
          break;
       }
@@ -1684,7 +1683,7 @@ c_unshortcut(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_SHORTCUT, *argv)) {
-      fprintf(stderr, _("No such shortcut: \"%s\"\n"), *argv);
+      n_err(_("No such shortcut: \"%s\"\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;

@@ -35,9 +35,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"--MKREL-START--
-.\" S-nail(1): v14.8.2 / 2015-06-17
-.Dd Jun 17, 2015
-.ds VV \\%v14.8.2
+.\" S-nail(1): v14.8.3 / 2015-07-04
+.Dd Jul 04, 2015
+.ds VV \\%v14.8.3
 .\"--MKREL-END--
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
@@ -720,6 +720,9 @@ When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
 When used like that the user's system mailbox is read in and a one line
 header of each message therein is printed.
+(See the command
+.Ic file
+for a in-depth description of the different mailbox types that exist.)
 Note that if the mailbox is empty \*(UA will exit after printing
 a message unless the option
 .Va emptystart
@@ -1819,12 +1822,15 @@ on that library and may not correspond one-to-one to what is described
 in this manual.
 .
 .Pp
-Regardless of the actually used command line editor history entries
-will be created for lines entered in command mode only, and creation of
-such an entry can be forcefully suppressed by starting the line with
-a space character.
-Note that history handling is by itself an optional feature and may
-therefore not be available.
+Regardless of the actually used command line editor
+.Ic history
+entries will be created for lines entered in command mode only, and
+creation of such an entry can be forcefully suppressed by starting the
+line with a space character.
+Note that
+.Ic history
+handling is by itself an optional feature and may therefore not be
+available.
 For more information see the documentation of the options
 .Va emptystart ,
 .Va history-gabby ,
@@ -2473,6 +2479,23 @@ block is executed.
 conditional execution block.
 .
 .Mx
+.It Ic errors
+\*(OP Since \*(UA uses the console as a user interface it can happen
+that messages scroll by too fast to become recognized.
+Optionally an error message ring queue is available which stores
+duplicates of any error message and notifies the user in interactive
+sessions whenever a new error has occurred.
+The queue is finite: if its maximum size is reached any new message
+replaces the eldest.
+The command
+.Ic errors
+can be used to manage this message queue: if given
+.Ar show
+or no argument the queue will be displayed and cleared,
+.Ar clear
+will only clear all messages from the queue.
+.
+.Mx
 .It Ic exit
 (ex or x) Exit from \*(UA without changing the active mailbox and skip
 any saving of messages in
@@ -2563,6 +2586,19 @@ and
 variables are set, then the given hooks will be used to load and save
 .Dq name ,
 and \*(UA will work with an intermediate temporary file.
+.Pp
+MBOX files (flat file-based mailboxes) are generally locked during file
+operations in order to avoid inconsistencies against concurrent
+modifications.
+Mailbox files which \*(UA treats as system mailboxes will also be
+protected by so-called dotlock files, the traditional way of mail spool
+file locking: for any file
+.Ql a
+a lock file
+.Ql a.lock
+will be created for the duration of the synchronization \(em
+as necessary a \*(OPal privilege-separated child process will be used to
+accommodate for mail group privilege adjustments for this purpose.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
@@ -4664,6 +4700,18 @@ If
 is set
 .Pf no Va dot
 is ignored and using a dot is the only method to terminate input mode.
+.
+.Mx
+.It Va dotlock-ignore-error
+Synchronization of mailboxes which \*(UA treats as system mailboxes
+(see the command
+.Ic file )
+will be protected with so-called dotlock files\(emthe traditional mail
+spool file locking method\(emin addition to system file locking.
+If the \*(OPal privilege-separated dotlock creation program is available
+then there is no good reason to ignore dotlock errors, and thus such
+errors are treated as fatal errors unless this variable is set.
+This variable is enabled by default if the dotlock helper is not builtin.
 .
 .Mx
 .It Va editalong

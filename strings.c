@@ -166,7 +166,7 @@ _salloc_bcheck(struct buffer *b)
       if (x.ui8p[6] != 0xAA) i |= 1<<6;
       if (x.ui8p[7] != 0xEF) i |= 1<<7;
       if (i != 0)
-         alert("sdope %p: corrupt lower canary: 0x%02X, size %u: %s, line %u",
+         n_alert("sdope %p: corrupt lower canary: 0x%02X, size %u: %s, line %u",
             ux, i, c->usr_size, c->file, c->line);
       x.cp += 8 + c->usr_size;
 
@@ -180,7 +180,7 @@ _salloc_bcheck(struct buffer *b)
       if (x.ui8p[6] != 0xAA) i |= 1<<6;
       if (x.ui8p[7] != 0xEF) i |= 1<<7;
       if (i != 0)
-         alert("sdope %p: corrupt upper canary: 0x%02X, size %u: %s, line %u",
+         n_alert("sdope %p: corrupt upper canary: 0x%02X, size %u: %s, line %u",
             ux, i, c->usr_size, c->file, c->line);
    }
    /*NYD2_LEAVE;*/
@@ -214,7 +214,7 @@ FL void *
    size += _SHOPE_SIZE;
 
    if (size >= SDYN_SIZE - 1)
-      alert("salloc() of %" PRIuZ " bytes from \"%s\", line %d\n",
+      n_alert("salloc() of %" PRIuZ " bytes from \"%s\", line %d",
          size, mdbg_file, mdbg_line);
 #endif
 
@@ -423,7 +423,7 @@ srelax_rele(void)
    }
 #ifdef HAVE_DEVEL
    else
-      fprintf(stderr, "srelax_rele(): recursion >0!\n");
+      n_err("srelax_rele(): recursion >0!\n");
 #endif
    NYD_LEAVE;
 }
@@ -893,24 +893,6 @@ Jsinglebyte:
    NYD_LEAVE;
    return (*cp == '\0');
 }
-
-#ifndef HAVE_SNPRINTF
-FL int
-snprintf(char *str, size_t size, char const *format, ...) /* XXX DANGER! */
-{
-   va_list ap;
-   int ret;
-   NYD2_ENTER;
-
-   va_start(ap, format);
-   ret = vsprintf(str, format, ap);
-   va_end(ap);
-   if (ret < 0)
-      ret = strlen(str);
-   NYD2_LEAVE;
-   return ret;
-}
-#endif
 
 FL char *
 sstpcpy(char *dst, char const *src)

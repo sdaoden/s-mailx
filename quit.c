@@ -118,7 +118,7 @@ writeback(FILE *res, FILE *obuf)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
          ++p;
          if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-            perror(mailname);
+            n_perr(mailname, 0);
             srelax_rele();
             goto jerror;
          }
@@ -133,7 +133,7 @@ writeback(FILE *res, FILE *obuf)
    ftrunc(obuf);
 
    if (ferror(obuf)) {
-      perror(mailname);
+      n_perr(mailname, 0);
 jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
@@ -187,11 +187,11 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    if (!stat(mailname, &statb) && statb.st_size > mailsize) {
       if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
-         perror(_("tmpfile"));
+         n_perr(_("tmpfile"), 0);
          goto jleave;
       }
       if ((ibuf = Zopen(mailname, "r")) == NULL) {
-         perror(mailname);
+         n_perr(mailname, 0);
          Fclose(obuf);
          goto jleave;
       }
@@ -206,7 +206,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    printf(_("\"%s\" "), displayname);
    fflush(stdout);
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
-      perror(mailname);
+      n_perr(mailname, 0);
       goto jleave;
    }
    ftrunc(obuf);
@@ -218,7 +218,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
          continue;
       ++c;
       if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-         perror(mailname);
+         n_perr(mailname, 0);
          srelax_rele();
          goto jleave;
       }
@@ -233,7 +233,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    }
    fflush(obuf);
    if (ferror(obuf)) {
-      perror(mailname);
+      n_perr(mailname, 0);
       goto jleave;
    }
    Fclose(obuf);
@@ -274,7 +274,7 @@ FL void
 quit(void)
 {
    int p, modify, anystat, c;
-   FILE *fbuf = NULL, *rbuf, *abuf;
+   FILE *fbuf = NULL, *lckfp = NULL, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
    NYD_ENTER;
@@ -343,8 +343,8 @@ jnewmail:
       goto jleave;
    }
 
-   if (!dot_lock(mailname, fileno(fbuf), 1)) {
-      perror(_("Unable to lock mailbox"));
+   if ((lckfp = dotlock(mailname, fileno(fbuf), 1)) == NULL) {
+      n_perr(_("Unable to (dot) lock mailbox, aborting operation"), 0);
       Fclose(fbuf);
       fbuf = NULL;
       goto jleave;
@@ -423,7 +423,8 @@ jcream:
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);
-      dot_unlock(mailname);
+      if (lckfp != NULL && lckfp != (FILE*)-1)
+         Pclose(lckfp, FAL0);
    }
    NYD_LEAVE;
 }
@@ -474,11 +475,11 @@ makembox(void) /* TODO oh my god */
    if (!ok_blook(append)) {
       if ((obuf = Ftmp(&tempQuit, "makembox",
             OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
-         perror(_("temporary mail quit file"));
+         n_perr(_("temporary mail quit file"), 0);
          goto jleave;
       }
       if ((ibuf = Fopen(tempQuit, "r")) == NULL)
-         perror(tempQuit);
+         n_perr(tempQuit, 0);
       Ftmp_release(&tempQuit);
       if (ibuf == NULL) {
          Fclose(obuf);
@@ -491,7 +492,7 @@ makembox(void) /* TODO oh my god */
          Fclose(abuf);
       }
       if (ferror(obuf)) {
-         perror(_("temporary mail quit file"));
+         n_perr(_("temporary mail quit file"), 0);
          Fclose(ibuf);
          Fclose(obuf);
          goto jleave;
@@ -501,13 +502,13 @@ makembox(void) /* TODO oh my god */
       if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) != -1)
          close(c);
       if ((obuf = Zopen(mbox, "r+")) == NULL) {
-         perror(mbox);
+         n_perr(mbox, 0);
          Fclose(ibuf);
          goto jleave;
       }
    } else {
       if ((obuf = Zopen(mbox, "a")) == NULL) {
-         perror(mbox);
+         n_perr(mbox, 0);
          goto jleave;
       }
       fchmod(fileno(obuf), 0600);
@@ -529,7 +530,7 @@ makembox(void) /* TODO oh my god */
 #endif
                goto jerr;
          } else if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
-            perror(mbox);
+            n_perr(mbox, 0);
 jerr:
             srelax_rele();
             if (ibuf != NULL)
@@ -559,13 +560,13 @@ jerr:
    }
    ftrunc(obuf);
    if (ferror(obuf)) {
-      perror(mbox);
+      n_perr(mbox, 0);
       Fclose(obuf);
       goto jleave;
    }
    if (Fclose(obuf) != 0) {
       if (prot != PROTO_IMAP)
-         perror(mbox);
+         n_perr(mbox, 0);
       goto jleave;
    }
    if (mcount == 1)

@@ -158,7 +158,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
       goto jleave;
 
-   fcntl_lock(fileno(fp), FLOCK_READ, 0);
+   file_lock(fileno(fp), FLT_READ, 0,0, 0);
    if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
          (unsigned long*)&xtime, &xlines) < 4)
       goto jfail;
@@ -291,9 +291,9 @@ putcache(struct mailbox *mp, struct message *m)
    if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
       if ((obuf = Fopen(name, "w")) == NULL)
          goto jleave;
-      fcntl_lock(fileno(obuf), FLOCK_WRITE, 0); /* XXX err hdl */
+      file_lock(fileno(obuf), FLT_WRITE, 0,0, 0); /* XXX err hdl */
    } else {
-      fcntl_lock(fileno(obuf), FLOCK_READ, 0); /* XXX err hdl */
+      file_lock(fileno(obuf), FLT_READ, 0,0, 0); /* XXX err hdl */
       if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
             (unsigned long*)&otime, &olines) >= 4 && ob != '\0' &&
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
@@ -379,7 +379,7 @@ initcache(struct mailbox *mp)
    if (cwget(&cw) == STOP)
       goto jleave;
    if ((uvfp = Fopen(uvname, "r+")) == NULL ||
-         (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
+         (file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
@@ -387,7 +387,7 @@ initcache(struct mailbox *mp)
       fflush(uvfp);
       rewind(uvfp);
    }
-   fcntl_lock(fileno(uvfp), FLOCK_WRITE, 0);
+   file_lock(fileno(uvfp), FLT_WRITE, 0,0, 0);
    fprintf(uvfp, "%lu\n", mp->mb_uidvalidity);
    if (ferror(uvfp) || Fclose(uvfp) != 0) {
       unlink(uvname);
@@ -469,7 +469,7 @@ clean(struct mailbox *mp, struct cw *cw)
    fp = Fopen("UIDVALIDITY", "w");
 jout:
    if (cwret(cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
 jleave:
@@ -538,7 +538,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
       free(contents);
    }
    if (cwret(cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
 jleave:
@@ -611,7 +611,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    msgCount = contentelem;
    message = scalloc(msgCount + 1, sizeof *message);
    if (cwret(&cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
    cwrelse(&cw);
@@ -711,7 +711,7 @@ cache_remove(const char *name)
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
       if (unlink(path) < 0) {
-         perror(path);
+         n_perr(path, 0);
          closedir(dirp);
          free(path);
          rv = STOP;
@@ -738,7 +738,7 @@ cache_rename(const char *old, const char *new)
          (newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
       goto jleave;
    if (rename(olddir, newdir) < 0) {
-      perror(olddir);
+      n_perr(olddir, 0);
       rv = STOP;
    }
 jleave:
@@ -759,7 +759,7 @@ cached_uidvalidity(struct mailbox *mp)
       goto jleave;
    }
    if ((uvfp = Fopen(uvname, "r")) == NULL ||
-         (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
+         (file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%lu", &uv) != 1)
       uv = 0;
    if (uvfp != NULL)
@@ -779,7 +779,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
    if ((fp = Fopen(name, mode)) != NULL)
-      fcntl_lock(fileno(fp), FLOCK_WRITE, 0);
+      file_lock(fileno(fp), FLT_WRITE, 0,0, 0);
    if (xname)
       *xname = name;
 jleave:
@@ -795,7 +795,7 @@ cache_queue(struct mailbox *mp)
 
    fp = cache_queue1(mp, "a", NULL);
    if (fp == NULL)
-      fputs("Cannot queue IMAP command. Retry when online.\n", stderr);
+      n_err(_("Cannot queue IMAP command. Retry when online.\n"));
    NYD_LEAVE;
    return fp;
 }
@@ -850,19 +850,19 @@ dequeue1(struct mailbox *mp)
 
    fp = cache_queue1(mp, "r+", &qname);
    if (fp != NULL && fsize(fp) > 0) {
-      if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox) != OKAY) {
-         fprintf(stderr, "Cannot select \"%s\" for dequeuing.\n",
-            mp->mb_imap_mailbox);
+      if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
+            != OKAY) {
+         n_err(_("Cannot select \"%s\" for dequeuing.\n"), mp->mb_imap_mailbox);
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
-            (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
+            (file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
             fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
-         fprintf(stderr, "Unique identifiers for \"%s\" are out of date. "
-            "Cannot commit IMAP commands.\n", mp->mb_imap_mailbox);
+         n_err(_("Unique identifiers for \"%s\" are out of date. "
+            "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
 jsave:
-         fputs("Saving IMAP commands to dead.letter\n", stderr);
+         n_err(_("Saving IMAP commands to *DEAD*\n"));
          savedeadletter(fp, 0);
          ftruncate(fileno(fp), 0);
          Fclose(fp);

@@ -115,7 +115,7 @@ edit1(int *msgvec, int viored)
             ++size;
          mp->m_size = (size_t)size;
          if (ferror(mb.mb_otf))
-            perror("/tmp");
+            n_perr(_("/tmp"), 0);
          Fclose(fp);
       }
 
@@ -166,7 +166,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER,
          (readonly ? 0400 : 0600))) == NULL) {
-      perror(_("temporary mail edit file"));
+      n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
 
@@ -183,7 +183,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (mp != NULL) {
       if (sendmp(mp, nf, 0, NULL, action, NULL) < 0) {
-         fprintf(stderr, _("Failed to prepare editable message"));
+         n_err(_("Failed to prepare editable message"));
          goto jleave;
       }
    } else {
@@ -202,7 +202,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
       modtime = statb.st_mtime, modsize = statb.st_size;
    t = ferror(nf);
    if (Fclose(nf) < 0 || t != 0) {
-      perror(tempEdit);
+      n_perr(tempEdit, 0);
       t = 1;
    }
    nf = NULL;
@@ -223,13 +223,13 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    if (readonly)
       goto jleave;
    if (stat(tempEdit, &statb) == -1) {
-      perror(tempEdit);
+      n_perr(tempEdit, 0);
       goto jleave;
    }
 
    if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
          (nf = Fopen(tempEdit, "a+")) == NULL)
-      perror(tempEdit);
+      n_perr(tempEdit, 0);
 jleave:
    if (tempEdit != NULL) {
       unlink(tempEdit);

@@ -27,7 +27,21 @@ With adjustments:
 
 With utility program and feature adjustments:
 
-  $ awk=/usr/bin/nawk make WANT_SOCKETS=no DESTDIR=./zzz install
+  $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
+
+Note that no special user or group massaging happens during
+installation, so you should run the above either via su(1), sudo(1),
+super(1) or a similar identity switcher as necessary.  If necessary, you
+possibly want to separate the configuration / building and the
+installation tasks, e.g.:
+
+  $ make PREFIX=/usr config build && sudo make doinstall
+
+If WANT_PRIVSEP has been enabled to include the minimal privilege-
+separated dotlock creation program that will however be installed with
+the group membership PRIVSEP_GROUP (default is "mail").
+In this case the user that executes the install/doinstall targets must
+be capable of changing the group ownership of the mini dotlock program.
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:
@@ -39,8 +53,9 @@ which take precedence over anything else:
 
 . CONFIG=MEDIUM
   Like MINIMAL, but with documentation strings, the builtin command line
-  editor with history support (if possible), basic colour support and
-  IDNA addresses.  Also adds in generic spam filter support.
+  editor with history support (if possible), error tracking, basic
+  colour support and IDNA addresses.  Also adds in generic spam filter
+  support.
 
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
@@ -79,7 +94,7 @@ The following make(1) target exists:
 . config      Only create or check and update the configuration.
 . build       Only build (using the existing configuration).
 . test        Run ./cc-test.sh in --check-only mode on the built binary.
-. packager-install
+. doinstall or packager-install
               Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
               using this target nonetheless (a following `uninstall'
@@ -110,9 +125,10 @@ The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
 systems, including all BSD systems, Linux, Solaris ...
-And if all else fails you can also pass in prefilled $LIBS and $INCS:
+And if all else fails you can also forcefully pass in include directives
+and library paths by passing prefilled $INCS and $LIBS variables:
 
-  $ INCS=-I/mypath/lib LIBS=-l/mypath/iconv make install
+  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv install
 
 1.1 What if configuration fails?
 --------------------------------
@@ -176,7 +192,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 . All systems:
   - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
     defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
-    number of warnings exploded (for no user benefit).
+    number of warnings exploded.
   - You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
     I/O and MIME rewrite that comes next.  They mostly refer to debug
@@ -200,7 +216,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc 5.1.0 [gcc 5.1.0-4]
+  - gcc 5.1.0 [gcc 5.1.0-5]
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
@@ -308,10 +324,9 @@ Unless otherwise noted the following applies to saying "$ make" and
 3. Current codebase state
 -------------------------
 
-Since i've forked Heirloom mailx(1) (the former "nail" for real) as
-S-nail(1) on 2012-09-18 i make my way through the codebase, and i'm
-getting more and more used to it as time goes by -- of course, i'm
-thinking object and thus this codebase and i are antipodes.
+I claim that we have reached a stable state that should enable users
+a neatless mode of operation when running 24/7 (except for growing
+memory usage from the OpenSSL side of the road, when used).
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
 anniversary of Berkeley Mail, as a good one.  Also see `TODO'.
 
