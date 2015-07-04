@@ -720,6 +720,9 @@ When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
 When used like that the user's system mailbox is read in and a one line
 header of each message therein is printed.
+(See the command
+.Ic file
+for a in-depth description of the different mailbox types that exist.)
 Note that if the mailbox is empty \*(UA will exit after printing
 a message unless the option
 .Va emptystart
@@ -2583,6 +2586,19 @@ and
 variables are set, then the given hooks will be used to load and save
 .Dq name ,
 and \*(UA will work with an intermediate temporary file.
+.Pp
+MBOX files (flat file-based mailboxes) are generally locked during file
+operations in order to avoid inconsistencies against concurrent
+modifications.
+Mailbox files which \*(UA treats as system mailboxes will also be
+protected by so-called dotlock files, the traditional way of mail spool
+file locking: for any file
+.Ql a
+a lock file
+.Ql a.lock
+will be created for the duration of the synchronization \(em
+as necessary a \*(OPal privilege-separated child process will be used to
+accommodate for mail group privilege adjustments for this purpose.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
