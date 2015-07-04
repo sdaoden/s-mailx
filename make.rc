@@ -188,6 +188,24 @@ WANT_FILTER_HTML_TAGSOUP=yes
 # A simple form of coloured output can optionally be produced (see manual).
 WANT_COLOUR=yes
 
+# File dotlocking is performed for any file that is assumed to be a system
+# mailbox: when synchronizing any such FILE a FILE.lock file will be created
+# in the directory of FILE for the duration of the synchronization, then it
+# will be removed again.  This is the traditional mail spool file locking
+# method.
+# The MAILSPOOL(s) where normal system mailboxes reside are usually SETGID
+# directories, which means that a user can read and write any FILE that is
+# owned by him, but unless he is a member of the group the directory is SETGID
+# to, he will not be able to newly create (such lock) files.
+# Because locking fails due to this synchronization will not be performed.
+# However, installing S-nail SETGID to the owner of MAILSPOOLs is a security
+# threat --- the solution is to install a privilege-separated mini-program
+# SETGID that has the sole purpose and functionality of managing this dotlock.
+# WANT_PRIVSEP enables this mini dotlock program, which will be installed in
+# LIBEXECDIR SETGID to the group PRIVSEP_GROUP.
+WANT_PRIVSEP=yes
+PRIVSEP_GROUP=mail
+
 ## PATHS AND PROGRAMS ##
 
 # General prefix where S-nail should be installed.
@@ -196,6 +214,9 @@ PREFIX=/usr/local
 # Fine tune individual locations, normally under $PREFIX.
 # . the place of the S-nail program.
 BINDIR="${PREFIX}/bin"
+# Only if WANT_PRIVSEP is enabled:
+# . the place where the privilege-separated dotlock helper is installed.
+LIBEXECDIR="${PREFIX}/libexec"
 # . of the manual.
 MANDIR="${PREFIX}/share/man"
 # . of the exemplary resource file.
@@ -240,9 +261,14 @@ XPAGER=more
 # is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=, grep=, mkdir=, mv=,
 #  tee=, rm=, sed=, tr=
+# Usually in administrator paths:
+#  chown= [WANT_PRIVSEP]
 # Note that rm(1), sed(1) and tr(1) are needed before this file is read, all
 # other utilities will be checked afterwards only.
 # For cross-compilation setting MAKE= and STRIP= may be necessary.
+# Due to the evaluation order of the build system all those programs are
+# usually needed, but by setting any of the variables to true(1), as in
+# chown=/usr/bin/true, availability of unneeded programs can be faked.
 # We require uname(1) -s, command(1) -v, echo(1), etc.
 # uname(1) can be circumvented by setting $OS.
 

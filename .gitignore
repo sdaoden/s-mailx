@@ -5,4 +5,5 @@ mkman.1
 mkrc.rc
 *.o
 s-nail
+s-nail-privsep
 .cc-*
