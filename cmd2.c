@@ -146,7 +146,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    if (obuf == NULL) {
       obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx") : Zopen(file, "wx"));
       if (obuf == NULL) {
-         perror(file);
+         n_perr(file, 0);
          goto jleave;
       }
    } else {
@@ -168,7 +168,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
             break;
          default:
             if (ferror(obuf)) {
-               perror(file);
+               n_perr(file, 0);
                goto jleave;
             }
             prependnl = 0;
@@ -236,7 +236,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    fflush(obuf);
    if (ferror(obuf)) {
 jferr:
-      perror(file);
+      n_perr(file, 0);
       if (!success)
          srelax_rele();
       success = FAL0;
@@ -288,7 +288,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
          *flag = FAL0;
          cp = expand("&");
       } else
-         fprintf(stderr, _("No file specified.\n"));
+         n_err(_("No file specified\n"));
    }
    NYD_LEAVE;
    return cp;

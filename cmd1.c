@@ -149,8 +149,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
-      fprintf(stderr,
-         _("*attrlist* is not of the correct length, using builtin\n"));
+      n_err(_("*attrlist* is not of the correct length, using builtin\n"));
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdflags) || env_blook("SYSV3", FAL0)) {
@@ -359,9 +358,8 @@ jputc:
                if (i != 0)
                   date = datebuf;
                else
-                  fprintf(stderr, _(
-                     "Ignored date format, it excesses the target buffer "
-                     "(%" PRIuZ " bytes)\n"), sizeof datebuf);
+                  n_err(_("Ignored date format, it excesses the target "
+                     "buffer (%lu bytes)\n"), (ul_i)sizeof(datebuf));
                datefmt = NULL;
             }
             if (n == 0)
@@ -517,7 +515,7 @@ j_A_redo:
 #endif
          default:
             if (options & OPT_D_V)
-               fprintf(stderr, _("Unkown *headline* format: \"%%%c\"\n"), c);
+               n_err(_("Unkown *headline* format: \"%%%c\"\n"), c);
             c = '?';
             goto jputc;
          }
@@ -733,7 +731,7 @@ jscroll_forward:
       break;
    default:
 jerr:
-      fprintf(stderr, _("Unrecognized scrolling command \"%s\"\n"), arg);
+      n_err(_("Unrecognized scrolling command \"%s\"\n"), arg);
       size = 1;
       goto jleave;
    }
@@ -904,7 +902,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if ((cp = ok_vlook(SHELL)) == NULL)
          cp = XSHELL;
       if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
-         perror(cmd);
+         n_perr(cmd, 0);
          obuf = stdout;
       } else
          safe_signal(SIGPIPE, &_cmd1_brokpipe);
@@ -933,7 +931,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          env_add[1] = NULL;
          obuf = Popen(pager, "w", NULL, env_add, 1);
          if (obuf == NULL) {
-            perror(pager);
+            n_perr(pager, 0);
             obuf = stdout;
             pager = NULL;
          } else
@@ -1002,7 +1000,7 @@ _pipe1(char *str, int doign)
    if ((cmd = laststring(str, &needs_list, TRU1)) == NULL) {
       cmd = ok_vlook(cmd);
       if (cmd == NULL || *cmd == '\0') {
-         fputs(_("variable cmd not set\n"), stderr);
+         n_err(_("Variable *cmd* not set\n"));
          goto jleave;
       }
    }
@@ -1045,7 +1043,7 @@ c_cmdnotsupp(void *v) /* TODO -> lex.c */
 {
    NYD_ENTER;
    UNUSED(v);
-   fprintf(stderr, _("The requested feature is not compiled in\n"));
+   n_err(_("The requested feature is not compiled in\n"));
    NYD_LEAVE;
    return 1;
 }
@@ -1116,7 +1114,7 @@ c_from(void *v)
             goto jendpipe;
          p = get_pager(NULL);
          if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
-            perror(p);
+            n_perr(p, 0);
             obuf = stdout;
             cp = NULL;
          } else
@@ -1362,7 +1360,7 @@ c_folders(void *v)
       if (name == NULL)
          goto jleave;
    } else if (!getfold(dirname, sizeof dirname)) {
-      fprintf(stderr, _("No value set for \"folder\"\n"));
+      n_err(_("No value set for \"folder\"\n"));
       goto jleave;
    } else
       name = dirname;

@@ -1819,12 +1819,15 @@ on that library and may not correspond one-to-one to what is described
 in this manual.
 .
 .Pp
-Regardless of the actually used command line editor history entries
-will be created for lines entered in command mode only, and creation of
-such an entry can be forcefully suppressed by starting the line with
-a space character.
-Note that history handling is by itself an optional feature and may
-therefore not be available.
+Regardless of the actually used command line editor
+.Ic history
+entries will be created for lines entered in command mode only, and
+creation of such an entry can be forcefully suppressed by starting the
+line with a space character.
+Note that
+.Ic history
+handling is by itself an optional feature and may therefore not be
+available.
 For more information see the documentation of the options
 .Va emptystart ,
 .Va history-gabby ,
@@ -2471,6 +2474,23 @@ block is executed.
 (en) Marks the end of an
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
 conditional execution block.
+.
+.Mx
+.It Ic errors
+\*(OP Since \*(UA uses the console as a user interface it can happen
+that messages scroll by too fast to become recognized.
+Optionally an error message ring queue is available which stores
+duplicates of any error message and notifies the user in interactive
+sessions whenever a new error has occurred.
+The queue is finite: if its maximum size is reached any new message
+replaces the eldest.
+The command
+.Ic errors
+can be used to manage this message queue: if given
+.Ar show
+or no argument the queue will be displayed and cleared,
+.Ar clear
+will only clear all messages from the queue.
 .
 .Mx
 .It Ic exit

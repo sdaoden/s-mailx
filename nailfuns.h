@@ -258,10 +258,6 @@ FL void        edit_attachments(struct attachment **aphead);
 
 FL void        n_raise(int signo);
 
-/* Announce a fatal error (and die) */
-FL void        panic(char const *format, ...);
-FL void        alert(char const *format, ...);
-
 /* Provide BSD-like signal() on all (POSIX) systems */
 FL sighandler_type safe_signal(int signum, sighandler_type handler);
 
@@ -424,6 +420,27 @@ FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
+
+/* Our error print series.. */
+FL void        n_err(char const *format, ...);
+FL void        n_verr(char const *format, va_list ap);
+
+/* ..(for use in a signal handler; to be obsoleted..).. */
+FL void        n_err_sighdl(char const *format, ...);
+
+/* ..including replacement for perror(3); if errval is 0 errno(3) is used */
+FL void        n_perr(char const *msg, int errval);
+
+/* Announce a fatal error (and die) */
+FL void        n_alert(char const *format, ...);
+FL void        n_panic(char const *format, ...);
+
+/* `errors' */
+#ifdef HAVE_ERRORS
+FL int         c_errors(void *vp);
+#else
+# define c_errors                c_cmdnotsupp
+#endif
 
 /* Memory allocation routines */
 #ifdef HAVE_DEBUG
@@ -1859,11 +1876,7 @@ FL void        makelow(char *cp);
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
 FL bool_t      substr(char const *str, char const *sub);
 
-/* Lazy vsprintf wrapper */
-#ifndef HAVE_SNPRINTF
-FL int         snprintf(char *str, size_t size, char const *format, ...);
-#endif
-
+/*  */
 FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);

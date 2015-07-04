@@ -436,7 +436,7 @@ _var_set(struct var_carrier *vcp, char const *value)
    _var_lookup(vcp);
 
    if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
-      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
+      n_err(_("Variable readonly: \"%s\"\n"), vcp->vc_name);
       ok = FAL0;
       goto jleave;
    }
@@ -490,9 +490,9 @@ _var_clear(struct var_carrier *vcp)
 
    if (!_var_lookup(vcp)) {
       if (!(pstate & PS_IN_LOAD) && (options & OPT_D_V))
-         fprintf(stderr, _("Variable undefined: \"%s\"\n"), vcp->vc_name);
+         n_err(_("Variable undefined: \"%s\"\n"), vcp->vc_name);
    } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
-      fprintf(stderr, _("Variable readonly: \"%s\"\n"), vcp->vc_name);
+      n_err(_("Variable readonly: \"%s\"\n"), vcp->vc_name);
       ok = FAL0;
    } else {
       if (_localopts != NULL)
@@ -523,7 +523,7 @@ _var_list_all(void)
 
    if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       goto jleave;
    }
 
@@ -625,7 +625,7 @@ _var_set_env(char **ap, bool_t issetenv)
       else
          ++cp;
       if (varbuf == cp2) {
-         fprintf(stderr, _("Non-null variable name required\n"));
+         n_err(_("Non-null variable name required\n"));
          ++errs;
          goto jnext;
       }
@@ -636,7 +636,7 @@ _var_set_env(char **ap, bool_t issetenv)
          if (issetenv && (!strcmp(k, "HOME") || /* TODO generic */
                !strcmp(k, "USER") || !strcmp(k, "TMPDIR"))) {/* TODO approach */
             if (options & OPT_D_V)
-               fprintf(stderr, _("Cannot `unsetenv' \"%s\"\n"), k);
+               n_err(_("Cannot `unsetenv' \"%s\"\n"), k);
             ++errs;
             goto jnext;
          }
@@ -728,8 +728,7 @@ _ma_look(char const *name, struct macro *data, enum ma_flags mafl)
             if ((mafl & MA_ACC) &&
                   account_name != NULL && !strcmp(account_name, name)) {
                mp->ma_flags |= MA_DELETED;
-               fprintf(stderr, _("Delayed deletion of active account \"%s\"\n"),
-                  name);
+               n_err(_("Delayed deletion of active account \"%s\"\n"), name);
             } else {
                _ma_freelines(mp->ma_contents);
                free(mp->ma_name);
@@ -803,7 +802,7 @@ _ma_list(enum ma_flags mafl)
 
    if ((fp = Ftmp(NULL, "listmacs", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       mc = 1;
       goto jleave;
    }
@@ -856,7 +855,7 @@ _ma_define(char const *name, enum ma_flags mafl)
       if (n.ui == 0)
          continue;
       if (n.i < 0) {
-         fprintf(stderr, _("Unterminated %s definition: \"%s\".\n"),
+         n_err(_("Unterminated %s definition: \"%s\"\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
          if ((pstate & PS_IN_LOAD) == PS_SOURCING)
             unstack();
@@ -894,7 +893,7 @@ _ma_define(char const *name, enum ma_flags mafl)
    mp->ma_maxlen = maxlen;
 
    if (_ma_look(mp->ma_name, mp, mafl) != NULL) {
-      fprintf(stderr, _("A %s named \"%s\" already exists.\n"),
+      n_err(_("A %s named \"%s\" already exists\n"),
          (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
       lst = mp->ma_contents;
       goto jerr;
@@ -923,7 +922,7 @@ _ma_undefine(char const *name, enum ma_flags mafl)
 
    if (LIKELY(name[0] != '*' || name[1] != '\0')) {
       if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) == NULL)
-         fprintf(stderr, _("%s \"%s\" is not defined\n"),
+         n_err(_("%s \"%s\" is not defined\n"),
             (mafl & MA_ACC ? "Account" : "Macro"), name);
    } else {
       struct macro **mpp, *lmp;
@@ -1288,7 +1287,7 @@ c_unsetenv(void *v)
          if (!strcmp(*ap, "HOME") || !strcmp(*ap, "USER") || /* TODO generic */
                !strcmp(*ap, "TMPDIR")) { /* TODO approach */
             if (options & OPT_D_V)
-               fprintf(stderr, _("Cannot `unsetenv' \"%s\"\n"), *ap);
+               n_err(_("Cannot `unsetenv' \"%s\"\n"), *ap);
             err = 1;
             continue;
          }
@@ -1326,13 +1325,12 @@ c_varedit(void *v)
 
       if (vc.vc_vmap != NULL) {
          if (vc.vc_vmap->vm_flags & VM_BINARY) {
-            fprintf(stderr, _("`varedit': can't edit binary variable \"%s\"\n"),
+            n_err(_("`varedit': can't edit binary variable \"%s\"\n"),
                vc.vc_name);
             continue;
          }
          if (vc.vc_vmap->vm_flags & VM_RDONLY) {
-            fprintf(stderr,
-               _("`varedit': can't edit readonly variable \"%s\"\n"),
+            n_err(_("`varedit': can't edit readonly variable \"%s\"\n"),
                vc.vc_name);
             continue;
          }
@@ -1342,12 +1340,12 @@ c_varedit(void *v)
 
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
             NULL) {
-         perror(_("`varedit': cannot create temporary file"));
+         n_perr(_("`varedit': cannot create temporary file"), 0);
          err = 1;
          break;
       } else if (vc.vc_var != NULL && *(val = vc.vc_var->v_value) != '\0' &&
             sizeof *val != fwrite(val, strlen(val), sizeof *val, of)) {
-         perror(_("`varedit' failed to write an old value to temporary file"));
+         n_perr(_("`varedit' failed to write old value to temporary file"), 0);
          Fclose(of);
          err = 1;
          continue;
@@ -1403,7 +1401,7 @@ c_define(void *v)
 
    if (args[1] == NULL || args[1][0] != '{' || args[1][1] != '\0' ||
          args[2] != NULL) {
-      fprintf(stderr, _("Syntax is: define <name> {"));
+      n_err(_("Syntax is: define <name> {"));
       goto jleave;
    }
 
@@ -1421,7 +1419,7 @@ c_undefine(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`undefine': required arguments are missing\n"));
+      n_err(_("`undefine': required arguments are missing\n"));
       goto jleave;
    }
    do
@@ -1459,7 +1457,7 @@ jleave:
    NYD_LEAVE;
    return rv;
 jerr:
-   fprintf(stderr, errs, name);
+   n_err(errs, name);
    goto jleave;
 }
 
@@ -1499,8 +1497,8 @@ check_folder_hook(bool_t nmail)
 
 jmac:
    if ((mp = _ma_look(cp, NULL, MA_NONE)) == NULL) {
-      fprintf(stderr, _("Cannot call *folder-hook* for \"%s\": "
-         "macro \"%s\" does not exist.\n"), displayname, cp);
+      n_err(_("Cannot call *folder-hook* for \"%s\": "
+         "macro \"%s\" does not exist\n"), displayname, cp);
       rv = FAL0;
       goto jleave;
    }
@@ -1537,12 +1535,11 @@ c_account(void *v)
 
    if (args[1] && args[1][0] == '{' && args[1][1] == '\0') {
       if (args[2] != NULL) {
-         fprintf(stderr, _("Syntax is: account <name> {\n"));
+         n_err(_("Syntax is: account <name> {\n"));
          goto jleave;
       }
       if (!asccasecmp(args[0], ACCOUNT_NULL)) {
-         fprintf(stderr, _("Error: \"%s\" is a reserved name.\n"),
-            ACCOUNT_NULL);
+         n_err(_("Error: \"%s\" is a reserved name\n"), ACCOUNT_NULL);
          goto jleave;
       }
       rv = !_ma_define(args[0], MA_ACC);
@@ -1550,7 +1547,7 @@ c_account(void *v)
    }
 
    if (pstate & PS_HOOK_MASK) {
-      fprintf(stderr, _("Cannot change account from within a hook.\n"));
+      n_err(_("Cannot change account from within a hook\n"));
       goto jleave;
    }
 
@@ -1559,7 +1556,7 @@ c_account(void *v)
    mp = NULL;
    if (asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
          (mp = _ma_look(args[0], NULL, MA_ACC)) == NULL) {
-      fprintf(stderr, _("Account \"%s\" does not exist.\n"), args[0]);
+      n_err(_("Account \"%s\" does not exist\n"), args[0]);
       goto jleave;
    }
 
@@ -1580,7 +1577,7 @@ c_account(void *v)
 
    if (mp != NULL && _ma_exec(mp, &mp->ma_localopts) == CBAD) {
       /* XXX account switch incomplete, unroll? */
-      fprintf(stderr, _("Switching to account \"%s\" failed.\n"), args[0]);
+      n_err(_("Switching to account \"%s\" failed\n"), args[0]);
       goto jleave;
    }
 
@@ -1609,7 +1606,7 @@ c_unaccount(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      fprintf(stderr, _("`unaccount': required arguments are missing\n"));
+      n_err(_("`unaccount': required arguments are missing\n"));
       goto jleave;
    }
    do
@@ -1629,8 +1626,8 @@ c_localopts(void *v)
    NYD_ENTER;
 
    if (_localopts == NULL) {
-      fprintf(stderr,
-         _("Cannot use `localopts' but from within a `define' or `account'\n"));
+      n_err(_("Cannot use `localopts' but from within a "
+         "`define' or `account'\n"));
       goto jleave;
    }
 

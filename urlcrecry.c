@@ -124,15 +124,14 @@ _nrc_init(void)
       goto j_leave;
 
    if ((fi = Fopen(netrc_load, "r")) == NULL) {
-      fprintf(stderr, _("Cannot open \"%s\"\n"), netrc_load);
+      n_err(_("Cannot open \"%s\"\n"), netrc_load);
       goto j_leave;
    }
 
    /* Be simple and apply rigid (permission) check(s) */
    if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
          (sb.st_mode & (S_IRWXG | S_IRWXO))) {
-      fprintf(stderr,
-         _("Not a regular file, or accessible by non-user: \"%s\"\n"),
+      n_err(_("Not a regular file, or accessible by non-user: \"%s\"\n"),
          netrc_load);
       goto jleave;
    }
@@ -225,8 +224,7 @@ jm_h:
    case NRC_ERROR:
 jerr:
       if (options & OPT_D_V)
-         fprintf(stderr, _("Errors occurred while parsing \"%s\"\n"),
-            netrc_load);
+         n_err(_("Errors occurred while parsing \"%s\"\n"), netrc_load);
       assert(nrc == NRC_NODE_ERR);
       goto jleave;
    }
@@ -497,8 +495,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
    if ((u.cp = ok_vlook(SHELL)) == NULL)
       u.cp = XSHELL;
    if ((pbuf = Popen(comm, "r", u.cp, env_addon, -1)) == NULL) {
-      fprintf(stderr, _("*agent-shell-lookup* startup failed (`%s')\n"),
-         comm);
+      n_err(_("*agent-shell-lookup* startup failed (`%s')\n"), comm);
       goto jleave;
    }
 
@@ -516,8 +513,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
 
    if (!Pclose(pbuf, TRU1)) {
       if (options & OPT_D_V)
-         fprintf(stderr, _("*agent-shell-lookup* execution failure (`%s')\n"),
-            comm);
+         n_err(_("*agent-shell-lookup* execution failure (`%s')\n"), comm);
       goto jleave;
    }
 
@@ -702,8 +698,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if !defined __ALLPROTO || !defined HAVE_SSL
 jeproto:
 #endif
-      fprintf(stderr, _("URL \"proto://\" prefix invalid: \"%s\"\n"),
-         urlp->url_input);
+      n_err(_("URL \"proto://\" prefix invalid: \"%s\"\n"), urlp->url_input);
       goto jleave;
    }
 #ifdef __ANYPROTO
@@ -728,8 +723,8 @@ juser:
          urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
 
          if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
-            fprintf(stderr,
-               _("String is not properly URL percent encoded: \"%s\"\n"), ub);
+            n_err(_("String is not properly URL percent encoded: \"%s\"\n"),
+               ub);
             goto jleave;
          }
          l = i;
@@ -742,8 +737,7 @@ juser:
             urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
 
       if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
-         fprintf(stderr,
-            _("String is not properly URL percent encoded: \"%s\"\n"), ub);
+         n_err(_("String is not properly URL percent encoded: \"%s\"\n"), ub);
          goto jleave;
       }
 
@@ -760,8 +754,7 @@ juser:
          *x = '\0';
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
-         fprintf(stderr, _("URL with invalid port number: \"%s\"\n"),
-            urlp->url_input);
+         n_err(_("URL with invalid port number: \"%s\"\n"), urlp->url_input);
          goto jleave;
       }
       urlp->url_portno = (ui16_t)l;
@@ -774,7 +767,7 @@ juser:
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && x[1] != '\0') {
       if (cproto != CPROTO_IMAP) {
-         fprintf(stderr, _("URL protocol doesn't support paths: \"%s\"\n"),
+         n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
             urlp->url_input);
          goto jleave;
       }
@@ -810,11 +803,11 @@ juser:
       if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
             == NULL) {
          /* No, check wether .netrc lookup is desired */
-#ifdef HAVE_NETRC
+# ifdef HAVE_NETRC
          if (!ok_blook(v15_compat) ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !_nrc_lookup(urlp, FAL0))
-#endif
+# endif
             urlp->url_user.s = UNCONST(myname);
       }
 
@@ -1002,21 +995,20 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
-      fprintf(stderr, _("Unsupported %s authentication method: %s\n"),
-         pname, s);
+      n_err(_("Unsupported %s authentication method: %s\n"), pname, s);
       ccp = NULL;
       goto jleave;
    }
 # ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
-      fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
+      n_err(_("No CRAM-MD5 support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
 # endif
 # ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
-      fprintf(stderr, _("No GSS-API support compiled in.\n"));
+      n_err(_("No GSS-API support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
@@ -1045,8 +1037,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
              * TODO check that first, then! change control flow, grow vbuf */
-            fprintf(stderr, _("A user is necessary for %s authentication.\n"),
-               pname);
+            n_err(_("A user is necessary for %s authentication\n"), pname);
             ccp = NULL;
             goto jleave;
          }
@@ -1071,8 +1062,8 @@ jpass:
       if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
             (ware & REQ_PASS)) {
          if ((s = getpassword(NULL)) == NULL) {
-            fprintf(stderr,
-               _("A password is necessary for %s authentication.\n"), pname);
+            n_err(_("A password is necessary for %s authentication\n"),
+               pname);
             ccp = NULL;
             goto jleave;
          }
@@ -1084,7 +1075,7 @@ jpass:
 jleave:
    ac_free(vbuf);
    if (ccp != NULL && (options & OPT_D_VV))
-      fprintf(stderr, _("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
+      n_err(_("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
@@ -1156,20 +1147,20 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    /* Verify method */
    if (!(ccp->cc_authtype & authmask)) {
-      fprintf(stderr, _("Unsupported %s authentication method: %s\n"), pstr, s);
+      n_err(_("Unsupported %s authentication method: %s\n"), pstr, s);
       ccp = NULL;
       goto jleave;
    }
 # ifndef HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
-      fprintf(stderr, _("No CRAM-MD5 support compiled in.\n"));
+      n_err(_("No CRAM-MD5 support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
 # endif
 # ifndef HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
-      fprintf(stderr, _("No GSS-API support compiled in.\n"));
+      n_err(_("No GSS-API support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
@@ -1203,15 +1194,14 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 js2pass:
          ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
       else {
-         fprintf(stderr, _("A password is necessary for %s authentication.\n"),
-            pstr);
+         n_err(_("A password is necessary for %s authentication\n"), pstr);
          ccp = NULL;
       }
    }
 
 jleave:
    if (ccp != NULL && (options & OPT_D_VV))
-      fprintf(stderr, _("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
+      n_err(_("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
@@ -1236,8 +1226,7 @@ c_netrc(void *v)
    if (!asccasecmp(*argv, "clear"))
       goto jclear;
 jerr:
-   fprintf(stderr, "Synopsis: netrc: %s\n",
-      _("Either <show> (default) or <clear> the .netrc cache"));
+   n_err(_("Synopsis: netrc: (<show> or) <clear> the .netrc cache\n"));
    v = NULL;
 jleave:
    NYD_LEAVE;
@@ -1250,14 +1239,14 @@ jlist:   {
    if (_nrc_list == NULL)
       _nrc_init();
    if (_nrc_list == NRC_NODE_ERR) {
-      fprintf(stderr, _("Interpolate what file?\n"));
+      n_err(_("Interpolate what file?\n"));
       v = NULL;
       goto jleave;
    }
 
    if ((fp = Ftmp(NULL, "netrc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
          ) == NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }

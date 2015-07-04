@@ -169,6 +169,7 @@
 
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
+#define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
@@ -987,12 +988,12 @@ enum user_options {
 #define OBSOLETE(X) \
 do {\
    if (options & OPT_D_V)\
-      fprintf(stderr, "%s: %s\n", _("Obsoletion warning"), X);\
+      n_err("%s: %s\n", _("Obsoletion warning"), X);\
 } while (0)
 #define OBSOLETE2(X,Y) \
 do {\
    if (options & OPT_D_V)\
-      fprintf(stderr, "%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+      n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 } while (0)
 
 enum program_state {
@@ -1015,7 +1016,10 @@ enum program_state {
 
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT
+   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+
+   /* Various first-time-init switches */
+   PS_ERRORS_NOTED   = 1<<24        /* Ring of `errors' content, print msg */
 };
 
 /* A large enum with all the binary and value options a.k.a their keys.

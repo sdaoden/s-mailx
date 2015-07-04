@@ -380,8 +380,7 @@ mime_enc_target(void)
    else if (!asccasecmp(cp, "base64"))
       rv = MIMEE_B64;
    else {
-      fprintf(stderr, _("Warning: invalid *encoding*, using Base64: \"%s\"\n"),
-         cp);
+      n_err(_("Warning: invalid *encoding*, using Base64: \"%s\"\n"), cp);
       rv = MIMEE_B64;
    }
    NYD2_LEAVE;

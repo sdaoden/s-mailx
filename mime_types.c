@@ -159,8 +159,7 @@ _mt_init(void)
                if (PTR2SIZE(srcs - srcs_arr) < NELEM(srcs_arr))
                   *srcs++ = ccp;
                else
-                  fprintf(stderr,
-                     _("*mimetypes-load-control*: too many sources, "
+                  n_err(_("*mimetypes-load-control*: too many sources, "
                         "skipping \"%s\"\n"), ccp);
                continue;
             }
@@ -175,8 +174,8 @@ _mt_init(void)
       case 'U': case 'u': srcs_arr[0] = MIME_TYPES_USR; break;
       default:
 jecontent:
-         fprintf(stderr,
-            _("*mimetypes-load-control*: unsupported content: \"%s\"\n"), ccp);
+         n_err(_("*mimetypes-load-control*: unsupported content: \"%s\"\n"),
+            ccp);
          goto jleave;
       }
 
@@ -190,8 +189,7 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR : (j == 1 ? _MT_SYS : 0)),
             *srcs, &line, &linesize)) {
          if ((options & OPT_D_V) || j > 1)
-            fprintf(stderr,
-               _("*mimetypes-load-control*: can't open or load \"%s\"\n"),
+            n_err(_("*mimetypes-load-control*: can't open or load \"%s\"\n"),
                *srcs);
       }
    if (line != NULL)
@@ -287,7 +285,7 @@ jexttypmar:
     * because this is quite common in mime.types(5) files */
    if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
       if (cmdcalled)
-         fprintf(stderr, _("Empty MIME type or no extensions given: \"%s\"\n"),
+         n_err(_("Empty MIME type or no extensions given: \"%s\"\n"),
             (len == 0 ? _("(no value)") : line));
       goto jleave;
    }
@@ -295,7 +293,7 @@ jexttypmar:
    if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
 jeinval:
       if (cmdcalled || (options & OPT_D_V))
-         fprintf(stderr, _("%s MIME type: \"%s\"\n"),
+         n_err(_("%s MIME type: \"%s\"\n"),
             (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")), typ);
       goto jleave;
    }
@@ -476,7 +474,7 @@ c_mimetype(void *v)
 
       if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
             == NULL) {
-         perror("tmpfile");
+         n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;
       }
@@ -579,7 +577,7 @@ jdelall:
       }
       if (!match) {
          if (!(pstate & PS_IN_LOAD) || (options & OPT_D_V))
-            fprintf(stderr, _("No such MIME type: \"%s\"\n"), *argv);
+            n_err(_("No such MIME type: \"%s\"\n"), *argv);
          v = NULL;
       }
    }

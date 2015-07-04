@@ -190,8 +190,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
          } else {
             if ((_oind += 2) > argc) {
                if (!colon /*&& _oerr*/) {
-                  fprintf(stderr,
-                     _("%s: option requires an argument -- %c\n"),
+                  n_err(_("%s: option requires an argument -- %c\n"),
                      argv[0], (char)_oopt);
                }
                rv = (colon ? ':' : '?');
@@ -218,7 +217,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
 
    /* Definitive error */
    if (!colon /*&& opterr*/)
-      fprintf(stderr, _("%s: invalid option -- %c\n"), argv[0], _oopt);
+      n_err(_("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else
@@ -243,7 +242,7 @@ _startup(void)
    effectivegid = getegid();
    realgid = getgid();
    if (setgid(realgid) == -1) {
-      perror("setgid");
+      n_perr(_("setgid"), 0);
       exit(1);
    }
 
@@ -396,11 +395,11 @@ _setup_vars(void)
    cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
-      panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
+      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
-      alert(_("\"%s\" is not a user of this system"), cp);
+      n_alert(_("\"%s\" is not a user of this system"), cp);
       exit(67); /* XXX BSD EX_NOUSER */
    } else {
       myname = pw->pw_name;
@@ -585,7 +584,7 @@ _hdrstop(int signo)
    UNUSED(signo);
 
    fflush(stdout);
-   fprintf(stderr, _("\nInterrupt\n"));
+   n_err_sighdl(_("\nInterrupt\n"));
    siglongjmp(__hdrjmp, 1);
 }
 
@@ -732,7 +731,7 @@ main(int argc, char *argv[])
          options |= OPT_HEADERSONLY;
          break;
       case 'h':
-         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+         n_err(V_(usagestr) _USAGE_ARGS);
          goto jleave;
       case 'i':
          /* Ignore interrupts */
@@ -873,11 +872,9 @@ joarg:
          goto jgetopt_done;
       case '?':
 jusage:
-         if (emsg != NULL) {
-            fputs(V_(emsg), stderr);
-            putc('\n', stderr);
-         }
-         fprintf(stderr, V_(usagestr) _USAGE_ARGS);
+         if (emsg != NULL)
+            n_err("%s\n", V_(emsg));
+         n_err(V_(usagestr) _USAGE_ARGS);
 #undef _USAGE_ARGS
          exit_status = EXIT_USE;
          goto jleave;
@@ -1029,8 +1026,8 @@ jgetopt_done:
       if ((cp = argv[i = _oind]) != NULL) {
          if (isfail ||
                (isrestrict && !(options & (OPT_INTERACTIVE |OPT_TILDE_FLAG)))) {
-            fprintf(stderr,
-               _("*expandargv* doesn't allow additional MTA argument\n"));
+            n_err(_("*expandargv* doesn't allow MTA arguments; consider "
+               "using *sendmail-arguments*\n"));
             exit_status = EXIT_USE | EXIT_SEND_ERROR;
             goto jleave;
          }
@@ -1048,7 +1045,7 @@ jgetopt_done:
    pstate |= PS_STARTED;
 
    if (options & OPT_DEBUG)
-      fprintf(stderr, _("user = %s, homedir = %s\n"), myname, homedir);
+      n_err(_("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg, X_head);
@@ -1067,7 +1064,7 @@ jgetopt_done:
             a_curr = a_head;
             a_head = a_head->aa_next;
          } else {
-            perror(a_head->aa_file);
+            n_perr(a_head->aa_file, 0);
             exit_status = EXIT_ERR;
             goto jleave;
          }

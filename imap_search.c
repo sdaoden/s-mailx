@@ -133,7 +133,7 @@ static enum okay     itsplit(char const *spec, char const **xp);
 static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
                         size_t c, struct itnode *n);
-static time_t        _read_imap_date(char const *cp);
+static time_t        _imap_read_date(char const *cp);
 static bool_t        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
@@ -167,7 +167,7 @@ itparse(char const *spec, char const **xp, int sub)
                --(*xp);
                goto jleave;
             }
-            fprintf(stderr, "Excess in \")\".\n");
+            n_err(_("Excess in \")\"\n"));
             rv = STOP;
             goto jleave;
          }
@@ -179,8 +179,7 @@ itparse(char const *spec, char const **xp, int sub)
             goto jleave;
          spec = *xp;
          if ((n.n_x = _it_tree) == NULL) {
-            fprintf(stderr, "Criterion for NOT missing: >>> %s <<<\n",
-               around(*xp));
+            n_err(_("Criterion for NOT missing: >>> %s <<<\n"), around(*xp));
             rv = STOP;
             goto jleave;
          }
@@ -192,7 +191,7 @@ itparse(char const *spec, char const **xp, int sub)
          if ((rv = itparse(spec, xp, sub + 1)) == STOP)
             goto jleave;
          if ((n.n_x = _it_tree) == NULL) {
-            fprintf(stderr, "First criterion for OR missing: >>> %s <<<\n",
+            n_err(_("First criterion for OR missing: >>> %s <<<\n"),
                around(*xp));
             rv = STOP;
             goto jleave;
@@ -202,7 +201,7 @@ itparse(char const *spec, char const **xp, int sub)
             goto jleave;
          spec = *xp;
          if ((n.n_y = _it_tree) == NULL) {
-            fprintf(stderr, "Second criterion for OR missing: >>> %s <<<\n",
+            n_err(_("Second criterion for OR missing: >>> %s <<<\n"),
                around(*xp));
             rv = STOP;
             goto jleave;
@@ -280,14 +279,13 @@ itscan(char const *spec, char const **xp)
          goto jleave;
       }
    }
-   fprintf(stderr, "Bad SEARCH criterion \"");
-   while (__GO(*spec)) {
-      putc(*spec & 0377, stderr);
-      ++spec;
-   }
+
+   n_err(_("Bad SEARCH criterion \""));
+   for (i = 0; __GO(spec[i]); ++i)
+      ;
+   n_err(_("%.*s \": >>> %s <<<\n"), i, spec, around(*xp));
 #undef __GO
 
-   fprintf(stderr, "\": >>> %s <<<\n", around(*xp));
    _it_token = ITBAD;
    rv = STOP;
 jleave:
@@ -326,8 +324,8 @@ itsplit(char const *spec, char const **xp)
       /* <date> */
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
-      if ((t = _read_imap_date(_it_args[0])) == (time_t)-1) {
-         fprintf(stderr, "Invalid date \"%s\": >>> %s <<<\n",
+      if ((t = _imap_read_date(_it_args[0])) == (time_t)-1) {
+         n_err(_("Invalid date \"%s\": >>> %s <<<\n"),
             (char*)_it_args[0], around(*xp));
          rv = STOP;
          break;
@@ -372,13 +370,13 @@ itsplit(char const *spec, char const **xp)
       _it_number = strtoul(_it_args[0], &cp, 10);
       if (spacechar(*cp) || *cp == '\0')
          break;
-      fprintf(stderr, "Invalid size: >>> %s <<<\n", around(*xp));
+      n_err(_("Invalid size: >>> %s <<<\n"), around(*xp));
       rv = STOP;
       break;
    case ITUID:
       /* <message set> */
-      fprintf(stderr,
-         "Searching for UIDs is not supported: >>> %s <<<\n", around(*xp));
+      n_err(_("Searching for UIDs is not supported: >>> %s <<<\n"),
+         around(*xp));
       rv = STOP;
       break;
    default:
@@ -401,7 +399,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    while (spacechar(*spec))
       ++spec;
    if (*spec == '\0' || *spec == '(' || *spec == ')') {
-      fprintf(stderr, "Missing string argument: >>> %s <<<\n",
+      n_err(_("Missing string argument: >>> %s <<<\n"),
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
@@ -437,7 +435,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
    NYD_ENTER;
 
    if (n == NULL) {
-      fprintf(stderr, "Internal error: Empty node in SEARCH tree.\n");
+      n_err(_("Internal error: Empty node in SEARCH tree\n"));
       rv = 0;
       goto jleave;
    }
@@ -466,7 +464,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
 
    switch (n->n_token) {
    default:
-      fprintf(stderr, "Internal SEARCH error: Lost token %d\n", n->n_token);
+      n_err(_("Internal SEARCH error: Lost token %d\n"), n->n_token);
       rv = 0;
       break;
    case ITAND:
@@ -590,7 +588,7 @@ jleave:
 }
 
 static time_t
-_read_imap_date(char const *cp)
+_imap_read_date(char const *cp)
 {
    time_t t = (time_t)-1;
    int year, month, day, i, tzdiff;
@@ -787,7 +785,7 @@ imap_search(char const *spec, int f)
       i = strlen(spec);
       lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {
-      fprintf(stderr, _("No last SEARCH criteria available.\n"));
+      n_err(_("No last SEARCH criteria available\n"));
       goto jleave;
    }
    spec =

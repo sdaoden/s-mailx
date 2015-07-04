@@ -137,8 +137,8 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
 
    if (mnbuf != NULL) {
       if (strncmp(mnbuf, mailname, mnlen))
-         fputs(_("Mailbox changed: it seems existing rfc822 attachments "
-            "became invalid!\n"), stderr);
+         n_err(_("Mailbox changed: it is likely that existing "
+            "rfc822 attachments became invalid!\n"));
       ac_free(mnbuf);
    }
    NYD_LEAVE;
@@ -156,7 +156,7 @@ _include_file(char const *name, int *linecount, int *charcount,
    NYD_ENTER;
 
    if ((fbuf = Fopen(name, "r")) == NULL) {
-      perror(name);
+      n_perr(name, 0);
       goto jleave;
    }
 
@@ -223,7 +223,7 @@ insertcommand(FILE *fp, char const *cmd)
          putc(c, fp);
       Pclose(ibuf, TRU1);
    } else
-      perror(cmd);
+      n_perr(cmd, 0);
    NYD_LEAVE;
 }
 
@@ -278,7 +278,7 @@ jpager:
             goto jendpipe;
          obuf = Popen(cp, "w", NULL, NULL, 1);
          if (obuf == NULL) {
-            perror(cp);
+            n_perr(cp, 0);
             obuf = stdout;
          } else
             safe_signal(SIGPIPE, &_collect_onpipe);
@@ -338,7 +338,7 @@ exwrite(char const *name, FILE *fp, int f)
       fflush(stdout);
    }
    if ((of = Fopen(name, "a")) == NULL) {
-      perror(NULL);
+      n_perr(NULL, 0);
       goto jleave;
    }
 
@@ -350,7 +350,7 @@ exwrite(char const *name, FILE *fp, int f)
          ++lc;
       putc(c, of);
       if (ferror(of)) {
-         perror(name);
+         n_perr(name, 0);
          Fclose(of);
          goto jleave;
       }
@@ -374,7 +374,7 @@ makeheader(FILE *fp, struct header *hp)
 
    if ((nf = Ftmp(NULL, "colhead", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(_("temporary mail edit file"));
+      n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
 
@@ -434,7 +434,7 @@ mespipe(char *cmd)
 
    if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror(_("temporary mail edit file"));
+      n_perr(_("temporary mail edit file"), 0);
       goto jout;
    }
 
@@ -448,7 +448,7 @@ mespipe(char *cmd)
    }
 
    if (fsize(nf) == 0) {
-      fprintf(stderr, _("No bytes from \"%s\" !?\n"), cmd);
+      n_err(_("No bytes from \"%s\" !?\n"), cmd);
       Fclose(nf);
       goto jout;
    }
@@ -477,7 +477,7 @@ forward(char *ms, FILE *fp, int f)
    if (*msgvec == 0) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         fputs(_("No appropriate messages\n"), stderr);
+         n_err(_("No appropriate messages\n"));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -501,7 +501,7 @@ forward(char *ms, FILE *fp, int f)
       printf(" %d", *msgvec);
       fflush(stdout);
       if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
-         perror(_("temporary mail file"));
+         n_perr(_("temporary mail file"), 0);
          rv = -1;
          break;
       }
@@ -647,7 +647,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    ++noreset;
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER,
          0600)) == NULL) {
-      perror(_("temporary mail file"));
+      n_perr(_("temporary mail file"), 0);
       goto jerr;
    }
 
@@ -749,7 +749,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       /* Come here for printing the after-signal message.  Duplicate messages
        * won't be printed because the write is aborted if we get a SIGTTOU */
       if (_coll_hadintr) {
-         fprintf(stderr, _("\n(Interrupt -- one more to kill letter)\n"));
+         n_err(_("\n(Interrupt -- one more to kill letter)\n"));
       } else {
 jcont:
          printf(_("(continue)\n"));
@@ -827,7 +827,7 @@ jcont:
             else
                break;
          }
-         fputs(_("Unknown tilde escape.\n"), stderr);
+         n_err(_("Unknown tilde escape: ~%c\n"), asciichar(c) ? c : '?');
          break;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
@@ -914,7 +914,7 @@ jcont:
          while (whitechar(*cp))
             ++cp;
          if (*cp == '\0') {
-            fputs(_("Interpolate what file?\n"), stderr);
+            n_err(_("Interpolate what file?\n"));
             break;
          }
          if (*cp == '!') {
@@ -924,7 +924,7 @@ jcont:
          if ((cp = file_expand(cp)) == NULL)
             break;
          if (is_dir(cp)) {
-            fprintf(stderr, _("%s: Directory\n"), cp);
+            n_err(_("\"%s\": Directory\n"), cp);
             break;
          }
          printf(_("\"%s\" "), cp);
@@ -962,7 +962,7 @@ jcont:
          while (blankchar(*cp))
             ++cp;
          if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
-            fputs(_("Write what file!?\n"), stderr);
+            n_err(_("Write what file!?\n"));
             break;
          }
          rewind(_coll_fp);

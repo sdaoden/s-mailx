@@ -91,12 +91,12 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
    do {
       if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
          if (len >= 0 && !ign_eof)
-            fprintf(stderr, _("Unexpected EOF on SMTP connection\n"));
+            n_err(_("Unexpected EOF on SMTP connection\n"));
          rv = -1;
          goto jleave;
       }
       if (options & OPT_VERBVERB)
-         fputs(slp->buf, stderr);
+         n_err(slp->buf);
       switch (slp->buf[0]) {
       case '1':   rv = 1; break;
       case '2':   rv = 2; break;
@@ -105,7 +105,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       default:    rv = 5; break;
       }
       if (val != rv)
-         fprintf(stderr, _("smtp-server: %s"), slp->buf);
+         n_err(_("smtp-server: %s"), slp->buf);
    } while (slp->buf[3] == '-');
 
    if (want_dat) {
@@ -134,7 +134,7 @@ do if (!(options & OPT_DEBUG)) {\
 #define _OUT(X) \
 do {\
    if (options & OPT_VERBVERB)\
-      fprintf(stderr, ">>> %s", X);\
+      n_err(">>> %s", X);\
    if (!(options & OPT_DEBUG))\
       swrite(sp, X);\
 } while (0)
@@ -171,7 +171,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    }
 #else
    if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
-      fprintf(stderr, _("No SSL support compiled in.\n"));
+      n_err(_("No SSL support compiled in\n"));
       goto jleave;
    }
 #endif
@@ -229,7 +229,9 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (!_smtp_gssapi(sp, sbp, slp))
+      if (options & OPT_DEBUG)
+         n_err(">>> %s", _(">>>Would perform GSS-API authentication now\n"));
+      else if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
       break;
 #endif
@@ -269,16 +271,12 @@ jsend:
             inbcc = FAL0;
       }
 
-      if (*slp->buf == '.') {
-         if (options & OPT_DEBUG)
-            putc('.', stderr);
-         else
-            swrite1(sp, ".", 1, 1);
-      }
       if (options & OPT_DEBUG) {
-         fprintf(stderr, ">>> %s", slp->buf);
+         n_err(">>> %s%s", (*slp->buf == '.' ? "." : ""), slp->buf);
          continue;
       }
+      if (*slp->buf == '.')
+         swrite1(sp, ".", 1, 1); /* TODO I/O rewrite.. */
       slp->buf[blen - 1] = NETNL[0];
       slp->buf[blen] = NETNL[1];
       swrite1(sp, slp->buf, blen + 1, 1);

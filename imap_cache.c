@@ -469,7 +469,7 @@ clean(struct mailbox *mp, struct cw *cw)
    fp = Fopen("UIDVALIDITY", "w");
 jout:
    if (cwret(cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
 jleave:
@@ -538,7 +538,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
       free(contents);
    }
    if (cwret(cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
 jleave:
@@ -611,7 +611,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    msgCount = contentelem;
    message = scalloc(msgCount + 1, sizeof *message);
    if (cwret(&cw) == STOP) {
-      fputs("Fatal: Cannot change back to current directory.\n", stderr);
+      n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
    }
    cwrelse(&cw);
@@ -711,7 +711,7 @@ cache_remove(const char *name)
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
       if (unlink(path) < 0) {
-         perror(path);
+         n_perr(path, 0);
          closedir(dirp);
          free(path);
          rv = STOP;
@@ -738,7 +738,7 @@ cache_rename(const char *old, const char *new)
          (newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
       goto jleave;
    if (rename(olddir, newdir) < 0) {
-      perror(olddir);
+      n_perr(olddir, 0);
       rv = STOP;
    }
 jleave:
@@ -795,7 +795,7 @@ cache_queue(struct mailbox *mp)
 
    fp = cache_queue1(mp, "a", NULL);
    if (fp == NULL)
-      fputs("Cannot queue IMAP command. Retry when online.\n", stderr);
+      n_err(_("Cannot queue IMAP command. Retry when online.\n"));
    NYD_LEAVE;
    return fp;
 }
@@ -852,18 +852,17 @@ dequeue1(struct mailbox *mp)
    if (fp != NULL && fsize(fp) > 0) {
       if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
             != OKAY) {
-         fprintf(stderr, "Cannot select \"%s\" for dequeuing.\n",
-            mp->mb_imap_mailbox);
+         n_err(_("Cannot select \"%s\" for dequeuing.\n"), mp->mb_imap_mailbox);
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
             (fcntl_lock(fileno(uvfp), FLOCK_READ, 0), 0) ||
             fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
-         fprintf(stderr, "Unique identifiers for \"%s\" are out of date. "
-            "Cannot commit IMAP commands.\n", mp->mb_imap_mailbox);
+         n_err(_("Unique identifiers for \"%s\" are out of date. "
+            "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
 jsave:
-         fputs("Saving IMAP commands to dead.letter\n", stderr);
+         n_err(_("Saving IMAP commands to *DEAD*\n"));
          savedeadletter(fp, 0);
          ftruncate(fileno(fp), 0);
          Fclose(fp);

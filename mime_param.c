@@ -348,8 +348,7 @@ jeeqaaster:
        * TODO (for a message) a summary can be printed: faulty MIME, xy */
       if (emsg == NULL)
          emsg = N_("multiple causes");
-      fprintf(stderr, _("Message had MIME errors: %s\n"),
-         V_(emsg));
+      n_err(_("Message had MIME errors: %s\n"), V_(emsg));
    }
 jleave:
    NYD2_LEAVE;
@@ -363,9 +362,8 @@ jerr:
    if (options & OPT_D_V) {
       if (emsg == NULL)
          emsg = N_("expected asterisk \"*\"");
-      fprintf(stderr,
-         _("Faulty \"%s\" RFC 2231 MIME parameter value: %s\n   Near: %s\n"),
-         param, V_(emsg), hbp_base);
+      n_err(_("Faulty \"%s\" RFC 2231 MIME parameter value: %s\n"
+         "Near: %s\n"), param, V_(emsg), hbp_base);
    }
    rv = NULL;
    goto jleave;
@@ -558,7 +556,7 @@ jneed_enc:
       bp_xmax -= self->mpb_charset_len;
    }
    if (PTRCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
-      DBG( alert("_mime_param_create(): Hunky Dory!"); )
+      DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
       bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
    }
    assert(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
@@ -659,7 +657,7 @@ jleave:
 jrecurse:
    if (self->mpb_level == 999) {
       if (options & OPT_D_VV)
-         fprintf(stderr, _("Message RFC 2231 parameters nested too deeply!\n"));
+         n_err(_("Message RFC 2231 parameters nested too deeply!\n"));
       goto jleave;
    }
 

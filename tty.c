@@ -113,8 +113,8 @@ do {\
    if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
 jerr:\
-   fprintf(stderr, "Synopsis: history: %s\n",\
-      _("<show> (default), <clear> or select <NO> from editor history"));\
+   n_err(_("Synopsis: history: %s\n" \
+      "<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
    NYD_LEAVE;\
@@ -433,7 +433,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
@@ -654,7 +654,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
@@ -2009,7 +2009,7 @@ jlist: {
 
    if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
          NULL) {
-      perror("tmpfile");
+      n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
