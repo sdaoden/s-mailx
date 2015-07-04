@@ -467,7 +467,6 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    static int shudclob;
 
    struct stat stb;
-   struct flock flp;
    size_t offset;
    char const *who;
    int rv, omsgCount = 0;
@@ -582,9 +581,6 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
 
    /* Copy the messages into /tmp and set pointers */
-   flp.l_type = F_RDLCK;
-   flp.l_start = 0;
-   flp.l_whence = SEEK_SET;
    if (!(fm & FEDIT_NEWMAIL)) {
       mb.mb_type = MB_FILE;
       mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
@@ -606,8 +602,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          pstate |= PS_EDIT;
       initbox(name);
       offset = 0;
-      flp.l_len = 0;
-      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!(pstate & PS_EDIT) && !file_lock(fileno(ibuf), FLT_READ, 0,0, 0)) {
          /*TODO dotlock!*/
          n_perr(_("Unable to lock mailbox"), 0);
          rele_sigs();
@@ -618,8 +613,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
       omsgCount = msgCount;
-      flp.l_len = offset;
-      if (!(pstate & PS_EDIT) && fcntl(fileno(ibuf), F_SETLKW, &flp) == -1) {
+      if (!(pstate & PS_EDIT) &&
+            !file_lock(fileno(ibuf), FLT_READ, 0,offset, 0)) {
          /*TODO dotlock!*/
          rele_sigs();
          goto jnonmail;

@@ -860,11 +860,12 @@ FL enum okay   get_body(struct message *mp);
 /* File locking */
 
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      file_lock(int fd, enum file_lock_type flt, size_t pollmsecs);
+FL bool_t      file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
+                  size_t pollmsecs);
 
 /* Aquire a FLT_WRITE lock and create a dotlock file; upon success
  * dot_unlock() must be called for cleanup of the dotlock file.
- * Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
+ * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise) */
 FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
 FL void        dot_unlock(char const *fname);
 

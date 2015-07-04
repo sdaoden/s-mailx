@@ -115,7 +115,8 @@ static void       makemessage(void);
 static enum okay  get_header(struct message *mp);
 
 /*  */
-static bool_t     _file_lock(int fd, enum file_lock_type ft);
+static bool_t     _file_lock(int fd, enum file_lock_type ft,
+                     off_t off, off_t len);
 static void       _file_lock_msg(char const *fname);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
@@ -497,7 +498,7 @@ get_header(struct message *mp)
 }
 
 static bool_t
-_file_lock(int fd, enum file_lock_type flt)
+_file_lock(int fd, enum file_lock_type flt, off_t off, off_t len)
 {
    struct flock flp;
    bool_t rv;
@@ -512,9 +513,9 @@ _file_lock(int fd, enum file_lock_type flt)
 
    /* (For now we restart, but in the future we may not */
    flp.l_type = rv;
-   flp.l_start = 0;
+   flp.l_start = off;
    flp.l_whence = SEEK_SET;
-   flp.l_len = 0;
+   flp.l_len = len;
    while (!(rv = (fcntl(fd, F_SETLKW, &flp) != -1)) && errno == EINTR)
       ;
    NYD2_LEAVE;
@@ -1301,14 +1302,15 @@ get_body(struct message *mp)
 }
 
 FL bool_t
-file_lock(int fd, enum file_lock_type flt, size_t pollmsecs)
+file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
+   size_t pollmsecs)
 {
-   size_t retries;
+   size_t tries;
    bool_t rv;
    NYD_ENTER;
 
-   for (rv = FAL0, retries = 0; retries < FILE_LOCK_RETRIES; ++retries)
-      if ((rv = _file_lock(fd, flt)) || pollmsecs == 0)
+   for (tries = 0; tries <= FILE_LOCK_TRIES; ++tries)
+      if ((rv = _file_lock(fd, flt, off, len)) || pollmsecs == 0)
          break;
       else
          sleep(1); /* TODO pollmsecs -> use finer grain */
@@ -1322,7 +1324,7 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
    char path[PATH_MAX];
    sigset_t nset, oset;
    int olderrno;
-   size_t retries = 0;
+   size_t tries = 0;
    bool_t didmsg = FAL0, rv = FAL0;
    NYD_ENTER;
 
@@ -1332,12 +1334,12 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
       didmsg = TRU1;
    }
 
-   while (!_file_lock(fd, FLT_WRITE))
+   while (!_file_lock(fd, FLT_WRITE, 0, 0))
       switch (errno) {
       case EACCES:
       case EAGAIN:
       case ENOLCK:
-         if (pollmsecs > 0 && ++retries < FILE_LOCK_RETRIES) {
+         if (pollmsecs > 0 && ++tries < FILE_LOCK_TRIES) {
             if (!didmsg)
                _file_lock_msg(fname);
             putchar('.');
@@ -1374,7 +1376,7 @@ dot_lock(char const *fname, int fd, size_t pollmsecs)
 
    snprintf(path, sizeof(path), "%s.lock", fname);
 
-   while (retries++ < FILE_LOCK_RETRIES) {
+   for (tries = 0; ++tries <= FILE_LOCK_TRIES;) {
       sigprocmask(SIG_BLOCK, &nset, &oset);
       rv = (_dotlock_create_excl(path) == 0);
       olderrno = errno;

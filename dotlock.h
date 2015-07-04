@@ -66,7 +66,7 @@ _dotlock_create_excl(char const *fname) /* TODO revisit! */
        (int)PTR2SIZE(ptr - fname), fname, hostname, (pid ^ (int)t));
 
    /* We try to create the unique filename */
-   for (ntries = 0; ntries < DOTLOCK_RETRIES; ++ntries) {
+   for (ntries = 0; ++ntries <= DOTLOCK_TRIES;) {
       fd = open(path,
 #ifdef O_SYNC
                (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_SYNC),

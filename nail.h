@@ -169,8 +169,8 @@
 
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
-#define DOTLOCK_RETRIES 5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_RETRIES 10     /* Maximum retries before file_lock() fails */
+#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
+#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
