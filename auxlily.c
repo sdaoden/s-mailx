@@ -97,6 +97,13 @@ union mem_ptr {
 };
 #endif
 
+#ifdef HAVE_ERRORS
+struct err_node {
+   struct err_node   *en_next;
+   struct str        en_str;
+};
+#endif
+
 #ifndef HAVE_POSIX_RANDOM
 static union rand_state *_rand;
 #endif
@@ -113,6 +120,12 @@ static sigset_t         _hold_nset, _hold_oset;
 #ifdef HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
 static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
+#endif
+
+/* Error ring, for `errors' */
+#ifdef HAVE_ERRORS
+static struct err_node  *_err_head, *_err_tail;
+static size_t           _err_cnt, _err_cnt_noted;
 #endif
 
 #ifdef HAVE_DEBUG
@@ -833,16 +846,42 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
    char *cp;
    char const *ccp_base, *ccp;
    size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
-   bool_t run2;
+   bool_t trigger; /* 1.: `errors' ring note?  2.: first loop tick done */
    NYD_ENTER;
 
+   /* No other place to place this */
+#ifdef HAVE_ERRORS
+   if (options & OPT_INTERACTIVE) {
+      if (!(pstate & PS_ERRORS_NOTED) && _err_head != NULL) {
+         pstate |= PS_ERRORS_NOTED;
+         fprintf(stderr, _("There are new messages in the error message ring "
+               "(denoted by \"#ERR#\")\n"
+            "  The `errors' command manages this message ring\n"));
+      }
+
+      if ((trigger = (_err_cnt_noted != _err_cnt)))
+         _err_cnt_noted = _err_cnt;
+   } else
+      trigger = FAL0;
+#endif
+
    cp = buf;
-   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0')
-      goto jleave;
+   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0') {
+#ifdef HAVE_ERRORS
+      if (trigger)
+         ccp_base = "";
+      else
+#endif
+         goto jleave;
+   }
+#ifdef HAVE_ERRORS
+   if (trigger)
+      ccp_base = savecatsep(_("#ERR#"), '\0', ccp_base);
+#endif
    NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
    dfmaxlen = 0; /* keep CC happy */
-   run2 = FAL0;
+   trigger = FAL0;
 jredo:
    ccp = ccp_base;
    NATCH_CHAR( cclen = cclen_base; )
@@ -865,7 +904,7 @@ jredo:
          }
          break;
       } else if ((l = c) > 1) {
-         if (run2) {
+         if (trigger) {
             memcpy(cp, ccp, l);
             cp += l;
          }
@@ -875,7 +914,7 @@ jredo:
       } else
 #endif
       if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
-            if (run2)
+            if (trigger)
                *cp++ = (char)c;
             --maxlen;
             continue;
@@ -883,7 +922,7 @@ jredo:
       if (c == 0 || c == PROMPT_STOP)
          break;
 
-      if (run2) {
+      if (trigger) {
          char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
          if (a == NULL)
             a = "";
@@ -895,8 +934,8 @@ jredo:
       }
    }
 
-   if (!run2) {
-      run2 = TRU1;
+   if (!trigger) {
+      trigger = TRU1;
       dfmaxlen = maxlen;
       goto jredo;
    }
@@ -1755,18 +1794,87 @@ n_err(char const *format, ...)
    NYD2_ENTER;
 
    va_start(ap, format);
-   vfprintf(stderr, format, ap);
+#ifdef HAVE_ERRORS
+   if (options & OPT_INTERACTIVE)
+      n_verr(format, ap);
+   else
+#endif
+        {
+      vfprintf(stderr, format, ap);
+      if (strchr(format, '\n') != NULL) /* TODO */
+         fflush(stderr);
+   }
    va_end(ap);
-   if (strchr(format, '\n') != NULL) /* TODO */
-      fflush(stderr);
    NYD2_LEAVE;
 }
 
 FL void
 n_verr(char const *format, va_list ap)
 {
+   /* Check use cases of PS_ERRORS_NOTED, too! */
+#ifdef HAVE_ERRORS
+   char buf[LINESIZE], *xbuf = buf;
+   int l = sizeof(buf) -1;
+   struct err_node *enp;
+
+   LCTA(ERRORS_MAX > 3);
+#endif
    NYD2_ENTER;
-   vfprintf(stderr, format, ap);
+
+#ifdef HAVE_ERRORS
+   if (!(options & OPT_INTERACTIVE))
+#endif
+   {
+      vfprintf(stderr, format, ap);
+      goto jleave;
+   }
+
+#ifdef HAVE_ERRORS
+jredo:
+   l = vsnprintf(xbuf, l +1, format, ap);
+   if (l == 0) {
+      assert(xbuf == buf);
+      goto jleave;
+   }
+   if (UICMP(z, l, >=, sizeof buf)) {
+      if (xbuf == buf) {
+         xbuf = smalloc(l +1);
+         goto jredo;
+      }
+      l = sizeof(buf) -1;
+   }
+   xbuf[l] = '\0';
+
+   fwrite(xbuf, 1, l, stderr);
+
+   /* Link it into the `errors' message ring */
+   if ((enp = _err_tail) == NULL) {
+jcreat:
+      enp = scalloc(1, sizeof *enp);
+      if (_err_tail != NULL)
+         _err_tail->en_next = enp;
+      else
+         _err_head = enp;
+      _err_tail = enp;
+      ++_err_cnt;
+   } else if (enp->en_str.l > 0 && enp->en_str.s[enp->en_str.l - 1] == '\n') {
+      if (_err_cnt < ERRORS_MAX)
+         goto jcreat;
+
+      _err_head = (enp = _err_head)->en_next;
+      _err_tail->en_next = enp;
+      _err_tail = enp;
+      free(enp->en_str.s);
+      memset(enp, 0, sizeof *enp);
+   }
+
+   n_str_add_buf(&enp->en_str, xbuf, l);
+
+   if (xbuf != buf)
+      free(xbuf);
+#endif /* HAVE_ERRORS */
+
+jleave:
    if (strchr(format, '\n') != NULL) /* TODO */
       fflush(stderr);
    NYD2_LEAVE;
@@ -1790,16 +1898,32 @@ n_perr(char const *msg, int errval)
    char const *fmt;
    NYD2_ENTER;
 
-   if (errval == 0)
-      errval = errno;
-
    if (msg == NULL) {
       fmt = "%s%s\n";
       msg = "";
    } else
-      fmt = "%s: %s\n",
+      fmt = "%s: %s\n";
 
-   fprintf(stderr, fmt, msg, strerror(errval));
+   if (errval == 0)
+      errval = errno;
+
+   n_err(fmt, msg, strerror(errval));
+   NYD2_LEAVE;
+}
+
+FL void
+n_alert(char const *format, ...)
+{
+   va_list ap;
+   NYD2_ENTER;
+
+   n_err(_("Alert: "));
+
+   va_start(ap, format);
+   n_verr(format, ap);
+   va_end(ap);
+
+   n_err("\n");
    NYD2_LEAVE;
 }
 
@@ -1821,21 +1945,67 @@ n_panic(char const *format, ...)
    abort(); /* Was exit(EXIT_ERR); for a while, but no */
 }
 
-FL void
-n_alert(char const *format, ...)
+#ifdef HAVE_ERRORS
+FL int
+c_errors(void *v)
 {
-   va_list ap;
-   NYD2_ENTER;
+   char **argv = v;
+   struct err_node *enp;
+   NYD_ENTER;
 
-   n_err(_("Alert: "));
+   if (*argv == NULL)
+      goto jlist;
+   if (argv[1] != NULL)
+      goto jerr;
+   if (!asccasecmp(*argv, "show"))
+      goto jlist;
+   if (!asccasecmp(*argv, "clear"))
+      goto jclear;
+jerr:
+   fprintf(stderr, _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
+   v = NULL;
+jleave:
+   NYD_LEAVE;
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
-   va_start(ap, format);
-   n_verr(format, ap);
-   va_end(ap);
+jlist: {
+      FILE *fp;
+      size_t i;
 
-   n_errc('\n');
-   NYD2_LEAVE;
+      if (_err_head == NULL) {
+         fprintf(stderr, _("The error ring is empty\n"));
+         goto jleave;
+      }
+
+      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
+            ) == NULL) {
+         fprintf(stderr, _("tmpfile"));
+         v = NULL;
+         goto jleave;
+      }
+
+      for (i = 0, enp = _err_head; enp != NULL; enp = enp->en_next)
+         fprintf(fp, "- %4" PRIuZ ". %" PRIuZ " bytes: %s",
+            ++i, enp->en_str.l, enp->en_str.s);
+      /* We don't know wether last string ended with NL; be simple */
+      putc('\n', fp);
+
+      page_or_print(fp, 0);
+      Fclose(fp);
+   }
+   /* FALLTHRU */
+
+jclear:
+   _err_tail = NULL;
+   _err_cnt = _err_cnt_noted = 0;
+   while ((enp = _err_head) != NULL) {
+      _err_head = enp->en_next;
+      free(enp->en_str.s);
+      free(enp);
+   }
+   goto jleave;
 }
+#endif /* HAVE_ERRORS */
 
 #ifndef HAVE_DEBUG
 FL void *
