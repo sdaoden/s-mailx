@@ -864,10 +864,10 @@ FL bool_t      file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
                   size_t pollmsecs);
 
 /* Aquire a FLT_WRITE lock and create a dotlock file; upon success
- * dot_unlock() must be called for cleanup of the dotlock file.
+ * a registered control-pipe FILE* is returned; the lock file will be removed
+ * once the control pipe is closed, usually via Pclose() etc.
  * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise) */
-FL bool_t      dot_lock(char const *fname, int fd, size_t pollmsecs);
-FL void        dot_unlock(char const *fname);
+FL FILE *      dotlock(char const *fname, int fd, size_t pollmsecs);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS

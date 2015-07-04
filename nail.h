@@ -742,6 +742,19 @@ enum cproto {
    CPROTO_IMAP
 };
 
+enum dotlock_state {
+   DLS_NONE,
+   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
+   DLS_NAMETOOLONG,           /* Lock file name would be too long */
+   DLS_NOPERM,                /* No permission to creat lock file */
+   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
+   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
+   DLS_EXIST,                 /* Lock file already exists, stale lock? */
+   DLS_DUNNO,                 /* Catch-all error */
+   DLS_PING,                  /* Not an error, but have to wait for lock */
+   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+};
+
 enum exit_status {
    EXIT_OK        = EXIT_SUCCESS,
    EXIT_ERR       = EXIT_FAILURE,
