@@ -894,24 +894,6 @@ Jsinglebyte:
    return (*cp == '\0');
 }
 
-#ifndef HAVE_SNPRINTF
-FL int
-snprintf(char *str, size_t size, char const *format, ...) /* XXX DANGER! */
-{
-   va_list ap;
-   int ret;
-   NYD2_ENTER;
-
-   va_start(ap, format);
-   ret = vsprintf(str, format, ap);
-   va_end(ap);
-   if (ret < 0)
-      ret = strlen(str);
-   NYD2_LEAVE;
-   return ret;
-}
-#endif
-
 FL char *
 sstpcpy(char *dst, char const *src)
 {

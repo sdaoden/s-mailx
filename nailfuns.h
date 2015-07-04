@@ -1869,11 +1869,7 @@ FL void        makelow(char *cp);
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
 FL bool_t      substr(char const *str, char const *sub);
 
-/* Lazy vsprintf wrapper */
-#ifndef HAVE_SNPRINTF
-FL int         snprintf(char *str, size_t size, char const *format, ...);
-#endif
-
+/*  */
 FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);

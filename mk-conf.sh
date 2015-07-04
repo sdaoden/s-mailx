@@ -856,6 +856,32 @@ else
    config_exit 1
 fi
 
+if link_check snprintf 'v?snprintf(3)' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome(char *buf, ...)
+{
+   va_list ap;
+   va_start(ap, buf);
+   vsnprintf(buf, 20, "%s", ap);
+   va_end(ap);
+   return;
+}
+int main(void)
+{
+   char b[20];
+   snprintf(b, sizeof b, "%s", "string");
+   dome(b, "string");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   config_exit 1
+fi
+
 # XXX Move to below later when the time stuff is regulary needed.
 # XXX Add POSIX check once standardized
 link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
@@ -908,7 +934,6 @@ then
    :
 else
    msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
-   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
 fi # -n ${have_posix_random}
@@ -919,16 +944,6 @@ int main(void)
 {
    setenv("s-nail", "to be made nifty!", 1);
    unsetenv("s-nail");
-   return 0;
-}
-!
-
-link_check snprintf 'snprintf(3)' '#define HAVE_SNPRINTF' << \!
-#include <stdio.h>
-int main(void)
-{
-   char b[20];
-   snprintf(b, sizeof b, "%s", "string");
    return 0;
 }
 !
@@ -2107,7 +2122,7 @@ ${cat} > ${tmp2}.c << \!
 : - Coloured message display (simple)
 #endif
 :
-#if !defined HAVE_WORDEXP || !defined HAVE_SNPRINTF || !defined HAVE_FCHDIR ||\
+#if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
       defined HAVE_DEBUG || defined HAVE_DEVEL
 :Remarks:
 # ifndef HAVE_WORDEXP
@@ -2119,12 +2134,6 @@ ${cat} > ${tmp2}.c << \!
 : _ P.S.: the codebase is in transition away from wordexp(3) to some
 : _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
 : _ about shell word expression in its introduction for more on that.
-# endif
-# ifndef HAVE_SNPRINTF
-: . The function snprintf(3) could not be found. We will use an internal
-: _ sprintf() instead. This might overflow buffers if input values are
-: _ larger than expected. Use the resulting binary with care or update
-: _ your system environment and start the configuration process again.
 # endif
 # ifndef HAVE_FCHDIR
 : . The function fchdir(2) could not be found. We will use chdir(2)
