@@ -162,9 +162,11 @@ os_setup() {
    fi
 
    # Sledgehammer: better set _GNU_SOURCE
+   # And in general: oh, boy!
    OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
    #OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
+   #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
    if [ -d /usr/pkg ]; then
@@ -395,7 +397,7 @@ msg() {
 
 rc=./make.rc
 lst=./config.lst
-h=./config.h
+h=./config.h h_name=config.h
 mk=./mk.mk
 
 newlst=./config.lst-new
@@ -772,11 +774,11 @@ ${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) $(XINCS) $(CFLAGS) -c $<
+	$(CC) -I./ $(XINCS) $(CFLAGS) -c $<
 .c.x:
-	$(CC) $(XINCS) -E $< >$@
+	$(CC) -I./ $(XINCS) -E $< >$@
 .c:
-	$(CC) $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
+	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
 .y: ;
 !
 
@@ -788,7 +790,7 @@ _check_preface() {
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    echo '*** test program is'
-   ${tee} ${tmp}.c
+   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
    #echo '*** the preprocessor generates'
    #${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
