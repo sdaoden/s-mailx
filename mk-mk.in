@@ -220,8 +220,19 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
 		__mkdir "$(DESTDIR)$(LIBEXECDIR)";\
 		__stripfile "$(PRIVSEP)";\
-		__copychownfile 2555 ":$(PRIVSEP_GROUP)" "$(PRIVSEP)" \
-			"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+		m='o=rx' o=;\
+		if [ -n "$(PRIVSEP_GROUP)" ]; then \
+			m="g=rxs,$${m}" o=":$(PRIVSEP_GROUP)";\
+		else \
+			m="g=rx,$${m}";\
+		fi;\
+		if [ -n "$(PRIVSEP_USER)" ]; then \
+			m="u=rxs,$${m}" o="$(PRIVSEP_USER)$${o}";\
+		else \
+			m="u=rx,$${m}";\
+		fi;\
+		__copychownfile "$${m}" "$${o}" "$(PRIVSEP)" \
+				"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
 	fi;\
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\

@@ -34,9 +34,6 @@ _ign_signal(int signum)
    nact.sa_handler = SIG_IGN;
    sigemptyset(&nact.sa_mask);
    nact.sa_flags = 0;
-#ifdef SA_RESTART
-   nact.sa_flags |= SA_RESTART;
-#endif
    sigaction(signum, &nact, &oact);
 }
 
@@ -47,7 +44,7 @@ main(int argc, char **argv)
    char const *name, *hostname, *randstr;
    size_t pollmsecs;
    enum dotlock_state dls;
-   gid_t gid, egid;
+   bool_t anyid;
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
    if (argc != 10 ||
@@ -74,11 +71,40 @@ main(int argc, char **argv)
    randstr = argv[7];
    pollmsecs = (size_t)strtoul(argv[9], NULL, 10);
 
-   /* Try to change our group identity; to catch faulty installations etc.
+   /* Try to change our identity; to catch faulty installations etc.
+    * don't baild if UID==EUID or setuid() fails, but simply continue,
     * don't baild if GID==EGID or setgid() fails, but simply continue */
-   gid = getgid();
-   egid = getegid();
-   if (gid == egid || setgid(egid)) {
+   anyid = FAL0;
+
+   if (PRIVSEP_USER[0] != '\0') {
+      uid_t uid = getuid(), euid = geteuid();
+
+      if (uid != euid) {
+         if (setuid(euid)) {
+            dls = DLS_PRIVFAILED;
+            if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=,
+                  sizeof dls))
+               goto jerr;
+         }
+         anyid = TRU1;
+      }
+   }
+
+   if (PRIVSEP_GROUP[0] != '\0') {
+      gid_t gid = getgid(), egid = getegid();
+
+      if (gid != egid) {
+         if (setgid(egid)) {
+            dls = DLS_PRIVFAILED;
+            if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=,
+                  sizeof dls))
+               goto jerr;
+         }
+         anyid = TRU1;
+      }
+   }
+
+   if (!anyid) {
       dls = DLS_PRIVFAILED;
       if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=, sizeof dls))
          goto jerr;

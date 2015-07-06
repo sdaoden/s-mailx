@@ -205,8 +205,13 @@ WANT_COLOUR=yes
 # SETGID that has the sole purpose and functionality of managing this dotlock.
 # WANT_PRIVSEP enables this mini dotlock program, which will be installed in
 # LIBEXECDIR SETGID to the group PRIVSEP_GROUP.
+# If you set PRIVSEP_USER to any value then the binary will be installed
+# SETUID and will try to change user identity.
+# You can define _GROUP and _USER and have it installed SETUID *and* SETGID.
+# But note nothing prevents you from giving two empty values.
 WANT_PRIVSEP=yes
 PRIVSEP_GROUP=mail
+PRIVSEP_USER=
 
 ## PATHS AND PROGRAMS ##
 
