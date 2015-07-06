@@ -863,7 +863,8 @@ do {\
       if (np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
+         if (!is_addr_invalid(np,
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG)) {
             fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
