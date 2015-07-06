@@ -10,6 +10,7 @@ option_reset() {
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+      #WANT_MD5=0
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
@@ -21,7 +22,7 @@ option_reset() {
    WANT_QUOTE_FOLD=0
    WANT_FILTER_HTML_TAGSOUP=0
    WANT_COLOUR=0
-   #WANT_MD5=0
+   WANT_PRIVSEP=0
 }
 
 option_maximal() {
@@ -30,6 +31,7 @@ option_maximal() {
       WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
       WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
       WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+      #WANT_MD5=1
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
    WANT_REGEX=1
@@ -42,7 +44,7 @@ option_maximal() {
    WANT_QUOTE_FOLD=1
    WANT_FILTER_HTML_TAGSOUP=1
    WANT_COLOUR=1
-   #WANT_MD5=1
+   WANT_PRIVSEP=1
 }
 
 # Predefined CONFIG= urations take precedence over anything else
@@ -954,6 +956,16 @@ else
    config_exit 1
 fi
 fi # -z ${have_posix_random}
+
+link_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+#include <unistd.h>
+int main(void)
+{
+   pathconf(".", _PC_NAME_MAX);
+   pathconf(".", _PC_PATH_MAX);
+   return 0;
+}
+!
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
