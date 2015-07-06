@@ -135,10 +135,9 @@ __dotlock_create_excl(char const *fname, char const *lname)
 
    /* If the number of links was two (one for the unique file and one for
     * the lock), we've won the race */
-   if (stb.st_nlink != 2) {
+   if (stb.st_nlink != 2)
       rv = DLS_EXIST;
-      goto jleave;
-   }
+
 jleave:
    return rv;
 jbados:
