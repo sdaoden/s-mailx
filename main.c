@@ -343,7 +343,8 @@ _startup(void)
       /* Reset possibly messed up state; luckily this also gives us an
        * indication wether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
-      enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
+      if (mbtowc(&wc, NULL, mb_cur_max))
+         options |= OPT_ENC_MBSTATE;
    }
 # endif
 #else

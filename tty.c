@@ -1228,7 +1228,7 @@ _ncl_kother(struct line *l, wchar_t wc)
    if (i > MB_LEN_MAX)
       goto jleave;
    cell.count = (ui32_t)i;
-   if (enc_has_state) {
+   if (options & OPT_ENC_MBSTATE) {
       i = wcrtomb(cell.cbuf + i, L'\0', &ps);
       if (i == 1)
          ;

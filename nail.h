@@ -992,6 +992,7 @@ enum user_options {
    OPT_TTYIN      = OPT_INTERACTIVE,
    OPT_TTYOUT     = 1u<<19,
    OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
+   OPT_ENC_MBSTATE = 1u<<21,  /* Multibyte environment with shift states */
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
@@ -1786,7 +1787,6 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL int         enc_has_state;       /* Encoding has shift states */
 
 VL char const  *homedir;            /* Path name of home directory */
 VL char const  *myname;             /* My login name */
