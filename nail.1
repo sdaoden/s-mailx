@@ -144,27 +144,6 @@ It is usable as a mail batch language.
 .\" .Ss "Options" {{{
 .Ss "Options"
 .
-In the following list of supported command line options,
-.Fl D , d , E , i , N
-and
-.Fl v
-are implemented by means of setting the respective option, as via
-.Fl S .
-.Bk -words
-.Op Ar mta-option ...
-.Ek
-arguments that are given at the end of the command line after a
-.Ql --
-separator will be passed through to the mail-transfer-agent (MTA) and
-persist for an entire (interactive) session \(en if the setting of
-.Va expandargv
-allows their recognition;
-MTA arguments can also be specified in the variable
-.Va sendmail-arguments ;
-find MTA interaction described in more detail in the documentation of
-.Va sendmail .
-MTA arguments are ignored when mail is send via SMTP data transfer.
-.
 .Bl -tag -width ".Fl _ Ar _ccount"
 .Mx
 .It Fl A Ar account
@@ -459,6 +438,28 @@ This flag forces termination of option processing in order to address
 It also forcefully puts \*(UA into send mode, see
 .Sx "Sending mail" .
 .El
+.
+.Pp
+In the above list of supported command line options,
+.Fl D , d , E , i , N
+and
+.Fl v
+are implemented by means of setting the respective option, as via
+.Fl S .
+.Bk -words
+.Op Ar mta-option ...
+.Ek
+arguments that are given at the end of the command line after a
+.Ql --
+separator will be passed through to the mail-transfer-agent (MTA) and
+persist for an entire (interactive) session \(en if the setting of
+.Va expandargv
+allows their recognition;
+MTA arguments can also be specified in the variable
+.Va sendmail-arguments ;
+find MTA interaction described in more detail in the documentation of
+.Va sendmail .
+MTA arguments are ignored when mail is send via SMTP data transfer.
 .\" }}}
 .
 .\" .Ss "A starter" {{{
