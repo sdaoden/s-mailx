@@ -240,11 +240,11 @@ FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
  * attachments.c
  */
 
-/* Try to add an attachment for *file*, file_expand()ed.
- * Return the new head of list *aphead*, or NULL.
- * The newly created attachment will be stored in **newap*, if given */
-FL struct attachment *  add_attachment(struct attachment *aphead, char *file,
-                           struct attachment **newap);
+/* Try to add an attachment for file, file_expand()ed.
+ * Return the new head of list aphead, or NULL.
+ * The newly created attachment will be stored in *newap, if given */
+FL struct attachment * add_attachment(struct attachment *aphead, char *file,
+                        struct attachment **newap);
 
 /* Append comma-separated list of file names to the end of attachment list */
 FL void        append_attachments(struct attachment **aphead, char *names);

@@ -46,7 +46,7 @@
 /* We use calloc() for struct attachment */
 CTA(AC_DEFAULT == 0);
 
-/* Fill in some attachment fields; don't be interactive if number==0n */
+/* Fill in some attachment fields; don't be interactive if number==0 */
 static struct attachment * _fill_in(struct attachment *ap,
                               char const *file, ui32_t number);
 

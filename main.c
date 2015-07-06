@@ -1052,16 +1052,37 @@ jgetopt_done:
        * attachments which we had delayed due to this.
        * This may use savestr(), but since we won't enter the command loop we
        * don't need to care about that */
-      while (a_head != NULL) {
-         attach = add_attachment(attach, a_head->aa_file, NULL);
-         if (attach != NULL) {
-            a_curr = a_head;
+      for (cp = NULL; a_head != NULL;) {
+         struct attachment *nahp, *nap;
+
+         if ((nahp = add_attachment(attach, a_head->aa_file, &nap)) != NULL) {
+            attach = nahp;
+            if (cp != NULL) {
+               nap->a_conv = AC_FIX_INCS;
+               nap->a_input_charset = cp;
+               cp = NULL;
+            }
             a_head = a_head->aa_next;
-         } else {
-            n_perr(a_head->aa_file, 0);
-            exit_status = EXIT_ERR;
-            goto jleave;
+            continue;
          }
+
+         /* It may not have worked because of appended character set */
+         if (cp == NULL && (cp = strrchr(a_head->aa_file, '=')) != NULL) {
+            char c, *nfp = savestrbuf(a_head->aa_file,
+                  PTR2SIZE(cp++ - a_head->aa_file));
+
+            for (i = 0; (c = cp[i]) != '\0'; ++i)
+               if (!alnumchar(c) && !punctchar(c))
+                  break;
+            if (c == '\0') {
+               a_head->aa_file = nfp;
+               continue;
+            }
+         }
+
+         n_perr(a_head->aa_file, 0);
+         exit_status = EXIT_ERR;
+         goto jleave;
       }
 
       if (options & OPT_INTERACTIVE)

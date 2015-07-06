@@ -161,6 +161,19 @@ The same filename conventions as described in the section
 apply: shell word expansion is restricted to the tilde
 .Ql ~
 and variables.
+Shall
+.Ar file
+not be accessible but contain a
+.Ql =
+character, then anything after the
+.Ql =
+is assumed to specify the input character set and anything before
+.Ql =
+the filename: this is the only option to specify the input character set
+(and don't perform any character set conversion) for text attachments
+from the command line, not using the
+.Ic ~@
+tilde escape command.
 .
 .Mx
 .It Fl B
