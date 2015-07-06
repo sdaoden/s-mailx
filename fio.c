@@ -578,6 +578,17 @@ _dotlock_main(void)
          dls = DLS_NAMETOOLONG | DLS_ABANDON;
          goto jmsg;
       }
+#ifdef HAVE_PATHCONF
+      else {
+         /* fd is a file, not portable to use for _PC_NAME_MAX */
+         long pc;
+
+         if ((pc = pathconf(".", _PC_NAME_MAX)) == -1 || pc <= (long)i + 1 +1) {
+            dls = DLS_NAMETOOLONG | DLS_ABANDON;
+            goto jmsg;
+         }
+      }
+#endif
    }
 
    /* Ignore SIGPIPE, the child reacts upon EPIPE instead */
