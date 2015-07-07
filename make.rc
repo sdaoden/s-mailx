@@ -7,7 +7,8 @@
 #@   that can be set in here (and/or from the command line).
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1) syntax.
 #@   Evaluation occurs *after* it has been read, so command line overwrites
-#@   take effect.  The parsing is linewise, sorry for that.
+#@   take effect.  To use multiline values, escape the newlines on any but the
+#@   last line with a backslash, as in "LINE \".
 #@   The parsing is also sequential top-to-bottom (nonetheless) so that
 #@   any shell snippet in a value can refer only to stuff above it.
 #@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
@@ -237,12 +238,24 @@ SYSCONFDIR="${PREFIX}/etc"
 DESTDIR=
 
 # The directory where the local mail system stores user mail (mbox) files.
-MAILSPOOL=`if [ -d /var/spool/mail ]; then echo /var/spool/mail; else echo /var/mail; fi`
+MAILSPOOL=`\
+   if [ -d /var/spool/mail ]; then \
+      echo /var/spool/mail;\
+   else \
+      echo /var/mail;\
+   fi`
 
 # Path to the local MTA (Mail Transport Agent).
 # Test is: /usr/sbin/sendmail -> /usr/lib/sendmail -> /usr/bin/sendmail.
 # (Only of interest if the local mail system is used).
-SENDMAIL=`if [ -x /usr/sbin/sendmail ]; then echo /usr/sbin/sendmail; elif [ -x /usr/lib/sendmail ]; then echo /usr/lib/sendmail; else echo /usr/bin/sendmail; fi`
+SENDMAIL=`\
+   if [ -x /usr/sbin/sendmails ]; then \
+      echo /usr/sbin/sendmail;\
+   elif [ -x /usr/lib/sendmail ]; then \
+      echo /usr/lib/sendmail;\
+   else \
+      echo /usr/bin/sendmail;\
+   fi`
 
 # Today a lot of systems no longer use sendmail(1), but a different MTA.
 # To ensure compatibility with sendmail(1), a system called mailwrapper(8) is
@@ -292,7 +305,7 @@ SID=s-
 NAIL=nail
 
 # The location of the exemplary resource template.
-# Note 1: it's not overwritten if it yet exists!
+# Note 1: it's not overwritten by "make install" if it yet exists!
 # Note 2: it MUST be within $SYSCONFDIR!
 # Note 3: nonetheless ${SYSCONFDIR}/ must be part of this!
 SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
@@ -332,6 +345,11 @@ WANT_NYD2=no
 # compiler support them; this goes in line with our own (heap) memory canaries
 # and will detect buffer overflows.  It is usually only useful during
 # development, i.e., in a debug environment that tests all aspects of a program.
-WANT_FORCED_STACKPROT=`feat_yes DEVEL || feat_yes DEBUG && echo yes || echo no`
+WANT_FORCED_STACKPROT=`\
+   if feat_yes DEVEL || feat_yes DEBUG; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
 
 # s-it-mode

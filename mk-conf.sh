@@ -492,8 +492,11 @@ trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
 
 ${rm} -f ${tmp}
-< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
+# We want read(1) to perform backslash escaping in order to be able to use
+# multiline values in make.rc
 while read line; do
+   line="`echo ${line} | ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//'`"
+   [ -z "${line}" ] && continue
    i="`echo ${line} | ${sed} -e 's/=.*$//'`"
    eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
@@ -502,7 +505,7 @@ while read line; do
       j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
    fi
    echo "${i}=\"${j}\""
-done > ${tmp}
+done < ${rc} > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 
