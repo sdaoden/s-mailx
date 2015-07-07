@@ -611,7 +611,7 @@ _dotlock_main(void)
    if (fstat(fd, &stb) == -1)
       goto jmsg;
 
-   if (stb.st_uid != getuid() || stb.st_gid != getgid()) {
+   if (stb.st_uid != getuid() || stb.st_gid != getgid() || access(".", W_OK)) {
       char itoabuf[64];
       char const *args[11];
 
