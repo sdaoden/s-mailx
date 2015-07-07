@@ -631,7 +631,12 @@ _dotlock_main(void)
    }
 #endif
 
-   /* So let's try and call it ourselfs! */
+   /* So let's try and call it ourselfs!  Note that we don't block signals just
+    * like our privsep child does, the user will anyway be able to remove his
+    * file again, and if we're in -u/$USER mode then we are allowed to access
+    * the user's box: shall we leave behind a stale dotlock then at least we
+    * start a friendly human conversation.  Since we cannot handle SIGKILL and
+    * SIGSTOP malicious things could happen whatever we do */
    safe_signal(SIGHUP, SIG_IGN);
    safe_signal(SIGINT, SIG_IGN);
    safe_signal(SIGQUIT, SIG_IGN);

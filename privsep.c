@@ -2,6 +2,8 @@
  *@ Privilege-separated dot file lock program (WANT_PRIVSEP=yes)
  *@ that is capable of calling setgid(2) and change its group identity
  *@ to the configured PRIVSEP_GROUP (usually "mail").
+ *@ It should be started when chdir(2)d to the lock file's directory,
+ *@ and SIGPIPE should be ignored.
  *
  * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -41,6 +43,7 @@ int
 main(int argc, char **argv)
 {
    struct stat stb;
+   sigset_t nset, oset;
    char const *name, *hostname, *randstr;
    size_t pollmsecs;
    enum dotlock_state dls;
@@ -66,14 +69,16 @@ main(int argc, char **argv)
       exit(EXIT_USE);
    }
 
+   close(STDERR_FILENO);
+
    name = argv[3];
    hostname = argv[5];
    randstr = argv[7];
    pollmsecs = (size_t)strtoul(argv[9], NULL, 10);
 
-   /* Try to change our identity; to catch faulty installations etc.
-    * don't baild if UID==EUID or setuid() fails, but simply continue,
-    * don't baild if GID==EGID or setgid() fails, but simply continue */
+   /* Try to change our identity.
+    * Don't bail if UID==EUID or setuid() fails, but simply continue,
+    * don't bail if GID==EGID or setgid() fails, but simply continue */
    anyid = FAL0;
 
    if (PRIVSEP_USER[0] != '\0') {
@@ -110,11 +115,17 @@ main(int argc, char **argv)
          goto jerr;
    }
 
-   _ign_signal(SIGHUP);
-   _ign_signal(SIGINT);
+   /* In order to prevent stale lock files at all cost block any signals until
+    * we have unlinked the lock file.
+    * It is still not safe because we may be SIGKILLed and may linger around
+    * because we have been SIGSTOPped, but unfortunately the standard doesn't
+    * give any option a.k.a. atcrash() --- and then again we should not
+    * unlink(2) the lock file unless our parent has finalized the
+    * synchronization!  While at it, let me rant about the default action of
+    * realtime signals is to terminate the program */
    _ign_signal(SIGPIPE); /* (Inherited, though) */
-   _ign_signal(SIGQUIT);
-   _ign_signal(SIGTERM);
+   sigfillset(&nset);
+   sigprocmask(SIG_BLOCK, &nset, &oset);
 
    dls = DLS_NOPERM;
    dls = _dotlock_create(name, hostname, randstr, pollmsecs);
@@ -130,6 +141,8 @@ main(int argc, char **argv)
 
       unlink(name);
    }
+
+   sigprocmask(SIG_SETMASK, &oset, NULL);
    return EXIT_OK;
 jerr:
    return EXIT_ERR;

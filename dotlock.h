@@ -109,7 +109,7 @@ __dotlock_create_excl(char const *fname, char const *lname)
 #else
                (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL),
 #endif
-            0);
+            S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if (fd != -1) {
          close(fd);
          break;
