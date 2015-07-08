@@ -179,6 +179,7 @@
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
+#define REFERENCES_MAX  20       /* Maximum entries in References: */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
@@ -1620,8 +1621,8 @@ enum gfield {
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: field */
-   GREF           = 1<<12,    /* References: field */
+   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: */
+   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
    GSKIN          = 1<<15,    /* Skin names */

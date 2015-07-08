@@ -865,7 +865,7 @@ do {\
             np = np->n_flink;
          if (!is_addr_invalid(np,
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG)) {
-            fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+            fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
             n_err(_("Invalid address in mail header: \"%s\"\n"), np->n_name);
@@ -1639,7 +1639,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
       m_NOALI  = 1<<3,
-      m_CSEEN  = 2<<3
+      m_CSEEN  = 1<<4
    } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
    int rv = 1;
@@ -1676,7 +1676,10 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          m |= m_CSEEN;
          ++col;
       }
+
       len = strlen(np->n_fullname);
+      if (np->n_flags & GREF)
+         len += 2;
       ++col; /* The separating space */
       if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
          if (fputs("\n ", fo) == EOF)
@@ -1686,8 +1689,21 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       } else
          putc(' ', fo);
       m = (m & ~m_CSEEN) | m_INIT;
-      len = xmime_write(np->n_fullname, len, fo,
-            ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+
+      {
+         char *hb = np->n_fullname;
+         /* GREF needs to be placed in angle brackets, but which are missing */
+         if (np->n_type & GREF) {
+            hb = ac_alloc(len);
+            hb[0] = '<';
+            hb[len - 1] = '>';
+            memcpy(hb + 1, np->n_fullname, len - 2);
+         }
+         len = xmime_write(hb, len, fo,
+               ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+         if (np->n_type & GREF)
+            ac_free(hb);
+      }
       if (len < 0)
          goto jleave;
       col += len;

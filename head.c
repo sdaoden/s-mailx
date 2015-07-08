@@ -739,10 +739,17 @@ hfield_mult(char const *field, struct message *mp, int mult)
 {
    FILE *ibuf;
    int lc;
+   struct str hfs;
    size_t linesize = 0; /* TODO line pool */
-   char *linebuf = NULL, *colon, *oldhfield = NULL;
+   char *linebuf = NULL, *colon;
    char const *hfield;
    NYD_ENTER;
+
+   /* There are (spam) messages which have header bytes which are many KB when
+    * joined, so resize a single heap storage until we are done if we shall
+    * collect a field that may have multiple bodies; only otherwise use the
+    * string dope directly */
+   memset(&hfs, 0, sizeof hfs);
 
    if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
@@ -755,18 +762,26 @@ hfield_mult(char const *field, struct message *mp, int mult)
    while (lc > 0) {
       if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
          break;
-      if ((hfield = thisfield(linebuf, field)) != NULL) {
-         oldhfield = save2str(hfield, oldhfield);
-         if (mult == 0)
+      if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
+         if (mult)
+            n_str_add_buf(&hfs, hfield, strlen(hfield));
+         else {
+            hfs.s = savestr(hfield);
             break;
+         }
       }
    }
 
 jleave:
    if (linebuf != NULL)
       free(linebuf);
+   if (mult && hfs.s != NULL) {
+      colon = savestrbuf(hfs.s, hfs.l);
+      free(hfs.s);
+      hfs.s = colon;
+   }
    NYD_LEAVE;
-   return oldhfield;
+   return hfs.s;
 }
 
 FL char const *

@@ -158,7 +158,7 @@ _bangexp(char **str, size_t *size)
 }
 
 static void
-make_ref_and_cs(struct message *mp, struct header *head)
+make_ref_and_cs(struct message *mp, struct header *head) /* TODO rewrite FAST */
 {
    char *oldref, *oldmsgid, *newref, *cp;
    size_t oldreflen = 0, oldmsgidlen = 0, reflen;
@@ -183,7 +183,7 @@ make_ref_and_cs(struct message *mp, struct header *head)
       reflen += oldmsgidlen;
    }
 
-   newref = ac_alloc(reflen);
+   newref = smalloc(reflen);
    if (oldref != NULL) {
       memcpy(newref, oldref, oldreflen +1);
       if (oldmsgid != NULL) {
@@ -194,12 +194,12 @@ make_ref_and_cs(struct message *mp, struct header *head)
    } else if (oldmsgid)
       memcpy(newref, oldmsgid, oldmsgidlen +1);
    n = extract(newref, GREF);
-   ac_free(newref);
+   free(newref);
 
-   /* Limit number of references */
+   /* Limit number of references TODO better on parser side */
    while (n->n_flink != NULL)
       n = n->n_flink;
-   for (i = 1; i < 21; ++i) { /* XXX no magics */
+   for (i = 1; i <= REFERENCES_MAX; ++i) {
       if (n->n_blink != NULL)
          n = n->n_blink;
       else

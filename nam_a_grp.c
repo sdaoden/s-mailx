@@ -350,7 +350,7 @@ _extract1(char const *line, enum gfield ntype, char const *separators,
 
    np = NULL;
    cp = line;
-   nbuf = ac_alloc(strlen(line) +1);
+   nbuf = smalloc(strlen(line) +1);
    while ((cp = yankname(cp, nbuf, separators, keepcomms)) != NULL) {
       t = nalloc(nbuf, ntype);
       if (topp == NULL)
@@ -360,7 +360,7 @@ _extract1(char const *line, enum gfield ntype, char const *separators,
       t->n_blink = np;
       np = t;
    }
-   ac_free(nbuf);
+   free(nbuf);
 jleave:
    NYD_LEAVE;
    return topp;
@@ -897,17 +897,20 @@ nalloc(char *str, enum gfield ntype)
    NYD_ENTER;
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
-   np = salloc(sizeof *np);
+   addrspec_with_guts(((ntype & (GFULL | GSKIN | GREF)) != 0), str, &ag);
+   if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
+      ag.ag_n_flags |= NAME_NAME_SALLOC;
+      np = salloc(sizeof(*np) + ag.ag_slen +1);
+      memcpy(np + 1, ag.ag_skinned, ag.ag_slen +1);
+      ag.ag_skinned = (char*)(np + 1);
+   } else
+      np = salloc(sizeof *np);
+
    np->n_flink = NULL;
    np->n_blink = NULL;
    np->n_type = ntype;
    np->n_flags = 0;
 
-   addrspec_with_guts(((ntype & (GFULL | GSKIN | GREF)) != 0), str, &ag);
-   if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
-      ag.ag_n_flags |= NAME_NAME_SALLOC;
-      ag.ag_skinned = savestrbuf(ag.ag_skinned, ag.ag_slen);
-   }
    np->n_fullname = np->n_name = ag.ag_skinned;
    np->n_fullextra = NULL;
    np->n_flags = ag.ag_n_flags;
@@ -981,18 +984,6 @@ jskipfullextra:
          ac_free(in.s);
 #endif
       np->n_flags |= NAME_FULLNAME_SALLOC;
-   } else if (ntype & GREF) { /* TODO LEGACY */
-      /* TODO Unfortunately we had to skin GREFerences i.e. the
-       * TODO surrounding angle brackets have been stripped away.
-       * TODO Necessarily since otherwise the plain address check
-       * TODO fails due to them; insert them back so that valid
-       * TODO headers will be created */
-      np->n_fullname = np->n_name = str = salloc(ag.ag_slen + 2 +1);
-      *(str++) = '<';
-      memcpy(str, ag.ag_skinned, ag.ag_slen);
-      str += ag.ag_slen;
-      *(str++) = '>';
-      *str = '\0';
    }
 jleave:
    NYD_LEAVE;
