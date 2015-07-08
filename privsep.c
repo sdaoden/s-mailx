@@ -81,6 +81,7 @@ main(int argc, char **argv)
     * don't bail if GID==EGID or setgid() fails, but simply continue */
    anyid = FAL0;
 
+#if 0 /* TODO PRIVSEP_USER disabled, won't setuid(2) for now, see make.rc! */
    if (PRIVSEP_USER[0] != '\0') {
       uid_t uid = getuid(), euid = geteuid();
 
@@ -94,6 +95,7 @@ main(int argc, char **argv)
          anyid = TRU1;
       }
    }
+#endif
 
    if (PRIVSEP_GROUP[0] != '\0') {
       gid_t gid = getgid(), egid = getegid();
@@ -125,6 +127,7 @@ main(int argc, char **argv)
     * realtime signals is to terminate the program */
    _ign_signal(SIGPIPE); /* (Inherited, though) */
    sigfillset(&nset);
+   sigdelset(&nset, SIGCONT); /* (Rather redundant, though) */
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
    dls = DLS_NOPERM;

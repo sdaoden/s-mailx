@@ -611,6 +611,11 @@ _dotlock_main(void)
    if (fstat(fd, &stb) == -1)
       goto jmsg;
 
+   /* TODO this is not really correct in respect to the -u/$USER options we
+    * TODO offer according to the standard, but it has to wait until v15.0
+    * TODO when we can remember that a box was opened via "%USER", in which
+    * TODO case -u/$USER/%USER should get the possibility to write her own
+    * TODO box, or something similar */
    if (stb.st_uid != getuid() || stb.st_gid != getgid() || access(".", W_OK)) {
       char itoabuf[64];
       char const *args[11];
