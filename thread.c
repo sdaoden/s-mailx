@@ -154,8 +154,16 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
    ui32_t h, c, n = 0;
    NYD2_ENTER;
 
-   if (id == NULL && (id = hfield1("message-id", mdata)) == NULL)
-      goto jleave;
+   if (id == NULL) {
+      if ((id = hfield1("message-id", mdata)) == NULL)
+         goto jleave;
+      /* Normalize, what hfield1() doesn't do (TODO should now GREF, too!!) */
+      if (id[0] == '<') {
+         id[strlen(id) -1] = '\0';
+         if (*id != '\0')
+            ++id;
+      }
+   }
 
    if (mdata != NULL && mdata->m_idhash)
       h = ~mdata->m_idhash;
