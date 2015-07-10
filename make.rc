@@ -209,7 +209,9 @@ WANT_COLOUR=yes
 # If you set PRIVSEP_USER to any value then the binary will be installed
 # SETUID and will try to change user identity.
 # You can define _GROUP and _USER and have it installed SETUID *and* SETGID.
-# But note nothing prevents you from giving two empty values.
+# And note nothing prevents you from giving two empty values.
+# The actual installation make targets will require the chown(1) program (as
+# below) and usually higher privileges if you enable WANT_PRIVSEP.
 # TODO NOTE: setting PRIVSEP_USER is honoured but the -privsep child will NOT
 # TODO call setuid(2) accordingly: for now i think the implications are not
 # TODO really understood and until we can do so safely (also in respect to
