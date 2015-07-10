@@ -5237,8 +5237,10 @@ certificates.
 .Mx
 .It Va term-ca-mode
 \*(OP If terminal capability queries are supported and this option is
-set then \*(UA will try to create a terminal session when in interactive
-mode, which will cause a screen clearance once \*(UA is terminated again.
+set then \*(UA will try to switch to the
+.Dq alternate screen
+when in interactive mode, so that the terminal will go back to the
+normal screen, leaving all the text there intact, when \*(UA exits.
 .Sy Note:
 even when supported for this to produce appealing results the used
 .Ev PAGER
