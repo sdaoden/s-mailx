@@ -1553,7 +1553,8 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
          break;
       case DLS_NOPERM:
          if (options & OPT_D_V)
-            emsg = N_("  Can't create a lock file! Please check permissions\n");
+            emsg = N_("  Can't create a lock file! Please check permissions\n"
+                  "  (Or set *dotlock-ignore-error* variable.)");
          serrno = EACCES;
          break;
       case DLS_NOEXEC:
