@@ -1502,6 +1502,7 @@ int main(void)
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'MD5 digest in OpenSSL' \
             '#define HAVE_OPENSSL_MD5' << \!
+#include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
 
@@ -1644,7 +1645,8 @@ else
 fi
 
 if feat_yes IDNA; then
-   if link_check idna 'GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
+   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
+         '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
@@ -1663,8 +1665,40 @@ int main(void)
 !
    then
       :
+   elif link_check idna 'idnkit' '#define HAVE_IDNA HAVE_IDNA_IDNKIT' \
+         '-lidnkit' << \!
+#include <stdio.h>
+#include <idn/api.h>
+#include <idn/result.h>
+int main(void)
+{
+   idn_result_t r;
+   char ace_name[256];
+   char local_name[256];
+
+   r = idn_encodename(IDN_ENCODE_APP, "does.this.work", ace_name,
+         sizeof(ace_name));
+   if (r != idn_success) {
+      fprintf(stderr, "idn_encodename failed: %s\n", idn_result_tostring(r));
+      return 1;
+   }
+   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name, sizeof(local_name));
+   if (r != idn_success) {
+      fprintf(stderr, "idn_decodename failed: %s\n", idn_result_tostring(r));
+      return 1;
+   }
+   return 0;
+}
+!
+   then
+      :
    else
       feat_bail_required IDNA
+   fi
+
+   if [ -n "${have_idna}" ]; then
+      echo '#define HAVE_IDNA_LIBIDNA 0' >> ${h}
+      echo '#define HAVE_IDNA_IDNKIT 1' >> ${h}
    fi
 else
    echo '/* WANT_IDNA=0 */' >> ${h}

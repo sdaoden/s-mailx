@@ -106,6 +106,14 @@
 # endif
 #endif
 
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
 #   define NAME_MAX     _POSIX_NAME_MAX

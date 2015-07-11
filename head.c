@@ -44,9 +44,13 @@
 #endif
 
 #ifdef HAVE_IDNA
-# include <idna.h>
-# include <idn-free.h>
-# include <stringprep.h>
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+#  include <idna.h>
+#  include <idn-free.h>
+#  include <stringprep.h>
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+#  include <idn/api.h>
+# endif
 #endif
 
 struct cmatch_data {
@@ -202,6 +206,7 @@ _is_date(char const *date)
 }
 
 #ifdef HAVE_IDNA
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
 static struct addrguts *
 _idna_apply(struct addrguts *agp)
 {
@@ -261,7 +266,65 @@ jleave:
    NYD_LEAVE;
    return agp;
 }
-#endif
+
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT /* IDNA==LIBIDNA */
+static struct addrguts *
+_idna_apply(struct addrguts *agp)
+{
+   char *idna_in, *idna_out, *cs;
+   size_t sz, i;
+   idn_result_t r;
+   NYD_ENTER;
+
+   sz = agp->ag_slen - agp->ag_sdom_start;
+   assert(sz > 0);
+   idna_in = ac_alloc(sz +1);
+   memcpy(idna_in, agp->ag_skinned + agp->ag_sdom_start, sz);
+   idna_in[sz] = '\0';
+
+   for (idna_out = NULL, sz = HOST_NAME_MAX +1;; sz += HOST_NAME_MAX) {
+      idna_out = ac_alloc(sz);
+
+      r = idn_encodename(IDN_ENCODE_APP, idna_in, idna_out, sz);
+      switch (r) {
+      case idn_success:
+      case idn_buffer_overflow:
+         break;
+      case idn_invalid_encoding:
+         n_err(_("Cannot convert from %s to %s\n"), charset_get_lc(), "UTF-8");
+         /* FALLTHRU */
+      default:
+         agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
+         goto jleave;
+      }
+
+      if (r == idn_success)
+         break;
+      ac_free(idna_out);
+   }
+
+   /* Replace the domain part of .ag_skinned with IDNA version */
+   sz = strlen(idna_out);
+   i = agp->ag_sdom_start;
+   cs = salloc(agp->ag_slen - i + sz +1);
+   memcpy(cs, agp->ag_skinned, i);
+   memcpy(cs + i, idna_out, sz);
+   i += sz;
+   cs[i] = '\0';
+
+   agp->ag_skinned = cs;
+   agp->ag_slen = i;
+   NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+      NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
+
+jleave:
+   ac_free(idna_out);
+   ac_free(idna_in);
+   NYD_LEAVE;
+   return agp;
+}
+# endif /* IDNA==IDNKIT */
+#endif /* HAVE_IDNA */
 
 static int
 _addrspec_check(int skinned, struct addrguts *agp)
@@ -1487,7 +1550,7 @@ fakedate(time_t t)
    return cp;
 }
 
-#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
+#ifdef HAVE_IMAP_SEARCH
 FL time_t
 unixtime(char const *fromline)
 {
@@ -1543,7 +1606,7 @@ jinvalid:
    time(&t);
    goto jleave;
 }
-#endif /* HAVE_IMAP_SEARCH || defined HAVE_IMAP */
+#endif /* HAVE_IMAP_SEARCH */
 
 FL time_t
 rfctime(char const *date)
