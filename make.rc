@@ -96,7 +96,8 @@ WANT_AGENT=yes
 # possibility to use domain names in their native language, i.e., to use
 # non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>, which the IDNA
 # algorithm would convert to <www.xn--rksmrgsa-0zap8p.example>.  :)
-# This needs the GNU Libidn library (<https://www.gnu.org/software/libidn/>).
+# This either needs idnkit (<https://www.nic.ad.jp/ja/idn/idnkit/download/>)
+# or the GNU Libidn library (<https://www.gnu.org/software/libidn/>).
 # It can be "require"d.
 WANT_IDNA=yes
 
