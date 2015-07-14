@@ -116,9 +116,9 @@
 
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
-#   define NAME_MAX     _POSIX_NAME_MAX
+#  define NAME_MAX      _POSIX_NAME_MAX
 # else
-#   define NAME_MAX     14
+#  define NAME_MAX      14
 # endif
 #endif
 #if NAME_MAX < 8
