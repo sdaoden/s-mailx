@@ -2044,7 +2044,7 @@ else
 fi
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
+echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} ./mk-mk.in >> ${mk}
 

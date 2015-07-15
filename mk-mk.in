@@ -5,9 +5,9 @@ OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
 	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(<)';\
-	else echo '  $$ $(CC) $(CFLAGS) $(INCLUDES) -c $(<)';\
+	else echo '  $$ $(CC) $(CFLAGS) $(INCS) -c $(<)';\
 	fi;\
-	$(CC) $(CFLAGS) $(INCLUDES) -c $(<)
+	$(CC) $(CFLAGS) $(INCS) -c $(<)
 .c .y: ;
 
 all: _all_echoes $(UAGENT) $(OPTIONAL_PRIVSEP)
@@ -16,7 +16,7 @@ _all_echoes:
 	if [ -z "$(VERBOSE)" ]; then \
 		echo '. CC      : $(CC)';\
 		echo '. CFLAGS  : $(CFLAGS)';\
-		echo '. INCLUDES: $(INCLUDES)';\
+		echo '. INCS    : $(INCS)';\
 		[ -n "$(LDFLAGS)" ] && echo '. LDFLAGS : $(LDFLAGS)';\
 		echo '. LIBS    : $(LIBS)';\
 	fi
