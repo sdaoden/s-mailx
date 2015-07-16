@@ -256,7 +256,7 @@ MAILSPOOL=`\
 # Test is: /usr/sbin/sendmail -> /usr/lib/sendmail -> /usr/bin/sendmail.
 # (Only of interest if the local mail system is used).
 SENDMAIL=`\
-   if [ -x /usr/sbin/sendmails ]; then \
+   if [ -x /usr/sbin/sendmail ]; then \
       echo /usr/sbin/sendmail;\
    elif [ -x /usr/lib/sendmail ]; then \
       echo /usr/lib/sendmail;\
