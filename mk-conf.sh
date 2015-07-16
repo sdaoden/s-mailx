@@ -27,7 +27,7 @@ option_reset() {
 }
 
 option_maximal() {
-   WANT_ICONV=1
+   WANT_ICONV=require
    WANT_SOCKETS=1
       WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
       WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
@@ -35,8 +35,8 @@ option_maximal() {
       #WANT_MD5=1
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
-   WANT_REGEX=1
-   WANT_NCL=1
+   WANT_REGEX=require
+   WANT_NCL=require
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
@@ -64,7 +64,7 @@ if [ -n "${CONFIG}" ]; then
       ;;
    MEDIUM)
       option_reset
-      WANT_ICONV=1
+      WANT_ICONV=require
       WANT_IDNA=1
       WANT_REGEX=1
       WANT_NCL=1
@@ -78,9 +78,9 @@ if [ -n "${CONFIG}" ]; then
       ;;
    NETSEND)
       option_reset
-      WANT_ICONV=1
+      WANT_ICONV=require
       WANT_SOCKETS=1
-         WANT_SSL=1
+         WANT_SSL=require
          WANT_SMTP=require
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1

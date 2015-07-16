@@ -49,11 +49,14 @@ which take precedence over anything else:
 . CONFIG=MINIMAL
   This is the most plain mailx(1)-alike mode, but with MIME support and
   (if available) character set conversion and regular expressions
-  builtin (here mostly ment for mailing list matching).  That's it.
+  builtin (here mostly ment for mailing list matching).  Dotlock files
+  and the privileged separated dotlock helper.  That's it.
+
+  "Require"s dotlocking and the privileged separated dotlock helper.
 
 . CONFIG=MEDIUM
   Like MINIMAL, but with documentation strings, the builtin command line
-  editor with history support (if possible), error tracking, basic
+  editor (NCL) with history support (if possible), error tracking, basic
   colour support and IDNA addresses.  Also adds in generic spam filter
   support.
 
@@ -61,8 +64,10 @@ which take precedence over anything else:
   and don't regret improved usability for the rare interactive use
   occasions.
 
+  "Require"s iconv(3), dotlocking and the privileged separated dotlock
+  helper.
+
 . CONFIG=NETSEND
-  WANT_SMTP as a requirement.
   NETSEND also tries to add SSL/TLS, GSSAPI, .netrc file parsing as well
   as external password *agent-lookup* on top of MEDIUM, on the other
   hand spam filter support is removed.
@@ -70,8 +75,13 @@ which take precedence over anything else:
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
 
+  "Require"s iconv(3), SSL/TLS, SMTP (sockets), dotlocking and the
+  privileged separated dotlock helper.
+
 . CONFIG=MAXIMAL
-  Anything on (though none of which as a requirement).
+  Anything on.
+  "Require"s iconv(3), regex(3), the NCL as well as dotlocking and the
+  privileged separated dotlock helper.
 
   S-nail(1) gains mail fetching capabilities and heads more toward being
   a full-featured mail-user-agent (MUA) with this.
