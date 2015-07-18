@@ -255,8 +255,8 @@ Unless otherwise noted the following applies to saying "$ make" and
     + Faulty message on longjmp() clobbering (of a const variable).
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 4.0-RELEASE x86_64 [4.0.5]
-  - gcc 4.7.4 [DragonFly] Release/2014-06-12
+  DragonFly 4.2-RELEASE DragonFly v4.2.1-RELEASE
+  - gcc 5.1.1 [DragonFly] Release/2015-05-25
     + I will never get iconv(3) right for DragonFly it seems.
 
 . NetBSD <https://www.netbsd.org/>
