@@ -507,7 +507,9 @@ ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
 # multiline values in make.rc
 while read line; do
-   line="`echo ${line} | ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//'`"
+   # This should be [[:space:]] but needs -E; so test SPC/HT
+   line="`echo ${line} |\
+         ${sed} -e '/^[ 	]*#/d' -e '/^$/d' -e 's/[ 	]*$//'`"
    [ -z "${line}" ] && continue
    i="`echo ${line} | ${sed} -e 's/=.*$//'`"
    eval j="\$${i}" jx="\${${i}+x}"
