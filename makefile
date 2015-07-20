@@ -112,7 +112,7 @@ _update-release:
 	\
 	git add version.h nail.1 nail.rc &&\
 	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
-	git tag -f "v$${REL}" &&\
+	git tag -s -f "v$${REL}" &&\
 	\
 	git update-ref refs/heads/next master &&\
 	\
