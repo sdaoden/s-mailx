@@ -465,6 +465,8 @@ do {\
    UNUSED(__i_am_unused__);\
 } while (0)
 
+#define UNINIT(N,V)     N = V
+
 #undef ISPOW2
 #define ISPOW2(X)       ((((X) - 1) & (X)) == 0)
 #undef MIN
