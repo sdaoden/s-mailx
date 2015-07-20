@@ -190,36 +190,29 @@ WANT_FILTER_HTML_TAGSOUP=yes
 # A simple form of coloured output can optionally be produced (see manual).
 WANT_COLOUR=yes
 
-# File dotlocking is performed for any file that is assumed to be a system
-# mailbox: when synchronizing any such FILE a FILE.lock file will be created
-# in the directory of FILE for the duration of the synchronization, then it
-# will be removed again.  This is the traditional mail spool file locking
-# method.
-# The MAILSPOOL(s) where normal system mailboxes reside are usually SETGID
-# directories, which means that a user can read and write any FILE that is
-# owned by him, but unless he is a member of the group the directory is SETGID
-# to, he will not be able to newly create (such lock) files.
+# File dotlocking is performed for "system mailbox" (%[USER] and %:ANYFILE)
+# MBOX files: when synchronizing any such FILE a FILE.lock file will be created
+# in the directory of FILE, for the duration of the synchronization.
+# This is the traditional mail spool file locking, enabled via WANT_DOTLOCK.
+# MAILSPOOL(s) where normal system mailboxes reside are usually not writable
+# by normal users, except that a user may read and write his own mailbox.
+# But this means that a program run by the user cannot create a .lock file!
 # Because locking fails due to this synchronization will not be performed
-# unless the user sets the *dotlock-ignore-error* variable (which is however by
-# default enabled if WANT_PRIVSEP is false).
-# However, installing S-nail SETGID to the owner of MAILSPOOLs is a security
-# threat --- the solution is to install a privilege-separated mini-program
-# SETGID that has the sole purpose and functionality of managing this dotlock.
+# unless the user sets the *dotlock-ignore-error* variable (which is however
+# by default enabled if WANT_PRIVSEP is false).
+# The solution is to install a privilege-separated mini-program that has the
+# sole purpose and functionality of managing this dotlock file.
 # WANT_PRIVSEP enables this mini dotlock program, which will be installed in
-# LIBEXECDIR SETGID to the group PRIVSEP_GROUP.
-# If you set PRIVSEP_USER to any value then the binary will be installed
-# SETUID and will try to change user identity.
-# You can define _GROUP and _USER and have it installed SETUID *and* SETGID.
-# And note nothing prevents you from giving two empty values.
+# LIBEXECDIR, SETUID to the PRIVSEP_USER (usually root).
+# With it dotlock files can be created for any mailbox for which the invoking
+# user has read (or read-write) permissions, and under the UID and GID of the
+# mailbox.  (Note we ensure its owner is capable of removing the lock!)
 # The actual installation make targets will require the chown(1) program (as
 # below) and usually higher privileges if you enable WANT_PRIVSEP.
-# TODO NOTE: setting PRIVSEP_USER is honoured but the -privsep child will NOT
-# TODO call setuid(2) accordingly: for now i think the implications are not
-# TODO really understood and until we can do so safely (also in respect to
-# TODO the -u/$USER/%USER options we offer) we won't go setuid(2)!
+# WANT_DOTLOCK and WANT_PRIVSEP can be "require"d.
+WANT_DOTLOCK=yes
 WANT_PRIVSEP=yes
-PRIVSEP_GROUP=mail
-PRIVSEP_USER=
+PRIVSEP_USER=root
 
 ## PATHS AND PROGRAMS ##
 

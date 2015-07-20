@@ -1,7 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Privilege-separated dot file lock program (WANT_PRIVSEP=yes)
- *@ that is capable of calling setgid(2) and change its group identity
- *@ to the configured PRIVSEP_GROUP (usually "mail").
+ *@ that is capable of calling setuid(2) and change its user identity
+ *@ to the configured PRIVSEP_USER (usually "root"), in order to create
+ *@ a dotlock file with the same UID/GID as the mailbox to be locked.
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ and SIGPIPE should be ignored.
  *
@@ -24,6 +25,7 @@
 
 #include "nail.h"
 
+#define n_PRIVSEP_SOURCE
 #include "dotlock.h"
 
 static void _ign_signal(int signum);
@@ -42,23 +44,24 @@ _ign_signal(int signum)
 int
 main(int argc, char **argv)
 {
+   struct dotlock_info di;
    struct stat stb;
    sigset_t nset, oset;
-   char const *name, *hostname, *randstr;
-   size_t pollmsecs;
    enum dotlock_state dls;
-   bool_t anyid;
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
-   if (argc != 10 ||
-         strcmp(argv[0], PRIVSEP) ||
-         strcmp(argv[1], "dotlock") ||
-         strcmp(argv[2], "name") ||
-         strcmp(argv[4], "hostname") ||
-         strcmp(argv[6], "randstr") ||
-         strcmp(argv[8], "pollmsecs") ||
-         fstat(0, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
-         fstat(1, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
+   if (argc != 12 ||
+         strcmp(argv[ 0], PRIVSEP) ||
+         (argv[1][0] != 'r' && argv[1][0] != 'w') ||
+         strcmp(argv[ 1] + 1, "dotlock") ||
+         strcmp(argv[ 2], "mailbox") ||
+         strcmp(argv[ 4], "name") ||
+         strcmp(argv[ 6], "hostname") ||
+         strcmp(argv[ 8], "randstr") ||
+         strcmp(argv[10], "pollmsecs") ||
+         fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
+         fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
+jeuse:
       fprintf(stderr,
          "This is a helper program of \"" UAGENT "\" (in " BINDIR ").\n"
          "  It is capable of gaining more privileges than \"" UAGENT "\"\n"
@@ -69,71 +72,56 @@ main(int argc, char **argv)
       exit(EXIT_USE);
    }
 
+   di.di_file_name = argv[3];
+   di.di_lock_name = argv[5];
+   di.di_hostname = argv[7];
+   di.di_randstr = argv[9];
+   di.di_pollmsecs = (size_t)strtoul(argv[11], NULL, 10);
+   {
+      size_t i = strlen(di.di_file_name);
+
+      if (i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
+            di.di_lock_name[i] == '\0' || strcmp(di.di_lock_name + i, ".lock"))
+         goto jeuse;
+   }
+
    close(STDERR_FILENO);
-
-   name = argv[3];
-   hostname = argv[5];
-   randstr = argv[7];
-   pollmsecs = (size_t)strtoul(argv[9], NULL, 10);
-
-   /* Try to change our identity.
-    * Don't bail if UID==EUID or setuid() fails, but simply continue,
-    * don't bail if GID==EGID or setgid() fails, but simply continue */
-   anyid = FAL0;
-
-#if 0 /* TODO PRIVSEP_USER disabled, won't setuid(2) for now, see make.rc! */
-   if (PRIVSEP_USER[0] != '\0') {
-      uid_t uid = getuid(), euid = geteuid();
-
-      if (uid != euid) {
-         if (setuid(euid)) {
-            dls = DLS_PRIVFAILED;
-            if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=,
-                  sizeof dls))
-               goto jerr;
-         }
-         anyid = TRU1;
-      }
-   }
-#endif
-
-   if (PRIVSEP_GROUP[0] != '\0') {
-      gid_t gid = getgid(), egid = getegid();
-
-      if (gid != egid) {
-         if (setgid(egid)) {
-            dls = DLS_PRIVFAILED;
-            if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=,
-                  sizeof dls))
-               goto jerr;
-         }
-         anyid = TRU1;
-      }
-   }
-
-   if (!anyid) {
-      dls = DLS_PRIVFAILED;
-      if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=, sizeof dls))
-         goto jerr;
-   }
 
    /* In order to prevent stale lock files at all cost block any signals until
     * we have unlinked the lock file.
     * It is still not safe because we may be SIGKILLed and may linger around
     * because we have been SIGSTOPped, but unfortunately the standard doesn't
-    * give any option a.k.a. atcrash() --- and then again we should not
-    * unlink(2) the lock file unless our parent has finalized the
-    * synchronization!  While at it, let me rant about the default action of
-    * realtime signals is to terminate the program */
+    * give any option, e.g. atcrash() or open(O_TEMPORARY_KEEP_NAME) or so, ---
+    * and then again we should not unlink(2) the lock file unless our parent
+    * has finalized the synchronization!  While at it, let me rant about the
+    * default action of realtime signals, program termination */
    _ign_signal(SIGPIPE); /* (Inherited, though) */
    sigfillset(&nset);
    sigdelset(&nset, SIGCONT); /* (Rather redundant, though) */
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   dls = DLS_NOPERM;
-   dls = _dotlock_create(name, hostname, randstr, pollmsecs);
+   dls = DLS_NOPERM | DLS_ABANDON;
+
+   /* First of all: we only dotlock when the executing user has the necessary
+    * rights to access the mailbox */
+   if (access(di.di_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
+      goto jmsg;
+
+   /* We need UID and GID information about the mailbox to lock */
+   if (stat(di.di_file_name, di.di_stb = &stb) == -1)
+      goto jmsg;
+
+   dls = DLS_PRIVFAILED | DLS_ABANDON;
+
+   /* This privsep helper only gets executed when needed, it thus doesn't make
+    * sense to try to continue with initial privileges */
+   if (setuid(geteuid()))
+      goto jmsg;
+
+   dls = _dotlock_create(&di);
 
    /* Finally: notify our parent about the actual lock state.. */
+jmsg:
    write(STDOUT_FILENO, &dls, sizeof dls);
    close(STDOUT_FILENO);
 
@@ -142,13 +130,11 @@ main(int argc, char **argv)
    if (dls == DLS_NONE) {
       read(STDIN_FILENO, &dls, sizeof dls);
 
-      unlink(name);
+      unlink(di.di_lock_name);
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   return EXIT_OK;
-jerr:
-   return EXIT_ERR;
+   return (dls == DLS_NONE ? EXIT_OK : EXIT_ERR);
 }
 
 /* s-it-mode */

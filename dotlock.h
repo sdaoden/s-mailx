@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Creation of an exclusive "dotlock" file.  This is (potentially) shared
- *@ in between dotlock() and the privilege-separated "dotlocker"..
+ *@ in between dot_lock() and the privilege-separated "dotlocker"..
+ *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
  *@ that SIGPIPE is ignored (we react upon EPIPE).
  *
@@ -30,12 +31,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* Actual logic: fname is the XY.lock file, hostname and randstr have been
- * created in the parent (to avoid useless page-ins etc.).
- * Callee has to ensure strlen(fname)+1+1 fits in NAME_MAX */
-static enum dotlock_state  _dotlock_create(char const *fname,
-                              char const *hostname, char const *randstr,
-                              size_t pollmsecs);
+/* Callee has to ensure strlen(di_lock_name)+1+1 fits in NAME_MAX! */
+static enum dotlock_state  _dotlock_create(struct dotlock_info *dip);
 
 /* Create a unique file. O_EXCL does not really work over NFS so we follow
  * the following trick (inspired by S.R. van den Berg):
@@ -44,12 +41,11 @@ static enum dotlock_state  _dotlock_create(char const *fname,
  * - get the link count of the target
  * - unlink the mostly unique filename
  * - if the link count was 2, then we are ok; else we've failed */
-static enum dotlock_state  __dotlock_create_excl(char const *fname,
+static enum dotlock_state  __dotlock_create_excl(struct dotlock_info *dip,
                               char const *lname);
 
 static enum dotlock_state
-_dotlock_create(char const *fname, char const *hostname, char const *randstr,
-   size_t pollmsecs)
+_dotlock_create(struct dotlock_info *dip)
 {
    char lname[NAME_MAX];
    sigset_t nset, oset;
@@ -57,8 +53,9 @@ _dotlock_create(char const *fname, char const *hostname, char const *randstr,
    ssize_t w;
    enum dotlock_state rv, xrv;
 
-   /* See _create_excl() */
-   snprintf(lname, sizeof lname, "%s.%s.%s", fname, hostname, randstr);
+   /* (Callee ensured this doesn't end up as plain "di_lock_name" */
+   snprintf(lname, sizeof lname, "%s.%s.%s",
+      dip->di_lock_name, dip->di_hostname, dip->di_randstr);
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGHUP);
@@ -68,16 +65,15 @@ _dotlock_create(char const *fname, char const *hostname, char const *randstr,
    sigaddset(&nset, SIGTTIN);
    sigaddset(&nset, SIGTTOU);
    sigaddset(&nset, SIGTSTP);
-   sigaddset(&nset, SIGCHLD);
 
    for (tries = 0;; ++tries) {
       sigprocmask(SIG_BLOCK, &nset, &oset);
-      rv = __dotlock_create_excl(fname, lname);
+      rv = __dotlock_create_excl(dip, lname);
       sigprocmask(SIG_SETMASK, &oset, NULL);
 
       if (rv == DLS_NONE || (rv & DLS_ABANDON))
          break;
-      if (pollmsecs == 0 || tries >= DOTLOCK_TRIES) {
+      if (dip->di_pollmsecs == 0 || tries >= DOTLOCK_TRIES) {
          rv |= DLS_ABANDON;
          break;
       }
@@ -94,7 +90,7 @@ _dotlock_create(char const *fname, char const *hostname, char const *randstr,
 }
 
 static enum dotlock_state
-__dotlock_create_excl(char const *fname, char const *lname)
+__dotlock_create_excl(struct dotlock_info *dip, char const *lname)
 {
    struct stat stb;
    int fd;
@@ -111,10 +107,19 @@ __dotlock_create_excl(char const *fname, char const *lname)
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if (fd != -1) {
+#if defined HAVE_PRIVSEP && defined n_PRIVSEP_SOURCE
+         if (dip->di_stb != NULL &&
+               fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)) {
+            int x = errno;
+            close(fd);
+            errno = x;
+            goto jbados;
+         }
+#endif
          close(fd);
          break;
       } else if (errno != EEXIST) {
-         rv = DLS_NOPERM | DLS_ABANDON;
+         rv = DLS_NOPERM /*| DLS_ABANDON*/;
          goto jleave;
       } else if (tries >= DOTLOCK_TRIES) {
          rv = DLS_EXIST;
@@ -123,7 +128,7 @@ __dotlock_create_excl(char const *fname, char const *lname)
    }
 
    /* We link the name to the fname */
-   if (link(lname, fname) == -1)
+   if (link(lname, dip->di_lock_name) == -1)
       goto jbados;
 
    /* Note that we stat our own exclusively created name, not the
@@ -137,7 +142,6 @@ __dotlock_create_excl(char const *fname, char const *lname)
     * the lock), we've won the race */
    if (stb.st_nlink != 2)
       rv = DLS_EXIST;
-
 jleave:
    return rv;
 jbados:

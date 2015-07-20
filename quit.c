@@ -184,6 +184,10 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    doreset = TRU1;
 
+   /* TODO This is too simple minded?  We should regenerate an index file
+    * TODO to be able to truly tell wether *anything* has changed!
+    * TODO (Or better: only come here.. then!  It is an *object method!* */
+   /* TODO Ignoring stat error is easy, huh? */
    if (!stat(mailname, &statb) && statb.st_size > mailsize) {
       if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
@@ -195,8 +199,10 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
          Fclose(obuf);
          goto jleave;
       }
+
+      file_lock(fileno(ibuf), FLT_READ, 0,0, 1); /* TODO ignoring lock error! */
       fseek(ibuf, (long)mailsize, SEEK_SET);
-      while ((c = getc(ibuf)) != EOF)
+      while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
          putc(c, obuf);
       Fclose(ibuf);
       ibuf = obuf;
@@ -209,6 +215,8 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
       n_perr(mailname, 0);
       goto jleave;
    }
+
+   file_lock(fileno(obuf), FLT_WRITE, 0,0, 1); /* TODO ignoring lock error! */
    ftrunc(obuf);
 
    srelax_hold();
@@ -343,7 +351,7 @@ jnewmail:
       goto jleave;
    }
 
-   if ((lckfp = dotlock(mailname, fileno(fbuf), 1)) == NULL) {
+   if ((lckfp = dot_lock(mailname, fileno(fbuf), FLT_WRITE, 0,0, 1)) == NULL) {
       n_perr(_("Unable to (dot) lock mailbox, aborting operation"), 0);
       Fclose(fbuf);
       fbuf = NULL;

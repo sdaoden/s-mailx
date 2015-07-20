@@ -2611,8 +2611,10 @@ file locking: for any file
 a lock file
 .Ql a.lock
 will be created for the duration of the synchronization \(em
-as necessary a \*(OPal privilege-separated child process will be used to
-accommodate for mail group privilege adjustments for this purpose.
+as necessary a \*(OPal privilege-separated dotlock child process will be
+used to accommodate for necessary privilege adjustments in order to
+create the dotlock file in the same directory and with the same user and
+group identities as the file of interest.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.

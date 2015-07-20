@@ -761,6 +761,7 @@ enum dotlock_state {
    DLS_NOEXEC,                /* Privilege separated dotlocker not found */
    DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
    DLS_EXIST,                 /* Lock file already exists, stale lock? */
+   DLS_FISHY,                 /* Something makes us think bad of situation */
    DLS_DUNNO,                 /* Catch-all error */
    DLS_PING,                  /* Not an error, but have to wait for lock */
    DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
@@ -794,8 +795,7 @@ enum fexp_mode {
 
 enum file_lock_type {
    FLT_READ,
-   FLT_WRITE,
-   FLT_UNLOCK
+   FLT_WRITE
 };
 
 enum mimecontent {
@@ -1342,6 +1342,19 @@ struct ccred {
    struct str     cc_user;       /* User (urlxdec()oded) or NULL */
    struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
+
+#ifdef HAVE_DOTLOCK
+struct dotlock_info {
+   char const  *di_file_name;
+   char const  *di_lock_name;
+   char const  *di_hostname;
+   char const  *di_randstr;
+   size_t      di_pollmsecs;
+# ifdef HAVE_PRIVSEP
+   struct stat *di_stb;
+# endif
+};
+#endif
 
 struct time_current {
    time_t      tc_time;

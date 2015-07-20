@@ -174,42 +174,40 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	@__mkdir() {\
 		_dir=$${1};\
 		if [ -d "$${_dir}" ]; then :; else\
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ $(mkdir) -m 0755 -p '$${_dir}'";\
-			fi;\
 			$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _dst=$${3};\
-		if [ -n "$(VERBOSE)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
 			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
-		fi;\
 		$(cp) -f "$${_src}" "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} _dst=$${4};\
-		if [ -n "$(VERBOSE)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
 			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
-			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
-		fi;\
 		$(cp) -f "$${_src}" "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
 		$(chown) $${_ident} "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__stripfile() {\
 		_file=$${1};\
 		if [ "$(WANT_DEBUG)" != 0 ]; then \
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ :WANT_DEBUG=1, not strip(1)ing";\
-			fi;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ $(STRIP) '$${_file}'";\
-			fi;\
 			$(strip) "$${_file}";\
 		fi;\
 	};\
@@ -221,7 +219,7 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 		__mkdir "$(DESTDIR)$(LIBEXECDIR)";\
 		__stripfile "$(PRIVSEP)";\
 		m='o=rx' o=;\
-		if [ -n "$(PRIVSEP_GROUP)" ]; then \
+		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
 			m="g=rxs,$${m}" o=":$(PRIVSEP_GROUP)";\
 		else \
 			m="g=rx,$${m}";\

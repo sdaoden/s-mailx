@@ -22,7 +22,8 @@ option_reset() {
    WANT_QUOTE_FOLD=0
    WANT_FILTER_HTML_TAGSOUP=0
    WANT_COLOUR=0
-   WANT_PRIVSEP=0
+   WANT_DOTLOCK=0
+      WANT_PRIVSEP=0
 }
 
 option_maximal() {
@@ -44,7 +45,8 @@ option_maximal() {
    WANT_QUOTE_FOLD=1
    WANT_FILTER_HTML_TAGSOUP=1
    WANT_COLOUR=1
-   WANT_PRIVSEP=1
+   WANT_DOTLOCK=require
+      WANT_PRIVSEP=require
 }
 
 # Predefined CONFIG= urations take precedence over anything else
@@ -57,6 +59,8 @@ if [ -n "${CONFIG}" ]; then
       option_reset
       WANT_ICONV=1
       WANT_REGEX=1
+      WANT_DOTLOCK=require
+         WANT_PRIVSEP=require
       ;;
    MEDIUM)
       option_reset
@@ -69,6 +73,8 @@ if [ -n "${CONFIG}" ]; then
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
+      WANT_DOTLOCK=require
+         WANT_PRIVSEP=require
       ;;
    NETSEND)
       option_reset
@@ -83,6 +89,8 @@ if [ -n "${CONFIG}" ]; then
          WANT_HISTORY=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
+      WANT_DOTLOCK=require
+         WANT_PRIVSEP=require
       ;;
    MAXIMAL)
       option_reset
@@ -132,6 +140,10 @@ option_update() {
 
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
+   fi
+
+   if feat_no DOTLOCK; then
+      WANT_PRIVSEP=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -1100,7 +1112,7 @@ int main(void)
    return 0;
 }
 !
-   fi
+fi
 
 # Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
@@ -1152,6 +1164,41 @@ fi
 
 if feat_yes NYD2; then
    echo '#define HAVE_NYD2' >> ${h}
+fi
+
+##
+
+if feat_yes DOTLOCK; then
+   if link_check readlink 'readlink(2)' << \!
+#include <unistd.h>
+int main(void)
+{
+   char buf[128];
+   readlink("here", buf, sizeof buf);
+   return 0;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes PRIVSEP; then
+   if link_check fchown 'fchown(2)' << \!
+#include <unistd.h>
+int main(void)
+{
+   fchown(0, 0, 0);
+   return 0;
+}
+!
+   then
+      :
+   else
+      feat_bail_required PRIVSEP
+   fi
 fi
 
 ##
@@ -1946,6 +1993,12 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
+if feat_yes DOTLOCK; then
+   echo '#define HAVE_DOTLOCK' >> ${h}
+else
+   echo '/* WANT_DOTLOCK=0 */' >> ${h}
+fi
+
 if feat_yes PRIVSEP; then
    echo '#define HAVE_PRIVSEP' >> ${h}
 else
@@ -2007,6 +2060,7 @@ printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_PRIVSEP\n   ",PRIVSEP-DOTLOCK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
