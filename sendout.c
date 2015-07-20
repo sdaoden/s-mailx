@@ -116,8 +116,10 @@ static int           __savemail(char const *name, FILE *fp);
 /*  */
 static bool_t        _transfer(struct sendbundle *sbp);
 
-static bool_t        __start_mta(struct sendbundle *sbp);
-static char const ** __prepare_mta_args(struct name *to, struct header *hp);
+static bool_t        __mta_start(struct sendbundle *sbp);
+static char const ** __mta_prepare_args(struct name *to, struct header *hp);
+static void          __mta_debug(struct sendbundle *sbp, char const *mta,
+                        char const **args);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
 static char *        _message_id(struct header *hp);
@@ -1380,7 +1382,7 @@ _transfer(struct sendbundle *sbp)
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
             sbp->sb_input = ef;
-            if (!__start_mta(sbp))
+            if (!__mta_start(sbp))
                rv = FAL0;
             sbp->sb_to = nsave;
             sbp->sb_input = fisave;
@@ -1412,16 +1414,16 @@ _transfer(struct sendbundle *sbp)
       ac_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__start_mta(sbp)))
+   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))
       rv = FAL0;
    NYD_LEAVE;
    return rv;
 }
 
 static bool_t
-__start_mta(struct sendbundle *sbp)
+__mta_start(struct sendbundle *sbp)
 {
-   char const **args = NULL, **t, *mta, *smtp;
+   char const **args = NULL, *mta, *smtp;
    pid_t pid;
    sigset_t nset;
    bool_t rv = FAL0;
@@ -1434,17 +1436,14 @@ __start_mta(struct sendbundle *sbp)
       } else
          mta = SENDMAIL;
 
-      args = __prepare_mta_args(sbp->sb_to, sbp->sb_hp);
+      args = __mta_prepare_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
-         n_err(_("\"%s\" arguments:"), mta);
-         for (t = args; *t != NULL; ++t)
-            n_err(" \"%s\"", *t);
-         n_err("\n");
+         __mta_debug(sbp, mta, args);
          rv = TRU1;
          goto jleave;
       }
    } else {
-      mta = NULL; /* Silence cc */
+      UNINIT(mta, NULL); /* Silence cc */
 #ifndef HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1501,6 +1500,7 @@ jstop:
       n_err(_("... message not sent\n"));
       _exit(EXIT_ERR);
    }
+
    if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
          rv = TRU1;
@@ -1516,7 +1516,7 @@ jleave:
 }
 
 static char const **
-__prepare_mta_args(struct name *to, struct header *hp)
+__mta_prepare_args(struct name *to, struct header *hp)
 {
    size_t vas_count, i, j;
    char **vas, *cp;
@@ -1587,6 +1587,30 @@ __prepare_mta_args(struct name *to, struct header *hp)
       ac_free(vas);
    NYD_LEAVE;
    return args;
+}
+
+static void
+__mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
+{
+   size_t cnt, bufsize;
+   char *buf;
+   NYD_ENTER;
+
+   n_err(_(">>> MTA: \"%s\", arguments:"), mta);
+   for (; *args != NULL; ++args)
+      n_err(" \"%s\"", *args);
+   n_err("\n");
+
+   fflush_rewind(sbp->sb_input);
+
+   cnt = fsize(sbp->sb_input);
+   buf = NULL;
+   bufsize = 0;
+   while (fgetline(&buf, &bufsize, &cnt, NULL, sbp->sb_input, 1) != NULL)
+      n_err(">>> %s", buf);
+   if (buf != NULL)
+      free(buf);
+   NYD_LEAVE;
 }
 
 static char *
