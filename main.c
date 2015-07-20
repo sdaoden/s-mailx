@@ -1048,50 +1048,54 @@ jgetopt_done:
    }
 
    /* xxx exit_status = EXIT_OK; */
-   if (X_head == NULL || _X_arg_eval(X_head)) {
-      /* Now that full mailx(1)-style file expansion is possible handle the
-       * attachments which we had delayed due to this.
-       * This may use savestr(), but since we won't enter the command loop we
-       * don't need to care about that */
-      for (cp = NULL; a_head != NULL;) {
-         struct attachment *nahp, *nap;
+   if (X_head != NULL && !_X_arg_eval(X_head))
+      goto jleave;
 
-         if ((nahp = add_attachment(attach, a_head->aa_file, &nap)) != NULL) {
-            attach = nahp;
-            if (cp != NULL) {
-               nap->a_conv = AC_FIX_INCS;
-               nap->a_input_charset = cp;
-               cp = NULL;
-            }
-            a_head = a_head->aa_next;
+   /* Now that full mailx(1)-style file expansion is possible handle the
+    * attachments which we had delayed due to this.
+    * This may use savestr(), but since we won't enter the command loop we
+    * don't need to care about that */
+   for (cp = NULL; a_head != NULL;) {
+      struct attachment *nahp, *nap;
+
+      if ((nahp = add_attachment(attach, a_head->aa_file, &nap)) != NULL) {
+         attach = nahp;
+         /* Did we split a charset set name for fixation purposes? */
+         if (cp != NULL) {
+            nap->a_conv = AC_FIX_INCS;
+            nap->a_input_charset = cp;
+            cp = NULL;
+         }
+         a_head = a_head->aa_next;
+         continue;
+      }
+      i = errno;
+
+      /* It may not have worked because of an appended character set name, so
+       * try to split name and charset and retry once */
+      if (cp == NULL && (cp = strrchr(a_head->aa_file, '=')) != NULL) {
+         char *ncp, *nfp = savestrbuf(a_head->aa_file,
+               PTR2SIZE(cp - a_head->aa_file));
+
+         for (ncp = ++cp; *ncp != '\0'; ++ncp)
+            if (!alnumchar(*ncp) && !punctchar(*ncp))
+               break;
+         if (*ncp == '\0') {
+            a_head->aa_file = nfp;
             continue;
          }
-
-         /* It may not have worked because of appended character set */
-         if (cp == NULL && (cp = strrchr(a_head->aa_file, '=')) != NULL) {
-            char c, *nfp = savestrbuf(a_head->aa_file,
-                  PTR2SIZE(cp++ - a_head->aa_file));
-
-            for (i = 0; (c = cp[i]) != '\0'; ++i)
-               if (!alnumchar(c) && !punctchar(c))
-                  break;
-            if (c == '\0') {
-               a_head->aa_file = nfp;
-               continue;
-            }
-         }
-
-         n_perr(a_head->aa_file, 0);
-         exit_status = EXIT_ERR;
-         goto jleave;
       }
 
-      if (options & OPT_INTERACTIVE)
-         tty_init();
-      mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-      if (options & OPT_INTERACTIVE)
-         tty_destroy();
+      n_perr(a_head->aa_file, i);
+      exit_status = EXIT_ERR;
+      goto jleave;
    }
+
+   if (options & OPT_INTERACTIVE)
+      tty_init();
+   mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+   if (options & OPT_INTERACTIVE)
+      tty_destroy();
 
 jleave:
 #ifdef HAVE_TERMCAP
