@@ -555,7 +555,7 @@ will be sent:
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an isolated (almost) dry-run mode first
 $ LC_ALL=C MAILRC=/dev/null \*(ua -n -dvv \e
-    -Ssmtp -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
+    -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
     -s Subject "(Lovely) Bob <bob@host2>"
 $ cat ./sent-mails.mbox
 .Ed
@@ -614,6 +614,11 @@ and the knowledge that messages are sent asynchronously unless
 is set: only with it MTA delivery errors will be recognizable.
 .
 .Pp
+Setting
+.Va from
+is often necessary (e.g., in conjunction with
+.Va smtp )
+or desirable, you may want to do some dry-run tests before you go.
 Saving a copy of the sent messages in a
 .Va record
 may also be desireable \(en as for most mailbox file targets some
