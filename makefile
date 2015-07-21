@@ -162,15 +162,23 @@ _update-release:
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$${UAGENT}-$${FREL}.tar.gz" >> \
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar.gz" 2>&1 &&\
+	cat "$${UAGENT}-$${FREL}.tar.gz.asc" >> \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	openssl md5 "$${UAGENT}-$${FREL}.tar.xz" >> \
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	openssl sha1 "$${UAGENT}-$${FREL}.tar.xz" >> \
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	openssl sha256 "$${UAGENT}-$${FREL}.tar.xz" >> \
 		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar.xz" 2>&1 &&\
+	cat "$${UAGENT}-$${FREL}.tar.xz.asc" >> \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	\
 	( echo "-put $${UAGENT}-$${FREL}.tar.gz";\
-	  echo "-put $${UAGENT}-$${FREL}.tar.xz" ) | \
+	  echo "-put $${UAGENT}-$${FREL}.tar.gz.asc";\
+	  echo "-put $${UAGENT}-$${FREL}.tar.xz";\
+	  echo "-put $${UAGENT}-$${FREL}.tar.xz.asc" ) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
 	\
