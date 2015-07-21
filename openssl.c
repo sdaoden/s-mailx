@@ -173,9 +173,12 @@ static struct ssl_protocol const _ssl_protocols[] = {
 static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 #ifndef OPENSSL_NO_AES
 # define _SMIME_DEFAULT_CIPHER   EVP_aes_128_cbc   /* According to RFC 5751 */
-   {"aes-128", &EVP_aes_128_cbc},
-   {"aes-256", &EVP_aes_256_cbc},
-   {"aes-192", &EVP_aes_192_cbc},
+   {"aes128",  &EVP_aes_128_cbc},
+   {"aes256",  &EVP_aes_256_cbc},
+   {"aes192",  &EVP_aes_192_cbc},
+      {"aes-128", &EVP_aes_128_cbc}, /* TODO obsolete */
+      {"aes-256", &EVP_aes_256_cbc}, /* TODO obsolete */
+      {"aes-192", &EVP_aes_192_cbc}, /* TODO obsolete */
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef _SMIME_DEFAULT_CIPHER
