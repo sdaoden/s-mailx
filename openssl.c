@@ -198,7 +198,7 @@ static void       _ssl_init(void);
 #if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
 static void       _ssl_free(void *vp);
 #endif
-#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
 static void       _ssl_atexit(void);
 #endif
 
@@ -322,12 +322,12 @@ _ssl_free(void *vp)
 }
 #endif
 
-#if defined HAVE_OPENSSL_CONFIG || defined HAVE_OPENSSL_ALL_ALGORITHMS
+#if defined HAVE_OPENSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
 static void
 _ssl_atexit(void)
 {
    NYD_ENTER;
-# ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+# ifdef HAVE_SSL_ALL_ALGORITHMS
    if (_ssl_state & SS_ALGO_LOAD)
       EVP_cleanup();
 # endif
@@ -842,7 +842,7 @@ _smime_cipher(char const *name)
       }
 
    /* Not a builtin algorithm, but we may have dynamic support for more */
-#ifdef HAVE_OPENSSL_ALL_ALGORITHMS
+#ifdef HAVE_SSL_ALL_ALGORITHMS
    if (!(_ssl_state & SS_ALGO_LOAD)) {
       _ssl_state |= SS_ALGO_LOAD;
       OpenSSL_add_all_algorithms();

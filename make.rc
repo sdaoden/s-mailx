@@ -60,7 +60,8 @@ WANT_SSL=yes
 # suffice to understand the user request.
 # Will create a large statically linked binary; dynamically linked the costs
 # only arise once the extended lookup is actually needed (the first time).
-WANT_ALL_SSL_ALGORITHMS=yes
+# This can be "require"d.
+WANT_SSL_ALL_ALGORITHMS=yes
 
 # If $WANT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d.

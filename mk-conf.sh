@@ -1533,9 +1533,9 @@ int main(void)
 }
 !
 
-      if feat_yes ALL_SSL_ALGORITHMS; then
-         link_check ossl_allalgo 'OpenSSL all-algorithms support' \
-            '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
+      if feat_yes SSL_ALL_ALGORITHMS; then
+         if link_check ssl_all_algo 'OpenSSL all-algorithms support' \
+            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 
 int main(void)
@@ -1546,7 +1546,12 @@ int main(void)
    return 0;
 }
 !
-      fi # ALL_SSL_ALGORITHMS
+         then
+            :
+         else
+            feat_bail_required SSL_ALL_ALGORITHMS
+         fi
+      fi # SSL_ALL_ALGORITHMS
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'MD5 digest in OpenSSL' \
@@ -2040,6 +2045,8 @@ printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SSL_ALL_ALGORITHMS\n   ",SSL-ALL-ALGORITHMS"\n# endif\n'\
+   >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
@@ -2129,6 +2136,9 @@ ${cat} > ${tmp2}.c << \!
 # ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS (OpenSSL)
 # endif
+# ifdef HAVE_SSL_ALL_ALGORITHMS
+: + + Support for more ("all") digest and cipher algorithms
+# endif
 #endif
 #ifdef HAVE_SMTP
 : + SMTP protocol
@@ -2216,6 +2226,10 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_SSL
 : - S/MIME and SSL/TLS
+#else
+# ifndef HAVE_SSL_ALL_ALGORITHMS
+: - Support for more S/MIME and SSL/TLS digest and cipher algorithms
+# endif
 #endif
 #ifndef HAVE_SMTP
 : - SMTP protocol
