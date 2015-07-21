@@ -820,7 +820,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
          mc = MIME_MULTI;
    } else if (is_asccaseprefix(ct, "application/")) {
       ct += sizeof("application/") -1;
-      if (!asccasecmp(ct, "x-pkcs7-mime"))
+      if (!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
          mc = MIME_PKCS7;
    }
 jleave:

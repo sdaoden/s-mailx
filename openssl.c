@@ -711,9 +711,19 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       to = hfield1("to", m);
       cc = hfield1("cc", m);
       cnttype = hfield1("content-type", m);
+
       if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
          goto jleave;
-      if (cnttype && !ascncasecmp(cnttype, "application/x-pkcs7-mime", 24)) {
+
+#undef _X
+#undef _Y
+#define _X     (sizeof("application/") -1)
+#define _Y(X)  X, sizeof(X) -1
+      if (cnttype && is_asccaseprefix(cnttype, "application/") &&
+            (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
+             !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
+#undef _Y
+#undef _X
          if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
             goto jleave;
          if (x != (struct message*)-1) {
@@ -1599,9 +1609,19 @@ jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);
    cnttype = hfield1("content-type", m);
+
    if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
-   if (cnttype && !strncmp(cnttype, "application/x-pkcs7-mime", 24)) {
+
+#undef _X
+#undef _Y
+#define _X     (sizeof("application/") -1)
+#define _Y(X)  X, sizeof(X) -1
+   if (cnttype && is_asccaseprefix(cnttype, "application/") &&
+         (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
+          !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
+#undef _Y
+#undef _X
       if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
          goto jleave;
       if (x != (struct message*)-1) {
