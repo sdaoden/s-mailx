@@ -1798,9 +1798,9 @@ S/MIME verification works relative to the values found in the
 (or
 .Ql Sender: )
 header field(s), which means that the values of
-.Va smime-sign , smime-sign-cert
+.Va smime-sign , smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-include-certs
+.Va smime-sign-message-digest
 will not be looked up using the
 .Ql USER
 and
@@ -5220,9 +5220,9 @@ header and that the message content has not been altered.
 It does not change the message text,
 and people will be able to read the message as usual.
 Also see
-.Va smime-sign-cert
+.Va smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-include-certs .
+.Va smime-sign-message-digest .
 .
 .Mx
 .It Va smime-no-default-ca
@@ -6632,7 +6632,7 @@ verification of S/MIME signed messages.
 .
 .Mx
 .It Va smime-cipher-USER@HOST
-\*(OP Specifies a cipher to use when generating S/MIME encrypted
+\*(OP Specifies the cipher to use when generating S/MIME encrypted
 messages for the specified account.
 RFC 5751 mandates a default of
 .Dq aes128
@@ -6730,6 +6730,38 @@ Note that top level certificates may also be included in the chain but
 don't play a role for verification.
 Also see
 .Va smime-sign-cert .
+Remember that for this
+.Ql USER@HOST
+refers to the variable
+.Va from
+(or, if that contains multiple addresses,
+.Va sender ) .
+.
+.Mx Va smime-sign-message-digest
+.It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
+\*(OP Specifies the message digest to use when signing S/MIME messages.
+RFC 5751 mandates a default of
+.Dq sha1 .
+Possible values are (case-insensitive and) in decreasing cipher strength:
+.Dq sha512 ,
+.Dq sha384 ,
+.Dq sha256 ,
+.Dq sha224
+and
+.Dq md5 .
+.Pp
+The actually available message digest algorithms depend on the
+cryptographic library that \*(UA uses.
+\*(OP Support for more message digest algorithms may be available
+through dynamic loading via, e.g.,
+.Xr EVP_get_digestbyname 3
+(OpenSSL) if \*(UA has been compiled to support this.
+Remember that for this
+.Ql USER@HOST
+refers to the variable
+.Va from
+(or, if that contains multiple addresses,
+.Va sender ) .
 .
 .Mx
 .It Va smtp

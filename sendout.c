@@ -1933,7 +1933,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    }
 
    if (dosign == TRUM1)
-      dosign = ok_blook(smime_sign);
+      dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
 #ifndef HAVE_SSL
    if (dosign) {
       n_err(_("No SSL support compiled in\n"));

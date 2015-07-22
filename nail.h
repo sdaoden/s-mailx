@@ -1235,6 +1235,7 @@ enum okeys {
    ok_v_smime_crl_file,
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
+   ok_v_smime_sign_message_digest,
    ok_v_smtp,
    /* TODO v15-compat: smtp-auth: drop */
    ok_v_smtp_auth,

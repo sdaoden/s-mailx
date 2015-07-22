@@ -1730,8 +1730,9 @@ FL enum okay   ssl_verify_decide(void);
 FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
                   int keep);
 
-/*  */
-FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp);
+/* */
+FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
+                  char const *message_digest);
 
 /*  */
 FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);

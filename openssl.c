@@ -143,8 +143,13 @@ struct ssl_protocol {
 #endif
 
 struct smime_cipher {
-   char const  sc_name[8];
-   EVP_CIPHER const * (*sc_fun)(void);
+   char const        sc_name[8];
+   EVP_CIPHER const  *(*sc_fun)(void);
+};
+
+struct smime_digest {
+   char const     sd_name[8];
+   EVP_MD const   *(*sd_fun)(void);
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
@@ -193,6 +198,20 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 # error cipher algorithms that are required to support S/MIME
 #endif
 
+/* Supported S/MIME message digest algorithms */
+static struct smime_digest const _smime_digests[] = { /* Manual!! */
+#define _SMIME_DEFAULT_DIGEST    EVP_sha1 /* According to RFC 5751 */
+#define _SMIME_DEFAULT_DIGEST_S  "sha1"
+   {"sha1",    &EVP_sha1},
+   {"sha256",  &EVP_sha256},
+   {"sha512",  &EVP_sha512},
+   {"sha384",  &EVP_sha384},
+   {"sha224",  &EVP_sha224},
+#ifndef OPENSSL_NO_MD5
+   {"md5",     &EVP_md5},
+#endif
+};
+
 static enum ssl_state   _ssl_state;
 static size_t           _ssl_msgno;
 
@@ -200,6 +219,9 @@ static int        _ssl_rand_init(void);
 static void       _ssl_init(void);
 #if defined HAVE_DEVEL && defined HAVE_OPENSSL_MEMHOOKS && defined HAVE_DEBUG
 static void       _ssl_free(void *vp);
+#endif
+#ifdef HAVE_SSL_ALL_ALGORITHMS
+static void       _ssl_load_algos(void);
 #endif
 #if defined HAVE_OPENSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
 static void       _ssl_atexit(void);
@@ -229,6 +251,8 @@ static FILE *     smime_sign_cert(char const *xname, char const *xname2,
 static char *     _smime_sign_include_certs(char const *name);
 static bool_t     _smime_sign_include_chain_creat(_STACKOF(X509) **chain,
                      char const *cfiles);
+static EVP_MD const * _smime_sign_digest(char const *name,
+                        char const **digname);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
@@ -321,6 +345,24 @@ _ssl_free(void *vp)
    NYD_ENTER;
    if (vp != NULL)
       free(vp);
+   NYD_LEAVE;
+}
+#endif
+
+#ifdef HAVE_SSL_ALL_ALGORITHMS
+static void
+_ssl_load_algos(void)
+{
+   NYD_ENTER;
+   if (!(_ssl_state & SS_ALGO_LOAD)) {
+      _ssl_state |= SS_ALGO_LOAD;
+      OpenSSL_add_all_algorithms();
+
+      if (!(_ssl_state & SS_EXIT_HDL)) {
+         _ssl_state |= SS_EXIT_HDL;
+         atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
+      }
+   }
    NYD_LEAVE;
 }
 #endif
@@ -846,15 +888,7 @@ _smime_cipher(char const *name)
 
    /* Not a builtin algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
-   if (!(_ssl_state & SS_ALGO_LOAD)) {
-      _ssl_state |= SS_ALGO_LOAD;
-      OpenSSL_add_all_algorithms();
-      if (!(_ssl_state & SS_EXIT_HDL)) {
-         _ssl_state |= SS_EXIT_HDL;
-         atexit(&_ssl_atexit); /* TODO generic program-wide event mech. */
-      }
-   }
-
+   _ssl_load_algos();
    if ((cipher = EVP_get_cipherbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -999,6 +1033,63 @@ jerr:
    sk_X509_pop_free(*chain, X509_free);
    *chain = NULL;
    goto jleave;
+}
+
+static EVP_MD const *
+_smime_sign_digest(char const *name, char const **digname)
+{
+   EVP_MD const *digest;
+   char const *cp;
+   size_t i;
+   NYD_ENTER;
+
+   /* See comments in smime_sign_cert() for algorithm pitfalls */
+   if (name != NULL) {
+      struct name *np;
+
+      for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
+         int vs;
+         char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
+         cp = vok_vlook(vn);
+         ac_free(vn);
+         if (cp != NULL)
+            goto jhave_name;
+      }
+   }
+
+   if ((cp = ok_vlook(smime_sign_message_digest)) == NULL) {
+      digest = _SMIME_DEFAULT_DIGEST();
+      *digname = _SMIME_DEFAULT_DIGEST_S;
+      goto jleave;
+   }
+
+jhave_name:
+   i = strlen(cp);
+   {  char *x = salloc(i +1);
+      i_strcpy(x, cp, i +1);
+      cp = x;
+   }
+   *digname = cp;
+
+   for (i = 0; i < NELEM(_smime_digests); ++i)
+      if (!strcmp(_smime_digests[i].sd_name, cp)) {
+         digest = (*_smime_digests[i].sd_fun)();
+         goto jleave;
+      }
+
+   /* Not a builtin algorithm, but we may have dynamic support for more */
+#ifdef HAVE_SSL_ALL_ALGORITHMS
+   _ssl_load_algos();
+   if ((digest = EVP_get_digestbyname(cp)) != NULL)
+      goto jleave;
+#endif
+
+   n_err(_("Invalid message digest: \"%s\"\n"), cp);
+   digest = NULL;
+jleave:
+   NYD_LEAVE;
+   return digest;
 }
 
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
@@ -1303,9 +1394,11 @@ smime_sign(FILE *ip, char const *addr)
    FILE *rv = NULL, *sp = NULL, *fp = NULL, *bp, *hp;
    X509 *cert = NULL;
    _STACKOF(X509) *chain = NULL;
-   PKCS7 *pkcs7;
    EVP_PKEY *pkey = NULL;
    BIO *bb, *sb;
+   PKCS7 *pkcs7;
+   EVP_MD const *md;
+   char const *name;
    bool_t bail = FAL0;
    NYD_ENTER;
 
@@ -1331,8 +1424,12 @@ smime_sign(FILE *ip, char const *addr)
    Fclose(fp);
    fp = NULL;
 
-   if ((addr = _smime_sign_include_certs(addr)) != NULL &&
-         !_smime_sign_include_chain_creat(&chain, addr))
+   if ((name = _smime_sign_include_certs(addr)) != NULL &&
+         !_smime_sign_include_chain_creat(&chain, name))
+      goto jleave;
+
+   name = NULL;
+   if ((md = _smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
    if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
@@ -1346,6 +1443,8 @@ smime_sign(FILE *ip, char const *addr)
       goto jerr1;
 
    sb = NULL;
+   pkcs7 = NULL;
+
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
          (sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err(_("Error creating BIO signing objects"));
@@ -1353,17 +1452,33 @@ smime_sign(FILE *ip, char const *addr)
       goto jerr;
    }
 
-   if ((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NULL) {
+#undef _X
+#define _X  PKCS7_DETACHED | PKCS7_PARTIAL
+   if ((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb, _X)) == NULL) {
       ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
+   if (PKCS7_sign_add_signer(pkcs7, cert, pkey, md, _X) == NULL) {
+      ssl_gen_err(_("Error setting PKCS#7 signing object signer"));
+      bail = TRU1;
+      goto jerr;
+   }
+   if (!PKCS7_final(pkcs7, bb, _X)) {
+      ssl_gen_err(_("Error finalizing the PKCS#7 signing object"));
+      bail = TRU1;
+      goto jerr;
+   }
+#undef _X
+
    if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
       ssl_gen_err(_("Error writing signed S/MIME data"));
       bail = TRU1;
       /*goto jerr*/
    }
 jerr:
+   if (pkcs7 != NULL)
+      PKCS7_free(pkcs7);
    if (sb != NULL)
       BIO_free(sb);
    if (bb != NULL)
@@ -1371,7 +1486,7 @@ jerr:
    if (!bail) {
       rewind(bp);
       fflush_rewind(sp);
-      rv = smime_sign_assemble(hp, bp, sp);
+      rv = smime_sign_assemble(hp, bp, sp, name);
    } else
 jerr1:
       Fclose(sp);

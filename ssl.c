@@ -180,7 +180,7 @@ jleave:
 }
 
 FL FILE *
-smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
+smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
 {
    char *boundary;
    int c, lastc = EOF;
@@ -202,8 +202,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 
    boundary = mime_param_boundary_create();
    fprintf(op, "Content-Type: multipart/signed;\n"
-      " protocol=\"application/pkcs7-signature\"; micalg=sha1;\n"
-      " boundary=\"%s\"\n\n", boundary);
+      " protocol=\"application/pkcs7-signature\"; micalg=%s;\n"
+      " boundary=\"%s\"\n\n", message_digest, boundary);
    fprintf(op, "This is a S/MIME signed message.\n\n--%s\n", boundary);
    while ((c = getc(bp)) != EOF)
       putc(c, op);
