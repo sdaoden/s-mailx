@@ -554,8 +554,8 @@ will be sent:
 .Bd -literal -offset indent
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an isolated (almost) dry-run mode first
-$ LC_ALL=C MAILRC=/dev/null \*(ua -n -dvv \e
-    -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
+$ LC_ALL=C MAILRC=/dev/null \*(ua -n -dvv -Sv15-compat \e
+    -Ssendwait -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
     -s Subject "(Lovely) Bob <bob@host2>"
 $ cat ./sent-mails.mbox
 .Ed
@@ -621,7 +621,7 @@ is often necessary (e.g., in conjunction with
 or desirable, you may want to do some dry-run tests before you go.
 Saving a copy of the sent messages in a
 .Va record
-may also be desireable \(en as for most mailbox file targets some
+may also be desirable \(en as for most mailbox file targets some
 special conventions are recognized, see the
 .Ic file
 command for more on that.
@@ -679,8 +679,8 @@ What remains is treated as a network address.
 .Bd -literal -offset indent
 $ echo bla | \*(ua -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(ua -Sexpandaddr -s test '|cat >> ./mbox.mbox'
-$ echo safe | LC_ALL=C MAILRC=/dev/null \*(ua -n \e
-    -Sexpandaddr=fail,noalias -s test -. bob@home.net
+$ echo safe | LC_ALL=C MAILRC=/dev/null \*(ua -n -Sv15-compat \e
+    -Ssendwait -Sexpandaddr=fail,noalias -s test -. bob@home.net
 .Ed
 .
 .Pp
@@ -722,12 +722,12 @@ environment variables, or by using the
 command line option to specify options:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C MAILRC=/dev/null password=SECRET \*(ua -n \e
-    -Sv15-compat \e
+$ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \*(ua -n \e
+    -Sv15-compat -Ssendwait -Sexpandaddr=fail,noalias \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file \e
-    "Recipient 1 <recipient1@domain>" recipient2@domain \e
+    -. "Recipient 1 <recipient1@domain>" recipient2@domain \e
     < content_file
 .Ed
 .\" }}}
@@ -907,10 +907,11 @@ if $features !@ HTML-FILTER
   #set pipe-text/html=@
 endif
 mimetype '@ application/mathml+xml mathml'
-set pipe-application/pdf="@&cat > \e
-      \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
-    acroread \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
-    rm \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e""
+set pipe-application/pdf="@&set -C;\e
+    : > \e"${TMPDIR}/${NAIL_FILENAME}\e"; \e
+    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
+      EXIT INT QUIT PIPE TERM;\e
+    xpdf \e"${TMPDIR}/${NAIL_FILENAME}\e""
 .Ed
 .
 .Pp
@@ -7864,6 +7865,41 @@ ghost lS    !ls -aFrS
 ghost LS    !ls -aFS
 ghost llS   !ls -aFlrS
 ghost LlS   !ls -aFlS
+
+# We don't support gpg(1) directly yet.  But simple --clearsign'd
+# message parts can be dealt with as follows:
+define V {
+  localopts yes
+  set pipe-text/plain="set -C;\e
+    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" \e
+    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
+      EXIT INT QUIT PIPE TERM;\e
+    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
+    if < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk '\e
+        BEGIN{estat = 1}\e
+        END{exit estat}\e
+        /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
+          estat=0;\e
+          next;\e
+        }\e
+        /^-----BEGIN PGP SIGNATURE-----/,\e
+            /^-----END PGP SIGNATURE-----/ {\e
+          estat=0;\e
+          next;\e
+        }\e
+        {print}\e
+        '; then \e
+      echo '>>>>>';\e
+      gpg --verify \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
+    fi"
+  print
+}
+
+define RK {
+  !printf 'Key IDs to gpg --recv-keys: ';\e
+    read keyids;\e
+    gpg --recv-keys ${keyids};
+}
 .Ed
 .
 .Pp
@@ -7950,7 +7986,7 @@ Encryption, in contrast, makes the message text invisible for all people
 except those who have access to the secret decryption key.
 To encrypt a message, the specific recipient's public encryption key
 must be known.
-It is thus not possible to send encrypted mail to people unless their
+It is therefore not possible to send encrypted mail to people unless their
 key has been retrieved from either previous communication or public key
 directories.
 A message should always be signed before it is encrypted.
@@ -7967,6 +8003,12 @@ A set of CA certificates is usually delivered with OpenSSL and installed
 on your system.
 If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
+(Otherwise set
+.Va ssl-no-default-ca
+and use
+.Va smime-ca-file
+and/or
+.Va smime-ca-dir . )
 In general, a certificate cannot be more secure than the method its CA
 certificate has been retrieved with, though.
 Thus if you download a CA certificate from the Internet,
@@ -7977,8 +8019,8 @@ much as you trust the download process.
 The first thing you need for participating in S/MIME message exchange is
 your personal certificate, including a private key.
 The certificate contains public information, in particular your name and
-your email address, and the public key that is used by others to encrypt
-messages for you,
+your email address(es), and the public key that is used by others to
+encrypt messages for you,
 and to verify signed messages they supposedly received from you.
 The certificate is included in each signed message you send.
 The private key must be kept secret.
@@ -7988,33 +8030,77 @@ public key, and to sign messages.
 .Pp
 For personal use it is recommended that you get a S/MIME certificate
 from one of the major CAs on the Internet using your WWW browser.
-(Many CAs offer such certificates for free.)
-You will usually receive a combined certificate and private key in
-PKCS#12 format which \*(UA does not directly accept.
-To convert it to PEM format, use the following shell command:
+Many CAs offer such certificates for free.
+There is also
+.Lk https://www.CAcert.org
+which issues client and server certificates to members of their
+community for free; their root certificate
+.Pf ( Lk https://\:www.cacert.org/\:certs/\:root.crt )
+is often not in the default set of trusted CA root certificates, though,
+which means you will have to download their root certificate separately
+and ensure it is part of our S/MIME certificate validation chain by
+including it in
+.Va smime-ca-dir
+or as a vivid member of the
+.Va smime-ca-file .
+But let's take a step-by-step tour on how to setup S/MIME with
+a certificate from CAcert.org despite this situation!
 .
 .Pp
-.Dl $ openssl pkcs12 \-in cert.p12 \-out cert.pem \-clcerts \-nodes
+First of all you will have to become a member of the CAcert.org
+community.
+Once you are, create and verify all email addresses you want to be able
+to create signed and encrypted messages for/with using the corresponding
+entries of the web interface.
+Now ready to create S/MIME certificates, therefore create a new
+.Dq client certificate
+and ensure to include all email addresses that should be covered by the
+certificate in the following web form, and also to use your name as the
+.Dq common name .
 .
 .Pp
-If you omit the
-.Ql -nodes
-parameter, you can specifiy an additional
-.Dq PEM pass phrase
-for protecting the private key.
-\*(UA will then ask you for that pass phrase each time it signs or
-decrypts a message.
-Afterwards you can then use
+Create a private key and a certificate request on your local box
+(please see the manual pages of the used commands for more in-depth
+knowledge on what the used arguments etc. do):
 .
 .Pp
-.Dl set smime-sign-cert-myname@myisp.example=cert.pem
+.Dl openssl req -nodes -newkey rsa:4096 -keyout key.pem -out creq.pem
 .
 .Pp
-to make this private key and certificate known to \*(UA.
-You can now sign outgoing messages, just set
+Afterwards copy-and-paste the content of
+.Dq creq.pem
+into the certificate-request (CSR) field of the web form on the
+CAcert.org website (you may need to unfold some
+.Dq advanced options
+to see the corresponding text field).
+This last step will ensure that your private key (which never left your
+box) and the public key (the generated certificate) belong together.
+You are now ready and can create your CAcert certified public key.
+Download and store or copy-and-paste it as
+.Dq pub.crt .
 .
 .Pp
-.Dl set smime-sign
+Yay.
+In order to use your new S/MIME setup you will have to create
+a combined private key/public key (certificate) file:
+.
+.Pp
+.Dl cat key.pem pub.crt > ME@HERE.com.paired
+.
+.Pp
+This is the file \*(UA will work with.
+If you have created your private key with a passphrase then \*(UA will
+ask you for it whenever a message is signed or decrypted.
+Set the following variables to henceforth use S/MIME (setting
+.Va smime-ca-file
+is of interest for verification only):
+.
+.Bd -literal -offset indent
+set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
+  smime-sign-cert=ME@HERE.com.paired \e
+  smime-sign-message-digest=SHA256 \e
+  smime-sign
+.Ed
 .
 .Pp
 From each signed message you send,
@@ -8028,8 +8114,8 @@ After that, retrieve the certificate and tell \*(UA that it should use
 it for encryption:
 .
 .Pp
-.Dl certsave filename
-.Dl set smime-encrypt-USER@HOST=filename
+.Dl certsave FILENAME
+.Dl set smime-encrypt-USER@HOST=FILENAME
 .
 .Pp
 You should carefully consider if you prefer to store encrypted messages
@@ -8047,7 +8133,7 @@ commands leave them encrypted.
 .
 .Pp
 Note that neither S/MIME signing nor encryption applies to message
-subjects or other header fields.
+subjects or other header fields yet.
 Thus they may not contain sensitive information for encrypted messages,
 and cannot be trusted even if the message content has been verified.
 When sending signed messages,
