@@ -592,23 +592,32 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
       cp = "";
    env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
-   /* NAIL_FILENAME_GENERATED TODO pathconf NAME_MAX, adjust */
-   s.s = getrandstring(NAME_MAX / 4);
+   /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
+    * TODO a file wherever he wants!  *Do* create a zero-size temporary file
+    * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
+    * TODO the pipe returns?  Like this we *can* verify path/name issues! */
+#undef _X
+#define _X  MIN(NAME_MAX / 4, 16)
+   s.s = getrandstring(_X);
    if (mpp == NULL)
       cp = s.s;
    else if (*cp == '\0') {
+      size_t i;
+
       if (  (((cp = mpp->m_ct_type_usr_ovwr) == NULL || *cp == '\0') &&
              ((cp = mpp->m_ct_type_plain) == NULL || *cp == '\0')) ||
             ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0') ||
-            strlen(sh) > NAME_MAX / 4)
+            (i = strlen(sh)) > _X)
          cp = s.s;
       else {
-         LCTA(NAME_MAX / 4 >= 13);
-         s.s[NAME_MAX / 4  -1] = '.';
-         s.s[NAME_MAX / 4] = '\0';
-         cp = savecat(s.s, sh);
+         LCTA(_X >= 13);
+
+         s.s[0] = '-';
+         cp = s.s = savecat(sh, s.s);
+         s.s[i + _X  - 4] = '.';
       }
    }
+#undef _X
    env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 

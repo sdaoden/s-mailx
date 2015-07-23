@@ -926,8 +926,13 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
       scfp->cf_a0 = "-c";
    }
 
+   /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
+    * TODO a file wherever he wants!  *Do* create a zero-size temporary file
+    * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
+    * TODO the pipe returns?  Like this we *can* verify path/name issues! */
    scfp->cf_env[0] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
-         getrandstring(NAME_MAX), NULL)->s;
+         getrandstring(MIN(NAME_MAX / 4, 16)), NULL)->s;
+
    scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
    scfp->cf_env[2] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
    scfp->cf_env[3] = NULL;
