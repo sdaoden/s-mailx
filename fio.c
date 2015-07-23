@@ -694,7 +694,7 @@ jmsg:
       unlink(name);
    }
    NYD_LEAVE;
-   _exit(EXIT_OK);
+   return EXIT_OK;
 }
 #endif /* HAVE_DOTLOCK */
 
