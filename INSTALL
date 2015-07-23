@@ -202,7 +202,8 @@ Unless otherwise noted the following applies to saying "$ make" and
 . All systems:
   - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
     defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
-    number of warnings exploded.
+    number of warnings exploded.  With gcc 5.2 that went down again,
+    but just keep it like that nonetheless.
   - You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
     I/O and MIME rewrite that comes next.  They mostly refer to debug
@@ -226,12 +227,13 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . ArchLinux <https://www.archlinux.org/>
   Linux 3.17.6-1-ARCH x86_64
-  - gcc 5.1.0 [gcc 5.1.0-5]
+  - gcc (GCC) 5.2.0 [5.2.0-1]
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
       help.
-  - clang version 3.6.1 (tags/RELEASE_361/final) [clang-3.6.1-1]
+      Ditto, 'gl.gl_slot' and 'gl.gl_htable'.
+  - clang version 3.6.2 (tags/RELEASE_362/final) [3.6.2-1]
     + :)
 
 . Void Linux <http://www.voidlinux.eu/>
@@ -242,7 +244,9 @@ Unless otherwise noted the following applies to saying "$ make" and
 . CRUX Linux <http://www.crux.nu/>
   CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
   - gcc (CRUX) 4.8.2.
-    + :)
+    + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
+      'gl.gl_group'.
+      Ditto 'vc.vc_prime'.
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.1-RELEASE amd64
@@ -250,9 +254,12 @@ Unless otherwise noted the following applies to saying "$ make" and
     + :)
 
 . OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.7-current (GENERIC) #753: Thu Mar 26 14:56:52 MDT 2015
+  OpenBSD 5.8-beta (GENERIC) #972: Sun Jul  5 18:46:11 MDT 2015
   - gcc (GCC) 4.2.1 20070719.
     + Faulty message on longjmp() clobbering (of a const variable).
+      And such.  Just ignore that.
+    + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
+      'gl.gl_group'.
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
   DragonFly 4.2-RELEASE DragonFly v4.2.1-RELEASE
@@ -261,18 +268,6 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . NetBSD <https://www.netbsd.org/>
   + Show work.
-
-. Mac OS X <https://www.apple.com/>
-  (Snow Leopard) Darwin 10.8.0 i386
-  + Worked a thousand hours.
-  - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-  - clang version 3.4 (branches/release_34 197314)
-    Target: x86_64-apple-darwin10.8.0
-    Thread model: posix.
-  - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
-    (dot 3).
-  - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
-    2.9svn).
 
 . Solaris <http://opencsw.org/>
   * First of all: thanks to OpenCSW.org for offering SSH access to
@@ -323,6 +318,18 @@ Unless otherwise noted the following applies to saying "$ make" and
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with WANT_AUTOCC add this:
        ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+
+. Mac OS X <https://www.apple.com/>
+  (Snow Leopard) Darwin 10.8.0 i386
+  + Worked a thousand hours.
+  - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
+  - clang version 3.4 (branches/release_34 197314)
+    Target: x86_64-apple-darwin10.8.0
+    Thread model: posix.
+  - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
+    (dot 3).
+  - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
+    2.9svn).
 
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the "install" rule, because
