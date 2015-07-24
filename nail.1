@@ -55,7 +55,6 @@
 .ds OU [no v15-compat]
 .ds ID [v15 behaviour may differ]
 .ds RO (Read-only)
-.ds EX (EXPERIMENTAL)
 .
 .Dt "\*(UU" 1
 .Os
@@ -254,7 +253,7 @@ option.
 .It Fl h
 Print a short usage summary.
 Because of widespread use a
-.Fl -help
+.Fl Fl help
 argument will have the same effect.
 .
 .Mx
@@ -404,7 +403,7 @@ Using it twice increases the level of verbosity.
 .
 .Mx
 .It Fl X Ar cmd
-\*(EX Add the given
+Add the given
 .Ar cmd
 to the list of commands to be executed before normal operation starts.
 Correlates with
@@ -446,8 +445,9 @@ $ LC_ALL=C printf 'm bob\en~s ubject\enText\en.\enx\en' | \e
 .
 .Mx
 .It Fl \&.
-This flag forces termination of option processing in order to address
-.Dq option injection .
+This flag forces termination of option processing in order to prevent
+.Dq option injection
+(attacks).
 It also forcefully puts \*(UA into send mode, see
 .Sx "Sending mail" .
 .El
@@ -741,7 +741,7 @@ When used like that the user's system mailbox is read in and a one line
 header of each message therein is printed.
 (See the command
 .Ic file
-for a in-depth description of the different mailbox types that exist.)
+for an in-depth description of the different mailbox types that exist.)
 Note that if the mailbox is empty \*(UA will exit after printing
 a message unless the option
 .Va emptystart
@@ -908,10 +908,12 @@ if $features !@ HTML-FILTER
 endif
 mimetype '@ application/mathml+xml mathml'
 set pipe-application/pdf="@&set -C;\e
-    : > \e"${TMPDIR}/${NAIL_FILENAME}\e"; \e
+    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
     trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
       EXIT INT QUIT PIPE TERM;\e
-    xpdf \e"${TMPDIR}/${NAIL_FILENAME}\e""
+    set +C;\e
+    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
+    xpdf \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e""
 .Ed
 .
 .Pp
@@ -1640,7 +1642,7 @@ criterion then the last of those criteria is used.
 .\" .Ss "On URL syntax and credential lookup" {{{
 .Ss "On URL syntax and credential lookup"
 .
-\*(IN For accessing protocol-specific resources, like a POP3 mailbox,
+\*(IN For accessing protocol-specific resources, like POP3 mailboxes,
 usage of compact and standardized Uniform Resource Locators
 (URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
@@ -1715,7 +1717,7 @@ exists before finally ending up looking at the plain variable itself.
 \*(UA obeys the following logic scheme when dealing with the
 necessary credential informations of an account:
 .
-.Bl -bullet -offset indent
+.Bl -bullet
 .It
 If no
 .Ql USER
@@ -1746,9 +1748,9 @@ either the name that has been given with the
 command line option (or, equivalently, but with less precedence, the
 environment variable
 .Ev USER ) ,
-or
-.Ql getpwuid(getuid())
-a.k.a. the current login user.
+or the
+.Dq current
+user.
 The identity of this user has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .
@@ -2060,7 +2062,7 @@ prints a sorted list of available commands, and the command
 when given an argument, will show a documentation string for the
 expansion, as in
 .Ql ?unc ;
-documentation strings are however \*(OP.)
+documentation strings are however \*(OPal.)
 .
 .Pp
 For commands which take message lists as arguments, the next message
@@ -5330,7 +5332,7 @@ The backslash character has no special meaning except in these cases.
 .
 .Bd -literal -offset indent
 set 1=val\e one 2="val two" 3='val "three"' 4='val \e'four\e''
-var 1 2 3 4
+varshow 1 2 3 4
 unset 1 2 3 4
 .Ed
 .
@@ -7662,7 +7664,9 @@ file is accessible by only the user if it contains a
 .Cd password
 token for any other
 .Cd login
-than anonymous, \*(UA will always require these strict permissions.
+than
+.Dq anonymous ,
+\*(UA will always require these strict permissions.
 .El
 .
 .Pp
@@ -7834,9 +7838,9 @@ mlsubscribe ^xfans@xfans.xyz$
 # A real life example of a very huge free mail provider
 account XooglX {
   localopts yes
+  set from="Your Name <youremail@domain>"
   # (The plain smtp:// proto is optional)
   set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
-  set from="Your Name <youremail@domain>"
 }
 
 # Here is a pretty large one which does not allow sending mails
@@ -7847,24 +7851,24 @@ account XooglX {
 # still sending the message through their normal mail provider
 account XandeX {
   localopts true
+  set from="Your Name <youremail@domain>"
   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
-  set from="Your Name <youremail@domain>"
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-ghost l     !ls -aFtr
-ghost L     !ls -aFt
-ghost ll    !ls -aFltr
-ghost Ll    !ls -aFlt
-ghost la    !ls -aFr
-ghost La    !ls -aF
-ghost lla   1ls -aFlr
-ghost Lla   !ls -aFl
-ghost lS    !ls -aFrS
-ghost LS    !ls -aFS
-ghost llS   !ls -aFlrS
-ghost LlS   !ls -aFlS
+ghost l   !ls -aFtr
+ghost L   !ls -aFt
+ghost ll  !ls -aFltr
+ghost Ll  !ls -aFlt
+ghost la  !ls -aFr
+ghost La  !ls -aF
+ghost lla !ls -aFlr
+ghost Lla !ls -aFl
+ghost lS  !ls -aFrS
+ghost LS  !ls -aFS
+ghost llS !ls -aFlrS
+ghost LlS !ls -aFlS
 
 # We don't support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
@@ -7874,6 +7878,7 @@ define V {
     : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" \e
     trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
       EXIT INT QUIT PIPE TERM;\e
+    set +C;\e
     cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
     if < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk '\e
         BEGIN{estat = 1}\e
@@ -7894,12 +7899,14 @@ define V {
     fi"
   print
 }
+ghost V call V
 
 define RK {
   !printf 'Key IDs to gpg --recv-keys: ';\e
     read keyids;\e
     gpg --recv-keys ${keyids};
 }
+ghost RK call RK
 .Ed
 .
 .Pp
@@ -7917,6 +7924,7 @@ that sets up SMTP and POP3:
 .Bd -literal -offset indent
 account XandeX {
   localopts true
+  set from="Your Name <youremail@domain>"
   set netrc-lookup
   #set agent-shell-lookup="gpg -d .pass.gpg"
 
@@ -8402,7 +8410,7 @@ remains intact.
 .An "Kurt Shoens" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An Steffen Nurpmeso Aq Mt s-nail-users@lists.sourceforge.net
+.An "Steffen Nurpmeso" Aq Mt s-nail-users@lists.sourceforge.net
 .
 .
 .\" .Sh CAVEATS {{{
