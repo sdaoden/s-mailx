@@ -1451,17 +1451,17 @@ initbox(char const *name)
 FL bool_t
 print_comm_docstr(char const *comm)
 {
-   bool_t rv = FAL0;
-   struct cmd_ghost *cg;
+   struct cmd_ghost const *cg;
    struct cmd const *cp;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
    /* Ghosts take precedence */
    for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
       if (!strcmp(comm, cg->name)) {
-         printf("%s -> <%s>\n", comm, cg->cmd.s);
-         rv = TRU1;
-         goto jleave;
+         printf("%s -> ", comm);
+         comm = cg->cmd.s;
+         break;
       }
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp) {
@@ -1476,7 +1476,11 @@ print_comm_docstr(char const *comm)
       rv = TRU1;
       break;
    }
-jleave:
+
+   if (!rv && cg != NULL) {
+      printf("\"%s\"\n", comm);
+      rv = TRU1;
+   }
    NYD_LEAVE;
    return rv;
 }
