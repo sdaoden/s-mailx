@@ -20,7 +20,7 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.8.4 ("Nameless bird (shot by Hemingway)", 2015-07-21 +2
+v14.8.4 ("Nameless bird (shot by Hemingway)", 2015-07-21 +X
 -----------------------------------------------------------
 
 Thanks for Jérémie Courrèges-Anglas for beating me to it.
@@ -66,12 +66,13 @@ NOTES, ChangeLog (packager-affine)
 
   . The privsep helper now re-checks that it is capable to read (or
     read/write) the mailbox it is creating a dotlock for, to reduce the
-    chance of being misused (by itself).
+    chance of being misused (by itself).  I.e., it does so before
+    raising its privileges, say.
 
   [d5ec3cb]
 
 - The predefined CONFIG=urations have been changed a bit and now
-  "require" more options as they did before.
+  "require" more options than they did before.
 
 - Renamed WANT_ALL_SSL_ALGORITHMS to WANT_SSL_ALL_ALGORITHMS.
   That was a no-brainer, default of "yes" remains, but it now can also
@@ -89,8 +90,7 @@ ChangeLog
   when the -a @39 option cannot access(2) the file to be attached it
   searches the filename for an equals-sign "=" and splits into filename
   and character set shall it find one.  A character set defined like
-  this is "fixated", effectively avoiding any character set conversion
-  to occur.  E.g.,
+  this is "fixated" and therefore no character set conversion occurs.
 
     $ echo body |
     ./s-nail -d -s subject du@auch \
@@ -124,7 +124,7 @@ ChangeLog
 - New variable *smime-sign-message-digest* [-USER@HOST] @437 can be used
   to define the message digest for S/MIME signing.  RFC 5751 mandates
   a default of SHA1, by default available are also SHA256, SHA512,
-  SHA384 and SHA224, MD5 my be available dependent on OpenSSL.
+  SHA384 and SHA224, MD5 may be available, dependent on OpenSSL.
   With WANT_SSL_ALL_ALGORITHMS more digests may be available. [2f6dac3]
 
 - Using NAIL_FILENAME_GENERATED was prevented since some time since it
@@ -132,6 +132,18 @@ ChangeLog
 
 - Heavily rewritten manual section "Signed and encrypted messages with
   S/MIME" @35, giving a ready-to-go example for CAcert.org.
+
+- Nicer output for `help' @126 (#125) / `?' @74 when given an argument:
+  if that is a command ghost we search for the expansion and do print
+  the (further expansion and) help for that if possible [cea8c20]:
+
+    ?0[]? ?save
+    save: Append <message-list> to <file>
+    ?0[]? ?s
+    s (save): Append <message-list> to <file>
+    ?0[]? gh s s
+    ?0[]? ?s
+    s -> s (save): Append <message-list> to <file>
 
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
