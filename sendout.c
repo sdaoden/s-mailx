@@ -2132,6 +2132,13 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_io;
 
+   memset(&sb, 0, sizeof sb);
+   sb.sb_to = to;
+   sb.sb_input = nfi;
+   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
+      /* ..wait until we can write DEAD */
+      _sendout_error = -1;
+
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
 jfail_dead:
       savedeadletter(nfi, TRU1);
@@ -2145,12 +2152,6 @@ jerr_o:
    }
 
    if (_sendout_error < 0)
-      goto jfail_dead;
-
-   memset(&sb, 0, sizeof sb);
-   sb.sb_to = to;
-   sb.sb_input = nfi;
-   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
       goto jfail_dead;
 
    Fclose(nfo);
