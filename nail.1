@@ -4470,6 +4470,21 @@ Notes: \*(UA doesn't support the
 variable \(en use command line options or
 .Va sendmail-arguments
 to pass options through to a MTA.
+And the default global
+.Pa \*(UR
+file (which is loaded unless the
+.Fl n
+command line flag has been used or the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable is set) bends those initial settings a bit, e.g.,
+it sets the options
+.Va hold ,
+.Va keepsave
+and
+.Va keep ,
+to name a few, calls
+.Ic retain
+etc., and should thus be taken into account.
 .\" }}}
 .
 .\" .Ss "Binary options" {{{
