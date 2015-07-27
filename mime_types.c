@@ -804,7 +804,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
          mc = MIME_TEXT;
    } else if (is_asccaseprefix(ct, "message/")) {
       ct += sizeof("message/") -1;
-      if (!asccasecmp(ct, "message/rfc822"))
+      if (!asccasecmp(ct, "rfc822"))
          mc = MIME_822;
       else
          mc = MIME_MESSAGE;
