@@ -2215,6 +2215,11 @@ c_source(void *v)
       goto jleave;
    }
 
+   if (temporary_localopts_store != NULL) {
+      n_err(_("Before v15 you cannot `source' from within macros, sorry\n"));
+      Fclose(fi);
+      goto jleave;
+   }
    if (_fio_stack_size >= NELEM(_fio_stack)) {
       n_err(_("Too many `source' recursions\n"));
       Fclose(fi);
