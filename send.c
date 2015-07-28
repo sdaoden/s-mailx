@@ -1293,10 +1293,6 @@ jcopyout:
       if (convert == CONV_FROMB64_T || (asccasecmp(tcs, ip->m_charset) &&
             asccasecmp(charset_get_7bit(), ip->m_charset))) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         /* XXX Don't bail out if we cannot iconv(3) here;
-          * XXX alternatively we could avoid trying to open
-          * XXX if ip->m_charset is "unknown-8bit", which was
-          * XXX the one that has bitten me?? */
          /*
           * TODO errors should DEFINETELY not be scrolled away!
           * TODO what about an error buffer (think old shsp(1)),
