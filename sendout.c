@@ -1718,10 +1718,12 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          char *hb = np->n_fullname;
          /* GREF needs to be placed in angle brackets, but which are missing */
          if (np->n_type & GREF) {
-            hb = ac_alloc(len);
+            hb = ac_alloc(len + 2 +1);
             hb[0] = '<';
-            hb[len - 1] = '>';
-            memcpy(hb + 1, np->n_fullname, len - 2);
+            hb[len + 1] = '>';
+            hb[len + 2] = '\0';
+            memcpy(hb + 1, np->n_fullname, len);
+            len += 2;
          }
          len = xmime_write(hb, len, fo,
                ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
