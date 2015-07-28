@@ -118,7 +118,7 @@ ChangeLog
 
 - *smime-cipher-USER@HOST* @431 values changed to versions without
   hyphen, as that is what OpenSSL uses: e.g., AES256 not AES-256; the
-  former versions are no longer documented and will be dropped with
+  latter versions are no longer documented and will be dropped with
   v15.0. [f2c6eec]
 
 - New variable *smime-sign-message-digest* [-USER@HOST] @437 can be used
@@ -144,6 +144,26 @@ ChangeLog
     ?0[]? gh s s
     ?0[]? ?s
     s -> s (save): Append <message-list> to <file>
+
+- No longer allowing recursive commands in macros to avoid that the
+  following can crash us (check can be bypassed):
+
+      ? define ouch {
+        echo ouch
+        reply 2
+      }
+      ? reply
+      ~:call ouch
+
+  This is a pity because "? call ouch" does no longer cause a reply, but
+  the real healing will take time.
+  Also the `source' command is now actively disabled during macro
+  evaluation -- this only works(/ed) by accidence and anyway non-
+  synchronously (the `source'd file will be loaded after the macro
+  evaluation has finished).  The real healing for this is heavy stuff
+  and will remove a smart and fantastic idea from before 1979, but it
+  won't work out with macro support (see commit message for more upon
+  interest). [5461a30]
 
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
