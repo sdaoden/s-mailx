@@ -778,12 +778,7 @@ jcont:
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
-         /* Since readline_input() transparently switches to `source'd files
-          * and `~:source FILE' may enter this, ensure we quit again! */
-         if (pstate & PS_SOURCING) {
-            unstack();
-            continue;
-         }
+         assert(!(pstate & PS_SOURCING));
          if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
             printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
             continue;
