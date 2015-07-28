@@ -725,6 +725,8 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
    /* TODO yippieia, cat(check(lextract)) :-) */
    rewind(fp);
    while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+      struct name *np;
+
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
@@ -763,7 +765,44 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
             ;
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
+      }
+      /* The remaining are mostly hacked in and thus TODO -- at least in
+       * TODO respect to their content checking */
+      else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "message-id")) != NULL) {
+         np = checkaddrs(lextract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG,
+               NULL);
+         if (np == NULL || np->n_flink != NULL)
+            goto jebadhead;
+         ++seenfields;
+         hq->h_message_id = np;
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "in-reply-to")) != NULL) {
+         np = checkaddrs(lextract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG,
+               NULL);
+         if (np == NULL || np->n_flink != NULL)
+            goto jebadhead;
+         ++seenfields;
+         hq->h_in_reply_to = np;
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "references")) != NULL) {
+         ++seenfields;
+         /* TODO Limit number of references TODO better on parser side */
+         hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG,
+               NULL));
+      /* and that is very hairy */
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "mail-followup-to")) != NULL) {
+         ++seenfields;
+         hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS /*|
+               EACM_NOLOG*/,
+               NULL));
       } else
+jebadhead:
          n_err(_("Ignoring header field \"%s\"\n"), linebuf);
    }
 
@@ -789,6 +828,13 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       hp->h_sender = hq->h_sender;
       hp->h_organization = hq->h_organization;
       hp->h_subject = hq->h_subject;
+
+      if (pstate & PS_t_FLAG) {
+         hp->h_ref = hq->h_ref;
+         hp->h_message_id = hq->h_message_id;
+         hp->h_in_reply_to = hq->h_in_reply_to;
+         hp->h_mft = hq->h_mft;
+      }
    } else
       n_err(_("Restoring deleted header lines\n"));
 

@@ -862,10 +862,10 @@ do {\
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
       if (fmt("References:", np, fo, 0))
          goto jleave;
-      if (np->n_name != NULL) {
+      if (hp->h_in_reply_to == NULL && np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np,
+         if (!is_addr_invalid(np, /* TODO check that on parser side! */
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG)) {
             fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
@@ -874,6 +874,10 @@ do {\
             goto jleave;
          }
       }
+   }
+   if ((np = hp->h_in_reply_to) != NULL && (w & GREF)) {
+      fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+      ++gotcha;
    }
 
    if (w & GIDENT) {
@@ -1621,6 +1625,18 @@ _message_id(struct header *hp)
    size_t rl, i;
    struct tm *tmp;
    NYD_ENTER;
+
+   if (hp->h_message_id != NULL) {
+      i = strlen(hp->h_message_id->n_name);
+      rl = sizeof("Message-ID: <>") -1;
+      rv = salloc(rl + i +1);
+      memcpy(rv, "Message-ID: <", --rl);
+      memcpy(rv + rl, hp->h_message_id->n_name, i);
+      rl += i;
+      rv[rl++] = '>';
+      rv[rl] = '\0';
+      goto jleave;
+   }
 
    if (ok_blook(message_id_disable))
       goto jleave;

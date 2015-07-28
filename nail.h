@@ -1047,7 +1047,8 @@ enum program_state {
    PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
 
    /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1<<24        /* Ring of `errors' content, print msg */
+   PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
+   PS_t_FLAG         = 1<<25        /* OPT_t_FLAG made persistant */
 };
 
 /* A large enum with all the binary and value options a.k.a their keys.
@@ -1672,12 +1673,14 @@ struct header {
    char        *h_subject;    /* Subject string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
-   struct name *h_ref;        /* References */
+   struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
    char        *h_charset;    /* preferred charset */
    struct name *h_from;       /* overridden "From:" field */
    struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_message_id; /* overridden "Message-ID:" field */
+   struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    char        *h_organization; /* overridden "Organization:" field */
