@@ -779,28 +779,25 @@ jcont:
 
       if (cnt < 0) {
          assert(!(pstate & PS_SOURCING));
-         if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
+         if (options & OPT_t_FLAG) {
+            fflush_rewind(_coll_fp);
+            pstate |= PS_t_FLAG;
+            if (makeheader(_coll_fp, hp) != OKAY)
+               goto jerr;
+            rewind(_coll_fp);
+            options &= ~OPT_t_FLAG;
+            continue;
+         } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
             printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
             continue;
          }
          break;
       }
-      if ((options & OPT_t_FLAG) && cnt == 0) {
-         rewind(_coll_fp);
-         if (makeheader(_coll_fp, hp) != OKAY)
-            goto jerr;
-         rewind(_coll_fp);
-         options &= ~OPT_t_FLAG;
-         continue;
-      }
 
       _coll_hadintr = 0;
-      if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-            (options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
-            (ok_blook(dot) || ok_blook(ignoreeof)))
-         break;
-      if (cnt == 0 || linebuf[0] != escape ||
-            !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
+
+      if (cnt == 0 || !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
+jputline:
          /* TODO calls putline(), which *always* appends LF;
           * TODO thus, STDIN with -t will ALWAYS end with LF,
           * TODO even if no trailing LF and QP encoding.
@@ -808,7 +805,12 @@ jcont:
          if (putline(_coll_fp, linebuf, cnt) < 0)
             goto jerr;
          continue;
+      } else if (linebuf[0] == '.') {
+         if (linebuf[1] == '\0' && (ok_blook(dot) || ok_blook(ignoreeof)))
+            break;
       }
+      if (linebuf[0] != escape)
+         goto jputline;
 
       tty_addhist(linebuf, TRU1);
 
