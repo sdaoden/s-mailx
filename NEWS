@@ -165,6 +165,15 @@ ChangeLog
   won't work out with macro support (see commit message for more upon
   interest). [5461a30]
 
+- And `source' will be actively forbidden in compose mode, too.  It never
+  worked the way it should. [abd388c]
+
+- Did -t @60 ever work for real?  Now it does.
+  Even better it now "supports" some more header fields (References:,
+  In-Reply-To:, Message-ID:, and Mail-Followup-To:, but the latter will
+  be subject of a nice followup content massage) -- S-nail can
+  henceforth be used for git(1)s send-email command. [6842f12,631d402]
+
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
