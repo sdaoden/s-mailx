@@ -61,7 +61,8 @@ static si8_t   _sendout_error;
 
 static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
-                        char const *prefix, FILE *fo, struct name **xp);
+                        char const *prefix, FILE *fo, struct name **xp,
+                        enum gfield addflags);
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
@@ -134,13 +135,14 @@ static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
 
 static enum okay
 _putname(char const *line, enum gfield w, enum sendaction action,
-   size_t *gotcha, char const *prefix, FILE *fo, struct name **xp)
+   size_t *gotcha, char const *prefix, FILE *fo, struct name **xp,
+   enum gfield addflags)
 {
    struct name *np;
    enum okay rv = STOP;
    NYD_ENTER;
 
-   np = lextract(line, GEXTRA | GFULL);
+   np = lextract(line, GEXTRA | GFULL | addflags);
    if (xp != NULL)
       *xp = np;
    if (np == NULL)
@@ -782,29 +784,38 @@ do {\
    if (w & GIDENT) {
       struct name *fromf = NULL, *senderf = NULL;
 
-      if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, ff))
+      /* If -t parsed or composed From: then take it.  With -t we otherwise
+       * want -r to be honoured in favour of *from* in order to have
+       * a behaviour that is compatible with what users would expect from e.g.
+       * postfix(1) */
+      if ((fromf = hp->h_from) != NULL ||
+            ((pstate & PS_t_FLAG) && (fromf = option_r_arg) != NULL)) {
+         if (fmt("From:", fromf, fo, ff))
             goto jleave;
          ++gotcha;
-         fromf = hp->h_from;
       } else if ((addr = myaddrs(hp)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf))
-            goto jleave;
-         hp->h_from = fromf;
-      }
-
-      if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, ff))
+         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf,
+               GFULLEXTRA))
             goto jleave;
          ++gotcha;
-         senderf = hp->h_sender;
-      } else if ((addr = ok_vlook(sender)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf))
+      }
+      hp->h_from = fromf;
+
+      if ((senderf = hp->h_sender) != NULL) {
+         if (fmt("Sender:", senderf, fo, ff))
             goto jleave;
+         ++gotcha;
+      } else if ((addr = ok_vlook(sender)) != NULL) {
+         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf,
+               GFULLEXTRA))
+            goto jleave;
+         ++gotcha;
+      }
+      hp->h_sender = senderf;
 
       if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
          goto jleave;
-      /* Note that fromasender is NULL, 0x1 or real sender here */
+      /* Note that fromasender is (NULL,) 0x1 or real sender here */
 
       if (((addr = hp->h_organization) != NULL ||
             (addr = ok_vlook(ORGANIZATION)) != NULL) &&
@@ -1556,20 +1567,27 @@ __mta_prepare_args(struct name *to, struct header *hp)
    for (j = 0; j < vas_count; ++j, ++i)
       args[i] = vas[j];
 
-   /* -r option?  We may only pass skinned addresses */
+   /* -r option?  In conjunction with -t we act compatible to postfix(1) and
+    * ignore it (it is -f / -F there) if the message specified From:/Sender:.
+    * The interdependency with -t has been resolved in _puthead() */
    if (options & OPT_r_FLAG) {
       struct name const *np;
 
-      if ((np = option_r_arg) != NULL ||
-            (hp != NULL && (np = hp->h_from) != NULL)) {
+      if (hp != NULL && (np = hp->h_from) != NULL) {
+         /* However, what wasn't resolved there was the case that the message
+          * specified multiple From: addresses and a Sender: */
+         if ((pstate & PS_t_FLAG) && hp->h_sender != NULL)
+            np = hp->h_sender;
+
          if (np->n_fullextra != NULL) {
             args[i++] = "-F";
             args[i++] = np->n_fullextra;
          }
-
          cp = np->n_name;
-      } else
-         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      } else {
+         assert(option_r_arg == NULL);
+         cp = skin(myorigin(NULL));
+      }
 
       if (cp != NULL) {
          args[i++] = "-f";
@@ -1777,13 +1795,13 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       mkdate(fo, "Date");
       if ((cp = myaddrs(NULL)) != NULL) {
          if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-From:", fo,
-               &fromfield))
+               &fromfield, 0))
             goto jleave;
       }
       /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
       if ((cp = ok_vlook(sender)) != NULL) {
          if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-Sender:", fo,
-               &senderfield))
+               &senderfield, 0))
             goto jleave;
       }
       if (fmt("Resent-To:", to, fo, FMT_COMMA))

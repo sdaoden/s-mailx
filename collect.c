@@ -781,6 +781,8 @@ jcont:
          assert(!(pstate & PS_SOURCING));
          if (options & OPT_t_FLAG) {
             fflush_rewind(_coll_fp);
+            /* It is important to set PS_t_FLAG before extract_header() *and*
+             * keep OPT_t_FLAG for the first parse of the message, too! */
             pstate |= PS_t_FLAG;
             if (makeheader(_coll_fp, hp) != OKAY)
                goto jerr;

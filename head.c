@@ -740,18 +740,23 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
                EACM_NORMAL, NULL));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         ++seenfields;
-         hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
-                  EACM_STRICT, NULL));
+         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+            ++seenfields;
+            hq->h_from = cat(hq->h_from,
+                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                     EACM_STRICT, NULL));
+         }
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         ++seenfields;
-         hq->h_sender = cat(hq->h_sender,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
+         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+            ++seenfields;
+            hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
+                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                     EACM_STRICT, NULL));
+         }
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)
@@ -834,6 +839,17 @@ jebadhead:
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
          hp->h_mft = hq->h_mft;
+
+         /* And perform additional validity checks so that we don't bail later
+          * on TODO this is good and the place where this should occur,
+          * TODO unfortunately a lot of other places do again and blabla */
+         if (pstate & PS_t_FLAG) {
+            if (hp->h_from == NULL)
+               hp->h_from = option_r_arg;
+            else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
+               hp->h_sender = lextract(ok_vlook(sender),
+                     GEXTRA | GFULL | GFULLEXTRA);
+         }
       }
    } else
       n_err(_("Restoring deleted header lines\n"));
