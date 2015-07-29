@@ -37,12 +37,14 @@ NOTES, ChangeLog (packager-affine)
 
 - I have rewritten the privilege-separated dotlock helper program,
   because among others a SETGID one is of no use in todays world.
-  So it is now SETUID to PRIVSEP_USER, PRIVSEP_GROUP has been dropped.
+  So it is now SETUID to the new PRIVSEP_USER.
+
+  . WANT_PRIVSEP and PRIVSEP_GROUP have been dropped.
 
   . New option: WANT_DOTLOCK, by default enabled.
     It is henceforth possible to strip any dotlock code off S-nail.
-    WANT_PRIVSEP is still a separate option, though it must be said that
-    it is likely that without the helper WANT_DOTLOCK is mostly a no-op.
+    So either S-nail has complete dotlock support, including the
+    privilege-separated dotlock helper, or none at all.
 
   . New variable: PRIVSEP_USER, by default "root".
     It must be a privileged user that can be used to implement the new

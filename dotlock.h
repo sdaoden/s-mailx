@@ -107,7 +107,7 @@ __dotlock_create_excl(struct dotlock_info *dip, char const *lname)
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if (fd != -1) {
-#if defined HAVE_PRIVSEP && defined n_PRIVSEP_SOURCE
+#ifdef n_PRIVSEP_SOURCE
          if (dip->di_stb != NULL &&
                fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)) {
             int x = errno;

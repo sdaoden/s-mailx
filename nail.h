@@ -1352,9 +1352,7 @@ struct dotlock_info {
    char const  *di_hostname;
    char const  *di_randstr;
    size_t      di_pollmsecs;
-# ifdef HAVE_PRIVSEP
    struct stat *di_stb;
-# endif
 };
 #endif
 

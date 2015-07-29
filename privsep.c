@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Privilege-separated dot file lock program (WANT_PRIVSEP=yes)
+ *@ Privilege-separated dot file lock program (WANT_DOTLOCK=yes)
  *@ that is capable of calling setuid(2) and change its user identity
  *@ to the configured PRIVSEP_USER (usually "root"), in order to create
  *@ a dotlock file with the same UID/GID as the mailbox to be locked.

@@ -35,13 +35,12 @@ super(1) or a similar identity switcher as necessary.  If necessary, you
 possibly want to separate the configuration / building and the
 installation tasks, e.g.:
 
-  $ make PREFIX=/usr config build && sudo make doinstall
+  $ make PREFIX=/usr config build && super|sudo|su -c make doinstall
 
-If WANT_PRIVSEP has been enabled to include the minimal privilege-
-separated dotlock creation program that will however be installed with
-the group membership PRIVSEP_GROUP (default is "mail").
-In this case the user that executes the install/doinstall targets must
-be capable of changing the group ownership of the mini dotlock program.
+If WANT_DOTLOCK has been enabled to include the minimal privilege-
+separated dotlock creation program that, however, will be installed
+SETUID to the defined PRIVSEP_USER (default is "root"), and therefore
+the installation process needs to have the appropriate privileges.
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else:

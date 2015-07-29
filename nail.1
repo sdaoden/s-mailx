@@ -2619,10 +2619,10 @@ file locking: for any file
 a lock file
 .Ql a.lock
 will be created for the duration of the synchronization \(em
-as necessary a \*(OPal privilege-separated dotlock child process will be
-used to accommodate for necessary privilege adjustments in order to
-create the dotlock file in the same directory and with the same user and
-group identities as the file of interest.
+as necessary a privilege-separated dotlock child process will be used
+to accommodate for necessary privilege adjustments in order to create
+the dotlock file in the same directory
+and with the same user and group identities as the file of interest.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
@@ -4742,15 +4742,15 @@ is ignored and using a dot is the only method to terminate input mode.
 .
 .Mx
 .It Va dotlock-ignore-error
-Synchronization of mailboxes which \*(UA treats as system mailboxes
-(see the command
+\*(OP Synchronization of mailboxes which \*(UA treats as system
+mailboxes (see the command
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
 spool file locking method\(emin addition to system file locking.
-If the \*(OPal privilege-separated dotlock creation program is available
-then there is no good reason to ignore dotlock errors, and thus such
-errors are treated as fatal errors unless this variable is set.
-This variable is enabled by default if the dotlock helper is not builtin.
+Because \*(UA ships with a privilege-separated dotlock creation program
+that should always be able to create such a dotlock file there is no
+good reason to ignore dotlock file creation errors, and thus these are
+fatal unless this variable is set.
 .
 .Mx
 .It Va editalong

@@ -23,7 +23,6 @@ option_reset() {
    WANT_FILTER_HTML_TAGSOUP=0
    WANT_COLOUR=0
    WANT_DOTLOCK=0
-      WANT_PRIVSEP=0
 }
 
 option_maximal() {
@@ -46,7 +45,6 @@ option_maximal() {
    WANT_FILTER_HTML_TAGSOUP=1
    WANT_COLOUR=1
    WANT_DOTLOCK=require
-      WANT_PRIVSEP=require
 }
 
 # Predefined CONFIG= urations take precedence over anything else
@@ -60,7 +58,6 @@ if [ -n "${CONFIG}" ]; then
       WANT_ICONV=1
       WANT_REGEX=1
       WANT_DOTLOCK=require
-         WANT_PRIVSEP=require
       ;;
    MEDIUM)
       option_reset
@@ -74,7 +71,6 @@ if [ -n "${CONFIG}" ]; then
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       WANT_DOTLOCK=require
-         WANT_PRIVSEP=require
       ;;
    NETSEND)
       option_reset
@@ -90,7 +86,6 @@ if [ -n "${CONFIG}" ]; then
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       WANT_DOTLOCK=require
-         WANT_PRIVSEP=require
       ;;
    MAXIMAL)
       option_reset
@@ -140,10 +135,6 @@ option_update() {
 
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
-   fi
-
-   if feat_no DOTLOCK; then
-      WANT_PRIVSEP=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -631,7 +622,7 @@ printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 printf "#define PRIVSEP \"${SID}${NAIL}-privsep\"\n" >> ${newh}
 printf "PRIVSEP = \$(UAGENT)-privsep\n" >> ${newmk}
-if feat_yes PRIVSEP; then
+if feat_yes DOTLOCK; then
    printf "OPTIONAL_PRIVSEP = \$(PRIVSEP)\n" >> ${newmk}
 else
    printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
@@ -1187,7 +1178,7 @@ int main(void)
    fi
 fi
 
-if feat_yes PRIVSEP; then
+if feat_yes DOTLOCK; then
    if link_check fchown 'fchown(2)' << \!
 #include <unistd.h>
 int main(void)
@@ -1199,7 +1190,7 @@ int main(void)
    then
       :
    else
-      feat_bail_required PRIVSEP
+      feat_bail_required DOTLOCK
    fi
 fi
 
@@ -2006,12 +1997,6 @@ else
    echo '/* WANT_DOTLOCK=0 */' >> ${h}
 fi
 
-if feat_yes PRIVSEP; then
-   echo '#define HAVE_PRIVSEP' >> ${h}
-else
-   echo '/* WANT_PRIVSEP=0 */' >> ${h}
-fi
-
 if feat_yes MD5; then
    echo '#define HAVE_MD5' >> ${h}
 else
@@ -2070,7 +2055,6 @@ printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_PRIVSEP\n   ",PRIVSEP-DOTLOCK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
@@ -2203,8 +2187,8 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
 #endif
-#ifdef HAVE_PRIVSEP
-: + Privilege-separated file dotlock program
+#ifdef HAVE_DOTLOCK
+: + Dotlock files and privilege-separated file dotlock program
 #endif
 :
 :The following optional features are disabled:
@@ -2279,8 +2263,8 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
 #endif
-#ifndef HAVE_PRIVSEP
-: - Privilege-separated file dotlock program
+#ifndef HAVE_DOTLOCK
+: - Dotlock files and privilege-separated file dotlock program
 #endif
 :
 #if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
@@ -2312,7 +2296,7 @@ ${cat} > ${tmp2}.c << \!
 :Setup:
 : . System-wide resource file: SYSCONFRC
 : . bindir: BINDIR
-#ifdef HAVE_PRIVSEP
+#ifdef HAVE_DOTLOCK
 : . libexecdir: LIBEXECDIR
 #endif
 : . mandir: MANDIR

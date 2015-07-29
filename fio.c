@@ -644,7 +644,6 @@ jislink:
     * either assume a directory we are not allowed to write in, or that we run
     * via -u/$USER/%USER as someone else, in which case we favour our
     * privilege-separated dotlock process */
-# ifdef HAVE_PRIVSEP
    if (stb.st_uid != user_id || stb.st_gid != group_id || access(".", W_OK)) {
       char itoabuf[64];
       char const *args[13];
@@ -664,7 +663,6 @@ jislink:
       write(STDOUT_FILENO, &dls, sizeof dls);
       /* But fall through and try it with normal privileges! */
    }
-# endif
 
    /* So let's try and call it ourselfs!  Note that we don't block signals just
     * like our privsep child does, the user will anyway be able to remove his
