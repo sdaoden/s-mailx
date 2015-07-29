@@ -375,6 +375,30 @@ fields giving its recipients and
 .Ql Subject:
 giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
+.Pp
+Also understood are
+.Ql Reply-To:
+(possibly overriding
+.Va replyto ) ,
+.Ql Sender:
+(p.\ o.\&
+.Va sender ) ,
+.Ql Organization:
+(p.\ o.\&
+.Va ORGANIZATION ) .
+Note you can also specify
+.Ql From: ,
+possibly overriding
+.Va from !
+.Pp
+The following, which are normally created automatically based
+upon the message context, can also be specified:
+.Ql Message-ID: ,
+.Ql In-Reply-To: ,
+.Ql References:
+and
+.Ql Mail-Followup-To:
+(special address massage will however still occur for the latter).
 .
 .Mx
 .It Fl u Ar user
