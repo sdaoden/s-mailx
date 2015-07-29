@@ -2081,7 +2081,8 @@ else
    printf '#define _MAIN_SOURCE\n' >> ${src}
    printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
    for i in *.c; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] [ "${i}" = privsep.c ]; then
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
+            [ "${i}" = privsep.c ]; then
          continue
       fi
       printf "${i} " >> ${mk}
