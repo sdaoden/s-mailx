@@ -1799,7 +1799,7 @@ struct cw {
  */
 
 #undef VL
-#ifdef _MAIN_SOURCE
+#ifdef n_MAIN_SOURCE
 # ifndef HAVE_AMALGAMATION
 #  define VL
 # else
@@ -1897,6 +1897,8 @@ VL uc_i const  class_char[];
  * Finally, let's include the function prototypes XXX embed
  */
 
-#include "nailfuns.h"
+#ifndef n_PRIVSEP_SOURCE
+# include "nailfuns.h"
+#endif
 
 /* s-it-mode */

@@ -39,11 +39,9 @@
  */
 #undef n_FILE
 #define n_FILE main
+#define n_MAIN_SOURCE
 
-#ifndef HAVE_AMALGAMATION
-# define _MAIN_SOURCE
-# include "nail.h"
-#endif
+#include "nail.h"
 
 #include <sys/ioctl.h>
 
@@ -1122,5 +1120,10 @@ c_rexit(void *v) /* TODO program state machine */
    NYD_LEAVE;
    return 1;
 }
+
+/* Source the others in that case! */
+#ifdef HAVE_AMALGAMATION
+# include "config.h"
+#endif
 
 /* s-it-mode */

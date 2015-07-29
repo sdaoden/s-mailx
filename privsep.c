@@ -22,10 +22,10 @@
  */
 #undef n_FILE
 #define n_FILE privsep
+#define n_PRIVSEP_SOURCE
 
 #include "nail.h"
 
-#define n_PRIVSEP_SOURCE
 #include "dotlock.h"
 
 static void _ign_signal(int signum);

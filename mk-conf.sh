@@ -754,11 +754,10 @@ tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
 inc=./config.inc
-src=./config.c
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
+trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
 trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 # Time to redefine helper 2
@@ -779,8 +778,6 @@ exec 5>&2 > ${log} 2>&1
 
 echo "${LIBS}" > ${lib}
 echo "${INCS}" > ${inc}
-# ${src} is only created if WANT_AMALGAMATION
-${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
@@ -2018,11 +2015,12 @@ ${mv} ${tmp} ${lib}
 
 # config.h
 ${mv} ${h} ${tmp}
-printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
+printf '#ifndef _CONFIG_H\n# define _CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
+${rm} -f ${tmp}
 
 printf '\n/* The "feature string" */\n' >> ${h}
-printf '#if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
+printf '# if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
 printf 'static char const _features[] = "MIME"\n' >> ${h}
 printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
@@ -2057,10 +2055,7 @@ printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
-printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
-
-printf '#endif /* _CONFIG_H */\n' >> ${h}
-${rm} -f ${tmp}
+printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk
 ${rm} -rf ${tmp0}.* ${tmp0}*
@@ -2072,24 +2067,26 @@ if feat_no AMALGAMATION; then
       fi
       printf "${i} " >> ${mk}
    done
-   echo >> ${mk}
-   echo 'OBJ_DEP =' >> ${mk}
+   printf '\nOBJ_TARGET =\nOBJ_DEP =\n' >> ${mk}
 else
-   j=`echo "${src}" | ${sed} 's/^.\///'`
-   echo "${j}" >> ${mk}
-   printf 'OBJ_DEP = main.c ' >> ${mk}
-   printf '#define _MAIN_SOURCE\n' >> ${src}
-   printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
+   printf 'main.c\nOBJ_TARGET = main.c\nOBJ_DEP = ' >> ${mk}
+
+   echo '\n/* HAVE_AMALGAMATION: include sources */' >> ${h}
+   printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
+   printf '# undef _CONFIG_H\n' >> ${h}
+   printf '# define _CONFIG_H 2\n' >> ${h}
    for i in *.c; do
       if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
             [ "${i}" = privsep.c ]; then
          continue
       fi
       printf "${i} " >> ${mk}
-      printf "#include \"${i}\"\n" >> ${src}
+      printf "# include \"${i}\"\n" >> ${h}
    done
    echo >> ${mk}
 fi
+
+printf '#endif /* _CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
