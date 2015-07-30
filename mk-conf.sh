@@ -866,6 +866,32 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
+if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+#include <pwd.h>
+#include <unistd.h>
+int main(void)
+{
+   struct passwd *pw;
+   gid_t gid;
+   uid_t uid;
+
+   if ((gid = getgid()) != 1)
+      gid = getegid();
+   if ((uid = getuid()) != 1)
+      uid = geteuid();
+   if ((pw = getpwuid(uid)) == NULL)
+      pw = getpwnam("root");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require user and group info / database searches.'
+   msg 'That much Unix we indulge ourselfs.'
+   config_exit 1
+fi
+
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void)
