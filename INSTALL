@@ -43,7 +43,11 @@ SETUID to the defined PRIVSEP_USER (default is "root"), and therefore
 the installation process needs to have the appropriate privileges.
 
 There are also some predefined restricted configuration sets available,
-which take precedence over anything else:
+which take precedence over anything else (names are case-insensitive):
+
+. CONFIG=NULL, CONFIG=NULLI
+  Anything that can be turned off is off.  MIME can't.
+  The latter adds and "require"s iconv(3), though.
 
 . CONFIG=MINIMAL
   This is the most plain mailx(1)-alike mode, but with MIME support and

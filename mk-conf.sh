@@ -50,16 +50,20 @@ option_maximal() {
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case "${CONFIG}" in
-   NULLTEST)
+   [nN][uU][lL][lL])
       option_reset
       ;;
-   MINIMAL)
+   [nN][uU][lL][lL][iI])
+      option_reset
+      WANT_ICONV=require
+      ;;
+   [mM][iI][nN][iI][mM][aA][lL])
       option_reset
       WANT_ICONV=1
       WANT_REGEX=1
       WANT_DOTLOCK=require
       ;;
-   MEDIUM)
+   [mM][eE][dD][iI][uU][mM])
       option_reset
       WANT_ICONV=require
       WANT_IDNA=1
@@ -72,7 +76,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_COLOUR=1
       WANT_DOTLOCK=require
       ;;
-   NETSEND)
+   [nN][eE][tT][sS][eE][nN][dD])
       option_reset
       WANT_ICONV=require
       WANT_SOCKETS=1
@@ -87,21 +91,21 @@ if [ -n "${CONFIG}" ]; then
       WANT_COLOUR=1
       WANT_DOTLOCK=require
       ;;
-   MAXIMAL)
+   [mM][aA][xX][iI][mM][aA][lL])
       option_reset
       option_maximal
       ;;
-   DEVEL)
+   [dD][eE][vV][eE][lL])
       WANT_DEVEL=1 WANT_DEBUG=1 WANT_NYD2=1
       option_maximal
       ;;
-   ODEVEL)
+   [oO][dD][eE][vV][eE][lL])
       WANT_DEVEL=1
       option_maximal
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
+      echo >&2 'Possible values: NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
       ;;
    esac
