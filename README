@@ -9,17 +9,18 @@ It is usable as a mail batch language.
 S-nail is a derivative of Heirloom mailx, formerly known as nail, which
 itself is based upon Berkeley Mail that has a history back to the 70s.
 
-Please refer to the file INSTALL for build and installation remarks,
-and to NEWS for release update information.  The file THANKS mentions
-people who have helped improving S-nail and deserve acknowledgement.
+Please refer to the file "INSTALL" for build and installation remarks,
+and to "NEWS" for release update information.  The file "THANKS"
+mentions people who have helped improving S-nail and deserve
+acknowledgement.
 
 S-nail has git(1) repositories at Sourceforge[1] (browsable[2]) and
 GitLab.com[3] (browsable[4]), and regulary produces release tarballs[5],
-which can also be addressed directly[6] (e.g., via `curl -v -L').
+which can also be addressed directly[6] (e.g., via "curl -v -L").
 There is also something visual on the web that includes the latest
 version of the manual online[7].
 And we have a mailing list[8] with moderated unsubscribed posting
-possibilities; subscriptions can be managed via webinterface[9];
+possibilities; subscriptions can be managed via web interface[9];
 GMANE.org added s-nail-users@ to their archive[10] -- thank you!
 
   [1] git.code.sf.net/p/s-nail/code (HTTP / GIT)
@@ -64,14 +65,14 @@ alternatively
   $ git checkout master
   $ make CONFIG=MAXIMAL install
 
-The S-nail(1) heraldic animal `snailmail.jpg' has been found at
+The S-nail(1) heraldic animal "snailmail.jpg" has been found at
 <http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg>.
 Thank you!
 
 AUTHORS
 =======
 
-Berkeley Mail was (according to def.h) developed by Kurt Shoens, dated
+Berkeley Mail was (according to "def.h") developed by Kurt Shoens, dated
 March 25, 1978.  According to the CSRG commit log authors of BSD mail in
 the time spam 1980-10-08 to 1995-05-01 were, in order of appearance
 (commit count): Kurt Shoens (379), Kirk McKusick (50), Carl Smith (16),

@@ -12,9 +12,9 @@ I n s t a l l i n g  S - n a i l
 --------------
 
 System specific notes can be found in the next section.
-Any (optional) feature is adjustable and documented in `make.rc'.
+All (optional) features are adjustable and documented in "make.rc".
 Adjustments may also take place, and are usually done, from the command
-line, overriding those made in `make.rc' (if any):
+line, overriding those made in "make.rc" (if any):
 
   $ [make &&] make install
   $ make uninstall          # Won't remove the system wide startup file!
@@ -29,18 +29,15 @@ With utility program and feature adjustments:
 
   $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
 
-Note that no special user or group massaging happens during
-installation, so you should run the above either via su(1), sudo(1),
-super(1) or a similar identity switcher as necessary.  If necessary, you
-possibly want to separate the configuration / building and the
-installation tasks, e.g.:
-
-  $ make PREFIX=/usr config build && super|sudo|su -c make doinstall
-
 If WANT_DOTLOCK has been enabled to include the minimal privilege-
-separated dotlock creation program that, however, will be installed
-SETUID to the defined PRIVSEP_USER (default is "root"), and therefore
-the installation process needs to have the appropriate privileges.
+separated dotlock creation program that will be installed SETUID to the
+defined PRIVSEP_USER (default is "root"), and therefore the installation
+process needs to have the appropriate privileges.
+You therefore possibly want to separate the configuration / building and
+the installation tasks, and give the last step higher privileges via
+super(1), sudo(1), su(1) or a similar mechanism, e.g.:
+
+  $ make PREFIX=/usr config build && super make doinstall
 
 There are also some predefined restricted configuration sets available,
 which take precedence over anything else (names are case-insensitive):
@@ -93,9 +90,9 @@ E.g.:
 
   $ make CONFIG=MAXIMAL DESTDIR=./xtest install
 
-would create a `s-nail' binary and install a `s-nail' manual etc.
-under the prefix `/usr/local' but rooted under [./]`xtest', i.e., the
-binary would be installed as `[./]xtest/usr/local/bin/s-nail'.
+would create a "s-nail" binary and install a "s-nail" manual etc.
+under the prefix "/usr/local" but rooted under "[./]xtest", i.e., the
+binary would be installed as "[./]xtest/usr/local/bin/s-nail".
 The following make(1) target exists:
 
 . all         Create / check and update configuration, build.
@@ -106,28 +103,28 @@ The following make(1) target exists:
 
 . config      Only create or check and update the configuration.
 . build       Only build (using the existing configuration).
-. test        Run ./cc-test.sh in --check-only mode on the built binary.
+. test        Run "cc-test.sh" in --check-only mode on the built binary.
 . doinstall or packager-install
               Only install using the built files of the existing
               configuration.  It is possible to overwrite DESTDIR= when
               using this target nonetheless (a following `uninstall'
               won't know about that overwritten value, however).
 
-Setting the make(1) variable `VERBOSE' to an arbitrary value, as in
-"$ make VERBOSE=xy install", will change the output of the build,
-install etc. processes to a different, more verbose one.
+Setting the make(1) variable $VERBOSE to an arbitrary value, as in
+"$ make VERBOSE=xy install", will change the output of the `build',
+`install' etc. targets to a different, more verbose one.
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable $C_INCLUDE_PATH
-includes the necessary `include/' paths and the environment variable
-$LD_LIBRARY_PATH includes the necessary `lib/'rary paths.
+includes the necessary "include/" paths and the environment variable
+$LD_LIBRARY_PATH includes the necessary "lib/"rary paths.
 
 The S-nail make system will inspect these two environment variables and
 *automatically* convert them to cc(1) (c99(1)) -I and -L options (since
 these environment variables are, different to the command line options,
 not part of the POSIX standard).
 To set these environment variables, the following can be done in
-a Bourne/Korn/POSIX compatible shell:
+a Bourne / Korn / POSIX compatible shell:
 
   $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
   $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
@@ -137,7 +134,7 @@ a Bourne/Korn/POSIX compatible shell:
 The S-nail make system will also automatically integrate pkgsrc(7) paths
 into this mechanism.  pkgsrc(7) is used to handle building (compilation),
 installation and removal of software packages on a lot of operating
-systems, including all BSD systems, Linux, Solaris ...
+systems, including all BSD systems, Linux, Solaris etc.
 And if all else fails you can also forcefully pass in include directives
 and library paths by passing prefilled $INCS and $LIBS variables:
 
@@ -146,13 +143,13 @@ and library paths by passing prefilled $INCS and $LIBS variables:
 1.1 What if configuration fails?
 --------------------------------
 
-The configuration process creates some files named `config':
+The configuration process creates some files named "config":
 
 . config.log  output generated by the configuration compile tests.
 . config.lst  configuration (chosen option, programs, paths).
-. config.h    C program header produced according to `config.lst'.
+. config.h    C program header produced according to "config.lst".
 
-Of special interest is `config.log' since the error usually manifests
+Of special interest is "config.log" since the error usually manifests
 here in textual output.  Maybe that makes it obvious what can be done
 (header files could not be found because of missing entries in
 $C_INCLUDE_PATH, libraries could not be linked because of incomplete
@@ -174,16 +171,16 @@ Please ensure WANT_DEBUG=yes is enabled during compilation, as in
 
   $ make CONFIG=MAXIMAL WANT_DEBUG=yes
 
-If WANT_AUTOCC is enabled then the build system should automatically
-adjust the compiler flags accordingly, please see `make.rc' for more.
+If $WANT_AUTOCC is enabled then the build system should automatically
+adjust the compiler flags accordingly, please see "make.rc" for more.
 There is also a "devel"opment target which does most of this by itself:
 
   $ make devel
 
-WANT_DEBUG ("devel") will enable memory bound debug canaries and
+$WANT_DEBUG ("devel") will enable memory bound debug canaries and
 Not-Yet-Dead function graph listings etc.  Whereas the latter will try
 to write its listing into a file named after your favourite MUA in
-your $TMPDIR (or /tmp or ./, in order), falling back to STDERR shall
+your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
 creation of the file not be possible (we won't overwrite an existing
 file), the debug facilities in general make their appearance on the
 standard error channel; because this can be a quite long output, then,
@@ -219,13 +216,13 @@ Unless otherwise noted the following applies to saying "$ make" and
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
       unsigned int', but argument 3 has type 'size_t'
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
-    However, `nail.h' tries hard to detect the real type size and
+    However, "nail.h" tries hard to detect the real type size and
     defines the "PRI[du]Z" macros which end up with the correct size,
-    which is compile-time asserted via PRIxZ_FMT_CTA() in `main.c'.
+    which is compile-time asserted via PRIxZ_FMT_CTA() in "main.c".
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
-    WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
+    $WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
@@ -280,12 +277,12 @@ Unless otherwise noted the following applies to saying "$ make" and
   - I couldn't get us going on SunOS 5.9: the build system had to be
     extended to check for UINTPTR_MAX being defined as the empty string
     and similar very special things.
-  - With WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+  - With $WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
-    WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+    $WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
   - I will never get iconv(3) right for Solaris it seems.
-  - In order to be able to run the tests you will need a cksum that
-    supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
+  - In order to be able to run the tests you will need a cksum(1) that
+    supports CRC-32 (POSIX).  We look into "/opt/csw/gnu/cksum", but if
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.  (A future version of S-nail will
     use different testing, but until then: Sorry!)
@@ -295,10 +292,6 @@ Unless otherwise noted the following applies to saying "$ make" and
   SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
   - cc: Sun C 5.9 SunOS_sparc Patch 124867-16 2010/08/11
     + Some harmless warnings.
-    + S/MIME tests fail with "OpenSSL 1.0.1m 19 Mar 2015":
-        behave:s/mime:sign/verify:
-        Error creating the PKCS#7 signing object: \
-          error:21083097:lib(33):func(131):reason(151)
   SunOS 5.10 Generic_147441-19 i86pc i386 i86pc
   - cc: Sun C 5.9 SunOS_i386 Patch 124868-15 2010/08/11
     + Some harmless warnings.
@@ -319,7 +312,7 @@ Unless otherwise noted the following applies to saying "$ make" and
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       then you have to overwrite this symbol with __builtin_va_start,
-      e.g., in conjunction with WANT_AUTOCC add this:
+      e.g., in conjunction with $WANT_AUTOCC add this:
        ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
 . Mac OS X <https://www.apple.com/>
@@ -335,9 +328,9 @@ Unless otherwise noted the following applies to saying "$ make" and
     2.9svn).
 
 . UnixWare 7.1.4.
-  + Note: it is no longer possible to use the "install" rule, because
+  + Note: it is no longer possible to use the `install' rule, because
     we use shell functions to ease the task of directory creation etc.
-    (especially useful due to VERBOSE=), and that won't work due to bugs
+    (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
   + You'll see some harmless and ignorable warnings.
 
@@ -348,7 +341,7 @@ I claim that we have reached a stable state that should enable users
 a neatless mode of operation when running 24/7 (except for growing
 memory usage from the OpenSSL side of the road, when used).
 I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
-anniversary of Berkeley Mail, as a good one.  Also see `TODO'.
+anniversary of Berkeley Mail, as a good one.  Also see "TODO".
 
 For S-nail, v15.0 (not before 2017) is dedicated to a Send- and
 MIME-layer rewrite that will bring the possibility to access each
