@@ -1,5 +1,5 @@
-#@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
-#@ Please see `INSTALL' and `make.rc' instead.
+#@ "mk-mk.in" -- mk.mk template, completed by mk-conf.sh.
+#@ Please see "INSTALL" and "make.rc" instead.
 
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
@@ -28,14 +28,14 @@ $(UAGENT): $(OBJ)
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-$(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
-$(OBJ_TARGET) accmacvar.o: okeys.h version.h
-$(OBJ_TARGET) fio.o: dotlock.h
-$(OBJ_TARGET) imap.o: imap_gssapi.h
-$(OBJ_TARGET) lex.o: cmd_tab.h
-$(OBJ_TARGET) mime_types.o: mime_types.h
-$(OBJ_TARGET) imap.c pop3.o smtp.o urlcrecry.o: rfc1321.h
-$(OBJ_TARGET) smtp.o: smtp_gssapi.h
+$(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
+$(AMALGAM_TARGET) accmacvar.o: okeys.h version.h
+$(AMALGAM_TARGET) fio.o: dotlock.h
+$(AMALGAM_TARGET) imap.o: imap_gssapi.h
+$(AMALGAM_TARGET) lex.o: cmd_tab.h
+$(AMALGAM_TARGET) mime_types.o: mime_types.h
+$(AMALGAM_TARGET) imap.c pop3.o smtp.o urlcrecry.o: rfc1321.h
+$(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
 
 $(PRIVSEP): privsep.o
 	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
@@ -121,7 +121,7 @@ _version_from_header = VERSION="`< version.h $(sed) \
 		-e '/ VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
-mkman.1: nail.1 mk.mk
+mkman.1: nail.1
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 		$(_version_from_header) \
@@ -147,7 +147,7 @@ mkman.1: nail.1 mk.mk
 	{print}\
 	'
 
-mkrc.rc: nail.rc mk.mk
+mkrc.rc: nail.rc
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
@@ -171,7 +171,7 @@ mkrc.rc: nail.rc mk.mk
 
 _install_echoes:
 	@echo 'Installing..'
-install: _install_echoes mk.mk mkman.1 mkrc.rc
+install: _install_echoes mkman.1 mkrc.rc
 	@__mkdir() {\
 		_dir=$${1};\
 		if [ -d "$${_dir}" ]; then :; else\
