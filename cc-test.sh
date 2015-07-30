@@ -74,6 +74,10 @@ cc_all_configs() {
             printf "WANT_AUTOCC=1\n"
          }
 
+         printf "CONFIG=NULL WANT_AUTOCC=0\n"
+         printf "CONFIG=NULL WANT_AUTOCC=1\n"
+         printf "CONFIG=NULLI WANT_AUTOCC=0\n"
+         printf "CONFIG=NULLI WANT_AUTOCC=1\n"
          printf "CONFIG=MINIMAL WANT_AUTOCC=0\n"
          printf "CONFIG=MINIMAL WANT_AUTOCC=1\n"
          printf "CONFIG=MEDIUM WANT_AUTOCC=0\n"
@@ -82,6 +86,10 @@ cc_all_configs() {
          printf "CONFIG=NETSEND WANT_AUTOCC=1\n"
          printf "CONFIG=MAXIMAL WANT_AUTOCC=0\n"
          printf "CONFIG=MAXIMAL WANT_AUTOCC=1\n"
+         printf "CONFIG=DEVEL WANT_AUTOCC=0\n"
+         printf "CONFIG=DEVEL WANT_AUTOCC=1\n"
+         printf "CONFIG=ODEVEL WANT_AUTOCC=0\n"
+         printf "CONFIG=ODEVEL WANT_AUTOCC=1\n"
       }
    ' | while read c; do
       printf "\n\n##########\n$c\n"
