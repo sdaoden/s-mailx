@@ -7942,23 +7942,24 @@ define V {
       EXIT INT QUIT PIPE TERM;\e
     set +C;\e
     cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
-    if < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk '\e
-        BEGIN{estat = 1}\e
-        END{exit estat}\e
-        /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
-          estat=0;\e
+    < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk \e
+        -v TMPFILE=\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" '\e
+      BEGIN {done=0}\e
+      /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
+        if (done++ != 0)\e
           next;\e
-        }\e
-        /^-----BEGIN PGP SIGNATURE-----/,\e
-            /^-----END PGP SIGNATURE-----/ {\e
-          estat=0;\e
-          next;\e
-        }\e
-        {print}\e
-        '; then \e
-      echo '>>>>>';\e
-      gpg --verify \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
-    fi"
+        print \e"--- GPG --verify ---\e";\e
+        system(\e"gpg --verify \e" TMPFILE \e" 2>&1\e");\e
+        print \e"--- GPG --verify ---\e";\e
+        print \e"\e";\e
+        next;\e
+      }\e
+      /^-----BEGIN PGP SIGNATURE-----/,\e
+          /^-----END PGP SIGNATURE-----/ {\e
+        next;\e
+      }\e
+      {print}\e
+      '"
   print
 }
 ghost V call V
