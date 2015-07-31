@@ -132,7 +132,7 @@
      DS(N_("Append <message-list> to <file>")) },
    { "Save", &c_Save, (A | STRLIST), 0, 0
      DS(N_("Like \"save\", but derive filename from first sender")) },
-   { "source", &c_source, (M | RAWLIST), 1, 1
+   { "source", &c_source, (M | R | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
    { "set", &c_set, (H | M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },

@@ -180,7 +180,7 @@ jleave:
 }
 
 FL FILE *
-smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
+smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
 {
    char *boundary;
    int c, lastc = EOF;
@@ -202,14 +202,14 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp)
 
    boundary = mime_param_boundary_create();
    fprintf(op, "Content-Type: multipart/signed;\n"
-      " protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\n"
-      " boundary=\"%s\"\n\n", boundary);
+      " protocol=\"application/pkcs7-signature\"; micalg=%s;\n"
+      " boundary=\"%s\"\n\n", message_digest, boundary);
    fprintf(op, "This is a S/MIME signed message.\n\n--%s\n", boundary);
    while ((c = getc(bp)) != EOF)
       putc(c, op);
 
    fprintf(op, "\n--%s\n", boundary);
-   fputs("Content-Type: application/x-pkcs7-signature; name=\"smime.p7s\"\n"
+   fputs("Content-Type: application/pkcs7-signature; name=\"smime.p7s\"\n"
       "Content-Transfer-Encoding: base64\n"
       "Content-Disposition: attachment; filename=\"smime.p7s\"\n\n", op);
    while ((c = getc(sp)) != EOF) {
@@ -259,7 +259,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
       lastc = c;
    }
 
-   fprintf(op, "Content-Type: application/x-pkcs7-mime; name=\"smime.p7m\"\n"
+   fprintf(op, "Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
       "Content-Transfer-Encoding: base64\n"
       "Content-Disposition: attachment; filename=\"smime.p7m\"\n\n");
    while ((c = getc(yp)) != EOF) {

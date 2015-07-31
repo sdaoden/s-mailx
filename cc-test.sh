@@ -2,7 +2,7 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
-ARGS='-n# -Sstealthmua -Sexpandaddr=restrict'
+ARGS='-n# -Sstealthmua -Sexpandaddr=restrict -Sdotlock-ignore-error'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
@@ -73,6 +73,23 @@ cc_all_configs() {
                printf data[k] "=1 "
             printf "WANT_AUTOCC=1\n"
          }
+
+         printf "CONFIG=NULL WANT_AUTOCC=0\n"
+         printf "CONFIG=NULL WANT_AUTOCC=1\n"
+         printf "CONFIG=NULLI WANT_AUTOCC=0\n"
+         printf "CONFIG=NULLI WANT_AUTOCC=1\n"
+         printf "CONFIG=MINIMAL WANT_AUTOCC=0\n"
+         printf "CONFIG=MINIMAL WANT_AUTOCC=1\n"
+         printf "CONFIG=MEDIUM WANT_AUTOCC=0\n"
+         printf "CONFIG=MEDIUM WANT_AUTOCC=1\n"
+         printf "CONFIG=NETSEND WANT_AUTOCC=0\n"
+         printf "CONFIG=NETSEND WANT_AUTOCC=1\n"
+         printf "CONFIG=MAXIMAL WANT_AUTOCC=0\n"
+         printf "CONFIG=MAXIMAL WANT_AUTOCC=1\n"
+         printf "CONFIG=DEVEL WANT_AUTOCC=0\n"
+         printf "CONFIG=DEVEL WANT_AUTOCC=1\n"
+         printf "CONFIG=ODEVEL WANT_AUTOCC=0\n"
+         printf "CONFIG=ODEVEL WANT_AUTOCC=1\n"
       }
    ' | while read c; do
       printf "\n\n##########\n$c\n"

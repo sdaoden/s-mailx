@@ -77,7 +77,7 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
 
-static enum okay  makeheader(FILE *fp, struct header *hp);
+static enum okay  makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
  * new temp file */
@@ -365,7 +365,7 @@ jleave:
 }
 
 static enum okay
-makeheader(FILE *fp, struct header *hp)
+makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
    FILE *nf;
    int c;
@@ -378,7 +378,8 @@ makeheader(FILE *fp, struct header *hp)
       goto jleave;
    }
 
-   extract_header(fp, hp);
+   extract_header(fp, hp, checkaddr_err);
+
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
    if (fp != _coll_fp)
@@ -409,7 +410,7 @@ mesedit(int c, struct header *hp)
    if (nf != NULL) {
       if (hp) {
          rewind(nf);
-         makeheader(nf, hp);
+         makeheader(nf, hp, NULL);
       } else {
          fseek(nf, 0L, SEEK_END);
          Fclose(_coll_fp);
@@ -607,7 +608,7 @@ jleave:
 
 FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-   char *quotefile, int doprefix)
+   char *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct ignoretab *quoteig;
    int lc, cc, c, t;
@@ -778,34 +779,28 @@ jcont:
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
-         /* Since readline_input() transparently switches to `source'd files
-          * and `~:source FILE' may enter this, ensure we quit again! */
-         if (pstate & PS_SOURCING) {
-            unstack();
+         assert(!(pstate & PS_SOURCING));
+         if (options & OPT_t_FLAG) {
+            fflush_rewind(_coll_fp);
+            /* It is important to set PS_t_FLAG before extract_header() *and*
+             * keep OPT_t_FLAG for the first parse of the message, too! */
+            pstate |= PS_t_FLAG;
+            if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
+               goto jerr;
+            rewind(_coll_fp);
+            options &= ~OPT_t_FLAG;
             continue;
-         }
-         if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
+         } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
             printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
             continue;
          }
          break;
       }
-      if ((options & OPT_t_FLAG) && cnt == 0) {
-         rewind(_coll_fp);
-         if (makeheader(_coll_fp, hp) != OKAY)
-            goto jerr;
-         rewind(_coll_fp);
-         options &= ~OPT_t_FLAG;
-         continue;
-      }
 
       _coll_hadintr = 0;
-      if (linebuf[0] == '.' && linebuf[1] == '\0' &&
-            (options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
-            (ok_blook(dot) || ok_blook(ignoreeof)))
-         break;
-      if (cnt == 0 || linebuf[0] != escape ||
-            !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
+
+      if (cnt == 0 || !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
+jputline:
          /* TODO calls putline(), which *always* appends LF;
           * TODO thus, STDIN with -t will ALWAYS end with LF,
           * TODO even if no trailing LF and QP encoding.
@@ -813,7 +808,12 @@ jcont:
          if (putline(_coll_fp, linebuf, cnt) < 0)
             goto jerr;
          continue;
+      } else if (linebuf[0] == '.') {
+         if (linebuf[1] == '\0' && (ok_blook(dot) || ok_blook(ignoreeof)))
+            break;
       }
+      if (linebuf[0] != escape)
+         goto jputline;
 
       tty_addhist(linebuf, TRU1);
 

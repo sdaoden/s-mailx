@@ -1,13 +1,13 @@
-#@ `mk-mk.in' -- mk.mk template, completed by mk-conf.sh
-#@ Please see `INSTALL' and `make.rc' instead.
+#@ "mk-mk.in" -- mk.mk template, completed by mk-conf.sh.
+#@ Please see "INSTALL" and "make.rc" instead.
 
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
 	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(<)';\
-	else echo '  $$ $(CC) $(CFLAGS) $(INCLUDES) -c $(<)';\
+	else echo '  $$ $(CC) $(CFLAGS) $(INCS) -c $(<)';\
 	fi;\
-	$(CC) $(CFLAGS) $(INCLUDES) -c $(<)
+	$(CC) $(CFLAGS) $(INCS) -c $(<)
 .c .y: ;
 
 all: _all_echoes $(UAGENT) $(OPTIONAL_PRIVSEP)
@@ -16,10 +16,11 @@ _all_echoes:
 	if [ -z "$(VERBOSE)" ]; then \
 		echo '. CC      : $(CC)';\
 		echo '. CFLAGS  : $(CFLAGS)';\
-		echo '. INCLUDES: $(INCLUDES)';\
+		echo '. INCS    : $(INCS)';\
 		[ -n "$(LDFLAGS)" ] && echo '. LDFLAGS : $(LDFLAGS)';\
 		echo '. LIBS    : $(LIBS)';\
 	fi
+
 $(UAGENT): $(OBJ)
 	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
@@ -27,14 +28,14 @@ $(UAGENT): $(OBJ)
 	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-$(OBJ): config.h nail.h nailfuns.h $(OBJ_DEP)
-config.o accmacvar.o: okeys.h version.h
-config.o fio.o: dotlock.h
-config.o imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
-config.o imap.o: imap_gssapi.h
-config.o lex.o: cmd_tab.h
-config.o mime_types.o: mime_types.h
-config.o smtp.o: smtp_gssapi.h
+$(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
+$(AMALGAM_TARGET) accmacvar.o: okeys.h version.h
+$(AMALGAM_TARGET) fio.o: dotlock.h
+$(AMALGAM_TARGET) imap.o: imap_gssapi.h
+$(AMALGAM_TARGET) lex.o: cmd_tab.h
+$(AMALGAM_TARGET) mime_types.o: mime_types.h
+$(AMALGAM_TARGET) imap.c pop3.o smtp.o urlcrecry.o: rfc1321.h
+$(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
 
 $(PRIVSEP): privsep.o
 	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
@@ -120,7 +121,7 @@ _version_from_header = VERSION="`< version.h $(sed) \
 		-e '/ VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
-mkman.1: nail.1 mk.mk
+mkman.1: nail.1
 	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 		$(_version_from_header) \
@@ -146,7 +147,7 @@ mkman.1: nail.1 mk.mk
 	{print}\
 	'
 
-mkrc.rc: nail.rc mk.mk
+mkrc.rc: nail.rc
 	@[ -n "$(VERBOSE)" ] &&\
 		echo '  GEN $(UAGENT) default resource file ($(@))';\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
@@ -170,46 +171,44 @@ mkrc.rc: nail.rc mk.mk
 
 _install_echoes:
 	@echo 'Installing..'
-install: _install_echoes mk.mk mkman.1 mkrc.rc
+install: _install_echoes mkman.1 mkrc.rc
 	@__mkdir() {\
 		_dir=$${1};\
 		if [ -d "$${_dir}" ]; then :; else\
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ $(mkdir) -m 0755 -p '$${_dir}'";\
-			fi;\
 			$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _dst=$${3};\
-		if [ -n "$(VERBOSE)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
 			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
-		fi;\
 		$(cp) -f "$${_src}" "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} _dst=$${4};\
-		if [ -n "$(VERBOSE)" ]; then \
+		[ -n "$(VERBOSE)" ] &&\
 			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
-			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
-		fi;\
 		$(cp) -f "$${_src}" "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
 		$(chown) $${_ident} "$${_dst}";\
+		[ -n "$(VERBOSE)" ] &&\
+			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__stripfile() {\
 		_file=$${1};\
 		if [ "$(WANT_DEBUG)" != 0 ]; then \
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ :WANT_DEBUG=1, not strip(1)ing";\
-			fi;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
-			if [ -n "$(VERBOSE)" ]; then \
+			[ -n "$(VERBOSE)" ] &&\
 				echo "  \$$ $(STRIP) '$${_file}'";\
-			fi;\
 			$(strip) "$${_file}";\
 		fi;\
 	};\
@@ -220,8 +219,19 @@ install: _install_echoes mk.mk mkman.1 mkrc.rc
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
 		__mkdir "$(DESTDIR)$(LIBEXECDIR)";\
 		__stripfile "$(PRIVSEP)";\
-		__copychownfile 2555 ":$(PRIVSEP_GROUP)" "$(PRIVSEP)" \
-			"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+		m='o=rx' o=;\
+		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
+			m="g=rxs,$${m}" o=":$(PRIVSEP_GROUP)";\
+		else \
+			m="g=rx,$${m}";\
+		fi;\
+		if [ -n "$(PRIVSEP_USER)" ]; then \
+			m="u=rxs,$${m}" o="$(PRIVSEP_USER)$${o}";\
+		else \
+			m="u=rx,$${m}";\
+		fi;\
+		__copychownfile "$${m}" "$${o}" "$(PRIVSEP)" \
+				"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
 	fi;\
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\

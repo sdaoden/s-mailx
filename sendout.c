@@ -61,7 +61,8 @@ static si8_t   _sendout_error;
 
 static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
-                        char const *prefix, FILE *fo, struct name **xp);
+                        char const *prefix, FILE *fo, struct name **xp,
+                        enum gfield addflags);
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
@@ -116,8 +117,10 @@ static int           __savemail(char const *name, FILE *fp);
 /*  */
 static bool_t        _transfer(struct sendbundle *sbp);
 
-static bool_t        __start_mta(struct sendbundle *sbp);
-static char const ** __prepare_mta_args(struct name *to, struct header *hp);
+static bool_t        __mta_start(struct sendbundle *sbp);
+static char const ** __mta_prepare_args(struct name *to, struct header *hp);
+static void          __mta_debug(struct sendbundle *sbp, char const *mta,
+                        char const **args);
 
 /* Create a Message-Id: header field.  Use either host name or from address */
 static char *        _message_id(struct header *hp);
@@ -132,13 +135,14 @@ static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
 
 static enum okay
 _putname(char const *line, enum gfield w, enum sendaction action,
-   size_t *gotcha, char const *prefix, FILE *fo, struct name **xp)
+   size_t *gotcha, char const *prefix, FILE *fo, struct name **xp,
+   enum gfield addflags)
 {
    struct name *np;
    enum okay rv = STOP;
    NYD_ENTER;
 
-   np = lextract(line, GEXTRA | GFULL);
+   np = lextract(line, GEXTRA | GFULL | addflags);
    if (xp != NULL)
       *xp = np;
    if (np == NULL)
@@ -780,29 +784,38 @@ do {\
    if (w & GIDENT) {
       struct name *fromf = NULL, *senderf = NULL;
 
-      if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, ff))
+      /* If -t parsed or composed From: then take it.  With -t we otherwise
+       * want -r to be honoured in favour of *from* in order to have
+       * a behaviour that is compatible with what users would expect from e.g.
+       * postfix(1) */
+      if ((fromf = hp->h_from) != NULL ||
+            ((pstate & PS_t_FLAG) && (fromf = option_r_arg) != NULL)) {
+         if (fmt("From:", fromf, fo, ff))
             goto jleave;
          ++gotcha;
-         fromf = hp->h_from;
       } else if ((addr = myaddrs(hp)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf))
-            goto jleave;
-         hp->h_from = fromf;
-      }
-
-      if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, ff))
+         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf,
+               GFULLEXTRA))
             goto jleave;
          ++gotcha;
-         senderf = hp->h_sender;
-      } else if ((addr = ok_vlook(sender)) != NULL)
-         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf))
+      }
+      hp->h_from = fromf;
+
+      if ((senderf = hp->h_sender) != NULL) {
+         if (fmt("Sender:", senderf, fo, ff))
             goto jleave;
+         ++gotcha;
+      } else if ((addr = ok_vlook(sender)) != NULL) {
+         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf,
+               GFULLEXTRA))
+            goto jleave;
+         ++gotcha;
+      }
+      hp->h_sender = senderf;
 
       if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
          goto jleave;
-      /* Note that fromasender is NULL, 0x1 or real sender here */
+      /* Note that fromasender is (NULL,) 0x1 or real sender here */
 
       if (((addr = hp->h_organization) != NULL ||
             (addr = ok_vlook(ORGANIZATION)) != NULL) &&
@@ -860,17 +873,22 @@ do {\
    if ((np = hp->h_ref) != NULL && (w & GREF)) {
       if (fmt("References:", np, fo, 0))
          goto jleave;
-      if (np->n_name != NULL) {
+      if (hp->h_in_reply_to == NULL && np->n_name != NULL) {
          while (np->n_flink != NULL)
             np = np->n_flink;
-         if (!is_addr_invalid(np, EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
-            fprintf(fo, "In-Reply-To: %s\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+         if (!is_addr_invalid(np, /* TODO check that on parser side! */
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME)) {
+            fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
             n_err(_("Invalid address in mail header: \"%s\"\n"), np->n_name);
             goto jleave;
          }
       }
+   }
+   if ((np = hp->h_in_reply_to) != NULL && (w & GREF)) {
+      fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+      ++gotcha;
    }
 
    if (w & GIDENT) {
@@ -931,7 +949,7 @@ do {\
                if (!(f & HF_LIST_REPLY)) {
 j_mft_add:
                   if (!is_addr_invalid(x,
-                        EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
+                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)) {
                      x->n_flink = mft;
                      mft = x;
                   } /* XXX write some warning?  if verbose?? */
@@ -1379,7 +1397,7 @@ _transfer(struct sendbundle *sbp)
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
             sbp->sb_input = ef;
-            if (!__start_mta(sbp))
+            if (!__mta_start(sbp))
                rv = FAL0;
             sbp->sb_to = nsave;
             sbp->sb_input = fisave;
@@ -1411,16 +1429,16 @@ _transfer(struct sendbundle *sbp)
       ac_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__start_mta(sbp)))
+   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))
       rv = FAL0;
    NYD_LEAVE;
    return rv;
 }
 
 static bool_t
-__start_mta(struct sendbundle *sbp)
+__mta_start(struct sendbundle *sbp)
 {
-   char const **args = NULL, **t, *mta, *smtp;
+   char const **args = NULL, *mta, *smtp;
    pid_t pid;
    sigset_t nset;
    bool_t rv = FAL0;
@@ -1433,17 +1451,14 @@ __start_mta(struct sendbundle *sbp)
       } else
          mta = SENDMAIL;
 
-      args = __prepare_mta_args(sbp->sb_to, sbp->sb_hp);
+      args = __mta_prepare_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
-         n_err(_("\"%s\" arguments:"), mta);
-         for (t = args; *t != NULL; ++t)
-            n_err(" \"%s\"", *t);
-         n_err("\n");
+         __mta_debug(sbp, mta, args);
          rv = TRU1;
          goto jleave;
       }
    } else {
-      mta = NULL; /* Silence cc */
+      UNINIT(mta, NULL); /* Silence cc */
 #ifndef HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1500,6 +1515,7 @@ jstop:
       n_err(_("... message not sent\n"));
       _exit(EXIT_ERR);
    }
+
    if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
       if (wait_child(pid, NULL))
          rv = TRU1;
@@ -1515,7 +1531,7 @@ jleave:
 }
 
 static char const **
-__prepare_mta_args(struct name *to, struct header *hp)
+__mta_prepare_args(struct name *to, struct header *hp)
 {
    size_t vas_count, i, j;
    char **vas, *cp;
@@ -1551,20 +1567,27 @@ __prepare_mta_args(struct name *to, struct header *hp)
    for (j = 0; j < vas_count; ++j, ++i)
       args[i] = vas[j];
 
-   /* -r option?  We may only pass skinned addresses */
+   /* -r option?  In conjunction with -t we act compatible to postfix(1) and
+    * ignore it (it is -f / -F there) if the message specified From:/Sender:.
+    * The interdependency with -t has been resolved in _puthead() */
    if (options & OPT_r_FLAG) {
       struct name const *np;
 
-      if ((np = option_r_arg) != NULL ||
-            (hp != NULL && (np = hp->h_from) != NULL)) {
+      if (hp != NULL && (np = hp->h_from) != NULL) {
+         /* However, what wasn't resolved there was the case that the message
+          * specified multiple From: addresses and a Sender: */
+         if ((pstate & PS_t_FLAG) && hp->h_sender != NULL)
+            np = hp->h_sender;
+
          if (np->n_fullextra != NULL) {
             args[i++] = "-F";
             args[i++] = np->n_fullextra;
          }
-
          cp = np->n_name;
-      } else
-         cp = skin(myorigin(NULL)); /* XXX ugh! ugh!! */
+      } else {
+         assert(option_r_arg == NULL);
+         cp = skin(myorigin(NULL));
+      }
 
       if (cp != NULL) {
          args[i++] = "-f";
@@ -1588,6 +1611,30 @@ __prepare_mta_args(struct name *to, struct header *hp)
    return args;
 }
 
+static void
+__mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
+{
+   size_t cnt, bufsize;
+   char *buf;
+   NYD_ENTER;
+
+   n_err(_(">>> MTA: \"%s\", arguments:"), mta);
+   for (; *args != NULL; ++args)
+      n_err(" \"%s\"", *args);
+   n_err("\n");
+
+   fflush_rewind(sbp->sb_input);
+
+   cnt = fsize(sbp->sb_input);
+   buf = NULL;
+   bufsize = 0;
+   while (fgetline(&buf, &bufsize, &cnt, NULL, sbp->sb_input, 1) != NULL)
+      n_err(">>> %s", buf);
+   if (buf != NULL)
+      free(buf);
+   NYD_LEAVE;
+}
+
 static char *
 _message_id(struct header *hp)
 {
@@ -1596,6 +1643,18 @@ _message_id(struct header *hp)
    size_t rl, i;
    struct tm *tmp;
    NYD_ENTER;
+
+   if (hp->h_message_id != NULL) {
+      i = strlen(hp->h_message_id->n_name);
+      rl = sizeof("Message-ID: <>") -1;
+      rv = salloc(rl + i +1);
+      memcpy(rv, "Message-ID: <", --rl);
+      memcpy(rv + rl, hp->h_message_id->n_name, i);
+      rl += i;
+      rv[rl++] = '>';
+      rv[rl] = '\0';
+      goto jleave;
+   }
 
    if (ok_blook(message_id_disable))
       goto jleave;
@@ -1637,8 +1696,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       m_INIT   = 1<<0,
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
-      m_NOALI  = 1<<3,
-      m_CSEEN  = 2<<3
+      m_NONAME = 1<<3,
+      m_CSEEN  = 1<<4
    } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
    int rv = 1;
@@ -1653,7 +1712,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
             _X("references:") || _X("disposition-notification-to:"))
-         m |= m_NOPF | m_NOALI;
+         m |= m_NOPF | m_NONAME;
       else if (ok_blook(add_file_recipients)) {
          ;
       } else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
@@ -1663,7 +1722,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
 
    for (; np != NULL; np = np->n_flink) {
       if (is_addr_invalid(np,
-            (m & m_NOALI ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
+            EACM_NOLOG | (m & m_NONAME ? EACM_NONAME : EACM_NONE)))
          continue;
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
@@ -1675,7 +1734,10 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          m |= m_CSEEN;
          ++col;
       }
+
       len = strlen(np->n_fullname);
+      if (np->n_flags & GREF)
+         len += 2;
       ++col; /* The separating space */
       if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
          if (fputs("\n ", fo) == EOF)
@@ -1685,8 +1747,23 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       } else
          putc(' ', fo);
       m = (m & ~m_CSEEN) | m_INIT;
-      len = xmime_write(np->n_fullname, len, fo,
-            ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+
+      {
+         char *hb = np->n_fullname;
+         /* GREF needs to be placed in angle brackets, but which are missing */
+         if (np->n_type & GREF) {
+            hb = ac_alloc(len + 2 +1);
+            hb[0] = '<';
+            hb[len + 1] = '>';
+            hb[len + 2] = '\0';
+            memcpy(hb + 1, np->n_fullname, len);
+            len += 2;
+         }
+         len = xmime_write(hb, len, fo,
+               ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+         if (np->n_type & GREF)
+            ac_free(hb);
+      }
       if (len < 0)
          goto jleave;
       col += len;
@@ -1718,13 +1795,13 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       mkdate(fo, "Date");
       if ((cp = myaddrs(NULL)) != NULL) {
          if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-From:", fo,
-               &fromfield))
+               &fromfield, 0))
             goto jleave;
       }
       /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
       if ((cp = ok_vlook(sender)) != NULL) {
          if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-Sender:", fo,
-               &senderfield))
+               &senderfield, 0))
             goto jleave;
       }
       if (fmt("Resent-To:", to, fo, FMT_COMMA))
@@ -1853,8 +1930,14 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
             EACM_NORMAL, &_sendout_error));
 
+   if (_sendout_error < 0) {
+      n_err(_("Some addressees in *autocc* or *autobcc* were "
+         "classified as \"hard error\"\n"));
+      goto j_leave;
+   }
+
    /* Collect user's mail from standard input.  Get the result as mtf */
-   mtf = collect(hp, printheaders, quote, quotefile, doprefix);
+   mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
    if (mtf == NULL)
       goto j_leave;
 
@@ -1892,7 +1975,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    }
 
    if (dosign == TRUM1)
-      dosign = ok_blook(smime_sign);
+      dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
 #ifndef HAVE_SSL
    if (dosign) {
       n_err(_("No SSL support compiled in\n"));
@@ -1926,7 +2009,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    to = namelist_vaporise_head(hp,
          (EACM_NORMAL |
-          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          TRU1, &_sendout_error);
    if (to == NULL) {
       n_err(_("No recipients specified\n"));
@@ -2069,7 +2152,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    if ((to = checkaddrs(to,
          (EACM_NORMAL |
-          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          &_sendout_error)) == NULL)
       goto jleave;
    /* For the _sendout_error<0 case we want to wait until we can write DEAD! */
@@ -2091,6 +2174,13 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_io;
 
+   memset(&sb, 0, sizeof sb);
+   sb.sb_to = to;
+   sb.sb_input = nfi;
+   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
+      /* ..wait until we can write DEAD */
+      _sendout_error = -1;
+
    if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
 jfail_dead:
       savedeadletter(nfi, TRU1);
@@ -2104,12 +2194,6 @@ jerr_o:
    }
 
    if (_sendout_error < 0)
-      goto jfail_dead;
-
-   memset(&sb, 0, sizeof sb);
-   sb.sb_to = to;
-   sb.sb_input = nfi;
-   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
       goto jfail_dead;
 
    Fclose(nfo);

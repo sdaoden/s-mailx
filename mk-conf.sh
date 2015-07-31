@@ -10,6 +10,7 @@ option_reset() {
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
       WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+      #WANT_MD5=0
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
@@ -21,19 +22,20 @@ option_reset() {
    WANT_QUOTE_FOLD=0
    WANT_FILTER_HTML_TAGSOUP=0
    WANT_COLOUR=0
-   #WANT_MD5=0
+   WANT_DOTLOCK=0
 }
 
 option_maximal() {
-   WANT_ICONV=1
+   WANT_ICONV=require
    WANT_SOCKETS=1
       WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
       WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
       WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
+      #WANT_MD5=1
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
-   WANT_REGEX=1
-   WANT_NCL=1
+   WANT_REGEX=require
+   WANT_NCL=require
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
@@ -42,23 +44,28 @@ option_maximal() {
    WANT_QUOTE_FOLD=1
    WANT_FILTER_HTML_TAGSOUP=1
    WANT_COLOUR=1
-   #WANT_MD5=1
+   WANT_DOTLOCK=require
 }
 
 # Predefined CONFIG= urations take precedence over anything else
 if [ -n "${CONFIG}" ]; then
    case "${CONFIG}" in
-   NULLTEST)
+   [nN][uU][lL][lL])
       option_reset
       ;;
-   MINIMAL)
+   [nN][uU][lL][lL][iI])
+      option_reset
+      WANT_ICONV=require
+      ;;
+   [mM][iI][nN][iI][mM][aA][lL])
       option_reset
       WANT_ICONV=1
       WANT_REGEX=1
+      WANT_DOTLOCK=require
       ;;
-   MEDIUM)
+   [mM][eE][dD][iI][uU][mM])
       option_reset
-      WANT_ICONV=1
+      WANT_ICONV=require
       WANT_IDNA=1
       WANT_REGEX=1
       WANT_NCL=1
@@ -67,12 +74,13 @@ if [ -n "${CONFIG}" ]; then
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
+      WANT_DOTLOCK=require
       ;;
-   NETSEND)
+   [nN][eE][tT][sS][eE][nN][dD])
       option_reset
-      WANT_ICONV=1
+      WANT_ICONV=require
       WANT_SOCKETS=1
-         WANT_SSL=1
+         WANT_SSL=require
          WANT_SMTP=require
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
@@ -81,22 +89,23 @@ if [ -n "${CONFIG}" ]; then
          WANT_HISTORY=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
+      WANT_DOTLOCK=require
       ;;
-   MAXIMAL)
+   [mM][aA][xX][iI][mM][aA][lL])
       option_reset
       option_maximal
       ;;
-   DEVEL)
+   [dD][eE][vV][eE][lL])
       WANT_DEVEL=1 WANT_DEBUG=1 WANT_NYD2=1
       option_maximal
       ;;
-   ODEVEL)
+   [oO][dD][eE][vV][eE][lL])
       WANT_DEVEL=1
       option_maximal
       ;;
    *)
       echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: MINIMAL, MEDIUM, NETSEND, MAXIMAL'
+      echo >&2 'Possible values: NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
       exit 1
       ;;
    esac
@@ -490,8 +499,13 @@ trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
 
 ${rm} -f ${tmp}
-< ${rc} ${sed} -e '/^[ \t]*#/d' -e '/^$/d' -e 's/[ \t]*$//' |
+# We want read(1) to perform backslash escaping in order to be able to use
+# multiline values in make.rc
 while read line; do
+   # This should be [[:space:]] but needs -E; so test SPC/HT
+   line="`echo ${line} |\
+         ${sed} -e '/^[ 	]*#/d' -e '/^$/d' -e 's/[ 	]*$//'`"
+   [ -z "${line}" ] && continue
    i="`echo ${line} | ${sed} -e 's/=.*$//'`"
    eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
@@ -500,7 +514,7 @@ while read line; do
       j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
    fi
    echo "${i}=\"${j}\""
-done > ${tmp}
+done < ${rc} > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 
@@ -612,7 +626,7 @@ printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
 
 printf "#define PRIVSEP \"${SID}${NAIL}-privsep\"\n" >> ${newh}
 printf "PRIVSEP = \$(UAGENT)-privsep\n" >> ${newmk}
-if feat_yes PRIVSEP; then
+if feat_yes DOTLOCK; then
    printf "OPTIONAL_PRIVSEP = \$(PRIVSEP)\n" >> ${newmk}
 else
    printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
@@ -744,11 +758,10 @@ tmp3=./${tmp0}3$$
 log=./config.log
 lib=./config.lib
 inc=./config.inc
-src=./config.c
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${src} ${makefile}; exit" 1 2 15
+trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
 trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
 
 # Time to redefine helper 2
@@ -769,8 +782,6 @@ exec 5>&2 > ${log} 2>&1
 
 echo "${LIBS}" > ${lib}
 echo "${INCS}" > ${inc}
-# ${src} is only created if WANT_AMALGAMATION
-${rm} -f ${src}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
@@ -854,6 +865,32 @@ run_check() {
 
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
+
+if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+#include <pwd.h>
+#include <unistd.h>
+int main(void)
+{
+   struct passwd *pw;
+   gid_t gid;
+   uid_t uid;
+
+   if ((gid = getgid()) != 1)
+      gid = getegid();
+   if ((uid = getuid()) != 1)
+      uid = geteuid();
+   if ((pw = getpwuid(uid)) == NULL)
+      pw = getpwnam("root");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require user and group info / database searches.'
+   msg 'That much Unix we indulge ourselfs.'
+   config_exit 1
+fi
 
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
@@ -954,6 +991,16 @@ else
    config_exit 1
 fi
 fi # -z ${have_posix_random}
+
+link_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+#include <unistd.h>
+int main(void)
+{
+   pathconf(".", _PC_NAME_MAX);
+   pathconf(".", _PC_PATH_MAX);
+   return 0;
+}
+!
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
@@ -1085,7 +1132,7 @@ int main(void)
    return 0;
 }
 !
-   fi
+fi
 
 # Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
@@ -1137,6 +1184,41 @@ fi
 
 if feat_yes NYD2; then
    echo '#define HAVE_NYD2' >> ${h}
+fi
+
+##
+
+if feat_yes DOTLOCK; then
+   if link_check readlink 'readlink(2)' << \!
+#include <unistd.h>
+int main(void)
+{
+   char buf[128];
+   readlink("here", buf, sizeof buf);
+   return 0;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes DOTLOCK; then
+   if link_check fchown 'fchown(2)' << \!
+#include <unistd.h>
+int main(void)
+{
+   fchown(0, 0, 0);
+   return 0;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
 fi
 
 ##
@@ -1469,9 +1551,9 @@ int main(void)
 }
 !
 
-      if feat_yes ALL_SSL_ALGORITHMS; then
-         link_check ossl_allalgo 'OpenSSL all-algorithms support' \
-            '#define HAVE_OPENSSL_ALL_ALGORITHMS' << \!
+      if feat_yes SSL_ALL_ALGORITHMS; then
+         if link_check ssl_all_algo 'OpenSSL all-algorithms support' \
+            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 
 int main(void)
@@ -1482,11 +1564,17 @@ int main(void)
    return 0;
 }
 !
-      fi # ALL_SSL_ALGORITHMS
+         then
+            :
+         else
+            feat_bail_required SSL_ALL_ALGORITHMS
+         fi
+      fi # SSL_ALL_ALGORITHMS
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
          run_check openssl_md5 'MD5 digest in OpenSSL' \
             '#define HAVE_OPENSSL_MD5' << \!
+#include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
 
@@ -1629,7 +1717,8 @@ else
 fi
 
 if feat_yes IDNA; then
-   if link_check idna 'GNU Libidn' '#define HAVE_IDNA' '-lidn' << \!
+   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
+         '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
@@ -1648,8 +1737,40 @@ int main(void)
 !
    then
       :
+   elif link_check idna 'idnkit' '#define HAVE_IDNA HAVE_IDNA_IDNKIT' \
+         '-lidnkit' << \!
+#include <stdio.h>
+#include <idn/api.h>
+#include <idn/result.h>
+int main(void)
+{
+   idn_result_t r;
+   char ace_name[256];
+   char local_name[256];
+
+   r = idn_encodename(IDN_ENCODE_APP, "does.this.work", ace_name,
+         sizeof(ace_name));
+   if (r != idn_success) {
+      fprintf(stderr, "idn_encodename failed: %s\n", idn_result_tostring(r));
+      return 1;
+   }
+   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name, sizeof(local_name));
+   if (r != idn_success) {
+      fprintf(stderr, "idn_decodename failed: %s\n", idn_result_tostring(r));
+      return 1;
+   }
+   return 0;
+}
+!
+   then
+      :
    else
       feat_bail_required IDNA
+   fi
+
+   if [ -n "${have_idna}" ]; then
+      echo '#define HAVE_IDNA_LIBIDNA 0' >> ${h}
+      echo '#define HAVE_IDNA_IDNKIT 1' >> ${h}
    fi
 else
    echo '/* WANT_IDNA=0 */' >> ${h}
@@ -1897,10 +2018,10 @@ else
    echo '/* WANT_COLOUR=0 */' >> ${h}
 fi
 
-if feat_yes PRIVSEP; then
-   echo '#define HAVE_PRIVSEP' >> ${h}
+if feat_yes DOTLOCK; then
+   echo '#define HAVE_DOTLOCK' >> ${h}
 else
-   echo '/* WANT_PRIVSEP=0 */' >> ${h}
+   echo '/* WANT_DOTLOCK=0 */' >> ${h}
 fi
 
 if feat_yes MD5; then
@@ -1924,11 +2045,12 @@ ${mv} ${tmp} ${lib}
 
 # config.h
 ${mv} ${h} ${tmp}
-printf '#ifndef _CONFIG_H\n# define _CONFIG_H\n' > ${h}
+printf '#ifndef _CONFIG_H\n# define _CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
+${rm} -f ${tmp}
 
 printf '\n/* The "feature string" */\n' >> ${h}
-printf '#if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
+printf '# if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
 printf 'static char const _features[] = "MIME"\n' >> ${h}
 printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
@@ -1936,6 +2058,8 @@ printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_SSL_ALL_ALGORITHMS\n   ",SSL-ALL-ALGORITHMS"\n# endif\n'\
+   >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
@@ -1958,13 +2082,10 @@ printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_PRIVSEP\n   ",PRIVSEP-DOTLOCK"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
-printf ';\n#endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
-
-printf '#endif /* _CONFIG_H */\n' >> ${h}
-${rm} -f ${tmp}
+printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk
 ${rm} -rf ${tmp0}.* ${tmp0}*
@@ -1976,26 +2097,29 @@ if feat_no AMALGAMATION; then
       fi
       printf "${i} " >> ${mk}
    done
-   echo >> ${mk}
-   echo 'OBJ_DEP =' >> ${mk}
+   printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
-   j=`echo "${src}" | ${sed} 's/^.\///'`
-   echo "${j}" >> ${mk}
-   printf 'OBJ_DEP = main.c ' >> ${mk}
-   printf '#define _MAIN_SOURCE\n' >> ${src}
-   printf '#include "nail.h"\n#include "main.c"\n' >> ${src}
+   printf 'main.c\nAMALGAM_TARGET = main.c\nAMALGAM_DEP = ' >> ${mk}
+
+   echo '\n/* HAVE_AMALGAMATION: include sources */' >> ${h}
+   printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
+   printf '# undef _CONFIG_H\n' >> ${h}
+   printf '# define _CONFIG_H 2\n' >> ${h}
    for i in *.c; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] [ "${i}" = privsep.c ]; then
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
+            [ "${i}" = privsep.c ]; then
          continue
       fi
       printf "${i} " >> ${mk}
-      printf "#include \"${i}\"\n" >> ${src}
+      printf "# include \"${i}\"\n" >> ${h}
    done
    echo >> ${mk}
 fi
 
+printf '#endif /* _CONFIG_H */\n' >> ${h}
+
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo "INCLUDES = `${cat} ${inc}`" >> ${mk}
+echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} ./mk-mk.in >> ${mk}
 
@@ -2023,6 +2147,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_SSL
 # ifdef HAVE_OPENSSL
 : + S/MIME and SSL/TLS (OpenSSL)
+# endif
+# ifdef HAVE_SSL_ALL_ALGORITHMS
+: + + Support for more ("all") digest and cipher algorithms
 # endif
 #endif
 #ifdef HAVE_SMTP
@@ -2088,8 +2215,8 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_COLOUR
 : + Coloured message display (simple)
 #endif
-#ifdef HAVE_PRIVSEP
-: + Privilege-separated file dotlock program
+#ifdef HAVE_DOTLOCK
+: + Dotlock files and privilege-separated file dotlock program
 #endif
 :
 :The following optional features are disabled:
@@ -2111,6 +2238,10 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_SSL
 : - S/MIME and SSL/TLS
+#else
+# ifndef HAVE_SSL_ALL_ALGORITHMS
+: - Support for more S/MIME and SSL/TLS digest and cipher algorithms
+# endif
 #endif
 #ifndef HAVE_SMTP
 : - SMTP protocol
@@ -2160,8 +2291,8 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_COLOUR
 : - Coloured message display (simple)
 #endif
-#ifndef HAVE_PRIVSEP
-: - Privilege-separated file dotlock program
+#ifndef HAVE_DOTLOCK
+: - Dotlock files and privilege-separated file dotlock program
 #endif
 :
 #if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
@@ -2193,7 +2324,7 @@ ${cat} > ${tmp2}.c << \!
 :Setup:
 : . System-wide resource file: SYSCONFRC
 : . bindir: BINDIR
-#ifdef HAVE_PRIVSEP
+#ifdef HAVE_DOTLOCK
 : . libexecdir: LIBEXECDIR
 #endif
 : . mandir: MANDIR

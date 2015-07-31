@@ -794,17 +794,21 @@ mime_type_mimepart_content(struct mimepart *mpp)
 
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (!asccasecmp(ct, "text/plain"))
-      mc = MIME_TEXT_PLAIN;
-   else if (!asccasecmp(ct, "text/html"))
-      mc = MIME_TEXT_HTML;
-   else if (!ascncasecmp(ct, "text/", 5))
-      mc = MIME_TEXT;
-   else if (!asccasecmp(ct, "message/rfc822"))
-      mc = MIME_822;
-   else if (!ascncasecmp(ct, "message/", 8))
-      mc = MIME_MESSAGE;
-   else if (!ascncasecmp(ct, "multipart/", 10)) {
+   else if (is_asccaseprefix(ct, "text/")) {
+      ct += sizeof("text/") -1;
+      if (!asccasecmp(ct, "plain"))
+         mc = MIME_TEXT_PLAIN;
+      else if (!asccasecmp(ct, "html"))
+         mc = MIME_TEXT_HTML;
+      else
+         mc = MIME_TEXT;
+   } else if (is_asccaseprefix(ct, "message/")) {
+      ct += sizeof("message/") -1;
+      if (!asccasecmp(ct, "rfc822"))
+         mc = MIME_822;
+      else
+         mc = MIME_MESSAGE;
+   } else if (!ascncasecmp(ct, "multipart/", 10)) {
       ct += sizeof("multipart/") -1;
       if (!asccasecmp(ct, "alternative"))
          mc = MIME_ALTERNATIVE;
@@ -814,9 +818,11 @@ mime_type_mimepart_content(struct mimepart *mpp)
          mc = MIME_DIGEST;
       else
          mc = MIME_MULTI;
-   } else if (!asccasecmp(ct, "application/x-pkcs7-mime") ||
-         !asccasecmp(ct, "application/pkcs7-mime"))
-      mc = MIME_PKCS7;
+   } else if (is_asccaseprefix(ct, "application/")) {
+      ct += sizeof("application/") -1;
+      if (!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
+         mc = MIME_PKCS7;
+   }
 jleave:
    NYD_LEAVE;
    return mc;

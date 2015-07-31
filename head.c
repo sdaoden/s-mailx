@@ -44,9 +44,13 @@
 #endif
 
 #ifdef HAVE_IDNA
-# include <idna.h>
-# include <idn-free.h>
-# include <stringprep.h>
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+#  include <idna.h>
+#  include <idn-free.h>
+#  include <stringprep.h>
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+#  include <idn/api.h>
+# endif
 #endif
 
 struct cmatch_data {
@@ -202,6 +206,7 @@ _is_date(char const *date)
 }
 
 #ifdef HAVE_IDNA
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
 static struct addrguts *
 _idna_apply(struct addrguts *agp)
 {
@@ -261,7 +266,65 @@ jleave:
    NYD_LEAVE;
    return agp;
 }
-#endif
+
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT /* IDNA==LIBIDNA */
+static struct addrguts *
+_idna_apply(struct addrguts *agp)
+{
+   char *idna_in, *idna_out, *cs;
+   size_t sz, i;
+   idn_result_t r;
+   NYD_ENTER;
+
+   sz = agp->ag_slen - agp->ag_sdom_start;
+   assert(sz > 0);
+   idna_in = ac_alloc(sz +1);
+   memcpy(idna_in, agp->ag_skinned + agp->ag_sdom_start, sz);
+   idna_in[sz] = '\0';
+
+   for (idna_out = NULL, sz = HOST_NAME_MAX +1;; sz += HOST_NAME_MAX) {
+      idna_out = ac_alloc(sz);
+
+      r = idn_encodename(IDN_ENCODE_APP, idna_in, idna_out, sz);
+      switch (r) {
+      case idn_success:
+      case idn_buffer_overflow:
+         break;
+      case idn_invalid_encoding:
+         n_err(_("Cannot convert from %s to %s\n"), charset_get_lc(), "UTF-8");
+         /* FALLTHRU */
+      default:
+         agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
+         goto jleave;
+      }
+
+      if (r == idn_success)
+         break;
+      ac_free(idna_out);
+   }
+
+   /* Replace the domain part of .ag_skinned with IDNA version */
+   sz = strlen(idna_out);
+   i = agp->ag_sdom_start;
+   cs = salloc(agp->ag_slen - i + sz +1);
+   memcpy(cs, agp->ag_skinned, i);
+   memcpy(cs + i, idna_out, sz);
+   i += sz;
+   cs[i] = '\0';
+
+   agp->ag_skinned = cs;
+   agp->ag_slen = i;
+   NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+      NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
+
+jleave:
+   ac_free(idna_out);
+   ac_free(idna_in);
+   NYD_LEAVE;
+   return agp;
+}
+# endif /* IDNA==IDNKIT */
+#endif /* HAVE_IDNA */
 
 static int
 _addrspec_check(int skinned, struct addrguts *agp)
@@ -343,7 +406,7 @@ jaddr_check:
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
-         agp->ag_n_flags |= NAME_ADDRSPEC_ISMAIL; /* TODO .. really? */
+         agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
          in_domain = (*p == '[') ? 2 : 1;
          continue;
       } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
@@ -352,11 +415,14 @@ jaddr_check:
          break;
       hadat = 0;
    }
-
    if (c.c != '\0') {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
       goto jleave;
    }
+
+   if (!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+      agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
+
 #ifdef HAVE_IDNA
    if (use_idna == 2)
       agp = _idna_apply(agp);
@@ -646,7 +712,7 @@ jerr:
 }
 
 FL void
-extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
+extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
@@ -662,31 +728,40 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
    /* TODO yippieia, cat(check(lextract)) :-) */
    rewind(fp);
    while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+      struct name *np;
+
+      /* We explicitly allow EAF_NAME for some addressees since aliases are not
+       * yet expanded when we parse these! */
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
-               EACM_NORMAL, NULL));
+               EACM_NORMAL | EAF_NAME, checkaddr_err));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
          hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
-               EACM_NORMAL, NULL));
+               EACM_NORMAL | EAF_NAME, checkaddr_err));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
-               EACM_NORMAL, NULL));
+               EACM_NORMAL | EAF_NAME, checkaddr_err));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         ++seenfields;
-         hq->h_from = cat(hq->h_from,
-               checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
-                  EACM_STRICT, NULL));
+         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+            ++seenfields;
+            hq->h_from = cat(hq->h_from,
+                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                     EACM_STRICT, NULL));
+         }
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
          hq->h_replyto = cat(hq->h_replyto,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         ++seenfields;
-         hq->h_sender = cat(hq->h_sender,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
+         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+            ++seenfields;
+            hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
+                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                     EACM_STRICT, NULL));
+         }
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)
@@ -700,7 +775,43 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
             ;
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
+      }
+      /* The remaining are mostly hacked in and thus TODO -- at least in
+       * TODO respect to their content checking */
+      else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "message-id")) != NULL) {
+         np = checkaddrs(lextract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+               NULL);
+         if (np == NULL || np->n_flink != NULL)
+            goto jebadhead;
+         ++seenfields;
+         hq->h_message_id = np;
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "in-reply-to")) != NULL) {
+         np = checkaddrs(lextract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+               NULL);
+         if (np == NULL || np->n_flink != NULL)
+            goto jebadhead;
+         ++seenfields;
+         hq->h_in_reply_to = np;
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "references")) != NULL) {
+         ++seenfields;
+         /* TODO Limit number of references TODO better on parser side */
+         hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+               NULL));
+      /* and that is very hairy */
+      } else if ((pstate & PS_t_FLAG) &&
+            (val = thisfield(linebuf, "mail-followup-to")) != NULL) {
+         ++seenfields;
+         hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
+               /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */ EACM_NONAME,
+               checkaddr_err));
       } else
+jebadhead:
          n_err(_("Ignoring header field \"%s\"\n"), linebuf);
    }
 
@@ -726,6 +837,24 @@ extract_header(FILE *fp, struct header *hp) /* XXX no header occur-cnt check */
       hp->h_sender = hq->h_sender;
       hp->h_organization = hq->h_organization;
       hp->h_subject = hq->h_subject;
+
+      if (pstate & PS_t_FLAG) {
+         hp->h_ref = hq->h_ref;
+         hp->h_message_id = hq->h_message_id;
+         hp->h_in_reply_to = hq->h_in_reply_to;
+         hp->h_mft = hq->h_mft;
+
+         /* And perform additional validity checks so that we don't bail later
+          * on TODO this is good and the place where this should occur,
+          * TODO unfortunately a lot of other places do again and blabla */
+         if (pstate & PS_t_FLAG) {
+            if (hp->h_from == NULL)
+               hp->h_from = option_r_arg;
+            else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
+               hp->h_sender = lextract(ok_vlook(sender),
+                     GEXTRA | GFULL | GFULLEXTRA);
+         }
+      }
    } else
       n_err(_("Restoring deleted header lines\n"));
 
@@ -739,10 +868,17 @@ hfield_mult(char const *field, struct message *mp, int mult)
 {
    FILE *ibuf;
    int lc;
+   struct str hfs;
    size_t linesize = 0; /* TODO line pool */
-   char *linebuf = NULL, *colon, *oldhfield = NULL;
+   char *linebuf = NULL, *colon;
    char const *hfield;
    NYD_ENTER;
+
+   /* There are (spam) messages which have header bytes which are many KB when
+    * joined, so resize a single heap storage until we are done if we shall
+    * collect a field that may have multiple bodies; only otherwise use the
+    * string dope directly */
+   memset(&hfs, 0, sizeof hfs);
 
    if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
@@ -755,18 +891,26 @@ hfield_mult(char const *field, struct message *mp, int mult)
    while (lc > 0) {
       if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
          break;
-      if ((hfield = thisfield(linebuf, field)) != NULL) {
-         oldhfield = save2str(hfield, oldhfield);
-         if (mult == 0)
+      if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
+         if (mult)
+            n_str_add_buf(&hfs, hfield, strlen(hfield));
+         else {
+            hfs.s = savestr(hfield);
             break;
+         }
       }
    }
 
 jleave:
    if (linebuf != NULL)
       free(linebuf);
+   if (mult && hfs.s != NULL) {
+      colon = savestrbuf(hfs.s, hfs.l);
+      free(hfs.s);
+      hfs.s = colon;
+   }
    NYD_LEAVE;
-   return oldhfield;
+   return hfs.s;
 }
 
 FL char const *
@@ -872,29 +1016,71 @@ jleave:
 }
 
 FL enum expand_addr_flags
-expandaddr_flags(void)
+expandaddr_to_eaf(void)
 {
+   struct eafdesc {
+      char const  *eafd_name;
+      bool_t      eafd_is_target;
+      ui8_t       eafd_andoff;
+      ui8_t       eafd_or;
+   } const eafa[] = {
+      {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
+      {"fail", FAL0, EAF_NONE, EAF_FAIL},
+      {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
+         {"file", TRU1, EAF_NONE, EAF_FILE},
+         {"pipe", TRU1, EAF_NONE, EAF_PIPE},
+         {"name", TRU1, EAF_NONE, EAF_NAME},
+         {"addr", TRU1, EAF_NONE, EAF_ADDR}
+   }, *eafp;
+
    char *buf;
+   enum expand_addr_flags rv;
    char const *cp;
-   enum expand_addr_flags rv = EAF_NONE;
    NYD2_ENTER;
 
-   if ((cp = ok_vlook(expandaddr)) != NULL) {
-      rv = EAF_SET;
+   if ((cp = ok_vlook(expandaddr)) == NULL)
+      rv = EAF_RESTRICT_TARGETS;
+   else if (*cp == '\0')
+      rv = EAF_TARGET_MASK;
+   else {
+      rv = EAF_TARGET_MASK;
 
-      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;)
-         if (!asccasecmp(cp, "restrict"))
-            rv |= EAF_RESTRICT;
-         else if (!asccasecmp(cp, "fail"))
-            rv |= EAF_FAIL;
-         else if (!asccasecmp(cp, "noalias"))
-            rv |= EAF_NOALIAS;
-         else if (options & OPT_D_V)
-            n_err(_("Unknown *expandaddr* value: \"%s\"\n"), cp);
+      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;) {
+         bool_t minus;
 
-      if ((rv & (EAF_FAIL | EAF_RESTRICT)) == (EAF_FAIL | EAF_RESTRICT)) {
-         rv &= ~EAF_RESTRICT;
-         n_err(_("*expandaddr*: \"restrict\" and \"fail\" are mutual!\n"));
+         if ((minus = (*cp == '-')) || *cp == '+')
+            ++cp;
+         for (eafp = eafa;; ++eafp) {
+            if (eafp == eafa + NELEM(eafa)) {
+               if (options & OPT_D_V)
+                  n_err(_("Unknown *expandaddr* value: \"%s\"\n"), cp);
+               break;
+            } else if (!asccasecmp(cp, eafp->eafd_name)) {
+               if (!minus) {
+                  rv &= ~eafp->eafd_andoff;
+                  rv |= eafp->eafd_or;
+               } else {
+                  if (eafp->eafd_is_target)
+                     rv &= ~eafp->eafd_or;
+                  else if (options & OPT_D_V)
+                     n_err(_("\"-\" prefix invalid for *expandaddr* value: "
+                        "\"%s\"\n"), --cp);
+               }
+               break;
+            } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
+               rv &= ~EAF_NAME;
+               break;
+            }
+         }
+      }
+
+      if ((rv & EAF_RESTRICT) && (options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
+         rv |= EAF_TARGET_MASK;
+      else if (options & OPT_D_V) {
+         if (!(rv & EAF_TARGET_MASK))
+            n_err(_("*expandaddr* doesn't allow any addresses\n"));
+         else if ((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
+            n_err(_("*expandaddr* with \"fail\" but no restrictions\n"));
       }
    }
    NYD2_LEAVE;
@@ -939,40 +1125,60 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    }
 
    /* *expandaddr* stuff */
-   eaf = expandaddr_flags();
+   if (!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
+      goto jleave;
 
-   if ((rv = (eacm & EACM_MODE_MASK) != EACM_NONE) &&
-         (f & NAME_ADDRSPEC_ISFILEORPIPE) &&
-          ((eacm & EACM_STRICT) || !(eaf & EAF_SET) ||
-          ((eaf & EAF_FAIL) ? (rv = -rv) : 0) ||
-          (!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)) &&
-           (eaf & EAF_RESTRICT)))) {
-      cs = ((eacm & EACM_STRICT)
-         ? _("\"%s\"%s: ignoring file or pipe address where not allowed\n")
-         : _("\"%s\"%s: *expandaddr* doesn't allow file or pipe address\n"));
-      cbuf[0] = '\0';
-      if (!(eacm & EACM_NOLOG))
-         goto jprint;
-   }
-   /* And any non-network addresses (MTA aliases) may be disallowed, too */
-   else if ((rv = (eacm & EACM_NOALIAS) != 0) &&
-         !(f & (NAME_ADDRSPEC_ISFILEORPIPE | NAME_ADDRSPEC_ISMAIL))) {
+   eaf = expandaddr_to_eaf();
+
+   if ((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)) {
       if (eaf & EAF_FAIL)
          rv = -rv;
-      cs = _("\"%s\"%s: non-network address / MTA alias w(h)ere not allowed\n");
-      cbuf[0] = '\0';
-      if (!(eacm & EACM_NOLOG))
-         goto jprint;
-   } else
-      rv = FAL0;
+      cs = _("\"%s\"%s: file or pipe addressees not allowed here\n");
+      if (eacm & EACM_NOLOG)
+         goto jleave;
+      else
+         goto j0print;
+   }
 
+   eaf |= (eacm & EAF_TARGET_MASK);
+   if (eacm & EACM_NONAME)
+      eaf &= ~EAF_NAME;
+
+   if (eaf == EAF_NONE) {
+      rv = FAL0;
+      goto jleave;
+   }
+   if (eaf & EAF_FAIL)
+      rv = -rv;
+
+   if (!(eaf & EAF_FILE) && (f & NAME_ADDRSPEC_ISFILE)) {
+      cs = _("\"%s\"%s: *expandaddr* doesn't allow file target\n");
+      if (eacm & EACM_NOLOG)
+         goto jleave;
+   } else if (!(eaf & EAF_PIPE) && (f & NAME_ADDRSPEC_ISPIPE)) {
+      cs = _("\"%s\"%s: *expandaddr* doesn't allow command pipe target\n");
+      if (eacm & EACM_NOLOG)
+         goto jleave;
+   } else if (!(eaf & EAF_NAME) && (f & NAME_ADDRSPEC_ISNAME)) {
+      cs = _("\"%s\"%s: *expandaddr* doesn't allow user name target\n");
+      if (eacm & EACM_NOLOG)
+         goto jleave;
+   } else if (!(eaf & EAF_ADDR) && (f & NAME_ADDRSPEC_ISADDR)) {
+      cs = _("\"%s\"%s: *expandaddr* doesn't allow mail address target\n");
+      if (eacm & EACM_NOLOG)
+         goto jleave;
+   } else {
+      rv = FAL0;
+      goto jleave;
+   }
+
+j0print:
+   cbuf[0] = '\0';
+jprint:
+   n_err(cs, np->n_name, cbuf);
 jleave:
    NYD_LEAVE;
    return rv;
-
-jprint:
-   n_err(cs, np->n_name, cbuf);
-   goto jleave;
 }
 
 FL char *

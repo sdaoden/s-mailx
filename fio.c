@@ -69,7 +69,9 @@
 # include <openssl/x509.h>
 #endif
 
-#include "dotlock.h"
+#ifdef HAVE_DOTLOCK
+# include "dotlock.h"
+#endif
 
 struct fio_stack {
    FILE  *s_file;    /* File we were in. */
@@ -88,11 +90,11 @@ struct shvar_stack {
 static size_t           _message_space;
 
 /* XXX Our Popen() main() takes void, temporary global data store */
+#ifdef HAVE_DOTLOCK
+static enum file_lock_type _dotlock_flt;
 static int              _dotlock_fd;
-static char const *     _dotlock_name;
-static char const *     _dotlock_hostname;
-static char const *     _dotlock_randstr;
-static size_t           _dotlock_pollmsecs;
+struct dotlock_info *   _dotlock_dip;
+#endif
 
 /* */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
@@ -129,7 +131,9 @@ static bool_t     _file_lock(int fd, enum file_lock_type ft,
                      off_t off, off_t len);
 
 /* main() of fork(2)ed dot file locker */
+#ifdef HAVE_DOTLOCK
 static int        _dotlock_main(void);
+#endif
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
 #ifdef HAVE_SOCKETS
@@ -516,74 +520,119 @@ _file_lock(int fd, enum file_lock_type flt, off_t off, off_t len)
    bool_t rv;
    NYD2_ENTER;
 
+   memset(&flp, 0, sizeof flp);
+
    switch (flt) {
+   default:
    case FLT_READ:    rv = F_RDLCK;  break;
    case FLT_WRITE:   rv = F_WRLCK;  break;
-   default:
-   case FLT_UNLOCK:  rv = F_UNLCK;  break;
    }
-
-   /* (For now we restart, but in the future we may not */
    flp.l_type = rv;
    flp.l_start = off;
    flp.l_whence = SEEK_SET;
    flp.l_len = len;
-   while (!(rv = (fcntl(fd, F_SETLKW, &flp) != -1)) && errno == EINTR)
-      ;
+
+   rv = (fcntl(fd, F_SETLK, &flp) != -1);
    NYD2_LEAVE;
    return rv;
 }
 
+#ifdef HAVE_DOTLOCK
 static int
 _dotlock_main(void)
 {
-#ifdef HAVE_PRIVSEP
-   struct stat stb;
-#endif
+   struct dotlock_info di;
+   struct stat stb, fdstb;
    char name[NAME_MAX];
    enum dotlock_state dls;
-   size_t pollmsecs;
-   char const *cp_orig, *cp, *hostname, *randstr;
+   char const *cp;
    int fd;
+   enum file_lock_type flt;
    NYD_ENTER;
 
    /* Get the arguments "passed to us" */
+   flt = _dotlock_flt;
    fd = _dotlock_fd;
    UNUSED(fd);
-   cp_orig = _dotlock_name;
-   hostname = _dotlock_hostname;
-   randstr = _dotlock_randstr;
-   pollmsecs = _dotlock_pollmsecs;
-
-   dls = DLS_CANT_CHDIR;
+   di = *_dotlock_dip;
 
    /* chdir(2)? */
-   if ((cp = strrchr(cp_orig, '/')) != NULL) {
+jislink:
+   dls = DLS_CANT_CHDIR | DLS_ABANDON;
+
+   if ((cp = strrchr(di.di_file_name, '/')) != NULL) {
       char const *fname = cp + 1;
 
-      while (PTRCMP(cp - 1, >, cp_orig) && cp[-1] == '/')
+      while (PTRCMP(cp - 1, >, di.di_file_name) && cp[-1] == '/')
          --cp;
-      cp = savestrbuf(cp_orig, PTR2SIZE(cp - cp_orig));
+      cp = savestrbuf(di.di_file_name, PTR2SIZE(cp - di.di_file_name));
       if (chdir(cp))
          goto jmsg;
 
-      cp = fname;
-   } else
-      cp = cp_orig;
+      di.di_file_name = fname;
+   }
+
+   /* So we're here, but then again the file can be a symbolic link!
+    * This is however only true if we do not have realpath(3) available since
+    * that'll have resolved the path already otherwise; nonetheless, let
+    * readlink(2) be a precondition for dotlocking and keep this code */
+   if (lstat(cp = di.di_file_name, &stb) == -1)
+      goto jmsg;
+   if (S_ISLNK(stb.st_mode)) {
+      /* Use salloc() and hope we stay in builtin buffer.. */
+      char *x;
+      size_t i;
+      ssize_t sr;
+
+      for (x = NULL, i = PATH_MAX;; i += PATH_MAX) {
+         x = salloc(i +1);
+         sr = readlink(cp, x, i);
+         if (sr <= 0) {
+            dls = DLS_FISHY | DLS_ABANDON;
+            goto jmsg;
+         }
+         if (UICMP(z, sr, <, i)) {
+            x[sr] = '\0';
+            i = (size_t)sr;
+            break;
+         }
+      }
+      di.di_file_name = x;
+      goto jislink;
+   }
+
+   dls = DLS_FISHY | DLS_ABANDON;
+
+   /* Bail out if the file has changed its identity in the meanwhile */
+   if (fstat(fd, &fdstb) == -1 ||
+         fdstb.st_dev != stb.st_dev || fdstb.st_ino != stb.st_ino ||
+         fdstb.st_uid != stb.st_uid || fdstb.st_gid != stb.st_gid ||
+         fdstb.st_mode != stb.st_mode)
+      goto jmsg;
 
    /* Be aware, even if the error is false! */
    {
-      int i = snprintf(name, sizeof name, "%s.lock", cp);
+      int i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
       if (i < 0 || UICMP(z, NAME_MAX, <=, (uiz_t)i + 1 +1)) {
          dls = DLS_NAMETOOLONG | DLS_ABANDON;
          goto jmsg;
       }
+# ifdef HAVE_PATHCONF
+      else {
+         /* fd is a file, not portable to use for _PC_NAME_MAX */
+         long pc;
+
+         if ((pc = pathconf(".", _PC_NAME_MAX)) == -1 || pc <= (long)i + 1 +1) {
+            dls = DLS_NAMETOOLONG | DLS_ABANDON;
+            goto jmsg;
+         }
+      }
+# endif
+      di.di_lock_name = name;
    }
 
    /* Ignore SIGPIPE, the child reacts upon EPIPE instead */
    safe_signal(SIGPIPE, SIG_IGN);
-
-   dls = DLS_NOPERM;
 
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  We don't know wether we have realpath(3) available,
@@ -592,42 +641,42 @@ _dotlock_main(void)
     * mailbox"; there may also be multiple system mailbox directories...
     * So what we do is that we fstat(2) the mailbox and check its UID and
     * GID against that of our own process: if any of those mismatch we must
-    * either assume a SETGID directory or that we run via -u/$USER as someone
-    * else, in which case we favour our privilege-separated dotlock process.
-    * A super-correct approach would be more complicated, and for no benefit in
-    * all real-life scenarios i ever encountered */
-#ifdef HAVE_PRIVSEP
-   if (fstat(fd, &stb) == -1)
-      goto jmsg;
-
-   if (stb.st_uid != getuid() || stb.st_gid != getgid()) {
+    * either assume a directory we are not allowed to write in, or that we run
+    * via -u/$USER/%USER as someone else, in which case we favour our
+    * privilege-separated dotlock process */
+   if (stb.st_uid != user_id || stb.st_gid != group_id || access(".", W_OK)) {
       char itoabuf[64];
-      char const *args[11];
+      char const *args[13];
 
-      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, pollmsecs);
-      args[0] = PRIVSEP;
-      args[1] = "dotlock";
-      args[2] = "name"; args[3] = name;
-      args[4] = "hostname"; args[5] = hostname;
-      args[6] = "randstr"; args[7] = randstr;
-      args[8] = "pollmsecs"; args[9] = itoabuf;
-      args[10] = NULL;
+      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, di.di_pollmsecs);
+      args[ 0] = PRIVSEP;
+      args[ 1] = (flt == FLT_READ ? "rdotlock" : "wdotlock");
+      args[ 2] = "mailbox";   args[ 3] = di.di_file_name;
+      args[ 4] = "name";      args[ 5] = di.di_lock_name;
+      args[ 6] = "hostname";  args[ 7] = di.di_hostname;
+      args[ 8] = "randstr";   args[ 9] = di.di_randstr;
+      args[10] = "pollmsecs"; args[11] = itoabuf;
+      args[12] = NULL;
       execv(LIBEXECDIR "/" UAGENT "-privsep", UNCONST(args));
 
       dls = DLS_NOEXEC;
       write(STDOUT_FILENO, &dls, sizeof dls);
       /* But fall through and try it with normal privileges! */
    }
-#endif
 
-   /* So let's try and call it ourselfs! */
+   /* So let's try and call it ourselfs!  Note that we don't block signals just
+    * like our privsep child does, the user will anyway be able to remove his
+    * file again, and if we're in -u/$USER mode then we are allowed to access
+    * the user's box: shall we leave behind a stale dotlock then at least we
+    * start a friendly human conversation.  Since we cannot handle SIGKILL and
+    * SIGSTOP malicious things could happen whatever we do */
    safe_signal(SIGHUP, SIG_IGN);
    safe_signal(SIGINT, SIG_IGN);
    safe_signal(SIGQUIT, SIG_IGN);
    safe_signal(SIGTERM, SIG_IGN);
 
    NYD;
-   dls = _dotlock_create(name, hostname, randstr, pollmsecs);
+   dls = _dotlock_create(&di);
    NYD;
 
    /* Finally: notify our parent about the actual lock state.. */
@@ -643,8 +692,9 @@ jmsg:
       unlink(name);
    }
    NYD_LEAVE;
-   _exit(EXIT_OK);
+   return EXIT_OK;
 }
+#endif /* HAVE_DOTLOCK */
 
 #ifdef HAVE_SOCKETS
 static long
@@ -1435,15 +1485,24 @@ file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
 }
 
 FL FILE *
-dotlock(char const *fname, int fd, size_t pollmsecs)
+dot_lock(char const *fname, int fd, enum file_lock_type flt,
+   off_t off, off_t len, size_t pollmsecs)
 {
-# undef _DOMSG
+#undef _DOMSG
+#ifdef HAVE_DOTLOCK
 # define _DOMSG() n_err(_("Creating dotlock for \"%s\" "), fname)
+#else
+# define _DOMSG() n_err(_("Trying to lock file \"%s\" "), fname)
+#endif
 
-   int cpipe[2], serrno;
+#ifdef HAVE_DOTLOCK
+   int cpipe[2];
+   struct dotlock_info di;
    enum dotlock_state dls;
-   union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
    char const *emsg = NULL;
+#endif
+   int UNINIT(serrno, 0);
+   union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
    bool_t flocked, didmsg = FAL0;
    FILE *rv = NULL;
    NYD_ENTER;
@@ -1454,7 +1513,7 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
    }
 
    flocked = FAL0;
-   for (u.tries = 0; !_file_lock(fd, FLT_WRITE, 0, 0);)
+   for (u.tries = 0; !_file_lock(fd, flt, off, len);)
       switch ((serrno = errno)) {
       case EACCES:
       case EAGAIN:
@@ -1473,6 +1532,18 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
       }
    flocked = TRU1;
 
+#ifndef HAVE_DOTLOCK
+jleave:
+   if (didmsg == TRUM1)
+      n_err("\n");
+   if (flocked)
+      rv = (FILE*)-1;
+   else
+      errno = serrno;
+   NYD_LEAVE;
+   return rv;
+
+#else
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
    if (pipe_cloexec(cpipe) == -1) {
@@ -1485,13 +1556,17 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
     * unless the lock has to be placed in the system spool and we have our
     * privilege-separated dotlock program available, in which case that will be
     * executed and do "it" with changed group-id */
-   _dotlock_fd = fd;
-   _dotlock_name = fname;
-   _dotlock_pollmsecs = pollmsecs;
+   di.di_file_name = fname;
+   di.di_pollmsecs = pollmsecs;
    /* Initialize some more stuff; query the two strings in the parent in order
-    * to cache the result of the former and anyway minimalize child page-ins */
-   _dotlock_hostname = nodename(FAL0);
-   _dotlock_randstr = getrandstring(16);
+    * to cache the result of the former and anyway minimalize child page-ins.
+    * Especially uname(3) may hang for multiple seconds when it is called the
+    * first time! */
+   di.di_hostname = nodename(FAL0);
+   di.di_randstr = getrandstring(16);
+   _dotlock_flt = flt;
+   _dotlock_fd = fd;
+   _dotlock_dip = &di;
 
    u.ptf = &_dotlock_main;
    rv = Popen((char*)-1, "W", u.sh, NULL, cpipe[1]);
@@ -1507,13 +1582,11 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
    /* Let's check wether we were able to create the dotlock file */
    for (;;) {
       u.r = read(cpipe[0], &dls, sizeof dls);
-      serrno = errno;
-
       if (UICMP(z, u.r, !=, sizeof dls)) {
-         if (u.r != -1)
-            serrno = EAGAIN;
+         serrno = (u.r != -1) ? EAGAIN : errno;
          dls = DLS_DUNNO | DLS_ABANDON;
-      }
+      } else
+         serrno = 0;
 
       if (dls & DLS_ABANDON)
          close(cpipe[0]);
@@ -1532,7 +1605,8 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
          break;
       case DLS_NOPERM:
          if (options & OPT_D_V)
-            emsg = N_("  Can't create a lock file! Please check permissions\n");
+            emsg = N_("  Can't create a lock file! Please check permissions\n"
+                  "  (Maybe setting *dotlock-ignore-error* variable helps.)\n");
          serrno = EACCES;
          break;
       case DLS_NOEXEC:
@@ -1549,6 +1623,11 @@ dotlock(char const *fname, int fd, size_t pollmsecs)
          emsg = N_("  It seems there is a stale dotlock file?\n"
                "  Please remove the lock file manually, then retry\n");
          serrno = EEXIST;
+         break;
+      case DLS_FISHY:
+         emsg = N_("  Fishy!  Is someone trying to \"steal\" foreign files?\n"
+               "  Please check the mailbox file etc. manually, then retry\n");
+         serrno = EAGAIN; /* ? Hack to ignore *dotlock-ignore-error* xxx */
          break;
       default:
       case DLS_DUNNO:
@@ -1603,6 +1682,7 @@ jemsg:
    didmsg = TRU1;
    n_err(V_(emsg));
    goto jleave;
+#endif /* HAVE_DOTLOCK */
 #undef _DOMSG
 }
 
@@ -2133,6 +2213,11 @@ c_source(void *v)
       goto jleave;
    }
 
+   if (temporary_localopts_store != NULL) {
+      n_err(_("Before v15 you cannot `source' from within macros, sorry\n"));
+      Fclose(fi);
+      goto jleave;
+   }
    if (_fio_stack_size >= NELEM(_fio_stack)) {
       n_err(_("Too many `source' recursions\n"));
       Fclose(fi);

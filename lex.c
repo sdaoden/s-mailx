@@ -470,7 +470,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    size_t offset;
    char const *who;
    int rv, omsgCount = 0;
-   FILE *ibuf = NULL;
+   FILE *ibuf = NULL, *lckfp = NULL;
    bool_t isdevnull = FAL0;
    NYD_ENTER;
 
@@ -573,7 +573,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       Fclose(ibuf);
 
       if ((ibuf = Zopen(name, "r")) == NULL ||
-            fstat(fileno(ibuf), &stb) == -1 || !S_ISREG(stb.st_mode)) {
+            fstat(fileno(ibuf), &stb) == -1 ||
+            (!S_ISREG(stb.st_mode) && !isdevnull)) {
          n_perr(name, 0);
          rele_sigs();
          goto jem2;
@@ -602,26 +603,40 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          pstate |= PS_EDIT;
       initbox(name);
       offset = 0;
-      if (!(pstate & PS_EDIT) && !file_lock(fileno(ibuf), FLT_READ, 0,0, 0)) {
-         /*TODO dotlock!*/
-         n_perr(_("Unable to lock mailbox"), 0);
-         rele_sigs();
-         goto jem1;
-      }
    } else {
       fseek(mb.mb_otf, 0L, SEEK_END);
+      /* TODO Doing this without holding a lock is.. And not err checking.. */
       fseek(ibuf, mailsize, SEEK_SET);
       offset = mailsize;
       omsgCount = msgCount;
-      if (!(pstate & PS_EDIT) &&
-            !file_lock(fileno(ibuf), FLT_READ, 0,offset, 0)) {
-         /*TODO dotlock!*/
-         rele_sigs();
-         goto jnonmail;
-      }
    }
+
+   if (isdevnull)
+      lckfp = (FILE*)-1;
+   else if (!(pstate & PS_EDIT))
+      lckfp = dot_lock(name, fileno(ibuf), FLT_READ, offset,0,
+            (fm & FEDIT_NEWMAIL ? 0 : 1));
+   else if (file_lock(fileno(ibuf), FLT_READ, offset,0,
+         (fm & FEDIT_NEWMAIL ? 0 : 1)))
+      lckfp = (FILE*)-1;
+
+   if (lckfp == NULL) {
+      if (!(fm & FEDIT_NEWMAIL)) {
+         char const *emsg = (pstate & PS_EDIT)
+               ? N_("Unable to lock mailbox, aborting operation")
+               : N_("Unable to (dot) lock mailbox, aborting operation");
+         n_perr(V_(emsg), 0);
+      }
+      rele_sigs();
+      if (!(fm & FEDIT_NEWMAIL))
+         goto jem1;
+      goto jnonmail;
+   }
+
    mailsize = fsize(ibuf);
 
+   /* TODO This is too simple minded?  We should regenerate an index file
+    * TODO to be able to truly tell wether *anything* has changed! */
    if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
       rele_sigs();
       goto jnonmail;
@@ -635,7 +650,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    Fclose(ibuf);
    ibuf = NULL;
+   if (lckfp != NULL && lckfp != (FILE*)-1) {
+      Pclose(lckfp, FAL0);
+      /*lckfp = NULL;*/
+   }
    rele_sigs();
+
    if (!(fm & FEDIT_NEWMAIL))
       pstate &= ~PS_SAW_COMMAND;
 
@@ -659,8 +679,11 @@ jnomail:
 
    rv = 0;
 jleave:
-   if (ibuf != NULL)
+   if (ibuf != NULL) {
       Fclose(ibuf);
+      if (lckfp != NULL && lckfp != (FILE*)-1)
+         Pclose(lckfp, FAL0);
+   }
    NYD_LEAVE;
    return rv;
 jem2:
@@ -1428,17 +1451,17 @@ initbox(char const *name)
 FL bool_t
 print_comm_docstr(char const *comm)
 {
-   bool_t rv = FAL0;
-   struct cmd_ghost *cg;
+   struct cmd_ghost const *cg;
    struct cmd const *cp;
+   bool_t rv = FAL0;
    NYD_ENTER;
 
    /* Ghosts take precedence */
    for (cg = _cmd_ghosts; cg != NULL; cg = cg->next)
       if (!strcmp(comm, cg->name)) {
-         printf("%s -> <%s>\n", comm, cg->cmd.s);
-         rv = TRU1;
-         goto jleave;
+         printf("%s -> ", comm);
+         comm = cg->cmd.s;
+         break;
       }
 
    for (cp = _cmd_tab; cp->name != NULL; ++cp) {
@@ -1453,7 +1476,11 @@ print_comm_docstr(char const *comm)
       rv = TRU1;
       break;
    }
-jleave:
+
+   if (!rv && cg != NULL) {
+      printf("\"%s\"\n", comm);
+      rv = TRU1;
+   }
    NYD_LEAVE;
    return rv;
 }

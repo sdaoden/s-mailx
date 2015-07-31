@@ -1041,6 +1041,8 @@ getrandstring(size_t length)
 
    b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
    ac_free(data);
+
+   b64.s[length] = '\0';
    NYD_LEAVE;
    return b64.s;
 }

@@ -39,11 +39,9 @@
  */
 #undef n_FILE
 #define n_FILE main
+#define n_MAIN_SOURCE
 
-#ifndef HAVE_AMALGAMATION
-# define _MAIN_SOURCE
-# include "nail.h"
-#endif
+#include "nail.h"
 
 #include <sys/ioctl.h>
 
@@ -318,10 +316,6 @@ _startup(void)
 
       ok_vset(sendmail, SENDMAIL);
       ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
-
-#ifndef HAVE_PRIVSEP
-      ok_bset(dotlock_ignore_error, TRU1);
-#endif
    } while (0);
 
    /*  --  >8  --  8<  --  */
@@ -343,7 +337,8 @@ _startup(void)
       /* Reset possibly messed up state; luckily this also gives us an
        * indication wether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
-      enc_has_state = mbtowc(&wc, NULL, mb_cur_max);
+      if (mbtowc(&wc, NULL, mb_cur_max))
+         options |= OPT_ENC_MBSTATE;
    }
 # endif
 #else
@@ -386,9 +381,10 @@ _setup_vars(void)
          ? savestr(cp) : TMPDIR_FALLBACK;
 
    cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
-   uid = getuid();
+   group_id = (ui32_t)getgid();
+   user_id = (ui32_t)(uid = getuid());
    if ((pwuid = getpwuid(uid)) == NULL)
-      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)uid);
+      n_panic(_("Cannot associate a name with uid %u"), user_id);
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
@@ -1046,29 +1042,54 @@ jgetopt_done:
    }
 
    /* xxx exit_status = EXIT_OK; */
-   if (X_head == NULL || _X_arg_eval(X_head)) {
-      /* Now that full mailx(1)-style file expansion is possible handle the
-       * attachments which we had delayed due to this.
-       * This may use savestr(), but since we won't enter the command loop we
-       * don't need to care about that */
-      while (a_head != NULL) {
-         attach = add_attachment(attach, a_head->aa_file, NULL);
-         if (attach != NULL) {
-            a_curr = a_head;
-            a_head = a_head->aa_next;
-         } else {
-            n_perr(a_head->aa_file, 0);
-            exit_status = EXIT_ERR;
-            goto jleave;
+   if (X_head != NULL && !_X_arg_eval(X_head))
+      goto jleave;
+
+   /* Now that full mailx(1)-style file expansion is possible handle the
+    * attachments which we had delayed due to this.
+    * This may use savestr(), but since we won't enter the command loop we
+    * don't need to care about that */
+   for (cp = NULL; a_head != NULL;) {
+      struct attachment *nahp, *nap;
+
+      if ((nahp = add_attachment(attach, a_head->aa_file, &nap)) != NULL) {
+         attach = nahp;
+         /* Did we split a charset set name for fixation purposes? */
+         if (cp != NULL) {
+            nap->a_conv = AC_FIX_INCS;
+            nap->a_input_charset = cp;
+            cp = NULL;
+         }
+         a_head = a_head->aa_next;
+         continue;
+      }
+      i = errno;
+
+      /* It may not have worked because of an appended character set name, so
+       * try to split name and charset and retry once */
+      if (cp == NULL && (cp = strrchr(a_head->aa_file, '=')) != NULL) {
+         char *ncp, *nfp = savestrbuf(a_head->aa_file,
+               PTR2SIZE(cp - a_head->aa_file));
+
+         for (ncp = ++cp; *ncp != '\0'; ++ncp)
+            if (!alnumchar(*ncp) && !punctchar(*ncp))
+               break;
+         if (*ncp == '\0') {
+            a_head->aa_file = nfp;
+            continue;
          }
       }
 
-      if (options & OPT_INTERACTIVE)
-         tty_init();
-      mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
-      if (options & OPT_INTERACTIVE)
-         tty_destroy();
+      n_perr(a_head->aa_file, i);
+      exit_status = EXIT_ERR;
+      goto jleave;
    }
+
+   if (options & OPT_INTERACTIVE)
+      tty_init();
+   mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
+   if (options & OPT_INTERACTIVE)
+      tty_destroy();
 
 jleave:
 #ifdef HAVE_TERMCAP
@@ -1099,5 +1120,10 @@ c_rexit(void *v) /* TODO program state machine */
    NYD_LEAVE;
    return 1;
 }
+
+/* Source the others in that case! */
+#ifdef HAVE_AMALGAMATION
+# include "config.h"
+#endif
 
 /* s-it-mode */

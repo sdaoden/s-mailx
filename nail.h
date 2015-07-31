@@ -106,11 +106,19 @@
 # endif
 #endif
 
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
-#   define NAME_MAX     _POSIX_NAME_MAX
+#  define NAME_MAX      _POSIX_NAME_MAX
 # else
-#   define NAME_MAX     14
+#  define NAME_MAX      14
 # endif
 #endif
 #if NAME_MAX < 8
@@ -179,6 +187,7 @@
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
+#define REFERENCES_MAX  20       /* Maximum entries in References: */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
@@ -456,6 +465,8 @@ do {\
    UNUSED(__i_am_unused__);\
 } while (0)
 
+#define UNINIT(N,V)     N = V
+
 #undef ISPOW2
 #define ISPOW2(X)       ((((X) - 1) & (X)) == 0)
 #undef MIN
@@ -696,11 +707,17 @@ enum authtype {
 };
 
 enum expand_addr_flags {
-   EAF_NONE       = 0,
-   EAF_SET        = 1<<0,     /* *expandaddr* set */
-   EAF_RESTRICT   = 1<<1,     /* "restrict" */
-   EAF_FAIL       = 1<<2,     /* "fail" */
-   EAF_NOALIAS    = 1<<3      /* "noalias" */
+   EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
+   EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_FAIL       = 1<<1,     /* "fail" */
+   /* Bits reused by enum expand_addr_check_mode! */
+   EAF_FILE       = 1<<3,     /* +"file" targets */
+   EAF_PIPE       = 1<<4,     /* +"pipe" command pipe targets */
+   EAF_NAME       = 1<<5,     /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1<<6,     /* +"addr" network address (contain "@") */
+
+   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
+   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
 };
 
 enum expand_addr_check_mode {
@@ -709,8 +726,12 @@ enum expand_addr_check_mode {
    EACM_STRICT    = 1<<1,     /* Never allow any file or pipe addresse */
    EACM_MODE_MASK = 0x3,      /* _NORMAL and _STRICT are mutual! */
 
-   EACM_NOALIAS   = 1<<2,     /* Don't allow MTA aliases (non-addresses) */
-   EACM_NOLOG     = 1<<3      /* Don't log check errors */
+   EACM_NOLOG     = 1<<2,     /* Don't log check errors */
+
+   /* Some special overwrites of EAF_TARGETs.
+    * May NOT clash with EAF_* bits which may be ORd to these here! */
+
+   EACM_NONAME    = 1<<16
 };
 
 enum colourspec {
@@ -750,6 +771,7 @@ enum dotlock_state {
    DLS_NOEXEC,                /* Privilege separated dotlocker not found */
    DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
    DLS_EXIST,                 /* Lock file already exists, stale lock? */
+   DLS_FISHY,                 /* Something makes us think bad of situation */
    DLS_DUNNO,                 /* Catch-all error */
    DLS_PING,                  /* Not an error, but have to wait for lock */
    DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
@@ -783,8 +805,7 @@ enum fexp_mode {
 
 enum file_lock_type {
    FLT_READ,
-   FLT_WRITE,
-   FLT_UNLOCK
+   FLT_WRITE
 };
 
 enum mimecontent {
@@ -992,6 +1013,7 @@ enum user_options {
    OPT_TTYIN      = OPT_INTERACTIVE,
    OPT_TTYOUT     = 1u<<19,
    OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
+   OPT_ENC_MBSTATE = 1u<<21,  /* Multibyte environment with shift states */
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
@@ -1035,7 +1057,8 @@ enum program_state {
    PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
 
    /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1<<24        /* Ring of `errors' content, print msg */
+   PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
+   PS_t_FLAG         = 1<<25        /* OPT_t_FLAG made persistant */
 };
 
 /* A large enum with all the binary and value options a.k.a their keys.
@@ -1223,6 +1246,7 @@ enum okeys {
    ok_v_smime_crl_file,
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
+   ok_v_smime_sign_message_digest,
    ok_v_smtp,
    /* TODO v15-compat: smtp-auth: drop */
    ok_v_smtp_auth,
@@ -1330,6 +1354,17 @@ struct ccred {
    struct str     cc_user;       /* User (urlxdec()oded) or NULL */
    struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
+
+#ifdef HAVE_DOTLOCK
+struct dotlock_info {
+   char const  *di_file_name;
+   char const  *di_lock_name;
+   char const  *di_hostname;
+   char const  *di_randstr;
+   size_t      di_pollmsecs;
+   struct stat *di_stb;
+};
+#endif
 
 struct time_current {
    time_t      tc_time;
@@ -1619,8 +1654,8 @@ enum gfield {
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: field */
-   GREF           = 1<<12,    /* References: field */
+   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: */
+   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
    GSKIN          = 1<<15,    /* Skin names */
@@ -1646,12 +1681,14 @@ struct header {
    char        *h_subject;    /* Subject string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
-   struct name *h_ref;        /* References */
+   struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
    char        *h_charset;    /* preferred charset */
    struct name *h_from;       /* overridden "From:" field */
    struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_message_id; /* overridden "Message-ID:" field */
+   struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    char        *h_organization; /* overridden "Organization:" field */
@@ -1669,19 +1706,20 @@ enum nameflags {
    NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
    NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISMAIL    = 1<< 7, /* ..is a valid mail address */
+   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is a valid mail network address */
+   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a valid mail network address */
 
-   NAME_ADDRSPEC_ERR_EMPTY = 1<< 8, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1<< 9, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR  = 1<<10, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA  = 1<<11, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ERR_EMPTY = 1<< 9, /* An empty string (or NULL) */
+   NAME_ADDRSPEC_ERR_ATSEQ = 1<<10, /* Weird @ sequence */
+   NAME_ADDRSPEC_ERR_CHAR  = 1<<11, /* Invalid character */
+   NAME_ADDRSPEC_ERR_IDNA  = 1<<12, /* IDNA convertion failed */
    NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
          NAME_ADDRSPEC_ERR_IDNA,
 
    /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC  = 12,
-   _NAME_MAXWC    = 0x7FFFF,
+   _NAME_SHIFTWC  = 13,
+   _NAME_MAXWC    = 0x3FFFF,
    _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
 };
 
@@ -1772,7 +1810,7 @@ struct cw {
  */
 
 #undef VL
-#ifdef _MAIN_SOURCE
+#ifdef n_MAIN_SOURCE
 # ifndef HAVE_AMALGAMATION
 #  define VL
 # else
@@ -1786,12 +1824,14 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL int         enc_has_state;       /* Encoding has shift states */
 
 VL char const  *homedir;            /* Path name of home directory */
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
 VL char const  *tempdir;            /* The temporary directory */
+
+VL ui32_t      group_id;            /* getgid() and getuid() */
+VL ui32_t      user_id;
 
 VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */
@@ -1868,6 +1908,8 @@ VL uc_i const  class_char[];
  * Finally, let's include the function prototypes XXX embed
  */
 
-#include "nailfuns.h"
+#ifndef n_PRIVSEP_SOURCE
+# include "nailfuns.h"
+#endif
 
 /* s-it-mode */

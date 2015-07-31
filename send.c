@@ -592,21 +592,32 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
       cp = "";
    env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
-   /* NAIL_FILENAME_GENERATED */
-   s.s = getrandstring(NAME_MAX);
+   /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
+    * TODO a file wherever he wants!  *Do* create a zero-size temporary file
+    * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
+    * TODO the pipe returns?  Like this we *can* verify path/name issues! */
+#undef _X
+#define _X  MIN(NAME_MAX / 4, 16)
+   s.s = getrandstring(_X);
    if (mpp == NULL)
       cp = s.s;
    else if (*cp == '\0') {
+      size_t i;
+
       if (  (((cp = mpp->m_ct_type_usr_ovwr) == NULL || *cp == '\0') &&
              ((cp = mpp->m_ct_type_plain) == NULL || *cp == '\0')) ||
-            ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0'))
+            ((sh = strrchr(cp, '/')) == NULL || *++sh == '\0') ||
+            (i = strlen(sh)) > _X)
          cp = s.s;
       else {
-         LCTA(NAME_MAX >= 8);
-         s.s[7] = '.';
-         cp = savecat(s.s, sh);
+         LCTA(_X >= 13);
+
+         s.s[0] = '-';
+         cp = s.s = savecat(sh, s.s);
+         s.s[i + _X  - 4] = '.';
       }
    }
+#undef _X
    env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 
@@ -1282,10 +1293,6 @@ jcopyout:
       if (convert == CONV_FROMB64_T || (asccasecmp(tcs, ip->m_charset) &&
             asccasecmp(charset_get_7bit(), ip->m_charset))) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         /* XXX Don't bail out if we cannot iconv(3) here;
-          * XXX alternatively we could avoid trying to open
-          * XXX if ip->m_charset is "unknown-8bit", which was
-          * XXX the one that has bitten me?? */
          /*
           * TODO errors should DEFINETELY not be scrolled away!
           * TODO what about an error buffer (think old shsp(1)),

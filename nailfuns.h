@@ -240,11 +240,11 @@ FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
  * attachments.c
  */
 
-/* Try to add an attachment for *file*, file_expand()ed.
- * Return the new head of list *aphead*, or NULL.
- * The newly created attachment will be stored in **newap*, if given */
-FL struct attachment *  add_attachment(struct attachment *aphead, char *file,
-                           struct attachment **newap);
+/* Try to add an attachment for file, file_expand()ed.
+ * Return the new head of list aphead, or NULL.
+ * The newly created attachment will be stored in *newap, if given */
+FL struct attachment * add_attachment(struct attachment *aphead, char *file,
+                        struct attachment **newap);
 
 /* Append comma-separated list of file names to the end of attachment list */
 FL void        append_attachments(struct attachment **aphead, char *names);
@@ -694,7 +694,7 @@ FL bool_t      condstack_take(void *self);
  */
 
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
-                  char *quotefile, int doprefix);
+                  char *quotefile, int doprefix, si8_t *checkaddr_err);
 
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
@@ -863,13 +863,16 @@ FL enum okay   get_body(struct message *mp);
 FL bool_t      file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
                   size_t pollmsecs);
 
-/* Aquire a FLT_WRITE lock and create a dotlock file; upon success
- * a registered control-pipe FILE* is returned; the lock file will be removed
- * once the control pipe is closed, usually via Pclose() etc.
+/* Aquire a flt lock and create a dotlock file; upon success a registered
+ * control-pipe FILE* is returned that keeps the link in between us and the
+ * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
+ * execv(2) with the privilege-separated dotlock helper program): the lock file
+ * will be removed once the control pipe is closed via Pclose().
  * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established */
-FL FILE *      dotlock(char const *fname, int fd, size_t pollmsecs);
+ * normal file lock could be established, otherwise errno is usable on error */
+FL FILE *      dot_lock(char const *fname, int fd, enum file_lock_type flt,
+                  off_t off, off_t len, size_t pollmsecs);
 
 /* Socket I/O */
 #ifdef HAVE_SOCKETS
@@ -923,7 +926,16 @@ FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
-FL void        extract_header(FILE *fp, struct header *hp);
+/* Extract some header fields (see -t documentation) from a message.
+ * If options&OPT_t_FLAG *and* pstate&PS_t_FLAG are both set a number of
+ * additional header fields are understood.
+ * If pstate&PS_t_FLAG is set but OPT_t_FLAG is no more, From: will not be
+ * assigned no more.
+ * This calls expandaddr() on some headers and sets checkaddr_err if that is
+ * not NULL -- note it explicitly allows EAF_NAME because aliases are not
+ * expanded when this is called! */
+FL void        extract_header(FILE *fp, struct header *hp,
+                  si8_t *checkaddr_err);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
@@ -947,8 +959,9 @@ FL char const * skip_comment(char const *cp);
 /* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
 
-/* Query *expandaddr*, parse it and return flags */
-FL enum expand_addr_flags expandaddr_flags(void);
+/* Query *expandaddr*, parse it and return flags.
+ * The flags are already adjusted for OPT_INTERACTIVE / OPT_TILDE_FLAG etc. */
+FL enum expand_addr_flags expandaddr_to_eaf(void);
 
 /* Check if an address is invalid, either because it is malformed or, if not,
  * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
@@ -1727,8 +1740,9 @@ FL enum okay   ssl_verify_decide(void);
 FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
                   int keep);
 
-/*  */
-FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp);
+/* */
+FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
+                  char const *message_digest);
 
 /*  */
 FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);

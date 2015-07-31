@@ -1,7 +1,10 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Privilege-separated dot file lock program (WANT_PRIVSEP=yes)
- *@ that is capable of calling setgid(2) and change its group identity
- *@ to the configured PRIVSEP_GROUP (usually "mail").
+ *@ Privilege-separated dot file lock program (WANT_DOTLOCK=yes)
+ *@ that is capable of calling setuid(2) and change its user identity
+ *@ to the configured PRIVSEP_USER (usually "root"), in order to create
+ *@ a dotlock file with the same UID/GID as the mailbox to be locked.
+ *@ It should be started when chdir(2)d to the lock file's directory,
+ *@ and SIGPIPE should be ignored.
  *
  * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -19,6 +22,7 @@
  */
 #undef n_FILE
 #define n_FILE privsep
+#define n_PRIVSEP_SOURCE
 
 #include "nail.h"
 
@@ -34,31 +38,30 @@ _ign_signal(int signum)
    nact.sa_handler = SIG_IGN;
    sigemptyset(&nact.sa_mask);
    nact.sa_flags = 0;
-#ifdef SA_RESTART
-   nact.sa_flags |= SA_RESTART;
-#endif
    sigaction(signum, &nact, &oact);
 }
 
 int
 main(int argc, char **argv)
 {
+   struct dotlock_info di;
    struct stat stb;
-   char const *name, *hostname, *randstr;
-   size_t pollmsecs;
+   sigset_t nset, oset;
    enum dotlock_state dls;
-   gid_t gid, egid;
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
-   if (argc != 10 ||
-         strcmp(argv[0], PRIVSEP) ||
-         strcmp(argv[1], "dotlock") ||
-         strcmp(argv[2], "name") ||
-         strcmp(argv[4], "hostname") ||
-         strcmp(argv[6], "randstr") ||
-         strcmp(argv[8], "pollmsecs") ||
-         fstat(0, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
-         fstat(1, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
+   if (argc != 12 ||
+         strcmp(argv[ 0], PRIVSEP) ||
+         (argv[1][0] != 'r' && argv[1][0] != 'w') ||
+         strcmp(argv[ 1] + 1, "dotlock") ||
+         strcmp(argv[ 2], "mailbox") ||
+         strcmp(argv[ 4], "name") ||
+         strcmp(argv[ 6], "hostname") ||
+         strcmp(argv[ 8], "randstr") ||
+         strcmp(argv[10], "pollmsecs") ||
+         fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
+         fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
+jeuse:
       fprintf(stderr,
          "This is a helper program of \"" UAGENT "\" (in " BINDIR ").\n"
          "  It is capable of gaining more privileges than \"" UAGENT "\"\n"
@@ -69,31 +72,56 @@ main(int argc, char **argv)
       exit(EXIT_USE);
    }
 
-   name = argv[3];
-   hostname = argv[5];
-   randstr = argv[7];
-   pollmsecs = (size_t)strtoul(argv[9], NULL, 10);
+   di.di_file_name = argv[3];
+   di.di_lock_name = argv[5];
+   di.di_hostname = argv[7];
+   di.di_randstr = argv[9];
+   di.di_pollmsecs = (size_t)strtoul(argv[11], NULL, 10);
+   {
+      size_t i = strlen(di.di_file_name);
 
-   /* Try to change our group identity; to catch faulty installations etc.
-    * don't baild if GID==EGID or setgid() fails, but simply continue */
-   gid = getgid();
-   egid = getegid();
-   if (gid == egid || setgid(egid)) {
-      dls = DLS_PRIVFAILED;
-      if (UICMP(z, write(STDOUT_FILENO, &dls, sizeof dls), !=, sizeof dls))
-         goto jerr;
+      if (i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
+            di.di_lock_name[i] == '\0' || strcmp(di.di_lock_name + i, ".lock"))
+         goto jeuse;
    }
 
-   _ign_signal(SIGHUP);
-   _ign_signal(SIGINT);
-   _ign_signal(SIGPIPE); /* (Inherited, though) */
-   _ign_signal(SIGQUIT);
-   _ign_signal(SIGTERM);
+   close(STDERR_FILENO);
 
-   dls = DLS_NOPERM;
-   dls = _dotlock_create(name, hostname, randstr, pollmsecs);
+   /* In order to prevent stale lock files at all cost block any signals until
+    * we have unlinked the lock file.
+    * It is still not safe because we may be SIGKILLed and may linger around
+    * because we have been SIGSTOPped, but unfortunately the standard doesn't
+    * give any option, e.g. atcrash() or open(O_TEMPORARY_KEEP_NAME) or so, ---
+    * and then again we should not unlink(2) the lock file unless our parent
+    * has finalized the synchronization!  While at it, let me rant about the
+    * default action of realtime signals, program termination */
+   _ign_signal(SIGPIPE); /* (Inherited, though) */
+   sigfillset(&nset);
+   sigdelset(&nset, SIGCONT); /* (Rather redundant, though) */
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+
+   dls = DLS_NOPERM | DLS_ABANDON;
+
+   /* First of all: we only dotlock when the executing user has the necessary
+    * rights to access the mailbox */
+   if (access(di.di_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
+      goto jmsg;
+
+   /* We need UID and GID information about the mailbox to lock */
+   if (stat(di.di_file_name, di.di_stb = &stb) == -1)
+      goto jmsg;
+
+   dls = DLS_PRIVFAILED | DLS_ABANDON;
+
+   /* This privsep helper only gets executed when needed, it thus doesn't make
+    * sense to try to continue with initial privileges */
+   if (setuid(geteuid()))
+      goto jmsg;
+
+   dls = _dotlock_create(&di);
 
    /* Finally: notify our parent about the actual lock state.. */
+jmsg:
    write(STDOUT_FILENO, &dls, sizeof dls);
    close(STDOUT_FILENO);
 
@@ -102,11 +130,11 @@ main(int argc, char **argv)
    if (dls == DLS_NONE) {
       read(STDIN_FILENO, &dls, sizeof dls);
 
-      unlink(name);
+      unlink(di.di_lock_name);
    }
-   return EXIT_OK;
-jerr:
-   return EXIT_ERR;
+
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   return (dls == DLS_NONE ? EXIT_OK : EXIT_ERR);
 }
 
 /* s-it-mode */

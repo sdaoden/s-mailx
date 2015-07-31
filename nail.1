@@ -35,9 +35,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"--MKREL-START--
-.\" S-nail(1): v14.8.3 / 2015-07-04
-.Dd Jul 04, 2015
-.ds VV \\%v14.8.3
+.\" S-nail(1): v14.8.4 / 2015-07-31
+.Dd Jul 31, 2015
+.ds VV \\%v14.8.4
 .\"--MKREL-END--
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
@@ -55,7 +55,6 @@
 .ds OU [no v15-compat]
 .ds ID [v15 behaviour may differ]
 .ds RO (Read-only)
-.ds EX (EXPERIMENTAL)
 .
 .Dt "\*(UU" 1
 .Os
@@ -71,7 +70,7 @@
 .Sh SYNOPSIS
 .
 .Nm \*(ua
-.Fl h | -help
+.Fl h | Fl Fl help
 .Nm \*(ua
 .Bk -words
 .Op Fl BDdEFintv~
@@ -86,7 +85,7 @@
 .Op Fl X Ar cmd
 .Op Fl \&.
 .Ar to-addr ...
-.Op Fl - Ar mta-option ...
+.Op Fl Fl \: Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Bk -words
@@ -97,7 +96,7 @@
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl X Ar cmd
 .Fl f Op Ar file
-.Op Fl - Ar mta-option ...
+.Op Fl Fl \: Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Bk -words
@@ -108,7 +107,7 @@
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .Op Fl X Ar cmd
-.Op Fl - Ar mta-option ...
+.Op Fl Fl \: Ar mta-option ...
 .Ek
 .\" }}}
 .
@@ -144,27 +143,6 @@ It is usable as a mail batch language.
 .\" .Ss "Options" {{{
 .Ss "Options"
 .
-In the following list of supported command line options,
-.Fl D , d , E , i , N
-and
-.Fl v
-are implemented by means of setting the respective option, as via
-.Fl S .
-.Bk -words
-.Op Ar mta-option ...
-.Ek
-arguments that are given at the end of the command line after a
-.Ql --
-separator will be passed through to the mail-transfer-agent (MTA) and
-persist for an entire (interactive) session \(en if the setting of
-.Va expandargv
-allows their recognition;
-MTA arguments can also be specified in the variable
-.Va sendmail-arguments ;
-find MTA interaction described in more detail in the documentation of
-.Va sendmail .
-MTA arguments are ignored when mail is send via SMTP data transfer.
-.
 .Bl -tag -width ".Fl _ Ar _ccount"
 .Mx
 .It Fl A Ar account
@@ -182,6 +160,19 @@ The same filename conventions as described in the section
 apply: shell word expansion is restricted to the tilde
 .Ql ~
 and variables.
+Shall
+.Ar file
+not be accessible but contain a
+.Ql =
+character, then anything after the
+.Ql =
+is assumed to specify the input character set and anything before
+.Ql =
+the filename: this is the only option to specify the input character set
+(and don't perform any character set conversion) for text attachments
+from the command line, not using the
+.Ic ~@
+tilde escape command.
 .
 .Mx
 .It Fl B
@@ -262,7 +253,7 @@ option.
 .It Fl h
 Print a short usage summary.
 Because of widespread use a
-.Fl -help
+.Fl Fl help
 argument will have the same effect.
 .
 .Mx
@@ -384,6 +375,32 @@ fields giving its recipients and
 .Ql Subject:
 giving the subject of the message.
 Recipients and subject specified on the command line are ignored.
+.Pp
+Also understood are
+.Ql Reply-To:
+(possibly overriding
+.Va replyto ) ,
+.Ql Sender:
+(p.\ o.\&
+.Va sender ) ,
+.Ql Organization:
+(p.\ o.\&
+.Va ORGANIZATION ) .
+Note you can also specify
+.Ql From: ,
+possibly overriding
+.Va from
+and the envelope address possibly specified with the option
+.Fl r !
+.Pp
+The following, which are normally created automatically based
+upon the message context, can also be specified:
+.Ql Message-ID: ,
+.Ql In-Reply-To: ,
+.Ql References:
+and
+.Ql Mail-Followup-To:
+(special address massage will however still occur for the latter).
 .
 .Mx
 .It Fl u Ar user
@@ -412,7 +429,7 @@ Using it twice increases the level of verbosity.
 .
 .Mx
 .It Fl X Ar cmd
-\*(EX Add the given
+Add the given
 .Ar cmd
 to the list of commands to be executed before normal operation starts.
 Correlates with
@@ -454,11 +471,34 @@ $ LC_ALL=C printf 'm bob\en~s ubject\enText\en.\enx\en' | \e
 .
 .Mx
 .It Fl \&.
-This flag forces termination of option processing in order to address
-.Dq option injection .
+This flag forces termination of option processing in order to prevent
+.Dq option injection
+(attacks).
 It also forcefully puts \*(UA into send mode, see
 .Sx "Sending mail" .
 .El
+.
+.Pp
+In the above list of supported command line options,
+.Fl D , d , E , i , N
+and
+.Fl v
+are implemented by means of setting the respective option, as via
+.Fl S .
+.Bk -words
+.Op Ar mta-option ...
+.Ek
+arguments that are given at the end of the command line after a
+.Ql --
+separator will be passed through to the mail-transfer-agent (MTA) and
+persist for an entire (interactive) session \(en if the setting of
+.Va expandargv
+allows their recognition;
+MTA arguments can also be specified in the variable
+.Va sendmail-arguments ;
+find MTA interaction described in more detail in the documentation of
+.Va sendmail .
+MTA arguments are ignored when mail is send via SMTP data transfer.
 .\" }}}
 .
 .\" .Ss "A starter" {{{
@@ -540,8 +580,8 @@ will be sent:
 .Bd -literal -offset indent
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an isolated (almost) dry-run mode first
-$ LC_ALL=C MAILRC=/dev/null \*(ua -n -dvv \e
-    -Ssmtp -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
+$ LC_ALL=C MAILRC=/dev/null \*(ua -n -dvv -Sv15-compat \e
+    -Ssendwait -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
     -s Subject "(Lovely) Bob <bob@host2>"
 $ cat ./sent-mails.mbox
 .Ed
@@ -600,9 +640,14 @@ and the knowledge that messages are sent asynchronously unless
 is set: only with it MTA delivery errors will be recognizable.
 .
 .Pp
+Setting
+.Va from
+is often necessary (e.g., in conjunction with
+.Va smtp )
+or desirable, you may want to do some dry-run tests before you go.
 Saving a copy of the sent messages in a
 .Va record
-may also be desireable \(en as for most mailbox file targets some
+may also be desirable \(en as for most mailbox file targets some
 special conventions are recognized, see the
 .Ic file
 command for more on that.
@@ -624,7 +669,8 @@ If the variable
 .Va expandaddr
 is not set then only network addresses (see
 .Xr mailaddr 7
-for a description of mail addresses) and aliases may be used, though.
+for a description of mail addresses) and plain user names (including MTA
+aliases) may be used, however.
 .
 .\" When changing any of the following adjust any RECIPIENTADDRSPEC;
 .\" grep the latter for the complete picture
@@ -634,7 +680,7 @@ If the variable
 is set the following rules are used to classify recipient addresses:
 Any name which starts with a vertical bar
 .Ql |
-character specifies a pipe \(en the command string following the
+character specifies a command pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
 Likewise, any name that starts with the character
@@ -660,8 +706,8 @@ What remains is treated as a network address.
 .Bd -literal -offset indent
 $ echo bla | \*(ua -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(ua -Sexpandaddr -s test '|cat >> ./mbox.mbox'
-$ echo safe | LC_ALL=C MAILRC=/dev/null \*(ua -n \e
-    -Sexpandaddr=fail,noalias -s test -. bob@home.net
+$ echo safe | LC_ALL=C MAILRC=/dev/null \*(ua -n -Sv15-compat \e
+    -Ssendwait -Sexpandaddr=fail,-all,+addr -s test -. bob@home.net
 .Ed
 .
 .Pp
@@ -678,7 +724,7 @@ and have it go to a group of people:
 Please note that this mechanism has nothing in common with the system
 wide aliases that may be used by the local MTA (mail-transfer-agent),
 which are subject to the
-.Dq noalias
+.Dq name
 constraint of
 .Va expandaddr
 and are often tracked in a file
@@ -703,12 +749,12 @@ environment variables, or by using the
 command line option to specify options:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C MAILRC=/dev/null password=SECRET \*(ua -n \e
-    -Sv15-compat \e
+$ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \*(ua -n \e
+    -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file \e
-    "Recipient 1 <recipient1@domain>" recipient2@domain \e
+    -. "Recipient 1 <recipient1@domain>" recipient2@domain \e
     < content_file
 .Ed
 .\" }}}
@@ -722,7 +768,7 @@ When used like that the user's system mailbox is read in and a one line
 header of each message therein is printed.
 (See the command
 .Ic file
-for a in-depth description of the different mailbox types that exist.)
+for an in-depth description of the different mailbox types that exist.)
 Note that if the mailbox is empty \*(UA will exit after printing
 a message unless the option
 .Va emptystart
@@ -888,10 +934,13 @@ if $features !@ HTML-FILTER
   #set pipe-text/html=@
 endif
 mimetype '@ application/mathml+xml mathml'
-set pipe-application/pdf="@&cat > \e
-      \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
-    acroread \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e"; \e
-    rm \e"${NAIL_TMPDIR}/${NAIL_FILENAME}\e""
+set pipe-application/pdf="@&set -C;\e
+    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
+    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
+      EXIT INT QUIT PIPE TERM;\e
+    set +C;\e
+    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
+    xpdf \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e""
 .Ed
 .
 .Pp
@@ -1620,7 +1669,7 @@ criterion then the last of those criteria is used.
 .\" .Ss "On URL syntax and credential lookup" {{{
 .Ss "On URL syntax and credential lookup"
 .
-\*(IN For accessing protocol-specific resources, like a POP3 mailbox,
+\*(IN For accessing protocol-specific resources, like POP3 mailboxes,
 usage of compact and standardized Uniform Resource Locators
 (URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
@@ -1695,7 +1744,7 @@ exists before finally ending up looking at the plain variable itself.
 \*(UA obeys the following logic scheme when dealing with the
 necessary credential informations of an account:
 .
-.Bl -bullet -offset indent
+.Bl -bullet
 .It
 If no
 .Ql USER
@@ -1726,9 +1775,9 @@ either the name that has been given with the
 command line option (or, equivalently, but with less precedence, the
 environment variable
 .Ev USER ) ,
-or
-.Ql getpwuid(getuid())
-a.k.a. the current login user.
+or the
+.Dq current
+user.
 The identity of this user has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .
@@ -1779,9 +1828,9 @@ S/MIME verification works relative to the values found in the
 (or
 .Ql Sender: )
 header field(s), which means that the values of
-.Va smime-sign , smime-sign-cert
+.Va smime-sign , smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-include-certs
+.Va smime-sign-message-digest
 will not be looked up using the
 .Ql USER
 and
@@ -2040,7 +2089,7 @@ prints a sorted list of available commands, and the command
 when given an argument, will show a documentation string for the
 expansion, as in
 .Ql ?unc ;
-documentation strings are however \*(OP.)
+documentation strings are however \*(OPal.)
 .
 .Pp
 For commands which take message lists as arguments, the next message
@@ -2597,8 +2646,10 @@ file locking: for any file
 a lock file
 .Ql a.lock
 will be created for the duration of the synchronization \(em
-as necessary a \*(OPal privilege-separated child process will be used to
-accommodate for mail group privilege adjustments for this purpose.
+as necessary a privilege-separated dotlock child process will be used
+to accommodate for necessary privilege adjustments in order to create
+the dotlock file in the same directory
+and with the same user and group identities as the file of interest.
 Also see
 .Va mbox-rfc4155
 for fine-tuning the handling of MBOX files.
@@ -4446,6 +4497,21 @@ Notes: \*(UA doesn't support the
 variable \(en use command line options or
 .Va sendmail-arguments
 to pass options through to a MTA.
+And the default global
+.Pa \*(UR
+file (which is loaded unless the
+.Fl n
+command line flag has been used or the
+.Ev NAIL_NO_SYSTEM_RC
+environment variable is set) bends those initial settings a bit, e.g.,
+it sets the options
+.Va hold ,
+.Va keepsave
+and
+.Va keep ,
+to name a few, calls
+.Ic retain
+etc., and should thus be taken into account.
 .\" }}}
 .
 .\" .Ss "Binary options" {{{
@@ -4703,15 +4769,15 @@ is ignored and using a dot is the only method to terminate input mode.
 .
 .Mx
 .It Va dotlock-ignore-error
-Synchronization of mailboxes which \*(UA treats as system mailboxes
-(see the command
+\*(OP Synchronization of mailboxes which \*(UA treats as system
+mailboxes (see the command
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
 spool file locking method\(emin addition to system file locking.
-If the \*(OPal privilege-separated dotlock creation program is available
-then there is no good reason to ignore dotlock errors, and thus such
-errors are treated as fatal errors unless this variable is set.
-This variable is enabled by default if the dotlock helper is not builtin.
+Because \*(UA ships with a privilege-separated dotlock creation program
+that should always be able to create such a dotlock file there is no
+good reason to ignore dotlock file creation errors, and thus these are
+fatal unless this variable is set.
 .
 .Mx
 .It Va editalong
@@ -5199,9 +5265,9 @@ header and that the message content has not been altered.
 It does not change the message text,
 and people will be able to read the message as usual.
 Also see
-.Va smime-sign-cert
+.Va smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-include-certs .
+.Va smime-sign-message-digest .
 .
 .Mx
 .It Va smime-no-default-ca
@@ -5223,8 +5289,10 @@ certificates.
 .Mx
 .It Va term-ca-mode
 \*(OP If terminal capability queries are supported and this option is
-set then \*(UA will try to create a terminal session when in interactive
-mode, which will cause a screen clearance once \*(UA is terminated again.
+set then \*(UA will try to switch to the
+.Dq alternate screen
+when in interactive mode, so that the terminal will go back to the
+normal screen, leaving all the text there intact, when \*(UA exits.
 .Sy Note:
 even when supported for this to produce appealing results the used
 .Ev PAGER
@@ -5306,7 +5374,7 @@ The backslash character has no special meaning except in these cases.
 .
 .Bd -literal -offset indent
 set 1=val\e one 2="val two" 3='val "three"' 4='val \e'four\e''
-var 1 2 3 4
+varshow 1 2 3 4
 unset 1 2 3 4
 .Ed
 .
@@ -5627,35 +5695,55 @@ to denote
 .
 .Mx
 .It Va expandaddr
-If set then an extended way of interpreting recipient address
-specifications is used \(en see the section
+If not set then file and command pipeline targets are not allowed,
+and any such address will be filtered out, giving a warning message.
+If set without a value then all possible recipient address
+specifications will be accepted \(en see the section
 .Sx "Sending mail"
 for more on this.
-To disallow any extended interpretation only in non-interactive mode,
-unless tilde commands were enabled explicitly by using one of the
-command line options
+To accept them, but only in interactive mode, or when tilde commands
+were enabled explicitly by using one of the command line options
 .Fl ~
 or
 .Fl # ,
 set this to the (case-insensitive) value
-.Dq restrict .
-If set to the value
-.Dq fail
-then the existence of extended recipient addresses is treated as a hard
-send error (instead of only filtering them out).
+.Ql restrict
+(note right now this is actually like setting
+.Ql restrict,-all,+name,+addr ) .
 .Pp
-In fact the value is interpreted as a comma-separated list of strings.
-To forbid that anything that is not a file or pipe addressee (and thus
-labelled as
-.Dq extended recipient address
-around here) will be treated as a network address, but to filter out
-aliases, too, include the value
-.Dq noalias
-(which will be a hard error only in conjunction with
-.Dq fail ) ;
-note this applies to system aliases only, \*(UA internal
-.Ic alias Ns
-es are not affected by this setting (only their expansion).
+In fact the value is interpreted as a comma-separated list of values.
+If it contains
+.Ql fail
+then the existence of disallowed specifications is treated as a hard
+send error instead of only filtering them out.
+The remaining values specify wether a specific type of recipient
+address specification is allowed (optionally indicated by a plus sign
+.Ql +
+prefix) or disallowed (prefixed with a hyphen
+.Ql - ) .
+The value
+.Ql all
+addresses all possible address specifications,
+.Ql file
+file targets,
+.Ql pipe
+command pipeline targets,
+.Ql name
+plain user names and (MTA) aliases (\*(OB
+.Ql noalias
+may be used as an alternative syntax to
+.Ql -name )
+and
+.Ql addr
+network addresses.
+These kind of values are interpreted in the given order, so that
+.Ql restrict,\:fail,\:+file,\:-all,\:+addr
+will cause hard errors for any non-network address recipient address
+unless \*(UA is in interactive mode or has been started with the
+.Fl ~
+or
+.Fl #
+command line option; in the latter case(s) any address may be used, then.
 .
 .Mx
 .It Va expandargv
@@ -6609,21 +6697,21 @@ verification of S/MIME signed messages.
 .
 .Mx
 .It Va smime-cipher-USER@HOST
-\*(OP Specifies a cipher to use when generating S/MIME encrypted
+\*(OP Specifies the cipher to use when generating S/MIME encrypted
 messages for the specified account.
 RFC 5751 mandates a default of
-.Dq aes-128
+.Dq aes128
 (AES-128 CBC).
 Possible values are (case-insensitive and) in decreasing cipher strength:
-.Dq aes-256
+.Dq aes256
 (AES-256 CBC),
-.Dq aes-192
+.Dq aes192
 (AES-192 CBC),
-.Dq aes-128
+.Dq aes128
 (AES-128 CBC),
 .Dq des3
 (DES EDE3 CBC, 168 bits; default if
-.Dq aes-128
+.Dq aes128
 isn't available) and
 .Dq des
 (DES CBC, 56 bits).
@@ -6707,6 +6795,38 @@ Note that top level certificates may also be included in the chain but
 don't play a role for verification.
 Also see
 .Va smime-sign-cert .
+Remember that for this
+.Ql USER@HOST
+refers to the variable
+.Va from
+(or, if that contains multiple addresses,
+.Va sender ) .
+.
+.Mx Va smime-sign-message-digest
+.It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
+\*(OP Specifies the message digest to use when signing S/MIME messages.
+RFC 5751 mandates a default of
+.Dq sha1 .
+Possible values are (case-insensitive and) in decreasing cipher strength:
+.Dq sha512 ,
+.Dq sha384 ,
+.Dq sha256 ,
+.Dq sha224
+and
+.Dq md5 .
+.Pp
+The actually available message digest algorithms depend on the
+cryptographic library that \*(UA uses.
+\*(OP Support for more message digest algorithms may be available
+through dynamic loading via, e.g.,
+.Xr EVP_get_digestbyname 3
+(OpenSSL) if \*(UA has been compiled to support this.
+Remember that for this
+.Ql USER@HOST
+refers to the variable
+.Va from
+(or, if that contains multiple addresses,
+.Va sender ) .
 .
 .Mx
 .It Va smtp
@@ -7606,7 +7726,9 @@ file is accessible by only the user if it contains a
 .Cd password
 token for any other
 .Cd login
-than anonymous, \*(UA will always require these strict permissions.
+than
+.Dq anonymous ,
+\*(UA will always require these strict permissions.
 .El
 .
 .Pp
@@ -7778,9 +7900,9 @@ mlsubscribe ^xfans@xfans.xyz$
 # A real life example of a very huge free mail provider
 account XooglX {
   localopts yes
+  set from="Your Name <youremail@domain>"
   # (The plain smtp:// proto is optional)
   set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
-  set from="Your Name <youremail@domain>"
 }
 
 # Here is a pretty large one which does not allow sending mails
@@ -7791,24 +7913,62 @@ account XooglX {
 # still sending the message through their normal mail provider
 account XandeX {
   localopts true
+  set from="Your Name <youremail@domain>"
   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
-  set from="Your Name <youremail@domain>"
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-ghost l     !ls -aFtr
-ghost L     !ls -aFt
-ghost ll    !ls -aFltr
-ghost Ll    !ls -aFlt
-ghost la    !ls -aFr
-ghost La    !ls -aF
-ghost lla   1ls -aFlr
-ghost Lla   !ls -aFl
-ghost lS    !ls -aFrS
-ghost LS    !ls -aFS
-ghost llS   !ls -aFlrS
-ghost LlS   !ls -aFlS
+ghost l   !ls -aFtr
+ghost L   !ls -aFt
+ghost ll  !ls -aFltr
+ghost Ll  !ls -aFlt
+ghost la  !ls -aFr
+ghost La  !ls -aF
+ghost lla !ls -aFlr
+ghost Lla !ls -aFl
+ghost lS  !ls -aFrS
+ghost LS  !ls -aFS
+ghost llS !ls -aFlrS
+ghost LlS !ls -aFlS
+
+# We don't support gpg(1) directly yet.  But simple --clearsign'd
+# message parts can be dealt with as follows:
+define V {
+  localopts yes
+  set pipe-text/plain="set -C;\e
+    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" \e
+    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
+      EXIT INT QUIT PIPE TERM;\e
+    set +C;\e
+    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
+    if < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk '\e
+        BEGIN{estat = 1}\e
+        END{exit estat}\e
+        /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
+          estat=0;\e
+          next;\e
+        }\e
+        /^-----BEGIN PGP SIGNATURE-----/,\e
+            /^-----END PGP SIGNATURE-----/ {\e
+          estat=0;\e
+          next;\e
+        }\e
+        {print}\e
+        '; then \e
+      echo '>>>>>';\e
+      gpg --verify \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
+    fi"
+  print
+}
+ghost V call V
+
+define RK {
+  !printf 'Key IDs to gpg --recv-keys: ';\e
+    read keyids;\e
+    gpg --recv-keys ${keyids};
+}
+ghost RK call RK
 .Ed
 .
 .Pp
@@ -7826,6 +7986,7 @@ that sets up SMTP and POP3:
 .Bd -literal -offset indent
 account XandeX {
   localopts true
+  set from="Your Name <youremail@domain>"
   set netrc-lookup
   #set agent-shell-lookup="gpg -d .pass.gpg"
 
@@ -7895,7 +8056,7 @@ Encryption, in contrast, makes the message text invisible for all people
 except those who have access to the secret decryption key.
 To encrypt a message, the specific recipient's public encryption key
 must be known.
-It is thus not possible to send encrypted mail to people unless their
+It is therefore not possible to send encrypted mail to people unless their
 key has been retrieved from either previous communication or public key
 directories.
 A message should always be signed before it is encrypted.
@@ -7912,6 +8073,12 @@ A set of CA certificates is usually delivered with OpenSSL and installed
 on your system.
 If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
+(Otherwise set
+.Va ssl-no-default-ca
+and use
+.Va smime-ca-file
+and/or
+.Va smime-ca-dir . )
 In general, a certificate cannot be more secure than the method its CA
 certificate has been retrieved with, though.
 Thus if you download a CA certificate from the Internet,
@@ -7922,8 +8089,8 @@ much as you trust the download process.
 The first thing you need for participating in S/MIME message exchange is
 your personal certificate, including a private key.
 The certificate contains public information, in particular your name and
-your email address, and the public key that is used by others to encrypt
-messages for you,
+your email address(es), and the public key that is used by others to
+encrypt messages for you,
 and to verify signed messages they supposedly received from you.
 The certificate is included in each signed message you send.
 The private key must be kept secret.
@@ -7933,33 +8100,77 @@ public key, and to sign messages.
 .Pp
 For personal use it is recommended that you get a S/MIME certificate
 from one of the major CAs on the Internet using your WWW browser.
-(Many CAs offer such certificates for free.)
-You will usually receive a combined certificate and private key in
-PKCS#12 format which \*(UA does not directly accept.
-To convert it to PEM format, use the following shell command:
+Many CAs offer such certificates for free.
+There is also
+.Lk https://www.CAcert.org
+which issues client and server certificates to members of their
+community for free; their root certificate
+.Pf ( Lk https://\:www.cacert.org/\:certs/\:root.crt )
+is often not in the default set of trusted CA root certificates, though,
+which means you will have to download their root certificate separately
+and ensure it is part of our S/MIME certificate validation chain by
+including it in
+.Va smime-ca-dir
+or as a vivid member of the
+.Va smime-ca-file .
+But let's take a step-by-step tour on how to setup S/MIME with
+a certificate from CAcert.org despite this situation!
 .
 .Pp
-.Dl $ openssl pkcs12 \-in cert.p12 \-out cert.pem \-clcerts \-nodes
+First of all you will have to become a member of the CAcert.org
+community.
+Once you are, create and verify all email addresses you want to be able
+to create signed and encrypted messages for/with using the corresponding
+entries of the web interface.
+Now ready to create S/MIME certificates, therefore create a new
+.Dq client certificate
+and ensure to include all email addresses that should be covered by the
+certificate in the following web form, and also to use your name as the
+.Dq common name .
 .
 .Pp
-If you omit the
-.Ql -nodes
-parameter, you can specifiy an additional
-.Dq PEM pass phrase
-for protecting the private key.
-\*(UA will then ask you for that pass phrase each time it signs or
-decrypts a message.
-Afterwards you can then use
+Create a private key and a certificate request on your local box
+(please see the manual pages of the used commands for more in-depth
+knowledge on what the used arguments etc. do):
 .
 .Pp
-.Dl set smime-sign-cert-myname@myisp.example=cert.pem
+.Dl openssl req -nodes -newkey rsa:4096 -keyout key.pem -out creq.pem
 .
 .Pp
-to make this private key and certificate known to \*(UA.
-You can now sign outgoing messages, just set
+Afterwards copy-and-paste the content of
+.Dq creq.pem
+into the certificate-request (CSR) field of the web form on the
+CAcert.org website (you may need to unfold some
+.Dq advanced options
+to see the corresponding text field).
+This last step will ensure that your private key (which never left your
+box) and the public key (the generated certificate) belong together.
+You are now ready and can create your CAcert certified public key.
+Download and store or copy-and-paste it as
+.Dq pub.crt .
 .
 .Pp
-.Dl set smime-sign
+Yay.
+In order to use your new S/MIME setup you will have to create
+a combined private key/public key (certificate) file:
+.
+.Pp
+.Dl cat key.pem pub.crt > ME@HERE.com.paired
+.
+.Pp
+This is the file \*(UA will work with.
+If you have created your private key with a passphrase then \*(UA will
+ask you for it whenever a message is signed or decrypted.
+Set the following variables to henceforth use S/MIME (setting
+.Va smime-ca-file
+is of interest for verification only):
+.
+.Bd -literal -offset indent
+set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
+  smime-sign-cert=ME@HERE.com.paired \e
+  smime-sign-message-digest=SHA256 \e
+  smime-sign
+.Ed
 .
 .Pp
 From each signed message you send,
@@ -7973,8 +8184,8 @@ After that, retrieve the certificate and tell \*(UA that it should use
 it for encryption:
 .
 .Pp
-.Dl certsave filename
-.Dl set smime-encrypt-USER@HOST=filename
+.Dl certsave FILENAME
+.Dl set smime-encrypt-USER@HOST=FILENAME
 .
 .Pp
 You should carefully consider if you prefer to store encrypted messages
@@ -7992,7 +8203,7 @@ commands leave them encrypted.
 .
 .Pp
 Note that neither S/MIME signing nor encryption applies to message
-subjects or other header fields.
+subjects or other header fields yet.
 Thus they may not contain sensitive information for encrypted messages,
 and cannot be trusted even if the message content has been verified.
 When sending signed messages,
@@ -8261,7 +8472,7 @@ remains intact.
 .An "Kurt Shoens" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An Steffen Nurpmeso Aq Mt s-nail-users@lists.sourceforge.net
+.An "Steffen Nurpmeso" Aq Mt s-nail-users@lists.sourceforge.net
 .
 .
 .\" .Sh CAVEATS {{{
