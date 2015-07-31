@@ -1,9 +1,12 @@
-mime_types.h
 config.*
 *.mk
-mkman.1
-mkrc.rc
-*.o
+
+mime_types.h
+uman.1
+urc.rc
+
 s-nail
 s-nail-privsep
+
+*.o
 .cc-*
