@@ -20,8 +20,8 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.8.4 ("Nameless bird (shot by Hemingway)", 2015-07-21 +X
------------------------------------------------------------
+v14.8.4 ("Nameless bird (shot by Hemingway)", 2015-08-04
+--------------------------------------------------------
 
 Thanks for Jérémie Courrèges-Anglas for beating me to it.
 
@@ -135,7 +135,7 @@ ChangeLog
 - Heavily rewritten manual section "Signed and encrypted messages with
   S/MIME" @35, giving a ready-to-go example for CAcert.org.
 
-- Nicer output for `help' @126 (#125) / `?' @74 when given an argument:
+- Nicer output for `help' @126 / `?' @74 when given an argument:
   if that is a command ghost we search for the expansion and do print
   the (further expansion and) help for that if possible [cea8c20]:
 
@@ -157,8 +157,8 @@ ChangeLog
       ? reply
       ~:call ouch
 
-  This is a pity because "? call ouch" does no longer cause a reply, but
-  the real healing will take time.
+  This is a pity because "? call ouch" does no longer cause a reply,
+  but the real healing will take time.
   Also the `source' command is now actively disabled during macro
   evaluation -- this only works(/ed) by accidence and anyway non-
   synchronously (the `source'd file will be loaded after the macro
@@ -167,14 +167,28 @@ ChangeLog
   won't work out with macro support (see commit message for more upon
   interest). [5461a30]
 
-- And `source' will be actively forbidden in compose mode, too.  It never
-  worked the way it should. [abd388c]
+- And `source' will be actively forbidden in compose mode, too.  It
+  never worked the way it should. [abd388c]
 
 - Did -t @60 ever work for real?  Now it does.
   Even better it now "supports" some more header fields (References:,
   In-Reply-To:, Message-ID:, and Mail-Followup-To:, but the latter will
   be subject of a nice followup content massage) -- S-nail can
-  henceforth be used for git(1)s send-email command. [6842f12,631d402]
+  henceforth be used for git(1)s send-email command.
+  We also improved the interdependency of -t (with[out] From:, Sender:),
+  -r, *from* and *sender*, but i don't say it is perfect yet.
+  [6842f12,631d402,a86ca2d]
+
+- Completely reworked *expandaddr* @373 handling, and you can now define
+  *exactly* what you want, e.g., "fail,-all,+addr,+file" will only allow
+  mail address or file recipients and hard error out otherwise.
+  Note that in order to make that work "restrict" has been changed to be
+  effectively "restrict,-all,+name,+addr", which matters in, e.g.,
+  "fail,-all,+file,restrict" which therefore truly is "restrict,fail"!
+
+  Even in conjunction with -t you should now see proper (-d / *debug*,
+  -v / *verbose*) messages for *expandaddr* caused address stripping,
+  or, with "fail", hard errors. [8668be3]
 
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
