@@ -1197,7 +1197,7 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
 
       if ((rv = is_addr_invalid(n, eacm)) != 0) {
          if (set_on_error != NULL)
-            *set_on_error = rv;
+            *set_on_error |= rv; /* don't loose -1! */
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
          if (n->n_flink)

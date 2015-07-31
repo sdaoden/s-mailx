@@ -77,7 +77,7 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
 
-static enum okay  makeheader(FILE *fp, struct header *hp);
+static enum okay  makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
  * new temp file */
@@ -365,7 +365,7 @@ jleave:
 }
 
 static enum okay
-makeheader(FILE *fp, struct header *hp)
+makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
    FILE *nf;
    int c;
@@ -378,7 +378,8 @@ makeheader(FILE *fp, struct header *hp)
       goto jleave;
    }
 
-   extract_header(fp, hp);
+   extract_header(fp, hp, checkaddr_err);
+
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
    if (fp != _coll_fp)
@@ -409,7 +410,7 @@ mesedit(int c, struct header *hp)
    if (nf != NULL) {
       if (hp) {
          rewind(nf);
-         makeheader(nf, hp);
+         makeheader(nf, hp, NULL);
       } else {
          fseek(nf, 0L, SEEK_END);
          Fclose(_coll_fp);
@@ -607,7 +608,7 @@ jleave:
 
 FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-   char *quotefile, int doprefix)
+   char *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct ignoretab *quoteig;
    int lc, cc, c, t;
@@ -784,7 +785,7 @@ jcont:
             /* It is important to set PS_t_FLAG before extract_header() *and*
              * keep OPT_t_FLAG for the first parse of the message, too! */
             pstate |= PS_t_FLAG;
-            if (makeheader(_coll_fp, hp) != OKAY)
+            if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
                goto jerr;
             rewind(_coll_fp);
             options &= ~OPT_t_FLAG;

@@ -707,11 +707,17 @@ enum authtype {
 };
 
 enum expand_addr_flags {
-   EAF_NONE       = 0,
-   EAF_SET        = 1<<0,     /* *expandaddr* set */
-   EAF_RESTRICT   = 1<<1,     /* "restrict" */
-   EAF_FAIL       = 1<<2,     /* "fail" */
-   EAF_NOALIAS    = 1<<3      /* "noalias" */
+   EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
+   EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_FAIL       = 1<<1,     /* "fail" */
+   /* Bits reused by enum expand_addr_check_mode! */
+   EAF_FILE       = 1<<3,     /* +"file" targets */
+   EAF_PIPE       = 1<<4,     /* +"pipe" command pipe targets */
+   EAF_NAME       = 1<<5,     /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1<<6,     /* +"addr" network address (contain "@") */
+
+   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
+   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
 };
 
 enum expand_addr_check_mode {
@@ -720,8 +726,12 @@ enum expand_addr_check_mode {
    EACM_STRICT    = 1<<1,     /* Never allow any file or pipe addresse */
    EACM_MODE_MASK = 0x3,      /* _NORMAL and _STRICT are mutual! */
 
-   EACM_NOALIAS   = 1<<2,     /* Don't allow MTA aliases (non-addresses) */
-   EACM_NOLOG     = 1<<3      /* Don't log check errors */
+   EACM_NOLOG     = 1<<2,     /* Don't log check errors */
+
+   /* Some special overwrites of EAF_TARGETs.
+    * May NOT clash with EAF_* bits which may be ORd to these here! */
+
+   EACM_NONAME    = 1<<16
 };
 
 enum colourspec {
@@ -1696,19 +1706,20 @@ enum nameflags {
    NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
    NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISMAIL    = 1<< 7, /* ..is a valid mail address */
+   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is a valid mail network address */
+   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a valid mail network address */
 
-   NAME_ADDRSPEC_ERR_EMPTY = 1<< 8, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1<< 9, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR  = 1<<10, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA  = 1<<11, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ERR_EMPTY = 1<< 9, /* An empty string (or NULL) */
+   NAME_ADDRSPEC_ERR_ATSEQ = 1<<10, /* Weird @ sequence */
+   NAME_ADDRSPEC_ERR_CHAR  = 1<<11, /* Invalid character */
+   NAME_ADDRSPEC_ERR_IDNA  = 1<<12, /* IDNA convertion failed */
    NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
          NAME_ADDRSPEC_ERR_IDNA,
 
    /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC  = 12,
-   _NAME_MAXWC    = 0x7FFFF,
+   _NAME_SHIFTWC  = 13,
+   _NAME_MAXWC    = 0x3FFFF,
    _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
 };
 

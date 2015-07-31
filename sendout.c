@@ -877,7 +877,7 @@ do {\
          while (np->n_flink != NULL)
             np = np->n_flink;
          if (!is_addr_invalid(np, /* TODO check that on parser side! */
-               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOALIAS | EACM_NOLOG)) {
+               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME)) {
             fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
             ++gotcha;
          } else {
@@ -949,7 +949,7 @@ do {\
                if (!(f & HF_LIST_REPLY)) {
 j_mft_add:
                   if (!is_addr_invalid(x,
-                        EACM_STRICT | EACM_NOALIAS | EACM_NOLOG)) {
+                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)) {
                      x->n_flink = mft;
                      mft = x;
                   } /* XXX write some warning?  if verbose?? */
@@ -1696,7 +1696,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       m_INIT   = 1<<0,
       m_COMMA  = 1<<1,
       m_NOPF   = 1<<2,
-      m_NOALI  = 1<<3,
+      m_NONAME = 1<<3,
       m_CSEEN  = 1<<4
    } m = (ff & GCOMMA) ? m_COMMA : 0;
    ssize_t col, len;
@@ -1712,7 +1712,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
             _X("references:") || _X("disposition-notification-to:"))
-         m |= m_NOPF | m_NOALI;
+         m |= m_NOPF | m_NONAME;
       else if (ok_blook(add_file_recipients)) {
          ;
       } else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
@@ -1722,7 +1722,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
 
    for (; np != NULL; np = np->n_flink) {
       if (is_addr_invalid(np,
-            (m & m_NOALI ? EACM_NOALIAS : EACM_NONE) | EACM_NOLOG))
+            EACM_NOLOG | (m & m_NONAME ? EACM_NONAME : EACM_NONE)))
          continue;
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
@@ -1930,8 +1930,14 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
             EACM_NORMAL, &_sendout_error));
 
+   if (_sendout_error < 0) {
+      n_err(_("Some addressees in *autocc* or *autobcc* were "
+         "classified as \"hard error\"\n"));
+      goto j_leave;
+   }
+
    /* Collect user's mail from standard input.  Get the result as mtf */
-   mtf = collect(hp, printheaders, quote, quotefile, doprefix);
+   mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
    if (mtf == NULL)
       goto j_leave;
 
@@ -2003,7 +2009,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    to = namelist_vaporise_head(hp,
          (EACM_NORMAL |
-          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          TRU1, &_sendout_error);
    if (to == NULL) {
       n_err(_("No recipients specified\n"));
@@ -2146,7 +2152,7 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    if ((to = checkaddrs(to,
          (EACM_NORMAL |
-          (expandaddr_flags() & EAF_NOALIAS ? EACM_NOALIAS : EACM_NONE)),
+          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          &_sendout_error)) == NULL)
       goto jleave;
    /* For the _sendout_error<0 case we want to wait until we can write DEAD! */

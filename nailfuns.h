@@ -694,7 +694,7 @@ FL bool_t      condstack_take(void *self);
  */
 
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
-                  char *quotefile, int doprefix);
+                  char *quotefile, int doprefix, si8_t *checkaddr_err);
 
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
@@ -930,8 +930,12 @@ FL int         extract_date_from_from_(char const *line, size_t linelen,
  * If options&OPT_t_FLAG *and* pstate&PS_t_FLAG are both set a number of
  * additional header fields are understood.
  * If pstate&PS_t_FLAG is set but OPT_t_FLAG is no more, From: will not be
- * assigned no more */
-FL void        extract_header(FILE *fp, struct header *hp);
+ * assigned no more.
+ * This calls expandaddr() on some headers and sets checkaddr_err if that is
+ * not NULL -- note it explicitly allows EAF_NAME because aliases are not
+ * expanded when this is called! */
+FL void        extract_header(FILE *fp, struct header *hp,
+                  si8_t *checkaddr_err);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
@@ -955,8 +959,9 @@ FL char const * skip_comment(char const *cp);
 /* Return the start of a route-addr (address in angle brackets), if present */
 FL char const * routeaddr(char const *name);
 
-/* Query *expandaddr*, parse it and return flags */
-FL enum expand_addr_flags expandaddr_flags(void);
+/* Query *expandaddr*, parse it and return flags.
+ * The flags are already adjusted for OPT_INTERACTIVE / OPT_TILDE_FLAG etc. */
+FL enum expand_addr_flags expandaddr_to_eaf(void);
 
 /* Check if an address is invalid, either because it is malformed or, if not,
  * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid

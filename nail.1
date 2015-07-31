@@ -669,7 +669,8 @@ If the variable
 .Va expandaddr
 is not set then only network addresses (see
 .Xr mailaddr 7
-for a description of mail addresses) and aliases may be used, though.
+for a description of mail addresses) and plain user names (including MTA
+aliases) may be used, however.
 .
 .\" When changing any of the following adjust any RECIPIENTADDRSPEC;
 .\" grep the latter for the complete picture
@@ -679,7 +680,7 @@ If the variable
 is set the following rules are used to classify recipient addresses:
 Any name which starts with a vertical bar
 .Ql |
-character specifies a pipe \(en the command string following the
+character specifies a command pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
 Likewise, any name that starts with the character
@@ -706,7 +707,7 @@ What remains is treated as a network address.
 $ echo bla | \*(ua -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(ua -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C MAILRC=/dev/null \*(ua -n -Sv15-compat \e
-    -Ssendwait -Sexpandaddr=fail,noalias -s test -. bob@home.net
+    -Ssendwait -Sexpandaddr=fail,-all,+addr -s test -. bob@home.net
 .Ed
 .
 .Pp
@@ -723,7 +724,7 @@ and have it go to a group of people:
 Please note that this mechanism has nothing in common with the system
 wide aliases that may be used by the local MTA (mail-transfer-agent),
 which are subject to the
-.Dq noalias
+.Dq name
 constraint of
 .Va expandaddr
 and are often tracked in a file
@@ -749,7 +750,7 @@ command line option to specify options:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \*(ua -n \e
-    -Sv15-compat -Ssendwait -Sexpandaddr=fail,noalias \e
+    -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file \e
@@ -5694,35 +5695,55 @@ to denote
 .
 .Mx
 .It Va expandaddr
-If set then an extended way of interpreting recipient address
-specifications is used \(en see the section
+If not set then file and command pipeline targets are not allowed,
+and any such address will be filtered out, giving a warning message.
+If set without a value then all possible recipient address
+specifications will be accepted \(en see the section
 .Sx "Sending mail"
 for more on this.
-To disallow any extended interpretation only in non-interactive mode,
-unless tilde commands were enabled explicitly by using one of the
-command line options
+To accept them, but only in interactive mode, or when tilde commands
+were enabled explicitly by using one of the command line options
 .Fl ~
 or
 .Fl # ,
 set this to the (case-insensitive) value
-.Dq restrict .
-If set to the value
-.Dq fail
-then the existence of extended recipient addresses is treated as a hard
-send error (instead of only filtering them out).
+.Ql restrict
+(note right now this is actually like setting
+.Ql restrict,-all,+name,+addr ) .
 .Pp
-In fact the value is interpreted as a comma-separated list of strings.
-To forbid that anything that is not a file or pipe addressee (and thus
-labelled as
-.Dq extended recipient address
-around here) will be treated as a network address, but to filter out
-aliases, too, include the value
-.Dq noalias
-(which will be a hard error only in conjunction with
-.Dq fail ) ;
-note this applies to system aliases only, \*(UA internal
-.Ic alias Ns
-es are not affected by this setting (only their expansion).
+In fact the value is interpreted as a comma-separated list of values.
+If it contains
+.Ql fail
+then the existence of disallowed specifications is treated as a hard
+send error instead of only filtering them out.
+The remaining values specify wether a specific type of recipient
+address specification is allowed (optionally indicated by a plus sign
+.Ql +
+prefix) or disallowed (prefixed with a hyphen
+.Ql - ) .
+The value
+.Ql all
+addresses all possible address specifications,
+.Ql file
+file targets,
+.Ql pipe
+command pipeline targets,
+.Ql name
+plain user names and (MTA) aliases (\*(OB
+.Ql noalias
+may be used as an alternative syntax to
+.Ql -name )
+and
+.Ql addr
+network addresses.
+These kind of values are interpreted in the given order, so that
+.Ql restrict,\:fail,\:+file,\:-all,\:+addr
+will cause hard errors for any non-network address recipient address
+unless \*(UA is in interactive mode or has been started with the
+.Fl ~
+or
+.Fl #
+command line option; in the latter case(s) any address may be used, then.
 .
 .Mx
 .It Va expandargv
