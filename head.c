@@ -1068,6 +1068,7 @@ expandaddr_to_eaf(void)
                }
                break;
             } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
+               OBSOLETE(_("*expandaddr*: \"noalias\" is henceforth \"-name\""));
                rv &= ~EAF_NAME;
                break;
             }

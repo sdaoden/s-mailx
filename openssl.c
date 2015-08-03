@@ -181,9 +181,6 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
    {"aes128",  &EVP_aes_128_cbc},
    {"aes256",  &EVP_aes_256_cbc},
    {"aes192",  &EVP_aes_192_cbc},
-      {"aes-128", &EVP_aes_128_cbc}, /* TODO obsolete */
-      {"aes-256", &EVP_aes_256_cbc}, /* TODO obsolete */
-      {"aes-192", &EVP_aes_192_cbc}, /* TODO obsolete */
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef _SMIME_DEFAULT_CIPHER
@@ -196,6 +193,14 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 #ifndef _SMIME_DEFAULT_CIPHER
 # error Your OpenSSL library does not include the necessary
 # error cipher algorithms that are required to support S/MIME
+#endif
+
+#ifndef OPENSSL_NO_AES
+static struct smime_cipher const _smime_ciphers_obs[] = { /* TODO obsolete */
+   {"aes-128", &EVP_aes_128_cbc},
+   {"aes-256", &EVP_aes_256_cbc},
+   {"aes-192", &EVP_aes_192_cbc}
+};
 #endif
 
 /* Supported S/MIME message digest algorithms */
@@ -885,6 +890,14 @@ _smime_cipher(char const *name)
          cipher = (*_smime_ciphers[i].sc_fun)();
          goto jleave;
       }
+#ifndef OPENSSL_NO_AES
+   for (i = 0; i < NELEM(_smime_ciphers_obs); ++i) /* TODO obsolete */
+      if (!asccasecmp(_smime_ciphers_obs[i].sc_name, cp)) {
+         OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
+         cipher = (*_smime_ciphers_obs[i].sc_fun)();
+         goto jleave;
+      }
+#endif
 
    /* Not a builtin algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
