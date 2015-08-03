@@ -1380,6 +1380,14 @@ FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 FL char *      mime_param_boundary_create(void);
 
 /*
+ * mime_parse.c
+ */
+
+/* Create MIME part object tree for and of mp */
+FL struct mimepart * mime_parse_msg(struct message *mp,
+                        enum mime_parse_flags mpf);
+
+/*
  * mime_types.c
  */
 

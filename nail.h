@@ -895,6 +895,12 @@ enum b64flags {
 #define MIME_TYPE_HANDLER_TEXT   (char*)-1
 #define MIME_TYPE_HANDLER_HTML   (char*)-2
 
+enum mime_parse_flags {
+   MIME_PARSE_NONE      = 0,
+   MIME_PARSE_DECRYPT   = 1<<0,
+   MIME_PARSE_PARTS     = 1<<1
+};
+
 enum mlist_state {
    MLIST_OTHER       = 0,     /* Normal address */
    MLIST_KNOWN       = 1,     /* A known `mlist' */
