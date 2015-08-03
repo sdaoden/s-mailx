@@ -762,9 +762,6 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       cc = hfield1("cc", m);
       cnttype = hfield1("content-type", m);
 
-      if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
-         goto jleave;
-
 #undef _X
 #undef _Y
 #define _X     (sizeof("application/") -1)
@@ -781,6 +778,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             continue;
          }
       }
+
+      if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
+         goto jleave;
       size = m->m_size;
       break;
    }
