@@ -724,7 +724,7 @@ and have it go to a group of people:
 Please note that this mechanism has nothing in common with the system
 wide aliases that may be used by the local MTA (mail-transfer-agent),
 which are subject to the
-.Dq name
+.Ql name
 constraint of
 .Va expandaddr
 and are often tracked in a file
@@ -3247,7 +3247,7 @@ the headers of each new message are also printed.
 .Mx
 .It Ic next
 (n) (like
-.Dq +
+.Ql +
 or
 .Dq ENTER )
 Goes to the next message in sequence and types it.
@@ -4647,7 +4647,7 @@ Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
 and all other variables prefixed with
-.Dq bsd ;
+.Ql bsd ;
 it also changes the meaning of the \*(UA specific
 .Ql \e&
 .Va prompt
@@ -5766,11 +5766,11 @@ arguments from the command line, as can be given after a
 .Ql --
 separator, are ignored due to safety reasons.
 However, if set to the special value
-.Dq fail ,
+.Ql fail ,
 then the presence of additional MTA arguments is treated as a hard
 error that causes \*(UA to exit with failure status.
 A lesser strict variant is the otherwise identical
-.Dq restrict ,
+.Ql restrict ,
 which does accept such arguments in interactive mode, or if tilde
 commands were enabled explicitly by using one of the command line options
 .Fl ~
@@ -6714,20 +6714,20 @@ verification of S/MIME signed messages.
 \*(OP Specifies the cipher to use when generating S/MIME encrypted
 messages for the specified account.
 RFC 5751 mandates a default of
-.Dq aes128
+.Ql aes128
 (AES-128 CBC).
 Possible values are (case-insensitive and) in decreasing cipher strength:
-.Dq aes256
+.Ql aes256
 (AES-256 CBC),
-.Dq aes192
+.Ql aes192
 (AES-192 CBC),
-.Dq aes128
+.Ql aes128
 (AES-128 CBC),
-.Dq des3
+.Ql des3
 (DES EDE3 CBC, 168 bits; default if
-.Dq aes128
+.Ql aes128
 isn't available) and
-.Dq des
+.Ql des
 (DES CBC, 56 bits).
 .Pp
 The actually available cipher algorithms depend on the cryptographic
@@ -6738,14 +6738,14 @@ dynamic loading via, e.g.,
 (OpenSSL) if \*(UA has been compiled to support this.
 .
 .Mx
-.It Va smime-crl-file
-\*(OP Specifies a file that contains a CRL in PEM format to use when
-verifying S/MIME messages.
-.
-.Mx
 .It Va smime-crl-dir
 \*(OP Specifies a directory that contains files with CRLs in PEM format
 to use when verifying S/MIME messages.
+.
+.Mx
+.It Va smime-crl-file
+\*(OP Specifies a file that contains a CRL in PEM format to use when
+verifying S/MIME messages.
 .
 .Mx
 .It Va smime-encrypt-USER@HOST
@@ -6820,14 +6820,14 @@ refers to the variable
 .It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
 RFC 5751 mandates a default of
-.Dq sha1 .
+.Ql sha1 .
 Possible values are (case-insensitive and) in decreasing cipher strength:
-.Dq sha512 ,
-.Dq sha384 ,
-.Dq sha256 ,
-.Dq sha224
+.Ql sha512 ,
+.Ql sha384 ,
+.Ql sha256 ,
+.Ql sha224
 and
-.Dq md5 .
+.Ql md5 .
 .Pp
 The actually available message digest algorithms depend on the
 cryptographic library that \*(UA uses.
@@ -8133,18 +8133,18 @@ a certificate from CAcert.org despite this situation!
 .
 .Pp
 First of all you will have to become a member of the CAcert.org
-community.
+community, simply by registrating yourself via the web interface.
 Once you are, create and verify all email addresses you want to be able
 to create signed and encrypted messages for/with using the corresponding
 entries of the web interface.
-Now ready to create S/MIME certificates, therefore create a new
-.Dq client certificate
-and ensure to include all email addresses that should be covered by the
+Now ready to create S/MIME certificates, so let's create a new
+.Dq client certificate ,
+ensure to include all email addresses that should be covered by the
 certificate in the following web form, and also to use your name as the
 .Dq common name .
 .
 .Pp
-Create a private key and a certificate request on your local box
+Create a private key and a certificate request on your local computer
 (please see the manual pages of the used commands for more in-depth
 knowledge on what the used arguments etc. do):
 .
@@ -8159,8 +8159,9 @@ CAcert.org website (you may need to unfold some
 .Dq advanced options
 to see the corresponding text field).
 This last step will ensure that your private key (which never left your
-box) and the public key (the generated certificate) belong together.
-You are now ready and can create your CAcert certified public key.
+box) and the certificate belong together (through the public key that
+will find its way into the certificate via the certificate-request).
+You are now ready and can create your CAcert certified certificate.
 Download and store or copy-and-paste it as
 .Dq pub.crt .
 .
@@ -8188,19 +8189,43 @@ set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
 .Ed
 .
 .Pp
-From each signed message you send,
-the recipient can fetch your certificate and use it to send encrypted
-mail back to you.
-Accordingly if somebody sends you a signed message, you can do the same.
-First use the
+From each signed message you send, the recipient can fetch your
+certificate and use it to send encrypted mail back to you.
+Accordingly if somebody sends you a signed message, you can do the same,
+and use the
 .Ic verify
 command to check the validity of the certificate.
-After that, retrieve the certificate and tell \*(UA that it should use
-it for encryption:
 .
 .Pp
-.Dl certsave FILENAME
-.Dl set smime-encrypt-USER@HOST=FILENAME
+Options of interest for S/MIME signing:
+.Va smime-ca-dir ,
+.Va smime-ca-file ,
+.Va smime-crl-dir ,
+.Va smime-crl-file ,
+.Va smime-no-default-ca ,
+.Va smime-sign ,
+.Va smime-sign-cert ,
+.Va smime-sign-include-certs
+and
+.Va smime-sign-message-digest .
+.
+.Pp
+After it has been verified save the certificate via
+.Ic certsave
+and tell \*(UA that it should use it for encryption for further
+communication with that somebody:
+.
+.Bd -literal -offset indent
+certsave FILENAME
+set smime-encrypt-USER@HOST=FILENAME \e
+    smime-cipher-USER@HOST=AES256
+.Ed
+.
+.Pp
+Additional options of interest for S/MIME en- and decryption:
+.Va smime-cipher-USER@HOST
+and
+.Va smime-encrypt-USER@HOST .
 .
 .Pp
 You should carefully consider if you prefer to store encrypted messages
