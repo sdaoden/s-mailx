@@ -1654,7 +1654,7 @@ j_n:
          cbuf_base[1] = 'p';
          cbuf_base[2] = '\0';
          pstate &= ~PS_HOOK_MASK;
-         execute(cbuf_base, TRU1, 2);
+         execute(cbuf_base, 2);
          goto j_l;
       case 'P' ^ 0x40: /* history previous */
 j_p:

@@ -1141,8 +1141,8 @@ FL int         newmailinfo(int omsgCount);
 FL bool_t      commands(void);
 
 /* TODO drop execute() is the legacy version of evaluate().
- * Contxt is non-zero if called while composing mail */
-FL int         execute(char *linebuf, int contxt, size_t linesize);
+ * It assumes we've been invoked recursively */
+FL int         execute(char *linebuf, size_t linesize);
 
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.

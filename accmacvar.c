@@ -774,7 +774,7 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    buf = ac_alloc(mp->ma_maxlen +1);
    for (lp = mp->ma_contents; lp; lp = lp->l_next) {
       memcpy(buf, lp->l_line, lp->l_length +1);
-      rv |= execute(buf, TRU1, lp->l_length); /* XXX break if != 0 ? */
+      rv |= execute(buf, lp->l_length); /* XXX break if != 0 ? */
    }
    ac_free(buf);
 

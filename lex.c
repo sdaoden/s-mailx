@@ -879,13 +879,12 @@ jreadline:
 }
 
 FL int
-execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
+execute(char *linebuf, size_t linesize) /* XXX LEGACY */
 {
    struct eval_ctx ev;
 #ifdef HAVE_COLOUR
    struct colour_table *ct_save;
 #endif
-   char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
    int rv;
    NYD_ENTER;
 
@@ -900,12 +899,8 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    memset(&ev, 0, sizeof ev);
    ev.ev_line.s = linebuf;
    ev.ev_line.l = linesize;
-   ev.ev_is_recursive = (contxt != 0);
-   temporary_orig_line = contxt ? savestr(linebuf) : NULL;
+   ev.ev_is_recursive = TRU1;
    rv = evaluate(&ev);
-
-   if (contxt && temporary_orig_line != NULL)
-      tty_addhist(temporary_orig_line, TRU1);
 
 #ifdef HAVE_COLOUR
    colour_table = ct_save;
