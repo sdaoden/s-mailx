@@ -1444,11 +1444,15 @@ c_verify(void *vp)
    if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
       goto jleave;
 
+   srelax_hold();
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
       ec |= smime_verify(mp, *ip, chain, store);
+      srelax();
    }
+   srelax_rele();
+
    if ((rv = ec) != 0)
       exit_status |= EXIT_ERR;
 jleave:
