@@ -879,7 +879,7 @@ _smime_cipher(char const *name)
    cp = vok_vlook(vn);
    ac_free(vn);
 
-   if (cp == NULL) {
+   if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
       cipher = _SMIME_DEFAULT_CIPHER();
       goto jleave;
    }
@@ -906,7 +906,7 @@ _smime_cipher(char const *name)
       goto jleave;
 #endif
 
-   n_err(_("Invalid cipher(s): \"%s\"\n"), cp);
+   n_err(_("Invalid S/MIME cipher(s): \"%s\"\n"), cp);
 jleave:
    NYD_LEAVE;
    return cipher;

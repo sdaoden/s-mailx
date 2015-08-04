@@ -1244,6 +1244,7 @@ enum okeys {
    ok_v_signature,
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
+   ok_v_smime_cipher,
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
    ok_v_smime_sign_cert,

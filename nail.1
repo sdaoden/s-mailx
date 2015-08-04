@@ -6709,10 +6709,10 @@ Enhanced Mail) format for verification of S/MIME signed messages.
 \*(OP Specifies a file with CA certificates in PEM format for
 verification of S/MIME signed messages.
 .
-.Mx
-.It Va smime-cipher-USER@HOST
+.Mx Va smime-cipher
+.It Va smime-cipher-USER@HOST , smime-cipher
 \*(OP Specifies the cipher to use when generating S/MIME encrypted
-messages for the specified account.
+messages (for the specified account).
 RFC 5751 mandates a default of
 .Ql aes128
 (AES-128 CBC).
@@ -8223,7 +8223,7 @@ set smime-encrypt-USER@HOST=FILENAME \e
 .
 .Pp
 Additional options of interest for S/MIME en- and decryption:
-.Va smime-cipher-USER@HOST
+.Va smime-cipher
 and
 .Va smime-encrypt-USER@HOST .
 .
