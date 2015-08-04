@@ -3534,8 +3534,22 @@ Takes a message list and marks all messages as having been read.
 .
 .Mx
 .It Ic set
-(se) With no arguments, prints all variable values.
-Otherwise, sets an option.
+(se) Without arguments this command prints all options and, for
+non-binary options, values that are currently known to \*(UA.
+Setting any of the options
+.Va bsdcompat
+or
+.Va bsdset
+changes the output format to BSD style, otherwise a properly quoted
+listing is produced.
+If
+.Va debug
+is set or
+.Va verbose
+has been set twice then the listing is modified to mark out assembled
+variables.
+.Pp
+Otherwise modifies (set and unsets) the given options.
 Arguments are of the form
 .Ql option=value
 (no space before or after

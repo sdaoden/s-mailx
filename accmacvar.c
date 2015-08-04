@@ -115,7 +115,8 @@ struct var_show {
    char const     *vs_value;     /* Value (from wherever it came) or NULL */
    bool_t         vs_isset;      /* Managed by us and existent */
    bool_t         vs_isenv;      /* Set, but managed by environ */
-   ui8_t          __pad[6];
+   bool_t         vs_isasm;      /* Is an assembled variable */
+   ui8_t          __pad[5];
 };
 
 struct lostack {
@@ -404,7 +405,7 @@ _var_broadway(struct var_show *vsp, char const *name)
 
    memset(vsp, 0, sizeof *vsp);
 
-   _var_revlookup(&vsp->vs_vc, name);
+   vsp->vs_isasm = !_var_revlookup(&vsp->vs_vc, name);
 
    if ((vsp->vs_isset = rv = _var_lookup(&vsp->vs_vc))) {
       vsp->vs_value = vsp->vs_vc.vc_var->v_value;
@@ -541,27 +542,29 @@ _var_list_all(void)
 
    i = (ok_blook(bsdcompat) || ok_blook(bsdset));
    for (cap = vacp; no != 0; ++cap, --no) {
-      char const *fmt;
+      char const *asmis, *fmt;
 
       if (!_var_broadway(&vs, *cap))
          continue;
       if (vs.vs_value == NULL)
          vs.vs_value = "";
 
+      asmis = !(options & OPT_D_VV) ? ""
+            : vs.vs_isasm ? "*" : " ";
       if (i)
-         fmt = "%s\t%s\n";
+         fmt = "%s%s\t%s\n";
       else {
          if (vs.vs_vc.vc_vmap != NULL &&
                (vs.vs_vc.vc_vmap->vm_flags & VM_BINARY))
-            fmt = "set %s\n";
+            fmt = "%sset %s\n";
          else {
-            fmt = "set %s=\"%s\"\n";
+            fmt = "%sset %s=\"%s\"\n";
             if (*vs.vs_value != '\0')
                vs.vs_value = __var_simple_quote(vs.vs_value);
          }
       }
       /* Shall a code checker complain on that, i'm in holiday */
-      fprintf(fp, fmt, *cap, vs.vs_value);
+      fprintf(fp, fmt, asmis, *cap, vs.vs_value);
    }
 
    page_or_print(fp, PTR2SIZE(cap - vacp));
