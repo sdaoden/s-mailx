@@ -949,6 +949,8 @@ enum mimecontent {
    MIME_ALTERNATIVE, /* multipart/alternative content */
    MIME_RELATED,     /* mime/related (RFC 2387) */
    MIME_DIGEST,      /* multipart/digest content */
+   MIME_SIGNED,      /* multipart/signed */
+   MIME_ENCRYPTED,   /* multipart/encrypted */
    MIME_MULTI,       /* other multipart/ content */
    MIME_PKCS7,       /* PKCS7 content */
    MIME_DISCARD      /* content is discarded */

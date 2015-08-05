@@ -123,13 +123,15 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
             goto jleave;
 #endif
          }
-         /* FALLTHRU */
+         break;
       default:
          break;
-      case MIME_MULTI:
       case MIME_ALTERNATIVE:
       case MIME_RELATED: /* TODO /related yet handled like /alternative */
       case MIME_DIGEST:
+      case MIME_SIGNED:
+      case MIME_ENCRYPTED:
+      case MIME_MULTI:
          _mime_parse_multipart(zmp, ip, mpf, level);
          break;
       case MIME_822:

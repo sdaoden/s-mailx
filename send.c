@@ -714,8 +714,10 @@ jalter_redo:
                switch (np->m_mimecontent) {
                case MIME_ALTERNATIVE:
                case MIME_RELATED:
-               case MIME_MULTI:
                case MIME_DIGEST:
+               case MIME_SIGNED:
+               case MIME_ENCRYPTED:
+               case MIME_MULTI:
                   mpsp = salloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
@@ -805,9 +807,11 @@ jalter_leave:
          goto jleave;
       }
       /* FALLTHRU */
-   case MIME_MULTI:
-   case MIME_DIGEST:
    case MIME_RELATED:
+   case MIME_DIGEST:
+   case MIME_SIGNED:
+   case MIME_ENCRYPTED:
+   case MIME_MULTI:
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
@@ -863,6 +867,8 @@ jmulti:
                if (ip->m_mimecontent != MIME_ALTERNATIVE &&
                      ip->m_mimecontent != MIME_RELATED &&
                      ip->m_mimecontent != MIME_DIGEST &&
+                     ip->m_mimecontent != MIME_SIGNED &&
+                     ip->m_mimecontent != MIME_ENCRYPTED &&
                      ip->m_mimecontent != MIME_MULTI)
                   break;
                _print_part_info(obuf, np, doitp, level, qf, stats);

@@ -1188,15 +1188,25 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
       else
          mc = MIME_MESSAGE;
    } else if (!ascncasecmp(ct, "multipart/", 10)) {
-      ct += sizeof("multipart/") -1;
-      if (!asccasecmp(ct, "alternative"))
-         mc = MIME_ALTERNATIVE;
-      else if (!asccasecmp(ct, "related"))
-         mc = MIME_RELATED;
-      else if (!asccasecmp(ct, "digest"))
-         mc = MIME_DIGEST;
-      else
-         mc = MIME_MULTI;
+      struct multi_types {
+         char              mt_name[12];
+         enum mimecontent  mt_mc;
+      } const mta[] = {
+         {"alternative\0", MIME_ALTERNATIVE},
+         {"related", MIME_RELATED},
+         {"digest", MIME_DIGEST},
+         {"signed", MIME_SIGNED},
+         {"encrypted", MIME_ENCRYPTED}
+      }, *mtap;
+
+      for (ct += sizeof("multipart/") -1, mtap = mta;;)
+         if (!asccasecmp(ct, mtap->mt_name)) {
+            mc = mtap->mt_mc;
+            break;
+         } else if (++mtap == mta + n_NELEM(mta)) {
+            mc = MIME_MULTI;
+            break;
+         }
    } else if (is_asccaseprefix(ct, "application/")) {
       if (is_os)
          goto jos_content_check;
