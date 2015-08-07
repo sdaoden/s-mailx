@@ -823,13 +823,14 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    fi
    ${rm} -rf ./VERIFY
 
-   printf "behave:s/mime:encrypt/decrypt: "
+   # (signing +) encryption / decryption
    ${cat} <<-_EOT > ./tsendmail.sh
 		#!/bin/sh -
 		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
 	_EOT
    chmod 0755 ./tsendmail.sh
 
+   printf "behave:s/mime:encrypt+sign/decrypt+verify: "
    echo bla |
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
@@ -854,6 +855,42 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
+   ${sed} -e '/^X-Decoding-Date/d' \
+         -e \
+         '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
+      < ./DECRYPT > ./ENCRYPT
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2838023744 515'
+
+   ${rm} -f ./DECRYPT
+   printf "behave:s/mime:encrypt/decrypt: "
+   echo bla |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Sfrom=test@localhost \
+      -s 'S/MIME test' recei@ver.com
+   printf 'decrypt ./DECRYPT\nx\n' |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Sfrom=test@localhost \
+      -Sbatch-exit-on-error -R \
+      -f ./ENCRYPT >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      ESTAT=1
+      printf 'error: decryption failed\n'
+      # FALLTHRU
+   fi
+   ${sed} -e '/^X-Decoding-Date/d' \
+      < ./DECRYPT > ./ENCRYPT
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2279047916 300'
+
    ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
       ./tkey.pem ./tcert.pem ./tpair.pem
 }
