@@ -1966,7 +1966,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
    if (gflags & GTO)
       hp->h_to = grab_names("To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
    if (gflags & GCC)
       hp->h_cc = grab_names("Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
@@ -1987,11 +1987,12 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
             GEXTRA | GFULL);
       if (hp->h_organization == NULL)
          hp->h_organization = ok_vlook(ORGANIZATION);
-      hp->h_organization = readstr_input("Organization: ", hp->h_organization);
+      hp->h_organization = n_input_cp_addhist("Organization: ",
+            hp->h_organization, TRU1);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
 
    NYD_LEAVE;
    return errs;
