@@ -923,6 +923,19 @@ readstr_input(char const *prompt, char const *string)
    return rv;
 }
 
+FL char *
+n_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby)
+{
+   char *rv;
+   NYD2_ENTER;
+
+   if ((rv = readstr_input(prompt, string)) != NULL && *rv != '\0' &&
+         (options & OPT_INTERACTIVE))
+      tty_addhist(rv, isgabby);
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL void
 setptr(FILE *ibuf, off_t offset)
 {

@@ -790,6 +790,11 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
  * mode, otherwise this argument is ignored for reproducibility */
 FL char *      readstr_input(char const *prompt, char const *string);
 
+/* Identical to readstr_input(), but places any non-empty return in the history
+ * (as a isgabby entry) in OPT_INTERACTIVE mode */
+FL char *      n_input_cp_addhist(char const *prompt, char const *string,
+                  bool_t isgabby);
+
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
 
