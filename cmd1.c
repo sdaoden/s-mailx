@@ -951,12 +951,10 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       touch(mp);
       setdot(mp);
       uncollapse1(mp, 1);
-      if (!dopipe) {
-         if (ip != msgvec)
-            fprintf(obuf, "\n");
-         if (action != SEND_MBOX)
-            _show_msg_overview(obuf, mp, *ip);
-      }
+      if (!dopipe && ip != msgvec)
+         fprintf(obuf, "\n");
+      if (action != SEND_MBOX)
+         _show_msg_overview(obuf, mp, *ip);
       sendmp(mp, obuf, (doign ? ignore : NULL), NULL, action, mstats);
       srelax();
       if (formfeed) /* TODO a nicer way to separate piped messages! */
