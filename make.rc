@@ -365,6 +365,13 @@ OPT_MLE=yes
 # Note this only supports text-, no database files.
 OPT_MTA_ALIASES=yes
 
+# OpenPGP (Pretty Good Privacy (TM)) support: signing, verification, en-
+# and decryption of messages via an OpenPGP implementation; for now only
+# GnuPG (https://gnupg.org) is supported.
+# See *privacy-interface* in the manual for a starter.
+# This feature can be "require"d.
+OPT_OPENPGP=yes
+
 # Major switch to toggle *all* network related protocols
 # (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
