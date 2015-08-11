@@ -106,9 +106,8 @@ It is possible to apply manual adjustments on top of those.
   and do not regret improved usability for the rare interactive use
   occasions.  Adds documentation strings, the built-in line editor (MLE)
   with history support and key bindings, error tracking, basic colour
-  support and IDNA addresses, as well as generic spam filter support.
-
-  "Require"s iconv(3), regex(3) and the dotlock helper.
+  support and IDNA addresses, as well as OpenPGP and generic spam filter
+  support.
 
 - CONFIG=NETSEND
   Sending messages directly to the mail provider via the SMTP protocol,
