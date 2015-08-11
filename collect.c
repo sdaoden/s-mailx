@@ -548,7 +548,7 @@ _collint(int s)
       siglongjmp(_coll_jmp, 1);
    }
    exit_status |= EXIT_SEND_ERROR;
-   if (ok_blook(save) && s != 0)
+   if (s != 0)
       savedeadletter(_coll_fp, 1);
    /* Aborting message, no need to fflush() .. */
    siglongjmp(_coll_abort, 1);
@@ -1071,6 +1071,9 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
    FILE *dbuf;
    ul_i lines, bytes;
    NYD_ENTER;
+
+   if (!ok_blook(save))
+      goto jleave;
 
    if (fflush_rewind_first) {
       fflush(fp);

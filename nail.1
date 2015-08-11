@@ -758,8 +758,9 @@ environment variables, or by using the
 command line option to specify options:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \*(ua -n \e
-    -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr \e
+$ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \e
+    \*(ua -n -Sv15-compat -Ssendwait -Snosave \e
+    -Sexpandaddr=fail,-all,+addr \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
     -s 'subject' -a attachment_file \e
@@ -5204,12 +5205,9 @@ MIME mechanism, for more visual convenience.
 .
 .Mx
 .It Va save
-When the user aborts a message with two
-.Dq RUBOUT
-(interrupt,
-.Ql control-C )
-characters, \*(UA will copy the partial letter to the file
-.Ev DEAD .
+Enable saving of (partial) messages in
+.Ev DEAD
+upon interrupt or delivery error.
 .
 .Mx
 .It Va searchheaders
@@ -7443,8 +7441,9 @@ Queried and used once on program startup.
 .
 .Mx
 .It Ev DEAD
-The name of the file to use for saving aborted messages.
-This defaults to
+The name of the file to use for saving aborted messages if
+.Va save
+is set; this defaults to
 .Pa dead.letter
 in the user's
 .Ev HOME
