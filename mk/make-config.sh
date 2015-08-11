@@ -48,6 +48,7 @@ XOPTIONS="\
       TERMCAP='Terminal capability queries (termcap(5))' \
          TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    MTA_ALIASES='MTA aliases(5) (text file) support' \
+   OPENPGP='OpenPGP message signing, verification, en- and decryption' \
    REGEX='Regular expressions' \
    NET='Network support' \
       GSSAPI='Generic Security Service authentication' \
@@ -159,6 +160,7 @@ option_setup() {
          OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+         OPT_OPENPGP=1
          OPT_SPAM_FILTER=1
          OPT_UISTRINGS=1
          ;;
@@ -181,6 +183,7 @@ option_setup() {
             OPT_NET_TEST=1
             OPT_SMTP=require
             OPT_TLS=require
+         OPT_OPENPGP=1
          OPT_SPAM_FILTER=1
          OPT_UISTRINGS=1
          ;;
@@ -3777,6 +3780,7 @@ feat_def MAILDIR
 feat_def MD5 # XXX only sockets
 feat_def MTA_ALIASES
 feat_def NETRC
+feat_def OPENPGP
 feat_def POP3
 feat_def SMIME
 feat_def SMTP
