@@ -601,7 +601,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    hold_all_sigs();
 #ifdef HAVE_MKOSTEMP
    fd = 0;
-   if (!(oflags & OF_REGISTER))
+   /*if (!(oflags & OF_REGISTER))*/
       /* O_CLOEXEC note: <-> support check included in mk-conf.sh */
       fd |= O_CLOEXEC;
    if (oflags & OF_APPEND)
@@ -616,7 +616,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
 #elif defined HAVE_MKSTEMP
    if ((fd = mkstemp(cp_base)) == -1)
       goto jfree;
-   if (!(oflags & OF_REGISTER))
+   /*if (!(oflags & OF_REGISTER))*/
       (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
    if (oflags & OF_APPEND) { /* XXX include CLOEXEC here, drop above, then */
       int f;
@@ -637,7 +637,7 @@ jclose:
    if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | _O_CLOEXEC |
          (oflags & OF_APPEND ? O_APPEND : 0), mode)) == -1)
       goto junlink;
-   if (!(oflags & OF_REGISTER))
+   /*if (!(oflags & OF_REGISTER))*/
       _CLOEXEC_SET(fd);
 #endif
 
