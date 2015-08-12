@@ -215,7 +215,8 @@ If yes, return an exit status of zero, a non-zero value otherwise.
 .Mx
 .It Fl F
 Save the message to send in a file named after the local part of the
-first recipient's address.
+first recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Fl f Op Ar file
@@ -875,6 +876,14 @@ the message,
 to the sender and all recipients or
 .Ic Reply Ql R
 exclusively to the sender.
+Messages can also be
+.Ic forward Ns
+ed (shorter alias is
+.Ic fwd Ns ).
+Note that when replying to or forwarding a message recipient addresses
+will be stripped from comments and names unless the option
+.Va fullnames
+is set.
 Deletion causes \*(UA to forget about the message;
 This is not irreversible, though, one can
 .Ic undelete Ql u
@@ -2737,14 +2746,16 @@ See also the variable
 (F) Similar to
 .Ic Respond ,
 but saves the message in a file named after the local part of the first
-recipient's address.
+recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic followup
 (fo) Similar to
 .Ic respond ,
 but saves the message in a file named after the local part of the first
-recipient's address.
+recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic followupall
@@ -2781,7 +2792,8 @@ Alias for
 Similar to
 .Ic fwd ,
 but saves the message in a file named after the local part of the
-recipient's address.
+recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic fwd
@@ -2799,6 +2811,9 @@ commands specify which header fields are included in the new message.
 Only the first part of a multipart message is included unless the
 .Va forward-as-attachment
 option is set.
+Unless the option
+.Va fullnames
+is set recipient addresses will be stripped from comments, names etc.
 .
 .Mx
 .It Ic fwdignore
@@ -3133,7 +3148,8 @@ header if that seems useful, regardless of the setting of the variable
 Similar to
 .Ic mail ,
 but saves the message in a file named after the local part of the first
-recipient's address.
+recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic mail
@@ -3222,7 +3238,8 @@ but also prints ignored header fields and all MIME parts.
 Similar to
 .Ic move ,
 but moves the messages to a file named after the local part of the
-sender address of the first message.
+sender address of the first message (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic netrc
@@ -3382,6 +3399,9 @@ Does not reply to other recipients of the original message.
 .Va flipr
 will exchange this command with
 .Ic reply .
+Unless the option
+.Va fullnames
+is set the recipient address will be stripped from comments, names etc.
 .
 .Mx
 .It Ic reply
@@ -3396,6 +3416,9 @@ influence response behaviour.
 The command
 .Ic Lreply
 offers special support for replying to mailing lists.
+Unless the option
+.Va fullnames
+is set recipient addresses will be stripped from comments, names etc.
 If
 .Va flipr
 is set the commands
@@ -3475,7 +3498,9 @@ takes precedence over the mentioned.
 (S) Similar to
 .Ic save,
 but saves the messages in a file named after the local part of the
-sender of the first message instead of taking a filename argument.
+sender of the first message instead of (in
+.Va record
+and) taking a filename argument.
 .
 .Mx
 .It Ic save
@@ -4877,11 +4902,10 @@ attachments with all of their parts included.
 .
 .Mx
 .It Va fullnames
-When replying to a message \*(UA normally removes the comment parts of
-email addresses,
-which by convention contain the full names of the recipients.
+When replying to or forwarding a message \*(UA normally removes the
+comment and name parts of email addresses.
 If this variable is set such stripping is not performed,
-and comments are retained.
+and comments, names etc. are retained.
 .
 .Mx
 .It Va header
