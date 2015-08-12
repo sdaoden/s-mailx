@@ -372,10 +372,11 @@ The message to be sent is expected to contain a message header with
 .Ql Cc: ,
 or
 .Ql Bcc:
-fields giving its recipients and
+fields giving its recipients, which will be added to those given on the
+command line.
+If a message subject is specified via
 .Ql Subject:
-giving the subject of the message.
-Recipients and subject specified on the command line are ignored.
+then it'll be used in favour of one given on the command line.
 .Pp
 Also understood are
 .Ql Reply-To:

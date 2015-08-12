@@ -924,9 +924,10 @@ FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
-/* Extract some header fields (see -t documentation) from a message.
+/* Extract some header fields (see e.g. -t documentation) from a message.
  * If options&OPT_t_FLAG *and* pstate&PS_t_FLAG are both set a number of
- * additional header fields are understood.
+ * additional header fields are understood and address joining is performed as
+ * necessary, and the subject is treated with additional care, too.
  * If pstate&PS_t_FLAG is set but OPT_t_FLAG is no more, From: will not be
  * assigned no more.
  * This calls expandaddr() on some headers and sets checkaddr_err if that is

@@ -1863,11 +1863,9 @@ mail(struct name *to, struct name *cc, struct name *bcc, char *subject,
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
-   if (!(options & OPT_t_FLAG)) {
-      head.h_to = to;
-      head.h_cc = cc;
-      head.h_bcc = bcc;
-   }
+   head.h_to = to;
+   head.h_cc = cc;
+   head.h_bcc = bcc;
    head.h_attach = attach;
 
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);

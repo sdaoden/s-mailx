@@ -718,6 +718,12 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
+   if ((pstate & PS_t_FLAG) && (options & OPT_t_FLAG)) {
+      hq->h_to = hp->h_to;
+      hq->h_cc = hp->h_cc;
+      hq->h_bcc = hp->h_bcc;
+   }
+
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
 
@@ -832,7 +838,9 @@ jebadhead:
       hp->h_replyto = hq->h_replyto;
       hp->h_sender = hq->h_sender;
       hp->h_organization = hq->h_organization;
-      hp->h_subject = hq->h_subject;
+      if (hq->h_subject != NULL || !(pstate & PS_t_FLAG) ||
+            !(options & OPT_t_FLAG))
+         hp->h_subject = hq->h_subject;
 
       if (pstate & PS_t_FLAG) {
          hp->h_ref = hq->h_ref;
