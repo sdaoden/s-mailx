@@ -582,71 +582,73 @@ FL FILE *
 Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
 {
    FILE *fp = NULL;
+   size_t maxname, tries;
    char *cp_base, *cp;
-   int fd;
+   int osoflags, fd;
    NYD_ENTER;
 
+   assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
+   assert(!(oflags & OF_RDONLY));
+   assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
+
+   maxname = NAME_MAX;
+#ifdef HAVE_PATHCONF
+   {  long pc;
+
+      if ((pc = pathconf(tempdir, _PC_NAME_MAX)) != -1)
+         maxname = (size_t)pc;
+   }
+#endif
+
    cp_base =
-   cp = smalloc(strlen(tempdir) + 1 + sizeof("mail") + strlen(prefix) + 7 +1);
+   cp = smalloc(strlen(tempdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tempdir);
    *cp++ = '/';
-   cp = sstpcpy(cp, "mail");
-   if (*prefix) {
-      *cp++ = '-';
-      cp = sstpcpy(cp, prefix);
-   }
-   /* TODO Ftmp(): unroll our own creation loop with atoi(random()) */
-   sstpcpy(cp, ".XXXXXX");
 
-   hold_all_sigs();
-#ifdef HAVE_MKOSTEMP
-   fd = 0;
-   /*if (!(oflags & OF_REGISTER))*/
-      /* O_CLOEXEC note: <-> support check included in mk-conf.sh */
-      fd |= O_CLOEXEC;
+   osoflags = O_CREAT | O_EXCL | _O_CLOEXEC;
+   osoflags |= (oflags & OF_WRONLY) ? O_WRONLY : O_RDWR;
    if (oflags & OF_APPEND)
-      fd |= O_APPEND;
-   if ((fd = mkostemp(cp_base, fd)) == -1)
-      goto jfree;
+      osoflags |= O_APPEND;
 
-   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1) {
-      close(fd);
-      goto junlink;
-   }
-#elif defined HAVE_MKSTEMP
-   if ((fd = mkstemp(cp_base)) == -1)
-      goto jfree;
-   /*if (!(oflags & OF_REGISTER))*/
-      (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
-   if (oflags & OF_APPEND) { /* XXX include CLOEXEC here, drop above, then */
-      int f;
+   for (tries = 0;; ++tries) {
+      size_t i;
+      char *x;
 
-      if ((f = fcntl(fd, F_GETFL)) == -1 ||
-            fcntl(fd, F_SETFL, f | O_APPEND) == -1) {
-jclose:
-         close(fd);
-         goto junlink;
+      x = sstpcpy(cp, UAGENT);
+      *x++ = '-';
+      if (*prefix != '\0') {
+         x = sstpcpy(x, prefix);
+         *x++ = '-';
       }
-   }
 
-   if (mode != (S_IRUSR | S_IWUSR) && fchmod(fd, mode) == -1)
-      goto jclose;
-#else
-   if (mktemp(cp_base) == NULL)
-      goto jfree;
-   if ((fd = open(cp_base, O_CREAT | O_EXCL | O_RDWR | _O_CLOEXEC |
-         (oflags & OF_APPEND ? O_APPEND : 0), mode)) == -1)
-      goto junlink;
-   /*if (!(oflags & OF_REGISTER))*/
-      _CLOEXEC_SET(fd);
-#endif
+      /* Calculate length of a random string addon */
+      i = PTR2SIZE(x - cp);
+      if (i >= maxname >> 1) {
+         x = cp;
+         i = maxname -1;
+      } else
+         i = maxname >> 1;
+      /* But don't be too fatalistic */
+      if (i > 8 && tries < FTMP_OPEN_TRIES / 2)
+         i = 8;
+      memcpy(x, getrandstring(i), i +1);
+
+      hold_all_sigs();
+      if ((fd = open(cp_base, osoflags, mode)) != -1) {
+         _CLOEXEC_SET(fd);
+         break;
+      }
+      if (tries >= FTMP_OPEN_TRIES)
+         goto jfree;
+      rele_all_sigs();
+   }
 
    if (oflags & OF_REGISTER)
       fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
    else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
+
    if (fp == NULL || (oflags & OF_UNLINK)) {
-junlink:
       unlink(cp_base);
       goto jfree;
    }

@@ -184,6 +184,7 @@
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
+#define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"

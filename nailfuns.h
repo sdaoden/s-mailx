@@ -1575,6 +1575,7 @@ FL FILE *      Zopen(char const *file, char const *oflags);
 /* Create a temporary file in tempdir, use prefix for its name, store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
  * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
+ * One of OF_WRONLY and OF_RDWR must be set.
  * mode specifies the access mode of the newly created temporary file */
 FL FILE *      Ftmp(char **fn, char const *prefix, enum oflags oflags,
                   int mode);
