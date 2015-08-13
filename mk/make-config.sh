@@ -39,6 +39,7 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    IDNA='Internationalized Domain Names for Applications (encode only)' \
    IMAP_SEARCH='IMAP-style search expressions' \
+   MAILCAP='MIME type handlers defined via mailcap file(s)' \
    MAILDIR='Maildir E-mail directories' \
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
@@ -3341,6 +3342,7 @@ feat_def DOCSTRINGS
 feat_def ERRORS
 feat_def IMAP
 feat_def IMAP_SEARCH
+feat_def MAILCAP
 feat_def MAILDIR
 feat_def MD5 # XXX only sockets
 feat_def MTA_ALIASES
@@ -3549,6 +3551,9 @@ fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
 msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
+if feat_yes MAILCAP; then
+   msg ' . Built-in $MAILCAPS path search: %s' "${VAL_MAILCAPS}"
+fi
 
 msg ''
 if [ -n "${have_fnmatch}" ] && [ -n "${have_fchdir}" ]; then
