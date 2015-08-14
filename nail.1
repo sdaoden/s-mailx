@@ -7902,6 +7902,10 @@ set sendcharsets=utf-8,iso-8859-1
 # use the same encoding that the original poster used herself!
 set reply-in-same-charset
 
+# When replying to or forwarding a message the comment and name
+# parts of email addresses are removed unless this variable is set
+set fullnames
+
 # When sending messages, wait until the Mail-Transfer-Agent finishs.
 # Only like this you'll be able to see errors reported through the
 # exit status of the MTA (including the builtin SMTP one)!
