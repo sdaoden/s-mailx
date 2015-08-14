@@ -617,7 +617,8 @@ page_or_print(FILE *fp, size_t lines)
       }
 
       if (lines >= u.rows) {
-         run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
+         run_command(get_pager(NULL), 0, fileno(fp), -1,
+            NULL, NULL, NULL, NULL);
          goto jleave;
       }
    }

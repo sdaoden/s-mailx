@@ -688,7 +688,7 @@ c_shell(void *v)
 
    sigint = safe_signal(SIGINT, SIG_IGN);
    sigemptyset(&mask);
-   run_command(sh, &mask, -1, -1, "-c", cmd, NULL);
+   run_command(sh, &mask, -1, -1, "-c", cmd, NULL, NULL);
    safe_signal(SIGINT, sigint);
    printf("!\n");
 
@@ -709,7 +709,7 @@ c_dosh(void *v)
       sh = XSHELL;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
-   run_command(sh, 0, -1, -1, NULL, NULL, NULL);
+   run_command(sh, 0, -1, -1, NULL, NULL, NULL, NULL);
    safe_signal(SIGINT, sigint);
    putchar('\n');
    NYD_LEAVE;

@@ -211,7 +211,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    sigemptyset(&cset);
    if (run_command(ed, (oldint != SIG_IGN ? &cset : NULL), -1, -1, tempEdit,
-         NULL, NULL) < 0)
+         NULL, NULL, NULL) < 0)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary

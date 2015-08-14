@@ -441,7 +441,8 @@ mespipe(char *cmd)
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
    fflush(_coll_fp);
-   if (run_command(sh, 0, fileno(_coll_fp), fileno(nf), "-c", cmd, NULL) < 0) {
+   if (run_command(sh, 0, fileno(_coll_fp), fileno(nf), "-c", cmd, NULL, NULL)
+         < 0) {
       Fclose(nf);
       goto jout;
    }

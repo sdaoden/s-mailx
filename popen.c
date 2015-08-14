@@ -222,7 +222,7 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL) >= 0)
+   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL) >= 0)
       rv = OKAY;
 
    close(outfd);
@@ -256,7 +256,7 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
       goto jleave;
    }
 
-   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL);
+   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -901,12 +901,12 @@ fork_child(void)
 
 FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
-   char const *a0, char const *a1, char const *a2)
+   char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
    int rv;
    NYD_ENTER;
 
-   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, NULL)) < 0)
+   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
    else
       rv = wait_command(rv);
