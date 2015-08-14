@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ `(un)?mimetype' and other mime.types(5) related facilities.
+ *@ "Keep in sync with" ./mime.types.
  *
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
