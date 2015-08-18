@@ -871,7 +871,16 @@ jpipe_close:
          convert = CONV_FROMB64_T;
          break;
       default:
-         convert = CONV_FROMB64;
+         switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
+         case MIME_HDL_TEXT:
+         case MIME_HDL_PTF:
+            convert = CONV_FROMB64_T;
+            break;
+         default:
+            convert = CONV_FROMB64;
+            break;
+         }
+         break;
       }
       break;
    default:
@@ -887,7 +896,9 @@ jpipe_close:
          action == SEND_TOSRCH) &&
          (ip->m_mimecontent == MIME_TEXT_PLAIN ||
           ip->m_mimecontent == MIME_TEXT_HTML ||
-          ip->m_mimecontent == MIME_TEXT)) {
+          ip->m_mimecontent == MIME_TEXT ||
+          (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
+          (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
       char const *tcs = charset_get_lc();
 
       if (iconvd != (iconv_t)-1)
