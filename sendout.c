@@ -1534,6 +1534,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    size_t vas_count, i, j;
    char **vas, *cp;
    char const **args;
+   bool_t snda;
    NYD_ENTER;
 
    if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
@@ -1549,15 +1550,19 @@ __mta_prepare_args(struct name *to, struct header *hp)
    i = 4 + smopts_count + vas_count + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
-   args[0] = ok_vlook(sendmail_progname);
-   if (args[0] == NULL || *args[0] == '\0')
+   if ((args[0] = ok_vlook(sendmail_progname)) == NULL || *args[0] == '\0')
       args[0] = SENDMAIL_PROGNAME;
-   args[1] = "-i";
-   i = 2;
-   if (ok_blook(metoo))
-      args[i++] = "-m";
-   if (options & OPT_VERB)
-      args[i++] = "-v";
+
+   if ((snda = ok_blook(sendmail_no_default_arguments)))
+      i = 1;
+   else {
+      args[1] = "-i";
+      i = 2;
+      if (ok_blook(metoo))
+         args[i++] = "-m";
+      if (options & OPT_VERB)
+         args[i++] = "-v";
+   }
 
    for (j = 0; j < smopts_count; ++j, ++i)
       args[i] = smopts[j];
@@ -1568,7 +1573,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
     * The interdependency with -t has been resolved in _puthead() */
-   if (options & OPT_r_FLAG) {
+   if (!snda && (options & OPT_r_FLAG)) {
       struct name const *np;
 
       if (hp != NULL && (np = hp->h_from) != NULL) {

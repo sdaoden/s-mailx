@@ -1238,6 +1238,9 @@ enum okeys {
    ok_v_sender,
    ok_v_sendmail,
    ok_v_sendmail_arguments,
+   /* FIXME this is not falsely sorted, but this entire enum including the
+    * FIXME manual should be sorted alphabetically instead of binary/value */
+   ok_b_sendmail_no_default_arguments,
    ok_v_sendmail_progname,
    ok_v_SHELL,
    ok_v_Sign,

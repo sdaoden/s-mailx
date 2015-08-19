@@ -54,6 +54,7 @@
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
 .ds ID [v15 behaviour may differ]
+.ds BY (Binary)
 .ds RO (Read-only)
 .
 .Dt "\*(UU" 1
@@ -6704,26 +6705,30 @@ sources: from the variable
 if set, from the command line if given and the variable
 .Va expandargv
 allows their use.
-It'll always be passed the
+Argument processing of the MTA will always be terminated with a
+.Ql --
+separator.
+.Pp
+The otherwise occurring implicit usage of the following MTA command line
+arguments can be disabled by setting the binary option
+.Va sendmail-no-default-arguments :
 .Ql -i
-option, the option
+(for not treating a line with only a dot
+.Ql \&.
+character as the end of input),
 .Ql -m
-only if the
+(shall the option
 .Va metoo
-variable, and
+be set) and
 .Ql -v
-only if the
+(if the
 .Va verbose
-variable are set.
-In conjunction with the
+option is set); in conjunction with the
 .Fl r
-command line option \*(UA may pass
+command line option \*(UA will also pass
 .Ql -f
 as well as
 .Ql -F .
-Option processing of the MTA will be terminated via a
-.Ql --
-separator.
 .
 .Mx
 .It Va sendmail-arguments
@@ -6733,6 +6738,13 @@ The content of this variable will be split up in a vector of arguments
 which will be joined onto other possible MTA options:
 .Pp
 .Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
+.
+.Mx
+.It Va sendmail-no-default-arguments
+\*(BY Unless this option is set \*(UA will pass some well known
+standard command line options to the defined
+.Va sendmail
+program, see there for more.
 .
 .Mx
 .It Va sendmail-progname
