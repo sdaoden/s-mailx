@@ -283,7 +283,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             char const *x = cp;
             int c;
             do {
-               c = expand_shell_escape(&x, FAL0);
+               c = n_shell_expand_escape(&x, FAL0);
                if (c < 0)
                   break;
                *cp++ = (char)c;

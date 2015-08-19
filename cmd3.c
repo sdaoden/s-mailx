@@ -1075,7 +1075,7 @@ c_echo(void *v)
          if (ap != argv)
             putchar(' ');
          c = 0;
-         while (*cp != '\0' && (c = expand_shell_escape(&cp, FAL0)) > 0)
+         while (*cp != '\0' && (c = n_shell_expand_escape(&cp, FAL0)) > 0)
             putchar(c);
          /* \c ends overall processing */
          if (c < 0)
