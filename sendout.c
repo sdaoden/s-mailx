@@ -1640,7 +1640,7 @@ _message_id(struct header *hp)
    struct tm *tmp;
    NYD_ENTER;
 
-   if (hp->h_message_id != NULL) {
+   if (hp != NULL && hp->h_message_id != NULL) {
       i = strlen(hp->h_message_id->n_name);
       rl = sizeof("Message-ID: <>") -1;
       rv = salloc(rl + i +1);
