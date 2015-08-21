@@ -1135,6 +1135,10 @@ gggggggggggggggg"
       hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
    cksum_test content:14 "${MBOX}" '1106643854 2453'
+   # `resend' test
+   printf "Resend ${BODY}\nx\n" |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} -f "${MBOX}"
+   cksum_test content:14-2 "${MBOX}" '1106643854 2453'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }
