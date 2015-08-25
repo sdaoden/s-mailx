@@ -856,6 +856,12 @@ command, e.g.,
 In order to print all header fields of a message regardless of currently
 active ignore or retain lists, use the command
 .Ic Print .
+The variable
+.Va crt
+controls wether and when \*(UA will use the configured
+.Ev PAGER
+for printing instead of directly writing to the terminal (generally
+speaking).
 .
 .Pp
 Dependent upon the configuration a
