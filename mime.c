@@ -856,7 +856,8 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             goto jnotmime;
          ++p;
 #ifdef HAVE_ICONV
-         {  size_t i = PTR2SIZE(p - cbeg);
+         if (flags & TD_ICONV) {
+            size_t i = PTR2SIZE(p - cbeg);
             char *ltag, *cs = ac_alloc(i);
 
             memcpy(cs, cbeg, --i);
