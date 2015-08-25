@@ -1531,22 +1531,25 @@ In order to search for a string that includes a
 is effectively non-optional, but may be given as the empty string.
 .
 .It Ar address
-All messages from
-.Ar address .
-By default, this is a case-sensitive search for the complete email
-address.
-If the
-.Va allnet
-variable is set,
-only the local part of the addresses is evaluated for the comparison.
-Otherwise, if the
+A case-insensitive
+.Dq any substring matches
+search against the
+.Ql From:
+header, which will match addresses (too) even if
 .Va showname
-variable is set,
-a case-sensitive search for the complete real name of a sender is
-performed.
-The IMAP-style
+is set (and POSIX says
+.Dq any address as shown in a header summary shall be matchable in this form ) ;
+However, if the
+.Va allnet
+variable is set, only the local part of the addresses is evaluated
+case-sensitively for the comparison, and the setting of
+.Va showname
+is completely ignored.
+For finer control and match boundaries use the
+.Ql @
+search expression; the \*(OPal IMAP-style
 .Ql (from address)
-expression can be used instead if substring matches are desired.
+expression can also be used if substring matches are desired.
 .El
 .
 .Pp

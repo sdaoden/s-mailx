@@ -847,24 +847,63 @@ scaninit(void)
 static bool_t
 _matchsender(struct message *mp, char const *str, bool_t allnet)
 {
+   char const *str_base, *np_base, *np;
+   char sc, nc;
    bool_t rv;
    NYD_ENTER;
 
-   if (allnet) {
-      char *cp = nameof(mp, 0);
-
-      do {
-         if ((*cp == '@' || *cp == '\0') && (*str == '@' || *str == '\0')) {
-            rv = TRU1;
-            goto jleave;
-         }
-         if (*cp != *str)
-            break;
-      } while (++cp, *str++ != '\0');
+   /* Empty string doesn't match */
+   if (*(str_base = str) == '\0') {
       rv = FAL0;
       goto jleave;
    }
-   rv = !strcmp(str, (*(ok_blook(showname) ? &realname : &skin))(name1(mp, 0)));
+
+   /* *allnet* is POSIX and, since it explicitly mentions login and user names,
+    * most likely case-sensitive.  XXX Still allow substr matching, though
+    * XXX possibly the first letter should be case-insensitive, then? */
+   if (allnet) {
+      np_base = np = nameof(mp, 0);
+      for (;;) {
+         if ((sc = *str++) == '@')
+            sc = '\0';
+         if ((nc = *np++) == '@' || nc == '\0' || sc == '\0')
+            break;
+         if (sc != nc) {
+            np = ++np_base;
+            str = str_base;
+         }
+      }
+      rv = (sc == '\0');
+   } else {
+      char const *real_base = name1(mp, 0);
+      bool_t again = ok_blook(showname);
+
+      /* TODO POSIX says ~"match any address as shown in header overview",
+       * TODO but a normalized match would be more sane i guess.
+       * TODO struct name should gain a comparison method, normalize realname
+       * TODO content (in TODO) and thus match as likewise
+       * TODO "Buddy (Today) <here>" and "(Now) Buddy <here>" */
+jagain:
+      np_base = np = again ? realname(real_base) : skin(real_base);
+      for (;;) {
+         sc = *str++;
+         if ((nc = *np++) == '\0' || sc == '\0')
+            break;
+         sc = upperconv(sc);
+         nc = upperconv(nc);
+         if (sc != nc) {
+            np = ++np_base;
+            str = str_base;
+         }
+      }
+
+      /* And really if i want to match 'on@' then i want it to match even if
+       * *showname* is set! */
+      if (!(rv = (sc == '\0')) && again) {
+         again = FAL0;
+         goto jagain;
+      }
+   }
 jleave:
    NYD_LEAVE;
    return rv;
