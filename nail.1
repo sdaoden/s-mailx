@@ -965,7 +965,7 @@ if $features !@ HTML-FILTER
   #set pipe-text/html=@
 endif
 mimetype '@ application/mathml+xml mathml'
-set pipe-application/pdf="@&+=@ \e
+set pipe-application/pdf="@&=@ \e
     trap \e"rm -f \e\e\e"${NAIL_FILENAME_TEMPORARY}\e\e\e"\e" EXIT;\e
     trap \e"exit 75\e" \e INT QUIT TERM;\e
     xpdf \e"${NAIL_FILENAME_TEMPORARY}\e""
@@ -6465,7 +6465,7 @@ can in fact be used to adjust usage and behaviour of a following shell
 command specification by appending trigger characters to it, e.g., the
 following hypothetical command specification could be used:
 .Bd -literal -offset indent
-set pipe-X/Y="@*++=cat ${NAIL_FILENAME_TEMPORARY}"
+set pipe-X/Y="@!*++=vim ${NAIL_FILENAME_TEMPORARY}"
 .Ed
 .Pp
 .Bl -tag -compact -width ".It Ql __"
@@ -6484,6 +6484,13 @@ The command will be run asynchronously, i.e., without blocking \*(UA,
 which may be a handy way to display a, e.g., PDF file while also
 continuing to read the mail message.
 Asynchronous execution implies
+.Ql # .
+.It Ql \&!
+The command must be run on an interactive terminal, \*(UA will
+temporarily release the terminal to it.
+This flag is mutual exclusive with
+.Ql & ,
+will only be used in interactive mode and implies
 .Ql # .
 .It Ql +
 Request creation of a zero-sized temporary file, the absolute pathname
