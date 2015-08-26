@@ -1372,7 +1372,7 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
              !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y
 #undef _X
-         if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
+         if ((x = smime_decrypt(m, to, cc, TRU1)) == NULL)
             goto jleave;
          if (x != (struct message*)-1) {
             m = x;
@@ -2155,10 +2155,6 @@ smime_sign(FILE *ip, char const *addr)
 
    a_xtls_init();
 
-   if (addr == NULL) {
-      n_err(_("No *from* address for signing specified\n"));
-      goto jleave;
-   }
    if ((fp = smime_sign_cert(addr, NULL, 1, NULL)) == NULL)
       goto jleave;
 
@@ -2364,7 +2360,7 @@ jleave:
 
 FL struct message *
 smime_decrypt(struct message *m, char const *to, char const *cc,
-   boole signcall)
+   boole is_a_verify_call)
 {
    char const *myaddr;
    long size;
@@ -2430,7 +2426,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
    }
 
    if(PKCS7_type_is_signed(pkcs7)){
-      if(signcall){
+      if(!is_a_verify_call){
          setinput(&mb, m, NEED_BODY);
          rv = (struct message*)-1;
          goto jleave;
@@ -2515,7 +2511,7 @@ jloop:
           !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y
 #undef _X
-      if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
+      if ((x = smime_decrypt(m, to, cc, TRU1)) == NULL)
          goto jleave;
       if (x != (struct message*)-1) {
          m = x;

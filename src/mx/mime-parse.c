@@ -250,7 +250,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    to = hfield1("to", zmp);
    cc = hfield1("cc", zmp);
 
-   if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
+   if ((xmp = smime_decrypt(&m, to, cc, FAL0)) != NULL) {
       np = n_autorec_calloc(1, sizeof *np);
       np->m_flag = xmp->m_flag;
       np->m_content_info = xmp->m_content_info | CI_ENCRYPTED | CI_ENCRYPTED_OK;

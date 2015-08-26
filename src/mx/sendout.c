@@ -53,6 +53,7 @@
 #include "mx/iconv.h"
 #include "mx/names.h"
 #include "mx/net-smtp.h"
+#include "mx/privacy.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
@@ -1309,20 +1310,17 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
 
    rv = TRU1;
 
-   for (cnt = 0, np = sbp->sb_to; np != NULL;) {
-      char const k[] = "smime-encrypt-", *cp;
-      uz nl = strlen(np->n_name);
-      char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
-      memcpy(vs, k, sizeof(k) -1);
-      memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
+   for(cnt = 0, np = sbp->sb_to; np != NIL;){
+      FILE *ef;
 
-      if ((cp = n_var_vlook(vs, FAL0)) != NULL) {
-#ifdef mx_HAVE_SMIME
-         FILE *ef;
+      if((ef = mx_privacy_encrypt_try(sbp->sb_input, np->n_name)
+            ) != R(FILE*,-1)){
+         if(ef != NIL){
+            struct mx_name *nsave;
+            FILE *fisave;
 
-         if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
-            FILE *fisave = sbp->sb_input;
-            struct mx_name *nsave = sbp->sb_to;
+            fisave = sbp->sb_input;
+            nsave = sbp->sb_to;
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GFULLEXTRA | GSKIN));
             sbp->sb_input = ef;
@@ -1332,34 +1330,26 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
             sbp->sb_input = fisave;
 
             mx_fs_close(ef);
-         } else {
-#else
-            n_err(_("No S/MIME support compiled in\n"));
-            rv = FAL0;
-#endif
+         }else{
             n_err(_("Message not sent to: %s\n"), np->n_name);
             _sendout_error = TRU1;
-#ifdef mx_HAVE_SMIME
          }
-#endif
          rewind(sbp->sb_input);
 
-         if (np->n_flink != NULL)
+         if(np->n_flink != NIL)
             np->n_flink->n_blink = np->n_blink;
-         if (np->n_blink != NULL)
+         if(np->n_blink != NIL)
             np->n_blink->n_flink = np->n_flink;
-         if (np == sbp->sb_to)
+         if(np == sbp->sb_to)
             sbp->sb_to = np->n_flink;
          np = np->n_flink;
-      } else {
+      }else{
          ++cnt;
          np = np->n_flink;
       }
-      n_lofi_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) ||
-         !a_sendout_mta_start(sbp)))
+   if(cnt > 0 && (mx_privacy_encrypt_is_forced() || !a_sendout_mta_start(sbp)))
       rv = FAL0;
    NYD_OU;
    return rv;
@@ -2117,12 +2107,18 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO -C headers can be managed (removed etc.) via ~^, too, but the
     * TODO *customhdr* ones are fixated at this very place here, no sooner! */
 
-   dosign = TRUM1;
-
    /* */
+#ifdef mx_HAVE_PRIVACY
+   dosign = TRUM1;
+#else
+   dosign = FAL0;
+#endif
+
    if(n_psonce & n_PSO_INTERACTIVE){
+#ifdef mx_HAVE_PRIVACY
       if(ok_blook(asksign))
          dosign = mx_tty_yesorno(_("Sign this message"), TRU1);
+#endif
    }
 
    if(fsize(mtf) == 0){
@@ -2138,13 +2134,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          n_err(_("Null message body; hope that's ok\n"));
    }
 
-   if (dosign == TRUM1)
-      dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
-#ifndef mx_HAVE_SMIME
-   if (dosign) {
-      n_err(_("No S/MIME support compiled in\n"));
-      goto jfail_dead;
-   }
+#ifdef mx_HAVE_PRIVACY
+   if(dosign == TRUM1)
+      dosign = mx_privacy_sign_is_desired(); /* TODO USER@HOST, *from*++!!! */
 #endif
 
    /* XXX Update time_current again; once n_collect() offers editing of more
@@ -2240,9 +2232,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    mtf = nmtf;
 
    /*  */
-#ifdef mx_HAVE_SMIME
-   if (dosign) {
-      if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
+#ifdef mx_HAVE_PRIVACY
+   if(dosign){
+      if((nmtf = mx_privacy_sign(mtf, sb.sb_signer.s)) == NIL)
          goto jfail_dead;
       mx_fs_close(mtf);
       mtf = nmtf;
