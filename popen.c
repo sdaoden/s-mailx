@@ -61,7 +61,10 @@ struct fp {
       FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
-      FP_MASK     = (1<<6) - 1
+      FP_MASK     = (1<<6) - 1,
+      /* TODO FP_UNLINK: should be in a separated process so that unlinking
+       * TODO the temporary "garbage" is "safe"(r than it is like that) */
+      FP_UNLINK   = 1<<6
    }           flags;
 };
 
@@ -134,6 +137,8 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
 {
    struct fp *fpp;
    NYD_ENTER;
+
+   assert(!(flags & FP_UNLINK) || realfile != NULL);
 
    fpp = smalloc(sizeof *fpp);
    fpp->fp = fp;
@@ -268,6 +273,8 @@ unregister_file(FILE *fp)
       if (p->fp == fp) {
          if ((p->flags & FP_MASK) != FP_RAW) /* TODO ;} */
             rv = _file_save(p);
+         if (p->flags & FP_UNLINK && unlink(p->realfile))
+            rv = STOP;
          *pp = p->link;
          if (p->save_cmd != NULL)
             free(p->save_cmd);
@@ -609,6 +616,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
 
    assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
    assert(!(oflags & OF_RDONLY));
+   assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
 
    e = 0;
    maxname = NAME_MAX;
@@ -665,9 +673,16 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
       rele_all_sigs();
    }
 
-   if (oflags & OF_REGISTER)
-      fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
-   else
+   if (oflags & OF_REGISTER) {
+      char const *osflags = (oflags & OF_RDWR ? "w+" : "w");
+      int osflagbits;
+
+      scan_mode(osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
+      if ((fp = fdopen(fd, osflags)) != NULL)
+         register_file(fp, osflagbits | _O_CLOEXEC, 0, 0,
+            (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),
+            cp_base, 0L, NULL);
+   } else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
