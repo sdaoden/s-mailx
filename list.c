@@ -990,7 +990,8 @@ static bool_t
 _match_at(struct message *mp, struct search_expr *sep)
 {
    struct str in, out;
-   char *nfield, *cfield;
+   char *nfield;
+   char const *cfield;
    bool_t rv = FAL0;
    NYD_ENTER;
 
@@ -1003,28 +1004,72 @@ _match_at(struct message *mp, struct search_expr *sep)
 jmsg:
          if ((rv = message_match(mp, sep, rv)))
             break;
-      } else if (!asccasecmp(cfield, "text") ||
+         continue;
+      }
+      if (!asccasecmp(cfield, "text") ||
             (cfield[1] == '\0' && cfield[0] == '=')) {
          rv = TRU1;
          goto jmsg;
-      } else if (!asccasecmp(cfield, "header") ||
+      }
+
+      if (!asccasecmp(cfield, "header") ||
             (cfield[1] == '\0' && cfield[0] == '<')) {
          if ((rv = header_match(mp, sep)))
             break;
-      } else if ((in.s = hfieldX(cfield, mp)) == NULL)
          continue;
-      else {
-         in.l = strlen(in.s);
-         mime_fromhdr(&in, &out, TD_ICONV);
+      }
+
+      /* This is not a special name, so take care for the "skin" prefix !
+       * and possible abbreviations */
+      {
+         struct name *np;
+         bool_t doskin;
+
+         if ((doskin = (*cfield == '~')))
+            ++cfield;
+         if (cfield[0] != '\0' && cfield[1] == '\0') {
+            char const x[][8] = {
+               "from", "to", "cc", "bcc", "subject"
+            };
+            size_t i;
+            char c1 = lowerconv(cfield[0]);
+
+            for (i = 0; i < NELEM(x); ++i) {
+               if (c1 == x[i][0]) {
+                  cfield = x[i];
+                  break;
+               }
+            }
+         }
+         if ((in.s = hfieldX(cfield, mp)) == NULL)
+            continue;
+
+         /* Shall we split into address list and match the addresses only? */
+         if (doskin) {
+            np = lextract(in.s, GSKIN);
+            if (np == NULL)
+               continue;
+            out.s = np->n_name;
+         } else {
+            np = NULL;
+            in.l = strlen(in.s);
+            mime_fromhdr(&in, &out, TD_ICONV);
+         }
+jnext_name:
 #ifdef HAVE_REGEX
          if (sep->ss_sexpr == NULL)
             rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
          else
 #endif
             rv = substr(out.s, sep->ss_sexpr);
-         free(out.s);
+         if (np == NULL)
+            free(out.s);
          if (rv)
             break;
+         if (np != NULL && (np = np->n_flink) != NULL) {
+            out.s = np->n_name;
+            goto jnext_name;
+         }
       }
    }
    NYD_LEAVE;

@@ -1378,8 +1378,7 @@ Multiple colon modifiers can be joined into one, e.g.,
 .Ql :du .
 The following special message names exist:
 .
-.Pp
-.Bl -tag -compact -width ".It Ar _n_u"
+.Bl -tag -width ".It Ar _n_u"
 .It Ar :n
 All
 .Ql new
@@ -1510,11 +1509,32 @@ specifies a comma-separated list of header fields to search, as in
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
 .Pp
+In order to search for a string that includes a
+.Ql @
+(commercial at) character the
+.Ar name-list
+is effectively non-optional, but may be given as the empty string.
+Some special header fields may be abbreviated:
+.Ql f ,
+.Ql t ,
+.Ql c ,
+.Ql b
+and
+.Ql s
+will match
+.Ql From ,
+.Ql To ,
+.Ql Cc ,
+.Ql Bcc
+and
+.Ql Subject ,
+respectively and case-insensitively.
 The special names
 .Ql header
 or
 .Ql <
-can be used to search in the header of the message, and the special names
+can be used to search in (all of) the header(s) of the message, and the
+special names
 .Ql body
 or
 .Ql >
@@ -1524,11 +1544,17 @@ or
 .Ql =
 can be used to perform full text searches \(en whereas the former
 searches only the body, the latter also searches the message header.
-In order to search for a string that includes a
-.Ql @
-(commercial at) character the
-.Ar name-list
-is effectively non-optional, but may be given as the empty string.
+.Pp
+This message specification performs full text comparison, but even with
+regular expression support it is almost impossible to write a search
+expression that savely matches only a specific address domain.
+To request that the content of the header is treated as a list of
+addresses, and to strip those down to the plain email address which the
+search expression is to be matched against, prefix the header name
+(abbreviation) with a tilde
+.Ql ~ :
+.Pp
+.Dl '@~f@@a\e.safe\e.domain\e.match$'
 .
 .It Ar address
 A case-insensitive
@@ -1541,8 +1567,8 @@ is set (and POSIX says
 .Dq any address as shown in a header summary shall be matchable in this form ) ;
 However, if the
 .Va allnet
-variable is set, only the local part of the addresses is evaluated
-case-sensitively for the comparison, and the setting of
+variable is set, only the local part of the address is evaluated
+for the comparison, not ignoring case, and the setting of
 .Va showname
 is completely ignored.
 For finer control and match boundaries use the
