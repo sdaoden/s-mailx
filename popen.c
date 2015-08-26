@@ -589,7 +589,6 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
 
    assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
    assert(!(oflags & OF_RDONLY));
-   assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
 
    maxname = NAME_MAX;
 #ifdef HAVE_PATHCONF
