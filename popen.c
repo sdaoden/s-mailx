@@ -660,18 +660,28 @@ jleave:
 }
 
 FL FILE *
-Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
+Ftmp(char **fn, char const *namehint, enum oflags oflags, int mode)
 {
-   FILE *fp = NULL;
-   size_t maxname, tries;
+   /* The 8 is arbitrary but leaves room for a six character suffix (the
+    * POSIX minimum path length is 14, though we don't check that XXX).
+    * 8 should be more than sufficient given that we use base64url encoding
+    * for our random string */
+   enum {_RANDCHARS = 8};
+
+   size_t maxname, xlen, i;
    char *cp_base, *cp;
    int osoflags, fd, e;
+   bool_t relesigs;
+   FILE *fp;
    NYD_ENTER;
 
+   assert(namehint != NULL);
    assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
    assert(!(oflags & OF_RDONLY));
    assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
 
+   fp = NULL;
+   relesigs = FAL0;
    e = 0;
    maxname = NAME_MAX;
 #ifdef HAVE_PATHCONF
@@ -682,48 +692,59 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    }
 #endif
 
+   if ((oflags & OF_SUFFIX) && *namehint != '\0') {
+      if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
+         errno = ENAMETOOLONG;
+         goto jleave;
+      }
+   } else
+      xlen = 0;
+
+   /* Prepare the template string once, then iterate over the random range */
    cp_base =
    cp = smalloc(strlen(tempdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tempdir);
    *cp++ = '/';
+   {
+      char *x = sstpcpy(cp, UAGENT);
+      *x++ = '-';
+      if (!(oflags & OF_SUFFIX))
+         x = sstpcpy(x, namehint);
+
+      i = PTR2SIZE(x - cp);
+      if (i > maxname - xlen - _RANDCHARS) {
+         size_t j = maxname - xlen - _RANDCHARS;
+         x -= i - j;
+         i = j;
+      }
+
+      if ((oflags & OF_SUFFIX) && xlen > 0)
+         memcpy(x + _RANDCHARS, namehint, xlen);
+
+      x[xlen + _RANDCHARS] = '\0';
+      cp = x;
+   }
 
    osoflags = O_CREAT | O_EXCL | _O_CLOEXEC;
    osoflags |= (oflags & OF_WRONLY) ? O_WRONLY : O_RDWR;
    if (oflags & OF_APPEND)
       osoflags |= O_APPEND;
 
-   for (tries = 0;; ++tries) {
-      size_t i;
-      char *x;
-
-      x = sstpcpy(cp, UAGENT);
-      *x++ = '-';
-      if (*prefix != '\0') {
-         x = sstpcpy(x, prefix);
-         *x++ = '-';
-      }
-
-      /* Calculate length of a random string addon */
-      i = PTR2SIZE(x - cp);
-      if (i >= maxname >> 1) {
-         x = cp;
-         i = maxname -1;
-      } else
-         i = maxname >> 1;
-      /* But don't be too fatalistic */
-      if (i > 8 && tries < FTMP_OPEN_TRIES / 2)
-         i = 8;
-      memcpy(x, getrandstring(i), i +1);
+   for (i = 0;; ++i) {
+      memcpy(cp, getrandstring(_RANDCHARS), _RANDCHARS);
 
       hold_all_sigs();
+      relesigs = TRU1;
+
       if ((fd = open(cp_base, osoflags, mode)) != -1) {
          _CLOEXEC_SET(fd);
          break;
       }
-      if (tries >= FTMP_OPEN_TRIES) {
+      if (i >= FTMP_OPEN_TRIES) {
          e = errno;
          goto jfree;
       }
+      relesigs = FAL0;
       rele_all_sigs();
    }
 
@@ -750,7 +771,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    else
       free(cp_base);
 jleave:
-   if (fp == NULL || !(oflags & OF_HOLDSIGS))
+   if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
    if (fp == NULL)
       errno = e;

@@ -975,7 +975,8 @@ enum oflags {
    OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
    OF_REGISTER    = 1<<10,    /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1<<11 /* unlink(2) upon unreg.; _REGISTER asserted! */
+   OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
+   OF_SUFFIX      = 1<<12     /* Ftmp() name hint is mandatory! extension! */
 };
 
 enum okay {
