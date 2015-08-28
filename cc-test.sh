@@ -952,6 +952,15 @@ printf \
 "345\n"\
 "Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
 "3456\n"\
+"QP am Zeilenende über soft-nl hinweg\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"ö123\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"1ö23\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"12ö3\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"123ö\n"\
 "=VIER = EQUAL SIGNS=ON A LINE=\n"\
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
@@ -981,24 +990,24 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '3498258986 5631'
+   cksum_test content:001-0 "${MBOX}" '3310338268 6375'
 
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '3916146590 5630'
+   cksum_test content:001 "${MBOX}" '62505451 6374'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '3498258986 5631'
+   cksum_test content:002 "${MBOX}" '3310338268 6375'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '3916146590 5630'
+   cksum_test content:003 "${MBOX}" '62505451 6374'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"

@@ -567,7 +567,7 @@ jheadq:
          /* XXX but - ensure is+1>=ie, then??
           * xxx and/or - what about resetting lnlen; that contra
           * xxx dicts input==1 input line assertion, though */
-         if (c == '\n' || is == ie || *is == '\n')
+         if (c == '\n' || is == ie || is[0] == '\n' || is[1] == '\n')
             continue;
 jsoftnl:
          qp[0] = '=';
