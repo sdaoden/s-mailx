@@ -155,10 +155,13 @@ option_update() {
 
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+   msg 'Operating system is "%s"' ${OS}
 
    if [ ${OS} = sunos ]; then
+      msg ' . have special SunOS / Solaris environmental rules, dealing with it'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
+      msg ' . have special UnixWare environmental rules, dealing with it'
       if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
@@ -168,6 +171,8 @@ os_setup() {
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
+   elif [ -n "${VERBOSE}" ]; then
+      msg ' . no special treatment for this system necessary or known'
    fi
 
    # Sledgehammer: better set _GNU_SOURCE
@@ -423,6 +428,7 @@ check_tool() {
    # Evaluate, just in case user comes in with shell snippets (..well..)
    eval i="${i}"
    if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
+      [ -n "${VERBOSE}" ] && msg ' . $%s ... "%s"' "${n}" "${i}"
       eval ${n}=${i}
       return 0
    fi
@@ -434,6 +440,7 @@ check_tool() {
 }
 
 # Check those tools right now that we need before including $rc
+msg 'Checking for basic utility set'
 check_tool rm "${rm:-`command -v rm`}"
 check_tool sed "${sed:-`command -v sed`}"
 check_tool tr "${tr:-`command -v tr`}"
@@ -498,6 +505,7 @@ feat_bail_required() {
 trap "${rm} -f ${tmp}; exit" 1 2 15
 trap "${rm} -f ${tmp}" 0
 
+printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
 # multiline values in make.rc
@@ -517,10 +525,12 @@ while read line; do
 done < ${rc} > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
+printf >&2 'done\n'
 
 # We need to know about that now, in order to provide utility overwrites etc.
 os_setup
 
+msg 'Checking for remaining set of utilities'
 check_tool grep "${grep:-`command -v grep`}"
 
 # Before we step ahead with the other utilities perform a path cleanup first.
@@ -590,6 +600,7 @@ trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" 0
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
 # evaluated values not only in our new configuration file, but also at hand..
+printf >&2 'Evaluating all configuration items ... '
 ${rm} -f ${newlst} ${newmk} ${newh}
 exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
@@ -619,6 +630,7 @@ while read line; do
    eval "${i}=\"${j}\""
 done
 exec 0<&5 1>&6 5<&- 6<&-
+printf >&2 'done\n'
 
 # Add the known utility and some other variables
 printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
