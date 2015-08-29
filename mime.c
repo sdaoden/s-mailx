@@ -401,6 +401,7 @@ jnoenc_retry:
             wcur = wbot++;
 
          flags |= _ENC_LAST;
+         pstate |= PS_HEADER_NEEDED_MIME;
 
          /* RFC 2047:
           *    An 'encoded-word' may not be more than 75 characters long,

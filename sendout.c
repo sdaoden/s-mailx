@@ -633,6 +633,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (nfi == NULL)
       goto jleave;
 
+   pstate &= ~PS_HEADER_NEEDED_MIME; /* TODO a hack should be carrier tracked */
+
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
    convert = mime_type_file_classify(fi, &contenttype, &charset, &do_iconv);
 
@@ -986,7 +988,10 @@ j_mft_add:
    if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
-   if (w & GMIME) {
+   /* We don't need MIME unless.. we need MIME?! */
+   if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||
+         hp->h_attach != NULL || convert != CONV_7BIT ||
+         asccasecmp(charset, "US-ASCII"))) {
       ++gotcha;
       fputs("MIME-Version: 1.0\n", fo);
       if (hp->h_attach != NULL) {

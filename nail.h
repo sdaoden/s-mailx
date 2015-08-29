@@ -1062,6 +1062,8 @@ enum program_state {
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
    PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
 
+   PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
+
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
    PS_t_FLAG         = 1<<25        /* OPT_t_FLAG made persistant */

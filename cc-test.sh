@@ -859,7 +859,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
          -e \
          '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
       < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2838023744 515'
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '82649489 454'
 
    ${rm} -f ./DECRYPT
    printf "behave:s/mime:encrypt/decrypt: "
@@ -889,7 +889,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    fi
    ${sed} -e '/^X-Decoding-Date/d' \
       < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2279047916 300'
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2694938815 239'
 
    ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
       ./tkey.pem ./tcert.pem ./tpair.pem
@@ -1012,7 +1012,7 @@ gggggggggggggggg"
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '4140682175 72'
+   cksum_test content:004 "${MBOX}" '3729232114 11'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
@@ -1020,7 +1020,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '3503215815 245'
+   cksum_test content:005 "${MBOX}" '773028641 184'
 
    ## $BODY CHANGED
 
@@ -1030,7 +1030,7 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '11112309 106'
+   cksum_test content:006 "${MBOX}" '654030565 45'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    # TODO Note: because of our weird putline() handling in <-> collect.c
@@ -1102,7 +1102,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '1276108207 271'
+   cksum_test content:012 "${MBOX}" '2467265470 210'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -1113,7 +1113,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '3677630181 210'
+   cksum_test content:013 "${MBOX}" '4119922611 149'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot
