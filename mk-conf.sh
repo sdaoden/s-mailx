@@ -750,6 +750,8 @@ if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
 elif [ -f ${lst} ]; then
    echo 'Configuration has been updated..'
+   ( eval "${MAKE} -f ./mk.mk clean" )
+   echo
 else
    echo 'Shiny configuration..'
 fi
