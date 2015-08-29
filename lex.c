@@ -661,12 +661,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
 
    if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
-jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {
-         if (!ok_blook(emptystart))
 jnomail:
+         if (!ok_blook(emptystart))
             n_err(_("No mail for %s\n"), who);
       }
+jnonmail:
       rv = 1;
       goto jleave;
    }
