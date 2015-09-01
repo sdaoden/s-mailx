@@ -1584,7 +1584,7 @@ jleave:
       } else
          serrno = 0;
 
-      if (dls & DLS_ABANDON)
+      if (dls == DLS_NONE || (dls & DLS_ABANDON))
          close(cpipe[0]);
 
       switch (dls & ~DLS_ABANDON) {
