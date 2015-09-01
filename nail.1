@@ -602,13 +602,11 @@ will start the text editor to revise the message in it's current state,
 allows editing of the message recipients and
 .Ql Ic ~?
 gives an overview of available tilde escapes.
-Typing
-.Ql control-D
-.Pf ( Ql ^D )
-at the beginning of an empty line leaves
-compose mode and causes the message to be send, whereas typing
-.Ql control-C
-.Pf ( Ql ^C )
+Typing control-D
+.Ql ^D
+at the beginning of an empty line leaves compose mode and causes the
+message to be send, whereas typing control-C
+.Ql ^C
 twice will abort the current letter (saving its contents in the file
 denoted by
 .Ev DEAD
@@ -679,29 +677,32 @@ or
 may not only be email addressees but can also be names of mailboxes and
 even complete shell command pipe specifications.
 Proper quoting may be necessary, e.g., to embed whitespace characters.
+(Recall that \*(UA deals with mail standards, therefore those define the
+rules with which content is interpreted.)
 If the variable
 .Va expandaddr
 is not set then only network addresses (see
 .Xr mailaddr 7
 for a description of mail addresses) and plain user names (including MTA
-aliases) may be used, however.
+aliases) may be used, other types will be filtered out, giving a warning
+message.
 .
 .\" When changing any of the following adjust any RECIPIENTADDRSPEC;
 .\" grep the latter for the complete picture
 .Pp
 If the variable
 .Va expandaddr
-is set the following rules are used to classify recipient addresses:
+is set then extended recipient addresses will optionally be accepted:
 Any name which starts with a vertical bar
 .Ql |
 character specifies a command pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
-Likewise, any name that starts with the character
+Likewise, any name that starts with the character slash
 .Ql /
-(slash) or the character sequence
+or the character sequence dot slash
 .Ql ./
-(dot slash) is treated as a file, regardless of the remaining content.
+is treated as a file, regardless of the remaining content.
 Any other name which contains an at sign
 .Ql @
 character is treated as a network address;
@@ -759,8 +760,7 @@ To avoid environmental noise scripts should
 \*(ua from any configuration files and create a script-local
 environment, either by pointing the
 .Ev MAILRC
-variable to a custom configuration file, by passing the configuration in
-environment variables, or by using the
+variable to a custom configuration file, or by using the
 .Fl S
 command line option to specify options:
 .
