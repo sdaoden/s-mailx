@@ -1251,7 +1251,9 @@ mightrecord(FILE *fp, struct name *to)
    bool_t rv = TRU1;
    NYD_ENTER;
 
-   if (to != NULL) {
+   if (options & OPT_DEBUG)
+      cp = NULL;
+   else if (to != NULL) {
       cp = savestr(skinned_name(to));
       for (cq = cp; *cq != '\0' && *cq != '@'; ++cq)
          ;

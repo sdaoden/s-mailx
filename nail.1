@@ -468,7 +468,7 @@ E.g., the following should send an email message to
 .Dq bob :
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en.\enx\en' | \e
-  LC_ALL=C MAILRC=/dev/null s-nail -n -#
+  LC_ALL=C MAILRC=/dev/null s-nail -n -# -Snosave
 .Ed
 .
 .Mx
@@ -581,12 +581,10 @@ will be sent:
 .
 .Bd -literal -offset indent
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
-# But... try it in an isolated (almost) dry-run mode first
+# But... try it in an isolated dry-run mode first
 $ LC_ALL=C MAILRC=/dev/null \e
-  \*(ua -n -dvv -Sv15-compat -Ssendwait -Snosave \e
-    -Sfrom="me <he@re>" -Srecord=./sent-mails.mbox \e
+  \*(ua -n -d -vv -Sfrom="me <he@re>" \e
     -s Subject -. "(Lovely) Bob <bob@host2>"
-$ cat ./sent-mails.mbox
 .Ed
 .
 .Pp
@@ -4769,6 +4767,10 @@ for more on this.
 .Mx
 .It Va debug
 Prints debugging messages and disables the actual delivery of messages.
+Also implies
+.Pf no Va record
+and
+.Pf no Va save .
 .
 .Mx
 .It Va disconnected

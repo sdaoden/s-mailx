@@ -1072,7 +1072,7 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
    ul_i lines, bytes;
    NYD_ENTER;
 
-   if (!ok_blook(save))
+   if ((options & OPT_DEBUG) || !ok_blook(save))
       goto jleave;
 
    if (fflush_rewind_first) {
