@@ -150,35 +150,28 @@ _update-release:
 		< nail.rc > nail.rcx &&\
 	mv -f nail.rcx nail.rc \
 	) &&\
+	\
 	tar -c -f "$${UAGENT}-$${FREL}.tar" "$${UAGENT}-$${REL}" &&\
+	\
+	openssl md5 "$${UAGENT}-$${FREL}.tar" > \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	openssl sha1 "$${UAGENT}-$${FREL}.tar" >> \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	openssl sha256 "$${UAGENT}-$${FREL}.tar" >> \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar" 2>&1 &&\
+	cat "$${UAGENT}-$${FREL}.tar.asc" >> \
+		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	\
 	< "$${UAGENT}-$${FREL}.tar" gzip > "$${UAGENT}-$${FREL}.tar.gz" &&\
 	< "$${UAGENT}-$${FREL}.tar" xz -e -C sha256 > \
 		"$${UAGENT}-$${FREL}.tar.xz" &&\
+	\
 	rm -f "$${UAGENT}-$${FREL}.tar" &&\
-	openssl md5 "$${UAGENT}-$${FREL}.tar.gz" > \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha1 "$${UAGENT}-$${FREL}.tar.gz" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha256 "$${UAGENT}-$${FREL}.tar.gz" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar.gz" 2>&1 &&\
-	cat "$${UAGENT}-$${FREL}.tar.gz.asc" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl md5 "$${UAGENT}-$${FREL}.tar.xz" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha1 "$${UAGENT}-$${FREL}.tar.xz" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha256 "$${UAGENT}-$${FREL}.tar.xz" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar.xz" 2>&1 &&\
-	cat "$${UAGENT}-$${FREL}.tar.xz.asc" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
 	\
 	( echo "-put $${UAGENT}-$${FREL}.tar.gz";\
-	  echo "-put $${UAGENT}-$${FREL}.tar.gz.asc";\
 	  echo "-put $${UAGENT}-$${FREL}.tar.xz";\
-	  echo "-put $${UAGENT}-$${FREL}.tar.xz.asc" ) | \
+	  echo "-put $${UAGENT}-$${FREL}.tar.asc" ) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
 	\
