@@ -37,6 +37,9 @@
    /* TODO that this does not belong: clear */
 # include "mx/filter-html.h"
 #endif
+#ifdef mx_HAVE_MAILCAP
+# include "mx/mailcap.h"
+#endif
 
 #include "mx/mime-type.h"
 #include "su/code-in.h"
@@ -925,26 +928,25 @@ jnextc:
    if(rv & mx_MIMETYPE_HDL_ISQUOTE){
       if(rv & mx_MIMETYPE_HDL_NOQUOTE)
          goto jerr;
-
       /* Cannot fetch data back from asynchronous process */
       if(rv & mx_MIMETYPE_HDL_ASYNC)
          goto jerr;
-
-      /* TODO Cannot use a "needsterminal" program for quoting */
-      if(rv & mx_MIMETYPE_HDL_NEEDSTERM)
+      if(rv & mx_MIMETYPE_HDL_NEEDSTERM) /* XXX for now */
+         goto jerr;
+      /* xxx Need copiousoutput, and nothing else (for now) */
+      if(!(rv & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
          goto jerr;
    }
 
    if(rv & mx_MIMETYPE_HDL_NEEDSTERM){
       if(rv & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
-         cp = N_("cannot use needsterminal _and_ copiousoutput");
+         cp = N_("cannot use needsterminal and copiousoutput");
          goto jerr;
       }
       if(rv & mx_MIMETYPE_HDL_ASYNC){
-         cp = N_("cannot use needsterminal _and_ x-mailx-async");
+         cp = N_("cannot use needsterminal and x-mailx-async");
          goto jerr;
       }
-
       /* needsterminal needs a terminal */
       if(!(n_psonce & n_PSO_INTERACTIVE))
          goto jerr;
@@ -952,16 +954,14 @@ jnextc:
 
    if(rv & mx_MIMETYPE_HDL_ASYNC){
       if(rv & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
-         cp = N_("cannot use x-mailx-async _and_ copiousoutput");
+         cp = N_("cannot use x-mailx-async and copiousoutput");
          goto jerrlog;
       }
       if(rv & mx_MIMETYPE_HDL_TMPF_UNLINK){
-         cp = N_("cannot use x-mailx-async _and_ x-mailx-tmpfile-unlink");
+         cp = N_("cannot use x-mailx-async and x-mailx-tmpfile-unlink");
          goto jerrlog;
       }
    }
-
-   /* TODO mailcap-only: TMPF_UNLINK): needs -tmpfile OR -tmpfile-fill */
 
    rv |= mx_MIMETYPE_HDL_CMD;
 jleave:
@@ -994,7 +994,8 @@ c_mimetype(void *vp){
       uz l;
 
       if(a_mimetype_list == NIL){
-         fprintf(n_stdout, _("# `mimetype': no mime.types(5) available\n"));
+         fprintf(n_stdout,
+            _("# `mimetype': no mime.type(5) data available\n"));
          goto jleave;
       }
 
@@ -1430,8 +1431,8 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
    buf = NIL;
 
    rv = mx_MIMETYPE_HDL_NIL;
-   if(action == SEND_QUOTE || action == SEND_QUOTE_ALL)
-      rv |= mx_MIMETYPE_HDL_ISQUOTE;
+   if(action == SEND_QUOTE || action == SEND_QUOTE_ALL) /* TODO  rude */
+      rv |= mx_MIMETYPE_HDL_ISQUOTE; /* TODO HACK (even for no reason) */
    else if(action != SEND_TODISP && action != SEND_TODISP_ALL &&
          action != SEND_TODISP_PARTS)
       goto jleave;
@@ -1469,6 +1470,7 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
       goto jleave;
 
    su_mem_copy(cp = &buf[a__L], cs, cl +1);
+   cs = cp; /* Ensure normalized variant is henceforth used */
    for(; *cp != '\0'; ++cp)
       *cp = su_cs_to_lower(*cp);
 
@@ -1478,7 +1480,15 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
       goto jleave;
    }
 
-   /* III. and final: `mimetype' type-marker extension induced handler */
+   /* III. RFC 1524 / Mailcap lookup */
+#ifdef mx_HAVE_MAILCAP
+   if(mx_mailcap_handler(mthp, cs, action, mpp)){
+      rv = mthp->mth_flags;
+      goto jleave;
+   }
+#endif
+
+   /* IV. and final: `mimetype' type-marker extension induced handler */
    if(a_mimetype_by_name(&mtl, cs) != NIL)
       switch(mtl.mtl_node->mtn_flags & a_MIMETYPE__TM_MARKMASK){
 #ifndef mx_HAVE_FILTER_HTML_TAGSOUP

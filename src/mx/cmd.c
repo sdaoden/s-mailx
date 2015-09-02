@@ -43,6 +43,7 @@
 #include "mx/cred-netrc.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
+#include "mx/mailcap.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
 #include "mx/privacy.h"

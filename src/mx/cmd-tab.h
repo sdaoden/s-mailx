@@ -481,6 +481,14 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Like `mail', but derive filename from first recipient")) },
    { "mail", &c_sendmail, (I | M | R | SC | EM | TSTRING), 0, 0, NIL
      DS(N_("Compose mail; recipients may be given as arguments")) },
+   { "mailcap",
+#ifdef mx_HAVE_MAILCAP
+      &c_mailcap,
+#else
+      NIL,
+#endif
+      (M | TWYSH), 0, 1, NIL
+      DS(N_("[<show>], <load> or <clear> the $MAILCAPS cache")) },
    { "mbox", &c_mboxit, (A | W | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Indicate that <msglist> is to be stored in *MBOX*")) },
    { "mimetype", &c_mimetype, (M | TWYSH), 0, MAC, NIL

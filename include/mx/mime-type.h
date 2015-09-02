@@ -45,23 +45,33 @@ enum mx_mimetype{
 enum mx_mimetype_handler_flags{
    mx_MIMETYPE_HDL_NIL, /* No pipe- mimetype handler, go away */
    mx_MIMETYPE_HDL_CMD, /* Normal command */
-   mx_MIMETYPE_HDL_TEXT, /* @ special cmd to force treatment as text */
-   mx_MIMETYPE_HDL_PTF, /* A special pointer-to-function handler */
    mx_MIMETYPE_HDL_MSG, /* Display msg (returned as command string) */
+   mx_MIMETYPE_HDL_PTF, /* A special pointer-to-function handler */
+   mx_MIMETYPE_HDL_TEXT, /* @ special cmd to force treatment as text */
    mx_MIMETYPE_HDL_TYPE_MASK = 7u,
-   mx_MIMETYPE_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD output directly usable */
-   mx_MIMETYPE_HDL_ISQUOTE = 1u<<5, /* Is quote action (have info, keep it!) */
-   mx_MIMETYPE_HDL_NOQUOTE = 1u<<6, /* No MIME for quoting */
-   mx_MIMETYPE_HDL_ASYNC = 1u<<7, /* Should run asynchronously */
-   mx_MIMETYPE_HDL_NEEDSTERM = 1u<<8, /* Takes over terminal */
-   mx_MIMETYPE_HDL_TMPF = 1u<<9, /* Create temporary file (zero-sized) */
-   mx_MIMETYPE_HDL_TMPF_FILL = 1u<<10, /* Fill in the msg body content */
-   mx_MIMETYPE_HDL_TMPF_UNLINK = 1u<<11, /* Delete it later again */
 
+   /* compose, composetyped, edit, print */
+
+   mx_MIMETYPE_HDL_ASYNC = 1u<<8, /* Should run asynchronously */
+   mx_MIMETYPE_HDL_COPIOUSOUTPUT = 1u<<9, /* _CMD output directly usable */
+   mx_MIMETYPE_HDL_NEEDSTERM = 1u<<10, /* Takes over terminal */
+   mx_MIMETYPE_HDL_NOQUOTE = 1u<<11, /* No MIME for quoting */
+   mx_MIMETYPE_HDL_TMPF = 1u<<12, /* Create temporary file (zero-sized) */
+   mx_MIMETYPE_HDL_TMPF_FILL = 1u<<13, /* Fill in the msg body content */
+   mx_MIMETYPE_HDL_TMPF_UNLINK = 1u<<14, /* Delete it later again */
    /* Handler with _HDL_TMPF has a .mth_tmpf_nametmpl.. */
-   mx_MIMETYPE_HDL_TMPF_NAMETMPL = 1u<<16,
-   mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX = 1u<<17 /* ..to be used as suffix */
+   mx_MIMETYPE_HDL_TMPF_NAMETMPL = 1u<<15,
+   mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX = 1u<<16, /* ..to be used as suffix */
+   /* xxx textualnewlines */
+
+   /* Is (per call: for) quote action.  TODO This is a hack, in v15 there must
+    * TODO be filters which become plugged together: test regular action
+    * TODO instead (once creating filter chain); only _NOQUOTE detection then
+    * TODO must be made possible for mailcap somehow, still; in fact only
+    * TODO used to avoid evaluation "action" multiple times */
+   mx_MIMETYPE_HDL_ISQUOTE = 1u<<17
 };
+enum {mx_MIMETYPE_HDL_MAX = mx_MIMETYPE_HDL_ISQUOTE};
 
 struct mx_mimetype_handler{
    BITENUM_IS(u32,mx_mime_handler_flags) mth_flags;

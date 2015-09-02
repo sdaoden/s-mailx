@@ -14063,23 +14063,6 @@ This field is not used by \*(UA.
 A textual description that describes this type of data.
 .
 .Mx
-.It Cd x-mailx-even-if-not-interactive
-An extension flag test field \(em by default handlers without
-.Cd copiousoutput
-are entirely ignored in non-interactive mode, but if this flag is set
-then their use will be considered.
-It is an error if this flag is set for commands that use the flag
-.Cd needsterminal .
-.
-.Mx
-.It Cd x-mailx-noquote
-An extension flag field that indicates that even a
-.Cd copiousoutput
-.Cd view
-command shall not be used to generate message quotes
-(as it would be by default).
-.
-.Mx
 .It Cd x-mailx-async
 Extension flag field that denotes that the given
 .Cd view
@@ -14088,6 +14071,14 @@ Cannot be used in conjunction with
 .Cd needsterminal ;
 the standard output of the command will go to
 .Pa /dev/null .
+.
+.Mx
+.It Cd x-mailx-noquote
+An extension flag field that indicates that even a
+.Cd copiousoutput
+.Cd view
+command shall not be used to generate message quotes
+(as it would be by default).
 .
 .Mx
 .It Cd x-mailx-test-once
@@ -14132,16 +14123,6 @@ or without also setting
 .Cd x-mailx-tmpfile
 or
 .Cd x-mailx-tmpfile-fill .
-.
-.Mx
-.It Cd x-mailx-tmpfile-keep
-Using the string
-.Ql %s
-implies the three tmpfile related flags above, but if you want, e.g.,
-.Cd x-mailx-async
-and deal with the temporary file yourself, you can add in this flag to
-forcefully ignore
-.Cd x-mailx-tmpfile-unlink .
 .El
 .
 .

@@ -41,6 +41,7 @@ fi
 ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
    ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
+   ARGS="${ARGS}"' -Smailcap-disable'
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
    ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
@@ -158,6 +159,7 @@ t_all() {
    jspawn mass_recipients
    jspawn lreply_futh_rth_etc
    jspawn pipe_handlers
+   jspawn mailcap
    jsync
 
    # Unclassified rest
@@ -9208,6 +9210,115 @@ t_pipe_handlers() {
                > "${BODY}" 2>&1
       check 7 0 "${BODY}" '686281717 676'
    fi
+
+   t_epilog "${@}"
+}
+
+t_mailcap() {
+   t_prolog "${@}"
+
+   if have_feat mailcap; then :; else
+      t_echoskip '[!MAILCAP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   ${cat} <<-'_EOT' > ./.tmailcap
+text/html; lynx -dump %s; copiousoutput; nametemplate=%s.html
+application/pdf; /Applications/Preview.app/Contents/MacOS/Preview %s;\
+  nametemplate=%s.pdf;\
+  test = [ "${OSTYPE}" = darwin ]
+application/pdf;\
+  infile=%s\;\
+    trap "rm -f ${infile}" EXIT\;\
+    trap "exit 75" INT QUIT TERM\;\
+    mupdf "${infile}";\
+  test = [ -n "${DISPLAY}" ];\
+  nametemplate = %s.pdf; x-mailx-async
+application/pdf; pdftotext -layout %s -; nametemplate=%s.pdf; copiousoutput
+application/*; echo "This is \\"%t\\" but \
+     is 50 \% Greek to me" \; < %s head -c 1024 | cat -vet; \
+     description=" this is\;a \"wildcard\" match, no trailing quote!    ;\
+   copiousoutput; x-mailx-noquote
+
+    
+                                     ;
+bummer/hummer;;
+application/postscript; ps-to-terminal %s;\ needsterminal
+application/postscript; ps-to-terminal %s; \compose=idraw %s
+x-be2; the-cmd %s; \
+  print=print-cmd %s ; \
+            copiousoutput             ;         \
+  compose=compose-cmd -d %s ; \
+                   textualnewlines;    \
+  composetyped = composetyped-cmd -dd %s ; \
+    x-mailx-noquote ;\
+  edit=edit-cmd -ddd %s; \
+  description = a\;desc;\
+  nametemplate=%s.be2;\
+  test                       =                 this is "a" test ;  \
+    x-mailx-test-once ;\
+  x11-bitmap = x11-bitmap.bpm;;;;;
+application/*; echo "is \"%t\" \
+  50 \% Greek" \; cat %s; copiousoutput; \; description="catch-all buddy";
+audio/*; showaudio;compose=%n
+image/jpeg; showpicture -viewer xv %s
+image/*; showpicture %s
+message/partial; showpartial %s %{id} %{number} %{total}
+application/postscript ; lpr %s ; label="PS File";\
+	compose="getx PS %s"
+application/atomicmail; atomicmail %s ; needsterminal
+application/andrew-inset;     ezview %s ; copiousoutput;\
+   edit=ez -d %s; compose="ez -d %s"; label="Andrew i/d"
+text/richtext; xy iso-8859-1 -e richtext -p %s; \
+   test=test "`echo %{charset} | tr A-Z a-z`"  = iso-8859-1; copiousoutput
+text/plain; xy iso-8859-1 %s;\
+   test=test "`echo %{charset} | tr A-Z a-z`" = iso-8859-1; copiousoutput
+text/richtext; rich %s %{not-closed; copiousoutput
+default; cat %s; copiousoutput
+_EOT
+   ${chmod} 0644 ./.tmailcap
+
+   printf 'm;echo =1/$?;m c;echo =2/$?;
+         mailca loa;echo =3/$?;mailc s;echo =4/$?' |
+      MAILCAPS=./.tmailcap ${MAILX} -X'commandalias m mailcap' ${ARGS} \
+         > ./.tall 2>./.terr
+   check 1 0 ./.tall '2012114724 3064'
+   check 2 - ./.terr '3903313993 2338'
+
+   ##
+
+   echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 "${MBOX}"
+   check 3 0 "${MBOX}" '4224630386 228'
+
+   printf '#
+text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
+      test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
+text/plain; echo p-2-1\\;< %%s cat\\;echo p-2-2;\\
+      test=echo Y >> ./.terrmc\\;[ -z "$XY" ]
+text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
+         </dev/null cat %%s\\;echo p-3-2\\; } > ./.tx\\; mv -f ./.tx ./.tasy;\\
+      test=[ -n "$XY" ];nametemplate=%%s.txt;x-mailx-async
+text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
+   ' > ./.tmailcap
+
+   </dev/null MAILCAPS=./.tmailcap ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '#
+\mailcap
+\echo =1
+\mimeview
+\echo =2
+\environ set XY=yes
+\mimeview
+\echo =3
+\type
+\echo =4
+' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 4 0 ./.tall '1446638436 1286'
+   check 5 - ./.terr '4294967295 0'
+   check 6 - ./.terrmc '2376112102 6'
+   check 7 - ./.tasy '3913344578 37' async
 
    t_epilog "${@}"
 }

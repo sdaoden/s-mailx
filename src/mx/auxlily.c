@@ -1249,6 +1249,8 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    su_CS_DICT_FOREACH(dp, &dv)
       *xcpp++ = su_cs_dict_view_key(&dv);
    if(cnt > 1)
+      /* This works even for case-insensitive keys because cs_dict will store
+       * keys in lowercase-normalized versions, then */
       su_sort_shell_vpp(su_S(void const**,cpp), cnt, su_cs_toolbox.tb_compare);
 
    for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
