@@ -1157,7 +1157,7 @@ grab_names(char const *field, struct name *np, int comma, enum gfield gflags)
    NYD_ENTER;
 
 jloop:
-   np = lextract(readstr_input(field, detract(np, comma)), gflags);
+   np = lextract(n_input_cp_addhist(field, detract(np, comma), TRU1), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
       if (is_addr_invalid(nq, EACM_NONE))
          goto jloop;

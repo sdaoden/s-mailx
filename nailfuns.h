@@ -787,8 +787,10 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
  * This may only be called from toplevel (not during PS_SOURCING).
  * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility */
-FL char *      readstr_input(char const *prompt, char const *string);
+ * mode, otherwise this argument is ignored for reproducibility.
+ * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
+FL char *      n_input_cp_addhist(char const *prompt, char const *string,
+                  bool_t isgabby);
 
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
@@ -1444,7 +1446,7 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
-/* Get a lextract() list via readstr_input(), reassigning to *np* */
+/* Get a lextract() list via n_input_cp_addhist(), reassigning to *np* */
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
