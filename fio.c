@@ -136,6 +136,9 @@ static int        _dotlock_main(void);
 static long       xwrite(int fd, char const *data, size_t sz);
 #endif
 
+/* `source' and `source_if' */
+static bool_t     _source_file(char const *file, bool_t silent_error);
+
 static void
 _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 {
@@ -715,6 +718,45 @@ jleave:
    return rv;
 }
 #endif /* HAVE_SOCKETS */
+
+static bool_t
+_source_file(char const *file, bool_t silent_error)
+{
+   char *cp;
+   FILE *fi = NULL;
+   NYD_ENTER;
+
+   if ((cp = fexpand(file, FEXP_LOCAL)) == NULL)
+      goto jleave;
+   if ((fi = Fopen(cp, "r")) == NULL) {
+      if (!silent_error || (options & OPT_D_V))
+         n_perr(cp, 0);
+      goto jleave;
+   }
+
+   if (temporary_localopts_store != NULL) {
+      n_err(_("Before v15 you cannot `source' from within macros, sorry\n"));
+      goto jeclose;
+   }
+   if (_fio_stack_size >= NELEM(_fio_stack)) {
+      n_err(_("Too many `source' recursions\n"));
+jeclose:
+      Fclose(fi);
+      fi = NULL;
+      goto jleave;
+   }
+
+   _fio_stack[_fio_stack_size].s_file = _fio_input;
+   _fio_stack[_fio_stack_size].s_cond = condstack_release();
+   _fio_stack[_fio_stack_size].s_loading = !!(pstate & PS_LOADING);
+   ++_fio_stack_size;
+   pstate &= ~PS_LOADING;
+   pstate |= PS_SOURCING;
+   _fio_input = fi;
+jleave:
+   NYD_LEAVE;
+   return (fi != NULL);
+}
 
 FL char *
 (fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen, FILE *fp,
@@ -2231,38 +2273,22 @@ jleave:
 FL int
 c_source(void *v)
 {
-   int rv = 1;
-   char **arglist = v, *cp;
-   FILE *fi;
+   int rv;
    NYD_ENTER;
 
-   if ((cp = fexpand(*arglist, FEXP_LOCAL)) == NULL)
-      goto jleave;
-   if ((fi = Fopen(cp, "r")) == NULL) {
-      n_perr(cp, 0);
-      goto jleave;
-   }
+   rv = _source_file(*(char**)v, FAL0) ? 0 : 1;
+   NYD_LEAVE;
+   return rv;
+}
 
-   if (temporary_localopts_store != NULL) {
-      n_err(_("Before v15 you cannot `source' from within macros, sorry\n"));
-      Fclose(fi);
-      goto jleave;
-   }
-   if (_fio_stack_size >= NELEM(_fio_stack)) {
-      n_err(_("Too many `source' recursions\n"));
-      Fclose(fi);
-      goto jleave;
-   }
+FL int
+c_source_if(void *v) /* XXX obsolete?, support file tests in `if' etc.! */
+{
+   int rv;
+   NYD_ENTER;
 
-   _fio_stack[_fio_stack_size].s_file = _fio_input;
-   _fio_stack[_fio_stack_size].s_cond = condstack_release();
-   _fio_stack[_fio_stack_size].s_loading = !!(pstate & PS_LOADING);
-   ++_fio_stack_size;
-   pstate &= ~PS_LOADING;
-   pstate |= PS_SOURCING;
-   _fio_input = fi;
+   rv = _source_file(*(char**)v, TRU1) ? 0 : 1;
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }

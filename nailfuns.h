@@ -896,8 +896,10 @@ FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * PS_SOURCING so that others will realize that they are no longer reading from
- * a tty (in all probability) */
+ * a tty (in all probability).
+ * The latter won't return failure (TODO should be replaced by "-f FILE") */
 FL int         c_source(void *v);
+FL int         c_source_if(void *v);
 
 /* Pop the current input back to the previous level.  Update the PS_SOURCING
  * flag as appropriate */

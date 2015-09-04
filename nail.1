@@ -3744,6 +3744,15 @@ the current sorting criterion is printed.
 (so) The source command reads commands from a file.
 .
 .Mx
+.It Ic source_if
+The difference to
+.Ic source
+is that this command will not generate an error if the given file
+argument cannot be opened successfully.
+This can matter in, e.g., resource files, since loading of those is
+stopped when an error is encountered.
+.
+.Mx
 .It Ic spamclear
 \*(OP Takes a list of messages and clears their
 .Ql is-spam
