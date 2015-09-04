@@ -1842,8 +1842,8 @@ VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
 VL char const  *tempdir;            /* The temporary directory */
 
-VL ui32_t      group_id;            /* getgid() and getuid() */
-VL ui32_t      user_id;
+VL gid_t       group_id;            /* getgid() and getuid() */
+VL uid_t       user_id;
 
 VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */

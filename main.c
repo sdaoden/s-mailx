@@ -377,8 +377,8 @@ _setup_vars(void)
          ? savestr(cp) : TMPDIR_FALLBACK;
 
    cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
-   group_id = (ui32_t)getgid();
-   user_id = (ui32_t)(uid = getuid());
+   group_id = getgid();
+   user_id = uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
       n_panic(_("Cannot associate a name with uid %u"), user_id);
    if (cp == NULL || *cp == '\0')
