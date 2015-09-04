@@ -1816,17 +1816,38 @@ jleave:
    return rv;
 }
 
-# if defined HAVE_GETADDRINFO || defined HAVE_SSL
 static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
 static int        __sopen_sig; /* TODO someday, we won't need it no more */
 static void
 __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
-   __sopen_sig = sig;
-   siglongjmp(__sopen_actjmp, 1);
+   if (__sopen_sig < 0) {
+      /* Of course the following doesn't belong into a signal handler XXX */
+      int i, j;
+
+      if (__sopen_sig == -1) {
+         fprintf(stderr,
+            _("\nInterrupting it could turn the (GNU/Linux+) DNS resolver "
+                  "unusable.\n"
+               "  Wait until it's done, or do terminate the program\n"));
+         __sopen_sig = -2;
+      } else if ((i = j = ABS(__sopen_sig)) + 15 < scrnwidth) {
+         putc('\r', stderr);
+         for (; j > 0; --j)
+            putc(' ', stderr);
+         fputs("___( o)", stderr);
+         putc((i & 1) ? '=' : '>', stderr);
+         putc(' ', stderr);
+         putc(' ', stderr);
+         ++i;
+         __sopen_sig = -i;
+      }
+   } else {
+      __sopen_sig = sig;
+      siglongjmp(__sopen_actjmp, 1);
+   }
 }
-# endif
 
 FL bool_t
 sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
@@ -1839,23 +1860,19 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 # endif
 # ifdef HAVE_GETADDRINFO
    char hbuf[NI_MAXHOST];
-   struct addrinfo hints, *res0, *res;
-   int volatile errval = 0 /* pacify CC */;
+   struct addrinfo hints, *res0 = NULL, *res;
 # else
    struct sockaddr_in servaddr;
    struct in_addr **pptr;
    struct hostent *hp;
    struct servent *ep;
 # endif
-# if defined HAVE_GETADDRINFO || defined HAVE_SSL
    sighandler_type volatile ohup, oint;
    char const * volatile serv;
-   int volatile sofd = -1;
-# else
-   char const *serv;
-   int sofd = -1; /* TODO may leak without getaddrinfo(3) support (pre v15.0) */
-# endif
+   int volatile sofd = -1, errval;
    NYD_ENTER;
+
+   UNINIT(errval, 0);
 
    /* Connect timeouts after 30 seconds XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
@@ -1868,14 +1885,14 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
       n_err(_("Resolving host \"%s:%s\" ... "),
          urlp->url_host.s, serv);
 
-# ifdef HAVE_GETADDRINFO
-   res0 = NULL;
-
+   /* Signal handling (in respect to __sopen_sig dealing) is heavy, but no
+    * healing until v15.0 and i want to end up with that functionality */
    hold_sigs();
    __sopen_sig = 0;
    ohup = safe_signal(SIGHUP, &__sopen_onsig);
    oint = safe_signal(SIGINT, &__sopen_onsig);
    if (sigsetjmp(__sopen_actjmp, 0)) {
+jpseudo_jump:
       n_err("%s\n",
          (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
       if (sofd >= 0) {
@@ -1886,10 +1903,18 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    }
    rele_sigs();
 
+# ifdef HAVE_GETADDRINFO
    for (;;) {
       memset(&hints, 0, sizeof hints);
       hints.ai_socktype = SOCK_STREAM;
-      if ((errval = getaddrinfo(urlp->url_host.s, serv, &hints, &res0)) == 0)
+      __sopen_sig = -1;
+      errval = getaddrinfo(urlp->url_host.s, serv, &hints, &res0);
+      if (__sopen_sig != -1) {
+         __sopen_sig = SIGINT;
+         goto jpseudo_jump;
+      }
+      __sopen_sig = 0;
+      if (errval == 0)
          break;
 
       if (options & OPT_VERB)
@@ -1947,19 +1972,6 @@ jjumped:
       res0 = NULL;
    }
 
-   hold_sigs();
-   safe_signal(SIGINT, oint);
-   safe_signal(SIGHUP, ohup);
-   rele_sigs();
-
-   if (sofd < 0) {
-      if (errval != 0) {
-         errno = errval;
-         n_perr(_("Could not connect"), 0);
-      }
-      goto jleave;
-   }
-
 # else /* HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
       if ((ep = getservbyname(UNCONST(serv), "tcp")) != NULL)
@@ -1976,12 +1988,21 @@ jjumped:
             n_err(_("  Unknown service: \"%s\"\n"
                "  Including a port in the URL may circumvent this problem\n"),
                urlp->url_proto);
-            goto jleave;
+            assert(sofd == -1 && errval == 0);
+            goto jjumped;
          }
       }
    }
 
-   if ((hp = gethostbyname(urlp->url_host.s)) == NULL) {
+   __sopen_sig = -1;
+   hp = gethostbyname(urlp->url_host.s);
+   if (__sopen_sig != -1) {
+      __sopen_sig = SIGINT;
+      goto jpseudo_jump;
+   }
+   __sopen_sig = 0;
+
+   if (hp == NULL) {
       char const *emsg;
 
       if (options & OPT_VERB)
@@ -1995,14 +2016,15 @@ jjumped:
       }
       n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
          urlp->url_host.s, serv, V_(emsg));
-      goto jleave;
+      goto jjumped;
    } else if (options & OPT_VERB)
       n_err(_("done\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
       n_perr(_("could not create socket"), 0);
-      goto jleave;
+      assert(sofd == -1 && errval == 0);
+      goto jjumped;
    }
 
    memset(&servaddr, 0, sizeof servaddr);
@@ -2016,12 +2038,25 @@ jjumped:
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      n_perr(_("could not connect"), 0);
+      errval = errno;
       close(sofd);
       sofd = -1;
+   }
+jjumped:
+# endif /* !HAVE_GETADDRINFO */
+
+   hold_sigs();
+   safe_signal(SIGINT, oint);
+   safe_signal(SIGHUP, ohup);
+   rele_sigs();
+
+   if (sofd < 0) {
+      if (errval != 0) {
+         errno = errval;
+         n_perr(_("Could not connect"), 0);
+      }
       goto jleave;
    }
-# endif /* !HAVE_GETADDRINFO */
 
    if (options & OPT_VERB)
       n_err(_("connected.\n"));
@@ -2070,7 +2105,6 @@ jsclose:
 
 jleave:
    /* May need to bounce the signal to the lex.c trampoline (or wherever) */
-# if defined HAVE_GETADDRINFO || defined HAVE_SSL
    if (__sopen_sig != 0) {
       sigset_t cset;
       sigemptyset(&cset);
@@ -2078,7 +2112,6 @@ jleave:
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
       n_raise(__sopen_sig);
    }
-#endif
    NYD_LEAVE;
    return (sofd >= 0);
 }
