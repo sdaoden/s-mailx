@@ -5318,6 +5318,12 @@ If no character set conversion capabilities are available in \*(UA then
 the only supported character set is
 .Va ttycharset .
 .
+.It Va sendmail-no-default-arguments
+Unless this option is set \*(UA will pass some well known
+standard command line options to the defined
+.Va sendmail
+program, see there for more.
+.
 .Mx
 .It Va sendwait
 When sending a message wait until the MTA (including the builtin SMTP
