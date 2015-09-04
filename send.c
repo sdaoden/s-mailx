@@ -1084,7 +1084,8 @@ jgetname:
       f2 = n_input_cp_addhist(": ", ((f != (char*)-1 && f != NULL)
             ? fexpand_nshell_quote(f) : NULL), TRU1);
       if (f2 == NULL || *f2 == '\0') {
-         n_err(_("... skipping this\n"));
+         if (options & OPT_D_V)
+            n_err(_("... skipping this\n"));
          fp = NULL;
          goto jleave;
       } else if (*f2 == '|')
