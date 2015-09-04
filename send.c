@@ -824,7 +824,15 @@ jmulti:
                if (np->m_partstring && !strcmp(np->m_partstring, "1"))
                   break;
                stats = NULL;
-               if ((obuf = newfile(np, UNVOLATILE(&ispipe))) == NULL)
+               /* TODO Always open multipart on /dev/null, it's a hack to be
+                * TODO able to dive into that structure, and still better
+                * TODO than asking the user for something stupid.
+                * TODO oh, wait, we did ask for a filename for this MIME mail,
+                * TODO and that outer container is useless anyway ;-P */
+               if (np->m_multipart != NULL) {
+                  if ((obuf = Fopen("/dev/null", "w")) == NULL)
+                     continue;
+               } else if ((obuf = newfile(np, UNVOLATILE(&ispipe))) == NULL)
                   continue;
                if (!ispipe)
                   break;
