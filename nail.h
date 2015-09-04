@@ -1023,7 +1023,7 @@ enum user_options {
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
+   OPT_D_VV       = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
 };
 
 #define IS_TTY_SESSION() \
