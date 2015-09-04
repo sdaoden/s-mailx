@@ -824,10 +824,11 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
     * TODO á la RFC 2047 is discarded; i.e.: this function should deal with
     * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode() */
    struct str cin, cout;
-   char *p, *op, *upper, *cbeg;
+   char *p, *op, *upper;
    ui32_t convert, lastenc, lastoutl;
 #ifdef HAVE_ICONV
    char const *tcs;
+   char *cbeg;
    iconv_t fhicd = (iconv_t)-1;
 #endif
    NYD_ENTER;
@@ -850,7 +851,9 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
       op = p;
       if (*p == '=' && *(p + 1) == '?') {
          p += 2;
+#ifdef HAVE_ICONV
          cbeg = p;
+#endif
          while (p < upper && *p != '?')
             ++p;  /* strip charset */
          if (p >= upper)
