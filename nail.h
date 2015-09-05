@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -188,6 +184,7 @@
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
+#define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 #define MAILRC          "~/.mailrc"
@@ -869,7 +866,7 @@ enum mime_enc_flags {
     * detecting wether quoting is necessary at all will be reported as
     * "must-quote" if they have to be encoded in an encoded word */
    MIMEEF_ISENCWORD  = 1<<6,
-   __MIMEEF_LAST     = MIMEEF_ISENCWORD
+   __MIMEEF_LAST     = 6
 };
 
 enum qpflags {
@@ -892,12 +889,21 @@ enum b64flags {
    B64_ISENCWORD  = MIMEEF_ISENCWORD,
    /* Special version of Base64, "Base64URL", according to RFC 4648.
     * Only supported for encoding! */
-   B64_RFC4648URL = __MIMEEF_LAST<<1
+   B64_RFC4648URL = 1<<(__MIMEEF_LAST+1),
+   /* Don't use any ("=") padding;
+    * may NOT be used with any of _CRLF, _LF or _MULTILINE */
+   B64_NOPAD      = 1<<(__MIMEEF_LAST+2)
 };
 
 /* Special handler return values for mime_type_mimepart_handler() */
 #define MIME_TYPE_HANDLER_TEXT   (char*)-1
 #define MIME_TYPE_HANDLER_HTML   (char*)-2
+
+enum mime_parse_flags {
+   MIME_PARSE_NONE      = 0,
+   MIME_PARSE_DECRYPT   = 1<<0,
+   MIME_PARSE_PARTS     = 1<<1
+};
 
 enum mlist_state {
    MLIST_OTHER       = 0,     /* Normal address */
@@ -913,7 +919,7 @@ enum oflags {
    OF_CREATE      = 1<<4,
    OF_TRUNC       = 1<<5,
    OF_EXCL        = 1<<6,
-   OF_CLOEXEC     = 1<<7,
+   OF_CLOEXEC     = 1<<7,     /* TODO not used, always implied!  CHANGE!! */
    OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
    OF_REGISTER    = 1<<10     /* Register file in our file table */
@@ -1017,7 +1023,7 @@ enum user_options {
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB
+   OPT_D_VV       = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
 };
 
 #define IS_TTY_SESSION() \
@@ -1055,6 +1061,8 @@ enum program_state {
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
    PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+
+   PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
@@ -1235,6 +1243,9 @@ enum okeys {
    ok_v_sender,
    ok_v_sendmail,
    ok_v_sendmail_arguments,
+   /* FIXME this is not falsely sorted, but this entire enum including the
+    * FIXME manual should be sorted alphabetically instead of binary/value */
+   ok_b_sendmail_no_default_arguments,
    ok_v_sendmail_progname,
    ok_v_SHELL,
    ok_v_Sign,
@@ -1242,6 +1253,7 @@ enum okeys {
    ok_v_signature,
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
+   ok_v_smime_cipher,
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
    ok_v_smime_sign_cert,
@@ -1830,8 +1842,8 @@ VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
 VL char const  *tempdir;            /* The temporary directory */
 
-VL ui32_t      group_id;            /* getgid() and getuid() */
-VL ui32_t      user_id;
+VL gid_t       group_id;            /* getgid() and getuid() */
+VL uid_t       user_id;
 
 VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */

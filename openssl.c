@@ -181,9 +181,6 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
    {"aes128",  &EVP_aes_128_cbc},
    {"aes256",  &EVP_aes_256_cbc},
    {"aes192",  &EVP_aes_192_cbc},
-      {"aes-128", &EVP_aes_128_cbc}, /* TODO obsolete */
-      {"aes-256", &EVP_aes_256_cbc}, /* TODO obsolete */
-      {"aes-192", &EVP_aes_192_cbc}, /* TODO obsolete */
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef _SMIME_DEFAULT_CIPHER
@@ -196,6 +193,14 @@ static struct smime_cipher const _smime_ciphers[] = { /* Manual!! */
 #ifndef _SMIME_DEFAULT_CIPHER
 # error Your OpenSSL library does not include the necessary
 # error cipher algorithms that are required to support S/MIME
+#endif
+
+#ifndef OPENSSL_NO_AES
+static struct smime_cipher const _smime_ciphers_obs[] = { /* TODO obsolete */
+   {"aes-128", &EVP_aes_128_cbc},
+   {"aes-256", &EVP_aes_256_cbc},
+   {"aes-192", &EVP_aes_192_cbc}
+};
 #endif
 
 /* Supported S/MIME message digest algorithms */
@@ -757,9 +762,6 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       cc = hfield1("cc", m);
       cnttype = hfield1("content-type", m);
 
-      if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
-         goto jleave;
-
 #undef _X
 #undef _Y
 #define _X     (sizeof("application/") -1)
@@ -776,6 +778,9 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
             continue;
          }
       }
+
+      if ((ip = setinput(&mb, m, NEED_BODY)) == NULL)
+         goto jleave;
       size = m->m_size;
       break;
    }
@@ -874,7 +879,7 @@ _smime_cipher(char const *name)
    cp = vok_vlook(vn);
    ac_free(vn);
 
-   if (cp == NULL) {
+   if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
       cipher = _SMIME_DEFAULT_CIPHER();
       goto jleave;
    }
@@ -885,6 +890,14 @@ _smime_cipher(char const *name)
          cipher = (*_smime_ciphers[i].sc_fun)();
          goto jleave;
       }
+#ifndef OPENSSL_NO_AES
+   for (i = 0; i < NELEM(_smime_ciphers_obs); ++i) /* TODO obsolete */
+      if (!asccasecmp(_smime_ciphers_obs[i].sc_name, cp)) {
+         OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
+         cipher = (*_smime_ciphers_obs[i].sc_fun)();
+         goto jleave;
+      }
+#endif
 
    /* Not a builtin algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
@@ -893,7 +906,7 @@ _smime_cipher(char const *name)
       goto jleave;
 #endif
 
-   n_err(_("Invalid cipher(s): \"%s\"\n"), cp);
+   n_err(_("Invalid S/MIME cipher(s): \"%s\"\n"), cp);
 jleave:
    NYD_LEAVE;
    return cipher;

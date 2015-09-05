@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -637,6 +633,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (nfi == NULL)
       goto jleave;
 
+   pstate &= ~PS_HEADER_NEEDED_MIME; /* TODO a hack should be carrier tracked */
+
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
    convert = mime_type_file_classify(fi, &contenttype, &charset, &do_iconv);
 
@@ -990,7 +988,10 @@ j_mft_add:
    if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
-   if (w & GMIME) {
+   /* We don't need MIME unless.. we need MIME?! */
+   if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||
+         hp->h_attach != NULL || convert != CONV_7BIT ||
+         asccasecmp(charset, "US-ASCII"))) {
       ++gotcha;
       fputs("MIME-Version: 1.0\n", fo);
       if (hp->h_attach != NULL) {
@@ -1255,7 +1256,9 @@ mightrecord(FILE *fp, struct name *to)
    bool_t rv = TRU1;
    NYD_ENTER;
 
-   if (to != NULL) {
+   if (options & OPT_DEBUG)
+      cp = NULL;
+   else if (to != NULL) {
       cp = savestr(skinned_name(to));
       for (cq = cp; *cq != '\0' && *cq != '@'; ++cq)
          ;
@@ -1536,6 +1539,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    size_t vas_count, i, j;
    char **vas, *cp;
    char const **args;
+   bool_t snda;
    NYD_ENTER;
 
    if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
@@ -1551,15 +1555,19 @@ __mta_prepare_args(struct name *to, struct header *hp)
    i = 4 + smopts_count + vas_count + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
-   args[0] = ok_vlook(sendmail_progname);
-   if (args[0] == NULL || *args[0] == '\0')
+   if ((args[0] = ok_vlook(sendmail_progname)) == NULL || *args[0] == '\0')
       args[0] = SENDMAIL_PROGNAME;
-   args[1] = "-i";
-   i = 2;
-   if (ok_blook(metoo))
-      args[i++] = "-m";
-   if (options & OPT_VERB)
-      args[i++] = "-v";
+
+   if ((snda = ok_blook(sendmail_no_default_arguments)))
+      i = 1;
+   else {
+      args[1] = "-i";
+      i = 2;
+      if (ok_blook(metoo))
+         args[i++] = "-m";
+      if (options & OPT_VERB)
+         args[i++] = "-v";
+   }
 
    for (j = 0; j < smopts_count; ++j, ++i)
       args[i] = smopts[j];
@@ -1570,7 +1578,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
     * The interdependency with -t has been resolved in _puthead() */
-   if (options & OPT_r_FLAG) {
+   if (!snda && (options & OPT_r_FLAG)) {
       struct name const *np;
 
       if (hp != NULL && (np = hp->h_from) != NULL) {
@@ -1644,7 +1652,7 @@ _message_id(struct header *hp)
    struct tm *tmp;
    NYD_ENTER;
 
-   if (hp->h_message_id != NULL) {
+   if (hp != NULL && hp->h_message_id != NULL) {
       i = strlen(hp->h_message_id->n_name);
       rl = sizeof("Message-ID: <>") -1;
       rv = salloc(rl + i +1);
@@ -1867,11 +1875,9 @@ mail(struct name *to, struct name *cc, struct name *bcc, char *subject,
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
-   if (!(options & OPT_t_FLAG)) {
-      head.h_to = to;
-      head.h_cc = cc;
-      head.h_bcc = bcc;
-   }
+   head.h_to = to;
+   head.h_cc = cc;
+   head.h_bcc = bcc;
    head.h_attach = attach;
 
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);

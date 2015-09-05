@@ -567,7 +567,7 @@ jheadq:
          /* XXX but - ensure is+1>=ie, then??
           * xxx and/or - what about resetting lnlen; that contra
           * xxx dicts input==1 input line assertion, though */
-         if (c == '\n' || is == ie || *is == '\n')
+         if (c == '\n' || is == ie || is[0] == '\n' || is[1] == '\n')
             continue;
 jsoftnl:
          qp[0] = '=';
@@ -749,6 +749,9 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    char *b64;
    NYD_ENTER;
 
+   assert(!(flags & B64_NOPAD) ||
+      !(flags & (B64_CRLF | B64_LF | B64_MULTILINE)));
+
    p = (ui8_t const*)in->s;
 
    if (!(flags & B64_BUF)) {
@@ -805,7 +808,10 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
          *b64++ = '\r';
       if (flags & (B64_CRLF | B64_LF))
          *b64++ = '\n';
-   }
+   } else if (flags & B64_NOPAD)
+      while (b64 != out->s && b64[-1] == '=')
+         --b64;
+
    out->l = PTR2SIZE(b64 - out->s);
    out->s[out->l] = '\0';
 
@@ -820,7 +826,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
          if (c == '+')
             *b64 = '-';
          else if (c == '/')
-            *b64 = '_';
+               *b64 = '_';
    }
    NYD_LEAVE;
    return out;

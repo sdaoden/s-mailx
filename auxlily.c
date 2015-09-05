@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -1014,15 +1010,17 @@ getrandstring(size_t length)
       _rand_init();
 #endif
 
-   data = ac_alloc(length);
+   /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
+    * with PAD stripped is still longer than what the user requests, easy way */
+   data = ac_alloc(i = length + 3);
 
 #ifndef HAVE_POSIX_RANDOM
-   for (i = length; i-- > 0;)
+   while (i-- > 0)
       data[i] = (char)_rand_get8();
 #else
    {  char *cp = data;
 
-      for (i = length; i > 0;) {
+      while (i > 0) {
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
@@ -1039,9 +1037,11 @@ getrandstring(size_t length)
    }
 #endif
 
-   b64_encode_buf(&b64, data, length, B64_SALLOC | B64_RFC4648URL);
+   b64_encode_buf(&b64, data, length + 3,
+      B64_SALLOC | B64_RFC4648URL | B64_NOPAD);
    ac_free(data);
 
+   assert(b64.l >= length);
    b64.s[length] = '\0';
    NYD_LEAVE;
    return b64.s;

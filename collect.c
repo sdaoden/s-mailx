@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -133,7 +129,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
    while ((ap = ap->a_flink) != NULL);
 
    pstate &= ~PS_HOOK_MASK;
-   execute(linebuf, TRU1, linesize);
+   execute(linebuf, linesize);
 
    if (mnbuf != NULL) {
       if (strncmp(mnbuf, mailname, mnlen))
@@ -552,7 +548,7 @@ _collint(int s)
       siglongjmp(_coll_jmp, 1);
    }
    exit_status |= EXIT_SEND_ERROR;
-   if (ok_blook(save) && s != 0)
+   if (s != 0)
       savedeadletter(_coll_fp, 1);
    /* Aborting message, no need to fflush() .. */
    siglongjmp(_coll_abort, 1);
@@ -1075,6 +1071,9 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
    FILE *dbuf;
    ul_i lines, bytes;
    NYD_ENTER;
+
+   if ((options & OPT_DEBUG) || !ok_blook(save))
+      goto jleave;
 
    if (fflush_rewind_first) {
       fflush(fp);

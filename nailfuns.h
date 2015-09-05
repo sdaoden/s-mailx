@@ -4,9 +4,9 @@
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
-/*-
- * Copyright (c) 1992, 1993
- * The Regents of the University of California.  All rights reserved.
+/*
+ * Copyright (c) 1980, 1993
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -791,8 +787,10 @@ FL int         readline_input(char const *prompt, bool_t nl_escape,
  * This may only be called from toplevel (not during PS_SOURCING).
  * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility */
-FL char *      readstr_input(char const *prompt, char const *string);
+ * mode, otherwise this argument is ignored for reproducibility.
+ * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
+FL char *      n_input_cp_addhist(char const *prompt, char const *string,
+                  bool_t isgabby);
 
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
@@ -898,8 +896,10 @@ FL void        load(char const *name);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * PS_SOURCING so that others will realize that they are no longer reading from
- * a tty (in all probability) */
+ * a tty (in all probability).
+ * The latter won't return failure (TODO should be replaced by "-f FILE") */
 FL int         c_source(void *v);
+FL int         c_source_if(void *v);
 
 /* Pop the current input back to the previous level.  Update the PS_SOURCING
  * flag as appropriate */
@@ -926,9 +926,10 @@ FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
-/* Extract some header fields (see -t documentation) from a message.
+/* Extract some header fields (see e.g. -t documentation) from a message.
  * If options&OPT_t_FLAG *and* pstate&PS_t_FLAG are both set a number of
- * additional header fields are understood.
+ * additional header fields are understood and address joining is performed as
+ * necessary, and the subject is treated with additional care, too.
  * If pstate&PS_t_FLAG is set but OPT_t_FLAG is no more, From: will not be
  * assigned no more.
  * This calls expandaddr() on some headers and sets checkaddr_err if that is
@@ -1141,8 +1142,8 @@ FL int         newmailinfo(int omsgCount);
 FL bool_t      commands(void);
 
 /* TODO drop execute() is the legacy version of evaluate().
- * Contxt is non-zero if called while composing mail */
-FL int         execute(char *linebuf, int contxt, size_t linesize);
+ * It assumes we've been invoked recursively */
+FL int         execute(char *linebuf, size_t linesize);
 
 /* Evaluate a single command.
  * .ev_add_history and .ev_new_content will be updated upon success.
@@ -1384,6 +1385,14 @@ FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 FL char *      mime_param_boundary_create(void);
 
 /*
+ * mime_parse.c
+ */
+
+/* Create MIME part object tree for and of mp */
+FL struct mimepart * mime_parse_msg(struct message *mp,
+                        enum mime_parse_flags mpf);
+
+/*
  * mime_types.c
  */
 
@@ -1440,7 +1449,7 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
-/* Get a lextract() list via readstr_input(), reassigning to *np* */
+/* Get a lextract() list via n_input_cp_addhist(), reassigning to *np* */
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
@@ -1571,6 +1580,7 @@ FL FILE *      Zopen(char const *file, char const *oflags);
 /* Create a temporary file in tempdir, use prefix for its name, store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
  * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
+ * One of OF_WRONLY and OF_RDWR must be set.
  * mode specifies the access mode of the newly created temporary file */
 FL FILE *      Ftmp(char **fn, char const *prefix, enum oflags oflags,
                   int mode);

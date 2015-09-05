@@ -17,19 +17,18 @@
 # - Follow lines may be used: instead of repeating MIMETYPE, start the next
 #   line with whitespace.  (Intervening comment lines may be used.)
 # - TYPEMARKER: an at sign (@) will tag the MIME type as plain text (unless
-#   the user installs a specific pipe handler for the type in question).
+#   the user installs a specific handler for the type in question).
 #   . "@t@" is identical to plain "@".
 #   . "@h@" will tag the MIME type as HTML tagsoup.
 #   . "@H@" is identical to "@h@", but won't treat the MIME type as plain
 #      text if the builtin HTML tagsoup parser isn't available, i.e., it
-#      requires an explicit pipe-MIMETYPE (or pipe-EXTENSION) handler.
-#   [Maybe later: . "@x@" and "@X@" are like h/H, but for XML tagsoup.]
+#      requires an explicit MIME type handler to be set.
 #
 # Syntax restrictions:
 # - Comments must be lines of their own.
-# - Only MIME types for which we have mime.c:enum mime_type constants are
-#   allowed in this file here.
-# - MIME types without any plain extensions are not handled by mk-mk.in.
+# - Only MIME types for which we have a type constant allocated in
+#   mime_types.c:enum mime_type are allowed in this file here.
+# - MIME types without any file extensions are not handled by mk-mk.in.
 # - Note that the order of types and extensions is preserved ...
 # - Note that at least one builtin type is required (empty C array)
 

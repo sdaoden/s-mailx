@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -851,24 +847,63 @@ scaninit(void)
 static bool_t
 _matchsender(struct message *mp, char const *str, bool_t allnet)
 {
+   char const *str_base, *np_base, *np;
+   char sc, nc;
    bool_t rv;
    NYD_ENTER;
 
-   if (allnet) {
-      char *cp = nameof(mp, 0);
-
-      do {
-         if ((*cp == '@' || *cp == '\0') && (*str == '@' || *str == '\0')) {
-            rv = TRU1;
-            goto jleave;
-         }
-         if (*cp != *str)
-            break;
-      } while (++cp, *str++ != '\0');
+   /* Empty string doesn't match */
+   if (*(str_base = str) == '\0') {
       rv = FAL0;
       goto jleave;
    }
-   rv = !strcmp(str, (*(ok_blook(showname) ? &realname : &skin))(name1(mp, 0)));
+
+   /* *allnet* is POSIX and, since it explicitly mentions login and user names,
+    * most likely case-sensitive.  XXX Still allow substr matching, though
+    * XXX possibly the first letter should be case-insensitive, then? */
+   if (allnet) {
+      np_base = np = nameof(mp, 0);
+      for (;;) {
+         if ((sc = *str++) == '@')
+            sc = '\0';
+         if ((nc = *np++) == '@' || nc == '\0' || sc == '\0')
+            break;
+         if (sc != nc) {
+            np = ++np_base;
+            str = str_base;
+         }
+      }
+      rv = (sc == '\0');
+   } else {
+      char const *real_base = name1(mp, 0);
+      bool_t again = ok_blook(showname);
+
+      /* TODO POSIX says ~"match any address as shown in header overview",
+       * TODO but a normalized match would be more sane i guess.
+       * TODO struct name should gain a comparison method, normalize realname
+       * TODO content (in TODO) and thus match as likewise
+       * TODO "Buddy (Today) <here>" and "(Now) Buddy <here>" */
+jagain:
+      np_base = np = again ? realname(real_base) : skin(real_base);
+      for (;;) {
+         sc = *str++;
+         if ((nc = *np++) == '\0' || sc == '\0')
+            break;
+         sc = upperconv(sc);
+         nc = upperconv(nc);
+         if (sc != nc) {
+            np = ++np_base;
+            str = str_base;
+         }
+      }
+
+      /* And really if i want to match 'on@' then i want it to match even if
+       * *showname* is set! */
+      if (!(rv = (sc == '\0')) && again) {
+         again = FAL0;
+         goto jagain;
+      }
+   }
 jleave:
    NYD_LEAVE;
    return rv;
@@ -955,7 +990,8 @@ static bool_t
 _match_at(struct message *mp, struct search_expr *sep)
 {
    struct str in, out;
-   char *nfield, *cfield;
+   char *nfield;
+   char const *cfield;
    bool_t rv = FAL0;
    NYD_ENTER;
 
@@ -968,28 +1004,72 @@ _match_at(struct message *mp, struct search_expr *sep)
 jmsg:
          if ((rv = message_match(mp, sep, rv)))
             break;
-      } else if (!asccasecmp(cfield, "text") ||
+         continue;
+      }
+      if (!asccasecmp(cfield, "text") ||
             (cfield[1] == '\0' && cfield[0] == '=')) {
          rv = TRU1;
          goto jmsg;
-      } else if (!asccasecmp(cfield, "header") ||
+      }
+
+      if (!asccasecmp(cfield, "header") ||
             (cfield[1] == '\0' && cfield[0] == '<')) {
          if ((rv = header_match(mp, sep)))
             break;
-      } else if ((in.s = hfieldX(cfield, mp)) == NULL)
          continue;
-      else {
-         in.l = strlen(in.s);
-         mime_fromhdr(&in, &out, TD_ICONV);
+      }
+
+      /* This is not a special name, so take care for the "skin" prefix !
+       * and possible abbreviations */
+      {
+         struct name *np;
+         bool_t doskin;
+
+         if ((doskin = (*cfield == '~')))
+            ++cfield;
+         if (cfield[0] != '\0' && cfield[1] == '\0') {
+            char const x[][8] = {
+               "from", "to", "cc", "bcc", "subject"
+            };
+            size_t i;
+            char c1 = lowerconv(cfield[0]);
+
+            for (i = 0; i < NELEM(x); ++i) {
+               if (c1 == x[i][0]) {
+                  cfield = x[i];
+                  break;
+               }
+            }
+         }
+         if ((in.s = hfieldX(cfield, mp)) == NULL)
+            continue;
+
+         /* Shall we split into address list and match the addresses only? */
+         if (doskin) {
+            np = lextract(in.s, GSKIN);
+            if (np == NULL)
+               continue;
+            out.s = np->n_name;
+         } else {
+            np = NULL;
+            in.l = strlen(in.s);
+            mime_fromhdr(&in, &out, TD_ICONV);
+         }
+jnext_name:
 #ifdef HAVE_REGEX
          if (sep->ss_sexpr == NULL)
             rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
          else
 #endif
             rv = substr(out.s, sep->ss_sexpr);
-         free(out.s);
+         if (np == NULL)
+            free(out.s);
          if (rv)
             break;
+         if (np != NULL && (np = np->n_flink) != NULL) {
+            out.s = np->n_name;
+            goto jnext_name;
+         }
       }
    }
    NYD_LEAVE;

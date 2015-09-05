@@ -2,7 +2,7 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
-ARGS='-n# -Sstealthmua -Sexpandaddr=restrict -Sdotlock-ignore-error'
+ARGS='-n# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
@@ -823,13 +823,14 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    fi
    ${rm} -rf ./VERIFY
 
-   printf "behave:s/mime:encrypt/decrypt: "
+   # (signing +) encryption / decryption
    ${cat} <<-_EOT > ./tsendmail.sh
 		#!/bin/sh -
 		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
 	_EOT
    chmod 0755 ./tsendmail.sh
 
+   printf "behave:s/mime:encrypt+sign/decrypt+verify: "
    echo bla |
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
@@ -854,6 +855,42 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
+   ${sed} -e '/^X-Decoding-Date/d' \
+         -e \
+         '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
+      < ./DECRYPT > ./ENCRYPT
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '82649489 454'
+
+   ${rm} -f ./DECRYPT
+   printf "behave:s/mime:encrypt/decrypt: "
+   echo bla |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Sfrom=test@localhost \
+      -s 'S/MIME test' recei@ver.com
+   printf 'decrypt ./DECRYPT\nx\n' |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
+      -Ssendmail=./tsendmail.sh \
+      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Sfrom=test@localhost \
+      -Sbatch-exit-on-error -R \
+      -f ./ENCRYPT >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      ESTAT=1
+      printf 'error: decryption failed\n'
+      # FALLTHRU
+   fi
+   ${sed} -e '/^X-Decoding-Date/d' \
+      < ./DECRYPT > ./ENCRYPT
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2694938815 239'
+
    ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
       ./tkey.pem ./tcert.pem ./tpair.pem
 }
@@ -915,6 +952,15 @@ printf \
 "345\n"\
 "Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12"\
 "3456\n"\
+"QP am Zeilenende über soft-nl hinweg\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"ö123\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"1ö23\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"12ö3\n"\
+"Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende."\
+"123ö\n"\
 "=VIER = EQUAL SIGNS=ON A LINE=\n"\
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
@@ -944,29 +990,29 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '3498258986 5631'
+   cksum_test content:001-0 "${MBOX}" '3310338268 6375'
 
    ${rm} -f "${MBOX}"
    < "${BODY}" MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '3916146590 5630'
+   cksum_test content:001 "${MBOX}" '62505451 6374'
 
    ${rm} -f "${MBOX}"
    < /dev/null MAILRC=/dev/null \
    "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
       -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '3498258986 5631'
+   cksum_test content:002 "${MBOX}" '3310338268 6375'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '3916146590 5630'
+   cksum_test content:003 "${MBOX}" '62505451 6374'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '4140682175 72'
+   cksum_test content:004 "${MBOX}" '3729232114 11'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
@@ -974,7 +1020,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '3503215815 245'
+   cksum_test content:005 "${MBOX}" '773028641 184'
 
    ## $BODY CHANGED
 
@@ -984,7 +1030,7 @@ gggggggggggggggg"
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '11112309 106'
+   cksum_test content:006 "${MBOX}" '654030565 45'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    # TODO Note: because of our weird putline() handling in <-> collect.c
@@ -1056,7 +1102,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '1276108207 271'
+   cksum_test content:012 "${MBOX}" '2467265470 210'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -1067,7 +1113,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '3677630181 210'
+   cksum_test content:013 "${MBOX}" '4119922611 149'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot
@@ -1098,6 +1144,10 @@ gggggggggggggggg"
       hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
    cksum_test content:14 "${MBOX}" '1106643854 2453'
+   # `resend' test
+   printf "Resend ${BODY}\nx\n" |
+   MAILRC=/dev/null "${SNAIL}" ${ARGS} -f "${MBOX}"
+   cksum_test content:14-2 "${MBOX}" '1106643854 2453'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }

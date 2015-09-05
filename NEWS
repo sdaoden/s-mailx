@@ -20,6 +20,126 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.5 ("Hen Harrier"), 2015-09-05
+-----------------------------------
+
+Credits John Dodson, Claudio Cappelli.
+
+We welcome Claudio Cappelli in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- I've forgotten to add obsoletion warning messages in v14.8.4, so
+  running with enabled -d/*debug* -vv/2x*verbose* may be useful.
+  Sorry! [b3e34db]
+
+- A series of bug FIXes (which caused the "Hen Harrier" in the end):
+
+  . v14.8.4 bug: macro content will be added to the history. [28672e5]
+
+  . Fallout of massive not-yet-dead style and control flow change series
+    in February 2014, I.: the close-on-exec bit of temporary file
+    descriptors wasn't set. [8f58404]
+
+  . Fallout of massive not-yet-dead style and control flow change series
+    in February 2014, II.: temporary files were always created in the
+    current directory.  Aloha, heh. [edc12c8]
+
+  . v14.8.4 bug: when `resend'ing messages a crash would happen when
+    generating the Message-Id: (control flow messed up when hastily
+    implementing extended -t parsing). [9e63ae6]
+    (Hello, Bob Tennent: i finally have added at least a simple `resend'
+    test.  Don't your worry.)
+
+  . v14.8.4 bug: plugged a file descriptor leak in the dotlock code (one
+    side of the control pipe was leaked upon success; there you see how
+    large ulimit(3) limits are by default today). [ed5c8cf]
+
+- When using -t and a template message recipients given on the command
+  line will now be joined into the message instead of being discarded.
+  [9eb4cbf]
+
+ChangeLog
+^^^^^^^^^
+
+- The `set' command will now mark out assembled variables if *debug* or
+  2x*verbose* is set. [2b6e64a]
+
+- Added *smime-cipher* @433 option (i.e., generic variant of
+  *smime-cipher-USER@HOST*). [58804ea]
+
+- Messages will now _only_ be saved in *DEAD* if *save* is set (POSIX).
+  [3fefac9]
+
+- The (pretty useless for now) `pipe' command will now also print the
+  overall message info (it printed MIME part infos already). [e0a8196]
+
+- NAIL_FILENAME_GENERATED is now nothing but a random string. [36097df]
+
+- *debug* now implies no*record* and no*save*. [ca9f512]
+
+- After almost three years i've finally heard what John Dodson said and
+  changed/restored behaviour of plain "address" message specifications
+  to reflect the original intent (and a bit POSIX) so we now have
+    A case-insensitive “any substring matches” search against the
+    ‘From:’ header, which will match addresses (too) even if
+    showname[339] is set [things are different if *allnet* is set]
+  [44cec1f]  (John Dodson)
+
+- ..and therefore we need the possibility to somehow perform "exact
+  boundary" matches: for this i've extended the "@" message
+  specification with a header-name "~" prefix and header abbreviations:
+    ‘f’, ‘t’, ‘c’, ‘b’ and ‘s’ will match ‘From’, ‘To’, ‘Cc’, ‘Bcc’ and
+    ‘Subject’, respectively and case-insensitively.
+  And:
+    This message specification performs full text comparison, but even
+    with regular expression support it is almost impossible to write a
+    search expression that savely matches only a specific address
+    domain.  To request that the content of the header is treated as a
+    list of addresses, and to strip those down to the plain email
+    address which the search expression is to be matched against, pre‐
+    fix the header name (abbreviation) with a tilde ‘~’:
+      '@~f@@a\.safe\.domain\.match$'
+  [50c2816]
+
+- New option: *sendmail-no-default-arguments* @426 [d983036]
+  (Claudio Cappelli)
+
+- Do no longer make a difference in "no mail for user" and "missing
+  system mailbox".  The latter caused yet an annoying error message even
+  with *emptystart*. [7abff87]
+
+- New command `source_if' @187 is like `source' but don't fails if the
+  file cannot be loaded.  That is to say, we do not yet support
+  "-f FILE@ tests nor `test -f FILE` shell commands for `if', sigh.
+  [893bd5f]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Unless Gunnar Ritter is directly affected the fourth clause of the BSD
+  copyright has been dropped, as has been done for NetBSD Mail.
+  [b9ea247]
+
+- Quoted-printable encoding will avoid printing a soft newline if only
+  a single character is about to follow. [6b31542]
+
+- The configuration script now shows what it is doing at the beginning,
+  to overcome those hangs that can be seen especially in VMs. [4c29cea]
+
+- The configuration will do an automatic "make clean" when the
+  configuration had been updated. [9706734]
+
+- We no longer generate a MIME message unless that is necessary.  I.e.,
+  a plain 7-bit (US-ASCII) message without attachments send from
+  a system daemon is a plain RFC 822/2822/5322 message and doesn't
+  require any MIME header. [824257a]
+
+- To avoid that DNS resolver becomes unusable due to ^C interruption.
+  Also fixes a possible leak in non-getaddrinfo(3) codepath (old boxes).
+  [767897a]
+
 v14.8.4 ("Nameless bird (shot by Hemingway)", 2015-08-04
 --------------------------------------------------------
 
@@ -71,7 +191,7 @@ NOTES, ChangeLog (packager-affine)
     chance of being misused (by itself).  I.e., it does so before
     raising its privileges, say.
 
-  [d5ec3cb]
+  [d5ec3cb,b29e2c8]
 
 - The predefined CONFIG=urations have been changed a bit and now
   "require" more options than they did before.

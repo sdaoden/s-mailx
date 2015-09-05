@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -134,6 +130,8 @@
      DS(N_("Like \"save\", but derive filename from first sender")) },
    { "source", &c_source, (M | R | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
+   { "source_if", &c_source_if, (M | R | RAWLIST), 1, 1
+     DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (H | M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000

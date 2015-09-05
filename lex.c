@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -665,12 +661,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
 
    if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
-jnonmail:
       if (!(fm & FEDIT_NEWMAIL)) {
-         if (!ok_blook(emptystart))
 jnomail:
+         if (!ok_blook(emptystart))
             n_err(_("No mail for %s\n"), who);
       }
+jnonmail:
       rv = 1;
       goto jleave;
    }
@@ -879,13 +875,12 @@ jreadline:
 }
 
 FL int
-execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
+execute(char *linebuf, size_t linesize) /* XXX LEGACY */
 {
    struct eval_ctx ev;
 #ifdef HAVE_COLOUR
    struct colour_table *ct_save;
 #endif
-   char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
    int rv;
    NYD_ENTER;
 
@@ -900,12 +895,8 @@ execute(char *linebuf, int contxt, size_t linesize) /* XXX LEGACY */
    memset(&ev, 0, sizeof ev);
    ev.ev_line.s = linebuf;
    ev.ev_line.l = linesize;
-   ev.ev_is_recursive = (contxt != 0);
-   temporary_orig_line = contxt ? savestr(linebuf) : NULL;
+   ev.ev_is_recursive = TRU1;
    rv = evaluate(&ev);
-
-   if (contxt && temporary_orig_line != NULL)
-      tty_addhist(temporary_orig_line, TRU1);
 
 #ifdef HAVE_COLOUR
    colour_table = ct_save;

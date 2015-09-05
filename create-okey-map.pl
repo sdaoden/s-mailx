@@ -56,6 +56,7 @@ sub parse_nail_h {
 
       # An entry may have a comment with special directives
       /^\s*(\w+),?\s*(?:\/\*\s*(?:{(.*)})\s*\*\/\s*)?$/;
+      next unless $1;
       my ($k, $x) = ($1, $2);
       my %vals;
       $vals{enum} = $k;

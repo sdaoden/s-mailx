@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -78,13 +74,13 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    ap->a_content_type = mime_type_by_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
-      ap->a_content_type = readstr_input(prefix, ap->a_content_type);
+      ap->a_content_type = n_input_cp_addhist(prefix, ap->a_content_type, TRU1);
    }
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Disposition: ", number);
-      if ((ap->a_content_disposition = readstr_input(prefix,
-            ap->a_content_disposition)) == NULL)
+      if ((ap->a_content_disposition = n_input_cp_addhist(prefix,
+            ap->a_content_disposition, TRU1)) == NULL)
          goto jcdis;
    } else
 jcdis:
@@ -92,14 +88,14 @@ jcdis:
 
    if (number > 0 && ok_blook(attachment_ask_content_id)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
-      ap->a_content_id = readstr_input(prefix, ap->a_content_id);
+      ap->a_content_id = n_input_cp_addhist(prefix, ap->a_content_id, TRU1);
    } else
       ap->a_content_id = NULL;
 
    if (number > 0 && ok_blook(attachment_ask_content_description)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Description: ", number);
-      ap->a_content_description = readstr_input(prefix,
-            ap->a_content_description);
+      ap->a_content_description = n_input_cp_addhist(prefix,
+            ap->a_content_description, TRU1);
    }
    NYD_LEAVE;
    return ap;
@@ -151,7 +147,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    for (;;) {
       if ((cp = ap->a_name) != NULL)
          cp = fexpand_nshell_quote(cp);
-      if ((cp = readstr_input(prefix, cp)) == NULL) {
+      if ((cp = n_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
          goto jleave;
@@ -206,7 +202,7 @@ jcs:
       number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
-   cp = ap->a_input_charset = readstr_input(prefix, defcs);
+   cp = ap->a_input_charset = n_input_cp_addhist(prefix, defcs, TRU1);
 #ifdef HAVE_ICONV
    if (!(options & OPT_INTERACTIVE)) {
 #endif
@@ -219,7 +215,7 @@ jcs:
       _("#%" PRIu32 "\toutput (send) charset: "), number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
-   defcs = ap->a_charset = readstr_input(prefix, defcs);
+   defcs = ap->a_charset = n_input_cp_addhist(prefix, defcs, TRU1);
 
    /* Input, no output -> input=as given, output=no conversion at all */
    if (cp != NULL && defcs == NULL) {

@@ -6,7 +6,7 @@
  */
 /*
  * Copyright (c) 1980, 1993
- * The Regents of the University of California.  All rights reserved.
+ *      The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,11 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by the University of
- *    California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -722,6 +718,12 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
+   if ((pstate & PS_t_FLAG) && (options & OPT_t_FLAG)) {
+      hq->h_to = hp->h_to;
+      hq->h_cc = hp->h_cc;
+      hq->h_bcc = hp->h_bcc;
+   }
+
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
 
@@ -836,7 +838,9 @@ jebadhead:
       hp->h_replyto = hq->h_replyto;
       hp->h_sender = hq->h_sender;
       hp->h_organization = hq->h_organization;
-      hp->h_subject = hq->h_subject;
+      if (hq->h_subject != NULL || !(pstate & PS_t_FLAG) ||
+            !(options & OPT_t_FLAG))
+         hp->h_subject = hq->h_subject;
 
       if (pstate & PS_t_FLAG) {
          hp->h_ref = hq->h_ref;
@@ -1068,6 +1072,7 @@ expandaddr_to_eaf(void)
                }
                break;
             } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
+               OBSOLETE(_("*expandaddr*: \"noalias\" is henceforth \"-name\""));
                rv &= ~EAF_NAME;
                break;
             }
@@ -1969,7 +1974,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
    if (gflags & GTO)
       hp->h_to = grab_names("To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
    if (gflags & GCC)
       hp->h_cc = grab_names("Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
@@ -1990,11 +1995,12 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
             GEXTRA | GFULL);
       if (hp->h_organization == NULL)
          hp->h_organization = ok_vlook(ORGANIZATION);
-      hp->h_organization = readstr_input("Organization: ", hp->h_organization);
+      hp->h_organization = n_input_cp_addhist("Organization: ",
+            hp->h_organization, TRU1);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = readstr_input("Subject: ", hp->h_subject);
+      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
 
    NYD_LEAVE;
    return errs;
