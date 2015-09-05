@@ -12,7 +12,7 @@ I n s t a l l i n g  S - n a i l
 --------------
 
 System specific notes can be found in the next section.
-All (optional) features are adjustable and documented in "make.rc".
+All (optional) features are documented (and adjustable) in "make.rc".
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in "make.rc" (if any):
 
@@ -161,8 +161,8 @@ would contact s-nail-users@!
 ---------------------------
 
 Even worse!  This should not happen if configuration succeeded!  It
-would be very kind and highly appreciated if you report this to
-s-nail-users@.
+would be very kind and highly appreciated if you would report this
+to s-nail-users@.
 
 1.3 How can i enable debugging?
 -------------------------------
@@ -173,11 +173,11 @@ Please ensure WANT_DEBUG=yes is enabled during compilation, as in
 
 If $WANT_AUTOCC is enabled then the build system should automatically
 adjust the compiler flags accordingly, please see "make.rc" for more.
-There is also a "devel"opment target which does most of this by itself:
+There is also a `devel'opment target which does most of this by itself:
 
   $ make devel
 
-$WANT_DEBUG ("devel") will enable memory bound debug canaries and
+$WANT_DEBUG (`devel') will enable memory bound debug canaries and
 Not-Yet-Dead function graph listings etc.  Whereas the latter will try
 to write its listing into a file named after your favourite MUA in
 your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
@@ -226,45 +226,38 @@ Unless otherwise noted the following applies to saying "$ make" and
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
-  Linux 3.17.6-1-ARCH x86_64
-  - gcc (GCC) 5.2.0 [5.2.0-1]
+  Latest as of 2015-09-15, clang(1) and gcc(1).
+  - gcc
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
       -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
       help.
       Ditto, 'gl.gl_slot' and 'gl.gl_htable'.
-  - clang version 3.6.2 (tags/RELEASE_362/final) [3.6.2-1]
-    + :)
 
 . Void Linux <http://www.voidlinux.eu/>
-  Void GNU/Linux 3.19.3_1 i686
-  - gcc (GCC) 4.9.2 [gcc-4.9.2_2]
-    + Faulty message on longjmp() clobbering (of a const variable).
+  It's too hot in Summer!
 
 . CRUX Linux <http://www.crux.nu/>
-  CRUX 3.1 (rc1) Linux 3.12.17 x86_64.
-  - gcc (CRUX) 4.8.2.
+  CRUX 3.1, gcc(1).
+  - gcc
     + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
       'gl.gl_group'.
       Ditto 'vc.vc_prime'.
 
 . FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.1-RELEASE amd64
-  - FreeBSD clang version 3.4.1 (tags/RELEASE_34/dot1-final 208032) 20140512
-    + :)
+  FreeBSD 10.2, clang(1) and gcc6(1).
 
 . OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.8-beta (GENERIC) #972: Sun Jul  5 18:46:11 MDT 2015
-  - gcc (GCC) 4.2.1 20070719.
+  OpenBSD 5.8-beta, gcc(1)
+  - gcc
     + Faulty message on longjmp() clobbering (of a const variable).
       And such.  Just ignore that.
     + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
       'gl.gl_group'.
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 4.2-RELEASE DragonFly v4.2.1-RELEASE
-  - gcc 5.1.1 [DragonFly] Release/2015-05-25
-    + I will never get iconv(3) right for DragonFly it seems.
+  DragonFly 4.2-RELEASE DragonFly v4.2.1-RELEASE, gcc(1)
+  + I will never get iconv(3) right for DragonFly it seems.
 
 . NetBSD <https://www.netbsd.org/>
   + Show work.
@@ -274,9 +267,6 @@ Unless otherwise noted the following applies to saying "$ make" and
     their Solaris build cluster!
   - According to standards(5) we require the /usr/xpg4 environment, and
     will bail if we cannot find it.
-  - I couldn't get us going on SunOS 5.9: the build system had to be
-    extended to check for UINTPTR_MAX being defined as the empty string
-    and similar very special things.
   - With $WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     $WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
@@ -286,27 +276,20 @@ Unless otherwise noted the following applies to saying "$ make" and
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.  (A future version of S-nail will
     use different testing, but until then: Sorry!)
-  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
-  - gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
-    + A lot of warnings on longjmp() clobbering.
-  SunOS 5.10 Generic_150400-17 sun4v sparc SUNW,SPARC-Enterprise-T5220
-  - cc: Sun C 5.9 SunOS_sparc Patch 124867-16 2010/08/11
-    + Some harmless warnings.
-  SunOS 5.10 Generic_147441-19 i86pc i386 i86pc
-  - cc: Sun C 5.9 SunOS_i386 Patch 124868-15 2010/08/11
-    + Some harmless warnings.
-  SunOS 5.11 11.2 sun4u sparc SUNW,SPARC-Enterprise
-  - (GCC) 4.9.2
-    + We forcefully disable stack protectors on SunOS/gcc because of
-      linking errors:
+  - I couldn't get us going on SunOS 5.9: the build system had to be
+    extended to check for UINTPTR_MAX being defined as the empty string
+    and similar very special things.
+  - The OpenCSW build cluster consists of SunOS 5.10 and SunOS 5.11
+    machines under SPARC and i386, and
+      make&&make test&&make devel&&make test
+    succeeded on all of them on 2015-09-04 (-03?).  However, some notes:
+    + We may forcefully disable stack protectors on SunOS/gcc because of
+      linking errors seen on earlier tests:
         Undefined                       first referenced
          symbol                             in file
         __stack_chk_fail                    accmacvar.o
         __stack_chk_guard                   accmacvar.o
         ld: fatal: symbol referencing errors
-    + Quite some (false) warnings on maybe-uninitialized.
-  SunOS 5.11 11.0 i86pc i386 i86pc
-  - gcc (GCC) 4.9.2
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
@@ -315,24 +298,13 @@ Unless otherwise noted the following applies to saying "$ make" and
       e.g., in conjunction with $WANT_AUTOCC add this:
        ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
-. Mac OS X <https://www.apple.com/>
-  (Snow Leopard) Darwin 10.8.0 i386
-  + Worked a thousand hours.
-  - gcc-mp-4.8 (MacPorts gcc48 4.8.2_0) 4.8.2.
-  - clang version 3.4 (branches/release_34 197314)
-    Target: x86_64-apple-darwin10.8.0
-    Thread model: posix.
-  - i686-apple-darwin10-gcc-4.2.1 (GCC) 4.2.1 (Apple Inc. build 5666)
-    (dot 3).
-  - Apple clang version 1.7 (tags/Apple/clang-77) (based on LLVM
-    2.9svn).
-
 . UnixWare 7.1.4.
   + Note: it is no longer possible to use the `install' rule, because
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + You'll see some harmless and ignorable warnings.
+  + Not tested for v14.8.5, but never seen any problems but some
+    harmless and ignorable compile warnings.
 
 3. Current codebase state
 -------------------------
