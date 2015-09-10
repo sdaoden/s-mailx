@@ -137,6 +137,9 @@ _update-release:
 	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
 	( \
 	cd "$${UAGENT}-$${REL}" &&\
+	\
+	rm -f .gitignore .mailmap \
+	\
 	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
 			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
