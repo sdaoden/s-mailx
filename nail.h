@@ -764,6 +764,7 @@ enum dotlock_state {
    DLS_NONE,
    DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
    DLS_NAMETOOLONG,           /* Lock file name would be too long */
+   DLS_ROFS,                  /* Read-only filesystem (no error, mailbox RO) */
    DLS_NOPERM,                /* No permission to creat lock file */
    DLS_NOEXEC,                /* Privilege separated dotlocker not found */
    DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */

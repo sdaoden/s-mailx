@@ -119,7 +119,7 @@ __dotlock_create_excl(struct dotlock_info *dip, char const *lname)
          close(fd);
          break;
       } else if (errno != EEXIST) {
-         rv = DLS_NOPERM /*| DLS_ABANDON*/;
+         rv = (errno == EROFS) ? DLS_ROFS | DLS_ABANDON : DLS_NOPERM;
          goto jleave;
       } else if (tries >= DOTLOCK_TRIES) {
          rv = DLS_EXIST;

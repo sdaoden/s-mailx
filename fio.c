@@ -549,6 +549,9 @@ _dotlock_main(void)
    enum file_lock_type flt;
    NYD_ENTER;
 
+   /* Ignore SIGPIPE, we'll see EPIPE and "fall through" */
+   safe_signal(SIGPIPE, SIG_IGN);
+
    /* Get the arguments "passed to us" */
    flt = _dotlock_flt;
    fd = _dotlock_fd;
@@ -630,9 +633,6 @@ jislink:
       di.di_lock_name = name;
    }
 
-   /* Ignore SIGPIPE, the child reacts upon EPIPE instead */
-   safe_signal(SIGPIPE, SIG_IGN);
-
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  We don't know wether we have realpath(3) available,
     * and manually resolving the path is due especially given that S-nail
@@ -643,7 +643,19 @@ jislink:
     * either assume a directory we are not allowed to write in, or that we run
     * via -u/$USER/%USER as someone else, in which case we favour our
     * privilege-separated dotlock process */
-   if (stb.st_uid != user_id || stb.st_gid != group_id || access(".", W_OK)) {
+   assert(cp != NULL); /* Ugly: avoid a useless var and reuse that one */
+   if (access(".", W_OK)) {
+      /* This may however also indicate a read-only filesystem, which is not
+       * really an error from our point of view since the mailbox will degrade
+       * to a readonly one for which no dotlock is needed, then, and errors
+       * may arise only due to actions which require box modifications */
+      if (errno == EROFS) {
+         dls = DLS_ROFS | DLS_ABANDON;
+         goto jmsg;
+      }
+      cp = NULL;
+   }
+   if (cp == NULL || stb.st_uid != user_id || stb.st_gid != group_id) {
       char itoabuf[64];
       char const *args[13];
 
@@ -1642,6 +1654,12 @@ jleave:
          emsg = N_("Resulting dotlock filename would be too long\n");
          serrno = EACCES;
          break;
+      case DLS_ROFS:
+         assert(dls & DLS_ABANDON);
+         if (options & OPT_D_V)
+            emsg = N_("  Read-only filesystem, not creating lock file\n");
+         serrno = EROFS;
+         break;
       case DLS_NOPERM:
          if (options & OPT_D_V)
             emsg = N_("  Can't create a lock file! Please check permissions\n"
@@ -1706,8 +1724,9 @@ jleave:
    if (didmsg == TRUM1)
       n_err("\n");
    if (rv == NULL) {
-      if (flocked && serrno != EAGAIN && serrno != EEXIST &&
-            ok_blook(dotlock_ignore_error))
+      if (flocked && (serrno == EROFS ||
+            (serrno != EAGAIN && serrno != EEXIST &&
+             ok_blook(dotlock_ignore_error))))
          rv = (FILE*)-1;
       else
          errno = serrno;
