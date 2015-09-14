@@ -236,8 +236,9 @@ install: _install_echoes mkman.1 mkrc.rc
 	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
 	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
-	if [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then :; else\
-		__copyfile 0444 ./mkrc.rc "$(DESTDIR)$(SYSCONFRC)";\
+	if [ -f "$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)" ]; then :; else\
+		__copyfile 0444 ./mkrc.rc \
+			"$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)";\
 	fi
 
 uninstall:

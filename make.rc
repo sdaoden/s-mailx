@@ -305,11 +305,9 @@ PRIVSEP_USER=root
 SID=s-
 NAIL=nail
 
-# The location of the exemplary resource template.
+# The name of the exemplary resource template.
 # Note 1: it's not overwritten by "make install" if it yet exists!
-# Note 2: it MUST be within $SYSCONFDIR!
-# Note 3: nonetheless ${SYSCONFDIR}/ must be part of this!
-SYSCONFRC="${SYSCONFDIR}/${SID}${NAIL}.rc"
+SYSCONFRC="${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 

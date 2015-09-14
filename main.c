@@ -966,7 +966,7 @@ jgetopt_done:
    spreserve();
 
    if (!(options & OPT_NOSRC) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
-      load(SYSCONFRC);
+      load(SYSCONFDIR "/" SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
    if ((cp = env_vlook("MAILRC", TRU1)) == NULL)
