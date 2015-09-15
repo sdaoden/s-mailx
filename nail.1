@@ -5150,6 +5150,16 @@ file extension), then the original
 .Ql Content-Type:
 will not be overwritten.
 .
+.Mx
+.It Va mime-alternative-favour-rich
+\*(BY If this variable is set then rich MIME alternative parts (e.g.,
+HTML) will be preferred in favour of included plain text versions when
+displaying messages, provided that a handler exists which produces
+output that can be (re)integrated into \*(UA's normal visual display.
+(E.g., at the time of this writing some newsletters ship their full
+content only in the rich HTML part, whereas the plain text part only
+contains topic subjects.)
+.
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 \*(IN \*(OP Used to control usage of the users

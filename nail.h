@@ -1189,6 +1189,7 @@ enum okeys {
    ok_b_message_id_disable,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
+   ok_b_mime_alternative_favour_rich,
    ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,

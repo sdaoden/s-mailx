@@ -710,15 +710,51 @@ jalter_redo:
                   switch (mime_type_handler(&mh, np, action)) {
                   default:
                      mh.mh_flags = MIME_HDL_NULL;
-                     continue;
-                  case MIME_HDL_TEXT:
+                     continue; /* break; break; */
                   case MIME_HDL_PTF:
+                     if (!ok_blook(mime_alternative_favour_rich)) {/* TODO */
+                        struct mimepart *x = np;
+
+                        while ((x = x->m_nextpart) != NULL) {
+                           struct mime_handler mhx;
+
+                           if (x->m_mimecontent == MIME_TEXT_PLAIN ||
+                                 mime_type_handler(&mhx, x, action) ==
+                                    MIME_HDL_TEXT)
+                              break;
+                        }
+                        if (x != NULL)
+                           continue; /* break; break; */
+                        goto jalter_plain;
+                     }
+                     /* FALLTHRU */
+                  case MIME_HDL_TEXT:
                      break;
                   }
                   /* FALLTHRU */
                case MIME_TEXT_PLAIN:
                   if (hadpart)
                      break;
+                  if (ok_blook(mime_alternative_favour_rich)) { /* TODO */
+                     struct mimepart *x = np;
+
+                     /* TODO twice TODO, we should dive into /related and
+                      * TODO check wether that has rich parts! */
+                     while ((x = x->m_nextpart) != NULL) {
+                        struct mime_handler mhx;
+
+                        switch (mime_type_handler(&mhx, x, action)) {
+                        case MIME_HDL_PTF:
+                           break;
+                        default:
+                           continue;
+                        }
+                        break;
+                     }
+                     if (x != NULL)
+                        continue; /* break; break; */
+                  }
+jalter_plain:
                   quoteflt_flush(qf);
                   if (action == SEND_QUOTE && hadpart) {
                      struct quoteflt *dummy = quoteflt_dummy();
