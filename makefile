@@ -33,6 +33,9 @@ odevel:
 	@CONFIG=ODEVEL; export CONFIG;\
 	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
 	LC_ALL=C $(MAKE) -f ./mk.mk all
+d-b:
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
+	LC_ALL=C $(MAKE) -f ./mk.mk all
 
 _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
