@@ -807,31 +807,40 @@ jmulti:
                break;
             case SEND_TODISP:
             case SEND_TODISP_ALL:
-            case SEND_QUOTE_ALL:
-               if (ip->m_mimecontent != MIME_MULTI &&
-                     ip->m_mimecontent != MIME_ALTERNATIVE &&
+               if (ip->m_mimecontent != MIME_ALTERNATIVE &&
                      ip->m_mimecontent != MIME_RELATED &&
-                     ip->m_mimecontent != MIME_DIGEST)
+                     ip->m_mimecontent != MIME_DIGEST &&
+                     ip->m_mimecontent != MIME_MULTI)
                   break;
                _print_part_info(obuf, np, doign, level, qf, stats);
                break;
+            case SEND_QUOTE:
+            case SEND_QUOTE_ALL:
             case SEND_MBOX:
             case SEND_RFC822:
             case SEND_SHOW:
             case SEND_TOSRCH:
-            case SEND_QUOTE:
             case SEND_DECRYPT:
             case SEND_TOPIPE:
                break;
             }
 
             quoteflt_flush(qf);
+            if ((action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
+                  np->m_multipart == NULL && ip->m_parent != NULL) {
+               struct quoteflt *dummy = quoteflt_dummy();
+               _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
+                  NULL);
+               quoteflt_flush(dummy);
+            }
             if (sendpart(zmp, np, obuf, doign, qf, action, stats, level+1) < 0)
                rv = -1;
             quoteflt_reset(qf, origobuf);
 
-            if (action == SEND_QUOTE)
-               break;
+            if (action == SEND_QUOTE) {
+               if (ip->m_mimecontent != MIME_RELATED)
+                  break;
+            }
             if (action == SEND_TOFILE && obuf != origobuf) {
                if (!ispipe)
                   Fclose(obuf);
@@ -849,6 +858,7 @@ jpipe_close:
       case SEND_SHOW:
          break;
       }
+      break;
    }
 
    /* Copy out message body */
