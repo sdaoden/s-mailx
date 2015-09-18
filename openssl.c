@@ -764,7 +764,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
       break;
    }
 
-   if ((fp = Ftmp(NULL, "smimever", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((fp = Ftmp(NULL, "smimever", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -1424,8 +1424,8 @@ smime_sign(FILE *ip, char const *addr)
    if ((md = _smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
-   if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
-         == NULL) {
+   if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+         NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -1534,7 +1534,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    certs = sk_X509_new_null();
    sk_X509_push(certs, cert);
 
-   if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tempfile"), 0);
       goto jerr1;
@@ -1624,7 +1624,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
       Fclose(fp);
    }
 
-   if ((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tempfile"), 0);
       goto j_ferr;
@@ -1741,8 +1741,8 @@ jloop:
    }
    size = m->m_size;
 
-   if ((fp = Ftmp(NULL, "smimecert", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
-         == NULL) {
+   if ((fp = Ftmp(NULL, "smimecert", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+         NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }

@@ -572,8 +572,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
    NYD_ENTER;
 
-   if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
-         0600)) == NULL) {
+   if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
+         == NULL) {
       n_perr(_("temporary mail file"), 0);
       goto jleave;
    }
@@ -1072,7 +1072,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          char *tempEdit;
 
          if ((fout = Ftmp(&tempEdit, "outof",
-               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
+               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)) == NULL) {
             n_perr(_("Creation of temporary image"), 0);
             *senderror = TRU1;
             goto jcant;
@@ -2118,8 +2118,8 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if (_sendout_error < 0)
       n_err(_("Some addressees were classified as \"hard error\"\n"));
 
-   if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
-         0600)) == NULL) {
+   if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
+         == NULL) {
       _sendout_error = TRU1;
       n_perr(_("temporary mail file"), 0);
       goto jleave;

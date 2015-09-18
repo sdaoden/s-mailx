@@ -1600,10 +1600,8 @@ FL FILE *      Zopen(char const *file, char const *oflags);
  * part of the resulting filename, otherwise Ftmp() will fail), store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
  * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
- * One of OF_WRONLY and OF_RDWR must be set.
- * mode specifies the access mode of the newly created temporary file */
-FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags,
-                  int mode);
+ * One of OF_WRONLY and OF_RDWR must be set.  Mode of 0600 is implied */
+FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
 
 /* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
  * called: call this to unlink(2) and free *fn and to rele_all_sigs() */

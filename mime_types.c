@@ -853,8 +853,8 @@ c_mimetype(void *v)
          goto jleave;
       }
 
-      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
-            == NULL) {
+      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;

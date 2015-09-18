@@ -160,8 +160,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    char *tempEdit;
    NYD_ENTER;
 
-   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER,
-         (readonly ? 0400 : 0600))) == NULL) {
+   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER)) == NULL) {
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
@@ -192,11 +191,16 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    fflush(nf);
-   if (fstat(fileno(nf), &statb) == -1)
-      modtime = 0, modsize = 0;
-   else
-      modtime = statb.st_mtime, modsize = statb.st_size;
-   t = ferror(nf);
+   if ((t = ferror(nf)) == 0) {
+      if (fstat(fileno(nf), &statb) == -1)
+         modtime = 0, modsize = 0;
+      else
+         modtime = statb.st_mtime, modsize = statb.st_size;
+
+      if (readonly)
+         t = (fchmod(fileno(nf), S_IRUSR) != 0);
+   }
+
    if (Fclose(nf) < 0 || t != 0) {
       n_perr(tempEdit, 0);
       t = 1;
@@ -227,8 +231,8 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
          (nf = Fopen(tempEdit, "a+")) == NULL)
       n_perr(tempEdit, 0);
 jleave:
-   if (tempEdit != NULL) {
-      unlink(tempEdit);
+   if (tempEdit != NULL) { /* TODO i'd rather do more signal handling */
+      unlink(tempEdit);    /* TODO in here */
       Ftmp_free(&tempEdit);
    }
    NYD_LEAVE;

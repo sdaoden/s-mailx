@@ -237,8 +237,7 @@ _c_ghost(void *v)
    if (*argv == NULL) {
       FILE *fp;
 
-      if ((fp = Ftmp(NULL, "ghost", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-            NULL)
+      if ((fp = Ftmp(NULL, "ghost", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
          fp = stdout;
       for (i = 0, cg = _cmd_ghosts; cg != NULL; cg = cg->next)
          fprintf(fp, "ghost %s \"%s\"\n", cg->name, string_quote(cg->cmd.s));
@@ -1413,7 +1412,7 @@ initbox(char const *name)
     * TODO Well, not true no more except that in parens */
    _update_mailname((name != mailname) ? name : NULL);
 
-   if ((mb.mb_otf = Ftmp(&tempMesg, "tmpbox", OF_WRONLY | OF_HOLDSIGS, 0600)) ==
+   if ((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
          NULL) {
       n_perr(_("temporary mail message file"), 0);
       exit(EXIT_ERR);

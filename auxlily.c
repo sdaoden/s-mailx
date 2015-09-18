@@ -2199,8 +2199,8 @@ jlist: {
          goto jleave;
       }
 
-      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
-            ) == NULL) {
+      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          fprintf(stderr, _("tmpfile"));
          v = NULL;
          goto jleave;
@@ -2566,8 +2566,7 @@ c_smemtrace(void *v)
    NYD_ENTER;
 
    v = (void*)0x1;
-   if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr("tmpfile", 0);
       goto jleave;
    }

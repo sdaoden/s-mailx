@@ -297,7 +297,7 @@ _attach_iconv(struct attachment *ap)
    }
    cnt = fsize(fi);
 
-   if ((fo = Ftmp(NULL, "atic", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((fo = Ftmp(NULL, "aticonv", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("temporary mail file"), 0);
       goto jerr;

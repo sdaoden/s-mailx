@@ -176,8 +176,8 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    rbuf = *qbuf;
 
    if (mhp->mh_flags & MIME_HDL_ISQUOTE) {
-      if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER,
-            0600)) == NULL) {
+      if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          n_perr(_("tmpfile"), 0);
          *qbuf = rbuf;
       }
@@ -949,7 +949,7 @@ jpipe_close:
 
          if ((pbuf = Ftmp((mh.mh_flags & MIME_HDL_TMPF ? &cp : NULL),
                (mh.mh_flags & MIME_HDL_TMPF_FILL ? "mimehdlfill" : "mimehdl"),
-               of, 0600)) == NULL)
+               of)) == NULL)
             goto jesend;
 
          if (mh.mh_flags & MIME_HDL_TMPF) {

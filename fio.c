@@ -1071,8 +1071,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    bool_t rv = FAL0;
    NYD_ENTER;
 
-   if ((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
+   if ((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto j_leave;
 
    if (sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)

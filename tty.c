@@ -427,8 +427,7 @@ jlist: {
    HIST_ENTRY **hl;
    ul_i i, b;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
@@ -648,8 +647,7 @@ jlist: {
    size_t i, b;
    int x;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
@@ -2004,8 +2002,7 @@ jlist: {
    if (_ncl_hist == NULL)
       goto jleave;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;

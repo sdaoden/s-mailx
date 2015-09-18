@@ -196,8 +196,8 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
     * TODO (Or better: only come here.. then!  It is an *object method!* */
    /* TODO Ignoring stat error is easy, huh? */
    if (!stat(mailname, &statb) && statb.st_size > mailsize) {
-      if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER,
-            0600)) == NULL) {
+      if ((obuf = Ftmp(NULL, "edstop", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          n_perr(_("tmpfile"), 0);
          goto jleave;
       }
@@ -368,7 +368,7 @@ jnewmail:
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
       printf(_("New mail has arrived.\n"));
-      rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600);
+      rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
 #ifdef APPEND
@@ -489,7 +489,7 @@ makembox(void) /* TODO oh my god */
    mcount = 0;
    if (!ok_blook(append)) {
       if ((obuf = Ftmp(&tempQuit, "makembox",
-            OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
+            OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)) == NULL) {
          n_perr(_("temporary mail quit file"), 0);
          goto jleave;
       }

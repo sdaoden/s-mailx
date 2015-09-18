@@ -370,8 +370,7 @@ makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if ((nf = Ftmp(NULL, "colhead", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((nf = Ftmp(NULL, "colhead", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
@@ -431,8 +430,7 @@ mespipe(char *cmd)
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
       n_perr(_("temporary mail edit file"), 0);
       goto jout;
    }
@@ -650,8 +648,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    ++noreset;
-   if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER,
-         0600)) == NULL) {
+   if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+         NULL) {
       n_perr(_("temporary mail file"), 0);
       goto jerr;
    }

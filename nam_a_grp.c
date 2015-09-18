@@ -657,8 +657,7 @@ _group_print_all(enum group_type gt)
    if (i > 1)
       qsort(ida, i, sizeof *ida, &__group_print_qsorter);
 
-   if ((fp = Ftmp(NULL, "prgroup", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
+   if ((fp = Ftmp(NULL, "prgroup", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       fp = stdout;
    lines = 0;
 

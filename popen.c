@@ -616,7 +616,7 @@ jraw:
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */
-   if ((rv = Ftmp(NULL, "zopen", rof, 0600)) == NULL) {
+   if ((rv = Ftmp(NULL, "zopen", rof)) == NULL) {
       n_perr(_("tmpfile"), 0);
       goto jerr;
    }
@@ -660,7 +660,7 @@ jleave:
 }
 
 FL FILE *
-Ftmp(char **fn, char const *namehint, enum oflags oflags, int mode)
+Ftmp(char **fn, char const *namehint, enum oflags oflags)
 {
    /* The 8 is arbitrary but leaves room for a six character suffix (the
     * POSIX minimum path length is 14, though we don't check that XXX).
@@ -736,7 +736,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags, int mode)
       hold_all_sigs();
       relesigs = TRU1;
 
-      if ((fd = open(cp_base, osoflags, mode)) != -1) {
+      if ((fd = open(cp_base, osoflags, 0600)) != -1) {
          _CLOEXEC_SET(fd);
          break;
       }
@@ -800,7 +800,7 @@ Ftmp_release(char **fn)
 }
 
 FL void
-Ftmp_free(char **fn)
+Ftmp_free(char **fn) /* TODO DROP: OF_REGISTER_FREEPATH! */
 {
    char *cp;
    NYD_ENTER;
