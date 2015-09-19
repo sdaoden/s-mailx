@@ -2176,7 +2176,13 @@ ${cat} > ${tmp2}.c << \!
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
-: + Command line editing
+# ifdef HAVE_READLINE
+: + Command line editing via readline(3)
+# elif defined HAVE_EDITLINE
+: + Command line editing via editline(3)
+# else
+: + Command line editing via N(ail) C(ommand) L(ine)
+# endif
 # ifdef HAVE_TABEXPAND
 : + + Tabulator expansion
 # endif
