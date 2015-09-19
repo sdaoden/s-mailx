@@ -934,12 +934,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             safe_signal(SIGPIPE, &_cmd1_brokpipe);
       }
 #ifdef HAVE_COLOUR
-      if (action != SEND_MBOX)
+      if (IS_TTY_SESSION() && action != SEND_MBOX)
          colour_table_create(pager != NULL); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if ((options & OPT_TTYOUT) && action != SEND_MBOX)
+   else if (IS_TTY_SESSION() && action != SEND_MBOX)
       colour_table_create(FAL0); /* (salloc()s!) */
 #endif
 
@@ -1271,7 +1271,7 @@ c_top(void *v)
    }
 
 #ifdef HAVE_COLOUR
-   if (options & OPT_TTYOUT)
+   if (IS_TTY_SESSION())
       colour_table_create(FAL0); /* (salloc()s) */
 #endif
    empty_last = 1;
