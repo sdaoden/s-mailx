@@ -822,7 +822,7 @@ jputline:
          goto jputline;
 
       if (!(options & OPT_t_FLAG))
-         tty_addhist(linebuf, TRU1);
+         n_tty_addhist(linebuf, TRU1);
 
       c = linebuf[1];
       switch (c) {

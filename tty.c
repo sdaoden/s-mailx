@@ -135,13 +135,13 @@ jleave:\
  * and place the implementations one after the other below the other externals
  */
 
-static sigjmp_buf __tty_actjmp; /* TODO someday, we won't need it no more */
+static sigjmp_buf __n_tty_actjmp; /* TODO someday, we won't need it no more */
 static void
-__tty_acthdl(int s) /* TODO someday, we won't need it no more */
+__n_tty_acthdl(int s) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
    termios_state_reset();
-   siglongjmp(__tty_actjmp, s);
+   siglongjmp(__n_tty_actjmp, s);
 }
 
 FL bool_t
@@ -164,10 +164,10 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(__n_tty_actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &__n_tty_acthdl);
+   safe_signal(SIGHUP, &__n_tty_acthdl);
 
    if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
@@ -199,10 +199,10 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(__n_tty_actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &__n_tty_acthdl);
+   safe_signal(SIGHUP, &__n_tty_acthdl);
 
    if (readline_input(query, FAL0, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
@@ -245,10 +245,10 @@ getpassword(char const *query)
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(__n_tty_actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &__n_tty_acthdl);
+   safe_signal(SIGHUP, &__n_tty_acthdl);
 
    if (options & OPT_TTYIN)
       tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
@@ -296,7 +296,7 @@ _rl_pre_input(void)
 }
 
 FL void
-tty_init(void)
+n_tty_init(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
@@ -324,7 +324,7 @@ tty_init(void)
 }
 
 FL void
-tty_destroy(void)
+n_tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    char const *v;
@@ -340,7 +340,7 @@ tty_destroy(void)
 }
 
 FL void
-tty_signal(int sig)
+n_tty_signal(int sig)
 {
    sigset_t nset, oset;
    NYD_X; /* Signal handler */
@@ -362,7 +362,7 @@ tty_signal(int sig)
       /* XXX When we come here we'll continue editing, so reestablish
        * XXX cannot happen */
       sigprocmask(SIG_BLOCK, &oset, NULL);
-      _rl_shup = safe_signal(SIGHUP, &tty_signal);
+      _rl_shup = safe_signal(SIGHUP, &n_tty_signal);
       rl_reset_after_signal();
       break;
    default:
@@ -371,7 +371,7 @@ tty_signal(int sig)
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
    int nn;
@@ -384,7 +384,7 @@ FL int
       rl_pre_input_hook = &_rl_pre_input;
    }
 
-   _rl_shup = safe_signal(SIGHUP, &tty_signal);
+   _rl_shup = safe_signal(SIGHUP, &n_tty_signal);
    line = readline(prompt != NULL ? prompt : "");
    safe_signal(SIGHUP, _rl_shup);
 
@@ -408,7 +408,7 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
+n_tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);
@@ -494,7 +494,7 @@ _el_getprompt(void)
 }
 
 FL void
-tty_init(void)
+n_tty_init(void)
 {
 # ifdef HAVE_HISTORY
    HistEvent he;
@@ -533,6 +533,7 @@ tty_init(void)
 # endif
    el_source(_el_el, NULL); /* Source ~/.editrc */
 
+NYD;
    /* Because el_source() may have introduced yet a different history size
     * limit, simply load and incorporate the history, leave it up to
     * editline(3) to do the rest */
@@ -541,11 +542,12 @@ tty_init(void)
    if (v != NULL)
       history(_el_hcom, &he, H_LOAD, v);
 # endif
+NYD;
    NYD_LEAVE;
 }
 
 FL void
-tty_destroy(void)
+n_tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    HistEvent he;
@@ -565,7 +567,7 @@ tty_destroy(void)
 }
 
 FL void
-tty_signal(int sig)
+n_tty_signal(int sig)
 {
    NYD_X; /* Signal handler */
    switch (sig) {
@@ -580,7 +582,7 @@ tty_signal(int sig)
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
    int nn;
@@ -613,7 +615,7 @@ jleave:
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
+n_tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Enlarge meaning of unique .. to something that rocks;
@@ -832,13 +834,13 @@ _ncl_sigs_up(void)
    sigfillset(&nset);
 
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   _ncl_oint = safe_signal(SIGINT, &tty_signal);
-   _ncl_oquit = safe_signal(SIGQUIT, &tty_signal);
-   _ncl_oterm = safe_signal(SIGTERM, &tty_signal);
-   _ncl_ohup = safe_signal(SIGHUP, &tty_signal);
-   _ncl_otstp = safe_signal(SIGTSTP, &tty_signal);
-   _ncl_ottin = safe_signal(SIGTTIN, &tty_signal);
-   _ncl_ottou = safe_signal(SIGTTOU, &tty_signal);
+   _ncl_oint = safe_signal(SIGINT, &n_tty_signal);
+   _ncl_oquit = safe_signal(SIGQUIT, &n_tty_signal);
+   _ncl_oterm = safe_signal(SIGTERM, &n_tty_signal);
+   _ncl_ohup = safe_signal(SIGHUP, &n_tty_signal);
+   _ncl_otstp = safe_signal(SIGTSTP, &n_tty_signal);
+   _ncl_ottin = safe_signal(SIGTTIN, &n_tty_signal);
+   _ncl_ottou = safe_signal(SIGTTOU, &n_tty_signal);
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
    NYD2_LEAVE;
 }
@@ -1777,7 +1779,7 @@ jleave:
 }
 
 FL void
-tty_init(void)
+n_tty_init(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
@@ -1816,7 +1818,7 @@ tty_init(void)
       else {
          bool_t isgabby = (lbuf[0] == '*');
          _ncl_hist_load = TRU1;
-         tty_addhist(lbuf + isgabby, isgabby);
+         n_tty_addhist(lbuf + isgabby, isgabby);
          _ncl_hist_load = FAL0;
       }
    }
@@ -1832,7 +1834,7 @@ jleave:
 }
 
 FL void
-tty_destroy(void)
+n_tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
@@ -1884,7 +1886,7 @@ jleave:
 }
 
 FL void
-tty_signal(int sig)
+n_tty_signal(int sig)
 {
    sigset_t nset, oset;
    NYD_X; /* Signal handler */
@@ -1909,7 +1911,7 @@ tty_signal(int sig)
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
    ssize_t nn;
@@ -1927,7 +1929,7 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
+n_tty_addhist(char const *s, bool_t isgabby)
 {
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
@@ -2071,28 +2073,28 @@ jentry: {
 
 #if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
 FL void
-tty_init(void)
+n_tty_init(void)
 {
    NYD_ENTER;
    NYD_LEAVE;
 }
 
 FL void
-tty_destroy(void)
+n_tty_destroy(void)
 {
    NYD_ENTER;
    NYD_LEAVE;
 }
 
 FL void
-tty_signal(int sig)
+n_tty_signal(int sig)
 {
    NYD_X; /* Signal handler */
    UNUSED(sig);
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
+(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
    SMALLOC_DEBUG_ARGS)
 {
    int rv;
@@ -2109,7 +2111,7 @@ FL int
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
+n_tty_addhist(char const *s, bool_t isgabby)
 {
    NYD_ENTER;
    UNUSED(s);

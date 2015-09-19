@@ -811,7 +811,7 @@ FL int
          string = NULL;
          /* TODO if nold>0, don't redisplay the entire line!
           * TODO needs complete redesign ... */
-         n = (tty_readline)(prompt, linebuf, linesize, n
+         n = (n_tty_readline)(prompt, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
       } else {
          if (prompt != NULL) {
@@ -869,7 +869,7 @@ n_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby)
    n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
    if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
          (options & OPT_INTERACTIVE))
-      tty_addhist(rv, isgabby);
+      n_tty_addhist(rv, isgabby);
 
    if (linebuf != NULL)
       free(linebuf);

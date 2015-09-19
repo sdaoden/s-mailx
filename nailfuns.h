@@ -2060,24 +2060,24 @@ FL char *      getpassword(char const *query);
 #if defined HAVE_EDITLINE || defined HAVE_READLINE
 # define TTY_WANTS_SIGWINCH
 #endif
-FL void        tty_init(void);
-FL void        tty_destroy(void);
+FL void        n_tty_init(void);
+FL void        n_tty_destroy(void);
 
 /* Rather for main.c / SIGWINCH interaction only */
-FL void        tty_signal(int sig);
+FL void        n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content */
-FL int         tty_readline(char const *prompt, char **linebuf,
+FL int         n_tty_readline(char const *prompt, char **linebuf,
                   size_t *linesize, size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define tty_readline(A,B,C,D)   tty_readline(A, B, C, D, __FILE__, __LINE__)
+# define n_tty_readline(A,B,C,D) n_tty_readline(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Add a line (most likely as returned by tty_readline()) to the history.
+/* Add a line (most likely as returned by n_tty_readline()) to the history.
  * Wether an entry added for real depends on the isgabby / *history-gabby*
  * relation, and / or wether s is non-empty and doesn't begin with U+0020 */
-FL void        tty_addhist(char const *s, bool_t isgabby);
+FL void        n_tty_addhist(char const *s, bool_t isgabby);
 
 #if defined HAVE_HISTORY &&\
    (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)

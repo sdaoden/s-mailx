@@ -861,7 +861,7 @@ jreadline:
             goto jreadline;
          /* That *can* happen since evaluate() unstack()s on error! */
          if (temporary_orig_line != NULL)
-            tty_addhist(temporary_orig_line, !ev.ev_add_history);
+            n_tty_addhist(temporary_orig_line, !ev.ev_add_history);
       }
    }
 

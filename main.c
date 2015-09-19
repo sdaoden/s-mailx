@@ -478,7 +478,7 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
 jleave:
 #ifdef SIGWINCH
    if (is_sighdl && IS_TTY_SESSION())
-      tty_signal(SIGWINCH);
+      n_tty_signal(SIGWINCH);
 #endif
    NYD_LEAVE;
 }
@@ -540,10 +540,10 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
    /* Enter the command loop */
    if (xhp == NULL || _X_arg_eval(xhp)) {
       if (options & OPT_INTERACTIVE)
-         tty_init();
+         n_tty_init();
       commands();
       if (options & OPT_INTERACTIVE)
-         tty_destroy();
+         n_tty_destroy();
    }
 
    if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
@@ -1079,10 +1079,10 @@ jgetopt_done:
    }
 
    if (options & OPT_INTERACTIVE)
-      tty_init();
+      n_tty_init();
    mail(to, cc, bcc, subject, attach, qf, ((options & OPT_F_FLAG) != 0));
    if (options & OPT_INTERACTIVE)
-      tty_destroy();
+      n_tty_destroy();
 
 jleave:
 #ifdef HAVE_TERMCAP
