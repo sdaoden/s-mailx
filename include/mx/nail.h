@@ -1999,7 +1999,8 @@ MUNLINKED = 1u<<15,     /* Unlinked from IMAP cache */
 
    /* The following are hacks in so far as they let imagine what the future
     * will bring, without doing this already today */
-   MBADFROM_ = 1u<<29   /* From_ line must be replaced */
+   MBADFROM_ = 1u<<29,  /* From_ line must be replaced */
+   MDISPLAY = 1u<<30    /* Display content of this part */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
@@ -2010,23 +2011,23 @@ struct mimepart {
    enum mflag  m_flag;
    enum content_info m_content_info;
 #ifdef mx_HAVE_SPAM
-   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+   ui32_t      m_spamscore;         /* Spam score as int, 24:8 bits */
 #else
    ui8_t m__pad1[4];
 #endif
-   int         m_block;       /* block number of this part */
-   size_t      m_offset;      /* offset in block of part */
-   size_t      m_size;        /* Bytes in the part */
-   size_t      m_xsize;       /* Bytes in the full part */
-   long        m_lines;       /* Lines in the message: write format! */
-   long        m_xlines;      /* Lines in the full message; ditto */
-   time_t      m_time;        /* time the message was sent */
-   char const  *m_from;       /* message sender */
-   struct mimepart *m_nextpart;     /* next part at same level */
-   struct mimepart *m_multipart;    /* parts of multipart */
-   struct mimepart *m_parent;       /* enclosing multipart part */
-   char const  *m_ct_type;          /* content-type */
-   char const  *m_ct_type_plain;    /* content-type without specs */
+   int         m_block;             /* Block number of this part */
+   size_t      m_offset;            /* Offset in block of part */
+   size_t      m_size;              /* Bytes in the part */
+   size_t      m_xsize;             /* Bytes in the full part */
+   long        m_lines;             /* Lines in the message; wire format! */
+   long        m_xlines;            /* Lines in the full message; ditto */
+   time_t      m_time;              /* Time the message was sent */
+   char const  *m_from;             /* Message sender */
+   struct mimepart *m_nextpart;     /* Next part at same level */
+   struct mimepart *m_multipart;    /* Parts of multipart */
+   struct mimepart *m_parent;       /* Enclosing multipart part */
+   char const  *m_ct_type;          /* Content-type */
+   char const  *m_ct_type_plain;    /* Content-type without specs */
    char const  *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    char const  *m_charset;
    char const  *m_ct_enc;           /* Content-Transfer-Encoding */

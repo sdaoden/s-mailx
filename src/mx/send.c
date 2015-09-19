@@ -79,6 +79,17 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
                         char **linedat, size_t *linesize,
                         ui64_t *stats, int level);
 
+/* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
+ * and check whether there are any such down mpp, which is a .m_multipart of
+ * an /alternative container..
+ * Afterwards the latter will flag all the subtree accordingly, setting
+ * MDISPLAY in mimepart.m_flag if a part shall be displayed.
+ * TODO of course all this is hacky in that it should ONLY be done so */
+static bool_t        _send_al7ive_have_better(struct mimepart *mpp,
+                        enum sendaction action, bool_t want_rich);
+static void          _send_al7ive_flag_tree(struct mimepart *mpp,
+                        enum sendaction action, bool_t want_rich);
+
 /* Get a file for an attachment */
 static FILE *        newfile(struct mimepart *ip, bool_t volatile *ispipe);
 
@@ -444,7 +455,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    char **linedat, size_t *linesize, ui64_t * volatile stats, int level)
 {
    int volatile rv = 0;
-   struct mime_handler mh;
+   struct mime_handler mh_stack, * volatile mhp;
    struct str outrest, inrest;
    char *cp;
    char const * volatile tmpname = NULL;
@@ -650,7 +661,7 @@ jhdrtrunc:
    }
 
 jheaders_skip:
-   su_mem_set(&mh, 0, sizeof mh);
+   su_mem_set(mhp = &mh_stack, 0, sizeof mh_stack);
 
    switch (ip->m_mimecontent) {
    case MIME_822:
@@ -693,20 +704,23 @@ jheaders_skip:
       case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch (n_mimetype_handler(&mh, ip, action)) {
+         if ((mhp = ip->m_handler) == NULL)
+            n_mimetype_handler(mhp =
+               ip->m_handler = n_autorec_alloc(sizeof(*mhp)), ip, action);
+         switch (mhp->mh_flags & MIME_HDL_TYPE_MASK) {
          case MIME_HDL_NULL:
             if(action != SEND_TODISP_PARTS)
                break;
             /* FALLTHRU */
          case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
-            if(mh.mh_msg.l > 0)
-               _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
+            if(mhp->mh_msg.l > 0)
+               _out(mhp->mh_msg.s, mhp->mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
                   qf, stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:
             if(action == SEND_TODISP_PARTS &&
-                  (mh.mh_flags & MIME_HDL_COPIOUSOUTPUT))
+                  (mhp->mh_flags & MIME_HDL_COPIOUSOUTPUT))
                goto jleave;
             break;
          case MIME_HDL_TEXT:
@@ -738,7 +752,10 @@ jheaders_skip:
       case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch (n_mimetype_handler(&mh, ip, action)) {
+         if ((mhp = ip->m_handler) == NULL)
+            n_mimetype_handler(mhp = ip->m_handler =
+               n_autorec_alloc(sizeof(*mhp)), ip, action);
+         switch (mhp->mh_flags & MIME_HDL_TYPE_MASK) {
          default:
          case MIME_HDL_NULL:
             if (action != SEND_TODISP && action != SEND_TODISP_ALL &&
@@ -746,14 +763,14 @@ jheaders_skip:
                goto jleave;
             /* FALLTHRU */
          case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
-            if(mh.mh_msg.l > 0)
-               _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
+            if(mhp->mh_msg.l > 0)
+               _out(mhp->mh_msg.s, mhp->mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
                   qf, stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:
             if(action == SEND_TODISP_PARTS){
-               if(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)
+               if(mhp->mh_flags & MIME_HDL_COPIOUSOUTPUT)
                   goto jleave;
                else{
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
@@ -793,12 +810,22 @@ jheaders_skip:
             struct mpstack *outer;
             struct mimepart *mp;
          } outermost, * volatile curr, * volatile mpsp;
-         bool_t volatile neednl, hadpart;
+         enum {
+            _NONE,
+            _DORICH  = 1<<0,  /* We are looking for rich parts */
+            _HADPART = 1<<1,  /* Did print a part already */
+            _NEEDNL  = 1<<3   /* Need a visual separator */
+         } flags;
          struct n_sigman smalter;
 
          (curr = &outermost)->outer = NULL;
          curr->mp = ip;
-         neednl = hadpart = FAL0;
+         flags = ok_blook(mime_alternative_favour_rich) ? _DORICH : _NONE;
+         if (!_send_al7ive_have_better(ip->m_multipart, action,
+               ((flags & _DORICH) != 0)))
+            flags ^= _DORICH;
+         _send_al7ive_flag_tree(ip->m_multipart, action,
+            ((flags & _DORICH) != 0));
 
          n_SIGMAN_ENTER_SWITCH(&smalter, n_SIGMAN_ALL) {
          case 0:
@@ -812,12 +839,12 @@ jheaders_skip:
 jalter_redo:
             for (; np != NULL; np = np->m_nextpart) {
                if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
-                  if (neednl)
+                  if (flags & _NEEDNL)
                      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats,
                         NULL, NULL);
                   _print_part_info(obuf, np, doitp, level, qf, stats);
                }
-               neednl = TRU1;
+               flags |= _NEEDNL;
 
                switch (np->m_mimecontent) {
                case MIME_ALTERNATIVE:
@@ -832,78 +859,20 @@ jalter_redo:
                   curr->mp = np;
                   curr = mpsp;
                   np = mpsp->mp;
-                  neednl = FAL0;
+                  flags &= ~_NEEDNL;
                   goto jalter_redo;
                default:
-                  if (hadpart)
+                  if (!(np->m_flag & MDISPLAY))
                      break;
-                  switch (n_mimetype_handler(&mh, np, action)) {
-                  default:
-                     mh.mh_flags = MIME_HDL_NULL;
-                     continue; /* break; break; */
-                  case MIME_HDL_CMD:
-                     if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)){
-                        mh.mh_flags = MIME_HDL_NULL;
-                        continue; /* break; break; */
-                     }
-                     /* FALLTHRU */
-                  case MIME_HDL_PTF:
-                     if (!ok_blook(mime_alternative_favour_rich)) {/* TODO */
-                        struct mimepart *x = np;
-
-                        while ((x = x->m_nextpart) != NULL) {
-                           struct mime_handler mhx;
-
-                           if (x->m_mimecontent == MIME_TEXT_PLAIN ||
-                                 n_mimetype_handler(&mhx, x, action) ==
-                                    MIME_HDL_TEXT)
-                              break;
-                        }
-                        if (x != NULL)
-                           continue; /* break; break; */
-                        goto jalter_plain;
-                     }
-                     /* FALLTHRU */
-                  case MIME_HDL_TEXT:
-                     break;
-                  }
-                  /* FALLTHRU */
-               case MIME_TEXT_PLAIN:
-                  if (hadpart)
-                     break;
-                  if (ok_blook(mime_alternative_favour_rich)) { /* TODO */
-                     struct mimepart *x = np;
-
-                     /* TODO twice TODO, we should dive into /related and
-                      * TODO check whether that has rich parts! */
-                     while ((x = x->m_nextpart) != NULL) {
-                        struct mime_handler mhx;
-
-                        switch (n_mimetype_handler(&mhx, x, action)) {
-                        case MIME_HDL_CMD:
-                           if(!(mhx.mh_flags & MIME_HDL_COPIOUSOUTPUT))
-                              continue;
-                           /* FALLTHRU */
-                        case MIME_HDL_PTF:
-                           break;
-                        default:
-                           continue;
-                        }
-                        break;
-                     }
-                     if (x != NULL)
-                        continue; /* break; break; */
-                  }
-jalter_plain:
+                  /* This thing we gonna do */
                   quoteflt_flush(qf);
-                  if (action == SEND_QUOTE && hadpart)
+                  if ((flags & _HADPART) && action == SEND_QUOTE)
                      /* XXX (void)*/a_send_out_nl(obuf, stats);
-                  hadpart = TRU1;
-                  neednl = FAL0;
+                  flags |= _HADPART;
+                  flags &= ~_NEEDNL;
                   rv = sendpart(zmp, np, obuf, doitp, qf, action,
                         linedat, linesize, stats, level + 1);
                   quoteflt_reset(qf, origobuf);
-
                   if (rv < 0)
                      curr = &outermost; /* Cause overall loop termination */
                   break;
@@ -1054,7 +1023,7 @@ jpipe_close:
          convert = CONV_FROMB64_T;
          break;
       default:
-         switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
+         switch (mhp->mh_flags & MIME_HDL_TYPE_MASK) {
          case MIME_HDL_TEXT:
          case MIME_HDL_PTF:
             convert = CONV_FROMB64_T;
@@ -1090,8 +1059,8 @@ jpipe_close:
          (ip->m_mimecontent == MIME_TEXT_PLAIN ||
             ip->m_mimecontent == MIME_TEXT_HTML ||
             ip->m_mimecontent == MIME_TEXT ||
-            (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
-            (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
+            (mhp->mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
+            (mhp->mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
       char const *tcs;
 
       tcs = ok_vlook(ttycharset);
@@ -1106,9 +1075,9 @@ jpipe_close:
    }
 #endif
 
-   switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
+   switch (mhp->mh_flags & MIME_HDL_TYPE_MASK) {
    case MIME_HDL_CMD:
-      if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)){
+      if(!(mhp->mh_flags & MIME_HDL_COPIOUSOUTPUT)){
          if(action != SEND_TODISP_PARTS)
             goto jmhp_default;
          /* Ach, what a hack!  We need filters.. v15! */
@@ -1121,28 +1090,28 @@ jpipe_close:
       qbuf = obuf;
 
       term_infd = n_CHILD_FD_PASS;
-      if (mh.mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
+      if (mhp->mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
          enum oflags of;
 
          of = OF_RDWR | OF_REGISTER;
-         if (!(mh.mh_flags & MIME_HDL_TMPF)) {
+         if (!(mhp->mh_flags & MIME_HDL_TMPF)) {
             term_infd = 0;
-            mh.mh_flags |= MIME_HDL_TMPF_FILL;
+            mhp->mh_flags |= MIME_HDL_TMPF_FILL;
             of |= OF_UNLINK;
-         } else if (mh.mh_flags & MIME_HDL_TMPF_UNLINK)
+         } else if (mhp->mh_flags & MIME_HDL_TMPF_UNLINK)
             of |= OF_REGISTER_UNLINK;
 
-         if ((pbuf = Ftmp((mh.mh_flags & MIME_HDL_TMPF ? &cp : NULL),
-               (mh.mh_flags & MIME_HDL_TMPF_FILL ? "mimehdlfill" : "mimehdl"),
+         if ((pbuf = Ftmp((mhp->mh_flags & MIME_HDL_TMPF ? &cp : NULL),
+               (mhp->mh_flags & MIME_HDL_TMPF_FILL ? "mimehdlfill" : "mimehdl"),
                of)) == NULL)
             goto jesend;
 
-         if (mh.mh_flags & MIME_HDL_TMPF) {
+         if (mhp->mh_flags & MIME_HDL_TMPF) {
             tmpname = savestr(cp);
             Ftmp_free(&cp);
          }
 
-         if (mh.mh_flags & MIME_HDL_TMPF_FILL) {
+         if (mhp->mh_flags & MIME_HDL_TMPF_FILL) {
             if (term_infd == 0)
                term_infd = fileno(pbuf);
             goto jsend;
@@ -1150,13 +1119,13 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(&mh, ip, n_UNVOLATILE(&qbuf), tmpname, term_infd);
+      pbuf = _pipefile(mhp, ip, n_UNVOLATILE(&qbuf), tmpname, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;
          rv = -1;
          goto jend;
-      } else if ((mh.mh_flags & MIME_HDL_NEEDSTERM) && pbuf == (FILE*)-1) {
+      } else if ((mhp->mh_flags & MIME_HDL_NEEDSTERM) && pbuf == (FILE*)-1) {
          pbuf = qbuf = NULL;
          goto jend;
       }
@@ -1171,7 +1140,7 @@ jesend:
 
    default:
 jmhp_default:
-      mh.mh_flags = MIME_HDL_NULL;
+      mhp->mh_flags = MIME_HDL_NULL;
       pbuf = qbuf = obuf;
       break;
    }
@@ -1239,8 +1208,8 @@ joutln:
 
    quoteflt_flush(qf);
 
-   if (rv >= 0 && (mh.mh_flags & MIME_HDL_TMPF_FILL)) {
-      mh.mh_flags &= ~MIME_HDL_TMPF_FILL;
+   if (rv >= 0 && (mhp->mh_flags & MIME_HDL_TMPF_FILL)) {
+      mhp->mh_flags &= ~MIME_HDL_TMPF_FILL;
       fflush(pbuf);
       really_rewind(pbuf);
       /* Don't Fclose() the Ftmp() thing due to OF_REGISTER_UNLINK++ */
@@ -1264,7 +1233,7 @@ joutln:
 jend:
    if (pbuf != qbuf) {
       safe_signal(SIGPIPE, SIG_IGN);
-      Pclose(pbuf, !(mh.mh_flags & MIME_HDL_ASYNC));
+      Pclose(pbuf, !(mhp->mh_flags & MIME_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
       if (rv >= 0 && qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);
@@ -1276,6 +1245,119 @@ jend:
 jleave:
    n_NYD_OU;
    return rv;
+}
+
+static bool_t
+_send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
+   bool_t want_rich)
+{
+   bool_t rv = FAL0;
+   n_NYD_IN;
+
+   for (; mpp != NULL; mpp = mpp->m_nextpart) {
+      switch (mpp->m_mimecontent) {
+      case MIME_TEXT_PLAIN:
+         if (!want_rich)
+            goto jflag;
+         continue;
+      case MIME_ALTERNATIVE:
+      case MIME_RELATED:
+      case MIME_DIGEST:
+      case MIME_SIGNED:
+      case MIME_ENCRYPTED:
+      case MIME_MULTI:
+         /* Be simple and recurse */
+         if (_send_al7ive_have_better(mpp->m_multipart, action, want_rich))
+            goto jleave;
+         continue;
+      default:
+         break;
+      }
+
+      if (mpp->m_handler == NULL)
+         n_mimetype_handler(mpp->m_handler =
+            n_autorec_alloc(sizeof(*mpp->m_handler)), mpp, action);
+      switch (mpp->m_handler->mh_flags & MIME_HDL_TYPE_MASK) {
+      case MIME_HDL_TEXT:
+         if (!want_rich)
+            goto jflag;
+         break;
+      case MIME_HDL_PTF:
+         if (want_rich) {
+jflag:
+            mpp->m_flag |= MDISPLAY;
+            assert(mpp->m_parent != NULL);
+            mpp->m_parent->m_flag |= MDISPLAY;
+            rv = TRU1;
+         }
+         break;
+      case MIME_HDL_CMD:
+         if (want_rich && (mpp->m_handler->mh_flags & MIME_HDL_COPIOUSOUTPUT))
+            goto jflag;
+         /* FALLTHRU */
+      default:
+         break;
+      }
+   }
+jleave:
+   n_NYD_OU;
+   return rv;
+}
+
+static void
+_send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
+   bool_t want_rich)
+{
+   bool_t hot;
+   n_NYD_IN;
+
+   assert(mpp->m_parent != NULL);
+   hot = ((mpp->m_parent->m_flag & MDISPLAY) != 0);
+
+   for (; mpp != NULL; mpp = mpp->m_nextpart) {
+      switch (mpp->m_mimecontent) {
+      case MIME_TEXT_PLAIN:
+         if (hot && !want_rich)
+            mpp->m_flag |= MDISPLAY;
+         continue;
+      case MIME_ALTERNATIVE:
+      case MIME_RELATED:
+      case MIME_DIGEST:
+      case MIME_SIGNED:
+      case MIME_ENCRYPTED:
+      case MIME_MULTI:
+         /* Be simple and recurse */
+         if (_send_al7ive_have_better(mpp->m_multipart, action, want_rich))
+            goto jleave;
+         continue;
+      default:
+         break;
+      }
+
+      if (mpp->m_handler == NULL)
+         n_mimetype_handler(mpp->m_handler =
+            n_autorec_alloc(sizeof(*mpp->m_handler)), mpp, action);
+      switch (mpp->m_handler->mh_flags & MIME_HDL_TYPE_MASK) {
+      case MIME_HDL_TEXT:
+         if (hot && !want_rich)
+            mpp->m_flag |= MDISPLAY;
+         break;
+      case MIME_HDL_PTF:
+         if (hot && want_rich)
+            mpp->m_flag |= MDISPLAY;
+         break;
+      case MIME_HDL_CMD:
+         if (hot && want_rich &&
+               (mpp->m_handler->mh_flags & MIME_HDL_COPIOUSOUTPUT))
+            mpp->m_flag |= MDISPLAY;
+         break;
+         break;
+      default:
+         break;
+      }
+   }
+jleave:
+   n_NYD_OU;
 }
 
 static FILE *
