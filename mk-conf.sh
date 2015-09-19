@@ -35,7 +35,7 @@ option_maximal() {
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
-   WANT_NCL=require
+   WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
