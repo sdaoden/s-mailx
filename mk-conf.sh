@@ -1162,26 +1162,6 @@ fi
 
 ##
 
-link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mmap(0, 0, 0, 0, 0, 0);
-   return 0;
-}
-!
-
-link_check mremap 'mremap(2)' '#define HAVE_MREMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mremap(0, 0, 0, MREMAP_MAYMOVE);
-   return 0;
-}
-!
-
 run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
