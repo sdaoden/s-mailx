@@ -2056,6 +2056,7 @@ printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_MD5\n   ",MD5 [APOP,CRAM-MD5]"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
@@ -2156,6 +2157,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_GSSAPI
 : + GSS-API authentication
 #endif
+#ifdef HAVE_MD5
+: + MD5 message digest (APOP, CRAM-MD5)
+#endif
 #ifdef HAVE_NETRC
 : + .netrc file support
 #endif
@@ -2246,6 +2250,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_GSSAPI
 : - GSS-API authentication
+#endif
+#ifndef HAVE_MD5
+: - MD5 message digest (APOP, CRAM-MD5)
 #endif
 #ifndef HAVE_NETRC
 : - .netrc file support
