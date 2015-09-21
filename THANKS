@@ -4,8 +4,9 @@ Gunnar Ritter and which was itself based upon Berkeley Mail that
 originates in 2BSD (Kurt Shoens (UCB) March 25, 1978).
 
 Other people contributed by reporting problems, suggesting various
-improvements or submitting actual code.  Here is a list of those
-people.  I hope the list is complete and free of errors.
+improvements, wether directly or indirectly, or submitting actual
+code.  Here is a list of those people.  I hope the list is
+complete and free of errors.
 
 Hilko Bengen              bengen at debian dot org
 Gaetan Bisson             bisson at archlinux dot org
@@ -19,6 +20,7 @@ Ralph Corderoy            ralph at inputplus dot co dot uk
 Jérémie Courrèges-Anglas  jca at wxcvbn dot org
 Jürgen Daubert            jue at jue dot li
 John Dodson               johnd at physiol dot usyd dot edu dot au
+Mike Frysinger            vapier at gentoo dot org
 Ezequiel Garzón           garzon dot lucero at gmail dot com
 Philip Guenther           guenther at openbsd dot org
 Peter Hofmann             snailusers at uninformativ dot de
