@@ -557,6 +557,9 @@ struct htmlflt_href {
 
 struct htmlflt_tag {
    si32_t      hft_act;    /* char or hf_special_actions */
+   /* Not NUL: character to inject, with high bit set: place a space
+    * afterwards.  Note: only recognized with _HFSA_NEEDSEP or _HFSA_NEEDNL */
+   char        hft_injc;
    ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
    char const  hft_tag[11]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
@@ -573,20 +576,27 @@ struct hf_ent {
 /* Tag list; not binary searched :(, so try to take care a bit */
 static struct htmlflt_tag const  _hf_tags[] = {
 # undef _X
-# define _X(S,A)  { A, sizeof(S) -1, S }
+# undef _XC
+# define _X(S,A)     {A, '\0', sizeof(S) -1, S "\0"}
+# define _XC(S,C,A)  {A, C, sizeof(S) -1, S "\0"}
 
    _X("P", _HFSA_NEEDSEP),       _X("/P", _HFSA_NEEDNL),
    _X("DIV", _HFSA_NEEDSEP),     _X("/DIV", _HFSA_NEEDNL),
    _X("TR", _HFSA_NEEDNL),
                                  _X("/TH", '\t'),
                                  _X("/TD", '\t'),
-   _X("A", _HFSA_HREF),          _X("/A", _HFSA_HREF_END),
-   _X("IMG", _HFSA_IMG),
-   _X("IT", _HFSA_NEEDNL),
-   _X("BR", '\n'),
-   _X("PRE", _HFSA_PRE),         _X("/PRE", _HFSA_PRE_END),
+   /* Let it stand out; also since we don't support implicit paragraphs after
+    * block elements, plain running text after a list (seen in Unicode
+    * announcement via Firefox) */
+   _X("UL", _HFSA_NEEDSEP),      _X("/UL", _HFSA_NEEDSEP),
+   _XC("LI", (char)0x80 | '*', _HFSA_NEEDSEP),
    _X("DL", _HFSA_NEEDSEP),
    _X("DT", _HFSA_NEEDNL),
+
+   _X("A", _HFSA_HREF),          _X("/A", _HFSA_HREF_END),
+   _X("IMG", _HFSA_IMG),
+   _X("BR", '\n'),
+   _X("PRE", _HFSA_PRE),         _X("/PRE", _HFSA_PRE_END),
    _X("TITLE", _HFSA_NEEDSEP),   /*_X("/TITLE", '\n'),*/
    _X("H1", _HFSA_NEEDSEP),      /*_X("/H1", '\n'),*/
    _X("H2", _HFSA_NEEDSEP),      /*_X("/H2", '\n'),*/
@@ -607,11 +617,11 @@ static struct hf_ent const       _hf_ents[] = {
 # undef _XU
 # undef _XS
 # undef _XUS
-# define _X(E,C)     {(sizeof(E) -1), C, 0x0u, "", E}
-# define _XU(E,C,U)  {(sizeof(E) -1) | _HFE_HAVE_UNI, C, U, "", E}
-# define _XS(E,S)    {(sizeof(E) -1) | _HFE_HAVE_CSTR, '\0', 0x0u, S "\0", E}
+# define _X(E,C)     {(sizeof(E) -1), C, 0x0u, "", E "\0"}
+# define _XU(E,C,U)  {(sizeof(E) -1) | _HFE_HAVE_UNI, C, U, "", E "\0"}
+# define _XS(E,S)    {(sizeof(E) -1) | _HFE_HAVE_CSTR, '\0', 0x0u,S "\0",E "\0"}
 # define _XSU(E,S,U) \
-   {(sizeof(E) -1) | _HFE_HAVE_UNI | _HFE_HAVE_CSTR, '\0', U, S "\0", E}
+   {(sizeof(E) -1) | _HFE_HAVE_UNI | _HFE_HAVE_CSTR, '\0', U, S "\0", E "\0"}
 
    _X("quot", '"'),
    _X("amp", '&'),
@@ -1136,6 +1146,11 @@ jput_as_is:
    case _HFSA_NEEDNL:
       if (!(f & _HF_NL_1))
          self = _hf_nl(self);
+      if (hftp->hft_injc != '\0') {
+         self = _hf_putc(self, hftp->hft_injc & 0x7F);
+         if ((uc_i)hftp->hft_injc & 0x80)
+            self = _hf_putc(self, ' ');
+      }
       break;
 
    case _HFSA_IGN:
