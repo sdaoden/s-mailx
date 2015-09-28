@@ -6269,19 +6269,20 @@ or a similar mechanism to correctly classify content, but simply specify
 even for plain text attachments like
 .Ql text/diff .
 If this variable is set then \*(UA will try to classify such MIME
-message parts on its own, if possible, and through their file name.
-This variable can also be given a non-empty value, in which case the
-value is expected to be a number, actually a carrier of bits.
+message parts on its own, if possible, for example via a possibly
+existent attachment filename.
+A non-empty value may also be given, in which case a number is expected,
+actually a carrier of bits.
 Creating the bit-carrying number is a simple addition:
 .Bd -literal -offset indent
-? !echo Value should be set to $((2 + 4))
-Value should be set to 6
+? !echo Value should be set to $((2 + 4 + 8))
+Value should be set to 14
 .Ed
 .Pp
 .Bl -bullet -compact
 .It
 If bit two is set (2) then the detected
-.Qd real
+.Dq real
 content-type will be carried along with the message and be used for
 deciding which
 .Va pipe-TYPE/SUBTYPE
@@ -6293,11 +6294,11 @@ overridden content-type by showing a plus-sign
 If bit three is set (4) then the counter-evidence is always produced
 and a positive result will be used as the MIME type, even forcefully
 overriding the parts given MIME type.
-.\".It
-.\"If bit four is set (8) then as a last resort the content of
-.\".Ql application/octet-stream
-.\"parts will be inspected, so that data that looks like (english) plain
-.\"text can be treated as such.
+.It
+If bit four is set (8) then as a last resort the actual content of
+.Ql application/octet-stream
+parts will be inspected, so that data which looks like plain text can be
+treated as such.
 .El
 .
 .Mx
@@ -8064,7 +8065,7 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 # Never refuse to start into interactive mode, and more
 set emptystart \e
     colour-pager crt= followup-to followup-to-honour=ask-yes \e
-    history-gabby mime-counter-evidence=6 \e
+    history-gabby mime-counter-evidence=0xE \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
     NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
     reply-to-honour=ask-yes
