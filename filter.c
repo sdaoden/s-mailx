@@ -561,7 +561,7 @@ struct htmlflt_tag {
     * afterwards.  Note: only recognized with _HFSA_NEEDSEP or _HFSA_NEEDNL */
    char        hft_injc;
    ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
-   char const  hft_tag[11]; /* Tag less < and > surroundings (TR, /TR, ..) */
+   char const  hft_tag[10]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
 CTA(SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE); /* .hf_ign_tag */
 
