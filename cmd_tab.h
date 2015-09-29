@@ -254,8 +254,6 @@
      DS(N_("Un\"saveignore\" <header-fields>")) },
    { "unsaveretain", &c_unsaveretain, (M | RAWLIST), 0, 1000
      DS(N_("Un\"saveretain\" <header-fields>")) },
-   { "inc", &c_newmail, (A | T | NOLIST), 0, 0
-     DS(N_("Check for new mail in current folder")) },
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
