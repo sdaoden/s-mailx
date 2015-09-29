@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Startup -- interface with user.
+ *@ Startup and initialization.
  *@ This file is also used to materialize externals.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -112,7 +112,7 @@ VL uc_i const        class_char[] = {
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
 
-/* Our own little getopt(3); note --help is special treated as 'h' */
+/* Our own little getopt(3); note --help is special-treated as 'h' */
 static int     _getopt(int argc, char * const argv[], char const *optstring);
 
 /* Perform basic startup initialization */
@@ -203,7 +203,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    /* Special support for --help, which is quite common */
-   if (_oopt == '-' && !strcmp(curp, "-help")) {
+   if (_oopt == '-' && !strcmp(curp, "-help") && curp - 1 == argv[_oind]) {
       ++_oind;
       rv = 'h';
       goto jleave;
