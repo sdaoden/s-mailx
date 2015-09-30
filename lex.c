@@ -795,7 +795,7 @@ commands(void)
       handlerstacktop = NULL;
 
 #ifdef HAVE_COLOUR
-      colour_table = NULL; /* XXX intermediate hack */
+      n_colour_table = NULL; /* XXX intermediate hack */
 #endif
       if (temporary_localopts_store != NULL) /* XXX intermediate hack */
          temporary_localopts_free(); /* XXX intermediate hack */
@@ -915,7 +915,7 @@ execute(char *linebuf, size_t linesize) /* XXX LEGACY */
 {
    struct eval_ctx ev;
 #ifdef HAVE_COLOUR
-   struct colour_table *ct_save;
+   struct n_colour_table *ct_save;
 #endif
    int rv;
    NYD_ENTER;
@@ -924,8 +924,8 @@ execute(char *linebuf, size_t linesize) /* XXX LEGACY */
     * TODO a value carrier that transports the entire state of a recursion
     * TODO we need to save away also the colour table */
 #ifdef HAVE_COLOUR
-   ct_save = colour_table;
-   colour_table = NULL;
+   ct_save = n_colour_table;
+   n_colour_table = NULL;
 #endif
 
    memset(&ev, 0, sizeof ev);
@@ -935,7 +935,7 @@ execute(char *linebuf, size_t linesize) /* XXX LEGACY */
    rv = evaluate(&ev);
 
 #ifdef HAVE_COLOUR
-   colour_table = ct_save;
+   n_colour_table = ct_save;
 #endif
    NYD_LEAVE;
    return rv;

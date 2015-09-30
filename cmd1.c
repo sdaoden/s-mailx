@@ -102,12 +102,12 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
    NYD_ENTER;
 
 #ifdef HAVE_COLOUR
-   if (colour_table != NULL) {
+   if (n_colour_table != NULL) {
       struct str const *sp;
 
-      if ((sp = colour_get(COLOURSPEC_MSGINFO)) != NULL)
+      if ((sp = n_colour_get(n_COLOURSPEC_MSGINFO)) != NULL)
          cpre = sp->s;
-      csuf = colour_get(COLOURSPEC_RESET)->s;
+      csuf = n_colour_get(n_COLOURSPEC_RESET)->s;
    }
 #endif
    fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
@@ -965,12 +965,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 #ifdef HAVE_COLOUR
       if (IS_TTY_SESSION() && action != SEND_MBOX)
-         colour_table_create(pager != NULL); /* (salloc()s!) */
+         n_colour_table_create(pager != NULL, FAL0); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
    else if (IS_TTY_SESSION() && action != SEND_MBOX)
-      colour_table_create(FAL0); /* (salloc()s!) */
+      n_colour_table_create(FAL0, FAL0); /* (salloc()s!) */
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -1001,7 +1001,7 @@ jclose_pipe:
       safe_signal(SIGPIPE, SIG_IGN);
       if (hadsig && isrelax)
          srelax_rele();
-      colour_reset(obuf); /* XXX hacky; only here because we still jump */
+      n_colour_reset(obuf); /* XXX hacky; only here because we still jump */
       Pclose(obuf, TRU1);
       safe_signal(SIGPIPE, dflpipe);
    }
@@ -1302,7 +1302,7 @@ c_top(void *v)
 
 #ifdef HAVE_COLOUR
    if (IS_TTY_SESSION())
-      colour_table_create(FAL0); /* (salloc()s) */
+      n_colour_table_create(FAL0, FAL0); /* (salloc()s) */
 #endif
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);

@@ -197,23 +197,22 @@
 #define AGENT_HOST      "NAIL_HOST"
 #define AGENT_HOST_PORT "NAIL_HOST_PORT"
 
-#undef COLOUR
 #ifdef HAVE_COLOUR
-# define COLOUR(X)      X
+# define n_COLOUR(X)       X
 #else
-# define COLOUR(X)
+# define n_COLOUR(X)
 #endif
-#define COLOUR_MSGINFO  "fg=green"
-#define COLOUR_PARTINFO "fg=brown"
-#define COLOUR_FROM_    "fg=brown"
-#define COLOUR_HEADER   "fg=red"
-#define COLOUR_UHEADER  "ft=bold,fg=red"
-/* The COLOUR_TERMS is in addition to those which have "color" in their name!
- * (Keep in SYNC: ./nail.h:COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
-#define COLOUR_TERMS    \
+#define n_COLOUR_MSGINFO   "fg=green"
+#define n_COLOUR_PARTINFO  "fg=brown"
+#define n_COLOUR_FROM_     "fg=brown"
+#define n_COLOUR_HEADER    "fg=red"
+#define n_COLOUR_UHEADER   "ft=bold,fg=red"
+#define n_COLOUR_USER_HEADERS "from,subject"
+/* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
+ * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
+#define n_COLOUR_TERMS     \
    "aterm,cons25,gnome,konsole,kterm,linux,"\
    "rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
-#define COLOUR_USER_HEADERS "from,subject"
 
 /* Special FD requests for run_command() / start_command() */
 #define COMMAND_FD_PASS -1
@@ -773,13 +772,13 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
-enum colourspec {
-   COLOURSPEC_MSGINFO,
-   COLOURSPEC_PARTINFO,
-   COLOURSPEC_FROM_,
-   COLOURSPEC_HEADER,
-   COLOURSPEC_UHEADER,
-   COLOURSPEC_RESET
+enum n_colourspec {
+   n_COLOURSPEC_MSGINFO,
+   n_COLOURSPEC_PARTINFO,
+   n_COLOURSPEC_FROM_,
+   n_COLOURSPEC_HEADER,
+   n_COLOURSPEC_UHEADER,
+   n_COLOURSPEC_RESET
 };
 
 enum conversion {
@@ -1395,9 +1394,9 @@ struct str {
    size_t   l;       /* the stings's length */
 };
 
-struct colour_table {
+struct n_colour_table {
    /* Plus a copy of *colour-user-headers* */
-   struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
+   struct str  ct_csinfo[n_COLOURSPEC_RESET+1 + 1];
 };
 
 struct bidi_info {
@@ -1963,7 +1962,7 @@ VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
 #ifdef HAVE_COLOUR
-VL struct colour_table  *colour_table;
+VL struct n_colour_table   *n_colour_table;
 #endif
 
 #ifdef HAVE_SSL

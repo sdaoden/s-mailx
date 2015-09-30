@@ -399,17 +399,19 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
 FL void        bidi_info_create(struct bidi_info *bip);
 
 /* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test wether *colour-pager* is to be inspected */
+ * test wether *colour-pager* is to be inspected, and headerview indicates
+ * wether the colours for header overview shall be queried instead of those for
+ * actual message display */
 #ifdef HAVE_COLOUR
-FL void        colour_table_create(bool_t pager_used);
-FL void        colour_put(FILE *fp, enum colourspec cs);
-FL void        colour_put_header(FILE *fp, char const *name);
-FL void        colour_reset(FILE *fp);
-FL struct str const * colour_get(enum colourspec cs);
+FL void        n_colour_table_create(bool_t pager_used, bool_t headerview);
+FL void        n_colour_put(FILE *fp, enum n_colourspec cs);
+FL void        n_colour_put_user_header(FILE *fp, char const *name);
+FL void        n_colour_reset(FILE *fp);
+FL struct str const * n_colour_get(enum n_colourspec cs);
 #else
-# define colour_put(FP,CS)
-# define colour_put_header(FP,N)
-# define colour_reset(FP)
+# define n_colour_put(FP,CS)
+# define n_colour_put_user_header(FP,N)
+# define n_colour_reset(FP)
 #endif
 
 /* Check wether the argument string is a true (1) or false (0) boolean, or an

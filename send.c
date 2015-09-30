@@ -91,8 +91,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    NYD2_ENTER;
 
 #ifdef HAVE_COLOUR
-   cpre = colour_get(COLOURSPEC_PARTINFO);
-   csuf = colour_get(COLOURSPEC_RESET);
+   cpre = n_colour_get(n_COLOURSPEC_PARTINFO);
+   csuf = n_colour_get(n_COLOURSPEC_RESET);
 #else
    cpre = csuf = NULL;
 #endif
@@ -471,7 +471,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             /* XXX This is all temporary (colour belongs into backend), so
              * XXX use tmpfile as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
-            if (colour_table != NULL)
+            if (n_colour_table != NULL)
                tmpfile = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
@@ -524,7 +524,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          {
          bool_t colour_stripped = FAL0;
          if (tmpfile != NULL) {
-            colour_put_header(obuf, tmpfile);
+            n_colour_put_user_header(obuf, tmpfile);
             if (len > 0 && start[len - 1] == '\n') {
                colour_stripped = TRU1;
                --len;
@@ -534,7 +534,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          _out(start, len, obuf, convert, action, qf, stats, NULL);
 #ifdef HAVE_COLOUR
          if (tmpfile != NULL) {
-            colour_reset(obuf); /* XXX reset after \n!! */
+            n_colour_reset(obuf); /* XXX reset after \n!! */
             if (colour_stripped)
                putc('\n', obuf);
          }
@@ -1285,9 +1285,9 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       nl = "";
    }
 
-   colour_put(fp, COLOURSPEC_FROM_);
+   n_colour_put(fp, n_COLOURSPEC_FROM_);
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   colour_reset(fp);
+   n_colour_reset(fp);
    if (i > 0 && stats != NULL)
       *stats += i;
    NYD_LEAVE;
@@ -1320,8 +1320,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    {
    struct str const *cpre, *csuf;
 #ifdef HAVE_COLOUR
-   cpre = colour_get(COLOURSPEC_FROM_);
-   csuf = colour_get(COLOURSPEC_RESET);
+   cpre = n_colour_get(n_COLOURSPEC_FROM_);
+   csuf = n_colour_get(n_COLOURSPEC_RESET);
 #else
    cpre = csuf = NULL;
 #endif

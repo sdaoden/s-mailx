@@ -1773,11 +1773,11 @@ bidi_info_create(struct bidi_info *bip)
 
 #ifdef HAVE_COLOUR
 FL void
-colour_table_create(bool_t pager_used)
+n_colour_table_create(bool_t pager_used, bool_t headerview)
 {
-   union {char *cp; char const *ccp; void *vp; struct colour_table *ctp;} u;
+   union {char *cp; char const *ccp; void *vp; struct n_colour_table *ctp;} u;
    size_t i;
-   struct colour_table *ct;
+   struct n_colour_table *ct;
    NYD_ENTER;
 
    if (ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager)))
@@ -1791,7 +1791,7 @@ colour_table_create(bool_t pager_used)
       if (strstr(term, "color") != NULL)
          goto jok;
       if ((okterms = ok_vlook(colour_terms)) == NULL)
-         okterms = UNCONST(COLOUR_TERMS);
+         okterms = UNCONST(n_COLOUR_TERMS);
       okterms = savestr(okterms);
 
       i = strlen(term);
@@ -1802,44 +1802,64 @@ colour_table_create(bool_t pager_used)
    }
 
 jok:
-   colour_table = ct = salloc(sizeof *ct); /* XXX lex.c yet resets (FILTER!) */
+   n_colour_table = ct = salloc(sizeof *ct); /* XXX lex.c yet resets (FILTER!) */
    {  static struct {
          enum okeys        okey;
-         enum colourspec   cspec;
+         enum n_colourspec cspec;
          char const        *defval;
-      } const map[] = {
-         {ok_v_colour_msginfo,  COLOURSPEC_MSGINFO,  COLOUR_MSGINFO},
-         {ok_v_colour_partinfo, COLOURSPEC_PARTINFO, COLOUR_PARTINFO},
-         {ok_v_colour_from_,    COLOURSPEC_FROM_,    COLOUR_FROM_},
-         {ok_v_colour_header,   COLOURSPEC_HEADER,   COLOUR_HEADER},
-         {ok_v_colour_uheader,  COLOURSPEC_UHEADER,  COLOUR_UHEADER}
-      };
+      } const
+      /* Message display set */
+      mds_map[] = {
+         {ok_v_colour_msginfo,   n_COLOURSPEC_MSGINFO,   n_COLOUR_MSGINFO},
+         {ok_v_colour_partinfo,  n_COLOURSPEC_PARTINFO,  n_COLOUR_PARTINFO},
+         {ok_v_colour_from_,     n_COLOURSPEC_FROM_,     n_COLOUR_FROM_},
+         {ok_v_colour_header,    n_COLOURSPEC_HEADER,    n_COLOUR_HEADER},
+         {ok_v_colour_uheader,   n_COLOURSPEC_UHEADER,   n_COLOUR_UHEADER},
+      },
+      /* Header overview set */
+      hos_map[] = {
+         {0,0,""}
+      }, * map;
+      size_t nelem;
 
-      for (i = 0; i < NELEM(map); ++i) {
+      if (headerview) {
+         map = hos_map;
+         nelem = NELEM(hos_map);
+      } else {
+         map = mds_map;
+         nelem = NELEM(mds_map);
+      }
+
+      for (i = 0; i < nelem; ++i) {
          if ((u.cp = _var_oklook(map[i].okey)) == NULL)
             u.ccp = map[i].defval;
          u.cp = _colour_iso6429(u.ccp);
          ct->ct_csinfo[map[i].cspec].l = strlen(u.cp);
          ct->ct_csinfo[map[i].cspec].s = u.cp;
       }
-   }
-   ct->ct_csinfo[COLOURSPEC_RESET].l = sizeof("\033[0m") -1;
-   ct->ct_csinfo[COLOURSPEC_RESET].s = UNCONST("\033[0m");
 
-   if ((u.cp = ok_vlook(colour_user_headers)) == NULL)
-      u.ccp = COLOUR_USER_HEADERS;
-   ct->ct_csinfo[COLOURSPEC_RESET + 1].l = i = strlen(u.ccp);
-   ct->ct_csinfo[COLOURSPEC_RESET + 1].s = (i == 0) ? NULL : savestr(u.ccp);
+      if (!headerview) {
+         if ((u.cp = ok_vlook(colour_user_headers)) == NULL)
+            u.ccp = n_COLOUR_USER_HEADERS;
+         ct->ct_csinfo[n_COLOURSPEC_RESET + 1].l = i = strlen(u.ccp);
+         ct->ct_csinfo[n_COLOURSPEC_RESET + 1].s =
+               (i == 0) ? NULL : savestr(u.ccp);
+      }
+   }
+
+   /* XXX using [0m is hard, we should selectively turn off what is on */
+   ct->ct_csinfo[n_COLOURSPEC_RESET].l = sizeof("\033[0m") -1;
+   ct->ct_csinfo[n_COLOURSPEC_RESET].s = UNCONST("\033[0m");
 jleave:
    NYD_LEAVE;
 }
 
 FL void
-colour_put(FILE *fp, enum colourspec cs)
+n_colour_put(FILE *fp, enum n_colourspec cs)
 {
    NYD_ENTER;
-   if (colour_table != NULL) {
-      struct str const *cp = colour_get(cs);
+   if (n_colour_table != NULL) {
+      struct str const *cp = n_colour_get(cs);
 
       fwrite(cp->s, cp->l, 1, fp);
    }
@@ -1847,18 +1867,19 @@ colour_put(FILE *fp, enum colourspec cs)
 }
 
 FL void
-colour_put_header(FILE *fp, char const *name)
+n_colour_put_user_header(FILE *fp, char const *name)
 {
-   enum colourspec cs = COLOURSPEC_HEADER;
+   enum n_colourspec cs = n_COLOURSPEC_HEADER;
    struct str const *uheads;
    char *cp, *cp_base, *x;
    size_t namelen;
    NYD_ENTER;
 
-   if (colour_table == NULL)
+   if (n_colour_table == NULL)
       goto j_leave;
+
    /* Normal header colours if there are no user headers */
-   uheads = colour_table->ct_csinfo + COLOURSPEC_RESET + 1;
+   uheads = n_colour_table->ct_csinfo + n_COLOURSPEC_RESET + 1;
    if (uheads->s == NULL)
       goto jleave;
 
@@ -1870,34 +1891,34 @@ colour_put_header(FILE *fp, char const *name)
    while ((x = n_strsep(&cp, ',', TRU1)) != NULL) {
       size_t l = (cp != NULL) ? PTR2SIZE(cp - x) - 1 : strlen(x);
       if (l == namelen && !ascncasecmp(x, name, namelen)) {
-         cs = COLOURSPEC_UHEADER;
+         cs = n_COLOURSPEC_UHEADER;
          break;
       }
    }
    ac_free(cp_base);
 jleave:
-   colour_put(fp, cs);
+   n_colour_put(fp, cs);
 j_leave:
    NYD_LEAVE;
 }
 
 FL void
-colour_reset(FILE *fp)
+n_colour_reset(FILE *fp)
 {
    NYD_ENTER;
-   if (colour_table != NULL)
+   if (n_colour_table != NULL)
       fwrite("\033[0m", 4, 1, fp);
    NYD_LEAVE;
 }
 
 FL struct str const *
-colour_get(enum colourspec cs)
+n_colour_get(enum n_colourspec cs)
 {
    struct str const *rv = NULL;
    NYD_ENTER;
 
-   if (colour_table != NULL)
-      if ((rv = colour_table->ct_csinfo + cs)->s == NULL)
+   if (n_colour_table != NULL)
+      if ((rv = n_colour_table->ct_csinfo + cs)->s == NULL)
          rv = NULL;
    NYD_LEAVE;
    return rv;
