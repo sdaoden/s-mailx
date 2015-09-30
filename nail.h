@@ -450,6 +450,11 @@
  * a special local CTA to overcome this */
 #define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
 #define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
+#ifdef n_MAIN_SOURCE
+# define MCTA(TEST)     CTA(TEST);
+#else
+# define MCTA(TEST)
+#endif
 
 #define _CTA_1(T,F,L)   _CTA_2(T, F, L)
 #define _CTA_2(T,F,L)  \
