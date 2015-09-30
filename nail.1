@@ -4795,7 +4795,7 @@ which causes prompting of the user in interactive mode, with the given
 boolean as the default value.
 .
 .\" .Ss "Initial settings" {{{
-.\" (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
+.\" (Keep in SYNC: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
 .Ss "Initial Settings"
 .
 The standard POSIX 2008/Cor 1-2013 mandates the following initial
@@ -5272,8 +5272,9 @@ Entries only need to be added if the string
 .Dq color
 isn't part of the terminal name itself; the default value is
 .Pp
-.Dl cons25,linux,rxvt,rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:\
-wsvt25,\:xterm
+.\" (Keep in SYNC: ./nail.h:COLOUR_TERMS, ./nail.1:*colour-terms*"!)
+.Dl aterm,cons25,gnome,konsole,\:kterm,\:linux,\:\
+rxvt,\:rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:wsvt25,\:xterm
 .
 .Mx
 .It Va colour-uheader

@@ -208,8 +208,11 @@
 #define COLOUR_FROM_    "fg=brown"
 #define COLOUR_HEADER   "fg=red"
 #define COLOUR_UHEADER  "ft=bold,fg=red"
+/* The COLOUR_TERMS is in addition to those which have "color" in their name!
+ * (Keep in SYNC: ./nail.h:COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
 #define COLOUR_TERMS    \
-   "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
+   "aterm,cons25,gnome,konsole,kterm,linux,"\
+   "rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 #define COLOUR_USER_HEADERS "from,subject"
 
 /* Special FD requests for run_command() / start_command() */
