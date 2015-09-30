@@ -1348,8 +1348,8 @@ jdone:
       c_sort((void*)-1);
    }
 
-   if ((options & OPT_EXISTONLY) && (mb.mb_type == MB_IMAP ||
-         mb.mb_type == MB_CACHE)) {
+   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST) &&
+         (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)) {
       rv = (msgCount == 0);
       goto jleave;
    }

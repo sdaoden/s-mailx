@@ -215,8 +215,11 @@ This is useful for sending messages from scripts.
 .
 .Mx
 .It Fl e
-Just check if mail is present in the system mailbox.
+Just check if mail is present (in the specified or system mailbox).
 If yes, return an exit status of zero, a non-zero value otherwise.
+To restrict the set of mails to consider in this evaluation a message
+specification can be added with the option
+.Fl L .
 .
 .Mx
 .It Fl F
@@ -251,7 +254,9 @@ that starts with a hyphen, prefix it with a (relative) path, as in
 .
 .Mx
 .It Fl H
-Print a header summary of all messages and exit.
+Print a summary of the
+.Ic headers
+of all messages in the specified or system mailbox and exit.
 A configurable summary view is available via the
 .Fl L
 option.
@@ -271,7 +276,10 @@ variable to ignore tty interrupt signals.
 .
 .Mx
 .It Fl L Ar spec-list
-Print a header summary of only those messages that match the given
+Print a summary of all
+.Ic headers
+of only those messages in the specified or system mailbox that match the
+given
 .Ar spec-list ,
 then exit.
 See the section
@@ -279,7 +287,9 @@ See the section
 for the format of
 .Ar spec-list .
 If the
-.Fl H
+.Fl e
+(\*(OB or
+.Fl H )
 option has been given in addition no header summary is produced,
 but \*(UA will instead indicate via its exit status wether
 .Ar spec-list
@@ -1498,7 +1508,8 @@ command),
 .Ql delete 1-5
 will delete the messages that are located between (and including)
 messages 1 through 5 in the sorted/threaded order, as shown in the
-header summary.
+.Ic headers
+summary.
 Multiple colon modifiers can be joined into one, e.g.,
 .Ql :du .
 The following special message names exist:
@@ -3059,7 +3070,9 @@ hello, world
 .It Ic headers
 (h) Show the current group of headers, the size of which depends on
 the variable
-.Va screen .
+.Va screen
+and the style of which can be adjusted with the variable
+.Va headline .
 If a message-specification is given the group of headers containing the
 first message therein is shown and the message at the top of the screen
 becomes the new

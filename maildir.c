@@ -778,7 +778,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       pstate |= PS_SETFILE_OPENED;
    }
 
-   if (options & OPT_EXISTONLY) {
+   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
       i = (msgCount == 0);
       goto jleave;
    }

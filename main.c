@@ -513,7 +513,8 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
    }
    if (options & OPT_QUICKRUN_MASK) {
       exit_status = i;
-      if (!(options & OPT_EXISTONLY) && i == EXIT_OK)
+      if (i == EXIT_OK && (!(options & OPT_EXISTONLY) ||
+            (options & OPT_HEADERLIST)))
          print_header_summary(Larg);
       goto jquit;
    }
@@ -918,12 +919,8 @@ jgetopt_done:
          emsg = N_("Send options without primary recipient specified.");
          goto jusage;
       }
-      if (options & OPT_EXISTONLY) {
-         emsg = N_("The -e option cannot be used in send mode.");
-         goto jusage;
-      }
-      if (options & (OPT_HEADERSONLY | OPT_HEADERLIST)) {
-         emsg = N_("The -H and -L options cannot be used in send mode.");
+      if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) {
+         emsg = N_("The -e, -H and -L options cannot be used in send mode.");
          goto jusage;
       }
       if (options & OPT_R_FLAG) {
@@ -935,11 +932,14 @@ jgetopt_done:
          emsg = N_("The options -f and -u are mutually exclusive");
          goto jusage;
       }
-      if ((options & OPT_EXISTONLY) &&
-            (options & (OPT_HEADERSONLY | OPT_HEADERLIST))) {
-         emsg = N_("The option -e is mutual exclusive with -H and -L");
+      if ((options & (OPT_EXISTONLY | OPT_HEADERSONLY)) ==
+            (OPT_EXISTONLY | OPT_HEADERSONLY)) {
+         emsg = N_("The options -e and -H are mutual exclusive");
          goto jusage;
       }
+      if ((options & (OPT_HEADERSONLY | OPT_HEADERLIST)) == /* TODO OBSOLETE */
+            (OPT_HEADERSONLY | OPT_HEADERLIST))
+         OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
    }
 
    /*

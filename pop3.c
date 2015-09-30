@@ -880,7 +880,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
 
-   if (options & OPT_EXISTONLY) {
+   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
       rv = (msgCount == 0);
       goto jleave;
    }

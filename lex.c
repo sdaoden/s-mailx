@@ -675,7 +675,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       pstate |= PS_SETFILE_OPENED;
    }
 
-   if (options & OPT_EXISTONLY) {
+   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
       rv = (msgCount == 0);
       goto jleave;
    }
@@ -1184,13 +1184,13 @@ print_header_summary(char const *Larg)
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
-      if ((options & (OPT_VERB | OPT_HEADERSONLY)) == OPT_HEADERSONLY) {
+      if ((options & (OPT_VERB | OPT_EXISTONLY)) == OPT_EXISTONLY) {
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }
       assert(_msgvec != NULL);
       i = (getmsglist(/*TODO make arg const */UNCONST(Larg), _msgvec, 0) <= 0);
-      if (options & OPT_HEADERSONLY) {
+      if (options & OPT_EXISTONLY) {
          exit_status = (int)i;
          goto jleave;
       }
