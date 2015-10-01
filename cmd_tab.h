@@ -53,12 +53,6 @@
 #define W            ARG_W
 #define O            ARG_O
 
-#ifdef HAVE_DOCSTRINGS
-# define DS(S)       , S
-#else
-# define DS(S)
-#endif
-
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
@@ -208,7 +202,7 @@
      DS(N_("Echo given arguments")) },
    { "quit", &_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &_c_pcmdlist, (H | M | NOLIST), 0, 0
+   { "list", &_c_list, (H | M | NOLIST), 0, 0
      DS(N_("List all available commands")) },
    { "xit", &c_rexit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
@@ -412,9 +406,6 @@
    { "smemtrace", &c_smemtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
 #endif
-   { NULL, NULL, 0, 0, 0 DS("") }
-
-#undef DS
 
 #undef MSGLIST
 #undef STRLIST

@@ -2402,6 +2402,14 @@ The following commands are available:
 .
 .Bl -tag -width ".Ic _ccount"
 .Mx
+.It Ic \&!
+Executes the
+.Ev SHELL
+(see
+.Xr sh 1 Ns
+) command which follows.
+.
+.Mx
 .It Ic #
 The comment-command causes the entire line to be ignored.
 .Sy Note:
@@ -2412,14 +2420,10 @@ indicating special character, which means that, e.g., trailing comments
 on a line are not possible.
 .
 .Mx
-.It Ic ~
-Interprets the remainder of the word as a macro name and passes it
-through to the
-.Ic call
-command; e.g.,
-.Ql ~ Ns Ar mymacro
-is a shorter synonym for
-.Ql call Ar mymacro .
+.It Ic +
+Goes to the next message in sequence and types it
+(like
+.Dq ENTER ) .
 .
 .Mx
 .It Ic -
@@ -2447,18 +2451,20 @@ and
 and see how the display changes.
 .
 .Mx
-.It Ic \&!
-Executes the
-.Ev SHELL
-(see
-.Xr sh 1 Ns
-) command which follows.
-.
-.Mx
 .It Ic \&|
 A synonym for the
 .Ic pipe
 command.
+.
+.Mx
+.It Ic ~
+Interprets the remainder of the word as a macro name and passes it
+through to the
+.Ic call
+command; e.g.,
+.Ql ~ Ns Ar mymacro
+is a shorter synonym for
+.Ql call Ar mymacro .
 .
 .Mx
 .It Ic account

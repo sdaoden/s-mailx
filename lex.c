@@ -86,7 +86,7 @@ static int     _c_ghost(void *v);
 static int     _c_unghost(void *v);
 
 /* Print a list of all commands */
-static int     _c_pcmdlist(void *v);
+static int     _c_list(void *v);
 
 static int     __pcmd_cmp(void const *s1, void const *s2);
 
@@ -105,10 +105,24 @@ static void    stop(int s);
 /* Branch here on hangup signal and simulate "exit" */
 static void    hangup(int s);
 
-/* List of all commands */
+/* List of all commands, and list of commands which are specially treated
+ * and deduced in execute(), but we need a list for _c_list() and
+ * print_comm_docstr() */
+#ifdef HAVE_DOCSTRINGS
+# define DS(S)       , S
+#else
+# define DS(S)
+#endif
 static struct cmd const _cmd_tab[] = {
 #include "cmd_tab.h"
+},
+                        _special_cmd_tab[] = {
+   { "#", NULL, 0, 0, 0
+     DS(N_("\"Comment command\": ignore remaining (continuable) line")) },
+  { "-", NULL, 0, 0, 0
+     DS(N_("Print out the preceding message")) }
 };
+#undef DS
 
 #ifdef HAVE_C90AMEND1
 SINLINE size_t
@@ -214,10 +228,10 @@ _lex_isolate(char const *comm)
 static struct cmd const *
 _lex(char const *comm) /* TODO **command hashtable**! linear list search!!! */
 {
-   struct cmd const *cp;
+   struct cmd const *cp, *cpmax;
    NYD_ENTER;
 
-   for (cp = _cmd_tab; cp->name != NULL; ++cp)
+   for (cp = cpmax = _cmd_tab, cpmax += NELEM(_cmd_tab); cp != cpmax; ++cp)
       if (*comm == *cp->name && is_prefix(comm, cp->name))
          goto jleave;
    cp = NULL;
@@ -358,20 +372,24 @@ __pcmd_cmp(void const *s1, void const *s2)
 }
 
 static int
-_c_pcmdlist(void *v)
+_c_list(void *v)
 {
    struct cmd const **cpa, *cp, **cursor;
    size_t i;
    NYD_ENTER;
    UNUSED(v);
 
-   for (i = 0; _cmd_tab[i].name != NULL; ++i)
-      ;
-   ++i;
+   i = NELEM(_cmd_tab) + NELEM(_special_cmd_tab) + 1;
    cpa = ac_alloc(sizeof(cp) * i);
 
-   for (i = 0; (cp = _cmd_tab + i)->name != NULL; ++i)
-      cpa[i] = cp;
+   for (i = 0; i < NELEM(_cmd_tab); ++i)
+      cpa[i] = _cmd_tab + i;
+   {
+      size_t j;
+
+      for (j = 0; j < NELEM(_special_cmd_tab); ++i, ++j)
+         cpa[i] = _special_cmd_tab + j;
+   }
    cpa[i] = NULL;
 
    qsort(cpa, i, sizeof(cp), &__pcmd_cmp);
@@ -1461,7 +1479,7 @@ FL bool_t
 print_comm_docstr(char const *comm)
 {
    struct cmd_ghost const *cg;
-   struct cmd const *cp;
+   struct cmd const *cp, *cpmax;
    bool_t rv = FAL0;
    NYD_ENTER;
 
@@ -1473,7 +1491,9 @@ print_comm_docstr(char const *comm)
          break;
       }
 
-   for (cp = _cmd_tab; cp->name != NULL; ++cp) {
+   cpmax = (cp = _cmd_tab) + NELEM(_cmd_tab);
+jredo:
+   for (; cp < cpmax; ++cp) {
       if (cp->func == &c_cmdnotsupp)
          continue;
       if (!strcmp(comm, cp->name))
@@ -1484,6 +1504,10 @@ print_comm_docstr(char const *comm)
          continue;
       rv = TRU1;
       break;
+   }
+   if (!rv && cpmax == _cmd_tab + NELEM(_cmd_tab)) {
+      cpmax = (cp = _special_cmd_tab) + NELEM(_special_cmd_tab);
+      goto jredo;
    }
 
    if (!rv && cg != NULL) {
