@@ -50,9 +50,6 @@
 # include <locale.h>
 #endif
 
-/* Verify that our size_t PRI[du]Z format string has the correct type size */
-PRIxZ_FMT_CTA();
-
 struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;

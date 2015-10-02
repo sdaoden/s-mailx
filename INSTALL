@@ -222,7 +222,8 @@ Unless otherwise noted the following applies to saying "$ make" and
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
     However, "nail.h" tries hard to detect the real type size and
     defines the "PRI[du]Z" macros which end up with the correct size,
-    which is compile-time asserted via PRIxZ_FMT_CTA() in "main.c".
+    which is also compile-time asserted (see the "MCTA(sizeof(size_t) ==
+    XZ)" statements in "nail.h".
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
