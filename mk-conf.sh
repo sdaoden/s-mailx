@@ -521,7 +521,7 @@ while read line; do
    else
       j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
    fi
-   echo "${i}=\"${j}\""
+  echo "${i}=\"${j}\""
 done < ${rc} > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
@@ -1427,7 +1427,7 @@ int main(void)
 !
 
 if feat_yes SSL; then
-   if link_check openssl 'OpenSSL 1.1.0 and above' \
+   if link_check openssl 'OpenSSL (new style *_client_method(3ssl))' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -1450,7 +1450,7 @@ int main(void)
 !
    then
       :
-   elif link_check openssl 'OpenSSL' \
+   elif link_check openssl 'OpenSSL (old style *_client_method(3ssl))' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
