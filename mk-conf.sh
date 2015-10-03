@@ -502,7 +502,7 @@ feat_bail_required() {
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
 # Note we leave alone the values
-trap "${rm} -f ${tmp}; exit 1" HUP INT TERM
+trap "exit 1" HUP INT TERM
 trap "${rm} -f ${tmp}" EXIT
 
 printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
@@ -594,8 +594,7 @@ check_tool cksum "${cksum:-`command -v cksum`}"
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}; exit 1" \
-   HUP INT TERM
+trap "exit 1" HUP INT TERM
 trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
@@ -776,7 +775,7 @@ inc=./config.inc
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit 1" HUP INT TERM
+trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
 trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" EXIT
 
 # Time to redefine helper 2
