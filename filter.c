@@ -628,6 +628,7 @@ static struct hf_ent const       _hf_ents[] = {
    _X("lt", '<'),                _X("gt", '>'),
 
    _XU("nbsp", ' ', 0x0020 /* Note: not 0x00A0 seems to be better for us */),
+   _XU("middot", '.', 0x00B7),
    _XSU("hellip", "...", 0x2026),
    _XSU("mdash", "---", 0x2014), _XSU("ndash", "--", 0x2013),
    _XSU("laquo", "<<", 0x00AB),  _XSU("raquo", ">>", 0x00BB),
