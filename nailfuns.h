@@ -723,6 +723,8 @@ FL int         c_visual(void *v);
 /* Run an editor on either size bytes of the file fp (or until EOF if size is
  * negative) or on the message mp, and return a new file or NULL on error of if
  * the user didn't perform any edits.
+ * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
+ * from within compose mode, and giving TRUM1 to puthead().
  * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
@@ -1720,10 +1722,15 @@ FL enum okay   mail1(struct header *hp, int printheaders,
  * numeric timezones are easier to read and because $TZ isn't always set */
 FL int         mkdate(FILE *fo, char const *field);
 
-/* Dump the to, subject, cc header on the passed file buffer */
-FL int         puthead(struct header *hp, FILE *fo, enum gfield w,
-                  enum sendaction action, enum conversion convert,
-                  char const *contenttype, char const *charset);
+/* Dump the to, subject, cc header on the passed file buffer.
+ * nosend_msg tells us not to dig to deep but to instead go for compose mode or
+ * editing a message (yet we're stupid and cannot do it any better) - if it is
+ * TRUM1 then we're really in compose mode and will produce some fields for
+ * easier filling in */
+FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
+                  enum gfield w, enum sendaction action,
+                  enum conversion convert, char const *contenttype,
+                  char const *charset);
 
 /*  */
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);

@@ -166,6 +166,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    if (hp != NULL) {
+      assert(mp == NULL);
       t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
       if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
             (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
@@ -173,7 +174,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
             (hp->h_organization != NULL || ok_vlook(ORGANIZATION) != NULL) ||
             hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
          t |= GIDENT;
-      puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+      puthead(TRUM1, hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    }
 
    if (mp != NULL) {

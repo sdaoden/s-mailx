@@ -285,7 +285,7 @@ jpager:
 
    fprintf(obuf, _("-------\nMessage contains:\n"));
    gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA;
-   puthead(hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
+   puthead(TRU1, hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
    while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
    if (hp->h_attach != NULL) {
@@ -403,7 +403,7 @@ mesedit(int c, struct header *hp)
    ok_bset(add_file_recipients, TRU1);
 
    sigint = safe_signal(SIGINT, SIG_IGN);
-   nf = run_editor(_coll_fp, (off_t)-1, c, 0, hp, NULL, SEND_MBOX, sigint);
+   nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
    if (nf != NULL) {
       if (hp) {
          rewind(nf);
@@ -688,7 +688,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       }
 
       if (printheaders && !ok_blook(editalong)) {
-         puthead(hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+         puthead(TRU1, hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
          fflush(stdout);
       }
    }
