@@ -218,11 +218,23 @@ _list_reply(int *msgvec, enum header_flags hf)
    char const *reply_to, *rcv, *cp;
    enum gfield gf;
    struct name *rt, *mft, *np;
-   int rv = 1;
+   int *save_msgvec;
    NYD_ENTER;
 
+   /* TODO Since we may recur and do stuff with message lists we need to save
+    * TODO away the argument vector as long as that isn't done by machinery */
+   {
+      size_t i;
+      for (i = 0; msgvec[i] != 0; ++i)
+         ;
+      save_msgvec = ac_alloc(sizeof(*save_msgvec) * i +1);
+      save_msgvec[i] = 0;
+      while (i-- > 0)
+         save_msgvec[i] = msgvec[i];
+   }
+
 jnext_msg:
-   mp = message + *msgvec - 1;
+   mp = message + *save_msgvec - 1;
    touch(mp);
    setdot(mp);
 
@@ -367,7 +379,7 @@ j_lt_redo:
 
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
-      head.h_attach->a_msgno = *msgvec;
+      head.h_attach->a_msgno = *save_msgvec;
       head.h_attach->a_content_description = _("Original message content");
    }
 
@@ -375,16 +387,17 @@ j_lt_redo:
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 
-   if (*++msgvec != 0) {
+   if (*++save_msgvec != 0) {
       /* TODO message (error) ring.., less sleep */
       printf(_("Waiting a second before proceeding to the next message..\n"));
       fflush(stdout);
       sleep(1);
       goto jnext_msg;
    }
-   rv = 0;
+
+   ac_free(save_msgvec);
    NYD_LEAVE;
-   return rv;
+   return 0;
 }
 
 static int
@@ -739,6 +752,7 @@ c_help(void *v)
 "Reply <message list>        reply to message senders\n"
 "reply <message list>        reply to message senders and all recipients\n"));
    puts(_(
+"Lreply <message list>       forced mailing-list reply to all given messages\n"
 "mail addresses              mail to specific recipients\n"
 "file folder                 change to another folder\n"
 "quit                        quit and apply changes to folder\n"
