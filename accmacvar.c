@@ -200,9 +200,10 @@ static int           _ma_exec(struct macro const *mp, struct var **unroller);
 /* User display helpers */
 static int           _ma_list(enum ma_flags mafl);
 
-/* */
+/* _ma_define() returns error for faulty definitions and already existing
+ * names, _ma_undefine() returns error if a named thing doesn't exist */
 static bool_t        _ma_define(char const *name, enum ma_flags mafl);
-static void          _ma_undefine(char const *name, enum ma_flags mafl);
+static bool_t        _ma_undefine(char const *name, enum ma_flags mafl);
 static void          _ma_freelines(struct mline *lp);
 
 /* Update replay-log */
@@ -919,16 +920,21 @@ jerr:
    goto jleave;
 }
 
-static void
+static bool_t
 _ma_undefine(char const *name, enum ma_flags mafl)
 {
    struct macro *mp;
+   bool_t rv;
    NYD2_ENTER;
 
+   rv = TRU1;
+
    if (LIKELY(name[0] != '*' || name[1] != '\0')) {
-      if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) == NULL)
+      if ((mp = _ma_look(name, NULL, mafl | MA_UNDEF)) == NULL) {
          n_err(_("%s \"%s\" is not defined\n"),
             (mafl & MA_ACC ? "Account" : "Macro"), name);
+         rv = FAL0;
+      }
    } else {
       struct macro **mpp, *lmp;
 
@@ -945,6 +951,7 @@ _ma_undefine(char const *name, enum ma_flags mafl)
          }
    }
    NYD2_LEAVE;
+   return rv;
 }
 
 static void
@@ -1423,14 +1430,15 @@ jleave:
 FL int
 c_undefine(void *v)
 {
-   int rv = 1;
-   char **args = v;
+   int rv;
+   char **args;
    NYD_ENTER;
 
-   do
-      _ma_undefine(*args, MA_NONE);
-   while (*++args != NULL);
    rv = 0;
+   args = v;
+   do
+      rv |= !_ma_undefine(*args, MA_NONE);
+   while (*++args != NULL);
    NYD_LEAVE;
    return rv;
 }
@@ -1605,14 +1613,15 @@ jleave:
 FL int
 c_unaccount(void *v)
 {
-   int rv = 1;
-   char **args = v;
+   int rv;
+   char **args;
    NYD_ENTER;
 
-   do
-      _ma_undefine(*args, MA_ACC);
-   while (*++args != NULL);
    rv = 0;
+   args = v;
+   do
+      rv |= !_ma_undefine(*args, MA_ACC);
+   while (*++args != NULL);
    NYD_LEAVE;
    return rv;
 }
