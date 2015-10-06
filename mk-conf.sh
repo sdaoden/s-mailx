@@ -1127,7 +1127,7 @@ int main(void)
 fi # have_setlocale
 
 # Note: run_check, thus we also get only the desired implementation...
-run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
+run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void)
 {
