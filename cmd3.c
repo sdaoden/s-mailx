@@ -227,14 +227,15 @@ _list_reply(int *msgvec, enum header_flags hf)
       size_t i;
       for (i = 0; msgvec[i] != 0; ++i)
          ;
-      save_msgvec = ac_alloc(sizeof(*save_msgvec) * i +1);
-      save_msgvec[i] = 0;
+      ++i;
+      save_msgvec = ac_alloc(sizeof(*save_msgvec) * i);
       while (i-- > 0)
          save_msgvec[i] = msgvec[i];
+      msgvec = save_msgvec;
    }
 
 jnext_msg:
-   mp = message + *save_msgvec - 1;
+   mp = message + *msgvec - 1;
    touch(mp);
    setdot(mp);
 
@@ -379,7 +380,7 @@ j_lt_redo:
 
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
-      head.h_attach->a_msgno = *save_msgvec;
+      head.h_attach->a_msgno = *msgvec;
       head.h_attach->a_content_description = _("Original message content");
    }
 
@@ -387,7 +388,7 @@ j_lt_redo:
          ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 
-   if (*++save_msgvec != 0) {
+   if (*++msgvec != 0) {
       /* TODO message (error) ring.., less sleep */
       printf(_("Waiting a second before proceeding to the next message..\n"));
       fflush(stdout);
