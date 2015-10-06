@@ -148,9 +148,14 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
       n_err(_("*attrlist* is not of the correct length, using builtin\n"));
    }
 
-   if (ok_blook(bsdcompat) || ok_blook(bsdflags) || env_blook("SYSV3", FAL0)) {
+   if (ok_blook(bsdcompat) || ok_blook(bsdflags)) {
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
+   } else if (env_blook("SYSV3", FAL0)) {
+      char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
+      memcpy(attrlist, bsdattr, sizeof bsdattr);
+      OBSOLETE(_("*SYSV3*: please use *bsdcompat* or *bsdflags*, "
+         "or set *attrlist*"));
    } else {
       char const pattr[attrlen +1]   = "NUROSPMFAT+-$~";
       memcpy(attrlist, pattr, sizeof pattr);

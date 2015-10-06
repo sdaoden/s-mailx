@@ -4998,11 +4998,9 @@ with the default being
 .Ql NUROSPMFAT+\-$~
 or
 .Ql NU\ \ *HMFAT+\-$~
-if
+if the
 .Va bsdflags
-or the
-.Ev SYSV3
-environment variable are set, in the following order:
+variable is set, in the following order:
 .Pp
 .Bl -tag -compact -offset indent -width ".It Ql _"
 .It Ql N
@@ -8051,10 +8049,6 @@ the
 .Sx "TILDE ESCAPES"
 and when starting subprocesses.
 A default shell is used if this option is not defined.
-.
-.Mx
-.It Ev SYSV3
-Changes the letters printed in the first column of a header summary.
 .
 .Mx
 .It Ev TERM
