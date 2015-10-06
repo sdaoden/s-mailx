@@ -286,9 +286,9 @@
      DS(N_("Un`draft' <message-list>")) },
    { "define", &c_define, (M | RAWLIST), 0, 2
      DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "undefine", &c_undefine, (M | RAWLIST), 0, 1000
+   { "undefine", &c_undefine, (M | RAWLIST), 1, 1000
      DS(N_("Un`define' all given <macros> (\"*\" for all)")) },
-   { "unaccount", &c_unaccount, (M | RAWLIST), 0, 1000
+   { "unaccount", &c_unaccount, (M | RAWLIST), 1, 1000
      DS(N_("Delete all given <accounts> (\"*\" for all)")) },
    { "call", &c_call, (M | RAWLIST), 0, 1
      DS(N_("Call a macro")) },

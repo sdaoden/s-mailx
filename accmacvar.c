@@ -1427,15 +1427,10 @@ c_undefine(void *v)
    char **args = v;
    NYD_ENTER;
 
-   if (*args == NULL) {
-      n_err(_("`undefine': required arguments are missing\n"));
-      goto jleave;
-   }
    do
       _ma_undefine(*args, MA_NONE);
    while (*++args != NULL);
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -1614,15 +1609,10 @@ c_unaccount(void *v)
    char **args = v;
    NYD_ENTER;
 
-   if (*args == NULL) {
-      n_err(_("`unaccount': required arguments are missing\n"));
-      goto jleave;
-   }
    do
       _ma_undefine(*args, MA_ACC);
    while (*++args != NULL);
    rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }
