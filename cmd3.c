@@ -737,34 +737,40 @@ c_help(void *v)
    }
 
    /* Very ugly, but take care for compiler supported string lengths :( */
-   printf(_("%s commands:\n"), progname);
-   puts(_(
-"type <message list>         type messages\n"
-"next                        goto and type next message\n"
-"from <message list>         give head lines of messages\n"
-"headers                     print out active message headers\n"
-"delete <message list>       delete messages\n"
-"undelete <message list>     undelete messages\n"));
-   puts(_(
-"save <message list> folder  append messages to folder and mark as saved\n"
-"copy <message list> folder  append messages to folder without marking them\n"
-"write <message list> file   append message texts to file, save attachments\n"
-"preserve <message list>     keep incoming messages in mailbox even if saved\n"
-"Reply <message list>        reply to message senders\n"
-"reply <message list>        reply to message senders and all recipients\n"));
-   puts(_(
-"Lreply <message list>       forced mailing-list reply to all given messages\n"
-"mail addresses              mail to specific recipients\n"
-"file folder                 change to another folder\n"
-"quit                        quit and apply changes to folder\n"
-"xit                         quit and discard changes made to folder\n"
-"!                           shell escape\n"
-"cd <directory>              chdir to directory or home if none given\n"
-"list                        list names of all available commands\n"));
-   printf(_(
-"A <message list> consists of integers, ranges of same, or other criteria\n"
-"separated by spaces.  If omitted, %s uses the last message typed.\n"),
-      progname);
+   fputs(progname, stdout);
+   fputs(_(
+      " commands -- \"<msglist>\" denotes message specifications,\n"
+      "e.g., \"1-5\", \":n\" or \".\", separated by spaces:\n"), stdout);
+   fputs(_(
+"\n"
+"type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
+"Type <msglist>         like `type' but always show all headers\n"
+"next                   goto and type next message\n"
+"from <msglist>         print header summary for the given list\n"
+"headers                header summary for messages surrounding \"dot\"\n"
+"delete <msglist>       delete messages (can be `undelete'd)\n"),
+      stdout);
+
+   fputs(_(
+"\n"
+"save <msglist> folder  append messages to folder and mark as saved\n"
+"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
+"write <msglist> file   write message contents to file (prompts for parts)\n"
+"Reply <msglist>        reply to message senders only\n"
+"reply <msglist>        like `Reply', but address all recipients\n"
+"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
+      stdout);
+
+   fputs(_(
+"\n"
+"mail <recipients>      compose a mail for the given recipients\n"
+"file folder            change to another mailbox\n"
+"File folder            like `file', but open readonly\n"
+"quit                   quit and apply changes to the current mailbox\n"
+"xit or exit            like `quit', but discard changes\n"
+"!shell command         shell escape\n"
+"list                   list names of all available commands\n"),
+      stdout);
 
 jleave:
    NYD_LEAVE;
