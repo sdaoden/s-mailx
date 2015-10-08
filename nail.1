@@ -2981,15 +2981,14 @@ will display the following message, not the current one.
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
 conditional execution construct \(em if the given condition is true then
 the encapsulated block is executed.
-POSIX only supports the conditions
-.Ql [Rr]eceive ,
-.Ql [Ss]end
+POSIX only supports the (case-insensitive) conditions
+.Ql r Ns
+eceive
 and
-.Ql [Tt]erm
-(execute if standard input is a tty), all remaining conditions are
-non-portable extensions; note that falsely specified conditions cause
-the execution of the entire conditional construct until the
-(matching) closing
+.Ql s Ns
+end, all remaining conditions are non-portable extensions; note that
+falsely specified conditions cause the execution of the entire
+conditional construct until the (matching) closing
 .Ic endif
 command to be suppressed.
 The syntax of the nestable
@@ -3006,6 +3005,10 @@ endif
 .Ed
 .
 .Pp
+The (case-insensitive) condition
+.Ql t Ns
+erminal will evaluate to true if the standard input is a terminal, i.e.,
+in interactive sessions.
 Another condition can be any boolean value (see the section
 .Sx "INTERNAL VARIABLES"
 for booleans) to mark an enwrapped block as
