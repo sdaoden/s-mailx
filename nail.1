@@ -179,13 +179,19 @@ Make standard input and standard output line-buffered.
 .
 .Mx
 .It Fl b Ar address
-Send blind carbon copies to the given list of addresses.
-.Sx "On sending mail, and non-interactive mode"
-below goes into more detail on that.
+Send a blind carbon copy to
+.Ar address .
+Can be used multiple times, but it is also possible to give
+a comma-separated list of receivers in a single argument, proper shell
+quoting provided, e.g.,
+.Ql -b """qrec1  ,  rec2,rec3, Ex <am@ple>""" .
+Also see the section
+.Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Fl c Ar address
-Send carbon copies to the given list of addresses.
+Send carbon copies to the given receiver(s).
+Can be used multiple times.
 .
 .Mx
 .It Fl D
@@ -583,8 +589,24 @@ $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an isolated dry-run mode first
 $ LC_ALL=C MAILRC=/dev/null \e
   \*(ua -n -d -vv -Sfrom="me <he@re>" \e
+    -b bcc@exam.ple -c cc@exam.ple \e
     -s Subject -. "(Lovely) Bob <bob@host2>"
 .Ed
+.
+.Pp
+The command line options
+.Fl b
+and
+.Fl c
+can be used to add (blind) carbon copy receivers.
+Almost always lists of addresses can be given where an address is
+expected:
+whereas comma-separated lists should be given, e.g.,
+.Ql -c """r1@exam.ple ,  r2@exam.ple,r3@exam.ple""" ,
+that very example could also be given as the whitespace-separated list
+.Ql -c """r1@exam.ple   r2@exam.ple r3@exam.ple""" ,
+but which for obvious reasons would not work for
+.Ql -c """R1 <r1@exam.ple>, R2 (heh!) <r2@exam.ple>""" .
 .
 .Pp
 The user is then expected to type in the message contents.
@@ -674,7 +696,7 @@ or
 .Ql Bcc: )
 may not only be email addressees but can also be names of mailboxes and
 even complete shell command pipe specifications.
-Proper quoting may be necessary, e.g., to embed whitespace characters.
+Proper (shell) quoting is necessary, e.g., to embed whitespace characters.
 (Recall that \*(UA deals with mail standards, therefore those define the
 rules with which content is interpreted.)
 If the variable
