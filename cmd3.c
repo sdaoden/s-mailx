@@ -746,7 +746,7 @@ c_help(void *v)
 "type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
-"from <msglist>         print header summary for the given list\n"
+"from <msglist>         print header summary for the given list (\"search\")\n"
 "headers                header summary for messages surrounding \"dot\"\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
       stdout);
