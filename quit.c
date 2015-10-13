@@ -82,15 +82,26 @@ static void _demail(void);
 static void
 _alter(char const *name)
 {
+#ifdef HAVE_UTIMENSAT
+   struct timespec tsa[2];
+#else
    struct stat sb;
    struct utimbuf utb;
+#endif
    NYD_ENTER;
 
+#ifdef HAVE_UTIMENSAT
+   tsa[0].tv_sec = n_time_epoch() + 1;
+   tsa[0].tv_nsec = 0;
+   tsa[1].tv_nsec = UTIME_OMIT;
+   utimensat(AT_FDCWD, name, tsa, 0);
+#else
    if (!stat(name, &sb)) {
       utb.actime = n_time_epoch() + 1;
       utb.modtime = sb.st_mtime;
       utime(name, &utb);
    }
+#endif
    NYD_LEAVE;
 }
 
