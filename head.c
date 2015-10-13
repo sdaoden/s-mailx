@@ -1736,7 +1736,7 @@ jleave:
    NYD2_LEAVE;
    return t;
 jinvalid:
-   time(&t);
+   t = n_time_epoch();
    goto jleave;
 }
 #endif /* HAVE_IMAP_SEARCH || defined HAVE_IMAP */

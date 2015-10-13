@@ -87,7 +87,7 @@ _alter(char const *name)
    NYD_ENTER;
 
    if (!stat(name, &sb)) {
-      utb.actime = time(NULL) + 1;
+      utb.actime = n_time_epoch() + 1;
       utb.modtime = sb.st_mtime;
       utime(name, &utb);
    }
