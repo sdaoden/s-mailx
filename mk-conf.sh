@@ -880,89 +880,6 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
-#include <pwd.h>
-#include <unistd.h>
-int main(void)
-{
-   struct passwd *pw;
-   gid_t gid;
-   uid_t uid;
-
-   if ((gid = getgid()) != 1)
-      gid = getegid();
-   if ((uid = getuid()) != 1)
-      uid = geteuid();
-   if ((pw = getpwuid(uid)) == NULL)
-      pw = getpwnam("root");
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: we require user and group info / database searches.'
-   msg 'That much Unix we indulge ourselfs.'
-   config_exit 1
-fi
-
-if link_check termios 'termios.h and tc*(3) family' << \!
-#include <termios.h>
-int main(void)
-{
-   struct termios tios;
-   tcgetattr(0, &tios);
-   tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: we require termios.h and the tc*() family of functions.'
-   msg 'That much Unix we indulge ourselfs.'
-   config_exit 1
-fi
-
-if link_check snprintf 'v?snprintf(3)' << \!
-#include <stdarg.h>
-#include <stdio.h>
-static void dome(char *buf, ...)
-{
-   va_list ap;
-   va_start(ap, buf);
-   vsnprintf(buf, 20, "%s", ap);
-   va_end(ap);
-   return;
-}
-int main(void)
-{
-   char b[20];
-   snprintf(b, sizeof b, "%s", "string");
-   dome(b, "string");
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
-   config_exit 1
-fi
-
-# XXX Move to below later when the time stuff is regulary needed.
-# XXX Add POSIX check once standardized
-link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
-#include <stdlib.h>
-int main(void)
-{
-   arc4random();
-   return 0;
-}
-!
-
-# XXX Not indented for that - drop cond. when time stuff is regulary needed.
-if [ -z "${have_posix_random}" ]; then
 if link_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
@@ -1001,10 +918,100 @@ int main(void)
 then
    :
 else
-   msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
+   have_no_subsecond_time=1
+fi
+
+if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+#include <pwd.h>
+#include <unistd.h>
+int main(void)
+{
+   struct passwd *pw;
+   gid_t gid;
+   uid_t uid;
+
+   if ((gid = getgid()) != 1)
+      gid = getegid();
+   if ((uid = getuid()) != 1)
+      uid = geteuid();
+   if ((pw = getpwuid(uid)) == NULL)
+      pw = getpwnam("root");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require user and group info / database searches.'
+   msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
-fi # -z ${have_posix_random}
+
+if link_check snprintf 'v?snprintf(3)' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome(char *buf, ...)
+{
+   va_list ap;
+   va_start(ap, buf);
+   vsnprintf(buf, 20, "%s", ap);
+   va_end(ap);
+   return;
+}
+int main(void)
+{
+   char b[20];
+   snprintf(b, sizeof b, "%s", "string");
+   dome(b, "string");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   config_exit 1
+fi
+
+if link_check termios 'termios.h and tc*(3) family' << \!
+#include <termios.h>
+int main(void)
+{
+   struct termios tios;
+   tcgetattr(0, &tios);
+   tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require termios.h and the tc*() family of functions.'
+   msg 'That much Unix we indulge ourselfs.'
+   config_exit 1
+fi
+
+##
+
+link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
+#include <sys/types.h>
+#include <sys/mman.h>
+int main(void)
+{
+   mmap(0, 0, 0, 0, 0, 0);
+   return 0;
+}
+!
+
+link_check mremap 'mremap(2)' '#define HAVE_MREMAP' << \!
+#include <sys/types.h>
+#include <sys/mman.h>
+int main(void)
+{
+   mremap(0, 0, 0, MREMAP_MAYMOVE);
+   return 0;
+}
+!
 
 link_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
@@ -1015,6 +1022,36 @@ int main(void)
    return 0;
 }
 !
+
+link_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
+#include <fcntl.h>
+#include <unistd.h>
+int main(void)
+{
+   int fds[2];
+   pipe2(fds, O_CLOEXEC);
+   return 0;
+}
+!
+
+##
+
+# XXX Add POSIX check once standardized
+if link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void)
+{
+   arc4random();
+   return 0;
+}
+!
+then
+   :
+elif [ -n "${have_no_subsecond_time}" ]; then
+   msg 'ERROR: %s %s' 'without a native random' \
+      'one of clock_gettime(2) and gettimeofday(2) is required.'
+   config_exit 1
+fi
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
@@ -1040,37 +1077,6 @@ link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
 int main(void)
 {
    fchdir(0);
-   return 0;
-}
-!
-
-link_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
-#include <fcntl.h>
-#include <unistd.h>
-int main(void)
-{
-   int fds[2];
-   pipe2(fds, O_CLOEXEC);
-   return 0;
-}
-!
-
-link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mmap(0, 0, 0, 0, 0, 0);
-   return 0;
-}
-!
-
-link_check mremap 'mremap(2)' '#define HAVE_MREMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mremap(0, 0, 0, MREMAP_MAYMOVE);
    return 0;
 }
 !
