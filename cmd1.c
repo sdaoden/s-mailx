@@ -1331,12 +1331,18 @@ c_mboxit(void *v)
    int *msgvec = v, *ip;
    NYD_ENTER;
 
+   if (pstate & PS_EDIT) {
+      n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
+      goto jleave;
+   }
+
    for (ip = msgvec; *ip != 0; ++ip) {
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
       pstate |= PS_DID_PRINT_DOT;
    }
+jleave:
    NYD_LEAVE;
    return 0;
 }

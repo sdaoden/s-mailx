@@ -3206,11 +3206,8 @@ then collects the remaining mail content and sends it out.
 when \*(UA is quit; this is the default action unless the
 .Va hold
 option is set.
-\*(UA deviates from the POSIX standard with this command, as a
-.Ic next
-command issued after
-.Ic mbox
-will display the following message, not the current one.
+\*(ID This command can only be used in a system mailbox (see
+.Ic file ) .
 .
 .Mx
 .It Ic mimetype
