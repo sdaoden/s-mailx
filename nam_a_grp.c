@@ -670,9 +670,10 @@ _group_print_all(enum group_type gt)
          i = (ui32_t)_mlsub_size, h = (ui32_t)_mlsub_hits;
       else
          i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
-      fprintf(fp, _("\n%s list total: %u entries, %u hits\n"),
-         (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
-         i, h);
+      if (i > 0)
+         fprintf(fp, _("%s list total: %u entries, %u hits\n"),
+            (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
+            i, h);
    }
 #endif
 
