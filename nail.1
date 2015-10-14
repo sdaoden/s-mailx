@@ -1319,17 +1319,29 @@ to retain maximum compatibility with older mail clients.
 .Ss "Message states"
 .
 \*(UA differentiates in between several different message states;
-the current state will be reflected in the header display if
+the current state will be reflected in header summary displays if
 .Va headline
-is configured to do so.
-In \*(UA message states are inspected when leaving a mailbox and may
-cause messages to be automatically moved to the special
+is configured to do so (via the internal variable
+.Va attrlist ) ,
+and messages can also be selected and be acted upon depending on their
+state (see
+.Sx "Specifying messages" ) .
+When operating on the system mailbox or in primary mailboxes opened with
+the special prefix
+.Ql %:
+(see
+.Ic file )
+special actions, like the automatic moving of messages to the secondary
 .Ev MBOX
-mailbox \(en because this may be irritating to users which are used to
+mailbox may be applied when the mailbox is left (also implicitly via
+a successful exit of \*(UA, but not if the special command
+.Ic exit
+is used) \(en however, because this may be irritating to users which
+are used to
 .Dq more modern
 mail-user-agents, the default global
 .Pa \*(UR
-sets the
+sets the internal
 .Va hold
 and
 .Va keepsave
@@ -7872,17 +7884,20 @@ This variable is only used when it resides in the process environment.
 .Mx
 .It Ev MBOX
 The name of the user's mbox file.
-Supports a logical subset of the special conventions that are
-documented for the
+A logical subset of the special conventions that are documented for the
 .Ic file
 command and the
 .Va folder
-option.
+option may be used.
 The fallback default is
 .Pa mbox
 in the user's
 .Ev HOME
 directory.
+Traditionally this secondary mailbox is used as the file to save
+messages from the system mailbox that have been read.
+Also see
+.Sx "Message states" .
 .
 .Mx
 .It Ev NAIL_NO_SYSTEM_RC
