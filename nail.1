@@ -1,3 +1,5 @@
+.\"@ nail.1 - S-nail(1) reference manual.
+.\"
 .\" Copyright (c) 1980, 1990, 1993
 .\"     The Regents of the University of California.  All rights reserved.
 .\" Copyright (c) 2000
@@ -187,7 +189,7 @@ Send carbon copies to the given list of addresses.
 .
 .Mx
 .It Fl D
-\*(OP Set the
+\*(OP\*(OB Set the
 .Va disconnected
 variable.
 .
@@ -465,7 +467,7 @@ E.g., the following should send an email message to
 .Dq bob :
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en.\enx\en' | \e
-  LC_ALL=C MAILRC=/dev/null s-nail -n -# -Snosave
+  LC_ALL=C MAILRC=/dev/null \*(ua -n -# -Snosave
 .Ed
 .
 .Mx
@@ -753,7 +755,7 @@ itself.
 .Pp
 To avoid environmental noise scripts should
 .Dq detach
-\*(ua from any configuration files and create a script-local
+\*(UA from any configuration files and create a script-local
 environment, either by pointing the
 .Ev MAILRC
 variable to a custom configuration file, or by using the
@@ -777,15 +779,14 @@ $ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \e
 .
 When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
-When used like that the user's system mailbox is read in and a one line
-header of each message therein is printed.
-(See the command
+When used like that the user's system mailbox (see the command
 .Ic file
-for an in-depth description of the different mailbox types that exist.)
-Note that if the mailbox is empty \*(UA will exit after printing
-a message unless the option
+for an in-depth description of the different mailbox types that exist)
+is read in and a one line header of each message therein is printed.
+If the mailbox is empty, however, \*(UA will exit immediately (after
+printing a message) unless the variable
 .Va emptystart
-is found to be set.
+is set.
 .
 .Pp
 At the
@@ -857,6 +858,10 @@ controls wether and when \*(UA will use the configured
 .Ev PAGER
 for printing instead of directly writing to the terminal (generally
 speaking).
+Note that historically the global
+.Pa \*(UR
+not only adjusts the list of displayed headers, but also sets
+.Va crt .
 .
 .Pp
 Dependent upon the configuration a
@@ -2380,7 +2385,7 @@ and makes them specially addressable.
 .
 .Mx
 .It Ic cache
-\*(OP Only applicable to cached IMAP mailboxes;
+\*(OP\*(OB Only applicable to cached IMAP mailboxes;
 takes a message list and reads the specified messages into the IMAP
 cache.
 .
@@ -2425,7 +2430,7 @@ in header summaries, unless they are in state
 .
 .Mx
 .It Ic connect
-\*(OP If operating in disconnected mode on an IMAP mailbox,
+\*(OP\*(OB If operating in disconnected mode on an IMAP mailbox,
 switch to online mode and connect to the mail server while retaining
 the mailbox status.
 See the description of the
@@ -2464,7 +2469,7 @@ Encrypted messages are first decrypted, if possible, and then copied.
 .Mx
 .It Ic define
 Without arguments the current list of macros, including their content,
-is printed, but otherwise a macro is defined.
+is printed, otherwise a macro is defined.
 A macro definition is a sequence of commands in the following form:
 .Bd -literal -offset indent
 define name {
@@ -2491,6 +2496,23 @@ depends on how (i.e.,
 normal macro, folder hook, account switch) the macro is invoked.
 Macros can be deleted via
 .Ic undefine .
+.Bd -filled -compact -offset indent
+.Sy \*(ID:
+Macro behaviour, including option localization, will change in v15.
+To be on the absolutely safe side and avoid any surprises it may be wise
+to use wrappers that depend on the program version, e.g.,:
+.Ed
+.Bd -literal -offset indent
+if $version-major < 15
+  define name {
+    echo "pre v15"
+  }
+else
+  define name {
+    echo "Please reverify macro name (post v15)"
+  }
+endif
+.Ed
 .
 .Mx
 .It Ic delete
@@ -2509,7 +2531,7 @@ Also see
 .
 .Mx
 .It Ic disconnect
-\*(OP (disco) If operating in online mode on an IMAP mailbox,
+\*(OP\*(OB (disco) If operating in online mode on an IMAP mailbox,
 switch to disconnected mode while retaining the mailbox status.
 See the description of the
 .Va disconnected
@@ -3102,7 +3124,7 @@ and
 .
 .Mx
 .It Ic imap
-\*(OP Sends command strings directly to the current IMAP server.
+\*(OP\*(OB Sends command strings directly to the current IMAP server.
 \*(UA operates always in IMAP `selected state' on the current mailbox;
 commands that change this will produce undesirable results and should be
 avoided.
@@ -3572,9 +3594,9 @@ file is used.
 The filename in quotes, followed by the generated character count
 is echoed on the user's terminal.
 If editing a system mailbox the messages are marked for deletion.
-Compressed files and IMAP mailboxes are handled as described for the
-.Fl f
-command line option above.
+Filename interpretation as described for the
+.Ic file
+command is performed.
 .
 .Mx
 .It Ic savediscard
@@ -4690,7 +4712,7 @@ By default such addressees are not mentioned.
 .Mx Va agent-shell-lookup
 .It Va agent-shell-lookup-USER@HOST , agent-shell-lookup-HOST , \
   agent-shell-lookup
-\*(IN \*(OP Account passwords can be fetched via an external agent
+\*(IN\*(OP Account passwords can be fetched via an external agent
 program in order to permit encrypted password storage \(en see
 .Sx "On URL syntax and credential lookup"
 for more on credential lookup.
@@ -4789,7 +4811,7 @@ An empty line finalizes the list.
 .
 .Mx
 .It Va asksign
-\*(BY \*(OP Causes the user to be prompted if the message is to be
+\*(BY\*(OP Causes the user to be prompted if the message is to be
 signed at the end of each message.
 The
 .Va smime-sign
@@ -4814,13 +4836,16 @@ It is advisable to not use these but for the first of the variables;
 even for that it has to be noted that the data is used
 .Dq as is .
 .
+.
 .Mx
 .It Va attrlist
 A sequence of characters to print in the
 .Ql attribute
 column of the
 .Va headline
-as shown in the header display; each for one type of messages (see
+as shown in the display of
+.Ic headers ;
+each for one type of messages (see
 .Sx "Message states" ) ,
 with the default being
 .Ql NUROSPMFAT+\-$~
@@ -4856,12 +4881,13 @@ draft.
 .It Ql +
 start of a collapsed thread.
 .It Ql -
-collapsed.
+an uncollapsed thread (TODO ignored for now).
 .It Ql $
 classified as spam.
 .It Ql ~
 classified as possible spam.
 .El
+.
 .
 .Mx
 .It Va autobcc
@@ -4888,7 +4914,7 @@ thus, after deleting a message the next one will be typed automatically.
 .
 .Mx
 .It Va autothread
-\*(BY \*(OB Causes threaded mode (see the
+\*(BY\*(OB Causes threaded mode (see the
 .Ic thread
 command) to be entered automatically when a folder is opened.
 The same as
@@ -5010,7 +5036,7 @@ command.
 .
 .Mx
 .It Va colour-disable
-\*(BY \*(OP Forcefully disable usage of colours.
+\*(BY\*(OP Forcefully disable usage of colours.
 Also see the section
 .Sx "Coloured message display" .
 .
@@ -5033,7 +5059,7 @@ for the format of the value.
 .
 .Mx
 .It Va colour-pager
-\*(BY \*(OP Wether colour shall be used for output that is paged through
+\*(BY\*(OP Wether colour shall be used for output that is paged through
 .Ev PAGER .
 Note that pagers may need special flags, e.g.,
 .Xr less 1
@@ -5106,7 +5132,8 @@ can be forced by setting this to the value
 .Ql 0 ,
 setting it without a value will deduce the current height of the
 terminal screen to compute the treshold (see
-.Ev LINES
+.Ev LINES ,
+.Va screen
 and
 .Xr stty 1 ) .
 .
@@ -5151,7 +5178,7 @@ as well as
 .
 .Mx
 .It Va disconnected
-\*(BY \*(OP When an IMAP mailbox is selected and this variable is set,
+\*(BY\*(OP\*(OB When an IMAP mailbox is selected and this variable is set,
 no connection to the server is initiated.
 Instead, data is obtained from the local cache (see
 .Va imap-cache Ns
@@ -5180,7 +5207,7 @@ but other accounts are not affected.
 .
 .Mx
 .It Va disposition-notification-send
-\*(BY \*(OP Emit a
+\*(BY\*(OP Emit a
 .Ql Disposition-Notification-To:
 header (RFC 3798) with the message.
 This requires the
@@ -5210,7 +5237,7 @@ is ignored and using a dot is the only method to terminate input mode.
 .
 .Mx
 .It Va dotlock-ignore-error
-\*(BY \*(OP Synchronization of mailboxes which \*(UA treats as system
+\*(BY\*(OP Synchronization of mailboxes which \*(UA treats as system
 mailboxes (see the command
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
@@ -5424,15 +5451,36 @@ delimiter.
 .
 .Mx
 .It Va folder-hook
-When a folder is opened and this variable is set,
-the macro corresponding to the value of this variable is executed.
-The macro is also invoked when new mail arrives,
+This variable can be set to the name of a
+.Ic define Ns d
+macro which will be called whenever a
+.Ic file
+is opened.
+The macro will also be invoked when new mail arrives,
 but message lists for commands executed from the macro
 only include newly arrived messages then.
 If
 .Ic localopts
 are activated in a folder hook, then the covered settings will be
 reverted once the folder is left again.
+.Bd -filled -offset indent
+.Sy \*(ID:
+Macro behaviour, including option localization, will change in v15.
+To be on the absolutely safe side and avoid any surprises it may be wise
+to use wrappers that depend on the program version, e.g.,:
+.Ed
+.Bd -literal -offset indent
+if $version-major < 15
+  define sent-hook {
+    echo "pre v15"
+  }
+else
+  define sent-hook {
+    echo "Please re-verify sent-hook (post v15)"
+  }
+endif
+folder-hook-+sent=sent-hook
+.Ed
 .
 .Mx
 .It Va folder-hook-FOLDER
@@ -5551,28 +5599,35 @@ The command line option
 can be used to set
 .Pf no Va header .
 .
+.
 .Mx
 .It Va headline
-A format string to use for the header summary,
-similar to
+A format string to use for the summary of
+.Ic headers ,
+similar to the ones used for
 .Xr printf 3
 formats.
-A percent character
+Format specifiers in the given string start with a percent character
 .Ql %
-introduces a format specifier that may be followed by a number
-indicating the field width;
-If the (possibly implicitly implied) field width is negative, the field
-is to be left-aligned.
+and may be followed by an optional decimal number indicating the field
+width \(em if that is negative, the field is to be left-aligned.
 Valid format specifiers are:
+.
 .Pp
 .Bl -tag -compact -offset indent -width "_%%_"
 .It Ql %%
 A plain percent character.
 .It Ql %>
-A space character but for the current message, for which it expands to
+.Dq Dotmark :
+a space character but for the current message
+.Pf ( Dq dot ) ,
+for which it expands to
 .Ql > .
 .It Ql %<
-A space character but for the current message, for which it expands to
+.Dq Dotmark :
+a space character but for the current message
+.Pf ( Dq dot ) ,
+for which it expands to
 .Ql < .
 .It Ql %$
 \*(OP The spam score of the message, as has been classified via the
@@ -5590,14 +5645,14 @@ The indenting level in threaded mode.
 .It Ql %f
 The address of the message sender.
 .It Ql %i
-The message thread structure.
+The message thread tree structure.
 (Note that this format doesn't support a field width.)
 .It Ql %l
-The number of lines of the message.
+The number of lines of the message, if available.
 .It Ql %m
 Message number.
 .It Ql %o
-The number of octets (bytes) in the message.
+The number of octets (bytes) in the message, if available.
 .It Ql %s
 Message subject (if any).
 .It Ql %S
@@ -5623,6 +5678,7 @@ Also see
 .Va attrlist
 and
 .Va headline-bidi .
+.
 .
 .Mx
 .It Va headline-bidi
@@ -5714,7 +5770,7 @@ etc. first.
 .
 .Mx
 .It Va idna-disable
-\*(BY \*(OP Can be used to turn off the automatic conversion of domain
+\*(BY\*(OP Can be used to turn off the automatic conversion of domain
 names according to the rules of IDNA (internationalized domain names
 for applications).
 Since the IDNA code assumes that domain names are specified with the
@@ -5745,7 +5801,7 @@ This option also applies to \*(UA command mode.
 .
 .Mx Va imap-auth
 .It Va imap-auth-USER@HOST , imap-auth
-\*(OP Sets the IMAP authentication method.
+\*(OP\*(OB Sets the IMAP authentication method.
 Valid values are `login' for the usual password-based authentication
 (the default),
 `cram-md5', which is a password-based authentication that does not send
@@ -5754,7 +5810,7 @@ and `gssapi' for GSS-API based authentication.
 .
 .Mx
 .It Va imap-cache
-\*(OP Enables caching of IMAP mailboxes.
+\*(OP\*(OB Enables caching of IMAP mailboxes.
 The value of this variable must point to a directory that is either
 existent or can be created by \*(UA.
 All contents of the cache can be deleted by \*(UA at any time;
@@ -5762,7 +5818,7 @@ it is not safe to make assumptions about them.
 .
 .Mx Va imap-keepalive
 .It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive
-\*(OP IMAP servers may close the connection after a period of
+\*(OP\*(OB IMAP servers may close the connection after a period of
 inactivity; the standard requires this to be at least 30 minutes,
 but practical experience may vary.
 Setting this variable to a numeric `value' greater than 0 causes
@@ -5771,7 +5827,7 @@ is performed.
 .
 .Mx
 .It Va imap-list-depth
-\*(OP When retrieving the list of folders on an IMAP server, the
+\*(OP\*(OB When retrieving the list of folders on an IMAP server, the
 .Ic folders
 command stops after it has reached a certain depth to avoid possible
 infinite loops.
@@ -5784,7 +5840,7 @@ command does not descend to subfolders.
 .
 .Mx Va imap-use-starttls
 .It Va imap-use-starttls-USER@HOST , imap-use-starttls-HOST , imap-use-starttls
-\*(OP Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
+\*(OP\*(OB Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
 IMAP session SSL/TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
@@ -6106,7 +6162,7 @@ are understood.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
-\*(BY \*(IN \*(OP Used to control usage of the users
+\*(BY\*(IN\*(OP Used to control usage of the users
 .Pa .netrc
 file for lookup of account credentials, as documented in the section
 .Sx "On URL syntax and credential lookup"
@@ -6344,7 +6400,7 @@ Handlers registered using this method take precedence.
 .
 .Mx Va pop3-auth
 .It Va pop3-auth-USER@HOST , pop3-auth-HOST , pop3-auth
-\*(OP \*(IN Variable chain that sets the POP3 authentication method.
+\*(OP\*(IN Variable chain that sets the POP3 authentication method.
 The only possible value as of now is
 .Ql plain ,
 which is thus the default.
@@ -6352,7 +6408,7 @@ which is thus the default.
 .Mx
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
-\*(BY \*(OP When accessing a POP3 server \*(UA loads the headers of
+\*(BY\*(OP When accessing a POP3 server \*(UA loads the headers of
 the messages, and only requests the message bodies on user request.
 For the POP3 protocol this means that the message headers will be
 downloaded twice.
@@ -6372,7 +6428,7 @@ command to be sent each value seconds if no other operation is performed.
 .
 .Mx Va pop3-no-apop
 .It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
-\*(BY \*(OP Unless this variable is set the
+\*(BY\*(OP Unless this variable is set the
 .Ql APOP
 authentication method will be used when connecting to a POP3 server that
 advertises support.
@@ -6386,7 +6442,7 @@ requires \*(IN.
 .
 .Mx Va pop3-use-starttls
 .It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
-\*(BY \*(OP Causes \*(UA to issue a
+\*(BY\*(OP Causes \*(UA to issue a
 .Ql STLS
 command to make an unencrypted POP3 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
@@ -6636,6 +6692,13 @@ headers are printed.
 This number is also used for scrolling with the
 .Ic z
 command.
+Overall screen dimensions and pager usage is influenced by the
+environment variables
+.Ev COLUMNS
+and
+.Ev LINES
+and the variable
+.Va crt .
 .
 .Mx
 .It Va searchheaders
@@ -6665,7 +6728,7 @@ for the complete picture of character set conversion in \*(UA.
 .
 .Mx
 .It Va sendcharsets-else-ttycharset
-\*(BY \*(OP If this variable is set, but
+\*(BY\*(OP If this variable is set, but
 .Va sendcharsets
 is not, then \*(UA acts as if
 .Va sendcharsets
@@ -6891,16 +6954,16 @@ variable.
 .
 .Mx
 .It Va smime-force-encryption
-\*(BY \*(OP Causes \*(UA to refuse sending unencrypted messages.
+\*(BY\*(OP Causes \*(UA to refuse sending unencrypted messages.
 .
 .Mx
 .It Va smime-no-default-ca
-\*(BY \*(OP Don't load default CA locations when verifying S/MIME signed
+\*(BY\*(OP Don't load default CA locations when verifying S/MIME signed
 messages.
 .
 .Mx
 .It Va smime-sign
-\*(BY \*(OP S/MIME sign outgoing messages with the user's private key
+\*(BY\*(OP S/MIME sign outgoing messages with the user's private key
 and include the user's certificate as a MIME attachment.
 Signing a message enables a recipient to verify that the sender used
 a valid certificate,
@@ -7093,7 +7156,7 @@ may override dependend on sender address in the variable
 .Va from .
 .
 .It Va smtp-auth-password
-\*(OP \*(OU Sets the global fallback password for SMTP authentication.
+\*(OP\*(OU Sets the global fallback password for SMTP authentication.
 If the authentication method requires a password, but neither
 .Va smtp-auth-password
 nor a matching
@@ -7108,7 +7171,7 @@ for specific values of sender addresses, dependent upon the variable
 .Va from .
 .
 .It Va smtp-auth-user
-\*(OP \*(OU Sets the global fallback user name for SMTP authentication.
+\*(OP\*(OU Sets the global fallback user name for SMTP authentication.
 If the authentication method requires a user name, but neither
 .Va smtp-auth-user
 nor a matching
@@ -7538,7 +7601,7 @@ suppression doesn't occur.
 .
 .Mx
 .It Va term-ca-mode
-\*(BY \*(OP If terminal capability queries are supported and this option
+\*(BY\*(OP If terminal capability queries are supported and this option
 is set then \*(UA will try to switch to the
 .Dq alternate screen
 when in interactive mode, so that the terminal will go back to the
@@ -7643,7 +7706,9 @@ should be considered an indication that the following variables are
 either standardized as being vivid parts of process environments, or
 are commonly found in there.
 Unless otherwise explicitly noted they integrate into the normal
-variable handling, as documented above, from \*(UAs' point of view.
+variable handling, as documented in
+.Sx "INTERNAL VARIABLES" ,
+from \*(UAs' point of view.
 .
 .Bl -tag -width ".It Ev _AILR_"
 .Mx
@@ -7764,7 +7829,7 @@ This variable is only used when it resides in the process environment.
 .
 .Mx
 .It Ev NETRC
-\*(IN \*(OP This variable overrides the default location of the user's
+\*(IN\*(OP This variable overrides the default location of the user's
 .Pa .netrc
 file.
 .
@@ -7874,7 +7939,7 @@ System wide MIME types, see
 .
 .Mx
 .It Pa ~/.netrc
-\*(IN \*(OP The default location of the users
+\*(IN\*(OP The default location of the users
 .Pa .netrc
 file \(en the section
 .Sx "The .netrc file"
@@ -8504,8 +8569,10 @@ set sendwait
 set mimetypes-load-control
 
 # Default directory where we act in (relative to $HOME)
-set folder=mail MBOX=+mbox.mbox record=+sent.mbox \e
-    DEAD=+dead.mbox
+set folder=mail
+# A leading "+" (often) means: under *folder*
+# *record* is used to save copies of sent messages
+set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.mbox
 
 # Make "file mymbox" and "file myrec" go to..
 shortcut mymbox %:+mbox.mbox myrec +sent.mbox
@@ -8525,7 +8592,7 @@ set emptystart \e
     colour-pager crt= followup-to followup-to-honour=ask-yes \e
     history-gabby mime-counter-evidence=0xE \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
-    NAIL_HISTFILE=+.s-nailhist NAIL_HISTSIZE=-1 \e
+    NAIL_HISTFILE=+.\*(uahist NAIL_HISTSIZE=-1 \e
     reply-to-honour=ask-yes
 
 # When `p'rinting messages, show only these headers
