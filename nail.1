@@ -7783,10 +7783,29 @@ The term
 should be considered an indication that the following variables are
 either standardized as being vivid parts of process environments, or
 are commonly found in there.
-Unless otherwise explicitly noted they integrate into the normal
-variable handling, as documented in
+The process environment is inherited from the
+.Xr sh 1
+once \*(UA is started, and unless otherwise explicitly noted variables
+in there integrate into the normal handling of
 .Sx "INTERNAL VARIABLES" ,
-from \*(UAs' point of view.
+from \*(UAs point of view, i.e., they can be
+.Ic set
+as such in resource files and need not necessarily come from the process
+environment and be managed via
+.Ic setenv
+and
+.Ic unsetenv .
+E.g., the following example, applicable to a POSIX shell, sets the
+.Ev COLUMNS
+environment variable for \*(UA only, and beforehand exports the
+.Ev EDITOR
+in order to affect any further processing in the running shell:
+.
+.Bd -literal -offset indent
+$ EDITOR="vim -u ${HOME}/.vimrc"
+$ export EDITOR
+$ COLUMNS=80 \*(ua -R
+.Ed
 .
 .Bl -tag -width ".It Ev _AILR_"
 .Mx
