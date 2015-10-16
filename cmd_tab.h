@@ -138,6 +138,8 @@
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Show message headers of <message-list>")) },
+   { "search", &c_from, (A | MSGLIST), 0, MMNORM
+     DS(N_("\"Search\" for <message-specification>, print matching headers")) },
    { "file", &c_file, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL

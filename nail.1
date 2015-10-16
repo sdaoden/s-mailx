@@ -918,7 +918,9 @@ and
 .Ql t+
 will display the last and the next message, respectively.
 The command
-.Ic from
+.Ic search
+(a more substantial alias of the standard command
+.Ic from )
 will display a header summary of the given message specification list
 instead of their content, e.g., the following will search for subjects:
 .
@@ -2998,6 +3000,8 @@ Alias for
 (f) Takes a list of message specifications and displays a summary of
 their message headers, as via
 .Ic headers .
+An alias of this command is
+.Ic search .
 Also see
 .Sx "Specifying messages" .
 .
@@ -3781,6 +3785,16 @@ overrides
 .Ic saveignore .
 The use of this command is strongly discouraged since it may strip
 header fields that are needed to decode the message correctly.
+.
+.Mx
+.It Ic search
+Takes a message specification (list) and displays a header summary of
+all matching messages, as via
+.Ic headers .
+This command is an alias of
+.Ic from .
+Also see
+.Sx "Specifying messages" .
 .
 .Mx
 .It Ic seen
