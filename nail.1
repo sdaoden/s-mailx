@@ -254,7 +254,7 @@ that starts with a hyphen, prefix it with a (relative) path, as in
 .
 .Mx
 .It Fl H
-Print a summary of the
+Display a summary of the
 .Ic headers
 of all messages in the specified or system mailbox and exit.
 A configurable summary view is available via the
@@ -263,7 +263,7 @@ option.
 .
 .Mx
 .It Fl h
-Print a short usage summary.
+Show a short usage summary.
 Because of widespread use a
 .Fl Fl help
 argument will have the same effect.
@@ -276,7 +276,7 @@ variable to ignore tty interrupt signals.
 .
 .Mx
 .It Fl L Ar spec-list
-Print a summary of all
+Display a summary of all
 .Ic headers
 of only those messages in the specified or system mailbox that match the
 given
@@ -436,7 +436,7 @@ etc.; also see
 .
 .Mx
 .It Fl V
-Print \*(UA's version and exit.
+Show \*(UA's version and exit.
 .
 .Mx
 .It Fl v
@@ -884,65 +884,64 @@ or the first message of the mailbox; the option
 will instead cause usage of the last message for this purpose.
 The command
 .Ic headers
-will print a
+will display a
 .Va screen Ns
 ful of header summaries containing the
 .Dq dot ,
 whereas
 .Ic from
-will print only the summaries of the given messages, defaulting to the
+will display only the summaries of the given messages, defaulting to the
 .Dq dot .
 .
 .Pp
-Messages can be printed with the
+Messages can be displayed on the user's terminal with the
 .Ic type
 command, or short:
 .Ql t .
 By default the current message
 .Pf ( Dq dot )
-is printed, but like with most other commands it is possible to give
+is displayed, but like with many other commands it is possible to give
 a fancy message specification (see
 .Sx "Specifying messages" ) ,
 e.g.,
 .Ql t:u
 will display all unread messages,
 .Ql t.
-will print the
+will display the
 .Dq dot ,
 .Ql t 1 5
-will print the messages 1 and 5,
+will type the messages 1 and 5,
 .Ql t 1-5
-will print the messages 1 through 5, and
+will type the messages 1 through 5, and
 .Ql t-
 and
 .Ql t+
-will print the last and the next message, respectively.
-By the way, using the command
+will display the last and the next message, respectively.
+The command
 .Ic from
-in conjunction with a message specification is the way to perform
-searching in \*(UA: the following will print the header summaries of all
-messages which contain the given string in their subject, for example:
+will display a header summary of the given message specification list
+instead of their content, e.g., the following will search for subjects:
 .
 .Pp
 .Dl ? from """@Some subject to search for"""
 .
 .Pp
-In the default setup all header fields of a message will be printed,
+In the default setup all header fields of a message will be displayed,
 but this can be changed: either by blacklisting a list of fields via
 .Ic ignore ,
 or by whitelisting only a given list with the
 .Ic retain
 command, e.g.,
 .Ql Ic \:retain Ns \0date from to cc subject .
-In order to print all header fields of a message regardless of currently
-active ignore or retain lists, use the command
+In order to display all header fields of a message regardless of
+currently active ignore or retain lists, use the command
 .Ic Type .
 The variable
 .Va crt
 controls wether and when \*(UA will use the configured
 .Ev PAGER
-for printing instead of directly writing to the terminal (generally
-speaking).
+for display instead of directly writing to the user terminal
+(generally speaking).
 Note that historically the global
 .Pa \*(UR
 not only adjusts the list of displayed headers, but also sets
@@ -1101,7 +1100,7 @@ sets their subscription attribute, creating them first as necessary.
 doesn't
 .Ic unmlist
 automatically, but only resets the subscription attribute.)
-Using the commands without arguments will print out (a subset of) all
+Using the commands without arguments will show (a subset of) all
 currently defined mailing lists.
 The
 .Va headline
@@ -1424,11 +1423,11 @@ The message has been processed by one of the following commands:
 .Ic mbox ,
 .Ic next ,
 .Ic pipe  ,
-.Ic print ,
 .Ic Print ,
+.Ic print ,
 .Ic top ,
-.Ic type ,
 .Ic Type ,
+.Ic type ,
 .Ic undelete .
 The
 .Ic delete ,
@@ -2427,9 +2426,8 @@ Goes to the next message in sequence and types it
 .
 .Mx
 .It Ic -
-Print out the preceding message.
-If given a numeric argument n,
-goes to the n'th previous message and prints it.
+Display the preceding message, or the n'th previous message if given
+a numeric argument n.
 .
 .Mx
 .It Ic =
@@ -2438,17 +2436,16 @@ Show the current message number (the
 .
 .Mx
 .It Ic \&?
-Prints a brief summary of commands.
+Show a brief summary of commands.
 \*(OP Given an argument a synopsis for the command in question is
-printed instead;
-commands can be abbreviated in general and this command can be used
-to see the full expansion of an abbreviation including the synopsis,
-try, e.g.,
+shown instead; commands can be abbreviated in general and this command
+can be used to see the full expansion of an abbreviation including the
+synopsis, try, e.g.,
 .Ql ?h ,
 .Ql ?hel
 and
 .Ql ?help
-and see how the display changes.
+and see how the output changes.
 .
 .Mx
 .It Ic \&|
@@ -2472,7 +2469,7 @@ is a shorter synonym for
 An account is a group of commands and variable settings which together
 usually arrange the environment for the purpose of creating a system login.
 Without any argument a listing of all defined accounts and their content
-is printed.
+is shown.
 A specific account can be activated by giving solely its name, resulting
 in the system mailbox or inbox of that account to be activated as via an
 explicit use of the command
@@ -2504,8 +2501,8 @@ Accounts can be deleted via
 .
 .Mx
 .It Ic alias
-(a) With no arguments, prints out all currently-defined aliases.
-With one argument, prints out that alias.
+(a) With no arguments, shows all currently-defined aliases.
+With one argument, shows that alias.
 With more than one argument,
 creates a new alias or appends to an existing one.
 .Ic unalias
@@ -2597,7 +2594,7 @@ otherwise identical to
 .
 .Mx
 .It Ic cwd
-Print the current working directory.
+Show the name of the current working directory.
 .
 .Mx
 .It Ic Decrypt
@@ -2614,7 +2611,7 @@ Encrypted messages are first decrypted, if possible, and then copied.
 .Mx
 .It Ic define
 Without arguments the current list of macros, including their content,
-is printed, otherwise a macro is defined.
+is shown, otherwise a macro is defined.
 A macro definition is a sequence of commands in the following form:
 .Bd -literal -offset indent
 define name {
@@ -2689,7 +2686,7 @@ Thus `disco *' makes the entire mailbox available for disconnected use.
 .Mx
 .Mx
 .It Ic dp , dt
-Deletes the current message and prints the next message.
+Deletes the current message and displays the next message.
 If there is no next message, \*(UA says
 .Dq at EOF .
 .
@@ -2796,7 +2793,7 @@ but open the mailbox readonly.
 .Mx
 .It Ic file
 (fi) The file command switches to a new mailbox.
-Without arguments it prints the complete state of the current mailbox.
+Without arguments it shows status information of the current mailbox.
 If an argument is given, it will write out changes (such as deletions)
 the user has made and open a new mailbox.
 Some special conventions are recognized for the
@@ -2998,8 +2995,11 @@ Alias for
 .
 .Mx
 .It Ic from
-(f) Takes a list of messages and prints their message headers
-(which qualifies this command as \*(UAs search facility).
+(f) Takes a list of message specifications and displays a summary of
+their message headers, as via
+.Ic headers .
+Also see
+.Sx "Specifying messages" .
 .
 .Mx
 .It Ic Fwd
@@ -3016,7 +3016,7 @@ and forwards the message to him.
 The text of the original message is included in the new one,
 with the value of the
 .Va fwdheading
-variable printed before.
+variable preceding it.
 The
 .Ic fwdignore
 and
@@ -3051,7 +3051,7 @@ option is set.
 .Mx
 .It Ic ghost
 Define or list command aliases, so-called ghosts.
-Without arguments a list of all currently known aliases is printed.
+Without arguments a list of all currently known aliases is shown.
 With one argument the expansion of the given alias is shown.
 With two or more arguments a command alias is defined or updated: the
 first argument is the name under which the remaining command line should
@@ -3261,11 +3261,11 @@ endif
 .
 .Mx
 .It Ic ignore
-Without arguments the list of ignored header fields is printed,
+Without arguments the list of ignored header fields is shown,
 otherwise the given list of header fields is added to the ignore list:
-Header fields in the ignore list are not printed on the terminal when
-a message is printed.
-To print a message in its entirety, use the commands
+Header fields in the ignore list are not shown on the terminal when
+a message is displayed.
+To display a message in its entirety, use the commands
 .Ic Type
 or
 .Ic Print .
@@ -3300,7 +3300,7 @@ Not all IMAP servers support this command.
 .
 .Mx
 .It Ic list
-Prints the names of all available commands, alphabetically sorted.
+Shows the names of all available commands, alphabetically sorted.
 .
 .Mx
 .It Ic localopts
@@ -3398,7 +3398,7 @@ MIME type unregistration and cache resets can be triggered with
 .Mx
 .It Ic mlist
 Without arguments the list of all currently defined mailing lists
-(and their attributes, if any) is printed.
+(and their attributes, if any) is shown.
 Otherwise all given arguments (which need not be quoted except for
 whitespace) will be added and henceforth be recognized as mailing lists.
 Mailing lists may be removed via the command
@@ -3412,7 +3412,7 @@ for more on those).
 .Mx
 .It Ic mlsubscribe
 Without arguments the list of all currently defined mailing lists which
-have a subscription attribute is printed.
+have a subscription attribute is shown.
 Otherwise this attribute will be set for all given mailing lists,
 newly creating them as necessary (as via
 .Ic mlist ) .
@@ -3440,7 +3440,7 @@ successfully.
 .It Ic More
 Like
 .Ic more ,
-but also prints ignored header fields and all MIME parts.
+but also displays ignored header fields and all MIME parts.
 Identical to
 .Ic Page .
 .
@@ -3459,7 +3459,7 @@ Identical to
 .Ar show
 has been given the content of the
 .Pa .netrc
-cache is printed, loading it first as necessary,
+cache is shown, loading it first as necessary,
 If the argument is
 .Ar load
 then the cache will only be initialized and
@@ -3480,11 +3480,11 @@ documents the file format in detail.
 .It Ic newmail
 Checks for new mail in the current folder without committing any changes
 before.
-If new mail is present, a message is printed.
+If new mail is present, a message is shown.
 If the
 .Va header
 variable is set,
-the headers of each new message are also printed.
+the headers of each new message are also shown.
 .
 .Mx
 .It Ic next
@@ -3515,7 +3515,7 @@ command is sent, otherwise no operation is performed.
 .It Ic Page
 Like
 .Ic page ,
-but also prints ignored header fields and all MIME parts.
+but also displays ignored header fields and all MIME parts.
 Identical to
 .Ic More .
 .
@@ -3697,11 +3697,11 @@ Same as
 .
 .Mx
 .It Ic retain
-(ret) Without arguments the list of retained header fields is printed,
+(ret) Without arguments the list of retained header fields is shown,
 otherwise the given list of header fields is added to the retain list:
 Header fields in the retain list are shown on the terminal when
-a message is printed, all other header fields are suppressed.
-To print a message in its entirety, use the commands
+a message is displayed, all other header fields are suppressed.
+To display a message in its entirety, use the commands
 .Ic Type
 or
 .Ic Print .
@@ -3788,7 +3788,7 @@ Takes a message list and marks all messages as having been read.
 .
 .Mx
 .It Ic set
-(se) Without arguments this command prints all variables and their
+(se) Without arguments this command shows all variables and their
 values which are currently known to \*(UA.
 Setting any of the variables
 .Va bsdcompat
@@ -3845,7 +3845,7 @@ Also see
 .Mx
 .It Ic shortcut
 Without arguments the list of all currently defined shortcuts is
-printed.
+shown.
 Otherwise all given arguments (which need not be quoted except for
 whitespace) are treated as pairs of shortcuts and their expansions,
 creating new or changing already existing shortcuts, as necessary.
@@ -3865,7 +3865,7 @@ message text is shown.
 .
 .Mx
 .It Ic size
-(si) Print the size in characters of each message of the given
+(si) Shows the size in characters of each message of the given
 message-list.
 .
 .Mx
@@ -4006,12 +4006,12 @@ Message numbers are the same as in unthreaded mode.
 If the
 .Va header
 variable is set,
-a header summary in threaded order is also printed.
+a header summary in threaded order is also displayed.
 .
 .Mx
 .It Ic top
-(to) Takes a message list and prints the top few lines of each.
-The number of lines printed is controlled by the variable
+(to) Takes a message list and displays the top few lines of each.
+The number of lines shown is controlled by the variable
 .Va toplines
 and defaults to five.
 .
@@ -4028,7 +4028,7 @@ command will display the following message instead of the current one.
 .It Ic Type
 (T) Like
 .Ic type
-but also prints out ignored header fields and all parts of MIME
+but also displays out ignored header fields and all parts of MIME
 .Ql multipart/alternative
 messages.
 .
@@ -4051,7 +4051,7 @@ if necessary.
 .Mx
 .It Ic unaccount
 Delete all given accounts.
-An error message is printed if a given account is not defined.
+An error message is shown if a given account is not defined.
 The special name
 .Ql *
 will discard all existing accounts.
@@ -4075,13 +4075,13 @@ Takes a message list and makes the message and all replies to it visible
 in header summaries again.
 When a message becomes the current message,
 it is automatically made visible.
-Also when a message with collapsed replies is printed,
+Also when a message with collapsed replies is displayed,
 all of these are automatically uncollapsed.
 .
 .Mx
 .It Ic undefine
 Undefine all given macros.
-An error message is printed if a given macro is not defined.
+An error message is shown if a given macro is not defined.
 The special name
 .Ql *
 will discard all existing macros.
@@ -4235,7 +4235,7 @@ return to normal message order and,
 if the
 .Va header
 variable is set,
-print a header summary.
+displays a header summary.
 .
 .Mx
 .It Ic unthread
@@ -4567,7 +4567,7 @@ and
 .Ic retain
 lists are used to modify the message headers.
 For MIME multipart messages,
-only the first printable part is included.
+only the first displayable part is included.
 .
 .Mx
 .It Ic ~H
@@ -4623,11 +4623,11 @@ and
 .Ic retain
 lists are used to modify the message headers.
 For MIME multipart messages,
-only the first printable part is included.
+only the first displayable part is included.
 .
 .Mx
 .It Ic ~p
-Print out the message collected so far,
+Display the message collected so far,
 prefaced by the message header fields
 and followed by the attachment list, if any.
 .
@@ -4723,7 +4723,7 @@ with the command
 .Ic varshow
 will give more insight on the given variable(s), and
 .Ic set ,
-when called without arguments, will print a listing of all variables.
+when called without arguments, will show a listing of all variables.
 Variables are also implicitly inherited from the program
 .Sx ENVIRONMENT
 and can be set explicitly via the command line option
@@ -4819,7 +4819,7 @@ but the
 .Ql \e&
 special prompt escape results in
 .Dq \&?
-being printed unless
+being shown unless
 .Va bsdcompat
 is set),
 .Pf no Va quiet ,
@@ -4997,7 +4997,7 @@ even for that it has to be noted that the data is used
 .
 .Mx
 .It Va attrlist
-A sequence of characters to print in the
+A sequence of characters to display in the
 .Ql attribute
 column of the
 .Va headline
@@ -5745,7 +5745,7 @@ and comments, names etc. are retained.
 .
 .Mx
 .It Va fwdheading
-The string to print before the text of a message with the
+The string to put before the text of a message with the
 .Ic forward
 command
 (unless the
@@ -5753,7 +5753,7 @@ command
 variable is set).
 Defaults to
 .Dq -------- Original Message --------
-if unset; No heading is printed if it is set to the empty string.
+if unset; No heading is put if it is set to the empty string.
 .
 .Mx
 .It Va header
@@ -5799,7 +5799,7 @@ for which it expands to
 \*(OP The spam score of the message, as has been classified via the
 command
 .Ic spamrate .
-Prints only a replacement character if there is no spam support.
+Shows only a replacement character if there is no spam support.
 .It Ql %a
 Message attribute character (status flag); the actual content can be
 adjusted by setting
@@ -5864,7 +5864,7 @@ detection of the terminal character set is one precondition;
 and this feature only works in an Unicode (i.e., UTF-8) locale.
 .Pp
 In general setting this variable will cause \*(UA to encapsulate text
-fields that may occur when printing
+fields that may occur when displaying
 .Va headline
 (and some other fields, like dynamic expansions in
 .Va prompt )
@@ -6358,8 +6358,7 @@ newly created local folders will be in Maildir format.
 .
 .Mx
 .It Va newmail
-Checks for new mail in the current folder each time the prompt is
-printed.
+Checks for new mail in the current folder each time the prompt is shown.
 For IMAP mailboxes the server is then polled for new mail,
 which may result in delayed operation if the connection to the server is
 slow.
@@ -6400,7 +6399,7 @@ unless it is set to an absolute pathname.
 .It Va page
 \*(BO If set, each message feed through the command given for
 .Ic pipe
-command prints out is followed by a formfeed character
+is followed by a formfeed character
 .Ql \ef .
 .
 .Mx Va password
@@ -6634,7 +6633,7 @@ requires \*(IN.
 \*(BY This option causes all characters to be considered printable.
 It is only effective if given in a startup file.
 With this option set some character sequences in messages may put the
-user's terminal in an undefined state when printed;
+user's terminal in an undefined state when displayed;
 it should only be used as a last resort if no working system locale can
 be found.
 .
@@ -6651,7 +6650,7 @@ just as if the surrounding part was of type
 .
 .Mx
 .It Va prompt
-The string printed when a command is accepted.
+The string shown when a command is accepted.
 Prompting may be prevented by either setting this to the null string
 or by setting
 .Pf no Va prompt .
@@ -6721,7 +6720,7 @@ prefixed by the value of the variable
 .Va indentprefix .
 Normally, a heading consisting of
 .Dq Fromheaderfield wrote:
-is printed before the quotation.
+is put before the quotation.
 If the string
 .Ql noheading
 is assigned to the
@@ -6731,7 +6730,7 @@ If the string
 .Ql headers
 is assigned, the headers selected by the
 .Ic ignore Ns / Ns Ic retain
-commands are printed above the message body,
+commands are put above the message body,
 thus
 .Va \&\&quote
 acts like an automatic
@@ -6740,7 +6739,7 @@ acts like an automatic
 command, then.
 If the string
 .Ql allheaders
-is assigned, all headers are printed above the message body and all MIME
+is assigned, all headers are put above the message body and all MIME
 parts are included, making
 .Va \&\&quote
 act like an automatic
@@ -6860,11 +6859,10 @@ upon interrupt or delivery error.
 .
 .Mx
 .It Va screen
-When \*(UA initially prints the message headers it determines the number
-to print by looking at the speed of the terminal.
-The faster the terminal, the more it prints.
-This option overrides this calculation and specifies how many message
-headers are printed.
+When \*(UA initially displays the message headers it determines the
+number to display by looking at the speed of the terminal.
+The faster the terminal, the more will be shown.
+This option specifies the number to use and overrides the calculation.
 This number is also used for scrolling with the
 .Ic z
 command.
@@ -7749,7 +7747,7 @@ Valid (case-insensitive) values are
 .Ql ask
 (ask whether to continue on standard input),
 .Ql warn
-(print a warning and continue),
+(show a warning and continue),
 .Ql ignore
 (do not perform validation).
 The default is
@@ -7795,8 +7793,10 @@ command line flag.
 .
 .Mx
 .It Va toplines
-If defined, gives the number of lines of a message to be printed out
-with the top command; normally, the first five lines are printed.
+If defined, gives the number of lines of a message to be displayed
+with the command
+.Ic top ;
+normally, the first five lines are printed.
 .
 .Mx
 .It Va ttycharset
