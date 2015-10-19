@@ -120,7 +120,7 @@ static struct lex const    _singles[] = {
    { '\0',  0 }
 };
 
-static int     lastcolmod;
+static bool_t  _list_saw_d, _list_last_saw_d; /* :d on its way HACK TODO */
 static size_t  STRINGLEN;
 static int     lexnumber;              /* Number of TNUMBER from scan() */
 static char    *lexstring;             /* String from TSTRING, scan() */
@@ -334,6 +334,10 @@ number:
                   n_err(_("Unknown colon modifier \"%s\"\n"), lexstring);
                   markall_ret(-1)
                }
+               if (colresult == CMDELETED) {
+                  _list_saw_d = TRU1;
+                  f |= MDELETED;
+               }
                colmod |= colresult;
             }
          } else
@@ -367,10 +371,16 @@ number:
          pstate &= ~PS_MSGLIST_DIRECT;
          tback = TRU1;
          for (i = 1; i <= msgCount; i++) {
-            if ((message[i - 1].m_flag & MHIDDEN) ||
-                  (message[i - 1].m_flag & MDELETED) != (unsigned)f)
+            struct message const *mp_t = message + i - 1;
+
+            if (mp_t->m_flag & MHIDDEN)
                continue;
-            if (message[i - 1].m_flag & MOLDMARK)
+            if ((mp_t->m_flag & MDELETED) != (unsigned)f) {
+               if (!_list_last_saw_d)
+                  continue;
+               _list_saw_d = TRU1;
+            }
+            if (mp_t->m_flag & MOLDMARK)
                mark(i, f);
          }
          break;
@@ -420,18 +430,21 @@ number:
       tok = scan(&bufp);
    }
 
-   lastcolmod = colmod;
    np = add_to_namelist(&namelist, &nmlsize, np, NULL);
    --np;
    mc = FAL0;
    if (star) {
       for (i = 0; i < msgCount; ++i) {
-         if (!(message[i].m_flag & MHIDDEN) &&
-               (message[i].m_flag & MDELETED) == (unsigned)f) {
-            mark(i + 1, f);
-            mc = TRU1;
-         }
+         struct message const *mp_t = message + i;
+
+         if (mp_t->m_flag & MHIDDEN)
+            continue;
+         if (!_list_saw_d && (mp_t->m_flag & MDELETED) != (unsigned)f)
+            continue;
+         mark(i + 1, f);
+         mc = TRU1;
       }
+
       if (!mc) {
          if (!(pstate & PS_HOOK_MASK))
             printf(_("No applicable messages.\n"));
@@ -595,8 +608,10 @@ jnamesearch_sepfree:
          mp = message + i - 1;
          for (colp = _coltab; colp->co_char != '\0'; ++colp)
             if ((colp->co_bit & colmod) &&
-                  ((mp->m_flag & colp->co_mask) == (unsigned)colp->co_equal))
+                  ((mp->m_flag & colp->co_mask) == (unsigned)colp->co_equal)) {
                bad = FAL0;
+               break;
+            }
          if (bad)
             unmark(i);
       }
@@ -636,16 +651,12 @@ evalcol(int col)
    int rv;
    NYD_ENTER;
 
-   if (col == 0)
-      rv = lastcolmod;
-   else {
-      rv = 0;
-      for (colp = _coltab; colp->co_char != '\0'; ++colp)
-         if (colp->co_char == col) {
-            rv = colp->co_bit;
-            break;
-         }
-   }
+   rv = 0;
+   for (colp = _coltab; colp->co_char != '\0'; ++colp)
+      if (colp->co_char == col) {
+         rv = colp->co_bit;
+         break;
+      }
    NYD_LEAVE;
    return rv;
 }
@@ -1180,6 +1191,8 @@ getmsglist(char *buf, int *vector, int flags)
    NYD_ENTER;
 
    pstate &= ~PS_MSGLIST_MASK;
+   _list_last_saw_d = _list_saw_d;
+   _list_saw_d = FAL0;
 
    if (msgCount == 0) {
       *vector = 0;
@@ -1342,14 +1355,17 @@ mark(int mesg, int f)
    i = mesg;
    if (i < 1 || i > msgCount)
       n_panic(_("Bad message number to mark"));
+
    if (mb.mb_threaded == 1 && threadflag) {
-      if (!(message[i - 1].m_flag & MHIDDEN)) {
-         if (f == MDELETED || !(message[i - 1].m_flag & MDELETED))
-         message[i - 1].m_flag |= MMARK;
+      struct message *mp_t = message + i - 1;
+
+      if (!(mp_t->m_flag & MHIDDEN)) {
+         if (f == MDELETED || !(mp_t->m_flag & MDELETED) || _list_saw_d)
+            mp_t->m_flag |= MMARK;
       }
 
-      if (message[i - 1].m_child) {
-         mp = message[i - 1].m_child;
+      if (mp_t->m_child != NULL) {
+         mp = mp_t->m_child;
          mark((int)PTR2SIZE(mp - message + 1), f);
          for (mp = mp->m_younger; mp != NULL; mp = mp->m_younger)
             mark((int)PTR2SIZE(mp - message + 1), f);

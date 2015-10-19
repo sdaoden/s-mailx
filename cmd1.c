@@ -769,7 +769,7 @@ jleave:
 }
 
 static int
-_headers(int msgspec) /* FIXME rework v14.8; also: Neitzel mail, 2014-08-21 */
+_headers(int msgspec) /* TODO rework v15 */
 {
    ui32_t flag;
    int g, k, mesg, size, lastg = 1;
