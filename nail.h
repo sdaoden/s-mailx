@@ -1037,12 +1037,12 @@ enum user_options {
 
 #define OBSOLETE(X) \
 do {\
-   if (options & OPT_D_V)\
+   if (options & OPT_D_V_VV)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
 } while (0)
 #define OBSOLETE2(X,Y) \
 do {\
-   if (options & OPT_D_V)\
+   if (options & OPT_D_V_VV)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 } while (0)
 
