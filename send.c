@@ -50,7 +50,7 @@ static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
  * variables accordingly */
 static FILE *        _pipefile(struct mime_handler *mhp,
                         struct mimepart const *mpp, FILE **qbuf,
-                        char const *tmpfile, int term_infd);
+                        char const *tmpname, int term_infd);
 
 /* Call mime_write() as approbiate and adjust statistics */
 SINLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
@@ -172,7 +172,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
 static FILE *
 _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
-   char const *tmpfile, int term_infd)
+   char const *tmpname, int term_infd)
 {
    struct str s;
    char const *env_addon[8], *cp, *sh;
@@ -230,9 +230,9 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    env_addon[6] = NULL;
 
    /* NAIL_FILENAME_TEMPORARY? */
-   if (tmpfile != NULL) {
+   if (tmpname != NULL) {
       env_addon[6] = str_concat_csvl(&s, NAILENV_FILENAME_TEMPORARY, "=",
-            tmpfile, NULL)->s;
+            tmpname, NULL)->s;
       env_addon[7] = NULL;
    }
 
@@ -354,7 +354,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct mime_handler mh;
    struct str rest;
    char *line = NULL, *cp, *cp2, *start;
-   char const *tmpfile = NULL;
+   char const *tmpname = NULL;
    size_t linesize = 0, linelen, cnt;
    int volatile term_infd;
    int dostat, infld = 0, ignoring = 1, isenc, c;
@@ -475,10 +475,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             ignoring = 0;
             /* For colourization we need the complete line, so save it */
             /* XXX This is all temporary (colour belongs into backend), so
-             * XXX use tmpfile as a temporary storage in the meanwhile */
+             * XXX use tmpname as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
             if (pstate & PS_COLOUR_ACTIVE)
-               tmpfile = savestrbuf(line, PTR2SIZE(cp2 - line));
+               tmpname = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
          *cp2 = c;
@@ -529,8 +529,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 #ifdef HAVE_COLOUR
          {
          bool_t colour_stripped = FAL0;
-         if (tmpfile != NULL) {
-            n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, tmpfile);
+         if (tmpname != NULL) {
+            n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, tmpname);
             if (len > 0 && start[len - 1] == '\n') {
                colour_stripped = TRU1;
                --len;
@@ -539,7 +539,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 #endif
          _out(start, len, obuf, convert, action, qf, stats, NULL);
 #ifdef HAVE_COLOUR
-         if (tmpfile != NULL) {
+         if (tmpname != NULL) {
             n_colour_reset(obuf);
             if (colour_stripped)
                putc('\n', obuf);
@@ -556,7 +556,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    quoteflt_flush(qf);
    free(line);
    line = NULL;
-   tmpfile = NULL;
+   tmpname = NULL;
 
 jskip:
    memset(&mh, 0, sizeof mh);
@@ -984,7 +984,7 @@ jpipe_close:
    switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
    case MIME_HDL_CMD:
    case MIME_HDL_PTF:
-      tmpfile = NULL;
+      tmpname = NULL;
       qbuf = obuf;
 
       term_infd = COMMAND_FD_PASS;
@@ -1005,7 +1005,7 @@ jpipe_close:
             goto jesend;
 
          if (mh.mh_flags & MIME_HDL_TMPF) {
-            tmpfile = savestr(cp);
+            tmpname = savestr(cp);
             Ftmp_free(&cp);
          }
 
@@ -1017,7 +1017,7 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(&mh, ip, UNVOLATILE(&qbuf), tmpfile, term_infd);
+      pbuf = _pipefile(&mh, ip, UNVOLATILE(&qbuf), tmpname, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;
@@ -1027,7 +1027,7 @@ jesend:
          pbuf = qbuf = NULL;
          goto jend;
       }
-      tmpfile = NULL;
+      tmpname = NULL;
       action = SEND_TOPIPE;
       if (pbuf != qbuf) {
          oldpipe = safe_signal(SIGPIPE, &_send_onpipe);
