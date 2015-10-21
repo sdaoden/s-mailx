@@ -656,14 +656,16 @@ _c_file(void *v, enum fedit_mode fm)
       i = 1;
       goto jleave;
    }
-   assert(!(fm & FEDIT_NEWMAIL));
-   check_folder_hook(FAL0);
+   assert(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
+   if (pstate & PS_SETFILE_OPENED)
+      check_folder_hook(FAL0);
 
-   if (i > 0 && !ok_blook(emptystart)) {
+   if (i > 0) {
       i = 1;
       goto jleave;
    }
-   announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
+   if (pstate & PS_SETFILE_OPENED)
+      announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
    i = 0;
 jleave:
    NYD2_LEAVE;

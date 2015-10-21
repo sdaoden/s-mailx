@@ -870,7 +870,11 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    mb.mb_type = MB_POP3;
    mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
    pop3_setptr(&mb, &sc);
-   pstate &= ~PS_SAW_COMMAND;
+
+   /*if (!(fm & FEDIT_NEWMAIL)) */{
+      pstate &= ~PS_SAW_COMMAND;
+      pstate |= PS_SETFILE_OPENED;
+   }
 
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);

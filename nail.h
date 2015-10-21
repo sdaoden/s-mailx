@@ -1110,7 +1110,8 @@ enum program_state {
    PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
 
    PS_EDIT           = 1<< 8,       /* Current mailbox not a "system mailbox" */
-   PS_SAW_COMMAND    = 1<< 9,       /* ..after mailbox switch */
+   PS_SETFILE_OPENED = 1<< 9,       /* (hack) setfile() opened a new box */
+   PS_SAW_COMMAND    = 1<<10,       /* ..after mailbox switch */
 
    PS_DID_PRINT_DOT  = 1<<16,       /* Current message has been printed */
 

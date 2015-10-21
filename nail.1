@@ -5097,7 +5097,9 @@ and all other variables prefixed with
 it also changes the meaning of the \*(UA specific
 .Ql \e&
 .Va prompt
-escape sequence.
+escape sequence and changes behaviour of
+.Va emptystart
+(which doesn't exist in BSD).
 .
 .Mx
 .It Va bsdflags
@@ -5422,8 +5424,11 @@ fields are accepted within the header, other fields are ignored.
 .It Va emptystart
 \*(BO When entering interactive mode \*(UA normally writes
 .Dq \&No mail for user
-and exits immediately.
-If this option is set \*(UA starts even with an empty mailbox.
+and exits immediately if a mailbox is empty or doesn't exist.
+If this option is set \*(UA starts even with an empty or nonexistent
+mailbox (the latter behaviour furtherly depends upon
+.Va bsdcompat ,
+though).
 .
 .Mx
 .It Va encoding

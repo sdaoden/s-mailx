@@ -773,8 +773,10 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       c_sort((void*)-1);
    }
 
-   if (!(fm & FEDIT_NEWMAIL))
+   if (!(fm & FEDIT_NEWMAIL)) {
       pstate &= ~PS_SAW_COMMAND;
+      pstate |= PS_SETFILE_OPENED;
+   }
 
    if (options & OPT_EXISTONLY) {
       i = (msgCount == 0);

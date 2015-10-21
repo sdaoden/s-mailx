@@ -39,6 +39,8 @@
 # include "nail.h"
 #endif
 
+#include <pwd.h>
+
 struct cmd {
    char const     *name;         /* Name of command */
    int            (*func)(void*); /* Implementor of command */
@@ -459,6 +461,9 @@ hangup(int s)
 FL int
 setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 {
+   /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
+    * necessary to make a mailbox accessible by a different user, and if that
+    * has happened, let's just let the usual file perms decide */
    static int shudclob;
 
    struct stat stb;
@@ -469,9 +474,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    bool_t isdevnull = FAL0;
    NYD_ENTER;
 
-   /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
-    * necessary to make a mailbox accessible by a different user, and if that
-    * has happened, let's just let the usual file perms decide */
+   pstate &= ~PS_SETFILE_OPENED;
 
    if (name[0] == '%' || ((who = shortcut_expand(name)) != NULL && *who == '%'))
       fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
@@ -493,6 +496,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
             name = savestr(ebuf);
       } while (0);
 #endif
+      rv = 1;
       break;
    case PROTO_MAILDIR:
       shudclob = 1;
@@ -519,18 +523,33 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
 
    if ((ibuf = Zopen(name, "r")) == NULL) {
-      if (((fm & FEDIT_SYSBOX) && errno == ENOENT) || (fm & FEDIT_NEWMAIL)) {
+      if ((fm & FEDIT_SYSBOX) && errno == ENOENT) {
+         if (strcmp(who, myname) && getpwnam(who) == NULL) {
+            n_err(_("\"%s\" is not a user of this system\n"), who);
+            goto jem2;
+         }
+         if (!(options & OPT_QUICKRUN_MASK) && ok_blook(bsdcompat))
+            n_err(_("No mail for %s\n"), who);
          if (fm & FEDIT_NEWMAIL)
-            goto jnonmail;
-         goto jnomail;
-      }
+            goto jleave;
+         if (ok_blook(emptystart)) {
+            if (!(options & OPT_QUICKRUN_MASK) && !ok_blook(bsdcompat))
+               n_perr(name, 0);
+            /* We must avoid returning -1 and causing program exit */
+            mb.mb_type = MB_VOID;
+            rv = 1;
+            goto jleave;
+         }
+         goto jem2;
+      } else if (fm & FEDIT_NEWMAIL)
+         goto jleave;
       n_perr(name, 0);
       goto jem1;
    }
 
    if (fstat(fileno(ibuf), &stb) == -1) {
       if (fm & FEDIT_NEWMAIL)
-         goto jnonmail;
+         goto jleave;
       n_perr(_("fstat"), 0);
       goto jem1;
    }
@@ -539,7 +558,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       /* EMPTY */
    } else {
       if (fm & FEDIT_NEWMAIL)
-         goto jnonmail;
+         goto jleave;
       errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
       n_perr(name, 0);
       goto jem1;
@@ -625,7 +644,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       rele_sigs();
       if (!(fm & FEDIT_NEWMAIL))
          goto jem1;
-      goto jnonmail;
+      goto jleave;
    }
 
    mailsize = fsize(ibuf);
@@ -634,7 +653,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
     * TODO to be able to truly tell wether *anything* has changed! */
    if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
       rele_sigs();
-      goto jnonmail;
+      goto jleave;
    }
    setptr(ibuf, offset);
    setmsize(msgCount);
@@ -651,8 +670,10 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
    rele_sigs();
 
-   if (!(fm & FEDIT_NEWMAIL))
+   if (!(fm & FEDIT_NEWMAIL)) {
       pstate &= ~PS_SAW_COMMAND;
+      pstate |= PS_SETFILE_OPENED;
+   }
 
    if (options & OPT_EXISTONLY) {
       rv = (msgCount == 0);
@@ -661,14 +682,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
       if (!(fm & FEDIT_NEWMAIL)) {
-jnomail:
          if (!ok_blook(emptystart))
             n_err(_("No mail for %s\n"), who);
       }
-jnonmail:
-      rv = 1;
       goto jleave;
    }
+
    if (fm & FEDIT_NEWMAIL)
       newmailinfo(omsgCount);
 
