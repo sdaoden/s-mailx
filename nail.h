@@ -1090,20 +1090,17 @@ enum user_options {
 
    /*  */
    OPT_SENDMODE   = 1u<<17,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<18,  /* isatty(0) */
-   OPT_TTYIN      = OPT_INTERACTIVE,
+   OPT_TTYIN      = 1u<<18,
    OPT_TTYOUT     = 1u<<19,
-   OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
-   OPT_ENC_MBSTATE = 1u<<21,  /* Multibyte environment with shift states */
+   OPT_INTERACTIVE = 1u<<20,
+   OPT_UNICODE    = 1u<<21,   /* We're in an UTF-8 environment */
+   OPT_ENC_MBSTATE = 1u<<22,  /* Multibyte environment with shift states */
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
    OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB,
    OPT_D_V_VV     = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
 };
-
-#define IS_TTY_SESSION() \
-   ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
 
 #define OBSOLETE(X) \
 do {\

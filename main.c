@@ -247,11 +247,13 @@ _startup(void)
    command_manager_start();
 
    if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
-      options |= OPT_TTYIN | OPT_INTERACTIVE;
+      options |= OPT_TTYIN;
    if (isatty(STDOUT_FILENO))
       options |= OPT_TTYOUT;
-   if (IS_TTY_SESSION())
+   if ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT)) {
+      options |= OPT_INTERACTIVE;
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+   }
 
    /*  --  >8  --  8<  --  */
 
@@ -477,7 +479,7 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
 
 jleave:
 #ifdef SIGWINCH
-   if (is_sighdl && IS_TTY_SESSION())
+   if (is_sighdl && (options & OPT_INTERACTIVE))
       n_tty_signal(SIGWINCH);
 #endif
    NYD_LEAVE;

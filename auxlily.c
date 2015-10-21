@@ -620,7 +620,7 @@ page_or_print(FILE *fp, size_t lines)
 
    fflush_rewind(fp);
 
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
+   if ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL) {
       char *eptr;
       union {sl_i sli; size_t rows;} u;
 

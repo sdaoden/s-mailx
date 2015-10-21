@@ -840,7 +840,7 @@ _headers(int msgspec) /* TODO rework v15 */
    opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
 
 #ifdef HAVE_COLOUR
-   if (IS_TTY_SESSION())
+   if (options & OPT_INTERACTIVE)
       n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
 #endif
 
@@ -1032,14 +1032,15 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          }
       }
 #ifdef HAVE_COLOUR
-      if (IS_TTY_SESSION() &&
+      if ((options & OPT_INTERACTIVE) &&
             (action == SEND_TODISP || action == SEND_TODISP_ALL ||
              action == SEND_SHOW))
          n_colour_env_create(n_COLOUR_GROUP_VIEW, obuf != stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if (IS_TTY_SESSION() && action != SEND_MBOX)
+   else if ((options & OPT_INTERACTIVE) &&
+         (action == SEND_TODISP || action == SEND_TODISP_ALL))
       n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
 #endif
 
@@ -1206,7 +1207,7 @@ c_from(void *v)
       goto jleave;
    opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
 
-   if (IS_TTY_SESSION()) {
+   if (options & OPT_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
@@ -1272,7 +1273,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
    opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
 
 #ifdef HAVE_COLOUR
-   if (IS_TTY_SESSION())
+   if (options & OPT_INTERACTIVE)
       n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
 #endif
 
@@ -1407,8 +1408,9 @@ c_top(void *v)
          topl = 5;
    }
 
+   /* XXX Colours of `top' only for message and part info lines */
 #ifdef HAVE_COLOUR
-   if (IS_TTY_SESSION())
+   if (options & OPT_INTERACTIVE)
       n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
 #endif
    empty_last = 1;
