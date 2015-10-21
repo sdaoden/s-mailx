@@ -8535,6 +8535,53 @@ and
 .\" }}} (Examples)
 .
 .
+.\" .Sh "FAQ" {{{
+.Sh "FAQ"
+.
+.\" .Ss "I can't login to Google mail a.k.a. GMail" {{{
+.Ss "I can't login to Google mail a.k.a. GMail"
+.
+Since 2014 some free service providers classify programs as
+.Dq less secure
+unless they use a special authentification method (OAuth 2.0) which
+wasn't standardized for non-HTTP protocol authentication token query
+until August 2015 (RFC 7628).
+.
+.Pp
+Different to Kerberos / GSSAPI, which is developed since the mid of the
+1980s, where a user can easily create a local authentication ticket for
+her- and himself with the locally installed
+.Xr kinit 1
+program, that protocol has no such local part but instead requires
+a world-wide-web query to create or fetch a token; since there is no
+local cache this query has to be performed whenever \*(UA is invoked
+from the command line (in interactive sessions situation may differ).
+.
+.Pp
+\*(UA doesn't support OAuth.
+Because of this it is necessary to declare \*(UA a
+.Dq less secure app
+(on the providers account web page) in order to read and send mail.
+However, it also seems possible to take the following steps instead:
+.
+.Pp
+.Bl -enum -compact
+.It
+give the provider the number of a mobile phone,
+.It
+enable
+.Dq 2-Step Verification ,
+.It
+create an application specific password (16 characters), and
+.It
+use that special password instead of your real Google account password in
+S-nail (for more on that see the section
+.Sx "On URL syntax and credential lookup" ) .
+.El
+.\" }}}
+.\" }}}
+.
+.
 .\" .Sh "SEE ALSO" {{{
 .Sh "SEE ALSO"
 .
