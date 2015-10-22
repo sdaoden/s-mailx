@@ -3250,6 +3250,14 @@ Also see
 .Va followup-to .
 .
 .Mx
+.It Ic Move
+Similar to
+.Ic move ,
+but moves the messages to a file named after the local part of the
+sender address of the first message (instead of in
+.Va record Ns ).
+.
+.Mx
 .It Ic move
 Acts like
 .Ic copy
@@ -3257,28 +3265,21 @@ but marks the messages for deletion if they were transferred
 successfully.
 .
 .Mx
-.It Ic more
-Like
-.Ic print
-or
-.Ic type ,
-but prints a form-feed
-.Pf ( Ql \ef )
-in between messages.
-.
-.Mx
 .It Ic More
 Like
 .Ic more ,
 but also prints ignored header fields and all MIME parts.
+Identical to
+.Ic Page .
 .
 .Mx
-.It Ic Move
-Similar to
-.Ic move ,
-but moves the messages to a file named after the local part of the
-sender address of the first message (instead of in
-.Va record Ns ).
+.It Ic more
+Invokes the
+.Ev PAGER
+on the given messages, even in non-interactive mode and as long as the
+standard output is a terminal.
+Identical to
+.Ic page .
 .
 .Mx
 .It Ic netrc
@@ -3334,6 +3335,23 @@ Same as
 If the current folder is accessed via a network connection, a
 .Dq NOOP
 command is sent, otherwise no operation is performed.
+.
+.Mx
+.It Ic Page
+Like
+.Ic page ,
+but also prints ignored header fields and all MIME parts.
+Identical to
+.Ic More .
+.
+.Mx
+.It Ic page
+Invokes the
+.Ev PAGER
+on the given messages, even in non-interactive mode and as long as the
+standard output is a terminal.
+Identical to
+.Ic more .
 .
 .Mx
 .It Ic Pipe

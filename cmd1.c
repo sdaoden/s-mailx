@@ -902,8 +902,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          obuf = stdout;
       } else
          safe_signal(SIGPIPE, &_cmd1_brokpipe);
-   } else if ((options & OPT_TTYOUT) &&
-         (dopage || (cp = ok_vlook(crt)) != NULL)) {
+   } else if ((options & OPT_TTYOUT) && (dopage ||
+         ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
       char const *pager = NULL;
       size_t nlines = 0;
 

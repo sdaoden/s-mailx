@@ -99,13 +99,13 @@
    { "mbox", &c_mboxit, (A | W | MSGLIST), 0, 0
      DS(N_("Indicate that <message-list> is to be stored in *mbox*")) },
    { "more", &c_more, (A | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"type\"/\"print\", put print \\f between messages")) },
+     DS(N_("Invoke the pager on the given messages")) },
    { "page", &c_more, (A | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"type\"/\"print\", put print \\f between messages")) },
+     DS(N_("Invoke the pager on the given messages")) },
    { "More", &c_More, (A | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Type\"/\"Print\", put print \\f between messages")) },
+     DS(N_("Invoke the pager on the given messages")) },
    { "Page", &c_More, (A | MSGLIST), 0, MMNDEL
-     DS(N_("Like \"Type\"/\"Print\", put print \\f between messages")) },
+     DS(N_("Invoke the pager on the given messages")) },
    { "unread", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> as not being read")) },
    { "Unread", &c_unread, (A | MSGLIST), 0, MMNDEL
