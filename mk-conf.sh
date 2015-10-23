@@ -576,6 +576,7 @@ check_tool cmp "${cmp:-`command -v cmp`}"
 check_tool mkdir "${mkdir:-`command -v mkdir`}"
 check_tool mv "${mv:-`command -v mv`}"
 # rm(1), sed(1) above
+check_tool sort "${sort:-`command -v sort`}"
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool chown "${chown:-`command -v chown`}" 1 ||
@@ -645,7 +646,7 @@ else
 fi
 
 for i in \
-      awk cat chmod chown cp cmp grep mkdir mv rm sed tee tr \
+      awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE make strip \
       cksum; do
    eval j=\$${i}
@@ -2087,10 +2088,12 @@ printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk
+# Note we cannout use explicit ./ filename prefix for source and object
+# pathnames because of a bug in bmake(1)
 ${rm} -rf ${tmp0}.* ${tmp0}*
 printf 'OBJ_SRC = ' >> ${mk}
 if feat_no AMALGAMATION; then
-   for i in *.c; do
+   for i in `printf '%s\n' *.c | ${sort}`; do
       if [ "${i}" = privsep.c ]; then
          continue
       fi
@@ -2104,7 +2107,7 @@ else
    printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef _CONFIG_H\n' >> ${h}
    printf '# define _CONFIG_H 2\n' >> ${h}
-   for i in *.c; do
+   for i in `printf '%s\n' *.c | ${sort}`; do
       if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
             [ "${i}" = privsep.c ]; then
          continue
