@@ -1,6 +1,6 @@
 #@ Makefile for S-nail.
-#@ Adjustments have to be made in `make.rc' -- or on the command line.
-#@ See the file `INSTALL' if you need help.
+#@ Adjustments have to be made in "make.rc" -- or on the command line.
+#@ See the file "INSTALL" if you need help.
 
 .PHONY: all install uninstall clean distclean config build test
 
@@ -112,8 +112,8 @@ _update-release:
 	mv -f nail.rcx nail.rc &&\
 	\
 	git add version.h nail.1 nail.rc &&\
-	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
-	git tag -s -f "v$${REL}" &&\
+	LC_ALL=${ORIG_LC_ALL} git commit -S -m "Bump $${UUAGENT} v$${REL}" &&\
+	LC_ALL=${ORIG_LC_ALL} git tag -s -f "v$${REL}" &&\
 	\
 	git update-ref refs/heads/next master &&\
 	\
@@ -121,7 +121,8 @@ _update-release:
 	git rm -rf '*' &&\
 	git archive --format=tar "v$${REL}" | tar -x -f - &&\
 	git add --all &&\
-	git commit -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
+	LC_ALL=${ORIG_LC_ALL} \
+		git commit -S -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
 	\
 	git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
