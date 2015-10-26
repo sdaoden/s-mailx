@@ -372,7 +372,7 @@ screensize(void)
 }
 
 FL char const *
-get_pager(char const **env_addon)
+n_pager_get(char const **env_addon)
 {
    char const *cp;
    NYD_ENTER;
@@ -383,11 +383,18 @@ get_pager(char const **env_addon)
 
    if (env_addon != NULL) {
       *env_addon = NULL;
-      if (strstr(cp, "less") != NULL) {
-         if (!env_blook("LESS", TRU1))
-            *env_addon = "LESS=FRSXi";
-      } else if (strstr(cp, "lv") != NULL) {
-         if (!env_blook("LV", TRU1))
+      /* Update the manual upon any changes:
+       *    *colour-pager*, $PAGER */
+      if(strstr(rv, "less") != NULL){
+         if(!env_blook("LESS", TRU1))
+            *env_addon =
+#ifdef HAVE_TERMCAP
+                  (pstate & PS_TERMCAP_CA_MODE) ? "LESS=Ri"
+                     : !(pstate & PS_TERMCAP_DISABLE) ? "LESS=FRi" :
+#endif
+                        "LESS=FRXi";
+      }else if(strstr(rv, "lv") != NULL){
+         if(!env_blook("LV", TRU1))
             *env_addon = "LV=-c";
       }
    }
@@ -421,7 +428,7 @@ page_or_print(FILE *fp, size_t lines)
       }
 
       if (lines >= u.rows) {
-         run_command(get_pager(NULL), 0, fileno(fp), COMMAND_FD_PASS,
+         run_command(n_pager_get(NULL), 0, fileno(fp), COMMAND_FD_PASS,
             NULL, NULL, NULL, NULL);
          goto jleave;
       }

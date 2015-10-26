@@ -275,7 +275,7 @@ FL int         screensize(void);
 /* Get our $PAGER; if env_addon is not NULL it is checked wether we know about
  * some environment variable that supports colour+ and set *env_addon to that,
  * e.g., "LESS=FRSXi" */
-FL char const *get_pager(char const **env_addon);
+FL char const *n_pager_get(char const **env_addon);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
@@ -1563,9 +1563,15 @@ FL bool_t      pipe_cloexec(int fd[2]);
  * called from within the child process */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
+FL bool_t      Pclose(FILE *fp, bool_t dowait);
 
-FL bool_t      Pclose(FILE *ptr, bool_t dowait);
+/* In OPT_INTERACTIVE, we want to go over $PAGER.
+ * These are specialized version of Popen()/Pclose() which also encapsulate
+ * error message printing, terminal handling etc. additionally */
+FL FILE *      n_pager_open(void);
+FL bool_t      n_pager_close(FILE *fp);
 
+/*  */
 FL void        close_all_files(void);
 
 /* Fork a child process, enable use of the *child() series below */

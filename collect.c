@@ -272,14 +272,11 @@ print_collf(FILE *cf, struct header *hp)
       rewind(cf);
       if (l < m) {
 jpager:
-         cp = get_pager(NULL);
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
-         obuf = Popen(cp, "w", NULL, NULL, 1);
-         if (obuf == NULL) {
-            n_perr(cp, 0);
+         if ((obuf = n_pager_open()) == NULL)
             obuf = stdout;
-         } else
+         else
             safe_signal(SIGPIPE, &_collect_onpipe);
       }
    }
@@ -313,11 +310,8 @@ jpager:
    }
 
 jendpipe:
-   if (obuf != stdout) {
-      safe_signal(SIGPIPE, SIG_IGN);
-      Pclose(obuf, TRU1);
-      safe_signal(SIGPIPE, dflpipe);
-   }
+   if (obuf != stdout)
+      n_pager_close(obuf);
    if (lbuf != NULL)
       free(lbuf);
    safe_signal(SIGINT, sigint);

@@ -1003,13 +1003,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         char const *env_add[2], *pager = get_pager(env_add + 0);
-         env_add[1] = NULL;
-         obuf = Popen(pager, "w", NULL, env_add, 1);
-         if (obuf == NULL) {
-            n_perr(pager, 0);
+         if ((obuf = n_pager_open()) == NULL)
             obuf = stdout;
-         }
       }
 #ifdef HAVE_COLOUR
       if ((options & OPT_INTERACTIVE) &&
@@ -1054,7 +1049,7 @@ jleave:
       srelax_rele();
    n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
    if (obuf != stdout)
-      Pclose(obuf, TRU1);
+      n_pager_close(obuf);
    }
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
@@ -1191,13 +1186,9 @@ c_from(void *v)
       if ((cp = ok_vlook(crt)) != NULL) {
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
-         if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
-            char const *p = get_pager(NULL);
-            if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
-               n_perr(p, 0);
-               obuf = stdout;
-            }
-         }
+         if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3 &&
+               (obuf = n_pager_open()) == NULL)
+            obuf = stdout;
       }
       n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != stdout); )
    }
@@ -1223,7 +1214,7 @@ jleave:
       srelax_rele();
    n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
    if (obuf != stdout)
-      Pclose(obuf, TRU1);
+      n_pager_close(obuf);
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return 0;

@@ -49,9 +49,9 @@ struct fp {
    struct fp   *link;
    char        *realfile;
    char        *save_cmd;
+   struct termios *fp_tios;
    long        offset;
    int         omode;
-   int         pipe;
    int         pid;
    enum {
       FP_RAW      = 0,
@@ -60,10 +60,12 @@ struct fp {
       FP_BZIP2    = 1<<2,
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
-      FP_MASK     = (1<<6) - 1,
+      FP_PIPE     = 1<<6,
+      FP_MASK     = (1<<7) - 1,
       /* TODO FP_UNLINK: should be in a separated process so that unlinking
        * TODO the temporary "garbage" is "safe"(r than it is like that) */
-      FP_UNLINK   = 1<<6
+      FP_UNLINK   = 1<<9,
+      FP_TERMIOS  = 1<<10
    }           flags;
 };
 
@@ -84,13 +86,13 @@ static sighandler_type a_popen_otstp, a_popen_ottin, a_popen_ottou;
 static volatile int a_popen_hadsig;
 
 static int           scan_mode(char const *mode, int *omode);
-static void          register_file(FILE *fp, int omode, int ispipe, int pid,
+static void          register_file(FILE *fp, int omode, int pid,
                         int flags, char const *realfile, long offset,
-                        char const *save_cmd);
+                        char const *save_cmd, struct termios *tiosp);
 static enum okay     _file_save(struct fp *fpp);
 static int           _file_load(int flags, int infd, int outfd,
                         char const *load_cmd);
-static enum okay     unregister_file(FILE *fp);
+static enum okay     unregister_file(FILE *fp, struct termios **tiosp);
 static int           file_pid(FILE *fp);
 
 /* TODO Rather temporary: deal with job control with FD_PASS */
@@ -140,23 +142,25 @@ jleave:
 }
 
 static void
-register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
-   char const *realfile, long offset, char const *save_cmd)
+register_file(FILE *fp, int omode, int pid, int flags,
+   char const *realfile, long offset, char const *save_cmd,
+   struct termios *tiosp)
 {
    struct fp *fpp;
    NYD_ENTER;
 
    assert(!(flags & FP_UNLINK) || realfile != NULL);
+   assert(!(flags & FP_TERMIOS) || tiosp != NULL);
 
    fpp = smalloc(sizeof *fpp);
    fpp->fp = fp;
    fpp->omode = omode;
-   fpp->pipe = ispipe;
    fpp->pid = pid;
    fpp->link = fp_head;
    fpp->flags = flags;
    fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
    fpp->save_cmd = (save_cmd != NULL) ? sstrdup(save_cmd) : NULL;
+   fpp->fp_tios = tiosp;
    fpp->offset = offset;
    fp_head = fpp;
    NYD_LEAVE;
@@ -264,23 +268,39 @@ jleave:
 }
 
 static enum okay
-unregister_file(FILE *fp)
+unregister_file(FILE *fp, struct termios **tiosp)
 {
    struct fp **pp, *p;
    enum okay rv = OKAY;
    NYD_ENTER;
 
+   if (tiosp)
+      *tiosp = NULL;
+
    for (pp = &fp_head; (p = *pp) != NULL; pp = &p->link)
       if (p->fp == fp) {
-         if ((p->flags & FP_MASK) != FP_RAW) /* TODO ;} */
+         switch (p->flags & FP_MASK) {
+         case FP_RAW:
+         case FP_PIPE:
+            break;
+         default:
             rv = _file_save(p);
-         if (p->flags & FP_UNLINK && unlink(p->realfile))
+            break;
+         }
+         if ((p->flags & FP_UNLINK) && unlink(p->realfile))
             rv = STOP;
+
          *pp = p->link;
          if (p->save_cmd != NULL)
             free(p->save_cmd);
          if (p->realfile != NULL)
             free(p->realfile);
+         if (p->flags & FP_TERMIOS) {
+            if (tiosp != NULL)
+               *tiosp = p->fp_tios;
+            else
+               free(p->fp_tios);
+         }
          free(p);
          goto jleave;
       }
@@ -488,7 +508,7 @@ Fopen(char const *file, char const *oflags)
    NYD_ENTER;
 
    if ((fp = safe_fopen(file, oflags, &osflags)) != NULL)
-      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -505,7 +525,7 @@ Fdopen(int fd, char const *oflags, bool_t nocloexec)
       osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
-      register_file(fp, osflags, 0, 0, FP_RAW, NULL, 0L, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -516,7 +536,7 @@ Fclose(FILE *fp)
    int i = 0;
    NYD_ENTER;
 
-   if (unregister_file(fp) == OKAY)
+   if (unregister_file(fp, NULL) == OKAY)
       i |= 1;
    if (fclose(fp) == 0)
       i |= 2;
@@ -643,7 +663,7 @@ jerr:
       goto jleave;
    }
 
-   register_file(rv, osflags, 0, 0, flags, file, offset, csave);
+   register_file(rv, osflags, 0, flags, file, offset, csave, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -744,9 +764,9 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
       scan_mode(osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
       if ((fp = fdopen(fd, osflags)) != NULL)
-         register_file(fp, osflagbits | _O_CLOEXEC, 0, 0,
+         register_file(fp, osflagbits | _O_CLOEXEC, 0,
             (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),
-            cp_base, 0L, NULL);
+            cp_base, 0L, NULL, NULL);
    } else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
@@ -827,6 +847,7 @@ FL FILE *
 Popen(char const *cmd, char const *mode, char const *sh,
    char const **env_addon, int newfd1)
 {
+   struct termios *tiosp;
    int p[2], myside, hisside, fd0, fd1, pid;
    char mod[2] = {'0', '\0'};
    sigset_t nset;
@@ -857,7 +878,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    if (*mode == 'r') {
       myside = p[READ];
-      fd0 = -1;
+      fd0 = COMMAND_FD_PASS;
       hisside = fd1 = p[WRITE];
       mod[0] = *mode;
    } else if (*mode == 'W') {
@@ -868,9 +889,20 @@ Popen(char const *cmd, char const *mode, char const *sh,
    } else {
       myside = p[WRITE];
       hisside = fd0 = p[READ];
-      fd1 = -1;
+      fd1 = COMMAND_FD_PASS;
       mod[0] = 'w';
    }
+
+   /* In interactive mode both STDIN and STDOUT point to the terminal.  If we
+    * pass through the TTY restore terminal attributes after pipe returns.
+    * XXX It shouldn't matter which FD we actually use in this case */
+   if ((options & OPT_INTERACTIVE) && (fd0 == COMMAND_FD_PASS ||
+         fd1 == COMMAND_FD_PASS)) {
+      tiosp = smalloc(sizeof *tiosp);
+      tcgetattr(STDIN_FILENO, tiosp);
+      n_TERMCAP_SUSPEND(TRU1);
+   } else
+      tiosp = NULL;
 
    sigemptyset(&nset);
 
@@ -898,7 +930,9 @@ Popen(char const *cmd, char const *mode, char const *sh,
    }
    close(hisside);
    if ((rv = fdopen(myside, mod)) != NULL)
-      register_file(rv, 0, 1, pid, FP_RAW, NULL, 0L, NULL);
+      register_file(rv, 0, pid,
+         (tiosp == NULL ? FP_PIPE : FP_PIPE | FP_TERMIOS),
+         NULL, 0L, NULL, tiosp);
    else
       close(myside);
 jleave:
@@ -909,6 +943,7 @@ jleave:
 FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
+   struct termios *tiosp;
    sigset_t nset, oset;
    int pid;
    bool_t rv = FAL0;
@@ -917,20 +952,60 @@ Pclose(FILE *ptr, bool_t dowait)
    pid = file_pid(ptr);
    if (pid < 0)
       goto jleave;
-   unregister_file(ptr);
+
+   unregister_file(ptr, &tiosp);
    fclose(ptr);
+
    if (dowait) {
       sigemptyset(&nset);
       sigaddset(&nset, SIGINT);
       sigaddset(&nset, SIGHUP);
       sigprocmask(SIG_BLOCK, &nset, &oset);
       rv = wait_child(pid, NULL);
+      if (tiosp != NULL) {
+         n_TERMCAP_RESUME(TRU1);
+         tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+      }
       sigprocmask(SIG_SETMASK, &oset, NULL);
    } else {
       free_child(pid);
       rv = TRU1;
    }
+   if (tiosp != NULL)
+      free(tiosp);
 jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL FILE *
+n_pager_open(void)
+{
+   char const *env_add[2], *pager;
+   FILE *rv;
+   NYD_ENTER;
+
+   assert(options & OPT_INTERACTIVE);
+
+   pager = n_pager_get(env_add + 0);
+   env_add[1] = NULL;
+
+   if ((rv = Popen(pager, "w", NULL, env_add, COMMAND_FD_PASS)) == NULL)
+      n_perr(pager, 0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+n_pager_close(FILE *fp)
+{
+   sighandler_type sh;
+   bool_t rv;
+   NYD_ENTER;
+
+   sh = safe_signal(SIGPIPE, SIG_IGN);
+   rv = Pclose(fp, TRU1);
+   safe_signal(SIGPIPE, sh);
    NYD_LEAVE;
    return rv;
 }
@@ -940,7 +1015,7 @@ close_all_files(void)
 {
    NYD_ENTER;
    while (fp_head != NULL)
-      if (fp_head->pipe)
+      if ((fp_head->flags & FP_MASK) == FP_PIPE)
          Pclose(fp_head->fp, TRU1);
       else
          Fclose(fp_head->fp);
