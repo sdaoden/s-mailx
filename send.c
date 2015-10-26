@@ -352,7 +352,7 @@ _pipefile(enum pipe_flags pipeflags, char const *pipecomm,
       sh = XSHELL;
 
    rbuf = Popen(pipecomm, "W", sh, env_addon,
-         (pipeflags & PIPE_ASYNC ? -1 : fileno(*qbuf)));
+         (pipeflags & PIPE_ASYNC ? COMMAND_FD_PASS : fileno(*qbuf)));
 jerror:
    if (rbuf == NULL)
       n_err(_("Cannot run MIME type handler \"%s\": %s\n"),

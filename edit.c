@@ -210,8 +210,8 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
       ed = (viored == 'e') ? "ed" : "vi"; /* XXX no magics, -> nail.h */
 
    sigemptyset(&cset);
-   if (run_command(ed, (oldint != SIG_IGN ? &cset : NULL), -1, -1, tempEdit,
-         NULL, NULL, NULL) < 0)
+   if (run_command(ed, (oldint != SIG_IGN ? &cset : NULL),
+         COMMAND_FD_PASS, COMMAND_FD_PASS, tempEdit, NULL, NULL, NULL) < 0)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary

@@ -1140,7 +1140,7 @@ jcantfout:
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
+         pid = start_command(sh, &nset, fda[xcnt++], COMMAND_FD_NULL, "-c",
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
             n_err(_("Piping message to \"%s\" failed\n"), np->n_name);

@@ -1616,18 +1616,20 @@ FL void        close_all_files(void);
 FL int         fork_child(void);
 
 /* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  The command name can be a sequence of words.  Signals must be
- * handled by the caller.  "Mask" contains the signals to ignore in the new
- * process.  SIGINT is enabled unless it's in the mask.
+ * and stdout.  FDs may also be COMMAND_FD_NULL and COMMAND_FD_PASS, meaning to
+ * redirect from/to /dev/null or pass through our own set of FDs; in the
+ * latter case terminal capabilities are saved/restored if possible.
+ * The command name can be a sequence of words.
+ * Signals must be handled by the caller.  "Mask" contains the signals to
+ * ignore in the new process.  SIGINT is enabled unless it's in the mask.
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment */
 FL int         run_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
                   char const **env_addon);
 
-/*
- * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment */
+/* Like run_command, but don't wait for the command to finish.
+ * Also it is usually an error to use COMMAND_FD_PASS for this one */
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
                   char const **env_addon);

@@ -212,6 +212,11 @@
    "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 #define COLOUR_USER_HEADERS "from,subject"
 
+/* Special FD requests for run_command() / start_command() */
+#define COMMAND_FD_PASS -1
+#define COMMAND_FD_NULL -2
+
+/*  */
 #define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR   365L
 #define DATE_SECSMIN    60L

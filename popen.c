@@ -79,6 +79,11 @@ struct child {
 static struct fp     *fp_head;
 static struct child  *_popen_child;
 
+/* TODO Rather temporary: deal with job control with FD_PASS */
+static struct termios a_popen_tios;
+static sighandler_type a_popen_otstp, a_popen_ottin, a_popen_ottou;
+static volatile int a_popen_hadsig;
+
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int ispipe, int pid,
                         int flags, char const *realfile, long offset,
@@ -89,10 +94,14 @@ static int           _file_load(int flags, int infd, int outfd,
 static enum okay     unregister_file(FILE *fp);
 static int           file_pid(FILE *fp);
 
+/* TODO Rather temporary: deal with job control with FD_PASS */
+static void a_popen_jobsigs_up(void);
+static void a_popen_jobsigs_down(void);
+static void a_popen_jobsig(int sig);
+
 /* Handle SIGCHLD */
 static void          _sigchld(int signo);
 
-static int           wait_command(int pid);
 static struct child *_findchild(int pid, bool_t create);
 static void          _delchild(struct child *cp);
 
@@ -308,6 +317,66 @@ file_pid(FILE *fp)
 }
 
 static void
+a_popen_jobsigs_up(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   a_popen_otstp = safe_signal(SIGTSTP, &a_popen_jobsig);
+   a_popen_ottin = safe_signal(SIGTTIN, &a_popen_jobsig);
+   a_popen_ottou = safe_signal(SIGTTOU, &a_popen_jobsig);
+
+   /* This assumes oset contains nothing but SIGCHLD, so to say */
+   sigdelset(&oset, SIGTSTP);
+   sigdelset(&oset, SIGTTIN);
+   sigdelset(&oset, SIGTTOU);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_popen_jobsigs_down(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGTSTP, a_popen_otstp);
+   safe_signal(SIGTTIN, a_popen_ottin);
+   safe_signal(SIGTTOU, a_popen_ottou);
+
+   sigaddset(&oset, SIGTSTP);
+   sigaddset(&oset, SIGTTIN);
+   sigaddset(&oset, SIGTTOU);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_popen_jobsig(int sig){
+   sighandler_type oldact;
+   sigset_t nset;
+   bool_t hadsig;
+   NYD_X; /* Signal handler */
+
+   hadsig = (a_popen_hadsig != 0);
+   a_popen_hadsig = 1;
+
+   oldact = safe_signal(sig, SIG_DFL);
+
+   sigemptyset(&nset);
+   sigaddset(&nset, sig);
+   sigprocmask(SIG_UNBLOCK, &nset, NULL);
+   n_raise(sig);
+   sigprocmask(SIG_BLOCK, &nset, NULL);
+
+   safe_signal(sig, oldact);
+}
+
+static void
 _sigchld(int signo)
 {
    pid_t pid;
@@ -333,21 +402,6 @@ _sigchld(int signo)
          }
       }
    }
-}
-
-static int
-wait_command(int pid)
-{
-   int rv = 0;
-   NYD_ENTER;
-
-   if (!wait_child(pid, NULL)) {
-      if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         n_err(_("Fatal error in process\n"));
-      rv = -1;
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 static struct child *
@@ -903,13 +957,50 @@ FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
+   sigset_t nset, oset;
+   bool_t tio_set;
    int rv;
    NYD_ENTER;
 
+   /* TODO Of course this is a joke given that during a "p*" the PAGER may
+    * TODO be up and running while we play around like this... but i guess
+    * TODO this can't be helped at all unless we perform complete and true
+    * TODO process group separation and ensure we don't deadlock us out
+    * TODO via TTY jobcontrol signal storms (could this really happen?).
+    * TODO Or have a builtin pager.  Or query any necessity BEFORE we start
+    * TODO any action, and shall we find we need to run programs dump it
+    * TODO all into a temporary file which is then passed through to the
+    * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
+   if ((tio_set = ((options & OPT_INTERACTIVE) &&
+         (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
+      tcgetattr((options & OPT_TTYIN ? STDIN_FILENO : STDOUT_FILENO), &a_popen_tios);
+      sigfillset(&nset);
+      sigdelset(&nset, SIGCHLD);
+      /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
+      sigprocmask(SIG_BLOCK, &nset, &oset);
+      a_popen_hadsig = 0;
+      a_popen_jobsigs_up();
+   }
+
    if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
-   else
-      rv = wait_command(rv);
+   else {
+      if (wait_child(rv, NULL))
+         rv = 0;
+      else {
+         if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            n_err(_("Fatal error in process\n"));
+         rv = -1;
+      }
+   }
+
+   if (tio_set) {
+      a_popen_jobsigs_down();
+      tio_set = ((options & OPT_TTYIN) != 0);
+      tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
+         (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -999,10 +1090,22 @@ prepare_child(sigset_t *nset, int infd, int outfd)
    NYD_ENTER;
 
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
-   if (infd >= 0)
+   /* TODO WHAT IS WITH STDERR_FILENO DAMN? */
+   if ((i = (infd == COMMAND_FD_NULL)))
+      infd = open("/dev/null", O_RDONLY);
+   if (infd >= 0) {
       dup2(infd, STDIN_FILENO);
-   if (outfd >= 0)
+      if (i)
+         close(infd);
+   }
+
+   if ((i = (outfd == COMMAND_FD_NULL)))
+      outfd = open("/dev/null", O_WRONLY);
+   if (outfd >= 0) {
       dup2(outfd, STDOUT_FILENO);
+      if (i)
+         close(outfd);
+   }
 
    if (nset) {
       for (i = 1; i < NSIG; ++i)

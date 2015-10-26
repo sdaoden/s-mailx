@@ -362,7 +362,8 @@ jleave:
    snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
    if ((shellp = ok_vlook(SHELL)) == NULL)
       shellp = UNCONST(XSHELL);
-   pid = start_command(shellp, NULL, -1, pivec[1], "-c", cmdbuf, NULL, NULL);
+   pid = start_command(shellp, NULL, COMMAND_FD_NULL, pivec[1],
+         "-c", cmdbuf, NULL, NULL);
    if (pid < 0) {
       close(pivec[0]);
       close(pivec[1]);
