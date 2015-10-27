@@ -37,6 +37,12 @@ d-b:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
 	LC_ALL=C $(MAKE) -f ./mk.mk all
 
+d-gettext:
+	LC_ALL=C xgettext --sort-by-file --strict --add-location \
+		--from-code=UTF-8 --keyword --keyword=_ --keyword=N_ \
+		--add-comments=I18N --foreign-user \
+		-o messages.pot *.c *.h
+
 _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 	$(SHELL) ./mk-conf.sh
