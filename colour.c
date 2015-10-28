@@ -621,18 +621,20 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
       {"black", '0'}, {"red", '1'}, {"green", '2'}, {"brown", '3'},
       {"blue", '4'}, {"magenta", '5'}, {"cyan", '6'}, {"white", '7'}
    }, *idp;
-   char *xspec, *cp, fg[3], cfg[3] = {0, 0, 0};
+   char *xspec, *cp, fg[3], cfg[2 + 2*sizeof("255")];
    ui8_t ftno_base, ftno;
    bool_t rv;
    NYD_ENTER;
 
    rv = FAL0;
+   /* 0/1 indicate usage, thereafter possibly 256 color sequences */
+   cfg[0] = cfg[1] = 0;
 
    /* Since we use salloc(), reuse the n_strsep() buffer also for the return
     * value, ensure we have enough room for that */
    /* C99 */{
       size_t i = strlen(spec) +1;
-      xspec = salloc(MAX(i, sizeof("\033[1;4;7;30;40m")));
+      xspec = salloc(MAX(i, sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       memcpy(xspec, spec, i);
       spec = xspec;
    }
@@ -667,21 +669,37 @@ jbail:
                break;
             }
       }else if(!asccasecmp(cp, "fg")){
-         y = cfg + 1;
+         y = cfg + 0;
          goto jiter_colour;
       }else if(!asccasecmp(cp, "bg")){
-         y = cfg + 2;
+         y = cfg + 1;
 jiter_colour:
          if(ct == a_COLOUR_T_MONO){
             *store = UNCONST(_("colours are not allowed"));
             goto jleave;
          }
-         for(idp = ca;; ++idp)
+         /* Maybe 256 color spec TODO allow user some query to check
+          * TODO wether this is applicable, we know with TERMCAP,
+          * TODO we might now otherwise; macros with arguments/returns or
+          * TODO special variable or whatever */
+         if(digitchar(x[0])){
+            sl_i xv;
+
+            xv = strtol(x, &cp, 10);
+            if(xv < 0 || xv > 255 || *cp != '\0' || PTRCMP(&x[3], <, cp)){
+               *store = UNCONST(_("invalid 256-colour specification"));
+               goto jleave;
+            }
+            y[0] = 5;
+            memcpy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
+               (x[1] == '\0' ? 2 : (x[2] == '\0' ? 3 : 4)));
+         }else for(idp = ca;; ++idp)
             if(idp == ca + NELEM(ca)){
                *store = UNCONST(_("invalid colour attribute"));
                goto jleave;
             }else if(!asccasecmp(x, idp->id_name)){
-               *y = idp->id_modc;
+               y[0] = 1;
+               y[2] = idp->id_modc;
                break;
             }
       }else
@@ -690,7 +708,7 @@ jiter_colour:
 
    /* Restore our salloc() buffer, create return value */
    xspec = UNCONST(spec);
-   if(ftno > 0 || cfg[1] || cfg[2]){
+   if(ftno > 0 || cfg[0] || cfg[1]){ /* TODO unite/share colour setters */
       xspec[0] = '\033';
       xspec[1] = '[';
       xspec += 2;
@@ -701,20 +719,34 @@ jiter_colour:
          *xspec++ = fg[ftno];
       }
 
-      if(cfg[1]){
+      if(cfg[0]){
          if(ftno_base > 0)
             *xspec++ = ';';
          xspec[0] = '3';
-         xspec[1] = cfg[1];
-         xspec += 2;
+         if(cfg[0] == 1){
+            xspec[1] = cfg[2];
+            xspec += 2;
+         }else{
+            memcpy(xspec + 1, "8;5;", 4);
+            xspec += 5;
+            for(ftno = 2; cfg[ftno] != '\0'; ++ftno)
+               *xspec++ = cfg[ftno];
+         }
       }
 
-      if(cfg[2]){
-         if(ftno_base > 0 || cfg[1])
+      if(cfg[1]){
+         if(ftno_base > 0 || cfg[0])
             *xspec++ = ';';
          xspec[0] = '4';
-         xspec[1] = cfg[2];
-         xspec += 2;
+         if(cfg[1] == 1){
+            xspec[1] = cfg[3];
+            xspec += 2;
+         }else{
+            memcpy(xspec + 1, "8;5;", 4);
+            xspec += 5;
+            for(ftno = 2 + sizeof("255"); cfg[ftno] != '\0'; ++ftno)
+               *xspec++ = cfg[ftno];
+         }
       }
 
       *xspec++ = 'm';

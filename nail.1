@@ -2263,6 +2263,7 @@ and
 can be used to remove mappings.
 The following (case-insensitive) keywords and attributes exist:
 .
+.
 .Bl -tag -width ft=
 .It Cd ft=
 a font attribute:
@@ -2272,6 +2273,7 @@ or
 .Ql underline .
 It is possible (and often applicable) to specify multiple font
 attributes for a single mapping.
+.
 .It Cd fg=
 foreground colour attribute:
 .Ql black ,
@@ -2283,22 +2285,52 @@ foreground colour attribute:
 .Ql cyan
 or
 .Ql white .
+If the terminal offers 256-color support decimal numbers in the range
+0 to 255, inclusive, may be given instead:
+.Pp
+.Bl -tag -compact -width "999 - 999"
+.It 0 - 7
+the standard ISO 6429 colors, as above.
+.It 8 - 15
+high intensity variants of the standard colors.
+.It 16 - 231
+216 colors in tuples of 6.
+.It 232 - 255
+grayscale from black to white in 24 steps.
+.El
+.Bd -literal -offset indent
+#!/bin/sh -
+fg() { printf "\e033[38;5;${1}m($1)"; }
+bg() { printf "\e033[48;5;${1}m($1)"; }
+i=0
+while [ $i -lt 256 ]; do fg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+i=0
+while [ $i -lt 256 ]; do bg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+.Ed
+.
 .It Cd bg=
 background colour attribute (see
 .Cd fg=
 for possible values).
 .El
 .
+.
 .Pp
 When creating a colour or font attribute mapping for one of the
 mappable slots (the command
 .Ic colour
 gives a listing of all possible slots) multiple keywords / attribute
-pairs can be joined in a comma-separated list:
+pairs can be joined in a comma-separated list;
+and, since colours are only available in interactive mode, it may make
+sense to conditionalize the colour setup by encapsulating it with
+.Ic if :
 .
 .Bd -literal -offset indent
 if terminal
   colour view-header ft=bold,fg=magenta,bg=cyan
+  colour view-header ft=bold,fg=208,bg=230 subject,from
 
   mono   view-header ft=bold
   mono   view-header ft=bold,ft=reverse subject,from
