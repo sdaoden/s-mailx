@@ -1313,6 +1313,20 @@ spectrum of characters is available.
 In this setup characters from various countries can be displayed,
 while it is still possible to use more simple character sets for sending
 to retain maximum compatibility with older mail clients.
+.
+.Pp
+On the other hand the POSIX standard defines a locale-independent 7-bit
+.Dq portable character set
+that should be used when overall portability is an issue, the even more
+restricted subset named
+.Dq portable filename character set
+consisting of A-Z, a-z, 0-9, period
+.Ql \&. ,
+underscore
+.Ql _
+and
+.Ql -
+hyphen.
 .\" }}}
 .
 .\" .Ss "Message states" {{{
@@ -4164,10 +4178,16 @@ Same as
 .Mx
 .It Ic urldecode
 Decode the given URL-encoded string arguments and show the results.
+Note the resulting strings may not be valid in the current locale, see
+.Ic urlencode .
 .
 .Mx
 .It Ic urlencode
 URL-encode the given arguments and show the results.
+Because the arguments effectively are in the character set of the
+current locale the results will vary accordingly unless the input solely
+consists of characters in the portable character set, see
+.Sx "Character sets" .
 .
 .Mx
 .It Ic varedit
