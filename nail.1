@@ -1820,38 +1820,36 @@ criterion then the last of those criteria is used.
 .\" .Ss "On URL syntax and credential lookup" {{{
 .Ss "On URL syntax and credential lookup"
 .
-\*(IN For accessing protocol-specific resources, like POP3 mailboxes,
-usage of compact and standardized Uniform Resource Locators
-(URL, RFC 1738) has become omnipresent.
+\*(IN For accessing protocol-specific resources usage of Uniform
+Resource Locators (URL, RFC 1738) has become omnipresent.
 \*(UA expects and understands URLs in the following form;
 parts in brackets
 .Ql []
 denote optional parts, optional either because there also exist other
 ways to define the information in question or because support of the
-part is protocol-specific \(en e.g.,
+part is protocol-specific (e.g.,
 .Ql /path
-is used by the IMAP protocol but not by POP3.
+is used by the IMAP protocol but not by POP3);
+If any of
+.Ql USER
+and
+.Ql PASSWORD
+are specified they must be given in URL percent encoded form (RFC 3986;
+the commands
+.Ic urlencode
+and
+.Ic urldecode
+may be helpful):
 .
 .Pp
 .Dl PROTOCOL://[USER[:PASSWORD]@]server[:port][/path]
 .
 .Pp
-If
-.Ql USER
-and
-.Ql PASSWORD
-are specified as part of an URL they must be given in URL percent
-encoded (RFC 3986) form \(en the command
-.Ic urlencode
-can be used to perform the encoding and show the encoded value.
-(This doesn't really conform to any standard, but for one it isn't
-used for any data exchange over the internet, and second it's easier for
-users to simply call
-.Ic urlencode
-on a string and use that instead of having to deal with several
-different standards.)
-On the other hand, values given in variables are expected not to be URL
-percent encoded.
+Note that these \*(UA URLs most often don't conform to any real
+standard, but instead represent a normalized variant of RFC 1738 \(en
+they are not used in data exchange but only ment as a compact,
+easy-to-use way of defining and representing information in
+a well-known notation.
 .
 .Pp
 Many internal variables of \*(UA exist in multiple versions, called
@@ -1876,7 +1874,10 @@ isn't truly the
 that had been found when doing the user chain lookup as is described
 below, i.e., this
 .Ql USER
-will never be in URL percent encoded form, wether it came from an URL or not.
+will never be in URL percent encoded form, wether it came from an URL or
+not; i.e., values of
+.Sx "INTERNAL VARIABLES"
+must not be URL percent encoded.
 .
 .Pp
 For example, wether an hypothetical URL
@@ -1941,16 +1942,14 @@ have no success.
 .It
 If no
 .Ql PASSWORD
-has been given in the URL \(en it should be noted once that specifying
-the password in the URL is only syntactic sugar for the user, it'll
-never be part of an URL that \*(UA uses itself \(en, then if the
+has been given in the URL, then if the
 .Ql USER
 has been found through the \*(OPal
-.Pa .netrc
-file lookup then that may have already provided the password, too.
+.Va netrc-lookup
+then that may have already provided the password, too.
 Otherwise the variable chain
 .Va password-USER@HOST , password-HOST , password
-is looked up.
+is looked up and used if existent.
 .Pp
 \*(OP Then if any of the variables of the chain
 .Va agent-shell-lookup-USER@HOST , agent-shell-lookup-HOST , \
@@ -1961,11 +1960,14 @@ It is perfectly valid for such an agent to simply not return any data,
 in which case the password lookup is continued somewhere else;
 Any command failure is treated as a hard error, however.
 .Pp
-The next variable chain that is inspected is the \*(OPal
-.Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup ,
-but this time looking only for the password (multiple user accounts
-for a single machine may exist as well as a fallback entry without
-user but with a password).
+Afterwards the complete \*(OPal variable chain
+.Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
+is looked up.
+If set, the
+.Pa .netrc
+cache is searched for a password only (multiple user accounts for
+a single machine may exist as well as a fallback entry without user
+but with a password).
 .Pp
 If at that point there is still no password available, but the
 (protocols') chosen authentication type requires a password, then in
