@@ -382,6 +382,8 @@
      DS(N_("Mailing-list reply to the given message")) },
    { "errors", &c_errors, (H | I | RAWLIST), 0, 1
      DS(N_("Either <show> (default) or <clear> the error message ring")) },
+   { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
+     DS(N_("Move the dot up <-> or down <+> by one")) },
    { "features", &_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
    { "version", &_c_version, (H | M | NOLIST), 0, 0
