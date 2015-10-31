@@ -1169,23 +1169,26 @@ The content of these files is interpreted as follows:
 .Pp
 .Bl -bullet -compact
 .It
-A lines' leading whitespace is ignored.
+A lines' leading whitespace is removed.
 .It
-An empty line is ignored.
+Empty lines are ignored.
+.It
+Any other line is interpreted as a command.
+It may be spread over multiple input lines if the newline character is
+.Dq escaped
+by placing a backslash character
+.Ql \e
+as the last character of the line; whereas any leading whitespace of
+follow lines is ignored, trailing whitespace before the escaped newlines
+remains in the input.
 .It
 If the line (content) starts with the number sign
 .Ql #
 then it is a comment-command \(en a real command! \(en and also ignored.
 This command is the only form of comment that is understood.
-.It
-A line can be
-.Dq continued
-on the next line if the newline character is
-.Dq escaped
-by preceding it with the backslash character
-.Ql \e .
-Note that any leading whitespace of follow lines is removed:
-If whitespace is desired it must be placed before the backslash.
+.El
+.
+.Pp
 For example:
 .
 .Bd -literal -offset indent
@@ -1193,8 +1196,8 @@ For example:
     es, it is really continued here.
 set debug \e
     verbose
+    set editheaders
 .Ed
-.El
 .\" }}}
 .
 .\" .Ss "Character sets" {{{
