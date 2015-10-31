@@ -70,9 +70,9 @@
 #endif
 
 struct fio_stack {
-   FILE  *s_file;    /* File we were in. */
-   void  *s_cond;    /* Saved state of conditional stack */
-   int   s_loading;  /* Loading .mailrc, etc. */
+   FILE *s_file;     /* File we were in. */
+   void *s_cond;     /* Saved state of conditional stack */
+   ui32_t s_pstate;  /* Copy of ::pstate */
 };
 
 /* Slots in ::message */
@@ -125,7 +125,7 @@ static int        _dotlock_main(void);
 static long       xwrite(int fd, char const *data, size_t sz);
 #endif
 
-/* `source' and `source_if' */
+/* `source' and `source_if' (if silent_error: no pipes allowed, then) */
 static bool_t     _source_file(char const *file, bool_t silent_error);
 
 static void
@@ -618,12 +618,35 @@ static bool_t
 _source_file(char const *file, bool_t silent_error)
 {
    char *cp;
-   FILE *fi = NULL;
+   bool_t ispipe;
+   FILE *fi;
    NYD_ENTER;
 
-   if ((cp = fexpand(file, FEXP_LOCAL)) == NULL)
+   fi = NULL;
+
+   if ((ispipe = !silent_error)) {
+      size_t i = strlen(file);
+
+      while (i > 0 && spacechar(file[i - 1]))
+         --i;
+      if (i > 0 && file[i - 1] == '|')
+         cp = savestrbuf(file, --i);
+      else
+         ispipe = FAL0;
+   }
+
+   if (ispipe) {
+      char const *sh;
+
+      if ((sh = ok_vlook(SHELL)) == NULL)
+         sh = XSHELL;
+      if ((fi = Popen(cp, "r", sh, NULL, COMMAND_FD_NULL)) == NULL) {
+         n_perr(cp, 0);
+         goto jleave;
+      }
+   } else if ((cp = fexpand(file, FEXP_LOCAL)) == NULL)
       goto jleave;
-   if ((fi = Fopen(cp, "r")) == NULL) {
+   else if ((fi = Fopen(cp, "r")) == NULL) {
       if (!silent_error || (options & OPT_D_V))
          n_perr(cp, 0);
       goto jleave;
@@ -636,17 +659,20 @@ _source_file(char const *file, bool_t silent_error)
    if (_fio_stack_size >= NELEM(_fio_stack)) {
       n_err(_("Too many `source' recursions\n"));
 jeclose:
-      Fclose(fi);
+      if (ispipe)
+         Pclose(fi, TRU1);
+      else
+         Fclose(fi);
       fi = NULL;
       goto jleave;
    }
 
    _fio_stack[_fio_stack_size].s_file = _fio_input;
    _fio_stack[_fio_stack_size].s_cond = condstack_release();
-   _fio_stack[_fio_stack_size].s_loading = !!(pstate & PS_LOADING);
+   _fio_stack[_fio_stack_size].s_pstate = pstate;
    ++_fio_stack_size;
-   pstate &= ~PS_LOADING;
-   pstate |= PS_SOURCING;
+   pstate &= ~(PS_LOADING | PS_PIPING);
+   pstate |= PS_SOURCING | (ispipe ? PS_PIPING : PS_NONE);
    _fio_input = fi;
 jleave:
    NYD_LEAVE;
@@ -2190,15 +2216,16 @@ unstack(void)
       goto jleave;
    }
 
-   Fclose(_fio_input);
+   if (pstate & PS_PIPING)
+      Pclose(_fio_input, TRU1);
+   else
+      Fclose(_fio_input);
 
    --_fio_stack_size;
    if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
       n_err(_("Unmatched \"if\"\n"));
-   if (_fio_stack[_fio_stack_size].s_loading)
-      pstate |= PS_LOADING;
-   else
-      pstate &= ~PS_LOADING;
+   pstate &= ~(PS_LOADING | PS_PIPING);
+   pstate |= _fio_stack[_fio_stack_size].s_pstate & (PS_LOADING | PS_PIPING);
    _fio_input = _fio_stack[_fio_stack_size].s_file;
    if (_fio_stack_size == 0) {
       if (pstate & PS_LOADING)

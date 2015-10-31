@@ -1112,11 +1112,13 @@ do {\
 } while (0)
 
 enum program_state {
+   PS_NONE           = 0,
    PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
 
    PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
    PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */
    PS_IN_LOAD        = PS_LOADING | PS_SOURCING,
+   PS_PIPING         = 1<< 3,       /* `source'ing via pipe */
 
    PS_EVAL_ERROR     = 1<< 4,       /* Last evaluate() command failed */
 
