@@ -58,7 +58,6 @@ struct fp {
       FP_GZIP     = 1<<0,
       FP_XZ       = 1<<1,
       FP_BZIP2    = 1<<2,
-      FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
       FP_MASK     = (1<<6) - 1,
@@ -180,12 +179,6 @@ _file_save(struct fp *fpp)
    fflush(fpp->fp);
    clearerr(fpp->fp);
 
-#ifdef HAVE_IMAP
-   if ((fpp->flags & FP_MASK) == FP_IMAP) {
-      rv = imap_append(fpp->realfile, fpp->fp);
-      goto jleave;
-   }
-#endif
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
          outfd = errno;
@@ -260,7 +253,6 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
       cmd[2] = load_cmd;
       break;
    case FP_MAILDIR:
-   case FP_IMAP:
       rv = 0;
       goto jleave;
    }
@@ -553,9 +545,8 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
       rof |= OF_APPEND;
    mode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
 
-   if ((osflags & O_APPEND) && ((p = which_protocol(file)) == PROTO_IMAP ||
-         p == PROTO_MAILDIR)) {
-      flags |= (p == PROTO_IMAP) ? FP_IMAP : FP_MAILDIR;
+   if ((osflags & O_APPEND) && ((p = which_protocol(file)) == PROTO_MAILDIR)) {
+      flags |= FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT;
       infd = -1;
    } else {
@@ -621,7 +612,7 @@ jraw:
       goto jerr;
    }
 
-   if (flags & (FP_IMAP | FP_MAILDIR))
+   if (flags & FP_MAILDIR)
       ;
    else if (infd >= 0) {
       if (_file_load(flags, infd, fileno(rv), cload) < 0) {

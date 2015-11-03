@@ -568,8 +568,7 @@ trycreate(char const *name)
    } else if (makedir(name) != OKAY) {
       n_err(_("Cannot create directory \"%s\"\n"), name);
       goto jleave;
-   } else
-      ++imap_created_mailbox;
+   }
    rv = OKAY;
 jleave:
    NYD_LEAVE;

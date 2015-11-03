@@ -1695,7 +1695,7 @@ fakedate(time_t t)
    return cp;
 }
 
-#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
+#ifdef HAVE_IMAP_SEARCH
 FL time_t
 unixtime(char const *fromline)
 {
@@ -1751,7 +1751,7 @@ jinvalid:
    t = n_time_epoch();
    goto jleave;
 }
-#endif /* HAVE_IMAP_SEARCH || defined HAVE_IMAP */
+#endif /* HAVE_IMAP_SEARCH */
 
 FL time_t
 rfctime(char const *date)

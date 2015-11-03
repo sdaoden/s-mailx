@@ -549,19 +549,6 @@ j_A_redo:
                n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
          wleft = (n >= 0) ? wleft - n : 0;
          break;
-      case 'U':
-#ifdef HAVE_IMAP
-            if (n == 0)
-               n = 9;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, mp->m_uid);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-#else
-            c = '?';
-            goto jputc;
-#endif
       default:
          if (options & OPT_D_V)
             n_err(_("Unkown *headline* format: \"%%%c\"\n"), c);
@@ -884,6 +871,7 @@ _headers(int msgspec) /* TODO rework v15 */
          mq = lastmq;
       }
       _screen = g / size;
+
       mp = mq;
       mesg = (int)PTR2SIZE(mp - message);
       if (PTRCMP(dot, !=, message + msgspec - 1)) { /* TODO really?? */
@@ -893,10 +881,7 @@ _headers(int msgspec) /* TODO rework v15 */
                break;
             }
       }
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(mesg + 1, mesg + size);
-#endif
+
       srelax_hold();
       isrelax = TRU1;
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
@@ -1260,10 +1245,6 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
    size_t printed;
    NYD_ENTER;
 
-#ifdef HAVE_IMAP
-   if (mb.mb_type == MB_IMAP)
-      imap_getheaders(bottom, topx);
-#endif
    time_current_update(&time_current, FAL0);
 
    isrelax = FAL0;
@@ -1505,18 +1486,10 @@ c_folders(void *v)
    } else
       name = dirname;
 
-   if (which_protocol(name) == PROTO_IMAP) {
-#ifdef HAVE_IMAP
-      imap_folders(name, *argv == NULL);
-#else
-      rv = c_cmdnotsupp(NULL);
-#endif
-   } else {
-      if ((cmd = ok_vlook(LISTER)) == NULL)
-         cmd = XLISTER;
-      run_command(cmd, 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name, NULL, NULL,
-         NULL);
-   }
+   if ((cmd = ok_vlook(LISTER)) == NULL)
+      cmd = XLISTER;
+   run_command(cmd, 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name, NULL, NULL,
+      NULL);
 jleave:
    NYD_LEAVE;
    return rv;

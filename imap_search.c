@@ -133,7 +133,11 @@ static enum okay     itsplit(char const *spec, char const **xp);
 static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
                         size_t c, struct itnode *n);
+
 static time_t        _imap_read_date(char const *cp);
+static char *        _imap_quotestr(char const *s);
+static char *        _imap_unquotestr(char const *s);
+
 static bool_t        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
@@ -417,7 +421,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
       *ap++ = **xp;
    } while (*(*xp)++);
 
-   *tp = imap_unquotestr(*tp);
+   *tp = _imap_unquotestr(*tp);
    rv = OKAY;
 jleave:
    NYD_LEAVE;
@@ -628,6 +632,50 @@ jleave:
    return t;
 }
 
+static char *
+_imap_quotestr(char const *s)
+{
+   char *n, *np;
+   NYD2_ENTER;
+
+   np = n = salloc(2 * strlen(s) + 3);
+   *np++ = '"';
+   while (*s) {
+      if (*s == '"' || *s == '\\')
+         *np++ = '\\';
+      *np++ = *s++;
+   }
+   *np++ = '"';
+   *np = '\0';
+   NYD2_LEAVE;
+   return n;
+}
+
+static char *
+_imap_unquotestr(char const *s)
+{
+   char *n, *np;
+   NYD2_ENTER;
+
+   if (*s != '"') {
+      n = savestr(s);
+      goto jleave;
+   }
+
+   np = n = salloc(strlen(s) + 1);
+   while (*++s) {
+      if (*s == '\\')
+         s++;
+      else if (*s == '"')
+         break;
+      *np++ = *s;
+   }
+   *np = '\0';
+jleave:
+   NYD2_LEAVE;
+   return n;
+}
+
 static bool_t
 matchfield(struct message *m, char const *field, void const *what)
 {
@@ -742,10 +790,10 @@ jdone:
 
    ep = salloc(epsize = strlen(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
-      realnam ? imap_quotestr(realnam) : "NIL",
-      sourceaddr ? imap_quotestr(sourceaddr) : "NIL",
-      localpart ? imap_quotestr(localpart) : "NIL",
-      domainpart ? imap_quotestr(domainpart) : "NIL");
+      realnam ? _imap_quotestr(realnam) : "NIL",
+      sourceaddr ? _imap_quotestr(sourceaddr) : "NIL",
+      localpart ? _imap_quotestr(localpart) : "NIL",
+      domainpart ? _imap_quotestr(domainpart) : "NIL");
    ac_free(ip);
    NYD_LEAVE;
    return ep;
@@ -792,11 +840,10 @@ imap_search(char const *spec, int f)
    _it_begin = lastspec;
 
    _it_need_headers = FAL0;
-#ifdef HAVE_IMAP
+#if 0
    if ((rv = imap_search1(spec, f) == OKAY))
       goto jleave;
 #endif
-
    if (itparse(spec, &xp, 0) == STOP)
       goto jleave;
    if (_it_tree == NULL) {
@@ -804,7 +851,7 @@ imap_search(char const *spec, int f)
       goto jleave;
    }
 
-#ifdef HAVE_IMAP
+#if 0
    if (mb.mb_type == MB_IMAP && _it_need_headers)
       imap_getheaders(1, msgCount);
 #endif

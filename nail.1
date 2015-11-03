@@ -73,7 +73,7 @@
 .Fl h | Fl Fl help
 .Nm \*(ua
 .Bk -words
-.Op Fl BDdEFintv~
+.Op Fl BdEFintv~
 .Op Fl A Ar account
 .Op Fl a Ar attachment
 .Op Fl b Ar bcc-addr
@@ -89,7 +89,7 @@
 .Ek
 .Nm \*(ua
 .Bk -words
-.Op Fl BDdEeHiNnRv~#
+.Op Fl BdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
@@ -100,7 +100,7 @@
 .Ek
 .Nm \*(ua
 .Bk -words
-.Op Fl BDdEeHiNnRv~#
+.Op Fl BdEeHiNnRv~#
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
@@ -135,8 +135,8 @@ will print warnings for many use cases of obsolete features.
 with lines replaced by messages.
 It is intended to provide the functionality of the POSIX
 .Xr mailx 1
-command and offers (mostly optional) extensions for line editing, IDNA,
-MIME, S/MIME, SMTP and POP3 (and IMAP).
+command, but is MIME capable and optionally offers extensions for
+line editing, S/MIME, SMTP and POP3 among others.
 It is usable as a mail batch language.
 .
 .\" .Ss "Options" {{{
@@ -192,12 +192,6 @@ Also see the section
 .It Fl c Ar address
 Send carbon copies to the given receiver(s).
 Can be used multiple times.
-.
-.Mx
-.It Fl D
-\*(OP\*(OB Set the
-.Va disconnected
-variable.
 .
 .Mx
 .It Fl d
@@ -498,7 +492,7 @@ It also forcefully puts \*(UA into send mode, see
 .
 .Pp
 In the above list of supported command line options,
-.Fl D , d , E , i , N
+.Fl d , E , i , N
 and
 .Fl v
 are implemented by means of setting the respective option, as via
@@ -2478,7 +2472,7 @@ The two argument form is identical to defining a macro as via
 For example:
 .Bd -literal -offset indent
 account myisp {
-  set folder=imaps://mylogin@imap.myisp.example
+  set folder=mail
   set record=+Sent
   set from="myname@myisp.example (My Name)"
   set smtp=smtp://mylogin@smtp.myisp.example
@@ -2523,12 +2517,6 @@ Takes a message list and marks each message as having been answered.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
 and makes them specially addressable.
-.
-.Mx
-.It Ic cache
-\*(OP\*(OB Only applicable to cached IMAP mailboxes;
-takes a message list and reads the specified messages into the IMAP
-cache.
 .
 .Mx
 .It Ic call
@@ -2716,15 +2704,6 @@ For a generic overview see the section
 .
 .
 .Mx
-.It Ic connect
-\*(OP\*(OB If operating in disconnected mode on an IMAP mailbox,
-switch to online mode and connect to the mail server while retaining
-the mailbox status.
-See the description of the
-.Va disconnected
-variable for more information.
-.
-.Mx
 .It Ic Copy
 (C) Copy messages to files whose names are derived from the author of
 the respective message and don't mark them as being saved;
@@ -2815,18 +2794,6 @@ nor will they be available for most other commands.
 .Ic ignore .
 Also see
 .Ic retain .
-.
-.Mx
-.It Ic disconnect
-\*(OP\*(OB (disco) If operating in online mode on an IMAP mailbox,
-switch to disconnected mode while retaining the mailbox status.
-See the description of the
-.Va disconnected
-variable for more.
-A list of messages may optionally be given as argument;
-the respective messages are then read into the cache before the
-connection is closed.
-Thus `disco *' makes the entire mailbox available for disconnected use.
 .
 .Mx
 .Mx
@@ -2949,10 +2916,7 @@ argument:
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
-(percent sign) means the invoking user's system mailbox
-(or the value of
-.Va folder
-for IMAP folders),
+(percent sign) means the invoking user's system mailbox,
 .It Ar %user
 means the system mailbox of
 .Ar user
@@ -3065,12 +3029,6 @@ or
 they must be escaped in URL notation \(en the command
 .Ic urlencode
 can be used to show the necessary conversion.
-The optional `path' part applies to IMAP only;
-if it is omitted, the default `INBOX' is used.
-.Pp
-If \*(UA is connected to an IMAP server,
-a name of the form `@mailbox' refers to the `mailbox' on that server,
-but otherwise a `@' prefix has no special meaning.
 .
 .Mx
 .It Ic flag
@@ -3090,11 +3048,7 @@ and makes them specially addressable.
 .It Ic folders
 With no arguments, list the names of the folders in the folder directory.
 With an existing folder as an argument,
-lists the names of folders below the named folder;
-e.\|g. the command `folders @' lists the folders on the base level of
-the current IMAP server.
-See also the variable
-.Va imap-list-depth .
+lists the names of folders below the named folder.
 .
 .Mx
 .It Ic Followup
@@ -3422,30 +3376,6 @@ and
 .Ic retain .
 .
 .Mx
-.It Ic imap
-\*(OP\*(OB Sends command strings directly to the current IMAP server.
-\*(UA operates always in IMAP `selected state' on the current mailbox;
-commands that change this will produce undesirable results and should be
-avoided.
-Useful IMAP commands are:
-.Bl -tag -offset indent -width ".Ic getquotearoot"
-.It create
-Takes the name of an IMAP mailbox as an argument and creates it.
-.It getquotaroot
-(RFC 2087) Takes the name of an IMAP mailbox as an argument
-and prints the quotas that apply to the mailbox.
-Not all IMAP servers support this command.
-.It namespace
-(RFC 2342) Takes no arguments and prints the Personal Namespaces,
-the Other User's Namespaces and the Shared Namespaces.
-Each namespace type is printed in parentheses;
-if there are multiple namespaces of the same type,
-inner parentheses separate them.
-For each namespace a prefix and a hierarchy separator is listed.
-Not all IMAP servers support this command.
-.El
-.
-.Mx
 .It Ic list
 Shows the names of all available commands, alphabetically sorted.
 .
@@ -3755,8 +3685,7 @@ The user is asked for confirmation in interactive mode.
 Takes the name of an existing folder
 and the name for the new folder
 and renames the first to the second one.
-Both folders must be of the same type
-and must be located on the current server for IMAP.
+Both folders must be of the same type.
 .
 .Mx
 .It Ic Reply
@@ -3904,9 +3833,6 @@ or when automatically saving to
 This command should only be applied to header fields that do not contain
 information needed to decode the message,
 as MIME content fields do.
-If saving messages on an IMAP account ignoring fields makes it
-impossible to copy the data directly on the server,
-thus operation usually becomes much slower.
 .
 .Mx
 .It Ic saveretain
@@ -5474,35 +5400,6 @@ as well as
 .Pf no Va save .
 .
 .Mx
-.It Va disconnected
-\*(BY\*(OP\*(OB When an IMAP mailbox is selected and this variable is set,
-no connection to the server is initiated.
-Instead, data is obtained from the local cache (see
-.Va imap-cache Ns
-).
-Mailboxes that are not present in the cache
-and messages that have not yet entirely been fetched from the server
-are not available;
-to fetch all messages in a mailbox at once,
-the command
-.No ` Ns Li copy * /dev/null Ns '
-can be used while still in connected mode.
-Changes that are made to IMAP mailboxes in disconnected mode are queued
-and committed later when a connection to that server is made.
-This procedure is not completely reliable since it cannot be guaranteed
-that the IMAP unique identifiers (UIDs) on the server still match the
-ones in the cache at that time.
-Data is saved to
-.Ev DEAD
-when this problem occurs.
-.
-.It Va disconnected-USER@HOST
-The specified account is handled as described for the
-.Va disconnected
-variable above,
-but other accounts are not affected.
-.
-.Mx
 .It Va disposition-notification-send
 \*(BO\*(OP Emit a
 .Ql Disposition-Notification-To:
@@ -5729,25 +5626,6 @@ The same special conventions as documented for the
 command may be used when specifying a new value for
 .Va \&\&folder ,
 but be aware that the expansion is fully performed immediately.
-E.g., if the expanded name refers to an IMAP account, all names that
-begin with `+' refer to IMAP mailboxes below the
-.Va folder
-target box.
-.Pp
-Note: some IMAP servers do not accept the creation of mailboxes in
-the hierarchy base, but require that they are created as subfolders of
-`INBOX' \(en with such servers a folder name of the form
-.Pp
-.Dl imaps://mylogin@imap.myisp.example/INBOX.
-.Pp
-should be used (the last character is the server's hierarchy delimiter).
-Folder names prefixed by `+' will then refer to folders below `INBOX',
-while folder names prefixed by `@' refer to folders below the hierarchy
-base.
-See the
-.Ic imap
-namespace command for a method to detect the appropriate prefix and
-delimiter.
 .
 .Mx
 .It Va folder-hook
@@ -6130,52 +6008,6 @@ on a line by itself or by using the
 overrides a setting of
 .Pf no Va dot .
 .
-.Mx Va imap-auth
-.It Va imap-auth-USER@HOST , imap-auth
-\*(OP\*(OB Sets the IMAP authentication method.
-Valid values are `login' for the usual password-based authentication
-(the default),
-`cram-md5', which is a password-based authentication that does not send
-the password over the network in clear text,
-and `gssapi' for GSS-API based authentication.
-.
-.Mx
-.It Va imap-cache
-\*(OP\*(OB Enables caching of IMAP mailboxes.
-The value of this variable must point to a directory that is either
-existent or can be created by \*(UA.
-All contents of the cache can be deleted by \*(UA at any time;
-it is not safe to make assumptions about them.
-.
-.Mx Va imap-keepalive
-.It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive
-\*(OP\*(OB IMAP servers may close the connection after a period of
-inactivity; the standard requires this to be at least 30 minutes,
-but practical experience may vary.
-Setting this variable to a numeric `value' greater than 0 causes
-a `NOOP' command to be sent each `value' seconds if no other operation
-is performed.
-.
-.Mx
-.It Va imap-list-depth
-\*(OP\*(OB When retrieving the list of folders on an IMAP server, the
-.Ic folders
-command stops after it has reached a certain depth to avoid possible
-infinite loops.
-The value of this variable sets the maximum depth allowed.
-The default is 2.
-If the folder separator on the current IMAP server is a slash `/',
-this variable has no effect and the
-.Ic folders
-command does not descend to subfolders.
-.
-.Mx Va imap-use-starttls
-.It Va imap-use-starttls-USER@HOST , imap-use-starttls-HOST , imap-use-starttls
-\*(OP\*(OB Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
-IMAP session SSL/TLS encrypted.
-This functionality is not supported by all servers,
-and is not used if the session is already encrypted by the IMAPS method.
-.
 .Mx
 .It Va indentprefix
 String used by the
@@ -6493,23 +6325,7 @@ newly created local folders will be in Maildir format.
 .Mx
 .It Va newmail
 Checks for new mail in the current folder each time the prompt is shown.
-For IMAP mailboxes the server is then polled for new mail,
-which may result in delayed operation if the connection to the server is
-slow.
 A Maildir folder must be re-scanned to determine if new mail has arrived.
-.Pp
-If this variable is set to the special value
-.Ql nopoll
-an IMAP server is not actively asked for new mail, but new mail may
-still be detected and announced with any other IMAP command that is sent
-to the server.
-In either case the IMAP server may send notifications about messages
-that have been deleted on the server by another process or client.
-In this case,
-.Dq Expunged X messages
-is printed regardless of this variable, and message numbers may have
-changed.
-.Pp
 If this variable is set to the special value
 .Ql nopoll
 then a Maildir folder will not be rescanned completely, but only
@@ -9637,35 +9453,6 @@ Its functionality differs widely between the various system environments
 \*(UA runs on.
 .
 .Pp
-Limitations with IMAP mailboxes are:
-It is not possible to edit messages, but it is possible to append them.
-Thus to edit a message, create a local copy of it, edit it, append it,
-and delete the original.
-The line count for the header display is only appropriate if the entire
-message has been downloaded from the server.
-The marking of messages as `new' is performed by the IMAP server;
-use of the
-.Ic exit
-command instead of
-.Ic quit
-will not cause it to be reset, and if the
-.Va newmail
-variable is unset, messages that arrived during a session will not be
-in state `new' anymore when the folder is opened again.
-Also if commands queued in disconnected mode are committed,
-the IMAP server will delete the `new' flag for all messages in the
-changed folder,
-and new messages will appear as unread when it is selected for viewing
-later.
-The `flagged', `answered', and `draft' attributes are usually permanent,
-but some IMAP servers are known to drop them without notification.
-Message numbers may change with IMAP every time before the prompt is
-printed if \*(UA is notified by the server that messages have been
-deleted by some other client or process.
-In this case, `Expunged n messages' is printed, and message numbers may
-have changed.
-.
-.Pp
 Limitations with POP3 mailboxes are:
 It is not possible to edit messages, they can only be copied and deleted.
 The line count for the header display is only appropriate if the entire
@@ -9687,7 +9474,7 @@ If a
 .Dq RUBOUT
 (interrupt,
 .Ql control-C )
-is typed while an IMAP or POP3 operation is in progress, \*(UA will wait
+is typed while a POP3 operation is in progress, \*(UA will wait
 until the operation can be safely aborted, and will then return to the
 command loop and print the prompt again.
 When a second
@@ -9715,34 +9502,16 @@ a proxy.
 .
 .Pp
 \*(UA immediately contacts the SMTP server (or
-.Xr sendmail 1 Ns
-) even when operating in
-.Va disconnected
-mode.
+.Xr sendmail 1 ) .
 It would not make much sense for \*(UA to defer outgoing mail since SMTP
 servers usually provide much more elaborated delay handling than \*(UA
 could perform as a client.
-Thus the recommended setup for sending mail in
-.Va disconnected
-mode is to configure a local SMTP server such that it sends outgoing
-mail as soon as an external network connection is available again,
-i.e., to advise it to do that from a network startup script.
 .\" }}}
 .
 .
 .Sh BUGS
 .
-With IMAP, at least if the IMAP cache is used, if multiple
-.Ic connect
-and
-.Ic disconnect
-cycles happen without an intervening change of the active mailbox then
-\*(UA will at some time loose the ability to keep the local state
-up-to-date, meaning that, e.g., messages show up with false numbers, and
-including the possibility that messages are accessed via numbers that
-are no(t longer) valid, resulting in program crashes.
-The solution is to change the active mailbox before that happens :).
-Also see the file
+See the file
 .Pa TODO
 from the distribution or the repository.
 .

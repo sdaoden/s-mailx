@@ -996,10 +996,6 @@ c_unread(void *v)
       setdot(message + *ip - 1);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
-         imap_unread(message + *ip - 1, *ip); /* TODO return? */
-#endif
       pstate |= PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
@@ -1097,11 +1093,7 @@ c_newmail(void *v)
    NYD_ENTER;
    UNUSED(v);
 
-   if (
-#ifdef HAVE_IMAP
-         (mb.mb_type != MB_IMAP || imap_newmail(1)) &&
-#endif
-         (val = setfile(mailname,
+   if ((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
          ) == 0) {
       mdot = getmdot(1);
@@ -1227,13 +1219,6 @@ c_noop(void *v)
    UNUSED(v);
 
    switch (mb.mb_type) {
-   case MB_IMAP:
-#ifdef HAVE_IMAP
-      imap_noop();
-#else
-      rv = c_cmdnotsupp(NULL);
-#endif
-      break;
    case MB_POP3:
 #ifdef HAVE_POP3
       pop3_noop();
@@ -1296,12 +1281,6 @@ c_remove(void *v)
          n_err(_("Cannot remove POP3 mailbox \"%s\"\n"),name);
          ec |= 1;
          break;
-      case PROTO_IMAP:
-#ifdef HAVE_IMAP
-         if (imap_remove(name) != OKAY)
-#endif
-            ec |= 1;
-         break;
       case PROTO_MAILDIR:
          if (maildir_remove(name) != OKAY)
             ec |= 1;
@@ -1343,10 +1322,6 @@ c_rename(void *v)
       n_err(_("Cannot rename current mailbox \"%s\"\n"), old);
       goto jleave;
    }
-   if ((oldp == PROTO_IMAP || newp == PROTO_IMAP) && oldp != newp) {
-      fprintf(stderr, _("Can only rename folders of same type.\n"));
-      goto jleave;
-   }
 
    ec = 0;
 
@@ -1385,12 +1360,6 @@ jnopop3:
       n_err(_("Cannot rename POP3 mailboxes\n"));
       ec |= 1;
       break;
-#ifdef HAVE_IMAP
-   case PROTO_IMAP:
-      if (imap_rename(old, new) != OKAY)
-         ec |= 1;
-      break;
-#endif
    case PROTO_UNKNOWN:
    default:
       n_err(_("Unknown protocol in \"%s\" and \"%s\"; not renamed\n"),

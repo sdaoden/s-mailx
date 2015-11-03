@@ -79,7 +79,6 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    char *file = NULL, *cp, *cq;
    char const *disp = "";
    FILE *obuf;
-   enum protocol prot;
    bool_t success = FAL0, f;
    NYD_ENTER;
 
@@ -127,15 +126,12 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 
    if ((file = expand(file)) == NULL)
       goto jleave;
-   prot = which_protocol(file);
-   if (prot != PROTO_IMAP) {
-      if (access(file, F_OK) >= 0) {
-         newfile = 0;
-         disp = _("[Appended]");
-      } else {
-         newfile = 1;
-         disp = _("[New file]");
-      }
+   if (access(file, F_OK) >= 0) {
+      newfile = 0;
+      disp = _("[Appended]");
+   } else {
+      newfile = 1;
+      disp = _("[New file]");
    }
 
    obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
@@ -180,38 +176,12 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 
    success = TRU1;
    tstats[0] = tstats[1] = 0;
-   imap_created_mailbox = 0;
 
    srelax_hold();
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
       mp = message + *ip - 1;
-      if (prot == PROTO_IMAP && ignoret[0].i_count == 0 &&
-            ignoret[1].i_count == 0
-#ifdef HAVE_IMAP /* TODO revisit */
-            && imap_thisaccount(file)
-#endif
-      ) {
-#ifdef HAVE_IMAP
-         if (imap_copy(mp, *ip, file) == STOP)
-#endif
-         {
-#ifndef HAVE_IMAP
-# ifdef ENOSYS
-            errno = ENOSYS;
-# elif defined EOPNOTSUPP
-            errno = EOPNOTSUPP;
-# else
-            errno = EINVAL;
-# endif
-#endif
-            success = FAL0;
-            goto jferr;
-         }
-#ifdef HAVE_IMAP
-         mstats[0] = mp->m_xsize;
-#endif
-      } else if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
+      if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
          success = FAL0;
          goto jferr;
       }
@@ -242,13 +212,6 @@ jferr:
       success = FAL0;
 
    if (success) {
-      if (prot == PROTO_IMAP || prot == PROTO_MAILDIR) {
-         disp = (
-#ifdef HAVE_IMAP
-            ((prot == PROTO_IMAP) && disconnected(file)) ? "[Queued]" :
-#endif
-            (imap_created_mailbox ? "[New file]" : "[Appended]"));
-      }
       printf("\"%s\" %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
          file, disp, /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
@@ -697,10 +660,6 @@ c_undelete(void *v)
          mp->m_flag &= ~(MDELETED | MSAVED);
       else
          mp->m_flag &= ~MDELETED;
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
-         imap_undelete(mp, *ip);
-#endif
    }
    NYD_LEAVE;
    return 0;

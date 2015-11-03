@@ -1064,7 +1064,7 @@ FL char const * fakedate(time_t t);
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
-#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
+#ifdef HAVE_IMAP_SEARCH
 FL time_t      unixtime(char const *from);
 #endif
 
@@ -1089,77 +1089,6 @@ FL int         grab_headers(struct header *hp, enum gfield gflags,
 
 /* Check wether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
-
-/*
- * imap.c
- */
-
-#ifdef HAVE_IMAP
-FL char const * imap_fileof(char const *xcp);
-FL enum okay   imap_noop(void);
-FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
-                  const char *mbx, enum fedit_mode fm);
-FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
-FL enum okay   imap_header(struct message *m);
-FL enum okay   imap_body(struct message *m);
-FL void        imap_getheaders(int bot, int top);
-FL void        imap_quit(void);
-FL enum okay   imap_undelete(struct message *m, int n);
-FL enum okay   imap_unread(struct message *m, int n);
-FL int         c_imap_imap(void *vp);
-FL int         imap_newmail(int nmail);
-FL enum okay   imap_append(const char *xserver, FILE *fp);
-FL void        imap_folders(const char *name, int strip);
-FL enum okay   imap_copy(struct message *m, int n, const char *name);
-# ifdef HAVE_IMAP_SEARCH
-FL enum okay   imap_search1(const char *spec, int f);
-# endif
-FL int         imap_thisaccount(const char *cp);
-FL enum okay   imap_remove(const char *name);
-FL enum okay   imap_rename(const char *old, const char *new);
-FL enum okay   imap_dequeue(struct mailbox *mp, FILE *fp);
-FL int         c_connect(void *vp);
-FL int         c_disconnect(void *vp);
-FL int         c_cache(void *vp);
-FL int         disconnected(const char *file);
-FL void        transflags(struct message *omessage, long omsgCount,
-                  int transparent);
-FL time_t      imap_read_date_time(const char *cp);
-FL const char * imap_make_date_time(time_t t);
-#else
-# define c_imap_imap             c_cmdnotsupp
-# define c_connect               c_cmdnotsupp
-# define c_disconnect            c_cmdnotsupp
-# define c_cache                 c_cmdnotsupp
-#endif
-
-#if defined HAVE_IMAP || defined HAVE_IMAP_SEARCH
-FL char *      imap_quotestr(char const *s);
-FL char *      imap_unquotestr(char const *s);
-#endif
-
-/*
- * imap_cache.c
- */
-
-#ifdef HAVE_IMAP
-FL enum okay   getcache1(struct mailbox *mp, struct message *m,
-                  enum needspec need, int setflags);
-FL enum okay   getcache(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-FL void        putcache(struct mailbox *mp, struct message *m);
-FL void        initcache(struct mailbox *mp);
-FL void        purgecache(struct mailbox *mp, struct message *m, long mc);
-FL void        delcache(struct mailbox *mp, struct message *m);
-FL enum okay   cache_setptr(enum fedit_mode fm, int transparent);
-FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
-                  FILE *fp);
-FL enum okay   cache_remove(char const *name);
-FL enum okay   cache_rename(char const *old, char const *new);
-FL unsigned long cached_uidvalidity(struct mailbox *mp);
-FL FILE *      cache_queue(struct mailbox *mp);
-FL enum okay   cache_dequeue(struct mailbox *mp);
-#endif /* HAVE_IMAP */
 
 /*
  * imap_search.c
@@ -1244,14 +1173,6 @@ FL int         first(int f, int m);
 
 /* Mark the named message by setting its mark bit */
 FL void        mark(int mesg, int f);
-
-/* lzw.c TODO drop */
-#ifdef HAVE_IMAP
-FL int         zwrite(void *cookie, const char *wbp, int num);
-FL int         zfree(void *cookie);
-FL int         zread(void *cookie, char *rbp, int num);
-FL void *      zalloc(FILE *fp);
-#endif /* HAVE_IMAP */
 
 /*
  * maildir.c

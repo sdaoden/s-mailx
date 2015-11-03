@@ -206,9 +206,6 @@ markall(char *buf, int f)
    bool_t mc, star, topen, tback;
    size_t j, nmlsize;
    enum idfield idfield = ID_REFERENCES;
-#ifdef HAVE_IMAP
-   int gotheaders;
-#endif
    NYD_ENTER;
 
    lexstring = ac_alloc(STRINGLEN = 2 * strlen(buf) +1);
@@ -232,9 +229,6 @@ markall(char *buf, int f)
    bufp = buf;
    mc = FAL0;
    beg = star = other = topen = tback = FAL0;
-#ifdef HAVE_IMAP
-   gotheaders = 0;
-#endif
 
    for (tok = scan(&bufp); tok != TEOL;) {
       switch (tok) {
@@ -396,10 +390,6 @@ number:
 
       case TCOMMA:
          pstate &= ~PS_MSGLIST_DIRECT;
-#ifdef HAVE_IMAP
-         if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
-            imap_getheaders(1, msgCount);
-#endif
          if (id == NULL && (cp = hfield1("in-reply-to", dot)) != NULL) {
             id = savestr(cp);
             idfield = ID_IN_REPLY_TO;
@@ -531,10 +521,6 @@ number:
             goto jnamesearch_sepfree;
       }
 
-#ifdef HAVE_IMAP
-      if (mb.mb_type == MB_IMAP && gotheaders++ == 0)
-         imap_getheaders(1, msgCount);
-#endif
       srelax_hold();
       allnet = ok_blook(allnet);
       for (i = 1; i <= msgCount; ++i) {

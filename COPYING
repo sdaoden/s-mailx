@@ -115,7 +115,7 @@ QP quoting idea, _b64_decode(), b64_encode():
  */
 
 ==========================================================================
-imap_gssapi.h, smtp_gssapi.h:
+smtp_gssapi.h:
 partially derived from sample code in:
 
 /*

@@ -490,19 +490,12 @@ static sigjmp_buf __hdrjmp; /* XXX */
 static int
 _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
 {
-   char *cp;
    int i;
    sighandler_type prevint;
    NYD_ENTER;
 
    if (folder == NULL)
       folder = "%";
-   else if (*folder == '@') {
-      /* This must be treated specially to make possible invocation like
-       * -A imap -f @mailbox */
-      if ((cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP)
-         n_strlcpy(mailname, cp, PATH_MAX);
-   }
 
    if (options & OPT_QUICKRUN_MASK)
       i = FEDIT_RDONLY;
@@ -613,18 +606,18 @@ _X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:DdEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:~#.",
+   static char const optstr[] = "A:a:Bb:c:dEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
-         "  %s [-BDdEFintv~] [-A account]\n"
+         "  %s [-BdEFintv~] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
          "\t [-s subject] [-X cmd] [-.] to-address... [-- mta-option...]\n"
-         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "  %s [-BdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
          "\t [-X cmd] -f [file] [-- mta-option...]\n"
-         "  %s [-BDdEeHiNnRv~#] [-A account]\n"
+         "  %s [-BdEeHiNnRv~#] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
          "\t [-u user] [-X cmd] [-- mta-option...]\n"
       );
@@ -684,14 +677,6 @@ main(int argc, char *argv[])
          options |= OPT_SENDMODE;
          cc = cat(cc, lextract(_oarg, GCC | GFULL));
          break;
-      case 'D':
-#ifdef HAVE_IMAP
-         ok_bset(disconnected, TRU1);
-         okey = "disconnected";
-         goto joarg;
-#else
-         break;
-#endif
       case 'd':
          ok_bset(debug, TRU1);
          okey = "debug";

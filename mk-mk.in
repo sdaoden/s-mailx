@@ -31,10 +31,9 @@ $(UAGENT): $(OBJ)
 $(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
 $(AMALGAM_TARGET) accmacvar.o: okeys.h version.h
 $(AMALGAM_TARGET) fio.o: dotlock.h
-$(AMALGAM_TARGET) imap.o: imap_gssapi.h
 $(AMALGAM_TARGET) lex.o: cmd_tab.h
 $(AMALGAM_TARGET) mime_types.o: mime_types.h
-$(AMALGAM_TARGET) imap.c pop3.o smtp.o urlcrecry.o: rfc1321.h
+$(AMALGAM_TARGET) pop3.o smtp.o urlcrecry.o: rfc1321.h
 $(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
 
 $(PRIVSEP): privsep.o
