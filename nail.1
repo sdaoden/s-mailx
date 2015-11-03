@@ -180,7 +180,7 @@ Make standard input and standard output line-buffered.
 .Mx
 .It Fl b Ar address
 Send blind carbon copies to the given list of addresses.
-.Sx Sending mail
+.Sx "On sending mail, and non-interactive mode"
 below goes into more detail on that.
 .
 .Mx
@@ -476,7 +476,7 @@ This flag forces termination of option processing in order to prevent
 .Dq option injection
 (attacks).
 It also forcefully puts \*(UA into send mode, see
-.Sx "Sending mail" .
+.Sx "On sending mail, and non-interactive mode" .
 .El
 .
 .Pp
@@ -566,8 +566,8 @@ The section
 contains some further suggestions.
 .\" }}}
 .
-.\" .Ss "Sending mail" {{{
-.Ss "Sending mail"
+.\" .Ss "On sending mail, and non-interactive mode" {{{
+.Ss "On sending mail, and non-interactive mode"
 .
 To send a message to one or more people, using a local
 mail-transfer-agent (MTA; the executable path can be set via
@@ -772,10 +772,26 @@ $ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \e
     -. "Recipient 1 <recipient1@domain>" recipient2@domain \e
     < content_file
 .Ed
+.
+.Pp
+In interactive mode, which is introduced in the next section, messages
+can be send by calling the
+.Ic mail
+command with a list of recipient addresses \(em the semantics are
+completely identical to non-interactive message sending, except that
+it is likely necessary to separate recipient lists with commas:
+.
+.Bd -literal -offset indent
+$ \*(ua -d -Squiet -Semptystart
+"/var/spool/mail/user": 0 messages
+? mail "Recipient 1 <recipient1@domain>", recipient2@domain
+? # Will do the right thing (tm)
+? m recipient1@domain recipient2@domain
+.Ed
 .\" }}}
 .
-.\" .Ss "Reading mail" {{{
-.Ss "Reading mail"
+.\" .Ss "On reading mail, and interactive mode" {{{
+.Ss "On reading mail, and interactive mode"
 .
 When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
@@ -815,31 +831,49 @@ messages; the current message \(en the
 or the first message of the mailbox; the option
 .Va showlast
 will instead cause usage of the last message for this purpose.
+The command
+.Ic headers
+will print a
+.Va screen Ns
+ful of header summaries containing the
+.Dq dot ,
+whereas
+.Ic from
+will print only the summaries of the given messages, defaulting to the
+.Dq dot .
 .
 .Pp
 Messages can be printed with the
-.Ic print
+.Ic type
 command, or short:
-.Ql p .
+.Ql t .
 By default the current message
 .Pf ( Dq dot )
 is printed, but like with most other commands it is possible to give
 a fancy message specification (see
 .Sx "Specifying messages" ) ,
 e.g.,
-.Ql p:u
+.Ql t:u
 will display all unread messages,
-.Ql p.
+.Ql t.
 will print the
 .Dq dot ,
-.Ql p 1 5
+.Ql t 1 5
 will print the messages 1 and 5,
-.Ql p 1-5
+.Ql t 1-5
 will print the messages 1 through 5, and
-.Ql p-
+.Ql t-
 and
-.Ql p+
+.Ql t+
 will print the last and the next message, respectively.
+By the way, using the command
+.Ic from
+in conjunction with a message specification is the way to perform
+searching in \*(UA: the following will print the header summaries of all
+messages which contain the given string in their subject, for example:
+.
+.Pp
+.Dl ? from """@Some subject to search for"""
 .
 .Pp
 In the default setup all header fields of a message will be printed,
@@ -851,7 +885,7 @@ command, e.g.,
 .Ql Ic \:retain Ns \0date from to cc subject .
 In order to print all header fields of a message regardless of currently
 active ignore or retain lists, use the command
-.Ic Print .
+.Ic Type .
 The variable
 .Va crt
 controls wether and when \*(UA will use the configured
@@ -1365,7 +1399,8 @@ is set.
 .Ss "Specifying messages"
 .
 Commands such as
-.Ic print
+.Ic from ,
+.Ic type
 and
 .Ic delete
 can be given a list of message numbers as arguments to apply to a number
@@ -1563,7 +1598,7 @@ search expression is to be matched against, prefix the header name
 (abbreviation) with a tilde
 .Ql ~ :
 .Pp
-.Dl '@~f@@a\e.safe\e.domain\e.match$'
+.Dl @~f@@a\e.safe\e.domain\e.match$
 .
 .It Ar address
 A case-insensitive
@@ -3409,28 +3444,13 @@ every message is followed by a formfeed character.
 .
 .Mx
 .It Ic Print
-(P) Like
-.Ic print
-but also prints out ignored header fields and all parts of MIME
-.Ql multipart/alternative
-messages.
-See also
-.Ic print ,
-.Ic ignore
-and
-.Ic retain .
+(P) Alias for
+.Ic Type .
 .
 .Mx
 .It Ic print
-(p) Takes a message list and types out each message on the user's
-terminal.
-For MIME multipart messages, all parts with a content type of
-.Ql text
-or
-.Ql message
-are shown, the other are hidden except for their headers.
-Messages are decrypted and converted to the terminal character set
-if necessary.
+(p) Research Unix equivalent of
+.Ic type .
 .
 .Mx
 .It Ic quit
@@ -3725,7 +3745,7 @@ command.
 .Mx
 .It Ic show
 Like
-.Ic print ,
+.Ic type ,
 but performs neither MIME decoding nor decryption, so that the raw
 message text is shown.
 .
@@ -3890,14 +3910,27 @@ command will display the following message instead of the current one.
 .
 .Mx
 .It Ic Type
-(T) Identical to the
-.Ic Print
-command.
+(T) Like
+.Ic type
+but also prints out ignored header fields and all parts of MIME
+.Ql multipart/alternative
+messages.
 .
 .Mx
 .It Ic type
-(t) A synonym for
-.Ic print .
+(t) Takes a message list and types out each message on the user's
+terminal, honouring
+.Ic ignore
+and
+.Ic retain
+lists.
+For MIME multipart messages, all parts with a content type of
+.Ql text
+or
+.Ql message
+are shown, the other are hidden except for their headers.
+Messages are decrypted and converted to the terminal character set
+if necessary.
 .
 .Mx
 .It Ic unaccount
@@ -5320,7 +5353,7 @@ If not set then file and command pipeline targets are not allowed,
 and any such address will be filtered out, giving a warning message.
 If set without a value then all possible recipient address
 specifications will be accepted \(en see the section
-.Sx "Sending mail"
+.Sx "On sending mail, and non-interactive mode"
 for more on this.
 To accept them, but only in interactive mode, or when tilde commands
 were enabled explicitly by using one of the command line options
@@ -7070,7 +7103,7 @@ refers to the variable
 \*(OP Normally \*(UA invokes the program defined via
 .Va sendmail
 to transfer messages, as described in
-.Sx "Sending mail" .
+.Sx "On sending mail, and non-interactive mode" .
 Setting the
 .Va \&\&smtp
 variable will instead cause SMTP network connections be made to the
