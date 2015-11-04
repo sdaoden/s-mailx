@@ -8538,6 +8538,25 @@ and
 .\" .Sh "FAQ" {{{
 .Sh "FAQ"
 .
+.\" .Ss "\*(UA shortly hangs on startup" {{{
+.Ss "\*(UA shortly hangs on startup"
+.
+This can have two reasons, one is the necessity to wait for a file lock
+and can't be helped, the other being that \*(UA calls the function
+.Xr uname 2
+in order to query the nodename of the box (sometimes the real one is
+needed instead of the one represented by the internal variable
+.Va hostname ) .
+You may have varying success by ensuring that the real hostname and
+.Ql localhost
+have entries in
+.Pa /etc/hosts ,
+or, more generally, that the name service is properly setup \(en
+and does
+.Xr hostname 1
+return what you'd expect?
+.\" }}}
+.
 .\" .Ss "I can't login to Google mail a.k.a. GMail" {{{
 .Ss "I can't login to Google mail a.k.a. GMail"
 .
