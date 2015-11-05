@@ -952,8 +952,8 @@ jleave:
 }
 
 FL char *
-getprompt(void) /* TODO evaluate only as necessary (needs a bit) */
-{
+getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
+{ /* FIXME getprompt must mb->wc->mb+reset seq! */
    static char buf[PROMPT_BUFFER_SIZE];
 
    char *cp;

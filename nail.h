@@ -277,7 +277,7 @@
 #define SBUFFER_BUILTIN (0x10000u >> 1u)
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined HAVE_TERMCAP || defined HAVE_COLOUR
+#if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
 # define n_HAVE_TCAP
 #endif
 
@@ -1060,7 +1060,11 @@ enum tdflags {
 };
 
 /* Shared terminal capability descriptions.
- * NO,NO: necessary n_termcap_cmd() arguments */
+ * NO,NO: necessary n_termcap_cmd() arguments.
+ * If arguments are in [] brackets they are not regular but are only used
+ * when the command, i.e., its effect, is somehow simulated / faked by
+ * a builtin fallback implementation.
+ * Availability if builtin fallback indicated by leading ! excl. mark */
 #ifdef n_HAVE_TCAP
 enum n_termcap_cmd{
 # ifdef HAVE_COLOUR
@@ -1068,16 +1072,24 @@ enum n_termcap_cmd{
 # endif
 
 # ifdef HAVE_TERMCAP
-   n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: 0,0 */
-   n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: 0,0 */
+   n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: -,- */
+   n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: -,- */
 
-   n_TERMCAP_CMD_ks,    /* smkx/ks: -,- */
-   n_TERMCAP_CMD_ke,    /* rmkx/ke: -,- */
+   n_TERMCAP_CMD_ks,    /* keypad_xmit/smkx/ks: -,- */
+   n_TERMCAP_CMD_ke,    /* keypad_local/rmkx/ke: -,- */
 
-   n_TERMCAP_CMD_cd,    /* clr_eos/ed/cd: 0,0 */
-   n_TERMCAP_CMD_cl,    /* clear_screen/clear/cl (+home cursor): 0,0 */
+   n_TERMCAP_CMD_cd,    /* clr_eos/ed/cd: -,- */
+   n_TERMCAP_CMD_cl,    /* clear_screen/clear/cl (+home cursor): -,- */
    /*n_TERMCAP_CMD_cm,*/    /* cursor_address/cup/cm: row,column */
-   n_TERMCAP_CMD_ho,    /* cursor_home/home/ho: 0,0 */
+   n_TERMCAP_CMD_ho,    /* cursor_home/home/ho: -,- */
+# endif
+
+# ifdef HAVE_MLE
+   n_TERMCAP_CMD_ce,    /* ! clr_eol/el/ce: [start-column],- */
+   n_TERMCAP_CMD_ch,    /* ! column_address/hpa/ch: column,- */
+   n_TERMCAP_CMD_cr,    /* ! carriage_return/cr/cr: -,- */
+   n_TERMCAP_CMD_le,    /* ! cursor_left/cub1/le: count,- */
+   n_TERMCAP_CMD_nd,    /* !(\033[C) cursor_right/cuf1/nd: count,- */
 # endif
 
    n__TERMCAP_CMD_MAX,
@@ -1171,7 +1183,8 @@ enum program_state {
    PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
    PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
    PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
-   PS_TERMCAP_CA_MODE = 1<<28       /* HAVE_TERMCAP: ca_mode available & used */
+   PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
+   PS_HISTORY_LOADED = 1<<29        /* Command line editor history loaded */
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.

@@ -205,8 +205,6 @@ WANT_READLINE=no
 WANT_MLE=yes
 # All line editors optionally support history management.
 WANT_HISTORY=yes
-# For the MLE we optionally support "expand-on-tabulator".
-WANT_TABEXPAND=yes
 
 # Use termcap(3) for terminal control; can be "require"d.
 WANT_TERMCAP=yes

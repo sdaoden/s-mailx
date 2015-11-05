@@ -36,7 +36,7 @@ option_maximal() {
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
    WANT_MLE=1
-      WANT_HISTORY=1 WANT_TABEXPAND=1
+      WANT_HISTORY=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
@@ -134,7 +134,7 @@ option_update() {
    fi
 
    if feat_no READLINE && feat_no MLE; then
-      WANT_HISTORY=0 WANT_TABEXPAND=0
+      WANT_HISTORY=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -2073,24 +2073,12 @@ int main(void){
 
    __edrdlib -lreadline ||
       __edrdlib '-lreadline -ltermcap' || feat_bail_required READLINE
-   [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
 if feat_yes MLE && [ -z "${have_readline}" ] &&
       [ -n "${have_c90amend1}" ]; then
    have_mle=1
    echo '#define HAVE_MLE' >> ${h}
-
-   if [ -n "${have_pathconf}" ]; then
-      link_check _pc_max_input 'pathconf(2): _PC_MAX_INPUT' \
-         '#define HAVE_PATHCONF__PC_MAX_INPUT' << \!
-#include <unistd.h>
-int main(void){
-   pathconf("/dev/tty", _PC_MAX_INPUT);
-   return 0;
-}
-!
-   fi
 else
    feat_bail_required MLE
    echo '/* WANT_{READLINE,MLE}=0 */' >> ${h}
@@ -2106,12 +2094,6 @@ if [ -n "${have_cle}" ] && feat_yes HISTORY; then
    echo '#define HAVE_HISTORY' >> ${h}
 else
    echo '/* WANT_HISTORY=0 */' >> ${h}
-fi
-
-if [ -n "${have_cle}" ] && feat_yes TABEXPAND; then
-   echo '#define HAVE_TABEXPAND' >> ${h}
-else
-   echo '/* WANT_TABEXPAND=0 */' >> ${h}
 fi
 
 if feat_yes TERMCAP; then
@@ -2267,7 +2249,7 @@ printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
+  printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
@@ -2382,10 +2364,11 @@ ${cat} > ${tmp2}.c << \!
 # ifdef HAVE_READLINE
 : + Command line editing via readline(3)
 # else
-: + Command line editing via M(ailx)-L(ine)-E(ditor)
-# endif
-# ifdef HAVE_TABEXPAND
-: + + Tabulator expansion
+#  ifdef HAVE_WCWIDTH
+: + Command line editing via M(ailx)-L(ine)-E(ditor) (wide glyph support)
+#  else
+: + Command line editing via M(ailx)-L(ine)-E(ditor) (no wide glyph support)
+#  endif
 # endif
 # ifdef HAVE_HISTORY
 : + + History management

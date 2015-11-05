@@ -106,6 +106,15 @@ static struct a_termcap_control const a_termcap_control[] = {
    /*{"cm", a_TERMCAP_CF_T_STR | a_TERMCAP_CF_A_IDX1 | a_TERMCAP_CF_A_IDX2},*/
    {"ho", a_TERMCAP_CF_T_STR},
 #endif
+
+#ifdef HAVE_MLE
+   /* For ce the argument is actually for the simulated (ALTERN) impl. only */
+   {"ce", a_TERMCAP_CF_T_STR | a_TERMCAP_CF_A_IDX1},
+   {"ch", a_TERMCAP_CF_T_STR | a_TERMCAP_CF_A_IDX1},
+   {"cr", a_TERMCAP_CF_T_STR},
+   {"le", a_TERMCAP_CF_T_STR | a_TERMCAP_CF_A_CNT},
+   {"nd", a_TERMCAP_CF_T_STR | a_TERMCAP_CF_A_CNT},
+#endif
 };
 
 n_CTA(n__TERMCAP_CMD_MAX == NELEM(a_termcap_control),
@@ -298,6 +307,43 @@ jdumb:
       tep->te_flags = a_TERMCAP_CF_ALTERN;
 #endif
 
+#ifdef HAVE_MLE
+   /* ce == ch + [:SPC:] (start column specified by argument) */
+   if((tep = &ents[n_TERMCAP_CMD_ce])->te_flags == 0)
+      tep->te_flags = a_TERMCAP_CF_ALTERN;
+
+   /* ch == cr[\r] + nd[:\033C:] */
+   if((tep = &ents[n_TERMCAP_CMD_ch])->te_flags == 0)
+      tep->te_flags = a_TERMCAP_CF_ALTERN;
+
+   /* cr == \r (and if not the terminal is very far off in the past; due to
+    * this we don't even mark it as _ALTERN!) */
+   if((tep = &ents[n_TERMCAP_CMD_cr])->te_flags == 0){
+      tep->te_flags = a_termcap_control[n_TERMCAP_CMD_cr].tc_flags;
+      tep->te_off = (ui16_t)PTR2SIZE(cbp - cmdbuf);
+      cbp[0] = '\r';
+      cbp[1] = '\0';
+      cbp += 2;
+   }
+
+   /* le == \b */
+   if((tep = &ents[n_TERMCAP_CMD_le])->te_flags == 0){
+      tep->te_flags = a_termcap_control[n_TERMCAP_CMD_le].tc_flags;
+      tep->te_off = (ui16_t)PTR2SIZE(cbp - cmdbuf);
+      cbp[0] = '\b';
+      cbp[1] = '\0';
+      cbp += 2;
+   }
+
+   /* nd == \033[C (we may not fail, anyway, so use xterm sequence default) */
+   if((tep = &ents[n_TERMCAP_CMD_nd])->te_flags == 0){
+      tep->te_flags = a_termcap_control[n_TERMCAP_CMD_nd].tc_flags;
+      tep->te_off = (ui16_t)PTR2SIZE(cbp - cmdbuf);
+      memcpy(cbp, "\033[C", sizeof("\033[C"));
+      cbp += sizeof("\033[C");
+   }
+#endif /* HAVE_MLE */
+
    /* Finally create our global structure */
    assert(PTR2SIZE(cbp - cmdbuf) < a_TERMCAP_CMDBUF);
    a_termcap_g = smalloc(sizeof(struct a_termcap_g) -
@@ -430,16 +476,39 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
       }  break;
       }
    }else{
-      /* xxx Use table-based approach for fallback strategies */
+      switch(cmd){
+      default:
+         rv = TRUM1;
+         break;
 #ifdef HAVE_TERMCAP
-      /* cl = ho + cd */
-      if(cmd == n_TERMCAP_CMD_cl){
+      case n_TERMCAP_CMD_cl: /* cl = ho + cd */
          rv = n_termcap_cmdx(n_TERMCAP_CMD_ho);
          if(rv > 0)
             rv = n_termcap_cmdx(n_TERMCAP_CMD_cd | cmd_flags);
-         goto jflush;
-      }
+         break;
 #endif
+#ifdef HAVE_MLE
+      case n_TERMCAP_CMD_ce: /* ce == ch + [:SPC:] */
+         if(a1 > 0)
+            --a1;
+         if((rv = n_termcap_cmd(n_TERMCAP_CMD_ch, a1, 0)) > 0){
+            for(a2 = scrnwidth - a1 - 1; a2 > 0; --a2)
+               if(putchar(' ') == EOF){
+                  rv = FAL0;
+                  break;
+               }
+            if(rv && n_termcap_cmd(n_TERMCAP_CMD_ch, a1, -1) != TRU1)
+               rv = FAL0;
+         }
+         break;
+      case n_TERMCAP_CMD_ch: /* ch == cr + nd */
+         rv = n_termcap_cmdx(n_TERMCAP_CMD_cr);
+         if(rv > 0 && a1 > 0){
+            rv = n_termcap_cmd(n_TERMCAP_CMD_nd, a1, -1);
+         }
+         break;
+#endif /* HAVE_MLE */
+      }
 
 jflush:
       if(cmd_flags & n_TERMCAP_CMD_FLAG_FLUSH)
