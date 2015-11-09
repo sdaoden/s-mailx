@@ -117,10 +117,21 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
     * TODO copy the message attachments over to temporary files, but that
     * TODO would require more changes so that the user still can recognize
     * TODO in `~@' etc. that its a rfc822 message attachment; see below */
-   char *mnbuf = NULL;
-   size_t mnlen = 0 /* silence CC */;
+   struct n_sigman sm;
    struct attachment *ap;
+   char *mnbuf;
+   size_t mnlen;
    NYD_ENTER;
+
+   mnbuf = NULL;
+   UNINIT(mnlen, 0);
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    /* If the above todo is worked, remove or outsource to attachments.c! */
    if(hp != NULL && (ap = hp->h_attach) != NULL) do
@@ -128,18 +139,20 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
          mnbuf = sstrdup(mailname);
          break;
       }
-   while ((ap = ap->a_flink) != NULL);
+   while((ap = ap->a_flink) != NULL);
 
    pstate &= ~PS_HOOK_MASK;
    execute(linebuf, linesize);
-
-   if (mnbuf != NULL) {
-      if (strncmp(mnbuf, mailname, mnlen))
+   n_sigman_cleanup_ping(&sm);
+jleave:
+   if(mnbuf != NULL){
+      if(strncmp(mnbuf, mailname, mnlen))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
       free(mnbuf);
    }
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 static int
