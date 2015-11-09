@@ -139,9 +139,9 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
    }
 
    if (force || (cp = ok_vlook(MAIL)) == NULL)
-      snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
+      snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user); /* TODO */
    else
-      n_strlcpy(buf, cp, bufsize);
+      n_strscpy(buf, cp, bufsize);
    NYD_LEAVE;
 }
 
@@ -1330,7 +1330,7 @@ getfold(char *name, size_t size)
    NYD_ENTER;
 
    if ((folder = ok_vlook(folder)) != NULL)
-      n_strlcpy(name, folder, size);
+      n_strscpy(name, folder, size);
    NYD_LEAVE;
    return (folder != NULL);
 }

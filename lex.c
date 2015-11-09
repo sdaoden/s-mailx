@@ -175,7 +175,7 @@ _update_mailname(char const *name)
       } else
 jdocopy:
 #endif
-         n_strlcpy(mailname, name, sizeof(mailname));
+         n_strscpy(mailname, name, sizeof(mailname));
    }
 
    mailp = mailname;
@@ -1414,7 +1414,7 @@ initbox(char const *name)
    NYD_ENTER;
 
    if (mb.mb_type != MB_VOID)
-      n_strlcpy(prevfile, mailname, PATH_MAX);
+      n_strscpy(prevfile, mailname, PATH_MAX);
 
    /* TODO name always NE mailname (but goes away for objects anyway)
     * TODO Well, not true no more except that in parens */

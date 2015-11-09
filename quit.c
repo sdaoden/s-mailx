@@ -580,7 +580,7 @@ save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
 
    if ((cp = expand("&")) == NULL)
       cp = "";
-   n_strlcpy(_mboxname, cp, sizeof _mboxname);
+   n_strscpy(_mboxname, cp, sizeof _mboxname);
    NYD_LEAVE;
 }
 

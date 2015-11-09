@@ -1880,7 +1880,10 @@ FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)
 #endif
 
-FL char *      n_strlcpy(char *dst, char const *src, size_t len);
+/* Copy at most dstsize bytes of src to dst and return string length.
+ * Returns -E2BIG if dst is not large enough; dst will always be terminated
+ * unless dstsize was 0 on entry */
+FL ssize_t     n_strscpy(char *dst, char const *src, size_t dstsize);
 
 /* Case-independent ASCII comparisons */
 FL int         asccasecmp(char const *s1, char const *s2);

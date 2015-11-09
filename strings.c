@@ -898,17 +898,28 @@ FL char *
    return dp;
 }
 
-FL char *
-n_strlcpy(char *dst, char const *src, size_t len)
-{
+FL ssize_t
+n_strscpy(char *dst, char const *src, size_t dstsize){
+   ssize_t rv;
    NYD2_ENTER;
 
-   assert(len > 0);
-
-   dst = strncpy(dst, src, len);
-   dst[len -1] = '\0';
+   if(LIKELY(dstsize > 0)){
+      rv = 0;
+      do{
+         if((dst[rv] = src[rv]) == '\0')
+            goto jleave;
+         ++rv;
+      }while(--dstsize > 0);
+      dst[--rv] = '\0';
+   }
+#ifdef HAVE_DEVEL
+   else
+      assert(dstsize > 0);
+#endif
+   rv = -1;
+jleave:
    NYD2_LEAVE;
-   return dst;
+   return rv;
 }
 
 FL int
