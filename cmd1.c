@@ -40,9 +40,6 @@
 #endif
 
 static int        _screen;
-static sigjmp_buf _cmd1_pipejmp;
-
-static void    _cmd1_onpipe(int signo);
 
 /* Prepare and print "[Message: xy]:" intro */
 static void    _show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
@@ -76,14 +73,6 @@ static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 
 /* Pipe the requested messages */
 static int     _pipe1(char *str, int doign);
-
-static void
-_cmd1_onpipe(int signo)
-{
-   NYD_X; /* Signal handler */
-   UNUSED(signo);
-   siglongjmp(_cmd1_pipejmp, 1);
-}
 
 static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
@@ -809,8 +798,8 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
+   struct n_sigman sm;
    bool_t volatile isrelax;
-   sighandler_type volatile opipe;
    ui32_t volatile flag;
    int g, k, mesg, size, lastg = 1;
    struct message *mp, *mq, *lastmq = NULL;
@@ -819,12 +808,14 @@ _headers(int msgspec) /* TODO rework v15 */
 
    time_current_update(&time_current, FAL0);
 
-   isrelax = FAL0;
-   opipe = NULL;
    flag = 0;
-   if (sigsetjmp(_cmd1_pipejmp, 1))
+   isrelax = FAL0;
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
       goto jleave;
-   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+   }
 
 #ifdef HAVE_COLOUR
    if (options & OPT_INTERACTIVE)
@@ -950,13 +941,14 @@ _headers(int msgspec) /* TODO rework v15 */
 
    if (!flag)
       printf(_("No more mail.\n"));
+
+   n_sigman_cleanup_ping(&sm);
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut(stdout); )
-   if (opipe != NULL)
-      safe_signal(SIGPIPE, opipe);
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? stdout : NULL); )
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return !flag;
 }
 
@@ -964,13 +956,13 @@ static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t dodecode, char *cmd, ui64_t *tstats)
 {
+   struct n_sigman sm;
    ui64_t mstats[1];
    int rv = 1, *ip;
    struct message *mp;
    char const *cp;
    FILE * volatile obuf;
    bool_t volatile isrelax = FAL0;
-   sighandler_type opipe = NULL;
    NYD_ENTER;
    {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
@@ -980,9 +972,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
    obuf = stdout;
 
-   if (sigsetjmp(_cmd1_pipejmp, 1))
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
       goto jleave;
-   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+   }
 
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
@@ -1000,7 +995,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             mp = message + *ip - 1;
             if (!(mp->m_have & HAVE_BODY))
                if (get_body(mp) != OKAY)
-                  goto jleave;
+                  goto jcleanup_leave;
             nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
          }
       }
@@ -1052,19 +1047,17 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    isrelax = FAL0;
 
    rv = 0;
+jcleanup_leave:
+   n_sigman_cleanup_ping(&sm);
 jleave:
-   if (obuf != stdout)
-      /* Ignore SIGPIPE so it can't cause a duplicate close */
-      safe_signal(SIGPIPE, SIG_IGN);
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut(obuf); )
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
    if (obuf != stdout)
       Pclose(obuf, TRU1);
-   if (opipe != NULL)
-      safe_signal(SIGPIPE, dflpipe);
    }
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
@@ -1176,21 +1169,23 @@ c_Scroll(void *v)
 FL int
 c_from(void *v)
 {
+   struct n_sigman sm;
    int *msgvec = v, *ip, n;
    char *cp;
    FILE * volatile obuf;
    bool_t volatile isrelax;
-   sighandler_type volatile opipe;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
    obuf = stdout;
    isrelax = FAL0;
-   opipe = NULL;
-   if (sigsetjmp(_cmd1_pipejmp, 1))
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
       goto jleave;
-   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+   }
 
    if (options & OPT_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
@@ -1222,36 +1217,35 @@ c_from(void *v)
    srelax_rele();
    isrelax = FAL0;
 
+   n_sigman_cleanup_ping(&sm);
 jleave:
-   if (obuf != stdout)
-      /* Ignore SIGPIPE so it can't cause a duplicate close */
-      safe_signal(SIGPIPE, SIG_IGN);
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut(obuf); )
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
    if (obuf != stdout)
       Pclose(obuf, TRU1);
-   if (opipe != NULL)
-      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return 0;
 }
 
 FL void
 print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
+   struct n_sigman sm;
    bool_t volatile isrelax;
-   sighandler_type volatile opipe;
    size_t printed;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
    isrelax = FAL0;
-   opipe = NULL;
-   if (sigsetjmp(_cmd1_pipejmp, 1))
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
       goto jleave;
-   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+   }
 
 #ifdef HAVE_COLOUR
    if (options & OPT_INTERACTIVE)
@@ -1273,13 +1267,13 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
    srelax_rele();
    isrelax = FAL0;
 
+   n_sigman_cleanup_ping(&sm);
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut(stdout); )
-   if (opipe != NULL)
-      safe_signal(SIGPIPE, opipe);
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? stdout : NULL); )
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 FL int
