@@ -335,16 +335,6 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
    siglongjmp(__sendp_actjmp, 1);
 }
 
-static sigjmp_buf       __sndalter_actjmp; /* TODO someday.. */
-static int              __sndalter_sig; /* TODO someday.. */
-static void
-__sndalter_onsig(int sig) /* TODO someday, we won't need it no more */
-{
-   NYD_X; /* Signal handler */
-   __sndalter_sig = sig;
-   siglongjmp(__sndalter_actjmp, 1);
-}
-
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct ignoretab *doign, struct quoteflt *qf,
@@ -687,19 +677,18 @@ jskip:
             struct mimepart *mp;
          } outermost, * volatile curr, * volatile mpsp;
          bool_t volatile neednl, hadpart;
-         sighandler_type volatile opsh, oish, ohsh;
+         struct n_sigman smalter;
 
          (curr = &outermost)->outer = NULL;
          curr->mp = ip;
          neednl = hadpart = FAL0;
 
-         __sndalter_sig = 0;
-         opsh = safe_signal(SIGPIPE, &__sndalter_onsig);
-         oish = safe_signal(SIGINT, &__sndalter_onsig);
-         ohsh = safe_signal(SIGHUP, &__sndalter_onsig);
-         if (sigsetjmp(__sndalter_actjmp, 1)) {
+         n_SIGMAN_ENTER_SWITCH(&smalter, n_SIGMAN_ALL) {
+         case 0:
+            break;
+         default:
             rv = -1;
-            goto jalter_unroll;
+            goto jalter_leave;
          }
 
          for (np = ip->m_multipart;;) {
@@ -790,7 +779,6 @@ jalter_plain:
                   quoteflt_reset(qf, origobuf);
 
                   if (rv < 0)
-jalter_unroll:
                      curr = &outermost; /* Cause overall loop termination */
                   break;
                }
@@ -802,11 +790,8 @@ jalter_unroll:
             curr = mpsp;
             np = curr->mp->m_nextpart;
          }
-         safe_signal(SIGHUP, ohsh);
-         safe_signal(SIGINT, oish);
-         safe_signal(SIGPIPE, opsh);
-         if (__sndalter_sig != 0)
-            n_raise(__sndalter_sig);
+jalter_leave:
+         n_sigman_leave(&smalter, n_SIGMAN_VIPSIGS_NTTYOUT);
          goto jleave;
       }
       /* FALLTHRU */
