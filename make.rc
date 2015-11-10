@@ -191,7 +191,7 @@ WANT_IDNA=yes
 WANT_IMAP_SEARCH=yes
 
 # Regular expression (re_format(7)) support for searches, conditional
-# expressions etc.; can be "require"d.
+# expressions etc., we use the extended ones, then; can be "require"d.
 WANT_REGEX=yes
 
 # Command line editing and -history.
