@@ -447,10 +447,7 @@ command_manager_start(void)
 
    nact.sa_handler = &_sigchld;
    sigemptyset(&nact.sa_mask);
-   nact.sa_flags = 0
-#ifdef SA_RESTART
-         | SA_RESTART
-#endif
+   nact.sa_flags = SA_RESTART
 #ifdef SA_NOCLDSTOP
          | SA_NOCLDSTOP
 #endif

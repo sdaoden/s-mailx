@@ -65,15 +65,6 @@ union rand_state {
 };
 #endif
 
-#ifdef HAVE_NYD
-struct nyd_info {
-   char const  *ni_file;
-   char const  *ni_fun;
-   ui32_t      ni_chirp_line;
-   ui32_t      ni_level;
-};
-#endif
-
 struct shvar_stack {
    struct shvar_stack *shs_next; /* Outer stack frame */
    char const  *shs_value; /* Remaining value to expand */
@@ -113,20 +104,6 @@ union mem_ptr {
 static union rand_state *_rand;
 #endif
 
-/* {hold,rele}_all_sigs() */
-static size_t           _alls_depth;
-static sigset_t         _alls_nset, _alls_oset;
-
-/* {hold,rele}_sigs() */
-static size_t           _hold_sigdepth;
-static sigset_t         _hold_nset, _hold_oset;
-
-/* NYD, memory pool debug */
-#ifdef HAVE_NYD
-static ui32_t           _nyd_curr, _nyd_level;
-static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
-#endif
-
 /* Error ring, for `errors' */
 #ifdef HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
@@ -147,10 +124,6 @@ static struct mem_chunk *_mem_list, *_mem_free;
 static void    _rand_init(void);
 static ui32_t  _rand_weak(ui32_t seed);
 SINLINE ui8_t  _rand_get8(void);
-#endif
-
-#ifdef HAVE_NYD
-static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
 
 /* Perform shell variable expansion */
@@ -204,7 +177,7 @@ _rand_init(void)
       }
    }
 
-   for (u.i = 11 * sizeof(_rand->b8); u.i != 0; --u.i)
+   for (u.i = 5 * sizeof(_rand->b8); u.i != 0; --u.i)
       _rand_get8();
 jleave:
    NYD2_LEAVE;
@@ -241,26 +214,6 @@ _rand_get8(void)
    return _rand->a._dat[(ui8_t)(si + sj)];
 }
 #endif /* HAVE_POSIX_RANDOM */
-
-#ifdef HAVE_NYD
-static void
-_nyd_print(int fd, struct nyd_info *nip)
-{
-   char buf[80];
-   union {int i; size_t z;} u;
-
-   u.i = snprintf(buf, sizeof buf,
-         "%c [%2" PRIu32 "] %.25s (%.16s:%" PRIu32 ")\n",
-         "=><"[(nip->ni_chirp_line >> 29) & 0x3], nip->ni_level, nip->ni_fun,
-         nip->ni_file, (nip->ni_chirp_line & 0x1FFFFFFFu));
-   if (u.i > 0) {
-      u.z = u.i;
-      if (u.z > sizeof buf)
-         u.z = sizeof buf - 1; /* (Skip \0) */
-      write(fd, buf, u.z);
-   }
-}
-#endif
 
 static char *
 _sh_exp_var(struct shvar_stack *shsp)
@@ -365,177 +318,6 @@ jrecurse:
    rv = _sh_exp_var(&next);
    goto jleave;
 }
-
-FL void
-n_raise(int signo)
-{
-   NYD2_ENTER;
-   kill(getpid(), signo);
-   NYD2_LEAVE;
-}
-
-FL sighandler_type
-safe_signal(int signum, sighandler_type handler)
-{
-   struct sigaction nact, oact;
-   sighandler_type rv;
-   NYD2_ENTER;
-
-   nact.sa_handler = handler;
-   sigemptyset(&nact.sa_mask);
-   nact.sa_flags = 0;
-#ifdef SA_RESTART
-   nact.sa_flags |= SA_RESTART;
-#endif
-   rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL void
-hold_all_sigs(void)
-{
-   NYD2_ENTER;
-   if (_alls_depth++ == 0) {
-      sigfillset(&_alls_nset);
-      sigdelset(&_alls_nset, SIGABRT);
-#ifdef SIGBUS
-      sigdelset(&_alls_nset, SIGBUS);
-#endif
-      sigdelset(&_alls_nset, SIGCHLD);
-      sigdelset(&_alls_nset, SIGFPE);
-      sigdelset(&_alls_nset, SIGILL);
-      sigdelset(&_alls_nset, SIGKILL);
-      sigdelset(&_alls_nset, SIGSEGV);
-      sigdelset(&_alls_nset, SIGSTOP);
-      sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
-   }
-   NYD2_LEAVE;
-}
-
-FL void
-rele_all_sigs(void)
-{
-   NYD2_ENTER;
-   if (--_alls_depth == 0)
-      sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
-}
-
-FL void
-hold_sigs(void)
-{
-   NYD2_ENTER;
-   if (_hold_sigdepth++ == 0) {
-      sigemptyset(&_hold_nset);
-      sigaddset(&_hold_nset, SIGHUP);
-      sigaddset(&_hold_nset, SIGINT);
-      sigaddset(&_hold_nset, SIGQUIT);
-      sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
-   }
-   NYD2_LEAVE;
-}
-
-FL void
-rele_sigs(void)
-{
-   NYD2_ENTER;
-   if (--_hold_sigdepth == 0)
-      sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
-   NYD2_LEAVE;
-}
-
-#ifdef HAVE_NYD
-FL void
-_nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
-{
-   struct nyd_info *nip = _nyd_infos;
-
-   if (_nyd_curr != NELEM(_nyd_infos))
-      nip += _nyd_curr++;
-   else
-      _nyd_curr = 1;
-   nip->ni_file = file;
-   nip->ni_fun = fun;
-   nip->ni_chirp_line = ((ui32_t)(act & 0x3) << 29) | (line & 0x1FFFFFFFu);
-   nip->ni_level = ((act == 0) ? _nyd_level
-         : (act == 1) ? ++_nyd_level : _nyd_level--);
-}
-
-FL void
-_nyd_oncrash(int signo)
-{
-   char pathbuf[PATH_MAX], s2ibuf[32], *cp;
-   struct sigaction xact;
-   sigset_t xset;
-   size_t i, fnl;
-   int fd;
-   struct nyd_info *nip;
-
-   LCTA(sizeof("./") -1 + sizeof(UAGENT) -1 + sizeof(".dat") < PATH_MAX);
-
-   xact.sa_handler = SIG_DFL;
-   sigemptyset(&xact.sa_mask);
-   xact.sa_flags = 0;
-   sigaction(signo, &xact, NULL);
-
-   i = strlen(tempdir);
-   fnl = sizeof(UAGENT) -1;
-
-   if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {
-      (cp = pathbuf)[0] = '.';
-      i = 1;
-   } else
-      memcpy(cp = pathbuf, tempdir, i);
-   cp[i++] = '/'; /* xxx pathsep */
-   memcpy(cp += i, UAGENT, fnl);
-   i += fnl;
-   memcpy(cp += fnl, ".dat", sizeof(".dat"));
-   fnl = i + sizeof(".dat") -1;
-
-   if ((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
-      fd = STDERR_FILENO;
-
-# undef _X
-# define _X(X) (X), sizeof(X) -1
-   write(fd, _X("\n\nNYD: program dying due to signal "));
-
-   cp = s2ibuf + sizeof(s2ibuf) -1;
-	*cp = '\0';
-   i = signo;
-	do {
-		*--cp = "0123456789"[i % 10];
-		i /= 10;
-	} while (i != 0);
-   write(fd, cp, PTR2SIZE((s2ibuf + sizeof(s2ibuf) -1) - cp));
-
-   write(fd, _X(":\n"));
-
-   if (_nyd_infos[NELEM(_nyd_infos) - 1].ni_file != NULL)
-      for (i = _nyd_curr, nip = _nyd_infos + i; i < NELEM(_nyd_infos); ++i)
-         _nyd_print(fd, nip++);
-   for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
-      _nyd_print(fd, nip++);
-
-   write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
-
-   if (fd != STDERR_FILENO) {
-      write(STDERR_FILENO, _X("Crash NYD listing written to "));
-      write(STDERR_FILENO, pathbuf, fnl);
-      write(STDERR_FILENO, _X("\n"));
-# undef _X
-
-      close(fd);
-   }
-
-   sigemptyset(&xset);
-   sigaddset(&xset, signo);
-   sigprocmask(SIG_UNBLOCK, &xset, NULL);
-   n_raise(signo);
-   for (;;)
-      _exit(EXIT_ERR);
-}
-#endif /* HAVE_NYD */
 
 FL void
 touch(struct message *mp)

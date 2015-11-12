@@ -259,50 +259,6 @@ FL void        edit_attachments(struct attachment **aphead);
  * auxlily.c
  */
 
-FL void        n_raise(int signo);
-
-/* Provide BSD-like signal() on all (POSIX) systems */
-FL sighandler_type safe_signal(int signum, sighandler_type handler);
-
-/* Hold *all* signals but SIGCHLD, and release that total block again */
-FL void        hold_all_sigs(void);
-FL void        rele_all_sigs(void);
-
-/* Hold HUP/QUIT/INT */
-FL void        hold_sigs(void);
-FL void        rele_sigs(void);
-
-/* Not-Yet-Dead debug information (handler installation in main.c) */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
-FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
-                  char const *fun);
-FL void        _nyd_oncrash(int signo);
-
-# define HAVE_NYD
-# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# ifdef HAVE_NYD2
-#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# endif
-#else
-# undef HAVE_NYD
-#endif
-#ifndef NYD
-# define NYD_ENTER               do {} while (0)
-# define NYD_LEAVE               do {} while (0)
-# define NYD                     do {} while (0)
-# define NYD_X                   do {} while (0) /* XXX LEGACY */
-#endif
-#ifndef NYD2
-# define NYD2_ENTER              do {} while (0)
-# define NYD2_LEAVE              do {} while (0)
-# define NYD2                    do {} while (0)
-#endif
-
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
@@ -1718,6 +1674,82 @@ FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
 
 /*  */
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
+
+/*
+ * signal.c
+ */
+
+FL void        n_raise(int signo);
+
+/* Provide BSD-like signal() on all (POSIX) systems */
+FL sighandler_type safe_signal(int signum, sighandler_type handler);
+
+/* Hold *all* signals but SIGCHLD, and release that total block again */
+FL void        hold_all_sigs(void);
+FL void        rele_all_sigs(void);
+
+/* Hold HUP/QUIT/INT */
+FL void        hold_sigs(void);
+FL void        rele_sigs(void);
+
+/* Call _ENTER_SWITCH() with the according flags, it'll take care for the rest
+ * and also set the jump buffer - it returns 0 if anything went fine and
+ * a signal number if a jump occurred, in which case all handlers requested in
+ * flags are temporarily SIG_IGN.
+ * _cleanup_ping() informs the condome that no jumps etc. shall be performed
+ * until _leave() is called in the following -- to be (optionally) called right
+ * before the local jump label is reached which is jumped to after a long jump
+ * occurred, straight code flow provided, e.g., to avoid destructors to be
+ * called twice.  _leave() must always be called last, reraise_flags will be
+ * used to decide how signal handling has to continue
+ */
+#define n_SIGMAN_ENTER_SWITCH(S,F) do{\
+   int __x__;\
+   hold_sigs();\
+   if(sigsetjmp((S)->sm_jump, 1))\
+      __x__ = -1;\
+   else\
+      __x__ = F;\
+   n__sigman_enter(S, __x__);\
+}while(0); switch((S)->sm_signo)
+FL int         n__sigman_enter(struct n_sigman *self, int flags);
+FL void        n_sigman_cleanup_ping(struct n_sigman *self);
+FL void        n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
+
+/* Pending signal or 0? */
+FL int         n_sigman_peek(void);
+FL void        n_sigman_consume(void);
+
+/* Not-Yet-Dead debug information (handler installation in main.c) */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
+                  char const *fun);
+FL void        _nyd_oncrash(int signo);
+
+# define HAVE_NYD
+# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# ifdef HAVE_NYD2
+#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# endif
+#else
+# undef HAVE_NYD
+#endif
+#ifndef NYD
+# define NYD_ENTER               do {} while (0)
+# define NYD_LEAVE               do {} while (0)
+# define NYD                     do {} while (0)
+# define NYD_X                   do {} while (0) /* XXX LEGACY */
+#endif
+#ifndef NYD2
+# define NYD2_ENTER              do {} while (0)
+# define NYD2_LEAVE              do {} while (0)
+# define NYD2                    do {} while (0)
+#endif
 
 /*
  * smtp.c
