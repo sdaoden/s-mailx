@@ -283,6 +283,16 @@ VAL_IDNA=idnkit,idn2,idn
 # search is performed locally.
 OPT_IMAP_SEARCH=yes
 
+# Support for RFC 1524 a.k.a mailcap files can be made available.
+# The search order when looking up MIME type handlers for display /
+# quoting purposes is then *pipe-EXTENSION*, *pipe-TYPE/SUBTYPE*,
+# mailcap entry, `mimetype's type-marker extension.
+# For other purposes mailcap entries are used exclusively.
+# RFC 1524 specifies the default $VAL_MAILCAPS path search as follows,
+# and it specifies the $MAILCAPS environment variable to override it.
+OPT_MAILCAP=yes
+VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
+
 # Whether support for Maildir E-mail directories shall be enabled.
 OPT_MAILDIR=yes
 
