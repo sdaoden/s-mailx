@@ -315,6 +315,8 @@
 #define PREREQ_CLANG(X,Y)  0
 #define CC_GCC             0
 #define PREREQ_GCC(X,Y)    0
+#define CC_TCC             0
+#define PREREQ_TCC(X,Y)    0
 
 #ifdef __clang__
 # undef CC_CLANG
@@ -324,6 +326,7 @@
    (__clang_major__ + 0 > (X) || \
     (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
 # define __EXTEN           __extension__
+
 #elif defined __GNUC__
 # undef CC_GCC
 # undef PREREQ_GCC
@@ -331,6 +334,10 @@
 # define PREREQ_GCC(X,Y)   \
    (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
 # define __EXTEN           __extension__
+
+#elif defined __TINYC__
+# undef CC_TCC
+# define CC_TCC            1
 #endif
 
 #ifndef __EXTEN
@@ -395,25 +402,26 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-  /* Variable size arrays and structure fields */
 # define VFIELD_SIZE(X)
 # define VFIELD_SIZEOF(T,F) (0)
-  /* Inline functions */
-# define HAVE_INLINE
-# define INLINE         inline
-# define SINLINE        static inline
 #else
 # define VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
    : ((ssize_t)(X) < 0 ? sizeof(size_t) - ABS(X) : (size_t)(X)))
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
-# if CC_CLANG || PREREQ_GCC(2, 9)
-#   define INLINE       static __inline
-#   define SINLINE      static __inline
-# else
-#   define INLINE
-#   define SINLINE      static
-# endif
+#endif
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define HAVE_INLINE
+# define INLINE         inline
+# define SINLINE        static inline
+#elif CC_CLANG || PREREQ_GCC(2, 9)
+# define HAVE_INLINE
+# define INLINE         static __inline
+# define SINLINE        static __inline
+#else
+# define INLINE
+# define SINLINE        static
 #endif
 
 #undef __FUN__
@@ -1917,9 +1925,9 @@ VL char const  *temporary_protocol_ext;
 VL char const  month_names[12 + 1][4];
 VL char const  weekday_names[7 + 1][4];
 
-VL char const  uagent[];            /* User agent */
+VL char const  uagent[sizeof UAGENT];
 
-VL uc_i const  class_char[];
+VL uc_i const  class_char[1 + 0x7F];
 #endif
 
 /*

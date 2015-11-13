@@ -69,8 +69,8 @@ VL char const        month_names[12 + 1][4] = {
    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
-VL char const        uagent[] = UAGENT;
-VL uc_i const        class_char[] = {
+VL char const        uagent[sizeof UAGENT] = UAGENT;
+VL uc_i const        class_char[1 + 0x7F] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
