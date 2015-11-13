@@ -2093,7 +2093,7 @@ if feat_no AMALGAMATION; then
 else
    printf 'main.c\nAMALGAM_TARGET = main.c\nAMALGAM_DEP = ' >> ${mk}
 
-   echo '\n/* HAVE_AMALGAMATION: include sources */' >> ${h}
+   printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef _CONFIG_H\n' >> ${h}
    printf '# define _CONFIG_H 2\n' >> ${h}
