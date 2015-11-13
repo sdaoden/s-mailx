@@ -73,6 +73,8 @@ _update-release:
 	echo "Is $${UAGENT} <v$${REL}> correct?  ENTER continues";\
 	read i;\
 	\
+	git show announce > "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" &&\
+	\
 	grep=grep sed=sed cmp=cmp mv=mv \
 		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
 	$(_version_from_header);\
@@ -185,12 +187,8 @@ _update-release:
 	make CONFIG=MAXIMAL &&\
 	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
+		-q "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
 		-b nail-announce-bcc nail-announce &&\
-	cd .. &&\
-	\
-	echo "Really remove $${UAGENT}-$${REL} build dir?  ENTER continues";\
-	read i;\
-	rm -rf "$${UAGENT}-$${REL}" &&\
 	echo 'Uff.'
 
 # s-mk-mode
