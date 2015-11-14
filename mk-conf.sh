@@ -2091,7 +2091,7 @@ if feat_no AMALGAMATION; then
    done
    printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
-   printf 'main.c\nAMALGAM_TARGET = main.c\nAMALGAM_DEP = ' >> ${mk}
+   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
    printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
