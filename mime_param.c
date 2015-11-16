@@ -493,9 +493,10 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
     * conversion run over the final, joined, partially percent-decoded value
     * should be sufficient */
 #ifdef HAVE_ICONV
-   if ((f & _HAVE_ICONV) && /* XXX pacify compiler */ fhicd != (iconv_t)-1) {
+   if (f & _HAVE_ICONV) {
+      sin.s = NULL;
+      sin.l = 0;
       if (n_iconv_str(fhicd, &sin, &sou, NULL, TRU1) != 0) {
-         n_iconv_reset(fhicd);
          if (!(f & _ERRORS))
             *emsg = N_("character set conversion failed on value");
          f |= _ERRORS;
@@ -503,6 +504,8 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       }
       free(sou.s);
       sou = sin;
+
+      n_iconv_close(fhicd);
    }
 #endif
 
