@@ -1407,7 +1407,7 @@ c_top(void *v)
       if (mp->m_flag & MNOFROM)
          /* XXX c_top(): coloured output? */
          printf("From %s %s\n", fakefrom(mp), fakedate(mp->m_time));
-      if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {  /* XXX could use TOP */
+      if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {  /* XXX use TOP */
          v = NULL;
          break;
       }

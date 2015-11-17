@@ -1513,7 +1513,7 @@ jleave:
          goto jleave;
       case DLS_CANT_CHDIR:
          if (options & OPT_D_V)
-            emsg = N_("  Can't change to directory! Please check permissions\n");
+            emsg = N_("  Can't change directory!  Please check permissions\n");
          serrno = EACCES;
          break;
       case DLS_NAMETOOLONG:

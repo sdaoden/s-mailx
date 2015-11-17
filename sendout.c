@@ -1906,9 +1906,10 @@ do {\
 
          /* Trimmed something, (re-)add Re: */
          if (sub != hp->h_subject) {
-            fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates english "Re: " */
+            fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates eng. "Re: " */
             if (sublen > 0 &&
-                  xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  xmime_write(sub, sublen, fo,
+                     (!nodisp ? CONV_NONE : CONV_TOHDR),
                      (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
                goto jleave;
          }
@@ -1940,7 +1941,7 @@ do {\
             np = np->n_flink;
          if (!is_addr_invalid(np, /* TODO check that on parser side! */
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME)) {
-            fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+            fprintf(fo, "In-Reply-To: <%s>\n",np->n_name);/*TODO RFC5322 3.6.4*/
             ++gotcha;
          } else {
             n_err(_("Invalid address in mail header: \"%s\"\n"), np->n_name);
