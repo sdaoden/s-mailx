@@ -404,13 +404,13 @@
    { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 
-#ifdef HAVE_DEBUG
-   { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
-     DS(N_("Print statistics about the auto-reclaimed string store")) },
-#endif
 #ifdef c_memtrace
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
+#endif
+#ifdef c_sstats
+   { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
+     DS(N_("Print statistics about the auto-reclaimed string store")) },
 #endif
 
 #undef MSGLIST

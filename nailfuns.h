@@ -51,9 +51,13 @@
 # define HAVE_MEMORY_DEBUG
 # define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
+# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
+# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
 #else
 # define SMALLOC_DEBUG_ARGS
 # define SMALLOC_DEBUG_ARGSCALL
+# define SALLOC_DEBUG_ARGS
+# define SALLOC_DEBUG_ARGSCALL
 #endif
 
 /*
@@ -1193,6 +1197,44 @@ FL bool_t      n__memcheck(char const *file, int line);
 # define n_memreset()            do{}while(0)
 #endif
 
+/* String storage, auto-reclaimed after execution level is left */
+
+/* Allocate size more bytes of space and return the address of the first byte
+ * to the caller.  An even number of bytes are always allocated so that the
+ * space will always be on a word boundary */
+FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
+FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
+# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
+#endif
+
+/* Auto-reclaim string storage; if only_if_relaxed is true then only perform
+ * the reset when a srelax_hold() is currently active */
+FL void        sreset(bool_t only_if_relaxed);
+
+/* The "problem" with sreset() is that it releases all string storage except
+ * what was present once spreserve() had been called; it therefore cannot be
+ * called from all that code which yet exists and walks about all the messages
+ * in order, e.g. quit(), searches, etc., because, unfortunately, these code
+ * paths are reached with new intermediate string dope already in use.
+ * Thus such code should take a srelax_hold(), successively call srelax() after
+ * a single message has been handled, and finally srelax_rele() (unless it is
+ * clear that sreset() occurs anyway) */
+FL void        srelax_hold(void);
+FL void        srelax_rele(void);
+FL void        srelax(void);
+
+/* Make current string storage permanent: new allocs will be auto-reclaimed by
+ * sreset().  This is called once only, from within main() */
+FL void        spreserve(void);
+
+/* 'sstats' command */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+FL int         c_sstats(void *v);
+# define c_sstats                c_sstats
+#endif
+
 /*
  * mime.c
  */
@@ -1840,57 +1882,7 @@ FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 
 /*
  * strings.c
- * This bundles several different string related support facilities:
- * - auto-reclaimed string storage (memory goes away on command loop ticks)
- * - plain char* support functions which use unspecified or smalloc() memory
- * - struct str related support funs
- * - our iconv(3) wrapper
  */
-
-/* Auto-reclaimed string storage */
-
-#ifdef HAVE_DEBUG
-# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
-# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
-#else
-# define SALLOC_DEBUG_ARGS
-# define SALLOC_DEBUG_ARGSCALL
-#endif
-
-/* Allocate size more bytes of space and return the address of the first byte
- * to the caller.  An even number of bytes are always allocated so that the
- * space will always be on a word boundary */
-FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
-FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
-# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
-#endif
-
-/* Auto-reclaim string storage; if only_if_relaxed is true then only perform
- * the reset when a srelax_hold() is currently active */
-FL void        sreset(bool_t only_if_relaxed);
-
-/* The "problem" with sreset() is that it releases all string storage except
- * what was present once spreserve() had been called; it therefore cannot be
- * called from all that code which yet exists and walks about all the messages
- * in order, e.g. quit(), searches, etc., because, unfortunately, these code
- * paths are reached with new intermediate string dope already in use.
- * Thus such code should take a srelax_hold(), successively call srelax() after
- * a single message has been handled, and finally srelax_rele() (unless it is
- * clear that sreset() occurs anyway) */
-FL void        srelax_hold(void);
-FL void        srelax_rele(void);
-FL void        srelax(void);
-
-/* Make current string storage permanent: new allocs will be auto-reclaimed by
- * sreset().  This is called once only, from within main() */
-FL void        spreserve(void);
-
-/* 'sstats' command */
-#ifdef HAVE_DEBUG
-FL int         c_sstats(void *v);
-#endif
 
 /* Return a pointer to a dynamic copy of the argument */
 FL char *      savestr(char const *str SALLOC_DEBUG_ARGS);
