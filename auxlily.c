@@ -177,18 +177,6 @@ _rand_get8(void)
 #endif /* HAVE_POSIX_RANDOM */
 
 FL int
-argcount(char **argv)/* FIXME -> lex.c */
-{
-   char **ap;
-   NYD_ENTER;
-
-   for (ap = argv; *ap++ != NULL;)
-      ;
-   NYD_LEAVE;
-   return (int)PTR2SIZE(ap - argv - 1);
-}
-
-FL int
 screensize(void)
 {
    int s;

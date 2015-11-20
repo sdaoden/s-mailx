@@ -263,9 +263,6 @@ FL void        edit_attachments(struct attachment **aphead);
  * auxlily.c
  */
 
-/* Count the number of arguments in the given string raw list */
-FL int         argcount(char **argv);
-
 /* Compute screen size */
 FL int         screensize(void);
 
@@ -1032,6 +1029,9 @@ FL bool_t      print_comm_docstr(char const *comm);
 /*
  * list.c
  */
+
+/* Count the number of arguments in the given string raw list */
+FL int         argcount(char **argv);
 
 /* Convert user string of message numbers and store the numbers into vector.
  * Returns the count of messages picked up or -1 on error */

@@ -1170,6 +1170,18 @@ jem1:
 }
 
 FL int
+argcount(char **argv)/* FIXME -> lex.c */
+{
+   char **ap;
+   NYD_ENTER;
+
+   for (ap = argv; *ap++ != NULL;)
+      ;
+   NYD_LEAVE;
+   return (int)PTR2SIZE(ap - argv - 1);
+}
+
+FL int
 getmsglist(char *buf, int *vector, int flags)
 {
    int *ip, mc;
