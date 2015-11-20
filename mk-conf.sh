@@ -421,6 +421,16 @@ tmp0=___tmp
 tmp=./${tmp0}1$$
 tmp2=./${tmp0}2$$
 
+t1=ten10one1ten10one1
+if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
+      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
+      ) > /dev/null 2>&1; then
+   good_shell=1
+else
+   unset good_shell
+fi
+unset t1
+
 # We need some standard utilities
 unset -f command
 check_tool() {
@@ -440,9 +450,12 @@ check_tool() {
 }
 
 # Check those tools right now that we need before including $rc
+# GNU tools are very slow, so try other options if possible
 msg 'Checking for basic utility set'
+check_tool awk "${awk:-`command -v nawk`}" 1 ||
+   check_tool awk "mawk" 1 ||
+   check_tool awk "awk"
 check_tool rm "${rm:-`command -v rm`}"
-check_tool sed "${sed:-`command -v sed`}"
 check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
@@ -508,21 +521,50 @@ trap "${rm} -f ${tmp}" EXIT
 printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
-# multiline values in make.rc
+# multiline values in make.rc; GNU sed(1) blew me off the map, being VERY slow,
+# first shell / awk mixed case better, Aahron Robbins suggested the following
+< ${rc} ${awk} 'BEGIN{line = ""}{
+   gsub(/^[[:space:]]+/, "", $0)
+   gsub(/[[:space:]]+$/, "", $0)
+   if(gsub(/\\$/, "", $0)){
+      line = line $0
+      next
+   }else
+      line = line $0
+   if(index(line, "#") == 1){
+      line = ""
+   }else if(length(line)){
+      print line
+      line = ""
+   }
+}' |
 while read line; do
-   # This should be [[:space:]] but needs -E; so test SPC/HT
-   line="`echo ${line} |\
-         ${sed} -e '/^[ 	]*#/d' -e '/^$/d' -e 's/[ 	]*$//'`"
-   [ -z "${line}" ] && continue
-   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
+   if [ -n "${good_shell}" ]; then
+      i=${line%%=*}
+   else
+      i=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/=.*$/, "", LINE)
+         print LINE
+      }'`
+   fi
+   if [ "${i}" = "${line}" ]; then
+      msg 'ERROR: invalid syntax in "%s"' "${line}"
+      continue
+   fi
+
    eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
       : # Yet present
    else
-      j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
+      j=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/^[^=]*=/, "", LINE)
+         gsub(/^\"*/, "", LINE)
+         gsub(/\"*$/, "", LINE)
+         print LINE
+      }'`
    fi
   echo "${i}=\"${j}\""
-done < ${rc} > ${tmp}
+done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 printf >&2 'done\n'
@@ -568,14 +610,16 @@ path_check() {
 
 path_check PATH
 
-check_tool awk "${awk:-`command -v awk`}"
+# awk(1) above
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
 check_tool cp "${cp:-`command -v cp`}"
 check_tool cmp "${cmp:-`command -v cmp`}"
+# grep(1) above
 check_tool mkdir "${mkdir:-`command -v mkdir`}"
 check_tool mv "${mv:-`command -v mv`}"
-# rm(1), sed(1) above
+# rm(1) above
+check_tool sed "${sed:-`command -v sed`}"
 check_tool sort "${sort:-`command -v sort`}"
 check_tool tee "${tee:-`command -v tee`}"
 
@@ -605,9 +649,22 @@ printf >&2 'Evaluating all configuration items ... '
 ${rm} -f ${newlst} ${newmk} ${newh}
 exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
-   i=`echo ${line} | ${sed} -e 's/=.*$//'`
+   z=
+   if [ -n "${good_shell}" ]; then
+      i=${line%%=*}
+      [ "${i}" != "${i#WANT_}" ] && z=1
+   else
+      i=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/=.*$/, "", LINE);\
+         print LINE
+      }'`
+      if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+         z=1
+      fi
+   fi
+
    eval j=\$${i}
-   if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+   if [ -n "${z}" ]; then
       j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
