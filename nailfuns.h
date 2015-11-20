@@ -1417,20 +1417,22 @@ FL int         c_mimetype(void *v);
 FL int         c_unmimetype(void *v);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
-FL char *      mime_type_by_filename(char const *name);
+FL char *      mime_type_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
  * left alone unless it's non-NULL */
-FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
+FL enum conversion mime_type_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
  * but otherwise mpp is const */
-FL enum mimecontent mime_type_mimepart_content(struct mimepart *mpp);
+FL enum mimecontent mime_type_classify_part(struct mimepart *mpp);
 
-/* Get the (pipe) handler for a part (may be MIME_TYPE_HANDLER_*),
- * or NULL if there is none known */
-FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
+/* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
+ * mhp is anyway initialized (mh_flags, mh_msg) */
+FL enum mime_handler_flags mime_type_handler(struct mime_handler *mhp,
+                              struct mimepart const *mpp,
+                              enum sendaction action);
 
 /*
  * nam_a_grp.c

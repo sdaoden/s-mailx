@@ -934,14 +934,27 @@ enum b64flags {
    B64_NOPAD      = 1<<(__MIMEEF_LAST+2)
 };
 
-/* Special handler return values for mime_type_mimepart_handler() */
-#define MIME_TYPE_HANDLER_TEXT   (char*)-1
-#define MIME_TYPE_HANDLER_HTML   (char*)-2
-
 enum mime_parse_flags {
    MIME_PARSE_NONE      = 0,
    MIME_PARSE_DECRYPT   = 1<<0,
    MIME_PARSE_PARTS     = 1<<1
+};
+
+enum mime_handler_flags {
+   MIME_HDL_NULL,                /* No pipe- mimetype handler, go away */
+   MIME_HDL_CMD,                 /* Normal command */
+   MIME_HDL_TEXT,                /* @ special cmd to force treatment as text */
+   MIME_HDL_PTF,                 /* A special pointer-to-function handler */
+   MIME_HDL_MSG,                 /* Display msg (returned as command string) */
+   MIME_HDL_TYPE_MASK   = 7,
+   MIME_HDL_ISQUOTE     = 1<<4,  /* Is quote action (we have info, keep it!) */
+   MIME_HDL_NOQUOTE     = 1<<5,  /* No MIME for quoting */
+   MIME_HDL_ALWAYS      = 1<<6,  /* Handler shall run for multi-msg actions */
+   MIME_HDL_ASYNC       = 1<<7,  /* Should run asynchronously */
+   MIME_HDL_NEEDSTERM   = 1<<8,  /* Takes over terminal */
+   MIME_HDL_TMPF        = 1<<9,  /* Create temporary file (zero-sized) */
+   MIME_HDL_TMPF_FILL   = 1<<10, /* Fill in the msg body content */
+   MIME_HDL_TMPF_UNLINK = 1<<11  /* Delete it later again */
 };
 
 enum mlist_state {
@@ -1411,14 +1424,22 @@ struct ccred {
 
 #ifdef HAVE_DOTLOCK
 struct dotlock_info {
-   char const  *di_file_name;
-   char const  *di_lock_name;
-   char const  *di_hostname;
-   char const  *di_randstr;
-   size_t      di_pollmsecs;
+   char const  *di_file_name;    /* Mailbox to lock */
+   char const  *di_lock_name;    /* .di_file_name + .lock */
+   char const  *di_hostname;     /* ..filled in parent (due resolver delays) */
+   char const  *di_randstr;      /* ..ditto, random string */
+   size_t      di_pollmsecs;     /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
+
+struct mime_handler {
+   enum mime_handler_flags mh_flags;
+   struct str  mh_msg;           /* Message describing this command */
+   /* XXX union{} the following? */
+   char const  *mh_shell_cmd;    /* For MIME_HDL_CMD */
+   int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
+};
 
 struct time_current {
    time_t      tc_time;

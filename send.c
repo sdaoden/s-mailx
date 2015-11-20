@@ -39,22 +39,6 @@
 # include "nail.h"
 #endif
 
-enum pipe_flags {
-   PIPE_NULL,              /* No pipe- mimetype handler, go away */
-   PIPE_CMD,               /* Normal command */
-   PIPE_TEXT,              /* @ special command to force treatment as text */
-   PIPE_MSG,               /* Display message (returned as command string) */
-   PIPE_TYPE_MASK = 7,
-   PIPE_ISQUOTE   = 1<<4,  /* Is quote action (we have the info, keep it!) */
-   PIPE_NOQUOTE   = 1<<5,  /* No MIME for quoting */
-   PIPE_ALWAYS    = 1<<6,  /* Handler shall run even for multi-msg actions */
-   PIPE_ASYNC     = 1<<7,  /* Should run asynchronously */
-   PIPE_NEEDSTERM = 1<<8,  /* Takes over terminal */
-   PIPE_TMPFILE   = 1<<9,  /* Create temporary file (zero-sized) */
-   PIPE_TMPFILE_FILL    = 1<<10, /* Fill it in with the message body content */
-   PIPE_TMPFILE_UNLINK  = 1<<11  /* Delete that later again */
-};
-
 static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
@@ -62,13 +46,9 @@ static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
                         struct ignoretab *doign, int level,
                         struct quoteflt *qf, ui64_t *stats);
 
-/* Query possible pipe command for MIME part */
-static enum pipe_flags _pipecmd(char const **result, struct mimepart const *mpp,
-                        bool_t isquote);
-
 /* Create a pipe; if mpp is not NULL, place some NAILENV_* environment
  * variables accordingly */
-static FILE *        _pipefile(enum pipe_flags pipeflags, char const *pipecomm,
+static FILE *        _pipefile(struct mime_handler *mhp,
                         struct mimepart const *mpp, FILE **qbuf,
                         char const *tmpfile, int term_infd);
 
@@ -184,113 +164,9 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    NYD2_LEAVE;
 }
 
-static enum pipe_flags
-_pipecmd(char const **result, struct mimepart const *mpp, bool_t isquote)
-{
-   enum pipe_flags rv;
-   char const *cp;
-   NYD2_ENTER;
-
-   *result = NULL;
-   rv = isquote ? PIPE_ISQUOTE : PIPE_NULL;
-
-   /* Do we have any handler for this part? */
-   if ((cp = mime_type_mimepart_handler(mpp)) == NULL) {
-      ;
-   } else if (cp == MIME_TYPE_HANDLER_TEXT)
-      rv |= PIPE_TEXT;
-   else if (
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-         cp == MIME_TYPE_HANDLER_HTML ||
-#endif
-         *cp != '@') {
-      *result = cp;
-      rv |= PIPE_CMD;
-   } else if (*++cp == '\0') {
-      /* Treat as plain text */
-      rv |= PIPE_TEXT;
-   } else {
-      rv |= PIPE_CMD;
-jnextc:
-      switch (*cp) {
-      case '*':   rv |= PIPE_ALWAYS;   ++cp; goto jnextc;
-      case '#':   rv |= PIPE_NOQUOTE;  ++cp; goto jnextc;
-      case '&':   rv |= PIPE_ASYNC;    ++cp; goto jnextc;
-      case '!':   rv |= PIPE_NEEDSTERM;++cp; goto jnextc;
-      case '+':
-         if (rv & PIPE_TMPFILE)
-            rv |= PIPE_TMPFILE_UNLINK;
-         rv |= PIPE_TMPFILE;
-         ++cp;
-         goto jnextc;
-      case '=':
-         rv |= PIPE_TMPFILE_FILL;
-         ++cp;
-         goto jnextc;
-      case '@':
-         ++cp;
-         /* FALLTHRU */
-      default:
-         break;
-      }
-
-      /* Implications */
-      if (rv & PIPE_TMPFILE_FILL)
-         rv |= PIPE_TMPFILE;
-
-      /* Exceptions */
-      if (rv & PIPE_ISQUOTE) {
-         if (rv & PIPE_NOQUOTE) {
-            rv = PIPE_NULL | PIPE_ISQUOTE;
-            goto jleave;
-         }
-
-         /* Cannot fetch data back from asynchronous process */
-         if (rv & PIPE_ASYNC) {
-            rv = PIPE_NULL | PIPE_ISQUOTE;
-            goto jleave;
-         }
-
-         /* TODO Can't use a "needsterminal" program for quoting */
-         if (rv & PIPE_NEEDSTERM) {
-            rv = PIPE_NULL | PIPE_ISQUOTE;
-            goto jleave;
-         }
-      }
-
-      if (rv & PIPE_NEEDSTERM) {
-         if (rv & PIPE_ASYNC) {
-            n_err(_("MIME type handlers: can't use \"needsterminal\" and "
-               "\"x-nail-async\" together\n"));
-            rv = PIPE_NULL;
-            goto jleave;
-         }
-
-         /* needsterminal needs a terminal */
-         if (!(options & OPT_INTERACTIVE)) {
-            rv = PIPE_NULL;
-            goto jleave;
-         }
-      }
-
-      if (!(rv & PIPE_ALWAYS) && !(pstate & PS_MSGLIST_DIRECT)) {
-         /* Viewing multiple messages in one go, don't block system */
-         *result = _("[-- Directly address message only to display this --]\n");
-         rv &= ~PIPE_TYPE_MASK;
-         rv |= PIPE_MSG;
-         goto jleave;
-      }
-
-      *result = cp;
-   }
-jleave:
-   NYD2_LEAVE;
-   return rv;
-}
-
 static FILE *
-_pipefile(enum pipe_flags pipeflags, char const *pipecomm,
-   struct mimepart const *mpp, FILE **qbuf, char const *tmpfile, int term_infd)
+_pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
+   char const *tmpfile, int term_infd)
 {
    struct str s;
    char const *env_addon[8], *cp, *sh;
@@ -299,7 +175,7 @@ _pipefile(enum pipe_flags pipeflags, char const *pipecomm,
 
    rbuf = *qbuf;
 
-   if (pipeflags & PIPE_ISQUOTE) {
+   if (mhp->mh_flags & MIME_HDL_ISQUOTE) {
       if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER,
             0600)) == NULL) {
          n_perr(_("tmpfile"), 0);
@@ -307,21 +183,18 @@ _pipefile(enum pipe_flags pipeflags, char const *pipecomm,
       }
    }
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-   if (pipecomm == MIME_TYPE_HANDLER_HTML) {
+   if ((mhp->mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF) {
       union {int (*ptf)(void); char const *sh;} u;
 
       fflush(*qbuf);
       if (*qbuf != stdout) /* xxx never?  v15: it'll be a filter anyway */
          fflush(stdout);
 
-      pipecomm = "Builtin HTML tagsoup filter";
-      u.ptf = &htmlflt_process_main;
+      u.ptf = mhp->mh_ptf;
       if((rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf))) == NULL)
          goto jerror;
       goto jleave;
    }
-#endif
 
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
@@ -360,30 +233,28 @@ _pipefile(enum pipe_flags pipeflags, char const *pipecomm,
    if ((sh = ok_vlook(SHELL)) == NULL)
       sh = XSHELL;
 
-   if (pipeflags & PIPE_NEEDSTERM) {
+   if (mhp->mh_flags & MIME_HDL_NEEDSTERM) {
       sigset_t nset;
       int pid;
 
       sigemptyset(&nset);
       pid = run_command(sh, NULL, term_infd, COMMAND_FD_PASS, "-c",
-            pipecomm, NULL, env_addon);
+            mhp->mh_shell_cmd, NULL, env_addon);
       rbuf = (pid < 0) ? NULL : (FILE*)-1;
    } else {
-      rbuf = Popen(pipecomm, "W", sh, env_addon,
-            (pipeflags & PIPE_ASYNC ? -1 : fileno(*qbuf)));
+      rbuf = Popen(mhp->mh_shell_cmd, "W", sh, env_addon,
+            (mhp->mh_flags & MIME_HDL_ASYNC ? -1 : fileno(*qbuf)));
 jerror:
       if (rbuf == NULL)
          n_err(_("Cannot run MIME type handler \"%s\": %s\n"),
-            pipecomm, strerror(errno));
+            mhp->mh_msg, strerror(errno));
       else {
          fflush(*qbuf);
          if (*qbuf != stdout)
             fflush(stdout);
       }
    }
-#ifdef HAVE_FILTER_HTML_TAGSOUP
 jleave:
-#endif
    NYD_LEAVE;
    return rbuf;
 }
@@ -474,10 +345,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    enum sendaction volatile action, ui64_t * volatile stats, int level)
 {
    int volatile rv = 0;
+   struct mime_handler mh;
    struct str rest;
    char *line = NULL, *cp, *cp2, *start;
-   enum pipe_flags pipeflags;
-   char const *pipecomm = NULL, *tmpfile = NULL;
+   char const *tmpfile = NULL;
    size_t linesize = 0, linelen, cnt;
    int volatile term_infd;
    int dostat, infld = 0, ignoring = 1, isenc, c;
@@ -598,10 +469,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             ignoring = 0;
             /* For colourization we need the complete line, so save it */
             /* XXX This is all temporary (colour belongs into backend), so
-             * XXX use pipecomm as a temporary storage in the meanwhile */
+             * XXX use tmpfile as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
             if (colour_table != NULL)
-               pipecomm = savestrbuf(line, PTR2SIZE(cp2 - line));
+               tmpfile = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
          *cp2 = c;
@@ -652,8 +523,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 #ifdef HAVE_COLOUR
          {
          bool_t colour_stripped = FAL0;
-         if (pipecomm != NULL) {
-            colour_put_header(obuf, pipecomm);
+         if (tmpfile != NULL) {
+            colour_put_header(obuf, tmpfile);
             if (len > 0 && start[len - 1] == '\n') {
                colour_stripped = TRU1;
                --len;
@@ -662,7 +533,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 #endif
          _out(start, len, obuf, convert, action, qf, stats, NULL);
 #ifdef HAVE_COLOUR
-         if (pipecomm != NULL) {
+         if (tmpfile != NULL) {
             colour_reset(obuf); /* XXX reset after \n!! */
             if (colour_stripped)
                putc('\n', obuf);
@@ -679,10 +550,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    quoteflt_flush(qf);
    free(line);
    line = NULL;
-   pipecomm = NULL;
+   tmpfile = NULL;
 
 jskip:
-   pipeflags = PIPE_NULL;
+   memset(&mh, 0, sizeof mh);
 
    switch (ip->m_mimecontent) {
    case MIME_822:
@@ -723,11 +594,9 @@ jskip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch ((pipeflags = _pipecmd(&pipecomm, ip,
-                  (action == SEND_QUOTE || action == SEND_QUOTE_ALL))
-               ) & PIPE_TYPE_MASK) {
-         case PIPE_MSG:
-            _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
+         switch (mime_type_handler(&mh, ip, action)) {
+         case MIME_HDL_MSG:
+            _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
@@ -754,20 +623,19 @@ jskip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch ((pipeflags = _pipecmd(&pipecomm, ip,
-                  (action == SEND_QUOTE || action == SEND_QUOTE_ALL))
-               ) & PIPE_TYPE_MASK) {
-         case PIPE_MSG:
-            _out(pipecomm, strlen(pipecomm), obuf, CONV_NONE, SEND_MBOX, qf,
+         switch (mime_type_handler(&mh, ip, action)) {
+         case MIME_HDL_MSG:
+            _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
-         case PIPE_CMD:
+         case MIME_HDL_CMD:
             /* FIXME WE NEED TO DO THAT IF WE ARE THE ONLY MAIL
              * FIXME CONTENT !! */
-         case PIPE_TEXT:
+         case MIME_HDL_TEXT:
             break;
-         case PIPE_NULL:
+         default:
+         case MIME_HDL_NULL:
             if (level == 0 && cnt) {
                char const *x = _("[-- Binary content --]\n");
                _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
@@ -786,20 +654,23 @@ jskip:
       }
       break;
    case MIME_ALTERNATIVE:
-   case MIME_RELATED:
       if ((action == SEND_TODISP || action == SEND_QUOTE) &&
             !ok_blook(print_alternatives)) {
-         /* XXX This (a) should not remain (b) should be own fun */
+         /* XXX This (a) should not remain (b) should be own fun
+          * TODO (despite the fact that v15 will do this completely differently
+          * TODO by having an action-specific "manager" that will traverse the
+          * TODO parsed MIME tree and decide for each part wether it'll be
+          * TODO displayed or not *before* we walk the tree for doing action */
          struct mpstack {
-            struct mpstack    *outer;
-            struct mimepart   *mp;
-         } outermost, * volatile curr = &outermost, * volatile mpsp;
+            struct mpstack *outer;
+            struct mimepart *mp;
+         } outermost, * volatile curr, * volatile mpsp;
+         bool_t volatile neednl, hadpart;
          sighandler_type volatile opsh, oish, ohsh;
-         size_t volatile partcnt = 0/* silence CC */;
-         bool_t volatile neednl = FAL0;
 
-         curr->outer = NULL;
+         (curr = &outermost)->outer = NULL;
          curr->mp = ip;
+         neednl = hadpart = FAL0;
 
          __sndalter_sig = 0;
          opsh = safe_signal(SIGPIPE, &__sndalter_onsig);
@@ -811,7 +682,6 @@ jskip:
          }
 
          for (np = ip->m_multipart;;) {
-            partcnt = 0;
 jalter_redo:
             for (; np != NULL; np = np->m_nextpart) {
                if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
@@ -826,7 +696,7 @@ jalter_redo:
                case MIME_RELATED:
                case MIME_MULTI:
                case MIME_DIGEST:
-                  mpsp = ac_alloc(sizeof *mpsp);
+                  mpsp = salloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
                   curr->mp = np;
@@ -835,41 +705,36 @@ jalter_redo:
                   neednl = FAL0;
                   goto jalter_redo;
                default:
-                  switch ((pipeflags = _pipecmd(&pipecomm, np,
-                           (action == SEND_QUOTE || action == SEND_QUOTE_ALL))
-                        ) & PIPE_TYPE_MASK) {
+                  if (hadpart)
+                     break;
+                  switch (mime_type_handler(&mh, np, action)) {
                   default:
-                     pipeflags = PIPE_NULL;
+                     mh.mh_flags = MIME_HDL_NULL;
                      continue;
-                  case PIPE_TEXT:
+                  case MIME_HDL_TEXT:
+                  case MIME_HDL_PTF:
                      break;
                   }
                   /* FALLTHRU */
                case MIME_TEXT_PLAIN:
-                  ++partcnt;
-                  if (action == SEND_QUOTE && partcnt > 1 &&
-                        ip->m_mimecontent == MIME_ALTERNATIVE)
+                  if (hadpart)
                      break;
                   quoteflt_flush(qf);
-                  if (action == SEND_QUOTE && partcnt > 1) {
+                  if (action == SEND_QUOTE && hadpart) {
                      struct quoteflt *dummy = quoteflt_dummy();
                      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
                         NULL);
                      quoteflt_flush(dummy);
                   }
+                  hadpart = TRU1;
                   neednl = FAL0;
                   rv = sendpart(zmp, np, obuf, doign, qf, action, stats,
                         level + 1);
                   quoteflt_reset(qf, origobuf);
 
-                  if (rv < 0) {
+                  if (rv < 0)
 jalter_unroll:
-                     for (;; curr = mpsp) {
-                        if ((mpsp = curr->outer) == NULL)
-                           break;
-                        ac_free(curr);
-                     }
-                  }
+                     curr = &outermost; /* Cause overall loop termination */
                   break;
                }
             }
@@ -877,7 +742,6 @@ jalter_unroll:
             mpsp = curr->outer;
             if (mpsp == NULL)
                break;
-            ac_free(curr);
             curr = mpsp;
             np = curr->mp->m_nextpart;
          }
@@ -891,6 +755,7 @@ jalter_unroll:
       /* FALLTHRU */
    case MIME_MULTI:
    case MIME_DIGEST:
+   case MIME_RELATED:
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
@@ -1053,33 +918,35 @@ jpipe_close:
    }
 #endif
 
-   tmpfile = NULL;
-   if ((pipeflags & PIPE_TYPE_MASK) == PIPE_CMD) {
+   switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
+   case MIME_HDL_CMD:
+   case MIME_HDL_PTF:
+      tmpfile = NULL;
       qbuf = obuf;
 
       term_infd = COMMAND_FD_PASS;
-      if (pipeflags & (PIPE_TMPFILE | PIPE_NEEDSTERM)) {
+      if (mh.mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
          enum oflags of;
 
          of = OF_RDWR | OF_REGISTER;
-         if (!(pipeflags & PIPE_TMPFILE)) {
+         if (!(mh.mh_flags & MIME_HDL_TMPF)) {
             term_infd = 0;
-            pipeflags |= PIPE_TMPFILE_FILL;
+            mh.mh_flags |= MIME_HDL_TMPF_FILL;
             of |= OF_UNLINK;
-         } else if (pipeflags & PIPE_TMPFILE_UNLINK)
+         } else if (mh.mh_flags & MIME_HDL_TMPF_UNLINK)
             of |= OF_REGISTER_UNLINK;
 
-         if ((pbuf = Ftmp((pipeflags & PIPE_TMPFILE ? &cp : NULL),
-               (pipeflags & PIPE_TMPFILE_FILL ? "mimehdlfill" : "mimehdl"),
+         if ((pbuf = Ftmp((mh.mh_flags & MIME_HDL_TMPF ? &cp : NULL),
+               (mh.mh_flags & MIME_HDL_TMPF_FILL ? "mimehdlfill" : "mimehdl"),
                of, 0600)) == NULL)
             goto jesend;
 
-         if (pipeflags & PIPE_TMPFILE) {
+         if (mh.mh_flags & MIME_HDL_TMPF) {
             tmpfile = savestr(cp);
             Ftmp_free(&cp);
          }
 
-         if (pipeflags & PIPE_TMPFILE_FILL) {
+         if (mh.mh_flags & MIME_HDL_TMPF_FILL) {
             if (term_infd == 0)
                term_infd = fileno(pbuf);
             goto jsend;
@@ -1087,14 +954,13 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(pipeflags, pipecomm, ip, UNVOLATILE(&qbuf), tmpfile,
-            term_infd);
+      pbuf = _pipefile(&mh, ip, UNVOLATILE(&qbuf), tmpfile, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;
          rv = -1;
          goto jend;
-      } else if ((pipeflags & PIPE_NEEDSTERM) && pbuf == (FILE*)-1) {
+      } else if ((mh.mh_flags & MIME_HDL_NEEDSTERM) && pbuf == (FILE*)-1) {
          pbuf = qbuf = NULL;
          goto jend;
       }
@@ -1105,9 +971,12 @@ jesend:
          if (sigsetjmp(_send_pipejmp, 1))
             goto jend;
       }
-   } else {
-      pipeflags = PIPE_NULL;
+      break;
+
+   default:
+      mh.mh_flags = MIME_HDL_NULL;
       pbuf = qbuf = obuf;
+      break;
    }
 
 jsend:
@@ -1157,7 +1026,8 @@ joutln:
    }
    quoteflt_flush(qf);
 
-   if (pipeflags & PIPE_TMPFILE_FILL) {
+   if (mh.mh_flags & MIME_HDL_TMPF_FILL) {
+      mh.mh_flags &= ~MIME_HDL_TMPF_FILL;
       fflush(pbuf);
       really_rewind(pbuf);
       /* Don't Fclose() the Ftmp() thing due to OF_REGISTER_UNLINK++ */
@@ -1181,7 +1051,7 @@ jend:
       free(line);
    if (pbuf != qbuf) {
       safe_signal(SIGPIPE, SIG_IGN);
-      Pclose(pbuf, !(pipeflags & PIPE_ASYNC));
+      Pclose(pbuf, !(mh.mh_flags & MIME_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
       if (qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);

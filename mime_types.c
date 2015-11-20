@@ -102,6 +102,11 @@ static struct mtlookup * _mt_by_filename(struct mtlookup *mtlp,
 static struct mtlookup * _mt_by_mtname(struct mtlookup *mtlp,
                            char const *mtname);
 
+/* Check wether a *pipe-XY* handler is applicable, and adjust flags according
+ * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
+ * isn't changed if mhp doesn't apply */
+static enum mime_handler_flags _mt_pipe_check(struct mime_handler *mhp);
+
 static void
 _mt_init(void)
 {
@@ -454,6 +459,98 @@ jleave:
    return mtlp;
 }
 
+static enum mime_handler_flags
+_mt_pipe_check(struct mime_handler *mhp)
+{
+   enum mime_handler_flags rv_orig, rv;
+   char const *cp;
+   NYD2_ENTER;
+
+   rv_orig = rv = mhp->mh_flags;
+
+   /* Do we have any handler for this part? */
+   if (*(cp = mhp->mh_shell_cmd) == '\0')
+      goto jleave;
+   else if (*cp++ != '@') {
+      rv |= MIME_HDL_CMD;
+      goto jleave;
+   } else if (*cp == '\0') {
+      rv |= MIME_HDL_TEXT;
+      goto jleave;
+   }
+
+jnextc:
+   switch (*cp) {
+   case '*':   rv |= MIME_HDL_ALWAYS;     ++cp; goto jnextc;
+   case '#':   rv |= MIME_HDL_NOQUOTE;    ++cp; goto jnextc;
+   case '&':   rv |= MIME_HDL_ASYNC;      ++cp; goto jnextc;
+   case '!':   rv |= MIME_HDL_NEEDSTERM;  ++cp; goto jnextc;
+   case '+':
+      if (rv & MIME_HDL_TMPF)
+         rv |= MIME_HDL_TMPF_UNLINK;
+      rv |= MIME_HDL_TMPF;
+      ++cp;
+      goto jnextc;
+   case '=':
+      rv |= MIME_HDL_TMPF_FILL;
+      ++cp;
+      goto jnextc;
+   case '@':
+      ++cp;
+      /* FALLTHRU */
+   default:
+      break;
+   }
+   mhp->mh_shell_cmd = cp;
+
+   /* Implications */
+   if (rv & MIME_HDL_TMPF_FILL)
+      rv |= MIME_HDL_TMPF;
+
+   /* Exceptions */
+   if (rv & MIME_HDL_ISQUOTE) {
+      if (rv & MIME_HDL_NOQUOTE)
+         goto jerr;
+
+      /* Cannot fetch data back from asynchronous process */
+      if (rv & MIME_HDL_ASYNC)
+         goto jerr;
+
+      /* TODO Can't use a "needsterminal" program for quoting */
+      if (rv & MIME_HDL_NEEDSTERM)
+         goto jerr;
+   }
+
+   if (rv & MIME_HDL_NEEDSTERM) {
+      if (rv & MIME_HDL_ASYNC) {
+         n_err(_("MIME type handlers: can't use \"needsterminal\" and "
+            "\"x-nail-async\" together\n"));
+         goto jerr;
+      }
+
+      /* needsterminal needs a terminal */
+      if (!(options & OPT_INTERACTIVE))
+         goto jerr;
+   }
+
+   if (!(rv & MIME_HDL_ALWAYS) && !(pstate & PS_MSGLIST_DIRECT)) {
+      /* Viewing multiple messages in one go, don't block system */
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+            _("[-- Directly address message only for display --]\n")));
+      rv |= MIME_HDL_MSG;
+      goto jleave;
+   }
+
+   rv |= MIME_HDL_CMD;
+jleave:
+   mhp->mh_flags = rv;
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   rv = rv_orig;
+   goto jleave;
+}
+
 FL int
 c_mimetype(void *v)
 {
@@ -587,7 +684,7 @@ jdelall:
 }
 
 FL char *
-mime_type_by_filename(char const *name)
+mime_type_classify_filename(char const *name)
 {
    struct mtlookup mtl;
    NYD_ENTER;
@@ -598,7 +695,7 @@ mime_type_by_filename(char const *name)
 }
 
 FL enum conversion
-mime_type_file_classify(FILE *fp, char const **contenttype,
+mime_type_classify_file(FILE *fp, char const **contenttype,
    char const **charset, int *do_iconv)
 {
    /* TODO classify once only PLEASE PLEASE PLEASE */
@@ -749,7 +846,7 @@ jleave:
 }
 
 FL enum mimecontent
-mime_type_mimepart_content(struct mimepart *mpp)
+mime_type_classify_part(struct mimepart *mpp)
 {
    struct mtlookup mtl;
    enum mimecontent mc;
@@ -829,16 +926,27 @@ jleave:
    return mc;
 }
 
-FL char const *
-mime_type_mimepart_handler(struct mimepart const *mpp)
+FL enum mime_handler_flags
+mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
+   enum sendaction action)
 {
 #define __S    "pipe-"
 #define __L    (sizeof(__S) -1)
    struct mtlookup mtl;
-   char const *es, *cs, *rv;
-   size_t el, cl, l;
    char *buf, *cp;
+   enum mime_handler_flags rv;
+   char const *es, *cs, *ccp;
+   size_t el, cl, l;
    NYD_ENTER;
+
+   memset(mhp, 0, sizeof *mhp);
+   buf = NULL;
+
+   rv = MIME_HDL_NULL;
+   if (action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+      rv |= MIME_HDL_ISQUOTE;
+   else if (action != SEND_TODISP && action != SEND_TODISP_ALL)
+      goto jleave;
 
    el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
          *++es != '\0') ? strlen(es) : 0;
@@ -848,9 +956,11 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
 
 /* FIXME here and below : another mime-counter-evidence bit, content check */
 
-      rv = NULL;
       goto jleave;
    }
+
+   /* We don't pass the flags around, so ensure carrier is up-to-date */
+   mhp->mh_flags = rv;
 
    buf = ac_alloc(__L + l +1);
    memcpy(buf, __S, __L);
@@ -862,42 +972,58 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
       for (cp = buf + __L; *cp != '\0'; ++cp)
          *cp = lowerconv(*cp);
 
-      if ((rv = vok_vlook(buf)) != NULL)
-         goto jok;
+      if ((mhp->mh_shell_cmd = ccp = vok_vlook(buf)) != NULL) {
+         rv = _mt_pipe_check(mhp);
+         goto jleave;
+      }
    }
 
-   /* Then MIME Content-Type: */
-   if (cl > 0) {
-      memcpy(buf + __L, cs, cl +1);
-      for (cp = buf + __L; *cp != '\0'; ++cp)
-         *cp = lowerconv(*cp);
+   /* Then MIME Content-Type:, if any */
+   if (cl == 0)
+      goto jleave;
 
-      if ((rv = vok_vlook(buf)) != NULL)
-         goto jok;
+   memcpy(buf + __L, cs, cl +1);
+   for (cp = buf + __L; *cp != '\0'; ++cp)
+      *cp = lowerconv(*cp);
 
-      if (_mt_by_mtname(&mtl, cs) != NULL)
-         switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
+   if ((mhp->mh_shell_cmd = vok_vlook(buf)) != NULL) {
+      rv = _mt_pipe_check(mhp);
+      goto jleave;
+   }
+
+   if (_mt_by_mtname(&mtl, cs) != NULL)
+      switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
 #ifndef HAVE_FILTER_HTML_TAGSOUP
-         case _MT_SOUP_H:
+      case _MT_SOUP_H:
+         break;
 #endif
-         default:
-            break;
-         case _MT_SOUP_h:
+      case _MT_SOUP_h:
 #ifdef HAVE_FILTER_HTML_TAGSOUP
-         case _MT_SOUP_H:
-            rv = MIME_TYPE_HANDLER_HTML;
-            goto jok;
+      case _MT_SOUP_H:
+         mhp->mh_ptf = &htmlflt_process_main;
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s =
+               UNCONST(_("Builtin HTML tagsoup filter")));
+         rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
+         goto jleave;
 #endif
-         case _MT_PLAIN:
-            rv = MIME_TYPE_HANDLER_TEXT;
-            goto jok;
-         }
-   }
+         /* FALLTHRU */
+      case _MT_PLAIN:
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s =
+               UNCONST(_("Plain text view")));
+         rv ^= MIME_HDL_NULL | MIME_HDL_TEXT;
+         goto jleave;
+      default:
+         break;
+      }
 
-   rv = NULL;
-jok:
-   ac_free(buf);
 jleave:
+   if (buf != NULL)
+      ac_free(buf);
+
+   mhp->mh_flags = rv;
+   if ((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+            _("[-- No MIME handler installed or none applicable --]")));
    NYD_LEAVE;
    return rv;
 #undef __L

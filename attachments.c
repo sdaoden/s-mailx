@@ -71,7 +71,7 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    else
       file = ap->a_name;
 
-   ap->a_content_type = mime_type_by_filename(file);
+   ap->a_content_type = mime_type_classify_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
       snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
       ap->a_content_type = n_input_cp_addhist(prefix, ap->a_content_type, TRU1);
