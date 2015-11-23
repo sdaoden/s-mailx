@@ -353,6 +353,48 @@ a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,/* TODO str2fmt */
       fputc('\n', obuf);
    }
 
+   /* Signature */
+   if(mpp->m_content_info & (CI_SIGNED | CI_ENCRYPTED)){
+      ti.l = 0;
+      ti.s = NULL;
+
+      /* FIXME CI_EXPANDED STUFF ... */
+      if(mpp->m_content_info & CI_SIGNED)
+         n_str_add_cp(&ti, (mpp->m_content_info & CI_SIGNED_OK
+            ? _("Signed data (good signature)")
+            : (mpp->m_content_info & CI_SIGNED_BAD
+               ? _("Signed data (signature unverified)")
+               : _("Signed data"))));
+
+      if(mpp->m_content_info & CI_ENCRYPTED){
+         if(mpp->m_content_info & CI_SIGNED)
+            n_str_add_cp(&ti, " -- ");
+         n_str_add_cp(&ti, (mpp->m_content_info & CI_ENCRYPTED_OK
+            ? _("Encrypted data (decryption ok)")
+            : (mpp->m_content_info & CI_ENCRYPTED_BAD
+               ? _("Encrypted data (decryption impossible)")
+               : _("Encrypted data"))));
+      }
+
+      if(cpre != NULL)
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+      mx_makeprint(&ti, &to);
+      to.l = mx_del_cntrl(to.s, to.l);
+      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      su_FREE(to.s);
+
+      su_FREE(ti.s);
+
+      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if(csuf != NULL)
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   }
+
    /* Content-Description */
    if((cp = mpp->m_content_description) != NIL && *cp != '\0' &&
          mx_ignore_is_ign(doitp, "content-description")){
@@ -824,7 +866,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    if (ip->m_mime_type == mx_MIME_TYPE_PKCS7) {
       if (ip->m_multipart &&
-            action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
+            action != SEND_MBOX && action != SEND_RFC822 &&
+            action != SEND_SHOW)
          goto jheaders_skip;
    }
 
@@ -1146,6 +1189,26 @@ jhdrtrunc:
       goto jleave;
    }
 
+   /* TODO Something visual to inform the user that we have decrypted
+    * TODO something into something else here; it is a hack until v15.0
+    * TODO when we have [PARSER <-> ANALYZER <-> filter chain] */
+   if((action == SEND_TODISP || action == SEND_TODISP_ALL) &&
+         ip->m_parent != NULL &&
+         ip->m_parent->m_mime_type == mx_MIME_TYPE_PKCS7 &&
+         ip->m_multipart == NIL){
+      struct mimepart *pmip = ip->m_parent;
+      char *filename = pmip->m_filename;
+
+      pmip->m_filename = NULL;
+      _print_part_info(obuf, pmip, doitp, level, qf, stats);
+      pmip->m_filename = filename;
+
+      if(ip->m_mime_type != mx_MIME_TYPE_SIGNED && ip->m_nextpart == NIL){
+         a_send_out_nl(obuf, qf, stats);
+         flags |= a_F_HANY;
+      }
+   }
+
    *anyoutput = ((flags & a_F_HANY) != 0);
 jheaders_skip:
    STRUCT_ZERO(struct mx_mime_type_handler, mthp = &mth_stack);
@@ -1403,10 +1466,10 @@ jalter_leave:
          goto jleave;
       }
       FALLTHRU
-   case mx_MIME_TYPE_RELATED:
-   case mx_MIME_TYPE_DIGEST:
    case mx_MIME_TYPE_SIGNED:
    case mx_MIME_TYPE_ENCRYPTED:
+   case mx_MIME_TYPE_RELATED:
+   case mx_MIME_TYPE_DIGEST:
    case mx_MIME_TYPE_MULTI:
       switch(action){
       case SEND_TODISP:
