@@ -39,6 +39,9 @@
 # include "nail.h"
 #endif
 
+/* Fetch plain */
+static char *  _mime_parse_ct_plain_from_ct(char const *cth);
+
 static bool_t  _mime_parse_part(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 
@@ -50,32 +53,44 @@ static void    _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 #endif
 
-static void    _mime_parse_multipart(struct message *zmp,
+static bool_t  _mime_parse_multipart(struct message *zmp,
                   struct mimepart *ip, enum mime_parse_flags mpf, int level);
 static void    __mime_parse_new(struct mimepart *ip, struct mimepart **np,
                   off_t offs, int *part);
 static void    __mime_parse_end(struct mimepart **np, off_t xoffs,
                   long lines);
 
+static char *
+_mime_parse_ct_plain_from_ct(char const *cth)
+{
+   char *rv_b, *rv;
+   NYD2_ENTER;
+
+   rv_b = savestr(cth);
+
+   if ((rv = strchr(rv_b, ';')) != NULL)
+      *rv = '\0';
+
+   rv = rv_b + strlen(rv_b);
+   while (rv > rv_b && blankchar(rv[-1]))
+      --rv;
+   *rv = '\0';
+   NYD2_LEAVE;
+   return rv_b;
+}
+
 static bool_t
 _mime_parse_part(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
-   char *cp_b, *cp;
+   char *cp;
    bool_t rv = FAL0;
    NYD_ENTER;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
-   if (ip->m_ct_type != NULL) {
-      ip->m_ct_type_plain = cp_b = savestr(ip->m_ct_type);
-      if ((cp = strchr(cp_b, ';')) != NULL)
-         *cp = '\0';
-      cp = cp_b + strlen(cp_b);
-      while (cp > cp_b && blankchar(cp[-1]))
-         --cp;
-      *cp = '\0';
-   } else if (ip->m_parent != NULL &&
-         ip->m_parent->m_mimecontent == MIME_DIGEST)
+   if (ip->m_ct_type != NULL)
+      ip->m_ct_type_plain = _mime_parse_ct_plain_from_ct(ip->m_ct_type);
+   else if (ip->m_parent != NULL && ip->m_parent->m_mimecontent == MIME_DIGEST)
       ip->m_ct_type_plain = "message/rfc822";
    else
       ip->m_ct_type_plain = "text/plain";
@@ -117,9 +132,11 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          if (mpf & MIME_PARSE_DECRYPT) {
 #ifdef HAVE_SSL
             _mime_parse_pkcs7(zmp, ip, mpf, level);
+            if (ip->m_content_info & CI_ENCRYPTED_OK)
+               ip->m_content_info |= CI_EXPANDED;
             break;
 #else
-            n_err(_("No SSL support compiled in\n"));
+            n_err(_("No SSL / S/MIME support compiled in\n"));
             goto jleave;
 #endif
          }
@@ -132,7 +149,8 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       case MIME_SIGNED:
       case MIME_ENCRYPTED:
       case MIME_MULTI:
-         _mime_parse_multipart(zmp, ip, mpf, level);
+         if (!_mime_parse_multipart(zmp, ip, mpf, level))
+            goto jleave;
          break;
       case MIME_822:
          _mime_parse_rfc822(zmp, ip, mpf, level);
@@ -176,7 +194,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
 
    np = csalloc(1, sizeof *np);
    np->m_flag = MNOFROM;
-   np->m_have = HAVE_HEADER | HAVE_BODY;
+   np->m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
    np->m_block = mailx_blockof(offs);
    np->m_offset = mailx_offsetof(offs);
    np->m_size = np->m_xsize = cnt;
@@ -185,7 +203,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
    np->m_parent = ip;
    ip->m_multipart = np;
 
-   if (ok_blook(rfc822_body_from_)) {
+   if (!(mpf & MIME_PARSE_SHALLOW) && ok_blook(rfc822_body_from_)) {
       substdate((struct message*)np);
       np->m_from = fakefrom((struct message*)np);/* TODO strip MNOFROM flag? */
    }
@@ -212,33 +230,33 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
       np = csalloc(1, sizeof *np);
       np->m_flag = xmp->m_flag;
-      np->m_have = xmp->m_have;
+      np->m_content_info = xmp->m_content_info | CI_ENCRYPTED | CI_ENCRYPTED_OK;
       np->m_block = xmp->m_block;
       np->m_offset = xmp->m_offset;
       np->m_size = xmp->m_size;
       np->m_xsize = xmp->m_xsize;
       np->m_lines = xmp->m_lines;
       np->m_xlines = xmp->m_xlines;
-      np->m_partstring = ip->m_partstring;
+
+      /* TODO using part "1" for decrypted content is a hack */
+      if ((np->m_partstring = ip->m_partstring) == NULL)
+         ip->m_partstring = np->m_partstring = n_UNCONST("1");
 
       if (_mime_parse_part(zmp, np, mpf, level + 1) == OKAY) {
+         ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_OK;
          np->m_parent = ip;
          ip->m_multipart = np;
       }
-   }
+   } else
+      ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_BAD;
    NYD_LEAVE;
 }
 #endif /* HAVE_SSL */
 
-static void
+static bool_t
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
-   /* TODO Instead of the recursive multiple run parse we have today,
-    * TODO the send/MIME layer rewrite must create a "tree" of parts with
-    * TODO a single-pass parse, then address each part directly as
-    * TODO necessary; since boundaries start with -- and the content
-    * TODO rather forms a stack this is pretty cheap indeed! */
    struct mimepart *np = NULL;
    char *boundary, *line = NULL;
    size_t linesize = 0, linelen, cnt, boundlen;
@@ -261,7 +279,11 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
          break;
    offs = ftell(ibuf);
 
+   /* TODO using part "1" for decrypted content is a hack */
+   if (ip->m_partstring == NULL)
+      ip->m_partstring = n_UNCONST("1");
    __mime_parse_new(ip, &np, offs, NULL);
+
    while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
       /* XXX linelen includes LF */
       if (!((lines > 0 || part == 0) && linelen > boundlen &&
@@ -308,9 +330,12 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
       if (np->m_mimecontent != MIME_DISCARD)
          _mime_parse_part(zmp, np, mpf, level + 1);
-   free(line);
+
 jleave:
+   if (line != NULL)
+      free(line);
    NYD_LEAVE;
+   return (ip != NULL);
 }
 
 static void
@@ -323,7 +348,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
 
    *np = csalloc(1, sizeof **np);
    (*np)->m_flag = MNOFROM;
-   (*np)->m_have = HAVE_HEADER | HAVE_BODY;
+   (*np)->m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
    (*np)->m_block = mailx_blockof(offs);
    (*np)->m_offset = mailx_offsetof(offs);
 
@@ -370,7 +395,7 @@ mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
 
    ip = csalloc(1, sizeof *ip);
    ip->m_flag = mp->m_flag;
-   ip->m_have = mp->m_have;
+   ip->m_content_info = mp->m_content_info;
    ip->m_block = mp->m_block;
    ip->m_offset = mp->m_offset;
    ip->m_size = mp->m_size;

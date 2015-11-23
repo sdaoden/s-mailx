@@ -69,7 +69,7 @@ static int     _headers(int msgspec);
 
 /* Show the requested messages */
 static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-                  bool_t dodecode, char *cmd, ui64_t *tstats);
+                  bool_t donotdecode, char *cmd, ui64_t *tstats);
 
 /* Pipe the requested messages */
 static int     _pipe1(char *str, int doign);
@@ -985,7 +985,7 @@ jleave:
 
 static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-   bool_t dodecode, char *cmd, ui64_t *tstats)
+   bool_t donotdecode, char *cmd, ui64_t *tstats)
 {
    struct n_sigman sm;
    ui64_t mstats[1];
@@ -998,7 +998,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    NYD_ENTER;
    {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
-         ? SEND_MBOX : dodecode
+         ? SEND_MBOX : donotdecode
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
@@ -1023,7 +1023,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if (!dopage) {
          for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
             mp = message + *ip - 1;
-            if (!(mp->m_have & HAVE_BODY))
+            if (!(mp->m_content_info & CI_HAVE_BODY))
                if (get_body(mp) != OKAY)
                   goto jcleanup_leave;
             nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */

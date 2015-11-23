@@ -107,8 +107,11 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    /* Take care of "99.99", i.e., 5 */
    if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
       cp = "?";
-   if (level || (cp[0] != '1' && cp[1] == '\0'))
+   if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
+         cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+   /* Part id, content-type, encoding, charset */
    if (cpre != NULL)
       _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
@@ -151,25 +154,50 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
-   if (n_ignore_is_ign(doitp, "content-disposition", 19) &&
-         mpp->m_filename != NULL && *mpp->m_filename != '\0') {
-      makeprint(n_str_add_cp(&ti, mpp->m_filename), &to);
-      free(ti.s);
-      to.l = delctrl(to.s, to.l);
-
+   /* */
+   if (mpp->m_content_info & CI_MIME_ERRORS) {
       if (cpre != NULL)
          _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
             NULL, NULL);
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+      ti.l = strlen(ti.s = n_UNCONST(_("Defective MIME structure")));
+      makeprint(&ti, &to);
+      ti.s = NULL; /* Not allocated! */
+      to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      free(to.s);
+
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
          _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
             NULL, NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-
-      free(to.s);
    }
+
+   /* Filename */
+   if (n_ignore_is_ign(doitp, "content-disposition", 19) &&
+         mpp->m_filename != NULL && *mpp->m_filename != '\0') {
+      if (cpre != NULL)
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+      ti.l = 0;
+      makeprint(n_str_add_cp(&ti, mpp->m_filename), &to);
+      to.l = delctrl(to.s, to.l);
+      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      free(to.s);
+
+      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if (csuf != NULL)
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   }
+
+   if (ti.s != NULL)
+      free(ti.s);
    NYD2_LEAVE;
 }
 
@@ -362,9 +390,13 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    n_UNINIT(term_infd, 0);
    n_UNINIT(cnt, 0);
 
-   if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
-         action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
-      goto jskip;
+   quoteflt_reset(qf, obuf);
+
+   if (ip->m_mimecontent == MIME_PKCS7) {
+      if (ip->m_multipart &&
+            action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
+         goto jheaders_skip;
+   }
 
    dostat = 0;
    if (level == 0) {
@@ -383,7 +415,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    cnt = ip->m_size;
 
    if (ip->m_mimecontent == MIME_DISCARD)
-      goto jskip;
+      goto jheaders_skip;
 
    if (!(ip->m_flag & MNOFROM))
       while (cnt && (c = getc(ibuf)) != EOF) {
@@ -397,7 +429,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
-   quoteflt_reset(qf, obuf);
    /* C99 */{
    enum {
       HPS_NONE = 0,
@@ -571,7 +602,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    line = NULL;
    tmpname = NULL;
 
-jskip:
+jheaders_skip:
    memset(&mh, 0, sizeof mh);
 
    switch (ip->m_mimecontent) {
@@ -960,7 +991,7 @@ jpipe_close:
          action == SEND_RFC822 || action == SEND_SHOW)
       convert = CONV_NONE;
 #ifdef HAVE_ICONV
-   if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
+   else if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
          action == SEND_TOSRCH) &&
          (ip->m_mimecontent == MIME_TEXT_PLAIN ||
@@ -1466,7 +1497,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 
    mpf = MIME_PARSE_NONE;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
-      mpf |= MIME_PARSE_DECRYPT | MIME_PARSE_PARTS;
+      mpf |= MIME_PARSE_PARTS | MIME_PARSE_DECRYPT;
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 

@@ -1033,7 +1033,8 @@ enum b64flags {
 enum mime_parse_flags {
    MIME_PARSE_NONE      = 0,
    MIME_PARSE_DECRYPT   = 1<<0,
-   MIME_PARSE_PARTS     = 1<<1
+   MIME_PARSE_PARTS     = 1<<1,
+   MIME_PARSE_SHALLOW   = 1<<2
 };
 
 enum mime_handler_flags {
@@ -2069,10 +2070,18 @@ enum needspec {
    NEED_BODY         /* need header and body of a message */
 };
 
-enum havespec {
-   HAVE_NOTHING,              /* nothing downloaded yet */
-   HAVE_HEADER    = 01,       /* header is downloaded */
-   HAVE_BODY      = 02        /* entire message is downloaded */
+enum content_info {
+   CI_NOTHING,                /* Nothing downloaded yet */
+   CI_HAVE_HEADER = 1<<0,     /* Header is downloaded */
+   CI_HAVE_BODY   = 1<<1,     /* Entire message is downloaded */
+   CI_MIME_ERRORS = 1<<2,     /* Defective MIME structure */
+   CI_EXPANDED    = 1<<3,     /* Container part (pk7m) exploded into X */
+   CI_SIGNED      = 1<<4,     /* Has a signature.. */
+   CI_SIGNED_OK   = 1<<5,     /* ..verified ok.. */
+   CI_SIGNED_BAD  = 1<<6,     /* ..verified bad (missing key).. */
+   CI_ENCRYPTED   = 1<<7,     /* Is encrypted.. */
+   CI_ENCRYPTED_OK = 1<<8,    /* ..decryption possible/ok.. */
+   CI_ENCRYPTED_BAD = 1<<9    /* ..not possible/ok */
 };
 
 /* flag bits. Attention: Flags that are used in cache.c may not change */
@@ -2111,8 +2120,8 @@ enum mflag {
 #define visible(mp)     (((mp)->m_flag & MMNDEL) == 0)
 
 struct mimepart {
-   enum mflag  m_flag;        /* flags */
-   enum havespec m_have;      /* downloaded parts of the part */
+   enum mflag  m_flag;
+   enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
@@ -2140,7 +2149,7 @@ struct mimepart {
 
 struct message {
    enum mflag  m_flag;        /* flags */
-   enum havespec m_have;      /* downloaded parts of the message */
+   enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif

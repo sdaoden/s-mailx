@@ -1258,10 +1258,11 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need){
 
    switch(need){
    case NEED_HEADER:
-      ok = (m->m_have & HAVE_HEADER) ? OKAY : a_message_get_header(m);
+      ok = (m->m_content_info & CI_HAVE_HEADER) ? OKAY
+            : a_message_get_header(m);
       break;
    case NEED_BODY:
-      ok = (m->m_have & HAVE_BODY) ? OKAY : get_body(m);
+      ok = (m->m_content_info & CI_HAVE_BODY) ? OKAY : get_body(m);
       break;
    case NEED_UNSPEC:
       ok = OKAY;

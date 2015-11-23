@@ -277,7 +277,7 @@ setptr(FILE *ibuf, off_t offset)
       if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
          self.m_xsize = self.m_size;
          self.m_xlines = self.m_lines;
-         self.m_have = HAVE_HEADER | HAVE_BODY;
+         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
          if (selfcnt > 0)
             message_append(&self);
          message_append_null();
@@ -316,7 +316,7 @@ setptr(FILE *ibuf, off_t offset)
          }
          self.m_xsize = self.m_size;
          self.m_xlines = self.m_lines;
-         self.m_have = HAVE_HEADER | HAVE_BODY;
+         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
          if (selfcnt++ > 0)
             message_append(&self);
          msgCount++;

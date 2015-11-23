@@ -667,10 +667,10 @@ jretry:
 
    switch (need) {
    case NEED_HEADER:
-      m->m_have |= HAVE_HEADER;
+      m->m_content_info |= CI_HAVE_HEADER;
       break;
    case NEED_BODY:
-      m->m_have |= HAVE_HEADER | HAVE_BODY;
+      m->m_content_info |= CI_HAVE_HEADER | CI_HAVE_BODY;
       m->m_xlines = m->m_lines;
       m->m_xsize = m->m_size;
       break;
