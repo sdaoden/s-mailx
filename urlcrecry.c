@@ -1167,7 +1167,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 # endif
 
    /* Password */
-   if ((ccp->cc_pass = urlp->url_pass).s != NULL)
+   ccp->cc_pass = urlp->url_pass;
+   if (ccp->cc_pass.s != NULL)
       goto jleave;
 
    if ((s = xok_vlook(password, urlp, OXM_ALL)) != NULL)
