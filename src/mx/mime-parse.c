@@ -396,6 +396,63 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
       if(np->m_mime_type != mx_MIME_TYPE_DISCARD)
          a_mps_part(zmp, np, mpf, level + 1);
 
+   /* RFC 1847, 2015, 3156: exactly two body parts, of defined type(s) */
+   if(ip->m_mime_type == mx_MIME_TYPE_SIGNED ||
+         ip->m_mime_type == mx_MIME_TYPE_ENCRYPTED){
+      /* Do not use _plain, *mime-counter-evidence* may overwrite it! */
+      char const *pct;
+
+      if((pct = ip->m_ct_type_plain) == ip->m_ct_type_usr_ovwr)
+         pct = a_mps_ct_plain_from_ct(ip->m_ct_type);
+
+      for(cnt = 0, np = ip->m_multipart; np != NIL; np = np->m_nextpart){
+         if(np->m_mime_type != mx_MIME_TYPE_DISCARD){
+            char const *ct;
+
+            if((ct = np->m_ct_type_plain) == np->m_ct_type_usr_ovwr ||
+                  (ct != NIL && np->m_ct_type_usr_ovwr != NIL &&
+                   !su_cs_cmp_case(ct, np->m_ct_type_usr_ovwr)))
+               ct = a_mps_ct_plain_from_ct(np->m_ct_type);
+
+            if(++cnt == 1){
+               if(ip->m_mime_type == mx_MIME_TYPE_SIGNED)
+                  np->m_content_info |= CI_SIGNED;
+               else{
+                  np->m_content_info |= CI_ENCRYPTED;
+                  if(su_cs_cmp_case(ct, "application/pgp-encrypted"))
+                     goto ject;
+               }
+            }else if(cnt == 2){
+               if(ip->m_mime_type == mx_MIME_TYPE_SIGNED){
+                  if(su_cs_cmp_case_n(ct, "application/",
+                        sizeof("application/")-1))
+                     goto ject;
+                  ct += sizeof("application/") -1;
+
+                  if(!su_cs_cmp_case(ct, "pgp-signature"))
+                     continue;
+
+                  if(!su_cs_cmp_case(ct, "x-"))
+                     ct += sizeof("x-") -1;
+                  if(!su_cs_cmp_case(ct, "pkcs7-signature"))
+                     continue;
+                  goto ject;
+               }else if(su_cs_cmp_case(ct, "application/octet-stream"))
+                     goto ject;
+            }else
+               break;
+         }
+      }
+
+      if(cnt != 2){
+ject:
+         n_err(_("Message %d: defective MIME content of \"%s\" part\n"),
+            S(int,P2UZ(zmp - message + 1)), pct);
+         ip->m_content_info |= CI_MIME_ERRORS;
+         goto jleave;
+      }
+   }
+
    rv = TRU1;
 jleave:
    mx_fs_linepool_release(line, linesize);
@@ -475,6 +532,36 @@ mx_mime_parse_msg(struct message *mp, BITENUM_IS(u32,mx_mime_parse_flags) mpf){
    NYD_OU;
    return ip;
 }
+
+#ifdef mx_HAVE_TLS
+#if 0 /* TODO mime_parse_pkcs7 */
+struct mimepart *
+mx_mime_parse_pkcs7(struct message *mp, struct mimepart *unencmp, /* FIXME */
+      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level){
+   off_t pos;
+   struct mimepart *ip;
+   NYD_IN;
+
+   pos = ftell(mb.mb_itf);
+
+   ip = su_AUTO_CALLOC(sizeof *ip);
+   *ip = *unencmp;
+
+   a_mps_parse_pkcs7(mp, ip, mpf | mx_MIME_PARSE_DECRYPT, level);
+
+   if(ip->m_content_info & CI_ENCRYPTED_OK){
+      *unencmp = *ip;
+      unencmp->m_content_info |= CI_EXPANDED;
+   }else{
+      fseek(mb.mb_itf, pos, SEEK_SET);
+      ip = NIL;
+   }
+
+   NYD_OU;
+   return ip;
+}
+#endif /* 0 */
+#endif /* mx_HAVE_TLS */
 
 #include "su/code-ou.h"
 #undef su_FILE

@@ -40,6 +40,14 @@ enum mx_mime_parse_flags{
 EXPORT struct mimepart *mx_mime_parse_msg(struct message *mp,
       BITENUM_IS(u32,mx_mime_parse_flags) mpf);
 
+#ifdef mx_HAVE_TLS
+#if 0 /* TODO mime_parse_pkcs7 */
+EXPORT struct mimepart *mx_mime_parse_pkcs7(struct message *mp,
+      struct mimepart *unencmp, BITENUM_IS(u32,mx_mime_parse_flags) mpf,
+      int level);
+#endif
+#endif
+
 #include <su/code-ou.h>
 #endif /* mx_MIME_PARSE_H */
 /* s-it-mode */
