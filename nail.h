@@ -2140,6 +2140,7 @@ VL struct message *dot;                /* Pointer to current message */
 VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
+VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
 
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */

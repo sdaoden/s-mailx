@@ -1349,18 +1349,6 @@ jleave:
    return rv;
 }
 
-FL bool_t
-getfold(char *name, size_t size)
-{
-   char const *folder;
-   NYD_ENTER;
-
-   if ((folder = ok_vlook(folder)) != NULL)
-      n_strscpy(name, folder, size);
-   NYD_LEAVE;
-   return (folder != NULL);
-}
-
 FL char const *
 getdeadletter(void) /* XXX should that be in auxlily.c? */
 {

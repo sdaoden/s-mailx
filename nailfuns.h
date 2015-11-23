@@ -873,9 +873,6 @@ FL char *      fexpand_nshell_quote(char const *name);
  * desired value (ownership will be taken) */
 FL bool_t      var_folder_updated(char const *folder, char **store);
 
-/* Determine the current *folder* name, store it in *name* */
-FL bool_t      getfold(char *name, size_t size);
-
 /* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
 
@@ -930,6 +927,40 @@ FL int         c_source_if(void *v);
 /* Pop the current input back to the previous level.  Update the PS_SOURCING
  * flag as appropriate */
 FL int         unstack(void);
+
+/*
+ * folder.c
+ */
+
+/* Set up editing on the given file name.
+ * If the first character of name is %, we are considered to be editing the
+ * file, otherwise we are reading our mail which has signficance for mbox and
+ * so forth */
+FL int         setfile(char const *name, enum fedit_mode fm);
+
+FL int         newmailinfo(int omsgCount);
+
+/* Set the size of the message vector used to construct argument lists to
+ * message list functions */
+FL void        setmsize(int sz);
+
+/* Logic behind -H / -L invocations */
+FL void        print_header_summary(char const *Larg);
+
+/* Announce the presence of the current Mail version, give the message count,
+ * and print a header listing */
+FL void        announce(int printheaders);
+
+/* Announce information about the file we are editing.  Return a likely place
+ * to set dot */
+FL int         newfileinfo(void);
+
+FL int         getmdot(int nmail);
+
+FL void        initbox(char const *name);
+
+/* Determine the current *folder* name, store it in *name* */
+FL bool_t      getfold(char *name, size_t size);
 
 /*
  * head.c
@@ -1086,15 +1117,6 @@ FL enum okay   imap_search(char const *spec, int f);
  * lex.c
  */
 
-/* Set up editing on the given file name.
- * If the first character of name is %, we are considered to be editing the
- * file, otherwise we are reading our mail which has signficance for mbox and
- * so forth.
- nmail: Check for new mail in the current folder only */
-FL int         setfile(char const *name, enum fedit_mode fm);
-
-FL int         newmailinfo(int omsgCount);
-
 /* Interpret user commands.  If standard input is not a tty, print no prompt;
  * return wether the last processed command returned error */
 FL bool_t      commands(void);
@@ -1109,30 +1131,11 @@ FL int         execute(char *linebuf, size_t linesize);
  * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
 FL int         evaluate(struct eval_ctx *evp);
 
-/* Set the size of the message vector used to construct argument lists to
- * message list functions */
-FL void        setmsize(int sz);
-
-/* Logic behind -H / -L invocations */
-FL void        print_header_summary(char const *Larg);
-
 /* The following gets called on receipt of an interrupt.  This is to abort
  * printout of a command, mainly.  Dispatching here when command() is inactive
  * crashes rcv.  Close all open files except 0, 1, 2, and the temporary.  Also,
  * unstack all source files */
 FL void        onintr(int s);
-
-/* Announce the presence of the current Mail version, give the message count,
- * and print a header listing */
-FL void        announce(int printheaders);
-
-/* Announce information about the file we are editing.  Return a likely place
- * to set dot */
-FL int         newfileinfo(void);
-
-FL int         getmdot(int nmail);
-
-FL void        initbox(char const *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
  * Return FAL0 if there is no such command */
