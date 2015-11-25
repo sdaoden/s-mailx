@@ -1199,7 +1199,9 @@ jcantfout:
          }
          free_child(pid);
       } else {
-         char c, *fname = file_expand(np->n_name);
+         int c;
+         char *fname = file_expand(np->n_name);
+
          if (fname == NULL) {
             *senderror = TRU1;
             goto jcant;
