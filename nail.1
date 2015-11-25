@@ -201,9 +201,10 @@ variable.
 .
 .Mx
 .It Fl d
-Set the
+Sets the
 .Va debug
-variable, which enables debug messages and disables message delivery.
+variable which enables debug messages and disables message delivery,
+among others; effectively turns almost any operation into a dry-run.
 .
 .Mx
 .It Fl E
@@ -431,7 +432,7 @@ Print \*(UA's version and exit.
 .It Fl v
 Setting the
 .Va verbose
-option causes some verbosity (like printing of certificate chains).
+option enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .
 .Mx
@@ -5270,8 +5271,8 @@ The content interpretation is identical to
 .
 .Mx
 .It Va debug
-\*(BY Prints debugging messages and disables the actual delivery of
-messages, and also implies
+\*(BY Enables debug messages and obsoletion warnings, disables the
+actual delivery of messages and also implies
 .Pf no Va record
 as well as
 .Pf no Va save .
@@ -7758,14 +7759,13 @@ doing things, respectively.
 .
 .Mx
 .It Va verbose
-\*(BY
-Setting this option, also controllable via the command line option
+\*(BY Setting this option, also controllable via the command line option
 .Fl v ,
-causes \*(UA to be more verbose, so that, e.g., certificate chains will
-be displayed on the users terminal.
-Setting this binary option twice increases the level of verbosity, in
-which case even details of the actual message delivery and protocol
-conversations are shown.
+causes \*(UA to be more verbose, e.g., it will display obsoletion
+warnings and SSL/TLS certificate chains.
+Even though marked \*(BY this option may be set twice in order to
+increase the level of verbosity even more, in which case even details of
+the actual message delivery and protocol conversations are shown.
 A single
 .Pf no Va verbose
 is sufficient to disable verbosity as such.
