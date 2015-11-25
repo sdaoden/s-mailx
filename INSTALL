@@ -16,7 +16,7 @@ All (optional) features are documented (and adjustable) in "make.rc".
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in "make.rc" (if any):
 
-  $ [make &&] make install
+  $ make install
   $ make uninstall          # Won't remove the system wide startup file!
   $ make distclean          # *Completely* cleanup working directory
 
