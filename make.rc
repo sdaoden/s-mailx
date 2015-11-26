@@ -54,12 +54,12 @@ MAILSPOOL=`\
 
 # Path to the local MTA (Mail Transport Agent).
 SENDMAIL=`\
-   if [ -x /usr/sbin/sendmail ]; then \
-      echo /usr/sbin/sendmail;\
+   if [ -x /usr/bin/sendmail ]; then \
+      echo /usr/bin/sendmail;\
    elif [ -x /usr/lib/sendmail ]; then \
       echo /usr/lib/sendmail;\
    else \
-      echo /usr/bin/sendmail;\
+      echo /usr/sbin/sendmail;\
    fi`
 
 # Today a lot of systems no longer use sendmail(1), but a different MTA.
