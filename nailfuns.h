@@ -419,17 +419,18 @@ FL time_t      n_time_epoch(void);
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
-/* Our error print series.. */
+/* Our error print series..  Note: these reverse scan format in order to know
+ * wether a newline was included or not -- this affects the output! */
 FL void        n_err(char const *format, ...);
 FL void        n_verr(char const *format, va_list ap);
 
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);
 
-/* ..including replacement for perror(3); if errval is 0 errno(3) is used */
+/* Our perror(3); if errval is 0 errno(3) is used; newline appended */
 FL void        n_perr(char const *msg, int errval);
 
-/* Announce a fatal error (and die) */
+/* Announce a fatal error (and die); newline appended */
 FL void        n_alert(char const *format, ...);
 FL void        n_panic(char const *format, ...);
 

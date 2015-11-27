@@ -179,7 +179,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (mp != NULL) {
       if (sendmp(mp, nf, 0, NULL, action, NULL) < 0) {
-         n_err(_("Failed to prepare editable message"));
+         n_err(_("Failed to prepare editable message\n"));
          goto jleave;
       }
    } else {

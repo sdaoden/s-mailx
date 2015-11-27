@@ -230,7 +230,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
       if (options & OPT_DEBUG)
-         n_err(">>> %s", _(">>>Would perform GSS-API authentication now\n"));
+         n_err(_(">>> We would perform GSS-API authentication now\n"));
       else if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
       break;
@@ -272,7 +272,8 @@ jsend:
       }
 
       if (options & OPT_DEBUG) {
-         n_err(">>> %s%s", (*slp->buf == '.' ? "." : ""), slp->buf);
+         slp->buf[blen - 1] = '\0';
+         n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : ""), slp->buf);
          continue;
       }
       if (*slp->buf == '.')

@@ -1297,7 +1297,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
 static void
 __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
 {
-   size_t cnt, bufsize;
+   size_t cnt, bufsize, llen;
    char *buf;
    NYD_ENTER;
 
@@ -1311,8 +1311,10 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    cnt = fsize(sbp->sb_input);
    buf = NULL;
    bufsize = 0;
-   while (fgetline(&buf, &bufsize, &cnt, NULL, sbp->sb_input, 1) != NULL)
-      n_err(">>> %s", buf);
+   while (fgetline(&buf, &bufsize, &cnt, &llen, sbp->sb_input, TRU1) != NULL) {
+      buf[--llen] = '\0';
+      n_err(">>> %s\n", buf);
+   }
    if (buf != NULL)
       free(buf);
    NYD_LEAVE;

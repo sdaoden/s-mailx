@@ -290,11 +290,12 @@ static enum okay
 pop3_answer(struct mailbox *mp)
 {
    int sz;
+   size_t blen;
    enum okay rv = STOP;
    NYD_ENTER;
 
 jretry:
-   if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock)) > 0) {
+   if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, &blen, &mp->mb_sock)) > 0) {
       if ((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
       if (options & OPT_VERBVERB)
@@ -307,7 +308,11 @@ jretry:
       case '-':
          rv = STOP;
          mp->mb_active = MB_NONE;
-         n_err(_("POP3 error: %s"), _pop3_buf);
+         while (blen > 0 &&
+               (_pop3_buf[blen - 1] == NETNL[0] ||
+                _pop3_buf[blen - 1] == NETNL[1]))
+            _pop3_buf[--blen] = '\0';
+         n_err(_("POP3 error: %s\n"), _pop3_buf);
          break;
       default:
          /* If the answer starts neither with '+' nor with '-', it must be part
