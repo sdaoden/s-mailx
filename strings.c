@@ -600,31 +600,40 @@ is_asccaseprefix(char const *as1, char const *as2)
 }
 
 FL struct str *
-(n_str_dup)(struct str *self, struct str const *t SMALLOC_DEBUG_ARGS)
-{
+(n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
+      SMALLOC_DEBUG_ARGS){
    NYD_ENTER;
-   if (t != NULL && t->l > 0) {
-      self->l = t->l;
-      self->s = (srealloc)(self->s, t->l +1 SMALLOC_DEBUG_ARGSCALL);
-      memcpy(self->s, t->s, t->l);
-      self->s[t->l] = '\0';
-   } else
+   if(buflen == UIZ_MAX)
+      buflen = (buf == NULL) ? 0 : strlen(buf);
+
+   assert(buflen == 0 || buf != NULL);
+
+   if(LIKELY(buflen > 0)){
+      self->s = (srealloc)(self->s, (self->l = buflen) +1
+            SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s, buf, buflen);
+      self->s[buflen] = '\0';
+   }else
       self->l = 0;
    NYD_LEAVE;
    return self;
 }
 
 FL struct str *
-(n_str_add_buf)(struct str *self, char const *buf, size_t buflen
-   SMALLOC_DEBUG_ARGS)
-{
+(n_str_add_buf)(struct str *self, char const *buf, uiz_t buflen
+      SMALLOC_DEBUG_ARGS){
    NYD_ENTER;
-   if (buflen != 0) {
-      size_t sl = self->l;
-      self->l = sl + buflen;
-      self->s = (srealloc)(self->s, self->l +1 SMALLOC_DEBUG_ARGSCALL);
-      memcpy(self->s + sl, buf, buflen);
-      self->s[self->l] = '\0';
+   if(buflen == UIZ_MAX)
+      buflen = (buf == NULL) ? 0 : strlen(buf);
+
+   assert(buflen == 0 || buf != NULL);
+
+   if(buflen > 0) {
+      size_t osl = self->l, nsl = osl + buflen;
+
+      self->s = (srealloc)(self->s, (self->l = nsl) +1 SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s + osl, buf, buflen);
+      self->s[nsl] = '\0';
    }
    NYD_LEAVE;
    return self;

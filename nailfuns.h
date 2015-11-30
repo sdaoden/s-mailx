@@ -1970,20 +1970,27 @@ FL char const *asccasestr(char const *s1, char const *s2);
 /* Case-independent ASCII check wether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
 
-/* struct str related support funs */
+/* struct str related support funs TODO _cp->_cs! */
 
 /* *self->s* is srealloc()ed */
-FL struct str * n_str_dup(struct str *self, struct str const *t
-                  SMALLOC_DEBUG_ARGS);
+#define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is srealloc()ed, *self->l* incremented */
-FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
+/* *self->s* is srealloc()ed; if buflen==UIZ_MAX strlen() is called unless buf
+ * is NULL; buf may be NULL if buflen is 0 */
+FL struct str * n_str_assign_buf(struct str *self,
+                  char const *buf, uiz_t buflen SMALLOC_DEBUG_ARGS);
+#define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
+#define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
+
+/* *self->s* is srealloc()ed, *self->l* incremented; if buflen==UIZ_MAX
+ * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
+FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
                   SMALLOC_DEBUG_ARGS);
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
-#define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, (CP) ? strlen(CP) : 0)
+#define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UIZ_MAX)
 
 #ifdef HAVE_DEBUG
-# define n_str_dup(S,T)          n_str_dup(S, T, __FILE__, __LINE__)
+# define n_str_assign_buf(S,B,BL) n_str_assign_buf(S, B, BL, __FILE__, __LINE__)
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
