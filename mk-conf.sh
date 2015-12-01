@@ -639,8 +639,9 @@ check_tool cksum "${cksum:-`command -v cksum`}"
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
-trap "exit 1" HUP INT TERM
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" EXIT
+trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
+trap "trap \"\" HUP INT TERM EXIT;\
+   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -833,8 +834,10 @@ inc=./config.inc
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" EXIT
+trap "trap \"\" HUP INT TERM;\
+   ${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
+trap "trap \"\" HUP INT TERM EXIT;\
+   ${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" EXIT
 
 # Time to redefine helper 2
 msg() {
