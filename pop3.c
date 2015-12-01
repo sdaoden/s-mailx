@@ -937,7 +937,7 @@ pop3_quit(void)
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
       safe_signal(SIGINT, saveint);
-      safe_signal(SIGPIPE, saveint);
+      safe_signal(SIGPIPE, savepipe);
       _pop3_lock = 0;
       interrupts = 0;
       goto jleave;
