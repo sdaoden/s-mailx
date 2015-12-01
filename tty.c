@@ -166,7 +166,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
 jrestore:
    termios_state_reset();
 
-   safe_signal(SIGINT, ohup);
+   safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 jleave:
    NYD_LEAVE;
