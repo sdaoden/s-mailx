@@ -426,11 +426,11 @@
 #endif
 
 #if defined __predict_true && defined __predict_false
-# define LIKELY(X)      __predict_true((X) == 1)
-# define UNLIKELY(X)    __predict_false((X) == 0)
+# define LIKELY(X)      __predict_true(X)
+# define UNLIKELY(X)    __predict_false(X)
 #elif CC_CLANG || PREREQ_GCC(2, 96)
-# define LIKELY(X)      __builtin_expect((X) == 1, 1)
-# define UNLIKELY(X)    __builtin_expect((X) == 0, 0)
+# define LIKELY(X)      __builtin_expect(X, 1)
+# define UNLIKELY(X)    __builtin_expect(X, 0)
 #else
 # define LIKELY(X)      (X)
 # define UNLIKELY(X)    (X)
