@@ -954,7 +954,8 @@ produce) with either of the text-mode browsers
 or
 .Xr elinks 1 ,
 teach \*(UA about MathML documents and make it display them as plain text
-and to open PDF attachments in an external PDF viewer, asynchronously:
+and to open PDF attachments in an external PDF viewer, asynchronously
+and with some other magic attached:
 .
 .Bd -literal -offset indent
 if $features !@ HTML-FILTER
@@ -964,13 +965,10 @@ if $features !@ HTML-FILTER
   #set pipe-text/html=@
 endif
 mimetype '@ application/mathml+xml mathml'
-set pipe-application/pdf="@&set -C;\e
-    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
-    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
-      EXIT INT QUIT PIPE TERM;\e
-    set +C;\e
-    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e"; \e
-    xpdf \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e""
+set pipe-application/pdf="@&+=@ \e
+    trap \e"rm -f \e\e\e"${NAIL_FILENAME_TEMPORARY}\e\e\e"\e" EXIT;\e
+    trap \e"exit 75\e" \e INT QUIT TERM;\e
+    xpdf \e"${NAIL_FILENAME_TEMPORARY}\e""
 .Ed
 .
 .Pp
@@ -6450,6 +6448,8 @@ When a MIME message part of type
 (normalized to lowercase) is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
+(For a future version of \*(UA support of mailcap files as specified in
+RFC 1524 is planned, in which case this mechanism will be \*(OBed.)
 The special value
 .Ql @
 can be used to force interpretation of the message part as plain text, e.g.,
@@ -6459,38 +6459,57 @@ will henceforth treat signatures as plain text and display them "as is".
 .Ic mimetype
 command in conjunction with a type marker.)
 .Pp
-Also, if a shell command is prefixed with
-.Ql @ ,
-then the command will only be used to prepare the MIME message part if
-the message is displayed by itself, but not when multiple messages are
-displayed at once.
-.Pp
-Finally, if a shell command is prefixed with
-.Ql @& ,
-then, in addition to what has been described for the plain
+The special value
 .Ql @
-shell command prefix, the command will be run asynchronously, i.e.,
-without blocking \*(UA, which may be a handy way to display a, e.g., PDF
-file while also continuing to read the mail message.
+can in fact be used to adjust usage and behaviour of a following shell
+command specification by appending trigger characters to it, e.g., the
+following hypothetical command specification could be used:
+.Bd -literal -offset indent
+set pipe-X/Y="@*++=cat ${NAIL_FILENAME_TEMPORARY}"
+.Ed
+.Pp
+.Bl -tag -compact -width ".It Ql __"
+.It Ql *
+Simply by using the special
+.Ql @
+prefix the (shell command) MIME type handler will only be invoked to
+display or convert the MIME part if the message is addressed directly
+and alone by itself.
+Use this trigger to disable this and always invoke the handler (again).
+.It Ql #
+If set the handler will not be invoked when a message is to be quoted,
+but only when it will be displayed.
+.It Ql &
+The command will be run asynchronously, i.e., without blocking \*(UA,
+which may be a handy way to display a, e.g., PDF file while also
+continuing to read the mail message.
+Asynchronous execution implies
+.Ql # .
+.It Ql +
+Request creation of a zero-sized temporary file, the absolute pathname
+of which will be made accessable via the environment variable
+.Ev NAIL_FILENAME_TEMPORARY .
+If this trigger is given twice then the file will be unlinked
+automatically by \*(UA when the command loop is entered again at latest.
+(Don't use this for asynchronous handlers.)
+.It Ql =
+Normally the MIME part content is passed to the handler via standard
+input; if this flag is set then the data will instead be written into
+.Ev NAIL_FILENAME_TEMPORARY .
+Note that in order to cause deletion of the temporary file you still
+have to give two additional plus-signs
+.Ql ++ !
+.It Ql @
+To avoid ambiguities with normal shell command content you can use
+another at-sign to forcefully terminate interpretation of remaining
+characters.
+(Any character not in this list will have the same effect.)
+.El
+.Pp
 Some information about the MIME part to be displayed is embedded into
 the environment of the shell command:
 .Pp
 .Bl -tag -compact -width ".It Ev _AIL__ILENAME__ENERATED"
-.Mx
-.It Ev NAIL_TMPDIR
-The temporary directory that \*(UA uses.
-Usually identical to
-.Ev TMPDIR ,
-but guaranteed to be set and usable by child processes;
-to ensure the latter condition for
-.Ev \&\&TMPDIR
-also, it'll be set.
-.Mx
-.It Ev NAIL_FILENAME
-The filename, if any is set, the empty string otherwise.
-.Mx
-.It Ev NAIL_FILENAME_GENERATED
-A random string.
 .Mx
 .It Ev NAIL_CONTENT
 The MIME content-type of the part, if known, the empty string otherwise.
@@ -6502,6 +6521,26 @@ includes the carry-around-bit (2), then this will be set to the detected
 MIME content-type; not only then identical to
 .Ev \&\&NAIL_CONTENT
 otherwise.
+.Mx
+.It Ev NAIL_FILENAME
+The filename, if any is set, the empty string otherwise.
+.Mx
+.It Ev NAIL_FILENAME_GENERATED
+A random string.
+.Mx
+.It Ev NAIL_FILENAME_TEMPORARY
+If temporary file creation has been requested through the command prefix
+this variable will be set and contain the absolute pathname of the
+temporary file.
+.Mx
+.It Ev NAIL_TMPDIR
+The temporary directory that \*(UA uses.
+Usually identical to
+.Ev TMPDIR ,
+but guaranteed to be set and usable by child processes;
+to ensure the latter condition for
+.Ev \&\&TMPDIR
+also, it'll be set.
 .El
 .
 .Mx
@@ -8070,14 +8109,9 @@ ghost LlS !ls -aFlS
 # message parts can be dealt with as follows:
 define V {
   localopts yes
-  set pipe-text/plain="set -C;\e
-    : > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" \e
-    trap \e"rm -f \e\e\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e\e\e"\e" \e
-      EXIT INT QUIT PIPE TERM;\e
-    set +C;\e
-    cat > \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e";\e
-    < \e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" awk \e
-        -v TMPFILE=\e"${TMPDIR}/${NAIL_FILENAME_GENERATED}\e" '\e
+  set pipe-text/plain="@*#++=@\e
+    < \e"${NAIL_FILENAME_TEMPORARY}\e" awk \e
+        -v TMPFILE=\e"${NAIL_FILENAME_TEMPORARY}\e" '\e
       BEGIN {done=0}\e
       /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
         if (done++ != 0)\e
