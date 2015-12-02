@@ -1109,6 +1109,22 @@ int main(void){
 }
 !
 
+# We use this only then for now (need NOW+1)
+run_check utimensat 'utimensat(2)' '#define HAVE_UTIMENSAT' << \!
+#include <fcntl.h> /* For AT_* */
+#include <sys/stat.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts[2];
+
+   ts[0].tv_nsec = UTIME_NOW;
+   ts[1].tv_nsec = UTIME_OMIT;
+   if(!utimensat(AT_FDCWD, "", ts, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+
 ##
 
 # XXX Add POSIX check once standardized
