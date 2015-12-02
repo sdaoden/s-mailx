@@ -584,12 +584,13 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    FILE *fp = NULL;
    size_t maxname, tries;
    char *cp_base, *cp;
-   int osoflags, fd;
+   int osoflags, fd, e;
    NYD_ENTER;
 
    assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
    assert(!(oflags & OF_RDONLY));
 
+   e = 0;
    maxname = NAME_MAX;
 #ifdef HAVE_PATHCONF
    {  long pc;
@@ -637,8 +638,10 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
          _CLOEXEC_SET(fd);
          break;
       }
-      if (tries >= FTMP_OPEN_TRIES)
+      if (tries >= FTMP_OPEN_TRIES) {
+         e = errno;
          goto jfree;
+      }
       rele_all_sigs();
    }
 
@@ -648,6 +651,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
+      e = errno;
       unlink(cp_base);
       goto jfree;
    }
@@ -659,6 +663,8 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
 jleave:
    if (fp == NULL || !(oflags & OF_HOLDSIGS))
       rele_all_sigs();
+   if (fp == NULL)
+      errno = e;
    NYD_LEAVE;
    return fp;
 jfree:
