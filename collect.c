@@ -654,8 +654,15 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    }
 
-   if ((cp = ok_vlook(NAIL_HEAD)) != NULL && putesc(cp, _coll_fp) < 0)
+   {
+      char const *cp_obsolete = ok_vlook(NAIL_HEAD);
+      if(cp_obsolete != NULL)
+         OBSOLETE(_("please use *message-inject-head* instead of *NAIL_HEAD*"));
+
+      if(((cp = ok_vlook(message_inject_head)) != NULL ||
+         (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
       goto jerr;
+   }
 
    /* If we are going to prompt for a subject, refrain from printing a newline
     * after the headers (since some people mind) */
@@ -1073,15 +1080,22 @@ jout:
          putc('\n', _coll_fp);
    }
 
-   if(fflush(_coll_fp))
-      goto jerr;
+   {  char const *cp_obsolete = ok_vlook(NAIL_TAIL);
 
-   if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
-      if (putesc(cp, _coll_fp) < 0)
+      if(cp_obsolete != NULL)
+         OBSOLETE(_("please use *message-inject-tail* instead of *NAIL_TAIL*"));
+
+   if((cp = ok_vlook(message_inject_tail)) != NULL ||
+         (cp = cp_obsolete) != NULL){
+      if(putesc(cp, _coll_fp) < 0)
          goto jerr;
-      if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+      if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
          goto jerr;
    }
+   }
+
+   if(fflush(_coll_fp))
+      goto jerr;
    rewind(_coll_fp);
 
 jleave:

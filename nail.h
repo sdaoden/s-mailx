@@ -1241,6 +1241,8 @@ ok_b_emptybox,
    ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {special=1} */
    ok_b_message_id_disable,
+   ok_v_message_inject_head,
+   ok_v_message_inject_tail,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
@@ -1248,14 +1250,12 @@ ok_b_emptybox,
    ok_v_mimetypes_load_control,
 
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
-   /* TODO v15-compat: NAIL_HEAD -> message-head? */
-   ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
+ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
    /* TODO v15-compat: NAIL_HISTFILE -> history-file */
    ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
    /* TODO v15-compat: NAIL_HISTSIZE -> history-size{,limit} */
    ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
-   /* TODO v15-compat: NAIL_TAIL -> message-tail? */
-   ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_netrc_lookup,
    ok_v_newfolders,
    ok_v_newmail,

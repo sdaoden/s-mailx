@@ -6125,6 +6125,24 @@ field by itself, so you should ensure that it accepts messages without a
 .Ql Message-ID . )
 .
 .Mx
+.It Va message-inject-head
+A string to put at the beginning of each new message.
+The escape sequences tabulator
+.Ql \et
+and newline
+.Ql \en
+are understood.
+.
+.Mx
+.It Va message-inject-tail
+A string to put at the end of each new message.
+The escape sequences tabulator
+.Ql \et
+and newline
+.Ql \en
+are understood.
+.
+.Mx
 .It Va metoo
 \*(BO Usually, when an
 .Ic alias
@@ -6279,15 +6297,6 @@ Use this file for commands that are not understood by other POSIX
 implementations.
 .
 .Mx
-.It Va NAIL_HEAD
-A string to put at the beginning of each new message.
-The escape sequences tabulator
-.Ql \et
-and newline
-.Ql \en
-are understood.
-.
-.Mx
 .It Va NAIL_HISTFILE
 \*(OP If a command line editor is available then this can be set to
 name the (expandable) path of the location of a permanent history file.
@@ -6306,15 +6315,6 @@ Dependent on the available command line editor this will also define the
 number of history entries in memory;
 it is also editor-specific wether runtime updates of this value will be
 honoured.
-.
-.Mx
-.It Va NAIL_TAIL
-A string to put at the end of each new message.
-The escape sequences tabulator
-.Ql \et
-and newline
-.Ql \en
-are understood.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
