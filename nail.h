@@ -1212,8 +1212,10 @@ ok_b_emptybox,
    ok_b_header,                        /* {special=1} */
    ok_v_headline,
    ok_v_headline_bidi,
+   ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
+   ok_v_history_size,
    ok_b_hold,
    ok_v_hostname,
 
@@ -1251,10 +1253,8 @@ ok_b_emptybox,
 
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
-   /* TODO v15-compat: NAIL_HISTFILE -> history-file */
-   ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-   /* TODO v15-compat: NAIL_HISTSIZE -> history-size{,limit} */
-   ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
+ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
+ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_netrc_lookup,
    ok_v_newfolders,

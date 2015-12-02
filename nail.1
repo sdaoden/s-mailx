@@ -2068,12 +2068,12 @@ handling is by itself an optional feature and may therefore not be
 available.
 For more information see the documentation of the variables
 .Va emptystart ,
+.Va history-file ,
 .Va history-gabby ,
 .Va history-gabby-persist ,
-.Va line-editor-disable ,
-.Va NAIL_HISTFILE
+.Va history-size
 and
-.Va NAIL_HISTSIZE .
+.Va line-editor-disable .
 And there is also the \*(OPal
 .Va term-ca-mode
 will can be set to cause overall screen resets when \*(UA releases the
@@ -5872,6 +5872,11 @@ select Unicode 1.1 support (U+200E, LEFT-TO-RIGHT MARK); the latter
 again reserves room for two spaces in addition.
 .
 .Mx
+.It Va history-file
+\*(OP If a command line editor is available then this can be set to
+name the (expandable) path of the location of a permanent history file.
+.
+.Mx
 .It Va history-gabby
 \*(BO\*(OP Add more entries to the history as is normally done.
 .
@@ -5883,7 +5888,22 @@ entries in persistent storage unless this variable is set.
 On the other hand it will not loose the knowledge of wether a persistent
 entry was gabby or not.
 Also see
-.Va NAIL_HISTFILE .
+.Va history-file .
+.
+.Mx
+.It Va history-size
+\*(OP If a command line editor is available this value restricts the
+amount of history entries that are saved into a set and valid
+.Va history-file .
+A value of less than 0 disables this feature;
+note that loading and incorporation of
+.Va history-file
+upon program startup can also be suppressed by doing this.
+An unset or invalid value, or 0, causes a default value to be used.
+Dependent on the available command line editor this will also define the
+number of history entries in memory;
+it is also editor-specific wether runtime updates of this value will be
+honoured.
 .
 .Mx
 .It Va hold
@@ -6295,26 +6315,6 @@ invocations.
 Use this file for commands that are not understood by other POSIX
 .Xr mailx 1
 implementations.
-.
-.Mx
-.It Va NAIL_HISTFILE
-\*(OP If a command line editor is available then this can be set to
-name the (expandable) path of the location of a permanent history file.
-.
-.Mx
-.It Va NAIL_HISTSIZE
-\*(OP If a command line editor is available this value restricts the
-amount of history entries that are saved into a set and valid
-.Va NAIL_HISTFILE .
-A value of less than 0 disables this feature;
-note that loading and incorporation of
-.Va NAIL_HISTFILE
-upon program startup can also be suppressed by doing this.
-An unset or invalid value, or 0, causes a default value to be used.
-Dependent on the available command line editor this will also define the
-number of history entries in memory;
-it is also editor-specific wether runtime updates of this value will be
-honoured.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
@@ -8763,10 +8763,11 @@ set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager crt= followup-to followup-to-honour=ask-yes \e
-    history-gabby mime-counter-evidence=0xE \e
+    colour-pager crt= \e
+    followup-to followup-to-honour=ask-yes \e
+    history-file=+.\*(uahist history-size=-1 history-gabby \e
+    mime-counter-evidence=0xE \e
     prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
-    NAIL_HISTFILE=+.\*(uahist NAIL_HISTSIZE=-1 \e
     reply-to-honour=ask-yes
 
 # When `p'rinting messages, show only these headers

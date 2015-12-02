@@ -65,15 +65,25 @@
 #ifdef HAVE_HISTORY
 # define _CL_HISTFILE(S) \
 do {\
-   S = ok_vlook(NAIL_HISTFILE);\
+   char const *__hist_obsolete = ok_vlook(NAIL_HISTFILE);\
+   if (__hist_obsolete != NULL)\
+      OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));\
+   S = ok_vlook(history_file);\
+   if ((S) == NULL)\
+      (S) = __hist_obsolete;\
    if ((S) != NULL)\
-      S = fexpand(S, FEXP_LOCAL);\
-} while (0)
+      S = fexpand(S, FEXP_LOCAL | FEXP_NSHELL);\
+} while(0)
 
 # define _CL_HISTSIZE(V) \
 do {\
-   char const *__sv = ok_vlook(NAIL_HISTSIZE);\
+   char const *__hist_obsolete = ok_vlook(NAIL_HISTSIZE);\
+   char const *__sv = ok_vlook(history_size);\
    long __rv;\
+   if (__hist_obsolete != NULL)\
+      OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));\
+   if (__sv == NULL)\
+      __sv = __hist_obsolete;\
    if (__sv == NULL || *__sv == '\0' || (__rv = strtol(__sv, NULL, 10)) == 0)\
       (V) = HIST_SIZE;\
    else if (__rv < 0)\
@@ -290,7 +300,7 @@ tty_init(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
-   char *v;
+   char const *v;
 # endif
    NYD_ENTER;
 
@@ -317,7 +327,7 @@ FL void
 tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
-   char *v;
+   char const *v;
 # endif
    NYD_ENTER;
 
@@ -489,7 +499,7 @@ tty_init(void)
 # ifdef HAVE_HISTORY
    HistEvent he;
    long hs;
-   char *v;
+   char const *v;
 # endif
    NYD_ENTER;
 
@@ -539,7 +549,7 @@ tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    HistEvent he;
-   char *v;
+   char const *v;
 # endif
    NYD_ENTER;
 
@@ -1771,7 +1781,8 @@ tty_init(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
-   char *v, *lbuf;
+   char const *v;
+   char *lbuf;
    FILE *f;
    size_t lsize, cnt, llen;
 # endif
@@ -1825,7 +1836,7 @@ tty_destroy(void)
 {
 # ifdef HAVE_HISTORY
    long hs;
-   char *v;
+   char const *v;
    struct hist *hp;
    bool_t dogabby;
    FILE *f;
