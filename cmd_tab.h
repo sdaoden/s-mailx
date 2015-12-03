@@ -398,7 +398,7 @@
 #endif
 #ifdef HAVE_NETRC
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
-     DS(N_("Either <show> (default) or <clear> the .netrc cache")) },
+     DS(N_("<show> (default), <load> or <clear> the .netrc cache")) },
 #endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0

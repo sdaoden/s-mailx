@@ -1216,13 +1216,18 @@ c_netrc(void *v)
 {
    char **argv = v;
    struct nrc_node *nrc;
+   bool_t load_only;
    NYD_ENTER;
 
+   load_only = FAL0;
    if (*argv == NULL)
       goto jlist;
    if (argv[1] != NULL)
       goto jerr;
    if (!asccasecmp(*argv, "show"))
+      goto jlist;
+   load_only = TRU1;
+   if (!asccasecmp(*argv, "load"))
       goto jlist;
    if (!asccasecmp(*argv, "clear"))
       goto jclear;
@@ -1244,6 +1249,8 @@ jlist:   {
       v = NULL;
       goto jleave;
    }
+   if (load_only)
+      goto jleave;
 
    if ((fp = Ftmp(NULL, "netrc", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
