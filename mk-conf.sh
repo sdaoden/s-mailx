@@ -14,7 +14,7 @@ option_reset() {
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
-   WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
+   WANT_READLINE=0 WANT_NCL=0
    WANT_TERMCAP=0
    WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
@@ -133,7 +133,7 @@ option_update() {
       WANT_GSSAPI=0
    fi
 
-   if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
+   if feat_no READLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
 
@@ -2072,51 +2072,17 @@ int main(void){
    [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
-if feat_yes EDITLINE && [ -z "${have_readline}" ]; then
-   __edlib() {
-      link_check editline "for editline(3) (${1})" \
-         '#define HAVE_EDITLINE' "${1}" << \!
-#include <stdio.h> /* For C89 NULL */
-#include <histedit.h>
-static char * getprompt(void) { return (char*)"ok"; }
-int main(void)
-{
-   EditLine *el_el = el_init("TEST", stdin, stdout, stderr);
-   HistEvent he;
-   History *el_hcom = history_init();
-   history(el_hcom, &he, H_SETSIZE, 242);
-   el_set(el_el, EL_SIGNAL, 0);
-   el_set(el_el, EL_TERMINAL, NULL);
-   el_set(el_el, EL_HIST, &history, el_hcom);
-   el_set(el_el, EL_EDITOR, "emacs");
-   el_set(el_el, EL_PROMPT, &getprompt);
-   el_source(el_el, NULL);
-   history(el_hcom, &he, H_GETSIZE);
-   history(el_hcom, &he, H_CLEAR);
-   el_end(el_el);
-   /* TODO add loader and addfn checks */
-   history_end(el_hcom);
-   return 0;
-}
-!
-   }
-
-   __edlib -ledit ||
-      __edlib '-ledit -ltermcap' || feat_bail_required EDITLINE
-   [ -n "${have_editline}" ] && WANT_TABEXPAND=0
-fi
-
-if feat_yes NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
+if feat_yes NCL && [ -z "${have_readline}" ] &&\
       [ -n "${have_c90amend1}" ]; then
    have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
 else
    feat_bail_required NCL
-   echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
+   echo '/* WANT_{READLINE,NCL}=0 */' >> ${h}
 fi
 
 # Generic have-a-command-line-editor switch for those who need it below
-if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
+if [ -n "${have_ncl}" ] ||\
       [ -n "${have_readline}" ]; then
    have_cle=1
 fi
@@ -2293,7 +2259,6 @@ printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
@@ -2406,11 +2371,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_REGEX
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
-#if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
+#if defined HAVE_READLINE || defined HAVE_NCL
 # ifdef HAVE_READLINE
 : + Command line editing via readline(3)
-# elif defined HAVE_EDITLINE
-: + Command line editing via editline(3)
 # else
 : + Command line editing via N(ail) C(ommand) L(ine)
 # endif
@@ -2503,7 +2466,7 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_REGEX
 : - Regular expression support
 #endif
-#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
+#if !defined HAVE_READLINE && !defined HAVE_NCL
 : - Command line editing and history
 #endif
 #ifndef HAVE_TERMCAP

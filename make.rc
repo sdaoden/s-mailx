@@ -191,23 +191,17 @@ WANT_IMAP_SEARCH=yes
 WANT_REGEX=yes
 
 # Command line editing and -history.
-# S-nail actually supports three different command line editors, one
-# builtin and two fully fledged external libraries which may offer
-# a slightly better user experience at the cost of more memory usage and
-# CPU time; also the interactive behaviour may not be one-to-one to what
-# is documented.  Note that these are tested in shown order, and each
-# desired one must be enabled by itself!
+# One may choose in between different command line editors.  Note that
+# (1) only the builtin NCL (may) map(s) 1:1 to the behaviour as is
+# documented in the manual and (2) these are tested in the shown order:
 # . WANT_READLINE
 #   The GNU readline(3) compatible interface; can be "require"d.
-# . WANT_EDITLINE
-#   Command line editing via BSD editline(3); can be "require"d.
 # . WANT_NCL
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
 #   system then our builtin NCL (Nail Command Line editor) version can
 #   be used.  It is documented in the manual section "Command line
 #   editor" and can be "require"d.
 WANT_READLINE=no
-WANT_EDITLINE=no
 WANT_NCL=yes
 # All command line editors optionally support history management.
 WANT_HISTORY=yes

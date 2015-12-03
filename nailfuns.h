@@ -2158,7 +2158,7 @@ FL char *      getpassword(char const *query);
 #endif
 
 /* Overall interactive terminal life cycle for command line editor library */
-#if defined HAVE_EDITLINE || defined HAVE_READLINE
+#if defined HAVE_READLINE
 # define TTY_WANTS_SIGWINCH
 #endif
 FL void        n_tty_init(void);

@@ -2099,10 +2099,9 @@ contains complete example configurations.
 .
 \*(OP \*(UA can be configured to support a command line editor and
 command history lists which are saved in between sessions.
-One may link against fully-fledged external libraries
-.Pf ( Xr readline 6 ,
-.Xr editline 3 Ns
-) or use \*(UA's own command line editor NCL (Nail-Command-Line)
+One may link against a fully-fledged external library
+.Pf ( Xr readline 6 )
+or use \*(UA's own command line editor NCL (Nail-Command-Line)
 instead, which should work in all environments which comply to the
 ISO C standard (ISO/IEC 9899:1990/Amendment 1:1995).
 When an external library is used, interactive behaviour of \*(UA relies
@@ -6757,16 +6756,6 @@ escape sequences as necessary to correctly display bidirectional text,
 this is not true for the final string that makes up
 .Va \&\&prompt
 as such, i.e., real BIDI handling is not supported.
-.Pp
-When a newer version of the
-.Xr editline 3
-.Sx "Command line editor"
-is used, any escape sequence must itself be encapsulated with another
-escape character for usage with the
-.Va EL_PROMPT_ESC
-mechanism: \*(UA configures the control character
-.Ql \e01
-for this.
 .
 .Mx
 .It Va quiet
@@ -9513,7 +9502,6 @@ S-nail (for more on that see the section
 .Xr vacation 1 ,
 .Xr xterm 1 ,
 .Xr xz 1 ,
-.Xr editline 3 ,
 .Xr iconv 3 ,
 .Xr readline 3 ,
 .Xr setlocale 3 ,
