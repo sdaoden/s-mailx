@@ -119,9 +119,9 @@ _update-release:
 	\
 	git checkout timeline &&\
 	git rm -rf '*' &&\
-	git archive --format=tar.gz "v$${REL}" | tar -x -z -f - &&\
+	git archive --format=tar "v$${REL}" | tar -x -f - &&\
 	git add --all &&\
-	git commit -m "$${UAGENT} v$${REL}, $${DATE_ISO}" &&\
+	git commit -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
 	\
 	git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
@@ -130,11 +130,10 @@ _update-release:
 	read i;\
 	git push &&\
 	\
-	git archive --format=tar.gz --prefix="$${UAGENT}-$${REL}/" \
-		-o "$${TMPDIR}/$${UAGENT}-$${FREL}.tar.gz" "v$${REL}" &&\
+	git archive --format=tar --prefix="$${UAGENT}-$${REL}/" "v$${REL}" |\
+		( cd "$${TMPDIR}" && tar -x -f - ) &&\
 	cd "$${TMPDIR}" &&\
-	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
-	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
+	\
 	( \
 	cd "$${UAGENT}-$${REL}" &&\
 	\
