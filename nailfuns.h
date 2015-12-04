@@ -2098,15 +2098,29 @@ FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
  * termcap.c
  */
 
-/* termcap(3) / xy lifetime handling -- only to be called if OPT_INTERACTIVE
- * is true, and may internally decline to initialize itself; note that
- * termcap_destroy() can always be called */
-/* TODO Maybe drop TTYOUT/etc. and only set INTERACTIVE when input and output
- * TODO are a terminal, or ensure via I/O stuff that we use the input+output
- * TODO terminal FD accordingly */
 #ifdef HAVE_TERMCAP
+/* termcap(3) / xy lifetime handling -- these will only do something if we're
+ * OPT_INTERACTIVE etc. */
 FL void        termcap_init(void);
 FL void        termcap_destroy(void);
+# define termcap_init()          \
+   do if(options & OPT_INTERACTIVE) termcap_init(); while(0)
+# define termcap_destroy()       \
+   do if(options & OPT_INTERACTIVE) termcap_destroy(); while(0)
+
+/* Must be called whenever the terminal is released / reaquired */
+FL void        termcap_suspend(void);
+FL void        termcap_resume(void);
+# define termcap_suspend()       \
+   do if(options & OPT_INTERACTIVE) termcap_suspend(); while(0)
+# define termcap_resume()        \
+   do if(options & OPT_INTERACTIVE) termcap_resume(); while(0)
+
+#else /* HAVE_TERMCAP */
+# define termcap_init()
+# define termcap_destroy()
+# define termcap_suspend()
+# define termcap_resume()
 #endif
 
 /*

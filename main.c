@@ -1015,8 +1015,8 @@ jgetopt_done:
    /* We had to wait until the resource files are loaded but it is time to get
     * the termcap going, so that *term-ca-mode* won't hide our output for us */
 #ifdef HAVE_TERMCAP
-   if ((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
-      termcap_init(); /* TODO program state machine */
+   if (!(options & OPT_QUICKRUN_MASK))
+      termcap_init();
 #endif
 
    /* Now we can set the account */
@@ -1127,10 +1127,7 @@ jgetopt_done:
       n_tty_destroy();
 
 jleave:
-#ifdef HAVE_TERMCAP
-   if (options & OPT_INTERACTIVE)
-      termcap_destroy();
-#endif
+   termcap_destroy();
 #ifdef HAVE_DEBUG
    sreset(FAL0);
    smemcheck();
@@ -1146,10 +1143,7 @@ c_rexit(void *v) /* TODO program state machine */
    NYD_ENTER;
 
    if (!(pstate & PS_SOURCING)) {
-#ifdef HAVE_TERMCAP
-      if (options & OPT_INTERACTIVE)
-         termcap_destroy();
-#endif
+      termcap_destroy();
       exit(EXIT_OK);
    }
    NYD_LEAVE;

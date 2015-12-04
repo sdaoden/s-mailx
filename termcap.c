@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Terminal capability interaction. TODO very rudimentary yet
+ *@ Terminal capability interaction.
  *
  * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -28,22 +28,19 @@ EMPTY_FILE()
 #ifdef HAVE_TERMCAP_CURSES
 # include <curses.h>
 #endif
-
 #include <term.h>
 
-static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
+static char *a_termcap_buffer, *a_termcap_ti, *a_termcap_te;
 
-static int     _termcap_putc(int c);
+static int a_termcap_putc(int c);
 
 static int
-_termcap_putc(int c)
-{
+a_termcap_putc(int c){
    return putchar(c);
 }
 
 FL void
-termcap_init(void)
-{
+(termcap_init)(void){
    /* For newer ncurses based termcap emulation buf will remain unused, for
     * elder non-emulated ones really weird things will happen if an entry
     * would require more than 1024 bytes, so don't mind.
@@ -52,53 +49,73 @@ termcap_init(void)
    char buf[1024 + 512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
    NYD_ENTER;
 
-   /* We don't do nothing unless stdout is a terminal TODO */
-   if (!(options & OPT_TTYOUT))
+   assert(options & OPT_INTERACTIVE);
+
+   if(!ok_blook(term_ca_mode))
+      goto jleave;
+   if((cp = env_vlook("TERM", FAL0)) == NULL)
       goto jleave;
 
-   if (!ok_blook(term_ca_mode))
-      goto jleave;
-   if ((cp = env_vlook("TERM", FAL0)) == NULL)
-      goto jleave;
-
-   if (!tgetent(buf, cp))
+   if(!tgetent(buf, cp))
       goto jleave;
    cpb = cmdbuf;
 
    cpti = cpb;
-   if ((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
+   if((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
       goto jleave;
    cpte = cpb;
-   if ((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
+   if((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
       goto jleave;
 
-   _termcap_buffer = smalloc(PTR2SIZE(cpb - cmdbuf));
-   memcpy(_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
+   a_termcap_buffer = smalloc(PTR2SIZE(cpb - cmdbuf));
+   memcpy(a_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
 
-   _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
-   _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
+   a_termcap_ti = a_termcap_buffer + PTR2SIZE(cpti - cmdbuf);
+   a_termcap_te = a_termcap_ti + PTR2SIZE(cpte - cpti);
 
-   tputs(_termcap_ti, 1, &_termcap_putc);
+   tputs(a_termcap_ti, 1, &a_termcap_putc);
    fflush(stdout);
 jleave:
    NYD_LEAVE;
 }
 
 FL void
-termcap_destroy(void)
-{
+(termcap_destroy)(void){
    NYD_ENTER;
+   assert(options & OPT_INTERACTIVE);
 
-   if (_termcap_buffer == NULL)
-      goto jleave;
+   if(a_termcap_buffer != NULL){
+      tputs(a_termcap_te, 1, &a_termcap_putc);
+      fflush(stdout);
 
-   tputs(_termcap_te, 1, &_termcap_putc);
-
-   free(_termcap_buffer);
-jleave:
+      free(a_termcap_buffer);
+   }
    NYD_LEAVE;
 }
 
+FL void
+(termcap_suspend)(void){
+   NYD2_ENTER;
+   assert(options & OPT_INTERACTIVE);
+
+   if(a_termcap_buffer != NULL){
+      tputs(a_termcap_te, 1, &a_termcap_putc);
+      fflush(stdout);
+   }
+   NYD2_LEAVE;
+}
+
+FL void
+(termcap_resume)(void){
+   NYD2_ENTER;
+   assert(options & OPT_INTERACTIVE);
+
+   if(a_termcap_buffer != NULL){
+      tputs(a_termcap_ti, 1, &a_termcap_putc);
+      fflush(stdout);
+   }
+   NYD2_LEAVE;
+}
 #endif /* HAVE_TERMCAP */
 
 /* s-it-mode */
