@@ -911,7 +911,7 @@ _link_mayrun() {
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
-      echo "*** adding INCS<${incs}> LIBS<${libs}>"
+      echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
@@ -941,39 +941,45 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check clock_gettime 'clock_gettime(2)' \
+if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct timespec ts;
-   clock_gettime(CLOCK_REALTIME, &ts);
-   return 0;
+
+   if(!clock_gettime(CLOCK_REALTIME, &ts) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 then
    :
-elif link_check clock_gettime 'clock_gettime(2) (via -lrt)' \
+elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' \
    '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
 #include <time.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct timespec ts;
-   clock_gettime(CLOCK_REALTIME, &ts);
-   return 0;
+
+   if(!clock_gettime(CLOCK_REALTIME, &ts) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 then
    :
-elif link_check gettimeofday 'gettimeofday(2)' \
+elif run_check gettimeofday 'gettimeofday(2)' \
    '#define HAVE_GETTIMEOFDAY' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct timeval tv;
-   gettimeofday(&tv, NULL);
-   return 0;
+
+   if(!gettimeofday(&tv, NULL) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 then
@@ -982,21 +988,23 @@ else
    have_no_subsecond_time=1
 fi
 
-if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+if run_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
 #include <pwd.h>
 #include <unistd.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct passwd *pw;
    gid_t gid;
    uid_t uid;
 
-   if ((gid = getgid()) != 1)
+   if((gid = getgid()) != 0)
       gid = getegid();
-   if ((uid = getuid()) != 1)
+   if((uid = getuid()) != 0)
       uid = geteuid();
-   if ((pw = getpwuid(uid)) == NULL)
-      pw = getpwnam("root");
+   if((pw = getpwuid(uid)) == NULL && errno == ENOSYS)
+      return 1;
+   if((pw = getpwnam("root")) == NULL && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
@@ -1011,17 +1019,17 @@ fi
 if link_check snprintf 'v?snprintf(3)' << \!
 #include <stdarg.h>
 #include <stdio.h>
-static void dome(char *buf, ...)
-{
+static void dome(char *buf, ...){
    va_list ap;
+
    va_start(ap, buf);
    vsnprintf(buf, 20, "%s", ap);
    va_end(ap);
    return;
 }
-int main(void)
-{
+int main(void){
    char b[20];
+
    snprintf(b, sizeof b, "%s", "string");
    dome(b, "string");
    return 0;
@@ -1036,9 +1044,9 @@ fi
 
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
-int main(void)
-{
+int main(void){
    struct termios tios;
+
    tcgetattr(0, &tios);
    tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
    return 0;
@@ -1074,24 +1082,30 @@ int main(void)
 }
 !
 
-link_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
-int main(void)
-{
-   pathconf(".", _PC_NAME_MAX);
-   pathconf(".", _PC_PATH_MAX);
-   return 0;
+#include <errno.h>
+int main(void){
+   int rv = 0;
+
+   errno = 0;
+   rv |= !(pathconf(".", _PC_NAME_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+   errno = 0;
+   rv |= !(pathconf(".", _PC_PATH_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+   return rv;
 }
 !
 
-link_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
+run_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
 #include <fcntl.h>
 #include <unistd.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    int fds[2];
-   pipe2(fds, O_CLOEXEC);
-   return 0;
+
+   if(!pipe2(fds, O_CLOEXEC) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 
@@ -1100,8 +1114,7 @@ int main(void)
 # XXX Add POSIX check once standardized
 if link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    arc4random();
    return 0;
 }
@@ -1116,8 +1129,7 @@ fi
 
 link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    setenv("s-nail", "to be made nifty!", 1);
    unsetenv("s-nail");
    return 0;
@@ -1126,8 +1138,7 @@ int main(void)
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
-int main(void)
-{
+int main(void){
    putc_unlocked('@', stdout);
    return 0;
 }
@@ -1135,8 +1146,7 @@ int main(void)
 
 link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
 #include <unistd.h>
-int main(void)
-{
+int main(void){
    fchdir(0);
    return 0;
 }
@@ -1144,8 +1154,7 @@ int main(void)
 
 link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
-int main(void)
-{
+int main(void){
    setlocale(LC_ALL, "");
    return 0;
 }
@@ -1158,10 +1167,10 @@ if [ "${have_setlocale}" = yes ]; then
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
-int main(void)
-{
+int main(void){
    char mbb[MB_LEN_MAX + 1];
    wchar_t wc;
+
    iswprint(L'c');
    towupper(L'c');
    mbtowc(&wc, "x", 1);
@@ -1174,8 +1183,7 @@ int main(void)
    if [ "${have_c90amend1}" = yes ]; then
       link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
-int main(void)
-{
+int main(void){
    wcwidth(L'c');
    return 0;
 }
@@ -1185,29 +1193,34 @@ int main(void)
    link_check nl_langinfo 'nl_langinfo(3)' '#define HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    nl_langinfo(DAY_1);
    return (nl_langinfo(CODESET) == NULL);
 }
 !
 fi # have_setlocale
 
-# Note: run_check, thus we also get only the desired implementation...
 run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
+#if 1 /* TODO for now we use realpath(3) without NULL as 2nd arg! */
+   /* (And note that on Linux tcc(1) otherwise didn't detect once tested! */
+   char x_buf[4096], *x = realpath(".", x_buf);
+
+   return (x != NULL) ? 0 : 1;
+#else
    char *x = realpath(".", NULL), *y = realpath("/", NULL);
+
    return (x != NULL && y != NULL) ? 0 : 1;
+#endif
 }
 !
 
 link_check wordexp 'wordexp(3)' '#define HAVE_WORDEXP' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <wordexp.h>
-int main(void)
-{
-   wordexp((char*)0, (wordexp_t*)0, 0);
+int main(void){
+   wordexp(NULL, NULL, 0);
    return 0;
 }
 !
@@ -1226,12 +1239,12 @@ if feat_no NOALLOCA; then
    # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
    # versions of alloca(3) since modern compilers just can't be trusted
    # not to overoptimize and silently break some code
-   link_check alloca '__builtin_alloca()' \
+   run_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
 #include <stdio.h> /* For C89 NULL */
-int main(void)
-{
+int main(void){
    void *vp = __builtin_alloca(1);
+
    return (vp != NULL);
 }
 !
@@ -1248,13 +1261,15 @@ fi
 ##
 
 if feat_yes DOTLOCK; then
-   if link_check readlink 'readlink(2)' << \!
+   if run_check readlink 'readlink(2)' << \!
 #include <unistd.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    char buf[128];
-   readlink("here", buf, sizeof buf);
-   return 0;
+
+   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
    then
@@ -1265,12 +1280,13 @@ int main(void)
 fi
 
 if feat_yes DOTLOCK; then
-   if link_check fchown 'fchown(2)' << \!
+   if run_check fchown 'fchown(2)' << \!
 #include <unistd.h>
-int main(void)
-{
-   fchown(0, 0, 0);
-   return 0;
+# include <errno.h>
+int main(void){
+   if(!fchown(0, 0, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
    then
@@ -1284,12 +1300,14 @@ fi
 
 if feat_yes ICONV; then
    ${cat} > ${tmp2}.c << \!
+#include <stdio.h> /* For C89 NULL */
 #include <iconv.h>
-int main(void)
-{
+int main(void){
    iconv_t id;
 
    id = iconv_open("foo", "bar");
+   iconv(id, NULL, NULL, NULL, NULL);
+   iconv_close(id);
    return 0;
 }
 !
@@ -1307,21 +1325,25 @@ if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct sockaddr_un soun;
-   socket(AF_UNIX, SOCK_STREAM, 0);
-   connect(0, (struct sockaddr*)&soun, 0);
-   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+
+   if(socket(AF_UNIX, SOCK_STREAM, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(connect(0, (struct sockaddr*)&soun, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR) == -1 && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check af_unix 'AF_UNIX sockets' \
+   < ${tmp2}.c run_check af_unix 'AF_UNIX sockets' \
          '#define HAVE_UNIX_SOCKETS' ||
-      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lnsl)' \
+      < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lnsl)' \
          '#define HAVE_UNIX_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
+      < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
          '#define HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
@@ -1331,21 +1353,23 @@ if feat_yes SOCKETS; then
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct sockaddr s;
-   socket(AF_INET, SOCK_STREAM, 0);
-   connect(0, &s, 0);
+
+   if(socket(AF_INET, SOCK_STREAM, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(connect(0, &s, 0) == -1 && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check sockets 'sockets' \
+   < ${tmp2}.c run_check sockets 'sockets' \
          '#define HAVE_SOCKETS' ||
-      < ${tmp2}.c link_check sockets 'sockets (via -lnsl)' \
+      < ${tmp2}.c run_check sockets 'sockets (via -lnsl)' \
          '#define HAVE_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check sockets 'sockets (via -lsocket -lnsl)' \
+      < ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' \
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
@@ -1360,12 +1384,11 @@ if feat_yes SOCKETS; then
 #include <sys/socket.h>
 #include <stdio.h>
 #include <netdb.h>
-
-int main(void)
-{
+int main(void){
    struct addrinfo a, *ap;
    int lrv;
-   switch ((lrv = getaddrinfo("foo", "0", &a, &ap))) {
+
+   switch((lrv = getaddrinfo("foo", "0", &a, &ap))){
    case EAI_NONAME:
    case EAI_SERVICE:
    default:
@@ -1400,9 +1423,7 @@ if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-
-int main(void)
-{
+int main(void){
    struct sockaddr_in servaddr;
    unsigned short portno;
    struct servent *ep;
@@ -1410,15 +1431,15 @@ int main(void)
    struct in_addr **pptr;
 
    portno = 0;
-   if ((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
+   if((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
       portno = (unsigned short)ep->s_port;
 
-   if ((hp = gethostbyname("POPPY-HOST")) != NULL) {
+   if((hp = gethostbyname("POPPY-HOST")) != NULL){
       pptr = (struct in_addr**)hp->h_addr_list;
-      if (hp->h_addrtype != AF_INET)
+      if(hp->h_addrtype != AF_INET)
          fprintf(stderr, "au\n");
-   } else {
-      switch (h_errno) {
+   }else{
+      switch(h_errno){
       case HOST_NOT_FOUND:
       case TRY_AGAIN:
       case NO_RECOVERY:
@@ -1450,13 +1471,16 @@ int main(void)
 fi
 
 feat_yes SOCKETS &&
-link_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
+run_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    int sockfd = 3;
-   setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0);
+
+   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
+         errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
@@ -1465,10 +1489,10 @@ feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    struct timeval tv;
    int sockfd = 3;
+
    tv.tv_sec = 42;
    tv.tv_usec = 21;
    setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
@@ -1481,10 +1505,10 @@ feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    struct linger li;
    int sockfd = 3;
+
    li.l_onoff = 1;
    li.l_linger = 42;
    setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
@@ -1501,14 +1525,12 @@ if feat_yes SSL; then
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-#ifdef OPENSSL_NO_TLS1
+#ifdef OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
 # error We need TLSv1.
 #endif
-
-int main(void)
-{
+int main(void){
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+
    SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
@@ -1524,14 +1546,13 @@ int main(void)
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-#if defined OPENSSL_NO_SSL3 && defined OPENSSL_NO_TLS1
+#if defined OPENSSL_NO_SSL3 &&\
+      defined OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
 # error We need one of SSLv3 and TLSv1.
 #endif
-
-int main(void)
-{
+int main(void){
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+
    SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
@@ -1552,11 +1573,10 @@ int main(void)
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-int main(void)
-{
+int main(void){
    STACK_OF(GENERAL_NAME) *gens = NULL;
-   printf("%p", gens); /* to make it used */
+
+   printf("%p", gens); /* to use it */
    return 0;
 }
 !
@@ -1565,9 +1585,7 @@ int main(void)
          '#define HAVE_OPENSSL_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
-
-int main(void)
-{
+int main(void){
    CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
    CONF_modules_free();
    return 0;
@@ -1579,15 +1597,14 @@ int main(void)
 #include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-
-int main(void)
-{
+int main(void){
 #if HAVE_OPENSSL < 10100
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
 #else
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
 #endif
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
+
    SSL_CONF_CTX_set_flags(cctx,
       SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
       SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
@@ -1603,9 +1620,7 @@ int main(void)
       link_check rand_egd 'OpenSSL RAND_egd()' \
          '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
-
-int main(void)
-{
+int main(void){
    return RAND_egd("some.where") > 0;
 }
 !
@@ -1614,9 +1629,7 @@ int main(void)
          if link_check ssl_all_algo 'OpenSSL all-algorithms support' \
             '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
-
-int main(void)
-{
+int main(void){
    OpenSSL_add_all_algorithms();
    EVP_get_cipherbyname("two cents i never exist");
    EVP_cleanup();
@@ -1636,9 +1649,7 @@ int main(void)
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
-
-int main(void)
-{
+int main(void){
    char const dat[] = "abrakadabrafidibus";
    char dig[16], hex[16 * 2];
    MD5_CTX ctx;
@@ -1651,7 +1662,7 @@ int main(void)
    MD5_Final(dig, &ctx);
 
 #define hexchar(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
-   for (i = 0; i < sizeof(hex) / 2; i++) {
+   for(i = 0; i < sizeof(hex) / 2; i++){
       j = i << 1;
       hex[j] = hexchar((dig[i] & 0xf0) >> 4);
       hex[++j] = hexchar(dig[i] & 0x0f);
@@ -1666,9 +1677,7 @@ int main(void)
             '#define HAVE_OPENSSL_MEMHOOKS' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/crypto.h>
-
-int main(void)
-{
+int main(void){
    CRYPTO_set_mem_ex_functions(NULL, NULL, NULL);
    CRYPTO_set_mem_functions(NULL, NULL, NULL);
    return 0;
@@ -1701,9 +1710,7 @@ fi
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
-
-int main(void)
-{
+int main(void){
    gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
    gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
    return 0;
@@ -1746,9 +1753,7 @@ int main(void)
          '-lgssapi_krb5' << \!
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
-
-int main(void)
-{
+int main(void){
    gss_import_name(0, 0, gss_nt_service_name, 0);
    gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
    return 0;
@@ -1781,9 +1786,9 @@ if feat_yes IDNA; then
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
-int main(void)
-{
+int main(void){
    char *utf8, *idna_ascii, *idna_utf8;
+
    utf8 = stringprep_locale_to_utf8("does.this.work");
    if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES)
          != IDNA_SUCCESS)
@@ -1801,8 +1806,7 @@ int main(void)
 #include <stdio.h>
 #include <idn/api.h>
 #include <idn/result.h>
-int main(void)
-{
+int main(void){
    idn_result_t r;
    char ace_name[256];
    char local_name[256];
@@ -1845,10 +1849,10 @@ if feat_yes REGEX; then
    if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    int status;
    regex_t re;
+
    if (regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0)
       return 1;
    status = regexec(&re, "plan9", 0,NULL, 0);
@@ -1872,12 +1876,12 @@ if feat_yes READLINE; then
 #include <stdio.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-int main(void)
-{
+int main(void){
    char *rl;
    HISTORY_STATE *hs;
    HIST_ENTRY **he;
    int i;
+
    using_history();
    read_history("");
    stifle_history(242);
@@ -1978,12 +1982,12 @@ if feat_yes TERMCAP; then
 #include <string.h>
 ${2}
 #include <term.h>
-#define PTR2SIZE(X)     ((unsigned long)(X))
-#define UNCONST(P)      ((void*)(unsigned long)(void const*)(P))
-static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
-int main(void)
-{
+#define PTR2SIZE(X) ((unsigned long)(X))
+#define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
+static char *_termcap_buffer, *_termcap_ti, *_termcap_te;
+int main(void){
    char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+
    tgetent(buf, getenv("TERM"));
    cpb = cmdbuf;
    cpti = cpb;
