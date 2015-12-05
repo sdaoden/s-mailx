@@ -624,7 +624,7 @@ jislink:
          /* fd is a file, not portable to use for _PC_NAME_MAX */
          long pc;
 
-         if ((pc = pathconf(".", _PC_NAME_MAX)) == -1 || pc <= (long)i + 1 +1) {
+         if ((pc = pathconf(".", _PC_NAME_MAX)) != -1 && pc <= (long)i + 1 +1) {
             dls = DLS_NAMETOOLONG | DLS_ABANDON;
             goto jmsg;
          }
