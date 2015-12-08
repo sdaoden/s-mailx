@@ -4,6 +4,7 @@
 
 .PHONY: all install uninstall clean distclean config build test
 
+_not_all_: build
 all: config
 	@LC_ALL=C $(MAKE) -f ./mk.mk all
 install: all
@@ -38,7 +39,7 @@ _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	$(SHELL) ./mk-conf.sh
 _prestop = if [ -f ./mk.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
-		echo 'The following targets will work: install, all, config';\
+		echo 'The following targets will work: config, [all], install';\
 		exit 1;\
 	fi
 
