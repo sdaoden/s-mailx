@@ -70,6 +70,12 @@ The following make(1) targets exists, the default being `build':
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
 
+              S-nail will create an uninstall shell script
+              (VAL_UAGENT-uninstall.sh), but which will *not* be installed
+              if $DESTDIR is set non-empty -- within $DESTDIR, that is.
+              Copy or move it manually from the S-nail root directory ./
+              into $DESTDIR as necessary.
+
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
