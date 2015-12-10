@@ -343,8 +343,7 @@ jeeqaaster:
 
    errors |= __rfc2231_join(head, &rv, &emsg);
    if (errors && (options & OPT_D_V_VV)) {
-      /* TODO 1. we need our error ring; 2. such errors in particular
-       * TODO should set global flags so that at the end of an operation
+      /* TODO should set global flags so that at the end of an operation
        * TODO (for a message) a summary can be printed: faulty MIME, xy */
       if (emsg == NULL)
          emsg = N_("multiple causes");
