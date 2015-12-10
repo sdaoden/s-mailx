@@ -2076,17 +2076,28 @@ int main(void){
    [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
-if feat_yes NCL && [ -z "${have_readline}" ] &&\
+if feat_yes NCL && [ -z "${have_readline}" ] &&
       [ -n "${have_c90amend1}" ]; then
    have_ncl=1
    echo '#define HAVE_NCL' >> ${h}
+
+   if [ -n "${have_pathconf}" ]; then
+      link_check _pc_max_input 'pathconf(2): _PC_MAX_INPUT' \
+         '#define HAVE_PATHCONF__PC_MAX_INPUT' << \!
+#include <unistd.h>
+int main(void){
+   pathconf("/dev/tty", _PC_MAX_INPUT);
+   return 0;
+}
+!
+   fi
 else
    feat_bail_required NCL
    echo '/* WANT_{READLINE,NCL}=0 */' >> ${h}
 fi
 
 # Generic have-a-command-line-editor switch for those who need it below
-if [ -n "${have_ncl}" ] ||\
+if [ -n "${have_ncl}" ] ||
       [ -n "${have_readline}" ]; then
    have_cle=1
 fi
