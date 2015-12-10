@@ -1245,7 +1245,7 @@ fi
 
 ##
 
-run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
 int main(void){
@@ -1255,6 +1255,10 @@ int main(void){
    rv |= !(pathconf(".", _PC_NAME_MAX) >= 0 || errno == 0 || errno != ENOSYS);
    errno = 0;
    rv |= !(pathconf(".", _PC_PATH_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+
+   /* Only link check */
+   fpathconf(0, _PC_NAME_MAX);
+
    return rv;
 }
 !
