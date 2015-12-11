@@ -640,7 +640,8 @@ _var_set_env(char **ap, bool_t issetenv)
          char const *k = varbuf + 2;
 
          if (issetenv && (!strcmp(k, "HOME") || /* TODO generic */
-               !strcmp(k, "USER") || !strcmp(k, "TMPDIR"))) {/* TODO approach */
+               !strcmp(k, "LOGNAME") || !strcmp(k, "USER") || /* TODO .. */
+               !strcmp(k, "TMPDIR"))) {/* TODO approach */
             if (options & OPT_D_V)
                n_err(_("Cannot `unsetenv' \"%s\"\n"), k);
             ++errs;
@@ -662,11 +663,11 @@ _var_set_env(char **ap, bool_t issetenv)
             static char const *cp_buf[3];
             char const **pl, **pe;
 
-            if (!strcmp(varbuf, "HOME")) /* TODO generic */
+            if (!strcmp(varbuf, "HOME")) /* TODO generic approach..*/
                pl = cp_buf + 0, pe = &homedir;
-            else if (!strcmp(varbuf, "USER")) /* TODO approach */
+            else if (!strcmp(varbuf, "LOGNAME") || !strcmp(varbuf, "USER"))
                pl = cp_buf + 1, pe = &myname;
-            else if (!strcmp(varbuf, "TMPDIR")) /* TODO also here */
+            else if (!strcmp(varbuf, "TMPDIR")) /* TODO ..until here */
                pl = cp_buf + 2, pe = &tempdir;
             else
                break;
@@ -1296,7 +1297,8 @@ c_unsetenv(void *v)
       for (ap = v; *ap != NULL; ++ap) {
          bool_t bad;
 
-         if (!strcmp(*ap, "HOME") || !strcmp(*ap, "USER") || /* TODO generic */
+         if (!strcmp(*ap, "HOME") || /* TODO generic */
+               !strcmp(*ap, "LOGNAME") || !strcmp(*ap, "USER") || /* TODO .. */
                !strcmp(*ap, "TMPDIR")) { /* TODO approach */
             if (options & OPT_D_V)
                n_err(_("Cannot `unsetenv' \"%s\"\n"), *ap);

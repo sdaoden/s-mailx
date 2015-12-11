@@ -372,14 +372,17 @@ _setup_vars(void)
    struct passwd *pwuid, *pw;
    NYD_ENTER;
 
-   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
-         ? savestr(cp) : TMPDIR_FALLBACK;
+   /* Verify and fixate user identification */
+   if (myname != NULL)
+      cp = myname;
+   else if ((cp = env_vlook("LOGNAME", TRU1)) == NULL)
+      cp = env_vlook("USER", TRU1);
 
-   cp = (myname == NULL) ? env_vlook("USER", TRU1) : myname;
    group_id = getgid();
    user_id = uid = getuid();
    if ((pwuid = getpwuid(uid)) == NULL)
       n_panic(_("Cannot associate a name with uid %u"), user_id);
+
    if (cp == NULL || *cp == '\0')
       myname = pwuid->pw_name;
    else if ((pw = getpwnam(cp)) == NULL) {
@@ -393,9 +396,13 @@ _setup_vars(void)
    myname = savestr(myname);
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
+   /* */
    if ((cp = env_vlook("HOME", TRU1)) == NULL)
       cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
    homedir = savestr(cp);
+
+   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
+         ? savestr(cp) : TMPDIR_FALLBACK;
    NYD_LEAVE;
 }
 

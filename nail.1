@@ -426,7 +426,7 @@ in some aspects, e.g. in respect to
 \(enexpansions of
 .Ql %
 etc.; also see
-.Ev USER .
+.Ev LOGNAME .
 .
 .Mx
 .It Fl V
@@ -1967,7 +1967,7 @@ either the name that has been given with the
 .Fl u
 command line option (or, equivalently, but with less precedence, the
 environment variable
-.Ev USER ) ,
+.Ev LOGNAME ) ,
 or the
 .Dq current
 user.
@@ -7793,8 +7793,11 @@ for the complete picture about character sets.
 \*(IN Variable chain that sets a global fallback user name, which is
 used in case none has been given in the protocol and account-specific
 URL.
-This variable defaults to the value of
-.Ev USER .
+This variable defaults to the value of the first of
+.Ev LOGNAME
+and
+.Ev USER
+that is set (the former being SystemV and POSIX standard, the latter BSD).
 .
 .Mx
 .It Va v15-compat
@@ -7942,6 +7945,19 @@ Default is
 .Ev SHELL ) .
 .
 .Mx
+.It Ev LOGNAME
+Force identification as the given user, i.e., identical to the
+.Fl u
+command line option.
+This variable is standardized and therefore used in preference to the
+otherwise identical
+.Ev USER ;
+it is only used when it resides in the process environment.
+\*(ID The variable can be updated at runtime via
+.Ic setenv ,
+but without having an effect on \*(UA itself.
+.
+.Mx
 .It Ev MAIL
 Is used as the user's mailbox, if set.
 Otherwise, a system-dependent default is used.
@@ -8058,14 +8074,19 @@ to update the value at runtime.
 .
 .Mx
 .It Ev USER
+This variable comes from the BSD world and is only used if the POSIX
+standard environment variable
+.Ev LOGNAME ,
+which originates in SysV
+.Ux ,
+is not set.
 Force identification as the given user, i.e., identical to the
 .Fl u
 command line option.
 This variable is only used when it resides in the process environment.
-Use
-.Ic setenv
-to update the value at runtime, but note that doing so won't trigger any
-of those validation checks that were performed on program startup (again).
+\*(ID The variable can be updated at runtime via
+.Ic setenv ,
+but without having an effect on \*(UA itself.
 .
 .Mx
 .It Ev VISUAL
