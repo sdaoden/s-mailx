@@ -211,12 +211,7 @@ WANT_HISTORY=yes
 WANT_TABEXPAND=yes
 
 # Use termcap(3) for terminal control; can be "require"d.
-# - When *term-ca-mode* is set:
-#   . On startup emit "ti" (smcup / enter_ca_mode)
-#   . On exit emit "te" (rmcup / exit_ca_mode)
-# NOTE: requires $PAGER etc. to also support and use ca-mode, otherwise
-# the screen looks really, really ugly.
-WANT_TERMCAP=no
+WANT_TERMCAP=yes
 
 # Enable the `errors' command; S-nail is a console-based application and
 # thus errors may fly by pretty fast as other operations are in
