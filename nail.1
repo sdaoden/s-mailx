@@ -512,9 +512,17 @@ MTA arguments are ignored when mail is send via SMTP data transfer.
 .\" .Ss "A starter" {{{
 .Ss "A starter"
 .
-\*(UA is a direct descendant of the BSD Mail program that was introduced
-in 1978 (itself superceeding the simpler UNIX mail program) and used
-to introduce itself (in the Mail reference manual) as follows:
+\*(UA is a direct descendant of
+.Bx
+Mail, a successor of the Research
+.Ux
+mail which
+.Dq was there from the start
+according to
+.Sx HISTORY .
+The
+.Bx
+Mail reference manual begins with the following words:
 .
 .Bd -ragged -offset indent
 Mail provides a simple and friendly environment for sending and
@@ -530,8 +538,10 @@ send to names which address groups of users.
 .Ed
 .
 .Pp
-\*(UA is thus the user side of the Unix mail system, whereas the system
-side (mail-transfer-agent, MTA) was traditionally taken by
+\*(UA is thus the user side of the
+.Ux
+mail system, whereas the system side (mail-transfer-agent, MTA) was
+traditionally taken by
 .Xr sendmail 8 ;
 today
 .Xr postfix 1
@@ -3520,7 +3530,9 @@ every message is followed by a formfeed character.
 .
 .Mx
 .It Ic print
-(p) Research Unix equivalent of
+(p) Research
+.Ux
+equivalent of
 .Ic type .
 .
 .Mx
@@ -9370,18 +9382,43 @@ S-nail (for more on that see the section
 .\" .Sh HISTORY {{{
 .Sh HISTORY
 .
-A
-.Em mail
-command appeared in Version 1 AT&T Unix.
-Berkeley Mail was written in 1978 by Kurt Shoens.
-This man page is derived from from
+M. Douglas McIlroy writes in his article
+.Dq A Research UNIX Reader: Annotated Excerpts \
+from the Programmer's Manual, 1971-1986
+a
+.Xr mail 1
+command already appeared in First Edition
+.Ux
+in 1971:
+.
+.Bd -ragged -offset indent
+Electronic mail was there from the start.
+Never satisfied with its exact behavior, everybody touched it at one
+time or another: to assure the safety of simultaneous access, to improve
+privacy, to survive crashes, to exploit uucp, to screen out foreign
+freeloaders, or whatever.
+Not until v7 did the interface change (Thompson).
+Later, as mail became global in its reach, Dave Presotto took charge and
+brought order to communications with a grab-bag of external networks
+(v8).
+.Ed
+.
+.Pp
+.Bx
+Mail was written in 1978 by Kurt Shoens and developed as part of the
+.Bx
+.Ux
+distribution until 1995.
+Mail has then seen further development in open source
+.Bx
+variants, noticeably by Christos Zoulas in
+.Pf Net Bx .
+Basing upon this Nail, later Heirloom Mailx, was developed by Gunnar
+Ritter in the years 2000 until 2008.
+Since 2012 S-nail is maintained by Steffen (Daode) Nurpmeso.
+This man page is derived from
 .Dq The Mail Reference Manual
-originally written by Kurt Shoens.
-.Dq Heirloom Mailx
-enhancements are maintained and documented by Gunnar
-Ritter.
-.Dq S-nail
-is maintained and documented by Steffen (Daode) Nurpmeso.
+that was originally written by Kurt Shoens.
 .\" }}}
 .
 .
