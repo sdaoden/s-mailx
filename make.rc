@@ -21,7 +21,14 @@
 #@ . You may NOT comment out anything in here -- if you want to disable
 #@   a feature, set it to a false boolean.
 
-## PATHS AND PROGRAMS ##
+## IDENTITIES, PATHS AND PROGRAMS ##
+
+# The user ID our small privilege-separated helper program will be
+# SETUID to, shall it be included ($WANT_DOTLOCK).
+# The actual installation make targets will require the chown(1) program
+# (as below) and require sufficient privileges to perform the SETUID to
+# $PRIVSEP_USER, then.
+PRIVSEP_USER=root
 
 # General prefix where S-nail should be installed.
 PREFIX=/usr/local
@@ -29,20 +36,24 @@ PREFIX=/usr/local
 # Fine tune individual locations, normally under $PREFIX.
 # . the place of the S-nail program.
 BINDIR="${PREFIX}/bin"
-# Only if WANT_DOTLOCK is enabled:
-# . the place of the privilege-separated helper program.
+# . the place of the privilege-separated helper program, the name
+#   of which is [$SID$NAIL]-privsep (see below for $SID & $NAIL).
+#   (Only with $WANT_DOTLOCK.)
 LIBEXECDIR="${PREFIX}/libexec"
 # . of the manual.
 MANDIR="${PREFIX}/share/man"
 # . of the exemplary resource file.
 SYSCONFDIR="${PREFIX}/etc"
 
-# This variable is prepended to all the paths from above at installation
-# time; this feature can be used for, e.g., package building: if $PREFIX
-# is "/usr/local", but $DESTDIR is set to "here", then S-nail will still
-# think its $PREFIX is "/usr/local" whereis the build system will
-# instead use "here/usr/local".
-DESTDIR=
+# The variable $DESTDIR is prepended to all the paths from above at
+# installation time; this feature can be used for, e.g., package
+# building: if $PREFIX is "/usr/local", but $DESTDIR is set to "here",
+# then S-nail will still think its $PREFIX is "/usr/local" whereis the
+# build system will instead use "here/usr/local".
+# NOTE: it cannot be set in here, but must be given on the command line
+# when invoking the "install" make(1) (directly or indirectly).
+# (That is, if you uncomment it, it'll be update-tracked...)
+#DESTDIR=
 
 # Where the local mail system stores user mail (mbox) files.
 MAILSPOOL=`\
@@ -96,10 +107,10 @@ VAL_VISUAL=vi
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=,
 #     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=
 # Usually in administrator paths:
-#  chown= [WANT_DOTLOCK]
+#  chown= [$WANT_DOTLOCK]
 # Note that awk(1), rm(1) and tr(1) are needed before this file is read,
 # all other utilities will be checked afterwards only.  For
-# cross-compilation setting MAKE= and STRIP= may be necessary.  Due to
+# cross-compilation setting $MAKE and $STRIP may be necessary.  Due to
 # the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
@@ -112,10 +123,10 @@ VAL_VISUAL=vi
 # of known-good compiler flags?  If so additions may still be provided
 # by setting $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
 # Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS,
-# set this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS:
-#     $ make ADDCFLAGS=-std=c99 install
+# otherwise pass additional flags via $ADDCFLAGS / $ADDLDFLAGS:
+#     $ make ADDCFLAGS=-std=c99 tangerine
 # Whatever you do, the configuration is fixated and updates will force
-# rebuilds.  And far below in this file there is WANT_FORCED_STACKPROT,
+# rebuilds.  And far below in this file there is $WANT_FORCED_STACKPROT,
 # too, which can be used to cause injection of stack protectors.
 WANT_AUTOCC=yes
 
@@ -280,22 +291,18 @@ WANT_COLOUR=yes
 # %:ANYFILE) MBOX files: when synchronizing any such FILE a FILE.lock
 # file will be created in the directory of FILE, for the duration of the
 # synchronization.
-# Set WANT_DOTLOCK to support this traditional mail spool file locking.
-# MAILSPOOL(s) where normal system mailboxes reside are usually not
+# Set $WANT_DOTLOCK to support this traditional mail spool file locking.
+# $MAILSPOOL(s) where normal system mailboxes reside are usually not
 # writable by normal users, except that a user may read and write his
 # own mailbox.  But this means that a program run by the user cannot
 # create a .lock file!  The solution is to install a privilege-separated
 # mini-program that has the sole purpose and functionality of managing
 # the dotlock file in such situations -- and only then, as a last
-# ressort.  Our small helper will be installed in LIBEXECDIR, SETUID to
-# the PRIVSEP_USER (usually root).  With it dotlock files can be created
-# for any mailbox for which the invoking user has read (or read-write)
-# permissions, and under the UID and GID of the mailbox itself!
-# The actual installation make targets will require the chown(1) program
-# (as above) and require sufficient privileges to SETUID to PRIVSEP_USER.
-# WANT_DOTLOCK can be "require"d.
+# ressort.  With it dotlock files can be created for any mailbox for
+# which the invoking user has read (or read-write) permissions, and
+# under the UID and GID of the mailbox itself!  We call it -privsep.
+# $WANT_DOTLOCK can be "require"d.
 WANT_DOTLOCK=yes
-PRIVSEP_USER=root
 
 ##  --  >8  --  8<  --  ##
 ## Normal users should not need to read any further
@@ -310,7 +317,7 @@ SID=s-
 NAIL=nail
 
 # The name of the exemplary resource template.
-# Note 1: it's not overwritten by "make install" if it yet exists!
+# Note 1: not overwritten by "make install" if yet existent!
 SYSCONFRC="${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
@@ -345,7 +352,7 @@ WANT_NOMEMDBG=no
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print
 # a function call trace when the program crashes.  Whereas NYD will be
-# used automatically when either of WANT_DEBUG and WANT_DEVEL is
+# used automatically when either of $WANT_DEBUG and $WANT_DEVEL is
 # defined, an extended level of NYD is compiled in only on explicit
 # request.
 # TODO Separation in between NYD and NYD2 not yet fully done.

@@ -2,40 +2,41 @@
 #@ Adjustments have to be made in "make.rc" -- or on the command line.
 #@ See the file "INSTALL" if you need help.
 
-.PHONY: all install uninstall clean distclean config build test
+.PHONY: ohno tangerine all config build install uninstall clean distclean test \
+	devel odevel
 
-_not_all_: build
-all: config
-	@LC_ALL=C $(MAKE) -f ./mk.mk all
-install: all
-	@LC_ALL=C $(MAKE) -f ./mk.mk install
+ohno: build
+tangerine: config build test install
+all: config build
+
+config:
+	@$(_prego)
+build:
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
+install packager-install: build
+	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk DESTDIR="$(DESTDIR)" install
 uninstall:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk uninstall
+
 clean:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk clean
 distclean:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk distclean
 
-config:
-	@$(_prego)
-build:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk all
 test:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk test
-doinstall packager-install:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk DESTDIR="$(DESTDIR)" install
 
 devel:
 	@CONFIG=DEVEL; export CONFIG;\
 	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk all
+	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG;\
 	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk all
+	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
 d-b:
 	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk all
+	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
 
 d-gettext:
 	LC_ALL=C xgettext --sort-by-file --strict --add-location \
@@ -48,7 +49,7 @@ _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	$(SHELL) ./mk-conf.sh
 _prestop = if [ -f ./mk.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
-		echo 'The following targets will work: config, [all], install';\
+		echo 'Use one of the targets: config, all, tangerine';\
 		exit 1;\
 	fi
 

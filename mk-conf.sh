@@ -640,7 +640,8 @@ while read line; do
          print LINE
       }'`
    fi
-  echo "${i}=\"${j}\""
+   [ "${i}" = "DESTDIR" ] && continue
+   echo "${i}=\"${j}\""
 done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
