@@ -89,6 +89,7 @@ FL void
       fflush(stdout);
 
       free(a_termcap_buffer);
+      DBG( a_termcap_buffer = NULL; )
    }
    NYD_LEAVE;
 }

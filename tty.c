@@ -1,10 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ TTY interaction.
+ *@ TTY (command line) editing interaction.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
- */
-/* The NCL version is
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -16,34 +14,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
  */
 #undef n_FILE
 #define n_FILE tty
@@ -57,6 +27,10 @@
 # ifdef HAVE_HISTORY
 #  include <readline/history.h>
 # endif
+#endif
+
+#if defined HAVE_READLINE || defined HAVE_NCL || defined HAVE_TERMCAP
+# define a_TTY_SIGNALS
 #endif
 
 /* Shared history support macros */
@@ -95,6 +69,7 @@ do {\
    switch (*(S)) {\
    case '\0':\
    case ' ':\
+   case '\t':\
       NOACT;\
    default:\
       break;\
@@ -132,6 +107,56 @@ jleave:\
  * Because we have multiple identical implementations, change file layout a bit
  * and place the implementations one after the other below the other externals
  */
+
+#ifdef a_TTY_SIGNALS
+static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
+   a_tty_ohup,
+   a_tty_otstp, a_tty_ottin, a_tty_ottou;
+#endif
+
+#ifdef a_TTY_SIGNALS
+static void a_tty_sigs_up(void), a_tty_sigs_down(void);
+#endif
+
+#ifdef a_TTY_SIGNALS
+static void
+a_tty_sigs_up(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   a_tty_oint = safe_signal(SIGINT, &n_tty_signal);
+   a_tty_oquit = safe_signal(SIGQUIT, &n_tty_signal);
+   a_tty_oterm = safe_signal(SIGTERM, &n_tty_signal);
+   a_tty_ohup = safe_signal(SIGHUP, &n_tty_signal);
+   a_tty_otstp = safe_signal(SIGTSTP, &n_tty_signal);
+   a_tty_ottin = safe_signal(SIGTTIN, &n_tty_signal);
+   a_tty_ottou = safe_signal(SIGTTOU, &n_tty_signal);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_sigs_down(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGINT, a_tty_oint);
+   safe_signal(SIGQUIT, a_tty_oquit);
+   safe_signal(SIGTERM, a_tty_oterm);
+   safe_signal(SIGHUP, a_tty_ohup);
+   safe_signal(SIGTSTP, a_tty_otstp);
+   safe_signal(SIGTTIN, a_tty_ottin);
+   safe_signal(SIGTTOU, a_tty_ottou);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+#endif /* a_TTY_SIGNALS */
 
 static sigjmp_buf __n_tty_actjmp; /* TODO someday, we won't need it no more */
 static void
@@ -277,31 +302,29 @@ jrestore:
 /*
  * readline(3)
  */
-
 #ifdef HAVE_READLINE
-static sighandler_type  _rl_shup;
-static char *           _rl_buf;    /* pre_input() hook: initial line */
-static int              _rl_buflen; /* content, and its length */
 
-static int  _rl_pre_input(void);
+static char *a_tty_rl_buf;    /* pre_input() hook: initial line */
+static int a_tty_rl_buflen;   /* content, and its length */
+
+/* Our rl_pre_input_hook */
+static int a_tty_rl_pre_input(void);
 
 static int
-_rl_pre_input(void)
-{
-   NYD_ENTER;
+a_tty_rl_pre_input(void){
+   NYD2_ENTER;
    /* Handle leftover data from \ escaped former line */
-   rl_extend_line_buffer(_rl_buflen + 10);
-   memcpy(rl_line_buffer, _rl_buf, _rl_buflen + 1);
-   rl_point = rl_end = _rl_buflen;
+   rl_extend_line_buffer(a_tty_rl_buflen + 10);
+   memcpy(rl_line_buffer, a_tty_rl_buf, a_tty_rl_buflen + 1);
+   rl_point = rl_end = a_tty_rl_buflen;
    rl_pre_input_hook = (rl_hook_func_t*)NULL;
    rl_redisplay();
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return 0;
 }
 
 FL void
-n_tty_init(void)
-{
+n_tty_init(void){
 # ifdef HAVE_HISTORY
    long hs;
    char const *v;
@@ -321,15 +344,14 @@ n_tty_init(void)
     * it up to readline(3) to do the rest */
 # ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
-   if (v != NULL)
+   if(v != NULL)
       read_history(v);
 # endif
    NYD_LEAVE;
 }
 
 FL void
-n_tty_destroy(void)
-{
+n_tty_destroy(void){
 # ifdef HAVE_HISTORY
    char const *v;
 # endif
@@ -337,68 +359,73 @@ n_tty_destroy(void)
 
 # ifdef HAVE_HISTORY
    _CL_HISTFILE(v);
-   if (v != NULL)
+   if(v != NULL)
       write_history(v);
 # endif
    NYD_LEAVE;
 }
 
 FL void
-n_tty_signal(int sig)
-{
-   sigset_t nset, oset;
+n_tty_signal(int sig){
    NYD_X; /* Signal handler */
 
-   switch (sig) {
+   /* WINCH comes from main.c */
+   switch(sig){
 # ifdef SIGWINCH
    case SIGWINCH:
       break;
 # endif
-   case SIGHUP:
-      /* readline(3) doesn't catch it :( */
-      rl_free_line_state();
-      rl_cleanup_after_signal();
-      safe_signal(SIGHUP, _rl_shup);
+   default:{
+      sigset_t nset, oset;
+
+      /* readline(3) doesn't catch SIGHUP :( */
+      if(sig == SIGHUP){
+         rl_free_line_state();
+         rl_cleanup_after_signal();
+      }
+      termcap_suspend();
+      a_tty_sigs_down();
+
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
       n_raise(sig);
-      /* XXX When we come here we'll continue editing, so reestablish
-       * XXX cannot happen */
-      sigprocmask(SIG_BLOCK, &oset, NULL);
-      _rl_shup = safe_signal(SIGHUP, &n_tty_signal);
-      rl_reset_after_signal();
+      /* When we come here we'll continue editing, so reestablish */
+      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+
+      a_tty_sigs_up();
+      termcap_resume();
+      if(sig == SIGHUP)
+         rl_reset_after_signal();
       break;
-   default:
-      break;
+      }
    }
 }
 
 FL int
 (n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
+      SMALLOC_DEBUG_ARGS){
    int nn;
    char *line;
    NYD_ENTER;
 
-   if (n > 0) {
-      _rl_buf = *linebuf;
-      _rl_buflen = (int)n;
-      rl_pre_input_hook = &_rl_pre_input;
+   if(n > 0){
+      a_tty_rl_buf = *linebuf;
+      a_tty_rl_buflen = (int)n;
+      rl_pre_input_hook = &a_tty_rl_pre_input;
    }
 
-   _rl_shup = safe_signal(SIGHUP, &n_tty_signal);
+   a_tty_sigs_up();
    line = readline(prompt != NULL ? prompt : "");
-   safe_signal(SIGHUP, _rl_shup);
+   a_tty_sigs_down();
 
-   if (line == NULL) {
+   if(line == NULL){
       nn = -1;
       goto jleave;
    }
    n = strlen(line);
 
-   if (n >= *linesize) {
+   if(n >= *linesize){
       *linesize = LINESIZE + n +1;
       *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
    }
@@ -412,13 +439,13 @@ jleave:
 }
 
 FL void
-n_tty_addhist(char const *s, bool_t isgabby)
-{
+n_tty_addhist(char const *s, bool_t isgabby){
    NYD_ENTER;
    UNUSED(s);
    UNUSED(isgabby);
+
 # ifdef HAVE_HISTORY
-   if (isgabby && !ok_blook(history_gabby))
+   if(isgabby && !ok_blook(history_gabby))
       goto jleave;
    _CL_CHECK_ADDHIST(s, goto jleave);
    hold_all_sigs();  /* XXX too heavy */
@@ -431,17 +458,16 @@ jleave:
 
 # ifdef HAVE_HISTORY
 FL int
-c_history(void *v)
-{
+c_history(void *v){
    C_HISTORY_SHARED;
 
-jlist: {
+jlist:{
    FILE *fp;
    HISTORY_STATE *hs;
    HIST_ENTRY **hl;
    ul_i i, b;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
@@ -449,9 +475,10 @@ jlist: {
 
    hs = history_get_history_state();
 
-   for (i = (ul_i)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
+   for(i = (ul_i)hs->length, hl = hs->entries + i, b = 0; i > 0; --i){
       char *cp = (*--hl)->line;
       size_t sl = strlen(cp);
+
       fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n", i, cp, b, sl);
       b += sl;
    }
@@ -465,10 +492,10 @@ jclear:
    clear_history();
    goto jleave;
 
-jentry: {
+jentry:{
    HISTORY_STATE *hs = history_get_history_state();
 
-   if (UICMP(z, entry, <=, hs->length))
+   if(UICMP(z, entry, <=, hs->length))
       v = temporary_arg_v_store = hs->entries[entry - 1]->line;
    else
       v = NULL;
@@ -492,7 +519,6 @@ jentry: {
  * convert that on-the-fly back to the plain char* result once we're done.
  * To simplify our live, use savestr() buffers for all other needed memory
  */
-
 #ifdef HAVE_NCL
 # ifndef MAX_INPUT
 #  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
@@ -543,13 +569,6 @@ struct hist {
 };
 # endif
 
-static sighandler_type  _ncl_oint;
-static sighandler_type  _ncl_oquit;
-static sighandler_type  _ncl_oterm;
-static sighandler_type  _ncl_ohup;
-static sighandler_type  _ncl_otstp;
-static sighandler_type  _ncl_ottin;
-static sighandler_type  _ncl_ottou;
 static struct xtios     _ncl_tios;
 # ifdef HAVE_HISTORY
 static struct hist      *_ncl_hist;
@@ -558,9 +577,6 @@ static size_t           _ncl_hist_size;
 static size_t           _ncl_hist_size_max;
 static bool_t           _ncl_hist_load;
 # endif
-
-static void    _ncl_sigs_up(void);
-static void    _ncl_sigs_down(void);
 
 static void    _ncl_term_mode(bool_t raw);
 
@@ -593,46 +609,6 @@ static size_t  _ncl_kht(struct line *l);
 # endif
 static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
                   size_t len SMALLOC_DEBUG_ARGS);
-
-static void
-_ncl_sigs_up(void)
-{
-   sigset_t nset, oset;
-   NYD2_ENTER;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   _ncl_oint = safe_signal(SIGINT, &n_tty_signal);
-   _ncl_oquit = safe_signal(SIGQUIT, &n_tty_signal);
-   _ncl_oterm = safe_signal(SIGTERM, &n_tty_signal);
-   _ncl_ohup = safe_signal(SIGHUP, &n_tty_signal);
-   _ncl_otstp = safe_signal(SIGTSTP, &n_tty_signal);
-   _ncl_ottin = safe_signal(SIGTTIN, &n_tty_signal);
-   _ncl_ottou = safe_signal(SIGTTOU, &n_tty_signal);
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_sigs_down(void)
-{
-   sigset_t nset, oset;
-   NYD2_ENTER;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   safe_signal(SIGINT, _ncl_oint);
-   safe_signal(SIGQUIT, _ncl_oquit);
-   safe_signal(SIGTERM, _ncl_oterm);
-   safe_signal(SIGHUP, _ncl_ohup);
-   safe_signal(SIGTSTP, _ncl_otstp);
-   safe_signal(SIGTTIN, _ncl_ottin);
-   safe_signal(SIGTTOU, _ncl_ottou);
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
-}
 
 static void
 _ncl_term_mode(bool_t raw)
@@ -1674,14 +1650,18 @@ n_tty_signal(int sig)
       break;
    default:
       _ncl_term_mode(FAL0);
-      _ncl_sigs_down();
+      termcap_suspend();
+      a_tty_sigs_down();
+
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
       n_raise(sig);
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-      _ncl_sigs_up();
+
+      a_tty_sigs_up();
+      termcap_resume();
       _ncl_term_mode(TRU1);
       break;
    }
@@ -1694,13 +1674,11 @@ FL int
    ssize_t nn;
    NYD_ENTER;
 
-   /* Of course we have races here, but they cannot be avoided on POSIX
-    * (except by even *more* actions) */
-   _ncl_sigs_up();
+   a_tty_sigs_up();
    _ncl_term_mode(TRU1);
    nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
    _ncl_term_mode(FAL0);
-   _ncl_sigs_down();
+   a_tty_sigs_down();
    NYD_LEAVE;
    return (int)nn;
 }
@@ -1847,49 +1825,72 @@ jentry: {
 /*
  * The really-nothing-at-all implementation
  */
-
 #if !defined HAVE_READLINE && !defined HAVE_NCL
+
 FL void
-n_tty_init(void)
-{
+n_tty_init(void){
    NYD_ENTER;
    NYD_LEAVE;
 }
 
 FL void
-n_tty_destroy(void)
-{
+n_tty_destroy(void){
    NYD_ENTER;
    NYD_LEAVE;
 }
 
 FL void
-n_tty_signal(int sig)
-{
+n_tty_signal(int sig){
    NYD_X; /* Signal handler */
    UNUSED(sig);
+
+# ifdef HAVE_TERMCAP
+   switch(sig){
+   default:{
+      sigset_t nset, oset;
+
+      termcap_suspend();
+      a_tty_sigs_down();
+
+      sigemptyset(&nset);
+      sigaddset(&nset, sig);
+      sigprocmask(SIG_UNBLOCK, &nset, &oset);
+      n_raise(sig);
+      /* When we come here we'll continue editing, so reestablish */
+      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+
+      a_tty_sigs_up();
+      termcap_resume();
+      break;
+   }
+   }
+# endif /* HAVE_TERMCAP */
 }
 
 FL int
 (n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
+      SMALLOC_DEBUG_ARGS){
    int rv;
    NYD_ENTER;
 
-   if (prompt != NULL) {
-      if (*prompt != '\0')
+   if(prompt != NULL){
+      if(*prompt != '\0')
          fputs(prompt, stdout);
       fflush(stdout);
    }
+# ifdef HAVE_TERMCAP
+   a_tty_sigs_up();
+# endif
    rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
+# ifdef HAVE_TERMCAP
+   a_tty_sigs_down();
+# endif
    NYD_LEAVE;
    return rv;
 }
 
 FL void
-n_tty_addhist(char const *s, bool_t isgabby)
-{
+n_tty_addhist(char const *s, bool_t isgabby){
    NYD_ENTER;
    UNUSED(s);
    UNUSED(isgabby);
@@ -1897,4 +1898,5 @@ n_tty_addhist(char const *s, bool_t isgabby)
 }
 #endif /* nothing at all */
 
+#undef a_TTY_SIGNALS
 /* s-it-mode */
