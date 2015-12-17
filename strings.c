@@ -381,7 +381,7 @@ sreset(bool_t only_if_relaxed)
       free(hb);
    }
 
-   DBG( smemreset(); )
+   n_memreset();
 jleave:
    NYD_LEAVE;
 }

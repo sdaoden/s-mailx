@@ -1136,7 +1136,7 @@ jleave:
 #endif
 j_leave:
 #ifdef HAVE_DEBUG
-   smemcheck();
+   n_memcheck();
 #endif
    NYD_LEAVE;
    return exit_status;

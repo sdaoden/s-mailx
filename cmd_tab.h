@@ -407,7 +407,9 @@
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
      DS(N_("Print statistics about the auto-reclaimed string store")) },
-   { "smemtrace", &c_smemtrace, (H | I | M | NOLIST), 0, 0
+#endif
+#ifdef c_memtrace
+   { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
 #endif
 

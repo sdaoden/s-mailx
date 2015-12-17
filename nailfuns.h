@@ -46,6 +46,16 @@
 # define FL                      static
 #endif
 
+/* Memory allocation routines from memory.c offer some debug support */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+# define HAVE_MEMORY_DEBUG
+# define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
+# define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
+#else
+# define SMALLOC_DEBUG_ARGS
+# define SMALLOC_DEBUG_ARGSCALL
+#endif
+
 /*
  * Macro-based generics
  */
@@ -86,16 +96,6 @@
 # define is_maybe_regex(S) anyof("^.[]*+?()|$", S)
 #else
 # define is_maybe_regex(S) anyof("^[]*+?|$", S)
-#endif
-
-/* Try to use alloca() for some function-local buffers and data, fall back to
- * smalloc()/free() if not available */
-#ifdef HAVE_ALLOCA
-# define ac_alloc(n)    HAVE_ALLOCA(n)
-# define ac_free(n)     do {UNUSED(n);} while (0)
-#else
-# define ac_alloc(n)    smalloc(n)
-# define ac_free(n)     free(n)
 #endif
 
 /* Single-threaded, use unlocked I/O */
@@ -413,35 +413,6 @@ FL void        n_panic(char const *format, ...);
 FL int         c_errors(void *vp);
 #else
 # define c_errors                c_cmdnotsupp
-#endif
-
-/* Memory allocation routines */
-#ifdef HAVE_DEBUG
-# define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
-# define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
-#else
-# define SMALLOC_DEBUG_ARGS
-# define SMALLOC_DEBUG_ARGSCALL
-#endif
-
-FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
-FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
-FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
-
-#ifdef HAVE_DEBUG
-FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
-/* Called by sreset(), then */
-FL void        smemreset(void);
-
-FL int         c_smemtrace(void *v);
-/* For immediate debugging purposes, it is possible to check on request */
-FL bool_t      _smemcheck(char const *file, int line);
-
-# define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
-# define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
-# define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
-# define free(P)                 sfree(P, __FILE__, __LINE__)
-# define smemcheck()             _smemcheck(__FILE__, __LINE__)
 #endif
 
 /*
@@ -1179,6 +1150,48 @@ FL enum okay   maildir_remove(char const *name);
 
 /* Quit quickly.  If PS_SOURCING, just pop the input level by returning error */
 FL int         c_rexit(void *v);
+
+/*
+ * memory.c
+ */
+
+/* Try to use alloca() for some function-local buffers and data, fall back to
+ * smalloc()/free() if not available */
+
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)    HAVE_ALLOCA(n)
+# define ac_free(n)     do {UNUSED(n);} while (0)
+#else
+# define ac_alloc(n)    smalloc(n)
+# define ac_free(n)     free(n)
+#endif
+
+/* Generic heap memory */
+
+FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
+FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
+FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_MEMORY_DEBUG
+FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
+
+/* Called by sreset(), then */
+FL void        n_memreset(void);
+
+FL int         c_memtrace(void *v);
+
+/* For immediate debugging purposes, it is possible to check on request */
+FL bool_t      n__memcheck(char const *file, int line);
+
+# define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
+# define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
+# define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
+# define free(P)                 sfree(P, __FILE__, __LINE__)
+# define c_memtrace              c_memtrace
+# define n_memcheck()            n__memcheck(__FILE__, __LINE__)
+#else
+# define n_memreset()            do{}while(0)
+#endif
 
 /*
  * mime.c
