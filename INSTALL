@@ -71,9 +71,8 @@ which take precedence over anything else (names are case-insensitive):
   helper.
 
 . CONFIG=NETSEND
-  NETSEND also tries to add SSL/TLS, GSSAPI, .netrc file parsing as well
-  as external password *agent-lookup* on top of MEDIUM, on the other
-  hand spam filter support is removed.
+  Adds SSL/TLS, GSSAPI and .netrc file parsing on top of MEDIUM, on the
+  other hand spam filter support is removed.
 
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.

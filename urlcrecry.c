@@ -80,7 +80,7 @@ static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
                            struct nrc_node const *nrc);
 #endif /* HAVE_NETRC */
 
-/* The password can also be gained through external agents */
+/* The password can also be gained through external agents TODO v15-compat */
 #ifdef HAVE_AGENT
 static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
 #endif
@@ -512,7 +512,7 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 
 #ifdef HAVE_AGENT
 static bool_t
-_agent_shell_lookup(struct url *urlp, char const *comm)
+_agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 {
    char buf[128];
    char const *env_addon[8];
@@ -1205,8 +1205,10 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    if ((s = xok_vlook(password, urlp, OXM_ALL)) != NULL)
       goto js2pass;
-# ifdef HAVE_AGENT
+# ifdef HAVE_AGENT /* TODO v15-compat obsolete */
    if ((s = xok_vlook(agent_shell_lookup, urlp, OXM_ALL)) != NULL) {
+      OBSOLETE(_("*agent-shell-lookup* will vanish.  Please use encrypted "
+         "~/.netrc (via *netrc-pipe*), or simply `source' an encrypted file"));
       if (!_agent_shell_lookup(urlp, s)) {
          ccp = NULL;
          goto jleave;

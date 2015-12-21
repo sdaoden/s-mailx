@@ -2362,7 +2362,6 @@ printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_MD5\n   ",MD5 [APOP,CRAM-MD5]"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
@@ -2469,9 +2468,6 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_NETRC
 : + .netrc file support
 #endif
-#ifdef HAVE_AGENT
-: + Password query through agent
-#endif
 #ifdef HAVE_IDNA
 : + IDNA (internationalized domain names for applications) support
 #endif
@@ -2571,9 +2567,6 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_NETRC
 : - .netrc file support
-#endif
-#ifndef HAVE_AGENT
-: - Password query through agent
 #endif
 #ifndef HAVE_IDNA
 : - IDNA (internationalized domain names for applications) support

@@ -177,6 +177,10 @@ WANT_NETRC=yes
 # If $WANT_SOCKETS: passwords can also be looked up through an external
 # "agent" in order to allow for encrypted password storage (see
 # *agent-shell-lookup*).
+# [Obsolete] Even though marked *v15-compat* this feature has been
+# obsoleted; please use an encrypted .netrc file (via *netrc-pipe*) or
+# encrypt a complete resource file and load this like, e.g.,
+#     source "gpg -qd ~/.mailprivate.gpg | "
 WANT_AGENT=yes
 
 # IDNA (internationalized domain names for applications) offers users

@@ -2113,15 +2113,6 @@ Otherwise the variable chain
 .Va password-USER@HOST , password-HOST , password
 is looked up and used if existent.
 .Pp
-\*(OP Then if any of the variables of the chain
-.Va agent-shell-lookup-USER@HOST , agent-shell-lookup-HOST , \
-  agent-shell-lookup
-is set the shell command specified therein is run and the output (less
-newline characters) will be used as the password.
-It is perfectly valid for such an agent to simply not return any data,
-in which case the password lookup is continued somewhere else;
-Any command failure is treated as a hard error, however.
-.Pp
 Afterwards the complete \*(OPal variable chain
 .Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 is looked up.
@@ -5383,54 +5374,6 @@ mention them in the corresponding address fields of the message instead
 of silently stripping them from their recipient list.
 By default such addressees are not mentioned.
 .
-.Mx Va agent-shell-lookup
-.It Va agent-shell-lookup-USER@HOST , agent-shell-lookup-HOST , \
-  agent-shell-lookup
-\*(IN\*(OP Account passwords can be fetched via an external agent
-program in order to permit encrypted password storage \(en see
-.Sx "On URL syntax and credential lookup"
-for more on credential lookup.
-If this is set then the content is interpreted as a shell command the
-output of which (with newline characters removed) is treated as the
-account password shall the command succeed (and have produced non-empty
-non-newline output); e.g., via
-.Xr gpg 1 :
-.Bd -literal -offset indent
-$ echo PASSWORD > .pass
-$ gpg -e .pass
-$ eval `gpg-agent --daemon \e
-    --pinentry-program=/usr/bin/pinentry-curses \e
-    --max-cache-ttl 99999 --default-cache-ttl 99999`
-$ echo 'set agent-shell-lookup="gpg -d .pass.gpg"' \e
-    >> \*(ur
-.Ed
-.Pp
-A couple of environment variables will be set for the agent:
-.Pp
-.Bl -tag -compact -width ".It Ev _AIL_TMPDIR[337]"
-.It Ev NAIL_TMPDIR
-The temporary directory that \*(UA uses.
-Usually identical to
-.Ev TMPDIR ,
-but guaranteed to be set and usable by child processes;
-to ensure the latter condition for
-.Ev TMPDIR
-also, it'll be set.
-.It Ev NAIL_USER
-The user
-.Pf ( Ql USER )
-for which the password is looked up.
-.It Ev NAIL_USER_ENC
-The URL percent-encoded variant of
-.Ev NAIL_USER .
-.It Ev NAIL_HOST
-The plain machine hostname of the user account.
-.It Ev NAIL_HOST_PORT
-The
-.Ql HOST
-(hostname possibly including port) of the user account.
-.El
-.
 .Mx
 .It Va allnet
 \*(BO Causes only the local part to be evaluated
@@ -7996,8 +7939,7 @@ function of the OpenSSL library, if available.
 .
 .Mx Va ssl-method
 .It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
-\*(OP
-\*(OB Please use the newer and more flexible
+\*(OB\*(OP Please use the newer and more flexible
 .Va ssl-protocol
 instead: if both values are set,
 .Va ssl-protocol
@@ -9913,7 +9855,6 @@ use that special password instead of your real Google account password in
 .Xr file 1 ,
 .Xr fmt 1 ,
 .Xr gpg 1 ,
-.Xr gpg-agent 1 ,
 .Xr gzip 1 ,
 .Xr less 1 ,
 .Xr more 1 ,
