@@ -633,7 +633,7 @@ denoted by
 .Ev DEAD
 unless
 .Pf no Va save
-is set.)
+is set).
 .
 .Pp
 A number of variables can be used to alter default behavior; e.g.,
@@ -932,11 +932,16 @@ When reading the system mailbox or when
 .Ic file )
 specified a mailbox explicitly prefixed with the special
 .Ql %:
-modifier then messages which have been read will be moved to the user's
+modifier (propagating the mailbox to a primary one) then messages which
+have been read will be moved to a secondary mailbox, the user's
 .Ev MBOX
-file automatically when the mailbox is left, either by changing the
+file, automatically when the mailbox is left, either by changing the
 active mailbox or by quitting \*(UA (also see
-.Sx "Message states" ) .
+.Sx "Message states" )
+\(en this automatic moving from a system or primary to the secondary
+mailbox is not performed when the variable
+.Va hold
+is set.
 .
 .Pp
 After examining a message the user can also
@@ -945,7 +950,7 @@ the message,
 .Ic reply Ql r
 to the sender and all recipients or
 .Ic Reply Ql R
-exclusively to the sender.
+exclusively to the sender(s).
 Messages can also be
 .Ic forward Ns
 ed (shorter alias is
@@ -1020,9 +1025,9 @@ produce) with either of the text-mode browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
-teach \*(UA about MathML documents and make it display them as plain text
-and to open PDF attachments in an external PDF viewer, asynchronously
-and with some other magic attached:
+teach \*(UA about MathML documents and make it display them as plain
+text, and to open PDF attachments in an external PDF viewer,
+asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
 if $features !@ HTML-FILTER
@@ -1033,9 +1038,9 @@ if $features !@ HTML-FILTER
 endif
 mimetype '@ application/mathml+xml mathml'
 set pipe-application/pdf="@&=@ \e
-    trap \e"rm -f \e\e\e"${NAIL_FILENAME_TEMPORARY}\e\e\e"\e" EXIT;\e
-    trap \e"exit 75\e" \e INT QUIT TERM;\e
-    xpdf \e"${NAIL_FILENAME_TEMPORARY}\e""
+  trap \e"rm -f \e\e\e"${NAIL_FILENAME_TEMPORARY}\e\e\e"\e" EXIT;\e
+  trap \e"trap \e\e\e"\e\e\e" INT QUIT TERM; exit 1\e" \e INT QUIT TERM;\e
+  xpdf \e"${NAIL_FILENAME_TEMPORARY}\e""
 .Ed
 .
 .Pp
@@ -1181,7 +1186,7 @@ It may be spread over multiple input lines if the newline character is
 by placing a backslash character
 .Ql \e
 as the last character of the line; whereas any leading whitespace of
-follow lines is ignored, trailing whitespace before the escaped newlines
+follow lines is ignored, trailing whitespace before a escaped newline
 remains in the input.
 .It
 If the line (content) starts with the number sign
@@ -1242,7 +1247,7 @@ variable.
 (This is mostly an issue when interactively using \*(UA, though.
 It is actually possible to send mail in a completely
 .Dq faked
-locale environment.)
+locale environment, an option that \*(UA's test-suite uses excessively.)
 .
 .Pp
 If no character set conversion capabilities have been compiled into
@@ -1255,6 +1260,7 @@ it is simply assumed that it can be used to exchange 8-bit messages,
 and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to the mentioned
+.\" (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!)
 ISO-8859-1.
 .
 .Pp
@@ -1299,7 +1305,9 @@ All the specified character sets are tried in order unless the
 conversion of the part or attachment succeeds.
 If none of the tried (8-bit) character sets is capable to represent the
 content of the part or attachment,
-then the message will not be sent and its text will be saved to
+then the message will not be sent and its text will optionally be
+.Va save Ns d
+in
 .Ev DEAD .
 In general, if the message
 .Dq Cannot convert from a to b
@@ -2046,6 +2054,10 @@ For more information see the documentation of the variables
 .Va NAIL_HISTFILE
 and
 .Va NAIL_HISTSIZE .
+And there is also the \*(OPal
+.Va term-ca-mode
+will can be set to cause overall screen resets when \*(UA releases the
+terminal in interactive mode.
 .
 .Pp
 The builtin \*(UA command line editor supports the following operations;
@@ -2238,21 +2250,24 @@ Each command is typed on a line by itself,
 and may take arguments following the command word.
 The command need not be typed in its entirety \(en
 the first command which matches the typed prefix is used.
-(The command
-.Ic list
-prints a sorted list of available commands, and the command
+An \(en alphabetically \(en sorted list of commands can be shown
+with the command
+.Ic list ,
+and the command
 .Ic help
 (or
 .Ic \&? ) ,
 when given an argument, will show a documentation string for the
-expansion, as in
-.Ql ?unc ;
-documentation strings are however \*(OPal.)
+command matching the expanded argument, as in
+.Ql ?t ,
+which should be a shorthand of
+.Ql ?type ;
+documentation strings are however \*(OPal.
 .
 .Pp
 For commands which take message lists as arguments, the next message
 forward that satisfies the command's requirements will be used shall no
-explicit message list have been passed.
+explicit message list have been specified.
 If there are no messages forward of the current message,
 the search proceeds backwards,
 and if there are no good messages at all,
@@ -2282,7 +2297,8 @@ as in
 .
 .It
 An argument that is not enclosed in quotes, as above, can usually still
-contain space characters if those spaces are backslash-escaped.
+contain space characters if those spaces are backslash-escaped, as in
+.Ql you\e are .
 .
 .It
 A backslash outside of the enclosing quotes is discarded
@@ -2812,11 +2828,11 @@ variables are set, then the given hooks will be used to load and save
 and \*(UA will work with an intermediate temporary file.
 .Pp
 MBOX files (flat file-based mailboxes) are generally locked during file
-operations in order to avoid inconsistencies against concurrent
+operations in order to avoid inconsistencies due to concurrent
 modifications.
-Mailbox files which \*(UA treats as system mailboxes will also be
-protected by so-called dotlock files, the traditional way of mail spool
-file locking: for any file
+\*(OPal Mailbox files which \*(UA treats as system or primary mailboxes
+will also be protected by so-called dotlock files, the traditional way
+of mail spool file locking: for any file
 .Ql a
 a lock file
 .Ql a.lock
@@ -5830,14 +5846,15 @@ again reserves room for two spaces in addition.
 .
 .Mx
 .It Va history-gabby
-\*(BY
-\*(OP Add more entries to the history as is normally done.
+\*(BY\*(OP Add more entries to the history as is normally done.
 .
 .Mx
 .It Va history-gabby-persist
-\*(BY
-\*(OP \*(UA's own NCL will not save the additional (gabby) history
-entries in persistent storage unless this variable is also set.
+\*(BY\*(OP \*(UA's own NCL will not save the additional
+.Va history-gabby
+entries in persistent storage unless this variable is set.
+On the other hand it will not loose the knowledge of wether a persistent
+entry was gabby or not.
 Also see
 .Va NAIL_HISTFILE .
 .
@@ -5885,16 +5902,14 @@ possible international domain names (before conversion, that is).
 .
 .Mx
 .It Va ignore
-\*(BY
-Ignore interrupt signals from the terminal while entering messages;
-instead echo them as
+\*(BY Ignore interrupt signals from the terminal while entering
+messages; instead echo them as
 .Ql @
 characters and discard the current line.
 .
 .Mx
 .It Va ignoreeof
-\*(BY
-Ignore end-of-file conditions
+\*(BY Ignore end-of-file conditions
 .Pf ( Ql control-D ) ,
 on message input, which instead can be terminated only by entering a
 .Va dot
@@ -6054,10 +6069,11 @@ precondition to ensure message checksums won't change.)
 By default \*(UA will perform this
 .Ql From_
 quoting in a way that results in a MBOX file that is compatible with
-the loose POSIX MBOX layout, in order not to exceed the capabilities
-of simple applications, however.
-Set this option to generate MBOX files for RFC 4155 compliant
-applications only.
+the POSIX MBOX layout, which means that, in order not to exceed the
+capabilities of simple applications, many more
+.Ql From_
+lines get quoted (thus modified) than necessary according to RFC 4155.
+Set this option to instead generate MBOX files which comply to RFC 4155.
 .
 .Mx
 .It Va memdebug
@@ -6677,8 +6693,7 @@ command; also see
 .
 .Mx
 .It Va quote-as-attachment
-\*(BY
-If this is set, then the original message is added in its entirety as a
+\*(BY Add the original message in its entirety as a
 .Ql message/rfc822
 MIME attachment when replying to a message.
 Note this works regardless of the setting of
@@ -6774,8 +6789,7 @@ This is a quadoption; if set without a value it defaults to
 .
 .Mx
 .It Va rfc822-body-from_
-\*(BY
-This variable can be used to force displaying a so-called
+\*(BY This variable can be used to force displaying a so-called
 .Ql From_
 line for messages that are embedded into an envelope mail via the
 .Ql message/rfc822
@@ -7322,8 +7336,7 @@ Setting this variable also influences the generated
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
-\*(BY
-\*(OP Causes \*(UA to issue a
+\*(BY\*(OP Causes \*(UA to issue a
 .Ql STARTTLS
 command to make an SMTP session SSL/TLS encrypted, i.e., to enable
 transport layer security.
@@ -7616,8 +7629,7 @@ Note that SSLv2 is no longer supported at all.
 .
 .Mx
 .It Va ssl-no-default-ca
-\*(BY
-\*(OP Don't load default CA locations to verify SSL/TLS server
+\*(BY\*(OP Don't load default CA locations to verify SSL/TLS server
 certificates.
 .
 .Mx Va ssl-protocol
@@ -7711,13 +7723,14 @@ is set then \*(UA will try to switch to the
 .Dq alternate screen
 when in interactive mode, so that the terminal will go back to the
 normal screen, leaving all the text there intact, when \*(UA exits.
+.Pp
 .Sy Note:
 even when supported for this to produce appealing results the used
 .Ev PAGER
 and possibly configured
 .Va pipe-TYPE/SUBTYPE
 applications that take control over the terminal need to have
-corresponding support too, e.g., the
+corresponding support and must be configured accordingly, too, e.g., the
 .Xr less 1
 pager should be driven with the
 .Ql -X
