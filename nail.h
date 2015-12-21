@@ -1515,6 +1515,7 @@ ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_NETRC,                      /* {env=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
+   ok_v_netrc_pipe,
    ok_v_newfolders,
    ok_v_newmail,
 

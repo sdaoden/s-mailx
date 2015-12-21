@@ -2084,6 +2084,10 @@ specific entry which provides a
 name: this lookup will only succeed if unambiguous (one possible matching
 entry for
 .Ql HOST ) .
+It is possible to load encrypted
+.Pa .netrc
+files via
+.Va netrc-pipe .
 .Pp
 If there is still no
 .Ql USER
@@ -3958,7 +3962,7 @@ Identical to
 .Ar show
 has been given the content of the
 .Pa .netrc
-cache is shown, loading it first as necessary,
+cache is shown, loading it first as necessary.
 If the argument is
 .Ar load
 then the cache will only be initialized and
@@ -3968,7 +3972,8 @@ Note that \*(UA will try to load the file only once, use
 .Ql Ic \&\&netrc Ns \:\0\:clear
 to unlock further attempts.
 See
-.Va netrc-lookup
+.Va netrc-lookup ,
+.Va netrc-pipe
 and the section
 .Sx "On URL syntax and credential lookup" ;
 the section
@@ -6680,6 +6685,25 @@ and for the command
 the section
 .Sx "The .netrc file"
 documents the file format.
+Also see
+.Va netrc-pipe .
+.
+.Mx
+.It Va netrc-pipe
+\*(IN\*(OP When
+.Pa .netrc
+is loaded (see
+.Ic netrc
+and
+.Va netrc-lookup )
+then \*(UA will read the output of a shell pipe instead of the users
+.Pa .netrc
+file if this variable is set (to the desired shell command).
+This can be used to, e.g., store
+.Pa .netrc
+in encrypted form:
+.Pp
+.Dl set netrc-pipe='gpg -qd ~/.netrc.pgp'
 .
 .Mx
 .It Va newfolders
@@ -9401,7 +9425,8 @@ account XandeX {
   set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set netrc-lookup
-  #set agent-shell-lookup='gpg -d .pass.gpg'
+  # Load an encrypted ~/.netrc by uncommenting the next line
+  #set netrc-pipe='gpg -qd ~/.netrc.pgp'
 
   set smtp=smtps://smtp.yXXXXx.ru:465 \e
       smtp-hostname= hostname=yXXXXx.com
@@ -9417,28 +9442,6 @@ file:
 .
 .Bd -literal -offset indent
 machine *.yXXXXx.ru login USER password PASS
-.Ed
-.
-.Pp
-If the also \*(OPal
-.Va agent-shell-lookup
-is available things could be diversified further by using encrypted
-password storage: for this, don't specify
-.Ql password PASS
-in the
-.Pa .netrc
-file and instead uncomment the line that defines agent lookup in the
-example
-.Ic account
-above, then create the encrypted password storage file
-.Pa .pass.gpg :
-.
-.Bd -literal -offset indent
-$ echo PASS > .pass
-$ gpg -e .pass
-$ eval `gpg-agent --daemon \e
-        --pinentry-program=/usr/bin/pinentry-curses \e
-        --max-cache-ttl 99999 --default-cache-ttl 99999`
 .Ed
 .
 .Pp

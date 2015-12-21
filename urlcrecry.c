@@ -109,30 +109,52 @@ _url_last_at_before_slash(char const *sp)
 static void
 _nrc_init(void)
 {
+   struct n_sigman sm;
    char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
       user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
    struct stat sb;
    FILE *fi;
    enum nrc_token t;
-   bool_t seen_default, nl_last;
-   struct nrc_node *ntail = NULL /* CC happy */, *nhead = NULL,
-      *nrc = NRC_NODE_ERR;
+   bool_t ispipe, seen_default, nl_last;
+   struct nrc_node *ntail, *nhead, *nrc;
    NYD_ENTER;
 
-   if ((netrc_load = file_expand(ok_vlook(NETRC))) == NULL)
-      goto j_leave;
+   UNINIT(ntail, NULL);
+   nhead = NULL;
+   nrc = NRC_NODE_ERR;
+   ispipe = FAL0;
+   fi = NULL;
 
-   if ((fi = Fopen(netrc_load, "r")) == NULL) {
-      n_err(_("Cannot open \"%s\"\n"), netrc_load);
-      goto j_leave;
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
+      goto jleave;
    }
 
-   /* Be simple and apply rigid (permission) check(s) */
-   if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
-         (sb.st_mode & (S_IRWXG | S_IRWXO))) {
-      n_err(_("Not a regular file, or accessible by non-user: \"%s\"\n"),
-         netrc_load);
-      goto jleave;
+   if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
+      ispipe = TRU1;
+      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, COMMAND_FD_NULL)
+            ) == NULL) {
+         n_perr(netrc_load, 0);
+         goto j_leave;
+      }
+   } else {
+      if ((netrc_load = file_expand(ok_vlook(NETRC))) == NULL)
+         goto j_leave;
+
+      if ((fi = Fopen(netrc_load, "r")) == NULL) {
+         n_err(_("Cannot open \"%s\"\n"), netrc_load);
+         goto j_leave;
+      }
+
+      /* Be simple and apply rigid (permission) check(s) */
+      if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
+            (sb.st_mode & (S_IRWXG | S_IRWXO))) {
+         n_err(_("Not a regular file, or accessible by non-user: \"%s\"\n"),
+            netrc_load);
+         goto jleave;
+      }
    }
 
    seen_default = FAL0;
@@ -233,8 +255,14 @@ jerr:
 
    if (nhead != NULL)
       nrc = nhead;
+   n_sigman_cleanup_ping(&sm);
 jleave:
-   Fclose(fi);
+   if (fi != NULL) {
+      if (ispipe)
+            Pclose(fi, TRU1);
+      else
+         Fclose(fi);
+   }
    if (nrc == NRC_NODE_ERR)
       while (nhead != NULL) {
          ntail = nhead;
@@ -244,6 +272,7 @@ jleave:
 j_leave:
    _nrc_list = nrc;
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 static enum nrc_token
@@ -509,7 +538,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
    env_addon[6] = NULL;
 
    if ((pbuf = Popen(comm, "r", ok_vlook(SHELL), env_addon, -1)) == NULL) {
-      n_err(_("*agent-shell-lookup* startup failed (`%s')\n"), comm);
+      n_err(_("*agent-shell-lookup* startup failed (\"%s\")\n"), comm);
       goto jleave;
    }
 
@@ -526,8 +555,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
       n_str_add_buf(&s, buf, l);
 
    if (!Pclose(pbuf, TRU1)) {
-      if (options & OPT_D_V)
-         n_err(_("*agent-shell-lookup* execution failure (`%s')\n"), comm);
+      n_err(_("*agent-shell-lookup* execution failure (\"%s\")\n"), comm);
       goto jleave;
    }
 
@@ -543,7 +571,7 @@ jleave:
    NYD2_LEAVE;
    return rv;
 }
-#endif
+#endif /* HAVE_AGENT */
 
 FL char *
 (urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS)
