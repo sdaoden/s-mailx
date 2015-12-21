@@ -563,7 +563,7 @@ screensize(void)
    NYD_ENTER;
 
    if ((cp = ok_vlook(screen)) == NULL || (s = atoi(cp)) <= 0)
-      s = scrnheight - 4; /* XXX no magics */
+      s = scrnheight - 2; /* XXX no magics */
    NYD_LEAVE;
    return s;
 }
