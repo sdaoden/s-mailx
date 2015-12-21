@@ -402,6 +402,14 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define n_FIELD_INITN(N) CONCAT(., N) =
+# define n_FIELD_INITI(I) [I] =
+#else
+# define n_FIELD_INITN(N)
+# define n_FIELD_INITI(N)
+#endif
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define VFIELD_SIZE(X)
 # define VFIELD_SIZEOF(T,F) (0)
 #else
@@ -458,10 +466,19 @@
  * a special local CTA to overcome this */
 #define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
 #define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
-#ifdef n_MAIN_SOURCE
-# define MCTA(TEST)     CTA(TEST);
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 201112L
+# define n_CTA(T,M) _Static_assert(T, M)
+# define n_LCTA(T,M) _Static_assert(T, M)
 #else
-# define MCTA(TEST)
+# define n_CTA(T,M)  _CTA_1(T, n_FILE, __LINE__)
+# define n_LCTA(T,M) _LCTA_1(T, n_FILE, __LINE__)
+#endif
+
+#ifdef n_MAIN_SOURCE
+# define n_MCTA(T,M) n_CTA(T, M);
+#else
+# define n_MCTA(T,M)
 #endif
 
 #define _CTA_1(T,F,L)   _CTA_2(T, F, L)
@@ -652,11 +669,13 @@ typedef ssize_t         siz_t;
 # if SIZE_MAX == UI64_MAX || SIZE_MAX == SI64_MAX
 #  define PRIuZ         PRIu64
 #  define PRIdZ         PRId64
-MCTA(sizeof(size_t) == sizeof(ui64_t))
+n_MCTA(sizeof(size_t) == sizeof(ui64_t),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # elif SIZE_MAX == UI32_MAX || SIZE_MAX == SI32_MAX
 #  define PRIuZ         PRIu32
 #  define PRIdZ         PRId32
-MCTA(sizeof(size_t) == sizeof(ui32_t))
+n_MCTA(sizeof(size_t) == sizeof(ui32_t),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # else
 #  error SIZE_MAX is neither UI64_MAX nor UI32_MAX (please report this)
 # endif
@@ -665,7 +684,8 @@ MCTA(sizeof(size_t) == sizeof(ui32_t))
 #ifndef PRIuZ
 # define PRIuZ          "lu"
 # define PRIdZ          "ld"
-MCTA(sizeof(size_t) == sizeof(unsigned long))
+n_MCTA(sizeof(size_t) == sizeof(unsigned long),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # define UIZ_MAX        ULONG_MAX
 #endif
 
