@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ File operations, name word expansion.
+ *@ File operations.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -39,12 +39,6 @@
 # include "nail.h"
 #endif
 
-#include <sys/wait.h>
-
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
-#endif
-
 
 struct fio_stack {
    FILE *s_file;     /* File we were in. */
@@ -59,13 +53,6 @@ static size_t           _message_space;
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
 static FILE *           _fio_input;
-
-/* Locate the user's mailbox file (where new, unread mail is queued) */
-static void       _findmail(char *buf, size_t bufsize, char const *user,
-                     bool_t force);
-
-/* Perform shell meta character expansion TODO obsolete (INSECURE!) */
-static char *     _globname(char const *name, enum fexp_mode fexpm);
 
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
@@ -86,167 +73,6 @@ static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off, off_t len
 
 /* `source' and `source_if' (if silent_error: no pipes allowed, then) */
 static bool_t     _source_file(char const *file, bool_t silent_error);
-
-static void
-_findmail(char *buf, size_t bufsize, char const *user, bool_t force)
-{
-   char *cp;
-   NYD_ENTER;
-
-   if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL) {
-      ;
-   }
-
-   if (force || (cp = ok_vlook(MAIL)) == NULL)
-      snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user); /* TODO */
-   else
-      n_strscpy(buf, cp, bufsize);
-   NYD_LEAVE;
-}
-
-static char *
-_globname(char const *name, enum fexp_mode fexpm)
-{
-#ifdef HAVE_WORDEXP
-   wordexp_t we;
-   char *cp = NULL;
-   sigset_t nset;
-   int i;
-   NYD_ENTER;
-
-   /* Mac OS X Snow Leopard and Linux don't init fields on error, causing
-    * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
-   memset(&we, 0, sizeof we);
-
-   /* Some systems (notably Open UNIX 8.0.0) fork a shell for wordexp()
-    * and wait, which will fail if our SIGCHLD handler is active */
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGCHLD);
-   sigprocmask(SIG_BLOCK, &nset, NULL);
-# ifndef WRDE_NOCMD
-#  define WRDE_NOCMD 0
-# endif
-   i = wordexp(name, &we, WRDE_NOCMD);
-   sigprocmask(SIG_UNBLOCK, &nset, NULL);
-
-   switch (i) {
-   case 0:
-      break;
-#ifdef WRDE_CMDSUB
-   case WRDE_CMDSUB:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Command substitution not allowed\n"), name);
-      goto jleave;
-#endif
-   case WRDE_NOSPACE:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
-      goto jleave;
-   case WRDE_BADCHAR:
-   case WRDE_SYNTAX:
-   default:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("Syntax error in \"%s\"\n"), name);
-      goto jleave;
-   }
-
-   switch (we.we_wordc) {
-   case 1:
-      cp = savestr(we.we_wordv[0]);
-      break;
-   case 0:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": No match\n"), name);
-      break;
-   default:
-      if (fexpm & FEXP_MULTIOK) {
-         size_t j, l;
-
-         for (l = 0, j = 0; j < we.we_wordc; ++j)
-            l += strlen(we.we_wordv[j]) + 1;
-         ++l;
-         cp = salloc(l);
-         for (l = 0, j = 0; j < we.we_wordc; ++j) {
-            size_t x = strlen(we.we_wordv[j]);
-            memcpy(cp + l, we.we_wordv[j], x);
-            l += x;
-            cp[l++] = ' ';
-         }
-         cp[l] = '\0';
-      } else if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Ambiguous\n"), name);
-      break;
-   }
-jleave:
-   wordfree(&we);
-   NYD_LEAVE;
-   return cp;
-
-#else /* HAVE_WORDEXP */
-   struct stat sbuf;
-   char xname[PATH_MAX +1], cmdbuf[PATH_MAX +1], /* also used for files */
-      *shellp, *cp = NULL;
-   int pivec[2], pid, l, waits;
-   NYD_ENTER;
-
-   if (pipe(pivec) < 0) {
-      n_perr(_("pipe"), 0);
-      goto jleave;
-   }
-   snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-   if ((shellp = ok_vlook(SHELL)) == NULL)
-      shellp = UNCONST(XSHELL);
-   pid = start_command(shellp, NULL, COMMAND_FD_NULL, pivec[1],
-         "-c", cmdbuf, NULL, NULL);
-   if (pid < 0) {
-      close(pivec[0]);
-      close(pivec[1]);
-      goto jleave;
-   }
-   close(pivec[1]);
-
-jagain:
-   l = read(pivec[0], xname, sizeof xname);
-   if (l < 0) {
-      if (errno == EINTR)
-         goto jagain;
-      n_perr(_("read"), 0);
-      close(pivec[0]);
-      goto jleave;
-   }
-   close(pivec[0]);
-   if (!wait_child(pid, &waits) && WTERMSIG(waits) != SIGPIPE) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion failed\n"), name);
-      goto jleave;
-   }
-   if (l == 0) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": No match\n"), name);
-      goto jleave;
-   }
-   if (l == sizeof xname) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
-      goto jleave;
-   }
-   xname[l] = 0;
-   for (cp = xname + l - 1; *cp == '\n' && cp > xname; --cp)
-      ;
-   cp[1] = '\0';
-   if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') != NULL &&
-         stat(xname, &sbuf) < 0) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Ambiguous\n"), name);
-      cp = NULL;
-      goto jleave;
-   }
-   cp = savestr(xname);
-jleave:
-   NYD_LEAVE;
-   return cp;
-#endif /* !HAVE_WORDEXP */
-}
 
 static size_t
 _length_of_line(char const *line, size_t linesize)
@@ -890,132 +716,6 @@ fsize(FILE *iob)
    NYD_ENTER;
 
    rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL char *
-fexpand(char const *name, enum fexp_mode fexpm)
-{
-   char cbuf[PATH_MAX +1];
-   char const *res;
-   struct str s;
-   bool_t dyn;
-   NYD_ENTER;
-
-   /* The order of evaluation is "%" and "#" expand into constants.
-    * "&" can expand into "+".  "+" can expand into shell meta characters.
-    * Shell meta characters expand into constants.
-    * This way, we make no recursive expansion */
-   if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
-      res = UNCONST(name);
-
-   if (fexpm & FEXP_SHELL) {
-      dyn = FAL0;
-      goto jshell;
-   }
-jnext:
-   dyn = FAL0;
-   switch (*res) {
-   case '%':
-      if (res[1] == ':' && res[2] != '\0') {
-         res = &res[2];
-         goto jnext;
-      }
-      _findmail(cbuf, sizeof cbuf, (res[1] != '\0' ? res + 1 : myname),
-         (res[1] != '\0' || (options & OPT_u_FLAG)));
-      res = cbuf;
-      goto jislocal;
-   case '#':
-      if (res[1] != '\0')
-         break;
-      if (prevfile[0] == '\0') {
-         n_err(_("No previous file\n"));
-         res = NULL;
-         goto jleave;
-      }
-      res = prevfile;
-      goto jislocal;
-   case '&':
-      if (res[1] == '\0') {
-         if ((res = ok_vlook(MBOX)) == NULL)
-            res = UNCONST("~/mbox"); /* XXX no magics (POSIX though) */
-         else if (res[0] != '&' || res[1] != '\0')
-            goto jnext;
-      }
-      break;
-   }
-
-   if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-      size_t i = strlen(cbuf);
-
-      res = str_concat_csvl(&s, cbuf,
-            ((i > 0 && cbuf[i - 1] == '/') ? "" : "/"), res + 1, NULL)->s;
-      dyn = TRU1;
-
-      if (res[0] == '%' && res[1] == ':') {
-         res += 2;
-         goto jnext;
-      }
-   }
-
-   /* Catch the most common shell meta character */
-jshell:
-   if (res[0] == '~') {
-      res = n_shell_expand_tilde(res, NULL);
-      dyn = TRU1;
-   }
-   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
-      switch (which_protocol(res)) {
-      case PROTO_FILE:
-      case PROTO_MAILDIR:
-         res = (fexpm & FEXP_NSHELL) ? n_shell_expand_var(res, TRU1, NULL)
-               : _globname(res, fexpm);
-         dyn = TRU1;
-         goto jleave;
-      default:
-         break;
-      }
-jislocal:
-   if (fexpm & FEXP_LOCAL)
-      switch (which_protocol(res)) {
-      case PROTO_FILE:
-      case PROTO_MAILDIR:
-         break;
-      default:
-         n_err(_("Not a local file or directory: \"%s\"\n"), name);
-         res = NULL;
-         break;
-      }
-jleave:
-   if (res && !dyn)
-      res = savestr(res);
-   NYD_LEAVE;
-   return UNCONST(res);
-}
-
-FL char *
-fexpand_nshell_quote(char const *name)
-{
-   size_t i, j;
-   char *rv, c;
-   NYD_ENTER;
-
-   for (i = j = 0; (c = name[i]) != '\0'; ++i)
-      if (c == '\\')
-         ++j;
-
-   if (j == 0)
-      rv = savestrbuf(name, i);
-   else {
-      rv = salloc(i + j +1);
-      for (i = j = 0; (c = name[i]) != '\0'; ++i) {
-         rv[j++] = c;
-         if (c == '\\')
-            rv[j++] = c;
-      }
-      rv[j] = '\0';
-   }
    NYD_LEAVE;
    return rv;
 }

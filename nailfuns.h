@@ -294,25 +294,6 @@ FL ui32_t      pjw(char const *cp); /* TODO obsolete -> torek_hash() */
 /* Find a prime greater than n */
 FL ui32_t      nextprime(ui32_t n);
 
-/* (Try to) Expand ^~/? and ^~USER/? constructs.
- * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
-FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
-
-/* (Try to) Expand any shell variable in s, allowing backslash escaping
- * (of any following character) with bsescape.
- * Returns the completely resolved (maybe empty) salloc()ed string.
- * Logs on error */
-FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
-                  bool_t *err_or_null);
-
-/* Check wether *s is an escape sequence, expand it as necessary.
- * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
- * *s is advanced to after the expanded sequence (as possible).
- * If use_prompt_extensions is set, an enum prompt_exp may be returned */
-FL int         n_shell_expand_escape(char const **s,
-                  bool_t use_prompt_extensions);
-
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
 FL char *      getprompt(void);
 
@@ -825,25 +806,6 @@ FL struct message * setdot(struct message *mp);
 
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
-
-/* Evaluate the string given as a new mailbox name. Supported meta characters:
- * . %  for my system mail box
- * . %user for user's system mail box
- * . #  for previous file
- * . &  invoker's mbox file
- * . +file file in folder directory
- * . any shell meta character (except for FEXP_NSHELL).
- * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
- * a poor man's vis(3), on name before calling this (and showing the user).
- * Returns the file name as an auto-reclaimed string */
-FL char *      fexpand(char const *name, enum fexp_mode fexpm);
-
-#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
-#define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
-
-/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
- * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
-FL char *      fexpand_nshell_quote(char const *name);
 
 /* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
  * be replaced by something else leave store alone, otherwise smalloc() the
@@ -1730,6 +1692,48 @@ FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
 
 /*  */
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
+
+/*
+ * shexp.c
+ */
+
+/* Evaluate the string given as a new mailbox name. Supported meta characters:
+ * . %  for my system mail box
+ * . %user for user's system mail box
+ * . #  for previous file
+ * . &  invoker's mbox file
+ * . +file file in folder directory
+ * . any shell meta character (except for FEXP_NSHELL).
+ * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
+ * a poor man's vis(3), on name before calling this (and showing the user).
+ * Returns the file name as an auto-reclaimed string */
+FL char *      fexpand(char const *name, enum fexp_mode fexpm);
+
+#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
+#define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
+
+/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
+ * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
+FL char *      fexpand_nshell_quote(char const *name);
+
+/* (Try to) Expand ^~/? and ^~USER/? constructs.
+ * Returns the completely resolved (maybe empty or identical to input)
+ * salloc()ed string */
+FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
+
+/* (Try to) Expand any shell variable in s, allowing backslash escaping
+ * (of any following character) with bsescape.
+ * Returns the completely resolved (maybe empty) salloc()ed string.
+ * Logs on error */
+FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
+                  bool_t *err_or_null);
+
+/* Check wether *s is an escape sequence, expand it as necessary.
+ * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
+ * *s is advanced to after the expanded sequence (as possible).
+ * If use_prompt_extensions is set, an enum prompt_exp may be returned */
+FL int         n_shell_expand_escape(char const **s,
+                  bool_t use_prompt_extensions);
 
 /*
  * signal.c
