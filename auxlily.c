@@ -176,18 +176,8 @@ _rand_get8(void)
 }
 #endif /* HAVE_POSIX_RANDOM */
 
-FL void
-touch(struct message *mp)
-{
-   NYD_ENTER;
-   mp->m_flag |= MTOUCH;
-   if (!(mp->m_flag & MREAD))
-      mp->m_flag |= MREAD | MSTATUS;
-   NYD_LEAVE;
-}
-
 FL int
-argcount(char **argv)
+argcount(char **argv)/* FIXME -> lex.c */
 {
    char **ap;
    NYD_ENTER;

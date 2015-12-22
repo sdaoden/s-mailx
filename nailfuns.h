@@ -263,10 +263,6 @@ FL void        edit_attachments(struct attachment **aphead);
  * auxlily.c
  */
 
-/* Touch the named message by setting its MTOUCH flag.  Touched messages have
- * the effect of not being sent back to the system mailbox on exit */
-FL void        touch(struct message *mp);
-
 /* Count the number of arguments in the given string raw list */
 FL int         argcount(char **argv);
 
@@ -786,24 +782,6 @@ FL void        setptr(FILE *ibuf, off_t offset);
  * return -1, else the count of characters written, including the newline */
 FL int         putline(FILE *obuf, char *linebuf, size_t count);
 
-/* Return a file buffer all ready to read up the passed message pointer */
-FL FILE *      setinput(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-
-/* Reset (free) the global message array */
-FL void        message_reset(void);
-
-/* Append the passed message descriptor onto the message array; if mp is NULL,
- * NULLify the entry at &[msgCount-1] */
-FL void        message_append(struct message *mp);
-
-/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
-* true then the headers will also be searched (as plain text) */
-FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-               bool_t with_headers);
-
-FL struct message * setdot(struct message *mp);
-
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
 
@@ -814,8 +792,6 @@ FL bool_t      var_folder_updated(char const *folder, char **store);
 
 /* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
-
-FL enum okay   get_body(struct message *mp);
 
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
 FL bool_t      n_file_lock(int fd, enum n_file_lock_type flt,
@@ -1070,6 +1046,39 @@ FL int         first(int f, int m);
 
 /* Mark the named message by setting its mark bit */
 FL void        mark(int mesg, int f);
+
+/*
+ * message.c
+ */
+
+/* Return a file buffer all ready to read up the passed message pointer */
+FL FILE *      setinput(struct mailbox *mp, struct message *m,
+                  enum needspec need);
+
+/*  */
+FL enum okay   get_body(struct message *mp);
+
+/* Reset (free) the global message array */
+FL void        message_reset(void);
+
+/* Append the passed message descriptor onto the message array; if mp is NULL,
+ * NULLify the entry at &[msgCount-1] */
+FL void        message_append(struct message *mp);
+
+/* Append a NULL message */
+FL void        message_append_null(void);
+
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+               bool_t with_headers);
+
+/*  */
+FL struct message * setdot(struct message *mp);
+
+/* Touch the named message by setting its MTOUCH flag.  Touched messages have
+ * the effect of not being sent back to the system mailbox on exit */
+FL void        touch(struct message *mp);
 
 /*
  * maildir.c

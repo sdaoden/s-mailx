@@ -46,9 +46,6 @@ struct fio_stack {
    ui32_t s_pstate;  /* Copy of ::pstate */
 };
 
-/* Slots in ::message */
-static size_t           _message_space;
-
 /* */
 static struct fio_stack _fio_stack[FIO_STACK_SIZE];
 static size_t           _fio_stack_size;
@@ -61,12 +58,6 @@ static size_t     _length_of_line(char const *line, size_t linesize);
 /* Read a line, one character at a time */
 static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
                      FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
-
-/* Take the data out of the passed ghost file and toss it into a dynamically
- * allocated message structure */
-static void       makemessage(void);
-
-static enum okay  get_header(struct message *mp);
 
 /* Workhorse */
 static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off, off_t len);
@@ -126,44 +117,6 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
       *llen = n;
 jleave:
    NYD2_LEAVE;
-   return rv;
-}
-
-static void
-makemessage(void)
-{
-   NYD_ENTER;
-   if (msgCount == 0)
-      message_append(NULL);
-   setdot(message);
-   message[msgCount].m_size = 0;
-   message[msgCount].m_lines = 0;
-   NYD_LEAVE;
-}
-
-static enum okay
-get_header(struct message *mp)
-{
-   enum okay rv;
-   NYD_ENTER;
-   UNUSED(mp);
-
-   switch (mb.mb_type) {
-   case MB_FILE:
-   case MB_MAILDIR:
-      rv = OKAY;
-      break;
-#ifdef HAVE_POP3
-   case MB_POP3:
-      rv = pop3_header(mp);
-      break;
-#endif
-   case MB_VOID:
-   default:
-      rv = STOP;
-      break;
-   }
-   NYD_LEAVE;
    return rv;
 }
 
@@ -486,8 +439,8 @@ setptr(FILE *ibuf, off_t offset)
          self.m_have = HAVE_HEADER | HAVE_BODY;
          if (selfcnt > 0)
             message_append(&self);
-         makemessage();
-         if (linebuf)
+         message_append_null();
+         if (linebuf != NULL)
             free(linebuf);
          break;
       }
@@ -581,131 +534,6 @@ putline(FILE *obuf, char *linebuf, size_t cnt)
       rv = (int)(cnt + 1);
    NYD_LEAVE;
    return rv;
-}
-
-FL FILE *
-setinput(struct mailbox *mp, struct message *m, enum needspec need)
-{
-   FILE *rv = NULL;
-   enum okay ok = STOP;
-   NYD_ENTER;
-
-   switch (need) {
-   case NEED_HEADER:
-      ok = (m->m_have & HAVE_HEADER) ? OKAY : get_header(m);
-      break;
-   case NEED_BODY:
-      ok = (m->m_have & HAVE_BODY) ? OKAY : get_body(m);
-      break;
-   case NEED_UNSPEC:
-      ok = OKAY;
-      break;
-   }
-   if (ok != OKAY)
-      goto jleave;
-
-   fflush(mp->mb_otf);
-   if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
-         SEEK_SET) == -1) {
-      n_perr(_("fseek"), 0);
-      n_panic(_("temporary file seek"));
-   }
-   rv = mp->mb_itf;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL void
-message_reset(void)
-{
-   NYD_ENTER;
-   if (message != NULL) {
-      free(message);
-      message = NULL;
-   }
-   msgCount = 0;
-   _message_space = 0;
-   NYD_LEAVE;
-}
-
-FL void
-message_append(struct message *mp)
-{
-   NYD_ENTER;
-   if (UICMP(z, msgCount + 1, >=, _message_space)) {
-      /* XXX remove _message_space magics (or use s_Vector) */
-      _message_space = (_message_space >= 128 && _message_space <= 1000000)
-            ? _message_space << 1 : _message_space + 64;
-      message = srealloc(message, _message_space * sizeof *message);
-   }
-   if (msgCount > 0) {
-      if (mp != NULL)
-         message[msgCount - 1] = *mp;
-      else
-         memset(message + msgCount - 1, 0, sizeof *message);
-   }
-   NYD_LEAVE;
-}
-
-FL bool_t
-message_match(struct message *mp, struct search_expr const *sep,
-   bool_t with_headers)
-{
-   char **line;
-   size_t *linesize, cnt;
-   FILE *fp;
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   if ((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-      goto j_leave;
-
-   if (sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
-      goto jleave;
-   fflush_rewind(fp);
-
-   cnt = fsize(fp);
-   line = &termios_state.ts_linebuf; /* XXX line pool */
-   linesize = &termios_state.ts_linesize; /* XXX line pool */
-
-   if (!with_headers)
-      while (fgetline(line, linesize, &cnt, NULL, fp, 0))
-         if (**line == '\n')
-            break;
-
-   while (fgetline(line, linesize, &cnt, NULL, fp, 0)) {
-#ifdef HAVE_REGEX
-      if (sep->ss_sexpr == NULL) {
-         if (regexec(&sep->ss_regex, *line, 0,NULL, 0) == REG_NOMATCH)
-            continue;
-      } else
-#endif
-      if (!substr(*line, sep->ss_sexpr))
-         continue;
-      rv = TRU1;
-      break;
-   }
-
-jleave:
-   Fclose(fp);
-j_leave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL struct message *
-setdot(struct message *mp)
-{
-   NYD_ENTER;
-   if (dot != mp) {
-      prevdot = dot;
-      pstate &= ~PS_DID_PRINT_DOT;
-   }
-   dot = mp;
-   uncollapse1(dot, 0);
-   NYD_LEAVE;
-   return dot;
 }
 
 FL off_t
@@ -804,32 +632,6 @@ getdeadletter(void) /* XXX should that be in auxlily.c? */
       cp = "dead.letter"; /* XXX magic -> nail.h (POSIX thing though) */
    NYD_LEAVE;
    return cp;
-}
-
-FL enum okay
-get_body(struct message *mp)
-{
-   enum okay rv;
-   NYD_ENTER;
-   UNUSED(mp);
-
-   switch (mb.mb_type) {
-   case MB_FILE:
-   case MB_MAILDIR:
-      rv = OKAY;
-      break;
-#ifdef HAVE_POP3
-   case MB_POP3:
-      rv = pop3_body(mp);
-      break;
-#endif
-   case MB_VOID:
-   default:
-      rv = STOP;
-      break;
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 FL bool_t
