@@ -855,27 +855,9 @@ FL char const * getdeadletter(void);
 
 FL enum okay   get_body(struct message *mp);
 
-/* File locking */
-
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
 FL bool_t      n_file_lock(int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
-
-/* Socket I/O */
-#ifdef HAVE_SOCKETS
-FL bool_t      sopen(struct sock *sp, struct url *urlp);
-FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, char const *data);
-FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
-                  int use_buffer);
-
-/*  */
-FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
-                  struct sock *sp SMALLOC_DEBUG_ARGS);
-# ifdef HAVE_DEBUG
-#  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
-# endif
-#endif /* HAVE_SOCKETS */
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
@@ -1832,6 +1814,25 @@ FL void        _nyd_oncrash(int signo);
 #ifdef HAVE_SMTP
 /* Send a message via SMTP */
 FL bool_t      smtp_mta(struct sendbundle *sbp);
+#endif
+
+/*
+ * socket.c
+ */
+
+#ifdef HAVE_SOCKETS
+FL bool_t      sopen(struct sock *sp, struct url *urlp);
+FL int         sclose(struct sock *sp);
+FL enum okay   swrite(struct sock *sp, char const *data);
+FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
+                  int use_buffer);
+
+/*  */
+FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
+                  struct sock *sp SMALLOC_DEBUG_ARGS);
+# ifdef HAVE_DEBUG
+#  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
+# endif
 #endif
 
 /*
