@@ -1131,23 +1131,6 @@ setdot(struct message *mp)
    return dot;
 }
 
-FL int
-rm(char const *name)
-{
-   struct stat sb;
-   int rv = -1;
-   NYD_ENTER;
-
-   if (stat(name, &sb) < 0)
-      ;
-   else if (!S_ISREG(sb.st_mode))
-      errno = EISDIR;
-   else
-      rv = unlink(name);
-   NYD_LEAVE;
-   return rv;
-}
-
 FL off_t
 fsize(FILE *iob)
 {

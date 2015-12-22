@@ -565,7 +565,7 @@ trycreate(char const *name)
          n_err(_("\"%s\" is not a directory\n"), name);
          goto jleave;
       }
-   } else if (makedir(name) != OKAY) {
+   } else if (!n_path_mkdir(name)) {
       n_err(_("Cannot create directory \"%s\"\n"), name);
       goto jleave;
    }

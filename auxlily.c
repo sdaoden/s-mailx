@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Auxiliary functions.
+ *@ Auxiliary functions that don't fit anywhere else.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -301,23 +301,6 @@ touch(struct message *mp)
    if (!(mp->m_flag & MREAD))
       mp->m_flag |= MREAD | MSTATUS;
    NYD_LEAVE;
-}
-
-FL bool_t
-is_dir(char const *name)
-{
-   struct stat sbuf;
-   bool_t rv;
-   NYD_ENTER;
-
-   for (rv = FAL0;;)
-      if (!stat(name, &sbuf)) {
-         rv = (S_ISDIR(sbuf.st_mode) != 0);
-         break;
-      } else if (errno != EINTR)
-         break;
-   NYD_LEAVE;
-   return rv;
 }
 
 FL int
@@ -926,98 +909,6 @@ getrandstring(size_t length)
    NYD_LEAVE;
    return b64.s;
 }
-
-FL enum okay
-makedir(char const *name)
-{
-   struct stat st;
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   if (!mkdir(name, 0700))
-      rv = OKAY;
-   else {
-      int e = errno;
-      if ((e == EEXIST || e == ENOSYS) && !stat(name, &st) &&
-            S_ISDIR(st.st_mode))
-         rv = OKAY;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-#ifdef HAVE_FCHDIR
-FL enum okay
-cwget(struct cw *cw)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   if ((cw->cw_fd = open(".", O_RDONLY)) == -1)
-      goto jleave;
-   if (fchdir(cw->cw_fd) == -1) {
-      close(cw->cw_fd);
-      goto jleave;
-   }
-   rv = OKAY;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL enum okay
-cwret(struct cw *cw)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   if (!fchdir(cw->cw_fd))
-      rv = OKAY;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL void
-cwrelse(struct cw *cw)
-{
-   NYD_ENTER;
-   close(cw->cw_fd);
-   NYD_LEAVE;
-}
-
-#else /* !HAVE_FCHDIR */
-FL enum okay
-cwget(struct cw *cw)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   if (getcwd(cw->cw_wd, sizeof cw->cw_wd) != NULL && !chdir(cw->cw_wd))
-      rv = OKAY;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL enum okay
-cwret(struct cw *cw)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
-
-   if (!chdir(cw->cw_wd))
-      rv = OKAY;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL void
-cwrelse(struct cw *cw)
-{
-   NYD_ENTER;
-   UNUSED(cw);
-   NYD_LEAVE;
-}
-#endif /* !HAVE_FCHDIR */
 
 FL size_t
 field_detect_width(char const *buf, size_t blen){

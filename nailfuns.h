@@ -267,9 +267,6 @@ FL void        edit_attachments(struct attachment **aphead);
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
 
-/* Test to see if the passed file name is a directory, return true if it is */
-FL bool_t      is_dir(char const *name);
-
 /* Count the number of arguments in the given string raw list */
 FL int         argcount(char **argv);
 
@@ -324,13 +321,6 @@ FL char *      nodename(int mayoverride);
 
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
-
-FL enum okay   makedir(char const *name);
-
-/* A get-wd..restore-wd approach */
-FL enum okay   cwget(struct cw *cw);
-FL enum okay   cwret(struct cw *cw);
-FL void        cwrelse(struct cw *cw);
 
 /* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
  * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
@@ -817,9 +807,6 @@ FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);
 
 FL struct message * setdot(struct message *mp);
-
-/* Delete a file, but only if the file is a plain file */
-FL int         rm(char const *name);
 
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
@@ -1551,6 +1538,25 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 #else /* HAVE_OPENSSL */
 # define c_verify                c_cmdnotsupp
 #endif
+
+/*
+ * path.c
+ */
+
+/* Test to see if the passed file name is a directory, return true if it is */
+FL bool_t      is_dir(char const *name);
+
+/*  */
+FL bool_t      n_path_mkdir(char const *name);
+
+/* Delete a file, but only if the file is a plain file; return FAL0 on system
+ * error and TRUM1 if name is not a plain file, return TRU1 on success */
+FL bool_t      n_path_rm(char const *name);
+
+/* A get-wd..restore-wd approach */
+FL enum okay   cwget(struct cw *cw);
+FL enum okay   cwret(struct cw *cw);
+FL void        cwrelse(struct cw *cw);
 
 /*
  * pop3.c

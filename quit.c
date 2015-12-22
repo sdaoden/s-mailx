@@ -256,9 +256,15 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    doreset = FAL0;
 
    if (gotcha && !ok_blook(keep) && !ok_blook(emptybox)/* TODO obsolete eb*/) {
-      rm(mailname);
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("removed\n") : _("removed.\n"));
+      bool_t rms;
+
+      if ((rms = n_path_rm(mailname)) == TRU1)
+         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            ? _("removed\n") : _("removed.\n"));
+      else {
+         printf(_("removal error\n"));
+         n_err(_("could not remove file \"%s\"\n")); /* XXX error cause */
+      }
    } else
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
@@ -276,7 +282,7 @@ static void
 _demail(void)
 {
    NYD2_ENTER;
-   if (ok_blook(keep) || rm(mailname) < 0) {
+   if (ok_blook(keep) || n_path_rm(mailname) <= FAL0) {
       /* TODO demail(): try use f?truncate(2) instead?! */
       int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
       if (fd >= 0)
