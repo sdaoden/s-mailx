@@ -174,7 +174,7 @@
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
 #define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
+#define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
@@ -819,19 +819,19 @@ enum cproto {
    CPROTO_POP3
 };
 
-enum dotlock_state {
-   DLS_NONE,
-   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
-   DLS_NAMETOOLONG,           /* Lock file name would be too long */
-   DLS_ROFS,                  /* Read-only filesystem (no error, mailbox RO) */
-   DLS_NOPERM,                /* No permission to creat lock file */
-   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
-   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
-   DLS_EXIST,                 /* Lock file already exists, stale lock? */
-   DLS_FISHY,                 /* Something makes us think bad of situation */
-   DLS_DUNNO,                 /* Catch-all error */
-   DLS_PING,                  /* Not an error, but have to wait for lock */
-   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+enum n_dotlock_state{
+   n_DLS_NONE,
+   n_DLS_CANT_CHDIR,    /* Failed to chdir(2) into desired path */
+   n_DLS_NAMETOOLONG,   /* Lock file name would be too long */
+   n_DLS_ROFS,          /* Read-only filesystem (no error, mailbox RO) */
+   n_DLS_NOPERM,        /* No permission to creat lock file */
+   n_DLS_NOEXEC,        /* Privilege separated dotlocker not found */
+   n_DLS_PRIVFAILED,    /* Rising privileges failed in dotlocker */
+   n_DLS_EXIST,         /* Lock file already exists, stale lock? */
+   n_DLS_FISHY,         /* Something makes us think bad of situation */
+   n_DLS_DUNNO,         /* Catch-all error */
+   n_DLS_PING,          /* Not an error, but have to wait for lock */
+   n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
 enum exit_status {
@@ -860,7 +860,7 @@ enum fexp_mode {
    FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
-enum file_lock_type {
+enum n_file_lock_type{
    FLT_READ,
    FLT_WRITE
 };
@@ -1617,12 +1617,12 @@ struct ccred {
 };
 
 #ifdef HAVE_DOTLOCK
-struct dotlock_info {
-   char const  *di_file_name;    /* Mailbox to lock */
-   char const  *di_lock_name;    /* .di_file_name + .lock */
-   char const  *di_hostname;     /* ..filled in parent (due resolver delays) */
-   char const  *di_randstr;      /* ..ditto, random string */
-   size_t      di_pollmsecs;     /* Delay in between locking attempts */
+struct n_dotlock_info{
+   char const *di_file_name;  /* Mailbox to lock */
+   char const *di_lock_name;  /* .di_file_name + .lock */
+   char const *di_hostname;   /* ..filled in parent (due resolver delays) */
+   char const *di_randstr;    /* ..ditto, random string */
+   size_t di_pollmsecs;       /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
