@@ -260,6 +260,8 @@ cc_setup() {
       CC=${i}
    elif { i="`command -v c99`"; }; then
       CC=${i}
+   elif { i="`command -v tcc`"; }; then
+      CC=${i}
    else
       if [ "${CC}" = cc ]; then
          :
@@ -268,7 +270,7 @@ cc_setup() {
       else
          printf >&2 'boing booom tschak\n'
          msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         msg ' Neither of clang(1), gcc(1), tcc(1), c89(1) and c99(1).'
          msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
          config_exit 1
       fi
@@ -300,7 +302,12 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      _cc_flags_generic
+      if [ "${CC}" = tcc ]; then
+         msg ' . have special tcc(1) environmental rules, dealing with it'
+         _cc_flags_tcc
+      else
+         _cc_flags_generic
+      fi
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
@@ -312,6 +319,19 @@ cc_flags() {
    fi
    msg ''
    export CFLAGS LDFLAGS
+}
+
+_cc_flags_tcc() {
+   _CFLAGS= _LDFLAGS=
+
+   cc_check -Wall
+   cc_check -Wextra
+   cc_check -pedantic
+
+   if feat_yes DEBUG; then
+      cc_check -b
+      cc_check -g
+   fi
 }
 
 _cc_flags_generic() {
@@ -2196,6 +2216,8 @@ else
       printf "# include \"${i}\"\n" >> ${h}
    done
    echo >> ${mk}
+   # tcc(1) fails on 2015-11-13 unless this #else clause existed
+   echo '#else' >> ${h}
 fi
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
@@ -2423,7 +2445,7 @@ ${cat} > ${tmp2}.c << \!
 #endif
 : . mandir: MANDIR
 : . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
-: . $MAILSPOOL: MAILSPOOL
+: . Mail spool directory: MAILSPOOL
 :
 !
 
