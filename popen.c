@@ -535,6 +535,7 @@ jraw:
          goto jleave;
    }
 
+   /* Note rv is not yet register_file()d, fclose() it in error path! */
    if ((rv = Ftmp(NULL, "zopen", rof, 0600)) == NULL) {
       n_perr(_("tmpfile"), 0);
       goto jerr;
@@ -546,7 +547,7 @@ jraw:
       if (_file_load(flags, infd, fileno(rv), cload) < 0) {
 jerr:
          if (rv != NULL)
-            Fclose(rv);
+            fclose(rv);
          rv = NULL;
          if (infd >= 0)
             close(infd);
@@ -554,7 +555,7 @@ jerr:
       }
    } else {
       if ((infd = creat(file, 0666)) == -1) {
-         Fclose(rv);
+         fclose(rv);
          rv = NULL;
          goto jleave;
       }
