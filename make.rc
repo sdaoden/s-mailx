@@ -85,10 +85,10 @@ XPAGER=more
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=,
-#     grep=, mkdir=, mv=, tee=, rm=, sed=, tr=
+#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=
 # Usually in administrator paths:
 #  chown= [WANT_DOTLOCK]
-# Note that rm(1), sed(1) and tr(1) are needed before this file is read,
+# Note that awk(1), rm(1) and tr(1) are needed before this file is read,
 # all other utilities will be checked afterwards only.  For
 # cross-compilation setting MAKE= and STRIP= may be necessary.  Due to
 # the evaluation order of the build system all those programs are
