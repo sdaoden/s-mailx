@@ -129,7 +129,7 @@ _cleantmp(void)
    if ((dirp = opendir("tmp")) == NULL)
       goto jleave;
 
-   time(&now);
+   now = n_time_epoch();
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
@@ -506,7 +506,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
 
    /* Create a unique temporary file */
    for (nfn = (char*)0xA /* XXX no magic */;; sleep(1)) {
-      time(&now);
+      now = n_time_epoch();
       flen = strlen(fn = mkname(now, flag, NULL));
       tfn = salloc(n = nlen + flen + 6);
       snprintf(tfn, n, "%s/tmp/%s", name, fn);

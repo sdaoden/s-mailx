@@ -1776,11 +1776,35 @@ quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
    return rv;
 }
 
+FL time_t
+n_time_epoch(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+   struct timespec ts;
+#elif defined HAVE_GETTIMEOFDAY
+   struct timeval ts;
+#endif
+   time_t rv;
+   NYD2_ENTER;
+
+#ifdef HAVE_CLOCK_GETTIME
+   clock_gettime(CLOCK_REALTIME, &ts);
+   rv = (time_t)ts.tv_sec;
+#elif defined HAVE_GETTIMEOFDAY
+   gettimeofday(&ts, NULL);
+   rv = (time_t)ts.tv_sec;
+#else
+   rv = time(NULL);
+#endif
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
    NYD_ENTER;
-   tc->tc_time = time(NULL);
+   tc->tc_time = n_time_epoch();
    if (full_update) {
       memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
       memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_local);
