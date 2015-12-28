@@ -4,6 +4,8 @@
  *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
  *@ that SIGPIPE is ignored (we react upon EPIPE).
+ *@ It furtherly assumes that it can create a file name that is at least one
+ *@ byte longer than the dotlock file's name!
  *
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
@@ -31,8 +33,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* Callee has to ensure strlen(di_lock_name)+1+1 fits in NAME_MAX! */
-static enum dotlock_state  _dotlock_create(struct dotlock_info *dip);
+/* Jump in */
+static enum dotlock_state _dotlock_create(struct dotlock_info *dip);
 
 /* Create a unique file. O_EXCL does not really work over NFS so we follow
  * the following trick (inspired by S.R. van den Berg):
@@ -47,13 +49,15 @@ static enum dotlock_state  __dotlock_create_excl(struct dotlock_info *dip,
 static enum dotlock_state
 _dotlock_create(struct dotlock_info *dip)
 {
-   char lname[NAME_MAX];
+   /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
+    * problems (SunOS), since the pathconf(3) value came too late! */
+   char lname[PATH_MAX +1];
    sigset_t nset, oset;
    size_t tries;
    ssize_t w;
    enum dotlock_state rv, xrv;
 
-   /* (Callee ensured this doesn't end up as plain "di_lock_name" */
+   /* (Callee ensured this doesn't end up as plain "di_lock_name") */
    snprintf(lname, sizeof lname, "%s.%s.%s",
       dip->di_lock_name, dip->di_hostname, dip->di_randstr);
 

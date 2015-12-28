@@ -350,7 +350,7 @@ jleave:
 
 #else /* HAVE_WORDEXP */
    struct stat sbuf;
-   char xname[PATH_MAX], cmdbuf[PATH_MAX], /* also used for files */
+   char xname[PATH_MAX +1], cmdbuf[PATH_MAX +1], /* also used for files */
       *shellp, *cp = NULL;
    int pivec[2], pid, l, waits;
    NYD_ENTER;
@@ -540,9 +540,11 @@ _file_lock(int fd, enum file_lock_type flt, off_t off, off_t len)
 static int
 _dotlock_main(void)
 {
+   /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
+    * problems (SunOS), since the pathconf(3) value comes too late! */
+   char name[PATH_MAX +1];
    struct dotlock_info di;
    struct stat stb, fdstb;
-   char name[NAME_MAX];
    enum dotlock_state dls;
    char const *cp;
    int fd;
@@ -612,26 +614,37 @@ jislink:
          fdstb.st_mode != stb.st_mode)
       goto jmsg;
 
-   /* Be aware, even if the error is false! */
-   {
+   /* Be aware, even if the error is false!  Note the shared code in dotlock.h
+    * *requires* that it is possible to create a filename at least one byte
+    * longer than di_lock_name! */
+   do/* while(0) breaker */{
+# ifdef HAVE_PATHCONF
+      long pc;
+# endif
       int i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
-      if (i < 0 || UICMP(z, NAME_MAX, <=, (uiz_t)i + 1 +1)) {
+
+      /* fd is a file, not portable to use for _PC_NAME_MAX */
+      if(i < 0){
+jenametool:
          dls = DLS_NAMETOOLONG | DLS_ABANDON;
          goto jmsg;
       }
 # ifdef HAVE_PATHCONF
-      else {
-         /* fd is a file, not portable to use for _PC_NAME_MAX */
-         long pc;
-
-         if ((pc = pathconf(".", _PC_NAME_MAX)) != -1 && pc <= (long)i + 1 +1) {
-            dls = DLS_NAMETOOLONG | DLS_ABANDON;
-            goto jmsg;
-         }
-      }
+      errno = 0;
+      if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
+         /* errno unchanged: no limit */
+         if(errno == 0)
+            break;
+      }else if(pc - 1 >= (long)i)
+         break;
+      else
+         goto jenametool;
 # endif
-      di.di_lock_name = name;
-   }
+      if(UICMP(z, NAME_MAX - 1, <, (uiz_t)i))
+         goto jenametool;
+   }while(0);
+
+   di.di_lock_name = name;
 
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  We don't know wether we have realpath(3) available,
@@ -1255,7 +1268,7 @@ fsize(FILE *iob)
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
-   char cbuf[PATH_MAX];
+   char cbuf[PATH_MAX +1];
    char const *res;
    struct str s;
    bool_t dyn;
