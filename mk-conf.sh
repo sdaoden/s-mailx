@@ -156,6 +156,7 @@ option_update() {
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 cc_maxopt=100
+_CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    i="${OS:-`uname -s`}"
@@ -337,6 +338,7 @@ cc_flags() {
 }
 
 _cc_flags_tcc() {
+   __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
    _CFLAGS= _LDFLAGS=
 
    cc_check -Wall
@@ -347,9 +349,13 @@ _cc_flags_tcc() {
       cc_check -b
       cc_check -g
    fi
+
+   _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+   unset __cflags __ldflags
 }
 
 _cc_flags_generic() {
+   __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
    _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
@@ -418,6 +424,9 @@ _cc_flags_generic() {
       ld_check -pie || _CFLAGS=${_ccfg}
    fi
    unset _ccfg
+
+   _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+   unset __cflags __ldflags
 }
 
 ##  --  >8  --  8<  --  ##
