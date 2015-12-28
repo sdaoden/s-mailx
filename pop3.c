@@ -140,26 +140,21 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* Use the APOP single roundtrip? */
-   if (!xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
 #ifdef HAVE_MD5
-      if (ts != NULL) {
-         if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY)
-            n_err(_("POP3 \"APOP\" authentication failed, "
-               "maybe try setting *pop3-no-apop*\n"));
-         goto jleave;
-      } else
-#endif
-             if (options & OPT_D_V) {
+   if (ts != NULL && !xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
+      if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY) {
          char const *ccp = "";
-
-#ifdef HAVE_SSL
+# ifdef HAVE_SSL
          if (scp->sc_sock.s_use_ssl)
-            ccp = _(" (over encrypted connection)");
-#endif
-         n_err(_("No POP3 \"APOP\" support, plain text authentication%s\n"),
-            ccp);
+            ccp = _(" (over an encrypted connection)");
+# endif
+         n_err(_("POP3 \"APOP\" authentication failed!\n"
+            "  The server indicated support - but disable via *pop3-no-apop*\n"
+            "  to use plain text authentication%s\n"), ccp);
       }
+      goto jleave;
    }
+#endif
 
    rv = _pop3_auth_plain(mp, scp);
 jleave:
@@ -937,7 +932,7 @@ pop3_quit(void)
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
       safe_signal(SIGINT, saveint);
-      safe_signal(SIGPIPE, saveint);
+      safe_signal(SIGPIPE, savepipe);
       _pop3_lock = 0;
       interrupts = 0;
       goto jleave;

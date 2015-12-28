@@ -1339,7 +1339,7 @@ c_varedit(void *v)
 
       if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
             NULL) {
-         n_perr(_("`varedit': cannot create temporary file"), 0);
+         n_perr(_("`varedit': can't create temporary file, bailing out"), 0);
          err = 1;
          break;
       } else if (vc.vc_var != NULL && *(val = vc.vc_var->v_value) != '\0' &&
@@ -1377,8 +1377,12 @@ c_varedit(void *v)
             err = 1;
 
          free(base);
+         Fclose(nf);
+      } else {
+         n_err(_("`varedit': can't start $EDITOR, bailing out\n"));
+         err = 1;
+         break;
       }
-      Fclose(nf);
    }
 
    safe_signal(SIGINT, sigint);

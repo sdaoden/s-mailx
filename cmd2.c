@@ -510,10 +510,12 @@ c_next(void *v)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
-      mp = dot;
-      if (pstate & PS_DID_PRINT_DOT)
+      /* TODO The threading code had some bugs that caused crashes.
+       * TODO The last thing (before the deep look) happens here,
+       * TODO so let's not trust PS_DID_PRINT_DOT but check & hope it fixes */
+      if ((mp = dot) != NULL && (pstate & PS_DID_PRINT_DOT))
          mp = next_in_thread(mp);
-      while (mp && (mp->m_flag & MMNORM))
+      while (mp != NULL && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);
    }
    if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {

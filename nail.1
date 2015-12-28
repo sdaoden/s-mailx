@@ -35,9 +35,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"--MKREL-START--
-.\" S-nail(1): v14.8.5 / 2015-09-05
-.Dd Sep 05, 2015
-.ds VV \\%v14.8.5
+.\" S-nail(1): v14.8.6 / 2015-12-28
+.Dd Dec 28, 2015
+.ds VV \\%v14.8.6
 .\"--MKREL-END--
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
@@ -798,7 +798,7 @@ the command
 .Ic list
 will give a listing of all available commands and
 .Ic help
-will give a summary of the most useful ones.
+will give a summary of some common ones.
 If the \*(OPal documentation strings are available one can type
 .Ql ?X
 and see the actual expansion of
@@ -2826,7 +2826,8 @@ Alias for
 .
 .Mx
 .It Ic from
-(f) Takes a list of messages and prints their message headers.
+(f) Takes a list of messages and prints their message headers
+(which qualifies this command as \*(UAs search facility).
 .
 .Mx
 .It Ic Fwd
@@ -3205,11 +3206,8 @@ then collects the remaining mail content and sends it out.
 when \*(UA is quit; this is the default action unless the
 .Va hold
 option is set.
-\*(UA deviates from the POSIX standard with this command, as a
-.Ic next
-command issued after
-.Ic mbox
-will display the following message, not the current one.
+\*(ID This command can only be used in a system mailbox (see
+.Ic file ) .
 .
 .Mx
 .It Ic mimetype
@@ -3252,6 +3250,14 @@ Also see
 .Va followup-to .
 .
 .Mx
+.It Ic Move
+Similar to
+.Ic move ,
+but moves the messages to a file named after the local part of the
+sender address of the first message (instead of in
+.Va record Ns ).
+.
+.Mx
 .It Ic move
 Acts like
 .Ic copy
@@ -3259,28 +3265,21 @@ but marks the messages for deletion if they were transferred
 successfully.
 .
 .Mx
-.It Ic more
-Like
-.Ic print
-or
-.Ic type ,
-but prints a form-feed
-.Pf ( Ql \ef )
-in between messages.
-.
-.Mx
 .It Ic More
 Like
 .Ic more ,
 but also prints ignored header fields and all MIME parts.
+Identical to
+.Ic Page .
 .
 .Mx
-.It Ic Move
-Similar to
-.Ic move ,
-but moves the messages to a file named after the local part of the
-sender address of the first message (instead of in
-.Va record Ns ).
+.It Ic more
+Invokes the
+.Ev PAGER
+on the given messages, even in non-interactive mode and as long as the
+standard output is a terminal.
+Identical to
+.Ic page .
 .
 .Mx
 .It Ic netrc
@@ -3336,6 +3335,23 @@ Same as
 If the current folder is accessed via a network connection, a
 .Dq NOOP
 command is sent, otherwise no operation is performed.
+.
+.Mx
+.It Ic Page
+Like
+.Ic page ,
+but also prints ignored header fields and all MIME parts.
+Identical to
+.Ic More .
+.
+.Mx
+.It Ic page
+Invokes the
+.Ev PAGER
+on the given messages, even in non-interactive mode and as long as the
+standard output is a terminal.
+Identical to
+.Ic more .
 .
 .Mx
 .It Ic Pipe
@@ -8535,6 +8551,72 @@ and
 .Va spamfilter-rate-scanscore .
 .\" }}}
 .\" }}} (Examples)
+.
+.
+.\" .Sh "FAQ" {{{
+.Sh "FAQ"
+.
+.\" .Ss "\*(UA shortly hangs on startup" {{{
+.Ss "\*(UA shortly hangs on startup"
+.
+This can have two reasons, one is the necessity to wait for a file lock
+and can't be helped, the other being that \*(UA calls the function
+.Xr uname 2
+in order to query the nodename of the box (sometimes the real one is
+needed instead of the one represented by the internal variable
+.Va hostname ) .
+You may have varying success by ensuring that the real hostname and
+.Ql localhost
+have entries in
+.Pa /etc/hosts ,
+or, more generally, that the name service is properly setup \(en
+and does
+.Xr hostname 1
+return what you'd expect?
+.\" }}}
+.
+.\" .Ss "I can't login to Google mail a.k.a. GMail" {{{
+.Ss "I can't login to Google mail a.k.a. GMail"
+.
+Since 2014 some free service providers classify programs as
+.Dq less secure
+unless they use a special authentification method (OAuth 2.0) which
+wasn't standardized for non-HTTP protocol authentication token query
+until August 2015 (RFC 7628).
+.
+.Pp
+Different to Kerberos / GSSAPI, which is developed since the mid of the
+1980s, where a user can easily create a local authentication ticket for
+her- and himself with the locally installed
+.Xr kinit 1
+program, that protocol has no such local part but instead requires
+a world-wide-web query to create or fetch a token; since there is no
+local cache this query has to be performed whenever \*(UA is invoked
+from the command line (in interactive sessions situation may differ).
+.
+.Pp
+\*(UA doesn't support OAuth.
+Because of this it is necessary to declare \*(UA a
+.Dq less secure app
+(on the providers account web page) in order to read and send mail.
+However, it also seems possible to take the following steps instead:
+.
+.Pp
+.Bl -enum -compact
+.It
+give the provider the number of a mobile phone,
+.It
+enable
+.Dq 2-Step Verification ,
+.It
+create an application specific password (16 characters), and
+.It
+use that special password instead of your real Google account password in
+S-nail (for more on that see the section
+.Sx "On URL syntax and credential lookup" ) .
+.El
+.\" }}}
+.\" }}}
 .
 .
 .\" .Sh "SEE ALSO" {{{

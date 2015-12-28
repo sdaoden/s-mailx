@@ -1,9 +1,10 @@
 #@ Makefile for S-nail.
-#@ Adjustments have to be made in `make.rc' -- or on the command line.
-#@ See the file `INSTALL' if you need help.
+#@ Adjustments have to be made in "make.rc" -- or on the command line.
+#@ See the file "INSTALL" if you need help.
 
 .PHONY: all install uninstall clean distclean config build test
 
+_not_all_: build
 all: config
 	@LC_ALL=C $(MAKE) -f ./mk.mk all
 install: all
@@ -38,7 +39,7 @@ _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	$(SHELL) ./mk-conf.sh
 _prestop = if [ -f ./mk.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
-		echo 'The following targets will work: install, all, config';\
+		echo 'The following targets will work: config, [all], install';\
 		exit 1;\
 	fi
 
@@ -71,6 +72,8 @@ _update-release:
 	read REL;\
 	echo "Is $${UAGENT} <v$${REL}> correct?  ENTER continues";\
 	read i;\
+	\
+	git show announce > "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" &&\
 	\
 	grep=grep sed=sed cmp=cmp mv=mv \
 		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
@@ -111,16 +114,17 @@ _update-release:
 	mv -f nail.rcx nail.rc &&\
 	\
 	git add version.h nail.1 nail.rc &&\
-	git commit -m "Bump $${UUAGENT} v$${REL}" &&\
-	git tag -s -f "v$${REL}" &&\
+	LC_ALL=${ORIG_LC_ALL} git commit -S -m "Bump $${UUAGENT} v$${REL}" &&\
+	LC_ALL=${ORIG_LC_ALL} git tag -s -f "v$${REL}" &&\
 	\
 	git update-ref refs/heads/next master &&\
 	\
 	git checkout timeline &&\
 	git rm -rf '*' &&\
-	git archive --format=tar.gz "v$${REL}" | tar -x -z -f - &&\
+	git archive --format=tar "v$${REL}" | tar -x -f - &&\
 	git add --all &&\
-	git commit -m "$${UAGENT} v$${REL}, $${DATE_ISO}" &&\
+	LC_ALL=${ORIG_LC_ALL} \
+		git commit -S -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
 	\
 	git checkout master &&\
 	git log --no-walk --decorate --oneline --branches --remotes &&\
@@ -129,13 +133,15 @@ _update-release:
 	read i;\
 	git push &&\
 	\
-	git archive --format=tar.gz --prefix="$${UAGENT}-$${REL}/" \
-		-o "$${TMPDIR}/$${UAGENT}-$${FREL}.tar.gz" "v$${REL}" &&\
+	git archive --format=tar --prefix="$${UAGENT}-$${REL}/" "v$${REL}" |\
+		( cd "$${TMPDIR}" && tar -x -f - ) &&\
 	cd "$${TMPDIR}" &&\
-	tar -x -z -f "$${UAGENT}-$${FREL}.tar.gz" &&\
-	rm -f "$${UAGENT}-$${FREL}.tar.gz" &&\
+	\
 	( \
 	cd "$${UAGENT}-$${REL}" &&\
+	\
+	rm -f .gitignore .mailmap &&\
+	\
 	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
 			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
@@ -181,12 +187,8 @@ _update-release:
 	make CONFIG=MAXIMAL &&\
 	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
+		-q "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
 		-b nail-announce-bcc nail-announce &&\
-	cd .. &&\
-	\
-	echo "Really remove $${UAGENT}-$${REL} build dir?  ENTER continues";\
-	read i;\
-	rm -rf "$${UAGENT}-$${REL}" &&\
 	echo 'Uff.'
 
 # s-mk-mode

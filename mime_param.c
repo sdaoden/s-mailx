@@ -342,9 +342,8 @@ jeeqaaster:
    assert(head != NULL); /* (always true due to jumpin:, but..) */
 
    errors |= __rfc2231_join(head, &rv, &emsg);
-   if (errors && (options & OPT_D_VV)) {
-      /* TODO 1. we need our error ring; 2. such errors in particular
-       * TODO should set global flags so that at the end of an operation
+   if (errors && (options & OPT_D_V_VV)) {
+      /* TODO should set global flags so that at the end of an operation
        * TODO (for a message) a summary can be printed: faulty MIME, xy */
       if (emsg == NULL)
          emsg = N_("multiple causes");
@@ -385,11 +384,13 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
    } f = _NONE;
    ui32_t no;
 #ifdef HAVE_ICONV
-   iconv_t fhicd = (iconv_t)-1;/* XXX pacify compiler */
+   iconv_t fhicd;
 #endif
    NYD2_ENTER;
 
 #ifdef HAVE_ICONV
+   UNINIT(fhicd, (iconv_t)-1);
+
    if (head->rj_is_enc) {
       char const *tcs;
 
@@ -442,74 +443,71 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       f |= _SEEN_ANY;
 
       i = np->rj_len - np->rj_val_off;
-      if (!np->rj_is_enc) {
+      if (!np->rj_is_enc)
          n_str_add_buf(&sou, np->rj_dat + np->rj_val_off, i);
-         continue;
-      }
+      else {
+         /* Perform percent decoding */
+         sin.s = smalloc(i +1);
+         sin.l = 0;
 
-      /* Always perform percent decoding */
-      sin.s = smalloc(i +1);
-      sin.l = 0;
-      for (cp = np->rj_dat + np->rj_val_off; i > 0;) {
-         char c;
+         for (cp = np->rj_dat + np->rj_val_off; i > 0;) {
+            char c;
 
-         if ((c = *cp++) == '%') {
-            si32_t cc;
+            if ((c = *cp++) == '%') {
+               si32_t cc;
 
-            if (i < 3 || (cc = mime_hexseq_to_char(cp)) < 0) {
-               if (!(f & _ERRORS))
-                  *emsg = N_("invalid RFC 2231 percent encoded sequence");
-               f |= _ERRORS;
-               goto jhex_putc;
+               if (i < 3 || (cc = mime_hexseq_to_char(cp)) < 0) {
+                  if (!(f & _ERRORS))
+                     *emsg = N_("invalid RFC 2231 percent encoded sequence");
+                  f |= _ERRORS;
+                  goto jhex_putc;
+               }
+               sin.s[sin.l++] = (char)cc;
+               cp += 2;
+               i -= 3;
+            } else {
+   jhex_putc:
+               sin.s[sin.l++] = c;
+               --i;
             }
-            sin.s[sin.l++] = (char)cc;
-            cp += 2;
-            i -= 3;
-         } else {
-jhex_putc:
-            sin.s[sin.l++] = c;
-            --i;
          }
-      }
-      sin.s[sin.l] = '\0';
+         sin.s[sin.l] = '\0';
 
-      /* And add character set conversion on top as necessary.
-       * RFC 2231 is pragmatic: encode only mentions percent encoding and the
-       * character set for the entire string ("[no] facility for using more
-       * than one character set or language"), therefore "continuations may
-       * contain a mixture of encoded and unencoded segments" applies to
-       * a contiguous string of a single character set that has been torn in
-       * pieces due to space restrictions, and it happened that some pieces
-       * didn't need to be percent encoded.
-       *
-       * _In particular_ it therefore doesn't repeat the RFC 2047 paradigm
-       * that encoded-words-are-atomic, meaning that a single character-set
-       * conversion run over the final, joined, partially percent-decoded value
-       * should be sufficient */
-#ifdef HAVE_ICONV
-      if (f & _HAVE_ICONV) {
-         struct str sio = {NULL, 0}; /* TODO string pool */
-
-         if (n_iconv_str(fhicd, &sio, &sin, NULL, TRU1) != 0) {
-            n_iconv_reset(fhicd);
-            if (!(f & _ERRORS))
-               *emsg = N_("character set conversion failed on value");
-            f |= _ERRORS;
-            n_str_add_buf(&sio, "?", 1);
-         }
+         n_str_add_buf(&sou, sin.s, sin.l);
          free(sin.s);
-         sin = sio;
       }
-#endif
-
-      n_str_add_buf(&sou, sin.s, sin.l);
-      free(sin.s);
    }
 
+   /* And add character set conversion on top as necessary.
+    * RFC 2231 is pragmatic: encode only mentions percent encoding and the
+    * character set for the entire string ("[no] facility for using more
+    * than one character set or language"), therefore "continuations may
+    * contain a mixture of encoded and unencoded segments" applies to
+    * a contiguous string of a single character set that has been torn in
+    * pieces due to space restrictions, and it happened that some pieces
+    * didn't need to be percent encoded.
+    *
+    * _In particular_ it therefore doesn't repeat the RFC 2047 paradigm
+    * that encoded-words-are-atomic, meaning that a single character-set
+    * conversion run over the final, joined, partially percent-decoded value
+    * should be sufficient */
 #ifdef HAVE_ICONV
-   if ((f & _HAVE_ICONV) && /* XXX pacify compiler */ fhicd != (iconv_t)-1)
+   if (f & _HAVE_ICONV) {
+      sin.s = NULL;
+      sin.l = 0;
+      if (n_iconv_str(fhicd, &sin, &sou, NULL, TRU1) != 0) {
+         if (!(f & _ERRORS))
+            *emsg = N_("character set conversion failed on value");
+         f |= _ERRORS;
+         n_str_add_buf(&sin, "?", 1);
+      }
+      free(sou.s);
+      sou = sin;
+
       n_iconv_close(fhicd);
+   }
 #endif
+
    memcpy(*result = salloc(sou.l +1), sou.s, sou.l +1);
    free(sou.s);
    NYD2_LEAVE;
@@ -656,7 +654,7 @@ jleave:
    /* Need to recurse, take care not to excess magical limit of 999 levels */
 jrecurse:
    if (self->mpb_level == 999) {
-      if (options & OPT_D_VV)
+      if (options & OPT_D_V_VV)
          n_err(_("Message RFC 2231 parameters nested too deeply!\n"));
       goto jleave;
    }

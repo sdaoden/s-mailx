@@ -35,7 +35,7 @@ option_maximal() {
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
-   WANT_NCL=require
+   WANT_NCL=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
@@ -153,15 +153,29 @@ option_update() {
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
+# TODO cc_maxopt is brute simple, we should compile test program and dig real
+# compiler versions for known compilers, then be more specific
+cc_maxopt=100
+_CFLAGS= _LDFLAGS=
+
+os_early_setup() {
+   i="${OS:-`uname -s`}"
+
+   if [ ${i} = SunOS ]; then
+      msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
+      _os_early_setup_sunos
+   fi
+}
+
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
    msg 'Operating system is "%s"' ${OS}
 
    if [ ${OS} = sunos ]; then
-      msg ' . have special SunOS / Solaris environmental rules, dealing with it'
+      msg ' . have special SunOS / Solaris "setup" rules ...'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      msg ' . have special UnixWare environmental rules, dealing with it'
+      msg ' . have special UnixWare environmental rules ...'
       if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
@@ -189,7 +203,7 @@ os_setup() {
    fi
 }
 
-_os_setup_sunos() {
+_os_early_setup_sunos() {
    # According to standards(5), this is what we need to do
    if [ -d /usr/xpg4 ]; then :; else
       msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
@@ -198,7 +212,9 @@ _os_setup_sunos() {
    PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
    [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
    export PATH
+}
 
+_os_setup_sunos() {
    C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
    LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
 
@@ -231,7 +247,7 @@ _os_setup_sunos() {
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
          # Assume gcc(1)
-         force_no_stackprot=1 need_R_ldflags=-Wl,-R
+         cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
       fi
    fi
 }
@@ -260,6 +276,8 @@ cc_setup() {
       CC=${i}
    elif { i="`command -v c99`"; }; then
       CC=${i}
+   elif { i="`command -v tcc`"; }; then
+      CC=${i}
    else
       if [ "${CC}" = cc ]; then
          :
@@ -268,7 +286,7 @@ cc_setup() {
       else
          printf >&2 'boing booom tschak\n'
          msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), c89(1) and c99(1).'
+         msg ' Neither of clang(1), gcc(1), tcc(1), c89(1) and c99(1).'
          msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
          config_exit 1
       fi
@@ -300,7 +318,12 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      _cc_flags_generic
+      if [ "${CC}" = tcc ]; then
+         msg ' . have special tcc(1) environmental rules ...'
+         _cc_flags_tcc
+      else
+         _cc_flags_generic
+      fi
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
@@ -314,7 +337,25 @@ cc_flags() {
    export CFLAGS LDFLAGS
 }
 
+_cc_flags_tcc() {
+   __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
+   _CFLAGS= _LDFLAGS=
+
+   cc_check -Wall
+   cc_check -Wextra
+   cc_check -pedantic
+
+   if feat_yes DEBUG; then
+      cc_check -b
+      cc_check -g
+   fi
+
+   _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+   unset __cflags __ldflags
+}
+
 _cc_flags_generic() {
+   __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
    _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
@@ -363,11 +404,11 @@ _cc_flags_generic() {
    if feat_yes DEBUG; then
       cc_check -O
       cc_check -g
-   elif cc_check -O3; then
+   elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
       :
-   elif cc_check -O2; then
+   elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
       :
-   elif cc_check -O1; then
+   elif [ ${cc_maxopt} -gt 0 ] && cc_check -O1; then
       :
    else
       cc_check -O
@@ -383,6 +424,9 @@ _cc_flags_generic() {
       ld_check -pie || _CFLAGS=${_ccfg}
    fi
    unset _ccfg
+
+   _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+   unset __cflags __ldflags
 }
 
 ##  --  >8  --  8<  --  ##
@@ -421,6 +465,16 @@ tmp0=___tmp
 tmp=./${tmp0}1$$
 tmp2=./${tmp0}2$$
 
+t1=ten10one1ten10one1
+if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
+      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
+      ) > /dev/null 2>&1; then
+   good_shell=1
+else
+   unset good_shell
+fi
+unset t1
+
 # We need some standard utilities
 unset -f command
 check_tool() {
@@ -439,10 +493,14 @@ check_tool() {
    return 1
 }
 
+# Very easy checks for the operating system in order to be able to adjust paths
+# or similar very basic things which we need to be able to go at all
+os_early_setup
+
 # Check those tools right now that we need before including $rc
 msg 'Checking for basic utility set'
+check_tool awk "${awk:-`command -v awk`}"
 check_tool rm "${rm:-`command -v rm`}"
-check_tool sed "${sed:-`command -v sed`}"
 check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
@@ -502,27 +560,56 @@ feat_bail_required() {
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
 # Note we leave alone the values
-trap "${rm} -f ${tmp}; exit" 1 2 15
-trap "${rm} -f ${tmp}" 0
+trap "exit 1" HUP INT TERM
+trap "${rm} -f ${tmp}" EXIT
 
 printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
-# multiline values in make.rc
+# multiline values in make.rc; GNU sed(1) blew me off the map, being VERY slow,
+# first shell / awk mixed case better, Aahron Robbins suggested the following
+< ${rc} ${awk} 'BEGIN{line = ""}{
+   gsub(/^[[:space:]]+/, "", $0)
+   gsub(/[[:space:]]+$/, "", $0)
+   if(gsub(/\\$/, "", $0)){
+      line = line $0
+      next
+   }else
+      line = line $0
+   if(index(line, "#") == 1){
+      line = ""
+   }else if(length(line)){
+      print line
+      line = ""
+   }
+}' |
 while read line; do
-   # This should be [[:space:]] but needs -E; so test SPC/HT
-   line="`echo ${line} |\
-         ${sed} -e '/^[ 	]*#/d' -e '/^$/d' -e 's/[ 	]*$//'`"
-   [ -z "${line}" ] && continue
-   i="`echo ${line} | ${sed} -e 's/=.*$//'`"
+   if [ -n "${good_shell}" ]; then
+      i=${line%%=*}
+   else
+      i=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/=.*$/, "", LINE)
+         print LINE
+      }'`
+   fi
+   if [ "${i}" = "${line}" ]; then
+      msg 'ERROR: invalid syntax in "%s"' "${line}"
+      continue
+   fi
+
    eval j="\$${i}" jx="\${${i}+x}"
    if [ -n "${j}" ] || [ "${jx}" = x ]; then
       : # Yet present
    else
-      j="`echo ${line} | ${sed} -e 's/^[^=]*=//' -e 's/^\"*//' -e 's/\"*$//'`"
+      j=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/^[^=]*=/, "", LINE)
+         gsub(/^\"*/, "", LINE)
+         gsub(/\"*$/, "", LINE)
+         print LINE
+      }'`
    fi
-   echo "${i}=\"${j}\""
-done < ${rc} > ${tmp}
+  echo "${i}=\"${j}\""
+done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
 printf >&2 'done\n'
@@ -568,14 +655,17 @@ path_check() {
 
 path_check PATH
 
-check_tool awk "${awk:-`command -v awk`}"
+# awk(1) above
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
 check_tool cp "${cp:-`command -v cp`}"
 check_tool cmp "${cmp:-`command -v cmp`}"
+# grep(1) above
 check_tool mkdir "${mkdir:-`command -v mkdir`}"
 check_tool mv "${mv:-`command -v mv`}"
-# rm(1), sed(1) above
+# rm(1) above
+check_tool sed "${sed:-`command -v sed`}"
+check_tool sort "${sort:-`command -v sort`}"
 check_tool tee "${tee:-`command -v tee`}"
 
 check_tool chown "${chown:-`command -v chown`}" 1 ||
@@ -594,8 +684,9 @@ check_tool cksum "${cksum:-`command -v cksum`}"
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}; exit" 1 2 15
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${newlst} ${newmk} ${newh}" 0
+trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
+trap "trap \"\" HUP INT TERM EXIT;\
+   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -604,9 +695,22 @@ printf >&2 'Evaluating all configuration items ... '
 ${rm} -f ${newlst} ${newmk} ${newh}
 exec 5<&0 6>&1 <${tmp} >${newlst}
 while read line; do
-   i=`echo ${line} | ${sed} -e 's/=.*$//'`
+   z=
+   if [ -n "${good_shell}" ]; then
+      i=${line%%=*}
+      [ "${i}" != "${i#WANT_}" ] && z=1
+   else
+      i=`${awk} -v LINE="${line}" 'BEGIN{
+         gsub(/=.*$/, "", LINE);\
+         print LINE
+      }'`
+      if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+         z=1
+      fi
+   fi
+
    eval j=\$${i}
-   if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+   if [ -n "${z}" ]; then
       j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
@@ -645,7 +749,7 @@ else
 fi
 
 for i in \
-      awk cat chmod chown cp cmp grep mkdir mv rm sed tee tr \
+      awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE make strip \
       cksum; do
    eval j=\$${i}
@@ -775,8 +879,10 @@ inc=./config.inc
 makefile=./config.mk
 
 # (No function since some shells loose non-exported variables in traps)
-trap "${rm} -f ${lst} ${h} ${mk} ${lib} ${inc} ${makefile}; exit" 1 2 15
-trap "${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" 0
+trap "trap \"\" HUP INT TERM;\
+   ${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
+trap "trap \"\" HUP INT TERM EXIT;\
+   ${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" EXIT
 
 # Time to redefine helper 2
 msg() {
@@ -850,7 +956,7 @@ _link_mayrun() {
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then
-      echo "*** adding INCS<${incs}> LIBS<${libs}>"
+      echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
@@ -880,21 +986,70 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
 
-if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+if run_check clock_gettime 'clock_gettime(2)' \
+   '#define HAVE_CLOCK_GETTIME' << \!
+#include <time.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts;
+
+   if(!clock_gettime(CLOCK_REALTIME, &ts) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' \
+   '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
+#include <time.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts;
+
+   if(!clock_gettime(CLOCK_REALTIME, &ts) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif run_check gettimeofday 'gettimeofday(2)' \
+   '#define HAVE_GETTIMEOFDAY' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <sys/time.h>
+# include <errno.h>
+int main(void){
+   struct timeval tv;
+
+   if(!gettimeofday(&tv, NULL) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+else
+   have_no_subsecond_time=1
+fi
+
+if run_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
 #include <pwd.h>
 #include <unistd.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct passwd *pw;
    gid_t gid;
    uid_t uid;
 
-   if ((gid = getgid()) != 1)
+   if((gid = getgid()) != 0)
       gid = getegid();
-   if ((uid = getuid()) != 1)
+   if((uid = getuid()) != 0)
       uid = geteuid();
-   if ((pw = getpwuid(uid)) == NULL)
-      pw = getpwnam("root");
+   if((pw = getpwuid(uid)) == NULL && errno == ENOSYS)
+      return 1;
+   if((pw = getpwnam("root")) == NULL && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
@@ -906,11 +1061,37 @@ else
    config_exit 1
 fi
 
+if link_check snprintf 'v?snprintf(3)' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome(char *buf, ...){
+   va_list ap;
+
+   va_start(ap, buf);
+   vsnprintf(buf, 20, "%s", ap);
+   va_end(ap);
+   return;
+}
+int main(void){
+   char b[20];
+
+   snprintf(b, sizeof b, "%s", "string");
+   dome(b, "string");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   config_exit 1
+fi
+
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
-int main(void)
-{
+int main(void){
    struct termios tios;
+
    tcgetattr(0, &tios);
    tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
    return 0;
@@ -924,136 +1105,7 @@ else
    config_exit 1
 fi
 
-if link_check snprintf 'v?snprintf(3)' << \!
-#include <stdarg.h>
-#include <stdio.h>
-static void dome(char *buf, ...)
-{
-   va_list ap;
-   va_start(ap, buf);
-   vsnprintf(buf, 20, "%s", ap);
-   va_end(ap);
-   return;
-}
-int main(void)
-{
-   char b[20];
-   snprintf(b, sizeof b, "%s", "string");
-   dome(b, "string");
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
-   config_exit 1
-fi
-
-# XXX Move to below later when the time stuff is regulary needed.
-# XXX Add POSIX check once standardized
-link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
-#include <stdlib.h>
-int main(void)
-{
-   arc4random();
-   return 0;
-}
-!
-
-# XXX Not indented for that - drop cond. when time stuff is regulary needed.
-if [ -z "${have_posix_random}" ]; then
-if link_check clock_gettime 'clock_gettime(2)' \
-   '#define HAVE_CLOCK_GETTIME' << \!
-#include <time.h>
-int main(void)
-{
-   struct timespec ts;
-   clock_gettime(CLOCK_REALTIME, &ts);
-   return 0;
-}
-!
-then
-   :
-elif link_check clock_gettime 'clock_gettime(2) (via -lrt)' \
-   '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
-#include <time.h>
-int main(void)
-{
-   struct timespec ts;
-   clock_gettime(CLOCK_REALTIME, &ts);
-   return 0;
-}
-!
-then
-   :
-elif link_check gettimeofday 'gettimeofday(2)' \
-   '#define HAVE_GETTIMEOFDAY' << \!
-#include <stdio.h> /* For C89 NULL */
-#include <sys/time.h>
-int main(void)
-{
-   struct timeval tv;
-   gettimeofday(&tv, NULL);
-   return 0;
-}
-!
-then
-   :
-else
-   msg 'ERROR: one of clock_gettime(2) and gettimeofday(2) is required.'
-   config_exit 1
-fi
-fi # -z ${have_posix_random}
-
-link_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
-#include <unistd.h>
-int main(void)
-{
-   pathconf(".", _PC_NAME_MAX);
-   pathconf(".", _PC_PATH_MAX);
-   return 0;
-}
-!
-
-link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
-#include <stdlib.h>
-int main(void)
-{
-   setenv("s-nail", "to be made nifty!", 1);
-   unsetenv("s-nail");
-   return 0;
-}
-!
-
-link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
-#include <stdio.h>
-int main(void)
-{
-   putc_unlocked('@', stdout);
-   return 0;
-}
-!
-
-link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
-#include <unistd.h>
-int main(void)
-{
-   fchdir(0);
-   return 0;
-}
-!
-
-link_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
-#include <fcntl.h>
-#include <unistd.h>
-int main(void)
-{
-   int fds[2];
-   pipe2(fds, O_CLOEXEC);
-   return 0;
-}
-!
+##
 
 link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
 #include <sys/types.h>
@@ -1075,10 +1127,95 @@ int main(void)
 }
 !
 
+run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+#include <unistd.h>
+#include <errno.h>
+int main(void){
+   int rv = 0;
+
+   errno = 0;
+   rv |= !(pathconf(".", _PC_NAME_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+   errno = 0;
+   rv |= !(pathconf(".", _PC_PATH_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+   return rv;
+}
+!
+
+run_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
+#include <fcntl.h>
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   int fds[2];
+
+   if(!pipe2(fds, O_CLOEXEC) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+
+# We use this only then for now (need NOW+1)
+run_check utimensat 'utimensat(2)' '#define HAVE_UTIMENSAT' << \!
+#include <fcntl.h> /* For AT_* */
+#include <sys/stat.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts[2];
+
+   ts[0].tv_nsec = UTIME_NOW;
+   ts[1].tv_nsec = UTIME_OMIT;
+   if(!utimensat(AT_FDCWD, "", ts, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+
+##
+
+# XXX Add POSIX check once standardized
+if link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void){
+   arc4random();
+   return 0;
+}
+!
+then
+   :
+elif [ -n "${have_no_subsecond_time}" ]; then
+   msg 'ERROR: %s %s' 'without a native random' \
+      'one of clock_gettime(2) and gettimeofday(2) is required.'
+   config_exit 1
+fi
+
+link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
+#include <stdlib.h>
+int main(void){
+   setenv("s-nail", "to be made nifty!", 1);
+   unsetenv("s-nail");
+   return 0;
+}
+!
+
+link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
+#include <stdio.h>
+int main(void){
+   putc_unlocked('@', stdout);
+   return 0;
+}
+!
+
+link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
+#include <unistd.h>
+int main(void){
+   fchdir(0);
+   return 0;
+}
+!
+
 link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
-int main(void)
-{
+int main(void){
    setlocale(LC_ALL, "");
    return 0;
 }
@@ -1091,10 +1228,10 @@ if [ "${have_setlocale}" = yes ]; then
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
-int main(void)
-{
+int main(void){
    char mbb[MB_LEN_MAX + 1];
    wchar_t wc;
+
    iswprint(L'c');
    towupper(L'c');
    mbtowc(&wc, "x", 1);
@@ -1107,8 +1244,7 @@ int main(void)
    if [ "${have_c90amend1}" = yes ]; then
       link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
-int main(void)
-{
+int main(void){
    wcwidth(L'c');
    return 0;
 }
@@ -1118,29 +1254,34 @@ int main(void)
    link_check nl_langinfo 'nl_langinfo(3)' '#define HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    nl_langinfo(DAY_1);
    return (nl_langinfo(CODESET) == NULL);
 }
 !
 fi # have_setlocale
 
-# Note: run_check, thus we also get only the desired implementation...
-run_check realpath 'realpath()' '#define HAVE_REALPATH' << \!
+run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
+#if 1 /* TODO for now we use realpath(3) without NULL as 2nd arg! */
+   /* (And note that on Linux tcc(1) otherwise didn't detect once tested! */
+   char x_buf[4096], *x = realpath(".", x_buf);
+
+   return (x != NULL) ? 0 : 1;
+#else
    char *x = realpath(".", NULL), *y = realpath("/", NULL);
+
    return (x != NULL && y != NULL) ? 0 : 1;
+#endif
 }
 !
 
 link_check wordexp 'wordexp(3)' '#define HAVE_WORDEXP' << \!
+#include <stdio.h> /* For C89 NULL */
 #include <wordexp.h>
-int main(void)
-{
-   wordexp((char*)0, (wordexp_t*)0, 0);
+int main(void){
+   wordexp(NULL, NULL, 0);
    return 0;
 }
 !
@@ -1159,12 +1300,12 @@ if feat_no NOALLOCA; then
    # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
    # versions of alloca(3) since modern compilers just can't be trusted
    # not to overoptimize and silently break some code
-   link_check alloca '__builtin_alloca()' \
+   run_check alloca '__builtin_alloca()' \
       '#define HAVE_ALLOCA __builtin_alloca' << \!
 #include <stdio.h> /* For C89 NULL */
-int main(void)
-{
+int main(void){
    void *vp = __builtin_alloca(1);
+
    return (vp != NULL);
 }
 !
@@ -1181,13 +1322,15 @@ fi
 ##
 
 if feat_yes DOTLOCK; then
-   if link_check readlink 'readlink(2)' << \!
+   if run_check readlink 'readlink(2)' << \!
 #include <unistd.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    char buf[128];
-   readlink("here", buf, sizeof buf);
-   return 0;
+
+   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
    then
@@ -1198,12 +1341,13 @@ int main(void)
 fi
 
 if feat_yes DOTLOCK; then
-   if link_check fchown 'fchown(2)' << \!
+   if run_check fchown 'fchown(2)' << \!
 #include <unistd.h>
-int main(void)
-{
-   fchown(0, 0, 0);
-   return 0;
+# include <errno.h>
+int main(void){
+   if(!fchown(0, 0, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
    then
@@ -1217,12 +1361,14 @@ fi
 
 if feat_yes ICONV; then
    ${cat} > ${tmp2}.c << \!
+#include <stdio.h> /* For C89 NULL */
 #include <iconv.h>
-int main(void)
-{
+int main(void){
    iconv_t id;
 
    id = iconv_open("foo", "bar");
+   iconv(id, NULL, NULL, NULL, NULL);
+   iconv_close(id);
    return 0;
 }
 !
@@ -1240,21 +1386,25 @@ if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct sockaddr_un soun;
-   socket(AF_UNIX, SOCK_STREAM, 0);
-   connect(0, (struct sockaddr*)&soun, 0);
-   shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR);
+
+   if(socket(AF_UNIX, SOCK_STREAM, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(connect(0, (struct sockaddr*)&soun, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(shutdown(0, SHUT_RD | SHUT_WR | SHUT_RDWR) == -1 && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check af_unix 'AF_UNIX sockets' \
+   < ${tmp2}.c run_check af_unix 'AF_UNIX sockets' \
          '#define HAVE_UNIX_SOCKETS' ||
-      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lnsl)' \
+      < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lnsl)' \
          '#define HAVE_UNIX_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
+      < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
          '#define HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
@@ -1264,21 +1414,23 @@ if feat_yes SOCKETS; then
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-int main(void)
-{
+# include <errno.h>
+int main(void){
    struct sockaddr s;
-   socket(AF_INET, SOCK_STREAM, 0);
-   connect(0, &s, 0);
+
+   if(socket(AF_INET, SOCK_STREAM, 0) == -1 && errno == ENOSYS)
+      return 1;
+   if(connect(0, &s, 0) == -1 && errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
 
-   < ${tmp2}.c link_check sockets 'sockets' \
+   < ${tmp2}.c run_check sockets 'sockets' \
          '#define HAVE_SOCKETS' ||
-      < ${tmp2}.c link_check sockets 'sockets (via -lnsl)' \
+      < ${tmp2}.c run_check sockets 'sockets (via -lnsl)' \
          '#define HAVE_SOCKETS' '-lnsl' ||
-      < ${tmp2}.c link_check sockets 'sockets (via -lsocket -lnsl)' \
+      < ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' \
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
@@ -1293,12 +1445,11 @@ if feat_yes SOCKETS; then
 #include <sys/socket.h>
 #include <stdio.h>
 #include <netdb.h>
-
-int main(void)
-{
+int main(void){
    struct addrinfo a, *ap;
    int lrv;
-   switch ((lrv = getaddrinfo("foo", "0", &a, &ap))) {
+
+   switch((lrv = getaddrinfo("foo", "0", &a, &ap))){
    case EAI_NONAME:
    case EAI_SERVICE:
    default:
@@ -1333,9 +1484,7 @@ if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-
-int main(void)
-{
+int main(void){
    struct sockaddr_in servaddr;
    unsigned short portno;
    struct servent *ep;
@@ -1343,15 +1492,15 @@ int main(void)
    struct in_addr **pptr;
 
    portno = 0;
-   if ((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
+   if((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
       portno = (unsigned short)ep->s_port;
 
-   if ((hp = gethostbyname("POPPY-HOST")) != NULL) {
+   if((hp = gethostbyname("POPPY-HOST")) != NULL){
       pptr = (struct in_addr**)hp->h_addr_list;
-      if (hp->h_addrtype != AF_INET)
+      if(hp->h_addrtype != AF_INET)
          fprintf(stderr, "au\n");
-   } else {
-      switch (h_errno) {
+   }else{
+      switch(h_errno){
       case HOST_NOT_FOUND:
       case TRY_AGAIN:
       case NO_RECOVERY:
@@ -1383,13 +1532,16 @@ int main(void)
 fi
 
 feat_yes SOCKETS &&
-link_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
+run_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+# include <errno.h>
+int main(void){
    int sockfd = 3;
-   setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0);
+
+   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
+         errno == ENOSYS)
+      return 1;
    return 0;
 }
 !
@@ -1398,10 +1550,10 @@ feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    struct timeval tv;
    int sockfd = 3;
+
    tv.tv_sec = 42;
    tv.tv_usec = 21;
    setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
@@ -1414,10 +1566,10 @@ feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
 link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    struct linger li;
    int sockfd = 3;
+
    li.l_onoff = 1;
    li.l_linger = 42;
    setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
@@ -1426,7 +1578,7 @@ int main(void)
 !
 
 if feat_yes SSL; then
-   if link_check openssl 'OpenSSL 1.1.0 and above' \
+   if link_check openssl 'OpenSSL (new style *_client_method(3ssl))' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -1434,14 +1586,12 @@ if feat_yes SSL; then
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-#ifdef OPENSSL_NO_TLS1
+#ifdef OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
 # error We need TLSv1.
 #endif
-
-int main(void)
-{
+int main(void){
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+
    SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
@@ -1449,7 +1599,7 @@ int main(void)
 !
    then
       :
-   elif link_check openssl 'OpenSSL' \
+   elif link_check openssl 'OpenSSL (old style *_client_method(3ssl))' \
       '#define HAVE_SSL
       #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -1457,14 +1607,13 @@ int main(void)
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-#if defined OPENSSL_NO_SSL3 && defined OPENSSL_NO_TLS1
+#if defined OPENSSL_NO_SSL3 &&\
+      defined OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
 # error We need one of SSLv3 and TLSv1.
 #endif
-
-int main(void)
-{
+int main(void){
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+
    SSL_CTX_free(ctx);
    PEM_read_PrivateKey(0, 0, 0, 0);
    return 0;
@@ -1485,11 +1634,10 @@ int main(void)
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-
-int main(void)
-{
+int main(void){
    STACK_OF(GENERAL_NAME) *gens = NULL;
-   printf("%p", gens); /* to make it used */
+
+   printf("%p", gens); /* to use it */
    return 0;
 }
 !
@@ -1498,9 +1646,7 @@ int main(void)
          '#define HAVE_OPENSSL_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
-
-int main(void)
-{
+int main(void){
    CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
    CONF_modules_free();
    return 0;
@@ -1512,15 +1658,14 @@ int main(void)
 #include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-
-int main(void)
-{
+int main(void){
 #if HAVE_OPENSSL < 10100
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
 #else
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
 #endif
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
+
    SSL_CONF_CTX_set_flags(cctx,
       SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
       SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
@@ -1536,9 +1681,7 @@ int main(void)
       link_check rand_egd 'OpenSSL RAND_egd()' \
          '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
-
-int main(void)
-{
+int main(void){
    return RAND_egd("some.where") > 0;
 }
 !
@@ -1547,9 +1690,7 @@ int main(void)
          if link_check ssl_all_algo 'OpenSSL all-algorithms support' \
             '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
-
-int main(void)
-{
+int main(void){
    OpenSSL_add_all_algorithms();
    EVP_get_cipherbyname("two cents i never exist");
    EVP_cleanup();
@@ -1569,9 +1710,7 @@ int main(void)
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
-
-int main(void)
-{
+int main(void){
    char const dat[] = "abrakadabrafidibus";
    char dig[16], hex[16 * 2];
    MD5_CTX ctx;
@@ -1584,7 +1723,7 @@ int main(void)
    MD5_Final(dig, &ctx);
 
 #define hexchar(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
-   for (i = 0; i < sizeof(hex) / 2; i++) {
+   for(i = 0; i < sizeof(hex) / 2; i++){
       j = i << 1;
       hex[j] = hexchar((dig[i] & 0xf0) >> 4);
       hex[++j] = hexchar(dig[i] & 0x0f);
@@ -1593,21 +1732,6 @@ int main(void)
 }
 !
       fi # feat_yes MD5 && feat_no NOEXTMD5
-
-      if feat_yes DEVEL; then
-         link_check ossl_memhooks 'OpenSSL memory hooks' \
-            '#define HAVE_OPENSSL_MEMHOOKS' << \!
-#include <stdio.h> /* For C89 NULL */
-#include <openssl/crypto.h>
-
-int main(void)
-{
-   CRYPTO_set_mem_ex_functions(NULL, NULL, NULL);
-   CRYPTO_set_mem_functions(NULL, NULL, NULL);
-   return 0;
-}
-!
-      fi
    fi
 else
    echo '/* WANT_SSL=0 */' >> ${h}
@@ -1634,9 +1758,7 @@ fi
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
-
-int main(void)
-{
+int main(void){
    gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
    gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
    return 0;
@@ -1679,9 +1801,7 @@ int main(void)
          '-lgssapi_krb5' << \!
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_generic.h>
-
-int main(void)
-{
+int main(void){
    gss_import_name(0, 0, gss_nt_service_name, 0);
    gss_init_sec_context(0,0,0,0,0,0,0,0,0,0,0,0,0);
    return 0;
@@ -1714,9 +1834,9 @@ if feat_yes IDNA; then
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h>
-int main(void)
-{
+int main(void){
    char *utf8, *idna_ascii, *idna_utf8;
+
    utf8 = stringprep_locale_to_utf8("does.this.work");
    if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES)
          != IDNA_SUCCESS)
@@ -1734,8 +1854,7 @@ int main(void)
 #include <stdio.h>
 #include <idn/api.h>
 #include <idn/result.h>
-int main(void)
-{
+int main(void){
    idn_result_t r;
    char ace_name[256];
    char local_name[256];
@@ -1778,10 +1897,10 @@ if feat_yes REGEX; then
    if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
-int main(void)
-{
+int main(void){
    int status;
    regex_t re;
+
    if (regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0)
       return 1;
    status = regexec(&re, "plan9", 0,NULL, 0);
@@ -1805,12 +1924,12 @@ if feat_yes READLINE; then
 #include <stdio.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-int main(void)
-{
+int main(void){
    char *rl;
    HISTORY_STATE *hs;
    HIST_ENTRY **he;
    int i;
+
    using_history();
    read_history("");
    stifle_history(242);
@@ -1911,12 +2030,12 @@ if feat_yes TERMCAP; then
 #include <string.h>
 ${2}
 #include <term.h>
-#define PTR2SIZE(X)     ((unsigned long)(X))
-#define UNCONST(P)      ((void*)(unsigned long)(void const*)(P))
-static char    *_termcap_buffer, *_termcap_ti, *_termcap_te;
-int main(void)
-{
+#define PTR2SIZE(X) ((unsigned long)(X))
+#define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
+static char *_termcap_buffer, *_termcap_ti, *_termcap_te;
+int main(void){
    char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+
    tgetent(buf, getenv("TERM"));
    cpb = cmdbuf;
    cpti = cpb;
@@ -2056,6 +2175,7 @@ printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_MD5\n   ",MD5 [APOP,CRAM-MD5]"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_AGENT\n   ",AGENT"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
@@ -2080,10 +2200,12 @@ printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
 printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk
+# Note we cannout use explicit ./ filename prefix for source and object
+# pathnames because of a bug in bmake(1)
 ${rm} -rf ${tmp0}.* ${tmp0}*
 printf 'OBJ_SRC = ' >> ${mk}
 if feat_no AMALGAMATION; then
-   for i in *.c; do
+   for i in `printf '%s\n' *.c | ${sort}`; do
       if [ "${i}" = privsep.c ]; then
          continue
       fi
@@ -2091,13 +2213,13 @@ if feat_no AMALGAMATION; then
    done
    printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
-   printf 'main.c\nAMALGAM_TARGET = main.c\nAMALGAM_DEP = ' >> ${mk}
+   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
-   echo '\n/* HAVE_AMALGAMATION: include sources */' >> ${h}
+   printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef _CONFIG_H\n' >> ${h}
    printf '# define _CONFIG_H 2\n' >> ${h}
-   for i in *.c; do
+   for i in `printf '%s\n' *.c | ${sort}`; do
       if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
             [ "${i}" = privsep.c ]; then
          continue
@@ -2106,6 +2228,8 @@ else
       printf "# include \"${i}\"\n" >> ${h}
    done
    echo >> ${mk}
+   # tcc(1) fails on 2015-11-13 unless this #else clause existed
+   echo '#else' >> ${h}
 fi
 
 printf '#endif /* _CONFIG_H */\n' >> ${h}
@@ -2156,6 +2280,9 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_GSSAPI
 : + GSS-API authentication
 #endif
+#ifdef HAVE_MD5
+: + MD5 message digest (APOP, CRAM-MD5)
+#endif
 #ifdef HAVE_NETRC
 : + .netrc file support
 #endif
@@ -2172,7 +2299,13 @@ ${cat} > ${tmp2}.c << \!
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
 #if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
-: + Command line editing
+# ifdef HAVE_READLINE
+: + Command line editing via readline(3)
+# elif defined HAVE_EDITLINE
+: + Command line editing via editline(3)
+# else
+: + Command line editing via N(ail) C(ommand) L(ine)
+# endif
 # ifdef HAVE_TABEXPAND
 : + + Tabulator expansion
 # endif
@@ -2246,6 +2379,9 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #ifndef HAVE_GSSAPI
 : - GSS-API authentication
+#endif
+#ifndef HAVE_MD5
+: - MD5 message digest (APOP, CRAM-MD5)
 #endif
 #ifndef HAVE_NETRC
 : - .netrc file support
@@ -2321,7 +2457,7 @@ ${cat} > ${tmp2}.c << \!
 #endif
 : . mandir: MANDIR
 : . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
-: . $MAILSPOOL: MAILSPOOL
+: . Mail spool directory: MAILSPOOL
 :
 !
 

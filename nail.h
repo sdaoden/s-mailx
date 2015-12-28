@@ -315,6 +315,8 @@
 #define PREREQ_CLANG(X,Y)  0
 #define CC_GCC             0
 #define PREREQ_GCC(X,Y)    0
+#define CC_TCC             0
+#define PREREQ_TCC(X,Y)    0
 
 #ifdef __clang__
 # undef CC_CLANG
@@ -324,6 +326,7 @@
    (__clang_major__ + 0 > (X) || \
     (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
 # define __EXTEN           __extension__
+
 #elif defined __GNUC__
 # undef CC_GCC
 # undef PREREQ_GCC
@@ -331,6 +334,10 @@
 # define PREREQ_GCC(X,Y)   \
    (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
 # define __EXTEN           __extension__
+
+#elif defined __TINYC__
+# undef CC_TCC
+# define CC_TCC            1
 #endif
 
 #ifndef __EXTEN
@@ -395,25 +402,34 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-  /* Variable size arrays and structure fields */
+# define n_FIELD_INITN(N) CONCAT(., N) =
+# define n_FIELD_INITI(I) [I] =
+#else
+# define n_FIELD_INITN(N)
+# define n_FIELD_INITI(N)
+#endif
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define VFIELD_SIZE(X)
 # define VFIELD_SIZEOF(T,F) (0)
-  /* Inline functions */
-# define HAVE_INLINE
-# define INLINE         inline
-# define SINLINE        static inline
 #else
 # define VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
-   : ((ssize_t)(X) < 0 ? sizeof(size_t) - (X) : (size_t)(X)))
+   : ((ssize_t)(X) < 0 ? sizeof(size_t) - ABS(X) : (size_t)(X)))
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
-# if CC_CLANG || PREREQ_GCC(2, 9)
-#   define INLINE       static __inline
-#   define SINLINE      static __inline
-# else
-#   define INLINE
-#   define SINLINE      static
-# endif
+#endif
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
+# define HAVE_INLINE
+# define INLINE         inline
+# define SINLINE        static inline
+#elif CC_CLANG || PREREQ_GCC(2, 9)
+# define HAVE_INLINE
+# define INLINE         static __inline
+# define SINLINE        static __inline
+#else
+# define INLINE
+# define SINLINE        static
 #endif
 
 #undef __FUN__
@@ -450,6 +466,20 @@
  * a special local CTA to overcome this */
 #define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
 #define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
+
+#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 201112L
+# define n_CTA(T,M) _Static_assert(T, M)
+# define n_LCTA(T,M) _Static_assert(T, M)
+#else
+# define n_CTA(T,M)  _CTA_1(T, n_FILE, __LINE__)
+# define n_LCTA(T,M) _LCTA_1(T, n_FILE, __LINE__)
+#endif
+
+#ifdef n_MAIN_SOURCE
+# define n_MCTA(T,M) n_CTA(T, M);
+#else
+# define n_MCTA(T,M)
+#endif
 
 #define _CTA_1(T,F,L)   _CTA_2(T, F, L)
 #define _CTA_2(T,F,L)  \
@@ -632,7 +662,6 @@ typedef ssize_t         siz_t;
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define PRIuZ          "zu"
 # define PRIdZ          "zd"
-# define PRIxZ_FMT_CTA() CTA(1 == 1)
 # define UIZ_MAX        SIZE_MAX
 #elif defined SIZE_MAX
   /* UnixWare has size_t as unsigned as required but uses a signed limit
@@ -640,11 +669,13 @@ typedef ssize_t         siz_t;
 # if SIZE_MAX == UI64_MAX || SIZE_MAX == SI64_MAX
 #  define PRIuZ         PRIu64
 #  define PRIdZ         PRId64
-#  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui64_t))
+n_MCTA(sizeof(size_t) == sizeof(ui64_t),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # elif SIZE_MAX == UI32_MAX || SIZE_MAX == SI32_MAX
 #  define PRIuZ         PRIu32
 #  define PRIdZ         PRId32
-#  define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(ui32_t))
+n_MCTA(sizeof(size_t) == sizeof(ui32_t),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # else
 #  error SIZE_MAX is neither UI64_MAX nor UI32_MAX (please report this)
 # endif
@@ -653,7 +684,8 @@ typedef ssize_t         siz_t;
 #ifndef PRIuZ
 # define PRIuZ          "lu"
 # define PRIdZ          "ld"
-# define PRIxZ_FMT_CTA() CTA(sizeof(size_t) == sizeof(unsigned long))
+n_MCTA(sizeof(size_t) == sizeof(unsigned long),
+   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 # define UIZ_MAX        ULONG_MAX
 #endif
 
@@ -764,6 +796,7 @@ enum dotlock_state {
    DLS_NONE,
    DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
    DLS_NAMETOOLONG,           /* Lock file name would be too long */
+   DLS_ROFS,                  /* Read-only filesystem (no error, mailbox RO) */
    DLS_NOPERM,                /* No permission to creat lock file */
    DLS_NOEXEC,                /* Privilege separated dotlocker not found */
    DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
@@ -1023,7 +1056,8 @@ enum user_options {
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
+   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB,
+   OPT_D_V_VV     = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
 };
 
 #define IS_TTY_SESSION() \
@@ -1031,12 +1065,12 @@ enum user_options {
 
 #define OBSOLETE(X) \
 do {\
-   if (options & OPT_D_V)\
+   if (options & OPT_D_V_VV)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
 } while (0)
 #define OBSOLETE2(X,Y) \
 do {\
-   if (options & OPT_D_V)\
+   if (options & OPT_D_V_VV)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 } while (0)
 
@@ -1911,9 +1945,9 @@ VL char const  *temporary_protocol_ext;
 VL char const  month_names[12 + 1][4];
 VL char const  weekday_names[7 + 1][4];
 
-VL char const  uagent[];            /* User agent */
+VL char const  uagent[sizeof UAGENT];
 
-VL uc_i const  class_char[];
+VL uc_i const  class_char[1 + 0x7F];
 #endif
 
 /*

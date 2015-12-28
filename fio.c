@@ -350,7 +350,7 @@ jleave:
 
 #else /* HAVE_WORDEXP */
    struct stat sbuf;
-   char xname[PATH_MAX], cmdbuf[PATH_MAX], /* also used for files */
+   char xname[PATH_MAX +1], cmdbuf[PATH_MAX +1], /* also used for files */
       *shellp, *cp = NULL;
    int pivec[2], pid, l, waits;
    NYD_ENTER;
@@ -540,14 +540,19 @@ _file_lock(int fd, enum file_lock_type flt, off_t off, off_t len)
 static int
 _dotlock_main(void)
 {
+   /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
+    * problems (SunOS), since the pathconf(3) value comes too late! */
+   char name[PATH_MAX +1];
    struct dotlock_info di;
    struct stat stb, fdstb;
-   char name[NAME_MAX];
    enum dotlock_state dls;
    char const *cp;
    int fd;
    enum file_lock_type flt;
    NYD_ENTER;
+
+   /* Ignore SIGPIPE, we'll see EPIPE and "fall through" */
+   safe_signal(SIGPIPE, SIG_IGN);
 
    /* Get the arguments "passed to us" */
    flt = _dotlock_flt;
@@ -609,29 +614,37 @@ jislink:
          fdstb.st_mode != stb.st_mode)
       goto jmsg;
 
-   /* Be aware, even if the error is false! */
-   {
+   /* Be aware, even if the error is false!  Note the shared code in dotlock.h
+    * *requires* that it is possible to create a filename at least one byte
+    * longer than di_lock_name! */
+   do/* while(0) breaker */{
+# ifdef HAVE_PATHCONF
+      long pc;
+# endif
       int i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
-      if (i < 0 || UICMP(z, NAME_MAX, <=, (uiz_t)i + 1 +1)) {
+
+      /* fd is a file, not portable to use for _PC_NAME_MAX */
+      if(i < 0){
+jenametool:
          dls = DLS_NAMETOOLONG | DLS_ABANDON;
          goto jmsg;
       }
 # ifdef HAVE_PATHCONF
-      else {
-         /* fd is a file, not portable to use for _PC_NAME_MAX */
-         long pc;
-
-         if ((pc = pathconf(".", _PC_NAME_MAX)) == -1 || pc <= (long)i + 1 +1) {
-            dls = DLS_NAMETOOLONG | DLS_ABANDON;
-            goto jmsg;
-         }
-      }
+      errno = 0;
+      if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
+         /* errno unchanged: no limit */
+         if(errno == 0)
+            break;
+      }else if(pc - 1 >= (long)i)
+         break;
+      else
+         goto jenametool;
 # endif
-      di.di_lock_name = name;
-   }
+      if(UICMP(z, NAME_MAX - 1, <, (uiz_t)i))
+         goto jenametool;
+   }while(0);
 
-   /* Ignore SIGPIPE, the child reacts upon EPIPE instead */
-   safe_signal(SIGPIPE, SIG_IGN);
+   di.di_lock_name = name;
 
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  We don't know wether we have realpath(3) available,
@@ -643,7 +656,19 @@ jislink:
     * either assume a directory we are not allowed to write in, or that we run
     * via -u/$USER/%USER as someone else, in which case we favour our
     * privilege-separated dotlock process */
-   if (stb.st_uid != user_id || stb.st_gid != group_id || access(".", W_OK)) {
+   assert(cp != NULL); /* Ugly: avoid a useless var and reuse that one */
+   if (access(".", W_OK)) {
+      /* This may however also indicate a read-only filesystem, which is not
+       * really an error from our point of view since the mailbox will degrade
+       * to a readonly one for which no dotlock is needed, then, and errors
+       * may arise only due to actions which require box modifications */
+      if (errno == EROFS) {
+         dls = DLS_ROFS | DLS_ABANDON;
+         goto jmsg;
+      }
+      cp = NULL;
+   }
+   if (cp == NULL || stb.st_uid != user_id || stb.st_gid != group_id) {
       char itoabuf[64];
       char const *args[13];
 
@@ -1243,7 +1268,7 @@ fsize(FILE *iob)
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
-   char cbuf[PATH_MAX];
+   char cbuf[PATH_MAX +1];
    char const *res;
    struct str s;
    bool_t dyn;
@@ -1642,6 +1667,12 @@ jleave:
          emsg = N_("Resulting dotlock filename would be too long\n");
          serrno = EACCES;
          break;
+      case DLS_ROFS:
+         assert(dls & DLS_ABANDON);
+         if (options & OPT_D_V)
+            emsg = N_("  Read-only filesystem, not creating lock file\n");
+         serrno = EROFS;
+         break;
       case DLS_NOPERM:
          if (options & OPT_D_V)
             emsg = N_("  Can't create a lock file! Please check permissions\n"
@@ -1706,8 +1737,9 @@ jleave:
    if (didmsg == TRUM1)
       n_err("\n");
    if (rv == NULL) {
-      if (flocked && serrno != EAGAIN && serrno != EEXIST &&
-            ok_blook(dotlock_ignore_error))
+      if (flocked && (serrno == EROFS ||
+            (serrno != EAGAIN && serrno != EEXIST &&
+             ok_blook(dotlock_ignore_error))))
          rv = (FILE*)-1;
       else
          errno = serrno;

@@ -166,7 +166,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
 jrestore:
    termios_state_reset();
 
-   safe_signal(SIGINT, ohup);
+   safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 jleave:
    NYD_LEAVE;
@@ -880,7 +880,7 @@ _ncl_term_mode(bool_t raw)
    tiosp->c_iflag &= ~(ISTRIP);
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
-   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
+   tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
    NYD2_LEAVE;
 }
 

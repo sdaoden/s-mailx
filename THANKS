@@ -7,8 +7,10 @@ Other people contributed by reporting problems, suggesting various
 improvements or submitting actual code.  Here is a list of those
 people.  I hope the list is complete and free of errors.
 
+Hilko Bengen              bengen at debian dot org
 Gaetan Bisson             bisson at archlinux dot org
 Karol Błażewicz           karol dot blazewicz at gmail dot com
+Salvatore Bonaccorso      carnil at debian dot org
 Martin Brandenburg        martin at martinbrandenburg dot com
 Peter Bray                pdb_ml at yahoo dot com dot au
 Jan Chaloupka             jchaloup at redhat dot com
@@ -17,6 +19,7 @@ Jérémie Courrèges-Anglas  jca at wxcvbn dot org
 Jürgen Daubert            jue at jue dot li
 John Dodson               johnd at physiol dot usyd dot edu dot au
 Ezequiel Garzón           garzon dot lucero at gmail dot com
+Philip Guenther           guenther at openbsd dot org
 Peter Hofmann             snailusers at uninformativ dot de
 Frantisek Holop           minusf at obiit dot org
 Stephen Isard             3s9xh9m02 at sneakemail dot com
@@ -35,14 +38,16 @@ Sunil Nimmagadda          sunil at sunilnimmagadda dot com
 Björn Persson             bjorn at xn--rombobjrn-67a dot se
 Dirk-Wilhelm Peters       peters at schwertfisch dot de
 Gianluca Ramunno          ramunno dot gianluca at gmail dot com
+Aharon Robbins            arnold at skeeve dot com
 Rich Salz                 rsalz at akamai dot com
 Georg Schlisio            g dot schlisio at dukun dot de
+Martin Sebor              msebor at redhat dot com
 Andy Switala              andy dot switala at gmail dot com
 Bob Tennent               rdt at cs dot queensu dot ca
 Tim                       trondd at gmail dot com
 Gavin Troy                gavtroy at fastmail dot fm
 Paul Vojta                vojta at math dot berkeley dot edu
 William Yodlowsky         william at OpenBSD dot org
-Ypnose                    linuxien at legtux dot org
+Ypnose                    ypnx at mailoo dot org
 
 # s-tm-mode

@@ -413,6 +413,9 @@ FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
 FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
                   si8_t emptyrv);
 
+/* Get seconds since epoch */
+FL time_t      n_time_epoch(void);
+
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);

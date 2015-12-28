@@ -48,30 +48,59 @@ CHECK_ONLY=
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
    < ${CONF} ${awk} '
-      BEGIN {i = 0}
+      BEGIN {
+         NOTME["WANT_AUTOCC"] = 1
+         NOTME["WANT_DEBUG"] = 1
+         NOTME["WANT_NOEXTMD5"] = 1
+         NOTME["WANT_NOALLOCA"] = 1
+         NOTME["WANT_DEVEL"] = 1
+         NOTME["WANT_NYD2"] = 1
+         i = 0
+      }
       /^[[:space:]]*WANT_/ {
          sub(/^[[:space:]]*/, "")
          # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
          # does not seem to be a compliant escape for =
          #sub(/=.*$/, "")
          $1 = substr($1, 1, index($1, "=") - 1)
-         if ($1 == "WANT_AUTOCC")
+         if (NOTME[$1])
             next
          data[i++] = $1
       }
       END {
+         # Doing this completely sequentially and not doing make distclean in
+         # between runs should effectively result in lesser compilations.
+         # It is completely dumb nonetheless... TODO
          for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
             printf "WANT_AUTOCC=1\n"
-
+         }
+         for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
             printf "WANT_AUTOCC=1\n"
+         }
+         # With debug
+         for (j = 1; j < i; ++j) {
+            for (k = 1; k < j; ++k)
+               printf data[k] "=1 "
+            for (k = j; k < i; ++k)
+               printf data[k] "=0 "
+            printf "WANT_AUTOCC=1\n"
+            printf "WANT_DEBUG=1\n"
+         }
+         for (j = 1; j < i; ++j) {
+            for (k = 1; k < j; ++k)
+               printf data[k] "=0 "
+            for (k = j; k < i; ++k)
+               printf data[k] "=1 "
+            printf "WANT_AUTOCC=1\n"
+            printf "WANT_DEBUG=1\n"
          }
 
          printf "CONFIG=NULL WANT_AUTOCC=0\n"
@@ -96,8 +125,8 @@ cc_all_configs() {
       printf "\n\n##########\n$c\n" >&2
       sh -c "${MAKE} ${c}"
       t_all
-      ${MAKE} distclean
    done
+   ${MAKE} distclean
 }
 
 # cksum_test()

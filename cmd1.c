@@ -902,8 +902,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          obuf = stdout;
       } else
          safe_signal(SIGPIPE, &_cmd1_brokpipe);
-   } else if ((options & OPT_TTYOUT) &&
-         (dopage || (cp = ok_vlook(crt)) != NULL)) {
+   } else if ((options & OPT_TTYOUT) && (dopage ||
+         ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
       char const *pager = NULL;
       size_t nlines = 0;
 
@@ -934,12 +934,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             safe_signal(SIGPIPE, &_cmd1_brokpipe);
       }
 #ifdef HAVE_COLOUR
-      if (action != SEND_MBOX)
+      if (IS_TTY_SESSION() && action != SEND_MBOX)
          colour_table_create(pager != NULL); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if ((options & OPT_TTYOUT) && action != SEND_MBOX)
+   else if (IS_TTY_SESSION() && action != SEND_MBOX)
       colour_table_create(FAL0); /* (salloc()s!) */
 #endif
 
@@ -1271,7 +1271,7 @@ c_top(void *v)
    }
 
 #ifdef HAVE_COLOUR
-   if (options & OPT_TTYOUT)
+   if (IS_TTY_SESSION())
       colour_table_create(FAL0); /* (salloc()s) */
 #endif
    empty_last = 1;
@@ -1331,12 +1331,18 @@ c_mboxit(void *v)
    int *msgvec = v, *ip;
    NYD_ENTER;
 
+   if (pstate & PS_EDIT) {
+      n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
+      goto jleave;
+   }
+
    for (ip = msgvec; *ip != 0; ++ip) {
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
       pstate |= PS_DID_PRINT_DOT;
    }
+jleave:
    NYD_LEAVE;
    return 0;
 }

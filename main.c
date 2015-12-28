@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Startup -- interface with user.
+ *@ Startup and initialization.
  *@ This file is also used to materialize externals.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -50,9 +50,6 @@
 # include <locale.h>
 #endif
 
-/* Verify that our size_t PRI[du]Z format string has the correct type size */
-PRIxZ_FMT_CTA();
-
 struct a_arg {
    struct a_arg   *aa_next;
    char           *aa_file;
@@ -72,8 +69,8 @@ VL char const        month_names[12 + 1][4] = {
    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
-VL char const        uagent[] = UAGENT;
-VL uc_i const        class_char[] = {
+VL char const        uagent[sizeof UAGENT] = UAGENT;
+VL uc_i const        class_char[1 + 0x7F] = {
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
@@ -112,7 +109,7 @@ VL uc_i const        class_char[] = {
 static char          *_oarg;
 static int           _oind, /*_oerr,*/ _oopt;
 
-/* Our own little getopt(3); note --help is special treated as 'h' */
+/* Our own little getopt(3); note --help is special-treated as 'h' */
 static int     _getopt(int argc, char * const argv[], char const *optstring);
 
 /* Perform basic startup initialization */
@@ -203,7 +200,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    /* Special support for --help, which is quite common */
-   if (_oopt == '-' && !strcmp(curp, "-help")) {
+   if (_oopt == '-' && !strcmp(curp, "-help") && curp - 1 == argv[_oind]) {
       ++_oind;
       rv = 'h';
       goto jleave;
@@ -966,7 +963,7 @@ jgetopt_done:
    spreserve();
 
    if (!(options & OPT_NOSRC) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
-      load(SYSCONFRC);
+      load(SYSCONFDIR "/" SYSCONFRC);
    /* *expand() returns a savestr(), but load only uses the file name for
     * fopen(), so it's safe to do this */
    if ((cp = env_vlook("MAILRC", TRU1)) == NULL)
