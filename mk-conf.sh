@@ -153,15 +153,28 @@ option_update() {
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
+# TODO cc_maxopt is brute simple, we should compile test program and dig real
+# compiler versions for known compilers, then be more specific
+cc_maxopt=100
+
+os_early_setup() {
+   i="${OS:-`uname -s`}"
+
+   if [ ${i} = SunOS ]; then
+      msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
+      _os_early_setup_sunos
+   fi
+}
+
 os_setup() {
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
    msg 'Operating system is "%s"' ${OS}
 
    if [ ${OS} = sunos ]; then
-      msg ' . have special SunOS / Solaris environmental rules, dealing with it'
+      msg ' . have special SunOS / Solaris "setup" rules ...'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      msg ' . have special UnixWare environmental rules, dealing with it'
+      msg ' . have special UnixWare environmental rules ...'
       if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
@@ -189,7 +202,7 @@ os_setup() {
    fi
 }
 
-_os_setup_sunos() {
+_os_early_setup_sunos() {
    # According to standards(5), this is what we need to do
    if [ -d /usr/xpg4 ]; then :; else
       msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
@@ -198,7 +211,9 @@ _os_setup_sunos() {
    PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
    [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
    export PATH
+}
 
+_os_setup_sunos() {
    C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
    LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
 
@@ -231,7 +246,7 @@ _os_setup_sunos() {
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
          # Assume gcc(1)
-         force_no_stackprot=1 need_R_ldflags=-Wl,-R
+         cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
       fi
    fi
 }
@@ -303,7 +318,7 @@ cc_flags() {
       fi
 
       if [ "${CC}" = tcc ]; then
-         msg ' . have special tcc(1) environmental rules, dealing with it'
+         msg ' . have special tcc(1) environmental rules ...'
          _cc_flags_tcc
       else
          _cc_flags_generic
@@ -383,11 +398,11 @@ _cc_flags_generic() {
    if feat_yes DEBUG; then
       cc_check -O
       cc_check -g
-   elif cc_check -O3; then
+   elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
       :
-   elif cc_check -O2; then
+   elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
       :
-   elif cc_check -O1; then
+   elif [ ${cc_maxopt} -gt 0 ] && cc_check -O1; then
       :
    else
       cc_check -O
@@ -469,12 +484,13 @@ check_tool() {
    return 1
 }
 
+# Very easy checks for the operating system in order to be able to adjust paths
+# or similar very basic things which we need to be able to go at all
+os_early_setup
+
 # Check those tools right now that we need before including $rc
-# GNU tools are very slow, so try other options if possible
 msg 'Checking for basic utility set'
-check_tool awk "${awk:-`command -v nawk`}" 1 ||
-   check_tool awk "mawk" 1 ||
-   check_tool awk "awk"
+check_tool awk "${awk:-`command -v awk`}"
 check_tool rm "${rm:-`command -v rm`}"
 check_tool tr "${tr:-`command -v tr`}"
 
