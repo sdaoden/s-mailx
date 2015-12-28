@@ -140,7 +140,7 @@ _update-release:
 	( \
 	cd "$${UAGENT}-$${REL}" &&\
 	\
-	rm -f .gitignore .mailmap \
+	rm -f .gitignore .mailmap &&\
 	\
 	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
