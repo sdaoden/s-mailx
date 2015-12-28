@@ -184,7 +184,7 @@ _update-release:
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
-	make CONFIG=MAXIMAL &&\
+	make CONFIG=MAXIMAL config build &&\
 	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
 		-q "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
