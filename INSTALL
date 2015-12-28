@@ -231,7 +231,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
-  Latest as of 2015-09-15, clang(1) and gcc(1).
+  Latest as of 2015-12-28, tcc(1), clang(1) and gcc(1).
   - gcc
     + False warning on "'gl.gl_group' may be used uninitialized".
       I had explicitly committed "Clarify condition (hopefully fix
@@ -240,10 +240,10 @@ Unless otherwise noted the following applies to saying "$ make" and
       Ditto, 'gl.gl_slot' and 'gl.gl_htable'.
 
 . Void Linux <http://www.voidlinux.eu/>
-  It's too hot in Summer!
+  In December 2015.
 
 . CRUX Linux <http://www.crux.nu/>
-  CRUX 3.1, gcc(1).
+  CRUX 3.2 RC3, gcc(1).
   - gcc
     + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
       'gl.gl_group'.
@@ -281,13 +281,12 @@ Unless otherwise noted the following applies to saying "$ make" and
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.  (A future version of S-nail will
     use different testing, but until then: Sorry!)
-  - I couldn't get us going on SunOS 5.9: the build system had to be
-    extended to check for UINTPTR_MAX being defined as the empty string
-    and similar very special things.
-  - The OpenCSW build cluster consists of SunOS 5.10 and SunOS 5.11
-    machines under SPARC and i386, and
-      make&&make test&&make devel&&make test
-    succeeded on all of them on 2015-09-04 (-03?).  However, some notes:
+  - I couldn't get us going on SunOS 5.9 Sparc: the build system had to
+    be extended to check for UINTPTR_MAX being defined as the empty
+    string and similar very special things.
+  - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
+    under SPARC and i386, and it looked good on 2015-12-28.
+    However, some notes:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen on earlier tests:
         Undefined                       first referenced
@@ -308,7 +307,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + Not tested for v14.8.5, but never seen any problems but some
+  + Not tested for v14.8.[56], but never seen any problems but some
     harmless and ignorable compile warnings.
 
 3. Current codebase state
@@ -317,7 +316,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 I claim that we have reached a stable state that should enable users
 a neatless mode of operation when running 24/7 (except for growing
 memory usage from the OpenSSL side of the road, when used).
-I'll hope to be able to release S-nail v20 on 2018-03-25, the 40th
+I'll hope to be able to release S-nail v20 on 2020-03-25, the 42th
 anniversary of Berkeley Mail, as a good one.  Also see "TODO".
 
 For S-nail, v15.0 (not before 2017) is dedicated to a Send- and
