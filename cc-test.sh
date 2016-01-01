@@ -28,6 +28,14 @@ LC_ALL=${LC} LANG=${LC}
 ttycharset=UTF-8
 export LC_ALL LANG ttycharset
 
+# Problem: force $SHELL to be a real shell.  It seems some testing environments
+# use nologin(?), but we need a real shell for command execution
+if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
+   echo >&2 '$SHELL seems to be nologin, overwriting to /bin/sh!'
+   SHELL=/bin/sh
+   export SHELL
+fi
+
 ESTAT=0
 
 usage() {
