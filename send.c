@@ -1162,12 +1162,17 @@ newfile(struct mimepart *ip, bool_t *ispipe)
 jgetname:
       f2 = n_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
             ? fexpand_nshell_quote(f) : NULL), TRU1);
+      if(f2 != NULL)
+         while(spacechar(*f2))
+            ++f2;
       if (f2 == NULL || *f2 == '\0') {
          if (options & OPT_D_V)
             n_err(_("... skipping this\n"));
          fp = NULL;
          goto jleave;
-      } else if (*f2 == '|')
+      }
+
+      if (*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
       else if ((f3 = fexpand(f2, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
@@ -1183,6 +1188,7 @@ jgetname:
 
    if (*f == '|') {
       char const *cp;
+
       cp = ok_vlook(SHELL);
       if (cp == NULL)
          cp = XSHELL;

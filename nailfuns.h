@@ -1866,7 +1866,8 @@ FL char *      string_quote(char const *v);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
  * to indicate wether getmsglist() et al need to be called to collect
- * additional args that remain in linebuf.  Return NULL on "error" */
+ * additional args that remain in linebuf.  If strip is true possibly
+ * surrounding quote characters are removed.  Return NULL on "error" */
 FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 
 /* Convert a string to lowercase, in-place and with multibyte-aware */

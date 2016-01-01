@@ -713,7 +713,7 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
    cp += strlen(linebuf) -1;
 
    /* Strip away trailing blanks */
-   while (whitechar(*cp) && cp > linebuf)
+   while (spacechar(*cp) && cp > linebuf)
       --cp;
    cp[1] = '\0';
    if (cp == linebuf)
@@ -732,7 +732,7 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
       if (quoted != ' ') {
          if (*cp != quoted)
             continue;
-      } else if (!whitechar(*cp))
+      } else if (!spacechar(*cp))
          continue;
       if (cp == linebuf || cp[-1] != '\\') {
          /* When in whitespace mode, WS prefix doesn't belong */
@@ -753,13 +753,13 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
     * "? copy +'x y.mbox'" or even "? copy +x\ y.mbox" */
    while (cp > linebuf) {
       --cp;
-      if (whitechar(*cp)) {
+      if (spacechar(*cp)) {
          p = cp;
          *cp++ = '\0';
          /* We can furtherly release our callees if we now decide wether the
           * remaining non-"last string" line content contains non-WS */
          while (--p >= linebuf)
-            if (!whitechar(*p))
+            if (!spacechar(*p))
                goto jleave;
          linebuf = cp;
          break;

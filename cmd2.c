@@ -77,19 +77,26 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    int newfile = 0, last = 0, *msgvec, *ip;
    struct message *mp;
    char *file = NULL, *cp, *cq;
-   char const *disp = "";
+   char const *disp = "", *shell = NULL;
    FILE *obuf;
    bool_t success = FAL0, f;
    NYD_ENTER;
 
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    if (sender_record) {
-      for (cp = str; *cp != '\0' && blankchar(*cp); ++cp)
+      for (cp = str; *cp != '\0' && spacechar(*cp); ++cp)
          ;
       f = (*cp != '\0');
    } else {
       if ((file = snarf(str, &f, convert != SEND_TOFILE)) == NULL)
          goto jleave;
+      while(spacechar(*file))
+         ++file;
+      if (*file == '|') {
+         ++file;
+         if ((shell = ok_vlook(SHELL)) == NULL)
+            shell = XSHELL;
+      }
    }
 
    if (!f) {
@@ -122,6 +129,18 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          memcpy(file + 1, cp, sz);
       } else
          file = cp;
+   }
+
+   /* Pipe target is special TODO hacked in later, normalize flow! */
+   if (shell != NULL) {
+      if ((obuf = Popen(file, "w", shell, NULL, 1)) == NULL) {
+         int esave = errno;
+         n_perr(file, esave);
+         errno = esave;
+         goto jleave;
+      }
+      disp = _("[Piped]");
+      goto jsend;
    }
 
    if ((file = expand(file)) == NULL)
@@ -174,6 +193,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       }
    }
 
+jsend:
    success = TRU1;
    tstats[0] = tstats[1] = 0;
 
@@ -208,7 +228,10 @@ jferr:
          srelax_rele();
       success = FAL0;
    }
-   if (Fclose(obuf) != 0)
+   if (shell != NULL) {
+      if (!Pclose(obuf, TRU1))
+         success = FAL0;
+   } else if (Fclose(obuf) != 0)
       success = FAL0;
 
    if (success) {
@@ -243,7 +266,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
    char *cp;
    NYD_ENTER;
 
-   if ((cp = laststring(linebuf, flag, FAL0)) == NULL) {
+   if ((cp = laststring(linebuf, flag, TRU1)) == NULL) {
       if (usembox) {
          *flag = FAL0;
          cp = expand("&");
