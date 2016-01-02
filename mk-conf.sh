@@ -566,8 +566,8 @@ trap "${rm} -f ${tmp}" EXIT
 printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
-# multiline values in make.rc; GNU sed(1) blew me off the map, being VERY slow,
-# first shell / awk mixed case better, Aahron Robbins suggested the following
+# multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow in
+# VMs (see [fa2e248]), Aharon Robbins suggested the following
 < ${rc} ${awk} 'BEGIN{line = ""}{
    gsub(/^[[:space:]]+/, "", $0)
    gsub(/[[:space:]]+$/, "", $0)
