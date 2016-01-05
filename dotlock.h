@@ -7,7 +7,7 @@
  *@ It furtherly assumes that it can create a file name that is at least one
  *@ byte longer than the dotlock file's name!
  *
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.

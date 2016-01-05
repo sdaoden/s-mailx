@@ -2,7 +2,7 @@
  *@ `(un)?mimetype' and other mime.types(5) related facilities.
  *@ "Keep in sync with" ./mime.types.
  *
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

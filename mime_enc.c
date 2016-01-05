@@ -4,7 +4,7 @@
  *@ - Base64, section 6.8
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /* QP quoting idea, _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
 /* $NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $ */
