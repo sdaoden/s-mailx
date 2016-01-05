@@ -4,7 +4,7 @@
  *@ M(ailx) L(ine) E(ditor), change the file layout a bit and place those
  *@ one after the other below the other externals.
  *
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
