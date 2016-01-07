@@ -1557,7 +1557,8 @@ __mta_prepare_args(struct name *to, struct header *hp)
 
    /* Terminate option list to avoid false interpretation of system-wide
     * aliases that start with hyphen */
-   args[i++] = "--";
+   if (!snda)
+      args[i++] = "--";
 
    /* Receivers follow */
    for (; to != NULL; to = to->n_flink)

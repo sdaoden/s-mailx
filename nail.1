@@ -6736,13 +6736,16 @@ sources: from the variable
 if set, from the command line if given and the variable
 .Va expandargv
 allows their use.
-Argument processing of the MTA will always be terminated with a
+Argument processing of the MTA will be terminated with a
 .Ql --
 separator.
 .Pp
 The otherwise occurring implicit usage of the following MTA command line
-arguments can be disabled by setting the binary option
-.Va sendmail-no-default-arguments :
+arguments can be disabled by setting the boolean option
+.Va sendmail-no-default-arguments
+(which will also disable passing
+.Ql --
+to the MTA):
 .Ql -i
 (for not treating a line with only a dot
 .Ql \&.
