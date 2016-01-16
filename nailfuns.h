@@ -1219,7 +1219,7 @@ FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
 FL void        maildir_quit(void);
 
-FL enum okay   maildir_append(char const *name, FILE *fp);
+FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
 
 FL enum okay   maildir_remove(char const *name);
 
