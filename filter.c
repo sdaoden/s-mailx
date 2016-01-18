@@ -1013,6 +1013,8 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    store->s = NULL;
    store->l = 0;
 
+   /* TODO Too simple minded, we need to properly skip over things embedded in
+    * parameters etc.! */
    if ((cp = UNCONST(asccasestr(self->hf_bdat, param))) == NULL)
       goto jleave;
    cp += strlen(param);
@@ -1023,7 +1025,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       if (c == '=')
          break;
    }
-   if ((c = *cp) == '\0')
+   if ((c = *cp) == '\0' || c == '>')
       goto jleave;
 
    if (c == '"' || c == '\'') {
@@ -1039,10 +1041,10 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          ;
       /* XXX ... and we simply ignore missing trailing " :> */
    } else {
-      if (!whitechar(c))
-         while ((c = *++cp) != '\0' && !whitechar(c))
-            ;
       store->s = cp;
+      if (!whitechar(c))
+         while ((c = *++cp) != '\0' && !whitechar(c) && c != '>')
+            ;
    }
    i = PTR2SIZE(cp - store->s);
 
