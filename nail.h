@@ -417,11 +417,13 @@
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define VFIELD_SIZE(X)
 # define VFIELD_SIZEOF(T,F) (0)
+# define VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
    : ((ssize_t)(X) < 0 ? sizeof(size_t) - ABS(X) : (size_t)(X)))
 # define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
+# define VSTRUCT_SIZEOF(T,F) (sizeof(T) - SIZEOF_FIELD(T, F))
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
