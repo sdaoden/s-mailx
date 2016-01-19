@@ -1,10 +1,10 @@
 TODO reminder.
 
-Release S-nail v20 on 2018-03-25, the 40th anniversary of Mail.
-With a clean, conforming and efficient codebase, then.
+Rename S-nail to S-mailx in v15.0, change things i've messed with
+a single, massively backward incompatible change.
 
-- Recipients specified on the command line should be added to those
-  specified in the message when the -t option is set.
+Release S-mailx v20 on 2020-03-25, the 42nd anniversary of BSD Mail.
+With a clean, conforming and efficient codebase, then.
 
 - At least optionally disallow silent discarding of invalid addresses,
   i.e., cause sending to be aborted if not all recipient addresses pass the
@@ -12,18 +12,6 @@ With a clean, conforming and efficient codebase, then.
 
 - Ditto if a resource file can't be found that has been explicitly set via
   environment variables there should be some feedback.
-
-- I.e., it is fine to be silent unless an error occurs, but then please
-  report errors and offer (in interactive mode) the possibility to act at
-  a glance.  (See error ring topic around here.)
-
-- POSIX says that, when written to DEAD: "If the file exists, the message
-  shall be written to replace the contents of the file".  This is mentioned
-  for ASYNCHRONOUS EVENTS, but it's the only description of what should be
-  done in which way to DEAD.  savedeadletter() yet appends.  See ZOMBIE ,)
-
-- It irritates me that a message with 5 visible lines but 115 header lines
-  goes through the pager, even if i have *crt=*.
 
 - We should possibly get away of using command line utilities for
   compression.  (At least optionally?)  Instead we should link against
@@ -59,12 +47,6 @@ With a clean, conforming and efficient codebase, then.
 -- Also, when we run a pipe handler asynchronously there should possible
    written something like [pipe-handler xy started] or something
 
-- Offer the possibility to work with certificate fingerprints instead of
-  full certificates, in equal spirit to the current maintainers S-Postman
-  and Mercurial.  S-nail(1) could simply offer something in equal spirit to
-  the formers --fingerprint, so that no other tool is necessary for
-  certificate management (for at least secure transport).
-
 - It would be nice if it would be possible to define a format string for
   *quote*, like 'set quote="format=some formats"'.
   In general the current approach is somewhat messy IMO.  I.e., it would
@@ -77,8 +59,7 @@ With a clean, conforming and efficient codebase, then.
 -- This would also mean that interactive message editing would work
   accordingly.  PleasE!
 
-- Command line editing should gain possibility of context sensitive tab
-  completion.
+- Line editing should gain possibility of context sensitive tab completion.
 
 - Maybe there should be an additional ZOMBIE directive that is served in
   equal spirit to DEAD, but that could be a valid MBOX... ?
@@ -87,10 +68,7 @@ With a clean, conforming and efficient codebase, then.
 
 - Having a newsreader would be a really cool thing.  (RFC 977 and 2980)
 
-- There should be a way to ignore the From_ line, as opposed to the From:
-  line, i.e., distinctively.
-
-- There should be a variable that controls wether leading and trailing
+- There should be a variable that controls whether leading and trailing
   empty lines of parts and/or messages as such should be printed or not.
 
 - printhead()/hprf(): support %n newline format (%t tab?).
@@ -105,16 +83,8 @@ With a clean, conforming and efficient codebase, then.
    variables (though prefix and appendix or prefix and suffix, but..).
    Note that our code is quite unflexible.
 
-- The "top" command should honour ignoretab, or there should be a very
-  special "top" ignoretab.  It simply doesn't make sense to "top" 5 lines
-  when all that you get are Received: lines...
-
-- In the very end it is not that hard to add (optional) MTA
-  functionality at a most simple level.
-  Use sqlite for aliases (and possibly cache), then.
-  (Though a nice dynamic cpdict should also be sufficient.)
-
-- We should support IMAP compression over the wire.
+- It irritates me that a message with 5 visible lines but 115 header lines
+  goes through the pager, even if i have *crt=*.
 
 Low-Level
 ---------
@@ -142,38 +112,18 @@ Low-Level
     "co$mm1 cö,mm,2 'c'omm.3" <abc@däf.de>
   Or?
 
--- Think about a name bypass hashmap cache, and whenever we have to skin or
-   nalloc() or whatever, look in there.  Maybe even an additional link for
-   non GFULL(/GSKIN) and fully skinned struct name objects.
-   The amount of duplicated work in this codebase is frustrating, but the
-   real healing would make necessary a complete rewrite of the name handling!
-   Such a cache would work without touching the current code flow ... or
-   allow a smooth transition to a new one anyway.
-
 ++  NOTE: 'alternates' tracking happens BEFORE we enter composing, this
     means that an account switch during message composing will NOT cause
     reevaluation of all that very very clumy
     elide/delete_alternates/gexpand/is_myname etc. handling.
 
-- The char classification stuff can be improved; currently each character
-  has exactly one classification bit set, even if multiple would apply
-  (e.g., HT=\t == CNTRL|SPACE|ASCII|BLANK).  This would allow better
-  testing using our own classification functions in quite some places.
+- many uses of whitechar() should be spacechar(), and spacechar() should
+  be blankspacechar(), and blankspacechar() should be dropped.  then
+  drop onlywhitechar() again, too.  maybe reduce char_class bits then.
 
-- The quoted-printable Content-Transfer-Encoding: supports soft linebreaks;
-  it happens that a lot of mailers (Apple Mail?, Microsoft Word, Yahoo!
-  Webmail) create HTML parts which solely consist of a single line,
-  created via soft linebreaks.
-  To handle such mess we need to be able to break out of the input-line ==
-  output line relationship that is still fixated in the codebase.
-  I.e., it is not even sufficient to convert "rest" into an array, but best
-  would be if we would be able to sequentially work what we have, and
-  detect when it is safe to "dump that out".
-  This MUST be part of the send/mime layer rewrite in 15.0.
-
--- In v15.0, when we can address attachments of a message individually,
-   it would be nice to provide even more access, just like nmh(1) does
-   (Johan Commelin: Are s-nail and mh related?).
+- In v15.0, when we can address attachments of a message individually,
+  it would be nice to provide even more access, just like nmh(1) does
+  (Johan Commelin: Are s-nail and mh related?).
 
 - I never used anything but the *datefield* option, and it would really be
   nice if the date strings would be parsed off into some 16 byte or what
@@ -187,6 +137,7 @@ Low-Level
 - At some later time extend the logic behind -# -- it should not have
   a current folder, but start in VOID mode (...), and unless one is
   explicitly chosen..  We need a reliable batch mode.
+  P.S.: then drop again the special casing of /dev/null.
 
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
@@ -211,48 +162,77 @@ Low-Level
     it. How is it doing that?  [Of course he was using Maildir]
 
 - Add TODO notes for those RFCs:
-  RFC 5322 - The basic format of email messages.
-  MIME (Multimeda) email extensions
-  RFC 2405 - The format of MIME message bodies.
-  RFC 2406 - Common multimedia types.
-  RFC 2017 - URL External-Body Access-Type
-  RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
-    text (format=flowed).   (Martin Neitzel)
-  RFC 2407 - Encoding of non-ASCII text in message headers.
-  RFC 2183 - The Content-Disposition Header
-  RFC 5321 - Simple Mail Transfer Protocol.
-  RFC 6409 - Message Submission for Mail
-  RFC 4954 - SMTP Authentication
-  RFC 3207 - SMTP over TLS
-  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport
-  Post Office Protocol (POP)
-  RFC 1939 - Post Office Protocol v3
-  RFC 2449 - POP3 Extensions (including SASL)
-  RFC 2595 - TLS for POP3 (among others)
-  Security
-  RFC 4422, 4505 - Simple Authentication and Security layer (SASL)
-            (Tarqi Kazan)
-  RFC 5246 - Transport Layer Security (TLS)
   RFC 977 -> 3977 - Network News Transfer Protocol
   RFC 1036 - Standard for USENET Messages
-  RFC 2980 - Common NNTP Extensions
-  RFC 2387 - multipart/related  -- yet handled like /alternative
+  RFC 1524 - True support for mailcap files?
+    TODO YES!  We really need to replace the pipe-TYPE/SUBTYPE mechanism
+    with something real.  When we can work on the parsed MAIL DOM.
+  RFC 1939 - Post Office Protocol v3
+  RFC 2017 - URL External-Body Access-Type
+  RFC 2183 - The Content-Disposition Header
+  RFC 2369 - The Use of URLs as Meta-Syntax for Core Mail List Commands
+             and their Transport through Message Header Fields
+             (RFC 2368 - The mailto URL scheme)
   RFC 2384,1738 - I.e., Much better URL support
+  RFC 2387 - multipart/related  -- yet handled like /alternative
+  RFC 2405 - The format of MIME message bodies.
+  RFC 2406 - Common multimedia types.
+  RFC 2407 - Encoding of non-ASCII text in message headers.
+  RFC 2449 - POP3 Extensions (including SASL)
+  RFC 2595 - TLS for POP3 (among others)
+  RFC 2980 - Common NNTP Extensions
+  RFC 3156 - MIME Security with OpenPGP
+  RFC 3207 - SMTP over TLS
+  RFC 3461, 3464 -
+    Simple Mail Transfer Protocol (SMTP) Service Extension for Delivery
+      Status Notifications (DSNs),
+    An Extensible Message Format for Delivery Status Notifications
+  RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
+    text (format=flowed).   (Martin Neitzel)
+  RFC 4422, 4505 - Simple Authentication and Security layer (SASL)
+            (Tarqi Kazan)
+  RFC 4880 - OpenPGP Message Format
+  RFC 4954 - SMTP Authentication
+  rfc5198.txt Unicode Format for Network Interchange
+  RFC 5246 - Transport Layer Security (TLS)
+  RFC 5321 - Simple Mail Transfer Protocol.
+  RFC 5322 - The basic format of email messages.
+  RFC 5598 - Internet Mail Architecture
   RFC 5751 - Secure/Multipurpose Internet Mail Extensions (S/MIME)
+    TODO NOTE that our S/MIME support is extremely weak regarding
+    TODO understanding, we should not rely on OpenSSL but instead
+    TODO handle it ourselfs; the RFC says:
+    S/MIME is used to secure MIME entities.  A MIME entity can be a sub-
+       part, sub-parts of a message, or the whole message with all its sub-
+       parts.  A MIME entity that is the whole message includes only the
+       MIME message headers and MIME body, and does not include the RFC-822
+       header.  Note that S/MIME can also be used to secure MIME entities
+       used in applications other than Internet mail.  If protection of the
+       RFC-822 header is required, the use of the message/rfc822 media type
+       is explained later in this section.
   RFC 6125 - Representation and Verification of Domain-Based Application
     Service Identity within Internet Public Key Infrastructure Using
     X.509 (PKIX) Certificates in the Context of Transport Layer Security
     (TLS)
- RFC 3461, 3464 -
-    Simple Mail Transfer Protocol (SMTP) Service Extension for Delivery
-      Status Notifications (DSNs),
-    An Extensible Message Format for Delivery Status Notifications
- RFC 5598 - Internet Mail Architecture
- RFC 1524 - True support for mailcap files?
- draft-ietf-uta-email-tls-certs-01.txt
- SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
- draft-melnikov-smime-header-signing
- Considerations for protecting Email header with S/MIME
+  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport
+  RFC 6409 - Message Submission for Mail
+  rfc6530.txt Overview and Framework for Internationalized Email
+  rfc6531.txt SMTP Extension for Internationalized Email
+  rfc6532.txt Internationalized Email Headers
+  rfc6854.txt Update to Internet Message Format to Allow Group Syntax in
+    the "From:" and "Sender:" Header Fields
+  rfc6855.txt IMAP Support for UTF-8
+  rfc6856.txt Post Office Protocol Version 3 (POP3) Support for UTF-8
+  rfc6857.txt Post-Delivery Message Downgrading for Internationalized
+    Email Messages
+  rfc6858.txt Simplified POP and IMAP Downgrading for Internationalized Email
+
+  draft-ietf-uta-email-tls-certs-01.txt
+   SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
+  draft-melnikov-smime-header-signing
+   Considerations for protecting Email header with S/MIME
+  Read https://tools.ietf.org/html/draft-ietf-uta-tls-bcp-07.
+    Can we implement OCSP (see RFC 6066; -> RFC 6960)????
 
 - This is how the codebase has to be reworked in respect to signals and
   jumping:
@@ -262,35 +242,57 @@ Low-Level
      eval_ctx gets a new instance every time evaluate() is entered; for
      the interactive mode, commands() instantiates an outermost eval_ctx
      that "cannot be left".
+
      cmd_ctx knows about the eval_ctx in which it is was created; it is
      created for each command that has an entry in cmd_tab and is passed
      as the new argument of these kind of functions.
      (send_ctx is the carrier for the MIME and send layer rewrite.)
-  2. We'll get a signal manager.  This is a global layer which is the
-     sole object-in-charge for signals.  We'll install a complete set of
-     handlers once -- those will only set has-occurred bits.
-     All interested parties have to peek at the signal manager when they
-     are in the position to deal with signals, via a series of
-     "ha(s|ve)_occurred", "needs_action", "would_raise" or whatever, as
-     well as "doact".
-  3. We need a sort of non-local return, everything else would require
-     a totally different way of programming.  Also, non-local returns
-     are not *that* bad, generally speaking.  We'll be easy and add the
-     possibility to define a jump target location in eval_ctx and
-     cmd_ctx, by peeking at the signal manager (for object design
-     reasons, though done by a macro, say), just like saying "i need to
-     have the chance to perform some actions shall a jump be necessary".
-  4. So, somewhere deep down the still recursive codebase, shall the
-     necessity to honour a jump request occur, we peek the signal
-     manager to "unroll" the current cmd_ctx/eval_ctx chain(s), which
-     will result in none-to-multiple jumps to locations which require
-     cleanup actions, ultimately ending in the non-leavable commands()
-     eval_ctx or whatever.
-  6. Hot: we save us from thousands of syscalls, and get rid of the
-     fucking sig* shit.  It rhymes, it rhymes :)
-     Should we even be able to go the non-blocking select(2) way in the
-     end -- that would be fantastic!
- 10. The line buffer used in evaluate() that is passed through to
+  2. cmd_tab handling becomes more intelligent: add bit fields so that
+     for some arguments (i.e., the first two or three) automatic
+     normalization can be specified, like whitespace trimming, like
+     automatic expansion of variables etc.  For getrawlist.
+
+      - and: commands that work only in interactive mode, and are
+        _silently_ ignored otherwise (no error).
+        I.e., commands which work on only with true user interaction
+        should not need to take care no more, but simply assume that
+        there will be true user interaction.  And like that.
+
+     E.g., customhdr header field is always to be WS trimmed, just the
+     same as the body.  shortcut at least should have trimmed name, etc.
+     To do that right, properly parse from left to right, take care
+     about backslash escaping, and (optionally) expand shell variables
+     and backtick substituations.
+
+     The cmd_ctx needs to carry around the cmd_tab structure so that the
+     commands can themselves print the synopsis in case of errors --
+     alternatively we need a return bit which should cause the command
+     callee to emit the synopsis as an error message, whatever is best.
+     Some (hopefully) duplicate occurrances of such strings can vanish.
+  2.1 We have some commands which offer "show" subcommands.
+      Those should only work in interactive mode OR SO.
+      This could be done with a flag, too.
+  X. Offer a central "`[un]onevent' EVENT MACRO [conditions]" register.
+     Change all hooks to use that one, optimize the case where a single
+     macro is registered for a single event but with different
+     preconditions.
+
+     E.g., "on_interactive_mode_enter" could then be hooked to call
+     `bind' and set `colour's, for example.  In conjunction with 2.
+     above those commands could simply be (silent, successful) no-ops
+     before we reach that state (and again after
+     on_interactive_mode_leave is processed).
+
+  X.x We should make the message accessible at least a bit on macro level.
+      I.e., so that message specification checks can be applied on the
+      macro level, as in
+        if `message match-spec '@~t@bank.com'`
+          set smime-sign customhdr='X-BlahBlahBlah:Banks are monsters'
+        endif
+      where `message' (or so) would refer to the currently active
+      message (in compose mode) or the "dot" (otherwise).
+      `message' would gain some keywords.  Something like that.
+  8. The line buffer used in evaluate() that is passed through to
      commands (thus: in cmd_ctx, then) needs to become `const'.
      (I tried to do so in the past, but some commands write into it,
      thus i stopped and iirc even added some changes on my own which
@@ -299,6 +301,20 @@ Low-Level
      lines before executing then.
      + The temporary hack which duplicates the line buffer in order to
      place the original content in history can be removed again.
+     + The command context also takes preparsed command array if so
+     specified in cmd_tab, and entries are cleaned up (see 2.)
+  9. We should unite all the un*() commands with their non-un*
+     versions, if they have one.  They may take a different argument
+     list etc., but only one entry in the command table for such.
+     - The POSIX standard command abbreviations must remain, so maybe
+       outsource those in a hashtable or whatever that is checked first,
+       but detach command table order from that anyway.
+     - Offer a(n optional, and on/off switchable) Damerau-Levenshtein
+       mode for command completion;
+ 10. We MUST switch the entire codebase to use SysV signal handling, don't
+     do the BSDish SA_RESTART, which is why we still suffer the way we
+     do and need jumps.  I can't dig BSD signal handling, and never ever
+     did so myself until i got here.
  11. Macro execution is potentially recursive.  Meaning that
      `undefine', etc. can occur while macros are executing.
      The simplemost approach would be to have some recursion counter for
@@ -321,14 +337,22 @@ Low-Level
      overwritten?  Same answer, plus a message "new settings take effect
      when account is switched to the next time".)
  20. The attachment charset selection loop can then be rewritten to
-     check wether an ^C occurred and treat that as end-of-loop
+     check whether an ^C occurred and treat that as end-of-loop
      condition.  In v14.6.3 this was introduced, but it should act
-     differently depending on wether the interrupt occurred during
+     differently depending on whether the interrupt occurred during
      character set selection or attachment filename input.
-     Also in respect wether the interrupt is "propagated" or not.
+     Also in respect whether the interrupt is "propagated" or not.
      It's ugly, and documented accordingly.
  30. Mail protocols and mail messages are accessed through a "VFS".
      URL should then support file:// and maildir:// etc.  Update manual!
+
+     . It should be considered to drop many variables in favour of
+       ?SEARCH usage for keys, or key=value pairs, e.g.
+        smtp://exam.ple?starttls=yes;smtp-hostname=;
+       etc.   USER@HOST is neat, but that is possibly preferable?
+       We could then also extend *mta* and drop *smtp* as such, e.g.,
+       mta=smtp://dSDAS, mta=builtin://XZ, mta=bltin://XZ.
+       Question: what is with smtp-hostname and such??
  31. Flag updates of individual messages must find their way through to
      the protocol.
  32. Use deque (on partial views).
@@ -348,6 +372,40 @@ Low-Level
      create a new anonymous "result" view.  It must be possible to
      specify that a view is to be applied to the entire mailbox instead
      of the current view, via a simple easy understandable syntax.
+
+     Or name it "msgset".
+     We won't extend macros that much because it would require much too
+     much logic for no purpose, instead we'll (hopefully) add some
+     scriptable abstraction, with an optional builtin Lua binding.
+     E.g., it would be too complicated to create a language to access
+     individual message parts (headers etc.), add error handling etc.
+     Better to make it all directly accessible via language binding, and
+     offer commands which relinquish execution to such a binding, maybe
+     even with some arguments, as in "? lua ARG" - it should be possible
+     that ARG is a msgset, then.
+
+     But what macros should be able to do is iterating over such
+     a msgset / view, as in
+        msgset create NAME :SPEC:
+        msgset add NAME :SPEC:
+      and then either
+        for[-each] NAME
+          normal-cmd SOMEHOW-REFER-TO-ITER
+          if SOMEHOW-ACCESS-LAST-STATUS
+          endif
+        endfor
+      as well as
+        msgset cmd NAME normal-cmd
+      and even
+        normal-cmd NAME
+      in which case NAME should simply be treated as a SPEC, likely that
+      this requires a new trigger, though, e.g. {NAME}, [NAME] or !NAME...
+      I.e., the new namelist (likely a deque) should contain MsgRef
+      objects which point to a Message and a Mailbox (for cross-mailbox
+      msgset's and without the need for a Message to store a pointer to
+      the owning mailbox?  Or make MsgRef a superclass that may have
+      a subclass which offers such cross-refs).
+
  50. Support SASL, unite all GSS-API etc. under an abstraction!
      Maybe even drop direct GSS-API and support only through SASL.
      That is, we can very well provide our own little SASL-client
@@ -357,6 +415,8 @@ Low-Level
      a line of authentication mechanisms and a callback mechanism.
      Possibly the user should be able to permit or forbid automatic
      selection of GSS-API (to avoid useless round-trips) etc. etc.
+ 80. The MIME rewrite: mime_parser <-> mime "DOM" analyzer <->
+     selectively create filter chains per part and do XY.
  99. Now i'm dreaming some more: with the new object-based approach
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
@@ -365,6 +425,33 @@ Low-Level
      The absolute sensation would be joinable operations over multiple
      open mailboxes, e.g., views over multiple such!
 100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
+1000. Extend macros and provide language bindings.  See item 34.
+     Additionally there was:
+    I want *pipemac* (or *pipe-hookXY*).  This requires v15.0
+    infrastructure (pseudo: evaluate() returns enum eval_retval{OK=0,
+    ERR=1, ISMAC=0x80, MACOK=ISMAC|OK, MACERR=ISMAC|ERR}; new `return'
+    command which only works in an executing macro (care: recursion);
+    macro arguments in pseudo variables $1...$x (works?); `return' can
+    "return" a list (simply keep argument list around); macro execution
+    can then simply check the return value to decide what to do (no
+    jumping); btw.: where is our `clone' command which clones WHATEVER?):
+      define pipemac {
+        clone name=$1 base=$2 ext=$3 ACTION=$4([SEND_]MBOX|DISPLAY|etc)
+        if $name =~ 'README|INSTALL|TODO|COPYING|*.(txt|rc|cfg|conf)$'
+          return 'text/plain'
+        elif $ext =~ 'gz$'
+          return 'application/gzip'
+        elif $ext =~ '*.\.nim$'
+          return 'text/x-nimrod'
+        else
+          varshell i /usr/bin/file --preserve-date $name
+          return $i
+        endif
+      }
+    Also interesting would be the possibility to let a macro BE the
+    (forked+exec, I/O redirected) external handler, "returning the
+    output I/O handle".
+    Inspired by Gavin Troy and Bob Tennent.
 
 - Deal with faulty message selection that may occur when selecting threads
   via & (when at least mixed with other selectors).
@@ -381,6 +468,10 @@ Low-Level
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
 
+--- Being able to sort the outermost level of threads was a suggestion
+    of Rudolf Sykora, especially being able to sort the outermost level
+    according to the date of the newest message in a thread.
+
 - Drop **use-starttls* in favour of something better: support 'auto',
   'no' and 'yes' and act accordingly.  For the former be smart enough on
   the protocol side.  (RFC 3207 describes man-in-the-middle attacks due
@@ -389,20 +480,6 @@ Low-Level
 - NOTE: we do not really support IPv6 sofar in that we are not prepared to
   deal with IPv6 addresses (as in '[ADDR]:PORT').  Pimp url_parse().
   And socket I/O.
-
-- mutt(1) dotlock ..., "mbox" command doesn'T work?
-
-- ARGH!  Should `folders' auto-login if *folder* is an IMAP account that is
-  not active?  Why does _expand() use *mailname* to expand `@', not
-  getfold() (care: res may point into cbuf, savestr() or so!).
-  Why does demail() etc. treat *mailname* as a file (more or less), why do
-  we need *mailname* at all;  we should have Folder objects, multiple of
-  which concurrently, one the active; a Folder may not become *folder*
-  unless it has write (store) capabilities).  Maybe then `mbox' works fine
-  if connected to a POP3 server with a *MBOX* on an IMAP account that yet
-  never was connected and needs to read a password on the terminal before
-  the login works ... note the latter situation yet kills us since i think
-  INT is blocked during all that ;-((
 
 - I had a connection collapse during a POP3 download, and neither was
   there a chance to get access to the 22 yet downloaded mails (after
@@ -418,19 +495,6 @@ Low-Level
     clone header _x
     unset _x
 
-- Ensure that `.' and EOF on a line works with all TTY modes (*ignoreeof*
-  relationship, too)!  EOF conditions in general!
-
--- NCL / current expand-on-tab: fexpand() should take additional size_t* to
-   store the number of the results OR should "return char** array", so that
-   individual results can be addressed.
-   Then we could simply print "\nALL-RESULTS\n" and NOT expand the current
-   line if the result is ambiguous, i.e., we have more than one possible
-   expansion.
-   However, we would then need something to print the results page-wise,
-   in case we have so many of them that they don't fit on the screen.
-   ...  Etc. ...
-
 - I got an email in base64 that obviously used CRNL line endings, and once
   i've replied the CR where quoted as *control* characters.
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
@@ -444,19 +508,12 @@ Low-Level
     should this be documented?  What does NetBSD Mail do?  Should we NOT
     be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
     2>FILE' is not interactive, even though it accepts terminal input.)
-  . Automatically track message attachments when switching off the
-    folder.
-    NOTE: 'alternates' tracking happens BEFORE we enter composing, this
-    means that an account switch during message composing will NOT cause
-    reevaluation of all that very very clumy
-    elide/delete_alternates/gexpand/is_myname etc. handling.
-    We REALLY need an object based rework of all that.
   . It would be cool if ghosts, shortcuts, alternates could
     (optionally?) be tracked via localopts.  And macros.  And inner macros.
     (Additional entry on xy-local xy somewhere above)
     And / or local to a macro/account if defined in one.
-  . DESTDIR= should not be taken into account when deciding wether
-    a rebuild is necessary (not wrong to give that to Gaetan Bisson).
+    Should be per-carrier copy-on-write environments.
+    Just like TeX with def / gdef ...
   . Just like the RFC 3676 link above, it would be nice if it would be
     somehow possible to recognize links in a document; i don't know yet
     how this could be achieved without loosing formatting information (i
@@ -472,52 +529,41 @@ Low-Level
     handled; setting also generates SIGTTOU when we're not in foreground
     pgrp, so we better deal with all that and ENSURE WE GET THROUGH when
     resetting terminal attributes!
-  .. "I guess it would be much better to create our own session via
+  .. TTY "I guess it would be much better to create our own session via
      setpgid(2) and then tcsetpgrp(3) any processes we run synchronously,
      and properly deal with SIGTTOU, but it always has been like that and
      i won't do that before other things have been changed.
+  .. NOTE: TTY: place (at least run_command()) childs which go over
+     terminal into own group.
+     Introduce global "terminal state" manager which tracks who
+     currently owns the terminal, so that we can gracefully switch it
+     on/off, check in main loop whether restore is necessary.
+     It that can deal with multiple "windows" then we could have open
+     multiple of those, i.e., multiple PAGER instances, and non-PAGER
+     instances (fflush() if there is FILE before switch off).
+
+     TTY thus: "needsterminal" could be driven gracefully EVEN IF
+     a PAGER is open because the current user action is "print*", since
+     we KNOW that there is a PAGER and can temporarily lay it down to
+     sleep, fflush()ing/adjusting as necessary, and wake it up again
+     afterwards (or, with some work, gracefully shut it down if ^C ^C).
+     This is of course also true for user questions ("really display
+     part XY?", "need decryption password:", etc.!!!)!!
   . Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
     global mbstate_t objects until the send / MIME layer rewrite is done and
     has the carrier.  Use flip states and add aux funs with only update the
     state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
     HANDLED!!
-  . Ypnose (linuxien AT legtux DOT org) pointed out that for the IMAP
-    cache we have some kind of UID validity check -- couldn't that be
-    used to perform some kind of automatic reconnection when we get that
-    much-too-frequent connection breaks in IMAP mode??
-    Also, and also for POP3, don't let the ALARM based (ugh!  I'm
-    starting to dream wet from select(2), almost truly) timer blindly
-    tick, but restart it with a full interval when we did regular
-    conversation with a server.  Don't forget the SSL timeouts (300
-    seconds) and their interaction with normal (user) keepalives.
-    Add a global *keepalive*, add *keepalive-USER@HOST*.  (Add and use
-    a generic, single function to get the value for either protocol.)
-  . HAVE_HISTORY plus: for WANT_EDITLINE and WANT_READLINE the
-    mk-conf.sh yet always tests anything, i.e., we could fail due to
-    history related stuff even though the user doesn't WANT_HISTORY.
-  .. We should in fact convert our NCL history to a shared history
-     implementation, and only hook editline(3) and readline(3) so that
-     ^R and Cursor-(Up|Down) work as expected everywhere.
-     Like that we would have duplicate elimination for readline(3), too.
-  .. tty_addhist() should take a struct str.  Anyway, evaluate() should
-     enter a history entry if the caller allows so, and it should trim
-     also trailing whitespace; also, the expanded command should be
-     stored, not the abbreviation, so that 'sst' and 'sstats' will no
-     longer produce two separate entries.
-  ... Because of laststring() and because the evaluate()d line buffer is
+  . Because of laststring() and because the evaluate()d line buffer is
       not constant history entries sometimes do not 100% reflect what
       was actually present on the command line, but i refrained from
       hacking a solution since that buffer must end up as a constant
       (TODOs or so in the source).
       P.S.: i have hacked that in in [f1ded4c] (as a temporary user
       goodie because of inconvenience for v14.7.6).
-  . getprompt() could reserve for each dynamic entry at least one
-    visible offset, so that at least a `?' could be written if the room
-    is otherwise insufficient; in addition, if there were 3 such
-    dynamics, but all in all two visible offsets would be left, a single
-    entry with as much `?' as possible c/should be written, so as to
-    indicate the user anything visually.
   . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
+    Maybe our passed carrier should pass desired output newline (as
+    opposed to data-embedded newlines)
   . which_protocol(), *newmail* mechanism, displayname, mailname: all of
     this <rude>SHIT</rude> must vanish and be replaced by a URL, and
     a nice "VFS" mailbox object that carries all necessary state so that
@@ -547,16 +593,11 @@ Low-Level
   . _(), N_(), V_():
     use GNU tools for extraction etc., and write a simple helper program
     which converts these files to a serialized hashmap, just like we did
-    for the okeys (and *exactly* so); add a config check wether the ({})
+    for the okeys (and *exactly* so); add a config check whether the ({})
     extension is supported and finally use that for some ({static char
     const *tr_res;}) injection optimization, then.  (Think SFSYS)
   . Searching body/text yet includes headers from attachments and
     attachment data.  This is shit.  :)
-  . Btw.: (with IMAP) when opening a folder the hook gets executed after
-    the flags but before the headers are loaded, but for `newmail' it is
-    *after* the headers have been loaded.
-  .      /* TODO *batch-exit-on-error*: sourcing and loading MUST BE FLAGS!
-          * TODO the current behaviour is suboptimal AT BEST! */
   . The "nifty" unregister_file()->_compress() mechanism that even
     shovels '-Sfolder=imaps://user1@localhost -Srecord="+Sent Items"'
     *records* calls clearerr() on the descriptor before performing it's
@@ -586,13 +627,6 @@ Low-Level
       4. run trigger macros WHICH MAY MODIFY THE MESSAGE AGAIN, so
       5. fully reinitialize the send carrier (as necessary)
       6. pass the _final_ message down the send/mime chain
-  . SMTPS never became a standard and :465 was already reassigned
-    (thanks, carriers), but if a user says SMTPS and doesn't specify
-    a port also then we could simply assume :465 because except NetBSD
-    noone has SMTPS in their /etc/services?
-    Or at least automatically restart a failed getaddrinfo() in the
-    SMPTS case (if EAI_SERVICE)?
-    (Ooops - i think this should go to Gianluca Ramunno!)
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
@@ -604,7 +638,7 @@ Low-Level
     of of one.
   . RFC 5751 describes a message multipart layout that also includes the
     headers in the signature; it would be nice (for completeness sake)
-    to be able to support that.
+    to be able to support that.  Note shutup@ietf.org.
   . The capability to save a message under the name of a recipient is in
     the standard etc., but i've never used it.
     What would be cool, otoh, would be if there would be the possibility
@@ -613,24 +647,11 @@ Low-Level
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
-  . Things like colalign(), makeprint(), colour*, as well as
-    possibly even cmd1.c:(__hprf|putindent)(), etc. belong into a cui.c,
-    display.c or the like, but not into auxlily.c etc. for sure.
-    Also writing a range of headers should be done through an
-    iterator-thing with setup/finalize init/destroy life cycle, which
-    would encapsulate the entire cmd1.c:_print_head() in the single
-    iterator setup function!
   .. Unite
       defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
      into HAVE_NATCH_CHAR, solely keep that.  But improve the name
-  . Using -t should still optionally offer an option to enter editing.
-    Also we should support command line arguments on top.
-    Add a -T flag for that.  Drop -q, let -T mean the same if no header
-    fields are given (i.e., header fields are not mandatory as with -t).
-    ANYWAY: -t and -q are mutual, enforce that (yet done?)
-    While there, it should be possible to send non text/plain for
-    -q/-t, i.e., perform MIME classification; v15.0 and not only this,
-    why not simply sucking in complete MIME messages via -t?
+  . why not simply sucking in complete MIME messages via -t?  In a way
+    that parses it as a MIME message, that is!
     (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
   . mutt list handling (`~') is very powerful
   . Check what happens if an account switch or a network connection is
@@ -641,10 +662,6 @@ Low-Level
     with timeouts etc. (for MBOX and Maildir it's not that bad, but for
     anything over the network, yet the mentioned may come in over NFS).
     Remove it until we have something better?
-  . The :d modifier is extremely useless even though POSIX compliant (No
-    deleted message or deleted message header shall be displayed by any
-    mailx command other than undelete.)
-    If i explicitly say p:d or f:d or c:d it should work.
   . The RFC 3798 *disposition-notification-send* mechanism is yet not
     truly conforming (and works with *from*).  Also, this is only the
     sender side, there should be support for creating the MDN response.
@@ -652,118 +669,30 @@ Low-Level
     create-when-unread-flag-goes-away, ditto-but-also-strip-header)
   .. Also, there is DSN as a SMTP extension, see the RFCs 3461, 346 (as
      above) and 6522 (Wikipedia).
-  . Add a env_blook()/env_vlook() series like that: add a FROM-ENV bit
-    to variables; use the normal var lookup, but even if found, when
-    FROM-ENV not set, use getenv(3); question yet open is wether that
-    value should then override what we have;  in fact i think we should
-    possibly during loading phase act like this automatically for *all*
-    variable settings, i.e., settings from the environment MUST override
-    settings from ressource files UNLESS command line arguments
-    explicitly override anything else.  That is pretty shitty, which
-    makes me think that we should possibly iterate over environ(3) and
-    explicitly overtake all values therein, or at least those which have
-    a meaning for S-nail; this needn't be as expensive as it sounds.
-  .. Some things need to be tracked, e.g. HOME (homedir), TMPDIR
-     (tempdir) or must not be settable (USER).  We should be able to
-     do so (currently "USER" etc. are "assembled") and error out as
-     necessary (currently "setenv USER=goof" just works!)
-  .. More on variables below!
-  . We should support more named colours, enabled via a, e.g.,
-    *colour-plus*, but provide downgrade colours for given colour names
-    if that isn't set. (Gavin Troy)
-  . I want *pipemac* (or *pipe-hookXY*).  This requires v15.0
-    infrastructure (pseudo: evaluate() returns enum eval_retval{OK=0,
-    ERR=1, ISMAC=0x80, MACOK=ISMAC|OK, MACERR=ISMAC|ERR}; new `return'
-    command which only works in an executing macro (care: recursion);
-    macro arguments in pseudo variables $1...$x (works?); `return' can
-    "return" a list (simply keep argument list around); macro execution
-    can then simply check the return value to decide what to do (no
-    jumping); btw.: where is our `clone' command which clones WHATEVER?):
-      define pipemac {
-        clone name=$1 base=$2 ext=$3 ACTION=$4([SEND_]MBOX|DISPLAY|etc)
-        if $name =~ 'README|INSTALL|TODO|COPYING|*.(txt|rc|cfg|conf)$'
-          return 'text/plain'
-        elif $ext =~ 'gz$'
-          return 'application/gzip'
-        elif $ext =~ '*.\.nim$'
-          return 'text/x-nimrod'
-        else
-          varshell i /usr/bin/file --preserve-date $name
-          return $i
-        endif
-      }
-    Also interesting would be the possibility to let a macro BE the
-    (forked+exec, I/O redirected) external handler, "returning the
-    output I/O handle".
-    Inspired by Gavin Troy and Bob Tennent.
-  . Check cmd_tab.h <-> POSIX:
-      The following commands shall be invalid in the start-up file: !,
-      edit, hold, mail, preserve, reply, Reply, shell, visual, Copy,
-      followup, and Followup.
-    Add setenv, unsetenv etc.  But that shouldn't be covered by the
-    ARG_I bit, but we need another one; setenv and unsetenv currently
-    explicitly test for the "starting" variable.  (That+ should be
-    a bit(s) anyway, see elsewhere in this file.)
-  .. NOTE: POSIX also has a clear idea on what variable comes in from
-     the environment and which not.  This was actually adjusted
-     accordingly in the manual after v14.7.1, but we don't really honour
-     it; since our -S mechanism now works correctly it is possibly
-     a good idea to again make a *true and real difference* in between
-     external variables that will be overtaken from the environment and
-     internal variables, which *may not* come in from the environment.
-     They may however override values which (are allowed to) come in
-     from the environment -- that is, for those we should force
-     overriding via setenv even upon startup!  (Add a FROMENV flag for
-     enum okeys, and handle it somehow like special!)
-  ... While here: variables with a defined fallback value (like LISTER
-      <- XLISTER, SHELL <- XSHELL etc.) should RETURN the fallback
-      value, i.e., the following should NOT be necessary:
-       if ((sh = ok_vlook(SHELL)) == NULL)
-          sh = XSHELL;
-      but be done automatically -- why not have yet another enum okeys
-      flag that names a preprocessor macro, as in fallback=NAME?
-  ... More on variables above!
-  ... fexpand() the 2nd: it should return structure because we need to
-      check for FEDIT_SYSBOX, which currently only checks wether the first
-      character of a file name is '%', not wether it is '%', '%:FILEPATH'
-      or '%VALIDUSER', because that is impossible to do!
-  ... ALL OF THAT: another fexpand() thing below!!
+  . The var_* series should return "const char*" not "char*".
+    This should already work today because otherwise we would get SEGV
+    all through the way.
+  .. While here: rename enum okeys to enum internal_variables, and the
+     ok_*() series to iv_().  And see below for env_*() series.
+  . fexpand() the 2nd: it should return structure because we need to
+     check for FEDIT_SYSBOX, which currently only checks whether the first
+     character of a file name is '%', not whether it is '%', '%:FILEPATH'
+     or '%VALIDUSER', because that is impossible to do!
   . On the long run in-memory password storage should be zeroed after
     use, possibly even encoded *during* use.  After v15.
-  . Add direct support of gpg-agent(1) and add *agent-lookup* (requires
-    libassuan, but is so much more performant than *agent-shell-lookup*).
-    Then again, how about either adding a special config variable or
-    interpreting the very first character of *agent-shell-lookup*
-    specially in order to support caching of looked up passwords?
-    Let it be a number in seconds as necessary?
-  . Try to deal with invalid MBOXes: if a final MIME boundary is seen,
-    don't require the separating newline before the from (when reading
-    the mailbox).
   . We need a `spamcheck' command that is like `spamrate' but updates
     the mail in-place, i.e., with the headers that the spam engine adds.
-  . My signal handling is pretty messy, too.  E.g., for the new spam
-    handling we even reset TTIN etc. etc., whereas for
-    *agent-shell-lookup* we don't do just about anything.  Even though
-    it work (due to stacking of handlers all over the place etc.), but
-    we need to have a clean design at some later time.
-  . How hard would it be adding support for mixmaster?
-  . lex.c:__narrow_suffix() is wrong (for stateful encodings that we
+  . __narrow_suffix() is wrong (for stateful encodings that we
     don't support yet) and should inject a reset sequence if it shortens
     the string.
   .. Ditto field_put_bidi_clip() and possibly more.
   .. THAT IS TO SAY: the entire codebase doesn't really support stateful
-    encodings, including the bidi_ things that i've done (but the NCL
+    encodings, including the bidi_ things that i've done (but the MLE
     does iirc?  what is this??).  We should have a global string that
     has the multibyte reset sequence plus length available for easy
     access.
-  . Note (for v15.0 most likely): when quoting an original message then
-    if that doesn't end with a newline we should automatically add one.
-    I thought about hacking it in via quoteflt in the meanwhile??
-  .. We want this stuff also for message specification btw., look at
-    NetBSD Mail in particular.  (I.e., the parenthesis are yet taken by
-    IMAP searches, but if sole parens are separated by WS, maybe?)
   . When a user edits a specific header, it should no longer be
-    modified.  This unfortunately requires v15.0 infrastructure.
+    modified.
   . Regular expression list resorting is no good; the user should be
     able to specify a match order weight, as in:
       mlist 10 a@b.org 8 c@d.org .*@else@org 0 almost@never.com
@@ -780,67 +709,21 @@ Low-Level
     addresse(e)s if the first character is a backslash.  Others do.
     And do we really support that notion all through the codebase.
     And, even more: should we support that at all?
-  . The var_* series should return "const char*" not "char*".
-    This should already work today because otherwise we would get SEGV
-    all through the way.
-  .. Now that we have flags and VIRTUAL variables we can very well
-     extend that and provide an additional set of DEFVAL.  On the one
-     hand it doesn't make sense to do all those first-time-inits due
-     comply to POSIX compliance, because many get vanished again when
-     the resource(s) is (are) loaded; many others are never ever needed,
-     but still require dynamic memory.  Better to have DEFVAL and
-     a init-on-first-use for those which have this set.
-  .. I think it would really be better if localopts handling is replaced
-     by an "environment" with copy-on-change adjustments via reference
-     counting.  (But not before we have a signal manager.)
   . We need more hooks: on-leave, on-connect.. whatever
-  . callforeachexec MACRO SHELL..STUFF..
-     -> MACRO called with each line read (in $1 ...)
-  . fio.c:_globname() is a security risk, but anyway the current POSIX
-    definition of wordexp(3) is a joke (Rich Felker,
-    gmane.comp.security.oss.general-15785).  Beside that.
-    What can be encapsulated in the v15.0 URL object (scheme:// prefix).
-    Otherwise and in addition: change semantics in v15.0, support POSIX:
-      Several unquoted special characters shall be recognized when used
-      as file names, with the following substitutions:
-      %       The system mailbox for the invoking user.
-      %user   The system mailbox for user.
-      #       The previous file.
-      &       The current mbox.
-      +file   The named file in the folder directory. (See the folder variable.)
-    --> Transition to internal mechanism started with topic/fexpand.2.
-    .. The new internal expansion mechanism should possibly get support
-       for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
-       There is no real way to get the functionality otherwise...
+  . The new internal ~/$ expansion mechanism should possibly get support
+     for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
+     There is no real way to get the functionality otherwise...
   . struct ignoretab and handling can be merged with the new generic
     struct group stuff (with some effort) and localized in nam_a_grp.c,
     then.  Then -- rename that file to grpignnam.c??  :-)
-  . run_command()++: when we change TTY modes then if we "release" the
-    terminal to child processes (note STDERR...) then we should
-    proactively reset before exec and reinstantiate once the child has
-    finished.  Maybe the former anyway.  I.e.: don't rely on the shell.
-    Also, if our stdin is a pipe we possibly want to adjust that for the
-    child instead of simply leaving the fd alone, which isn't an
-    impossible case as of today.
   . Make S/MIME an option separate of SSL/TLS, i.e., optional.
-  . Read https://tools.ietf.org/html/draft-ietf-uta-tls-bcp-07.
-    Can we implement OCSP (see RFC 6066)????
   . With very long input Heirloom mailx(1) / S-nail(1) can produce
     encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
     non self-contained encoded-words).
   . Group addresses, especially the undisclosed recipients but also
     "Bla": addresses; are missing.
-  . The interface must be straight.  "history clear" -> "unhistory".
-    Ugly but straight.  And ditto all the stuff in equal spirit.
-  . ~@: comma-separated list input should be possible even for filenames
-    which include commas, proper quoting provided.  Adjust manual
   . It is terrible that -S sets variables twice, at once and after the
-    resource files have been loaded.  Instead we should look for
-    PS_LOADING and simply don't overwrite variables that are yet set; of
-    course this interferes with the plain basic settings which we yet
-    establish for POSIX compliance -- i.e., first we need a compile-time
-    automatism for those, thereafter... Ok we still need a bit to mark
-    them, but isn't it worth the effort.
+    resource files have been loaded.  Instead we should set a bit
   . The Base64 decoder must become a filter with its own buffer, so that
     we can join splitted sequences etc.; yes, that is invalid, but we
     should be tolerant (tolerant on input, strict on output - right?).
@@ -851,17 +734,10 @@ Low-Level
     sequences of those bytes, which i don't consider a good thing..
     And then, should we (really, see mime_enc.c) make a difference in
     B64_T and B64, ... and regarding this??
-  . OPT_INTERACTIVE and ARG_I are two different kinds of
-    "interactivity".  The latter should be "non-loading/sourcing".
-  . Cleanup: mime_param.c uses _ALPHA_, urlcrecry.c uses ALPHA_.  Unify
-    that across all sources / headers, full recompile test anywhere
-    thereafter.
-  . Several facilities can use table-based settings: colour-stuff
-    (auxlily.c), ccred_lookup() (maybe including availability error
-    stuff!)
-  . *smime-sign* (*asksign*) i would like to see in all XOK forms, yet
-    today the credentials are looked up after variable check, in fact
-    even conditionalized on wether signing is desired or not.
+  . Cleanup:  n_ is anything public / external,
+    _n_ is public/e but not really, FILENAME/ABBREV_symbol are statics,
+    FILENAME/ABBREV__symbol are helpers of a single other static
+    (function group) (-> colour.c, lex_input.c: done).
   . Per-folder (S/MIME) en- and decryption key (Tarqi Kazan): if a xy
     variable is set (that points to a key) add a transparent en- and
     decryption layer on top of any per-message operation (for boxes for
@@ -871,11 +747,42 @@ Low-Level
     it which have really been sent.  If we support postponing and have
     a multi-process layout and add an intermediate *record-queue* we
     may be able to improve the situation.
-  . All of OPT_INTERACTIVE, (OPT_SENDMODE,) OPT_UNICODE, OPT_TTYIN,
-    OPT_TTYOUT should not be user_options but instead program_state
-    members.
-
+  . I like "SMTP and SUBMISSION Service Extensions For Address Query",
+    for which we need
+      if (!SSL_set_tlsext_host_name(con, servername))
+        error
+  . [Dd]ecrypt should transport decryption errors, not silently be like
+    copy and copy undecrypted content, because this is what it's for?
+    ..We need atomic operations with rollback support in order to make
+      this happen, but i think maybe file truncation (decryption always
+      appends?) is enough provided that files are locked?
+      WE NEED ATOMIC OPERATION SUPPORT for quite some operations.
+      Man, are we far from that.
+  . `pipe' is total shit regarding MIME.  We need some defined and
+     documented method to configure which parts are displayed and/or how
+     they are visually separated.
+  . The new n_err() facility is nice, but we need n_msg() too, maybe
+    more.  Maybe à la Log:: and macro wrappers with priority unrolled,
+    then add user-settable treshold, too.  Btw. C99 adds vararg macros.
+    .. In PARTICULAR we MUST NOT use stdout when in batch mode:
+         ssh X "echo 'move * |cat' | s-nail -#f %" >> download
+       should do the right thing, but can't like that due to unwanted
+       noise in the stdout output!  Best would be if it would be
+       possible to explicitly define a file/dev to be used, but falling
+       back to stderr in batch mode otherwise. (think S-Web42)
+  . Exit status handling is sick.
+  . Especially in interactive mode MIME classification should count
+    (non-NUL) control characters and the number of different thereof,
+    giving users an option to treat something as text nonetheless.
+    E.g., roff files often use controls as separators in conditionals,
+    some shell scripts use controls for $IFS field separation, and that
+    will end up with charset=binary.
 --
+
+  . rewrite make.rc/mk-conf.sh: features==options should be named
+    OPT_name, path,names,valuesr VAL_name.
+    (Also remember the idea of the automatic inter-dependency tracking
+    via simple text file
 
   . We can "steal" features from msmtp(1) that make sense: SOCKS support
     (primitive) and /etc/aliases ($mta_alias_file).  At least postfix(1)
