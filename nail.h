@@ -1580,6 +1580,15 @@ struct n_string{
 #endif
 };
 
+struct n_strlist{
+   struct n_strlist *sl_next;
+   size_t sl_len;
+   char sl_dat[VFIELD_SIZE(0)];
+};
+#define n_STRLIST_MALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
+   smalloc(sizeof(struct n_strlist) - \
+      VFIELD_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
    struct str  bi_end;        /* End of ... */
