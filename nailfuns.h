@@ -398,22 +398,6 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
-/* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test wether *colour-pager* is to be inspected, and headerview indicates
- * wether the colours for header overview shall be queried instead of those for
- * actual message display */
-#ifdef HAVE_COLOUR
-FL void        n_colour_table_create(bool_t pager_used, bool_t headerview);
-FL void        n_colour_put(FILE *fp, enum n_colourspec cs);
-FL void        n_colour_put_user_header(FILE *fp, char const *name);
-FL void        n_colour_reset(FILE *fp);
-FL struct str const * n_colour_get(enum n_colourspec cs);
-#else
-# define n_colour_put(FP,CS)
-# define n_colour_put_user_header(FP,N)
-# define n_colour_reset(FP)
-#endif
-
 /* Check wether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
  * treated as a boolean, is used as the return value shall inbuf be empty.
@@ -731,6 +715,29 @@ FL int         c_visual(void *v);
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
                   enum sendaction action, sighandler_type oldint);
+
+/*
+ * colour.c
+ */
+
+#ifdef HAVE_COLOUR
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected, and headerview indicates
+ * wether the colours for header overview shall be queried instead of those for
+ * actual message display.
+ * n_colour_get() may return NULL (except for n_COLOUR_ID_RESET; still so if
+ * no colour table has been created, however). */
+FL void        n_colour_table_create(bool_t pager_used, bool_t headerview);
+FL void        n_colour_put(FILE *fp, enum n_colour_id cid);
+FL void        n_colour_put_user_header(FILE *fp, char const *name);
+FL void        n_colour_reset(FILE *fp);
+FL struct str const * n_colour_get(enum n_colour_id cid);
+
+#else
+# define n_colour_put(FP,CS)
+# define n_colour_put_user_header(FP,N)
+# define n_colour_reset(FP)
+#endif /* HAVE_COLOUR */
 
 /*
  * filter.c

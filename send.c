@@ -91,8 +91,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    NYD2_ENTER;
 
 #ifdef HAVE_COLOUR
-   cpre = n_colour_get(n_COLOURSPEC_PARTINFO);
-   csuf = n_colour_get(n_COLOURSPEC_RESET);
+   cpre = n_colour_get(n_COLOUR_ID_VIEW_PARTINFO);
+   csuf = n_colour_get(n_COLOUR_ID_RESET);
 #else
    cpre = csuf = NULL;
 #endif
@@ -1285,7 +1285,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       nl = "";
    }
 
-   n_colour_put(fp, n_COLOURSPEC_FROM_);
+   n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_);
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
    n_colour_reset(fp);
    if (i > 0 && stats != NULL)
@@ -1320,8 +1320,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    {
    struct str const *cpre, *csuf;
 #ifdef HAVE_COLOUR
-   cpre = n_colour_get(n_COLOURSPEC_FROM_);
-   csuf = n_colour_get(n_COLOURSPEC_RESET);
+   cpre = n_colour_get(n_COLOUR_ID_VIEW_FROM_);
+   csuf = n_colour_get(n_COLOUR_ID_RESET);
 #else
    cpre = csuf = NULL;
 #endif

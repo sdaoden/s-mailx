@@ -197,17 +197,29 @@
 #define AGENT_HOST      "NAIL_HOST"
 #define AGENT_HOST_PORT "NAIL_HOST_PORT"
 
+/* Colour stuff */
 #ifdef HAVE_COLOUR
 # define n_COLOUR(X)       X
 #else
 # define n_COLOUR(X)
 #endif
-#define n_COLOUR_MSGINFO   "fg=green"
-#define n_COLOUR_PARTINFO  "fg=brown"
-#define n_COLOUR_FROM_     "fg=brown"
-#define n_COLOUR_HEADER    "fg=red"
-#define n_COLOUR_UHEADER   "ft=bold,fg=red"
-#define n_COLOUR_USER_HEADERS "from,subject"
+
+/* Message display range */
+#define n_COLOUR_VIEW_MSGINFO    "fg=green"
+#define n_COLOUR_VIEW_PARTINFO   "fg=brown"
+#define n_COLOUR_VIEW_FROM_      "fg=brown"
+#define n_COLOUR_VIEW_HEADER     "fg=red"
+#define n_COLOUR_VIEW_UHEADER    "ft=bold,fg=red"
+#define n_COLOUR_VIEW_USER_HEADERS "from,subject"
+
+/* Header summary range */
+#define n_COLOUR_HSUM_CURRENT    ""
+#define n_COLOUR_HSUM_DOT        "fg=blue"
+#define n_COLOUR_HSUM_DOT_MARK   "ft=bold,ft=reverse,fg=blue"
+#define n_COLOUR_HSUM_DOT_THREAD "fg=blue"
+#define n_COLOUR_HSUM_OLDER      ""
+#define n_COLOUR_HSUM_THREAD     "fg=magenta"
+
 /* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
  * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
 #define n_COLOUR_TERMS     \
@@ -772,13 +784,28 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
-enum n_colourspec {
-   n_COLOURSPEC_MSGINFO,
-   n_COLOURSPEC_PARTINFO,
-   n_COLOURSPEC_FROM_,
-   n_COLOURSPEC_HEADER,
-   n_COLOURSPEC_UHEADER,
-   n_COLOURSPEC_RESET
+/* We do have two groups of colour IDs, one for message display and one for
+ * header summary display; since only one of them can be active at any given
+ * time let's share the value range; ensure _RESET is largest value! */
+enum n_colour_id {
+   /* Message display range */
+   n_COLOUR_ID_VIEW_MSGINFO   = 0,
+   n_COLOUR_ID_VIEW_PARTINFO,
+   n_COLOUR_ID_VIEW_FROM_,
+   n_COLOUR_ID_VIEW_HEADER,
+   n_COLOUR_ID_VIEW_UHEADER,
+   /* (The plain *colour-view-user-headers* string) */
+   _n_COLOUR_ID_VIEW_USER_HEADERS,
+
+   /* Header summary range */
+   n_COLOUR_ID_HSUM_CURRENT   = 0,
+   n_COLOUR_ID_HSUM_DOT,
+   n_COLOUR_ID_HSUM_DOT_MARK,
+   n_COLOUR_ID_HSUM_DOT_THREAD,
+   n_COLOUR_ID_HSUM_OLDER,
+   n_COLOUR_ID_HSUM_THREAD,
+
+   n_COLOUR_ID_RESET
 };
 
 enum conversion {
@@ -1172,14 +1199,26 @@ ok_b_autothread,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_b_colour_disable,
-   ok_v_colour_from_,                  /* {name=colour-from_} */
-   ok_v_colour_header,
-   ok_v_colour_msginfo,
+   ok_v_colour_hsum_current,
+   ok_v_colour_hsum_dot,
+   ok_v_colour_hsum_dot_mark,
+   ok_v_colour_hsum_dot_thread,
+   ok_v_colour_hsum_older,
+   ok_v_colour_hsum_thread,
+ok_v_colour_from_,                     /* {name=colour-from_} */
+ok_v_colour_header,
+ok_v_colour_msginfo,
    ok_b_colour_pager,
-   ok_v_colour_partinfo,
+ok_v_colour_partinfo,
    ok_v_colour_terms,
-   ok_v_colour_uheader,
-   ok_v_colour_user_headers,
+ok_v_colour_uheader,
+ok_v_colour_user_headers,
+   ok_v_colour_view_from_,             /* {name=colour-from_} */
+   ok_v_colour_view_header,
+   ok_v_colour_view_msginfo,
+   ok_v_colour_view_partinfo,
+   ok_v_colour_view_uheader,
+   ok_v_colour_view_user_headers,
    ok_v_crt,
 
    ok_v_DEAD,
@@ -1395,8 +1434,7 @@ struct str {
 };
 
 struct n_colour_table {
-   /* Plus a copy of *colour-user-headers* */
-   struct str  ct_csinfo[n_COLOURSPEC_RESET+1 + 1];
+   struct str  ct_csinfo[n_COLOUR_ID_RESET +1];
 };
 
 struct bidi_info {

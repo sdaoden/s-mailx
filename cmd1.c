@@ -40,11 +40,9 @@
 #endif
 
 static int        _screen;
-static sigjmp_buf _cmd1_pipestop;
 static sigjmp_buf _cmd1_pipejmp;
 
 static void    _cmd1_onpipe(int signo);
-static void    _cmd1_brokpipe(int signo);
 
 /* Prepare and print "[Message: xy]:" intro */
 static void    _show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
@@ -88,14 +86,6 @@ _cmd1_onpipe(int signo)
 }
 
 static void
-_cmd1_brokpipe(int signo)
-{
-   NYD_X; /* Signal handler */
-   UNUSED(signo);
-   siglongjmp(_cmd1_pipestop, 1);
-}
-
-static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
    char const *cpre = "", *csuf = "";
@@ -105,9 +95,9 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
    if (n_colour_table != NULL) {
       struct str const *sp;
 
-      if ((sp = n_colour_get(n_COLOURSPEC_MSGINFO)) != NULL)
+      if ((sp = n_colour_get(n_COLOUR_ID_VIEW_MSGINFO)) != NULL)
          cpre = sp->s;
-      csuf = n_colour_get(n_COLOURSPEC_RESET)->s;
+      csuf = n_colour_get(n_COLOUR_ID_RESET)->s;
    }
 #endif
    fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
@@ -181,18 +171,21 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    int i, n, s, wleft, subjlen;
    struct message *mp;
    time_t datet;
+   n_COLOUR( enum n_colour_id colo_new COMMA colo_cur COMMA colo_bas; )
    enum {
       _NONE       = 0,
-      _ISADDR     = 1<<0,
-      _ISTO       = 1<<1,
-      _IFMT       = 1<<2,
-      _LOOP_MASK  = (1<<3) - 1,
-      _SFMT       = 1<<3
+      _ISDOT      = 1<<0,
+      _ISADDR     = 1<<1,
+      _ISTO       = 1<<2,
+      _IFMT       = 1<<3,
+      _LOOP_MASK  = (1<<4) - 1,
+      _SFMT       = 1<<4
    } flags = _NONE;
    NYD_ENTER;
    UNUSED(buf);
 
-   mp = message + msgno - 1;
+   if ((mp = message + msgno - 1) == dot)
+      flags = _ISDOT;
    datet = mp->m_time;
    date = NULL;
 
@@ -299,11 +292,26 @@ jredo:
    }
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
+#ifdef HAVE_COLOUR
+   if (flags & _ISDOT)
+      colo_bas = n_COLOUR_ID_HSUM_DOT;
+   else {
+      colo_bas = n_COLOUR_ID_HSUM_CURRENT;
+   }
+   n_colour_put(f, colo_new = colo_cur = colo_bas);
+#endif
+
    for (fp = fmt; *fp != '\0'; ++fp) {
       char c;
-      if ((c = *fp & 0xFF) != '%')
+      if ((c = *fp & 0xFF) != '%') {
+#ifdef HAVE_COLOUR
+         if ((colo_new = colo_bas) != colo_cur) {
+            n_colour_reset(f);
+            n_colour_put(f, colo_cur = colo_new);
+         }
+#endif
          putc(c, f);
-      else {
+      } else {
          flags &= _LOOP_MASK;
          n = 0;
          s = 1;
@@ -326,7 +334,9 @@ jredo:
             goto jputc;
          case '>':
          case '<':
-            if (dot != mp)
+            if (flags & _ISDOT) {
+               n_COLOUR( colo_new = n_COLOUR_ID_HSUM_DOT_MARK );
+            } else
                c = ' ';
             goto jputc;
          case '$':
@@ -347,10 +357,22 @@ jredo:
          case 'a':
             c = _dispc(mp, attrlist);
 jputc:
+#ifdef HAVE_COLOUR
+            if (colo_new != colo_cur || colo_cur != (colo_new = colo_bas))
+               n_colour_reset(f);
+            if (colo_new != colo_cur)
+               n_colour_put(f, colo_cur = colo_new);
+#endif
             if (UICMP(32, ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
             n = fprintf(f, "%*c", n, c);
             wleft = (n >= 0) ? wleft - n : 0;
+#ifdef HAVE_COLOUR
+            if ((colo_new = colo_bas) != colo_cur) {
+               n_colour_reset(f);
+               n_colour_put(f, colo_cur = colo_new);
+            }
+#endif
             break;
          case 'd':
             if (datefmt != NULL) {
@@ -400,8 +422,22 @@ jputc:
             break;
          case 'i':
             if (threaded) {
+#ifdef HAVE_COLOUR
+               colo_new = (flags & _ISDOT) ? n_COLOUR_ID_HSUM_DOT_THREAD
+                     : n_COLOUR_ID_HSUM_THREAD;
+               if (colo_new != colo_cur) {
+                  n_colour_reset(f);
+                  n_colour_put(f, colo_cur = colo_new);
+               }
+#endif
                n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
                wleft = (n >= 0) ? wleft - n : 0;
+#ifdef HAVE_COLOUR
+               if ((colo_new = colo_bas) != colo_cur) {
+                  n_colour_reset(f);
+                  n_colour_put(f, colo_cur = colo_new);
+               }
+#endif
             }
             break;
          case 'l':
@@ -525,6 +561,11 @@ j_A_redo:
             break;
       }
    }
+
+#ifdef HAVE_COLOUR
+   if (colo_cur != n_COLOUR_ID_RESET)
+      n_colour_reset(f);
+#endif
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
@@ -771,7 +812,9 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   ui32_t flag;
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
+   ui32_t volatile flag;
    int g, k, mesg, size, lastg = 1;
    struct message *mp, *mq, *lastmq = NULL;
    enum mflag fl = MNEW | MFLAGGED;
@@ -779,7 +822,18 @@ _headers(int msgspec) /* TODO rework v15 */
 
    time_current_update(&time_current, FAL0);
 
+   isrelax = FAL0;
+   opipe = NULL;
    flag = 0;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+#ifdef HAVE_COLOUR
+   if (IS_TTY_SESSION())
+      n_colour_table_create(FAL0, TRU1);
+#endif
+
    size = screensize();
    if (_screen < 0)
       _screen = 0;
@@ -834,6 +888,7 @@ _headers(int msgspec) /* TODO rework v15 */
          imap_getheaders(mesg + 1, mesg + size);
 #endif
       srelax_hold();
+      isrelax = TRU1;
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
          ++mesg;
          if (!visible(mp))
@@ -844,6 +899,7 @@ _headers(int msgspec) /* TODO rework v15 */
          srelax();
       }
       srelax_rele();
+      isrelax = FAL0;
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -878,7 +934,9 @@ _headers(int msgspec) /* TODO rework v15 */
                break;
             }
       }
+
       srelax_hold();
+      isrelax = TRU1;
       while (mp) {
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
@@ -892,10 +950,17 @@ _headers(int msgspec) /* TODO rework v15 */
          mp = next_in_thread(mp);
       }
       srelax_rele();
+      isrelax = FAL0;
    }
 
    if (!flag)
       printf(_("No more mail.\n"));
+jleave:
+   if (isrelax)
+      srelax_rele();
+   n_colour_reset(stdout);
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
    return !flag;
 }
@@ -905,11 +970,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t dodecode, char *cmd, ui64_t *tstats)
 {
    ui64_t mstats[1];
-   int rv, *ip;
+   int rv = 1, *ip;
    struct message *mp;
    char const *cp;
    FILE * volatile obuf;
-   bool_t volatile hadsig = FAL0, isrelax = FAL0;
+   bool_t volatile isrelax = FAL0;
+   sighandler_type opipe = NULL;
    NYD_ENTER;
    {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
@@ -919,10 +985,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
    obuf = stdout;
 
-   if (sigsetjmp(_cmd1_pipestop, 1)) {
-      hadsig = TRU1;
-      goto jclose_pipe;
-   }
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
 
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
@@ -930,21 +995,17 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
          n_perr(cmd, 0);
          obuf = stdout;
-      } else
-         safe_signal(SIGPIPE, &_cmd1_brokpipe);
+      }
    } else if ((options & OPT_TTYOUT) && (dopage ||
          ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      char const *pager = NULL;
       size_t nlines = 0;
 
       if (!dopage) {
          for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
             mp = message + *ip - 1;
             if (!(mp->m_have & HAVE_BODY))
-               if (get_body(mp) != OKAY) {
-                  rv = 1;
+               if (get_body(mp) != OKAY)
                   goto jleave;
-               }
             nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
          }
       }
@@ -952,20 +1013,17 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         char const *env_add[2];
-         pager = get_pager(env_add + 0);
+         char const *env_add[2], *pager = get_pager(env_add + 0);
          env_add[1] = NULL;
          obuf = Popen(pager, "w", NULL, env_add, 1);
          if (obuf == NULL) {
             n_perr(pager, 0);
             obuf = stdout;
-            pager = NULL;
-         } else
-            safe_signal(SIGPIPE, &_cmd1_brokpipe);
+         }
       }
 #ifdef HAVE_COLOUR
       if (IS_TTY_SESSION() && action != SEND_MBOX)
-         n_colour_table_create(pager != NULL, FAL0); /* (salloc()s!) */
+         n_colour_table_create(obuf != stdout, FAL0); /* (salloc()s!) */
 #endif
    }
 #ifdef HAVE_COLOUR
@@ -995,19 +1053,19 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    srelax_rele();
    isrelax = FAL0;
 
-jclose_pipe:
-   if (obuf != stdout) {
+   rv = 0;
+jleave:
+   if (obuf != stdout)
       /* Ignore SIGPIPE so it can't cause a duplicate close */
       safe_signal(SIGPIPE, SIG_IGN);
-      if (hadsig && isrelax)
-         srelax_rele();
-      n_colour_reset(obuf); /* XXX hacky; only here because we still jump */
+   if (isrelax)
+      srelax_rele();
+   n_colour_reset(obuf); /* XXX hacky; only here because we still jump */
+   if (obuf != stdout)
       Pclose(obuf, TRU1);
+   if (opipe != NULL)
       safe_signal(SIGPIPE, dflpipe);
    }
-   rv = 0;
-   }
-jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -1123,45 +1181,62 @@ c_from(void *v)
    int *msgvec = v, *ip, n;
    char *cp;
    FILE * volatile obuf;
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
-   obuf = stdout;
 
-   /* TODO unfixable memory leaks still */
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
-      for (n = 0, ip = msgvec; *ip != 0; ++ip)
-         n++;
-      if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
-         char const *p;
-         if (sigsetjmp(_cmd1_pipejmp, 1))
-            goto jendpipe;
-         p = get_pager(NULL);
-         if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
-            n_perr(p, 0);
-            obuf = stdout;
-            cp = NULL;
-         } else
-            safe_signal(SIGPIPE, &_cmd1_onpipe);
+   obuf = stdout;
+   isrelax = FAL0;
+   opipe = NULL;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+   if (IS_TTY_SESSION()) {
+      if ((cp = ok_vlook(crt)) != NULL) {
+         for (n = 0, ip = msgvec; *ip != 0; ++ip)
+            ++n;
+         if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
+            char const *p = get_pager(NULL);
+            if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
+               n_perr(p, 0);
+               obuf = stdout;
+            }
+         }
       }
+#ifdef HAVE_COLOUR
+      n_colour_table_create(obuf != stdout, TRU1);
+#endif
    }
 
+   /* Update dot before display so that the dotmark etc. are correct */
+   for (ip = msgvec; *ip != 0; ++ip)
+      ;
+   if (--ip >= msgvec)
+      setdot(message + *ip - 1);
+
    srelax_hold();
+   isrelax = TRU1;
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
       srelax();
    }
    srelax_rele();
+   isrelax = FAL0;
 
-   if (--ip >= msgvec)
-      setdot(message + *ip - 1);
-
-jendpipe:
-   if (obuf != stdout) {
+jleave:
+   if (obuf != stdout)
+      /* Ignore SIGPIPE so it can't cause a duplicate close */
       safe_signal(SIGPIPE, SIG_IGN);
+   if (isrelax)
+      srelax_rele();
+   n_colour_reset(obuf); /* XXX hacky; only here because we still jump */
+   if (obuf != stdout)
       Pclose(obuf, TRU1);
-      safe_signal(SIGPIPE, dflpipe);
-   }
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
    return 0;
 }
@@ -1169,6 +1244,8 @@ jendpipe:
 FL void
 print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
    size_t printed;
    NYD_ENTER;
 
@@ -1178,7 +1255,19 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 #endif
    time_current_update(&time_current, FAL0);
 
+   isrelax = FAL0;
+   opipe = NULL;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+#ifdef HAVE_COLOUR
+   if (IS_TTY_SESSION())
+      n_colour_table_create(FAL0, TRU1);
+#endif
+
    srelax_hold();
+   isrelax = TRU1;
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1190,6 +1279,14 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       srelax();
    }
    srelax_rele();
+   isrelax = FAL0;
+
+jleave:
+   if (isrelax)
+      srelax_rele();
+   n_colour_reset(stdout);
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
 }
 
