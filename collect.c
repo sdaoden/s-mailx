@@ -259,7 +259,6 @@ print_collf(FILE *cf, struct header *hp)
       m += (hp->h_from != NULL || myaddrs(hp) != NULL);
       m += (hp->h_sender != NULL || ok_vlook(sender) != NULL);
       m += (hp->h_replyto != NULL || ok_vlook(replyto) != NULL);
-      m += (hp->h_organization != NULL || ok_vlook(ORGANIZATION) != NULL);
 
       l = (*cp == '\0') ? screensize() : atoi(cp);
       if (m > l)

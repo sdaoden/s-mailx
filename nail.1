@@ -394,10 +394,7 @@ Also understood are
 .Va replyto ) ,
 .Ql Sender:
 (p.\ o.\&
-.Va sender ) ,
-.Ql Organization:
-(p.\ o.\&
-.Ev ORGANIZATION ) .
+.Va sender ) .
 Note you can also specify
 .Ql From: ,
 possibly overriding
@@ -4723,15 +4720,14 @@ only the first displayable part is included.
 .It Ic ~H
 Edit the message header fields
 .Ql From: ,
-.Ql Reply-To: ,
-.Ql Sender:
+.Ql Reply-To:
 and
-.Ql Organization:
+.Ql Sender:
 by typing each one in turn and allowing the user to edit the field.
 The default values for these fields originate from the
-.Va from , replyto , sender
+.Va from , replyto
 and
-.Ev ORGANIZATION
+.Va sender
 variables.
 .
 .Mx
@@ -5523,10 +5519,9 @@ The
 .Ql Bcc: ,
 .Ql Subject: ,
 .Ql From: ,
-.Ql Reply-To: ,
-.Ql Sender: ,
+.Ql Reply-To:
 and
-.Ql Organization:
+.Ql Sender:
 fields are accepted within the header, other fields are ignored.
 .
 .Mx
@@ -8060,12 +8055,6 @@ This variable is only used when it resides in the process environment.
 \*(IN\*(OP This variable overrides the default location of the user's
 .Pa .netrc
 file.
-.
-.Mx
-.It Ev ORGANIZATION
-The value to put into the
-.Ql Organization:
-field of the message header.
 .
 .Mx
 .It Ev PAGER

@@ -1901,17 +1901,6 @@ do {\
       if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
          goto jleave;
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
-
-      if (((addr = hp->h_organization) != NULL ||
-            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
-            (l = strlen(addr)) > 0) {
-         fwrite("Organization: ", sizeof(char), 14, fo);
-         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
-            goto jleave;
-         ++gotcha;
-         putc('\n', fo);
-      }
    }
 
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {

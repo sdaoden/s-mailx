@@ -779,12 +779,6 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
                      EACM_STRICT, NULL));
          } else
             goto jebadhead;
-      } else if ((val = thisfield(linebuf, "organization")) != NULL) {
-         ++seenfields;
-         for (cp = val; blankchar(*cp); ++cp)
-            ;
-         hq->h_organization = (hq->h_organization != NULL)
-               ? save2str(hq->h_organization, cp) : savestr(cp);
       } else if ((val = thisfield(linebuf, "subject")) != NULL ||
             (val = thisfield(linebuf, "subj")) != NULL) {
          ++seenfields;
@@ -892,7 +886,6 @@ jebadhead:
       hp->h_from = hq->h_from;
       hp->h_replyto = hq->h_replyto;
       hp->h_sender = hq->h_sender;
-      hp->h_organization = hq->h_organization;
       if (hq->h_subject != NULL || !(pstate & PS_t_FLAG) ||
             !(options & OPT_t_FLAG))
          hp->h_subject = hq->h_subject;
@@ -2049,10 +2042,6 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
          hp->h_sender = extract(ok_vlook(sender), GEXTRA | GFULL);
       hp->h_sender = grab_names("Sender: ", hp->h_sender, comma,
             GEXTRA | GFULL);
-      if (hp->h_organization == NULL)
-         hp->h_organization = ok_vlook(ORGANIZATION);
-      hp->h_organization = n_input_cp_addhist("Organization: ",
-            hp->h_organization, TRU1);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))

@@ -1271,7 +1271,6 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
-   ok_v_ORGANIZATION,
    ok_b_outfolder,
 
    ok_v_PAGER,
@@ -1737,7 +1736,7 @@ enum gfield {
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: */
+   GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
    GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
@@ -1781,7 +1780,6 @@ struct header {
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
-   char        *h_organization; /* overridden "Organization:" field */
    struct n_header_field *h_user_headers;
 };
 

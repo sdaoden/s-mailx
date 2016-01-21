@@ -776,11 +776,6 @@ need_hdrconv(struct header *hp, enum gfield w) /* TODO once only, then iter */
             goto jneeds;
       } else if (_has_highbit(myaddrs(NULL)))
          goto jneeds;
-      if (hp->h_organization) {
-         if (_has_highbit(hp->h_organization))
-            goto jneeds;
-      } else if (_has_highbit(ok_vlook(ORGANIZATION)))
-         goto jneeds;
       if (hp->h_replyto) {
          if (_name_highbit(hp->h_replyto))
             goto jneeds;
