@@ -67,6 +67,10 @@ static int           _put_ct(FILE *fo, char const *contenttype,
 SINLINE int          _put_cte(FILE *fo, enum conversion conv);
 static int           _put_cd(FILE *fo, char const *cd, char const *filename);
 
+/* Put all entries of the given header list */
+static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
+                        bool_t nodisp);
+
 /* Write an attachment to the file buffer, converting to MIME */
 static int           _attach_file(struct attachment *ap, FILE *fo);
 static int           __attach_file(struct attachment *ap, FILE *fo);
@@ -231,6 +235,25 @@ jerr:
    rv = -1;
    goto jleave;
 
+}
+
+static bool_t
+_sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
+   bool_t rv;
+   NYD2_ENTER;
+
+   for(rv = TRU1; hfp != NULL; hfp = hfp->hf_next)
+      if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
+            putc(':', fo) == EOF || putc(' ', fo) == EOF ||
+            xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
+               (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0 ||
+            putc('\n', fo) == EOF){
+         rv = FAL0;
+         break;
+      }
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -1826,7 +1849,7 @@ do {\
 } while (0)
 
    char const *addr;
-   size_t gotcha, l;
+   size_t gotcha;
    struct name *np, *fromasender = NULL;
    int stealthmua, rv = 1;
    bool_t nodisp;
@@ -2055,17 +2078,23 @@ j_mft_add:
    if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
+   /* The user may have placed headers when editing */
+   if(1){
+      struct n_header_field *hfp;
+
+      if((hfp = hp->h_user_headers) != NULL){
+         if(!_sendout_header_list(fo, hfp, nodisp))
+            goto jleave;
+         ++gotcha;
+      }
+   }
+
    /* Custom headers, as via `customhdr' */
    if(!nosend_msg){
       struct n_header_field *hfp;
 
-      for(hfp = n_customhdr_query(); hfp != NULL; hfp = hfp->hf_next){
-         if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
-               putc(':', fo) == EOF || putc(' ', fo) == EOF ||
-               xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
-                  (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0 ||
-               putc('\n', fo) == EOF)
+      if((hfp = n_customhdr_query()) != NULL){
+         if(!_sendout_header_list(fo, hfp, nodisp))
             goto jleave;
          ++gotcha;
       }

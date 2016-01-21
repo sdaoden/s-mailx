@@ -722,6 +722,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
    /* See the prototype declaration for the hairy relationship of
     * options&OPT_t_FLAG and/or pstate&PS_t_FLAG in here */
+   struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
    size_t linesize = 0, seenfields = 0;
@@ -735,6 +736,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;
    }
+   hftail = &hq->h_user_headers;
 
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
@@ -775,7 +777,8 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
                      EACM_STRICT, NULL));
-         }
+         } else
+            goto jebadhead;
       } else if ((val = thisfield(linebuf, "organization")) != NULL) {
          ++seenfields;
          for (cp = val; blankchar(*cp); ++cp)
@@ -792,41 +795,81 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       }
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
-      else if ((pstate & PS_t_FLAG) &&
-            (val = thisfield(linebuf, "message-id")) != NULL) {
-         np = checkaddrs(lextract(val, GREF),
-               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-               NULL);
-         if (np == NULL || np->n_flink != NULL)
+      else if((val = thisfield(linebuf, "message-id")) != NULL){
+         if(pstate & PS_t_FLAG){
+            np = checkaddrs(lextract(val, GREF),
+                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+                  NULL);
+            if (np == NULL || np->n_flink != NULL)
+               goto jebadhead;
+            ++seenfields;
+            hq->h_message_id = np;
+         }else
             goto jebadhead;
-         ++seenfields;
-         hq->h_message_id = np;
-      } else if ((pstate & PS_t_FLAG) &&
-            (val = thisfield(linebuf, "in-reply-to")) != NULL) {
-         np = checkaddrs(lextract(val, GREF),
-               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-               NULL);
-         if (np == NULL || np->n_flink != NULL)
+      }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
+         if(pstate & PS_t_FLAG){
+            np = checkaddrs(lextract(val, GREF),
+                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+                  NULL);
+            if (np == NULL || np->n_flink != NULL)
+               goto jebadhead;
+            ++seenfields;
+            hq->h_in_reply_to = np;
+         }else
             goto jebadhead;
-         ++seenfields;
-         hq->h_in_reply_to = np;
-      } else if ((pstate & PS_t_FLAG) &&
-            (val = thisfield(linebuf, "references")) != NULL) {
-         ++seenfields;
-         /* TODO Limit number of references TODO better on parser side */
-         hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
-               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-               NULL));
+      }else if((val = thisfield(linebuf, "references")) != NULL){
+         if(pstate & PS_t_FLAG){
+            ++seenfields;
+            /* TODO Limit number of references TODO better on parser side */
+            hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
+                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
+                  NULL));
+         }else
+            goto jebadhead;
+      }
       /* and that is very hairy */
-      } else if ((pstate & PS_t_FLAG) &&
-            (val = thisfield(linebuf, "mail-followup-to")) != NULL) {
-         ++seenfields;
-         hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
-               /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */ EACM_NONAME,
-               checkaddr_err));
-      } else
+      else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
+         if(pstate & PS_t_FLAG){
+            ++seenfields;
+            hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
+                  /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
+                  checkaddr_err));
+         }else
+            goto jebadhead;
+      }
+      /* A free-form user header; gethfield() did some verification already.. */
+      else{
+         struct n_header_field *hfp;
+         ui32_t nl, bl;
+         char const *nstart;
+
+         for(nstart = cp = linebuf;; ++cp)
+            if(!fieldnamechar(*cp))
+               break;
+         nl = (ui32_t)PTR2SIZE(cp - nstart);
+
+         while(blankchar(*cp))
+            ++cp;
+         if(*cp++ != ':'){
 jebadhead:
-         n_err(_("Ignoring header field \"%s\"\n"), linebuf);
+            n_err(_("Ignoring header field \"%s\"\n"), linebuf);
+            continue;
+         }
+         while(blankchar(*cp))
+            ++cp;
+         bl = (ui32_t)strlen(cp) +1;
+
+         ++seenfields;
+         *hftail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+               nl +1 + bl);
+            hftail = &hfp->hf_next;
+         hfp->hf_next = NULL;
+         hfp->hf_nl = nl;
+         hfp->hf_bl = bl - 1;
+         memcpy(hfp->hf_dat, nstart, nl);
+            hfp->hf_dat[nl++] = '\0';
+            memcpy(hfp->hf_dat + nl, cp, bl);
+      }
    }
 
    /* In case the blank line after the header has been edited out.  Otherwise,
@@ -853,6 +896,7 @@ jebadhead:
       if (hq->h_subject != NULL || !(pstate & PS_t_FLAG) ||
             !(options & OPT_t_FLAG))
          hp->h_subject = hq->h_subject;
+      hp->h_user_headers = hq->h_user_headers;
 
       if (pstate & PS_t_FLAG) {
          hp->h_ref = hq->h_ref;

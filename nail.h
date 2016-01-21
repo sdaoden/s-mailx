@@ -1782,6 +1782,7 @@ struct header {
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    char        *h_organization; /* overridden "Organization:" field */
+   struct n_header_field *h_user_headers;
 };
 
 /* Handling of namelist nodes used in processing the recipients of mail and
