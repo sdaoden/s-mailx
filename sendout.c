@@ -2055,6 +2055,22 @@ j_mft_add:
    if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
 
+   /* Custom headers, as via `customhdr' */
+   if(!nosend_msg){
+      struct n_header_field *hfp;
+
+      for(hfp = n_customhdr_query(); hfp != NULL; hfp = hfp->hf_next){
+         if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
+               putc(':', fo) == EOF || putc(' ', fo) == EOF ||
+               xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
+                  (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0 ||
+               putc('\n', fo) == EOF)
+            goto jleave;
+         ++gotcha;
+      }
+   }
+
    /* We don't need MIME unless.. we need MIME?! */
    if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||
          hp->h_attach != NULL || convert != CONV_7BIT ||
