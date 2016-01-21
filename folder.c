@@ -240,8 +240,11 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
     * file, else we will ruin the message[] data structure */
 
    hold_sigs(); /* TODO note on this one in quit.c:quit() */
-   if (shudclob && !(fm & FEDIT_NEWMAIL))
-      quit();
+   if (shudclob && !(fm & FEDIT_NEWMAIL) && !quit()) {
+      rele_sigs();
+      goto jem2;
+   }
+
 #ifdef HAVE_SOCKETS
    if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */

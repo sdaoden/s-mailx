@@ -371,7 +371,7 @@ _pop3_maincatch(int s)
    if (interrupts++ == 0)
       n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
    else
-      onintr(0);
+      siglongjmp(_pop3_jmp, 1);
 }
 
 static enum okay
@@ -395,6 +395,7 @@ pop3alarm(int s)
    UNUSED(s);
 
    if (_pop3_lock++ == 0) {
+      hold_all_sigs();
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -406,6 +407,7 @@ pop3alarm(int s)
       }
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
+      rele_all_sigs();
       if (pop3_noop1(&mb) != OKAY) {
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
@@ -562,6 +564,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    }
 
    if (_pop3_lock++ == 0) {
+      hold_all_sigs();
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -569,6 +572,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
          goto jleave;
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
+      rele_all_sigs();
    }
 
    fseek(mp->mb_otf, 0L, SEEK_END);
@@ -681,7 +685,7 @@ jleave:
    --_pop3_lock;
    NYD_LEAVE;
    if (interrupts)
-      onintr(0);
+      n_raise(SIGINT);
    return rv;
 }
 
@@ -765,12 +769,14 @@ pop3_noop(void)
    NYD_ENTER;
 
    _pop3_lock = 1;
+   hold_all_sigs();
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_pop3_maincatch);
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1) == 0) {
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
+      rele_all_sigs();
       rv = pop3_noop1(&mb);
    }
    safe_signal(SIGINT, saveint);
@@ -808,11 +814,13 @@ pop3_setfile(char const *server, enum fedit_mode fm)
              : sc.sc_url.url_u_h_p.s))))
       goto jleave;
 
+   if (!quit())
+      goto jleave;
+
    if (!sopen(&sc.sc_sock, &sc.sc_url))
       goto jleave;
 
    rv = 1;
-   quit();
 
    if (fm & FEDIT_SYSBOX)
       pstate &= ~PS_EDIT;
@@ -844,7 +852,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       _pop3_lock = 0;
       rv = -1;
       if (interrupts > 0)
-         onintr(0);
+         n_raise(SIGINT);
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -925,14 +933,18 @@ pop3_body(struct message *m)
    return rv;
 }
 
-FL void
+FL bool_t
 pop3_quit(void)
 {
    sighandler_type volatile saveint, savepipe;
+   bool_t rv;
    NYD_ENTER;
+
+   rv = FAL0;
 
    if (mb.mb_sock.s_fd < 0) {
       n_err(_("POP3 connection already closed\n"));
+      rv = TRU1;
       goto jleave;
    }
 
@@ -956,8 +968,11 @@ pop3_quit(void)
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
+
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
+   return rv;
 }
 #endif /* HAVE_POP3 */
 

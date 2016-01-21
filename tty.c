@@ -196,7 +196,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
+   if (n_lex_input(prompt, TRU1, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
@@ -231,7 +231,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(query, FAL0, &termios_state.ts_linebuf,
+   if (n_lex_input(query, TRU1, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:

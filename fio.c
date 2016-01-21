@@ -39,18 +39,6 @@
 # include "nail.h"
 #endif
 
-
-struct fio_stack {
-   FILE *s_file;     /* File we were in. */
-   void *s_cond;     /* Saved state of conditional stack */
-   ui32_t s_pstate;  /* Copy of ::pstate */
-};
-
-/* */
-static struct fio_stack _fio_stack[FIO_STACK_SIZE];
-static size_t           _fio_stack_size;
-static FILE *           _fio_input;
-
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
 static size_t     _length_of_line(char const *line, size_t linesize);
@@ -61,9 +49,6 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
 
 /* Workhorse */
 static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off, off_t len);
-
-/* `source' and `source_if' (if silent_error: no pipes allowed, then) */
-static bool_t     _source_file(char const *file, bool_t silent_error);
 
 static size_t
 _length_of_line(char const *line, size_t linesize)
@@ -142,71 +127,6 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
    rv = (fcntl(fd, F_SETLK, &flp) != -1);
    NYD2_LEAVE;
    return rv;
-}
-
-static bool_t
-_source_file(char const *file, bool_t silent_error)
-{
-   char *cp;
-   bool_t ispipe;
-   FILE *fi;
-   NYD_ENTER;
-
-   fi = NULL;
-
-   if ((ispipe = !silent_error)) {
-      size_t i = strlen(file);
-
-      while (i > 0 && spacechar(file[i - 1]))
-         --i;
-      if (i > 0 && file[i - 1] == '|')
-         cp = savestrbuf(file, --i);
-      else
-         ispipe = FAL0;
-   }
-
-   if (ispipe) {
-      char const *sh;
-
-      if ((sh = ok_vlook(SHELL)) == NULL)
-         sh = XSHELL;
-      if ((fi = Popen(cp, "r", sh, NULL, COMMAND_FD_NULL)) == NULL) {
-         n_perr(cp, 0);
-         goto jleave;
-      }
-   } else if ((cp = fexpand(file, FEXP_LOCAL)) == NULL)
-      goto jleave;
-   else if ((fi = Fopen(cp, "r")) == NULL) {
-      if (!silent_error || (options & OPT_D_V))
-         n_perr(cp, 0);
-      goto jleave;
-   }
-
-   if (temporary_localopts_store != NULL) {
-      n_err(_("Before v15 you cannot `source' from within macros, sorry\n"));
-      goto jeclose;
-   }
-   if (_fio_stack_size >= NELEM(_fio_stack)) {
-      n_err(_("Too many `source' recursions\n"));
-jeclose:
-      if (ispipe)
-         Pclose(fi, TRU1);
-      else
-         Fclose(fi);
-      fi = NULL;
-      goto jleave;
-   }
-
-   _fio_stack[_fio_stack_size].s_file = _fio_input;
-   _fio_stack[_fio_stack_size].s_cond = condstack_release();
-   _fio_stack[_fio_stack_size].s_pstate = pstate;
-   ++_fio_stack_size;
-   pstate &= ~(PS_LOADING | PS_PIPING);
-   pstate |= PS_SOURCING | (ispipe ? PS_PIPING : PS_NONE);
-   _fio_input = fi;
-jleave:
-   NYD_LEAVE;
-   return (fi != NULL);
 }
 
 FL char *
@@ -312,107 +232,6 @@ jagain:
       (*linebuf)[--n] = '\0';
    rv = (int)n;
 jleave:
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL int
-(readline_input)(char const *prompt, bool_t nl_escape, char **linebuf,
-   size_t *linesize, char const *string SMALLOC_DEBUG_ARGS)
-{
-   /* TODO readline: linebuf pool! */
-   FILE *ifile = (_fio_input != NULL) ? _fio_input : stdin;
-   bool_t doprompt, dotty;
-   int n, nold;
-   NYD2_ENTER;
-
-   doprompt = (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE));
-   dotty = (doprompt && !ok_blook(line_editor_disable));
-   if (!doprompt)
-      prompt = NULL;
-   else if (prompt == NULL)
-      prompt = getprompt();
-
-   /* Ensure stdout is flushed first anyway */
-   if (!dotty && prompt == NULL)
-      fflush(stdout);
-
-   for (nold = n = 0;;) {
-      if (dotty) {
-         assert(ifile == stdin);
-         if (string != NULL && (n = (int)strlen(string)) > 0) {
-            if (*linesize > 0)
-               *linesize += n +1;
-            else
-               *linesize = (size_t)n + LINESIZE +1;
-            *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
-            memcpy(*linebuf, string, (size_t)n +1);
-         }
-         string = NULL;
-         /* TODO if nold>0, don't redisplay the entire line!
-          * TODO needs complete redesign ... */
-         n = (n_tty_readline)(prompt, linebuf, linesize, n
-               SMALLOC_DEBUG_ARGSCALL);
-      } else {
-         if (prompt != NULL) {
-            if (*prompt != '\0')
-               fputs(prompt, stdout);
-            fflush(stdout);
-         }
-         n = (readline_restart)(ifile, linebuf, linesize, n
-               SMALLOC_DEBUG_ARGSCALL);
-
-         if (n > 0 && nold > 0) {
-            int i = 0;
-            char const *cp = *linebuf + nold;
-
-            while (blankspacechar(*cp) && nold + i < n)
-               ++cp, ++i;
-            if (i > 0) {
-               memmove(*linebuf + nold, cp, n - nold - i);
-               n -= i;
-               (*linebuf)[n] = '\0';
-            }
-         }
-      }
-      if (n <= 0)
-         break;
-
-      /* POSIX says:
-       * An unquoted <backslash> at the end of a command line shall
-       * be discarded and the next line shall continue the command */
-      if (!nl_escape || n == 0 || (*linebuf)[n - 1] != '\\')
-         break;
-      (*linebuf)[nold = --n] = '\0';
-      if (prompt != NULL && *prompt != '\0')
-         prompt = ".. "; /* XXX PS2 .. */
-   }
-
-   if (n >= 0 && (options & OPT_D_VV))
-      n_err(_("%s %d bytes <%.*s>\n"),
-         ((pstate & PS_LOADING) ? "LOAD"
-          : (pstate & PS_SOURCING) ? "SOURCE" : "READ"),
-         n, n, *linebuf);
-   NYD2_LEAVE;
-   return n;
-}
-
-FL char *
-n_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby)
-{
-   /* FIXME n_input_cp_addhist(): leaks on sigjmp without linepool */
-   size_t linesize = 0;
-   char *linebuf = NULL, *rv = NULL;
-   int n;
-   NYD2_ENTER;
-
-   n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
-   if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
-         (options & OPT_INTERACTIVE))
-      n_tty_addhist(rv, isgabby);
-
-   if (linebuf != NULL)
-      free(linebuf);
    NYD2_LEAVE;
    return rv;
 }
@@ -647,97 +466,6 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
          break;
       else
          n_msleep(pollmsecs, FAL0);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL void
-load(char const *name)
-{
-   struct str n;
-   void *cond;
-   FILE *in, *oldin;
-   NYD_ENTER;
-
-   if (name == NULL || *name == '\0' || (in = Fopen(name, "r")) == NULL)
-      goto jleave;
-
-   oldin = _fio_input;
-   _fio_input = in;
-   pstate |= PS_IN_LOAD;
-   /* commands() may sreset(), copy over file name */
-   n.l = strlen(name);
-   n.s = ac_alloc(n.l +1);
-   memcpy(n.s, name, n.l +1);
-
-   cond = condstack_release();
-   if (!commands())
-      n_err(_("Stopped loading \"%s\" due to errors "
-         "(enable *debug* for trace)\n"), n.s);
-   condstack_take(cond);
-
-   ac_free(n.s);
-   pstate &= ~PS_IN_LOAD;
-   _fio_input = oldin;
-   Fclose(in);
-jleave:
-   NYD_LEAVE;
-}
-
-FL int
-c_source(void *v)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = _source_file(*(char**)v, FAL0) ? 0 : 1;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_source_if(void *v) /* XXX obsolete?, support file tests in `if' etc.! */
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = _source_file(*(char**)v, TRU1) ? 0 : 1;
-   rv = 0;
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-unstack(void)
-{
-   int rv = 1;
-   NYD_ENTER;
-
-   if (_fio_stack_size == 0) {
-      n_err(_("`source' stack over-pop\n"));
-      pstate &= ~PS_SOURCING;
-      goto jleave;
-   }
-
-   if (pstate & PS_PIPING)
-      Pclose(_fio_input, TRU1);
-   else
-      Fclose(_fio_input);
-
-   --_fio_stack_size;
-   if (!condstack_take(_fio_stack[_fio_stack_size].s_cond))
-      n_err(_("Unmatched \"if\"\n"));
-   pstate &= ~(PS_LOADING | PS_PIPING);
-   pstate |= _fio_stack[_fio_stack_size].s_pstate & (PS_LOADING | PS_PIPING);
-   _fio_input = _fio_stack[_fio_stack_size].s_file;
-   if (_fio_stack_size == 0) {
-      if (pstate & PS_LOADING)
-         pstate |= PS_SOURCING;
-      else
-         pstate &= ~PS_SOURCING;
-   }
-   rv = 0;
-jleave:
    NYD_LEAVE;
    return rv;
 }

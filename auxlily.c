@@ -227,8 +227,7 @@ page_or_print(FILE *fp, size_t lines)
 
    fflush_rewind(fp);
 
-   if ((options & OPT_INTERACTIVE) && (pstate & PS_STARTED) &&
-         (cp = ok_vlook(crt)) != NULL) {
+   if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
       char *eptr;
       union {sl_i sli; size_t rows;} u;
 

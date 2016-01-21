@@ -939,8 +939,11 @@ _headers(int msgspec) /* TODO rework v15 */
       isrelax = FAL0;
    }
 
-   if (!flag)
+   if (!flag) {
       printf(_("No more mail.\n"));
+      if (pstate & (PS_HOOK_MASK | PS_ROBOT))
+         flag = !flag;
+   }
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -1078,7 +1081,7 @@ _pipe1(char *str, int doign)
    if (!needs_list) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_HOOK_MASK) {
+         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
             rv = 0;
             goto jleave;
          }
@@ -1089,7 +1092,7 @@ _pipe1(char *str, int doign)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & PS_HOOK_MASK) {
+      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
          rv = 0;
          goto jleave;
       }

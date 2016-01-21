@@ -64,10 +64,6 @@
  * Macro-based generics
  */
 
-/* Kludges to handle the change from setexit / reset to setjmp / longjmp */
-#define setexit()             (void)sigsetjmp(srbuf, 1)
-#define reset(x)              siglongjmp(srbuf, x)
-
 /* ASCII char classification */
 #define __ischarof(C, FLAGS)  \
    (asciichar(C) && (class_char[(uc_i)(C)] & (FLAGS)) != 0)
@@ -557,9 +553,9 @@ FL int         c_urldecode(void *v);
 /* if.elif.else.endif conditional execution.
  * condstack_isskip() returns wether the current condition state doesn't allow
  * execution of commands.
- * condstack_release() and condstack_take() are used when PS_SOURCING files, they
- * rotate the current condition stack; condstack_take() returns a false boolean
- * if the current condition stack has unclosed conditionals */
+ * condstack_release() and condstack_take() rotate the current condition stack;
+ * condstack_take() returns a false boolean if the current condition stack has
+ * unclosed conditionals */
 FL int         c_if(void *v);
 FL int         c_elif(void *v);
 FL int         c_else(void *v);
@@ -712,30 +708,6 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input, with editing if interactive and possible.
- * If prompt is NULL we'll call getprompt() first, if necessary.
- * nl_escape defines wether user can escape newlines via backslash (POSIX).
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * Return number of octets or a value <0 on error.
- * Note: may use the currently `source'd file stream instead of stdin! */
-FL int         readline_input(char const *prompt, bool_t nl_escape,
-                  char **linebuf, size_t *linesize, char const *string
-                  SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define readline_input(A,B,C,D,E) readline_input(A,B,C,D,E,__FILE__,__LINE__)
-#endif
-
-/* Read a line of input, with editing if interactive and possible, return it
- * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during PS_SOURCING).
- * If prompt is NULL we'll call getprompt() if necessary.
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
-FL char *      n_input_cp_addhist(char const *prompt, char const *string,
-                  bool_t isgabby);
-
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
 
@@ -757,23 +729,6 @@ FL char const * getdeadletter(void);
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
 FL bool_t      n_file_lock(int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
-
-/* Deal with loading of resource files and dealing with a stack of files for
- * the source command */
-
-/* Load a file of user definitions -- this is *only* for main()! */
-FL void        load(char const *name);
-
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * PS_SOURCING so that others will realize that they are no longer reading from
- * a tty (in all probability).
- * The latter won't return failure (TODO should be replaced by "-f FILE") */
-FL int         c_source(void *v);
-FL int         c_source_if(void *v);
-
-/* Pop the current input back to the previous level.  Update the PS_SOURCING
- * flag as appropriate */
-FL int         unstack(void);
 
 /*
  * folder.c
@@ -961,34 +916,69 @@ FL enum okay   imap_search(char const *spec, int f);
 #endif
 
 /*
- * lex.c
+ * lex_input.c
  */
-
-/* Interpret user commands.  If standard input is not a tty, print no prompt;
- * return wether the last processed command returned error */
-FL bool_t      commands(void);
-
-/* TODO drop execute() is the legacy version of evaluate().
- * It assumes we've been invoked recursively */
-FL int         execute(char *linebuf, size_t linesize);
-
-/* Evaluate a single command.
- * .ev_add_history and .ev_new_content will be updated upon success.
- * Command functions return 0 for success, 1 for error, and -1 for abort.
- * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
-FL int         evaluate(struct eval_ctx *evp);
-
-/* The following gets called on receipt of an interrupt.  This is to abort
- * printout of a command, mainly.  Dispatching here when command() is inactive
- * crashes rcv.  Close all open files except 0, 1, 2, and the temporary.  Also,
- * unstack all source files */
-FL void        onintr(int s);
 
 /* Print the docstring of `comm', which may be an abbreviation.
  * Return FAL0 if there is no such command */
 #ifdef HAVE_DOCSTRINGS
-FL bool_t      print_comm_docstr(char const *comm);
+FL bool_t      n_print_comm_docstr(char const *comm);
 #endif
+
+/* Interpret user commands.  If stdin is not a tty, print no prompt; return
+ * wether last processed command returned error -- this is *only* for main()! */
+FL bool_t      n_commands(void);
+
+/* Actual cmd input */
+
+/* Read a complete line of input, with editing if interactive and possible.
+ * If prompt is NULL we'll call getprompt() first, if necessary.
+ * nl_escape defines wether user can escape newlines via backslash (POSIX).
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
+ * Return number of octets or a value <0 on error.
+ * Note: may use the currently `source'd file stream instead of stdin! */
+FL int         n_lex_input(char const *prompt, bool_t nl_escape,
+                  char **linebuf, size_t *linesize, char const *string
+                  SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define n_lex_input(A,B,C,D,E) n_lex_input(A,B,C,D,E,__FILE__,__LINE__)
+#endif
+
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
+ * This may only be called from toplevel (not during PS_ROBOT).
+ * If prompt is NULL we'll call getprompt() if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
+ * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
+FL char *      n_lex_input_cp_addhist(char const *prompt, char const *string,
+                  bool_t isgabby);
+
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions -- this is *only* for main()! */
+FL void        n_load(char const *name);
+
+/* "Load" all the -X command line definitions in order -- *only* for main() */
+FL void        n_load_Xargs(char const **lines);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * PS_SOURCING so that others will realize that they are no longer reading from
+ * a tty (in all probability).
+ * The latter won't return failure (TODO should be replaced by "-f FILE") */
+FL int         c_source(void *v);
+FL int         c_source_if(void *v);
+
+/* Evaluate a complete macro / a single command.  For the former lines will
+ * always be free()d, for the latter cmd will always be duplicated internally */
+FL bool_t      n_source_macro(char const *name, char **lines);
+FL bool_t      n_source_command(char const *cmd);
+
+/* XXX Hack: may we release our (interactive) (terminal) control to a different
+ * XXX program, e.g., a $PAGER? */
+FL bool_t      n_source_may_yield_control(void);
 
 /*
  * list.c
@@ -1050,7 +1040,7 @@ FL void        touch(struct message *mp);
 
 FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
-FL void        maildir_quit(void);
+FL bool_t      maildir_quit(void);
 
 FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
 
@@ -1060,8 +1050,8 @@ FL enum okay   maildir_remove(char const *name);
  * main.c
  */
 
-/* Quit quickly.  If PS_SOURCING, just pop the input level by returning error */
-FL int         c_rexit(void *v);
+/* Quit quickly.  In recursed state, return error to just pop the input level */
+FL int         c_exit(void *v);
 
 /*
  * memory.c
@@ -1368,7 +1358,7 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
-/* Get a lextract() list via n_input_cp_addhist(), reassigning to *np* */
+/* Get a lextract() list via n_lex_input_cp_addhist(), reassigning to *np* */
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
@@ -1497,7 +1487,7 @@ FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 
 /*  */
-FL void        pop3_quit(void);
+FL bool_t      pop3_quit(void);
 #endif /* HAVE_POP3 */
 
 /*
@@ -1598,7 +1588,7 @@ FL bool_t      wait_child(int pid, int *wait_status);
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,
  * if none saved there */
-FL void        quit(void);
+FL bool_t      quit(void);
 
 /* Adjust the message flags in each message */
 FL int         holdbits(void);

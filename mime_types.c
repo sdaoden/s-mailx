@@ -957,7 +957,7 @@ jdelall:
             lnp = mtnp, mtnp = mtnp->mt_next;
       }
       if (!match) {
-         if (!(pstate & PS_IN_LOAD) || (options & OPT_D_V))
+         if (!(pstate & PS_ROBOT) || (options & OPT_D_V))
             n_err(_("No such MIME type: \"%s\"\n"), *argv);
          v = NULL;
       }

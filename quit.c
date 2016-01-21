@@ -74,13 +74,13 @@ static int  writeback(FILE *res, FILE *obuf);
 
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
-static void edstop(void);
+static bool_t edstop(void);
 
 /* Remove "mailname", unless *keep* says otherwise; force truncation, then */
 static void _demail(void);
 
 static void
-_alter(char const *name)
+_alter(char const *name) /* TODO error handling */
 {
 #ifdef HAVE_UTIMENSAT
    struct timespec tsa[2];
@@ -161,21 +161,22 @@ jleave:
    return rv;
 }
 
-static void
-edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
+static bool_t
+edstop(void) /* TODO oh my god */
 {
    int gotcha, c;
    struct message *mp;
    FILE *obuf = NULL, *ibuf = NULL;
    struct stat statb;
-   bool_t doreset;
+   bool_t rv;
    NYD_ENTER;
 
-   hold_sigs();
-   doreset = FAL0;
+   rv = TRU1;
 
    if (mb.mb_perm == 0)
-      goto jleave;
+      goto j_leave;
+
+   hold_sigs();
 
    for (mp = message, gotcha = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
@@ -189,7 +190,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    if (!gotcha)
       goto jleave;
 
-   doreset = TRU1;
+   rv = FAL0;
 
    /* TODO This is too simple minded?  We should regenerate an index file
     * TODO to be able to truly tell wether *anything* has changed!
@@ -218,6 +219,7 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
 
    printf(_("\"%s\" "), displayname);
    fflush(stdout);
+
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
       n_perr(mailname, 0);
       goto jleave;
@@ -253,8 +255,6 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
    }
    Fclose(obuf);
 
-   doreset = FAL0;
-
    if (gotcha && !ok_blook(keep) && !ok_blook(emptybox)/* TODO obsolete eb*/) {
       bool_t rms;
 
@@ -262,24 +262,37 @@ edstop(void) /* TODO oh my god - and REMOVE that CRAPPY reset(0) jump!! */
          printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             ? _("removed\n") : _("removed.\n"));
       else {
-         printf(_("removal error\n"));
-         n_err(_("could not remove file \"%s\"\n")); /* XXX error cause */
+         int e = errno;
+         printf(_("removal error (ignored)\n"));
+         n_err(_("Error removing \"%s\" (ignored):"), mailname); /* TODO */
+         n_perr(NULL, e); /* TODO */
       }
    } else
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
    fflush(stdout);
+
+   rv = TRU1;
 jleave:
    if (ibuf != NULL)
       Fclose(ibuf);
    rele_sigs();
+
+   if(!rv){
+      /* TODO The codebase aborted by jumping to the main loop here.
+       * TODO The OpenBSD mailx simply ignores this error.
+       * TODO For now we follow the latter unless we are interactive,
+       * TODO in which case we ask the user wether the error is to be
+       * TODO ignored or not.  More of this around here in this file! */
+      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+   }
+j_leave:
    NYD_LEAVE;
-   if (doreset)
-      reset(0);
+   return rv;
 }
 
 static void
-_demail(void)
+_demail(void) /* TODO error handling */
 {
    NYD2_ENTER;
    if (ok_blook(keep) || n_path_rm(mailname) <= FAL0) {
@@ -291,15 +304,17 @@ _demail(void)
    NYD2_LEAVE;
 }
 
-FL void
+FL bool_t
 quit(void)
 {
    int p, modify, anystat, c;
    FILE *fbuf = NULL, *lckfp = NULL, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
+   bool_t rv;
    NYD_ENTER;
 
+   rv = FAL0;
    temporary_localopts_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */
@@ -318,13 +333,13 @@ quit(void)
       break;
    case MB_MAILDIR:
       rele_sigs(); /* YYY */
-      maildir_quit();
+      rv = maildir_quit();
       hold_sigs(); /* YYY */
       goto jleave;
 #ifdef HAVE_POP3
    case MB_POP3:
       rele_sigs(); /* YYY */
-      pop3_quit();
+      rv = pop3_quit();
       hold_sigs(); /* YYY */
       goto jleave;
 #endif
@@ -332,11 +347,14 @@ quit(void)
    default:
       goto jleave;
    }
-   if (p) goto jleave; /* TODO */
+   if (p) {
+      rv = TRU1;
+      goto jleave; /* TODO */
+   }
 
    /* If editing (not reading system mail box), then do the work in edstop() */
    if (pstate & PS_EDIT) {
-      edstop();
+      rv = edstop();
       goto jleave;
    }
 
@@ -349,17 +367,18 @@ quit(void)
     * a message */
    fbuf = Zopen(mailname, "r+");
    if (fbuf == NULL) {
-      if (errno == ENOENT)
-         goto jleave;
+      if (errno != ENOENT)
 jnewmail:
-      printf(_("Thou hast new mail.\n"));
+         printf(_("Thou hast new mail.\n"));
+      rv = TRU1;
       goto jleave;
    }
 
    if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, 1)) == NULL) {
-      n_perr(_("Unable to (dot) lock mailbox, aborting operation"), 0);
+      n_perr(_("Unable to (dot) lock mailbox"), 0);
       Fclose(fbuf);
       fbuf = NULL;
+      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
       goto jleave;
    }
 
@@ -396,27 +415,35 @@ jnewmail:
          modify++;
    }
    if (p == msgCount && !modify && !anystat) {
+      rv = TRU1;
       if (p == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else if (p > 1)
          printf(_("Held %d messages in %s\n"), p, displayname);
       goto jleave;
    }
+
    if (c == 0) {
       if (p != 0) {
-         writeback(rbuf, fbuf);
+         if (writeback(rbuf, fbuf) >= 0)
+            rv = TRU1;
+         else
+            rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
          goto jleave;
       }
       goto jcream;
    }
 
-   if (makembox() == STOP)
+   if (makembox() == STOP) {
+      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
       goto jleave;
+   }
 
    /* Now we are ready to copy back preserved files to the system mailbox, if
     * any were requested */
    if (p != 0) {
-      writeback(rbuf, fbuf);
+      if (writeback(rbuf, fbuf) < 0)
+         rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
       goto jleave;
    }
 
@@ -430,9 +457,11 @@ jcream:
       Fclose(rbuf);
       ftrunc(abuf);
       _alter(mailname);
-      goto jleave;
+      rv = TRU1;
+   } else {
+      _demail();
+      rv = TRU1;
    }
-   _demail();
 jleave:
    if (fbuf != NULL) {
       Fclose(fbuf);
@@ -440,6 +469,7 @@ jleave:
          Pclose(lckfp, FAL0);
    }
    NYD_LEAVE;
+   return rv;
 }
 
 FL int

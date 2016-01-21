@@ -120,11 +120,10 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    struct n_sigman sm;
    struct attachment *ap;
    char *mnbuf;
-   size_t mnlen;
    NYD_ENTER;
 
+   UNUSED(linesize);
    mnbuf = NULL;
-   UNINIT(mnlen, 0);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
    case 0:
@@ -141,12 +140,12 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
       }
    while((ap = ap->a_flink) != NULL);
 
-   pstate &= ~PS_HOOK_MASK;
-   execute(linebuf, linesize);
+   n_source_command(linebuf);
+
    n_sigman_cleanup_ping(&sm);
 jleave:
    if(mnbuf != NULL){
-      if(strncmp(mnbuf, mailname, mnlen))
+      if(strcmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
       free(mnbuf);
@@ -659,7 +658,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
    long cnt;
    enum sendaction action;
    sigset_t oset, nset;
-   sighandler_type savedtop;
    FILE * volatile sigfp;
    NYD_ENTER;
 
@@ -670,11 +668,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGINT);
-   sigaddset(&nset, SIGHUP);
+   sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   handlerpush(&_collint);
+/* FIXME have dropped handlerpush() and localized onintr() in lex.c! */
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
@@ -688,6 +684,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
       goto jerr;
+   pstate |= PS_RECURSED;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    ++noreset;
@@ -834,7 +831,7 @@ jcont:
    assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for (;;) {
       _coll_jmp_p = 1;
-      cnt = readline_input("", FAL0, &linebuf, &linesize, NULL);
+      cnt = n_lex_input("", FAL0, &linebuf, &linesize, NULL);
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
@@ -1179,12 +1176,10 @@ jout:
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   handlerpop();
    --noreset;
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGINT);
-   sigaddset(&nset, SIGHUP);
+   sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
+   pstate &= ~PS_RECURSED;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    safe_signal(SIGTSTP, _coll_savetstp);

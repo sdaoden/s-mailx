@@ -177,7 +177,6 @@
 #define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
-#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
@@ -1263,12 +1262,12 @@ enum program_state {
    PS_NONE           = 0,
    PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
 
-   PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
-   PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */
-   PS_IN_LOAD        = PS_LOADING | PS_SOURCING,
-   PS_PIPING         = 1<< 3,       /* `source'ing via pipe */
+   PS_EXIT           = 1<< 1,       /* Exit request pending */
+   PS_SOURCING       = 1<< 2,       /* During load() or `source' */
+   PS_RECURSED       = 1<< 3,       /* State machine recursed, e.g. `~:CMD' */
+   PS_ROBOT          = 1<< 4,       /* State machine in non-interactive state */
 
-   PS_EVAL_ERROR     = 1<< 4,       /* Last evaluate() command failed */
+   PS_EVAL_ERROR     = 1<< 5,       /* Last evaluate() command failed */
 
    PS_HOOK_NEWMAIL   = 1<< 6,
    PS_HOOK           = 1<< 7,
@@ -1627,6 +1626,29 @@ struct n_dotlock_info{
 };
 #endif
 
+/* Execution context bundles  */
+struct n_exec_ctx{
+
+   void *l_smem;                 /* salloc() memory TODO -> memraw? */
+   /* TODO our new per-exec-ctx memory "allocators" are yet very dumb.
+    * TODO for v15 those should not be wrapping nodes but real allocators */
+   struct n_mem_raw *l_memraw;   /* n_mem_alloc() (/ n_mem_free()) */
+   struct n_mem_wrap *l_memwrap; /* n_mem_wrap() (/ n_mem_unwrap()) */
+};
+
+struct n_mem_raw{
+   struct n_mem_raw *mr_prev;
+   struct n_mem_raw *mr_next;
+   char mr_buf[VFIELD_SIZE(0)];
+};
+
+struct n_mem_wrap{
+   struct n_mem_wrap *mw_prev;
+   struct n_mem_wrap *mw_next;
+   void *mw_obj;
+   void (*mw_dtor)(void *obj);
+};
+
 struct mime_handler {
    enum mime_handler_flags mh_flags;
    struct str  mh_msg;           /* Message describing this command */
@@ -1694,15 +1716,6 @@ struct n_sigman{
    sighandler_type sm_oterm;
    sighandler_type sm_opipe;
    sigjmp_buf sm_jump;
-};
-
-struct eval_ctx {
-   struct str  ev_line;          /* The terminated data to evaluate */
-   ui32_t      ev_line_size;     /* May be used to store line memory size */
-   bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
-   ui8_t       __dummy[3];
-   bool_t      ev_add_history;   /* Enter (final) command in history? */
-   char const  *ev_new_content;  /* History: reenter line, start with this */
 };
 
 struct termios_state {
@@ -1911,10 +1924,11 @@ enum argtype {
    ARG_M          = 1u<< 8,   /* Legal from send mode bit */
    ARG_P          = 1u<< 9,   /* Autoprint dot after command */
    ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
-   ARG_T          = 1u<<11,   /* Is a transparent command */
-   ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13,   /* Invalid when read only bit */
-   ARG_O          = 1u<<14    /* OBSOLETE()d command */
+   ARG_S          = 1u<<11,   /* Cannot be called unless PS_STARTED (POSIX) */
+   ARG_T          = 1u<<12,   /* Is a transparent command */
+   ARG_V          = 1u<<13,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<14,   /* Invalid when read only bit */
+   ARG_O          = 1u<<15    /* OBSOLETE()d command */
 };
 
 enum gfield {
@@ -2122,7 +2136,7 @@ VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */
 VL struct name *option_r_arg;       /* Argument to -r option */
 VL char const  **smopts;            /* sendmail(1) opts from commline */
-VL size_t      smopts_count;        /* Entries in smopts */
+VL size_t      smopts_cnt;          /* Entries in smopts */
 
 VL ui32_t      pstate;              /* Bits of enum program_state */
 VL size_t      noreset;             /* String resets suspended (recursive) */
@@ -2163,14 +2177,10 @@ VL iconv_t     iconvd;
 VL sigjmp_buf  srbuf;
 VL int         interrupts;
 VL sighandler_type dflpipe;
-VL sighandler_type handlerstacktop;
-#define handlerpush(f)  (savedtop = handlerstacktop, handlerstacktop = (f))
-#define handlerpop()    (handlerstacktop = savedtop)
 
 /* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value
  * TODO carrier structs instead of locals */
 VL char        *temporary_arg_v_store;
-VL void        *temporary_localopts_store;
 /* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
 VL char const  *temporary_protocol_ext;
 

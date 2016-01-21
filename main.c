@@ -55,12 +55,6 @@ struct a_arg {
    char           *aa_file;
 };
 
-struct X_arg {
-   struct X_arg   *xa_next;
-   size_t         xa_cmd_len;
-   char           xa_cmd_buf[VFIELD_SIZE(sizeof(size_t))];
-};
-
 /* (extern, but not with amalgamation, so define here) */
 VL char const        weekday_names[7 + 1][4] = {
    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
@@ -132,14 +126,10 @@ static void    _setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int     _rcv_mode(char const *folder, char const *Larg,
-                  struct X_arg *xhp);
+static int     _rcv_mode(char const *folder, char const *Larg);
 
 /* Interrupt printing of the headers */
 static void    _hdrstop(int signo);
-
-/* -X arg given at least once, evaluate the list in order */
-static bool_t  _X_arg_eval(struct X_arg *xhp);
 
 static int
 _getopt(int argc, char * const argv[], char const *optstring)
@@ -496,7 +486,7 @@ jleave:
 static sigjmp_buf __hdrjmp; /* XXX */
 
 static int
-_rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
+_rcv_mode(char const *folder, char const *Larg)
 {
    int i;
    sighandler_type prevint;
@@ -542,13 +532,11 @@ _rcv_mode(char const *folder, char const *Larg, struct X_arg *xhp)
    }
 
    /* Enter the command loop */
-   if (xhp == NULL || _X_arg_eval(xhp)) {
-      if (options & OPT_INTERACTIVE)
-         n_tty_init();
-      commands();
-      if (options & OPT_INTERACTIVE)
-         n_tty_destroy();
-   }
+   if (options & OPT_INTERACTIVE)
+      n_tty_init();
+   n_commands();
+   if (options & OPT_INTERACTIVE)
+      n_tty_destroy();
 
    if (mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR) {
       safe_signal(SIGHUP, SIG_IGN);
@@ -574,70 +562,31 @@ _hdrstop(int signo)
    siglongjmp(__hdrjmp, 1);
 }
 
-static bool_t
-_X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
-{
-   struct eval_ctx ev;
-   struct X_arg *xp;
-   bool_t rv = TRU1;
-   NYD_ENTER;
-
-   while ((xp = xhp) != NULL) {
-      xhp = xp->xa_next;
-
-      memset(&ev, 0, sizeof ev);
-      ev.ev_line.s = xp->xa_cmd_buf;
-      ev.ev_line.l = xp->xa_cmd_len;
-      ev.ev_is_recursive = TRU1;
-      pstate &= ~PS_HOOK_MASK;
-      rv = (evaluate(&ev) == 0);
-      free(xp);
-
-      if (!rv) {
-         if (exit_status == EXIT_OK)
-            exit_status = EXIT_ERR;
-         break;
-      }
-      if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
-         if (exit_status != EXIT_OK)
-            break;
-         if (pstate & PS_EVAL_ERROR) {
-            exit_status = EXIT_ERR;
-            break;
-         }
-      }
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]){
    static char const optstr[] = "A:a:Bb:c:dEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:::~#.",
       usagestr[] = N_(
-         " Synopsis:\n"
+         "Synopsis:\n"
          "  %s -h | --help\n"
          "  %s [-BdEFintv~] [-: spec] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
-         "\t [-q file] [-r from-address] [-S var[=value]...]\n"
-         "\t [-s subject] [-X cmd] [-.] to-address... [-- mta-option...]\n"
+         "\t [-q file] [-r from-address] [-S var[=value]..]\n"
+         "\t [-s subject] [-X cmd] [-.] to-address.. [-- mta-option..]\n"
          "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
-         "\t [-X cmd] -f [file] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-X cmd] -f [file] [-- mta-option..]\n"
          "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
-         "\t [-u user] [-X cmd] [-- mta-option...]\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-u user] [-X cmd] [-- mta-option..]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
-   struct X_arg *X_head = NULL, *X_curr = /* silence CC */ NULL;
-   struct a_arg *a_head = NULL, *a_curr = /* silence CC */ NULL;
-   struct name *to = NULL, *cc = NULL, *bcc = NULL;
-   struct attachment *attach = NULL;
-   char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
-   char const *okey, **oargs = NULL, *folder = NULL, *emsg = NULL;
-   size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
+   struct a_arg *a_head, *a_curr;
+   struct name *to, *cc, *bcc;
+   struct attachment *attach;
+   char *cp, *subject, *qf, *Aarg, *Larg;
+   char const *okey, **oargs, **Xargs, *folder, *emsg;
+   size_t oargs_size, oargs_cnt, Xargs_size, Xargs_cnt, smopts_size;
    enum{
       a_RF_NONE = 0,
       a_RF_SET = 1<<0,
@@ -648,6 +597,15 @@ main(int argc, char *argv[])
    int i;
    NYD_ENTER;
 
+   a_head = NULL;
+   UNINIT(a_curr, NULL);
+   to = cc = bcc = NULL;
+   attach = NULL;
+   cp = subject = qf =
+         Aarg = Larg = NULL;
+   oargs = Xargs = NULL;
+   folder = emsg = NULL;
+   oargs_size = oargs_cnt = Xargs_size = Xargs_cnt = smopts_size = 0;
    resfiles = a_RF_ALL;
 
    /*
@@ -749,9 +707,9 @@ main(int argc, char *argv[])
          break;
       case 'O':
          /* Additional options to pass-through to MTA TODO v15-compat legacy */
-         if (smopts_count == (size_t)smopts_size)
-            smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_count);
-         smopts[smopts_count++] = _oarg;
+         if (smopts_cnt == smopts_size)
+            smopts_size = _grow_cpp(&smopts, smopts_size + 8, smopts_cnt);
+         smopts[smopts_cnt++] = _oarg;
          break;
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
@@ -791,9 +749,9 @@ main(int argc, char *argv[])
             c_set(a);
          }
 joarg:
-         if (oargs_count == oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
-         oargs[oargs_count++] = okey;
+         if (oargs_cnt == oargs_size)
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
+         oargs[oargs_cnt++] = okey;
          break;
       case 's':
          /* Subject: */
@@ -818,20 +776,11 @@ joarg:
          ok_bset(verbose, TRU1);
          okey = "verbose";
          goto joarg;
-      case 'X': {
-            /* Add to list of commands to exec before entering normal operation */
-            size_t l = strlen(_oarg);
-            struct X_arg *nxp = smalloc(sizeof(*nxp) -
-                  VFIELD_SIZEOF(struct X_arg, xa_cmd_buf) + l +1);
-            if (X_head == NULL)
-               X_head = nxp;
-            else
-               X_curr->xa_next = nxp;
-            X_curr = nxp;
-            nxp->xa_next = NULL;
-            nxp->xa_cmd_len = l;
-            memcpy(nxp->xa_cmd_buf, _oarg, l +1);
-         }
+      case 'X':
+         /* Add to list of commands to exec before entering normal operation */
+         if (Xargs_cnt == Xargs_size)
+            Xargs_size = _grow_cpp(&Xargs, Xargs_size + 8, Xargs_cnt);
+         Xargs[Xargs_cnt++] = _oarg;
          break;
       case ':':
          /* Control which resource files shall be loaded */
@@ -856,10 +805,8 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 5 >= oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
-         /* xxx Setting most of the -# options immediately is useless, so be
-          * selective in what is set immediately */
+         if (oargs_cnt + 5 >= oargs_size)
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          folder = "/dev/null";
          ok_bset(emptystart, TRU1);
@@ -867,12 +814,12 @@ joarg:
          ok_bset(quiet, TRU1);
          ok_bset(sendwait, TRU1);
          ok_vset(MBOX, folder);
-         oargs[oargs_count + 0] = "emptystart";
-         oargs[oargs_count + 1] = "noheader";
-         oargs[oargs_count + 2] = "quiet";
-         oargs[oargs_count + 3] = "sendwait";
-         oargs[oargs_count + 4] = "MBOX=/dev/null";
-         oargs_count += 5;
+         oargs[oargs_cnt + 0] = "emptystart";
+         oargs[oargs_cnt + 1] = "noheader";
+         oargs[oargs_cnt + 2] = "quiet";
+         oargs[oargs_cnt + 3] = "sendwait";
+         oargs[oargs_cnt + 4] = "MBOX=/dev/null";
+         oargs_cnt += 5;
          break;
       case '.':
          options |= OPT_SENDMODE;
@@ -926,11 +873,13 @@ jgetopt_done:
     * allocate the necessary space for them before we call spreserve()! */
    while (argv[i] != NULL)
       ++i;
-   if (smopts_count + i > smopts_size)
-      DBG(smopts_size =) _grow_cpp(&smopts, smopts_count + i + 1, smopts_count);
+   if (smopts_cnt + i > smopts_size)
+      DBG(smopts_size =) _grow_cpp(&smopts, smopts_cnt + i + 1, smopts_cnt);
 
    /* Check for inconsistent arguments */
    if (options & OPT_SENDMODE) {
+      /* XXX This is only because BATCH_FLAG sets *folder*=/dev/null
+       * XXX in order to function.  Ideally that would not be needed */
       if (folder != NULL && !(options & OPT_BATCH_FLAG)) {
          emsg = N_("Cannot give -f and people to send to.");
          goto jusage;
@@ -1001,30 +950,15 @@ jgetopt_done:
       /* *expand() returns a savestr(), but load only uses the file name for
        * fopen(), so it's safe to do this */
       if((resfiles & a_RF_SYSTEM) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
-         load(SYSCONFDIR "/" SYSCONFRC);
+         n_load(SYSCONFDIR "/" SYSCONFRC);
       if(resfiles & a_RF_USER){
          if((cp = env_vlook("MAILRC", TRU1)) == NULL)
             cp = UNCONST(MAILRC);
-         load(file_expand(cp));
+         n_load(file_expand(cp));
       }
       if(env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
             (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
-         load(file_expand(cp));
-   }
-
-   /* We had to wait until the resource files are loaded, but now it is time
-    * to get the termcap up and going */
-#ifdef n_HAVE_TCAP
-   if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
-      n_termcap_init();
-#endif
-
-   /* Now we can set the account */
-   if (Aarg != NULL) {
-      char const *a[2];
-      a[0] = Aarg;
-      a[1] = NULL;
-      c_account(a);
+         n_load(file_expand(cp));
    }
 
    /* Ensure the -S and other command line options take precedence over
@@ -1032,12 +966,15 @@ jgetopt_done:
     * Our "ternary binary" option *verbose* needs special treament */
    if ((options & (OPT_VERB | OPT_VERBVERB)) == OPT_VERB)
       options &= ~OPT_VERB;
-   for (i = 0; UICMP(z, i, <, oargs_count); ++i) {
+   /* ..and be silent when unsetting an undefined variable */
+   pstate |= PS_ROBOT;
+   for (i = 0; UICMP(z, i, <, oargs_cnt); ++i) {
       char const *a[2];
       a[0] = oargs[i];
       a[1] = NULL;
       c_set(a);
    }
+   pstate &= ~PS_ROBOT;
 
    /* Additional options to pass-through to MTA, and allowed to do so? */
    if ((cp = ok_vlook(expandargv)) != NULL) {
@@ -1056,29 +993,46 @@ jgetopt_done:
             goto jleave;
          }
          do {
-            assert(smopts_count + 1 <= smopts_size);
-            smopts[smopts_count++] = cp;
+            assert(smopts_cnt + 1 <= smopts_size);
+            smopts[smopts_cnt++] = cp;
          } while ((cp = argv[++i]) != NULL);
       }
+   }
+
+   /* We had to wait until the resource files are loaded and any command line
+    * setting has been restored, but get the termcap up and going before we
+    * switch account or running commands */
+#ifdef n_HAVE_TCAP
+   if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
+      n_termcap_init();
+#endif
+
+   /* Now we can set the account */
+   if (Aarg != NULL) {
+      char const *a[2];
+      a[0] = Aarg;
+      a[1] = NULL;
+      c_account(a);
+   }
+
+   /* "load()" commands given on command line */
+   if (Xargs_cnt > 0){
+      Xargs[Xargs_cnt] = NULL;
+      n_load_Xargs(Xargs);
    }
 
    /*
     * We're finally completely setup and ready to go
     */
-
    pstate |= PS_STARTED;
 
    if (options & OPT_DEBUG)
       n_err(_("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
-      exit_status = _rcv_mode(folder, Larg, X_head);
+      exit_status = _rcv_mode(folder, Larg);
       goto jleave;
    }
-
-   /* xxx exit_status = EXIT_OK; */
-   if (X_head != NULL && !_X_arg_eval(X_head))
-      goto jleave;
 
    /* Now that full mailx(1)-style file expansion is possible handle the
     * attachments which we had delayed due to this.
@@ -1143,20 +1097,23 @@ j_leave:
 }
 
 FL int
-c_rexit(void *v) /* TODO program state machine */
-{
-   UNUSED(v);
+c_exit(void *v){/* TODO program state machine */
    NYD_ENTER;
+   UNUSED(v);
 
-   if (!(pstate & PS_SOURCING)) {
+   if(pstate & PS_STARTED){
+      if(!(pstate & PS_SOURCING)){
 #ifdef n_HAVE_TCAP
-      if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
-         n_termcap_destroy();
+         if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) ==
+               OPT_INTERACTIVE)
+            n_termcap_destroy();
 #endif
-      exit(EXIT_OK);
+         exit(EXIT_OK);
+      }
    }
+   pstate |= PS_EXIT;
    NYD_LEAVE;
-   return 1;
+   return 0;
 }
 
 /* Source the others in that case! */

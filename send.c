@@ -1160,7 +1160,7 @@ newfile(struct mimepart *ip, bool_t *ispipe)
          (ip->m_partstring != NULL) ? ip->m_partstring : _("?"),
          _(" ("), ip->m_ct_type_plain, _("): "), NULL);
 jgetname:
-      f2 = n_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
+      f2 = n_lex_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
             ? fexpand_nshell_quote(f) : NULL), TRU1);
       if(f2 != NULL)
          while(spacechar(*f2))

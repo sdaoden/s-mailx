@@ -74,13 +74,14 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    ap->a_content_type = mime_type_classify_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Type: ", number);
-      ap->a_content_type = n_input_cp_addhist(prefix, ap->a_content_type, TRU1);
+      ap->a_content_type = n_lex_input_cp_addhist(prefix, ap->a_content_type,
+            TRU1);
    }
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Disposition: ",
          number);
-      if ((ap->a_content_disposition = n_input_cp_addhist(prefix,
+      if ((ap->a_content_disposition = n_lex_input_cp_addhist(prefix,
             ap->a_content_disposition, TRU1)) == NULL)
          goto jcdis;
    } else
@@ -89,14 +90,14 @@ jcdis:
 
    if (number > 0 && ok_blook(attachment_ask_content_id)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-ID: ", number);
-      ap->a_content_id = n_input_cp_addhist(prefix, ap->a_content_id, TRU1);
+      ap->a_content_id = n_lex_input_cp_addhist(prefix, ap->a_content_id, TRU1);
    } else
       ap->a_content_id = NULL;
 
    if (number > 0 && ok_blook(attachment_ask_content_description)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Description: ",
          number);
-      ap->a_content_description = n_input_cp_addhist(prefix,
+      ap->a_content_description = n_lex_input_cp_addhist(prefix,
             ap->a_content_description, TRU1);
    }
    NYD_LEAVE;
@@ -149,7 +150,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    for (;;) {
       if ((cp = ap->a_name) != NULL)
          cp = fexpand_nshell_quote(cp);
-      if ((cp = n_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
+      if ((cp = n_lex_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
          goto jleave;
@@ -204,7 +205,7 @@ jcs:
       number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
-   cp = ap->a_input_charset = n_input_cp_addhist(prefix, defcs, TRU1);
+   cp = ap->a_input_charset = n_lex_input_cp_addhist(prefix, defcs, TRU1);
 #ifdef HAVE_ICONV
    if (!(options & OPT_INTERACTIVE)) {
 #endif
@@ -217,7 +218,7 @@ jcs:
       _("#%-5" PRIu32 " output (send) charset: "), number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
-   defcs = ap->a_charset = n_input_cp_addhist(prefix, defcs, TRU1);
+   defcs = ap->a_charset = n_lex_input_cp_addhist(prefix, defcs, TRU1);
 
    /* Input, no output -> input=as given, output=no conversion at all */
    if (cp != NULL && defcs == NULL) {
