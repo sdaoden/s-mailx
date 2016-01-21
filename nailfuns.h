@@ -1228,8 +1228,9 @@ FL char const * charset_iter_or_fallback(void);
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
+/* Check wether our headers will need MIME conversion */
 #ifdef HAVE_ICONV
-FL char const * need_hdrconv(struct header *hp, enum gfield w);
+FL char const * need_hdrconv(struct header *hp);
 #endif
 
 /* Convert header fields from RFC 1522 format */

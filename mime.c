@@ -761,43 +761,56 @@ charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 
 #ifdef HAVE_ICONV
 FL char const *
-need_hdrconv(struct header *hp, enum gfield w) /* TODO once only, then iter */
+need_hdrconv(struct header *hp) /* TODO once only, then iter */
 {
-   char const *ret = NULL;
+   struct n_header_field *hfp;
+   char const *rv;
    NYD_ENTER;
 
-   if (w & GIDENT) {
-      if (hp->h_mft != NULL) {
-         if (_name_highbit(hp->h_mft))
-            goto jneeds;
-      }
-      if (hp->h_from != NULL) {
-         if (_name_highbit(hp->h_from))
-            goto jneeds;
-      } else if (_has_highbit(myaddrs(NULL)))
+   rv = NULL;
+
+   if((hfp = hp->h_user_headers) != NULL)
+      do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
          goto jneeds;
-      if (hp->h_replyto) {
-         if (_name_highbit(hp->h_replyto))
-            goto jneeds;
-      } else if (_has_highbit(ok_vlook(replyto)))
+      while((hfp = hfp->hf_next) != NULL);
+
+   if((hfp = hp->h_custom_headers) != NULL ||
+         (hp->h_custom_headers = hfp = n_customhdr_query()) != NULL)
+      do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
          goto jneeds;
-      if (hp->h_sender) {
-         if (_name_highbit(hp->h_sender))
-            goto jneeds;
-      } else if (_has_highbit(ok_vlook(sender)))
+      while((hfp = hfp->hf_next) != NULL);
+
+   if (hp->h_mft != NULL) {
+      if (_name_highbit(hp->h_mft))
          goto jneeds;
    }
-   if ((w & GTO) && _name_highbit(hp->h_to))
+   if (hp->h_from != NULL) {
+      if (_name_highbit(hp->h_from))
+         goto jneeds;
+   } else if (_has_highbit(myaddrs(NULL)))
       goto jneeds;
-   if ((w & GCC) && _name_highbit(hp->h_cc))
+   if (hp->h_replyto) {
+      if (_name_highbit(hp->h_replyto))
+         goto jneeds;
+   } else if (_has_highbit(ok_vlook(replyto)))
       goto jneeds;
-   if ((w & GBCC) && _name_highbit(hp->h_bcc))
+   if (hp->h_sender) {
+      if (_name_highbit(hp->h_sender))
+         goto jneeds;
+   } else if (_has_highbit(ok_vlook(sender)))
       goto jneeds;
-   if ((w & GSUBJECT) && _has_highbit(hp->h_subject))
+
+   if (_name_highbit(hp->h_to))
+      goto jneeds;
+   if (_name_highbit(hp->h_cc))
+      goto jneeds;
+   if (_name_highbit(hp->h_bcc))
+      goto jneeds;
+   if (_has_highbit(hp->h_subject))
 jneeds:
-      ret = _CS_ITER_GET(); /* TODO MIME/send: iter active? iter! else */
+      rv = _CS_ITER_GET(); /* TODO MIME/send: iter active? iter! else */
    NYD_LEAVE;
-   return ret;
+   return rv;
 }
 #endif /* HAVE_ICONV */
 

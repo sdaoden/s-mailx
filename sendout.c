@@ -608,7 +608,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
 #ifdef HAVE_ICONV
    tcs = charset_get_lc();
-   if ((convhdr = need_hdrconv(hp, GTO | GSUBJECT | GCC | GBCC | GIDENT))) {
+   if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
@@ -2082,7 +2082,10 @@ j_mft_add:
    if(!nosend_msg){
       struct n_header_field *hfp;
 
-      if((hfp = n_customhdr_query()) != NULL){
+      /* With iconv support we likely have a cached result */
+      if((hfp = hp->h_custom_headers) == NULL)
+         hp->h_custom_headers = hfp = n_customhdr_query();
+      if(hfp != NULL){
          if(!_sendout_header_list(fo, hfp, nodisp))
             goto jleave;
          ++gotcha;

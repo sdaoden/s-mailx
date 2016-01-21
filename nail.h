@@ -1781,6 +1781,7 @@ struct header {
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
+   struct n_header_field *h_custom_headers; /* (Cached result) */
 };
 
 /* Handling of namelist nodes used in processing the recipients of mail and
