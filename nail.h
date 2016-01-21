@@ -1756,6 +1756,13 @@ enum header_flags {
 };
 
 /* Structure used to pass about the current state of a message (header) */
+struct n_header_field{
+   struct n_header_field *hf_next;
+   ui32_t hf_nl;              /* Field-name length */
+   ui32_t hf_bl;              /* Field-body length*/
+   char hf_dat[VFIELD_SIZE(0)];
+};
+
 struct header {
    ui32_t      h_flags;       /* enum header_flags bits */
    ui32_t      h_dummy;

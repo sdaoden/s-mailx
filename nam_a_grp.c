@@ -1785,4 +1785,36 @@ c_uncustomhdr(void *v){
    return rv;
 }
 
+FL struct n_header_field *
+n_customhdr_query(void){ /* XXX Uses salloc()! */
+   struct group const *gp;
+   ui32_t h;
+   struct n_header_field *rv, **tail, *hfp;
+   NYD_ENTER;
+
+   rv = NULL;
+   tail = &rv;
+
+   for(h = 0; h < HSHSIZE; ++h)
+      for(gp = _customhdr_heads[h]; gp != NULL; gp = gp->g_next){
+         char const *cp;
+         ui32_t nl, bl;
+
+         GP_TO_SUBCLASS(cp, gp);
+         nl = (ui32_t)strlen(gp->g_id) +1;
+         bl = (ui32_t)strlen(cp) +1;
+
+         *tail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+               nl + bl);
+            tail = &hfp->hf_next;
+         hfp->hf_next = NULL;
+         hfp->hf_nl = nl - 1;
+         hfp->hf_bl = bl - 1;
+         memcpy(hfp->hf_dat, gp->g_id, nl);
+            memcpy(hfp->hf_dat + nl, cp, bl);
+      }
+   NYD_LEAVE;
+   return rv;
+}
+
 /* s-it-mode */

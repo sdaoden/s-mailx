@@ -1476,9 +1476,12 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
-/* `(un)?customhdr' */
+/* `(un)?customhdr'.
+ * Query a list of all currently defined custom headers (salloc()ed) */
 FL int         c_customhdr(void *v);
 FL int         c_uncustomhdr(void *v);
+
+FL struct n_header_field * n_customhdr_query(void);
 
 /*
  * openssl.c
