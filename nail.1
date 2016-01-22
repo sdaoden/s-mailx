@@ -2736,6 +2736,11 @@ Defined custom headers will be injected into newly composed or forwarded
 messages, e.g.:
 .Pp
 .Dl customhdr OpenPGP id=12345678; url=http://www.YYY.ZZ
+.Pp
+The \*(OB variable
+.Va customhdr
+may also be used to inject custom headers; it is covered by
+.Ic localopts .
 .
 .Mx
 .It Ic cwd
@@ -5400,6 +5405,15 @@ terminal screen to compute the treshold (see
 .Va screen
 and
 .Xr stty 1 ) .
+.
+.Mx
+.It Va customhdr
+\*(OB A variable counterpart of the
+.Ic customhdr
+command (see there for documentation), interpreted as a comma-separated
+list of custom headers to be injected, e.g.:
+.Pp
+.Dl set customhdr="Hdr1: Body1, Hdr2: Body2"
 .
 .Mx
 .It Va datefield

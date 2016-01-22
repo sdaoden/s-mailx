@@ -1194,6 +1194,7 @@ ok_b_autothread,
    ok_b_colour_pager,
    ok_v_colour_terms,
    ok_v_crt,
+   ok_v_customhdr,
 
    ok_v_DEAD,
    ok_v_datefield,

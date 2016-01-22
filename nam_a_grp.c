@@ -1813,6 +1813,57 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
          memcpy(hfp->hf_dat, gp->g_id, nl);
             memcpy(hfp->hf_dat + nl, cp, bl);
       }
+
+   /* TODO We have no copy-on-write environments yet, and since custom headers
+    * TODO are a perfect subject for localization, add the OBSOLETE variable
+    * TODO *customhdr*, too */
+   {
+      char const *vp = ok_vlook(customhdr);
+
+      if(vp != NULL){
+         char *buf = savestr(vp);
+jch_outer:
+         while((vp = n_strsep(&buf, ',', TRU1)) != NULL){
+            ui32_t nl, bl;
+            char const *nstart, *cp;
+
+            for(nstart = cp = vp;; ++cp){
+               if(fieldnamechar(*cp))
+                  continue;
+               if(*cp == '\0'){
+                  if(cp == nstart){
+                     n_err(_("Invalid nameless *customhdr* entry\n"));
+                     goto jch_outer;
+                  }
+               }else if(*cp != ':' && !blankchar(*cp)){
+jch_badent:
+                  n_err(_("Invalid *customhdr* entry: \"%s\"\n"), vp);
+                  goto jch_outer;
+               }
+               break;
+            }
+            nl = (ui32_t)PTR2SIZE(cp - nstart);
+
+            while(blankchar(*cp))
+               ++cp;
+            if(*cp++ != ':')
+               goto jch_badent;
+            while(blankchar(*cp))
+               ++cp;
+            bl = (ui32_t)strlen(cp) +1;
+
+            *tail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+                  nl +1 + bl);
+               tail = &hfp->hf_next;
+            hfp->hf_next = NULL;
+            hfp->hf_nl = nl;
+            hfp->hf_bl = bl - 1;
+            memcpy(hfp->hf_dat, nstart, nl);
+               hfp->hf_dat[nl++] = '\0';
+               memcpy(hfp->hf_dat + nl, cp, bl);
+         }
+      }
+   }
    NYD_LEAVE;
    return rv;
 }
