@@ -2722,6 +2722,22 @@ otherwise identical to
 .Ic save .
 .
 .Mx
+.It Ic customhdr
+With no arguments, shows all currently-defined custom headers.
+With one argument, shows that custom header.
+With more than one argument, creates a new or replaces an existing
+custom header with the name given as the first argument, the content of
+which being defined by the concatenated remaining arguments.
+.Ic uncustomhdr
+can be used to delete custom headers.
+\*(ID Overwriting of automatically managed headers is neither supported
+nor prevented.
+Defined custom headers will be injected into newly composed or forwarded
+messages, e.g.:
+.Pp
+.Dl customhdr OpenPGP id=12345678; url=http://www.YYY.ZZ
+.
+.Mx
 .It Ic cwd
 Show the name of the current working directory.
 .
@@ -4197,6 +4213,13 @@ will remove all mappings (no precondition allowed).
 Also see
 .Sx "Coloured display"
 for the general picture.
+.
+.Mx
+.It Ic uncustomhdr
+Deletes the custom headers given as arguments.
+The special name
+.Ql *
+will remove all custom headers.
 .
 .Mx
 .It Ic undefine

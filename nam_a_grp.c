@@ -44,7 +44,8 @@ enum group_type {
    GT_ALIAS       = 1<< 0,
    GT_MLIST       = 1<< 1,
    GT_SHORTCUT    = 1<< 2,
-   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT,
+   GT_CUSTOMHDR   = 1<< 3,
+   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CUSTOMHDR,
 
    /* Subtype bits and flags */
    GT_SUBSCRIBE   = 1<< 4,
@@ -122,6 +123,9 @@ static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 
 /* `shortcut' */
 static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hash */
+
+/* `customhdr' */
+static struct group     *_customhdr_heads[HSHSIZE]; /* TODO dynamic hash */
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -417,7 +421,8 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
    lgp = NULL;
    gp = *(glp->gl_htable = glp->gl_slot =
           ((gt & GT_ALIAS ? _alias_heads :
-            (gt & GT_MLIST ? _mlist_heads : _shortcut_heads)) +
+            (gt & GT_MLIST ? _mlist_heads :
+            (gt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads))) +
            torek_hash(id) % HSHSIZE));
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
@@ -450,7 +455,8 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
    NYD_ENTER;
 
    for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads :
-            (gt & GT_MLIST ? _mlist_heads : _shortcut_heads)), i = 0;
+            (gt & GT_MLIST ? _mlist_heads :
+            (gt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads))), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -640,7 +646,8 @@ _group_print_all(enum group_type gt)
 
    xgt = gt & GT_PRINT_MASK;
    gpa = (xgt & GT_ALIAS ? _alias_heads
-         : (xgt & GT_MLIST ? _mlist_heads : _shortcut_heads));
+         : (xgt & GT_MLIST ? _mlist_heads
+         : (xgt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads)));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -743,6 +750,10 @@ _group_print(struct group const *gp, FILE *fo)
       char const *cp;
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
+   } else if (gp->g_type & GT_CUSTOMHDR) {
+      char const *cp;
+      GP_TO_SUBCLASS(cp, gp);
+      fprintf(fo, "customhdr %s \"%s\"", gp->g_id, string_quote(cp));
    }
 
    putc('\n', fo);
@@ -1689,6 +1700,89 @@ shortcut_expand(char const *str)
       str = NULL;
    NYD_LEAVE;
    return str;
+}
+
+FL int
+c_customhdr(void *v){
+   struct group *gp;
+   char const **argv, *hcp;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+
+   if((hcp = *(argv = v)) == NULL){
+      _group_print_all(GT_CUSTOMHDR);
+      goto jleave;
+   }
+
+   /* Verify the header field name */
+   for(rv = 1;; ++hcp){
+      if(fieldnamechar(*hcp))
+         continue;
+      if(*hcp == '\0'){
+         if(hcp == *argv){
+            n_err(_("Cannot use nameless custom header\n"));
+            goto jleave;
+         }
+         hcp = *argv;
+         break;
+      }
+      n_err(_("Invalid custom header name: \"%s\"\n"), *argv);
+      goto jleave;
+   }
+   rv = 0;
+
+   if(*++argv == NULL){
+      if((gp = _group_find(GT_CUSTOMHDR, hcp)) != NULL)
+         _group_print(gp, stdout);
+      else{
+         n_err(_("No such custom header: \"%s\"\n"), hcp);
+         rv = 1;
+      }
+   }else{
+      /* Because one hardly ever redefines, anything is stored in one chunk */
+      size_t i, l;
+      char *cp;
+
+      if(_group_find(GT_CUSTOMHDR, hcp) != NULL)
+         _group_del(GT_CUSTOMHDR, hcp);
+
+      for(l = i = 0; argv[i] != NULL; ++i)
+         l += strlen(argv[i]) + 1;
+      gp = _group_fetch(GT_CUSTOMHDR, hcp, l +1);
+      GP_TO_SUBCLASS(cp, gp);
+      for(i = 0; argv[i] != NULL; ++i){
+         if(i > 0)
+            *cp++ = ' ';
+         l = strlen(argv[i]);
+         memcpy(cp, argv[i], l);
+         cp += l;
+      }
+      *cp = '\0';
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_uncustomhdr(void *v){
+   int rv;
+   char **argv;
+   NYD_ENTER;
+
+   rv = 0;
+
+   argv = v;
+   do{
+      if(!_group_del(GT_CUSTOMHDR, *argv)){
+         n_err(_("No such custom header: \"%s\"\n"), *argv);
+         rv = 1;
+      }
+   }while(*++argv != NULL);
+   NYD_LEAVE;
+   return rv;
 }
 
 /* s-it-mode */
