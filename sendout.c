@@ -75,9 +75,6 @@ static int           __attach_file(struct attachment *ap, FILE *fo);
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         bool_t signing_caps);
 
-/* Put the signature file at fo. TODO layer rewrite: *integrate in body*!! */
-static int           put_signature(FILE *fo, int convert);
-
 /* Attach a message to the file buffer */
 static int           attach_message(struct attachment *ap, FILE *fo);
 
@@ -476,49 +473,6 @@ jleave:
 }
 
 static int
-put_signature(FILE *fo, int convert)
-{
-   char buf[SEND_LINESIZE], *sig, c = '\n';
-   FILE *fsig;
-   size_t sz;
-   int rv;
-   NYD_ENTER;
-
-   if ((sig = ok_vlook(signature)) == NULL || *sig == '\0') {
-      rv = 0;
-      goto jleave;
-   }
-   rv = -1;
-
-   if ((sig = file_expand(sig)) == NULL)
-      goto jleave;
-
-   if ((fsig = Fopen(sig, "r")) == NULL) {
-      n_perr(sig, 0);
-      goto jleave;
-   }
-   while ((sz = fread(buf, sizeof *buf, SEND_LINESIZE, fsig)) != 0) {
-      c = buf[sz - 1];
-      if (xmime_write(buf, sz, fo, convert, TD_NONE) < 0)
-         goto jerr;
-   }
-   if (ferror(fsig)) {
-jerr:
-      n_perr(sig, 0);
-      Fclose(fsig);
-      goto jleave;
-   }
-   Fclose(fsig);
-   if (c != '\n')
-      putc('\n', fo);
-
-   rv = 0;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
 attach_message(struct attachment *ap, FILE *fo)
 {
    struct message *mp;
@@ -587,8 +541,6 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
       if (ferror(fi))
          goto jleave;
-      if (charset != NULL)
-         put_signature(fo, convert);
    }
 
    for (att = hp->h_attach; att != NULL; att = att->a_flink) {
@@ -717,8 +669,6 @@ jerr:
          nfi = NULL;
          goto jleave;
       }
-      if (charset != NULL)
-         put_signature(nfo, convert); /* XXX if (text/) !! */
    }
 
 #ifdef HAVE_ICONV

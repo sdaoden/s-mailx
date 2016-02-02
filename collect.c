@@ -761,8 +761,6 @@ jcont:
          if ((size_t)cnt != fwrite(linebuf, sizeof *linebuf, cnt, _coll_fp))
             goto jerr;
       }
-      if (fflush(_coll_fp))
-         goto jerr;
       goto jout;
    }
 
@@ -1029,15 +1027,56 @@ jputline:
    }
 
 jout:
-   if (_coll_fp != NULL) {
-      if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
-         if (putesc(cp, _coll_fp) < 0)
-            goto jerr;
-         if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+   /* Place signature? */
+   if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
+      FILE *fp;
+      size_t i;
+
+      if((quote = file_expand(cp)) == NULL){
+         n_err(_("*signature* expands to invalid file: \"%s\"\n"), cp);
+         goto jerr;
+      }
+      if((fp = Fopen(cp = quote, "r")) == NULL){
+         n_err(_("Can't open *signature* \"%s\": %s\n"), cp, strerror(errno));
+         goto jerr;
+      }
+
+      if(linebuf == NULL)
+         linebuf = smalloc(linesize = LINESIZE);
+      c = '\0';
+      while((i = fread(linebuf, sizeof *linebuf, linesize, fp)) > 0){
+         c = linebuf[i - 1];
+         if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
-      rewind(_coll_fp);
+
+      {  int e = errno, ise = ferror(fp);
+
+         Fclose(fp);
+
+         if(ise){
+            n_err(_("Errors while reading *signature* \"%s\": %s\n"),
+               cp, strerror(e));
+            goto jerr;
+         }
+      }
+
+      if(c != '\0' && c != '\n')
+         putc('\n', _coll_fp);
    }
+
+   if(fflush(_coll_fp))
+      goto jerr;
+
+   if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
+      if (putesc(cp, _coll_fp) < 0)
+         goto jerr;
+      if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+         goto jerr;
+   }
+   rewind(_coll_fp);
+
+jleave:
    if (linebuf != NULL)
       free(linebuf);
    handlerpop();
@@ -1060,7 +1099,7 @@ jerr:
       Fclose(_coll_fp);
       _coll_fp = NULL;
    }
-   goto jout;
+   goto jleave;
 }
 
 FL void
