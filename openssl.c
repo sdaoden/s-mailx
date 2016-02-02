@@ -109,6 +109,12 @@ EMPTY_FILE()
 # define _STACKOF(X)          /*X*/STACK
 #endif
 
+#if defined OPENSSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER + 0 >= 0x0090581fL
+# define _RAND_LOAD_FILE_MAXBYTES -1
+#else
+# define _RAND_LOAD_FILE_MAXBYTES 1024
+#endif
+
 enum ssl_state {
    SS_INIT           = 1<<0,
    SS_RAND_INIT      = 1<<1,
@@ -220,8 +226,8 @@ static struct smime_digest const _smime_digests[] = { /* Manual!! */
 static enum ssl_state   _ssl_state;
 static size_t           _ssl_msgno;
 
-static int        _ssl_rand_init(void);
-static void       _ssl_init(void);
+static bool_t     _ssl_rand_init(void);
+static void       _ssl_init(void); /* TODO must return error! */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
 static void       _ssl_load_algos(void);
 #endif
@@ -260,37 +266,70 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
-static int
-_ssl_rand_init(void)
-{
-   char *cp, *x;
-   int state = 0;
+static bool_t
+_ssl_rand_init(void){
+   char const *cp, *x;
+   bool_t rv;
    NYD_ENTER;
 
-#ifdef HAVE_OPENSSL_RAND_EGD
-   if ((cp = ok_vlook(ssl_rand_egd)) != NULL) {
-      if ((x = file_expand(cp)) == NULL || RAND_egd(cp = x) == -1)
-         n_err(_("Entropy daemon at \"%s\" not available\n"), cp);
-      else
-         state = 1;
-   } else
-#endif
-   if ((cp = ok_vlook(ssl_rand_file)) != NULL) {
-      if ((x = file_expand(cp)) == NULL || RAND_load_file(cp = x, 1024) == -1)
-         n_err(_("Entropy file at \"%s\" not available\n"), cp);
-      else {
-         struct stat st;
+   rv = FAL0;
 
-         if (!stat(cp, &st) && S_ISREG(st.st_mode) && !access(cp, W_OK)) {
-            if (RAND_write_file(cp) == -1) {
-               n_err(_("Writing entropy data to \"%s\" failed\n"), cp);
-            }
-         }
-         state = 1;
+   /* Shall use some external daemon? */
+   if((cp = ok_vlook(ssl_rand_egd)) != NULL){
+#ifdef HAVE_OPENSSL_RAND_EGD
+      if((x = file_expand(cp)) != NULL && RAND_egd(cp = x) != -1){
+         rv = TRU1;
+         goto jleave;
+      }
+      n_err(_("*ssl_rand_egd* daemon at \"%s\" not available\n"), cp);
+#else
+      if(options & OPT_D_VV)
+         n_err(_("*ssl_rand_egd* (\"%s\"): unsupported by SSL library\n"), cp);
+#endif
+   }
+
+   /* Prefer possible user setting */
+   if((cp = ok_vlook(ssl_rand_file)) != NULL){
+      x = NULL;
+      if(*cp != '\0'){
+         if((x = file_expand(cp)) == NULL)
+            n_err(_("*ssl-rand-file*: expansion of \"%s\" failed\n"), cp);
+      }
+      cp = x;
+   }
+
+   /* If the SSL PRNG is initialized don't put any more effort in this if the
+    * user defined entropy isn't usable */
+   if(cp == NULL){
+      if(RAND_status()){
+         rv = TRU1;
+         goto jleave;
+      }
+
+      if((cp = RAND_file_name(salloc(PATH_MAX), PATH_MAX)) == NULL){
+         n_err(_("*ssl-rand-file*: no SSL entropy file, can't seed PRNG\n"));
+         goto jleave;
       }
    }
+
+   if(RAND_load_file(cp, _RAND_LOAD_FILE_MAXBYTES) != -1){
+      for(x = (char*)-1;;){
+         RAND_seed(getrandstring(32), 32);
+         if((rv = (RAND_status() != 0)))
+            break;
+         if((x = (char*)((uintptr_t)x >> 1)) == NULL){
+            n_err(_("*ssl-rand-file*: can't seed SSL PRNG with entropy\n"));
+            goto jleave;
+         }
+      }
+
+      if(RAND_write_file(cp) == -1)
+         n_err(_("*ssl-rand-file*: writing entropy to \"%s\" failed\n"), cp);
+   }else
+      n_err(_("*ssl-rand-file*: \"%s\" cannot be loaded\n"), cp);
+jleave:
    NYD_LEAVE;
-   return state;
+   return rv;
 }
 
 static void
@@ -302,8 +341,8 @@ _ssl_init(void)
    NYD_ENTER;
 
    if (!(_ssl_state & SS_INIT)) {
-      SSL_library_init();
       SSL_load_error_strings();
+      SSL_library_init();
       _ssl_state |= SS_INIT;
    }
 

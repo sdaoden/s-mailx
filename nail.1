@@ -7738,10 +7738,19 @@ Not all SSL/TLS libraries support this.
 .
 .Mx
 .It Va ssl-rand-file
-\*(OP Gives the pathname to a file with entropy data, see
+\*(OP Gives the filename to a file with random entropy data, see
 .Xr RAND_load_file 3 .
-If the file is a regular file writable by the invoking user,
-new data is written to it after it has been loaded.
+If this variable is not set, or set to the empty string, or if the
+filename expansion failed, then
+.Xr RAND_file_name 3
+will be used to create the filename if, and only if,
+.Xr RAND_status 3
+documents that the SSL PRNG is not yet sufficiently seeded.
+If \*(UA successfully seeded the SSL PRNG then it'll update the file via
+.Xr RAND_write_file 3 .
+This variable is only used if
+.Va ssl-rand-egd
+is not set (or not supported by the SSL/TLS library).
 .
 .Mx Va ssl-verify
 .It Va ssl-verify-USER@HOST , ssl-verify-HOST , ssl-verify
