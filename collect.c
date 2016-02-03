@@ -609,16 +609,21 @@ collect(struct header *hp, int printheaders, struct message *mp,
    struct ignoretab *quoteig;
    int lc, cc, c, t;
    int volatile escape, getfields;
-   char *linebuf = NULL, *quote = NULL;
+   char *linebuf, *quote;
    char const *cp;
-   size_t linesize = 0; /* TODO line pool */
+   size_t i, linesize; /* TODO line pool */
    long cnt;
    enum sendaction action;
    sigset_t oset, nset;
    sighandler_type savedtop;
+   FILE volatile *sigfp;
    NYD_ENTER;
 
    _coll_fp = NULL;
+   sigfp = NULL;
+   linesize = 0;
+   linebuf = quote = NULL;
+
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
    sigemptyset(&nset);
@@ -757,8 +762,8 @@ jcont:
    /* No tilde escapes, interrupts not expected.  Simply copy STDIN */
    if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))) {
       linebuf = srealloc(linebuf, linesize = LINESIZE);
-      while ((cnt = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
-         if ((size_t)cnt != fwrite(linebuf, sizeof *linebuf, cnt, _coll_fp))
+      while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
+         if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
       goto jout;
@@ -1029,14 +1034,11 @@ jputline:
 jout:
    /* Place signature? */
    if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
-      FILE *fp;
-      size_t i;
-
       if((quote = file_expand(cp)) == NULL){
          n_err(_("*signature* expands to invalid file: \"%s\"\n"), cp);
          goto jerr;
       }
-      if((fp = Fopen(cp = quote, "r")) == NULL){
+      if((sigfp = Fopen(cp = quote, "r")) == NULL){
          n_err(_("Can't open *signature* \"%s\": %s\n"), cp, strerror(errno));
          goto jerr;
       }
@@ -1044,15 +1046,18 @@ jout:
       if(linebuf == NULL)
          linebuf = smalloc(linesize = LINESIZE);
       c = '\0';
-      while((i = fread(linebuf, sizeof *linebuf, linesize, fp)) > 0){
+      while((i = fread(linebuf, sizeof *linebuf, linesize, UNVOLATILE(sigfp)))
+            > 0){
          c = linebuf[i - 1];
          if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
 
-      {  int e = errno, ise = ferror(fp);
+      {  int e = errno, ise = ferror(UNVOLATILE(sigfp));
+         FILE *x = UNVOLATILE(sigfp);
 
-         Fclose(fp);
+         sigfp = NULL;
+         Fclose(x);
 
          if(ise){
             n_err(_("Errors while reading *signature* \"%s\": %s\n"),
@@ -1095,6 +1100,8 @@ jleave:
    return _coll_fp;
 
 jerr:
+   if(sigfp != NULL)
+      Fclose(UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {
       Fclose(_coll_fp);
       _coll_fp = NULL;
