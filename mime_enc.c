@@ -294,6 +294,7 @@ _b64_decode_prepare(struct str *work, struct str const *in)
 
    if (cp_len > 16)
       cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
+   cp_len += 2*3 +1;
    NYD2_LEAVE;
    return cp_len;
 }
