@@ -357,13 +357,12 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    char const *tmpname = NULL;
    size_t linesize = 0, linelen, cnt;
    int volatile term_infd;
-   int dostat, infld = 0, ignoring = 1, isenc, c;
+   int dostat, c;
    struct mimepart *volatile np;
    FILE * volatile ibuf = NULL, * volatile pbuf = obuf,
       * volatile qbuf = obuf, *origobuf = obuf;
    enum conversion volatile convert;
    sighandler_type volatile oldpipe = SIG_DFL;
-   long lineno = 0;
    NYD_ENTER;
 
    if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
@@ -395,7 +394,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          if (c == '\n')
             break;
       }
-   isenc = 0;
    convert = (action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
          action == SEND_TOSRCH)
@@ -403,6 +401,16 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    /* Work the headers */
    quoteflt_reset(qf, obuf);
+   /* C99 */{
+   enum {
+      HPS_NONE = 0,
+      HPS_IN_FIELD = 1<<0,
+      HPS_IGNORE = 1<<1,
+      HPS_ISENC_1 = 1<<2,
+      HPS_ISENC_2 = 1<<3
+   } hps = HPS_NONE;
+   size_t lineno = 0;
+
    while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
       ++lineno;
       if (line[0] == '\n') {
@@ -417,15 +425,16 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          break;
       }
 
-      isenc &= ~1;
-      if (infld && blankchar(line[0])) {
+      hps &= ~HPS_ISENC_1;
+      if ((hps & HPS_IN_FIELD) && blankchar(line[0])) {
          /* If this line is a continuation (SP / HT) of a previous header
           * field, determine if the start of the line is a MIME encoded word */
-         if (isenc & 2) {
-            for (cp = line; blankchar(*cp); ++cp);
+         if (hps & HPS_ISENC_2) {
+            for (cp = line; blankchar(*cp); ++cp)
+               ;
             if (cp > line && linelen - PTR2SIZE(cp - line) > 8 &&
                   cp[0] == '=' && cp[1] == '?')
-               isenc |= 1;
+               hps |= HPS_ISENC_1;
          }
       } else {
          /* Pick up the header field if we have one */
@@ -434,13 +443,18 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          cp2 = cp;
          while (spacechar(*cp))
             ++cp;
-         if (cp[0] != ':' && level == 0 && lineno == 1) {
+         if (cp[0] != ':') {
+            if (lineno != 1)
+               n_err(_("Malformed message: headers and body not separated "
+                  "(with empty line)\n"));
             /* Not a header line, force out status: This happens in uucp style
              * mail where there are no headers at all */
-            if (dostat & 1)
-               statusput(zmp, obuf, qf, stats);
-            if (dostat & 2)
-               xstatusput(zmp, obuf, qf, stats);
+            if (level == 0 /*&& lineno == 1*/) {
+               if (dostat & 1)
+                  statusput(zmp, obuf, qf, stats);
+               if (dostat & 2)
+                  xstatusput(zmp, obuf, qf, stats);
+            }
             if (doign != allignore)
                _out("\n", 1, obuf, CONV_NONE,SEND_MBOX, qf, stats, NULL);
             break;
@@ -456,23 +470,23 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
                (action == SEND_MBOX && !(dostat & (1 << 2)) &&
                 (!asccasecmp(line, "content-length") ||
                 !asccasecmp(line, "lines"))))
-            ignoring = 1;
+            hps |= HPS_IGNORE;
          else if (!asccasecmp(line, "status")) {
              /* If field is "status," go compute and print real Status: field */
             if (dostat & 1) {
                statusput(zmp, obuf, qf, stats);
                dostat &= ~1;
-               ignoring = 1;
+               hps |= HPS_IGNORE;
             }
          } else if (!asccasecmp(line, "x-status")) {
             /* If field is "status," go compute and print real Status: field */
             if (dostat & 2) {
                xstatusput(zmp, obuf, qf, stats);
                dostat &= ~2;
-               ignoring = 1;
+               hps |= HPS_IGNORE;
             }
          } else {
-            ignoring = 0;
+            hps &= ~HPS_IGNORE;
             /* For colourization we need the complete line, so save it */
             /* XXX This is all temporary (colour belongs into backend), so
              * XXX use tmpname as a temporary storage in the meanwhile */
@@ -483,7 +497,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          }
          *cp2 = c;
          dostat &= ~(1 << 2);
-         infld = 1;
+         hps |= HPS_IN_FIELD;
       }
 
       /* Determine if the end of the line is a MIME encoded word */
@@ -493,7 +507,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
        * TODO a MIME-encoded word or not, as long as a single separating space
        * TODO remains in between lines (the MIME stuff will correctly remove
        * TODO whitespace in between multiple adjacent encoded words) */
-      isenc &= ~2;
+      hps &= ~HPS_ISENC_2;
       if (cnt && (c = getc(ibuf)) != EOF) {
          if (blankchar(c)) {
             cp = line + linelen - 1;
@@ -502,12 +516,12 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             while (cp >= line && whitechar(*cp))
                --cp;
             if (PTR2SIZE(cp - line > 8) && cp[0] == '=' && cp[-1] == '?')
-               isenc |= 2;
+               hps |= HPS_ISENC_2;
          }
          ungetc(c, ibuf);
       }
 
-      if (!ignoring) {
+      if (!(hps & HPS_IGNORE)) {
          size_t len = linelen;
          start = line;
          if (action == SEND_TODISP || action == SEND_TODISP_ALL ||
@@ -515,12 +529,12 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
                action == SEND_TOSRCH) {
             /* Strip blank characters if two MIME-encoded words follow on
              * continuing lines */
-            if (isenc & 1)
+            if (hps & HPS_ISENC_1)
                while (len > 0 && blankchar(*start)) {
                   ++start;
                   --len;
                }
-            if (isenc & 2)
+            if (hps & HPS_ISENC_2)
                if (len > 0 && start[len - 1] == '\n')
                   --len;
             while (len > 0 && blankchar(start[len - 1]))
@@ -553,6 +567,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          }
       }
    }
+   } /* C99 */
    quoteflt_flush(qf);
    free(line);
    line = NULL;
