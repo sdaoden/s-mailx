@@ -2049,7 +2049,7 @@ jjumped:
 # else /* HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
       if ((ep = getservbyname(UNCONST(serv), "tcp")) != NULL)
-         urlp->url_portno = ep->s_port;
+         urlp->url_portno = ntohs(ep->s_port);
       else {
          if (options & OPT_VERB)
             n_err(_("failed\n"));
