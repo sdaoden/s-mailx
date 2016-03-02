@@ -831,9 +831,15 @@ mails may be read.
 When used like that the user's system mailbox (see the command
 .Ic file
 for an in-depth description of the different mailbox types that exist)
-is read in and a one line header of each message therein is printed.
-If the mailbox is empty, however, \*(UA will exit immediately (after
-printing a message) unless the variable
+is read in and a one line header of each message therein is displayed.
+The visual style of this summary of
+.Ic headers
+can be adjusted through the variable
+.Va headline
+and the possible sorting criterion via
+.Va autosort .
+If the initially opened mailbox is empty \*(UA will instead exit
+immediately (after displaying a message) unless the variable
 .Va emptystart
 is set.
 .
@@ -3839,17 +3845,22 @@ message-list.
 .
 .Mx
 .It Ic sort
-Create a sorted representation of the current folder,
-and change the
+Shows the current sorting criterion when used without an argument.
+Otherwise creates a sorted representation of the current folder,
+and changes the
 .Ic next
-command and the addressing modes such that they refer to messages in the
-sorted order.
+command and the addressing modes such that they refer to messages in
+the sorted order.
 Message numbers are the same as in regular mode.
 If the
 .Va header
 variable is set,
-a header summary in the new order is also printed.
-Possible sorting criteria are:
+a header summary in the new order is also displayed.
+Automatic folder sorting can be enabled by setting the
+.Va autosort
+variable, as in, e.g.,
+.Ql set autosort=thread .
+Possible sorting criterions are:
 .Pp
 .Bl -tag -compact -offset indent -width "subject"
 .It date
@@ -3882,9 +3893,6 @@ If the
 .Va showname
 variable is set, the recipient's real name (if any) is used.
 .El
-.Pp
-If no argument is given,
-the current sorting criterion is printed.
 .
 .Mx
 .It Ic source
@@ -5050,7 +5058,8 @@ The same as
 Causes sorted mode (see the
 .Ic sort
 command) to be entered automatically with the value of this option as
-sorting method when a folder is opened.
+sorting method when a folder is opened, e.g.,
+.Ql set autosort=thread .
 .
 .Mx
 .It Va bang
