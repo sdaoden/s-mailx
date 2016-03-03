@@ -2096,32 +2096,40 @@ FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
 
 /*
  * termcap.c
+ * This is a little bit hairy since it provides some stuff even if HAVE_TERMCAP
+ * is false due to encapsulation desire
  */
 
-#ifdef HAVE_TERMCAP
-/* termcap(3) / xy lifetime handling -- these will only do something if we're
- * OPT_INTERACTIVE etc. */
-FL void        termcap_init(void);
-FL void        termcap_destroy(void);
-# define termcap_init()          \
-   do if(options & OPT_INTERACTIVE) termcap_init(); while(0)
-# define termcap_destroy()       \
-   do if(options & OPT_INTERACTIVE) termcap_destroy(); while(0)
+#ifdef n_HAVE_TCAP
+/* termcap(3) / xy lifetime handling -- only called if we're OPT_INTERACTIVE
+ * but not doing something in OPT_QUICKRUN_MASK */
+FL void        n_termcap_init(void);
+FL void        n_termcap_destroy(void);
 
-/* Must be called whenever the terminal is released / reaquired */
-FL void        termcap_suspend(void);
-FL void        termcap_resume(void);
-# define termcap_suspend()       \
-   do if(options & OPT_INTERACTIVE) termcap_suspend(); while(0)
-# define termcap_resume()        \
-   do if(options & OPT_INTERACTIVE) termcap_resume(); while(0)
+/* enter_ca_mode / enable keypad (both if possible).
+ * TODO When complete is not set we won't enter_ca_mode, for example: we don't
+ * TODO want a complete screen clearance after $PAGER returned after displaying
+ * TODO a mail, because otherwise the screen would look differently for normal
+ * TODO stdout display messages.  Etc. */
+# ifdef HAVE_TERMCAP
+FL void        n_termcap_resume(bool_t complete);
+FL void        n_termcap_suspend(bool_t complete);
 
-#else /* HAVE_TERMCAP */
-# define termcap_init()
-# define termcap_destroy()
-# define termcap_suspend()
-# define termcap_resume()
-#endif
+#  define n_TERMCAP_RESUME(CPL)  n_termcap_resume(CPL)
+#  define n_TERMCAP_SUSPEND(CPL) n_termcap_suspend(CPL)
+# else
+#  define n_TERMCAP_RESUME(CPL)
+#  define n_TERMCAP_SUSPEND(CPL)
+# endif
+
+/* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
+ * for commands which are not available and have no builtin fallback.
+ * For query options the return represents a true value and -1 error.
+ * Will return FAL0 directly unless we've been initialized.
+ * By convention unused argument slots are given as -1 */
+FL ssize_t    n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
+# define n_termcap_cmdx(CMD)     n_termcap_cmd(CMD, -1, -1)
+#endif /* n_HAVE_TCAP */
 
 /*
  * thread.c

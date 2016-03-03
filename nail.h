@@ -282,6 +282,11 @@
 #define SBUFFER_SIZE    ((0x10000u >> 1u) - 0x400)
 #define SBUFFER_BUILTIN (0x10000u >> 1u)
 
+/* Switch indicating necessity of terminal access interface (termcap.c) */
+#if defined HAVE_TERMCAP
+# define n_HAVE_TCAP
+#endif
+
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
 # define XSHELL         "/bin/sh"
@@ -1060,6 +1065,33 @@ enum tdflags {
    _TD_BUFCOPY    = 1<<15     /* Buffer may be constant, copy it */
 };
 
+/* Shared terminal capability descriptions.
+ * NO,NO: necessary n_termcap_cmd() arguments */
+#ifdef n_HAVE_TCAP
+enum n_termcap_cmd{
+# ifdef HAVE_TERMCAP
+   n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: 0,0 */
+   n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: 0,0 */
+
+   n_TERMCAP_CMD_ks,    /* smkx/ks: -,- */
+   n_TERMCAP_CMD_ke,    /* rmkx/ke: -,- */
+
+   n_TERMCAP_CMD_cd,    /* clr_eos/ed/cd: 0,0 */
+   n_TERMCAP_CMD_cl,    /* clear_screen/clear/cl (+home cursor): 0,0 */
+   /*n_TERMCAP_CMD_cm,*/    /* cursor_address/cup/cm: row,column */
+   n_TERMCAP_CMD_ho,    /* cursor_home/home/ho: 0,0 */
+# endif
+
+   n__TERMCAP_CMD_MAX,
+   n__TERMCAP_CMD_MASK = (1<<24) - 1,
+
+   /* Only perform command if ca-mode is used */
+   n_TERMCAP_CMD_FLAG_CA_MODE = 1<<29,
+   /* I/O should be flushed after command completed */
+   n_TERMCAP_CMD_FLAG_FLUSH = 1<<30
+};
+#endif /* n_HAVE_TCAP */
+
 enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
@@ -1139,7 +1171,9 @@ enum program_state {
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
    PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
-   PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
+   PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
+   PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
+   PS_TERMCAP_CA_MODE = 1<<28       /* HAVE_TERMCAP: ca_mode available & used */
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.
@@ -1249,7 +1283,6 @@ ok_b_emptybox,
    ok_b_keepsave,
 
    ok_v_LISTER,
-   ok_v_line_editor_cursor_right,      /* {special=1} */
    ok_b_line_editor_disable,
 
    ok_v_MAIL,
@@ -1369,7 +1402,8 @@ ok_v_smtp_auth_user,
    ok_v_ssl_verify,
    ok_v_stealthmua,
 
-   ok_b_term_ca_mode,
+   ok_v_termcap,
+   ok_b_termcap_disable,
    ok_v_toplines,
    ok_v_ttycharset,
 

@@ -2123,28 +2123,20 @@ if feat_yes TERMCAP; then
 #include <string.h>
 ${2}
 #include <term.h>
-#define PTR2SIZE(X) ((unsigned long)(X))
 #define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
-static char *_termcap_buffer, *_termcap_ti, *_termcap_te;
+static int my_putc(int c){return putchar(c);}
 int main(void){
-   char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+   char buf[1024+512], cmdbuf[2048], *cpb, *r1;
+   int r2 = OK, r3 = ERR;
 
    tgetent(buf, getenv("TERM"));
    cpb = cmdbuf;
-   cpti = cpb;
-   if ((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
-      goto jleave;
-   cpte = cpb;
-   if ((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
-      goto jleave;
-   _termcap_buffer = malloc(PTR2SIZE(cpb - cmdbuf));
-   memcpy(_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
-   _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
-   _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
-   tputs(_termcap_ti, 1, &putchar);
-   tputs(_termcap_te, 1, &putchar);
-jleave:
-   return (cp == NULL);
+   r1 = tgetstr(UNCONST("cm"), &cpb);
+   tgoto(r1, 1, 1);
+   r2 = tgetnum(UNCONST("Co"));
+   r3 = tgetflag(UNCONST("ut"));
+   tputs("cr", 1, &my_putc);
+   return (r1 == NULL || r2 == -1 || r3 == 0);
 }
 _EOT
    }

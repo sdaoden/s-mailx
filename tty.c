@@ -383,7 +383,7 @@ n_tty_signal(int sig){
          rl_free_line_state();
          rl_cleanup_after_signal();
       }
-      termcap_suspend();
+      n_TERMCAP_SUSPEND(TRU1);
       a_tty_sigs_down();
 
       sigemptyset(&nset);
@@ -394,7 +394,7 @@ n_tty_signal(int sig){
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
       a_tty_sigs_up();
-      termcap_resume();
+      n_TERMCAP_RESUME(TRU1);
       if(sig == SIGHUP)
          rl_reset_after_signal();
       break;
@@ -416,7 +416,9 @@ FL int
    }
 
    a_tty_sigs_up();
+   n_TERMCAP_SUSPEND(FAL0);
    line = readline(prompt != NULL ? prompt : "");
+   n_TERMCAP_RESUME(FAL0);
    a_tty_sigs_down();
 
    if(line == NULL){
@@ -1259,7 +1261,6 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
    if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
       l.prompt = prompt = "?ERR?";
    /* TODO *l.nd=='\0' : instead adjust accmacvar.c to disallow empty vals */
-   if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
       l.nd = "\033[C"; /* XXX no "magic" constant */
    l.x_buf = buf;
    l.x_bufsize = bufsize;
@@ -1655,7 +1656,7 @@ n_tty_signal(int sig)
       break;
    default:
       _ncl_term_mode(FAL0);
-      termcap_suspend();
+      n_TERMCAP_SUSPEND(TRU1);
       a_tty_sigs_down();
 
       sigemptyset(&nset);
@@ -1666,7 +1667,7 @@ n_tty_signal(int sig)
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
       a_tty_sigs_up();
-      termcap_resume();
+      n_TERMCAP_RESUME(TRU1);
       _ncl_term_mode(TRU1);
       break;
    }
@@ -1854,7 +1855,7 @@ n_tty_signal(int sig){
    default:{
       sigset_t nset, oset;
 
-      termcap_suspend();
+      n_TERMCAP_SUSPEND(TRU1);
       a_tty_sigs_down();
 
       sigemptyset(&nset);
@@ -1865,7 +1866,7 @@ n_tty_signal(int sig){
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
       a_tty_sigs_up();
-      termcap_resume();
+      n_TERMCAP_RESUME(TRU1);
       break;
    }
    }

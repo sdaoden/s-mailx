@@ -463,7 +463,7 @@ stop(int s)
    safe_signal(s, old_action);
    if (_reset_on_stop) {
       _reset_on_stop = 0;
-      termcap_resume();
+      n_TERMCAP_RESUME(TRU1);
       reset(0);
    }
 }
