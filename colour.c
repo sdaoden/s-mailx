@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `colour' and `mono' commands, and anything working with it.
+ *@ `(un)?colour' commands, and anything working with it.
  *
  * Copyright (c) 2014 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -30,9 +30,9 @@ EMPTY_FILE()
 #define a_COLOUR_TAG_IS_SPECIAL(P) (PTR2SIZE(P) >= PTR2SIZE(-3))
 
 enum a_colour_type{
+   a_COLOUR_T_COLOUR256,
    a_COLOUR_T_COLOUR,
-   a_COLOUR_T_MONO,
-   a_COLOUR_T_TYPES = 2
+   a_COLOUR_T_MONO
 };
 
 enum a_colour_tag_type{
@@ -51,7 +51,7 @@ struct a_colour_map_id{
    ui8_t cmi_tt;                 /* enum a_colour_tag_type */
    char const cmi_name[13];
 };
-CTA(_n_COLOUR_IDS <= UI8_MAX);
+CTA(n__COLOUR_IDS <= UI8_MAX);
 
 struct n_colour_pen{
    struct str cp_dat;   /* Pre-prepared ISO 6429 escape sequence */
@@ -76,11 +76,12 @@ struct a_colour_g{
    ui8_t cg_group;                  /* If .cg_has_env, enum n_colour_group */
    ui8_t __cg_pad[6];
    struct a_colour_map *cg_active;  /* The currently active colour */
-   /* Active mapping: .cg_colour_maps on colour terminal, _mono_ otherwise */
-   struct a_colour_map *(*cg_maps)[_n_COLOUR_GROUPS][_n_COLOUR_IDS];
+   /* Active mapping: .cg_colour*_maps on colour terminal, _mono_ otherwise */
+   struct a_colour_map *(*cg_maps)[n__COLOUR_GROUPS][n__COLOUR_IDS];
    struct n_colour_pen cg_reset;    /* The reset sequence */
-   struct a_colour_map *cg_colour_maps[_n_COLOUR_GROUPS][_n_COLOUR_IDS];
-   struct a_colour_map *cg_mono_maps[_n_COLOUR_GROUPS][_n_COLOUR_IDS];
+   struct a_colour_map *cg_colour256_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
+   struct a_colour_map *cg_colour_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
+   struct a_colour_map *cg_mono_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
    char cg_reset_buf[sizeof("\033[0m")];
 };
 
@@ -105,12 +106,12 @@ struct a_colour_env{
 /* C99: use [INDEX]={} */
 CTA(n_COLOUR_GROUP_SUM == 0);
 CTA(n_COLOUR_GROUP_VIEW == 1);
-static char const a_colour_group_prefixes[_n_COLOUR_GROUPS][8] = {
+static char const a_colour_group_prefixes[n__COLOUR_GROUPS][8] = {
    "sum-", "view-"
 };
 
 static struct a_colour_map_id const
-      a_colour_map_ids[_n_COLOUR_GROUPS][_n_COLOUR_IDS] = {{
+      a_colour_map_ids[n__COLOUR_GROUPS][n__COLOUR_IDS] = {{
    {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_DOTMARK, a_COLOUR_TT_SUM, "dotmark"},
    {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_HEADER, a_COLOUR_TT_SUM, "header"},
    {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_THREAD, a_COLOUR_TT_SUM, "thread"},
@@ -130,11 +131,14 @@ static struct a_colour_env *a_colour_env;
 static void a_colour_init(void);
 DBG( static void a_colour_atexit(void); )
 
-/* Shared `(un)?(colour|mono)' implementations */
-static bool_t a_colour_mux(enum a_colour_type ct, char **argv);
-static bool_t a_colour_unmux(enum a_colour_type ct, char **argv);
+/* Find the type or -1 */
+static enum a_colour_type a_colour_type_find(char const *name);
 
-static bool_t a_colour__show(enum a_colour_type tp);
+/* `(un)?colour' implementations */
+static bool_t a_colour_mux(char **argv);
+static bool_t a_colour_unmux(char **argv);
+
+static bool_t a_colour__show(enum a_colour_type ct);
 /* (regexpp may be NULL) */
 static char const *a_colour__tag_identify(struct a_colour_map_id const *cmip,
                      char const *ctag, void **regexpp);
@@ -170,6 +174,10 @@ a_colour_init(void){
       a_colour_g->cg_reset.cp_dat.l = sizeof("\033[0m") -1); /* (calloc) */
 
    /* terminfo rocks: if we find "color", assume it's right; don't case care */
+   a_colour_g->cg_maps = &a_colour_g->cg_colour256_maps;
+   if(asccasestr(term, "256color") != NULL) /* FIXME temporary hack */
+      goto jmaps;
+
    a_colour_g->cg_maps = &a_colour_g->cg_colour_maps;
 
    if(asccasestr(term, "color") != NULL)
@@ -201,15 +209,50 @@ a_colour_atexit(void){
 }
 #endif
 
+static enum a_colour_type
+a_colour_type_find(char const *name){
+   struct{
+      char name[7];
+      ui8_t type;
+   } const ta[] = {
+      {"256", a_COLOUR_T_COLOUR256},
+      {"8", a_COLOUR_T_COLOUR},
+      {"iso", a_COLOUR_T_COLOUR},
+      {"ansi", a_COLOUR_T_COLOUR},
+      {"1", a_COLOUR_T_MONO},
+      {"mono", a_COLOUR_T_MONO}
+   }, *tp;
+   enum a_colour_type rv;
+   NYD2_ENTER;
+
+   tp = ta;
+   do if(!asccasecmp(tp->name, name)){
+      rv = tp->type;
+      goto jleave;
+   }while(PTRCMP(++tp, !=, ta + NELEM(ta)));
+
+   rv = (enum a_colour_type)-1;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
 static bool_t
-a_colour_mux(enum a_colour_type ct, char **argv){
+a_colour_mux(char **argv){
    void *regexp;
-   char const *cmd, *mapname, *ctag;
-   struct a_colour_map *(*mapp)[_n_COLOUR_GROUPS][_n_COLOUR_IDS], **cmap,
+   char const *mapname, *ctag;
+   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], **cmap,
       *blcmp, *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
    bool_t rv;
+   enum a_colour_type ct;
    NYD2_ENTER;
+
+   if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
+      n_err(_("`colour': invalid colour type \"%s\"\n"), argv[-1]);
+      rv = FAL0;
+      goto jleave;
+   }
 
    if(a_colour_g == NULL)
       a_colour_init();
@@ -221,17 +264,25 @@ a_colour_mux(enum a_colour_type ct, char **argv){
 
    rv = FAL0;
    regexp = NULL;
-   cmd = (ct == a_COLOUR_T_COLOUR) ? "colour" : "mono";
-   mapp = (ct == a_COLOUR_T_COLOUR) ? &a_colour_g->cg_colour_maps
-         : &a_colour_g->cg_mono_maps;
+   switch(ct){
+   case a_COLOUR_T_COLOUR256:
+      mapp = &a_colour_g->cg_colour256_maps;
+      break;
+   case a_COLOUR_T_COLOUR:
+      mapp = &a_colour_g->cg_colour_maps;
+      break;
+   default:
+      mapp = &a_colour_g->cg_mono_maps;
+      break;
+   }
 
    if((cmip = a_colour_map_id_find(mapname = argv[0])) == NULL){
-      n_err(_("`%s': non-existing mapping: \"%s\"\n"), cmd, mapname);
+      n_err(_("`colour': non-existing mapping: \"%s\"\n"), mapname);
       goto jleave;
    }
 
    if(argv[1] == NULL){
-      n_err(_("`%s': \"%s\": missing attributes argument\n"), cmd, mapname);
+      n_err(_("`colour': \"%s\": missing attribute argument\n"), mapname);
       goto jleave;
    }
 
@@ -241,13 +292,13 @@ a_colour_mux(enum a_colour_type ct, char **argv){
       char const *xtag;
 
       if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-         n_err(_("`%s': \"%s\" doesn't support preconditions\n"), cmd, mapname);
+         n_err(_("`colour': \"%s\" doesn't support preconditions\n"), mapname);
          goto jleave;
       }else if((xtag = a_colour__tag_identify(cmip, ctag, &regexp)) ==
             n_COLOUR_TAG_ERR){
          /* I18N: ..of colour mapping */
-         n_err(_("`%s': \"%s\": invalid precondition: \"%s\"\n"),
-            cmd, mapname, ctag);
+         n_err(_("`colour': \"%s\": invalid precondition: \"%s\"\n"),
+            mapname, ctag);
          goto jleave;
       }
       ctag = xtag;
@@ -280,7 +331,7 @@ a_colour_mux(enum a_colour_type ct, char **argv){
 
       if(!a_colour_iso6429(ct, &cp, argv[1])){
          /* I18N: colour command: mapping: error message: user argument */
-         n_err(_("`%s': \"%s\": %s: \"%s\"\n"), cmd, mapname, cp, argv[1]);
+         n_err(_("`colour': \"%s\": %s: \"%s\"\n"), mapname, cp, argv[1]);
          goto jleave;
       }
 
@@ -336,15 +387,21 @@ jleave:
 }
 
 static bool_t
-a_colour_unmux(enum a_colour_type ct, char **argv){
-   char const *cmd, *mapname, *ctag, *xtag;
-   struct a_colour_map *(*mapp)[_n_COLOUR_GROUPS][_n_COLOUR_IDS], **cmap,
+a_colour_unmux(char **argv){
+   char const *mapname, *ctag, *xtag;
+   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], **cmap,
       *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
    bool_t rv;
+   enum a_colour_type ct;
    NYD2_ENTER;
 
-   cmd = (ct == a_COLOUR_T_COLOUR) ? "uncolour" : "unmono";
+   if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
+      n_err(_("`uncolour': invalid colour type \"%s\"\n"), argv[-1]);
+      rv = FAL0;
+      goto jleave;
+   }
+
    mapname = argv[0];
    ctag = (mapname != NULL) ? argv[1] : mapname;
 
@@ -353,16 +410,25 @@ a_colour_unmux(enum a_colour_type ct, char **argv){
       goto jemap;
    rv = FAL0;
 
-   mapp = (ct == a_COLOUR_T_COLOUR)
-         ? &a_colour_g->cg_colour_maps : &a_colour_g->cg_mono_maps;
+   switch(ct){
+   case a_COLOUR_T_COLOUR256:
+      mapp = &a_colour_g->cg_colour256_maps;
+      break;
+   case a_COLOUR_T_COLOUR:
+      mapp = &a_colour_g->cg_colour_maps;
+      break;
+   default:
+      mapp = &a_colour_g->cg_mono_maps;
+      break;
+   }
 
    /* Delete anything? */
    if(ctag == NULL && mapname[0] == '*' && mapname[1] == '\0'){
       size_t i1, i2;
       struct a_colour_map *tmp;
 
-      for(i1 = 0; i1 < _n_COLOUR_GROUPS; ++i1)
-         for(i2 = 0; i2 < _n_COLOUR_IDS; ++i2)
+      for(i1 = 0; i1 < n__COLOUR_GROUPS; ++i1)
+         for(i2 = 0; i2 < n__COLOUR_IDS; ++i2)
             for(cmp = *(cmap = &(*mapp)[i1][i2]), *cmap = NULL; cmp != NULL;){
                tmp = cmp;
                cmp = cmp->cm_next;
@@ -372,8 +438,8 @@ a_colour_unmux(enum a_colour_type ct, char **argv){
       if(a_colour_g == NULL){
 jemap:
          /* I18N: colour command, mapping and precondition (option in quotes) */
-         n_err(_("`%s': non-existing mapping: \"%s\"%s%s%s\n"),
-            cmd, mapname, (ctag == NULL ? "" : " \""),
+         n_err(_("`uncolour': non-existing mapping: \"%s\"%s%s%s\n"),
+            mapname, (ctag == NULL ? "" : " \""),
             (ctag == NULL ? "" : ctag), (ctag == NULL ? "" : "\""));
          goto jleave;
       }
@@ -383,13 +449,13 @@ jemap:
 
       if((xtag = ctag) != NULL){
          if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-            n_err(_("`%s': \"%s\" doesn't support preconditions\n"),
-               cmd, mapname);
+            n_err(_("`uncolour': \"%s\" doesn't support preconditions\n"),
+               mapname);
             goto jleave;
          }else if((xtag = a_colour__tag_identify(cmip, ctag, NULL)) ==
                n_COLOUR_TAG_ERR){
-            n_err(_("`%s': \"%s\": invalid precondition: \"%s\"\n"),
-               cmd, mapname, ctag);
+            n_err(_("`uncolour': \"%s\": invalid precondition: \"%s\"\n"),
+               mapname, ctag);
             goto jleave;
          }
          /* (Improve user experience) */
@@ -427,23 +493,30 @@ jleave:
 }
 
 static bool_t
-a_colour__show(enum a_colour_type tp){
-   char const *cmd;
-   struct a_colour_map *(*mapp)[_n_COLOUR_GROUPS][_n_COLOUR_IDS], *cmp;
+a_colour__show(enum a_colour_type ct){
+   char const *type;
+   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], *cmp;
    size_t i1, i2;
    bool_t rv;
    NYD2_ENTER;
 
-   if(tp == a_COLOUR_T_COLOUR){
-      cmd = "colour";
+   switch(ct){
+   case a_COLOUR_T_COLOUR256:
+      type = "256";
+      mapp = &a_colour_g->cg_colour256_maps;
+      break;
+   case a_COLOUR_T_COLOUR:
+      type = "iso";
       mapp = &a_colour_g->cg_colour_maps;
-   }else{
-      cmd = "mono";
+      break;
+   default:
+      type = "mono";
       mapp = &a_colour_g->cg_mono_maps;
+      break;
    }
 
-   for(i1 = 0; i1 < _n_COLOUR_GROUPS; ++i1)
-      for(i2 = 0; i2 < _n_COLOUR_IDS; ++i2){
+   for(i1 = 0; i1 < n__COLOUR_GROUPS; ++i1)
+      for(i2 = 0; i2 < n__COLOUR_IDS; ++i2){
          if((cmp = (*mapp)[i1][i2]) == NULL)
             continue;
 
@@ -461,8 +534,8 @@ a_colour__show(enum a_colour_type tp){
             else if(cmp->cm_regex != NULL)
                tagann = "[rx] ";
 #endif
-            printf("%s %-*s %s %s%s\n",
-               cmd, a_COLOUR_MAP_SHOW_FIELDWIDTH,
+            printf("colour %s %-*s %s %s%s\n",
+               type, a_COLOUR_MAP_SHOW_FIELDWIDTH,
                savecat(a_colour_group_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),
                (char const*)cmp->cm_buf + cmp->cm_user_off,
@@ -528,13 +601,13 @@ jetag:
 static struct a_colour_map_id const *
 a_colour_map_id_find(char const *cp){
    size_t i;
-   struct a_colour_map_id const (*cmip)[_n_COLOUR_IDS], *rv;
+   struct a_colour_map_id const (*cmip)[n__COLOUR_IDS], *rv;
    NYD2_ENTER;
 
    rv = NULL;
 
    for(i = 0;; ++i){
-      if(i == _n_COLOUR_IDS)
+      if(i == n__COLOUR_IDS)
          goto jleave;
       else{
          size_t j = strlen(a_colour_group_prefixes[i]);
@@ -547,7 +620,7 @@ a_colour_map_id_find(char const *cp){
    cmip = &a_colour_map_ids[i];
 
    for(i = 0;; ++i){
-      if(i == _n_COLOUR_IDS || (rv = &(*cmip)[i])->cmi_name[0] == '\0'){
+      if(i == n__COLOUR_IDS || (rv = &(*cmip)[i])->cmi_name[0] == '\0'){
          rv = NULL;
          break;
       }
@@ -678,12 +751,14 @@ jiter_colour:
             *store = UNCONST(_("colours are not allowed"));
             goto jleave;
          }
-         /* Maybe 256 color spec TODO allow user some query to check
-          * TODO wether this is applicable, we know with TERMCAP,
-          * TODO we might now otherwise; macros with arguments/returns or
-          * TODO special variable or whatever */
+         /* Maybe 256 color spec */
          if(digitchar(x[0])){
             sl_i xv;
+
+            if(ct == a_COLOUR_T_COLOUR){
+               *store = UNCONST(_("invalid colour for 8-colour mode"));
+               goto jleave;
+            }
 
             xv = strtol(x, &cp, 10);
             if(xv < 0 || xv > 255 || *cp != '\0' || PTRCMP(&x[3], <, cp)){
@@ -764,7 +839,7 @@ c_colour(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = !a_colour_mux(a_COLOUR_T_COLOUR, v);
+   rv = !a_colour_mux(v);
    NYD_LEAVE;
    return rv;
 }
@@ -774,27 +849,7 @@ c_uncolour(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = !a_colour_unmux(a_COLOUR_T_COLOUR, v);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_mono(void *v){
-   int rv;
-   NYD_ENTER;
-
-   rv = !a_colour_mux(a_COLOUR_T_MONO, v);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_unmono(void *v){
-   int rv;
-   NYD_ENTER;
-
-   rv = !a_colour_unmux(a_COLOUR_T_MONO, v);
+   rv = !a_colour_unmux(v);
    NYD_LEAVE;
    return rv;
 }

@@ -403,14 +403,10 @@
      DS(N_("<show> (default), <load> or <clear> the .netrc cache")) },
 #endif
 #ifdef HAVE_COLOUR
-   { "colour", &c_colour, (M | RAWLIST), 0, 3
-     DS(N_("Show all colour settings or define one")) },
-   { "uncolour", &c_uncolour, (M | RAWLIST), 1, 2
-     DS(N_("Un`colour' <mapping> [<precondition>] (\"*\" for all)")) },
-   { "mono", &c_mono, (M | RAWLIST), 0, 3
-     DS(N_("Show all monochrome settings or define one")) },
-   { "unmono", &c_unmono, (M | RAWLIST), 1, 2
-     DS(N_("Un`mono'chrome <mapping> [<precondition>] (\"*\" for all)")) },
+   { "colour", &c_colour, (M | RAWLIST), 1, 4
+     DS(N_("Show colour settings of <type> (mono, iso, 256) or define one")) },
+   { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
+     DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 #endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0

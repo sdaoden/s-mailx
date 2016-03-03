@@ -774,7 +774,7 @@ enum expand_addr_check_mode {
 enum n_colour_group{
    n_COLOUR_GROUP_SUM,
    n_COLOUR_GROUP_VIEW,
-   _n_COLOUR_GROUPS = 2
+   n__COLOUR_GROUPS = 2
 };
 
 enum n_colour_id{
@@ -789,7 +789,7 @@ enum n_colour_id{
    n_COLOUR_ID_VIEW_MSGINFO,
    n_COLOUR_ID_VIEW_PARTINFO,
 
-   _n_COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
+   n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
 };
 
 /* Colour preconditions, let's call them tags, cannot be an enum because for

@@ -721,11 +721,9 @@ FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
  */
 
 #ifdef HAVE_COLOUR
-/* `(un)?(colour|mono)' */
+/* `(un)?colour' */
 FL int         c_colour(void *v);
 FL int         c_uncolour(void *v);
-FL int         c_mono(void *v);
-FL int         c_unmono(void *v);
 
 /* We want coloured output (in this salloc() cycle).  pager_used is used to
  * test wether *colour-pager* is to be inspected.

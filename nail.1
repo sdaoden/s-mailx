@@ -2207,10 +2207,8 @@ and
 .\" .Ss "Coloured display" {{{
 .Ss "Coloured display"
 .
-\*(OP \*(UA can be configured to support coloured display,
-realized by emitting ISO 6429 (ECMA-48 / ANSI) terminal control escape
-sequences for colour and font attribute control.
-At least the latter can optionally be used on a monochrome display, too.
+\*(OP \*(UA can be configured to support a coloured display and font
+attributes.
 Colour usage depends on the value of the environment variable
 .Ev TERM :
 if that is not set or set to the value
@@ -2245,99 +2243,31 @@ If the variable
 is set then any active usage of colour and font attribute sequences
 is suppressed, but without affecting possibly established
 .Ic colour
-and
-.Ic mono Ns
-chrome mappings.
+mappings.
 .
 .Pp
-To define and control colours and font attributes two commands exist:
+To define and control colours and font attributes a single multiplexer
+command family exists:
 .Ic colour
-shows or defines colour mappings which are used if coloured display is
-possible and
-.Ic mono
-shows or defines font attribute mappings for monochrome displays.
-The commands
+shows or defines colour mappings for the given colour type (e.g.,
+monochrome) and
 .Ic uncolour
-and
-.Ic unmono
-can be used to remove mappings.
-The following (case-insensitive) keywords and attributes exist:
-.
-.
-.Bl -tag -width ft=
-.It Cd ft=
-a font attribute:
-.Ql bold ,
-.Ql reverse
-or
-.Ql underline .
-It is possible (and often applicable) to specify multiple font
-attributes for a single mapping.
-.
-.It Cd fg=
-foreground colour attribute:
-.Ql black ,
-.Ql blue ,
-.Ql green ,
-.Ql red ,
-.Ql brown ,
-.Ql magenta ,
-.Ql cyan
-or
-.Ql white .
-If the terminal offers 256-color support decimal numbers in the range
-0 to 255, inclusive, may be given instead:
-.Pp
-.Bl -tag -compact -width "999 - 999"
-.It 0 - 7
-the standard ISO 6429 colors, as above.
-.It 8 - 15
-high intensity variants of the standard colors.
-.It 16 - 231
-216 colors in tuples of 6.
-.It 232 - 255
-grayscale from black to white in 24 steps.
-.El
-.Bd -literal -offset indent
-#!/bin/sh -
-fg() { printf "\e033[38;5;${1}m($1)"; }
-bg() { printf "\e033[48;5;${1}m($1)"; }
-i=0
-while [ $i -lt 256 ]; do fg $i; i=$(($i + 1)); done
-printf "\e033[0m\en"
-i=0
-while [ $i -lt 256 ]; do bg $i; i=$(($i + 1)); done
-printf "\e033[0m\en"
-.Ed
-.
-.It Cd bg=
-background colour attribute (see
-.Cd fg=
-for possible values).
-.El
-.
-.
-.Pp
-When creating a colour or font attribute mapping for one of the
-mappable slots (the command
-.Ic colour
-gives a listing of all possible slots) multiple keywords / attribute
-pairs can be joined in a comma-separated list;
-and, since colours are only available in interactive mode, it may make
+can be used to remove mappings of a given colour type.
+Since colours are only available in interactive mode, it may make
 sense to conditionalize the colour setup by encapsulating it with
 .Ic if :
 .
 .Bd -literal -offset indent
 if terminal
-  colour view-header ft=bold,fg=magenta,bg=cyan
-  colour view-header ft=bold,fg=208,bg=230 subject,from
+  colour iso  view-msginfo  ft=bold,fg=green
+  colour iso  view-header   ft=bold,fg=red   "from,subject"
+  colour iso  view-header   fg=red
 
-  mono   view-header ft=bold
-  mono   view-header ft=bold,ft=reverse subject,from
-
-  unmono view-header
-  unmono view-header subject,from
-  uncolour view-header
+  uncolour iso view-header  from,subject
+  colour iso  view-header   ft=bold,fg=magenta,bg=cyan
+  colour 256  view-header   ft=bold,fg=208,bg=230 subject,from
+  colour mono view-header   ft=bold
+  colour mono view-header   ft=bold,ft=reverse subject,from
 endif
 .Ed
 .\" }}}
@@ -2642,29 +2572,34 @@ in header summaries, unless they are in state
 .
 .Mx
 .It Ic colour
-\*(OP Without arguments the list of all currently defined colour
-mappings is shown.
-If given two or three arguments a mapping of colour and font attributes,
-as documented in the section
-.Sx "Coloured display" ,
-is established for the given slot, e.g.:
-.
-.Bd -literal -offset indent
-colour view-msginfo ft=bold,fg=green
-colour view-header  ft=bold,fg=red   "from,subject"
-colour view-header  fg=red
-
-uncolour view-header from,subject
-.Ed
+\*(OP Manage colour mappings for the type of colour given as the
+(case-insensitive) first argument, which must be one of
+.Ql 256
+for 256-colour terminals,
+.Ql 8 ,
+.Ql ansi
+or
+.Ql iso
+for the standard 8-colour ANSI / ISO 6429 color palette and
+.Ql 1
+or
+.Ql mono
+for monochrome terminals.
+Monochrome terminals cannot deal with colours, but only (some) font
+attributes.
 .
 .Pp
-If called with two arguments a default mapping is created, the optional
-third argument defines a mapping with precondition: if conditioned
-mappings exist they are tested in (creation) order unless
-a (case-insensitive) match has been found, and the default mapping (if
-any) will only be chosen as a last resort.
-The available types of preconditions depend on the mappable slot.
-The following mappable slots exist:
+Without further arguments the list of all currently defined mappings for
+the given colour type is shown.
+Otherwise the second argument defines the mappable slot, the third
+argument a (comma-separated list of) colour and font attribute
+specification(s), and the optional fourth argument can be used to
+specify a precondition: if conditioned mappings exist they are tested in
+(creation) order unless a (case-insensitive) match has been found, and
+the default mapping (if any has been established) will only be chosen as
+a last resort.
+The types of precondition available depend on the mappable slot, the
+following of which exist:
 .
 .Pp
 .Bl -tag -compact -width view-partinfo
@@ -2717,11 +2652,67 @@ For MIME part info lines.
 .El
 .
 .Pp
-Colour mappings may be removed with the command
-.Ic uncolour ,
-as shown above; Use the command
-.Ic mono
-to create mappings for monochrome displays.
+The following (case-insensitive) colour definitions and font attributes
+are understood, multiple of which can be specified in a comma-separated
+list:
+.
+.Bl -tag -width ft=
+.It Cd ft=
+a font attribute:
+.Ql bold ,
+.Ql reverse
+or
+.Ql underline .
+It is possible (and often applicable) to specify multiple font
+attributes for a single mapping.
+.
+.It Cd fg=
+foreground colour attribute:
+.Ql black ,
+.Ql blue ,
+.Ql green ,
+.Ql red ,
+.Ql brown ,
+.Ql magenta ,
+.Ql cyan
+or
+.Ql white .
+To specify a 256-color mode a decimal number colour specification in
+the range 0 to 255, inclusive, is supported, and interpreted as follows:
+.Pp
+.Bl -tag -compact -width "999 - 999"
+.It 0 - 7
+the standard ISO 6429 colors, as above.
+.It 8 - 15
+high intensity variants of the standard colors.
+.It 16 - 231
+216 colors in tuples of 6.
+.It 232 - 255
+grayscale from black to white in 24 steps.
+.El
+.Bd -literal -offset indent
+#!/bin/sh -
+fg() { printf "\e033[38;5;${1}m($1)"; }
+bg() { printf "\e033[48;5;${1}m($1)"; }
+i=0
+while [ $i -lt 256 ]; do fg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+i=0
+while [ $i -lt 256 ]; do bg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+.Ed
+.
+.It Cd bg=
+background colour attribute (see
+.Cd fg=
+for possible values).
+.El
+.
+.Pp
+Mappings may be removed with the command
+.Ic uncolour .
+For a generic overview see the section
+.Sx "Coloured display" .
 .
 .
 .Mx
@@ -3578,19 +3569,6 @@ Also see
 .Va followup-to .
 .
 .Mx
-.It Ic mono
-\*(OP Without arguments the list of all currently defined monochrome
-mappings is shown.
-If given arguments monochrome mappings are newly established, please
-refer to the documentation of the command
-.Ic colour
-for actual semantics, it creates mappings for coloured terminals and the
-only difference is that no colour attributes are allowed for
-.Ic \&\&mono .
-Monochrome mappings may be removed via the command
-.Ic unmono .
-.
-.Mx
 .It Ic Move
 Similar to
 .Ic move ,
@@ -4259,18 +4237,16 @@ all of these are automatically uncollapsed.
 .
 .Mx
 .It Ic uncolour
-Forget about the given
+Forget about a
 .Ic colour
-mapping; if the optional precondition argument is used then only the
-exact tuple of mapping and precondition is removed.
+mapping for the given colour type (see
+.Ic colour
+for a list of types) and mapping; if the optional precondition argument
+is used then only the exact tuple of mapping and precondition is removed.
 The special name
 .Ql *
 will remove all mappings (no precondition allowed).
 Also see
-.Ic mono
-and
-.Ic unmono
-as well as
 .Sx "Coloured display"
 for the general picture.
 .
@@ -4360,17 +4336,6 @@ The special name
 will clear the attribute from all lists which have it set.
 Also see
 .Ic mlsubscribe .
-.
-.Mx
-.It Ic unmono
-Forget about the given
-.Ic mono Ns
-chrome mapping; the special name
-.Ql *
-will remove all mappings.
-Please refer to the documentation of the command
-.Ic uncolour
-for actual semantics, the syntax is identical.
 .
 .Mx
 .It Ic Unread
