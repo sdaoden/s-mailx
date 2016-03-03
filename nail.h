@@ -204,12 +204,6 @@
 # define n_COLOUR(X)
 #endif
 
-/* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
- * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
-#define n_COLOUR_TERMS     \
-   "aterm,cons25,gnome,konsole,kterm,linux,"\
-   "rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
-
 /* Special FD requests for run_command() / start_command() */
 #define COMMAND_FD_PASS -1
 #define COMMAND_FD_NULL -2
@@ -283,7 +277,7 @@
 #define SBUFFER_BUILTIN (0x10000u >> 1u)
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined HAVE_TERMCAP
+#if defined HAVE_TERMCAP || defined HAVE_COLOUR
 # define n_HAVE_TCAP
 #endif
 
@@ -771,12 +765,12 @@ enum expand_addr_check_mode {
 };
 
 #ifdef HAVE_COLOUR
-/* We do have several groups of colour IDs; since only one of them can be
+/* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
-enum n_colour_group{
-   n_COLOUR_GROUP_SUM,
-   n_COLOUR_GROUP_VIEW,
-   n__COLOUR_GROUPS = 2
+enum n_colour_ctx{
+   n_COLOUR_CTX_SUM,
+   n_COLOUR_CTX_VIEW,
+   n__COLOUR_CTX_MAX
 };
 
 enum n_colour_id{
@@ -1069,6 +1063,10 @@ enum tdflags {
  * NO,NO: necessary n_termcap_cmd() arguments */
 #ifdef n_HAVE_TCAP
 enum n_termcap_cmd{
+# ifdef HAVE_COLOUR
+   n_TERMCAP_CMD_Co,    /* Numeric query: max_colors/colors/Co */
+# endif
+
 # ifdef HAVE_TERMCAP
    n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: 0,0 */
    n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: 0,0 */
@@ -1230,7 +1228,6 @@ ok_b_autothread,
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_colour_terms,
    ok_v_crt,
    ok_v_customhdr,
 

@@ -30,9 +30,11 @@ EMPTY_FILE()
 #define a_COLOUR_TAG_IS_SPECIAL(P) (PTR2SIZE(P) >= PTR2SIZE(-3))
 
 enum a_colour_type{
-   a_COLOUR_T_COLOUR256,
-   a_COLOUR_T_COLOUR,
-   a_COLOUR_T_MONO
+   a_COLOUR_T_256,
+   a_COLOUR_T_8,
+   a_COLOUR_T_1,
+   a_COLOUR_T_NONE,        /* EQ largest real colour + 1! */
+   a_COLOUR_T_UNKNOWN      /* Initial value: real one queried before 1st use */
 };
 
 enum a_colour_tag_type{
@@ -45,13 +47,18 @@ enum a_colour_tag_type{
    a_COLOUR_TT_VIEW = a_COLOUR_TT_HEADERS
 };
 
+struct a_colour_type_map{
+   ui8_t ctm_type;   /* a_colour_type */
+   char ctm_name[7];
+};
+
 struct a_colour_map_id{
-   ui8_t cmi_group;              /* enum n_colour_group */
-   ui8_t cmi_id;                 /* enum n_colour_id */
-   ui8_t cmi_tt;                 /* enum a_colour_tag_type */
+   ui8_t cmi_ctx;             /* enum n_colour_ctx */
+   ui8_t cmi_id;              /* enum n_colour_id */
+   ui8_t cmi_tt;              /* enum a_colour_tag_type */
    char const cmi_name[13];
 };
-CTA(n__COLOUR_IDS <= UI8_MAX);
+n_CTA(n__COLOUR_IDS <= UI8_MAX, "Enumeration exceeds storage datatype");
 
 struct n_colour_pen{
    struct str cp_dat;   /* Pre-prepared ISO 6429 escape sequence */
@@ -71,17 +78,15 @@ struct a_colour_map /* : public n_colour_pen */{
 };
 
 struct a_colour_g{
+   ui8_t cg_type;                   /* a_colour_type */
    /* TODO cg_has_env not used, we have to go for PS_COLOUR_ACTIVE */
    bool_t cg_has_env;
-   ui8_t cg_group;                  /* If .cg_has_env, enum n_colour_group */
-   ui8_t __cg_pad[6];
+   ui8_t cg_ctx;                    /* If .cg_has_env, enum n_colour_ctx */
+   ui8_t __cg_pad[5];
    struct a_colour_map *cg_active;  /* The currently active colour */
-   /* Active mapping: .cg_colour*_maps on colour terminal, _mono_ otherwise */
-   struct a_colour_map *(*cg_maps)[n__COLOUR_GROUPS][n__COLOUR_IDS];
    struct n_colour_pen cg_reset;    /* The reset sequence */
-   struct a_colour_map *cg_colour256_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
-   struct a_colour_map *cg_colour_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
-   struct a_colour_map *cg_mono_maps[n__COLOUR_GROUPS][n__COLOUR_IDS];
+   struct a_colour_map
+      *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX][n__COLOUR_IDS];
    char cg_reset_buf[sizeof("\033[0m")];
 };
 
@@ -98,28 +103,40 @@ struct a_colour_g{
  * TODO This should be no problem in practice, however */
 struct a_colour_env{
    struct a_colour_env *ce_last;
-   ui8_t ce_group;               /* enum n_colour_group active upon switch */
+   ui8_t ce_ctx;                 /* enum n_colour_ctx active upon switch */
    bool_t ce_is_active;          /* Was colour active in outer level? */
    ui8_t __ce_pad[6];
 };
 
 /* C99: use [INDEX]={} */
-CTA(n_COLOUR_GROUP_SUM == 0);
-CTA(n_COLOUR_GROUP_VIEW == 1);
-static char const a_colour_group_prefixes[n__COLOUR_GROUPS][8] = {
+/* */
+n_CTA(a_COLOUR_T_256 == 0, "Unexpected value of constant");
+n_CTA(a_COLOUR_T_8 == 1, "Unexpected value of constant");
+n_CTA(a_COLOUR_T_1 == 2, "Unexpected value of constant");
+static char const a_colour_types[][8] = {"256", "iso", "mono"};
+
+static struct a_colour_type_map const a_colour_type_maps[] = {
+   {a_COLOUR_T_256, "256"},
+   {a_COLOUR_T_8, "8"}, {a_COLOUR_T_8, "iso"}, {a_COLOUR_T_8, "ansi"},
+   {a_COLOUR_T_1, "1"}, {a_COLOUR_T_1, "mono"}
+};
+
+n_CTA(n_COLOUR_CTX_SUM == 0, "Unexpected value of constant");
+n_CTA(n_COLOUR_CTX_VIEW == 1, "Unexpected value of constant");
+static char const a_colour_ctx_prefixes[n__COLOUR_CTX_MAX][8] = {
    "sum-", "view-"
 };
 
 static struct a_colour_map_id const
-      a_colour_map_ids[n__COLOUR_GROUPS][n__COLOUR_IDS] = {{
-   {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_DOTMARK, a_COLOUR_TT_SUM, "dotmark"},
-   {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_HEADER, a_COLOUR_TT_SUM, "header"},
-   {n_COLOUR_GROUP_SUM, n_COLOUR_ID_SUM_THREAD, a_COLOUR_TT_SUM, "thread"},
+      a_colour_map_ids[n__COLOUR_CTX_MAX][n__COLOUR_IDS] = {{
+   {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_DOTMARK, a_COLOUR_TT_SUM, "dotmark"},
+   {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_HEADER, a_COLOUR_TT_SUM, "header"},
+   {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_THREAD, a_COLOUR_TT_SUM, "thread"},
    }, {
-   {n_COLOUR_GROUP_VIEW, n_COLOUR_ID_VIEW_FROM_, a_COLOUR_TT_NONE, "from_"},
-   {n_COLOUR_GROUP_VIEW, n_COLOUR_ID_VIEW_HEADER, a_COLOUR_TT_VIEW, "header"},
-   {n_COLOUR_GROUP_VIEW, n_COLOUR_ID_VIEW_MSGINFO, a_COLOUR_TT_NONE, "msginfo"},
-   {n_COLOUR_GROUP_VIEW, n_COLOUR_ID_VIEW_PARTINFO, a_COLOUR_TT_NONE,
+   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_FROM_, a_COLOUR_TT_NONE, "from_"},
+   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_HEADER, a_COLOUR_TT_VIEW, "header"},
+   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_MSGINFO, a_COLOUR_TT_NONE, "msginfo"},
+   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_PARTINFO, a_COLOUR_TT_NONE,
       "partinfo"},
 }};
 #define a_COLOUR_MAP_SHOW_FIELDWIDTH \
@@ -161,39 +178,14 @@ static bool_t a_colour_iso6429(enum a_colour_type ct, char **store,
 
 static void
 a_colour_init(void){
-   char const *term, *cp;
-   char *okterms;
    NYD2_ENTER;
 
    a_colour_g = scalloc(1, sizeof *a_colour_g);
 
-   if((term = env_vlook("TERM", FAL0)) == NULL || !asccasecmp(term, "dumb"))
-      goto jleave;
-
    memcpy(a_colour_g->cg_reset.cp_dat.s = a_colour_g->cg_reset_buf, "\033[0m",
       a_colour_g->cg_reset.cp_dat.l = sizeof("\033[0m") -1); /* (calloc) */
-
-   /* terminfo rocks: if we find "color", assume it's right; don't case care */
-   a_colour_g->cg_maps = &a_colour_g->cg_colour256_maps;
-   if(asccasestr(term, "256color") != NULL) /* FIXME temporary hack */
-      goto jmaps;
-
-   a_colour_g->cg_maps = &a_colour_g->cg_colour_maps;
-
-   if(asccasestr(term, "color") != NULL)
-      goto jmaps;
-
-   if((cp = ok_vlook(colour_terms)) == NULL)
-      cp = n_COLOUR_TERMS;
-   okterms = savestr(cp);
-   while((cp = n_strsep(&okterms, ',', TRU1)) != NULL)
-      if(!asccasecmp(cp, term))
-         goto jmaps;
-
-   a_colour_g->cg_maps = &a_colour_g->cg_mono_maps;
-jmaps:
+   a_colour_g->cg_type = a_COLOUR_T_UNKNOWN;
    DBG( atexit(&a_colour_atexit); ) /* TODO prog-global atexit event */
-jleave:
    NYD2_LEAVE;
 }
 
@@ -211,25 +203,15 @@ a_colour_atexit(void){
 
 static enum a_colour_type
 a_colour_type_find(char const *name){
-   struct{
-      char name[7];
-      ui8_t type;
-   } const ta[] = {
-      {"256", a_COLOUR_T_COLOUR256},
-      {"8", a_COLOUR_T_COLOUR},
-      {"iso", a_COLOUR_T_COLOUR},
-      {"ansi", a_COLOUR_T_COLOUR},
-      {"1", a_COLOUR_T_MONO},
-      {"mono", a_COLOUR_T_MONO}
-   }, *tp;
+   struct a_colour_type_map const *ctmp;
    enum a_colour_type rv;
    NYD2_ENTER;
 
-   tp = ta;
-   do if(!asccasecmp(tp->name, name)){
-      rv = tp->type;
+   ctmp = a_colour_type_maps;
+   do if(!asccasecmp(ctmp->ctm_name, name)){
+      rv = ctmp->ctm_type;
       goto jleave;
-   }while(PTRCMP(++tp, !=, ta + NELEM(ta)));
+   }while(PTRCMP(++ctmp, !=, a_colour_type_maps + NELEM(a_colour_type_maps)));
 
    rv = (enum a_colour_type)-1;
 jleave:
@@ -241,14 +223,14 @@ static bool_t
 a_colour_mux(char **argv){
    void *regexp;
    char const *mapname, *ctag;
-   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], **cmap,
-      *blcmp, *lcmp, *cmp;
+   struct a_colour_map **cmap, *blcmp, *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
    bool_t rv;
    enum a_colour_type ct;
    NYD2_ENTER;
 
-   if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
+   if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1 &&
+         (*argv != NULL || !n_is_all_or_aster(argv[-1]))){
       n_err(_("`colour': invalid colour type \"%s\"\n"), argv[-1]);
       rv = FAL0;
       goto jleave;
@@ -264,17 +246,6 @@ a_colour_mux(char **argv){
 
    rv = FAL0;
    regexp = NULL;
-   switch(ct){
-   case a_COLOUR_T_COLOUR256:
-      mapp = &a_colour_g->cg_colour256_maps;
-      break;
-   case a_COLOUR_T_COLOUR:
-      mapp = &a_colour_g->cg_colour_maps;
-      break;
-   default:
-      mapp = &a_colour_g->cg_mono_maps;
-      break;
-   }
 
    if((cmip = a_colour_map_id_find(mapname = argv[0])) == NULL){
       n_err(_("`colour': non-existing mapping: \"%s\"\n"), mapname);
@@ -307,7 +278,8 @@ a_colour_mux(char **argv){
    /* At this time we have all the information to be able to query wether such
     * a mapping is yet established. If so, destroy it */
    for(blcmp = lcmp = NULL,
-            cmp = *(cmap = &(*mapp)[cmip->cmi_group][cmip->cmi_id]);
+            cmp = *(cmap =
+                  &a_colour_g->cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id]);
          cmp != NULL; blcmp = lcmp, lcmp = cmp, cmp = cmp->cm_next){
       char const *xctag = cmp->cm_tag;
 
@@ -389,53 +361,48 @@ jleave:
 static bool_t
 a_colour_unmux(char **argv){
    char const *mapname, *ctag, *xtag;
-   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], **cmap,
-      *lcmp, *cmp;
+   struct a_colour_map **cmap, *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
-   bool_t rv;
    enum a_colour_type ct;
+   bool_t aster, rv;
    NYD2_ENTER;
 
+   rv = TRU1;
+   aster = FAL0;
+
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
-      n_err(_("`uncolour': invalid colour type \"%s\"\n"), argv[-1]);
-      rv = FAL0;
-      goto jleave;
+      if(!n_is_all_or_aster(argv[-1])){
+         n_err(_("`uncolour': invalid colour type \"%s\"\n"), argv[-1]);
+         rv = FAL0;
+         goto jleave;
+      }
+      aster = TRU1;
+      ct = 0;
    }
 
    mapname = argv[0];
    ctag = (mapname != NULL) ? argv[1] : mapname;
 
-   rv = TRU1;
    if(a_colour_g == NULL)
       goto jemap;
-   rv = FAL0;
-
-   switch(ct){
-   case a_COLOUR_T_COLOUR256:
-      mapp = &a_colour_g->cg_colour256_maps;
-      break;
-   case a_COLOUR_T_COLOUR:
-      mapp = &a_colour_g->cg_colour_maps;
-      break;
-   default:
-      mapp = &a_colour_g->cg_mono_maps;
-      break;
-   }
 
    /* Delete anything? */
+jredo:
    if(ctag == NULL && mapname[0] == '*' && mapname[1] == '\0'){
       size_t i1, i2;
       struct a_colour_map *tmp;
 
-      for(i1 = 0; i1 < n__COLOUR_GROUPS; ++i1)
+      for(i1 = 0; i1 < n__COLOUR_CTX_MAX; ++i1)
          for(i2 = 0; i2 < n__COLOUR_IDS; ++i2)
-            for(cmp = *(cmap = &(*mapp)[i1][i2]), *cmap = NULL; cmp != NULL;){
+            for(cmp = *(cmap = &a_colour_g->cg_maps[ct][i1][i2]), *cmap = NULL;
+                  cmp != NULL;){
                tmp = cmp;
                cmp = cmp->cm_next;
                a_colour_map_unref(tmp);
             }
    }else{
       if(a_colour_g == NULL){
+         rv = FAL0;
 jemap:
          /* I18N: colour command, mapping and precondition (option in quotes) */
          n_err(_("`uncolour': non-existing mapping: \"%s\"%s%s%s\n"),
@@ -444,18 +411,22 @@ jemap:
          goto jleave;
       }
 
-      if((cmip = a_colour_map_id_find(mapname)) == NULL)
+      if((cmip = a_colour_map_id_find(mapname)) == NULL){
+         rv = FAL0;
          goto jemap;
+      }
 
       if((xtag = ctag) != NULL){
          if(cmip->cmi_tt == a_COLOUR_TT_NONE){
             n_err(_("`uncolour': \"%s\" doesn't support preconditions\n"),
                mapname);
+            rv = FAL0;
             goto jleave;
          }else if((xtag = a_colour__tag_identify(cmip, ctag, NULL)) ==
                n_COLOUR_TAG_ERR){
             n_err(_("`uncolour': \"%s\": invalid precondition: \"%s\"\n"),
                mapname, ctag);
+            rv = FAL0;
             goto jleave;
          }
          /* (Improve user experience) */
@@ -464,12 +435,14 @@ jemap:
       }
 
       lcmp = NULL;
-      cmp = *(cmap = &(*mapp)[cmip->cmi_group][cmip->cmi_id]);
+      cmp = *(cmap = &a_colour_g->cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id]);
       for(;;){
          char const *xctag;
 
-         if(cmp == NULL)
+         if(cmp == NULL){
+            rv = FAL0;
             goto jemap;
+         }
          if((xctag = cmp->cm_tag) == ctag)
             break;
          if(ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag) &&
@@ -486,38 +459,28 @@ jemap:
          lcmp->cm_next = cmp->cm_next;
       a_colour_map_unref(cmp);
    }
-   rv = TRU1;
+
 jleave:
+   if(aster && ++ct != a_COLOUR_T_NONE)
+      goto jredo;
    NYD2_LEAVE;
    return rv;
 }
 
 static bool_t
 a_colour__show(enum a_colour_type ct){
-   char const *type;
-   struct a_colour_map *(*mapp)[n__COLOUR_GROUPS][n__COLOUR_IDS], *cmp;
+   struct a_colour_map *cmp;
    size_t i1, i2;
    bool_t rv;
    NYD2_ENTER;
 
-   switch(ct){
-   case a_COLOUR_T_COLOUR256:
-      type = "256";
-      mapp = &a_colour_g->cg_colour256_maps;
-      break;
-   case a_COLOUR_T_COLOUR:
-      type = "iso";
-      mapp = &a_colour_g->cg_colour_maps;
-      break;
-   default:
-      type = "mono";
-      mapp = &a_colour_g->cg_mono_maps;
-      break;
-   }
-
-   for(i1 = 0; i1 < n__COLOUR_GROUPS; ++i1)
+   /* Show all possible types? */
+   if((rv = (ct == (enum a_colour_type)-1 ? TRU1 : FAL0)))
+      ct = 0;
+jredo:
+   for(i1 = 0; i1 < n__COLOUR_CTX_MAX; ++i1)
       for(i2 = 0; i2 < n__COLOUR_IDS; ++i2){
-         if((cmp = (*mapp)[i1][i2]) == NULL)
+         if((cmp = a_colour_g->cg_maps[ct][i1][i2]) == NULL)
             continue;
 
          while(cmp != NULL){
@@ -535,14 +498,17 @@ a_colour__show(enum a_colour_type ct){
                tagann = "[rx] ";
 #endif
             printf("colour %s %-*s %s %s%s\n",
-               type, a_COLOUR_MAP_SHOW_FIELDWIDTH,
-               savecat(a_colour_group_prefixes[i1],
+               a_colour_types[ct], a_COLOUR_MAP_SHOW_FIELDWIDTH,
+               savecat(a_colour_ctx_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),
                (char const*)cmp->cm_buf + cmp->cm_user_off,
                tagann, tag);
             cmp = cmp->cm_next;
          }
       }
+
+   if(rv && ++ct != a_COLOUR_T_NONE)
+      goto jredo;
    rv = TRU1;
    NYD2_LEAVE;
    return rv;
@@ -610,8 +576,8 @@ a_colour_map_id_find(char const *cp){
       if(i == n__COLOUR_IDS)
          goto jleave;
       else{
-         size_t j = strlen(a_colour_group_prefixes[i]);
-         if(!ascncasecmp(cp, a_colour_group_prefixes[i], j)){
+         size_t j = strlen(a_colour_ctx_prefixes[i]);
+         if(!ascncasecmp(cp, a_colour_ctx_prefixes[i], j)){
             cp += j;
             break;
          }
@@ -637,8 +603,8 @@ a_colour_map_find(enum n_colour_id cid, char const *ctag){
    struct a_colour_map *cmp;
    NYD2_ENTER;
 
-   for(cmp = (*a_colour_g->cg_maps)[a_colour_g->cg_group][cid]; cmp != NULL;
-         cmp = cmp->cm_next){
+   cmp = a_colour_g->cg_maps[a_colour_g->cg_type][a_colour_g->cg_ctx][cid];
+   for(; cmp != NULL; cmp = cmp->cm_next){
       char const *xtag = cmp->cm_tag;
 
       if(xtag == ctag)
@@ -747,7 +713,7 @@ jbail:
       }else if(!asccasecmp(cp, "bg")){
          y = cfg + 1;
 jiter_colour:
-         if(ct == a_COLOUR_T_MONO){
+         if(ct == a_COLOUR_T_1){
             *store = UNCONST(_("colours are not allowed"));
             goto jleave;
          }
@@ -755,7 +721,7 @@ jiter_colour:
          if(digitchar(x[0])){
             sl_i xv;
 
-            if(ct == a_COLOUR_T_COLOUR){
+            if(ct == a_COLOUR_T_8){
                *store = UNCONST(_("invalid colour for 8-colour mode"));
                goto jleave;
             }
@@ -855,7 +821,7 @@ c_uncolour(void *v){
 }
 
 FL void
-n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used){
+n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
    NYD_ENTER;
    if(!(options & OPT_INTERACTIVE))
       goto jleave;
@@ -867,10 +833,23 @@ n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used){
 
    if(a_colour_g == NULL)
       a_colour_init();
-   if(a_colour_g->cg_maps == NULL)
+   if(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)
+      switch(n_termcap_cmdx(n_TERMCAP_CMD_Co)){
+      case 256:   a_colour_g->cg_type = a_COLOUR_T_256;  break;
+      case 8:     a_colour_g->cg_type = a_COLOUR_T_8;    break;
+      case 1:     a_colour_g->cg_type = a_COLOUR_T_1;    break;
+      default:
+         if(options & OPT_D_V)
+            n_err(_("Ignoring unsupported termcap entry for Co(lors)\n"));
+         /* FALLTHRU */
+      case 0:
+         a_colour_g->cg_type = a_COLOUR_T_NONE;
+         goto jleave;
+      }
+   if(a_colour_g->cg_type == a_COLOUR_T_NONE)
       goto jleave;
 
-   a_colour_g->cg_group = cgrp;
+   a_colour_g->cg_ctx = cctx;
    a_colour_g->cg_active = NULL;
    pstate |= PS_COLOUR_ACTIVE;
 jleave:
@@ -888,7 +867,7 @@ n_colour_env_push(void){
    cep = smalloc(sizeof *cep);
    cep->ce_last = a_colour_env;
    if(a_colour_g != NULL){
-      cep->ce_group = a_colour_g->cg_group;
+      cep->ce_ctx = a_colour_g->cg_ctx;
       a_colour_g->cg_active = NULL;
    }
    cep->ce_is_active = ((pstate & PS_COLOUR_ACTIVE) != 0);
@@ -915,7 +894,7 @@ n_colour_env_pop(bool_t any_env_till_root){
 
       if(a_colour_g != NULL){
          a_colour_g->cg_active = NULL;
-         a_colour_g->cg_group = cep->ce_group;
+         a_colour_g->cg_ctx = cep->ce_ctx;
       }
       a_colour_env = cep->ce_last;
 

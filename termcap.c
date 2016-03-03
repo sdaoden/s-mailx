@@ -37,9 +37,9 @@ EMPTY_FILE()
 /*
  * xxx We are not really compatible with very old and strange terminals since
  * we don't care at all for circumstances indicated by terminal flags: if we
- * find a capability we use it and assume it works.  E.g., if Co indicates
- * colours we simply use ISO 6429 also for font attributes etc.  That is, we
- * don't use the ncurses/terminfo interface with all its internal logic.
+ * find a capability we use it and assume it works.  E.g., if "Co" indicates
+ * colours we simply use ISO 6429 also for font attributes etc.  That is,
+ * we don't use the ncurses/terminfo interface with all its internal logic.
  * TODO After I/O layer rewrite, "output to STDIN_FILENO".
  */
 
@@ -93,6 +93,10 @@ struct a_termcap_g{
 
 /* Update the *termcap* member documentation on changes! */
 static struct a_termcap_control const a_termcap_control[] = {
+#ifdef HAVE_COLOUR
+   {"Co", a_TERMCAP_CF_T_NUM},
+#endif
+
 #ifdef HAVE_TERMCAP
    {"te", a_TERMCAP_CF_T_STR},
    {"ti", a_TERMCAP_CF_T_STR},
@@ -121,7 +125,7 @@ a_termcap_putc(int c){
 #endif
 
 FL void
-n_termcap_init(void){ /* xxx logical split */
+n_termcap_init(void){ /* XXX logical split */
    char buf[a_TERMCAP_ENTRYMAX], cmdbuf[a_TERMCAP_CMDBUF], *cbp, *cp, *bp;
    struct a_termcap_ent ents[n__TERMCAP_CMD_MAX], *tep;
    size_t i;

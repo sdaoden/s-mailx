@@ -750,7 +750,7 @@ FL int         c_uncolour(void *v);
  * test wether *colour-pager* is to be inspected.
  * The push/pop functions deal with recursive execute()ions, for now. TODO
  * env_gut() will reset() as necessary */
-FL void        n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used);
+FL void        n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used);
 FL void        n_colour_env_push(void);
 FL void        n_colour_env_pop(bool_t any_env_till_root);
 FL void        n_colour_env_gut(FILE *fp);

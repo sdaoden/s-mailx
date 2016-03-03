@@ -2136,10 +2136,11 @@ and
 .Lb libtermcap
 will be initialized to work with the
 .Ev TERM Ns
-inal, enhancing several interactive usage aspects of \*(UA (shall this
-succeed), including the MLE:
-For example it will learn the keycodes of special keys like, e.g.,
-arrows and it will automatically enter the so-called
+inal in order to enhance or enable interactive usage aspects, for example
+.Sx "Coloured display" ,
+and extend behaviour of the MLE, which may learn the key-sequences of
+special keys like, e.g., the cursor and function keys, and which will
+automatically enter the so-called
 .Dq ca-mode
 alternative screen shall the terminal support it.
 The internal variable
@@ -2271,32 +2272,30 @@ key is held.
 .Ss "Coloured display"
 .
 \*(OP \*(UA can be configured to support a coloured display and font
-attributes.
-Colour usage depends on the value of the environment variable
-.Ev TERM :
-if that is not set or set to the value
-.Ql dumb
-then this section doesn't apply, if the value includes the string
-.Ql color ,
-or if it can be found (case-insensitively) in the variable
-.Va colour-terms
-then \*(UA will assume a colour-enabled display, but otherwise
-a monochrome display is assumed.
+attributes by emitting ANSI / ISO 6429 SGR (select graphic rendition)
+escape sequences.
+Usage of colours and font attributes solely depends upon the
+capability of the detected terminal type that is defined by the
+environment variable
+.Ev TERM
+and which can be fine-tuned by the user via the internal variable
+.Va termcap .
 .
 .Pp
 On top of what \*(UA knows about the terminal the boolean variable
 .Va colour-pager
-defines wether colour and font attribute sequences should also be
-generated when the output of a command needs to go through the
+defines wether the actually applicable colour and font attribute
+sequences should also be generated when output is going to be paged
+through the external program defined by the environment variable
 .Ev PAGER
 (also see
 .Va crt Ns
 ).
 This is not enabled by default because different pager programs need
 different command line switches or other configuration in order to
-support those colour sequences.
-\*(UA knows about some widely used pagers and in a clean environment
-it is often enough to simply set
+support those sequences.
+\*(UA however knows about some widely used pagers and in a clean
+environment it is often enough to simply set
 .Va colour-pager ;
 please refer to that variable for more on this topic.
 .
@@ -2321,7 +2320,7 @@ sense to conditionalize the colour setup by encapsulating it with
 .Ic if :
 .
 .Bd -literal -offset indent
-if terminal
+if terminal && $features =@ +colour
   colour iso  view-msginfo  ft=bold,fg=green
   colour iso  view-header   ft=bold,fg=red   "from,subject"
   colour iso  view-header   fg=red
@@ -2646,8 +2645,12 @@ Monochrome terminals cannot deal with colours, but only (some) font
 attributes.
 .
 .Pp
-Without further arguments the list of all currently defined mappings for
-the given colour type is shown.
+Without further arguments the list of all currently defined mappings
+for the given colour type is shown (as a special case giving
+.Ql all
+or
+.Ql *
+will iterate over all types in order).
 Otherwise the second argument defines the mappable slot, the third
 argument a (comma-separated list of) colour and font attribute
 specification(s), and the optional fourth argument can be used to
@@ -5451,19 +5454,6 @@ Also see the section
 for more on this.
 .
 .Mx
-.It Va colour-terms
-\*(OP A comma-separated list of
-.Ev TERM Ns
-inals for which coloured display can be used.
-Entries only need to be added if the string
-.Ql color
-isn't part of the terminal name itself; the default value is
-.Pp
-.\" (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!)
-.Dl aterm,cons25,gnome,konsole,\:kterm,\:linux,\:\
-rxvt,\:rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:wsvt25,\:xterm
-.
-.Mx
 .It Va crt
 In a(n interactive) terminal session, then if this valued option is set
 it'll be used as a threshold to determine how many lines the given
@@ -7896,6 +7886,14 @@ operation of the builtin line editor or \*(UA in general:
 .
 .Pp
 .Bl -tag -compact -width yay
+.\" HAVE_COLOUR
+.It Cd Co
+.Cd max_colors Ns / Ns Cd colors :
+numeric capability specifying the maximum number of colours.
+Note that \*(UA doesn't actually care about the terminal beside that,
+but always emits ANSI/ISO 6429 escape sequences for producing the
+colour and font attributes.
+.
 .\" HAVE_TERMCAP
 .It Cd te , ti
 .Cd exit_ca_mode Ns / Ns Cd rmcup

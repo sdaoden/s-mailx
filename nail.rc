@@ -55,9 +55,7 @@ set ask
 # *header* on a per-folder basis (it is meaningless unless *header* is set)
 set bsdannounce
 
-# Uncomment this in order to get coloured output in $PAGER.
-# (Coloured output is only used if $TERM is either found in *colour-terms*
-# or includes the string "color")
+# Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
 
 # Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
