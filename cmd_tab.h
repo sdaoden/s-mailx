@@ -402,6 +402,16 @@
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("<show> (default), <load> or <clear> the .netrc cache")) },
 #endif
+#ifdef HAVE_COLOUR
+   { "colour", &c_colour, (M | RAWLIST), 0, 3
+     DS(N_("Show all colour settings or define one")) },
+   { "uncolour", &c_uncolour, (M | RAWLIST), 1, 2
+     DS(N_("Un`colour' <mapping> [<precondition>] (\"*\" for all)")) },
+   { "mono", &c_mono, (M | RAWLIST), 0, 3
+     DS(N_("Show all monochrome settings or define one")) },
+   { "unmono", &c_unmono, (M | RAWLIST), 1, 2
+     DS(N_("Un`mono'chrome <mapping> [<precondition>] (\"*\" for all)")) },
+#endif
 #ifdef HAVE_DEBUG
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
      DS(N_("Print statistics about the auto-reclaimed string store")) },

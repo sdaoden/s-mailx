@@ -204,22 +204,6 @@
 # define n_COLOUR(X)
 #endif
 
-/* Message display range */
-#define n_COLOUR_VIEW_MSGINFO    "fg=green"
-#define n_COLOUR_VIEW_PARTINFO   "fg=brown"
-#define n_COLOUR_VIEW_FROM_      "fg=brown"
-#define n_COLOUR_VIEW_HEADER     "fg=red"
-#define n_COLOUR_VIEW_UHEADER    "ft=bold,fg=red"
-#define n_COLOUR_VIEW_USER_HEADERS "from,subject"
-
-/* Header summary range */
-#define n_COLOUR_HSUM_CURRENT    ""
-#define n_COLOUR_HSUM_DOT        "fg=blue"
-#define n_COLOUR_HSUM_DOT_MARK   "ft=bold,ft=reverse,fg=blue"
-#define n_COLOUR_HSUM_DOT_THREAD "fg=blue"
-#define n_COLOUR_HSUM_OLDER      ""
-#define n_COLOUR_HSUM_THREAD     "fg=magenta"
-
 /* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
  * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
 #define n_COLOUR_TERMS     \
@@ -784,29 +768,36 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
-/* We do have two groups of colour IDs, one for message display and one for
- * header summary display; since only one of them can be active at any given
- * time let's share the value range; ensure _RESET is largest value! */
-enum n_colour_id {
-   /* Message display range */
-   n_COLOUR_ID_VIEW_MSGINFO   = 0,
-   n_COLOUR_ID_VIEW_PARTINFO,
-   n_COLOUR_ID_VIEW_FROM_,
-   n_COLOUR_ID_VIEW_HEADER,
-   n_COLOUR_ID_VIEW_UHEADER,
-   /* (The plain *colour-view-user-headers* string) */
-   _n_COLOUR_ID_VIEW_USER_HEADERS,
-
-   /* Header summary range */
-   n_COLOUR_ID_HSUM_CURRENT   = 0,
-   n_COLOUR_ID_HSUM_DOT,
-   n_COLOUR_ID_HSUM_DOT_MARK,
-   n_COLOUR_ID_HSUM_DOT_THREAD,
-   n_COLOUR_ID_HSUM_OLDER,
-   n_COLOUR_ID_HSUM_THREAD,
-
-   n_COLOUR_ID_RESET
+#ifdef HAVE_COLOUR
+/* We do have several groups of colour IDs; since only one of them can be
+ * active at any given time let's share the value range */
+enum n_colour_group{
+   n_COLOUR_GROUP_SUM,
+   n_COLOUR_GROUP_VIEW,
+   _n_COLOUR_GROUPS = 2
 };
+
+enum n_colour_id{
+   /* Header summary */
+   n_COLOUR_ID_SUM_DOTMARK = 0,
+   n_COLOUR_ID_SUM_HEADER,
+   n_COLOUR_ID_SUM_THREAD,
+
+   /* Message display */
+   n_COLOUR_ID_VIEW_FROM_ = 0,
+   n_COLOUR_ID_VIEW_HEADER,
+   n_COLOUR_ID_VIEW_MSGINFO,
+   n_COLOUR_ID_VIEW_PARTINFO,
+
+   _n_COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
+};
+
+/* Colour preconditions, let's call them tags, cannot be an enum because for
+ * message display they are the actual header name of the current header.  Thus
+ * let's use constants of pseudo pointers */
+# define n_COLOUR_TAG_SUM_DOT ((char*)-2)
+# define n_COLOUR_TAG_SUM_OLDER ((char*)-3)
+#endif /* HAVE_COLOUR */
 
 enum conversion {
    CONV_NONE,        /* no conversion */
@@ -1150,6 +1141,8 @@ enum program_state {
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 
+   PS_COLOUR_ACTIVE  = 1<<22,       /* n_colour_env_create().._gut() cycle */
+
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
    PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
@@ -1199,26 +1192,8 @@ ok_b_autothread,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_b_colour_disable,
-   ok_v_colour_hsum_current,
-   ok_v_colour_hsum_dot,
-   ok_v_colour_hsum_dot_mark,
-   ok_v_colour_hsum_dot_thread,
-   ok_v_colour_hsum_older,
-   ok_v_colour_hsum_thread,
-ok_v_colour_from_,                     /* {name=colour-from_} */
-ok_v_colour_header,
-ok_v_colour_msginfo,
    ok_b_colour_pager,
-ok_v_colour_partinfo,
    ok_v_colour_terms,
-ok_v_colour_uheader,
-ok_v_colour_user_headers,
-   ok_v_colour_view_from_,             /* {name=colour-from_} */
-   ok_v_colour_view_header,
-   ok_v_colour_view_msginfo,
-   ok_v_colour_view_partinfo,
-   ok_v_colour_view_uheader,
-   ok_v_colour_view_user_headers,
    ok_v_crt,
 
    ok_v_DEAD,
@@ -1433,15 +1408,15 @@ struct str {
    size_t   l;       /* the stings's length */
 };
 
-struct n_colour_table {
-   struct str  ct_csinfo[n_COLOUR_ID_RESET +1];
-};
-
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
    struct str  bi_end;        /* End of ... */
    size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
 };
+
+#ifdef HAVE_COLOUR
+struct n_colour_pen;
+#endif
 
 struct url {
    char const     *url_input;       /* Input as given (really) */
@@ -1998,10 +1973,6 @@ VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
-
-#ifdef HAVE_COLOUR
-VL struct n_colour_table   *n_colour_table;
-#endif
 
 #ifdef HAVE_SSL
 VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */

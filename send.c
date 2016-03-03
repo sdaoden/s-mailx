@@ -91,8 +91,14 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    NYD2_ENTER;
 
 #ifdef HAVE_COLOUR
-   cpre = n_colour_get(n_COLOUR_ID_VIEW_PARTINFO);
-   csuf = n_colour_get(n_COLOUR_ID_RESET);
+   {
+   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO,
+         NULL);
+   if ((cpre = n_colour_pen_to_str(cpen)) != NULL)
+      csuf = n_colour_reset_to_str();
+   else
+      csuf = NULL;
+   }
 #else
    cpre = csuf = NULL;
 #endif
@@ -471,7 +477,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             /* XXX This is all temporary (colour belongs into backend), so
              * XXX use tmpfile as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
-            if (n_colour_table != NULL)
+            if (pstate & PS_COLOUR_ACTIVE)
                tmpfile = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
@@ -524,7 +530,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          {
          bool_t colour_stripped = FAL0;
          if (tmpfile != NULL) {
-            n_colour_put_user_header(obuf, tmpfile);
+            n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, tmpfile);
             if (len > 0 && start[len - 1] == '\n') {
                colour_stripped = TRU1;
                --len;
@@ -534,7 +540,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          _out(start, len, obuf, convert, action, qf, stats, NULL);
 #ifdef HAVE_COLOUR
          if (tmpfile != NULL) {
-            n_colour_reset(obuf); /* XXX reset after \n!! */
+            n_colour_reset(obuf);
             if (colour_stripped)
                putc('\n', obuf);
          }
@@ -1285,9 +1291,9 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       nl = "";
    }
 
-   n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_);
+   n_COLOUR( n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_, NULL); )
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   n_colour_reset(fp);
+   n_COLOUR( n_colour_reset(fp); )
    if (i > 0 && stats != NULL)
       *stats += i;
    NYD_LEAVE;
@@ -1318,20 +1324,24 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    cnt = mp->m_size;
    sz = 0;
    {
-   struct str const *cpre, *csuf;
+   char const *cpre = "", *csuf = "";
 #ifdef HAVE_COLOUR
-   cpre = n_colour_get(n_COLOUR_ID_VIEW_FROM_);
-   csuf = n_colour_get(n_COLOUR_ID_RESET);
-#else
-   cpre = csuf = NULL;
+   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
+   struct str const *sp = n_colour_pen_to_str(cpen);
+
+   if (sp != NULL) {
+      cpre = sp->s;
+      sp = n_colour_reset_to_str();
+      if (sp != NULL)
+         csuf = sp->s;
+   }
 #endif
    if (mp->m_flag & MNOFROM) {
       if (doign != allignore && doign != fwdignore && action != SEND_RFC822)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
-               (cpre != NULL ? cpre->s : ""),
-               (int)qf.qf_pfix_len, (qf.qf_pfix_len != 0 ? qf.qf_pfix : ""),
-               fakefrom(mp), fakedate(mp->m_time),
-               (csuf != NULL ? csuf->s : ""));
+               cpre, (int)qf.qf_pfix_len,
+               (qf.qf_pfix_len != 0 ? qf.qf_pfix : ""), fakefrom(mp),
+               fakedate(mp->m_time), csuf);
    } else if (doign != allignore && doign != fwdignore &&
          action != SEND_RFC822) {
       if (qf.qf_pfix_len > 0) {
@@ -1342,16 +1352,16 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
       }
 #ifdef HAVE_COLOUR
       if (cpre != NULL) {
-         fputs(cpre->s, obuf);
-         cpre = (struct str const*)0x1;
+         fputs(cpre, obuf);
+         cpre = (char const*)0x1;
       }
 #endif
 
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {
 #ifdef HAVE_COLOUR
          if (c == '\n' && csuf != NULL) {
-            cpre = (struct str const*)0x1;
-            fputs(csuf->s, obuf);
+            cpre = (char const*)0x1;
+            fputs(csuf, obuf);
          }
 #endif
          putc(c, obuf);
@@ -1362,8 +1372,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
       }
 
 #ifdef HAVE_COLOUR
-      if (csuf != NULL && cpre != (struct str const*)0x1)
-         fputs(csuf->s, obuf);
+      if (csuf != NULL && cpre != (char const*)0x1)
+         fputs(csuf, obuf);
 #endif
    } else {
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {

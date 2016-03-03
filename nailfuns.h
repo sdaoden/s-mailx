@@ -721,23 +721,43 @@ FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
  */
 
 #ifdef HAVE_COLOUR
-/* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test wether *colour-pager* is to be inspected, and headerview indicates
- * wether the colours for header overview shall be queried instead of those for
- * actual message display.
- * n_colour_get() may return NULL (except for n_COLOUR_ID_RESET; still so if
- * no colour table has been created, however). */
-FL void        n_colour_table_create(bool_t pager_used, bool_t headerview);
-FL void        n_colour_put(FILE *fp, enum n_colour_id cid);
-FL void        n_colour_put_user_header(FILE *fp, char const *name);
-FL void        n_colour_reset(FILE *fp);
-FL struct str const * n_colour_get(enum n_colour_id cid);
+/* `(un)?(colour|mono)' */
+FL int         c_colour(void *v);
+FL int         c_uncolour(void *v);
+FL int         c_mono(void *v);
+FL int         c_unmono(void *v);
 
-#else
-# define n_colour_put(FP,CS)
-# define n_colour_put_user_header(FP,N)
-# define n_colour_reset(FP)
-#endif /* HAVE_COLOUR */
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected.
+ * The push/pop functions deal with recursive execute()ions, for now. TODO
+ * env_gut() will reset() as necessary */
+FL void        n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used);
+FL void        n_colour_env_push(void);
+FL void        n_colour_env_pop(bool_t any_env_till_root);
+FL void        n_colour_env_gut(FILE *fp);
+
+/* Putting anything (for pens: including NULL) resets current state first */
+FL void        n_colour_put(FILE *fp, enum n_colour_id cid, char const *ctag);
+FL void        n_colour_reset(FILE *fp);
+
+/* Of course temporary only and may return NULL.  Doesn't affect state! */
+FL struct str const *n_colour_reset_to_str(void);
+
+/* A pen is bound to its environment and automatically reclaimed; it may be
+ * NULL but that can be used anyway for simplicity.
+ * This includes pen_to_str() -- which doesn't affect state! */
+FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
+                           char const *ctag);
+FL void        n_colour_pen_put(struct n_colour_pen *self, FILE *fp);
+
+FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
+
+#else /* HAVE_COLOUR */
+# define c_colour                c_cmdnotsupp
+# define c_uncolour              c_cmdnotsupp
+# define c_mono                  c_cmdnotsupp
+# define c_unmono                c_cmdnotsupp
+#endif
 
 /*
  * filter.c
