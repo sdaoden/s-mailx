@@ -1,12 +1,11 @@
-I n s t a l l i n g  S - n a i l
-================================
+I n s t a l l i n g  S - n a i l / S - m a i l x
+================================================
 
 1.  Compilation
 1.1 What if configuration fails?
 1.2 What if building fails?
 1.3 How can i enable debugging?
-2.  Special notes for the latest release
-3.  Current codebase state
+2.  Notes on building the latest release
 
 1. Compilation
 --------------
@@ -15,10 +14,11 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
-Without any adjustments all possible features which are not in
-experimental state will be enabled but not "require"d, so that
-configuration won't fail shall any of them not be usable due to the
-given system environment.
+Without any adjustments all non-experimental features will be enabled,
+except some which provide redundant functionality (e.g., OPT_SPAMC is
+disabled because the generic OPT_SPAM_FILTER can do the same).
+None of the features are "require"d by default, so that configuration
+won't fail shall any of them not be available or usable.
 
   $ make tangerine  # equals "$ make config build test install"
   $ make distclean  # *Completely* cleanup working directory
@@ -202,97 +202,77 @@ Should you really discover any problems with S-nail it would be very
 useful for development if you would contact the mailing-list!
 Thank you!
 
-2. Special notes for the latest release
+2. Notes on building the latest release
 ---------------------------------------
 
-S-nail(1) has been or is used regulary on these systems ("uname -srm").
-Unless otherwise noted the following applies to saying "$ make" and
-"$ make devel" followed by "$ make test".
+This software has been in use or is used on a regulary basis on FreeBSD
+and Linux.  Occasional tests happens on the remains of the following.
+Unless otherwise noted the following applies to saying
+"$ make tangerine; make devel && make test".
+In alphabetical order:
 
 - All systems:
-  * I've turned off -Wstrict-overflow warnings unless OPT_DEVEL is
-    defined (talking about OPT_AUTOCC=yes here).  With gcc 5.1 the
-    number of warnings exploded.  With gcc 5.2 that went down again,
-    but just keep it like that nonetheless.
-  * You may see warnings on unused returns from write(2), ftruncate(2)
-    and a few other I/O functions.  These will vanish after the large
-    I/O and MIME rewrite that comes next.  They mostly refer to debug
-    dumping, truncating a(n open) file to zero size and freopen(3)ing
-    one of the standard channels.  I refrained from adding abort(3)
-    calls as return value checks.
+  * I've turned off -Wstrict-overflow warnings unless we're debug
+    enabled (talking about OPT_AUTOCC=yes here).
+  * You will likely see warnings on unused returns from write(2),
+    ftruncate(2) and a few other I/O functions.  These will vanish after
+    the large I/O and MIME rewrite that comes with v15.
+  * I am using the latest gcc(1) and clang(1) compilers, and am doing
+    scan-build(1) and Coverity.com inspection before major releases.
+    Some "XYZ may be used uninitialized" warnings are logically false.
 
 - All 32-bit systems:
   * There _may_ be warnings about format strings, like, e.g.,
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
       unsigned int', but argument 3 has type 'size_t'
-    The S-nail codebase is ISO C89, so we have no %z printf(3) format.
-    However, "nail.h" tries hard to detect the real type size and
-    defines the "PRI[du]Z" macros which end up with the correct size,
-    which is also compile-time asserted (see the "MCTA(sizeof(size_t) ==
-    XZ)" statements in "nail.h".
+    The codebase is ISO C89, so we have no %z printf(3) format.
+    However we try hard to detect the real type size and define the
+    "PRI[du]Z" macros which end up with the correct size, which is
+    also compile-time asserted (see the "MCTA(sizeof(size_t) == XZ)"
+    statements in "nail.h").
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
     $OPT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
     ensure -std=c99 is set in your $CFLAGS.
 
+. AlpineLinux <https://www.alpinelinux.org/>
+  AlpineLinux 3.4.3, gcc(1).
+
 . ArchLinux <https://www.archlinux.org/>
-  Latest as of 2016-03-26, clang(1) and gcc(1).
+  Latest as of 2016-08-12, clang(1) and gcc(1).
 
-. Void Linux <http://www.voidlinux.eu/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. CRUX Linux <http://www.crux.nu/>
+. CRUX Linux <https://www.crux.nu/>
   CRUX 3.2 RC3, gcc(1).
 
-- FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.2, clang(1) and gcc6(1).
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. OpenBSD <http://www.openbsd.org/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
+  DragonFly 4.6.0, gcc(1).
+  * I will never get iconv(3) right for Solaris it seems.
+
+- FreeBSD <https://www.freebsd.org/>
+  FreeBSD 10.3, clang(1).
 
 - NetBSD <https://www.netbsd.org/>
-  * Show work.
+  Not tested.
+
+. OpenBSD <https://www.openbsd.org/>
+  OpenBSD 5.9.
 
 - Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
-  * According to standards(5) we require the /usr/xpg4 environment, and
-    will bail if we cannot find it.
+  * In order to be able to run the tests you will need a cksum(1) that
+    supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
+    that cannot be found you have to adjust the $cksum variable (see
+    above) to something that works.
+    (v15 will use a different test suite.)
   * With $OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     $OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
   * I will never get iconv(3) right for Solaris it seems.
-  * In order to be able to run the tests you will need a cksum(1) that
-    supports CRC-32 (POSIX).  We look into "/opt/csw/gnu/cksum", but if
-    that cannot be found you have to adjust the $cksum variable (see
-    above) to something that works.  (A future version of S-nail will
-    use different testing, but until then: Sorry!)
-  - I couldn't get us going on SunOS 5.9 Sparc: the build system had to
-    be extended to check for UINTPTR_MAX being defined as the empty
-    string and similar very special things.
-  - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386, and it looked good on 2016-03-25.
-    However, some notes:
+  * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
-      linking errors seen on earlier tests:
-        Undefined                       first referenced
-         symbol                             in file
-        __stack_chk_fail                    accmacvar.o
-        __stack_chk_guard                   accmacvar.o
-        ld: fatal: symbol referencing errors
+      linking errors seen in earlier tests.
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
@@ -300,33 +280,23 @@ Unless otherwise noted the following applies to saying "$ make" and
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with $OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+    + I couldn't get us going on SunOS 5.9 Sparc: the build system had
+      to be extended to check for UINTPTR_MAX being defined as the empty
+      string and similar very special things.
+  - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
+    under SPARC and i386.
+    It looked good on 2016-03-25.
 
 - UnixWare 7.1.4.
   * Note: it is no longer possible to use the `install' rule, because
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + Not tested for v14.8.[567], but never seen any problems but some
-    harmless and ignorable compile warnings.
+  + Not tested after v14.8.4.
 
-3. Current codebase state
--------------------------
-
-I claim that we have reached a stable state that should enable users
-a neatless mode of operation when running 24/7 (except for growing
-memory usage from the OpenSSL side of the road, when used).
-I'll hope to be able to release S-nail v20 on 2020-03-25, the 42nd
-anniversary of Berkeley Mail, as a good one.  Also see TODO.
-
-For S-nail, v15.0 (not before 2017) is dedicated to a Send- and
-MIME-layer rewrite that will bring the possibility to access each
-message part individually. Because the Berkeley codebase and its nail
-fork have design flaws in respect to mailbox handling and non-local code
-jumps (due to / and signals), whereas the (MIME capable) NetBSD and
-OpenBSD forks have instead addressed this problem, more or less
-complete, in one or the other way, v15.0 will also have to address
-signal handling, because only like that we have the possibility to ever
-reach a clean state from which we can actually think about re-extending
-this MUA.
+. Void Linux <http://www.voidlinux.eu/>
+  Not tested for v14.9.
+  (My current working environment is restricted since i've lost
+  a machine in January.)
 
 # s-ts-mode
