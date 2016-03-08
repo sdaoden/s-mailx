@@ -372,6 +372,10 @@ FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
+/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
+ * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
+FL size_t      field_detect_width(char const *buf, size_t blen);
+
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);

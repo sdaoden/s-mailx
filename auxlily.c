@@ -1257,6 +1257,60 @@ cwrelse(struct cw *cw)
 #endif /* !HAVE_FCHDIR */
 
 FL size_t
+field_detect_width(char const *buf, size_t blen){
+   size_t rv;
+   NYD2_ENTER;
+
+   if(blen == UIZ_MAX)
+      blen = (buf == NULL) ? 0 : strlen(buf);
+   assert(blen == 0 || buf != NULL);
+
+   if((rv = blen) > 0){
+#ifdef HAVE_C90AMEND1
+      mbstate_t mbs;
+      wchar_t wc;
+
+      memset(&mbs, 0, sizeof mbs);
+
+      for(rv = 0; blen > 0;){
+         size_t i = mbrtowc(&wc, buf, blen, &mbs);
+
+         switch(i){
+         case (size_t)-2:
+         case (size_t)-1:
+            rv = (size_t)-1;
+            /* FALLTHRU */
+         case 0:
+            blen = 0;
+            break;
+         default:
+            buf += i;
+            blen -= i;
+# ifdef HAVE_WCWIDTH
+            /* C99 */{
+               int w = wcwidth(wc);
+
+               if(w > 0)
+                  rv += w;
+               else if(wc == '\t')
+                  ++rv;
+            }
+# else
+            if(iswprint(wc))
+               rv += 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
+            else if(wc == '\t')
+               ++rv;
+# endif
+            break;
+         }
+      }
+#endif /* HAVE_C90AMEND1 */
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL size_t
 field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
 {
    size_t rv;
