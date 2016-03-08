@@ -1282,7 +1282,6 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_pop3_keepalive,
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
-   ok_b_print_all_chars,
    ok_b_print_alternatives,
    ok_v_prompt,
 

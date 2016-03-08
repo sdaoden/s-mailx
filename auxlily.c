@@ -1422,25 +1422,14 @@ jnobidi:
 FL void
 makeprint(struct str const *in, struct str *out)
 {
-   static int print_all_chars = -1;
-
    char const *inp, *maxp;
    char *outp;
    DBG( size_t msz; )
    NYD_ENTER;
 
-   if (print_all_chars == -1)
-      print_all_chars = ok_blook(print_all_chars);
-
    out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
-
-   if (print_all_chars) {
-      out->l = in->l;
-      memcpy(outp, inp, out->l);
-      goto jleave;
-   }
 
 #ifdef HAVE_NATCH_CHAR
    if (mb_cur_max > 1) {
@@ -1508,7 +1497,6 @@ makeprint(struct str const *in, struct str *out)
       }
       out->l = in->l;
    }
-jleave:
    out->s[out->l] = '\0';
    NYD_LEAVE;
 }
