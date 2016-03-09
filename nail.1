@@ -676,7 +676,8 @@ will start the text editor to revise the message in it's current state,
 allows editing of the message recipients and
 .Ql Ic ~?
 gives an overview of available tilde escapes.
-Typing control-D
+Typing
+.Ql control-D
 .Pf ( Ql ^D )
 at the beginning of an empty line leaves compose mode and causes the
 message to be sent, whereas typing
@@ -982,8 +983,8 @@ not only adjusts the list of displayed headers, but also sets
 .Va crt .
 .
 .Pp
-Dependent upon the configuration a
-.Sx "Command line editor"
+Dependent upon the configuration a line editor (see the section
+.Sx "On terminal control and line editor" )
 aims at making user experience with the many
 .Sx COMMANDS
 a bit nicer.
@@ -1034,7 +1035,8 @@ To end a mail processing session one may either issue
 to cause a full program exit, which possibly includes
 automatic moving of read messages to
 .Ev MBOX
-as well as updating the \*(OPal command line editor history file,
+as well as updating the \*(OPal line editor
+.Va history-file ,
 or use the command
 .Ic exit Ql x
 instead in order to prevent any of these actions.
@@ -2094,53 +2096,79 @@ The section
 contains complete example configurations.
 .\" }}}
 .
-.\" .Ss "Command line editor" {{{
-.Ss "Command line editor"
+.\" .Ss "On terminal control and line editor" {{{
+.Ss "On terminal control and line editor"
 .
-\*(OP \*(UA can be configured to support a command line editor and
-command history lists which are saved in between sessions.
-One may link against a fully-fledged external library
-.Pf ( Xr readline 6 )
-or use \*(UA's own command line editor NCL (Nail-Command-Line)
-instead, which should work in all environments which comply to the
-ISO C standard (ISO/IEC 9899:1990/Amendment 1:1995).
-When an external library is used, interactive behaviour of \*(UA relies
-on that library and may not correspond one-to-one to what is described
-in this manual.
+\*(OP \*(UA can be configured to support a line editor,
+history lists that can be saved in between sessions,
+and terminal control to improve interactive usage experience.
+For the former one may either link against an external library
+.Pf ( Xr readline 3 ;
+behaviour of \*(UA may differ slightly),
+or enable the builtin Mailx-Line-Editor (MLE), which should work in all
+environments which comply to the ISO C standard
+.St -isoC-amd1 ,
+and which will support wide glyphs if possible (the necessary
+functionality had been removed from ISO C, but was included in
+.St -xpg4 ) .
+Prevent usage of a line editor in interactive mode by setting the
+internal variable
+.Va line-editor-disable .
 .
 .Pp
-Regardless of the actually used command line editor
+\*(OP If the
 .Ic history
-entries will be created for lines entered in command mode only, and
-creation of such an entry can be forcefully suppressed by starting the
-line with a space character.
-Note that
-.Ic history
-handling is by itself an optional feature and may therefore not be
-available.
-For more information see the documentation of the variables
-.Va emptystart ,
+feature is available then input from line editor prompts will be saved
+in a history list that can be searched in and be expanded from.
+Such saving can be prevented by prefixing input with any amount of
+whitespace.
+Aspects of history, like allowed content, maximum size etc., can be
+configured with the variables
 .Va history-file ,
 .Va history-gabby ,
-.Va history-gabby-persist ,
-.Va history-size
+.Va history-gabby-persist
 and
-.Va line-editor-disable .
-And there is also the \*(OPal
-.Va term-ca-mode
-will can be set to cause overall screen resets when \*(UA releases the
-terminal in interactive mode.
+.Va history-size .
 .
 .Pp
-The builtin \*(UA command line editor supports the following operations;
-the notation
-.Ql ^-character
+\*(OP For terminal control the standard
+.Ux
+.Lb libtermcap
+will be initialized to work with the
+.Ev TERM Ns
+inal, enhancing several interactive usage aspects of \*(UA (shall this
+succeed), including the MLE:
+For example it will learn the keycodes of special keys like, e.g.,
+arrows and it will automatically enter the so-called
+.Dq ca-mode
+alternative screen shall the terminal support it.
+The internal variable
+.Va termcap
+can be used to overwrite settings or to learn (correct(ed)) keycodes.
+Interaction with the
+.Lb libtermcap
+can be disabled completely by setting
+.Va termcap-disable ,
+which may be necessary for proper operation on the actual terminal;
+note that the variable
+.Va termcap
+will be queried by some \*(OPal modules of \*(UA, like the MLE,
+regardless of the availability of the mentioned library and wether its
+use is disabled.
+.
+.Pp
+\*(OP The builtin \*(UA line editor MLE supports the following
+operations; the notation
+.Ql ^-LETTER
 stands for the combination of the
-.Dq Control
+.Ql control
 key plus the mentioned character, e.g.,
 .Ql ^A
 means
-.Dq hold down control key and press the A key :
+.Dq hold down control key and press the A key .
+Especially without termcap support setting respective entries in
+.Va termcap
+will help shall MLE misbehave.
 .
 .Pp
 .Bl -tag -compact -width "Ql _M"
@@ -2172,7 +2200,7 @@ The same as
 backward delete one character.
 .
 .It Ql ^I
-\*(OP The same as
+The same as
 .Dq horizontal tabulator :
 try to expand the word before the cursor.
 (Note this is not
@@ -2215,15 +2243,7 @@ Move the cursor backward one word boundary.
 .El
 .
 .Pp
-If problems with commands that are based upon rightwise movement are
-encountered, adjustments of the option
-.Va line-editor-cursor-right
-may solve the problem, as documented for it.
-.
-.Pp
-If the terminal produces key sequences which are compatible with
-.Xr xterm 1
-then the left and right cursor keys will map to
+If the keycodes are known then the left and right cursor keys will map to
 .Ql ^B
 and
 .Ql ^F ,
@@ -2243,7 +2263,7 @@ and
 Also the up and down cursor keys should invoke
 .Ic dotmove
 for up- and downwards movement if they are used while the
-.Dq Control
+.Ql control
 key is held.
 .\" }}}
 .
@@ -2953,7 +2973,7 @@ will only clear all messages from the queue.
 (ex or x) Exit from \*(UA without changing the active mailbox and skip
 any saving of messages in
 .Ev MBOX
-as well as a possibly tracked command line editor history file.
+as well as a possibly tracked line editor history file.
 .
 .Mx
 .It Ic features
@@ -6006,7 +6026,7 @@ again reserves room for two spaces in addition.
 .
 .Mx
 .It Va history-file
-\*(OP If a command line editor is available then this can be set to
+\*(OP If a line editor is available then this can be set to
 name the (expandable) path of the location of a permanent history file.
 .
 .Mx
@@ -6025,7 +6045,7 @@ Also see
 .
 .Mx
 .It Va history-size
-\*(OP If a command line editor is available this value restricts the
+\*(OP If a line editor is available this value restricts the
 amount of history entries that are saved into a set and valid
 .Va history-file .
 A value of less than 0 disables this feature;
@@ -6033,7 +6053,7 @@ note that loading and incorporation of
 .Va history-file
 upon program startup can also be suppressed by doing this.
 An unset or invalid value, or 0, causes a default value to be used.
-Dependent on the available command line editor this will also define the
+Dependent on the available line editor this will also define the
 number of history entries in memory;
 it is also editor-specific wether runtime updates of this value will be
 honoured.
@@ -6156,31 +6176,9 @@ originating folder when \*(UA is quit.
 Setting this option causes all saved message to be retained.
 .
 .Mx
-.It Va line-editor-cursor-right
-\*(OP If the builtin command line editor is used, actions which are
-based on rightwise movement may not work on some terminals.
-If you encounter such problems, set this variable to the terminal
-control sequence that is necessary to move the cursor one column to the
-right.
-The default is
-.Ql \e033[C ,
-which should work for most terminals.
-Less often occur
-.Ql \e033OC
-and
-.Ql \e014 .
-Note that
-.Dq Escape
-and other control character have to be written as shell-style escape
-sequences, e.g.,
-.Ql \e033
-for (US-ASCII)
-.Dq Escape .
-.
-.Mx
 .It Va line-editor-disable
 \*(BO Turn off any enhanced line editing capabilities (see
-.Sx "Command line editor"
+.Sx "On terminal control and line editor"
 for more).
 .
 .Mx
@@ -7828,30 +7826,165 @@ then the mentioned
 .Ql Message-ID:
 suppression doesn't occur.
 .
+.
 .Mx
-.It Va term-ca-mode
-\*(BY\*(OP If terminal capability queries
-.Pf ( Xr termcap 5 ,
-.Xr terminfo 5 )
-are supported and this option is set then \*(UA will try to
-switch to the
-.Dq alternate screen
-when in interactive mode if the
-.Ev TERM Ns
-inal allows to do so, so that the terminal will go back to the
-normal screen, leaving all the text there intact, when \*(UA exits.
+.It Va termcap
+(\*(OP) This specifies a comma-separated list of
+.Lb libtermcap
+capabilities (see
+.Sx "On terminal control and line editor" ,
+escape commas with backslash) to be used to overwrite or define entries.
+.Sy Note
+that this variable will only be queried once at program startup and can
+thus only be specified in resource files or on the command line.
+.
 .Pp
-.Sy Note:
-even when supported for this to produce appealing results the used
-.Ev PAGER
-and possibly configured
-.Va pipe-TYPE/SUBTYPE
-applications that take control over the terminal need to have
-corresponding support and must be configured accordingly, too, e.g., the
-.Xr less 1
-pager should be driven with the
-.Ql -X
-command line flag.
+String capabilities form
+.Ql cap=value
+pairs and are expected unless noted otherwise.
+Numerics have to be notated as
+.Ql cap#number
+where the number is expected in normal decimal notation.
+Finally, booleans don't have any value but indicate a true or false
+state simply by being defined or not; this indeed means that \*(UA
+doesn't support undefining a boolean that normally exists.
+The following example defines entries for combinations of
+.Ql control-CURSOR :
+.
+.Bd -literal -offset indent
+set termcap="%k=\e033[D,%o=\e033[C,%q=\e033[A,%r=\e033[B"
+.Ed
+.
+.Pp
+Keycodes can easily be detected with the command
+.Xr cat 1
+by running it on an interactive terminal via
+.Ql $ cat
+and pressing some keys: here
+.Ql ^[
+will stand for
+.Ql escape
+and
+.Ql ^LETTER
+for
+.Ql control-LETTER
+(actually a visualized numeric where
+.Ql A
+stands for 1 etc.; in fact: the numeric value of
+.Ql LETTER
+in the US-ASCII character set bitwise XORd with
+.Ql 0x40 ,
+e.g.,
+.Ql $ echo $((0x41 ^ 0x40)) .
+Note that
+.Ql escape
+and other control characters have to be notated as shell-style
+escape sequences, e.g.,
+.Ql \e033
+for (US-ASCII)
+.Ql escape
+and
+.Ql \e001
+for
+.Ql ^A .
+.
+.Pp
+The following terminal capabilities are or may be meaningful for the
+operation of the builtin line editor or \*(UA in general:
+.
+.Pp
+.Bl -tag -compact -width yay
+.\" HAVE_TERMCAP
+.It Cd te , ti
+.Cd exit_ca_mode Ns / Ns Cd rmcup
+and
+.Cd enter_ca_mode Ns / Ns Cd smcup ,
+respectively: exit and enter the alternative screen
+.Dq ca-mode ,
+effectively turning \*(UA into a fullscreen application.
+To disable that, set (at least) one to the empty string.
+.
+.It Cd ks , ke
+.Cd keypad_xmit Ns / Ns Cd smkx
+and
+.Cd keypad_local Ns / Ns Cd rmkx ,
+respectively: enable and disable the keypad.
+This is always enabled if available, because it seems even keyboards
+without keypads generate other key codes for, e.g., cursor keys in that
+case, and only if enabled we see the codes that we are interested in.
+.
+.It Cd cd
+.Cd clr_eos Ns / Ns Cd ed :
+clear the screen.
+.
+.It Cd cl
+.Cd clear_screen Ns / Ns Cd clear :
+clear the screen and home cursor.
+(Will be simulated via
+.Cd ho
+plus
+.Cd cd . )
+.
+.It Cd ho
+.Cd cursor_home Ns / Ns Cd home :
+home cursor.
+.
+.\" HAVE_MLE
+.It Cd ce
+.Cd clr_eol Ns / Ns Cd el :
+clear to the end of line.
+(Will be simulated via
+.Cd ch
+plus repititions of space characters.)
+.
+.It Cd ch
+.Cd column_address Ns / Ns Cd hpa :
+move the cursor (to the given column parameter) in the current row.
+(Will be simulated via
+.Cd cr
+plus
+.Cd nd . )
+.
+.It Cd cr
+.Cd carriage_return Ns / Ns Cd cr :
+move to the first column in the current row.
+The default builtin fallback is
+.Ql \er .
+.
+.It Cd le
+.Cd cursor_left Ns / Ns Cd cub1 :
+move the cursor left one space (non-destructively).
+The default builtin fallback is
+.Ql \eb .
+.
+.It Cd nd
+.Cd cursor_right Ns / Ns Cd cuf1 :
+move the cursor right one space (non-destructively).
+The default builtin fallback is
+.Ql \e033[C ,
+which is used by most terminals.
+Less often occur
+.Ql \e033OC
+and
+.Ql \e014 .
+.
+.It Cd %k , %o , %q , %r
+The left, right, up and down cursor keys with the
+.Ql control
+key held.
+.El
+.
+.
+.Mx
+.It Va termcap-disable
+\*(OP Disable any interaction with the
+.Lb libtermcap .
+If set only some generic fallback builtins and possibly the content of
+.Va termcap
+describe the terminal to \*(UA.
+.Sy Note
+that this variable will only be queried once at program startup and can
+thus only be specified in resource files or on the command line.
 .
 .Mx
 .It Va toplines
@@ -8141,8 +8274,8 @@ A default shell is used if this option is not defined.
 \*(OP The terminal type for which output is to be prepared.
 For extended colour and font control please refer to
 .Sx "Coloured display" ,
-and for terminal capability queries to
-.Va term-ca-mode .
+and for terminal management in general to
+.Sx "On terminal control and line editor" .
 .
 .Mx
 .It Ev TMPDIR
