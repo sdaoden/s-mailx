@@ -296,42 +296,6 @@ FL char *      nodename(int mayoverride);
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
 
-/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
- * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
-FL size_t      field_detect_width(char const *buf, size_t blen);
-
-/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
- * safely placed in a buffer (field width) of maxlen bytes */
-FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
-
-/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
- * taking into account multibyte code point boundaries and possibly
- * encapsulating in bidi_info toggles as necessary */
-FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
-                  size_t blen);
-
-/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
-FL char *      colalign(char const *cp, int col, int fill,
-                  int *cols_decr_used_or_null);
-
-/* Convert a string to a displayable one;
- * prstr() returns the result savestr()d, prout() writes it */
-FL void        makeprint(struct str const *in, struct str *out);
-FL size_t      delctrl(char *cp, size_t len);
-FL char *      prstr(char const *s);
-FL int         prout(char const *s, size_t sz, FILE *fp);
-
-/* Print out a Unicode character or a substitute for it, return 0 on error or
- * wcwidth() (or 1) on success */
-FL size_t      putuc(int u, int c, FILE *fp);
-
-/* Check wether bidirectional info maybe needed for blen bytes of bdat */
-FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
-
-/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
- * the strings are always empty */
-FL void        bidi_info_create(struct bidi_info *bip);
-
 /* Check wether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
  * treated as a boolean, is used as the return value shall inbuf be empty.
@@ -2297,6 +2261,46 @@ FL int         c_history(void *v);
 #else
 # define c_history               c_cmdnotsupp
 #endif
+
+/*
+ * ui_str.c
+ */
+
+/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
+ * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
+FL size_t      field_detect_width(char const *buf, size_t blen);
+
+/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
+ * safely placed in a buffer (field width) of maxlen bytes */
+FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
+
+/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
+ * taking into account multibyte code point boundaries and possibly
+ * encapsulating in bidi_info toggles as necessary */
+FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
+                  size_t blen);
+
+/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
+FL char *      colalign(char const *cp, int col, int fill,
+                  int *cols_decr_used_or_null);
+
+/* Convert a string to a displayable one;
+ * prstr() returns the result savestr()d, prout() writes it */
+FL void        makeprint(struct str const *in, struct str *out);
+FL size_t      delctrl(char *cp, size_t len);
+FL char *      prstr(char const *s);
+FL int         prout(char const *s, size_t sz, FILE *fp);
+
+/* Print out a Unicode character or a substitute for it, return 0 on error or
+ * wcwidth() (or 1) on success */
+FL size_t      putuc(int u, int c, FILE *fp);
+
+/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+
+/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+ * the strings are always empty */
+FL void        bidi_info_create(struct bidi_info *bip);
 
 /*
  * urlcrecry.c
