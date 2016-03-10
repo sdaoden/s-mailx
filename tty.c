@@ -1843,10 +1843,12 @@ tty_destroy(void)
    if (v == NULL)
       goto jleave;
 
-   if ((hp = _ncl_hist) != NULL)
-      while (hp->older != NULL && hs-- != 0)
-         hp = hp->older;
    dogabby = ok_blook(history_gabby_persist);
+
+   if ((hp = _ncl_hist) != NULL)
+      for (; hp->th_older != NULL; hp = hp->th_older)
+         if ((dogabby || !hp->th_isgabby) && --hs == 0)
+            break;
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */
