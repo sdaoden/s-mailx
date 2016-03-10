@@ -29,7 +29,7 @@
 # endif
 #endif
 
-#if defined HAVE_READLINE || defined HAVE_NCL || defined HAVE_TERMCAP
+#if defined HAVE_READLINE || defined HAVE_MLE || defined HAVE_TERMCAP
 # define a_TTY_SIGNALS
 #endif
 
@@ -506,20 +506,25 @@ jentry:{
 #endif /* HAVE_READLINE */
 
 /*
- * NCL: our homebrew version (inspired from NetBSD sh(1) / dash(1)s hetio.c).
+ * MLE: the Mailx-Line-Editor, our homebrew editor
+ * (inspired from NetBSD sh(1) / dash(1)s hetio.c).
  *
  * Only used in interactive mode, simply use STDIN_FILENO as point of interest.
  * We do not handle character widths because the terminal must deal with that
  * anyway on the one hand, and also wcwidth(3) doesn't support zero-width
  * characters by definition on the other.  We're addicted.
  *
- * To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
+ * TODO MLE2: either "require" TERMCAP, or "#ifdef HAVE_TERMCAP" support for
+ * TODO a MLE<->TERMCAP carrier which gives us exact knowledge of special key
+ * TODO sequences as well as of a basic set of ops: cm,ce etc.
+ */
+/* To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
  * we're forced to use the very same buffer--the one that is passed through to
  * us from the outside--to store anything we need, i.e., a `struct cell[]', and
  * convert that on-the-fly back to the plain char* result once we're done.
  * To simplify our live, use savestr() buffers for all other needed memory
  */
-#ifdef HAVE_NCL
+#ifdef HAVE_MLE
 # ifndef MAX_INPUT
 #  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
 # endif
@@ -1266,9 +1271,9 @@ _ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
 jrestart:
    memset(ps, 0, sizeof ps);
    cursor_maybe = cursor_store = 0;
-   /* TODO: NCL: we should output the reset sequence when we jrestart:
-    * TODO: NCL: if we are using a stateful encoding? !
-    * TODO: NCL: in short: this is not yet well understood */
+   /* TODO: MLE: we should output the reset sequence when we jrestart:
+    * TODO: MLE: if we are using a stateful encoding? !
+    * TODO: MLE: in short: this is not yet well understood */
    for (;;) {
       _ncl_check_grow(&l, len SMALLOC_DEBUG_ARGSCALL);
 
@@ -1820,12 +1825,12 @@ jentry: {
    goto jleave;
 }
 # endif /* HAVE_HISTORY */
-#endif /* HAVE_NCL */
+#endif /* HAVE_MLE */
 
 /*
  * The really-nothing-at-all implementation
  */
-#if !defined HAVE_READLINE && !defined HAVE_NCL
+#if !defined HAVE_READLINE && !defined HAVE_MLE
 
 FL void
 n_tty_init(void){

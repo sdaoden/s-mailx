@@ -190,24 +190,22 @@ WANT_IMAP_SEARCH=yes
 # expressions etc., we use the extended ones, then; can be "require"d.
 WANT_REGEX=yes
 
-# Command line editing and -history.
-# One may choose in between different command line editors.  Note that
-# (1) only the builtin NCL (may) map(s) 1:1 to the behaviour as is
-# documented in the manual and (2) these are tested in the shown order:
+# Line editing and -history (manual "On terminal and line editor").
+# One may choose in between different line editors.  Note that (1) only
+# the builtin MLE (may) map(s) 1:1 to the behaviour as is documented in
+# the manual and (2) these are tested in the shown order:
 # . WANT_READLINE
 #   The GNU readline(3) compatible interface; can be "require"d.
-# . WANT_NCL
+# . WANT_MLE
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
-#   system then our builtin NCL (Nail Command Line editor) version can
-#   be used.  It is documented in the manual section "Command line
-#   editor" and can be "require"d.
+#   system then our builtin MLE (Mailx-Line-Editor) version can be used.
+#   An enabled & available WANT_TERMCAP may affect and improve the MLE.
+#   Can be "require"d.
 WANT_READLINE=no
-WANT_NCL=yes
-# All command line editors optionally support history management.
+WANT_MLE=yes
+# All line editors optionally support history management.
 WANT_HISTORY=yes
-# For the NCL command line editor we optionally support
-# "expand-on-tabulator".  Turning it off shrinks the binary.
-# Please see the respective manual entry.
+# For the MLE we optionally support "expand-on-tabulator".
 WANT_TABEXPAND=yes
 
 # Use termcap(3) for terminal control; can be "require"d.

@@ -14,7 +14,7 @@ option_reset() {
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
-   WANT_READLINE=0 WANT_NCL=0
+   WANT_READLINE=0 WANT_MLE=0
    WANT_TERMCAP=0
    WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
@@ -35,7 +35,7 @@ option_maximal() {
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
-   WANT_NCL=1
+   WANT_MLE=1
       WANT_HISTORY=1 WANT_TABEXPAND=1
    WANT_TERMCAP=1
    WANT_ERRORS=1
@@ -68,7 +68,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_ICONV=require
       WANT_IDNA=1
       WANT_REGEX=1
-      WANT_NCL=1
+      WANT_MLE=1
          WANT_HISTORY=1
       WANT_ERRORS=1
       WANT_SPAM_FILTER=1
@@ -85,7 +85,7 @@ if [ -n "${CONFIG}" ]; then
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
       WANT_REGEX=1
-      WANT_NCL=1
+      WANT_MLE=1
          WANT_HISTORY=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
@@ -133,7 +133,7 @@ option_update() {
       WANT_GSSAPI=0
    fi
 
-   if feat_no READLINE && feat_no NCL; then
+   if feat_no READLINE && feat_no MLE; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
 
@@ -2076,10 +2076,10 @@ int main(void){
    [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
-if feat_yes NCL && [ -z "${have_readline}" ] &&
+if feat_yes MLE && [ -z "${have_readline}" ] &&
       [ -n "${have_c90amend1}" ]; then
-   have_ncl=1
-   echo '#define HAVE_NCL' >> ${h}
+   have_mle=1
+   echo '#define HAVE_MLE' >> ${h}
 
    if [ -n "${have_pathconf}" ]; then
       link_check _pc_max_input 'pathconf(2): _PC_MAX_INPUT' \
@@ -2092,12 +2092,12 @@ int main(void){
 !
    fi
 else
-   feat_bail_required NCL
-   echo '/* WANT_{READLINE,NCL}=0 */' >> ${h}
+   feat_bail_required MLE
+   echo '/* WANT_{READLINE,MLE}=0 */' >> ${h}
 fi
 
-# Generic have-a-command-line-editor switch for those who need it below
-if [ -n "${have_ncl}" ] ||
+# Generic have-a-line-editor switch for those who need it below
+if [ -n "${have_mle}" ] ||
       [ -n "${have_readline}" ]; then
    have_cle=1
 fi
@@ -2274,7 +2274,7 @@ printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
@@ -2386,11 +2386,11 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_REGEX
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
-#if defined HAVE_READLINE || defined HAVE_NCL
+#if defined HAVE_READLINE || defined HAVE_MLE
 # ifdef HAVE_READLINE
 : + Command line editing via readline(3)
 # else
-: + Command line editing via N(ail) C(ommand) L(ine)
+: + Command line editing via M(ailx)-L(ine)-E(ditor)
 # endif
 # ifdef HAVE_TABEXPAND
 : + + Tabulator expansion
@@ -2481,7 +2481,7 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_REGEX
 : - Regular expression support
 #endif
-#if !defined HAVE_READLINE && !defined HAVE_NCL
+#if !defined HAVE_READLINE && !defined HAVE_MLE
 : - Command line editing and history
 #endif
 #ifndef HAVE_TERMCAP

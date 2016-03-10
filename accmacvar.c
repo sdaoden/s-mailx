@@ -276,7 +276,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             *val = cp;
       }
       break;
-#ifdef HAVE_NCL
+#ifdef HAVE_MLE
    case ok_v_line_editor_cursor_right:
       if ((ok = (val != NULL && *val != NULL))) {
          /* Set with no value? TODO very guly */

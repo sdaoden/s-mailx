@@ -59,10 +59,9 @@ which take precedence over anything else (names are case-insensitive):
   "Require"s dotlocking and the privileged separated dotlock helper.
 
 . CONFIG=MEDIUM
-  Like MINIMAL, but with documentation strings, the builtin command line
-  editor (NCL) with history support (if possible), error tracking, basic
-  colour support and IDNA addresses.  Also adds in generic spam filter
-  support.
+  Like MINIMAL, but with documentation strings, the builtin line editor
+  (MLE) with history support (if possible), error tracking, basic colour
+  support and IDNA addresses.  Also adds in generic spam filter support.
 
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
@@ -84,7 +83,7 @@ which take precedence over anything else (names are case-insensitive):
 
 . CONFIG=MAXIMAL
   Anything on, including experimental features.
-  "Require"s iconv(3), regex(3), the NCL as well as dotlocking and the
+  "Require"s iconv(3), regex(3), the MLE as well as dotlocking and the
   privileged separated dotlock helper.
 
   S-nail(1) gains mail fetching capabilities and heads more toward being
