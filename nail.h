@@ -1126,7 +1126,7 @@ enum program_state {
    PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
 };
 
-/* A large enum with all the binary and value options a.k.a their keys.
+/* A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
  * Note: see the comments in accmacvar.c before changing *anything* in here! */

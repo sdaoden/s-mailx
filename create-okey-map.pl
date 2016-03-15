@@ -60,7 +60,7 @@ sub parse_nail_h {
       my ($k, $x) = ($1, $2);
       my %vals;
       $vals{enum} = $k;
-      $vals{binary} = ($k =~ /^ok_b/ ? 1 : 0);
+      $vals{boolean} = ($k =~ /^ok_b/ ? 1 : 0);
       $k = $1 if $k =~ /^ok_[bv]_(.+)$/;
       $k =~ s/_/-/g;
       $vals{name} = $k;
@@ -105,7 +105,7 @@ sub create_c_tool {
 
 enum var_map_flags {
    VM_NONE     = 0,
-   VM_BINARY   = 1<<0,           /* ok_b_* */
+   VM_BOOLEAN  = 1<<0,           /* ok_b_* */
    VM_RDONLY   = 1<<1,           /* May not be set by user */
    VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
    VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
@@ -255,7 +255,7 @@ sub dump_keydat_varmap {
       my $l = length $k;
       my $a = join '\',\'', split(//, $k);
       my ($f, $s) = ('', ', ');
-      if ($e->{binary})  {$f .= $s . 'VM_BINARY'; $s = ' | '}
+      if ($e->{boolean}) {$f .= $s . 'VM_BOOLEAN'; $s = ' | '}
       if ($e->{rdonly})  {$f .= $s . 'VM_RDONLY'; $s = ' | '}
       if ($e->{special}) {$f .= $s . 'VM_SPECIAL'; $s = ' | '}
       if ($e->{virtual}) {
@@ -272,7 +272,7 @@ sub dump_keydat_varmap {
    print F 'static struct var_map const _var_map[] = {', "\n";
    foreach my $e (@ENTS) {
       my $f = 'VM_NONE';
-      $f .= ' | VM_BINARY'  if $e->{binary};
+      $f .= ' | VM_BOOLEAN' if $e->{boolean};
       $f .= ' | VM_RDONLY'  if $e->{rdonly};
       $f .= ' | VM_SPECIAL' if $e->{special};
       $f .= ' | VM_VIRTUAL' if $e->{virtual};

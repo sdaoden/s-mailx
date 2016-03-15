@@ -53,7 +53,7 @@
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
 .ds ID [v15 behaviour may differ]
-.ds BY (Binary)
+.ds BO (Boolean)
 .ds RO (Read-only)
 .
 .Dt "\*(UU" 1
@@ -2199,7 +2199,7 @@ or its name includes the string
 .Ql color .
 .
 .Pp
-On top of that the binary option
+On top of what \*(UA knows about the terminal the boolean variable
 .Va colour-pager
 defines wether these colour sequences are also generated when the output
 of a command needs to go through the
@@ -3133,7 +3133,7 @@ erminal will evaluate to true if the standard input is a terminal, i.e.,
 in interactive sessions.
 Another condition can be any boolean value (see the section
 .Sx "INTERNAL VARIABLES"
-for booleans) to mark an enwrapped block as
+for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
@@ -3289,7 +3289,7 @@ It can only be used inside of macro definition blocks introduced by
 .Ic account
 or
 .Ic define ,
-and is interpreted as a boolean (see
+and is interpreted as a boolean (string, see
 .Sx "INTERNAL VARIABLES" ) ;
 the
 .Dq covered scope
@@ -4236,13 +4236,13 @@ consists of characters in the portable character set, see
 .It Ic varedit
 Edit the values of or create the given variable(s) in the
 .Ev EDITOR .
-Binary variables cannot be edited.
+Boolean variables cannot be edited.
 .
 .Mx
 .It Ic varshow
 Show informations about all the given variables.
 \*(UA knows about a finite set of known builtin variables that are
-subdivided further in binary and value variants;
+subdivided further in boolean and value variants;
 they may have special properties, like
 .Dq read-only
 (setting may not be changed) and
@@ -4254,7 +4254,7 @@ variables, which are expected to be able to store values, may exist.
 .Bd -literal -offset indent
 ? set foo=bar nobar
 ? varshow sendwait version-major foo bar
-"sendwait": (73) binary: set=1 (ENVIRON=0)
+"sendwait": (73) boolean: set=1 (ENVIRON=0)
 "version-major": (192) value, read-only, virtual:\e
   set=1 (ENVIRON=0) value<14>
 "foo": (assembled) set=1 (ENVIRON=0) value<bar>
@@ -4706,7 +4706,7 @@ and can be set explicitly via the command line option
 .
 .Pp
 Two different kind of variables exist.
-There are binary variables, which can only be in one of the two states
+There are boolean variables, which can only be in one of the two states
 .Dq set
 and
 .Dq unset ,
@@ -4730,7 +4730,7 @@ unset one two three four
 Dependent upon the actual option the string values will be interpreted
 as numbers, colour names, normal text etc., but there also exists
 a special kind of string value, the
-.Dq boolean ,
+.Dq boolean string ,
 which must either be a decimal integer (in which case
 .Ql 0
 is false and
@@ -4745,9 +4745,9 @@ for a false boolean and
 .Ql yes
 and
 .Ql true
-for a true boolean; a special kind of boolean is the
+for a true boolean; a special kind of boolean string is the
 .Dq quadoption ,
-which is a boolean that can optionally be prefixed with the
+which is a boolean string that can optionally be prefixed with the
 (case-insensitive) term
 .Ql ask- ,
 as in
@@ -4837,7 +4837,7 @@ etc., and should thus be taken into account.
 .Bl -tag -width ".It Va _utoprin_"
 .Mx
 .It Va add-file-recipients
-\*(BY When file or pipe recipients have been specified,
+\*(BO When file or pipe recipients have been specified,
 mention them in the corresponding address fields of the message instead
 of silently stripping them from their recipient list.
 By default such addressees are not mentioned.
@@ -4892,25 +4892,25 @@ The
 .
 .Mx
 .It Va allnet
-\*(BY Causes only the local part to be evaluated
+\*(BO Causes only the local part to be evaluated
 when comparing addresses.
 .
 .Mx
 .It Va append
-\*(BY Causes messages saved in
+\*(BO Causes messages saved in
 .Ev MBOX
 to be appended to the end rather than prepended.
 This should always be set.
 .
 .Mx
 .It Va ask
-\*(BY Causes \*(UA to prompt for the subject of each message sent.
+\*(BO Causes \*(UA to prompt for the subject of each message sent.
 If the user responds with simply a newline,
 no subject field will be sent.
 .
 .Mx
 .It Va askatend
-\*(BY Causes the prompts for
+\*(BO Causes the prompts for
 .Ql Cc:
 and
 .Ql Bcc:
@@ -4918,13 +4918,13 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-\*(BY If set, \*(UA asks for files to attach at the end of each message,
+\*(BO If set, \*(UA asks for files to attach at the end of each message,
 shall the list be found empty at that time.
 An empty line finalizes the list.
 .
 .Mx
 .It Va askcc
-\*(BY Causes the user to be prompted for carbon copy recipients
+\*(BO Causes the user to be prompted for carbon copy recipients
 (at the end of each message if
 .Va askatend
 or
@@ -4934,7 +4934,7 @@ An empty line finalizes the list.
 .
 .Mx
 .It Va askbcc
-\*(BY Causes the user to be prompted for blind carbon copy
+\*(BO Causes the user to be prompted for blind carbon copy
 recipients (at the end of each message if
 .Va askatend
 or
@@ -4944,7 +4944,7 @@ An empty line finalizes the list.
 .
 .Mx
 .It Va asksign
-\*(BY\*(OP Causes the user to be prompted if the message is to be
+\*(BO\*(OP Causes the user to be prompted if the message is to be
 signed at the end of each message.
 The
 .Va smime-sign
@@ -4952,7 +4952,7 @@ variable is ignored when this variable is set.
 .
 .Mx
 .It Va asksub
-\*(BY Alternative name for
+\*(BO Alternative name for
 .Va ask .
 .
 .Mx
@@ -4963,7 +4963,7 @@ variable is ignored when this variable is set.
   attachment-ask-content-disposition , \
   attachment-ask-content-id , \
   attachment-ask-content-type
-\*(BY If set then the user will be prompted for some attachment
+\*(BO If set then the user will be prompted for some attachment
 information when editing the attachment list.
 It is advisable to not use these but for the first of the variables;
 even for that it has to be noted that the data is used
@@ -5034,20 +5034,20 @@ message will be sent automatically.
 .
 .Mx
 .It Va autocollapse
-\*(BY Causes threads to be collapsed automatically when threaded mode
+\*(BO Causes threads to be collapsed automatically when threaded mode
 is entered (see the
 .Ic collapse
 command).
 .
 .Mx
 .It Va autoprint
-\*(BY Causes the delete command to behave like
+\*(BO Causes the delete command to behave like
 .Ql dp - ;
 thus, after deleting a message the next one will be typed automatically.
 .
 .Mx
 .It Va autothread
-\*(BY\*(OB Causes threaded mode (see the
+\*(BO\*(OB Causes threaded mode (see the
 .Ic thread
 command) to be entered automatically when a folder is opened.
 The same as
@@ -5063,13 +5063,13 @@ sorting method when a folder is opened, e.g.,
 .
 .Mx
 .It Va bang
-\*(BY Enables the substitution of
+\*(BO Enables the substitution of
 .Ql \&!
 by the contents of the last command line in shell escapes.
 .
 .Mx
 .It Va batch-exit-on-error
-\*(BY If the batch mode has been enabled via the
+\*(BO If the batch mode has been enabled via the
 .Fl #
 command line option, then this variable will be consulted whenever \*(UA
 completes one operation (returns to the command prompt); if it is set
@@ -5077,13 +5077,13 @@ then \*(UA will terminate if the last operation generated an error.
 .
 .Mx
 .It Va bsdannounce
-\*(BY Causes automatic display of a header summary after executing a
+\*(BO Causes automatic display of a header summary after executing a
 .Ic file
 command.
 .
 .Mx
 .It Va bsdcompat
-\*(BY Sets some cosmetical features to traditional BSD style;
+\*(BO Sets some cosmetical features to traditional BSD style;
 has the same affect as setting
 .Va askatend
 and all other variables prefixed with
@@ -5095,21 +5095,21 @@ escape sequence.
 .
 .Mx
 .It Va bsdflags
-\*(BY Changes the letters printed in the first column of a header
+\*(BO Changes the letters shown in the first column of a header
 summary to traditional BSD style.
 .
 .Mx
 .It Va bsdheadline
-\*(BY Changes the display of columns in a header summary to traditional
+\*(BO Changes the display of columns in a header summary to traditional
 BSD style.
 .
 .Mx
 .It Va bsdmsgs
-\*(BY Changes some informational messages to traditional BSD style.
+\*(BO Changes some informational messages to traditional BSD style.
 .
 .Mx
 .It Va bsdorder
-\*(BY Causes the
+\*(BO Causes the
 .Ql Subject:
 field to appear immediately after the
 .Ql To:
@@ -5119,7 +5119,7 @@ field in message headers and with the
 .
 .Mx
 .It Va bsdset
-\*(BY Changes the output format of the
+\*(BO Changes the output format of the
 .Ic set
 command to traditional BSD style.
 .
@@ -5170,7 +5170,7 @@ command.
 .
 .Mx
 .It Va colour-disable
-\*(BY\*(OP Forcefully disable usage of colours.
+\*(BO\*(OP Forcefully disable usage of colours.
 Also see the section
 .Sx "Coloured message display" .
 .
@@ -5193,7 +5193,7 @@ for the format of the value.
 .
 .Mx
 .It Va colour-pager
-\*(BY\*(OP Wether colour shall be used for output that is paged through
+\*(BO\*(OP Wether colour shall be used for output that is paged through
 .Ev PAGER .
 Note that pagers may need special flags, e.g.,
 .Xr less 1
@@ -5308,7 +5308,7 @@ The content interpretation is identical to
 .
 .Mx
 .It Va debug
-\*(BY Enables debug messages and obsoletion warnings, disables the
+\*(BO Enables debug messages and obsoletion warnings, disables the
 actual delivery of messages and also implies
 .Pf no Va record
 as well as
@@ -5345,7 +5345,7 @@ but other accounts are not affected.
 .
 .Mx
 .It Va disposition-notification-send
-\*(BY\*(OP Emit a
+\*(BO\*(OP Emit a
 .Ql Disposition-Notification-To:
 header (RFC 3798) with the message.
 This requires the
@@ -5362,7 +5362,7 @@ variable to be set.
 .
 .Mx
 .It Va dot
-\*(BY When dot is set, a period
+\*(BO When dot is set, a period
 .Ql \&.
 on a line by itself during message input in (interactive) compose mode
 will be treated as end-of-message (in addition to the normal end-of-file
@@ -5375,7 +5375,7 @@ is ignored.
 .
 .Mx
 .It Va dotlock-ignore-error
-\*(BY\*(OP Synchronization of mailboxes which \*(UA treats as system
+\*(BO\*(OP Synchronization of mailboxes which \*(UA treats as system
 mailboxes (see the command
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
@@ -5387,7 +5387,7 @@ fatal unless this variable is set.
 .
 .Mx
 .It Va editalong
-\*(BY If this variable is set then the editor is started automatically
+\*(BO If this variable is set then the editor is started automatically
 when a message is composed in interactive mode, as if the
 .Ic ~e
 .Sx "TILDE ESCAPES"
@@ -5398,7 +5398,7 @@ variable is implied for this automatically spawned editor session.
 .
 .Mx
 .It Va editheaders
-\*(BY When a message is edited while being composed,
+\*(BO When a message is edited while being composed,
 its header is included in the editable text.
 The
 .Ql To: ,
@@ -5414,7 +5414,7 @@ fields are accepted within the header, other fields are ignored.
 .
 .Mx
 .It Va emptystart
-\*(BY If the mailbox is empty \*(UA normally prints
+\*(BO When entering interactive mode \*(UA normally writes
 .Dq \&No mail for user
 and exits immediately.
 If this option is set \*(UA starts even with an empty mailbox.
@@ -5523,7 +5523,7 @@ of this variable is identical to the output of the command
 .
 .Mx
 .It Va flipr
-\*(BY This option reverses the meanings of a set of reply commands,
+\*(BO This option reverses the meanings of a set of reply commands,
 turning the lowercase variants, which by default address all recipients
 included in the header of a message
 .Pf ( Ic reply , respond , followup )
@@ -5645,7 +5645,7 @@ first, but then followed by
 .
 .Mx
 .It Va followup-to
-\*(BY Controls wether a
+\*(BO Controls wether a
 .Ql Mail-Followup-To:
 header is generated when sending messages to known mailing lists.
 Also see
@@ -5674,7 +5674,7 @@ and
 .
 .Mx
 .It Va forward-as-attachment
-\*(BY Original messages are normally sent as inline text with the
+\*(BO Original messages are normally sent as inline text with the
 .Ic forward
 command,
 and only the first part of a multipart message is included.
@@ -5710,7 +5710,7 @@ variable is required (according to the standard RFC 5322).
 .
 .Mx
 .It Va fullnames
-\*(BY When replying to or forwarding a message \*(UA normally removes
+\*(BO When replying to or forwarding a message \*(UA normally removes
 the comment and name parts of email addresses.
 If this variable is set such stripping is not performed,
 and comments, names etc. are retained.
@@ -5729,7 +5729,7 @@ if unset; No heading is printed if it is set to the empty string.
 .
 .Mx
 .It Va header
-\*(BY Causes the header summary to be written at startup and after
+\*(BO Causes the header summary to be written at startup and after
 commands that affect the number of messages or the order of messages in
 the current folder; enabled by default.
 The command line option
@@ -5867,11 +5867,11 @@ again reserves room for two spaces in addition.
 .
 .Mx
 .It Va history-gabby
-\*(BY\*(OP Add more entries to the history as is normally done.
+\*(BO\*(OP Add more entries to the history as is normally done.
 .
 .Mx
 .It Va history-gabby-persist
-\*(BY\*(OP \*(UA's own NCL will not save the additional
+\*(BO\*(OP \*(UA's own MLE will not save the additional
 .Va history-gabby
 entries in persistent storage unless this variable is set.
 On the other hand it will not loose the knowledge of wether a persistent
@@ -5881,7 +5881,7 @@ Also see
 .
 .Mx
 .It Va hold
-\*(BY This option is used to hold messages in the system mailbox,
+\*(BO This option is used to hold messages in the system mailbox,
 and it is set by default.
 .
 .Mx
@@ -5913,7 +5913,7 @@ etc. first.
 .
 .Mx
 .It Va idna-disable
-\*(BY\*(OP Can be used to turn off the automatic conversion of domain
+\*(BO\*(OP Can be used to turn off the automatic conversion of domain
 names according to the rules of IDNA (internationalized domain names
 for applications).
 Since the IDNA code assumes that domain names are specified with the
@@ -5923,14 +5923,14 @@ possible international domain names (before conversion, that is).
 .
 .Mx
 .It Va ignore
-\*(BY Ignore interrupt signals from the terminal while entering
+\*(BO Ignore interrupt signals from the terminal while entering
 messages; instead echo them as
 .Ql @
 characters and discard the current line.
 .
 .Mx
 .It Va ignoreeof
-\*(BY Ignore end-of-file conditions
+\*(BO Ignore end-of-file conditions
 .Pf ( Ql control-D )
 in compose mode on message input and in interactive command input.
 If set an interactive command input session can only be left by
@@ -6011,7 +6011,7 @@ Be sure to quote the value if it contains spaces or tabs.
 .
 .Mx
 .It Va keep
-\*(BY If set, an empty mailbox file is not removed.
+\*(BO If set, an empty mailbox file is not removed.
 This may improve the interoperability with other mail user agents
 when using a common folder directory, and prevents malicious users
 from creating fake mailboxes in a world-writable spool directory.
@@ -6020,7 +6020,7 @@ types will never be removed.
 .
 .Mx
 .It Va keep-content-length
-\*(BY When (editing messages and) writing
+\*(BO When (editing messages and) writing
 .Ev MBOX
 mailbox files \*(UA can be told to keep the
 .Ql Content-Length:
@@ -6038,7 +6038,7 @@ fields already marks the message as being modified.
 .
 .Mx
 .It Va keepsave
-\*(BY When a message is saved it is usually discarded from the
+\*(BO When a message is saved it is usually discarded from the
 originating folder when \*(UA is quit.
 Setting this option causes all saved message to be retained.
 .
@@ -6066,13 +6066,13 @@ for (US-ASCII)
 .
 .Mx
 .It Va line-editor-disable
-\*(BY Turn off any enhanced command line editing capabilities (see
+\*(BO Turn off any enhanced line editing capabilities (see
 .Sx "Command line editor"
 for more).
 .
 .Mx
 .It Va markanswered
-\*(BY When a message is replied to and this variable is set,
+\*(BO When a message is replied to and this variable is set,
 it is marked as having been answered.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
@@ -6080,7 +6080,7 @@ and makes them specially addressable.
 .
 .Mx
 .It Va mbox-rfc4155
-\*(BY \*(UA generates and expects fully RFC 4155 compliant MBOX text
+\*(BO \*(UA generates and expects fully RFC 4155 compliant MBOX text
 mailboxes.
 Messages which are fetched over the network or from within already
 existing Maildir (or any non-MBOX) mailboxes may require so-called
@@ -6106,11 +6106,11 @@ Set this option to instead generate MBOX files which comply to RFC 4155.
 .
 .Mx
 .It Va memdebug
-\*(BY Internal development variable.
+\*(BO Internal development variable.
 .
 .Mx
 .It Va message-id-disable
-\*(BY By setting this option the generation of
+\*(BO By setting this option the generation of
 .Ql Message-ID:
 can be completely suppressed, effectively leaving this task up to the
 mail-transfer-agent (MTA) or the SMTP server.
@@ -6120,7 +6120,7 @@ field by itself, so you should ensure that it accepts messages without a
 .
 .Mx
 .It Va metoo
-\*(BY Usually, when an
+\*(BO Usually, when an
 .Ic alias
 expansion contains the sender, the sender is removed from the expansion.
 Setting this option suppresses these removals.
@@ -6134,7 +6134,7 @@ MTA is known which doesn't support it (for historical compatibility).
 .
 .Mx
 .It Va mime-allow-text-controls
-\*(BY When sending messages, each part of the message is MIME-inspected
+\*(BO When sending messages, each part of the message is MIME-inspected
 in order to classify the
 .Ql Content-Type:
 and
@@ -6172,7 +6172,7 @@ will not be overwritten.
 .
 .Mx
 .It Va mime-alternative-favour-rich
-\*(BY If this variable is set then rich MIME alternative parts (e.g.,
+\*(BO If this variable is set then rich MIME alternative parts (e.g.,
 HTML) will be preferred in favour of included plain text versions when
 displaying messages, provided that a handler exists which produces
 output that can be (re)integrated into \*(UA's normal visual display.
@@ -6312,7 +6312,7 @@ are understood.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
-\*(BY\*(IN\*(OP Used to control usage of the users
+\*(BO\*(IN\*(OP Used to control usage of the users
 .Pa .netrc
 file for lookup of account credentials, as documented in the section
 .Sx "On URL syntax and credential lookup"
@@ -6356,7 +6356,7 @@ timestamp changes are detected.
 .
 .Mx
 .It Va outfolder
-\*(BY Causes the filename given in the
+\*(BO Causes the filename given in the
 .Va record
 variable
 and the sender-based filenames for the
@@ -6370,7 +6370,7 @@ unless it is set to an absolute pathname.
 .
 .Mx
 .It Va page
-\*(BY If set, each message the
+\*(BO If set, each message feed through the command given for
 .Ic pipe
 command prints out is followed by a formfeed character
 .Ql \ef .
@@ -6397,7 +6397,7 @@ the file should be readable by the invoking user only.
 .
 .Mx
 .It Va piperaw
-\*(BY Send messages to the
+\*(BO Send messages to the
 .Ic pipe
 command without performing MIME and character set conversions.
 .
@@ -6558,7 +6558,7 @@ which is thus the default.
 .Mx
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
-\*(BY\*(OP When accessing a POP3 server \*(UA loads the headers of
+\*(BO\*(OP When accessing a POP3 server \*(UA loads the headers of
 the messages, and only requests the message bodies on user request.
 For the POP3 protocol this means that the message headers will be
 downloaded twice.
@@ -6578,7 +6578,7 @@ command to be sent each value seconds if no other operation is performed.
 .
 .Mx Va pop3-no-apop
 .It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
-\*(BY\*(OP Unless this variable is set the
+\*(BO\*(OP Unless this variable is set the
 .Ql APOP
 authentication method will be used when connecting to a POP3 server that
 advertises support.
@@ -6592,7 +6592,7 @@ requires \*(IN.
 .
 .Mx Va pop3-use-starttls
 .It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
-\*(BY\*(OP Causes \*(UA to issue a
+\*(BO\*(OP Causes \*(UA to issue a
 .Ql STLS
 command to make an unencrypted POP3 session SSL/TLS encrypted.
 This functionality is not supported by all servers,
@@ -6612,7 +6612,7 @@ be found.
 .
 .Mx
 .It Va print-alternatives
-\*(BY When a MIME message part of type
+\*(BO When a MIME message part of type
 .Ql multipart/alternative
 is displayed and it contains a subpart of type
 .Ql text/plain ,
@@ -6684,7 +6684,7 @@ for this.
 .
 .Mx
 .It Va quiet
-\*(BY Suppresses the printing of the version when first invoked.
+\*(BO Suppresses the printing of the version when first invoked.
 .
 .Mx
 .It Va quote
@@ -6722,7 +6722,7 @@ command; also see
 .
 .Mx
 .It Va quote-as-attachment
-\*(BY Add the original message in its entirety as a
+\*(BO Add the original message in its entirety as a
 .Ql message/rfc822
 MIME attachment when replying to a message.
 Note this works regardless of the setting of
@@ -6748,7 +6748,7 @@ Necessary adjustments take place silently.
 .
 .Mx
 .It Va recipients-in-cc
-\*(BY On group replies, specify only the sender of the original mail in
+\*(BO On group replies, specify only the sender of the original mail in
 .Ql To:
 and mention the other recipients in the secondary
 .Ql Cc: .
@@ -6766,7 +6766,7 @@ but instead saved to
 .
 .Mx
 .It Va record-resent
-\*(BY If both this variable and the
+\*(BO If both this variable and the
 .Va record
 variable are set,
 the
@@ -6779,7 +6779,7 @@ folder as it is normally only done for newly composed messages.
 .
 .Mx
 .It Va reply-in-same-charset
-\*(BY If this variable is set \*(UA first tries to use the same
+\*(BO If this variable is set \*(UA first tries to use the same
 character set of the original message for replies.
 If this fails, the mechanism described in
 .Sx "Character sets"
@@ -6818,7 +6818,7 @@ This is a quadoption; if set without a value it defaults to
 .
 .Mx
 .It Va rfc822-body-from_
-\*(BY This variable can be used to force displaying a so-called
+\*(BO This variable can be used to force displaying a so-called
 .Ql From_
 line for messages that are embedded into an envelope mail via the
 .Ql message/rfc822
@@ -6826,7 +6826,7 @@ MIME mechanism, for more visual convenience.
 .
 .Mx
 .It Va save
-\*(BY Enable saving of (partial) messages in
+\*(BO Enable saving of (partial) messages in
 .Ev DEAD
 upon interrupt or delivery error.
 .
@@ -6850,7 +6850,7 @@ and the variable
 .
 .Mx
 .It Va searchheaders
-\*(BY Expand message-list specifiers in the form
+\*(BO Expand message-list specifiers in the form
 .Ql /x:y
 to all messages containing the substring
 .Dq y
@@ -6876,7 +6876,7 @@ for the complete picture of character set conversion in \*(UA.
 .
 .Mx
 .It Va sendcharsets-else-ttycharset
-\*(BY\*(OP If this variable is set, but
+\*(BO\*(OP If this variable is set, but
 .Va sendcharsets
 is not, then \*(UA acts as if
 .Va sendcharsets
@@ -6963,7 +6963,7 @@ which will be joined onto other possible MTA options:
 .
 .Mx
 .It Va sendmail-no-default-arguments
-\*(BY Unless this option is set \*(UA will pass some well known
+\*(BO Unless this option is set \*(UA will pass some well known
 standard command line options to the defined
 .Va sendmail
 program, see there for more.
@@ -6985,7 +6985,7 @@ The default is
 .
 .Mx
 .It Va sendwait
-\*(BY When sending a message wait until the MTA (including the builtin
+\*(BO When sending a message wait until the MTA (including the builtin
 SMTP one) exits before accepting further commands.
 .Sy Only
 with this variable set errors reported by the MTA will be recognizable!
@@ -6994,17 +6994,17 @@ the exit status of \*(ua will also be non-zero.
 .
 .Mx
 .It Va showlast
-\*(BY Setting this option causes \*(UA to start at the last message
+\*(BO Setting this option causes \*(UA to start at the last message
 instead of the first one when opening a mail folder.
 .
 .Mx
 .It Va showname
-\*(BY Causes \*(UA to use the sender's real name instead of the plain
+\*(BO Causes \*(UA to use the sender's real name instead of the plain
 address in the header field summary and in message specifications.
 .
 .Mx
 .It Va showto
-\*(BY Causes the recipient of the message to be shown in the header
+\*(BO Causes the recipient of the message to be shown in the header
 summary if the message was sent by the user.
 .
 .Mx
@@ -7029,7 +7029,7 @@ individual message.
 .
 .Mx
 .It Va skipemptybody
-\*(BY If an outgoing message does not contain any text in its first or
+\*(BO If an outgoing message does not contain any text in its first or
 only message part, do not send it but discard it silently (see also the
 command line option
 .Fl E ) .
@@ -7102,16 +7102,16 @@ variable.
 .
 .Mx
 .It Va smime-force-encryption
-\*(BY\*(OP Causes \*(UA to refuse sending unencrypted messages.
+\*(BO\*(OP Causes \*(UA to refuse sending unencrypted messages.
 .
 .Mx
 .It Va smime-no-default-ca
-\*(BY\*(OP Don't load default CA locations when verifying S/MIME signed
+\*(BO\*(OP Don't load default CA locations when verifying S/MIME signed
 messages.
 .
 .Mx
 .It Va smime-sign
-\*(BY\*(OP S/MIME sign outgoing messages with the user's private key
+\*(BO\*(OP S/MIME sign outgoing messages with the user's private key
 and include the user's certificate as a MIME attachment.
 Signing a message enables a recipient to verify that the sender used
 a valid certificate,
@@ -7365,7 +7365,7 @@ Setting this variable also influences the generated
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
-\*(BY\*(OP Causes \*(UA to issue a
+\*(BO\*(OP Causes \*(UA to issue a
 .Ql STARTTLS
 command to make an SMTP session SSL/TLS encrypted, i.e., to enable
 transport layer security.
@@ -7658,7 +7658,7 @@ Note that SSLv2 is no longer supported at all.
 .
 .Mx
 .It Va ssl-no-default-ca
-\*(BY\*(OP Don't load default CA locations to verify SSL/TLS server
+\*(BO\*(OP Don't load default CA locations to verify SSL/TLS server
 certificates.
 .
 .Mx Va ssl-protocol
@@ -7793,7 +7793,7 @@ This variable defaults to the value of
 .
 .Mx
 .It Va v15-compat
-\*(BY Setting this option enables upward compatibility with \*(UA
+\*(BO Setting this option enables upward compatibility with \*(UA
 version 15.0 in respect to which configuration options are available and
 how they are handled.
 This manual uses \*(IN and \*(OU to refer to the new and the old way of
@@ -7801,11 +7801,11 @@ doing things, respectively.
 .
 .Mx
 .It Va verbose
-\*(BY Setting this option, also controllable via the command line option
+\*(BO Setting this option, also controllable via the command line option
 .Fl v ,
 causes \*(UA to be more verbose, e.g., it will display obsoletion
 warnings and SSL/TLS certificate chains.
-Even though marked \*(BY this option may be set twice in order to
+Even though marked \*(BO this option may be set twice in order to
 increase the level of verbosity even more, in which case even details of
 the actual message delivery and protocol conversations are shown.
 A single

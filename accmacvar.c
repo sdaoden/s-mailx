@@ -41,7 +41,7 @@
 #endif
 
 /*
- * HOWTO add a new non-dynamic binary or value option:
+ * HOWTO add a new non-dynamic boolean or value option:
  * - add an entry to nail.h:enum okeys
  * - run create-okey-map.pl
  * - update nail.1
@@ -62,7 +62,7 @@ enum ma_flags {
 
 enum var_map_flags {
    VM_NONE     = 0,
-   VM_BINARY   = 1<<0,           /* ok_b_* */
+   VM_BOOLEAN  = 1<<0,           /* ok_b_* */
    VM_RDONLY   = 1<<1,           /* May not be set by user */
    VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
    VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
@@ -457,9 +457,9 @@ _var_set(struct var_carrier *vcp, char const *value)
    if (vcp->vc_vmap == NULL)
       vp->v_value = _var_vcopy(value);
    else {
-      /* Via `set' etc. the user may give even binary options non-binary
-       * values, ignore that and force binary xxx error log? */
-      if (vcp->vc_vmap->vm_flags & VM_BINARY)
+      /* Via `set' etc. the user may give even boolean options non-boolean
+       * values, ignore that and force boolean xxx error log? */
+      if (vcp->vc_vmap->vm_flags & VM_BOOLEAN)
          value = UNCONST("");
       vp->v_value = _var_vcopy(value);
 
@@ -555,7 +555,7 @@ _var_list_all(void)
          fmt = "%s%s\t%s\n";
       else {
          if (vs.vs_vc.vc_vmap != NULL &&
-               (vs.vs_vc.vc_vmap->vm_flags & VM_BINARY))
+               (vs.vs_vc.vc_vmap->vm_flags & VM_BOOLEAN))
             fmt = "%sset %s\n";
          else {
             fmt = "%sset %s=\"%s\"\n";
@@ -1216,8 +1216,8 @@ c_varshow(void *v)
       if (vs.vs_vc.vc_vmap != NULL) {
          ui16_t f = vs.vs_vc.vc_vmap->vm_flags;
 
-         if (f & VM_BINARY)
-            printf(_("\"%s\": (%d) binary%s%s: set=%d (ENVIRON=%d)\n"),
+         if (f & VM_BOOLEAN)
+            printf(_("\"%s\": (%d) boolean%s%s: set=%d (ENVIRON=%d)\n"),
                vs.vs_vc.vc_name, vs.vs_vc.vc_okey,
                (f & VM_RDONLY ? ", read-only" : ""),
                (f & VM_VIRTUAL ? ", virtual" : ""), vs.vs_isset, vs.vs_isenv);
@@ -1329,8 +1329,8 @@ c_varedit(void *v)
       _var_revlookup(&vc, *argv++);
 
       if (vc.vc_vmap != NULL) {
-         if (vc.vc_vmap->vm_flags & VM_BINARY) {
-            n_err(_("`varedit': can't edit binary variable \"%s\"\n"),
+         if (vc.vc_vmap->vm_flags & VM_BOOLEAN) {
+            n_err(_("`varedit': can't edit boolean variable \"%s\"\n"),
                vc.vc_name);
             continue;
          }
