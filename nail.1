@@ -5362,16 +5362,16 @@ variable to be set.
 .
 .Mx
 .It Va dot
-\*(BY When dot is set, a dot
+\*(BY When dot is set, a period
 .Ql \&.
-on a line by itself during message input from a terminal shall be
-treated as end-of-message (in addition to the normal end-of-file
+on a line by itself during message input in (interactive) compose mode
+will be treated as end-of-message (in addition to the normal end-of-file
 condition).
 If
 .Va ignoreeof
 is set
 .Pf no Va dot
-is ignored and using a dot is the only method to terminate input mode.
+is ignored.
 .
 .Mx
 .It Va dotlock-ignore-error
@@ -5931,14 +5931,22 @@ characters and discard the current line.
 .Mx
 .It Va ignoreeof
 \*(BY Ignore end-of-file conditions
-.Pf ( Ql control-D ) ,
-on message input, which instead can be terminated only by entering a
-.Va dot
+.Pf ( Ql control-D )
+in compose mode on message input and in interactive command input.
+If set an interactive command input session can only be left by
+explicitly using one of the commands
+.Ic exit
+and
+.Ic quit ,
+and message input in compose mode can only be terminated by entering
+a period
 .Ql \&.
 on a line by itself or by using the
 .Ic ~.
-.Sx "TILDE ESCAPES" .
-This option also applies to \*(UA command mode.
+.Sx "TILDE ESCAPES" ;
+.Va ignoreeof
+overrides a setting of
+.Pf no Va dot .
 .
 .Mx Va imap-auth
 .It Va imap-auth-USER@HOST , imap-auth
