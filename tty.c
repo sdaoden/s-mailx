@@ -2330,9 +2330,7 @@ jredo:
 
    if(tl.tl_reenter_after_cmd != NULL){
       n = 0;
-#if 0
       n_source_command(tl.tl_reenter_after_cmd);
-#endif
       goto jredo;
    }
 
