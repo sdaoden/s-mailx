@@ -318,7 +318,7 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      if [ "${CC}" = tcc ]; then
+      if { echo "${CC}" | ${grep} tcc; } >/dev/null 2>&1; then
          msg ' . have special tcc(1) environmental rules ...'
          _cc_flags_tcc
       else
