@@ -1846,8 +1846,8 @@ tty_destroy(void)
    dogabby = ok_blook(history_gabby_persist);
 
    if ((hp = _ncl_hist) != NULL)
-      for (; hp->th_older != NULL; hp = hp->th_older)
-         if ((dogabby || !hp->th_isgabby) && --hs == 0)
+      for (; hp->older != NULL; hp = hp->older)
+         if ((dogabby || !hp->isgabby) && --hs == 0)
             break;
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
