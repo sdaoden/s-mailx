@@ -1074,7 +1074,6 @@ enum user_options {
    OPT_HEADERSONLY = 1u<<4,   /* -H */
    OPT_HEADERLIST = 1u<< 5,   /* -L */
    OPT_QUICKRUN_MASK = OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST,
-   OPT_NOSRC      = 1u<< 6,   /* -n */
    OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
    OPT_F_FLAG     = 1u<< 8,   /* -F */
    OPT_N_FLAG     = 1u<< 9,   /* -N / *header* */

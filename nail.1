@@ -74,6 +74,7 @@
 .Nm \*(ua
 .Bk -words
 .Op Fl BdEFintv~
+.Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op Fl a Ar attachment
 .Op Fl b Ar bcc-addr
@@ -85,29 +86,31 @@
 .Op Fl X Ar cmd
 .Op Fl \&.
 .Ar to-addr ...
-.Op Fl Fl \: Ar mta-option ...
+.Op Fl Fl \~ Ns Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Bk -words
 .Op Fl BdEeHiNnRv~#
+.Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl X Ar cmd
 .Fl f Op Ar file
-.Op Fl Fl \: Ar mta-option ...
+.Op Fl Fl \~ Ns Ar mta-option ...
 .Ek
 .Nm \*(ua
 .Bk -words
 .Op Fl BdEeHiNnRv~#
+.Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .Op Fl X Ar cmd
-.Op Fl Fl \: Ar mta-option ...
+.Op Fl Fl \~ Ns Ar mta-option ...
 .Ek
 .\" }}}
 .
@@ -143,6 +146,34 @@ It is usable as a mail batch language.
 .Ss "Options"
 .
 .Bl -tag -width ".Fl _ Ar _ccount"
+.Mx
+.It Fl \&: Ar spec
+Explicitly control which of the
+.Sx "Resource files"
+shall be loaded: if the letter
+.Ql s
+is (case-insensitively) part of the
+.Ar spec
+then the system wide
+.Pa \*(UR
+is loaded, likewise the letter
+.Ql u
+controls loading of the user's personal
+.Pa \*(ur
+file, whereas the letters
+.Ql -
+and
+.Ql /
+explicitly forbid loading of any resource files.
+This option should be used by scripts: to avoid environmental noise they
+should
+.Dq detach
+from any configuration files and create a script-local environment,
+explicitly setting any desired variable via
+.Fl S .
+This option overrides
+.Fl n .
+.
 .Mx
 .It Fl A Ar account
 Executes an
@@ -304,15 +335,13 @@ reading mail or editing a mail folder.
 .
 .Mx
 .It Fl n
-Inhibits reading
+Standard flag that inhibits reading the system wide
 .Pa \*(UR
 upon startup.
-This option should be activated for \*(UA scripts that are invoked on
-more than one machine, because the contents of that file may differ
-between them.
-(The same behaviour can be achieved by setting the
-.Ev NAIL_NO_SYSTEM_RC
-environment variable.)
+The option
+.Fl \&:
+allows more control over the startup sequence; also see
+.Sx "Resource files" .
 .
 .Mx
 .It Fl q Ar file
@@ -477,8 +506,8 @@ It also enables processing of
 E.g., the following should send an email message to
 .Dq bob :
 .Bd -literal -offset indent
-$ LC_ALL=C printf 'm bob\en~s ubject\enText\en.\enx\en' | \e
-  LC_ALL=C MAILRC=/dev/null \*(ua -n -# -Snosave
+$ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' | \e
+  LC_ALL=C \*(ua -:/ -d#
 .Ed
 .
 .Mx
@@ -604,8 +633,7 @@ will be sent:
 .Bd -literal -offset indent
 $ \*(ua -s Subject -a attachm.ent bill@host1 'Bob <bob@host2>'
 # But... try it in an isolated dry-run mode first
-$ LC_ALL=C MAILRC=/dev/null \e
-  \*(ua -n -d -vv -Sfrom="me <he@re>" \e
+$ LC_ALL=C \*(ua -:/ -d -vv -Sfrom="me <he@exam.ple>" \e
     -b bcc@exam.ple -c cc@exam.ple \e
     -s Subject -. "(Lovely) Bob <bob@host2>"
 .Ed
@@ -758,8 +786,8 @@ What remains is treated as a network address.
 .Bd -literal -offset indent
 $ echo bla | \*(ua -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(ua -Sexpandaddr -s test '|cat >> ./mbox.mbox'
-$ echo safe | LC_ALL=C MAILRC=/dev/null \e
-    \*(ua -n -Sv15-compat -Ssendwait -Snosave \e
+$ echo safe | LC_ALL=C \e
+    \*(ua -:/ -Sv15-compat -Ssendwait -Snosave \e
       -Sexpandaddr=fail,-all,+addr -s test \e
       -. bob@home.net
 .Ed
@@ -795,15 +823,15 @@ itself.
 To avoid environmental noise scripts should
 .Dq detach
 \*(UA from any configuration files and create a script-local
-environment, either by pointing the
-.Ev MAILRC
-variable to a custom configuration file, or by using the
+environment, ideally with the command line options
+.Fl \&:
+to disable any configuration file in conjunction with repititions of
 .Fl S
-command line option to specify variables:
+to specify variables:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C MAILRC=/dev/null password=NOTSECRET \e
-  \*(ua -n -Sv15-compat -Ssendwait -Snosave \e
+$ env LC_ALL=C password=NOTSECRET \e
+  \*(ua -:/ -Sv15-compat -Ssendwait -Snosave \e
     -Sexpandaddr=fail,-all,+addr \e
     -S 'smtp=smtps://mylogin@some.host:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@domain' \e
@@ -1176,8 +1204,10 @@ Upon startup \*(UA reads in several resource files:
 .It Pa \*(UR
 System wide initialization file.
 Reading of this file can be suppressed, either by using the
+.Fl \&:
+or
 .Fl n
-command line option, or by setting the environment variable
+command line options, or by setting the environment variable
 .Ev NAIL_NO_SYSTEM_RC .
 .
 .Mx
@@ -1185,12 +1215,17 @@ command line option, or by setting the environment variable
 File giving initial commands.
 A different file can be chosen by setting the environment variable
 .Ev MAILRC .
+Reading of this file can be suppressed with the
+.Fl \&:
+command line option.
 .
 .It Va NAIL_EXTRA_RC
-Can be used to define an optional startup file to be read after
-.Pa \*(ur .
-This variable is only honoured in certain circumstances (see its
-documentation for more).
+Can be used to define an optional startup file to be read after all
+other resource files.
+It can be used to specify settings that are not understood by other
+.Xr mailx 1
+implementations, for example.
+This variable is only honoured when defined in a resource file.
 .El
 .
 .Pp
@@ -6347,16 +6382,10 @@ the MIME type cache).
 .
 .Mx
 .It Va NAIL_EXTRA_RC
-The name of an optional startup file to be read after
-.Pa \*(ur .
-This variable has an effect only if it is set in
-.Pa \*(UR
-or
-.Pa \&\&\*(ur ,
-it is not imported from the environment in order to honour
-.Ql MAILRC=/dev/null Ns /
-.Fl n
-invocations.
+The name of an optional startup file to be read last.
+This variable has an effect only if it is set in any of the
+.Sx "Resource files" ,
+it is not imported from the environment.
 Use this file for commands that are not understood by other POSIX
 .Xr mailx 1
 implementations.
@@ -8019,9 +8048,12 @@ Is used as a startup file instead of
 .Pa \*(ur
 if set.
 When \*(UA scripts are invoked on behalf of other users,
-this variable should be set to
+either this variable should be set to
 .Pa /dev/null
-to avoid side-effects from reading their configuration files.
+or the
+.Fl \&:
+command line option should be used in order to avoid side-effects from
+reading their configuration files.
 This variable is only used when it resides in the process environment.
 .
 .Mx

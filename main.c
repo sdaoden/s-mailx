@@ -613,18 +613,18 @@ _X_arg_eval(struct X_arg *xhp) /* TODO error handling not right */
 int
 main(int argc, char *argv[])
 {
-   static char const optstr[] = "A:a:Bb:c:dEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:~#.",
+   static char const optstr[] = "A:a:Bb:c:dEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:::~#.",
       usagestr[] = N_(
          " Synopsis:\n"
          "  %s -h | --help\n"
-         "  %s [-BdEFintv~] [-A account]\n"
+         "  %s [-BdEFintv~] [-: spec] [-A account]\n"
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]...]\n"
          "\t [-s subject] [-X cmd] [-.] to-address... [-- mta-option...]\n"
-         "  %s [-BdEeHiNnRv~#] [-A account]\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
          "\t [-X cmd] -f [file] [-- mta-option...]\n"
-         "  %s [-BdEeHiNnRv~#] [-A account]\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]...]\n"
          "\t [-u user] [-X cmd] [-- mta-option...]\n"
       );
@@ -637,8 +637,17 @@ main(int argc, char *argv[])
    char *cp = NULL, *subject = NULL, *qf = NULL, *Aarg = NULL, *Larg = NULL;
    char const *okey, **oargs = NULL, *folder = NULL, *emsg = NULL;
    size_t oargs_size = 0, oargs_count = 0, smopts_size = 0;
+   enum{
+      a_RF_NONE = 0,
+      a_RF_SET = 1<<0,
+      a_RF_SYSTEM = 1<<1,
+      a_RF_USER = 1<<2,
+      a_RF_ALL = a_RF_SYSTEM | a_RF_USER
+   } resfiles;
    int i;
    NYD_ENTER;
+
+   resfiles = a_RF_ALL;
 
    /*
     * Start our lengthy setup, finalize by setting PS_STARTED
@@ -731,7 +740,11 @@ main(int argc, char *argv[])
          goto joarg;
       case 'n':
          /* Don't source "unspecified system start-up file" */
-         options |= OPT_NOSRC;
+         if(resfiles & a_RF_SET){
+            emsg = N_("-n cannot be used in conjunction with -:");
+            goto jusage;
+         }
+         resfiles = a_RF_USER;
          break;
       case 'O':
          /* Additional options to pass-through to MTA TODO v15-compat legacy */
@@ -805,6 +818,7 @@ joarg:
          okey = "verbose";
          goto joarg;
       case 'X': {
+            /* Add to list of commands to exec before entering normal operation */
             size_t l = strlen(_oarg);
             struct X_arg *nxp = smalloc(sizeof(*nxp) -
                   VFIELD_SIZEOF(struct X_arg, xa_cmd_buf) + l +1);
@@ -817,6 +831,23 @@ joarg:
             nxp->xa_cmd_len = l;
             memcpy(nxp->xa_cmd_buf, _oarg, l +1);
          }
+         break;
+      case ':':
+         /* Control which resource files shall be loaded */
+         if(!(resfiles & (a_RF_SET | a_RF_SYSTEM))){
+            emsg = N_("-n cannot be used in conjunction with -:");
+            goto jusage;
+         }
+         resfiles = a_RF_SET;
+         while((i = *_oarg++) != '\0')
+            switch(i){
+            case 'S': case 's': resfiles |= a_RF_SYSTEM; break;
+            case 'U': case 'u': resfiles |= a_RF_USER; break;
+            case ':': case '/': resfiles &= ~a_RF_ALL; break;
+            default:
+               emsg = N_("Invalid argument of -:");
+               goto jusage;
+            }
          break;
       case '~':
          /* Enable tilde escapes even in non-interactive mode */
@@ -954,16 +985,21 @@ jgetopt_done:
    /* Snapshot our string pools.  Memory is auto-reclaimed from now on */
    spreserve();
 
-   if (!(options & OPT_NOSRC) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
-      load(SYSCONFDIR "/" SYSCONFRC);
-   /* *expand() returns a savestr(), but load only uses the file name for
-    * fopen(), so it's safe to do this */
-   if ((cp = env_vlook("MAILRC", TRU1)) == NULL)
-      cp = UNCONST(MAILRC);
-   load(file_expand(cp));
-   if (env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
-         (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
-      load(file_expand(cp));
+   /* load() any resource files */
+   if(resfiles & a_RF_ALL){
+      /* *expand() returns a savestr(), but load only uses the file name for
+       * fopen(), so it's safe to do this */
+      if((resfiles & a_RF_SYSTEM) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
+         load(SYSCONFDIR "/" SYSCONFRC);
+      if(resfiles & a_RF_USER){
+         if((cp = env_vlook("MAILRC", TRU1)) == NULL)
+            cp = UNCONST(MAILRC);
+         load(file_expand(cp));
+      }
+      if(env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
+            (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+         load(file_expand(cp));
+   }
 
    /* We had to wait until the resource files are loaded but it is time to get
     * the termcap going, so that *term-ca-mode* won't hide our output for us */
