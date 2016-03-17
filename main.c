@@ -146,17 +146,18 @@ _getopt(int argc, char * const argv[], char const *optstring)
 {
    static char const *lastp;
 
-   int rv = -1, colon;
+   int rv = -1/*, colon*/;
    char const *curp;
    NYD_ENTER;
 
    _oarg = NULL;
 
-   if ((colon = (optstring[0] == ':')))
-      ++optstring;
+   /*if ((colon = (optstring[0] == ':')))
+      ++optstring;*/
+
    if (lastp != NULL) {
       curp = lastp;
-      lastp = 0;
+      lastp = NULL;
    } else {
       if (_oind >= argc || argv[_oind] == NULL || argv[_oind][0] != '-' ||
             argv[_oind][1] == '\0')
@@ -168,23 +169,23 @@ _getopt(int argc, char * const argv[], char const *optstring)
       curp = &argv[_oind][1];
    }
 
-   _oopt = curp[0];
-   while (optstring[0] != '\0') {
-      if (optstring[0] == ':' || optstring[0] != _oopt) {
-         ++optstring;
+   for(_oopt = curp[0]; optstring[0] != '\0';){
+      if(optstring[0] != _oopt){
+         optstring += 1 + (optstring[1] == ':');
          continue;
       }
+
       if (optstring[1] == ':') {
          if (curp[1] != '\0') {
             _oarg = UNCONST(curp + 1);
             ++_oind;
          } else {
             if ((_oind += 2) > argc) {
-               if (!colon /*&& _oerr*/) {
+               /*if (!colon *//*&& _oerr*//*)*/ {
                   n_err(_("%s: option requires an argument -- %c\n"),
                      argv[0], (char)_oopt);
                }
-               rv = (colon ? ':' : '?');
+               rv = (/*colon ? ':' :*/ '?');
                goto jleave;
             }
             _oarg = argv[_oind - 1];
@@ -207,13 +208,13 @@ _getopt(int argc, char * const argv[], char const *optstring)
    }
 
    /* Definitive error */
-   if (!colon /*&& opterr*/)
+   /*if (!colon *//*&& opterr*//*)*/
       n_err(_("%s: invalid option -- %c\n"), argv[0], _oopt);
    if (curp[1] != '\0')
       lastp = curp + 1;
    else
       ++_oind;
-   _oarg = 0;
+   _oarg = NULL;
    rv = '?';
 jleave:
    NYD_LEAVE;
