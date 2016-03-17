@@ -1053,8 +1053,8 @@ gggggggggggggggg"
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
-   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
-      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n~.\n" &&
+      printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
    ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
    cksum_test content:005 "${MBOX}" '773028641 184'
@@ -1063,7 +1063,7 @@ gggggggggggggggg"
 
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
-   printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
+   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    MAILRC=/dev/null "${SNAIL}" ${ARGS} \
       -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"

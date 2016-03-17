@@ -824,25 +824,23 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_count + 6 >= oargs_size)
+         if (oargs_count + 5 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_count);
          /* xxx Setting most of the -# options immediately is useless, so be
           * selective in what is set immediately */
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          folder = "/dev/null";
-         ok_bset(dot, TRU1);
          ok_bset(emptystart, TRU1);
          ok_bset(header, FAL0);
          ok_bset(quiet, TRU1);
          ok_bset(sendwait, TRU1);
          ok_vset(MBOX, folder);
-         oargs[oargs_count + 0] = "dot";
-         oargs[oargs_count + 1] = "emptystart";
-         oargs[oargs_count + 2] = "noheader";
-         oargs[oargs_count + 3] = "quiet";
-         oargs[oargs_count + 4] = "sendwait";
-         oargs[oargs_count + 5] = "MBOX=/dev/null";
-         oargs_count += 6;
+         oargs[oargs_count + 0] = "emptystart";
+         oargs[oargs_count + 1] = "noheader";
+         oargs[oargs_count + 2] = "quiet";
+         oargs[oargs_count + 3] = "sendwait";
+         oargs[oargs_count + 4] = "MBOX=/dev/null";
+         oargs_count += 5;
          break;
       case '.':
          options |= OPT_SENDMODE;

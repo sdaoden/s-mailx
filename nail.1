@@ -458,9 +458,10 @@ even if not in interactive mode.
 .
 .Mx
 .It Fl #
-This sets several variables to prepare \*(UA for working in (most likely
-non-interactive) batch mode:
-.Va dot ,
+Enables batch mode.
+In batch mode the full set of commands is available, just like in
+interactive mode, and diverse variable settings and internal states are
+adjusted for batch necessities, e.g., it sets
 .Va emptystart ,
 .Pf no Va header ,
 .Va quiet ,
