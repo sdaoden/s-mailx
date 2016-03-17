@@ -548,8 +548,10 @@ today
 or
 .Xr exim 8
 are often used for this purpose instead.
-If the \*(OPal SMTP feature has been built into \*(UA then the
-system side is not a mandatory precondition for mail delivery.
+If the \*(OPal SMTP is included in the
+.Ic features
+of \*(UA then the system side is not a mandatory precondition for mail
+delivery.
 .
 .Pp
 Because \*(UA strives for compliance with POSIX
@@ -1267,9 +1269,11 @@ locale environment, an option that \*(UA's test-suite uses excessively.)
 .
 .Pp
 If no character set conversion capabilities have been compiled into
-\*(UA (i.e., no
-.Xr iconv 3
-library has been found), then
+\*(UA
+.Pf ( Ic features
+doesn't include the term
+.Ql ICONV ) ,
+then
 .Va ttycharset
 will be the only supported character set,
 it is simply assumed that it can be used to exchange 8-bit messages,
@@ -2760,7 +2764,9 @@ as well as a possibly tracked command line editor history file.
 .
 .Mx
 .It Ic features
-Print the list of features that have been compiled into \*(UA.
+Show the list of features that have been compiled into \*(UA.
+(Outputs the contents of the variable
+.Va features . )
 .
 .Mx
 .It Ic File
