@@ -1076,12 +1076,18 @@ newfile(struct mimepart *ip, int *ispipe)
    }
 
    if (options & OPT_INTERACTIVE) {
+      struct str prompt;
       char *f2, *f3;
+
+      /* TODO Generic function which asks for filename.
+       * TODO If the current part is the first textpart the target
+       * TODO is implicit from outer `write' etc! */
+      /* I18N: Filename input prompt with file type indication */
+      str_concat_csvl(&prompt, _("Enter filename for part "),
+         (ip->m_partstring != NULL) ? ip->m_partstring : _("?"),
+         _(" ("), ip->m_ct_type_plain, _("): "), NULL);
 jgetname:
-      printf(_("Enter filename for part %s (%s)"),
-         (ip->m_partstring != NULL) ? ip->m_partstring : "?",
-         ip->m_ct_type_plain);
-      f2 = n_input_cp_addhist(": ", ((f != (char*)-1 && f != NULL)
+      f2 = n_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
             ? fexpand_nshell_quote(f) : NULL), TRU1);
       if (f2 == NULL || *f2 == '\0') {
          if (options & OPT_D_V)
