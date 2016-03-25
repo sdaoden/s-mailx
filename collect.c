@@ -228,7 +228,7 @@ print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf = NULL; /* TODO line pool */
    sighandler_type sigint;
-   FILE *volatile obuf = stdout;
+   FILE * volatile obuf = stdout;
    struct attachment *ap;
    char const *cp;
    enum gfield gf;
@@ -616,7 +616,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    enum sendaction action;
    sigset_t oset, nset;
    sighandler_type savedtop;
-   FILE volatile *sigfp;
+   FILE * volatile sigfp;
    NYD_ENTER;
 
    _coll_fp = NULL;
