@@ -1053,8 +1053,9 @@ jout:
             goto jerr;
       }
 
-      {  int e = errno, ise = ferror(UNVOLATILE(sigfp));
+      /* C99 */{
          FILE *x = UNVOLATILE(sigfp);
+         int e = errno, ise = ferror(x);
 
          sigfp = NULL;
          Fclose(x);
