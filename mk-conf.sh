@@ -168,6 +168,8 @@ os_early_setup() {
 }
 
 os_setup() {
+   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
+   OSFULLSPEC="${OS:-`uname -a | ${tr} '[A-Z]' '[a-z]'`}"
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
    msg 'Operating system is "%s"' ${OS}
 
@@ -861,6 +863,7 @@ for i in \
       CFLAGS \
       LDFLAGS \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
+      OSFULLSPEC \
       ; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
