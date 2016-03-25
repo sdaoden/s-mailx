@@ -880,7 +880,7 @@ _ncl_term_mode(bool_t raw)
    tiosp->c_iflag &= ~(ISTRIP);
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
    NYD2_LEAVE;
 }
 
