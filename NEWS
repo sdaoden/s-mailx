@@ -20,6 +20,68 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.7 ("The Vulture 38"), 2016-03-25
+--------------------------------------
+
+A cumulated bugfix release.
+
+Credits Gaetan Bisson, Sergey Matveev, Dirk-Wilhelm Peters, Allan McRae
+and Ralph Corderoy.
+
+We welcome Sergey Matveev, Allan McRae and Ralph Corderoy in THANKS.
+
+  Remarks:
+  S-nail will become S-mailx after v14.9, and all project resources will
+  move to www.sdaoden.eu with v14.9.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Thanks to Sergey Matveev the Maildir code is now compatible to *BSD.
+  Interested persons may read the commit log. [0c30b14] (Sergey Matveev)
+
+- The builtin NCL couldn't paste more than one line since October 2015.
+  [ff5d914]  (Ralph Corderoy)
+
+- The (much to restricted) test target should now work if $SHELL is set
+  to something "nologin". [7876f3a]  (Gaetan Bisson)
+
+- If *sendmail-no-default-arguments* is set we will NOT (!) terminate
+  MTA options with "--", assuming the user does.  This allows, e.g.,
+  very sick things like (ouch) [8b0bdbe]
+
+    set sendmail="/bin/ssh" \
+      sendmail-arguments="steffen@sdaoden.eu /usr/sbin/sendmail -t" \
+      sendmail-no-default-arguments \
+      sendmail-progname="ssh"
+
+ChangeLog
+^^^^^^^^^
+
+- The primitive builtin HTML filter should now correctly parse HTML
+  parameters.  It seems to become necessary ;) [e227a78,65df701]
+
+- *signature* will now undergo MIME encoding. [fe209f7]
+  (Dirk-Wilhelm Peters)
+
+- Operating systems without getaddrinfo(3) but only with gethostname(3)
+  should be able to resolve DNS (port numbers) correctly again.
+  [7dd3a71]  (Allan McRae)
+
+- The builtin NCL no longer counts gabby history limits against the
+  given maximum persistent history size unless gabbiness is desired.
+  [76780e4,f06ccb6]
+
+ChangeLog (purely technical)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- WANT_READLINE environments should possibly have a better experience
+  hen interactively editing the attachment list. [ede2800]
+  (In general interactive situation has to improve a lot.)
+
+- Fix a bit of weird buffer handling. [536d3a7,0f2cc31,e9a5c22]
+  (Ralph Corderoy)
+
 v14.8.6 ("Hen Harrier II"), 2015-12-28
 --------------------------------------
 
