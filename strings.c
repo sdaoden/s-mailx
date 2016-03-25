@@ -1015,7 +1015,8 @@ FL struct str *
    if (t != NULL && t->l > 0) {
       self->l = t->l;
       self->s = (srealloc)(self->s, t->l +1 SMALLOC_DEBUG_ARGSCALL);
-      memcpy(self->s, t->s, t->l +1);
+      memcpy(self->s, t->s, t->l);
+      self->s[t->l] = '\0';
    } else
       self->l = 0;
    NYD_LEAVE;
