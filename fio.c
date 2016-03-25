@@ -981,7 +981,7 @@ n_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby)
    NYD2_ENTER;
 
    n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
-   if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n + 1)) != '\0' &&
+   if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
          (options & OPT_INTERACTIVE))
       tty_addhist(rv, isgabby);
 
@@ -2049,7 +2049,7 @@ jjumped:
 # else /* HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
       if ((ep = getservbyname(UNCONST(serv), "tcp")) != NULL)
-         urlp->url_portno = ep->s_port;
+         urlp->url_portno = ntohs(ep->s_port);
       else {
          if (options & OPT_VERB)
             n_err(_("failed\n"));

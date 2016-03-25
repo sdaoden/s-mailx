@@ -371,7 +371,7 @@ _gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
    NYD_ENTER;
 
    if (UICMP(z, level++, >, MAXEXP)) {
-      printf(_("Expanding alias to depth larger than %d\n"), MAXEXP);
+      n_err(_("Expanding alias to depth larger than %d\n"), MAXEXP);
       goto jleave;
    }
 
@@ -767,12 +767,12 @@ _mlmux(enum group_type gt, char **argv)
                gp->g_type |= GT_SUBSCRIBE;
                _MLMUX_LINKIN(gp);
             } else {
-               printf(_("Mailing-list already `mlsubscribe'd: \"%s\"\n"),
+               n_err(_("Mailing-list already `mlsubscribe'd: %s\n"),
                   *argv);
                rv = 1;
             }
          } else {
-            printf(_("Mailing-list already `mlist'ed: \"%s\"\n"), *argv);
+            n_err(_("Mailing-list already `mlist'ed: %s\n"), *argv);
             rv = 1;
          }
       } else

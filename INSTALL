@@ -231,38 +231,31 @@ Unless otherwise noted the following applies to saying "$ make" and
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
-  Latest as of 2015-12-28, tcc(1), clang(1) and gcc(1).
-  - gcc
-    + False warning on "'gl.gl_group' may be used uninitialized".
-      I had explicitly committed "Clarify condition (hopefully fix
-      -Wmaybe-uninit, too), 2015-04-28" on [topic/gcc51], but it didn't
-      help.
-      Ditto, 'gl.gl_slot' and 'gl.gl_htable'.
+  Latest as of 2016-03-25, clang(1) and gcc(1).
 
 . Void Linux <http://www.voidlinux.eu/>
-  In December 2015.
+  Not tested for v14.8.7.
+  (My current working environment is restricted since i've lost
+  a machine in January.)
 
 . CRUX Linux <http://www.crux.nu/>
   CRUX 3.2 RC3, gcc(1).
-  - gcc
-    + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
-      'gl.gl_group'.
-      Ditto 'vc.vc_prime'.
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.2, clang(1) and gcc6(1).
+  Not tested for v14.8.7.
+  (My current working environment is restricted since i've lost
+  a machine in January.)
 
 . OpenBSD <http://www.openbsd.org/>
-  OpenBSD 5.8-beta, gcc(1)
-  - gcc
-    + Faulty message on longjmp() clobbering (of a const variable).
-      And such.  Just ignore that.
-    + (Faulty) Warnings on unused 'gl.gl_htable', 'gl.gl_slot' and
-      'gl.gl_group'.
+  Not tested for v14.8.7.
+  (My current working environment is restricted since i've lost
+  a machine in January.)
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 4.2-RELEASE DragonFly v4.2.1-RELEASE, gcc(1)
-  + I will never get iconv(3) right for DragonFly it seems.
+  Not tested for v14.8.7.
+  (My current working environment is restricted since i've lost
+  a machine in January.)
 
 . NetBSD <https://www.netbsd.org/>
   + Show work.
@@ -285,7 +278,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     be extended to check for UINTPTR_MAX being defined as the empty
     string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386, and it looked good on 2015-12-28.
+    under SPARC and i386, and it looked good on 2016-03-25.
     However, some notes:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen on earlier tests:
@@ -307,7 +300,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + Not tested for v14.8.[56], but never seen any problems but some
+  + Not tested for v14.8.[567], but never seen any problems but some
     harmless and ignorable compile warnings.
 
 3. Current codebase state

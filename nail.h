@@ -1100,7 +1100,8 @@ enum program_state {
 
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
-   PS_t_FLAG         = 1<<25        /* OPT_t_FLAG made persistant */
+   PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
+   PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
 };
 
 /* A large enum with all the binary and value options a.k.a their keys.

@@ -1839,8 +1839,8 @@ n_verr(char const *format, va_list ap)
 {
    /* Check use cases of PS_ERRORS_NOTED, too! */
 #ifdef HAVE_ERRORS
-   char buf[LINESIZE], *xbuf = buf;
-   int l = sizeof(buf) -1;
+   char buf[LINESIZE], *xbuf;
+   int lmax, l;
    struct err_node *enp;
 
    LCTA(ERRORS_MAX > 3);
@@ -1856,20 +1856,17 @@ n_verr(char const *format, va_list ap)
    }
 
 #ifdef HAVE_ERRORS
+   xbuf = buf;
+   l = sizeof(buf);
 jredo:
-   l = vsnprintf(xbuf, l +1, format, ap);
-   if (l == 0) {
-      assert(xbuf == buf);
+   l = vsnprintf(xbuf, l, format, ap);
+   if (l <= 0)
       goto jleave;
+   if (UICMP(z, l, >=, lmax)) {
+      lmax = ++l;
+      xbuf = srealloc((xbuf == buf ? NULL : xbuf), lmax);
+      goto jredo;
    }
-   if (UICMP(z, l, >=, sizeof buf)) {
-      if (xbuf == buf) {
-         xbuf = smalloc(l +1);
-         goto jredo;
-      }
-      l = sizeof(buf) -1;
-   }
-   xbuf[l] = '\0';
 
    fwrite(xbuf, 1, l, stderr);
 

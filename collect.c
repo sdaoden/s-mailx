@@ -228,7 +228,7 @@ print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf = NULL; /* TODO line pool */
    sighandler_type sigint;
-   FILE *volatile obuf = stdout;
+   FILE * volatile obuf = stdout;
    struct attachment *ap;
    char const *cp;
    enum gfield gf;
@@ -609,16 +609,21 @@ collect(struct header *hp, int printheaders, struct message *mp,
    struct ignoretab *quoteig;
    int lc, cc, c, t;
    int volatile escape, getfields;
-   char *linebuf = NULL, *quote = NULL;
+   char *linebuf, *quote;
    char const *cp;
-   size_t linesize = 0; /* TODO line pool */
+   size_t i, linesize; /* TODO line pool */
    long cnt;
    enum sendaction action;
    sigset_t oset, nset;
    sighandler_type savedtop;
+   FILE * volatile sigfp;
    NYD_ENTER;
 
    _coll_fp = NULL;
+   sigfp = NULL;
+   linesize = 0;
+   linebuf = quote = NULL;
+
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
    sigemptyset(&nset);
@@ -757,12 +762,10 @@ jcont:
    /* No tilde escapes, interrupts not expected.  Simply copy STDIN */
    if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))) {
       linebuf = srealloc(linebuf, linesize = LINESIZE);
-      while ((cnt = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
-         if ((size_t)cnt != fwrite(linebuf, sizeof *linebuf, cnt, _coll_fp))
+      while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
+         if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
-      if (fflush(_coll_fp))
-         goto jerr;
       goto jout;
    }
 
@@ -996,48 +999,90 @@ jputline:
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
          puts(_(
-"-------------------- ~ ESCAPES ----------------------------\n"
-"~~             Quote a single tilde\n"
-"~@ [file ...]  Edit attachment list\n"
-"~b users       Add users to \"blind\" Bcc: list\n"
-"~c users       Add users to Cc: list\n"
-"~d             Read in dead.letter\n"
-"~e             Edit the message buffer\n"
-"~F messages    Read in messages including all headers, don't indent lines\n"
-"~f messages    Like ~F, but honour the `ignore' / `retain' configuration\n"
-"~h             Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
+"\nTILDE ESCAPES excerpt:\n"
+"~~           Quote a single tilde\n"
+"~@ [:file:]  Edit attachment list\n"
+"~b users     Add users to \"blind\" Bcc: list\n"
+"~c users     Add users to Cc: list\n"
+"~d           Read in dead.letter\n"
+"~e           Edit the message buffer\n"
+"~F messages  Read in messages including all headers, don't indent lines\n"
+"~f messages  Like ~F, but honour the `ignore' / `retain' configuration\n"
+"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
          puts(_(
-"~R file        Read in a file, indent lines\n"
-"~r file        Read in a file\n"
-"~p             Print the message buffer\n"
-"~q             Abort message composition and save text to DEAD\n"
-"~M messages    Read in messages, keep all header lines, indent lines\n"
-"~m messages    Like ~M, but honour the `ignore' / `retain' configuration\n"
-"~s subject     Set Subject:\n"
-"~t users       Add users to To: list\n"));
+"~R file      Read in a file, indent lines\n"
+"~r file      Read in a file\n"
+"~p           Print the message buffer\n"
+"~q           Abort message composition and save text to DEAD\n"
+"~M messages  Read in messages, keep all header lines, indent lines\n"
+"~m messages  Like ~M, but honour the `ignore' / `retain' configuration\n"
+"~s subject   Set Subject:\n"
+"~t users     Add users to To: list\n"));
          puts(_(
-"~U messages    Read in message(s) without any headers, indent lines\n"
-"~u messages    Read in message(s) without any headers\n"
-"~v             Invoke alternate editor ($VISUAL) on message\n"
-"~w file        Write message onto file\n"
-"~x             Abort message composition and discard message\n"
-"~!command      Invoke the shell\n"
-"~:command      Execute a regular command\n"
-"-----------------------------------------------------------\n"));
+"~U messages  Read in message(s) without any headers, indent lines\n"
+"~u messages  Read in message(s) without any headers\n"
+"~v           Invoke alternate editor ($VISUAL) on message\n"
+"~w file      Write message onto file\n"
+"~x           Abort message composition and discard message\n"
+"~|command    Pipe message through a filter, replace content on success\n"
+"~!command    Invoke the shell\n"
+"~:command    Execute a regular command\n"));
          break;
       }
    }
 
 jout:
-   if (_coll_fp != NULL) {
-      if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
-         if (putesc(cp, _coll_fp) < 0)
-            goto jerr;
-         if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+   /* Place signature? */
+   if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
+      if((quote = file_expand(cp)) == NULL){
+         n_err(_("*signature* expands to invalid file: \"%s\"\n"), cp);
+         goto jerr;
+      }
+      if((sigfp = Fopen(cp = quote, "r")) == NULL){
+         n_err(_("Can't open *signature* \"%s\": %s\n"), cp, strerror(errno));
+         goto jerr;
+      }
+
+      if(linebuf == NULL)
+         linebuf = smalloc(linesize = LINESIZE);
+      c = '\0';
+      while((i = fread(linebuf, sizeof *linebuf, linesize, UNVOLATILE(sigfp)))
+            > 0){
+         c = linebuf[i - 1];
+         if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
-      rewind(_coll_fp);
+
+      /* C99 */{
+         FILE *x = UNVOLATILE(sigfp);
+         int e = errno, ise = ferror(x);
+
+         sigfp = NULL;
+         Fclose(x);
+
+         if(ise){
+            n_err(_("Errors while reading *signature* \"%s\": %s\n"),
+               cp, strerror(e));
+            goto jerr;
+         }
+      }
+
+      if(c != '\0' && c != '\n')
+         putc('\n', _coll_fp);
    }
+
+   if(fflush(_coll_fp))
+      goto jerr;
+
+   if ((cp = ok_vlook(NAIL_TAIL)) != NULL) {
+      if (putesc(cp, _coll_fp) < 0)
+         goto jerr;
+      if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+         goto jerr;
+   }
+   rewind(_coll_fp);
+
+jleave:
    if (linebuf != NULL)
       free(linebuf);
    handlerpop();
@@ -1056,11 +1101,13 @@ jout:
    return _coll_fp;
 
 jerr:
+   if(sigfp != NULL)
+      Fclose(UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {
       Fclose(_coll_fp);
       _coll_fp = NULL;
    }
-   goto jout;
+   goto jleave;
 }
 
 FL void

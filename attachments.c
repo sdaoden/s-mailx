@@ -402,7 +402,11 @@ edit_attachments(struct attachment **aphead)
    ui32_t attno = 1;
    NYD_ENTER;
 
-   printf(_("# Be aware that \"\\\" must be escaped: \"\\\\\", \"\\$HOME\"\n"));
+   if (!(pstate & PS_ATTACHMENTS_NOTED)) {
+      pstate |= PS_ATTACHMENTS_NOTED;
+      printf(_("# Please be aware that \"\\\" must be escaped, e.g., "
+         "\"\\\\\", \"\\$HOME\"\n"));
+   }
 
    /* Modify already present ones? */
    for (ap = *aphead; ap != NULL; ap = fap) {

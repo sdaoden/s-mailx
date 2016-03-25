@@ -1006,43 +1006,96 @@ _hf_putbuf(struct htmlflt *self, char const *cp, size_t len)
 static struct htmlflt *
 _hf_param(struct htmlflt *self, struct str *store, char const *param)
 {
-   char *cp, c;
+   char const *cp;
+   char c, x, quote;
    size_t i;
+   bool_t hot;
    NYD2_ENTER;
 
    store->s = NULL;
    store->l = 0;
+   cp = self->hf_bdat;
 
-   if ((cp = UNCONST(asccasestr(self->hf_bdat, param))) == NULL)
-      goto jleave;
-   cp += strlen(param);
-
-   for (;;) {
-      if ((c = *cp++) == '\0')
+   /* Skip over any non-WS first; be aware of soup, if it slipped through */
+   for(;;){
+      if((c = *cp++) == '\0' || c == '>')
          goto jleave;
-      if (c == '=')
+      if(whitechar(c))
          break;
    }
-   if ((c = *cp) == '\0')
-      goto jleave;
 
-   if (c == '"' || c == '\'') {
-      char quote = c;
+   /* Search for the parameter, take care of other quoting along the way */
+   x = *param++;
+   x = upperconv(x);
+   quote = '\0';
+   i = strlen(param);
 
+   for(hot = TRU1;;){
+      if((c = *cp++) == '\0' || c == '>')
+         goto jleave;
+      if(whitechar(c)){
+         hot = TRU1;
+         continue;
+      }
+
+      /* Could it be a parameter? */
+      if(hot){
+         hot = FAL0;
+
+         /* Is it the desired one? */
+         if((c = upperconv(c)) == x && !ascncasecmp(param, cp, i)){
+            char const *cp2 = cp + i;
+
+            if((quote = *cp2++) != '='){
+               if(quote == '\0' || quote == '>')
+                  goto jleave;
+               while(whitechar(quote))
+                  quote = *cp2++;
+            }
+            if(quote == '='){
+               cp = cp2;
+               break;
+            }
+            continue; /* XXX Optimize: i bytes or even cp2 can't be it! */
+         }
+      }
+
+      /* Not the desired one; but a parameter? */
+      if(c != '=')
+         continue;
+      /* If so, properly skip over the value */
+      if(c == '"' || c == '\''){
+         /* TODO oops i have forgotten wether backslash quoting is allowed in
+          * TODO quoted HTML parameter values?  not supporting that for now.. */
+         for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
+            ;
+      }else
+         while((c = *cp) != '\0' && !whitechar(c) && c != '>')
+            ++cp;
+      if(c == '\0')
+         goto jleave;
+   }
+
+   /* Skip further whitespace */
+   for(;;){
+      if((c = *cp++) == '\0' || c == '>')
+         goto jleave;
+      if(!whitechar(c))
+         break;
+   }
+
+   if(c == '"' || c == '\''){
       /* TODO oops i have forgotten wether backslash quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
-      if ((c = *++cp) == '\0' || c == quote)
-         goto jleave;
-      store->s = cp;
-
-      while ((c = *++cp) != '\0' && c != quote)
+      store->s = UNCONST(cp);
+      for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
          ;
-      /* XXX ... and we simply ignore missing trailing " :> */
-   } else {
-      if (!whitechar(c))
-         while ((c = *++cp) != '\0' && !whitechar(c))
-            ;
-      store->s = cp;
+      /* XXX ... and we simply ignore a missing trailing " :> */
+   }else{
+      store->s = UNCONST(cp - 1);
+      if(!whitechar(c))
+         while((c = *cp) != '\0' && !whitechar(c) && c != '>')
+            ++cp;
    }
    i = PTR2SIZE(cp - store->s);
 
@@ -1051,7 +1104,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
     * value content TODO join into the parse step above! */
    for (cp = store->s; i > 0 && spacechar(*cp); ++cp, --i)
       ;
-   store->s = cp;
+   store->s = UNCONST(cp);
    for (cp += i - 1; i > 0 && spacechar(*cp); --cp, --i)
       ;
    if ((store->l = i) == 0)

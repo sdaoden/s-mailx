@@ -880,7 +880,7 @@ _ncl_term_mode(bool_t raw)
    tiosp->c_iflag &= ~(ISTRIP);
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
    NYD2_LEAVE;
 }
 
@@ -1843,10 +1843,12 @@ tty_destroy(void)
    if (v == NULL)
       goto jleave;
 
-   if ((hp = _ncl_hist) != NULL)
-      while (hp->older != NULL && hs-- != 0)
-         hp = hp->older;
    dogabby = ok_blook(history_gabby_persist);
+
+   if ((hp = _ncl_hist) != NULL)
+      for (; hp->older != NULL; hp = hp->older)
+         if ((dogabby || !hp->isgabby) && --hs == 0)
+            break;
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "w"); /* TODO temporary + rename?! */

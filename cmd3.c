@@ -1255,7 +1255,7 @@ c_remove(void *v)
    NYD_ENTER;
 
    if (*args == NULL) {
-      n_err(_("Synopsis: `remove' mailbox ...\n"));
+      n_err(_("Synopsis: remove: <mailbox>...\n"));
       ec = 1;
       goto jleave;
    }
@@ -1325,7 +1325,7 @@ c_rename(void *v)
    ec = 1;
 
    if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      n_err(_("Synopsis: `rename' old new\n"));
+      n_err(_("Synopsis: rename: <old> <new>\n"));
       goto jleave;
    }
 

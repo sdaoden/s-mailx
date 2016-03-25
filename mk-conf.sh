@@ -168,6 +168,8 @@ os_early_setup() {
 }
 
 os_setup() {
+   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
+   OSFULLSPEC="${OS:-`uname -a | ${tr} '[A-Z]' '[a-z]'`}"
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
    msg 'Operating system is "%s"' ${OS}
 
@@ -318,7 +320,7 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      if [ "${CC}" = tcc ]; then
+      if { echo "${CC}" | ${grep} tcc; } >/dev/null 2>&1; then
          msg ' . have special tcc(1) environmental rules ...'
          _cc_flags_tcc
       else
@@ -359,19 +361,36 @@ _cc_flags_generic() {
    _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
-   cc_check -Wall
-   cc_check -Wextra
-   cc_check -pedantic
+   # Check -g first since some others may rely upon -g / optim. level
+   if feat_yes DEBUG; then
+      cc_check -O
+      cc_check -g
+   elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
+      :
+   elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
+      :
+   elif [ ${cc_maxopt} -gt 0 ] && cc_check -O1; then
+      :
+   else
+      cc_check -O
+   fi
 
-   cc_check -Wbad-function-cast
-   cc_check -Wcast-align
-   cc_check -Wcast-qual
-   cc_check -Winit-self
-   cc_check -Wmissing-prototypes
-   cc_check -Wshadow
-   cc_check -Wunused
-   cc_check -Wwrite-strings
-   cc_check -Wno-long-long
+   if feat_yes DEVEL && cc_check -Weverything; then
+      :
+   else
+      cc_check -Wall
+      cc_check -Wextra
+      cc_check -Wbad-function-cast
+      cc_check -Wcast-align
+      cc_check -Wcast-qual
+      cc_check -Winit-self
+      cc_check -Wmissing-prototypes
+      cc_check -Wshadow
+      cc_check -Wunused
+      cc_check -Wwrite-strings
+      cc_check -Wno-long-long
+   fi
+   cc_check -pedantic
 
    if feat_yes AMALGAMATION && feat_no DEVEL; then
       cc_check -Wno-unused-function
@@ -401,17 +420,20 @@ _cc_flags_generic() {
    if feat_yes AMALGAMATION; then
       cc_check -pipe
    fi
-   if feat_yes DEBUG; then
-      cc_check -O
-      cc_check -g
-   elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
-      :
-   elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
-      :
-   elif [ ${cc_maxopt} -gt 0 ] && cc_check -O1; then
-      :
-   else
-      cc_check -O
+
+   # LD (+ dependend CC)
+
+   if feat_yes DEVEL; then
+      _ccfg=${_CFLAGS}
+      # -fsanitize=address
+      #if cc_check -fsanitize=memory &&
+      #      ld_check -fsanitize=memory &&
+      #      cc_check -fsanitize-memory-track-origins=2 &&
+      #      ld_check -fsanitize-memory-track-origins=2; then
+      #   :
+      #else
+      #   _CFLAGS=${_ccfg}
+      #fi
    fi
 
    ld_check -Wl,-z,relro
@@ -566,8 +588,8 @@ trap "${rm} -f ${tmp}" EXIT
 printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
-# multiline values in make.rc; GNU sed(1) blew me off the map, being VERY slow,
-# first shell / awk mixed case better, Aahron Robbins suggested the following
+# multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow in
+# VMs (see [fa2e248]), Aharon Robbins suggested the following
 < ${rc} ${awk} 'BEGIN{line = ""}{
    gsub(/^[[:space:]]+/, "", $0)
    gsub(/[[:space:]]+$/, "", $0)
@@ -805,7 +827,7 @@ else
 fi
 
 cc_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
    if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
@@ -817,7 +839,7 @@ cc_check() {
 }
 
 ld_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . %s .. ' "${1}"
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
    if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1} ${ADDLDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _LDFLAGS="${_LDFLAGS} ${1}"
@@ -841,6 +863,7 @@ for i in \
       CFLAGS \
       LDFLAGS \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
+      OSFULLSPEC \
       ; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}

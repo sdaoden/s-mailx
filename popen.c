@@ -175,7 +175,7 @@ _file_save(struct fp *fpp)
    }
 #endif
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
-      rv = maildir_append(fpp->realfile, fpp->fp);
+      rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
 

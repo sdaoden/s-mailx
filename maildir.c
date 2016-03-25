@@ -833,7 +833,7 @@ jleave:
 }
 
 FL enum okay
-maildir_append(char const *name, FILE *fp)
+maildir_append(char const *name, FILE *fp, long offset)
 {
    char *buf, *bp, *lp;
    size_t bufsize, buflen, cnt;
@@ -850,7 +850,7 @@ maildir_append(char const *name, FILE *fp)
    buf = smalloc(bufsize = LINESIZE); /* TODO line pool; signals */
    buflen = 0;
    cnt = fsize(fp);
-   offs = ftell(fp);
+   offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
    size = 0;
 
    srelax_hold();
