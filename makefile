@@ -54,7 +54,7 @@ _update-release:
 	LC_ALL=C; export LC_ALL;\
 	: $${UAGENT:=s-nail};\
 	: $${UUAGENT:=S-nail};\
-	: $${UPLOAD:=sdaoden@frs.sourceforge.net:/home/frs/project/s-nail};\
+	: $${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads};\
 	: $${ACCOUNT:=sn_sf};\
 	DATE_MAN="`date -u +'%b %d, %Y'`";\
 	DATE_ISO="`date -u +%Y-%m-%d`";\
@@ -79,7 +79,6 @@ _update-release:
 		VERSION="$${REL}" $(MAKE) -f mk-mk.in _update-version &&\
 	$(_version_from_header);\
 	REL="$${VERSION}";\
-	FREL=`echo $${REL} | sed -e 's/\./_/g'`;\
 	\
 	< nail.1 > nail.1x awk '\
 		BEGIN { written = 0 }\
@@ -122,26 +121,9 @@ _update-release:
 	git checkout timeline &&\
 	git rm -rf '*' &&\
 	git archive --format=tar "v$${REL}" | tar -x -f - &&\
-	git add --all &&\
-	LC_ALL=${ORIG_LC_ALL} \
-		git commit -S -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
-	\
-	git checkout master &&\
-	git log --no-walk --decorate --oneline --branches --remotes &&\
-	git branch &&\
-	echo "Push git(1) repo?  ENTER continues";\
-	read i;\
-	git push &&\
-	\
-	git archive --format=tar --prefix="$${UAGENT}-$${REL}/" "v$${REL}" |\
-		( cd "$${TMPDIR}" && tar -x -f - ) &&\
-	cd "$${TMPDIR}" &&\
 	\
 	( \
-	cd "$${UAGENT}-$${REL}" &&\
-	\
 	rm -f .gitignore .mailmap &&\
-	\
 	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
 			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
@@ -157,27 +139,42 @@ _update-release:
 	mv -f nail.rcx nail.rc \
 	) &&\
 	\
-	tar -c -f "$${UAGENT}-$${FREL}.tar" "$${UAGENT}-$${REL}" &&\
+	git add --all &&\
+	LC_ALL=${ORIG_LC_ALL} \
+		git commit -S -m "$${UUAGENT} v$${REL}, $${DATE_ISO}" &&\
+	LC_ALL=${ORIG_LC_ALL} git tag -s -f "v$${REL}.ar" &&\
 	\
-	openssl md5 "$${UAGENT}-$${FREL}.tar" > \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha1 "$${UAGENT}-$${FREL}.tar" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	openssl sha256 "$${UAGENT}-$${FREL}.tar" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
-	gpg --detach-sign --armor "$${UAGENT}-$${FREL}.tar" 2>&1 &&\
-	cat "$${UAGENT}-$${FREL}.tar.asc" >> \
-		"$${UAGENT}-$${FREL}.cksum" 2>&1 &&\
+	git checkout master &&\
+	git log --no-walk --decorate --oneline --branches --remotes &&\
+	git branch &&\
+	echo "Push git(1) repo?  ENTER continues";\
+	read i;\
+	git push &&\
 	\
-	< "$${UAGENT}-$${FREL}.tar" gzip > "$${UAGENT}-$${FREL}.tar.gz" &&\
-	< "$${UAGENT}-$${FREL}.tar" xz -e -C sha256 > \
-		"$${UAGENT}-$${FREL}.tar.xz" &&\
+	git archive --format=tar --prefix="$${UAGENT}-$${REL}/" "v$${REL}.ar" |\
+		( cd "$${TMPDIR}" && tar -x -f - ) &&\
+	cd "$${TMPDIR}" &&\
+	tar -c -f "$${UAGENT}-$${REL}.tar" "$${UAGENT}-$${REL}" &&\
 	\
-	rm -f "$${UAGENT}-$${FREL}.tar" &&\
+	openssl md5 "$${UAGENT}-$${REL}.tar" > \
+		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
+	openssl sha1 "$${UAGENT}-$${REL}.tar" >> \
+		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
+	openssl sha256 "$${UAGENT}-$${REL}.tar" >> \
+		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
+	gpg --detach-sign --armor "$${UAGENT}-$${REL}.tar" 2>&1 &&\
+	cat "$${UAGENT}-$${REL}.tar.asc" >> \
+		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
 	\
-	( echo "-put $${UAGENT}-$${FREL}.tar.gz";\
-	  echo "-put $${UAGENT}-$${FREL}.tar.xz";\
-	  echo "-put $${UAGENT}-$${FREL}.tar.asc" ) | \
+	< "$${UAGENT}-$${REL}.tar" gzip > "$${UAGENT}-$${REL}.tar.gz" &&\
+	< "$${UAGENT}-$${REL}.tar" xz -e -C sha256 > \
+		"$${UAGENT}-$${REL}.tar.xz" &&\
+	\
+	rm -f "$${UAGENT}-$${REL}.tar" &&\
+	\
+	( echo "-put $${UAGENT}-$${REL}.tar.gz";\
+	  echo "-put $${UAGENT}-$${REL}.tar.xz";\
+	  echo "-put $${UAGENT}-$${REL}.tar.asc" ) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
 	\
