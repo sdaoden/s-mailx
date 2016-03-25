@@ -933,7 +933,7 @@ jputline:
             ++cp;
          hp->h_subject = savestr(cp);
          break;
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
       case 'S':
          c_sstats(NULL);
          break;

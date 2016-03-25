@@ -47,7 +47,7 @@
 #endif
 
 /* Memory allocation routines from memory.c offer some debug support */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
+#if (defined HAVE_DEBUG || defined HAVE_DEVEL) && !defined HAVE_NOMEMDBG
 # define HAVE_MEMORY_DEBUG
 # define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
 # define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
@@ -693,7 +693,7 @@ FL ssize_t     htmlflt_flush(struct htmlflt *self);
  */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
                   size_t *llen, FILE *fp, int appendnl SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define fgetline(A,B,C,D,E,F)   \
    fgetline(A, B, C, D, E, F, __FILE__, __LINE__)
 #endif
@@ -703,7 +703,7 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
  * n is the number of characters already read */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
                   size_t n SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define readline_restart(A,B,C,D) \
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
@@ -941,7 +941,7 @@ FL bool_t      n_commands(void);
 FL int         n_lex_input(char const *prompt, bool_t nl_escape,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_lex_input(A,B,C,D,E) n_lex_input(A,B,C,D,E,__FILE__,__LINE__)
 #endif
 
@@ -1102,7 +1102,7 @@ FL bool_t      n__memcheck(char const *file, int line);
  * space will always be on a word boundary */
 FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
 FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
+#ifdef HAVE_MEMORY_DEBUG
 # define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
 # define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
 #endif
@@ -1128,7 +1128,7 @@ FL void        srelax(void);
 FL void        spreserve(void);
 
 /* 'sstats' command */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
+#ifdef HAVE_MEMORY_DEBUG
 FL int         c_sstats(void *v);
 # define c_sstats                c_sstats
 #endif
@@ -1797,7 +1797,7 @@ FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
                   struct sock *sp SMALLOC_DEBUG_ARGS);
-# ifdef HAVE_DEBUG
+# ifdef HAVE_MEMORY_DEBUG
 #  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
 # endif
 #endif
@@ -1865,7 +1865,7 @@ FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 /* Return a pointer to a dynamic copy of the argument */
 FL char *      savestr(char const *str SALLOC_DEBUG_ARGS);
 FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define savestr(CP)             savestr(CP, __FILE__, __LINE__)
 # define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
 #endif
@@ -1873,7 +1873,7 @@ FL char *      savestrbuf(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS);
 /* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
 FL char *      savecatsep(char const *cp1, char sep, char const *cp2
                   SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define savecatsep(S1,SEP,S2)   savecatsep(S1, SEP, S2, __FILE__, __LINE__)
 #endif
 
@@ -1885,7 +1885,7 @@ FL char *      savecatsep(char const *cp1, char sep, char const *cp2
 
 /* Create duplicate, lowercasing all characters along the way */
 FL char *      i_strdup(char const *src SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
 #endif
 
@@ -1895,7 +1895,7 @@ FL struct str * str_concat_csvl(struct str *self, ...);
 /*  */
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
 #endif
 
@@ -1940,7 +1940,7 @@ FL bool_t      substr(char const *str, char const *sub);
 FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp SMALLOC_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define sstrdup(CP)             sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)
 #endif
@@ -1979,7 +1979,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
 #define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UIZ_MAX)
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_str_assign_buf(S,B,BL) n_str_assign_buf(S, B, BL, __FILE__, __LINE__)
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
@@ -2004,7 +2004,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 /* Release all memory */
 FL struct n_string *n_string_clear(struct n_string *self SMALLOC_DEBUG_ARGS);
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_string_clear(S) \
    ((S)->s_size != 0 ? (n_string_clear)(S, __FILE__, __LINE__) : (S))
 #else
@@ -2015,7 +2015,7 @@ FL struct n_string *n_string_clear(struct n_string *self SMALLOC_DEBUG_ARGS);
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
                      SMALLOC_DEBUG_ARGS);
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_string_reserve(S,N)   (n_string_reserve)(S, N, __FILE__, __LINE__)
 #endif
 
@@ -2032,7 +2032,7 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 #define n_string_assign_buf(S,B,BL) \
    ((S)->s_len = 0, n_string_push_buf(S, B, BL))
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_string_push_buf(S,B,BL) \
    n_string_push_buf(S, B, BL, __FILE__, __LINE__)
 # define n_string_push_c(S,C)    n_string_push_c(S, C, __FILE__, __LINE__)
@@ -2048,7 +2048,7 @@ FL struct n_string *n_string_unshift_buf(struct n_string *self, char const *buf,
 FL struct n_string *n_string_unshift_c(struct n_string *self, char c
                      SMALLOC_DEBUG_ARGS);
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_string_unshift_buf(S,B,BL) \
    n_string_unshift_buf(S, B, BL, __FILE__, __LINE__)
 # define n_string_unshift_c(S,C) n_string_unshift_c(S, C, __FILE__, __LINE__)
@@ -2059,7 +2059,7 @@ FL struct n_string *n_string_unshift_c(struct n_string *self, char c
 FL char *      n_string_cp(struct n_string *self SMALLOC_DEBUG_ARGS);
 FL char const *n_string_cp_const(struct n_string const *self);
 
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_string_cp(S)          n_string_cp(S, __FILE__, __LINE__)
 #endif
 
@@ -2244,7 +2244,7 @@ FL void        n_tty_signal(int sig);
  * If n>0 assumes that *linebuf has n bytes of default content */
 FL int         n_tty_readline(char const *prompt, char **linebuf,
                   size_t *linesize, size_t n SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_tty_readline(A,B,C,D) (n_tty_readline)(A, B, C, D, __FILE__,__LINE__)
 #endif
 
@@ -2307,7 +2307,7 @@ FL void        bidi_info_create(struct bidi_info *bip);
  * These return a newly salloc()ated result */
 FL char *      urlxenc(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif

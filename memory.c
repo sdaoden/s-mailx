@@ -628,7 +628,9 @@ n__memcheck(char const *mdbg_file, int mdbg_line)
 FL void *
 (salloc)(size_t size SALLOC_DEBUG_ARGS)
 {
-   DBG( size_t orig_size = size; )
+#ifdef HAVE_MEMORY_DEBUG
+   size_t orig_size = size;
+#endif
    union {struct buffer *b; struct hugebuf *hb; char *cp;} u;
    char *x, *y, *z;
    NYD2_ENTER;
@@ -769,7 +771,9 @@ sreset(bool_t only_if_relaxed)
    struct buffer *blh, *bh;
    NYD_ENTER;
 
-   DBG( ++_all_resetreqs; )
+#ifdef HAVE_MEMORY_DEBUG
+   ++_all_resetreqs;
+#endif
    if (noreset) {
       /* Reset relaxation after any jump is a MUST */
       if (_relax_recur_no > 0)
@@ -796,7 +800,9 @@ sreset(bool_t only_if_relaxed)
       do {
          struct buffer *x = bh;
          bh = x->b._next;
-         DBG( _salloc_bcheck(x); )
+#ifdef HAVE_MEMORY_DEBUG
+         _salloc_bcheck(x);
+#endif
 
          /* Give away all buffers that are not covered by sreset().
           * _buf_head is builtin and thus cannot be free()d */
@@ -852,7 +858,9 @@ srelax_rele(void)
 
    if (--_relax_recur_no == 0) {
       for (b = _buf_head; b != NULL; b = b->b._next) {
-         DBG( _salloc_bcheck(b); )
+#ifdef HAVE_MEMORY_DEBUG
+         _salloc_bcheck(b);
+#endif
          b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
          b->b._relax = NULL;
       }
@@ -880,7 +888,9 @@ srelax(void)
 
    if (_relax_recur_no == 1) {
       for (b = _buf_head; b != NULL; b = b->b._next) {
-         DBG( _salloc_bcheck(b); )
+#ifdef HAVE_MEMORY_DEBUG
+         _salloc_bcheck(b);
+#endif
          b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
          DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
       }

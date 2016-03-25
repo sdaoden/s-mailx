@@ -2290,6 +2290,12 @@ else
    echo '/* WANT_MD5=0 */' >> ${h}
 fi
 
+if feat_yes NOMEMDBG; then
+   echo '#define HAVE_NOMEMDBG' >> ${h}
+else
+   echo '/* WANT_NOMEMDBG=0 */' >> ${h}
+fi
+
 ## Summarizing
 
 # Since we cat(1) the content of those to cc/"ld", convert them to single line

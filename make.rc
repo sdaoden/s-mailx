@@ -310,6 +310,10 @@ SYSCONFRC="${SID}${NAIL}.rc"
 # memory canaries.
 WANT_DEBUG=no
 
+# Experimental code etc.
+# Note: this will be forcefully set (again) if $WANT_DEBUG=yes.
+WANT_DEVEL=no
+
 # We use the crypto libraries' MD5 implementation if possible, unless..
 WANT_NOEXTMD5=no
 
@@ -321,9 +325,10 @@ WANT_NOEXTMD5=no
 # Note: this will be forcefully set (again) if $WANT_DEBUG=yes.
 WANT_NOALLOCA="${WANT_DEBUG}"
 
-# Experimental code etc.
-# Note: this will be forcefully set (again) if WANT_DEBUG=yes.
-WANT_DEVEL=no
+# If $WANT_DEBUG is true we'll use a simple memory wrapper with
+# canaries.  This interferes with memory debuggers like valgrind(1) or
+# the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
+WANT_NOMEMDBG=no
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print
 # a function call trace when the program crashes.  Whereas NYD will be

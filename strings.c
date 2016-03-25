@@ -651,7 +651,7 @@ FL struct n_string *
 
    if(self->s_size != 0){
       if(!self->s_auto){
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
          sfree(self->s_dat SMALLOC_DEBUG_ARGSCALL);
 #else
          free(self->s_dat);

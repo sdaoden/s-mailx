@@ -59,9 +59,10 @@ cc_all_configs() {
       BEGIN {
          NOTME["WANT_AUTOCC"] = 1
          NOTME["WANT_DEBUG"] = 1
+         NOTME["WANT_DEVEL"] = 1
          NOTME["WANT_NOEXTMD5"] = 1
          NOTME["WANT_NOALLOCA"] = 1
-         NOTME["WANT_DEVEL"] = 1
+         NOTME["WANT_NOMEMDBG"] = 1
          NOTME["WANT_NYD2"] = 1
          i = 0
       }

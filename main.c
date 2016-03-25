@@ -1085,11 +1085,11 @@ jleave:
    if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
       n_termcap_destroy();
 #endif
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
    sreset(FAL0);
 #endif
 j_leave:
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
    n_memcheck();
 #endif
    NYD_LEAVE;
