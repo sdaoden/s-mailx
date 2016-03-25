@@ -999,6 +999,7 @@ jputline:
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
          puts(_(
+"\nTILDE ESCAPES excerpt:\n"
 "~~           Quote a single tilde\n"
 "~@ [:file:]  Edit attachment list\n"
 "~b users     Add users to \"blind\" Bcc: list\n"
@@ -1025,8 +1026,7 @@ jputline:
 "~x           Abort message composition and discard message\n"
 "~|command    Pipe message through a filter, replace content on success\n"
 "~!command    Invoke the shell\n"
-"~:command    Execute a regular command\n"
-"-----------------------------------------------------------\n"));
+"~:command    Execute a regular command\n"));
          break;
       }
    }
