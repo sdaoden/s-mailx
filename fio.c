@@ -981,7 +981,7 @@ n_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby)
    NYD2_ENTER;
 
    n = readline_input(prompt, FAL0, &linebuf, &linesize, string);
-   if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n + 1)) != '\0' &&
+   if (n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
          (options & OPT_INTERACTIVE))
       tty_addhist(rv, isgabby);
 
