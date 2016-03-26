@@ -1,53 +1,78 @@
-W e l c o m e  t o  S - n a i l
-===============================
+W e l c o m e  t o  S - n a i l/ S - m a i l x
+==============================================
 
-S-nail is a mail processing system with a command syntax reminiscent of
-ed(1) with lines replaced by messages.  It is intended to provide the
-functionality of the POSIX mailx(1) command and offers (mostly optional)
-extensions for line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
+S-nail (later S-mailx) is a mail processing system with a command
+syntax reminiscent of ed(1) with lines replaced by messages.
+It is intended to provide the functionality of the POSIX mailx(1)
+command, but is MIME capable and optionally offers extensions for
+line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
 It is usable as a mail batch language.
-S-nail is a derivative of Heirloom mailx, formerly known as nail, which
-itself is based upon Berkeley Mail that has a history back to the 70s.
 
 Please refer to the file "INSTALL" for build and installation remarks,
 and to "NEWS" for release update information.  The file "THANKS"
-mentions people who have helped improving S-nail and deserve
-acknowledgement.
+mentions people who have helped improving and deserve acknowledgement.
 
-S-nail has git(1) repositories at Sourceforge[1] (browsable[2]) and
-GitLab.com[3] (browsable[4]), and regulary produces release tarballs[5],
-which can also be addressed directly[6] (e.g., via "curl -v -L").
-There is also something visual on the web that includes the latest
-version of the manual online[7].
-And we have a mailing list[8] with moderated unsubscribed posting
+This software originates in the codebase of Heirloom mailx, formerly
+known as nail, which itself is based upon Berkeley Mail that has
+a history back to 1978 and which superseded Unix mail, a program that
+already shipped with First Edition Unix from 1971 -- M. Douglas McIlroy
+writes in his article "A Research UNIX Reader: Annotated Excerpts from
+the Programmer's Manual, 1971-1986":
+
+  MAIL (v1 page 21, v7 page 22)
+    Electronic mail was there from the start. Never satisfied with its
+    exact behavior, everybody touched it at one time or another: to
+    assure the safety of simultaneous access, to improve privacy, to
+    survive crashes, to exploit uucp, to screen out foreign freeloaders,
+    or whatever. Not until v7 did the interface change (Thompson). [.]
+
+We have a web page[1] which includes the online manual of the latest
+release, which can be downloaded via[2].
+There are git(1) repositories at sdaoden.eu[3] (use [4] for cloning
+purposes), with mirrors at Sourceforge[5] and GitLab.com[6].
+
+  [1] https?://www.sdaoden.eu/code.html#s-nail
+  [2] https?://www.sdaoden.eu/downloads/s-nail-latest.tar.{asc,gz,xz}
+  [3] https?://git.sdaoden.eu/cgit/s-nail.git
+  [4] https?://git.sdaoden.eu/scm/s-nail.git
+  [5] http://sourceforge.net/projects/s-nail
+  [6] https://gitlab.com/sdaoden/s-nail
+
+And a mailing list[7] (later: [8]!) with moderated unsubscribed posting
 possibilities; subscriptions can be managed via web interface[9];
-GMANE.org added s-nail-users@ to their archive[10] -- thank you!
+GMANE.org added the ML their archive[10] -- thank you!
+Commits to the [master] branch will be posted to [11], and announcements
+will also be posted to [12], both are receive-only mailing-lists.
+These and all other mailings-lists at sdaoden.eu are hosted by MLMMJ, so
+users can manage their subscriptions by appending keywords to the plain
+mailing list address, a +subscribe for subscription, and +unsubscribe
+for unsubscription, e.g., s-mailx+subscribe@sdaoden.eu.
 
-  [1] git.code.sf.net/p/s-nail/code (HTTP / GIT)
-  [2] http://sourceforge.net/p/s-nail/code/
-  [3] https://gitlab.com/sdaoden/s-nail.git
-  [4] https://gitlab.com/sdaoden/s-nail
-  [5] https://sourceforge.net/projects/s-nail/files/?source=navbar
-  [6] https://downloads.sourceforge.net/project/s-nail/s-nail-VERSION.tar.xz
-  [7] http://sdaoden.users.sourceforge.net/code.html#s-nail
-  [8] mailto:s-nail-users@lists.sourceforge.net
+  [7] s-nail-users@lists.sourceforge.net
+  [8] s-mailx@sdaoden.eu
   [9] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
-  [10] news://news.gmane.org/gmane.mail.s-nail.user
+  [10] news.gmane.org/gmane.mail.s-nail.user
+  [11] s-mailx-commit@sdaoden.eu
+  [12] s-announce@sdaoden.eu
 
 The S-nail(1) git(1) repository consists of five branches:
 
 - master: rooted on top of [heirloom], this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
   It is updated once a release is made, and will otherwise only see
-  cherry-picked bugfixes or very stable improvements.
+  cherry-picked bug fixes or stable improvements.
 
 - next: rooted on top of [master], this consists of a furious mixture of
   commits that eventually end up in [master]; it is a snapshot of the
   [crawl] branch, taken once that seems to be quite stable.
 
-- crawl: developer chaos, nothing for normal people.
+- crawl: developer chaos (distributed horror backup - don't use!).
 
 - timeline: an ongoing effort to collect the complete history of Mail.
+  Anything from the pre-Gunnar Ritter area is taken from CSRG and other
+  archives, for nail and Heirloom mailx i've used release balls, and
+  since S-nail v14.8.7 this is also true again (and tagging the release
+  as vVERSION.ar).
 
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
@@ -58,23 +83,25 @@ likely is interested in:
   $ mkdir s-nail.git
   $ cd s-nail.git
   $ git init
-  $ git remote add origin -t master git://git.code.sf.net/p/s-nail/code
-alternatively
-  $ git remote add origin -t master https://gitlab.com/s-nail/s-nail.git
+  $ git remote add origin -t master https://git.sdaoden.eu/scm/s-nail.git
   $ git fetch -v
   $ git checkout master
   $ make CONFIG=MAXIMAL install
 
-The S-nail(1) heraldic animal "snailmail.jpg" has been found at
-<http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg>.
+The release commits and release tags are signed with an OpenPGP key.
+Our heraldic animal "snailmail.jpg" has been found at [100].
 Thank you!
+
+  [100] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
 
 AUTHORS
 =======
 
+Unix mail seems to have been written mostly by Ken Thompson.
+
 Berkeley Mail was (according to "def.h") developed by Kurt Shoens, dated
 March 25, 1978.  According to the CSRG commit log authors of BSD mail in
-the time spam 1980-10-08 to 1995-05-01 were, in order of appearance
+the time span 1980-10-08 to 1995-05-01 were, in order of appearance
 (commit count): Kurt Shoens (379), Kirk McKusick (50), Carl Smith (16),
 Bill Bush (2), Eric Allman (6), Craig Leres (43), Sam Leffler (51),
 Ralph Campbell (21), Serge Granik (28), Edward Wang (253),
@@ -82,18 +109,19 @@ Donn Seeley (1), Jay Lepreau (3), Jim Bloom (1), Anne Hughes (2),
 Kevin Dunlap (34), Keith Bostic (253), Mike Karels (1), Cael Staelin (6)
 and Dave Borman (17).  One commit by Charlie Root, 36 by "dist".
 
-After the 4.4BSD release in 1993, Mail was not further developed
-officially.  The code that Heirloom mailx is based on contains
-numerous patches from OpenBSD, NetBSD, RedHat and Debian. Namely
-the NetBSD developer Christos Zoulas wrote much of it.
+Official BSD Mail development ceased in 1995 according to the CSRG
+(Berkeley's Computer Systems Research Group) repository.  Mail has then
+seen further development in open source BSD variants, noticeably by
+Christos Zoulas in NetBSD.
 
-The maintainer and primary developer of Heirloom mailx is
-Gunnar Ritter. Its development started under the name "nail" in
-February 2000 and added especially the MIME code, network protocol
-support, and POSIX conformance improvements. In March 2006, the
-program has been integrated into the Heirloom project.
+Gunnar Ritter reused that codebase when he started developing nail in
+February 2000, and incorporated numerous patches from OpenBSD, NetBSD,
+RedHat and Debian.  He added MIME code, network protocol support, and
+POSIX conformance improvements. In March 2006, he integrated that
+program into the Heirloom project, renaming it to Heirloom mailx, the
+development of which ceased in 2008.
 
-In 2012 the stale Heirloom mailx(1) was adapted as S-nail(1) by
-Steffen (Daode) Nurpmeso.
+In 2012 Steffen (Daode) Nurpmeso adopted the codebase as S-nail.
+We try to end up as S-mailx.
 
 # s-ts-mode
