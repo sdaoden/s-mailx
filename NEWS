@@ -5,6 +5,8 @@ In the following numbers in [] reference either the commit SHA1 hash or
 the name of a topic branch which relate to the NEWS entry;
 Likewise, numbers after an at-sign @ are mdocmx(7) manual anchor
 references which allow directly jumping to the given anchor.
+Commits can be browsed by appending the commit hash to
+  https://git.sdaoden.eu/cgit/s-nail.git/commit/?id=
 
 The complete changelog of commits in between two versions can be
 inspected by using the git(1) `log' command as shown below, where "OLD"
@@ -20,28 +22,27 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.8.7 ("The Vulture 38"), 2016-03-25
---------------------------------------
+v14.8.8 ("The Vulture 38"), 2016-03-26 (v14.8.7 as of 2016-03-25 broken)
+------------------------------------------------------------------------
 
 A cumulated bugfix release.
 
 Credits Gaetan Bisson, Sergey Matveev, Dirk-Wilhelm Peters, Allan McRae
 and Ralph Corderoy.
+All the mentioned persons deserve special thanks indeed.
 
 We welcome Sergey Matveev, Allan McRae and Ralph Corderoy in THANKS.
 
-  Remarks:
-  S-nail will become S-mailx after v14.9, and all project resources will
-  move to www.sdaoden.eu with v14.9.
+  S-nail will become S-mailx after v14.9, and all project resources
+  will move to www.sdaoden.eu with v14.9; only the ML remains hosted
+  at Sourceforge.net as of this writing.
+  We thank Sourceforge.net for hosting this project so many years!
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Thanks to Sergey Matveev the Maildir code is now compatible to *BSD.
   Interested persons may read the commit log. [0c30b14] (Sergey Matveev)
-
-- The builtin NCL couldn't paste more than one line since October 2015.
-  [ff5d914]  (Ralph Corderoy)
 
 - The (much to restricted) test target should now work if $SHELL is set
   to something "nologin". [7876f3a]  (Gaetan Bisson)
@@ -72,6 +73,9 @@ ChangeLog
   given maximum persistent history size unless gabbiness is desired.
   [76780e4,f06ccb6]
 
+- The builtin NCL couldn't paste more than one line since October 2015.
+  [ff5d914]  (Ralph Corderoy)
+
 ChangeLog (purely technical)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -81,6 +85,9 @@ ChangeLog (purely technical)
 
 - Fix a bit of weird buffer handling. [536d3a7,0f2cc31,e9a5c22]
   (Ralph Corderoy)
+
+- Fix the fixed buffer handling which broke v14.8.7. [3e4831a]
+  (Gaetan Bisson)
 
 v14.8.6 ("Hen Harrier II"), 2015-12-28
 --------------------------------------

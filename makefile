@@ -55,7 +55,7 @@ _update-release:
 	: $${UAGENT:=s-nail};\
 	: $${UUAGENT:=S-nail};\
 	: $${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads};\
-	: $${ACCOUNT:=sn_sf};\
+	: $${ACCOUNT:=ich};\
 	DATE_MAN="`date -u +'%b %d, %Y'`";\
 	DATE_ISO="`date -u +%Y-%m-%d`";\
 	if [ "`git rev-parse --verify HEAD`" != \
@@ -172,20 +172,29 @@ _update-release:
 	\
 	rm -f "$${UAGENT}-$${REL}.tar" &&\
 	\
-	( echo "-put $${UAGENT}-$${REL}.tar.gz";\
-	  echo "-put $${UAGENT}-$${REL}.tar.xz";\
-	  echo "-put $${UAGENT}-$${REL}.tar.asc" ) | \
+	(\
+	echo "-put $${UAGENT}-$${REL}.tar.gz";\
+	echo "-rm $${UAGENT}-latest.tar.gz";\
+	echo "-ln -s $${UAGENT}-$${REL}.tar.gz $${UAGENT}-latest.tar.gz";\
+	echo "-put $${UAGENT}-$${REL}.tar.xz";\
+	echo "-rm $${UAGENT}-latest.tar.xz";\
+	echo "-ln -s $${UAGENT}-$${REL}.tar.xz $${UAGENT}-latest.tar.xz";\
+	echo "-put $${UAGENT}-$${REL}.tar.asc";\
+	echo "-rm $${UAGENT}-latest.tar.asc";\
+	echo "-ln -s $${UAGENT}-$${REL}.tar.asc $${UAGENT}-latest.tar.asc";\
+	echo "-chmod 0644 $${UAGENT}-$${REL}.tar.*";\
+	) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
 	\
 	echo 'Really send announcement mail?  ENTER continues';\
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
-	make CONFIG=MAXIMAL config build &&\
+	make CONFIG=MAXIMAL all &&\
 	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
 		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
 		-q "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
-		-b nail-announce-bcc nail-announce &&\
+		-b mailx-announce-bcc mailx-announce &&\
 	echo 'Uff.'
 
 # s-mk-mode

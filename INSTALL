@@ -231,10 +231,10 @@ Unless otherwise noted the following applies to saying "$ make" and
     -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
-  Latest as of 2016-03-25, clang(1) and gcc(1).
+  Latest as of 2016-03-26, clang(1) and gcc(1).
 
 . Void Linux <http://www.voidlinux.eu/>
-  Not tested for v14.8.7.
+  Not tested for v14.8.8.
   (My current working environment is restricted since i've lost
   a machine in January.)
 
@@ -243,17 +243,17 @@ Unless otherwise noted the following applies to saying "$ make" and
 
 . FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.2, clang(1) and gcc6(1).
-  Not tested for v14.8.7.
+  Not tested for v14.8.8.
   (My current working environment is restricted since i've lost
   a machine in January.)
 
 . OpenBSD <http://www.openbsd.org/>
-  Not tested for v14.8.7.
+  Not tested for v14.8.8.
   (My current working environment is restricted since i've lost
   a machine in January.)
 
 . DragonFly BSD <https://www.dragonflybsd.org/>
-  Not tested for v14.8.7.
+  Not tested for v14.8.8.
   (My current working environment is restricted since i've lost
   a machine in January.)
 

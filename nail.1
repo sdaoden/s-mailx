@@ -34,9 +34,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" S-nail(1): v14.8.7 / 2016-03-25
-.Dd Mar 25, 2016
-.ds VV \\%v14.8.7
+.\" S-nail(1): v14.8.8 / 2016-03-26
+.Dd Mar 26, 2016
+.ds VV \\%v14.8.8
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -611,14 +611,13 @@
 .Sh DESCRIPTION
 .Bd -filled -compact -offset indent
 .Sy Compatibility note:
-\*(UA and part of its configuration syntax will change in v15.0.
-Until then there will exist a partial but growing number of
-backward and forward compatibility configuration options.
-To choose the new syntax and behaviour already today, the binary option
-.Va v15-compat
-must be set.
-The manual will refer to it via \*(IN and \*(OU as necessary.
-Commands and variables which will vanish in v15.0 are marked \*(OB.
+S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
+A partial set of compatibility options exist, tagged as \*(IN and \*(OU.
+To choose upward compatible behaviour, please set the internal variable
+.Va v15-compat .
+Anything which will vanish in v15.0 is tagged \*(OB, and using
+.Fl d
+will print warnings for many use cases of obsolete features.
 .Ed
 .Pp
 \*(UA is a mail processing system with a command syntax reminiscent of
@@ -8400,6 +8399,8 @@ remains intact.
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
 .An "Steffen Nurpmeso" Aq Mt s-nail-users@lists.sourceforge.net
+(later
+.Mt s-mailx@sdaoden.eu ) .
 .Sh CAVEATS
 The character set conversion uses and relies upon the
 .Xr iconv 3

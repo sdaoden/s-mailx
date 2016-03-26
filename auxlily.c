@@ -1857,9 +1857,9 @@ n_verr(char const *format, va_list ap)
 
 #ifdef HAVE_ERRORS
    xbuf = buf;
-   l = sizeof(buf);
+   lmax = sizeof buf;
 jredo:
-   l = vsnprintf(xbuf, l, format, ap);
+   l = vsnprintf(xbuf, lmax, format, ap);
    if (l <= 0)
       goto jleave;
    if (UICMP(z, l, >=, lmax)) {
