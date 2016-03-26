@@ -175,13 +175,13 @@ _update-release:
 	(\
 	echo "-put $${UAGENT}-$${REL}.tar.gz";\
 	echo "-rm $${UAGENT}-latest.tar.gz";\
-	echo "-ln -s $${UAGENT}-$${REL}.tar.gz $${UAGENT}-latest.tar.gz";\
+	echo "-ln $${UAGENT}-$${REL}.tar.gz $${UAGENT}-latest.tar.gz";\
 	echo "-put $${UAGENT}-$${REL}.tar.xz";\
 	echo "-rm $${UAGENT}-latest.tar.xz";\
-	echo "-ln -s $${UAGENT}-$${REL}.tar.xz $${UAGENT}-latest.tar.xz";\
+	echo "-ln $${UAGENT}-$${REL}.tar.xz $${UAGENT}-latest.tar.xz";\
 	echo "-put $${UAGENT}-$${REL}.tar.asc";\
 	echo "-rm $${UAGENT}-latest.tar.asc";\
-	echo "-ln -s $${UAGENT}-$${REL}.tar.asc $${UAGENT}-latest.tar.asc";\
+	echo "-ln $${UAGENT}-$${REL}.tar.asc $${UAGENT}-latest.tar.asc";\
 	echo "-chmod 0644 $${UAGENT}-$${REL}.tar.*";\
 	) | \
 	sftp -b - $${UPLOAD} &&\
