@@ -2,7 +2,7 @@
 # /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #--MKREL-START--
-# S-nail(1): v14.8.7 / 2016-03-25
+# S-nail(1): v14.8.8 / 2016-03-26
 #--MKREL-END--
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
