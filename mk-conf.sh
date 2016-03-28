@@ -348,7 +348,7 @@ _cc_flags_tcc() {
    cc_check -pedantic
 
    if feat_yes DEBUG; then
-      cc_check -b
+      # May have problems to find libtcc cc_check -b
       cc_check -g
    fi
 
@@ -806,12 +806,20 @@ cc_setup
 
 ${cat} > ${tmp}.c << \!
 #include <stdio.h>
-int main(int argc, char **argv)
-{
+#include <string.h>
+static void doit(char const *s);
+int
+main(int argc, char **argv){
    (void)argc;
    (void)argv;
-   puts("Hello world");
+   doit("Hello world");
    return 0;
+}
+static void
+doit(char const *s){
+   char buf[12];
+   strcpy(buf, s);
+   puts(s);
 }
 !
 
