@@ -159,8 +159,14 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    }
    rv = FAL0;
 
-   if (prompt == NULL)
-      prompt = noninteract_default ? _(" ([yes]/no)? ") : _(" ([no]/yes)? ");
+   /* C99 */{
+      char const *quest = noninteract_default
+            ? _("[yes]/no? ") : _("[no]/yes? ");
+
+      if (prompt == NULL)
+         prompt = _("Continue");
+      prompt = savecatsep(prompt, ' ', quest);
+   }
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);

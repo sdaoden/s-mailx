@@ -2006,8 +2006,9 @@ FL void        uncollapse1(struct message *mp, int always);
 
 /* Return wether user says yes, on STDIN if interactive.
  * Uses noninteract_default, the return value for non-interactive use cases,
- * also to choose a default prompt if that is NULL as well as a hint for
- * boolify().  Handles+reraises SIGINT */
+ * as a hint for boolify() and chooses the yes/no string to append to prompt
+ * accordingly.  If prompt is NULL "Continue" is used instead.
+ * Handles+reraises SIGINT */
 FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
 
 #ifdef HAVE_SOCKETS

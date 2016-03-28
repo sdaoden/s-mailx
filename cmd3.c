@@ -1238,7 +1238,7 @@ c_remove(void *v)
 {
    char const *fmt;
    size_t fmt_len;
-   char **args = v, *name;
+   char **args = v, *name, *ename;
    int ec = 0;
    NYD_ENTER;
 
@@ -1248,14 +1248,15 @@ c_remove(void *v)
       goto jleave;
    }
 
-   fmt = _("Remove \"%s\" (y/n) ? ");
+   fmt = _("Remove \"%s\"");
    fmt_len = strlen(fmt);
    do {
       if ((name = expand(*args)) == NULL)
          continue;
+      ename = string_quote(name);
 
       if (!strcmp(name, mailname)) {
-         n_err(_("Cannot remove current mailbox \"%s\"\n"), name);
+         n_err(_("Cannot remove current mailbox \"%s\"\n"), ename);
          ec |= 1;
          continue;
       }
@@ -1263,7 +1264,7 @@ c_remove(void *v)
          size_t vl = strlen(name) + fmt_len +1;
          char *vb = ac_alloc(vl);
          bool_t asw;
-         snprintf(vb, vl, fmt, name);
+         snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
          ac_free(vb);
          if (!asw)
@@ -1278,7 +1279,7 @@ c_remove(void *v)
          }
          break;
       case PROTO_POP3:
-         n_err(_("Cannot remove POP3 mailbox \"%s\"\n"),name);
+         n_err(_("Cannot remove POP3 mailbox \"%s\"\n"), ename);
          ec |= 1;
          break;
       case PROTO_MAILDIR:
@@ -1286,7 +1287,7 @@ c_remove(void *v)
             ec |= 1;
          break;
       case PROTO_UNKNOWN:
-         n_err(_("Unknown protocol in \"%s\"; not removed\n"), name);
+         n_err(_("Unknown protocol in \"%s\"; not removed\n"), ename);
          ec |= 1;
          break;
       }

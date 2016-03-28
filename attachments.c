@@ -188,8 +188,8 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    if (!(options & OPT_INTERACTIVE))
       goto jcs;
    if ((cp = ap->a_content_type) != NULL && ascncasecmp(cp, "text/", 5) != 0 &&
-         !getapproval(_("Filename doesn't indicate text content - "
-            "edit charsets nonetheless? "), TRU1)) {
+         !getapproval(_("File doesn't indicate text content, "
+            "edit character sets"), TRU1)) {
       ap->a_conv = AC_DEFAULT;
       goto jleave;
    }

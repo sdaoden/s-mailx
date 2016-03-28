@@ -1663,7 +1663,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          eot = FAL0, edit_attachments(&hp->h_attach);
 
       if (ok_blook(asksign))
-         eot = FAL0, dosign = getapproval(_("Sign this message (y/n)? "), TRU1);
+         eot = FAL0, dosign = getapproval(_("Sign this message"), TRU1);
 
       if (eot) {
          printf(_("EOT\n"));
