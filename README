@@ -80,8 +80,14 @@ The S-nail(1) git(1) repository consists of five branches:
 To clone only the [master] branch, which is what a normal user most
 likely is interested in:
 
-  $ mkdir s-nail.git
-  $ cd s-nail.git
+  $ git clone --single-branch https://git.sdaoden.eu/scm/s-nail.git
+  $ cd s-nail
+  $ make tangerine
+
+when available, otherwise the very same can be achieved via
+
+  $ mkdir s-mailx.git
+  $ cd s-mailx.git
   $ git init
   $ git remote add origin -t master https://git.sdaoden.eu/scm/s-nail.git
   $ git fetch -v
