@@ -999,25 +999,24 @@ jputline:
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
          puts(_(
-"\nTILDE ESCAPES excerpt:\n"
-"~~           Quote a single tilde\n"
+"TILDE ESCAPES (to be placed after a newline) excerpt:\n"
+"~~           Quote (write) a single tilde\n"
 "~@ [:file:]  Edit attachment list\n"
-"~b users     Add users to \"blind\" Bcc: list\n"
-"~c users     Add users to Cc: list\n"
-"~d           Read in dead.letter\n"
+"~c users     Add users to Ccc: list (`~b' for Bcc:)\n"
+"~d           Read in *DEAD* (dead.letter)\n"
 "~e           Edit the message buffer\n"
 "~F messages  Read in messages including all headers, don't indent lines\n"
 "~f messages  Like ~F, but honour the `ignore' / `retain' configuration\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
+"~h           Prompt for Subject:, To:, Cc: and \"blind\" Bcc:"));
          puts(_(
-"~R file      Read in a file, indent lines\n"
-"~r file      Read in a file\n"
-"~p           Print the message buffer\n"
-"~q           Abort message composition and save text to DEAD\n"
 "~M messages  Read in messages, keep all header lines, indent lines\n"
 "~m messages  Like ~M, but honour the `ignore' / `retain' configuration\n"
+"~p           Print the message buffer\n"
+"~q           Abort message composition and save text to DEAD\n"
+"~R file      Read in a file, indent lines\n"
+"~r file      Read in a file\n"
 "~s subject   Set Subject:\n"
-"~t users     Add users to To: list\n"));
+"~t users     Add users to To: list"));
          puts(_(
 "~U messages  Read in message(s) without any headers, indent lines\n"
 "~u messages  Read in message(s) without any headers\n"
@@ -1026,7 +1025,7 @@ jputline:
 "~x           Abort message composition and discard message\n"
 "~|command    Pipe message through a filter, replace content on success\n"
 "~!command    Invoke the shell\n"
-"~:command    Execute a regular command\n"));
+"~:command    Execute a regular command"));
          break;
       }
    }
