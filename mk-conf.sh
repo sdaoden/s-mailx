@@ -2472,7 +2472,7 @@ ${cat} > ${tmp2}.c << \!
 :
 #endif /* Remarks */
 :Setup:
-: . System-wide resource file: SYSCONFRC
+: . System-wide resource file: SYSCONFDIR/SYSCONFRC
 : . bindir: BINDIR
 #ifdef HAVE_DOTLOCK
 : . libexecdir: LIBEXECDIR
