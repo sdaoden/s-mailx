@@ -790,7 +790,7 @@ jcont:
             options &= ~OPT_t_FLAG;
             continue;
          } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
+            printf(_("*ignoreeof* set, use \"~.\" to terminate letter\n"));
             continue;
          }
          break;
