@@ -710,6 +710,8 @@ jerr:
 FL void
 extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
+   /* See the prototype declaration for the hairy relationship of
+    * options&OPT_t_FLAG and/or pstate&PS_t_FLAG in here */
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
    size_t linesize = 0, seenfields = 0;

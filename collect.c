@@ -73,6 +73,8 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
 
+/* Parse off the message header from fp and store relevant fields in hp,
+ * replace _coll_fp with a shiny new version without any header */
 static enum okay  makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
@@ -786,7 +788,6 @@ jcont:
             pstate |= PS_t_FLAG;
             if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
                goto jerr;
-            rewind(_coll_fp);
             options &= ~OPT_t_FLAG;
             continue;
          } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
@@ -814,7 +815,8 @@ jputline:
       if (linebuf[0] != escape)
          goto jputline;
 
-      tty_addhist(linebuf, TRU1);
+      if (!(options & OPT_t_FLAG))
+         tty_addhist(linebuf, TRU1);
 
       c = linebuf[1];
       switch (c) {
