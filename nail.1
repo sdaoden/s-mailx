@@ -345,7 +345,10 @@ allows more control over the startup sequence; also see
 .
 .Mx
 .It Fl q Ar file
-Start the message with the contents of the specified file.
+Initialize the message body with the contents of the specified file,
+which may be standard input
+.Ql -
+only in non-interactive context.
 May be given in send mode only.
 .
 .Mx
@@ -406,7 +409,8 @@ Specify the subject of the to-be-sent message.
 .
 .Mx
 .It Fl t
-The message to be sent is expected to contain a message header with
+The message given (on standard input) is expected to contain, separated
+from the message body with an empty line, a message header with
 .Ql To: ,
 .Ql Cc: ,
 or
@@ -441,6 +445,10 @@ and
 (special address massage will however still occur for the latter).
 In fact custom header fields may also be used, the content of which
 is passed through unchanged.
+In conjunction with
+.Fl ~
+.Sx TILDE ESCAPES
+can be embedded, too.
 .
 .Mx
 .It Fl u Ar user

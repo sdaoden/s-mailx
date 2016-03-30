@@ -756,8 +756,8 @@ main(int argc, char *argv[])
       case 'q':
          /* Quote file TODO drop? -Q with real quote?? what ? */
          options |= OPT_SENDMODE;
-         if (*_oarg != '-')
-            qf = _oarg;
+         /* Allow for now, we have to special check validity of -q- later on! */
+         qf = (_oarg[0] == '-' && _oarg[1] == '\0') ? (char*)-1 : _oarg;
          break;
       case 'R':
          /* Open folders read-only */
@@ -943,6 +943,10 @@ jgetopt_done:
          emsg = N_("Send options without primary recipient specified.");
          goto jusage;
       }
+      if ((options & OPT_t_FLAG) && qf != NULL) {
+         emsg = N_("-t and -q are mutual exclusive.");
+         goto jusage;
+      }
       if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) {
          emsg = N_("The -e, -H and -L options cannot be used in send mode.");
          goto jusage;
@@ -973,6 +977,12 @@ jgetopt_done:
    _setup_vars();
 
    if (options & OPT_INTERACTIVE) {
+      /* Now we can finally check wether -q- was given */
+      if (qf == (char*)-1) {
+         emsg = N_("In interactive mode -q cannot use standard input \"-\"\n");
+         goto jusage;
+      }
+
       _setscreensize(0);
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH

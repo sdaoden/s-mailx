@@ -695,6 +695,9 @@ FL bool_t      condstack_take(void *self);
  * collect.c
  */
 
+/*
+ * If quotefile is (char*)-1, stdin will be used, caller has to verify that
+ * we're not running in interactive mode */
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
                   char *quotefile, int doprefix, si8_t *checkaddr_err);
 

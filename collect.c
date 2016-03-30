@@ -153,7 +153,9 @@ _include_file(char const *name, int *linecount, int *charcount,
    size_t linesize = 0, indl, linelen, cnt;
    NYD_ENTER;
 
-   if ((fbuf = Fopen(name, "r")) == NULL) {
+   if (name == (char*)-1)
+      fbuf = stdin;
+   else if ((fbuf = Fopen(name, "r")) == NULL) {
       n_perr(name, 0);
       goto jleave;
    }
@@ -190,7 +192,7 @@ _include_file(char const *name, int *linecount, int *charcount,
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   if (fbuf != NULL)
+   if (fbuf != NULL && fbuf != stdin)
       Fclose(fbuf);
    NYD_LEAVE;
    return ret;
