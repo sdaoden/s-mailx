@@ -156,11 +156,11 @@ _update-release:
 	cd "$${TMPDIR}" &&\
 	tar -c -f "$${UAGENT}-$${REL}.tar" "$${UAGENT}-$${REL}" &&\
 	\
-	openssl md5 "$${UAGENT}-$${REL}.tar" > \
-		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
 	openssl sha1 "$${UAGENT}-$${REL}.tar" >> \
 		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
 	openssl sha256 "$${UAGENT}-$${REL}.tar" >> \
+		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
+	openssl sha512 "$${UAGENT}-$${REL}.tar" >> \
 		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
 	gpg --detach-sign --armor "$${UAGENT}-$${REL}.tar" 2>&1 &&\
 	cat "$${UAGENT}-$${REL}.tar.asc" >> \
@@ -191,10 +191,11 @@ _update-release:
 	read i;\
 	cd "$${UAGENT}-$${REL}" &&\
 	make CONFIG=MAXIMAL all &&\
-	LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
-		-s "[ANNOUNCE] of $${UUAGENT} v$${REL}" \
-		-q "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
-		-b mailx-announce-bcc mailx-announce &&\
+	< "$${TMPDIR}/$${UAGENT}-$${REL}.ann.mail" \
+		LC_ALL=${ORIG_LC_ALL} ./$${UAGENT} -A $${ACCOUNT} \
+				-Snofollowup-to \
+			-s "[ANN]ouncing $${UUAGENT} v$${REL}" \
+			-t &&\
 	echo 'Uff.'
 
 # s-mk-mode
