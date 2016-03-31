@@ -676,10 +676,11 @@ allows editing of the message recipients and
 .Ql Ic ~?
 gives an overview of available tilde escapes.
 Typing control-D
-.Ql ^D
+.Pf ( Ql ^D )
 at the beginning of an empty line leaves compose mode and causes the
-message to be send, whereas typing control-C
-.Ql ^C
+message to be sent, whereas typing
+.Ql control-C
+.Pf ( Ql ^C )
 twice will abort the current letter (saving its contents in the file
 denoted by
 .Ev DEAD
@@ -850,7 +851,7 @@ $ env LC_ALL=C password=NOTSECRET \e
 .
 .Pp
 In interactive mode, which is introduced in the next section, messages
-can be send by calling the
+can be sent by calling the
 .Ic mail
 command with a list of recipient addresses \(em the semantics are
 completely identical to non-interactive message sending, except that
@@ -3506,7 +3507,7 @@ mailing lists, or pretend to do so (see
 on top of the usual
 .Ic reply
 functionality this will actively resort and even remove message
-recipients in order to generate a message that is supposed to be send to
+recipients in order to generate a message that is supposed to be sent to
 a mailing list.
 For example it will also implicitly generate a
 .Ql Mail-Followup-To:

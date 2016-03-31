@@ -801,7 +801,7 @@ joarg:
          options |= OPT_SENDMODE;
          break;
       case 't':
-         /* Read defined set of headers from mail to be send */
+         /* Read defined set of headers from mail to be sent */
          options |= OPT_SENDMODE | OPT_t_FLAG;
          break;
       case 'u':
