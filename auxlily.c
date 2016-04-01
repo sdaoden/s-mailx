@@ -1750,6 +1750,37 @@ time_current_update(struct time_current *tc, bool_t full_update)
    NYD_LEAVE;
 }
 
+FL uiz_t
+n_msleep(uiz_t millis, bool_t ignint){
+   uiz_t rv;
+   NYD2_ENTER;
+
+#ifdef HAVE_NANOSLEEP
+   /* C99 */{
+      struct timespec ts, trem;
+      int i;
+
+      ts.tv_sec = millis / 1000;
+      ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
+
+      while((i = nanosleep(&ts, &trem)) != 0 && ignint)
+         ts = trem;
+      rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
+   }
+
+#elif defined HAVE_SLEEP
+   if((millis /= 1000) == 0)
+      millis = 1;
+   while((rv = sleep((unsigned int)millis)) != 0 && ignint)
+      millis = rv;
+#else
+# error Configuration should have detected a function for sleeping.
+#endif
+
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL void
 n_err(char const *format, ...){
    va_list ap;

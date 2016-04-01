@@ -392,7 +392,7 @@ j_lt_redo:
       /* TODO message (error) ring.., less sleep */
       printf(_("Waiting a second before proceeding to the next message..\n"));
       fflush(stdout);
-      sleep(1);
+      n_msleep(1000, FAL0);
       goto jnext_msg;
    }
 

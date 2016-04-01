@@ -1073,6 +1073,56 @@ else
    have_no_subsecond_time=1
 fi
 
+if run_check nanosleep 'nanosleep(2)' \
+   '#define HAVE_NANOSLEEP' << \!
+#include <time.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts;
+
+   ts.tv_sec = 1;
+   ts.tv_nsec = 100000;
+   if(!nanosleep(&ts, NULL) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif run_check nanosleep 'nanosleep(2) (via -lrt)' \
+   '#define HAVE_NANOSLEEP' '-lrt' << \!
+#include <time.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts;
+
+   ts.tv_sec = 1;
+   ts.tv_nsec = 100000;
+   if(!nanosleep(&ts, NULL) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+# link_check is enough for this, that function is so old, trust the proto
+elif link_check sleep 'sleep(3)' \
+   '#define HAVE_SLEEP' << \!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   if(!sleep(1) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require one of nanosleep(2) and sleep(3).'
+   config_exit 1
+fi
+
 if run_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
 #include <pwd.h>
 #include <unistd.h>

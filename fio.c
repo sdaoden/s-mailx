@@ -1422,7 +1422,7 @@ file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
       if ((rv = _file_lock(fd, flt, off, len)) || pollmsecs == 0)
          break;
       else
-         sleep(1); /* TODO pollmsecs -> use finer grain */
+         n_msleep(pollmsecs, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -1466,7 +1466,7 @@ dot_lock(char const *fname, int fd, enum file_lock_type flt,
                _DOMSG();
             n_err(".");
             didmsg = TRUM1;
-            sleep(1); /* TODO pollmsecs -> use finer grain */
+            n_msleep(pollmsecs, FAL0);
             continue;
          }
          /* FALLTHRU */

@@ -88,7 +88,7 @@ _dotlock_create(struct dotlock_info *dip)
          rv = DLS_DUNNO | DLS_ABANDON;
          break;
       }
-      sleep(1); /* TODO pollmsecs -> use finer grain */
+      n_msleep(dip->di_pollmsecs, FAL0);
    }
    return rv;
 }

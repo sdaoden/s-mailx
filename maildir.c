@@ -505,7 +505,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
    nlen = strlen(name);
 
    /* Create a unique temporary file */
-   for (nfn = (char*)0xA /* XXX no magic */;; sleep(1)) {
+   for (nfn = (char*)0xA /* XXX no magic */;; n_msleep(500, FAL0)) {
       now = n_time_epoch();
       flen = strlen(fn = mkname(now, flag, NULL));
       tfn = salloc(n = nlen + flen + 6);

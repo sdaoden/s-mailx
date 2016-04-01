@@ -419,6 +419,11 @@ FL time_t      n_time_epoch(void);
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
+/* Returns 0 if fully slept, number of millis left if ignint is true and we
+ * were interrupted.  Actual resolution may be second or less.
+ * Note in case of HAVE_SLEEP this may be SIGALARM based. */
+FL uiz_t       n_msleep(uiz_t millis, bool_t ignint);
+
 /* Our error print series..  Note: these reverse scan format in order to know
  * wether a newline was included or not -- this affects the output! */
 FL void        n_err(char const *format, ...);
