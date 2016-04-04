@@ -269,6 +269,7 @@ cc_setup() {
       CFLAGS= LDFLAGS=
       export CFLAGS LDFLAGS
    fi
+
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    printf >&2 'Searching for a usable C compiler .. $CC='
@@ -279,6 +280,8 @@ cc_setup() {
    elif { i="`command -v c99`"; }; then
       CC=${i}
    elif { i="`command -v tcc`"; }; then
+      CC=${i}
+   elif { i="`command -v pcc`"; }; then
       CC=${i}
    else
       if [ "${CC}" = cc ]; then
@@ -320,10 +323,16 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      if { echo "${CC}" | ${grep} tcc; } >/dev/null 2>&1; then
+      i=`echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}'`
+      if { echo "${i}" | ${grep} tcc; } >/dev/null 2>&1; then
          msg ' . have special tcc(1) environmental rules ...'
          _cc_flags_tcc
       else
+         # As of pcc CVS 2016-04-02, stack protection support is announced but
+         # will break if used on Linux
+         if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
+            force_no_stackprot=1
+         fi
          _cc_flags_generic
       fi
 
@@ -412,7 +421,7 @@ _cc_flags_generic() {
          fi
       else
          msg 'Not checking for -fstack-protector compiler option,'
-         msg 'since that caused linker errors in a "similar" configuration.'
+         msg 'since that caused errors in a "similar" configuration.'
          msg 'You may turn off WANT_AUTOCC and use your own settings, rerun'
       fi
    fi
