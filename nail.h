@@ -1735,7 +1735,7 @@ enum gfield {
    GMSGID         = 1<< 9,    /* a Message-ID */
 
    GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
-   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
+   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-ID:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
    GSKIN          = 1<<15,    /* Skin names */

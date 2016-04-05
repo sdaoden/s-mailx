@@ -112,7 +112,7 @@ static char const ** __mta_prepare_args(struct name *to, struct header *hp);
 static void          __mta_debug(struct sendbundle *sbp, char const *mta,
                         char const **args);
 
-/* Create a Message-Id: header field.  Use either host name or from address */
+/* Create a Message-ID: header field.  Use either host name or from address */
 static char *        _message_id(struct header *hp);
 
 /* Format the given header line to not exceed 72 characters */
