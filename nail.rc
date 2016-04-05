@@ -60,7 +60,8 @@ set bsdannounce
 # or includes the string "color")
 #set colour-pager
 
-# Assume a CRT-like terminal and invoke a $PAGER
+# Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
+# the screen.  (Set crt=0 to always page; value treated as number of lines)
 set crt
 
 # Define date display in header summary
@@ -69,7 +70,7 @@ set crt
 # When composing messages a line consisting of `.' finalizes a message
 set dot
 
-# Immediately start $EDITOR (or $VISUAL) when composing a message
+# Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
 #set editalong
 
 # Startup into interactive mode even if the (given) mailbox is empty
@@ -79,11 +80,12 @@ set dot
 # addresses are removed unless this variable is set.
 #set fullnames
 
-# [OPTION] Add more entries to the history as is done by default
-set history-gabby
+# [OPTION] Add more entries to the history as is done by default.
+# The latter will cause the builtin editor to save those entries, too
+set history-gabby history-gabby-persist
 
-# Do not forward to mbox by default since this is likely to be
-# irritating for most users today; also see *keepsave*
+# Do not move read messages of system mailboxes to MBOX by default since this
+# is likely to be irritating for most users today; also see *keepsave*
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
