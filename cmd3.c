@@ -1069,7 +1069,7 @@ c_echo(void *v)
 
    for (ap = argv; *ap != NULL; ++ap) {
       cp = *ap;
-      if ((cp = fexpand(cp, FEXP_NSHORTCUT)) != NULL) {
+      if ((cp = fexpand(cp, FEXP_NSHORTCUT | FEXP_NSHELL)) != NULL) {
          if (ap != argv)
             putchar(' ');
          c = 0;
