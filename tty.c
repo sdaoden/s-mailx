@@ -612,6 +612,11 @@ struct a_tty_line{
    ui32_t tl_prompt_width;
    ui8_t tl__dummy[4];
    char const *tl_prompt;        /* Preformatted prompt (including colours) */
+   /* .tl_pos_buf is a hack */
+# ifdef HAVE_COLOUR
+   char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
+   char *tl_pos;                 /* Address of the [4] */
+# endif
 };
 
 # ifdef HAVE_HISTORY
@@ -832,7 +837,22 @@ a_tty_vinuni(struct a_tty_line *tlp){
          !n_termcap_cmd(n_TERMCAP_CMD_ce, 0, -1))
       goto jleave;
 
-   fputs(_("Please enter Unicode code point: "), stdout);
+   /* C99 */{
+      struct str const *cpre, *csuf;
+#ifdef HAVE_COLOUR
+      struct n_colour_pen *cpen;
+
+      cpen = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL);
+      if((cpre = n_colour_pen_to_str(cpen)) != NULL)
+         csuf = n_colour_reset_to_str();
+      else
+         csuf = NULL;
+#else
+      cpre = csuf = NULL;
+#endif
+      printf(_("%sPlease enter Unicode code point:%s "),
+         (cpre != NULL ? cpre->s : ""), (csuf != NULL ? csuf->s : ""));
+   }
    fflush(stdout);
 
    buf[sizeof(buf) -1] = '\0';
@@ -1169,9 +1189,13 @@ jpaint:
    if((f & a_HAVE_POSITION) &&
          ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) ||
           ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT)))){
+# ifdef HAVE_COLOUR
+      char *posbuf = tlp->tl_pos_buf, *pos = tlp->tl_pos;
+# else
       char posbuf[5], *pos = posbuf;
 
       pos[4] = '\0';
+# endif
 
       if(phy_cur != (w = phy_wid_base) &&
             !n_termcap_cmd(n_TERMCAP_CMD_ch, phy_cur = w, 0))
@@ -2197,9 +2221,16 @@ FL int
 (n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
       SMALLOC_DEBUG_ARGS){
    struct a_tty_line tl;
+# ifdef HAVE_COLOUR
+   char *posbuf, *pos;
+# endif
    ui32_t plen, pwidth;
    ssize_t nn;
    NYD_ENTER;
+
+# ifdef HAVE_COLOUR
+   n_colour_env_create(n_COLOUR_CTX_MLE, FAL0);
+# endif
 
    /* Classify prompt */
    UNINIT(plen, 0);
@@ -2225,6 +2256,52 @@ FL int
       }
    }
 
+# ifdef HAVE_COLOUR
+   /* C99 */{
+      struct n_colour_pen *ccp;
+      struct str const *sp;
+
+      if(prompt != NULL &&
+            (ccp = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL)) != NULL &&
+            (sp = n_colour_pen_to_str(ccp)) != NULL){
+         char const *ccol = sp->s;
+
+         if((sp = n_colour_reset_to_str()) != NULL){
+            size_t l1 = strlen(ccol), l2 = strlen(sp->s);
+            ui32_t nplen = (ui32_t)(l1 + plen + l2);
+            char *nprompt = salloc(nplen +1);
+
+            memcpy(nprompt, ccol, l1);
+            memcpy(&nprompt[l1], prompt, plen);
+            memcpy(&nprompt[l1 += plen], sp->s, ++l2);
+
+            prompt = nprompt;
+            plen = nplen;
+         }
+      }
+
+      /* .tl_pos_buf is a hack */
+      posbuf = pos = NULL;
+      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
+            (sp = n_colour_pen_to_str(ccp)) != NULL){
+         char const *ccol = sp->s;
+
+         if((sp = n_colour_reset_to_str()) != NULL){
+            size_t l1 = strlen(ccol), l2 = strlen(sp->s);
+
+            posbuf = salloc(l1 + 4 + l2 +1);
+            memcpy(posbuf, ccol, l1);
+            pos = &posbuf[l1];
+            memcpy(&pos[4], sp->s, ++l2);
+         }
+      }
+      if(posbuf == NULL){
+         posbuf = pos = salloc(4 +1);
+         pos[4] = '\0';
+      }
+   }
+# endif /* HAVE_COLOUR */
+
 jredo:
    memset(&tl, 0, sizeof tl);
 
@@ -2232,6 +2309,10 @@ jredo:
       tl.tl_prompt_length = plen;
       tl.tl_prompt_width = pwidth;
    }
+# ifdef HAVE_COLOUR
+   tl.tl_pos_buf = posbuf;
+   tl.tl_pos = pos;
+# endif
 
    tl.tl_line.cbuf = *linebuf;
    if(n != 0){
@@ -2254,6 +2335,10 @@ jredo:
 #endif
       goto jredo;
    }
+
+# ifdef HAVE_COLOUR
+   n_colour_env_gut(stdout);
+# endif
    NYD_LEAVE;
    return (int)nn;
 }

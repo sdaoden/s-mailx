@@ -770,6 +770,7 @@ enum expand_addr_check_mode {
 enum n_colour_ctx{
    n_COLOUR_CTX_SUM,
    n_COLOUR_CTX_VIEW,
+   n_COLOUR_CTX_MLE,
    n__COLOUR_CTX_MAX
 };
 
@@ -784,6 +785,10 @@ enum n_colour_id{
    n_COLOUR_ID_VIEW_HEADER,
    n_COLOUR_ID_VIEW_MSGINFO,
    n_COLOUR_ID_VIEW_PARTINFO,
+
+   /* Mailx-Line-Editor */
+   n_COLOUR_ID_MLE_POSITION = 0,
+   n_COLOUR_ID_MLE_PROMPT,
 
    n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
 };

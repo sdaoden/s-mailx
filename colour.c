@@ -123,8 +123,9 @@ static struct a_colour_type_map const a_colour_type_maps[] = {
 
 n_CTA(n_COLOUR_CTX_SUM == 0, "Unexpected value of constant");
 n_CTA(n_COLOUR_CTX_VIEW == 1, "Unexpected value of constant");
+n_CTA(n_COLOUR_CTX_MLE == 2, "Unexpected value of constant");
 static char const a_colour_ctx_prefixes[n__COLOUR_CTX_MAX][8] = {
-   "sum-", "view-"
+   "sum-", "view-", "mle-"
 };
 
 static struct a_colour_map_id const
@@ -136,8 +137,10 @@ static struct a_colour_map_id const
    {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_FROM_, a_COLOUR_TT_NONE, "from_"},
    {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_HEADER, a_COLOUR_TT_VIEW, "header"},
    {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_MSGINFO, a_COLOUR_TT_NONE, "msginfo"},
-   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_PARTINFO, a_COLOUR_TT_NONE,
-      "partinfo"},
+   {n_COLOUR_CTX_VIEW, n_COLOUR_ID_VIEW_PARTINFO, a_COLOUR_TT_NONE, "partinfo"},
+   }, {
+   {n_COLOUR_CTX_MLE, n_COLOUR_ID_MLE_POSITION, a_COLOUR_TT_NONE, "position"},
+   {n_COLOUR_CTX_MLE, n_COLOUR_ID_MLE_PROMPT, a_COLOUR_TT_NONE, "prompt"},
 }};
 #define a_COLOUR_MAP_SHOW_FIELDWIDTH \
    (int)(sizeof("view-")-1 + sizeof("partinfo")-1)

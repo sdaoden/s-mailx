@@ -2169,7 +2169,10 @@ means
 .Dq hold down control key and press the A key .
 Especially without termcap support setting respective entries in
 .Va termcap
-will help shall MLE misbehave.
+will help shall the MLE misbehave.
+The MLE also supports several
+.Ic colour
+mappings.
 .
 .Pp
 .Bl -tag -compact -width "Ql _M"
@@ -2664,8 +2667,22 @@ The types of precondition available depend on the mappable slot, the
 following of which exist:
 .
 .Pp
+Mappings prefixed with
+.Ql mle-
+are used for the \*(OPal builtin Mailx-Line-Editor (MLE, see
+.Sx "On terminal control and line editor" )
+and don't support preconditions.
+.Pp
 .Bl -tag -compact -width view-partinfo
-.It Cd sum-dotmark
+.It Cd mle-position
+This mapping is used for the position indicator that is visible when
+a line cannot be fully displayed on the screen.
+.It Cd mle-prompt
+Used for the
+.Va prompt .
+.El
+.
+.Pp
 Mappings prefixed with
 .Ql sum-
 are used in header summaries, and they all understand the preconditions
@@ -2674,6 +2691,9 @@ are used in header summaries, and they all understand the preconditions
 .Ql older
 for elder messages (only honoured in conjunction with
 .Va datefield-markout-older ) .
+.Pp
+.Bl -tag -compact -width view-partinfo
+.It Cd sum-dotmark
 This mapping is used for the
 .Dq dotmark
 that can be created with the
@@ -2691,11 +2711,15 @@ For the thread structure which can be created with the
 .Ql %i
 format of the variable
 .Va headline .
+.El
 .
-.It Cd view-from_
+.Pp
 Mappings prefixed with
 .Ql view-
 are used when displaying messages.
+.Pp
+.Bl -tag -compact -width view-partinfo
+.It Cd view-from_
 This mapping is used for so-called
 .Ql From_
 lines, which are MBOX file format specific header lines.
@@ -6699,16 +6723,11 @@ just as if the surrounding part was of type
 .Mx
 .It Va prompt
 The string shown when a command is accepted.
-Prompting may be prevented by either setting this to the null string
-or by setting
-.Pf no Va prompt .
-The same XSI escape sequences that are understood by the
-.Ic echo
-command may be used within
-.Va \&\&prompt .
-.Pp
-In addition, the following \*(UA specific additional sequences are
-understood:
+Prompting may be prevented by setting this to the null string
+(or by setting
+.Pf no Va prompt ) .
+If a value is assigned the following \*(UA specific additional sequences
+are understood:
 .Ql \e& ,
 which expands to
 .Dq \&?
@@ -9016,7 +9035,7 @@ set emptystart \e
     followup-to followup-to-honour=ask-yes \e
     history-file=+.\*(uahist history-size=-1 history-gabby \e
     mime-counter-evidence=0xE \e
-    prompt="\e033[31m?\e?[\e$ \e@]\e& \e033[0m" \e
+    prompt='?\e?[\e$ \e@]\e& ' \e
     reply-to-honour=ask-yes
 
 # When `p'rinting messages, show only these headers
