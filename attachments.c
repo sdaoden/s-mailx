@@ -73,12 +73,13 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
 
    ap->a_content_type = mime_type_classify_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
-      snprintf(prefix, sizeof prefix, "#%u\tContent-Type: ", number);
+      snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Type: ", number);
       ap->a_content_type = n_input_cp_addhist(prefix, ap->a_content_type, TRU1);
    }
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
-      snprintf(prefix, sizeof prefix, "#%u\tContent-Disposition: ", number);
+      snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Disposition: ",
+         number);
       if ((ap->a_content_disposition = n_input_cp_addhist(prefix,
             ap->a_content_disposition, TRU1)) == NULL)
          goto jcdis;
@@ -87,13 +88,14 @@ jcdis:
       ap->a_content_disposition = "attachment";
 
    if (number > 0 && ok_blook(attachment_ask_content_id)) {
-      snprintf(prefix, sizeof prefix, "#%u\tContent-ID: ", number);
+      snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-ID: ", number);
       ap->a_content_id = n_input_cp_addhist(prefix, ap->a_content_id, TRU1);
    } else
       ap->a_content_id = NULL;
 
    if (number > 0 && ok_blook(attachment_ask_content_description)) {
-      snprintf(prefix, sizeof prefix, "#%u\tContent-Description: ", number);
+      snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Description: ",
+         number);
       ap->a_content_description = n_input_cp_addhist(prefix,
             ap->a_content_description, TRU1);
    }
@@ -143,7 +145,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    }
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
-   snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tfilename: "), number);
+   snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " filename: "), number);
    for (;;) {
       if ((cp = ap->a_name) != NULL)
          cp = fexpand_nshell_quote(cp);
@@ -198,7 +200,7 @@ jcs_restart:
    charset_iter_reset(NULL);
 jcs:
 #endif
-   snprintf(prefix, sizeof prefix, _("#%" PRIu32 "\tinput charset: "),
+   snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " input charset: "),
       number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
@@ -212,7 +214,7 @@ jcs:
    }
 
    snprintf(prefix, sizeof prefix,
-      _("#%" PRIu32 "\toutput (send) charset: "), number);
+      _("#%-5" PRIu32 " output (send) charset: "), number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
    defcs = ap->a_charset = n_input_cp_addhist(prefix, defcs, TRU1);
