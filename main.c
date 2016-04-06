@@ -1044,6 +1044,9 @@ jgetopt_done:
       bool_t isfail = !asccasecmp(cp, "fail"),
          isrestrict = (!isfail && !asccasecmp(cp, "restrict"));
 
+      if ((options & OPT_D_V) && !isfail && !isrestrict && *cp != '\0')
+         n_err(_("Unknown *expandargv* value: \"%s\"\n"), cp);
+
       if ((cp = argv[i = _oind]) != NULL) {
          if (isfail ||
                (isrestrict && !(options & (OPT_INTERACTIVE |OPT_TILDE_FLAG)))) {
