@@ -2131,8 +2131,14 @@ FL void        n_termcap_suspend(bool_t complete);
  * For query options the return represents a true value and -1 error.
  * Will return FAL0 directly unless we've been initialized.
  * By convention unused argument slots are given as -1 */
-FL ssize_t    n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
+FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
 # define n_termcap_cmdx(CMD)     n_termcap_cmd(CMD, -1, -1)
+
+/* Query multiplexer.
+ * Returns TRU1 on success and TRUM1 for queries for which a builtin default
+ * is returned; FAL0 is returned on non-availability */
+FL bool_t      n_termcap_query(enum n_termcap_query query,
+                  struct n_termcap_value *tvp);
 #endif /* n_HAVE_TCAP */
 
 /*

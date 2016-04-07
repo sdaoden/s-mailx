@@ -834,21 +834,30 @@ n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
       goto jleave;
    }
 
-   if(a_colour_g == NULL)
+   if(UNLIKELY(a_colour_g == NULL))
       a_colour_init();
-   if(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)
-      switch(n_termcap_cmdx(n_TERMCAP_CMD_Co)){
-      case 256:   a_colour_g->cg_type = a_COLOUR_T_256;  break;
-      case 8:     a_colour_g->cg_type = a_COLOUR_T_8;    break;
-      case 1:     a_colour_g->cg_type = a_COLOUR_T_1;    break;
-      default:
-         if(options & OPT_D_V)
-            n_err(_("Ignoring unsupported termcap entry for Co(lors)\n"));
-         /* FALLTHRU */
-      case 0:
+
+   if(UNLIKELY(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)){
+      struct n_termcap_value tv;
+
+      if(!n_termcap_query(n_TERMCAP_QUERY_Co, &tv)){
          a_colour_g->cg_type = a_COLOUR_T_NONE;
          goto jleave;
-      }
+      }else
+         switch(tv.tv_data.tvd_numeric){
+         case 256:   a_colour_g->cg_type = a_COLOUR_T_256;  break;
+         case 8:     a_colour_g->cg_type = a_COLOUR_T_8;    break;
+         case 1:     a_colour_g->cg_type = a_COLOUR_T_1;    break;
+         default:
+            if(options & OPT_D_V)
+               n_err(_("Ignoring unsupported termcap entry for Co(lors)\n"));
+            /* FALLTHRU */
+         case 0:
+            a_colour_g->cg_type = a_COLOUR_T_NONE;
+            goto jleave;
+         }
+   }
+
    if(a_colour_g->cg_type == a_COLOUR_T_NONE)
       goto jleave;
 

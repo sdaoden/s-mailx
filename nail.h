@@ -1064,18 +1064,22 @@ enum tdflags {
    _TD_BUFCOPY    = 1<<15     /* Buffer may be constant, copy it */
 };
 
-/* Shared terminal capability descriptions.
+#ifdef n_HAVE_TCAP
+enum n_termcap_captype{
+   /* Internally we share the bitspace, so ensure no value ends up as 0 */
+   n_TERMCAP_CAPTYPE_BOOL = 1,
+   n_TERMCAP_CAPTYPE_NUMERIC,
+   n_TERMCAP_CAPTYPE_STRING,
+   n__TERMCAP_CAPTYPE_MAX
+};
+
+/* Different to query a command performs an action.
  * NO,NO: necessary n_termcap_cmd() arguments.
  * If arguments are in [] brackets they are not regular but are only used
  * when the command, i.e., its effect, is somehow simulated / faked by
  * a builtin fallback implementation.
  * Availability if builtin fallback indicated by leading ! excl. mark */
-#ifdef n_HAVE_TCAP
 enum n_termcap_cmd{
-# ifdef HAVE_COLOUR
-   n_TERMCAP_CMD_Co,    /* Numeric query: max_colors/colors/Co */
-# endif
-
 # ifdef HAVE_TERMCAP
    n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: -,- */
    n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: -,- */
@@ -1104,6 +1108,15 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_FLAG_CA_MODE = 1<<29,
    /* I/O should be flushed after command completed */
    n_TERMCAP_CMD_FLAG_FLUSH = 1<<30
+};
+
+/* A query is a command that only returns a struct n_termcap_value */
+enum n_termcap_query{
+# ifdef HAVE_COLOUR
+   n_TERMCAP_QUERY_Co,  /* NUMERIC query: max_colors/colors/Co */
+# endif
+
+   n__TERMCAP_QUERY_MAX
 };
 #endif /* n_HAVE_TCAP */
 
@@ -1530,13 +1543,6 @@ struct mime_handler {
    int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
 };
 
-struct time_current {
-   time_t      tc_time;
-   struct tm   tc_gm;
-   struct tm   tc_local;
-   char        tc_ctime[32];
-};
-
 struct quoteflt {
    FILE        *qf_os;        /* Output stream */
    char const  *qf_pfix;
@@ -1608,6 +1614,25 @@ do {\
       termios_state.ts_needs_reset = FAL0;\
    }\
 } while (0)
+
+#ifdef n_HAVE_TCAP
+struct n_termcap_value{
+   enum n_termcap_captype tv_captype;
+   ui8_t tv__dummy[4];
+   union n_termcap_value_data{
+      bool_t tvd_bool;
+      ui32_t tvd_numeric;
+      char const *tvd_string;
+   } tv_data;
+};
+#endif
+
+struct time_current {
+   time_t      tc_time;
+   struct tm   tc_gm;
+   struct tm   tc_local;
+   char        tc_ctime[32];
+};
 
 struct sock {                 /* data associated with a socket */
    int         s_fd;          /* file descriptor */
