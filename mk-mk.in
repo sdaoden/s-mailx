@@ -35,6 +35,7 @@ $(AMALGAM_TARGET) lex.o: cmd_tab.h
 $(AMALGAM_TARGET) mime_types.o: mime_types.h
 $(AMALGAM_TARGET) pop3.o smtp.o urlcrecry.o: rfc1321.h
 $(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
+$(AMALGAM_TARGET) termcap.o: tcaps.h
 
 $(PRIVSEP): privsep.o
 	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\

@@ -206,8 +206,16 @@ WANT_MLE=yes
 # All line editors optionally support history management.
 WANT_HISTORY=yes
 
-# Use termcap(3) for terminal control; can be "require"d.
+# Use termcap(5) for terminal control; can be "require"d.
+# Today most environments ship a termcap(5) that in fact is part of
+# terminfo(5), and acts as a converting wrapper for this library.
+# To avoid this redundancy we also support terminfo(5), and use it
+# instead if we find it (assuming that termcap(5) is a stub, then).
+# Note that terminfo(5) offers access to more key sequences, e.g.,
+# kLFT5, for which no termcap(5) entry exists.
+# terminfo(5) support can (thus) be "require"d.
 WANT_TERMCAP=yes
+WANT_TERMCAP_PREFER_TERMINFO=yes
 
 # Enable the `errors' command; S-nail is a console-based application and
 # thus errors may fly by pretty fast as other operations are in

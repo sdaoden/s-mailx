@@ -1073,32 +1073,37 @@ enum n_termcap_captype{
    n__TERMCAP_CAPTYPE_MAX
 };
 
-/* Different to query a command performs an action.
- * NO,NO: necessary n_termcap_cmd() arguments.
- * If arguments are in [] brackets they are not regular but are only used
- * when the command, i.e., its effect, is somehow simulated / faked by
- * a builtin fallback implementation.
- * Availability if builtin fallback indicated by leading ! excl. mark */
+/* Termcap commands; different to queries commands perform actions.
+ * Commands are resolved upon init time, and are all termcap(5)-compatible,
+ * therefore we use the short termcap(5) names.
+ * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes on
+ * necessary termcap_cmd() arguments; if those are in [] brackets they are not
+ * regular but are only used when the command, i.e., its effect, is somehow
+ * simulated / faked by a builtin fallback implementation.
+ * Availability of builtin fallback indicated by leading @ (at-sign) */
 enum n_termcap_cmd{
 # ifdef HAVE_TERMCAP
-   n_TERMCAP_CMD_te,    /* exit_ca_mode/rmcup/te: -,- */
-   n_TERMCAP_CMD_ti,    /* enter_ca_mode/smcup/ti: -,- */
+   n_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
+   n_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
 
-   n_TERMCAP_CMD_ks,    /* keypad_xmit/smkx/ks: -,- */
-   n_TERMCAP_CMD_ke,    /* keypad_local/rmkx/ke: -,- */
+   n_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
+   n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
 
-   n_TERMCAP_CMD_cd,    /* clr_eos/ed/cd: -,- */
-   n_TERMCAP_CMD_cl,    /* clear_screen/clear/cl (+home cursor): -,- */
-   /*n_TERMCAP_CMD_cm,*/    /* cursor_address/cup/cm: row,column */
-   n_TERMCAP_CMD_ho,    /* cursor_home/home/ho: -,- */
+   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
+   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
 # endif
 
 # ifdef HAVE_MLE
-   n_TERMCAP_CMD_ce,    /* ! clr_eol/el/ce: [start-column],- */
-   n_TERMCAP_CMD_ch,    /* ! column_address/hpa/ch: column,- */
-   n_TERMCAP_CMD_cr,    /* ! carriage_return/cr/cr: -,- */
-   n_TERMCAP_CMD_le,    /* ! cursor_left/cub1/le: count,- */
-   n_TERMCAP_CMD_nd,    /* !(\033[C) cursor_right/cuf1/nd: count,- */
+   n_TERMCAP_CMD_ce, /* el/ce, STRING | @ clr_eol: [start-column],- */
+   n_TERMCAP_CMD_ch, /* hpa/ch, STRING, IDX1 | column_address: column,- */
+   n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
+   n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
+   n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
 # endif
 
    n__TERMCAP_CMD_MAX,
@@ -1110,10 +1115,17 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_FLAG_FLUSH = 1<<30
 };
 
-/* A query is a command that only returns a struct n_termcap_value */
+/* Termcap queries; a query is a command that returns a struct n_termcap_value.
+ * Queries are resolved once they are used first, and may not be termcap(5)-
+ * compatible, therefore we use terminfo(5) names.
+ * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes */
 enum n_termcap_query{
 # ifdef HAVE_COLOUR
-   n_TERMCAP_QUERY_Co,  /* NUMERIC query: max_colors/colors/Co */
+   n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
 
    n__TERMCAP_QUERY_MAX

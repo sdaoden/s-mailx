@@ -2131,31 +2131,31 @@ and
 .Va history-size .
 .
 .Pp
-\*(OP For terminal control the standard
+\*(OP Terminal control will be realized through one of the standard
 .Ux
-.Lb libtermcap
-will be initialized to work with the
-.Ev TERM Ns
-inal in order to enhance or enable interactive usage aspects, for example
+libraries, either the
+.Lb libtermcap ,
+or, alternatively, the
+.Lb libterminfo ,
+both of which will be initialized to work with the environment variable
+.Ev TERM .
+Terminal control will enhance or enable interactive usage aspects, e.g.,
 .Sx "Coloured display" ,
 and extend behaviour of the MLE, which may learn the key-sequences of
-special keys like, e.g., the cursor and function keys, and which will
-automatically enter the so-called
+keys like the cursor and function keys, and which will automatically
+enter the so-called
 .Dq ca-mode
 alternative screen shall the terminal support it.
 The internal variable
 .Va termcap
 can be used to overwrite settings or to learn (correct(ed)) keycodes.
-Interaction with the
-.Lb libtermcap
-can be disabled completely by setting
+Actual interaction with the chosen library can be disabled completely by
+setting the internal variable
 .Va termcap-disable ,
 which may be necessary for proper operation on the actual terminal;
-note that the variable
 .Va termcap
-will be queried by some \*(OPal modules of \*(UA, like the MLE,
-regardless of the availability of the mentioned library and wether its
-use is disabled.
+will be queried regardless, even if the \*(OPal support for the
+libraries has not been enabled at configuration time.
 .
 .Pp
 \*(OP The builtin \*(UA line editor MLE supports the following
@@ -3676,7 +3676,7 @@ then the cache will only be initialized and
 .Ar clear
 will remove its contents.
 Note that \*(UA will try to load the file only once, use
-.Ql Ic netrc Ns \:\0\:clear
+.Ql Ic \&\&netrc Ns \:\0\:clear
 to unlock further attempts.
 See
 .Va netrc-lookup
@@ -7841,6 +7841,8 @@ suppression doesn't occur.
 .Mx
 .It Va termcap
 (\*(OP) This specifies a comma-separated list of
+.Lb libterminfo
+and/or
 .Lb libtermcap
 capabilities (see
 .Sx "On terminal control and line editor" ,
@@ -7859,11 +7861,10 @@ where the number is expected in normal decimal notation.
 Finally, booleans don't have any value but indicate a true or false
 state simply by being defined or not; this indeed means that \*(UA
 doesn't support undefining a boolean that normally exists.
-The following example defines entries for combinations of
-.Ql control-CURSOR :
+The following example defines that the terminal has 256 colours:
 .
 .Bd -literal -offset indent
-set termcap="%k=\e033[D,%o=\e033[C,%q=\e033[A,%r=\e033[B"
+set termcap="colors=256"
 .Ed
 .
 .Pp
@@ -7908,58 +7909,58 @@ operation of the builtin line editor or \*(UA in general:
 .Pp
 .Bl -tag -compact -width yay
 .\" HAVE_COLOUR
-.It Cd Co
-.Cd max_colors Ns / Ns Cd colors :
+.It Cd colors Ns \0or Cd Co
+.Cd max_colors :
 numeric capability specifying the maximum number of colours.
 Note that \*(UA doesn't actually care about the terminal beside that,
 but always emits ANSI/ISO 6429 escape sequences for producing the
 colour and font attributes.
 .
 .\" HAVE_TERMCAP
-.It Cd te , ti
-.Cd exit_ca_mode Ns / Ns Cd rmcup
+.It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
+.Cd exit_ca_mode
 and
-.Cd enter_ca_mode Ns / Ns Cd smcup ,
+.Cd enter_ca_mode ,
 respectively: exit and enter the alternative screen
 .Dq ca-mode ,
 effectively turning \*(UA into a fullscreen application.
 To disable that, set (at least) one to the empty string.
 .
-.It Cd ks , ke
-.Cd keypad_xmit Ns / Ns Cd smkx
+.It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
+.Cd keypad_xmit
 and
-.Cd keypad_local Ns / Ns Cd rmkx ,
+.Cd keypad_local ,
 respectively: enable and disable the keypad.
 This is always enabled if available, because it seems even keyboards
 without keypads generate other key codes for, e.g., cursor keys in that
 case, and only if enabled we see the codes that we are interested in.
 .
-.It Cd cd
-.Cd clr_eos Ns / Ns Cd ed :
+.It Cd ed Ns \0or Cd cd
+.Cd clr_eos :
 clear the screen.
 .
-.It Cd cl
-.Cd clear_screen Ns / Ns Cd clear :
+.It Cd clear Ns \0or Cd cl
+.Cd clear_screen :
 clear the screen and home cursor.
 (Will be simulated via
 .Cd ho
 plus
 .Cd cd . )
 .
-.It Cd ho
-.Cd cursor_home Ns / Ns Cd home :
+.It Cd home Ns \0or Cd ho
+.Cd cursor_home :
 home cursor.
 .
 .\" HAVE_MLE
-.It Cd ce
-.Cd clr_eol Ns / Ns Cd el :
+.It Cd el Ns \0or Cd ce
+.Cd clr_eol :
 clear to the end of line.
 (Will be simulated via
 .Cd ch
 plus repititions of space characters.)
 .
-.It Cd ch
-.Cd column_address Ns / Ns Cd hpa :
+.It Cd hpa Ns \0or Cd ch
+.Cd column_address :
 move the cursor (to the given column parameter) in the current row.
 (Will be simulated via
 .Cd cr
@@ -7967,19 +7968,19 @@ plus
 .Cd nd . )
 .
 .It Cd cr
-.Cd carriage_return Ns / Ns Cd cr :
+.Cd carriage_return :
 move to the first column in the current row.
 The default builtin fallback is
 .Ql \er .
 .
-.It Cd le
-.Cd cursor_left Ns / Ns Cd cub1 :
+.It Cd cub1 Ns \0or Cd le
+.Cd cursor_left :
 move the cursor left one space (non-destructively).
 The default builtin fallback is
 .Ql \eb .
 .
-.It Cd nd
-.Cd cursor_right Ns / Ns Cd cuf1 :
+.It Cd cuf1 Ns \0or Cd nd
+.Cd cursor_right :
 move the cursor right one space (non-destructively).
 The default builtin fallback is
 .Ql \e033[C ,
@@ -7988,18 +7989,12 @@ Less often occur
 .Ql \e033OC
 and
 .Ql \e014 .
-.
-.It Cd %k , %o , %q , %r
-The left, right, up and down cursor keys with the
-.Ql control
-key held.
 .El
 .
 .
 .Mx
 .It Va termcap-disable
-\*(OP Disable any interaction with the
-.Lb libtermcap .
+\*(OP Disable any interaction with a terminal control library.
 If set only some generic fallback builtins and possibly the content of
 .Va termcap
 describe the terminal to \*(UA.

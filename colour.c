@@ -840,7 +840,7 @@ n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
    if(UNLIKELY(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)){
       struct n_termcap_value tv;
 
-      if(!n_termcap_query(n_TERMCAP_QUERY_Co, &tv)){
+      if(!n_termcap_query(n_TERMCAP_QUERY_colors, &tv)){
          a_colour_g->cg_type = a_COLOUR_T_NONE;
          goto jleave;
       }else

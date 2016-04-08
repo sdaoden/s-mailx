@@ -2,6 +2,11 @@
  *@ Terminal capability interaction.
  *@ For encapsulation purposes provide a basic foundation even without
  *@ HAVE_TERMCAP, but with nail.h:n_HAVE_TCAP.
+ *@ HOWTO add a new non-dynamic command or query:
+ *@ - add an entry to nail.h:enum n_termcap_{cmd,query}
+ *@ - run mk-tcap-map.pl
+ *@ - update the *termcap* member documentation on changes!
+ *@ Bug: in case of clashes of two-letter names terminfo(5) wins.
  *
  * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  *
@@ -84,8 +89,12 @@ n_CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
    "enum n_termcap_captype exceeds bit range of a_termcap_flags");
 
 struct a_termcap_control{
-   char tc_cap[2];   /* Not \0 terminated! */
    ui16_t tc_flags;
+   /* Offset base into a_termcap_namedat[], which stores the two-letter
+    * termcap(5) name directly followed by a NUL terminated terminfo(5) name.
+    * A termcap(5) name may consist of two NULs meaning ENOENT,
+    * a terminfo(5) name may be empty for the same purpose */
+   ui16_t tc_off;
 };
 n_CTA(a_TERMCAP_F__LAST <= UI16_MAX,
    "a_termcap_flags exceed storage datatype in a_termcap_control");
@@ -118,30 +127,10 @@ struct a_termcap_g{
     * TODO add a variable member to hold .tg_lib_buf IF we really need that */
 };
 
-/* Update the *termcap* member documentation on changes! */
-static struct a_termcap_control const a_termcap_control[] = {
-#ifdef HAVE_TERMCAP
-   {"te", n_TERMCAP_CAPTYPE_STRING},
-   {"ti", n_TERMCAP_CAPTYPE_STRING},
-
-   {"cd", n_TERMCAP_CAPTYPE_STRING},
-   {"cl", n_TERMCAP_CAPTYPE_STRING},
-   {"ho", n_TERMCAP_CAPTYPE_STRING},
-#endif
-
-#ifdef HAVE_MLE
-   /* ce takes an argument if it is simulated (_F_ALTERN) only */
-   {"ce", n_TERMCAP_CAPTYPE_STRING},
-   {"ch", n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_ARG_IDX1},
-   {"cr", n_TERMCAP_CAPTYPE_STRING},
-   {"le", n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_ARG_CNT},
-   {"nd", n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_ARG_CNT},
-#endif
-
-#ifdef HAVE_COLOUR
-   {"Co", n_TERMCAP_CAPTYPE_NUMERIC | a_TERMCAP_F_QUERY},
-#endif
-};
+/* Include the constant mk-tcap-map.pl output */
+#include "tcaps.h"
+n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
+   "Termcap command and query name data exceed storage datatype");
 n_CTA(a_TERMCAP_ENT_MAX == NELEM(a_termcap_control),
    "Control array doesn't match command/query array to be controlled");
 
@@ -160,12 +149,19 @@ static bool_t a_termcap_load(char const *term);
 /* Query the capability tcp and fill in tep (upon success) */
 static bool_t a_termcap_ent_query(struct a_termcap_ent *tep,
                struct a_termcap_control const *tcp);
-#endif
 
-/* */
-#ifdef HAVE_TERMCAP
+/* Output PTF for both, termcap(5) and terminfo(5) */
 static int a_termcap_putc(int c);
 #endif
+
+/* Get n_termcap_cmd or n_termcap_query constant belonging to (nlen bytes of)
+ * name, or -1 if not found.  min and max have to be used to cramp the result */
+static si32_t a_termcap_enum_for_name(char const *name, size_t nlen,
+               si32_t min, si32_t max);
+#define a_termcap_cmd_for_name(NB,NL) \
+   a_termcap_enum_for_name(NB, NL, 0, n__TERMCAP_CMD_MAX)
+#define a_termcap_query_for_name(NB,NL) \
+   a_termcap_enum_for_name(NB, NL, n__TERMCAP_CMD_MAX, a_TERMCAP_ENT_MAX)
 
 static void
 a_termcap_init_var(struct str const *termvar){
@@ -187,6 +183,7 @@ a_termcap_init_var(struct str const *termvar){
    ebp = a_termcap_g->tg_buf_tail;
    for(; (ccp = n_strsep(&cbp, ',', TRU1)) != NULL;){
       struct a_termcap_ent *tep;
+      size_t kl;
       char const *v;
       ui16_t f;
 
@@ -195,34 +192,37 @@ a_termcap_init_var(struct str const *termvar){
 jeinvent:
          n_err(_("*termcap*: invalid entry: \"%s\"\n"), ccp);
          continue;
-      }else if(ccp[2] == '\0'){
-         f = n_TERMCAP_CAPTYPE_BOOL;
-         UNINIT(v, NULL);
-      }else{
-         if(ccp[2] == '#')
+      }
+      for(kl = 2, v = &ccp[2];; ++kl, ++v){
+         char c = *v;
+
+         if(c == '\0'){
+            f = n_TERMCAP_CAPTYPE_BOOL;
+            break;
+         }else if(c == '#'){
             f = n_TERMCAP_CAPTYPE_NUMERIC;
-         else if(ccp[2] == '=')
+            ++v;
+            break;
+         }else if(c == '='){
             f = n_TERMCAP_CAPTYPE_STRING;
-         else
-            goto jeinvent;
-         v = ccp + 3;
+            ++v;
+            break;
+         }
       }
 
       /* Do we know about this one? */
-      for(i = a_TERMCAP_ENT_MAX;;){
+      /* C99 */{
          struct a_termcap_control const *tcp;
+         si32_t tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX);
 
-         if(i-- == 0){
+         if(tci < 0){
             if(options & OPT_D_V)
                n_err(_("*termcap*: unknown capability: \"%s\"\n"), ccp);
-            break;
-         }
-         tcp = &a_termcap_control[i];
-
-         if(tcp->tc_cap[0] != ccp[0] || tcp->tc_cap[1] != ccp[1])
             continue;
+         }
+         i = (size_t)tci;
 
-         /* That's the right one, take it over */
+         tcp = &a_termcap_control[i];
          if((tcp->tc_flags & a_TERMCAP_F_TYPE_MASK) != f){
             n_err(_("*termcap*: entry type mismatch: \"%s\"\n"), ccp);
             break;
@@ -230,27 +230,25 @@ jeinvent:
          tep = &a_termcap_g->tg_ents[i];
          tep->te_flags = tcp->tc_flags;
          tep->te_off = (ui16_t)PTR2SIZE(ebp - a_termcap_g->tg_buf);
+      }
 
-         if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL)
+      if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL)
+         ;
+      else if(*v == '\0')
+         tep->te_flags |= a_TERMCAP_F_DISABLED;
+      else if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_NUMERIC){
+         char *eptr;
+         long l = strtol(v, &eptr, 10);
+
+         if(*eptr != '\0' || l < 0 || UICMP(32, l, >=, UI16_MAX))
+            goto jeinvent;
+         tep->te_off = (ui16_t)l;
+      }else for(;;){
+         int c = n_shell_expand_escape(&v, FAL0);
+
+         *ebp++ = (char)c;
+         if(c == '\0')
             break;
-         if(*v == '\0')
-            tep->te_flags |= a_TERMCAP_F_DISABLED;
-         else if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_NUMERIC){
-            char *eptr;
-            long l = strtol(v, &eptr, 10);
-
-            if(*eptr != '\0' || l < 0 || UICMP(32, l, >=, UI16_MAX))
-               goto jeinvent;
-            tep->te_off = (ui16_t)l;
-            break;
-         }else for(;;){
-            int c = n_shell_expand_escape(&v, FAL0);
-
-            *ebp++ = (char)c;
-            if(c == '\0')
-               break;
-         }
-         break;
       }
    }
    a_termcap_g->tg_buf_tail = ebp;
@@ -365,69 +363,157 @@ a_termcap_init_altern(void){
 }
 
 #ifdef HAVE_TERMCAP
+# ifdef HAVE_TERMINFO
 static bool_t
 a_termcap_load(char const *term){
    bool_t rv;
+   int err;
    NYD2_ENTER;
 
-   rv = FAL0;
-
-   /* ncurses may return -1 */
-   if(tgetent(a_termcap_g->tg_lib_buf, term) <= 0){
+   if(!(rv = (setupterm(term, STDOUT_FILENO, &err) == OK)))
       n_err(_("Unknown ${TERM}inal \"%s\", using only *termcap*\n"), term);
-      goto jleave;
-   }
-
-   rv = TRU1;
-jleave:
    NYD2_LEAVE;
+   return rv;
 }
 
 static bool_t
 a_termcap_ent_query(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
+   char const *cnam;
    bool_t rv;
    NYD2_ENTER;
 
-   switch(tcp->tc_flags & a_TERMCAP_F_TYPE_MASK){
+   cnam = &a_termcap_namedat[tcp->tc_off] + 2;
+   if(UNLIKELY(*cnam == '\0'))
+      rv = FAL0;
+   else switch(tcp->tc_flags & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
       tep->te_flags = tcp->tc_flags;
-      tep->te_off = (tgetflag(tcp->tc_cap) > 0);
+      tep->te_off = (tigetflag(cnam) > 0);
       rv = TRU1;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:{
-      int r = tgetnum(tcp->tc_cap);
+      int r = tigetnum(cnam);
 
       tep->te_flags = tcp->tc_flags;
       if((rv = (r >= 0)))
          tep->te_off = (ui16_t)MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-      }break;
+   }  break;
+   default:
+   case n_TERMCAP_CAPTYPE_STRING:{
+      char *cp;
+
+      tep->te_flags = tcp->tc_flags;
+      cp = tigetstr(cnam);
+      if((rv = (cp != NULL && cp != (char*)-1))){
+         char *ebp_orig = a_termcap_g->tg_buf_tail;
+         size_t l = strlen(cp) +1;
+
+         tep->te_off = (ui16_t)PTR2SIZE(ebp_orig - a_termcap_g->tg_buf);
+         assert((size_t)tep->te_off ==
+            PTR2SIZE(ebp_orig - a_termcap_g->tg_buf));
+         memcpy(ebp_orig, cp, l);
+         a_termcap_g->tg_buf_tail = (ebp_orig += l);
+      }else
+         tep->te_flags |= a_TERMCAP_F_NOENT;
+   }  break;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+# else /* HAVE_TERMINFO */
+static bool_t
+a_termcap_load(char const *term){
+   bool_t rv;
+   NYD2_ENTER;
+
+   /* ncurses may return -1 */
+   if(!(rv = tgetent(a_termcap_g->tg_lib_buf, term) > 0))
+      n_err(_("Unknown ${TERM}inal \"%s\", using only *termcap*\n"), term);
+   NYD2_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_termcap_ent_query(struct a_termcap_ent *tep,
+      struct a_termcap_control const *tcp){
+   char const *cnam;
+   bool_t rv;
+   NYD2_ENTER;
+
+   cnam = &a_termcap_namedat[tcp->tc_off];
+   if(UNLIKELY(*cnam == '\0'))
+      rv = FAL0;
+   else switch(tcp->tc_flags & a_TERMCAP_F_TYPE_MASK){
+   case n_TERMCAP_CAPTYPE_BOOL:
+      tep->te_flags = tcp->tc_flags;
+      tep->te_off = (tgetflag(cnam) > 0);
+      rv = TRU1;
+      break;
+   case n_TERMCAP_CAPTYPE_NUMERIC:{
+      int r = tgetnum(cnam);
+
+      tep->te_flags = tcp->tc_flags;
+      if((rv = (r >= 0)))
+         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
+      else
+         tep->te_flags |= a_TERMCAP_F_NOENT;
+   }  break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:{
       char *ebp_orig = a_termcap_g->tg_buf_tail;
 
       tep->te_flags = tcp->tc_flags;
-      if((rv = (tgetstr(tcp->tc_cap, &a_termcap_g->tg_buf_tail) != NULL))){
+      if((rv = (tgetstr(cnam, &a_termcap_g->tg_buf_tail) != NULL))){
          tep->te_off = (ui16_t)PTR2SIZE(ebp_orig - a_termcap_g->tg_buf);
          assert((size_t)tep->te_off ==
             PTR2SIZE(ebp_orig - a_termcap_g->tg_buf));
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-      }break;
+   }  break;
    }
    NYD2_LEAVE;
    return rv;
 }
-#endif /* HAVE_TERMCAP */
+# endif /* !HAVE_TERMINFO */
 
-#ifdef HAVE_TERMCAP
 static int
 a_termcap_putc(int c){
    return putchar(c);
 }
-#endif
+#endif /* HAVE_TERMCAP */
+
+static si32_t
+a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
+   struct a_termcap_control const *tcp;
+   char const *cnam;
+   si32_t rv;
+   NYD2_ENTER;
+
+   /* Prefer terminfo(5) names */
+   for(rv = max;;){
+      if(rv-- == min){
+         rv = -1;
+         break;
+      }
+
+      tcp = &a_termcap_control[(ui32_t)rv];
+      cnam = &a_termcap_namedat[tcp->tc_off];
+      if(cnam[2] != '\0'){
+         char const *xcp = cnam + 2;
+
+         if(nlen == strlen(xcp) && !memcmp(xcp, name, nlen))
+            break;
+      }
+      if(nlen == 2 && cnam[0] == name[0] && cnam[1] == name[1])
+         break;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
 
 FL void
 n_termcap_init(void){
@@ -446,7 +532,7 @@ n_termcap_init(void){
       size_t bl = sizeof(struct a_termcap_g) -
             VFIELD_SIZEOF(struct a_termcap_g, tg_buf) +
             termvar.l + a_TERMCAP_ENTRYSIZE_MAX
-# ifndef HAVE_TGETENT_NULL_BUF
+# if !defined HAVE_TGETENT_NULL_BUF && !defined HAVE_TERMINFO
             + a_TERMCAP_ENTRYSIZE_MAX
 # endif
             ;
@@ -455,7 +541,7 @@ n_termcap_init(void){
    a_termcap_g->tg_ext_ents = NULL;
    a_termcap_g->tg_buf_tail = a_termcap_g->tg_buf;
    a_termcap_g->tg_lib_buf =
-# ifdef HAVE_TGETENT_NULL_BUF
+# if defined HAVE_TGETENT_NULL_BUF || defined HAVE_TERMINFO
          NULL
 # else
          &a_termcap_g->tg_buf[termvar.l + a_TERMCAP_ENTRYSIZE_MAX]
@@ -580,13 +666,22 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
 #ifdef HAVE_TERMCAP
       if(tep->te_flags & (a_TERMCAP_F_ARG_IDX1 | a_TERMCAP_F_ARG_IDX2)){
          if(pstate & PS_TERMCAP_DISABLE){
-            if(options & OPT_D_V)
-               n_err(_("*termcap-disable*d (or: $TERM not set / unknown): "
-                  "cannot perform CAP \"%.2s\"\n"),
-               a_termcap_control[cmd].tc_cap);
+            if(options & OPT_D_V){
+               char const *cnam = &a_termcap_namedat[
+                     a_termcap_control[cmd].tc_off];
+
+               if(cnam[2] != '\0')
+                  cnam += 2;
+               n_err(_("*termcap-disable*d (/$TERM not set/unknown): "
+                  "can't perform CAP \"%s\"\n"), cnam);
+            }
             goto jleave;
          }
 
+# ifdef HAVE_TERMINFO
+         if((cp = tparm(cp, a1, a2, 0,0,0,0,0,0,0)) == NULL)
+            goto jleave;
+# else
          /* curs_termcap.3:
           * The \fBtgoto\fP function swaps the order of parameters.
           * It does this also for calls requiring only a single parameter.
@@ -597,6 +692,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
          }
          if((cp = tgoto(cp, (int)a1, (int)a2)) == NULL)
             goto jleave;
+# endif
       }
 #endif
 

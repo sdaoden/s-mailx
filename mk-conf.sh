@@ -15,7 +15,7 @@ option_reset() {
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
    WANT_READLINE=0 WANT_MLE=0
-   WANT_TERMCAP=0
+   WANT_TERMCAP=0 WANT_TERMCAP_PREFER_TERMINFO=0
    WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
@@ -37,7 +37,7 @@ option_maximal() {
    WANT_REGEX=require
    WANT_MLE=1
       WANT_HISTORY=1
-   WANT_TERMCAP=1
+   WANT_TERMCAP=1 WANT_TERMCAP_PREFER_TERMINFO=1
    WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
@@ -1800,7 +1800,7 @@ int main(void){
 }
 !
 
-      link_check rand_egd 'OpenSSL RAND_egd()' \
+      link_check rand_egd 'OpenSSL RAND_egd(3ssl)' \
          '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
@@ -2122,19 +2122,57 @@ int main(void){
 _EOT
    }
 
-   __termcaplib -ltermcap '' '' termcap ||
-      __termcaplib -ltermcap '#include <curses.h>' '
-         #define HAVE_TERMCAP_CURSES' \
-         'curses.h / -ltermcap' ||
-      __termcaplib -lcurses '#include <curses.h>' '
-         #define HAVE_TERMCAP_CURSES' \
-         'curses.h / -lcurses' ||
-      feat_bail_required TERMCAP
+   __terminfolib() {
+      link_check terminfo "terminfo(5) (via ${2})" \
+         '#define HAVE_TERMCAP
+         #define HAVE_TERMCAP_CURSES
+         #define HAVE_TERMINFO' "${1}" << _EOT
+#include <stdio.h>
+#include <curses.h>
+#include <term.h>
+#define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
+static int my_putc(int c){return putchar(c);}
+int main(void){
+   int er, r0, r1, r2;
+   char *r3, *tp;
 
-   if [ -n "${have_termcap}" ]; then
-      run_check tgetent_null \
-         "tgetent(3) of termcap(5) takes NULL buffer" \
-         "#define HAVE_TGETENT_NULL_BUF" << _EOT
+   er = OK;
+   r0 = setupterm(NULL, 1, &er);
+   r1 = tigetflag(UNCONST("bce"));
+   r2 = tigetnum(UNCONST("colors"));
+   r3 = tigetstr(UNCONST("cr"));
+   tp = tparm(r3, NULL);
+   tputs(tp, 1, &my_putc);
+   return (r0 == ERR || r1 == -1 || r2 == -2 || r2 == -1 ||
+      r3 == (char*)-1 || r3 == NULL);
+}
+_EOT
+   }
+
+   if feat_yes TERMCAP_PREFER_TERMINFO; then
+      __terminfolib -ltinfo -ltinfo ||
+         __terminfolib -lcurses -lcurses ||
+         __terminfolib -lcursesw -lcursesw ||
+         feat_bail_required TERMCAP_PREFER_TERMINFO
+   fi
+
+   if [ -z "${have_terminfo}" ]; then
+      __termcaplib -ltermcap '' '' '-ltermcap' ||
+         __termcaplib -ltermcap '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -ltermcap' ||
+         __termcaplib -lcurses '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -lcurses' ||
+         __termcaplib -lcursesw '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -lcursesw' ||
+         feat_bail_required TERMCAP
+
+      if [ -n "${have_termcap}" ]; then
+         run_check tgetent_null \
+            "tgetent(3) of termcap(5) takes NULL buffer" \
+            "#define HAVE_TGETENT_NULL_BUF" << _EOT
 #include <stdio.h> /* For C89 NULL */
 #include <stdlib.h>
 #ifdef HAVE_TERMCAP_CURSES
@@ -2146,9 +2184,11 @@ int main(void){
    return 0;
 }
 _EOT
+      fi
    fi
 else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
+   echo '/* WANT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
 fi
 
 if feat_yes ERRORS; then
@@ -2268,6 +2308,7 @@ printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
   printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
+  printf '# ifdef HAVE_TERMINFO\n   " (terminfo(5))"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
@@ -2391,7 +2432,11 @@ ${cat} > ${tmp2}.c << \!
 # endif
 #endif
 #ifdef HAVE_TERMCAP
-: + Terminal capability queries
+# ifdef HAVE_TERMINFO
+: + Terminal capability queries (terminfo(5))
+# else
+: + Terminal capability queries (termcap(5))
+# endif
 #endif
 #ifdef HAVE_SPAM
 : + Spam management
