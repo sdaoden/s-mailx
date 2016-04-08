@@ -2097,12 +2097,11 @@ else
 fi
 
 if feat_yes TERMCAP; then
-   __termlib() {
-      link_check termcap "for termcap(3) (via ${4})" \
+   __termcaplib() {
+      link_check termcap "termcap(5) (via ${4})" \
          "#define HAVE_TERMCAP${3}" "${1}" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 ${2}
 #include <term.h>
 #define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
@@ -2123,14 +2122,31 @@ int main(void){
 _EOT
    }
 
-   __termlib -ltermcap '' '' termcap ||
-      __termlib -ltermcap '#include <curses.h>' '
+   __termcaplib -ltermcap '' '' termcap ||
+      __termcaplib -ltermcap '#include <curses.h>' '
          #define HAVE_TERMCAP_CURSES' \
          'curses.h / -ltermcap' ||
-      __termlib -lcurses '#include <curses.h>' '
+      __termcaplib -lcurses '#include <curses.h>' '
          #define HAVE_TERMCAP_CURSES' \
          'curses.h / -lcurses' ||
       feat_bail_required TERMCAP
+
+   if [ -n "${have_termcap}" ]; then
+      run_check tgetent_null \
+         "tgetent(3) of termcap(5) takes NULL buffer" \
+         "#define HAVE_TGETENT_NULL_BUF" << _EOT
+#include <stdio.h> /* For C89 NULL */
+#include <stdlib.h>
+#ifdef HAVE_TERMCAP_CURSES
+# include <curses.h>
+#endif
+#include <term.h>
+int main(void){
+   tgetent(NULL, getenv("TERM"));
+   return 0;
+}
+_EOT
+   fi
 else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
 fi
