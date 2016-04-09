@@ -2534,6 +2534,9 @@ ${cat} > ${tmp2}.c << \!
 !
 
 ${make} -f ${makefile} ${tmp2}.x
-< ${tmp2}.x >&5 ${sed} -e '/^[^:]/d; /^$/d; s/^://'
+< ${tmp2}.x ${sed} -e '/^[^:]/d; /^$/d; s/^://' |
+while read l; do
+   msg "${l}"
+done
 
 # s-it-mode
