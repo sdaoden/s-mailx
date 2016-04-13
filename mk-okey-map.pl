@@ -134,7 +134,7 @@ static ui32_t
 torek_hash(char const *name)
 {
    /* Chris Torek's hash.
-    * NOTE: need to change *at least* create-okey-map.pl when changing the
+    * NOTE: need to change *at least* mk-okey-map.pl when changing the
     * algorithm!! */
 	ui32_t h = 0;
 

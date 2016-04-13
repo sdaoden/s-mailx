@@ -1,5 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Account, macro and variable handling.
+ *@ HOWTO add a new non-dynamic boolean or value option:
+ *@ - add an entry to nail.h:enum okeys
+ *@ - run mk-okey-map.pl
+ *@ - update the manual!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -40,14 +44,7 @@
 # include "nail.h"
 #endif
 
-/*
- * HOWTO add a new non-dynamic boolean or value option:
- * - add an entry to nail.h:enum okeys
- * - run create-okey-map.pl
- * - update nail.1
- */
-
-/* Note: changing the hash function must be reflected in create-okey-map.pl */
+/* Note: changing the hash function must be reflected in mk-okey-map.pl */
 #define MA_PRIME           HSHSIZE
 #define MA_NAME2HASH(N)    torek_hash(N)
 #define MA_HASH2PRIME(H)   ((H) % MA_PRIME)
@@ -126,7 +123,7 @@ struct lostack {
    bool_t         s_unroll;      /* Unroll? */
 };
 
-/* Include the constant create-okey-map.pl output */
+/* Include the constant mk-okey-map.pl output */
 #include "version.h"
 #include "okeys.h"
 
