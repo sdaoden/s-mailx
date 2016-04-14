@@ -396,6 +396,10 @@
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(N_("[<show>], <clear> or select <NO> from editor history")) },
+   { "bind", &c_bind, (M | STRLIST), 1, 1000
+     DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
+   { "unbind", &c_unbind, (M | STRLIST), 2, 2
+     DS(N_("Un`bind' <context> <key[:,key:]> (\"*\" for all)")) },
 
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },

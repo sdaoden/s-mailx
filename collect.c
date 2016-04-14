@@ -44,13 +44,9 @@
 
 static sighandler_type  _coll_saveint;    /* Previous SIGINT value */
 static sighandler_type  _coll_savehup;    /* Previous SIGHUP value */
-static sighandler_type  _coll_savetstp;   /* Previous SIGTSTP value */
-static sighandler_type  _coll_savettou;   /* Previous SIGTTOU value */
-static sighandler_type  _coll_savettin;   /* Previous SIGTTIN value */
 static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
-static int              _coll_jmp_p;      /* whether to long jump */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static sigjmp_buf       _coll_pipejmp;    /* On broken pipe */
 
@@ -90,9 +86,6 @@ static void       mespipe(char *cmd);
  * Return a count of the number of characters now in the message, or -1 if an
  * error is encountered writing the message temporary */
 static int        forward(char *ms, FILE *fp, int f);
-
-/* Print (continue) when continued after ^Z */
-static void       collstop(int s);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -335,7 +328,7 @@ exwrite(char const *name, FILE *fp, int f)
    NYD_ENTER;
 
    if (f) {
-      printf("\"%s\" ", name);
+      printf("%s ", n_shell_quote_cp(name, FAL0));
       fflush(stdout);
    }
    if ((of = Fopen(name, "a")) == NULL) {
@@ -511,29 +504,6 @@ jleave:
 }
 
 static void
-collstop(int s)
-{
-   sighandler_type old_action;
-   sigset_t nset;
-   NYD_X; /* Signal handler */
-
-   old_action = safe_signal(s, SIG_DFL);
-
-   sigemptyset(&nset);
-   sigaddset(&nset, s);
-   sigprocmask(SIG_UNBLOCK, &nset, NULL);
-   n_raise(s);
-   sigprocmask(SIG_BLOCK, &nset, NULL);
-
-   safe_signal(s, old_action);
-   if (_coll_jmp_p) {
-      _coll_jmp_p = 0;
-      _coll_hadintr = 0;
-      siglongjmp(_coll_jmp, 1);
-   }
-}
-
-static void
 _collint(int s)
 {
    NYD_X; /* Signal handler */
@@ -662,11 +632,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGHUP, collhup);
-   /* TODO We do a lot of redundant signal handling, especially
-    * TODO with the command line editor(s); try to merge this */
-   _coll_savetstp = safe_signal(SIGTSTP, collstop);
-   _coll_savettou = safe_signal(SIGTTOU, collstop);
-   _coll_savettin = safe_signal(SIGTTIN, collstop);
    if (sigsetjmp(_coll_abort, 1))
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
@@ -791,19 +756,17 @@ collect(struct header *hp, int printheaders, struct message *mp,
          } else {
             rewind(_coll_fp);
             mesedit('e', hp);
-            goto jcont;
+            /* As mandated by the Mail Reference Manual, print "(continue)" */
+jcont:
+            printf(_("(continue)\n"));
+            fflush(stdout);
          }
       }
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
        * won't be printed because the write is aborted if we get a SIGTTOU */
-      if (_coll_hadintr) {
+      if (_coll_hadintr)
          n_err(_("\n(Interrupt -- one more to kill letter)\n"));
-      } else {
-jcont:
-         printf(_("(continue)\n"));
-         fflush(stdout);
-      }
    }
 
    /* We're done with -M or -m */
@@ -823,9 +786,7 @@ jcont:
     * All commands which come here are forbidden when sourcing! */
    assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for (;;) {
-      _coll_jmp_p = 1;
       cnt = n_lex_input("", FAL0, &linebuf, &linesize, NULL);
-      _coll_jmp_p = 0;
 
       if (cnt < 0) {
          assert(!(pstate & PS_SOURCING));
@@ -881,13 +842,14 @@ jputline:
       case '!':
          /* Shell escape, send the balance of line to sh -c */
          c_shell(linebuf + 2);
+         goto jcont;
          break;
       case ':':
          /* FALLTHRU */
       case '_':
          /* Escape to command mode, but be nice! */
          _execute_command(hp, linebuf + 2, cnt - 2);
-         goto jcont;
+         break;
       case '.':
          /* Simulate end of file on input */
          goto jout;
@@ -906,13 +868,13 @@ jputline:
             grab_headers(hp, GTO | GSUBJECT | GCC | GBCC,
                   (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while (hp->h_to == NULL);
-         goto jcont;
+         break;
       case 'H':
          /* Grab extra headers */
          do
             grab_headers(hp, GEXTRA, 0);
          while (check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
-         goto jcont;
+         break;
       case 't':
          /* Add to the To list */
          hp->h_to = cat(hp->h_to,
@@ -968,15 +930,15 @@ jputline:
          }
          if (*cp == '!') {
             insertcommand(_coll_fp, cp + 1);
-            break;
+            goto jcont;
          }
          if ((cp = file_expand(cp)) == NULL)
             break;
          if (is_dir(cp)) {
-            n_err(_("\"%s\": Directory\n"), cp);
+            n_err(_("%s: Directory\n"), n_shell_quote_cp(cp, FAL0));
             break;
          }
-         printf(_("\"%s\" "), cp);
+         printf(_("%s "), n_shell_quote_cp(cp, FAL0));
          fflush(stdout);
          if (_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0)
             goto jerr;
@@ -1029,11 +991,11 @@ jputline:
           * don't shift over */
          if (forward(linebuf + 2, _coll_fp, c) < 0)
             goto jerr;
-         goto jcont;
+         break;
       case 'p':
          /* Print current state of the message without altering anything */
          print_collf(_coll_fp, hp);
-         goto jcont;
+         break;
       case '|':
          /* Pipe message through command. Collect output as new message */
          rewind(_coll_fp);
@@ -1179,9 +1141,6 @@ jleave:
    pstate &= ~PS_RECURSED;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
-   safe_signal(SIGTSTP, _coll_savetstp);
-   safe_signal(SIGTTOU, _coll_savettou);
-   safe_signal(SIGTTIN, _coll_savettin);
    sigprocmask(SIG_SETMASK, &oset, NULL);
    NYD_LEAVE;
    return _coll_fp;

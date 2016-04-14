@@ -2173,15 +2173,36 @@ and terminal control to improve interactive usage experience.
 For the former one may either link against an external library
 .Pf ( Xr readline 3 ;
 behaviour of \*(UA may differ slightly),
-or enable the builtin Mailx-Line-Editor (MLE), which should work in all
-environments which comply to the ISO C standard
-.St -isoC-amd1 ,
-and which will support wide glyphs if possible (the necessary
-functionality had been removed from ISO C, but was included in
-.St -xpg4 ) .
+or enable the builtin Mailx-Line-Editor (MLE).
 Prevent usage of a line editor in interactive mode by setting the
 internal variable
 .Va line-editor-disable .
+.
+.Pp
+\*(OP Terminal control will be realized through one of the standard
+.Ux
+libraries, either the
+.Lb libtermcap ,
+or, alternatively, the
+.Lb libterminfo ,
+both of which will be initialized to work with the environment variable
+.Ev TERM .
+Terminal control will enhance or enable interactive usage aspects, e.g.,
+.Sx "Coloured display" ,
+and extend behaviour of the MLE, which may learn the byte-sequences of
+keys like the cursor and function keys, and which will automatically
+enter the so-called
+.Dq ca-mode
+alternative screen shall the terminal support it.
+The internal variable
+.Va termcap
+can be used to overwrite settings or to learn (correct(ed)) keycodes.
+Actual interaction with the chosen library can be disabled completely by
+setting the internal variable
+.Va termcap-disable ;
+.Va termcap
+will be queried regardless, even if the \*(OPal support for the
+libraries has not been enabled at configuration time.
 .
 .Pp
 \*(OP If the
@@ -2199,141 +2220,206 @@ and
 .Va history-size .
 .
 .Pp
-\*(OP Terminal control will be realized through one of the standard
-.Ux
-libraries, either the
-.Lb libtermcap ,
-or, alternatively, the
-.Lb libterminfo ,
-both of which will be initialized to work with the environment variable
-.Ev TERM .
-Terminal control will enhance or enable interactive usage aspects, e.g.,
-.Sx "Coloured display" ,
-and extend behaviour of the MLE, which may learn the key-sequences of
-keys like the cursor and function keys, and which will automatically
-enter the so-called
-.Dq ca-mode
-alternative screen shall the terminal support it.
-The internal variable
+\*(OP The builtin \*(UA line editor MLE should work in all environments
+which comply to the ISO C standard
+.St -isoC-amd1 ,
+and will support wide glyphs if possible (the necessary functionality
+had been removed from ISO C, but was included in
+.St -xpg4 ) .
+Especially if the \*(OPal terminal control support is missing setting
+entries in the internal variable
 .Va termcap
-can be used to overwrite settings or to learn (correct(ed)) keycodes.
-Actual interaction with the chosen library can be disabled completely by
-setting the internal variable
-.Va termcap-disable ,
-which may be necessary for proper operation on the actual terminal;
-.Va termcap
-will be queried regardless, even if the \*(OPal support for the
-libraries has not been enabled at configuration time.
+will help shall the MLE misbehave, see there for more.
+The MLE can support a little bit of
+.Ic colour .
 .
 .Pp
-\*(OP The builtin \*(UA line editor MLE supports the following
-operations; the notation
-.Ql ^-LETTER
-stands for the combination of the
-.Ql control
-key plus the mentioned character, e.g.,
-.Ql ^A
-means
-.Dq hold down control key and press the A key .
-Especially without termcap support setting respective entries in
-.Va termcap
-will help shall the MLE misbehave.
-The MLE also supports several
-.Ic colour
-mappings.
+The MLE supports a set of editing and control commands.
+By default (as) many (as possible) of these will be assigned to a set of
+single-letter control codes, which should work on any terminal.
+If the \*(OPal
+.Ic bind
+command is available then the MLE commands can also be accessed freely
+by assigning the command name, which is shown in parenthesis in the list
+below, to any desired key-sequence, and the MLE will instead and also use
+.Ic bind
+to establish its builtin key bindings
+(more of them if the \*(OPal terminal control is available),
+an action which can then be suppressed completely by setting
+.Va line-editor-no-defaults .
+The following uses the
+.Xr sh 1 Ns
+ell-style quote notation that is documented in the introductional
+section of
+.Sx COMMANDS ;
+combinations not mentioned either cause job control signals or don't
+generate a (unique) keycode:
+.
 .
 .Pp
 .Bl -tag -compact -width "Ql _M"
-.It Ql ^A
-Go to the start of the line.
-.It Ql ^B
-Move the cursor backward one character.
-.It Ql ^D
+.It Ql \ecA
+Go to the start of the line
+.Pf ( Cd mle-go-home ) .
+.
+.It Ql \ecB
+Move the cursor backward one character
+.Pf ( Cd mle-go-bwd ) .
+.
+.It Ql \ecD
 Forward delete the character under the cursor;
 quits \*(UA if used on the empty line unless the
 .Va ignoreeof
-option is set.
-.It Ql ^E
-Go to the end of the line.
-.It Ql ^F
-Move the cursor forward one character.
+option is set
+.Pf ( Cd mle-del-fwd ) .
 .
-.It Ql ^G
+.It Ql \ecE
+Go to the end of the line
+.Pf ( Cd mle-go-end ) .
+.
+.It Ql \ecF
+Move the cursor forward one character
+.Pf ( Cd mle-go-fwd ) .
+.
+.It Ql \ecG
 Cancel current operation, full reset.
 If there is an active history search or tabulator expansion then this
 command will first reset that, reverting to the former line content;
-thus a second reset is needed for a full reset in this case.
-In all cases \*(UA will reset a possibly used multibyte character input
-state machine.
+thus a second reset is needed for a full reset in this case
+.Pf ( Cd mle-reset ) .
 .
-.It Ql ^H
-The same as
-.Dq backspace :
-backward delete one character.
+.It Ql \ecH
+Backspace: backward delete one character
+.Pf ( Cd mle-del-bwd ) .
 .
-.It Ql ^I
-\*(NQ The same as
-.Dq horizontal tabulator :
+.It Ql \ecI
+\*(NQ
+Horizontal tabulator:
 try to expand the word before the cursor, also supporting \*(UA
 .Ic file
-expansions.
+expansions
+.Pf ( Cd mle-complete ) .
+This is affected by
+.Cd mle-quote-rndtrip .
 .
-.It Ql ^J
+.It Ql \ecJ
+Newline:
+commit the current line
+.Pf ( Cd mle-commit ) .
+.
+.It Ql \ecK
+Cut all characters from the cursor to the end of the line
+.Pf ( Cd mle-snarf-end ) .
+.
+.It Ql \ecL
+Repaint the line
+.Pf ( Cd mle-repaint ) .
+.
+.It Ql \ecN
+\*(OP Go to the next history entry
+.Pf ( Cd mle-hist-fwd ) .
+.
+.It Ql \ecO
+Invokes the command
+.Ql Ic dt .
+.
+.It Ql \ecP
+\*(OP Go to the previous history entry
+.Pf ( Cd mle-hist-bwd ) .
+.
+.It Ql \ecQ
+Toggle roundtrip mode shell quotes, where produced,
+on and off
+.Pf ( Cd mle-quote-rndtrip ) .
+This setting is temporary, and will be forgotten once the command line
+is committed.
+.
+.It Ql \ecR
+\*(OP Complete the current line from (the remaining) older history entries
+.Pf ( Cd mle-hist-srch-bwd ) .
+.
+.It Ql \ecS
+\*(OP Complete the current line from (the remaining) newer history entries
+.Pf ( Cd mle-hist-srch-fwd ) .
+.
+.It Ql \ecT
+Paste the snarf buffer
+.Pf ( Cd mle-paste ) .
+.
+.It Ql \ecU
 The same as
-.Dq ENTER :
-complete this line of input.
-.It Ql ^K
-Delete all characters from the cursor to the end of the line.
-.It Ql ^L
-Repaint the line.
-.It Ql ^N
-\*(OP Go to the next history entry.
-.It Ql ^O
-Execute the command
-.Ic dp .
-.It Ql ^P
-\*(OP Go to the previous history entry.
-.It Ql ^R
-\*(OP Complete the current line from (the remaining older) history entries.
-.It Ql ^U
-The same as
-.Ql ^A
+.Ql \ecA
 followed by
-.Ql ^K .
-.It Ql ^V
-Prompts for a Unicode character to be inserted.
-.It Ql ^W
-Delete the characters from the one preceding the cursor to the preceding
-word boundary.
-.It Ql ^X
-Move the cursor forward one word boundary.
-.It Ql ^Y
-Move the cursor backward one word boundary.
-.El
+.Ql \ecK
+.Pf ( Cd mle-snarf-line ) .
 .
-.Pp
-If the keycodes are known then the left and right cursor keys will map to
-.Ql ^B
-and
-.Ql ^F ,
-respectively, the up and down cursor keys will map to
-.Ql ^P
-and
-.Ql ^N ,
-and the Home/End/PgUp/PgDown keys will call the
-.Ic z
-command with the respective arguments
-.Ql 0 ,
-.Ql $ ,
-.Ql -
-and
-.Ql +
-(i.e., perform scrolling through the header summary list).
-Also the up and down cursor keys should invoke
-.Ic dotmove
-for up- and downwards movement if they are used while the
-.Ql control
-key is held.
+.It Ql \ecV
+Prompts for a Unicode character (its hexadecimal number) to be inserted
+.Pf ( Cd mle-prompt-char ) .
+Note this command needs to be assigned to a single-letter control code
+in order to become recognized and executed during input of
+a key-sequence (only four single-letter control codes can be used for
+that shortcut purpose); this control code is special-treated and can't
+be part of any other sequence, because any occurrence will perform the
+.Cd mle-prompt-char
+function immediately.
+.
+.It Ql \ecW
+Cut the characters from the one preceding the cursor to the preceding
+word boundary
+.Pf ( Cd mle-snarf-word-bwd ) .
+.
+.It Ql \ecX
+Move the cursor forward one word boundary
+.Pf ( Cd mle-go-word-fwd ) .
+.
+.It Ql \ecY
+Move the cursor backward one word boundary
+.Pf ( Cd mle-go-word-bwd ) .
+.
+.It Ql \ec[
+Escape: reset a possibly used multibyte character input state machine
+and \*(OPally a lingering, incomplete key binding
+.Pf ( Cd mle-cancel ) .
+This command needs to be assigned to a single-letter control code in
+order to become recognized and executed during input of a key-sequence
+(only four single-letter control codes can be used for that shortcut
+purpose).
+This control code may also be part of a multi-byte sequence, but if
+a sequence is active and the very control code is currently also an
+expected input, then it will first be consumed by the active sequence.
+.
+.It Ql \ec\e
+Invokes the command
+.Ql Ic z Ns + .
+.
+.It Ql \ec]
+Invokes the command
+.Ql Ic z Ns $ .
+.
+.It Ql \ec^
+Invokes the command
+.Ql Ic z Ns 0 .
+.
+.It Ql \ec_
+Cut the characters from the one after the cursor to the succeeding word
+boundary
+.Pf ( Cd mle-snarf-word-fwd ) .
+.
+.It Ql \ec?
+Backspace:
+.Cd mle-del-bwd .
+.
+.It \(en
+.Cd mle-fullreset :
+in difference to
+.Cd mle-reset
+this will immediately reset a possibly active search etc.
+.
+.It \(en
+.Cd mle-bell :
+ring the audible bell.
+.El
 .\" }}}
 .
 .\" .Ss "Coloured display" {{{
@@ -2822,6 +2908,201 @@ Takes a message list and marks each message as having been answered.
 This mark has no technical meaning in the mail system;
 it just causes messages to be marked in the header summary,
 and makes them specially addressable.
+.
+.
+.Mx
+.It Ic bind
+\*(OP\*(NQ The bind command extends the MLE (see
+.Sx "On terminal control and line editor" )
+with freely configurable key bindings.
+With one argument all bindings for the given context are shown,
+specifying an asterisk
+.Ql *
+will show the bindings of all contexts; a more verbose listing will be
+produced if either of
+.Va debug
+or
+.Va verbose
+are set.
+With two or more arguments a binding is (re)established:
+the first argument is the context to which the binding shall apply,
+the second argument is a comma-separated list of the
+.Dq keys
+which form the binding, and any remaining arguments form the expansion.
+To indicate that a binding shall not be auto-committed, but that the
+expansion shall instead be furtherly editable by the user, an at-sign
+.Ql @
+(that will be removed) can be placed last in the expansion, from which
+leading and trailing whitespace will finally be removed.
+.
+.Pp
+Contexts define when a binding applies, i.e., a binding won't be seen
+unless the context for which it is defined for is currently active.
+This is not true for the binding
+.Ql base ,
+which always applies, but which will be searched secondarily to a more
+specialized context and may thus have some or all of its key bindings
+transparently replaced by equal bindings of more specialized contexts.
+The available contexts are
+.Ql base ,
+which always applies, and
+.Ql compose ,
+which applies to compose-mode.
+.
+.Pp
+.Dq Keys
+which form the binding are specified as a comma-separated list of
+byte-sequences, where each list entry corresponds to one key(press).
+\*(OPally a list entry may, indicated by a leading colon character
+.Ql \&: ,
+also refer to the name of a terminal capability;
+several dozen names will be compiled into \*(UA and may be specified
+either by their
+.Xr terminfo 5 ,
+or, if existing, by their
+.Xr termcap 5
+name, regardless of the actually used terminal control library.
+It is however possible to use any capability, as long as the name is
+resolvable by the control library or defined in the internal variable
+.Va termcap .
+Input sequences are not case-normalized, so that an exact match is
+required to update or remove a binding.
+Examples:
+.
+.Bd -literal -offset indent
+bind base $'\eE',d mle-snarf-word-fwd # Esc(ape)
+bind base $'\eE',$'\ec?' mle-snarf-word-bwd # Esc, Delete
+bind compose :kf1 ~e
+bind base $'\ecA',:khome,w 'echo An editable binding@'
+bind base a,b,c rm -rf / @  # Another editable binding
+.Ed
+.
+.Pp
+Note that the entire comma-separated list is first parsed (over) as a
+shell-token with whitespace as the field separator, before being parsed
+and expanded for real with comma as the field separator, therefore
+whitespace needs to be properly quoted:
+shell-style quoting is documented in the introductional section of
+.Sx COMMANDS .
+Using Unicode reverse solidus escape sequences renders a binding
+defunctional if the locale doesn't support Unicode (see
+.Sx "Character sets" ) ,
+and using terminal capabilities does so if no terminal control support
+is (currently) available.
+.
+.Pp
+The following terminal capability names are builtin and can be used in
+.Xr terminfo 5
+or (if available) the two-letter
+.Xr termcap 5
+notation regardless of the actually used library.
+See the respective manual for a list of capabilities.
+The program
+.Xr infocmp 1
+can be used to show all the capabilities of
+.Ev $TERM
+or the given terminal type;
+using the
+.Fl \&\&x
+flag will also show supported (non-standard) extensions.
+.
+.Pp
+.Bl -tag -compact -width kcuuf_or_kcuuf
+.It Cd kbs Ns \0or Cd kb
+Backspace.
+.It Cd kdch1 Ns \0or Cd kD
+Delete character.
+.It Cd kDC Ns \0or Cd *4
+\(em shifted variant.
+.It Cd kel Ns \0or Cd kE
+Clear to end of line.
+.It Cd kext Ns \0or Cd @9
+Exit.
+.It Cd kich1 Ns \0or Cd kI
+Insert character.
+.It Cd kIC Ns \0or Cd #3
+\(em shifted variant.
+.It Cd khome Ns \0or Cd kh
+Home.
+.It Cd kHOM Ns \0or Cd #2
+\(em shifted variant.
+.It Cd kend Ns \0or Cd @7
+End.
+.It Cd knp Ns \0or Cd kN
+Next page.
+.It Cd kpp Ns \0or Cd kP
+Previous page.
+.It Cd kcub1 Ns \0or Cd kl
+Left cursor (with more modifiers: see below).
+.It Cd kLFT Ns \0or Cd #4
+\(em shifted variant.
+.It Cd kcuf1 Ns \0or Cd kr
+Right cursor (ditto).
+.It Cd kRIT Ns \0or Cd %i
+\(em shifted variant.
+.It Cd kcud1 Ns \0or Cd kd
+Down cursor (ditto).
+.It Cd kDN
+\(em shifted variant (only terminfo).
+.It Cd kcuu1 Ns \0or Cd ku
+Up cursor (ditto).
+.It Cd kUP
+\(em shifted variant (only terminfo).
+.It Cd kf0 Ns \0or Cd k0
+Function key 0.
+Add one for each function key up to
+.Cd kf9
+and
+.Cd k9 ,
+respectively.
+.It Cd kf10 Ns \0or Cd k;
+Function key 10.
+.It Cd kf11 Ns \0or Cd F1
+Function key 11.
+Add one for each function key up to
+.Cd kf19
+and
+.Cd F9 ,
+respectively.
+.El
+.
+.Pp
+Some terminals support key-modifier combination extensions, e.g.,
+.Ql Alt+Shift+xy .
+For example, the delete key,
+.Cd kdch1 :
+in its shifted variant, the name is mutated to
+.Cd  kDC ,
+then a number is appended for the states
+.Ql Alt
+.Pf ( Cd kDC3 ) ,
+.Ql Shift+Alt
+.Pf ( Cd kDC4 ) ,
+.Ql Control
+.Pf ( Cd kDC5 ) ,
+.Ql Shift+Control
+.Pf ( Cd kDC6 ) ,
+.Ql Alt+Control
+.Pf ( Cd kDC7 ) ,
+finally
+.Ql Shift+Alt+Control
+.Pf ( Cd kDC8 ) .
+The same for the left cursor key,
+.Cd kcub1 :
+.Cd KLFT , KLFT3 , KLFT4 , KLFT5 , KLFT6 , KLFT7 , KLFT8 .
+.
+.Pp
+Key bindings can be removed with the command
+.Ic unbind .
+It is advisable to use an initial escape or other control character (e.g.,
+.Ql \ecA )
+for bindings which describe user key combinations (as opposed to purely
+terminal capability based ones), in order to avoid ambiguities whether
+input belongs to key sequences or not; it also reduces search time.
+Adjusting
+.Va bind-timeout
+may help shall keys and sequences be falsely recognized.
+.
 .
 .Mx
 .It Ic call
@@ -4609,6 +4890,17 @@ will discard all existing aliases.
 Takes a message list and marks each message as not having been answered.
 .
 .Mx
+.It Ic unbind
+Forget about a key
+.Ic bind Ns
+ing, specified by its context and input sequence, both of which may be
+specified as a wildcard (asterisk,
+.Ql * ) ,
+e.g.,
+.Ql unbind * *
+will remove all bindings of all contexts.
+.
+.Mx
 .It Ic uncollapse
 Only applicable to threaded mode.
 Takes a message list and makes the message and all replies to it visible
@@ -5582,6 +5874,18 @@ completes one operation (returns to the command prompt); if it is set
 then \*(UA will terminate if the last operation generated an error.
 .
 .Mx
+.It Va bind-timeout
+\*(OP Terminals generate multi-byte sequences for certain forms of
+input, for example for function and other special keys.
+Some terminals however do not write these multi-byte sequences as
+a whole, but byte-by-byte, and the latter is what \*(UA actually reads.
+This variable specifies the timeout in milliseconds that the MLE (see
+.Sx "On terminal control and line editor" )
+waits for more bytes to arrive unless it considers a sequence
+.Dq complete .
+The default is 200.
+.
+.Mx
 .It Va bsdannounce
 \*(BO Causes automatic display of a header summary after executing a
 .Ic file
@@ -6431,6 +6735,10 @@ Setting this option causes all saved message to be retained.
 \*(BO Turn off any enhanced line editing capabilities (see
 .Sx "On terminal control and line editor"
 for more).
+.
+.Mx
+.It Va line-editor-no-defaults
+\*(BO\*(OP Do not establish any default key binding.
 .
 .Mx
 .It Va markanswered
@@ -8121,47 +8429,29 @@ Numerics have to be notated as
 where the number is expected in normal decimal notation.
 Finally, booleans don't have any value but indicate a true or false
 state simply by being defined or not; this indeed means that \*(UA
-doesn't support undefining a boolean that normally exists.
-The following example defines that the terminal has 256 colours:
+doesn't support undefining an existing boolean.
+String capability values will undergo some expansions before use:
+for one notations like
+.Ql ^LETTER
+stand for
+.Ql control-LETTER ,
+and for clarification purposes
+.Ql \eE
+can be used to specify
+.Ql escape
+(the control notation
+.Ql ^[
+could lead to misreadings when a left bracket follows, which it does for
+the standard CSI sequence);
+finally three letter octal sequences, as in
+.Ql \e061 ,
+are supported.
+To specify that a terminal supports 256-colours, and to define sequences
+that home the cursor and produce an audible bell, one might write:
 .
 .Bd -literal -offset indent
-set termcap="colors=256"
+set termcap='Co#256,home=\eE[H,bel=^G'
 .Ed
-.
-.Pp
-Keycodes can easily be detected with the command
-.Xr cat 1
-by running it on an interactive terminal via
-.Ql $ cat
-(using the
-.Fl \&\&v
-command line option if available) and pressing some keys: here
-.Ql ^[
-will stand for
-.Ql escape
-and
-.Ql ^LETTER
-for
-.Ql control-LETTER
-(actually a visualized numeric where
-.Ql A
-stands for 1 etc.; in fact: the numeric value of
-.Ql LETTER
-in the US-ASCII character set bitwise XORd with
-.Ql 0x40 ,
-e.g.,
-.Ql $ echo $((0x41 ^ 0x40)) .
-Note that
-.Ql escape
-and other control characters have to be notated as shell-style
-escape sequences, e.g.,
-.Ql \e033
-for (US-ASCII)
-.Ql escape
-and
-.Ql \e001
-for
-.Ql ^A .
 .
 .Pp
 The following terminal capabilities are or may be meaningful for the
@@ -8174,8 +8464,7 @@ operation of the builtin line editor or \*(UA in general:
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
 Note that \*(UA doesn't actually care about the terminal beside that,
-but always emits ANSI/ISO 6429 escape sequences for producing the
-colour and font attributes.
+but always emits ANSI / ISO 6429 escape sequences.
 .
 .\" HAVE_TERMCAP
 .It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
@@ -8244,14 +8533,17 @@ The default builtin fallback is
 .Cd cursor_right :
 move the cursor right one space (non-destructively).
 The default builtin fallback is
-.Ql \e033[C ,
+.Ql \eE[C ,
 which is used by most terminals.
 Less often occur
-.Ql \e033OC
+.Ql \eEC
 and
-.Ql \e014 .
+.Ql \eEOC .
 .El
 .
+.Pp
+Many more capabilities which describe key-sequences are documented for
+.Ic bind .
 .
 .Mx
 .It Va termcap-disable
@@ -9840,6 +10132,16 @@ and
 .\" .Sh "FAQ" {{{
 .Sh "FAQ"
 .
+In general it is a good idea to turn on
+.Va debug
+.Pf ( Fl d )
+and / or
+.Va verbose
+.Pf ( Fl v ,
+twice) if something doesn't work well.
+Very often a diagnostic message can be produced that leads to the
+problems' solution.
+.
 .\" .Ss "\*(UA shortly hangs on startup" {{{
 .Ss "\*(UA shortly hangs on startup"
 .
@@ -9902,6 +10204,47 @@ use that special password instead of your real Google account password in
 \*(UA (for more on that see the section
 .Sx "On URL syntax and credential lookup" ) .
 .El
+.\" }}}
+.
+.\" .Ss "Not \(dqdefunctional\(dq, but the editor key won't work" {{{
+.Ss "Not \(dqdefunctional\(dq, but the editor key won't work"
+.
+It can happen that the terminal library (see
+.Sx "On terminal control and line editor",
+.Ic bind ,
+.Va termcap )
+reports different codes than the terminal really sends, in which case
+\*(UA will tell that a key binding is functional, but won't be able to
+recognize it because the received data doesn't match anything expected.
+The verbose listing of
+.Ic bind Ns
+ings will show the byte sequences that are expected.
+.
+.Pp
+To overcome the situation, use, e.g., the program
+.Xr cat 1 ,
+in conjunction with the
+.Fl \&\&v
+flag if available, to see the byte sequences which are actually produced
+by keypresses, and use the variable
+.Va termcap
+to make \*(UA aware of them.
+E.g., the terminal this is typed on produces some false sequences, here
+an example showing the shifted home key:
+.
+.Bd -literal -offset indent
+? set verbose
+? bind*
+# 1B 5B=[ 31=1 3B=; 32=2 48=H
+  bind base :kHOM z0
+? x
+$ cat -v
+^[[H
+? \*(uA -v -Stermcap='kHOM=\eE[H'
+? bind*
+# 1B 5B=[ 48=H
+  bind base :kHOM z0
+.Ed
 .\" }}}
 .\" }}}
 .

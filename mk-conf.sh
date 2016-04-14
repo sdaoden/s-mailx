@@ -1344,7 +1344,7 @@ int main(void){
    struct termios tios;
 
    tcgetattr(0, &tios);
-   tcsetattr(0, TCSADRAIN | TCSAFLUSH, &tios);
+   tcsetattr(0, TCSANOW | TCSADRAIN | TCSAFLUSH, &tios);
    return 0;
 }
 !

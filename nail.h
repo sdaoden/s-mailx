@@ -891,6 +891,16 @@ enum n_file_lock_type{
    FLT_WRITE
 };
 
+enum n_lexinput_flags{
+   n_LEXINPUT_NONE,
+   n_LEXINPUT_CTX_BASE = 0,      /* Input context (`bind' etc.): fallback */
+   n_LEXINPUT_CTX_COMPOSE = 1,
+   n__LEXINPUT_CTX_MASK = 1,
+   n__LEXINPUT_CTX_MAX = n_LEXINPUT_CTX_COMPOSE + 1,
+   n_LEXINPUT_HIST_ADD = 1<<8,   /* Add the result to history list */
+   n_LEXINPUT_HIST_GABBY = 1<<9  /* Consider this history entry as gabby */
+};
+
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
    MIME_SUBHDR,      /* inside a multipart subheader */
@@ -1379,7 +1389,7 @@ enum program_state {
    PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
    PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
    PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
-   PS_HISTORY_LOADED = 1<<29        /* Command line editor history loaded */
+   PS_LINE_EDITOR_INIT = 1<<29      /* MLE is initialized */
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.
@@ -1429,6 +1439,7 @@ ok_b_autothread,
 
    ok_b_bang,
    ok_b_batch_exit_on_error,
+   ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
    ok_b_bsdannounce,
    ok_b_bsdcompat,
    ok_b_bsdflags,
@@ -1500,6 +1511,7 @@ ok_b_emptybox,
    ok_v_LISTER,                        /* {env=1,defval=VAL_LISTER} */
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
+   ok_b_line_editor_no_defaults,
 
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */

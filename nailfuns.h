@@ -2300,6 +2300,15 @@ FL int         c_history(void *v);
 # define c_history               c_cmdnotsupp
 #endif
 
+/* `bind' and `unbind' */
+#ifdef HAVE_KEY_BINDINGS
+FL int         c_bind(void *v);
+FL int         c_unbind(void *v);
+#else
+# define c_bind                  c_cmdnotsupp
+# define c_unbind                c_cmdnotsupp
+#endif
+
 /*
  * ui_str.c
  */

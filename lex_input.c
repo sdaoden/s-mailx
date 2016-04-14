@@ -92,7 +92,6 @@ struct a_lex_input_stack{
    char li_name[VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
-static bool_t a_lex_reset_on_stop;        /* do a reset() if stopped */
 static sighandler_type a_lex_oldpipe;
 static struct a_lex_ghost *a_lex_ghosts;
 /* a_lex_cmd_tab[] after fun protos */
@@ -132,9 +131,6 @@ static int a_lex_evaluate(struct a_lex_eval_ctx *evp);
 
 /* Get first-fit, or NULL */
 static struct a_lex_cmd const *a_lex__firstfit(char const *comm);
-
-/* When we wake up after ^Z, reprint the prompt */
-static void a_lex_stop(int s);
 
 /* Branch here on hangup signal and simulate "exit" */
 static void a_lex_hangup(int s);
@@ -751,29 +747,6 @@ jleave:
 }
 
 static void
-a_lex_stop(int s){
-   sighandler_type old_action;
-   sigset_t nset;
-   NYD_X; /* Signal handler */
-
-   old_action = safe_signal(s, SIG_DFL);
-
-   sigemptyset(&nset);
-   sigaddset(&nset, s);
-   sigprocmask(SIG_UNBLOCK, &nset, NULL);
-   n_raise(s);
-   sigprocmask(SIG_BLOCK, &nset, NULL);
-
-   safe_signal(s, old_action);
-
-   if(a_lex_reset_on_stop){
-      a_lex_reset_on_stop = 0;
-      n_TERMCAP_RESUME(TRU1);
-      siglongjmp(srbuf, 0); /* FIXME get rid */
-   }
-}
-
-static void
 a_lex_hangup(int s){
    NYD_X; /* Signal handler */
    UNUSED(s);
@@ -1074,11 +1047,6 @@ n_commands(void){ /* FIXME */
          safe_signal(SIGINT, &a_lex_onintr);
       if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
          safe_signal(SIGHUP, &a_lex_hangup);
-      /* TODO We do a lot of redundant signal handling, especially
-       * TODO with the command line editor(s); try to merge this */
-      safe_signal(SIGTSTP, &a_lex_stop);
-      safe_signal(SIGTTOU, &a_lex_stop);
-      safe_signal(SIGTTIN, &a_lex_stop);
    }
    a_lex_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
    safe_signal(SIGPIPE, a_lex_oldpipe);
@@ -1148,7 +1116,6 @@ n_commands(void){ /* FIXME */
             }
          }
 
-         a_lex_reset_on_stop = TRU1;
          exit_status = EXIT_OK;
       }
 
@@ -1159,7 +1126,6 @@ jreadline:
             ev.le_new_content);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
-      a_lex_reset_on_stop = FAL0;
 
       if (n < 0) {
 /* FIXME did unstack() when PS_SOURCING, only break with PS_LOADING*/
