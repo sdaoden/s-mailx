@@ -1123,11 +1123,66 @@ enum n_termcap_cmd{
  * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
  * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
  * a | vertical bar or end-of-comment ends processing; see termcap.c.
- * We may use the free-form part after | for the "Variable String" and notes */
+ * We may use the free-form part after | for the "Variable String" and notes.
+ * The "xkey | X:" keys are Dickey's xterm extensions, see (our) manual */
 enum n_termcap_query{
 # ifdef HAVE_COLOUR
    n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
+
+   /* --mk-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
+   /* Update the `bind' manual on change! */
+# ifdef HAVE_KEY_BINDINGS
+   n_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
+   n_TERMCAP_QUERY_key_dc,       /* kdch1/kD, STRING | delete-character */
+      n_TERMCAP_QUERY_key_sdc,      /* kDC / *4, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_eol,      /* kel/kE, STRING | clear-to-end-of-line */
+   n_TERMCAP_QUERY_key_exit,     /* kext/@9, STRING */
+   n_TERMCAP_QUERY_key_ic,       /* kich1/kI, STRING | insert character */
+      n_TERMCAP_QUERY_key_sic,      /* kIC/#3, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_home,     /* khome/kh, STRING */
+      n_TERMCAP_QUERY_key_shome,    /* kHOM/#2, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_end,      /* kend/@7, STRING */
+      n_TERMCAP_QUERY_key_send,     /* kEND / *7, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_npage,    /* knp/kN, STRING */
+   n_TERMCAP_QUERY_key_ppage,    /* kpp/kP, STRING */
+   n_TERMCAP_QUERY_key_left,     /* kcub1/kl, STRING */
+      n_TERMCAP_QUERY_key_sleft,    /* kLFT/#4, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aleft,   /* kLFT3/-, STRING | X: Alt+left */
+      n_TERMCAP_QUERY_xkey_cleft,   /* kLFT5/-, STRING | X: Control+left */
+   n_TERMCAP_QUERY_key_right,    /* kcuf1/kr, STRING */
+      n_TERMCAP_QUERY_key_sright,   /* kRIT/%i, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aright,  /* kRIT3/-, STRING | X: Alt+right */
+      n_TERMCAP_QUERY_xkey_cright,  /* kRIT5/-, STRING | X: Control+right */
+   n_TERMCAP_QUERY_key_down,     /* kcud1/kd, STRING */
+      n_TERMCAP_QUERY_xkey_sdown,   /* kDN/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_adown,   /* kDN3/-, STRING | X: Alt+down */
+      n_TERMCAP_QUERY_xkey_cdown,   /* kDN5/-, STRING | X: Control+down */
+   n_TERMCAP_QUERY_key_up,       /* kcuu1/ku, STRING */
+      n_TERMCAP_QUERY_xkey_sup,     /* kUP/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aup,     /* kUP3/-, STRING | X: Alt+up */
+      n_TERMCAP_QUERY_xkey_cup,     /* kUP5/-, STRING | X: Control+up */
+   n_TERMCAP_QUERY_kf0,          /* kf0/k0, STRING */
+   n_TERMCAP_QUERY_kf1,          /* kf1/k1, STRING */
+   n_TERMCAP_QUERY_kf2,          /* kf2/k2, STRING */
+   n_TERMCAP_QUERY_kf3,          /* kf3/k3, STRING */
+   n_TERMCAP_QUERY_kf4,          /* kf4/k4, STRING */
+   n_TERMCAP_QUERY_kf5,          /* kf5/k5, STRING */
+   n_TERMCAP_QUERY_kf6,          /* kf6/k6, STRING */
+   n_TERMCAP_QUERY_kf7,          /* kf7/k7, STRING */
+   n_TERMCAP_QUERY_kf8,          /* kf8/k8, STRING */
+   n_TERMCAP_QUERY_kf9,          /* kf9/k9, STRING */
+   n_TERMCAP_QUERY_kf10,         /* kf10/k;, STRING */
+   n_TERMCAP_QUERY_kf11,         /* kf11/F1, STRING */
+   n_TERMCAP_QUERY_kf12,         /* kf12/F2, STRING */
+   n_TERMCAP_QUERY_kf13,         /* kf13/F3, STRING */
+   n_TERMCAP_QUERY_kf14,         /* kf14/F4, STRING */
+   n_TERMCAP_QUERY_kf15,         /* kf15/F5, STRING */
+   n_TERMCAP_QUERY_kf16,         /* kf16/F6, STRING */
+   n_TERMCAP_QUERY_kf17,         /* kf17/F7, STRING */
+   n_TERMCAP_QUERY_kf18,         /* kf18/F8, STRING */
+   n_TERMCAP_QUERY_kf19,         /* kf19/F9, STRING */
+# endif /* HAVE_KEY_BINDINGS */
 
    n__TERMCAP_QUERY_MAX
 };

@@ -2141,6 +2141,14 @@ FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
  * is returned; FAL0 is returned on non-availability */
 FL bool_t      n_termcap_query(enum n_termcap_query query,
                   struct n_termcap_value *tvp);
+
+/* Get a n_termcap_query for name or -1 if it is not known, and -2 if
+ * type wasn't _NONE and the type doesn't match. */
+# ifdef HAVE_KEY_BINDINGS
+FL si32_t      n_termcap_query_for_name(char const *name,
+                  enum n_termcap_captype type);
+FL char const *n_termcap_name_of_query(enum n_termcap_query query);
+# endif
 #endif /* n_HAVE_TCAP */
 
 /*
@@ -2206,7 +2214,7 @@ FL void        n_tty_signal(int sig);
 FL int         n_tty_readline(char const *prompt, char **linebuf,
                   size_t *linesize, size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define n_tty_readline(A,B,C,D) n_tty_readline(A, B, C, D, __FILE__, __LINE__)
+# define n_tty_readline(A,B,C,D) (n_tty_readline)(A, B, C, D, __FILE__,__LINE__)
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.

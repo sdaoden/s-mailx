@@ -15,6 +15,7 @@ option_reset() {
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
    WANT_READLINE=0 WANT_MLE=0
+      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
    WANT_TERMCAP=0 WANT_TERMCAP_PREFER_TERMINFO=0
    WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
@@ -36,7 +37,7 @@ option_maximal() {
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
    WANT_MLE=1
-      WANT_HISTORY=1
+      WANT_HISTORY=1 WANT_KEY_BINDINGS=1
    WANT_TERMCAP=1 WANT_TERMCAP_PREFER_TERMINFO=1
    WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
@@ -69,7 +70,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_IDNA=1
       WANT_REGEX=1
       WANT_MLE=1
-         WANT_HISTORY=1
+         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
       WANT_ERRORS=1
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
@@ -86,7 +87,7 @@ if [ -n "${CONFIG}" ]; then
       WANT_IDNA=1
       WANT_REGEX=1
       WANT_MLE=1
-         WANT_HISTORY=1
+         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       WANT_DOTLOCK=require
@@ -134,7 +135,7 @@ option_update() {
    fi
 
    if feat_no READLINE && feat_no MLE; then
-      WANT_HISTORY=0
+      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -2096,6 +2097,12 @@ else
    echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
+if [ -n "${have_mle}" ] && feat_yes KEY_BINDINGS; then
+   echo '#define HAVE_KEY_BINDINGS' >> ${h}
+else
+   echo '/* WANT_KEY_BINDINGS=0 */' >> ${h}
+fi
+
 if feat_yes TERMCAP; then
    __termcaplib() {
       link_check termcap "termcap(5) (via ${4})" \
@@ -2307,6 +2314,7 @@ printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
   printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_KEY_BINDINGS\n   ",KEY-BINDINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
   printf '# ifdef HAVE_TERMINFO\n   " (terminfo(5))"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
@@ -2430,6 +2438,9 @@ ${cat} > ${tmp2}.c << \!
 # ifdef HAVE_HISTORY
 : + + History management
 # endif
+# ifdef HAVE_KEY_BINDINGS
+: + + Configurable key bindings
+# endif
 #endif
 #ifdef HAVE_TERMCAP
 # ifdef HAVE_TERMINFO
@@ -2519,6 +2530,13 @@ ${cat} > ${tmp2}.c << \!
 #endif
 #if !defined HAVE_READLINE && !defined HAVE_MLE
 : - Command line editing and history
+#else
+# ifndef HAVE_HISTORY
+: + (Command line editing) - History management
+# endif
+# ifndef HAVE_KEY_BINDINGS
+: + (Command line editing) - Configurable key bindings
+# endif
 #endif
 #ifndef HAVE_TERMCAP
 : - Terminal capability queries

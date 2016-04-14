@@ -205,6 +205,8 @@ WANT_READLINE=no
 WANT_MLE=yes
 # All line editors optionally support history management.
 WANT_HISTORY=yes
+# The MLE optionally supports `(un)?bind'ing of key sequences
+WANT_KEY_BINDINGS=yes
 
 # Use termcap(5) for terminal control; can be "require"d.
 # Today most environments ship a termcap(5) that in fact is part of

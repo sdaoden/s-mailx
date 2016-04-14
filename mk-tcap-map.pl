@@ -7,15 +7,21 @@ use utf8;
 
 my $OUT = 'tcaps.h';
 
+# Generate a more verbose output.  Not for shipout versions.
+my $VERB = 1;
+
 ##  --  >8  --  8<  --  ##
 
 use diagnostics -verbose;
 use strict;
 use warnings;
 
-my ($CAPS_LEN, @CAPS_NAMES, @ENTS) = (0);
+my ($S, $CAPS_LEN, $BIND_START, @CAPS_NAMES, @ENTS) =
+      (($VERB ? '   ' : ''), 0, -1);
 
 sub main_fun{
+   if(@ARGV) {$VERB = 0; $S = ''}
+
    parse_nail_h();
 
    dump_data();
@@ -49,7 +55,11 @@ sub parse_nail_h{
 
       # Ignore empty and comment lines
       /^$/ && next;
-      /^\s*\/\*/ && next;
+      if(/^\s*\/\*/){
+         # However, one special directive we know
+         $BIND_START = @CAPS_NAMES + 1 if /--mk-tcap-map--/;
+         next
+      }
 
       # We need to preserve preprocessor conditionals
       if(/^\s*#/){
@@ -60,7 +70,7 @@ sub parse_nail_h{
       # An entry is a constant followed by a specially crafted comment;
       # ignore anything else
       /^\s*(\w+),\s*
-         \/\*\s*(\w+|-)\/([^,\s]+|-),
+         \/\*\s*(\w+|-)\s*\/\s*([^,\s]+|-),
          \s*(\w+)\s*
          (?:,\s*(\w+)\s*)?
          (?:\||\*\/)
@@ -70,8 +80,8 @@ sub parse_nail_h{
          unless($4 eq 'BOOL' || $4 eq 'NUMERIC' || $4 eq 'STRING');
 
       my $e = 'n_TERMCAP_CAPTYPE_' . $4;
-      $e = $e . ' | a_TERMCAP_F_QUERY' if $init == 2;
-      $e = $e . ' | a_TERMCAP_F_ARG_' . $5 if $5;
+      $e = $e . '|a_TERMCAP_F_QUERY' if $init == 2;
+      $e = $e . '|a_TERMCAP_F_ARG_' . $5 if $5;
       push @ENTS, [$1, $e, $CAPS_LEN];
       # termcap(5) names are always two chars, place them first, don't add NUL
       my ($ti, $tc) = ($2, $3);
@@ -100,19 +110,33 @@ sub dump_data{
          }
       }
 
+      if($BIND_START > 0){
+         print F '#ifdef HAVE_KEY_BINDINGS', "\n" if(--$BIND_START == 0)
+      }
       my ($tcn, $tin) = (_exp(scalar $np->[3], 2), _exp(scalar $np->[4], 0));
-      print F "   /* [$np->[1]]+$np->[2], $np->[0] */ $tcn  $tin'\\0',\n";
+      if($VERB){
+         print F "${S}/* [$np->[1]]+$np->[2], $np->[0] */ $tcn  $tin'\\0',\n"
+      }else{
+         print F "${S}$tcn $tin'\\0',\n"
+      }
    }
+   print F '#endif /* HAVE_KEY_BINDINGS */', "\n" if($BIND_START == 0);
    print F '};', "\n\n";
 
    print F 'static struct a_termcap_control const a_termcap_control[] = {',
       "\n";
+   my $i = 0;
    foreach my $ent (@ENTS){
       if($#$ent == 0){
          print F $ent->[0], "\n"
       }else{
-         print F '   {/* ', $ent->[0], ' */ ', $ent->[1], ', ', $ent->[2],
-            "},\n"
+         if($VERB){
+            print F ${S}, '{/* ', $i, '. ', $ent->[0], ' */ ', $ent->[1], ', ',
+               $ent->[2], "},\n"
+         }else{
+            print F "{$ent->[1], $ent->[2]},\n"
+         }
+         ++$i
       }
    }
    print F '};', "\n";
