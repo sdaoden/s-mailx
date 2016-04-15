@@ -241,10 +241,16 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
 #ifdef HAVE_FILTER_HTML_TAGSOUP
    if (pipecomm == MIME_TYPE_HANDLER_HTML) {
       union {int (*ptf)(void); char const *sh;} u;
-      u.ptf = &htmlflt_process_main;
-      rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf));
+
+      fflush(*qbuf);
+      if (*qbuf != stdout) /* xxx never?  v15: it'll be a filter anyway */
+         fflush(stdout);
+
       pipecomm = "Builtin HTML tagsoup filter";
-      goto jafter_tagsoup_hack;
+      u.ptf = &htmlflt_process_main;
+      if((rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf))) == NULL)
+         goto jerror;
+      goto jleave;
    }
 #endif
 
@@ -279,17 +285,20 @@ _pipefile(char const *pipecomm, struct mimepart const *mpp, FILE **qbuf,
       sh = XSHELL;
 
    rbuf = Popen(pipecomm, "W", sh, env_addon, (async ? -1 : fileno(*qbuf)));
+   if (rbuf == NULL) {
 #ifdef HAVE_FILTER_HTML_TAGSOUP
-jafter_tagsoup_hack:
+jerror:
 #endif
-   if (rbuf == NULL)
       n_err(_("Cannot run MIME type handler \"%s\": %s\n"),
          pipecomm, strerror(errno));
-   else {
+   } else {
       fflush(*qbuf);
       if (*qbuf != stdout)
          fflush(stdout);
    }
+#ifdef HAVE_FILTER_HTML_TAGSOUP
+jleave:
+#endif
    NYD_LEAVE;
    return rbuf;
 }
