@@ -2235,7 +2235,7 @@ ${mv} ${tmp} ${lib}
 
 # config.h
 ${mv} ${h} ${tmp}
-printf '#ifndef _CONFIG_H\n# define _CONFIG_H 1\n' > ${h}
+printf '#ifndef n_CONFIG_H\n# define n_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
 ${rm} -f ${tmp}
 
@@ -2310,7 +2310,7 @@ else
    echo '#else' >> ${h}
 fi
 
-printf '#endif /* _CONFIG_H */\n' >> ${h}
+printf '#endif /* n_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
