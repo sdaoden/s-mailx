@@ -1823,7 +1823,7 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
       if(vp != NULL){
          char *buf = savestr(vp);
 jch_outer:
-         while((vp = n_strsep(&buf, ',', TRU1)) != NULL){
+         while((vp = n_strescsep(&buf, ',', TRU1)) != NULL){
             ui32_t nl, bl;
             char const *nstart, *cp;
 

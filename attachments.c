@@ -385,7 +385,7 @@ append_attachments(struct attachment **aphead, char *names)
    struct attachment *xaph, *nap;
    NYD_ENTER;
 
-   while ((cp = n_strsep(&names, ',', 1)) != NULL) {
+   while ((cp = n_strescsep(&names, ',', TRU1)) != NULL) {
       xaph = add_attachment(*aphead, fexpand_nshell_quote(cp), &nap);
       if (xaph != NULL) {
          *aphead = xaph;

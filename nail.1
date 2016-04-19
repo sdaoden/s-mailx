@@ -4690,8 +4690,9 @@ arguments are specified for the
 .Ic \&\&~@
 command they are treated as a comma-separated list of files,
 which are all expanded and appended to the end of the attachment list.
-(Filenames with commas, or with leading or trailing whitespace can only
-be added via the command line or the first method.
+(Commas need to be escaped with backslash, but filenames with leading or
+trailing whitespace can only be added via the command line or the first
+method.
 Message attachments can only be added via the first method;
 filenames which clash with message numbers can only be added via the
 command line or the second method.)
@@ -5454,9 +5455,10 @@ and
 \*(OB A variable counterpart of the
 .Ic customhdr
 command (see there for documentation), interpreted as a comma-separated
-list of custom headers to be injected, e.g.:
+list of custom headers to be injected, to include commas in the header
+bodies escape them with backslash, e.g.:
 .Pp
-.Dl set customhdr="Hdr1: Body1, Hdr2: Body2"
+.Dl set customhdr="Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2"
 .
 .Mx
 .It Va datefield
