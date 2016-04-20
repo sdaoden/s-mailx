@@ -349,7 +349,7 @@
    { "spamclear", &c_spam_clear, (A | M | I | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
    { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
-     DS(N_("Print or create <ghost> (<command>), or list all ghosts")) },
+     DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
    { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
@@ -381,23 +381,23 @@
    { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given message")) },
    { "errors", &c_errors, (H | I | RAWLIST), 0, 1
-     DS(N_("Either <show> (default) or <clear> the error message ring")) },
+     DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
    { "customhdr", &c_customhdr, (M | RAWLIST), 0, 1000
-     DS(N_("Show all/<header>, or (re)define a custom <header> to <:data:>")) },
+     DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
    { "uncustomhdr", &c_uncustomhdr, (M | RAWLIST), 1, 1000
      DS(N_("Delete custom <:header:> (\"*\" for all)")) },
    { "features", &_c_features, (H | M | NOLIST), 0, 0
-     DS(N_("Show features that are compiled into the MUA")) },
+     DS(N_("Show features that are compiled into the Mail-User-Agent")) },
    { "version", &_c_version, (H | M | NOLIST), 0, 0
-     DS(N_("Print the MUA version")) },
+     DS(N_("Print the Mail-User-Agent version")) },
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
 
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
-     DS(N_("<show> (default), <load> or <clear> the .netrc cache")) },
+     DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
    { "colour", &c_colour, (M | RAWLIST), 1, 4
      DS(N_("Show colour settings of <type> (mono, iso, 256) or define one")) },
