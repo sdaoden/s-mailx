@@ -1713,6 +1713,16 @@ quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
    return rv;
 }
 
+FL bool_t
+n_is_all_or_aster(char const *name){
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = ((name[0] == '*' && name[1] == '\0') || !asccasecmp(name, "all"));
+   NYD_LEAVE;
+   return rv;
+}
+
 FL time_t
 n_time_epoch(void)
 {

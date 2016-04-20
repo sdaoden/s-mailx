@@ -412,6 +412,9 @@ FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
 FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
                   si8_t emptyrv);
 
+/* Is the argument "all" (case-insensitive) or "*" */
+FL bool_t      n_is_all_or_aster(char const *name);
+
 /* Get seconds since epoch */
 FL time_t      n_time_epoch(void);
 
