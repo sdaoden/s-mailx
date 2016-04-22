@@ -1232,7 +1232,8 @@ n_iconv_open(char const *tocode, char const *fromcode)
    char *t, *f;
    NYD_ENTER;
 
-   if (!asccasecmp(fromcode, "unknown-8bit") &&
+   if ((!asccasecmp(fromcode, "unknown-8bit") ||
+            !asccasecmp(fromcode, "binary")) &&
          (fromcode = ok_vlook(charset_unknown_8bit)) == NULL)
       fromcode = charset_get_8bit();
 

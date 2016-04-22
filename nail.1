@@ -5378,6 +5378,12 @@ is assumed to really be in the character set given in the value,
 otherwise the (final) value of
 .Va charset-8bit
 is used for this purpose.
+.Pp
+This variable will also be taken into account if a MIME type (see
+.Sx "The mime.types files" )
+of a MIME message part that uses the
+.Ql binary
+character set is forcefully treated as text.
 .
 .Mx
 .It Va cmd
