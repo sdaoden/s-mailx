@@ -1159,7 +1159,7 @@ n_utf32_to_utf8(ui32_t c, char *buf)
        * xxx (However, should we ever get yet another surrogate range we
        * xxx need to deal with that all over the place anyway? */
       {0x00000800, 0x0000FFFF, 0xE0, 3, 0xF0, 0xFF-0xF0, 3-1, 3, {0,}},
-      {0x00010000, 0x001FFFFF, 0xF0, 4, 0xF8, 0xFF-0xF8, 4-1, 4, {0,}},
+      {0x00010000, 0x0010FFFF, 0xF0, 4, 0xF8, 0xFF-0xF8, 4-1, 4, {0,}},
    }, *catp = _cat;
    size_t l;
 
