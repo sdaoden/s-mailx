@@ -481,6 +481,8 @@
 # define n_CTA(T,M)  _CTA_1(T, n_FILE, __LINE__)
 # define n_LCTA(T,M) _LCTA_1(T, n_FILE, __LINE__)
 #endif
+#define n_CTAV(T) n_CTA(T, "Unexpected value of constant")
+#define n_LCTAV(T) n_LCTA(T, "Unexpected value of constant")
 
 #ifdef n_MAIN_SOURCE
 # define n_MCTA(T,M) n_CTA(T, M);
