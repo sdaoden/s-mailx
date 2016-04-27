@@ -148,7 +148,9 @@ static bool_t a_termcap_load(char const *term);
 
 /* Query the capability tcp and fill in tep (upon success) */
 static bool_t a_termcap_ent_query(struct a_termcap_ent *tep,
-               struct a_termcap_control const *tcp);
+               char const *cname, ui16_t cflags);
+SINLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+                  struct a_termcap_control const *tcp);
 
 /* Output PTF for both, termcap(5) and terminfo(5) */
 static int a_termcap_putc(int c);
@@ -378,24 +380,20 @@ a_termcap_load(char const *term){
 
 static bool_t
 a_termcap_ent_query(struct a_termcap_ent *tep,
-      struct a_termcap_control const *tcp){
-   char const *cnam;
+      char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
 
-   cnam = &a_termcap_namedat[tcp->tc_off] + 2;
-   if(UNLIKELY(*cnam == '\0'))
+   if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
-   else switch(tcp->tc_flags & a_TERMCAP_F_TYPE_MASK){
+   else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
-      tep->te_flags = tcp->tc_flags;
-      tep->te_off = (tigetflag(cnam) > 0);
+      tep->te_off = (tigetflag(cname) > 0);
       rv = TRU1;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:{
-      int r = tigetnum(cnam);
+      int r = tigetnum(cname);
 
-      tep->te_flags = tcp->tc_flags;
       if((rv = (r >= 0)))
          tep->te_off = (ui16_t)MIN(UI16_MAX, r);
       else
@@ -405,8 +403,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    case n_TERMCAP_CAPTYPE_STRING:{
       char *cp;
 
-      tep->te_flags = tcp->tc_flags;
-      cp = tigetstr(cnam);
+      cp = tigetstr(cname);
       if((rv = (cp != NULL && cp != (char*)-1))){
          char *ebp_orig = a_termcap_g->tg_buf_tail;
          size_t l = strlen(cp) +1;
@@ -424,6 +421,13 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    return rv;
 }
 
+SINLINE bool_t
+a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+      struct a_termcap_control const *tcp){
+   return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off] + 2,
+      tcp->tc_flags);
+}
+
 # else /* HAVE_TERMINFO */
 static bool_t
 a_termcap_load(char const *term){
@@ -439,24 +443,20 @@ a_termcap_load(char const *term){
 
 static bool_t
 a_termcap_ent_query(struct a_termcap_ent *tep,
-      struct a_termcap_control const *tcp){
-   char const *cnam;
+      char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
 
-   cnam = &a_termcap_namedat[tcp->tc_off];
-   if(UNLIKELY(*cnam == '\0'))
+   if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
-   else switch(tcp->tc_flags & a_TERMCAP_F_TYPE_MASK){
+   else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
-      tep->te_flags = tcp->tc_flags;
-      tep->te_off = (tgetflag(cnam) > 0);
+      tep->te_off = (tgetflag(cname) > 0);
       rv = TRU1;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:{
-      int r = tgetnum(cnam);
+      int r = tgetnum(cname);
 
-      tep->te_flags = tcp->tc_flags;
       if((rv = (r >= 0)))
          tep->te_off = (ui16_t)MIN(UI16_MAX, r);
       else
@@ -466,8 +466,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    case n_TERMCAP_CAPTYPE_STRING:{
       char *ebp_orig = a_termcap_g->tg_buf_tail;
 
-      tep->te_flags = tcp->tc_flags;
-      if((rv = (tgetstr(cnam, &a_termcap_g->tg_buf_tail) != NULL))){
+      if((rv = (tgetstr(cname, &a_termcap_g->tg_buf_tail) != NULL))){
          tep->te_off = (ui16_t)PTR2SIZE(ebp_orig - a_termcap_g->tg_buf);
          assert((size_t)tep->te_off ==
             PTR2SIZE(ebp_orig - a_termcap_g->tg_buf));
@@ -477,6 +476,13 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    }
    NYD2_LEAVE;
    return rv;
+}
+
+SINLINE bool_t
+a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+      struct a_termcap_control const *tcp){
+   return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off],
+      tcp->tc_flags);
 }
 # endif /* !HAVE_TERMINFO */
 
@@ -569,7 +575,7 @@ n_termcap_init(void){
          if(i-- == 0)
             break;
          if((tep = &a_termcap_g->tg_ents[i])->te_flags == 0)
-            a_termcap_ent_query(tep, &a_termcap_control[i]);
+            a_termcap_ent_query_tcp(tep, &a_termcap_control[i]);
       }
    }
 #endif
@@ -774,14 +780,46 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
       goto jleave;
    assert(a_termcap_g != NULL);
 
-   tep = a_termcap_g->tg_ents + n__TERMCAP_CMD_MAX;
-   if((tep += query)->te_flags == 0
+   /* Is it a builtin query? */
+   if(query != n__TERMCAP_QUERY_MAX){
+      tep = &a_termcap_g->tg_ents[n__TERMCAP_CMD_MAX + query];
+
+      if(tep->te_flags == 0
 #ifdef HAVE_TERMCAP
-         && !a_termcap_ent_query(UNCONST(tep),
-               &a_termcap_control[n__TERMCAP_CMD_MAX + query])
+            && !a_termcap_ent_query_tcp(UNCONST(tep),
+                  &a_termcap_control[n__TERMCAP_CMD_MAX + query])
 #endif
-   )
+      )
+         goto jleave;
+   }else{
+#ifndef HAVE_TERMCAP
       goto jleave;
+#else
+      size_t nlen;
+      struct a_termcap_ext_ent *teep;
+      char const *ndat = tvp->tv_data.tvd_string;
+
+      for(teep = a_termcap_g->tg_ext_ents; teep != NULL; teep = teep->tee_next)
+         if(!strcmp(teep->tee_name, ndat)){
+            tep = &teep->tee_super;
+            goto jextok;
+         }
+
+      nlen = strlen(ndat) +1;
+      teep = smalloc(sizeof(*teep) -
+            VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + nlen);
+      tep = &teep->tee_super;
+      teep->tee_next = a_termcap_g->tg_ext_ents;
+      a_termcap_g->tg_ext_ents = teep;
+      memcpy(teep->tee_name, ndat, nlen);
+
+      if(!a_termcap_ent_query(UNCONST(tep), ndat,
+               n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_QUERY))
+         goto jleave;
+jextok:;
+#endif
+   }
+
    if(tep->te_flags & a_TERMCAP_F_NOENT)
       goto jleave;
 

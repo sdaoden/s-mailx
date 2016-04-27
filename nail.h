@@ -1066,6 +1066,7 @@ enum tdflags {
 
 #ifdef n_HAVE_TCAP
 enum n_termcap_captype{
+   n_TERMCAP_CAPTYPE_NONE = 0,
    /* Internally we share the bitspace, so ensure no value ends up as 0 */
    n_TERMCAP_CAPTYPE_BOOL = 1,
    n_TERMCAP_CAPTYPE_NUMERIC,
