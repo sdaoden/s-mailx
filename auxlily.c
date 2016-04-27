@@ -1404,6 +1404,16 @@ makeprint(struct str const *in, struct str *out)
                wc = isuni ? 0x2421 : '?';
             else
                wc = isuni ? 0x2426 : '?';
+         }else if(isuni){ /* TODO ctext */
+            /* We need to actively filter out L-TO-R and R-TO-R marks TODO ctext */
+            if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
+               continue;
+            /* And some zero-width messes */
+            if(wc >= 0x200B && wc <= 0x200D)
+               continue;
+            /* Oh about the ISO C wide character interfaces, baby! */
+            if(wc == 0xFEFF)
+               continue;
          }
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
