@@ -47,6 +47,16 @@
 # include <wordexp.h>
 #endif
 
+/* POSIX says
+ *   Environment variable names used by the utilities in the Shell and
+ *   Utilities volume of POSIX.1-2008 consist solely of uppercase
+ *   letters, digits, and the <underscore> ('_') from the characters
+ *   defined in Portable Character Set and do not begin with a digit.
+ *   Other characters may be permitted by an implementation;
+ *   applications shall tolerate the presence of such names.
+ * We do support the hyphen "-" because it is common for mailx. */
+#define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
+
 struct shvar_stack {
    struct shvar_stack *shs_next; /* Outer stack frame */
    char const  *shs_value; /* Remaining value to expand */
@@ -266,17 +276,9 @@ _sh_exp_var(struct shvar_stack *shsp)
       if ((lc = (*++vp == '{')))
          ++vp;
 
-      /* POSIX says
-       *   Environment variable names used by the utilities in the Shell and
-       *   Utilities volume of POSIX.1-2008 consist solely of uppercase
-       *   letters, digits, and the <underscore> ('_') from the characters
-       *   defined in Portable Character Set and do not begin with a digit.
-       *   Other characters may be permitted by an implementation;
-       *   applications shall tolerate the presence of such names.
-       * We do support the hyphen "-" because it is common for mailx. */
       shsp->shs_dat = vp;
       for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
-         if (!alnumchar(c) && c != '_' && c != '-')
+         if (!a_SHEXP_ISVARC(c))
             break;
 
       if (lc) {
@@ -350,10 +352,6 @@ fexpand(char const *name, enum fexp_mode fexpm)
    if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
       res = UNCONST(name);
 
-   if (fexpm & FEXP_SHELL) {
-      dyn = FAL0;
-      goto jshell;
-   }
 jnext:
    dyn = FAL0;
    switch (*res) {
@@ -396,22 +394,33 @@ jnext:
    }
 
    /* Catch the most common shell meta character */
-jshell:
    if (res[0] == '~') {
       res = n_shell_expand_tilde(res, NULL);
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
-      switch (which_protocol(res)) {
+
+   if (anyof(res, "|&;<>{}()[]*?$`'\"\\")) {
+      bool_t doexp;
+
+      if(fexpm & FEXP_NOPROTO)
+         doexp = TRU1;
+      else switch(which_protocol(res)){
       case PROTO_FILE:
       case PROTO_MAILDIR:
+         doexp = TRU1;
+         break;
+      default:
+         doexp = FAL0;
+         break;
+      }
+
+      if(doexp){
          res = (fexpm & FEXP_NSHELL) ? n_shell_expand_var(res, TRU1, NULL)
                : _globname(res, fexpm);
          dyn = TRU1;
-         goto jleave;
-      default:
-         break;
       }
+   }
+
 jislocal:
    if (fexpm & FEXP_LOCAL)
       switch (which_protocol(res)) {
@@ -423,6 +432,7 @@ jislocal:
          res = NULL;
          break;
       }
+
 jleave:
    if (res && !dyn)
       res = savestr(res);
@@ -527,7 +537,7 @@ n_shell_expand_var(char const *s, bool_t bsescape, bool_t *err_or_null)
 }
 
 FL int
-n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
+n_shell_expand_escape(char const **s, bool_t use_nail_extensions)/* TODO DROP!*/
 {
    char const *xs;
    int c, n;
@@ -550,6 +560,12 @@ n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
    case 'r':   c = '\r';         break;
    case 't':   c = '\t';         break;
    case 'v':   c = '\v';         break;
+
+   /* ESCape */
+   case 'E':
+   case 'e':
+      c = '\033';
+      break;
 
    /* Hexadecimal TODO uses ASCII */
    case 'X':
@@ -625,6 +641,438 @@ jleave:
    *s = xs;
    NYD2_LEAVE;
    return c;
+}
+
+FL enum n_shexp_state
+n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
+   char c2, c, quotec;
+   bool_t skipq, surplus;
+   enum n_shexp_state rv;
+   size_t i, il;
+   char const *ib;
+   NYD2_ENTER;
+   UNINIT(c, '\0');
+
+   assert(store != NULL);
+   assert(input != NULL);
+   assert(input->l == 0 || input->s != NULL);
+
+   if(dolog == TRUM1)
+      dolog = ((options & OPT_D_V) != 0);
+
+   ib = input->s;
+   if((il = input->l) == UIZ_MAX)
+      input->l = il = strlen(ib);
+
+   store = n_string_reserve(store, MIN(il, 32)); /* XXX */
+
+   for(rv = n_SHEXP_STATE_NONE, skipq = surplus = FAL0, quotec = '\0'; il > 0;){
+      --il, c = *ib++;
+
+      /* If no quote-mode active.. */
+      if(quotec == '\0'){
+         if(c == '"' || c == '\''){
+            quotec = c;
+            surplus = (c == '"');
+            continue;
+         }else if(c == '$'){
+            if(il > 0){
+               if(*ib == '\''){
+                  --il, ++ib;
+                  quotec = '\'';
+                  surplus = TRU1;
+                  continue;
+               }else
+                  goto J_var_expand;
+            }
+         }else if(c == '\\'){
+            /* Outside of quotes this just escapes any next character, but a sole
+             * <backslash> at EOS is left unchanged */
+             if(il > 0)
+               --il, c = *ib++;
+         }else if(c == '#'){
+            rv |= n_SHEXP_STATE_STOP;
+            goto jleave;
+         }else if(blankchar(c))
+            break;
+      }else{
+         /* Quote-mode */
+         if(c == quotec){
+            skipq = surplus = FAL0;
+            quotec = '\0';
+            continue;
+         }else if(c == '\\' && surplus){
+            char const *ib_save = ib - 1;
+
+            /* A sole <backslash> at EOS is treated as-is! */
+            if(il == 0)
+               break;
+            else if((c2 = *ib) == quotec){
+               --il, ++ib;
+               c = quotec;
+            }else if(quotec == '"'){
+               /* Double quotes:
+                *    The <backslash> shall retain its special meaning as an
+                *    escape character (see Section 2.2.1) only when followed
+                *    by one of the following characters when considered
+                *    special: $ ` " \ <newline> */
+               switch(c2){
+               case '$':
+               case '`':
+               /* case '"': already handled via c2 == quotec */
+               case '\\':
+                  --il, ++ib;
+                  c = c2;
+                  /* FALLTHRU */
+               default:
+                  break;
+               }
+            }else{
+               /* Dollar-single-quote */
+               --il, ++ib;
+               switch(c2){
+               case '"':
+               /* case '\'': already handled via c2 == quotec */
+               case '\\':
+                  c = c2;
+                  break;
+
+               case 'b': c = '\b'; break;
+               case 'f': c = '\f'; break;
+               case 'n': c = '\n'; break;
+               case 'r': c = '\r'; break;
+               case 't': c = '\t'; break;
+               case 'v': c = '\v'; break;
+
+               case 'E':
+               case 'e': c = '\033'; break;
+
+               /* Control character */
+               case 'c':
+                  if(il == 0)
+                     goto j_dollar_ungetc;
+                  --il, c2 = *ib++;
+                  if(skipq)
+                     continue;
+                  c = upperconv(c2) ^ 0x40;
+                  if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
+                     if(dolog)
+                        n_err(_("Invalid \"\\c\" notation: \"%.*s\"\n"),
+                           (int)input->l, input->s);
+                     rv |= n_SHEXP_STATE_ERR_CONTROL;
+                  }
+                  /* As an implementation-defined extension, support \c@
+                   * EQ printf(1) alike \c */
+                  if(c == '\0'){
+                     rv |= n_SHEXP_STATE_STOP;
+                     goto jleave;
+                  }
+                  break;
+
+               /* Octal sequence: 1 to 3 octal bytes */
+               case '0':
+                  /* As an extension (dependent on where you look, echo(1), or
+                   * awk(1)/tr(1) etc.), allow leading "0" octal indicator */
+                  if(il > 0 && (c = *ib) >= '0' && c <= '7'){
+                     c2 = c;
+                     --il, ++ib;
+                  }
+                  /* FALLTHRU */
+               case '1': case '2': case '3':
+               case '4': case '5': case '6': case '7':
+                  c2 -= '0';
+                  if(il > 0 && (c = *ib) >= '0' && c <= '7'){
+                     c2 = (c2 << 3) | (c - '0');
+                     --il, ++ib;
+                  }
+                  if(il > 0 && (c = *ib) >= '0' && c <= '7'){
+                     if((ui8_t)c2 > 0x1F){
+                        if(dolog)
+                           n_err(_("\"\\0\" argument exceeds a byte: "
+                              "\"%.*s\"\n"), (int)input->l, input->s);
+                        rv |= n_SHEXP_STATE_ERR_NUMBER;
+                        --il, ++ib;
+                        goto jeasis;
+                     }
+                     c2 = (c2 << 3) | (c -= '0');
+                     --il, ++ib;
+                  }
+                  if((c = c2) == '\0')
+                     skipq = TRU1;
+                  if(skipq)
+                     continue;
+                  break;
+
+               /* ISO 10646 / Unicode sequence, 8 or 4 hexadecimal bytes */
+               case 'U':
+                  i = 8;
+                  if(0){
+                  /* FALLTHRU */
+               case 'u':
+                     i = 4;
+                  }
+                  if(il == 0)
+                     goto j_dollar_ungetc;
+                  if(0){
+                     /* FALLTHRU */
+
+               /* Hexadecimal sequence, 1 or 2 hexadecimal bytes */
+               case 'X':
+               case 'x':
+                     if(il == 0)
+                        goto j_dollar_ungetc;
+                     i = 2;
+                  }
+                  /* C99 */{
+                     static ui8_t const hexatoi[] = { /* XXX uses ASCII */
+                        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+                     };
+                     size_t no, j;
+
+                     i = MIN(il, i);
+                     for(no = j = 0; i-- > 0; --il, ++ib, ++j){
+                        c = *ib;
+                        if(hexchar(c)){
+                           no <<= 4;
+                           no += hexatoi[(ui8_t)((c) - ((c) <= '9' ? 48
+                                 : ((c) <= 'F' ? 55 : 87)))];
+                        }else if(j == 0){
+                           if(skipq)
+                              break;
+                           c2 = (c2 == 'U' || c2 == 'u') ? 'u' : 'x';
+                           if(dolog)
+                              n_err(_("Invalid \"\\%c\" notation: \"%.*s\"\n"),
+                                 c2, (int)input->l, input->s);
+                           rv |= n_SHEXP_STATE_ERR_NUMBER;
+                           goto jeasis;
+                        }else
+                           break;
+                     }
+
+                     /* Unicode massage */
+                     if(c2 != 'U' && c2 != 'u'){
+                        if((c = (char)no) == '\0')
+                           skipq = TRU1;
+                     }else if(no == 0)
+                        skipq = TRU1;
+                     else if(!skipq){
+                        store = n_string_reserve(store, MAX(j, 4));
+
+                        c2 = FAL0;
+                        if(no > 0x10FFFF){ /* XXX magic; CText */
+                           if(dolog)
+                              n_err(_("\"\\U\" argument exceeds 0x10FFFF: "
+                                 "\"%.*s\"\n"), (int)input->l, input->s);
+                           rv |= n_SHEXP_STATE_UNICODE |
+                                 n_SHEXP_STATE_ERR_NUMBER |
+                                 n_SHEXP_STATE_ERR_UNICODE;
+                           goto jeunicode;
+                        }else if((options & OPT_UNICODE) ||
+                              (c2 = n_uasciichar(no))){
+                           char utf[8];
+
+                           if(!c2)
+                              rv |= n_SHEXP_STATE_UNICODE;
+                           j = n_utf32_to_utf8(no, utf);
+                           store = n_string_push_buf(store, utf, j);
+                        }else{
+                           /* Write unchanged */
+jeunicode:
+                           rv |= n_SHEXP_STATE_UNICODE |
+                                 n_SHEXP_STATE_ERR_UNICODE;
+jeasis:
+                           store = n_string_push_buf(store, ib_save,
+                                 PTR2SIZE(ib - ib_save));
+                           continue;
+                        }
+                        continue;
+                     }
+                     if(skipq)
+                        continue;
+                  }
+                  break;
+
+               /* Extension: \$ can be used to expand a variable.
+                * Bug|ad effect: if conversion fails, not written "as-is" */
+               case '$':
+                  if(il == 0)
+                     goto j_dollar_ungetc;
+                  goto J_var_expand;
+
+               default:
+j_dollar_ungetc:
+                  /* Follow bash behaviour, print sequence unchanged */
+                  ++il, --ib;
+                  break;
+               }
+            }
+         }else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{
+            bool_t brace;
+
+            if(!(brace = (*ib == '{')) || il > 1){
+               char const *cp, *vp;
+
+               il -= brace;
+               vp = (ib += brace);
+
+               for(i = 0; il > 0 && (c = *ib, a_SHEXP_ISVARC(c)); ++i)
+                  --il, ++ib;
+
+               if(brace){
+                  if(il == 0 || *ib != '}'){
+                     if(skipq){
+                        assert(surplus && quotec == '\'');
+                        continue;
+                     }
+                     if(dolog)
+                        n_err(_("Closing brace missing for ${VAR}: \"%.*s\"\n"),
+                           (int)input->l, input->s);
+                     rv |= n_SHEXP_STATE_STOP |
+                           n_SHEXP_STATE_ERR_QUOTEOPEN | n_SHEXP_STATE_ERR_BRACE;
+                     goto jleave;
+                  }
+                  --il, ++ib;
+               }
+
+               if(skipq)
+                  continue;
+
+               if(i == 0){
+                  if(brace){
+                     if(dolog)
+                        n_err(_("Bad substitution (${}): \"%.*s\"\n"),
+                           (int)input->l, input->s);
+                     rv |= n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_BADSUB;
+                     goto jleave;
+                  }
+                  c = '$';
+               }else{
+                  vp = savestrbuf(vp, i);
+                  /* Check getenv(3) shall no internal variable exist! */
+                  if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL)
+                     store = n_string_push_cp(store, cp);
+                  continue;
+               }
+            }
+         }else if(c == '`' && quotec == '"' && il > 0){ /* TODO shell command */
+            continue;
+         }
+      }
+
+      if(!skipq)
+         store = n_string_push_c(store, c);
+   }
+
+   if(quotec != '\0'){
+      if(dolog)
+         n_err(_("Missing closing quote in: \"%.*s\"\n"),
+            (int)input->l, input->s);
+      rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
+   }
+jleave:
+   input->s = UNCONST(ib);
+   input->l = il;
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL struct n_string *
+n_shell_quote(struct n_string *store, struct str const *input){
+   /* TODO In v15 we need to save (possibly normalize) away user input,
+    * TODO so that the ORIGINAL (normalized) input can be used directly.
+    * Because we're the last, stay primitive */
+   bool_t qflag;
+   size_t j, i, il;
+   char const *ib;
+   NYD2_ENTER;
+
+   assert(store != NULL);
+   assert(input != NULL);
+   assert(input->l == 0 || input->s != NULL);
+
+   ib = input->s;
+   if((il = input->l) == UIZ_MAX)
+      il = strlen(ib);
+
+   /* Calculate necessary buffer space */
+   if(il == 0)
+      qflag = TRU1, j = 0;
+   else for(qflag = FAL0, j = sizeof("''") -1, i = 0; i < il; ++i){
+      char c = ib[i];
+
+      if(c == '\'' || !asciichar(c) || cntrlchar(c)){
+         qflag |= TRUM1;
+         j += sizeof("\\0377") -1;
+      }else if(c == '\\' || c == '$' || blankchar(c)){
+         qflag |= TRU1;
+         j += sizeof("\\ ") -1;
+      }else
+         ++j;
+   }
+   store = n_string_reserve(store, j + 3);
+
+   if(!qflag)
+      store = n_string_push_buf(store, ib, il);
+   else if(qflag == TRU1){
+      store = n_string_push_c(store, '\'');
+      store = n_string_push_buf(store, ib, il);
+      store = n_string_push_c(store, '\'');
+   }else{
+      store = n_string_push_buf(store, "$'", sizeof("$'") -1);
+
+      for(qflag = FAL0, j = 0, i = 0; i < il; ++i){
+         char c = ib[i];
+
+         if(c == '\'' || !asciichar(c) || cntrlchar(c)){
+            store = n_string_push_c(store, '\\');
+            if(cntrlchar(c)){
+               char c2 = c;
+
+               switch(c){
+               case 0x07: c = 'a'; break;
+               case 0x08: c = 'b'; break;
+               case 0x09: c = 't'; break;
+               case 0x0A: c = 'n'; break;
+               case 0x0B: c = 'v'; break;
+               case 0x0C: c = 'f'; break;
+               case 0x0D: c = 'r'; break;
+               default: break;
+               }
+               if(c == c2){
+                  store = n_string_push_c(store, 'c');
+                  c ^= 0x40;
+               }
+               store = n_string_push_c(store, c);
+               continue;
+            }else if(c != '\''){
+               store = n_string_push_buf(store, "xFF", sizeof("xFF") -1);
+               n_c_to_hex_base16(&store->s_dat[store->s_len - 2], c);
+               continue;
+            }
+         }
+         store = n_string_push_c(store, c);
+      }
+      store = n_string_push_c(store, '\'');
+   }
+   NYD2_LEAVE;
+   return store;
+}
+
+FL char *
+n_shell_quote_cp(char const *cp){
+   struct n_string store;
+   struct str input;
+   char *rv;
+   NYD2_ENTER;
+
+   assert(cp != NULL);
+
+   input.s = UNCONST(cp);
+   input.l = UIZ_MAX;
+   rv = n_string_cp(n_shell_quote(n_string_creat_auto(&store), &input));
+   n_string_gut(n_string_drop_ownership(&store));
+   NYD2_LEAVE;
+   return rv;
 }
 
 /* s-it-mode */

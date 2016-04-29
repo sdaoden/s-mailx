@@ -39,7 +39,8 @@
 #define RAWLIST      ARG_RAWLIST
 #define NOLIST       ARG_NOLIST
 #define NDMLIST      ARG_NDMLIST
-#define ECHOLIST     ARG_ECHOLIST
+#define WYSHLIST     ARG_WYSHLIST
+
 #define ARG_ARGMASK  ARG_ARGMASK
 #define A            ARG_A
 #define F            ARG_F
@@ -197,7 +198,7 @@
      DS(N_("Forward <message> to <address>")) },
    { "edit", &c_editor, (A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <message-list>")) },
-   { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
+   { "echo", &c_echo, (H | M | WYSHLIST), 0, 1000
      DS(N_("Echo given arguments")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
@@ -359,7 +360,7 @@
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
+   { "urlencode", &c_urlencode, (H | M | RAWLIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
    { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
      DS(N_("Decode the URL-encoded <URL-list> into strings")) },
@@ -391,7 +392,7 @@
      DS(N_("Print the Mail-User-Agent version")) },
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
-     DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
+     DS(N_("[<show>], <clear> or select <NO> from editor history")) },
 
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
@@ -413,12 +414,13 @@
      DS(N_("Print statistics about the auto-reclaimed string store")) },
 #endif
 
+#undef WYSHLIST
 #undef MSGLIST
 #undef STRLIST
 #undef RAWLIST
 #undef NOLIST
 #undef NDMLIST
-#undef ECHOLIST
+
 #undef ARG_ARGMASK
 #undef A
 #undef F

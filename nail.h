@@ -840,12 +840,12 @@ enum fedit_mode {
 
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
-   FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
-   FEXP_SHELL     = 1<<1,     /* No folder %,#,&,+ stuff, yet sh(1) */
+   FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
+   FEXP_LOCAL = 1<<1,         /* Result must be local file/maildir */
    FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
-   FEXP_SILENT    = 1<<3,     /* Don't print but only return errors */
-   FEXP_MULTIOK   = 1<<4,     /* Expansion to many entries is ok */
-   FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_SILENT = 1<<3,        /* Don't print but only return errors */
+   FEXP_MULTIOK = 1<<4,       /* Expansion to many entries is ok */
+   FEXP_NSHELL = 1<<5         /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
 enum n_file_lock_type{
@@ -1027,6 +1027,21 @@ enum sendaction {
    SEND_QUOTE,       /* convert for quoting */
    SEND_QUOTE_ALL,   /* same, include all MIME parts */
    SEND_DECRYPT      /* decrypt */
+};
+
+enum n_shexp_state{
+   n_SHEXP_STATE_NONE,
+   n_SHEXP_STATE_STOP = 1<<1,          /* \c0 or # comment seen last */
+
+   n_SHEXP_STATE_UNICODE = 1<<1,       /* \[Uu] used */
+
+   n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
+   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* \[Uu] used: faulty or !OPT_UNICODE */
+   n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
+   n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* QUOTEOPEN + no } brace for ${VAR */
+   n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<21, /* Quote remains open at EOS */
+   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 21)
 };
 
 enum n_sigman_flags{
@@ -1931,10 +1946,11 @@ struct message {
 enum argtype {
    ARG_MSGLIST    = 0,        /* Message list type */
    ARG_STRLIST    = 1,        /* A pure string */
-   ARG_RAWLIST    = 2,        /* Shell string list */
+   ARG_RAWLIST    = 2,        /* getrawlist(), old style */
    ARG_NOLIST     = 3,        /* Just plain 0 */
    ARG_NDMLIST    = 4,        /* Message list, no defaults */
-   ARG_ECHOLIST   = 5,        /* Like raw list, but keep quote chars */
+   ARG_WYSHLIST   = 5,        /* getrawlist(), sh(1) compatible */
+     ARG_WYRALIST = 6,        /* _RAWLIST or _WYSHLIST (with `wysh') */
    ARG_ARGMASK    = 7,        /* Mask of the above */
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */

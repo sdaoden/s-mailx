@@ -53,6 +53,7 @@
 .ds IN [v15-compat]
 .ds OU [no v15-compat]
 .ds ID [v15 behaviour may differ]
+.ds NQ [Only new quoting rules]
 .ds BO (Boolean)
 .ds RO (Read-only)
 .
@@ -125,7 +126,11 @@
 .Bd -filled -compact -offset indent
 .Sy Compatibility note:
 S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
-Backward incompatibility has to be expected.
+Backward incompatibility has to be expected \(en
+.Sx COMMANDS
+will use
+.Xr \&\&sh 1 Ns
+-style argument quoting rules, for example.
 New and old behaviour is flagged \*(IN and \*(OU, and setting
 .Va v15-compat ,
 one of the many
@@ -1119,16 +1124,16 @@ asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
 if $features !@ HTML-FILTER
-  #set pipe-text/html="elinks -force-html -dump 1"
-  set pipe-text/html="lynx -stdin -dump -force_html"
+  #set pipe-text/html='elinks -force-html -dump 1'
+  set pipe-text/html='lynx -stdin -dump -force_html'
   # Display HTML as plain text instead
   #set pipe-text/html=@
 endif
 mimetype '@ application/mathml+xml mathml'
-set pipe-application/pdf="@&=@ \e
-  trap \e"rm -f \e\e\e"${NAIL_FILENAME_TEMPORARY}\e\e\e"\e" EXIT;\e
-  trap \e"trap \e\e\e"\e\e\e" INT QUIT TERM; exit 1\e" \e INT QUIT TERM;\e
-  xpdf \e"${NAIL_FILENAME_TEMPORARY}\e""
+wysh set pipe-application/pdf='@&=@ \e
+  trap "rm -f \e"${NAIL_FILENAME_TEMPORARY}\e"" EXIT;\e
+  trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
+  mupdf "${NAIL_FILENAME_TEMPORARY}"'
 .Ed
 .
 .Pp
@@ -1180,7 +1185,7 @@ dictionary, whereas expressions are placed in (a) list(s) which is
 .
 .Bd -literal -offset indent
 set followup-to followup-to-honour=ask-yes reply-to-honour=ask-yes
-mlist a1@b1.c1 a2@b2.c2 .*@lists\e\e.c3$
+wysh mlist a1@b1.c1 a2@b2.c2 '.*@lists\e.c3$'
 mlsubscribe a4@b4.c4 exact@lists.c3
 .Ed
 .
@@ -2401,7 +2406,7 @@ and if there are no good messages at all,
 \*(UA types
 .Dq no applicable messages
 and aborts the command.
-The arguments to commands can be quoted, using the following methods:
+\*(ID Non-message-list arguments can be quoted using the following methods:
 .
 .Pp
 .Bl -bullet -compact -offset indent
@@ -2430,13 +2435,177 @@ contain space characters if those spaces are backslash-escaped, as in
 .It
 A backslash outside of the enclosing quotes is discarded
 and the following character is treated literally as part of the argument.
-.
-.It
-An unquoted backslash at the end of a command line is discarded and the
-next line continues the command.
 .El
 .
+.
 .Pp
+Some commands which don't take message-list arguments can also be
+prefixed with the special keyword
+.Ic \&\&wysh
+to choose \*(INible behaviour, and some new commands support only the
+new quoting style (without that keyword) and are flagged \*(NQ.
+In the future \*(UA will (mostly) use
+.Xr sh 1
+compatible argument parsing:
+Non-message-list arguments can be quoted using the following shell-style
+mechanisms: the escape character, single-quotes, double-quotes and
+dollar-single-quotes; any unquoted number sign
+.Ql #
+starts a comment that ends argument processing.
+.
+.
+.Pp
+.Bl -bullet -compact -offset indent
+.It
+The literal value of any character can be preserved by preceeding it
+with the escape character backslash
+.Ql \e .
+An unquoted dollar
+.Ql $
+will cause variable expansion of the given name: \*(UA
+.Sx "INTERNAL VARIABLES"
+as well as
+.Sx ENVIRONMENT
+(shell) variables can be accessed through this mechanism, brace
+enclosing the name is supported.
+.
+.It
+Arguments which are enclosed in
+.Ql 'single-\:quotes'
+retain their literal value.
+A single-quote cannot occur within single-quotes.
+.
+.It
+The literal value of all characters enclosed in
+.Ql \(dqdouble-\:quotes\(dq
+is retained, with the exception of dollar
+.Ql $ ,
+which will cause variable expansion, as above, backquote (grave accent)
+.Ql ` ,
+(which not yet means anything special), backslash
+.Ql \e ,
+which will escape any of the characters dollar
+.Ql $
+(to prevent variable expansion), backquote (grave accent)
+.Ql ` ,
+double-quote
+.Ql \(dq
+(to prevent ending the quote) and backslash
+.Ql \e
+(to prevent escaping, i.e., to embed a backslash character as-is), but
+has no special meaning otherwise.
+.
+.It
+Arguments enclosed in
+.Ql $'dollar-\:single-\:quotes'
+extend normal single quotes in that backslash escape sequences are
+expanded as follows:
+.Pp
+.Bl -tag -compact -width "Ql \eNNN"
+.It Ql \ea
+alerts (bell).
+.It Ql \eb
+emits a backspace.
+.It Ql \eE
+an escape character.
+.It Ql \ee
+an escape character.
+.It Ql \ef
+form feed.
+.It Ql \en
+new line.
+.It Ql \er
+carriage return.
+.It Ql \et
+horizontal tab.
+.It Ql \ev
+vertical tab.
+.It Ql \e\e
+backslash character.
+.It Ql \e'
+single quote.
+.It Ql \e"
+double quote (escaping is optional).
+.It Ql \eNNN
+eight-bit byte with the octal value
+.Ql NNN
+(one to three octal digits), optionally with an additional
+.Ql 0
+suffix.
+A 0 byte will suppress further output for the quoted argument.
+.It Ql \exHH
+eight-bit byte with the hexadecimal value
+.Ql HH
+(one or two hexadecimal characters).
+A 0 byte will suppress further output for the quoted argument.
+.It Ql \eUHHHHHHHH
+the Unicode / ISO-10646 character with the hexadecimal codepoint value
+.Ql HHHHHHHH
+(one to eight hexadecimal digits) \(em note that Unicode defines the
+maximum code to be ever supported as
+.Ql 0x10FFFF
+(in planes of
+.Ql 0xFFFF
+characters each).
+This escape is only supported in locales which support Unicode (see
+.Sx "Character sets" ) ,
+in other cases the sequence will remain unexpanded unless the given code
+point is ASCII compatible.
+The character NUL will suppress further output for the quoted argument.
+.It Ql \euHHHH
+Identical to
+.Ql \eUHHHHHHHH
+except it takes only one to four hexadecimal digits.
+.It Ql \ecX
+the
+.Ql control-X
+character.
+This is a mechanism that allows usage of the non-printable (ASCII and
+compatible) control codes 0 to 31: to be able to create a printable
+representation the numeric value 64 is added to the control code of
+desire, and the resulting ASCII character set code point is then
+printed, e.g., BEL is
+.Ql 7 + 64 = 71 = G .
+Often circumflex notation is used for the visualization purpose, e.g,
+.Ql ^G ,
+but the reverse solid notation has been standardized:
+.Ql \ecG .
+The control code NUL
+.Pf ( Ql \ec@ )
+ends argument processing without producing further output.
+.It Ql \e$NAME
+Non-standard extension: expand the given variable name, as above.
+Brace enclosing the name is supported.
+.It Ql \e`{command}
+Not yet supported, just to raise awareness: Non-standard extension.
+.El
+.El
+.
+.
+.Pp
+.Sy Compatibility notes:
+\*(ID Note these are new mechanisms which are not supported by all
+commands.
+Round-tripping (feeding in things shown in list modes again) are not yet
+stable or possible at all.
+Before \*(UA will switch entirely to shell-style argument parsing there
+will be a transition phase where using
+.Ic \&\&wysh
+will emit obsoletion warnings.
+E.g., the following are equivalent:
+.
+.Bd -literal -offset indent
+mlist @any\e\e.where\e\e.example\e\e.com
+wysh mlist '@any\e.where\e.example\e.com' # This is a comment
+wysh mlist $'@any\e\e\ex2Ewhere\e\e.example\e\e\e56com' # A comment
+wysh mlist "@any\e.where\e.example\e.com"
+.Ed
+.
+.Pp
+In any event an unquoted backslash at the end of a command line is
+discarded and the next line continues the command.
+\*(ID Note that line continuation is handled before the above parsing is
+applied, i.e., the parsers documented above will see merged lines.
 Filenames, where expected, are subsequently subjected to the following
 transformations, in sequence:
 .
@@ -2475,22 +2644,24 @@ will be replaced by the expansion of the variable, if possible; \*(UA
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
-(shell) variables can be accessed through this mechanism.
-In order to include a raw
-.Ql $
-character precede it with a backslash
-.Ql \e ,
-to include a backslash double it.
-If more than a single pathname results from this expansion and the
-command is expecting one file, an error results.
+(shell) variables can be accessed through this mechanism, and the usual
+escape mechanism has to be applied to prevent interpretation.
+If the fully expanded filename results in multiple pathnames and the
+command is expecting only one file, an error results.
+\*(ID Note that in conjunction with the special forward-compatible
+.Ic \&\&wysh
+keyword a string that will be subject to filename meta expansion has to
+be protected against the otherwise possible double expansion (expansions
+of expanded content) \(en it is yet undecided wether this will later be
+a regular feature or wether expansion will only be applied during
+argument parsing.
 .Pp
-Note that in interactive display context, in order to allow simple
-value acceptance (typing
+In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
-backslash quoting is performed automatically as necessary, e.g., a file
+arguments will usually be displayed in a properly quoted form, e.g., a file
 .Ql diet\e is \ecurd.txt
-will be displayed as
-.Ql diet\e\e is \e\ecurd.txt .
+may become displayed as
+.Ql 'diet\e is \ecurd.txt' .
 .El
 .
 .Pp
@@ -2590,7 +2761,7 @@ The two argument form is identical to defining a macro as via
 .Bd -literal -offset indent
 account myisp {
   set folder=~/mail MAIL=+syste.mbox record=+sent.mbox
-  set from="myname@myisp.example (My Name)"
+  set from='myname@myisp.example (My Name)'
   set smtp=smtp://mylogin@smtp.myisp.example
 }
 .Ed
@@ -2955,24 +3126,10 @@ and makes them specially addressable.
 .
 .Mx
 .It Ic echo
-(ec) Echoes its arguments,
-resolving special names as documented for the command
-.Ic file .
-The escape sequences
-.Ql \ea ,
-.Ql \eb ,
-.Ql \ec ,
-.Ql \ef ,
-.Ql \en ,
-.Ql \er ,
-.Ql \et ,
-.Ql \ev ,
-.Ql \e\e
-and
-.Ql \e0octal-num
-are interpreted just as they are by
-.Xr printf 1
-(proper quoting provided).
+(ec) Echoes its arguments after applying
+.Xr sh 1 Ns -style
+expansions and filename transformations, as documented for
+.Sx COMMANDS .
 .
 .Mx
 .It Ic edit
@@ -4121,7 +4278,7 @@ if there is no value, i.e., a boolean variable.
 Quotation marks may be placed around any part of the assignment
 statement to quote blanks or tabs, e.g.,
 .Pp
-.Dl set indentprefix="->"
+.Dl set indentprefix='->'
 .Pp
 If an argument begins with
 .Ql no ,
@@ -5058,17 +5215,14 @@ There are boolean variables, which can only be in one of the two states
 and
 .Dq unset ,
 and value variables with a(n optional) string value.
-For the latter proper quoting is necessary upon assignment time:
-To embed whitespace (space and tabulator) in a value it either needs to
-be escaped with a backslash character, or the entire value must be
-enclosed in (double or single) quotation marks;
-To use quotation marks identical to those used to enclose the value,
-escape them with a backslash character.
-The backslash character has no special meaning except in these cases.
+For the latter proper quoting is necessary upon assignment time, the
+introduction of the section
+.Sx COMMANDS
+documents the supported quoting rules.
 .
 .Bd -literal -offset indent
-set one=val\e 1 two="val 2" \e
-    three='val "3"' four='val \e'4\e''
+wysh set one=val\e 1 two="val 2" \e
+    three='val "3"' four=$'val \e'4\e''
 varshow one two three four
 unset one two three four
 .Ed
@@ -5564,7 +5718,7 @@ command (see there for documentation), interpreted as a comma-separated
 list of custom headers to be injected, to include commas in the header
 bodies escape them with backslash, e.g.:
 .Pp
-.Dl set customhdr="Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2"
+.Dl set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
 .
 .Mx
 .It Va datefield
@@ -6603,7 +6757,7 @@ can in fact be used to adjust usage and behaviour of a following shell
 command specification by appending trigger characters to it, e.g., the
 following hypothetical command specification could be used:
 .Bd -literal -offset indent
-set pipe-X/Y="@*!++=@vim ${NAIL_FILENAME_TEMPORARY}"
+set pipe-X/Y='@*!++=@vim ${NAIL_FILENAME_TEMPORARY}'
 .Ed
 .
 .Pp
@@ -9043,7 +9197,7 @@ set ssl-no-default-ca
 # Change this only when the remote server doesn't support it:
 # maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
 # such explicit exceptions, then
-set ssl-protocol="-ALL,+TLSv1.2"
+set ssl-protocol='-ALL,+TLSv1.2'
 
 # Explicitly define the list of ciphers, which may improve security,
 # especially with protocols older than TLS v1.2.  See ciphers(1).
@@ -9051,8 +9205,8 @@ set ssl-protocol="-ALL,+TLSv1.2"
 # final list will be sorted by algorithm strength.
 # This is an example: in reality it is possibly best to only use
 # ssl-cipher-list-HOST (or -USER@HOST), as necessary, again..
-set ssl-cipher-list="ALL:!aNULL:!MEDIUM:!LOW:\e
-    !MD5:!RC4:!EXPORT:@STRENGTH"
+set ssl-cipher-list='ALL:!aNULL:!MEDIUM:!LOW:\e
+    !MD5:!RC4:!EXPORT:@STRENGTH'
 
 # Request strict transport security checks!
 set ssl-verify=strict
@@ -9086,7 +9240,7 @@ set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.mbox
 shortcut mymbox %:+mbox.mbox myrec +sent.mbox
 
 # Not really optional, e.g., for S/MIME
-set from="Your Name <address@exam.ple>"
+set from='Your Name <address@exam.ple>'
 
 # It may be necessary to set hostname and/or smtp-hostname
 # if the "SERVER" of smtp and "domain" of from don't match.
@@ -9109,13 +9263,13 @@ set emptystart \e
 retain date from to cc subject
 
 # Some mailing lists
-mlist @xyz-editor\e.xyz$ @xyzf\e.xyz$
-mlsubscribe ^xfans@xfans\e.xyz$
+mlist '@xyz-editor\e.xyz'$ '@xyzf\e.xyz$'
+mlsubscribe '^xfans@xfans\e.xyz$'
 
 # A real life example of a very huge free mail provider
 account XooglX {
   set folder=~/spool/XooglX MAIL=+syste.mbox sent=+sent
-  set from="Your Name <address@examp.ple>"
+  set from='Your Name <address@examp.ple>'
   # (The plain smtp:// proto is optional)
   set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
 }
@@ -9128,7 +9282,7 @@ account XooglX {
 # still sending the message through their normal mail provider
 account XandeX {
   set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
-  set from="Your Name <address@exam.ple>"
+  set from='Your Name <address@exam.ple>'
   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
 }
@@ -9150,26 +9304,25 @@ ghost LlS !ls -aFlS
 # We don't support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
-  localopts yes
-  set pipe-text/plain="@*#++=@\e
-    < \e"${NAIL_FILENAME_TEMPORARY}\e" awk \e
-        -v TMPFILE=\e"${NAIL_FILENAME_TEMPORARY}\e" '\e
+  wysh set pipe-text/plain=$'@*#++=@\e
+    < "${NAIL_FILENAME_TEMPORARY}" awk \e
+        -v TMPFILE="${NAIL_FILENAME_TEMPORARY}" \e'\e
       BEGIN {done=0}\e
-      /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
+      /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/{\e
         if (done++ != 0)\e
           next;\e
-        print \e"--- GPG --verify ---\e";\e
-        system(\e"gpg --verify \e" TMPFILE \e" 2>&1\e");\e
-        print \e"--- GPG --verify ---\e";\e
-        print \e"\e";\e
+        print "--- GPG --verify ---";\e
+        system("gpg --verify " TMPFILE " 2>&1");\e
+        print "--- GPG --verify ---";\e
+        print "";\e
         next;\e
       }\e
       /^-----BEGIN PGP SIGNATURE-----/,\e
-          /^-----END PGP SIGNATURE-----/ {\e
+          /^-----END PGP SIGNATURE-----/{\e
         next;\e
       }\e
       {print}\e
-      '"
+      \e''
   print
 }
 ghost V call V
@@ -9197,9 +9350,9 @@ that sets up SMTP and POP3:
 .Bd -literal -offset indent
 account XandeX {
   set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
-  set from="Your Name <address@exam.ple>"
+  set from='Your Name <address@exam.ple>'
   set netrc-lookup
-  #set agent-shell-lookup="gpg -d .pass.gpg"
+  #set agent-shell-lookup='gpg -d .pass.gpg'
 
   set smtp=smtps://smtp.yXXXXx.ru:465 \e
       smtp-hostname= hostname=yXXXXx.com

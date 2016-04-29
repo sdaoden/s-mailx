@@ -167,16 +167,7 @@ have_feat() {
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
-   # Test for [d1f1a19]
-   ${rm} -f "${MBOX}"
-   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
-      MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
-   cksum_test behave:001 "${MBOX}" '4214021069 15'
-
-   # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
-   # TODO for this to be testable we need a way to echo a variable
-   # TODO or to force echo of the prompt
-
+   __behave_wysh
    __behave_ifelse
    __behave_localopts
 
@@ -185,6 +176,168 @@ t_behave() {
    # FIXME __behave_mlist
 
    have_feat SSL/TLS && have_feat S/MIME && __behave_smime
+}
+
+__behave_wysh() {
+   # Nestable conditions test
+   ${rm} -f "${BODY}" "${MBOX}"
+   ${cat} <<- '__EOT' > "${BODY}"
+	#
+	echo abcd
+	echo a'b'c'd'
+	echo a"b"c"d"
+	echo a$'b'c$'d'
+	echo 'abcd'
+	echo "abcd"
+	echo $'abcd'
+	echo a\ b\ c\ d
+	echo a 'b c' d
+	echo a "b c" d
+	echo a $'b c' d
+	#
+	echo 'a$`"\'
+	echo "a\$\`'\"\\"
+	echo $'a\$`\'\"\\'
+	echo $'a\$`\'"\\'
+	# DIET=CURD TIED=
+	echo 'a${DIET}b${TIED}c\${DIET}d\${TIED}e' # COMMENT
+	echo "a${DIET}b${TIED}c\${DIET}d\${TIED}e"
+	echo $'a${DIET}b${TIED}c\${DIET}d\${TIED}e'
+	#
+	echo a$'\101\0101\x41\u0041\u41\U00000041\U41'c
+	echo a$'\u0041\u41\u0C1\U00000041\U41'c
+	echo a$'\377'c
+	echo a$'\0377'c
+	echo a$'\400'c
+	echo a$'\0400'c
+	echo a$'\U1100001'c
+	#
+	echo a$'b\0c'd
+	echo a$'b\00c'de
+	echo a$'b\000c'df
+	echo a$'b\0000c'dg
+	echo a$'b\x0c'dh
+	echo a$'b\x00c'di
+	echo a$'b\u0'dj
+	echo a$'b\u00'dk
+	echo a$'b\u000'dl
+	echo a$'b\u0000'dm
+	echo a$'b\U0'dn
+	echo a$'b\U00'do
+	echo a$'b\U000'dp
+	echo a$'b\U0000'dq
+	echo a$'b\U00000'dr
+	echo a$'b\U000000'ds
+	echo a$'b\U0000000'dt
+	echo a$'b\U00000000'du
+	#
+	echo a$'\cI'b
+	echo a$'\011'b
+	echo a$'\x9'b
+	echo a$'\u9'b
+	echo a$'\U9'b
+	echo a$'\c@'b c d
+	__EOT
+
+   < "${BODY}" MAILRC=/dev/null \
+      DIET=CURD TIED= "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#a b c d
+#a b c d
+#a b c d
+#a b c d
+#a$`"\
+#a$`'"\
+#a$`'"\
+#a$`'"\
+#a${DIET}b${TIED}c\${DIET}d\${TIED}e
+#aCURDbc${DIET}d${TIED}e
+#a${DIET}b${TIED}cCURDde
+#aAAAAAAAc
+#aAAÃAAc
+#aÿc
+#aÿc
+#abd
+#abde
+#abdf
+#abdg
+#abdh
+#abdi
+#abdj
+#abdk
+#abdl
+#abdm
+#abdn
+#abdo
+#abdp
+#abdq
+#abdr
+#abds
+#abdt
+#abdu
+#a	b
+#a	b
+#a	b
+#a	b
+#a	b
+#a
+   cksum_test behave:wysh_unicode "${MBOX}" '475805847 317'
+   < "${BODY}" MAILRC=/dev/null LC_ALL=C \
+      DIET=CURD TIED= "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#abcd
+#a b c d
+#a b c d
+#a b c d
+#a b c d
+#a$`"\
+#a$`'"\
+#a$`'"\
+#a$`'"\
+#a${DIET}b${TIED}c\${DIET}d\${TIED}e
+#aCURDbc${DIET}d${TIED}e
+#a${DIET}b${TIED}cCURDde
+#aAAAAAAAc
+#aAA\u0C1AAc
+#aÿc
+#aÿc
+#abd
+#abde
+#abdf
+#abdg
+#abdh
+#abdi
+#abdj
+#abdk
+#abdl
+#abdm
+#abdn
+#abdo
+#abdp
+#abdq
+#abdr
+#abds
+#abdt
+#abdu
+#a	b
+#a	b
+#a	b
+#a	b
+#a	b
+#a
+   cksum_test behave:wysh_c "${MBOX}" '2932758085 320'
+   ${rm} -f "${BODY}" "${MBOX}"
 }
 
 __behave_ifelse() {

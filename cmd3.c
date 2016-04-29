@@ -1061,27 +1061,18 @@ c_File(void *v)
 }
 
 FL int
-c_echo(void *v)
-{
-   char const **argv = v, **ap, *cp;
-   int c;
+c_echo(void *v){
+   char const **argv, **ap, *cp;
    NYD_ENTER;
 
-   for (ap = argv; *ap != NULL; ++ap) {
-      cp = *ap;
-      if ((cp = fexpand(cp, FEXP_NSHORTCUT | FEXP_NSHELL)) != NULL) {
-         if (ap != argv)
-            putchar(' ');
-         c = 0;
-         while (*cp != '\0' && (c = n_shell_expand_escape(&cp, FAL0)) > 0)
-            putchar(c);
-         /* \c ends overall processing */
-         if (c < 0)
-            goto jleave;
-      }
+   for(ap = argv = v; *ap != NULL; ++ap){
+      if(ap != argv)
+         putchar(' ');
+      if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
+         cp = *ap;
+      fputs(cp, stdout);
    }
    putchar('\n');
-jleave:
    NYD_LEAVE;
    return 0;
 }

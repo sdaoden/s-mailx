@@ -989,9 +989,10 @@ FL int         argcount(char **argv);
  * Returns the count of messages picked up or -1 on error */
 FL int         getmsglist(char *buf, int *vector, int flags);
 
-/* Scan out the list of string arguments, shell style for a RAWLIST */
-FL int         getrawlist(char const *line, size_t linesize,
-                  char **argv, int argc, int echolist);
+/* Scan out the list of string arguments according to rm, return -1 on error;
+ * res_dat is NULL terminated unless res_size is 0 or error occurred */
+FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+                  char const *line, size_t linesize);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
@@ -1688,6 +1689,22 @@ FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
 FL int         n_shell_expand_escape(char const **s,
                   bool_t use_prompt_extensions);
+
+/* Parse the next shell token from input (->s and ->l are adjusted to the
+ * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
+ * EQ UIZ_MAX strlen(->s) is used) and _append_ the resulting output to store.
+ * dolog states wether error logging shall be performed, TRUM1 -> OPT_D_V */
+FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
+                        struct str *input, bool_t dolog);
+
+/* Quote input in a way that can, in theory, be fed into parse_token() again.
+ * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
+ * Resulting output is _appended_ to store.
+ * TODO Note: last resort, since \u and $ expansions etc. are necessarily
+ * TODO already expanded and can thus not be reverted, but ALL we have */
+FL struct n_string *n_shell_quote(struct n_string *store,
+                     struct str const *input);
+FL char *      n_shell_quote_cp(char const *cp);
 
 /*
  * signal.c

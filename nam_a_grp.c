@@ -747,7 +747,7 @@ _group_print(struct group const *gp, FILE *fo)
       fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s \"%s\"", gp->g_id, string_quote(cp));
+      fprintf(fo, "customhdr %s \"%s\"", gp->g_id, cp);
    }
 
    putc('\n', fo);

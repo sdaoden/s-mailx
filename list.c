@@ -1240,69 +1240,119 @@ jleave:
 }
 
 FL int
-getrawlist(char const *line, size_t linesize, char **argv, int argc,
-   int echolist)
-{
-   char c, *cp2, quotec, *linebuf;
-   int argn;
+getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+      char const *line, size_t linesize){
+   int res_no;
    NYD_ENTER;
 
    pstate &= ~PS_MSGLIST_MASK;
 
-   linebuf = ac_alloc(linesize);
+   if(res_size == 0){
+      res_no = -1;
+      goto jleave;
+   }else if(UICMP(z, res_size, >, INT_MAX))
+      res_size = INT_MAX;
+   else
+      --res_size;
+   res_no = 0;
 
-   for (argn = 0;;) {
-      if (!argn || !echolist) {
-         for (; blankchar(*line); ++line)
+   if(!wysh){
+      /* And assuming result won't grow input */
+      char c2, c, quotec, *cp2, *linebuf;
+
+      linebuf = salloc(linesize);
+
+      for(;;){
+         for(; blankchar(*line); ++line)
             ;
-         if (*line == '\0')
+         if(*line == '\0')
             break;
-      }
-      if (argn >= argc - 1) {
-         n_err(_("Too many elements in the list; excess discarded\n"));
-         break;
-      }
 
-      cp2 = linebuf;
-      for (quotec = '\0'; ((c = *line++) != '\0');) {
-         if (quotec != '\0') {
-            if (c == quotec) {
-               quotec = '\0';
-               if (echolist)
-                  *cp2++ = c;
-            } else if (c == '\\') {
-               switch (c = *line++) {
-               case '\0':
-                  *cp2++ = '\\';
-                  --line;
-                  break;
-               default:
-                  if (line[-1] != quotec || echolist)
-                     *cp2++ = '\\';
-                  *cp2++ = c;
+         if(UICMP(z, res_no, >=, res_size)){
+            n_err(_("Too many input tokens for result storage\n"));
+            res_no = -1;
+            break;
+         }
+
+         cp2 = linebuf;
+         quotec = '\0';
+
+         /* TODO v15: complete switch in order mirror known behaviour */
+         while((c = *line++) != '\0'){
+            if(quotec != '\0'){
+               if(c == quotec){
+                  quotec = '\0';
+                  continue;
+               }else if(c == '\\'){
+                  if((c2 = *line++) == quotec)
+                     c = c2;
+                  else
+                     --line;
                }
-            } else
-               *cp2++ = c;
-         } else if (c == '"' || c == '\'') {
-            if (echolist)
-               *cp2++ = c;
-            quotec = c;
-         } else if (c == '\\' && !echolist)
-            *cp2++ = (*line != '\0') ? *line++ : c;
-         else if (blankchar(c))
-            break;
-         else
+            }else if(c == '"' || c == '\''){
+               quotec = c;
+               continue;
+            }else if(c == '\\'){
+               if((c2 = *line++) != '\0')
+                  c = c2;
+               else
+                  --line;
+            }else if(blankchar(c))
+               break;
             *cp2++ = c;
-      }
-      argv[argn++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
-      if (c == '\0')
-         break;
-   }
-   argv[argn] = NULL;
+         }
 
-   ac_free(linebuf);
+         res_dat[res_no++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
+         if(c == '\0')
+            break;
+      }
+   }else{
+      /* sh(1) compat mode.  Prepare shell token-wise */
+      struct n_string store;
+      struct str input;
+
+      n_string_creat_auto(&store);
+      input.s = UNCONST(line);
+      input.l = linesize;
+
+      for(;;){
+         for(; blankchar(*line); ++line)
+            ;
+         if(*line == '\0')
+            break;
+
+         if(UICMP(z, res_no, >=, res_size)){
+            n_err(_("Too many input tokens for result storage\n"));
+            res_no = -1;
+            break;
+         }
+
+         input.l -= PTR2SIZE(line - input.s);
+         input.s = UNCONST(line);
+         /* C99 */{
+            enum n_shexp_state shs;
+
+            if(((shs = n_shell_parse_token(&store, &input, TRU1)) &
+                   n_SHEXP_STATE_ERR_MASK) & ~n_SHEXP_STATE_ERR_UNICODE){
+               res_no = -1;
+               break;
+            }
+            res_dat[res_no++] = n_string_cp(&store);
+            n_string_drop_ownership(&store);
+            if(shs & n_SHEXP_STATE_STOP)
+               break;
+         }
+         line = input.s;
+      }
+
+      n_string_gut(&store);
+   }
+
+   if(res_no >= 0)
+      res_dat[(size_t)res_no] = NULL;
+jleave:
    NYD_LEAVE;
-   return argn;
+   return res_no;
 }
 
 FL int

@@ -427,8 +427,10 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
    struct a_lex_ghost *gp;
    struct a_lex_cmd const *cmd;
    int c, e;
+   bool_t wysh;
    NYD_ENTER;
 
+   wysh = FAL0;
    e = 1;
    cmd = NULL;
    gp = NULL;
@@ -482,6 +484,13 @@ jrestart:
          goto jleave0;
       cmd = a_lex_cmd_tab + 0;
       goto jexec;
+   }
+
+   /* XXX It may be the argument parse adjuster */
+   if(!wysh && c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
+      wysh = TRU1;
+      line.s = cp;
+      goto jrestart;
    }
 
    /* If this is the first evaluation, check command ghosts */
@@ -566,6 +575,8 @@ jexec:
    if(cmd->lc_argtype & ARG_V)
       temporary_arg_v_store = NULL;
 
+   if(wysh && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
+      n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
    switch(cmd->lc_argtype & ARG_ARGMASK){
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
@@ -604,12 +615,22 @@ je96:
       e = (*cmd->lc_func)(cp);
       break;
 
+   case ARG_WYSHLIST:
+      c = 1;
+      if(0){
+         /* FALLTHRU */
+   case ARG_WYRALIST:
+         c = wysh ? 1 : 0;
+         if(0){
    case ARG_RAWLIST:
-   case ARG_ECHOLIST:
-      /* A vector of strings, in shell style */
-      if((c = getrawlist(cp, line.l, arglist, NELEM(arglist),
-            ((cmd->lc_argtype & ARG_ARGMASK) == ARG_ECHOLIST))) < 0)
+            c = 0;
+         }
+      }
+
+      if((c = getrawlist((c != 0), arglist, NELEM(arglist), cp, line.l)) < 0){
+         n_err(_("Invalid argument list\n"));
          break;
+      }
       if(c < cmd->lc_minargs){
          n_err(_("`%s' requires at least %d arg(s)\n"),
             cmd->lc_name, cmd->lc_minargs);
@@ -631,7 +652,8 @@ je96:
       break;
 
    default:
-      DBG( n_panic(_("Implementation error: unknown argument type")); )
+      DBG( n_panic(_("Implementation error: unknown argument type: %d"),
+         cmd->lc_argtype & ARG_ARGMASK); )
       goto jleave0;
    }
 

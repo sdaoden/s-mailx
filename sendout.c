@@ -1243,10 +1243,11 @@ __mta_prepare_args(struct name *to, struct header *hp)
       vas_cnt = 0;
       vas = NULL;
    } else {
-      /* Don't assume anything on the content but do allocate exactly j slots */
+      /* Don't assume anything on the content but do allocate exactly j slots;
+       * like this getrawlist will never overflow (and return -1) */
       j = strlen(cp);
       vas = ac_alloc(sizeof(*vas) * j);
-      vas_cnt = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
+      vas_cnt = (size_t)getrawlist(FAL0, vas, j, cp, j);
    }
 
    i = 4 + smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
