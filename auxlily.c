@@ -307,10 +307,11 @@ _sh_exp_var(struct shvar_stack *shsp)
        *   letters, digits, and the <underscore> ('_') from the characters
        *   defined in Portable Character Set and do not begin with a digit.
        *   Other characters may be permitted by an implementation;
-       *   applications shall tolerate the presence of such names. */
+       *   applications shall tolerate the presence of such names.
+       * We do support the hyphen "-" because it is common for mailx. */
       shsp->shs_dat = vp;
       for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
-         if (!alnumchar(c) && c != '_')
+         if (!alnumchar(c) && c != '_' && c != '-')
             break;
 
       if (lc) {
