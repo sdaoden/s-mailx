@@ -1617,7 +1617,6 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    struct sendbundle sb;
    struct name *to;
    FILE *mtf, *nmtf;
-   char const *cp;
    bool_t dosign;
    enum okay rv = STOP;
    NYD_ENTER;
@@ -1628,20 +1627,6 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   /*  */
-   if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
-      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
-            EACM_NORMAL, &_sendout_error));
-   if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
-      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
-            EACM_NORMAL, &_sendout_error));
-
-   if (_sendout_error < 0) {
-      n_err(_("Some addressees in *autocc* or *autobcc* were "
-         "classified as \"hard error\"\n"));
-      goto j_leave;
-   }
-
    /* Collect user's mail from standard input.  Get the result as mtf */
    mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
    if (mtf == NULL)
@@ -1649,26 +1634,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    dosign = TRUM1;
 
+   /* */
    if (options & OPT_INTERACTIVE) {
-      bool_t eot = TRU1;
-
-      if ((eot = (ok_blook(bsdcompat) || ok_blook(askatend)))) {
-         if (hp->h_cc == NULL && ok_blook(askcc))
-            eot = FAL0, grab_headers(hp, GCC, 1);
-         if (hp->h_bcc == NULL && ok_blook(askbcc))
-            eot = FAL0, grab_headers(hp, GBCC, 1);
-      }
-
-      if (hp->h_attach == NULL && ok_blook(askattach))
-         eot = FAL0, edit_attachments(&hp->h_attach);
-
       if (ok_blook(asksign))
-         eot = FAL0, dosign = getapproval(_("Sign this message"), TRU1);
-
-      if (eot) {
-         printf(_("EOT\n"));
-         fflush(stdout);
-      }
+         dosign = getapproval(_("Sign this message"), TRU1);
    }
 
    if (fsize(mtf) == 0) {
@@ -1867,38 +1836,23 @@ do {\
    if (w & GDATE)
       mkdate(fo, "Date"), ++gotcha;
    if (w & GIDENT) {
-      struct name *fromf = NULL, *senderf = NULL;
+      if (hp->h_from == NULL || hp->h_sender == NULL)
+         setup_from_and_sender(hp);
 
-      /* If -t parsed or composed From: then take it.  With -t we otherwise
-       * want -r to be honoured in favour of *from* in order to have
-       * a behaviour that is compatible with what users would expect from e.g.
-       * postfix(1) */
-      if ((fromf = hp->h_from) != NULL ||
-            ((pstate & PS_t_FLAG) && (fromf = option_r_arg) != NULL)) {
-         if (fmt("From:", fromf, fo, ff))
-            goto jleave;
-         ++gotcha;
-      } else if ((addr = myaddrs(hp)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "From:", fo, &fromf,
-               GFULLEXTRA))
+      if (hp->h_from != NULL) {
+         if (fmt("From:", hp->h_from, fo, ff))
             goto jleave;
          ++gotcha;
       }
-      hp->h_from = fromf;
 
-      if ((senderf = hp->h_sender) != NULL) {
-         if (fmt("Sender:", senderf, fo, ff))
-            goto jleave;
-         ++gotcha;
-      } else if ((addr = ok_vlook(sender)) != NULL) {
-         if (_putname(addr, w, action, &gotcha, "Sender:", fo, &senderf,
-               GFULLEXTRA))
+      if (hp->h_sender != NULL) {
+         if (fmt("Sender:", hp->h_sender, fo, ff))
             goto jleave;
          ++gotcha;
       }
-      hp->h_sender = senderf;
 
-      if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
+      fromasender = UNCONST(check_from_and_sender(hp->h_from, hp->h_sender));
+      if (fromasender == NULL)
          goto jleave;
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
    }

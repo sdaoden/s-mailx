@@ -54,8 +54,8 @@ static int              _coll_jmp_p;      /* whether to long jump */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static sigjmp_buf       _coll_pipejmp;    /* On broken pipe */
 
-/* Handle `~:', `~_' */
-static void       _execute_command(struct header *hp, char *linebuf,
+/* Handle `~:', `~_' and some hooks; hp may be NULL */
+static void       _execute_command(struct header *hp, char const *linebuf,
                      size_t linesize);
 
 /* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
@@ -102,9 +102,11 @@ static void       collhup(int s);
 
 static int        putesc(char const *s, FILE *stream);
 
+/* Call the hook macname */
+static void a_coll_call_hook(struct header *hp, char const *macname);
+
 static void
-_execute_command(struct header *hp, char *linebuf, size_t linesize)
-{
+_execute_command(struct header *hp, char const *linebuf, size_t linesize){
    /* The problem arises if there are rfc822 message attachments and the
     * user uses `~:' to change the current file.  TODO Unfortunately we
     * TODO cannot simply keep a pointer to, or increment a reference count
@@ -121,11 +123,9 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
    NYD_ENTER;
 
    /* If the above todo is worked, remove or outsource to attachments.c! */
-   if ((ap = hp->h_attach) != NULL) do
-      if (ap->a_msgno) {
-         mnlen = strlen(mailname) +1;
-         mnbuf = ac_alloc(mnlen);
-         memcpy(mnbuf, mailname, mnlen);
+   if(hp != NULL && (ap = hp->h_attach) != NULL) do
+      if(ap->a_msgno){
+         mnbuf = sstrdup(mailname);
          break;
       }
    while ((ap = ap->a_flink) != NULL);
@@ -137,7 +137,7 @@ _execute_command(struct header *hp, char *linebuf, size_t linesize)
       if (strncmp(mnbuf, mailname, mnlen))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
-      ac_free(mnbuf);
+      free(mnbuf);
    }
    NYD_LEAVE;
 }
@@ -604,6 +604,41 @@ jleave:
    return rv;
 }
 
+static void
+a_coll_call_hook(struct header *hp, char const *macname){ /* TODO v15: drop */
+   char const *val;
+   NYD2_ENTER;
+
+   if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
+      val = "";
+   ok_vset(compose_from, val);
+   if((val = detract(hp->h_sender, 0)) == NULL)
+      val = "";
+   ok_vset(compose_sender, val);
+   if((val = detract(hp->h_to, GNAMEONLY)) == NULL)
+      val = "";
+   ok_vset(compose_to, val);
+   if((val = detract(hp->h_cc, GNAMEONLY)) == NULL)
+      val = "";
+   ok_vset(compose_cc, val);
+   if((val = detract(hp->h_bcc, GNAMEONLY)) == NULL)
+      val = "";
+   ok_vset(compose_bcc, val);
+   if((val = hp->h_subject) == NULL)
+      val = "";
+   ok_vset(compose_subject, val);
+
+   call_compose_mode_hook(macname);
+
+   ok_vclear(compose_subject);
+   ok_vclear(compose_bcc);
+   ok_vclear(compose_cc);
+   ok_vclear(compose_to);
+   ok_vclear(compose_sender);
+   ok_vclear(compose_from);
+   NYD2_LEAVE;
+}
+
 FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
    char *quotefile, int doprefix, si8_t *checkaddr_err)
@@ -655,16 +690,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    }
 
-   {
-      char const *cp_obsolete = ok_vlook(NAIL_HEAD);
-      if(cp_obsolete != NULL)
-         OBSOLETE(_("please use *message-inject-head* instead of *NAIL_HEAD*"));
-
-      if(((cp = ok_vlook(message_inject_head)) != NULL ||
-         (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
-      goto jerr;
-   }
-
    /* If we are going to prompt for a subject, refrain from printing a newline
     * after the headers (since some people mind) */
    getfields = 0;
@@ -687,74 +712,93 @@ collect(struct header *hp, int printheaders, struct message *mp,
                t &= ~GNL, getfields |= GCC;
          }
       }
-
-      if (printheaders && !ok_blook(editalong)) {
-         puthead(TRU1, hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
-         fflush(stdout);
-      }
-   }
-
-   /* Quote an original message */
-   if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
-      quoteig = allignore;
-      action = SEND_QUOTE;
-      if (doprefix) {
-         quoteig = fwdignore;
-         if ((cp = ok_vlook(fwdheading)) == NULL)
-            cp = "-------- Original Message --------";
-         if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
-            goto jerr;
-      } else if (!strcmp(quote, "noheading")) {
-         /*EMPTY*/;
-      } else if (!strcmp(quote, "headers")) {
-         quoteig = ignore;
-      } else if (!strcmp(quote, "allheaders")) {
-         quoteig = NULL;
-         action = SEND_QUOTE_ALL;
-      } else {
-         cp = hfield1("from", mp);
-         if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-            if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
-               goto jerr;
-            if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
-               goto jerr;
-         }
-      }
-      if (fflush(_coll_fp))
-         goto jerr;
-      if (doprefix)
-         cp = NULL;
-      else if ((cp = ok_vlook(indentprefix)) == NULL)
-         cp = INDENT_DEFAULT;
-      if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
-         goto jerr;
-   }
-
-   /* Print what we have sofar also on the terminal (if useful) */
-   if ((options & OPT_INTERACTIVE) && !ok_blook(editalong)) {
-      rewind(_coll_fp);
-      while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-         putc(c, stdout);
-      if (fseek(_coll_fp, 0, SEEK_END))
-         goto jerr;
-      /* Ensure this is clean xxx not really necessary? */
-      fflush(stdout);
    }
 
    escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
    _coll_hadintr = 0;
 
    if (!sigsetjmp(_coll_jmp, 1)) {
+      /* Ask for some headers first, as necessary */
       if (getfields)
          grab_headers(hp, getfields, 1);
+
+      /* Execute compose-post-hook TODO completely v15-compat intermediate!! */
+      if((cp = ok_vlook(on_compose_enter)) != NULL){
+         setup_from_and_sender(hp);
+         a_coll_call_hook(hp, cp);
+      }
+
+      /* C99 */{
+         char const *cp_obsolete = ok_vlook(NAIL_HEAD);
+         if(cp_obsolete != NULL)
+            OBSOLETE(_("please use *message-inject-head* "
+               "instead of *NAIL_HEAD*"));
+
+         if(((cp = ok_vlook(message_inject_head)) != NULL ||
+            (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
+         goto jerr;
+      }
+
+      /* Quote an original message */
+      if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
+         quoteig = allignore;
+         action = SEND_QUOTE;
+         if (doprefix) {
+            quoteig = fwdignore;
+            if ((cp = ok_vlook(fwdheading)) == NULL)
+               cp = "-------- Original Message --------";
+            if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
+               goto jerr;
+         } else if (!strcmp(quote, "noheading")) {
+            /*EMPTY*/;
+         } else if (!strcmp(quote, "headers")) {
+            quoteig = ignore;
+         } else if (!strcmp(quote, "allheaders")) {
+            quoteig = NULL;
+            action = SEND_QUOTE_ALL;
+         } else {
+            cp = hfield1("from", mp);
+            if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
+               if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
+                  goto jerr;
+               if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
+                  goto jerr;
+            }
+         }
+         if (fflush(_coll_fp))
+            goto jerr;
+         if (doprefix)
+            cp = NULL;
+         else if ((cp = ok_vlook(indentprefix)) == NULL)
+            cp = INDENT_DEFAULT;
+         if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
+            goto jerr;
+      }
+
       if (quotefile != NULL) {
          if (_include_file(quotefile, &lc, &cc, TRU1, FAL0) != 0)
             goto jerr;
       }
-      if ((options & OPT_INTERACTIVE) && ok_blook(editalong)) {
-         rewind(_coll_fp);
-         mesedit('e', hp);
-         goto jcont;
+
+      if (options & OPT_INTERACTIVE) {
+         /* Print what we have sofar also on the terminal (if useful) */
+         if (!ok_blook(editalong)) {
+            if (printheaders)
+               puthead(TRU1, hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+
+            rewind(_coll_fp);
+            while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
+               putc(c, stdout);
+            if (fseek(_coll_fp, 0, SEEK_END))
+               goto jerr;
+
+            /* Ensure this is clean xxx not really necessary? */
+            fflush(stdout);
+         } else {
+            rewind(_coll_fp);
+            mesedit('e', hp);
+            goto jcont;
+         }
       }
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
@@ -1042,6 +1086,32 @@ jputline:
    }
 
 jout:
+   /* Execute compose-post-hook TODO completely v15-compat intermediate!! */
+   if((cp = ok_vlook(on_compose_leave)) != NULL){
+      setup_from_and_sender(hp);
+      a_coll_call_hook(hp, cp);
+   }
+
+   /* Final change to edit headers, if not already above */
+   if (ok_blook(bsdcompat) || ok_blook(askatend)) {
+      if (hp->h_cc == NULL && ok_blook(askcc))
+         grab_headers(hp, GCC, 1);
+      if (hp->h_bcc == NULL && ok_blook(askbcc))
+         grab_headers(hp, GBCC, 1);
+   }
+   if (hp->h_attach == NULL && ok_blook(askattach))
+      edit_attachments(&hp->h_attach);
+
+   /* Add automatic receivers */
+   if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
+      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
+            EACM_NORMAL, checkaddr_err));
+   if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
+      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
+            EACM_NORMAL, checkaddr_err));
+   if (*checkaddr_err != 0)
+      goto jerr;
+
    /* Place signature? */
    if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
       if((quote = file_expand(cp)) == NULL){

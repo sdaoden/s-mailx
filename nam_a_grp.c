@@ -1120,24 +1120,23 @@ detract(struct name *np, enum gfield ntype)
 {
    char *topp, *cp;
    struct name *p;
-   int comma, s;
+   int flags, s;
    NYD_ENTER;
 
    topp = NULL;
    if (np == NULL)
       goto jleave;
 
-   comma = ntype & GCOMMA;
-   ntype &= ~GCOMMA;
+   flags = ntype & (GCOMMA | GNAMEONLY);
+   ntype &= ~(GCOMMA | GNAMEONLY);
    s = 0;
-   if ((options & OPT_DEBUG) && comma)
-      n_err(_("detract() asked to insert commas\n"));
+
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
-      s += strlen(p->n_fullname) +1;
-      if (comma)
-         s++;
+      s += strlen(flags & GNAMEONLY ? p->n_name : p->n_fullname) +1;
+      if (flags & GCOMMA)
+         ++s;
    }
    if (s == 0)
       goto jleave;
@@ -1148,13 +1147,13 @@ detract(struct name *np, enum gfield ntype)
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
-      cp = sstpcpy(cp, p->n_fullname);
-      if (comma && p->n_flink != NULL)
+      cp = sstpcpy(cp, (flags & GNAMEONLY ? p->n_name : p->n_fullname));
+      if ((flags & GCOMMA) && p->n_flink != NULL)
          *cp++ = ',';
       *cp++ = ' ';
    }
    *--cp = 0;
-   if (comma && *--cp == ',')
+   if ((flags & GCOMMA) && *--cp == ',')
       *cp = 0;
 jleave:
    NYD_LEAVE;

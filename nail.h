@@ -1154,6 +1154,16 @@ enum program_state {
  * ok_[bv]set() and ok_[bv]clear().
  * Note: see the comments in accmacvar.c before changing *anything* in here! */
 enum okeys {
+   /* TODO likely temporary hook data, v15 drop */
+   ok_v_on_compose_enter,
+   ok_v_on_compose_leave,
+   ok_v_compose_from,
+   ok_v_compose_sender,
+   ok_v_compose_to,
+   ok_v_compose_cc,
+   ok_v_compose_bcc,
+   ok_v_compose_subject,
+
    ok_b_add_file_recipients,
    ok_v_agent_shell_lookup,
    ok_b_allnet,
@@ -1731,10 +1741,11 @@ enum gfield {
 
    GNL            = 1<< 4,    /* Print blank line after */
    GDEL           = 1<< 5,    /* Entity removed from list */
-   GCOMMA         = 1<< 6,    /* detract puts in commas */
+   GCOMMA         = 1<< 6,    /* detract() puts in commas */
    GUA            = 1<< 7,    /* User-Agent field */
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
+   GNAMEONLY      = 1<<10,    /* detract() does NOT use fullnames */
 
    GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
    GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-ID:) */

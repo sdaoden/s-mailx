@@ -220,8 +220,11 @@ FL int         c_define(void *v);
 FL int         c_undefine(void *v);
 FL int         c_call(void *v);
 
-/* Check wether a *folder-hook* exists for the currently active mailbox */
+/* TODO Check wether a *folder-hook* exists for the currently active mailbox */
 FL bool_t      check_folder_hook(bool_t nmail);
+
+/* TODO v15 drop Invoke compose hook macname */
+FL void        call_compose_mode_hook(char const *macname);
 
 /* Accounts: `account', `unaccount' */
 FL int         c_account(void *v);
@@ -1089,6 +1092,9 @@ FL time_t      combinetime(int year, int month, int day,
                   int hour, int minute, int second);
 
 FL void        substdate(struct message *m);
+
+/* TODO Weird thing that tries to fill in From: and Sender: */
+FL void        setup_from_and_sender(struct header *hp);
 
 /* Note: returns 0x1 if both args were NULL */
 FL struct name const * check_from_and_sender(struct name const *fromfield,

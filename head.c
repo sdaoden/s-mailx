@@ -1958,6 +1958,33 @@ substdate(struct message *m)
    NYD_LEAVE;
 }
 
+FL void
+setup_from_and_sender(struct header *hp)
+{
+   char const *addr;
+   struct name *np;
+   NYD_ENTER;
+
+   /* If -t parsed or composed From: then take it.  With -t we otherwise
+    * want -r to be honoured in favour of *from* in order to have
+    * a behaviour that is compatible with what users would expect from e.g.
+    * postfix(1) */
+   if ((np = hp->h_from) != NULL ||
+         ((pstate & PS_t_FLAG) && (np = option_r_arg) != NULL)) {
+      ;
+   } else if ((addr = myaddrs(hp)) != NULL)
+      np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+   hp->h_from = np;
+
+   if ((np = hp->h_sender) != NULL) {
+      ;
+   } else if ((addr = ok_vlook(sender)) != NULL)
+      np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+   hp->h_sender = np;
+
+   NYD_LEAVE;
+}
+
 FL struct name const *
 check_from_and_sender(struct name const *fromfield,
    struct name const *senderfield)

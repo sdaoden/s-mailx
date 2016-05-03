@@ -787,8 +787,7 @@ commands(void)
       interrupts = 0;
       handlerstacktop = NULL;
 
-      if (temporary_localopts_store != NULL) /* XXX intermediate hack */
-         temporary_localopts_free(); /* XXX intermediate hack */
+      temporary_localopts_free(); /* XXX intermediate hack */
       sreset((pstate & PS_SOURCING) != 0);
       if (!(pstate & PS_SOURCING)) {
          char *cp;

@@ -2821,23 +2821,20 @@ A defined macro can be invoked explicitly by using the
 .Ic call
 or
 .Ic ~
-commands, or implicitly by setting the
-.Va folder-hook
-or
-.Va folder-hook-FOLDER
-variables.
+commands, or implicitly if a macro hook is triggered, e.g., a
+.Va folder-hook .
 Note that interpretation of
 .Ic localopts
 depends on how (i.e.,
 .Dq as what :
-normal macro, folder hook, account switch) the macro is invoked.
+normal macro, folder hook, hook, account switch) the macro is invoked.
 Macros can be deleted via
 .Ic undefine .
 .Pp
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
 Please be aware of that and possibly embed a version check in a resource
-file of yours.
+file of yours!
 .
 .Mx
 .It Ic delete
@@ -5747,24 +5744,11 @@ only include newly arrived messages then.
 .Ic localopts
 are activated by default in a folder hook, causing the covered settings
 to be reverted once the folder is left again.
-.Bd -filled -offset indent
+.Pp
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
-To be on the absolutely safe side and avoid any surprises it may be wise
-to use wrappers that depend on the program version, e.g.,:
-.Ed
-.Bd -literal -offset indent
-if $version-major < 15
-  define sent-hook {
-    echo "pre v15"
-  }
-else
-  define sent-hook {
-    echo "Please re-verify sent-hook (post v15)"
-  }
-endif
-folder-hook-+sent=sent-hook
-.Ed
+Please be aware of that and possibly embed a version check in a resource
+file of yours.
 .
 .Mx
 .It Va folder-hook-FOLDER
@@ -6430,6 +6414,30 @@ If this variable is set to the special value
 .Ql nopoll
 then a Maildir folder will not be rescanned completely, but only
 timestamp changes are detected.
+.
+.Mx
+.Mx
+.It Va on-compose-enter , on-compose-leave
+\*(ID Macro hooks which will be executed before compose mode is
+entered, and after composing has been finished, respectively.
+Please note that this interface is very likely to change in v15, and
+should therefore possibly even be seen as experimental.
+.Ic localopts
+are by default enabled for these hooks, causing any setting to be
+forgotten after the message has been sent.
+The following variables will be set temporarily during execution of the
+macros.
+.Pp
+.Bl -tag -compact -width ".It Va compose_subject"
+.It Va compose-from
+.Va from .
+.It Va compose-sender
+.Va sender .
+.It Va compose-to , compose-cc , compose-bcc
+The list of receiver addresses as a space-separated list.
+.It Va compose-subject
+The subject.
+.El
 .
 .Mx
 .It Va outfolder

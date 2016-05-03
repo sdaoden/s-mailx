@@ -133,6 +133,8 @@ static struct lostack *_localopts;  /* Currently executing macro unroll list */
  * TODO today via a static lostack, it should be a field in mailbox, once that
  * TODO is a real multi-instance object */
 static struct var    *_folder_hook_localopts;
+/* TODO Ditto, compose hooks */
+static struct var    *a_macvar_compose_localopts;
 
 /* TODO once we have a dynamically sized hashtable we could unite _macros and
  * TODO _variables into a single hashtable, stripping down fun interface;
@@ -1532,6 +1534,24 @@ jleave:
    return rv;
 }
 
+FL void
+call_compose_mode_hook(char const *macname) /* TODO temporary, v15: drop */
+{
+   struct macro *mp;
+   NYD_ENTER;
+
+   if ((mp = _ma_look(macname, NULL, MA_NONE)) == NULL)
+      n_err(_("Cannot call *on-compose-*-hook*: "
+         "macro \"%s\" does not exist\n"), macname);
+   else {
+      pstate &= ~PS_HOOK_MASK;
+      pstate |= PS_HOOK;
+      _ma_exec(mp, &a_macvar_compose_localopts, TRU1);
+      pstate &= ~PS_HOOK_MASK;
+   }
+   NYD_LEAVE;
+}
+
 FL int
 c_account(void *v)
 {
@@ -1661,6 +1681,14 @@ temporary_localopts_free(void) /* XXX intermediate hack */
       x = x->up;
       if (losp->s_localopts != NULL)
          _localopts_unroll(&losp->s_localopts);
+   }
+
+   if (a_macvar_compose_localopts != NULL) {
+      void *save = _localopts;
+      _localopts = NULL;
+      _localopts_unroll(&a_macvar_compose_localopts);
+      a_macvar_compose_localopts = NULL;
+      _localopts = save;
    }
    NYD_LEAVE;
 }
