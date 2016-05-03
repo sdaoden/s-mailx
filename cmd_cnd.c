@@ -124,7 +124,14 @@ jesyn:
       break;
    case '$':
       /* Look up the value in question, we need it anyway */
-      ++cp;
+      if(*++cp == '{'){
+         size_t i = strlen(cp);
+
+         if(i > 0 && cp[i - 1] == '}')
+            cp = savestrbuf(++cp, i -= 2);
+         else
+            goto jesyn;
+      }
       lhv = noop ? NULL : vok_vlook(cp);
 
       /* Single argument, "implicit boolean" form? */
@@ -163,6 +170,16 @@ jesyn:
       if (*rhv == '$') {
          if (*++rhv == '\0')
             goto jesyn;
+         else if(*rhv == '{'){
+            size_t i = strlen(rhv);
+
+            if(i > 0 && rhv[i - 1] == '}')
+               rhv = savestrbuf(++rhv, i -= 2);
+            else{
+               cp = --rhv;
+               goto jesyn;
+            }
+         }
          rhv = noop ? NULL : vok_vlook(rhv);
       }
 

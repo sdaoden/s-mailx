@@ -3334,11 +3334,20 @@ for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
-It is possible to check a variable for existence or compare its
-expansion against a user given value or another variable via the
+It is possible to check
+.Sx "INTERNAL VARIABLES"
+as well as
+.Sx ENVIRONMENT
+variables for existence or compare their expansion against a user given
+value or another variable by using the
 .Ql $
 .Pf ( Dq variable next )
-conditional trigger character.
+conditional trigger character;
+a variable on the right hand side may be signalled using the same
+mechanism.
+The variable names may be enclosed in a pair of matching braces.
+.
+.Pp
 The available comparison operators are
 .Ql <
 (less than),
@@ -3406,7 +3415,7 @@ if $ttycharset == "UTF-8"
   echo *ttycharset* is set to UTF-8, case-insensitively
 endif
 set t1=one t2=one
-if $t1 == $t2
+if ${t1} == ${t2}
   echo These two variables are equal
 endif
 if $version-major >= 15
@@ -3416,10 +3425,10 @@ if $version-major >= 15
       echo ..in an X terminal
     endif
   endif
-  if [ [ true ] && [ [ $debug ] || [ $verbose ] ] ]
+  if [ [ true ] && [ [ ${debug} ] || [ $verbose ] ] ]
     echo Noisy, noisy
   endif
-  if true && $debug || $verbose
+  if true && $debug || ${verbose}
     echo Left associativity, as is known from the shell
   endif
   if ! ! true && ! [ ! $debug && ! $verbose ]

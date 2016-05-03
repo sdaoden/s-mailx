@@ -628,7 +628,29 @@ __behave_ifelse() {
 		else
 		   echo 59.err
 		endif
-      # Unary !
+		# Some more en-braced variables
+		set diet=yo curd=ho
+		if ${diet} == ${curd}
+		   echo 70.err
+		else
+		   echo 70.ok
+		endif
+		if ${diet} != ${curd}
+		   echo 71.ok
+		else
+		   echo 71.err
+		endif
+		if $diet == ${curd}
+		   echo 72.err
+		else
+		   echo 72.ok
+		endif
+		if ${diet} == $curd
+		   echo 73.err
+		else
+		   echo 73.ok
+		endif
+		# Unary !
 		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
 		   echo 80.ok
 		else
@@ -721,7 +743,7 @@ __behave_ifelse() {
 		   echo 98.err
 		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '3542193361 607'
+   cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
