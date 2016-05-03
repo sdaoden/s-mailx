@@ -192,7 +192,8 @@ static struct macro *_ma_look(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
-static int           _ma_exec(struct macro const *mp, struct var **unroller);
+static int           _ma_exec(struct macro const *mp, struct var **unroller,
+                        bool_t localopts);
 
 /* User display helpers */
 static int           _ma_list(enum ma_flags mafl);
@@ -755,7 +756,7 @@ jleave:
 }
 
 static int
-_ma_exec(struct macro const *mp, struct var **unroller)
+_ma_exec(struct macro const *mp, struct var **unroller, bool_t localopts)
 {
    struct lostack los;
    char *buf;
@@ -765,9 +766,9 @@ _ma_exec(struct macro const *mp, struct var **unroller)
    NYD2_ENTER;
 
    los.s_up = _localopts;
-   los.s_mac = UNCONST(mp);
-   los.s_localopts = NULL;
-   los.s_unroll = FAL0;
+   los.s_mac = UNCONST(mp); /* But not used.. */
+   los.s_localopts = (unroller == NULL) ? NULL : *unroller;
+   los.s_unroll = localopts;
    _localopts = &los;
 
    x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
@@ -1463,7 +1464,7 @@ c_call(void *v)
       goto jerr;
    }
 
-   rv = _ma_exec(mp, NULL);
+   rv = _ma_exec(mp, NULL, FAL0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1473,7 +1474,7 @@ jerr:
 }
 
 FL bool_t
-check_folder_hook(bool_t nmail)
+check_folder_hook(bool_t nmail) /* TODO temporary, v15: drop */
 {
    size_t len;
    char *var, *cp;
@@ -1522,7 +1523,7 @@ jmac:
       pstate |= PS_HOOK;
       unroller = &_folder_hook_localopts;
    }
-   rv = (_ma_exec(mp, unroller) == 0);
+   rv = (_ma_exec(mp, unroller, TRU1) == 0);
    pstate &= ~PS_HOOK_MASK;
 
 jleave:
@@ -1586,7 +1587,7 @@ c_account(void *v)
    account_name = (mp != NULL) ? mp->ma_name : NULL;
    _acc_curr = mp;
 
-   if (mp != NULL && _ma_exec(mp, &mp->ma_localopts) == CBAD) {
+   if (mp != NULL && _ma_exec(mp, &mp->ma_localopts, TRU1) == CBAD) {
       /* XXX account switch incomplete, unroll? */
       n_err(_("Switching to account \"%s\" failed\n"), args[0]);
       goto jleave;

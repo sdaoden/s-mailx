@@ -124,7 +124,8 @@
 .Bd -filled -compact -offset indent
 .Sy Compatibility note:
 S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
-A partial set of compatibility options exist, tagged as \*(IN and \*(OU.
+A partial set of compatibility options exist, tagged as \*(IN and \*(OU,
+yet complete compatibility won't be possible.
 To choose upward compatible behaviour, please set the internal variable
 .Va v15-compat .
 Anything which will vanish in v15.0 is tagged \*(OB, and using
@@ -2536,8 +2537,8 @@ The special account
 .Ql null
 (case-insensitive) always exists.
 .Ic localopts
-can be used to localize account settings \(en different to normal macros
-the settings will be reverted once the account is switched off.
+are enabled by default and localize account settings \(en different to
+normal macros the settings will be reverted once the account is switched off.
 Accounts can be deleted via
 .Ic unaccount .
 .
@@ -2832,23 +2833,11 @@ depends on how (i.e.,
 normal macro, folder hook, account switch) the macro is invoked.
 Macros can be deleted via
 .Ic undefine .
-.Bd -filled -compact -offset indent
+.Pp
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
-To be on the absolutely safe side and avoid any surprises it may be wise
-to use wrappers that depend on the program version, e.g.,:
-.Ed
-.Bd -literal -offset indent
-if $version-major < 15
-  define name {
-    echo "pre v15"
-  }
-else
-  define name {
-    echo "Please reverify macro name (post v15)"
-  }
-endif
-.Ed
+Please be aware of that and possibly embed a version check in a resource
+file of yours.
 .
 .Mx
 .It Ic delete
@@ -5746,10 +5735,9 @@ is opened.
 The macro will also be invoked when new mail arrives,
 but message lists for commands executed from the macro
 only include newly arrived messages then.
-If
 .Ic localopts
-are activated in a folder hook, then the covered settings will be
-reverted once the folder is left again.
+are activated by default in a folder hook, causing the covered settings
+to be reverted once the folder is left again.
 .Bd -filled -offset indent
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
@@ -8883,7 +8871,6 @@ mlsubscribe ^xfans@xfans.xyz$
 
 # A real life example of a very huge free mail provider
 account XooglX {
-  localopts yes
   set from="Your Name <youremail@domain>"
   # (The plain smtp:// proto is optional)
   set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
@@ -8896,7 +8883,6 @@ account XooglX {
 # with the mailing list under their project account (in from),
 # still sending the message through their normal mail provider
 account XandeX {
-  localopts true
   set from="Your Name <youremail@domain>"
   set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
@@ -8965,7 +8951,6 @@ that sets up SMTP and POP3:
 .
 .Bd -literal -offset indent
 account XandeX {
-  localopts true
   set from="Your Name <youremail@domain>"
   set netrc-lookup
   #set agent-shell-lookup="gpg -d .pass.gpg"
