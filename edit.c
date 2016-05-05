@@ -51,8 +51,6 @@ edit1(int *msgvec, int viored)
    struct message *mp;
    off_t size;
    bool_t wb, lastnl;
-   char *line = NULL; /* TODO line pool */
-   size_t linesize = 0;
    NYD_ENTER;
 
    wb = ok_blook(writebackedited);
@@ -61,20 +59,14 @@ edit1(int *msgvec, int viored)
    for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
       sighandler_type sigint;
 
-      if (i > 0) { /* TODO getapproval(): return APPROV_{YES,NO,QUIT}: USE! */
-         char *p;
+      if(i > 0){
+         char prompt[64];
 
-         printf(_("Edit message %d [ynq]? "), msgvec[i]);
-         fflush(stdout);
-         if (readline_restart(stdin, &line, &linesize, 0) < 0)
-            break;
-         for (p = line; blankchar(*p); ++p)
-            ;
-         if (*p == 'q')
-            break;
-         if (*p == 'n')
+         snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
+         if(!getapproval(prompt, FAL0))
             continue;
       }
+
       mp = message + msgvec[i] - 1;
       setdot(mp);
       pstate |= PS_DID_PRINT_DOT;
@@ -117,9 +109,6 @@ edit1(int *msgvec, int viored)
 
       safe_signal(SIGINT, sigint);
    }
-
-   if (line != NULL)
-      free(line);
    NYD_LEAVE;
    return 0;
 }
