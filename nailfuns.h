@@ -71,6 +71,9 @@
 #define upperchar(c)    __ischarof(c, C_UPPER)
 #define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
 #define octalchar(c)    __ischarof(c, C_OCTAL)
+#define hexchar(c) /* TODO extend bits, add C_HEX */\
+   (__ischarof(c, C_DIGIT | C_OCTAL) || ((c) >= 'A' && (c) <= 'F') ||\
+    ((c) >= 'a' && (c) <= 'f'))
 
 #define upperconv(c)    (lowerchar(c) ? (char)((uc_i)(c) - 'a' + 'A') : (c))
 #define lowerconv(c)    (upperchar(c) ? (char)((uc_i)(c) - 'A' + 'a') : (c))
