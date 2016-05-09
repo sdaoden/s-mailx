@@ -866,7 +866,6 @@ n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
       goto jleave;
 
    switch ((c = *xs & 0xFF)) {
-   case '\\':                    break;
    case 'a':   c = '\a';         break;
    case 'b':   c = '\b';         break;
    case 'c':   c = PROMPT_STOP;  break;
@@ -875,12 +874,52 @@ n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
    case 'r':   c = '\r';         break;
    case 't':   c = '\t';         break;
    case 'v':   c = '\v';         break;
+
+   /* Hexadecimal TODO uses ASCII */
+   case 'X':
+   case 'x': {
+      static ui8_t const hexatoi[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+#undef a_HEX
+#define a_HEX(n) \
+   hexatoi[(ui8_t)((n) - ((n) <= '9' ? 48 : ((n) <= 'F' ? 55 : 87)))]
+
+      c = 0;
+      ++xs;
+      if(hexchar(*xs))
+         c = a_HEX(*xs);
+      else{
+         --xs;
+         if(options & OPT_D_V)
+            n_err(_("Invalid \"\\xNUMBER\" notation in \"%s\"\n"), xs - 1);
+         c = '\\';
+         goto jleave;
+      }
+      ++xs;
+      if(hexchar(*xs)){
+         c <<= 4;
+         c += a_HEX(*xs);
+         ++xs;
+      }
+      goto jleave;
+   }
+#undef a_HEX
+
+   /* octal, with optional 0 prefix */
    case '0':
-      for (++xs, c = 0, n = 4; --n > 0 && octalchar(*xs); ++xs) {
+      ++xs;
+      if(0){
+   default:
+         if(*xs == '\0'){
+            c = '\\';
+            break;
+         }
+      }
+      for (c = 0, n = 3; n-- > 0 && octalchar(*xs); ++xs) {
          c <<= 3;
          c |= *xs - '0';
       }
       goto jleave;
+
    /* S-nail extension for nice (get)prompt(()) support */
    case '&':
    case '?':
@@ -895,14 +934,16 @@ n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
          }
          break;
       }
+
       /* FALLTHRU */
    case '\0':
       /* A sole <backslash> at EOS is treated as-is! */
-      /* FALLTHRU */
-   default:
       c = '\\';
-      goto jleave;
+      /* FALLTHRU */
+   case '\\':
+      break;
    }
+
    ++xs;
 jleave:
    *s = xs;
