@@ -121,6 +121,9 @@ static int a_lex_c_features(void *v);
 /* Print the binaries version number */
 static int a_lex_c_version(void *v);
 
+/* PS_STATE_PENDMASK requires some actions */
+static void a_lex_update_pstate(void);
+
 /* Evaluate a single command.
  * .le_add_history and .le_new_content will be updated upon success.
  * Command functions return 0 for success, 1 for error, and -1 for abort.
@@ -396,6 +399,23 @@ a_lex_c_version(void *v){
    printf(_("Version %s\n"), ok_vlook(version));
    NYD_LEAVE;
    return 0;
+}
+
+static void
+a_lex_update_pstate(void){
+   NYD_ENTER;
+
+   if(pstate & PS_SIGWINCH_PEND){
+      char buf[32];
+
+      snprintf(buf, sizeof buf, "%d", scrnwidth);
+      ok_vset(COLUMNS, buf);
+      snprintf(buf, sizeof buf, "%d", scrnheight);
+      ok_vset(LINES, buf);
+   }
+
+   pstate &= ~PS_PSTATE_PENDMASK;
+   NYD_LEAVE;
 }
 
 static int
@@ -1265,6 +1285,9 @@ FL int
             n, n, *linebuf);
    }
 jleave:
+   if (pstate & PS_PSTATE_PENDMASK)
+      a_lex_update_pstate();
+
    NYD2_LEAVE;
    return n;
 }

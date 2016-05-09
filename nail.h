@@ -1277,7 +1277,10 @@ enum program_state {
    PS_SETFILE_OPENED = 1<< 9,       /* (hack) setfile() opened a new box */
    PS_SAW_COMMAND    = 1<<10,       /* ..after mailbox switch */
 
-   PS_DID_PRINT_DOT  = 1<<16,       /* Current message has been printed */
+   PS_DID_PRINT_DOT  = 1<<12,       /* Current message has been printed */
+
+   PS_SIGWINCH_PEND  = 1<<14,       /* Need update of $COLUMNS/$LINES */
+   PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */

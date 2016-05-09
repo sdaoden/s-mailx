@@ -8130,7 +8130,8 @@ $ COLUMNS=80 \*(uA -R
 .It Ev COLUMNS
 The user's preferred width in column positions for the terminal screen
 or window.
-Queried and used once on program startup.
+Queried and used once on program startup, actively managed for child
+processes in interactive mode.
 .
 .Mx
 .It Ev DEAD
@@ -8174,7 +8175,8 @@ and
 .It Ev LINES
 The user's preferred number of lines on a page or the vertical screen
 or window size in lines.
-Queried and used once on program startup.
+Queried and used once on program startup, actively managed for child
+processes in interactive mode.
 .
 .Mx
 .It Ev LISTER

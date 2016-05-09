@@ -417,6 +417,11 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
       char *cp;
       long i;
 
+      /* We manage those variables for our child processes, so ensure they
+       * are up to date, always */
+      if (options & OPT_INTERACTIVE)
+         pstate |= PS_SIGWINCH_PEND;
+
       if ((cp = env_vlook("LINES", FAL0)) != NULL &&
             (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnheight = realscreenheight = (int)i;
@@ -477,8 +482,11 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
 
 jleave:
 #ifdef SIGWINCH
-   if (is_sighdl && (options & OPT_INTERACTIVE))
-      n_tty_signal(SIGWINCH);
+   if (is_sighdl) {
+      pstate |= PS_SIGWINCH_PEND; /* XXX Not atomic */
+      if (options & OPT_INTERACTIVE)
+         n_tty_signal(SIGWINCH);
+   }
 #endif
    NYD_LEAVE;
 }
