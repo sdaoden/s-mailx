@@ -1132,6 +1132,7 @@ else
 fi
 
 if link_check environ 'environ(3)' << \!
+#include <stdio.h> /* For C89 NULL */
 int main(void){
    extern char **environ;
 
