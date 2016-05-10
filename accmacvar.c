@@ -62,7 +62,8 @@ enum var_map_flags {
    VM_BOOLEAN  = 1<<0,           /* ok_b_* */
    VM_RDONLY   = 1<<1,           /* May not be set by user */
    VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
-   VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
+   VM_VIRTUAL  = 1<<3,           /* "Stateless": no var* -- implies VM_RDONLY */
+   VM_ENVIRON  = 1<<4            /* Update environment on change */
 };
 
 struct macro {
@@ -452,6 +453,14 @@ _var_set(struct var_carrier *vcp, char const *value)
          char *cp = vp->v_value;
          vp->v_value = oval;
          oval = cp;
+      } else if (vcp->vc_vmap->vm_flags & VM_ENVIRON) {
+#ifdef HAVE_SETENV
+         ok = (setenv(vcp->vc_name, vp->v_value, 1) == 0);
+#else
+         if(options & OPT_D_VV)
+            n_err(_("Cannot update environment variable \"%s\"\n"),
+               vcp->vc_name);
+#endif
       }
    }
 
@@ -1200,19 +1209,25 @@ c_varshow(void *v)
          ui16_t f = vs.vs_vc.vc_vmap->vm_flags;
 
          if (f & VM_BOOLEAN)
-            printf(_("\"%s\": (%d) boolean%s%s: set=%d (ENVIRON=%d)\n"),
+            printf(_("\"%s\": (%d) boolean%s%s%s: set=%d%s\n"),
                vs.vs_vc.vc_name, vs.vs_vc.vc_okey,
-               (f & VM_RDONLY ? ", read-only" : ""),
-               (f & VM_VIRTUAL ? ", virtual" : ""), vs.vs_isset, vs.vs_isenv);
+               (f & VM_RDONLY ? ",read-only" : ""),
+               (f & VM_VIRTUAL ? ",virtual" : ""),
+               (f & VM_ENVIRON ? ",environ-sync" : ""),
+               vs.vs_isset, (vs.vs_isenv ? _(" (in extern environ)") : ""));
          else
-            printf(_("\"%s\": (%d) value%s%s: set=%d (ENVIRON=%d) value<%s>\n"),
+            printf(
+               _("\"%s\": (%d) value%s%s%s: set=%d%s value<%s>\n"),
                vs.vs_vc.vc_name, vs.vs_vc.vc_okey,
-               (f & VM_RDONLY ? ", read-only" : ""),
-               (f & VM_VIRTUAL ? ", virtual" : ""), vs.vs_isset, vs.vs_isenv,
+               (f & VM_RDONLY ? ",read-only" : ""),
+               (f & VM_VIRTUAL ? ",virtual" : ""),
+               (f & VM_ENVIRON ? ",environ-sync" : ""),
+               vs.vs_isset, (vs.vs_isenv ? _(" (in extern environ)") : ""),
                vs.vs_value);
       } else
-         printf("\"%s\": (assembled): set=%d (ENVIRON=%d) value<%s>\n",
-            vs.vs_vc.vc_name, vs.vs_isset, vs.vs_isenv, vs.vs_value);
+         printf("\"%s\": (assembled): set=%d%s value<%s>\n",
+            vs.vs_vc.vc_name, vs.vs_isset,
+            (vs.vs_isenv ? _(" (in extern environ)") : ""), vs.vs_value);
    }
    NYD_LEAVE;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */

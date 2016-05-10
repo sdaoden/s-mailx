@@ -70,7 +70,8 @@ sub parse_nail_h {
             $1 =~ /([^=]+)=(.+)/;
             die "Unsupported special directive: $1"
                if ($1 ne 'name' && $1 ne 'rdonly' &&
-                   $1 ne 'special' && $1 ne 'virtual');
+                   $1 ne 'special' && $1 ne 'virtual' &&
+                   $1 ne 'environ');
             $vals{$1} = $2
          }
       }
@@ -108,7 +109,8 @@ enum var_map_flags {
    VM_BOOLEAN  = 1<<0,           /* ok_b_* */
    VM_RDONLY   = 1<<1,           /* May not be set by user */
    VM_SPECIAL  = 1<<2,           /* Wants _var_check_specials() evaluation */
-   VM_VIRTUAL  = 1<<3            /* "Stateless": no var* -- implies VM_RDONLY */
+   VM_VIRTUAL  = 1<<3,           /* "Stateless": no var* -- implies VM_RDONLY */
+   VM_ENVIRON  = 1<<4            /* Update environment on change */
 };
 
 /* Binary compatible with struct var! (xxx make it superclass?) */
@@ -263,6 +265,7 @@ sub dump_keydat_varmap {
          $f .= $s . 'VM_VIRTUAL'; $s = ' | ';
          $virts{$k} = $e;
       }
+      if ($e->{environ}) {$f .= $s . 'VM_ENVIRON'; $s = ' | '}
       print F "   /* $i. [$alen]+$l $k$f */\n", "   '$a','\\0',\n";
       ++$i;
       $alen += $l + 1
@@ -276,6 +279,7 @@ sub dump_keydat_varmap {
       $f .= ' | VM_RDONLY'  if $e->{rdonly};
       $f .= ' | VM_SPECIAL' if $e->{special};
       $f .= ' | VM_VIRTUAL' if $e->{virtual};
+      $f .= ' | VM_ENVIRON' if $e->{environ};
       my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
       print F "   {$e->{hash}u, $e->{keyoff}u, $f}, /* $n */\n"
    }

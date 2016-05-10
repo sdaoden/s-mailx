@@ -1347,6 +1347,7 @@ ok_b_autothread,
    ok_b_bsdorder,
    ok_b_bsdset,
 
+   ok_v_COLUMNS,                       /* {environ=1} */
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_charset_unknown_8bit,
@@ -1356,7 +1357,7 @@ ok_b_autothread,
    ok_v_crt,
    ok_v_customhdr,
 
-   ok_v_DEAD,
+   ok_v_DEAD,                          /* {environ=1} */
    ok_v_datefield,
    ok_v_datefield_markout_older,
    ok_b_debug,                         /* {special=1} */
@@ -1364,7 +1365,7 @@ ok_b_autothread,
    ok_b_dot,
    ok_b_dotlock_ignore_error,
 
-   ok_v_EDITOR,
+   ok_v_EDITOR,                        /* {environ=1} */
    ok_b_editalong,
    ok_b_editheaders,
 ok_b_emptybox,
@@ -1404,11 +1405,12 @@ ok_b_emptybox,
    ok_b_keep_content_length,
    ok_b_keepsave,
 
-   ok_v_LISTER,
+   ok_v_LINES,                         /* {environ=1} */
+   ok_v_LISTER,                        /* {environ=1} */
    ok_b_line_editor_disable,
 
-   ok_v_MAIL,
-   ok_v_MBOX,
+   ok_v_MAIL,                          /* {environ=1} */
+   ok_v_MBOX,                          /* {environ=1} */
    ok_b_markanswered,
    ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {special=1} */
@@ -1432,7 +1434,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
 
    ok_b_outfolder,
 
-   ok_v_PAGER,
+   ok_v_PAGER,                      /* {environ=1} */
+   ok_v_PATH,                       /* {environ=1} */
    ok_b_page,
    ok_v_password,
    ok_b_piperaw,
@@ -1458,7 +1461,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
-   ok_v_SHELL,
+   ok_v_SHELL,                         /* {environ=1} */
    ok_b_save,
    ok_v_screen,
    ok_b_searchheaders,
@@ -1531,7 +1534,7 @@ ok_v_smtp_auth_user,
 
    ok_v_user,
 
-   ok_v_VISUAL,
+   ok_v_VISUAL,                        /* {environ=1} */
    ok_b_v15_compat,
    ok_b_verbose,                       /* {special=1} */
    ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
