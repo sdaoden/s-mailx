@@ -1131,6 +1131,20 @@ else
    config_exit 1
 fi
 
+if link_check environ 'environ(3)' << \!
+int main(void){
+   extern char **environ;
+
+   return environ[0] == NULL;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the environ(3) array for subprocess control.'
+   config_exit 1
+fi
+
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void){
