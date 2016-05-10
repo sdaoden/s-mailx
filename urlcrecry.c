@@ -63,7 +63,8 @@ static char *           _url_last_at_before_slash(char const *sp);
 #ifdef HAVE_NETRC
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
-static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN]);
+static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN],
+                           bool_t *nl_last);
 
 /* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
  * only_pass is true then the lookup is for the password only, otherwise we
@@ -113,7 +114,7 @@ _nrc_init(void)
    struct stat sb;
    FILE *fi;
    enum nrc_token t;
-   bool_t seen_default;
+   bool_t seen_default, nl_last;
    struct nrc_node *ntail = NULL /* CC happy */, *nhead = NULL,
       *nrc = NRC_NODE_ERR;
    NYD_ENTER;
@@ -137,8 +138,9 @@ _nrc_init(void)
    }
 
    seen_default = FAL0;
+   nl_last = TRU1;
 jnext:
-   switch((t = __nrc_token(fi, buffer))) {
+   switch((t = __nrc_token(fi, buffer, &nl_last))) {
    case NRC_NONE:
       break;
    default: /* Doesn't happen (but on error?), keep CC happy */
@@ -152,7 +154,7 @@ jdef:
 jm_h:
       /* Normalize HOST to lowercase */
       *host = '\0';
-      if (!seen_default && (t = __nrc_token(fi, host)) != NRC_INPUT)
+      if (!seen_default && (t = __nrc_token(fi, host, &nl_last)) != NRC_INPUT)
          goto jerr;
       else {
          char *cp;
@@ -161,28 +163,30 @@ jm_h:
       }
 
       *user = *pass = '\0';
-      while ((t = __nrc_token(fi, buffer)) != NRC_NONE && t != NRC_MACHINE &&
-            t != NRC_DEFAULT) {
+      while ((t = __nrc_token(fi, buffer, &nl_last)) != NRC_NONE &&
+            t != NRC_MACHINE && t != NRC_DEFAULT) {
          switch(t) {
          case NRC_LOGIN:
-            if ((t = __nrc_token(fi, user)) != NRC_INPUT)
+            if ((t = __nrc_token(fi, user, &nl_last)) != NRC_INPUT)
                goto jerr;
             break;
          case NRC_PASSWORD:
-            if ((t = __nrc_token(fi, pass)) != NRC_INPUT)
+            if ((t = __nrc_token(fi, pass, &nl_last)) != NRC_INPUT)
                goto jerr;
             break;
          case NRC_ACCOUNT:
-            if ((t = __nrc_token(fi, buffer)) != NRC_INPUT)
+            if ((t = __nrc_token(fi, buffer, &nl_last)) != NRC_INPUT)
                goto jerr;
             break;
          case NRC_MACDEF:
-            if ((t = __nrc_token(fi, buffer)) != NRC_INPUT)
+            if ((t = __nrc_token(fi, buffer, &nl_last)) != NRC_INPUT)
                goto jerr;
             else {
                int i = 0, c;
                while ((c = getc(fi)) != EOF)
                   if (c == '\n') { /* xxx */
+                     /* Don't care about comments here, since we parse until
+                      * we've seen two successive newline characters */
                      if (i)
                         break;
                      i = 1;
@@ -245,21 +249,34 @@ j_leave:
 }
 
 static enum nrc_token
-__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
+__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 {
    int c;
    char *cp;
-   enum nrc_token rv = NRC_NONE;
+   enum nrc_token rv;
    NYD2_ENTER;
 
-   c = EOF;
-   if (feof(fi) || ferror(fi))
-      goto jleave;
+   rv = NRC_NONE;
+   for (;;) {
+      bool_t seen_nl;
 
-   while ((c = getc(fi)) != EOF && whitechar(c))
-      ;
-   if (c == EOF)
-      goto jleave;
+      c = EOF;
+      if (feof(fi) || ferror(fi))
+         goto jleave;
+
+      for (seen_nl = *nl_last; (c = getc(fi)) != EOF && whitechar(c);)
+         seen_nl |= (c == '\n');
+
+      if (c == EOF)
+         goto jleave;
+      /* fetchmail and derived parsers support comments */
+      if ((*nl_last = seen_nl) && c == '#') {
+         while ((c = getc(fi)) != EOF && c != '\n')
+            ;
+         continue;
+      }
+      break;
+   }
 
    cp = buffer;
    /* Is it a quoted token?  At least IBM syntax also supports ' quotes */
@@ -290,6 +307,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN])
             goto jleave;
          }
       }
+      *nl_last = (c == '\n');
    }
    *cp = '\0';
 
