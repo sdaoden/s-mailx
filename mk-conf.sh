@@ -145,6 +145,10 @@ option_update() {
    if feat_no SOCKETS; then
       WANT_MD5=0
    fi
+
+   if feat_yes DEVEL; then
+      WANT_DEBUG=1
+   fi
    if feat_yes DEBUG; then
       WANT_NOALLOCA=1 WANT_DEVEL=1
    fi
@@ -296,7 +300,7 @@ cc_setup() {
          config_exit 1
       fi
    fi
-   printf >&2 '"%s"\n' "${CC}"
+   printf >&2 -- '"%s"\n' "${CC}"
    export CC
 }
 
@@ -479,7 +483,7 @@ config_exit() {
 msg() {
    fmt=${1}
    shift
-   printf >&2 "${fmt}\\n" "${@}"
+   printf >&2 -- "${fmt}\\n" "${@}"
 }
 
 ## First of all, create new configuration and check wether it changed
@@ -873,7 +877,7 @@ for i in \
       INCS LIBS \
       ; do
    eval j=\$${i}
-   printf "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=${j}\n" >> ${newlst}
 done
 for i in \
       CC \
@@ -883,8 +887,8 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j=\$${i}
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n" >> ${newlst}
+   printf -- "${i} = ${j}\n" >> ${newmk}
+   printf -- "${i}=${j}\n" >> ${newlst}
 done
 
 # Now finally check wether we already have a configuration and if so, wether
@@ -929,13 +933,13 @@ msg() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
-   printf "${fmt}\\n" "${@}" >&5
+   printf -- "${fmt}\\n" "${@}" >&5
 }
 msg_nonl() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
-   printf "${fmt}" "${@}" >&5
+   printf -- "${fmt}" "${@}" >&5
 }
 
 exec 5>&2 > ${log} 2>&1
@@ -1024,7 +1028,7 @@ run_check() {
 ##
 
 # May be multiline..
-[ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
+[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
 if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
