@@ -1076,6 +1076,168 @@ FL struct str *
 }
 
 /*
+ * struct n_string TODO extend, optimize
+ */
+
+FL struct n_string *
+(n_string_clear)(struct n_string *self SMALLOC_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+
+   if(self->s_size != 0){
+      if(!self->s_auto){
+#ifdef HAVE_DEBUG
+         sfree(self->s_dat SMALLOC_DEBUG_ARGSCALL);
+#else
+         free(self->s_dat);
+#endif
+      }
+      self->s_len = self->s_auto = self->s_size = 0;
+      self->s_dat = NULL;
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_reserve)(struct n_string *self, size_t noof SMALLOC_DEBUG_ARGS){
+   ui32_t i, l, s;
+   NYD_ENTER;
+
+   assert(self != NULL);
+
+   s = self->s_size;
+   l = self->s_len;
+#if 0 /* FIXME memory alloc too large */
+   if(SI32_MAX - n_ALIGN(1) - l <= noof)
+      n_panic(_("Memory allocation too large"));
+#endif
+
+   if((i = s - l) <= noof){
+      i += 1 + l + (ui32_t)noof;
+      i = n_ALIGN(i);
+      self->s_size = i -1;
+
+      if(!self->s_auto)
+         self->s_dat = (srealloc)(self->s_dat, i SMALLOC_DEBUG_ARGSCALL);
+      else{
+         char *ndat = (salloc)(i SALLOC_DEBUG_ARGSCALL);
+
+         if(l > 0)
+            memcpy(ndat, self->s_dat, l);
+         self->s_dat = ndat;
+      }
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_push_buf)(struct n_string *self, char const *buf, size_t buflen
+      SMALLOC_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+   assert(buflen == 0 || buf != NULL);
+
+   if(buflen == UIZ_MAX)
+      buflen = (buf == NULL) ? 0 : strlen(buf);
+
+   if(buflen > 0){
+      ui32_t i;
+
+      self = (n_string_reserve)(self, buflen SMALLOC_DEBUG_ARGSCALL);
+      memcpy(self->s_dat + (i = self->s_len), buf, buflen);
+      self->s_len = (i += (ui32_t)buflen);
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_push_c)(struct n_string *self, char c SMALLOC_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+
+   if(self->s_len + 1 >= self->s_size)
+      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+   self->s_dat[self->s_len++] = c;
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_unshift_buf)(struct n_string *self, char const *buf, size_t buflen
+      SMALLOC_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+   assert(buflen == 0 || buf != NULL);
+
+   if(buflen == UIZ_MAX)
+      buflen = (buf == NULL) ? 0 : strlen(buf);
+
+   if(buflen > 0){
+      self = (n_string_reserve)(self, buflen SMALLOC_DEBUG_ARGSCALL);
+      if(self->s_len > 0)
+         memmove(self->s_dat + buflen, self->s_dat, self->s_len);
+      memcpy(self->s_dat, buf, buflen);
+      self->s_len += (ui32_t)buflen;
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_unshift_c)(struct n_string *self, char c SMALLOC_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+
+   if(self->s_len + 1 >= self->s_size)
+      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+   if(self->s_len > 0)
+      memmove(self->s_dat + 1, self->s_dat, self->s_len);
+   self->s_dat[0] = c;
+   ++self->s_len;
+   NYD_LEAVE;
+   return self;
+}
+
+FL char *
+(n_string_cp)(struct n_string *self SMALLOC_DEBUG_ARGS){
+   char *rv;
+   NYD2_ENTER;
+
+   assert(self != NULL);
+
+   if(self->s_size == 0)
+      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+
+   (rv = self->s_dat)[self->s_len] = '\0';
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char const *
+n_string_cp_const(struct n_string const *self){
+   char const *rv;
+   NYD2_ENTER;
+
+   assert(self != NULL);
+
+   if(self->s_size != 0){
+      ((struct n_string*)UNCONST(self))->s_dat[self->s_len] = '\0';
+      rv = self->s_dat;
+   }else
+      rv = "";
+   NYD2_LEAVE;
+   return rv;
+}
+
+/*
  * UTF-8
  */
 

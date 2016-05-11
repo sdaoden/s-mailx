@@ -1949,6 +1949,117 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
+/* struct n_string
+ * May have NULL buffer, may contain embedded NULs */
+
+/* Lifetime */
+#define n_string_creat(S) \
+   ((S)->s_dat = NULL, (S)->s_len = (S)->s_auto = (S)->s_size = 0, (S))
+#define n_string_creat_auto(S) \
+   ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S)->s_auto = TRU1, (S))
+#define n_string_gut(S) ((S)->s_size != 0 ? (void)n_string_clear(S) : (void)0)
+
+/* Truncate to size, which must be LE current length */
+#define n_string_trunc(S,L)      ((S)->s_len = (L), (S))
+
+/* Release buffer ownership */
+#define n_string_drop_ownership(S) \
+   ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S))
+
+/* Release all memory */
+FL struct n_string *n_string_clear(struct n_string *self SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_DEBUG
+# define n_string_clear(S) \
+   ((S)->s_size != 0 ? (n_string_clear)(S, __FILE__, __LINE__) : (S))
+#else
+# define n_string_clear(S)       ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
+#endif
+
+/* Reserve room for noof additional bytes */
+FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
+                     SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_DEBUG
+# define n_string_reserve(S,N)   (n_string_reserve)(S, N, __FILE__, __LINE__)
+#endif
+
+/* */
+FL struct n_string *n_string_push_buf(struct n_string *self, char const *buf,
+                     size_t buflen SMALLOC_DEBUG_ARGS);
+#define n_string_push(S, T)       n_string_push_buf(S, (T)->s_len, (T)->s_dat)
+#define n_string_push_cp(S,CP)    n_string_push_buf(S, CP, UIZ_MAX)
+FL struct n_string *n_string_push_c(struct n_string *self, char c
+                     SMALLOC_DEBUG_ARGS);
+
+#define n_string_assign(S,T)     ((S)->s_len = 0, n_string_push(S, T))
+#define n_string_assign_cp(S,CP) ((S)->s_len = 0, n_string_push_cp(S, CP))
+#define n_string_assign_buf(S,B,BL) \
+   ((S)->s_len = 0, n_string_push_buf(S, B, BL))
+
+#ifdef HAVE_DEBUG
+# define n_string_push_buf(S,B,BL) \
+   n_string_push_buf(S, B, BL, __FILE__, __LINE__)
+# define n_string_push_c(S,C)    n_string_push_c(S, C, __FILE__, __LINE__)
+#endif
+
+/* */
+FL struct n_string *n_string_unshift_buf(struct n_string *self, char const *buf,
+                     size_t buflen SMALLOC_DEBUG_ARGS);
+#define n_string_unshift(S, T) \
+   n_string_unshift_buf(S, (T)->s_len, (T)->s_dat)
+#define n_string_unshift_cp(S,CP) \
+      n_string_unshift_buf(S, CP, UIZ_MAX)
+FL struct n_string *n_string_unshift_c(struct n_string *self, char c
+                     SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_DEBUG
+# define n_string_unshift_buf(S,B,BL) \
+   n_string_unshift_buf(S, B, BL, __FILE__, __LINE__)
+# define n_string_unshift_c(S,C) n_string_unshift_c(S, C, __FILE__, __LINE__)
+#endif
+
+/* Ensure self has a - NUL terminated - buffer, and return that.
+ * The latter may return the pointer to an internal empty RODATA instead */
+FL char *      n_string_cp(struct n_string *self SMALLOC_DEBUG_ARGS);
+FL char const *n_string_cp_const(struct n_string const *self);
+
+#ifdef HAVE_DEBUG
+# define n_string_cp(S)          n_string_cp(S, __FILE__, __LINE__)
+#endif
+
+#ifdef HAVE_INLINE
+n_INLINE struct n_string *
+(n_string_creat)(struct n_string *self){
+   return n_string_creat(self);
+}
+# undef n_string_creat
+
+n_INLINE struct n_string *
+(n_string_creat_auto)(struct n_string *self){
+   return n_string_creat_auto(self);
+}
+# undef n_string_creat_auto
+
+n_INLINE void
+(n_string_gut)(struct n_string *self){
+   n_string_gut(self);
+}
+# undef n_string_gut
+
+n_INLINE struct n_string *
+(n_string_trunc)(struct n_string *self, size_t l){
+   return n_string_trunc(self, l);
+}
+# undef n_string_trunc
+
+n_INLINE struct n_string *
+(n_string_drop_ownership)(struct n_string *self){
+   return n_string_drop_ownership(self);
+}
+# undef n_string_drop_ownership
+#endif /* HAVE_INLINE */
+
 /* UTF-8 stuff */
 
 /* ..and update arguments to point after range; returns UI32_MAX on error, in

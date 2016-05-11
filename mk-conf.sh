@@ -1026,6 +1026,39 @@ run_check() {
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
+if run_check inline '"inline" functions' \
+   '#define HAVE_INLINE
+   #define n_INLINE static inline' << \!
+static inline int ilf(int i){return ++i;}
+int main(void){return ilf(-1);}
+!
+then
+   :
+elif run_check inline '"__inline" functions' \
+   '#define HAVE_INLINE
+   #define n_INLINE static __inline' << \!
+static __inline int ilf(int i){return ++i;}
+int main(void){return ilf(-1);}
+!
+then
+   :
+fi
+
+if run_check endian 'Little endian byteorder' \
+   '#define HAVE_BYTE_ORDER_LITTLE' << \!
+int main(void){
+   enum {vBig = 1, vLittle = 0};
+   union {unsigned short bom; unsigned char buf[2];} u;
+   u.bom = 0xFEFF;
+   return((u.buf[1] == 0xFE) ? vLittle : vBig);
+}
+!
+then
+   :
+fi
+
+##
+
 if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
 #include <time.h>

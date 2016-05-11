@@ -426,16 +426,9 @@
 # define VSTRUCT_SIZEOF(T,F) (sizeof(T) - SIZEOF_FIELD(T, F))
 #endif
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define HAVE_INLINE
-# define INLINE         inline
-# define SINLINE        static inline
-#elif CC_CLANG || PREREQ_GCC(2, 9)
-# define HAVE_INLINE
-# define INLINE         static __inline
-# define SINLINE        static __inline
+#ifdef HAVE_INLINE
+# define SINLINE        n_INLINE /* TODO obsolete */
 #else
-# define INLINE
 # define SINLINE        static
 #endif
 
@@ -1409,6 +1402,18 @@ enum {
 struct str {
    char     *s;      /* the string's content */
    size_t   l;       /* the stings's length */
+};
+
+struct n_string{
+   char *s_dat;         /*@ May contain NULs, not automatically terminated */
+   ui32_t s_len;        /*@ gth of string */
+#ifdef HAVE_BYTE_ORDER_LITTLE
+   ui32_t s_auto : 1;   /* Stored in auto-reclaimed storage? */
+#endif
+   ui32_t s_size : 31;  /* of .s_dat, -1 */
+#ifndef HAVE_BYTE_ORDER_LITTLE
+   ui32_t s_auto : 1;
+#endif
 };
 
 struct bidi_info {
