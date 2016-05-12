@@ -85,8 +85,6 @@
      DS(N_("Un`delete' <message-list>")) },
    { "unset", &c_unset, (H | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>")) },
-   { "unsetenv", &c_unsetenv, (H | M | RAWLIST), 1, 1000
-     DS(N_("Unset <option-list>, also in the program environment")) },
    { "mail", &c_sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
    { "Mail", &c_Sendmail, (I | M | R | S | STRLIST), 0, 0
@@ -129,8 +127,6 @@
      DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (H | M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
-     DS(N_("Set (a) <variable>(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
@@ -404,6 +400,9 @@
      DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
    { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
+
+   { "environ", &c_environ, (H | M | RAWLIST), 2, 1000
+     DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
 #ifdef c_memtrace
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0

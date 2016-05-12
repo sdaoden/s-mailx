@@ -248,64 +248,6 @@ _startup(void)
 
    /*  --  >8  --  8<  --  */
 
-   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
-   /* (Keep in sync:
-    * ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings") */
-   /* noallnet */
-   /* noappend */
-   ok_bset(asksub, TRU1);
-   /* noaskbcc */
-   /* noaskcc */
-   /* noautoprint */
-   /* nobang */
-   /* nocmd */
-   /* nocrt */
-   /* nodebug */
-   /* nodot */
-   /* ok_vset(escape, ESCAPE *"~"*); TODO non-compliant */
-   /* noflipr */
-   /* nofolder */
-   ok_bset(header, TRU1);
-   /* nohold */
-   /* noignore */
-   /* noignoreeof */
-   /* nokeep */
-   /* nokeepsave */
-   /* nometoo */
-   /* noonehop -- Note: we ignore this one */
-   /* nooutfolder */
-   /* nopage */
-   ok_vset(prompt, "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
-   /* noquiet */
-   /* norecord */
-   ok_bset(save, TRU1);
-   /* nosendwait */
-   /* noshowto */
-   /* nosign */
-   /* noSign */
-   /* ok_vset(toplines, "5"); XXX somewhat hmm */
-
-   /* TODO until we have an automatic mechanism for that, set some more
-    * TODO variables so that users see the internal fallback settings
-    * TODO (something like "defval=X,notempty=1") */
-   do {
-      char const *vp;
-
-      vp = env_vlook("SHELL", TRU1);
-      ok_vset(SHELL, (vp != NULL ? vp : XSHELL));
-
-      vp = env_vlook("LISTER", TRU1);
-      ok_vset(LISTER, (vp != NULL ? vp : XLISTER));
-
-      vp = env_vlook("PAGER", TRU1);
-      ok_vset(PAGER, (vp != NULL ? vp : XPAGER));
-
-      ok_vset(sendmail, SENDMAIL);
-      ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
-   } while (0);
-
-   /*  --  >8  --  8<  --  */
-
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;

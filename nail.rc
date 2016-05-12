@@ -16,7 +16,6 @@
 #--MKREL-END--
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
-# (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
@@ -30,6 +29,7 @@
 #   separator on the command line or set the *sendmail-arguments* variable.)
 # - *prompt* is "\\& " by default, which will act POSIX-compliant
 #   unless the user does set *bsdcompat*
+# (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 ## The remaining content adjusts the standard-imposed default settings.
 # Note that some of the following flags are specific to S-nail(1) and may thus

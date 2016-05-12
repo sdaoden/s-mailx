@@ -1161,7 +1161,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if ((crl_file = _var_oklook(fok)) != NULL) {
+   if ((crl_file = n_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       if ((crl_file = file_expand(crl_file)) == NULL ||
             load_crl1(store, crl_file) != OKAY)
@@ -1172,7 +1172,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
 #endif
    }
 
-   if ((crl_dir = _var_oklook(dok)) != NULL) {
+   if ((crl_dir = n_var_oklook(dok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       char *x;
       if ((x = file_expand(crl_dir)) == NULL ||
