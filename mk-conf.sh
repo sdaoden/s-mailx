@@ -1245,6 +1245,30 @@ else
    config_exit 1
 fi
 
+if link_check setenv '(un)?setenv(3)' '#define HAVE_SETENV' << \!
+#include <stdlib.h>
+int main(void){
+   setenv("s-mailx", "i want to see it cute!", 1);
+   unsetenv("s-mailx");
+   return 0;
+}
+!
+then
+   :
+elif link_check setenv 'putenv(3)' '#define HAVE_PUTENV' << \!
+#include <stdlib.h>
+int main(void){
+   putenv("s-mailx=i want to see it cute!");
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require either the setenv(3) or putenv(3) functions.'
+   config_exit 1
+fi
+
 if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void){
@@ -1329,15 +1353,6 @@ elif [ -n "${have_no_subsecond_time}" ]; then
       'one of clock_gettime(2) and gettimeofday(2) is required.'
    config_exit 1
 fi
-
-link_check setenv 'setenv(3)/unsetenv(3)' '#define HAVE_SETENV' << \!
-#include <stdlib.h>
-int main(void){
-   setenv("s-nail", "to be made nifty!", 1);
-   unsetenv("s-nail");
-   return 0;
-}
-!
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
