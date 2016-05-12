@@ -236,8 +236,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       env_addon[7] = NULL;
    }
 
-   if ((sh = ok_vlook(SHELL)) == NULL)
-      sh = XSHELL;
+   sh = ok_vlook(SHELL);
 
    if (mhp->mh_flags & MIME_HDL_NEEDSTERM) {
       sigset_t nset;
@@ -1187,12 +1186,7 @@ jgetname:
    }
 
    if (*f == '|') {
-      char const *cp;
-
-      cp = ok_vlook(SHELL);
-      if (cp == NULL)
-         cp = XSHELL;
-      fp = Popen(f + 1, "w", cp, NULL, 1);
+      fp = Popen(f + 1, "w", ok_vlook(SHELL), NULL, 1);
       if (!(*ispipe = (fp != NULL)))
          n_perr(f, 0);
    } else {

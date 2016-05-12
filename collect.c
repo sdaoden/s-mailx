@@ -222,15 +222,10 @@ static void
 insertcommand(FILE *fp, char const *cmd)
 {
    FILE *ibuf = NULL;
-   char const *cp;
    int c;
    NYD_ENTER;
 
-   cp = ok_vlook(SHELL);
-   if (cp == NULL)
-      cp = XSHELL;
-
-   if ((ibuf = Popen(cmd, "r", cp, NULL, 0)) != NULL) {
+   if ((ibuf = Popen(cmd, "r", ok_vlook(SHELL), NULL, 0)) != NULL) {
       while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
          putc(c, fp);
       Pclose(ibuf, TRU1);
@@ -432,7 +427,6 @@ mespipe(char *cmd)
 {
    FILE *nf;
    sighandler_type sigint;
-   char const *sh;
    NYD_ENTER;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
@@ -443,11 +437,9 @@ mespipe(char *cmd)
    }
 
    /* stdin = current message.  stdout = new message */
-   if ((sh = ok_vlook(SHELL)) == NULL)
-      sh = XSHELL;
    fflush(_coll_fp);
-   if (run_command(sh, 0, fileno(_coll_fp), fileno(nf), "-c", cmd, NULL, NULL)
-         < 0) {
+   if (run_command(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
+         cmd, NULL, NULL) < 0) {
       Fclose(nf);
       goto jout;
    }

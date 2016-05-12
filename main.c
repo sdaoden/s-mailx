@@ -296,47 +296,57 @@ _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 }
 
 static void
-_setup_vars(void)
-{
-   /* Before spreserve(): use our string pool instead of LibC heap */
-   /* XXX further check paths? */
-   char const *cp;
-   uid_t uid;
+_setup_vars(void){
+   /* XXX furtherly check paths? */
    struct passwd *pwuid, *pw;
+   uid_t uid;
+   char const *cp;
+   bool_t doset;
    NYD_ENTER;
 
    /* Verify and fixate user identification */
-   if (myname != NULL)
+   if(myname != NULL){
       cp = myname;
-   else if ((cp = env_vlook("LOGNAME", TRU1)) == NULL)
-      cp = env_vlook("USER", TRU1);
+      doset = TRU1;
+   }else if((doset = ((cp = ok_vlook(LOGNAME)) == NULL)))
+      cp = ok_vlook(USER);
 
    group_id = getgid();
    user_id = uid = getuid();
-   if ((pwuid = getpwuid(uid)) == NULL)
+   if((pwuid = getpwuid(uid)) == NULL)
       n_panic(_("Cannot associate a name with uid %u"), user_id);
 
-   if (cp == NULL || *cp == '\0') {
-      myname = pwuid->pw_name;
+   if(cp == NULL || *cp == '\0'){
+      cp = pwuid->pw_name;
       pw = NULL;
-   } else if ((pw = getpwnam(cp)) == NULL) {
+      doset = TRU1;
+   }else if((pw = getpwnam(cp)) == NULL){
       n_alert(_("\"%s\" is not a user of this system"), cp);
       exit(EXIT_NOUSER);
-   } else {
-      myname = pw->pw_name;
-      if (pw->pw_uid != uid)
+   }else{
+      cp = pw->pw_name;
+      if(pw->pw_uid != uid)
          options |= OPT_u_FLAG;
+      doset = TRU1;
    }
-   myname = savestr(myname);
+
+   if(doset){
+      pstate |= PS_STARTED;
+      ok_vset(LOGNAME, cp);
+      pstate &= ~PS_STARTED;
+   }
+
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
    /* */
-   if ((cp = env_vlook("HOME", TRU1)) == NULL)
+   if((cp = ok_vlook(HOME)) == NULL){
       cp = (pw != NULL) ? pw->pw_dir : pwuid->pw_dir;
-   homedir = savestr(cp);
+      pstate |= PS_STARTED;
+      ok_vset(HOME, cp);
+      pstate &= ~PS_STARTED;
+   }
 
-   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
-         ? savestr(cp) : TMPDIR_FALLBACK;
+   (void)ok_vlook(TMPDIR);
    NYD_LEAVE;
 }
 
@@ -365,10 +375,10 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
       if (options & OPT_INTERACTIVE)
          pstate |= PS_SIGWINCH_PEND;
 
-      if ((cp = env_vlook("LINES", FAL0)) != NULL &&
+      if ((cp = ok_vlook(LINES)) != NULL &&
             (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnheight = realscreenheight = (int)i;
-      if ((cp = env_vlook("COLUMNS", FAL0)) != NULL &&
+      if ((cp = ok_vlook(COLUMNS)) != NULL &&
             (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
          scrnwidth = (int)i;
 
@@ -900,15 +910,11 @@ jgetopt_done:
    if(resfiles & a_RF_ALL){
       /* *expand() returns a savestr(), but load only uses the file name for
        * fopen(), so it's safe to do this */
-      if((resfiles & a_RF_SYSTEM) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
+      if((resfiles & a_RF_SYSTEM) && !ok_blook(NAIL_NO_SYSTEM_RC))
          n_load(SYSCONFDIR "/" SYSCONFRC);
-      if(resfiles & a_RF_USER){
-         if((cp = env_vlook("MAILRC", TRU1)) == NULL)
-            cp = UNCONST(MAILRC);
-         n_load(file_expand(cp));
-      }
-      if(env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
-            (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+      if(resfiles & a_RF_USER)
+         n_load(file_expand(ok_vlook(MAILRC)));
+      if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_load(file_expand(cp));
    }
 

@@ -119,9 +119,7 @@ _nrc_init(void)
       *nrc = NRC_NODE_ERR;
    NYD_ENTER;
 
-   if ((netrc_load = env_vlook("NETRC", FAL0)) == NULL)
-      netrc_load = UNCONST(NETRC);
-   if ((netrc_load = file_expand(netrc_load)) == NULL)
+   if ((netrc_load = file_expand(ok_vlook(NETRC))) == NULL)
       goto j_leave;
 
    if ((fi = Fopen(netrc_load, "r")) == NULL) {
@@ -510,9 +508,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm)
 
    env_addon[6] = NULL;
 
-   if ((u.cp = ok_vlook(SHELL)) == NULL)
-      u.cp = XSHELL;
-   if ((pbuf = Popen(comm, "r", u.cp, env_addon, -1)) == NULL) {
+   if ((pbuf = Popen(comm, "r", ok_vlook(SHELL), env_addon, -1)) == NULL) {
       n_err(_("*agent-shell-lookup* startup failed (`%s')\n"), comm);
       goto jleave;
    }

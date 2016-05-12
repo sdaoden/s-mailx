@@ -188,21 +188,18 @@ screensize(void)
 }
 
 FL char const *
-n_pager_get(char const **env_addon)
-{
-   char const *cp;
+n_pager_get(char const **env_addon){
+   char const *rv;
    NYD_ENTER;
 
-   cp = ok_vlook(PAGER);
-   if (cp == NULL || *cp == '\0')
-      cp = XPAGER;
+   rv = ok_vlook(PAGER);
 
-   if (env_addon != NULL) {
+   if(env_addon != NULL){
       *env_addon = NULL;
       /* Update the manual upon any changes:
        *    *colour-pager*, $PAGER */
       if(strstr(rv, "less") != NULL){
-         if(!env_blook("LESS", TRU1))
+         if(getenv("LESS") == NULL)
             *env_addon =
 #ifdef HAVE_TERMCAP
                   (pstate & PS_TERMCAP_CA_MODE) ? "LESS=Ri"
@@ -210,12 +207,12 @@ n_pager_get(char const **env_addon)
 #endif
                         "LESS=FRXi";
       }else if(strstr(rv, "lv") != NULL){
-         if(!env_blook("LV", TRU1))
+         if(getenv("LV") == NULL)
             *env_addon = "LV=-c";
       }
    }
    NYD_LEAVE;
-   return cp;
+   return rv;
 }
 
 FL void

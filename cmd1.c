@@ -135,7 +135,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
    if (ok_blook(bsdcompat) || ok_blook(bsdflags)) {
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
-   } else if (env_blook("SYSV3", FAL0)) {
+   } else if (ok_blook(SYSV3)) {
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
       OBSOLETE(_("*SYSV3*: please use *bsdcompat* or *bsdflags*, "
@@ -983,9 +983,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    }
 
    if (dopipe) {
-      if ((cp = ok_vlook(SHELL)) == NULL)
-         cp = XSHELL;
-      if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
+      if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
          n_perr(cmd, 0);
          obuf = stdout;
       }
@@ -1460,7 +1458,6 @@ FL int
 c_folders(void *v)
 {
    char dirname[PATH_MAX], *name, **argv = v;
-   char const *cmd;
    int rv = 1;
    NYD_ENTER;
 
@@ -1474,10 +1471,8 @@ c_folders(void *v)
    } else
       name = dirname;
 
-   if ((cmd = ok_vlook(LISTER)) == NULL)
-      cmd = XLISTER;
-   run_command(cmd, 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name, NULL, NULL,
-      NULL);
+   run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name,
+      NULL, NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;

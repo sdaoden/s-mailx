@@ -223,8 +223,7 @@ _file_save(struct fp *fpp)
    default:
       cmd[0] = "cat";   cmd[1] = NULL; break;
    case FP_HOOK:
-      if ((cmd[0] = ok_vlook(SHELL)) == NULL)
-         cmd[0] = XSHELL;
+      cmd[0] = ok_vlook(SHELL);
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
@@ -251,8 +250,7 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
    case FP_HOOK:
-      if ((cmd[0] = ok_vlook(SHELL)) == NULL)
-         cmd[0] = XSHELL;
+      cmd[0] = ok_vlook(SHELL);
       cmd[1] = "-c";
       cmd[2] = load_cmd;
       break;

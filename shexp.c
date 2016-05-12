@@ -164,7 +164,7 @@ jleave:
 #else /* HAVE_WORDEXP */
    struct stat sbuf;
    char xname[PATH_MAX +1], cmdbuf[PATH_MAX +1], /* also used for files */
-      *shellp, *cp = NULL;
+      cp = NULL;
    int pivec[2], pid, l, waits;
    NYD_ENTER;
 
@@ -173,9 +173,7 @@ jleave:
       goto jleave;
    }
    snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-   if ((shellp = ok_vlook(SHELL)) == NULL)
-      shellp = UNCONST(XSHELL);
-   pid = start_command(shellp, NULL, COMMAND_FD_NULL, pivec[1],
+   pid = start_command(ok_vlook(SHELL), NULL, COMMAND_FD_NULL, pivec[1],
          "-c", cmdbuf, NULL, NULL);
    if (pid < 0) {
       close(pivec[0]);
@@ -293,8 +291,12 @@ _sh_exp_var(struct shvar_stack *shsp)
       }
 
       shsp->shs_len = i;
-      if ((cp = vok_vlook(savestrbuf(shsp->shs_dat, i))) != NULL)
-         shsp->shs_len = strlen(shsp->shs_dat = cp);
+      /* Check getenv(3) shall no internal variable exist! */
+      if ((rv = vok_vlook(cp = savestrbuf(shsp->shs_dat, i))) != NULL ||
+            (rv = getenv(cp)) != NULL)
+         shsp->shs_len = strlen(shsp->shs_dat = rv);
+      else
+         shsp->shs_len = 0, shsp->shs_dat = UNCONST("");
    }
    if (c != '\0')
       goto jrecurse;
@@ -374,12 +376,8 @@ jnext:
       res = prevfile;
       goto jislocal;
    case '&':
-      if (res[1] == '\0') {
-         if ((res = ok_vlook(MBOX)) == NULL)
-            res = UNCONST("~/mbox"); /* XXX no magics (POSIX though) */
-         else if (res[0] != '&' || res[1] != '\0')
-            goto jnext;
-      }
+      if (res[1] == '\0')
+         res = ok_vlook(MBOX);
       break;
    }
 

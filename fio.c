@@ -433,22 +433,12 @@ jleave:
 FL char const *
 getdeadletter(void) /* XXX should that be in auxlily.c? */
 {
-   char const *cp;
+   char const *cp_base, *cp;
    NYD_ENTER;
 
-   if ((cp = ok_vlook(DEAD)) == NULL || (cp = fexpand(cp, FEXP_LOCAL)) == NULL)
-      cp = fexpand("~/dead.letter", FEXP_LOCAL | FEXP_SHELL);
-   else if (*cp != '/') {
-      size_t sz = strlen(cp) + 2 +1;
-      char *buf = ac_alloc(sz);
-
-      snprintf(buf, sz, "~/%s", cp);
-      cp = fexpand(buf, FEXP_LOCAL | FEXP_SHELL);
-      ac_free(buf);
-   }
-
+   cp = fexpand(cp_base = ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
    if (cp == NULL)
-      cp = "dead.letter"; /* XXX magic -> nail.h (POSIX thing though) */
+      cp = cp_base;
    NYD_LEAVE;
    return cp;
 }

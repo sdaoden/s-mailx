@@ -913,16 +913,13 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
 {
    struct str s;
    struct spam_cf *scfp;
-   char const *cp;
    NYD2_ENTER;
    LCTA(3 < NELEM(scfp->cf_env));
 
    scfp = &vcp->vc_t.cf;
 
    if ((scfp->cf_useshell = useshell)) {
-      if ((cp = ok_vlook(SHELL)) == NULL)
-         cp = XSHELL;
-      scfp->cf_acmd = cp;
+      scfp->cf_acmd = ok_vlook(SHELL);
       scfp->cf_a0 = "-c";
    }
 

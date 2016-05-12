@@ -145,7 +145,6 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    int t;
    time_t modtime;
    off_t modsize;
-   char const *ed;
    char *tempEdit;
    NYD_ENTER;
 
@@ -198,12 +197,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    if (t != 0)
       goto jleave;
 
-   ed = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
-   if (ed == NULL)
-      ed = (viored == 'e') ? "ed" : "vi"; /* XXX no magics, -> nail.h */
-
    sigemptyset(&cset);
-   if (run_command(ed, (oldint != SIG_IGN ? &cset : NULL),
+   if (run_command((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
+         (oldint != SIG_IGN ? &cset : NULL),
          COMMAND_FD_PASS, COMMAND_FD_PASS, tempEdit, NULL, NULL, NULL) < 0)
       goto jleave;
 

@@ -94,8 +94,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          ++file;
       if (*file == '|') {
          ++file;
-         if ((shell = ok_vlook(SHELL)) == NULL)
-            shell = XSHELL;
+         shell = ok_vlook(SHELL);
       }
    }
 

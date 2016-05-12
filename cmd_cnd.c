@@ -132,7 +132,10 @@ jesyn:
          else
             goto jesyn;
       }
-      lhv = noop ? NULL : vok_vlook(cp);
+      if(noop)
+         lhv = NULL;
+      else if((lhv = vok_vlook(cp)) == NULL)
+         lhv = getenv(cp);
 
       /* Single argument, "implicit boolean" form? */
       if (argc == 1) {
@@ -180,7 +183,10 @@ jesyn:
                goto jesyn;
             }
          }
-         rhv = noop ? NULL : vok_vlook(rhv);
+         if(noop)
+            rhv = NULL;
+         else if((rhv = vok_vlook(cp = rhv)) == NULL)
+            rhv = getenv(cp);
       }
 
       /* A null value is treated as the empty string */
