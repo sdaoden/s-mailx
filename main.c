@@ -374,9 +374,10 @@ _setup_vars(void)
    if ((pwuid = getpwuid(uid)) == NULL)
       n_panic(_("Cannot associate a name with uid %u"), user_id);
 
-   if (cp == NULL || *cp == '\0')
+   if (cp == NULL || *cp == '\0') {
       myname = pwuid->pw_name;
-   else if ((pw = getpwnam(cp)) == NULL) {
+      pw = NULL;
+   } else if ((pw = getpwnam(cp)) == NULL) {
       n_alert(_("\"%s\" is not a user of this system"), cp);
       exit(EXIT_NOUSER);
    } else {
@@ -389,7 +390,7 @@ _setup_vars(void)
 
    /* */
    if ((cp = env_vlook("HOME", TRU1)) == NULL)
-      cp = "."; /* XXX User and Login objects; Login: pw->pw_dir */
+      cp = (pw != NULL) ? pw->pw_dir : pwuid->pw_dir;
    homedir = savestr(cp);
 
    tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
