@@ -122,7 +122,10 @@ _update-release:
 	' && \
 	mv -f nail.rcx nail.rc &&\
 	\
-	git add version.h nail.1 nail.rc &&\
+	./mk-okey-map.pl&&\
+	./mk-tcap-map.pl&&\
+	\
+	git add version.h nail.1 nail.rc okeys.h tcaps.h&&\
 	LC_ALL=${ORIG_LC_ALL} git commit -S -m "Bump $${UUAGENT} v$${REL}" &&\
 	LC_ALL=${ORIG_LC_ALL} git tag -s -f "v$${REL}" &&\
 	\
@@ -148,6 +151,9 @@ _update-release:
 		< nail.rc > nail.rcx &&\
 	mv -f nail.rcx nail.rc \
 	) &&\
+	\
+	./mk-okey-map.pl noverbose &&\
+	./mk-tcap-map.pl noverbose &&\
 	\
 	git add --all &&\
 	LC_ALL=${ORIG_LC_ALL} \
