@@ -2633,7 +2633,7 @@ ${cat} > ${tmp2}.c << \!
 : . libexecdir: LIBEXECDIR
 #endif
 : . mandir: MANDIR
-: . sendmail(1): SENDMAIL (argv[0] = SENDMAIL_PROGNAME)
+: . sendmail(1): VAL_SENDMAIL (argv[0] = VAL_SENDMAIL_PROGNAME)
 : . Mail spool directory: MAILSPOOL
 :
 !

@@ -52,8 +52,12 @@ MAILSPOOL=`\
       echo /var/mail;\
    fi`
 
+## TODO In v15 we will have a clean separation in between options (OPT_) and
+## TODO values (VAL_).  This is better than the current WANT_ and XYZ mess.
+## TODO Start today with a few
+
 # Path to the local MTA (Mail Transport Agent).
-SENDMAIL=`\
+VAL_SENDMAIL=`\
    if [ -x /usr/bin/sendmail ]; then \
       echo /usr/bin/sendmail;\
    elif [ -x /usr/lib/sendmail ]; then \
@@ -67,20 +71,25 @@ SENDMAIL=`\
 # mailwrapper(8) is often used, which selects the required service by
 # looking at the name by which the program actually has been invoked.
 # This variable can be used to adjust this name as necessary.
-SENDMAIL_PROGNAME=sendmail
+VAL_SENDMAIL_PROGNAME=sendmail
 
 # Default *SHELL* (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to
-# it's own builtin sh(1) path (most likely `bin/sh'), effectively
-# bypassing *XSHELL*.
-XSHELL=/bin/sh
+# it's own builtin sh(1) path
+VAL_SHELL=/bin/sh
 
-# The default *LISTER* (in the $PATH).
-XLISTER=ls
-
-# The default *PAGER* (in the $PATH).
-XPAGER=more
+# Some more default fallback values, some of which are standardized
+# and (thus)/or documented in the manual (changes not reflected there!)
+VAL_DEAD=~/dead.letter
+VAL_EDITOR=ed
+VAL_LISTER=ls
+VAL_MAILRC=~/.mailrc
+VAL_MBOX=~/.mbox
+VAL_NETRC=~/.netrc
+VAL_PAGER=more
+VAL_TMPDIR=/tmp
+VAL_VISUAL=vi
 
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
