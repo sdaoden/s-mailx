@@ -179,8 +179,8 @@ static void          _group_print_all(enum group_type gt);
 
 static int           __group_print_qsorter(void const *a, void const *b);
 
-/* Really print a group, actually */
-static void          _group_print(struct group const *gp, FILE *fo);
+/* Really print a group, actually.  Return number of written lines */
+static size_t        _group_print(struct group const *gp, FILE *fo);
 
 /* Multiplexers for list and subscribe commands */
 static int           _mlmux(enum group_type gt, char **argv);
@@ -668,8 +668,8 @@ _group_print_all(enum group_type gt)
       fp = stdout;
    lines = 0;
 
-   for (i = 0; ida[i] != NULL; ++lines, ++i)
-      _group_print(_group_find(gt, ida[i]), fp);
+   for (i = 0; ida[i] != NULL; ++i)
+      lines += _group_print(_group_find(gt, ida[i]), fp);
 #ifdef HAVE_REGEX
    if (gt & GT_MLIST) {
       if (gt & GT_SUBSCRIBE)
@@ -677,7 +677,7 @@ _group_print_all(enum group_type gt)
       else
          i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
       if (i > 0)
-         fprintf(fp, _("%s list total: %u entries, %u hits\n"),
+         fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
             (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
             i, h);
    }
@@ -701,11 +701,14 @@ __group_print_qsorter(void const *a, void const *b)
    return rv;
 }
 
-static void
+static size_t
 _group_print(struct group const *gp, FILE *fo)
 {
-   char const *sep;
+   char const *cp;
+   size_t rv;
    NYD_ENTER;
+
+   rv = 1;
 
    if (gp->g_type & GT_ALIAS) {
       struct grp_names_head *gnhp;
@@ -722,13 +725,6 @@ _group_print(struct group const *gp, FILE *fo)
          } while (gnp != NULL);
       }
    } else if (gp->g_type & GT_MLIST) {
-      fprintf(fo, "%-42s", gp->g_id);
-
-      sep = " [";
-      if (gp->g_type & GT_SUBSCRIBE) {
-         fprintf(fo, "%ssub", sep);
-         sep = NULL;
-      }
 #ifdef HAVE_REGEX
       if (gp->g_type & GT_REGEX) {
          size_t i;
@@ -738,26 +734,25 @@ _group_print(struct group const *gp, FILE *fo)
          GP_TO_SUBCLASS(grp, gp);
          for (i = 1; lp != grp; lp = lp->gr_next)
             ++i;
-
-         fprintf(fo, "%srx: %" PRIuZ "/%" PRIuZ ". hits/sort",
-            (sep != NULL ? sep : ", "), grp->gr_hits, i);
-         sep = NULL;
+         fprintf(fo, "# regex(7): hits %" PRIuZ ", sort %" PRIuZ ".\n  ",
+            grp->gr_hits, i);
+         ++rv;
       }
 #endif
-      if (sep == NULL)
-         putc(']', fo);
+
+      fprintf(fo, "%s %s",
+         (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"), gp->g_id);
    } else if (gp->g_type & GT_SHORTCUT) {
-      char const *cp;
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
    } else if (gp->g_type & GT_CUSTOMHDR) {
-      char const *cp;
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "customhdr %s \"%s\"", gp->g_id, string_quote(cp));
    }
 
    putc('\n', fo);
    NYD_LEAVE;
+   return rv;
 }
 
 static int
