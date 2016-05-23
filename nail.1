@@ -124,13 +124,17 @@
 .Bd -filled -compact -offset indent
 .Sy Compatibility note:
 S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
-A partial set of compatibility options exist, tagged as \*(IN and \*(OU,
-yet complete compatibility won't be possible.
-To choose upward compatible behaviour, please set the internal variable
-.Va v15-compat .
-Anything which will vanish in v15.0 is tagged \*(OB, and using
+Backward incompatibility has to be expected.
+New and old behaviour is flagged \*(IN and \*(OU, and setting
+.Va v15-compat ,
+one of the many
+.Sx "INTERNAL VARIABLES" ,
+will choose new behaviour when applicable.
+\*(OB flags what will vanish, and enabling
 .Fl d
-will print warnings for many use cases of obsolete features.
+or
+.Fl v
+enables obsoletion warnings.
 .Ed
 .
 .Pp
