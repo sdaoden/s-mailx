@@ -8694,14 +8694,15 @@ in- as well as outside of a quoted string.
 .It
 BSD doesn't require the final quotation mark of the final user input token.
 .It
+The original BSD (Berknet) parser also supported a format which allowed
+tokens to be separated with commas \(en whereas at least Hewlett-Packard
+still seems to support this syntax, \*(UA does not!
+.It
 As a non-portable extension some widely-used programs support
 shell-style comments: if an input line starts, after any amount of
 whitespace, with a number sign
 .Ql # ,
 then the rest of the line is ignored.
-.It
-At least Hewlett-Packard seems to support a format which also allows
-tokens to be separated with commas \(en this format is not supported!
 .It
 Whereas other programs may require that the
 .Pa .netrc
