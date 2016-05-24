@@ -102,8 +102,8 @@ static void       collhup(int s);
 
 static int        putesc(char const *s, FILE *stream);
 
-/* Call the hook macname */
-static void a_coll_call_hook(struct header *hp, char const *macname);
+/* call_compose_mode_hook() setter hook */
+static void a_coll__hook_setter(void *arg);
 
 static void
 _execute_command(struct header *hp, char const *linebuf, size_t linesize){
@@ -603,9 +603,12 @@ jleave:
 }
 
 static void
-a_coll_call_hook(struct header *hp, char const *macname){ /* TODO v15: drop */
+a_coll__hook_setter(void *arg){ /* TODO v15: drop */
+   struct header *hp;
    char const *val;
    NYD2_ENTER;
+
+   hp = arg;
 
    if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
       val = "";
@@ -625,15 +628,6 @@ a_coll_call_hook(struct header *hp, char const *macname){ /* TODO v15: drop */
    if((val = hp->h_subject) == NULL)
       val = "";
    ok_vset(compose_subject, val);
-
-   call_compose_mode_hook(macname);
-
-   ok_vclear(compose_subject);
-   ok_vclear(compose_bcc);
-   ok_vclear(compose_cc);
-   ok_vclear(compose_to);
-   ok_vclear(compose_sender);
-   ok_vclear(compose_from);
    NYD2_LEAVE;
 }
 
@@ -718,10 +712,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if (getfields)
          grab_headers(hp, getfields, 1);
 
-      /* Execute compose-post-hook TODO completely v15-compat intermediate!! */
+      /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
          setup_from_and_sender(hp);
-         a_coll_call_hook(hp, cp);
+         call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
       }
 
       /* C99 */{
@@ -1082,10 +1076,10 @@ jputline:
    }
 
 jout:
-   /* Execute compose-post-hook TODO completely v15-compat intermediate!! */
+   /* Execute compose-leave TODO completely v15-compat intermediate!! */
    if((cp = ok_vlook(on_compose_leave)) != NULL){
       setup_from_and_sender(hp);
-      a_coll_call_hook(hp, cp);
+      call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
    }
 
    /* Final change to edit headers, if not already above */

@@ -170,7 +170,8 @@ FL int         c_call(void *v);
 FL bool_t      check_folder_hook(bool_t nmail);
 
 /* TODO v15 drop Invoke compose hook macname */
-FL void        call_compose_mode_hook(char const *macname);
+FL void        call_compose_mode_hook(char const *macname,
+                  void (*hook_pre)(void *), void *hook_arg);
 
 /* Accounts: `account', `unaccount' */
 FL int         c_account(void *v);
