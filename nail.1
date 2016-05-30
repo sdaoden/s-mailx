@@ -2374,12 +2374,14 @@ endif
 .
 Each command is typed on a line by itself,
 and may take arguments following the command word.
-The command need not be typed in its entirety \(en
-the first command which matches the typed prefix is used.
-An \(en alphabetically \(en sorted list of commands can be shown
-with the command
-.Ic list ,
-and the command
+Command names may be abbreviated, in which case the first command that
+matches the given prefix will be used.
+The command
+.Ic list
+can be used to show the list of all commands, either alphabetically
+sorted or in prefix search order (these don't match, also because the
+POSIX standard prescribes a set of abbreviations).
+\*(OPally the command
 .Ic help
 (or
 .Ic \&? ) ,
@@ -2387,8 +2389,7 @@ when given an argument, will show a documentation string for the
 command matching the expanded argument, as in
 .Ql ?t ,
 which should be a shorthand of
-.Ql ?type ;
-documentation strings are however \*(OPal.
+.Ql ?type .
 .
 .Pp
 For commands which take message lists as arguments, the next message
@@ -3592,6 +3593,8 @@ and
 .Mx
 .It Ic list
 Shows the names of all available commands, alphabetically sorted.
+If given any non-whitespace argument the list will be shown in the order
+in which command prefixes are searched.
 .
 .Mx
 .It Ic localopts

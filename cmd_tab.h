@@ -201,8 +201,8 @@
      DS(N_("Echo given arguments")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &a_lex_c_list, (H | M | NOLIST), 0, 0
-     DS(N_("List all available commands")) },
+   { "list", &a_lex_c_list, (H | M | STRLIST), 0, 0
+     DS(N_("List all commands (with argument: in prefix search order)")) },
    { "xit", &c_exit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
    { "exit", &c_exit, (M | NOLIST), 0, 0

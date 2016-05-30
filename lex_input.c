@@ -318,10 +318,8 @@ a_lex_c_list(void *v){
    size_t i;
    NYD_ENTER;
 
-   UNUSED(v);
-
-   i = NELEM(a_lex_cmd_tab) + NELEM(a_lex_special_cmd_tab) + 1;
-   cpa = ac_alloc(sizeof(cp) * i);
+   i = NELEM(a_lex_cmd_tab) + NELEM(a_lex_special_cmd_tab) +1;
+   cpa = salloc(sizeof(cp) * i);
 
    for(i = 0; i < NELEM(a_lex_cmd_tab); ++i)
       cpa[i] = &a_lex_cmd_tab[i];
@@ -333,7 +331,12 @@ a_lex_c_list(void *v){
    }
    cpa[i] = NULL;
 
-   qsort(cpa, i, sizeof(cp), &a_lex__pcmd_cmp);
+   /* C99 */{
+      char const *xcp = v;
+
+      if(*xcp == '\0')
+         qsort(cpa, i, sizeof(xcp), &a_lex__pcmd_cmp);
+   }
 
    printf(_("Commands are:\n"));
    for(i = 0, cursor = cpa; (cp = *cursor++) != NULL;){
@@ -348,8 +351,6 @@ a_lex_c_list(void *v){
       }
       printf((*cursor != NULL ? "%s, " : "%s\n"), cp->lc_name);
    }
-
-   ac_free(cpa);
    NYD_LEAVE;
    return 0;
 }
