@@ -322,7 +322,7 @@ jleave:
 
 static bool_t
 a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
-   struct a_amv_lostack los;
+   struct a_amv_lostack los, *los_save;
    struct a_amv_mac_line **amlp;
    char **args_base, **args;
    struct a_amv_mac const *amp;
@@ -335,9 +335,15 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
       *(args++) = sbufdup((*amlp)->aml_dat, (*amlp)->aml_len);
    *args = NULL;
 
-   los.as_up = a_amv_lopts;
    los.as_mac = UNCONST(amp); /* But not used.. */
-   los.as_lopts = (amcap->amca_unroller == NULL) ? NULL : *amcap->amca_unroller;
+   los_save = a_amv_lopts;
+   if(amcap->amca_unroller == NULL){
+      los.as_up = los_save;
+      los.as_lopts = NULL;
+   }else{
+      los.as_up = NULL;
+      los.as_lopts = *amcap->amca_unroller;
+   }
    los.as_unroll = amcap->amca_lopts_on;
 
    a_amv_lopts = &los;
@@ -346,7 +352,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    rv = n_source_macro(amp->am_name, args_base);
    if(amcap->amca_hook_post != NULL)
       (*amcap->amca_hook_post)(amcap->amca_hook_arg);
-   a_amv_lopts = los.as_up;
+   a_amv_lopts = los_save;
 
    if(amcap->amca_unroller == NULL){
       if(los.as_lopts != NULL)
@@ -578,16 +584,12 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
    size_t nl, vl;
    NYD2_ENTER;
 
-   /* Propagate unrolling up the stack, as necessary.  Store all unroll
-    * information in the uppermost level which declared it wants to unroll, in
-    * order to avoid duplicates and thus needless actions when unrolling */
-   /* C99 */{
-      struct a_amv_lostack *lalp;
-
-      for(lalp = NULL; alp != NULL; alp = alp->as_up)
-         if(alp->as_unroll)
-            lalp = alp;
-      if((alp = lalp) == NULL)
+   /* Propagate unrolling up the stack, as necessary */
+   assert(alp != NULL);
+   for(;;){
+      if(alp->as_unroll)
+         break;
+      if((alp = alp->as_up) == NULL)
          goto jleave;
    }
 
