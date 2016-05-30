@@ -112,7 +112,7 @@ static void    _startup(void);
 /* Grow a char** */
 static size_t  _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
 
-/* Initialize *tempdir*, *myname*, *homedir* */
+/* Setup some variables which we require to be valid / verified */
 static void    _setup_vars(void);
 
 /* We're in an interactive session - compute what the screen size for printing
@@ -298,52 +298,46 @@ _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 static void
 _setup_vars(void){
    /* XXX furtherly check paths? */
-   struct passwd *pwuid, *pw;
-   uid_t uid;
+   struct passwd *pwuid;
    char const *cp;
-   bool_t doset;
    NYD_ENTER;
 
-   /* Verify and fixate user identification */
-   if(myname != NULL){
-      cp = myname;
-      doset = TRU1;
-   }else if((doset = ((cp = ok_vlook(LOGNAME)) == NULL)))
-      cp = ok_vlook(USER);
-
    group_id = getgid();
-   user_id = uid = getuid();
-   if((pwuid = getpwuid(uid)) == NULL)
-      n_panic(_("Cannot associate a name with uid %u"), user_id);
+   if((pwuid = getpwuid(user_id = getuid())) == NULL)
+      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)user_id);
+   myname = savestr(pwuid->pw_name); /* XXX replace uses with vlook(LOGNAME)! */
 
-   if(cp == NULL || *cp == '\0'){
-      cp = pwuid->pw_name;
-      pw = NULL;
-      doset = TRU1;
-   }else if((pw = getpwnam(cp)) == NULL){
-      n_alert(_("\"%s\" is not a user of this system"), cp);
-      exit(EXIT_NOUSER);
-   }else{
-      cp = pw->pw_name;
-      if(pw->pw_uid != uid)
-         options |= OPT_u_FLAG;
-      doset = TRU1;
-   }
+   /* C99 */{
+      char const *ep;
+      bool_t doenv;
 
-   if(doset){
-      pstate |= PS_STARTED;
-      ok_vset(LOGNAME, cp);
-      pstate &= ~PS_STARTED;
+      if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
+            (doenv = strcmp(myname, ep)))
+         n_err(_("Warning: $LOGNAME=\"%s\" not identical to user (\"%s\")!\n"),
+            ep, myname);
+      if(doenv){
+         pstate |= PS_ROOT;
+         ok_vset(LOGNAME, myname);
+         pstate &= ~PS_ROOT;
+      }
+
+      if((ep = ok_vlook(USER)) != NULL && strcmp(myname, ep)){
+         n_err(_("Warning: $USER=\"%s\" not identical to user (\"%s\")!\n"),
+            ep, myname);
+         pstate |= PS_ROOT;
+         ok_vset(USER, myname);
+         pstate &= ~PS_ROOT;
+      }
    }
 
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
    /* */
    if((cp = ok_vlook(HOME)) == NULL){
-      cp = (pw != NULL) ? pw->pw_dir : pwuid->pw_dir;
-      pstate |= PS_STARTED;
+      cp = pwuid->pw_dir;
+      pstate |= PS_ROOT;
       ok_vset(HOME, cp);
-      pstate &= ~PS_STARTED;
+      pstate &= ~PS_ROOT;
    }
 
    (void)ok_vlook(TMPDIR);
@@ -533,12 +527,12 @@ main(int argc, char *argv[]){
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]..]\n"
          "\t [-s subject] [-X cmd] [-.] to-address.. [-- mta-option..]\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
-         "\t [-X cmd] -f [file] [-- mta-option..]\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
+         "  %s [-BdEeHiNnRv~] [-: spec] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
          "\t [-u user] [-X cmd] [-- mta-option..]\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-X cmd] [file] [-- mta-option..]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
@@ -724,9 +718,8 @@ joarg:
          options |= OPT_SENDMODE | OPT_t_FLAG;
          break;
       case 'u':
-         /* Set user name to pretend to be; don't set OPT_u_FLAG yet, this is
-          * done as necessary in _setup_vars() above */
-         myname = _oarg;
+         /* Temporarily set myname so that we can recognize the -u condition */
+         myname = savecat("%", _oarg);
          break;
       case 'V':
          puts(ok_vlook(version));
@@ -807,7 +800,7 @@ jgetopt_done:
    else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
-   else if (folder != NULL && folder[1] == '\0') {
+   else if (folder != NULL && /*folder[0] == '&' &&*/ folder[1] == '\0') {
       folder = cp;
       if ((cp = argv[++i]) != NULL) {
          if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
@@ -837,7 +830,7 @@ jgetopt_done:
    if (smopts_cnt + i > smopts_size)
       DBG(smopts_size =) _grow_cpp(&smopts, smopts_cnt + i + 1, smopts_cnt);
 
-   /* Check for inconsistent arguments */
+   /* Check for inconsistent arguments, fix some temporaries */
    if (options & OPT_SENDMODE) {
       /* XXX This is only because BATCH_FLAG sets *folder*=/dev/null
        * XXX in order to function.  Ideally that would not be needed */
@@ -866,8 +859,8 @@ jgetopt_done:
          goto jusage;
       }
    } else {
-      if (folder != NULL && myname != NULL) {
-         emsg = N_("The options -f and -u are mutually exclusive");
+      if (myname != NULL && folder != NULL) {
+         emsg = N_("The options -u and -f (and -#) are mutually exclusive");
          goto jusage;
       }
       if ((options & (OPT_EXISTONLY | OPT_HEADERSONLY)) ==
@@ -878,6 +871,9 @@ jgetopt_done:
       if ((options & (OPT_HEADERSONLY | OPT_HEADERLIST)) == /* TODO OBSOLETE */
             (OPT_HEADERSONLY | OPT_HEADERLIST))
          OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
+
+      if(myname != NULL)
+         folder = myname;
    }
 
    /*
@@ -898,7 +894,7 @@ jgetopt_done:
 # ifndef TTY_WANTS_SIGWINCH
       if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
-         safe_signal(SIGWINCH, _setscreensize);
+         safe_signal(SIGWINCH, &_setscreensize);
 #endif
    } else
       scrnheight = realscreenheight = 24, scrnwidth = 80;
@@ -982,9 +978,6 @@ jgetopt_done:
     * We're finally completely setup and ready to go
     */
    pstate |= PS_STARTED;
-
-   if (options & OPT_DEBUG)
-      n_err(_("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg);

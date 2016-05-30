@@ -90,19 +90,7 @@
 .Ek
 .Nm \*(uA
 .Bk -words
-.Op Fl BdEeHiNnRv~#
-.Op Fl \&: Ar spec
-.Op Fl A Ar account
-.Op Fl L Ar spec-list
-.Op Fl r Ar from-addr
-.Op Fl S Ar variable Ns Op Ns = Ns Ar value
-.Op Fl X Ar cmd
-.Fl f Op Ar file
-.Op Fl Fl \~ Ns Ar mta-option ...
-.Ek
-.Nm \*(uA
-.Bk -words
-.Op Fl BdEeHiNnRv~#
+.Op Fl BdEeHiNnRv~
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
@@ -110,6 +98,19 @@
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .Op Fl X Ar cmd
+.Op Fl Fl \~ Ns Ar mta-option ...
+.Ek
+.Nm \*(uA
+.Bk -words
+.Op Fl BdEeHiNnRv~#
+.Op Fl \&: Ar spec
+.Op Fl A Ar account
+.Fl f
+.Op Fl L Ar spec-list
+.Op Fl r Ar from-addr
+.Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl X Ar cmd
+.Op Ar file
 .Op Fl Fl \~ Ns Ar mta-option ...
 .Ek
 .\" }}}
@@ -462,17 +463,10 @@ can be embedded, too.
 .
 .Mx
 .It Fl u Ar user
-Read the system mailbox of
-.Ar user
-(appropriate privileges presumed), and
-.Dq assume to be
-.Ar user
-in some aspects, e.g. in respect to
-.Ic file Ns
-\(enexpansions of
-.Ql %
-etc.; also see
-.Ev LOGNAME .
+Initially read the system mailbox of
+.Ar user ,
+appropriate privileges presumed; effectively identical to
+.Ql -f %user .
 .
 .Mx
 .It Fl V
@@ -2039,16 +2033,8 @@ entry for
 .Pp
 If there is still no
 .Ql USER
-then \*(UA will fall back to the user who is supposed to run \*(UA:
-either the name that has been given with the
-.Fl u
-command line option (or, equivalently, but with less precedence, the
-environment variable
-.Ev LOGNAME ) ,
-or the
-.Dq current
-user.
-The identity of this user has been fixated during \*(UA startup and is
+then \*(UA will fall back to the user who is supposed to run \*(UA,
+the identity of which has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .
 .It
@@ -8080,11 +8066,7 @@ for the complete picture about character sets.
 \*(IN Variable chain that sets a global fallback user name, which is
 used in case none has been given in the protocol and account-specific
 URL.
-This variable defaults to the value of the first of
-.Ev LOGNAME
-and
-.Ev USER
-that is set (the former being SystemV and POSIX standard, the latter BSD).
+This variable defaults to the name of the user who runs \*(UA.
 .
 .Mx
 .It Va v15-compat
@@ -8242,15 +8224,9 @@ Default is
 .
 .Mx
 .It Ev LOGNAME
-Force identification as the given user, i.e., identical to the
-.Fl u
-command line option.
-This variable is standardized and therefore used in preference to the
-otherwise identical
-.Ev USER ;
-it is only used when it resides in the process environment.
-Note that updates will not affect \*(UA itself, but will affect any
-newly created child process.
+Upon startup \*(UA will actively ensure that this variable refers to the
+name of the user who runs \*(UA, in order to be able to pass a verified
+name to any newly created child process.
 .
 .Mx
 .It Ev MAIL
@@ -8385,10 +8361,10 @@ This variable is only used when it resides in the process environment.
 .
 .Mx
 .It Ev USER
-This legacy variable comes from the BSD world and is only inspected if
-the POSIX standard environment variable
+Identical to
 .Ev LOGNAME
-is not set (a condition that will be corrected automatically).
+(see there), but this variable is not standardized, should therefore not
+be used, and is only corrected if already set.
 .
 .Mx
 .It Ev VISUAL

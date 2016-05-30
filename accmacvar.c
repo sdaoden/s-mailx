@@ -626,18 +626,23 @@ jleave:
 static void
 a_amv_lopts_unroll(struct a_amv_var **avpp){
    struct a_amv_lostack *save_alp;
+   bool_t reset;
    struct a_amv_var *x, *avp;
    NYD2_ENTER;
 
    avp = *avpp;
    *avpp = NULL;
+   reset = !(pstate & PS_ROOT);
 
    save_alp = a_amv_lopts;
    a_amv_lopts = NULL;
    while(avp != NULL){
       x = avp;
       avp = avp->av_link;
+      pstate |= PS_ROOT;
       vok_vset(x->av_name, x->av_value);
+      if(reset)
+         pstate &= ~PS_ROOT;
       free(x);
    }
    a_amv_lopts = save_alp;
@@ -704,10 +709,6 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       flag = OPT_N_FLAG;
       enable = !enable;
       break;
-   case ok_v_LOGNAME:
-      assert(enable);
-      myname = *val; /* XXX replace users with ok_vlook(LOGNAME) */
-      break;
    case ok_b_memdebug:
       flag = OPT_MEMDEBUG;
       break;
@@ -717,12 +718,6 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    case ok_v_TMPDIR:
       if(enable) /* DEFVAL will soon ensure a value otherwise! */
          tempdir = *val; /* XXX replace users with ok_vlook(TMPDIR) */
-      break;
-   case ok_v_USER:
-      if(options & OPT_D_V)
-         n_err(_("Redirecting $USER to standardized $LOGNAME environment\n"));
-      assert(enable);
-      ok_vset(LOGNAME, *val);
       break;
    case ok_b_verbose:
       flag = (enable && !(options & OPT_VERB))
@@ -938,7 +933,8 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    if((avmp = avcp->avc_map) != NULL){
       ok = FAL0;
 
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0)){
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
+            !(pstate & PS_ROOT))){
          n_err(_("Variable is readonly: \"%s\"\n"), avcp->avc_name);
          goto jleave;
       }
@@ -947,7 +943,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          goto jleave;
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
-            !(pstate & PS_STARTED))){
+            !(pstate & (PS_ROOT | PS_STARTED)))){
          n_err(_("Variable cannot be set in a resource file: \"%s\"\n"),
             avcp->avc_name);
          goto jleave;
@@ -1049,13 +1045,14 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
    if(UNLIKELY(!a_amv_var_lookup(avcp))){
       if(force_env)
          rv = a_amv_var__clearenv(avcp->avc_name, NULL);
-      else if(!(pstate & PS_ROBOT) && (options & OPT_D_V))
+      else if(!(pstate & (PS_ROOT | PS_ROBOT)) && (options & OPT_D_V))
          n_err(_("Can't unset undefined variable: \"%s\"\n"), avcp->avc_name);
       goto jleave;
    }
 
    if(LIKELY((avmp = avcp->avc_map) != NULL)){
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0)){
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
+            !(pstate & PS_ROOT))){
          n_err(_("Variable may not be unset: \"%s\"\n"), avcp->avc_name);
          rv = FAL0;
          goto jleave;

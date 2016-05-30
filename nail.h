@@ -1212,9 +1212,8 @@ enum user_options {
    OPT_R_FLAG     = 1u<<10,   /* -R */
    OPT_r_FLAG     = 1u<<11,   /* -r (plus option_r_arg) */
    OPT_t_FLAG     = 1u<<12,   /* -t */
-   OPT_u_FLAG     = 1u<<13,   /* -u / $USER and pw->pw_uid != getuid(2) */
-   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<15,   /* -# */
+   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
    /*  */
    OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
@@ -1247,6 +1246,7 @@ do {\
 enum program_state {
    PS_NONE           = 0,
    PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
+   PS_ROOT           = 1<<30,       /* Temporary "bypass any checks" bit */
 
    PS_EXIT           = 1<< 1,       /* Exit request pending */
    PS_SOURCING       = 1<< 2,       /* During load() or `source' */
@@ -1399,7 +1399,7 @@ ok_b_emptybox,
 
    ok_v_LINES,                         /* {env=1} */
    ok_v_LISTER,                        /* {env=1,defval=VAL_LISTER} */
-   ok_v_LOGNAME,                       /* {vip=1,nodel=1,import=1} */
+   ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
 
    ok_v_MAIL,                          /* {env=1} */
@@ -1525,13 +1525,13 @@ ok_v_smtp_auth_user,
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,                  /* {vip=1,import=1,defval=VAL_TMPDIR} */
+   ok_v_TMPDIR,                        /* {vip=1,import=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {defval=5} */
    ok_v_ttycharset,
 
-   ok_v_USER,                          /* {vip=1,nodel=1,import=1} */
+   ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_user,
 
    ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */

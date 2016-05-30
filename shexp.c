@@ -72,7 +72,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
    char *cp;
    NYD_ENTER;
 
-   if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL) {
+   if (!force && !strcmp(user, myname) && (cp = ok_vlook(folder)) != NULL) {
       ;
    }
 
@@ -362,7 +362,7 @@ jnext:
          goto jnext;
       }
       _findmail(cbuf, sizeof cbuf, (res[1] != '\0' ? res + 1 : myname),
-         (res[1] != '\0' || (options & OPT_u_FLAG)));
+         (res[1] != '\0'));
       res = cbuf;
       goto jislocal;
    case '#':
