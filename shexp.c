@@ -69,7 +69,7 @@ static char *  _sh_exp_var(struct shvar_stack *shsp);
 static void
 _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 {
-   char *cp;
+   char const *cp;
    NYD_ENTER;
 
    if (!force && !strcmp(user, myname) && (cp = ok_vlook(folder)) != NULL) {
@@ -78,8 +78,11 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 
    if (force || (cp = ok_vlook(MAIL)) == NULL)
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user); /* TODO */
-   else
-      n_strscpy(buf, cp, bufsize);
+   else {
+      char const *exp = fexpand(cp, FEXP_NSHELL);
+
+      n_strscpy(buf, (exp != NULL ? exp : cp), bufsize);
+   }
    NYD_LEAVE;
 }
 
