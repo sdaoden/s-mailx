@@ -6,6 +6,7 @@ ARGS='-n# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
+MAIL=/dev/null
 
 MAKE="${MAKE:-`command -v make`}"
 awk=${awk:-`command -v awk`}
@@ -17,7 +18,7 @@ grep=${grep:-`command -v grep`}
 
 ##  --  >8  --  8<  --  ##
 
-export SNAIL ARGS CONF BODY MBOX MAKE awk cat cksum rm sed grep
+export SNAIL ARGS CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
 
 # NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
 # nl_langinfo(CODESET), then, so also overwrite ttycharset.
@@ -177,6 +178,7 @@ t_behave() {
    # TODO or to force echo of the prompt
 
    __behave_ifelse
+   __behave_localopts
 
    # FIXME __behave_alias
 
@@ -830,6 +832,45 @@ __behave_ifelse() {
 		__EOT
       cksum_test behave:if-regex "${MBOX}" '439960016 81'
    fi
+}
+
+__behave_localopts() {
+   # Nestable conditions test
+   ${rm} -f "${MBOX}"
+   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+	define t2 {
+	   echo in: t2
+	   set t2=t2
+	   echo $t2
+	}
+	define t1 {
+	   echo in: t1
+	   set gv1=gv1
+	   localopts on
+	   set lv1=lv1 lv2=lv2
+	   set lv3=lv3
+	   call t2
+	   localopts off
+	   set gv2=gv2
+	   echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	}
+	define t0 {
+	   echo in: t0
+	   call t1
+	   echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	}
+	account trouble {
+	   echo in: trouble
+	   call t0
+	}
+	call t0
+	unset gv1 gv2
+	account trouble
+	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+	account null
+	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+	__EOT
+   cksum_test behave:localopts "${MBOX}" '660843351 231'
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
