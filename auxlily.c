@@ -309,7 +309,8 @@ jfile:
             (memcpy(np+sz, cp=".xz",4), !stat(np,&st) && S_ISREG(st.st_mode)) ||
             (memcpy(np+sz, cp=".bz2",5), !stat(np, &st) && S_ISREG(st.st_mode)))
          temporary_protocol_ext = cp;
-      else if ((cp = ok_vlook(newfolders)) != NULL && !strcmp(cp, "maildir"))
+      else if ((cp = ok_vlook(newfolders)) != NULL &&
+            !asccasecmp(cp, "maildir"))
          rv = PROTO_MAILDIR;
    }
    ac_free(np);
