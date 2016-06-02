@@ -249,7 +249,7 @@ _os_setup_sunos() {
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
-         # Assume gcc(1)
+         # Assume gcc(1), which supports -R for compat
          cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
       fi
    fi
@@ -292,7 +292,7 @@ cc_setup() {
       else
          printf >&2 'boing booom tschak\n'
          msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), tcc(1), c89(1) and c99(1).'
+         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
          msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
          config_exit 1
       fi
@@ -360,6 +360,11 @@ _cc_flags_tcc() {
    if feat_yes DEBUG; then
       # May have problems to find libtcc cc_check -b
       cc_check -g
+   fi
+
+   if ld_check -Wl,-rpath =./ no; then
+      need_R_ldflags=-Wl,-rpath=
+      ld_runtime_flags # update!
    fi
 
    _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
@@ -449,6 +454,13 @@ _cc_flags_generic() {
    ld_check -Wl,-z,relro
    ld_check -Wl,-z,now
    ld_check -Wl,-z,noexecstack
+   if ld_check -Wl,-rpath =./ no; then
+      need_R_ldflags=-Wl,-rpath=
+      ld_runtime_flags # update!
+   elif ld_check -Wl,-R ./ no; then
+      need_R_ldflags=-Wl,-R
+      ld_runtime_flags # update!
+   fi
 
    # Address randomization
    _ccfg=${_CFLAGS}
@@ -589,6 +601,79 @@ feat_bail_required() {
    option_update # XXX this is rather useless here (dependency chain..)
 }
 
+path_check() {
+   # "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
+   varname=${1} addflag=${2} flagvarname=${3}
+   j=${IFS}
+   IFS=:
+   eval "set -- \$${1}"
+   IFS=${j}
+   j= k= y= z=
+   for i
+   do
+      [ -z "${i}" ] && continue
+      [ -d "${i}" ] || continue
+      if [ -n "${j}" ]; then
+         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
+            :
+         else
+            y="${y} :${i}:"
+            j="${j}:${i}"
+            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
+         fi
+      else
+         y=" :${i}:"
+         j="${i}"
+         [ -n "${addflag}" ] && k="${addflag}${i}"
+      fi
+   done
+   eval "${varname}=\"${j}\""
+   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
+   unset varname
+}
+
+ld_runtime_flags() {
+   if [ -n "${need_R_ldflags}" ]; then
+      i=${IFS}
+      IFS=:
+      set -- ${LD_LIBRARY_PATH}
+      IFS=${i}
+      for i
+      do
+         LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
+         _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
+      done
+      export LDFLAGS
+   fi
+   # Disable it for a possible second run.
+   need_R_ldflags=
+}
+
+cc_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
+   if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _CFLAGS="${_CFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+ld_check() {
+   # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
+   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${ADDLDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
 # Note we leave alone the values
@@ -654,38 +739,6 @@ msg 'Checking for remaining set of utilities'
 check_tool grep "${grep:-`command -v grep`}"
 
 # Before we step ahead with the other utilities perform a path cleanup first.
-# We need this function also for C_INCLUDE_PATH and LD_LIBRARY_PATH
-# "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
-path_check() {
-   varname=${1} addflag=${2} flagvarname=${3}
-   j=${IFS}
-   IFS=:
-   eval "set -- \$${1}"
-   IFS=${j}
-   j= k= y= z=
-   for i
-   do
-      [ -z "${i}" ] && continue
-      [ -d "${i}" ] || continue
-      if [ -n "${j}" ]; then
-         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
-            :
-         else
-            y="${y} :${i}:"
-            j="${j}:${i}"
-            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
-         fi
-      else
-         y=" :${i}:"
-         j="${i}"
-         [ -n "${addflag}" ] && k="${addflag}${i}"
-      fi
-   done
-   eval "${varname}=\"${j}\""
-   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
-   unset varname
-}
-
 path_check PATH
 
 # awk(1) above
@@ -798,18 +851,8 @@ LIBS="${LIBS} ${_LIBS}"
 unset _INCS _LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
 
-if [ -n "${need_R_ldflags}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${LD_LIBRARY_PATH}
-   IFS=${i}
-   for i
-   do
-      LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
-      _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
-   done
-   export LDFLAGS
-fi
+# Some environments need runtime path flags to be able to go at all
+ld_runtime_flags
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
 
@@ -845,30 +888,7 @@ else
    config_exit 1
 fi
 
-cc_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
-      _CFLAGS="${_CFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
-      return 0
-   fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
-   return 1
-}
-
-ld_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1} ${ADDLDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
-      _LDFLAGS="${_LDFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
-      return 0
-   fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
-   return 1
-}
-
+# This may also update ld_runtime_flags() (again)
 cc_flags
 
 for i in \
