@@ -1418,21 +1418,30 @@ int main(void){
 !
 fi # have_setlocale
 
-run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void){
-#if 1 /* TODO for now we use realpath(3) without NULL as 2nd arg! */
-   /* (And note that on Linux tcc(1) otherwise didn't detect once tested! */
    char x_buf[4096], *x = realpath(".", x_buf);
 
    return (x != NULL) ? 0 : 1;
-#else
-   char *x = realpath(".", NULL), *y = realpath("/", NULL);
-
-   return (x != NULL && y != NULL) ? 0 : 1;
-#endif
 }
 !
+then
+   if run_check realpath_malloc 'realpath(3) takes NULL' \
+         '#define HAVE_REALPATH_NULL' << \!
+#include <stdlib.h>
+int main(void){
+   char *x = realpath(".", NULL);
+
+   if(x != NULL)
+      free(x);
+   return (x != NULL) ? 0 : 1;
+}
+!
+   then
+      :
+   fi
+fi
 
 link_check wordexp 'wordexp(3)' '#define HAVE_WORDEXP' << \!
 #include <stdio.h> /* For C89 NULL */

@@ -688,34 +688,27 @@ a_amv_var_free(char *cp){
 
 static bool_t
 a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
-   char *cp;
    int flag;
    bool_t ok;
    NYD2_ENTER;
 
    ok = TRU1;
    flag = 0;
-   cp = NULL;
 
    switch(okey){
    case ok_b_debug:
       flag = OPT_DEBUG;
       break;
-   case ok_v_folder:
-      ok = (val != NULL && var_folder_updated(*val, &cp));
-      if(ok && cp != NULL){
-         a_amv_var_free(*val);
-         /* Ensure we don't leak later on */
-         if(*cp == '\0'){
-            *val = UNCONST("");
-            free(cp);
-         }else
-            *val = cp;
-      }
-      break;
    case ok_v_HOME:
-      assert(enable);
-      homedir = *val; /* XXX replace users with ok_vlook(HOME) */
+      /* Invalidate any resolved folder then, too
+       * FALLTHRU */
+   case ok_v_folder:
+      ok = !(pstate & PS_ROOT);
+      pstate |= PS_ROOT;
+      ok_vclear(_folder_resolved);
+      if(ok)
+         pstate &= ~PS_ROOT;
+      ok = TRU1;
       break;
    case ok_b_header:
       flag = OPT_N_FLAG;

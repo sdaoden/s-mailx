@@ -805,7 +805,7 @@ c_chdir(void *v)
    NYD_ENTER;
 
    if (*arglist == NULL)
-      cp = homedir;
+      cp = ok_vlook(HOME);
    else if ((cp = file_expand(*arglist)) == NULL)
       goto jleave;
    if (chdir(cp) == -1) {

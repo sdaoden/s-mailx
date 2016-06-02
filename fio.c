@@ -367,69 +367,6 @@ fsize(FILE *iob)
    return rv;
 }
 
-FL bool_t
-var_folder_updated(char const *name, char **store)
-{
-   char rv = TRU1;
-   char *folder, *unres = NULL, *res = NULL;
-   NYD_ENTER;
-
-   if ((folder = UNCONST(name)) == NULL)
-      goto jleave;
-
-   /* Expand the *folder*; skip %: prefix for simplicity of use */
-   /* XXX This *only* works because we do NOT
-    * XXX update environment variables via the "set" mechanism */
-   if (folder[0] == '%' && folder[1] == ':')
-      folder += 2;
-   if ((folder = fexpand(folder, FEXP_FULL)) == NULL) /* XXX error? */
-      goto jleave;
-
-   switch (which_protocol(folder)) {
-   case PROTO_POP3:
-      n_err(_("*folder* cannot be set to a flat, readonly POP3 account\n"));
-      rv = FAL0;
-      goto jleave;
-   default:
-      /* Further expansion desired */
-      break;
-   }
-
-   /* All non-absolute paths are relative to our home directory */
-   if (*folder != '/') {
-      size_t l1 = strlen(homedir), l2 = strlen(folder);
-      unres = ac_alloc(l1 + l2 + 1 +1);
-      memcpy(unres, homedir, l1);
-      unres[l1] = '/';
-      memcpy(unres + l1 + 1, folder, l2);
-      unres[l1 + 1 + l2] = '\0';
-      folder = unres;
-   }
-
-   /* Since lex.c:_update_mailname() uses realpath(3) if available to
-    * avoid that we loose track of our currently open folder in case we
-    * chdir away, but still checks the leading path portion against
-    * getfold() to be able to abbreviate to the +FOLDER syntax if
-    * possible, we need to realpath(3) the folder, too */
-#ifdef HAVE_REALPATH
-   res = ac_alloc(PATH_MAX +1);
-   if (realpath(folder, res) == NULL)
-      n_err(_("Can't canonicalize \"%s\"\n"), folder);
-   else
-      folder = res;
-#endif
-
-   *store = sstrdup(folder);
-
-   if (res != NULL)
-      ac_free(res);
-   if (unres != NULL)
-      ac_free(unres);
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
 FL char const *
 getdeadletter(void) /* XXX should that be in auxlily.c? */
 {

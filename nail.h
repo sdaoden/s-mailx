@@ -1370,6 +1370,7 @@ ok_b_emptybox,
    ok_v_features,                      /* {virt=_features} */
    ok_b_flipr,
    ok_v_folder,                        /* {vip=1} */
+   ok_v__folder_resolved,              /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_v_followup_to_honour,
@@ -2131,7 +2132,6 @@ VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
 
-VL char const  *homedir;            /* Path name of home directory */
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
 VL char const  *tempdir;            /* The temporary directory */

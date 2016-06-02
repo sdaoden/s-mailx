@@ -1454,21 +1454,20 @@ jleave:
 FL int
 c_folders(void *v)
 {
-   char dirname[PATH_MAX], *name, **argv = v;
-   int rv = 1;
+   char const *cp;
+   char **argv;
+   int rv;
    NYD_ENTER;
 
-   if (*argv) {
-      name = expand(*argv);
-      if (name == NULL)
-         goto jleave;
-   } else if (!getfold(dirname, sizeof dirname)) {
-      n_err(_("No value set for \"folder\"\n"));
-      goto jleave;
-   } else
-      name = dirname;
+   rv = 1;
 
-   run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name,
+   if(*(argv = v) != NULL){
+      if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL)
+         goto jleave;
+   }else
+      cp = folder_query();
+
+   run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, cp,
       NULL, NULL, NULL);
 jleave:
    NYD_LEAVE;

@@ -81,7 +81,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 static bool_t
 _update_mailname(char const *name)
 {
-   char tbuf[PATH_MAX], *mailp, *dispp;
+   char *mailp, *dispp;
    size_t i, j;
    bool_t rv = TRU1;
    NYD_ENTER;
@@ -90,8 +90,9 @@ _update_mailname(char const *name)
    if (name != NULL) {
 #ifdef HAVE_REALPATH
       enum protocol p = which_protocol(name);
+
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
-         if (realpath(name, mailname) == NULL) {
+         if (realpath(name, mailname) == NULL && errno != ENOENT) {
             n_err(_("Can't canonicalize \"%s\"\n"), name);
             rv = FAL0;
             goto jdocopy;
@@ -106,13 +107,17 @@ jdocopy:
    dispp = displayname;
 
    /* Don't display an absolute path but "+FOLDER" if under *folder* */
-   if (getfold(tbuf, sizeof tbuf)) {
-      i = strlen(tbuf);
-      if (i < sizeof(tbuf) -1)
-         tbuf[i++] = '/';
-      if (!strncmp(tbuf, mailp, i)) {
-         mailp += i;
-         *dispp++ = '+';
+   /* C99 */{
+      char const *folderp;
+
+      if(*(folderp = folder_query()) != '\0'){
+         i = strlen(folderp);
+         if(!strncmp(folderp, mailp, i)){
+            if(folderp[i -1] != '/' && mailp[i] == '/') /* XXX DIRSEP magic */
+               ++i;
+            mailp += i;
+            *dispp++ = '+';
+         }
       }
    }
 
@@ -156,13 +161,27 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    pstate &= ~PS_SETFILE_OPENED;
 
-   if (name[0] == '%' || ((who = shortcut_expand(name)) != NULL && *who == '%'))
-      fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
+   /* C99 */{
+      enum fexp_mode fexpm;
 
-   who = (name[1] != '\0') ? name + 1 : myname;
+      if((who = shortcut_expand(name)) != NULL){
+         fexpm = FEXP_NSHORTCUT | FEXP_NSHELL;
+         name = who;
+      }else
+         fexpm = FEXP_NSHELL;
 
-   if ((name = expand(name)) == NULL)
-      goto jem1;
+      if(name[0] == '%'){
+         fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
+         if(*(who = &name[1]) == ':')
+            ++who;
+         if(*who == '\0')
+            who = myname;
+      }else
+         who = myname;
+
+      if ((name = fexpand(name, fexpm)) == NULL)
+         goto jem1;
+   }
 
    switch (which_protocol(name)) {
    case PROTO_FILE:
@@ -171,9 +190,19 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       isdevnull = ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"));
 #ifdef HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
-         char ebuf[PATH_MAX];
-         if (realpath(name, ebuf) != NULL)
-            name = savestr(ebuf);
+# ifdef HAVE_REALPATH_NULL
+         char *cp;
+
+         if ((cp = realpath(name, NULL)) != NULL) {
+            name = savestr(cp);
+            (free)(cp);
+         }
+# else
+         char cbuf[PATH_MAX];
+
+         if (realpath(name, cbuf) != NULL)
+            name = savestr(cbuf);
+# endif
       } while (0);
 #endif
       rv = 1;
@@ -664,16 +693,111 @@ initbox(char const *name)
    NYD_LEAVE;
 }
 
-FL bool_t
-getfold(char *name, size_t size)
-{
-   char const *folder;
+FL char const *
+folder_query(void){
+   struct n_string s, *sp = &s;
+   char *cp;
+   char const *rv;
+   bool_t err;
    NYD_ENTER;
 
-   if ((folder = ok_vlook(folder)) != NULL)
-      n_strscpy(name, folder, size);
+   /* *folder* is linked with *_folder_resolved*: we only use the latter */
+   for(err = FAL0;;){
+      if((rv = ok_vlook(_folder_resolved)) != NULL)
+         break;
+
+      /* POSIX says:
+       *    If directory does not start with a <slash> ('/'), the contents
+       *    of HOME shall be prefixed to it.
+       * And:
+       *    If folder is unset or set to null, [.] filenames beginning with
+       *    '+' shall refer to files in the current directory.
+       * We may have the result already */
+      rv = "";
+      err = FAL0;
+
+      if((cp = ok_vlook(folder)) == NULL)
+         goto jset;
+
+      /* Expand the *folder*; skip %: prefix for simplicity of use */
+      if(cp[0] == '%' && cp[1] == ':')
+         cp += 2;
+      if((err = (cp = fexpand(cp, FEXP_NSHELL)) == NULL) || *cp == '\0')
+         goto jset;
+
+      switch(which_protocol(cp)){
+      case PROTO_POP3:
+         n_err(_("*folder* can't be set to a flat, readonly POP3 account\n"));
+         err = TRU1;
+         goto jset;
+      default:
+         /* Further expansion desired */
+         break;
+      }
+
+      /* Prefix HOME as necessary */
+      if(*cp != '/'){
+         char const *home = ok_vlook(HOME);
+         size_t l1 = strlen(home), l2 = strlen(cp);
+
+         sp = n_string_creat_auto(sp);
+         sp = n_string_reserve(sp, l1 + 1 + l2 +1);
+         sp = n_string_push_buf(sp, home, l1);
+         sp = n_string_push_c(sp, '/');
+         sp = n_string_push_buf(sp, cp, l2);
+         cp = n_string_cp(sp);
+      }
+
+      rv = cp;
+
+      /* TODO Since our visual mailname is resolved via realpath(3) if available
+       * TODO to avoid that we loose track of our currently open folder in case
+       * TODO we chdir away, but still checks the leading path portion against
+       * TODO fold_query() to be able to abbreviate to the +FOLDER syntax if
+       * TODO possible, we need to realpath(3) the folder, too */
+#ifdef HAVE_REALPATH
+      /* C99 */{
+# ifndef HAVE_REALPATH_NULL
+         if(cp == sp->s_dat)
+            sp = n_string_drop_ownership(sp);
+         sp = n_string_reserve(sp, PATH_MAX +1);
+# else
+         sp->s_dat = NULL;
+# endif
+
+         if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
+# ifdef HAVE_REALPATH_NULL
+            sp->s_dat = savestr(cp = sp->s_dat);
+            (free)(cp);
+# endif
+            rv = sp->s_dat;
+         }else if(errno == ENOENT)
+            rv = cp;
+         else{
+            n_err(_("Can't canonicalize *folder*: \"%s\"\n"), cp);
+            err = TRU1;
+            rv = "";
+         }
+      }
+#endif /* HAVE_REALPATH */
+
+jset:
+      /* C99 */{
+         bool_t reset = !(pstate & PS_ROOT);
+
+         pstate |= PS_ROOT;
+         ok_vset(_folder_resolved, rv);
+         if(reset)
+            pstate &= ~PS_ROOT;
+      }
+   }
+
+   if(err){
+      n_err(_("*folder* is not resolvable, using CWD\n"));
+      assert(rv != NULL && *rv == '\0');
+   }
    NYD_LEAVE;
-   return (folder != NULL);
+   return rv;
 }
 
 /* s-it-mode */

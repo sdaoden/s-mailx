@@ -57,8 +57,7 @@ struct shvar_stack {
 };
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */
-static void       _findmail(char *buf, size_t bufsize, char const *user,
-                     bool_t force);
+static char * _findmail(char const *user, bool_t force);
 
 /* Perform shell meta character expansion TODO obsolete (INSECURE!) */
 static char *     _globname(char const *name, enum fexp_mode fexpm);
@@ -66,24 +65,24 @@ static char *     _globname(char const *name, enum fexp_mode fexpm);
 /* Perform shell variable expansion */
 static char *  _sh_exp_var(struct shvar_stack *shsp);
 
-static void
-_findmail(char *buf, size_t bufsize, char const *user, bool_t force)
+static char *
+_findmail(char const *user, bool_t force)
 {
+   char *rv;
    char const *cp;
    NYD_ENTER;
 
-   if (!force && !strcmp(user, myname) && (cp = ok_vlook(folder)) != NULL) {
-      ;
-   }
+   if (force || (cp = ok_vlook(MAIL)) == NULL) {
+      size_t ul = strlen(user), i = sizeof(MAILSPOOL) -1 + 1 + ul +1;
 
-   if (force || (cp = ok_vlook(MAIL)) == NULL)
-      snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user); /* TODO */
-   else {
-      char const *exp = fexpand(cp, FEXP_NSHELL);
-
-      n_strscpy(buf, (exp != NULL ? exp : cp), bufsize);
-   }
+      rv = salloc(i);
+      memcpy(rv, MAILSPOOL, i = sizeof(MAILSPOOL));
+      rv[i] = '/';
+      memcpy(&rv[++i], user, ul +1);
+   } else if ((rv = fexpand(cp, FEXP_NSHELL)) == NULL)
+      rv = savestr(cp);
    NYD_LEAVE;
+   return rv;
 }
 
 static char *
@@ -339,9 +338,8 @@ jrecurse:
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
-   char cbuf[PATH_MAX +1];
-   char const *res;
    struct str s;
+   char const *cp, *res;
    bool_t dyn;
    NYD_ENTER;
 
@@ -364,9 +362,7 @@ jnext:
          res = &res[2];
          goto jnext;
       }
-      _findmail(cbuf, sizeof cbuf, (res[1] != '\0' ? res + 1 : myname),
-         (res[1] != '\0'));
-      res = cbuf;
+      res = _findmail((res[1] != '\0' ? res + 1 : myname), (res[1] != '\0'));
       goto jislocal;
    case '#':
       if (res[1] != '\0')
@@ -384,13 +380,15 @@ jnext:
       break;
    }
 
-   if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-      size_t i = strlen(cbuf);
+   /* POSIX: if *folder* unset or null, "+" shall be retained */
+   if (*res == '+' && *(cp = folder_query()) != '\0') {
+      size_t i = strlen(cp);
 
-      res = str_concat_csvl(&s, cbuf,
-            ((i > 0 && cbuf[i - 1] == '/') ? "" : "/"), res + 1, NULL)->s;
+      res = str_concat_csvl(&s, cp,
+            ((i == 0 || cp[i -1] == '/') ? "" : "/"), res + 1, NULL)->s;
       dyn = TRU1;
 
+      /* TODO *folder* can't start with %[:], can it!?! */
       if (res[0] == '%' && res[1] == ':') {
          res += 2;
          goto jnext;
@@ -474,7 +472,7 @@ n_shell_expand_tilde(char const *s, bool_t *err_or_null)
       goto jasis;
 
    if (*(rp = s + 1) == '/' || *rp == '\0')
-      np = homedir;
+      np = ok_vlook(HOME);
    else {
       if ((rp = strchr(s + 1, '/')) == NULL)
          rp = (np = UNCONST(s)) + 1;

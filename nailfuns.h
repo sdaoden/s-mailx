@@ -714,11 +714,6 @@ FL int         putline(FILE *obuf, char *linebuf, size_t count);
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
 
-/* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
- * be replaced by something else leave store alone, otherwise smalloc() the
- * desired value (ownership will be taken) */
-FL bool_t      var_folder_updated(char const *folder, char **store);
-
 /* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
 
@@ -757,8 +752,10 @@ FL int         getmdot(int nmail);
 
 FL void        initbox(char const *name);
 
-/* Determine the current *folder* name, store it in *name* */
-FL bool_t      getfold(char *name, size_t size);
+/* Determine and expand the current *folder* name, return it or the empty
+ * string also in case of errors: since POSIX mandates a default of CWD if not
+ * set etc., that seems to be a valid fallback, then */
+FL char const *folder_query(void);
 
 /*
  * head.c

@@ -5823,15 +5823,20 @@ set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
 .
 .Mx
 .It Va folder
-The name of the directory to use for storing folders of messages.
-All folder names that begin with
+The default path under which mailboxes are to be saved:
+file names that begin with the plus-sign
 .Ql +
-refer to files below it.
-The same special conventions as documented for the
+will be expanded by prefixing them with the value of this variable.
+The same special syntax conventions as documented for the
 .Ic file
-command may be used when specifying a new value for
-.Va \&\&folder ,
-but be aware that the expansion is fully performed immediately.
+command may be used; if the non-empty value doesn't start with a slash
+.Ql / ,
+then the value of
+.Ev HOME
+will be prefixed automatically.
+If unset or the empty string any
+.Ql +
+prefixing file names will remain unexpanded.
 .
 .Mx
 .It Va folder-hook
