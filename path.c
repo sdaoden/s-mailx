@@ -63,10 +63,26 @@ n_path_mkdir(char const *name)
    bool_t rv;
    NYD_ENTER;
 
-   if (!mkdir(name, 0700))
+jredo:
+   if(!mkdir(name, 0777))
       rv = TRU1;
-   else {
+   else{
       int e = errno;
+
+      /* Try it recursively */
+      if(e == ENOENT){
+         char const *vp;
+
+
+         if((vp = strrchr(name, '/')) != NULL){ /* TODO magic dirsep */
+            while(vp > name && vp[-1] == '/')
+               --vp;
+            vp = savestrbuf(name, PTR2SIZE(vp - name));
+
+            if(n_path_mkdir(vp))
+               goto jredo;
+         }
+      }
 
       rv = ((e == EEXIST || e == ENOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode));

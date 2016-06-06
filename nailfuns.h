@@ -1450,7 +1450,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 /* Test to see if the passed file name is a directory, return true if it is */
 FL bool_t      is_dir(char const *name);
 
-/*  */
+/* Recursively create a directory */
 FL bool_t      n_path_mkdir(char const *name);
 
 /* Delete a file, but only if the file is a plain file; return FAL0 on system
