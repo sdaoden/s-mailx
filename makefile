@@ -123,7 +123,7 @@ _update-release:
 	git archive --format=tar "v$${REL}" | tar -x -f - &&\
 	\
 	( \
-	rm -f .gitignore .mailmap &&\
+	rm -f .gitignore .mailmap TODO &&\
 	sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
 		-e '/--BEGINSTRIP--/,$$ {' \
 			-e '/^\.[[:space:]]*$$/d' -e '/^\.[[:space:]]*\\"/d' \
