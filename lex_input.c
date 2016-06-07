@@ -1239,6 +1239,17 @@ FL int
        *    be discarded and the next line shall continue the command */
       if(!nl_escape || (*linebuf)[n - 1] != '\\')
          break;
+      /* Definitely outside of quotes, thus the quoting rules are so that an
+       * uneven number of successive backslashs at EOL is a continuation */
+      if(n > 1){
+         size_t i, j;
+
+         for(j = 1, i = (size_t)n - 1; i-- > 0; ++j)
+            if((*linebuf)[i] != '\\')
+               break;
+         if(!(j & 1))
+            break;
+      }
       (*linebuf)[nold = --n] = '\0';
       if(prompt != NULL && *prompt != '\0')
          prompt = ".. "; /* XXX PS2 .. */
