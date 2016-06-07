@@ -489,6 +489,9 @@ do {\
 #undef ABS
 #define ABS(A)          ((A) < 0 ? -(A) : (A))
 
+/* Create a bit mask for the bit range LO..HI -- HI can't use highest bit! */
+#define n_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
+
 #undef DBG
 #undef NDBG
 #ifndef HAVE_DEBUG
