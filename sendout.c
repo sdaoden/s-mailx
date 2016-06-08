@@ -604,6 +604,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    pstate &= ~PS_HEADER_NEEDED_MIME; /* TODO a hack should be carrier tracked */
 
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
+   if((options & OPT_Mm_FLAG) && option_Mm_arg != NULL)
+      contenttype = option_Mm_arg;
    convert = mime_type_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
@@ -2048,8 +2050,9 @@ j_mft_add:
 
    /* We don't need MIME unless.. we need MIME?! */
    if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||
-         hp->h_attach != NULL || convert != CONV_7BIT ||
-         asccasecmp(charset, "US-ASCII"))) {
+         hp->h_attach != NULL ||
+         ((options & OPT_Mm_FLAG) && option_Mm_arg != NULL) ||
+         convert != CONV_7BIT || asccasecmp(charset, "US-ASCII"))) {
       ++gotcha;
       fputs("MIME-Version: 1.0\n", fo);
       if (hp->h_attach != NULL) {

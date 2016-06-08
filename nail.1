@@ -70,6 +70,7 @@
 .\" .Sh SYNOPSIS {{{
 .Sh SYNOPSIS
 .
+.\" Keep in SYNC: ./nail.1:"SYNOPSIS, main()
 .Nm \*(uA
 .Fl h | Fl Fl help
 .Nm \*(uA
@@ -80,9 +81,9 @@
 .Op Fl a Ar attachment
 .Op Fl b Ar bcc-addr
 .Op Fl c Ar cc-addr
-.Op Fl q Ar quote-file
+.Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
-.Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl S Ar var Ns Op Ns = Ns Ar value
 .Op Fl s Ar subject
 .Op Fl X Ar cmd
 .Op Fl \&.
@@ -96,7 +97,7 @@
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
-.Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl S Ar var Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .Op Fl X Ar cmd
 .Op Fl Fl \~ Ns Ar mta-option ...
@@ -109,7 +110,7 @@
 .Fl f
 .Op Fl L Ar spec-list
 .Op Fl r Ar from-addr
-.Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl S Ar var Ns Op Ns = Ns Ar value
 .Op Fl X Ar cmd
 .Op Ar file
 .Op Fl Fl \~ Ns Ar mta-option ...
@@ -156,7 +157,7 @@ It is usable as a mail batch language.
 .\" .Ss "Options" {{{
 .Ss "Options"
 .
-.Bl -tag -width ".Fl _ Ar _ccount"
+.Bl -tag -width ".Fl _ Ar _ddr"
 .Mx
 .It Fl \&: Ar spec
 Explicitly control which of the
@@ -227,20 +228,21 @@ tilde escape command.
 Make standard input and standard output line-buffered.
 .
 .Mx
-.It Fl b Ar address
+.It Fl b Ar addr
 Send a blind carbon copy to
-.Ar address .
-Can be used multiple times, but it is also possible to give
-a comma-separated list of receivers in a single argument, proper shell
-quoting provided, e.g.,
+.Ar addr Ns
+ess.
+May be used multiple times, but it is also possible to give
+a comma-separated list of receivers in a single argument, proper quoting
+provided, e.g.,
 .Ql -b """qrec1  ,  rec2,rec3, Ex <am@ple>""" .
 Also see the section
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
-.It Fl c Ar address
+.It Fl c Ar addr
 Send carbon copies to the given receiver(s).
-Can be used multiple times.
+May be used multiple times.
 .
 .Mx
 .It Fl d
@@ -272,7 +274,7 @@ first recipient's address (instead of in
 .Va record Ns ).
 .
 .Mx
-.It Fl f Op Ar file
+.It Fl f
 Read in the contents of the user's
 .Ev MBOX
 (or the specified file) for processing;
@@ -280,15 +282,15 @@ when \*(UA is quit, it writes undeleted messages back to this file
 (but be aware of the
 .Va hold
 option).
-Some special conventions are recognized for the string
+Some special conventions are recognized for the optional
 .Ar file
-which are documented for the
+argument which are documented for the
 .Ic file
 command below.
 Note that
 .Ar file
-is not a direct argument to the flag
-.Fl f ,
+is not a argument to the flag
+.Fl \&\&f ,
 but is instead taken from the command line after option processing has
 been completed.
 In order to use a
@@ -349,6 +351,34 @@ be enabled explicitly (e.g., by using the option
 .Fl v ) .
 .
 .Mx
+.It Fl M Ar type
+Special send mode that will flag standard input with the MIME
+.Ql Content-Type:
+set to the given
+.Ar type
+and use it as the main message body.
+\*(ID Using this option will bypass processing of
+.Va message-inject-head ,
+.Va signature
+and
+.Va message-inject-tail .
+Also see
+.Fl q , m , t .
+.
+.Mx
+.It Fl m Ar file
+Special send mode that will MIME classify the specified
+.Ar file
+and use it as the main message body.
+\*(ID Using this option will bypass processing of
+.Va message-inject-head ,
+.Va signature
+and
+.Va message-inject-tail .
+Also see
+.Fl q , M , t .
+.
+.Mx
 .It Fl N
 Unset the
 .Va header
@@ -367,40 +397,43 @@ allows more control over the startup sequence; also see
 .
 .Mx
 .It Fl q Ar file
-Initialize the message body with the contents of the specified file,
+Special send mode that will initialize the message body with the
+contents of the specified
+.Ar file ,
 which may be standard input
 .Ql -
 only in non-interactive context.
-May be given in send mode only.
+Also see
+.Fl M , m , t .
 .
 .Mx
 .It Fl R
 Any folder opened will be in read-only mode.
 .
 .Mx
-.It Fl r Ar address
+.It Fl r Ar from-addr
 If
-.Ar address
+.Ar from-addr
 is a valid address then it specifies the envelope sender address to be
 passed to the MTA as
 .Ql -f Ar address
 when a message is send.
 Shall
-.Ar address
+.Ar from-addr
 include a user name, then the address components will be separated and
 the name part will be passed to the MTA individually via
 .Ql -F Ar name .
 The given
-.Ar address
+.Ar from-addr
 will also be assigned to the
 .Va from
 variable (as via
-.Ql -Sfrom=address ) ,
+.Ql -Sfrom=from-addr ) ,
 therefore affecting possible SMTP data transfer;
 note this assignment does not cause value fixation.
 .Pp
 If instead an empty string is passed as
-.Ar address
+.Ar from-addr
 then the content of the variable
 .Va from
 will be evaluated and used for this purpose whenever the MTA is
@@ -414,10 +447,10 @@ nor
 flags to the MTA by itself.
 .
 .Mx
-.It Fl S Ar variable Ns Op = Ns value
+.It Fl S Ar var Ns Op = Ns value
 Sets the internal
-.Ar variable
-and, in case of a value variable, assigns
+.Ar var Ns
+iable and, in case of a value variable, assigns
 .Ar value
 to it.
 Even though variables (see
@@ -475,6 +508,8 @@ In conjunction with
 .Fl ~
 .Sx TILDE ESCAPES
 can be embedded, too.
+Also see
+.Fl M , m , q .
 .
 .Mx
 .It Fl u Ar user

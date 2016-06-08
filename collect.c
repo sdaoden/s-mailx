@@ -703,6 +703,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
                t &= ~GNL, getfields |= GCC;
          }
       }
+   } else {
+      UNINIT(t, 0);
    }
 
    escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
@@ -719,7 +721,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
       }
 
-      /* C99 */{
+      if(!(options & OPT_Mm_FLAG)){
          char const *cp_obsolete = ok_vlook(NAIL_HEAD);
          if(cp_obsolete != NULL)
             OBSOLETE(_("please use *message-inject-head* "
@@ -728,50 +730,51 @@ collect(struct header *hp, int printheaders, struct message *mp,
          if(((cp = ok_vlook(message_inject_head)) != NULL ||
             (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
          goto jerr;
-      }
 
-      /* Quote an original message */
-      if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
-         quoteig = allignore;
-         action = SEND_QUOTE;
-         if (doprefix) {
-            quoteig = fwdignore;
-            if ((cp = ok_vlook(fwdheading)) == NULL)
-               cp = "-------- Original Message --------";
-            if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
-               goto jerr;
-         } else if (!strcmp(quote, "noheading")) {
-            /*EMPTY*/;
-         } else if (!strcmp(quote, "headers")) {
-            quoteig = ignore;
-         } else if (!strcmp(quote, "allheaders")) {
-            quoteig = NULL;
-            action = SEND_QUOTE_ALL;
-         } else {
-            cp = hfield1("from", mp);
-            if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-               if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
+         /* Quote an original message */
+         if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
+            quoteig = allignore;
+            action = SEND_QUOTE;
+            if (doprefix) {
+               quoteig = fwdignore;
+               if ((cp = ok_vlook(fwdheading)) == NULL)
+                  cp = "-------- Original Message --------";
+               if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
                   goto jerr;
-               if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
-                  goto jerr;
+            } else if (!strcmp(quote, "noheading")) {
+               /*EMPTY*/;
+            } else if (!strcmp(quote, "headers")) {
+               quoteig = ignore;
+            } else if (!strcmp(quote, "allheaders")) {
+               quoteig = NULL;
+               action = SEND_QUOTE_ALL;
+            } else {
+               cp = hfield1("from", mp);
+               if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
+                  if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
+                     goto jerr;
+                  if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
+                     goto jerr;
+               }
             }
+            if (fflush(_coll_fp))
+               goto jerr;
+            if (doprefix)
+               cp = NULL;
+            else if ((cp = ok_vlook(indentprefix)) == NULL)
+               cp = INDENT_DEFAULT;
+            if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
+               goto jerr;
          }
-         if (fflush(_coll_fp))
-            goto jerr;
-         if (doprefix)
-            cp = NULL;
-         else if ((cp = ok_vlook(indentprefix)) == NULL)
-            cp = INDENT_DEFAULT;
-         if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
-            goto jerr;
       }
 
       if (quotefile != NULL) {
-         if (_include_file(quotefile, &lc, &cc, TRU1, FAL0) != 0)
+         if (_include_file(quotefile, &lc, &cc,
+               !(options & OPT_Mm_FLAG), FAL0) != 0)
             goto jerr;
       }
 
-      if (options & OPT_INTERACTIVE) {
+      if ((options & (OPT_Mm_FLAG | OPT_INTERACTIVE)) == OPT_INTERACTIVE) {
          /* Print what we have sofar also on the terminal (if useful) */
          if (!ok_blook(editalong)) {
             if (printheaders)
@@ -803,6 +806,9 @@ jcont:
       }
    }
 
+   /* We're done with -M or -m */
+   if(options & OPT_Mm_FLAG)
+      goto jout;
    /* No tilde escapes, interrupts not expected.  Simply copy STDIN */
    if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))) {
       linebuf = srealloc(linebuf, linesize = LINESIZE);
@@ -1103,6 +1109,9 @@ jout:
    if (*checkaddr_err != 0)
       goto jerr;
 
+   if(options & OPT_Mm_FLAG)
+      goto jskiptails;
+
    /* Place signature? */
    if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
       if((quote = file_expand(cp)) == NULL){
@@ -1156,6 +1165,7 @@ jout:
    }
    }
 
+jskiptails:
    if(fflush(_coll_fp))
       goto jerr;
    rewind(_coll_fp);

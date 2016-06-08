@@ -1292,12 +1292,13 @@ enum user_options {
    OPT_QUICKRUN_MASK = OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST,
    OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
    OPT_F_FLAG     = 1u<< 8,   /* -F */
-   OPT_N_FLAG     = 1u<< 9,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<<10,   /* -R */
-   OPT_r_FLAG     = 1u<<11,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<12,   /* -t */
-   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<14,   /* -# */
+   OPT_Mm_FLAG    = 1u<< 9,   /* -M or -m (plus option_Mm_arg) */
+   OPT_N_FLAG     = 1u<<10,   /* -N / *header* */
+   OPT_R_FLAG     = 1u<<11,   /* -R */
+   OPT_r_FLAG     = 1u<<12,   /* -r (plus option_r_arg) */
+   OPT_t_FLAG     = 1u<<13,   /* -t */
+   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<15,   /* -# */
 
    /*  */
    OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
@@ -2293,6 +2294,7 @@ VL uid_t       user_id;
 
 VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */
+VL char const *option_Mm_arg;       /* Argument for -[Mm] aka OPT_[Mm]_FLAG */
 VL struct name *option_r_arg;       /* Argument to -r option */
 VL char const  **smopts;            /* sendmail(1) opts from commline */
 VL size_t      smopts_cnt;          /* Entries in smopts */

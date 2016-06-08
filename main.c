@@ -522,19 +522,25 @@ _hdrstop(int signo)
 
 int
 main(int argc, char *argv[]){
-   static char const optstr[] = "A:a:Bb:c:dEeFfHhiL:NnO:q:Rr:S:s:tu:VvX:::~#.",
+   /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
+   static char const
+      optstr[] = "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.",
       usagestr[] = N_(
          "Synopsis:\n"
-         "  %s -h | --help\n"
+         "  %s -h\n"
+
          "  %s [-BdEFintv~] [-: spec] [-A account]\n"
-         "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
-         "\t [-q file] [-r from-address] [-S var[=value]..]\n"
-         "\t [-s subject] [-X cmd] [-.] to-address.. [-- mta-option..]\n"
+         "\t [-a attachment] [-b bcc-addr] [-c cc-addr]\n"
+         "\t [-M type | -m file | -q file | -t]\n"
+         "\t [-r from-addr] [-S var[=value]..]\n"
+         "\t [-s subject] [-X cmd] [-.] to-addr.. [-- mta-option..]\n"
+
          "  %s [-BdEeHiNnRv~] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-L spec-list] [-r from-addr] [-S var[=value]..]\n"
          "\t [-u user] [-X cmd] [-- mta-option..]\n"
+
          "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-L spec-list] [-r from-addr] [-S var[=value]..]\n"
          "\t [-X cmd] [file] [-- mta-option..]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
@@ -650,6 +656,20 @@ main(int argc, char *argv[]){
                Larg[j - 1] = '\0';
          }
          break;
+      case 'M':
+         if(qf != NULL && (!(options & OPT_Mm_FLAG) || qf != (char*)-1))
+            goto jeMmq;
+         option_Mm_arg = _oarg;
+         qf = (char*)-1;
+         if(0){
+            /* FALLTHRU*/
+      case 'm':
+            if(qf != NULL && (!(options & OPT_Mm_FLAG) || qf == (char*)-1))
+               goto jeMmq;
+            qf = _oarg;
+         }
+         options |= OPT_SENDMODE | OPT_Mm_FLAG;
+         break;
       case 'N':
          /* Avoid initial header printing */
          ok_bset(header, FAL0);
@@ -670,6 +690,11 @@ main(int argc, char *argv[]){
          smopts[smopts_cnt++] = _oarg;
          break;
       case 'q':
+         if (qf != NULL && (options & OPT_Mm_FLAG)) {
+jeMmq:
+            emsg = N_("Only one of -M, -m or -q may be given");
+            goto jusage;
+         }
          /* Quote file TODO drop? -Q with real quote?? what ? */
          options |= OPT_SENDMODE;
          /* Allow for now, we have to special check validity of -q- later on! */
@@ -850,7 +875,7 @@ jgetopt_done:
          goto jusage;
       }
       if ((options & OPT_t_FLAG) && qf != NULL) {
-         emsg = N_("-t and -q are mutual exclusive.");
+         emsg = N_("The -M, -m, -q and -t options are mutual exclusive.");
          goto jusage;
       }
       if (options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) {
@@ -860,6 +885,14 @@ jgetopt_done:
       if (options & OPT_R_FLAG) {
          emsg = N_("The -R option is meaningless in send mode.");
          goto jusage;
+      }
+
+      if (options & OPT_INTERACTIVE) {
+         if (qf == (char*)-1) {
+            if (!(options & OPT_Mm_FLAG))
+               emsg = N_("-q can't use standard input when interactive.\n");
+            goto jusage;
+         }
       }
    } else {
       if (myname != NULL && folder != NULL) {
@@ -886,12 +919,6 @@ jgetopt_done:
    _setup_vars();
 
    if (options & OPT_INTERACTIVE) {
-      /* Now we can finally check wether -q- was given */
-      if (qf == (char*)-1) {
-         emsg = N_("In interactive mode -q cannot use standard input \"-\"\n");
-         goto jusage;
-      }
-
       _setscreensize(0);
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH
@@ -975,6 +1002,24 @@ jgetopt_done:
    if (Xargs_cnt > 0){
       Xargs[Xargs_cnt] = NULL;
       n_load_Xargs(Xargs);
+   }
+
+   /* Final tests */
+   if(options & OPT_Mm_FLAG){
+      if(qf == (char*)-1){
+         if(!mime_type_check_mtname(option_Mm_arg)){
+            n_err(_("Could not find `mimetype' for -M argument: \"%s\"\n"),
+               option_Mm_arg);
+            exit_status = EXIT_ERR;
+            goto jleave;
+         }
+      }else if((option_Mm_arg = mime_type_classify_filename(qf)) == NULL){
+         n_err(_("Could not `mimetype'-classify -m argument: \"%s\"\n"),
+            qf);
+         exit_status = EXIT_ERR;
+         goto jleave;
+      }else if(!asccasecmp(option_Mm_arg, "text/plain")) /* TODO no: magic!! */
+         option_Mm_arg = NULL;
    }
 
    /*
