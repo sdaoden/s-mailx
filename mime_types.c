@@ -966,6 +966,18 @@ jdelall:
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
+FL bool_t
+mime_type_check_mtname(char const *name)
+{
+   struct mtlookup mtl;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = (_mt_by_mtname(&mtl, name) != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
 FL char *
 mime_type_classify_filename(char const *name)
 {

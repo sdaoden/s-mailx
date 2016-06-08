@@ -1306,6 +1306,9 @@ FL struct mimepart * mime_parse_msg(struct message *mp,
 FL int         c_mimetype(void *v);
 FL int         c_unmimetype(void *v);
 
+/* Check wether the Content-Type name is internally known */
+FL bool_t      mime_type_check_mtname(char const *name);
+
 /* Return a Content-Type matching the name, or NULL if none could be found */
 FL char *      mime_type_classify_filename(char const *name);
 
