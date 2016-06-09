@@ -85,18 +85,6 @@ static ui8_t const         _qtab_body[] = {
     N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
 };
 
-/* For decoding be robust and allow lowercase letters, too */
-static char const          _qp_itoa16[] = "0123456789ABCDEF";
-static ui8_t const         _qp_atoi16[] = {
-   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 0x30-0x37 */
-   0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x38-0x3F */
-   0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, /* 0x40-0x47 */
-   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x48-0x4f */
-   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x50-0x57 */
-   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x58-0x5f */
-   0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF  /* 0x60-0x67 */
-};
-
 /* The decoding table is only accessed via _B64_DECUI8() */
 static char const          _b64_enctbl[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -123,10 +111,6 @@ static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
  * sol indicates wether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
                         enum mime_enc_flags flags);
-
-/* Convert c to/from a hexadecimal character string */
-SINLINE char *       _qp_ctohex(char *store, char c);
-SINLINE si32_t       _qp_cfromhex(char const *hex);
 
 /* Trim WS and make work point to the decodable range of in*
  * Return the amount of bytes a b64_decode operation on that buffer requires */
@@ -234,43 +218,6 @@ jleave:
    return r;
 }
 
-SINLINE char *
-_qp_ctohex(char *store, char c)
-{
-   NYD2_ENTER;
-   store[2] = '\0';
-   store[1] = _qp_itoa16[(ui8_t)c & 0x0F];
-   c = ((ui8_t)c >> 4) & 0x0F;
-   store[0] = _qp_itoa16[(ui8_t)c];
-   NYD2_LEAVE;
-   return store;
-}
-
-SINLINE si32_t
-_qp_cfromhex(char const *hex)
-{
-   ui8_t i1, i2;
-   si32_t rv;
-   NYD2_ENTER;
-
-   if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(_qp_atoi16) ||
-         (i2 = (ui8_t)hex[1] - '0') >= NELEM(_qp_atoi16))
-      goto jerr;
-   i1 = _qp_atoi16[i1];
-   i2 = _qp_atoi16[i2];
-   if ((i1 | i2) & 0xF0u)
-      goto jerr;
-   rv = i1;
-   rv <<= 4;
-   rv += i2;
-jleave:
-   NYD2_LEAVE;
-   return rv;
-jerr:
-   rv = -1;
-   goto jleave;
-}
-
 static size_t
 _b64_decode_prepare(struct str *work, struct str const *in)
 {
@@ -339,28 +286,6 @@ jleave: {
    }
    in->l -= PTR2SIZE((char*)UNCONST(q) - in->s);
    in->s = UNCONST(q);
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL char *
-mime_char_to_hexseq(char store[3], char c)
-{
-   char *rv;
-   NYD2_ENTER;
-
-   rv = _qp_ctohex(store, c);
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL si32_t
-mime_hexseq_to_char(char const *hex)
-{
-   si32_t rv;
-   NYD2_ENTER;
-
-   rv = _qp_cfromhex(hex);
    NYD2_LEAVE;
    return rv;
 }
@@ -547,7 +472,7 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
             seenx = TRU1;
 jheadq:
             *qp++ = '=';
-            qp = _qp_ctohex(qp, c) + 1;
+            qp = n_c_to_hex_base16(qp, c) + 1;
          }
       }
       goto jleave;
@@ -585,7 +510,7 @@ jsoftnl:
          lnlen = 0;
       }
       *qp++ = '=';
-      qp = _qp_ctohex(qp, c);
+      qp = n_c_to_hex_base16(qp, c);
       qp += 2;
       lnlen += 3;
       if (c != '\n' || !seenx)
@@ -639,7 +564,7 @@ qp_decode(struct str *out, struct str const *in, struct str *rest)
                ++is;
                goto jehead;
             }
-            c = _qp_cfromhex(is);
+            c = n_c_from_hex_base16(is);
             is += 2;
             if (c >= 0)
                *oc++ = (char)c;
@@ -682,7 +607,7 @@ jehead:
 
       /* Not a soft line break? */
       if (*is != '\n') {
-         c = _qp_cfromhex(is);
+         c = n_c_from_hex_base16(is);
          is += 2;
          if (c >= 0)
             *oc++ = (char)c;

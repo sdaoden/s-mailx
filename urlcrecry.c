@@ -568,7 +568,7 @@ FL char *
       else {
 jesc:
          np[0] = '%';
-         mime_char_to_hexseq(np + 1, c1);
+         n_c_to_hex_base16(np + 1, c1);
          np += 3;
       }
    }
@@ -589,7 +589,7 @@ FL char *
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
          si32_t o = c;
-         if (LIKELY((c = mime_hexseq_to_char(cp)) >= '\0'))
+         if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
             c = o;

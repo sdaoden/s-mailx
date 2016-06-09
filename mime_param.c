@@ -456,7 +456,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
             if ((c = *cp++) == '%') {
                si32_t cc;
 
-               if (i < 3 || (cc = mime_hexseq_to_char(cp)) < 0) {
+               if (i < 3 || (cc = n_c_from_hex_base16(cp)) < 0) {
                   if (!(f & _ERRORS))
                      *emsg = N_("invalid RFC 2231 percent encoded sequence");
                   f |= _ERRORS;
@@ -590,7 +590,7 @@ jneed_enc:
       } else if (u.uc > 0x7F || _rfc2231_etab[u.uc]) {
          f ^= _RAW;
          bp[0] = '%';
-         mime_char_to_hexseq(bp + 1, u.c);
+         n_c_to_hex_base16(bp + 1, u.c);
          bp += 3;
       }
 

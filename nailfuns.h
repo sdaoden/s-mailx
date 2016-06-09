@@ -269,6 +269,10 @@ FL void        page_or_print(FILE *fp, size_t lines);
 /* Parse name and guess at the required protocol */
 FL enum protocol  which_protocol(char const *name);
 
+/* Hexadecimal itoa (NUL terminates) / atoi (-1 on error) */
+FL char *      n_c_to_hex_base16(char store[3], char c);
+FL si32_t      n_c_from_hex_base16(char const hex[2]);
+
 /* Hash the passed string -- uses Chris Torek's hash algorithm */
 FL ui32_t      torek_hash(char const *name);
 #define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
@@ -1185,13 +1189,6 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * TODO in v15.0 CTE will be filter based, and explicit conversion will
  * TODO gain clear error codes
  */
-
-/* Utilities: the former converts the byte c into a (NUL terminated)
- * hexadecimal string as is used in URL percent- and quoted-printable encoding,
- * the latter performs the backward conversion and returns the character or -1
- * on error; both don't deal with the sequence-introducing percent "%" */
-FL char *      mime_char_to_hexseq(char store[3], char c);
-FL si32_t      mime_hexseq_to_char(char const *hex);
 
 /* Default MIME Content-Transfer-Encoding: as via *encoding* */
 FL enum mime_enc mime_enc_target(void);
