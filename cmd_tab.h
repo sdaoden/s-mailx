@@ -40,6 +40,7 @@
 #define NOLIST       ARG_NOLIST
 #define NDMLIST      ARG_NDMLIST
 #define WYSHLIST     ARG_WYSHLIST
+#  define WYRALIST   ARG_WYRALIST
 
 #define ARG_ARGMASK  ARG_ARGMASK
 #define A            ARG_A
@@ -84,7 +85,7 @@
      DS(N_("Delete the current message, then print the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(N_("Un`delete' <message-list>")) },
-   { "unset", &c_unset, (H | M | RAWLIST), 1, 1000
+   { "unset", &c_unset, (H | M | WYRALIST), 1, 1000
      DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -114,19 +115,19 @@
      DS(N_("Copy <message-list>, but don't mark them for deletion")) },
    { "Copy", &c_Copy, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `copy', but derive filename from first sender")) },
-   { "chdir", &c_chdir, (M | RAWLIST), 0, 1
+   { "chdir", &c_chdir, (M | WYRALIST), 0, 1
      DS(N_("Change CWD to the specified/the login directory")) },
-   { "cd", &c_chdir, (M | RAWLIST), 0, 1
+   { "cd", &c_chdir, (M | WYRALIST), 0, 1
      DS(N_("Change CWD to the specified/the login directory")) },
    { "save", &c_save, (A | STRLIST), 0, 0
      DS(N_("Append <message-list> to <file>")) },
    { "Save", &c_Save, (A | S | STRLIST), 0, 0
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "source", &c_source, (M | R | RAWLIST), 1, 1
+   { "source", &c_source, (M | R | WYRALIST), 1, 1
      DS(N_("Read commands from <file>")) },
-   { "source_if", &c_source_if, (M | R | RAWLIST), 1, 1
+   { "source_if", &c_source_if, (M | R | WYRALIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (H | M | RAWLIST), 0, 1000
+   { "set", &c_set, (H | M | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -138,7 +139,7 @@
      DS(N_("Show message headers of <message-list>")) },
    { "search", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("\"Search\" for <message-specification>, print matching headers")) },
-   { "file", &c_file, (T | M | RAWLIST), 0, 1
+   { "file", &c_file, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `reply', but derive filename from first sender")) },
@@ -146,9 +147,9 @@
      DS(N_("Like `reply', but derive filename from first sender")) },
    { "followupsender", &c_followupsender, (A | I | R | MSGLIST), 0, MMNDEL
      DS(N_("Like `Followup', but always reply to the sender only")) },
-   { "folder", &c_file, (T | M | RAWLIST), 0, 1
+   { "folder", &c_file, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
-   { "folders", &c_folders, (T | M | RAWLIST), 0, 1
+   { "folders", &c_folders, (T | M | WYRALIST), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
      DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
@@ -156,9 +157,9 @@
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
      DS(N_("Print a page of headers (with the first of <message> if given)")) },
-   { "help", &c_help, (H | M | RAWLIST), 0, 1
+   { "help", &c_help, (H | M | WYRALIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
-   { "?", &c_help, (H | M | RAWLIST), 0, 1
+   { "?", &c_help, (H | M | WYRALIST), 0, 1
      DS(N_("Show command help (for the given one)")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
@@ -250,9 +251,9 @@
      DS(N_("Un`saveretain' <header-fields>")) },
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
-   { "shortcut", &c_shortcut, (M | RAWLIST), 0, 1000
+   { "shortcut", &c_shortcut, (M | WYRALIST), 0, 1000
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
+   { "unshortcut", &c_unshortcut, (M | WYRALIST), 1, 1000
      DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
@@ -330,9 +331,9 @@
      DS(N_("Un`fwdignore' <header-fields>")) },
    { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
      DS(N_("Un`fwdretain' <header-fields>")) },
-   { "mimetype", &c_mimetype, (M | RAWLIST), 0, 1000
+   { "mimetype", &c_mimetype, (M | WYRALIST), 0, 1000
      DS(N_("(Load and) show all known MIME types or define some")) },
-   { "unmimetype", &c_unmimetype, (M | RAWLIST), 1, 1000
+   { "unmimetype", &c_unmimetype, (M | WYRALIST), 1, 1000
      DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
    { "spamrate", &c_spam_rate, (A | M | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
@@ -346,9 +347,9 @@
      DS(N_("Set the spam flag for each message in <message-list>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
-   { "ghost", &a_lex_c_ghost, (M | RAWLIST), 0, 1000
+   { "ghost", &a_lex_c_ghost, (M | WYRALIST), 0, 1000
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-   { "unghost", &a_lex_c_unghost, (M | RAWLIST), 1, 1000
+   { "unghost", &a_lex_c_unghost, (M | WYRALIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
      DS(N_("Inside `define' / `account': insulate modifications? <boolean>"))},
@@ -356,25 +357,25 @@
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
+   { "varshow", &c_varshow, (H | M | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
+   { "varedit", &c_varedit, (H | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlencode", &c_urlencode, (H | M | RAWLIST), 1, 1000
+   { "urlencode", &c_urlencode, (H | M | WYRALIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
-   { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
+   { "urldecode", &c_urldecode, (H | M | WYRALIST), 1, 1000
      DS(N_("Decode the URL-encoded <URL-list> into strings")) },
-   { "File", &c_File, (T | M | RAWLIST), 0, 1
+   { "File", &c_File, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
-   { "Folder", &c_File, (T | M | RAWLIST), 0, 1
+   { "Folder", &c_File, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
-   { "mlist", &c_mlist, (M | RAWLIST), 0, 1000
+   { "mlist", &c_mlist, (M | WYRALIST), 0, 1000
      DS(N_("Show all known mailing lists or define some")) },
-   { "unmlist", &c_unmlist, (M | RAWLIST), 1, 1000
+   { "unmlist", &c_unmlist, (M | WYRALIST), 1, 1000
      DS(N_("Un`mlist' <name-list> (\"*\" for all)")) },
-   { "mlsubscribe", &c_mlsubscribe, (M | RAWLIST), 0, 1000
+   { "mlsubscribe", &c_mlsubscribe, (M | WYRALIST), 0, 1000
      DS(N_("Show all mailing list subscriptions or define some")) },
-   { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
+   { "unmlsubscribe", &c_unmlsubscribe, (M | WYRALIST), 1, 1000
      DS(N_("Un`mlsubscribe' <name-list> (\"*\" for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given message")) },
@@ -382,9 +383,9 @@
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
-   { "customhdr", &c_customhdr, (M | RAWLIST), 0, 1000
+   { "customhdr", &c_customhdr, (M | WYRALIST), 0, 1000
      DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
-   { "uncustomhdr", &c_uncustomhdr, (M | RAWLIST), 1, 1000
+   { "uncustomhdr", &c_uncustomhdr, (M | WYRALIST), 1, 1000
      DS(N_("Delete custom <:header:> (\"*\" for all)")) },
    { "features", &a_lex_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the Mail-User-Agent")) },
@@ -397,12 +398,12 @@
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
-   { "colour", &c_colour, (M | RAWLIST), 1, 4
+   { "colour", &c_colour, (M | WYRALIST), 1, 4
      DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
-   { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
+   { "uncolour", &c_uncolour, (M | WYRALIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (H | M | RAWLIST), 2, 1000
+   { "environ", &c_environ, (H | M | WYRALIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
 #ifdef c_memtrace
@@ -414,6 +415,7 @@
      DS(N_("Print statistics about the auto-reclaimed string store")) },
 #endif
 
+#  undef WYRALIST
 #undef WYSHLIST
 #undef MSGLIST
 #undef STRLIST

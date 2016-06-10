@@ -676,10 +676,12 @@ _group_print_all(enum group_type gt)
          i = (ui32_t)_mlsub_size, h = (ui32_t)_mlsub_hits;
       else
          i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
-      if (i > 0)
+      if (i > 0 && (options & OPT_D_V)){
          fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
             (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
             i, h);
+         ++lines;
+      }
    }
 #endif
 
@@ -726,7 +728,7 @@ _group_print(struct group const *gp, FILE *fo)
       }
    } else if (gp->g_type & GT_MLIST) {
 #ifdef HAVE_REGEX
-      if (gp->g_type & GT_REGEX) {
+      if ((gp->g_type & GT_REGEX) && (options & OPT_D_V)){
          size_t i;
          struct grp_regex *grp,
             *lp = (gp->g_type & GT_SUBSCRIBE ? _mlsub_regex : _mlist_regex);
@@ -740,14 +742,15 @@ _group_print(struct group const *gp, FILE *fo)
       }
 #endif
 
-      fprintf(fo, "%s %s",
-         (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"), gp->g_id);
+      fprintf(fo, "wysh %s %s",
+         (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"),
+         n_shell_quote_cp(gp->g_id));
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
+      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s \"%s\"", gp->g_id, cp);
+      fprintf(fo, "wysh customhdr %s %s", gp->g_id, n_shell_quote_cp(cp));
    }
 
    putc('\n', fo);

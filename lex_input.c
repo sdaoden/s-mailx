@@ -204,8 +204,8 @@ a_lex_c_ghost(void *v){
          fp = stdout;
 
       for(i = 0, gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
-         fprintf(fp, "ghost %s \"%s\"\n",
-            gp->lg_name, string_quote(gp->lg_cmd.s));
+         fprintf(fp, "wysh ghost %s %s\n",
+            gp->lg_name, n_shell_quote_cp(gp->lg_cmd.s));
 
       if(fp != stdout){
          page_or_print(fp, i);
@@ -225,8 +225,8 @@ a_lex_c_ghost(void *v){
    if(argv[1] == NULL){
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(argv[0], gp->lg_name)){
-            printf("ghost %s \"%s\"\n",
-               gp->lg_name, string_quote(gp->lg_cmd.s));
+            printf("wysh ghost %s %s\n",
+               gp->lg_name, n_shell_quote_cp(gp->lg_cmd.s));
             goto jleave;
          }
       n_err(_("`ghost': no such alias: \"%s\"\n"), argv[0]);

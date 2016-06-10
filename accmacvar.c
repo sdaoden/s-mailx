@@ -265,8 +265,6 @@ static int a_amv_var__show_cmp(void const *s1, void const *s2);
 /* Actually do print one, return number of lines written */
 static size_t a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
-static char *a_amv_var__simple_quote(char const *cp);
-
 /* Shared c_set() and c_environ():set impl, return success */
 static bool_t a_amv_var_c_set(char **ap, bool_t issetenv);
 
@@ -1294,6 +1292,7 @@ a_amv_var__show_cmp(void const *s1, void const *s2){
 static size_t
 a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var_carrier avc;
+   char const *quote;
    size_t i;
    NYD2_ENTER;
 
@@ -1302,9 +1301,12 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    a_amv_var_revlookup(&avc, name);
    if(!a_amv_var_lookup(&avc, FAL0)){
-      msgp = n_string_assign_cp(msgp, _("No such variable: \""));
-      msgp = n_string_push_cp(msgp, name);
-      msgp = n_string_push_c(msgp, '"');
+      struct str s;
+
+      msgp = n_string_assign_cp(msgp, _("No such variable: "));
+      s.s = UNCONST(name);
+      s.l = UIZ_MAX;
+      msgp = n_shell_quote(msgp, &s);
       goto jleave;
    }
 
@@ -1346,15 +1348,19 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    if(avc.avc_var->av_flags & a_AMV_VF_RDONLY)
       msgp = n_string_push_cp(msgp, "# ");
+   UNINIT(quote, NULL);
+   if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
+      quote = n_shell_quote_cp(avc.avc_var->av_value);
+      if(strcmp(quote, avc.avc_var->av_value))
+         msgp = n_string_push_cp(msgp, "wysh ");
+   }
    if(avc.avc_var->av_flags & a_AMV_VF_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
    msgp = n_string_push_cp(msgp, name);
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
-      msgp = n_string_push_buf(msgp, "=\"", 2);
-      msgp = n_string_push_cp(msgp,
-            a_amv_var__simple_quote(avc.avc_var->av_value));
-      msgp = n_string_push_c(msgp, '"');
+      msgp = n_string_push_c(msgp, '=');
+      msgp = n_string_push_cp(msgp, quote);
    }
 
 jleave:
@@ -1362,48 +1368,6 @@ jleave:
    fputs(n_string_cp(msgp), fp);
    NYD2_ENTER;
    return (i > 0 ? 2 : 1);
-}
-
-static char *
-a_amv_var__simple_quote(char const *cp){ /* TODO <> string_quote(), etc.. */
-   bool_t esc;
-   size_t i;
-   char const *cp_base;
-   char c, *rv;
-   NYD2_ENTER;
-
-   for(i = 0, cp_base = cp; (c = *cp) != '\0'; ++i, ++cp)
-      switch(c){
-      case '\n':
-      case '\t':
-      case '"':
-         ++i;
-         /* FALLTHRU */
-      default:
-         break;
-      }
-   rv = salloc(i +1);
-
-   for(esc = FAL0, i = 0, cp = cp_base; (c = *cp) != '\0'; rv[i++] = c, ++cp){
-      if(!esc){
-         switch(c){
-         case '\n':
-         case '\t':
-            c = (c == '\n' ? 'n' : 't');
-            /* FALLTHRU */
-         case '"':
-            rv[i++] = '\\';
-            /* FALLTHRU */
-         default:
-            break;
-         }
-         esc = (c == '\\');
-      }else
-         esc = FAL0;
-   }
-   rv[i] = '\0';
-   NYD2_LEAVE;
-   return rv;
 }
 
 static bool_t
