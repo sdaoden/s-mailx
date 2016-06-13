@@ -1002,32 +1002,34 @@ jputline:
           * compiler supported string lengths :() */
          puts(_(
 "TILDE ESCAPES (to be placed after a newline) excerpt:\n"
-"~~           Quote (write) a single tilde\n"
-"~@ [:file:]  Edit attachment list\n"
-"~c users     Add users to Ccc: list (`~b' for Bcc:)\n"
-"~d           Read in *DEAD* (dead.letter)\n"
-"~e           Edit the message buffer\n"
-"~F messages  Read in messages including all headers, don't indent lines\n"
-"~f messages  Like ~F, but honour the `ignore' / `retain' configuration\n"
-"~h           Prompt for Subject:, To:, Cc: and \"blind\" Bcc:"));
+"~.            Commit and send message\n"
+"~: <command>  Execute a mail command\n"
+"~<! <command> Insert output of command\n"
+"~@ [<files>]  Edit attachment list\n"
+"~A            Insert *Sign* variable (`~a' inserts *sign*)\n"
+"~c <users>    Add users to Cc: list (`~b' for Bcc:)\n"
+"~d            Read in *DEAD* (dead.letter)\n"
+"~e            Edit message via *EDITOR*"
+         ));
          puts(_(
-"~M messages  Read in messages, keep all header lines, indent lines\n"
-"~m messages  Like ~M, but honour the `ignore' / `retain' configuration\n"
-"~p           Print the message buffer\n"
-"~q           Abort message composition and save text to DEAD\n"
-"~R file      Read in a file, indent lines\n"
-"~r file      Read in a file\n"
-"~s subject   Set Subject:\n"
-"~t users     Add users to To: list"));
+"~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
+"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
+"~H            Edit From:, Reply-To: and Sender:\n"
+"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
+"~i <variable> Insert a value and a newline\n"
+"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
+"~p            Print current message compose buffer\n"
+"~r <file>     Read in a file (`~R' *indentprefix* lines)"
+         ));
          puts(_(
-"~U messages  Read in message(s) without any headers, indent lines\n"
-"~u messages  Read in message(s) without any headers\n"
-"~v           Invoke alternate editor ($VISUAL) on message\n"
-"~w file      Write message onto file\n"
-"~x           Abort message composition and discard message\n"
-"~|command    Pipe message through a filter, replace content on success\n"
-"~!command    Invoke the shell\n"
-"~:command    Execute a regular command"));
+"~s <subject>  Set Subject:\n"
+"~t <users>    Add users to To: list\n"
+"~u <msglist>  Read in message(s) without headers (`~U' indents lines)\n"
+"~v            Edit message via *VISUAL*\n"
+"~w <file>     Write message onto file\n"
+"~x            Abort composition, discard message (`~q' saves in *DEAD*)\n"
+"~| <command>  Pipe message through shell filter"
+         ));
          break;
       }
    }
