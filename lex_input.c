@@ -314,8 +314,9 @@ jouter:  ;
 
 static int
 a_lex_c_list(void *v){
+   FILE *fp;
    struct a_lex_cmd const **cpa, *cp, **cursor;
-   size_t i;
+   size_t l, i;
    NYD_ENTER;
 
    i = NELEM(a_lex_cmd_tab) + NELEM(a_lex_special_cmd_tab) +1;
@@ -338,18 +339,49 @@ a_lex_c_list(void *v){
          qsort(cpa, i, sizeof(xcp), &a_lex__pcmd_cmp);
    }
 
-   printf(_("Commands are:\n"));
-   for(i = 0, cursor = cpa; (cp = *cursor++) != NULL;){
-      size_t j;
+   if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+      fp = stdout;
 
+   fprintf(fp, _("Commands are:\n"));
+   l = 1;
+   for(i = 0, cursor = cpa; (cp = *cursor++) != NULL;){
       if(cp->lc_func == &c_cmdnotsupp)
          continue;
-      j = strlen(cp->lc_name) + 2;
-      if((i += j) > 72){
-         i = j;
-         printf("\n");
+      if(options & OPT_D_V){
+         char const *argt;
+
+         switch(cp->lc_argtype & ARG_ARGMASK){
+         case ARG_MSGLIST: argt = N_("message-list"); break;
+         case ARG_STRLIST: argt = N_("a \"string\""); break;
+         case ARG_RAWLIST: argt = N_("old-style quoting"); break;
+         case ARG_NOLIST: argt = N_("no arguments"); break;
+         case ARG_NDMLIST: argt = N_("message-list (without a default)"); break;
+         case ARG_WYSHLIST: argt = N_("sh(1)ell-style quoting"); break;
+         default: argt = N_("`wysh' for sh(1)ell-style quoting"); break;
+         }
+#ifdef HAVE_DOCSTRINGS
+         fprintf(fp, _("`%s'.  Argument type: %s.\n\t%s\n"),
+            cp->lc_name, V_(argt), V_(cp->lc_doc));
+         l += 2;
+#else
+         fprintf(fp, "`%s' (%s)\n", cp->lc_name, argt);
+         ++l;
+#endif
+      }else{
+         size_t j = strlen(cp->lc_name) + 2;
+
+         if((i += j) > 72){
+            i = j;
+            fprintf(fp, "\n");
+            ++l;
+         }
+         fprintf(fp, (*cursor != NULL ? "%s, " : "%s\n"), cp->lc_name);
       }
-      printf((*cursor != NULL ? "%s, " : "%s\n"), cp->lc_name);
+   }
+
+   if(fp != stdout){
+      page_or_print(fp, l);
+      Fclose(fp);
    }
    NYD_LEAVE;
    return 0;

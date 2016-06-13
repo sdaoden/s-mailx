@@ -2414,7 +2414,12 @@ The command
 .Ic list
 can be used to show the list of all commands, either alphabetically
 sorted or in prefix search order (these don't match, also because the
-POSIX standard prescribes a set of abbreviations).
+POSIX standard prescribes a set of abbreviations); a more verbose
+listing will be produced if either of
+.Va debug
+or
+.Va verbose
+are set.
 \*(OPally the command
 .Ic help
 (or
@@ -3777,6 +3782,9 @@ and
 Shows the names of all available commands, alphabetically sorted.
 If given any non-whitespace argument the list will be shown in the order
 in which command prefixes are searched.
+A more
+.Va verbose
+output is available.
 .
 .Mx
 .It Ic localopts
