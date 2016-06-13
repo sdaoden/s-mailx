@@ -64,15 +64,21 @@ VL char const        month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const        uagent[sizeof UAGENT] = UAGENT;
-VL uc_i const        class_char[1 + 0x7F] = {
+VL ui16_t const      class_char[1 + 0x7F] = {
+#define a_BC C_BLANK | C_CNTRL
+#define a_SC C_SPACE | C_CNTRL
+#define a_WC C_WHITE | C_CNTRL
 /* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
-   C_CNTRL, C_BLANK, C_WHITE, C_SPACE, C_SPACE, C_SPACE, C_CNTRL, C_CNTRL,
+   C_CNTRL, a_BC,    a_WC,    a_SC,    a_SC,    a_SC,    C_CNTRL, C_CNTRL,
 /* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
 /* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us */
    C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
+#undef a_WC
+#undef a_SC
+#undef a_BC
 /* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  ' */
    C_BLANK, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
 /* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  / */

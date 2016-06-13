@@ -1552,15 +1552,15 @@ ok_v_smtp_auth_user,
 
 /* Locale-independent character classes */
 enum {
-   C_CNTRL        = 0000,
-   C_BLANK        = 0001,
-   C_WHITE        = 0002,
-   C_SPACE        = 0004,
-   C_PUNCT        = 0010,
-   C_OCTAL        = 0020,
-   C_DIGIT        = 0040,
-   C_UPPER        = 0100,
-   C_LOWER        = 0200
+   C_CNTRL        = 1<<0,
+   C_BLANK        = 1<<1,
+   C_WHITE        = 1<<2,
+   C_SPACE        = 1<<3,
+   C_PUNCT        = 1<<4,
+   C_OCTAL        = 1<<5,
+   C_DIGIT        = 1<<6,
+   C_UPPER        = 1<<7,
+   C_LOWER        = 1<<8
 };
 
 struct str {
@@ -2202,7 +2202,7 @@ VL char const  weekday_names[7 + 1][4];
 
 VL char const  uagent[sizeof UAGENT];
 
-VL uc_i const  class_char[1 + 0x7F];
+VL ui16_t const class_char[1 + 0x7F];
 #endif
 
 /*

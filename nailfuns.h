@@ -66,14 +66,15 @@
 
 /* ASCII char classification */
 #define __ischarof(C, FLAGS)  \
-   (asciichar(C) && (class_char[(uc_i)(C)] & (FLAGS)) != 0)
+   (asciichar(C) && (class_char[(ui8_t)(C)] & (FLAGS)) != 0)
 
-#define asciichar(c)    ((uc_i)(c) <= 0177)
+#define n_uasciichar(U) ((size_t)(U) <= 0x7F)
+#define asciichar(c)    ((uc_i)(c) <= 0x7F)
 #define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
 #define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
 #define blankchar(c)    __ischarof(c, C_BLANK)
 #define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
-#define cntrlchar(c)    (asciichar(c) && class_char[(ui8_t)(c)] == C_CNTRL)
+#define cntrlchar(c)    __ischarof(c, C_CNTRL)
 #define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
 #define lowerchar(c)    __ischarof(c, C_LOWER)
 #define punctchar(c)    __ischarof(c, C_PUNCT)
