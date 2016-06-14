@@ -383,9 +383,9 @@
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
-   { "customhdr", &c_customhdr, (M | WYRALIST), 0, 1000
+   { "customhdr", &c_customhdr, (M | WYSHLIST), 0, 1000
      DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
-   { "uncustomhdr", &c_uncustomhdr, (M | WYRALIST), 1, 1000
+   { "uncustomhdr", &c_uncustomhdr, (M | WYSHLIST), 1, 1000
      DS(N_("Delete custom <:header:> (\"*\" for all)")) },
    { "features", &a_lex_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the Mail-User-Agent")) },
@@ -398,12 +398,12 @@
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
-   { "colour", &c_colour, (M | WYRALIST), 1, 4
+   { "colour", &c_colour, (M | WYSHLIST), 1, 4
      DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
-   { "uncolour", &c_uncolour, (M | WYRALIST), 2, 3
+   { "uncolour", &c_uncolour, (M | WYSHLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (H | M | WYRALIST), 2, 1000
+   { "environ", &c_environ, (H | M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
 #ifdef c_memtrace

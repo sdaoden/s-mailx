@@ -501,7 +501,7 @@ jredo:
             else if(cmp->cm_regex != NULL)
                tagann = "[rx] ";
 #endif
-            printf("wysh colour %s %-*s %s %s%s\n",
+            printf("colour %s %-*s %s %s%s\n",
                a_colour_types[ct], a_COLOUR_MAP_SHOW_FIELDWIDTH,
                savecat(a_colour_ctx_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),

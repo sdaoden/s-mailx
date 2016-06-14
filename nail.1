@@ -2452,6 +2452,8 @@ mechanisms: the escape character, single-quotes, double-quotes and
 dollar-single-quotes; any unquoted number sign
 .Ql #
 starts a comment that ends argument processing.
+The overall granularity of error reporting and diagnostics, also
+regarding function arguments and their content, will improve.
 .
 .
 .Pp
@@ -2834,7 +2836,7 @@ in header summaries, unless they are in state
 .
 .Mx
 .It Ic colour
-\*(OP Manage colour mappings for the type of colour given as the
+\*(OP\*(NQ Manage colour mappings for the type of colour given as the
 (case-insensitive) first argument, which must be one of
 .Ql 256
 for 256-colour terminals,
@@ -3017,7 +3019,7 @@ otherwise identical to
 .
 .Mx
 .It Ic customhdr
-With no arguments, shows all currently-defined custom headers.
+\*(NQ With no arguments, shows all currently-defined custom headers.
 With one argument, shows that custom header.
 With more than one argument, creates a new or replaces an existing
 custom header with the name given as the first argument, the content of
@@ -3170,7 +3172,7 @@ conditional execution block.
 .
 .Mx
 .It Ic environ
-\*(UA has a strict notion about which variables are
+\*(NQ \*(UA has a strict notion about which variables are
 .Sx "INTERNAL VARIABLES"
 and which are managed in the program
 .Sx ENVIRONMENT .

@@ -1286,9 +1286,10 @@ enum program_state {
    PS_SIGWINCH_PEND  = 1<<14,       /* Need update of $COLUMNS/$LINES */
    PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
+   PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+   PS_WYSHLIST_SAW_UNICODE = 1<<17, /* ARG_WYSHLIST saw \[Uu] */
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 

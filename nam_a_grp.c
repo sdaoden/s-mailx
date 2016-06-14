@@ -750,7 +750,7 @@ _group_print(struct group const *gp, FILE *fo)
       fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "wysh customhdr %s %s", gp->g_id, n_shell_quote_cp(cp));
+      fprintf(fo, "customhdr %s %s", gp->g_id, n_shell_quote_cp(cp));
    }
 
    putc('\n', fo);
