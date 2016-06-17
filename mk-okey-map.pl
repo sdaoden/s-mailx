@@ -76,6 +76,7 @@ sub parse_nail_h{
             die "Unsupported special directive: $1"
                if($1 ne 'name' &&
                   $1 ne 'rdonly' && $1 ne 'nodel' && $1 ne 'notempty' &&
+                     $1 ne 'nocntrls' &&
                   $1 ne 'vip' && $1 ne 'virt' &&
                   $1 ne 'env' && $1 ne 'import' &&
                   $1 ne 'i3val' && $1 ne 'defval');
@@ -118,13 +119,14 @@ enum a_amv_var_flags{
    a_AMV_VF_RDONLY = 1<<2,    /* May not be set by user */
    a_AMV_VF_NODEL = 1<<3,     /* May not be deleted */
    a_AMV_VF_NOTEMPTY = 1<<4,  /* May not be assigned an empty value */
-   a_AMV_VF_VIP = 1<<5,       /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<6,    /* Import ONLY from environ (before PS_STARTED) */
-   a_AMV_VF_ENV = 1<<7,       /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<8,     /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<9,    /* Has a default value */
-   a_AMV_VF_LINKED = 1<<10,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(10+1)) - 1
+   a_AMV_VF_NOCNTRLS = 1<<5,  /* Value may not contain control characters */
+   a_AMV_VF_VIP = 1<<6,       /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1<<7,    /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_ENV = 1<<8,       /* Update environment on change */
+   a_AMV_VF_I3VAL = 1<<9,     /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1<<10,   /* Has a default value */
+   a_AMV_VF_LINKED = 1<<11,   /* `environ' linked */
+   a_AMV_VF__MASK = (1<<(11+1)) - 1
 };
 
 struct a_amv_var_map{
@@ -285,6 +287,7 @@ sub dump_map{
       if($e->{rdonly}) {$f .= $s . 'a_AMV_VF_RDONLY'; $s = '|'}
       if($e->{nodel}) {$f .= $s . 'a_AMV_VF_NODEL'; $s = '|'}
       if($e->{notempty}) {$f .= $s . 'a_AMV_VF_NOTEMPTY'; $s = '|'}
+      if($e->{nocntrls}) {$f .= $s . 'a_AMV_VF_NOCNTRLS'; $s = '|'}
       if($e->{vip}) {$f .= $s . 'a_AMV_VF_VIP'; $s = '|'}
       if($e->{env}) {$f .= $s . 'a_AMV_VF_ENV'; $s = '|'}
       print F "${S}/* $i. [$alen]+$l $k$f */\n" if $VERB;
@@ -303,6 +306,7 @@ sub dump_map{
       $f .= '|a_AMV_VF_RDONLY' if $e->{rdonly};
       $f .= '|a_AMV_VF_NODEL' if $e->{nodel};
       $f .= '|a_AMV_VF_NOTEMPTY' if $e->{notempty};
+      $f .= '|a_AMV_VF_NOCNTRLS' if $e->{nocntrls};
       $f .= '|a_AMV_VF_VIP' if $e->{vip};
       $f .= '|a_AMV_VF_IMPORT' if $e->{import};
       $f .= '|a_AMV_VF_ENV' if $e->{env};

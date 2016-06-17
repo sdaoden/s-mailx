@@ -78,13 +78,14 @@ enum a_amv_var_flags{
    a_AMV_VF_RDONLY = 1<<2,    /* May not be set by user */
    a_AMV_VF_NODEL = 1<<3,     /* May not be deleted */
    a_AMV_VF_NOTEMPTY = 1<<4,  /* May not be assigned an empty value */
-   a_AMV_VF_VIP = 1<<5,       /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<6,    /* Import ONLY from environ (before PS_STARTED) */
-   a_AMV_VF_ENV = 1<<7,       /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<8,     /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<9,    /* Has a default value */
-   a_AMV_VF_LINKED = 1<<10,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(10+1)) - 1
+   a_AMV_VF_NOCNTRLS = 1<<5,  /* Value may not contain control characters */
+   a_AMV_VF_VIP = 1<<6,       /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1<<7,    /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_ENV = 1<<8,       /* Update environment on change */
+   a_AMV_VF_I3VAL = 1<<9,     /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1<<10,   /* Has a default value */
+   a_AMV_VF_LINKED = 1<<11,   /* `environ' linked */
+   a_AMV_VF__MASK = (1<<(11+1)) - 1
 };
 
 struct a_amv_mac{
@@ -833,6 +834,22 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp){
             if(isempty){
                if(!isbltin)
                   goto jerr;
+            }else{
+               if(avmp->avm_flags & a_AMV_VF_NOCNTRLS){
+                  for(i = 0;; ++i){
+                     char c = cp[i];
+
+                     if(c == '\0')
+                        break;
+                     if(cntrlchar(c)){
+                        if(options & OPT_D_V)
+                           n_err(_("Ignoring environment, control characters "
+                              "invalid in variable: \"%s\"\n"),
+                              avcp->avc_name);
+                        goto jerr;
+                     }
+                  }
+               }
             }
             goto jnewval;
          }
@@ -893,8 +910,9 @@ jleave:
 
 jnewval: /* C99 */{
       struct a_amv_var **avpp;
-      size_t l = strlen(avcp->avc_name) +1;
+      size_t l;
 
+      l = strlen(avcp->avc_name) +1;
       avcp->avc_var = avp = smalloc(sizeof(*avp) -
             VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
@@ -941,6 +959,16 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
          n_err(_("Variable must not be empty: \"%s\"\n"), avcp->avc_name);
          goto jleave;
+      }
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0)){
+         char const *cp;
+
+         for(cp = value; *cp != '\0'; ++cp)
+            if(cntrlchar(*cp)){
+               n_err(_("Control characters invalid in variable: \"%s\"\n"),
+                  avcp->avc_name);
+               goto jleave;
+            }
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(pstate & (PS_ROOT | PS_STARTED)))){
@@ -1210,6 +1238,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_VIRT, "virtual"},
             {a_AMV_VF_RDONLY, "readonly"},
             {a_AMV_VF_NODEL, "nodelete"},
+            {a_AMV_VF_NOTEMPTY, "notempty"},
+            {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_IMPORT, "import-environ-first\0"},
             {a_AMV_VF_ENV, "sync-environ"},
             {a_AMV_VF_I3VAL, "initial-value"},

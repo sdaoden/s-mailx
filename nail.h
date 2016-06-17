@@ -1346,7 +1346,7 @@ ok_b_autothread,
    ok_b_colour_disable,
    ok_b_colour_pager,
    ok_v_crt,
-   ok_v_customhdr,
+   ok_v_customhdr,                     /* {nocntrls=1} */
 
    ok_v_DEAD,                          /* {env=1,defval=VAL_DEAD} */
    ok_v_datefield,
@@ -1430,8 +1430,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
 
    ok_b_outfolder,
 
-   ok_v_PAGER,                      /* {env=1,defval=VAL_PAGER} */
-   ok_v_PATH,                       /* {nodel=1,import=1} */
+   ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
+   ok_v_PATH,                          /* {nodel=1,import=1} */
    ok_b_page,
    ok_v_password,
    ok_b_piperaw,
@@ -1441,7 +1441,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
    ok_b_print_alternatives,
-   ok_v_prompt,                     /* {i3val="\\& "} */
+   ok_v_prompt,                        /* {i3val="\\& "} */
 
    ok_b_quiet,
    ok_v_quote,
