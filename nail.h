@@ -1033,7 +1033,8 @@ enum n_shexp_state{
    n_SHEXP_STATE_NONE,
    n_SHEXP_STATE_STOP = 1<<1,          /* \c0 or # comment seen last */
 
-   n_SHEXP_STATE_UNICODE = 1<<1,       /* \[Uu] used */
+   n_SHEXP_STATE_UNICODE = 1<<2,       /* \[Uu] used */
+   n_SHEXP_STATE_CONTROL = 1<<3,       /* Control characters seen */
 
    n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
    n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* \[Uu] used: faulty or !OPT_UNICODE */
@@ -1290,6 +1291,7 @@ enum program_state {
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
    PS_WYSHLIST_SAW_UNICODE = 1<<17, /* ARG_WYSHLIST saw \[Uu] */
+   PS_WYSHLIST_SAW_CONTROL = 1<<18, /* ..saw C0+ control characters */
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 

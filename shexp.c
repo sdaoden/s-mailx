@@ -885,6 +885,8 @@ jeasis:
                                  PTR2SIZE(ib - ib_save));
                            continue;
                         }
+                        if(n_uasciichar(no) && cntrlchar(no)) /* TODO ctext */
+                           rv |= n_SHEXP_STATE_CONTROL;
                         continue;
                      }
                      if(skipq)
@@ -949,8 +951,14 @@ j_dollar_ungetc:
                }else{
                   vp = savestrbuf(vp, i);
                   /* Check getenv(3) shall no internal variable exist! */
-                  if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL)
+                  if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL){
                      store = n_string_push_cp(store, cp);
+                     for(; (c = *cp) != '\0'; ++cp)
+                        if(cntrlchar(c)){
+                           rv |= n_SHEXP_STATE_CONTROL;
+                           break;
+                        }
+                  }
                   continue;
                }
             }
@@ -959,8 +967,11 @@ j_dollar_ungetc:
          }
       }
 
-      if(!skipq)
+      if(!skipq){
+         if(cntrlchar(c))
+            rv |= n_SHEXP_STATE_CONTROL;
          store = n_string_push_c(store, c);
+      }
    }
 
    if(quotec != '\0'){
@@ -970,6 +981,8 @@ j_dollar_ungetc:
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
    }
 jleave:
+   if(rv & n_SHEXP_STATE_CONTROL)
+      pstate |= PS_WYSHLIST_SAW_CONTROL;
    input->s = UNCONST(ib);
    input->l = il;
    NYD2_LEAVE;
