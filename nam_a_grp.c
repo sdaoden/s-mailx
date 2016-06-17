@@ -1720,13 +1720,13 @@ c_customhdr(void *v){
          continue;
       if(*hcp == '\0'){
          if(hcp == *argv){
-            n_err(_("Cannot use nameless custom header\n"));
+            n_err(_("`customhdr': no name specified\n"));
             goto jleave;
          }
          hcp = *argv;
          break;
       }
-      n_err(_("Invalid custom header name: \"%s\"\n"), *argv);
+      n_err(_("`customhdr': invalid name: \"%s\"\n"), *argv);
       goto jleave;
    }
    rv = 0;
@@ -1735,13 +1735,20 @@ c_customhdr(void *v){
       if((gp = _group_find(GT_CUSTOMHDR, hcp)) != NULL)
          _group_print(gp, stdout);
       else{
-         n_err(_("No such custom header: \"%s\"\n"), hcp);
+         n_err(_("No such `customhdr': \"%s\"\n"), hcp);
          rv = 1;
       }
    }else{
       /* Because one hardly ever redefines, anything is stored in one chunk */
       size_t i, l;
       char *cp;
+
+      if(pstate & PS_WYSHLIST_SAW_CONTROL){
+         n_err(_("`customhdr': \"%s\": control characters not allowed: %s%s\n"),
+            hcp, n_shell_quote_cp(*argv), (argv[1] != NULL ? "..." : ""));
+         rv = 1;
+         goto jleave;
+      }
 
       if(_group_find(GT_CUSTOMHDR, hcp) != NULL)
          _group_del(GT_CUSTOMHDR, hcp);
