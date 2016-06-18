@@ -33,7 +33,7 @@ struct cond_stack {
 
 struct if_cmd {
    char const  * const *ic_argv_base;
-   char const  * const *ic_argv_max;
+   char const  * const *ic_argv_max;   /* BUT: .ic_argv MUST be terminated! */
    char const  * const *ic_argv;
 };
 
@@ -410,10 +410,10 @@ FL int
 c_if(void *v)
 {
    struct if_cmd ic;
+   char const * const *argv;
    struct cond_stack *csp;
    size_t argc;
-   si8_t xrv, rv = 1;
-   char const * const *argv = v;
+   si8_t xrv, rv;
    NYD_ENTER;
 
    csp = smalloc(sizeof *csp);
@@ -429,18 +429,29 @@ c_if(void *v)
       goto jleave;
    }
 
-   for (argc = 0; argv[argc] != NULL; ++argc)
-      ;
-   assert(argc > 0); /* (Minimum argument count for command) */
+   /* For heaven's sake, support comments _today_ TODO wyshlist.. */
+   for (argc = 0, argv = v; argv[argc] != NULL; ++argc)
+      if(argv[argc][0] == '#'){
+         char const **nav = salloc(sizeof(char*) * (argc + 1));
+         size_t i;
+
+         for(i = 0; i < argc; ++i)
+            nav[i] = argv[i];
+         nav[i] = NULL;
+         argv = nav;
+         break;
+      }
    ic.ic_argv_base = ic.ic_argv = argv;
-   ic.ic_argv_max = argv + argc;
+   ic.ic_argv_max = &argv[argc];
    xrv = _if_group(&ic, 0, FAL0);
 
    if (xrv >= 0) {
       csp->c_go = (bool_t)xrv;
       rv = 0;
-   } else
+   } else {
       csp->c_error = csp->c_noop = TRU1;
+      rv = 1;
+   }
 jleave:
    NYD_LEAVE;
    return rv;
