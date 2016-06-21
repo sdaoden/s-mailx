@@ -338,7 +338,7 @@ If the
 (\*(OB or
 .Fl H )
 option has been given in addition no header summary is produced,
-but \*(UA will instead indicate via its exit status wether
+but \*(UA will instead indicate via its exit status whether
 .Ar spec-list
 matched any messages
 .Pf ( Ql 0 )
@@ -729,7 +729,7 @@ solely of a dot
 .Va on-compose-enter
 and
 .Va on-compose-leave
-hook macros may be set to automatically adjust some settings dependend
+hook macros may be set to automatically adjust some settings dependent
 on receiver, sender or subject contexts.
 .
 .Pp
@@ -861,7 +861,7 @@ To avoid environmental noise scripts should
 \*(UA from any configuration files and create a script-local
 environment, ideally with the command line options
 .Fl \&:
-to disable any configuration file in conjunction with repititions of
+to disable any configuration file in conjunction with repetitions of
 .Fl S
 to specify variables:
 .
@@ -1000,7 +1000,7 @@ currently active ignore or retain lists, use the command
 .Ic Type .
 The variable
 .Va crt
-controls wether and when \*(UA will use the configured
+controls whether and when \*(UA will use the configured
 .Ev PAGER
 for display instead of directly writing to the user terminal
 (generally speaking).
@@ -1199,7 +1199,7 @@ and
 .Ic Lreply )
 and
 .Va followup-to
-controls wether this header is created when sending mails; it will be
+controls whether this header is created when sending mails; it will be
 created automatically for a couple of reasons, too, like when the
 special
 .Dq mailing list specific
@@ -1224,7 +1224,7 @@ address that is presented in the
 .Ql List-To:
 header of a message that is being responded to to the list of known
 mailing lists.
-Shall that header have existed \*(UA will instead, dependend on the
+Shall that header have existed \*(UA will instead, dependent on the
 variable
 .Va reply-to-honour ,
 use an also set
@@ -1975,7 +1975,7 @@ may be helpful):
 .Pp
 Note that these \*(UA URLs most often don't conform to any real
 standard, but instead represent a normalized variant of RFC 1738 \(en
-they are not used in data exchange but only ment as a compact,
+they are not used in data exchange but only meant as a compact,
 easy-to-use way of defining and representing information in
 a well-known notation.
 .
@@ -2002,27 +2002,27 @@ isn't truly the
 that had been found when doing the user chain lookup as is described
 below, i.e., this
 .Ql USER
-will never be in URL percent encoded form, wether it came from an URL or
-not; i.e., values of
+will never be in URL percent encoded form, whether it came from an URL
+or not; i.e., values of
 .Sx "INTERNAL VARIABLES"
 must not be URL percent encoded.
 .
 .Pp
-For example, wether an hypothetical URL
+For example, whether an hypothetical URL
 .Ql smtp://hey%3Ayou@our.house
-had been given that includes a user, or wether the URL was
+had been given that includes a user, or whether the URL was
 .Ql smtp://our.house
 and the user had been found differently, to lookup the variable chain
 .Va smtp-use-starttls
-\*(UA first looks for wether
+\*(UA first looks for whether
 .Ql smtp-\:use-\:starttls-\:hey:you@our.house
-is defined, then wether
+is defined, then whether
 .Ql smtp-\:use-\:starttls-\:our.house
 exists before finally ending up looking at the plain variable itself.
 .
 .Pp
 \*(UA obeys the following logic scheme when dealing with the
-necessary credential informations of an account:
+necessary credential information of an account:
 .
 .Bl -bullet
 .It
@@ -2316,7 +2316,7 @@ and which can be fine-tuned by the user via the internal variable
 .Pp
 On top of what \*(UA knows about the terminal the boolean variable
 .Va colour-pager
-defines wether the actually applicable colour and font attribute
+defines whether the actually applicable colour and font attribute
 sequences should also be generated when output is going to be paged
 through the external program defined by the environment variable
 .Ev PAGER
@@ -2451,7 +2451,7 @@ regarding function arguments and their content, will improve.
 .Pp
 .Bl -bullet -compact -offset indent
 .It
-The literal value of any character can be preserved by preceeding it
+The literal value of any character can be preserved by preceding it
 with the escape character backslash
 .Ql \e .
 An unquoted dollar
@@ -3134,7 +3134,7 @@ variable is set.
 .It Ic elif
 Part of the
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
-conditional \(em if the condition of a preceeding
+conditional \(em if the condition of a preceding
 .Ic if
 was false, check the following condition and execute the following block
 if it evaluates true.
@@ -3143,7 +3143,7 @@ if it evaluates true.
 .It Ic else
 (el) Part of the
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
-conditional \(em if none of the conditions of the preceeding
+conditional \(em if none of the conditions of the preceding
 .Ic if
 and
 .Ic elif
@@ -3651,7 +3651,7 @@ The available comparison operators are
 (is not substring of).
 The values of the left and right hand side are treated as strings and
 are compared 8-bit byte-wise, ignoring case according to the rules of
-the US-ASCII encoding (therefore, dependend on the active locale,
+the US-ASCII encoding (therefore, dependent on the active locale,
 possibly producing false results for strings in the locale encoding).
 Except for the substring checks the comparison will instead be performed
 arithmetically if both, the user given value as well as the variable
@@ -4256,7 +4256,7 @@ A more verbose listing will be produced if either of
 .Va debug
 or
 .Va verbose
-are set, in which case variables may be preceeded with a comment line
+are set, in which case variables may be preceded with a comment line
 that gives some context of what \*(UA knows about the given variable.
 .Pp
 Otherwise the given variables (and arguments) are set or adjusted.
@@ -4400,7 +4400,7 @@ i.e., it can only be called from macros that were
 .It Ic source_if
 The difference to
 .Ic source
-(beside not supporting pipe syntax a.k.a. shell command input) is that
+(beside not supporting pipe syntax aka shell command input) is that
 this command will not generate an error if the given file argument
 cannot be opened successfully.
 This can matter in, e.g., resource files, since loading of those is
@@ -4419,7 +4419,7 @@ flag.
 to forget it has ever used them to train its Bayesian filter.
 Unless otherwise noted the
 .Ql is-spam
-flag of the message is inspected to chose wether a message shall be
+flag of the message is inspected to chose whether a message shall be
 forgotten to be
 .Dq ham
 or
@@ -4904,7 +4904,7 @@ and the rest of this section does not apply.
 If character set conversion has been compiled into \*(UA, then this mode
 gives the user the option to specify input and output character sets,
 unless the file extension indicates binary content, in which case \*(UA
-asks wether this step shall be skipped for the attachment in question.
+asks whether this step shall be skipped for the attachment in question.
 If not skipped, then the charset that succeeds to represent the
 attachment data will be used in the
 .Ql charset=
@@ -4952,7 +4952,7 @@ Note that the file extension check isn't performed in this mode, since
 no conversion will take place anyway.
 .Pp
 Note that in non-interactive mode, for reproduceabilities sake, there
-will always be two questions for each attachment, regardless of wether
+will always be two questions for each attachment, regardless of whether
 character set conversion is available and what the file extension is.
 The first asks for the filename, and the second asks for the input
 character set to be passed through to the corresponding MIME parameter;
@@ -5666,7 +5666,7 @@ Also see the section
 .
 .Mx
 .It Va colour-pager
-\*(BO\*(OP Wether colour shall be used for output that is paged through
+\*(BO\*(OP Whether colour shall be used for output that is paged through
 .Ev PAGER .
 Note that pagers may need special flags, e.g.,
 .Xr less 1
@@ -5879,7 +5879,7 @@ If it contains
 .Ql fail
 then the existence of disallowed specifications is treated as a hard
 send error instead of only filtering them out.
-The remaining values specify wether a specific type of recipient
+The remaining values specify whether a specific type of recipient
 address specification is allowed (optionally indicated by a plus sign
 .Ql +
 prefix) or disallowed (prefixed with a hyphen
@@ -6028,7 +6028,7 @@ first, but then followed by
 .
 .Mx
 .It Va followup-to
-\*(BO Controls wether a
+\*(BO Controls whether a
 .Ql Mail-Followup-To:
 header is generated when sending messages to known mailing lists.
 Also see
@@ -6040,7 +6040,7 @@ and
 .
 .Mx
 .It Va followup-to-honour
-Controls wether a
+Controls whether a
 .Ql Mail-Followup-To:
 header is honoured when group-replying to a message via
 .Ic reply
@@ -6262,8 +6262,8 @@ name the (expandable) path of the location of a permanent history file.
 \*(BO\*(OP \*(UA's own MLE will not save the additional
 .Va history-gabby
 entries in persistent storage unless this variable is set.
-On the other hand it will not loose the knowledge of wether a persistent
-entry was gabby or not.
+On the other hand it will not loose the knowledge of whether
+a persistent entry was gabby or not.
 Also see
 .Va history-file .
 .
@@ -6279,8 +6279,8 @@ upon program startup can also be suppressed by doing this.
 If unset or 0, a default value will be used.
 Dependent on the available line editor this will also define the
 number of history entries in memory;
-it is also editor-specific wether runtime updates of this value will be
-honoured.
+it is also editor-specific whether runtime updates of this value will
+be honoured.
 .
 .Mx
 .It Va hold
@@ -6784,7 +6784,7 @@ will only be used in interactive mode and implies
 .
 .It Ql +
 Request creation of a zero-sized temporary file, the absolute pathname
-of which will be made accessable via the environment variable
+of which will be made accessible via the environment variable
 .Ev NAIL_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile ) .
 If this trigger is given twice then the file will be unlinked
@@ -7100,7 +7100,7 @@ list.
 .
 .Mx
 .It Va reply-to-honour
-Controls wether a
+Controls whether a
 .Ql Reply-To:
 header is honoured when replying to a message via
 .Ic reply
@@ -7547,7 +7547,7 @@ Assign a value like \*(IN
 .Ql submission://server[:port] ) .
 .El
 .Pp
-For more on credentials etc. please see
+For more on credentials etc., please see
 .Sx "On URL syntax and credential lookup" .
 The SMTP transfer is executed in a child process, which runs
 asynchronously unless either the
@@ -7592,7 +7592,7 @@ Note that
 is \*(IN.
 \*(OU: Note for
 .Va smtp-auth-USER@HOST :
-may override dependend on sender address in the variable
+may override dependent on sender address in the variable
 .Va from .
 .
 .It Va smtp-auth-password
@@ -7717,7 +7717,7 @@ It is possible to specify a per-user configuration via
 .
 .It Ql filter
 generic spam filter support via freely configurable hooks.
-This interface is ment for programs like
+This interface is meant for programs like
 .Xr bogofilter 1
 and
 .Xr sylfilter 1
@@ -7778,7 +7778,7 @@ executable had been found during compilation.
 \*(OP Even though \*(UA deals with most arguments for the
 .Ql spamc
 .Va spam-interface
-automatically, it may at least sometimes be desirable to specifiy
+automatically, it may at least sometimes be desirable to specify
 connection-related ones via this variable, e.g.,
 .Ql -d server.example.com -p 783 .
 .
@@ -8166,7 +8166,7 @@ home cursor.
 clear to the end of line.
 (Will be simulated via
 .Cd ch
-plus repititions of space characters.)
+plus repetitions of space characters.)
 .
 .It Cd hpa Ns \0or Cd ch
 .Cd column_address :
@@ -8591,8 +8591,8 @@ documents the file format.
 When sending messages \*(UA tries to determine the content type of all
 attachments.
 When displaying message content or attachments \*(UA uses the content
-type to decide wether it can directly display data or wether it needs to
-deal with content handlers.
+type to decide whether it can directly display data or whether it needs
+to deal with content handlers.
 It learns about MIME types and how to treat them by reading
 .Pa mime.types
 files, the loading of which can be controlled by setting the variable
@@ -8718,7 +8718,7 @@ the entry is about to handle (case-insensitively, and no backslash
 escaping is possible in this field).
 If the subtype is specified as an asterisk
 .Ql *
-the entry is ment to match all subtypes of the named type, e.g.,
+the entry is meant to match all subtypes of the named type, e.g.,
 .Ql audio/*
 would match any audio type.
 The second field defines the shell command which shall be used to
@@ -8879,7 +8879,7 @@ Cannot be used in conjunction with
 .Cd needsterminal .
 .
 .It Cd x-mailx-test-once
-Extension flag which denotes wether the given
+Extension flag which denotes whether the given
 .Cd test
 command shall be evaluated once only and the (boolean) result be cached.
 This is handy if some global unchanging condition is to be queried, like
@@ -8947,7 +8947,7 @@ command shall not, the following will help out the latter (with enabled
 .Va debug
 or an increased
 .Va verbose
-level \*(UA will show informations about handler evaluation):
+level \*(UA will show information about handler evaluation):
 .
 .Bd -literal -offset indent
 application/postscript; ps-to-terminal %s; needsterminal
@@ -9798,8 +9798,8 @@ RFC 6762 standardized the link-local top-level domain
 .Ql .local .
 .\" }}}
 .
-.\" .Ss "I can't login to Google mail a.k.a. GMail" {{{
-.Ss "I can't login to Google mail a.k.a. GMail"
+.\" .Ss "I can't login to Google mail aka GMail" {{{
+.Ss "I can't login to Google mail aka GMail"
 .
 Since 2014 some free service providers classify programs as
 .Dq less secure
@@ -9835,7 +9835,7 @@ enable
 create an application specific password (16 characters), and
 .It
 use that special password instead of your real Google account password in
-S-nail (for more on that see the section
+\*(UA (for more on that see the section
 .Sx "On URL syntax and credential lookup" ) .
 .El
 .\" }}}
@@ -10006,7 +10006,7 @@ could perform as a client.
 .
 See the file
 .Pa TODO
-from the distribution or the repository.
+from the repository.
 .
 After deleting some message of a POP3 mailbox the header summary falsely
 claims that there are no messages to display, you need to perform
