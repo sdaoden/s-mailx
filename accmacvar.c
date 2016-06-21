@@ -587,6 +587,7 @@ __var_list_all_cmp(void const *s1, void const *s2)
 static char *
 __var_simple_quote(char const *cp) /* TODO "unite" with string_quote(), etc.. */
 {
+   bool_t esc;
    size_t i;
    char const *cp_base;
    char c, *rv;
@@ -597,9 +598,14 @@ __var_simple_quote(char const *cp) /* TODO "unite" with string_quote(), etc.. */
          ++i;
    rv = salloc(i +1);
 
-   for (i = 0, cp = cp_base; (c = *cp) != '\0'; rv[i++] = c, ++cp)
-      if (c == '"')
-         rv[i++] = '\\';
+   for (esc = FAL0, i = 0, cp = cp_base; (c = *cp) != '\0'; rv[i++] = c, ++cp) {
+      if (!esc) {
+         if (c == '"')
+            rv[i++] = '\\';
+         esc = (c == '\\');
+      } else
+         esc = FAL0;
+   }
    rv[i] = '\0';
    NYD2_LEAVE;
    return rv;

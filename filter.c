@@ -1124,15 +1124,24 @@ _hf_expand_all_ents(struct htmlflt *self, struct str const *param)
 
    for (cp = param->s, maxcp = cp + param->l; cp < maxcp;)
       if ((c = *cp++) != '&')
+jputc:
          self = _hf_putc(self, c);
       else {
-         for (ep = cp--; ep < maxcp && (c = *ep++) != ';';)
-            if (c == '\0') {
-               self = _hf_puts(self, cp);
+         for (ep = cp--;;) {
+            if (ep == maxcp || (c = *ep++) == '\0') {
+               for (; cp < ep; ++cp)
+                  self = _hf_putc(self, *cp);
                goto jleave;
+            } else if (c == ';') {
+               if ((i = PTR2SIZE(ep - cp)) > 1) {
+                  self = _hf_check_ent(self, cp, i);
+                  break;
+               } else {
+                  c = *cp++;
+                  goto jputc;
+               }
             }
-         if ((i = PTR2SIZE(ep - cp)) > 1)
-            self = _hf_check_ent(self, cp, i);
+         }
          cp = ep;
       }
 jleave:
@@ -1310,7 +1319,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
    l_save = l;
    assert(*s == '&');
    assert(l > 0);
-   assert(s[l - 1] == ';');
+   /* False entities seen in the wild assert(s[l - 1] == ';'); */
    ++s;
    l -= 2;
 

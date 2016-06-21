@@ -22,6 +22,55 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.9 ("Dung Beetle"), 2016-06-21
+-----------------------------------
+
+A cumulated bugfix release.
+
+Credits Ralph Corderoy.
+Apologies, Dirk-Wilhelm Peters.
+
+  S-nail will become S-mailx after v14.9, and all project resources
+  will move to www.sdaoden.eu with v14.9; only the ML remains hosted
+  at Sourceforge.net as of this writing.
+  We thank Sourceforge.net for hosting this project so many years!
+
+ChangeLog
+^^^^^^^^^
+
+- *signature* and tail injections now work correctly even in combination
+  with -t. [d4237ac]  (Dirk-Wilhelm Peters)
+
+- Fix faulty (by-one) buffer overflow calculation in the NCL line editor
+  that could sometimes be seen when using ^W for backward deleting
+  a word when using this at a freshly created rightmost columns.
+  Bug was introduced in [d33bd89] (tty.c, NCL: reduce realloc counts,
+  2013-08-23).  (Ralph Corderoy)
+
+git(1) shortlog
+^^^^^^^^^^^^^^^
+
+b0b974e mk-conf.sh: disable -b for tcc(1) [mob]
+a415c58 makefile:_update-release: symlinks do not work with lighttpd, use hard
+        ones
+2fefb1f collect(): fit ~? output in 25 lines (fixes [5dea8a4,4e61d5c] ;)
+7c7c888 mime.types: oops, fix x-xz tbz->txz extension!
+c40c206 collect(): hint for `~.' if *ignoreeof* is set, not ".": needs *dot*
+d4237ac Fix *signature* / tail injection in conjunction with -t..
+ef6a9c2 mk-conf.sh: pcc(1) as of CVS works without stack protectors!
+d5cec10 FIX HTML filter: swallow lone ampersands in parameters (SIGH!)..
+08eb902 FIX: avoid duplicate output for HTML filter..
+524adf4 makeprint(): filter some iswprint()==true, but which really aren't..
+552b2b8 `set': fix quoting when printing all variables
+aa8df72 mk-conf.sh: fix DEVEL<->DEBUG interdependency; terminate printf(1)
+        args
+f84b0cd mk-conf.sh: check for the needed environ(3)
+b5af710 mk-conf.sh: fix [f84b0cd]: NULL needs stdio.h
+fdcbf59 Again "improve" ~? listing
+ba29651 FIX: cntrlchar() was broken since [4e49924] from 2012-10-15!!
+08ab13f tty.c, NCL fix possible off-by-one (Ralph Corderoy)
+815e99f makefile:_update-release: rm TODO in [timeline] _shipout release_ ball
+
 v14.8.8 ("The Vulture 38"), 2016-03-26 (v14.8.7 as of 2016-03-25 broken)
 ------------------------------------------------------------------------
 

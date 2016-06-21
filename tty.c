@@ -891,7 +891,7 @@ _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
    NYD2_ENTER;
 
    i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
-   if (i > *l->x_bufsize) {
+   if (i >= *l->x_bufsize) {
       i <<= 1;
       *l->x_bufsize = i;
       l->line.cbuf =

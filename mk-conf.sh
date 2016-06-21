@@ -145,6 +145,10 @@ option_update() {
    if feat_no SOCKETS; then
       WANT_MD5=0
    fi
+
+   if feat_yes DEVEL; then
+      WANT_DEBUG=1
+   fi
    if feat_yes DEBUG; then
       WANT_NOALLOCA=1 WANT_DEVEL=1
    fi
@@ -269,6 +273,7 @@ cc_setup() {
       CFLAGS= LDFLAGS=
       export CFLAGS LDFLAGS
    fi
+
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    printf >&2 'Searching for a usable C compiler .. $CC='
@@ -279,6 +284,8 @@ cc_setup() {
    elif { i="`command -v c99`"; }; then
       CC=${i}
    elif { i="`command -v tcc`"; }; then
+      CC=${i}
+   elif { i="`command -v pcc`"; }; then
       CC=${i}
    else
       if [ "${CC}" = cc ]; then
@@ -293,7 +300,7 @@ cc_setup() {
          config_exit 1
       fi
    fi
-   printf >&2 '"%s"\n' "${CC}"
+   printf >&2 -- '"%s"\n' "${CC}"
    export CC
 }
 
@@ -320,10 +327,16 @@ cc_flags() {
          msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
       fi
 
-      if { echo "${CC}" | ${grep} tcc; } >/dev/null 2>&1; then
+      i=`echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}'`
+      if { echo "${i}" | ${grep} tcc; } >/dev/null 2>&1; then
          msg ' . have special tcc(1) environmental rules ...'
          _cc_flags_tcc
       else
+         # As of pcc CVS 2016-04-02, stack protection support is announced but
+         # will break if used on Linux
+         if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
+            force_no_stackprot=1
+         fi
          _cc_flags_generic
       fi
 
@@ -348,7 +361,7 @@ _cc_flags_tcc() {
    cc_check -pedantic
 
    if feat_yes DEBUG; then
-      cc_check -b
+      # May have problems to find libtcc cc_check -b
       cc_check -g
    fi
 
@@ -412,7 +425,7 @@ _cc_flags_generic() {
          fi
       else
          msg 'Not checking for -fstack-protector compiler option,'
-         msg 'since that caused linker errors in a "similar" configuration.'
+         msg 'since that caused errors in a "similar" configuration.'
          msg 'You may turn off WANT_AUTOCC and use your own settings, rerun'
       fi
    fi
@@ -470,7 +483,7 @@ config_exit() {
 msg() {
    fmt=${1}
    shift
-   printf >&2 "${fmt}\\n" "${@}"
+   printf >&2 -- "${fmt}\\n" "${@}"
 }
 
 ## First of all, create new configuration and check wether it changed
@@ -806,12 +819,20 @@ cc_setup
 
 ${cat} > ${tmp}.c << \!
 #include <stdio.h>
-int main(int argc, char **argv)
-{
+#include <string.h>
+static void doit(char const *s);
+int
+main(int argc, char **argv){
    (void)argc;
    (void)argv;
-   puts("Hello world");
+   doit("Hello world");
    return 0;
+}
+static void
+doit(char const *s){
+   char buf[12];
+   strcpy(buf, s);
+   puts(s);
 }
 !
 
@@ -856,7 +877,7 @@ for i in \
       INCS LIBS \
       ; do
    eval j=\$${i}
-   printf "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=${j}\n" >> ${newlst}
 done
 for i in \
       CC \
@@ -866,8 +887,8 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j=\$${i}
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n" >> ${newlst}
+   printf -- "${i} = ${j}\n" >> ${newmk}
+   printf -- "${i}=${j}\n" >> ${newlst}
 done
 
 # Now finally check wether we already have a configuration and if so, wether
@@ -912,13 +933,13 @@ msg() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
-   printf "${fmt}\\n" "${@}" >&5
+   printf -- "${fmt}\\n" "${@}" >&5
 }
 msg_nonl() {
    fmt=${1}
    shift
    printf "*** ${fmt}\\n" "${@}"
-   printf "${fmt}" "${@}" >&5
+   printf -- "${fmt}" "${@}" >&5
 }
 
 exec 5>&2 > ${log} 2>&1
@@ -1007,7 +1028,7 @@ run_check() {
 ##
 
 # May be multiline..
-[ -n "${OS_DEFINES}" ] && printf "${OS_DEFINES}" >> ${h}
+[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
 if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
@@ -1107,6 +1128,21 @@ then
    :
 else
    msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   config_exit 1
+fi
+
+if link_check environ 'environ(3)' << \!
+#include <stdio.h> /* For C89 NULL */
+int main(void){
+   extern char **environ;
+
+   return environ[0] == NULL;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the environ(3) array for subprocess control.'
    config_exit 1
 fi
 

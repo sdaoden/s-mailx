@@ -58,8 +58,8 @@ application/xml               xml xsl xsd
 
 application/gzip              tgz gz emz
 application/x-bzip2           bz2 tbz2 boz
-# EXTENSION .tbz
-application/x-xz              xz tbz
+# EXTENSION .txz
+application/x-xz              xz txz
 application/x-tar             tar
 application/zip               zip
 

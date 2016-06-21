@@ -73,6 +73,8 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
 
+/* Parse off the message header from fp and store relevant fields in hp,
+ * replace _coll_fp with a shiny new version without any header */
 static enum okay  makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
@@ -786,11 +788,10 @@ jcont:
             pstate |= PS_t_FLAG;
             if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
                goto jerr;
-            rewind(_coll_fp);
             options &= ~OPT_t_FLAG;
             continue;
          } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("*ignoreeof* set, use \".\" to terminate letter\n"));
+            printf(_("*ignoreeof* set, use \"~.\" to terminate letter\n"));
             continue;
          }
          break;
@@ -814,7 +815,8 @@ jputline:
       if (linebuf[0] != escape)
          goto jputline;
 
-      tty_addhist(linebuf, TRU1);
+      if (!(options & OPT_t_FLAG))
+         tty_addhist(linebuf, TRU1);
 
       c = linebuf[1];
       switch (c) {
@@ -999,34 +1001,35 @@ jputline:
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
          puts(_(
-"\nTILDE ESCAPES excerpt:\n"
-"~~           Quote a single tilde\n"
-"~@ [:file:]  Edit attachment list\n"
-"~b users     Add users to \"blind\" Bcc: list\n"
-"~c users     Add users to Cc: list\n"
-"~d           Read in dead.letter\n"
-"~e           Edit the message buffer\n"
-"~F messages  Read in messages including all headers, don't indent lines\n"
-"~f messages  Like ~F, but honour the `ignore' / `retain' configuration\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"));
+"TILDE ESCAPES (to be placed after a newline) excerpt:\n"
+"~.            Commit and send message\n"
+"~: <command>  Execute a mail command\n"
+"~<! <command> Insert output of command\n"
+"~@ [<files>]  Edit attachment list\n"
+"~A            Insert *Sign* variable (`~a' inserts *sign*)\n"
+"~c <users>    Add users to Cc: list (`~b' for Bcc:)\n"
+"~d            Read in *DEAD* (dead.letter)\n"
+"~e            Edit message via *EDITOR*"
+         ));
          puts(_(
-"~R file      Read in a file, indent lines\n"
-"~r file      Read in a file\n"
-"~p           Print the message buffer\n"
-"~q           Abort message composition and save text to DEAD\n"
-"~M messages  Read in messages, keep all header lines, indent lines\n"
-"~m messages  Like ~M, but honour the `ignore' / `retain' configuration\n"
-"~s subject   Set Subject:\n"
-"~t users     Add users to To: list\n"));
+"~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
+"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
+"~H            Edit From:, Reply-To: and Sender:\n"
+"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
+"~i <variable> Insert a value and a newline\n"
+"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
+"~p            Print current message compose buffer\n"
+"~r <file>     Read in a file (`~R' *indentprefix* lines)"
+         ));
          puts(_(
-"~U messages  Read in message(s) without any headers, indent lines\n"
-"~u messages  Read in message(s) without any headers\n"
-"~v           Invoke alternate editor ($VISUAL) on message\n"
-"~w file      Write message onto file\n"
-"~x           Abort message composition and discard message\n"
-"~|command    Pipe message through a filter, replace content on success\n"
-"~!command    Invoke the shell\n"
-"~:command    Execute a regular command\n"));
+"~s <subject>  Set Subject:\n"
+"~t <users>    Add users to To: list\n"
+"~u <msglist>  Read in message(s) without headers (`~U' indents lines)\n"
+"~v            Edit message via *VISUAL*\n"
+"~w <file>     Write message onto file\n"
+"~x            Abort composition, discard message (`~q' saves in *DEAD*)\n"
+"~| <command>  Pipe message through shell filter"
+         ));
          break;
       }
    }

@@ -63,7 +63,7 @@
 #define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
 #define blankchar(c)    __ischarof(c, C_BLANK)
 #define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
-#define cntrlchar(c)    __ischarof(c, C_CNTRL)
+#define cntrlchar(c)    (asciichar(c) && class_char[(ui8_t)(c)] == C_CNTRL)
 #define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
 #define lowerchar(c)    __ischarof(c, C_LOWER)
 #define punctchar(c)    __ischarof(c, C_PUNCT)
