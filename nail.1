@@ -2236,16 +2236,11 @@ The same as
 backward delete one character.
 .
 .It Ql ^I
-The same as
+\*(NQ The same as
 .Dq horizontal tabulator :
-try to expand the word before the cursor.
-(Note this is not
-.Dq tabulator-completion
-as is known from the
-.Xr sh 1
-but really means the usual \*(UA expansion, as documented for
-.Ic file ,
-yet it involves shell expansion as a last step, too.)
+try to expand the word before the cursor, also supporting \*(UA
+.Ic file
+expansions.
 .
 .It Ql ^J
 The same as
