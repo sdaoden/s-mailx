@@ -399,7 +399,9 @@ jnext:
       dyn = TRU1;
    }
 
-   if (anyof(res, "|&;<>{}()[]*?$`'\"\\")) {
+   if ((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
+         ((fexpm & FEXP_NSHELL) ? (strchr(res, '$') != NULL)
+          : anyof(res, "|&;<>{}()[]*?$`'\"\\"))) {
       bool_t doexp;
 
       if(fexpm & FEXP_NOPROTO)

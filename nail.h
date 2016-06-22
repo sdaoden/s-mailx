@@ -845,7 +845,8 @@ enum fexp_mode {
    FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
    FEXP_SILENT = 1<<3,        /* Don't print but only return errors */
    FEXP_MULTIOK = 1<<4,       /* Expansion to many entries is ok */
-   FEXP_NSHELL = 1<<5         /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NSHELL = 1<<5,        /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1<<6           /* ..not even $VAR expansion */
 };
 
 enum n_file_lock_type{
