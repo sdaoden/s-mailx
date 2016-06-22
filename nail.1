@@ -207,8 +207,7 @@ Attach the given file to the message.
 The same filename conventions as described in the section
 .Sx COMMANDS
 apply: shell word expansion is restricted to the tilde
-.Ql ~
-and variables.
+.Ql ~ .
 Shall
 .Ar file
 not be accessible but contain a
@@ -4975,14 +4974,11 @@ If (instead)
 .Ar filename
 arguments are specified for the
 .Ic \&\&~@
-command they are treated as a comma-separated list of files,
-which are all expanded and appended to the end of the attachment list.
-(Commas need to be escaped with backslash, but filenames with leading or
-trailing whitespace can only be added via the command line or the first
-method.
-Message attachments can only be added via the first method;
-filenames which clash with message numbers can only be added via the
-command line or the second method.)
+command they are treated as a file list of
+.Xr sh 1 Ns
+-style quoted arguments, optionally also separated by commas, which are
+expanded and then appended to the existing list of message attachments.
+Message attachments can only be added via the first method.
 In this mode the (text) attachments are assumed to be in
 .Va ttycharset
 encoding, and will be evaluated as documented in the section

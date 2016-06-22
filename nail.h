@@ -1300,7 +1300,6 @@ enum program_state {
 
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
-   PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
    PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
    PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
    PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
