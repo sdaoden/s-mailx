@@ -174,67 +174,12 @@ jleave:
    return cp;
 
 #else /* HAVE_WORDEXP */
-   struct stat sbuf;
-   char xname[PATH_MAX +1], cmdbuf[PATH_MAX +1], /* also used for files */
-      cp = NULL;
-   int pivec[2], pid, l, waits;
-   NYD_ENTER;
+   UNUSED(fexpm);
 
-   if (pipe(pivec) < 0) {
-      n_perr(_("pipe"), 0);
-      goto jleave;
-   }
-   snprintf(cmdbuf, sizeof cmdbuf, "echo %s", name);
-   pid = start_command(ok_vlook(SHELL), NULL, COMMAND_FD_NULL, pivec[1],
-         "-c", cmdbuf, NULL, NULL);
-   if (pid < 0) {
-      close(pivec[0]);
-      close(pivec[1]);
-      goto jleave;
-   }
-   close(pivec[1]);
-
-jagain:
-   l = read(pivec[0], xname, sizeof xname);
-   if (l < 0) {
-      if (errno == EINTR)
-         goto jagain;
-      n_perr(_("read"), 0);
-      close(pivec[0]);
-      goto jleave;
-   }
-   close(pivec[0]);
-   if (!wait_child(pid, &waits) && WTERMSIG(waits) != SIGPIPE) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion failed\n"), name);
-      goto jleave;
-   }
-   if (l == 0) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": No match\n"), name);
-      goto jleave;
-   }
-   if (l == sizeof xname) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
-      goto jleave;
-   }
-   xname[l] = 0;
-   for (cp = xname + l - 1; *cp == '\n' && cp > xname; --cp)
-      ;
-   cp[1] = '\0';
-   if (!(fexpm & FEXP_MULTIOK) && strchr(xname, ' ') != NULL &&
-         stat(xname, &sbuf) < 0) {
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Ambiguous\n"), name);
-      cp = NULL;
-      goto jleave;
-   }
-   cp = savestr(xname);
-jleave:
-   NYD_LEAVE;
-   return cp;
-#endif /* !HAVE_WORDEXP */
+   if(options & OPT_D_V)
+      n_err(_("wordexp(3) not available, cannot perform expansion\n"));
+   return savestr(name);
+#endif
 }
 
 static char *

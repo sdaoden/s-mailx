@@ -2614,10 +2614,8 @@ ${cat} > ${tmp2}.c << \!
 :Remarks:
 # ifndef HAVE_WORDEXP
 : . WARNING: the function wordexp(3) could not be found.
-: _ This means that echo(1) will be used via the sh(1)ell in order
-: _ to expand shell meta characters in filenames, which is a potential
-: _ security hole.  Consider to either upgrade your system or set the
-: _ *SHELL* variable to some safe(r) wrapper script.
+: _ Wildcard and other shell expansions on filenames etc. will not be
+: _ supported on your system.
 : _ P.S.: the codebase is in transition away from wordexp(3) to some
 : _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
 : _ about shell word expression in its introduction for more on that.
