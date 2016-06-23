@@ -936,6 +936,44 @@ jleave:
    return rv;
 }
 
+FL enum n_shexp_state
+n_shell_sep(struct n_string *store, struct str *input,
+      bool_t ignore_empty, bool_t dolog){
+   char *base, *cp;
+   enum n_shexp_state ptrv, rv;
+   NYD2_ENTER;
+
+   if(input->l == UIZ_MAX)
+      input->l = strlen(input->s);
+
+   for(rv = n_SHEXP_STATE_STOP;;){
+      while(input->l > 0 && blankspacechar(*input->s))
+         ++input->s, --input->l;
+      if(input->l == 0)
+         break;
+
+      ptrv = n_shell_parse_token(n_string_trunc(store, 0), input, dolog);
+      if(ptrv & (n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_MASK)){
+         rv = ptrv;
+         break;
+      }
+
+      while(input->l > 0 && blankspacechar(*input->s))
+         ++input->s, --input->l;
+      if(input->l > 0 && *input->s == ','){
+         ++input->s;
+         --input->l;
+      }
+
+      if(!ignore_empty || store->s_len > 0){
+         rv = n_SHEXP_STATE_NONE | ptrv;
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL struct n_string *
 n_shell_quote(struct n_string *store, struct str const *input){
    /* TODO In v15 we need to save (possibly normalize) away user input,
