@@ -1927,11 +1927,8 @@ FL int         anyof(char const *s1, char const *s2);
  * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
  * See n_shell_sep() for the new way that supports sh(1) quoting.
- * strescsep will assert that sep is not NULL, and allows escaping of the
- * separator character with a backslash.
  * Return NULL or an entry */
 FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
-FL char *      n_strescsep(char **iolist, char sep, bool_t ignore_empty);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */

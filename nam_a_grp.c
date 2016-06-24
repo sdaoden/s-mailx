@@ -199,6 +199,9 @@ static void          _mlmux_linkout(struct group *gp);
 # define _MLMUX_LINKOUT(GP)
 #endif
 
+/* TODO v15: drop *customhdr* (OR change syntax and use shell tokens) */
+static char *a_nag_custom_sep(char **iolist);
+
 static bool_t
 _same_name(char const *n1, char const *n2)
 {
@@ -892,6 +895,54 @@ _mlmux_linkout(struct group *gp)
    NYD_LEAVE;
 }
 #endif /* HAVE_REGEX */
+
+static char *
+a_nag_custom_sep(char **iolist){
+   char *cp, c, *base;
+   bool_t isesc, anyesc;
+   NYD2_ENTER;
+
+   for(base = *iolist; base != NULL; base = *iolist){
+      while((c = *base) != '\0' && blankspacechar(c))
+         ++base;
+
+      for(isesc = anyesc = FAL0, cp = base;; ++cp){
+         if(UNLIKELY((c = *cp) == '\0')){
+            *iolist = NULL;
+            break;
+         }else if(!isesc){
+            if(c == ','){
+               *iolist = cp + 1;
+               break;
+            }
+            isesc = (c == '\\');
+         }else{
+            isesc = FAL0;
+            anyesc |= (c == ',');
+         }
+      }
+
+      while(cp > base && blankspacechar(cp[-1]))
+         --cp;
+      *cp = '\0';
+
+      if(*base != '\0'){
+         if(anyesc){
+            char *ins;
+
+            for(ins = cp = base;; ++ins)
+               if((c = *cp) == '\\' && cp[1] == ','){
+                  *ins = ',';
+                  cp += 2;
+               }else if((*ins = (++cp, c)) == '\0')
+                  break;
+         }
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return base;
+}
 
 FL struct name *
 nalloc(char *str, enum gfield ntype)
@@ -1828,7 +1879,7 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
       if(vp != NULL){
          char *buf = savestr(vp);
 jch_outer:
-         while((vp = n_strescsep(&buf, ',', TRU1)) != NULL){
+         while((vp = a_nag_custom_sep(&buf)) != NULL){
             ui32_t nl, bl;
             char const *nstart, *cp;
 
