@@ -1030,19 +1030,40 @@ enum sendaction {
    SEND_DECRYPT      /* decrypt */
 };
 
+enum n_shexp_parse_flags{
+   n_SHEXP_PARSE_NONE,
+   /* Don't perform any expansions or interpret backslash escape sequences etc.
+    * Output may be NULL, otherwise the possibly trimmed non-expanded input is
+    * used as output */
+   n_SHEXP_PARSE_DRYRUN = 1<<0,
+   n_SHEXP_PARSE_TRUNC = 1<<1,         /* Truncate result storage on entry */
+   n_SHEXP_PARSE_TRIMSPACE = 1<<2,     /* Ignore space surrounding tokens */
+   n_SHEXP_PARSE_LOG = 1<<3,           /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1<<4,       /* Log errors if OPT_D_V */
+   n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
+   n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
+   n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
+   n__SHEXP_PARSE_LAST = 7
+};
+
 enum n_shexp_state{
    n_SHEXP_STATE_NONE,
-   n_SHEXP_STATE_STOP = 1<<1,          /* \c0 or # comment seen last */
-
-   n_SHEXP_STATE_UNICODE = 1<<2,       /* \[Uu] used */
-   n_SHEXP_STATE_CONTROL = 1<<3,       /* Control characters seen */
+   /* We have produced some output (or would have, with _PARSE_DRYRUN).
+    * Note that empty quotes like '' produce no output but set this bit */
+   n_SHEXP_STATE_OUTPUT = 1<<2,
+   /* Don't call the parser again (\c0 or # comment seen; out of input).
+    * Not (necessarily) mutual with _OUTPUT) */
+   n_SHEXP_STATE_STOP = 1<<1,
+   n_SHEXP_STATE_UNICODE = 1<<3,       /* \[Uu] used */
+   n_SHEXP_STATE_CONTROL = 1<<4,       /* Control characters seen */
 
    n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
-   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* \[Uu] used: faulty or !OPT_UNICODE */
+   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !OPT_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
-   n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* QUOTEOPEN + no } brace for ${VAR */
+   n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
    n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<21, /* Quote remains open at EOS */
+
    n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 21)
 };
 

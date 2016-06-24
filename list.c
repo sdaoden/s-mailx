@@ -1332,15 +1332,22 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          /* C99 */{
             enum n_shexp_state shs;
 
-            if(((shs = n_shell_parse_token(&store, &input, TRU1)) &
-                   n_SHEXP_STATE_ERR_MASK) & ~n_SHEXP_STATE_ERR_UNICODE){
+            if((shs = n_shell_parse_token(&store, &input, n_SHEXP_PARSE_LOG)) &
+                  n_SHEXP_STATE_ERR_MASK){
                res_no = -1;
                break;
             }
-            res_dat[res_no++] = n_string_cp(&store);
-            n_string_drop_ownership(&store);
-            if(shs & n_SHEXP_STATE_UNICODE)
-               pstate |= PS_WYSHLIST_SAW_UNICODE;
+
+            if(shs & n_SHEXP_STATE_OUTPUT){
+               if(shs & n_SHEXP_STATE_UNICODE)
+                  pstate |= PS_WYSHLIST_SAW_UNICODE;
+               if(shs & n_SHEXP_STATE_CONTROL)
+                  pstate |= PS_WYSHLIST_SAW_CONTROL;
+
+               res_dat[res_no++] = n_string_cp(&store);
+               n_string_drop_ownership(&store);
+            }
+
             if(shs & n_SHEXP_STATE_STOP)
                break;
          }

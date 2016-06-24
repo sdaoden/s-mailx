@@ -228,7 +228,7 @@ _sh_exp_var(struct shvar_stack *shsp)
 
       if (lc) {
          if (c != '}') {
-            n_err(_("Variable name misses closing \"}\": \"%s\"\n"),
+            n_err(_("Variable name misses closing \"}\": %s\n"),
                shsp->shs_value);
             shsp->shs_len = strlen(shsp->shs_value);
             shsp->shs_dat = shsp->shs_value;
@@ -375,7 +375,8 @@ jislocal:
       case PROTO_MAILDIR:
          break;
       default:
-         n_err(_("Not a local file or directory: \"%s\"\n"), name);
+         n_err(_("Not a local file or directory: %s\n"),
+            n_shell_quote_cp(name));
          res = NULL;
          break;
       }
@@ -591,27 +592,49 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
+n_shell_parse_token(struct n_string *store, struct str *input,
+      enum n_shexp_parse_flags flags){
    char c2, c, quotec;
    bool_t skipq, surplus;
    enum n_shexp_state rv;
    size_t i, il;
-   char const *ib;
+   char const *ib_save, *ib;
    NYD2_ENTER;
    UNINIT(c, '\0');
 
-   assert(store != NULL);
+   assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
    assert(input != NULL);
    assert(input->l == 0 || input->s != NULL);
+   assert(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
+   assert(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
+      !(flags & n_SHEXP_PARSE_IFS_IS_COMMA));
 
-   if(dolog == TRUM1)
-      dolog = ((options & OPT_D_V) != 0);
+   if((flags & n_SHEXP_PARSE_LOG_D_V) && (options & OPT_D_V))
+      flags |= n_SHEXP_PARSE_LOG;
+
+   if((flags & n_SHEXP_PARSE_TRUNC) && store != NULL)
+      store = n_string_trunc(store, 0);
 
    ib = input->s;
    if((il = input->l) == UIZ_MAX)
-      input->l = il = strlen(ib);
+      il = strlen(ib);
 
-   store = n_string_reserve(store, MIN(il, 32)); /* XXX */
+jrestart_empty:
+   if(flags & n_SHEXP_PARSE_TRIMSPACE){
+      for(; il > 0; ++ib, --il)
+         if(!blankspacechar(*ib))
+            break;
+   }
+   input->s = UNCONST(ib);
+   input->l = il;
+
+   if(il == 0){
+      rv = n_SHEXP_STATE_STOP;
+      goto jleave;
+   }
+
+   if(store != NULL)
+      store = n_string_reserve(store, MIN(il, 32)); /* XXX */
 
    for(rv = n_SHEXP_STATE_NONE, skipq = surplus = FAL0, quotec = '\0'; il > 0;){
       --il, c = *ib++;
@@ -640,16 +663,24 @@ n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
          }else if(c == '#'){
             rv |= n_SHEXP_STATE_STOP;
             goto jleave;
-         }else if(blankchar(c))
+         }else if((flags &
+                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA)) &&
+               c == ',')
             break;
+         else if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA) && blankchar(c)){
+            ++il, --ib;
+            break;
+         }
       }else{
          /* Quote-mode */
          if(c == quotec){
             skipq = surplus = FAL0;
             quotec = '\0';
+            /* Users may need to recognize the presence of empty quotes */
+            rv |= n_SHEXP_STATE_OUTPUT;
             continue;
          }else if(c == '\\' && surplus){
-            char const *ib_save = ib - 1;
+            ib_save = ib - 1;
 
             /* A sole <backslash> at EOS is treated as-is! */
             if(il == 0)
@@ -703,8 +734,8 @@ n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
                      continue;
                   c = upperconv(c2) ^ 0x40;
                   if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
-                     if(dolog)
-                        n_err(_("Invalid \"\\c\" notation: \"%.*s\"\n"),
+                     if(flags & n_SHEXP_PARSE_LOG)
+                        n_err(_("Invalid \"\\c\" notation: %.*s\n"),
                            (int)input->l, input->s);
                      rv |= n_SHEXP_STATE_ERR_CONTROL;
                   }
@@ -734,12 +765,12 @@ n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
                   }
                   if(il > 0 && (c = *ib) >= '0' && c <= '7'){
                      if((ui8_t)c2 > 0x1F){
-                        if(dolog)
+                        if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("\"\\0\" argument exceeds a byte: "
-                              "\"%.*s\"\n"), (int)input->l, input->s);
+                              "%.*s\n"), (int)input->l, input->s);
                         rv |= n_SHEXP_STATE_ERR_NUMBER;
                         --il, ++ib;
-                        goto jeasis;
+                        goto je_ib_save;
                      }
                      c2 = (c2 << 3) | (c -= '0');
                      --il, ++ib;
@@ -787,11 +818,11 @@ n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
                            if(skipq)
                               break;
                            c2 = (c2 == 'U' || c2 == 'u') ? 'u' : 'x';
-                           if(dolog)
-                              n_err(_("Invalid \"\\%c\" notation: \"%.*s\"\n"),
+                           if(flags & n_SHEXP_PARSE_LOG)
+                              n_err(_("Invalid \"\\%c\" notation: %.*s\n"),
                                  c2, (int)input->l, input->s);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
-                           goto jeasis;
+                           goto je_ib_save;
                         }else
                            break;
                      }
@@ -803,33 +834,35 @@ n_shell_parse_token(struct n_string *store, struct str *input, bool_t dolog){
                      }else if(no == 0)
                         skipq = TRU1;
                      else if(!skipq){
-                        store = n_string_reserve(store, MAX(j, 4));
+                        if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                           store = n_string_reserve(store, MAX(j, 4));
 
                         c2 = FAL0;
                         if(no > 0x10FFFF){ /* XXX magic; CText */
-                           if(dolog)
+                           if(flags & n_SHEXP_PARSE_LOG)
                               n_err(_("\"\\U\" argument exceeds 0x10FFFF: "
-                                 "\"%.*s\"\n"), (int)input->l, input->s);
-                           rv |= n_SHEXP_STATE_UNICODE |
-                                 n_SHEXP_STATE_ERR_NUMBER |
-                                 n_SHEXP_STATE_ERR_UNICODE;
-                           goto jeunicode;
+                                 "%.*s\n"), (int)input->l, input->s);
+                           rv |= n_SHEXP_STATE_ERR_NUMBER;
+                           goto je_ib_save;
                         }else if((options & OPT_UNICODE) ||
                               (c2 = n_uasciichar(no))){
                            char utf[8];
 
+                           rv |= n_SHEXP_STATE_OUTPUT;
                            if(!c2)
                               rv |= n_SHEXP_STATE_UNICODE;
                            j = n_utf32_to_utf8(no, utf);
-                           store = n_string_push_buf(store, utf, j);
+                           if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                              store = n_string_push_buf(store, utf, j);
                         }else{
+                           if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                              rv |= n_SHEXP_STATE_ERR_UNICODE;
                            /* Write unchanged */
-jeunicode:
-                           rv |= n_SHEXP_STATE_UNICODE |
-                                 n_SHEXP_STATE_ERR_UNICODE;
-jeasis:
-                           store = n_string_push_buf(store, ib_save,
-                                 PTR2SIZE(ib - ib_save));
+je_ib_save:
+                           rv |= n_SHEXP_STATE_OUTPUT;
+                           if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                              store = n_string_push_buf(store, ib_save,
+                                    PTR2SIZE(ib - ib_save));
                            continue;
                         }
                         if(n_uasciichar(no) && cntrlchar(no)) /* TODO ctext */
@@ -861,6 +894,7 @@ j_dollar_ungetc:
             if(!(brace = (*ib == '{')) || il > 1){
                char const *cp, *vp;
 
+               ib_save = ib - 1;
                il -= brace;
                vp = (ib += brace);
 
@@ -873,12 +907,12 @@ j_dollar_ungetc:
                         assert(surplus && quotec == '\'');
                         continue;
                      }
-                     if(dolog)
-                        n_err(_("Closing brace missing for ${VAR}: \"%.*s\"\n"),
+                     if(flags & n_SHEXP_PARSE_LOG)
+                        n_err(_("Closing brace missing for ${VAR}: %.*s\n"),
                            (int)input->l, input->s);
-                     rv |= n_SHEXP_STATE_STOP |
-                           n_SHEXP_STATE_ERR_QUOTEOPEN | n_SHEXP_STATE_ERR_BRACE;
-                     goto jleave;
+                     rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
+                           n_SHEXP_STATE_ERR_BRACE;
+                     goto je_ib_save;
                   }
                   --il, ++ib;
                }
@@ -888,17 +922,20 @@ j_dollar_ungetc:
 
                if(i == 0){
                   if(brace){
-                     if(dolog)
-                        n_err(_("Bad substitution (${}): \"%.*s\"\n"),
+                     if(flags & n_SHEXP_PARSE_LOG)
+                        n_err(_("Bad substitution (${}): %.*s\n"),
                            (int)input->l, input->s);
-                     rv |= n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_BADSUB;
-                     goto jleave;
+                     rv |= n_SHEXP_STATE_ERR_BADSUB;
+                     goto je_ib_save;
                   }
                   c = '$';
-               }else{
+               }else if(flags & n_SHEXP_PARSE_DRYRUN)
+                  continue;
+               else{
                   vp = savestrbuf(vp, i);
                   /* Check getenv(3) shall no internal variable exist! */
                   if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL){
+                     rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
                      for(; (c = *cp) != '\0'; ++cp)
                         if(cntrlchar(c)){
@@ -915,61 +952,44 @@ j_dollar_ungetc:
       }
 
       if(!skipq){
+         rv |= n_SHEXP_STATE_OUTPUT;
          if(cntrlchar(c))
             rv |= n_SHEXP_STATE_CONTROL;
-         store = n_string_push_c(store, c);
+         if(!(flags & n_SHEXP_PARSE_DRYRUN))
+            store = n_string_push_c(store, c);
       }
    }
 
    if(quotec != '\0'){
-      if(dolog)
-         n_err(_("Missing closing quote in: \"%.*s\"\n"),
+      if(flags & n_SHEXP_PARSE_LOG)
+         n_err(_("Missing closing quote in: %.*s\n"),
             (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
    }
+
 jleave:
-   if(rv & n_SHEXP_STATE_CONTROL)
-      pstate |= PS_WYSHLIST_SAW_CONTROL;
-   input->s = UNCONST(ib);
-   input->l = il;
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL enum n_shexp_state
-n_shell_sep(struct n_string *store, struct str *input,
-      bool_t ignore_empty, bool_t dolog){
-   char *base, *cp;
-   enum n_shexp_state ptrv, rv;
-   NYD2_ENTER;
-
-   if(input->l == UIZ_MAX)
-      input->l = strlen(input->s);
-
-   for(rv = n_SHEXP_STATE_STOP;;){
-      while(input->l > 0 && blankspacechar(*input->s))
-         ++input->s, --input->l;
-      if(input->l == 0)
-         break;
-
-      ptrv = n_shell_parse_token(n_string_trunc(store, 0), input, dolog);
-      if(ptrv & (n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_MASK)){
-         rv = ptrv;
-         break;
-      }
-
-      while(input->l > 0 && blankspacechar(*input->s))
-         ++input->s, --input->l;
-      if(input->l > 0 && *input->s == ','){
-         ++input->s;
-         --input->l;
-      }
-
-      if(!ignore_empty || store->s_len > 0){
-         rv = n_SHEXP_STATE_NONE | ptrv;
-         break;
-      }
+   if((flags & n_SHEXP_PARSE_DRYRUN) && store != NULL){
+      store = n_string_push_buf(store, input->s, PTR2SIZE(ib - input->s));
+      rv |= n_SHEXP_STATE_OUTPUT;
    }
+
+   if(flags & n_SHEXP_PARSE_TRIMSPACE){
+      for(; il > 0; ++ib, --il)
+         if(!blankchar(*ib))
+            break;
+   }
+   input->l = il;
+   input->s = UNCONST(ib);
+
+   if(!(rv & n_SHEXP_STATE_STOP)){
+      if(il > 0 && !(rv & n_SHEXP_STATE_OUTPUT) &&
+            (flags & n_SHEXP_PARSE_IGNORE_EMPTY))
+         goto jrestart_empty;
+      if(!(rv & n_SHEXP_STATE_OUTPUT) && il == 0)
+         rv |= n_SHEXP_STATE_STOP;
+   }
+   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
+   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
    NYD2_LEAVE;
    return rv;
 }

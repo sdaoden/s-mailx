@@ -1692,20 +1692,9 @@ FL int         n_shell_expand_escape(char const **s,
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
- * EQ UIZ_MAX strlen(->s) is used) and _append_ the resulting output to store.
- * dolog states wether error logging shall be performed, TRUM1 -> OPT_D_V */
+ * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store */
 FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
-                        struct str *input, bool_t dolog);
-
-/* Treat input as list of shell tokens (->s and ->l are adjusted to the
- * remains, except for _STOP and errors, data is constant beside that; ->s may
- * be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used), optionally also
- * separated with commas (CSV); find and return the next entry in store,
- * trimming surrounding whitespace.
- * If ignore_empty is set empty entries are started over.
- * dolog states wether error logging shall be performed, TRUM1 -> OPT_D_V */
-FL enum n_shexp_state n_shell_sep(struct n_string *store, struct str *input,
-                        bool_t ignore_empty, bool_t dolog);
+                        struct str *input, enum n_shexp_parse_flags flags);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
@@ -1926,7 +1915,7 @@ FL int         anyof(char const *s1, char const *s2);
  * next entry, trimming surrounding whitespace, and point *iolist to the next
  * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
- * See n_shell_sep() for the new way that supports sh(1) quoting.
+ * See n_shell_parse_token() for the new way that supports sh(1) quoting.
  * Return NULL or an entry */
 FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
 

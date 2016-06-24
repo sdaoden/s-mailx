@@ -163,15 +163,13 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
 
       shin.s = UNCONST(cp);
       shin.l = UIZ_MAX;
-      if (n_shell_parse_token(n_string_trunc(shoup, 0), &shin, TRU1) &
-            n_SHEXP_STATE_ERR_MASK)
+      if((n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+               n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_IGNORE_EMPTY) &
+             (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
+             n_SHEXP_STATE_OUTPUT)
          continue;
-      for (; shin.l > 0; ++shin.s, --shin.l)
-         if (!blankspacechar(*shin.s)) {
-            n_err(_("There is trailing garbage, please re-edit\n"));
-            break;
-         }
-      if (shin.l != 0)
+      if(shin.l != 0)
          continue;
       cp = n_string_cp(shoup);
 
@@ -406,22 +404,30 @@ append_attachments(struct attachment **aphead, char *names){
    struct n_string shou, *shoup;
    NYD_ENTER;
 
-   shoup = n_string_creat(&shou);
+   shoup = n_string_creat_auto(&shou);
 
    for(shin.s = names, shin.l = UIZ_MAX;;){
       struct attachment *xaph, *nap;
+      enum n_shexp_state shs;
 
-      if(n_shell_sep(shoup, &shin, TRU1, TRU1) &
-            (n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_MASK))
+      shs = n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+             n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+             n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY);
+      if(shs & n_SHEXP_STATE_ERR_MASK)
          break;
 
-      if((xaph = add_attachment(*aphead, n_string_cp(shoup), &nap)) != NULL){
-         *aphead = xaph;
-         if(options & OPT_INTERACTIVE)
-            printf(_("~@: added attachment %s\n"),
-               n_shell_quote_cp(nap->a_name));
-      }else
-         n_perr(n_string_cp(shoup), 0);
+      if(shs & n_SHEXP_STATE_OUTPUT){
+         if((xaph = add_attachment(*aphead, n_string_cp(shoup), &nap)) != NULL){
+            *aphead = xaph;
+            if(options & OPT_INTERACTIVE)
+               printf(_("~@: added attachment %s\n"),
+                  n_shell_quote_cp(nap->a_name));
+         }else
+            n_perr(n_string_cp(shoup), 0);
+      }
+
+      if(shs & n_SHEXP_STATE_STOP)
+         break;
    }
    n_string_gut(shoup);
    NYD_LEAVE;
