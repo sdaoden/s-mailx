@@ -6459,8 +6459,11 @@ and makes them specially addressable.
 .
 .Mx
 .It Va mbox-rfc4155
-\*(BO \*(UA generates and expects fully RFC 4155 compliant MBOX text
+\*(BO \*(UA generates and expects RFC 4155 compliant MBOX text
 mailboxes.
+(With the restriction that RFC 4155 defines seven-bit clean data
+storage, but which can be overwritten by a contrary setting of
+.Va encoding ) .
 Messages which are fetched over the network or from within already
 existing Maildir (or any non-MBOX) mailboxes may require so-called
 .Ql From_
@@ -6469,10 +6472,10 @@ quoting (insertion of additional
 characters to prevent line content misinterpretation) to be applied in
 order to be storable in MBOX mailboxes, however, dependent on the
 circumspection of the message producer.
-(E.g., \*(UA itself will, when newly generating messages, choose a
+E.g., \*(UA itself will, when newly generating messages, choose a
 .Pf Content-Transfer- Va encoding
 that prevents the necessity for such quoting \(en a necessary
-precondition to ensure message checksums won't change.)
+precondition to ensure message checksums won't change.
 .Pp
 By default \*(UA will perform this
 .Ql From_
