@@ -1622,6 +1622,7 @@ ok_v_smtp_auth_user,
    ok_v_ttycharset,
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
+   ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
    ok_v_user,
 
    ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */

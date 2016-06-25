@@ -662,8 +662,8 @@ it is likely that some configuration settings have to be adjusted before
 using it is a smooth experience.
 The default global
 .Pa \*(UR
-file already bends those standard settings a bit towards more user
-friendliness and safety, e.g., it sets the
+file already bends those standard imposed settings a bit towards more
+user friendliness and safety, e.g., it sets the
 .Va hold
 and
 .Va keepsave
@@ -674,12 +674,16 @@ that would otherwise occur (see
 and
 .Va keep
 to not remove empty files in order not to mangle file permissions when
-files eventually get recreated.
-It does not set the
-.Va folder
-option so that by default file grouping (via the
+files eventually get recreated (\*(UA actively manages the file mode
+creation mask via
+.Va umask
+upon program startup).
+.Va folder ,
+one of the many
+.Sx "INTERNAL VARIABLES" ,
+isn't set by default so file grouping (via the
 .Ql +
-prefix as documented also for
+prefix as documented for
 .Ic file )
 is not enabled.
 The section
@@ -916,8 +920,7 @@ In interactive mode, which is introduced in the next section, messages
 can be sent by calling the
 .Ic mail
 command with a list of recipient addresses \(em the semantics are
-completely identical to non-interactive message sending, except that
-it is likely necessary to separate recipient lists with commas:
+completely identical to non-interactive message sending:
 .
 .Bd -literal -offset indent
 $ \*(uA -d -Squiet -Semptystart
@@ -8276,6 +8279,17 @@ locale environment.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.
+.
+.Mx
+.It Va umask
+For a safety-by-default policy \*(UA sets its process
+.Xr umask 2
+to
+.Ql 0077 ,
+but this variable can be used to override that:
+set it to an empty value to don't change the (current) setting,
+otherwise the process file mode creation mask is updated to the new value.
+Child processes inherit the process file mode creation mask.
 .
 .Mx Va user
 .It Va user-HOST , user

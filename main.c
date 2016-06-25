@@ -959,6 +959,10 @@ jgetopt_done:
    }
    pstate &= ~PS_ROBOT;
 
+   /* Cause possible umask(2), now that any setting is established, and before
+    * we change accounts, evaluate commands etc. */
+   (void)ok_vlook(umask);
+
    /* Additional options to pass-through to MTA, and allowed to do so? */
    if ((cp = ok_vlook(expandargv)) != NULL) {
       bool_t isfail = !asccasecmp(cp, "fail"),

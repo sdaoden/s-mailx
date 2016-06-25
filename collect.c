@@ -1216,9 +1216,7 @@ savedeadletter(FILE *fp, int fflush_rewind_first)
       goto jleave;
 
    cp = getdeadletter();
-   c = umask(077);
    dbuf = Fopen(cp, "a");
-   umask(c);
    if (dbuf == NULL)
       goto jleave;
 
