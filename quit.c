@@ -541,7 +541,7 @@ makembox(void) /* TODO oh my god */
       }
       Fclose(obuf);
 
-      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0600)) != -1)
+      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0666)) != -1)
          close(c);
       if ((obuf = Zopen(mbox, "r+")) == NULL) {
          n_perr(mbox, 0);
@@ -553,7 +553,6 @@ makembox(void) /* TODO oh my god */
          n_perr(mbox, 0);
          goto jleave;
       }
-      fchmod(fileno(obuf), 0600);
    }
 
    srelax_hold();

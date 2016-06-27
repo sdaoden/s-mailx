@@ -2422,8 +2422,6 @@ n_tty_destroy(void){
    if(f == NULL)
       goto jdone;
    (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, 500);
-   if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
-      goto jclose;
 
    for(; thp != NULL; thp = thp->th_younger){
       if(dogabby || !thp->th_isgabby){
@@ -2433,7 +2431,6 @@ n_tty_destroy(void){
          putc('\n', f);
       }
    }
-jclose:
    fclose(f);
 jdone:
    rele_all_sigs(); /* XXX remove jumps */
