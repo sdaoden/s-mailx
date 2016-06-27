@@ -231,8 +231,13 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
 
 /* Lookup a variable from .avc_(map|name|hash), return wether it was found.
  * Sets .avc_prime; .avc_var is NULL if not found.
- * Here it is where we care for _I3VAL and _DEFVAL, too */
-static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp);
+ * Here it is where we care for _I3VAL and _DEFVAL, too.
+ * An _I3VAL will be "consumed" as necessary anyway, but it won't be used to
+ * create a new variable if i3val_nonew is true; if i3val_nonew is TRUM1 then
+ * we set .avc_var to -1 and return true if that was the case, otherwise we'll
+ * return FAL0, then! */
+static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp,
+               bool_t i3val_nonew);
 
 /* Set var from .avc_(map|name|hash), return success */
 static bool_t a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
@@ -792,7 +797,7 @@ jleave:
 }
 
 static bool_t
-a_amv_var_lookup(struct a_amv_var_carrier *avcp){
+a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
    size_t i;
    char const *cp;
    struct a_amv_var_map const *avmp;
@@ -875,7 +880,12 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp){
                do
                   arr[i] = arr[i + 1];
                while(arr[i++] != NULL);
-               goto jnewval;
+
+               if(!i3val_nonew)
+                  goto jnewval;
+               if(i3val_nonew == TRUM1)
+                  avp = (struct a_amv_var*)-1;
+               goto jleave;
             }
       }
 
@@ -938,18 +948,16 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    struct a_amv_var *avp;
    char *oval;
    struct a_amv_var_map const *avmp;
-   bool_t ok;
+   bool_t rv;
    NYD2_ENTER;
 
    if(value == NULL){
-      ok = a_amv_var_clear(avcp, force_env);
+      rv = a_amv_var_clear(avcp, force_env);
       goto jleave;
    }
 
-   a_amv_var_lookup(avcp);
-
    if((avmp = avcp->avc_map) != NULL){
-      ok = FAL0;
+      rv = FAL0;
 
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(pstate & PS_ROOT))){
@@ -978,7 +986,8 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       }
    }
 
-   ok = TRU1;
+   rv = TRU1;
+   a_amv_var_lookup(avcp, TRU1);
 
    /* Don't care what happens later on, store this in the unroll list */
    if(a_amv_lopts != NULL)
@@ -1016,7 +1025,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       /* Check if update allowed XXX wasteful on error! */
       if((avp->av_flags & a_AMV_VF_VIP) &&
-            !(ok = a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value))){
+            !(rv = a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value))){
          char *cp = avp->av_value;
 
          avp->av_value = oval;
@@ -1027,12 +1036,12 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
       avp->av_flags |= a_AMV_VF_LINKED;
    if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED))
-      ok = a_amv_var__putenv(avcp, avp);
+      rv = a_amv_var__putenv(avcp, avp);
 
    a_amv_var_free(oval);
 jleave:
    NYD2_LEAVE;
-   return ok;
+   return rv;
 }
 
 static bool_t
@@ -1068,26 +1077,33 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
    bool_t rv;
    NYD2_ENTER;
 
-   rv = TRU1;
-
-   if(UNLIKELY(!a_amv_var_lookup(avcp))){
-      if(force_env)
-         rv = a_amv_var__clearenv(avcp->avc_name, NULL);
-      else if(!(pstate & (PS_ROOT | PS_ROBOT)) && (options & OPT_D_V))
-         n_err(_("Can't unset undefined variable: \"%s\"\n"), avcp->avc_name);
-      goto jleave;
-   }
+   rv = FAL0;
 
    if(LIKELY((avmp = avcp->avc_map) != NULL)){
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
             !(pstate & PS_ROOT))){
          n_err(_("Variable may not be unset: \"%s\"\n"), avcp->avc_name);
-         rv = FAL0;
          goto jleave;
       }
       if((avmp->avm_flags & a_AMV_VF_VIP) &&
-            !(rv = a_amv_var_check_vips(avcp->avc_okey, FAL0, NULL)))
+            !a_amv_var_check_vips(avcp->avc_okey, FAL0, NULL))
          goto jleave;
+   }
+
+   rv = TRU1;
+
+   if(UNLIKELY(!a_amv_var_lookup(avcp, TRUM1))){
+      if(force_env){
+jforce_env:
+         rv = a_amv_var__clearenv(avcp->avc_name, NULL);
+      }else if(!(pstate & (PS_ROOT | PS_ROBOT)) && (options & OPT_D_V))
+         n_err(_("Can't unset undefined variable: \"%s\"\n"), avcp->avc_name);
+      goto jleave;
+   }else if(avcp->avc_var == (struct a_amv_var*)-1){
+      avcp->avc_var = NULL;
+      if(force_env)
+         goto jforce_env;
+      goto jleave;
    }
 
    if(a_amv_lopts != NULL)
@@ -1114,7 +1130,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
    /* XXX Fun part, extremely simple-minded for now: if this variable has
     * XXX a default value, immediately reinstantiate it! */
    if(UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0))
-      a_amv_var_lookup(avcp);
+      a_amv_var_lookup(avcp, TRU1);
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -1218,7 +1234,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    i = 0;
 
    a_amv_var_revlookup(&avc, name);
-   if(!a_amv_var_lookup(&avc)){
+   if(!a_amv_var_lookup(&avc, FAL0)){
       msgp = n_string_assign_cp(msgp, _("No such variable: \""));
       msgp = n_string_push_cp(msgp, name);
       msgp = n_string_push_c(msgp, '"');
@@ -1694,7 +1710,7 @@ n_var_oklook(enum okeys okey){
    avc.avc_hash = avmp->avm_hash;
    avc.avc_okey = okey;
 
-   if(a_amv_var_lookup(&avc))
+   if(a_amv_var_lookup(&avc, FAL0))
       rv = avc.avc_var->av_value;
    else
       rv = NULL;
@@ -1744,7 +1760,7 @@ n_var_voklook(char const *vokey){
 
    a_amv_var_revlookup(&avc, vokey);
 
-   rv = a_amv_var_lookup(&avc) ? avc.avc_var->av_value : NULL;
+   rv = a_amv_var_lookup(&avc, FAL0) ? avc.avc_var->av_value : NULL;
    NYD_LEAVE;
    return rv;
 }
@@ -1806,7 +1822,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    memcpy(nbuf + nlen, us->s, us->l +1);
    avc.avc_name = a_amv_var_canonify(nbuf);
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-   if(a_amv_var_lookup(&avc))
+   if(a_amv_var_lookup(&avc, FAL0))
       goto jvar;
 
    /* The second */
@@ -1815,7 +1831,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
       memcpy(nbuf + nlen, us->s, us->l +1);
       avc.avc_name = a_amv_var_canonify(nbuf);
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-      if(a_amv_var_lookup(&avc)){
+      if(a_amv_var_lookup(&avc, FAL0)){
 jvar:
          rv = avc.avc_var->av_value;
          goto jleave;
@@ -1905,7 +1921,7 @@ c_varedit(void *v){
          }
       }
 
-      a_amv_var_lookup(&avc);
+      a_amv_var_lookup(&avc, FAL0);
 
       if((of = Ftmp(NULL, "varedit", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
             NULL){
@@ -1971,7 +1987,7 @@ c_environ(void *v){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap);
 
-         if(a_amv_var_lookup(&avc) && (islnk ||
+         if(a_amv_var_lookup(&avc, FAL0) && (islnk ||
                (avc.avc_var->av_flags & a_AMV_VF_LINKED))){
             if(!islnk){
                avc.avc_var->av_flags &= ~a_AMV_VF_LINKED;
