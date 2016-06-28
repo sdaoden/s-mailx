@@ -1243,8 +1243,9 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    if(options & OPT_D_V){
       if(avc.avc_map == NULL){
-         msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
+         msgp = n_string_push_c(msgp, '#');
          msgp = n_string_push_cp(msgp, "assembled");
+         i = 1;
       }
       /* C99 */{
          struct{

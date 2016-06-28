@@ -263,33 +263,36 @@ sub dump_map{
       my $k = $e->{name};
       my $l = length $k;
       my $a = join '\',\'', split(//, $k);
-      my ($f, $s) = ('', ', ');
-      if($e->{bool}) {$f .= $s . 'a_AMV_VF_BOOL'; $s = '|'}
+      my (@fa);
+      if($e->{bool}) {push @fa, 'a_AMV_VF_BOOL'}
       if($e->{virt}){
-         $virts{$k} = $e;
-         $f .= $s . 'a_AMV_VF_VIRT'; $s = '|';
          # Virtuals are implicitly rdonly and nodel
-         $e->{rdonly} = $e->{nodel} = 1
+         $e->{rdonly} = $e->{nodel} = 1;
+         $virts{$k} = $e;
+         push @fa, 'a_AMV_VF_VIRT'
       }
       if($e->{i3val}){
          $i3vals{$k} = $e;
-         $f .= $s . 'a_AMV_VF_I3VAL'; $s = '|'
+         push @fa, 'a_AMV_VF_I3VAL'
       }
       if($e->{defval}){
+         $e->{notempty} = 1;
          $defvals{$k} = $e;
-         $f .= $s . 'a_AMV_VF_DEFVAL'; $s = '|';
-         $e->{notempty} = 1
+         push @fa, 'a_AMV_VF_DEFVAL'
       }
       if($e->{import}){
-         $f .= $s . 'a_AMV_VF_IMPORT'; $s = '|';
-         $e->{env} = 1
+         $e->{env} = 1;
+         push @fa, 'a_AMV_VF_IMPORT'
       }
-      if($e->{rdonly}) {$f .= $s . 'a_AMV_VF_RDONLY'; $s = '|'}
-      if($e->{nodel}) {$f .= $s . 'a_AMV_VF_NODEL'; $s = '|'}
-      if($e->{notempty}) {$f .= $s . 'a_AMV_VF_NOTEMPTY'; $s = '|'}
-      if($e->{nocntrls}) {$f .= $s . 'a_AMV_VF_NOCNTRLS'; $s = '|'}
-      if($e->{vip}) {$f .= $s . 'a_AMV_VF_VIP'; $s = '|'}
-      if($e->{env}) {$f .= $s . 'a_AMV_VF_ENV'; $s = '|'}
+      if($e->{rdonly}) {push @fa, 'a_AMV_VF_RDONLY'}
+      if($e->{nodel}) {push @fa, 'a_AMV_VF_NODEL'}
+      if($e->{notempty}) {push @fa, 'a_AMV_VF_NOTEMPTY'}
+      if($e->{nocntrls}) {push @fa, 'a_AMV_VF_NOCNTRLS'}
+      if($e->{vip}) {push @fa, 'a_AMV_VF_VIP'}
+      if($e->{env}) {push @fa, 'a_AMV_VF_ENV'}
+      $e->{flags} = \@fa;
+      my $f = join('|', @fa);
+      $f = ', ' . $f if length $f;
       print F "${S}/* $i. [$alen]+$l $k$f */\n" if $VERB;
       print F "${S}'$a','\\0',\n";
       ++$i;
@@ -301,17 +304,8 @@ sub dump_map{
    print F 'static struct a_amv_var_map const a_amv_var_map[] = {', "\n";
    foreach my $e (@ENTS){
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
-      $f .= '|a_AMV_VF_BOOL' if $e->{bool};
-      $f .= '|a_AMV_VF_VIRT' if $e->{virt};
-      $f .= '|a_AMV_VF_RDONLY' if $e->{rdonly};
-      $f .= '|a_AMV_VF_NODEL' if $e->{nodel};
-      $f .= '|a_AMV_VF_NOTEMPTY' if $e->{notempty};
-      $f .= '|a_AMV_VF_NOCNTRLS' if $e->{nocntrls};
-      $f .= '|a_AMV_VF_VIP' if $e->{vip};
-      $f .= '|a_AMV_VF_IMPORT' if $e->{import};
-      $f .= '|a_AMV_VF_ENV' if $e->{env};
-      $f .= '|a_AMV_VF_I3VAL' if $e->{i3val};
-      $f .= '|a_AMV_VF_DEFVAL' if $e->{defval};
+      my $fa = join '|', @{$e->{flags}};
+      $f .= '|' . $fa if length $fa;
       my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
       print F "${S}{$e->{hash}u, $e->{keyoff}u, $f},";
       if($VERB) {print F "${S}/* $n */\n"}
@@ -344,8 +338,11 @@ _EOT
       print F "${S}a_X(char *av_env;)\n";
       print F "${S}ui16_t av_flags;\n";
       print F "${S}char const av_name[", length($e->{name}), " +1];\n";
+      my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
+      my $fa = join '|', @{$e->{flags}};
+      $f .= '|' . $fa if length $fa;
       print F "} const a_amv_$e->{vstruct} = ",
-         "{NULL, $e->{virt}, a_X(0 COMMA) 0, ", "\"$e->{name}\"};\n\n"
+         "{NULL, $e->{virt}, a_X(0 COMMA) $f, ", "\"$e->{name}\"};\n\n"
    }
    print F "# undef a_X\n";
 
