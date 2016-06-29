@@ -2108,7 +2108,7 @@ has been given in the URL, then if the
 .Ql USER
 has been found through the \*(OPal
 .Va netrc-lookup
-then that may have already provided the password, too.
+that may have already provided the password, too.
 Otherwise the variable chain
 .Va password-USER@HOST , password-HOST , password
 is looked up and used if existent.
@@ -9205,7 +9205,7 @@ set v15-compat
 set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
 
 # (Since we manage up-to-date ones explicitly, don't use any,
-# possibly outdated, default certificates shipped with OpenSSL
+# possibly outdated, default certificates shipped with OpenSSL)
 set ssl-no-default-ca
 
 # Don't use protocols older than TLS v1.2.
@@ -9216,12 +9216,11 @@ set ssl-protocol='-ALL,+TLSv1.2'
 
 # Explicitly define the list of ciphers, which may improve security,
 # especially with protocols older than TLS v1.2.  See ciphers(1).
-# Hint: it is important to include "@STRENGTH": only with it the
-# final list will be sorted by algorithm strength.
-# This is an example: in reality it is possibly best to only use
-# ssl-cipher-list-HOST (or -USER@HOST), as necessary, again..
-set ssl-cipher-list='ALL:!aNULL:!MEDIUM:!LOW:\e
-    !MD5:!RC4:!EXPORT:@STRENGTH'
+# Including "@STRENGTH" will sort the final list by algorithm strength.
+# In reality it is possibly best to only use ssl-cipher-list-HOST
+# (or -USER@HOST), as necessary, again..
+set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:!MEDIUM:!LOW:!EXPORT:@STRENGTH
+# ALL:!aNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
 
 # Request strict transport security checks!
 set ssl-verify=strict
@@ -9249,7 +9248,7 @@ set mimetypes-load-control
 set folder=mail
 # A leading "+" (often) means: under *folder*
 # *record* is used to save copies of sent messages
-set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.mbox
+set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.txt
 
 # Make "file mymbox" and "file myrec" go to..
 shortcut mymbox %:+mbox.mbox myrec +sent.mbox
@@ -9271,14 +9270,15 @@ set emptystart \e
     history-file=+.\*(uAhist history-size=-1 history-gabby \e
     mime-counter-evidence=0xE \e
     prompt='?\e?[\e$ \e@]\e& ' \e
-    reply-to-honour=ask-yes
+    reply-to-honour=ask-yes \e
+    umask=
 
 # When `t'yping messages, show only these headers
 # (use `T'ype for all headers and `S'how for raw message)
 retain date from to cc subject
 
 # Some mailing lists
-mlist '@xyz-editor\e.xyz'$ '@xyzf\e.xyz$'
+mlist '@xyz-editor\e.xyz$' '@xyzf\e.xyz$'
 mlsubscribe '^xfans@xfans\e.xyz$'
 
 # A real life example of a very huge free mail provider
@@ -9303,18 +9303,18 @@ account XandeX {
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-ghost l   !ls -aFtr
-ghost L   !ls -aFt
-ghost ll  !ls -aFltr
-ghost Ll  !ls -aFlt
-ghost la  !ls -aFr
-ghost La  !ls -aF
-ghost lla !ls -aFlr
-ghost Lla !ls -aFl
-ghost lS  !ls -aFrS
-ghost LS  !ls -aFS
-ghost llS !ls -aFlrS
-ghost LlS !ls -aFlS
+wysh ghost lls '!ls ${LS_COLOR_FLAG} -aFlrS'
+wysh ghost llS '!ls ${LS_COLOR_FLAG} -aFlS'
+wysh ghost ls '!ls ${LS_COLOR_FLAG} -aFrS'
+wysh ghost lS '!ls ${LS_COLOR_FLAG} -aFS'
+wysh ghost lla '!ls ${LS_COLOR_FLAG} -aFlr'
+wysh ghost llA '!ls ${LS_COLOR_FLAG} -aFl'
+wysh ghost la '!ls ${LS_COLOR_FLAG} -aFr'
+wysh ghost lA '!ls ${LS_COLOR_FLAG} -aF'
+wysh ghost ll '!ls ${LS_COLOR_FLAG} -aFltr'
+wysh ghost lL '!ls ${LS_COLOR_FLAG} -aFlt'
+wysh ghost l '!ls ${LS_COLOR_FLAG} -aFtr'
+wysh ghost L '!ls ${LS_COLOR_FLAG} -aFt'
 
 # We don't support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
@@ -9387,9 +9387,7 @@ machine *.yXXXXx.ru login USER password PASS
 .Ed
 .
 .Pp
-This configuration should now work just fine (use the
-.Fl d
-command line option for a(n almost) dry-run):
+This configuration should now work just fine:
 .
 .Pp
 .Dl $ echo text | \*(uA -vv -AXandeX -s Subject user@exam.ple
