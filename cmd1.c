@@ -707,7 +707,7 @@ a_cmd_scroll(char const *arg, bool_t onlynew){
       if(arg[1] == '\0')
          ++_screen;
       else{
-         bool_t isabs = FAL0;
+         isabs = FAL0;
 
          ++arg;
          if(0){
