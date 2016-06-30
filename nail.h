@@ -760,6 +760,26 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
+enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+   /* - A type */
+   n_CMD_ARG_DESC_STRING = 1<<0,    /* A !blankspacechar() string */
+   n_CMD_ARG_DESC_WYSH = 1<<1,      /* sh(1)ell-style quoted */
+
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+
+   /* - Optional flags */
+   /* It is not an error if an optional argument is missing; once an argument
+    * has been declared optional only optional arguments may follow */
+   n_CMD_ARG_DESC_OPTION = 1<<16,
+   /* GREEDY: parse as many of that type as possible; must be last entry */
+   n_CMD_ARG_DESC_GREEDY = 1<<17,
+   /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
+   n_CMD_ARG_DESC_HONOUR_STOP = 1<<18,
+
+   n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_HONOUR_STOP
+};
+
 #ifdef HAVE_COLOUR
 /* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
@@ -1657,6 +1677,42 @@ struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
    struct str  bi_end;        /* End of ... */
    size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
+};
+
+struct n_cmd_arg_desc{
+   char cad_name[12];   /* Name of command */
+   ui32_t cad_no;       /* Number of entries in cad_ent_flags */
+   /* [enum n_cmd_arg_desc_flags,arg-dep] */
+   ui32_t cad_ent_flags[VFIELD_SIZE(0)][2];
+};
+/* ISO C(99) doesn't allow initialization of "flex array" */
+#define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
+   struct n_cmd_arg_desc_ ## CMD {\
+      char cad_name[12];\
+      ui32_t cad_no;\
+      ui32_t cad_ent_flags[NO][2];\
+   } const VAR = { #CMD, NO,
+#define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
+#define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
+
+struct n_cmd_arg_ctx{
+   struct n_cmd_arg_desc const *cac_desc;
+   char const *cac_indat;     /* Input that shall be parsed */
+   size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   size_t cac_no;             /* Output: number of parsed arguments */
+   struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
+};
+
+struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+   struct n_cmd_arg *ca_next;
+   char const *ca_indat;   /* Pointer into n_cmd_arg_ctx.cac_indat */
+   size_t ca_inlen;        /* of .ca_indat of this arg (not terminated) */
+   ui32_t ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
+   ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
+   ui8_t ca__dummy[4];
+   union{
+      struct str ca_str;      /* _STRING, _WYSH */
+   } ca_arg;               /* Output: parsed result */
 };
 
 #ifdef HAVE_COLOUR

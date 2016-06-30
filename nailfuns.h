@@ -548,6 +548,25 @@ FL int         c_urlencode(void *v);
 FL int         c_urldecode(void *v);
 
 /*
+ * cmd_arg.c
+ */
+
+/* Scan out the list of string arguments according to rm, return -1 on error;
+ * res_dat is NULL terminated unless res_size is 0 or error occurred */
+FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+                  char const *line, size_t linesize);
+
+/* Scan an entire command argument line, return wether result can be used,
+ * otherwise no resources are allocated (in ->cac_arg).
+ * For _WYSH arguments the flags _TRIMSPACE and _LOG are implicit */
+FL bool_t      n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
+
+/* Join all the _GREEDY arguments that were seen into a single string.
+ * Asserted they are string-based.  The data (if any) is appended to store */
+FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
+                     struct n_string *store);
+
+/*
  * cmd_cnd.c
  */
 
@@ -979,28 +998,6 @@ FL bool_t      n_source_command(char const *cmd);
 FL bool_t      n_source_may_yield_control(void);
 
 /*
- * list.c
- */
-
-/* Count the number of arguments in the given string raw list */
-FL int         argcount(char **argv);
-
-/* Convert user string of message numbers and store the numbers into vector.
- * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char *buf, int *vector, int flags);
-
-/* Scan out the list of string arguments according to rm, return -1 on error;
- * res_dat is NULL terminated unless res_size is 0 or error occurred */
-FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
-                  char const *line, size_t linesize);
-
-/* Find the first message whose flags&m==f and return its message number */
-FL int         first(int f, int m);
-
-/* Mark the named message by setting its mark bit */
-FL void        mark(int mesg, int f);
-
-/*
  * message.c
  */
 
@@ -1032,6 +1029,16 @@ FL struct message * setdot(struct message *mp);
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
+
+/* Convert user string of message numbers and store the numbers into vector.
+ * Returns the count of messages picked up or -1 on error */
+FL int         getmsglist(char *buf, int *vector, int flags);
+
+/* Find the first message whose flags&m==f and return its message number */
+FL int         first(int f, int m);
+
+/* Mark the named message by setting its mark bit */
+FL void        mark(int mesg, int f);
 
 /*
  * maildir.c

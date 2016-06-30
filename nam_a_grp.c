@@ -1422,9 +1422,10 @@ c_alternates(void *v)
    char **namelist = v, **ap, **ap2, *cp;
    NYD_ENTER;
 
-   l = argcount(namelist) +1;
+   for (namelist = v, l = 0; namelist[l] != NULL; ++l)
+      ;
 
-   if (l == 1) {
+   if (l == 0) {
       if (_altnames != NULL) {
          printf("alternates ");
          for (ap = _altnames; *ap != NULL; ++ap)
@@ -1440,6 +1441,7 @@ c_alternates(void *v)
       free(_altnames);
    }
 
+   ++l;
    _altnames = smalloc(l * sizeof(*_altnames));
    for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
       l = strlen(*ap) +1;
