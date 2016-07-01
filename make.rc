@@ -119,6 +119,11 @@ VAL_VISUAL=vi
 
 ## FEATURE SET ##
 
+# For cross-compilation purposes it may be useful to not actually run
+# systemcall etc. tests (link and run the executable) but only to
+# perform the link tests necessary to detect host environment.
+WANT_CROSS_BUILD=no
+
 # Shall S-nail try to automatically detect a compiler and provide a set
 # of known-good compiler flags?  If so additions may still be provided
 # by setting $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.

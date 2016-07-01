@@ -1014,6 +1014,8 @@ _link_mayrun() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
+   feat_yes CROSS_BUILD && run=0
+
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
@@ -1047,6 +1049,7 @@ run_check() {
 
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+feat_yes CROSS_BUILD && msg ' . CROSS_BUILD enabled, not _running_ tests'
 
 if run_check inline '"inline" functions' \
    '#define HAVE_INLINE
