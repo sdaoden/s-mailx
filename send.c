@@ -1149,7 +1149,10 @@ newfile(struct mimepart *ip, bool_t *ispipe)
 
    if (options & OPT_INTERACTIVE) {
       struct str prompt;
+      struct n_string shou, *shoup;
       char *f2, *f3;
+
+      shoup = n_string_creat_auto(&shou);
 
       /* TODO Generic function which asks for filename.
        * TODO If the current part is the first textpart the target
@@ -1160,13 +1163,24 @@ newfile(struct mimepart *ip, bool_t *ispipe)
          _(" ("), ip->m_ct_type_plain, _("): "), NULL);
 jgetname:
       f2 = n_lex_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
-            ? fexpand_nshell_quote(f) : NULL), TRU1);
-      if(f2 != NULL)
-         while(spacechar(*f2))
-            ++f2;
+            ? n_shell_quote_cp(f) : NULL), TRU1);
+      if(f2 != NULL){
+         in.s = UNCONST(f2);
+         in.l = UIZ_MAX;
+         if((n_shell_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
+                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+                  n_SHEXP_PARSE_IGNORE_EMPTY) &
+                (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
+                n_SHEXP_STATE_OUTPUT)
+            goto jgetname;
+         if(in.l != 0)
+            goto jgetname;
+         f2 = n_string_cp(shoup);
+      }
       if (f2 == NULL || *f2 == '\0') {
          if (options & OPT_D_V)
             n_err(_("... skipping this\n"));
+         n_string_gut(shoup);
          fp = NULL;
          goto jleave;
       }
@@ -1179,6 +1193,8 @@ jgetname:
          goto jgetname;
       else
          f = f3;
+
+      n_string_gut(shoup);
    }
    if (f == NULL || f == (char*)-1) {
       fp = NULL;
