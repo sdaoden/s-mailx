@@ -336,7 +336,7 @@ __behave_wysh() {
 #a	b
 #a	b
 #a
-   cksum_test behave:wysh_c "${MBOX}" '2932758085 320'
+   cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
    ${rm} -f "${BODY}" "${MBOX}"
 }
 

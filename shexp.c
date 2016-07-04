@@ -568,6 +568,9 @@ jleave:
 FL enum n_shexp_state
 n_shell_parse_token(struct n_string *store, struct str *input,
       enum n_shexp_parse_flags flags){
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
+   char utf[8];
+#endif
    char c2, c, quotec;
    bool_t skipq, surplus;
    enum n_shexp_state rv;
@@ -744,7 +747,13 @@ jrestart_empty:
                               "%.*s\n"), (int)input->l, input->s);
                         rv |= n_SHEXP_STATE_ERR_NUMBER;
                         --il, ++ib;
-                        goto je_ib_save;
+                        /* Write unchanged */
+je_ib_save:
+                        rv |= n_SHEXP_STATE_OUTPUT;
+                        if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                           store = n_string_push_buf(store, ib_save,
+                                 PTR2SIZE(ib - ib_save));
+                        continue;
                      }
                      c2 = (c2 << 3) | (c -= '0');
                      --il, ++ib;
@@ -802,7 +811,7 @@ jrestart_empty:
                      }
 
                      /* Unicode massage */
-                     if(c2 != 'U' && c2 != 'u'){
+                     if((c2 != 'U' && c2 != 'u') || n_uasciichar(no)){
                         if((c = (char)no) == '\0')
                            skipq = TRU1;
                      }else if(no == 0)
@@ -817,30 +826,44 @@ jrestart_empty:
                               n_err(_("\"\\U\" argument exceeds 0x10FFFF: "
                                  "%.*s\n"), (int)input->l, input->s);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
-                           goto je_ib_save;
-                        }else if((options & OPT_UNICODE) ||
-                              (c2 = n_uasciichar(no))){
-                           char utf[8];
+                           /* But normalize the output anyway */
+                           goto Je_uni_norm;
+                        }
 
-                           rv |= n_SHEXP_STATE_OUTPUT;
-                           if(!c2)
-                              rv |= n_SHEXP_STATE_UNICODE;
-                           j = n_utf32_to_utf8(no, utf);
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
+                        j = n_utf32_to_utf8(no, utf);
+#endif
+#ifdef HAVE_NATCH_CHAR
+                        if(options & OPT_UNICODE){
+                           rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
                            if(!(flags & n_SHEXP_PARSE_DRYRUN))
                               store = n_string_push_buf(store, utf, j);
-                        }else{
-                           if(!(flags & n_SHEXP_PARSE_DRYRUN))
-                              rv |= n_SHEXP_STATE_ERR_UNICODE;
-                           /* Write unchanged */
-je_ib_save:
-                           rv |= n_SHEXP_STATE_OUTPUT;
-                           if(!(flags & n_SHEXP_PARSE_DRYRUN))
-                              store = n_string_push_buf(store, ib_save,
-                                    PTR2SIZE(ib - ib_save));
                            continue;
                         }
-                        if(n_uasciichar(no) && cntrlchar(no)) /* TODO ctext */
-                           rv |= n_SHEXP_STATE_CONTROL;
+#endif
+#ifdef HAVE_ICONV
+                        /* C99 */{
+                           char *icp;
+
+                           icp = n_iconv_onetime_cp(NULL, NULL, utf, FAL0);
+                           if(icp != NULL){
+                              rv |= n_SHEXP_STATE_OUTPUT;
+                              if(!(flags & n_SHEXP_PARSE_DRYRUN))
+                                 store = n_string_push_cp(store, icp);
+                              continue;
+                           }
+                        }
+#endif
+                        if(!(flags & n_SHEXP_PARSE_DRYRUN)) Je_uni_norm:{
+                           char itoa[32];
+
+                           rv |= n_SHEXP_STATE_OUTPUT |
+                                 n_SHEXP_STATE_ERR_UNICODE;
+                           i = snprintf(itoa, sizeof itoa, "\\%c%0*X",
+                                 (no > 0xFFFFu ? 'U' : 'u'),
+                                 (int)(no > 0xFFFFu ? 8 : 4), (ui32_t)no);
+                           store = n_string_push_buf(store, itoa, i);
+                        }
                         continue;
                      }
                      if(skipq)
@@ -1037,8 +1060,32 @@ n_shell_quote(struct n_string *store, struct str const *input){
                store = n_string_push_c(store, c);
                continue;
             }else if(c != '\''){
+#ifdef HAVE_NATCH_CHAR
+               if(options & OPT_UNICODE){
+                  ui32_t u;
+                  char const *ib2 = &ib[i];
+                  size_t il2 = il - i, il3 = il2;
+
+                  if((u = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+                     char itoa[32];
+
+                     il2 = -((siz_t)il2 - (siz_t)il3);
+                     i += --il2;
+                     il3 = snprintf(itoa, sizeof itoa, "%c%0*X",
+                           (u > 0xFFFFu ? 'U' : 'u'),
+                           (int)(u > 0xFFFFu ? 8 : 4), u);
+                     store = n_string_push_buf(store, itoa, il3);
+                     goto juseq;
+                  }
+               }
+#endif
                store = n_string_push_buf(store, "xFF", sizeof("xFF") -1);
                n_c_to_hex_base16(&store->s_dat[store->s_len - 2], c);
+#ifdef HAVE_NATCH_CHAR
+juseq:
+#endif
+               if(i + 1 < il && hexchar(ib[i + 1]))
+                  store = n_string_push_buf(store, "'$'", sizeof("'$'") -1);
                continue;
             }
          }

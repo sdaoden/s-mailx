@@ -810,7 +810,7 @@ jerr:
 }
 #endif /* HAVE_NATCH_CHAR */
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL size_t
 n_utf32_to_utf8(ui32_t c, char *buf)
 {
@@ -866,7 +866,7 @@ j0:
    NYD2_LEAVE;
    return l;
 }
-#endif /* HAVE_FILTER_HTML_TAGSOUP */
+#endif /* HAVE_NATCH_CHAR || HAVE_ICONV */
 
 /*
  * Our iconv(3) wrapper
