@@ -1659,17 +1659,12 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  * . &  invoker's mbox file
  * . +file file in folder directory
  * . any shell meta character (except for FEXP_NSHELL).
- * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
  * a poor man's vis(3), on name before calling this (and showing the user).
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
-
-/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
- * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
-FL char *      fexpand_nshell_quote(char const *name);
 
 /* (Try to) Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
