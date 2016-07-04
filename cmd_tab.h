@@ -311,7 +311,7 @@
      DS(N_("Save S/MIME certificates of <message-list> to <file>")) },
    { "rename", &c_rename, (M | RAWLIST), 0, 2
      DS(N_("Rename <existing-folder> to <new-folder>")) },
-   { "remove", &c_remove, (M | RAWLIST), 0, 1000
+   { "remove", &c_remove, (M | WYRALIST), 0, 1000
      DS(N_("Remove the named folders")) },
    { "show", &c_show, (A | MSGLIST), 0, MMNDEL
      DS(N_("Like `print', but show raw message content")) },

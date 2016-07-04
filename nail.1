@@ -4065,7 +4065,9 @@ Same as
 .
 .Mx
 .It Ic remove
-Removes the named folders.
+Removes the named files or directories.
+If a name refer to a mailbox, e.g., a Maildir mailbox, then a mailbox
+type specific removal will be performed, deleting the complete mailbox.
 The user is asked for confirmation in interactive mode.
 .
 .Mx
