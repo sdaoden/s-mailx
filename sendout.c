@@ -168,6 +168,15 @@ _put_ct(FILE *fo, char const *contenttype, char const *charset)
       ++rv;
    }
 
+   /* C99 */{
+      size_t l = strlen(charset);
+      char *lcs = salloc(l +1);
+
+      for(l = 0; *charset != '\0'; ++l, ++charset)
+         lcs[l] = lowerconv(*charset);
+      lcs[l] = '\0';
+      charset = lcs;
+   }
    if ((i = fprintf(fo, " charset=%s", charset)) < 0)
       goto jerr;
    rv += i;

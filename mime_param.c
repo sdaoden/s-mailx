@@ -874,7 +874,12 @@ mime_param_create(struct str *result, char const *name, char const *value)
    if ((i = strlen(top.mpb_value = value)) > UI32_MAX)
       goto jleave;
    top.mpb_value_len = (ui32_t)i;
-   top.mpb_charset_len = (ui32_t)strlen(top.mpb_charset = charset_get_lc());
+   if ((i = strlen(name = charset_get_lc())) > UI32_MAX)
+      goto jleave;
+   top.mpb_charset = salloc((top.mpb_charset_len = (ui32_t)i) +1);
+   for (i = 0; *name != '\0'; ++i, ++name)
+      ((char*)UNCONST(top.mpb_charset))[i] = lowerconv(*name);
+   ((char*)UNCONST(top.mpb_charset))[i] = '\0';
    top.mpb_is_utf8 = !ascncasecmp(top.mpb_charset, "utf-8",
          top.mpb_charset_len);
 
