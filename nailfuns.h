@@ -2127,6 +2127,11 @@ FL int         n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
                   char **outb, size_t *outbleft, bool_t skipilseq);
 FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
                   struct str *in_rest_or_null, bool_t skipilseq);
+
+/* If tocode==NULL, uses charset_get_lc().  If fromcode==NULL, uses UTF-8.
+ * Returns a salloc()ed buffer or NULL */
+FL char *      n_iconv_onetime_cp(char const *tocode, char const *fromcode,
+                  char const *input, bool_t skipilseq);
 #endif
 
 /*

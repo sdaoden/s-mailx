@@ -1080,6 +1080,36 @@ jrealloc:
    NYD2_LEAVE;
    return err;
 }
+
+FL char *
+n_iconv_onetime_cp(char const *tocode, char const *fromcode,
+      char const *input, bool_t skipilseq){
+   struct str out, in;
+   iconv_t icd;
+   char *rv;
+   NYD2_ENTER;
+
+   rv = NULL;
+   if(tocode == NULL)
+      tocode = charset_get_lc();
+   if(fromcode == NULL)
+      fromcode = "utf-8";
+
+   if((icd = iconv_open(tocode, fromcode)) == (iconv_t)-1)
+      goto jleave;
+
+   in.l = strlen(in.s = UNCONST(input)); /* logical */
+   out.s = NULL, out.l = 0;
+   if(!n_iconv_str(icd, &out, &in, NULL, skipilseq))
+      rv = savestrbuf(out.s, out.l);
+   if(out.s != NULL)
+      free(out.s);
+
+   iconv_close(icd);
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
 #endif /* HAVE_ICONV */
 
 /* s-it-mode */
