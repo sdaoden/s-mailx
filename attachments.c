@@ -154,7 +154,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " filename: "), number);
    for (;;) {
       if ((cp = ap->a_name) != NULL)
-         cp = n_shell_quote_cp(cp);
+         cp = n_shell_quote_cp(cp, FAL0);
       if ((cp = n_lex_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
@@ -276,7 +276,7 @@ jcs:
 jdone:
 #endif
    if (options & OPT_INTERACTIVE)
-      printf(_("~@: added attachment %s\n"), n_shell_quote_cp(ap->a_name));
+      printf(_("Added attachment %s\n"), n_shell_quote_cp(ap->a_name, FAL0));
 jleave:
    n_string_gut(shoup);
 
@@ -420,8 +420,8 @@ append_attachments(struct attachment **aphead, char *names){
          if((xaph = add_attachment(*aphead, n_string_cp(shoup), &nap)) != NULL){
             *aphead = xaph;
             if(options & OPT_INTERACTIVE)
-               printf(_("~@: added attachment %s\n"),
-                  n_shell_quote_cp(nap->a_name));
+               printf(_("Added attachment %s\n"),
+                  n_shell_quote_cp(nap->a_name, FAL0));
          }else
             n_perr(n_string_cp(shoup), 0);
       }

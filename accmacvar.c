@@ -1306,7 +1306,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       msgp = n_string_assign_cp(msgp, _("No such variable: "));
       s.s = UNCONST(name);
       s.l = UIZ_MAX;
-      msgp = n_shell_quote(msgp, &s);
+      msgp = n_shell_quote(msgp, &s, FAL0);
       goto jleave;
    }
 
@@ -1350,7 +1350,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       msgp = n_string_push_cp(msgp, "# ");
    UNINIT(quote, NULL);
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
-      quote = n_shell_quote_cp(avc.avc_var->av_value);
+      quote = n_shell_quote_cp(avc.avc_var->av_value, TRU1);
       if(strcmp(quote, avc.avc_var->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
    }

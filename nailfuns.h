@@ -1693,12 +1693,15 @@ FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
+ * If rndtrip is true we try to make the resulting string "portable" (by
+ * converting Unicode to \u etc.), otherwise we produce something to be
+ * consumed "now", i.e., to display for the user.
  * Resulting output is _appended_ to store.
  * TODO Note: last resort, since \u and $ expansions etc. are necessarily
  * TODO already expanded and can thus not be reverted, but ALL we have */
 FL struct n_string *n_shell_quote(struct n_string *store,
-                     struct str const *input);
-FL char *      n_shell_quote_cp(char const *cp);
+                     struct str const *input, bool_t rndtrip);
+FL char *      n_shell_quote_cp(char const *cp, bool_t rndtrip);
 
 /*
  * signal.c

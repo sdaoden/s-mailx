@@ -376,7 +376,7 @@ jislocal:
          break;
       default:
          n_err(_("Not a local file or directory: %s\n"),
-            n_shell_quote_cp(name));
+            n_shell_quote_cp(name, FAL0));
          res = NULL;
          break;
       }
@@ -1006,12 +1006,15 @@ jleave:
 }
 
 FL struct n_string *
-n_shell_quote(struct n_string *store, struct str const *input){
+n_shell_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    /* TODO In v15 we need to save (possibly normalize) away user input,
     * TODO so that the ORIGINAL (normalized) input can be used directly.
-    * Because we're the last, stay primitive */
-   bool_t qflag;
-   size_t j, i, il;
+    * Until then, stay somewhat primitive */
+#if 0
+   struct n_visual_info_ctx vic;
+#endif
+   enum{a_QNONE, a_QSINGLE, a_QDOLLAR} quote;
+   size_t il;
    char const *ib;
    NYD2_ENTER;
 
@@ -1023,96 +1026,191 @@ n_shell_quote(struct n_string *store, struct str const *input){
    if((il = input->l) == UIZ_MAX)
       il = strlen(ib);
 
-   /* Calculate necessary buffer space */
-   if(il == 0)
-      qflag = TRU1, j = 0;
-   else for(qflag = FAL0, j = sizeof("''") -1, i = 0; i < il; ++i){
-      char c = ib[i];
-
-      if(c == '\'' || !asciichar(c) || cntrlchar(c)){
-         qflag |= TRUM1;
-         j += sizeof("\\0377") -1;
-      }else if(c == '\\' || c == '$' || blankchar(c)){
-         qflag |= TRU1;
-         j += sizeof("\\ ") -1;
-      }else
-         ++j;
+   /* An empty string needs to be quoted */
+   if(il == 0){
+      store = n_string_push_buf(store, "''", sizeof("''") -1);
+      goto jleave;
    }
-   store = n_string_reserve(store, j + 3);
 
-   if(!qflag)
-      store = n_string_push_buf(store, ib, il);
-   else if(qflag == TRU1){
-      store = n_string_push_c(store, '\'');
-      store = n_string_push_buf(store, ib, il);
-      store = n_string_push_c(store, '\'');
-   }else{
-      store = n_string_push_buf(store, "$'", sizeof("$'") -1);
+#if 0
+   memset(&vic, 0, sizeof vic);
+   vic.vic_indat = ib;
+   vic.vic_inlen = il;
+   vic.vic_flags = n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC;
+   i = n_visual_info(&vic);
+#endif
 
-      for(qflag = FAL0, j = 0, i = 0; i < il; ++i){
-         char c = ib[i];
+   store = n_string_reserve(store, il + (il >> 2)); /* XXX */
+   quote = a_QNONE;
 
-         if(c == '\'' || !asciichar(c) || cntrlchar(c)){
+#if 0
+def HAVE_C90AMEND1 /* TODO wchar! */
+   if(i){
+      wchar_t *wcp;
+
+
+   }else
+#endif /* HAVE_C90AMEND1 */
+   while(il > 0){
+      enum{a_NONE, a_CNTRL, a_SPACE, a_SQ, a_BS, a_NASCII} ct;
+      char c;
+
+      /* Classify character and type of quote, if necessary.
+       * Try shorthands whenever possible */
+      c = *ib;
+      if(cntrlchar(c))
+         ct = a_CNTRL;
+      else if(blankspacechar(c) || c == '"' || c == '$'){
+         if(quote == a_QSINGLE || quote == a_QDOLLAR)
+            goto jc_one;
+         ct = a_SPACE;
+      }else if(c == '\'')
+         ct = a_SQ;
+      else if(c == '\\'){
+         if(quote == a_QSINGLE)
+            goto jc_one;
+         ct = a_BS;
+      }else if(!asciichar(c)){
+         if(!rndtrip)
+            goto jc_one;
+         ct = a_NASCII;
+      }else{
+         /* Shorthand: we can simply push that thing out */
+jc_one:
+         store = n_string_push_c(store, c);
+         ++ib, --il;
+         continue;
+      }
+
+      /* We have to take care for quotes, try to reuse what we have */
+      if(quote == a_QNONE){
+         switch(ct){
+         case a_NONE:
+         case a_SPACE:
+         case a_BS:
+            /* See XXX note beloq on a_QNONE! */
+            store = n_string_push_c(store, '\'');
+            quote = a_QSINGLE;
+            goto jc_one;
+         case a_SQ:
+            /* XXX a_QNONE backslash escaping of a single character is
+             * XXX disabled, because that starts looking bad if it is
+             * XXX needed more than once.  We'd need to count in a dryrun
+             * XXX first, then decide whether it should be used!
+             * XXX store = n_string_push_c(store, '\\');
+             * XXX goto jc_one; */
+             goto jc_qdollar;
+         case a_NASCII:
+            assert(rndtrip);
+            /* FALLTHRU */
+         case a_CNTRL:
+jc_qdollar:
+            store = n_string_push_buf(store, "$'", sizeof("$'") -1);
+            quote = a_QDOLLAR;
+            break;
+         }
+      }else if(quote == a_QSINGLE){
+         switch(ct){
+         case a_NONE:
+         case a_SPACE:
+         case a_BS:
+            assert(0);
+         case a_NASCII:
+            assert(rndtrip);
+            /* FALLTHRU */
+         case a_CNTRL:
+            store = n_string_push_c(store, '\'');
+            goto jc_qdollar;
+         case a_SQ:
+            /* xxx For SQ we possibly should also simply go for QDOLLAR now? */
+            store = n_string_push_c(store, '\'');
+            quote = a_QNONE;
             store = n_string_push_c(store, '\\');
-            if(cntrlchar(c)){
-               char c2 = c;
+            goto jc_one;
+         }
+      }
 
-               switch(c){
-               case 0x07: c = 'a'; break;
-               case 0x08: c = 'b'; break;
-               case 0x09: c = 't'; break;
-               case 0x0A: c = 'n'; break;
-               case 0x0B: c = 'v'; break;
-               case 0x0C: c = 'f'; break;
-               case 0x0D: c = 'r'; break;
-               default: break;
-               }
-               if(c == c2){
-                  store = n_string_push_c(store, 'c');
-                  c ^= 0x40;
-               }
-               store = n_string_push_c(store, c);
-               continue;
-            }else if(c != '\''){
+      assert(quote == a_QDOLLAR);
+      switch(ct){
+      case a_NONE:
+      case a_SPACE:
+         assert(0);
+      case a_SQ:
+      case a_BS:
+         store = n_string_push_c(store, '\\');
+         goto jc_one;
+      case a_CNTRL:{
+         char c2;
+
+         store = n_string_push_c(store, '\\');
+         switch(c2 = c){
+         case 0x07: c = 'a'; break;
+         case 0x08: c = 'b'; break;
+         case 0x09: c = 't'; break;
+         case 0x0A: c = 'n'; break;
+         case 0x0B: c = 'v'; break;
+         case 0x0C: c = 'f'; break;
+         case 0x0D: c = 'r'; break;
+         default: break;
+         }
+         if(c == c2){
+            store = n_string_push_c(store, 'c');
+            c ^= 0x40;
+         }
+         goto jc_one;
+      }  break;
+      case a_NASCII:
+         assert(rndtrip);
 #ifdef HAVE_NATCH_CHAR
-               if(options & OPT_UNICODE){
-                  ui32_t u;
-                  char const *ib2 = &ib[i];
-                  size_t il2 = il - i, il3 = il2;
+         if(options & OPT_UNICODE){
+            ui32_t u;
+            char const *ib2 = ib;
+            size_t il2 = il, il3 = il2;
 
-                  if((u = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
-                     char itoa[32];
+            if((u = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+               char itoa[32];
+               char const *cp;
 
-                     il2 = -((siz_t)il2 - (siz_t)il3);
-                     i += --il2;
-                     il3 = snprintf(itoa, sizeof itoa, "%c%0*X",
-                           (u > 0xFFFFu ? 'U' : 'u'),
-                           (int)(u > 0xFFFFu ? 8 : 4), u);
-                     store = n_string_push_buf(store, itoa, il3);
-                     goto juseq;
-                  }
+               il2 = PTR2SIZE(&ib2[0] - &ib[0]);
+               if(rndtrip || u == 0xFFFD/* TODO CText */){
+                  cp = itoa;
+                  il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
+                        (u > 0xFFFFu ? 'U' : 'u'),
+                        (int)(u > 0xFFFFu ? 8 : 4), u);
+               }else{
+                  cp = &ib[0];
+                  il3 = il2 + 1;
                }
-#endif
-               store = n_string_push_buf(store, "xFF", sizeof("xFF") -1);
-               n_c_to_hex_base16(&store->s_dat[store->s_len - 2], c);
-#ifdef HAVE_NATCH_CHAR
-juseq:
-#endif
-               if(i + 1 < il && hexchar(ib[i + 1]))
-                  store = n_string_push_buf(store, "'$'", sizeof("'$'") -1);
-               continue;
+               store = n_string_push_buf(store, cp, il3);
+               ib += il2, il -= il2;
+               goto jc_useq;
             }
          }
-         store = n_string_push_c(store, c);
+#endif /* HAVE_NATCH_CHAR */
+
+         store = n_string_push_buf(store, "\\xFF", sizeof("\\xFF") -1);
+         n_c_to_hex_base16(&store->s_dat[store->s_len - 2], c);
+         ++ib, --il;
+#ifdef HAVE_NATCH_CHAR
+jc_useq:
+#endif
+         if(il > 0 && hexchar(ib[1])){
+            store = n_string_push_c(store, '\'');
+            quote = a_QNONE;
+         }
+         break;
       }
-      store = n_string_push_c(store, '\'');
    }
+
+   if(quote == a_QSINGLE || quote == a_QDOLLAR)
+      store = n_string_push_c(store, '\'');
+jleave:
    NYD2_LEAVE;
    return store;
 }
 
 FL char *
-n_shell_quote_cp(char const *cp){
+n_shell_quote_cp(char const *cp, bool_t rndtrip){
    struct n_string store;
    struct str input;
    char *rv;
@@ -1122,7 +1220,8 @@ n_shell_quote_cp(char const *cp){
 
    input.s = UNCONST(cp);
    input.l = UIZ_MAX;
-   rv = n_string_cp(n_shell_quote(n_string_creat_auto(&store), &input));
+   rv = n_string_cp(n_shell_quote(n_string_creat_auto(&store), &input,
+         rndtrip));
    n_string_gut(n_string_drop_ownership(&store));
    NYD2_LEAVE;
    return rv;

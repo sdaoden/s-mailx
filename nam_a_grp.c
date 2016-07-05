@@ -747,13 +747,13 @@ _group_print(struct group const *gp, FILE *fo)
 
       fprintf(fo, "wysh %s %s",
          (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"),
-         n_shell_quote_cp(gp->g_id));
+         n_shell_quote_cp(gp->g_id, TRU1));
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp));
+      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s %s", gp->g_id, n_shell_quote_cp(cp));
+      fprintf(fo, "customhdr %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
    }
 
    putc('\n', fo);
@@ -1796,7 +1796,7 @@ c_customhdr(void *v){
 
       if(pstate & PS_WYSHLIST_SAW_CONTROL){
          n_err(_("`customhdr': \"%s\": control characters not allowed: %s%s\n"),
-            hcp, n_shell_quote_cp(*argv), (argv[1] != NULL ? "..." : ""));
+            hcp, n_shell_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
          rv = 1;
          goto jleave;
       }

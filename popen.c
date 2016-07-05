@@ -187,7 +187,7 @@ _file_save(struct fp *fpp)
       if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
          outfd = errno;
          n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-            fpp->realfile, strerror(outfd));
+            n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
          goto jleave;
       }
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
@@ -198,7 +198,7 @@ _file_save(struct fp *fpp)
    if(lseek(infd = fileno(fpp->fp), fpp->offset, SEEK_SET) == -1){
       outfd = errno;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-         fpp->realfile, strerror(outfd));
+         n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
       goto jleave;
    }
 
@@ -208,7 +208,7 @@ _file_save(struct fp *fpp)
    if (outfd == -1) {
       outfd = errno;
       n_err(_("Fatal: cannot create %s: %s\n"),
-         fpp->realfile, strerror(outfd));
+         n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
       goto jleave;
    }
 

@@ -1163,7 +1163,7 @@ newfile(struct mimepart *ip, bool_t *ispipe)
          _(" ("), ip->m_ct_type_plain, _("): "), NULL);
 jgetname:
       f2 = n_lex_input_cp_addhist(prompt.s, ((f != (char*)-1 && f != NULL)
-            ? n_shell_quote_cp(f) : NULL), TRU1);
+            ? n_shell_quote_cp(f, FAL0) : NULL), TRU1);
       if(f2 != NULL){
          in.s = UNCONST(f2);
          in.l = UIZ_MAX;

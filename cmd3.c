@@ -1246,7 +1246,7 @@ c_remove(void *v)
    do {
       if ((name = expand(*args)) == NULL)
          continue;
-      ename = n_shell_quote_cp(name);
+      ename = n_shell_quote_cp(name, FAL0);
 
       if (!strcmp(name, mailname)) {
          n_err(_("Cannot remove current mailbox %s\n"), ename);

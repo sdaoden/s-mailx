@@ -506,7 +506,7 @@ jredo:
                savecat(a_colour_ctx_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),
                (char const*)cmp->cm_buf + cmp->cm_user_off,
-               tagann, n_shell_quote_cp(tag));
+               tagann, n_shell_quote_cp(tag, TRU1));
             cmp = cmp->cm_next;
          }
       }
