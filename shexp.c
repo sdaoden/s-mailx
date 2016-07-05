@@ -566,13 +566,18 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shell_parse_token(struct n_string *store, struct str *input,
+n_shell_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
       enum n_shexp_parse_flags flags){
 #if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
    char utf[8];
 #endif
    char c2, c, quotec;
-   bool_t skipq, surplus;
+   enum{
+      a_NONE = 0,
+      a_SKIPQ = 1<<0,   /* Skip rest of this quote (\c0 ..) */
+      a_SURPLUS = 1<<1, /* Extended sequence interpretation */
+      a_NTOKEN = 1<<2   /* "New token": e.g., comments are possible */
+   } state;
    enum n_shexp_state rv;
    size_t i, il;
    char const *ib_save, *ib;
@@ -613,21 +618,26 @@ jrestart_empty:
    if(store != NULL)
       store = n_string_reserve(store, MIN(il, 32)); /* XXX */
 
-   for(rv = n_SHEXP_STATE_NONE, skipq = surplus = FAL0, quotec = '\0'; il > 0;){
+   for(rv = n_SHEXP_STATE_NONE, state = a_NTOKEN, quotec = '\0'; il > 0;){
       --il, c = *ib++;
 
       /* If no quote-mode active.. */
       if(quotec == '\0'){
          if(c == '"' || c == '\''){
             quotec = c;
-            surplus = (c == '"');
+            if(c == '"')
+               state |= a_SURPLUS;
+            else
+               state &= ~a_SURPLUS;
+            state &= ~a_NTOKEN;
             continue;
          }else if(c == '$'){
             if(il > 0){
+               state &= ~a_NTOKEN;
                if(*ib == '\''){
                   --il, ++ib;
                   quotec = '\'';
-                  surplus = TRU1;
+                  state |= a_SURPLUS;
                   continue;
                }else
                   goto J_var_expand;
@@ -637,29 +647,34 @@ jrestart_empty:
              * <backslash> at EOS is left unchanged */
              if(il > 0)
                --il, c = *ib++;
-         }else if(c == '#'){
+            state &= ~a_NTOKEN;
+         }else if(c == '#' && (state & a_NTOKEN)){
             rv |= n_SHEXP_STATE_STOP;
             goto jleave;
-         }else if((flags &
-                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA)) &&
-               c == ',')
+         }else if(c == ',' && (flags &
+               (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA)))
             break;
-         else if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA) && blankchar(c)){
-            ++il, --ib;
-            break;
-         }
+         else if(blankchar(c)){
+            if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
+               ++il, --ib;
+               break;
+            }
+            state |= a_NTOKEN;
+         }else
+            state &= ~a_NTOKEN;
       }else{
          /* Quote-mode */
+         assert(!(state & a_NTOKEN));
          if(c == quotec){
-            skipq = surplus = FAL0;
+            state = a_NONE;
             quotec = '\0';
             /* Users may need to recognize the presence of empty quotes */
             rv |= n_SHEXP_STATE_OUTPUT;
             continue;
-         }else if(c == '\\' && surplus){
+         }else if(c == '\\' && (state & a_SURPLUS)){
             ib_save = ib - 1;
-
-            /* A sole <backslash> at EOS is treated as-is! */
+            /* A sole <backslash> at EOS is treated as-is!  This is ok since
+             * the "closing quote" error will occur next, anyway */
             if(il == 0)
                break;
             else if((c2 = *ib) == quotec){
@@ -707,7 +722,7 @@ jrestart_empty:
                   if(il == 0)
                      goto j_dollar_ungetc;
                   --il, c2 = *ib++;
-                  if(skipq)
+                  if(state & a_SKIPQ)
                      continue;
                   c = upperconv(c2) ^ 0x40;
                   if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
@@ -759,8 +774,8 @@ je_ib_save:
                      --il, ++ib;
                   }
                   if((c = c2) == '\0')
-                     skipq = TRU1;
-                  if(skipq)
+                     state |= a_SKIPQ;
+                  if(state & a_SKIPQ)
                      continue;
                   break;
 
@@ -798,7 +813,7 @@ je_ib_save:
                            no += hexatoi[(ui8_t)((c) - ((c) <= '9' ? 48
                                  : ((c) <= 'F' ? 55 : 87)))];
                         }else if(j == 0){
-                           if(skipq)
+                           if(state & a_SKIPQ)
                               break;
                            c2 = (c2 == 'U' || c2 == 'u') ? 'u' : 'x';
                            if(flags & n_SHEXP_PARSE_LOG)
@@ -813,10 +828,10 @@ je_ib_save:
                      /* Unicode massage */
                      if((c2 != 'U' && c2 != 'u') || n_uasciichar(no)){
                         if((c = (char)no) == '\0')
-                           skipq = TRU1;
+                           state |= a_SKIPQ;
                      }else if(no == 0)
-                        skipq = TRU1;
-                     else if(!skipq){
+                        state |= a_SKIPQ;
+                     else if(!(state & a_SKIPQ)){
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
                            store = n_string_reserve(store, MAX(j, 4));
 
@@ -866,7 +881,7 @@ je_ib_save:
                         }
                         continue;
                      }
-                     if(skipq)
+                     if(state & a_SKIPQ)
                         continue;
                   }
                   break;
@@ -900,8 +915,8 @@ j_dollar_ungetc:
 
                if(brace){
                   if(il == 0 || *ib != '}'){
-                     if(skipq){
-                        assert(surplus && quotec == '\'');
+                     if(state & a_SKIPQ){
+                        assert((state & a_SURPLUS) && quotec == '\'');
                         continue;
                      }
                      if(flags & n_SHEXP_PARSE_LOG)
@@ -914,7 +929,7 @@ j_dollar_ungetc:
                   --il, ++ib;
                }
 
-               if(skipq)
+               if(state & a_SKIPQ)
                   continue;
 
                if(i == 0){
@@ -948,7 +963,7 @@ j_dollar_ungetc:
          }
       }
 
-      if(!skipq){
+      if(!(state & a_SKIPQ)){
          rv |= n_SHEXP_STATE_OUTPUT;
          if(cntrlchar(c))
             rv |= n_SHEXP_STATE_CONTROL;
@@ -959,8 +974,7 @@ j_dollar_ungetc:
 
    if(quotec != '\0'){
       if(flags & n_SHEXP_PARSE_LOG)
-         n_err(_("Missing closing quote in: %.*s\n"),
-            (int)input->l, input->s);
+         n_err(_("no closing quote: %.*s\n"), (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
    }
 
