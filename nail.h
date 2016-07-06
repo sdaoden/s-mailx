@@ -700,6 +700,14 @@ n_MCTA(sizeof(size_t) == sizeof(unsigned long),
 # endif
 #endif
 
+#ifdef HAVE_C90AMEND1
+typedef wchar_t         wc_t;
+# define n_WC_C(X)      L ## X
+#else
+typedef char            wc_t; /* Yep: really 8-bit char */
+# define n_WC_C(X)      X
+#endif
+
 enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
@@ -1237,6 +1245,21 @@ enum n_termcap_query{
    n__TERMCAP_QUERY_MAX
 };
 #endif /* n_HAVE_TCAP */
+
+enum n_visual_info_flags{
+   n_VISUAL_INFO_NONE,
+   n_VISUAL_INFO_ONE_CHAR = 1<<0,         /* Step only one char, then return */
+   n_VISUAL_INFO_SKIP_ERRORS = 1<<1,      /* Treat via replacement, step byte */
+   n_VISUAL_INFO_WIDTH_QUERY = 1<<2,      /* Detect visual character widths */
+
+   /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
+   n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
+   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..salloc() it first */
+   /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
+   n_VISUAL_INFO_WOUT_PRINTABLE = 1<<10,
+   n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |
+         n_VISUAL_INFO_WOUT_SALLOC | n_VISUAL_INFO_WOUT_PRINTABLE
+};
 
 enum user_options {
    OPT_NONE,
@@ -1803,6 +1826,25 @@ struct n_termcap_value{
    } tv_data;
 };
 #endif
+
+struct n_visual_info_ctx{
+   char const *vic_indat;  /*I Input data */
+   size_t vic_inlen;       /*I If UIZ_MAX, strlen(.vic_indat) */
+   char const *vic_oudat;  /*O remains */
+   size_t vic_oulen;
+   size_t vic_chars_seen;  /*O number of characters processed */
+   size_t vic_bytes_seen;  /*O number of bytes passed */
+   size_t vic_vi_width;    /*[O] visual width of the entire range */
+   wc_t *vic_woudat;       /*[O] if so requested */
+   size_t vic_woulen;      /*[O] entries in .vic_woudat, if used */
+   wc_t vic_waccu;         /*O The last wchar_t/char processed (if any) */
+   enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
+   /* TODO bidi */
+#ifdef HAVE_C90AMEND1
+   mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
+   mbstate_t vic_mbs_def;
+#endif
+};
 
 struct time_current {
    time_t      tc_time;

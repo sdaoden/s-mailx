@@ -38,56 +38,111 @@
 
 #include <ctype.h>
 
-FL size_t
-field_detect_width(char const *buf, size_t blen){
-   size_t rv;
+FL bool_t
+n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
+#ifdef HAVE_C90AMEND1
+   mbstate_t *mbp;
+#endif
+   size_t il;
+   char const *ib;
+   bool_t rv;
    NYD2_ENTER;
 
-   if(blen == UIZ_MAX)
-      blen = (buf == NULL) ? 0 : strlen(buf);
-   assert(blen == 0 || buf != NULL);
+   assert(vicp != NULL);
+   assert(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
+   assert(!(vif & n__VISUAL_INFO_FLAGS) || !(vif & n_VISUAL_INFO_ONE_CHAR));
 
-   if((rv = blen) > 0){
+   rv = TRU1;
+   ib = vicp->vic_indat;
+   if((il = vicp->vic_inlen) == UIZ_MAX)
+      il = vicp->vic_inlen = strlen(ib);
+
+   if((vif & (n_VISUAL_INFO_WIDTH_QUERY | n_VISUAL_INFO_WOUT_PRINTABLE)) ==
+         n_VISUAL_INFO_WOUT_PRINTABLE)
+      vif |= n_VISUAL_INFO_WIDTH_QUERY;
+
+   vicp->vic_chars_seen = vicp->vic_vi_width = 0;
+   if(vif & n_VISUAL_INFO_WOUT_CREATE){
+      if(vif & n_VISUAL_INFO_WOUT_SALLOC)
+         vicp->vic_woudat = salloc(sizeof(*vicp->vic_woudat) * (il +1));
+      vicp->vic_woulen = 0;
+   }
 #ifdef HAVE_C90AMEND1
-      mbstate_t mbs;
-      wchar_t wc;
+   if((mbp = vicp->vic_mbstate) == NULL)
+      mbp = &vicp->vic_mbs_def;
+#endif
 
-      memset(&mbs, 0, sizeof mbs);
+   if(il > 0){
+      do/* while(!(vif & n_VISUAL_INFO_ONE_CHAR) && il > 0) */{
+#ifdef HAVE_C90AMEND1
+         size_t i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
 
-      for(rv = 0; blen > 0;){
-         size_t i = mbrtowc(&wc, buf, blen, &mbs);
-
-         switch(i){
-         case (size_t)-2:
-         case (size_t)-1:
-            rv = (size_t)-1;
-            /* FALLTHRU */
-         case 0:
-            blen = 0;
+         if(i == (size_t)-2){
+            rv = FAL0;
             break;
-         default:
-            buf += i;
-            blen -= i;
-# ifdef HAVE_WCWIDTH
-            /* C99 */{
-               int w = wcwidth(wc);
-
-               if(w > 0)
-                  rv += w;
-               else if(wc == '\t')
-                  ++rv;
+         }else if(i == (size_t)-1){
+            if(!(vif & n_VISUAL_INFO_SKIP_ERRORS)){
+               rv = FAL0;
+               break;
             }
-# else
-            if(iswprint(wc))
-               rv += 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
-            else if(wc == '\t')
-               ++rv;
-# endif
+            memset(mbp, 0, sizeof *mbp);
+            vicp->vic_waccu = (options & OPT_UNICODE ? 0xFFFD : '?');
+            i = 1;
+         }else if(i == 0){
+            il = 0;
             break;
          }
-      }
-#endif /* HAVE_C90AMEND1 */
+
+         ++vicp->vic_chars_seen;
+         vicp->vic_bytes_seen += i;
+         ib += i;
+         il -= i;
+
+         if(vif & n_VISUAL_INFO_WIDTH_QUERY){
+            int w;
+            wchar_t wc = vicp->vic_waccu;
+
+# ifdef HAVE_WCWIDTH
+            w = (wc == '\t' ? 1 : wcwidth(wc));
+# else
+            if(wc == '\t' || iswprint(wc))
+               w = 1 + (wc >= 0x1100u); /* S-CText isfullwidth() */
+            else
+               w = -1;
+# endif
+            if(w > 0)
+               vicp->vic_vi_width += w;
+            else if(vif & n_VISUAL_INFO_WOUT_PRINTABLE)
+               continue;
+         }
+#else /* HAVE_C90AMEND1 */
+         char c = *ib;
+
+         if(c == '\0'){
+            il = 0;
+            break;
+         }
+
+         ++vicp->vic_chars_seen;
+         ++vicp->vic_bytes_seen;
+         vicp->vic_waccu = c;
+         if(vif & n_VISUAL_INFO_WIDTH_QUERY)
+            vicp->vic_vi_width += (c == '\t' || isprint(c)); /* XXX */
+
+         ++ib;
+         --il;
+#endif
+
+         if(vif & n_VISUAL_INFO_WOUT_CREATE)
+            vicp->vic_woudat[vicp->vic_woulen++] = vicp->vic_waccu;
+      }while(!(vif & n_VISUAL_INFO_ONE_CHAR) && il > 0);
    }
+
+   if(vif & n_VISUAL_INFO_WOUT_CREATE)
+      vicp->vic_woudat[vicp->vic_woulen] = L'\0';
+   vicp->vic_oudat = ib;
+   vicp->vic_oulen = il;
+   vicp->vic_flags = vif;
    NYD2_LEAVE;
    return rv;
 }

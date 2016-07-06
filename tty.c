@@ -2241,15 +2241,20 @@ FL int
       if(i == 0 || i >= UI32_MAX)
          prompt = NULL;
       else{
-         plen = (ui32_t)i;
          /* TODO *prompt* is in multibyte and not in a_tty_cell, therefore
           * TODO we cannot handle it in parts, it's all or nothing.
           * TODO Later (S-CText, SysV signals) the prompt should be some global
           * TODO carrier thing, fully evaluated and passed around as UI-enabled
           * TODO string, then we can print it character by character */
-         if((i = field_detect_width(prompt, i)) != (size_t)-1)
-            pwidth = (ui32_t)i;
-         else{
+         struct n_visual_info_ctx vic;
+
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = prompt;
+         vic.vic_inlen = i;
+         if(n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY)){
+            pwidth = (ui32_t)vic.vic_vi_width;
+            plen = (ui32_t)i;
+         }else{
             n_err(_("Character set error in evaluation of prompt\n"));
             prompt = NULL;
          }

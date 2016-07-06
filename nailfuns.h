@@ -2268,9 +2268,11 @@ FL int         c_history(void *v);
  * ui_str.c
  */
 
-/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
- * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
-FL size_t      field_detect_width(char const *buf, size_t blen);
+/* Parse (onechar of) a given buffer, and generate infos along the way.
+ * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
+ * vicp must be zeroed before first use */
+FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
+                  enum n_visual_info_flags vif);
 
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
