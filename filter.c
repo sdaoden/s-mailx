@@ -809,7 +809,7 @@ _hf_store(struct htmlflt *self, char c)
                (wc == 0x200E || wc == 0x200F ||
                   (wc >= 0x202A && wc <= 0x202E)) ||
                /* And some zero-width messes */
-               (wc >= 0x200B && wc <= 0x200D) ||
+               wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D) ||
                /* Oh about the ISO C wide character interfaces, baby! */
                (wc == 0xFEFF)){
             self->hf_len -= x;
