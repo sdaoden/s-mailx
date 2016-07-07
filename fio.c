@@ -1133,7 +1133,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need)
 
    fflush(mp->mb_otf);
    if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
-         SEEK_SET) < 0) {
+         SEEK_SET) == -1) {
       n_perr(_("fseek"), 0);
       n_panic(_("temporary file seek"));
    }
@@ -1260,7 +1260,7 @@ fsize(FILE *iob)
    off_t rv;
    NYD_ENTER;
 
-   rv = (fstat(fileno(iob), &sbuf) < 0) ? 0 : sbuf.st_size;
+   rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
    NYD_LEAVE;
    return rv;
 }

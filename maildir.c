@@ -134,7 +134,7 @@ _cleantmp(void)
       if (dp->d_name[0] == '.')
          continue;
       sstpcpy(sstpcpy(dep, "tmp/"), dp->d_name);
-      if (stat(dep, &st) < 0)
+      if (stat(dep, &st) == -1)
          continue;
       if (st.st_atime + 36*3600 < now)
          unlink(dep);
