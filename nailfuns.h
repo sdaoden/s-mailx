@@ -1666,18 +1666,6 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
 
-/* (Try to) Expand ^~/? and ^~USER/? constructs.
- * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
-FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
-
-/* (Try to) Expand any shell variable in s, allowing backslash escaping
- * (of any following character) with bsescape.
- * Returns the completely resolved (maybe empty) salloc()ed string.
- * Logs on error */
-FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
-                  bool_t *err_or_null);
-
 /* Check wether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
  * *s is advanced to after the expanded sequence (as possible).

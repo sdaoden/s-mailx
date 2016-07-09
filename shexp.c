@@ -57,13 +57,12 @@
  * We do support the hyphen "-" because it is common for mailx. */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
 
-struct shvar_stack {
-   struct shvar_stack *shs_next; /* Outer stack frame */
-   char const  *shs_value; /* Remaining value to expand */
-   size_t      shs_len;    /* gth of .shs_dat this level */
-   char const  *shs_dat;   /* Result data of this level */
-   bool_t      *shs_err;   /* Or NULL */
-   bool_t      shs_bsesc;  /* Shall backslash escaping be performed */
+struct a_shexp_var_stack {
+   struct a_shexp_var_stack *svs_next; /* Outer stack frame */
+   char const *svs_value;  /* Remaining value to expand */
+   size_t svs_len;         /* gth of .svs_dat this level */
+   char const *svs_dat;    /* Result data of this level */
+   bool_t svs_bsesc;       /* Shall backslash escaping be performed */
 };
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */
@@ -72,8 +71,15 @@ static char * _findmail(char const *user, bool_t force);
 /* Perform shell meta character expansion TODO obsolete (INSECURE!) */
 static char *     _globname(char const *name, enum fexp_mode fexpm);
 
-/* Perform shell variable expansion */
-static char *  _sh_exp_var(struct shvar_stack *shsp);
+/* Expand ^~/? and ^~USER/? constructs.
+ * Returns the completely resolved (maybe empty or identical to input)
+ * salloc()ed string */
+static char *a_shexp_tilde(char const *s);
+
+/* (Try to) Expand any shell variable in s.
+ * Returns the completely resolved (maybe empty) salloc()ed string.
+ * Logs on error */
+static char *a_shexp_var(struct a_shexp_var_stack *svsp);
 
 static char *
 _findmail(char const *user, bool_t force)
@@ -183,19 +189,58 @@ jleave:
 }
 
 static char *
-_sh_exp_var(struct shvar_stack *shsp)
+a_shexp_tilde(char const *s){
+   struct passwd *pwp;
+   size_t nl, rl;
+   char const *rp, *np;
+   char *rv;
+   NYD2_ENTER;
+
+   if(*(rp = &s[1]) == '/' || *rp == '\0'){
+      np = ok_vlook(HOME);
+      rl = strlen(rp);
+   }else{
+      if((rp = strchr(np = rp, '/')) != NULL){
+         nl = PTR2SIZE(rp - np);
+         np = savestrbuf(np, nl);
+         rl = strlen(rp);
+      }else
+         rl = 0;
+
+      if((pwp = getpwnam(np)) == NULL){
+         rv = savestr(s);
+         goto jleave;
+      }
+      np = pwp->pw_dir;
+   }
+
+   nl = strlen(np);
+   rv = salloc(nl + 1 + rl +1);
+   memcpy(rv, np, nl);
+   if(rl > 0){
+      memcpy(rv + nl, rp, rl);
+      nl += rl;
+   }
+   rv[nl] = '\0';
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char *
+a_shexp_var(struct a_shexp_var_stack *svsp)
 {
-   struct shvar_stack next, *np, *tmp;
+   struct a_shexp_var_stack next, *np, *tmp;
    char const *vp;
    char lc, c, *cp, *rv;
    size_t i;
    NYD2_ENTER;
 
-   if (*(vp = shsp->shs_value) != '$') {
-      bool_t bsesc = shsp->shs_bsesc;
+   if (*(vp = svsp->svs_value) != '$') {
+      bool_t bsesc = svsp->svs_bsesc;
       union {bool_t hadbs; char c;} u = {FAL0};
 
-      shsp->shs_dat = vp;
+      svsp->svs_dat = vp;
       for (lc = '\0', i = 0; ((c = *vp) != '\0'); ++i, ++vp) {
          if (c == '$' && lc != '\\')
             break;
@@ -203,10 +248,10 @@ _sh_exp_var(struct shvar_stack *shsp)
             continue;
          lc = (lc == '\\') ? (u.hadbs = TRU1, '\0') : c;
       }
-      shsp->shs_len = i;
+      svsp->svs_len = i;
 
       if (u.hadbs) {
-         shsp->shs_dat = cp = savestrbuf(shsp->shs_dat, i);
+         svsp->svs_dat = cp = savestrbuf(svsp->svs_dat, i);
 
          for (lc = '\0', rv = cp; (u.c = *cp++) != '\0';) {
             if (u.c != '\\' || lc == '\\')
@@ -215,13 +260,13 @@ _sh_exp_var(struct shvar_stack *shsp)
          }
          *rv = '\0';
 
-         shsp->shs_len = PTR2SIZE(rv - shsp->shs_dat);
+         svsp->svs_len = PTR2SIZE(rv - svsp->svs_dat);
       }
    } else {
       if ((lc = (*++vp == '{')))
          ++vp;
 
-      shsp->shs_dat = vp;
+      svsp->svs_dat = vp;
       for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
          if (!a_SHEXP_ISVARC(c))
             break;
@@ -229,43 +274,41 @@ _sh_exp_var(struct shvar_stack *shsp)
       if (lc) {
          if (c != '}') {
             n_err(_("Variable name misses closing \"}\": %s\n"),
-               shsp->shs_value);
-            shsp->shs_len = strlen(shsp->shs_value);
-            shsp->shs_dat = shsp->shs_value;
-            if (shsp->shs_err != NULL)
-               *shsp->shs_err = TRU1;
+               svsp->svs_value);
+            svsp->svs_len = strlen(svsp->svs_value);
+            svsp->svs_dat = svsp->svs_value;
             goto junroll;
          }
          c = *++vp;
       }
 
-      shsp->shs_len = i;
+      svsp->svs_len = i;
       /* Check getenv(3) shall no internal variable exist! */
-      if ((rv = vok_vlook(cp = savestrbuf(shsp->shs_dat, i))) != NULL ||
+      if ((rv = vok_vlook(cp = savestrbuf(svsp->svs_dat, i))) != NULL ||
             (rv = getenv(cp)) != NULL)
-         shsp->shs_len = strlen(shsp->shs_dat = rv);
+         svsp->svs_len = strlen(svsp->svs_dat = rv);
       else
-         shsp->shs_len = 0, shsp->shs_dat = UNCONST("");
+         svsp->svs_len = 0, svsp->svs_dat = UNCONST("");
    }
    if (c != '\0')
       goto jrecurse;
 
    /* That level made the great and completed encoding.  Build result */
 junroll:
-   for (i = 0, np = shsp, shsp = NULL; np != NULL;) {
-      i += np->shs_len;
-      tmp = np->shs_next;
-      np->shs_next = shsp;
-      shsp = np;
+   for (i = 0, np = svsp, svsp = NULL; np != NULL;) {
+      i += np->svs_len;
+      tmp = np->svs_next;
+      np->svs_next = svsp;
+      svsp = np;
       np = tmp;
    }
 
    cp = rv = salloc(i +1);
-   while (shsp != NULL) {
-      np = shsp;
-      shsp = shsp->shs_next;
-      memcpy(cp, np->shs_dat, np->shs_len);
-      cp += np->shs_len;
+   while (svsp != NULL) {
+      np = svsp;
+      svsp = svsp->svs_next;
+      memcpy(cp, np->svs_dat, np->svs_len);
+      cp += np->svs_len;
    }
    *cp = '\0';
 
@@ -274,11 +317,10 @@ jleave:
    return rv;
 jrecurse:
    memset(&next, 0, sizeof next);
-   next.shs_next = shsp;
-   next.shs_value = vp;
-   next.shs_err = shsp->shs_err;
-   next.shs_bsesc = shsp->shs_bsesc;
-   rv = _sh_exp_var(&next);
+   next.svs_next = svsp;
+   next.svs_value = vp;
+   next.svs_bsesc = svsp->svs_bsesc;
+   rv = a_shexp_var(&next);
    goto jleave;
 }
 
@@ -340,7 +382,7 @@ jnext:
 
    /* Catch the most common shell meta character */
    if (res[0] == '~') {
-      res = n_shell_expand_tilde(res, NULL);
+      res = a_shexp_tilde(res);
       dyn = TRU1;
    }
 
@@ -362,8 +404,15 @@ jnext:
       }
 
       if(doexp){
-         res = (fexpm & FEXP_NSHELL) ? n_shell_expand_var(res, TRU1, NULL)
-               : _globname(res, fexpm);
+         if(fexpm & FEXP_NSHELL){
+            struct a_shexp_var_stack top;
+
+            memset(&top, 0, sizeof top);
+            top.svs_value = res;
+            top.svs_bsesc = TRU1;
+            res = a_shexp_var(&top);
+         }else
+            res = _globname(res, fexpm);
          dyn = TRU1;
       }
    }
@@ -386,76 +435,6 @@ jleave:
       res = savestr(res);
    NYD_LEAVE;
    return UNCONST(res);
-}
-
-FL char *
-n_shell_expand_tilde(char const *s, bool_t *err_or_null)
-{
-   struct passwd *pwp;
-   size_t nl, rl;
-   char const *rp, *np;
-   char *rv;
-   bool_t err;
-   NYD2_ENTER;
-
-   err = FAL0;
-
-   if (s[0] != '~')
-      goto jasis;
-
-   if (*(rp = s + 1) == '/' || *rp == '\0')
-      np = ok_vlook(HOME);
-   else {
-      if ((rp = strchr(s + 1, '/')) == NULL)
-         rp = (np = UNCONST(s)) + 1;
-      else {
-         nl = PTR2SIZE(rp - s);
-         np = savestrbuf(s, nl);
-      }
-
-      if ((pwp = getpwnam(np)) == NULL) {
-         err = TRU1;
-         goto jasis;
-      }
-      np = pwp->pw_name;
-   }
-
-   nl = strlen(np);
-   rl = strlen(rp);
-   rv = salloc(nl + 1 + rl +1);
-   memcpy(rv, np, nl);
-   if (rl > 0) {
-      memcpy(rv + nl, rp, rl);
-      nl += rl;
-   }
-   rv[nl] = '\0';
-   goto jleave;
-
-jasis:
-   rv = savestr(s);
-jleave:
-   if (err_or_null != NULL)
-      *err_or_null = err;
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL char *
-n_shell_expand_var(char const *s, bool_t bsescape, bool_t *err_or_null)
-{
-   struct shvar_stack top;
-   char *rv;
-   NYD2_ENTER;
-
-   memset(&top, 0, sizeof top);
-
-   top.shs_value = s;
-   if ((top.shs_err = err_or_null) != NULL)
-      *err_or_null = FAL0;
-   top.shs_bsesc = bsescape;
-   rv = _sh_exp_var(&top);
-   NYD2_LEAVE;
-   return rv;
 }
 
 FL int
