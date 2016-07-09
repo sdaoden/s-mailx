@@ -1005,6 +1005,34 @@ jleave:
    return rv;
 }
 
+FL enum n_shexp_state
+n_shell_parse_token_buf(char **store, char const *indat, size_t inlen,
+      enum n_shexp_parse_flags flags){
+   struct n_string ss;
+   struct str is;
+   enum n_shexp_state shs;
+   NYD2_ENTER;
+
+   assert(store != NULL);
+   assert(inlen == 0 || indat != NULL);
+
+   n_string_creat_auto(&ss);
+   is.s = UNCONST(indat);
+   is.l = inlen;
+
+   shs = n_shell_parse_token(&ss, &is, flags);
+   if(is.l > 0)
+      shs &= ~n_SHEXP_STATE_STOP;
+   else
+      shs |= n_SHEXP_STATE_STOP;
+   *store = n_string_cp(&ss);
+   n_string_drop_ownership(&ss);
+
+   n_string_gut(&ss);
+   NYD2_LEAVE;
+   return shs;
+}
+
 FL struct n_string *
 n_shell_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    /* TODO In v15 we need to save (possibly normalize) away user input,

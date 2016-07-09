@@ -1691,6 +1691,12 @@ FL int         n_shell_expand_escape(char const **s,
 FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
                         struct str *input, enum n_shexp_parse_flags flags);
 
+/* Likewise, but strips n_SHEXP_STATE_STOP if input remains after parsing,
+ * otherwise forcefully sets it.  Returns autoreclaimed storage */
+FL enum n_shexp_state n_shell_parse_token_buf(char **store,
+                        char const *indat, size_t inlen,
+                        enum n_shexp_parse_flags flags);
+
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
  * If rndtrip is true we try to make the resulting string "portable" (by
