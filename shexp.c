@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Shell "word", file- and other name expansions.
+ *@ Shell "word", file- and other name expansions, incl. file globbing.
+ *@ TODO v15: peek signal states while opendir/readdir/etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -43,8 +44,9 @@
 
 #include <pwd.h>
 
-#ifdef HAVE_WORDEXP
-# include <wordexp.h>
+#ifdef HAVE_FNMATCH
+# include <dirent.h>
+# include <fnmatch.h>
 #endif
 
 /* POSIX says
@@ -65,11 +67,17 @@ struct a_shexp_var_stack {
    bool_t svs_bsesc;       /* Shall backslash escaping be performed */
 };
 
+#ifdef HAVE_FNMATCH
+struct a_shexp_glob_ctx{
+   char const *sgc_patdat;       /* Remaining pattern (at and below level) */
+   size_t sgc_patlen;
+   struct n_string *sgc_outer;   /* Resolved path up to this level */
+   ui32_t sgc_flags;
+};
+#endif
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static char * _findmail(char const *user, bool_t force);
-
-/* Perform shell meta character expansion TODO obsolete (INSECURE!) */
-static char *     _globname(char const *name, enum fexp_mode fexpm);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
@@ -80,6 +88,14 @@ static char *a_shexp_tilde(char const *s);
  * Returns the completely resolved (maybe empty) salloc()ed string.
  * Logs on error */
 static char *a_shexp_var(struct a_shexp_var_stack *svsp);
+
+/* Perform fnmatch(3).  May return NULL on error */
+static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
+#ifdef HAVE_FNMATCH
+static bool_t a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
+               struct n_strlist **slpp);
+static int a_shexp__globsort(void const *cvpa, void const *cvpb);
+#endif
 
 static char *
 _findmail(char const *user, bool_t force)
@@ -99,93 +115,6 @@ _findmail(char const *user, bool_t force)
       rv = savestr(cp);
    NYD_LEAVE;
    return rv;
-}
-
-static char *
-_globname(char const *name, enum fexp_mode fexpm)
-{
-#ifdef HAVE_WORDEXP
-   wordexp_t we;
-   char *cp = NULL;
-   sigset_t nset;
-   int i;
-   NYD_ENTER;
-
-   /* Mac OS X Snow Leopard and Linux don't init fields on error, causing
-    * SIGSEGV in wordfree(3); so let's just always zero it ourselfs */
-   memset(&we, 0, sizeof we);
-
-   /* Some systems (notably Open UNIX 8.0.0) fork a shell for wordexp()
-    * and wait, which will fail if our SIGCHLD handler is active */
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGCHLD);
-   sigprocmask(SIG_BLOCK, &nset, NULL);
-# ifndef WRDE_NOCMD
-#  define WRDE_NOCMD 0
-# endif
-   i = wordexp(name, &we, WRDE_NOCMD);
-   sigprocmask(SIG_UNBLOCK, &nset, NULL);
-
-   switch (i) {
-   case 0:
-      break;
-#ifdef WRDE_CMDSUB
-   case WRDE_CMDSUB:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Command substitution not allowed\n"), name);
-      goto jleave;
-#endif
-   case WRDE_NOSPACE:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Expansion buffer overflow\n"), name);
-      goto jleave;
-   case WRDE_BADCHAR:
-   case WRDE_SYNTAX:
-   default:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("Syntax error in \"%s\"\n"), name);
-      goto jleave;
-   }
-
-   switch (we.we_wordc) {
-   case 1:
-      cp = savestr(we.we_wordv[0]);
-      break;
-   case 0:
-      if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": No match\n"), name);
-      break;
-   default:
-      if (fexpm & FEXP_MULTIOK) {
-         size_t j, l;
-
-         for (l = 0, j = 0; j < we.we_wordc; ++j)
-            l += strlen(we.we_wordv[j]) + 1;
-         ++l;
-         cp = salloc(l);
-         for (l = 0, j = 0; j < we.we_wordc; ++j) {
-            size_t x = strlen(we.we_wordv[j]);
-            memcpy(cp + l, we.we_wordv[j], x);
-            l += x;
-            cp[l++] = ' ';
-         }
-         cp[l] = '\0';
-      } else if (!(fexpm & FEXP_SILENT))
-         n_err(_("\"%s\": Ambiguous\n"), name);
-      break;
-   }
-jleave:
-   wordfree(&we);
-   NYD_LEAVE;
-   return cp;
-
-#else /* HAVE_WORDEXP */
-   UNUSED(fexpm);
-
-   if(options & OPT_D_V)
-      n_err(_("wordexp(3) not available, cannot perform expansion\n"));
-   return savestr(name);
-#endif
 }
 
 static char *
@@ -324,6 +253,294 @@ jrecurse:
    goto jleave;
 }
 
+static char *
+a_shexp_globname(char const *name, enum fexp_mode fexpm){
+#ifdef HAVE_FNMATCH
+   struct a_shexp_glob_ctx sgc;
+   struct n_string outer;
+   struct n_strlist *slp;
+   char *cp;
+   NYD_ENTER;
+
+   memset(&sgc, 0, sizeof sgc);
+   sgc.sgc_patlen = strlen(name);
+   sgc.sgc_patdat = savestrbuf(name, sgc.sgc_patlen);
+   sgc.sgc_outer = n_string_reserve(n_string_creat(&outer), sgc.sgc_patlen);
+   sgc.sgc_flags = ((fexpm & FEXP_SILENT) != 0);
+   slp = NULL;
+   if(a_shexp__glob(&sgc, &slp))
+      cp = (char*)1;
+   else
+      cp = NULL;
+   n_string_gut(&outer);
+
+   if(cp == NULL)
+      goto jleave;
+
+   if(slp == NULL){
+      cp = UNCONST(N_("File pattern does not match"));
+      goto jerr;
+   }else if(slp->sl_next == NULL)
+      cp = savestrbuf(slp->sl_dat, slp->sl_len);
+   else if(fexpm & FEXP_MULTIOK){
+      struct n_strlist **sorta, *xslp;
+      size_t i, no, l;
+
+      no = l = 0;
+      for(xslp = slp; xslp != NULL; xslp = xslp->sl_next){
+         ++no;
+         l += xslp->sl_len + 1;
+      }
+
+      sorta = smalloc(sizeof(*sorta) * no);
+      no = 0;
+      for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
+         sorta[no++] = xslp;
+      qsort(sorta, no, sizeof *sorta, &a_shexp__globsort);
+
+      cp = salloc(++l);
+      l = 0;
+      for(i = 0; i < no; ++i){
+         xslp = sorta[i];
+         memcpy(&cp[l], xslp->sl_dat, xslp->sl_len);
+         l += xslp->sl_len;
+         cp[l++] = '\0';
+      }
+      cp[l] = '\0';
+
+      free(sorta);
+      pstate |= PS_EXPAND_MULTIRESULT;
+   }else{
+      cp = UNCONST(N_("File pattern matches multiple results"));
+      goto jerr;
+   }
+
+jleave:
+   while(slp != NULL){
+      struct n_strlist *tmp = slp;
+
+      slp = slp->sl_next;
+      free(tmp);
+   }
+   NYD_LEAVE;
+   return cp;
+
+jerr:
+   if(!(fexpm & FEXP_SILENT)){
+      name = n_shell_quote_cp(name, FAL0);
+      n_err("%s: %s\n", V_(cp), name);
+   }
+   cp = NULL;
+   goto jleave;
+
+#else /* HAVE_FNMATCH */
+   UNUSED(fexpm);
+
+   if(!(fexpm & FEXP_SILENT))
+      n_err(_("No filename pattern (fnmatch(3)) support compiled in\n"));
+   return savestr(name);
+#endif
+}
+
+#ifdef HAVE_FNMATCH
+static bool_t
+a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
+   enum{a_SILENT = 1<<0, a_DEEP=1<<1, a_SALLOC=1<<2};
+
+   struct a_shexp_glob_ctx nsgc;
+   struct dirent *dep;
+   DIR *dp;
+   size_t old_outerlen;
+   char const *ccp, *myp;
+   NYD2_ENTER;
+
+   /* We need some special treatment for the outermost level */
+   if(!(sgcp->sgc_flags & a_DEEP)){
+      if(sgcp->sgc_patlen > 0 && sgcp->sgc_patdat[0] == '/'){
+         myp = n_string_cp(n_string_push_c(sgcp->sgc_outer, '/'));
+         ++sgcp->sgc_patdat;
+         --sgcp->sgc_patlen;
+      }else
+         myp = "./";
+   }else
+      myp = n_string_cp(sgcp->sgc_outer);
+   old_outerlen = sgcp->sgc_outer->s_len;
+
+   /* Separate current directory/pattern level from any possible remaining
+    * pattern in order to be able to use it for fnmatch(3) */
+   if((ccp = memchr(sgcp->sgc_patdat, '/', sgcp->sgc_patlen)) == NULL)
+      nsgc.sgc_patlen = 0;
+   else{
+      nsgc = *sgcp;
+      nsgc.sgc_flags |= a_DEEP;
+      sgcp->sgc_patlen = PTR2SIZE((nsgc.sgc_patdat = &ccp[1]) -
+            &sgcp->sgc_patdat[0]);
+      nsgc.sgc_patlen -= sgcp->sgc_patlen;
+      /* Trim solidus */
+      if(sgcp->sgc_patlen > 0){
+         assert(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
+         ((char*)UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
+      }
+   }
+
+   /* Our current directory level */
+   /* xxx Plenty of room for optimizations, like quickshot lstat(2) which may
+    * xxx be the (sole) result depending on pattern surroundings, etc. */
+   if((dp = opendir(myp)) == NULL){
+      int err;
+
+      switch((err = errno)){
+      case ENOTDIR:
+         ccp = N_("cannot access paths under non-directory");
+         goto jerr;
+      case ENOENT:
+         ccp = N_("path component of (sub)pattern non-existent");
+         goto jerr;
+      case EACCES:
+         ccp = N_("file permission for file (sub)pattern denied");
+         goto jerr;
+      default:
+         ccp = N_("cannot handle file (sub)pattern");
+         goto jerr;
+      }
+   }
+
+   /* As necessary, quote bytes in the current pattern */
+   /* C99 */{
+      char *ncp;
+      size_t i;
+      bool_t need;
+
+      for(need = FAL0, i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
+         switch(*myp){
+         case '\'': case '"': case '\\': case '$':
+         case ' ': case '\t':
+            need = TRU1;
+            ++i;
+            /* FALLTHRU */
+         default:
+            ++i;
+            break;
+         }
+
+      if(need){
+         ncp = salloc(i +1);
+         for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
+            switch(*myp){
+            case '\'': case '"': case '\\': case '$':
+            case ' ': case '\t':
+               ncp[i++] = '\\';
+               /* FALLTHRU */
+            default:
+               ncp[i++] = *myp;
+               break;
+            }
+         ncp[i] = '\0';
+         myp = ncp;
+      }else
+         myp = sgcp->sgc_patdat;
+   }
+
+   while((dep = readdir(dp)) != NULL){
+      switch(fnmatch(myp, dep->d_name, FNM_PATHNAME | FNM_PERIOD)){
+      case 0:{
+         /* A match expresses the desire to recurse if there is more pattern */
+         if(nsgc.sgc_patlen > 0){
+            bool_t isdir;
+
+            n_string_push_cp((sgcp->sgc_outer->s_len > 1
+                  ? n_string_push_c(sgcp->sgc_outer, '/') : sgcp->sgc_outer),
+               dep->d_name);
+
+            isdir = FAL0;
+#ifdef HAVE_DIRENT_TYPE
+            if(dep->d_type == DT_DIR)
+               isdir = TRU1;
+            else if(dep->d_type == DT_LNK || dep->d_type == DT_UNKNOWN)
+#endif
+            {
+               struct stat sb;
+
+               if(stat(n_string_cp(sgcp->sgc_outer), &sb)){
+                  ccp = N_("I/O error when querying file status");
+                  goto jerr;
+               }else if(S_ISDIR(sb.st_mode))
+                  isdir = TRU1;
+            }
+
+            /* TODO We recurse with current dir FD open, which could E[MN]FILE!
+             * TODO Instead save away a list of such n_string's for later */
+            if(isdir && !a_shexp__glob(&nsgc, slpp)){
+               ccp = (char*)1;
+               goto jleave;
+            }
+
+            n_string_trunc(sgcp->sgc_outer, old_outerlen);
+         }else{
+            struct n_strlist *slp;
+            size_t i, j;
+
+            i = strlen(dep->d_name);
+            j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
+            slp = n_STRLIST_MALLOC(j);
+            *slpp = slp;
+            slpp = &slp->sl_next;
+            slp->sl_next = NULL;
+            if((j = old_outerlen) > 0){
+               memcpy(&slp->sl_dat[0], sgcp->sgc_outer->s_dat, j);
+               if(slp->sl_dat[j -1] != '/')
+                  slp->sl_dat[j++] = '/';
+            }
+            memcpy(&slp->sl_dat[j], dep->d_name, i);
+            slp->sl_dat[j += i] = '\0';
+            slp->sl_len = j;
+         }
+      }  break;
+      case FNM_NOMATCH:
+         break;
+      default:
+         ccp = N_("fnmatch(3) cannot handle file (sub)pattern");
+         goto jerr;
+      }
+   }
+
+   ccp = NULL;
+jleave:
+   if(dp != NULL)
+      closedir(dp);
+   NYD2_LEAVE;
+   return (ccp == NULL);
+
+jerr:
+   if(!(sgcp->sgc_flags & a_SILENT)){
+      char const *s2, *s3;
+
+      if(sgcp->sgc_outer->s_len > 0){
+         s2 = n_shell_quote_cp(n_string_cp(sgcp->sgc_outer), FAL0);
+         s3 = "/";
+      }else
+         s2 = s3 = "";
+
+      n_err("%s: %s%s%s\n", V_(ccp), s2, s3,
+         n_shell_quote_cp(sgcp->sgc_patdat, FAL0));
+   }
+   goto jleave;
+}
+
+static int
+a_shexp__globsort(void const *cvpa, void const *cvpb){
+   int rv;
+   struct n_strlist const * const *slpa, * const *slpb;
+   NYD2_ENTER;
+
+   slpa = cvpa;
+   slpb = cvpb;
+   rv = asccasecmp((*slpa)->sl_dat, (*slpb)->sl_dat);
+   NYD2_LEAVE;
+   return rv;
+}
+#endif /* HAVE_FNMATCH */
+
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
 {
@@ -331,6 +548,8 @@ fexpand(char const *name, enum fexp_mode fexpm)
    char const *cp, *res;
    bool_t dyn;
    NYD_ENTER;
+
+   pstate &= ~PS_EXPAND_MULTIRESULT;
 
    /* The order of evaluation is "%" and "#" expand into constants.
     * "&" can expand into "+".  "+" can expand into shell meta characters.
@@ -380,15 +599,10 @@ jnext:
       }
    }
 
-   /* Catch the most common shell meta character */
-   if (res[0] == '~') {
-      res = a_shexp_tilde(res);
-      dyn = TRU1;
-   }
-
-   if ((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
+   /* Do some meta expansions */
+   if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
          ((fexpm & FEXP_NSHELL) ? (strchr(res, '$') != NULL)
-          : anyof(res, "|&;<>{}()[]*?$`'\"\\"))) {
+          : anyof(res, "{}[]*?$"))){
       bool_t doexp;
 
       if(fexpm & FEXP_NOPROTO)
@@ -404,17 +618,24 @@ jnext:
       }
 
       if(doexp){
-         if(fexpm & FEXP_NSHELL){
-            struct a_shexp_var_stack top;
+         struct a_shexp_var_stack top;
 
-            memset(&top, 0, sizeof top);
-            top.svs_value = res;
-            top.svs_bsesc = TRU1;
-            res = a_shexp_var(&top);
-         }else
-            res = _globname(res, fexpm);
+         memset(&top, 0, sizeof top);
+         top.svs_value = res;
+         top.svs_bsesc = TRU1;
+         res = a_shexp_var(&top);
+
+         if(res[0] == '~')
+            res = a_shexp_tilde(res);
+
+         if(!(fexpm & FEXP_NSHELL) &&
+               (res = a_shexp_globname(res, fexpm)) == NULL)
+            goto jleave;
          dyn = TRU1;
-      }
+      }/* else no tilde */
+   }else if(res[0] == '~'){
+      res = a_shexp_tilde(res);
+      dyn = TRU1;
    }
 
 jislocal:
@@ -431,7 +652,7 @@ jislocal:
       }
 
 jleave:
-   if (res && !dyn)
+   if(res != NULL && !dyn)
       res = savestr(res);
    NYD_LEAVE;
    return UNCONST(res);

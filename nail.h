@@ -1338,6 +1338,8 @@ enum program_state {
    PS_WYSHLIST_SAW_UNICODE = 1<<17, /* ARG_WYSHLIST saw \[Uu] */
    PS_WYSHLIST_SAW_CONTROL = 1<<18, /* ..saw C0+ control characters */
 
+   PS_EXPAND_MULTIRESULT = 1<<19,   /* Last fexpand() with MULTIOK had .. */
+
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 
    PS_COLOUR_ACTIVE  = 1<<22,       /* n_colour_env_create().._gut() cycle */

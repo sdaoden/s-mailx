@@ -2402,9 +2402,7 @@ explicit message list have been specified.
 If there are no messages forward of the current message,
 the search proceeds backwards,
 and if there are no good messages at all,
-\*(UA types
-.Dq no applicable messages
-and aborts the command.
+\*(UA shows an error message and aborts the command.
 \*(ID Non-message-list arguments can be quoted using the following methods:
 .
 .Pp
@@ -2624,20 +2622,13 @@ If the
 variable is unset or is set to null, the filename will be unchanged.
 .
 .It
-Shell word expansions are applied to the filename.
-.\" TODO shell word expansion shell expand fexpand FEXP_NSHELL
-.Sy Compatibility note:
-on the long run support for complete shell word expansion will be
-replaced by an internally implemented restricted expansion mechanism in
-order to circumvent possible security impacts through shell expansion.
-Expect that a growing number of program parts only support this
-restricted syntax:
-.Pp
-Meta expansions are applied to the filename: leading tilde characters
-.Pf ( Ql ~/ )
-will be replaced by the expansion of
+Meta expansions are applied to the filename: a leading tilde
+.Ql ~
+character will be replaced by the expansion of
 .Ev HOME ,
-and any occurrence of
+except when followed by a valid user name, in which case the home
+directory of the given user is used instead.
+Any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
@@ -2649,19 +2640,12 @@ as well as
 escape mechanism has to be applied to prevent interpretation.
 If the fully expanded filename results in multiple pathnames and the
 command is expecting only one file, an error results.
-\*(ID Note that in conjunction with the special forward-compatible
-.Ic \&\&wysh
-keyword a string that will be subject to filename meta expansion has to
-be protected against the otherwise possible double expansion (expansions
-of expanded content) \(en it is yet undecided wether this will later be
-a regular feature or wether expansion will only be applied during
-argument parsing.
 .Pp
 In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
 arguments will usually be displayed in a properly quoted form, e.g., a file
 .Ql diet\e is \ecurd.txt
-may become displayed as
+may be displayed as
 .Ql 'diet\e is \ecurd.txt' .
 .El
 .

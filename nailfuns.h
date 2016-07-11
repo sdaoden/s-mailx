@@ -1660,6 +1660,8 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  * . +file file in folder directory
  * . any shell meta character (except for FEXP_NSHELL).
  * a poor man's vis(3), on name before calling this (and showing the user).
+ * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
+ * result string is terminated via \0\0 and PS_EXPAND_MULTIRESULT is set.
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
