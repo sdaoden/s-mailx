@@ -469,13 +469,13 @@ Specify the subject of the to-be-sent message.
 .Mx
 .It Fl t
 The message given (on standard input) is expected to contain, separated
-from the message body with an empty line, a message header with
+from the message body by an empty line, a message header with
 .Ql To: ,
 .Ql Cc: ,
 or
 .Ql Bcc:
-fields giving its recipients, which will be added to those given on the
-command line.
+fields giving its recipients, which will be added to any recipients
+specified on the command line.
 If a message subject is specified via
 .Ql Subject:
 then it'll be used in favour of one given on the command line.
@@ -486,28 +486,25 @@ Also understood are
 .Va replyto ) ,
 .Ql Sender:
 (p.\ o.\&
-.Va sender ) .
-Note you can also specify
-.Ql From: ,
-possibly overriding
+.Va sender ) ,
+.Ql From:
+(p.o.
 .Va from
-and the envelope address possibly specified with the option
-.Fl r !
-.Pp
-The following, which are normally created automatically based
-upon the message context, can also be specified:
+and / or option
+.Fl r ) .
 .Ql Message-ID: ,
 .Ql In-Reply-To: ,
 .Ql References:
 and
-.Ql Mail-Followup-To:
-(special address massage will however still occur for the latter).
-In fact custom header fields may also be used, the content of which
-is passed through unchanged.
-In conjunction with
+.Ql Mail-Followup-To: ,
+by default created automatically dependent on message context, will
+be used if specified (a special address massage will however still occur
+for the latter).
+Any other (even custom) header field is passed through entirely
+unchanged, and in conjunction with the option
 .Fl ~
-.Sx TILDE ESCAPES
-can be embedded, too.
+it is even possible to embed
+.Sx TILDE ESCAPES .
 Also see
 .Fl M , m , q .
 .
@@ -570,13 +567,13 @@ and
 .Va folder
 (both to
 .Pa /dev/null ) ;
-also no initial header listing will be printed, and processing of
+processing of
 .Sx "TILDE ESCAPES"
 is enabled in compose mode.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' | \e
-  LC_ALL=C \*(uA -:/ -d#
+  LC_ALL=C \*(uA -:/ -d# -X'alias bob bob@exam.ple'
 .Ed
 .
 .Mx
@@ -644,12 +641,8 @@ send to names which address groups of users.
 .Ux
 mail system, whereas the system side (mail-transfer-agent, MTA) was
 traditionally taken by
-.Xr sendmail 8 ;
-today
-.Xr postfix 1
-or
-.Xr exim 8
-are often used for this purpose instead.
+.Xr sendmail 8 ,
+and most MTAs provide a binary of this name for compatibility purposes.
 If the \*(OPal SMTP is included in the
 .Ic features
 of \*(UA then the system side is not a mandatory precondition for mail
@@ -678,17 +671,18 @@ files eventually get recreated (\*(UA actively manages the file mode
 creation mask via
 .Va umask
 upon program startup).
+On the other hand
 .Va folder ,
 one of the many
 .Sx "INTERNAL VARIABLES" ,
-isn't set by default so file grouping (via the
+isn't set by default so that file grouping (via the
 .Ql +
 prefix as documented for
 .Ic file )
-is not enabled.
+is not functional by default.
 The section
 .Sx EXAMPLES
-contains some further suggestions.
+contains some suggestions.
 .\" }}}
 .
 .\" .Ss "On sending mail, and non-interactive mode" {{{
@@ -1160,7 +1154,7 @@ text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
-if $features !@ HTML-FILTER
+if $features !@ +html-filter
   #set pipe-text/html='elinks -force-html -dump 1'
   set pipe-text/html='lynx -stdin -dump -force_html'
   # Display HTML as plain text instead
@@ -3742,7 +3736,7 @@ if ${t1} == ${t2}
 endif
 if $version-major >= 15
   echo Running a new version..
-  if $features =@ "regex"
+  if $features =@ +regex
     if $TERM =~ "^xterm\&.*"
       echo ..in an X terminal
     endif
@@ -5561,7 +5555,12 @@ then \*(UA will terminate if the last operation generated an error.
 .It Va bsdannounce
 \*(BO Causes automatic display of a header summary after executing a
 .Ic file
-command.
+command, and thus complements the standard variable
+.Va header ,
+which controls header summary display on program startup.
+It is only meaningful if
+.Va header
+is also set.
 .
 .Mx
 .It Va bsdcompat
@@ -6113,6 +6112,9 @@ The command line option
 .Fl N
 can be used to set
 .Pf no Va header .
+The variable
+.Va bsdannounce
+complements this and controls header summary display on folder changes.
 .
 .
 .Mx
@@ -7735,8 +7737,6 @@ It is possible to specify a per-user configuration via
 generic spam filter support via freely configurable hooks.
 This interface is meant for programs like
 .Xr bogofilter 1
-and
-.Xr sylfilter 1
 and requires according behaviour in respect to the hooks' exit
 status for at least the command
 .Ic spamrate
@@ -9727,10 +9727,8 @@ $ \*(uA -Sspam-interface=spamc -Sspam-maxsize=500000 \e
 .
 .Pp
 Using the generic filter approach allows usage of programs like
-.Xr bogofilter 1
-and
-.Xr sylfilter 1 .
-Here is an example for the former, requiring it to be accessible via
+.Xr bogofilter 1 .
+Here is an example, requiring it to be accessible via
 .Ev PATH :
 .
 .Bd -literal -offset indent
@@ -9850,36 +9848,27 @@ use that special password instead of your real Google account password in
 .
 .Xr bogofilter 1 ,
 .Xr bzip2 1 ,
-.Xr file 1 ,
 .Xr fmt 1 ,
 .Xr gpg 1 ,
 .Xr gzip 1 ,
-.Xr less 1 ,
 .Xr more 1 ,
 .Xr newaliases 1 ,
 .Xr openssl 1 ,
-.Xr postfix 1 ,
-.Xr printf 1 ,
 .Xr sendmail 1 ,
 .Xr sh 1 ,
 .Xr spamassassin 1 ,
 .Xr spamc 1 ,
 .Xr spamd 1 ,
-.Xr sylfilter 1 ,
-.Xr vacation 1 ,
-.Xr xterm 1 ,
 .Xr xz 1 ,
 .Xr iconv 3 ,
 .Xr readline 3 ,
 .Xr setlocale 3 ,
-.Xr ssl 3 ,
 .Xr aliases 5 ,
 .Xr termcap 5 ,
 .Xr terminfo 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
 .Xr re_format 7 ,
-.Xr exim 8 ,
 .Xr mailwrapper 8 ,
 .Xr sendmail 8
 .\" }}}
@@ -9941,15 +9930,7 @@ that was originally written by Kurt Shoens.
 .\" .Sh CAVEATS {{{
 .Sh CAVEATS
 .
-The character set conversion uses and relies upon the
-.Xr iconv 3
-function.
-Its functionality differs widely between the various system environments
-\*(UA runs on.
-.
-.Pp
 Limitations with POP3 mailboxes are:
-It is not possible to edit messages, they can only be copied and deleted.
 The line count for the header display is only appropriate if the entire
 message has been downloaded from the server.
 The status field of a message is maintained by the server between
@@ -9962,7 +9943,6 @@ The
 command and the
 .Va newmail
 variable have no effect.
-It is not possible to rename or to remove POP3 mailboxes.
 .
 .Pp
 If a
@@ -9994,13 +9974,6 @@ local network as the computer on which \*(UA is run.
 However, care should be taken when using a remote server of an ISP;
 it might be better to set up a local SMTP server then which just acts as
 a proxy.
-.
-.Pp
-\*(UA immediately contacts the SMTP server (or
-.Xr sendmail 1 ) .
-It would not make much sense for \*(UA to defer outgoing mail since SMTP
-servers usually provide much more elaborated delay handling than \*(UA
-could perform as a client.
 .\" }}}
 .
 .
