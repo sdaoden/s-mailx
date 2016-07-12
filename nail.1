@@ -841,9 +841,9 @@ Any name which starts with a vertical bar
 character specifies a command pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
-Likewise, any name that starts with the character slash
+Likewise, any name that starts with the character solidus
 .Ql /
-or the character sequence dot slash
+or the character sequence dot solidus
 .Ql ./
 is treated as a file, regardless of the remaining content.
 Any other name which contains an at sign
@@ -852,7 +852,7 @@ character is treated as a network address;
 Any other name which starts with a plus sign
 .Ql +
 character specifies a mailbox name;
-Any other name which contains a slash
+Any other name which contains a solidus
 .Ql /
 character but no exclamation mark
 .Ql \&!
@@ -1326,7 +1326,7 @@ Empty lines are ignored.
 Any other line is interpreted as a command.
 It may be spread over multiple input lines if the newline character is
 .Dq escaped
-by placing a backslash character
+by placing a reverse solidus character
 .Ql \e
 as the last character of the line; whereas any leading whitespace of
 follow lines is ignored, trailing whitespace before a escaped newline
@@ -1843,7 +1843,7 @@ This addressing mode is available with all types of folders;
 Strings must be enclosed by double quotes
 .Ql \&"
 in their entirety if they contain white space or parentheses;
-within the quotes, only backslash
+within the quotes, only reverse solidus
 .Ql \e
 is recognized as an escape character.
 All string searches are case-insensitive.
@@ -2446,24 +2446,24 @@ An argument can be enclosed between paired double-quotes
 or
 single-quotes
 .Ql 'argument' ;
-any white space, shell word expansion, or backslash characters (except
-as described next) within the quotes are treated literally as part of
-the argument.
+any white space, shell word expansion, or reverse solidus characters
+(except as described next) within the quotes are treated literally as
+part of the argument.
 A double-quote will be treated literally within single-quotes and vice
 versa.
 Inside such a quoted string the actually used quote character can be
-used nonetheless by escaping it with a backslash
+used nonetheless by escaping it with a reverse solidus
 .Ql \e ,
 as in
 .Ql """y\e""ou""" .
 .
 .It
 An argument that is not enclosed in quotes, as above, can usually still
-contain space characters if those spaces are backslash-escaped, as in
+contain space characters if those spaces are reverse solidus escaped, as in
 .Ql you\e are .
 .
 .It
-A backslash outside of the enclosing quotes is discarded
+A reverse solidus outside of the enclosing quotes is discarded
 and the following character is treated literally as part of the argument.
 .El
 .
@@ -2490,7 +2490,7 @@ regarding function arguments and their content, will improve.
 .Bl -bullet -compact -offset indent
 .It
 The literal value of any character can be preserved by preceding it
-with the escape character backslash
+with the escape character reverse solidus
 .Ql \e .
 An unquoted dollar
 .Ql $
@@ -2514,7 +2514,7 @@ is retained, with the exception of dollar
 .Ql $ ,
 which will cause variable expansion, as above, backquote (grave accent)
 .Ql ` ,
-(which not yet means anything special), backslash
+(which not yet means anything special), reverse solidus
 .Ql \e ,
 which will escape any of the characters dollar
 .Ql $
@@ -2522,15 +2522,15 @@ which will escape any of the characters dollar
 .Ql ` ,
 double-quote
 .Ql \(dq
-(to prevent ending the quote) and backslash
+(to prevent ending the quote) and reverse solidus
 .Ql \e
-(to prevent escaping, i.e., to embed a backslash character as-is), but
-has no special meaning otherwise.
+(to prevent escaping, i.e., to embed a reverse solidus character as-is),
+but has no special meaning otherwise.
 .
 .It
 Arguments enclosed in
 .Ql $'dollar-\:single-\:quotes'
-extend normal single quotes in that backslash escape sequences are
+extend normal single quotes in that reverse solidus escape sequences are
 expanded as follows:
 .Pp
 .Bl -tag -compact -width "Ql \eNNN"
@@ -2553,7 +2553,7 @@ horizontal tab.
 .It Ql \ev
 vertical tab.
 .It Ql \e\e
-backslash character.
+emits a reverse solidus character.
 .It Ql \e'
 single quote.
 .It Ql \e"
@@ -2644,7 +2644,7 @@ wysh mlist "@any\e.where\e.example\e.com"
 .Ed
 .
 .Pp
-In any event an unquoted backslash at the end of a command line is
+In any event an unquoted reverse solidus at the end of a command line is
 discarded and the next line continues the command.
 \*(ID Note that line continuation is handled before the above parsing is
 applied, i.e., the parsers documented above will see merged lines.
@@ -2659,7 +2659,7 @@ If the filename begins with an unquoted plus sign, and the
 variable is defined,
 the plus sign will be replaced by the value of the
 .Va folder
-variable followed by a slash.
+variable followed by a solidus.
 If the
 .Va folder
 variable is unset or is set to null, the filename will be unchanged.
@@ -5699,7 +5699,7 @@ and
 .Ic customhdr
 command (see there for documentation), interpreted as a comma-separated
 list of custom headers to be injected, to include commas in the header
-bodies escape them with backslash, e.g.:
+bodies escape them with reverse solidus, e.g.:
 .Pp
 .Dl set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
 .
@@ -5969,7 +5969,7 @@ file names that begin with the plus-sign
 will be expanded by prefixing them with the value of this variable.
 The same special syntax conventions as documented for the
 .Ic file
-command may be used; if the non-empty value doesn't start with a slash
+command may be used; if the non-empty value doesn't start with a solidus
 .Ql / ,
 then the value of
 .Ev HOME
@@ -8070,10 +8070,10 @@ and/or
 .Lb libtermcap
 capabilities (see
 .Sx "On terminal control and line editor" ,
-escape commas with backslash) to be used to overwrite or define entries.
-.Sy Note
-that this variable will only be queried once at program startup and can
-thus only be specified in resource files or on the command line.
+escape commas with reverse solidus) to be used to overwrite or define
+entries.
+Note that this variable will only be queried once at program startup and
+can thus only be specified in resource files or on the command line.
 .
 .Pp
 String capabilities form
@@ -8720,7 +8720,7 @@ described below.
 To extend a single entry (not comment) its line can be continued on
 follow lines if newline characters are
 .Dq escaped
-by preceding them with the backslash character
+by preceding them with the reverse solidus character
 .Ql \e .
 The standard doesn't specify how leading whitespace of follow lines is
 to be treated, therefore \*(UA retains it.
@@ -8729,7 +8729,7 @@ to be treated, therefore \*(UA retains it.
 .Dq Mailcap
 entries consist of a number of semicolon
 .Ql \&;
-separated fields, and the backslash
+separated fields, and the reverse solidus
 .Ql \e
 character can be used to escape any following character including
 semicolon and itself.
@@ -8740,7 +8740,7 @@ Leading and trailing whitespace of content is ignored (removed).
 .Pp
 The first field defines the MIME
 .Ql TYPE/SUBTYPE
-the entry is about to handle (case-insensitively, and no backslash
+the entry is about to handle (case-insensitively, and no reverse solidus
 escaping is possible in this field).
 If the subtype is specified as an asterisk
 .Ql *
@@ -9075,7 +9075,7 @@ be usable across multiple programs and platforms:
 BSD doesn't support single, but only double quotation marks, e.g.,
 .Ql password="pass with spaces" .
 .It
-BSD (only?) supports escaping of single characters via a backslash
+BSD (only?) supports escaping of single characters via a reverse solidus
 (e.g., a space can be escaped via
 .Ql \e\0 ) ,
 in- as well as outside of a quoted string.
