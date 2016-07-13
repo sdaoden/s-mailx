@@ -872,7 +872,7 @@ main(int argc, char **argv){
 static void
 doit(char const *s){
    char buf[12];
-   strcpy(buf, s);
+   memcpy(buf, s, strlen(s) +1);
    puts(s);
 }
 !
