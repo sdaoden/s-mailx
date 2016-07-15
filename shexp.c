@@ -59,6 +59,20 @@
  * We do support the hyphen "-" because it is common for mailx. */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
 
+enum a_shexp_quote_flags{
+   a_SHEXP_QUOTE_NONE,
+   a_SHEXP_QUOTE_ROUNDTRIP = 1<<0,  /* Result won't be consumed immediately */
+
+   a_SHEXP_QUOTE_T_REVSOL = 1<<8,   /* Type: by reverse solidus */
+   a_SHEXP_QUOTE_T_SINGLE = 1<<9,   /* Type: single-quotes */
+   a_SHEXP_QUOTE_T_DOUBLE = 1<<10,  /* Type: double-quotes */
+   a_SHEXP_QUOTE_T_DOLLAR = 1<<11,  /* Type: dollar-single-quotes */
+   a_SHEXP_QUOTE_T_MASK = a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+         a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR,
+
+   a_SHEXP_QUOTE__FREESHIFT = 16
+};
+
 struct a_shexp_var_stack {
    struct a_shexp_var_stack *svs_next; /* Outer stack frame */
    char const *svs_value;  /* Remaining value to expand */
@@ -75,6 +89,22 @@ struct a_shexp_glob_ctx{
    ui32_t sgc_flags;
 };
 #endif
+
+struct a_shexp_quote_ctx{
+   struct n_string *sqc_store;         /* Result storage */
+   struct str sqc_input;               /* Input data, topmost level */
+   ui32_t sqc_cnt_revso;
+   ui32_t sqc_cnt_single;
+   ui32_t sqc_cnt_double;
+   ui32_t sqc_cnt_dollar;
+   enum a_shexp_quote_flags sqc_flags;
+};
+
+struct a_shexp_quote_lvl{
+   struct a_shexp_quote_lvl *sql_link; /* Outer level */
+   struct str sql_dat;                 /* This level (has to) handle(d) */
+   enum a_shexp_quote_flags sql_flags;
+};
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static char * _findmail(char const *user, bool_t force);
@@ -96,6 +126,10 @@ static bool_t a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
                struct n_strlist **slpp);
 static int a_shexp__globsort(void const *cvpa, void const *cvpb);
 #endif
+
+/* Parse an input string and create a sh(1)ell-quoted result */
+static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp,
+               struct a_shexp_quote_lvl *sqlp);
 
 static char *
 _findmail(char const *user, bool_t force)
@@ -540,6 +574,360 @@ a_shexp__globsort(void const *cvpa, void const *cvpb){
    return rv;
 }
 #endif /* HAVE_FNMATCH */
+
+static void
+a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
+   /* XXX Because of the problems caused by ISO C multibyte interface we cannot
+    * XXX use the recursive implementation because of stateful encodings.
+    * XXX I.e., if a quoted substring cannot be self-contained - the data after
+    * XXX the quote relies on "the former state", then this doesn't make sense.
+    * XXX Therefore this is not fully programmed out but instead only detects
+    * XXX the "most fancy" quoting necessary, and directly does that.
+    * XXX As a result of this, T_REVSOL and T_DOUBLE are not even considered.
+    * XXX Otherwise we rather have to convert to wide first and act on that,
+    * XXX e.g., call visual_info(n_VISUAL_INFO_WOUT_CREATE) on entire input */
+#undef a_SHEXP_QUOTE_RECURSE /* XXX (Needs complete revisit, then) */
+#ifdef a_SHEXP_QUOTE_RECURSE
+# define jrecurse jrecurse
+   struct a_shexp_quote_lvl sql;
+#else
+# define jrecurse jstep
+#endif
+   struct n_visual_info_ctx vic;
+   union {struct a_shexp_quote_lvl *head; struct n_string *store;} u;
+   ui32_t flags;
+   size_t il;
+   char const *ib;
+   NYD2_ENTER;
+
+   ib = sqlp->sql_dat.s;
+   il = sqlp->sql_dat.l;
+   flags = sqlp->sql_flags;
+
+   /* Iterate over the entire input, classify characters and type of quotes
+    * along the way.  Whenever a quote change has to be applied, adjust flags
+    * for the new situation -, setup sql.* and recurse- */
+   while(il > 0){
+      char c;
+
+      c = *ib;
+      if(cntrlchar(c)){
+         if(flags & a_SHEXP_QUOTE_T_DOLLAR)
+            goto jstep;
+         if(c == '\t' && (flags & (a_SHEXP_QUOTE_T_REVSOL |
+               a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOUBLE)))
+            goto jstep;
+#ifdef a_SHEXP_QUOTE_RECURSE
+         ++sqcp->sqc_cnt_dollar;
+#endif
+         flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
+         goto jrecurse;
+      }else if(blankspacechar(c) || c == '"' || c == '$'){
+         if(flags & a_SHEXP_QUOTE_T_MASK)
+            goto jstep;
+#ifdef a_SHEXP_QUOTE_RECURSE
+         ++sqcp->sqc_cnt_single;
+#endif
+         flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
+         goto jrecurse;
+      }else if(c == '\''){
+         if(flags & (a_SHEXP_QUOTE_T_MASK & ~a_SHEXP_QUOTE_T_SINGLE))
+            goto jstep;
+#ifdef a_SHEXP_QUOTE_RECURSE
+         ++sqcp->sqc_cnt_dollar;
+#endif
+         flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
+         goto jrecurse;
+      }else if(c == '\\'){
+         if(flags & a_SHEXP_QUOTE_T_MASK)
+            goto jstep;
+#ifdef a_SHEXP_QUOTE_RECURSE
+         ++sqcp->sqc_cnt_single;
+#endif
+         flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
+         goto jrecurse;
+      }else if(!asciichar(c)){
+         /* Need to keep together multibytes */
+#ifdef a_SHEXP_QUOTE_RECURSE
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = ib;
+         vic.vic_inlen = il;
+         n_visual_info(&vic,
+            n_VISUAL_INFO_ONE_CHAR | n_VISUAL_INFO_SKIP_ERRORS);
+#endif
+         /* xxx check wether resulting \u would be ASCII */
+         if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP) ||
+               (flags & a_SHEXP_QUOTE_T_DOLLAR)){
+#ifdef a_SHEXP_QUOTE_RECURSE
+            ib = vic.vic_oudat;
+            il = vic.vic_oulen;
+            continue;
+#else
+            goto jstep;
+#endif
+         }
+#ifdef a_SHEXP_QUOTE_RECURSE
+         ++sqcp->sqc_cnt_dollar;
+#endif
+         flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
+         goto jrecurse;
+      }else
+jstep:
+         ++ib, --il;
+   }
+   sqlp->sql_flags = flags;
+
+   /* Level made the great and completed processing input.  Reverse the list of
+    * levels, detect the "most fancy" quote type needed along this way */
+   /* XXX Due to restriction as above very crude */
+   for(flags = 0, il = 0, u.head = NULL; sqlp != NULL;){
+      struct a_shexp_quote_lvl *tmp;
+
+      tmp = sqlp->sql_link;
+      sqlp->sql_link = u.head;
+      u.head = sqlp;
+      il += sqlp->sql_dat.l;
+      if(sqlp->sql_flags & a_SHEXP_QUOTE_T_MASK)
+         il += (sqlp->sql_dat.l >> 1);
+      flags |= sqlp->sql_flags;
+      sqlp = tmp;
+   }
+   sqlp = u.head;
+
+   /* Finally work the substrings in the correct order, adjusting quotes along
+    * the way as necessary.  Start off with the "most fancy" quote, so that
+    * the user sees an overall boundary she can orientate herself on.
+    * We do it like that to be able to give the user some "encapsulation
+    * experience", to address what strikes me is a problem of sh(1)ell quoting:
+    * different to, e.g., perl(1), where you see at a glance where a string
+    * starts and ends, sh(1) quoting occurs at the "top level", disrupting the
+    * visual appearance of "a string" as such */
+   u.store = n_string_reserve(sqcp->sqc_store, il);
+
+   if(flags & a_SHEXP_QUOTE_T_DOLLAR){
+      u.store = n_string_push_buf(u.store, "$'", sizeof("$'") -1);
+      flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
+   }else if(flags & a_SHEXP_QUOTE_T_DOUBLE){
+      u.store = n_string_push_c(u.store, '"');
+      flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOUBLE;
+   }else if(flags & a_SHEXP_QUOTE_T_SINGLE){
+      u.store = n_string_push_c(u.store, '\'');
+      flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
+   }else /*if(flags & a_SHEXP_QUOTE_T_REVSOL)*/
+      flags &= ~a_SHEXP_QUOTE_T_MASK;
+
+   /* Work all the levels */
+   for(; sqlp != NULL; sqlp = sqlp->sql_link){
+      /* As necessary update our mode of quoting */
+#ifdef a_SHEXP_QUOTE_RECURSE
+      il = 0;
+
+      switch(sqlp->sql_flags & a_SHEXP_QUOTE_T_MASK){
+      case a_SHEXP_QUOTE_T_DOLLAR:
+         if(!(flags & a_SHEXP_QUOTE_T_DOLLAR))
+            il = a_SHEXP_QUOTE_T_DOLLAR;
+         break;
+      case a_SHEXP_QUOTE_T_DOUBLE:
+         if(!(flags & (a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)))
+            il = a_SHEXP_QUOTE_T_DOLLAR;
+         break;
+      case a_SHEXP_QUOTE_T_SINGLE:
+         if(!(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+               a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)))
+            il = a_SHEXP_QUOTE_T_SINGLE;
+         break;
+      default:
+      case a_SHEXP_QUOTE_T_REVSOL:
+         if(!(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+               a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)))
+            il = a_SHEXP_QUOTE_T_REVSOL;
+         break;
+      }
+
+      if(il != 0){
+         if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
+            u.store = n_string_push_c(u.store, '\'');
+         else if(flags & a_SHEXP_QUOTE_T_DOUBLE)
+            u.store = n_string_push_c(u.store, '"');
+         flags &= ~a_SHEXP_QUOTE_T_MASK;
+
+         flags |= (ui32_t)il;
+         if(flags & a_SHEXP_QUOTE_T_DOLLAR)
+            u.store = n_string_push_buf(u.store, "$'", sizeof("$'") -1);
+         else if(flags & a_SHEXP_QUOTE_T_DOUBLE)
+            u.store = n_string_push_c(u.store, '"');
+         else if(flags & a_SHEXP_QUOTE_T_SINGLE)
+            u.store = n_string_push_c(u.store, '\'');
+      }
+#endif /* a_SHEXP_QUOTE_RECURSE */
+
+      /* Work the level's substring */
+      ib = sqlp->sql_dat.s;
+      il = sqlp->sql_dat.l;
+
+      while(il > 0){
+         char c2, c;
+
+         c = *ib;
+
+         if(cntrlchar(c)){
+            assert(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
+            assert((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+               a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)));
+            switch((c2 = c)){
+            case 0x07: c = 'a'; break;
+            case 0x08: c = 'b'; break;
+            case 0x0A: c = 'n'; break;
+            case 0x0B: c = 'v'; break;
+            case 0x0C: c = 'f'; break;
+            case 0x0D: c = 'r'; break;
+            case 0x1B: c = 'E'; break;
+            default: break;
+            case 0x09:
+               if(flags & a_SHEXP_QUOTE_T_DOLLAR){
+                  c = 't';
+                  break;
+               }
+               if(flags & a_SHEXP_QUOTE_T_REVSOL)
+                  u.store = n_string_push_c(u.store, '\\');
+               goto jpush;
+            }
+            u.store = n_string_push_c(u.store, '\\');
+            if(c == c2){
+               u.store = n_string_push_c(u.store, 'c');
+               c ^= 0x40;
+            }
+            goto jpush;
+         }else if(blankspacechar(c) || c == '"' || c == '$'){
+            if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
+               goto jpush;
+            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
+            u.store = n_string_push_c(u.store, '\\');
+            goto jpush;
+         }else if(c == '\''){
+            if(flags & a_SHEXP_QUOTE_T_DOUBLE)
+               goto jpush;
+            assert(!(flags & a_SHEXP_QUOTE_T_SINGLE));
+            u.store = n_string_push_c(u.store, '\\');
+            goto jpush;
+         }else if(c == '\\'){
+            if(flags & a_SHEXP_QUOTE_T_SINGLE)
+               goto jpush;
+            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
+               a_SHEXP_QUOTE_T_DOLLAR));
+            u.store = n_string_push_c(u.store, '\\');
+            goto jpush;
+         }else if(asciichar(c)){
+            /* Shorthand: we can simply push that thing out */
+jpush:
+            u.store = n_string_push_c(u.store, c);
+            ++ib, --il;
+         }else{
+            /* Not an ASCII character, take care not to split up multibyte
+             * sequences etc. */
+#ifdef HAVE_NATCH_CHAR
+            if(options & OPT_UNICODE){
+               ui32_t uc;
+               char const *ib2;
+               size_t il2, il3;
+
+               ib2 = ib;
+               il3 = il2 = il;
+               if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+                  char itoa[32];
+                  char const *cp;
+
+                  il2 = PTR2SIZE(&ib2[0] - &ib[0]);
+                  if((flags & a_SHEXP_QUOTE_ROUNDTRIP) || uc == 0xFFFDu){
+                     /* Use padding to make ambiguities impossible */
+                     il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
+                           (uc > 0xFFFFu ? 'U' : 'u'),
+                           (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                     cp = itoa;
+                  }else{
+                     il3 = il2;
+                     cp = &ib[0];
+                  }
+                  u.store = n_string_push_buf(u.store, cp, il3);
+                  ib += il2, il -= il2;
+                  continue;
+               }
+            }
+#endif /* HAVE_NATCH_CHAR */
+
+            memset(&vic, 0, sizeof vic);
+            vic.vic_indat = ib;
+            vic.vic_inlen = il;
+            n_visual_info(&vic,
+               n_VISUAL_INFO_ONE_CHAR | n_VISUAL_INFO_SKIP_ERRORS);
+
+            /* Work this substring as sensitive as possible */
+            il -= vic.vic_oulen;
+            if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP))
+               u.store = n_string_push_buf(u.store, ib, il);
+#ifdef HAVE_ICONV
+            else if((vic.vic_indat = n_iconv_onetime_cp("utf-8",
+                  charset_get_lc(), savestrbuf(ib, il), FAL0)) != NULL){
+               ui32_t uc;
+               char const *ib2;
+               size_t il2, il3;
+
+               il3 = il2 = strlen(ib2 = vic.vic_indat);
+               if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+                  char itoa[32];
+
+                  il2 = PTR2SIZE(&ib2[0] - &vic.vic_indat[0]);
+                  /* Use padding to make ambiguities impossible */
+                  il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
+                        (uc > 0xFFFFu ? 'U' : 'u'),
+                        (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                  u.store = n_string_push_buf(u.store, itoa, il3);
+               }else
+                  goto Jxseq;
+            }
+#endif
+            else
+#ifdef HAVE_ICONV
+                 Jxseq:
+#endif
+                        while(il-- > 0){
+               u.store = n_string_push_buf(u.store, "\\xFF",
+                     sizeof("\\xFF") -1);
+               n_c_to_hex_base16(&u.store->s_dat[u.store->s_len - 2], *ib++);
+            }
+
+            ib = vic.vic_oudat;
+            il = vic.vic_oulen;
+         }
+      }
+   }
+
+   /* Close an open quote */
+   if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
+      u.store = n_string_push_c(u.store, '\'');
+   else if(flags & a_SHEXP_QUOTE_T_DOUBLE)
+      u.store = n_string_push_c(u.store, '"');
+#ifdef a_SHEXP_QUOTE_RECURSE
+jleave:
+#endif
+   NYD2_LEAVE;
+   return;
+
+#ifdef a_SHEXP_QUOTE_RECURSE
+jrecurse:
+   sqlp->sql_dat.l -= il;
+
+   sql.sql_link = sqlp;
+   sql.sql_dat.s = UNCONST(ib);
+   sql.sql_dat.l = il;
+   sql.sql_flags = flags;
+   a_shexp__quote(sqcp, &sql);
+   goto jleave;
+#endif
+
+#undef jrecurse
+#undef a_SHEXP_QUOTE_RECURSE
+}
 
 FL char *
 fexpand(char const *name, enum fexp_mode fexpm)
@@ -1235,204 +1623,29 @@ n_shell_parse_token_buf(char **store, char const *indat, size_t inlen,
 
 FL struct n_string *
 n_shell_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
-   /* TODO In v15 we need to save (possibly normalize) away user input,
-    * TODO so that the ORIGINAL (normalized) input can be used directly.
-    * Until then, stay somewhat primitive */
-#if 0
-   struct n_visual_info_ctx vic;
-#endif
-   enum{a_QNONE, a_QSINGLE, a_QDOLLAR} quote;
-   size_t il;
-   char const *ib;
+   struct a_shexp_quote_lvl sql;
+   struct a_shexp_quote_ctx sqc;
    NYD2_ENTER;
 
    assert(store != NULL);
    assert(input != NULL);
    assert(input->l == 0 || input->s != NULL);
 
-   ib = input->s;
-   if((il = input->l) == UIZ_MAX)
-      il = strlen(ib);
+   memset(&sqc, 0, sizeof sqc);
+   sqc.sqc_store = store;
+   sqc.sqc_input.s = input->s;
+   if((sqc.sqc_input.l = input->l) == UIZ_MAX)
+      sqc.sqc_input.l = strlen(input->s);
+   sqc.sqc_flags = rndtrip ? a_SHEXP_QUOTE_ROUNDTRIP : a_SHEXP_QUOTE_NONE;
 
-   /* An empty string needs to be quoted */
-   if(il == 0){
+   if(sqc.sqc_input.l == 0)
       store = n_string_push_buf(store, "''", sizeof("''") -1);
-      goto jleave;
+   else{
+      memset(&sql, 0, sizeof sql);
+      sql.sql_dat = sqc.sqc_input;
+      sql.sql_flags = sqc.sqc_flags;
+      a_shexp__quote(&sqc, &sql);
    }
-
-#if 0
-   memset(&vic, 0, sizeof vic);
-   vic.vic_indat = ib;
-   vic.vic_inlen = il;
-   vic.vic_flags = n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC;
-   i = n_visual_info(&vic);
-#endif
-
-   store = n_string_reserve(store, il + (il >> 2)); /* XXX */
-   quote = a_QNONE;
-
-#if 0
-def HAVE_C90AMEND1 /* TODO wchar! */
-   if(i){
-      wchar_t *wcp;
-
-
-   }else
-#endif /* HAVE_C90AMEND1 */
-   while(il > 0){
-      enum{a_NONE, a_CNTRL, a_SPACE, a_SQ, a_BS, a_NASCII} ct;
-      char c;
-
-      /* Classify character and type of quote, if necessary.
-       * Try shorthands whenever possible */
-      c = *ib;
-      if(cntrlchar(c))
-         ct = a_CNTRL;
-      else if(blankspacechar(c) || c == '"' || c == '$'){
-         if(quote == a_QSINGLE || quote == a_QDOLLAR)
-            goto jc_one;
-         ct = a_SPACE;
-      }else if(c == '\'')
-         ct = a_SQ;
-      else if(c == '\\'){
-         if(quote == a_QSINGLE)
-            goto jc_one;
-         ct = a_BS;
-      }else if(!asciichar(c)){
-         if(!rndtrip)
-            goto jc_one;
-         ct = a_NASCII;
-      }else{
-         /* Shorthand: we can simply push that thing out */
-jc_one:
-         store = n_string_push_c(store, c);
-         ++ib, --il;
-         continue;
-      }
-
-      /* We have to take care for quotes, try to reuse what we have */
-      if(quote == a_QNONE){
-         switch(ct){
-         case a_NONE:
-         case a_SPACE:
-         case a_BS:
-            /* See XXX note beloq on a_QNONE! */
-            store = n_string_push_c(store, '\'');
-            quote = a_QSINGLE;
-            goto jc_one;
-         case a_SQ:
-            /* XXX a_QNONE backslash escaping of a single character is
-             * XXX disabled, because that starts looking bad if it is
-             * XXX needed more than once.  We'd need to count in a dryrun
-             * XXX first, then decide whether it should be used!
-             * XXX store = n_string_push_c(store, '\\');
-             * XXX goto jc_one; */
-             goto jc_qdollar;
-         case a_NASCII:
-            assert(rndtrip);
-            /* FALLTHRU */
-         case a_CNTRL:
-jc_qdollar:
-            store = n_string_push_buf(store, "$'", sizeof("$'") -1);
-            quote = a_QDOLLAR;
-            break;
-         }
-      }else if(quote == a_QSINGLE){
-         switch(ct){
-         case a_NONE:
-         case a_SPACE:
-         case a_BS:
-            assert(0);
-         case a_NASCII:
-            assert(rndtrip);
-            /* FALLTHRU */
-         case a_CNTRL:
-            store = n_string_push_c(store, '\'');
-            goto jc_qdollar;
-         case a_SQ:
-            /* xxx For SQ we possibly should also simply go for QDOLLAR now? */
-            store = n_string_push_c(store, '\'');
-            quote = a_QNONE;
-            store = n_string_push_c(store, '\\');
-            goto jc_one;
-         }
-      }
-
-      assert(quote == a_QDOLLAR);
-      switch(ct){
-      case a_NONE:
-      case a_SPACE:
-         assert(0);
-      case a_SQ:
-      case a_BS:
-         store = n_string_push_c(store, '\\');
-         goto jc_one;
-      case a_CNTRL:{
-         char c2;
-
-         store = n_string_push_c(store, '\\');
-         switch(c2 = c){
-         case 0x07: c = 'a'; break;
-         case 0x08: c = 'b'; break;
-         case 0x09: c = 't'; break;
-         case 0x0A: c = 'n'; break;
-         case 0x0B: c = 'v'; break;
-         case 0x0C: c = 'f'; break;
-         case 0x0D: c = 'r'; break;
-         default: break;
-         }
-         if(c == c2){
-            store = n_string_push_c(store, 'c');
-            c ^= 0x40;
-         }
-         goto jc_one;
-      }  break;
-      case a_NASCII:
-         assert(rndtrip);
-#ifdef HAVE_NATCH_CHAR
-         if(options & OPT_UNICODE){
-            ui32_t u;
-            char const *ib2 = ib;
-            size_t il2 = il, il3 = il2;
-
-            if((u = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
-               char itoa[32];
-               char const *cp;
-
-               il2 = PTR2SIZE(&ib2[0] - &ib[0]);
-               if(rndtrip || u == 0xFFFD/* TODO CText */){
-                  cp = itoa;
-                  il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
-                        (u > 0xFFFFu ? 'U' : 'u'),
-                        (int)(u > 0xFFFFu ? 8 : 4), u);
-               }else{
-                  cp = &ib[0];
-                  il3 = il2 + 1;
-               }
-               store = n_string_push_buf(store, cp, il3);
-               ib += il2, il -= il2;
-               goto jc_useq;
-            }
-         }
-#endif /* HAVE_NATCH_CHAR */
-
-         store = n_string_push_buf(store, "\\xFF", sizeof("\\xFF") -1);
-         n_c_to_hex_base16(&store->s_dat[store->s_len - 2], c);
-         ++ib, --il;
-#ifdef HAVE_NATCH_CHAR
-jc_useq:
-#endif
-         if(il > 0 && hexchar(ib[1])){
-            store = n_string_push_c(store, '\'');
-            quote = a_QNONE;
-         }
-         break;
-      }
-   }
-
-   if(quote == a_QSINGLE || quote == a_QDOLLAR)
-      store = n_string_push_c(store, '\'');
-jleave:
    NYD2_LEAVE;
    return store;
 }

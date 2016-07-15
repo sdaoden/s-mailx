@@ -753,7 +753,7 @@ n_string_cp_const(struct n_string const *self){
  * UTF-8
  */
 
-#ifdef HAVE_NATCH_CHAR
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL ui32_t
 n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
 {
@@ -808,9 +808,7 @@ jerr:
    c = UI32_MAX;
    goto jleave;
 }
-#endif /* HAVE_NATCH_CHAR */
 
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL size_t
 n_utf32_to_utf8(ui32_t c, char *buf)
 {

@@ -2096,14 +2096,12 @@ n_INLINE struct n_string *
 
 /* UTF-8 stuff */
 
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 /* ..and update arguments to point after range; returns UI32_MAX on error, in
  * which case the arguments will have been stepped one byte */
-#ifdef HAVE_NATCH_CHAR
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
-#endif
 
 /* buf must be large enough also for NUL, it's new length will be returned */
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 #endif
 
