@@ -1045,11 +1045,31 @@ run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
-##
+feat_def() {
+   if feat_yes ${1}; then
+      echo '#define HAVE_'${1}'' >> ${h}
+   else
+      echo '/* WANT_'${1}'=0 */' >> ${h}
+   fi
+}
+
+squeeze_em() {
+   < "${1}" > "${2}" ${awk} \
+   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
+}
+
+## Generics
 
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
-feat_yes CROSS_BUILD && msg ' . CROSS_BUILD enabled, not _running_ tests'
+
+feat_def AMALGAMATION
+feat_def CROSS_BUILD
+feat_def DEBUG
+feat_def DEVEL
+feat_def DOCSTRINGS
+feat_def ERRORS
+feat_def NYD2
 
 if run_check inline '"inline" functions' \
    '#define HAVE_INLINE
@@ -1082,7 +1102,9 @@ then
    :
 fi
 
-##
+## Test for "basic" system-calls / functionality that is used by all parts
+## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
+## macros to be used by only the subprograms (potentially).
 
 if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
@@ -1311,7 +1333,7 @@ else
    config_exit 1
 fi
 
-##
+## optional stuff
 
 run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
@@ -1394,6 +1416,97 @@ int main(void){
 }
 !
 
+if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+#include <stdlib.h>
+int main(void){
+   char x_buf[4096], *x = realpath(".", x_buf);
+
+   return (x != NULL) ? 0 : 1;
+}
+!
+then
+   if run_check realpath_malloc 'realpath(3) takes NULL' \
+         '#define HAVE_REALPATH_NULL' << \!
+#include <stdlib.h>
+int main(void){
+   char *x = realpath(".", NULL);
+
+   if(x != NULL)
+      free(x);
+   return (x != NULL) ? 0 : 1;
+}
+!
+   then
+      :
+   fi
+fi
+
+## optional and selectable
+
+if feat_no NOALLOCA; then
+   # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
+   # versions of alloca(3) since modern compilers just can't be trusted
+   # not to overoptimize and silently break some code
+   run_check alloca '__builtin_alloca()' \
+      '#define HAVE_ALLOCA __builtin_alloca' << \!
+#include <stdio.h> /* For C89 NULL */
+int main(void){
+   void *vp = __builtin_alloca(1);
+
+   return (vp != NULL);
+}
+!
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check readlink 'readlink(2)' << \!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   char buf[128];
+
+   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check fchown 'fchown(2)' << \!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   if(!fchown(0, 0, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+## Now it is the time to fork away the BASE_ series
+
+${rm} -f ${tmp}
+squeeze_em ${inc} ${tmp}
+${mv} ${tmp} ${inc}
+squeeze_em ${lib} ${tmp}
+${mv} ${tmp} ${lib}
+
+echo "BASE_LIBS = `${cat} ${lib}`" >> ${mk}
+echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
+
+## The remains are expected to be used only by the main MUA binary!
+
 link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void){
@@ -1442,31 +1555,6 @@ int main(void){
 !
 fi # have_setlocale
 
-if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
-#include <stdlib.h>
-int main(void){
-   char x_buf[4096], *x = realpath(".", x_buf);
-
-   return (x != NULL) ? 0 : 1;
-}
-!
-then
-   if run_check realpath_malloc 'realpath(3) takes NULL' \
-         '#define HAVE_REALPATH_NULL' << \!
-#include <stdlib.h>
-int main(void){
-   char *x = realpath(".", NULL);
-
-   if(x != NULL)
-      free(x);
-   return (x != NULL) ? 0 : 1;
-}
-!
-   then
-      :
-   fi
-fi
-
 link_check fnmatch 'fnmatch(3)' '#define HAVE_FNMATCH' << \!
 #include <fnmatch.h>
 int main(void){
@@ -1483,78 +1571,7 @@ int main(void){
 }
 !
 
-##
-
-if feat_yes DEBUG; then
-   echo '#define HAVE_DEBUG' >> ${h}
-fi
-
-if feat_yes AMALGAMATION; then
-   echo '#define HAVE_AMALGAMATION' >> ${h}
-fi
-
-if feat_no NOALLOCA; then
-   # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
-   # versions of alloca(3) since modern compilers just can't be trusted
-   # not to overoptimize and silently break some code
-   run_check alloca '__builtin_alloca()' \
-      '#define HAVE_ALLOCA __builtin_alloca' << \!
-#include <stdio.h> /* For C89 NULL */
-int main(void){
-   void *vp = __builtin_alloca(1);
-
-   return (vp != NULL);
-}
-!
-fi
-
-if feat_yes DEVEL; then
-   echo '#define HAVE_DEVEL' >> ${h}
-fi
-
-if feat_yes NYD2; then
-   echo '#define HAVE_NYD2' >> ${h}
-fi
-
-##
-
-if feat_yes DOTLOCK; then
-   if run_check readlink 'readlink(2)' << \!
-#include <unistd.h>
-# include <errno.h>
-int main(void){
-   char buf[128];
-
-   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
-      return 0;
-   return 1;
-}
-!
-   then
-      :
-   else
-      feat_bail_required DOTLOCK
-   fi
-fi
-
-if feat_yes DOTLOCK; then
-   if run_check fchown 'fchown(2)' << \!
-#include <unistd.h>
-# include <errno.h>
-int main(void){
-   if(!fchown(0, 0, 0) || errno != ENOSYS)
-      return 0;
-   return 1;
-}
-!
-   then
-      :
-   else
-      feat_bail_required DOTLOCK
-   fi
-fi
-
-##
+## optional and selectable
 
 if feat_yes ICONV; then
    ${cat} > ${tmp2}.c << \!
@@ -2272,14 +2289,6 @@ else
    echo '/* WANT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
 fi
 
-if feat_yes ERRORS; then
-   echo '#define HAVE_ERRORS' >> ${h}
-else
-   echo '/* WANT_ERRORS=0 */' >> ${h}
-fi
-
-##
-
 if feat_yes SPAM_SPAMC; then
    echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
@@ -2296,22 +2305,12 @@ else
    echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
 fi
 
-if feat_yes SPAM_FILTER; then
-   echo '#define HAVE_SPAM_FILTER' >> ${h}
-else
-   echo '/* WANT_SPAM_FILTER=0 */' >> ${h}
-fi
+feat_def SPAM_FILTER
 
 if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
    echo '#define HAVE_SPAM' >> ${h}
 else
    echo '/* HAVE_SPAM */' >> ${h}
-fi
-
-if feat_yes DOCSTRINGS; then
-   echo '#define HAVE_DOCSTRINGS' >> ${h}
-else
-   echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
 if feat_yes QUOTE_FOLD &&\
@@ -2321,43 +2320,14 @@ else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
-if feat_yes FILTER_HTML_TAGSOUP; then
-   echo '#define HAVE_FILTER_HTML_TAGSOUP' >> ${h}
-else
-   echo '/* WANT_FILTER_HTML_TAGSOUP=0 */' >> ${h}
-fi
-
-if feat_yes COLOUR; then
-   echo '#define HAVE_COLOUR' >> ${h}
-else
-   echo '/* WANT_COLOUR=0 */' >> ${h}
-fi
-
-if feat_yes DOTLOCK; then
-   echo '#define HAVE_DOTLOCK' >> ${h}
-else
-   echo '/* WANT_DOTLOCK=0 */' >> ${h}
-fi
-
-if feat_yes MD5; then
-   echo '#define HAVE_MD5' >> ${h}
-else
-   echo '/* WANT_MD5=0 */' >> ${h}
-fi
-
-if feat_yes NOMEMDBG; then
-   echo '#define HAVE_NOMEMDBG' >> ${h}
-else
-   echo '/* WANT_NOMEMDBG=0 */' >> ${h}
-fi
+feat_def FILTER_HTML_TAGSOUP
+feat_def COLOUR
+feat_def DOTLOCK
+feat_def MD5
+feat_def NOMEMDBG
 
 ## Summarizing
 
-# Since we cat(1) the content of those to cc/"ld", convert them to single line
-squeeze_em() {
-   < "${1}" > "${2}" ${awk} \
-   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
-}
 ${rm} -f ${tmp}
 squeeze_em ${inc} ${tmp}
 ${mv} ${tmp} ${inc}
@@ -2406,6 +2376,7 @@ printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_CROSS_BUILD\n   ",CROSS-BUILD"\n# endif\n' >> ${h}
 printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk

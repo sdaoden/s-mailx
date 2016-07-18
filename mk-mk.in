@@ -41,10 +41,14 @@ $(PRIVSEP): privsep.o
 	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
 	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) privsep.o';\
 	fi;\
-	$(CC) $(LDFLAGS) -o $(@) privsep.o
+	$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-privsep.o: config.h nail.h dotlock.h
+privsep.o: privsep.c config.h nail.h dotlock.h
+	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(@)';\
+	else echo '  $$ $(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c';\
+	fi;\
+	$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
 
 mime_types.h: mime.types
 	@echo '  GEN $(@)';\
