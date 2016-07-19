@@ -932,6 +932,16 @@ ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
 
+if [ -z "${VERBOSE}" ]; then
+   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${mk}
+   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${mk}
+   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${mk}
+   printf -- "ECHO_TEST = @\n" >> ${mk}
+   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${mk}
+   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${mk}
+   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${mk}
+fi
+
 ## Compile and link checking
 
 tmp3=./${tmp0}3$$

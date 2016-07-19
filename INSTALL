@@ -73,9 +73,9 @@ The following make(1) targets exists, the default being `build':
 
 - test        Run "cc-test.sh" in --check-only mode on the built binary.
 
-Setting the make(1) variable $VERBOSE to an arbitrary value, as in
-"$ make VERBOSE=xy tangerine", will change the output of the `all',
-`install' etc. targets to a different, more verbose one.
+Setting the make(1) variable $VERBOSE to an arbitrary value during
+`config' time, as in "$ make VERBOSE=xy tangerine", will change the
+output of the `all', `install' etc. targets to a more verbose one.
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable $C_INCLUDE_PATH

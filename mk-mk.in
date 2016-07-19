@@ -1,32 +1,19 @@
 #@ "mk-mk.in" -- mk.mk template, completed by mk-conf.sh.
 #@ Please see "INSTALL" and "make.rc" instead.
 
+SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
+
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
-	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(<)';\
-	else echo '  $$ $(CC) $(CFLAGS) $(INCS) -c $(<)';\
-	fi;\
-	$(CC) $(CFLAGS) $(INCS) -c $(<)
+	$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(<)
 .c .y: ;
 
-all: _all_echoes $(UAGENT) $(OPTIONAL_PRIVSEP)
-_all_echoes:
-	@echo 'Building..';\
-	if [ -z "$(VERBOSE)" ]; then \
-		echo '. CC      : $(CC)';\
-		echo '. CFLAGS  : $(CFLAGS)';\
-		echo '. INCS    : $(INCS)';\
-		[ -n "$(LDFLAGS)" ] && echo '. LDFLAGS : $(LDFLAGS)';\
-		echo '. LIBS    : $(LIBS)';\
-	fi
+all: $(UAGENT) $(OPTIONAL_PRIVSEP)
 
 $(UAGENT): $(OBJ)
-	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
-	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)';\
-	fi;\
-	$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
-	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
+	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
+	$(SIZE_CHECK)
 
 $(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
 $(AMALGAM_TARGET) accmacvar.o: okeys.h version.h
@@ -38,20 +25,20 @@ $(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
 $(AMALGAM_TARGET) termcap.o: tcaps.h
 
 $(PRIVSEP): privsep.o
-	@if [ -z "$(VERBOSE)" ]; then echo '  LINK $(@)';\
-	else echo '  $$ $(CC) $(LDFLAGS) -o $(@) privsep.o';\
-	fi;\
-	$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
-	@if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
+	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
+	$(SIZE_CHECK)
 
 privsep.o: privsep.c config.h nail.h dotlock.h
-	@if [ -z "$(VERBOSE)" ]; then echo '  CC $(@)';\
-	else echo '  $$ $(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c';\
-	fi;\
-	$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
+	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
+
+test: all
+	$(ECHO_TEST)\
+	MAKE=$(MAKE) \
+	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
+	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
 mime_types.h: mime.types
-	@echo '  GEN $(@)';\
+	$(ECHO_GEN)\
 	LC_ALL=C < ./mime.types > $(@) $(awk) '\
 	function add(mt, ln) {\
 		gsub(/[[:space:]]+/, " ", ln);\
@@ -114,19 +101,13 @@ mime_types.h: mime.types
 	}\
 	'
 
-test: all
-	@echo 'Running test, please wait';\
-	MAKE=$(MAKE) \
-	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
-	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
-
 # Corresponds to same thing in makefile!
 _version_from_header = VERSION="`< version.h $(sed) \
 		-e '/ VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
 mkman.1: nail.1
-	@[ -n "$(VERBOSE)" ] && echo '  GEN $(UAGENT) manual ($(@))';\
+	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 		$(_version_from_header) \
 	< ./nail.1 > $(@) $(awk) '\
@@ -152,8 +133,7 @@ mkman.1: nail.1
 	'
 
 mkrc.rc: nail.rc
-	@[ -n "$(VERBOSE)" ] &&\
-		echo '  GEN $(UAGENT) default resource file ($(@))';\
+	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
 		$(_version_from_header) \
 	< ./nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
@@ -173,46 +153,29 @@ mkrc.rc: nail.rc
 	{print}\
 	'
 
-_install_echoes:
-	@echo 'Installing..'
-install: _install_echoes mkman.1 mkrc.rc
-	@__mkdir() {\
+install: mkman.1 mkrc.rc
+	$(ECHO_BLOCK_BEGIN)\
+	__mkdir() {\
 		_dir=$${1};\
 		if [ -d "$${_dir}" ]; then :; else\
-			[ -n "$(VERBOSE)" ] &&\
-				echo "  \$$ $(mkdir) -m 0755 -p '$${_dir}'";\
 			$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _dst=$${3};\
-		[ -n "$(VERBOSE)" ] &&\
-			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
 		$(cp) -f "$${_src}" "$${_dst}";\
-		[ -n "$(VERBOSE)" ] &&\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} _dst=$${4};\
-		[ -n "$(VERBOSE)" ] &&\
-			echo "  \$$ $(cp) -f '$${_src}' '$${_dst}'";\
 		$(cp) -f "$${_src}" "$${_dst}";\
-		[ -n "$(VERBOSE)" ] &&\
-			echo "  \$$ $(chown) $${_ident} '$${_dst}'";\
 		$(chown) $${_ident} "$${_dst}";\
-		[ -n "$(VERBOSE)" ] &&\
-			echo "  \$$ $(chmod) $${_mode} '$${_dst}'";\
 		$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__stripfile() {\
 		_file=$${1};\
-		if [ "$(WANT_DEBUG)" != 0 ]; then \
-			[ -n "$(VERBOSE)" ] &&\
-				echo "  \$$ :WANT_DEBUG=1, not strip(1)ing";\
+		if [ "$(WANT_DEBUG)" != 0 ]; then :;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
-			[ -n "$(VERBOSE)" ] &&\
-				echo "  \$$ $(STRIP) '$${_file}'";\
 			$(strip) "$${_file}";\
 		fi;\
 	};\
@@ -243,40 +206,31 @@ install: _install_echoes mkman.1 mkrc.rc
 	if [ -f "$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)" ]; then :; else\
 		__copyfile 0444 ./mkrc.rc \
 			"$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)";\
-	fi
+	fi;\
+	$(ECHO_BLOCK_END)
 
 uninstall:
-	@echo 'Uninstalling..';\
-	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
-			"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1"';\
+	$(ECHO_BLOCK_BEGIN)\
+	echo 'Uninstalling..';\
 	$(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
 		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo \
-			  '  $$ $(rm) -f "$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)"';\
 		$(rm) -f "$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
 	fi;\
 	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
 		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"';\
-	fi
+	fi;\
+	$(ECHO_BLOCK_END)
 
 clean:
-	@echo 'Cleaning up..';\
-	[ -n "$(VERBOSE)" ] &&\
-		echo '  $$ $(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 \
-			./mkrc.rc';\
+	$(ECHO_CMD)\
 	$(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc;\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		[ -n "$(VERBOSE)" ] &&\
-			echo '  $$ $(rm) -f ./privsep.o $(PRIVSEP)';\
 		$(rm) -f ./privsep.o $(PRIVSEP);\
 	fi
 
 distclean: clean
-	@echo 'Deconfiguring..';\
-	[ -n "$(VERBOSE)" ] && echo '  $$ $(rm) -f ./config.* ./*.mk';\
+	$(ECHO_CMD)\
 	$(rm) -f ./config.* ./*.mk
 
 # MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise modify makefile
