@@ -65,7 +65,7 @@ union rand_state {
 #ifdef HAVE_ERRORS
 struct a_aux_err_node{
    struct a_aux_err_node *ae_next;
-   struct str ae_str;
+   struct n_string ae_str;
 };
 #endif
 
@@ -78,7 +78,7 @@ static union rand_state *_rand;
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 static size_t a_aux_err_cnt, a_aux_err_cnt_noted;
 #endif
-static size_t a_aux_err_dirty;
+static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
@@ -796,13 +796,38 @@ n_err(char const *format, ...){
    else
 #endif
    {
-      if(a_aux_err_dirty++ == 0)
-         fputs(UAGENT ": ", stderr);
-      vfprintf(stderr, format, ap);
-      if(strchr(format, '\n') != NULL){ /* TODO */
-         a_aux_err_dirty = 0;
-         fflush(stderr);
+      size_t len;
+      bool_t doname, doflush;
+
+      doflush = FAL0;
+      while(*format == '\n'){
+         doflush = TRU1;
+         putc('\n', stderr);
+         ++format;
       }
+
+      if((doname = doflush))
+         a_aux_err_linelen = 0;
+
+      if((len = strlen(format)) > 0){
+         if(doname || a_aux_err_linelen == 0)
+            fputs(UAGENT ": ", stderr);
+         vfprintf(stderr, format, ap);
+
+         /* C99 */{
+            size_t i = len;
+            do{
+               if(format[--len] == '\n'){
+                  a_aux_err_linelen = (i -= ++len);
+                  break;
+               }
+               ++a_aux_err_linelen;
+            }while(len > 0);
+         }
+      }
+
+      if(doflush)
+         fflush(stderr);
    }
    va_end(ap);
    NYD2_LEAVE;
@@ -812,79 +837,124 @@ FL void
 n_verr(char const *format, va_list ap){
    /* Check use cases of PS_ERRORS_NOTED, too! */
 #ifdef HAVE_ERRORS
-   char buf[LINESIZE], *xbuf;
-   int lmax, l;
    struct a_aux_err_node *enp;
-
-   LCTA(ERRORS_MAX > 3);
 #endif
+   bool_t doname, doflush;
+   size_t len;
    NYD2_ENTER;
 
-   if(a_aux_err_dirty++ == 0)
+   doflush = FAL0;
+   while(*format == '\n'){
+      doflush = TRU1;
+      putc('\n', stderr);
+      ++format;
+   }
+
+   if((doname = doflush)){
+      a_aux_err_linelen = 0;
+#ifdef HAVE_ERRORS
+      if(options & OPT_INTERACTIVE){
+         if((enp = a_aux_err_tail) != NULL &&
+               (enp->ae_str.s_len > 0 &&
+                enp->ae_str.s_dat[enp->ae_str.s_len - 1] != '\n'))
+            n_string_push_c(&enp->ae_str, '\n');
+      }
+#endif
+   }
+
+   if((len = strlen(format)) == 0)
+      goto jleave;
+
+   if(doname || a_aux_err_linelen == 0)
       fputs(UAGENT ": ", stderr);
+
+   /* C99 */{
+      size_t i = len;
+      do{
+         if(format[--len] == '\n'){
+            a_aux_err_linelen = (i -= ++len);
+            break;
+         }
+         ++a_aux_err_linelen;
+      }while(len > 0);
+   }
 
 #ifdef HAVE_ERRORS
    if(!(options & OPT_INTERACTIVE))
 #endif
-   {
       vfprintf(stderr, format, ap);
-      goto jleave;
-   }
-
 #ifdef HAVE_ERRORS
-   xbuf = buf;
-   lmax = sizeof buf;
-jredo:
-   l = vsnprintf(xbuf, lmax, format, ap);
-   if (l <= 0)
-      goto jleave;
-   if (UICMP(z, l, >=, lmax)) {
-      /* FIXME Cannot reuse va_list
-      lmax = ++l;
-      xbuf = srealloc((xbuf == buf ? NULL : xbuf), lmax);
-      goto jredo;
-      */
-   }
+   else{
+      int imax, i;
+      LCTA(ERRORS_MAX > 3);
 
-   fwrite(xbuf, 1, l, stderr);
-
-   /* Link it into the `errors' message ring */
-   if((enp = a_aux_err_tail) == NULL){
+      /* Link it into the `errors' message ring */
+      if((enp = a_aux_err_tail) == NULL){
 jcreat:
-      enp = scalloc(1, sizeof *enp);
-      if(a_aux_err_tail != NULL)
+         enp = smalloc(sizeof *enp);
+         enp->ae_next = NULL;
+         n_string_creat(&enp->ae_str);
+         if(a_aux_err_tail != NULL)
+            a_aux_err_tail->ae_next = enp;
+         else
+            a_aux_err_head = enp;
+         a_aux_err_tail = enp;
+         ++a_aux_err_cnt;
+      }else if(doname ||
+            (enp->ae_str.s_len > 0 &&
+             enp->ae_str.s_dat[enp->ae_str.s_len - 1] == '\n')){
+         if(a_aux_err_cnt < ERRORS_MAX)
+            goto jcreat;
+
+         a_aux_err_head = (enp = a_aux_err_head)->ae_next;
          a_aux_err_tail->ae_next = enp;
-      else
-         a_aux_err_head = enp;
-      a_aux_err_tail = enp;
-      ++a_aux_err_cnt;
-   }else if(enp->ae_str.l > 0 && enp->ae_str.s[enp->ae_str.l - 1] == '\n'){
-      if(a_aux_err_cnt < ERRORS_MAX)
-         goto jcreat;
+         a_aux_err_tail = enp;
+         enp->ae_next = NULL;
+         n_string_trunc(&enp->ae_str, 0);
+      }
 
-      a_aux_err_head = (enp = a_aux_err_head)->ae_next;
-      a_aux_err_tail->ae_next = enp;
-      a_aux_err_tail = enp;
-      free(enp->ae_str.s);
-      memset(enp, 0, sizeof *enp);
+# ifdef HAVE_VA_COPY
+      imax = 64;
+# else
+      imax = LINESIZE;
+# endif
+      for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
+# ifdef HAVE_VA_COPY
+         va_list vac;
+
+         va_copy(vac, ap);
+# else
+#  define vac ap
+# endif
+         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (size_t)i);
+         i = vsnprintf(&enp->ae_str.s_dat[len], (size_t)i, format, vac);
+# ifdef HAVE_VA_COPY
+         va_end(vac);
+# else
+#  undef vac
+# endif
+         if(i <= 0)
+            goto jleave;
+         if(UICMP(z, i, >=, imax)){
+# ifdef HAVE_VA_COPY
+            /* XXX Check overflow for upcoming LEN+++i! */
+            n_string_trunc(&enp->ae_str, len);
+            continue;
+# else
+            i = (int)strlen(&enp->ae_str.s_dat[len]);
+# endif
+         }
+         break;
+      }
+      n_string_trunc(&enp->ae_str, len + (size_t)i);
+
+      fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, stderr);
    }
-
-   n_str_add_buf(&enp->ae_str, xbuf, l);
-
-   if(xbuf != buf)
-      free(xbuf);
 #endif /* HAVE_ERRORS */
 
 jleave:
-   /* If the format ends with newline, be clean again */
-   /* C99 */{
-      size_t i = strlen(format);
-
-      if(i > 0 && format[i - 1] == '\n'){
-         fflush(stderr);
-         a_aux_err_dirty = 0;
-      }
-   }
+   if(doflush)
+      fflush(stderr);
    NYD2_LEAVE;
 }
 
@@ -922,7 +992,7 @@ n_alert(char const *format, ...){
    va_list ap;
    NYD2_ENTER;
 
-   n_err(a_aux_err_dirty > 0 ? _("\nAlert: ") : _("Alert: "));
+   n_err(a_aux_err_linelen > 0 ? _("\nAlert: ") : _("Alert: "));
 
    va_start(ap, format);
    n_verr(format, ap);
@@ -937,9 +1007,9 @@ n_panic(char const *format, ...){
    va_list ap;
    NYD2_ENTER;
 
-   if(a_aux_err_dirty > 0){
+   if(a_aux_err_linelen > 0){
       putc('\n', stderr);
-      a_aux_err_dirty = 0;
+      a_aux_err_linelen = 0;
    }
    fprintf(stderr, UAGENT ": Panic: ");
 
@@ -973,7 +1043,7 @@ jerr:
    v = NULL;
 jleave:
    NYD_LEAVE;
-   return v == NULL ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */
+   return (v == NULL) ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */
 
 jlist:{
       FILE *fp;
@@ -992,8 +1062,8 @@ jlist:{
       }
 
       for(i = 0, enp = a_aux_err_head; enp != NULL; enp = enp->ae_next)
-         fprintf(fp, "- %4" PRIuZ ". %" PRIuZ " bytes: %s",
-            ++i, enp->ae_str.l, enp->ae_str.s);
+         fprintf(fp, "%4" PRIuZ ". %u B: %s",
+            ++i, enp->ae_str.s_len, n_string_cp(&enp->ae_str));
       /* We don't know wether last string ended with NL; be simple */
       putc('\n', fp);
 
@@ -1005,9 +1075,10 @@ jlist:{
 jclear:
    a_aux_err_tail = NULL;
    a_aux_err_cnt = a_aux_err_cnt_noted = 0;
+   a_aux_err_linelen = 0;
    while((enp = a_aux_err_head) != NULL){
       a_aux_err_head = enp->ae_next;
-      free(enp->ae_str.s);
+      n_string_gut(&enp->ae_str);
       free(enp);
    }
    goto jleave;
