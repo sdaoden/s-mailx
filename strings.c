@@ -646,6 +646,23 @@ FL struct n_string *
 }
 
 FL struct n_string *
+(n_string_resize)(struct n_string *self, size_t nlen SMALLOC_DEBUG_ARGS){
+   ui32_t l;
+   NYD_ENTER;
+
+   assert(self != NULL);
+
+   if((l = self->s_len) > nlen)
+      self->s_len = nlen;
+   else{
+      nlen -= l;
+      self = (n_string_reserve)(self, nlen SMALLOC_DEBUG_ARGSCALL);
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
 (n_string_push_buf)(struct n_string *self, char const *buf, size_t buflen
       SMALLOC_DEBUG_ARGS){
    NYD_ENTER;
