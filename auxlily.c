@@ -1874,9 +1874,11 @@ jredo:
    if (l <= 0)
       goto jleave;
    if (UICMP(z, l, >=, lmax)) {
+      /* FIXME Cannot reuse va_list
       lmax = ++l;
       xbuf = srealloc((xbuf == buf ? NULL : xbuf), lmax);
       goto jredo;
+      */
    }
 
    fwrite(xbuf, 1, l, stderr);
