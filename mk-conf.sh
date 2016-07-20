@@ -1268,29 +1268,19 @@ else
    config_exit 1
 fi
 
-if link_check snprintf 'v?snprintf(3)' << \!
-#include <stdarg.h>
+if link_check snprintf 'snprintf(3)' << \!
 #include <stdio.h>
-static void dome(char *buf, ...){
-   va_list ap;
-
-   va_start(ap, buf);
-   vsnprintf(buf, 20, "%s", ap);
-   va_end(ap);
-   return;
-}
 int main(void){
    char b[20];
 
    snprintf(b, sizeof b, "%s", "string");
-   dome(b, "string");
    return 0;
 }
 !
 then
    :
 else
-   msg 'ERROR: we require the snprintf(3) and vsnprintf(3) functions.'
+   msg 'ERROR: we require the snprintf(3) function.'
    config_exit 1
 fi
 
@@ -1352,6 +1342,56 @@ else
 fi
 
 ## optional stuff
+
+if link_check vsnprintf 'vsnprintf(3)' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome(char *buf, size_t blen, ...){
+   va_list ap;
+
+   va_start(ap, buf);
+   vsnprintf(buf, blen, "%s", ap);
+   va_end(ap);
+}
+int main(void){
+   char b[20];
+
+   dome(b, sizeof b, "string");
+   return 0;
+}
+!
+then
+   :
+else
+   feat_bail_required ERRORS
+fi
+
+if [ "${have_vsnprintf}" = yes ]; then
+   link_check va_copy 'va_copy(3)' '#define HAVE_VA_COPY' << \!
+#include <stdarg.h>
+#include <stdio.h>
+static void dome2(char *buf, size_t blen, va_list src){
+   va_list ap;
+
+   va_copy(ap, src);
+   vsnprintf(buf, blen, "%s", ap);
+   va_end(ap);
+}
+static void dome(char *buf, size_t blen, ...){
+   va_list ap;
+
+   va_start(ap, buf);
+   dome2(buf, blen, ap)
+   va_end(ap);
+}
+int main(void){
+   char b[20];
+
+   dome(b, sizeof b, "string");
+   return 0;
+}
+!
+fi
 
 run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
