@@ -41,7 +41,7 @@
 
 #include <pwd.h>
 
-/* Update mailname (if name != NULL) and displayname, return wether displayname
+/* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
 #ifdef HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
@@ -93,7 +93,7 @@ _update_mailname(char const *name)
 
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL && errno != ENOENT) {
-            n_err(_("Can't canonicalize \"%s\"\n"), name);
+            n_err(_("Can't canonicalize %s\n"), n_shell_quote_cp(name, FAL0));
             rv = FAL0;
             goto jdocopy;
          }
@@ -225,7 +225,8 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    if ((ibuf = Zopen(name, "r")) == NULL) {
       if ((fm & FEDIT_SYSBOX) && errno == ENOENT) {
          if (strcmp(who, myname) && getpwnam(who) == NULL) {
-            n_err(_("\"%s\" is not a user of this system\n"), who);
+            n_err(_("%s is not a user of this system\n"),
+               n_shell_quote_cp(who, FAL0));
             goto jem2;
          }
          if (!(options & OPT_QUICKRUN_MASK) && ok_blook(bsdcompat))
@@ -283,7 +284,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
     * TODO point to the same box that we just have written, so any updates
     * TODO we won't see!  Reopen again in this case.  RACY! Goes with VOID! */
    /* TODO In addition: in case of compressed/hook boxes we lock a temporary! */
-   /* TODO We may uselessly open twice but quit() doesn't say wether we were
+   /* TODO We may uselessly open twice but quit() doesn't say whether we were
     * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
    if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !strcmp(name, mailname)) {
       name = mailname;
@@ -353,7 +354,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    mailsize = fsize(ibuf);
 
    /* TODO This is too simple minded?  We should regenerate an index file
-    * TODO to be able to truly tell wether *anything* has changed! */
+    * TODO to be able to truly tell whether *anything* has changed! */
    if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
       rele_sigs();
       goto jleave;
@@ -530,8 +531,8 @@ newfileinfo(void)
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   printf(_("\"%s\": "),
-      (_update_mailname(NULL) ? displayname : mailname));
+   printf(_("%s: "), n_shell_quote_cp(
+      (_update_mailname(NULL) ? displayname : mailname), FAL0));
    if (msgCount == 1)
       printf(_("1 message"));
    else
@@ -774,7 +775,8 @@ folder_query(void){
          }else if(errno == ENOENT)
             rv = cp;
          else{
-            n_err(_("Can't canonicalize *folder*: \"%s\"\n"), cp);
+            n_err(_("Can't canonicalize *folder*: %s\n"),
+               n_shell_quote_cp(cp, FAL0));
             err = TRU1;
             rv = "";
          }

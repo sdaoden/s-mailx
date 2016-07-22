@@ -1,6 +1,6 @@
 #@ Makefile for S-nail.
-#@ Adjustments have to be made in "make.rc" -- or on the command line.
-#@ See the file "INSTALL" if you need help.
+#@ Adjustments have to be made in make.rc -- or on the command line.
+#@ See the file INSTALL if you need help.
 
 .PHONY: ohno tangerine all config build install uninstall clean distclean test \
 	devel odevel

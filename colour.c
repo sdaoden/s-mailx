@@ -94,7 +94,7 @@ struct a_colour_g{
  * TODO carrier structure in equal spirit to the fio.c stack, which gets
  * TODO created for each execute() cycle (long in TODO), and carries along
  * TODO all the information, memory allocations and also output (filter)
- * TODO chains, so that we could actually decide wether we could simply
+ * TODO chains, so that we could actually decide whether we could simply
  * TODO suspend output for a chain, need to place reset sequences, etc.
  * TODO For now, since we have no such carrier to know where colour
  * TODO sequences have to be written, creating a colour environment requires
@@ -234,7 +234,8 @@ a_colour_mux(char **argv){
 
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1 &&
          (*argv != NULL || !n_is_all_or_aster(argv[-1]))){
-      n_err(_("`colour': invalid colour type \"%s\"\n"), argv[-1]);
+      n_err(_("`colour': invalid colour type %s\n"),
+         n_shell_quote_cp(argv[-1], FAL0));
       rv = FAL0;
       goto jleave;
    }
@@ -251,35 +252,38 @@ a_colour_mux(char **argv){
    regexp = NULL;
 
    if((cmip = a_colour_map_id_find(mapname = argv[0])) == NULL){
-      n_err(_("`colour': non-existing mapping: \"%s\"\n"), mapname);
+      n_err(_("`colour': non-existing mapping: %s\n"),
+         n_shell_quote_cp(mapname, FAL0));
       goto jleave;
    }
 
    if(argv[1] == NULL){
-      n_err(_("`colour': \"%s\": missing attribute argument\n"), mapname);
+      n_err(_("`colour': %s: missing attribute argument\n"),
+         n_shell_quote_cp(mapname, FAL0));
       goto jleave;
    }
 
-   /* Check wether preconditions are at all allowed, verify them as far as
+   /* Check whether preconditions are at all allowed, verify them as far as
     * possible as necessary.  For shell_quote() simplicity let's just ignore an
     * empty precondition */
    if((ctag = argv[2]) != NULL && *ctag != '\0'){
       char const *xtag;
 
       if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-         n_err(_("`colour': \"%s\" doesn't support preconditions\n"), mapname);
+         n_err(_("`colour': %s doesn't support preconditions\n"),
+            n_shell_quote_cp(mapname, FAL0));
          goto jleave;
       }else if((xtag = a_colour__tag_identify(cmip, ctag, &regexp)) ==
             n_COLOUR_TAG_ERR){
          /* I18N: ..of colour mapping */
-         n_err(_("`colour': \"%s\": invalid precondition: \"%s\"\n"),
-            mapname, ctag);
+         n_err(_("`colour': %s: invalid precondition: %s\n"),
+            n_shell_quote_cp(mapname, FAL0), n_shell_quote_cp(ctag, FAL0));
          goto jleave;
       }
       ctag = xtag;
    }
 
-   /* At this time we have all the information to be able to query wether such
+   /* At this time we have all the information to be able to query whether such
     * a mapping is yet established. If so, destroy it */
    for(blcmp = lcmp = NULL,
             cmp = *(cmap =
@@ -307,7 +311,8 @@ a_colour_mux(char **argv){
 
       if(!a_colour_iso6429(ct, &cp, argv[1])){
          /* I18N: colour command: mapping: error message: user argument */
-         n_err(_("`colour': \"%s\": %s: \"%s\"\n"), mapname, cp, argv[1]);
+         n_err(_("`colour': %s: %s: %s\n"), n_shell_quote_cp(mapname, FAL0),
+            cp, n_shell_quote_cp(argv[1], FAL0));
          goto jleave;
       }
 
@@ -376,7 +381,8 @@ a_colour_unmux(char **argv){
 
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
       if(!n_is_all_or_aster(argv[-1])){
-         n_err(_("`uncolour': invalid colour type \"%s\"\n"), argv[-1]);
+         n_err(_("`uncolour': invalid colour type %s\n"),
+            n_shell_quote_cp(argv[-1], FAL0));
          rv = FAL0;
          goto jleave;
       }
@@ -409,9 +415,9 @@ jredo:
          rv = FAL0;
 jemap:
          /* I18N: colour command, mapping and precondition (option in quotes) */
-         n_err(_("`uncolour': non-existing mapping: \"%s\"%s%s%s\n"),
-            mapname, (ctag == NULL ? "" : " \""),
-            (ctag == NULL ? "" : ctag), (ctag == NULL ? "" : "\""));
+         n_err(_("`uncolour': non-existing mapping: %s%s%s\n"),
+            n_shell_quote_cp(mapname, FAL0), (ctag == NULL ? "" : " "),
+            (ctag == NULL ? "" : n_shell_quote_cp(ctag, FAL0)));
          goto jleave;
       }
 
@@ -422,14 +428,14 @@ jemap:
 
       if((xtag = ctag) != NULL){
          if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-            n_err(_("`uncolour': \"%s\" doesn't support preconditions\n"),
-               mapname);
+            n_err(_("`uncolour': %s doesn't support preconditions\n"),
+               n_shell_quote_cp(mapname, FAL0));
             rv = FAL0;
             goto jleave;
          }else if((xtag = a_colour__tag_identify(cmip, ctag, NULL)) ==
                n_COLOUR_TAG_ERR){
-            n_err(_("`uncolour': \"%s\": invalid precondition: \"%s\"\n"),
-               mapname, ctag);
+            n_err(_("`uncolour': %s: invalid precondition: %s\n"),
+               n_shell_quote_cp(mapname, FAL0), n_shell_quote_cp(ctag, FAL0));
             rv = FAL0;
             goto jleave;
          }
@@ -695,7 +701,7 @@ jbail:
 
       if(!asccasecmp(cp, "ft")){
          if(!asccasecmp(x, "inverse")){
-            OBSOLETE(_("please use \"reverse\" not \"inverse\" for ft= fonts"));
+            OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
             x = UNCONST("reverse");
          }
          for(idp = fta;; ++idp)

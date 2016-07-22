@@ -251,7 +251,7 @@ jnext_msg:
          (cp = ok_vlook(reply_to_honour)) != NULL &&
          (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT, NULL)
          ) != NULL) {
-      char const *tr = _("Reply-To \"%s%s\"");
+      char const *tr = _("Reply-To %s%s");
       size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
       char *sp = salloc(l);
 
@@ -296,7 +296,7 @@ jnext_msg:
          (cp = hfield1("mail-followup-to", mp)) != NULL &&
          (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NULL)
          ) != NULL) {
-      char const *tr = _("Followup-To \"%s%s\"");
+      char const *tr = _("Followup-To %s%s");
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
       char *sp = salloc(l);
 
@@ -324,7 +324,7 @@ jnext_msg:
                is_addr_invalid(x = nalloc(x->n_name + sizeof("mailto:") -1,
                   GEXTRA | GSKIN), EACM_STRICT)) {
             if (options & OPT_D_V)
-               n_err(_("Message contains invalid \"List-Post:\" header\n"));
+               n_err(_("Message contains invalid List-Post: header\n"));
             cp = NULL;
             break;
          }
@@ -448,7 +448,7 @@ _Reply(int *msgvec, bool_t recipient_record)
             (cp = ok_vlook(reply_to_honour)) != NULL &&
             (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT, NULL)
             ) != NULL) {
-         char const *tr = _("Reply-To \"%s%s\"");
+         char const *tr = _("Reply-To %s%s");
          size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
          char *sp = salloc(l);
 
@@ -742,14 +742,14 @@ c_help(void *v)
    /* Very ugly, but take care for compiler supported string lengths :( */
    fputs(progname, stdout);
    fputs(_(
-      " commands -- \"<msglist>\" denotes message specifications,\n"
-      "e.g., \"1-5\", \":n\" or \".\", separated by spaces:\n"), stdout);
+      " commands -- <msglist> denotes message specifications,\n"
+      "e.g., 1-5, :n or ., separated by spaces:\n"), stdout);
    fputs(_(
 "\n"
 "type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
-"from <msglist>         print header summary for the given list (\"search\")\n"
+"from <msglist>         (search and) print header summary for the given list\n"
 "headers                header summary for messages surrounding \"dot\"\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
       stdout);
@@ -1158,7 +1158,8 @@ c_rename(void *v)
    newp = which_protocol(new);
 
    if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
-      n_err(_("Cannot rename current mailbox \"%s\"\n"), old);
+      n_err(_("Cannot rename current mailbox %s\n"),
+         n_shell_quote_cp(old, FAL0));
       goto jleave;
    }
 
@@ -1201,8 +1202,8 @@ jnopop3:
       break;
    case PROTO_UNKNOWN:
    default:
-      n_err(_("Unknown protocol in \"%s\" and \"%s\"; not renamed\n"),
-         old, new);
+      n_err(_("Unknown protocol in %s and %s; not renamed\n"),
+         n_shell_quote_cp(old, FAL0), n_shell_quote_cp(new, FAL0));
       ec |= 1;
       break;
    }

@@ -219,7 +219,7 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
    } else {
-      n_err(_("`%s': unknown / unsupported *spam-interface*: \"%s\"\n"),
+      n_err(_("`%s': unknown / unsupported *spam-interface*: %s\n"),
          _spam_cmds[sa], cp);
       goto jleave;
    }
@@ -349,7 +349,8 @@ jlearn:
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
    if (vcp->vc_verbose)
-      n_err(_("spamc(1) via \"%s\"\n"), sscp->c_super.cf_cmd);
+      n_err(_("spamc(1) via %s\n"),
+         n_shell_quote_cp(sscp->c_super.cf_cmd, FAL0));
 
    _spam_cf_setup(vcp, FAL0);
 
@@ -433,8 +434,8 @@ _spamd_setup(struct spam_vc *vcp)
       goto jleave;
    }
    if ((l = strlen(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
-      n_err(_("`%s': *spamd-socket* too long: \"%s\"\n"),
-         _spam_cmds[vcp->vc_action], cp);
+      n_err(_("`%s': *spamd-socket* too long: %s\n"),
+         _spam_cmds[vcp->vc_action], n_shell_quote_cp(cp, FAL0));
       goto jleave;
    }
    ssdp->d_sun.sun_family = AF_UNIX;
@@ -776,7 +777,7 @@ jecmd:
 
       var = strchr(cp, ';');
       if (var == NULL) {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: no `;' in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: missing semicolon;: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
@@ -785,7 +786,7 @@ jecmd:
       var = savestrbuf(cp, PTR2SIZE(var - cp));
       sfp->f_score_grpno = (ui32_t)strtoul(var, &ep, 0);
       if (var == ep || *ep != '\0') {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
@@ -798,14 +799,13 @@ jecmd:
       }
 
       if (regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE)) {
-         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: \"%s\"\n"),
+         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
          regfree(&sfp->f_score_regex);
-         n_err(_("`%s': *spamfilter-rate-scanscore*: "
-            "no group %u in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: no group %u: %s\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno, cp);
          goto jleave;
       }
@@ -1073,8 +1073,9 @@ jtail:
             vcp->vc_buffer[i] = '\0';
             if ((cp = strchr(vcp->vc_buffer, NETNL[0])) == NULL &&
                   (cp = strchr(vcp->vc_buffer, NETNL[1])) == NULL) {
-               n_err(_("%s`%s': program generates too much output: \"%s\"\n"),
-                  vcp->vc_esep, _spam_cmds[vcp->vc_action], scfp->cf_cmd);
+               n_err(_("%s`%s': program generates too much output: %s\n"),
+                  vcp->vc_esep, _spam_cmds[vcp->vc_action],
+                  n_shell_quote_cp(scfp->cf_cmd, FAL0));
                state |= _ERRORS;
             } else {
                scfp->cf_result = sbufdup(vcp->vc_buffer,

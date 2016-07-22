@@ -311,7 +311,7 @@ laststring(char *linebuf, bool_t *needs_list, bool_t strip)
       if (spacechar(*cp)) {
          p = cp;
          *cp++ = '\0';
-         /* We can furtherly release our callees if we now decide wether the
+         /* We can furtherly release our callees if we now decide whether the
           * remaining non-"last string" line content contains non-WS */
          while (--p >= linebuf)
             if (!spacechar(*p))

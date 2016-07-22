@@ -269,7 +269,7 @@ _startup(void)
             mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
          options |= OPT_UNICODE;
       /* Reset possibly messed up state; luckily this also gives us an
-       * indication wether the encoding has locking shift state sequences */
+       * indication whether the encoding has locking shift state sequences */
       /* TODO temporary - use option bits! */
       if (mbtowc(&wc, NULL, mb_cur_max))
          options |= OPT_ENC_MBSTATE;
@@ -319,7 +319,7 @@ _setup_vars(void){
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
             (doenv = strcmp(myname, ep)))
-         n_err(_("Warning: $LOGNAME=\"%s\" not identical to user (\"%s\")!\n"),
+         n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
             ep, myname);
       if(doenv){
          pstate |= PS_ROOT;
@@ -328,7 +328,7 @@ _setup_vars(void){
       }
 
       if((ep = ok_vlook(USER)) != NULL && strcmp(myname, ep)){
-         n_err(_("Warning: $USER=\"%s\" not identical to user (\"%s\")!\n"),
+         n_err(_("Warning: $USER (%s) not identical to user (%s)!\n"),
             ep, myname);
          pstate |= PS_ROOT;
          ok_vset(USER, myname);
@@ -976,7 +976,7 @@ jgetopt_done:
          isrestrict = (!isfail && !asccasecmp(cp, "restrict"));
 
       if ((options & OPT_D_V) && !isfail && !isrestrict && *cp != '\0')
-         n_err(_("Unknown *expandargv* value: \"%s\"\n"), cp);
+         n_err(_("Unknown *expandargv* value: %s\n"), cp);
 
       if ((cp = argv[i = _oind]) != NULL) {
          if (isfail ||
@@ -1019,14 +1019,14 @@ jgetopt_done:
    if(options & OPT_Mm_FLAG){
       if(qf == (char*)-1){
          if(!mime_type_check_mtname(option_Mm_arg)){
-            n_err(_("Could not find `mimetype' for -M argument: \"%s\"\n"),
+            n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                option_Mm_arg);
             exit_status = EXIT_ERR;
             goto jleave;
          }
       }else if((option_Mm_arg = mime_type_classify_filename(qf)) == NULL){
-         n_err(_("Could not `mimetype'-classify -m argument: \"%s\"\n"),
-            qf);
+         n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
+            n_shell_quote_cp(qf, FAL0));
          exit_status = EXIT_ERR;
          goto jleave;
       }else if(!asccasecmp(option_Mm_arg, "text/plain")) /* TODO no: magic!! */

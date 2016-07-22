@@ -166,7 +166,7 @@ static struct a_lex_cmd const a_lex_cmd_tab[] = {
 },
       a_lex_special_cmd_tab[] = {
    { "#", NULL, 0, 0, 0
-      DS(N_("\"Comment command\": ignore remaining (continuable) line")) },
+      DS(N_("Comment command: ignore remaining (continuable) line")) },
    { "-", NULL, 0, 0, 0
       DS(N_("Print out the preceding message")) }
 };
@@ -212,7 +212,8 @@ a_lex_c_ghost(void *v){
 
    /* Verify the ghost name is a valid one */
    if(*argv[0] == '\0' || *a_lex_isolate(argv[0]) != '\0'){
-      n_err(_("`ghost': can't canonicalize \"%s\"\n"), argv[0]);
+      n_err(_("`ghost': can't canonicalize %s\n"),
+         n_shell_quote_cp(argv[0], FAL0));
       v = NULL;
       goto jleave;
    }
@@ -225,7 +226,7 @@ a_lex_c_ghost(void *v){
                gp->lg_name, n_shell_quote_cp(gp->lg_cmd.s, TRU1));
             goto jleave;
          }
-      n_err(_("`ghost': no such alias: \"%s\"\n"), argv[0]);
+      n_err(_("`ghost': no such alias: %s\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -235,7 +236,7 @@ a_lex_c_ghost(void *v){
       if(*cp != '\0')
          cl += strlen(cp) +1; /* SP or NUL */
    if(cl == 0){
-      n_err(_("`ghost': empty command arguments after \"%s\"\n"), argv[0]);
+      n_err(_("`ghost': empty command arguments after %s\n"), argv[0]);
       v = NULL;
       goto jleave;
    }
@@ -299,7 +300,8 @@ a_lex_c_unghost(void *v){
                free(gp);
                goto jouter;
             }
-         n_err(_("`unghost': no such alias: \"%s\"\n"), cp);
+         n_err(_("`unghost': no such alias: %s\n"),
+            n_shell_quote_cp(cp, FAL0));
          rv = 1;
 jouter:  ;
       }
@@ -628,7 +630,7 @@ jexec:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL){
 je96:
-         n_err(_("Invalid use of \"message list\"\n"));
+         n_err(_("Invalid use of message list\n"));
          break;
       }
       if((c = getmsglist(cp, n_msgvec, cmd->lc_msgflag)) < 0)
@@ -810,7 +812,7 @@ a_lex_unstack(bool_t eval_error){
    }
 
    if(!condstack_take(lip->li_cond)){
-      n_err(_("Unmatched `if' at end of %s \"%s\"\n"),
+      n_err(_("Unmatched `if' at end of %s %s\n"),
          ((lip->li_flags & a_LEX_MACRO
           ? (lip->li_flags & a_LEX_MACRO_CMD ? _("command") : _("macro"))
           : _("`source'd file"))),
@@ -840,7 +842,7 @@ jleave:
 jerr:
    if(lip != NULL){
       if(options & OPT_D_V)
-         n_alert(_("Stopped %s \"%s\" due to errors%s"),
+         n_alert(_("Stopped %s %s due to errors%s"),
             (pstate & PS_STARTED
              ? (lip->li_flags & a_LEX_MACRO
                 ? (lip->li_flags & a_LEX_MACRO_CMD
@@ -936,7 +938,7 @@ a_lex_load(struct a_lex_input_stack *lip){
 */
    pstate |= PS_ROBOT | PS_SOURCING;
    if(options & OPT_D_V)
-      n_err(_("Loading \"%s\"\n"), lip->li_name);
+      n_err(_("Loading %s\n"), n_shell_quote_cp(lip->li_name, FAL0));
    a_lex_input = lip;
    if(!(rv = n_commands())){
       if(!(options & OPT_INTERACTIVE)){
@@ -1027,7 +1029,7 @@ jredo:
    }
 
    if(!rv && gp != NULL){
-      printf("\"%s\"\n", comm);
+      printf("%s\n", n_shell_quote_cp(comm, TRU1));
       rv = TRU1;
    }
    NYD_LEAVE;

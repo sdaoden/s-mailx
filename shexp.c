@@ -236,7 +236,7 @@ a_shexp_var(struct a_shexp_var_stack *svsp)
 
       if (lc) {
          if (c != '}') {
-            n_err(_("Variable name misses closing \"}\": %s\n"),
+            n_err(_("Variable name misses closing }: %s\n"),
                svsp->svs_value);
             svsp->svs_len = strlen(svsp->svs_value);
             svsp->svs_dat = svsp->svs_value;
@@ -655,7 +655,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
          n_visual_info(&vic,
             n_VISUAL_INFO_ONE_CHAR | n_VISUAL_INFO_SKIP_ERRORS);
 #endif
-         /* xxx check wether resulting \u would be ASCII */
+         /* xxx check whether resulting \u would be ASCII */
          if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP) ||
                (flags & a_SHEXP_QUOTE_T_DOLLAR)){
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -1092,7 +1092,7 @@ n_shell_expand_escape(char const **s, bool_t use_nail_extensions)/* TODO DROP!*/
       else{
          --xs;
          if(options & OPT_D_V)
-            n_err(_("Invalid \"\\xNUMBER\" notation in \"%s\"\n"), xs - 1);
+            n_err(_("Invalid \\xNUMBER notation in: %s\n"), xs - 1);
          c = '\\';
          goto jleave;
       }
@@ -1315,7 +1315,7 @@ jrestart_empty:
                   c = upperconv(c2) ^ 0x40;
                   if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
                      if(flags & n_SHEXP_PARSE_LOG)
-                        n_err(_("Invalid \"\\c\" notation: %.*s\n"),
+                        n_err(_("Invalid \\c notation: %.*s\n"),
                            (int)input->l, input->s);
                      rv |= n_SHEXP_STATE_ERR_CONTROL;
                   }
@@ -1346,8 +1346,8 @@ jrestart_empty:
                   if(il > 0 && (c = *ib) >= '0' && c <= '7'){
                      if((ui8_t)c2 > 0x1F){
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("\"\\0\" argument exceeds a byte: "
-                              "%.*s\n"), (int)input->l, input->s);
+                           n_err(_("\\0 argument exceeds a byte: %.*s\n"),
+                              (int)input->l, input->s);
                         rv |= n_SHEXP_STATE_ERR_NUMBER;
                         --il, ++ib;
                         /* Write unchanged */
@@ -1405,7 +1405,7 @@ je_ib_save:
                               break;
                            c2 = (c2 == 'U' || c2 == 'u') ? 'u' : 'x';
                            if(flags & n_SHEXP_PARSE_LOG)
-                              n_err(_("Invalid \"\\%c\" notation: %.*s\n"),
+                              n_err(_("Invalid \\%c notation: %.*s\n"),
                                  c2, (int)input->l, input->s);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
                            goto je_ib_save;
@@ -1426,8 +1426,8 @@ je_ib_save:
                         c2 = FAL0;
                         if(no > 0x10FFFF){ /* XXX magic; CText */
                            if(flags & n_SHEXP_PARSE_LOG)
-                              n_err(_("\"\\U\" argument exceeds 0x10FFFF: "
-                                 "%.*s\n"), (int)input->l, input->s);
+                              n_err(_("\\U argument exceeds 0x10FFFF: %.*s\n"),
+                                 (int)input->l, input->s);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
                            /* But normalize the output anyway */
                            goto Je_uni_norm;

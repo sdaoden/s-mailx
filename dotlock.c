@@ -138,7 +138,7 @@ jenametool:
    di.di_lock_name = name;
 
    /* We are in the directory of the mailbox for which we have to create
-    * a dotlock file for.  We don't know wether we have realpath(3) available,
+    * a dotlock file for.  We don't know whether we have realpath(3) available,
     * and manually resolving the path is due especially given that S-nail
     * supports the special "%:" syntax to warp any file into a "system
     * mailbox"; there may also be multiple system mailbox directories...
@@ -216,9 +216,11 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
       off_t off, off_t len, size_t pollmsecs){
 #undef _DOMSG
 #ifdef HAVE_DOTLOCK
-# define _DOMSG() n_err(_("Creating dotlock for \"%s\" "), fname)
+# define _DOMSG() \
+   n_err(_("Creating dotlock for %s "), n_shell_quote_cp(fname, FAL0))
 #else
-# define _DOMSG() n_err(_("Trying to lock file \"%s\" "), fname)
+# define _DOMSG() \
+   n_err(_("Trying to lock file %s "), n_shell_quote_cp(fname, FAL0))
 #endif
 
 #ifdef HAVE_DOTLOCK
@@ -312,7 +314,7 @@ jleave:
       goto jemsg;
    }
 
-   /* Let's check wether we were able to create the dotlock file */
+   /* Let's check whether we were able to create the dotlock file */
    for(;;){
       u.r = read(cpipe[0], &dls, sizeof dls);
       if(UICMP(z, u.r, !=, sizeof dls)){

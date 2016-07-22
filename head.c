@@ -87,7 +87,7 @@ static char const *        _from__skipword(char const *wp);
 static int                 _cmatch(size_t len, char const *date,
                               char const *tp);
 
-/* Check wether date is a valid 'From_' date.
+/* Check whether date is a valid 'From_' date.
  * (Rather ctime(3) generated dates, according to RFC 4155) */
 static int                 _is_date(char const *date);
 
@@ -858,7 +858,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
             ++cp;
          if(*cp++ != ':'){
 jebadhead:
-            n_err(_("Ignoring header field \"%s\"\n"), linebuf);
+            n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
          }
          while(blankchar(*cp))
@@ -1118,7 +1118,7 @@ expandaddr_to_eaf(void)
          for (eafp = eafa;; ++eafp) {
             if (eafp == eafa + NELEM(eafa)) {
                if (options & OPT_D_V)
-                  n_err(_("Unknown *expandaddr* value: \"%s\"\n"), cp);
+                  n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
             } else if (!asccasecmp(cp, eafp->eafd_name)) {
                if (!minus) {
@@ -1128,12 +1128,12 @@ expandaddr_to_eaf(void)
                   if (eafp->eafd_is_target)
                      rv &= ~eafp->eafd_or;
                   else if (options & OPT_D_V)
-                     n_err(_("\"-\" prefix invalid for *expandaddr* value: "
-                        "\"%s\"\n"), --cp);
+                     n_err(_("minus - prefix invalid for *expandaddr* value: "
+                        "%s\n"), --cp);
                }
                break;
             } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
-               OBSOLETE(_("*expandaddr*: \"noalias\" is henceforth \"-name\""));
+               OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
                break;
             }
@@ -1144,9 +1144,9 @@ expandaddr_to_eaf(void)
          rv |= EAF_TARGET_MASK;
       else if (options & OPT_D_V) {
          if (!(rv & EAF_TARGET_MASK))
-            n_err(_("*expandaddr* doesn't allow any addresses\n"));
+            n_err(_("*expandaddr* doesn't allow any addressees\n"));
          else if ((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
-            n_err(_("*expandaddr* with \"fail\" but no restrictions\n"));
+            n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
       }
    }
    NYD2_LEAVE;
@@ -1174,13 +1174,13 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
          bool_t ok8bit = TRU1;
 
          if (f & NAME_ADDRSPEC_ERR_IDNA) {
-            cs = _("Invalid domain name: \"%s\", character %s\n");
+            cs = _("Invalid domain name: %s, character %s\n");
             fmt = "'\\U%04X'";
             ok8bit = FAL0;
          } else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
-            cs = _("\"%s\" contains invalid %s sequence\n");
+            cs = _("%s contains invalid %s sequence\n");
          else
-            cs = _("\"%s\" contains invalid character %s\n");
+            cs = _("%s contains invalid character %s\n");
 
          c = NAME_ADDRSPEC_ERR_GETWC(f);
          snprintf(cbuf, sizeof cbuf,
@@ -1199,7 +1199,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    if ((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)) {
       if (eaf & EAF_FAIL)
          rv = -rv;
-      cs = _("\"%s\"%s: file or pipe addressees not allowed here\n");
+      cs = _("%s%s: file or pipe addressees not allowed here\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
       else
@@ -1218,19 +1218,19 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
       rv = -rv;
 
    if (!(eaf & EAF_FILE) && (f & NAME_ADDRSPEC_ISFILE)) {
-      cs = _("\"%s\"%s: *expandaddr* doesn't allow file target\n");
+      cs = _("%s%s: *expandaddr* doesn't allow file target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_PIPE) && (f & NAME_ADDRSPEC_ISPIPE)) {
-      cs = _("\"%s\"%s: *expandaddr* doesn't allow command pipe target\n");
+      cs = _("%s%s: *expandaddr* doesn't allow command pipe target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_NAME) && (f & NAME_ADDRSPEC_ISNAME)) {
-      cs = _("\"%s\"%s: *expandaddr* doesn't allow user name target\n");
+      cs = _("%s%s: *expandaddr* doesn't allow user name target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_ADDR) && (f & NAME_ADDRSPEC_ISADDR)) {
-      cs = _("\"%s\"%s: *expandaddr* doesn't allow mail address target\n");
+      cs = _("%s%s: *expandaddr* doesn't allow mail address target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else {
@@ -1241,7 +1241,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 j0print:
    cbuf[0] = '\0';
 jprint:
-   n_err(cs, np->n_name, cbuf);
+   n_err(cs, n_shell_quote_cp(np->n_name, TRU1), cbuf);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1963,7 +1963,7 @@ check_from_and_sender(struct name const *fromfield,
 
    if (senderfield != NULL) {
       if (senderfield->n_flink != NULL) {
-         n_err(_("The \"Sender:\" field may contain only one address\n"));
+         n_err(_("The Sender: field may contain only one address\n"));
          goto jleave;
       }
       rv = senderfield;
@@ -1971,8 +1971,8 @@ check_from_and_sender(struct name const *fromfield,
 
    if (fromfield != NULL) {
       if (fromfield->n_flink != NULL && senderfield == NULL) {
-         n_err(_("A \"Sender:\" field is required with multiple "
-            "addresses in \"From:\" field\n"));
+         n_err(_("A Sender: is required when there are multiple "
+            "addresses in From:\n"));
          goto jleave;
       }
       if (rv == NULL)

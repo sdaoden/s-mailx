@@ -144,15 +144,15 @@ _nrc_init(void)
          goto j_leave;
 
       if ((fi = Fopen(netrc_load, "r")) == NULL) {
-         n_err(_("Cannot open \"%s\"\n"), netrc_load);
+         n_err(_("Cannot open %s\n"), n_shell_quote_cp(netrc_load, FAL0));
          goto j_leave;
       }
 
       /* Be simple and apply rigid (permission) check(s) */
       if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
             (sb.st_mode & (S_IRWXG | S_IRWXO))) {
-         n_err(_("Not a regular file, or accessible by non-user: \"%s\"\n"),
-            netrc_load);
+         n_err(_("Not a regular file, or accessible by non-user: %s\n"),
+            n_shell_quote_cp(netrc_load, FAL0));
          goto jleave;
       }
    }
@@ -248,7 +248,8 @@ jm_h:
    case NRC_ERROR:
 jerr:
       if (options & OPT_D_V)
-         n_err(_("Errors occurred while parsing \"%s\"\n"), netrc_load);
+         n_err(_("Errors occurred while parsing %s\n"),
+            n_shell_quote_cp(netrc_load, FAL0));
       assert(nrc == NRC_NODE_ERR);
       goto jleave;
    }
@@ -538,7 +539,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    env_addon[6] = NULL;
 
    if ((pbuf = Popen(comm, "r", ok_vlook(SHELL), env_addon, -1)) == NULL) {
-      n_err(_("*agent-shell-lookup* startup failed (\"%s\")\n"), comm);
+      n_err(_("*agent-shell-lookup* startup failed (%s)\n"), comm);
       goto jleave;
    }
 
@@ -555,7 +556,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
       n_str_add_buf(&s, buf, l);
 
    if (!Pclose(pbuf, TRU1)) {
-      n_err(_("*agent-shell-lookup* execution failure (\"%s\")\n"), comm);
+      n_err(_("*agent-shell-lookup* execution failure (%s)\n"), comm);
       goto jleave;
    }
 
@@ -744,7 +745,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if !defined __ALLPROTO || !defined HAVE_SSL
 jeproto:
 #endif
-      n_err(_("URL \"proto://\" prefix invalid: \"%s\"\n"), urlp->url_input);
+      n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
       goto jleave;
    }
 #ifdef __ANYPROTO
@@ -769,7 +770,7 @@ juser:
          urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
 
          if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
-            n_err(_("String is not properly URL percent encoded: \"%s\"\n"),
+            n_err(_("String is not properly URL percent encoded: %s\n"),
                ub);
             goto jleave;
          }
@@ -783,7 +784,7 @@ juser:
             urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
 
       if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
-         n_err(_("String is not properly URL percent encoded: \"%s\"\n"), ub);
+         n_err(_("String is not properly URL percent encoded: %s\n"), ub);
          goto jleave;
       }
 
@@ -800,7 +801,7 @@ juser:
          *x = '\0';
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
-         n_err(_("URL with invalid port number: \"%s\"\n"), urlp->url_input);
+         n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
          goto jleave;
       }
       urlp->url_portno = (ui16_t)l;
@@ -815,8 +816,7 @@ juser:
 #if 0
       if (cproto != CPROTO_IMAP) {
 #endif
-         n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
-            urlp->url_input);
+         n_err(_("URL protocol doesn't support paths: %s\n"), urlp->url_input);
          goto jleave;
 #if 0
       }
@@ -852,7 +852,7 @@ juser:
    if (!urlp->url_had_user) {
       if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
             == NULL) {
-         /* No, check wether .netrc lookup is desired */
+         /* No, check whether .netrc lookup is desired */
 # ifdef HAVE_NETRC
          if (!ok_blook(v15_compat) ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
@@ -1118,7 +1118,7 @@ jpass:
 jleave:
    ac_free(vbuf);
    if (ccp != NULL && (options & OPT_D_VV))
-      n_err(_("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
+      n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
@@ -1241,7 +1241,7 @@ js2pass:
 
 jleave:
    if (ccp != NULL && (options & OPT_D_VV))
-      n_err(_("Credentials: host \"%s\", user \"%s\", pass \"%s\"\n"),
+      n_err(_("Credentials: host %s, user %s, pass %s\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
    NYD_LEAVE;
@@ -1298,7 +1298,7 @@ jlist:   {
    }
 
    for (l = 0, nrc = _nrc_list; nrc != NULL; ++l, nrc = nrc->nrc_next) {
-      fprintf(fp, _("machine %s "), nrc->nrc_dat);
+      fprintf(fp, _("machine %s "), nrc->nrc_dat); /* XXX quote? */
       if (nrc->nrc_ulen > 0)
          fprintf(fp, _("login \"%s\" "),
             string_quote(nrc->nrc_dat + nrc->nrc_mlen +1));

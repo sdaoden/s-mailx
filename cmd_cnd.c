@@ -59,7 +59,7 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
       msg_or_null = _("invalid expression syntax");
 
    if (nearby_or_null != NULL)
-      n_err(_("`if' conditional: %s -- near \"%s\"\n"),
+      n_err(_("`if' conditional: %s -- near: %s\n"),
          msg_or_null, nearby_or_null);
    else
       n_err(_("`if' conditional: %s\n"), msg_or_null);

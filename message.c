@@ -356,7 +356,7 @@ number:
             while (*++cp != '\0') {
                colresult = evalcol(*cp);
                if (colresult == 0) {
-                  n_err(_("Unknown colon modifier \"%s\"\n"), lexstring);
+                  n_err(_("Unknown colon modifier: %s\n"), lexstring);
                   markall_ret(-1)
                }
                if (colresult == CMDELETED) {
@@ -376,7 +376,7 @@ number:
             markall_ret(-1)
          topen = TRU1;
 #else
-         n_err(_("Optional selector is not available: \"%s\"\n"),
+         n_err(_("Optional selector is not available: %s\n"),
             lexstring);
          markall_ret(-1)
 #endif
@@ -413,7 +413,7 @@ number:
       case TSTAR:
          pstate &= ~PS_MSGLIST_DIRECT;
          if (other) {
-            n_err(_("Can't mix \"*\" with anything\n"));
+            n_err(_("Can't mix * with anything\n"));
             markall_ret(-1)
          }
          star = TRU1;
@@ -531,7 +531,7 @@ number:
 
             x = (x == NULL ? *nq : x) + 1;
             if (*x == '\0') { /* XXX Simply remove from list instead? */
-               n_err(_("Empty \"[@..]@\" search expression\n"));
+               n_err(_("Empty [@..]@ search expression\n"));
                rv = -1;
                continue;
             }
@@ -774,7 +774,7 @@ scan(char **sp)
       do {
          if ((c = *cp++&0377) == '\0') {
 jmtop:
-            n_err(_("Missing \")\"\n"));
+            n_err(_("Missing )\n"));
             rv = TERROR;
             goto jleave;
          }

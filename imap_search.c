@@ -171,7 +171,7 @@ itparse(char const *spec, char const **xp, int sub)
                --(*xp);
                goto jleave;
             }
-            n_err(_("Excess in \")\"\n"));
+            n_err(_("Excess in )\n"));
             rv = STOP;
             goto jleave;
          }
@@ -284,10 +284,10 @@ itscan(char const *spec, char const **xp)
       }
    }
 
-   n_err(_("Bad SEARCH criterion \""));
+   n_err(_("Bad SEARCH criterion: "));
    for (i = 0; __GO(spec[i]); ++i)
       ;
-   n_err(_("%.*s \": >>> %s <<<\n"), i, spec, around(*xp));
+   n_err(_("%.*s: >>> %s <<<\n"), i, spec, around(*xp));
 #undef __GO
 
    _it_token = ITBAD;
@@ -329,7 +329,7 @@ itsplit(char const *spec, char const **xp)
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       if ((t = _imap_read_date(_it_args[0])) == (time_t)-1) {
-         n_err(_("Invalid date \"%s\": >>> %s <<<\n"),
+         n_err(_("Invalid date %s: >>> %s <<<\n"),
             (char*)_it_args[0], around(*xp));
          rv = STOP;
          break;

@@ -134,13 +134,13 @@
    { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
-     DS(N_("Un`alias' <name-list> (\"*\" for all)")) },
+     DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
    { "from", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Type (matching) headers of <msglist> (a search specification)")) },
    { "search", &c_from, (A | MSGLIST), 0, MMNORM
-     DS(N_("\"Search\" for <msglist>, type matching headers")) },
+     DS(N_("Search for <msglist>, type matching headers")) },
    { "file", &c_file, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | I | R | S | MSGLIST), 0, MMNDEL
@@ -256,7 +256,7 @@
    { "shortcut", &c_shortcut, (M | WYRALIST), 0, 1000
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
    { "unshortcut", &c_unshortcut, (M | WYRALIST), 1, 1000
-     DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
+     DS(N_("Delete <shortcut-list> (* for all)")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0
@@ -272,7 +272,7 @@
    { "unflag", &c_unflag, (A | M | MSGLIST), 0, 0
      DS(N_("(Un)Flag <msglist> (for special attention)")) },
    { "answered", &c_answered, (A | M | MSGLIST), 0, 0
-     DS(N_("Mark the given <msglist> as \"answered\"")) },
+     DS(N_("Mark the given <msglist> as answered")) },
    { "unanswered", &c_unanswered, (A | M | MSGLIST), 0, 0
      DS(N_("Un`answered' <msglist>")) },
    { "draft", &c_draft, (A | M | MSGLIST), 0, 0
@@ -282,9 +282,9 @@
    { "define", &c_define, (M | RAWLIST), 0, 2
      DS(N_("Define a <macro> or show the currently defined ones")) },
    { "undefine", &c_undefine, (M | RAWLIST), 1, 1000
-     DS(N_("Un`define' all given <macros> (\"*\" for all)")) },
+     DS(N_("Un`define' all given <macros> (* for all)")) },
    { "unaccount", &c_unaccount, (M | RAWLIST), 1, 1000
-     DS(N_("Delete all given <accounts> (\"*\" for all)")) },
+     DS(N_("Delete all given <accounts> (* for all)")) },
    { "call", &c_call, (M | RAWLIST), 0, 1
      DS(N_("Call a macro")) },
    { "~", &c_call, (M | RAWLIST), 0, 1
@@ -336,7 +336,7 @@
    { "mimetype", &c_mimetype, (M | WYRALIST), 0, 1000
      DS(N_("(Load and) show all known MIME types, or define some")) },
    { "unmimetype", &c_unmimetype, (M | WYRALIST), 1, 1000
-     DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
+     DS(N_("Delete <type>s (reset, * for all; former reinitializes)")) },
    { "spamrate", &c_spam_rate, (A | M | MSGLIST), 0, 0
      DS(N_("Rate <msglist> via the spam detector")) },
    { "spamham", &c_spam_ham, (A | M | MSGLIST), 0, 0
@@ -344,7 +344,7 @@
    { "spamspam", &c_spam_spam, (A | M | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <msglist> is spam")) },
    { "spamforget", &c_spam_forget, (A | M | MSGLIST), 0, 0
-     DS(N_("Force the spam detector to \"unlearn\" <msglist>")) },
+     DS(N_("Force the spam detector to unlearn <msglist>")) },
    { "spamset", &c_spam_set, (A | M | MSGLIST), 0, 0
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
@@ -374,11 +374,11 @@
    { "mlist", &c_mlist, (M | WYRALIST), 0, 1000
      DS(N_("Show all known mailing lists or define some")) },
    { "unmlist", &c_unmlist, (M | WYRALIST), 1, 1000
-     DS(N_("Un`mlist' <name-list> (\"*\" for all)")) },
+     DS(N_("Un`mlist' <name-list> (* for all)")) },
    { "mlsubscribe", &c_mlsubscribe, (M | WYRALIST), 0, 1000
      DS(N_("Show all mailing list subscriptions or define some")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | WYRALIST), 1, 1000
-     DS(N_("Un`mlsubscribe' <name-list> (\"*\" for all)"))},
+     DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given <msglist>")) },
    { "errors", &c_errors, (H | I | RAWLIST), 0, 1
@@ -388,7 +388,7 @@
    { "customhdr", &c_customhdr, (M | WYSHLIST), 0, 1000
      DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
    { "uncustomhdr", &c_uncustomhdr, (M | WYSHLIST), 1, 1000
-     DS(N_("Delete custom <:header:> (\"*\" for all)")) },
+     DS(N_("Delete custom <:header:> (* for all)")) },
    { "features", &a_lex_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the Mail-User-Agent")) },
    { "version", &a_lex_c_version, (H | M | NOLIST), 0, 0
@@ -399,7 +399,7 @@
    { "bind", &c_bind, (M | STRLIST), 1, 1000
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
    { "unbind", &c_unbind, (M | STRLIST), 2, 2
-     DS(N_("Un`bind' <context> <key[:,key:]> (\"*\" for all)")) },
+     DS(N_("Un`bind' <context> <key[:,key:]> (* for all)")) },
 
    { "netrc", &c_netrc, (M | RAWLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
@@ -407,7 +407,7 @@
    { "colour", &c_colour, (M | WYSHLIST), 1, 4
      DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
    { "uncolour", &c_uncolour, (M | WYSHLIST), 2, 3
-     DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
+     DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
    { "environ", &c_environ, (H | M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },

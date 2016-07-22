@@ -281,10 +281,12 @@ _ssl_rand_init(void){
          rv = TRU1;
          goto jleave;
       }
-      n_err(_("*ssl_rand_egd* daemon at \"%s\" not available\n"), cp);
+      n_err(_("*ssl_rand_egd* daemon at %s not available\n"),
+         n_shell_quote_cp(cp, FAL0));
 #else
       if(options & OPT_D_VV)
-         n_err(_("*ssl_rand_egd* (\"%s\"): unsupported by SSL library\n"), cp);
+         n_err(_("*ssl_rand_egd* (%s): unsupported by SSL library\n"),
+            n_shell_quote_cp(cp, FAL0));
 #endif
    }
 
@@ -293,7 +295,8 @@ _ssl_rand_init(void){
       x = NULL;
       if(*cp != '\0'){
          if((x = file_expand(cp)) == NULL)
-            n_err(_("*ssl-rand-file*: expansion of \"%s\" failed\n"), cp);
+            n_err(_("*ssl-rand-file*: filename expansion of %s failed\n"),
+               n_shell_quote_cp(cp, FAL0));
       }
       cp = x;
    }
@@ -324,9 +327,11 @@ _ssl_rand_init(void){
       }
 
       if(RAND_write_file(cp) == -1)
-         n_err(_("*ssl-rand-file*: writing entropy to \"%s\" failed\n"), cp);
+         n_err(_("*ssl-rand-file*: writing entropy to %s failed\n"),
+            n_shell_quote_cp(cp, FAL0));
    }else
-      n_err(_("*ssl-rand-file*: \"%s\" cannot be loaded\n"), cp);
+      n_err(_("*ssl-rand-file*: %s cannot be loaded\n"),
+         n_shell_quote_cp(cp, FAL0));
 jleave:
    NYD_LEAVE;
    return rv;
@@ -576,19 +581,21 @@ _ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
    switch (sct) {
    case SCT_CERTIFICATE:
       if (SSL_CTX_use_certificate_chain_file(ctxp, value) != 1) {
-         ssl_gen_err(_("Can't load certificate from file \"%s\"\n"), value);
+         ssl_gen_err(_("Can't load certificate from file %s\n"),
+            n_shell_quote_cp(value, FAL0));
          confp = NULL;
       }
       break;
    case SCT_CIPHER_STRING:
       if (SSL_CTX_set_cipher_list(ctxp, value) != 1) {
-         ssl_gen_err(_("Invalid cipher string: \"%s\"\n"), value);
+         ssl_gen_err(_("Invalid cipher string: %s\n"), value);
          confp = NULL;
       }
       break;
    case SCT_PRIVATE_KEY:
       if (SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1) {
-         ssl_gen_err(_("Can't load private key from file \"%s\"\n"), value);
+         ssl_gen_err(_("Can't load private key from file %s\n"),
+            n_shell_quote_cp(value, FAL0));
          confp = NULL;
       }
       break;
@@ -627,7 +634,7 @@ _ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
             }
             if (++i < NELEM(_ssl_protocols))
                continue;
-            n_err(_("*ssl-protocol*: unsupported value \"%s\"\n"), cp);
+            n_err(_("*ssl-protocol*: unsupported value: %s\n"), cp);
             goto jleave;
          }
       }
@@ -712,7 +719,7 @@ ssl_check_host(struct sock *sp, struct url const *urlp)
    NYD_ENTER;
 
    if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-      n_err(_("No certificate from \"%s\"\n"), urlp->url_h_p.s);
+      n_err(_("No certificate from: %s\n"), urlp->url_h_p.s);
       goto jleave;
    }
 
@@ -924,7 +931,7 @@ _smime_cipher(char const *name)
       goto jleave;
 #endif
 
-   n_err(_("Invalid S/MIME cipher(s): \"%s\"\n"), cp);
+   n_err(_("Invalid S/MIME cipher(s): %s\n"), cp);
 jleave:
    NYD_LEAVE;
    return cipher;
@@ -1045,7 +1052,8 @@ _smime_sign_include_chain_creat(_STACKOF(X509) **chain, char const *cfiles)
          goto jerr;
       }
       if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-         ssl_gen_err(_("Error reading certificate from \"%s\""), cfield);
+         ssl_gen_err(_("Error reading certificate from %s"),
+            n_shell_quote_cp(cfield, FAL0));
          Fclose(fp);
          goto jerr;
       }
@@ -1116,7 +1124,7 @@ jhave_name:
       goto jleave;
 #endif
 
-   n_err(_("Invalid message digest: \"%s\"\n"), cp);
+   n_err(_("Invalid message digest: %s\n"), cp);
    digest = NULL;
 jleave:
    NYD_LEAVE;
@@ -1132,13 +1140,13 @@ load_crl1(X509_STORE *store, char const *name)
    NYD_ENTER;
 
    if (options & OPT_VERB)
-      n_err(_("Loading CRL from \"%s\"\n"), name);
+      n_err(_("Loading CRL from %s\n"), n_shell_quote_cp(name, FAL0));
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(_("Error creating X509 lookup object"));
       goto jleave;
    }
    if (X509_load_crl_file(lookup, name, X509_FILETYPE_PEM) != 1) {
-      ssl_gen_err(_("Error loading CRL from \"%s\""), name);
+      ssl_gen_err(_("Error loading CRL from %s"), n_shell_quote_cp(name, FAL0));
       goto jleave;
    }
    rv = OKAY;
@@ -1249,14 +1257,14 @@ ssl_open(struct url const *urlp, struct sock *sp)
    if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
       OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
       if (options & OPT_VERB)
-         n_err(_("*ssl-method*: \"%s\"\n"), cp);
+         n_err(_("*ssl-method*: %s\n"), cp);
       for (i = 0;;) {
          if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
             cp = _ssl_methods[i].sm_map;
             break;
          }
          if (++i == NELEM(_ssl_methods)) {
-            n_err(_("Unsupported TLS/SSL method \"%s\"\n"), cp);
+            n_err(_("Unsupported TLS/SSL method: %s\n"), cp);
             goto jerr1;
          }
       }
@@ -1264,7 +1272,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
    /* *ssl-protocol* */
    if ((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
       if (options & OPT_VERB)
-         n_err(_("*ssl-protocol*: \"%s\"\n"), cp_base);
+         n_err(_("*ssl-protocol*: %s\n"), cp_base);
       cp = cp_base;
    }
    cp = (cp != NULL ? savecatsep(cp, ',', SSL_DISABLED_PROTOCOLS)
@@ -1275,9 +1283,10 @@ ssl_open(struct url const *urlp, struct sock *sp)
    /* *ssl-cert* */
    if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
       if (options & OPT_VERB)
-         n_err(_("*ssl-cert* \"%s\"\n"), cp);
+         n_err(_("*ssl-cert* %s\n"), n_shell_quote_cp(cp, FAL0));
       if ((cp_base = file_expand(cp)) == NULL) {
-         n_err(_("*ssl-cert* value expansion failed: \"%s\"\n"), cp);
+         n_err(_("*ssl-cert* value expansion failed: %s\n"),
+            n_shell_quote_cp(cp, FAL0));
          goto jerr1;
       }
       cp = cp_base;
@@ -1287,9 +1296,10 @@ ssl_open(struct url const *urlp, struct sock *sp)
       /* *ssl-key* */
       if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
          if (options & OPT_VERB)
-            n_err(_("*ssl-key* \"%s\"\n"), cp_base);
+            n_err(_("*ssl-key* %s\n"), n_shell_quote_cp(cp_base, FAL0));
          if ((cp = file_expand(cp_base)) == NULL) {
-            n_err(_("*ssl-key* value expansion failed: \"%s\"\n"), cp_base);
+            n_err(_("*ssl-key* value expansion failed: %s\n"),
+               n_shell_quote_cp(cp_base, FAL0));
             goto jerr1;
          }
       }
@@ -1325,8 +1335,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    if (ssl_verify_level != SSL_VERIFY_IGNORE) {
       if (ssl_check_host(sp, urlp) != OKAY) {
-         n_err(_("Host certificate does not match \"%s\"\n"),
-            urlp->url_h_p.s);
+         n_err(_("Host certificate does not match: %s\n"), urlp->url_h_p.s);
          if (ssl_verify_decide() != OKAY)
             goto jerr2;
       }
@@ -1561,8 +1570,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
 
    if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
-      ssl_gen_err(_("Error reading encryption certificate from \"%s\""),
-         certfile);
+      ssl_gen_err(_("Error reading encryption certificate from %s"),
+         n_shell_quote_cp(certfile, FAL0));
       bail = TRU1;
    }
    Fclose(fp);

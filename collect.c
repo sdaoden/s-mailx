@@ -439,7 +439,7 @@ mespipe(char *cmd)
    }
 
    if (fsize(nf) == 0) {
-      n_err(_("No bytes from \"%s\" !?\n"), cmd);
+      n_err(_("No bytes from %s !?\n"), n_shell_quote_cp(cmd, FAL0));
       Fclose(nf);
       goto jout;
    }
@@ -609,7 +609,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    struct ignoretab *quoteig;
    int lc, cc, c, t;
    int volatile escape, getfields;
-   char *linebuf, *quote;
+   char *linebuf;
    char const *cp;
    size_t i, linesize; /* TODO line pool */
    long cnt;
@@ -621,7 +621,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    _coll_fp = NULL;
    sigfp = NULL;
    linesize = 0;
-   linebuf = quote = NULL;
+   linebuf = NULL;
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
@@ -697,7 +697,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          goto jerr;
 
          /* Quote an original message */
-         if (mp != NULL && (doprefix || (quote = ok_vlook(quote)) != NULL)) {
+         if (mp != NULL && (doprefix || (cp = ok_vlook(quote)) != NULL)) {
             quoteig = allignore;
             action = SEND_QUOTE;
             if (doprefix) {
@@ -706,11 +706,11 @@ collect(struct header *hp, int printheaders, struct message *mp,
                   cp = "-------- Original Message --------";
                if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
                   goto jerr;
-            } else if (!strcmp(quote, "noheading")) {
+            } else if (!strcmp(cp, "noheading")) {
                /*EMPTY*/;
-            } else if (!strcmp(quote, "headers")) {
+            } else if (!strcmp(cp, "headers")) {
                quoteig = ignore;
-            } else if (!strcmp(quote, "allheaders")) {
+            } else if (!strcmp(cp, "allheaders")) {
                quoteig = NULL;
                action = SEND_QUOTE_ALL;
             } else {
@@ -800,7 +800,7 @@ jcont:
             options &= ~OPT_t_FLAG;
             continue;
          } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("*ignoreeof* set, use \"~.\" to terminate letter\n"));
+            printf(_("*ignoreeof* set, use `~.' to terminate letter\n"));
             continue;
          }
          break;
@@ -832,7 +832,7 @@ jputline:
       default:
          /* On double escape, send a single one.  Otherwise, it's an error */
          if (c == escape) {
-            if (putline(_coll_fp, linebuf + 1, cnt - 1) < 0)
+            if (putline(_coll_fp, &linebuf[1], cnt - 1) < 0)
                goto jerr;
             else
                break;
@@ -841,14 +841,14 @@ jputline:
          break;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
-         c_shell(linebuf + 2);
+         c_shell(&linebuf[2]);
          goto jcont;
          break;
       case ':':
          /* FALLTHRU */
       case '_':
          /* Escape to command mode, but be nice! */
-         _execute_command(hp, linebuf + 2, cnt - 2);
+         _execute_command(hp, &linebuf[2], cnt - 2);
          break;
       case '.':
          /* Simulate end of file on input */
@@ -878,12 +878,12 @@ jputline:
       case 't':
          /* Add to the To list */
          hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(linebuf + 2, GTO | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[2], GTO | GFULL), EACM_NORMAL,
                   NULL));
          break;
       case 's':
          /* Set the Subject list */
-         cp = linebuf + 2;
+         cp = &linebuf[2];
          while (whitechar(*cp))
             ++cp;
          hp->h_subject = savestr(cp);
@@ -896,24 +896,24 @@ jputline:
       case '@':
          /* Edit the attachment list */
          if (linebuf[2] != '\0')
-            append_attachments(&hp->h_attach, linebuf + 2);
+            append_attachments(&hp->h_attach, &linebuf[2]);
          else
             edit_attachments(&hp->h_attach);
          break;
       case 'c':
          /* Add to the CC list */
          hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(linebuf + 2, GCC | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[2], GCC | GFULL), EACM_NORMAL,
                NULL));
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
          hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(linebuf + 2, GBCC | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[2], GBCC | GFULL), EACM_NORMAL,
                   NULL));
          break;
       case 'd':
-         strncpy(linebuf + 2, getdeadletter(), linesize - 2);
+         strncpy(&linebuf[2], getdeadletter(), linesize - 2);
          linebuf[linesize - 1] = '\0';
          /*FALLTHRU*/
       case 'R':
@@ -921,7 +921,7 @@ jputline:
       case '<':
          /* Invoke a file: Search for the file name, then open it and copy the
           * contents to _coll_fp */
-         cp = linebuf + 2;
+         cp = &linebuf[2];
          while (whitechar(*cp))
             ++cp;
          if (*cp == '\0') {
@@ -946,7 +946,7 @@ jputline:
          break;
       case 'i':
          /* Insert a variable into the file */
-         cp = linebuf + 2;
+         cp = &linebuf[2];
          while (whitechar(*cp))
             ++cp;
          if ((cp = vok_vlook(cp)) == NULL || *cp == '\0')
@@ -969,7 +969,7 @@ jputline:
          break;
       case 'w':
          /* Write the message on a file */
-         cp = linebuf + 2;
+         cp = &linebuf[2];
          while (blankchar(*cp))
             ++cp;
          if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
@@ -989,7 +989,7 @@ jputline:
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if (forward(linebuf + 2, _coll_fp, c) < 0)
+         if (forward(&linebuf[2], _coll_fp, c) < 0)
             goto jerr;
          break;
       case 'p':
@@ -999,7 +999,7 @@ jputline:
       case '|':
          /* Pipe message through command. Collect output as new message */
          rewind(_coll_fp);
-         mespipe(linebuf + 2);
+         mespipe(&linebuf[2]);
          goto jcont;
       case 'v':
       case 'e':
@@ -1025,7 +1025,7 @@ jputline:
 "~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
 "~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
+"~h            Prompt for Subject:, To:, Cc: and blind Bcc:\n"
 "~i <variable> Insert a value and a newline\n"
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
 "~p            Print current message compose buffer\n"
@@ -1076,12 +1076,17 @@ jout:
 
    /* Place signature? */
    if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
-      if((quote = file_expand(cp)) == NULL){
-         n_err(_("*signature* expands to invalid file: \"%s\"\n"), cp);
+      char const *cpq;
+
+      if((cpq = file_expand(cp)) == NULL){
+         n_err(_("*signature* expands to invalid file: %s\n"),
+            n_shell_quote_cp(cp, FAL0));
          goto jerr;
       }
-      if((sigfp = Fopen(cp = quote, "r")) == NULL){
-         n_err(_("Can't open *signature* \"%s\": %s\n"), cp, strerror(errno));
+      cpq = n_shell_quote_cp(cp = cpq, FAL0);
+
+      if((sigfp = Fopen(cp, "r")) == NULL){
+         n_err(_("Can't open *signature* %s: %s\n"), cpq, strerror(errno));
          goto jerr;
       }
 
@@ -1103,8 +1108,8 @@ jout:
          Fclose(x);
 
          if(ise){
-            n_err(_("Errors while reading *signature* \"%s\": %s\n"),
-               cp, strerror(e));
+            n_err(_("Errors while reading *signature* %s: %s\n"),
+               cpq, strerror(e));
             goto jerr;
          }
       }

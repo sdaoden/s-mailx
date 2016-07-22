@@ -1,17 +1,18 @@
 #@ make.rc can be used adjust the set of features, paths, etc.
-#@ You should have read "INSTALL" first.
+#@ You should have read INSTALL first.
 #@ Notes:
+#@ . Choosing a predefined CONFIG= disallows further option fine-tuning.
 #@ . Specifying settings on the command line will take precedence over
 #@   the variables in here (correctly triggering build updates as
 #@   necessary, too).
-#@ . Choosing one of the predefined CONFIG= sets overwrites a lot of
-#@   items that can be set in here / from the command line.
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
 #@   line overwrites take effect.  To use multiline values, escape the
-#@   newlines on any but the last line with a backslash, as in "LINE \".
-#@   The parsing is sequential top-to-bottom (nonetheless) so that shell
-#@   snippets in a value can refer only to stuff yet defined.
+#@   newlines on all lines but the last with a reverse solidus (back-
+#@   slash), as in "LINE \".
+#@   To embed a shell variable unexpanded, use two: "XY=\\${HOME}".
+#@   The parsing is sequential top-to-bottom (nonetheless), so that
+#@   shell snippets in a value can refer only to stuff yet defined.
 #@ . Boolean values can be set via 1/0, y/n, true/false, yes/no and
 #@   on/off (case doesn't matter), other values result in an error.
 #@ . However, the value "require" is also a true boolean, but will in
@@ -286,7 +287,7 @@ WANT_QUOTE_FOLD=yes
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it'll be
 # used for all MIME types which have the @h@ or @H@ type markers (more
-# on this in the manual section "THE mime.types FILES").  And which
+# on this in the manual section "The mime.types FILES").  And which
 # don't have any user defined MIME type handler, of course.
 WANT_FILTER_HTML_TAGSOUP=yes
 

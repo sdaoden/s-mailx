@@ -224,8 +224,9 @@ jferr:
       success = FAL0;
 
    if (success) {
-      printf("\"%s\" %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
-         file, disp, /*tstats[1], TODO v15: lines written */ tstats[0]);
+      printf("%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
+         n_shell_quote_cp(file, FAL0), disp,
+         /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
       for (ip = msgvec; *ip != 0 &&
             UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
@@ -615,7 +616,7 @@ c_preserve(void *v)
    NYD_ENTER;
 
    if (pstate & PS_EDIT) {
-      printf(_("Cannot \"preserve\" in a system mailbox\n"));
+      printf(_("Cannot `preserve' in a system mailbox\n"));
       goto jleave;
    }
 

@@ -251,7 +251,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
             (mhp->mh_flags & MIME_HDL_ASYNC ? -1 : fileno(*qbuf)));
 jerror:
       if (rbuf == NULL)
-         n_err(_("Cannot run MIME type handler \"%s\": %s\n"),
+         n_err(_("Cannot run MIME type handler: %s: %s\n"),
             mhp->mh_msg, strerror(errno));
       else {
          fflush(*qbuf);
@@ -492,7 +492,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       /* Determine if the end of the line is a MIME encoded word */
       /* TODO geeeh!  all this lengthy stuff that follows is about is dealing
        * TODO with header follow lines, and it should be up to the backend
-       * TODO what happens and what not, i.e., it doesn't matter wether it's
+       * TODO what happens and what not, i.e., it doesn't matter whether it's
        * TODO a MIME-encoded word or not, as long as a single separating space
        * TODO remains in between lines (the MIME stuff will correctly remove
        * TODO whitespace in between multiple adjacent encoded words) */
@@ -669,7 +669,7 @@ jskip:
          /* XXX This (a) should not remain (b) should be own fun
           * TODO (despite the fact that v15 will do this completely differently
           * TODO by having an action-specific "manager" that will traverse the
-          * TODO parsed MIME tree and decide for each part wether it'll be
+          * TODO parsed MIME tree and decide for each part whether it'll be
           * TODO displayed or not *before* we walk the tree for doing action */
          struct mpstack {
             struct mpstack *outer;
@@ -748,7 +748,7 @@ jalter_redo:
                      struct mimepart *x = np;
 
                      /* TODO twice TODO, we should dive into /related and
-                      * TODO check wether that has rich parts! */
+                      * TODO check whether that has rich parts! */
                      while ((x = x->m_nextpart) != NULL) {
                         struct mime_handler mhx;
 
@@ -811,7 +811,7 @@ jmulti:
              ip->m_multipart != NULL &&
              ip->m_multipart->m_mimecontent == MIME_DISCARD &&
              ip->m_multipart->m_nextpart == NULL) {
-            char const *x = _("[Missing multipart boundary - use \"show\" "
+            char const *x = _("[Missing multipart boundary - use show "
                   "to display the raw message]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
          }
@@ -1207,7 +1207,7 @@ jgetname:
          n_perr(f, 0);
    } else {
       if ((fp = Fopen(f, "w")) == NULL)
-         n_err(_("Cannot open \"%s\"\n"), f);
+         n_err(_("Cannot open %s\n"), n_shell_quote_cp(f, FAL0));
    }
 jleave:
    NYD_LEAVE;

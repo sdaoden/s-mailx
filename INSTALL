@@ -12,9 +12,9 @@ I n s t a l l i n g  S - n a i l
 --------------
 
 System specific notes can be found in the next section.
-All (optional) features are documented (and adjustable) in "make.rc".
+All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
-line, overriding those made in "make.rc" (if any).
+line, overriding those made in make.rc (if any).
 Without any adjustments all possible features which are not in
 experimental state will be enabled but not "require"d, so that
 configuration won't fail shall any of them not be usable due to the
@@ -51,7 +51,7 @@ The following make(1) targets exists, the default being `build':
 - tangerine   Shorthand for "$ make config build test install":
               create or check and update configuration, build, test and
               install.
-              The variable $DESTDIR will be honoured (see "make.rc"),
+              The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
               In order to parallelize the `build' step pass a $MAILJOBS
               variable, as shown below.
@@ -65,13 +65,13 @@ The following make(1) targets exists, the default being `build':
               $MAILJOBS is not tracked in the configuration.
 - install     Only install using the built files of the existing
               configuration.
-              The variable $DESTDIR will be honoured (see "make.rc"),
+              The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
 
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run "cc-test.sh" in --check-only mode on the built binary.
+- test        Run cc-test.sh in --check-only mode on the built binary.
 
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
@@ -103,7 +103,7 @@ and library paths by passing prefilled $INCS and $LIBS variables:
   $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv tangerine
 
 Note there are also some predefined configuration sets available, ment
-to be used instead of doing manual adjustments (in "make.rc" or) on the
+to be used instead of doing manual adjustments (in make.rc or) on the
 command line (names are case-insensitive):
 
 - CONFIG=NULL, CONFIG=NULLI
@@ -159,20 +159,20 @@ The configuration process creates some files named "config":
 - config.inc  List of C header include paths, as compiler directives.
 - config.lib  List of used library information, as compiler directives.
 
-Of special interest is "config.log" since the error usually manifests
-here in textual output.  Maybe that makes it obvious what can be done
-(header files could not be found because of missing entries in
-$C_INCLUDE_PATH, libraries could not be linked because of incomplete
-$LD_LIBRARY_PATH, etc.).
+Of special interest is config.log since the error usually manifests here
+in textual output.  Maybe that makes it obvious what can be done (header
+files could not be found because of missing entries in $C_INCLUDE_PATH,
+libraries could not be linked because of incomplete $LD_LIBRARY_PATH,
+etc.).
 Otherwise it is getting complicated, and it would be appreciated if you
-would contact s-nail-users@!
+would contact the mailing-list!
 
 1.2 What if building fails?
 ---------------------------
 
 Even worse!  This should not happen if configuration succeeded!  It
 would be very kind and highly appreciated if you would report this
-to s-nail-users@.
+to the mailing-list.
 
 1.3 How can i enable debugging?
 -------------------------------
@@ -182,7 +182,7 @@ Please ensure WANT_DEBUG=yes is enabled during compilation, as in
   $ make CONFIG=MAXIMAL WANT_DEBUG=yes
 
 If $WANT_AUTOCC is enabled then the build system should automatically
-adjust the compiler flags accordingly, please see "make.rc" for more.
+adjust the compiler flags accordingly, please see make.rc for more.
 There is also a `devel'opment target which does most of this by itself:
 
   $ make devel
@@ -199,7 +199,7 @@ it is possibly a good idea to redirect it to a file:
   $ s-nail -dvv 2> error.log
 
 Should you really discover any problems with S-nail it would be very
-useful for development if you would contact s-nail-users@!
+useful for development if you would contact the mailing-list!
 Thank you!
 
 2. Special notes for the latest release
@@ -316,7 +316,7 @@ I claim that we have reached a stable state that should enable users
 a neatless mode of operation when running 24/7 (except for growing
 memory usage from the OpenSSL side of the road, when used).
 I'll hope to be able to release S-nail v20 on 2020-03-25, the 42nd
-anniversary of Berkeley Mail, as a good one.  Also see "TODO".
+anniversary of Berkeley Mail, as a good one.  Also see TODO.
 
 For S-nail, v15.0 (not before 2017) is dedicated to a Send- and
 MIME-layer rewrite that will bring the possibility to access each

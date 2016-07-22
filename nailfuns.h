@@ -164,7 +164,7 @@ FL int         c_define(void *v);
 FL int         c_undefine(void *v);
 FL int         c_call(void *v);
 
-/* TODO Check wether a *folder-hook* exists for the currently active mailbox */
+/* TODO Check whether a *folder-hook* exists for the currently active mailbox */
 FL bool_t      check_folder_hook(bool_t nmail);
 
 /* TODO v15 drop Invoke compose hook macname */
@@ -256,7 +256,7 @@ FL void        edit_attachments(struct attachment **aphead);
 /* Compute screen size */
 FL int         screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is checked wether we know about
+/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
  * some environment variable that supports colour+ and set *env_addon to that,
  * e.g., "LESS=FRSXi" */
 FL char const *n_pager_get(char const **env_addon);
@@ -289,7 +289,7 @@ FL char *      nodename(int mayoverride);
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
 
-/* Check wether the argument string is a true (1) or false (0) boolean, or an
+/* Check whether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
  * treated as a boolean, is used as the return value shall inbuf be empty.
  * inlen may be UIZ_MAX to force strlen() detection */
@@ -319,7 +319,7 @@ FL void        time_current_update(struct time_current *tc,
 FL uiz_t       n_msleep(uiz_t millis, bool_t ignint);
 
 /* Our error print series..  Note: these reverse scan format in order to know
- * wether a newline was included or not -- this affects the output! */
+ * whether a newline was included or not -- this affects the output! */
 FL void        n_err(char const *format, ...);
 FL void        n_verr(char const *format, va_list ap);
 
@@ -533,7 +533,7 @@ FL int         c_urldecode(void *v);
 FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
                   char const *line, size_t linesize);
 
-/* Scan an entire command argument line, return wether result can be used,
+/* Scan an entire command argument line, return whether result can be used,
  * otherwise no resources are allocated (in ->cac_arg).
  * For _WYSH arguments the flags _TRIMSPACE and _LOG are implicit */
 FL bool_t      n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
@@ -548,7 +548,7 @@ FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
  */
 
 /* if.elif.else.endif conditional execution.
- * condstack_isskip() returns wether the current condition state doesn't allow
+ * condstack_isskip() returns whether the current condition state doesn't allow
  * execution of commands.
  * condstack_release() and condstack_take() rotate the current condition stack;
  * condstack_take() returns a false boolean if the current condition stack has
@@ -581,7 +581,7 @@ FL int         c_colour(void *v);
 FL int         c_uncolour(void *v);
 
 /* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test wether *colour-pager* is to be inspected.
+ * test whether *colour-pager* is to be inspected.
  * The push/pop functions deal with recursive execute()ions, for now. TODO
  * env_gut() will reset() as necessary */
 FL void        n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used);
@@ -775,7 +775,7 @@ FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
- * Return wether the From_ line was parsed successfully */
+ * Return whether the From_ line was parsed successfully */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
@@ -892,7 +892,7 @@ FL char *      getsender(struct message *m);
 FL int         grab_headers(struct header *hp, enum gfield gflags,
                   int subjfirst);
 
-/* Check wether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
+/* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*
@@ -962,14 +962,14 @@ FL bool_t      n_print_comm_docstr(char const *comm);
 #endif
 
 /* Interpret user commands.  If stdin is not a tty, print no prompt; return
- * wether last processed command returned error -- this is *only* for main()! */
+ * whether last processed command returned error; this is *only* for main()! */
 FL bool_t      n_commands(void);
 
 /* Actual cmd input */
 
 /* Read a complete line of input, with editing if interactive and possible.
  * If prompt is NULL we'll call getprompt() first, if necessary.
- * nl_escape defines wether user can escape newlines via backslash (POSIX).
+ * nl_escape defines whether user can escape newlines via backslash (POSIX).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error.
@@ -1037,7 +1037,7 @@ FL void        message_append(struct message *mp);
 /* Append a NULL message */
 FL void        message_append_null(void);
 
-/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
+/* Check whether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
  * true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);
@@ -1189,7 +1189,7 @@ FL char const * charset_iter_or_fallback(void);
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
-/* Check wether our headers will need MIME conversion */
+/* Check whether our headers will need MIME conversion */
 #ifdef HAVE_ICONV
 FL char const * need_hdrconv(struct header *hp);
 #endif
@@ -1325,7 +1325,7 @@ FL struct mimepart * mime_parse_msg(struct message *mp,
 FL int         c_mimetype(void *v);
 FL int         c_unmimetype(void *v);
 
-/* Check wether the Content-Type name is internally known */
+/* Check whether the Content-Type name is internally known */
 FL bool_t      mime_type_check_mtname(char const *name);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
@@ -1383,7 +1383,7 @@ FL char *      detract(struct name *np, enum gfield ntype);
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
-/* Check wether n1 n2 share the domain name */
+/* Check whether n1 n2 share the domain name */
 FL bool_t      name_is_same_domain(struct name const *n1,
                   struct name const *n2);
 
@@ -1420,7 +1420,7 @@ FL int         is_myname(char const *name);
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);
 
-/* `(un)?ml(ist|subscribe)', and a check wether a name is a (wanted) list */
+/* `(un)?ml(ist|subscribe)', and a check whether a name is a (wanted) list */
 FL int         c_mlist(void *v);
 FL int         c_unmlist(void *v);
 FL int         c_mlsubscribe(void *v);
@@ -1598,7 +1598,7 @@ FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 /* Mark a child as don't care - pid */
 FL void        free_child(int pid);
 
-/* Wait for pid, return wether we've had a normal EXIT_SUCCESS exit.
+/* Wait for pid, return whether we've had a normal EXIT_SUCCESS exit.
  * If wait_status is set, set it to the reported waitpid(2) wait status */
 FL bool_t      wait_child(int pid, int *wait_status);
 
@@ -1700,7 +1700,7 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
 
-/* Check wether *s is an escape sequence, expand it as necessary.
+/* Check whether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
  * *s is advanced to after the expanded sequence (as possible).
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
@@ -1959,7 +1959,7 @@ FL int         is_prefix(char const *as1, char const *as2);
 FL char *      string_quote(char const *v);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
- * to indicate wether getmsglist() et al need to be called to collect
+ * to indicate whether getmsglist() et al need to be called to collect
  * additional args that remain in linebuf.  If strip is true possibly
  * surrounding quote characters are removed.  Return NULL on "error" */
 FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
@@ -1991,7 +1991,7 @@ FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
 /* Case-independent ASCII string find s2 in s1, return it or NULL */
 FL char const *asccasestr(char const *s1, char const *s2);
 
-/* Case-independent ASCII check wether as2 is the initial substring of as1 */
+/* Case-independent ASCII check wjether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
 
 /* struct str related support funs TODO _cp->_cs! */
@@ -2253,7 +2253,7 @@ FL void        uncollapse1(struct message *mp, int always);
  * tty.c
  */
 
-/* Return wether user says yes, on STDIN if interactive.
+/* Return whether user says yes, on STDIN if interactive.
  * Uses noninteract_default, the return value for non-interactive use cases,
  * as a hint for boolify() and chooses the yes/no string to append to prompt
  * accordingly.  If prompt is NULL "Continue" is used instead.
@@ -2290,8 +2290,8 @@ FL int         n_tty_readline(char const *prompt, char **linebuf,
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Wether an entry added for real depends on the isgabby / *history-gabby*
- * relation, and / or wether s is non-empty and doesn't begin with U+0020 */
+ * Whether an entry added for real depends on the isgabby / *history-gabby*
+ * relation, and / or whether s is non-empty and doesn't begin with U+0020 */
 FL void        n_tty_addhist(char const *s, bool_t isgabby);
 
 #ifdef HAVE_HISTORY
@@ -2344,7 +2344,7 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
  * wcwidth() (or 1) on success */
 FL size_t      putuc(int u, int c, FILE *fp);
 
-/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+/* Check whether bidirectional info maybe needed for blen bytes of bdat */
 FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
 
 /* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
@@ -2375,7 +2375,7 @@ FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
                   char const *data);
 
 /* Zero ccp and lookup credentials for communicating with urlp.
- * Return wether credentials are available and valid (for chosen auth) */
+ * Return whether credentials are available and valid (for chosen auth) */
 FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);

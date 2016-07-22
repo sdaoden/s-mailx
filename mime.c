@@ -306,7 +306,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
       }
 
       /* Skip over a word to next non-whitespace, keep track along the way
-       * wether our 7-bit charset suffices to represent the data */
+       * whether our 7-bit charset suffices to represent the data */
       for (wend = wcur; wend < upper; ++wend) {
          if (whitechar(*wend))
             break;
@@ -314,7 +314,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
             flags |= _8BIT;
       }
 
-      /* Decide wether the range has to become encoded or not */
+      /* Decide whether the range has to become encoded or not */
       i = PTR2SIZE(wend - wcur);
       j = mime_enc_mustquote(wcur, i, MIMEEF_ISHEAD);
       /* If it just cannot fit on a SHOULD line length, force encode */
@@ -825,7 +825,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
     * TODO why our display reflects what is contained in the message: the 1:1
     * TODO relationship of message content and display!
     * TODO instead a header line should be decoded to what it is (a single
-    * TODO line that is) and it should be objective to the backend wether
+    * TODO line that is) and it should be objective to the backend whether
     * TODO it'll be folded to fit onto the display or not, e.g., for search
     * TODO purposes etc.  then the only condition we have to honour in here
     * TODO is that whitespace in between multiple adjacent MIME encoded words

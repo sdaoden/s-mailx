@@ -116,7 +116,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    oxm = ok_blook(v15_compat) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
-   /* Get the greeting, check wether APOP is advertised */
+   /* Get the greeting, check whether APOP is advertised */
    POP3_ANSWER(rv, goto jleave);
 #ifdef HAVE_MD5
    ts = _pop3_lookup_apop_timestamp(_pop3_buf);
@@ -143,14 +143,17 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #ifdef HAVE_MD5
    if (ts != NULL && !xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
       if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY) {
-         char const *ccp = "";
+         char const *ccp;
+
 # ifdef HAVE_SSL
          if (scp->sc_sock.s_use_ssl)
-            ccp = _(" (over an encrypted connection)");
+            ccp = _("over an encrypted connection");
+         else
 # endif
-         n_err(_("POP3 \"APOP\" authentication failed!\n"
-            "  The server indicated support - but disable via *pop3-no-apop*\n"
-            "  to use plain text authentication%s\n"), ccp);
+            ccp = _("(unsafe clear text!)");
+         n_err(_("POP3 APOP authentication failed!\n"
+            "  Server indicated support..  Set *pop3-no-apop*\n"
+            "  for plain text authentication %s\n"), ccp);
       }
       goto jleave;
    }
@@ -746,15 +749,22 @@ pop3_update(struct mailbox *mp)
       } else
          ++held;
    }
-   if (gotcha && (pstate & PS_EDIT)) {
-      printf(_("\"%s\" "), displayname);
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated\n"));
-   } else if (held && !(pstate & PS_EDIT)) {
-      if (held == 1)
-         printf(_("Held 1 message in %s\n"), displayname);
-      else
-         printf(_("Held %d messages in %s\n"), held, displayname);
+
+   /* C99 */{
+      char const *dnq;
+
+      dnq = n_shell_quote_cp(displayname, FAL0);
+
+      if (gotcha && (pstate & PS_EDIT)) {
+         printf(_("%s "), dnq);
+         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            ? _("complete\n") : _("updated\n"));
+      } else if (held && !(pstate & PS_EDIT)) {
+         if (held == 1)
+            printf(_("Held 1 message in %s\n"), dnq);
+         else
+            printf(_("Held %d messages in %s\n"), held, dnq);
+      }
    }
    fflush(stdout);
    NYD_LEAVE;
@@ -765,7 +775,7 @@ FL enum okay
 pop3_noop(void)
 {
    sighandler_type volatile saveint, savepipe;
-   enum okay rv = STOP;
+   enum okay volatile rv = STOP;
    NYD_ENTER;
 
    _pop3_lock = 1;

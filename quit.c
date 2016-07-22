@@ -193,7 +193,7 @@ edstop(void) /* TODO oh my god */
    rv = FAL0;
 
    /* TODO This is too simple minded?  We should regenerate an index file
-    * TODO to be able to truly tell wether *anything* has changed!
+    * TODO to be able to truly tell whether *anything* has changed!
     * TODO (Or better: only come here.. then!  It is an *object method!* */
    /* TODO Ignoring stat error is easy, huh? */
    if (!stat(mailname, &statb) && statb.st_size > mailsize) {
@@ -217,7 +217,7 @@ edstop(void) /* TODO oh my god */
       fflush_rewind(obuf);
    }
 
-   printf(_("\"%s\" "), displayname);
+   printf(_("%s "), n_shell_quote_cp(displayname, FAL0));
    fflush(stdout);
 
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
@@ -263,8 +263,10 @@ edstop(void) /* TODO oh my god */
             ? _("removed\n") : _("removed.\n"));
       else {
          int e = errno;
+
          printf(_("removal error (ignored)\n"));
-         n_err(_("Error removing \"%s\" (ignored):"), mailname); /* TODO */
+         n_err(_("Error removing %s (ignored):"),
+            n_shell_quote_cp(mailname, FAL0)); /* TODO */
          n_perr(NULL, e); /* TODO */
       }
    } else
@@ -282,7 +284,7 @@ jleave:
       /* TODO The codebase aborted by jumping to the main loop here.
        * TODO The OpenBSD mailx simply ignores this error.
        * TODO For now we follow the latter unless we are interactive,
-       * TODO in which case we ask the user wether the error is to be
+       * TODO in which case we ask the user whether the error is to be
        * TODO ignored or not.  More of this around here in this file! */
       rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
    }

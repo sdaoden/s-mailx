@@ -538,7 +538,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       GP_TO_SUBCLASS(grp, gp);
 
       if (regcomp(&grp->gr_regex, id, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-         n_err(_("Invalid regular expression: \"%s\"\n"), id);
+         n_err(_("Invalid regular expression: %s\n"), id);
          free(gp);
          gp = NULL;
          goto jleave;
@@ -726,7 +726,7 @@ _group_print(struct group const *gp, FILE *fo)
          do {
             struct grp_names *x = gnp;
             gnp = gnp->gn_next;
-            fprintf(fo, " \"%s\"", string_quote(x->gn_id));
+            fprintf(fo, " \"%s\"", string_quote(x->gn_id)); /* TODO shexp */
          } while (gnp != NULL);
       }
    } else if (gp->g_type & GT_MLIST) {
@@ -828,14 +828,15 @@ jaster_entry:
                      goto jaster_redo;
                }
             } else {
-               n_err(_("Mailing-list not `mlsubscribe'd: \"%s\"\n"), *argv);
+               n_err(_("Mailing-list not `mlsubscribe'd: %s\n"),
+                  n_shell_quote_cp(*argv, FAL0));
                rv = 1;
             }
             continue;
          }
       } else if (_group_del(gt, *argv))
          continue;
-      n_err(_("No such mailing-list: \"%s\"\n"), *argv);
+      n_err(_("No such mailing-list: %s\n"), n_shell_quote_cp(*argv, FAL0));
       rv = 1;
    }
    NYD_LEAVE;
@@ -1543,7 +1544,7 @@ c_alias(void *v)
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
          _group_print(gp, stdout);
       else {
-         n_err(_("No such alias: \"%s\"\n"), *argv);
+         n_err(_("No such alias: %s\n"), *argv);
          rv = 1;
       }
    } else {
@@ -1574,7 +1575,7 @@ c_unalias(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_ALIAS, *argv)) {
-      n_err(_("No such alias: \"%s\"\n"), *argv);
+      n_err(_("No such alias: %s\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;
@@ -1708,7 +1709,7 @@ c_shortcut(void *v)
       char *cp;
 
       if (argv[1] == NULL) {
-         n_err(_("Shortcut expansion is missing: \"%s\"\n"), *argv);
+         n_err(_("Shortcut expansion is missing: %s\n"), *argv);
          rv = 1;
          break;
       }
@@ -1732,7 +1733,7 @@ c_unshortcut(void *v)
    NYD_ENTER;
 
    do if (!_group_del(GT_SHORTCUT, *argv)) {
-      n_err(_("No such shortcut: \"%s\"\n"), *argv);
+      n_err(_("No such shortcut: %s\n"), *argv);
       rv = 1;
    } while (*++argv != NULL);
    NYD_LEAVE;
@@ -1779,7 +1780,7 @@ c_customhdr(void *v){
          hcp = *argv;
          break;
       }
-      n_err(_("`customhdr': invalid name: \"%s\"\n"), *argv);
+      n_err(_("`customhdr': invalid name: %s\n"), *argv);
       goto jleave;
    }
    rv = 0;
@@ -1788,7 +1789,7 @@ c_customhdr(void *v){
       if((gp = _group_find(GT_CUSTOMHDR, hcp)) != NULL)
          _group_print(gp, stdout);
       else{
-         n_err(_("No such `customhdr': \"%s\"\n"), hcp);
+         n_err(_("No such `customhdr': %s\n"), hcp);
          rv = 1;
       }
    }else{
@@ -1797,7 +1798,7 @@ c_customhdr(void *v){
       char *cp;
 
       if(pstate & PS_WYSHLIST_SAW_CONTROL){
-         n_err(_("`customhdr': \"%s\": control characters not allowed: %s%s\n"),
+         n_err(_("`customhdr': control characters not allowed: %s: %s%s\n"),
             hcp, n_shell_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
          rv = 1;
          goto jleave;
@@ -1835,7 +1836,7 @@ c_uncustomhdr(void *v){
    argv = v;
    do{
       if(!_group_del(GT_CUSTOMHDR, *argv)){
-         n_err(_("No such custom header: \"%s\"\n"), *argv);
+         n_err(_("No such custom header: %s\n"), *argv);
          rv = 1;
       }
    }while(*++argv != NULL);
@@ -1895,7 +1896,7 @@ jch_outer:
                   }
                }else if(*cp != ':' && !blankchar(*cp)){
 jch_badent:
-                  n_err(_("Invalid *customhdr* entry: \"%s\"\n"), vp);
+                  n_err(_("Invalid *customhdr* entry: %s\n"), vp);
                   goto jch_outer;
                }
                break;

@@ -235,7 +235,7 @@ static char const *a_amv_var_canonify(char const *vn);
 static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
                char const *name);
 
-/* Lookup a variable from .avc_(map|name|hash), return wether it was found.
+/* Lookup a variable from .avc_(map|name|hash), return whether it was found.
  * Sets .avc_prime; .avc_var is NULL if not found.
  * Here it is where we care for _I3VAL and _DEFVAL, too.
  * An _I3VAL will be "consumed" as necessary anyway, but it won't be used to
@@ -310,7 +310,7 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
          if((amf & a_AMV_MF_ACC) &&
                account_name != NULL && !strcmp(account_name, name)){
             amp->am_flags |= a_AMV_MF_DEL;
-            n_err(_("Delayed deletion of active account \"%s\"\n"), name);
+            n_err(_("Delayed deletion of active account: %s\n"), name);
          }else{
             a_amv_mac_free(amp);
             amp = (struct a_amv_mac*)-1;
@@ -453,7 +453,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       if(n.ui == 0)
          continue;
       if(n.i < 0){
-         n_err(_("Unterminated %s definition: \"%s\"\n"),
+         n_err(_("Unterminated %s definition: %s\n"),
             (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
          goto jerr;
       }
@@ -492,7 +492,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
          amlp->aml_prespc = leaspc;
          memcpy(amlp->aml_dat, cp, n.ui);
       }else{
-         n_err(_("Too much content in %s definition: \"%s\"\n"),
+         n_err(_("Too much content in %s definition: %s\n"),
             (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
          goto jerr;
       }
@@ -516,10 +516,10 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       *amlpp = NULL;
    }
 
-   /* Finally check wether such a macro already exists, in which case we throw
+   /* Finally check whether such a macro already exists, in which case we throw
     * it all away again.  At least we know it would have worked */
    if(a_amv_mac_lookup(name, amp, amf) != NULL){
-      n_err(_("A %s named \"%s\" already exists\n"),
+      n_err(_("There is already a %s of name: %s\n"),
          (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
       goto jerr;
    }
@@ -551,7 +551,7 @@ a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
 
    if(LIKELY(name[0] != '*' || name[1] != '\0')){
       if((amp = a_amv_mac_lookup(name, NULL, amf | a_AMV_MF_UNDEF)) == NULL){
-         n_err(_("%s \"%s\" is not defined\n"),
+         n_err(_("%s not defined: %s\n"),
             (amf & a_AMV_MF_ACC ? "Account" : "Macro"), name);
          rv = FAL0;
       }
@@ -603,7 +603,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
          goto jleave;
    }
 
-   /* Check wether this variable is handled yet */
+   /* Check whether this variable is handled yet */
    for(avp = alp->as_lopts; avp != NULL; avp = avp->av_link)
       if(!strcmp(avp->av_name, name))
          goto jleave;
@@ -1030,11 +1030,11 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(pstate & PS_ROOT))){
-         n_err(_("Variable is readonly: \"%s\"\n"), avcp->avc_name);
+         n_err(_("Variable is readonly: %s\n"), avcp->avc_name);
          goto jleave;
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
-         n_err(_("Variable must not be empty: \"%s\"\n"), avcp->avc_name);
+         n_err(_("Variable must not be empty: %s\n"), avcp->avc_name);
          goto jleave;
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
@@ -1057,7 +1057,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(pstate & (PS_ROOT | PS_STARTED)))){
-         n_err(_("Variable cannot be set in a resource file: \"%s\"\n"),
+         n_err(_("Variable cannot be set in a resource file: %s\n"),
             avcp->avc_name);
          goto jleave;
       }
@@ -1094,7 +1094,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
        * values, ignore that and force boolean */
       if(avp->av_flags & a_AMV_VF_BOOL){
          if((options & OPT_D_VV) && *value != '\0')
-            n_err(_("\"%s\" is a boolean variable, ignoring value: %s\n"),
+            n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
          avp->av_value = UNCONST(value = "");
       }else
@@ -1159,7 +1159,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
    if(LIKELY((avmp = avcp->avc_map) != NULL)){
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
             !(pstate & PS_ROOT))){
-         n_err(_("Variable may not be unset: \"%s\"\n"), avcp->avc_name);
+         n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
       }
       if((avmp->avm_flags & a_AMV_VF_VIP) &&
@@ -1174,7 +1174,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
 jforce_env:
          rv = a_amv_var__clearenv(avcp->avc_name, NULL);
       }else if(!(pstate & (PS_ROOT | PS_ROBOT)) && (options & OPT_D_V))
-         n_err(_("Can't unset undefined variable: \"%s\"\n"), avcp->avc_name);
+         n_err(_("Can't unset undefined variable: %s\n"), avcp->avc_name);
       goto jleave;
    }else if(avcp->avc_var == (struct a_amv_var*)-1){
       avcp->avc_var = NULL;
@@ -1396,8 +1396,8 @@ jouter:
 
       for(; (c = *cp) != '=' && c != '\0'; ++cp){
          if(cntrlchar(c) || whitechar(c)){
-            n_err(_("Variable name with control or newline character ignored: "
-               "\"%s\"\n"), ap[-1]);
+            n_err(_("Variable name with control character ignored: %s\n"),
+               ap[-1]);
             ++errs;
             goto jouter;
          }
@@ -1489,7 +1489,7 @@ c_call(void *v){
    }
 
    if((amp = a_amv_mac_lookup(name = *args, NULL, a_AMV_MF_NONE)) == NULL){
-      errs = _("Undefined macro `call'ed: \"%s\"\n");
+      errs = _("Undefined macro `call'ed: %s\n");
       goto jerr;
    }
 
@@ -1541,8 +1541,8 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
 
 jmac:
    if((amp = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) == NULL){
-      n_err(_("Cannot call *folder-hook* for \"%s\": "
-         "macro \"%s\" does not exist\n"), displayname, cp);
+      n_err(_("Cannot call *folder-hook* for %s: macro does not exist: %s\n"),
+         n_shell_quote_cp(displayname, FAL0), cp);
       rv = FAL0;
       goto jleave;
    }
@@ -1575,7 +1575,7 @@ call_compose_mode_hook(char const *macname, /* TODO temporary, v15: drop */
    NYD_ENTER;
 
    if((amp = a_amv_mac_lookup(macname, NULL, a_AMV_MF_NONE)) == NULL)
-      n_err(_("Cannot call *on-compose-**: macro \"%s\" does not exist\n"),
+      n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
          macname);
    else{
       memset(&amca, 0, sizeof amca);
@@ -1614,7 +1614,7 @@ c_account(void *v){
          goto jleave;
       }
       if(!asccasecmp(args[0], ACCOUNT_NULL)){
-         n_err(_("`account': error: \"%s\" is a reserved name\n"),
+         n_err(_("`account': cannot use reserved name: %s\n"),
             ACCOUNT_NULL);
          goto jleave;
       }
@@ -1632,7 +1632,7 @@ c_account(void *v){
    amp = NULL;
    if(asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
          (amp = a_amv_mac_lookup(args[0], NULL, a_AMV_MF_ACC)) == NULL) {
-      n_err(_("`account': account \"%s\" does not exist\n"), args[0]);
+      n_err(_("`account': account does not exist: %s\n"), args[0]);
       goto jleave;
    }
 
@@ -1657,8 +1657,7 @@ c_account(void *v){
       amca.amca_lopts_on = TRU1;
       if(!a_amv_mac_exec(&amca)){
          /* XXX account switch incomplete, unroll? */
-         n_err(_("`account': switching to account \"%s\" failed\n"),
-            amp->am_name);
+         n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
       }
    }
@@ -1956,12 +1955,12 @@ c_varedit(void *v){
 
       if(avc.avc_map != NULL){
          if(avc.avc_map->avm_flags & a_AMV_VF_BOOL){
-            n_err(_("`varedit': can't edit boolean variable \"%s\"\n"),
+            n_err(_("`varedit': cannot edit boolean variable: %s\n"),
                avc.avc_name);
             continue;
          }
          if(avc.avc_map->avm_flags & a_AMV_VF_RDONLY){
-            n_err(_("`varedit': can't edit readonly variable \"%s\"\n"),
+            n_err(_("`varedit': cannot edit readonly variable: %s\n"),
                avc.avc_name);
             continue;
          }
@@ -2040,15 +2039,14 @@ c_environ(void *v){
                continue;
             }else if(avc.avc_var->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)){
                if(options & OPT_D_V)
-                  n_err(_("`environ': link: already established for \"%s\"\n"),
-                     *ap);
+                  n_err(_("`environ': link: already established: %s\n"), *ap);
                continue;
             }
             avc.avc_var->av_flags |= a_AMV_VF_LINKED;
             if(!(avc.avc_var->av_flags & a_AMV_VF_ENV))
                a_amv_var__putenv(&avc, avc.avc_var);
          }else if(!islnk){
-            n_err(_("`environ': unlink: no link established: \"%s\"\n"), *ap);
+            n_err(_("`environ': unlink: no link established: %s\n"), *ap);
             err = 1;
          }else{
             char const *evp = getenv(*ap);
@@ -2056,8 +2054,8 @@ c_environ(void *v){
             if(evp != NULL)
                err |= !a_amv_var_set(&avc, evp, TRU1);
             else{
-               n_err(_("`environ': link: cannot link non-existent variable "
-                  "\"%s\"\n"), *ap);
+               n_err(_("`environ': link: cannot link to non-existent: %s\n"),
+                  *ap);
                err = 1;
             }
          }

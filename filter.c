@@ -316,7 +316,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
    if ((self->qf_pfix = prefix) != NULL)
       self->qf_pfix_len = (ui32_t)strlen(prefix);
 
-   /* Check wether the user wants the more fancy quoting algorithm */
+   /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
@@ -761,7 +761,7 @@ jput:
    }
    self->hf_flags = f;
 
-   /* Check wether there are HREFs to dump; there is so much messy tagsoup out
+   /* Check whether there are HREFs to dump; there is so much messy tagsoup out
     * there that it seems best not to simply dump HREFs in each _dump(), but
     * only with some gap, let's say half the real screen height */
    if (--self->hf_href_dist < 0 && (f & _HF_NL_2) && self->hf_hrefs != NULL)
@@ -1073,7 +1073,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          continue;
       /* If so, properly skip over the value */
       if(c == '"' || c == '\''){
-         /* TODO oops i have forgotten wether backslash quoting is allowed in
+         /* TODO oops i have forgotten whether backslash quoting is allowed in
           * TODO quoted HTML parameter values?  not supporting that for now.. */
          for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
             ;
@@ -1093,7 +1093,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    }
 
    if(c == '"' || c == '\''){
-      /* TODO oops i have forgotten wether backslash quoting is allowed in
+      /* TODO oops i have forgotten whether backslash quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
       store->s = UNCONST(cp);
       for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)

@@ -191,7 +191,7 @@ a_termcap_init_var(struct str const *termvar){
       /* Separate key/value, if any */
       if(/* no empties ccp[0] == '\0' ||*/ ccp[1] == '\0'){
 jeinvent:
-         n_err(_("*termcap*: invalid entry: \"%s\"\n"), ccp);
+         n_err(_("*termcap*: invalid entry: %s\n"), ccp);
          continue;
       }
       for(kl = 2, v = &ccp[2];; ++kl, ++v){
@@ -236,14 +236,14 @@ jeinvent:
             }else
 #endif /* HAVE_KEY_BINDINGS */
                   if(options & OPT_D_V)
-               n_err(_("*termcap*: unknown capability: \"%s\"\n"), ccp);
+               n_err(_("*termcap*: unknown capability: %s\n"), ccp);
             continue;
          }
          i = (size_t)tci;
 
          tcp = &a_termcap_control[i];
          if((tcp->tc_flags & a_TERMCAP_F_TYPE_MASK) != f){
-            n_err(_("*termcap*: entry type mismatch: \"%s\"\n"), ccp);
+            n_err(_("*termcap*: entry type mismatch: %s\n"), ccp);
             break;
          }
          tep = &a_termcap_g->tg_ents[i];
@@ -306,13 +306,13 @@ a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
 
             if((c2 = ibuf[2]) == '\0' || !octalchar(c2) ||
                   (c3 = ibuf[3]) == '\0' || !octalchar(c3)){
-               n_err(_("*termcap*: invalid octal sequence: \"%s\"\n"), oibuf);
+               n_err(_("*termcap*: invalid octal sequence: %s\n"), oibuf);
                goto jerr;
             }
             c -= '0', c2 -= '0', c3 -= '0';
             c <<= 3, c |= c2;
             if((ui8_t)c > 0x1F){
-               n_err(_("*termcap*: octal number too large: \"%s\"\n"), oibuf);
+               n_err(_("*termcap*: octal number too large: %s\n"), oibuf);
                goto jerr;
             }
             c <<= 3, c |= c3;
@@ -320,16 +320,16 @@ a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
             goto jpush;
          }
 jebsseq:
-         n_err(_("*termcap*: invalid \"\\\" sequence: \"%s\"\n"), oibuf);
+         n_err(_("*termcap*: invalid reverse solidus \\ sequence: %s\n"),oibuf);
          goto jerr;
       }else if(c == '^'){
          if((c = ibuf[1]) == '\0'){
-            n_err(_("*termcap*: incomplete ^CNTRL sequence: \"%s\"\n"), oibuf);
+            n_err(_("*termcap*: incomplete ^CNTRL sequence: %s\n"), oibuf);
             goto jerr;
          }
          c = upperconv(c) ^ 0x40;
          if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
-            n_err(_("*termcap*: invalid ^CNTRL sequence: \"%s\"\n"), oibuf);
+            n_err(_("*termcap*: invalid ^CNTRL sequence: %s\n"), oibuf);
             goto jerr;
          }
          ibuf += 2;
@@ -439,7 +439,7 @@ a_termcap_load(char const *term){
    NYD2_ENTER;
 
    if(!(rv = (setupterm(term, STDOUT_FILENO, &err) == OK)))
-      n_err(_("Unknown ${TERM}inal \"%s\", using only *termcap*\n"), term);
+      n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
    NYD2_LEAVE;
    return rv;
 }
@@ -501,7 +501,7 @@ a_termcap_load(char const *term){
 #  define a_BUF NULL
 # endif
    if(!(rv = tgetent(a_BUF, term) > 0))
-      n_err(_("Unknown ${TERM}inal \"%s\", using only *termcap*\n"), term);
+      n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
 # undef a_BUF
    NYD2_LEAVE;
    return rv;
@@ -736,7 +736,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
                if(cnam[2] != '\0')
                   cnam += 2;
                n_err(_("*termcap-disable*d (/$TERM not set/unknown): "
-                  "can't perform CAP \"%s\"\n"), cnam);
+                  "can't perform CAP: %s\n"), cnam);
             }
             goto jleave;
          }

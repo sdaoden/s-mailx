@@ -89,7 +89,7 @@ static int           make_multipart(struct header *hp, int convert, FILE *fi,
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
 
-/* Check wether Disposition-Notification-To: is desired */
+/* Check whether Disposition-Notification-To: is desired */
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
                         FILE *fo);
 
@@ -339,7 +339,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
       err = errno;
-      n_err(_("\"%s\": %s\n"), ap->a_name, strerror(errno));
+      n_err(_("%s: %s\n"), n_shell_quote_cp(ap->a_name, FAL0), strerror(err));
       goto jleave;
    }
 
@@ -1001,7 +1001,8 @@ mightrecord(FILE *fp, struct name *to)
 
       if (__savemail(ep, fp) != 0) {
 jbail:
-         n_err(_("Failed to save message in \"%s\" - message not sent\n"), ep);
+         n_err(_("Failed to save message in %s - message not sent\n"),
+            n_shell_quote_cp(ep, FAL0));
          exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
@@ -1132,7 +1133,7 @@ _transfer(struct sendbundle *sbp)
             n_err(_("No SSL support compiled in\n"));
             rv = FAL0;
 #endif
-            n_err(_("Message not sent to \"%s\"\n"), np->n_name);
+            n_err(_("Message not sent to: %s\n"), np->n_name);
             _sendout_error = TRU1;
 #ifdef HAVE_SSL
          }
@@ -1980,7 +1981,7 @@ do {\
             fprintf(fo, "In-Reply-To: <%s>\n",np->n_name);/*TODO RFC5322 3.6.4*/
             ++gotcha;
          } else {
-            n_err(_("Invalid address in mail header: \"%s\"\n"), np->n_name);
+            n_err(_("Invalid address in mail header: %s\n"), np->n_name);
             goto jleave;
          }
       }
@@ -2297,7 +2298,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
                break;
             }
          }
-         /* Well, i had to check wether the RFC allows this.  Assume we've
+         /* Well, i had to check whether the RFC allows this.  Assume we've
           * passed the headers, too, then! */
          if(i == line.s_len)
             flags |= a_INIT | a_BODY;

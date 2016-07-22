@@ -58,7 +58,7 @@ enum _qact {
    CR =   Q    /* Always quote a '\r' (CR) */
 };
 
-/* Lookup tables to decide wether a character must be encoded or not.
+/* Lookup tables to decide whether a character must be encoded or not.
  * Email header differences according to RFC 2047, section 4.2:
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
  * - don't care about the special ^F[rom] and ^.$ */
@@ -103,12 +103,12 @@ static signed char const   _b64__dectbl[] = {
 #define _B64_DECUI8(C)     \
    ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
 
-/* ASCII case-insensitive check wether Content-Transfer-Encoding: header body
+/* ASCII case-insensitive check whether Content-Transfer-Encoding: header body
  * hbody defined this encoding type */
 static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
 
-/* Check wether *s must be quoted according to flags, else body rules;
- * sol indicates wether we are at the first character of a line/field */
+/* Check whether *s must be quoted according to flags, else body rules;
+ * sol indicates whether we are at the first character of a line/field */
 SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
                         enum mime_enc_flags flags);
 
@@ -306,7 +306,7 @@ mime_enc_target(void)
    else if (!asccasecmp(cp, "base64"))
       rv = MIMEE_B64;
    else {
-      n_err(_("Warning: invalid *encoding*, using Base64: \"%s\"\n"), cp);
+      n_err(_("Warning: invalid *encoding*, using Base64: %s\n"), cp);
       rv = MIMEE_B64;
    }
    NYD2_LEAVE;

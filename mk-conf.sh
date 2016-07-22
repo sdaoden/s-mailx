@@ -172,7 +172,7 @@ os_setup() {
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
    OSFULLSPEC="${OS:-`uname -a | ${tr} '[A-Z]' '[a-z]'`}"
    OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
-   msg 'Operating system is "%s"' ${OS}
+   msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = sunos ]; then
       msg ' . have special SunOS / Solaris "setup" rules ...'
@@ -232,7 +232,7 @@ _os_setup_sunos() {
 
    [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
    if [ -x "${cksum}" ]; then :; else
-      msg 'ERROR: Not an executable program: "%s"' "${cksum}"
+      msg 'ERROR: Not an executable program: %s' "${cksum}"
       msg 'ERROR:   We need a CRC-32 cksum(1), as specified in POSIX.'
       msg 'ERROR:   However, we do so only for tests.'
       msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
@@ -297,7 +297,7 @@ cc_setup() {
          config_exit 1
       fi
    fi
-   printf >&2 -- '"%s"\n' "${CC}"
+   printf >&2 -- '%s\n' "${CC}"
    export CC
 }
 
@@ -496,7 +496,7 @@ msg() {
    printf >&2 -- "${fmt}\\n" "${@}"
 }
 
-## First of all, create new configuration and check wether it changed
+## First of all, create new configuration and check whether it changed
 
 rc=./make.rc
 lst=./config.lst
@@ -534,7 +534,7 @@ check_tool() {
       return 0
    fi
    if [ ${opt} -eq 0 ]; then
-      msg 'ERROR: no trace of utility "%s"' "${n}"
+      msg 'ERROR: no trace of utility %s' "${n}"
       config_exit 1
    fi
    return 1
@@ -686,7 +686,7 @@ ld_check() {
 trap "exit 1" HUP INT TERM
 trap "${rm} -f ${tmp}" EXIT
 
-printf >&2 'Reading and preparing configuration from "%s" ... ' ${rc}
+printf >&2 'Reading and preparing configuration from %s ... ' ${rc}
 ${rm} -f ${tmp}
 # We want read(1) to perform backslash escaping in order to be able to use
 # multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow in
@@ -716,7 +716,7 @@ while read line; do
       }'`
    fi
    if [ "${i}" = "${line}" ]; then
-      msg 'ERROR: invalid syntax in "%s"' "${line}"
+      msg 'ERROR: invalid syntax in: %s' "${line}"
       continue
    fi
 
@@ -862,7 +862,7 @@ export C_INCLUDE_PATH LD_LIBRARY_PATH
 # Some environments need runtime path flags to be able to go at all
 ld_runtime_flags
 
-## Detect CC, wether we can use it, and possibly which CFLAGS we can use
+## Detect CC, whether we can use it, and possibly which CFLAGS we can use
 
 cc_setup
 
@@ -917,7 +917,7 @@ for i in \
    printf -- "${i}=${j}\n" >> ${newlst}
 done
 
-# Now finally check wether we already have a configuration and if so, wether
+# Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    echo 'Configuration is up-to-date'

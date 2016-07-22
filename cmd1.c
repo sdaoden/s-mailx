@@ -543,7 +543,7 @@ j_A_redo:
          break;
       default:
          if (options & OPT_D_V)
-            n_err(_("Unkown *headline* format: \"%%%c\"\n"), c);
+            n_err(_("Unkown *headline* format: %%%c\n"), c);
          c = '?';
          goto jputcb;
       }
@@ -579,7 +579,7 @@ __subject(struct message *mp, bool_t threaded, size_t yetprinted)
    if (!threaded || mp->m_level == 0)
       goto jleave;
 
-   /* In a display thread - check wether this message uses the same
+   /* In a display thread - check whether this message uses the same
     * Subject: as it's parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
@@ -787,7 +787,7 @@ jerrbwd:
       break;
    default:
 jerr:
-      n_err(_("Unrecognized scrolling command \"%s\"\n"), arg);
+      n_err(_("Unrecognized scrolling command: %s\n"), arg);
       size = 1;
       goto jleave;
    }
@@ -1065,7 +1065,7 @@ static int
 _pipe1(char *str, int doign)
 {
    ui64_t stats[1];
-   char *cmd;
+   char const *cmd, *cmdq;
    int *msgvec, rv = 1;
    bool_t needs_list;
    NYD_ENTER;
@@ -1102,10 +1102,11 @@ _pipe1(char *str, int doign)
       goto jleave;
    }
 
-   printf(_("Pipe to: \"%s\"\n"), cmd);
+   cmdq = n_shell_quote_cp(cmd, FAL0);
+   printf(_("Pipe to: %s\n"), cmdq);
    stats[0] = 0;
-   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, cmd, stats)) == 0)
-      printf("\"%s\" %" PRIu64 " bytes\n", cmd, stats[0]);
+   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, UNCONST(cmd), stats)) == 0)
+      printf("%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
    NYD_LEAVE;
    return rv;

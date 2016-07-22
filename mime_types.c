@@ -136,7 +136,7 @@ static enum mime_type_class   _mt_classify_round(struct mt_class_arg *mtcap);
 /* We need an in-depth inspection of an application/octet-stream part */
 static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp);
 
-/* Check wether a *pipe-XY* handler is applicable, and adjust flags according
+/* Check whether a *pipe-XY* handler is applicable, and adjust flags according
  * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
  * isn't changed if mhp doesn't apply */
 static enum mime_handler_flags _mt_pipe_check(struct mime_handler *mhp);
@@ -200,7 +200,7 @@ _mt_init(void)
                   *srcs++ = ccp;
                else
                   n_err(_("*mimetypes-load-control*: too many sources, "
-                        "skipping \"%s\"\n"), ccp);
+                        "skipping %s\n"), n_shell_quote_cp(ccp, FAL0));
                continue;
             }
             /* FALLTHRU */
@@ -214,8 +214,7 @@ _mt_init(void)
       case 'U': case 'u': srcs_arr[0] = MIME_TYPES_USR; break;
       default:
 jecontent:
-         n_err(_("*mimetypes-load-control*: unsupported content: \"%s\"\n"),
-            ccp);
+         n_err(_("*mimetypes-load-control*: unsupported content: %s\n"), ccp);
          goto jleave;
       }
 
@@ -229,8 +228,8 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR : (j == 1 ? _MT_SYS : 0)),
             *srcs, &line, &linesize)) {
          if ((options & OPT_D_V) || j > 1)
-            n_err(_("*mimetypes-load-control*: can't open or load \"%s\"\n"),
-               *srcs);
+            n_err(_("*mimetypes-load-control*: can't open or load %s\n"),
+               n_shell_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
       free(line);
@@ -325,7 +324,7 @@ jexttypmar:
     * because this is quite common in mime.types(5) files */
    if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
       if (cmdcalled)
-         n_err(_("Empty MIME type or no extensions given: \"%s\"\n"),
+         n_err(_("Empty MIME type or no extensions given: %s\n"),
             (len == 0 ? _("(no value)") : line));
       goto jleave;
    }
@@ -333,7 +332,7 @@ jexttypmar:
    if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
 jeinval:
       if (cmdcalled || (options & OPT_D_V))
-         n_err(_("%s MIME type: \"%s\"\n"),
+         n_err(_("%s MIME type: %s\n"),
             (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")), typ);
       goto jleave;
    }
@@ -806,8 +805,8 @@ jnextc:
 
    if (rv & MIME_HDL_NEEDSTERM) {
       if (rv & MIME_HDL_ASYNC) {
-         n_err(_("MIME type handlers: can't use \"needsterminal\" and "
-            "\"x-nail-async\" together\n"));
+         n_err(_("MIME type handlers: can't use needsterminal and "
+            "x-nail-async together\n"));
          goto jerr;
       }
 
@@ -958,7 +957,7 @@ jdelall:
       }
       if (!match) {
          if (!(pstate & PS_ROBOT) || (options & OPT_D_V))
-            n_err(_("No such MIME type: \"%s\"\n"), *argv);
+            n_err(_("No such MIME type: %s\n"), *argv);
          v = NULL;
       }
    }
@@ -1096,7 +1095,7 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
       if (*mce.cp == '\0')
          is_os = FAL0;
       else if (*eptr != '\0' || (ui64_t)ul >= UI32_MAX) {
-         n_err(_("Can't parse *mime-counter-evidence* value \"%s\"\n"), mce.cp);
+         n_err(_("Can't parse *mime-counter-evidence* value: %s\n"), mce.cp);
          is_os = FAL0;
       } else {
          mce.f = (ui32_t)ul | MIMECE_SET;

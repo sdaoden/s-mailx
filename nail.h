@@ -954,12 +954,12 @@ enum mime_enc_flags {
     * inject the desired line-ending whenever a linewrap is desired */
    MIMEEF_MULTILINE  = 1<<4,
    /* (encode) Quote with header rules, do not generate soft NL breaks?
-    * For mustquote(), specifies wether special RFC 2047 header rules
+    * For mustquote(), specifies whether special RFC 2047 header rules
     * should be used instead */
    MIMEEF_ISHEAD     = 1<<5,
    /* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in
     * that characters which would not be reported as "must-quote" when
-    * detecting wether quoting is necessary at all will be reported as
+    * detecting whether quoting is necessary at all will be reported as
     * "must-quote" if they have to be encoded in an encoded word */
    MIMEEF_ISENCWORD  = 1<<6,
    __MIMEEF_LAST     = 6
@@ -1754,8 +1754,8 @@ struct n_colour_pen;
 struct url {
    char const     *url_input;       /* Input as given (really) */
    enum cproto    url_cproto;       /* Communication protocol as given */
-   bool_t         url_needs_tls;    /* Wether the protocol uses SSL/TLS */
-   bool_t         url_had_user;     /* Wether .url_user was part of the URL */
+   bool_t         url_needs_tls;    /* Whether the protocol uses SSL/TLS */
+   bool_t         url_had_user;     /* Whether .url_user was part of the URL */
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
    char const     *url_port;        /* Port (if given) or NULL */
    char           url_proto[14];    /* Communication protocol as 'xy\0//' */

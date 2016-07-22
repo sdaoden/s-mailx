@@ -443,7 +443,7 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
       if (!(pstate & PS_ERRORS_NOTED) && a_aux_err_head != NULL) {
          pstate |= PS_ERRORS_NOTED;
          fprintf(stderr, _("There are new messages in the error message ring "
-               "(denoted by \"#ERR#\")\n"
+               "(denoted by #ERR#)\n"
             "  The `errors' command manages this message ring\n"));
       }
 
@@ -1072,7 +1072,7 @@ jlist:{
       for(i = 0, enp = a_aux_err_head; enp != NULL; enp = enp->ae_next)
          fprintf(fp, "%4" PRIuZ ". %u B: %s",
             ++i, enp->ae_str.s_len, n_string_cp(&enp->ae_str));
-      /* We don't know wether last string ended with NL; be simple */
+      /* We don't know whether last string ended with NL; be simple */
       putc('\n', fp);
 
       page_or_print(fp, 0);

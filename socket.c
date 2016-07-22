@@ -262,8 +262,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (options & OPT_VERB)
-      n_err(_("Resolving host \"%s:%s\" ... "),
-         urlp->url_host.s, serv);
+      n_err(_("Resolving host %s:%s ... "), urlp->url_host.s, serv);
 
    /* Signal handling (in respect to __sopen_sig dealing) is heavy, but no
     * healing until v15.0 and i want to end up with that functionality */
@@ -299,17 +298,17 @@ jpseudo_jump:
 
       if (options & OPT_VERB)
          n_err(_("failed\n"));
-      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
+      n_err(_("Lookup of %s:%s failed: %s\n"),
          urlp->url_host.s, serv, gai_strerror(errval));
 
       /* Error seems to depend on how "smart" the /etc/service code is: is it
-       * "able" to state wether the service as such is NONAME or does it only
+       * "able" to state whether the service as such is NONAME or does it only
        * check for the given ai_socktype.. */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
                (serv = n_servbyname(urlp->url_proto, NULL)) != NULL &&
                *serv != '\0') {
-            n_err(_("  Trying standard protocol port \"%s\"\n"), serv);
+            n_err(_("  Trying standard protocol port %s\n"), serv);
             n_err(_("  If that succeeds consider including the "
                "port in the URL!\n"));
             continue;
@@ -330,7 +329,7 @@ jpseudo_jump:
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
-         n_err(_("%sConnecting to \"%s:%s\" ..."),
+         n_err(_("%sConnecting to %s:%s ..."),
                (res == res0 ? "" : "\n"), hbuf, serv);
       }
 
@@ -361,12 +360,12 @@ jjumped:
          if (options & OPT_VERB)
             n_err(_("failed\n"));
          if ((serv = n_servbyname(urlp->url_proto, &urlp->url_portno)) != NULL)
-            n_err(_("  Unknown service: \"%s\"\n"), urlp->url_proto);
-            n_err(_("  Trying standard protocol port \"%s\"\n"), serv);
+            n_err(_("  Unknown service: %s\n"), urlp->url_proto);
+            n_err(_("  Trying standard protocol port %s\n"), serv);
             n_err(_("  If that succeeds consider including the "
                "port in the URL!\n"));
          else {
-            n_err(_("  Unknown service: \"%s\"\n"), urlp->url_proto);
+            n_err(_("  Unknown service: %s\n"), urlp->url_proto);
             n_err(_("  Including a port number in the URL may "
                "circumvent this problem\n"));
             assert(sofd == -1 && errval == 0);
@@ -395,7 +394,7 @@ jjumped:
       case NO_RECOVERY:    emsg = N_("non-recoverable server error"); break;
       case NO_DATA:        emsg = N_("valid name without IP address"); break;
       }
-      n_err(_("Lookup of \"%s:%s\" failed: %s\n"),
+      n_err(_("Lookup of %s:%s failed: %s\n"),
          urlp->url_host.s, serv, V_(emsg));
       goto jjumped;
    } else if (options & OPT_VERB)
@@ -413,7 +412,7 @@ jjumped:
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERB)
-      n_err(_("%sConnecting to \"%s:%d\" ... "),
+      n_err(_("%sConnecting to %s:%d ... "),
          "", inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);

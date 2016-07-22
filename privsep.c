@@ -90,8 +90,8 @@ main(int argc, char **argv){
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
       fprintf(stderr,
-         "This is a helper program of \"" UAGENT "\" (in " BINDIR ").\n"
-         "  It is capable of gaining more privileges than \"" UAGENT "\"\n"
+         "This is a helper program of " UAGENT " (in " BINDIR ").\n"
+         "  It is capable of gaining more privileges than " UAGENT "\n"
          "  and will be used to create lock files.\n"
          "  It's sole purpose is outsourcing of high privileges into\n"
          "  fewest lines of code in order to reduce attack surface.\n"

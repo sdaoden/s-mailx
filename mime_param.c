@@ -245,7 +245,7 @@ jumpin:
                emsg = N_("too many digits to form a valid number");
                goto jerr;
             } else if ((c = *cp) != '=' && c != '*') {
-               emsg = N_("expected \"=\" or \"*\" after leading digits");
+               emsg = N_("expected = or * after leading digits");
                goto jerr;
             }
             memcpy(nobuf, hbp, i);
@@ -263,7 +263,7 @@ jumpin:
                   goto jeeqaaster;
             } else if (c != '=') {
 jeeqaaster:
-               emsg = N_("expected \"=\" after asterisk \"*\"");
+               emsg = N_("expected = after asterisk *");
                goto jerr;
             }
          } else {
@@ -306,7 +306,7 @@ jeeqaaster:
          switch (_mime_param_value_trim(&xval, hbp, &cp)) {
          default:
             emsg = (c == '*') ? N_("invalid value encoding")/* XXX fake */
-                  : N_("faulty value - missing closing quotation mark \"\"\"?");
+                  : N_("faulty value - missing closing quotation mark \"?");
             goto jerr;
          case -1:
             /* XXX if (np->is_enc && memchr(np->dat, '\'', i) != NULL) {
@@ -360,8 +360,8 @@ jerr:
    }
    if (options & OPT_D_V) {
       if (emsg == NULL)
-         emsg = N_("expected asterisk \"*\"");
-      n_err(_("Faulty \"%s\" RFC 2231 MIME parameter value: %s\n"
+         emsg = N_("expected asterisk *");
+      n_err(_("Faulty RFC 2231 MIME parameter value: %s: %s\n"
          "Near: %s\n"), param, V_(emsg), hbp_base);
    }
    rv = NULL;
@@ -827,7 +827,7 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
 
             /* We do have a result, but some (elder) software (S-nail <v14.8)
              * will use RFC 2047 encoded words in  parameter values, too */
-            /* TODO Automatically check wether the value seems to be RFC 2047
+            /* TODO Automatically check whether the value seems to be RFC 2047
              * TODO encwd. -- instead use *rfc2047_parameters* like mutt(1)? */
             if ((p = strstr(rv, "=?")) != NULL && strstr(p, "?=") != NULL) {
                struct str ti, to;

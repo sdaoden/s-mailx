@@ -1,5 +1,5 @@
-W e l c o m e  t o  S - n a i l/ S - m a i l x
-==============================================
+W e l c o m e  t o  S - n a i l / S - m a i l x
+===============================================
 
 S-nail (later S-mailx) is a mail processing system with a command
 syntax reminiscent of ed(1) with lines replaced by messages.
@@ -8,9 +8,9 @@ command, but is MIME capable and optionally offers extensions for
 line editing, IDNA, MIME, S/MIME, SMTP and POP3.
 It is usable as a mail batch language.
 
-Please refer to the file "INSTALL" for build and installation remarks,
-and to "NEWS" for release update information.  The file "THANKS"
-mentions people who have helped improving and deserve acknowledgement.
+Please refer to the file INSTALL for build and installation remarks,
+and to NEWS for release update information.  The file THANKS mentions
+people who have helped improving and deserve acknowledgement.
 
 This software originates in the codebase of Heirloom mailx, formerly
 known as nail, which itself is based upon Berkeley Mail that has
@@ -28,8 +28,8 @@ the Programmer's Manual, 1971-1986":
 
 We have a web page[1] which includes the online manual of the latest
 release, which can be downloaded via[2].
-There are git(1) repositories at sdaoden.eu[3] (use [4] for cloning
-purposes), with mirrors at Sourceforge[5] and GitLab.com[6].
+There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
+cloning purposes), with mirrors at Sourceforge[5] and GitLab.com[6].
 
   [1] https?://www.sdaoden.eu/code.html#s-nail
   [2] https?://www.sdaoden.eu/downloads/s-nail-latest.tar.{asc,gz,xz}
@@ -84,7 +84,8 @@ likely is interested in:
   $ cd s-nail
   $ make tangerine
 
-when available, otherwise the very same can be achieved via
+when the --single-branch option is available, otherwise the very same
+can be achieved via
 
   $ mkdir s-mailx.git
   $ cd s-mailx.git
@@ -95,7 +96,7 @@ when available, otherwise the very same can be achieved via
   $ make tangerine
 
 The release commits and release tags are signed with an OpenPGP key.
-Our heraldic animal "snailmail.jpg" has been found at [100].
+Our heraldic animal snailmail.jpg has been found at [100].
 Thank you!
 
   [100] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
@@ -105,7 +106,7 @@ AUTHORS
 
 Unix mail seems to have been written mostly by Ken Thompson.
 
-Berkeley Mail was (according to "def.h") developed by Kurt Shoens, dated
+Berkeley Mail was (according to def.h) developed by Kurt Shoens, dated
 March 25, 1978.  According to the CSRG commit log authors of BSD mail in
 the time span 1980-10-08 to 1995-05-01 were, in order of appearance
 (commit count): Kurt Shoens (379), Kirk McKusick (50), Carl Smith (16),
