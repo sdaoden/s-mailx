@@ -74,21 +74,21 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
 {
    ui64_t mstats[1], tstats[2];
    struct stat st;
-   int newfile = 0, last = 0, *msgvec, *ip;
+   int last = 0, *msgvec, *ip;
    struct message *mp;
    char *file = NULL, *cp, *cq;
    char const *disp = "", *shell = NULL;
    FILE *obuf;
-   bool_t success = FAL0, f;
+   bool_t success = FAL0, isflag;
    NYD_ENTER;
 
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    if (sender_record) {
       for (cp = str; *cp != '\0' && spacechar(*cp); ++cp)
          ;
-      f = (*cp != '\0');
+      isflag = (*cp != '\0');
    } else {
-      if ((file = snarf(str, &f, convert != SEND_TOFILE)) == NULL)
+      if ((file = snarf(str, &isflag, convert != SEND_TOFILE)) == NULL)
          goto jleave;
       while(spacechar(*file))
          ++file;
@@ -98,7 +98,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
       }
    }
 
-   if (!f) {
+   if (!isflag) {
       *msgvec = first(0, MMNORM);
       msgvec[1] = 0;
    } else if (getmsglist(str, msgvec, 0) < 0)
@@ -134,23 +134,18 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    if (shell != NULL) {
       if ((obuf = Popen(file, "w", shell, NULL, 1)) == NULL) {
          int esave = errno;
+
          n_perr(file, esave);
          errno = esave;
          goto jleave;
       }
+      isflag = FAL0;
       disp = _("[Piped]");
       goto jsend;
    }
 
    if ((file = expand(file)) == NULL)
       goto jleave;
-   if (access(file, F_OK) >= 0) {
-      newfile = 0;
-      disp = _("[Appended]");
-   } else {
-      newfile = 1;
-      disp = _("[New file]");
-   }
 
    obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
    if (obuf == NULL) {
@@ -159,36 +154,44 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          n_perr(file, 0);
          goto jleave;
       }
+      isflag = TRU1;
+      disp = _("[New file]");
    } else {
-      if (!newfile && !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
-            fseek(obuf, -2L, SEEK_END) == 0) {
-         char buf[2];
-         int prependnl = 0;
+      isflag = FAL0;
+      disp = _("[Appended]");
+   }
 
-         switch (fread(buf, sizeof *buf, 2, obuf)) {
-         case 2:
-            if (buf[1] != '\n') {
-               prependnl = 1;
-               break;
-            }
-            /* FALLTHRU */
-         case 1:
-            if (buf[0] != '\n')
-               prependnl = 1;
+   /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
+   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
+
+   if (!isflag && !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
+         fseek(obuf, -2L, SEEK_END) == 0) {
+      char buf[2];
+      int prependnl = 0;
+
+      switch (fread(buf, sizeof *buf, 2, obuf)) {
+      case 2:
+         if (buf[1] != '\n') {
+            prependnl = 1;
             break;
-         default:
-            if (ferror(obuf)) {
-               n_perr(file, 0);
-               goto jleave;
-            }
-            prependnl = 0;
          }
+         /* FALLTHRU */
+      case 1:
+         if (buf[0] != '\n')
+            prependnl = 1;
+         break;
+      default:
+         if (ferror(obuf)) {
+            n_perr(file, 0);
+            goto jleave;
+         }
+         prependnl = 0;
+      }
 
+      fflush(obuf);
+      if (prependnl) {
+         putc('\n', obuf);
          fflush(obuf);
-         if (prependnl) {
-            putc('\n', obuf);
-            fflush(obuf);
-         }
       }
    }
 
@@ -237,15 +240,16 @@ jferr:
       printf("\"%s\" %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
          file, disp, /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
-      newfile = ~MSAVED;
-      goto jiterand;
-   } else if (domove) {
-      newfile = ~(MSAVED | MDELETED);
-jiterand:
       for (ip = msgvec; *ip != 0 &&
             UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
          mp = message + *ip - 1;
-         mp->m_flag &= newfile;
+         mp->m_flag &= ~MSAVED;
+      }
+   } else if (domove) {
+      for (ip = msgvec; *ip != 0 &&
+            UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
+         mp = message + *ip - 1;
+         mp->m_flag &= ~(MSAVED | MDELETED);
       }
    }
 
