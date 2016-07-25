@@ -332,9 +332,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       lckfp = (FILE*)-1;
    else if (!(pstate & PS_EDIT))
       lckfp = n_dotlock(name, fileno(ibuf), FLT_READ, offset,0,
-            (fm & FEDIT_NEWMAIL ? 0 : 1));
+            (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX));
    else if (n_file_lock(fileno(ibuf), FLT_READ, offset,0,
-         (fm & FEDIT_NEWMAIL ? 0 : 1)))
+         (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX)))
       lckfp = (FILE*)-1;
 
    if (lckfp == NULL) {

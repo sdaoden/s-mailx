@@ -124,7 +124,13 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
    flp.l_whence = SEEK_SET;
    flp.l_len = len;
 
-   rv = (fcntl(fd, F_SETLK, &flp) != -1);
+   if (!(rv = (fcntl(fd, F_SETLK, &flp) != -1)))
+      switch (errno) {
+      case EBADF:
+      case EINVAL:
+         rv = TRUM1;
+         break;
+      }
    NYD2_LEAVE;
    return rv;
 }
@@ -385,14 +391,30 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    size_t pollmsecs)
 {
    size_t tries;
-   bool_t rv;
+   bool_t didmsg, rv;
    NYD_ENTER;
 
-   for (tries = 0; tries <= FILE_LOCK_TRIES; ++tries)
-      if ((rv = a_file_lock(fd, flt, off, len)) || pollmsecs == 0)
+   for (didmsg = FAL0, tries = 0; tries <= FILE_LOCK_TRIES; ++tries) {
+      rv = a_file_lock(fd, flt, off, len);
+
+      if (rv == TRUM1) {
+         rv = FAL0;
          break;
-      else
+      }
+      if (rv || pollmsecs == 0)
+         break;
+      else {
+         if(!didmsg){
+            n_err(_("Failed to create a file lock, waiting %lu milliseconds "),
+               pollmsecs);
+            didmsg = TRU1;
+         }else
+            n_err(".");
          n_msleep(pollmsecs, FAL0);
+      }
+   }
+   if(didmsg)
+      n_err(" %s\n", (rv ? _("ok") : _("failure")));
    NYD_LEAVE;
    return rv;
 }

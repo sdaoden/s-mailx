@@ -208,7 +208,7 @@ edstop(void) /* TODO oh my god */
          goto jleave;
       }
 
-      n_file_lock(fileno(ibuf), FLT_READ, 0,0, 1); /* TODO ign. lock error! */
+      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UIZ_MAX); /* TODO ign. lock err*/
       fseek(ibuf, (long)mailsize, SEEK_SET);
       while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
          putc(c, obuf);
@@ -225,7 +225,7 @@ edstop(void) /* TODO oh my god */
       goto jleave;
    }
 
-   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, 1); /* TODO ignoring lock error! */
+   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX); /* TODO ign. lock err! */
    ftrunc(obuf);
 
    srelax_hold();
@@ -374,7 +374,8 @@ jnewmail:
       goto jleave;
    }
 
-   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, 1)) == NULL) {
+   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UIZ_MAX)
+         ) == NULL) {
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       Fclose(fbuf);
       fbuf = NULL;

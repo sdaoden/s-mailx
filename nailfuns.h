@@ -667,6 +667,7 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
  * execv(2) with the privilege-separated dotlock helper program): the lock file
  * will be removed once the control pipe is closed via Pclose().
  * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
+ * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
  * normal file lock could be established, otherwise errno is usable on error */
 FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
@@ -741,7 +742,8 @@ FL off_t       fsize(FILE *iob);
 /* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
 
-/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
+/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0.
+ * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used */
 FL bool_t      n_file_lock(int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
 

@@ -175,6 +175,7 @@
 #define CBAD            (-15555)
 #define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
+#define FILE_LOCK_MILLIS 200     /* If UIZ_MAX, fall back to that */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
 #define HIST_SIZE       242      /* tty.c: history list default size */
