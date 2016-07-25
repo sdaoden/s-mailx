@@ -1021,7 +1021,14 @@ __savemail(char const *name, FILE *fp)
          n_perr(name, 0);
          goto jleave;
       }
-   } else {
+      emptyline = TRU1;
+   } else
+      emptyline = FAL0;
+
+   /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
+   n_file_lock(fileno(fo), FLT_WRITE, 0,0, UIZ_MAX);
+
+   if (!emptyline) {
       if (fseek(fo, -2L, SEEK_END) == 0) {
          switch (fread(buf, sizeof *buf, 2, fo)) {
          case 2:
