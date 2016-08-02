@@ -26,23 +26,24 @@ the Programmer's Manual, 1971-1986":
     survive crashes, to exploit uucp, to screen out foreign freeloaders,
     or whatever. Not until v7 did the interface change (Thompson). [.]
 
-We have a web page[1] which includes the online manual of the latest
-release, which can be downloaded via[2].
+Our latest release can be downloaded at [1], and the fully cross-
+referenced manual of which can be viewed online[2].
 There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
 cloning purposes), with mirrors at Sourceforge[5] and GitLab.com[6].
 
-  [1] https?://www.sdaoden.eu/code.html#s-nail
-  [2] https?://www.sdaoden.eu/downloads/s-nail-latest.tar.{asc,gz,xz}
+  [1] https?://www.sdaoden.eu/downloads/s-nail-latest.tar{,.{asc,gz,xz}}
+  [2] https?://www.sdaoden.eu/code.html#s-mailx
   [3] https?://git.sdaoden.eu/cgit/s-nail.git
   [4] https?://git.sdaoden.eu/scm/s-nail.git
   [5] http://sourceforge.net/projects/s-nail
   [6] https://gitlab.com/sdaoden/s-nail
 
-And a mailing list[7] (later: [8]!) with moderated unsubscribed posting
-possibilities; subscriptions can be managed via web interface[9];
-GMANE.org added the ML their archive[10] -- thank you!
-Commits to the [master] branch will be posted to [11], and announcements
-will also be posted to [12], both are receive-only mailing-lists.
+We have a mailing list[7] (later: [8]!) with moderated unsubscribed
+posting possibilities; subscriptions can be managed via web interface[9];
+Gmane added the ML their NNTP archive[10], and The Mail Archive archives
+a browser-accessible and searchable web version[11] -- thank you!
+Commits to the [master] branch will be posted to [12], and announcements
+will also be posted to [13], both are receive-only mailing-lists.
 These and all other mailings-lists at sdaoden.eu are hosted by MLMMJ, so
 users can manage their subscriptions by appending keywords to the plain
 mailing list address, a +subscribe for subscription, and +unsubscribe
@@ -52,15 +53,31 @@ for unsubscription, e.g., s-mailx+subscribe@sdaoden.eu.
   [8] s-mailx@sdaoden.eu
   [9] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
   [10] news.gmane.org/gmane.mail.s-nail.user
-  [11] s-mailx-commit@sdaoden.eu
-  [12] s-announce@sdaoden.eu
+  [11] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
+  [12] s-mailx-commit@sdaoden.eu
+  [13] s-announce@sdaoden.eu
 
 The S-nail(1) git(1) repository consists of five branches:
+
+- timeline: the more or less complete release history of Unix mail.
+  Unix mail data is taken from "The Unix Tree" [100], BSD Mail from
+  CSRG, then NetBSD, for nail and Heirloom mailx i've used release
+  balls.
+
+  Since v14.8.7 and onwards this branch is (therefore: again) used to
+  create the release tarballs, meaning that any modifications which are
+  necessary to create a release from [master] data are performed and
+  then committed, signed and tagged vVERSION.ar.
 
 - master: rooted on top of [heirloom], this adapts Heirloom mailx(1) as
   S-nail(1).  This is the stable branch that a normal user should track.
   It is updated once a release is made, and will otherwise only see
   cherry-picked bug fixes or stable improvements.
+
+  Releases are tagged as vVERSION (s-nailvVERSION from v13 - v13.2,
+  s-nail-VERSION from v14.0 - v14.4, Heirloom had R12_*) and signed.
+  This data snapshot is then imported into [timeline] and used as the
+  base for the release data (tagged vVERSION.ar).
 
 - next: rooted on top of [master], this consists of a furious mixture of
   commits that eventually end up in [master]; it is a snapshot of the
@@ -68,14 +85,10 @@ The S-nail(1) git(1) repository consists of five branches:
 
 - crawl: developer chaos (distributed horror backup - don't use!).
 
-- timeline: an ongoing effort to collect the complete history of Mail.
-  Anything from the pre-Gunnar Ritter area is taken from CSRG and other
-  archives, for nail and Heirloom mailx i've used release balls, and
-  since S-nail v14.8.7 this is also true again (and tagging the release
-  as vVERSION.ar).
-
 - heirloom: a full git(1) cvsimport of the Heirloom mailx(1) cvs(1)
   repository.
+
+  [100] http://minnie.tuhs.org/cgi-bin/utree.pl
 
 To clone only the [master] branch, which is what a normal user most
 likely is interested in:
@@ -95,11 +108,13 @@ can be achieved via
   $ git checkout master
   $ make tangerine
 
-The release commits and release tags are signed with an OpenPGP key.
-Our heraldic animal snailmail.jpg has been found at [100].
+The release commits and release tags are signed with an OpenPGP key,
+please see NEWS for its identity.
+
+Our heraldic animal snailmail.jpg has been found at [+1].
 Thank you!
 
-  [100] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
+  [+1] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
 
 AUTHORS
 =======
