@@ -152,9 +152,9 @@ jflush:
          memmove(self->qf_dat.s, save_b, save_l);
       }
    } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
-      bool_t isws = iswspace(wc);
+      bool_t isws = (iswspace(wc) != 0);
 
-      if ((isws && !self->qf_brk_isws) || self->qf_brkl == 0) {
+      if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
          self->qf_brkl = self->qf_dat.l;
          self->qf_brkw = self->qf_datw;
          self->qf_brk_isws = isws;
