@@ -114,9 +114,9 @@ scan_mode(char const *mode, int *omode)
       int         omode;
    } const maps[] = {
       {"r", O_RDONLY},
-      {"w", O_WRONLY | O_CREAT | O_TRUNC},
+      {"w", O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC},
       {"wx", O_WRONLY | O_CREAT | O_EXCL},
-      {"a", O_WRONLY | O_APPEND | O_CREAT},
+      {"a", O_WRONLY | O_APPEND | O_CREAT | n_O_NOFOLLOW},
       {"a+", O_RDWR | O_APPEND},
       {"r+", O_RDWR},
       {"w+", O_RDWR | O_CREAT | O_EXCL}
@@ -203,8 +203,8 @@ _file_save(struct fp *fpp)
    }
 
    outfd = open(fpp->realfile,
-         ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC))
-            & ~O_EXCL), 0666);
+         ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
+            n_O_NOFOLLOW) & ~O_EXCL), 0666);
    if (outfd == -1) {
       outfd = errno;
       n_err(_("Fatal: cannot create %s: %s\n"),
@@ -564,7 +564,7 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 
    if ((osflags & O_APPEND) && ((p = which_protocol(file)) == PROTO_MAILDIR)) {
       flags |= FP_MAILDIR;
-      osflags = O_RDWR | O_APPEND | O_CREAT;
+      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
       infd = -1;
    } else {
       char const *ext;

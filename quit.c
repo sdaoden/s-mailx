@@ -297,7 +297,8 @@ _demail(void) /* TODO error handling */
    NYD2_ENTER;
    if (ok_blook(keep) || n_path_rm(mailname) <= FAL0) {
       /* TODO demail(): try use f?truncate(2) instead?! */
-      int fd = open(mailname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+      int fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
+            0600);
       if (fd >= 0)
          close(fd);
    }
@@ -542,7 +543,8 @@ makembox(void) /* TODO oh my god */
       }
       Fclose(obuf);
 
-      if ((c = open(mbox, O_CREAT | O_TRUNC | O_WRONLY, 0666)) != -1)
+      if ((c = open(mbox, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC), 0666)
+            ) != -1)
          close(c);
       if ((obuf = Zopen(mbox, "r+")) == NULL) {
          n_perr(mbox, 0);

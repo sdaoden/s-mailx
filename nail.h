@@ -147,6 +147,12 @@
    do { (void)fcntl((FD), F_SETFD, FD_CLOEXEC); } while (0)
 #endif
 
+#ifdef O_NOFOLLOW
+# define n_O_NOFOLLOW      O_NOFOLLOW
+#else
+# define n_O_NOFOLLOW      0
+#endif
+
 /*  */
 
 #if BUFSIZ + 0 > 2560               /* TODO simply use BUFSIZ? */
