@@ -230,8 +230,8 @@ Unless otherwise noted the following applies to saying "$ make" and
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
-    $WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
-    -std=c99 is set in your $CFLAGS.
+    $WANT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
+    ensure -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
   Latest as of 2016-03-26, clang(1) and gcc(1).
@@ -296,7 +296,7 @@ Unless otherwise noted the following applies to saying "$ make" and
         __builtin_stdarg_start              auxlily.o
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with $WANT_AUTOCC add this:
-       ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+       EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
 - UnixWare 7.1.4.
   * Note: it is no longer possible to use the `install' rule, because
