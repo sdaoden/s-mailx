@@ -522,7 +522,7 @@ do {\
 #define V_(S)           S
 
 /*
- * Types
+ * Types TODO v15: n_XX_t
  */
 
 #ifdef UINT8_MAX
@@ -718,7 +718,7 @@ typedef char            wc_t; /* Yep: really 8-bit char */
 enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
-/* Add shorter aliases for "normal" integers */
+/* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
 typedef unsigned long   ul_i;
 typedef unsigned int    ui_i;
 typedef unsigned short  us_i;
@@ -729,7 +729,8 @@ typedef signed int      si_i;
 typedef signed short    ss_i;
 typedef signed char     sc_i;
 
-typedef void (          *sighandler_type)(int);
+typedef void (          *sighandler_type)(int); /* TODO v15 obsolete */
+typedef void (          *n_sighdl_t)(int);
 
 enum authtype {
    AUTHTYPE_NONE     = 1<<0,

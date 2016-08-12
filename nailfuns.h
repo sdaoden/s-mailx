@@ -1717,8 +1717,11 @@ FL char *      n_shell_quote_cp(char const *cp, bool_t rndtrip);
 
 FL void        n_raise(int signo);
 
-/* Provide BSD-like signal() on all (POSIX) systems */
+/* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
 FL sighandler_type safe_signal(int signum, sighandler_type handler);
+
+/* Provide reproducable non-restartable signal handler installation */
+FL n_sighdl_t  n_signal(int signo, n_sighdl_t hdl);
 
 /* Hold *all* signals but SIGCHLD, and release that total block again */
 FL void        hold_all_sigs(void);

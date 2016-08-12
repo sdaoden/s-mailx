@@ -154,6 +154,19 @@ safe_signal(int signum, sighandler_type handler)
    return rv;
 }
 
+FL n_sighdl_t
+n_signal(int signo, n_sighdl_t hdl){
+   struct sigaction nact, oact;
+   NYD2_ENTER;
+
+   nact.sa_handler = hdl;
+   sigemptyset(&nact.sa_mask);
+   nact.sa_flags = 0;
+   hdl = (sigaction(signo, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
+   NYD2_LEAVE;
+   return hdl;
+}
+
 FL void
 hold_all_sigs(void)
 {
