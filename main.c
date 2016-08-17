@@ -362,19 +362,16 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
     * only honour it upon first run; abuse *is_sighdl* as an indicator */
    if (!is_sighdl) {
       char *cp;
-      long i;
 
       /* We manage those variables for our child processes, so ensure they
        * are up to date, always */
       if (options & OPT_INTERACTIVE)
          pstate |= PS_SIGWINCH_PEND;
 
-      if ((cp = ok_vlook(LINES)) != NULL &&
-            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
-         scrnheight = realscreenheight = (int)i;
-      if ((cp = ok_vlook(COLUMNS)) != NULL &&
-            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
-         scrnwidth = (int)i;
+      if ((cp = ok_vlook(LINES)) != NULL)
+         scrnheight = realscreenheight = (int)strtoul(cp, NULL, 0); /* TODO */
+      if ((cp = ok_vlook(COLUMNS)) != NULL)
+         scrnwidth = (int)strtoul(cp, NULL, 0); /* TODO posui32= not posnum=! */
 
       if (scrnwidth != 0 && scrnheight != 0)
          goto jleave;

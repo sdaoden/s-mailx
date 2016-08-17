@@ -1293,6 +1293,7 @@ enum program_state {
  * - virt= implies rdonly,nodel
  * - import= implies env
  * - defval= implies notempty
+ * - num and posnum are mutual exclusive
  * - most default VAL_ues come from in from build system via ./make.rc
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
@@ -1338,14 +1339,14 @@ ok_b_autothread,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
 
-   ok_v_COLUMNS,                       /* {env=1} */
+   ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_crt,
+   ok_v_crt,                           /* {posnum=1} */
    ok_v_customhdr,                     /* {nocntrls=1} */
 
    ok_v_DEAD,                          /* {env=1,defval=VAL_DEAD} */
@@ -1384,7 +1385,7 @@ ok_b_emptybox,
    ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
-   ok_v_history_size,
+   ok_v_history_size,                  /* {notempty=1,num=1} */
    ok_b_hold,
    ok_v_hostname,
 
@@ -1397,7 +1398,7 @@ ok_b_emptybox,
    ok_b_keep_content_length,
    ok_b_keepsave,
 
-   ok_v_LINES,                         /* {env=1} */
+   ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
    ok_v_LISTER,                        /* {env=1,defval=VAL_LISTER} */
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
@@ -1414,14 +1415,14 @@ ok_b_emptybox,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
-   ok_v_mime_counter_evidence,
+   ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mimetypes_load_control,
 
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
    ok_b_NAIL_NO_SYSTEM_RC,             /* {import=1} */
 ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
 ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
+ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_NETRC,                      /* {env=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
@@ -1460,7 +1461,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_SHELL,                         /* {import=1,defval=VAL_SHELL} */
 ok_b_SYSV3,                         /* {env=1} */
    ok_b_save,                          /* {i3val=TRU1} */
-   ok_v_screen,
+   ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    ok_v_sendcharsets,
    ok_b_sendcharsets_else_ttycharset,
@@ -1496,7 +1497,7 @@ ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
    ok_b_smtp_use_starttls,
    ok_v_spam_interface,
-   ok_v_spam_maxsize,
+   ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
@@ -1528,7 +1529,7 @@ ok_v_smtp_auth_user,
    ok_v_TMPDIR,                        /* {vip=1,import=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
-   ok_v_toplines,                      /* {defval=5} */
+   ok_v_toplines,                      /* {notempty=1,posnum=1,defval="5"} */
    ok_v_ttycharset,
 
    ok_v_USER,                          /* {rdonly=1,import=1} */

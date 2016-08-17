@@ -1003,7 +1003,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 
       /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
-            (*cp != '\0' ? atoi(cp) : realscreenheight))) {
+            (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)realscreenheight))) {
          if ((obuf = n_pager_open()) == NULL)
             obuf = stdout;
       }
@@ -1187,7 +1187,8 @@ c_from(void *v)
       if ((cp = ok_vlook(crt)) != NULL) {
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
-         if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3 &&
+         if (UICMP(z, n, >, (*cp == '\0'
+                  ? (size_t)screensize() : strtoul(cp, NULL, 0)) + 3) &&
                (obuf = n_pager_open()) == NULL)
             obuf = stdout;
       }
@@ -1367,13 +1368,7 @@ c_top(void *v)
    FILE *ibuf;
    NYD_ENTER;
 
-   topl = 5;
-   cp = ok_vlook(toplines);
-   if (cp != NULL) {
-      topl = atoi(cp);
-      if (topl < 0 || topl > 10000)
-         topl = 5;
-   }
+   topl = (int)strtol(ok_vlook(toplines), NULL, 0);
 
    /* XXX Colours of `top' only for message and part info lines */
 #ifdef HAVE_COLOUR
@@ -1398,6 +1393,8 @@ c_top(void *v)
          break;
       }
       c = mp->m_lines;
+      /* TODO v15: in a filter-based implementation, simply "sendmp()" and hook
+       * TODO the output, then stop after passing through *toplines* lines! */
       for (lines = 0; lines < c && UICMP(32, lines, <=, topl); ++lines) {
          if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
             break;

@@ -269,7 +269,7 @@ print_collf(FILE *cf, struct header *hp)
       m += (hp->h_sender != NULL || ok_vlook(sender) != NULL);
       m += (hp->h_replyto != NULL || ok_vlook(replyto) != NULL);
 
-      l = (*cp == '\0') ? screensize() : atoi(cp);
+      l = (*cp == '\0') ? (size_t)screensize() : strtoul(cp, NULL, 0);
       if (m > l)
          goto jpager;
       l -= m;

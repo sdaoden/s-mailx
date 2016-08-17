@@ -175,16 +175,18 @@ _rand_get8(void)
 #endif /* HAVE_POSIX_RANDOM */
 
 FL int
-screensize(void)
-{
-   int s;
+screensize(void){
+   ul_i s;
    char *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if ((cp = ok_vlook(screen)) == NULL || (s = atoi(cp)) <= 0)
-      s = scrnheight - 2; /* XXX no magics */
-   NYD_LEAVE;
-   return s;
+   if((cp = ok_vlook(screen)) == NULL || (s = strtoul(cp, NULL, 0)) == 0)
+      s = scrnheight;
+   s -= 2; /* XXX no magics */
+   if(s > INT_MAX) /* TODO function should return unsigned */
+      s = INT_MAX;
+   NYD2_LEAVE;
+   return (int)s;
 }
 
 FL char const *
@@ -225,21 +227,18 @@ page_or_print(FILE *fp, size_t lines)
    fflush_rewind(fp);
 
    if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
-      char *eptr;
-      union {sl_i sli; size_t rows;} u;
+      size_t rows;
 
-      u.sli = strtol(cp, &eptr, 0);
-      u.rows = (*cp != '\0' && *eptr == '\0')
-            ? (size_t)u.sli : (size_t)scrnheight;
+      rows = (*cp == '\0') ? (size_t)scrnheight : strtoul(cp, NULL, 0);
 
-      if (u.rows > 0 && lines == 0) {
+      if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
-            if (c == '\n' && ++lines >= u.rows)
+            if (c == '\n' && ++lines >= rows)
                break;
          really_rewind(fp);
       }
 
-      if (lines >= u.rows) {
+      if (lines >= rows) {
          run_command(n_pager_get(NULL), 0, fileno(fp), COMMAND_FD_PASS,
             NULL, NULL, NULL, NULL);
          goto jleave;

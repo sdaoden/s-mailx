@@ -4315,8 +4315,7 @@ a header summary in threaded order is also displayed.
 .It Ic top
 (to) Takes a message list and displays the top few lines of each.
 The number of lines shown is controlled by the variable
-.Va toplines
-and defaults to five.
+.Va toplines .
 .
 .Mx
 .It Ic touch
@@ -6107,7 +6106,7 @@ A value of less than 0 disables this feature;
 note that loading and incorporation of
 .Va history-file
 upon program startup can also be suppressed by doing this.
-An unset or invalid value, or 0, causes a default value to be used.
+If unset or 0, a default value will be used.
 Dependent on the available line editor this will also define the
 number of history entries in memory;
 it is also editor-specific wether runtime updates of this value will be
@@ -7589,7 +7588,7 @@ variable is set.
 \*(OP Messages that exceed this size won't be passed through to the
 configured
 .Va spam-interface .
-The default is 420000 bytes.
+If unset or 0, the default of 420000 bytes is used.
 .
 .Mx
 .It Va spamc-command

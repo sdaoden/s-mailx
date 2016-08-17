@@ -70,7 +70,7 @@ enum a_amv_mac_flags{
 };
 
 /* mk-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
- * _IMPORT implies _ENV */
+ * _IMPORT implies _ENV; it doesn't verify anything... */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
    a_AMV_VF_BOOL = 1<<0,      /* ok_b_* */
@@ -79,13 +79,15 @@ enum a_amv_var_flags{
    a_AMV_VF_NODEL = 1<<3,     /* May not be deleted */
    a_AMV_VF_NOTEMPTY = 1<<4,  /* May not be assigned an empty value */
    a_AMV_VF_NOCNTRLS = 1<<5,  /* Value may not contain control characters */
-   a_AMV_VF_VIP = 1<<6,       /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<7,    /* Import ONLY from environ (before PS_STARTED) */
-   a_AMV_VF_ENV = 1<<8,       /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<9,     /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<10,   /* Has a default value */
-   a_AMV_VF_LINKED = 1<<11,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(11+1)) - 1
+   a_AMV_VF_NUM = 1<<6,       /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1<<7,    /* Value must be positive 32-bit number */
+   a_AMV_VF_VIP = 1<<8,       /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1<<9,    /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_ENV = 1<<10,      /* Update environment on change */
+   a_AMV_VF_I3VAL = 1<<11,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1<<12,   /* Has a default value */
+   a_AMV_VF_LINKED = 1<<13,   /* `environ' linked */
+   a_AMV_VF__MASK = (1<<(13+1)) - 1
 };
 
 struct a_amv_mac{
@@ -216,6 +218,10 @@ static void a_amv_var_free(char *cp);
 
 /* Check for special housekeeping */
 static bool_t a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val);
+
+/* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
+static bool_t a_amv_var_check_nocntrls(char const *val);
+static bool_t a_amv_var_check_num(char const *val, bool_t pos);
 
 /* If a variable name begins with a lowercase-character and contains at
  * least one '@', it is converted to all-lowercase. This is necessary
@@ -744,6 +750,63 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    return ok;
 }
 
+static bool_t
+a_amv_var_check_nocntrls(char const *val){
+   char c;
+   NYD2_ENTER;
+
+   while((c = *val++) != '\0')
+      if(cntrlchar(c))
+         break;
+   NYD2_LEAVE;
+   return (c == '\0');
+}
+
+static bool_t
+a_amv_var_check_num(char const *val, bool_t pos){ /* TODO intmax_t anywhere! */
+   /* TODO The internal/environment  variables which are num= or posnum= should
+    * TODO gain special lookup functions, or the return should be void* and
+    * TODO castable to integer; i.e. no more strtoX() should be needed.
+    * TODO I.e., the result of this function should instead be stored.
+    * TODO Use intmax_t IF that is sizeof(void*) only? */
+   bool_t rv;
+   NYD2_ENTER;
+
+   rv = TRU1;
+
+   if(*val != '\0'){ /* Would be _VF_NOTEMPTY if not allowed */
+      char *eptr;
+      union {long s; unsigned long u;} i;
+
+      if(!pos){
+         i.s = strtol(val, &eptr, 0); /* TODO strtoimax() */
+
+         if(*eptr != '\0' ||
+               ((i.s == LONG_MIN || i.s == LONG_MAX) && errno == ERANGE))
+            rv = FAL0;
+#if INT_MIN != LONG_MIN
+         else if(i.s < INT_MIN)
+            rv = FAL0;
+#endif
+#if INT_MAX != LONG_MAX
+         else if(i.s > INT_MAX)
+            rv = FAL0;
+#endif
+      }else{
+         i.u = strtoul(val, &eptr, 0); /* TODO strtoumax() */
+
+         if(*eptr != '\0' || (i.u == ULONG_MAX && errno == ERANGE))
+            rv = FAL0;
+#if UINT_MAX != ULONG_MAX
+         else if(i.u > UINT_MAX)
+            rv = FAL0;
+#endif
+      }
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
 static char const *
 a_amv_var_canonify(char const *vn){
    NYD2_ENTER;
@@ -827,7 +890,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
    if(LIKELY((avmp = avcp->avc_map) != NULL)){
       /* Does it have an import-from-environment flag? */
       if(UNLIKELY((avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
-         if((cp = getenv(avcp->avc_name)) != NULL){
+         if(LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
             /* May be better not to use that one, though? */
             bool_t isempty, isbltin;
 
@@ -836,24 +899,27 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
             isbltin = ((avmp->avm_flags & (a_AMV_VF_I3VAL | a_AMV_VF_DEFVAL)
                   ) != 0);
 
-            if(isempty){
+            if(UNLIKELY(isempty)){
                if(!isbltin)
                   goto jerr;
-            }else{
-               if(avmp->avm_flags & a_AMV_VF_NOCNTRLS){
-                  for(i = 0;; ++i){
-                     char c = cp[i];
-
-                     if(c == '\0')
-                        break;
-                     if(cntrlchar(c)){
-                        if(options & OPT_D_V)
-                           n_err(_("Ignoring environment, control characters "
-                              "invalid in variable: \"%s\"\n"),
-                              avcp->avc_name);
-                        goto jerr;
-                     }
-                  }
+            }else if(LIKELY(*cp != '\0')){
+                if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) &&
+                     !a_amv_var_check_nocntrls(cp))){
+                  n_err(_("Ignoring environment, control characters "
+                     "invalid in variable: %s\n"), avcp->avc_name);
+                  goto jerr;
+               }
+               if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
+                     !a_amv_var_check_num(cp, FAL0))){
+                  n_err(_("Environment variable value not a number "
+                     "or out of range: %s\n"), avcp->avc_name);
+                  goto jerr;
+               }
+               if(UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
+                     !a_amv_var_check_num(cp, TRU1))){
+                  n_err(_("Environment variable value not a number, "
+                     "negative or out of range: %s\n"), avcp->avc_name);
+                  goto jerr;
                }
             }
             goto jnewval;
@@ -968,15 +1034,23 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          n_err(_("Variable must not be empty: \"%s\"\n"), avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0)){
-         char const *cp;
-
-         for(cp = value; *cp != '\0'; ++cp)
-            if(cntrlchar(*cp)){
-               n_err(_("Control characters invalid in variable: \"%s\"\n"),
-                  avcp->avc_name);
-               goto jleave;
-            }
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
+            !a_amv_var_check_nocntrls(value))){
+         n_err(_("Variable forbids control characters: %s\n"),
+            avcp->avc_name);
+         goto jleave;
+      }
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
+            !a_amv_var_check_num(value, FAL0))){
+         n_err(_("Variable value not a number or out of range: %s\n"),
+            avcp->avc_name);
+         goto jleave;
+      }
+      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
+            !a_amv_var_check_num(value, TRU1))){
+         n_err(_("Variable value not a number, negative or out of range: %s\n"),
+            avcp->avc_name);
+         goto jleave;
       }
       if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(pstate & (PS_ROOT | PS_STARTED)))){
@@ -1257,6 +1331,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_NODEL, "nodelete"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
             {a_AMV_VF_NOCNTRLS, "no-control-chars"},
+            {a_AMV_VF_NUM, "number"},
+            {a_AMV_VF_POSNUM, "positive-number"},
             {a_AMV_VF_IMPORT, "import-environ-first\0"},
             {a_AMV_VF_ENV, "sync-environ"},
             {a_AMV_VF_I3VAL, "initial-value"},

@@ -224,10 +224,8 @@ _spam_action(enum spam_action sa, int *ip)
    }
 
    /* *spam-maxsize* we do handle ourselfs instead */
-   maxsize = 0;
-   if ((cp = ok_vlook(spam_maxsize)) != NULL)
-      maxsize = (size_t)strtol(cp, NULL, 10); /* TODO strtol */
-   if (maxsize <= 0)
+   if ((cp = ok_vlook(spam_maxsize)) == NULL ||
+         (maxsize = (size_t)strtoul(cp, NULL, 0)) == 0)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
