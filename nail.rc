@@ -57,6 +57,10 @@ set bsdannounce
 
 # Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
+# Btw., if your $PAGER is less(1) or lv(1) you will usually be served, as
+# documented for $PAGER in the manual, very well by doing, e.g., less(1):
+#  set PAGER=less
+#  environ unset LESS
 
 # Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
 # the screen.  (Set crt=0 to always page; value treated as number of lines)
@@ -66,17 +70,17 @@ set crt
 #set datefield="%R %m-%d" datefield-markout-older="   %g-%m-%d"
 
 # When composing messages a line consisting of `.' finalizes a message
-set dot
+#set dot
 
 # Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
 #set editalong
 
 # Startup into interactive mode even if the (given) mailbox is empty
-#set emptystart
+set emptystart
 
 # When replying to or forwarding a message the comment and name parts of email
 # addresses are removed unless this variable is set.
-#set fullnames
+set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
 # The latter will cause the builtin editor to save those entries, too
@@ -92,9 +96,10 @@ set indentprefix="> "
 # Mark messages that have been answered
 set markanswered
 
-# Try to circumvent false or missing MIME Content-Type descriptions
-# (Can be set to values for extended behaviour, please see the manual.)
-set mime-counter-evidence
+# Try to circumvent false or missing MIME Content-Type descriptions.
+# Do set a value for extended behaviour (see the manual)
+#set mime-counter-evidence
+set mime-counter-evidence=0xE
 
 # Control loading of mime.types(5) file: the value may be a combination of the
 # letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
@@ -164,15 +169,15 @@ retain date from to cc subject message-id mail-followup-to reply-to
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1)
-#if $features !@ HTML-FILTER
-#   set pipe-text/html="lynx -stdin -dump -force_html"
+#if $features !@ +html-filter
+#   set pipe-text/html='lynx -stdin -dump -force_html'
 #endif
 
-# PDF display, asynchronous display via xpdf(1)
-#set pipe-application/pdf="@&+=@ \
-#   trap \"rm -f \\\"${NAIL_FILENAME_TEMPORARY}\\\"\" EXIT;\
-#   trap "trap \\\"\\\" INT QUIT TERM; exit 1" INT QUIT TERM;\
-#   mupdf \"${NAIL_FILENAME_TEMPORARY}\""
+# PDF display, asynchronous display
+#wysh set pipe-application/pdf='@=&@\
+#   trap "rm -f \"${NAIL_FILENAME_TEMPORARY}\"" EXIT;\
+#   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+#   mupdf "${NAIL_FILENAME_TEMPORARY}"'
 
 ## Gimmicks
 
