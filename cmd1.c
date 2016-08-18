@@ -74,6 +74,9 @@ static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 /* Pipe the requested messages */
 static int     _pipe1(char *str, int doign);
 
+/* `top' / `Top' */
+static int a_cmd_top(void *vp, struct ignoretab *itp);
+
 static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
@@ -1027,6 +1030,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
+      pstate |= PS_DID_PRINT_DOT;
       uncollapse1(mp, 1);
       if (!dopipe && ip != msgvec)
          fprintf(obuf, "\n");
@@ -1105,6 +1109,165 @@ _pipe1(char *str, int doign)
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+static int
+a_cmd_top(void *vp, struct ignoretab *itp){
+   struct n_string s;
+   int *msgvec, *ip;
+   enum{a_NONE, a_SQUEEZE = 1<<0,
+      a_EMPTY = 1<<8, a_STOP = 1<<9,  a_WORKMASK = 0xFF00} f;
+   size_t tmax, plines;
+   FILE *iobuf, *pbuf;
+   NYD2_ENTER;
+
+   if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      n_perr(_("`top': I/O temporary file"), 0);
+      vp = NULL;
+      goto jleave;
+   }
+   if((pbuf = Ftmp(NULL, "toppag", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      n_perr(_("`top': temporary pager file"), 0);
+      vp = NULL;
+      goto jleave1;
+   }
+
+   /* TODO In v15 we should query the m_message object, and directly send only
+    * TODO those parts, optionally over empty-line-squeeze and quote-strip
+    * TODO filters, in which we are interested in: only text content!
+    * TODO And: with *topsqueeze*, header/content separating empty line.. */
+   pstate &= ~PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
+   plines = 0;
+
+#ifdef HAVE_COLOUR
+   if (options & OPT_INTERACTIVE)
+      n_colour_env_create(n_COLOUR_CTX_VIEW, TRU1);
+#endif
+   n_string_creat_auto(&s);
+   /* C99 */{
+      long l;
+
+      if((l = strtol(ok_vlook(toplines), NULL, 0)) <= 0){
+         tmax = screensize();
+         if(l < 0){
+            l = ABS(l);
+            tmax >>= l;
+         }
+      }else
+         tmax = l;
+   }
+   f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
+
+   for(ip = msgvec = vp;
+         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip){
+      struct message *mp;
+
+      mp = &message[*ip - 1];
+      touch(mp);
+      setdot(mp);
+      pstate |= PS_DID_PRINT_DOT;
+      uncollapse1(mp, 1);
+
+      rewind(iobuf);
+      if(ftruncate(fileno(iobuf), 0)){
+         n_perr(_("`top': ftruncate(2)"), 0);
+         vp = NULL;
+         break;
+      }
+      if(sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
+         n_err(_("`top': failed to prepare message %d\n"), *ip);
+         vp = NULL;
+         break;
+      }
+      fflush_rewind(iobuf);
+
+      _show_msg_overview(pbuf, mp, *ip);
+      ++plines;
+      /* C99 */{
+         size_t l;
+
+         n_string_trunc(&s, 0);
+         for(l = 0, f &= ~a_WORKMASK; !(f & a_STOP);){
+            int c;
+
+            if((c = getc(iobuf)) == EOF){
+               f |= a_STOP;
+               c = '\n';
+            }
+
+            if(c != '\n')
+               n_string_push_c(&s, c);
+            else if((f & a_SQUEEZE) && s.s_len == 0){
+               if(!(f & a_STOP) && ((f & a_EMPTY) || tmax - 1 <= l))
+                  continue;
+               if(putc('\n', pbuf) == EOF){
+                  vp = NULL;
+                  break;
+               }
+               f |= a_EMPTY;
+               ++l;
+            }else{
+               char const *cp, *xcp;
+
+               cp = n_string_cp_const(&s);
+               /* TODO Brute simple skip part overviews; see above.. */
+               if(!(f & a_SQUEEZE))
+                  c = '\1';
+               else if(s.s_len > 8 &&
+                     (xcp = strstr(cp, "[-- ")) != NULL &&
+                      PTRCMP(xcp, <, strstr(cp, " --]")))
+                  c = '\0';
+               else for(; (c = *cp) != '\0'; ++cp){
+                  if(!asciichar(c))
+                     break;
+                  if(!blankspacechar(c)){
+                     if(!ISQUOTE(c))
+                        break;
+                     c = '\0';
+                     break;
+                  }
+               }
+
+               if(c != '\0'){
+                  if(fputs(n_string_cp_const(&s), pbuf) == EOF ||
+                        putc('\n', pbuf) == EOF){
+                     vp = NULL;
+                     break;
+                  }
+                  if(++l >= tmax)
+                     break;
+                  f &= ~a_EMPTY;
+               }else
+                  f |= a_EMPTY;
+               n_string_trunc(&s, 0);
+            }
+         }
+         if(vp == NULL)
+            break;
+         if(l > 0)
+            plines += l;
+         else{
+            if(!(f & a_EMPTY) && putc('\n', pbuf) == EOF){
+               vp = NULL;
+               break;
+            }
+            ++plines;
+         }
+      }
+   }
+
+   n_string_gut(&s);
+   n_COLOUR( n_colour_env_gut(pbuf); )
+
+   fflush(pbuf);
+   page_or_print(pbuf, plines);
+
+   Fclose(pbuf);
+jleave1:
+   Fclose(iobuf);
+jleave:
+   NYD2_LEAVE;
+   return (vp != NULL);
 }
 
 FL int
@@ -1359,58 +1522,31 @@ c_Pipe(void *v)
 }
 
 FL int
-c_top(void *v)
-{
-   int *msgvec = v, *ip, c, topl, lines, empty_last;
-   struct message *mp;
-   char *cp, *linebuf = NULL;
-   size_t linesize = 0;
-   FILE *ibuf;
+c_top(void *v){
+   struct ignoretab it[2];
+   int rv;
    NYD_ENTER;
 
-   topl = (int)strtol(ok_vlook(toplines), NULL, 0);
+   n_ignoretab_creat(&it[0], TRU1);
+   n_ignoretab_creat(&it[1], TRU1);
+   n_ignoretab_insert(&it[1], "from", sizeof("from") -1);
+   n_ignoretab_insert(&it[1], "to", sizeof("to") -1);
+   n_ignoretab_insert(&it[1], "cc", sizeof("cc") -1);
+   n_ignoretab_insert(&it[1], "subject", sizeof("subject") -1);
 
-   /* XXX Colours of `top' only for message and part info lines */
-#ifdef HAVE_COLOUR
-   if (options & OPT_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
-#endif
-   empty_last = 1;
-   for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip) {
-      mp = message + *ip - 1;
-      touch(mp);
-      setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
-      if (!empty_last)
-         printf("\n");
-      _show_msg_overview(stdout, mp, *ip);
-      if (mp->m_flag & MNOFROM)
-         /* XXX c_top(): coloured output? */
-         printf("From %s %s\n", fakefrom(mp), fakedate(mp->m_time));
-      if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL) {  /* XXX use TOP */
-         v = NULL;
-         break;
-      }
-      c = mp->m_lines;
-      /* TODO v15: in a filter-based implementation, simply "sendmp()" and hook
-       * TODO the output, then stop after passing through *toplines* lines! */
-      for (lines = 0; lines < c && UICMP(32, lines, <=, topl); ++lines) {
-         if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
-            break;
-         puts(linebuf);
-
-         for (cp = linebuf; *cp != '\0' && blankchar(*cp); ++cp)
-            ;
-         empty_last = (*cp == '\0');
-      }
-   }
-
-   n_COLOUR( n_colour_env_gut(stdout); )
-   if (linebuf != NULL)
-      free(linebuf);
+   rv = !a_cmd_top(v, it);
    NYD_LEAVE;
-   return (v != NULL);
+   return rv;
+}
+
+FL int
+c_Top(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = !a_cmd_top(v, ignore);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int

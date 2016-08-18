@@ -1628,7 +1628,8 @@ ok_v_smtp_auth_user,
    ok_v_TMPDIR,                        /* {vip=1,import=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
-   ok_v_toplines,                      /* {notempty=1,posnum=1,defval="5"} */
+   ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
+   ok_b_topsqueeze,
    ok_v_ttycharset,
 
    ok_v_USER,                          /* {rdonly=1,import=1} */

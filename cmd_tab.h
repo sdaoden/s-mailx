@@ -73,6 +73,8 @@
      DS(N_("Edit <msglist>")) },
    { "top", &c_top, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type first *toplines* of all messages in <msglist>")) },
+   { "Top", &c_Top, (A | MSGLIST), 0, MMNDEL
+     DS(N_("Like `top', but bypass `ignore' / `retain'")) },
    { "touch", &c_stouch, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Mark <msglist> for saving in *mbox*")) },
    { "preserve", &c_preserve, (A | S | W | MSGLIST), 0, MMNDEL

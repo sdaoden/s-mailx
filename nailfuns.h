@@ -388,9 +388,9 @@ FL int         c_show(void *v);
 FL int         c_pipe(void *v);
 FL int         c_Pipe(void *v);
 
-/* Print the top so many lines of each desired message.
- * The number of lines is taken from *toplines* and defaults to 5 */
+/* Print the first *toplines* of each desired message */
 FL int         c_top(void *v);
+FL int         c_Top(void *v);
 
 /* List the folders the user currently has */
 FL int         c_folders(void *v);
