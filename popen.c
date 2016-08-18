@@ -217,8 +217,7 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd, cmd[1], cmd[2], NULL)
-         >= 0)
+   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL) >= 0)
       rv = OKAY;
 
    close(outfd);
