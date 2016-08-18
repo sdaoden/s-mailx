@@ -1249,6 +1249,21 @@ else
    config_exit 1
 fi
 
+if link_check ftruncate 'ftruncate(2)' \
+   '#define HAVE_FTRUNCATE' << \!
+#include <unistd.h>
+#include <sys/types.h>
+int main(void){
+   return (ftruncate(0, 0) != 0);
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require the ftruncate(2) system call.'
+   config_exit 1
+fi
+
 if run_check sa_restart 'SA_RESTART (for sigaction(2))' << \!
 #include <signal.h>
 # include <errno.h>
