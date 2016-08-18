@@ -148,8 +148,9 @@ do {\
 #else
 # define really_rewind(stream) \
 do {\
-   fseek(stream, 0, SEEK_END);\
    rewind(stream);\
+   fflush(stream);\
+   lseek(fileno(stream), 0, SEEK_SET);\
 } while (0)
 #endif
 
