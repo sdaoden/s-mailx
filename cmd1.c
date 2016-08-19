@@ -1414,44 +1414,6 @@ c_top(void *v)
 }
 
 FL int
-c_stouch(void *v)
-{
-   int *msgvec = v, *ip;
-   NYD_ENTER;
-
-   for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(message + *ip - 1);
-      dot->m_flag |= MTOUCH;
-      dot->m_flag &= ~MPRESERVE;
-      pstate |= PS_DID_PRINT_DOT;
-   }
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_mboxit(void *v)
-{
-   int *msgvec = v, *ip;
-   NYD_ENTER;
-
-   if (pstate & PS_EDIT) {
-      n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
-      goto jleave;
-   }
-
-   for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(message + *ip - 1);
-      dot->m_flag |= MTOUCH | MBOX;
-      dot->m_flag &= ~MPRESERVE;
-      pstate |= PS_DID_PRINT_DOT;
-   }
-jleave:
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
 c_folders(void *v)
 {
    char const *cp;

@@ -392,12 +392,6 @@ FL int         c_Pipe(void *v);
  * The number of lines is taken from *toplines* and defaults to 5 */
 FL int         c_top(void *v);
 
-/* Touch all the given messages so that they will get mboxed */
-FL int         c_stouch(void *v);
-
-/* Make sure all passed messages get mboxed */
-FL int         c_mboxit(void *v);
-
 /* List the folders the user currently has */
 FL int         c_folders(void *v);
 
@@ -442,6 +436,12 @@ FL int         c_deltype(void *v);
 
 /* Undelete the indicated messages */
 FL int         c_undelete(void *v);
+
+/* Touch all the given messages so that they will get mboxed */
+FL int         c_stouch(void *v);
+
+/* Make sure all passed messages get mboxed */
+FL int         c_mboxit(void *v);
 
 /*
  * cmd3.c
