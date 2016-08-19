@@ -239,8 +239,12 @@ page_or_print(FILE *fp, size_t lines)
       }
 
       if (lines >= rows) {
-         run_command(n_pager_get(NULL), 0, fileno(fp), COMMAND_FD_PASS,
-            NULL, NULL, NULL, NULL);
+         char const *env_add[2], *pager;
+
+         pager = n_pager_get(&env_add[0]);
+         env_add[1] = NULL;
+         run_command(pager, NULL, fileno(fp), COMMAND_FD_PASS, NULL,NULL,NULL,
+            env_add);
          goto jleave;
       }
    }
