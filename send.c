@@ -1274,34 +1274,30 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
                (int)qf.qf_pfix_len, (qf.qf_pfix_len != 0 ? qf.qf_pfix : ""),
                fakefrom(mp), fakedate(mp->m_time),
                (csuf != NULL ? csuf->s : ""));
-   } else {
-      if (doign != allignore && doign != fwdignore && action != SEND_RFC822) {
-         if (qf.qf_pfix_len > 0) {
-            i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
-            if (i != qf.qf_pfix_len)
-               goto jleave;
-            sz += i;
-         }
-#ifdef HAVE_COLOUR
-         if (cpre != NULL) {
-            fputs(cpre->s, obuf);
-            cpre = (struct str const*)0x1;
-         }
-#endif
+   } else if (doign != allignore && doign != fwdignore &&
+         action != SEND_RFC822) {
+      if (qf.qf_pfix_len > 0) {
+         i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
+         if (i != qf.qf_pfix_len)
+            goto jleave;
+         sz += i;
       }
+#ifdef HAVE_COLOUR
+      if (cpre != NULL) {
+         fputs(cpre->s, obuf);
+         cpre = (struct str const*)0x1;
+      }
+#endif
 
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {
-         if (doign != allignore && doign != fwdignore &&
-               action != SEND_RFC822) {
 #ifdef HAVE_COLOUR
-            if (c == '\n' && csuf != NULL) {
-               cpre = (struct str const*)0x1;
-               fputs(csuf->s, obuf);
-            }
-#endif
-            putc(c, obuf);
-            sz++;
+         if (c == '\n' && csuf != NULL) {
+            cpre = (struct str const*)0x1;
+            fputs(csuf->s, obuf);
          }
+#endif
+         putc(c, obuf);
+         ++sz;
          --cnt;
          if (c == '\n')
             break;
@@ -1311,6 +1307,12 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
       if (csuf != NULL && cpre != (struct str const*)0x1)
          fputs(csuf->s, obuf);
 #endif
+   } else {
+      while (cnt > 0 && (c = getc(ibuf)) != EOF) {
+         --cnt;
+         if (c == '\n')
+            break;
+      }
    }
    }
    if (sz > 0 && stats != NULL)
