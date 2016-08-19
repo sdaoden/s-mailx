@@ -443,6 +443,23 @@ FL int         c_stouch(void *v);
 /* Make sure all passed messages get mboxed */
 FL int         c_mboxit(void *v);
 
+/* Preserve messages, so that they will be sent back to the system mailbox */
+FL int         c_preserve(void *v);
+
+/* Mark all given messages as unread */
+FL int         c_unread(void *v);
+
+/* Mark all given messages as read */
+FL int         c_seen(void *v);
+
+/* Message flag manipulation */
+FL int         c_flag(void *v);
+FL int         c_unflag(void *v);
+FL int         c_answered(void *v);
+FL int         c_unanswered(void *v);
+FL int         c_draft(void *v);
+FL int         c_undraft(void *v);
+
 /*
  * cmd3.c
  */
@@ -488,15 +505,6 @@ FL int         c_resend(void *v);
 /* Resend a message list to a third person without adding headers */
 FL int         c_Resend(void *v);
 
-/* Preserve messages, so that they will be sent back to the system mailbox */
-FL int         c_preserve(void *v);
-
-/* Mark all given messages as unread */
-FL int         c_unread(void *v);
-
-/* Mark all given messages as read */
-FL int         c_seen(void *v);
-
 /* Print the size of each message */
 FL int         c_messize(void *v);
 
@@ -509,14 +517,6 @@ FL int         c_echo(void *v);
 
 /* 'newmail' command: Check for new mail without writing old mail back */
 FL int         c_newmail(void *v);
-
-/* Message flag manipulation */
-FL int         c_flag(void *v);
-FL int         c_unflag(void *v);
-FL int         c_answered(void *v);
-FL int         c_unanswered(void *v);
-FL int         c_draft(void *v);
-FL int         c_undraft(void *v);
 
 /* noop */
 FL int         c_noop(void *v);
