@@ -382,6 +382,19 @@ torek_hash(char const *name)
    return h;
 }
 
+FL ui32_t
+torek_ihashn(char const *dat, size_t len){
+   /* See torek_hash() */
+   char c;
+   ui32_t h;
+   NYD_ENTER;
+
+   for(h = 0; len > 0 && (c = *dat++) != '\0'; --len)
+      h = (h * 33) + lowerconv(c);
+   NYD_LEAVE;
+   return h;
+}
+
 FL unsigned
 pjw(char const *cp) /* TODO obsolete that -> torek_hash */
 {

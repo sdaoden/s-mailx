@@ -274,8 +274,11 @@ FL enum protocol  which_protocol(char const *name);
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL si32_t      n_c_from_hex_base16(char const hex[2]);
 
-/* Hash the passed string -- uses Chris Torek's hash algorithm */
+/* Hash the passed string -- uses Chris Torek's hash algorithm.
+ * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
+ * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
 FL ui32_t      torek_hash(char const *name);
+FL ui32_t      torek_ihashn(char const *dat, size_t len);
 #define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
 
 /* Create hash */
