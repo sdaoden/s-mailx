@@ -443,25 +443,6 @@ FL int         c_deltype(void *v);
 /* Undelete the indicated messages */
 FL int         c_undelete(void *v);
 
-/* Add the given header fields to the retained list.  If no arguments, print
- * the current list of retained fields */
-FL int         c_retfield(void *v);
-
-/* Add the given header fields to the ignored list.  If no arguments, print the
- * current list of ignored fields */
-FL int         c_igfield(void *v);
-
-FL int         c_saveretfield(void *v);
-FL int         c_saveigfield(void *v);
-FL int         c_fwdretfield(void *v);
-FL int         c_fwdigfield(void *v);
-FL int         c_unignore(void *v);
-FL int         c_unretain(void *v);
-FL int         c_unsaveignore(void *v);
-FL int         c_unsaveretain(void *v);
-FL int         c_unfwdignore(void *v);
-FL int         c_unfwdretain(void *v);
-
 /*
  * cmd3.c
  */
@@ -886,12 +867,6 @@ FL char *      subject_re_trim(char *cp);
 
 FL int         msgidcmp(char const *s1, char const *s2);
 
-/* See if the given header field is supposed to be ignored */
-FL int         is_ign(char const *field, size_t fieldlen,
-                  struct ignoretab igta[2]);
-
-FL int         member(char const *realfield, struct ignoretab *table);
-
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
 
@@ -928,6 +903,54 @@ FL int         grab_headers(struct header *hp, enum gfield gflags,
 
 /* Check wether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
+
+/*
+ * ignoretab.c
+ */
+
+/* Add the given header fields to the retained list.  If no arguments, print
+ * the current list of retained fields */
+FL int         c_retfield(void *v);
+
+/* Add the given header fields to the ignored list.  If no arguments, print the
+ * current list of ignored fields */
+FL int         c_igfield(void *v);
+
+FL int         c_saveretfield(void *v);
+FL int         c_saveigfield(void *v);
+FL int         c_fwdretfield(void *v);
+FL int         c_fwdigfield(void *v);
+FL int         c_unignore(void *v);
+FL int         c_unretain(void *v);
+FL int         c_unsaveignore(void *v);
+FL int         c_unsaveretain(void *v);
+FL int         c_unfwdignore(void *v);
+FL int         c_unfwdretain(void *v);
+
+/* See if the given header field (not NUL terminated) is to be ignored.
+ * For igta: [0] is ignore, [1] is retain -- TODO magic, enwrap in outer obj! */
+FL int         is_ign(char const *field, size_t fieldlen,
+                  struct ignoretab igta[2]);
+
+/* Future object stuff */
+
+/* Ignore hashtable lifecycle.
+ * isauto: whether auto-reclaimed storage is to be used for allocating childs;
+ * if so, _gut() needn't be called */
+FL struct ignoretab *n_ignoretab_creat(struct ignoretab *self, bool_t isauto);
+FL void        n_ignoretab_gut(struct ignoretab *self);
+
+/* Set an entry in an ignore hashtable.
+ * Returns FAL0 if cp is not a valid header field name, TRU1 if insertion took
+ * place and TRUM1 if cp is already part of self */
+FL bool_t      n_ignoretab_insert(struct ignoretab *self, char const *dat,
+                  size_t len);
+#define n_ignoretab_insert_cp(SELF,CP) n_ignoretab_insert(SELF, CP, UIZ_MAX)
+
+/* */
+FL bool_t      n_ignoretab_lookup(struct ignoretab *self, char const *dat,
+                  size_t len);
+#define n_ignoretab_lookup_cp(SELF,CP) n_ignoretab_lookup(SELF, CP, UIZ_MAX)
 
 /*
  * imap_search.c

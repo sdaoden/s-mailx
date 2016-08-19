@@ -2256,12 +2256,14 @@ struct sendbundle {
 };
 
 /* Structure of the hash table of ignored header fields */
-struct ignoretab {
-   int         i_count;       /* Number of entries */
-   struct ignored {
-      struct ignored *i_link;    /* Next ignored field in bucket */
-      char           *i_field;   /* This ignored field */
-   }           *i_head[HSHSIZE];
+struct ignoretab{
+   ui32_t it_count;
+   bool_t it_auto;     /* Stored in auto-reclaimed storage? */
+   ui8_t it__dummy[3];
+   struct n_ignoretab_field{
+      struct n_ignoretab_field *itf_next;
+      char itf_field[VFIELD_SIZE(0)];     /* Header field */
+   } *it_head[5 /* TODO make dynamic hashmap */];
 };
 
 /* For saving the current directory and later returning */
@@ -2331,8 +2333,8 @@ VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */
 VL struct ignoretab  saveignore[2];    /* ignored and retained fields
                                         * on save to folder */
-VL struct ignoretab  allignore[2];     /* special, ignore all headers */
 VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
+#define allignore ((struct ignoretab*)-2) /* special, ignore all headers */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

@@ -1658,49 +1658,6 @@ msgidcmp(char const *s1, char const *s2)
    return c1 - c2;
 }
 
-FL int
-is_ign(char const *field, size_t fieldlen, struct ignoretab igta[2])
-{
-   char *realfld;
-   int rv;
-   NYD_ENTER;
-
-   rv = 0;
-   if (igta == NULL)
-      goto jleave;
-   rv = 1;
-   if (igta == allignore)
-      goto jleave;
-
-   /* Lowercase it so that "Status" and "status" will hash to the same place */
-   realfld = ac_alloc(fieldlen +1);
-   i_strcpy(realfld, field, fieldlen +1);
-   if (igta[1].i_count > 0)
-      rv = !member(realfld, igta + 1);
-   else
-      rv = member(realfld, igta);
-   ac_free(realfld);
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-member(char const *realfield, struct ignoretab *table)
-{
-   struct ignored *igp;
-   int rv = 0;
-   NYD_ENTER;
-
-   for (igp = table->i_head[hash(realfield)]; igp != 0; igp = igp->i_link)
-      if (*igp->i_field == *realfield && !strcmp(igp->i_field, realfield)) {
-         rv = 1;
-         break;
-      }
-   NYD_LEAVE;
-   return rv;
-}
-
 FL char const *
 fakefrom(struct message *mp)
 {
