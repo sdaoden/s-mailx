@@ -1340,6 +1340,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    cnt = mp->m_size;
    sz = 0;
    {
+   bool_t nozap;
    char const *cpre = "", *csuf = "";
 #ifdef HAVE_COLOUR
    struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
@@ -1352,14 +1353,16 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
          csuf = sp->s;
    }
 #endif
+
+   nozap = (doign != allignore && doign != fwdignore && action != SEND_RFC822 &&
+            !is_ign("from_", sizeof("from_") -1, doign));
    if (mp->m_flag & MNOFROM) {
-      if (doign != allignore && doign != fwdignore && action != SEND_RFC822)
+      if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
                (qf.qf_pfix_len != 0 ? qf.qf_pfix : ""), fakefrom(mp),
                fakedate(mp->m_time), csuf);
-   } else if (doign != allignore && doign != fwdignore &&
-         action != SEND_RFC822) {
+   } else if (nozap) {
       if (qf.qf_pfix_len > 0) {
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
          if (i != qf.qf_pfix_len)

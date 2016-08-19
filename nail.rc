@@ -161,10 +161,10 @@ set showto
 ## Commands
 
 # Only include these selected header fields when forwarding messages
-fwdretain subject date from to
+fwdretain subject date from to cc
 
 # Only include the selected header fields when printing messages
-retain date from to cc subject message-id mail-followup-to reply-to
+retain from_ date from to cc subject message-id mail-followup-to reply-to
 
 ## Some pipe-TYPE/SUBTYPE entries
 
