@@ -2390,6 +2390,7 @@ if feat_yes QUOTE_FOLD &&\
       [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
+   feat_bail_required QUOTE_FOLD
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 

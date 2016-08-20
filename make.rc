@@ -279,6 +279,7 @@ WANT_DOCSTRINGS=yes
 # A simple line-based quoting mechanism can be made available via the
 # *quote-fold* mechanism.  This will be turned off automatically if the
 # required character classification is not available on the host.
+# Can be "require"d.
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
 WANT_QUOTE_FOLD=yes
 
