@@ -261,8 +261,9 @@
 #define NAILENV_CONTENT_EVIDENCE    "NAIL_CONTENT_EVIDENCE"
 
 /* Is *W* a quoting (ASCII only) character? */
-#define ISQUOTE(W)      \
-   ((W) == L'>' || (W) == L'|' || (W) == L'}' || (W) == L':')
+#define ISQUOTE(W) \
+   ((W) == n_WC_C('>') || (W) == n_WC_C('|') ||\
+    (W) == n_WC_C('}') || (W) == n_WC_C(':'))
 
 /* Maximum number of quote characters (not bytes!) that'll be used on
  * follow lines when compressing leading quote characters */
