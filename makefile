@@ -170,8 +170,8 @@ _update-release:
 	git archive --format=tar --prefix="$${UAGENT}-$${REL}/" "v$${REL}.ar" |\
 		( cd "$${TMPDIR}" && tar -x -f - ) &&\
 	cd "$${TMPDIR}" &&\
-	tar -c -f "$${UAGENT}-$${REL}.tar" "$${UAGENT}-$${REL}" &&\
 	\
+	tar -c -f "$${UAGENT}-$${REL}.tar" "$${UAGENT}-$${REL}" &&\
 	openssl sha1 "$${UAGENT}-$${REL}.tar" >> \
 		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
 	openssl sha256 "$${UAGENT}-$${REL}.tar" >> \
@@ -181,14 +181,14 @@ _update-release:
 	gpg --detach-sign --armor "$${UAGENT}-$${REL}.tar" 2>&1 &&\
 	cat "$${UAGENT}-$${REL}.tar.asc" >> \
 		"$${UAGENT}-$${REL}.cksum" 2>&1 &&\
-	\
 	< "$${UAGENT}-$${REL}.tar" gzip > "$${UAGENT}-$${REL}.tar.gz" &&\
 	< "$${UAGENT}-$${REL}.tar" xz -e -C sha256 > \
 		"$${UAGENT}-$${REL}.tar.xz" &&\
 	\
-	rm -f "$${UAGENT}-$${REL}.tar" &&\
-	\
 	(\
+	echo "-put $${UAGENT}-$${REL}.tar";\
+	echo "-rm $${UAGENT}-latest.tar";\
+	echo "-ln $${UAGENT}-$${REL}.tar $${UAGENT}-latest.tar";\
 	echo "-put $${UAGENT}-$${REL}.tar.gz";\
 	echo "-rm $${UAGENT}-latest.tar.gz";\
 	echo "-ln $${UAGENT}-$${REL}.tar.gz $${UAGENT}-latest.tar.gz";\
@@ -198,7 +198,7 @@ _update-release:
 	echo "-put $${UAGENT}-$${REL}.tar.asc";\
 	echo "-rm $${UAGENT}-latest.tar.asc";\
 	echo "-ln $${UAGENT}-$${REL}.tar.asc $${UAGENT}-latest.tar.asc";\
-	echo "-chmod 0644 $${UAGENT}-$${REL}.tar.*";\
+	echo "-chmod 0644 $${UAGENT}-$${REL}.tar*";\
 	) | \
 	sftp -b - $${UPLOAD} &&\
 	echo 'All seems fine';\
