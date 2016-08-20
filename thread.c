@@ -181,7 +181,9 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
          break;
       c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
       ++n;
-      while (c >= mprime)
+      if ((si32_t)c < 0)
+         c = 0;
+      else while (c >= mprime)
          c -= mprime;
       mp = mt + c;
    }

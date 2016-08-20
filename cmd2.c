@@ -146,7 +146,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
          goto jleave;
       }
    } else {
-      if (!newfile && fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
+      if (!newfile && !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
             fseek(obuf, -2L, SEEK_END) == 0) {
          char buf[2];
          int prependnl = 0;
@@ -169,6 +169,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
             }
             prependnl = 0;
          }
+
          fflush(obuf);
          if (prependnl) {
             putc('\n', obuf);

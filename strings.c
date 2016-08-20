@@ -1045,7 +1045,7 @@ FL struct str *
 
 #ifdef HAVE_NATCH_CHAR
 FL ui32_t
-n_utf8_to_utf32(char const **bdat, size_t *blen)
+n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
 {
    char const *cp;
    size_t l;
@@ -1060,12 +1060,12 @@ n_utf8_to_utf32(char const **bdat, size_t *blen)
       c = x;
    else {
       if ((x & 0xE0) == 0xC0) {
-         if (l < 2)
+         if (l < 1)
             goto jerr;
          l -= 1;
          c = x & ~0xC0;
       } else if ((x & 0xF0) == 0xE0) {
-         if (l < 3)
+         if (l < 2)
             goto jerr;
          l -= 2;
          c = x & ~0xE0;
@@ -1073,7 +1073,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen)
          x = (ui8_t)*cp++;
          c |= x & 0x7F;
       } else {
-         if (l < 4)
+         if (l < 3)
             goto jerr;
          l -= 3;
          c = x & ~0xF0;

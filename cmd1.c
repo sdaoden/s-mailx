@@ -67,7 +67,7 @@ static int     __putindent(FILE *fp, struct message *mp, int maxwidth);
 static int     _dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
-static int     _scroll1(char *arg, int onlynew);
+static int a_cmd_scroll(char const *arg, bool_t onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
@@ -681,48 +681,73 @@ _dispc(struct message *mp, char const *a)
 }
 
 static int
-_scroll1(char *arg, int onlynew)
-{
-   int msgspec, size;
-   NYD_ENTER;
+a_cmd_scroll(char const *arg, bool_t onlynew){
+   long l;
+   char *eptr;
+   bool_t isabs;
+   int msgspec, size, maxs;
+   NYD2_ENTER;
 
    msgspec = onlynew ? -1 : 0;
    size = screensize();
+   maxs = msgCount / size;
 
-   if (arg[0] != '\0' && arg[1] != '\0')
-      goto jerr;
-   switch (*arg) {
-   case '1': case '2': case '3': case '4': case '5':
-   case '6': case '7': case '8': case '9': case '0':
-      _screen = atoi(arg);
-      goto jscroll_forward;
+   switch(*arg){
    case '\0':
       ++_screen;
-      goto jscroll_forward;
+      goto jfwd;
    case '$':
-      _screen = msgCount / size;
-      goto jscroll_forward;
+      if(arg[1] != '\0')
+         goto jerr;
+      if(_screen == maxs)
+         goto jerrfwd;
+      _screen = maxs;
+      break;
    case '+':
-      if (arg[1] == '\0')
+      if(arg[1] == '\0')
          ++_screen;
-      else
-         _screen += atoi(arg + 1);
-jscroll_forward:
-      if (_screen * size > msgCount) {
-         _screen = msgCount / size;
+      else{
+         isabs = FAL0;
+
+         ++arg;
+         if(0){
+   case '1': case '2': case '3': case '4': case '5':
+   case '6': case '7': case '8': case '9': case '0':
+            isabs = TRU1;
+         }
+         l = strtol(arg, &eptr, 10);
+         if(*eptr != '\0')
+            goto jerr;
+         if(l > maxs - (isabs ? 0 : _screen))
+            goto jerrfwd;
+         _screen = isabs ? (int)l : _screen + l;
+      }
+jfwd:
+      if(_screen > maxs){
+jerrfwd:
+         _screen = maxs;
          printf(_("On last screenful of messages\n"));
       }
       break;
+
    case '-':
-      if (arg[1] == '\0')
+      if(arg[1] == '\0')
          --_screen;
-      else
-         _screen -= atoi(arg + 1);
-      if (_screen < 0) {
+      else{
+         ++arg;
+         l = strtol(arg, &eptr, 10);
+         if(*eptr != '\0')
+            goto jerr;
+         if(l > _screen)
+            goto jerrbwd;
+         _screen -= l;
+      }
+      if(_screen < 0){
+jerrbwd:
          _screen = 0;
          printf(_("On first screenful of messages\n"));
       }
-      if (msgspec == -1)
+      if(msgspec == -1)
          msgspec = -2;
       break;
    default:
@@ -734,7 +759,7 @@ jerr:
 
    size = _headers(msgspec);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return size;
 }
 
@@ -1071,7 +1096,7 @@ c_scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = _scroll1(v, 0);
+   rv = a_cmd_scroll(v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -1082,7 +1107,7 @@ c_Scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = _scroll1(v, 1);
+   rv = a_cmd_scroll(v, TRU1);
    NYD_LEAVE;
    return rv;
 }

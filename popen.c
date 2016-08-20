@@ -153,7 +153,7 @@ static enum okay
 _file_save(struct fp *fpp)
 {
    char const *cmd[3];
-   int outfd;
+   int outfd, infd;
    enum okay rv;
    NYD_ENTER;
 
@@ -165,8 +165,6 @@ _file_save(struct fp *fpp)
 
    fflush(fpp->fp);
    clearerr(fpp->fp);
-   if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1)
-      goto jleave;
 
 #ifdef HAVE_IMAP
    if ((fpp->flags & FP_MASK) == FP_IMAP) {
@@ -175,18 +173,33 @@ _file_save(struct fp *fpp)
    }
 #endif
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
+      if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
+         outfd = errno;
+         n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
+            fpp->realfile, strerror(outfd));
+         goto jleave;
+      }
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
 
-   outfd = open(fpp->realfile, (fpp->omode | O_CREAT) & ~O_EXCL, 0666);
-   if (outfd == -1) {
-      n_err(_("Fatal: cannot create \"%s\": %s\n"),
-         fpp->realfile, strerror(errno));
+   /* Ensure the I/O library doesn't optimize the fseek(3) away! */
+   if(lseek(infd = fileno(fpp->fp), fpp->offset, SEEK_SET) == -1){
+      outfd = errno;
+      n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
+         fpp->realfile, strerror(outfd));
       goto jleave;
    }
-   if (!(fpp->omode & O_APPEND))
-      ftruncate(outfd, 0);
+
+   outfd = open(fpp->realfile,
+         ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC))
+            & ~O_EXCL), 0666);
+   if (outfd == -1) {
+      outfd = errno;
+      n_err(_("Fatal: cannot create %s: %s\n"),
+         fpp->realfile, strerror(outfd));
+      goto jleave;
+   }
 
    cmd[2] = NULL;
    switch (fpp->flags & FP_MASK) {
@@ -204,9 +217,9 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd, cmd[1], cmd[2], NULL)
-         >= 0)
+   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL) >= 0)
       rv = OKAY;
+
    close(outfd);
 jleave:
    NYD_LEAVE;
@@ -488,13 +501,17 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
       char const *ext;
 
       if ((ext = strrchr(file, '.')) != NULL) {
-         if (!strcmp(ext, ".gz"))
+         if (!asccasecmp(ext, ".gz"))
             flags |= FP_GZIP;
-         else if (!strcmp(ext, ".xz"))
+         else if (!asccasecmp(ext, ".xz")) {
             flags |= FP_XZ;
-         else if (!strcmp(ext, ".bz2"))
+            osflags &= ~O_APPEND;
+            rof &= ~OF_APPEND;
+         } else if (!asccasecmp(ext, ".bz2")) {
             flags |= FP_BZIP2;
-         else {
+            osflags &= ~O_APPEND;
+            rof &= ~OF_APPEND;
+         } else {
 #undef _X1
 #define _X1 "file-hook-load-"
 #undef _X2
@@ -514,9 +531,11 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 #undef _X1
             ac_free(vbuf);
 
-            if ((csave != NULL) && (cload != NULL))
+            if ((csave != NULL) && (cload != NULL)) {
                flags |= FP_HOOK;
-            else if ((csave != NULL) | (cload != NULL)) {
+               osflags &= ~O_APPEND;
+               rof &= ~OF_APPEND;
+            } else if ((csave != NULL) | (cload != NULL)) {
                n_alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
                   "Treating as plain text!"), ext);
                goto jraw;

@@ -1409,7 +1409,7 @@ makeprint(struct str const *in, struct str *out)
             if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
                continue;
             /* And some zero-width messes */
-            if(wc >= 0x200B && wc <= 0x200D)
+            if(wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D))
                continue;
             /* Oh about the ISO C wide character interfaces, baby! */
             if(wc == 0xFEFF)
@@ -1535,7 +1535,8 @@ bidi_info_needed(char const *bdat, size_t blen)
 
          /* (Very very fuzzy, awaiting S-CText for good) */
          if ((c >= 0x05BE && c <= 0x08E3) ||
-               (c >= 0xFB1D && c <= 0xFEFC) ||
+               (c >= 0xFB1D && c <= 0xFE00) /* No: variation selectors */ ||
+               (c >= 0xFE70 && c <= 0xFEFC) ||
                (c >= 0x10800 && c <= 0x10C48) ||
                (c >= 0x1EE00 && c <= 0x1EEF1)) {
             rv = TRU1;
@@ -1873,9 +1874,11 @@ jredo:
    if (l <= 0)
       goto jleave;
    if (UICMP(z, l, >=, lmax)) {
+      /* FIXME Cannot reuse va_list
       lmax = ++l;
       xbuf = srealloc((xbuf == buf ? NULL : xbuf), lmax);
       goto jredo;
+      */
    }
 
    fwrite(xbuf, 1, l, stderr);

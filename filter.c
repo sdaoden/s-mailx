@@ -152,9 +152,9 @@ jflush:
          memmove(self->qf_dat.s, save_b, save_l);
       }
    } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
-      bool_t isws = iswspace(wc);
+      bool_t isws = (iswspace(wc) != 0);
 
-      if ((isws && !self->qf_brk_isws) || self->qf_brkl == 0) {
+      if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
          self->qf_brkl = self->qf_dat.l;
          self->qf_brkw = self->qf_datw;
          self->qf_brk_isws = isws;
@@ -498,7 +498,7 @@ quoteflt_flush(struct quoteflt *self)
 }
 
 /*
- * HTML tagsoup filter
+ * HTML tagsoup filter TODO rewrite wchar_t based (require HAVE_C90AMEND1)
  * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
  * TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
  * TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
@@ -801,15 +801,23 @@ _hf_store(struct htmlflt *self, char c)
 # ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
    if (mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
       wchar_t wc;
-      int x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
+      int w, x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
 
       if (x > 0) {
-         self->hf_mboff += x;
-         if ((x = wcwidth(wc)) == -1)
-            x = 1;
-         else if (iswspace(wc))
+         if ((w = wcwidth(wc)) == -1 ||
+               /* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
+               (wc == 0x200E || wc == 0x200F ||
+                  (wc >= 0x202A && wc <= 0x202E)) ||
+               /* And some zero-width messes */
+               wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D) ||
+               /* Oh about the ISO C wide character interfaces, baby! */
+               (wc == 0xFEFF)){
+            self->hf_len -= x;
+            goto jleave;
+         } else if (iswspace(wc))
             self->hf_last_ws = l;
-         i = (self->hf_mbwidth += x);
+         self->hf_mboff += x;
+         i = (self->hf_mbwidth += w);
       } else {
          if (x < 0) {
             mbtowc(&wc, NULL, mb_cur_max);
