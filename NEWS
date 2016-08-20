@@ -22,6 +22,71 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.10 ("Anachalcos"), 2016-08-20
+-----------------------------------
+
+A cumulated bugfix release.
+And because v14.9 still takes time.
+
+Credits to trondd.
+
+Apologies to Sergey and those members of the Roff community which would
+like to see progress!
+
+  S-nail will become S-mailx after v14.9, and all project resources
+  will move to www.sdaoden.eu with v14.9; only the ML remains hosted
+  at Sourceforge.net as of this writing.
+  We thank Sourceforge.net for hosting this project so many years!
+
+git(1) shortlog
+^^^^^^^^^^^^^^^
+
+Yes, "quick and dirty" only for Anachalcos.
+
+  7f7bae1 Fix `z' (Tim)
+
+Fixes page-wise movement if the argument is greater than 9.
+
+  43ad441 THANKS: update mail address of Tim (trondd)
+  8b85b96 Fix compiler warning of [7f7bae1] (Fix `z' (Tim))
+  6afff81 FIX possible intwrap caused delays (for mailboxes with size == 1)
+  530e81f FIX n_utf8_to_utf32() sequence length checks (since [558d8b8],
+          2015-03!)
+  78083c0 HTML filter: filter out some characters
+  407a705 Actively filter out U+00AD characters (Vincent Lefevre)..
+  e5591f2 THANKS: Vincent Lefevre
+  5c458cc FIX MBOX append (since ever (nail 11.16, 2004-11-18])!)..
+
+This only fixes invalid non-empty MBOX mailboxes, so "FIX" is possibly
+a bit overstated.
+
+  75982b9 bidi_info_needed(): no variation selectors etc. -- CText, where are
+          you!
+  e65db06 FIX n_verr(): cannot reuse va_list..
+
+Only for error messages > ~2 KB, which we usually don't produce.
+
+  23e8697 Fix *quote-fold* (on GNU/Linux iswspace() does not return boolean!)
+  98cf903 FIX: really_rewind() for pre POSIX Issue 7
+
+Hardly affects anyone, i had to look into old v5 FreeBSD: maybe.
+
+  41250b1 FIX: no O_APPEND for .bz2/.xz/*file-hook-load*!  Use lseek(2)!!..
+
+This is the reason for this release, and applies to all C libraries
+which optimize fseek(3) and do not adjust the file descriptor via
+lseek(2) if the resulting offset is in the I/O buffer.
+It seems to enable me to say
+
+    set file-hook-load-xz_pgp='gpg -d | xz -dc' \
+          file-hook-save-xz_pgp='xz -zc | gpg -e'
+
+on a GNU/Linux system without ending up with corrupted boxes,
+i.e., a complaining gpg(1) that says that says so.
+
+  224d858 popen.c:_file_save(): adjust partial [41250b1] cherry-pick
+  87c902a sendmp(): fix possible false insertion of colour reset seq.
+
 v14.8.9 ("Dung Beetle"), 2016-06-21
 -----------------------------------
 
