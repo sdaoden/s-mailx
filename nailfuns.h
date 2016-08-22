@@ -109,54 +109,51 @@
 # define putchar(c)     putc_unlocked((c), stdout)
 #endif
 
-/* Truncate a file to the last character written.  This is useful just before
- * closing an old file that was opened for read/write */
-#define ftrunc(stream) \
-do {\
-   off_t off;\
-   fflush(stream);\
-   off = ftell(stream);\
-   if (off >= 0)\
-      ftruncate(fileno(stream), off);\
-} while (0)
-
-/* fflush() and rewind() */
-#define fflush_rewind(stream) \
-do {\
-   fflush(stream);\
-   rewind(stream);\
-} while (0)
-
 /* There are problems with dup()ing of file-descriptors for child processes.
- * As long as those are not fixed in equal spirit to (outof(): FIX and
- * recode.., 2012-10-04), and to avoid reviving of bugs like (If *record* is
- * set, avoid writing dead content twice.., 2012-09-14), we have to somehow
- * accomplish that the FILE* fp makes itself comfortable with the *real* offset
- * of the underlaying file descriptor.  Unfortunately Standard I/O and POSIX
- * don't describe a way for that -- fflush();rewind(); won't do it.  This
- * fseek(END),rewind() pair works around the problem on *BSD and Linux.
- * Update as of 2014-03-03: with Issue 7 POSIX has overloaded fflush(3): if
- * used on a readable stream, then
+ * We have to somehow accomplish that the FILE* fp makes itself comfortable
+ * with the *real* offset of the underlaying file descriptor.
+ * POSIX Issue 7 overloaded fflush(3): if used on a readable stream, then
  *
  *    if the file is not already at EOF, and the file is one capable of
  *    seeking, the file offset of the underlying open file description shall
- *    be set to the file position of the stream.
- *
- * We need our own, simplified and reliable I/O */
+ *    be set to the file position of the stream */
 #if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define n_real_seek(FP,OFF,WH) (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF)
 # define really_rewind(stream) \
-do {\
+do{\
    rewind(stream);\
    fflush(stream);\
-} while (0)
+}while(0)
+
 #else
+# define n_real_seek(FP,OFF,WH) \
+   (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF &&\
+      lseek(fileno(FP), OFF, WH) != -1)
 # define really_rewind(stream) \
-do {\
+do{\
    rewind(stream);\
    fflush(stream);\
    lseek(fileno(stream), 0, SEEK_SET);\
-} while (0)
+}while(0)
 #endif
+
+/* fflush() and rewind() */
+#define fflush_rewind(stream) \
+do{\
+   fflush(stream);\
+   rewind(stream);\
+}while(0)
+
+/* Truncate a file to the last character written.  This is useful just before
+ * closing an old file that was opened for read/write */
+#define ftrunc(stream) \
+do{\
+   off_t off;\
+   fflush(stream);\
+   off = ftell(stream);\
+   if(off >= 0)\
+      ftruncate(fileno(stream), off);\
+}while(0)
 
 /*
  * accmacvar.c
