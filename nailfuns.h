@@ -276,10 +276,6 @@ FL si32_t      n_c_from_hex_base16(char const hex[2]);
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
 FL ui32_t      torek_hash(char const *name);
 FL ui32_t      torek_ihashn(char const *dat, size_t len);
-#define hash(S)                  (torek_hash(S) % HSHSIZE) /* xxx COMPAT (?) */
-
-/* Create hash */
-FL ui32_t      pjw(char const *cp); /* TODO obsolete -> torek_hash() */
 
 /* Find a prime greater than n */
 FL ui32_t      nextprime(ui32_t n);

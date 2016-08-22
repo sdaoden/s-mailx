@@ -58,6 +58,8 @@ static sigjmp_buf    _maildir_jmp;
 static void             __maildircatch(int s);
 static void             __maildircatch_hold(int s);
 
+static unsigned a_maildir_hash(char const *cp);
+
 /* Do some cleanup in the tmp/ subdir */
 static void             _cleantmp(void);
 
@@ -114,6 +116,24 @@ __maildircatch_hold(int s)
    n_err_sighdl(_("\nImportant operation in progress: "
       "interrupt again to forcefully abort\n"));
    safe_signal(SIGINT, &__maildircatch);
+}
+
+static unsigned
+a_maildir_hash(char const *cp) /* TODO obsolete that -> torek_hash */
+{
+   unsigned h = 0, g;
+   NYD_ENTER;
+
+   cp--;
+   while (*++cp) {
+      h = (h << 4 & 0xffffffff) + (*cp&0377);
+      if ((g = h & 0xf0000000) != 0) {
+         h = h ^ g >> 24;
+         h = h ^ g;
+      }
+   }
+   NYD_LEAVE;
+   return h;
 }
 
 static void
@@ -279,7 +299,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    memcpy(m->m_maildir_file + sz + 1, fn, i +1);
    m->m_time = t;
    m->m_flag = f;
-   m->m_maildir_hash = ~pjw(fn);
+   m->m_maildir_hash = ~a_maildir_hash(fn);
 jleave:
    NYD_LEAVE;
    return;
@@ -610,7 +630,7 @@ mdlook(char const *name, struct message *data)
    if (data && data->m_maildir_hash)
       h = ~data->m_maildir_hash;
    else
-      h = pjw(name);
+      h = a_maildir_hash(name);
    h %= _maildir_prime;
    c = h;
    md = _maildir_table + c;

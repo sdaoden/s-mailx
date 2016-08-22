@@ -399,24 +399,6 @@ torek_ihashn(char const *dat, size_t len){
    return h;
 }
 
-FL unsigned
-pjw(char const *cp) /* TODO obsolete that -> torek_hash */
-{
-   unsigned h = 0, g;
-   NYD_ENTER;
-
-   cp--;
-   while (*++cp) {
-      h = (h << 4 & 0xffffffff) + (*cp&0377);
-      if ((g = h & 0xf0000000) != 0) {
-         h = h ^ g >> 24;
-         h = h ^ g;
-      }
-   }
-   NYD_LEAVE;
-   return h;
-}
-
 FL ui32_t
 nextprime(ui32_t n)
 {
