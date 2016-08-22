@@ -170,7 +170,7 @@ static enum okay
 _file_save(struct fp *fpp)
 {
    char const *cmd[3];
-   int outfd, infd;
+   int outfd;
    enum okay rv;
    NYD_ENTER;
 
@@ -183,22 +183,16 @@ _file_save(struct fp *fpp)
    fflush(fpp->fp);
    clearerr(fpp->fp);
 
-   if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
-      if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
-         outfd = errno;
-         n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-            n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
-         goto jleave;
-      }
-      rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
-      goto jleave;
-   }
-
    /* Ensure the I/O library doesn't optimize the fseek(3) away! */
-   if(lseek(infd = fileno(fpp->fp), fpp->offset, SEEK_SET) == -1){
+   if(!n_real_seek(fpp->fp, fpp->offset, SEEK_SET)){
       outfd = errno;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
          n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+      goto jleave;
+   }
+
+   if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
+      rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
 
@@ -227,7 +221,8 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL) >= 0)
+   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd,
+         cmd[1], cmd[2], NULL, NULL) >= 0)
       rv = OKAY;
 
    close(outfd);
