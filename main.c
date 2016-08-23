@@ -725,11 +725,17 @@ jeMmq:
          }
          break;
       case 'S':
-         /* Set variable (twice) */
+         /* Set variable (TODO twice [only if successful]) */
          {  char *a[2];
+            bool_t b;
+
             okey = a[0] = _oarg;
             a[1] = NULL;
-            c_set(a);
+            pstate |= PS_ROBOT;
+            b = (c_set(a) == 0);
+            pstate &= ~PS_ROBOT;
+            if(!b)
+               break;
          }
 joarg:
          if (oargs_cnt == oargs_size)
@@ -953,6 +959,7 @@ jgetopt_done:
    pstate |= PS_ROBOT;
    for (i = 0; UICMP(z, i, <, oargs_cnt); ++i) {
       char const *a[2];
+
       a[0] = oargs[i];
       a[1] = NULL;
       c_set(a);
