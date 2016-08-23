@@ -724,17 +724,25 @@ n_time_epoch(void)
    struct timeval ts;
 #endif
    time_t rv;
+   char const *cp;
    NYD2_ENTER;
 
+   if((cp = ok_vlook(SOURCE_DATE_EPOCH)) != NULL){ /* TODO */
+      /* TODO This is marked "posnum", b and therefore 0<=X<=UINT_MAX.
+       * TODO This means we have a Sun, 07 Feb 2106 07:28:15 +0100 problem.
+       * TODO Therefore we need a num_ui64= type in v15 */
+      rv = (time_t)strtoul(cp, NULL, 0);
+   }else{
 #ifdef HAVE_CLOCK_GETTIME
-   clock_gettime(CLOCK_REALTIME, &ts);
-   rv = (time_t)ts.tv_sec;
+      clock_gettime(CLOCK_REALTIME, &ts);
+      rv = (time_t)ts.tv_sec;
 #elif defined HAVE_GETTIMEOFDAY
-   gettimeofday(&ts, NULL);
-   rv = (time_t)ts.tv_sec;
+      gettimeofday(&ts, NULL);
+      rv = (time_t)ts.tv_sec;
 #else
-   rv = time(NULL);
+      rv = time(NULL);
 #endif
+   }
    NYD2_LEAVE;
    return rv;
 }

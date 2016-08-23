@@ -1595,6 +1595,7 @@ ok_v_smtp_auth_password,
 ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
    ok_b_smtp_use_starttls,
+   ok_v_SOURCE_DATE_EPOCH,/*{name=SOURCE_DATE_EPOCH,env=1,notempty=1,posnum=1}*/
    ok_v_spam_interface,
    ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,

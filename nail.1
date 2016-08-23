@@ -8588,6 +8588,13 @@ and when starting subprocesses.
 A default shell is used if this option is not defined.
 .
 .Mx
+.It Ev SOURCE_DATE_EPOCH
+If set, this specifies a time in seconds since the Unix epoch
+(1970-01-01) to be used in place of the current time.
+This is for the sake of reproduceability of tests, to be used during
+development or by software packagers.
+.
+.Mx
 .It Ev TERM
 \*(OP The terminal type for which output is to be prepared.
 For extended colour and font control please refer to
