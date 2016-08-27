@@ -574,26 +574,6 @@ FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
 FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
 
 /*
- * edit.c
- */
-
-/* Edit a message list */
-FL int         c_editor(void *v);
-
-/* Invoke the visual editor on a message list */
-FL int         c_visual(void *v);
-
-/* Run an editor on either size bytes of the file fp (or until EOF if size is
- * negative) or on the message mp, and return a new file or NULL on error of if
- * the user didn't perform any edits.
- * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
- * from within compose mode, and giving TRUM1 to puthead().
- * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
-FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
-                  struct header *hp, struct message *mp,
-                  enum sendaction action, sighandler_type oldint);
-
-/*
  * colour.c
  */
 
@@ -649,6 +629,26 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
  * normal file lock could be established, otherwise errno is usable on error */
 FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
+
+/*
+ * edit.c
+ */
+
+/* Edit a message list */
+FL int         c_editor(void *v);
+
+/* Invoke the visual editor on a message list */
+FL int         c_visual(void *v);
+
+/* Run an editor on either size bytes of the file fp (or until EOF if size is
+ * negative) or on the message mp, and return a new file or NULL on error of if
+ * the user didn't perform any edits.
+ * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
+ * from within compose mode, and giving TRUM1 to puthead().
+ * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
+FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
+                  struct header *hp, struct message *mp,
+                  enum sendaction action, sighandler_type oldint);
 
 /*
  * filter.c
