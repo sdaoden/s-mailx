@@ -56,11 +56,17 @@ application/xml               xml xsl xsd
 # CHANGE (tika: text/plain)
 @ text/x-pod                  pod
 
-application/gzip              tgz gz emz
-application/x-bzip2           bz2 tbz2 boz
 # EXTENSION .txz
 application/x-xz              xz txz
+# EXTENSION
+application/x-lzma            lzma tlz
+application/gzip              tgz gz emz
+# EXTENSION
+application/x-lz4             lz4
 application/x-tar             tar
+application/x-bzip2           bz2 tbz2 boz
+# EXTENSIONs
+application/x-lzip            lz
 application/zip               zip
 
 application/pgp-encrypted     pgp
