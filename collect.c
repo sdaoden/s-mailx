@@ -550,7 +550,7 @@ _collint(int s)
    }
    exit_status |= EXIT_SEND_ERROR;
    if (s != 0)
-      savedeadletter(_coll_fp, 1);
+      savedeadletter(_coll_fp, TRU1);
    /* Aborting message, no need to fflush() .. */
    siglongjmp(_coll_abort, 1);
 }
@@ -561,7 +561,7 @@ collhup(int s)
    NYD_X; /* Signal handler */
    UNUSED(s);
 
-   savedeadletter(_coll_fp, 1);
+   savedeadletter(_coll_fp, TRU1);
    /* Let's pretend nobody else wants to clean up, a true statement at
     * this time */
    exit(EXIT_ERR);
@@ -1194,46 +1194,6 @@ jerr:
       _coll_fp = NULL;
    }
    goto jleave;
-}
-
-FL void
-savedeadletter(FILE *fp, int fflush_rewind_first)
-{
-   char const *cp;
-   int c;
-   FILE *dbuf;
-   ul_i lines, bytes;
-   NYD_ENTER;
-
-   if ((options & OPT_DEBUG) || !ok_blook(save))
-      goto jleave;
-
-   if (fflush_rewind_first) {
-      fflush(fp);
-      rewind(fp);
-   }
-   if (fsize(fp) == 0)
-      goto jleave;
-
-   cp = getdeadletter();
-   dbuf = Fopen(cp, "a");
-   if (dbuf == NULL)
-      goto jleave;
-
-   really_rewind(fp);
-
-   printf("\"%s\" ", cp);
-   for (lines = bytes = 0; (c = getc(fp)) != EOF; ++bytes) {
-      putc(c, dbuf);
-      if (c == '\n')
-         ++lines;
-   }
-   printf("%lu/%lu\n", lines, bytes);
-
-   Fclose(dbuf);
-   rewind(fp);
-jleave:
-   NYD_LEAVE;
 }
 
 /* s-it-mode */

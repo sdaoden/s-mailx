@@ -1446,7 +1446,7 @@ ok_b_autothread,
    ok_v_crt,                           /* {posnum=1} */
    ok_v_customhdr,                     /* {nocntrls=1} */
 
-   ok_v_DEAD,                          /* {env=1,defval=VAL_DEAD} */
+   ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
    ok_v_datefield,
    ok_v_datefield_markout_older,
    ok_b_debug,                         /* {vip=1} */

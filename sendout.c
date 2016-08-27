@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Mail to others.
+ *@ Message sending lifecycle, header composing, etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -814,12 +814,11 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
        * header expansion we leave it in and mark it as deleted */
       np->n_type |= GDEL;
 
-      if (options & OPT_DEBUG) {
-         n_err(_(">>> Would write message via \"%s\"\n"), np->n_name);
+      if(options & OPT_D_VV)
+         n_err(_(">>> Writing message via %s\n"),
+            n_shell_quote_cp(np->n_name, FAL0));
+      if(options & OPT_DEBUG)
          continue;
-      }
-      if (options & OPT_VERBVERB)
-         n_err(_(">>> Writing message via \"%s\"\n"), np->n_name);
 
       /* See if we have copied the complete message out yet.  If not, do so */
       if (image < 0) {
@@ -898,23 +897,25 @@ jcantfout:
          pid = start_command(sh, &nset, fda[xcnt++], COMMAND_FD_NULL, "-c",
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
-            n_err(_("Piping message to \"%s\" failed\n"), np->n_name);
+            n_err(_("Piping message to %s failed\n"),
+               n_shell_quote_cp(np->n_name, FAL0));
             *senderror = TRU1;
             goto jcant;
          }
          free_child(pid);
       } else {
          int c;
-         char *fname = file_expand(np->n_name);
+         char const *fname = file_expand(np->n_name), *fnameq;
 
          if (fname == NULL) {
             *senderror = TRU1;
             goto jcant;
          }
+         fnameq = n_shell_quote_cp(fname, FAL0);
 
          if ((fout = Zopen(fname, "a")) == NULL) {
-            n_err(_("Writing message to \"%s\" failed: %s\n"),
-               fname, strerror(errno));
+            n_err(_("Writing message to %s failed: %s\n"),
+               fnameq, strerror(errno));
             *senderror = TRU1;
             goto jcant;
          }
@@ -922,8 +923,8 @@ jcantfout:
          while ((c = getc(fin)) != EOF)
             putc(c, fout);
          if (ferror(fout)) {
-            n_err(_("Writing message to \"%s\" failed: %s\n"),
-               fname, _("write error"));
+            n_err(_("Writing message to %s failed: %s\n"),
+               fnameq, _("write error"));
             *senderror = TRU1;
          }
          Fclose(fout);
@@ -2175,6 +2176,109 @@ jleave:
       exit_status |= EXIT_SEND_ERROR;
    NYD_LEAVE;
    return rv;
+}
+
+FL void
+savedeadletter(FILE *fp, bool_t fflush_rewind_first){
+   struct n_string line;
+   int c;
+   enum {a_NONE, a_INIT = 1<<0, a_BODY = 1<<1, a_NL = 1<<2} flags;
+   ul_i bytes, lines;
+   FILE *dbuf;
+   char const *cp, *cpq;
+   NYD_ENTER;
+
+   if(!ok_blook(save))
+      goto jleave;
+
+   if(fflush_rewind_first){
+      fflush(fp);
+      rewind(fp);
+   }
+   if(fsize(fp) == 0)
+      goto jleave;
+
+   cp = getdeadletter();
+   cpq = n_shell_quote_cp(cp, FAL0);
+
+   if(options & OPT_DEBUG){
+      n_err(_(">>> Would (try to) write $DEAD %s\n"), cpq);
+      goto jleave;
+   }
+
+   if((dbuf = Fopen(cp, "w")) == NULL){
+      n_perr(_("Cannot save to $DEAD"), 0);
+      goto jleave;
+   }
+   n_file_lock(fileno(dbuf), FLT_WRITE, 0,0, UIZ_MAX); /* XXX Natomic */
+
+   printf("%s ", cpq);
+   fflush(stdout);
+
+   /* TODO savedeadletter() non-conforming: should check whether we have any
+    * TODO headers, if not we need to place "something", anything will do.
+    * TODO MIME is completely missing, we use MBOXO quoting!!  Yuck.
+    * TODO I/O error handling missing.  Yuck! */
+   n_string_reserve(n_string_creat_auto(&line), 2 * SEND_LINESIZE);
+   bytes = (ul_i)fprintf(dbuf, "From %s %s", myname, time_current.tc_ctime);
+   lines = 1;
+   for(flags = a_NONE, c = '\0'; c != EOF; bytes += line.s_len, ++lines){
+      n_string_trunc(&line, 0);
+      while((c = getc(fp)) != EOF && c != '\n')
+         n_string_push_c(&line, c);
+
+      /* TODO It may be that we have only some plain text.  It may be that we
+       * TODO have a complete MIME encoded message.  We don't know, and we
+       * TODO have no usable mechanism to dig it!!  tWe need v15! */
+      if(!(flags & a_INIT)){
+         size_t i;
+
+         /* Throw away leading empty lines! */
+         if(line.s_len == 0)
+            continue;
+         for(i = 0; i < line.s_len; ++i){
+            if(fieldnamechar(line.s_dat[i]))
+               continue;
+            if(line.s_dat[i] == ':'){
+               flags |= a_INIT;
+               break;
+            }else{
+               /* We have no headers, this is already a body line! */
+               flags |= a_INIT | a_BODY;
+               break;
+            }
+         }
+         /* Well, i had to check wether the RFC allows this.  Assume we've
+          * passed the headers, too, then! */
+         if(i == line.s_len)
+            flags |= a_INIT | a_BODY;
+      }
+      if(flags & a_BODY){
+         if(line.s_len >= 5 && !memcmp(line.s_dat, "From ", 5))
+            n_string_unshift_c(&line, '>');
+      }
+      if(line.s_len == 0)
+         flags |= a_BODY | a_NL;
+      else
+         flags &= ~a_NL;
+
+      n_string_push_c(&line, '\n');
+      fwrite(line.s_dat, sizeof *line.s_dat, line.s_len, dbuf);
+   }
+   if(!(flags & a_NL)){
+      putc('\n', dbuf);
+      ++bytes;
+      ++lines;
+   }
+   n_string_gut(&line);
+
+   Fclose(dbuf);
+   printf("%lu/%lu\n", lines, bytes);
+   fflush(stdout);
+
+   rewind(fp);
+jleave:
+   NYD_LEAVE;
 }
 
 #undef SEND_LINESIZE

@@ -571,8 +571,6 @@ FL bool_t      condstack_take(void *self);
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
                   char *quotefile, int doprefix, si8_t *checkaddr_err);
 
-FL void        savedeadletter(FILE *fp, int fflush_rewind_first);
-
 /*
  * colour.c
  */
@@ -1678,6 +1676,9 @@ FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
 
 /*  */
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
+
+/* $DEAD */
+FL void        savedeadletter(FILE *fp, bool_t fflush_rewind_first);
 
 /*
  * shexp.c

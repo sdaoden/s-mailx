@@ -8417,13 +8417,19 @@ in interactive mode thereafter.
 .
 .Mx
 .It Ev DEAD
-The name of the file to use for saving aborted messages if
+The name of the (mailbox)
+.Ic file
+to use for saving aborted messages if
 .Va save
 is set; this defaults to
 .Pa dead.letter
 in the user's
 .Ev HOME
 directory.
+If the variable
+.Va debug
+is set no output will be generated, otherwise the contents of the file
+will be replaced.
 .
 .Mx
 .It Ev EDITOR
