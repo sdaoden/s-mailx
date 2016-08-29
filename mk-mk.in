@@ -3,6 +3,11 @@
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
+# Corresponds to same thing in makefile!
+_version_from_header = VERSION="`< version.h $(sed) \
+		-e '/ VERSION /b X' -e d -e ':X' \
+		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
+
 OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
@@ -100,11 +105,6 @@ mime_types.h: mime.types
 		}\
 	}\
 	'
-
-# Corresponds to same thing in makefile!
-_version_from_header = VERSION="`< version.h $(sed) \
-		-e '/ VERSION /b X' -e d -e ':X' \
-		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
 mkman.1: nail.1
 	$(ECHO_GEN)\

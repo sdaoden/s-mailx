@@ -499,11 +499,13 @@ msg() {
 
 rc=./make.rc
 lst=./config.lst
+ev=./config.ev
 h=./config.h h_name=config.h
 mk=./mk.mk
 
 newlst=./config.lst-new
 newmk=./config.mk-new
+newev=./config.ev-new
 newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
@@ -773,7 +775,7 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newh}" EXIT
+   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newev} ${newh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -837,12 +839,14 @@ fi
 
 for i in \
       awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
-      MAKE make strip \
+      MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
    printf "${i}=${j}\n" >> ${newlst}
+   printf "${i}=\"${j}\";export ${i}; " >> ${newev}
 done
+printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 path_check C_INCLUDE_PATH -I _INCS
@@ -930,6 +934,7 @@ config_exit() {
 }
 
 ${mv} -f ${newlst} ${lst}
+${mv} -f ${newev} ${ev}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
 

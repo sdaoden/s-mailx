@@ -12,31 +12,31 @@ all: config build
 config:
 	@$(_prego)
 build:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
 install packager-install: build
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk DESTDIR="$(DESTDIR)" install
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk DESTDIR="$(DESTDIR)" install
 uninstall:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk uninstall
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk uninstall
 
 clean:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk clean
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk clean
 distclean:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk distclean
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk distclean
 
 test:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk test
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk test
 
 devel:
-	@CONFIG=DEVEL; export CONFIG;\
-	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
+	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
+	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
 odevel:
-	@CONFIG=ODEVEL; export CONFIG;\
-	$(_prego) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
+	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
+	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
 d-b:
-	@$(_prestop) && LC_ALL=C $(MAKE) -f ./mk.mk _update-version &&\
-	LC_ALL=C $(MAKE) -f ./mk.mk $(MAILJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
 
 d-gettext:
 	LC_ALL=C xgettext --sort-by-file --strict --add-location \
@@ -46,12 +46,13 @@ d-gettext:
 
 _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	$(SHELL) ./mk-conf.sh
+	$(SHELL) ./mk-conf.sh || exit 1
 _prestop = if [ -f ./mk.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine';\
 		exit 1;\
-	fi
+	fi;\
+	< ./config.ev read __ev__; eval $${__ev__}; unset __ev__
 
 # Corresponds to same thing in mk-mk.in! (Except it is sed not $(sed))
 _version_from_header = VERSION="`< version.h sed \
