@@ -219,27 +219,10 @@ static void
 __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
-   if (__sopen_sig < 0) {
-      /* Of course the following doesn't belong into a signal handler XXX */
-      int i, j;
-
-      if (__sopen_sig == -1) {
-         fprintf(stderr,
-            _("\nInterrupting it could turn the (GNU/Linux+) DNS resolver "
-                  "unusable.\n"
-               "  Wait until it's done, or do terminate the program\n"));
-         __sopen_sig = -2;
-      } else if ((i = j = ABS(__sopen_sig)) + 15 < scrnwidth) {
-         putc('\r', stderr);
-         for (; j > 0; --j)
-            putc(' ', stderr);
-         fputs("___( o)", stderr);
-         putc((i & 1) ? '=' : '>', stderr);
-         putc(' ', stderr);
-         putc(' ', stderr);
-         ++i;
-         __sopen_sig = -i;
-      }
+   if (__sopen_sig == -1) {
+      fprintf(stderr, _("\nInterrupting this operation may turn "
+         "the DNS resolver unusable\n"));
+      __sopen_sig = 0;
    } else {
       __sopen_sig = sig;
       siglongjmp(__sopen_actjmp, 1);
