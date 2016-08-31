@@ -12,7 +12,7 @@ OBJ = $(OBJ_SRC:.c=.o)
 .SUFFIXES: .o .c .y
 .c.o:
 	$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(<)
-.c .y: ;
+.c: ;
 
 all: $(UAGENT) $(OPTIONAL_PRIVSEP)
 

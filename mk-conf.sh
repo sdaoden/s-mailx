@@ -293,7 +293,7 @@ cc_setup() {
          printf >&2 'boing booom tschak\n'
          msg 'ERROR: I cannot find a compiler!'
          msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
-         msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
+         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
          config_exit 1
       fi
    fi
@@ -310,7 +310,7 @@ _cc_default() {
    if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
       :
    else
-      msg 'Using C compiler $CC="%s"' "${CC}"
+      msg 'Using C compiler ${CC}=%s' "${CC}"
    fi
 }
 
@@ -318,10 +318,11 @@ cc_flags() {
    if feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
-         msg 'Detecting $CFLAGS/$LDFLAGS for $CC="%s", just a second..' "${CC}"
+         msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}="%s", just a second..' \
+            "${CC}"
       else
          cc_check_silent=
-         msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
+         msg 'Testing usable ${CFLAGS}/${LDFLAGS} for ${CC}=%s' "${CC}"
       fi
 
       i=`echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}'`
@@ -528,7 +529,7 @@ check_tool() {
    # Evaluate, just in case user comes in with shell snippets (..well..)
    eval i="${i}"
    if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
-      [ -n "${VERBOSE}" ] && msg ' . $%s ... "%s"' "${n}" "${i}"
+      [ -n "${VERBOSE}" ] && msg ' . ${%s} ... %s' "${n}" "${i}"
       eval ${n}=${i}
       return 0
    fi
@@ -983,12 +984,11 @@ echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) -I./ $(XINCS) $(CFLAGS) -c $<
+	$(CC) -I./ $(XINCS) $(CFLAGS) -c $(<)
 .c.x:
-	$(CC) -I./ $(XINCS) -E $< >$@
+	$(CC) -I./ $(XINCS) -E $(<) > $(@)
 .c:
-	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
-.y: ;
+	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
 !
 
 _check_preface() {
