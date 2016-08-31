@@ -551,12 +551,12 @@ check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
 feat_val_no() {
-   [ "x${1}" = x0 ] ||
+   [ "x${1}" = x0 ] || [ "x${1}" = xn ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
 feat_val_yes() {
-   [ "x${1}" = x1 ] ||
+   [ "x${1}" = x1 ] || [ "x${1}" = xy ] ||
    [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
@@ -573,7 +573,7 @@ _feat_check() {
    elif feat_val_yes "${i}"; then
       return 0
    else
-      msg "ERROR: %s: any of 0/false/no/off or 1/true/yes/on/require, got: %s" \
+      msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" \
          "${1}" "${i}"
       config_exit 11
    fi

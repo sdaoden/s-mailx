@@ -12,8 +12,8 @@
 #@   newlines on any but the last line with a backslash, as in "LINE \".
 #@   The parsing is sequential top-to-bottom (nonetheless) so that shell
 #@   snippets in a value can refer only to stuff yet defined.
-#@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
-#@   (case doesn't matter), other values result in an error.
+#@ . Boolean values can be set via 1/0, y/n, true/false, yes/no and
+#@   on/off (case doesn't matter), other values result in an error.
 #@ . However, the value "require" is also a true boolean, but will in
 #@   addition cause configuration to fail if the requested feature is
 #@   missing.  This special behaviour is only tested by a logical subset
