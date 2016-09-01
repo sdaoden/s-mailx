@@ -434,7 +434,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    bool_t v15, rv = FAL0;
    char *shost, *from;
 #ifdef HAVE_SMTP
-   char *smtp;
+   char const *smtp;
 #endif
    NYD_ENTER;
 
@@ -454,9 +454,15 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
    }
 
 #ifdef HAVE_SMTP
-   if ((smtp = ok_vlook(smtp)) == NULL) {
-      rv = TRU1;
-      goto jleave;
+   if ((smtp = ok_vlook(smtp)) == NULL) { /* TODO v15 url_creat(,ok_vlook(mta)*/
+      char const *proto;
+
+      /* *smtp* OBSOLETE message in mta_start() */
+      if ((smtp = ok_vlook(mta)) == NULL ||
+            (proto = n_servbyname(smtp, NULL)) == NULL || *proto == '\0') {
+         rv = TRU1;
+         goto jleave;
+      }
    }
 
    if (!url_parse(&sbp->sb_url, CPROTO_SMTP, smtp))
@@ -1156,17 +1162,50 @@ _transfer(struct sendbundle *sbp)
 static bool_t
 __mta_start(struct sendbundle *sbp)
 {
-   char const **args = NULL, *mta, *smtp;
    pid_t pid;
    sigset_t nset;
-   bool_t rv = FAL0;
+   char const **args, *mta;
+   bool_t rv;
    NYD_ENTER;
 
-   if ((smtp = ok_vlook(smtp)) == NULL) {
+   if((mta = ok_vlook(smtp)) != NULL){
+      OBSOLETE(_("please don't use *smtp*, but assign an SMTP URL to *mta*"));
+      /* For *smtp* the smtp:// protocol was optional; be simple: don't check
+       * that *smtp* is misused with file:// or so */
+      if(n_servbyname(mta, NULL) == NULL)
+         mta = savecat("smtp://", mta);
+      rv = TRU1;
+   }else{
+      char const *proto;
+
+      if((proto = ok_vlook(sendmail)) != NULL)
+         OBSOLETE(_("please use *mta* instead of *sendmail*"));
+      if((mta = ok_vlook(mta)) == NULL){ /* TODO v15: mta = ok_vlook(mta); */
+         if(proto == NULL){
+            mta = VAL_MTA;
+            rv = FAL0;
+         }else
+            rv = TRU1;
+      }
+      /* TODO for now this is pretty hacky: in v15 we should simply create
+       * TODO an URL object; i.e., be able to do so, and it does it right
+       * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
+      else if((proto = n_servbyname(mta, NULL)) != NULL){
+         if(*proto == '\0'){
+            mta += sizeof("file://") -1;
+            rv = FAL0;
+         }else
+            rv = TRU1;
+      }else
+         rv = FAL0;
+   }
+
+   if(!rv){
       char const *mta_base;
 
-      if((mta = file_expand(mta_base = ok_vlook(sendmail))) == NULL){
-         n_err(_("*sendmail* variable expansion failure: \"%s\""), mta_base);
+      if((mta = file_expand(mta_base = mta)) == NULL){
+         n_err(_("*mta* variable expansion failure: %s\n"),
+            n_shell_quote_cp(mta_base, FAL0));
          goto jstop;
       }
 
@@ -1177,7 +1216,7 @@ __mta_start(struct sendbundle *sbp)
          goto jleave;
       }
    } else {
-      UNINIT(mta, NULL); /* Silence cc */
+      UNINIT(args, NULL);
 #ifndef HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1209,13 +1248,14 @@ jstop:
       sigaddset(&nset, SIGTTOU);
       freopen("/dev/null", "r", stdin);
 #ifdef HAVE_SMTP
-      if (smtp != NULL) {
+      if (rv) {
          prepare_child(&nset, 0, 1);
          if (smtp_mta(sbp))
             _exit(EXIT_OK);
       } else
 #endif
       {
+         char const *ecp;
          int e;
 
          prepare_child(&nset, fileno(sbp->sb_input), -1);
@@ -1226,9 +1266,9 @@ jstop:
          lseek(0, 0, SEEK_SET);
          execv(mta, UNCONST(args));
          e = errno;
-         smtp = (e != ENOENT) ? strerror(e)
-               : _("executable not found (adjust *sendmail* variable)");
-         n_err(_("Cannot start \"%s\": %s\n"), mta, smtp);
+         ecp = (e != ENOENT) ? strerror(e)
+               : _("executable not found (adjust *mta* variable)");
+         n_err(_("Cannot start %s: %s\n"), n_shell_quote_cp(mta, FAL0), ecp);
       }
       savedeadletter(sbp->sb_input, 1);
       n_err(_("... message not sent\n"));
@@ -1236,13 +1276,11 @@ jstop:
    }
 
    if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
-      if (wait_child(pid, NULL))
-         rv = TRU1;
-      else
+      if (!(rv = wait_child(pid, NULL)))
          _sendout_error = TRU1;
    } else {
-      rv = TRU1;
       free_child(pid);
+      rv = TRU1;
    }
 jleave:
    NYD_LEAVE;
@@ -1253,28 +1291,42 @@ static char const **
 __mta_prepare_args(struct name *to, struct header *hp)
 {
    size_t vas_cnt, i, j;
-   char **vas, *cp;
-   char const **args;
+   char **vas;
+   char const **args, *cp, *cp_v15compat;
    bool_t snda;
    NYD_ENTER;
 
-   if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
+   if((cp_v15compat = ok_vlook(sendmail_arguments)) != NULL)
+      OBSOLETE(_("please use *mta-arguments*, not *sendmail-arguments*"));
+   if((cp = ok_vlook(mta_arguments)) == NULL)
+      cp = cp_v15compat;
+   if ((cp /* TODO v15: = ok_vlook(mta_arguments)*/) == NULL) {
       vas_cnt = 0;
       vas = NULL;
    } else {
       /* Don't assume anything on the content but do allocate exactly j slots;
        * like this getrawlist will never overflow (and return -1) */
       j = strlen(cp);
-      vas = ac_alloc(sizeof(*vas) * j);
+      vas = salloc(sizeof(*vas) * j);
       vas_cnt = (size_t)getrawlist(FAL0, vas, j, cp, j);
    }
 
    i = 4 + smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
-   args[0] = ok_vlook(sendmail_progname);
+   if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
+      OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
+   if((cp = ok_vlook(mta_argv0)) == NULL)
+      cp = cp_v15compat;
+   if(cp == NULL)
+      cp = VAL_MTA_ARGV0;
+   args[0] = cp/* TODO v15: = ok_vlook(mta_argv0) */;
 
    if ((snda = ok_blook(sendmail_no_default_arguments)))
+      OBSOLETE(_("please use *mta-no-default-arguments*, "
+         "not *sendmail-no-default-arguments*"));
+   snda |= ok_blook(mta_no_default_arguments);
+   if ((snda /* TODO v15: = ok_blook(mta_no_default_arguments)*/))
       i = 1;
    else {
       args[1] = "-i";
@@ -1329,9 +1381,6 @@ __mta_prepare_args(struct name *to, struct header *hp)
       if (!(to->n_type & GDEL))
          args[i++] = to->n_name;
    args[i] = NULL;
-
-   if (vas != NULL)
-      ac_free(vas);
    NYD_LEAVE;
    return args;
 }
@@ -1343,9 +1392,9 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    char *buf;
    NYD_ENTER;
 
-   n_err(_(">>> MTA: \"%s\", arguments:"), mta);
+   n_err(_(">>> MTA: %s, arguments:"), n_shell_quote_cp(mta, FAL0));
    for (; *args != NULL; ++args)
-      n_err(" \"%s\"", *args);
+      n_err(" %s", n_shell_quote_cp(*args, FAL0));
    n_err("\n");
 
    fflush_rewind(sbp->sb_input);
