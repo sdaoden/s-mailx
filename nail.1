@@ -8128,18 +8128,6 @@ Note that this interface doesn't inspect the
 flag of a message for the command
 .Ic spamforget .
 .
-.It Ql spamd
-\*(UA will directly communicate with the
-.Xr spamassassin 1
-daemon
-.Xr spamd 1
-via a path-based
-.Xr unix 4
-stream socket as specified in
-.Va spamd-socket .
-It is possible to specify a per-user configuration via
-.Va spamd-user .
-.
 .It Ql filter
 generic spam filter support via freely configurable hooks.
 This interface is meant for programs like
@@ -8209,27 +8197,6 @@ connection-related ones via this variable, e.g.,
 .It Va spamc-user
 \*(OP Specify a username for per-user configuration files for the
 .Ql spamc
-.Va spam-interface .
-If this is set to the empty string then \*(UA will use the name of the
-current
-.Va user .
-.
-.Mx
-.It Va spamd-socket
-\*(OP Specify the path of the
-.Xr unix 4
-domain socket on which
-.Xr spamd 1
-listens for connections for the
-.Ql spamd
-.Va spam-interface .
-Note that the path is not expanded, but used
-.Dq as is .
-.
-.Mx
-.It Va spamd-user
-\*(OP Specify a username for per-user configuration files for the
-.Ql spamd
 .Va spam-interface .
 If this is set to the empty string then \*(UA will use the name of the
 current
@@ -10105,19 +10072,13 @@ message flag, without any interface interaction.
 The
 .Xr spamassassin 1
 based
-.Va spam-interface Ns s
+.Va spam-interface
 .Ql spamc
-and
-.Ql spamd
-require a running instance of the
+requires a running instance of the
 .Xr spamd 1
 server in order to function, started with the option
 .Fl -allow-tell
 shall Bayesian filter learning be possible.
-.Ql spamd
-only works via a local path-based
-.Xr unix 4
-socket, but otherwise the following will be equivalently fine:
 .
 .Bd -literal -offset indent
 $ spamd -i localhost:2142 -i /tmp/.spamsock -d [-L] [-l]
@@ -10129,9 +10090,6 @@ $ spamd --listen=localhost:2142 --listen=/tmp/.spamsock \e
 Thereafter \*(UA can make use of these interfaces:
 .
 .Bd -literal -offset indent
-$ \*(uA -Sspam-interface=spamd -Sspam-maxsize=500000 \e
-    -Sspamd-socket=/tmp/.spamsock -Sspamd-user=
-
 $ \*(uA -Sspam-interface=spamc -Sspam-maxsize=500000 \e
     -Sspamc-command=/usr/local/bin/spamc \e
     -Sspamc-arguments="-U /tmp/.spamsock" -Sspamc-user=
@@ -10181,7 +10139,6 @@ set folder-hook-FOLDER=spamdelhook
 See also the documentation for the variables
 .Va spam-interface , spam-maxsize ,
 .Va spamc-command , spamc-arguments , spamc-user ,
-.Va spamd-socket , spamd-user ,
 .Va spamfilter-ham , spamfilter-noham , spamfilter-nospam , \
   spamfilter-rate
 and

@@ -208,7 +208,8 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
 #ifdef HAVE_SPAM_SPAMD
-   } else if (!asccasecmp(cp, "spamd")) {
+   } else if (!asccasecmp(cp, "spamd")) { /* TODO v15: remove */
+      OBSOLETE(_("*spam-interface*=spamd will be removed; please use =spamc"));
       if (!_spamd_setup(&vc))
          goto jleave;
 #endif

@@ -260,7 +260,7 @@ WANT_ERRORS=yes
 # see the manual example section "Handling spam".
 # . WANT_SPAM_SPAMC:
 #   Support for interaction with spamassassin(1)s spamc(1).
-# . WANT_SPAM_SPAMD:
+# . [Obsolete] WANT_SPAM_SPAMD:
 #   Direct communication with spamassassin(1)s spamd(1).
 #   Needs unix(4) domain sockets (checked).  Can be "require"d.
 # . WANT_SPAM_FILTER:
