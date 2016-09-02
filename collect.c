@@ -100,7 +100,7 @@ static void       _collint(int s);
 
 static void       collhup(int s);
 
-static int        putesc(char const *s, FILE *stream);
+static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 
 /* call_compose_mode_hook() setter hook */
 static void a_coll__hook_setter(void *arg);

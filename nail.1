@@ -2582,6 +2582,16 @@ Not yet supported, just to raise awareness: Non-standard extension.
 commands.
 Round-tripping (feeding in things shown in list modes again) are not yet
 stable or possible at all.
+On new-style command lines it is wise to quote semicolon
+.Ql \&;
+and vertical bar
+.Ql |
+characters in order to ensure upward compatibility: the author would
+like to see things like
+.Ql ? echo $'trouble\tahead' | cat >> in_the_shell.txt
+and
+.Ql ? top 2 5 10; type 3 22
+become possible.
 Before \*(UA will switch entirely to shell-style argument parsing there
 will be a transition phase where using
 .Ic \&\&wysh
