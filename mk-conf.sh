@@ -5,47 +5,47 @@ LC_ALL=C
 export LC_ALL
 
 option_reset() {
-   WANT_ICONV=0
-   WANT_SOCKETS=0
-      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_SMTP=0 WANT_POP3=0
-      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
-      #WANT_MD5=0
-   WANT_IDNA=0
-   WANT_IMAP_SEARCH=0
-   WANT_REGEX=0
-   WANT_READLINE=0 WANT_MLE=0
-      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
-   WANT_TERMCAP=0 WANT_TERMCAP_PREFER_TERMINFO=0
-   WANT_ERRORS=0
-   WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
-   WANT_DOCSTRINGS=0
-   WANT_QUOTE_FOLD=0
-   WANT_FILTER_HTML_TAGSOUP=0
-   WANT_COLOUR=0
-   WANT_DOTLOCK=0
+   OPT_ICONV=0
+   OPT_SOCKETS=0
+      OPT_SSL=0 OPT_ALL_SSL_ALGORITHMS=0
+      OPT_SMTP=0 OPT_POP3=0
+      OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
+      #OPT_MD5=0
+   OPT_IDNA=0
+   OPT_IMAP_SEARCH=0
+   OPT_REGEX=0
+   OPT_READLINE=0 OPT_MLE=0
+      OPT_HISTORY=0 OPT_KEY_BINDINGS=0
+   OPT_TERMCAP=0 OPT_TERMCAP_PREFER_TERMINFO=0
+   OPT_ERRORS=0
+   OPT_SPAM_SPAMC=0 OPT_SPAM_SPAMD=0 OPT_SPAM_FILTER=0
+   OPT_DOCSTRINGS=0
+   OPT_QUOTE_FOLD=0
+   OPT_FILTER_HTML_TAGSOUP=0
+   OPT_COLOUR=0
+   OPT_DOTLOCK=0
 }
 
 option_maximal() {
-   WANT_ICONV=require
-   WANT_SOCKETS=1
-      WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
-      WANT_SMTP=1 WANT_POP3=1
-      WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
-      #WANT_MD5=1
-   WANT_IDNA=1
-   WANT_IMAP_SEARCH=1
-   WANT_REGEX=require
-   WANT_MLE=1
-      WANT_HISTORY=1 WANT_KEY_BINDINGS=1
-   WANT_TERMCAP=1 WANT_TERMCAP_PREFER_TERMINFO=1
-   WANT_ERRORS=1
-   WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
-   WANT_DOCSTRINGS=1
-   WANT_QUOTE_FOLD=1
-   WANT_FILTER_HTML_TAGSOUP=1
-   WANT_COLOUR=1
-   WANT_DOTLOCK=require
+   OPT_ICONV=require
+   OPT_SOCKETS=1
+      OPT_SSL=1 OPT_ALL_SSL_ALGORITHMS=1
+      OPT_SMTP=1 OPT_POP3=1
+      OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
+      #OPT_MD5=1
+   OPT_IDNA=1
+   OPT_IMAP_SEARCH=1
+   OPT_REGEX=require
+   OPT_MLE=1
+      OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+   OPT_TERMCAP=1 OPT_TERMCAP_PREFER_TERMINFO=1
+   OPT_ERRORS=1
+   OPT_SPAM_SPAMC=1 OPT_SPAM_SPAMD=1 OPT_SPAM_FILTER=1
+   OPT_DOCSTRINGS=1
+   OPT_QUOTE_FOLD=1
+   OPT_FILTER_HTML_TAGSOUP=1
+   OPT_COLOUR=1
+   OPT_DOTLOCK=require
 }
 
 # Predefined CONFIG= urations take precedence over anything else
@@ -56,52 +56,52 @@ if [ -n "${CONFIG}" ]; then
       ;;
    [nN][uU][lL][lL][iI])
       option_reset
-      WANT_ICONV=require
+      OPT_ICONV=require
       ;;
    [mM][iI][nN][iI][mM][aA][lL])
       option_reset
-      WANT_ICONV=1
-      WANT_REGEX=1
-      WANT_DOTLOCK=require
+      OPT_ICONV=1
+      OPT_REGEX=1
+      OPT_DOTLOCK=require
       ;;
    [mM][eE][dD][iI][uU][mM])
       option_reset
-      WANT_ICONV=require
-      WANT_IDNA=1
-      WANT_REGEX=1
-      WANT_MLE=1
-         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
-      WANT_ERRORS=1
-      WANT_SPAM_FILTER=1
-      WANT_DOCSTRINGS=1
-      WANT_COLOUR=1
-      WANT_DOTLOCK=require
+      OPT_ICONV=require
+      OPT_IDNA=1
+      OPT_REGEX=1
+      OPT_MLE=1
+         OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+      OPT_ERRORS=1
+      OPT_SPAM_FILTER=1
+      OPT_DOCSTRINGS=1
+      OPT_COLOUR=1
+      OPT_DOTLOCK=require
       ;;
    [nN][eE][tT][sS][eE][nN][dD])
       option_reset
-      WANT_ICONV=require
-      WANT_SOCKETS=1
-         WANT_SSL=require
-         WANT_SMTP=require
-         WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
-      WANT_IDNA=1
-      WANT_REGEX=1
-      WANT_MLE=1
-         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
-      WANT_DOCSTRINGS=1
-      WANT_COLOUR=1
-      WANT_DOTLOCK=require
+      OPT_ICONV=require
+      OPT_SOCKETS=1
+         OPT_SSL=require
+         OPT_SMTP=require
+         OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
+      OPT_IDNA=1
+      OPT_REGEX=1
+      OPT_MLE=1
+         OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+      OPT_DOCSTRINGS=1
+      OPT_COLOUR=1
+      OPT_DOTLOCK=require
       ;;
    [mM][aA][xX][iI][mM][aA][lL])
       option_reset
       option_maximal
       ;;
    [dD][eE][vV][eE][lL])
-      WANT_DEVEL=1 WANT_DEBUG=1 WANT_NYD2=1
+      OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
       option_maximal
       ;;
    [oO][dD][eE][vV][eE][lL])
-      WANT_DEVEL=1
+      OPT_DEVEL=1
       option_maximal
       ;;
    *)
@@ -115,7 +115,7 @@ fi
 # Inter-relationships
 option_update() {
    if feat_no SMTP && feat_no POP3; then
-      WANT_SOCKETS=0
+      OPT_SOCKETS=0
    fi
    if feat_no SOCKETS; then
       if feat_require SMTP; then
@@ -126,28 +126,28 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
-      WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_SMTP=0 WANT_POP3=0
-      WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
+      OPT_SSL=0 OPT_ALL_SSL_ALGORITHMS=0
+      OPT_SMTP=0 OPT_POP3=0
+      OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
    if feat_no SMTP; then
-      WANT_GSSAPI=0
+      OPT_GSSAPI=0
    fi
 
    if feat_no READLINE && feat_no MLE; then
-      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
+      OPT_HISTORY=0 OPT_KEY_BINDINGS=0
    fi
 
    # If we don't need MD5 leave it alone
    if feat_no SOCKETS; then
-      WANT_MD5=0
+      OPT_MD5=0
    fi
 
    if feat_yes DEVEL; then
-      WANT_DEBUG=1
+      OPT_DEBUG=1
    fi
    if feat_yes DEBUG; then
-      WANT_NOALLOCA=1 WANT_DEVEL=1
+      OPT_NOALLOCA=1 OPT_DEVEL=1
    fi
 }
 
@@ -186,7 +186,7 @@ os_setup() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
    elif [ -n "${VERBOSE}" ]; then
       msg ' . no special treatment for this system necessary or known'
@@ -247,7 +247,7 @@ _os_setup_sunos() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
          # Assume gcc(1), which supports -R for compat
          cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
@@ -429,7 +429,7 @@ _cc_flags_generic() {
       else
          msg 'Not checking for -fstack-protector compiler option,'
          msg 'since that caused errors in a "similar" configuration.'
-         msg 'You may turn off WANT_AUTOCC and use your own settings, rerun'
+         msg 'You may turn off OPT_AUTOCC and use your own settings, rerun'
       fi
    fi
 
@@ -567,7 +567,7 @@ feat_val_require() {
 }
 
 _feat_check() {
-   eval i=\$WANT_${1}
+   eval i=\$OPT_${1}
    i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    if feat_val_no "${i}"; then
       return 1
@@ -590,17 +590,17 @@ feat_no() {
 }
 
 feat_require() {
-   eval i=\$WANT_${1}
+   eval i=\$OPT_${1}
    i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
    [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
 }
 
 feat_bail_required() {
    if feat_require ${1}; then
-      msg 'ERROR: feature WANT_%s is required but not available' "${1}"
+      msg 'ERROR: feature OPT_%s is required but not available' "${1}"
       config_exit 13
    fi
-   eval WANT_${1}=0
+   eval OPT_${1}=0
    option_update # XXX this is rather useless here (dependency chain..)
 }
 
@@ -772,7 +772,7 @@ check_tool strip "${STRIP:-`command -v strip`}" 1 &&
 # For ./cc-test.sh only
 check_tool cksum "${cksum:-`command -v cksum`}"
 
-# Update WANT_ options now, in order to get possible inter-dependencies right
+# Update OPT_ options now, in order to get possible inter-dependencies right
 option_update
 
 # (No functions since some shells loose non-exported variables in traps)
@@ -790,13 +790,13 @@ while read line; do
    z=
    if [ -n "${good_shell}" ]; then
       i=${line%%=*}
-      [ "${i}" != "${i#WANT_}" ] && z=1
+      [ "${i}" != "${i#OPT_}" ] && z=1
    else
       i=`${awk} -v LINE="${line}" 'BEGIN{
          gsub(/=.*$/, "", LINE);\
          print LINE
       }'`
-      if echo "${i}" | ${grep} '^WANT_' >/dev/null 2>&1; then
+      if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
          z=1
       fi
    fi
@@ -806,14 +806,14 @@ while read line; do
       j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
       if [ -z "${j}" ] || feat_val_no "${j}"; then
          j=0
-         printf "/*#define ${i}*/\n" >> ${newh}
+         printf "   /* #undef ${i} */\n" >> ${newh}
       elif feat_val_yes "${j}"; then
          if feat_val_require "${j}"; then
             j=require
          else
             j=1
          fi
-         printf "#define ${i}\n" >> ${newh}
+         printf "   /* #define ${i} */\n" >> ${newh}
       else
          msg 'ERROR: cannot parse <%s>' "${line}"
          config_exit 1
@@ -829,13 +829,13 @@ exec 0<&5 1>&6 5<&- 6<&-
 printf >&2 'done\n'
 
 # Add the known utility and some other variables
-printf "#define UAGENT \"${SID}${NAIL}\"\n" >> ${newh}
-printf "UAGENT = ${SID}${NAIL}\n" >> ${newmk}
+printf "#define VAL_UAGENT \"${VAL_SID}${VAL_NAIL}\"\n" >> ${newh}
+printf "VAL_UAGENT = ${VAL_SID}${VAL_NAIL}\n" >> ${newmk}
 
-printf "#define PRIVSEP \"${SID}${NAIL}-privsep\"\n" >> ${newh}
-printf "PRIVSEP = \$(UAGENT)-privsep\n" >> ${newmk}
+printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_NAIL}-privsep\"\n" >> ${newh}
+printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
 if feat_yes DOTLOCK; then
-   printf "OPTIONAL_PRIVSEP = \$(PRIVSEP)\n" >> ${newmk}
+   printf "OPTIONAL_PRIVSEP = \$(VAL_PRIVSEP)\n" >> ${newmk}
 else
    printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
 fi
@@ -1067,7 +1067,7 @@ feat_def() {
    if feat_yes ${1}; then
       echo '#define HAVE_'${1}'' >> ${h}
    else
-      echo '/* WANT_'${1}'=0 */' >> ${h}
+      echo '/* OPT_'${1}'=0 */' >> ${h}
    fi
 }
 
@@ -1088,6 +1088,7 @@ feat_def DEVEL
 feat_def DOCSTRINGS
 feat_def ERRORS
 feat_def NYD2
+feat_def NOMEMDBG
 
 if run_check inline '"inline" functions' \
    '#define HAVE_INLINE
@@ -1665,7 +1666,7 @@ int main(void){
          '#define HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 else
-   echo '/* WANT_ICONV=0 */' >> ${h}
+   echo '/* OPT_ICONV=0 */' >> ${h}
 fi # feat_yes ICONV
 
 if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
@@ -1721,7 +1722,7 @@ int main(void){
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
-   echo '/* WANT_SOCKETS=0 */' >> ${h}
+   echo '/* OPT_SOCKETS=0 */' >> ${h}
 fi # feat_yes SOCKETS
 
 if feat_yes SOCKETS; then
@@ -2021,19 +2022,19 @@ int main(void){
       fi # feat_yes MD5 && feat_no NOEXTMD5
    fi
 else
-   echo '/* WANT_SSL=0 */' >> ${h}
+   echo '/* OPT_SSL=0 */' >> ${h}
 fi # feat_yes SSL
 
 if feat_yes SMTP; then
    echo '#define HAVE_SMTP' >> ${h}
 else
-   echo '/* WANT_SMTP=0 */' >> ${h}
+   echo '/* OPT_SMTP=0 */' >> ${h}
 fi
 
 if feat_yes POP3; then
    echo '#define HAVE_POP3' >> ${h}
 else
-   echo '/* WANT_POP3=0 */' >> ${h}
+   echo '/* OPT_POP3=0 */' >> ${h}
 fi
 
 if feat_yes GSSAPI; then
@@ -2094,19 +2095,19 @@ int main(void){
       feat_bail_required GSSAPI
    fi
 else
-   echo '/* WANT_GSSAPI=0 */' >> ${h}
+   echo '/* OPT_GSSAPI=0 */' >> ${h}
 fi # feat_yes GSSAPI
 
 if feat_yes NETRC; then
    echo '#define HAVE_NETRC' >> ${h}
 else
-   echo '/* WANT_NETRC=0 */' >> ${h}
+   echo '/* OPT_NETRC=0 */' >> ${h}
 fi
 
 if feat_yes AGENT; then
    echo '#define HAVE_AGENT' >> ${h}
 else
-   echo '/* WANT_AGENT=0 */' >> ${h}
+   echo '/* OPT_AGENT=0 */' >> ${h}
 fi
 
 if feat_yes IDNA; then
@@ -2165,13 +2166,13 @@ int main(void){
       echo '#define HAVE_IDNA_IDNKIT 1' >> ${h}
    fi
 else
-   echo '/* WANT_IDNA=0 */' >> ${h}
+   echo '/* OPT_IDNA=0 */' >> ${h}
 fi
 
 if feat_yes IMAP_SEARCH; then
    echo '#define HAVE_IMAP_SEARCH' >> ${h}
 else
-   echo '/* WANT_IMAP_SEARCH=0 */' >> ${h}
+   echo '/* OPT_IMAP_SEARCH=0 */' >> ${h}
 fi
 
 if feat_yes REGEX; then
@@ -2195,7 +2196,7 @@ int main(void){
       feat_bail_required REGEX
    fi
 else
-   echo '/* WANT_REGEX=0 */' >> ${h}
+   echo '/* OPT_REGEX=0 */' >> ${h}
 fi
 
 if feat_yes READLINE; then
@@ -2246,7 +2247,7 @@ if feat_yes MLE && [ -z "${have_readline}" ] &&
    echo '#define HAVE_MLE' >> ${h}
 else
    feat_bail_required MLE
-   echo '/* WANT_{READLINE,MLE}=0 */' >> ${h}
+   echo '/* OPT_{READLINE,MLE}=0 */' >> ${h}
 fi
 
 # Generic have-a-line-editor switch for those who need it below
@@ -2258,13 +2259,13 @@ fi
 if [ -n "${have_cle}" ] && feat_yes HISTORY; then
    echo '#define HAVE_HISTORY' >> ${h}
 else
-   echo '/* WANT_HISTORY=0 */' >> ${h}
+   echo '/* OPT_HISTORY=0 */' >> ${h}
 fi
 
 if [ -n "${have_mle}" ] && feat_yes KEY_BINDINGS; then
    echo '#define HAVE_KEY_BINDINGS' >> ${h}
 else
-   echo '/* WANT_KEY_BINDINGS=0 */' >> ${h}
+   echo '/* OPT_KEY_BINDINGS=0 */' >> ${h}
 fi
 
 if feat_yes TERMCAP; then
@@ -2358,8 +2359,8 @@ _EOT
       fi
    fi
 else
-   echo '/* WANT_TERMCAP=0 */' >> ${h}
-   echo '/* WANT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
+   echo '/* OPT_TERMCAP=0 */' >> ${h}
+   echo '/* OPT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
 fi
 
 if feat_yes SPAM_SPAMC; then
@@ -2368,14 +2369,14 @@ if feat_yes SPAM_SPAMC; then
       echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
 else
-   echo '/* WANT_SPAM_SPAMC=0 */' >> ${h}
+   echo '/* OPT_SPAM_SPAMC=0 */' >> ${h}
 fi
 
 if feat_yes SPAM_SPAMD && [ -n "${have_af_unix}" ]; then
    echo '#define HAVE_SPAM_SPAMD' >> ${h}
 else
    feat_bail_required SPAM_SPAMD
-   echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
+   echo '/* OPT_SPAM_SPAMD=0 */' >> ${h}
 fi
 
 feat_def SPAM_FILTER
@@ -2391,7 +2392,7 @@ if feat_yes QUOTE_FOLD &&\
    echo '#define HAVE_QUOTE_FOLD' >> ${h}
 else
    feat_bail_required QUOTE_FOLD
-   echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
+   echo '/* OPT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
 feat_def FILTER_HTML_TAGSOUP
@@ -2699,14 +2700,14 @@ ${cat} > ${tmp2}.c << \!
 :
 #endif /* Remarks */
 :Setup:
-: . System-wide resource file: SYSCONFDIR/SYSCONFRC
-: . bindir: BINDIR
+: . System-wide resource file: VAL_SYSCONFDIR/VAL_SYSCONFRC
+: . bindir: VAL_BINDIR
 #ifdef HAVE_DOTLOCK
-: . libexecdir: LIBEXECDIR
+: . libexecdir: VAL_LIBEXECDIR
 #endif
-: . mandir: MANDIR
+: . mandir: VAL_MANDIR
 : . MTA: VAL_MTA (argv[0] = VAL_MTA_ARGV0)
-: . Mail spool directory: MAILSPOOL
+: . $MAIL spool directory: VAL_MAIL
 :
 !
 

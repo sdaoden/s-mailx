@@ -139,10 +139,10 @@ _findmail(char const *user, bool_t force)
    NYD_ENTER;
 
    if (force || (cp = ok_vlook(MAIL)) == NULL) {
-      size_t ul = strlen(user), i = sizeof(MAILSPOOL) -1 + 1 + ul +1;
+      size_t ul = strlen(user), i = sizeof(VAL_MAIL) -1 + 1 + ul +1;
 
       rv = salloc(i);
-      memcpy(rv, MAILSPOOL, i = sizeof(MAILSPOOL));
+      memcpy(rv, VAL_MAIL, i = sizeof(VAL_MAIL));
       rv[i] = '/';
       memcpy(&rv[++i], user, ul +1);
    } else if ((rv = fexpand(cp, FEXP_NSHELL)) == NULL)

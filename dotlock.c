@@ -164,7 +164,7 @@ jenametool:
       char const *args[13];
 
       snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, di.di_pollmsecs);
-      args[ 0] = PRIVSEP;
+      args[ 0] = VAL_PRIVSEP;
       args[ 1] = (flt == FLT_READ ? "rdotlock" : "wdotlock");
       args[ 2] = "mailbox";   args[ 3] = di.di_file_name;
       args[ 4] = "name";      args[ 5] = di.di_lock_name;
@@ -172,7 +172,7 @@ jenametool:
       args[ 8] = "randstr";   args[ 9] = di.di_randstr;
       args[10] = "pollmsecs"; args[11] = itoabuf;
       args[12] = NULL;
-      execv(LIBEXECDIR "/" UAGENT "-privsep", UNCONST(args));
+      execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-privsep", UNCONST(args));
 
       dls = n_DLS_NOEXEC;
       write(STDOUT_FILENO, &dls, sizeof dls);

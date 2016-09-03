@@ -819,7 +819,7 @@ n_err(char const *format, ...){
 
       if((len = strlen(format)) > 0){
          if(doname || a_aux_err_linelen == 0)
-            fputs(UAGENT ": ", stderr);
+            fputs(VAL_UAGENT ": ", stderr);
          vfprintf(stderr, format, ap);
 
          /* C99 */{
@@ -874,7 +874,7 @@ n_verr(char const *format, va_list ap){
       goto jleave;
 
    if(doname || a_aux_err_linelen == 0)
-      fputs(UAGENT ": ", stderr);
+      fputs(VAL_UAGENT ": ", stderr);
 
    /* C99 */{
       size_t i = len;
@@ -1019,7 +1019,7 @@ n_panic(char const *format, ...){
       putc('\n', stderr);
       a_aux_err_linelen = 0;
    }
-   fprintf(stderr, UAGENT ": Panic: ");
+   fprintf(stderr, VAL_UAGENT ": Panic: ");
 
    va_start(ap, format);
    vfprintf(stderr, format, ap);

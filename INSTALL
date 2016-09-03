@@ -25,22 +25,22 @@ given system environment.
 
 With adjustments:
 
-  $ make WANT_POP3=no WANT_SMTP=require tangerine
-  $ make WANT_READLINE=true PREFIX=/some/nasty/prefix tangerine
+  $ make OPT_POP3=no OPT_SMTP=require tangerine
+  $ make OPT_READLINE=true VAL_PREFIX=/some/nasty/prefix tangerine
 
 With utility program and feature adjustments:
 
-  $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz tangerine
+  $ make awk=/usr/bin/nawk OPT_SOCKETS=no DESTDIR=./zzz tangerine
 
-If WANT_DOTLOCK has been enabled then the minimal privilege-separated
-SETUID (to PRIVSEP_USER, default "root") helper program will be build
+If OPT_DOTLOCK has been enabled then the minimal privilege-separated
+SETUID (to VAL_PRIVSEP_USER, default "root") helper program will be build
 and installed, and therefore the installation process needs to have the
 appropriate privileges.  In this case it may be useful to separate the
 configuration / building and the installation tasks and give the last
 step higher privileges via super(1), sudo(1), su(1) or a similar
 mechanism, e.g.:
 
-  $ make PREFIX=/usr config && make -j 4 &&
+  $ make VAL_PREFIX=/usr config && make -j 4 &&
     super make DESTDIR=./xy install
 
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
@@ -177,17 +177,17 @@ to the mailing-list.
 1.3 How can i enable debugging?
 -------------------------------
 
-Please ensure WANT_DEBUG=yes is enabled during compilation, as in
+Please ensure OPT_DEBUG=yes is enabled during compilation, as in
 
-  $ make CONFIG=MAXIMAL WANT_DEBUG=yes
+  $ make CONFIG=MAXIMAL OPT_DEBUG=yes
 
-If $WANT_AUTOCC is enabled then the build system should automatically
+If $OPT_AUTOCC is enabled then the build system should automatically
 adjust the compiler flags accordingly, please see make.rc for more.
 There is also a `devel'opment target which does most of this by itself:
 
   $ make devel
 
-$WANT_DEBUG (`devel') will enable memory bound debug canaries and
+$OPT_DEBUG (`devel') will enable memory bound debug canaries and
 Not-Yet-Dead function graph listings etc.  Whereas the latter will try
 to write its listing into a file named after your favourite MUA in
 your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
@@ -210,8 +210,8 @@ Unless otherwise noted the following applies to saying "$ make" and
 "$ make devel" followed by "$ make test".
 
 - All systems:
-  * I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
-    defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
+  * I've turned off -Wstrict-overflow warnings unless OPT_DEVEL is
+    defined (talking about OPT_AUTOCC=yes here).  With gcc 5.1 the
     number of warnings exploded.  With gcc 5.2 that went down again,
     but just keep it like that nonetheless.
   * You may see warnings on unused returns from write(2), ftruncate(2)
@@ -233,7 +233,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
-    $WANT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
+    $OPT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
     ensure -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
@@ -271,9 +271,9 @@ Unless otherwise noted the following applies to saying "$ make" and
     their Solaris build cluster!
   * According to standards(5) we require the /usr/xpg4 environment, and
     will bail if we cannot find it.
-  * With $WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+  * With $OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
-    $WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+    $OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
   * I will never get iconv(3) right for Solaris it seems.
   * In order to be able to run the tests you will need a cksum(1) that
     supports CRC-32 (POSIX).  We look into "/opt/csw/gnu/cksum", but if
@@ -298,7 +298,7 @@ Unless otherwise noted the following applies to saying "$ make" and
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       then you have to overwrite this symbol with __builtin_va_start,
-      e.g., in conjunction with $WANT_AUTOCC add this:
+      e.g., in conjunction with $OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
 - UnixWare 7.1.4.

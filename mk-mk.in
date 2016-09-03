@@ -14,9 +14,9 @@ OBJ = $(OBJ_SRC:.c=.o)
 	$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(<)
 .c: ;
 
-all: $(UAGENT) $(OPTIONAL_PRIVSEP)
+all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
 
-$(UAGENT): $(OBJ)
+$(VAL_UAGENT): $(OBJ)
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
@@ -29,7 +29,7 @@ $(AMALGAM_TARGET) pop3.o smtp.o urlcrecry.o: rfc1321.h
 $(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
 $(AMALGAM_TARGET) termcap.o: tcaps.h
 
-$(PRIVSEP): privsep.o
+$(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
@@ -40,7 +40,7 @@ test: all
 	$(ECHO_TEST)\
 	MAKE=$(MAKE) \
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
-	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
+	$(SHELL) ./cc-test.sh --check-only ./$(VAL_UAGENT)
 
 mime_types.h: mime.types
 	$(ECHO_GEN)\
@@ -108,7 +108,7 @@ mime_types.h: mime.types
 
 mkman.1: nail.1
 	$(ECHO_GEN)\
-	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
 	< ./nail.1 > $(@) $(awk) '\
 	BEGIN { written = 0 }\
@@ -134,7 +134,7 @@ mkman.1: nail.1
 
 mkrc.rc: nail.rc
 	$(ECHO_GEN)\
-	LC_ALL=C _SYSCONFRC="$(SYSCONFRC)" _UAGENT="$(UAGENT)" \
+	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
 	< ./nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
@@ -174,59 +174,61 @@ install: mkman.1 mkrc.rc
 	};\
 	__stripfile() {\
 		_file=$${1};\
-		if [ "$(WANT_DEBUG)" != 0 ]; then :;\
+		if [ "$(OPT_DEBUG)" != 0 ]; then :;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
 			$(strip) "$${_file}";\
 		fi;\
 	};\
 	if [ -n "$(DESTDIR)" ]; then __mkdir "$(DESTDIR)"; fi;\
-	__mkdir "$(DESTDIR)$(BINDIR)";\
-	__stripfile "$(UAGENT)";\
-	__copyfile 0555 "$(UAGENT)" "$(DESTDIR)$(BINDIR)/$(UAGENT)";\
+	__mkdir "$(DESTDIR)$(VAL_BINDIR)";\
+	__stripfile "$(VAL_UAGENT)";\
+	__copyfile 0555 "$(VAL_UAGENT)" \
+		"$(DESTDIR)$(VAL_BINDIR)/$(VAL_UAGENT)";\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		__mkdir "$(DESTDIR)$(LIBEXECDIR)";\
-		__stripfile "$(PRIVSEP)";\
+		__mkdir "$(DESTDIR)$(VAL_LIBEXECDIR)";\
+		__stripfile "$(VAL_PRIVSEP)";\
 		m='o=rx' o=;\
 		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
-			m="g=rxs,$${m}" o=":$(PRIVSEP_GROUP)";\
+			m="g=rxs,$${m}" o=":$(VAL_PRIVSEP_GROUP)";\
 		else \
 			m="g=rx,$${m}";\
 		fi;\
-		if [ -n "$(PRIVSEP_USER)" ]; then \
-			m="u=rxs,$${m}" o="$(PRIVSEP_USER)$${o}";\
+		if [ -n "$(VAL_PRIVSEP_USER)" ]; then \
+			m="u=rxs,$${m}" o="$(VAL_PRIVSEP_USER)$${o}";\
 		else \
 			m="u=rx,$${m}";\
 		fi;\
-		__copychownfile "$${m}" "$${o}" "$(PRIVSEP)" \
-				"$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+		__copychownfile "$${m}" "$${o}" "$(VAL_PRIVSEP)" \
+				"$(DESTDIR)$(VAL_LIBEXECDIR)/$(VAL_PRIVSEP)";\
 	fi;\
-	__mkdir "$(DESTDIR)$(MANDIR)/man1";\
-	__copyfile 0444 ./mkman.1 "$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
-	__mkdir "$(DESTDIR)$(SYSCONFDIR)";\
-	if [ -f "$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)" ]; then :; else\
+	__mkdir "$(DESTDIR)$(VAL_MANDIR)/man1";\
+	__copyfile 0444 ./mkman.1 \
+		"$(DESTDIR)$(VAL_MANDIR)/man1/$(VAL_UAGENT).1";\
+	__mkdir "$(DESTDIR)$(VAL_SYSCONFDIR)";\
+	if [ -f "$(DESTDIR)$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" ]; then :; else\
 		__copyfile 0444 ./mkrc.rc \
-			"$(DESTDIR)$(SYSCONFDIR)/$(SYSCONFRC)";\
+			"$(DESTDIR)$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)";\
 	fi;\
 	$(ECHO_BLOCK_END)
 
 uninstall:
 	$(ECHO_BLOCK_BEGIN)\
 	echo 'Uninstalling..';\
-	$(rm) -f "$(DESTDIR)$(BINDIR)/$(UAGENT)" \
-		"$(DESTDIR)$(MANDIR)/man1/$(UAGENT).1";\
+	$(rm) -f "$(DESTDIR)$(VAL_BINDIR)/$(VAL_UAGENT)" \
+		"$(DESTDIR)$(VAL_MANDIR)/man1/$(VAL_UAGENT).1";\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		$(rm) -f "$(DESTDIR)$(LIBEXECDIR)/$(PRIVSEP)";\
+		$(rm) -f "$(DESTDIR)$(VAL_LIBEXECDIR)/$(VAL_PRIVSEP)";\
 	fi;\
-	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(SYSCONFRC)" ]; then \
-		echo '  NOTE: not removing "$(DESTDIR)$(SYSCONFRC)"';\
+	if [ -n "$(VERBOSE)" ] && [ -f "$(DESTDIR)$(VAL_SYSCONFRC)" ]; then \
+		echo '  NOTE: not removing "$(DESTDIR)$(VAL_SYSCONFRC)"';\
 	fi;\
 	$(ECHO_BLOCK_END)
 
 clean:
 	$(ECHO_CMD)\
-	$(rm) -f $(OBJ) $(UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc;\
+	$(rm) -f $(OBJ) $(VAL_UAGENT) ./mime_types.h ./mkman.1 ./mkrc.rc;\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		$(rm) -f ./privsep.o $(PRIVSEP);\
+		$(rm) -f ./privsep.o $(VAL_PRIVSEP);\
 	fi
 
 distclean: clean

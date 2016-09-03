@@ -58,16 +58,16 @@ CHECK_ONLY=
 cc_all_configs() {
    < ${CONF} ${awk} '
       BEGIN {
-         NOTME["WANT_AUTOCC"] = 1
-         NOTME["WANT_DEBUG"] = 1
-         NOTME["WANT_DEVEL"] = 1
-         NOTME["WANT_NOEXTMD5"] = 1
-         NOTME["WANT_NOALLOCA"] = 1
-         NOTME["WANT_NOMEMDBG"] = 1
-         NOTME["WANT_NYD2"] = 1
+         NOTME["OPT_AUTOCC"] = 1
+         NOTME["OPT_DEBUG"] = 1
+         NOTME["OPT_DEVEL"] = 1
+         NOTME["OPT_NOEXTMD5"] = 1
+         NOTME["OPT_NOALLOCA"] = 1
+         NOTME["OPT_NOMEMDBG"] = 1
+         NOTME["OPT_NYD2"] = 1
          i = 0
       }
-      /^[[:space:]]*WANT_/ {
+      /^[[:space:]]*OPT_/ {
          sub(/^[[:space:]]*/, "")
          # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
          # does not seem to be a compliant escape for =
@@ -86,14 +86,14 @@ cc_all_configs() {
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
-            printf "WANT_AUTOCC=1\n"
+            printf "OPT_AUTOCC=1\n"
          }
          for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
-            printf "WANT_AUTOCC=1\n"
+            printf "OPT_AUTOCC=1\n"
          }
          # With debug
          for (j = 1; j < i; ++j) {
@@ -101,34 +101,34 @@ cc_all_configs() {
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
-            printf "WANT_AUTOCC=1\n"
-            printf "WANT_DEBUG=1\n"
+            printf "OPT_AUTOCC=1\n"
+            printf "OPT_DEBUG=1\n"
          }
          for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
-            printf "WANT_AUTOCC=1\n"
-            printf "WANT_DEBUG=1\n"
+            printf "OPT_AUTOCC=1\n"
+            printf "OPT_DEBUG=1\n"
          }
 
-         printf "CONFIG=NULL WANT_AUTOCC=0\n"
-         printf "CONFIG=NULL WANT_AUTOCC=1\n"
-         printf "CONFIG=NULLI WANT_AUTOCC=0\n"
-         printf "CONFIG=NULLI WANT_AUTOCC=1\n"
-         printf "CONFIG=MINIMAL WANT_AUTOCC=0\n"
-         printf "CONFIG=MINIMAL WANT_AUTOCC=1\n"
-         printf "CONFIG=MEDIUM WANT_AUTOCC=0\n"
-         printf "CONFIG=MEDIUM WANT_AUTOCC=1\n"
-         printf "CONFIG=NETSEND WANT_AUTOCC=0\n"
-         printf "CONFIG=NETSEND WANT_AUTOCC=1\n"
-         printf "CONFIG=MAXIMAL WANT_AUTOCC=0\n"
-         printf "CONFIG=MAXIMAL WANT_AUTOCC=1\n"
-         printf "CONFIG=DEVEL WANT_AUTOCC=0\n"
-         printf "CONFIG=DEVEL WANT_AUTOCC=1\n"
-         printf "CONFIG=ODEVEL WANT_AUTOCC=0\n"
-         printf "CONFIG=ODEVEL WANT_AUTOCC=1\n"
+         printf "CONFIG=NULL OPT_AUTOCC=0\n"
+         printf "CONFIG=NULL OPT_AUTOCC=1\n"
+         printf "CONFIG=NULLI OPT_AUTOCC=0\n"
+         printf "CONFIG=NULLI OPT_AUTOCC=1\n"
+         printf "CONFIG=MINIMAL OPT_AUTOCC=0\n"
+         printf "CONFIG=MINIMAL OPT_AUTOCC=1\n"
+         printf "CONFIG=MEDIUM OPT_AUTOCC=0\n"
+         printf "CONFIG=MEDIUM OPT_AUTOCC=1\n"
+         printf "CONFIG=NETSEND OPT_AUTOCC=0\n"
+         printf "CONFIG=NETSEND OPT_AUTOCC=1\n"
+         printf "CONFIG=MAXIMAL OPT_AUTOCC=0\n"
+         printf "CONFIG=MAXIMAL OPT_AUTOCC=1\n"
+         printf "CONFIG=DEVEL OPT_AUTOCC=0\n"
+         printf "CONFIG=DEVEL OPT_AUTOCC=1\n"
+         printf "CONFIG=ODEVEL OPT_AUTOCC=0\n"
+         printf "CONFIG=ODEVEL OPT_AUTOCC=1\n"
       }
    ' | while read c; do
       printf "\n\n##########\n$c\n"

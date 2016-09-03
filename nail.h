@@ -2384,7 +2384,7 @@ VL char const  *temporary_protocol_ext;
 VL char const  month_names[12 + 1][4];
 VL char const  weekday_names[7 + 1][4];
 
-VL char const  uagent[sizeof UAGENT];
+VL char const  uagent[sizeof VAL_UAGENT];
 
 VL ui16_t const class_char[1 + 0x7F];
 #endif

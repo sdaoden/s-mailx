@@ -709,7 +709,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    cp = sstpcpy(cp, tempdir);
    *cp++ = '/';
    {
-      char *x = sstpcpy(cp, UAGENT);
+      char *x = sstpcpy(cp, VAL_UAGENT);
       *x++ = '-';
       if (!(oflags & OF_SUFFIX))
          x = sstpcpy(x, namehint);

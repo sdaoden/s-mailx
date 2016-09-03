@@ -63,7 +63,7 @@ VL char const        month_names[12 + 1][4] = {
    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
-VL char const        uagent[sizeof UAGENT] = UAGENT;
+VL char const        uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL ui16_t const      class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL
@@ -943,7 +943,7 @@ jgetopt_done:
       /* *expand() returns a savestr(), but load only uses the file name for
        * fopen(), so it's safe to do this */
       if((resfiles & a_RF_SYSTEM) && !ok_blook(NAIL_NO_SYSTEM_RC))
-         n_load(SYSCONFDIR "/" SYSCONFRC);
+         n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
       if(resfiles & a_RF_USER)
          n_load(file_expand(ok_vlook(MAILRC)));
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)

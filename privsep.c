@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Privilege-separated dot file lock program (WANT_DOTLOCK=yes)
+ *@ Privilege-separated dot file lock program (OPT_DOTLOCK=yes)
  *@ that is capable of calling setuid(2) and change its user identity
- *@ to the configured PRIVSEP_USER (usually "root"), in order to create
+ *@ to the configured VAL_PRIVSEP_USER (usually "root"), in order to create
  *@ a dotlock file with the same UID/GID as the mailbox to be locked.
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ and SIGPIPE should be ignored.
@@ -78,7 +78,7 @@ main(int argc, char **argv){
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
    if(argc != 12 ||
-         strcmp(argv[ 0], PRIVSEP) ||
+         strcmp(argv[ 0], VAL_PRIVSEP) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||
          strcmp(argv[ 1] + 1, "dotlock") ||
          strcmp(argv[ 2], "mailbox") ||
@@ -90,8 +90,8 @@ main(int argc, char **argv){
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
       fprintf(stderr,
-         "This is a helper program of " UAGENT " (in " BINDIR ").\n"
-         "  It is capable of gaining more privileges than " UAGENT "\n"
+         "This is a helper program of " VAL_UAGENT " (in " VAL_BINDIR ").\n"
+         "  It is capable of gaining more privileges than " VAL_UAGENT "\n"
          "  and will be used to create lock files.\n"
          "  It's sole purpose is outsourcing of high privileges into\n"
          "  fewest lines of code in order to reduce attack surface.\n"
