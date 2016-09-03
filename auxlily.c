@@ -655,12 +655,13 @@ boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
    if (inlen == 0)
       rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
    else {
-      if ((inlen == 1 && *inbuf == '1') ||
+      if ((inlen == 1 && (*inbuf == '1' || *inbuf == 'y' || *inbuf == 'Y')) ||
             !ascncasecmp(inbuf, "true", inlen) ||
             !ascncasecmp(inbuf, "yes", inlen) ||
             !ascncasecmp(inbuf, "on", inlen))
          rv = 1;
-      else if ((inlen == 1 && *inbuf == '0') ||
+      else if ((inlen == 1 &&
+               (*inbuf == '0' || *inbuf == 'n' || *inbuf == 'N')) ||
             !ascncasecmp(inbuf, "false", inlen) ||
             !ascncasecmp(inbuf, "no", inlen) ||
             !ascncasecmp(inbuf, "off", inlen))
