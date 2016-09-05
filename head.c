@@ -678,6 +678,16 @@ extract_date_from_from_(char const *line, size_t linelen,
       if (cp == NULL)
          goto jerr;
    }
+   /* It seems there are invalid MBOX archives in the wild, compare
+    * . http://bugs.debian.org/624111
+    * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
+    * What they do is that they obfuscate the address to "name at host".
+    * I think we should handle that */
+   else if(cp[0] == 'a' && cp[1] == 't' && cp[2] == ' '){
+      cp = _from__skipword(cp += 3);
+      if (cp == NULL)
+         goto jerr;
+   }
 
    linelen -= PTR2SIZE(cp - line);
    if (linelen < _DATE_MINLEN)
