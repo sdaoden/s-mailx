@@ -1080,15 +1080,23 @@ joutln:
          break;
       }
    }
-   if (!eof && rest.l != 0) {
+   if (!eof && rv >= 0 && rest.l != 0) {
       linelen = 0;
       eof = TRU1;
       action |= _TD_EOF;
       goto joutln;
    }
+
+   /* TODO HACK: when sending to the display we yet get fooled if a message
+    * TODO doesn't end in a newline, because of our input/output 1:1.
+    * TODO This should be handled automatically by a display filter, then */
+   if(rv >= 0 && !qf->qf_nl_last &&
+         (action == SEND_TODISP || action == SEND_TODISP_ALL))
+      rv = quoteflt_push(qf, "\n", 1);
+
    quoteflt_flush(qf);
 
-   if (mh.mh_flags & MIME_HDL_TMPF_FILL) {
+   if (rv >= 0 && (mh.mh_flags & MIME_HDL_TMPF_FILL)) {
       mh.mh_flags &= ~MIME_HDL_TMPF_FILL;
       fflush(pbuf);
       really_rewind(pbuf);
@@ -1115,7 +1123,7 @@ jend:
       safe_signal(SIGPIPE, SIG_IGN);
       Pclose(pbuf, !(mh.mh_flags & MIME_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
-      if (qbuf != NULL && qbuf != obuf)
+      if (rv >= 0 && qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);
    }
 #ifdef HAVE_ICONV

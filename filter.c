@@ -375,10 +375,13 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    ssize_t rv = 0;
    NYD_ENTER;
 
+   self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
+
    if (len == 0)
       goto jleave;
 
-   /* Bypass? XXX Finally, this filter simply should not be used, then */
+   /* Bypass? TODO Finally, this filter simply should not be used, then
+    * (TODO It supercedes prefix_write() or something) */
    if (self->qf_pfix_len == 0) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;
