@@ -283,6 +283,9 @@ FL ui32_t      nextprime(ui32_t n);
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
 FL char *      getprompt(void);
 
+/* Return the name of the dead.letter file */
+FL char const * n_getdeadletter(void);
+
 /* Detect and query the hostname to use */
 FL char *      nodename(int mayoverride);
 
@@ -713,9 +716,6 @@ FL int         putline(FILE *obuf, char *linebuf, size_t count);
 
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
-
-/* Return the name of the dead.letter file */
-FL char const * getdeadletter(void);
 
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0.
  * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used */

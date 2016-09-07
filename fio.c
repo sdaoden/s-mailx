@@ -373,19 +373,6 @@ fsize(FILE *iob)
    return rv;
 }
 
-FL char const *
-getdeadletter(void) /* XXX should that be in auxlily.c? */
-{
-   char const *cp_base, *cp;
-   NYD_ENTER;
-
-   cp = fexpand(cp_base = ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
-   if (cp == NULL)
-      cp = cp_base;
-   NYD_LEAVE;
-   return cp;
-}
-
 FL bool_t
 n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    size_t pollmsecs)

@@ -913,8 +913,15 @@ jputline:
                   NULL));
          break;
       case 'd':
-         strncpy(&linebuf[2], getdeadletter(), linesize - 2);
-         linebuf[linesize - 1] = '\0';
+         cp = n_getdeadletter();
+         /* C99 */{
+            size_t i;
+
+            if((i = strlen(cp) +1) >= linesize - 2)
+               linebuf = srealloc(linebuf, (linesize = i + 2 -1) +1);
+            memcpy(&linebuf[2], cp, i);
+            assert(linebuf[i += 2 -1] == '\0');
+         }
          /*FALLTHRU*/
       case 'R':
       case 'r':

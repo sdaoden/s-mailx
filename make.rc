@@ -92,8 +92,10 @@ VAL_MTA_ARGV0=sendmail
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
-# and (thus)/or documented in the manual (changes not reflected there!)
-VAL_DEAD=~/dead.letter
+# and (thus)/or documented in the manual (changes not reflected there!).
+# Note that default paths are often not (shell) quoted when displayed
+VAL_DEAD_BASENAME=dead.letter
+VAL_DEAD="~/${VAL_DEAD_BASENAME}"
 VAL_EDITOR=ed
 VAL_LISTER=ls
 VAL_MAILRC=~/.mailrc

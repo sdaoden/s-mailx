@@ -533,6 +533,29 @@ jleave:
    return buf;
 }
 
+FL char const *
+n_getdeadletter(void){
+   char const *cp_base, *cp;
+   NYD_ENTER;
+
+   cp_base = NULL;
+jredo:
+   cp = fexpand(ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
+   if(cp == NULL || strlen(cp) >= PATH_MAX){
+      if(cp_base == NULL){
+         n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
+            VAL_DEAD, n_shell_quote_cp(cp, FAL0));
+         ok_vclear(DEAD);
+         goto jredo;
+      }else{
+         cp = savecatsep(ok_vlook(TMPDIR), '/', VAL_DEAD_BASENAME);
+         n_err(_("Cannot expand *DEAD*, using: %s\n"), cp);
+      }
+   }
+   NYD_LEAVE;
+   return cp;
+}
+
 FL char *
 nodename(int mayoverride)
 {

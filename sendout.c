@@ -2241,7 +2241,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
    if(fsize(fp) == 0)
       goto jleave;
 
-   cp = getdeadletter();
+   cp = n_getdeadletter();
    cpq = n_shell_quote_cp(cp, FAL0);
 
    if(options & OPT_DEBUG){
