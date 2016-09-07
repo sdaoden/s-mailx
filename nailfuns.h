@@ -689,7 +689,7 @@ FL ssize_t     htmlflt_flush(struct htmlflt *self);
  * llen - length_of_line(*line).
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.
- */
+ * Manages the PS_READLINE_NL hack */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
                   size_t *llen, FILE *fp, int appendnl SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -699,7 +699,9 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
 
 /* Read up a line from the specified input into the linebuffer.
  * Return the number of characters read.  Do not include the newline at EOL.
- * n is the number of characters already read */
+ * n is the number of characters already read and present in *linebuf; it'll be
+ * treated as _the_ line if no more (successful) reads are possible.
+ * Manages the PS_READLINE_NL hack */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
                   size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -709,10 +711,6 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
-
-/* Drop the passed line onto the passed output buffer.  If a write error occurs
- * return -1, else the count of characters written, including the newline */
-FL int         putline(FILE *obuf, char *linebuf, size_t count);
 
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
@@ -973,7 +971,8 @@ FL bool_t      n_commands(void);
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error.
- * Note: may use the currently `source'd file stream instead of stdin! */
+ * Note: may use the currently `source'd file stream instead of stdin!
+ * Manages the PS_READLINE_NL hack */
 FL int         n_lex_input(char const *prompt, bool_t nl_escape,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);

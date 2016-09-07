@@ -758,8 +758,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
             mesedit('e', hp);
             /* As mandated by the Mail Reference Manual, print "(continue)" */
 jcont:
-            printf(_("(continue)\n"));
-            fflush(stdout);
+            if(options & OPT_INTERACTIVE){
+               printf(_("(continue)\n"));
+               fflush(stdout);
+            }
          }
       }
    } else {
@@ -785,8 +787,19 @@ jcont:
    /* The interactive collect loop.
     * All commands which come here are forbidden when sourcing! */
    assert(_coll_hadintr || !(pstate & PS_SOURCING));
-   for (;;) {
-      cnt = n_lex_input("", FAL0, &linebuf, &linesize, NULL);
+   for(;;){
+      /* C99 */{
+         bool_t nlescape;
+
+         if(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)){
+            if(options & OPT_t_FLAG)
+               nlescape = FAL0;
+            else
+               nlescape = TRU1;
+         }else
+            nlescape = FAL0;
+         cnt = n_lex_input("", nlescape, &linebuf, &linesize, NULL);
+      }
 
       if (cnt < 0) {
          assert(!(pstate & PS_SOURCING));
@@ -808,183 +821,228 @@ jcont:
 
       _coll_hadintr = 0;
 
-      if (cnt == 0 || !(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG))) {
-jputline:
-         /* TODO calls putline(), which *always* appends LF;
-          * TODO thus, STDIN with -t will ALWAYS end with LF,
-          * TODO even if no trailing LF and QP encoding.
-          * TODO when finally changed, update cc-test.sh */
-         if (putline(_coll_fp, linebuf, cnt) < 0)
-            goto jerr;
-         continue;
-      } else if (linebuf[0] == '.') {
-         if (linebuf[1] == '\0' && (ok_blook(dot) || ok_blook(ignoreeof)))
+      cp = linebuf;
+      if(cnt == 0)
+         goto jputnl;
+      else if(!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
+         goto jputline;
+      else if(cp[0] == '.'){
+         if(cnt == 1 && (ok_blook(dot) || ok_blook(ignoreeof)))
             break;
       }
-      if (linebuf[0] != escape)
-         goto jputline;
-
-      if (!(options & OPT_t_FLAG))
-         n_tty_addhist(linebuf, TRU1);
-
-      c = linebuf[1];
-      switch (c) {
-      default:
-         /* On double escape, send a single one.  Otherwise, it's an error */
-         if (c == escape) {
-            if (putline(_coll_fp, &linebuf[1], cnt - 1) < 0)
+      if(cp[0] != escape){
+jputline:
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != cnt)
+            goto jerr;
+         /* TODO PS_READLINE_NL is a terrible hack to ensure that _in_all_-
+          * TODO _code_paths_ a file without trailing newline isn't modified
+          * TODO to continue one; the "saw-newline" needs to be part of an
+          * TODO I/O input machinery object */
+jputnl:
+         if(pstate & PS_READLINE_NL){
+            if(putc('\n', _coll_fp) == EOF)
                goto jerr;
-            else
+         }
+         continue;
+      }
+
+      /* Cleanup the input string: like this we can perform a little bit of
+       * usage testing and also have somewhat normalized history entries */
+      for(cp = &linebuf[2]; (c = *cp) != '\0' && blankspacechar(c); ++cp)
+         continue;
+      if(c == '\0'){
+         linebuf[2] = '\0';
+         cnt = 2;
+      }else{
+         size_t i;
+
+         i = PTR2SIZE(cp - linebuf) - 3;
+         memcpy(&linebuf[3], cp, (cnt -= i));
+         linebuf[2] = ' ';
+         linebuf[cnt] = '\0';
+
+         while(*cp != '\0') /* TODO trailing WS from lex_input */
+            ++cp;
+         for(;;){
+            c = cp[-1];
+            if(!blankspacechar(c))
                break;
          }
+         ((char*)UNCONST(cp))[0] = '\0';
+         cnt = PTR2SIZE(cp - linebuf);
+      }
+
+      switch((c = linebuf[1])){
+      default:
+         /* On double escape, send a single one.  Otherwise, it's an error */
+         if(c == escape){
+            cp = &linebuf[1];
+            --cnt;
+            goto jputline;
+         }
          n_err(_("Unknown tilde escape: ~%c\n"), asciichar(c) ? c : '?');
-         break;
+         continue;
+jearg:
+         n_err(_("Invalid tilde escape usage: %s\n"), linebuf);
+         continue;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
-         c_shell(&linebuf[2]);
-         goto jcont;
-         break;
+         if(cnt == 2)
+            goto jearg;
+         c_shell(&linebuf[3]);
+         goto jhistcont;
       case ':':
          /* FALLTHRU */
       case '_':
          /* Escape to command mode, but be nice! */
-         _execute_command(hp, &linebuf[2], cnt - 2);
+         if(cnt == 2)
+            goto jearg;
+         _execute_command(hp, &linebuf[3], cnt -= 3);
          break;
       case '.':
          /* Simulate end of file on input */
+         if(cnt != 2)
+            goto jearg;
          goto jout;
       case 'x':
          /* Same as 'q', but no *DEAD* saving */
          /* FALLTHRU */
       case 'q':
          /* Force a quit, act like an interrupt had happened */
+         if(cnt != 2)
+            goto jearg;
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
          exit(EXIT_ERR);
          /*NOTREACHED*/
       case 'h':
          /* Grab a bunch of headers */
+         if(cnt != 2)
+            goto jearg;
          do
             grab_headers(hp, GTO | GSUBJECT | GCC | GBCC,
                   (ok_blook(bsdcompat) && ok_blook(bsdorder)));
-         while (hp->h_to == NULL);
+         while(hp->h_to == NULL);
          break;
       case 'H':
          /* Grab extra headers */
+         if(cnt != 2)
+            goto jearg;
          do
             grab_headers(hp, GEXTRA, 0);
-         while (check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
+         while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          break;
       case 't':
-         /* Add to the To list */
+         /* Add to the To: list */
+         if(cnt == 2)
+            goto jearg;
          hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(&linebuf[2], GTO | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[3], GTO | GFULL), EACM_NORMAL,
                   NULL));
          break;
       case 's':
          /* Set the Subject list */
-         cp = &linebuf[2];
-         while (whitechar(*cp))
-            ++cp;
-         hp->h_subject = savestr(cp);
+         if(cnt == 2)
+            goto jearg;
+         hp->h_subject = savestr(&linebuf[3]);
          break;
 #ifdef HAVE_MEMORY_DEBUG
       case 'S':
+         if(cnt != 2)
+            goto jearg;
          c_sstats(NULL);
          break;
 #endif
       case '@':
          /* Edit the attachment list */
-         if (linebuf[2] != '\0')
-            append_attachments(&hp->h_attach, &linebuf[2]);
+         if(cnt != 2)
+            append_attachments(&hp->h_attach, &linebuf[3]);
          else
             edit_attachments(&hp->h_attach);
          break;
       case 'c':
          /* Add to the CC list */
+         if(cnt == 2)
+            goto jearg;
          hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(&linebuf[2], GCC | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[3], GCC | GFULL), EACM_NORMAL,
                NULL));
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
+         if(cnt == 2)
+            goto jearg;
          hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(&linebuf[2], GBCC | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(&linebuf[3], GBCC | GFULL), EACM_NORMAL,
                   NULL));
          break;
       case 'd':
+         if(cnt != 2)
+            goto jearg;
          cp = n_getdeadletter();
-         /* C99 */{
-            size_t i;
-
-            if((i = strlen(cp) +1) >= linesize - 2)
-               linebuf = srealloc(linebuf, (linesize = i + 2 -1) +1);
-            memcpy(&linebuf[2], cp, i);
-            assert(linebuf[i += 2 -1] == '\0');
-         }
-         /*FALLTHRU*/
+         if(0){
+            /*FALLTHRU*/
       case 'R':
       case 'r':
       case '<':
-         /* Invoke a file: Search for the file name, then open it and copy the
-          * contents to _coll_fp */
-         cp = &linebuf[2];
-         while (whitechar(*cp))
-            ++cp;
-         if (*cp == '\0') {
-            n_err(_("Interpolate what file?\n"));
+            /* Invoke a file: Search for the file name, then open it and copy
+             * the contents to _coll_fp */
+            if(cnt == 2){
+               n_err(_("Interpolate what file?\n"));
+               break;
+            }
+            if(*(cp = &linebuf[3]) == '!'){
+               insertcommand(_coll_fp, ++cp);
+               goto jhistcont;
+            }
+            if((cp = file_expand(cp)) == NULL)
+               break;
+         }
+         if(is_dir(cp)){
+            n_err(_("%s: is a directory\n"), n_shell_quote_cp(cp, FAL0));
             break;
          }
-         if (*cp == '!') {
-            insertcommand(_coll_fp, cp + 1);
-            goto jcont;
-         }
-         if ((cp = file_expand(cp)) == NULL)
-            break;
-         if (is_dir(cp)) {
-            n_err(_("%s: Directory\n"), n_shell_quote_cp(cp, FAL0));
+         if(_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0){
+            if(ferror(_coll_fp))
+               goto jerr;
             break;
          }
-         printf(_("%s "), n_shell_quote_cp(cp, FAL0));
-         fflush(stdout);
-         if (_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0)
-            goto jerr;
-         printf(_("%d/%d\n"), lc, cc);
+         printf(_("%s %d/%d\n"), n_shell_quote_cp(cp, FAL0), lc, cc);
          break;
       case 'i':
          /* Insert a variable into the file */
-         cp = &linebuf[2];
-         while (whitechar(*cp))
-            ++cp;
-         if ((cp = vok_vlook(cp)) == NULL || *cp == '\0')
+         if(cnt == 2)
+            goto jearg;
+         if((cp = vok_vlook(&linebuf[3])) == NULL || *cp == '\0')
             break;
-         if (putesc(cp, _coll_fp) < 0)
+         if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
             goto jerr;
-         if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+         if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
             goto jerr;
          break;
       case 'a':
       case 'A':
          /* Insert the contents of a signature variable */
+         if(cnt != 2)
+            goto jearg;
          cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
-         if (cp != NULL && *cp != '\0') {
-            if (putesc(cp, _coll_fp) < 0)
+         if(cp != NULL && *cp != '\0'){
+            if(putesc(cp, _coll_fp) < 0) /* TODO v15: user upon `set' time */
                goto jerr;
-            if ((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+            if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
                goto jerr;
          }
          break;
       case 'w':
          /* Write the message on a file */
-         cp = &linebuf[2];
-         while (blankchar(*cp))
-            ++cp;
-         if (*cp == '\0' || (cp = file_expand(cp)) == NULL) {
+         if(cnt == 2)
+            goto jearg;
+         if((cp = file_expand(&linebuf[3])) == NULL){
             n_err(_("Write what file!?\n"));
             break;
          }
          rewind(_coll_fp);
-         if (exwrite(cp, _coll_fp, 1) < 0)
+         if(exwrite(cp, _coll_fp, 1) < 0)
             goto jerr;
          break;
       case 'm':
@@ -996,24 +1054,32 @@ jputline:
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if (forward(&linebuf[2], _coll_fp, c) < 0)
-            goto jerr;
+         if(cnt == 2)
+            goto jearg;
+         if(forward(&linebuf[3], _coll_fp, c) < 0)
+            break;
          break;
       case 'p':
          /* Print current state of the message without altering anything */
+         if(cnt != 2)
+            goto jearg;
          print_collf(_coll_fp, hp);
          break;
       case '|':
          /* Pipe message through command. Collect output as new message */
+         if(cnt == 2)
+            goto jearg;
          rewind(_coll_fp);
-         mespipe(&linebuf[2]);
-         goto jcont;
+         mespipe(&linebuf[3]);
+         goto jhistcont;
       case 'v':
       case 'e':
          /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
+         if(cnt != 2)
+            goto jearg;
          rewind(_coll_fp);
          mesedit(c, ok_blook(editheaders) ? hp : NULL);
-         goto jcont;
+         goto jhistcont;
       case '?':
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
@@ -1047,8 +1113,21 @@ jputline:
 "~x            Abort composition, discard message (`~q' saves in *DEAD*)\n"
 "~| <command>  Pipe message through shell filter"
          ));
+         if(cnt != 2)
+            goto jearg;
          break;
       }
+
+      /* Finally place an entry in history as applicable */
+      if(0){
+jhistcont:
+         c = '\1';
+      }else
+         c = '\0';
+      if(!(options & OPT_t_FLAG))
+         n_tty_addhist(linebuf, TRU1);
+      if(c != '\0')
+         goto jcont;
    }
 
 jout:

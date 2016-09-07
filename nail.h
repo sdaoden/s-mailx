@@ -1382,6 +1382,8 @@ enum program_state {
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 
+   PS_READLINE_NL = 1<<21,          /* readline_input()+ saw a \n TODO HACK! */
+
    PS_COLOUR_ACTIVE  = 1<<22,       /* n_colour_env_create().._gut() cycle */
 
    /* Various first-time-init switches */

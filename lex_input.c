@@ -1212,8 +1212,10 @@ FL int
                 ? _("-X option") : _("MACRO")),
                n, n, *linebuf);
       }
+      pstate |= PS_READLINE_NL;
       goto jleave;
    }
+   pstate &= ~PS_READLINE_NL;
 
    doprompt = ((pstate & (PS_STARTED | PS_ROBOT)) == PS_STARTED &&
          (options & OPT_INTERACTIVE));
@@ -1276,8 +1278,11 @@ FL int
       /* POSIX says:
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
-      if(!nl_escape || (*linebuf)[n - 1] != '\\')
+      if(!nl_escape || (*linebuf)[n - 1] != '\\'){
+         if(dotty)
+            pstate |= PS_READLINE_NL;
          break;
+      }
       /* Definitely outside of quotes, thus the quoting rules are so that an
        * uneven number of successive backslashs at EOL is a continuation */
       if(n > 1){

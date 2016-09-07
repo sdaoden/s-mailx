@@ -74,6 +74,8 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    NYD2_ENTER;
 
    assert(*linesize == 0 || *line != NULL);
+   pstate &= ~PS_READLINE_NL;
+
    for (rv = *line;;) {
       if (*linesize <= LINESIZE || n >= *linesize - 128) {
          *linesize += ((rv == NULL) ? LINESIZE + n + 1 : 256);
@@ -83,8 +85,10 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
       if (c != EOF) {
          rv[n++] = c;
          rv[n] = '\0';
-         if (c == '\n')
+         if (c == '\n') {
+            pstate |= PS_READLINE_NL;
             break;
+         }
       } else {
          if (n > 0) {
             if (appendnl) {
@@ -151,6 +155,8 @@ FL char *
       goto jleave;
    }
 
+   pstate &= ~PS_READLINE_NL;
+
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = (srealloc)(rv, *linesize = LINESIZE SMALLOC_DEBUG_ARGSCALL);
    sz = (*linesize <= *cnt) ? *linesize : *cnt + 1;
@@ -190,7 +196,8 @@ FL int
    SMALLOC_DEBUG_ARGS)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
-    * TODO should be configurable just as for fgetline(); ..or whatever.. */
+    * TODO should be configurable just as for fgetline(); ..or whatever..
+    * TODO intwrap */
    int rv = -1;
    long sz;
    NYD2_ENTER;
@@ -201,6 +208,7 @@ FL int
     * only relevant if input is from tty, bypass it by read(), then */
    if (fileno(ibuf) == 0 && (options & OPT_TTYIN)) {
       assert(*linesize == 0 || *linebuf != NULL);
+      pstate &= ~PS_READLINE_NL;
       for (;;) {
          if (*linesize <= LINESIZE || n >= *linesize - 128) {
             *linesize += ((*linebuf == NULL) ? LINESIZE + n + 1 : 256);
@@ -211,16 +219,20 @@ jagain:
          if (sz > 0) {
             n += sz;
             (*linebuf)[n] = '\0';
-            if (n > 0 && (*linebuf)[n - 1] == '\n')
+            if ((*linebuf)[n - 1] == '\n') {
+               pstate |= PS_READLINE_NL;
                break;
+            }
          } else {
             if (sz < 0 && errno == EINTR)
                goto jagain;
+            /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {
                if ((*linebuf)[n - 1] != '\n') {
                   (*linebuf)[n++] = '\n';
                   (*linebuf)[n] = '\0';
-               }
+               } else
+                  pstate |= PS_READLINE_NL;
                break;
             } else
                goto jleave;
@@ -345,20 +357,6 @@ setptr(FILE *ibuf, off_t offset)
       maybe = linebuf[0] == 0;
    }
    NYD_LEAVE;
-}
-
-FL int
-putline(FILE *obuf, char *linebuf, size_t cnt)
-{
-   int rv = -1;
-   NYD_ENTER;
-
-   fwrite(linebuf, sizeof *linebuf, cnt, obuf);
-   putc('\n', obuf);
-   if (!ferror(obuf))
-      rv = (int)(cnt + 1);
-   NYD_LEAVE;
-   return rv;
 }
 
 FL off_t
