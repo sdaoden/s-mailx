@@ -616,6 +616,8 @@ path_check() {
    do
       [ -z "${i}" ] && continue
       [ -d "${i}" ] || continue
+      # Skip any fakeroot packager environment
+      case "${i}" in *fakeroot*) continue;; esac
       if [ -n "${j}" ]; then
          if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
             :
