@@ -2,11 +2,18 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
-ARGS='-n# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
+ARGS='-:/ -# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 MAIL=/dev/null
+
+if ( command -v command ) >/dev/null 2>&1; then :; else
+   command() {
+      shift
+      which "${@}"
+   }
+fi
 
 MAKE="${MAKE:-`command -v make`}"
 awk=${awk:-`command -v awk`}
@@ -16,18 +23,23 @@ rm=${rm:-`command -v rm`}
 sed=${sed:-`command -v sed`}
 grep=${grep:-`command -v grep`}
 
+if [ -z "${UTF8_LOCALE}" ]; then
+   UTF8_LOCALE=
+   if command -v locale >/dev/null 2>&1; then
+      UTF8_LOCALE=`(locale -a | ${grep} -i utf8 | uniq) 2>/dev/null`
+   fi
+fi
+
 ##  --  >8  --  8<  --  ##
 
 export SNAIL ARGS CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
 
-# NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
-# nl_langinfo(CODESET), then, so also overwrite ttycharset.
-# (In addition this setup allows us to succeed on TinyCore 4.4 that has no
-# other locales than C/POSIX installed by default!)
-LC=en_US.UTF-8
-LC_ALL=${LC} LANG=${LC}
-ttycharset=UTF-8
-export LC_ALL LANG ttycharset
+LC_ALL=C LANG=C ADDARG_UNI=-Sttycharset=UTF-8
+TZ=UTC
+# Wed Oct  2 01:50:07 UTC 1996
+SOURCE_DATE_EPOCH=844221007
+
+export LC_ALL LANG ADDARG_UNI TZ SOURCE_DATE_EPOCH
 
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
 # use nologin(?), but we need a real shell for command execution
@@ -145,7 +157,8 @@ cc_all_configs() {
 cksum_test() {
    tid=${1} f=${2} s=${3}
    printf "${tid}: "
-   csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
+#-e '/^Date:/d' \
+   csum="`${sed} -e '/^From /d' \
          -e '/^ boundary=/d' -e '/^--=-=/d' < \"${f}\" \
          -e '/^\[-- Message/d' | ${cksum}`";
    if [ "${csum}" = "${s}" ]; then
@@ -157,11 +170,7 @@ cksum_test() {
 }
 
 have_feat() {
-   (
-   echo 'feat' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} |
-   ${grep} ${1}
-   ) >/dev/null 2>&1
+   ( echo 'feat' | "${SNAIL}" ${ARGS} | ${grep} ${1} ) >/dev/null 2>&1
 }
 
 # t_behave()
@@ -239,8 +248,11 @@ __behave_wysh() {
 	echo a$'\c@'b c d
 	__EOT
 
-   < "${BODY}" MAILRC=/dev/null \
-      DIET=CURD TIED= "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
+   if [ -z "${UTF8_LOCALE}" ]; then
+      echo 'Skip behave:wysh_unicode, no UTF8_LOCALE'
+   else
+      < "${BODY}" DIET=CURD TIED= \
+      LC_ALL=${UTF8_LOCALE} "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
 #abcd
 #abcd
 #abcd
@@ -287,9 +299,10 @@ __behave_wysh() {
 #a	b
 #a	b
 #a
-   cksum_test behave:wysh_unicode "${MBOX}" '475805847 317'
-   < "${BODY}" MAILRC=/dev/null LC_ALL=C \
-      DIET=CURD TIED= "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
+      cksum_test behave:wysh_unicode "${MBOX}" '475805847 317'
+   fi
+
+   < "${BODY}" DIET=CURD TIED= "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 #abcd
 #abcd
 #abcd
@@ -343,7 +356,7 @@ __behave_wysh() {
 __behave_ifelse() {
    # Nestable conditions test
    ${rm} -f "${MBOX}"
-   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 		if 0
 		   echo 1.err
 		else
@@ -903,7 +916,7 @@ __behave_ifelse() {
 
    if have_feat REGEX; then
       ${rm} -f "${MBOX}"
-      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
@@ -990,7 +1003,7 @@ __behave_ifelse() {
 __behave_localopts() {
    # Nestable conditions test
    ${rm} -f "${MBOX}"
-   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define t2 {
 	   echo in: t2
 	   set t2=t2
@@ -1011,6 +1024,7 @@ __behave_localopts() {
 	   echo in: t0
 	   call t1
 	   echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	   echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
 	}
 	account trouble {
 	   echo in: trouble
@@ -1023,7 +1037,26 @@ __behave_localopts() {
 	account null
 	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
 	__EOT
-   cksum_test behave:localopts "${MBOX}" '660843351 231'
+#in: t0
+#in: t1
+#in: t2
+#t2
+#gv1 lv1 lv2 lv3 gv2, t2
+#gv1 gv2,
+#gv1    gv2, 
+#in: trouble
+#in: t0
+#in: t1
+#in: t2
+#t2
+#gv1 lv1 lv2 lv3 gv2, t2
+#gv1 gv2,
+#gv1    gv2, 
+#/dev/null: 0 messages
+#active trouble: gv1 gv2,
+#/dev/null: 0 messages
+#active null: ,
+   cksum_test behave:localopts "${MBOX}" '2679576177 236'
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
@@ -1055,14 +1088,12 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    ${cat} ./tkey.pem ./tcert.pem > ./tpair.pem
 
    printf "behave:s/mime:sign/verify: "
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo bla | "${SNAIL}" ${ARGS} \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./VERIFY
-   # TODO CHECK
    printf 'verify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   "${SNAIL}" ${ARGS} \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
@@ -1086,19 +1117,19 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 
    printf "behave:s/mime:encrypt+sign/decrypt+verify: "
    echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
+      -Smta=./tsendmail.sh \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    # TODO CHECK
    printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
+      -Smta=./tsendmail.sh \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
@@ -1109,7 +1140,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
-   ${sed} -e '/^X-Decoding-Date/d' \
+   ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
          -e \
          '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
       < ./DECRYPT > ./ENCRYPT
@@ -1117,19 +1148,17 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 
    ${rm} -f ./DECRYPT
    printf "behave:s/mime:encrypt/decrypt: "
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo bla | "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
+      -Smta=./tsendmail.sh \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
-   printf 'decrypt ./DECRYPT\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   printf 'decrypt ./DECRYPT\nx\n' | "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
+      -Smta=./tsendmail.sh \
       -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
       -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
@@ -1141,7 +1170,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       printf 'error: decryption failed\n'
       # FALLTHRU
    fi
-   ${sed} -e '/^X-Decoding-Date/d' \
+   ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
       < ./DECRYPT > ./ENCRYPT
    cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2694938815 239'
 
@@ -1240,115 +1269,93 @@ gggggggggggggggg"
    # Three tests for MIME encodign and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
 
-   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
-   < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '3310338268 6375'
+   < "${BODY}" "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+      -a "${BODY}" -s "${SUB}" "${MBOX}"
+   cksum_test content:001 "${MBOX}" '2886124440 6413'
 
    ${rm} -f "${MBOX}"
-   < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '62505451 6374'
-
-   ${rm} -f "${MBOX}"
-   < /dev/null MAILRC=/dev/null \
-   "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
-      -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '3310338268 6375'
+   < /dev/null "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+      -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
+   cksum_test content:002 "${MBOX}" '2886124440 6413'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '62505451 6374'
+   ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
+   cksum_test content:003 "${MBOX}" '2886124440 6413'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '3729232114 11'
+   echo body | "${SNAIL}" ${ARGS} "${MBOX}"
+   cksum_test content:004 "${MBOX}" '4004005686 49'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
    (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n~.\n" &&
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
-   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '773028641 184'
+   ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI}
+   cksum_test content:005 "${MBOX}" '2157252578 260'
 
    ## $BODY CHANGED
 
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Spipe-text/plain="${cat}" > "${BODY}"
+   "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '654030565 45'
+   cksum_test content:006 "${MBOX}" '2273863401 83'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
-   LC_ALL=C ${awk} 'BEGIN{
+   ${awk} 'BEGIN{
       for(i = 0; i < 10000; ++i)
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
-      }' |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua -Sexpandaddr \
-      -s TestSubject "${MBOX}"
-   cksum_test content:007-0 "${MBOX}" '2747333583 61729'
-
-   ${rm} -f "${MBOX}"
-   LC_ALL=C ${awk} 'BEGIN{
-      for(i = 0; i < 10000; ++i)
-         printf "\xC3\xBC"
-         #printf "\xF0\x90\x87\x90"
-      }' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -s TestSubject "${MBOX}"
-   cksum_test content:007 "${MBOX}" '3343002941 61728'
+      }' | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+   cksum_test content:007 "${MBOX}" '1754234717 61767'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
 
    #
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   cksum_test content:008 "${MBOX}" '3872015771 288'
+   cksum_test content:008 "${MBOX}" '4279661351 326'
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
-   i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
-   cksum_test content:009 "${MBOX}" '2048460448 1631'
+   i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
+   echo | "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
+   cksum_test content:009 "${MBOX}" '223283022 1669'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
 3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
 6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '1272213842 504'
+   cksum_test content:010 "${MBOX}" '2637105063 542'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   cksum_test content:011 "${MBOX}" '2972351879 572'
+   cksum_test content:011 "${MBOX}" '979048840 610'
 
    # Trailing WS
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | "${SNAIL}" ${ARGS} \
       -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -1356,18 +1363,17 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '2467265470 210'
+   cksum_test content:012 "${MBOX}" '1497528261 248'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | "${SNAIL}" ${ARGS} \
       -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '4119922611 149'
+   cksum_test content:013 "${MBOX}" '1588208111 187'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot
@@ -1375,16 +1381,15 @@ gggggggggggggggg"
    : > "ma'ger.txt"
    : > "mä'ger.txt"
    : > 'diet\ is \curd.txt'
-   : > diet \"is\" curd.txt
+   : > 'diet "is" curd.txt'
    : > höde-tröge.txt
    : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
    : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
    : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
    : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot \
+   echo bla | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "ma'ger.txt" -a "mä'ger.txt" \
-      -a 'diet\\\ is\ \\curd.txt' -a diet \"is\" curd.txt \
+      -a 'diet\ is \curd.txt' -a 'diet "is" curd.txt' \
       -a höde-tröge.txt \
       -a höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
       -a höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
@@ -1392,16 +1397,15 @@ gggggggggggggggg"
       -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
    ${rm} -f "ma'ger.txt" "mä'ger.txt" 'diet\ is \curd.txt' \
-      diet \"is\" curd.txt höde-tröge.txt \
+      'diet "is" curd.txt' höde-tröge.txt \
       höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
       höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
       hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
-   cksum_test content:14 "${MBOX}" '1106643854 2453'
+   cksum_test content:14 "${MBOX}" '589846634 2491'
    # `resend' test
-   printf "Resend ${BODY}\nx\n" |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -f "${MBOX}"
-   cksum_test content:14-2 "${MBOX}" '1106643854 2453'
+   printf "Resend ${BODY}\nx\n" | "${SNAIL}" ${ARGS} -f "${MBOX}"
+   cksum_test content:14-2 "${MBOX}" '589846634 2491'
 
    ${rm} -f "${BODY}" "${MBOX}"
 }
