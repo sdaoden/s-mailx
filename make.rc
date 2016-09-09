@@ -223,21 +223,15 @@ OPT_IMAP_SEARCH=yes
 OPT_REGEX=yes
 
 # Line editing and -history (manual "On terminal and line editor").
-# One may choose in between different line editors.  Note that (1) only
-# the builtin MLE (may) map(s) 1:1 to the behaviour as is documented in
-# the manual and (2) these are tested in the shown order:
-# . OPT_READLINE
-#   The GNU readline(3) compatible interface; can be "require"d.
 # . OPT_MLE
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
 #   system then our builtin MLE (Mailx-Line-Editor) version can be used.
 #   An enabled & available OPT_TERMCAP may affect and improve the MLE.
 #   Can be "require"d.
-OPT_READLINE=no
 OPT_MLE=yes
-# All line editors optionally support history management.
+# Add support for history management.
 OPT_HISTORY=yes
-# The MLE optionally supports `(un)?bind'ing of key sequences
+# Add support for `(un)?bind'ing of key sequences
 OPT_KEY_BINDINGS=yes
 
 # Use termcap(5) for terminal control; can be "require"d.

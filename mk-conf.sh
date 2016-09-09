@@ -14,7 +14,7 @@ option_reset() {
    OPT_IDNA=0
    OPT_IMAP_SEARCH=0
    OPT_REGEX=0
-   OPT_READLINE=0 OPT_MLE=0
+   OPT_MLE=0
       OPT_HISTORY=0 OPT_KEY_BINDINGS=0
    OPT_TERMCAP=0 OPT_TERMCAP_PREFER_TERMINFO=0
    OPT_ERRORS=0
@@ -134,7 +134,7 @@ option_update() {
       OPT_GSSAPI=0
    fi
 
-   if feat_no READLINE && feat_no MLE; then
+   if feat_no MLE; then
       OPT_HISTORY=0 OPT_KEY_BINDINGS=0
    fi
 
@@ -2199,60 +2199,16 @@ else
    echo '/* OPT_REGEX=0 */' >> ${h}
 fi
 
-if feat_yes READLINE; then
-   __edrdlib() {
-      link_check readline "for readline(3) (${1})" \
-         '#define HAVE_READLINE' "${1}" << \!
-#include <stdio.h>
-#include <readline/history.h>
-#include <readline/readline.h>
-int main(void){
-   char *rl;
-   HISTORY_STATE *hs;
-   HIST_ENTRY **he;
-   int i;
-
-   using_history();
-   read_history("");
-   stifle_history(242);
-   rl = readline("Enter a line:");
-   if (rl && *rl)
-      add_history(rl);
-   write_history("");
-   rl_extend_line_buffer(10);
-   rl_point = rl_end = 10;
-   rl_pre_input_hook = (rl_hook_func_t*)NULL;
-   rl_forced_update_display();
-   clear_history();
-   hs = history_get_history_state();
-   i = hs->length;
-   he = history_list();
-   if (i > 0)
-      rl = he[0]->line;
-   rl_free_line_state();
-   rl_cleanup_after_signal();
-   rl_reset_after_signal();
-   return 0;
-}
-!
-   }
-
-   __edrdlib -lreadline ||
-      __edrdlib '-lreadline -ltermcap' || feat_bail_required READLINE
-fi
-
-if feat_yes MLE && [ -z "${have_readline}" ] &&
-      [ -n "${have_c90amend1}" ]; then
+if feat_yes MLE && [ -n "${have_c90amend1}" ]; then
    have_mle=1
    echo '#define HAVE_MLE' >> ${h}
 else
    feat_bail_required MLE
-   echo '/* OPT_{READLINE,MLE}=0 */' >> ${h}
+   echo '/* OPT_MLE=0 */' >> ${h}
 fi
 
 # Generic have-a-line-editor switch for those who need it below
-if [ -n "${have_mle}" ] ||
-      [ -n "${have_readline}" ]; then
+if [ -n "${have_mle}" ]; then
    have_cle=1
 fi
 
@@ -2434,7 +2390,6 @@ printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
   printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
@@ -2547,15 +2502,11 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_REGEX
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
-#if defined HAVE_READLINE || defined HAVE_MLE
-# ifdef HAVE_READLINE
-: + Command line editing via readline(3)
-# else
-#  ifdef HAVE_WCWIDTH
+#if defined HAVE_MLE
+# ifdef HAVE_WCWIDTH
 : + Command line editing via M(ailx)-L(ine)-E(ditor) (wide glyph support)
-#  else
+# else
 : + Command line editing via M(ailx)-L(ine)-E(ditor) (no wide glyph support)
-#  endif
 # endif
 # ifdef HAVE_HISTORY
 : + + History management
@@ -2647,7 +2598,7 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_REGEX
 : - Regular expression support
 #endif
-#if !defined HAVE_READLINE && !defined HAVE_MLE
+#if !defined HAVE_MLE
 : - Command line editing and history
 #else
 # ifndef HAVE_HISTORY

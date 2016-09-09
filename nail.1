@@ -2173,18 +2173,6 @@ contains complete example configurations.
 .\" .Ss "On terminal control and line editor" {{{
 .Ss "On terminal control and line editor"
 .
-\*(OP \*(UA can be configured to support a line editor,
-history lists that can be saved in between sessions,
-and terminal control to improve interactive usage experience.
-For the former one may either link against an external library
-.Pf ( Xr readline 3 ;
-behaviour of \*(UA may differ slightly),
-or enable the builtin Mailx-Line-Editor (MLE).
-Prevent usage of a line editor in interactive mode by setting the
-internal variable
-.Va line-editor-disable .
-.
-.Pp
 \*(OP Terminal control will be realized through one of the standard
 .Ux
 libraries, either the
@@ -2195,9 +2183,9 @@ both of which will be initialized to work with the environment variable
 .Ev TERM .
 Terminal control will enhance or enable interactive usage aspects, e.g.,
 .Sx "Coloured display" ,
-and extend behaviour of the MLE, which may learn the byte-sequences of
-keys like the cursor and function keys, and which will automatically
-enter the so-called
+and extend behaviour of the Mailx-Line-Editor (MLE), which may learn the
+byte-sequences of keys like the cursor and function keys, and which will
+automatically enter the so-called
 .Dq ca-mode
 alternative screen shall the terminal support it.
 The internal variable
@@ -2211,33 +2199,37 @@ will be queried regardless, even if the \*(OPal support for the
 libraries has not been enabled at configuration time.
 .
 .Pp
-\*(OP If the
-.Ic history
-feature is available then input from line editor prompts will be saved
-in a history list that can be searched in and be expanded from.
-Such saving can be prevented by prefixing input with any amount of
-whitespace.
-Aspects of history, like allowed content, maximum size etc., can be
-configured with the variables
-.Va history-file ,
-.Va history-gabby ,
-.Va history-gabby-persist
-and
-.Va history-size .
-.
-.Pp
-\*(OP The builtin \*(UA line editor MLE should work in all environments
-which comply to the ISO C standard
+\*(OP The builtin \*(UA Mailx-Line-Editor (MLE) should work in all
+environments which comply to the ISO C standard
 .St -isoC-amd1 ,
 and will support wide glyphs if possible (the necessary functionality
 had been removed from ISO C, but was included in
 .St -xpg4 ) .
+Prevent usage of a line editor in interactive mode by setting the
+internal variable
+.Va line-editor-disable .
 Especially if the \*(OPal terminal control support is missing setting
 entries in the internal variable
 .Va termcap
 will help shall the MLE misbehave, see there for more.
 The MLE can support a little bit of
 .Ic colour .
+.
+.Pp
+\*(OP If the
+.Ic history
+feature is available then input from line editor prompts will be saved
+in a history list that can be searched in and be expanded from.
+Such saving can be prevented by prefixing input with any amount of
+whitespace.
+Aspects of history, like allowed content and maximum size, as well as
+whether history shall be saved persistently, can be configured with the
+internal variables
+.Va history-file ,
+.Va history-gabby ,
+.Va history-gabby-persist
+and
+.Va history-size .
 .
 .Pp
 The MLE supports a set of editing and control commands.

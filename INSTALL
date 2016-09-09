@@ -26,7 +26,7 @@ given system environment.
 With adjustments:
 
   $ make OPT_POP3=no OPT_SMTP=require tangerine
-  $ make OPT_READLINE=true VAL_PREFIX=/some/nasty/prefix tangerine
+  $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix tangerine
 
 With utility program and feature adjustments:
 

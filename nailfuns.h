@@ -2270,10 +2270,13 @@ FL char *      getuser(char const *query);
 FL char *      getpassword(char const *query);
 #endif
 
-/* Overall interactive terminal life cycle for command line editor library */
-#if defined HAVE_READLINE
+/* At least readline(3) (formerly supported) desires to handle SIGWINCH and
+ * install its own handler */
+#if 0
 # define TTY_WANTS_SIGWINCH
 #endif
+
+/* Overall interactive terminal life cycle for command line editor library */
 FL void        n_tty_init(void);
 FL void        n_tty_destroy(void);
 
