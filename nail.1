@@ -4104,6 +4104,15 @@ will still be reverted by
 .Ql macro1 !
 \*(ID Once the outermost level, the one which enabled localization
 first, is left, but no earlier, all adjustments will be unrolled.
+\*(ID Likewise worth knowing, if in this example
+.Ql macro2
+changes to a different
+.Ic account
+which sets some variables that are yet covered by localizations, their
+scope will be extended, and in fact leaving the
+.Ic account
+will (thus) restore settings in (likely) global scope which actually
+were defined in a local, private context.
 .
 .Mx
 .It Ic Lreply
