@@ -2293,7 +2293,7 @@ FL int         n_tty_readline(char const *prompt, char **linebuf,
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
  * Whether an entry added for real depends on the isgabby / *history-gabby*
- * relation, and / or whether s is non-empty and doesn't begin with U+0020 */
+ * relation, and / or whether s is non-empty and doesn't begin with spacechar() */
 FL void        n_tty_addhist(char const *s, bool_t isgabby);
 
 #ifdef HAVE_HISTORY

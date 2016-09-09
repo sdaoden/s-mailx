@@ -29,7 +29,7 @@
 # define a_TTY_SIGNALS
 #endif
 
-/* Shared history support macros */
+/* History support macros */
 #ifdef HAVE_HISTORY
 # define a_TTY_HISTFILE(S) \
 do{\
@@ -60,16 +60,13 @@ do{\
       (V) = __rv;\
 }while(0)
 
-# define a_TTY_CHECK_ADDHIST(S,NOACT) \
+# define a_TTY_CHECK_ADDHIST(S,ISGABBY,NOACT) \
 do{\
-   switch(*(S)){\
-   case '\0':\
-   case ' ':\
-   case '\t':\
+   if(!(pstate & (PS_ROOT | PS_LINE_EDITOR_INIT)) ||\
+         ok_blook(line_editor_disable) ||\
+         ((ISGABBY) && !ok_blook(history_gabby)) ||\
+         spacechar(*(S)) || *(S) == '\0')\
       NOACT;\
-   default:\
-      break;\
-   }\
 }while(0)
 
 # define C_HISTORY_SHARED \
@@ -77,8 +74,14 @@ do{\
    long entry;\
    NYD_ENTER;\
 \
-   if(!(pstate & PS_LINE_EDITOR_INIT))\
-      goto jleave;\
+   if(ok_blook(line_editor_disable)){\
+      n_err(_("history: *line-editor-disable* is set\n"));\
+      goto jerr;\
+   }\
+   if(!(pstate & PS_LINE_EDITOR_INIT)){\
+      n_tty_init();\
+      assert(pstate & PS_LINE_EDITOR_INIT);\
+   }\
    if(*argv == NULL)\
       goto jlist;\
    if(argv[1] != NULL)\
@@ -90,8 +93,9 @@ do{\
    if((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
       goto jentry;\
 jerr:\
-   n_err(_("Synopsis: history: %s\n" \
-      "<show> (default), <clear> or select <NO> from editor history"));\
+   n_err(_("Synopsis: history: %s\n"),\
+      /* Same string as in cmd_tab.h, still hoping...) */\
+      _("<show> (default), <clear> or select <NO> from editor history"));\
    v = NULL;\
 jleave:\
    NYD_LEAVE;\
@@ -777,11 +781,14 @@ static void a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd);
 static void a_tty_kgow(struct a_tty_line *tlp, si32_t dir);
 static bool_t a_tty_kother(struct a_tty_line *tlp, wchar_t wc);
 static ui32_t a_tty_kht(struct a_tty_line *tlp);
+
 # ifdef HAVE_HISTORY
-static ui32_t a_tty__khist_shared(struct a_tty_line *tlp,
-                  struct a_tty_hist *thp);
+/* Return UI32_MAX on "exhaustion" */
 static ui32_t a_tty_khist(struct a_tty_line *tlp, bool_t fwd);
 static ui32_t a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd);
+
+static ui32_t a_tty__khist_shared(struct a_tty_line *tlp,
+                  struct a_tty_hist *thp);
 # endif
 
 /* Handle a function */
@@ -2164,7 +2171,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
       tlp->tl_count = tlp->tl_cursor = 0;
    }else{
       f = a_TTY_VF_BELL;
-      rv = 0;
+      rv = UI32_MAX;
    }
 
    tlp->tl_vi_flags |= f;
@@ -2307,7 +2314,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
 # ifdef HAVE_HISTORY
             isfwd = FAL0;
          }
-         if((*len = a_tty_khist(tlp, isfwd)) > 0){
+         if((*len = a_tty_khist(tlp, isfwd)) != UI32_MAX){
             rv = a_TTY_FUN_STATUS_RESTART;
             break;
          }
@@ -2328,7 +2335,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
 # ifdef HAVE_HISTORY
          isfwd = FAL0;
       }
-      if((*len = a_tty_khist_search(tlp, isfwd)) > 0){
+      if((*len = a_tty_khist_search(tlp, isfwd)) != UI32_MAX){
          rv = a_TTY_FUN_STATUS_RESTART;
          break;
       }
@@ -3474,6 +3481,9 @@ FL void
 n_tty_init(void){
    NYD_ENTER;
 
+   if(ok_blook(line_editor_disable))
+      goto jleave;
+
    /* Load the history file */
 # ifdef HAVE_HISTORY
    do/* for break */{
@@ -3499,6 +3509,8 @@ n_tty_init(void){
          goto jhist_done;
       (void)n_file_lock(fileno(f), FLT_READ, 0,0, UIZ_MAX);
 
+      assert(!(pstate & PS_ROOT));
+      pstate |= PS_ROOT; /* Allow calling addhist() */
       lbuf = NULL;
       lsize = 0;
       cnt = (size_t)fsize(f);
@@ -3516,6 +3528,7 @@ n_tty_init(void){
       }
       if(lbuf != NULL)
          free(lbuf);
+      pstate &= ~PS_ROOT;
 
       fclose(f);
 jhist_done:
@@ -3572,12 +3585,16 @@ jhist_done:
    }
 # endif /* HAVE_KEY_BINDINGS */
 
+jleave:
    NYD_LEAVE;
 }
 
 FL void
 n_tty_destroy(void){
    NYD_ENTER;
+
+   if(!(pstate & PS_LINE_EDITOR_INIT))
+      goto jleave;
 
 # ifdef HAVE_HISTORY
    do/* for break */{
@@ -3626,10 +3643,11 @@ jhist_done:
    c_unbind(UNCONST("* *"));
 # endif
 
-#ifdef HAVE_DEBUG
+# ifdef HAVE_DEBUG
    memset(&a_tty, 0, sizeof a_tty);
-#endif
+# endif
    DBG( pstate &= ~PS_LINE_EDITOR_INIT; )
+jleave:
    NYD_LEAVE;
 }
 
@@ -3639,9 +3657,12 @@ n_tty_signal(int sig){
    NYD_X; /* Signal handler */
 
    switch(sig){
+# ifdef SIGWINCH
    case SIGWINCH:
-      /* We don't deal with SIGWINCH, yet get called from main.c */
+      /* We don't deal with SIGWINCH, yet get called from main.c.
+       * Note this case might get called even if !PS_LINE_EDITOR_INIT */
       break;
+# endif
    default:
       a_tty_term_mode(FAL0);
       n_TERMCAP_SUSPEND(TRU1);
@@ -3674,12 +3695,18 @@ FL int
    char const *orig_prompt;
    NYD_ENTER;
 
+   assert(!ok_blook(line_editor_disable));
+   if(!(pstate & PS_LINE_EDITOR_INIT))
+      n_tty_init();
    assert(pstate & PS_LINE_EDITOR_INIT);
 
    orig_prompt = prompt;
+   /* xxx Likely overkill: avoid "bind base a,b,c set-line-editor-disable"
+    * xxx not being honoured at once: call n_lex_input() instead of goto */
+# ifndef HAVE_KEY_BINDINGS
 jredo:
-   /* TODO because of jumping away we cannot use srelax()ation: would be good */
    prompt = orig_prompt;
+# endif
 
 # ifdef HAVE_COLOUR
    n_colour_env_create(n_COLOUR_CTX_MLE, FAL0);
@@ -3820,9 +3847,16 @@ jredo:
 # endif
 
    if(tl.tl_reenter_after_cmd != NULL){
-      n = (nn <= 0) ? 0 : nn;
       n_source_command(tl.tl_reenter_after_cmd);
+      /* TODO because of recursion we cannot use srelax()ation: would be good */
+      /* See above for why not simply using goto */
+      n = (nn <= 0) ? 0 : nn;
+# ifdef HAVE_KEY_BINDINGS
+      nn = (n_lex_input)(orig_prompt, TRU1, linebuf, linesize,
+            (n == 0 ? "" : savestrbuf(*linebuf, n)) SMALLOC_DEBUG_ARGSCALL);
+# else
       goto jredo;
+# endif
    }
    NYD_LEAVE;
    return (int)nn;
@@ -3840,12 +3874,9 @@ n_tty_addhist(char const *s, bool_t isgabby){
    UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   if(isgabby && !ok_blook(history_gabby))
-      goto j_leave;
-
+   a_TTY_CHECK_ADDHIST(s, isgabby, goto j_leave);
    if(a_tty.tg_hist_size_max == 0)
       goto j_leave;
-   a_TTY_CHECK_ADDHIST(s, goto j_leave);
 
    l = (ui32_t)strlen(s);
 
@@ -4179,12 +4210,11 @@ jleave:
    return (v != NULL) ? EXIT_OK : EXIT_ERR;
 }
 # endif /* HAVE_KEY_BINDINGS */
-#endif /* HAVE_MLE */
 
+#else /* HAVE_MLE */
 /*
  * The really-nothing-at-all implementation
  */
-#if !defined HAVE_MLE
 
 FL void
 n_tty_init(void){
