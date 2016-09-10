@@ -359,7 +359,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    a_amv_lopts = &los;
    if(amcap->amca_hook_pre != NULL)
       (*amcap->amca_hook_pre)(amcap->amca_hook_arg);
-   rv = n_source_macro(amp->am_name, args_base);
+   rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base);
    if(amcap->amca_hook_post != NULL)
       (*amcap->amca_hook_post)(amcap->amca_hook_arg);
    a_amv_lopts = los_save;
@@ -449,7 +449,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       ui32_t leaspc;
       char *cp;
 
-      n.i = n_lex_input("", TRU1, &line.s, &line.l, NULL);
+      n.i = n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, "",
+            &line.s, &line.l, NULL);
       if(n.ui == 0)
          continue;
       if(n.i < 0){

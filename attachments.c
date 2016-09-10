@@ -43,12 +43,13 @@
 CTA(AC_DEFAULT == 0);
 
 /* Fill in some attachment fields; don't be interactive if number==0 */
-static struct attachment * _fill_in(struct attachment *ap,
-                              char const *file, ui32_t number);
+static struct attachment * _fill_in(enum n_lexinput_flags lif,
+                              struct attachment *ap, char const *file,
+                              ui32_t number);
 
 /* Ask the user to edit file names and other data for the given attachment */
-static struct attachment * _read_attachment_data(struct attachment *ap,
-                              ui32_t number);
+static struct attachment * _read_attachment_data(enum n_lexinput_flags lif,
+                              struct attachment *ap, ui32_t number);
 
 /* Try to create temporary charset converted version */
 #ifdef HAVE_ICONV
@@ -56,7 +57,8 @@ static int                 _attach_iconv(struct attachment *ap);
 #endif
 
 static struct attachment *
-_fill_in(struct attachment *ap, char const *file, ui32_t number)
+_fill_in(enum n_lexinput_flags lif, struct attachment *ap, char const *file,
+      ui32_t number)
 {
    /* XXX The "attachment-ask-content-*" variables are left undocumented
     * since "they are for RFC connoisseurs only" ;) */
@@ -74,15 +76,14 @@ _fill_in(struct attachment *ap, char const *file, ui32_t number)
    ap->a_content_type = mime_type_classify_filename(file);
    if (number > 0 && ok_blook(attachment_ask_content_type)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Type: ", number);
-      ap->a_content_type = n_lex_input_cp_addhist(prefix, ap->a_content_type,
-            TRU1);
+      ap->a_content_type = n_lex_input_cp(lif, prefix, ap->a_content_type);
    }
 
    if (number > 0 && ok_blook(attachment_ask_content_disposition)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Disposition: ",
          number);
-      if ((ap->a_content_disposition = n_lex_input_cp_addhist(prefix,
-            ap->a_content_disposition, TRU1)) == NULL)
+      if ((ap->a_content_disposition = n_lex_input_cp(lif, prefix,
+            ap->a_content_disposition)) == NULL)
          goto jcdis;
    } else
 jcdis:
@@ -90,15 +91,15 @@ jcdis:
 
    if (number > 0 && ok_blook(attachment_ask_content_id)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-ID: ", number);
-      ap->a_content_id = n_lex_input_cp_addhist(prefix, ap->a_content_id, TRU1);
+      ap->a_content_id = n_lex_input_cp(lif, prefix, ap->a_content_id);
    } else
       ap->a_content_id = NULL;
 
    if (number > 0 && ok_blook(attachment_ask_content_description)) {
       snprintf(prefix, sizeof prefix, "#%-5" PRIu32 " Content-Description: ",
          number);
-      ap->a_content_description = n_lex_input_cp_addhist(prefix,
-            ap->a_content_description, TRU1);
+      ap->a_content_description = n_lex_input_cp(lif, prefix,
+            ap->a_content_description);
    }
    NYD_LEAVE;
    return ap;
@@ -115,7 +116,8 @@ __atticonv_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static struct attachment *
-_read_attachment_data(struct attachment * volatile ap, ui32_t number)
+_read_attachment_data(enum n_lexinput_flags lif,
+      struct attachment * volatile ap, ui32_t number)
 {
    sighandler_type volatile ohdl;
    char prefix[80 * 2];
@@ -155,7 +157,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    for (;;) {
       if ((cp = ap->a_name) != NULL)
          cp = n_shell_quote_cp(cp, FAL0);
-      if ((cp = n_lex_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
+      if ((cp = n_lex_input_cp(lif, prefix, cp)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
          goto jleave;
@@ -198,7 +200,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
       n_perr(cp, 0);
    }
 
-   ap = _fill_in(ap, cp, number);
+   ap = _fill_in(lif, ap, cp, number);
 
    /*
     * Character set of attachments: enum attach_conv
@@ -222,7 +224,7 @@ jcs:
       number);
    if ((defcs = ap->a_input_charset) == NULL)
       defcs = cslc;
-   cp = ap->a_input_charset = n_lex_input_cp_addhist(prefix, defcs, TRU1);
+   cp = ap->a_input_charset = n_lex_input_cp(lif, prefix, defcs);
 #ifdef HAVE_ICONV
    if (!(options & OPT_INTERACTIVE)) {
 #endif
@@ -235,7 +237,7 @@ jcs:
       _("#%-5" PRIu32 " output (send) charset: "), number);
    if ((defcs = ap->a_charset) == NULL)
       defcs = charset_iter();
-   defcs = ap->a_charset = n_lex_input_cp_addhist(prefix, defcs, TRU1);
+   defcs = ap->a_charset = n_lex_input_cp(lif, prefix, defcs);
 
    /* Input, no output -> input=as given, output=no conversion at all */
    if (cp != NULL && defcs == NULL) {
@@ -370,7 +372,8 @@ jerr:
 
 /* TODO add_attachment(): also work with **aphead, not *aphead ... */
 FL struct attachment *
-add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
+add_attachment(enum n_lexinput_flags lif, struct attachment *aphead,
+      char *file, struct attachment **newap)
 {
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
@@ -380,7 +383,7 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
    if (access(file, R_OK) != 0)
       goto jleave;
 
-   nap = _fill_in(csalloc(1, sizeof *nap), file, 0);
+   nap = _fill_in(lif, csalloc(1, sizeof *nap), file, 0);
    if (newap != NULL)
       *newap = nap;
    if (aphead != NULL) {
@@ -399,7 +402,8 @@ jleave:
 }
 
 FL void
-append_attachments(struct attachment **aphead, char *names){
+append_attachments(enum n_lexinput_flags lif, struct attachment **aphead,
+      char *names){
    struct str shin;
    struct n_string shou, *shoup;
    NYD_ENTER;
@@ -417,7 +421,8 @@ append_attachments(struct attachment **aphead, char *names){
          break;
 
       if(shs & n_SHEXP_STATE_OUTPUT){
-         if((xaph = add_attachment(*aphead, n_string_cp(shoup), &nap)) != NULL){
+         if((xaph = add_attachment(lif, *aphead, n_string_cp(shoup), &nap)
+               ) != NULL){
             *aphead = xaph;
             if(options & OPT_INTERACTIVE)
                printf(_("Added attachment %s\n"),
@@ -434,7 +439,7 @@ append_attachments(struct attachment **aphead, char *names){
 }
 
 FL void
-edit_attachments(struct attachment **aphead)
+edit_attachments(enum n_lexinput_flags lif, struct attachment **aphead)
 {
    struct attachment *ap, *fap, *bap;
    ui32_t attno = 1;
@@ -451,7 +456,7 @@ edit_attachments(struct attachment **aphead)
 
    /* Modify already present ones? */
    for (ap = *aphead; ap != NULL; ap = fap) {
-      if (_read_attachment_data(ap, attno) != NULL) {
+      if (_read_attachment_data(lif, ap, attno) != NULL) {
          fap = ap->a_flink;
          ++attno;
          continue;
@@ -474,7 +479,7 @@ edit_attachments(struct attachment **aphead)
    if ((bap = *aphead) != NULL)
       while (bap->a_flink != NULL)
          bap = bap->a_flink;
-   while ((fap = _read_attachment_data(NULL, attno)) != NULL) {
+   while ((fap = _read_attachment_data(lif, NULL, attno)) != NULL) {
       if (bap != NULL)
          bap->a_flink = fap;
       else

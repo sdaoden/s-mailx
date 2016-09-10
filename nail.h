@@ -893,12 +893,20 @@ enum n_file_lock_type{
 
 enum n_lexinput_flags{
    n_LEXINPUT_NONE,
-   n_LEXINPUT_CTX_BASE = 0,      /* Input context (`bind' etc.): fallback */
+   n_LEXINPUT_CTX_BASE = 0,            /* Input context (`bind'+): fallback */
    n_LEXINPUT_CTX_COMPOSE = 1,
    n__LEXINPUT_CTX_MASK = 1,
    n__LEXINPUT_CTX_MAX = n_LEXINPUT_CTX_COMPOSE + 1,
-   n_LEXINPUT_HIST_ADD = 1<<8,   /* Add the result to history list */
-   n_LEXINPUT_HIST_GABBY = 1<<9  /* Consider this history entry as gabby */
+
+   n_LEXINPUT_NL_ESC = 1<<8,           /* Support "\\$" line continuation */
+#if 0
+   n_LEXINPUT_DROP_TRAIL_SPC = 1<<9,   /* Drop any trailing space */
+   n_LEXINPUT_DROP_LEAD_SPC = 1<<10,   /* ..leading ones */
+   n_LEXINPUT_TRIM_SPACE = n_LEXINPUT_DROP_TRAIL_SPC | n_LEXINPUT_DROP_LEAD_SPC,
+#endif
+
+   n_LEXINPUT_HIST_ADD = 1<<16,        /* Add the result to history list */
+   n_LEXINPUT_HIST_GABBY = 1<<17       /* Consider history entry as gabby */
 };
 
 enum mimecontent {

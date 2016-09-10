@@ -133,7 +133,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
       }
    while((ap = ap->a_flink) != NULL);
 
-   n_source_command(linebuf);
+   n_source_command(n_LEXINPUT_CTX_COMPOSE, linebuf);
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -678,7 +678,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    if (!sigsetjmp(_coll_jmp, 1)) {
       /* Ask for some headers first, as necessary */
       if (getfields)
-         grab_headers(hp, getfields, 1);
+         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, getfields, 1);
 
       /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
@@ -789,16 +789,14 @@ jcont:
    assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for(;;){
       /* C99 */{
-         bool_t nlescape;
+         enum n_lexinput_flags lif;
 
+         lif = n_LEXINPUT_CTX_COMPOSE;
          if(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)){
-            if(options & OPT_t_FLAG)
-               nlescape = FAL0;
-            else
-               nlescape = TRU1;
-         }else
-            nlescape = FAL0;
-         cnt = n_lex_input("", nlescape, &linebuf, &linesize, NULL);
+            if(!(options & OPT_t_FLAG))
+               lif |= n_LEXINPUT_NL_ESC;
+         }
+         cnt = n_lex_input(lif, "", &linebuf, &linesize, NULL);
       }
 
       if (cnt < 0) {
@@ -894,7 +892,8 @@ jearg:
       case ':':
          /* FALLTHRU */
       case '_':
-         /* Escape to command mode, but be nice! */
+         /* Escape to command mode, but be nice! *//* TODO command expansion
+          * TODO should be handled here so that we have unique history! */
          if(cnt == 2)
             goto jearg;
          _execute_command(hp, &linebuf[3], cnt -= 3);
@@ -920,8 +919,9 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(hp, GTO | GSUBJECT | GCC | GBCC,
-                  (ok_blook(bsdcompat) && ok_blook(bsdorder)));
+            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp,
+              (GTO | GSUBJECT | GCC | GBCC),
+              (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while(hp->h_to == NULL);
          break;
       case 'H':
@@ -929,7 +929,7 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(hp, GEXTRA, 0);
+            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          break;
       case 't':
@@ -956,9 +956,10 @@ jearg:
       case '@':
          /* Edit the attachment list */
          if(cnt != 2)
-            append_attachments(&hp->h_attach, &linebuf[3]);
+            append_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach,
+               &linebuf[3]);
          else
-            edit_attachments(&hp->h_attach);
+            edit_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach);
          break;
       case 'c':
          /* Add to the CC list */
@@ -1140,12 +1141,12 @@ jout:
    /* Final change to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
       if (hp->h_cc == NULL && ok_blook(askcc))
-         grab_headers(hp, GCC, 1);
+         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GCC, 1);
       if (hp->h_bcc == NULL && ok_blook(askbcc))
-         grab_headers(hp, GBCC, 1);
+         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GBCC, 1);
    }
    if (hp->h_attach == NULL && ok_blook(askattach))
-      edit_attachments(&hp->h_attach);
+      edit_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach);
 
    /* Add automatic receivers */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')

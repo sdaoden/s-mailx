@@ -240,14 +240,17 @@ FL int         c_environ(void *v);
 /* Try to add an attachment for file, file_expand()ed.
  * Return the new head of list aphead, or NULL.
  * The newly created attachment will be stored in *newap, if given */
-FL struct attachment * add_attachment(struct attachment *aphead, char *file,
+FL struct attachment * add_attachment(enum n_lexinput_flags lif,
+                        struct attachment *aphead, char *file,
                         struct attachment **newap);
 
 /* Append comma-separated list of file names to the end of attachment list */
-FL void        append_attachments(struct attachment **aphead, char *names);
+FL void        append_attachments(enum n_lexinput_flags lif,
+                  struct attachment **aphead, char *names);
 
 /* Interactively edit the attachment list */
-FL void        edit_attachments(struct attachment **aphead);
+FL void        edit_attachments(enum n_lexinput_flags lif,
+                  struct attachment **aphead);
 
 /*
  * auxlily.c
@@ -887,8 +890,8 @@ FL char *      getsender(struct message *m);
 #endif
 
 /* Fill in / reedit the desired header fields */
-FL int         grab_headers(struct header *hp, enum gfield gflags,
-                  int subjfirst);
+FL int         grab_headers(enum n_lexinput_flags lif, struct header *hp,
+                  enum gfield gflags, int subjfirst);
 
 /* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
@@ -967,13 +970,12 @@ FL bool_t      n_commands(void);
 
 /* Read a complete line of input, with editing if interactive and possible.
  * If prompt is NULL we'll call getprompt() first, if necessary.
- * nl_escape defines whether user can escape newlines via backslash (POSIX).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
  * Manages the PS_READLINE_NL hack */
-FL int         n_lex_input(char const *prompt, bool_t nl_escape,
+FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
                   char **linebuf, size_t *linesize, char const *string
                   SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -985,10 +987,9 @@ FL int         n_lex_input(char const *prompt, bool_t nl_escape,
  * This may only be called from toplevel (not during PS_ROBOT).
  * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
-FL char *      n_lex_input_cp_addhist(char const *prompt, char const *string,
-                  bool_t isgabby);
+ * mode, otherwise this argument is ignored for reproducibility */
+FL char *      n_lex_input_cp(enum n_lexinput_flags lif,
+                  char const *prompt, char const *string);
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
@@ -1008,8 +1009,9 @@ FL int         c_source_if(void *v);
 
 /* Evaluate a complete macro / a single command.  For the former lines will
  * always be free()d, for the latter cmd will always be duplicated internally */
-FL bool_t      n_source_macro(char const *name, char **lines);
-FL bool_t      n_source_command(char const *cmd);
+FL bool_t      n_source_macro(enum n_lexinput_flags lif, char const *name,
+                  char **lines);
+FL bool_t      n_source_command(enum n_lexinput_flags lif, char const *cmd);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
@@ -1379,8 +1381,8 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 FL char *      detract(struct name *np, enum gfield ntype);
 
 /* Get a lextract() list via n_lex_input_cp_addhist(), reassigning to *np* */
-FL struct name * grab_names(char const *field, struct name *np, int comma,
-                     enum gfield gflags);
+FL struct name * grab_names(enum n_lexinput_flags lif, char const *field,
+                     struct name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 n2 share the domain name */
 FL bool_t      name_is_same_domain(struct name const *n1,
@@ -2284,11 +2286,13 @@ FL void        n_tty_destroy(void);
 FL void        n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
- * If n>0 assumes that *linebuf has n bytes of default content */
-FL int         n_tty_readline(char const *prompt, char **linebuf,
-                  size_t *linesize, size_t n SMALLOC_DEBUG_ARGS);
+ * If n>0 assumes that *linebuf has n bytes of default content.
+ * Only the _CTX_ bits in lif are used */
+FL int         n_tty_readline(enum n_lexinput_flags lif, char const *prompt,
+                  char **linebuf, size_t *linesize, size_t n
+                  SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
-# define n_tty_readline(A,B,C,D) (n_tty_readline)(A, B, C, D, __FILE__,__LINE__)
+# define n_tty_readline(A,B,C,D,E) (n_tty_readline)(A,B,C,D,E,__FILE__,__LINE__)
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.

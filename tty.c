@@ -192,8 +192,8 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(prompt, TRU1, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, NULL) >= 0)
+   if (n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, prompt,
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
 jrestore:
@@ -227,8 +227,8 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(query, TRU1, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, NULL) >= 0)
+   if (n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, query,
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
@@ -3684,8 +3684,8 @@ n_tty_signal(int sig){
 }
 
 FL int
-(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-      SMALLOC_DEBUG_ARGS){
+(n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
+      char **linebuf, size_t *linesize, size_t n SMALLOC_DEBUG_ARGS){
    struct a_tty_line tl;
 # ifdef HAVE_COLOUR
    char *posbuf, *pos;
@@ -3694,6 +3694,7 @@ FL int
    ssize_t nn;
    char const *orig_prompt;
    NYD_ENTER;
+   UNUSED(lif);
 
    assert(!ok_blook(line_editor_disable));
    if(!(pstate & PS_LINE_EDITOR_INIT))
@@ -3805,16 +3806,15 @@ jredo:
       }
    }
 
-   /* TODO honour other bind contexts, like "compose" */
    if(a_tty.tg_bind_isdirty)
       a_tty_bind_tree_teardown();
    if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
       a_tty_bind_tree_build();
-   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[n_LEXINPUT_CTX_BASE];
+   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[lif & n__LEXINPUT_CTX_MASK];
    tl.tl_bind_shcut_cancel =
-         &a_tty.tg_bind_shcut_cancel[n_LEXINPUT_CTX_BASE];
+         &a_tty.tg_bind_shcut_cancel[lif & n__LEXINPUT_CTX_MASK];
    tl.tl_bind_shcut_prompt_char =
-         &a_tty.tg_bind_shcut_prompt_char[n_LEXINPUT_CTX_BASE];
+         &a_tty.tg_bind_shcut_prompt_char[lif & n__LEXINPUT_CTX_MASK];
 # endif /* HAVE_KEY_BINDINGS */
 
    if((tl.tl_prompt = prompt) != NULL){ /* XXX not re-evaluated */
@@ -3847,12 +3847,12 @@ jredo:
 # endif
 
    if(tl.tl_reenter_after_cmd != NULL){
-      n_source_command(tl.tl_reenter_after_cmd);
+      n_source_command(lif, tl.tl_reenter_after_cmd);
       /* TODO because of recursion we cannot use srelax()ation: would be good */
       /* See above for why not simply using goto */
       n = (nn <= 0) ? 0 : nn;
 # ifdef HAVE_KEY_BINDINGS
-      nn = (n_lex_input)(orig_prompt, TRU1, linebuf, linesize,
+      nn = (n_lex_input)(lif, orig_prompt, linebuf, linesize,
             (n == 0 ? "" : savestrbuf(*linebuf, n)) SMALLOC_DEBUG_ARGSCALL);
 # else
       goto jredo;

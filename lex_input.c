@@ -151,7 +151,7 @@ static bool_t a_lex_source_file(char const *file, bool_t silent_error);
 static bool_t a_lex_load(struct a_lex_input_stack *lip);
 
 /* A simplified command loop for recursed state machines */
-static bool_t a_commands_recursive(void);
+static bool_t a_commands_recursive(enum n_lexinput_flags lif);
 
 /* List of all commands, and list of commands which are specially treated
  * and deduced in _evaluate(), but we need a list for _c_list() and
@@ -910,7 +910,7 @@ a_lex_source_file(char const *file, bool_t silent_error){
 
    pstate |= PS_SOURCING | PS_ROBOT;
    a_lex_input = lip;
-   a_commands_recursive();
+   a_commands_recursive(n_LEXINPUT_NONE | n_LEXINPUT_NL_ESC);
 /* FIXME return TRUM1 if file can't be opened, FAL0 on eval error */
 jleave:
    NYD_LEAVE;
@@ -953,7 +953,7 @@ a_lex_load(struct a_lex_input_stack *lip){
 }
 
 static bool_t
-a_commands_recursive(void){
+a_commands_recursive(enum n_lexinput_flags lif){
    struct a_lex_eval_ctx ev;
    bool_t rv;
    NYD2_ENTER;
@@ -968,7 +968,7 @@ a_commands_recursive(void){
 
       /* Read a line of commands and handle end of file specially */
       ev.le_line.l = ev.le_line_size;
-      n = n_lex_input(NULL, TRU1, &ev.le_line.s, &ev.le_line.l,
+      n = n_lex_input(lif, NULL, &ev.le_line.s, &ev.le_line.l,
             ev.le_new_content);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
@@ -1124,8 +1124,8 @@ n_commands(void){ /* FIXME */
       /* Read a line of commands and handle end of file specially */
 jreadline:
       ev.le_line.l = ev.le_line_size;
-      n = n_lex_input(NULL, TRU1, &ev.le_line.s, &ev.le_line.l,
-            ev.le_new_content);
+      n = n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, NULL,
+            &ev.le_line.s, &ev.le_line.l, ev.le_new_content);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
 
@@ -1180,12 +1180,13 @@ jreadline:
 }
 
 FL int
-(n_lex_input)(char const *prompt, bool_t nl_escape, char **linebuf,
+(n_lex_input)(enum n_lexinput_flags lif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string SMALLOC_DEBUG_ARGS){
    /* TODO readline: linebuf pool! */
-   bool_t doprompt, dotty;
-   int n, nold;
    FILE *ifile;
+   bool_t doprompt, dotty;
+   char const *iftype;
+   int n, nold;
    NYD2_ENTER;
 
    /* Special case macro mode: never need to prompt, lines have always been
@@ -1199,24 +1200,23 @@ FL int
       if((*linebuf = *lp) == NULL){
          *linesize = 0;
          n = -1;
-      }else{
-         ++a_lex_input->li_loff;
-         n = (int)(*linesize = strlen(*linebuf));
-
-         if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
-            *linebuf = sbufdup(*linebuf, *linesize);
-
-         if(options & OPT_D_VV)
-            n_err(_("%s %d bytes <%.*s>\n"),
-               (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION
-                ? _("-X option") : _("MACRO")),
-               n, n, *linebuf);
+         goto jleave;
       }
+
+      ++a_lex_input->li_loff;
+      *linesize = strlen(*linebuf);
+      if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
+         *linebuf = sbufdup(*linebuf, *linesize);
       pstate |= PS_READLINE_NL;
-      goto jleave;
+
+      iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
+            ? "-X OPTION" : "MACRO";
+      goto jhave_dat;
    }
    pstate &= ~PS_READLINE_NL;
 
+   iftype = (!(pstate & PS_STARTED) ? "LOAD"
+          : (pstate & PS_SOURCING) ? "SOURCE" : "READ");
    doprompt = ((pstate & (PS_STARTED | PS_ROBOT)) == PS_STARTED &&
          (options & OPT_INTERACTIVE));
    dotty = (doprompt && !ok_blook(line_editor_disable));
@@ -1246,7 +1246,7 @@ FL int
          string = NULL;
          /* TODO if nold>0, don't redisplay the entire line!
           * TODO needs complete redesign ... */
-         n = (n_tty_readline)(prompt, linebuf, linesize, n
+         n = (n_tty_readline)(lif, prompt, linebuf, linesize, n
                SMALLOC_DEBUG_ARGSCALL);
       }else{
          if(prompt != NULL) {
@@ -1278,7 +1278,7 @@ FL int
       /* POSIX says:
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
-      if(!nl_escape || (*linebuf)[n - 1] != '\\'){
+      if(!(lif & n_LEXINPUT_NL_ESC) || (*linebuf)[n - 1] != '\\'){
          if(dotty)
             pstate |= PS_READLINE_NL;
          break;
@@ -1299,25 +1299,53 @@ FL int
          prompt = ".. "; /* XXX PS2 .. */
    }
 
-   if(n >= 0){
-      (*linebuf)[*linesize = n] = '\0';
+   if(n < 0)
+      goto jleave;
+   (*linebuf)[*linesize = n] = '\0';
 
-      if(options & OPT_D_VV)
-         n_err(_("%s %d bytes <%.*s>\n"),
-            (!(pstate & PS_STARTED) ? "LOAD"
-             : (pstate & PS_SOURCING ? "SOURCE" : "READ")),
-            n, n, *linebuf);
+jhave_dat:
+#if 0
+   if(lif & n_LEXINPUT_DROP_TRAIL_SPC){
+      char *cp, c;
+      size_t i;
+
+      for(cp = &(*linebuf)[i = *linesize];; --i){
+         c = *--cp;
+         if(!blankspacechar(c))
+            break;
+      }
+      (*linebuf)[*linesize = i] = '\0';
    }
+
+   if(lif & n_LEXINPUT_DROP_LEAD_SPC){
+      char *cp, c;
+      size_t j, i;
+
+      for(cp = &(*linebuf)[0], j = *linesize, i = 0; i < j; ++i){
+         c = *cp++;
+         if(!blankspacechar(c))
+            break;
+      }
+      if(i > 0){
+         memcpy(&(*linebuf)[0], &(*linebuf)[i], j -= i);
+         (*linebuf)[*linesize = j] = '\0';
+      }
+   }
+#endif /* 0 (notyet - must take care for backslash escaped space) */
+
+   if(options & OPT_D_VV)
+      n_err(_("%s %" PRIuZ " bytes <%s>\n"), iftype, *linesize, *linebuf);
+   n = (int)*linesize; /* XXX si64_t */
 jleave:
    if (pstate & PS_PSTATE_PENDMASK)
       a_lex_update_pstate();
-
    NYD2_LEAVE;
    return n;
 }
 
 FL char *
-n_lex_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby){
+n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
+      char const *string){
    /* FIXME n_lex_input_cp_addhist(): leaks on sigjmp without linepool */
    size_t linesize;
    char *linebuf, *rv;
@@ -1328,10 +1356,10 @@ n_lex_input_cp_addhist(char const *prompt, char const *string, bool_t isgabby){
    linebuf = NULL;
    rv = NULL;
 
-   n = n_lex_input(prompt, TRU1, &linebuf, &linesize, string);
+   n = n_lex_input(lif, prompt, &linebuf, &linesize, string);
    if(n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
-         (options & OPT_INTERACTIVE))
-      n_tty_addhist(rv, isgabby);
+         (lif & n_LEXINPUT_HIST_ADD) && (options & OPT_INTERACTIVE))
+      n_tty_addhist(rv, ((lif & n_LEXINPUT_HIST_GABBY) != 0));
 
    if(linebuf != NULL)
       free(linebuf);
@@ -1403,7 +1431,7 @@ c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
 }
 
 FL bool_t
-n_source_macro(char const *name, char **lines){
+n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines){
    struct a_lex_input_stack *lip;
    size_t i;
    int rv;
@@ -1424,13 +1452,13 @@ n_source_macro(char const *name, char **lines){
 
    pstate |= PS_ROBOT;
    a_lex_input = lip;
-   rv = a_commands_recursive();
+   rv = a_commands_recursive(lif);
    NYD_LEAVE;
    return rv;
 }
 
 FL bool_t
-n_source_command(char const *cmd){
+n_source_command(enum n_lexinput_flags lif, char const *cmd){
    struct a_lex_input_stack *lip;
    size_t i, ial;
    bool_t rv;
@@ -1458,7 +1486,7 @@ n_source_command(char const *cmd){
 
    pstate |= PS_ROBOT;
    a_lex_input = lip;
-   rv = a_commands_recursive();
+   rv = a_commands_recursive(lif);
    NYD_LEAVE;
    return rv;
 }

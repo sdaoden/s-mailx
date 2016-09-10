@@ -1050,7 +1050,8 @@ jgetopt_done:
    for (cp = NULL; a_head != NULL;) {
       struct attachment *nahp, *nap;
 
-      if ((nahp = add_attachment(attach, a_head->aa_file, &nap)) != NULL) {
+      if ((nahp = add_attachment(n_LEXINPUT_CTX_BASE, attach, a_head->aa_file,
+            &nap)) != NULL) {
          attach = nahp;
          /* Did we split a charset set name for fixation purposes? */
          if (cp != NULL) {
