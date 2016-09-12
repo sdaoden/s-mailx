@@ -772,7 +772,7 @@ c_help(void *v)
 "quit                   quit and apply changes to the current mailbox\n"
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
-"list                   list names of all available commands\n"),
+"list [<anything>]      all available commands [in search order]\n"),
       stdout);
 
 jleave:
