@@ -243,7 +243,7 @@ OPT_KEY_BINDINGS=yes
 # kLFT5, for which no termcap(5) entry exists.
 # terminfo(5) support can (thus) be "require"d.
 OPT_TERMCAP=yes
-OPT_TERMCAP_PREFER_TERMINFO=yes
+OPT_TERMCAP_VIA_TERMINFO=yes
 
 # Enable the `errors' command; S-nail is a console-based application and
 # thus errors may fly by pretty fast as other operations are in

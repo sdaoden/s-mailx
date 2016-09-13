@@ -114,11 +114,10 @@ static int a_lex__pcmd_cmp(void const *s1, void const *s2);
 /* `quit' command */
 static int a_lex_c_quit(void *v);
 
-/* Print the binaries compiled-in features */
-static int a_lex_c_features(void *v);
-
 /* Print the binaries version number */
 static int a_lex_c_version(void *v);
+
+static int a_lex__version_cmp(void const *s1, void const *s2);
 
 /* PS_STATE_PENDMASK requires some actions */
 static void a_lex_update_pstate(void);
@@ -411,25 +410,59 @@ a_lex_c_quit(void *v){
 }
 
 static int
-a_lex_c_features(void *v){
+a_lex_c_version(void *v){
+   int longest, rv;
+   char *iop;
+   char const *cp, **arr;
+   size_t i, i2;
    NYD_ENTER;
-
    UNUSED(v);
 
-   printf(_("Features: %s\n"), ok_vlook(features));
+   printf(_("%s version %s\nFeatures included (+) or not (-)\n"),
+      uagent, ok_vlook(version));
+
+   /* *features* starts with dummy byte to avoid + -> *folder* expansions */
+   i = strlen(cp = &ok_vlook(features)[1]);
+   i2 = strlen(&cp[i + 1]) +1;
+   iop = salloc(i + i2);
+   memcpy(iop, cp, i);
+   memcpy(&iop[i], &cp[++i], i2);
+
+   arr = salloc(sizeof(cp) * VAL_FEATURES_CNT);
+   for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
+      arr[i] = cp;
+      i2 = strlen(cp);
+      longest = MAX(longest, (int)i2);
+   }
+   qsort(arr, i, sizeof(cp), &a_lex__version_cmp);
+
+   for(++longest, i2 = 0; i-- > 0;){
+      cp = *(arr++);
+      printf("%-*s ", longest, cp);
+      i2 += longest;
+      if(UICMP(z, ++i2 + longest, >=, scrnwidth) || i == 0){
+         i2 = 0;
+         putchar('\n');
+      }
+   }
+
+   if((rv = ferror(stdout) != 0))
+      clearerr(stdout);
    NYD_LEAVE;
-   return 0;
+   return rv;
 }
 
 static int
-a_lex_c_version(void *v){
-   NYD_ENTER;
+a_lex__version_cmp(void const *s1, void const *s2){
+   char const * const *cp1, * const *cp2;
+   int rv;
+   NYD2_ENTER;
 
-   UNUSED(v);
-
-   printf(_("Version %s\n"), ok_vlook(version));
-   NYD_LEAVE;
-   return 0;
+   cp1 = s1;
+   cp2 = s2;
+   rv = strcmp(&(*cp1)[1], &(*cp2)[1]);
+   NYD2_LEAVE;
+   return rv;
 }
 
 static void

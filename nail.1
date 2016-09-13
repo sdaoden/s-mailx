@@ -520,7 +520,9 @@ appropriate privileges presumed; effectively identical to
 .
 .Mx
 .It Fl V
-Show \*(UA's version and exit.
+Show \*(UA's
+.Ic version
+and exit.
 .
 .Mx
 .It Fl v
@@ -647,7 +649,7 @@ and most MTAs provide a binary of this name for compatibility purposes.
 If the \*(OPal SMTP
 .Va mta
 is included in the
-.Ic features
+.Va features
 of \*(UA then the system side is not a mandatory precondition for mail
 delivery.
 .
@@ -1169,7 +1171,7 @@ text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
-if $features !@ +html-filter
+if $features !@ +filter-html-tagsoup
   #set pipe-text/html='elinks -force-html -dump 1'
   set pipe-text/html='lynx -stdin -dump -force_html'
   # Display HTML as plain text instead
@@ -1408,9 +1410,9 @@ locale environment, an option that \*(UA's test-suite uses excessively.)
 .Pp
 If no character set conversion capabilities have been compiled into
 \*(UA
-.Pf ( Ic features
+.Pf ( Va features
 doesn't include the term
-.Ql ICONV ) ,
+.Ql +iconv ) ,
 then
 .Va ttycharset
 will be the only supported character set,
@@ -3557,12 +3559,6 @@ any saving of messages in
 as well as a possibly tracked line editor history file.
 .
 .Mx
-.It Ic features
-Show the list of features that have been compiled into \*(UA.
-(Outputs the contents of the variable
-.Va features . )
-.
-.Mx
 .It Ic File
 (Fi) Like
 .Ic file ,
@@ -5134,6 +5130,10 @@ within the certificate,
 and if the message content has been altered.
 .
 .Mx
+.It Ic version
+Shows the version and feature set of \*(UA.
+.
+.Mx
 .It Ic visual
 (v) Takes a message list and invokes the display editor on each message.
 Modified contents are discarded unless the
@@ -6268,9 +6268,14 @@ or
 .
 .Mx
 .It Va features
-\*(RO Information on the features compiled into \*(UA \(en the content
-of this variable is identical to the output of the command
-.Ic features .
+\*(RO String giving a list of features \*(UA, preceded with a plus-sign
+.Ql +
+if the feature is available, and a minus-sign
+.Ql -
+otherwise.
+The output of the command
+.Ic version
+will include this information.
 .
 .Mx
 .It Va flipr
@@ -8665,11 +8670,11 @@ is sufficient to disable verbosity as such.
 .Mx
 .It Va version , version-major , version-minor , version-update
 \*(RO \*(UA version information: the first variable contains a string
-containing the complete version identification \(en this is identical to
-the output of the command
-.Ic version .
-The latter three contain only digits: the major, minor and update
-version numbers.
+containing the complete version identification, the latter three contain
+only digits: the major, minor and update version numbers.
+The output of the command
+.Ic version
+will include this information.
 .
 .Mx
 .It Va writebackedited

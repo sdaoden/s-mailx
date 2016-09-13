@@ -389,10 +389,9 @@
      DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
    { "uncustomhdr", &c_uncustomhdr, (M | WYSHLIST), 1, 1000
      DS(N_("Delete custom <:header:> (* for all)")) },
-   { "features", &a_lex_c_features, (H | M | NOLIST), 0, 0
-     DS(N_("Show features that are compiled into the Mail-User-Agent")) },
+
    { "version", &a_lex_c_version, (H | M | NOLIST), 0, 0
-     DS(N_("Print the Mail-User-Agent version")) },
+     DS(N_("Show the version and feature set of the program")) },
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },

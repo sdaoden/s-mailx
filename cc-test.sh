@@ -170,7 +170,7 @@ cksum_test() {
 }
 
 have_feat() {
-   ( echo 'feat' | "${SNAIL}" ${ARGS} | ${grep} ${1} ) >/dev/null 2>&1
+   ( "${SNAIL}" ${ARGS} -Xversion -Xx | ${grep} ${1} ) >/dev/null 2>&1
 }
 
 # t_behave()
@@ -184,7 +184,7 @@ t_behave() {
 
    # FIXME __behave_mlist
 
-   have_feat SSL/TLS && have_feat S/MIME && __behave_smime
+   have_feat +smime && __behave_smime
 }
 
 __behave_wysh() {
@@ -914,7 +914,7 @@ __behave_ifelse() {
 	__EOT
    cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
-   if have_feat REGEX; then
+   if have_feat +regex; then
       ${rm} -f "${MBOX}"
       ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
@@ -1411,7 +1411,7 @@ gggggggggggggggg"
 }
 
 t_all() {
-   if have_feat DEVEL; then
+   if have_feat +devel; then
       ARGS="${ARGS} -Smemdebug"
       export ARGS
    fi

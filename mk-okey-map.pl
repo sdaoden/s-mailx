@@ -328,7 +328,7 @@ sub dump_map{
 #  define a_X(X)
 # endif
 
-/* Unfortunately init of varsized buffer won't work */
+/* Unfortunately init of varsized buffer won't work: define "subclass"es */
 _EOT
    my @skeys = sort keys %virts;
 
@@ -336,6 +336,7 @@ _EOT
       my $e = $virts{$_};
       $e->{vname} = $1 if $e->{enum} =~ /ok_._(.*)/;
       $e->{vstruct} = "var_virt_$e->{vname}";
+      print F "static char const a_amv_$e->{vstruct}_val[] = {$e->{virt}};\n";
       print F "static struct{\n";
       print F "${S}struct a_amv_var *av_link;\n";
       print F "${S}char const *av_value;\n";
@@ -346,7 +347,8 @@ _EOT
       my $fa = join '|', @{$e->{flags}};
       $f .= '|' . $fa if length $fa;
       print F "} const a_amv_$e->{vstruct} = ",
-         "{NULL, $e->{virt}, a_X(0 COMMA) $f, ", "\"$e->{name}\"};\n\n"
+         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 COMMA) $f, ",
+         "\"$e->{name}\"};\n\n"
    }
    print F "# undef a_X\n";
 

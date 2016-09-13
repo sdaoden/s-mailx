@@ -1,116 +1,155 @@
 #!/bin/sh -
-#@ Please see `INSTALL' and `make.rc' instead.
+#@ Please see INSTALL and make.rc instead.
 
 LC_ALL=C
 export LC_ALL
 
+# The feature set, to be kept in sync with make.rc
+# If no documentation given, the option is used as such; if doc is a hyphen,
+# entry is suppressed when configuration overview is printed: most likely for
+# obsolete features etc.
+XOPTIONS="\
+   ICONV='Character set conversion using iconv(3)' \
+   SOCKETS='Network support' \
+      SSL='SSL/TLS (OpenSSL)' \
+         SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
+      SMTP='Simple Mail Transfer Protocol client' \
+      POP3='Post Office Protocol Version 3 client' \
+      GSSAPI='Generic Security Service authentication' \
+      NETRC='.netrc file support' \
+      AGENT='-' \
+      MD5='MD5 message digest (APOP, CRAM-MD5)' \
+   IDNA='Internationalized Domain Names for Applications (encode only)' \
+   IMAP_SEARCH='IMAP-style search expressions' \
+   REGEX='Regular expressions' \
+   MLE='Mailx Line Editor' \
+      HISTORY='Line editor history management' \
+      KEY_BINDINGS='Configurable key bindings' \
+   TERMCAP='Terminal capability queries (termcap(5))' \
+      TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
+   ERRORS='Error log message ring' \
+   SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
+   SPAM_SPAMD='-' \
+   SPAM_FILTER='Freely configurable *spam-filter-..*s' \
+   DOCSTRINGS='Command documentation help strings' \
+   QUOTE_FOLD='Extended *quote-fold*ing' \
+   FILTER_HTML_TAGSOUP='Simple builtin HTML-to-text display filter' \
+   COLOUR='Coloured message display' \
+   DOTLOCK='Dotlock files and privilege-separated dotlock program' \
+"
+
+# Options which are automatically deduced from host environment, i.e., these
+# need special treatment all around here to warp from/to OPT_ stuff
+# setlocale, C90AMEND1, NL_LANGINFO, wcwidth
+XOPTIONS_DETECT="\
+   LOCALES='Locale support - printable characters etc. depend on environment' \
+   MBYTE_CHARSETS='Multibyte character sets' \
+   TERMINAL_CHARSET='Automatic detection of terminal character set' \
+   WIDE_GLYPHS='Wide glyph support' \
+"
+
+# Rather special options, for custom building, or which always exist.
+# Mostly for generating the visual overview and the *feature* string
+XOPTIONS_XTRA="\
+   MIME='Multipurpose Internet Mail Extensions' \
+   SMIME='S/MIME message signing, verification, en- and decryption' \
+   CROSS_BUILD='Cross-compilation: trust any detected environment' \
+   DEBUG='Debug enabled binary, not for end-users: THANKS!' \
+   DEVEL='Computers do not blunder' \
+"
+
+# The problem is that we don't have any tools we can use right now, so
+# encapsulate stuff in functions which get called in right order later on
+
 option_reset() {
-   OPT_ICONV=0
-   OPT_SOCKETS=0
-      OPT_SSL=0 OPT_ALL_SSL_ALGORITHMS=0
-      OPT_SMTP=0 OPT_POP3=0
-      OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
-      #OPT_MD5=0
-   OPT_IDNA=0
-   OPT_IMAP_SEARCH=0
-   OPT_REGEX=0
-   OPT_MLE=0
-      OPT_HISTORY=0 OPT_KEY_BINDINGS=0
-   OPT_TERMCAP=0 OPT_TERMCAP_PREFER_TERMINFO=0
-   OPT_ERRORS=0
-   OPT_SPAM_SPAMC=0 OPT_SPAM_SPAMD=0 OPT_SPAM_FILTER=0
-   OPT_DOCSTRINGS=0
-   OPT_QUOTE_FOLD=0
-   OPT_FILTER_HTML_TAGSOUP=0
-   OPT_COLOUR=0
-   OPT_DOTLOCK=0
+   set -- ${OPTIONS}
+   for i
+   do
+      eval OPT_${i}=0
+   done
 }
 
 option_maximal() {
+   set -- ${OPTIONS}
+   for i
+   do
+      eval OPT_${i}=1
+   done
    OPT_ICONV=require
-   OPT_SOCKETS=1
-      OPT_SSL=1 OPT_ALL_SSL_ALGORITHMS=1
-      OPT_SMTP=1 OPT_POP3=1
-      OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
-      #OPT_MD5=1
-   OPT_IDNA=1
-   OPT_IMAP_SEARCH=1
    OPT_REGEX=require
-   OPT_MLE=1
-      OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-   OPT_TERMCAP=1 OPT_TERMCAP_PREFER_TERMINFO=1
-   OPT_ERRORS=1
-   OPT_SPAM_SPAMC=1 OPT_SPAM_SPAMD=1 OPT_SPAM_FILTER=1
-   OPT_DOCSTRINGS=1
-   OPT_QUOTE_FOLD=1
-   OPT_FILTER_HTML_TAGSOUP=1
-   OPT_COLOUR=1
    OPT_DOTLOCK=require
 }
 
-# Predefined CONFIG= urations take precedence over anything else
-if [ -n "${CONFIG}" ]; then
-   case "${CONFIG}" in
-   [nN][uU][lL][lL])
-      option_reset
-      ;;
-   [nN][uU][lL][lL][iI])
-      option_reset
-      OPT_ICONV=require
-      ;;
-   [mM][iI][nN][iI][mM][aA][lL])
-      option_reset
-      OPT_ICONV=1
-      OPT_REGEX=1
-      OPT_DOTLOCK=require
-      ;;
-   [mM][eE][dD][iI][uU][mM])
-      option_reset
-      OPT_ICONV=require
-      OPT_IDNA=1
-      OPT_REGEX=1
-      OPT_MLE=1
-         OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-      OPT_ERRORS=1
-      OPT_SPAM_FILTER=1
-      OPT_DOCSTRINGS=1
-      OPT_COLOUR=1
-      OPT_DOTLOCK=require
-      ;;
-   [nN][eE][tT][sS][eE][nN][dD])
-      option_reset
-      OPT_ICONV=require
-      OPT_SOCKETS=1
-         OPT_SSL=require
-         OPT_SMTP=require
-         OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
-      OPT_IDNA=1
-      OPT_REGEX=1
-      OPT_MLE=1
-         OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-      OPT_DOCSTRINGS=1
-      OPT_COLOUR=1
-      OPT_DOTLOCK=require
-      ;;
-   [mM][aA][xX][iI][mM][aA][lL])
-      option_reset
-      option_maximal
-      ;;
-   [dD][eE][vV][eE][lL])
-      OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
-      option_maximal
-      ;;
-   [oO][dD][eE][vV][eE][lL])
-      OPT_DEVEL=1
-      option_maximal
-      ;;
-   *)
-      echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-      echo >&2 'Possible values: NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
-      exit 1
-      ;;
-   esac
-fi
+option_setup() {
+   option_parse OPTIONS_DETECT "${XOPTIONS_DETECT}"
+   option_parse OPTIONS "${XOPTIONS}"
+   option_parse OPTIONS_XTRA "${XOPTIONS_XTRA}"
+   OPT_MIME=1
+
+   # Predefined CONFIG= urations take precedence over anything else
+   if [ -n "${CONFIG}" ]; then
+      case "${CONFIG}" in
+      [nN][uU][lL][lL])
+         option_reset
+         ;;
+      [nN][uU][lL][lL][iI])
+         option_reset
+         OPT_ICONV=require
+         ;;
+      [mM][iI][nN][iI][mM][aA][lL])
+         option_reset
+         OPT_ICONV=1
+         OPT_REGEX=1
+         OPT_DOTLOCK=require
+         ;;
+      [mM][eE][dD][iI][uU][mM])
+         option_reset
+         OPT_ICONV=require
+         OPT_IDNA=1
+         OPT_REGEX=1
+         OPT_MLE=1
+            OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+         OPT_ERRORS=1
+         OPT_SPAM_FILTER=1
+         OPT_DOCSTRINGS=1
+         OPT_COLOUR=1
+         OPT_DOTLOCK=require
+         ;;
+      [nN][eE][tT][sS][eE][nN][dD])
+         option_reset
+         OPT_ICONV=require
+         OPT_SOCKETS=1
+            OPT_SSL=require
+            OPT_SMTP=require
+            OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
+         OPT_IDNA=1
+         OPT_REGEX=1
+         OPT_MLE=1
+            OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+         OPT_DOCSTRINGS=1
+         OPT_COLOUR=1
+         OPT_DOTLOCK=require
+         ;;
+      [mM][aA][xX][iI][mM][aA][lL])
+         option_reset
+         option_maximal
+         ;;
+      [dD][eE][vV][eE][lL])
+         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
+         option_maximal
+         ;;
+      [oO][dD][eE][vV][eE][lL])
+         OPT_DEVEL=1
+         option_maximal
+         ;;
+      *)
+         echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
+         echo >&2 '   NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
+         exit 1
+         ;;
+      esac
+   fi
+}
 
 # Inter-relationships
 option_update() {
@@ -126,7 +165,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_ALL_SSL_ALGORITHMS=0
+      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -151,6 +190,22 @@ option_update() {
    fi
 }
 
+rc=./make.rc
+lst=./config.lst
+ev=./config.ev
+h=./config.h h_name=config.h
+mk=./mk.mk
+
+newlst=./config.lst-new
+newmk=./config.mk-new
+newev=./config.ev-new
+newh=./config.h-new
+tmp0=___tmp
+tmp=./${tmp0}1$$
+tmp2=./${tmp0}2$$
+
+##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
+
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
@@ -160,12 +215,24 @@ cc_maxopt=100
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
+   # We don't "have any utility": only path adjustments and such in here!
    i="${OS:-`uname -s`}"
 
    if [ ${i} = SunOS ]; then
       msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
       _os_early_setup_sunos
    fi
+}
+
+_os_early_setup_sunos() {
+   # According to standards(5), this is what we need to do
+   if [ -d /usr/xpg4 ]; then :; else
+      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
+      config_exit 1
+   fi
+   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
+   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+   export PATH
 }
 
 os_setup() {
@@ -204,17 +271,6 @@ os_setup() {
       C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
       LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
    fi
-}
-
-_os_early_setup_sunos() {
-   # According to standards(5), this is what we need to do
-   if [ -d /usr/xpg4 ]; then :; else
-      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
-      config_exit 1
-   fi
-   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
-   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
-   export PATH
 }
 
 _os_setup_sunos() {
@@ -273,7 +329,7 @@ cc_setup() {
 
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
-   printf >&2 'Searching for a usable C compiler .. $CC='
+   msg_nonl 'Searching for a usable C compiler .. $CC='
    if { i="`command -v clang`"; }; then
       CC=${i}
    elif { i="`command -v gcc`"; }; then
@@ -290,20 +346,20 @@ cc_setup() {
       elif { i="`command -v c89`"; }; then
          CC=${i}
       else
-         printf >&2 'boing booom tschak\n'
+         msg 'boing booom tschak'
          msg 'ERROR: I cannot find a compiler!'
          msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
          msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
          config_exit 1
       fi
    fi
-   printf >&2 -- '%s\n' "${CC}"
+   msg '%s' "${CC}"
    export CC
 }
 
 _cc_default() {
    if [ -z "${CC}" ]; then
-      printf >&2 'To go on like you have chosen, please set $CC, rerun.'
+      msg 'To go on like you have chosen, please set $CC, rerun.'
       config_exit 1
    fi
 
@@ -318,7 +374,7 @@ cc_flags() {
    if feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
-         msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}="%s", just a second..' \
+         msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
             "${CC}"
       else
          cc_check_silent=
@@ -474,7 +530,7 @@ _cc_flags_generic() {
    unset __cflags __ldflags
 }
 
-##  --  >8  --  8<  --  ##
+##  --  >8  - <<OS/CC | SUPPORT FUNS>> -  8<  --  ##
 
 ## Notes:
 ## - Heirloom sh(1) (and same origin) have _sometimes_ problems with ': >'
@@ -496,21 +552,11 @@ msg() {
    printf >&2 -- "${fmt}\\n" "${@}"
 }
 
-## First of all, create new configuration and check whether it changed
-
-rc=./make.rc
-lst=./config.lst
-ev=./config.ev
-h=./config.h h_name=config.h
-mk=./mk.mk
-
-newlst=./config.lst-new
-newmk=./config.mk-new
-newev=./config.ev-new
-newh=./config.h-new
-tmp0=___tmp
-tmp=./${tmp0}1$$
-tmp2=./${tmp0}2$$
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf >&2 -- "${fmt}" "${@}"
+}
 
 t1=ten10one1ten10one1
 if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
@@ -539,16 +585,6 @@ check_tool() {
    fi
    return 1
 }
-
-# Very easy checks for the operating system in order to be able to adjust paths
-# or similar very basic things which we need to be able to go at all
-os_early_setup
-
-# Check those tools right now that we need before including $rc
-msg 'Checking for basic utility set'
-check_tool awk "${awk:-`command -v awk`}"
-check_tool rm "${rm:-`command -v rm`}"
-check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
 feat_val_no() {
@@ -604,6 +640,156 @@ feat_bail_required() {
    option_update # XXX this is rather useless here (dependency chain..)
 }
 
+option_parse() {
+   # Parse one of our XOPTIONS* in $2 and assign the sh(1) compatible list of
+   # options, without documentation, to $1
+   i="`${awk} -v input=\"${2}\" '
+      BEGIN{
+         for(i = 0;;){
+            voff = match(input, /[[:alnum:]_]+(='"'"'[^'"'"']+)?/)
+            if(voff == 0)
+               break
+            v = substr(input, voff, RLENGTH)
+            input = substr(input, voff + RLENGTH)
+            doff = index(v, "=")
+            if(doff > 0){
+               d = substr(v, doff + 2, length(v) - doff - 1)
+               v = substr(v, 1, doff - 1)
+            }
+            print v
+         }
+      }
+      '`"
+      eval ${1}=\"${i}\"
+}
+
+option_doc_of() {
+   # Return the "documentation string" for option $1, itself if none such
+   ${awk} -v want="${1}" \
+      -v input="${XOPTIONS_DETECT}${XOPTIONS}${XOPTIONS_XTRA}" '
+   BEGIN{
+      for(;;){
+         voff = match(input, /[[:alnum:]_]+(='"'"'[^'"'"']+)?/)
+         if(voff == 0)
+            break
+         v = substr(input, voff, RLENGTH)
+         input = substr(input, voff + RLENGTH)
+         doff = index(v, "=")
+         if(doff > 0){
+            d = substr(v, doff + 2, length(v) - doff - 1)
+            v = substr(v, 1, doff - 1)
+         }else
+            d = v
+         if(v == want){
+            if(d != "-")
+               print d
+            exit
+         }
+      }
+   }
+   '
+}
+
+option_join_rc() {
+   # Join the values from make.rc into what currently is defined, not
+   # overwriting yet existing settings
+   ${rm} -f ${tmp}
+   # We want read(1) to perform backslash escaping in order to be able to use
+   # multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow
+   # in VMs (see [fa2e248]), Aharon Robbins suggested the following
+   < ${rc} ${awk} 'BEGIN{line = ""}{
+      gsub(/^[[:space:]]+/, "", $0)
+      gsub(/[[:space:]]+$/, "", $0)
+      if(gsub(/\\$/, "", $0)){
+         line = line $0
+         next
+      }else
+         line = line $0
+      if(index(line, "#") == 1){
+         line = ""
+      }else if(length(line)){
+         print line
+         line = ""
+      }
+   }' |
+   while read line; do
+      if [ -n "${good_shell}" ]; then
+         i=${line%%=*}
+      else
+         i=`${awk} -v LINE="${line}" 'BEGIN{
+            gsub(/=.*$/, "", LINE)
+            print LINE
+         }'`
+      fi
+      if [ "${i}" = "${line}" ]; then
+         msg 'ERROR: invalid syntax in: %s' "${line}"
+         continue
+      fi
+
+      eval j="\$${i}" jx="\${${i}+x}"
+      if [ -n "${j}" ] || [ "${jx}" = x ]; then
+         : # Yet present
+      else
+         j=`${awk} -v LINE="${line}" 'BEGIN{
+            gsub(/^[^=]*=/, "", LINE)
+            gsub(/^\"*/, "", LINE)
+            gsub(/\"*$/, "", LINE)
+            print LINE
+         }'`
+      fi
+      [ "${i}" = "DESTDIR" ] && continue
+      echo "${i}=\"${j}\""
+   done > ${tmp}
+   # Reread the mixed version right now
+   . ./${tmp}
+}
+
+option_evaluate() {
+   # Expand the option values, which may contain shell snippets
+   ${rm} -f ${newlst} ${newmk} ${newh}
+   exec 5<&0 6>&1 <${tmp} >${newlst}
+   while read line; do
+      z=
+      if [ -n "${good_shell}" ]; then
+         i=${line%%=*}
+         [ "${i}" != "${i#OPT_}" ] && z=1
+      else
+         i=`${awk} -v LINE="${line}" 'BEGIN{
+            gsub(/=.*$/, "", LINE);\
+            print LINE
+         }'`
+         if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
+            z=1
+         fi
+      fi
+
+      eval j=\$${i}
+      if [ -n "${z}" ]; then
+         j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
+         if [ -z "${j}" ] || feat_val_no "${j}"; then
+            j=0
+            printf "   /* #undef ${i} */\n" >> ${newh}
+         elif feat_val_yes "${j}"; then
+            if feat_val_require "${j}"; then
+               j=require
+            else
+               j=1
+            fi
+            printf "   /* #define ${i} */\n" >> ${newh}
+         else
+            msg 'ERROR: cannot parse <%s>' "${line}"
+            config_exit 1
+         fi
+      else
+         printf "#define ${i} \"${j}\"\n" >> ${newh}
+      fi
+      printf "${i} = ${j}\n" >> ${newmk}
+      printf "${i}=${j}\n"
+      eval "${i}=\"${j}\""
+   done
+   exec 0<&5 1>&6 5<&- 6<&-
+}
+
 path_check() {
    # "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
    varname=${1} addflag=${2} flagvarname=${3}
@@ -655,30 +841,132 @@ ld_runtime_flags() {
 }
 
 cc_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
+   [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
    if "${CC}" ${INCS} \
          ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
    fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   [ -n "${cc_check_silent}" ] || msg 'no'
    return 1
 }
 
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
+   [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
    if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
    fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   [ -n "${cc_check_silent}" ] || msg 'no'
    return 1
 }
+
+_check_preface() {
+   variable=$1 topic=$2 define=$3
+
+   echo '**********'
+   msg_nonl ' . %s ... ' "${topic}"
+   echo "/* checked ${topic} */" >> ${h}
+   ${rm} -f ${tmp} ${tmp}.o
+   echo '*** test program is'
+   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+   #echo '*** the preprocessor generates'
+   #${make} -f ${makefile} ${tmp}.x
+   #${cat} ${tmp}.x
+   echo '*** results are'
+}
+
+compile_check() {
+   variable=$1 topic=$2 define=$3
+
+   _check_preface "${variable}" "${topic}" "${define}"
+
+   if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
+         [ -f ./${tmp}.o ]; then
+      msg 'yes'
+      echo "${define}" >> ${h}
+      eval have_${variable}=yes
+      return 0
+   else
+      echo "/* ${define} */" >> ${h}
+      msg 'no'
+      eval unset have_${variable}
+      return 1
+   fi
+}
+
+_link_mayrun() {
+   run=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+
+   _check_preface "${variable}" "${topic}" "${define}"
+
+   feat_yes CROSS_BUILD && run=0
+
+   if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
+            XLIBS="${LIBS} ${libs}" ./${tmp} &&
+         [ -f ./${tmp} ] &&
+         { [ ${run} -eq 0 ] || ./${tmp}; }; then
+      echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
+      msg 'yes'
+      echo "${define}" >> ${h}
+      LIBS="${LIBS} ${libs}"
+      echo "${libs}" >> ${lib}
+      INCS="${INCS} ${incs}"
+      echo "${incs}" >> ${inc}
+      eval have_${variable}=yes
+      return 0
+   else
+      msg 'no'
+      echo "/* ${define} */" >> ${h}
+      eval unset have_${variable}
+      return 1
+   fi
+}
+
+link_check() {
+   _link_mayrun 0 "${1}" "${2}" "${3}" "${4}" "${5}"
+}
+
+run_check() {
+   _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
+}
+
+feat_def() {
+   if feat_yes ${1}; then
+      echo '#define HAVE_'${1}'' >> ${h}
+   else
+      echo '/* OPT_'${1}'=0 */' >> ${h}
+   fi
+}
+
+squeeze_em() {
+   < "${1}" > "${2}" ${awk} \
+   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
+}
+
+##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
+
+# First of all, create new configuration and check whether it changed
+
+# Very easy checks for the operating system in order to be able to adjust paths
+# or similar very basic things which we need to be able to go at all
+os_early_setup
+
+# Check those tools right now that we need before including $rc
+msg 'Checking for basic utility set'
+check_tool awk "${awk:-`command -v awk`}"
+check_tool rm "${rm:-`command -v rm`}"
+check_tool tr "${tr:-`command -v tr`}"
+
+# Initialize the option set
+msg_nonl 'Setting up configuration options ... '
+option_setup
+msg 'done'
 
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
@@ -686,57 +974,9 @@ ld_check() {
 trap "exit 1" HUP INT TERM
 trap "${rm} -f ${tmp}" EXIT
 
-printf >&2 'Reading and preparing configuration from %s ... ' ${rc}
-${rm} -f ${tmp}
-# We want read(1) to perform backslash escaping in order to be able to use
-# multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow in
-# VMs (see [fa2e248]), Aharon Robbins suggested the following
-< ${rc} ${awk} 'BEGIN{line = ""}{
-   gsub(/^[[:space:]]+/, "", $0)
-   gsub(/[[:space:]]+$/, "", $0)
-   if(gsub(/\\$/, "", $0)){
-      line = line $0
-      next
-   }else
-      line = line $0
-   if(index(line, "#") == 1){
-      line = ""
-   }else if(length(line)){
-      print line
-      line = ""
-   }
-}' |
-while read line; do
-   if [ -n "${good_shell}" ]; then
-      i=${line%%=*}
-   else
-      i=`${awk} -v LINE="${line}" 'BEGIN{
-         gsub(/=.*$/, "", LINE)
-         print LINE
-      }'`
-   fi
-   if [ "${i}" = "${line}" ]; then
-      msg 'ERROR: invalid syntax in: %s' "${line}"
-      continue
-   fi
-
-   eval j="\$${i}" jx="\${${i}+x}"
-   if [ -n "${j}" ] || [ "${jx}" = x ]; then
-      : # Yet present
-   else
-      j=`${awk} -v LINE="${line}" 'BEGIN{
-         gsub(/^[^=]*=/, "", LINE)
-         gsub(/^\"*/, "", LINE)
-         gsub(/\"*$/, "", LINE)
-         print LINE
-      }'`
-   fi
-   [ "${i}" = "DESTDIR" ] && continue
-   echo "${i}=\"${j}\""
-done > ${tmp}
-# Reread the mixed version right now
-. ./${tmp}
-printf >&2 'done\n'
+msg_nonl 'Joining in %s ... ' ${rc}
+option_join_rc
+msg 'done'
 
 # We need to know about that now, in order to provide utility overwrites etc.
 os_setup
@@ -783,50 +1023,9 @@ trap "trap \"\" HUP INT TERM EXIT;\
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
 # evaluated values not only in our new configuration file, but also at hand..
-printf >&2 'Evaluating all configuration items ... '
-${rm} -f ${newlst} ${newmk} ${newh}
-exec 5<&0 6>&1 <${tmp} >${newlst}
-while read line; do
-   z=
-   if [ -n "${good_shell}" ]; then
-      i=${line%%=*}
-      [ "${i}" != "${i#OPT_}" ] && z=1
-   else
-      i=`${awk} -v LINE="${line}" 'BEGIN{
-         gsub(/=.*$/, "", LINE);\
-         print LINE
-      }'`
-      if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
-         z=1
-      fi
-   fi
-
-   eval j=\$${i}
-   if [ -n "${z}" ]; then
-      j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
-      if [ -z "${j}" ] || feat_val_no "${j}"; then
-         j=0
-         printf "   /* #undef ${i} */\n" >> ${newh}
-      elif feat_val_yes "${j}"; then
-         if feat_val_require "${j}"; then
-            j=require
-         else
-            j=1
-         fi
-         printf "   /* #define ${i} */\n" >> ${newh}
-      else
-         msg 'ERROR: cannot parse <%s>' "${line}"
-         config_exit 1
-      fi
-   else
-      printf "#define ${i} \"${j}\"\n" >> ${newh}
-   fi
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n"
-   eval "${i}=\"${j}\""
-done
-exec 0<&5 1>&6 5<&- 6<&-
-printf >&2 'done\n'
+msg_nonl 'Evaluating all configuration items ... '
+option_evaluate
+msg 'done'
 
 # Add the known utility and some other variables
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_NAIL}\"\n" >> ${newh}
@@ -979,6 +1178,7 @@ msg_nonl() {
    printf -- "${fmt}" "${@}" >&5
 }
 
+# !!
 exec 5>&2 > ${log} 2>&1
 
 echo "${LIBS}" > ${lib}
@@ -992,89 +1192,6 @@ ${cat} > ${makefile} << \!
 .c:
 	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
 !
-
-_check_preface() {
-   variable=$1 topic=$2 define=$3
-
-   echo '**********'
-   msg_nonl ' . %s ... ' "${topic}"
-   echo "/* checked ${topic} */" >> ${h}
-   ${rm} -f ${tmp} ${tmp}.o
-   echo '*** test program is'
-   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
-   #echo '*** the preprocessor generates'
-   #${make} -f ${makefile} ${tmp}.x
-   #${cat} ${tmp}.x
-   echo '*** results are'
-}
-
-compile_check() {
-   variable=$1 topic=$2 define=$3
-
-   _check_preface "${variable}" "${topic}" "${define}"
-
-   if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
-         [ -f ./${tmp}.o ]; then
-      msg 'yes'
-      echo "${define}" >> ${h}
-      eval have_${variable}=yes
-      return 0
-   else
-      echo "/* ${define} */" >> ${h}
-      msg 'no'
-      eval unset have_${variable}
-      return 1
-   fi
-}
-
-_link_mayrun() {
-   run=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
-
-   _check_preface "${variable}" "${topic}" "${define}"
-
-   feat_yes CROSS_BUILD && run=0
-
-   if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
-            XLIBS="${LIBS} ${libs}" ./${tmp} &&
-         [ -f ./${tmp} ] &&
-         { [ ${run} -eq 0 ] || ./${tmp}; }; then
-      echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
-      msg 'yes'
-      echo "${define}" >> ${h}
-      LIBS="${LIBS} ${libs}"
-      echo "${libs}" >> ${lib}
-      INCS="${INCS} ${incs}"
-      echo "${incs}" >> ${inc}
-      eval have_${variable}=yes
-      return 0
-   else
-      msg 'no'
-      echo "/* ${define} */" >> ${h}
-      eval unset have_${variable}
-      return 1
-   fi
-}
-
-link_check() {
-   _link_mayrun 0 "${1}" "${2}" "${3}" "${4}" "${5}"
-}
-
-run_check() {
-   _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
-}
-
-feat_def() {
-   if feat_yes ${1}; then
-      echo '#define HAVE_'${1}'' >> ${h}
-   else
-      echo '/* OPT_'${1}'=0 */' >> ${h}
-   fi
-}
-
-squeeze_em() {
-   < "${1}" > "${2}" ${awk} \
-   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
-}
 
 ## Generics
 
@@ -1581,6 +1698,7 @@ echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
 
 ## The remains are expected to be used only by the main MUA binary!
 
+OPT_LOCALES=0
 link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void){
@@ -1588,8 +1706,12 @@ int main(void){
    return 0;
 }
 !
+[ -n "${have_setlocale}" ] && OPT_LOCALES=1
 
-if [ "${have_setlocale}" = yes ]; then
+OPT_MBYTE_CHARSETS=0
+OPT_WIDE_GLYPHS=0
+OPT_TERMINAL_CHARSET=0
+if [ -n "${have_setlocale}" ]; then
    link_check c90amend1 'ISO/IEC 9899:1990/Amendment 1:1995' \
       '#define HAVE_C90AMEND1' << \!
 #include <limits.h>
@@ -1608,8 +1730,9 @@ int main(void){
    return (mblen("\0", 1) == 0);
 }
 !
+   [ -n "${have_c90amend1}" ] && OPT_MBYTE_CHARSETS=1
 
-   if [ "${have_c90amend1}" = yes ]; then
+   if [ -n "${have_c90amend1}" ]; then
       link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void){
@@ -1617,6 +1740,7 @@ int main(void){
    return 0;
 }
 !
+      [ -n "${have_wcwidth}" ] && OPT_WIDE_GLYPHS=1
    fi
 
    link_check nl_langinfo 'nl_langinfo(3)' '#define HAVE_NL_LANGINFO' << \!
@@ -1627,6 +1751,7 @@ int main(void){
    return (nl_langinfo(CODESET) == NULL);
 }
 !
+   [ -n "${have_nl_langinfo}" ] && OPT_TERMINAL_CHARSET=1
 fi # have_setlocale
 
 link_check fnmatch 'fnmatch(3)' '#define HAVE_FNMATCH' << \!
@@ -2025,6 +2150,12 @@ else
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # feat_yes SSL
 
+if [ "${have_openssl}" = 'yes' ]; then
+   OPT_SMIME=1
+else
+   OPT_SMIME=1
+fi
+
 if feat_yes SMTP; then
    echo '#define HAVE_SMTP' >> ${h}
 else
@@ -2277,11 +2408,11 @@ int main(void){
 _EOT
    }
 
-   if feat_yes TERMCAP_PREFER_TERMINFO; then
+   if feat_yes TERMCAP_VIA_TERMINFO; then
       __terminfolib -ltinfo -ltinfo ||
          __terminfolib -lcurses -lcurses ||
          __terminfolib -lcursesw -lcursesw ||
-         feat_bail_required TERMCAP_PREFER_TERMINFO
+         feat_bail_required TERMCAP_VIA_TERMINFO
    fi
 
    if [ -z "${have_terminfo}" ]; then
@@ -2316,7 +2447,7 @@ _EOT
    fi
 else
    echo '/* OPT_TERMCAP=0 */' >> ${h}
-   echo '/* OPT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
+   echo '/* OPT_TERMCAP_VIA_TERMINFO=0 */' >> ${h}
 fi
 
 if feat_yes SPAM_SPAMC; then
@@ -2370,44 +2501,7 @@ ${mv} ${h} ${tmp}
 printf '#ifndef n_CONFIG_H\n# define n_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
 ${rm} -f ${tmp}
-
-printf '\n/* The "feature string" */\n' >> ${h}
-printf '# if defined _ACCMACVAR_SOURCE || defined HAVE_AMALGAMATION\n' >> ${h}
-printf 'static char const _features[] = "MIME"\n' >> ${h}
-printf '# ifdef HAVE_SETLOCALE\n   ",LOCALES"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_C90AMEND1\n   ",MULTIBYTE CHARSETS"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_NL_LANGINFO\n   ",TERMINAL CHARSET"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_ICONV\n   ",ICONV"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SOCKETS\n   ",NETWORK"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SSL\n   ",S/MIME,SSL/TLS"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SSL_ALL_ALGORITHMS\n   ",SSL-ALL-ALGORITHMS"\n# endif\n'\
-   >> ${h}
-printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_MD5\n   ",MD5 [APOP,CRAM-MD5]"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
-  printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_KEY_BINDINGS\n   ",KEY-BINDINGS"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
-  printf '# ifdef HAVE_TERMINFO\n   " (terminfo(5))"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_DOCSTRINGS\n   ",DOCSTRINGS"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_QUOTE_FOLD\n   ",QUOTE-FOLD"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_FILTER_HTML_TAGSOUP\n   ",HTML-FILTER"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_CROSS_BUILD\n   ",CROSS-BUILD"\n# endif\n' >> ${h}
-printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
+printf '\n' >> ${h}
 
 # Create the real mk.mk
 # Note we cannout use explicit ./ filename prefix for source and object
@@ -2442,7 +2536,30 @@ else
    echo '#else' >> ${h}
 fi
 
-printf '#endif /* n_CONFIG_H */\n' >> ${h}
+# Finally, create the string that is used by *feature* and `version'.
+# Take this nice opportunity and generate a visual listing of included and
+# non-included features for the person who runs the configuration
+msg '\nThe following features are included (+) or not (-):'
+set -- ${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}
+printf '/* The "feature string" */\n' >> ${h}
+# Because + is expanded by *folder* if first in "echo $features", put something
+printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES "#' >> ${h}
+sep=
+for opt
+do
+   sopt="`echo ${opt} | ${tr} '[A-Z]_' '[a-z]-'`"
+   feat_yes ${opt} && sign=+ || sign=-
+   printf -- "${sep}${sign}${sopt}" >> ${h}
+   sep=','
+   i=`option_doc_of ${opt}`
+   [ -z "${i}" ] && continue
+   msg " %s %s: %s" ${sign} ${sopt} "${i}"
+done
+# TODO instead of using sh+tr+awk+printf, use awk, drop option_doc_of, inc here
+#exec 5>&1 >>${h}
+#${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
+#   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
+printf '"\n#endif /* n_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
@@ -2451,221 +2568,31 @@ ${cat} ./mk-mk.in >> ${mk}
 
 ## Finished!
 
-${cat} > ${tmp2}.c << \!
-#include "config.h"
-:
-:The following optional features are enabled:
-#ifdef HAVE_SETLOCALE
-: + Locale support: Printable characters depend on the environment
-# ifdef HAVE_C90AMEND1
-: + Multibyte character support
-# endif
-# ifdef HAVE_NL_LANGINFO
-: + Automatic detection of terminal character set
-# endif
-#endif
-#ifdef HAVE_ICONV
-: + Character set conversion using iconv()
-#endif
-#ifdef HAVE_SOCKETS
-: + Network support
-#endif
-#ifdef HAVE_SSL
-# ifdef HAVE_OPENSSL
-: + S/MIME and SSL/TLS (OpenSSL)
-# endif
-# ifdef HAVE_SSL_ALL_ALGORITHMS
-: + + Support for more ("all") digest and cipher algorithms
-# endif
-#endif
-#ifdef HAVE_SMTP
-: + SMTP protocol
-#endif
-#ifdef HAVE_POP3
-: + POP3 protocol
-#endif
-#ifdef HAVE_GSSAPI
-: + GSS-API authentication
-#endif
-#ifdef HAVE_MD5
-: + MD5 message digest (APOP, CRAM-MD5)
-#endif
-#ifdef HAVE_NETRC
-: + .netrc file support
-#endif
-#ifdef HAVE_IDNA
-: + IDNA (internationalized domain names for applications) support
-#endif
-#ifdef HAVE_IMAP_SEARCH
-: + IMAP-style search expressions
-#endif
-#ifdef HAVE_REGEX
-: + Regular expression support (searches, conditional expressions etc.)
-#endif
-#if defined HAVE_MLE
-# ifdef HAVE_WCWIDTH
-: + Command line editing via M(ailx)-L(ine)-E(ditor) (wide glyph support)
-# else
-: + Command line editing via M(ailx)-L(ine)-E(ditor) (no wide glyph support)
-# endif
-# ifdef HAVE_HISTORY
-: + + History management
-# endif
-# ifdef HAVE_KEY_BINDINGS
-: + + Configurable key bindings
-# endif
-#endif
-#ifdef HAVE_TERMCAP
-# ifdef HAVE_TERMINFO
-: + Terminal capability queries (terminfo(5))
-# else
-: + Terminal capability queries (termcap(5))
-# endif
-#endif
-#ifdef HAVE_SPAM
-: + Spam management
-# ifdef HAVE_SPAM_SPAMC
-: + + Via spamc(1) (of spamassassin(1))
-# endif
-# ifdef HAVE_SPAM_SPAMD
-: + + Directly via spamd(1) (of spamassassin(1))
-# endif
-# ifdef HAVE_SPAM_FILTER
-: + + Via freely configurable *spam-filter-XY*s
-# endif
-#endif
-#ifdef HAVE_DOCSTRINGS
-: + Documentation summary strings
-#endif
-#ifdef HAVE_QUOTE_FOLD
-: + Extended *quote-fold*ing
-#endif
-#ifdef HAVE_FILTER_HTML_TAGSOUP
-: + Builtin HTML-to-text filter (for display purposes, primitive)
-#endif
-#ifdef HAVE_COLOUR
-: + Coloured message display (simple)
-#endif
-#ifdef HAVE_DOTLOCK
-: + Dotlock files and privilege-separated file dotlock program
-#endif
-:
-:The following optional features are disabled:
-#ifndef HAVE_SETLOCALE
-: - Locale support: Only ASCII characters are recognized
-#endif
-# ifndef HAVE_C90AMEND1
-: - Multibyte character support
-# endif
-# ifndef HAVE_NL_LANGINFO
-: - Automatic detection of terminal character set
-# endif
-#ifndef HAVE_ICONV
-: - Character set conversion using iconv()
-: _ (Ooooh, no iconv(3), NO character set conversion possible!  Really...)
-#endif
-#ifndef HAVE_SOCKETS
-: - Network support
-#endif
-#ifndef HAVE_SSL
-: - S/MIME and SSL/TLS
-#else
-# ifndef HAVE_SSL_ALL_ALGORITHMS
-: - Support for more S/MIME and SSL/TLS digest and cipher algorithms
-# endif
-#endif
-#ifndef HAVE_SMTP
-: - SMTP protocol
-#endif
-#ifndef HAVE_POP3
-: - POP3 protocol
-#endif
-#ifndef HAVE_GSSAPI
-: - GSS-API authentication
-#endif
-#ifndef HAVE_MD5
-: - MD5 message digest (APOP, CRAM-MD5)
-#endif
-#ifndef HAVE_NETRC
-: - .netrc file support
-#endif
-#ifndef HAVE_IDNA
-: - IDNA (internationalized domain names for applications) support
-#endif
-#ifndef HAVE_IMAP_SEARCH
-: - IMAP-style search expressions
-#endif
-#ifndef HAVE_REGEX
-: - Regular expression support
-#endif
-#if !defined HAVE_MLE
-: - Command line editing and history
-#else
-# ifndef HAVE_HISTORY
-: + (Command line editing) - History management
-# endif
-# ifndef HAVE_KEY_BINDINGS
-: + (Command line editing) - Configurable key bindings
-# endif
-#endif
-#ifndef HAVE_TERMCAP
-: - Terminal capability queries
-#endif
-#ifndef HAVE_SPAM
-: - Spam management
-#endif
-#ifndef HAVE_DOCSTRINGS
-: - Documentation summary strings
-#endif
-#ifndef HAVE_QUOTE_FOLD
-: - Extended *quote-fold*ing
-#endif
-#ifndef HAVE_FILTER_HTML_TAGSOUP
-: - Builtin HTML-to-text filter (for display purposes, primitive)
-#endif
-#ifndef HAVE_COLOUR
-: - Coloured message display (simple)
-#endif
-#ifndef HAVE_DOTLOCK
-: - Dotlock files and privilege-separated file dotlock program
-#endif
-:
-#if !defined HAVE_FNMATCH || !defined HAVE_FCHDIR ||\
-      defined HAVE_DEBUG || defined HAVE_DEVEL
-:Remarks:
-# ifndef HAVE_FNMATCH
-: . The function fnmatch(3) could not be found.
-: _ Filename patterns like wildcard are not supported on your system.
-# endif
-# ifndef HAVE_FCHDIR
-: . The function fchdir(2) could not be found. We will use chdir(2)
-: _ instead. This is not a problem unless the current working
-: _ directory is changed while this program is inside of it.
-# endif
-# ifdef HAVE_DEBUG
-: . Debug enabled binary: not meant to be used by end-users: THANKS!
-# endif
-# ifdef HAVE_DEVEL
-: . Computers do not blunder.
-# endif
-:
-#endif /* Remarks */
-:Setup:
-: . System-wide resource file: VAL_SYSCONFDIR/VAL_SYSCONFRC
-: . bindir: VAL_BINDIR
-#ifdef HAVE_DOTLOCK
-: . libexecdir: VAL_LIBEXECDIR
-#endif
-: . mandir: VAL_MANDIR
-: . MTA: VAL_MTA (argv[0] = VAL_MTA_ARGV0)
-: . $MAIL spool directory: VAL_MAIL
-:
-!
+msg '\nSetup:'
+msg ' . System-wide resource file: %s/%s' "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
+msg ' . bindir: %s' "${VAL_BINDIR}"
+if feat_yes DOTLOCK; then
+   msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
+fi
+msg ' . mandir: %s' "${VAL_MANDIR}"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0 %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
+msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
+msg ''
 
-${make} -f ${makefile} ${tmp2}.x
-< ${tmp2}.x ${sed} -e '/^[^:]/d; /^$/d; s/^://' |
-while read l; do
-   msg "${l}"
-done
+if [ -n "${have_fnmatch}" ] && [ -n "${have_fchdir}" ]; then
+   exit 0
+fi
+msg 'Remarks:'
+if [ -z "${have_fnmatch}" ]; then
+   msg ' . The function fnmatch(3) could not be found.'
+   msg '   Filename patterns like wildcard are not supported on your system'
+fi
+if [ -z "${have_fchdir}" ]; then
+   msg ' . The function fchdir(2) could not be found.'
+   msg '   We will use chdir(2) instead.'
+   msg '   This is a problem only if the current working directory is changed'
+   msg '   while this program is inside of it'
+fi
+msg ''
 
 # s-it-mode

@@ -169,7 +169,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1)
-#if $features !@ +html-filter
+#if $features !@ +filter-html-tagsoup
 #   set pipe-text/html='lynx -stdin -dump -force_html'
 #endif
 
@@ -182,7 +182,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 ## Gimmicks
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode)
-#if terminal && $features =@ +mle && $features =@ +key-bindings
+#if terminal && $features =@ +key-bindings
 #   bind base $'\e',d mle-snarf-word-fwd
 #   bind base $'\e',$'\c?' mle-snarf-word-bwd
 #   bind base $'\e',f mle-go-word-fwd

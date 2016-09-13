@@ -481,7 +481,7 @@ _rcv_mode(char const *folder, char const *Larg)
          safe_signal(SIGINT, _hdrstop);
       if (!(options & OPT_N_FLAG)) {
          if (!ok_blook(quiet))
-            printf(_("%s version %s.  Type ? for help.\n"),
+            printf(_("%s version %s.  Type `?' for help\n"),
                (ok_blook(bsdcompat) ? "Mail" : uagent), ok_vlook(version));
          announce(1);
          fflush(stdout);
@@ -756,9 +756,9 @@ joarg:
          myname = savecat("%", _oarg);
          break;
       case 'V':
-         puts(ok_vlook(version));
-         exit(EXIT_OK);
-         /* NOTREACHED */
+         printf(_("%s version %s\n"), uagent, ok_vlook(version));
+         exit_status = EXIT_OK;
+         goto j_leave;
       case 'v':
          /* Be verbose */
          ok_bset(verbose, TRU1);

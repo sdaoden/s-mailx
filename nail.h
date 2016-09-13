@@ -1485,7 +1485,7 @@ ok_b_emptybox,
    ok_v_expandaddr,
    ok_v_expandargv,
 
-   ok_v_features,                      /* {virt=_features} */
+   ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,
    ok_v_folder,                        /* {vip=1} */
    ok_v__folder_resolved,              /* {rdonly=1,nodel=1} */
