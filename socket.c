@@ -307,7 +307,8 @@ jpseudo_jump:
        * check for the given ai_socktype.. */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
-               (serv = url_servbyname(urlp, NULL)) != NULL) {
+               (serv = n_servbyname(urlp->url_proto, NULL)) != NULL &&
+               *serv != '\0') {
             n_err(_("  Trying standard protocol port \"%s\"\n"), serv);
             n_err(_("  If that succeeds consider including the "
                "port in the URL!\n"));
@@ -359,7 +360,7 @@ jjumped:
       else {
          if (options & OPT_VERB)
             n_err(_("failed\n"));
-         if ((serv = url_servbyname(urlp, &urlp->url_portno)) != NULL)
+         if ((serv = n_servbyname(urlp->url_proto, &urlp->url_portno)) != NULL)
             n_err(_("  Unknown service: \"%s\"\n"), urlp->url_proto);
             n_err(_("  Trying standard protocol port \"%s\"\n"), serv);
             n_err(_("  If that succeeds consider including the "

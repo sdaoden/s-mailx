@@ -67,8 +67,8 @@ MAILSPOOL=`\
 ## TODO values (VAL_).  This is better than the current WANT_ and XYZ mess.
 ## TODO Start today with a few
 
-# Path to the local MTA (Mail Transport Agent).
-VAL_SENDMAIL=`\
+# Path to the local MTA (Mail-Transfer-Agent).
+VAL_MTA=`\
    if [ -x /usr/bin/sendmail ]; then \
       echo /usr/bin/sendmail;\
    elif [ -x /usr/lib/sendmail ]; then \
@@ -82,7 +82,7 @@ VAL_SENDMAIL=`\
 # mailwrapper(8) is often used, which selects the required service by
 # looking at the name by which the program actually has been invoked.
 # This variable can be used to adjust this name as necessary.
-VAL_SENDMAIL_PROGNAME=sendmail
+VAL_MTA_ARGV0=sendmail
 
 # Default *SHELL* (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of

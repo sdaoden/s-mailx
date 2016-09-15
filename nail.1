@@ -412,13 +412,17 @@ Any folder opened will be in read-only mode.
 If
 .Ar from-addr
 is a valid address then it specifies the envelope sender address to be
-passed to the MTA as
+passed to a file-based
+.Va mta
+(Mail-Transfer-Agent) as
 .Ql -f Ar address
 when a message is send.
 Shall
 .Ar from-addr
 include a user name, then the address components will be separated and
-the name part will be passed to the MTA individually via
+the name part will be passed to file-based
+.Va mta
+individually via
 .Ql -F Ar name .
 The given
 .Ar from-addr
@@ -426,22 +430,24 @@ will also be assigned to the
 .Va from
 variable (as via
 .Ql -Sfrom=from-addr ) ,
-therefore affecting possible SMTP data transfer;
-note this assignment does not cause value fixation.
+therefore affecting possible SMTP
+.Va mta
+data transfer; note this assignment does not cause value fixation.
 .Pp
 If instead an empty string is passed as
 .Ar from-addr
 then the content of the variable
 .Va from
-will be evaluated and used for this purpose whenever the MTA is
-contacted.
+will be evaluated and used for this purpose whenever the
+.Va mta
+is contacted.
 Note that \*(UA by default, without
 .Fl \&\&r
 that is, neither passes
-.Ql -f
+.Fl \&\&f
 nor
-.Ql -F
-flags to the MTA by itself.
+.Fl \&\&F
+flags to a file-based MTA by itself.
 .
 .Mx
 .It Fl S Ar var Ns Op = Ns value
@@ -594,14 +600,13 @@ are implemented by means of setting the respective option, as via
 .Ek
 arguments that are given at the end of the command line after a
 .Ql --
-separator will be passed through to the mail-transfer-agent (MTA) and
-persist for an entire (interactive) session \(en if the setting of
+separator will be passed through to a file-based
+.Va mta
+(Mail-Transfer-Agent) and persist for an entire (interactive) session
+\(en if the setting of
 .Va expandargv
-allows their recognition;
-MTA arguments can also be specified in the variable
-.Va sendmail-arguments ;
-find MTA interaction described in more detail in the documentation of
-.Va sendmail .
+allows their recognition; no such constraints apply to the variable
+.Va mta-arguments .
 .\" }}}
 .
 .\" .Ss "A starter" {{{
@@ -635,11 +640,13 @@ send to names which address groups of users.
 .Pp
 \*(UA is thus the user side of the
 .Ux
-mail system, whereas the system side (mail-transfer-agent, MTA) was
+mail system, whereas the system side (Mail-Transfer-Agent, MTA) was
 traditionally taken by
 .Xr sendmail 8 ,
 and most MTAs provide a binary of this name for compatibility purposes.
-If the \*(OPal SMTP is included in the
+If the \*(OPal SMTP
+.Va mta
+is included in the
 .Ic features
 of \*(UA then the system side is not a mandatory precondition for mail
 delivery.
@@ -684,14 +691,11 @@ contains some suggestions.
 .\" .Ss "On sending mail, and non-interactive mode" {{{
 .Ss "On sending mail, and non-interactive mode"
 .
-To send a message to one or more people, using a local
-mail-transfer-agent (MTA; the executable path can be set via
-.Va sendmail )
-or the \*(OPal builtin SMTP (set and see the variable
-.Va smtp )
-transport to actually deliver the generated mail message, \*(UA can be
-invoked with arguments which are the names of people to whom the mail
-will be sent, and the command line options
+To send a message to one or more people, using a local or a builtin
+.Va mta
+(Mail-Transfer-Agent) transport to actually deliver the generated mail
+message, \*(UA can be invoked with arguments which are the names of
+people to whom the mail will be sent, and the command line options
 .Fl b
 and
 .Fl c
@@ -701,8 +705,14 @@ can be used to add (blind) carbon copy receivers:
 $ \*(uA -s ubject -a ttach.txt bill@exam.ple
 # But... try it in an isolated dry-run mode first
 $ LC_ALL=C \*(uA -:/ -d -vv -Ssendwait \e
-   -b bcc@exam.ple -c cc@exam.ple -s "A subject" -. \e
-   "(Lovely) Bob <bob@exam.ple>"  eric@exam.ple
+   -b bcc@exam.ple -c cc@exam.ple -. \e
+   '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
+# With SMTP
+$ LC_ALL=C \*(uA -:/ -d -vv -Sv15-compat -Ssendwait \e
+    -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
+    -S 'from=scriptreply@exam.ple' \e
+    -a /etc/mail.rc \e
+    -. eric@exam.ple
 .Ed
 .
 .Pp
@@ -733,9 +743,9 @@ denoted by
 unless
 .Pf no Va save
 is set).
-Messages are sent asynchronously unless the variable
+Messages are sent asynchronously, without supervision, unless the variable
 .Va sendwait
-is set, therefore send errors won't be reported.
+is set, therefore send errors are not recognizable until then.
 .
 .Pp
 A number of
@@ -762,11 +772,11 @@ hook macros may be set to automatically adjust some settings dependent
 on receiver, sender or subject contexts.
 .
 .Pp
-Setting
-.Va from
-is often necessary (e.g., for
-.Va smtp
-transfer), and saving a copy of sent messages in a
+Especially for using public mail provider accounts with the SMTP
+.Va mta
+it is often necessary to set
+.Va from ,
+and saving a copy of sent messages in a
 .Va record
 may be desirable \(en as for most mailbox file targets some special
 syntax conventions are recognized (see the
@@ -867,7 +877,7 @@ command, so that, for instance, the user can send mail to
 .Ql cohorts
 and have it go to a group of people.
 These aliases have nothing in common with the system wide aliases that
-may be used by the MTA (mail-transfer-agent), which are subject to the
+may be used by the MTA, which are subject to the
 .Ql name
 constraint of
 .Va expandaddr
@@ -898,7 +908,7 @@ to specify variables:
 $ env LC_ALL=C \e
   \*(uA -:/ -Sv15-compat -Ssendwait -Snosave \e
     -Sexpandaddr=fail,-all,+addr \e
-    -S 'smtp=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
+    -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@exam.ple' \e
     -s 'subject' -a attachment_file \e
     -. "Recipient 1 <rec1@exam.ple>" rec2@exam.ple \e
@@ -2151,7 +2161,7 @@ unusual cases become possible.
 The usual case is as short as:
 .
 .Pp
-.Dl set smtp=smtp://USER:PASS@HOST smtp-use-starttls \e
+.Dl set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
 .Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
 .
 .Pp
@@ -2711,7 +2721,7 @@ and vertical bar
 .Ql |
 characters in order to ensure upward compatibility: the author would
 like to see things like
-.Ql ? echo $'trouble\tahead' | cat >> in_the_shell.txt
+.Ql ? echo $'trouble\etahead' | cat >> in_the_shell.txt
 and
 .Ql ? top 2 5 10; type 3 22
 become possible.
@@ -2875,7 +2885,7 @@ The two argument form is identical to defining a macro as via
 account myisp {
   set folder=~/mail MAIL=+syste.mbox record=+sent.mbox
   set from='myname@myisp.example (My Name)'
-  set smtp=smtp://mylogin@smtp.myisp.example
+  set mta=smtp://mylogin@smtp.myisp.example
 }
 .Ed
 .
@@ -5657,8 +5667,9 @@ set to
 Notes: \*(UA doesn't support the
 .Pf no Va onehop
 variable \(en use command line options or
-.Va sendmail-arguments
-to pass options through to a MTA.
+.Va mta-arguments
+to pass options through to a
+.Va mta .
 And the default global
 .Pa \*(UR
 file (which is loaded unless the
@@ -6234,9 +6245,11 @@ command line option; in the latter case(s) any address may be used, then.
 .
 .Mx
 .It Va expandargv
-Unless this variable is set additional mail-transfer-agent (MTA)
+Unless this variable is set additional
+.Va mta
+(Mail-Transfer-Agent)
 arguments from the command line, as can be given after a
-.Ql --
+.Fl \&\&-
 separator, are ignored due to safety reasons.
 However, if set to the special (case-insensitive) value
 .Ql fail ,
@@ -6396,15 +6409,17 @@ The address (or a list of addresses) to put into the
 field of the message header, quoting RFC 5322:
 the author(s) of the message, that is, the mailbox(es) of the person(s)
 or system(s) responsible for the writing of the message.
-If replying to messages these addresses are handled as if they were in
-the
+When
+.Ic reply Ns
+ing to messages these addresses are handled as if they were in the
 .Ic alternates
 list.
+.Pp
 If the machine's hostname is not valid at the Internet (for example at
 a dialup machine) then either this variable or
 .Va hostname
-(\*(IN and with
-.Va smtp
+(\*(IN and with a defined SMTP protocol in
+.Va mta
 .Va smtp-hostname
 adds even more fine-tuning capabilities),
 have to be set.
@@ -6627,14 +6642,12 @@ i.e., in
 and
 .Ql From:
 fields.
-Note that when
-.Va smtp
-transport is not used then it is normally the responsibility of the MTA
-to create these fields, \*(IN in conjunction with
-.Va smtp
-however
+Note that when SMTP transport is not used (via
+.Va mta ) ,
+then it is normally the responsibility of the MTA to create these
+fields, \*(IN in conjunction with SMTP however
 .Va smtp-hostname
-also influences the results;
+also influences the results:
 you should produce some test messages with the desired combination of
 .Va \&\&hostname ,
 and/or
@@ -6783,7 +6796,8 @@ Set this option to instead generate MBOX files which comply to RFC 4155.
 \*(BO By setting this option the generation of
 .Ql Message-ID:
 can be completely suppressed, effectively leaving this task up to the
-mail-transfer-agent (MTA) or the SMTP server.
+.Va mta
+(Mail-Transfer-Agent) or the SMTP server.
 (According to RFC 5321 your SMTP server is not required to add this
 field by itself, so you should ensure that it accepts messages without a
 .Ql Message-ID . )
@@ -6816,9 +6830,11 @@ Note that a set
 .Va metoo
 also causes a
 .Ql -m
-option to be passed to mail-transfer-agents (MTAs);
-though most of the modern MTAs don't (no longer) document this flag, no
-MTA is known which doesn't support it (for historical compatibility).
+option to be passed through to the
+.Va mta
+(Mail-Transfer-Agent); though most of the modern MTAs no longer document
+this flag, no MTA is known which doesn't support it (for historical
+compatibility).
 .
 .Mx
 .It Va mime-allow-text-controls
@@ -6943,6 +6959,160 @@ content may use the extended syntax that is described in the section
 .Sx "The mime.types files" .
 Directives found in such files always take precedence (are prepended to
 the MIME type cache).
+.
+.
+.Mx
+.It Va mta
+To choose an alternate Mail-Transfer-Agent, set this option to either
+the full pathname of an executable (optionally prefixed with a
+.Ql file://
+protocol indicator), or \*(OPally a SMTP protocol URL, e.g., \*(IN
+.Pp
+.Dl smtps?://[user[:password]@]server[:port]
+.Pp
+(\*(OU:
+.Ql [smtp://]server[:port] . )
+The default has been chosen at compie time.
+All supported data transfers are executed in child processes, which
+run asynchronously, and without supervision, unless either the
+.Va sendwait
+or the
+.Va verbose
+variable is set.
+If such a child receives a TERM signal, it will abort and
+.Va save
+the message to
+.Ev DEAD ,
+if so configured.
+.
+.Pp
+For a file-based MTA it may be necessary to set
+.Va mta-argv0
+in in order to choose the right target of a modern
+.Xr mailwrapper 8
+environment.
+It will be passed command line arguments from several possible sources:
+from the variable
+.Va mta-arguments
+if set, from the command line if given and the variable
+.Va expandargv
+allows their use.
+Argument processing of the MTA will be terminated with a
+.Fl \&\&-
+separator.
+.
+.Pp
+The otherwise occurring implicit usage of the following MTA command
+line arguments can be disabled by setting the boolean option
+.Va mta-no-default-arguments
+(which will also disable passing
+.Fl \&\&-
+to the MTA):
+.Fl \&\&i
+(for not treating a line with only a dot
+.Ql \&.
+character as the end of input),
+.Fl \&\&m
+(shall the option
+.Va metoo
+be set) and
+.Fl \&\&v
+(if the
+.Va verbose
+option is set); in conjunction with the
+.Fl r
+command line option \*(UA will also pass
+.Fl \&\&f
+as well as possibly
+.Fl \&\&F .
+.
+.Pp
+\*(OP \*(UA can send mail over SMTP network connections to a single
+defined SMTP smarthost, the access URL of which has to be assigned to
+.Va mta .
+To use this mode it is helpful to read
+.Sx "On URL syntax and credential lookup" .
+It may be necessary to set the
+.Va smtp-hostname
+variable in order to use a specific combination of
+.Va from ,
+.Va hostname
+and
+.Va mta
+with some mail providers.
+.
+.Pp
+.Bl -bullet -compact
+.It
+The plain SMTP protocol (RFC 5321) that normally lives on the
+server port 25 and requires setting the
+.Va smtp-use-starttls
+variable to enter a SSL/TLS encrypted session state.
+Assign a value like \*(IN
+.Ql smtp://[user[:password]@]server[:port]
+(\*(OU
+.Ql smtp://server[:port] )
+to choose this protocol.
+.It
+The so-called SMTPS which is supposed to live on server port 465
+and is automatically SSL/TLS secured.
+Unfortunately it never became a standardized protocol and may thus not
+be supported by your hosts network service database
+\(en in fact the port number has already been reassigned to other
+protocols!
+.Pp
+SMTPS is nonetheless a commonly offered protocol and thus can be
+chosen by assigning a value like \*(IN
+.Ql smtps://[user[:password]@]server[:port]
+(\*(OU
+.Ql smtps://server[:port] ) ;
+due to the mentioned problems it is usually necessary to explicitly
+specify the port as
+.Ql :465 ,
+however.
+.It
+Finally there is the SUBMISSION protocol (RFC 6409), which usually
+lives on server port 587 and is practically identically to the SMTP
+protocol from \*(UA's point of view beside that; it requires setting the
+.Va smtp-use-starttls
+variable to enter a SSL/TLS secured session state.
+Assign a value like \*(IN
+.Ql submission://[user[:password]@]server[:port]
+(\*(OU
+.Ql submission://server[:port] ) .
+.El
+.
+.
+.Mx
+.It Va mta-arguments
+Arguments to pass through to a file-based
+.Va mta
+can be given via this variable, the content of which will be split up in
+a vector of arguments, to be joined onto other possible MTA options:
+.Pp
+.Dl set mta-arguments='-t -X \&"/tmp/my log\&"'
+.
+.Mx
+.It Va mta-no-default-arguments
+\*(BO Unless this option is set \*(UA will pass some well known
+standard command line options to a file-based
+.Va mta
+(Mail-Transfer-Agent), see there for more.
+.
+.Mx
+.It Va mta-argv0
+Many systems use a so-called
+.Xr mailwrapper 8
+environment to ensure compatibility with
+.Xr sendmail 1 .
+This works by inspecting the name that was used to invoke the mail
+delivery system.
+If this variable is set then the mailwrapper (the program that is
+actually executed when calling the file-based
+.Va mta )
+will treat its contents as that name.
+The default is
+.Ql sendmail .
 .
 .Mx
 .It Va NAIL_EXTRA_RC
@@ -7564,81 +7734,29 @@ list.
 .
 .Mx
 .It Va sendmail
-To use an alternate mail transport agent (MTA),
-set this option to the full pathname of the program to use.
-It may be necessary to set
-.Va sendmail-progname
-in addition.
-.Pp
-The MTA will be passed command line arguments from several possible
-sources: from the variable
-.Va sendmail-arguments
-if set, from the command line if given and the variable
-.Va expandargv
-allows their use.
-Argument processing of the MTA will be terminated with a
-.Ql --
-separator.
-.Pp
-The otherwise occurring implicit usage of the following MTA command line
-arguments can be disabled by setting the boolean option
-.Va sendmail-no-default-arguments
-(which will also disable passing
-.Ql --
-to the MTA):
-.Ql -i
-(for not treating a line with only a dot
-.Ql \&.
-character as the end of input),
-.Ql -m
-(shall the option
-.Va metoo
-be set) and
-.Ql -v
-(if the
-.Va verbose
-option is set); in conjunction with the
-.Fl r
-command line option \*(UA will also pass
-.Ql -f
-as well as
-.Ql -F .
+\*(OB Predecessor of
+.Va mta .
 .
 .Mx
 .It Va sendmail-arguments
-Arguments to pass through to the Mail-Transfer-Agent can be given via
-this option.
-The content of this variable will be split up in a vector of arguments
-which will be joined onto other possible MTA options:
-.Pp
-.Dl set sendmail-arguments='-t -X \&"/tmp/my log\&"'
+\*(OB Predecessor of
+.Va mta-arguments .
 .
 .Mx
 .It Va sendmail-no-default-arguments
-\*(BO Unless this option is set \*(UA will pass some well known
-standard command line options to the defined
-.Va sendmail
-program, see there for more.
+\*(OB\*(BO Predecessor of
+.Va mta-no-default-arguments .
 .
 .Mx
 .It Va sendmail-progname
-Many systems use a so-called
-.Xr mailwrapper 8
-environment to ensure compatibility with
-.Xr sendmail 1 .
-This works by inspecting the name that was used to invoke the mail
-delivery system.
-If this variable is set then the mailwrapper (the program that is
-actually executed when calling
-.Dq sendmail )
-will treat its contents as that name.
-The default is
-.Ql sendmail .
+\*(OB Predecessor of
+.Va mta-argv0 .
 .
 .Mx
 .It Va sendwait
-\*(BO When sending a message wait until the MTA (including the builtin
-SMTP one) exits before accepting further commands.
+\*(BO When sending a message wait until the
+.Va mta
+(including the builtin SMTP one) exits before accepting further commands.
 .Sy Only
 with this variable set errors reported by the MTA will be recognizable!
 If the MTA returns a non-zero exit status,
@@ -7853,76 +7971,20 @@ refers to the variable
 (or, if that contains multiple addresses,
 .Va sender ) .
 .
-.
 .Mx
 .It Va smtp
-\*(OP Normally \*(UA invokes the program defined via
-.Va sendmail
-to transfer messages, as described in
-.Sx "On sending mail, and non-interactive mode" .
-Setting the
-.Va \&\&smtp
-variable will instead cause SMTP network connections be made to the
-server specified therein in order to directly submit the message.
-\*(UA knows about three different
-.Dq SMTP protocols :
-.Pp
-.Bl -bullet -compact
-.It
-The plain SMTP protocol (RFC 5321) that normally lives on the
-server port 25 and requires setting the
-.Va smtp-use-starttls
-variable to enter a SSL/TLS encrypted session state.
-Assign a value like \*(IN
-.Ql [smtp://][user[:password]@]server[:port]
-(\*(OU
-.Ql [smtp://]server[:port] )
-to choose this protocol.
-.It
-Then the so-called SMTPS which is supposed to live on server port 465
-and is automatically SSL/TLS secured.
-Unfortunately it never became a standardized protocol and may thus not
-be supported by your hosts network service database
-\(en in fact the port number has already been reassigned to other
-protocols!
-.Pp
-SMTPS is nonetheless a commonly offered protocol and thus can be
-chosen by assigning a value like \*(IN
-.Ql smtps://[user[:password]@]server[:port]
-(\*(OU
-.Ql smtps://server[:port] ) ;
-due to the mentioned problems it is usually necessary to explicitly
-specify the port as
-.Ql :465 ,
-however.
-.It
-Finally there is the SUBMISSION protocol (RFC 6409), which usually
-lives on server port 587 and is practically identically to the SMTP
-protocol from \*(UA's point of view beside that; it requires setting the
-.Va smtp-use-starttls
-variable to enter a SSL/TLS secured session state.
-Assign a value like \*(IN
-.Ql submission://[user[:password]@]server[:port]
-(\*(OU
-.Ql submission://server[:port] ) .
-.El
-.Pp
-For more on credentials etc., please see
-.Sx "On URL syntax and credential lookup" .
-The SMTP transfer is executed in a child process, which runs
-asynchronously unless either the
-.Va sendwait
-or the
-.Va verbose
-variable is set.
-If it receives a TERM signal, it will abort and save the message to
-.Ev DEAD .
-.
+\*(OB\*(OP To use the builtin SMTP transport, specify a SMTP URL in
+.Va mta .
+\*(ID For compatibility reasons a set
+.Va smtp
+is used in preference of
+.Va mta .
 .
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
-\*(OP Variable chain that sets the SMTP authentication method.
-Possible values are
+\*(OP Variable chain that controls the SMTP
+.Va mta
+authentication method, possible values are
 .Ql none
 (\*(OU default),
 .Ql plain
@@ -7939,7 +8001,7 @@ method doesn't need any user credentials,
 requires a user name and all other methods require a user name and
 a password.
 See \*(IN
-.Va smtp ,
+.Va mta ,
 .Va user
 and
 .Va password
@@ -7987,19 +8049,21 @@ for specific values of sender addresses, dependent upon the variable
 .
 .Mx
 .It Va smtp-hostname
-\*(IN Normally \*(UA uses the variable
+\*(OP\*(IN Normally \*(UA uses the variable
 .Va from
 to derive the necessary
 .Ql USER@HOST
-information to issue a
+information in order to issue a
 .Ql MAIL FROM:<>
-SMTP command.
+SMTP
+.Va mta
+command.
 Setting
 .Va smtp-hostname
 can be used to use the
 .Ql USER
 from the SMTP account
-.Pf ( Va smtp
+.Pf ( Va mta
 or the
 .Va user
 variable chain)
@@ -8019,8 +8083,9 @@ Setting this variable also influences the generated
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
 \*(BO\*(OP Causes \*(UA to issue a
 .Ql STARTTLS
-command to make an SMTP session SSL/TLS encrypted, i.e., to enable
-transport layer security.
+command to make an SMTP
+.Va mta
+session SSL/TLS encrypted, i.e., to enable transport layer security.
 .
 .
 .Mx
@@ -9609,9 +9674,9 @@ shortcut mymbox %:+mbox.mbox myrec +sent.mbox
 set from='Your Name <address@exam.ple>'
 
 # It may be necessary to set hostname and/or smtp-hostname
-# if the "SERVER" of smtp and "domain" of from don't match.
+# if the "SERVER" of mta and "domain" of from don't match.
 # The `urlencode' command can be used to encode USER and PASS
-set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
+set mta=(smtps?|submission)://[USER[:PASS]@]SERVER[:PORT] \e
     smtp-auth=login/plain... \e
     smtp-use-starttls
 
@@ -9637,8 +9702,7 @@ mlsubscribe '^xfans@xfans\e.xyz$'
 account XooglX {
   set folder=~/spool/XooglX MAIL=+syste.mbox sent=+sent
   set from='Your Name <address@examp.ple>'
-  # (The plain smtp:// proto is optional)
-  set smtp=USER:PASS@smtp.gmXil.com smtp-use-starttls
+  set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
 }
 
 # Here is a pretty large one which does not allow sending mails
@@ -9650,7 +9714,7 @@ account XooglX {
 account XandeX {
   set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
-  set smtp=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
+  set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
 }
 
@@ -9722,7 +9786,7 @@ account XandeX {
   # Load an encrypted ~/.netrc by uncommenting the next line
   #set netrc-pipe='gpg -qd ~/.netrc.pgp'
 
-  set smtp=smtps://smtp.yXXXXx.ru:465 \e
+  set mta=smtps://smtp.yXXXXx.ru:465 \e
       smtp-hostname= hostname=yXXXXx.com
   set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
   ghost xp fi pop3s://pop.yXXXXx.ru

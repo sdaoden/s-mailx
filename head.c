@@ -602,7 +602,7 @@ FL char const *
 myaddrs(struct header *hp)
 {
    struct name *np;
-   char *rv;
+   char const *rv, *mta;
    NYD_ENTER;
 
    if (hp != NULL && (np = hp->h_from) != NULL) {
@@ -618,15 +618,27 @@ myaddrs(struct header *hp)
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
     * accept his desire */
-   if (ok_vlook(smtp) != NULL || ok_vlook(hostname) != NULL) {
-      char *hn = nodename(1);
-      size_t sz = strlen(myname) + strlen(hn) + 1 +1;
-      rv = salloc(sz);
-      sstpcpy(sstpcpy(sstpcpy(rv, myname), "@"), hn);
-   }
+   if (ok_vlook(hostname) != NULL)
+      goto jnodename;
+   if (ok_vlook(smtp) != NULL || /* TODO obsolete -> mta */
+         /* TODO pretty hacky for now (this entire fun), later: url_creat()! */
+         ((mta = ok_vlook(mta)) != NULL &&
+          (mta = n_servbyname(mta, NULL)) != NULL && *mta != '\0'))
+      goto jnodename;
 jleave:
    NYD_LEAVE;
    return rv;
+
+jnodename:{
+      char *hn, *cp;
+      size_t i;
+
+      hn = nodename(1);
+      i = strlen(myname) + strlen(hn) + 1 +1;
+      rv = cp = salloc(i);
+      sstpcpy(sstpcpy(sstpcpy(cp, myname), "@"), hn);
+   }
+   goto jleave;
 }
 
 FL char const *

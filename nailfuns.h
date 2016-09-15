@@ -2364,10 +2364,11 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
 
-#ifdef HAVE_SOCKETS
-/* Return port of urlp->url_proto (and set irv_or_null), or NULL if unknown */
-FL char const * url_servbyname(struct url const *urlp, ui16_t *irv_or_null);
+/* Return port for proto (and set irv_or_null), or NULL if unknown.
+ * For file:// this returns an empty string */
+FL char const *n_servbyname(char const *proto, ui16_t *irv_or_null);
 
+#ifdef HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,

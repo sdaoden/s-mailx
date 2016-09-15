@@ -1527,6 +1527,12 @@ ok_b_emptybox,
    ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mimetypes_load_control,
+   /* TODO: v15 (not yet due to <-> sendmail): {defval=VAL_MTA} */
+   ok_v_mta,
+   ok_v_mta_arguments,
+   ok_b_mta_no_default_arguments,
+    /* TODO v15: (not yet due to <-> sendmail-progname {defval=VAL_MTA_ARGV0} */
+   ok_v_mta_argv0,
 
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
    ok_b_NAIL_NO_SYSTEM_RC,             /* {import=1} */
@@ -1577,10 +1583,10 @@ ok_b_SYSV3,                         /* {env=1} */
    ok_v_sendcharsets,
    ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,
-   ok_v_sendmail,                      /* {defval=VAL_SENDMAIL} */
-   ok_v_sendmail_arguments,
-   ok_b_sendmail_no_default_arguments,
-   ok_v_sendmail_progname,             /* {defval=VAL_SENDMAIL_PROGNAME} */
+ok_v_sendmail,
+ok_v_sendmail_arguments,
+ok_b_sendmail_no_default_arguments,
+ok_v_sendmail_progname,
    ok_b_sendwait,
    ok_b_showlast,
    ok_b_showname,
@@ -1601,7 +1607,7 @@ ok_b_SYSV3,                         /* {env=1} */
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
    ok_v_smime_sign_message_digest,
-   ok_v_smtp,
+ok_v_smtp,
    ok_v_smtp_auth,
 ok_v_smtp_auth_password,
 ok_v_smtp_auth_user,
