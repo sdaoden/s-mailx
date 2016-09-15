@@ -90,19 +90,7 @@
 .Ek
 .Nm \*(uA
 .Bk -words
-.Op Fl BdEeHiNnRv~#
-.Op Fl \&: Ar spec
-.Op Fl A Ar account
-.Op Fl L Ar spec-list
-.Op Fl r Ar from-addr
-.Op Fl S Ar variable Ns Op Ns = Ns Ar value
-.Op Fl X Ar cmd
-.Fl f Op Ar file
-.Op Fl Fl \~ Ns Ar mta-option ...
-.Ek
-.Nm \*(uA
-.Bk -words
-.Op Fl BdEeHiNnRv~#
+.Op Fl BdEeHiNnRv~
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op Fl L Ar spec-list
@@ -110,6 +98,19 @@
 .Op Fl S Ar variable Ns Op Ns = Ns Ar value
 .Op Fl u Ar user
 .Op Fl X Ar cmd
+.Op Fl Fl \~ Ns Ar mta-option ...
+.Ek
+.Nm \*(uA
+.Bk -words
+.Op Fl BdEeHiNnRv~#
+.Op Fl \&: Ar spec
+.Op Fl A Ar account
+.Fl f
+.Op Fl L Ar spec-list
+.Op Fl r Ar from-addr
+.Op Fl S Ar variable Ns Op Ns = Ns Ar value
+.Op Fl X Ar cmd
+.Op Ar file
 .Op Fl Fl \~ Ns Ar mta-option ...
 .Ek
 .\" }}}
@@ -174,7 +175,9 @@ This option should be used by scripts: to avoid environmental noise they
 should
 .Dq detach
 from any configuration files and create a script-local environment,
-explicitly setting any desired variable via
+explicitly setting any of the desired
+.Sx "INTERNAL VARIABLES"
+via
 .Fl S .
 This option overrides
 .Fl n .
@@ -397,12 +400,15 @@ flags to the MTA by itself.
 .
 .Mx
 .It Fl S Ar variable Ns Op = Ns value
-Sets the internal option
+Sets the internal
 .Ar variable
-and, in case of a value option, assigns
+and, in case of a value variable, assigns
 .Ar value
 to it.
-Even though variables set via
+Even though variables (see
+.Sx "INTERNAL VARIABLES" )
+.Ic set
+via
 .Fl S
 may be overwritten from within resource files,
 the command line setting will be reestablished after all resource files
@@ -457,17 +463,10 @@ can be embedded, too.
 .
 .Mx
 .It Fl u Ar user
-Read the system mailbox of
-.Ar user
-(appropriate privileges presumed), and
-.Dq assume to be
-.Ar user
-in some aspects, e.g. in respect to
-.Ic file Ns
-\(enexpansions of
-.Ql %
-etc.; also see
-.Ev LOGNAME .
+Initially read the system mailbox of
+.Ar user ,
+appropriate privileges presumed; effectively identical to
+.Ql -f %user .
 .
 .Mx
 .It Fl V
@@ -477,7 +476,7 @@ Show \*(UA's version and exit.
 .It Fl v
 Setting the
 .Va verbose
-option enables display of some informational context messages.
+variable enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .
 .Mx
@@ -702,7 +701,11 @@ unless
 is set).
 .
 .Pp
-A number of variables can be used to alter default behavior; e.g.,
+A number of
+.Sx ENVIRONMENT
+and
+.Sx "INTERNAL VARIABLES"
+can be used to alter default behavior; e.g.,
 .Ic set Ns
 ting (also via
 .Fl S )
@@ -852,7 +855,7 @@ to disable any configuration file in conjunction with repititions of
 to specify variables:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C password=NOTSECRET \e
+$ env LC_ALL=C \e
   \*(uA -:/ -Sv15-compat -Ssendwait -Snosave \e
     -Sexpandaddr=fail,-all,+addr \e
     -S 'smtp=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
@@ -969,7 +972,7 @@ will display a header summary of the given message specification list
 instead of their content, e.g., the following will search for subjects:
 .
 .Pp
-.Dl ? from """@Some subject to search for"""
+.Dl from """@Some subject to search for"""
 .
 .Pp
 In the default setup all header fields of a message will be displayed,
@@ -1230,13 +1233,17 @@ Reading of this file can be suppressed, either by using the
 .Fl \&:
 or
 .Fl n
-command line options, or by setting the environment variable
+command line options, or by setting the
+.Sx ENVIRONMENT
+variable
 .Ev NAIL_NO_SYSTEM_RC .
 .
 .Mx
 .It Pa \*(ur
 File giving initial commands.
-A different file can be chosen by setting the environment variable
+A different file can be chosen by setting the
+.Sx ENVIRONMENT
+variable
 .Ev MAILRC .
 Reading of this file can be suppressed with the
 .Fl \&:
@@ -1248,7 +1255,9 @@ other resource files.
 It can be used to specify settings that are not understood by other
 .Xr mailx 1
 implementations, for example.
-This variable is only honoured when defined in a resource file.
+This variable is only honoured when defined in a resource file, e.g.,
+it is one of the
+.Sx "INTERNAL VARIABLES" .
 .El
 .
 .Pp
@@ -2024,16 +2033,8 @@ entry for
 .Pp
 If there is still no
 .Ql USER
-then \*(UA will fall back to the user who is supposed to run \*(UA:
-either the name that has been given with the
-.Fl u
-command line option (or, equivalently, but with less precedence, the
-environment variable
-.Ev LOGNAME ) ,
-or the
-.Dq current
-user.
-The identity of this user has been fixated during \*(UA startup and is
+then \*(UA will fall back to the user who is supposed to run \*(UA,
+the identity of which has been fixated during \*(UA startup and is
 known to be a valid user on the current host.
 .
 .It
@@ -2457,9 +2458,11 @@ and any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
-will be replaced by the expansion of the variable, if possible;
-\*(UA internal as well as environmental (shell) variables can be
-accessed through this mechanism.
+will be replaced by the expansion of the variable, if possible; \*(UA
+.Sx "INTERNAL VARIABLES"
+as well as
+.Sx ENVIRONMENT
+(shell) variables can be accessed through this mechanism.
 In order to include a raw
 .Ql $
 character precede it with a backslash
@@ -2994,6 +2997,61 @@ block is executed.
 (en) Marks the end of an
 .Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
 conditional execution block.
+.
+.
+.Mx
+.It Ic environ
+\*(UA has a strict notion about which variables are
+.Sx "INTERNAL VARIABLES"
+and which are managed in the program
+.Sx ENVIRONMENT .
+Since some of the latter are a vivid part of \*(UAs functioning,
+however, they are transparently integrated into the normal handling of
+internal variables via
+.Ic set
+and
+.Ic unset .
+To integrate other environment variables of choice into this
+transparent handling, and also to export internal variables into the
+process environment where they normally are not, a
+.Ql link
+needs to become established with this command, as in, e.g.,
+.
+.Pp
+.Dl environ link PERL5LIB from TZ
+.
+.Pp
+Afterwards changing such variables with
+.Ic set
+will cause automatic updates of the program environment, and therefore
+be inherited by newly created child processes.
+Sufficient system support provided (it was in BSD as early as 1987, and
+is standardized since Y2K) removing such variables with
+.Ic unset
+will remove them also from the program environment, but in any way
+the knowledge they ever have been
+.Ql link Ns
+ed will be lost.
+Note this implies that
+.Ic localopts
+may cause loss of links.
+.
+.Pp
+The command
+.Ql unlink
+will remove an existing link, but leaves the variables as such intact.
+Additionally the subcommands
+.Ql set
+and
+.Ql unset
+are provided, which work exactly the same as the documented commands
+.Ic set
+and
+.Ic unset ,
+but (additionally) link the variable(s) with the program environment and
+thus immediately export them to, or remove them from (if possible),
+respectively, the program environment.
+.
 .
 .Mx
 .It Ic errors
@@ -3553,6 +3611,8 @@ which explicitly resets localization, then any value changes within
 .Ql macro2
 will still be reverted by
 .Ql macro1 !
+\*(ID Once the outermost level, the one which enabled localization
+first, is left, but no earlier, all adjustments will be unrolled.
 .
 .Mx
 .It Ic Lreply
@@ -4019,29 +4079,23 @@ Takes a message list and marks all messages as having been read.
 .
 .Mx
 .It Ic set
-(se) Without arguments this command shows all variables and their
-values which are currently known to \*(UA.
-Setting any of the variables
-.Va bsdcompat
-or
-.Va bsdset
-changes the output format to BSD style, otherwise a properly quoted
-listing is produced.
-If
+(se) Without arguments this command shows all internal variables which
+are currently known to \*(UA (they have been set).
+A more verbose listing will be produced if either of
 .Va debug
-is set or
+or
 .Va verbose
-has been set twice then the listing is modified to mark out assembled
-variables.
+are set, in which case variables may be preceeded with a comment line
+that gives some context of what \*(UA knows about the given variable.
 .Pp
-Otherwise modifies (set and unsets) the given variables.
+Otherwise the given variables (and arguments) are set or adjusted.
 Arguments are of the form
-.Ql option=value
+.Ql name=value
 (no space before or after
 .Ql = ) ,
 or plain
-.Ql option
-if there is no value.
+.Ql name
+if there is no value, i.e., a boolean variable.
 Quotation marks may be placed around any part of the assignment
 statement to quote blanks or tabs, e.g.,
 .Pp
@@ -4055,19 +4109,22 @@ the effect is the same as invoking the
 .Ic unset
 command with the remaining part of the variable
 .Pf ( Ql unset save ) .
-.
-.Mx
-.It Ic setenv
-Identical to
-.Ic set
-except that the variables are also exported into the program environment;
-since this task requires native host support the command will always
-report error if that is not available (but still act like
-.Ic set
-in this case).
-This operation is a no-op unless all resource files have been loaded.
+.Pp
+Any
+.Ql name
+that is known to map to an environment variable will automatically cause
+updates in the program environment (unsetting a variable in the
+environment requires corresponding system support).
+Please use the command
+.Ic environ
+for further environmental control.
 Also see
-.Ic unsetenv .
+.Ic varedit ,
+.Ic varshow
+and the sections
+.Sx "INTERNAL VARIABLES"
+and
+.Sx ENVIRONMENT .
 .
 .Mx
 .It Ic shell
@@ -4258,8 +4315,7 @@ a header summary in threaded order is also displayed.
 .It Ic top
 (to) Takes a message list and displays the top few lines of each.
 The number of lines shown is controlled by the variable
-.Va toplines
-and defaults to five.
+.Va toplines .
 .
 .Mx
 .It Ic touch
@@ -4467,22 +4523,11 @@ will remove all fields.
 .
 .Mx
 .It Ic unset
-(uns) Takes a list of option names and discards their remembered values;
-the reverse of
+(uns) Takes a list of internal variable names and discards their
+remembered values; the reverse of
 .Ic set .
-.
-.Mx
-.It Ic unsetenv
-Identical to
-.Ic unset
-except that the variables are also removed from the program environment;
-since this task requires native host support the command will always
-report error if that is not available (but still act like
-.Ic unset Ns
-).
-This operation is a no-op unless all resource files have been loaded.
 Also see
-.Ic setenv .
+.Ic environ .
 .
 .Mx
 .It Ic unshortcut
@@ -4533,26 +4578,11 @@ Boolean variables cannot be edited.
 .
 .Mx
 .It Ic varshow
-Show informations about all the given variables.
-\*(UA knows about a finite set of known builtin variables that are
-subdivided further in boolean and value variants;
-they may have special properties, like
-.Dq read-only
-(setting may not be changed) and
-.Dq virtual ,
-meaning that the value is generated on-the-fly as necessary.
-Beside those known variables an infinite number of unknown, so-called
-.Dq assembled
-variables, which are expected to be able to store values, may exist.
-.Bd -literal -offset indent
-? set foo=bar nobar
-? varshow sendwait version-major foo bar
-"sendwait": (73) boolean: set=1 (ENVIRON=0)
-"version-major": (192) value, read-only, virtual:\e
-  set=1 (ENVIRON=0) value<14>
-"foo": (assembled) set=1 (ENVIRON=0) value<bar>
-"bar": (assembled) set=0 (ENVIRON=0) value<NULL>
-.Ed
+This command produces the same output as the listing mode of
+.Ic set ,
+including
+.Va verbose Ns
+ity adjustments, but only for the given variables.
 .
 .Mx
 .It Ic verify
@@ -4992,13 +5022,15 @@ with the command
 will give more insight on the given variable(s), and
 .Ic set ,
 when called without arguments, will show a listing of all variables.
-Variables are also implicitly inherited from the program
+Some well-known variables will also become inherited from the
+program
 .Sx ENVIRONMENT
-and can be set explicitly via the command line option
-.Fl S .
+implicitly, others can be explicitly imported with the command
+.Ic environ
+and henceforth share the said properties.
 .
 .Pp
-Two different kind of variables exist.
+Two different kind of internal variables exist.
 There are boolean variables, which can only be in one of the two states
 .Dq set
 and
@@ -5049,7 +5081,7 @@ which causes prompting of the user in interactive mode, with the given
 boolean as the default value.
 .
 .\" .Ss "Initial settings" {{{
-.\" (Keep in SYNC: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
+.\" (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
 .Ss "Initial Settings"
 .
 The standard POSIX 2008/Cor 1-2013 mandates the following initial
@@ -5409,12 +5441,6 @@ field to appear immediately after the
 field in message headers and with the
 .Ic ~h
 .Sx "TILDE ESCAPES" .
-.
-.Mx
-.It Va bsdset
-\*(BO Changes the output format of the
-.Ic set
-command to traditional BSD style.
 .
 .Mx
 .It Va charset-7bit
@@ -6080,7 +6106,7 @@ A value of less than 0 disables this feature;
 note that loading and incorporation of
 .Va history-file
 upon program startup can also be suppressed by doing this.
-An unset or invalid value, or 0, causes a default value to be used.
+If unset or 0, a default value will be used.
 Dependent on the available line editor this will also define the
 number of history entries in memory;
 it is also editor-specific wether runtime updates of this value will be
@@ -7562,7 +7588,7 @@ variable is set.
 \*(OP Messages that exceed this size won't be passed through to the
 configured
 .Va spam-interface .
-The default is 420000 bytes.
+If unset or 0, the default of 420000 bytes is used.
 .
 .Mx
 .It Va spamc-command
@@ -8039,11 +8065,7 @@ for the complete picture about character sets.
 \*(IN Variable chain that sets a global fallback user name, which is
 used in case none has been given in the protocol and account-specific
 URL.
-This variable defaults to the value of the first of
-.Ev LOGNAME
-and
-.Ev USER
-that is set (the former being SystemV and POSIX standard, the latter BSD).
+This variable defaults to the name of the user who runs \*(UA.
 .
 .Mx
 .It Va v15-compat
@@ -8102,22 +8124,29 @@ the user.
 .
 The term
 .Dq environment variable
-should be considered an indication that the following variables are
-either standardized as being vivid parts of process environments, or
-are commonly found in there.
+should be considered an indication that these variables are either
+standardized as vivid parts of process environments, or that they are
+commonly found in there.
 The process environment is inherited from the
 .Xr sh 1
-once \*(UA is started, and unless otherwise explicitly noted variables
-in there integrate into the normal handling of
-.Sx "INTERNAL VARIABLES" ,
-from \*(UA's point of view, i.e., they can be
+once \*(UA is started, and unless otherwise explicitly noted handling of
+the following variables transparently integrates into that of the
+.Sx "INTERNAL VARIABLES"
+from \*(UA's point of view.
+This means that, e.g., they can be managed via
 .Ic set
-as such in resource files and need not necessarily come from the process
-environment and be managed via
-.Ic setenv
 and
-.Ic unsetenv .
-E.g., the following example, applicable to a POSIX shell, sets the
+.Ic unset ,
+causing automatic program environment updates (to be inherited by
+newly created child processes).
+.
+.Pp
+In order to transparently integrate other environment variables equally
+they need to be imported (linked) with the command
+.Ic environ .
+This command can also be used to set and unset non-integrated
+environment variables from scratch, sufficient system support provided.
+The following example, applicable to a POSIX shell, sets the
 .Ev COLUMNS
 environment variable for \*(UA only, and beforehand exports the
 .Ev EDITOR
@@ -8135,7 +8164,9 @@ $ COLUMNS=80 \*(uA -R
 The user's preferred width in column positions for the terminal screen
 or window.
 Queried and used once on program startup, actively managed for child
-processes in interactive mode.
+processes and the MLE (see
+.Sx "On terminal control and line editor" )
+in interactive mode thereafter.
 .
 .Mx
 .It Ev DEAD
@@ -8160,9 +8191,6 @@ A default editor is used if this value is not defined.
 .It Ev HOME
 The user's home directory.
 This variable is only used when it resides in the process environment.
-Use
-.Ic setenv
-to update the value at runtime.
 .
 .Mx
 .Mx
@@ -8174,13 +8202,14 @@ See
 .Xr locale 7
 and
 .Sx "Character sets" .
+(Only recognized by the system in the process environment.)
 .
 .Mx
 .It Ev LINES
 The user's preferred number of lines on a page or the vertical screen
 or window size in lines.
 Queried and used once on program startup, actively managed for child
-processes in interactive mode.
+processes in interactive mode thereafter.
 .
 .Mx
 .It Ev LISTER
@@ -8194,16 +8223,9 @@ Default is
 .
 .Mx
 .It Ev LOGNAME
-Force identification as the given user, i.e., identical to the
-.Fl u
-command line option.
-This variable is standardized and therefore used in preference to the
-otherwise identical
-.Ev USER ;
-it is only used when it resides in the process environment.
-\*(ID The variable can be updated at runtime via
-.Ic setenv ,
-but without having an effect on \*(UA itself.
+Upon startup \*(UA will actively ensure that this variable refers to the
+name of the user who runs \*(UA, in order to be able to pass a verified
+name to any newly created child process.
 .
 .Mx
 .It Ev MAIL
@@ -8335,25 +8357,13 @@ Used as directory for temporary files instead of
 .Pa /tmp ,
 if set.
 This variable is only used when it resides in the process environment.
-Use
-.Ic setenv
-to update the value at runtime.
 .
 .Mx
 .It Ev USER
-This variable comes from the BSD world and is only used if the POSIX
-standard environment variable
-.Ev LOGNAME ,
-which originates in SysV
-.Ux ,
-is not set.
-Force identification as the given user, i.e., identical to the
-.Fl u
-command line option.
-This variable is only used when it resides in the process environment.
-\*(ID The variable can be updated at runtime via
-.Ic setenv ,
-but without having an effect on \*(UA itself.
+Identical to
+.Ev LOGNAME
+(see there), but this variable is not standardized, should therefore not
+be used, and is only corrected if already set.
 .
 .Mx
 .It Ev VISUAL

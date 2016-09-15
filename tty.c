@@ -59,10 +59,10 @@ do{\
       OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));\
    if(__sv == NULL)\
       __sv = __hist_obsolete;\
-   if(__sv == NULL || *__sv == '\0' || (__rv = strtol(__sv, NULL, 10)) == 0)\
+   if(__sv == NULL || (__rv = strtol(__sv, NULL, 10)) == 0)\
       (V) = HIST_SIZE;\
    else if(__rv < 0)\
-      (V) = 0;\
+      __rv = 0;\
    else\
       (V) = __rv;\
 }while(0)

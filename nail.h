@@ -186,9 +186,6 @@
 #define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
-#define MAILRC          "~/.mailrc"
-#define NETRC           "~/.netrc"
-#define TMPDIR_FALLBACK "/tmp"
 
 /* Some environment variables for pipe hooks */
 #define AGENT_USER      "NAIL_USER"
@@ -278,17 +275,6 @@
 /* Switch indicating necessity of terminal access interface (termcap.c) */
 #if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
 # define n_HAVE_TCAP
-#endif
-
-/* These come from the configuration (named Xxy to not clash with sh(1)..) */
-#ifndef XSHELL
-# define XSHELL         "/bin/sh"
-#endif
-#ifndef XLISTER
-# define XLISTER        "ls"
-#endif
-#ifndef XPAGER
-# define XPAGER         "more"
 #endif
 
 /*
@@ -1226,9 +1212,8 @@ enum user_options {
    OPT_R_FLAG     = 1u<<10,   /* -R */
    OPT_r_FLAG     = 1u<<11,   /* -r (plus option_r_arg) */
    OPT_t_FLAG     = 1u<<12,   /* -t */
-   OPT_u_FLAG     = 1u<<13,   /* -u / $USER and pw->pw_uid != getuid(2) */
-   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<15,   /* -# */
+   OPT_TILDE_FLAG = 1u<<13,   /* -~ */
+   OPT_BATCH_FLAG = 1u<<14,   /* -# */
 
    /*  */
    OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
@@ -1261,6 +1246,7 @@ do {\
 enum program_state {
    PS_NONE           = 0,
    PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
+   PS_ROOT           = 1<<30,       /* Temporary "bypass any checks" bit */
 
    PS_EXIT           = 1<< 1,       /* Exit request pending */
    PS_SOURCING       = 1<< 2,       /* During load() or `source' */
@@ -1302,7 +1288,14 @@ enum program_state {
 /* A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
- * Note: see the comments in accmacvar.c before changing *anything* in here! */
+ * Notes:
+ * - see the comments in accmacvar.c before changing *anything* in here!
+ * - virt= implies rdonly,nodel
+ * - import= implies env
+ * - defval= implies notempty
+ * - num and posnum are mutual exclusive
+ * - most default VAL_ues come from in from build system via ./make.rc
+ * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
    /* TODO likely temporary hook data, v15 drop */
    ok_v_on_compose_enter,
@@ -1324,7 +1317,7 @@ enum okeys {
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksub,
+   ok_b_asksub,                        /* {i3val=TRU1} */
    ok_b_attachment_ask_content_description,
    ok_b_attachment_ask_content_disposition,
    ok_b_attachment_ask_content_id,
@@ -1345,26 +1338,26 @@ ok_b_autothread,
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
-   ok_b_bsdset,
 
+   ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_crt,
-   ok_v_customhdr,
+   ok_v_crt,                           /* {posnum=1} */
+   ok_v_customhdr,                     /* {nocntrls=1} */
 
-   ok_v_DEAD,
+   ok_v_DEAD,                          /* {env=1,defval=VAL_DEAD} */
    ok_v_datefield,
    ok_v_datefield_markout_older,
-   ok_b_debug,                         /* {special=1} */
+   ok_b_debug,                         /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_dotlock_ignore_error,
 
-   ok_v_EDITOR,
+   ok_v_EDITOR,                        /* {env=1,defval=VAL_EDITOR} */
    ok_b_editalong,
    ok_b_editheaders,
 ok_b_emptybox,
@@ -1374,9 +1367,9 @@ ok_b_emptybox,
    ok_v_expandaddr,
    ok_v_expandargv,
 
-   ok_v_features,                      /* {rdonly=1,virtual=_features} */
+   ok_v_features,                      /* {virt=_features} */
    ok_b_flipr,
-   ok_v_folder,                        /* {special=1} */
+   ok_v_folder,                        /* {vip=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_v_followup_to_honour,
@@ -1385,13 +1378,14 @@ ok_b_emptybox,
    ok_b_fullnames,
    ok_v_fwdheading,
 
-   ok_b_header,                        /* {special=1} */
+   ok_v_HOME,                          /* {vip=1,nodel=1,import=1} */
+   ok_b_header,                        /* {vip=1,i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
    ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
-   ok_v_history_size,
+   ok_v_history_size,                  /* {notempty=1,num=1} */
    ok_b_hold,
    ok_v_hostname,
 
@@ -1404,35 +1398,41 @@ ok_b_emptybox,
    ok_b_keep_content_length,
    ok_b_keepsave,
 
-   ok_v_LISTER,
+   ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
+   ok_v_LISTER,                        /* {env=1,defval=VAL_LISTER} */
+   ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
 
-   ok_v_MAIL,
-   ok_v_MBOX,
+   ok_v_MAIL,                          /* {env=1} */
+   ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
+   ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
    ok_b_markanswered,
    ok_b_mbox_rfc4155,
-   ok_b_memdebug,                      /* {special=1} */
+   ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,
    ok_v_message_inject_head,
    ok_v_message_inject_tail,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
-   ok_v_mime_counter_evidence,
+   ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mimetypes_load_control,
 
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
+   ok_b_NAIL_NO_SYSTEM_RC,             /* {import=1} */
 ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
 ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
+ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+   ok_v_NETRC,                      /* {env=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
    ok_v_newfolders,
    ok_v_newmail,
 
    ok_b_outfolder,
 
-   ok_v_PAGER,
+   ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
+   ok_v_PATH,                          /* {nodel=1,import=1} */
    ok_b_page,
    ok_v_password,
    ok_b_piperaw,
@@ -1442,7 +1442,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
    ok_b_print_alternatives,
-   ok_v_prompt,
+   ok_v_prompt,                        /* {i3val="\\& "} */
 
    ok_b_quiet,
    ok_v_quote,
@@ -1458,17 +1458,18 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
-   ok_v_SHELL,
-   ok_b_save,
-   ok_v_screen,
+   ok_v_SHELL,                         /* {import=1,defval=VAL_SHELL} */
+ok_b_SYSV3,                         /* {env=1} */
+   ok_b_save,                          /* {i3val=TRU1} */
+   ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    ok_v_sendcharsets,
    ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,
-   ok_v_sendmail,
+   ok_v_sendmail,                      /* {defval=VAL_SENDMAIL} */
    ok_v_sendmail_arguments,
    ok_b_sendmail_no_default_arguments,
-   ok_v_sendmail_progname,
+   ok_v_sendmail_progname,             /* {defval=VAL_SENDMAIL_PROGNAME} */
    ok_b_sendwait,
    ok_b_showlast,
    ok_b_showname,
@@ -1476,7 +1477,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_Sign,
    ok_v_sign,
    ok_v_signature,
-   ok_b_skipemptybody,                 /* {special=1} */
+   ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
    ok_v_smime_cipher,
@@ -1496,7 +1497,7 @@ ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
    ok_b_smtp_use_starttls,
    ok_v_spam_interface,
-   ok_v_spam_maxsize,
+   ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
@@ -1524,20 +1525,23 @@ ok_v_smtp_auth_user,
    ok_v_ssl_verify,
    ok_v_stealthmua,
 
+   ok_v_TERM,                          /* {env=1} */
+   ok_v_TMPDIR,                        /* {vip=1,import=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
-   ok_v_toplines,
+   ok_v_toplines,                      /* {notempty=1,posnum=1,defval="5"} */
    ok_v_ttycharset,
 
+   ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_user,
 
-   ok_v_VISUAL,
+   ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
-   ok_b_verbose,                       /* {special=1} */
-   ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
-   ok_v_version_major,                 /* {rdonly=1,virtual=VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {rdonly=1,virtual=VERSION_MINOR} */
-   ok_v_version_update,                /* {rdonly=1,virtual=VERSION_UPDATE} */
+   ok_b_verbose,                       /* {vip=1} */
+   ok_v_version,                       /* {virt=VERSION} */
+   ok_v_version_major,                 /* {virt=VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {virt=VERSION_MINOR} */
+   ok_v_version_update,                /* {virt=VERSION_UPDATE} */
 
    ok_b_writebackedited
 };

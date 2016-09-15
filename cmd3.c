@@ -681,7 +681,6 @@ jleave:
 FL int
 c_shell(void *v)
 {
-   char const *sh = NULL;
    char *str = v, *cmd;
    size_t cmdsize;
    sigset_t mask;
@@ -691,13 +690,11 @@ c_shell(void *v)
    cmd = smalloc(cmdsize = strlen(str) +1);
    memcpy(cmd, str, cmdsize);
    _bangexp(&cmd, &cmdsize);
-   if ((sh = ok_vlook(SHELL)) == NULL)
-      sh = XSHELL;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
    sigemptyset(&mask);
-   run_command(sh, &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c", cmd, NULL,
-      NULL);
+   run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
+      cmd, NULL, NULL);
    safe_signal(SIGINT, sigint);
    printf("!\n");
 
@@ -710,15 +707,12 @@ FL int
 c_dosh(void *v)
 {
    sighandler_type sigint;
-   char const *sh;
    NYD_ENTER;
    UNUSED(v);
 
-   if ((sh = ok_vlook(SHELL)) == NULL)
-      sh = XSHELL;
-
    sigint = safe_signal(SIGINT, SIG_IGN);
-   run_command(sh, 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL, NULL, NULL, NULL);
+   run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
+      NULL, NULL, NULL);
    safe_signal(SIGINT, sigint);
    putchar('\n');
    NYD_LEAVE;

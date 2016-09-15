@@ -1078,16 +1078,16 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
 
    if ((mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
       char *eptr;
-      long l;
+      ul_i ul;
 
-      l = strtol(mce.cp, &eptr, 0); /* XXX strtol */
+      ul = strtoul(mce.cp, &eptr, 0); /* XXX strtol */
       if (*mce.cp == '\0')
          is_os = FAL0;
-      else if (*eptr != '\0' || l < 0 || (ui64_t)(ul_i)l >= UI32_MAX) {
+      else if (*eptr != '\0' || (ui64_t)ul >= UI32_MAX) {
          n_err(_("Can't parse *mime-counter-evidence* value \"%s\"\n"), mce.cp);
          is_os = FAL0;
       } else {
-         mce.f = (ui32_t)l | MIMECE_SET;
+         mce.f = (ui32_t)ul | MIMECE_SET;
          is_os = !asccasecmp(ct, "application/octet-stream");
 
          if (mpp->m_filename != NULL && (is_os || (mce.f & MIMECE_ALL_OVWR))) {

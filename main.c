@@ -112,7 +112,7 @@ static void    _startup(void);
 /* Grow a char** */
 static size_t  _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
 
-/* Initialize *tempdir*, *myname*, *homedir* */
+/* Setup some variables which we require to be valid / verified */
 static void    _setup_vars(void);
 
 /* We're in an interactive session - compute what the screen size for printing
@@ -248,64 +248,6 @@ _startup(void)
 
    /*  --  >8  --  8<  --  */
 
-   /* Define defaults for internal variables, based on POSIX 2008/Cor 1-2013 */
-   /* (Keep in sync:
-    * ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings") */
-   /* noallnet */
-   /* noappend */
-   ok_bset(asksub, TRU1);
-   /* noaskbcc */
-   /* noaskcc */
-   /* noautoprint */
-   /* nobang */
-   /* nocmd */
-   /* nocrt */
-   /* nodebug */
-   /* nodot */
-   /* ok_vset(escape, ESCAPE *"~"*); TODO non-compliant */
-   /* noflipr */
-   /* nofolder */
-   ok_bset(header, TRU1);
-   /* nohold */
-   /* noignore */
-   /* noignoreeof */
-   /* nokeep */
-   /* nokeepsave */
-   /* nometoo */
-   /* noonehop -- Note: we ignore this one */
-   /* nooutfolder */
-   /* nopage */
-   ok_vset(prompt, "\\& "); /* POSIX "? " unless *bsdcompat*, then "& " */
-   /* noquiet */
-   /* norecord */
-   ok_bset(save, TRU1);
-   /* nosendwait */
-   /* noshowto */
-   /* nosign */
-   /* noSign */
-   /* ok_vset(toplines, "5"); XXX somewhat hmm */
-
-   /* TODO until we have an automatic mechanism for that, set some more
-    * TODO variables so that users see the internal fallback settings
-    * TODO (something like "defval=X,notempty=1") */
-   do {
-      char const *vp;
-
-      vp = env_vlook("SHELL", TRU1);
-      ok_vset(SHELL, (vp != NULL ? vp : XSHELL));
-
-      vp = env_vlook("LISTER", TRU1);
-      ok_vset(LISTER, (vp != NULL ? vp : XLISTER));
-
-      vp = env_vlook("PAGER", TRU1);
-      ok_vset(PAGER, (vp != NULL ? vp : XPAGER));
-
-      ok_vset(sendmail, SENDMAIL);
-      ok_vset(sendmail_progname, SENDMAIL_PROGNAME);
-   } while (0);
-
-   /*  --  >8  --  8<  --  */
-
 #ifdef HAVE_SETLOCALE
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
@@ -354,47 +296,51 @@ _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 }
 
 static void
-_setup_vars(void)
-{
-   /* Before spreserve(): use our string pool instead of LibC heap */
-   /* XXX further check paths? */
+_setup_vars(void){
+   /* XXX furtherly check paths? */
+   struct passwd *pwuid;
    char const *cp;
-   uid_t uid;
-   struct passwd *pwuid, *pw;
    NYD_ENTER;
 
-   /* Verify and fixate user identification */
-   if (myname != NULL)
-      cp = myname;
-   else if ((cp = env_vlook("LOGNAME", TRU1)) == NULL)
-      cp = env_vlook("USER", TRU1);
-
    group_id = getgid();
-   user_id = uid = getuid();
-   if ((pwuid = getpwuid(uid)) == NULL)
-      n_panic(_("Cannot associate a name with uid %u"), user_id);
+   if((pwuid = getpwuid(user_id = getuid())) == NULL)
+      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)user_id);
+   myname = savestr(pwuid->pw_name); /* XXX replace uses with vlook(LOGNAME)! */
 
-   if (cp == NULL || *cp == '\0') {
-      myname = pwuid->pw_name;
-      pw = NULL;
-   } else if ((pw = getpwnam(cp)) == NULL) {
-      n_alert(_("\"%s\" is not a user of this system"), cp);
-      exit(EXIT_NOUSER);
-   } else {
-      myname = pw->pw_name;
-      if (pw->pw_uid != uid)
-         options |= OPT_u_FLAG;
+   /* C99 */{
+      char const *ep;
+      bool_t doenv;
+
+      if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
+            (doenv = strcmp(myname, ep)))
+         n_err(_("Warning: $LOGNAME=\"%s\" not identical to user (\"%s\")!\n"),
+            ep, myname);
+      if(doenv){
+         pstate |= PS_ROOT;
+         ok_vset(LOGNAME, myname);
+         pstate &= ~PS_ROOT;
+      }
+
+      if((ep = ok_vlook(USER)) != NULL && strcmp(myname, ep)){
+         n_err(_("Warning: $USER=\"%s\" not identical to user (\"%s\")!\n"),
+            ep, myname);
+         pstate |= PS_ROOT;
+         ok_vset(USER, myname);
+         pstate &= ~PS_ROOT;
+      }
    }
-   myname = savestr(myname);
+
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
    /* */
-   if ((cp = env_vlook("HOME", TRU1)) == NULL)
-      cp = (pw != NULL) ? pw->pw_dir : pwuid->pw_dir;
-   homedir = savestr(cp);
+   if((cp = ok_vlook(HOME)) == NULL){
+      cp = pwuid->pw_dir;
+      pstate |= PS_ROOT;
+      ok_vset(HOME, cp);
+      pstate &= ~PS_ROOT;
+   }
 
-   tempdir = ((cp = env_vlook("TMPDIR", TRU1)) != NULL)
-         ? savestr(cp) : TMPDIR_FALLBACK;
+   (void)ok_vlook(TMPDIR);
    NYD_LEAVE;
 }
 
@@ -416,19 +362,16 @@ _setscreensize(int is_sighdl) /* TODO global policy; int wraps; minvals! */
     * only honour it upon first run; abuse *is_sighdl* as an indicator */
    if (!is_sighdl) {
       char *cp;
-      long i;
 
       /* We manage those variables for our child processes, so ensure they
        * are up to date, always */
       if (options & OPT_INTERACTIVE)
          pstate |= PS_SIGWINCH_PEND;
 
-      if ((cp = env_vlook("LINES", FAL0)) != NULL &&
-            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
-         scrnheight = realscreenheight = (int)i;
-      if ((cp = env_vlook("COLUMNS", FAL0)) != NULL &&
-            (i = strtol(cp, NULL, 10)) > 0 && i < INT_MAX)
-         scrnwidth = (int)i;
+      if ((cp = ok_vlook(LINES)) != NULL)
+         scrnheight = realscreenheight = (int)strtoul(cp, NULL, 0); /* TODO */
+      if ((cp = ok_vlook(COLUMNS)) != NULL)
+         scrnwidth = (int)strtoul(cp, NULL, 0); /* TODO posui32= not posnum=! */
 
       if (scrnwidth != 0 && scrnheight != 0)
          goto jleave;
@@ -581,12 +524,12 @@ main(int argc, char *argv[]){
          "\t [-a attachment] [-b bcc-address] [-c cc-address]\n"
          "\t [-q file] [-r from-address] [-S var[=value]..]\n"
          "\t [-s subject] [-X cmd] [-.] to-address.. [-- mta-option..]\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
-         "\t [-X cmd] -f [file] [-- mta-option..]\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
+         "  %s [-BdEeHiNnRv~] [-: spec] [-A account]\n"
          "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
          "\t [-u user] [-X cmd] [-- mta-option..]\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
+         "\t [-L spec-list] [-r from-address] [-S var[=value]..]\n"
+         "\t [-X cmd] [file] [-- mta-option..]\n"
       );
 #define _USAGE_ARGS , progname, progname, progname, progname
 
@@ -772,9 +715,8 @@ joarg:
          options |= OPT_SENDMODE | OPT_t_FLAG;
          break;
       case 'u':
-         /* Set user name to pretend to be; don't set OPT_u_FLAG yet, this is
-          * done as necessary in _setup_vars() above */
-         myname = _oarg;
+         /* Temporarily set myname so that we can recognize the -u condition */
+         myname = savecat("%", _oarg);
          break;
       case 'V':
          puts(ok_vlook(version));
@@ -855,7 +797,7 @@ jgetopt_done:
    else if (cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* OPT_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
-   else if (folder != NULL && folder[1] == '\0') {
+   else if (folder != NULL && /*folder[0] == '&' &&*/ folder[1] == '\0') {
       folder = cp;
       if ((cp = argv[++i]) != NULL) {
          if (cp[0] != '-' || cp[1] != '-' || cp[2] != '\0') {
@@ -885,7 +827,7 @@ jgetopt_done:
    if (smopts_cnt + i > smopts_size)
       DBG(smopts_size =) _grow_cpp(&smopts, smopts_cnt + i + 1, smopts_cnt);
 
-   /* Check for inconsistent arguments */
+   /* Check for inconsistent arguments, fix some temporaries */
    if (options & OPT_SENDMODE) {
       /* XXX This is only because BATCH_FLAG sets *folder*=/dev/null
        * XXX in order to function.  Ideally that would not be needed */
@@ -914,8 +856,8 @@ jgetopt_done:
          goto jusage;
       }
    } else {
-      if (folder != NULL && myname != NULL) {
-         emsg = N_("The options -f and -u are mutually exclusive");
+      if (myname != NULL && folder != NULL) {
+         emsg = N_("The options -u and -f (and -#) are mutually exclusive");
          goto jusage;
       }
       if ((options & (OPT_EXISTONLY | OPT_HEADERSONLY)) ==
@@ -926,6 +868,9 @@ jgetopt_done:
       if ((options & (OPT_HEADERSONLY | OPT_HEADERLIST)) == /* TODO OBSOLETE */
             (OPT_HEADERSONLY | OPT_HEADERLIST))
          OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
+
+      if(myname != NULL)
+         folder = myname;
    }
 
    /*
@@ -946,7 +891,7 @@ jgetopt_done:
 # ifndef TTY_WANTS_SIGWINCH
       if (safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
-         safe_signal(SIGWINCH, _setscreensize);
+         safe_signal(SIGWINCH, &_setscreensize);
 #endif
    } else
       scrnheight = realscreenheight = 24, scrnwidth = 80;
@@ -958,15 +903,11 @@ jgetopt_done:
    if(resfiles & a_RF_ALL){
       /* *expand() returns a savestr(), but load only uses the file name for
        * fopen(), so it's safe to do this */
-      if((resfiles & a_RF_SYSTEM) && !env_blook("NAIL_NO_SYSTEM_RC", TRU1))
+      if((resfiles & a_RF_SYSTEM) && !ok_blook(NAIL_NO_SYSTEM_RC))
          n_load(SYSCONFDIR "/" SYSCONFRC);
-      if(resfiles & a_RF_USER){
-         if((cp = env_vlook("MAILRC", TRU1)) == NULL)
-            cp = UNCONST(MAILRC);
-         n_load(file_expand(cp));
-      }
-      if(env_vlook("NAIL_EXTRA_RC", TRU1) == NULL &&
-            (cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+      if(resfiles & a_RF_USER)
+         n_load(file_expand(ok_vlook(MAILRC)));
+      if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_load(file_expand(cp));
    }
 
@@ -1034,9 +975,6 @@ jgetopt_done:
     * We're finally completely setup and ready to go
     */
    pstate |= PS_STARTED;
-
-   if (options & OPT_DEBUG)
-      n_err(_("user = %s, homedir = %s\n"), myname, homedir);
 
    if (!(options & OPT_SENDMODE)) {
       exit_status = _rcv_mode(folder, Larg);

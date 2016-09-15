@@ -617,7 +617,7 @@ n_termcap_init(void){
    if(ok_blook(termcap_disable))
       pstate |= PS_TERMCAP_DISABLE;
 #ifdef HAVE_TERMCAP
-   else if((ccp = env_vlook("TERM", FAL0)) == NULL){
+   else if((ccp = ok_vlook(TERM)) == NULL){
       n_err(_("Environment variable $TERM is not set, using only *termcap*\n"));
       pstate |= PS_TERMCAP_DISABLE;
    }else if(!a_termcap_load(ccp))

@@ -792,8 +792,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
       fda = salloc(sizeof(int) * pipecnt);
       for (i = 0; i < pipecnt; ++i)
          fda[i] = -1;
-      if ((sh = ok_vlook(SHELL)) == NULL)
-         sh = XSHELL;
+      sh = ok_vlook(SHELL);
    }
 
    for (np = names; np != NULL; np = np->n_flink) {
@@ -1145,11 +1144,12 @@ __mta_start(struct sendbundle *sbp)
    NYD_ENTER;
 
    if ((smtp = ok_vlook(smtp)) == NULL) {
-      if ((mta = ok_vlook(sendmail)) != NULL) {
-         if ((mta = file_expand(mta)) == NULL)
-            goto jstop;
-      } else
-         mta = SENDMAIL;
+      char const *mta_base;
+
+      if((mta = file_expand(mta_base = ok_vlook(sendmail))) == NULL){
+         n_err(_("*sendmail* variable expansion failure: \"%s\""), mta_base);
+         goto jstop;
+      }
 
       args = __mta_prepare_args(sbp->sb_to, sbp->sb_hp);
       if (options & OPT_DEBUG) {
@@ -1252,8 +1252,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    i = 4 + smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
-   if ((args[0] = ok_vlook(sendmail_progname)) == NULL || *args[0] == '\0')
-      args[0] = SENDMAIL_PROGNAME;
+   args[0] = ok_vlook(sendmail_progname);
 
    if ((snda = ok_blook(sendmail_no_default_arguments)))
       i = 1;

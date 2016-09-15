@@ -853,12 +853,8 @@ a_lex_source_file(char const *file, bool_t silent_error){
    /* Being a command argument file is space-trimmed */
    if((ispipe = (!silent_error && (nlen = strlen(file)) > 0 &&
          file[--nlen] == '|'))){
-      char const *sh;
-
-      if((sh = ok_vlook(SHELL)) == NULL)
-         sh = XSHELL;
       if((fip = Popen(nbuf = savestrbuf(file, nlen), "r",
-            sh, NULL, COMMAND_FD_NULL)) == NULL){
+            ok_vlook(SHELL), NULL, COMMAND_FD_NULL)) == NULL){
          if(!silent_error || (options & OPT_D_V))
             n_perr(nbuf, 0);
          goto jleave;
