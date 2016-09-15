@@ -700,6 +700,14 @@ n_MCTA(sizeof(size_t) == sizeof(unsigned long),
 # endif
 #endif
 
+#ifdef HAVE_C90AMEND1
+typedef wchar_t         wc_t;
+# define n_WC_C(X)      L ## X
+#else
+typedef char            wc_t; /* Yep: really 8-bit char */
+# define n_WC_C(X)      X
+#endif
+
 enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
@@ -750,6 +758,26 @@ enum expand_addr_check_mode {
     * May NOT clash with EAF_* bits which may be ORd to these here! */
 
    EACM_NONAME    = 1<<16
+};
+
+enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+   /* - A type */
+   n_CMD_ARG_DESC_STRING = 1<<0,    /* A !blankspacechar() string */
+   n_CMD_ARG_DESC_WYSH = 1<<1,      /* sh(1)ell-style quoted */
+
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+
+   /* - Optional flags */
+   /* It is not an error if an optional argument is missing; once an argument
+    * has been declared optional only optional arguments may follow */
+   n_CMD_ARG_DESC_OPTION = 1<<16,
+   /* GREEDY: parse as many of that type as possible; must be last entry */
+   n_CMD_ARG_DESC_GREEDY = 1<<17,
+   /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
+   n_CMD_ARG_DESC_HONOUR_STOP = 1<<18,
+
+   n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_HONOUR_STOP
 };
 
 #ifdef HAVE_COLOUR
@@ -840,12 +868,13 @@ enum fedit_mode {
 
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
-   FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
-   FEXP_SHELL     = 1<<1,     /* No folder %,#,&,+ stuff, yet sh(1) */
+   FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
+   FEXP_LOCAL = 1<<1,         /* Result must be local file/maildir */
    FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
-   FEXP_SILENT    = 1<<3,     /* Don't print but only return errors */
-   FEXP_MULTIOK   = 1<<4,     /* Expansion to many entries is ok */
-   FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_SILENT = 1<<3,        /* Don't print but only return errors */
+   FEXP_MULTIOK = 1<<4,       /* Expansion to many entries is ok */
+   FEXP_NSHELL = 1<<5,        /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1<<6           /* ..not even $VAR expansion */
 };
 
 enum n_file_lock_type{
@@ -1029,6 +1058,43 @@ enum sendaction {
    SEND_DECRYPT      /* decrypt */
 };
 
+enum n_shexp_parse_flags{
+   n_SHEXP_PARSE_NONE,
+   /* Don't perform any expansions or interpret backslash escape sequences etc.
+    * Output may be NULL, otherwise the possibly trimmed non-expanded input is
+    * used as output */
+   n_SHEXP_PARSE_DRYRUN = 1<<0,
+   n_SHEXP_PARSE_TRUNC = 1<<1,         /* Truncate result storage on entry */
+   n_SHEXP_PARSE_TRIMSPACE = 1<<2,     /* Ignore space surrounding tokens */
+   n_SHEXP_PARSE_LOG = 1<<3,           /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1<<4,       /* Log errors if OPT_D_V */
+   n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
+   n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
+   n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
+   n__SHEXP_PARSE_LAST = 7
+};
+
+enum n_shexp_state{
+   n_SHEXP_STATE_NONE,
+   /* We have produced some output (or would have, with _PARSE_DRYRUN).
+    * Note that empty quotes like '' produce no output but set this bit */
+   n_SHEXP_STATE_OUTPUT = 1<<2,
+   /* Don't call the parser again (\c0 or # comment seen; out of input).
+    * Not (necessarily) mutual with _OUTPUT) */
+   n_SHEXP_STATE_STOP = 1<<1,
+   n_SHEXP_STATE_UNICODE = 1<<3,       /* \[Uu] used */
+   n_SHEXP_STATE_CONTROL = 1<<4,       /* Control characters seen */
+
+   n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
+   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !OPT_UNICODE */
+   n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
+   n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
+   n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<21, /* Quote remains open at EOS */
+
+   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 21)
+};
+
 enum n_sigman_flags{
    n_SIGMAN_NONE = 0,
    n_SIGMAN_HUP = 1<<0,
@@ -1200,6 +1266,21 @@ enum n_termcap_query{
 };
 #endif /* n_HAVE_TCAP */
 
+enum n_visual_info_flags{
+   n_VISUAL_INFO_NONE,
+   n_VISUAL_INFO_ONE_CHAR = 1<<0,         /* Step only one char, then return */
+   n_VISUAL_INFO_SKIP_ERRORS = 1<<1,      /* Treat via replacement, step byte */
+   n_VISUAL_INFO_WIDTH_QUERY = 1<<2,      /* Detect visual character widths */
+
+   /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
+   n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
+   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..salloc() it first */
+   /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
+   n_VISUAL_INFO_WOUT_PRINTABLE = 1<<10,
+   n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |
+         n_VISUAL_INFO_WOUT_SALLOC | n_VISUAL_INFO_WOUT_PRINTABLE
+};
+
 enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
@@ -1271,9 +1352,13 @@ enum program_state {
    PS_SIGWINCH_PEND  = 1<<14,       /* Need update of $COLUMNS/$LINES */
    PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
+   PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
    PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+   PS_WYSHLIST_SAW_UNICODE = 1<<17, /* ARG_WYSHLIST saw \[Uu] */
+   PS_WYSHLIST_SAW_CONTROL = 1<<18, /* ..saw C0+ control characters */
+
+   PS_EXPAND_MULTIRESULT = 1<<19,   /* Last fexpand() with MULTIOK had .. */
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
 
@@ -1281,7 +1366,6 @@ enum program_state {
 
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
-   PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
    PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
    PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
    PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
@@ -1595,6 +1679,42 @@ struct bidi_info {
    size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
 };
 
+struct n_cmd_arg_desc{
+   char cad_name[12];   /* Name of command */
+   ui32_t cad_no;       /* Number of entries in cad_ent_flags */
+   /* [enum n_cmd_arg_desc_flags,arg-dep] */
+   ui32_t cad_ent_flags[VFIELD_SIZE(0)][2];
+};
+/* ISO C(99) doesn't allow initialization of "flex array" */
+#define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
+   struct n_cmd_arg_desc_ ## CMD {\
+      char cad_name[12];\
+      ui32_t cad_no;\
+      ui32_t cad_ent_flags[NO][2];\
+   } const VAR = { #CMD, NO,
+#define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
+#define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
+
+struct n_cmd_arg_ctx{
+   struct n_cmd_arg_desc const *cac_desc;
+   char const *cac_indat;     /* Input that shall be parsed */
+   size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   size_t cac_no;             /* Output: number of parsed arguments */
+   struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
+};
+
+struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+   struct n_cmd_arg *ca_next;
+   char const *ca_indat;   /* Pointer into n_cmd_arg_ctx.cac_indat */
+   size_t ca_inlen;        /* of .ca_indat of this arg (not terminated) */
+   ui32_t ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
+   ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
+   ui8_t ca__dummy[4];
+   union{
+      struct str ca_str;      /* _STRING, _WYSH */
+   } ca_arg;               /* Output: parsed result */
+};
+
 #ifdef HAVE_COLOUR
 struct n_colour_pen;
 #endif
@@ -1765,6 +1885,25 @@ struct n_termcap_value{
 };
 #endif
 
+struct n_visual_info_ctx{
+   char const *vic_indat;  /*I Input data */
+   size_t vic_inlen;       /*I If UIZ_MAX, strlen(.vic_indat) */
+   char const *vic_oudat;  /*O remains */
+   size_t vic_oulen;
+   size_t vic_chars_seen;  /*O number of characters processed */
+   size_t vic_bytes_seen;  /*O number of bytes passed */
+   size_t vic_vi_width;    /*[O] visual width of the entire range */
+   wc_t *vic_woudat;       /*[O] if so requested */
+   size_t vic_woulen;      /*[O] entries in .vic_woudat, if used */
+   wc_t vic_waccu;         /*O The last wchar_t/char processed (if any) */
+   enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
+   /* TODO bidi */
+#ifdef HAVE_C90AMEND1
+   mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
+   mbstate_t vic_mbs_def;
+#endif
+};
+
 struct time_current {
    time_t      tc_time;
    struct tm   tc_gm;
@@ -1931,10 +2070,11 @@ struct message {
 enum argtype {
    ARG_MSGLIST    = 0,        /* Message list type */
    ARG_STRLIST    = 1,        /* A pure string */
-   ARG_RAWLIST    = 2,        /* Shell string list */
+   ARG_RAWLIST    = 2,        /* getrawlist(), old style */
    ARG_NOLIST     = 3,        /* Just plain 0 */
    ARG_NDMLIST    = 4,        /* Message list, no defaults */
-   ARG_ECHOLIST   = 5,        /* Like raw list, but keep quote chars */
+   ARG_WYSHLIST   = 5,        /* getrawlist(), sh(1) compatible */
+     ARG_WYRALIST = 6,        /* _RAWLIST or _WYSHLIST (with `wysh') */
    ARG_ARGMASK    = 7,        /* Mask of the above */
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */

@@ -1443,12 +1443,19 @@ int main(void){
    fi
 fi
 
-link_check wordexp 'wordexp(3)' '#define HAVE_WORDEXP' << \!
-#include <stdio.h> /* For C89 NULL */
-#include <wordexp.h>
+link_check fnmatch 'fnmatch(3)' '#define HAVE_FNMATCH' << \!
+#include <fnmatch.h>
 int main(void){
-   wordexp(NULL, NULL, 0);
-   return 0;
+   return (fnmatch("*", ".", FNM_PATHNAME | FNM_PERIOD) == FNM_NOMATCH);
+}
+!
+
+link_check dirent_d_type 'struct dirent.d_type' '#define HAVE_DIRENT_TYPE' << \!
+#include <dirent.h>
+int main(void){
+   struct dirent de;
+   return !(de.d_type == DT_UNKNOWN ||
+      de.d_type == DT_DIR || de.d_type == DT_LNK);
 }
 !
 
@@ -2609,18 +2616,12 @@ ${cat} > ${tmp2}.c << \!
 : - Dotlock files and privilege-separated file dotlock program
 #endif
 :
-#if !defined HAVE_WORDEXP || !defined HAVE_FCHDIR ||\
+#if !defined HAVE_FNMATCH || !defined HAVE_FCHDIR ||\
       defined HAVE_DEBUG || defined HAVE_DEVEL
 :Remarks:
-# ifndef HAVE_WORDEXP
-: . WARNING: the function wordexp(3) could not be found.
-: _ This means that echo(1) will be used via the sh(1)ell in order
-: _ to expand shell meta characters in filenames, which is a potential
-: _ security hole.  Consider to either upgrade your system or set the
-: _ *SHELL* variable to some safe(r) wrapper script.
-: _ P.S.: the codebase is in transition away from wordexp(3) to some
-: _ safe (restricted) internal mechanism, see "COMMANDS" manual, read
-: _ about shell word expression in its introduction for more on that.
+# ifndef HAVE_FNMATCH
+: . The function fnmatch(3) could not be found.
+: _ Filename patterns like wildcard are not supported on your system.
 # endif
 # ifndef HAVE_FCHDIR
 : . The function fchdir(2) could not be found. We will use chdir(2)

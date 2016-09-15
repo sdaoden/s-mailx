@@ -100,7 +100,7 @@ static void       _collint(int s);
 
 static void       collhup(int s);
 
-static int        putesc(char const *s, FILE *stream);
+static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 
 /* call_compose_mode_hook() setter hook */
 static void a_coll__hook_setter(void *arg);
@@ -311,7 +311,8 @@ jpager:
                cp = "?";
             else if (ascncasecmp(cp, "text/", 5))
                csi = "";
-            fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs, ap->a_name);
+            fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs,
+               n_shell_quote_cp(ap->a_name, FAL0));
          }
       }
    }

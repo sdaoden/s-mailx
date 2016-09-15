@@ -199,6 +199,9 @@ static void          _mlmux_linkout(struct group *gp);
 # define _MLMUX_LINKOUT(GP)
 #endif
 
+/* TODO v15: drop *customhdr* (OR change syntax and use shell tokens) */
+static char *a_nag_custom_sep(char **iolist);
+
 static bool_t
 _same_name(char const *n1, char const *n2)
 {
@@ -676,10 +679,12 @@ _group_print_all(enum group_type gt)
          i = (ui32_t)_mlsub_size, h = (ui32_t)_mlsub_hits;
       else
          i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
-      if (i > 0)
+      if (i > 0 && (options & OPT_D_V)){
          fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
             (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
             i, h);
+         ++lines;
+      }
    }
 #endif
 
@@ -726,7 +731,7 @@ _group_print(struct group const *gp, FILE *fo)
       }
    } else if (gp->g_type & GT_MLIST) {
 #ifdef HAVE_REGEX
-      if (gp->g_type & GT_REGEX) {
+      if ((gp->g_type & GT_REGEX) && (options & OPT_D_V)){
          size_t i;
          struct grp_regex *grp,
             *lp = (gp->g_type & GT_SUBSCRIBE ? _mlsub_regex : _mlist_regex);
@@ -740,14 +745,15 @@ _group_print(struct group const *gp, FILE *fo)
       }
 #endif
 
-      fprintf(fo, "%s %s",
-         (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"), gp->g_id);
+      fprintf(fo, "wysh %s %s",
+         (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"),
+         n_shell_quote_cp(gp->g_id, TRU1));
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "shortcut %s \"%s\"", gp->g_id, string_quote(cp));
+      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s \"%s\"", gp->g_id, string_quote(cp));
+      fprintf(fo, "customhdr %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
    }
 
    putc('\n', fo);
@@ -889,6 +895,54 @@ _mlmux_linkout(struct group *gp)
    NYD_LEAVE;
 }
 #endif /* HAVE_REGEX */
+
+static char *
+a_nag_custom_sep(char **iolist){
+   char *cp, c, *base;
+   bool_t isesc, anyesc;
+   NYD2_ENTER;
+
+   for(base = *iolist; base != NULL; base = *iolist){
+      while((c = *base) != '\0' && blankspacechar(c))
+         ++base;
+
+      for(isesc = anyesc = FAL0, cp = base;; ++cp){
+         if(UNLIKELY((c = *cp) == '\0')){
+            *iolist = NULL;
+            break;
+         }else if(!isesc){
+            if(c == ','){
+               *iolist = cp + 1;
+               break;
+            }
+            isesc = (c == '\\');
+         }else{
+            isesc = FAL0;
+            anyesc |= (c == ',');
+         }
+      }
+
+      while(cp > base && blankspacechar(cp[-1]))
+         --cp;
+      *cp = '\0';
+
+      if(*base != '\0'){
+         if(anyesc){
+            char *ins;
+
+            for(ins = cp = base;; ++ins)
+               if((c = *cp) == '\\' && cp[1] == ','){
+                  *ins = ',';
+                  cp += 2;
+               }else if((*ins = (++cp, c)) == '\0')
+                  break;
+         }
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return base;
+}
 
 FL struct name *
 nalloc(char *str, enum gfield ntype)
@@ -1368,9 +1422,10 @@ c_alternates(void *v)
    char **namelist = v, **ap, **ap2, *cp;
    NYD_ENTER;
 
-   l = argcount(namelist) +1;
+   for (namelist = v, l = 0; namelist[l] != NULL; ++l)
+      ;
 
-   if (l == 1) {
+   if (l == 0) {
       if (_altnames != NULL) {
          printf("alternates ");
          for (ap = _altnames; *ap != NULL; ++ap)
@@ -1386,6 +1441,7 @@ c_alternates(void *v)
       free(_altnames);
    }
 
+   ++l;
    _altnames = smalloc(l * sizeof(*_altnames));
    for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
       l = strlen(*ap) +1;
@@ -1717,13 +1773,13 @@ c_customhdr(void *v){
          continue;
       if(*hcp == '\0'){
          if(hcp == *argv){
-            n_err(_("Cannot use nameless custom header\n"));
+            n_err(_("`customhdr': no name specified\n"));
             goto jleave;
          }
          hcp = *argv;
          break;
       }
-      n_err(_("Invalid custom header name: \"%s\"\n"), *argv);
+      n_err(_("`customhdr': invalid name: \"%s\"\n"), *argv);
       goto jleave;
    }
    rv = 0;
@@ -1732,13 +1788,20 @@ c_customhdr(void *v){
       if((gp = _group_find(GT_CUSTOMHDR, hcp)) != NULL)
          _group_print(gp, stdout);
       else{
-         n_err(_("No such custom header: \"%s\"\n"), hcp);
+         n_err(_("No such `customhdr': \"%s\"\n"), hcp);
          rv = 1;
       }
    }else{
       /* Because one hardly ever redefines, anything is stored in one chunk */
       size_t i, l;
       char *cp;
+
+      if(pstate & PS_WYSHLIST_SAW_CONTROL){
+         n_err(_("`customhdr': \"%s\": control characters not allowed: %s%s\n"),
+            hcp, n_shell_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
+         rv = 1;
+         goto jleave;
+      }
 
       if(_group_find(GT_CUSTOMHDR, hcp) != NULL)
          _group_del(GT_CUSTOMHDR, hcp);
@@ -1818,7 +1881,7 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
       if(vp != NULL){
          char *buf = savestr(vp);
 jch_outer:
-         while((vp = n_strescsep(&buf, ',', TRU1)) != NULL){
+         while((vp = a_nag_custom_sep(&buf)) != NULL){
             ui32_t nl, bl;
             char const *nstart, *cp;
 

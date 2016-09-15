@@ -1061,27 +1061,18 @@ c_File(void *v)
 }
 
 FL int
-c_echo(void *v)
-{
-   char const **argv = v, **ap, *cp;
-   int c;
+c_echo(void *v){
+   char const **argv, **ap, *cp;
    NYD_ENTER;
 
-   for (ap = argv; *ap != NULL; ++ap) {
-      cp = *ap;
-      if ((cp = fexpand(cp, FEXP_NSHORTCUT | FEXP_NSHELL)) != NULL) {
-         if (ap != argv)
-            putchar(' ');
-         c = 0;
-         while (*cp != '\0' && (c = n_shell_expand_escape(&cp, FAL0)) > 0)
-            putchar(c);
-         /* \c ends overall processing */
-         if (c < 0)
-            goto jleave;
-      }
+   for(ap = argv = v; *ap != NULL; ++ap){
+      if(ap != argv)
+         putchar(' ');
+      if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
+         cp = *ap;
+      fputs(cp, stdout);
    }
    putchar('\n');
-jleave:
    NYD_LEAVE;
    return 0;
 }
@@ -1238,35 +1229,36 @@ c_remove(void *v)
 {
    char const *fmt;
    size_t fmt_len;
-   char **args = v, *name, *ename;
-   int ec = 0;
+   char **args, *name, *ename;
+   int ec;
    NYD_ENTER;
 
-   if (*args == NULL) {
+   if (*(args = v) == NULL) {
       n_err(_("Synopsis: remove: <mailbox>...\n"));
       ec = 1;
       goto jleave;
    }
 
-   fmt = _("Remove \"%s\"");
+   ec = 0;
+
+   fmt = _("Remove %s");
    fmt_len = strlen(fmt);
    do {
       if ((name = expand(*args)) == NULL)
          continue;
-      ename = string_quote(name);
+      ename = n_shell_quote_cp(name, FAL0);
 
       if (!strcmp(name, mailname)) {
-         n_err(_("Cannot remove current mailbox \"%s\"\n"), ename);
+         n_err(_("Cannot remove current mailbox %s\n"), ename);
          ec |= 1;
          continue;
       }
       {
-         size_t vl = strlen(name) + fmt_len +1;
-         char *vb = ac_alloc(vl);
+         size_t vl = strlen(ename) + fmt_len +1;
+         char *vb = salloc(vl);
          bool_t asw;
          snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
-         ac_free(vb);
          if (!asw)
             continue;
       }
@@ -1274,12 +1266,23 @@ c_remove(void *v)
       switch (which_protocol(name)) {
       case PROTO_FILE:
          if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
-            n_perr(name, 0);
+            int se = errno;
+
+            if (se == EISDIR) {
+               struct stat sb;
+
+               if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
+                  if (!rmdir(name))
+                     break;
+                  se = errno;
+               }
+            }
+            n_perr(name, se);
             ec |= 1;
          }
          break;
       case PROTO_POP3:
-         n_err(_("Cannot remove POP3 mailbox \"%s\"\n"), ename);
+         n_err(_("Cannot remove POP3 mailbox %s\n"), ename);
          ec |= 1;
          break;
       case PROTO_MAILDIR:
@@ -1287,7 +1290,7 @@ c_remove(void *v)
             ec |= 1;
          break;
       case PROTO_UNKNOWN:
-         n_err(_("Unknown protocol in \"%s\"; not removed\n"), ename);
+         n_err(_("Not removed: unknown protocol: %s\n"), ename);
          ec |= 1;
          break;
       }

@@ -548,6 +548,25 @@ FL int         c_urlencode(void *v);
 FL int         c_urldecode(void *v);
 
 /*
+ * cmd_arg.c
+ */
+
+/* Scan out the list of string arguments according to rm, return -1 on error;
+ * res_dat is NULL terminated unless res_size is 0 or error occurred */
+FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+                  char const *line, size_t linesize);
+
+/* Scan an entire command argument line, return wether result can be used,
+ * otherwise no resources are allocated (in ->cac_arg).
+ * For _WYSH arguments the flags _TRIMSPACE and _LOG are implicit */
+FL bool_t      n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
+
+/* Join all the _GREEDY arguments that were seen into a single string.
+ * Asserted they are string-based.  The data (if any) is appended to store */
+FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
+                     struct n_string *store);
+
+/*
  * cmd_cnd.c
  */
 
@@ -979,27 +998,6 @@ FL bool_t      n_source_command(char const *cmd);
 FL bool_t      n_source_may_yield_control(void);
 
 /*
- * list.c
- */
-
-/* Count the number of arguments in the given string raw list */
-FL int         argcount(char **argv);
-
-/* Convert user string of message numbers and store the numbers into vector.
- * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char *buf, int *vector, int flags);
-
-/* Scan out the list of string arguments, shell style for a RAWLIST */
-FL int         getrawlist(char const *line, size_t linesize,
-                  char **argv, int argc, int echolist);
-
-/* Find the first message whose flags&m==f and return its message number */
-FL int         first(int f, int m);
-
-/* Mark the named message by setting its mark bit */
-FL void        mark(int mesg, int f);
-
-/*
  * message.c
  */
 
@@ -1031,6 +1029,16 @@ FL struct message * setdot(struct message *mp);
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
+
+/* Convert user string of message numbers and store the numbers into vector.
+ * Returns the count of messages picked up or -1 on error */
+FL int         getmsglist(char *buf, int *vector, int flags);
+
+/* Find the first message whose flags&m==f and return its message number */
+FL int         first(int f, int m);
+
+/* Mark the named message by setting its mark bit */
+FL void        mark(int mesg, int f);
 
 /*
  * maildir.c
@@ -1658,29 +1666,14 @@ FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
  * . &  invoker's mbox file
  * . +file file in folder directory
  * . any shell meta character (except for FEXP_NSHELL).
- * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
  * a poor man's vis(3), on name before calling this (and showing the user).
+ * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
+ * result string is terminated via \0\0 and PS_EXPAND_MULTIRESULT is set.
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
-
-/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
- * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
-FL char *      fexpand_nshell_quote(char const *name);
-
-/* (Try to) Expand ^~/? and ^~USER/? constructs.
- * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
-FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
-
-/* (Try to) Expand any shell variable in s, allowing backslash escaping
- * (of any following character) with bsescape.
- * Returns the completely resolved (maybe empty) salloc()ed string.
- * Logs on error */
-FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
-                  bool_t *err_or_null);
 
 /* Check wether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
@@ -1688,6 +1681,30 @@ FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
 FL int         n_shell_expand_escape(char const **s,
                   bool_t use_prompt_extensions);
+
+/* Parse the next shell token from input (->s and ->l are adjusted to the
+ * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
+ * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store */
+FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
+                        struct str *input, enum n_shexp_parse_flags flags);
+
+/* Likewise, but strips n_SHEXP_STATE_STOP if input remains after parsing,
+ * otherwise forcefully sets it.  Returns autoreclaimed storage */
+FL enum n_shexp_state n_shell_parse_token_buf(char **store,
+                        char const *indat, size_t inlen,
+                        enum n_shexp_parse_flags flags);
+
+/* Quote input in a way that can, in theory, be fed into parse_token() again.
+ * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
+ * If rndtrip is true we try to make the resulting string "portable" (by
+ * converting Unicode to \u etc.), otherwise we produce something to be
+ * consumed "now", i.e., to display for the user.
+ * Resulting output is _appended_ to store.
+ * TODO Note: last resort, since \u and $ expansions etc. are necessarily
+ * TODO already expanded and can thus not be reverted, but ALL we have */
+FL struct n_string *n_shell_quote(struct n_string *store,
+                     struct str const *input, bool_t rndtrip);
+FL char *      n_shell_quote_cp(char const *cp, bool_t rndtrip);
 
 /*
  * signal.c
@@ -1897,13 +1914,11 @@ FL int         anyof(char const *s1, char const *s2);
 
 /* Treat *iolist as a sep separated list of strings; find and return the
  * next entry, trimming surrounding whitespace, and point *iolist to the next
- * entry or to NULL if no more entries are contained.  If ignore_empty is not
+ * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
- * strescsep will assert that sep is not NULL, and allows escaping of the
- * separator character with a backslash.
+ * See n_shell_parse_token() for the new way that supports sh(1) quoting.
  * Return NULL or an entry */
 FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
-FL char *      n_strescsep(char **iolist, char sep, bool_t ignore_empty);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
@@ -2088,14 +2103,12 @@ n_INLINE struct n_string *
 
 /* UTF-8 stuff */
 
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 /* ..and update arguments to point after range; returns UI32_MAX on error, in
  * which case the arguments will have been stepped one byte */
-#ifdef HAVE_NATCH_CHAR
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
-#endif
 
 /* buf must be large enough also for NUL, it's new length will be returned */
-#ifdef HAVE_FILTER_HTML_TAGSOUP
 FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 #endif
 
@@ -2118,6 +2131,11 @@ FL int         n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
                   char **outb, size_t *outbleft, bool_t skipilseq);
 FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
                   struct str *in_rest_or_null, bool_t skipilseq);
+
+/* If tocode==NULL, uses charset_get_lc().  If fromcode==NULL, uses UTF-8.
+ * Returns a salloc()ed buffer or NULL */
+FL char *      n_iconv_onetime_cp(char const *tocode, char const *fromcode,
+                  char const *input, bool_t skipilseq);
 #endif
 
 /*
@@ -2254,9 +2272,11 @@ FL int         c_history(void *v);
  * ui_str.c
  */
 
-/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
- * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
-FL size_t      field_detect_width(char const *buf, size_t blen);
+/* Parse (onechar of) a given buffer, and generate infos along the way.
+ * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
+ * vicp must be zeroed before first use */
+FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
+                  enum n_visual_info_flags vif);
 
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */

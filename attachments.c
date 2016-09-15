@@ -119,8 +119,13 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
 {
    sighandler_type volatile ohdl;
    char prefix[80 * 2];
-   char const *cslc = NULL/*cc uninit?*/, *cp, *defcs;
+   struct str shin;
+   struct n_string shou, *shoup;
+   char const *cslc, *cp, *defcs;
    NYD_ENTER;
+
+   UNINIT(cslc, NULL);
+   shoup = n_string_creat(&shou);
 
    hold_sigs(); /* TODO until we have signal manager (see TODO) */
    ohdl = safe_signal(SIGINT, SIG_IGN);
@@ -149,12 +154,24 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
    snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " filename: "), number);
    for (;;) {
       if ((cp = ap->a_name) != NULL)
-         cp = fexpand_nshell_quote(cp);
+         cp = n_shell_quote_cp(cp, FAL0);
       if ((cp = n_lex_input_cp_addhist(prefix, cp, TRU1)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
          goto jleave;
       }
+
+      shin.s = UNCONST(cp);
+      shin.l = UIZ_MAX;
+      if((n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+               n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_IGNORE_EMPTY) &
+             (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
+             n_SHEXP_STATE_OUTPUT)
+         continue;
+      if(shin.l != 0)
+         continue;
+      cp = n_string_cp(shoup);
 
       /* May be a message number (XXX add "AC_MSG", use that not .a_msgno) */
       if (cp[0] == '#') {
@@ -173,7 +190,7 @@ _read_attachment_data(struct attachment * volatile ap, ui32_t number)
          }
       }
 
-      if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NSHELL)) != NULL &&
+      if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NVAR)) != NULL &&
             !access(cp, R_OK)) {
          ap->a_name = cp;
          break;
@@ -259,8 +276,10 @@ jcs:
 jdone:
 #endif
    if (options & OPT_INTERACTIVE)
-      printf(_("~@: added attachment \"%s\"\n"), ap->a_name);
+      printf(_("Added attachment %s\n"), n_shell_quote_cp(ap->a_name, FAL0));
 jleave:
+   n_string_gut(shoup);
+
    safe_signal(SIGINT, ohdl);/* TODO until we have signal manager (see TODO) */
    if (__atticonv_sig != 0) {
       sigset_t nset;
@@ -356,7 +375,7 @@ add_attachment(struct attachment *aphead, char *file, struct attachment **newap)
    struct attachment *nap = NULL, *ap;
    NYD_ENTER;
 
-   if ((file = fexpand(file, FEXP_LOCAL | FEXP_NSHELL)) == NULL)
+   if ((file = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL)
       goto jleave;
    if (access(file, R_OK) != 0)
       goto jleave;
@@ -380,21 +399,37 @@ jleave:
 }
 
 FL void
-append_attachments(struct attachment **aphead, char *names)
-{
-   char *cp;
-   struct attachment *xaph, *nap;
+append_attachments(struct attachment **aphead, char *names){
+   struct str shin;
+   struct n_string shou, *shoup;
    NYD_ENTER;
 
-   while ((cp = n_strescsep(&names, ',', TRU1)) != NULL) {
-      xaph = add_attachment(*aphead, fexpand_nshell_quote(cp), &nap);
-      if (xaph != NULL) {
-         *aphead = xaph;
-         if (options & OPT_INTERACTIVE)
-            printf(_("~@: added attachment \"%s\"\n"), nap->a_name);
-      } else
-         n_perr(cp, 0);
+   shoup = n_string_creat_auto(&shou);
+
+   for(shin.s = names, shin.l = UIZ_MAX;;){
+      struct attachment *xaph, *nap;
+      enum n_shexp_state shs;
+
+      shs = n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+             n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+             n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY);
+      if(shs & n_SHEXP_STATE_ERR_MASK)
+         break;
+
+      if(shs & n_SHEXP_STATE_OUTPUT){
+         if((xaph = add_attachment(*aphead, n_string_cp(shoup), &nap)) != NULL){
+            *aphead = xaph;
+            if(options & OPT_INTERACTIVE)
+               printf(_("Added attachment %s\n"),
+                  n_shell_quote_cp(nap->a_name, FAL0));
+         }else
+            n_perr(n_string_cp(shoup), 0);
+      }
+
+      if(shs & n_SHEXP_STATE_STOP)
+         break;
    }
+   n_string_gut(shoup);
    NYD_LEAVE;
 }
 
@@ -405,10 +440,13 @@ edit_attachments(struct attachment **aphead)
    ui32_t attno = 1;
    NYD_ENTER;
 
-   if (!(pstate & PS_ATTACHMENTS_NOTED)) {
-      pstate |= PS_ATTACHMENTS_NOTED;
-      printf(_("# Please be aware that \"\\\" must be escaped, e.g., "
-         "\"\\\\\", \"\\$HOME\"\n"));
+   /* C99 */{
+      static bool_t note_given; /* v15-compat: DROP */
+
+      if(!note_given){
+         note_given = TRU1;
+         printf(_("# Only supports sh(1)ell-style quoting for file names\n"));
+      }
    }
 
    /* Modify already present ones? */

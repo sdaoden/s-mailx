@@ -206,58 +206,6 @@ n_strsep(char **iolist, char sep, bool_t ignore_empty)
    return base;
 }
 
-FL char *
-n_strescsep(char **iolist, char sep, bool_t ignore_empty){
-   char *cp, c, *base;
-   bool_t isesc, anyesc;
-   NYD2_ENTER;
-
-   assert(sep != '\0');
-
-   for(base = *iolist; base != NULL; base = *iolist){
-      while((c = *base) != '\0' && blankspacechar(c))
-         ++base;
-
-      for(isesc = anyesc = FAL0, cp = base;; ++cp){
-         if(UNLIKELY((c = *cp) == '\0')){
-            *iolist = NULL;
-            break;
-         }else if(!isesc){
-            if(c == sep){
-               *iolist = cp + 1;
-               break;
-            }
-            isesc = (c == '\\');
-         }else{
-            isesc = FAL0;
-            anyesc |= (c == sep);
-         }
-      }
-
-      while(cp > base && blankspacechar(cp[-1]))
-         --cp;
-      *cp = '\0';
-
-      if(*base != '\0'){
-         if(anyesc){
-            char *ins;
-
-            for(ins = cp = base;; ++ins)
-               if((c = *cp) == '\\' && cp[1] == sep){
-                  *ins = sep;
-                  cp += 2;
-               }else if((*ins = (++cp, c)) == '\0')
-                  break;
-         }
-         break;
-      }
-      if(!ignore_empty)
-         break;
-   }
-   NYD2_LEAVE;
-   return base;
-}
-
 FL void
 i_strcpy(char *dest, char const *src, size_t size)
 {
@@ -805,7 +753,7 @@ n_string_cp_const(struct n_string const *self){
  * UTF-8
  */
 
-#ifdef HAVE_NATCH_CHAR
+#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL ui32_t
 n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
 {
@@ -860,9 +808,7 @@ jerr:
    c = UI32_MAX;
    goto jleave;
 }
-#endif /* HAVE_NATCH_CHAR */
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
 FL size_t
 n_utf32_to_utf8(ui32_t c, char *buf)
 {
@@ -918,7 +864,7 @@ j0:
    NYD2_LEAVE;
    return l;
 }
-#endif /* HAVE_FILTER_HTML_TAGSOUP */
+#endif /* HAVE_NATCH_CHAR || HAVE_ICONV */
 
 /*
  * Our iconv(3) wrapper
@@ -1131,6 +1077,36 @@ jrealloc:
    out->s[out->l = olb - ol] = '\0';
    NYD2_LEAVE;
    return err;
+}
+
+FL char *
+n_iconv_onetime_cp(char const *tocode, char const *fromcode,
+      char const *input, bool_t skipilseq){
+   struct str out, in;
+   iconv_t icd;
+   char *rv;
+   NYD2_ENTER;
+
+   rv = NULL;
+   if(tocode == NULL)
+      tocode = charset_get_lc();
+   if(fromcode == NULL)
+      fromcode = "utf-8";
+
+   if((icd = iconv_open(tocode, fromcode)) == (iconv_t)-1)
+      goto jleave;
+
+   in.l = strlen(in.s = UNCONST(input)); /* logical */
+   out.s = NULL, out.l = 0;
+   if(!n_iconv_str(icd, &out, &in, NULL, skipilseq))
+      rv = savestrbuf(out.s, out.l);
+   if(out.s != NULL)
+      free(out.s);
+
+   iconv_close(icd);
+jleave:
+   NYD2_LEAVE;
+   return rv;
 }
 #endif /* HAVE_ICONV */
 

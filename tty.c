@@ -103,9 +103,6 @@ jleave:\
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 #endif /* HAVE_HISTORY */
 
-/* fexpand() flags for expand-on-tab */
-#define a_TTY_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
-
 #ifdef a_TTY_SIGNALS
 static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
    a_tty_ohup,
@@ -529,21 +526,24 @@ jentry:{
  * convert that on-the-fly back to the plain char* result once we're done.
  * To simplify our live, use savestr() buffers for all other needed memory */
 
-/* Columns to ripoff: outermost may not be touched, plus position indicator.
- * Must thus be at least 1, but should be >= 1+4 to dig the position indicator
- * that we place (if there is sufficient space) */
-# define a_TTY_WIDTH_RIPOFF 5
-
-/* When shall the visual screen be scrolled, in % of usable screen width */
-# define a_TTY_SCROLL_MARGIN_LEFT 15
-# define a_TTY_SCROLL_MARGIN_RIGHT 10
-
 /* The maximum size (of a_tty_cell's) in a line */
 # define a_TTY_LINE_MAX SI32_MAX
 
 /* (Some more CTAs around) */
 n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
    "a_TTY_LINE_MAX larger than SI32_MAX, but the MLE uses 32-bit arithmetic");
+
+/* When shall the visual screen be scrolled, in % of usable screen width */
+# define a_TTY_SCROLL_MARGIN_LEFT 15
+# define a_TTY_SCROLL_MARGIN_RIGHT 10
+
+/* fexpand() flags for expand-on-tab */
+# define a_TTY_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
+
+/* Columns to ripoff: outermost may not be touched, plus position indicator.
+ * Must thus be at least 1, but should be >= 1+4 to dig the position indicator
+ * that we place (if there is sufficient space) */
+# define a_TTY_WIDTH_RIPOFF 5
 
 enum a_tty_visual_flags{
    a_TTY_VF_NONE,
@@ -593,6 +593,7 @@ struct a_tty_line{
       struct a_tty_cell *cells;
    } tl_line;
    struct str tl_defc;           /* Current default content */
+   size_t tl_defc_cursor_byte;   /* Desired position of cursor after takeover */
    struct str tl_savec;          /* Saved default content */
    struct str tl_yankbuf;        /* Last yanked data */
 # ifdef HAVE_HISTORY
@@ -608,9 +609,10 @@ struct a_tty_line{
     * TODO then check what _really_ has changed, sync those changes only */
    struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
    ui32_t tl_phy_cursor;         /* Physical cursor position */
+   bool_t tl_quote_roundtrip;    /* For _kht() expansion */
+   ui8_t tl__dummy2[3];
    ui32_t tl_prompt_length;      /* Preclassified (TODO needed as a_tty_cell) */
    ui32_t tl_prompt_width;
-   ui8_t tl__dummy[4];
    char const *tl_prompt;        /* Preformatted prompt (including colours) */
    /* .tl_pos_buf is a hack */
 # ifdef HAVE_COLOUR
@@ -623,8 +625,13 @@ struct a_tty_line{
 struct a_tty_hist{
    struct a_tty_hist *th_older;
    struct a_tty_hist *th_younger;
+#  ifdef HAVE_BYTE_ORDER_LITTLE
    ui32_t th_isgabby : 1;
+#  endif
    ui32_t th_len : 31;
+#  ifndef HAVE_BYTE_ORDER_LITTLE
+   ui32_t th_isgabby : 1;
+#  endif
    char th_dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # endif
@@ -1261,7 +1268,7 @@ jerr:
 }
 
 static si32_t
-a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){
+a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){/* TODO shell token-wise */
    bool_t anynon;
    struct a_tty_cell *tcap;
    ui32_t cur, cnt;
@@ -1563,27 +1570,26 @@ jleave:
 
 static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
+   struct stat sb;
    struct str orig, bot, topp, sub, exp;
+   struct n_string shou, *shoup;
    struct a_tty_cell *cword, *ctop, *cx;
-   bool_t set_savec = FAL0;
-   ui32_t f, rv;
+   bool_t wedid, set_savec;
+   ui32_t rv, f;
    NYD2_ENTER;
 
-   /* We cannot expand an empty line */
-   if(UNLIKELY(tlp->tl_count == 0)){
-      rv = 0;
-      f = a_TTY_VF_BELL; /* xxx really bell if no expansion is possible? */
-      goto jleave;
-   }
+   f = a_TTY_VF_NONE;
+   shoup = n_string_creat_auto(&shou);
 
    /* Get plain line data; if this is the first expansion/xy, update the
     * very original content so that ^G gets the origin back */
    orig = tlp->tl_savec;
    a_tty_cell2save(tlp);
    exp = tlp->tl_savec;
-   if(orig.s != NULL)
-      tlp->tl_savec = orig;
-   else
+   if(orig.s != NULL){
+      /*tlp->tl_savec = orig;*/
+      set_savec = FAL0;
+   }else
       set_savec = TRU1;
    orig = exp;
 
@@ -1595,52 +1601,80 @@ a_tty_kht(struct a_tty_line *tlp){
 
    /* topp: separate data right of cursor */
    if(cx > ctop){
-      for(rv = 0; --cx > ctop; --cx)
-         rv += cx->tc_count;
+      for(rv = 0; ctop < cx; ++ctop)
+         rv += ctop->tc_count;
       topp.l = rv;
       topp.s = orig.s + orig.l - rv;
+      ctop = cword + tlp->tl_cursor;
    }else
       topp.s = NULL, topp.l = 0;
 
-   /* bot, sub: we cannot expand the entire data left of cursor, but only
-    * the last "word", so separate them */
-   /* TODO Context-sensitive completion: stop for | too, try expand shell?
-    * TODO Ditto, "cx==cword(+space)": try mail command expansion? */
-   while(cx > cword && !iswspace(cx[-1].tc_wc))
-      --cx;
-   for(rv = 0; cword < cx; ++cword)
-      rv += cword->tc_count;
-   sub =
-   bot = orig;
-   bot.l = rv;
-   sub.s += rv;
-   sub.l -= rv;
-   sub.l -= topp.l;
+   /* Find the shell token that corresponds to the cursor position */
+   /* C99 */{
+      size_t max;
+
+      max = 0;
+      if(ctop > cword){
+         for(; cword < ctop; ++cword)
+            max += cword->tc_count;
+         cword = tlp->tl_line.cells;
+      }
+      bot = sub = orig;
+      bot.l = 0;
+      sub.l = max;
+
+      if(max > 0){
+         for(;;){
+            enum n_shexp_state shs;
+
+            exp = sub;
+            shs = n_shell_parse_token(NULL, &sub, n_SHEXP_PARSE_DRYRUN |
+                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
+            if(sub.l != 0){
+               size_t x;
+
+               assert(max >= sub.l);
+               x = max - sub.l;
+               bot.l += x;
+               max -= x;
+               continue;
+            }
+            if(shs & n_SHEXP_STATE_ERR_MASK){
+               n_err(_("Invalid completion pattern: %.*s\n"),
+                  (int)exp.l, exp.s);
+               goto jnope;
+            }
+            n_shell_parse_token(shoup, &exp,
+                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
+            break;
+         }
+
+         sub.s = n_string_cp(shoup);
+         sub.l = shoup->s_len;
+      }
+   }
 
    /* Leave room for "implicit asterisk" expansion, as below */
    if(sub.l == 0){
+      wedid = TRU1;
       sub.s = UNCONST("*");
       sub.l = 1;
-   }else{
-      exp.s = salloc(sub.l + 1 +1);
-      memcpy(exp.s, sub.s, sub.l);
-      exp.s[sub.l] = '\0';
-      sub.s = exp.s;
    }
 
-   /* TODO there is a TODO note upon fexpand() with multi-return;
-    * TODO if that will change, the if() below can be simplified.
-    * TODO Also: iff multireturn, offer a numbered list of possible
-    * TODO expansions, 0 meaning "none" and * (?) meaning "all",
-    * TODO go over the pager as necesary (use *crt*, generalized) */
-   /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
+   wedid = FAL0;
 jredo:
+   /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
    hold_all_sigs();
    exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
    rele_all_sigs();
 
    if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0)
       goto jnope;
+
+   /* May be multi-return! */
+   if(pstate & PS_EXPAND_MULTIRESULT)
+      goto jmulti;
+
    /* xxx That is not really true since the limit counts characters not bytes */
    n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
    if(exp.l + 1 >= a_TTY_LINE_MAX){
@@ -1650,12 +1684,37 @@ jredo:
 
    /* If the expansion equals the original string, assume the user wants what
     * is usually known as tab completion, append `*' and restart */
-   if(exp.l == sub.l && !strcmp(exp.s, sub.s)){
+   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l)){
       if(sub.s[sub.l - 1] == '*')
          goto jnope;
+
+      wedid = TRU1;
       sub.s[sub.l++] = '*';
       sub.s[sub.l] = '\0';
       goto jredo;
+   }
+   /* If it is a directory, and there is not yet a / appended, then we want the
+    * user to confirm that he wants to dive in -- with only a HT */
+   else if(wedid && exp.l == --sub.l && !memcmp(exp.s, sub.s, exp.l) &&
+         exp.s[exp.l - 1] != '/'){
+      if(stat(exp.s, &sb) || !S_ISDIR(sb.st_mode))
+         goto jnope;
+      sub.s = salloc(exp.l + 1 +1);
+      memcpy(sub.s, exp.s, exp.l);
+      sub.s[exp.l++] = '/';
+      sub.s[exp.l] = '\0';
+      exp.s = sub.s;
+      wedid = FAL0;
+      goto jset;
+   }else{
+      if(wedid && (wedid = (exp.s[exp.l - 1] == '*')))
+         --exp.l;
+      exp.s[exp.l] = '\0';
+jset:
+      exp.l = strlen(exp.s = n_shell_quote_cp(exp.s, tlp->tl_quote_roundtrip));
+      tlp->tl_defc_cursor_byte = bot.l + exp.l -1;
+      if(wedid)
+         goto jnope;
    }
 
    orig.l = bot.l + exp.l + topp.l;
@@ -1672,11 +1731,186 @@ jredo:
 
    tlp->tl_defc = orig;
    tlp->tl_count = tlp->tl_cursor = 0;
-   f = a_TTY_VF_MOD_DIRTY;
+   f |= a_TTY_VF_MOD_DIRTY;
 jleave:
+   n_string_gut(shoup);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;
+
+jmulti:{
+      struct n_visual_info_ctx vic;
+      struct str input;
+      wc_t c2, c1;
+      bool_t isfirst;
+      char const *lococp;
+      size_t locolen, scrwid, lnlen, lncnt, prefixlen;
+      FILE *fp;
+
+      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+         n_perr(_("tmpfile"), 0);
+         fp = stdout;
+      }
+
+      /* How long is the result string for real?  Search the NUL NUL
+       * terminator.  While here, detect the longest entry to perform an
+       * initial allocation of our accumulator string */
+      locolen = 0;
+      do{
+         size_t i;
+
+         i = strlen(&exp.s[++exp.l]);
+         locolen = MAX(locolen, i);
+         exp.l += i;
+      }while(exp.s[exp.l + 1] != '\0');
+
+      shoup = n_string_reserve(n_string_trunc(shoup, 0),
+            locolen + (locolen >> 1));
+
+      /* Iterate (once again) over all results */
+      scrwid = (size_t)scrnwidth - ((size_t)scrnwidth >> 3);
+      lnlen = lncnt = 0;
+      UNINIT(prefixlen, 0);
+      UNINIT(lococp, NULL);
+      UNINIT(c1, '\0');
+      for(isfirst = TRU1; exp.l > 0; isfirst = FAL0, c1 = c2){
+         size_t i;
+         char const *fullpath;
+
+         /* Next result */
+         sub = exp;
+         sub.l = i = strlen(sub.s);
+         assert(exp.l >= i);
+         if((exp.l -= i) > 0)
+            --exp.l;
+         exp.s += ++i;
+
+         /* Separate dirname and basename */
+         fullpath = sub.s;
+         if(isfirst){
+            char const *cp;
+
+            if((cp = strrchr(fullpath, '/')) != NULL)
+               prefixlen = PTR2SIZE(++cp - fullpath);
+            else
+               prefixlen = 0;
+         }
+         if(prefixlen > 0 && prefixlen < sub.l){
+            sub.l -= prefixlen;
+            sub.s += prefixlen;
+         }
+
+         /* We want case-insensitive sort-order */
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = sub.s;
+         vic.vic_inlen = sub.l;
+         c2 = n_visual_info(&vic, n_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
+               : (ui8_t)*sub.s;
+#ifdef HAVE_C90AMEND1
+         c2 = towlower(c2);
+#else
+         c2 = lowerconv((char)c2);
+#endif
+
+         /* Query longest common prefix along the way */
+         if(isfirst){
+            c1 = c2;
+            lococp = sub.s;
+            locolen = sub.l;
+         }else if(locolen > 0){
+            for(i = 0; i < locolen; ++i)
+               if(lococp[i] != sub.s[i]){
+                  i = field_detect_clip(i, lococp, i);
+                  locolen = i;
+                  break;
+               }
+         }
+
+         /* Prepare display */
+         input = sub;
+         shoup = n_shell_quote(n_string_trunc(shoup, 0), &input,
+               tlp->tl_quote_roundtrip);
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = shoup->s_dat;
+         vic.vic_inlen = shoup->s_len;
+         if(!n_visual_info(&vic,
+               n_VISUAL_INFO_SKIP_ERRORS | n_VISUAL_INFO_WIDTH_QUERY))
+            vic.vic_vi_width = shoup->s_len;
+
+         /* Put on screen.  Indent follow lines of same sort slot */
+         c1 = (c1 != c2);
+         if(isfirst || c1 ||
+               scrwid < lnlen || scrwid - lnlen <= vic.vic_vi_width + 2){
+            putc('\n', fp);
+            if(scrwid < lnlen)
+               ++lncnt;
+            ++lncnt, lnlen = 0;
+            if(!isfirst && !c1)
+               goto jsep;
+         }else if(lnlen > 0){
+jsep:
+            fputs("  ", fp);
+            lnlen += 2;
+         }
+         fputs(n_string_cp(shoup), fp);
+         lnlen += vic.vic_vi_width;
+
+         /* Support the known file name tagging TODO optional */
+         if(!lstat(fullpath, &sb)){
+            char c = '\0';
+
+            if(S_ISDIR(sb.st_mode))
+               c = '/';
+            else if(S_ISLNK(sb.st_mode))
+               c = '@';
+# ifdef S_ISFIFO
+            else if(S_ISFIFO(sb.st_mode))
+               c = '|';
+# endif
+# ifdef S_ISSOCK
+            else if(S_ISSOCK(sb.st_mode))
+               c = '=';
+# endif
+# ifdef S_ISCHR
+            else if(S_ISCHR(sb.st_mode))
+               c = '%';
+# endif
+# ifdef S_ISBLK
+            else if(S_ISBLK(sb.st_mode))
+               c = '#';
+# endif
+
+            if(c != '\0'){
+               putc(c, fp);
+               ++lnlen;
+            }
+         }
+      }
+      putc('\n', fp);
+      ++lncnt;
+
+      page_or_print(fp, lncnt);
+      if(fp != stdout)
+         Fclose(fp);
+
+      n_string_gut(shoup);
+
+      /* A common prefix of 0 means we cannot provide the user any auto
+       * completed characters */
+      if(locolen == 0)
+         goto jnope;
+
+      /* Otherwise we can, so extend the visual line content by the common
+       * prefix (in a reversible way) */
+      (exp.s = UNCONST(lococp))[locolen] = '\0';
+      exp.s -= prefixlen;
+      exp.l = (locolen += prefixlen);
+
+      /* XXX Indicate that there is multiple choice */
+      /* XXX f |= a_TTY_VF_BELL; -> *line-editor-audible-completion*? or so */
+      wedid = FAL0;
+      goto jset;
+   }
 
 jnope:
    /* If we've provided a default content, but failed to expand, there is
@@ -1685,8 +1919,8 @@ jnope:
       tlp->tl_savec.s = NULL;
       tlp->tl_savec.l = 0;
    }
-   rv = 0;
    f = a_TTY_VF_NONE;
+   rv = 0;
    goto jleave;
 }
 
@@ -1810,6 +2044,24 @@ jrestart:
          }
 
          if(tlp->tl_vi_flags & a_TTY_VF_REFRESH){
+            /* kht may want to restore a cursor position after inserting some
+             * data somewhere */
+            if(tlp->tl_defc_cursor_byte > 0){
+               size_t i, j;
+
+               a_tty_khome(tlp, FAL0);
+
+               i = tlp->tl_defc_cursor_byte;
+               tlp->tl_defc_cursor_byte = 0;
+               for(j = 0; tlp->tl_cursor < tlp->tl_count; ++j){
+                  a_tty_kright(tlp);
+                  if((len = tlp->tl_line.cells[j].tc_count) > i)
+                     break;
+                  i -= len;
+               }
+               len = 0;
+            }
+
             if(!a_tty_vi_refresh(tlp)){
                clearerr(stdout); /* xxx I/O layer rewrite */
                n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
@@ -1863,6 +2115,7 @@ jrestart:
                   sizeof cbuf_base == PTR2SIZE(cbufp - cbuf)){
                tlp->tl_savec.s = tlp->tl_defc.s = NULL;
                tlp->tl_savec.l = tlp->tl_defc.l = len = 0;
+               tlp->tl_defc_cursor_byte = 0;
                tlp->tl_vi_flags |= a_TTY_VF_BELL;
                goto jreset;
             }
@@ -1871,13 +2124,13 @@ jrestart:
             ps[0] = ps[1];
             continue;
          }
+         ps[1] = ps[0];
 
          /* Buffer takeover completed? */
          if(len != 0 && (len -= (size_t)rv) == 0){
             tlp->tl_defc.s = NULL;
             tlp->tl_defc.l = 0;
          }
-         ps[1] = ps[0];
          break;
       }
 
@@ -1912,7 +2165,7 @@ j_f:
       case 'I' ^ 0x40: /* horizontal tab */
          if((len = a_tty_kht(tlp)) > 0)
             goto jrestart;
-         goto jbell;
+         break;
       case 'J' ^ 0x40: /* NL (\n) */
          goto jdone;
       case 'G' ^ 0x40: /* full reset */
@@ -2241,15 +2494,20 @@ FL int
       if(i == 0 || i >= UI32_MAX)
          prompt = NULL;
       else{
-         plen = (ui32_t)i;
          /* TODO *prompt* is in multibyte and not in a_tty_cell, therefore
           * TODO we cannot handle it in parts, it's all or nothing.
           * TODO Later (S-CText, SysV signals) the prompt should be some global
           * TODO carrier thing, fully evaluated and passed around as UI-enabled
           * TODO string, then we can print it character by character */
-         if((i = field_detect_width(prompt, i)) != (size_t)-1)
-            pwidth = (ui32_t)i;
-         else{
+         struct n_visual_info_ctx vic;
+
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = prompt;
+         vic.vic_inlen = i;
+         if(n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY)){
+            pwidth = (ui32_t)vic.vic_vi_width;
+            plen = (ui32_t)i;
+         }else{
             n_err(_("Character set error in evaluation of prompt\n"));
             prompt = NULL;
          }

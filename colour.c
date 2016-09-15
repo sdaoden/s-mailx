@@ -261,8 +261,9 @@ a_colour_mux(char **argv){
    }
 
    /* Check wether preconditions are at all allowed, verify them as far as
-    * possible as necessary */
-   if((ctag = argv[2]) != NULL){
+    * possible as necessary.  For shell_quote() simplicity let's just ignore an
+    * empty precondition */
+   if((ctag = argv[2]) != NULL && *ctag != '\0'){
       char const *xtag;
 
       if(cmip->cmi_tt == a_COLOUR_TT_NONE){
@@ -505,7 +506,7 @@ jredo:
                savecat(a_colour_ctx_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),
                (char const*)cmp->cm_buf + cmp->cm_user_off,
-               tagann, tag);
+               tagann, n_shell_quote_cp(tag, TRU1));
             cmp = cmp->cm_next;
          }
       }
