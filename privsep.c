@@ -6,7 +6,7 @@
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ and SIGPIPE should be ignored.
  *
- * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2015 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

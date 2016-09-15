@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ n_dotlock(): creation of an exclusive "dotlock" file.
  *
- * Copyright (c) 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 #undef n_FILE
 #define n_FILE dotlock
