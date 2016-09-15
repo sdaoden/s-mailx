@@ -92,7 +92,7 @@ when available, otherwise the very same can be achieved via
   $ git remote add origin -t master https://git.sdaoden.eu/scm/s-nail.git
   $ git fetch -v
   $ git checkout master
-  $ make CONFIG=MAXIMAL install
+  $ make tangerine
 
 The release commits and release tags are signed with an OpenPGP key.
 Our heraldic animal "snailmail.jpg" has been found at [100].

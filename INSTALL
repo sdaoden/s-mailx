@@ -20,101 +20,62 @@ experimental state will be enabled but not "require"d, so that
 configuration won't fail shall any of them not be usable due to the
 given system environment.
 
-  $ make install
-  $ make uninstall          # Won't remove the system wide startup file!
-  $ make distclean          # *Completely* cleanup working directory
+  $ make tangerine  # equals "$ make config build test install"
+  $ make distclean  # *Completely* cleanup working directory
 
 With adjustments:
 
-  $ make WANT_POP3=no WANT_SMTP=require install
-  $ make WANT_READLINE=true PREFIX=/some/nasty/prefix install
+  $ make WANT_POP3=no WANT_SMTP=require tangerine
+  $ make WANT_READLINE=true PREFIX=/some/nasty/prefix tangerine
 
 With utility program and feature adjustments:
 
-  $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz install
+  $ make awk=/usr/bin/nawk WANT_SOCKETS=no DESTDIR=./zzz tangerine
 
-If WANT_DOTLOCK has been enabled to include the minimal privilege-
-separated dotlock creation program that will be installed SETUID to the
-defined PRIVSEP_USER (default is "root"), and therefore the installation
-process needs to have the appropriate privileges.
-You therefore possibly want to separate the configuration / building and
-the installation tasks, and give the last step higher privileges via
-super(1), sudo(1), su(1) or a similar mechanism, e.g.:
+If WANT_DOTLOCK has been enabled then the minimal privilege-separated
+SETUID (to PRIVSEP_USER, default "root") helper program will be build
+and installed, and therefore the installation process needs to have the
+appropriate privileges.  In this case it may be useful to separate the
+configuration / building and the installation tasks and give the last
+step higher privileges via super(1), sudo(1), su(1) or a similar
+mechanism, e.g.:
 
-  $ make PREFIX=/usr config build && super make doinstall
+  $ make PREFIX=/usr config && make -j 4 &&
+    super make DESTDIR=./xy install
 
-There are also some predefined restricted configuration sets available,
-which take precedence over anything else (names are case-insensitive):
+would create a "s-nail" binary and install a "s-nail" manual etc.  under
+the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
+installed as "[./]xy/usr/bin/s-nail".
+The following make(1) targets exists, the default being `build':
 
-. CONFIG=NULL, CONFIG=NULLI
-  Anything that can be turned off is off.  MIME can't.
-  The latter adds and "require"s iconv(3), though.
+- tangerine   Shorthand for "$ make config build test install":
+              create or check and update configuration, build, test and
+              install.
+              The variable $DESTDIR will be honoured (see "make.rc"),
+              but not be tracked in the configuration.
+              In order to parallelize the `build' step pass a $MAILJOBS
+              variable, as shown below.
+- all         Shorthand for "$ make config build".
 
-. CONFIG=MINIMAL
-  This is the most plain mailx(1)-alike mode, but with MIME support and
-  (if available) character set conversion and regular expressions
-  builtin (here mostly ment for mailing list matching).  Dotlock files
-  and the privileged separated dotlock helper.  That's it.
+- config      Only create or check and update the configuration.
+- build       Only build (using the existing configuration).
+              This can be parallelized, either by a corresponding make(1)
+              invocation when the target is run by itself, or by setting
+              the $MAILJOBS variable otherwise, e.g., "MAILJOBS='-j 4'".
+              $MAILJOBS is not tracked in the configuration.
+- install     Only install using the built files of the existing
+              configuration.
+              The variable $DESTDIR will be honoured (see "make.rc"),
+              but not be tracked in the configuration.
 
-  "Require"s dotlocking and the privileged separated dotlock helper.
+- clean       Remove anything which can be rebuild.
+- distclean   Remove anything which can be rebuild or reconfigured.
 
-. CONFIG=MEDIUM
-  Like MINIMAL, but with documentation strings, the builtin line editor
-  (MLE) with history support (if possible), error tracking, basic colour
-  support and IDNA addresses.  Also adds in generic spam filter support.
+- test        Run "cc-test.sh" in --check-only mode on the built binary.
 
-  Possibly what people want who need nothing but a MIME-capable mailx(1)
-  and don't regret improved usability for the rare interactive use
-  occasions.
-
-  "Require"s iconv(3), dotlocking and the privileged separated dotlock
-  helper.
-
-. CONFIG=NETSEND
-  Adds SSL/TLS, GSSAPI and .netrc file parsing on top of MEDIUM, on the
-  other hand spam filter support is removed.
-
-  Sending messages directly to the mail provider via the SMTP protocol,
-  instead of requiring a local mail-transfer-agent (MTA) who does.
-
-  "Require"s iconv(3), SSL/TLS, SMTP (sockets), dotlocking and the
-  privileged separated dotlock helper.
-
-. CONFIG=MAXIMAL
-  Anything on, including experimental features.
-  "Require"s iconv(3), regex(3), the MLE as well as dotlocking and the
-  privileged separated dotlock helper.
-
-  S-nail(1) gains mail fetching capabilities and heads more toward being
-  a full-featured mail-user-agent (MUA) with this.
-
-E.g.:
-
-  $ make CONFIG=MAXIMAL DESTDIR=./xtest install
-
-would create a "s-nail" binary and install a "s-nail" manual etc.
-under the prefix "/usr/local" but rooted under "[./]xtest", i.e., the
-binary would be installed as "[./]xtest/usr/local/bin/s-nail".
-The following make(1) target exists:
-
-. all         Create / check and update configuration, build.
-. install     Create / check and update configuration, build, install.
-. clean       Remove anything which can be rebuild.
-. distclean   Remove anything which can be rebuild or reconfigured.
-. uninstall   Uninstall (if configured).
-
-. config      Only create or check and update the configuration.
-. build       Only build (using the existing configuration).
-. test        Run "cc-test.sh" in --check-only mode on the built binary.
-. doinstall or packager-install
-              Only install using the built files of the existing
-              configuration.  It is possible to overwrite DESTDIR= when
-              using this target nonetheless (a following `uninstall'
-              won't know about that overwritten value, however).
-
-Setting the make(1) variable $VERBOSE to an arbitrary value, as in
-"$ make VERBOSE=xy install", will change the output of the `build',
-`install' etc. targets to a different, more verbose one.
+Setting the make(1) variable $VERBOSE to an arbitrary value during
+`config' time, as in "$ make VERBOSE=xy tangerine", will change the
+output of the `all', `install' etc. targets to a more verbose one.
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable $C_INCLUDE_PATH
@@ -131,31 +92,78 @@ a Bourne / Korn / POSIX compatible shell:
   $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
   $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
-  $ make install
+  $ make tangerine
 
 The S-nail make system will also automatically integrate pkgsrc(7) paths
-into this mechanism.  pkgsrc(7) is used to handle building (compilation),
-installation and removal of software packages on a lot of operating
-systems, including all BSD systems, Linux, Solaris etc.
+into this mechanism.  (pkgsrc(7) is a portable package management system
+that is used as a default on diverse operating systems.)
 And if all else fails you can also forcefully pass in include directives
 and library paths by passing prefilled $INCS and $LIBS variables:
 
-  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv install
+  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv tangerine
+
+Note there are also some predefined configuration sets available, ment
+to be used instead of doing manual adjustments (in "make.rc" or) on the
+command line (names are case-insensitive):
+
+- CONFIG=NULL, CONFIG=NULLI
+  Anything that can be turned off is off.  MIME can't.
+  The latter adds and "require"s iconv(3), though.
+
+- CONFIG=MINIMAL
+  This is the most plain mailx(1)-alike mode, but with MIME support and
+  (if available) character set conversion and regular expressions
+  builtin.  Dotlock files and the privileged separated dotlock helper.
+
+  "Require"s dotlocking and the privileged separated dotlock helper.
+
+- CONFIG=MEDIUM
+  Possibly what people want who need nothing but a MIME-capable mailx(1)
+  and don't regret improved usability for the rare interactive use
+  occasions.
+
+  Like MINIMAL, but with documentation strings, the builtin line editor
+  (MLE) with history support (if possible), error tracking, basic colour
+  support and IDNA addresses.
+
+  "Require"s iconv(3), dotlocking and the privileged separated dotlock
+  helper.
+
+- CONFIG=NETSEND
+  Sending messages directly to the mail provider via the SMTP protocol,
+  instead of requiring a local mail-transfer-agent (MTA) who does.
+
+  Adds SSL/TLS, GSSAPI and .netrc file parsing on top of MEDIUM, on the
+  other hand spam filter support is removed.
+
+  "Require"s iconv(3), SSL/TLS, SMTP (sockets), dotlocking and the
+  privileged separated dotlock helper.
+
+- CONFIG=MAXIMAL
+  Anything on, including experimental features.
+  S-nail(1) gains mail fetching capabilities and heads more towards
+  being a full-featured mail-user-agent (MUA) with this configuration.
+
+  "Require"s iconv(3), regex(3), the MLE as well as dotlocking and the
+  privileged separated dotlock helper.
 
 1.1 What if configuration fails?
 --------------------------------
 
 The configuration process creates some files named "config":
 
-. config.log  output generated by the configuration compile tests.
-. config.lst  configuration (chosen option, programs, paths).
-. config.h    C program header produced according to "config.lst".
+- config.log  output generated by the configuration compile tests.
+- config.lst  configuration (chosen option, programs, paths).
+- config.h    C program header produced according to config.lst.
+- config.ev   A set of sh(1) variable for reproducable compile runs.
+- config.inc  List of C header include paths, as compiler directives.
+- config.lib  List of used library information, as compiler directives.
 
 Of special interest is "config.log" since the error usually manifests
 here in textual output.  Maybe that makes it obvious what can be done
 (header files could not be found because of missing entries in
 $C_INCLUDE_PATH, libraries could not be linked because of incomplete
-$LD_LIBRARY_PATH).
+$LD_LIBRARY_PATH, etc.).
 Otherwise it is getting complicated, and it would be appreciated if you
 would contact s-nail-users@!
 
@@ -201,20 +209,20 @@ S-nail(1) has been or is used regulary on these systems ("uname -srm").
 Unless otherwise noted the following applies to saying "$ make" and
 "$ make devel" followed by "$ make test".
 
-. All systems:
-  - I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
+- All systems:
+  * I've turned off -Wstrict-overflow warnings unless WANT_DEVEL is
     defined (talking about WANT_AUTOCC=yes here).  With gcc 5.1 the
     number of warnings exploded.  With gcc 5.2 that went down again,
     but just keep it like that nonetheless.
-  - You may see warnings on unused returns from write(2), ftruncate(2)
+  * You may see warnings on unused returns from write(2), ftruncate(2)
     and a few other I/O functions.  These will vanish after the large
     I/O and MIME rewrite that comes next.  They mostly refer to debug
     dumping, truncating a(n open) file to zero size and freopen(3)ing
     one of the standard channels.  I refrained from adding abort(3)
     calls as return value checks.
 
-. All 32-bit systems:
-  - There _may_ be warnings about format strings, like, e.g.,
+- All 32-bit systems:
+  * There _may_ be warnings about format strings, like, e.g.,
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
       unsigned int', but argument 3 has type 'size_t'
     The S-nail codebase is ISO C89, so we have no %z printf(3) format.
@@ -225,8 +233,8 @@ Unless otherwise noted the following applies to saying "$ make" and
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
-    $WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
-    -std=c99 is set in your $CFLAGS.
+    $WANT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
+    ensure -std=c99 is set in your $CFLAGS.
 
 . ArchLinux <https://www.archlinux.org/>
   Latest as of 2016-03-26, clang(1) and gcc(1).
@@ -239,7 +247,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 . CRUX Linux <http://www.crux.nu/>
   CRUX 3.2 RC3, gcc(1).
 
-. FreeBSD <https://www.freebsd.org/>
+- FreeBSD <https://www.freebsd.org/>
   FreeBSD 10.2, clang(1) and gcc6(1).
   Not tested for v14.8.8.
   (My current working environment is restricted since i've lost
@@ -255,19 +263,19 @@ Unless otherwise noted the following applies to saying "$ make" and
   (My current working environment is restricted since i've lost
   a machine in January.)
 
-. NetBSD <https://www.netbsd.org/>
-  + Show work.
+- NetBSD <https://www.netbsd.org/>
+  * Show work.
 
-. Solaris <http://opencsw.org/>
-  * First of all: thanks to OpenCSW.org for offering SSH access to
+- Solaris <http://opencsw.org/>
+  @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
-  - According to standards(5) we require the /usr/xpg4 environment, and
+  * According to standards(5) we require the /usr/xpg4 environment, and
     will bail if we cannot find it.
-  - With $WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+  * With $WANT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     $WANT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
-  - I will never get iconv(3) right for Solaris it seems.
-  - In order to be able to run the tests you will need a cksum(1) that
+  * I will never get iconv(3) right for Solaris it seems.
+  * In order to be able to run the tests you will need a cksum(1) that
     supports CRC-32 (POSIX).  We look into "/opt/csw/gnu/cksum", but if
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.  (A future version of S-nail will
@@ -291,10 +299,10 @@ Unless otherwise noted the following applies to saying "$ make" and
         __builtin_stdarg_start              auxlily.o
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with $WANT_AUTOCC add this:
-       ADDCFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+       EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
-. UnixWare 7.1.4.
-  + Note: it is no longer possible to use the `install' rule, because
+- UnixWare 7.1.4.
+  * Note: it is no longer possible to use the `install' rule, because
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
@@ -307,7 +315,7 @@ Unless otherwise noted the following applies to saying "$ make" and
 I claim that we have reached a stable state that should enable users
 a neatless mode of operation when running 24/7 (except for growing
 memory usage from the OpenSSL side of the road, when used).
-I'll hope to be able to release S-nail v20 on 2020-03-25, the 42th
+I'll hope to be able to release S-nail v20 on 2020-03-25, the 42nd
 anniversary of Berkeley Mail, as a good one.  Also see "TODO".
 
 For S-nail, v15.0 (not before 2017) is dedicated to a Send- and

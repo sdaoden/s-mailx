@@ -183,8 +183,8 @@ os_setup() {
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       fi
@@ -244,12 +244,12 @@ _os_setup_sunos() {
          CC=cc
          feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-         CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
          WANT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
-         # Assume gcc(1)
+         # Assume gcc(1), which supports -R for compat
          cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
       fi
    fi
@@ -259,12 +259,12 @@ _os_setup_sunos() {
 cc_setup() {
    # Even though it belongs into cc_flags we will try to compile and link
    # something, so ensure we have a clean state regarding CFLAGS/LDFLAGS or
-   # ADDCFLAGS/ADDLDFLAGS
+   # EXTRA_CFLAGS/EXTRA_LDFLAGS
    if feat_no AUTOCC; then
       _cc_default
       # Ensure those don't do any harm
-      ADDCFLAGS= ADDLDFLAGS=
-      export ADDCFLAGS ADDLDFLAGS
+      EXTRA_CFLAGS= EXTRA_LDFLAGS=
+      export EXTRA_CFLAGS EXTRA_LDFLAGS
       return
    else
       CFLAGS= LDFLAGS=
@@ -292,8 +292,8 @@ cc_setup() {
       else
          printf >&2 'boing booom tschak\n'
          msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), tcc(1), c89(1) and c99(1).'
-         msg ' Please set $CC environment variable, maybe $CFLAGS also, rerun.'
+         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
          config_exit 1
       fi
    fi
@@ -310,7 +310,7 @@ _cc_default() {
    if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
       :
    else
-      msg 'Using C compiler $CC="%s"' "${CC}"
+      msg 'Using C compiler ${CC}=%s' "${CC}"
    fi
 }
 
@@ -318,10 +318,11 @@ cc_flags() {
    if feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
-         msg 'Detecting $CFLAGS/$LDFLAGS for $CC="%s", just a second..' "${CC}"
+         msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}="%s", just a second..' \
+            "${CC}"
       else
          cc_check_silent=
-         msg 'Testing usable $CFLAGS/$LDFLAGS for $CC="%s"' "${CC}"
+         msg 'Testing usable ${CFLAGS}/${LDFLAGS} for ${CC}=%s' "${CC}"
       fi
 
       i=`echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}'`
@@ -338,8 +339,8 @@ cc_flags() {
       fi
 
       feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS="${_CFLAGS} ${ADDCFLAGS}"
-      LDFLAGS="${_LDFLAGS} ${ADDLDFLAGS}"
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
    else
       if feat_no DEBUG; then
          CFLAGS="-DNDEBUG ${CFLAGS}"
@@ -360,6 +361,11 @@ _cc_flags_tcc() {
    if feat_yes DEBUG; then
       # May have problems to find libtcc cc_check -b
       cc_check -g
+   fi
+
+   if ld_check -Wl,-rpath =./ no; then
+      need_R_ldflags=-Wl,-rpath=
+      ld_runtime_flags # update!
    fi
 
    _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
@@ -449,6 +455,13 @@ _cc_flags_generic() {
    ld_check -Wl,-z,relro
    ld_check -Wl,-z,now
    ld_check -Wl,-z,noexecstack
+   if ld_check -Wl,-rpath =./ no; then
+      need_R_ldflags=-Wl,-rpath=
+      ld_runtime_flags # update!
+   elif ld_check -Wl,-R ./ no; then
+      need_R_ldflags=-Wl,-R
+      ld_runtime_flags # update!
+   fi
 
    # Address randomization
    _ccfg=${_CFLAGS}
@@ -487,11 +500,13 @@ msg() {
 
 rc=./make.rc
 lst=./config.lst
+ev=./config.ev
 h=./config.h h_name=config.h
 mk=./mk.mk
 
 newlst=./config.lst-new
 newmk=./config.mk-new
+newev=./config.ev-new
 newh=./config.h-new
 tmp0=___tmp
 tmp=./${tmp0}1$$
@@ -514,7 +529,7 @@ check_tool() {
    # Evaluate, just in case user comes in with shell snippets (..well..)
    eval i="${i}"
    if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
-      [ -n "${VERBOSE}" ] && msg ' . $%s ... "%s"' "${n}" "${i}"
+      [ -n "${VERBOSE}" ] && msg ' . ${%s} ... %s' "${n}" "${i}"
       eval ${n}=${i}
       return 0
    fi
@@ -537,12 +552,12 @@ check_tool tr "${tr:-`command -v tr`}"
 
 # Our feature check environment
 feat_val_no() {
-   [ "x${1}" = x0 ] ||
+   [ "x${1}" = x0 ] || [ "x${1}" = xn ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
 feat_val_yes() {
-   [ "x${1}" = x1 ] ||
+   [ "x${1}" = x1 ] || [ "x${1}" = xy ] ||
    [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
@@ -559,7 +574,7 @@ _feat_check() {
    elif feat_val_yes "${i}"; then
       return 0
    else
-      msg "ERROR: %s: any of 0/false/no/off or 1/true/yes/on/require, got: %s" \
+      msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" \
          "${1}" "${i}"
       config_exit 11
    fi
@@ -587,6 +602,82 @@ feat_bail_required() {
    fi
    eval WANT_${1}=0
    option_update # XXX this is rather useless here (dependency chain..)
+}
+
+path_check() {
+   # "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
+   varname=${1} addflag=${2} flagvarname=${3}
+   j=${IFS}
+   IFS=:
+   eval "set -- \$${1}"
+   IFS=${j}
+   j= k= y= z=
+   for i
+   do
+      [ -z "${i}" ] && continue
+      [ -d "${i}" ] || continue
+      # Skip any fakeroot packager environment
+      case "${i}" in *fakeroot*) continue;; esac
+      if [ -n "${j}" ]; then
+         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
+            :
+         else
+            y="${y} :${i}:"
+            j="${j}:${i}"
+            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
+         fi
+      else
+         y=" :${i}:"
+         j="${i}"
+         [ -n "${addflag}" ] && k="${addflag}${i}"
+      fi
+   done
+   eval "${varname}=\"${j}\""
+   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
+   unset varname
+}
+
+ld_runtime_flags() {
+   if [ -n "${need_R_ldflags}" ]; then
+      i=${IFS}
+      IFS=:
+      set -- ${LD_LIBRARY_PATH}
+      IFS=${i}
+      for i
+      do
+         LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
+         _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
+      done
+      export LDFLAGS
+   fi
+   # Disable it for a possible second run.
+   need_R_ldflags=
+}
+
+cc_check() {
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
+   if "${CC}" ${INCS} \
+         ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      _CFLAGS="${_CFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
+}
+
+ld_check() {
+   # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
+   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
+   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+      [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
+      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
+      return 0
+   fi
+   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
+   return 1
 }
 
 # Include $rc, but only take from it what wasn't overwritten by the user from
@@ -640,7 +731,8 @@ while read line; do
          print LINE
       }'`
    fi
-  echo "${i}=\"${j}\""
+   [ "${i}" = "DESTDIR" ] && continue
+   echo "${i}=\"${j}\""
 done > ${tmp}
 # Reread the mixed version right now
 . ./${tmp}
@@ -653,38 +745,6 @@ msg 'Checking for remaining set of utilities'
 check_tool grep "${grep:-`command -v grep`}"
 
 # Before we step ahead with the other utilities perform a path cleanup first.
-# We need this function also for C_INCLUDE_PATH and LD_LIBRARY_PATH
-# "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
-path_check() {
-   varname=${1} addflag=${2} flagvarname=${3}
-   j=${IFS}
-   IFS=:
-   eval "set -- \$${1}"
-   IFS=${j}
-   j= k= y= z=
-   for i
-   do
-      [ -z "${i}" ] && continue
-      [ -d "${i}" ] || continue
-      if [ -n "${j}" ]; then
-         if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
-            :
-         else
-            y="${y} :${i}:"
-            j="${j}:${i}"
-            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
-         fi
-      else
-         y=" :${i}:"
-         j="${i}"
-         [ -n "${addflag}" ] && k="${addflag}${i}"
-      fi
-   done
-   eval "${varname}=\"${j}\""
-   [ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
-   unset varname
-}
-
 path_check PATH
 
 # awk(1) above
@@ -718,7 +778,7 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newh}" EXIT
+   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newev} ${newh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -782,12 +842,14 @@ fi
 
 for i in \
       awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
-      MAKE make strip \
+      MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
    printf "${i}=${j}\n" >> ${newlst}
+   printf "${i}=\"${j}\";export ${i}; " >> ${newev}
 done
+printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 path_check C_INCLUDE_PATH -I _INCS
@@ -797,18 +859,8 @@ LIBS="${LIBS} ${_LIBS}"
 unset _INCS _LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
 
-if [ -n "${need_R_ldflags}" ]; then
-   i=${IFS}
-   IFS=:
-   set -- ${LD_LIBRARY_PATH}
-   IFS=${i}
-   for i
-   do
-      LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
-      _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
-   done
-   export LDFLAGS
-fi
+# Some environments need runtime path flags to be able to go at all
+ld_runtime_flags
 
 ## Detect CC, wether we can use it, and possibly which CFLAGS we can use
 
@@ -828,46 +880,23 @@ main(int argc, char **argv){
 static void
 doit(char const *s){
    char buf[12];
-   strcpy(buf, s);
+   memcpy(buf, s, strlen(s) +1);
    puts(s);
 }
 !
 
-if "${CC}" ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} \
+if "${CC}" ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
       -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
    msg 'ERROR: i cannot compile a "Hello world" via'
    msg '   %s' \
-      "${CC} ${INCS} ${CFLAGS} ${ADDCFLAGS} ${LDFLAGS} ${ADDLDFLAGS} ${LIBS}"
+   "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
    msg 'ERROR:   Please read INSTALL, rerun'
    config_exit 1
 fi
 
-cc_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . CC %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${1} ${ADDCFLAGS} ${_LDFLAGS} ${ADDLDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
-      _CFLAGS="${_CFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
-      return 0
-   fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
-   return 1
-}
-
-ld_check() {
-   [ -n "${cc_check_silent}" ] || printf >&2 ' . LD %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1} ${ADDLDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
-      _LDFLAGS="${_LDFLAGS} ${1}"
-      [ -n "${cc_check_silent}" ] || printf >&2 'yes\n'
-      return 0
-   fi
-   [ -n "${cc_check_silent}" ] || printf >&2 'no\n'
-   return 1
-}
-
+# This may also update ld_runtime_flags() (again)
 cc_flags
 
 for i in \
@@ -908,8 +937,19 @@ config_exit() {
 }
 
 ${mv} -f ${newlst} ${lst}
+${mv} -f ${newev} ${ev}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
+
+if [ -z "${VERBOSE}" ]; then
+   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${mk}
+   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${mk}
+   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${mk}
+   printf -- "ECHO_TEST = @\n" >> ${mk}
+   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${mk}
+   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${mk}
+   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${mk}
+fi
 
 ## Compile and link checking
 
@@ -946,12 +986,11 @@ echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) -I./ $(XINCS) $(CFLAGS) -c $<
+	$(CC) -I./ $(XINCS) $(CFLAGS) -c $(<)
 .c.x:
-	$(CC) -I./ $(XINCS) -E $< >$@
+	$(CC) -I./ $(XINCS) -E $(<) > $(@)
 .c:
-	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(XLIBS)
-.y: ;
+	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
 !
 
 _check_preface() {
@@ -993,6 +1032,8 @@ _link_mayrun() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
+   feat_yes CROSS_BUILD && run=0
+
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
@@ -1022,10 +1063,31 @@ run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
-##
+feat_def() {
+   if feat_yes ${1}; then
+      echo '#define HAVE_'${1}'' >> ${h}
+   else
+      echo '/* WANT_'${1}'=0 */' >> ${h}
+   fi
+}
+
+squeeze_em() {
+   < "${1}" > "${2}" ${awk} \
+   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
+}
+
+## Generics
 
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+
+feat_def AMALGAMATION
+feat_def CROSS_BUILD
+feat_def DEBUG
+feat_def DEVEL
+feat_def DOCSTRINGS
+feat_def ERRORS
+feat_def NYD2
 
 if run_check inline '"inline" functions' \
    '#define HAVE_INLINE
@@ -1058,7 +1120,9 @@ then
    :
 fi
 
-##
+## Test for "basic" system-calls / functionality that is used by all parts
+## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
+## macros to be used by only the subprograms (potentially).
 
 if run_check clock_gettime 'clock_gettime(2)' \
    '#define HAVE_CLOCK_GETTIME' << \!
@@ -1287,7 +1351,7 @@ else
    config_exit 1
 fi
 
-##
+## optional stuff
 
 run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
@@ -1370,6 +1434,97 @@ int main(void){
 }
 !
 
+if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+#include <stdlib.h>
+int main(void){
+   char x_buf[4096], *x = realpath(".", x_buf);
+
+   return (x != NULL) ? 0 : 1;
+}
+!
+then
+   if run_check realpath_malloc 'realpath(3) takes NULL' \
+         '#define HAVE_REALPATH_NULL' << \!
+#include <stdlib.h>
+int main(void){
+   char *x = realpath(".", NULL);
+
+   if(x != NULL)
+      free(x);
+   return (x != NULL) ? 0 : 1;
+}
+!
+   then
+      :
+   fi
+fi
+
+## optional and selectable
+
+if feat_no NOALLOCA; then
+   # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
+   # versions of alloca(3) since modern compilers just can't be trusted
+   # not to overoptimize and silently break some code
+   run_check alloca '__builtin_alloca()' \
+      '#define HAVE_ALLOCA __builtin_alloca' << \!
+#include <stdio.h> /* For C89 NULL */
+int main(void){
+   void *vp = __builtin_alloca(1);
+
+   return (vp != NULL);
+}
+!
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check readlink 'readlink(2)' << \!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   char buf[128];
+
+   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check fchown 'fchown(2)' << \!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   if(!fchown(0, 0, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   else
+      feat_bail_required DOTLOCK
+   fi
+fi
+
+## Now it is the time to fork away the BASE_ series
+
+${rm} -f ${tmp}
+squeeze_em ${inc} ${tmp}
+${mv} ${tmp} ${inc}
+squeeze_em ${lib} ${tmp}
+${mv} ${tmp} ${lib}
+
+echo "BASE_LIBS = `${cat} ${lib}`" >> ${mk}
+echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
+
+## The remains are expected to be used only by the main MUA binary!
+
 link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void){
@@ -1418,31 +1573,6 @@ int main(void){
 !
 fi # have_setlocale
 
-if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
-#include <stdlib.h>
-int main(void){
-   char x_buf[4096], *x = realpath(".", x_buf);
-
-   return (x != NULL) ? 0 : 1;
-}
-!
-then
-   if run_check realpath_malloc 'realpath(3) takes NULL' \
-         '#define HAVE_REALPATH_NULL' << \!
-#include <stdlib.h>
-int main(void){
-   char *x = realpath(".", NULL);
-
-   if(x != NULL)
-      free(x);
-   return (x != NULL) ? 0 : 1;
-}
-!
-   then
-      :
-   fi
-fi
-
 link_check fnmatch 'fnmatch(3)' '#define HAVE_FNMATCH' << \!
 #include <fnmatch.h>
 int main(void){
@@ -1459,78 +1589,7 @@ int main(void){
 }
 !
 
-##
-
-if feat_yes DEBUG; then
-   echo '#define HAVE_DEBUG' >> ${h}
-fi
-
-if feat_yes AMALGAMATION; then
-   echo '#define HAVE_AMALGAMATION' >> ${h}
-fi
-
-if feat_no NOALLOCA; then
-   # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
-   # versions of alloca(3) since modern compilers just can't be trusted
-   # not to overoptimize and silently break some code
-   run_check alloca '__builtin_alloca()' \
-      '#define HAVE_ALLOCA __builtin_alloca' << \!
-#include <stdio.h> /* For C89 NULL */
-int main(void){
-   void *vp = __builtin_alloca(1);
-
-   return (vp != NULL);
-}
-!
-fi
-
-if feat_yes DEVEL; then
-   echo '#define HAVE_DEVEL' >> ${h}
-fi
-
-if feat_yes NYD2; then
-   echo '#define HAVE_NYD2' >> ${h}
-fi
-
-##
-
-if feat_yes DOTLOCK; then
-   if run_check readlink 'readlink(2)' << \!
-#include <unistd.h>
-# include <errno.h>
-int main(void){
-   char buf[128];
-
-   if(!readlink("here", buf, sizeof buf) || errno != ENOSYS)
-      return 0;
-   return 1;
-}
-!
-   then
-      :
-   else
-      feat_bail_required DOTLOCK
-   fi
-fi
-
-if feat_yes DOTLOCK; then
-   if run_check fchown 'fchown(2)' << \!
-#include <unistd.h>
-# include <errno.h>
-int main(void){
-   if(!fchown(0, 0, 0) || errno != ENOSYS)
-      return 0;
-   return 1;
-}
-!
-   then
-      :
-   else
-      feat_bail_required DOTLOCK
-   fi
-fi
-
-##
+## optional and selectable
 
 if feat_yes ICONV; then
    ${cat} > ${tmp2}.c << \!
@@ -2248,14 +2307,6 @@ else
    echo '/* WANT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
 fi
 
-if feat_yes ERRORS; then
-   echo '#define HAVE_ERRORS' >> ${h}
-else
-   echo '/* WANT_ERRORS=0 */' >> ${h}
-fi
-
-##
-
 if feat_yes SPAM_SPAMC; then
    echo '#define HAVE_SPAM_SPAMC' >> ${h}
    if command -v spamc >/dev/null 2>&1; then
@@ -2272,22 +2323,12 @@ else
    echo '/* WANT_SPAM_SPAMD=0 */' >> ${h}
 fi
 
-if feat_yes SPAM_FILTER; then
-   echo '#define HAVE_SPAM_FILTER' >> ${h}
-else
-   echo '/* WANT_SPAM_FILTER=0 */' >> ${h}
-fi
+feat_def SPAM_FILTER
 
 if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
    echo '#define HAVE_SPAM' >> ${h}
 else
    echo '/* HAVE_SPAM */' >> ${h}
-fi
-
-if feat_yes DOCSTRINGS; then
-   echo '#define HAVE_DOCSTRINGS' >> ${h}
-else
-   echo '/* WANT_DOCSTRINGS=0 */' >> ${h}
 fi
 
 if feat_yes QUOTE_FOLD &&\
@@ -2297,43 +2338,14 @@ else
    echo '/* WANT_QUOTE_FOLD=0 */' >> ${h}
 fi
 
-if feat_yes FILTER_HTML_TAGSOUP; then
-   echo '#define HAVE_FILTER_HTML_TAGSOUP' >> ${h}
-else
-   echo '/* WANT_FILTER_HTML_TAGSOUP=0 */' >> ${h}
-fi
-
-if feat_yes COLOUR; then
-   echo '#define HAVE_COLOUR' >> ${h}
-else
-   echo '/* WANT_COLOUR=0 */' >> ${h}
-fi
-
-if feat_yes DOTLOCK; then
-   echo '#define HAVE_DOTLOCK' >> ${h}
-else
-   echo '/* WANT_DOTLOCK=0 */' >> ${h}
-fi
-
-if feat_yes MD5; then
-   echo '#define HAVE_MD5' >> ${h}
-else
-   echo '/* WANT_MD5=0 */' >> ${h}
-fi
-
-if feat_yes NOMEMDBG; then
-   echo '#define HAVE_NOMEMDBG' >> ${h}
-else
-   echo '/* WANT_NOMEMDBG=0 */' >> ${h}
-fi
+feat_def FILTER_HTML_TAGSOUP
+feat_def COLOUR
+feat_def DOTLOCK
+feat_def MD5
+feat_def NOMEMDBG
 
 ## Summarizing
 
-# Since we cat(1) the content of those to cc/"ld", convert them to single line
-squeeze_em() {
-   < "${1}" > "${2}" ${awk} \
-   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
-}
 ${rm} -f ${tmp}
 squeeze_em ${inc} ${tmp}
 ${mv} ${tmp} ${inc}
@@ -2382,6 +2394,7 @@ printf '# ifdef HAVE_COLOUR\n   ",COLOUR"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DOTLOCK\n   ",DOTLOCK-FILES"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEBUG\n   ",DEBUG"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_DEVEL\n   ",DEVEL"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_CROSS_BUILD\n   ",CROSS-BUILD"\n# endif\n' >> ${h}
 printf ';\n# endif /* _ACCMACVAR_SOURCE || HAVE_AMALGAMATION */\n' >> ${h}
 
 # Create the real mk.mk
