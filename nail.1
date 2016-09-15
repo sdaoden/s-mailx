@@ -243,16 +243,17 @@ May be used multiple times.
 .
 .Mx
 .It Fl d
-Sets the
+.Ic set
+the internal variable
 .Va debug
-variable which enables debug messages and disables message delivery,
+which enables debug messages and disables message delivery,
 among others; effectively turns almost any operation into a dry-run.
 .
 .Mx
 .It Fl E
-Set the
+.Ic set
 .Va skipemptybody
-variable and thus discard messages with an empty message part body.
+and thus discard messages with an empty message part body.
 This is useful for sending messages from scripts.
 .
 .Mx
@@ -315,9 +316,9 @@ argument will have the same effect.
 .
 .Mx
 .It Fl i
-Set the
+.Ic set
 .Va ignore
-variable to ignore tty interrupt signals.
+to ignore tty interrupt signals.
 .
 .Mx
 .It Fl L Ar spec-list
@@ -377,10 +378,10 @@ Also see
 .
 .Mx
 .It Fl N
-Unset the
+.Pf Un Ic set
 .Va header
-variable and thus inhibit initial display of message headers when
-reading mail or editing a mail folder.
+and thus inhibit initial display of message headers when reading mail or
+editing a mail folder.
 .
 .Mx
 .It Fl n
@@ -451,14 +452,15 @@ flags to a file-based MTA by itself.
 .
 .Mx
 .It Fl S Ar var Ns Op = Ns value
-Sets the internal
+.Ic set
+the internal
 .Ar var Ns
-iable and, in case of a value variable, assigns
+iable and, in case of a non-boolean variable which has a value, assign
 .Ar value
 to it.
 Even though variables (see
 .Sx "INTERNAL VARIABLES" )
-.Ic set
+.Ic \&\&set
 via
 .Fl S
 may be overwritten from within resource files,
@@ -526,9 +528,10 @@ and exit.
 .
 .Mx
 .It Fl v
-Setting the
+.Ic set Ns
+ting the internal variable
 .Va verbose
-variable enables display of some informational context messages.
+enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .
 .Mx
@@ -561,7 +564,9 @@ $ ( echo 'line    one. Word.     Word2.'; \e
 Enables batch mode.
 In batch mode the full set of commands is available, just like in
 interactive mode, and diverse variable settings and internal states are
-adjusted for batch necessities, e.g., it sets
+adjusted for batch necessities, e.g., it
+.Ic set Ns
+s
 .Va emptystart ,
 .Pf no Va header ,
 .Va quiet ,
@@ -595,7 +600,9 @@ In the above list of supported command line options,
 .Fl d , E , i , N
 and
 .Fl v
-are implemented by means of setting the respective option, as via
+are implemented by means of
+.Ic set Ns
+ting the respective option, as via
 .Fl S .
 .Bk -words
 .Op Ar mta-option ...
@@ -661,11 +668,13 @@ using it is a smooth experience.
 The default global
 .Pa \*(UR
 file already bends those standard imposed settings a bit towards more
-user friendliness and safety, e.g., it sets the
+user friendliness and safety, e.g., it
+.Ic set Ns
+s the internal variables
 .Va hold
 and
 .Va keepsave
-variables in order to suppress the automatic moving of messages to
+in order to suppress the automatic moving of messages to
 .Ev MBOX
 that would otherwise occur (see
 .Sx "Message states" )
