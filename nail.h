@@ -246,7 +246,8 @@
 #define MIME_TYPES_USR  "~/.mime.types"
 #define MIME_TYPES_SYS  "/etc/mime.types"
 
-/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set */
+/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
+ * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
 #define CHARSET_7BIT    "US-ASCII"
 #ifdef HAVE_ICONV
 # define CHARSET_8BIT      "UTF-8"
@@ -1125,13 +1126,13 @@ enum program_state {
    PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
 };
 
-/* A large enum with all the binary and value options a.k.a their keys.
+/* A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
  * Note: see the comments in accmacvar.c before changing *anything* in here! */
 enum okeys {
-   /* Option keys for binary options */
    ok_b_add_file_recipients,
+   ok_v_agent_shell_lookup,
    ok_b_allnet,
    ok_b_append,
    ok_b_ask,
@@ -1145,9 +1146,14 @@ enum okeys {
    ok_b_attachment_ask_content_disposition,
    ok_b_attachment_ask_content_id,
    ok_b_attachment_ask_content_type,
+   ok_v_attrlist,
+   ok_v_autobcc,
+   ok_v_autocc,
    ok_b_autocollapse,
    ok_b_autoprint,
-   ok_b_autothread,
+ok_b_autothread,
+   ok_v_autosort,
+
    ok_b_bang,
    ok_b_batch_exit_on_error,
    ok_b_bsdannounce,
@@ -1157,120 +1163,90 @@ enum okeys {
    ok_b_bsdmsgs,
    ok_b_bsdorder,
    ok_b_bsdset,
-   ok_b_colour_disable,
-   ok_b_colour_pager,
-   ok_b_debug,                         /* {special=1} */
-   ok_b_disconnected,
-   ok_b_disposition_notification_send,
-   ok_b_dot,
-   ok_b_dotlock_ignore_error,
-   ok_b_editalong,
-   ok_b_editheaders,
-   ok_b_emptybox,
-   ok_b_emptystart,
-   ok_b_flipr,
-   ok_b_followup_to,
-   ok_b_forward_as_attachment,
-   ok_b_fullnames,
-   ok_b_header,                        /* {special=1} */
-   ok_b_history_gabby,
-   ok_b_history_gabby_persist,
-   ok_b_hold,
-   ok_b_idna_disable,
-   ok_b_ignore,
-   ok_b_ignoreeof,
-   ok_b_imap_use_starttls,
-   ok_b_keep,
-   ok_b_keep_content_length,
-   ok_b_keepsave,
-   ok_b_line_editor_disable,
-   ok_b_markanswered,
-   ok_b_mbox_rfc4155,
-   ok_b_message_id_disable,
-   ok_b_metoo,
-   ok_b_mime_allow_text_controls,
-   ok_b_mime_alternative_favour_rich,
-   ok_b_netrc_lookup,
-   ok_b_outfolder,
-   ok_b_page,
-   ok_b_piperaw,
-   ok_b_pop3_bulk_load,
-   ok_b_pop3_no_apop,
-   ok_b_pop3_use_starttls,
-   ok_b_print_all_chars,
-   ok_b_print_alternatives,
-   ok_b_quiet,
-   ok_b_quote_as_attachment,
-   ok_b_recipients_in_cc,
-   ok_b_record_resent,
-   ok_b_reply_in_same_charset,
-   ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
-   ok_b_save,
-   ok_b_searchheaders,
-   ok_b_sendcharsets_else_ttycharset,
-   ok_b_sendwait,
-   ok_b_showlast,
-   ok_b_showname,
-   ok_b_showto,
-   ok_b_skipemptybody,                 /* {special=1} */
-   ok_b_smime_force_encryption,
-   ok_b_smime_no_default_ca,
-   ok_b_smime_sign,
-   ok_b_smtp_use_starttls,
-   ok_b_ssl_no_default_ca,
-   ok_b_term_ca_mode,
-   ok_b_v15_compat,
-   ok_b_verbose,                       /* {special=1} */
-   ok_b_writebackedited,
-   ok_b_memdebug,                      /* {special=1} */
 
-   /* Option keys for values options */
-   ok_v_agent_shell_lookup,
-   ok_v_attrlist,
-   ok_v_autobcc,
-   ok_v_autocc,
-   ok_v_autosort,
    ok_v_charset_7bit,
    ok_v_charset_8bit,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
+   ok_b_colour_disable,
    ok_v_colour_from_,                  /* {name=colour-from_} */
    ok_v_colour_header,
    ok_v_colour_msginfo,
+   ok_b_colour_pager,
    ok_v_colour_partinfo,
    ok_v_colour_terms,
    ok_v_colour_uheader,
    ok_v_colour_user_headers,
    ok_v_crt,
+
+   ok_v_DEAD,
    ok_v_datefield,
    ok_v_datefield_markout_older,
-   ok_v_DEAD,
+   ok_b_debug,                         /* {special=1} */
+   ok_b_disconnected,
+   ok_b_disposition_notification_send,
+   ok_b_dot,
+   ok_b_dotlock_ignore_error,
+
    ok_v_EDITOR,
+   ok_b_editalong,
+   ok_b_editheaders,
+ok_b_emptybox,
+   ok_b_emptystart,
    ok_v_encoding,
    ok_v_escape,
    ok_v_expandaddr,
    ok_v_expandargv,
+
    ok_v_features,                      /* {rdonly=1,virtual=_features} */
+   ok_b_flipr,
    ok_v_folder,                        /* {special=1} */
    ok_v_folder_hook,
+   ok_b_followup_to,
    ok_v_followup_to_honour,
+   ok_b_forward_as_attachment,
    ok_v_from,
+   ok_b_fullnames,
    ok_v_fwdheading,
+
+   ok_b_header,                        /* {special=1} */
    ok_v_headline,
    ok_v_headline_bidi,
+   ok_b_history_gabby,
+   ok_b_history_gabby_persist,
+   ok_b_hold,
    ok_v_hostname,
+
+   ok_b_idna_disable,
+   ok_b_ignore,
+   ok_b_ignoreeof,
+   ok_v_indentprefix,
    ok_v_imap_auth,
    ok_v_imap_cache,
    ok_v_imap_keepalive,
    ok_v_imap_list_depth,
-   ok_v_indentprefix,
-   ok_v_line_editor_cursor_right,      /* {special=1} */
+   ok_b_imap_use_starttls,
+
+   ok_b_keep,
+   ok_b_keep_content_length,
+   ok_b_keepsave,
+
    ok_v_LISTER,
+   ok_v_line_editor_cursor_right,      /* {special=1} */
+   ok_b_line_editor_disable,
+
    ok_v_MAIL,
    ok_v_MBOX,
+   ok_b_markanswered,
+   ok_b_mbox_rfc4155,
+   ok_b_memdebug,                      /* {special=1} */
+   ok_b_message_id_disable,
+   ok_b_metoo,
+   ok_b_mime_allow_text_controls,
+   ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,
-   /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
    ok_v_mimetypes_load_control,
+
    ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
    /* TODO v15-compat: NAIL_HEAD -> message-head? */
    ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
@@ -1280,48 +1256,77 @@ enum okeys {
    ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
    /* TODO v15-compat: NAIL_TAIL -> message-tail? */
    ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+   ok_b_netrc_lookup,
    ok_v_newfolders,
    ok_v_newmail,
+
    ok_v_ORGANIZATION,
+   ok_b_outfolder,
+
    ok_v_PAGER,
+   ok_b_page,
    ok_v_password,
-   /* TODO pop3_auth is yet a dummy to enable easier impl. of ccred_lookup()! */
+   ok_b_piperaw,
    ok_v_pop3_auth,
+   ok_b_pop3_bulk_load,
    ok_v_pop3_keepalive,
+   ok_b_pop3_no_apop,
+   ok_b_pop3_use_starttls,
+   ok_b_print_all_chars,
+   ok_b_print_alternatives,
    ok_v_prompt,
+
+   ok_b_quiet,
    ok_v_quote,
+   ok_b_quote_as_attachment,
    ok_v_quote_fold,
+
+   ok_b_recipients_in_cc,
    ok_v_record,
+   ok_b_record_resent,
+   ok_b_reply_in_same_charset,
    ok_v_reply_strings,
    ok_v_replyto,
    ok_v_reply_to_honour,
+   ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
+
+   ok_v_SHELL,
+   ok_b_save,
    ok_v_screen,
+   ok_b_searchheaders,
    ok_v_sendcharsets,
+   ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,
    ok_v_sendmail,
    ok_v_sendmail_arguments,
-   /* FIXME this is not falsely sorted, but this entire enum including the
-    * FIXME manual should be sorted alphabetically instead of binary/value */
    ok_b_sendmail_no_default_arguments,
    ok_v_sendmail_progname,
-   ok_v_SHELL,
+   ok_b_sendwait,
+   ok_b_showlast,
+   ok_b_showname,
+   ok_b_showto,
    ok_v_Sign,
    ok_v_sign,
    ok_v_signature,
+   ok_b_skipemptybody,                 /* {special=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
    ok_v_smime_cipher,
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
+   /* smime-encrypt-USER@HOST */
+   ok_b_smime_force_encryption,
+   ok_b_smime_no_default_ca,
+   ok_b_smime_sign,
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
    ok_v_smime_sign_message_digest,
    ok_v_smtp,
-   /* TODO v15-compat: smtp-auth: drop */
    ok_v_smtp_auth,
-   ok_v_smtp_auth_password,
-   ok_v_smtp_auth_user,
+ok_v_smtp_auth_password,
+ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
+   ok_b_smtp_use_starttls,
    ok_v_spam_interface,
    ok_v_spam_maxsize,
    ok_v_spamc_command,
@@ -1344,19 +1349,28 @@ enum okeys {
    ok_v_ssl_crl_file,
    ok_v_ssl_key,
    ok_v_ssl_method,
+   ok_b_ssl_no_default_ca,
    ok_v_ssl_protocol,
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,
    ok_v_stealthmua,
+
+   ok_b_term_ca_mode,
    ok_v_toplines,
    ok_v_ttycharset,
+
    ok_v_user,
+
+   ok_v_VISUAL,
+   ok_b_v15_compat,
+   ok_b_verbose,                       /* {special=1} */
    ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
    ok_v_version_major,                 /* {rdonly=1,virtual=VERSION_MAJOR} */
    ok_v_version_minor,                 /* {rdonly=1,virtual=VERSION_MINOR} */
    ok_v_version_update,                /* {rdonly=1,virtual=VERSION_UPDATE} */
-   ok_v_VISUAL
+
+   ok_b_writebackedited
 };
 
 /* Locale-independent character classes */

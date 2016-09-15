@@ -1,6 +1,16 @@
 #--MKRC-START--
-# /etc/s-nail.rc - configuration file for S-nail(1)
+#@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
+#@ The syntax of this file is interpreted as follows:
+#@ - A lines' leading whitespace is removed.
+#@ - Empty lines are ignored.
+#@ - Any other line is a command line.  Such lines can be spread over
+#@   multiple lines if the newline character is "escaped" by placing
+#@   a backslash character \ as the last character of the line; any leading
+#@   whitespace of follow lines is ignored, trailing whitespace before the
+#@   escaped newline is not.
+#@ - The number sign # is the comment-command and causes the (joined) line
+#@   (content) to be ignored.  No other form of comments exist.
 #--MKREL-START--
 # S-nail(1): v14.8.10 / 2016-08-20
 #--MKREL-END--
@@ -16,10 +26,10 @@
 # [t-z] toplines="5"
 # Notes:
 # - no*onehop* doesn't exist in this implementation.
-#   (To pass options through to an MTA, either add them after a "--" separator
-#   on the command line or by setting the *sendmail-arguments* variable.)
+#   (To pass options through to the MTA, either add them after a "--"
+#   separator on the command line or set the *sendmail-arguments* variable.)
 # - *prompt* is "\\& " by default, which will act POSIX-compliant
-#   unless the user would set *bsdcompat*
+#   unless the user does set *bsdcompat*
 
 ## The remaining content adjusts the standard-imposed default settings.
 # Note that some of the following flags are specific to S-nail(1) and may thus
