@@ -197,20 +197,18 @@
 #define AGENT_HOST      "NAIL_HOST"
 #define AGENT_HOST_PORT "NAIL_HOST_PORT"
 
-#undef COLOUR
+/* Colour stuff */
 #ifdef HAVE_COLOUR
-# define COLOUR(X)      X
+# define n_COLOUR(X)       X
 #else
-# define COLOUR(X)
+# define n_COLOUR(X)
 #endif
-#define COLOUR_MSGINFO  "fg=green"
-#define COLOUR_PARTINFO "fg=brown"
-#define COLOUR_FROM_    "fg=brown"
-#define COLOUR_HEADER   "fg=red"
-#define COLOUR_UHEADER  "ft=bold,fg=red"
-#define COLOUR_TERMS    \
-   "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
-#define COLOUR_USER_HEADERS "from,subject"
+
+/* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
+ * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
+#define n_COLOUR_TERMS     \
+   "aterm,cons25,gnome,konsole,kterm,linux,"\
+   "rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 
 /* Special FD requests for run_command() / start_command() */
 #define COMMAND_FD_PASS -1
@@ -770,14 +768,36 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
-enum colourspec {
-   COLOURSPEC_MSGINFO,
-   COLOURSPEC_PARTINFO,
-   COLOURSPEC_FROM_,
-   COLOURSPEC_HEADER,
-   COLOURSPEC_UHEADER,
-   COLOURSPEC_RESET
+#ifdef HAVE_COLOUR
+/* We do have several groups of colour IDs; since only one of them can be
+ * active at any given time let's share the value range */
+enum n_colour_group{
+   n_COLOUR_GROUP_SUM,
+   n_COLOUR_GROUP_VIEW,
+   n__COLOUR_GROUPS = 2
 };
+
+enum n_colour_id{
+   /* Header summary */
+   n_COLOUR_ID_SUM_DOTMARK = 0,
+   n_COLOUR_ID_SUM_HEADER,
+   n_COLOUR_ID_SUM_THREAD,
+
+   /* Message display */
+   n_COLOUR_ID_VIEW_FROM_ = 0,
+   n_COLOUR_ID_VIEW_HEADER,
+   n_COLOUR_ID_VIEW_MSGINFO,
+   n_COLOUR_ID_VIEW_PARTINFO,
+
+   n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
+};
+
+/* Colour preconditions, let's call them tags, cannot be an enum because for
+ * message display they are the actual header name of the current header.  Thus
+ * let's use constants of pseudo pointers */
+# define n_COLOUR_TAG_SUM_DOT ((char*)-2)
+# define n_COLOUR_TAG_SUM_OLDER ((char*)-3)
+#endif /* HAVE_COLOUR */
 
 enum conversion {
    CONV_NONE,        /* no conversion */
@@ -1070,20 +1090,17 @@ enum user_options {
 
    /*  */
    OPT_SENDMODE   = 1u<<17,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<18,  /* isatty(0) */
-   OPT_TTYIN      = OPT_INTERACTIVE,
+   OPT_TTYIN      = 1u<<18,
    OPT_TTYOUT     = 1u<<19,
-   OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
-   OPT_ENC_MBSTATE = 1u<<21,  /* Multibyte environment with shift states */
+   OPT_INTERACTIVE = 1u<<20,
+   OPT_UNICODE    = 1u<<21,   /* We're in an UTF-8 environment */
+   OPT_ENC_MBSTATE = 1u<<22,  /* Multibyte environment with shift states */
 
    /* Some easy-access shortcuts */
    OPT_D_V        = OPT_DEBUG | OPT_VERB,
    OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB,
    OPT_D_V_VV     = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
 };
-
-#define IS_TTY_SESSION() \
-   ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
 
 #define OBSOLETE(X) \
 do {\
@@ -1120,6 +1137,8 @@ enum program_state {
    PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
 
    PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
+
+   PS_COLOUR_ACTIVE  = 1<<22,       /* n_colour_env_create().._gut() cycle */
 
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
@@ -1170,14 +1189,8 @@ ok_b_autothread,
    ok_v_charset_unknown_8bit,
    ok_v_cmd,
    ok_b_colour_disable,
-   ok_v_colour_from_,                  /* {name=colour-from_} */
-   ok_v_colour_header,
-   ok_v_colour_msginfo,
    ok_b_colour_pager,
-   ok_v_colour_partinfo,
    ok_v_colour_terms,
-   ok_v_colour_uheader,
-   ok_v_colour_user_headers,
    ok_v_crt,
 
    ok_v_DEAD,
@@ -1392,16 +1405,15 @@ struct str {
    size_t   l;       /* the stings's length */
 };
 
-struct colour_table {
-   /* Plus a copy of *colour-user-headers* */
-   struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
-};
-
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
    struct str  bi_end;        /* End of ... */
    size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
 };
+
+#ifdef HAVE_COLOUR
+struct n_colour_pen;
+#endif
 
 struct url {
    char const     *url_input;       /* Input as given (really) */
@@ -1958,10 +1970,6 @@ VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
-
-#ifdef HAVE_COLOUR
-VL struct colour_table  *colour_table;
-#endif
 
 #ifdef HAVE_SSL
 VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */

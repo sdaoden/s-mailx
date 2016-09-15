@@ -398,20 +398,6 @@ FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
-/* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test wether *colour-pager* is to be inspected */
-#ifdef HAVE_COLOUR
-FL void        colour_table_create(bool_t pager_used);
-FL void        colour_put(FILE *fp, enum colourspec cs);
-FL void        colour_put_header(FILE *fp, char const *name);
-FL void        colour_reset(FILE *fp);
-FL struct str const * colour_get(enum colourspec cs);
-#else
-# define colour_put(FP,CS)
-# define colour_put_header(FP,N)
-# define colour_reset(FP)
-#endif
-
 /* Check wether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
  * treated as a boolean, is used as the return value shall inbuf be empty.
@@ -729,6 +715,47 @@ FL int         c_visual(void *v);
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
                   enum sendaction action, sighandler_type oldint);
+
+/*
+ * colour.c
+ */
+
+#ifdef HAVE_COLOUR
+/* `(un)?colour' */
+FL int         c_colour(void *v);
+FL int         c_uncolour(void *v);
+
+/* We want coloured output (in this salloc() cycle).  pager_used is used to
+ * test wether *colour-pager* is to be inspected.
+ * The push/pop functions deal with recursive execute()ions, for now. TODO
+ * env_gut() will reset() as necessary */
+FL void        n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used);
+FL void        n_colour_env_push(void);
+FL void        n_colour_env_pop(bool_t any_env_till_root);
+FL void        n_colour_env_gut(FILE *fp);
+
+/* Putting anything (for pens: including NULL) resets current state first */
+FL void        n_colour_put(FILE *fp, enum n_colour_id cid, char const *ctag);
+FL void        n_colour_reset(FILE *fp);
+
+/* Of course temporary only and may return NULL.  Doesn't affect state! */
+FL struct str const *n_colour_reset_to_str(void);
+
+/* A pen is bound to its environment and automatically reclaimed; it may be
+ * NULL but that can be used anyway for simplicity.
+ * This includes pen_to_str() -- which doesn't affect state! */
+FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
+                           char const *ctag);
+FL void        n_colour_pen_put(struct n_colour_pen *self, FILE *fp);
+
+FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
+
+#else /* HAVE_COLOUR */
+# define c_colour                c_cmdnotsupp
+# define c_uncolour              c_cmdnotsupp
+# define c_mono                  c_cmdnotsupp
+# define c_unmono                c_cmdnotsupp
+#endif
 
 /*
  * filter.c

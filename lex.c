@@ -783,6 +783,8 @@ commands(void)
    for (;;) {
       char *temporary_orig_line; /* XXX eval_ctx.ev_line not yet constant */
 
+      n_COLOUR( n_colour_env_pop(TRU1); )
+
       /* TODO Unless we have our signal manager (or however we do it) child
        * TODO processes may have time slots where their execution isn't
        * TODO protected by signal handlers (in between start and setup
@@ -794,9 +796,6 @@ commands(void)
       interrupts = 0;
       handlerstacktop = NULL;
 
-#ifdef HAVE_COLOUR
-      colour_table = NULL; /* XXX intermediate hack */
-#endif
       if (temporary_localopts_store != NULL) /* XXX intermediate hack */
          temporary_localopts_free(); /* XXX intermediate hack */
       sreset((pstate & PS_SOURCING) != 0);
@@ -914,29 +913,17 @@ FL int
 execute(char *linebuf, size_t linesize) /* XXX LEGACY */
 {
    struct eval_ctx ev;
-#ifdef HAVE_COLOUR
-   struct colour_table *ct_save;
-#endif
    int rv;
    NYD_ENTER;
-
-   /* TODO Maybe recursion from within collect.c!  As long as we don't have
-    * TODO a value carrier that transports the entire state of a recursion
-    * TODO we need to save away also the colour table */
-#ifdef HAVE_COLOUR
-   ct_save = colour_table;
-   colour_table = NULL;
-#endif
 
    memset(&ev, 0, sizeof ev);
    ev.ev_line.s = linebuf;
    ev.ev_line.l = linesize;
    ev.ev_is_recursive = TRU1;
+   n_COLOUR( n_colour_env_push(); )
    rv = evaluate(&ev);
+   n_COLOUR( n_colour_env_pop(FAL0); )
 
-#ifdef HAVE_COLOUR
-   colour_table = ct_save;
-#endif
    NYD_LEAVE;
    return rv;
 }

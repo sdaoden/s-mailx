@@ -40,11 +40,9 @@
 #endif
 
 static int        _screen;
-static sigjmp_buf _cmd1_pipestop;
 static sigjmp_buf _cmd1_pipejmp;
 
 static void    _cmd1_onpipe(int signo);
-static void    _cmd1_brokpipe(int signo);
 
 /* Prepare and print "[Message: xy]:" intro */
 static void    _show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
@@ -88,26 +86,23 @@ _cmd1_onpipe(int signo)
 }
 
 static void
-_cmd1_brokpipe(int signo)
-{
-   NYD_X; /* Signal handler */
-   UNUSED(signo);
-   siglongjmp(_cmd1_pipestop, 1);
-}
-
-static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
    char const *cpre = "", *csuf = "";
    NYD_ENTER;
 
 #ifdef HAVE_COLOUR
-   if (colour_table != NULL) {
-      struct str const *sp;
+   if (pstate & PS_COLOUR_ACTIVE) {
+      struct n_colour_pen *cpen;
 
-      if ((sp = colour_get(COLOURSPEC_MSGINFO)) != NULL)
-         cpre = sp->s;
-      csuf = colour_get(COLOURSPEC_RESET)->s;
+      if ((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
+         struct str const *sp;
+
+         if ((sp = n_colour_pen_to_str(cpen)) != NULL)
+            cpre = sp->s;
+         if ((sp = n_colour_reset_to_str()) != NULL)
+            csuf = sp->s;
+      }
    }
 #endif
    fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
@@ -176,25 +171,29 @@ static void
 __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, char const *attrlist)
 {
-   char buf[16], datebuf[FROM_DATEBUF], *cp, *subjline;
-   char const *datefmt, *date, *name, *fp;
+   char buf[16], datebuf[FROM_DATEBUF], cbuf[8], *cp, *subjline;
+   char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
    int i, n, s, wleft, subjlen;
    struct message *mp;
    time_t datet;
+   n_COLOUR( struct n_colour_pen *cpen_new COMMA *cpen_cur COMMA *cpen_bas; )
    enum {
       _NONE       = 0,
-      _ISADDR     = 1<<0,
-      _ISTO       = 1<<1,
-      _IFMT       = 1<<2,
-      _LOOP_MASK  = (1<<3) - 1,
-      _SFMT       = 1<<3
+      _ISDOT      = 1<<0,
+      _ISADDR     = 1<<1,
+      _ISTO       = 1<<2,
+      _IFMT       = 1<<3,
+      _LOOP_MASK  = (1<<4) - 1,
+      _SFMT       = 1<<4
    } flags = _NONE;
    NYD_ENTER;
    UNUSED(buf);
 
-   mp = message + msgno - 1;
+   if ((mp = message + msgno - 1) == dot)
+      flags = _ISDOT;
    datet = mp->m_time;
    date = NULL;
+   n_COLOUR( colo_tag = NULL; )
 
    datefmt = ok_vlook(datefield);
 jredo:
@@ -228,6 +227,7 @@ jredo:
             datebuf[4 + 7 + 1 + 4] = '\0';
             date = datebuf;
          }
+         n_COLOUR( colo_tag = n_COLOUR_TAG_SUM_OLDER; )
       } else if ((i & 1) == 0)
          datefmt = NULL;
    } else if (datet == (time_t)0 && !(mp->m_flag & MNOFROM)) {
@@ -299,209 +299,257 @@ jredo:
    }
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
+#ifdef HAVE_COLOUR
+   if (flags & _ISDOT)
+      colo_tag = n_COLOUR_TAG_SUM_DOT;
+   cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
+   n_colour_pen_put(cpen_new = cpen_cur = cpen_bas, f);
+#endif
+
    for (fp = fmt; *fp != '\0'; ++fp) {
       char c;
-      if ((c = *fp & 0xFF) != '%')
-         putc(c, f);
-      else {
-         flags &= _LOOP_MASK;
-         n = 0;
-         s = 1;
-         if (*++fp == '-') {
-            s = -1;
-            ++fp;
-         } else if (*fp == '+')
-            ++fp;
-         if (digitchar(*fp)) {
-            do
-               n = 10*n + *fp - '0';
-            while (++fp, digitchar(*fp));
-         }
-         if (*fp == '\0')
-            break;
 
-         n *= s;
-         switch ((c = *fp & 0xFF)) {
-         case '%':
-            goto jputc;
-         case '>':
-         case '<':
-            if (dot != mp)
-               c = ' ';
-            goto jputc;
-         case '$':
-#ifdef HAVE_SPAM
-            if (n == 0)
-               n = 5;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            snprintf(buf, sizeof buf, "%u.%02u",
-               (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
-            n = fprintf(f, "%*s", n, buf);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-#else
-            c = '?';
-            goto jputc;
+      if ((c = *fp & 0xFF) != '%') {
+#ifdef HAVE_COLOUR
+         if ((cpen_new = cpen_bas) != cpen_cur)
+            n_colour_pen_put(cpen_cur = cpen_new, f);
 #endif
-         case 'a':
-            c = _dispc(mp, attrlist);
-jputc:
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*c", n, c);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'd':
-            if (datefmt != NULL) {
-               i = strftime(datebuf, sizeof datebuf, datefmt,
-                     &time_current.tc_local);
-               if (i != 0)
-                  date = datebuf;
+         putc(c, f);
+         continue;
+      }
+
+      flags &= _LOOP_MASK;
+      n = 0;
+      s = 1;
+      if ((c = *++fp) == '-') {
+         s = -1;
+         ++fp;
+      } else if (c == '+')
+         ++fp;
+      if (digitchar(*fp)) {
+         do
+            n = 10*n + *fp - '0';
+         while (++fp, digitchar(*fp));
+      }
+
+      if ((c = *fp & 0xFF) == '\0')
+         break;
+      n *= s;
+
+      cbuf[1] = '\0';
+      switch (c) {
+      case '%':
+         goto jputcb;
+      case '>':
+      case '<':
+         if (flags & _ISDOT) {
+            n_COLOUR( cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
+                  colo_tag); );
+            if (options & OPT_UNICODE) {
+               if (c == '>')
+                  /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE: ▸ */
+                  cbuf[1] = (char)0x96, cbuf[2] = (char)0xB8;
                else
-                  n_err(_("Ignored date format, it excesses the target "
-                     "buffer (%lu bytes)\n"), (ul_i)sizeof(datebuf));
-               datefmt = NULL;
+                  /* 25C2;BLACK LEFT-POINTING SMALL TRIANGLE: ◂ */
+                  cbuf[1] = (char)0x97, cbuf[2] = (char)0x82;
+               c = (char)0xE2;
+               cbuf[3] = '\0';
             }
-            if (n == 0)
-               n = 16;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*.*s", n, n, date);
+         } else
+            c = ' ';
+         goto jputcb;
+      case '$':
+#ifdef HAVE_SPAM
+         if (n == 0)
+            n = 5;
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         snprintf(buf, sizeof buf, "%u.%02u",
+            (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
+         n = fprintf(f, "%*s", n, buf);
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+#else
+         c = '?';
+         goto jputcb;
+#endif
+      case 'a':
+         c = _dispc(mp, attrlist);
+jputcb:
+#ifdef HAVE_COLOUR
+         if (cpen_new == cpen_cur)
+            cpen_new = cpen_bas;
+         if (cpen_new != cpen_cur)
+            n_colour_pen_put(cpen_cur = cpen_new, f);
+#endif
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         cbuf[0] = c;
+         n = fprintf(f, "%*s", n, cbuf);
+         wleft = (n >= 0) ? wleft - n : 0;
+#ifdef HAVE_COLOUR
+         if ((cpen_new = cpen_bas) != cpen_cur)
+            n_colour_pen_put(cpen_cur = cpen_new, f);
+#endif
+         break;
+      case 'd':
+         if (datefmt != NULL) {
+            i = strftime(datebuf, sizeof datebuf, datefmt,
+                  &time_current.tc_local);
+            if (i != 0)
+               date = datebuf;
+            else
+               n_err(_("Ignored date format, it excesses the target "
+                  "buffer (%lu bytes)\n"), (ul_i)sizeof(datebuf));
+            datefmt = NULL;
+         }
+         if (n == 0)
+            n = 16;
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         n = fprintf(f, "%*.*s", n, n, date);
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+      case 'e':
+         if (n == 0)
+            n = 2;
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+      case 'f':
+         if (n == 0) {
+            n = 18;
+            if (s < 0)
+               n = -n;
+         }
+         i = ABS(n);
+         if (i > wleft) {
+            i = wleft;
+            n = (n < 0) ? -wleft : wleft;
+         }
+         if (flags & _ISTO) /* XXX tr()! */
+            i -= 3;
+         n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : ""),
+               colalign(name, i, n, &wleft));
+         if (n < 0)
+            wleft = 0;
+         else if (flags & _ISTO)
+            wleft -= 3;
+         break;
+      case 'i':
+         if (threaded) {
+#ifdef HAVE_COLOUR
+            cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
+            if (cpen_new != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new, f);
+#endif
+            n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'e':
-            if (n == 0)
-               n = 2;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
+#ifdef HAVE_COLOUR
+            if ((cpen_new = cpen_bas) != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new, f);
+#endif
+         }
+         break;
+      case 'l':
+         if (n == 0)
+            n = 4;
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         if (mp->m_xlines) {
+            n = fprintf(f, "%*ld", n, mp->m_xlines);
             wleft = (n >= 0) ? wleft - n : 0;
+         } else {
+            n = ABS(n);
+            wleft -= n;
+            while (n-- != 0)
+               putc(' ', f);
+         }
+         break;
+      case 'm':
+         if (n == 0) {
+            n = 3;
+            if (threaded)
+               for (i = msgCount; i > 999; i /= 10)
+                  ++n;
+         }
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         n = fprintf(f, "%*lu", n, (ul_i)msgno);
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+      case 'o':
+         if (n == 0)
+            n = -5;
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+      case 'S':
+         flags |= _SFMT;
+         /*FALLTHRU*/
+      case 's':
+         if (n == 0)
+            n = subjlen - 2;
+         if (n > 0 && s < 0)
+            n = -n;
+         if (subjlen > wleft)
+            subjlen = wleft;
+         if (UICMP(32, ABS(n), >, subjlen))
+            n = (n < 0) ? -subjlen : subjlen;
+         if (flags & _SFMT)
+            n -= (n < 0) ? -2 : 2;
+         if (n == 0)
             break;
-         case 'f':
-            if (n == 0) {
-               n = 18;
-               if (s < 0)
-                  n = -n;
-            }
-            i = ABS(n);
-            if (i > wleft) {
-               i = wleft;
-               n = (n < 0) ? -wleft : wleft;
-            }
-            if (flags & _ISTO) /* XXX tr()! */
-               i -= 3;
-            n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : ""),
-                  colalign(name, i, n, &wleft));
+         if (subjline == NULL)
+            subjline = __subject(mp, (threaded && (flags & _IFMT)), yetprinted);
+         if (subjline == (char*)-1) {
+            n = fprintf(f, "%*s", n, "");
+            wleft = (n >= 0) ? wleft - n : 0;
+         } else {
+            n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
+                  colalign(subjline, ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;
-            else if (flags & _ISTO)
-               wleft -= 3;
-            break;
-         case 'i':
-            if (threaded) {
-               n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
-               wleft = (n >= 0) ? wleft - n : 0;
-            }
-            break;
-         case 'l':
-            if (n == 0)
-               n = 4;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            if (mp->m_xlines) {
-               n = fprintf(f, "%*ld", n, mp->m_xlines);
-               wleft = (n >= 0) ? wleft - n : 0;
-            } else {
-               n = ABS(n);
-               wleft -= n;
-               while (n-- != 0)
-                  putc(' ', f);
-            }
-            break;
-         case 'm':
-            if (n == 0) {
-               n = 3;
-               if (threaded)
-                  for (i = msgCount; i > 999; i /= 10)
-                     ++n;
-            }
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, (ul_i)msgno);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'o':
-            if (n == 0)
-               n = -5;
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, (long)mp->m_xsize);
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'S':
-            flags |= _SFMT;
-            /*FALLTHRU*/
-         case 's':
-            if (n == 0)
-               n = subjlen - 2;
-            if (n > 0 && s < 0)
-               n = -n;
-            if (subjlen > wleft)
-               subjlen = wleft;
-            if (UICMP(32, ABS(n), >, subjlen))
-               n = (n < 0) ? -subjlen : subjlen;
-            if (flags & _SFMT)
-               n -= (n < 0) ? -2 : 2;
-            if (n == 0)
-               break;
-            if (subjline == NULL)
-               subjline = __subject(mp, (threaded && (flags & _IFMT)),
-                     yetprinted);
-            if (subjline == (char*)-1) {
-               n = fprintf(f, "%*s", n, "");
-               wleft = (n >= 0) ? wleft - n : 0;
-            } else {
-               n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
-                     colalign(subjline, ABS(n), n, &wleft));
-               if (n < 0)
-                  wleft = 0;
-            }
-            break;
-         case 'T': { /* Message recipient flags */
-            /* We never can reuse "name" since it's the full name */
-            struct name const *np = lextract(hfield1("to", mp), GTO | GSKIN);
-            c = ' ';
-            i = 0;
-j_A_redo:
-            for (; np != NULL; np = np->n_flink) {
-               switch (is_mlist(np->n_name, FAL0)) {
-               case MLIST_SUBSCRIBED:  c = 'S'; goto jputc;
-               case MLIST_KNOWN:       c = 'L'; goto jputc;
-               case MLIST_OTHER:
-               default:                break;
-               }
-            }
-            if (i != 0)
-               goto jputc;
-            ++i;
-            np = lextract(hfield1("cc", mp), GCC | GSKIN);
-            goto j_A_redo;
          }
-         case 't':
-            if (n == 0) {
-               n = 3;
-               if (threaded)
-                  for (i = msgCount; i > 999; i /= 10)
-                     ++n;
+         break;
+      case 'T': { /* Message recipient flags */
+         /* We never can reuse "name" since it's the full name */
+         struct name const *np = lextract(hfield1("to", mp), GTO | GSKIN);
+         c = ' ';
+         i = 0;
+j_A_redo:
+         for (; np != NULL; np = np->n_flink) {
+            switch (is_mlist(np->n_name, FAL0)) {
+            case MLIST_SUBSCRIBED:  c = 'S'; goto jputcb;
+            case MLIST_KNOWN:       c = 'L'; goto jputcb;
+            case MLIST_OTHER:
+            default:                break;
             }
-            if (UICMP(32, ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n,
-                  (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
-            wleft = (n >= 0) ? wleft - n : 0;
-            break;
-         case 'U':
+         }
+         if (i != 0)
+            goto jputcb;
+         ++i;
+         np = lextract(hfield1("cc", mp), GCC | GSKIN);
+         goto j_A_redo;
+      }
+      case 't':
+         if (n == 0) {
+            n = 3;
+            if (threaded)
+               for (i = msgCount; i > 999; i /= 10)
+                  ++n;
+         }
+         if (UICMP(32, ABS(n), >, wleft))
+            n = (n < 0) ? -wleft : wleft;
+         n = fprintf(f, "%*lu",
+               n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
+         wleft = (n >= 0) ? wleft - n : 0;
+         break;
+      case 'U':
 #ifdef HAVE_IMAP
             if (n == 0)
                n = 9;
@@ -514,17 +562,20 @@ j_A_redo:
             c = '?';
             goto jputc;
 #endif
-         default:
-            if (options & OPT_D_V)
-               n_err(_("Unkown *headline* format: \"%%%c\"\n"), c);
-            c = '?';
-            goto jputc;
-         }
-
-         if (wleft <= 0)
-            break;
+      default:
+         if (options & OPT_D_V)
+            n_err(_("Unkown *headline* format: \"%%%c\"\n"), c);
+         c = '?';
+         goto jputcb;
       }
+
+      if (wleft <= 0)
+         break;
    }
+
+#ifdef HAVE_COLOUR
+   n_colour_reset(f);
+#endif
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
@@ -771,7 +822,9 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   ui32_t flag;
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
+   ui32_t volatile flag;
    int g, k, mesg, size, lastg = 1;
    struct message *mp, *mq, *lastmq = NULL;
    enum mflag fl = MNEW | MFLAGGED;
@@ -779,7 +832,18 @@ _headers(int msgspec) /* TODO rework v15 */
 
    time_current_update(&time_current, FAL0);
 
+   isrelax = FAL0;
+   opipe = NULL;
    flag = 0;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+#ifdef HAVE_COLOUR
+   if (options & OPT_INTERACTIVE)
+      n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
+#endif
+
    size = screensize();
    if (_screen < 0)
       _screen = 0;
@@ -834,6 +898,7 @@ _headers(int msgspec) /* TODO rework v15 */
          imap_getheaders(mesg + 1, mesg + size);
 #endif
       srelax_hold();
+      isrelax = TRU1;
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
          ++mesg;
          if (!visible(mp))
@@ -844,6 +909,7 @@ _headers(int msgspec) /* TODO rework v15 */
          srelax();
       }
       srelax_rele();
+      isrelax = FAL0;
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -878,7 +944,9 @@ _headers(int msgspec) /* TODO rework v15 */
                break;
             }
       }
+
       srelax_hold();
+      isrelax = TRU1;
       while (mp) {
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
@@ -892,10 +960,17 @@ _headers(int msgspec) /* TODO rework v15 */
          mp = next_in_thread(mp);
       }
       srelax_rele();
+      isrelax = FAL0;
    }
 
    if (!flag)
       printf(_("No more mail.\n"));
+jleave:
+   if (isrelax)
+      srelax_rele();
+   n_COLOUR( n_colour_env_gut(stdout); )
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
    return !flag;
 }
@@ -905,11 +980,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t dodecode, char *cmd, ui64_t *tstats)
 {
    ui64_t mstats[1];
-   int rv, *ip;
+   int rv = 1, *ip;
    struct message *mp;
    char const *cp;
    FILE * volatile obuf;
-   bool_t volatile hadsig = FAL0, isrelax = FAL0;
+   bool_t volatile isrelax = FAL0;
+   sighandler_type opipe = NULL;
    NYD_ENTER;
    {/* C89.. */
    enum sendaction const action = ((dopipe && ok_blook(piperaw))
@@ -919,10 +995,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
    obuf = stdout;
 
-   if (sigsetjmp(_cmd1_pipestop, 1)) {
-      hadsig = TRU1;
-      goto jclose_pipe;
-   }
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
 
    if (dopipe) {
       if ((cp = ok_vlook(SHELL)) == NULL)
@@ -930,21 +1005,17 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if ((obuf = Popen(cmd, "w", cp, NULL, 1)) == NULL) {
          n_perr(cmd, 0);
          obuf = stdout;
-      } else
-         safe_signal(SIGPIPE, &_cmd1_brokpipe);
+      }
    } else if ((options & OPT_TTYOUT) && (dopage ||
          ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      char const *pager = NULL;
       size_t nlines = 0;
 
       if (!dopage) {
          for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
             mp = message + *ip - 1;
             if (!(mp->m_have & HAVE_BODY))
-               if (get_body(mp) != OKAY) {
-                  rv = 1;
+               if (get_body(mp) != OKAY)
                   goto jleave;
-               }
             nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
          }
       }
@@ -952,25 +1023,25 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* >= not <: we return to the prompt */
       if (dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? atoi(cp) : realscreenheight))) {
-         char const *env_add[2];
-         pager = get_pager(env_add + 0);
+         char const *env_add[2], *pager = get_pager(env_add + 0);
          env_add[1] = NULL;
          obuf = Popen(pager, "w", NULL, env_add, 1);
          if (obuf == NULL) {
             n_perr(pager, 0);
             obuf = stdout;
-            pager = NULL;
-         } else
-            safe_signal(SIGPIPE, &_cmd1_brokpipe);
+         }
       }
 #ifdef HAVE_COLOUR
-      if (IS_TTY_SESSION() && action != SEND_MBOX)
-         colour_table_create(pager != NULL); /* (salloc()s!) */
+      if ((options & OPT_INTERACTIVE) &&
+            (action == SEND_TODISP || action == SEND_TODISP_ALL ||
+             action == SEND_SHOW))
+         n_colour_env_create(n_COLOUR_GROUP_VIEW, obuf != stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if (IS_TTY_SESSION() && action != SEND_MBOX)
-      colour_table_create(FAL0); /* (salloc()s!) */
+   else if ((options & OPT_INTERACTIVE) &&
+         (action == SEND_TODISP || action == SEND_TODISP_ALL))
+      n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -995,19 +1066,19 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    srelax_rele();
    isrelax = FAL0;
 
-jclose_pipe:
-   if (obuf != stdout) {
+   rv = 0;
+jleave:
+   if (obuf != stdout)
       /* Ignore SIGPIPE so it can't cause a duplicate close */
       safe_signal(SIGPIPE, SIG_IGN);
-      if (hadsig && isrelax)
-         srelax_rele();
-      colour_reset(obuf); /* XXX hacky; only here because we still jump */
+   if (isrelax)
+      srelax_rele();
+   n_COLOUR( n_colour_env_gut(obuf); )
+   if (obuf != stdout)
       Pclose(obuf, TRU1);
+   if (opipe != NULL)
       safe_signal(SIGPIPE, dflpipe);
    }
-   rv = 0;
-   }
-jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -1123,45 +1194,60 @@ c_from(void *v)
    int *msgvec = v, *ip, n;
    char *cp;
    FILE * volatile obuf;
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
-   obuf = stdout;
 
-   /* TODO unfixable memory leaks still */
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
-      for (n = 0, ip = msgvec; *ip != 0; ++ip)
-         n++;
-      if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
-         char const *p;
-         if (sigsetjmp(_cmd1_pipejmp, 1))
-            goto jendpipe;
-         p = get_pager(NULL);
-         if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
-            n_perr(p, 0);
-            obuf = stdout;
-            cp = NULL;
-         } else
-            safe_signal(SIGPIPE, &_cmd1_onpipe);
+   obuf = stdout;
+   isrelax = FAL0;
+   opipe = NULL;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+   if (options & OPT_INTERACTIVE) {
+      if ((cp = ok_vlook(crt)) != NULL) {
+         for (n = 0, ip = msgvec; *ip != 0; ++ip)
+            ++n;
+         if (n > (*cp == '\0' ? screensize() : atoi(cp)) + 3) {
+            char const *p = get_pager(NULL);
+            if ((obuf = Popen(p, "w", NULL, NULL, 1)) == NULL) {
+               n_perr(p, 0);
+               obuf = stdout;
+            }
+         }
       }
+      n_COLOUR( n_colour_env_create(n_COLOUR_GROUP_SUM, obuf != stdout); )
    }
 
+   /* Update dot before display so that the dotmark etc. are correct */
+   for (ip = msgvec; *ip != 0; ++ip)
+      ;
+   if (--ip >= msgvec)
+      setdot(message + *ip - 1);
+
    srelax_hold();
+   isrelax = TRU1;
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
       srelax();
    }
    srelax_rele();
+   isrelax = FAL0;
 
-   if (--ip >= msgvec)
-      setdot(message + *ip - 1);
-
-jendpipe:
-   if (obuf != stdout) {
+jleave:
+   if (obuf != stdout)
+      /* Ignore SIGPIPE so it can't cause a duplicate close */
       safe_signal(SIGPIPE, SIG_IGN);
+   if (isrelax)
+      srelax_rele();
+   n_COLOUR( n_colour_env_gut(obuf); )
+   if (obuf != stdout)
       Pclose(obuf, TRU1);
-      safe_signal(SIGPIPE, dflpipe);
-   }
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
    return 0;
 }
@@ -1169,6 +1255,8 @@ jendpipe:
 FL void
 print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
+   bool_t volatile isrelax;
+   sighandler_type volatile opipe;
    size_t printed;
    NYD_ENTER;
 
@@ -1178,7 +1266,19 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 #endif
    time_current_update(&time_current, FAL0);
 
+   isrelax = FAL0;
+   opipe = NULL;
+   if (sigsetjmp(_cmd1_pipejmp, 1))
+      goto jleave;
+   opipe = safe_signal(SIGPIPE, &_cmd1_onpipe);
+
+#ifdef HAVE_COLOUR
+   if (options & OPT_INTERACTIVE)
+      n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
+#endif
+
    srelax_hold();
+   isrelax = TRU1;
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1190,6 +1290,14 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       srelax();
    }
    srelax_rele();
+   isrelax = FAL0;
+
+jleave:
+   if (isrelax)
+      srelax_rele();
+   n_COLOUR( n_colour_env_gut(stdout); )
+   if (opipe != NULL)
+      safe_signal(SIGPIPE, opipe);
    NYD_LEAVE;
 }
 
@@ -1300,9 +1408,10 @@ c_top(void *v)
          topl = 5;
    }
 
+   /* XXX Colours of `top' only for message and part info lines */
 #ifdef HAVE_COLOUR
-   if (IS_TTY_SESSION())
-      colour_table_create(FAL0); /* (salloc()s) */
+   if (options & OPT_INTERACTIVE)
+      n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
 #endif
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
@@ -1333,6 +1442,7 @@ c_top(void *v)
       }
    }
 
+   n_COLOUR( n_colour_env_gut(stdout); )
    if (linebuf != NULL)
       free(linebuf);
    NYD_LEAVE;

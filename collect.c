@@ -242,7 +242,7 @@ print_collf(FILE *cf, struct header *hp)
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if (IS_TTY_SESSION() && (cp = ok_vlook(crt)) != NULL) {
+   if ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL) {
       size_t l, m;
 
       m = 4;

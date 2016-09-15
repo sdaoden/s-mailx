@@ -2204,75 +2204,72 @@ and
 (i.e., perform scrolling through the header summary list).
 .\" }}}
 .
-.\" .Ss "Coloured message display" {{{
-.Ss "Coloured message display"
+.\" .Ss "Coloured display" {{{
+.Ss "Coloured display"
 .
-\*(OP \*(UA can be configured to support coloured message display,
-realized by emitting ANSI colour escape sequences.
-Colours are only used when the
-.Ev TERM
-environment variable is set and either the terminal type can be found in
+\*(OP \*(UA can be configured to support a coloured display and font
+attributes.
+Colour usage depends on the value of the environment variable
+.Ev TERM :
+if that is not set or set to the value
+.Ql dumb
+then this section doesn't apply, if the value includes the string
+.Ql color ,
+or if it can be found (case-insensitively) in the variable
 .Va colour-terms
-or its name includes the string
-.Ql color .
+then \*(UA will assume a colour-enabled display, but otherwise
+a monochrome display is assumed.
 .
 .Pp
 On top of what \*(UA knows about the terminal the boolean variable
 .Va colour-pager
-defines wether these colour sequences are also generated when the output
-of a command needs to go through the
+defines wether colour and font attribute sequences should also be
+generated when the output of a command needs to go through the
 .Ev PAGER
 (also see
 .Va crt Ns
-) \(en this is not enabled by default because different pager programs
-need different command line switches or other configuration in order to
-support those colour sequences, please see the option for more details.
+).
+This is not enabled by default because different pager programs need
+different command line switches or other configuration in order to
+support those colour sequences.
+\*(UA knows about some widely used pagers and in a clean environment
+it is often enough to simply set
+.Va colour-pager ;
+please refer to that variable for more on this topic.
 .
 .Pp
-To forcefully disable all colour support, set
-.Va colour-disable .
+If the variable
+.Va colour-disable
+is set then any active usage of colour and font attribute sequences
+is suppressed, but without affecting possibly established
+.Ic colour
+mappings.
 .
 .Pp
-Colours can be configured through font attributes
-.Pf ( Ql ft=
-\(en
-.Ql bold ,
-.Ql invers
-and
-.Ql underline ) ,
-foreground
-.Pf ( Ql fg= )
-and background
-.Pf ( Ql bg= )
-colours
-.Pf ( Ql black ,
-.Ql blue ,
-.Ql green ,
-.Ql red ,
-.Ql brown ,
-.Ql magenta ,
-.Ql cyan
-and
-.Ql white ) .
-Multiple specifications can be joined in a comma separated list, as in
+To define and control colours and font attributes a single multiplexer
+command family exists:
+.Ic colour
+shows or defines colour mappings for the given colour type (e.g.,
+monochrome) and
+.Ic uncolour
+can be used to remove mappings of a given colour type.
+Since colours are only available in interactive mode, it may make
+sense to conditionalize the colour setup by encapsulating it with
+.Ic if :
 .
-.Pp
-.Dl set colour-msginfo="ft=bold,fg=magenta,bg=cyan"
-.
-.Pp
-Variables to be set are
-.Va colour-msginfo ,
-.Va colour-partinfo ,
-.Va colour-from_ ,
-.Va colour-header
-and
-.Va colour-uheader ,
-as well as
-.Va colour-user-headers ,
-which is a list of headers to be colourized via
-.Va colour-uheader
-instead of the default
-.Va colour-header .
+.Bd -literal -offset indent
+if terminal
+  colour iso  view-msginfo  ft=bold,fg=green
+  colour iso  view-header   ft=bold,fg=red   "from,subject"
+  colour iso  view-header   fg=red
+
+  uncolour iso view-header  from,subject
+  colour iso  view-header   ft=bold,fg=magenta,bg=cyan
+  colour 256  view-header   ft=bold,fg=208,bg=230 subject,from
+  colour mono view-header   ft=bold
+  colour mono view-header   ft=bold,ft=reverse subject,from
+endif
+.Ed
 .\" }}}
 .\" }}} (DESCRIPTION)
 .
@@ -2571,6 +2568,152 @@ Only applicable to threaded mode.
 Takes a message list and makes all replies to these messages invisible
 in header summaries, unless they are in state
 .Ql new .
+.
+.
+.Mx
+.It Ic colour
+\*(OP Manage colour mappings for the type of colour given as the
+(case-insensitive) first argument, which must be one of
+.Ql 256
+for 256-colour terminals,
+.Ql 8 ,
+.Ql ansi
+or
+.Ql iso
+for the standard 8-colour ANSI / ISO 6429 color palette and
+.Ql 1
+or
+.Ql mono
+for monochrome terminals.
+Monochrome terminals cannot deal with colours, but only (some) font
+attributes.
+.
+.Pp
+Without further arguments the list of all currently defined mappings for
+the given colour type is shown.
+Otherwise the second argument defines the mappable slot, the third
+argument a (comma-separated list of) colour and font attribute
+specification(s), and the optional fourth argument can be used to
+specify a precondition: if conditioned mappings exist they are tested in
+(creation) order unless a (case-insensitive) match has been found, and
+the default mapping (if any has been established) will only be chosen as
+a last resort.
+The types of precondition available depend on the mappable slot, the
+following of which exist:
+.
+.Pp
+.Bl -tag -compact -width view-partinfo
+.It Cd sum-dotmark
+Mappings prefixed with
+.Ql sum-
+are used in header summaries, and they all understand the preconditions
+.Ql dot
+(the current message) and
+.Ql older
+for elder messages (only honoured in conjunction with
+.Va datefield-markout-older ) .
+This mapping is used for the
+.Dq dotmark
+that can be created with the
+.Ql %>
+or
+.Ql %<
+formats of the variable
+.Va headline .
+.It Cd sum-header
+For the complete header summary line except the
+.Dq dotmark
+and the thread structure.
+.It Cd sum-thread
+For the thread structure which can be created with the
+.Ql %i
+format of the variable
+.Va headline .
+.
+.It Cd view-from_
+Mappings prefixed with
+.Ql view-
+are used when displaying messages.
+This mapping is used for so-called
+.Ql From_
+lines, which are MBOX file format specific header lines.
+.It Cd view-header
+For header lines.
+A comma-separated list of headers to which the mapping applies may be
+given as a precondition; if the \*(OPal regular expression support is
+available then if any of the
+.Dq magical
+(extended) regular expression characters is seen the precondition will
+be evaluated as (an extended) one.
+.It Cd view-msginfo
+For the introductional message info line.
+.It Cd view-partinfo
+For MIME part info lines.
+.El
+.
+.Pp
+The following (case-insensitive) colour definitions and font attributes
+are understood, multiple of which can be specified in a comma-separated
+list:
+.
+.Bl -tag -width ft=
+.It Cd ft=
+a font attribute:
+.Ql bold ,
+.Ql reverse
+or
+.Ql underline .
+It is possible (and often applicable) to specify multiple font
+attributes for a single mapping.
+.
+.It Cd fg=
+foreground colour attribute:
+.Ql black ,
+.Ql blue ,
+.Ql green ,
+.Ql red ,
+.Ql brown ,
+.Ql magenta ,
+.Ql cyan
+or
+.Ql white .
+To specify a 256-color mode a decimal number colour specification in
+the range 0 to 255, inclusive, is supported, and interpreted as follows:
+.Pp
+.Bl -tag -compact -width "999 - 999"
+.It 0 - 7
+the standard ISO 6429 colors, as above.
+.It 8 - 15
+high intensity variants of the standard colors.
+.It 16 - 231
+216 colors in tuples of 6.
+.It 232 - 255
+grayscale from black to white in 24 steps.
+.El
+.Bd -literal -offset indent
+#!/bin/sh -
+fg() { printf "\e033[38;5;${1}m($1)"; }
+bg() { printf "\e033[48;5;${1}m($1)"; }
+i=0
+while [ $i -lt 256 ]; do fg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+i=0
+while [ $i -lt 256 ]; do bg $i; i=$(($i + 1)); done
+printf "\e033[0m\en"
+.Ed
+.
+.It Cd bg=
+background colour attribute (see
+.Cd fg=
+for possible values).
+.El
+.
+.Pp
+Mappings may be removed with the command
+.Ic uncolour .
+For a generic overview see the section
+.Sx "Coloured display" .
+.
 .
 .Mx
 .It Ic connect
@@ -4093,6 +4236,21 @@ Also when a message with collapsed replies is displayed,
 all of these are automatically uncollapsed.
 .
 .Mx
+.It Ic uncolour
+Forget about a
+.Ic colour
+mapping for the given colour type (see
+.Ic colour
+for a list of types) and mapping; if the optional precondition argument
+is used then only the exact tuple of mapping and precondition is removed.
+The special name
+.Ql *
+will remove all mappings (no precondition allowed).
+Also see
+.Sx "Coloured display"
+for the general picture.
+.
+.Mx
 .It Ic undefine
 Undefine all given macros.
 An error message is shown if a given macro is not defined.
@@ -4214,7 +4372,7 @@ will remove all fields.
 .Mx
 .It Ic unset
 (uns) Takes a list of option names and discards their remembered values;
-the inverse of
+the reverse of
 .Ic set .
 .
 .Mx
@@ -4510,7 +4668,7 @@ If (instead)
 .Ar filename
 arguments are specified for the
 .Ic \&\&~@
-command they are treated as a comma separated list of files,
+command they are treated as a comma-separated list of files,
 which are all expanded and appended to the end of the attachment list.
 (Filenames with commas, or with leading or trailing whitespace can only
 be added via the command line or the first method.
@@ -4795,7 +4953,7 @@ which causes prompting of the user in interactive mode, with the given
 boolean as the default value.
 .
 .\" .Ss "Initial settings" {{{
-.\" (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
+.\" (Keep in SYNC: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
 .Ss "Initial Settings"
 .
 The standard POSIX 2008/Cor 1-2013 mandates the following initial
@@ -5211,24 +5369,7 @@ command.
 .It Va colour-disable
 \*(BO\*(OP Forcefully disable usage of colours.
 Also see the section
-.Sx "Coloured message display" .
-.
-.Mx
-.It Va colour-from_
-\*(OP The colour specification for so-called
-.Ql From_
-lines.
-See the section
-.Sx "Coloured message display"
-for the format of the value.
-.
-.Mx
-.It Va colour-header
-\*(OP The colour specification for header lines.
-.
-.Mx
-.It Va colour-msginfo
-\*(OP The colour specification for the introductional message info line.
+.Sx "Coloured display" .
 .
 .Mx
 .It Va colour-pager
@@ -5256,42 +5397,21 @@ likewise for
 will optionally be set to
 .Dq -c .
 Also see the section
-.Sx "Coloured message display"
+.Sx "Coloured display"
 for more on this.
-.
-.Mx
-.It Va colour-partinfo
-\*(OP The colour specification for MIME part info lines.
 .
 .Mx
 .It Va colour-terms
 \*(OP A comma-separated list of
 .Ev TERM Ns
-inals for which coloured message display can be used.
+inals for which coloured display can be used.
 Entries only need to be added if the string
-.Dq color
+.Ql color
 isn't part of the terminal name itself; the default value is
 .Pp
-.Dl cons25,linux,rxvt,rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:\
-wsvt25,\:xterm
-.
-.Mx
-.It Va colour-uheader
-\*(OP The colour specification for those header lines that have been
-placed in the
-.Va colour-user-headers
-list.
-See the section
-.Sx "Coloured message display" .
-.
-.Mx
-.It Va colour-user-headers
-A comma separated list of (case-insensitive) header names which should
-be colourized with the alternative
-.Va colour-uheader
-colours.
-The default value is
-.Ql from,subject .
+.\" (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!)
+.Dl aterm,cons25,gnome,konsole,\:kterm,\:linux,\:\
+rxvt,\:rxvt-unicode,\:screen,\:sun,\:vt100,\:vt220,\:wsvt25,\:xterm
 .
 .Mx
 .It Va crt
@@ -7787,10 +7907,15 @@ suppression doesn't occur.
 .
 .Mx
 .It Va term-ca-mode
-\*(BY\*(OP If terminal capability queries are supported and this option
-is set then \*(UA will try to switch to the
+\*(BY\*(OP If terminal capability queries
+.Pf ( Xr termcap 5 ,
+.Xr terminfo 5 )
+are supported and this option is set then \*(UA will try to
+switch to the
 .Dq alternate screen
-when in interactive mode, so that the terminal will go back to the
+when in interactive mode if the
+.Ev TERM Ns
+inal allows to do so, so that the terminal will go back to the
 normal screen, leaving all the text there intact, when \*(UA exits.
 .Pp
 .Sy Note:
@@ -8078,6 +8203,10 @@ A default shell is used if this option is not defined.
 .Mx
 .It Ev TERM
 \*(OP The terminal type for which output is to be prepared.
+For extended colour and font control please refer to
+.Sx "Coloured display" ,
+and for terminal capability queries to
+.Va term-ca-mode .
 .
 .Mx
 .It Ev TMPDIR
@@ -9434,6 +9563,8 @@ S-nail (for more on that see the section
 .Xr setlocale 3 ,
 .Xr ssl 3 ,
 .Xr aliases 5 ,
+.Xr termcap 5 ,
+.Xr terminfo 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
 .Xr re_format 7 ,
