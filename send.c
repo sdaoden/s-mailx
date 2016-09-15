@@ -67,7 +67,7 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
                         ui64_t *stats, int level);
 
 /* Get a file for an attachment */
-static FILE *        newfile(struct mimepart *ip, bool_t *ispipe);
+static FILE *        newfile(struct mimepart *ip, bool_t volatile *ispipe);
 
 static void          pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
                         struct quoteflt *qf, ui64_t *stats);
@@ -343,7 +343,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct mime_handler mh;
    struct str rest;
    char *line = NULL, *cp, *cp2, *start;
-   char const *tmpname = NULL;
+   char const * volatile tmpname = NULL;
    size_t linesize = 0, linelen, cnt;
    int volatile term_infd;
    int dostat, c;
@@ -353,6 +353,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    enum conversion volatile convert;
    sighandler_type volatile oldpipe = SIG_DFL;
    NYD_ENTER;
+
+   UNINIT(term_infd, 0);
+   UNINIT(cnt, 0);
 
    if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
          action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
@@ -817,7 +820,7 @@ jmulti:
          }
 
          for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
-            bool_t ispipe;
+            bool_t volatile ispipe;
 
             if (np->m_mimecontent == MIME_DISCARD && action != SEND_DECRYPT)
                continue;
@@ -1136,7 +1139,7 @@ jleave:
 }
 
 static FILE *
-newfile(struct mimepart *ip, bool_t *ispipe)
+newfile(struct mimepart *ip, bool_t volatile *ispipe)
 {
    struct str in, out;
    char *f;
@@ -1234,7 +1237,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 
    fflush(pipebuf);
    rewind(pipebuf);
-   cnt = fsize(pipebuf);
+   cnt = (size_t)fsize(pipebuf);
    all_sz = 0;
 
    quoteflt_reset(qf, outbuf);

@@ -1068,7 +1068,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
     * TODO so that memory allocation count drops down massively; for now,
     * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
    struct str in, out;
-   ssize_t sz;
+   ssize_t volatile sz;
    int state;
    NYD_ENTER;
 

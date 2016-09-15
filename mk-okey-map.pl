@@ -358,7 +358,7 @@ _EOT
    foreach(@skeys){
       my $e = $virts{$_};
       my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
-      print F "${S}{$e->{enum}, (void const*)&a_amv_$e->{vstruct}},\n";
+      print F "${S}{$e->{enum}, {0,}, (void const*)&a_amv_$e->{vstruct}},\n";
    }
    print F "};\n";
 

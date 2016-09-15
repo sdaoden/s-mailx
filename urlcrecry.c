@@ -113,7 +113,7 @@ _nrc_init(void)
    char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
       user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
    struct stat sb;
-   FILE *fi;
+   FILE * fi;
    enum nrc_token t;
    bool_t ispipe, seen_default, nl_last;
    struct nrc_node *ntail, *nhead, *nrc;

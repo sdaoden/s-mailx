@@ -145,6 +145,7 @@ n_CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_var_virt{
    ui32_t avv_okey;
+   ui8_t avv__dummy[4];
    struct a_amv_var const *avv_var;
 };
 
@@ -161,6 +162,7 @@ struct a_amv_var_carrier{
    struct a_amv_var *avc_var;
    struct a_amv_var_map const *avc_map;
    enum okeys avc_okey;
+   ui8_t avc__pad[4];
 };
 
 /* Include the constant mk-okey-map.pl output */
@@ -463,7 +465,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       /* Trim WS, remember amount of leading spaces for display purposes */
       for(cp = line.s, leaspc = 0; n.ui > 0; ++cp, --n.ui)
          if(*cp == '\t')
-            leaspc = (leaspc + 8) & ~7;
+            leaspc = (leaspc + 8u) & ~7u;
          else if(*cp == ' ')
             ++leaspc;
          else
@@ -727,7 +729,7 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       if(**val != '\0'){
          ul_i ul;
 
-         if((ul = strtoul(*val, NULL, 0)) & ~0777){ /* (is valid _VF_POSNUM) */
+         if((ul = strtoul(*val, NULL, 0)) & ~0777u){ /* (is valid _VF_POSNUM) */
             n_err(_("Invalid *umask* setting: %s\n"), *val);
             ok = FAL0;
          }else

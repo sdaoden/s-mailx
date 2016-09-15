@@ -804,7 +804,8 @@ _headers(int msgspec) /* TODO rework v15 */
    struct n_sigman sm;
    bool_t volatile isrelax;
    ui32_t volatile flag;
-   int g, k, mesg, size, lastg = 1;
+   int g, k, mesg, size;
+   int volatile lastg = 1;
    struct message *mp, *mq, *lastmq = NULL;
    enum mflag fl = MNEW | MFLAGGED;
    NYD_ENTER;
@@ -964,7 +965,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 {
    struct n_sigman sm;
    ui64_t mstats[1];
-   int rv = 1, *ip;
+   int volatile rv = 1;
+   int *ip;
    struct message *mp;
    char const *cp;
    FILE * volatile obuf;
@@ -1116,8 +1118,8 @@ static int
 a_cmd_top(void *vp, struct ignoretab *itp){
    struct n_string s;
    int *msgvec, *ip;
-   enum{a_NONE, a_SQUEEZE = 1<<0,
-      a_EMPTY = 1<<8, a_STOP = 1<<9,  a_WORKMASK = 0xFF00} f;
+   enum{a_NONE, a_SQUEEZE = 1u<<0,
+      a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
    size_t tmax, plines;
    FILE *iobuf, *pbuf;
    NYD2_ENTER;
@@ -1149,13 +1151,13 @@ a_cmd_top(void *vp, struct ignoretab *itp){
       long l;
 
       if((l = strtol(ok_vlook(toplines), NULL, 0)) <= 0){
-         tmax = screensize();
+         tmax = (size_t)screensize();
          if(l < 0){
             l = ABS(l);
             tmax >>= l;
          }
       }else
-         tmax = l;
+         tmax = (size_t)l;
    }
    f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
 

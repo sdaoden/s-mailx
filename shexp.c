@@ -61,16 +61,16 @@
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
-   a_SHEXP_QUOTE_ROUNDTRIP = 1<<0,  /* Result won't be consumed immediately */
+   a_SHEXP_QUOTE_ROUNDTRIP = 1u<<0, /* Result won't be consumed immediately */
 
-   a_SHEXP_QUOTE_T_REVSOL = 1<<8,   /* Type: by reverse solidus */
-   a_SHEXP_QUOTE_T_SINGLE = 1<<9,   /* Type: single-quotes */
-   a_SHEXP_QUOTE_T_DOUBLE = 1<<10,  /* Type: double-quotes */
-   a_SHEXP_QUOTE_T_DOLLAR = 1<<11,  /* Type: dollar-single-quotes */
+   a_SHEXP_QUOTE_T_REVSOL = 1u<<8,  /* Type: by reverse solidus */
+   a_SHEXP_QUOTE_T_SINGLE = 1u<<9,  /* Type: single-quotes */
+   a_SHEXP_QUOTE_T_DOUBLE = 1u<<10, /* Type: double-quotes */
+   a_SHEXP_QUOTE_T_DOLLAR = 1u<<11, /* Type: dollar-single-quotes */
    a_SHEXP_QUOTE_T_MASK = a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
          a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR,
 
-   a_SHEXP_QUOTE__FREESHIFT = 16
+   a_SHEXP_QUOTE__FREESHIFT = 16u
 };
 
 struct a_shexp_var_stack {
@@ -79,6 +79,7 @@ struct a_shexp_var_stack {
    size_t svs_len;         /* gth of .svs_dat this level */
    char const *svs_dat;    /* Result data of this level */
    bool_t svs_bsesc;       /* Shall backslash escaping be performed */
+   ui8_t svs__dummy[7];
 };
 
 #ifdef HAVE_FNMATCH
@@ -87,6 +88,7 @@ struct a_shexp_glob_ctx{
    size_t sgc_patlen;
    struct n_string *sgc_outer;   /* Resolved path up to this level */
    ui32_t sgc_flags;
+   ui8_t sgc__dummy[4];
 };
 #endif
 
@@ -98,12 +100,14 @@ struct a_shexp_quote_ctx{
    ui32_t sqc_cnt_double;
    ui32_t sqc_cnt_dollar;
    enum a_shexp_quote_flags sqc_flags;
+   ui8_t sqc__dummy[4];
 };
 
 struct a_shexp_quote_lvl{
    struct a_shexp_quote_lvl *sql_link; /* Outer level */
    struct str sql_dat;                 /* This level (has to) handle(d) */
    enum a_shexp_quote_flags sql_flags;
+   ui8_t sql__dummy[4];
 };
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */

@@ -728,7 +728,8 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 {
    sighandler_type volatile saveint;
    struct cw cw;
-   int i = -1, omsgCount;
+   int omsgCount;
+   int volatile i = -1;
    NYD_ENTER;
 
    omsgCount = msgCount;

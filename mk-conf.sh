@@ -1514,7 +1514,7 @@ static void dome(char *buf, size_t blen, ...){
    va_list ap;
 
    va_start(ap, buf);
-   dome2(buf, blen, ap)
+   dome2(buf, blen, ap);
    va_end(ap);
 }
 int main(void){

@@ -371,6 +371,7 @@
 
 /* Align something to a size/boundary that cannot cause just any problem */
 #define n_ALIGN(X)      (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN_SMALL(X) (((X) + sizeof(void*)) & ~((sizeof(void*)) - 1))
 
 /* Members in constant array */
 #ifndef NELEM
@@ -1357,49 +1358,49 @@ do {\
 
 enum program_state {
    PS_NONE           = 0,
-   PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
-   PS_ROOT           = 1<<30,       /* Temporary "bypass any checks" bit */
+   PS_STARTED        = 1u<< 0,      /* main.c startup code passed, functional */
+   PS_ROOT           = 1u<<30,      /* Temporary "bypass any checks" bit */
 
-   PS_EXIT           = 1<< 1,       /* Exit request pending */
-   PS_SOURCING       = 1<< 2,       /* During load() or `source' */
-   PS_RECURSED       = 1<< 3,       /* State machine recursed, e.g. `~:CMD' */
-   PS_ROBOT          = 1<< 4,       /* State machine in non-interactive state */
+   PS_EXIT           = 1u<< 1,      /* Exit request pending */
+   PS_SOURCING       = 1u<< 2,      /* During load() or `source' */
+   PS_RECURSED       = 1u<< 3,      /* State machine recursed, e.g. `~:CMD' */
+   PS_ROBOT          = 1u<< 4,      /* State machine in non-interactive state */
 
-   PS_EVAL_ERROR     = 1<< 5,       /* Last evaluate() command failed */
+   PS_EVAL_ERROR     = 1u<< 5,      /* Last evaluate() command failed */
 
-   PS_HOOK_NEWMAIL   = 1<< 6,
-   PS_HOOK           = 1<< 7,
+   PS_HOOK_NEWMAIL   = 1u<< 6,
+   PS_HOOK           = 1u<< 7,
    PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
 
-   PS_EDIT           = 1<< 8,       /* Current mailbox not a "system mailbox" */
-   PS_SETFILE_OPENED = 1<< 9,       /* (hack) setfile() opened a new box */
-   PS_SAW_COMMAND    = 1<<10,       /* ..after mailbox switch */
+   PS_EDIT           = 1u<< 8,      /* Current mailbox not a "system mailbox" */
+   PS_SETFILE_OPENED = 1u<< 9,      /* (hack) setfile() opened a new box */
+   PS_SAW_COMMAND    = 1u<<10,      /* ..after mailbox switch */
 
-   PS_DID_PRINT_DOT  = 1<<12,       /* Current message has been printed */
+   PS_DID_PRINT_DOT  = 1u<<12,      /* Current message has been printed */
 
-   PS_SIGWINCH_PEND  = 1<<14,       /* Need update of $COLUMNS/$LINES */
+   PS_SIGWINCH_PEND  = 1u<<14,      /* Need update of $COLUMNS/$LINES */
    PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
-   PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
-   PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_WYSHLIST_SAW_UNICODE = 1<<17, /* ARG_WYSHLIST saw \[Uu] */
-   PS_WYSHLIST_SAW_CONTROL = 1<<18, /* ..saw C0+ control characters */
+   PS_MSGLIST_SAW_NO = 1u<<17,      /* Last *LIST saw numerics */
+   PS_MSGLIST_DIRECT = 1u<<18,      /* One msg was directly chosen by number */
+   PS_WYSHLIST_SAW_UNICODE = 1u<<17, /* ARG_WYSHLIST saw \[Uu] */
+   PS_WYSHLIST_SAW_CONTROL = 1u<<18, /* ..saw C0+ control characters */
 
-   PS_EXPAND_MULTIRESULT = 1<<19,   /* Last fexpand() with MULTIOK had .. */
+   PS_EXPAND_MULTIRESULT = 1u<<19,  /* Last fexpand() with MULTIOK had .. */
 
-   PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
+   PS_HEADER_NEEDED_MIME = 1u<<20,  /* mime_write_tohdr() needed x TODO HACK! */
 
-   PS_READLINE_NL = 1<<21,          /* readline_input()+ saw a \n TODO HACK! */
+   PS_READLINE_NL = 1u<<21,         /* readline_input()+ saw a \n TODO HACK! */
 
-   PS_COLOUR_ACTIVE  = 1<<22,       /* n_colour_env_create().._gut() cycle */
+   PS_COLOUR_ACTIVE  = 1u<<22,      /* n_colour_env_create().._gut() cycle */
 
    /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
-   PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
-   PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
-   PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
-   PS_LINE_EDITOR_INIT = 1<<29      /* MLE is initialized */
+   PS_ERRORS_NOTED   = 1u<<24,      /* Ring of `errors' content, print msg */
+   PS_t_FLAG         = 1u<<26,      /* OPT_t_FLAG made persistant */
+   PS_TERMCAP_DISABLE = 1u<<27,     /* HAVE_TERMCAP: *termcap-disable* was set */
+   PS_TERMCAP_CA_MODE = 1u<<28,     /* HAVE_TERMCAP: ca_mode available & used */
+   PS_LINE_EDITOR_INIT = 1u<<29     /* MLE is initialized */
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.

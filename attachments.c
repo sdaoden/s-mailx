@@ -319,7 +319,7 @@ _attach_iconv(struct attachment *ap)
       n_perr(ap->a_name, 0);
       goto jerr;
    }
-   cnt = fsize(fi);
+   cnt = (size_t)fsize(fi);
 
    if ((fo = Ftmp(NULL, "aticonv", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {

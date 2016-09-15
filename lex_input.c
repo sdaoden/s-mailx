@@ -426,7 +426,7 @@ a_lex_c_version(void *v){
    i2 = strlen(&cp[i + 1]) +1;
    iop = salloc(i + i2);
    memcpy(iop, cp, i);
-   memcpy(&iop[i], &cp[++i], i2);
+   memcpy(&iop[i], &cp[i + 1], i2);
 
    arr = salloc(sizeof(cp) * VAL_FEATURES_CNT);
    for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
@@ -792,6 +792,7 @@ a_lex_hangup(int s){
 static void
 a_lex_onintr(int s){
    NYD_X; /* Signal handler */
+   UNUSED(s);
 
    safe_signal(SIGINT, a_lex_onintr);
    noreset = 0;

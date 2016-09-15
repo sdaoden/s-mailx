@@ -87,7 +87,7 @@ struct a_colour_g{
    struct n_colour_pen cg_reset;    /* The reset sequence */
    struct a_colour_map
       *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX][n__COLOUR_IDS];
-   char cg_reset_buf[sizeof("\033[0m")];
+   char cg_reset_buf[n_ALIGN_SMALL(sizeof("\033[0m"))];
 };
 
 /* TODO The colour environment simply should be a pointer into an
@@ -333,7 +333,7 @@ a_colour_mux(char **argv){
       if(tl > 0){
          cmp->cm_tag = bp;
          memcpy(bp, ctag, ++tl);
-         bp += tl;
+         /*bp += tl;*/
       }else
          cmp->cm_tag = ctag;
 
@@ -384,7 +384,7 @@ a_colour_unmux(char **argv){
          n_err(_("`uncolour': invalid colour type %s\n"),
             n_shell_quote_cp(argv[-1], FAL0));
          rv = FAL0;
-         goto jleave;
+         goto j_leave;
       }
       aster = TRU1;
       ct = 0;
@@ -473,6 +473,7 @@ jemap:
 jleave:
    if(aster && ++ct != a_COLOUR_T_NONE)
       goto jredo;
+j_leave:
    NYD2_LEAVE;
    return rv;
 }

@@ -112,7 +112,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
     * TODO in `~@' etc. that its a rfc822 message attachment; see below */
    struct n_sigman sm;
    struct attachment *ap;
-   char *mnbuf;
+   char * volatile mnbuf;
    NYD_ENTER;
 
    UNUSED(linesize);
@@ -240,7 +240,7 @@ print_collf(FILE *cf, struct header *hp)
    NYD_ENTER;
 
    fflush_rewind(cf);
-   cnt = cnt2 = fsize(cf);
+   cnt = cnt2 = (size_t)fsize(cf);
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
@@ -607,7 +607,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
    char *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct ignoretab *quoteig;
-   int lc, cc, c, t;
+   int lc, cc, c;
+   int volatile t;
    int volatile escape, getfields;
    char *linebuf;
    char const *cp;
@@ -830,7 +831,7 @@ jcont:
       }
       if(cp[0] != escape){
 jputline:
-         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != cnt)
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (size_t)cnt)
             goto jerr;
          /* TODO PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
@@ -852,8 +853,6 @@ jputnl:
          linebuf[2] = '\0';
          cnt = 2;
       }else{
-         size_t i;
-
          i = PTR2SIZE(cp - linebuf) - 3;
          memcpy(&linebuf[3], cp, (cnt -= i));
          linebuf[2] = ' ';

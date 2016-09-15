@@ -359,7 +359,6 @@ pop3catch(int s)
       /*n_err_sighdl(_("Interrupt during POP3 operation\n"));*/
       interrupts = 2; /* Force "Interrupt" message shall we onintr(0) */
       siglongjmp(_pop3_jmp, 1);
-      break;
    case SIGPIPE:
       n_err_sighdl(_("Received SIGPIPE during POP3 operation\n"));
       break;

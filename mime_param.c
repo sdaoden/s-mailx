@@ -300,6 +300,7 @@ jeeqaaster:
                l = x, x = x->rj_next;
             if (x != NULL)
                np->rj_next = x;
+            assert(l != NULL);
             l->rj_next = np;
          }
 

@@ -53,11 +53,10 @@ do{\
    if(__sv == NULL)\
       __sv = __hist_obsolete;\
    if(__sv == NULL || (__rv = strtol(__sv, NULL, 10)) == 0)\
-      (V) = HIST_SIZE;\
+      __rv = HIST_SIZE;\
    else if(__rv < 0)\
       __rv = 0;\
-   else\
-      (V) = __rv;\
+   (V) = __rv;\
 }while(0)
 
 # define a_TTY_CHECK_ADDHIST(S,ISGABBY,NOACT) \
@@ -377,21 +376,21 @@ n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
  * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
 enum a_tty_bind_flags{
 # ifdef HAVE_KEY_BINDINGS
-   a_TTY_BIND_RESOLVE = 1<<8,    /* Term cap. yet needs to be resolved */
-   a_TTY_BIND_DEFUNCT = 1<<9,    /* Unicode/term cap. used but not avail. */
+   a_TTY_BIND_RESOLVE = 1u<<8,   /* Term cap. yet needs to be resolved */
+   a_TTY_BIND_DEFUNCT = 1u<<9,   /* Unicode/term cap. used but not avail. */
    a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT,
    /* MLE fun assigned to a one-byte-sequence: this may be used for special
     * key-sequence bypass processing */
-   a_TTY_BIND_MLE1CNTRL = 1<<10,
-   a_TTY_BIND_NOCOMMIT = 1<<11,  /* Expansion shall be editable */
+   a_TTY_BIND_MLE1CNTRL = 1u<<10,
+   a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
 # endif
 
    /* MLE internal commands */
-   a_TTY_BIND_FUN_INTERNAL = 1<<15,
-   a_TTY__BIND_FUN_SHIFT = 16,
-   a_TTY__BIND_FUN_SHIFTMAX = 24,
-   a_TTY__BIND_FUN_MASK = ((1 << a_TTY__BIND_FUN_SHIFTMAX) - 1) &
-         ~((1 << a_TTY__BIND_FUN_SHIFT) - 1),
+   a_TTY_BIND_FUN_INTERNAL = 1u<<15,
+   a_TTY__BIND_FUN_SHIFT = 16u,
+   a_TTY__BIND_FUN_SHIFTMAX = 24u,
+   a_TTY__BIND_FUN_MASK = ((1u << a_TTY__BIND_FUN_SHIFTMAX) - 1) &
+         ~((1u << a_TTY__BIND_FUN_SHIFT) - 1),
 # define a_TTY_BIND_FUN_REDUCE(X) \
    (((ui32_t)(X) & a_TTY__BIND_FUN_MASK) >> a_TTY__BIND_FUN_SHIFT)
 # define a_TTY_BIND_FUN_EXPAND(X) \
@@ -431,7 +430,7 @@ n_CTA((ui32_t)a_TTY_BIND_RESOLVE > (ui32_t)n__LEXINPUT_CTX_MAX,
 n_CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
       (1 << a_TTY__BIND_FUN_SHIFTMAX),
    "Bit carrier range must be expanded to represent necessary bits");
-n_CTA(a_TTY__BIND_LAST >= (1 << a_TTY__BIND_FUN_SHIFTMAX),
+n_CTA(a_TTY__BIND_LAST >= (1u << a_TTY__BIND_FUN_SHIFTMAX),
    "Bit carrier upper boundary must be raised to avoid value sharing");
 n_CTA(UICMP(64, a_TTY__BIND_LAST, <=, SI32_MAX),
    "Flag bits excess storage datatype" /* And we need one bit free */);
@@ -445,14 +444,14 @@ enum a_tty_fun_status{
 
 enum a_tty_visual_flags{
    a_TTY_VF_NONE,
-   a_TTY_VF_MOD_CURSOR = 1<<0,   /* Cursor moved */
-   a_TTY_VF_MOD_CONTENT = 1<<1,  /* Content modified */
-   a_TTY_VF_MOD_DIRTY = 1<<2,    /* Needs complete repaint */
-   a_TTY_VF_MOD_SINGLE = 1<<3,   /* TODO Drop when indirection as above comes */
+   a_TTY_VF_MOD_CURSOR = 1u<<0,  /* Cursor moved */
+   a_TTY_VF_MOD_CONTENT = 1u<<1, /* Content modified */
+   a_TTY_VF_MOD_DIRTY = 1u<<2,   /* Needs complete repaint */
+   a_TTY_VF_MOD_SINGLE = 1u<<3,  /* TODO Drop when indirection as above comes */
    a_TTY_VF_REFRESH = a_TTY_VF_MOD_DIRTY | a_TTY_VF_MOD_CURSOR |
          a_TTY_VF_MOD_CONTENT | a_TTY_VF_MOD_SINGLE,
-   a_TTY_VF_BELL = 1<<8,         /* Ring the bell */
-   a_TTY_VF_SYNC = 1<<9,         /* Flush/Sync I/O channel */
+   a_TTY_VF_BELL = 1u<<8,        /* Ring the bell */
+   a_TTY_VF_SYNC = 1u<<9,        /* Flush/Sync I/O channel */
 
    a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL | a_TTY_VF_SYNC,
    a_TTY__VF_LAST = a_TTY_VF_SYNC
@@ -2906,6 +2905,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       ui32_t seq_len;
       ui32_t cnv_len;      /* High bit set if a termap to be resolved */
       ui32_t calc_cnv_len; /* Ditto, but aligned etc. */
+      ui8_t kse__dummy[4];
    } *head, *tail;
    ui32_t f;
    NYD2_ENTER;
@@ -3327,6 +3327,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
          for(u.cp = (char const*)&((si32_t const*)cnvdat)[2];
                *u.cp != '\0'; ++u.cp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
+         assert(ntbtp != NULL);
          ntbtp->tbt_isseq_trail = TRU1;
          entlen &= SI32_MAX;
       }else{

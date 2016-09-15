@@ -86,8 +86,10 @@
    (__ischarof(c, C_DIGIT | C_OCTAL) || ((c) >= 'A' && (c) <= 'F') ||\
     ((c) >= 'a' && (c) <= 'f'))
 
-#define upperconv(c)    (lowerchar(c) ? (char)((uc_i)(c) - 'a' + 'A') : (c))
-#define lowerconv(c)    (upperchar(c) ? (char)((uc_i)(c) - 'A' + 'a') : (c))
+#define upperconv(c) \
+   (lowerchar(c) ? (char)((uc_i)(c) - 'a' + 'A') : (char)(c))
+#define lowerconv(c) \
+   (upperchar(c) ? (char)((uc_i)(c) - 'A' + 'a') : (char)(c))
 /* RFC 822, 3.2. */
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
@@ -2030,7 +2032,8 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 #define n_string_gut(S) ((S)->s_size != 0 ? (void)n_string_clear(S) : (void)0)
 
 /* Truncate to size, which must be LE current length */
-#define n_string_trunc(S,L)      ((S)->s_len = (L), (S))
+#define n_string_trunc(S,L) \
+   (assert(UICMP(z, L, <=, (S)->s_len)),  (S)->s_len = (ui32_t)(L), (S))
 
 /* Release buffer ownership */
 #define n_string_drop_ownership(S) \

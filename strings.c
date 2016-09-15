@@ -783,37 +783,37 @@ n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
    l = *blen - 1;
    x = (ui8_t)*cp++;
 
-   if (x <= 0x7F)
+   if (x <= 0x7Fu)
       c = x;
    else {
-      if ((x & 0xE0) == 0xC0) {
+      if ((x & 0xE0u) == 0xC0u) {
          if (l < 1)
             goto jerr;
          l -= 1;
-         c = x & ~0xC0;
-      } else if ((x & 0xF0) == 0xE0) {
+         c = x & ~0xC0u;
+      } else if ((x & 0xF0u) == 0xE0u) {
          if (l < 2)
             goto jerr;
          l -= 2;
-         c = x & ~0xE0;
+         c = x & ~0xE0u;
          c <<= 6;
          x = (ui8_t)*cp++;
-         c |= x & 0x7F;
+         c |= x & 0x7Fu;
       } else {
          if (l < 3)
             goto jerr;
          l -= 3;
-         c = x & ~0xF0;
+         c = x & ~0xF0u;
          c <<= 6;
          x = (ui8_t)*cp++;
-         c |= x & 0x7F;
+         c |= x & 0x7Fu;
          c <<= 6;
          x = (ui8_t)*cp++;
-         c |= x & 0x7F;
+         c |= x & 0x7Fu;
       }
       c <<= 6;
       x = (ui8_t)*cp++;
-      c |= x & 0x7F;
+      c |= x & 0x7Fu;
    }
 
 jleave:
@@ -868,11 +868,11 @@ jerr:
    catp += 3;
    goto j3;
 j4:
-   buf[3] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+   buf[3] = (char)0x80u | (char)(c & 0x3Fu); c >>= 6;
 j3:
-   buf[2] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+   buf[2] = (char)0x80u | (char)(c & 0x3Fu); c >>= 6;
 j2:
-   buf[1] = (char)0x80 | (char)(c & 0x3F); c >>= 6;
+   buf[1] = (char)0x80u | (char)(c & 0x3Fu); c >>= 6;
 j1:
    buf[0] = (char)catp->enc_leader | (char)(c);
 j0:

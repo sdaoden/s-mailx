@@ -113,7 +113,7 @@ _rand_init(void)
 
    for (seed = (uintptr_t)_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd) {
       for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
-         size_t t, k;
+         ui32_t t, k;
 
 # ifdef HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
@@ -181,7 +181,7 @@ screensize(void){
    NYD2_ENTER;
 
    if((cp = ok_vlook(screen)) == NULL || (s = strtoul(cp, NULL, 0)) == 0)
-      s = scrnheight;
+      s = (ul_i)scrnheight;
    s -= 2; /* XXX no magics */
    if(s > INT_MAX) /* TODO function should return unsigned */
       s = INT_MAX;
