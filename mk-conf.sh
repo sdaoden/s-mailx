@@ -1185,6 +1185,25 @@ else
    config_exit 1
 fi
 
+if run_check sa_restart 'SA_RESTART (for sigaction(2))' << \!
+#include <signal.h>
+# include <errno.h>
+int main(void){
+   struct sigaction nact, oact;
+
+   nact.sa_handler = SIG_DFL;
+   sigemptyset(&nact.sa_mask);
+   nact.sa_flags = SA_RESTART;
+   return !(!sigaction(SIGCHLD, &nact, &oact) || errno != ENOSYS);
+}
+!
+then
+   :
+else
+   msg 'ERROR: we (yet) require the SA_RESTART flag for sigaction(2).'
+   config_exit 1
+fi
+
 if link_check snprintf 'v?snprintf(3)' << \!
 #include <stdarg.h>
 #include <stdio.h>

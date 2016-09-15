@@ -174,10 +174,9 @@
 #define APPEND                   /* New mail goes to end of mailbox */
 #define CBAD            (-15555)
 #define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
+#define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define ESCAPE          '~'      /* Default escape for sending */
-#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
@@ -819,19 +818,19 @@ enum cproto {
    CPROTO_POP3
 };
 
-enum dotlock_state {
-   DLS_NONE,
-   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
-   DLS_NAMETOOLONG,           /* Lock file name would be too long */
-   DLS_ROFS,                  /* Read-only filesystem (no error, mailbox RO) */
-   DLS_NOPERM,                /* No permission to creat lock file */
-   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
-   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
-   DLS_EXIST,                 /* Lock file already exists, stale lock? */
-   DLS_FISHY,                 /* Something makes us think bad of situation */
-   DLS_DUNNO,                 /* Catch-all error */
-   DLS_PING,                  /* Not an error, but have to wait for lock */
-   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+enum n_dotlock_state{
+   n_DLS_NONE,
+   n_DLS_CANT_CHDIR,    /* Failed to chdir(2) into desired path */
+   n_DLS_NAMETOOLONG,   /* Lock file name would be too long */
+   n_DLS_ROFS,          /* Read-only filesystem (no error, mailbox RO) */
+   n_DLS_NOPERM,        /* No permission to creat lock file */
+   n_DLS_NOEXEC,        /* Privilege separated dotlocker not found */
+   n_DLS_PRIVFAILED,    /* Rising privileges failed in dotlocker */
+   n_DLS_EXIST,         /* Lock file already exists, stale lock? */
+   n_DLS_FISHY,         /* Something makes us think bad of situation */
+   n_DLS_DUNNO,         /* Catch-all error */
+   n_DLS_PING,          /* Not an error, but have to wait for lock */
+   n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
 enum exit_status {
@@ -860,7 +859,7 @@ enum fexp_mode {
    FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
-enum file_lock_type {
+enum n_file_lock_type{
    FLT_READ,
    FLT_WRITE
 };
@@ -1039,6 +1038,30 @@ enum sendaction {
    SEND_QUOTE,       /* convert for quoting */
    SEND_QUOTE_ALL,   /* same, include all MIME parts */
    SEND_DECRYPT      /* decrypt */
+};
+
+enum n_sigman_flags{
+   n_SIGMAN_NONE = 0,
+   n_SIGMAN_HUP = 1<<0,
+   n_SIGMAN_INT = 1<<1,
+   n_SIGMAN_QUIT = 1<<2,
+   n_SIGMAN_TERM = 1<<3,
+   n_SIGMAN_PIPE = 1<<4,
+
+   n_SIGMAN_IGN_HUP = 1<<5,
+   n_SIGMAN_IGN_INT = 1<<6,
+   n_SIGMAN_IGN_QUIT = 1<<7,
+   n_SIGMAN_IGN_TERM = 1<<8,
+
+   n_SIGMAN_ALL = 0xFF,
+   /* Mostly for _leave() reraise flags */
+   n_SIGMAN_VIPSIGS = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
+         n_SIGMAN_TERM,
+   n_SIGMAN_NTTYOUT_PIPE = 1<<16,
+   n_SIGMAN_VIPSIGS_NTTYOUT = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
+         n_SIGMAN_TERM | n_SIGMAN_NTTYOUT_PIPE,
+
+   n__SIGMAN_PING = 1<<17
 };
 
 #ifdef HAVE_SSL
@@ -1239,12 +1262,12 @@ enum program_state {
    PS_NONE           = 0,
    PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
 
-   PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
-   PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */
-   PS_IN_LOAD        = PS_LOADING | PS_SOURCING,
-   PS_PIPING         = 1<< 3,       /* `source'ing via pipe */
+   PS_EXIT           = 1<< 1,       /* Exit request pending */
+   PS_SOURCING       = 1<< 2,       /* During load() or `source' */
+   PS_RECURSED       = 1<< 3,       /* State machine recursed, e.g. `~:CMD' */
+   PS_ROBOT          = 1<< 4,       /* State machine in non-interactive state */
 
-   PS_EVAL_ERROR     = 1<< 4,       /* Last evaluate() command failed */
+   PS_EVAL_ERROR     = 1<< 5,       /* Last evaluate() command failed */
 
    PS_HOOK_NEWMAIL   = 1<< 6,
    PS_HOOK           = 1<< 7,
@@ -1593,15 +1616,38 @@ struct ccred {
 };
 
 #ifdef HAVE_DOTLOCK
-struct dotlock_info {
-   char const  *di_file_name;    /* Mailbox to lock */
-   char const  *di_lock_name;    /* .di_file_name + .lock */
-   char const  *di_hostname;     /* ..filled in parent (due resolver delays) */
-   char const  *di_randstr;      /* ..ditto, random string */
-   size_t      di_pollmsecs;     /* Delay in between locking attempts */
+struct n_dotlock_info{
+   char const *di_file_name;  /* Mailbox to lock */
+   char const *di_lock_name;  /* .di_file_name + .lock */
+   char const *di_hostname;   /* ..filled in parent (due resolver delays) */
+   char const *di_randstr;    /* ..ditto, random string */
+   size_t di_pollmsecs;       /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
+
+/* Execution context bundles  */
+struct n_exec_ctx{
+
+   void *l_smem;                 /* salloc() memory TODO -> memraw? */
+   /* TODO our new per-exec-ctx memory "allocators" are yet very dumb.
+    * TODO for v15 those should not be wrapping nodes but real allocators */
+   struct n_mem_raw *l_memraw;   /* n_mem_alloc() (/ n_mem_free()) */
+   struct n_mem_wrap *l_memwrap; /* n_mem_wrap() (/ n_mem_unwrap()) */
+};
+
+struct n_mem_raw{
+   struct n_mem_raw *mr_prev;
+   struct n_mem_raw *mr_next;
+   char mr_buf[VFIELD_SIZE(0)];
+};
+
+struct n_mem_wrap{
+   struct n_mem_wrap *mw_prev;
+   struct n_mem_wrap *mw_next;
+   void *mw_obj;
+   void (*mw_dtor)(void *obj);
+};
 
 struct mime_handler {
    enum mime_handler_flags mh_flags;
@@ -1659,13 +1705,17 @@ struct search_expr {
 #endif
 };
 
-struct eval_ctx {
-   struct str  ev_line;          /* The terminated data to evaluate */
-   ui32_t      ev_line_size;     /* May be used to store line memory size */
-   bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
-   ui8_t       __dummy[3];
-   bool_t      ev_add_history;   /* Enter (final) command in history? */
-   char const  *ev_new_content;  /* History: reenter line, start with this */
+/* This is somewhat temporary for pre v15 */
+struct n_sigman{
+   ui32_t sm_flags;           /* enum n_sigman_flags */
+   int sm_signo;
+   struct n_sigman *sm_outer;
+   sighandler_type sm_ohup;
+   sighandler_type sm_oint;
+   sighandler_type sm_oquit;
+   sighandler_type sm_oterm;
+   sighandler_type sm_opipe;
+   sigjmp_buf sm_jump;
 };
 
 struct termios_state {
@@ -1874,10 +1924,11 @@ enum argtype {
    ARG_M          = 1u<< 8,   /* Legal from send mode bit */
    ARG_P          = 1u<< 9,   /* Autoprint dot after command */
    ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
-   ARG_T          = 1u<<11,   /* Is a transparent command */
-   ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13,   /* Invalid when read only bit */
-   ARG_O          = 1u<<14    /* OBSOLETE()d command */
+   ARG_S          = 1u<<11,   /* Cannot be called unless PS_STARTED (POSIX) */
+   ARG_T          = 1u<<12,   /* Is a transparent command */
+   ARG_V          = 1u<<13,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<14,   /* Invalid when read only bit */
+   ARG_O          = 1u<<15    /* OBSOLETE()d command */
 };
 
 enum gfield {
@@ -2085,7 +2136,7 @@ VL int         exit_status;         /* Exit status */
 VL ui32_t      options;             /* Bits of enum user_options */
 VL struct name *option_r_arg;       /* Argument to -r option */
 VL char const  **smopts;            /* sendmail(1) opts from commline */
-VL size_t      smopts_count;        /* Entries in smopts */
+VL size_t      smopts_cnt;          /* Entries in smopts */
 
 VL ui32_t      pstate;              /* Bits of enum program_state */
 VL size_t      noreset;             /* String resets suspended (recursive) */
@@ -2103,6 +2154,7 @@ VL struct message *dot;                /* Pointer to current message */
 VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
+VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
 
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */
@@ -2125,14 +2177,10 @@ VL iconv_t     iconvd;
 VL sigjmp_buf  srbuf;
 VL int         interrupts;
 VL sighandler_type dflpipe;
-VL sighandler_type handlerstacktop;
-#define handlerpush(f)  (savedtop = handlerstacktop, handlerstacktop = (f))
-#define handlerpop()    (handlerstacktop = savedtop)
 
 /* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value
  * TODO carrier structs instead of locals */
 VL char        *temporary_arg_v_store;
-VL void        *temporary_localopts_store;
 /* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
 VL char const  *temporary_protocol_ext;
 

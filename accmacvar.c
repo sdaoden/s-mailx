@@ -194,7 +194,7 @@ static struct macro *_ma_look(char const *name, struct macro *data,
                         enum ma_flags mafl);
 
 /* Walk all lines of a macro and execute() them */
-static int           _ma_exec(struct macro const *mp, struct var **unroller,
+static bool_t        _ma_exec(struct macro const *mp, struct var **unroller,
                         bool_t localopts);
 
 /* User display helpers */
@@ -469,7 +469,7 @@ _var_clear(struct var_carrier *vcp)
    NYD2_ENTER;
 
    if (!_var_lookup(vcp)) {
-      if (!(pstate & PS_IN_LOAD) && (options & OPT_D_V))
+      if (!(pstate & PS_ROBOT) && (options & OPT_D_V))
          n_err(_("Variable undefined: \"%s\"\n"), vcp->vc_name);
    } else if (vcp->vc_vmap != NULL && (vcp->vc_vmap->vm_flags & VM_RDONLY)) {
       n_err(_("Variable readonly: \"%s\"\n"), vcp->vc_name);
@@ -739,42 +739,37 @@ jleave:
    return mp;
 }
 
-static int
+static bool_t
 _ma_exec(struct macro const *mp, struct var **unroller, bool_t localopts)
 {
    struct lostack los;
-   char *buf;
-   struct n2 {struct n2 *up; struct lostack *lo;} *x; /* FIXME hack (sigman+) */
    struct mline const *lp;
-   int rv = 0;
+   char **args;
+   size_t i;
+   bool_t rv;
    NYD2_ENTER;
+
+   for (i = 0, lp = mp->ma_contents; lp != NULL; ++i, lp = lp->l_next)
+      ;
+   args = smalloc(sizeof(*args) * ++i);
+   for (i = 0, lp = mp->ma_contents; lp != NULL; ++i, lp = lp->l_next)
+      args[i] = sbufdup(lp->l_line, lp->l_length);
+   args[i] = NULL;
 
    los.s_up = _localopts;
    los.s_mac = UNCONST(mp); /* But not used.. */
    los.s_localopts = (unroller == NULL) ? NULL : *unroller;
    los.s_unroll = localopts;
    _localopts = &los;
-
-   x = salloc(sizeof *x); /* FIXME intermediate hack (signal man+) */
-   x->up = temporary_localopts_store;
-   x->lo = _localopts;
-   temporary_localopts_store = x;
-
-   buf = ac_alloc(mp->ma_maxlen +1);
-   for (lp = mp->ma_contents; lp; lp = lp->l_next) {
-      memcpy(buf, lp->l_line, lp->l_length +1);
-      rv |= execute(buf, lp->l_length); /* XXX break if != 0 ? */
-   }
-   ac_free(buf);
-
-   temporary_localopts_store = x->up;  /* FIXME intermediate hack */
-
+   rv = n_source_macro(mp->ma_name, args);
    _localopts = los.s_up;
+
    if (unroller == NULL) {
       if (los.s_localopts != NULL)
          _localopts_unroll(&los.s_localopts);
    } else
       *unroller = los.s_localopts;
+
    NYD2_LEAVE;
    return rv;
 }
@@ -840,14 +835,12 @@ _ma_define(char const *name, enum ma_flags mafl)
    mp->ma_flags = mafl;
 
    for (;;) {
-      n.i = readline_input("", TRU1, &linebuf, &linesize, NULL);
+      n.i = n_lex_input("", TRU1, &linebuf, &linesize, NULL);
       if (n.ui == 0)
          continue;
       if (n.i < 0) {
          n_err(_("Unterminated %s definition: \"%s\"\n"),
             (mafl & MA_ACC ? "account" : "macro"), mp->ma_name);
-         if ((pstate & PS_IN_LOAD) == PS_SOURCING)
-            unstack();
          goto jerr;
       }
       if (_is_closing_angle(linebuf))
@@ -1437,18 +1430,18 @@ c_call(void *v)
    NYD_ENTER;
 
    if (args[0] == NULL || (args[1] != NULL && args[2] != NULL)) {
-      errs = _("Syntax is: call <%s>\n");
+      errs = _("Synopsis: call: <%s>\n");
       name = "name";
       goto jerr;
    }
 
-   if ((mp = _ma_look(*args, NULL, MA_NONE)) == NULL) {
-      errs = _("Undefined macro called: \"%s\"\n");
+   if ((mp = _ma_look(name = *args, NULL, MA_NONE)) == NULL) {
+      errs = _("Undefined macro `call'ed: \"%s\"\n");
       name = *args;
       goto jerr;
    }
 
-   rv = _ma_exec(mp, NULL, FAL0);
+   rv = (_ma_exec(mp, NULL, FAL0) == FAL0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1507,7 +1500,7 @@ jmac:
       pstate |= PS_HOOK;
       unroller = &_folder_hook_localopts;
    }
-   rv = (_ma_exec(mp, unroller, TRU1) == 0);
+   rv = _ma_exec(mp, unroller, TRU1);
    pstate &= ~PS_HOOK_MASK;
 
 jleave:
@@ -1589,7 +1582,7 @@ c_account(void *v)
    account_name = (mp != NULL) ? mp->ma_name : NULL;
    _acc_curr = mp;
 
-   if (mp != NULL && _ma_exec(mp, &mp->ma_localopts, TRU1) == CBAD) {
+   if (mp != NULL && !_ma_exec(mp, &mp->ma_localopts, TRU1)) {
       /* XXX account switch incomplete, unroll? */
       n_err(_("Switching to account \"%s\" failed\n"), args[0]);
       goto jleave;
@@ -1651,19 +1644,7 @@ jleave:
 FL void
 temporary_localopts_free(void) /* XXX intermediate hack */
 {
-   struct n2 {struct n2 *up; struct lostack *lo;} *x;
    NYD_ENTER;
-
-   x = temporary_localopts_store;
-   temporary_localopts_store = NULL;
-   _localopts = NULL;
-
-   while (x != NULL) {
-      struct lostack *losp = x->lo;
-      x = x->up;
-      if (losp->s_localopts != NULL)
-         _localopts_unroll(&losp->s_localopts);
-   }
 
    if (a_macvar_compose_localopts != NULL) {
       void *save = _localopts;
@@ -1683,6 +1664,7 @@ temporary_localopts_folder_hook_unroll(void) /* XXX intermediate hack */
       void *save = _localopts;
       _localopts = NULL;
       _localopts_unroll(&_folder_hook_localopts);
+      _folder_hook_localopts = NULL;
       _localopts = save;
    }
    NYD_LEAVE;

@@ -2050,7 +2050,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
    if (gflags & GTO)
       hp->h_to = grab_names("To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
+      hp->h_subject = n_lex_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
    if (gflags & GCC)
       hp->h_cc = grab_names("Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
@@ -2072,7 +2072,7 @@ grab_headers(struct header *hp, enum gfield gflags, int subjfirst)
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
+      hp->h_subject = n_lex_input_cp_addhist("Subject: ", hp->h_subject, TRU1);
 
    NYD_LEAVE;
    return errs;

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ This header is included by ./lex.c and defines the command array content.
+ *@ This is included by ./lex_input.c and defines the command array.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -48,6 +48,7 @@
 #define M            ARG_M
 #define P            ARG_P
 #define R            ARG_R
+#define S            ARG_S
 #define T            ARG_T
 #define V            ARG_V
 #define W            ARG_W
@@ -66,13 +67,13 @@
      DS(N_("Like `print', but prints all headers and parts")) },
    { "Print", &c_Type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Like `print', but prints all headers and parts")) },
-   { "visual", &c_visual, (A | I | MSGLIST), 0, MMNORM
+   { "visual", &c_visual, (A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <message-list>")) },
    { "top", &c_top, (A | MSGLIST), 0, MMNDEL
      DS(N_("Print top few lines of <message-list>")) },
    { "touch", &c_stouch, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> for saving in *mbox*")) },
-   { "preserve", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
+   { "preserve", &c_preserve, (A | S | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
    { "delete", &c_delete, (A | W | P | MSGLIST), 0, MMNDEL
      DS(N_("Delete <message-list>")) },
@@ -86,9 +87,9 @@
      DS(N_("Unset <option-list>")) },
    { "unsetenv", &c_unsetenv, (H | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>, also in the program environment")) },
-   { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
+   { "mail", &c_sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
-   { "Mail", &c_Sendmail, (R | M | I | STRLIST), 0, 0
+   { "Mail", &c_Sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Like `mail', but derive filename from first recipient")) },
    { "mbox", &c_mboxit, (A | W | MSGLIST), 0, 0
      DS(N_("Indicate that <message-list> is to be stored in *mbox*")) },
@@ -108,11 +109,11 @@
      DS(N_("Mark <message-list> as not being read")) },
    { "New", &c_unread, (A | MSGLIST), 0, MMNDEL
      DS(N_("Mark <message-list> as not being read")) },
-   { "!", &c_shell, (I | STRLIST), 0, 0 /* XXX I? */
+   { "!", &c_shell, (S | STRLIST), 0, 0
      DS(N_("Execute <shell-command>")) },
    { "copy", &c_copy, (A | M | STRLIST), 0, 0
      DS(N_("Copy <message-list>, but don't mark them for deletion")) },
-   { "Copy", &c_Copy, (A | M | STRLIST), 0, 0
+   { "Copy", &c_Copy, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `copy', but derive filename from first sender")) },
    { "chdir", &c_chdir, (M | RAWLIST), 0, 1
      DS(N_("Change CWD to the specified/the login directory")) },
@@ -120,7 +121,7 @@
      DS(N_("Change CWD to the specified/the login directory")) },
    { "save", &c_save, (A | STRLIST), 0, 0
      DS(N_("Append <message-list> to <file>")) },
-   { "Save", &c_Save, (A | STRLIST), 0, 0
+   { "Save", &c_Save, (A | S | STRLIST), 0, 0
      DS(N_("Like `save', but derive filename from first sender")) },
    { "source", &c_source, (M | R | RAWLIST), 1, 1
      DS(N_("Read commands from <file>")) },
@@ -130,7 +131,7 @@
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
      DS(N_("Set (a) <variable>(s) and export into the program environment")) },
-   { "shell", &c_dosh, (I | NOLIST), 0, 0
+   { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
      DS(N_("Un`alias' <name-list> (\"*\" for all)")) },
@@ -142,11 +143,11 @@
      DS(N_("\"Search\" for <message-specification>, print matching headers")) },
    { "file", &c_file, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
-   { "followup", &c_followup, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followup", &c_followup, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `reply', but derive filename from first sender")) },
-   { "followupall", &c_followupall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followupall", &c_followupall, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `reply', but derive filename from first sender")) },
-   { "followupsender", &c_followupsender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "followupsender", &c_followupsender, (A | I | R | MSGLIST), 0, MMNDEL
      DS(N_("Like `Followup', but always reply to the sender only")) },
    { "folder", &c_file, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
@@ -164,23 +165,23 @@
      DS(N_("Show command help (for the given one)")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
-   { "Reply", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Reply", &c_Reply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "Respond", &c_Reply, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Respond", &c_Reply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "Followup", &c_Followup, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Followup", &c_Followup, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `Reply', but derive filename from first sender")) },
-   { "reply", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
+   { "reply", &c_reply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replyall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replyall", &c_replyall, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator and recipients of <message-list>")) },
-   { "replysender", &c_replysender, (A | R | I | MSGLIST), 0, MMNDEL
+   { "replysender", &c_replysender, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "respond", &c_reply, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respond", &c_reply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondall", &c_replyall, (A | R | I | MSGLIST), 0, MMNDEL
+   { "respondall", &c_replyall, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originators and recipients of <message-list>")) },
-   { "respondsender", &c_replysender, (A | R | I | MSGLIST),0, MMNDEL
+   { "respondsender", &c_replysender, (A | I | R | S | MSGLIST),0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Resend", &c_Resend, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Like `resend', but don't add Resent-* headers")) },
@@ -198,17 +199,17 @@
      DS(N_("Forward <message> to <address>")) },
    { "fwd", &c_forward, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Forward <message> to <address>")) },
-   { "edit", &c_editor, (A | I | MSGLIST), 0, MMNORM
+   { "edit", &c_editor, (A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <message-list>")) },
    { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
      DS(N_("Echo given arguments")) },
-   { "quit", &_c_quit, NOLIST, 0, 0
+   { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &_c_list, (H | M | NOLIST), 0, 0
+   { "list", &a_lex_c_list, (H | M | NOLIST), 0, 0
      DS(N_("List all available commands")) },
-   { "xit", &c_rexit, (M | NOLIST), 0, 0
+   { "xit", &c_exit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
-   { "exit", &c_rexit, (M | NOLIST), 0, 0
+   { "exit", &c_exit, (M | NOLIST), 0, 0
      DS(N_("Immediate return to the shell without saving")) },
    { "pipe", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(N_("Pipe <message-list> to <command>")) },
@@ -218,7 +219,7 @@
      DS(N_("Like `pipe', but pipes all headers and parts")) },
    { "size", &c_messize, (A | MSGLIST), 0, MMNDEL
      DS(N_("Show size in characters for <message-list>")) },
-   { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
+   { "hold", &c_preserve, (A | S | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
    { "if", &c_if, (F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
@@ -292,9 +293,9 @@
      DS(N_("Like `copy', but mark messages for deletion")) },
    { "mv", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
-   { "Move", &c_Move, (A | M | STRLIST), 0, 0
+   { "Move", &c_Move, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `move', but derive filename from first sender")) },
-   { "Mv", &c_Move, (A | M | STRLIST), 0, 0
+   { "Mv", &c_Move, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `move', but derive filename from first sender")) },
    { "noop", &c_noop, (A | M | RAWLIST), 0, 0
      DS(N_("NOOP command if current folder is accessed via network")) },
@@ -306,7 +307,7 @@
      DS(N_("Verify <message-list>")) },
    { "decrypt", &c_decrypt, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but decrypt first, if encrypted")) },
-   { "Decrypt", &c_Decrypt, (A | M | STRLIST), 0, 0
+   { "Decrypt", &c_Decrypt, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `decrypt', but derive filename from first sender")) },
    { "certsave", &c_certsave, (A | STRLIST), 0, 0
      DS(N_("Save S/MIME certificates of <message-list> to <file>")) },
@@ -336,21 +337,21 @@
      DS(N_("(Load and) show all known MIME types or define some")) },
    { "unmimetype", &c_unmimetype, (M | RAWLIST), 1, 1000
      DS(N_("Delete <type>s (\"reset\", \"*\" for all; former reinit.s)")) },
-   { "spamrate", &c_spam_rate, (A | M | I | MSGLIST), 0, 0
+   { "spamrate", &c_spam_rate, (A | M | MSGLIST), 0, 0
      DS(N_("Rate <message-list> via the spam detector")) },
-   { "spamham", &c_spam_ham, (A | M | I | MSGLIST), 0, 0
+   { "spamham", &c_spam_ham, (A | M | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is ham")) },
-   { "spamspam", &c_spam_spam, (A | M | I | MSGLIST), 0, 0
+   { "spamspam", &c_spam_spam, (A | M | MSGLIST), 0, 0
      DS(N_("Teach the spam detector that <message-list> is spam")) },
-   { "spamforget", &c_spam_forget, (A | M | I | MSGLIST), 0, 0
+   { "spamforget", &c_spam_forget, (A | M | MSGLIST), 0, 0
      DS(N_("Force the spam detector to \"unlearn\" <message-list>")) },
-   { "spamset", &c_spam_set, (A | M | I | MSGLIST), 0, 0
+   { "spamset", &c_spam_set, (A | M | MSGLIST), 0, 0
      DS(N_("Set the spam flag for each message in <message-list>")) },
-   { "spamclear", &c_spam_clear, (A | M | I | MSGLIST), 0, 0
+   { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <message-list>")) },
-   { "ghost", &_c_ghost, (M | RAWLIST), 0, 1000
+   { "ghost", &a_lex_c_ghost, (M | RAWLIST), 0, 1000
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-   { "unghost", &_c_unghost, (M | RAWLIST), 1, 1000
+   { "unghost", &a_lex_c_unghost, (M | RAWLIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
      DS(N_("Inside `define' / `account': insulate modifications? <boolean>"))},
@@ -378,7 +379,7 @@
      DS(N_("Show all mailing list subscriptions or define some")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | RAWLIST), 1, 1000
      DS(N_("Un`mlsubscribe' <name-list> (\"*\" for all)"))},
-   { "Lreply", &c_Lreply, (A | R | I | MSGLIST), 0, MMNDEL
+   { "Lreply", &c_Lreply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given message")) },
    { "errors", &c_errors, (H | I | RAWLIST), 0, 1
      DS(N_("Either [<show>] or <clear> the error message ring")) },
@@ -388,9 +389,9 @@
      DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
    { "uncustomhdr", &c_uncustomhdr, (M | RAWLIST), 1, 1000
      DS(N_("Delete custom <:header:> (\"*\" for all)")) },
-   { "features", &_c_features, (H | M | NOLIST), 0, 0
+   { "features", &a_lex_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the Mail-User-Agent")) },
-   { "version", &_c_version, (H | M | NOLIST), 0, 0
+   { "version", &a_lex_c_version, (H | M | NOLIST), 0, 0
      DS(N_("Print the Mail-User-Agent version")) },
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
@@ -404,11 +405,13 @@
    { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 
-#ifdef HAVE_DEBUG
+#ifdef c_memtrace
+   { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
+     DS(N_("Trace current memory usage afap")) },
+#endif
+#ifdef c_sstats
    { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
      DS(N_("Print statistics about the auto-reclaimed string store")) },
-   { "smemtrace", &c_smemtrace, (H | I | M | NOLIST), 0, 0
-     DS(N_("Trace current memory usage afap")) },
 #endif
 
 #undef MSGLIST

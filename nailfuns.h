@@ -46,13 +46,23 @@
 # define FL                      static
 #endif
 
+/* Memory allocation routines from memory.c offer some debug support */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+# define HAVE_MEMORY_DEBUG
+# define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
+# define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
+# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
+# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
+#else
+# define SMALLOC_DEBUG_ARGS
+# define SMALLOC_DEBUG_ARGSCALL
+# define SALLOC_DEBUG_ARGS
+# define SALLOC_DEBUG_ARGSCALL
+#endif
+
 /*
  * Macro-based generics
  */
-
-/* Kludges to handle the change from setexit / reset to setjmp / longjmp */
-#define setexit()             (void)sigsetjmp(srbuf, 1)
-#define reset(x)              siglongjmp(srbuf, x)
 
 /* ASCII char classification */
 #define __ischarof(C, FLAGS)  \
@@ -86,16 +96,6 @@
 # define is_maybe_regex(S) anyof("^.[]*+?()|$", S)
 #else
 # define is_maybe_regex(S) anyof("^[]*+?|$", S)
-#endif
-
-/* Try to use alloca() for some function-local buffers and data, fall back to
- * smalloc()/free() if not available */
-#ifdef HAVE_ALLOCA
-# define ac_alloc(n)    HAVE_ALLOCA(n)
-# define ac_free(n)     do {UNUSED(n);} while (0)
-#else
-# define ac_alloc(n)    smalloc(n)
-# define ac_free(n)     free(n)
 #endif
 
 /* Single-threaded, use unlocked I/O */
@@ -259,67 +259,13 @@ FL void        edit_attachments(struct attachment **aphead);
  * auxlily.c
  */
 
-FL void        n_raise(int signo);
-
-/* Provide BSD-like signal() on all (POSIX) systems */
-FL sighandler_type safe_signal(int signum, sighandler_type handler);
-
-/* Hold *all* signals but SIGCHLD, and release that total block again */
-FL void        hold_all_sigs(void);
-FL void        rele_all_sigs(void);
-
-/* Hold HUP/QUIT/INT */
-FL void        hold_sigs(void);
-FL void        rele_sigs(void);
-
-/* Not-Yet-Dead debug information (handler installation in main.c) */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
-FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
-                  char const *fun);
-FL void        _nyd_oncrash(int signo);
-
-# define HAVE_NYD
-# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# ifdef HAVE_NYD2
-#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# endif
-#else
-# undef HAVE_NYD
-#endif
-#ifndef NYD
-# define NYD_ENTER               do {} while (0)
-# define NYD_LEAVE               do {} while (0)
-# define NYD                     do {} while (0)
-# define NYD_X                   do {} while (0) /* XXX LEGACY */
-#endif
-#ifndef NYD2
-# define NYD2_ENTER              do {} while (0)
-# define NYD2_LEAVE              do {} while (0)
-# define NYD2                    do {} while (0)
-#endif
-
-/* Touch the named message by setting its MTOUCH flag.  Touched messages have
- * the effect of not being sent back to the system mailbox on exit */
-FL void        touch(struct message *mp);
-
-/* Test to see if the passed file name is a directory, return true if it is */
-FL bool_t      is_dir(char const *name);
-
-/* Count the number of arguments in the given string raw list */
-FL int         argcount(char **argv);
-
 /* Compute screen size */
 FL int         screensize(void);
 
 /* Get our $PAGER; if env_addon is not NULL it is checked wether we know about
  * some environment variable that supports colour+ and set *env_addon to that,
  * e.g., "LESS=FRSXi" */
-FL char const *get_pager(char const **env_addon);
+FL char const *n_pager_get(char const **env_addon);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
@@ -337,25 +283,6 @@ FL ui32_t      pjw(char const *cp); /* TODO obsolete -> torek_hash() */
 /* Find a prime greater than n */
 FL ui32_t      nextprime(ui32_t n);
 
-/* (Try to) Expand ^~/? and ^~USER/? constructs.
- * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
-FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
-
-/* (Try to) Expand any shell variable in s, allowing backslash escaping
- * (of any following character) with bsescape.
- * Returns the completely resolved (maybe empty) salloc()ed string.
- * Logs on error */
-FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
-                  bool_t *err_or_null);
-
-/* Check wether *s is an escape sequence, expand it as necessary.
- * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
- * *s is advanced to after the expanded sequence (as possible).
- * If use_prompt_extensions is set, an enum prompt_exp may be returned */
-FL int         n_shell_expand_escape(char const **s,
-                  bool_t use_prompt_extensions);
-
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
 FL char *      getprompt(void);
 
@@ -364,49 +291,6 @@ FL char *      nodename(int mayoverride);
 
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
 FL char *      getrandstring(size_t length);
-
-FL enum okay   makedir(char const *name);
-
-/* A get-wd..restore-wd approach */
-FL enum okay   cwget(struct cw *cw);
-FL enum okay   cwret(struct cw *cw);
-FL void        cwrelse(struct cw *cw);
-
-/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
- * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
-FL size_t      field_detect_width(char const *buf, size_t blen);
-
-/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
- * safely placed in a buffer (field width) of maxlen bytes */
-FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
-
-/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
- * taking into account multibyte code point boundaries and possibly
- * encapsulating in bidi_info toggles as necessary */
-FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
-                  size_t blen);
-
-/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
-FL char *      colalign(char const *cp, int col, int fill,
-                  int *cols_decr_used_or_null);
-
-/* Convert a string to a displayable one;
- * prstr() returns the result savestr()d, prout() writes it */
-FL void        makeprint(struct str const *in, struct str *out);
-FL size_t      delctrl(char *cp, size_t len);
-FL char *      prstr(char const *s);
-FL int         prout(char const *s, size_t sz, FILE *fp);
-
-/* Print out a Unicode character or a substitute for it, return 0 on error or
- * wcwidth() (or 1) on success */
-FL size_t      putuc(int u, int c, FILE *fp);
-
-/* Check wether bidirectional info maybe needed for blen bytes of bdat */
-FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
-
-/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
- * the strings are always empty */
-FL void        bidi_info_create(struct bidi_info *bip);
 
 /* Check wether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
@@ -457,35 +341,6 @@ FL void        n_panic(char const *format, ...);
 FL int         c_errors(void *vp);
 #else
 # define c_errors                c_cmdnotsupp
-#endif
-
-/* Memory allocation routines */
-#ifdef HAVE_DEBUG
-# define SMALLOC_DEBUG_ARGS      , char const *mdbg_file, int mdbg_line
-# define SMALLOC_DEBUG_ARGSCALL  , mdbg_file, mdbg_line
-#else
-# define SMALLOC_DEBUG_ARGS
-# define SMALLOC_DEBUG_ARGSCALL
-#endif
-
-FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
-FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
-FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
-
-#ifdef HAVE_DEBUG
-FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
-/* Called by sreset(), then */
-FL void        smemreset(void);
-
-FL int         c_smemtrace(void *v);
-/* For immediate debugging purposes, it is possible to check on request */
-FL bool_t      _smemcheck(char const *file, int line);
-
-# define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
-# define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
-# define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
-# define free(P)                 sfree(P, __FILE__, __LINE__)
-# define smemcheck()             _smemcheck(__FILE__, __LINE__)
 #endif
 
 /*
@@ -698,9 +553,9 @@ FL int         c_urldecode(void *v);
 /* if.elif.else.endif conditional execution.
  * condstack_isskip() returns wether the current condition state doesn't allow
  * execution of commands.
- * condstack_release() and condstack_take() are used when PS_SOURCING files, they
- * rotate the current condition stack; condstack_take() returns a false boolean
- * if the current condition stack has unclosed conditionals */
+ * condstack_release() and condstack_take() rotate the current condition stack;
+ * condstack_take() returns a false boolean if the current condition stack has
+ * unclosed conditionals */
 FL int         c_if(void *v);
 FL int         c_elif(void *v);
 FL int         c_else(void *v);
@@ -783,6 +638,21 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
 #endif
 
 /*
+ * dotlock.c
+ */
+
+/* Aquire a flt lock and create a dotlock file; upon success a registered
+ * control-pipe FILE* is returned that keeps the link in between us and the
+ * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
+ * execv(2) with the privilege-separated dotlock helper program): the lock file
+ * will be removed once the control pipe is closed via Pclose().
+ * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
+ * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
+ * normal file lock could be established, otherwise errno is usable on error */
+FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
+                  off_t off, off_t len, size_t pollmsecs);
+
+/*
  * filter.c
  */
 
@@ -838,30 +708,6 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Read a complete line of input, with editing if interactive and possible.
- * If prompt is NULL we'll call getprompt() first, if necessary.
- * nl_escape defines wether user can escape newlines via backslash (POSIX).
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * Return number of octets or a value <0 on error.
- * Note: may use the currently `source'd file stream instead of stdin! */
-FL int         readline_input(char const *prompt, bool_t nl_escape,
-                  char **linebuf, size_t *linesize, char const *string
-                  SMALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define readline_input(A,B,C,D,E) readline_input(A,B,C,D,E,__FILE__,__LINE__)
-#endif
-
-/* Read a line of input, with editing if interactive and possible, return it
- * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during PS_SOURCING).
- * If prompt is NULL we'll call getprompt() if necessary.
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
-FL char *      n_input_cp_addhist(char const *prompt, char const *string,
-                  bool_t isgabby);
-
 /* Set up the input pointers while copying the mail file into /tmp */
 FL void        setptr(FILE *ibuf, off_t offset);
 
@@ -869,111 +715,54 @@ FL void        setptr(FILE *ibuf, off_t offset);
  * return -1, else the count of characters written, including the newline */
 FL int         putline(FILE *obuf, char *linebuf, size_t count);
 
-/* Return a file buffer all ready to read up the passed message pointer */
-FL FILE *      setinput(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-
-/* Reset (free) the global message array */
-FL void        message_reset(void);
-
-/* Append the passed message descriptor onto the message array; if mp is NULL,
- * NULLify the entry at &[msgCount-1] */
-FL void        message_append(struct message *mp);
-
-/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
-* true then the headers will also be searched (as plain text) */
-FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-               bool_t with_headers);
-
-FL struct message * setdot(struct message *mp);
-
-/* Delete a file, but only if the file is a plain file */
-FL int         rm(char const *name);
-
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
-
-/* Evaluate the string given as a new mailbox name. Supported meta characters:
- * . %  for my system mail box
- * . %user for user's system mail box
- * . #  for previous file
- * . &  invoker's mbox file
- * . +file file in folder directory
- * . any shell meta character (except for FEXP_NSHELL).
- * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
- * a poor man's vis(3), on name before calling this (and showing the user).
- * Returns the file name as an auto-reclaimed string */
-FL char *      fexpand(char const *name, enum fexp_mode fexpm);
-
-#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
-#define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
-
-/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
- * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
-FL char *      fexpand_nshell_quote(char const *name);
 
 /* accmacvar.c hook: *folder* variable has been updated; if folder shouldn't
  * be replaced by something else leave store alone, otherwise smalloc() the
  * desired value (ownership will be taken) */
 FL bool_t      var_folder_updated(char const *folder, char **store);
 
-/* Determine the current *folder* name, store it in *name* */
-FL bool_t      getfold(char *name, size_t size);
-
 /* Return the name of the dead.letter file */
 FL char const * getdeadletter(void);
 
-FL enum okay   get_body(struct message *mp);
-
-/* File locking */
-
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0 */
-FL bool_t      file_lock(int fd, enum file_lock_type flt, off_t off, off_t len,
-                  size_t pollmsecs);
-
-/* Aquire a flt lock and create a dotlock file; upon success a registered
- * control-pipe FILE* is returned that keeps the link in between us and the
- * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
- * execv(2) with the privilege-separated dotlock helper program): the lock file
- * will be removed once the control pipe is closed via Pclose().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established, otherwise errno is usable on error */
-FL FILE *      dot_lock(char const *fname, int fd, enum file_lock_type flt,
+FL bool_t      n_file_lock(int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
 
-/* Socket I/O */
-#ifdef HAVE_SOCKETS
-FL bool_t      sopen(struct sock *sp, struct url *urlp);
-FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, char const *data);
-FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
-                  int use_buffer);
+/*
+ * folder.c
+ */
 
-/*  */
-FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
-                  struct sock *sp SMALLOC_DEBUG_ARGS);
-# ifdef HAVE_DEBUG
-#  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
-# endif
-#endif /* HAVE_SOCKETS */
+/* Set up editing on the given file name.
+ * If the first character of name is %, we are considered to be editing the
+ * file, otherwise we are reading our mail which has signficance for mbox and
+ * so forth */
+FL int         setfile(char const *name, enum fedit_mode fm);
 
-/* Deal with loading of resource files and dealing with a stack of files for
- * the source command */
+FL int         newmailinfo(int omsgCount);
 
-/* Load a file of user definitions -- this is *only* for main()! */
-FL void        load(char const *name);
+/* Set the size of the message vector used to construct argument lists to
+ * message list functions */
+FL void        setmsize(int sz);
 
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * PS_SOURCING so that others will realize that they are no longer reading from
- * a tty (in all probability).
- * The latter won't return failure (TODO should be replaced by "-f FILE") */
-FL int         c_source(void *v);
-FL int         c_source_if(void *v);
+/* Logic behind -H / -L invocations */
+FL void        print_header_summary(char const *Larg);
 
-/* Pop the current input back to the previous level.  Update the PS_SOURCING
- * flag as appropriate */
-FL int         unstack(void);
+/* Announce the presence of the current Mail version, give the message count,
+ * and print a header listing */
+FL void        announce(int printheaders);
+
+/* Announce information about the file we are editing.  Return a likely place
+ * to set dot */
+FL int         newfileinfo(void);
+
+FL int         getmdot(int nmail);
+
+FL void        initbox(char const *name);
+
+/* Determine the current *folder* name, store it in *name* */
+FL bool_t      getfold(char *name, size_t size);
 
 /*
  * head.c
@@ -1127,66 +916,76 @@ FL enum okay   imap_search(char const *spec, int f);
 #endif
 
 /*
- * lex.c
+ * lex_input.c
  */
-
-/* Set up editing on the given file name.
- * If the first character of name is %, we are considered to be editing the
- * file, otherwise we are reading our mail which has signficance for mbox and
- * so forth.
- nmail: Check for new mail in the current folder only */
-FL int         setfile(char const *name, enum fedit_mode fm);
-
-FL int         newmailinfo(int omsgCount);
-
-/* Interpret user commands.  If standard input is not a tty, print no prompt;
- * return wether the last processed command returned error */
-FL bool_t      commands(void);
-
-/* TODO drop execute() is the legacy version of evaluate().
- * It assumes we've been invoked recursively */
-FL int         execute(char *linebuf, size_t linesize);
-
-/* Evaluate a single command.
- * .ev_add_history and .ev_new_content will be updated upon success.
- * Command functions return 0 for success, 1 for error, and -1 for abort.
- * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
-FL int         evaluate(struct eval_ctx *evp);
-
-/* Set the size of the message vector used to construct argument lists to
- * message list functions */
-FL void        setmsize(int sz);
-
-/* Logic behind -H / -L invocations */
-FL void        print_header_summary(char const *Larg);
-
-/* The following gets called on receipt of an interrupt.  This is to abort
- * printout of a command, mainly.  Dispatching here when command() is inactive
- * crashes rcv.  Close all open files except 0, 1, 2, and the temporary.  Also,
- * unstack all source files */
-FL void        onintr(int s);
-
-/* Announce the presence of the current Mail version, give the message count,
- * and print a header listing */
-FL void        announce(int printheaders);
-
-/* Announce information about the file we are editing.  Return a likely place
- * to set dot */
-FL int         newfileinfo(void);
-
-FL int         getmdot(int nmail);
-
-FL void        initbox(char const *name);
 
 /* Print the docstring of `comm', which may be an abbreviation.
  * Return FAL0 if there is no such command */
 #ifdef HAVE_DOCSTRINGS
-FL bool_t      print_comm_docstr(char const *comm);
+FL bool_t      n_print_comm_docstr(char const *comm);
 #endif
+
+/* Interpret user commands.  If stdin is not a tty, print no prompt; return
+ * wether last processed command returned error -- this is *only* for main()! */
+FL bool_t      n_commands(void);
+
+/* Actual cmd input */
+
+/* Read a complete line of input, with editing if interactive and possible.
+ * If prompt is NULL we'll call getprompt() first, if necessary.
+ * nl_escape defines wether user can escape newlines via backslash (POSIX).
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
+ * Return number of octets or a value <0 on error.
+ * Note: may use the currently `source'd file stream instead of stdin! */
+FL int         n_lex_input(char const *prompt, bool_t nl_escape,
+                  char **linebuf, size_t *linesize, char const *string
+                  SMALLOC_DEBUG_ARGS);
+#ifdef HAVE_DEBUG
+# define n_lex_input(A,B,C,D,E) n_lex_input(A,B,C,D,E,__FILE__,__LINE__)
+#endif
+
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
+ * This may only be called from toplevel (not during PS_ROBOT).
+ * If prompt is NULL we'll call getprompt() if necessary.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
+ * If OPT_INTERACTIVE a non-empty return is saved in the history, isgabby */
+FL char *      n_lex_input_cp_addhist(char const *prompt, char const *string,
+                  bool_t isgabby);
+
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions -- this is *only* for main()! */
+FL void        n_load(char const *name);
+
+/* "Load" all the -X command line definitions in order -- *only* for main() */
+FL void        n_load_Xargs(char const **lines);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * PS_SOURCING so that others will realize that they are no longer reading from
+ * a tty (in all probability).
+ * The latter won't return failure (TODO should be replaced by "-f FILE") */
+FL int         c_source(void *v);
+FL int         c_source_if(void *v);
+
+/* Evaluate a complete macro / a single command.  For the former lines will
+ * always be free()d, for the latter cmd will always be duplicated internally */
+FL bool_t      n_source_macro(char const *name, char **lines);
+FL bool_t      n_source_command(char const *cmd);
+
+/* XXX Hack: may we release our (interactive) (terminal) control to a different
+ * XXX program, e.g., a $PAGER? */
+FL bool_t      n_source_may_yield_control(void);
 
 /*
  * list.c
  */
+
+/* Count the number of arguments in the given string raw list */
+FL int         argcount(char **argv);
 
 /* Convert user string of message numbers and store the numbers into vector.
  * Returns the count of messages picked up or -1 on error */
@@ -1203,12 +1002,45 @@ FL int         first(int f, int m);
 FL void        mark(int mesg, int f);
 
 /*
+ * message.c
+ */
+
+/* Return a file buffer all ready to read up the passed message pointer */
+FL FILE *      setinput(struct mailbox *mp, struct message *m,
+                  enum needspec need);
+
+/*  */
+FL enum okay   get_body(struct message *mp);
+
+/* Reset (free) the global message array */
+FL void        message_reset(void);
+
+/* Append the passed message descriptor onto the message array; if mp is NULL,
+ * NULLify the entry at &[msgCount-1] */
+FL void        message_append(struct message *mp);
+
+/* Append a NULL message */
+FL void        message_append_null(void);
+
+/* Check wether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+               bool_t with_headers);
+
+/*  */
+FL struct message * setdot(struct message *mp);
+
+/* Touch the named message by setting its MTOUCH flag.  Touched messages have
+ * the effect of not being sent back to the system mailbox on exit */
+FL void        touch(struct message *mp);
+
+/*
  * maildir.c
  */
 
 FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
-FL void        maildir_quit(void);
+FL bool_t      maildir_quit(void);
 
 FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
 
@@ -1218,8 +1050,88 @@ FL enum okay   maildir_remove(char const *name);
  * main.c
  */
 
-/* Quit quickly.  If PS_SOURCING, just pop the input level by returning error */
-FL int         c_rexit(void *v);
+/* Quit quickly.  In recursed state, return error to just pop the input level */
+FL int         c_exit(void *v);
+
+/*
+ * memory.c
+ */
+
+/* Try to use alloca() for some function-local buffers and data, fall back to
+ * smalloc()/free() if not available */
+
+#ifdef HAVE_ALLOCA
+# define ac_alloc(n)    HAVE_ALLOCA(n)
+# define ac_free(n)     do {UNUSED(n);} while (0)
+#else
+# define ac_alloc(n)    smalloc(n)
+# define ac_free(n)     free(n)
+#endif
+
+/* Generic heap memory */
+
+FL void *      smalloc(size_t s SMALLOC_DEBUG_ARGS);
+FL void *      srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS);
+FL void *      scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS);
+
+#ifdef HAVE_MEMORY_DEBUG
+FL void        sfree(void *v SMALLOC_DEBUG_ARGS);
+
+/* Called by sreset(), then */
+FL void        n_memreset(void);
+
+FL int         c_memtrace(void *v);
+
+/* For immediate debugging purposes, it is possible to check on request */
+FL bool_t      n__memcheck(char const *file, int line);
+
+# define smalloc(SZ)             smalloc(SZ, __FILE__, __LINE__)
+# define srealloc(P,SZ)          srealloc(P, SZ, __FILE__, __LINE__)
+# define scalloc(N,SZ)           scalloc(N, SZ, __FILE__, __LINE__)
+# define free(P)                 sfree(P, __FILE__, __LINE__)
+# define c_memtrace              c_memtrace
+# define n_memcheck()            n__memcheck(__FILE__, __LINE__)
+#else
+# define n_memreset()            do{}while(0)
+#endif
+
+/* String storage, auto-reclaimed after execution level is left */
+
+/* Allocate size more bytes of space and return the address of the first byte
+ * to the caller.  An even number of bytes are always allocated so that the
+ * space will always be on a word boundary */
+FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
+FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
+# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
+#endif
+
+/* Auto-reclaim string storage; if only_if_relaxed is true then only perform
+ * the reset when a srelax_hold() is currently active */
+FL void        sreset(bool_t only_if_relaxed);
+
+/* The "problem" with sreset() is that it releases all string storage except
+ * what was present once spreserve() had been called; it therefore cannot be
+ * called from all that code which yet exists and walks about all the messages
+ * in order, e.g. quit(), searches, etc., because, unfortunately, these code
+ * paths are reached with new intermediate string dope already in use.
+ * Thus such code should take a srelax_hold(), successively call srelax() after
+ * a single message has been handled, and finally srelax_rele() (unless it is
+ * clear that sreset() occurs anyway) */
+FL void        srelax_hold(void);
+FL void        srelax_rele(void);
+FL void        srelax(void);
+
+/* Make current string storage permanent: new allocs will be auto-reclaimed by
+ * sreset().  This is called once only, from within main() */
+FL void        spreserve(void);
+
+/* 'sstats' command */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+FL int         c_sstats(void *v);
+# define c_sstats                c_sstats
+#endif
 
 /*
  * mime.c
@@ -1446,7 +1358,7 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
-/* Get a lextract() list via n_input_cp_addhist(), reassigning to *np* */
+/* Get a lextract() list via n_lex_input_cp_addhist(), reassigning to *np* */
 FL struct name * grab_names(char const *field, struct name *np, int comma,
                      enum gfield gflags);
 
@@ -1539,6 +1451,25 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 #endif
 
 /*
+ * path.c
+ */
+
+/* Test to see if the passed file name is a directory, return true if it is */
+FL bool_t      is_dir(char const *name);
+
+/*  */
+FL bool_t      n_path_mkdir(char const *name);
+
+/* Delete a file, but only if the file is a plain file; return FAL0 on system
+ * error and TRUM1 if name is not a plain file, return TRU1 on success */
+FL bool_t      n_path_rm(char const *name);
+
+/* A get-wd..restore-wd approach */
+FL enum okay   cwget(struct cw *cw);
+FL enum okay   cwret(struct cw *cw);
+FL void        cwrelse(struct cw *cw);
+
+/*
  * pop3.c
  */
 
@@ -1556,7 +1487,7 @@ FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 
 /*  */
-FL void        pop3_quit(void);
+FL bool_t      pop3_quit(void);
 #endif /* HAVE_POP3 */
 
 /*
@@ -1607,9 +1538,15 @@ FL bool_t      pipe_cloexec(int fd[2]);
  * called from within the child process */
 FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
+FL bool_t      Pclose(FILE *fp, bool_t dowait);
 
-FL bool_t      Pclose(FILE *ptr, bool_t dowait);
+/* In OPT_INTERACTIVE, we want to go over $PAGER.
+ * These are specialized version of Popen()/Pclose() which also encapsulate
+ * error message printing, terminal handling etc. additionally */
+FL FILE *      n_pager_open(void);
+FL bool_t      n_pager_close(FILE *fp);
 
+/*  */
 FL void        close_all_files(void);
 
 /* Fork a child process, enable use of the *child() series below */
@@ -1651,7 +1588,7 @@ FL bool_t      wait_child(int pid, int *wait_status);
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,
  * if none saved there */
-FL void        quit(void);
+FL bool_t      quit(void);
 
 /* Adjust the message flags in each message */
 FL int         holdbits(void);
@@ -1720,12 +1657,149 @@ FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
 FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
 
 /*
+ * shexp.c
+ */
+
+/* Evaluate the string given as a new mailbox name. Supported meta characters:
+ * . %  for my system mail box
+ * . %user for user's system mail box
+ * . #  for previous file
+ * . &  invoker's mbox file
+ * . +file file in folder directory
+ * . any shell meta character (except for FEXP_NSHELL).
+ * If FEXP_NSHELL is set you possibly want to call fexpand_nshell_quote(),
+ * a poor man's vis(3), on name before calling this (and showing the user).
+ * Returns the file name as an auto-reclaimed string */
+FL char *      fexpand(char const *name, enum fexp_mode fexpm);
+
+#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
+#define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
+
+/* A poor man's vis(3) for only backslash escaping as for FEXP_NSHELL.
+ * Returns the (possibly adjusted) buffer in auto-reclaimed storage */
+FL char *      fexpand_nshell_quote(char const *name);
+
+/* (Try to) Expand ^~/? and ^~USER/? constructs.
+ * Returns the completely resolved (maybe empty or identical to input)
+ * salloc()ed string */
+FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
+
+/* (Try to) Expand any shell variable in s, allowing backslash escaping
+ * (of any following character) with bsescape.
+ * Returns the completely resolved (maybe empty) salloc()ed string.
+ * Logs on error */
+FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
+                  bool_t *err_or_null);
+
+/* Check wether *s is an escape sequence, expand it as necessary.
+ * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
+ * *s is advanced to after the expanded sequence (as possible).
+ * If use_prompt_extensions is set, an enum prompt_exp may be returned */
+FL int         n_shell_expand_escape(char const **s,
+                  bool_t use_prompt_extensions);
+
+/*
+ * signal.c
+ */
+
+FL void        n_raise(int signo);
+
+/* Provide BSD-like signal() on all (POSIX) systems */
+FL sighandler_type safe_signal(int signum, sighandler_type handler);
+
+/* Hold *all* signals but SIGCHLD, and release that total block again */
+FL void        hold_all_sigs(void);
+FL void        rele_all_sigs(void);
+
+/* Hold HUP/QUIT/INT */
+FL void        hold_sigs(void);
+FL void        rele_sigs(void);
+
+/* Call _ENTER_SWITCH() with the according flags, it'll take care for the rest
+ * and also set the jump buffer - it returns 0 if anything went fine and
+ * a signal number if a jump occurred, in which case all handlers requested in
+ * flags are temporarily SIG_IGN.
+ * _cleanup_ping() informs the condome that no jumps etc. shall be performed
+ * until _leave() is called in the following -- to be (optionally) called right
+ * before the local jump label is reached which is jumped to after a long jump
+ * occurred, straight code flow provided, e.g., to avoid destructors to be
+ * called twice.  _leave() must always be called last, reraise_flags will be
+ * used to decide how signal handling has to continue
+ */
+#define n_SIGMAN_ENTER_SWITCH(S,F) do{\
+   int __x__;\
+   hold_sigs();\
+   if(sigsetjmp((S)->sm_jump, 1))\
+      __x__ = -1;\
+   else\
+      __x__ = F;\
+   n__sigman_enter(S, __x__);\
+}while(0); switch((S)->sm_signo)
+FL int         n__sigman_enter(struct n_sigman *self, int flags);
+FL void        n_sigman_cleanup_ping(struct n_sigman *self);
+FL void        n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
+
+/* Pending signal or 0? */
+FL int         n_sigman_peek(void);
+FL void        n_sigman_consume(void);
+
+/* Not-Yet-Dead debug information (handler installation in main.c) */
+#if defined HAVE_DEBUG || defined HAVE_DEVEL
+FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
+                  char const *fun);
+FL void        _nyd_oncrash(int signo);
+
+# define HAVE_NYD
+# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# ifdef HAVE_NYD2
+#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# endif
+#else
+# undef HAVE_NYD
+#endif
+#ifndef NYD
+# define NYD_ENTER               do {} while (0)
+# define NYD_LEAVE               do {} while (0)
+# define NYD                     do {} while (0)
+# define NYD_X                   do {} while (0) /* XXX LEGACY */
+#endif
+#ifndef NYD2
+# define NYD2_ENTER              do {} while (0)
+# define NYD2_LEAVE              do {} while (0)
+# define NYD2                    do {} while (0)
+#endif
+
+/*
  * smtp.c
  */
 
 #ifdef HAVE_SMTP
 /* Send a message via SMTP */
 FL bool_t      smtp_mta(struct sendbundle *sbp);
+#endif
+
+/*
+ * socket.c
+ */
+
+#ifdef HAVE_SOCKETS
+FL bool_t      sopen(struct sock *sp, struct url *urlp);
+FL int         sclose(struct sock *sp);
+FL enum okay   swrite(struct sock *sp, char const *data);
+FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
+                  int use_buffer);
+
+/*  */
+FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
+                  struct sock *sp SMALLOC_DEBUG_ARGS);
+# ifdef HAVE_DEBUG
+#  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
+# endif
 #endif
 
 /*
@@ -1786,57 +1860,7 @@ FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 
 /*
  * strings.c
- * This bundles several different string related support facilities:
- * - auto-reclaimed string storage (memory goes away on command loop ticks)
- * - plain char* support functions which use unspecified or smalloc() memory
- * - struct str related support funs
- * - our iconv(3) wrapper
  */
-
-/* Auto-reclaimed string storage */
-
-#ifdef HAVE_DEBUG
-# define SALLOC_DEBUG_ARGS       , char const *mdbg_file, int mdbg_line
-# define SALLOC_DEBUG_ARGSCALL   , mdbg_file, mdbg_line
-#else
-# define SALLOC_DEBUG_ARGS
-# define SALLOC_DEBUG_ARGSCALL
-#endif
-
-/* Allocate size more bytes of space and return the address of the first byte
- * to the caller.  An even number of bytes are always allocated so that the
- * space will always be on a word boundary */
-FL void *      salloc(size_t size SALLOC_DEBUG_ARGS);
-FL void *      csalloc(size_t nmemb, size_t size SALLOC_DEBUG_ARGS);
-#ifdef HAVE_DEBUG
-# define salloc(SZ)              salloc(SZ, __FILE__, __LINE__)
-# define csalloc(NM,SZ)          csalloc(NM, SZ, __FILE__, __LINE__)
-#endif
-
-/* Auto-reclaim string storage; if only_if_relaxed is true then only perform
- * the reset when a srelax_hold() is currently active */
-FL void        sreset(bool_t only_if_relaxed);
-
-/* The "problem" with sreset() is that it releases all string storage except
- * what was present once spreserve() had been called; it therefore cannot be
- * called from all that code which yet exists and walks about all the messages
- * in order, e.g. quit(), searches, etc., because, unfortunately, these code
- * paths are reached with new intermediate string dope already in use.
- * Thus such code should take a srelax_hold(), successively call srelax() after
- * a single message has been handled, and finally srelax_rele() (unless it is
- * clear that sreset() occurs anyway) */
-FL void        srelax_hold(void);
-FL void        srelax_rele(void);
-FL void        srelax(void);
-
-/* Make current string storage permanent: new allocs will be auto-reclaimed by
- * sreset().  This is called once only, from within main() */
-FL void        spreserve(void);
-
-/* 'sstats' command */
-#ifdef HAVE_DEBUG
-FL int         c_sstats(void *v);
-#endif
 
 /* Return a pointer to a dynamic copy of the argument */
 FL char *      savestr(char const *str SALLOC_DEBUG_ARGS);
@@ -1936,20 +1960,27 @@ FL char const *asccasestr(char const *s1, char const *s2);
 /* Case-independent ASCII check wether as2 is the initial substring of as1 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
 
-/* struct str related support funs */
+/* struct str related support funs TODO _cp->_cs! */
 
 /* *self->s* is srealloc()ed */
-FL struct str * n_str_dup(struct str *self, struct str const *t
-                  SMALLOC_DEBUG_ARGS);
+#define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is srealloc()ed, *self->l* incremented */
-FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
+/* *self->s* is srealloc()ed; if buflen==UIZ_MAX strlen() is called unless buf
+ * is NULL; buf may be NULL if buflen is 0 */
+FL struct str * n_str_assign_buf(struct str *self,
+                  char const *buf, uiz_t buflen SMALLOC_DEBUG_ARGS);
+#define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
+#define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
+
+/* *self->s* is srealloc()ed, *self->l* incremented; if buflen==UIZ_MAX
+ * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
+FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
                   SMALLOC_DEBUG_ARGS);
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
-#define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, (CP) ? strlen(CP) : 0)
+#define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UIZ_MAX)
 
 #ifdef HAVE_DEBUG
-# define n_str_dup(S,T)          n_str_dup(S, T, __FILE__, __LINE__)
+# define n_str_assign_buf(S,B,BL) n_str_assign_buf(S, B, BL, __FILE__, __LINE__)
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
 
@@ -2227,6 +2258,46 @@ FL int         c_history(void *v);
 #else
 # define c_history               c_cmdnotsupp
 #endif
+
+/*
+ * ui_str.c
+ */
+
+/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
+ * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
+FL size_t      field_detect_width(char const *buf, size_t blen);
+
+/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
+ * safely placed in a buffer (field width) of maxlen bytes */
+FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
+
+/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
+ * taking into account multibyte code point boundaries and possibly
+ * encapsulating in bidi_info toggles as necessary */
+FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
+                  size_t blen);
+
+/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
+FL char *      colalign(char const *cp, int col, int fill,
+                  int *cols_decr_used_or_null);
+
+/* Convert a string to a displayable one;
+ * prstr() returns the result savestr()d, prout() writes it */
+FL void        makeprint(struct str const *in, struct str *out);
+FL size_t      delctrl(char *cp, size_t len);
+FL char *      prstr(char const *s);
+FL int         prout(char const *s, size_t sz, FILE *fp);
+
+/* Print out a Unicode character or a substitute for it, return 0 on error or
+ * wcwidth() (or 1) on success */
+FL size_t      putuc(int u, int c, FILE *fp);
+
+/* Check wether bidirectional info maybe needed for blen bytes of bdat */
+FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+
+/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+ * the strings are always empty */
+FL void        bidi_info_create(struct bidi_info *bip);
 
 /*
  * urlcrecry.c

@@ -1233,23 +1233,23 @@ jleave:
 static char const **
 __mta_prepare_args(struct name *to, struct header *hp)
 {
-   size_t vas_count, i, j;
+   size_t vas_cnt, i, j;
    char **vas, *cp;
    char const **args;
    bool_t snda;
    NYD_ENTER;
 
    if ((cp = ok_vlook(sendmail_arguments)) == NULL) {
-      vas_count = 0;
+      vas_cnt = 0;
       vas = NULL;
    } else {
       /* Don't assume anything on the content but do allocate exactly j slots */
       j = strlen(cp);
       vas = ac_alloc(sizeof(*vas) * j);
-      vas_count = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
+      vas_cnt = (size_t)getrawlist(cp, j, vas, (int)j, FAL0);
    }
 
-   i = 4 + smopts_count + vas_count + 4 + 1 + count(to) + 1;
+   i = 4 + smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
    if ((args[0] = ok_vlook(sendmail_progname)) == NULL || *args[0] == '\0')
@@ -1266,10 +1266,10 @@ __mta_prepare_args(struct name *to, struct header *hp)
          args[i++] = "-v";
    }
 
-   for (j = 0; j < smopts_count; ++j, ++i)
+   for (j = 0; j < smopts_cnt; ++j, ++i)
       args[i] = smopts[j];
 
-   for (j = 0; j < vas_count; ++j, ++i)
+   for (j = 0; j < vas_cnt; ++j, ++i)
       args[i] = vas[j];
 
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and

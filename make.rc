@@ -302,12 +302,12 @@ SYSCONFRC="${SID}${NAIL}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
-# Use debug compiler flags, enable some additional commands (like
-# `sstats', `smemtrace') and some code assertions.  Note that setting
-# this also enables our own memory canaries, which require a rather
-# large amount of runtime memory, and forcefully disables alloca(3)
-# stack memory usage (see WANT_NOALLOCA below), so as to be able to
-# track usage of "stack memory" via our memory canaries.
+# Use debug compiler flags, enable some additional commands and code
+# assertions.  Note that setting this also enables our own memory
+# canaries, which require a rather large amount of runtime memory, and
+# forcefully disables alloca(3) stack memory usage (see $WANT_NOALLOCA
+# below), so as to be able to track usage of "stack memory" via our
+# memory canaries.
 WANT_DEBUG=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
@@ -315,9 +315,10 @@ WANT_NOEXTMD5=no
 
 # The codebase makes a lot of use of alloca(3), and this will remain
 # since S-nail will continue to be compliant to ISO C89, which has no
-# variable arrays, etc.  For testing purposes it is however nice to use
-# the much slower normal S-nail heap memory allocator instead.  Note:
-# this will be forcefully set (again) if WANT_DEBUG=yes.
+# variable ("flexible", sigh) arrays, etc.  For testing purposes it is
+# however nice to use the much slower normal S-nail heap memory
+# allocator instead.
+# Note: this will be forcefully set (again) if $WANT_DEBUG=yes.
 WANT_NOALLOCA="${WANT_DEBUG}"
 
 # Experimental code etc.

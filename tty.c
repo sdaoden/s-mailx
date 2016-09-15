@@ -196,7 +196,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
+   if (n_lex_input(prompt, TRU1, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
@@ -231,7 +231,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(query, FAL0, &termios_state.ts_linebuf,
+   if (n_lex_input(query, TRU1, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
@@ -2109,7 +2109,7 @@ n_tty_init(void){
    f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
    if(f == NULL)
       goto jdone;
-   (void)file_lock(fileno(f), FLT_READ, 0,0, 500);
+   (void)n_file_lock(fileno(f), FLT_READ, 0,0, 500);
 
    lbuf = NULL;
    lsize = 0;
@@ -2168,7 +2168,7 @@ n_tty_destroy(void){
    f = fopen(v, "w"); /* TODO temporary + rename?! */
    if(f == NULL)
       goto jdone;
-   (void)file_lock(fileno(f), FLT_WRITE, 0,0, 500);
+   (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, 500);
    if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
       goto jclose;
 
@@ -2330,9 +2330,7 @@ jredo:
 
    if(tl.tl_reenter_after_cmd != NULL){
       n = 0;
-#if 0
       n_source_command(tl.tl_reenter_after_cmd);
-#endif
       goto jredo;
    }
 

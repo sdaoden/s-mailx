@@ -565,7 +565,7 @@ trycreate(char const *name)
          n_err(_("\"%s\" is not a directory\n"), name);
          goto jleave;
       }
-   } else if (makedir(name) != OKAY) {
+   } else if (!n_path_mkdir(name)) {
       n_err(_("Cannot create directory \"%s\"\n"), name);
       goto jleave;
    }
@@ -711,8 +711,8 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (!(fm & FEDIT_NEWMAIL))
-      quit();
+   if (!(fm & FEDIT_NEWMAIL) && !quit())
+      goto jleave;
 
    saveint = safe_signal(SIGINT, SIG_IGN);
 
@@ -797,12 +797,15 @@ jleave:
    return i;
 }
 
-FL void
+FL bool_t
 maildir_quit(void)
 {
    sighandler_type saveint;
    struct cw cw;
+   bool_t rv;
    NYD_ENTER;
+
+   rv = FAL0;
 
    if (cwget(&cw) == STOP) {
       n_alert(_("Cannot open current directory"));
@@ -829,8 +832,10 @@ maildir_quit(void)
    if (cwret(&cw) == STOP)
       n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
+   return rv;
 }
 
 FL enum okay

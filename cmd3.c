@@ -506,7 +506,7 @@ _fwd(char *str, int recipient_record)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_HOOK_MASK) {
+         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
             rv = 0;
             goto jleave;
          }
@@ -518,7 +518,7 @@ _fwd(char *str, int recipient_record)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & PS_HOOK_MASK) {
+      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
          rv = 0;
          goto jleave;
       }
@@ -598,7 +598,7 @@ _resend1(void *v, bool_t add_resent)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & PS_HOOK_MASK) {
+         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
             f = FAL0;
             goto jleave;
          }
@@ -610,7 +610,7 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & PS_HOOK_MASK) {
+      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
          f = FAL0;
          goto jleave;
       }
@@ -661,7 +661,13 @@ _c_file(void *v, enum fedit_mode fm)
       check_folder_hook(FAL0);
 
    if (i > 0) {
-      i = 1;
+      /* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
+       * TODO a macro: because that recursed commando loop will terminate the
+       * TODO entire macro due to that!  So either the user needs to be able
+       * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
+       * TODO if $?", then "overriding an "error"), or we need a different
+       * TODO return that differentiates */
+      i = (pstate & PS_ROBOT) ? 0 : 1;
       goto jleave;
    }
    if (pstate & PS_SETFILE_OPENED)
@@ -730,7 +736,7 @@ c_help(void *v)
 
    if (arg != NULL) {
 #ifdef HAVE_DOCSTRINGS
-      ret = !print_comm_docstr(arg);
+      ret = !n_print_comm_docstr(arg);
       if (ret)
          n_err(_("Unknown command: `%s'\n"), arg);
 #else

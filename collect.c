@@ -117,10 +117,20 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
     * TODO copy the message attachments over to temporary files, but that
     * TODO would require more changes so that the user still can recognize
     * TODO in `~@' etc. that its a rfc822 message attachment; see below */
-   char *mnbuf = NULL;
-   size_t mnlen = 0 /* silence CC */;
+   struct n_sigman sm;
    struct attachment *ap;
+   char *mnbuf;
    NYD_ENTER;
+
+   UNUSED(linesize);
+   mnbuf = NULL;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    /* If the above todo is worked, remove or outsource to attachments.c! */
    if(hp != NULL && (ap = hp->h_attach) != NULL) do
@@ -128,18 +138,20 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
          mnbuf = sstrdup(mailname);
          break;
       }
-   while ((ap = ap->a_flink) != NULL);
+   while((ap = ap->a_flink) != NULL);
 
-   pstate &= ~PS_HOOK_MASK;
-   execute(linebuf, linesize);
+   n_source_command(linebuf);
 
-   if (mnbuf != NULL) {
-      if (strncmp(mnbuf, mailname, mnlen))
+   n_sigman_cleanup_ping(&sm);
+jleave:
+   if(mnbuf != NULL){
+      if(strcmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
       free(mnbuf);
    }
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 static int
@@ -272,14 +284,11 @@ print_collf(FILE *cf, struct header *hp)
       rewind(cf);
       if (l < m) {
 jpager:
-         cp = get_pager(NULL);
          if (sigsetjmp(_coll_pipejmp, 1))
             goto jendpipe;
-         obuf = Popen(cp, "w", NULL, NULL, 1);
-         if (obuf == NULL) {
-            n_perr(cp, 0);
+         if ((obuf = n_pager_open()) == NULL)
             obuf = stdout;
-         } else
+         else
             safe_signal(SIGPIPE, &_collect_onpipe);
       }
    }
@@ -313,11 +322,8 @@ jpager:
    }
 
 jendpipe:
-   if (obuf != stdout) {
-      safe_signal(SIGPIPE, SIG_IGN);
-      Pclose(obuf, TRU1);
-      safe_signal(SIGPIPE, dflpipe);
-   }
+   if (obuf != stdout)
+      n_pager_close(obuf);
    if (lbuf != NULL)
       free(lbuf);
    safe_signal(SIGINT, sigint);
@@ -652,7 +658,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
    long cnt;
    enum sendaction action;
    sigset_t oset, nset;
-   sighandler_type savedtop;
    FILE * volatile sigfp;
    NYD_ENTER;
 
@@ -663,11 +668,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGINT);
-   sigaddset(&nset, SIGHUP);
+   sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   handlerpush(&_collint);
+/* FIXME have dropped handlerpush() and localized onintr() in lex.c! */
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
@@ -681,6 +684,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
       goto jerr;
+   pstate |= PS_RECURSED;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    ++noreset;
@@ -827,7 +831,7 @@ jcont:
    assert(_coll_hadintr || !(pstate & PS_SOURCING));
    for (;;) {
       _coll_jmp_p = 1;
-      cnt = readline_input("", FAL0, &linebuf, &linesize, NULL);
+      cnt = n_lex_input("", FAL0, &linebuf, &linesize, NULL);
       _coll_jmp_p = 0;
 
       if (cnt < 0) {
@@ -1172,12 +1176,10 @@ jout:
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   handlerpop();
    --noreset;
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGINT);
-   sigaddset(&nset, SIGHUP);
+   sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
+   pstate &= ~PS_RECURSED;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    safe_signal(SIGTSTP, _coll_savetstp);

@@ -32,8 +32,7 @@ static uiz_t n_msleep(uiz_t millis, bool_t ignint);
 #include "dotlock.h"
 
 static void
-_ign_signal(int signum)
-{
+_ign_signal(int signum){
    struct sigaction nact, oact;
 
    nact.sa_handler = SIG_IGN;
@@ -71,15 +70,14 @@ n_msleep(uiz_t millis, bool_t ignint){
 }
 
 int
-main(int argc, char **argv)
-{
-   struct dotlock_info di;
+main(int argc, char **argv){
+   struct n_dotlock_info di;
    struct stat stb;
    sigset_t nset, oset;
-   enum dotlock_state dls;
+   enum n_dotlock_state dls;
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
-   if (argc != 12 ||
+   if(argc != 12 ||
          strcmp(argv[ 0], PRIVSEP) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||
          strcmp(argv[ 1] + 1, "dotlock") ||
@@ -89,7 +87,7 @@ main(int argc, char **argv)
          strcmp(argv[ 8], "randstr") ||
          strcmp(argv[10], "pollmsecs") ||
          fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
-         fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
+         fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
       fprintf(stderr,
          "This is a helper program of \"" UAGENT "\" (in " BINDIR ").\n"
@@ -109,7 +107,7 @@ jeuse:
    {
       size_t i = strlen(di.di_file_name);
 
-      if (i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
+      if(i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
             di.di_lock_name[i] == '\0' || strcmp(di.di_lock_name + i, ".lock"))
          goto jeuse;
    }
@@ -129,25 +127,25 @@ jeuse:
    sigdelset(&nset, SIGCONT); /* (Rather redundant, though) */
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   dls = DLS_NOPERM | DLS_ABANDON;
+   dls = n_DLS_NOPERM | n_DLS_ABANDON;
 
    /* First of all: we only dotlock when the executing user has the necessary
     * rights to access the mailbox */
-   if (access(di.di_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
+   if(access(di.di_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
       goto jmsg;
 
    /* We need UID and GID information about the mailbox to lock */
-   if (stat(di.di_file_name, di.di_stb = &stb) == -1)
+   if(stat(di.di_file_name, di.di_stb = &stb) == -1)
       goto jmsg;
 
-   dls = DLS_PRIVFAILED | DLS_ABANDON;
+   dls = n_DLS_PRIVFAILED | n_DLS_ABANDON;
 
    /* This privsep helper only gets executed when needed, it thus doesn't make
     * sense to try to continue with initial privileges */
-   if (setuid(geteuid()))
+   if(setuid(geteuid()))
       goto jmsg;
 
-   dls = _dotlock_create(&di);
+   dls = a_dotlock_create(&di);
 
    /* Finally: notify our parent about the actual lock state.. */
 jmsg:
@@ -156,14 +154,14 @@ jmsg:
 
    /* ..then eventually wait until we shall remove the lock again, which will
     * be notified via the read returning */
-   if (dls == DLS_NONE) {
+   if(dls == n_DLS_NONE){
       read(STDIN_FILENO, &dls, sizeof dls);
 
       unlink(di.di_lock_name);
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   return (dls == DLS_NONE ? EXIT_OK : EXIT_ERR);
+   return (dls == n_DLS_NONE ? EXIT_OK : EXIT_ERR);
 }
 
 /* s-it-mode */
