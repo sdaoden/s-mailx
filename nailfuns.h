@@ -2034,9 +2034,10 @@ FL int         n_tty_readline(char const *prompt, char **linebuf,
  * relation, and / or wether s is non-empty and doesn't begin with U+0020 */
 FL void        n_tty_addhist(char const *s, bool_t isgabby);
 
-#if defined HAVE_HISTORY &&\
-   (defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL)
+#ifdef HAVE_HISTORY
 FL int         c_history(void *v);
+#else
+# define c_history               c_cmdnotsupp
 #endif
 
 /*
@@ -2071,6 +2072,8 @@ FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
 /* `netrc' */
 #ifdef HAVE_NETRC
 FL int         c_netrc(void *v);
+#else
+# define c_netrc                 c_cmdnotsupp
 #endif
 
 /* MD5 (RFC 1321) related facilities */

@@ -1462,8 +1462,6 @@ print_comm_docstr(char const *comm)
    cpmax = (cp = _cmd_tab) + NELEM(_cmd_tab);
 jredo:
    for (; cp < cpmax; ++cp) {
-      if (cp->func == &c_cmdnotsupp)
-         continue;
       if (!strcmp(comm, cp->name))
          printf("%s: %s\n", comm, V_(cp->doc));
       else if (is_prefix(comm, cp->name))
