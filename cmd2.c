@@ -501,6 +501,37 @@ jleave:
 }
 
 FL int
+c_dotmove(void *v)
+{
+   char const *args;
+   int msgvec[2], rv;
+   NYD_ENTER;
+
+   if (*(args = v) == '\0' || args[1] != '\0') {
+jerr:
+      n_err(_("Synopsis: dotmove: up <-> or down <+> by one message\n"));
+      rv = 1;
+   } else switch (args[0]) {
+   case '-':
+   case '+':
+      if (msgCount == 0) {
+         printf(_("At EOF\n"));
+         rv = 0;
+      } else if (getmsglist(UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
+         setdot(message + msgvec[0] - 1);
+         msgvec[1] = 0;
+         rv = c_headers(msgvec);
+      } else
+         rv = 1;
+      break;
+   default:
+      goto jerr;
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_save(void *v)
 {
    char *str = v;

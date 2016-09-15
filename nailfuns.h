@@ -532,6 +532,9 @@ FL int         c_folders(void *v);
  * command with no arguments, print first message */
 FL int         c_next(void *v);
 
+/* Move the dot up or down by one message */
+FL int         c_dotmove(void *v);
+
 /* Save a message in a file.  Mark the message as saved so we can discard when
  * the user quits */
 FL int         c_save(void *v);

@@ -1740,6 +1740,14 @@ J_xterm_noapp: {
                   c_scroll(x);
                   cursor_store = 0;
                   goto j_l;
+               } else if (cursor_store == '-' && (wc == L'A' || wc == L'B')) {
+                  char x[2];
+                  x[0] = (wc != L'A') ? '+' : cursor_store;
+                  x[1] = '\0';
+                  putchar('\n');
+                  c_dotmove(x);
+                  cursor_store = 0;
+                  goto j_l;
                }
                _ncl_kother(&l, L'[');
                _ncl_kother(&l, (wchar_t)cursor_store);
