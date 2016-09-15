@@ -331,11 +331,23 @@ FL ui32_t      pjw(char const *cp); /* TODO obsolete -> torek_hash() */
 /* Find a prime greater than n */
 FL ui32_t      nextprime(ui32_t n);
 
+/* (Try to) Expand ^~/? and ^~USER/? constructs.
+ * Returns the completely resolved (maybe empty or identical to input)
+ * salloc()ed string */
+FL char *      n_shell_expand_tilde(char const *s, bool_t *err_or_null);
+
+/* (Try to) Expand any shell variable in s, allowing backslash escaping
+ * (of any following character) with bsescape.
+ * Returns the completely resolved (maybe empty) salloc()ed string.
+ * Logs on error */
+FL char *      n_shell_expand_var(char const *s, bool_t bsescape,
+                  bool_t *err_or_null);
+
 /* Check wether *s is an escape sequence, expand it as necessary.
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
  * *s is advanced to after the expanded sequence (as possible).
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
-FL int         expand_shell_escape(char const **s,
+FL int         n_shell_expand_escape(char const **s,
                   bool_t use_prompt_extensions);
 
 /* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
@@ -1405,20 +1417,22 @@ FL int         c_mimetype(void *v);
 FL int         c_unmimetype(void *v);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
-FL char *      mime_type_by_filename(char const *name);
+FL char *      mime_type_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
  * left alone unless it's non-NULL */
-FL enum conversion mime_type_file_classify(FILE *fp, char const **contenttype,
+FL enum conversion mime_type_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
  * but otherwise mpp is const */
-FL enum mimecontent mime_type_mimepart_content(struct mimepart *mpp);
+FL enum mimecontent mime_type_classify_part(struct mimepart *mpp);
 
-/* Get the (pipe) handler for a part (may be MIME_TYPE_HANDLER_*),
- * or NULL if there is none known */
-FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
+/* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
+ * mhp is anyway initialized (mh_flags, mh_msg) */
+FL enum mime_handler_flags mime_type_handler(struct mime_handler *mhp,
+                              struct mimepart const *mpp,
+                              enum sendaction action);
 
 /*
  * nam_a_grp.c
@@ -1581,13 +1595,13 @@ FL int         Fclose(FILE *fp);
 /* Open file according to oflags (see popen.c).  Handles compressed files */
 FL FILE *      Zopen(char const *file, char const *oflags);
 
-/* Create a temporary file in tempdir, use prefix for its name, store the
+/* Create a temporary file in tempdir, use namehint for its name (prefix
+ * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
+ * part of the resulting filename, otherwise Ftmp() will fail), store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
  * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
- * One of OF_WRONLY and OF_RDWR must be set.
- * mode specifies the access mode of the newly created temporary file */
-FL FILE *      Ftmp(char **fn, char const *prefix, enum oflags oflags,
-                  int mode);
+ * One of OF_WRONLY and OF_RDWR must be set.  Mode of 0600 is implied */
+FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
 
 /* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
  * called: call this to unlink(2) and free *fn and to rele_all_sigs() */
@@ -1616,15 +1630,20 @@ FL void        close_all_files(void);
 FL int         fork_child(void);
 
 /* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  The command name can be a sequence of words.  Signals must be
- * handled by the caller.  "Mask" contains the signals to ignore in the new
- * process.  SIGINT is enabled unless it's in the mask */
-FL int         run_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2);
-
-/*
+ * and stdout.  FDs may also be COMMAND_FD_NULL and COMMAND_FD_PASS, meaning to
+ * redirect from/to /dev/null or pass through our own set of FDs; in the
+ * latter case terminal capabilities are saved/restored if possible.
+ * The command name can be a sequence of words.
+ * Signals must be handled by the caller.  "Mask" contains the signals to
+ * ignore in the new process.  SIGINT is enabled unless it's in the mask.
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment */
+FL int         run_command(char const *cmd, sigset_t *mask, int infd,
+                  int outfd, char const *a0, char const *a1, char const *a2,
+                  char const **env_addon);
+
+/* Like run_command, but don't wait for the command to finish.
+ * Also it is usually an error to use COMMAND_FD_PASS for this one */
 FL int         start_command(char const *cmd, sigset_t *mask, int infd,
                   int outfd, char const *a0, char const *a1, char const *a2,
                   char const **env_addon);

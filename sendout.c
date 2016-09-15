@@ -325,7 +325,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
          bn = ++ct;
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = mime_type_file_classify(fi, (char const**)&ct,
+      convert = mime_type_classify_file(fi, (char const**)&ct,
          &charset, &do_iconv);
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
@@ -572,8 +572,8 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
    NYD_ENTER;
 
-   if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
-         0600)) == NULL) {
+   if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
+         == NULL) {
       n_perr(_("temporary mail file"), 0);
       goto jleave;
    }
@@ -588,7 +588,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    pstate &= ~PS_HEADER_NEEDED_MIME; /* TODO a hack should be carrier tracked */
 
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
-   convert = mime_type_file_classify(fi, &contenttype, &charset, &do_iconv);
+   convert = mime_type_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
    tcs = charset_get_lc();
@@ -611,7 +611,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 
 #ifdef HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->mime_type_file_classify*/
+   if (do_iconv && charset != NULL) { /*TODO charset->mime_type_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = errno) != 0) {
@@ -1072,7 +1072,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          char *tempEdit;
 
          if ((fout = Ftmp(&tempEdit, "outof",
-               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER, 0600)) == NULL) {
+               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)) == NULL) {
             n_perr(_("Creation of temporary image"), 0);
             *senderror = TRU1;
             goto jcant;
@@ -1140,7 +1140,7 @@ jcantfout:
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = start_command(sh, &nset, fda[xcnt++], -1, "-c",
+         pid = start_command(sh, &nset, fda[xcnt++], COMMAND_FD_NULL, "-c",
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
             n_err(_("Piping message to \"%s\" failed\n"), np->n_name);
@@ -2118,8 +2118,8 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
    if (_sendout_error < 0)
       n_err(_("Some addressees were classified as \"hard error\"\n"));
 
-   if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER,
-         0600)) == NULL) {
+   if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
+         == NULL) {
       _sendout_error = TRU1;
       n_perr(_("temporary mail file"), 0);
       goto jleave;

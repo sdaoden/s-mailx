@@ -1399,7 +1399,8 @@ c_folders(void *v)
    } else {
       if ((cmd = ok_vlook(LISTER)) == NULL)
          cmd = XLISTER;
-      run_command(cmd, 0, -1, -1, name, NULL, NULL);
+      run_command(cmd, 0, COMMAND_FD_PASS, COMMAND_FD_PASS, name, NULL, NULL,
+         NULL);
    }
 jleave:
    NYD_LEAVE;

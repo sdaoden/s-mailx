@@ -427,8 +427,7 @@ jlist: {
    HIST_ENTRY **hl;
    ul_i i, b;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
@@ -648,8 +647,7 @@ jlist: {
    size_t i, b;
    int x;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
@@ -868,8 +866,7 @@ _ncl_term_mode(bool_t raw)
    /* Always requery the attributes, in case we've been moved from background
     * to foreground or however else in between sessions */
    /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
-    * XXX as we don't handle terminal stuff when starting commands and don't
-    * XXX properly deal with TTIN and TTOU from all that */
+    * XXX as we don't properly deal with TTIN and TTOU etc. */
    tcgetattr(STDIN_FILENO, tiosp);
    tiosp->c_lflag |= ECHO | ICANON;
 
@@ -2005,8 +2002,7 @@ jlist: {
    if (_ncl_hist == NULL)
       goto jleave;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;

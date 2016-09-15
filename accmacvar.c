@@ -283,7 +283,7 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             char const *x = cp;
             int c;
             do {
-               c = expand_shell_escape(&x, FAL0);
+               c = n_shell_expand_escape(&x, FAL0);
                if (c < 0)
                   break;
                *cp++ = (char)c;
@@ -518,7 +518,7 @@ _var_list_all(void)
    char const **vacp, **cap;
    NYD2_ENTER;
 
-   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((fp = Ftmp(NULL, "listvars", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tmpfile"), 0);
       goto jleave;
@@ -805,7 +805,7 @@ _ma_list(enum ma_flags mafl)
    struct mline *lp;
    NYD2_ENTER;
 
-   if ((fp = Ftmp(NULL, "listmacs", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+   if ((fp = Ftmp(NULL, "listmacs", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tmpfile"), 0);
       mc = 1;
@@ -1343,7 +1343,7 @@ c_varedit(void *v)
 
       _var_lookup(&vc);
 
-      if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
+      if ((of = Ftmp(NULL, "vared", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
             NULL) {
          n_perr(_("`varedit': can't create temporary file, bailing out"), 0);
          err = 1;

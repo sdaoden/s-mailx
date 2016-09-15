@@ -61,7 +61,10 @@ struct fp {
       FP_IMAP     = 1<<3,
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
-      FP_MASK     = (1<<6) - 1
+      FP_MASK     = (1<<6) - 1,
+      /* TODO FP_UNLINK: should be in a separated process so that unlinking
+       * TODO the temporary "garbage" is "safe"(r than it is like that) */
+      FP_UNLINK   = 1<<6
    }           flags;
 };
 
@@ -76,6 +79,11 @@ struct child {
 static struct fp     *fp_head;
 static struct child  *_popen_child;
 
+/* TODO Rather temporary: deal with job control with FD_PASS */
+static struct termios a_popen_tios;
+static sighandler_type a_popen_otstp, a_popen_ottin, a_popen_ottou;
+static volatile int a_popen_hadsig;
+
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int ispipe, int pid,
                         int flags, char const *realfile, long offset,
@@ -86,10 +94,14 @@ static int           _file_load(int flags, int infd, int outfd,
 static enum okay     unregister_file(FILE *fp);
 static int           file_pid(FILE *fp);
 
+/* TODO Rather temporary: deal with job control with FD_PASS */
+static void a_popen_jobsigs_up(void);
+static void a_popen_jobsigs_down(void);
+static void a_popen_jobsig(int sig);
+
 /* Handle SIGCHLD */
 static void          _sigchld(int signo);
 
-static int           wait_command(int pid);
 static struct child *_findchild(int pid, bool_t create);
 static void          _delchild(struct child *cp);
 
@@ -134,6 +146,8 @@ register_file(FILE *fp, int omode, int ispipe, int pid, int flags,
 {
    struct fp *fpp;
    NYD_ENTER;
+
+   assert(!(flags & FP_UNLINK) || realfile != NULL);
 
    fpp = smalloc(sizeof *fpp);
    fpp->fp = fp;
@@ -217,7 +231,7 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL) >= 0)
+   if (run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL) >= 0)
       rv = OKAY;
 
    close(outfd);
@@ -251,7 +265,7 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
       goto jleave;
    }
 
-   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL);
+   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -268,6 +282,8 @@ unregister_file(FILE *fp)
       if (p->fp == fp) {
          if ((p->flags & FP_MASK) != FP_RAW) /* TODO ;} */
             rv = _file_save(p);
+         if (p->flags & FP_UNLINK && unlink(p->realfile))
+            rv = STOP;
          *pp = p->link;
          if (p->save_cmd != NULL)
             free(p->save_cmd);
@@ -301,6 +317,66 @@ file_pid(FILE *fp)
 }
 
 static void
+a_popen_jobsigs_up(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   a_popen_otstp = safe_signal(SIGTSTP, &a_popen_jobsig);
+   a_popen_ottin = safe_signal(SIGTTIN, &a_popen_jobsig);
+   a_popen_ottou = safe_signal(SIGTTOU, &a_popen_jobsig);
+
+   /* This assumes oset contains nothing but SIGCHLD, so to say */
+   sigdelset(&oset, SIGTSTP);
+   sigdelset(&oset, SIGTTIN);
+   sigdelset(&oset, SIGTTOU);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_popen_jobsigs_down(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGTSTP, a_popen_otstp);
+   safe_signal(SIGTTIN, a_popen_ottin);
+   safe_signal(SIGTTOU, a_popen_ottou);
+
+   sigaddset(&oset, SIGTSTP);
+   sigaddset(&oset, SIGTTIN);
+   sigaddset(&oset, SIGTTOU);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_popen_jobsig(int sig){
+   sighandler_type oldact;
+   sigset_t nset;
+   bool_t hadsig;
+   NYD_X; /* Signal handler */
+
+   hadsig = (a_popen_hadsig != 0);
+   a_popen_hadsig = 1;
+
+   oldact = safe_signal(sig, SIG_DFL);
+
+   sigemptyset(&nset);
+   sigaddset(&nset, sig);
+   sigprocmask(SIG_UNBLOCK, &nset, NULL);
+   n_raise(sig);
+   sigprocmask(SIG_BLOCK, &nset, NULL);
+
+   safe_signal(sig, oldact);
+}
+
+static void
 _sigchld(int signo)
 {
    pid_t pid;
@@ -326,21 +402,6 @@ _sigchld(int signo)
          }
       }
    }
-}
-
-static int
-wait_command(int pid)
-{
-   int rv = 0;
-   NYD_ENTER;
-
-   if (!wait_child(pid, NULL)) {
-      if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         n_err(_("Fatal error in process\n"));
-      rv = -1;
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 static struct child *
@@ -555,7 +616,7 @@ jraw:
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */
-   if ((rv = Ftmp(NULL, "zopen", rof, 0600)) == NULL) {
+   if ((rv = Ftmp(NULL, "zopen", rof)) == NULL) {
       n_perr(_("tmpfile"), 0);
       goto jerr;
    }
@@ -599,17 +660,28 @@ jleave:
 }
 
 FL FILE *
-Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
+Ftmp(char **fn, char const *namehint, enum oflags oflags)
 {
-   FILE *fp = NULL;
-   size_t maxname, tries;
+   /* The 8 is arbitrary but leaves room for a six character suffix (the
+    * POSIX minimum path length is 14, though we don't check that XXX).
+    * 8 should be more than sufficient given that we use base64url encoding
+    * for our random string */
+   enum {_RANDCHARS = 8};
+
+   size_t maxname, xlen, i;
    char *cp_base, *cp;
    int osoflags, fd, e;
+   bool_t relesigs;
+   FILE *fp;
    NYD_ENTER;
 
+   assert(namehint != NULL);
    assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
    assert(!(oflags & OF_RDONLY));
+   assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
 
+   fp = NULL;
+   relesigs = FAL0;
    e = 0;
    maxname = NAME_MAX;
 #ifdef HAVE_PATHCONF
@@ -620,54 +692,72 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    }
 #endif
 
+   if ((oflags & OF_SUFFIX) && *namehint != '\0') {
+      if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
+         errno = ENAMETOOLONG;
+         goto jleave;
+      }
+   } else
+      xlen = 0;
+
+   /* Prepare the template string once, then iterate over the random range */
    cp_base =
    cp = smalloc(strlen(tempdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tempdir);
    *cp++ = '/';
+   {
+      char *x = sstpcpy(cp, UAGENT);
+      *x++ = '-';
+      if (!(oflags & OF_SUFFIX))
+         x = sstpcpy(x, namehint);
+
+      i = PTR2SIZE(x - cp);
+      if (i > maxname - xlen - _RANDCHARS) {
+         size_t j = maxname - xlen - _RANDCHARS;
+         x -= i - j;
+         i = j;
+      }
+
+      if ((oflags & OF_SUFFIX) && xlen > 0)
+         memcpy(x + _RANDCHARS, namehint, xlen);
+
+      x[xlen + _RANDCHARS] = '\0';
+      cp = x;
+   }
 
    osoflags = O_CREAT | O_EXCL | _O_CLOEXEC;
    osoflags |= (oflags & OF_WRONLY) ? O_WRONLY : O_RDWR;
    if (oflags & OF_APPEND)
       osoflags |= O_APPEND;
 
-   for (tries = 0;; ++tries) {
-      size_t i;
-      char *x;
-
-      x = sstpcpy(cp, UAGENT);
-      *x++ = '-';
-      if (*prefix != '\0') {
-         x = sstpcpy(x, prefix);
-         *x++ = '-';
-      }
-
-      /* Calculate length of a random string addon */
-      i = PTR2SIZE(x - cp);
-      if (i >= maxname >> 1) {
-         x = cp;
-         i = maxname -1;
-      } else
-         i = maxname >> 1;
-      /* But don't be too fatalistic */
-      if (i > 8 && tries < FTMP_OPEN_TRIES / 2)
-         i = 8;
-      memcpy(x, getrandstring(i), i +1);
+   for (i = 0;; ++i) {
+      memcpy(cp, getrandstring(_RANDCHARS), _RANDCHARS);
 
       hold_all_sigs();
-      if ((fd = open(cp_base, osoflags, mode)) != -1) {
+      relesigs = TRU1;
+
+      if ((fd = open(cp_base, osoflags, 0600)) != -1) {
          _CLOEXEC_SET(fd);
          break;
       }
-      if (tries >= FTMP_OPEN_TRIES) {
+      if (i >= FTMP_OPEN_TRIES) {
          e = errno;
          goto jfree;
       }
+      relesigs = FAL0;
       rele_all_sigs();
    }
 
-   if (oflags & OF_REGISTER)
-      fp = Fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"), FAL0);
-   else
+   if (oflags & OF_REGISTER) {
+      char const *osflags = (oflags & OF_RDWR ? "w+" : "w");
+      int osflagbits;
+
+      scan_mode(osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
+      if ((fp = fdopen(fd, osflags)) != NULL)
+         register_file(fp, osflagbits | _O_CLOEXEC, 0, 0,
+            (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),
+            cp_base, 0L, NULL);
+   } else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
@@ -681,7 +771,7 @@ Ftmp(char **fn, char const *prefix, enum oflags oflags, int mode)
    else
       free(cp_base);
 jleave:
-   if (fp == NULL || !(oflags & OF_HOLDSIGS))
+   if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
    if (fp == NULL)
       errno = e;
@@ -710,7 +800,7 @@ Ftmp_release(char **fn)
 }
 
 FL void
-Ftmp_free(char **fn)
+Ftmp_free(char **fn) /* TODO DROP: OF_REGISTER_FREEPATH! */
 {
    char *cp;
    NYD_ENTER;
@@ -886,15 +976,52 @@ fork_child(void)
 
 FL int
 run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
-   char const *a0, char const *a1, char const *a2)
+   char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
+   sigset_t nset, oset;
+   bool_t tio_set;
    int rv;
    NYD_ENTER;
 
-   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, NULL)) < 0)
+   /* TODO Of course this is a joke given that during a "p*" the PAGER may
+    * TODO be up and running while we play around like this... but i guess
+    * TODO this can't be helped at all unless we perform complete and true
+    * TODO process group separation and ensure we don't deadlock us out
+    * TODO via TTY jobcontrol signal storms (could this really happen?).
+    * TODO Or have a builtin pager.  Or query any necessity BEFORE we start
+    * TODO any action, and shall we find we need to run programs dump it
+    * TODO all into a temporary file which is then passed through to the
+    * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
+   if ((tio_set = ((options & OPT_INTERACTIVE) &&
+         (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
+      tcgetattr((options & OPT_TTYIN ? STDIN_FILENO : STDOUT_FILENO), &a_popen_tios);
+      sigfillset(&nset);
+      sigdelset(&nset, SIGCHLD);
+      /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
+      sigprocmask(SIG_BLOCK, &nset, &oset);
+      a_popen_hadsig = 0;
+      a_popen_jobsigs_up();
+   }
+
+   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
-   else
-      rv = wait_command(rv);
+   else {
+      if (wait_child(rv, NULL))
+         rv = 0;
+      else {
+         if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+            n_err(_("Fatal error in process\n"));
+         rv = -1;
+      }
+   }
+
+   if (tio_set) {
+      a_popen_jobsigs_down();
+      tio_set = ((options & OPT_TTYIN) != 0);
+      tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
+         (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -984,10 +1111,22 @@ prepare_child(sigset_t *nset, int infd, int outfd)
    NYD_ENTER;
 
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
-   if (infd >= 0)
+   /* TODO WHAT IS WITH STDERR_FILENO DAMN? */
+   if ((i = (infd == COMMAND_FD_NULL)))
+      infd = open("/dev/null", O_RDONLY);
+   if (infd >= 0) {
       dup2(infd, STDIN_FILENO);
-   if (outfd >= 0)
+      if (i)
+         close(infd);
+   }
+
+   if ((i = (outfd == COMMAND_FD_NULL)))
+      outfd = open("/dev/null", O_WRONLY);
+   if (outfd >= 0) {
       dup2(outfd, STDOUT_FILENO);
+      if (i)
+         close(outfd);
+   }
 
    if (nset) {
       for (i = 1; i < NSIG; ++i)

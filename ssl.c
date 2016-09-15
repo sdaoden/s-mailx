@@ -116,11 +116,9 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
+   if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
-   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
       Fclose(*hp);
 jetmp:
       n_perr(_("tempfile"), 0);
@@ -187,8 +185,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    FILE *op;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -246,8 +243,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }

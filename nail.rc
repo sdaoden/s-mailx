@@ -159,12 +159,9 @@ retain date from to cc subject message-id mail-followup-to reply-to
 #endif
 
 # PDF display, asynchronous display via xpdf(1)
-#set pipe-application/pdf="@&set -C;\
-#   : > \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\";\
-#   trap \"rm -f \\\"${TMPDIR}/${NAIL_FILENAME_GENERATED}\\\"\" \
-#      EXIT INT QUIT PIPE TERM;\
-#   set +C;\
-#   cat > \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\";\
-#   xpdf \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\""
+#set pipe-application/pdf="@&+=@ \
+#   trap \"rm -f \\\"${NAIL_FILENAME_TEMPORARY}\\\"\" EXIT;\
+#   trap "trap \\\"\\\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+#   mupdf \"${NAIL_FILENAME_TEMPORARY}\""
 
 # s-it-mode

@@ -46,6 +46,20 @@ enum mime_type {
    __MT_MARKMASK = _MT_SOUP_H
 };
 
+enum mime_type_class {
+   _MT_C_CLEAN    = 0,        /* Plain RFC 5322 message */
+   _MT_C_NCTT     = 1<<0,     /* *contenttype == NULL */
+   _MT_C_ISTXT    = 1<<1,     /* *contenttype =~ text\/ */
+   _MT_C_ISTXTCOK = 1<<2,     /* _ISTXT + *mime-allow-text-controls* */
+   _MT_C_HIGHBIT  = 1<<3,     /* Not 7bit clean */
+   _MT_C_LONGLINES = 1<<4,    /* MIME_LINELEN_LIMIT exceed. */
+   _MT_C_CTRLCHAR = 1<<5,     /* Control characters seen */
+   _MT_C_HASNUL   = 1<<6,     /* Contains \0 characters */
+   _MT_C_NOTERMNL = 1<<7,     /* Lacks a final newline */
+   _MT_C_FROM_    = 1<<8,     /* ^From_ seen */
+   _MT_C_SUGGEST_DONE = 1<<16 /* Inspector suggests to stop further parse */
+};
+
 struct mtbltin {
    ui32_t         mtb_flags;
    ui32_t         mtb_mtlen;
@@ -66,6 +80,15 @@ struct mtlookup {
    size_t               mtl_nlen;
    struct mtnode const  *mtl_node;
    char                 *mtl_result;   /* If requested, salloc()ed MIME type */
+};
+
+struct mt_class_arg {
+   char const  *mtca_buf;
+   size_t      mtca_len;
+   ssize_t     mtca_curlen;
+   char        mtca_lastc;
+   char        mtca_c;
+   enum mime_type_class mtca_mtc;
 };
 
 static struct mtbltin const   _mt_bltin[] = {
@@ -101,6 +124,22 @@ static struct mtlookup * _mt_by_filename(struct mtlookup *mtlp,
                            char const *name, bool_t with_result);
 static struct mtlookup * _mt_by_mtname(struct mtlookup *mtlp,
                            char const *mtname);
+
+/* In-depth inspection of raw content: call _round() repeatedly, last time with
+ * a 0 length buffer, finally check .mtca_mtc for result.
+ * No further call is needed if _round() return includes _MT_C_SUGGEST_DONE,
+ * as the resulting classification is unambiguous */
+SINLINE struct mt_class_arg * _mt_classify_init(struct mt_class_arg *mtcap,
+                                 enum mime_type_class initval);
+static enum mime_type_class   _mt_classify_round(struct mt_class_arg *mtcap);
+
+/* We need an in-depth inspection of an application/octet-stream part */
+static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp);
+
+/* Check wether a *pipe-XY* handler is applicable, and adjust flags according
+ * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
+ * isn't changed if mhp doesn't apply */
+static enum mime_handler_flags _mt_pipe_check(struct mime_handler *mhp);
 
 static void
 _mt_init(void)
@@ -454,6 +493,347 @@ jleave:
    return mtlp;
 }
 
+SINLINE struct mt_class_arg *
+_mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
+{
+   NYD2_ENTER;
+   memset(mtcap, 0, sizeof *mtcap);
+   mtcap->mtca_lastc = mtcap->mtca_c = EOF;
+   mtcap->mtca_mtc = initval;
+   NYD2_LEAVE;
+   return mtcap;
+}
+
+static enum mime_type_class
+_mt_classify_round(struct mt_class_arg *mtcap)
+{
+   /* TODO BTW., after the MIME/send layer rewrite we could use a MIME
+    * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
+    * TODO and report that state to the outer world */
+#define F_        "From "
+#define F_SIZEOF  (sizeof(F_) -1)
+   char f_buf[F_SIZEOF], *f_p = f_buf;
+   char const *buf;
+   size_t blen;
+   ssize_t curlen;
+   int c, lastc;
+   enum mime_type_class mtc;
+   NYD2_ENTER;
+
+   buf = mtcap->mtca_buf;
+   blen = mtcap->mtca_len;
+   curlen = mtcap->mtca_curlen;
+   c = mtcap->mtca_c;
+   lastc = mtcap->mtca_lastc;
+   mtc = mtcap->mtca_mtc;
+
+   for (;; ++curlen) {
+      lastc = c;
+      if (blen == 0) {
+         /* Real EOF, or only current buffer end? */
+         if (mtcap->mtca_len == 0)
+            c = EOF;
+         else
+            break;
+      } else
+         c = (uc_i)*buf++;
+      --blen;
+
+      if (c == '\0') {
+         mtc |= _MT_C_HASNUL;
+         if (!(mtc & _MT_C_ISTXTCOK)) {
+            mtc |= _MT_C_SUGGEST_DONE;
+            break;
+         }
+         continue;
+      }
+      if (c == '\n' || c == EOF) {
+         if (curlen >= MIME_LINELEN_LIMIT)
+            mtc |= _MT_C_LONGLINES;
+         if (c == EOF) {
+            break;
+         }
+         f_p = f_buf;
+         curlen = -1;
+         continue;
+      }
+      /* A bit hairy is handling of \r=\x0D=CR.
+       * RFC 2045, 6.7:
+       * Control characters other than TAB, or CR and LF as parts of CRLF
+       * pairs, must not appear.  \r alone does not force _CTRLCHAR below since
+       * we cannot peek the next character.  Thus right here, inspect the last
+       * seen character for if its \r and set _CTRLCHAR in a delayed fashion */
+       /*else*/ if (lastc == '\r')
+         mtc |= _MT_C_CTRLCHAR;
+
+      /* Control character? XXX this is all ASCII here */
+      if (c < 0x20 || c == 0x7F) {
+         /* RFC 2045, 6.7, as above ... */
+         if (c != '\t' && c != '\r')
+            mtc |= _MT_C_CTRLCHAR;
+         /* If there is a escape sequence in backslash notation defined for
+          * this in ANSI X3.159-1989 (ANSI C89), don't treat it as a control
+          * for real.  I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.  Don't follow
+          * libmagic(1) in respect to \v=\x0B=VT.  \f=\x0C=NP; do ignore
+          * \e=\x1B=ESC */
+         if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
+            continue;
+         mtc |= _MT_C_HASNUL; /* Force base64 */
+         if (!(mtc & _MT_C_ISTXTCOK)) {
+            mtc |= _MT_C_SUGGEST_DONE;
+            break;
+         }
+      } else if ((ui8_t)c & 0x80) {
+         mtc |= _MT_C_HIGHBIT;
+         /* TODO count chars with HIGHBIT? libmagic?
+          * TODO try encode part - base64 if bails? */
+         if (!(mtc & (_MT_C_NCTT | _MT_C_ISTXT))) { /* TODO _NCTT?? */
+            mtc |= _MT_C_HASNUL /* Force base64 */ | _MT_C_SUGGEST_DONE;
+            break;
+         }
+      } else if (!(mtc & _MT_C_FROM_) && UICMP(z, curlen, <, F_SIZEOF)) {
+         *f_p++ = (char)c;
+         if (UICMP(z, curlen, ==, F_SIZEOF - 1) &&
+               PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
+               !memcmp(f_buf, F_, F_SIZEOF))
+            mtc |= _MT_C_FROM_;
+      }
+   }
+   if (c == EOF && lastc != '\n')
+      mtc |= _MT_C_NOTERMNL;
+
+   mtcap->mtca_curlen = curlen;
+   mtcap->mtca_lastc = lastc;
+   mtcap->mtca_c = c;
+   mtcap->mtca_mtc = mtc;
+   NYD2_LEAVE;
+   return mtc;
+#undef F_
+#undef F_SIZEOF
+}
+
+static enum mimecontent
+_mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
+{
+   struct str in = {NULL, 0}, rest = {NULL, 0}, dec = {NULL, 0};
+   struct mt_class_arg mtca;
+   enum mime_type_class mtc;
+   int lc, c;
+   size_t cnt, lsz;
+   FILE *ibuf;
+   off_t start_off;
+   enum mimecontent mc;
+   NYD2_ENTER;
+
+   assert(mpp->m_mime_enc != MIMEE_BIN);
+
+   mc = MIME_UNKNOWN;
+   UNINIT(mtc, 0);
+
+   /* TODO v15-compat Note we actually bypass our usual file handling by
+    * TODO directly using fseek() on mb.mb_itf -- the v15 rewrite will change
+    * TODO all of this, and until then doing it like this is the only option
+    * TODO to integrate nicely into whoever calls us */
+   start_off = ftell(mb.mb_itf);
+   if ((ibuf = setinput(&mb, (struct message*)mpp, NEED_BODY)) == NULL) {
+jos_leave:
+      fseek(mb.mb_itf, start_off, SEEK_SET);
+      goto jleave;
+   }
+   cnt = mpp->m_size;
+
+   /* Skip part headers */
+   for (lc = '\0'; cnt > 0; lc = c, --cnt)
+      if ((c = getc(ibuf)) == EOF || (c == '\n' && lc == '\n'))
+         break;
+   if (cnt == 0 || ferror(ibuf))
+      goto jos_leave;
+
+   /* So now let's inspect the part content, decoding content-transfer-encoding
+    * along the way TODO this should simply be "mime_factory_create(MPP)"! */
+   _mt_classify_init(&mtca, _MT_C_ISTXT);
+
+   for (lsz = 0;;) {
+      bool_t dobuf;
+
+      c = (--cnt == 0) ? EOF : getc(ibuf);
+      if ((dobuf = (c == '\n'))) {
+         /* Ignore empty lines */
+         if (lsz == 0)
+            continue;
+      } else if ((dobuf = (c == EOF))) {
+         if (lsz == 0 && rest.l == 0)
+            break;
+      }
+
+      if (in.l + 1 >= lsz)
+         in.s = srealloc(in.s, lsz += LINESIZE);
+      if (c != EOF)
+         in.s[in.l++] = (char)c;
+      if (!dobuf)
+         continue;
+
+jdobuf:
+      switch (mpp->m_mime_enc) {
+      case MIMEE_B64:
+         if (b64_decode(&dec, &in, &rest) == STOP) {
+            mtca.mtca_mtc = _MT_C_HASNUL;
+            goto jstopit; /* break;break; */
+         }
+         break;
+      case MIMEE_QP:
+         /* Drin */
+         if (qp_decode(&dec, &in, &rest) == STOP) {
+            mtca.mtca_mtc = _MT_C_HASNUL;
+            goto jstopit; /* break;break; */
+         }
+         if (dec.l == 0 && c != EOF) {
+            in.l = 0;
+            continue;
+         }
+         break;
+      default:
+         /* Temporarily switch those two buffers.. */
+         dec = in;
+         in.s = NULL;
+         in.l = 0;
+         break;
+      }
+
+      mtca.mtca_buf = dec.s;
+      mtca.mtca_len = (ssize_t)dec.l;
+      if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE) {
+         mtc = _MT_C_HASNUL;
+         break;
+      }
+
+      if (c == EOF)
+         break;
+      /* ..and restore switched */
+      if (in.s == NULL) {
+         in = dec;
+         dec.s = NULL;
+      }
+      in.l = dec.l = 0;
+   }
+   if (rest.l > 0) {
+      in.l = 0;
+      goto jdobuf;
+   }
+jstopit:
+   if (in.s != NULL)
+      free(in.s);
+   if (dec.s != NULL)
+      free(dec.s);
+   if (rest.s != NULL)
+      free(rest.s);
+
+   fseek(mb.mb_itf, start_off, SEEK_SET);
+
+   if (!(mtc & (_MT_C_HASNUL | _MT_C_CTRLCHAR))) {
+      mc = MIME_TEXT_PLAIN;
+      if (mce & MIMECE_ALL_OVWR)
+         mpp->m_ct_type_plain = "text/plain";
+      if (mce & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
+         mpp->m_ct_type_usr_ovwr = "text/plain";
+   }
+jleave:
+   NYD2_LEAVE;
+   return mc;
+}
+
+static enum mime_handler_flags
+_mt_pipe_check(struct mime_handler *mhp)
+{
+   enum mime_handler_flags rv_orig, rv;
+   char const *cp;
+   NYD2_ENTER;
+
+   rv_orig = rv = mhp->mh_flags;
+
+   /* Do we have any handler for this part? */
+   if (*(cp = mhp->mh_shell_cmd) == '\0')
+      goto jleave;
+   else if (*cp++ != '@') {
+      rv |= MIME_HDL_CMD;
+      goto jleave;
+   } else if (*cp == '\0') {
+      rv |= MIME_HDL_TEXT;
+      goto jleave;
+   }
+
+jnextc:
+   switch (*cp) {
+   case '*':   rv |= MIME_HDL_ALWAYS;     ++cp; goto jnextc;
+   case '#':   rv |= MIME_HDL_NOQUOTE;    ++cp; goto jnextc;
+   case '&':   rv |= MIME_HDL_ASYNC;      ++cp; goto jnextc;
+   case '!':   rv |= MIME_HDL_NEEDSTERM;  ++cp; goto jnextc;
+   case '+':
+      if (rv & MIME_HDL_TMPF)
+         rv |= MIME_HDL_TMPF_UNLINK;
+      rv |= MIME_HDL_TMPF;
+      ++cp;
+      goto jnextc;
+   case '=':
+      rv |= MIME_HDL_TMPF_FILL;
+      ++cp;
+      goto jnextc;
+   case '@':
+      ++cp;
+      /* FALLTHRU */
+   default:
+      break;
+   }
+   mhp->mh_shell_cmd = cp;
+
+   /* Implications */
+   if (rv & MIME_HDL_TMPF_FILL)
+      rv |= MIME_HDL_TMPF;
+
+   /* Exceptions */
+   if (rv & MIME_HDL_ISQUOTE) {
+      if (rv & MIME_HDL_NOQUOTE)
+         goto jerr;
+
+      /* Cannot fetch data back from asynchronous process */
+      if (rv & MIME_HDL_ASYNC)
+         goto jerr;
+
+      /* TODO Can't use a "needsterminal" program for quoting */
+      if (rv & MIME_HDL_NEEDSTERM)
+         goto jerr;
+   }
+
+   if (rv & MIME_HDL_NEEDSTERM) {
+      if (rv & MIME_HDL_ASYNC) {
+         n_err(_("MIME type handlers: can't use \"needsterminal\" and "
+            "\"x-nail-async\" together\n"));
+         goto jerr;
+      }
+
+      /* needsterminal needs a terminal */
+      if (!(options & OPT_INTERACTIVE))
+         goto jerr;
+   }
+
+   if (!(rv & MIME_HDL_ALWAYS) && !(pstate & PS_MSGLIST_DIRECT)) {
+      /* Viewing multiple messages in one go, don't block system */
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+            _("[-- Directly address message only for display --]\n")));
+      rv |= MIME_HDL_MSG;
+      goto jleave;
+   }
+
+   rv |= MIME_HDL_CMD;
+jleave:
+   mhp->mh_flags = rv;
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   rv = rv_orig;
+   goto jleave;
+}
+
 FL int
 c_mimetype(void *v)
 {
@@ -473,8 +853,8 @@ c_mimetype(void *v)
          goto jleave;
       }
 
-      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600))
-            == NULL) {
+      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;
@@ -587,7 +967,7 @@ jdelall:
 }
 
 FL char *
-mime_type_by_filename(char const *name)
+mime_type_classify_filename(char const *name)
 {
    struct mtlookup mtl;
    NYD_ENTER;
@@ -598,32 +978,13 @@ mime_type_by_filename(char const *name)
 }
 
 FL enum conversion
-mime_type_file_classify(FILE *fp, char const **contenttype,
+mime_type_classify_file(FILE *fp, char const **contenttype,
    char const **charset, int *do_iconv)
 {
    /* TODO classify once only PLEASE PLEASE PLEASE */
-   /* TODO BTW., after the MIME/send layer rewrite we could use a MIME
-    * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
-    * TODO and report that state to the outer world */
-#define F_        "From "
-#define F_SIZEOF  (sizeof(F_) -1)
-
-   char f_buf[F_SIZEOF], *f_p = f_buf;
-   enum {
-      _CLEAN      = 0,     /* Plain RFC 2822 message */
-      _NCTT       = 1<<0,  /* *contenttype == NULL */
-      _ISTXT      = 1<<1,  /* *contenttype =~ text/ */
-      _ISTXTCOK   = 1<<2,  /* _ISTXT + *mime-allow-text-controls* */
-      _HIGHBIT    = 1<<3,  /* Not 7bit clean */
-      _LONGLINES  = 1<<4,  /* MIME_LINELEN_LIMIT exceed. */
-      _CTRLCHAR   = 1<<5,  /* Control characters seen */
-      _HASNUL     = 1<<6,  /* Contains \0 characters */
-      _NOTERMNL   = 1<<7,  /* Lacks a final newline */
-      _FROM_      = 1<<8   /* ^From_ seen */
-   } ctt = _CLEAN;
+   enum mime_type_class mtc;
    enum mime_enc menc;
-   ssize_t curlen;
-   int c, lastc;
+   off_t fpsz;
    NYD_ENTER;
 
    assert(ftell(fp) == 0x0l);
@@ -631,111 +992,67 @@ mime_type_file_classify(FILE *fp, char const **contenttype,
    *do_iconv = 0;
 
    if (*contenttype == NULL)
-      ctt = _NCTT;
+      mtc = _MT_C_NCTT;
    else if (!ascncasecmp(*contenttype, "text/", 5))
-      ctt = ok_blook(mime_allow_text_controls) ? _ISTXT | _ISTXTCOK : _ISTXT;
+      mtc = ok_blook(mime_allow_text_controls)
+         ? _MT_C_ISTXT | _MT_C_ISTXTCOK : _MT_C_ISTXT;
+   else
+      mtc = _MT_C_CLEAN;
 
    menc = mime_enc_target();
 
-   if (fsize(fp) == 0)
+   if ((fpsz = fsize(fp)) == 0)
       goto j7bit;
+   else {
+      char buf[BUFFER_SIZE];
+      struct mt_class_arg mtca;
 
-   /* We have to inspect the file content */
-   for (curlen = 0, c = EOF;; ++curlen) {
-      lastc = c;
-      c = getc(fp);
-
-      if (c == '\0') {
-         ctt |= _HASNUL;
-         if (!(ctt & _ISTXTCOK))
+      _mt_classify_init(&mtca, mtc);
+      for (;;) {
+         mtca.mtca_len = fread(buf, sizeof(buf[0]), NELEM(buf), fp);
+         mtca.mtca_buf = buf;
+         if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE)
             break;
-         continue;
+         if (mtca.mtca_len == 0)
+            break;
       }
-      if (c == '\n' || c == EOF) {
-         if (curlen >= MIME_LINELEN_LIMIT)
-            ctt |= _LONGLINES;
-         if (c == EOF)
-            break;
-         f_p = f_buf;
-         curlen = -1;
-         continue;
-      }
-      /* A bit hairy is handling of \r=\x0D=CR.
-       * RFC 2045, 6.7:
-       * Control characters other than TAB, or CR and LF as parts of CRLF
-       * pairs, must not appear.  \r alone does not force _CTRLCHAR below since
-       * we cannot peek the next character.  Thus right here, inspect the last
-       * seen character for if its \r and set _CTRLCHAR in a delayed fashion */
-       /*else*/ if (lastc == '\r')
-         ctt |= _CTRLCHAR;
-
-      /* Control character? XXX this is all ASCII here */
-      if (c < 0x20 || c == 0x7F) {
-         /* RFC 2045, 6.7, as above ... */
-         if (c != '\t' && c != '\r')
-            ctt |= _CTRLCHAR;
-         /* If there is a escape sequence in backslash notation defined for
-          * this in ANSI X3.159-1989 (ANSI C89), don't treat it as a control
-          * for real.  I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.  Don't follow
-          * libmagic(1) in respect to \v=\x0B=VT.  \f=\x0C=NP; do ignore
-          * \e=\x1B=ESC */
-         if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
-            continue;
-         ctt |= _HASNUL; /* Force base64 */
-         if (!(ctt & _ISTXTCOK))
-            break;
-      } else if ((ui8_t)c & 0x80) {
-         ctt |= _HIGHBIT;
-         /* TODO count chars with HIGHBIT? libmagic?
-          * TODO try encode part - base64 if bails? */
-         if (!(ctt & (_NCTT | _ISTXT))) { /* TODO _NCTT?? */
-            ctt |= _HASNUL; /* Force base64 */
-            break;
-         }
-      } else if (!(ctt & _FROM_) && UICMP(z, curlen, <, F_SIZEOF)) {
-         *f_p++ = (char)c;
-         if (UICMP(z, curlen, ==, F_SIZEOF - 1) &&
-               PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
-               !memcmp(f_buf, F_, F_SIZEOF))
-            ctt |= _FROM_;
-      }
+      /* TODO ferror(fp) ! */
+      rewind(fp);
    }
-   if (lastc != '\n')
-      ctt |= _NOTERMNL;
-   rewind(fp);
 
-   if (ctt & _HASNUL) {
+   if (mtc & _MT_C_HASNUL) {
       menc = MIMEE_B64;
       /* Don't overwrite a text content-type to allow UTF-16 and such, but only
        * on request; else enforce what file(1)/libmagic(3) would suggest */
-      if (ctt & _ISTXTCOK)
+      if (mtc & _MT_C_ISTXTCOK)
          goto jcharset;
-      if (ctt & (_NCTT | _ISTXT))
+      if (mtc & (_MT_C_NCTT | _MT_C_ISTXT))
          *contenttype = "application/octet-stream";
       if (*charset == NULL)
          *charset = "binary";
       goto jleave;
    }
 
-   if (ctt & (_LONGLINES | _CTRLCHAR | _NOTERMNL | _FROM_)) {
+   if (mtc &
+         (_MT_C_LONGLINES | _MT_C_CTRLCHAR | _MT_C_NOTERMNL | _MT_C_FROM_)) {
       if (menc != MIMEE_B64)
          menc = MIMEE_QP;
       goto jstepi;
    }
-   if (ctt & _HIGHBIT) {
+   if (mtc & _MT_C_HIGHBIT) {
 jstepi:
-      if (ctt & (_NCTT | _ISTXT))
-         *do_iconv = ((ctt & _HIGHBIT) != 0);
+      if (mtc & (_MT_C_NCTT | _MT_C_ISTXT))
+         *do_iconv = ((mtc & _MT_C_HIGHBIT) != 0);
    } else
 j7bit:
       menc = MIMEE_7B;
-   if (ctt & _NCTT)
+   if (mtc & _MT_C_NCTT)
       *contenttype = "text/plain";
 
    /* Not an attachment with specified charset? */
 jcharset:
    if (*charset == NULL) /* TODO MIME/send: iter active? iter! else */
-      *charset = (ctt & _HIGHBIT) ? charset_iter_or_fallback()
+      *charset = (mtc & _MT_C_HIGHBIT) ? charset_iter_or_fallback()
             : charset_get_7bit();
 jleave:
    NYD_LEAVE;
@@ -743,18 +1060,16 @@ jleave:
    return (menc == MIMEE_7B ? CONV_7BIT :
       (menc == MIMEE_8B ? CONV_8BIT :
       (menc == MIMEE_QP ? CONV_TOQP : CONV_TOB64)));
-
-#undef F_
-#undef F_SIZEOF
 }
 
 FL enum mimecontent
-mime_type_mimepart_content(struct mimepart *mpp)
+mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
 {
    struct mtlookup mtl;
    enum mimecontent mc;
    char const *ct;
-   union {char const *cp; long l;} mce;
+   union {char const *cp; ui32_t f;} mce;
+   bool_t is_os;
    NYD_ENTER;
 
    mc = MIME_UNKNOWN;
@@ -766,32 +1081,29 @@ mime_type_mimepart_content(struct mimepart *mpp)
       long l;
 
       l = strtol(mce.cp, &eptr, 0); /* XXX strtol */
-      mce.l = (*mce.cp == '\0' || *eptr != '\0' || l < 0) ? 0 : l | MIMECE_SET;
-   }
+      if (*mce.cp == '\0')
+         is_os = FAL0;
+      else if (*eptr != '\0' || l < 0 || (ui64_t)(ul_i)l >= UI32_MAX) {
+         n_err(_("Can't parse *mime-counter-evidence* value \"%s\"\n"), mce.cp);
+         is_os = FAL0;
+      } else {
+         mce.f = (ui32_t)l | MIMECE_SET;
+         is_os = !asccasecmp(ct, "application/octet-stream");
 
-   if (mce.l != 0 && mpp->m_filename != NULL) {
-      bool_t is_os = !asccasecmp(ct, "application/octet-stream");
-
-      if (is_os || (mce.l & MIMECE_ALL_OVWR)) {
-         if (_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL) {
-            if (is_os) {
-               if (mce.l & MIMECE_BIN_PARSE) {
-                  /* TODO Code MIMECE_BIN_PARSE (*mime-counter-evidence* bit 4)
-                   * TODO This requires v15 framework since we must decode the
-                   * TODO single mimepart mpp to a temporary file in order to
-                   * TODO inspect the content! */
-               }
-               goto jleave;
+         if (mpp->m_filename != NULL && (is_os || (mce.f & MIMECE_ALL_OVWR))) {
+            if (_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL) {
+               if (is_os)
+                  goto jos_content_check;
+            } else if (is_os || asccasecmp(ct, mtl.mtl_result)) {
+               if (mce.f & MIMECE_ALL_OVWR)
+                  mpp->m_ct_type_plain = ct = mtl.mtl_result;
+               if (mce.f & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
+                  mpp->m_ct_type_usr_ovwr = ct = mtl.mtl_result;
             }
-
-         } else if (is_os || asccasecmp(ct, mtl.mtl_result)) {
-            if (mce.l & MIMECE_ALL_OVWR)
-               mpp->m_ct_type_plain = mtl.mtl_result;
-            if (mce.l & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
-               mpp->m_ct_type_usr_ovwr = mtl.mtl_result;
          }
       }
-   }
+   } else
+      is_os = FAL0;
 
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
@@ -820,6 +1132,8 @@ mime_type_mimepart_content(struct mimepart *mpp)
       else
          mc = MIME_MULTI;
    } else if (is_asccaseprefix(ct, "application/")) {
+      if (is_os)
+         goto jos_content_check;
       ct += sizeof("application/") -1;
       if (!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
          mc = MIME_PKCS7;
@@ -827,30 +1141,47 @@ mime_type_mimepart_content(struct mimepart *mpp)
 jleave:
    NYD_LEAVE;
    return mc;
+
+jos_content_check:
+   if ((mce.f & MIMECE_BIN_PARSE) && mpp->m_mime_enc != MIMEE_BIN &&
+         mpp->m_charset != NULL && asccasecmp(mpp->m_charset, "binary"))
+      mc = _mt_classify_os_part(mce.f, mpp);
+   goto jleave;
 }
 
-FL char const *
-mime_type_mimepart_handler(struct mimepart const *mpp)
+FL enum mime_handler_flags
+mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
+   enum sendaction action)
 {
 #define __S    "pipe-"
 #define __L    (sizeof(__S) -1)
    struct mtlookup mtl;
-   char const *es, *cs, *rv;
-   size_t el, cl, l;
    char *buf, *cp;
+   enum mime_handler_flags rv;
+   char const *es, *cs, *ccp;
+   size_t el, cl, l;
    NYD_ENTER;
+
+   memset(mhp, 0, sizeof *mhp);
+   buf = NULL;
+
+   rv = MIME_HDL_NULL;
+   if (action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+      rv |= MIME_HDL_ISQUOTE;
+   else if (action != SEND_TODISP && action != SEND_TODISP_ALL)
+      goto jleave;
 
    el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
          *++es != '\0') ? strlen(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
          (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
    if ((l = MAX(el, cl)) == 0) {
-
-/* FIXME here and below : another mime-counter-evidence bit, content check */
-
-      rv = NULL;
+      /* TODO this should be done during parse time! */
       goto jleave;
    }
+
+   /* We don't pass the flags around, so ensure carrier is up-to-date */
+   mhp->mh_flags = rv;
 
    buf = ac_alloc(__L + l +1);
    memcpy(buf, __S, __L);
@@ -862,42 +1193,57 @@ mime_type_mimepart_handler(struct mimepart const *mpp)
       for (cp = buf + __L; *cp != '\0'; ++cp)
          *cp = lowerconv(*cp);
 
-      if ((rv = vok_vlook(buf)) != NULL)
-         goto jok;
+      if ((mhp->mh_shell_cmd = ccp = vok_vlook(buf)) != NULL) {
+         rv = _mt_pipe_check(mhp);
+         goto jleave;
+      }
    }
 
-   /* Then MIME Content-Type: */
-   if (cl > 0) {
-      memcpy(buf + __L, cs, cl +1);
-      for (cp = buf + __L; *cp != '\0'; ++cp)
-         *cp = lowerconv(*cp);
+   /* Then MIME Content-Type:, if any */
+   if (cl == 0)
+      goto jleave;
 
-      if ((rv = vok_vlook(buf)) != NULL)
-         goto jok;
+   memcpy(buf + __L, cs, cl +1);
+   for (cp = buf + __L; *cp != '\0'; ++cp)
+      *cp = lowerconv(*cp);
 
-      if (_mt_by_mtname(&mtl, cs) != NULL)
-         switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
+   if ((mhp->mh_shell_cmd = vok_vlook(buf)) != NULL) {
+      rv = _mt_pipe_check(mhp);
+      goto jleave;
+   }
+
+   if (_mt_by_mtname(&mtl, cs) != NULL)
+      switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
 #ifndef HAVE_FILTER_HTML_TAGSOUP
-         case _MT_SOUP_H:
+      case _MT_SOUP_H:
+         break;
 #endif
-         default:
-            break;
-         case _MT_SOUP_h:
+      case _MT_SOUP_h:
 #ifdef HAVE_FILTER_HTML_TAGSOUP
-         case _MT_SOUP_H:
-            rv = MIME_TYPE_HANDLER_HTML;
-            goto jok;
+      case _MT_SOUP_H:
+         mhp->mh_ptf = &htmlflt_process_main;
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s =
+               UNCONST(_("Builtin HTML tagsoup filter")));
+         rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
+         goto jleave;
 #endif
-         case _MT_PLAIN:
-            rv = MIME_TYPE_HANDLER_TEXT;
-            goto jok;
-         }
-   }
+         /* FALLTHRU */
+      case _MT_PLAIN:
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(_("Plain text view")));
+         rv ^= MIME_HDL_NULL | MIME_HDL_TEXT;
+         goto jleave;
+      default:
+         break;
+      }
 
-   rv = NULL;
-jok:
-   ac_free(buf);
 jleave:
+   if (buf != NULL)
+      ac_free(buf);
+
+   mhp->mh_flags = rv;
+   if ((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+            _("[-- No MIME handler installed or none applicable --]")));
    NYD_LEAVE;
    return rv;
 #undef __L

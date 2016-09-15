@@ -42,7 +42,7 @@
 #include <sys/utsname.h>
 
 #include <ctype.h>
-#include <dirent.h>
+#include <pwd.h>
 
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_GETADDRINFO
@@ -74,6 +74,22 @@ struct nyd_info {
 };
 #endif
 
+struct shvar_stack {
+   struct shvar_stack *shs_next; /* Outer stack frame */
+   char const  *shs_value; /* Remaining value to expand */
+   size_t      shs_len;    /* gth of .shs_dat this level */
+   char const  *shs_dat;   /* Result data of this level */
+   bool_t      *shs_err;   /* Or NULL */
+   bool_t      shs_bsesc;  /* Shall backslash escaping be performed */
+};
+
+#ifdef HAVE_ERRORS
+struct err_node {
+   struct err_node   *en_next;
+   struct str        en_str;
+};
+#endif
+
 #ifdef HAVE_DEBUG
 struct mem_chunk {
    struct mem_chunk  *mc_prev;
@@ -90,13 +106,6 @@ union mem_ptr {
    struct mem_chunk  *p_c;
    char              *p_cp;
    ui8_t             *p_ui8p;
-};
-#endif
-
-#ifdef HAVE_ERRORS
-struct err_node {
-   struct err_node   *en_next;
-   struct str        en_str;
 };
 #endif
 
@@ -147,6 +156,9 @@ static char *  _colour_iso6429(char const *wish);
 #ifdef HAVE_NYD
 static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
+
+/* Perform shell variable expansion */
+static char *  _sh_exp_var(struct shvar_stack *shsp);
 
 #ifndef HAVE_POSIX_RANDOM
 static void
@@ -344,6 +356,109 @@ _nyd_print(int fd, struct nyd_info *nip)
    }
 }
 #endif
+
+static char *
+_sh_exp_var(struct shvar_stack *shsp)
+{
+   struct shvar_stack next, *np, *tmp;
+   char const *vp;
+   char lc, c, *cp, *rv;
+   size_t i;
+   NYD2_ENTER;
+
+   if (*(vp = shsp->shs_value) != '$') {
+      bool_t bsesc = shsp->shs_bsesc;
+      union {bool_t hadbs; char c;} u = {FAL0};
+
+      shsp->shs_dat = vp;
+      for (lc = '\0', i = 0; ((c = *vp) != '\0'); ++i, ++vp) {
+         if (c == '$' && lc != '\\')
+            break;
+         if (!bsesc)
+            continue;
+         lc = (lc == '\\') ? (u.hadbs = TRU1, '\0') : c;
+      }
+      shsp->shs_len = i;
+
+      if (u.hadbs) {
+         shsp->shs_dat = cp = savestrbuf(shsp->shs_dat, i);
+
+         for (lc = '\0', rv = cp; (u.c = *cp++) != '\0';) {
+            if (u.c != '\\' || lc == '\\')
+               *rv++ = u.c;
+            lc = (lc == '\\') ? '\0' : u.c;
+         }
+         *rv = '\0';
+
+         shsp->shs_len = PTR2SIZE(rv - shsp->shs_dat);
+      }
+   } else {
+      if ((lc = (*++vp == '{')))
+         ++vp;
+
+      /* POSIX says
+       *   Environment variable names used by the utilities in the Shell and
+       *   Utilities volume of POSIX.1-2008 consist solely of uppercase
+       *   letters, digits, and the <underscore> ('_') from the characters
+       *   defined in Portable Character Set and do not begin with a digit.
+       *   Other characters may be permitted by an implementation;
+       *   applications shall tolerate the presence of such names. */
+      shsp->shs_dat = vp;
+      for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
+         if (!alnumchar(c) && c != '_')
+            break;
+
+      if (lc) {
+         if (c != '}') {
+            n_err(_("Variable name misses closing \"}\": \"%s\"\n"),
+               shsp->shs_value);
+            shsp->shs_len = strlen(shsp->shs_value);
+            shsp->shs_dat = shsp->shs_value;
+            if (shsp->shs_err != NULL)
+               *shsp->shs_err = TRU1;
+            goto junroll;
+         }
+         c = *++vp;
+      }
+
+      shsp->shs_len = i;
+      if ((cp = vok_vlook(savestrbuf(shsp->shs_dat, i))) != NULL)
+         shsp->shs_len = strlen(shsp->shs_dat = cp);
+   }
+   if (c != '\0')
+      goto jrecurse;
+
+   /* That level made the great and completed encoding.  Build result */
+junroll:
+   for (i = 0, np = shsp, shsp = NULL; np != NULL;) {
+      i += np->shs_len;
+      tmp = np->shs_next;
+      np->shs_next = shsp;
+      shsp = np;
+      np = tmp;
+   }
+
+   cp = rv = salloc(i +1);
+   while (shsp != NULL) {
+      np = shsp;
+      shsp = shsp->shs_next;
+      memcpy(cp, np->shs_dat, np->shs_len);
+      cp += np->shs_len;
+   }
+   *cp = '\0';
+
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jrecurse:
+   memset(&next, 0, sizeof next);
+   next.shs_next = shsp;
+   next.shs_value = vp;
+   next.shs_err = shsp->shs_err;
+   next.shs_bsesc = shsp->shs_bsesc;
+   rv = _sh_exp_var(&next);
+   goto jleave;
+}
 
 FL void
 n_raise(int signo)
@@ -617,7 +732,8 @@ page_or_print(FILE *fp, size_t lines)
       }
 
       if (lines >= u.rows) {
-         run_command(get_pager(NULL), 0, fileno(fp), -1, NULL, NULL, NULL);
+         run_command(get_pager(NULL), 0, fileno(fp), COMMAND_FD_PASS,
+            NULL, NULL, NULL, NULL);
          goto jleave;
       }
    }
@@ -774,8 +890,78 @@ nextprime(ui32_t n)
    return mprime;
 }
 
+FL char *
+n_shell_expand_tilde(char const *s, bool_t *err_or_null)
+{
+   struct passwd *pwp;
+   size_t nl, rl;
+   char const *rp, *np;
+   char *rv;
+   bool_t err;
+   NYD2_ENTER;
+
+   err = FAL0;
+
+   if (s[0] != '~')
+      goto jasis;
+
+   if (*(rp = s + 1) == '/' || *rp == '\0')
+      np = homedir;
+   else {
+      if ((rp = strchr(s + 1, '/')) == NULL)
+         rp = (np = UNCONST(s)) + 1;
+      else {
+         nl = PTR2SIZE(rp - s);
+         np = savestrbuf(s, nl);
+      }
+
+      if ((pwp = getpwnam(np)) == NULL) {
+         err = TRU1;
+         goto jasis;
+      }
+      np = pwp->pw_name;
+   }
+
+   nl = strlen(np);
+   rl = strlen(rp);
+   rv = salloc(nl + 1 + rl +1);
+   memcpy(rv, np, nl);
+   if (rl > 0) {
+      memcpy(rv + nl, rp, rl);
+      nl += rl;
+   }
+   rv[nl] = '\0';
+   goto jleave;
+
+jasis:
+   rv = savestr(s);
+jleave:
+   if (err_or_null != NULL)
+      *err_or_null = err;
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char *
+n_shell_expand_var(char const *s, bool_t bsescape, bool_t *err_or_null)
+{
+   struct shvar_stack top;
+   char *rv;
+   NYD2_ENTER;
+
+   memset(&top, 0, sizeof top);
+
+   top.shs_value = s;
+   if ((top.shs_err = err_or_null) != NULL)
+      *err_or_null = FAL0;
+   top.shs_bsesc = bsescape;
+   rv = _sh_exp_var(&top);
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL int
-expand_shell_escape(char const **s, bool_t use_nail_extensions)
+n_shell_expand_escape(char const **s, bool_t use_nail_extensions)
 {
    char const *xs;
    int c, n;
@@ -909,7 +1095,7 @@ jredo:
          continue;
       } else
 #endif
-      if ((c = expand_shell_escape(&ccp, TRU1)) > 0) {
+      if ((c = n_shell_expand_escape(&ccp, TRU1)) > 0) {
             if (trigger)
                *cp++ = (char)c;
             --maxlen;
@@ -2013,8 +2199,8 @@ jlist: {
          goto jleave;
       }
 
-      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)
-            ) == NULL) {
+      if ((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+            NULL) {
          fprintf(stderr, _("tmpfile"));
          v = NULL;
          goto jleave;
@@ -2380,8 +2566,7 @@ c_smemtrace(void *v)
    NYD_ENTER;
 
    v = (void*)0x1;
-   if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr("tmpfile", 0);
       goto jleave;
    }

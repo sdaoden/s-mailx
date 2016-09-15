@@ -212,6 +212,11 @@
    "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
 #define COLOUR_USER_HEADERS "from,subject"
 
+/* Special FD requests for run_command() / start_command() */
+#define COMMAND_FD_PASS -1
+#define COMMAND_FD_NULL -2
+
+/*  */
 #define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
 #define DATE_DAYSYEAR   365L
 #define DATE_SECSMIN    60L
@@ -255,6 +260,7 @@
 #define NAILENV_TMPDIR              "NAIL_TMPDIR"
 #define NAILENV_FILENAME            "NAIL_FILENAME"
 #define NAILENV_FILENAME_GENERATED  "NAIL_FILENAME_GENERATED"
+#define NAILENV_FILENAME_TEMPORARY  "NAIL_FILENAME_TEMPORARY"
 #define NAILENV_CONTENT             "NAIL_CONTENT"
 #define NAILENV_CONTENT_EVIDENCE    "NAIL_CONTENT_EVIDENCE"
 
@@ -928,14 +934,27 @@ enum b64flags {
    B64_NOPAD      = 1<<(__MIMEEF_LAST+2)
 };
 
-/* Special handler return values for mime_type_mimepart_handler() */
-#define MIME_TYPE_HANDLER_TEXT   (char*)-1
-#define MIME_TYPE_HANDLER_HTML   (char*)-2
-
 enum mime_parse_flags {
    MIME_PARSE_NONE      = 0,
    MIME_PARSE_DECRYPT   = 1<<0,
    MIME_PARSE_PARTS     = 1<<1
+};
+
+enum mime_handler_flags {
+   MIME_HDL_NULL,                /* No pipe- mimetype handler, go away */
+   MIME_HDL_CMD,                 /* Normal command */
+   MIME_HDL_TEXT,                /* @ special cmd to force treatment as text */
+   MIME_HDL_PTF,                 /* A special pointer-to-function handler */
+   MIME_HDL_MSG,                 /* Display msg (returned as command string) */
+   MIME_HDL_TYPE_MASK   = 7,
+   MIME_HDL_ISQUOTE     = 1<<4,  /* Is quote action (we have info, keep it!) */
+   MIME_HDL_NOQUOTE     = 1<<5,  /* No MIME for quoting */
+   MIME_HDL_ALWAYS      = 1<<6,  /* Handler shall run for multi-msg actions */
+   MIME_HDL_ASYNC       = 1<<7,  /* Should run asynchronously */
+   MIME_HDL_NEEDSTERM   = 1<<8,  /* Takes over terminal */
+   MIME_HDL_TMPF        = 1<<9,  /* Create temporary file (zero-sized) */
+   MIME_HDL_TMPF_FILL   = 1<<10, /* Fill in the msg body content */
+   MIME_HDL_TMPF_UNLINK = 1<<11  /* Delete it later again */
 };
 
 enum mlist_state {
@@ -955,7 +974,9 @@ enum oflags {
    OF_CLOEXEC     = 1<<7,     /* TODO not used, always implied!  CHANGE!! */
    OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
-   OF_REGISTER    = 1<<10     /* Register file in our file table */
+   OF_REGISTER    = 1<<10,    /* Register file in our file table */
+   OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
+   OF_SUFFIX      = 1<<12     /* Ftmp() name hint is mandatory! extension! */
 };
 
 enum okay {
@@ -1168,6 +1189,7 @@ enum okeys {
    ok_b_message_id_disable,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
+   ok_b_mime_alternative_favour_rich,
    ok_b_netrc_lookup,
    ok_b_outfolder,
    ok_b_page,
@@ -1404,14 +1426,22 @@ struct ccred {
 
 #ifdef HAVE_DOTLOCK
 struct dotlock_info {
-   char const  *di_file_name;
-   char const  *di_lock_name;
-   char const  *di_hostname;
-   char const  *di_randstr;
-   size_t      di_pollmsecs;
+   char const  *di_file_name;    /* Mailbox to lock */
+   char const  *di_lock_name;    /* .di_file_name + .lock */
+   char const  *di_hostname;     /* ..filled in parent (due resolver delays) */
+   char const  *di_randstr;      /* ..ditto, random string */
+   size_t      di_pollmsecs;     /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
+
+struct mime_handler {
+   enum mime_handler_flags mh_flags;
+   struct str  mh_msg;           /* Message describing this command */
+   /* XXX union{} the following? */
+   char const  *mh_shell_cmd;    /* For MIME_HDL_CMD */
+   int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
+};
 
 struct time_current {
    time_t      tc_time;
