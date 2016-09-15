@@ -828,7 +828,7 @@ _headers(int msgspec) /* TODO rework v15 */
 
 #ifdef HAVE_COLOUR
    if (options & OPT_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
+      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
 #endif
 
    size = screensize();
@@ -1020,13 +1020,13 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if ((options & OPT_INTERACTIVE) &&
             (action == SEND_TODISP || action == SEND_TODISP_ALL ||
              action == SEND_SHOW))
-         n_colour_env_create(n_COLOUR_GROUP_VIEW, obuf != stdout);
+         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
    else if ((options & OPT_INTERACTIVE) &&
          (action == SEND_TODISP || action == SEND_TODISP_ALL))
-      n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
+      n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -1204,7 +1204,7 @@ c_from(void *v)
             }
          }
       }
-      n_COLOUR( n_colour_env_create(n_COLOUR_GROUP_SUM, obuf != stdout); )
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != stdout); )
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
@@ -1255,7 +1255,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 
 #ifdef HAVE_COLOUR
    if (options & OPT_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_GROUP_SUM, FAL0);
+      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
 #endif
 
    srelax_hold();
@@ -1392,7 +1392,7 @@ c_top(void *v)
    /* XXX Colours of `top' only for message and part info lines */
 #ifdef HAVE_COLOUR
    if (options & OPT_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_GROUP_VIEW, FAL0);
+      n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
 #endif
    empty_last = 1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);

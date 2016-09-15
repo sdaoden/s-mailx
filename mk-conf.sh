@@ -14,8 +14,9 @@ option_reset() {
    WANT_IDNA=0
    WANT_IMAP_SEARCH=0
    WANT_REGEX=0
-   WANT_READLINE=0 WANT_EDITLINE=0 WANT_NCL=0
-   WANT_TERMCAP=0
+   WANT_READLINE=0 WANT_MLE=0
+      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
+   WANT_TERMCAP=0 WANT_TERMCAP_PREFER_TERMINFO=0
    WANT_ERRORS=0
    WANT_SPAM_SPAMC=0 WANT_SPAM_SPAMD=0 WANT_SPAM_FILTER=0
    WANT_DOCSTRINGS=0
@@ -35,9 +36,9 @@ option_maximal() {
    WANT_IDNA=1
    WANT_IMAP_SEARCH=1
    WANT_REGEX=require
-   WANT_NCL=1
-      WANT_HISTORY=1 WANT_TABEXPAND=1
-   WANT_TERMCAP=1
+   WANT_MLE=1
+      WANT_HISTORY=1 WANT_KEY_BINDINGS=1
+   WANT_TERMCAP=1 WANT_TERMCAP_PREFER_TERMINFO=1
    WANT_ERRORS=1
    WANT_SPAM_SPAMC=1 WANT_SPAM_SPAMD=1 WANT_SPAM_FILTER=1
    WANT_DOCSTRINGS=1
@@ -68,8 +69,8 @@ if [ -n "${CONFIG}" ]; then
       WANT_ICONV=require
       WANT_IDNA=1
       WANT_REGEX=1
-      WANT_NCL=1
-         WANT_HISTORY=1
+      WANT_MLE=1
+         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
       WANT_ERRORS=1
       WANT_SPAM_FILTER=1
       WANT_DOCSTRINGS=1
@@ -85,8 +86,8 @@ if [ -n "${CONFIG}" ]; then
          WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       WANT_IDNA=1
       WANT_REGEX=1
-      WANT_NCL=1
-         WANT_HISTORY=1
+      WANT_MLE=1
+         WANT_HISTORY=1 WANT_KEY_BINDINGS=1
       WANT_DOCSTRINGS=1
       WANT_COLOUR=1
       WANT_DOTLOCK=require
@@ -133,8 +134,8 @@ option_update() {
       WANT_GSSAPI=0
    fi
 
-   if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
-      WANT_HISTORY=0 WANT_TABEXPAND=0
+   if feat_no READLINE && feat_no MLE; then
+      WANT_HISTORY=0 WANT_KEY_BINDINGS=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -1245,7 +1246,7 @@ fi
 
 ##
 
-run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
+run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
 int main(void){
@@ -1255,6 +1256,10 @@ int main(void){
    rv |= !(pathconf(".", _PC_NAME_MAX) >= 0 || errno == 0 || errno != ENOSYS);
    errno = 0;
    rv |= !(pathconf(".", _PC_PATH_MAX) >= 0 || errno == 0 || errno != ENOSYS);
+
+   /* Only link check */
+   fpathconf(0, _PC_NAME_MAX);
+
    return rv;
 }
 !
@@ -1796,7 +1801,7 @@ int main(void){
 }
 !
 
-      link_check rand_egd 'OpenSSL RAND_egd()' \
+      link_check rand_egd 'OpenSSL RAND_egd(3ssl)' \
          '#define HAVE_OPENSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
@@ -2069,54 +2074,19 @@ int main(void){
 
    __edrdlib -lreadline ||
       __edrdlib '-lreadline -ltermcap' || feat_bail_required READLINE
-   [ -n "${have_readline}" ] && WANT_TABEXPAND=1
 fi
 
-if feat_yes EDITLINE && [ -z "${have_readline}" ]; then
-   __edlib() {
-      link_check editline "for editline(3) (${1})" \
-         '#define HAVE_EDITLINE' "${1}" << \!
-#include <stdio.h> /* For C89 NULL */
-#include <histedit.h>
-static char * getprompt(void) { return (char*)"ok"; }
-int main(void)
-{
-   EditLine *el_el = el_init("TEST", stdin, stdout, stderr);
-   HistEvent he;
-   History *el_hcom = history_init();
-   history(el_hcom, &he, H_SETSIZE, 242);
-   el_set(el_el, EL_SIGNAL, 0);
-   el_set(el_el, EL_TERMINAL, NULL);
-   el_set(el_el, EL_HIST, &history, el_hcom);
-   el_set(el_el, EL_EDITOR, "emacs");
-   el_set(el_el, EL_PROMPT, &getprompt);
-   el_source(el_el, NULL);
-   history(el_hcom, &he, H_GETSIZE);
-   history(el_hcom, &he, H_CLEAR);
-   el_end(el_el);
-   /* TODO add loader and addfn checks */
-   history_end(el_hcom);
-   return 0;
-}
-!
-   }
-
-   __edlib -ledit ||
-      __edlib '-ledit -ltermcap' || feat_bail_required EDITLINE
-   [ -n "${have_editline}" ] && WANT_TABEXPAND=0
-fi
-
-if feat_yes NCL && [ -z "${have_editline}" ] && [ -z "${have_readline}" ] &&\
+if feat_yes MLE && [ -z "${have_readline}" ] &&
       [ -n "${have_c90amend1}" ]; then
-   have_ncl=1
-   echo '#define HAVE_NCL' >> ${h}
+   have_mle=1
+   echo '#define HAVE_MLE' >> ${h}
 else
-   feat_bail_required NCL
-   echo '/* WANT_{READLINE,EDITLINE,NCL}=0 */' >> ${h}
+   feat_bail_required MLE
+   echo '/* WANT_{READLINE,MLE}=0 */' >> ${h}
 fi
 
-# Generic have-a-command-line-editor switch for those who need it below
-if [ -n "${have_ncl}" ] || [ -n "${have_editline}" ] ||\
+# Generic have-a-line-editor switch for those who need it below
+if [ -n "${have_mle}" ] ||
       [ -n "${have_readline}" ]; then
    have_cle=1
 fi
@@ -2127,57 +2097,105 @@ else
    echo '/* WANT_HISTORY=0 */' >> ${h}
 fi
 
-if [ -n "${have_cle}" ] && feat_yes TABEXPAND; then
-   echo '#define HAVE_TABEXPAND' >> ${h}
+if [ -n "${have_mle}" ] && feat_yes KEY_BINDINGS; then
+   echo '#define HAVE_KEY_BINDINGS' >> ${h}
 else
-   echo '/* WANT_TABEXPAND=0 */' >> ${h}
+   echo '/* WANT_KEY_BINDINGS=0 */' >> ${h}
 fi
 
 if feat_yes TERMCAP; then
-   __termlib() {
-      link_check termcap "for termcap(3) (via ${4})" \
+   __termcaplib() {
+      link_check termcap "termcap(5) (via ${4})" \
          "#define HAVE_TERMCAP${3}" "${1}" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 ${2}
 #include <term.h>
-#define PTR2SIZE(X) ((unsigned long)(X))
 #define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
-static char *_termcap_buffer, *_termcap_ti, *_termcap_te;
+static int my_putc(int c){return putchar(c);}
 int main(void){
-   char buf[1024+512], cmdbuf[2048], *cpb, *cpti, *cpte, *cp;
+   char buf[1024+512], cmdbuf[2048], *cpb, *r1;
+   int r2 = OK, r3 = ERR;
 
    tgetent(buf, getenv("TERM"));
    cpb = cmdbuf;
-   cpti = cpb;
-   if ((cp = tgetstr(UNCONST("ti"), &cpb)) == NULL)
-      goto jleave;
-   cpte = cpb;
-   if ((cp = tgetstr(UNCONST("te"), &cpb)) == NULL)
-      goto jleave;
-   _termcap_buffer = malloc(PTR2SIZE(cpb - cmdbuf));
-   memcpy(_termcap_buffer, cmdbuf, PTR2SIZE(cpb - cmdbuf));
-   _termcap_ti = _termcap_buffer + PTR2SIZE(cpti - cmdbuf);
-   _termcap_te = _termcap_ti + PTR2SIZE(cpte - cpti);
-   tputs(_termcap_ti, 1, &putchar);
-   tputs(_termcap_te, 1, &putchar);
-jleave:
-   return (cp == NULL);
+   r1 = tgetstr(UNCONST("cm"), &cpb);
+   tgoto(r1, 1, 1);
+   r2 = tgetnum(UNCONST("Co"));
+   r3 = tgetflag(UNCONST("ut"));
+   tputs("cr", 1, &my_putc);
+   return (r1 == NULL || r2 == -1 || r3 == 0);
 }
 _EOT
    }
 
-   __termlib -ltermcap '' '' termcap ||
-      __termlib -ltermcap '#include <curses.h>' '
-         #define HAVE_TERMCAP_CURSES' \
-         'curses.h / -ltermcap' ||
-      __termlib -lcurses '#include <curses.h>' '
-         #define HAVE_TERMCAP_CURSES' \
-         'curses.h / -lcurses' ||
-      feat_bail_required TERMCAP
+   __terminfolib() {
+      link_check terminfo "terminfo(5) (via ${2})" \
+         '#define HAVE_TERMCAP
+         #define HAVE_TERMCAP_CURSES
+         #define HAVE_TERMINFO' "${1}" << _EOT
+#include <stdio.h>
+#include <curses.h>
+#include <term.h>
+#define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
+static int my_putc(int c){return putchar(c);}
+int main(void){
+   int er, r0, r1, r2;
+   char *r3, *tp;
+
+   er = OK;
+   r0 = setupterm(NULL, 1, &er);
+   r1 = tigetflag(UNCONST("bce"));
+   r2 = tigetnum(UNCONST("colors"));
+   r3 = tigetstr(UNCONST("cr"));
+   tp = tparm(r3, NULL);
+   tputs(tp, 1, &my_putc);
+   return (r0 == ERR || r1 == -1 || r2 == -2 || r2 == -1 ||
+      r3 == (char*)-1 || r3 == NULL);
+}
+_EOT
+   }
+
+   if feat_yes TERMCAP_PREFER_TERMINFO; then
+      __terminfolib -ltinfo -ltinfo ||
+         __terminfolib -lcurses -lcurses ||
+         __terminfolib -lcursesw -lcursesw ||
+         feat_bail_required TERMCAP_PREFER_TERMINFO
+   fi
+
+   if [ -z "${have_terminfo}" ]; then
+      __termcaplib -ltermcap '' '' '-ltermcap' ||
+         __termcaplib -ltermcap '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -ltermcap' ||
+         __termcaplib -lcurses '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -lcurses' ||
+         __termcaplib -lcursesw '#include <curses.h>' '
+            #define HAVE_TERMCAP_CURSES' \
+            'curses.h / -lcursesw' ||
+         feat_bail_required TERMCAP
+
+      if [ -n "${have_termcap}" ]; then
+         run_check tgetent_null \
+            "tgetent(3) of termcap(5) takes NULL buffer" \
+            "#define HAVE_TGETENT_NULL_BUF" << _EOT
+#include <stdio.h> /* For C89 NULL */
+#include <stdlib.h>
+#ifdef HAVE_TERMCAP_CURSES
+# include <curses.h>
+#endif
+#include <term.h>
+int main(void){
+   tgetent(NULL, getenv("TERM"));
+   return 0;
+}
+_EOT
+      fi
+   fi
 else
    echo '/* WANT_TERMCAP=0 */' >> ${h}
+   echo '/* WANT_TERMCAP_PREFER_TERMINFO=0 */' >> ${h}
 fi
 
 if feat_yes ERRORS; then
@@ -2293,11 +2311,12 @@ printf '# ifdef HAVE_IDNA\n   ",IDNA"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_IMAP_SEARCH\n   ",IMAP-SEARCH"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_REGEX\n   ",REGEX"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_READLINE\n   ",READLINE"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_EDITLINE\n   ",EDITLINE"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_NCL\n   ",NCL"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_TABEXPAND\n   ",TABEXPAND"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_MLE\n   ",MLE"\n# endif\n' >> ${h}
+  printf '# ifdef HAVE_WCWIDTH\n   " (WIDE GLYPHS)"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_HISTORY\n   ",HISTORY"\n# endif\n' >> ${h}
+printf '# ifdef HAVE_KEY_BINDINGS\n   ",KEY-BINDINGS"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_TERMCAP\n   ",TERMCAP"\n# endif\n' >> ${h}
+  printf '# ifdef HAVE_TERMINFO\n   " (terminfo(5))"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMC\n   ",SPAMC"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_SPAMD\n   ",SPAMD"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_SPAM_FILTER\n   ",SPAMFILTER"\n# endif\n' >> ${h}
@@ -2406,23 +2425,29 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_REGEX
 : + Regular expression support (searches, conditional expressions etc.)
 #endif
-#if defined HAVE_READLINE || defined HAVE_EDITLINE || defined HAVE_NCL
+#if defined HAVE_READLINE || defined HAVE_MLE
 # ifdef HAVE_READLINE
 : + Command line editing via readline(3)
-# elif defined HAVE_EDITLINE
-: + Command line editing via editline(3)
 # else
-: + Command line editing via N(ail) C(ommand) L(ine)
-# endif
-# ifdef HAVE_TABEXPAND
-: + + Tabulator expansion
+#  ifdef HAVE_WCWIDTH
+: + Command line editing via M(ailx)-L(ine)-E(ditor) (wide glyph support)
+#  else
+: + Command line editing via M(ailx)-L(ine)-E(ditor) (no wide glyph support)
+#  endif
 # endif
 # ifdef HAVE_HISTORY
 : + + History management
 # endif
+# ifdef HAVE_KEY_BINDINGS
+: + + Configurable key bindings
+# endif
 #endif
 #ifdef HAVE_TERMCAP
-: + Terminal capability queries
+# ifdef HAVE_TERMINFO
+: + Terminal capability queries (terminfo(5))
+# else
+: + Terminal capability queries (termcap(5))
+# endif
 #endif
 #ifdef HAVE_SPAM
 : + Spam management
@@ -2503,8 +2528,15 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_REGEX
 : - Regular expression support
 #endif
-#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
+#if !defined HAVE_READLINE && !defined HAVE_MLE
 : - Command line editing and history
+#else
+# ifndef HAVE_HISTORY
+: + (Command line editing) - History management
+# endif
+# ifndef HAVE_KEY_BINDINGS
+: + (Command line editing) - Configurable key bindings
+# endif
 #endif
 #ifndef HAVE_TERMCAP
 : - Terminal capability queries

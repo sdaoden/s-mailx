@@ -356,6 +356,8 @@ a_popen_jobsig(int sig){
 
    hadsig = (a_popen_hadsig != 0);
    a_popen_hadsig = 1;
+   if(!hadsig)
+      n_TERMCAP_SUSPEND(TRU1);
 
    oldact = safe_signal(sig, SIG_DFL);
 
@@ -986,6 +988,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    if ((tio_set = ((options & OPT_INTERACTIVE) &&
          (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
       tcgetattr((options & OPT_TTYIN ? STDIN_FILENO : STDOUT_FILENO), &a_popen_tios);
+      n_TERMCAP_SUSPEND(FAL0);
       sigfillset(&nset);
       sigdelset(&nset, SIGCHLD);
       /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
@@ -1009,6 +1012,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    if (tio_set) {
       a_popen_jobsigs_down();
       tio_set = ((options & OPT_TTYIN) != 0);
+      n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
       tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
          (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
       sigprocmask(SIG_SETMASK, &oset, NULL);

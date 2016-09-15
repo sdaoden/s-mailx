@@ -400,7 +400,7 @@
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
    { "colour", &c_colour, (M | RAWLIST), 1, 4
-     DS(N_("Show colour settings of <type> (mono, iso, 256) or define one")) },
+     DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
    { "uncolour", &c_uncolour, (M | RAWLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (\"*\" for all) [<precondition>]")) },
 

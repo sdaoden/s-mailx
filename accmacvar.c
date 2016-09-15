@@ -276,24 +276,6 @@ _var_check_specials(enum okeys okey, bool_t enable, char **val)
             *val = cp;
       }
       break;
-#ifdef HAVE_NCL
-   case ok_v_line_editor_cursor_right:
-      if ((ok = (val != NULL && *val != NULL))) {
-         /* Set with no value? TODO very guly */
-         if (*(cp = *val) != '\0') {
-            char const *x = cp;
-            int c;
-            do {
-               c = n_shell_expand_escape(&x, FAL0);
-               if (c < 0)
-                  break;
-               *cp++ = (char)c;
-            } while (*x != '\0');
-            *cp = '\0';
-         }
-      }
-      break;
-#endif
    default:
       break;
    }

@@ -55,9 +55,7 @@ set ask
 # *header* on a per-folder basis (it is meaningless unless *header* is set)
 set bsdannounce
 
-# Uncomment this in order to get coloured output in $PAGER.
-# (Coloured output is only used if $TERM is either found in *colour-terms*
-# or includes the string "color")
+# Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
 
 # Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
@@ -122,8 +120,8 @@ set keepsave
 # became invalid; set this to include them nonetheless
 #set keep-content-length
 
-# A nice prompt for ISO 6429/ECMA-48 terminals
-#set prompt="\033[31m?\?[\$ \@]\& \033[0m"
+# An informational prompt (and see "Gimmicks" below)
+#set prompt="?\?[\$ \@]\& "
 
 # Automatically quote the text of the message that is responded to
 set quote
@@ -175,5 +173,17 @@ retain date from to cc subject message-id mail-followup-to reply-to
 #   trap \"rm -f \\\"${NAIL_FILENAME_TEMPORARY}\\\"\" EXIT;\
 #   trap "trap \\\"\\\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf \"${NAIL_FILENAME_TEMPORARY}\""
+
+## Gimmicks
+
+# Coloured prompt for the Mailx-Line-Editor (when in interactive mode)
+#if terminal && $features =@ +mle && $features =@ +colour
+#   colour 256 mle-position   fg=202
+#   colour 256 mle-prompt     fg=red
+#   colour iso mle-position   ft=reverse
+#   colour iso mle-prompt     fg=red
+#   colour mono mle-position  ft=reverse
+#   colour mono mle-prompt    ft=bold
+#endif
 
 # s-it-mode

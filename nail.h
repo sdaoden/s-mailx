@@ -204,12 +204,6 @@
 # define n_COLOUR(X)
 #endif
 
-/* The n_COLOUR_TERMS is in addition to those which have "color" in their name!
- * (Keep in SYNC: ./nail.h:n_COLOUR_TERMS, ./nail.1:*colour-terms*"!) */
-#define n_COLOUR_TERMS     \
-   "aterm,cons25,gnome,konsole,kterm,linux,"\
-   "rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
-
 /* Special FD requests for run_command() / start_command() */
 #define COMMAND_FD_PASS -1
 #define COMMAND_FD_NULL -2
@@ -281,6 +275,11 @@
  * used first; note that these value include the size of the structure */
 #define SBUFFER_SIZE    ((0x10000u >> 1u) - 0x400)
 #define SBUFFER_BUILTIN (0x10000u >> 1u)
+
+/* Switch indicating necessity of terminal access interface (termcap.c) */
+#if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
+# define n_HAVE_TCAP
+#endif
 
 /* These come from the configuration (named Xxy to not clash with sh(1)..) */
 #ifndef XSHELL
@@ -766,12 +765,13 @@ enum expand_addr_check_mode {
 };
 
 #ifdef HAVE_COLOUR
-/* We do have several groups of colour IDs; since only one of them can be
+/* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
-enum n_colour_group{
-   n_COLOUR_GROUP_SUM,
-   n_COLOUR_GROUP_VIEW,
-   n__COLOUR_GROUPS = 2
+enum n_colour_ctx{
+   n_COLOUR_CTX_SUM,
+   n_COLOUR_CTX_VIEW,
+   n_COLOUR_CTX_MLE,
+   n__COLOUR_CTX_MAX
 };
 
 enum n_colour_id{
@@ -785,6 +785,10 @@ enum n_colour_id{
    n_COLOUR_ID_VIEW_HEADER,
    n_COLOUR_ID_VIEW_MSGINFO,
    n_COLOUR_ID_VIEW_PARTINFO,
+
+   /* Mailx-Line-Editor */
+   n_COLOUR_ID_MLE_POSITION = 0,
+   n_COLOUR_ID_MLE_PROMPT,
 
    n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
 };
@@ -1060,6 +1064,130 @@ enum tdflags {
    _TD_BUFCOPY    = 1<<15     /* Buffer may be constant, copy it */
 };
 
+#ifdef n_HAVE_TCAP
+enum n_termcap_captype{
+   n_TERMCAP_CAPTYPE_NONE = 0,
+   /* Internally we share the bitspace, so ensure no value ends up as 0 */
+   n_TERMCAP_CAPTYPE_BOOL = 1,
+   n_TERMCAP_CAPTYPE_NUMERIC,
+   n_TERMCAP_CAPTYPE_STRING,
+   n__TERMCAP_CAPTYPE_MAX
+};
+
+/* Termcap commands; different to queries commands perform actions.
+ * Commands are resolved upon init time, and are all termcap(5)-compatible,
+ * therefore we use the short termcap(5) names.
+ * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes on
+ * necessary termcap_cmd() arguments; if those are in [] brackets they are not
+ * regular but are only used when the command, i.e., its effect, is somehow
+ * simulated / faked by a builtin fallback implementation.
+ * Availability of builtin fallback indicated by leading @ (at-sign) */
+enum n_termcap_cmd{
+# ifdef HAVE_TERMCAP
+   n_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
+   n_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
+
+   n_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
+   n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
+
+   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
+   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
+# endif
+
+# ifdef HAVE_MLE
+   n_TERMCAP_CMD_ce, /* el/ce, STRING | @ clr_eol: [start-column],- */
+   n_TERMCAP_CMD_ch, /* hpa/ch, STRING, IDX1 | column_address: column,- */
+   n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
+   n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
+   n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
+# endif
+
+   n__TERMCAP_CMD_MAX,
+   n__TERMCAP_CMD_MASK = (1<<24) - 1,
+
+   /* Only perform command if ca-mode is used */
+   n_TERMCAP_CMD_FLAG_CA_MODE = 1<<29,
+   /* I/O should be flushed after command completed */
+   n_TERMCAP_CMD_FLAG_FLUSH = 1<<30
+};
+
+/* Termcap queries; a query is a command that returns a struct n_termcap_value.
+ * Queries are resolved once they are used first, and may not be termcap(5)-
+ * compatible, therefore we use terminfo(5) names.
+ * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes.
+ * The "xkey | X:" keys are Dickey's xterm extensions, see (our) manual */
+enum n_termcap_query{
+# ifdef HAVE_COLOUR
+   n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
+# endif
+
+   /* --mk-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
+   /* Update the `bind' manual on change! */
+# ifdef HAVE_KEY_BINDINGS
+   n_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
+   n_TERMCAP_QUERY_key_dc,       /* kdch1/kD, STRING | delete-character */
+      n_TERMCAP_QUERY_key_sdc,      /* kDC / *4, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_eol,      /* kel/kE, STRING | clear-to-end-of-line */
+   n_TERMCAP_QUERY_key_exit,     /* kext/@9, STRING */
+   n_TERMCAP_QUERY_key_ic,       /* kich1/kI, STRING | insert character */
+      n_TERMCAP_QUERY_key_sic,      /* kIC/#3, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_home,     /* khome/kh, STRING */
+      n_TERMCAP_QUERY_key_shome,    /* kHOM/#2, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_end,      /* kend/@7, STRING */
+      n_TERMCAP_QUERY_key_send,     /* kEND / *7, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_npage,    /* knp/kN, STRING */
+   n_TERMCAP_QUERY_key_ppage,    /* kpp/kP, STRING */
+   n_TERMCAP_QUERY_key_left,     /* kcub1/kl, STRING */
+      n_TERMCAP_QUERY_key_sleft,    /* kLFT/#4, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aleft,   /* kLFT3/-, STRING | X: Alt+left */
+      n_TERMCAP_QUERY_xkey_cleft,   /* kLFT5/-, STRING | X: Control+left */
+   n_TERMCAP_QUERY_key_right,    /* kcuf1/kr, STRING */
+      n_TERMCAP_QUERY_key_sright,   /* kRIT/%i, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aright,  /* kRIT3/-, STRING | X: Alt+right */
+      n_TERMCAP_QUERY_xkey_cright,  /* kRIT5/-, STRING | X: Control+right */
+   n_TERMCAP_QUERY_key_down,     /* kcud1/kd, STRING */
+      n_TERMCAP_QUERY_xkey_sdown,   /* kDN/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_adown,   /* kDN3/-, STRING | X: Alt+down */
+      n_TERMCAP_QUERY_xkey_cdown,   /* kDN5/-, STRING | X: Control+down */
+   n_TERMCAP_QUERY_key_up,       /* kcuu1/ku, STRING */
+      n_TERMCAP_QUERY_xkey_sup,     /* kUP/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aup,     /* kUP3/-, STRING | X: Alt+up */
+      n_TERMCAP_QUERY_xkey_cup,     /* kUP5/-, STRING | X: Control+up */
+   n_TERMCAP_QUERY_kf0,          /* kf0/k0, STRING */
+   n_TERMCAP_QUERY_kf1,          /* kf1/k1, STRING */
+   n_TERMCAP_QUERY_kf2,          /* kf2/k2, STRING */
+   n_TERMCAP_QUERY_kf3,          /* kf3/k3, STRING */
+   n_TERMCAP_QUERY_kf4,          /* kf4/k4, STRING */
+   n_TERMCAP_QUERY_kf5,          /* kf5/k5, STRING */
+   n_TERMCAP_QUERY_kf6,          /* kf6/k6, STRING */
+   n_TERMCAP_QUERY_kf7,          /* kf7/k7, STRING */
+   n_TERMCAP_QUERY_kf8,          /* kf8/k8, STRING */
+   n_TERMCAP_QUERY_kf9,          /* kf9/k9, STRING */
+   n_TERMCAP_QUERY_kf10,         /* kf10/k;, STRING */
+   n_TERMCAP_QUERY_kf11,         /* kf11/F1, STRING */
+   n_TERMCAP_QUERY_kf12,         /* kf12/F2, STRING */
+   n_TERMCAP_QUERY_kf13,         /* kf13/F3, STRING */
+   n_TERMCAP_QUERY_kf14,         /* kf14/F4, STRING */
+   n_TERMCAP_QUERY_kf15,         /* kf15/F5, STRING */
+   n_TERMCAP_QUERY_kf16,         /* kf16/F6, STRING */
+   n_TERMCAP_QUERY_kf17,         /* kf17/F7, STRING */
+   n_TERMCAP_QUERY_kf18,         /* kf18/F8, STRING */
+   n_TERMCAP_QUERY_kf19,         /* kf19/F9, STRING */
+# endif /* HAVE_KEY_BINDINGS */
+
+   n__TERMCAP_QUERY_MAX
+};
+#endif /* n_HAVE_TCAP */
+
 enum user_options {
    OPT_NONE,
    OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
@@ -1139,7 +1267,10 @@ enum program_state {
    /* Various first-time-init switches */
    PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
    PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
-   PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
+   PS_t_FLAG         = 1<<26,       /* OPT_t_FLAG made persistant */
+   PS_TERMCAP_DISABLE = 1<<27,      /* HAVE_TERMCAP: *termcap-disable* was set */
+   PS_TERMCAP_CA_MODE = 1<<28,      /* HAVE_TERMCAP: ca_mode available & used */
+   PS_HISTORY_LOADED = 1<<29        /* Command line editor history loaded */
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.
@@ -1196,7 +1327,6 @@ ok_b_autothread,
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_colour_terms,
    ok_v_crt,
    ok_v_customhdr,
 
@@ -1249,7 +1379,6 @@ ok_b_emptybox,
    ok_b_keepsave,
 
    ok_v_LISTER,
-   ok_v_line_editor_cursor_right,      /* {special=1} */
    ok_b_line_editor_disable,
 
    ok_v_MAIL,
@@ -1369,7 +1498,8 @@ ok_v_smtp_auth_user,
    ok_v_ssl_verify,
    ok_v_stealthmua,
 
-   ok_b_term_ca_mode,
+   ok_v_termcap,
+   ok_b_termcap_disable,
    ok_v_toplines,
    ok_v_ttycharset,
 
@@ -1481,13 +1611,6 @@ struct mime_handler {
    int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
 };
 
-struct time_current {
-   time_t      tc_time;
-   struct tm   tc_gm;
-   struct tm   tc_local;
-   char        tc_ctime[32];
-};
-
 struct quoteflt {
    FILE        *qf_os;        /* Output stream */
    char const  *qf_pfix;
@@ -1559,6 +1682,25 @@ do {\
       termios_state.ts_needs_reset = FAL0;\
    }\
 } while (0)
+
+#ifdef n_HAVE_TCAP
+struct n_termcap_value{
+   enum n_termcap_captype tv_captype;
+   ui8_t tv__dummy[4];
+   union n_termcap_value_data{
+      bool_t tvd_bool;
+      ui32_t tvd_numeric;
+      char const *tvd_string;
+   } tv_data;
+};
+#endif
+
+struct time_current {
+   time_t      tc_time;
+   struct tm   tc_gm;
+   struct tm   tc_local;
+   char        tc_ctime[32];
+};
 
 struct sock {                 /* data associated with a socket */
    int         s_fd;          /* file descriptor */

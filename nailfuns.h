@@ -372,6 +372,10 @@ FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
+/* Detect visual width of (blen bytes of) buf, return (size_t)-1 on error.
+ * Give blen UIZ_MAX to strlen().   buf may be NULL if (final) blen is 0 */
+FL size_t      field_detect_width(char const *buf, size_t blen);
+
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
@@ -750,7 +754,7 @@ FL int         c_uncolour(void *v);
  * test wether *colour-pager* is to be inspected.
  * The push/pop functions deal with recursive execute()ions, for now. TODO
  * env_gut() will reset() as necessary */
-FL void        n_colour_env_create(enum n_colour_group cgrp, bool_t pager_used);
+FL void        n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used);
 FL void        n_colour_env_push(void);
 FL void        n_colour_env_pop(bool_t any_env_till_root);
 FL void        n_colour_env_gut(FILE *fp);
@@ -2096,18 +2100,56 @@ FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
 
 /*
  * termcap.c
+ * This is a little bit hairy since it provides some stuff even if HAVE_TERMCAP
+ * is false due to encapsulation desire
  */
 
-/* termcap(3) / xy lifetime handling -- only to be called if OPT_INTERACTIVE
- * is true, and may internally decline to initialize itself; note that
- * termcap_destroy() can always be called */
-/* TODO Maybe drop TTYOUT/etc. and only set INTERACTIVE when input and output
- * TODO are a terminal, or ensure via I/O stuff that we use the input+output
- * TODO terminal FD accordingly */
-#ifdef HAVE_TERMCAP
-FL void        termcap_init(void);
-FL void        termcap_destroy(void);
-#endif
+#ifdef n_HAVE_TCAP
+/* termcap(3) / xy lifetime handling -- only called if we're OPT_INTERACTIVE
+ * but not doing something in OPT_QUICKRUN_MASK */
+FL void        n_termcap_init(void);
+FL void        n_termcap_destroy(void);
+
+/* enter_ca_mode / enable keypad (both if possible).
+ * TODO When complete is not set we won't enter_ca_mode, for example: we don't
+ * TODO want a complete screen clearance after $PAGER returned after displaying
+ * TODO a mail, because otherwise the screen would look differently for normal
+ * TODO stdout display messages.  Etc. */
+# ifdef HAVE_TERMCAP
+FL void        n_termcap_resume(bool_t complete);
+FL void        n_termcap_suspend(bool_t complete);
+
+#  define n_TERMCAP_RESUME(CPL)  n_termcap_resume(CPL)
+#  define n_TERMCAP_SUSPEND(CPL) n_termcap_suspend(CPL)
+# else
+#  define n_TERMCAP_RESUME(CPL)
+#  define n_TERMCAP_SUSPEND(CPL)
+# endif
+
+/* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
+ * for commands which are not available and have no builtin fallback.
+ * For query options the return represents a true value and -1 error.
+ * Will return FAL0 directly unless we've been initialized.
+ * By convention unused argument slots are given as -1 */
+FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
+# define n_termcap_cmdx(CMD)     n_termcap_cmd(CMD, -1, -1)
+
+/* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX then
+ * tvp->tv_data.tvd_string must contain the name of the query to look up; this
+ * is used to lookup just about *any* (string) capability.
+ * Returns TRU1 on success and TRUM1 for queries for which a builtin default
+ * is returned; FAL0 is returned on non-availability */
+FL bool_t      n_termcap_query(enum n_termcap_query query,
+                  struct n_termcap_value *tvp);
+
+/* Get a n_termcap_query for name or -1 if it is not known, and -2 if
+ * type wasn't _NONE and the type doesn't match. */
+# ifdef HAVE_KEY_BINDINGS
+FL si32_t      n_termcap_query_for_name(char const *name,
+                  enum n_termcap_captype type);
+FL char const *n_termcap_name_of_query(enum n_termcap_query query);
+# endif
+#endif /* n_HAVE_TCAP */
 
 /*
  * thread.c
@@ -2158,7 +2200,7 @@ FL char *      getpassword(char const *query);
 #endif
 
 /* Overall interactive terminal life cycle for command line editor library */
-#if defined HAVE_EDITLINE || defined HAVE_READLINE
+#if defined HAVE_READLINE
 # define TTY_WANTS_SIGWINCH
 #endif
 FL void        n_tty_init(void);
@@ -2172,7 +2214,7 @@ FL void        n_tty_signal(int sig);
 FL int         n_tty_readline(char const *prompt, char **linebuf,
                   size_t *linesize, size_t n SMALLOC_DEBUG_ARGS);
 #ifdef HAVE_DEBUG
-# define n_tty_readline(A,B,C,D) n_tty_readline(A, B, C, D, __FILE__, __LINE__)
+# define n_tty_readline(A,B,C,D) (n_tty_readline)(A, B, C, D, __FILE__,__LINE__)
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
