@@ -321,8 +321,6 @@ OpenBSD forks have instead addressed this problem, more or less
 complete, in one or the other way, v15.0 will also have to address
 signal handling, because only like that we have the possibility to ever
 reach a clean state from which we can actually think about re-extending
-this MUA. It is not unlikely that IMAP support will be dropped
-temporarily, leaving only the plain mailx(1) plus Maildir, SMTP and POP3
-functionality. It has to move under the headline reduce to the max.
+this MUA.
 
 # s-ts-mode

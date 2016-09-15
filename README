@@ -5,7 +5,7 @@ S-nail (later S-mailx) is a mail processing system with a command
 syntax reminiscent of ed(1) with lines replaced by messages.
 It is intended to provide the functionality of the POSIX mailx(1)
 command, but is MIME capable and optionally offers extensions for
-line editing, IDNA, MIME, S/MIME, SMTP and POP3 (and IMAP).
+line editing, IDNA, MIME, S/MIME, SMTP and POP3.
 It is usable as a mail batch language.
 
 Please refer to the file "INSTALL" for build and installation remarks,

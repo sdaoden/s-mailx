@@ -815,8 +815,7 @@ enum conversion {
 
 enum cproto {
    CPROTO_SMTP,
-   CPROTO_POP3,
-   CPROTO_IMAP
+   CPROTO_POP3
 };
 
 enum dotlock_state {
@@ -1023,7 +1022,6 @@ enum prompt_exp {
 enum protocol {
    PROTO_FILE,       /* refers to a local file */
    PROTO_POP3,       /* is a pop3 server string */
-   PROTO_IMAP,       /* is an imap server string */
    PROTO_MAILDIR,    /* refers to a maildir folder */
    PROTO_UNKNOWN     /* unknown protocol */
 };
@@ -1197,7 +1195,6 @@ ok_b_autothread,
    ok_v_datefield,
    ok_v_datefield_markout_older,
    ok_b_debug,                         /* {special=1} */
-   ok_b_disconnected,
    ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_dotlock_ignore_error,
@@ -1237,11 +1234,6 @@ ok_b_emptybox,
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_indentprefix,
-   ok_v_imap_auth,
-   ok_v_imap_cache,
-   ok_v_imap_keepalive,
-   ok_v_imap_list_depth,
-   ok_b_imap_use_starttls,
 
    ok_b_keep,
    ok_b_keep_content_length,
@@ -1429,7 +1421,7 @@ struct url {
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
    struct str     url_host;         /* Service hostname */
-   struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
+   struct str     url_path;         /* Path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
    struct str     url_h_p;          /* .url_host[:.url_port] */
    /* .url_user@.url_host
@@ -1588,26 +1580,13 @@ struct mailbox {
       MB_VOID,       /* no type (e. g. connection failed) */
       MB_FILE,       /* local file */
       MB_POP3,       /* POP3 mailbox */
-      MB_IMAP,       /* IMAP mailbox */
-      MB_MAILDIR,    /* maildir folder */
-      MB_CACHE       /* cached mailbox */
+      MB_MAILDIR     /* maildir folder */
    }           mb_type;       /* type of mailbox */
    enum {
       MB_DELE = 01,  /* may delete messages in mailbox */
       MB_EDIT = 02   /* may edit messages in mailbox */
    }           mb_perm;
    int mb_threaded;           /* mailbox has been threaded */
-#ifdef HAVE_IMAP
-   enum mbflags {
-      MB_NOFLAGS  = 000,
-      MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
-   }           mb_flags;
-   unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
-   char        *mb_imap_account;    /* name of current IMAP account */
-   char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
-   char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
-   char        *mb_cache_directory; /* name of cache directory */
-#endif
    struct sock mb_sock;       /* socket structure */
 };
 
@@ -1638,22 +1617,20 @@ enum mflag {
    MBOX           = (1<<10),  /* Send this to mbox, regardless */
    MNOFROM        = (1<<11),  /* no From line */
    MHIDDEN        = (1<<12),  /* message is hidden to user */
-   MFULLYCACHED   = (1<<13),  /* message is completely cached */
-   MBOXED         = (1<<14),  /* message has been sent to mbox */
-   MUNLINKED      = (1<<15),  /* message was unlinked from cache */
-   MNEWEST        = (1<<16),  /* message is very new (newmail) */
-   MFLAG          = (1<<17),  /* message has been flagged recently */
-   MUNFLAG        = (1<<18),  /* message has been unflagged */
-   MFLAGGED       = (1<<19),  /* message is `flagged' */
-   MANSWER        = (1<<20),  /* message has been answered recently */
-   MUNANSWER      = (1<<21),  /* message has been unanswered */
-   MANSWERED      = (1<<22),  /* message is `answered' */
-   MDRAFT         = (1<<23),  /* message has been drafted recently */
-   MUNDRAFT       = (1<<24),  /* message has been undrafted */
-   MDRAFTED       = (1<<25),  /* message is marked as `draft' */
-   MOLDMARK       = (1<<26),  /* messages was marked previously */
-   MSPAM          = (1<<27),  /* message is classified as spam */
-   MSPAMUNSURE    = (1<<28)   /* message may be spam, but it is unsure */
+   MBOXED         = (1<<13),  /* message has been sent to mbox */
+   MNEWEST        = (1<<14),  /* message is very new (newmail) */
+   MFLAG          = (1<<15),  /* message has been flagged recently */
+   MUNFLAG        = (1<<16),  /* message has been unflagged */
+   MFLAGGED       = (1<<17),  /* message is `flagged' */
+   MANSWER        = (1<<18),  /* message has been answered recently */
+   MUNANSWER      = (1<<19),  /* message has been unanswered */
+   MANSWERED      = (1<<20),  /* message is `answered' */
+   MDRAFT         = (1<<21),  /* message has been drafted recently */
+   MUNDRAFT       = (1<<22),  /* message has been undrafted */
+   MDRAFTED       = (1<<23),  /* message is marked as `draft' */
+   MOLDMARK       = (1<<24),  /* messages was marked previously */
+   MSPAM          = (1<<25),  /* message is classified as spam */
+   MSPAMUNSURE    = (1<<26)   /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
@@ -1709,9 +1686,6 @@ struct message {
    struct message *m_parent;  /* parent of this message */
    unsigned    m_level;       /* thread level of message */
    long        m_threadpos;   /* position in threaded display */
-#ifdef HAVE_IMAP
-   unsigned long m_uid;       /* IMAP unique identifier */
-#endif
    char        *m_maildir_file;  /* original maildir file of msg */
    ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
@@ -1959,7 +1933,6 @@ VL struct message *dot;                /* Pointer to current message */
 VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
-VL int            imap_created_mailbox; /* hack to get feedback from imap */
 
 VL struct ignoretab  ignore[2];        /* ignored and retained fields
                                         * 0 is ignore, 1 is retain */

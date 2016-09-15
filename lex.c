@@ -526,15 +526,6 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       rv = pop3_setfile(name, fm);
       goto jleave;
 #endif
-#ifdef HAVE_IMAP
-   case PROTO_IMAP:
-      shudclob = 1;
-      if ((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
-         rv = 1;
-      else
-         rv = imap_setfile(name, fm);
-      goto jleave;
-#endif
    default:
       n_err(_("Cannot handle protocol: %s\n"), name);
       goto jem1;
@@ -821,15 +812,12 @@ commands(void)
          char *cp;
 
          cp = ok_vlook(newmail);
-         if ((options & OPT_TTYIN) && (cp != NULL || mb.mb_type == MB_IMAP)) {
+         if ((options & OPT_TTYIN) && cp != NULL) {
             struct stat st;
 
-            n = (cp != NULL && strcmp(cp, "noimap") && strcmp(cp, "nopoll"));
+            n = (cp != NULL && strcmp(cp, "nopoll"));
             if ((mb.mb_type == MB_FILE && !stat(mailname, &st) &&
                      st.st_size > mailsize) ||
-#ifdef HAVE_IMAP
-                  (mb.mb_type == MB_IMAP && imap_newmail(n) > (cp == NULL)) ||
-#endif
                   (mb.mb_type == MB_MAILDIR && n != 0)) {
                size_t odot = PTR2SIZE(dot - message);
                ui32_t odid = (pstate & PS_DID_PRINT_DOT);
@@ -841,10 +829,8 @@ commands(void)
                   rv = FAL0;
                   break;
                }
-               if (mb.mb_type != MB_IMAP) {
-                  dot = message + odot;
-                  pstate |= odid;
-               }
+               dot = message + odot;
+               pstate |= odid;
             }
          }
 
@@ -1311,8 +1297,6 @@ newfileinfo(void)
       printf(_(" %d moved"), moved);
    if (hidden > 0)
       printf(_(" %d hidden"), hidden);
-   if (mb.mb_type == MB_CACHE)
-      printf(" [Disconnected]");
    else if (mb.mb_perm == 0)
       printf(_(" [Read only]"));
    printf("\n");
@@ -1453,9 +1437,6 @@ initbox(char const *name)
       free(mb.mb_sorted);
       mb.mb_sorted = NULL;
    }
-#ifdef HAVE_IMAP
-   mb.mb_flags = MB_NOFLAGS;
-#endif
    dot = prevdot = threadroot = NULL;
    pstate &= ~PS_DID_PRINT_DOT;
    NYD_LEAVE;

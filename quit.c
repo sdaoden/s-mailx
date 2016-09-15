@@ -322,14 +322,6 @@ quit(void)
       hold_sigs(); /* YYY */
       goto jleave;
 #endif
-#ifdef HAVE_IMAP
-   case MB_IMAP:
-   case MB_CACHE:
-      rele_sigs(); /* YYY */
-      imap_quit();
-      hold_sigs(); /* YYY */
-      goto jleave;
-#endif
    case MB_VOID:
    default:
       goto jleave;
@@ -481,7 +473,6 @@ makembox(void) /* TODO oh my god */
    char *mbox, *tempQuit;
    int mcount, c;
    FILE *ibuf = NULL, *obuf, *abuf;
-   enum protocol prot;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -530,23 +521,11 @@ makembox(void) /* TODO oh my god */
    }
 
    srelax_hold();
-   prot = which_protocol(mbox);
    for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
-         if (prot == PROTO_IMAP &&
-               saveignore[0].i_count == 0 && saveignore[1].i_count == 0
-#ifdef HAVE_IMAP /* TODO revisit */
-               && imap_thisaccount(mbox)
-#endif
-         ) {
-#ifdef HAVE_IMAP
-            if (imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
-#endif
-               goto jerr;
-         } else if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
+         if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
             n_perr(mbox, 0);
-jerr:
             srelax_rele();
             if (ibuf != NULL)
                Fclose(ibuf);
@@ -580,8 +559,7 @@ jerr:
       goto jleave;
    }
    if (Fclose(obuf) != 0) {
-      if (prot != PROTO_IMAP)
-         n_perr(mbox, 0);
+      n_perr(mbox, 0);
       goto jleave;
    }
    if (mcount == 1)

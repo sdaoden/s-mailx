@@ -135,23 +135,13 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
    NYD_ENTER;
 
    if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL) {
-      switch (which_protocol(cp)) {
-      case PROTO_IMAP:
-         if (strcmp(cp, protbase(cp)))
-            goto jcopy;
-         snprintf(buf, bufsize, "%s/INBOX", cp);
-         goto jleave;
-      default:
-         break;
-      }
+      ;
    }
 
    if (force || (cp = ok_vlook(MAIL)) == NULL)
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
    else
-jcopy:
       n_strlcpy(buf, cp, bufsize);
-jleave:
    NYD_LEAVE;
 }
 
@@ -381,12 +371,6 @@ get_header(struct message *mp)
 #ifdef HAVE_POP3
    case MB_POP3:
       rv = pop3_header(mp);
-      break;
-#endif
-#ifdef HAVE_IMAP
-   case MB_IMAP:
-   case MB_CACHE:
-      rv = imap_header(mp);
       break;
 #endif
    case MB_VOID:
@@ -1202,11 +1186,6 @@ jnext:
       break;
    }
 
-   if (res[0] == '@' && which_protocol(mailname) == PROTO_IMAP) {
-      res = str_concat_csvl(&s, protbase(mailname), "/", res + 1, NULL)->s;
-      dyn = TRU1;
-   }
-
    if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
       size_t i = strlen(cbuf);
 
@@ -1304,11 +1283,6 @@ var_folder_updated(char const *name, char **store)
       n_err(_("*folder* cannot be set to a flat, readonly POP3 account\n"));
       rv = FAL0;
       goto jleave;
-   case PROTO_IMAP:
-      /* Simply assign what we have, even including `%:' prefix */
-      if (folder != name)
-         goto jvcopy;
-      goto jleave;
    default:
       /* Further expansion desired */
       break;
@@ -1338,7 +1312,6 @@ var_folder_updated(char const *name, char **store)
       folder = res;
 #endif
 
-jvcopy:
    *store = sstrdup(folder);
 
    if (res != NULL)
@@ -1400,12 +1373,6 @@ get_body(struct message *mp)
 #ifdef HAVE_POP3
    case MB_POP3:
       rv = pop3_body(mp);
-      break;
-#endif
-#ifdef HAVE_IMAP
-   case MB_IMAP:
-   case MB_CACHE:
-      rv = imap_body(mp);
       break;
 #endif
    case MB_VOID:

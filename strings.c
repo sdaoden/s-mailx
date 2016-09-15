@@ -552,33 +552,6 @@ FL char *
    return dest;
 }
 
-FL char *
-(protbase)(char const *cp SALLOC_DEBUG_ARGS) /* TODO obsolete */
-{
-   char *n, *np;
-   NYD_ENTER;
-
-   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
-
-   /* Just ignore the `is-system-mailbox' prefix XXX */
-   if (cp[0] == '%' && cp[1] == ':')
-      cp += 2;
-
-   while (*cp != '\0') {
-      if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-         *np++ = *cp++;
-         *np++ = *cp++;
-         *np++ = *cp++;
-      } else if (cp[0] == '/')
-         break;
-      else
-         *np++ = *cp++;
-   }
-   *np = '\0';
-   NYD_LEAVE;
-   return n;
-}
-
 FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {

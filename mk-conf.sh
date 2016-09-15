@@ -8,7 +8,7 @@ option_reset() {
    WANT_ICONV=0
    WANT_SOCKETS=0
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_SMTP=0 WANT_POP3=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
       #WANT_MD5=0
    WANT_IDNA=0
@@ -29,7 +29,7 @@ option_maximal() {
    WANT_ICONV=require
    WANT_SOCKETS=1
       WANT_SSL=1 WANT_ALL_SSL_ALGORITHMS=1
-      WANT_SMTP=1 WANT_POP3=1 WANT_IMAP=1
+      WANT_SMTP=1 WANT_POP3=1
       WANT_GSSAPI=1 WANT_NETRC=1 WANT_AGENT=1
       #WANT_MD5=1
    WANT_IDNA=1
@@ -113,7 +113,7 @@ fi
 
 # Inter-relationships
 option_update() {
-   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
+   if feat_no SMTP && feat_no POP3; then
       WANT_SOCKETS=0
    fi
    if feat_no SOCKETS; then
@@ -125,15 +125,11 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
-      if feat_require IMAP; then
-         msg "ERROR: need SOCKETS for required feature IMAP\\n"
-         config_exit 13
-      fi
       WANT_SSL=0 WANT_ALL_SSL_ALGORITHMS=0
-      WANT_SMTP=0 WANT_POP3=0 WANT_IMAP=0
+      WANT_SMTP=0 WANT_POP3=0
       WANT_GSSAPI=0 WANT_NETRC=0 WANT_AGENT=0
    fi
-   if feat_no SMTP && feat_no IMAP; then
+   if feat_no SMTP; then
       WANT_GSSAPI=0
    fi
 
@@ -1166,26 +1162,6 @@ fi
 
 ##
 
-link_check mmap 'mmap(2)' '#define HAVE_MMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mmap(0, 0, 0, 0, 0, 0);
-   return 0;
-}
-!
-
-link_check mremap 'mremap(2)' '#define HAVE_MREMAP' << \!
-#include <sys/types.h>
-#include <sys/mman.h>
-int main(void)
-{
-   mremap(0, 0, 0, MREMAP_MAYMOVE);
-   return 0;
-}
-!
-
 run_check pathconf 'pathconf(2)' '#define HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
@@ -1808,12 +1784,6 @@ else
    echo '/* WANT_POP3=0 */' >> ${h}
 fi
 
-if feat_yes IMAP; then
-   echo '#define HAVE_IMAP' >> ${h}
-else
-   echo '/* WANT_IMAP=0 */' >> ${h}
-fi
-
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
@@ -2232,7 +2202,6 @@ printf '# ifdef HAVE_SSL_ALL_ALGORITHMS\n   ",SSL-ALL-ALGORITHMS"\n# endif\n'\
    >> ${h}
 printf '# ifdef HAVE_SMTP\n   ",SMTP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_POP3\n   ",POP3"\n# endif\n' >> ${h}
-printf '# ifdef HAVE_IMAP\n   ",IMAP"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_GSSAPI\n   ",GSS-API"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_MD5\n   ",MD5 [APOP,CRAM-MD5]"\n# endif\n' >> ${h}
 printf '# ifdef HAVE_NETRC\n   ",NETRC"\n# endif\n' >> ${h}
@@ -2333,9 +2302,6 @@ ${cat} > ${tmp2}.c << \!
 #ifdef HAVE_POP3
 : + POP3 protocol
 #endif
-#ifdef HAVE_IMAP
-: + IMAP protocol
-#endif
 #ifdef HAVE_GSSAPI
 : + GSS-API authentication
 #endif
@@ -2433,9 +2399,6 @@ ${cat} > ${tmp2}.c << \!
 #ifndef HAVE_POP3
 : - POP3 protocol
 #endif
-#ifndef HAVE_IMAP
-: - IMAP protocol
-#endif
 #ifndef HAVE_GSSAPI
 : - GSS-API authentication
 #endif
@@ -2498,7 +2461,7 @@ ${cat} > ${tmp2}.c << \!
 # ifndef HAVE_FCHDIR
 : . The function fchdir(2) could not be found. We will use chdir(2)
 : _ instead. This is not a problem unless the current working
-: _ directory of mailx is moved while the IMAP cache is used.
+: _ directory is changed while this program is inside of it.
 # endif
 # ifdef HAVE_DEBUG
 : . Debug enabled binary: not meant to be used by end-users: THANKS!

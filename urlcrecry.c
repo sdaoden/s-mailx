@@ -622,10 +622,10 @@ url_servbyname(struct url const *urlp, ui16_t *irv_or_null)
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
-#if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
+#if defined HAVE_SMTP && defined HAVE_POP3
 # define __ALLPROTO
 #endif
-#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
+#if defined HAVE_SMTP || defined HAVE_POP3
 # define __ANYPROTO
    char *cp, *x;
 #endif
@@ -678,13 +678,12 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #else
       goto jeproto;
 #endif
+#if 0
    case CPROTO_IMAP:
-#ifdef HAVE_IMAP
       _if ("imap", 143)
       _ifs ("imaps", 993)
       _protox("imap", 143);
       break;
-#else
       goto jeproto;
 #endif
    }
@@ -766,13 +765,17 @@ juser:
 
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && x[1] != '\0') {
+#if 0
       if (cproto != CPROTO_IMAP) {
+#endif
          n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
             urlp->url_input);
          goto jleave;
+#if 0
       }
       urlp->url_path.l = strlen(++x);
       urlp->url_path.s = savestrbuf(x, urlp->url_path.l);
+#endif
    }
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
@@ -948,13 +951,6 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
       break;
-   case CPROTO_IMAP:
-      pname = "IMAP";
-      pxstr = "imap-auth";
-      pxlen = sizeof("imap-auth") -1;
-      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
-      authdef = "login";
-      break;
    }
 
    ccp->cc_cproto = cproto;
@@ -1110,12 +1106,6 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       authokey = ok_v_pop3_auth;
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
-      break;
-   case CPROTO_IMAP:
-      pstr = "imap";
-      authokey = ok_v_imap_auth;
-      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
-      authdef = "login";
       break;
    }
 

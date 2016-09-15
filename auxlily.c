@@ -684,23 +684,6 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
          n_err(_("No SSL support compiled in\n"));
 # endif
 #endif
-      } else if (!strncmp(name, "imap://", 7)) {
-#ifdef HAVE_IMAP
-         rv = PROTO_IMAP;
-#else
-         fprintf(stderr, _("No IMAP support compiled in.\n"));
-#endif
-      } else if (!strncmp(name, "imaps://", 8)) {
-#if defined HAVE_IMAP && defined HAVE_SSL
-         rv = PROTO_IMAP;
-#else
-# ifndef HAVE_IMAP
-         fprintf(stderr, _("No IMAP support compiled in.\n"));
-# endif
-# ifndef HAVE_SSL
-         fprintf(stderr, _("No SSL support compiled in.\n"));
-# endif
-#endif
       }
       goto jleave;
    }

@@ -256,24 +256,16 @@
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
    { "unshortcut", &c_unshortcut, (M | RAWLIST), 1, 1000
      DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
-   { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
-     DS(N_("Send command strings directly to the IMAP server")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0
      DS(N_("Create threaded view of current \"folder\"")) },
    { "unthread", &c_unthread, (A | O | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
-   { "connect", &c_connect, (A | NOLIST), 0, 0
-     DS(N_("If disconnected, connect to IMAP mailbox")) },
-   { "disconnect", &c_disconnect, (A | NDMLIST), 0, 0
-     DS(N_("If connected, disconnect from IMAP mailbox")) },
    { "sort", &c_sort, (A | RAWLIST), 0, 1
      DS(N_("Change sorting: date,from,size,spam,status,subject,thread,to")) },
    { "unsort", &c_unthread, (A | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
-   { "cache", &c_cache, (A | MSGLIST), 0, 0
-     DS(N_("Read specified <message list> into the IMAP cache")) },
    { "flag", &c_flag, (A | M | MSGLIST), 0, 0
      DS(N_("(Un)Flag <message-list> (for special attention)")) },
    { "unflag", &c_unflag, (A | M | MSGLIST), 0, 0
@@ -305,7 +297,7 @@
    { "Mv", &c_Move, (A | M | STRLIST), 0, 0
      DS(N_("Like `move', but derive filename from first sender")) },
    { "noop", &c_noop, (A | M | RAWLIST), 0, 0
-     DS(N_("NOOP command if IMAP or POP folder; else noop")) },
+     DS(N_("NOOP command if current folder is accessed via network")) },
    { "collapse", &c_collapse, (A | MSGLIST), 0, 0
      DS(N_("Collapse thread views for <message-list>")) },
    { "uncollapse", &c_uncollapse, (A | MSGLIST), 0, 0
