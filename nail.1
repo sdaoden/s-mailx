@@ -394,10 +394,7 @@ Also understood are
 .Va replyto ) ,
 .Ql Sender:
 (p.\ o.\&
-.Va sender ) ,
-.Ql Organization:
-(p.\ o.\&
-.Ev ORGANIZATION ) .
+.Va sender ) .
 Note you can also specify
 .Ql From: ,
 possibly overriding
@@ -413,6 +410,8 @@ upon the message context, can also be specified:
 and
 .Ql Mail-Followup-To:
 (special address massage will however still occur for the latter).
+In fact custom header fields may also be used, the content of which
+is passed through unchanged.
 .
 .Mx
 .It Fl u Ar user
@@ -2722,6 +2721,27 @@ otherwise identical to
 .Ic save .
 .
 .Mx
+.It Ic customhdr
+With no arguments, shows all currently-defined custom headers.
+With one argument, shows that custom header.
+With more than one argument, creates a new or replaces an existing
+custom header with the name given as the first argument, the content of
+which being defined by the concatenated remaining arguments.
+.Ic uncustomhdr
+can be used to delete custom headers.
+\*(ID Overwriting of automatically managed headers is neither supported
+nor prevented.
+Defined custom headers will be injected into newly composed or forwarded
+messages, e.g.:
+.Pp
+.Dl customhdr OpenPGP id=12345678; url=http://www.YYY.ZZ
+.Pp
+The \*(OB variable
+.Va customhdr
+may also be used to inject custom headers; it is covered by
+.Ic localopts .
+.
+.Mx
 .It Ic cwd
 Show the name of the current working directory.
 .
@@ -4199,6 +4219,13 @@ Also see
 for the general picture.
 .
 .Mx
+.It Ic uncustomhdr
+Deletes the custom headers given as arguments.
+The special name
+.Ql *
+will remove all custom headers.
+.
+.Mx
 .It Ic undefine
 Undefine all given macros.
 An error message is shown if a given macro is not defined.
@@ -4693,15 +4720,14 @@ only the first displayable part is included.
 .It Ic ~H
 Edit the message header fields
 .Ql From: ,
-.Ql Reply-To: ,
-.Ql Sender:
+.Ql Reply-To:
 and
-.Ql Organization:
+.Ql Sender:
 by typing each one in turn and allowing the user to edit the field.
 The default values for these fields originate from the
-.Va from , replyto , sender
+.Va from , replyto
 and
-.Ev ORGANIZATION
+.Va sender
 variables.
 .
 .Mx
@@ -5379,6 +5405,15 @@ and
 .Xr stty 1 ) .
 .
 .Mx
+.It Va customhdr
+\*(OB A variable counterpart of the
+.Ic customhdr
+command (see there for documentation), interpreted as a comma-separated
+list of custom headers to be injected, e.g.:
+.Pp
+.Dl set customhdr="Hdr1: Body1, Hdr2: Body2"
+.
+.Mx
 .It Va datefield
 In the summary of
 .Ic headers
@@ -5484,10 +5519,9 @@ The
 .Ql Bcc: ,
 .Ql Subject: ,
 .Ql From: ,
-.Ql Reply-To: ,
-.Ql Sender: ,
+.Ql Reply-To:
 and
-.Ql Organization:
+.Ql Sender:
 fields are accepted within the header, other fields are ignored.
 .
 .Mx
@@ -8021,12 +8055,6 @@ This variable is only used when it resides in the process environment.
 \*(IN\*(OP This variable overrides the default location of the user's
 .Pa .netrc
 file.
-.
-.Mx
-.It Ev ORGANIZATION
-The value to put into the
-.Ql Organization:
-field of the message header.
 .
 .Mx
 .It Ev PAGER

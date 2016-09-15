@@ -57,7 +57,7 @@
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
    { "alias", &c_alias, (M | RAWLIST), 0, 1000
-     DS(N_("Show all or the specified <alias>(es), or (re)define one")) },
+     DS(N_("Show all/<alias>, or (re)define <alias> to <:data:>")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type each message of <message-list> on the terminal")) },
    { "type", &c_type, (A | MSGLIST), 0, MMNDEL
@@ -384,6 +384,10 @@
      DS(N_("Either <show> (default) or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
+   { "customhdr", &c_customhdr, (M | RAWLIST), 0, 1000
+     DS(N_("Show all/<header>, or (re)define a custom <header> to <:data:>")) },
+   { "uncustomhdr", &c_uncustomhdr, (M | RAWLIST), 1, 1000
+     DS(N_("Delete custom <:header:> (\"*\" for all)")) },
    { "features", &_c_features, (H | M | NOLIST), 0, 0
      DS(N_("Show features that are compiled into the MUA")) },
    { "version", &_c_version, (H | M | NOLIST), 0, 0

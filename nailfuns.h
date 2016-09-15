@@ -1228,8 +1228,9 @@ FL char const * charset_iter_or_fallback(void);
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
+/* Check wether our headers will need MIME conversion */
 #ifdef HAVE_ICONV
-FL char const * need_hdrconv(struct header *hp, enum gfield w);
+FL char const * need_hdrconv(struct header *hp);
 #endif
 
 /* Convert header fields from RFC 1522 format */
@@ -1475,6 +1476,13 @@ FL int         c_shortcut(void *v);
 FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
+
+/* `(un)?customhdr'.
+ * Query a list of all currently defined custom headers (salloc()ed) */
+FL int         c_customhdr(void *v);
+FL int         c_uncustomhdr(void *v);
+
+FL struct n_header_field * n_customhdr_query(void);
 
 /*
  * openssl.c

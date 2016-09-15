@@ -67,6 +67,10 @@ static int           _put_ct(FILE *fo, char const *contenttype,
 SINLINE int          _put_cte(FILE *fo, enum conversion conv);
 static int           _put_cd(FILE *fo, char const *cd, char const *filename);
 
+/* Put all entries of the given header list */
+static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
+                        bool_t nodisp);
+
 /* Write an attachment to the file buffer, converting to MIME */
 static int           _attach_file(struct attachment *ap, FILE *fo);
 static int           __attach_file(struct attachment *ap, FILE *fo);
@@ -231,6 +235,25 @@ jerr:
    rv = -1;
    goto jleave;
 
+}
+
+static bool_t
+_sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
+   bool_t rv;
+   NYD2_ENTER;
+
+   for(rv = TRU1; hfp != NULL; hfp = hfp->hf_next)
+      if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
+            putc(':', fo) == EOF || putc(' ', fo) == EOF ||
+            xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
+               (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0 ||
+            putc('\n', fo) == EOF){
+         rv = FAL0;
+         break;
+      }
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -585,7 +608,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
 #ifdef HAVE_ICONV
    tcs = charset_get_lc();
-   if ((convhdr = need_hdrconv(hp, GTO | GSUBJECT | GCC | GBCC | GIDENT))) {
+   if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
@@ -1826,7 +1849,7 @@ do {\
 } while (0)
 
    char const *addr;
-   size_t gotcha, l;
+   size_t gotcha;
    struct name *np, *fromasender = NULL;
    int stealthmua, rv = 1;
    bool_t nodisp;
@@ -1878,17 +1901,6 @@ do {\
       if ((fromasender = UNCONST(check_from_and_sender(fromf,senderf))) == NULL)
          goto jleave;
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
-
-      if (((addr = hp->h_organization) != NULL ||
-            (addr = ok_vlook(ORGANIZATION)) != NULL) &&
-            (l = strlen(addr)) > 0) {
-         fwrite("Organization: ", sizeof(char), 14, fo);
-         if (xmime_write(addr, l, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
-            goto jleave;
-         ++gotcha;
-         putc('\n', fo);
-      }
    }
 
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
@@ -2054,6 +2066,31 @@ j_mft_add:
 
    if ((w & GUA) && stealthmua == 0)
       fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
+
+   /* The user may have placed headers when editing */
+   if(1){
+      struct n_header_field *hfp;
+
+      if((hfp = hp->h_user_headers) != NULL){
+         if(!_sendout_header_list(fo, hfp, nodisp))
+            goto jleave;
+         ++gotcha;
+      }
+   }
+
+   /* Custom headers, as via `customhdr' */
+   if(!nosend_msg){
+      struct n_header_field *hfp;
+
+      /* With iconv support we likely have a cached result */
+      if((hfp = hp->h_custom_headers) == NULL)
+         hp->h_custom_headers = hfp = n_customhdr_query();
+      if(hfp != NULL){
+         if(!_sendout_header_list(fo, hfp, nodisp))
+            goto jleave;
+         ++gotcha;
+      }
+   }
 
    /* We don't need MIME unless.. we need MIME?! */
    if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||

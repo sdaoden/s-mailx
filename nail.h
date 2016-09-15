@@ -1194,6 +1194,7 @@ ok_b_autothread,
    ok_b_colour_pager,
    ok_v_colour_terms,
    ok_v_crt,
+   ok_v_customhdr,
 
    ok_v_DEAD,
    ok_v_datefield,
@@ -1270,7 +1271,6 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
-   ok_v_ORGANIZATION,
    ok_b_outfolder,
 
    ok_v_PAGER,
@@ -1736,7 +1736,7 @@ enum gfield {
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: */
+   GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
    GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
@@ -1756,6 +1756,13 @@ enum header_flags {
 };
 
 /* Structure used to pass about the current state of a message (header) */
+struct n_header_field{
+   struct n_header_field *hf_next;
+   ui32_t hf_nl;              /* Field-name length */
+   ui32_t hf_bl;              /* Field-body length*/
+   char hf_dat[VFIELD_SIZE(0)];
+};
+
 struct header {
    ui32_t      h_flags;       /* enum header_flags bits */
    ui32_t      h_dummy;
@@ -1773,7 +1780,8 @@ struct header {
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
-   char        *h_organization; /* overridden "Organization:" field */
+   struct n_header_field *h_user_headers;
+   struct n_header_field *h_custom_headers; /* (Cached result) */
 };
 
 /* Handling of namelist nodes used in processing the recipients of mail and
