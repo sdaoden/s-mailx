@@ -229,16 +229,13 @@ Make standard input and standard output line-buffered.
 Send a blind carbon copy to
 .Ar addr Ns
 ess.
-May be used multiple times, but it is also possible to give
-a comma-separated list of receivers in a single argument, proper quoting
-provided, e.g.,
-.Ql -b """qrec1  ,  rec2,rec3, Ex <am@ple>""" .
+May be used multiple times.
 Also see the section
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Fl c Ar addr
-Send carbon copies to the given receiver(s).
+Send carbon copies to the given receiver.
 May be used multiple times.
 .
 .Mx
@@ -458,8 +455,8 @@ the internal
 iable and, in case of a non-boolean variable which has a value, assign
 .Ar value
 to it.
-Even though variables (see
-.Sx "INTERNAL VARIABLES" )
+Even though
+.Sx "INTERNAL VARIABLES"
 .Ic \&\&set
 via
 .Fl S
@@ -490,11 +487,9 @@ Also understood are
 (possibly overriding
 .Va replyto ) ,
 .Ql Sender:
-(p.\ o.\&
-.Va sender ) ,
+.Pf ( Va sender ) ,
 .Ql From:
-(p.o.
-.Va from
+.Pf ( Va from
 and / or option
 .Fl r ) .
 .Ql Message-ID: ,
@@ -556,7 +551,7 @@ text before sending the message:
 .Bd -literal -offset indent
 $ ( echo 'line    one. Word.     Word2.'; \e
     echo '~| /usr/bin/fmt -tuw66' ) |\e
-  LC_ALL=C \*(uA -:/ -d~ bob@exam.ple
+  LC_ALL=C \*(uA -:/ -Sttycharset=UTF-8 -d~ bob@exam.ple
 .Ed
 .
 .Mx
@@ -916,8 +911,8 @@ to disable any configuration file in conjunction with repetitions of
 to specify variables:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C \e
-  \*(uA -:/ -Sv15-compat -Ssendwait -Snosave \e
+$ env LC_ALL=C \*(uA -:/ \e
+    -Sv15-compat -Ssendwait -Snosave -Sttycharset=utf-8 \e
     -Sexpandaddr=fail,-all,+addr \e
     -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@exam.ple' \e
@@ -927,6 +922,13 @@ $ env LC_ALL=C \e
 .Ed
 .
 .Pp
+As shown, scripts can
+.Dq fake
+a locale environment, the above specifies the all-compatible 7-bit clean
+.Ev LC_ALL
+.Dq C ,
+but will nonetheless take and send UTF-8 in the message text by using
+.Va ttycharset .
 In interactive mode, which is introduced in the next section, messages
 can be sent by calling the
 .Ic mail

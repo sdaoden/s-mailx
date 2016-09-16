@@ -10,17 +10,17 @@ This is a major feature release.
     components of the final release.
 
 I didn't know where S-mailx will truly end up with, but only knew
-i wanted to overcome the technical shortcomings, have a better
-user experience (regarding the software) and that i wanted to
-have, e.g., NNTP support.
+i wanted to overcome the technical shortcomings, have a better user
+experience (regarding the software) and that i wanted to have, e.g.,
+NNTP support.
 
-During development of this release it became clear that the
-general usage will be changed, backward incompatibly, and move
-towards sh(1)ell style command line usage, that is to say, we will
-turn over and will start parsing regular shell tokens, instead of
-comma-separated lists, OR space-separated lists or whatever, and
-will expand _any_ value content sh(1)ell-compatibly, instead of
-not at all in general and only \t and \n in some others etc.
+During development of this release it became clear that the general
+usage will be changed in v15, backward incompatibly, and move towards
+sh(1)ell style command line usage, that is to say, we will turn over and
+will start parsing regular shell tokens, instead of comma-separated
+lists, OR space-separated lists or whatever, and will expand _any_ value
+content sh(1)ell-compatibly, instead of not at all in general and only
+\t and \n in some specific others etc.:
 
   wysh set a='${TMPDIR}\t/' b="${TMPDIR}\t/" c=$'\${TMPDIR}\t/'
   echo a=$a b=$b c=$c
@@ -32,24 +32,23 @@ not at all in general and only \t and \n in some others etc.
 
 (But don't do that).  All this is documented in COMMANDS#?.
 Today only new commands (like `bind', `customhdr' etc.), but also
-attachment selection, `remove' and `write' use this, others, like
-`set', can optionally support it with a new command prefix: `wysh'.
+attachment selection, `remove' and `write' use this, others, like `set',
+can optionally support it with a new command prefix: `wysh'.
 
-Credits, in order of commit appearance: Antonio Radici,
-Aharon Robbins, Mike Frysinger, Predrag Punosevac, Michael Convey,
-Hariskar, Rudolf Sykora, Martin Neitzel, Gavin Troy,
-Salvatore Bonaccorso, Todd C.  Miller, Sergey Matveev, Robert Elz,
-Mantas Mikulėnas, Respiranto, Jens Schleusener,
-Walter Alejandro Iglesias, Ralph Corderoy, Thomas Dickey, Afan,
-Justin Ellingwood, Ingo Schwarze, Viktor Szépe, Gaetan Bisson,
-Juan RP, William Yodlowsky, Hilko Bengen, Matthew Dillon,
+Credits, in order of commit appearance: Antonio Radici, Aharon Robbins,
+Mike Frysinger, Predrag Punosevac, Michael Convey, Hariskar,
+Rudolf Sykora, Martin Neitzel, Gavin Troy, Salvatore Bonaccorso,
+Todd C. Miller, Sergey Matveev, Robert Elz, Mantas Mikulėnas,
+Respiranto, Jens Schleusener, Walter Alejandro Iglesias, Ralph Corderoy,
+Thomas Dickey, Afan, Justin Ellingwood, Ingo Schwarze, Viktor Szépe,
+Gaetan Bisson, Juan RP, William Yodlowsky, Hilko Bengen, Matthew Dillon,
 Colin Watson and Donald Mugnai.
 
 We welcome Antonio Radici, Mike Frysinger, Predrag Punosevac,
 Michael Convey, Rudolf Sykora, Todd C. Miller, Robert Elz,
 Jens Schleusener, Walter Alejandro Iglesias, Thomas Dickey, Afan,
-Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon,
-Colin Watson and Donald Mugnai in THANKS.
+Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon, Colin Watson
+and Donald Mugnai in THANKS.
 
 Apologies: Sergey Matveev.  Members of the Roff community which await
 progress.
@@ -84,6 +83,8 @@ NOTES, ChangeLog (packager-affine)
 
   + The `build' phase can be parallelized by setting the MAILJOBS
     environment variable, e.g., "make MAILJOBS='-j 4' build".
+
+  + DESTDIR will no longer be tracked in the configuration.
     (Gaetan Bisson)
 
   + Set the new OPT_CROSS_BUILD to avoid feature runtime tests,
@@ -141,8 +142,9 @@ NOTES, ChangeLog (packager-affine)
   o Set the variable *colour-disable*#? to turn colour off without
     affecting established settings.
 
-  o It is deduced via termcap(5) (see below) whether the terminal
-    supports colors, e.g., "s-nail -Stermcap=Co#256".
+  o It is deduced via termcap(5) (see below) a.k.a. *termcap*#?
+    whether the terminal supports colors, e.g.,
+    "s-nail -Stermcap=Co#256".
 
   o Support for 256-colour terminals. (Gavin Troy)
 
@@ -162,7 +164,9 @@ NOTES, ChangeLog (packager-affine)
   which can be covered by `localopts'#?. [topic/customhdr]
   (Sergey Matveev)
 
-  o Support of *ORGANIZATION* has been dropped.
+  o Support for *ORGANIZATION* has been dropped.
+    This environment variable is a non-portable invention,
+    a custom header.
 
   o In compose mode `~e'#? supports _any_ header.
 
@@ -176,7 +180,7 @@ NOTES, ChangeLog (packager-affine)
    o Note: it is likely that in the future "scope-local" environments
      will be implemented, then also covering things like shortcuts etc.,
      and some thing like a "global" prefix to extend a setting to the
-     global namespace.  (Think TeX.)
+     global namespace.  Just to make you aware.  (Think TeX.)
 
 - A first simple form of compose-mode hooks has been implemented:
   *on-compose-enter*#? and *on-compose-leave*#? can be set to
@@ -247,6 +251,7 @@ NOTES, ChangeLog (packager-affine)
 
 - Internal and environment variables are now explicitly _defined_ and
   _tracked_ after variable handling has been rewritten completely.
+  This results in standard-compatible behaviour.
   [topic/okeys-attr.2]
 
   o Notes:
@@ -255,7 +260,7 @@ NOTES, ChangeLog (packager-affine)
 
     + But if you do, e.g., "set TMPDIR=~/tmp", then this will also be
       reflected in the program environment (it is an environment
-      variable) and thus affect child processes.
+      variable) and thus affects child processes.
 
     + Therefore we no longer have `setenv' and `unsetenv'.
 
@@ -271,7 +276,7 @@ NOTES, ChangeLog (packager-affine)
    (*LOGNAME*#? is POSIX standardized and henceforth used and preferred
    over *USER*, which came from BSD. [e96baaa]  (Todd C. Miller))
 
-  o *MAIL*#?, as the user's primary system mailbox, nows supports the
+  o *MAIL*#?, as the user's primary system mailbox, now supports the
     usual file name expansions. [e337e00]
 
 - In the future (at least non-message-list) argument handling will be
@@ -284,27 +289,27 @@ NOTES, ChangeLog (packager-affine)
     wysh set message-inject-tail=$'\n--steffen'
     bind base $'\cA,\x61' 'echo control-A and small a'
 
-- We now actively manage *umask*: 0077 by default, but an empty
+- We now actively manage *umask*#?: 0077 by default, but an empty
   string will use the setting that is active upon startup.
   Like any change to (known) environment variables this setting
   will also be inherited by any child process. [1bd8e48]
   (Walter Alejandro Iglesias)
 
 - Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*,
-  e.g., *mta*, *mta-arguments*, *mta-no-default-argument*,
-  *mta-argv0*.
+  e.g., *mta*#?, *mta-arguments*#?, *mta-no-default-arguments*#?,
+  *mta-argv0*#?.
 
   The reason is that in v15 we won't even have *smtp*: it is just
-  another form of MTA, and thus obsolete by itself.
+  another form of MTA, and thus redundant.
 
   For now we support a hack that understands a file:// URL in
   *mta*, too, but that is the default if there is no protocol.
   E.g.: "set mta=smtp://a:b@xy.z"
 
-- The "spamd" spam interface is obsolete.  I haven't tested it
-  since my main machine died, it is error prone since it assumes
-  internals of the spamassassin interface, and there never was
-  a speed improvement against "spamc".  (However it could react
+- The "spamd" *spam-interface*#? is obsolete.  I haven't
+  tested it since my main machine died, it is error prone since it
+  assumes internals of the spamassassin interface, and there never
+  was a speed improvement against "spamc".  (However it could react
   upon the current "is-spam" state of a message, which "spamc"
   doesn't allow.) [284db64]
 
@@ -320,8 +325,8 @@ ChangeLog
   (Predrag Punosevac, Michael Convey, Hariskar, Rudolf Sykora,
   Respiranto, Thomas Dickey, Donald Mugnai)
 
-- *mime-counter-evidence* gained bit 4 (perform proper in-depth content
-  inspection as necessary; set to 0xE for all bits).
+- *mime-counter-evidence*#? gained bit 4 (perform proper in-depth
+  content inspection as necessary; set to 0xE for all bits).
   [topic/mimetype.2]  (Aharon Robbins)
 
 - Maildir paths are now created recursively as necessary. [3c57c83]

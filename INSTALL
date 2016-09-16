@@ -40,7 +40,7 @@ configuration / building and the installation tasks and give the last
 step higher privileges via super(1), sudo(1), su(1) or a similar
 mechanism, e.g.:
 
-  $ make VAL_PREFIX=/usr config && make -j 4 &&
+  $ make VAL_PREFIX=/usr config && make MAILJOBS='-j 4' &&
     super make DESTDIR=./xy install
 
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
@@ -56,6 +56,8 @@ The following make(1) targets exists, the default being `build':
               In order to parallelize the `build' step pass a $MAILJOBS
               variable, as shown below.
 - all         Shorthand for "$ make config build".
+              In order to parallelize the `build' step pass a $MAILJOBS
+              variable, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
@@ -123,8 +125,8 @@ command line (names are case-insensitive):
   occasions.
 
   Like MINIMAL, but with documentation strings, the builtin line editor
-  (MLE) with history support (if possible), error tracking, basic colour
-  support and IDNA addresses.
+  (MLE) with history support and key bindings, error tracking, basic
+  colour support and IDNA addresses.
 
   "Require"s iconv(3), dotlocking and the privileged separated dotlock
   helper.
@@ -231,7 +233,7 @@ In alphabetical order:
     However we try hard to detect the real type size and define the
     "PRI[du]Z" macros which end up with the correct size, which is
     also compile-time asserted (see the "MCTA(sizeof(size_t) == XZ)"
-    statements in "nail.h").
+    statements in nail.h).
 
     You can completely overcome this situation by forcing ISO C99 mode
     when compiling, e.g., with gcc(1) and clang(1): if you use
@@ -242,7 +244,7 @@ In alphabetical order:
   AlpineLinux 3.4.3, gcc(1).
 
 . ArchLinux <https://www.archlinux.org/>
-  Latest as of 2016-08-12, clang(1) and gcc(1).
+  Latest as of 2016-09-16, clang(1) and gcc(1).
 
 . CRUX Linux <https://www.crux.nu/>
   CRUX 3.2 RC3, gcc(1).
@@ -287,18 +289,18 @@ In alphabetical order:
       string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
     under SPARC and i386.
-    It looked good on 2016-03-25.
+    It looked good on 2016-09-16.
 
 - UnixWare 7.1.4.
   * Note: it is no longer possible to use the `install' rule, because
     we use shell functions to ease the task of directory creation etc.
     (especially useful due to $VERBOSE), and that won't work due to bugs
     (in the system make(1) program i presume).
-  + Not tested after v14.8.4.
+  + Not tested after v14.8.4, just fine before that.
 
 . Void Linux <http://www.voidlinux.eu/>
-  Not tested for v14.9.
+  Not yet tested for v14.9.0.
   (My current working environment is restricted since i've lost
-  a machine in January.)
+  my main development machine.)
 
 # s-ts-mode
