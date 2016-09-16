@@ -379,8 +379,10 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    bool_t didmsg, rv;
    NYD_ENTER;
 
-   UNINIT(rv, 0);
+   if(pollmsecs == UIZ_MAX)
+      pollmsecs = FILE_LOCK_MILLIS;
 
+   UNINIT(rv, 0);
    for (didmsg = FAL0, tries = 0; tries <= FILE_LOCK_TRIES; ++tries) {
       rv = a_file_lock(fd, flt, off, len);
 

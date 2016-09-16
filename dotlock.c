@@ -235,6 +235,9 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    FILE *rv;
    NYD_ENTER;
 
+   if(pollmsecs == UIZ_MAX)
+      pollmsecs = FILE_LOCK_MILLIS;
+
    rv = NULL;
    didmsg = FAL0;
    UNINIT(serrno, 0);
