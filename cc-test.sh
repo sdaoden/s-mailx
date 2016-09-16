@@ -7,6 +7,7 @@ CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 MAIL=/dev/null
+#UTF8_LOCALE= autodetected unless set
 
 if ( command -v command ) >/dev/null 2>&1; then :; else
    command() {
@@ -22,13 +23,6 @@ cksum=${cksum:-`command -v cksum`}
 rm=${rm:-`command -v rm`}
 sed=${sed:-`command -v sed`}
 grep=${grep:-`command -v grep`}
-
-if [ -z "${UTF8_LOCALE}" ]; then
-   UTF8_LOCALE=
-   if command -v locale >/dev/null 2>&1; then
-      UTF8_LOCALE=`(locale -a | ${grep} -i utf8 | uniq) 2>/dev/null`
-   fi
-fi
 
 ##  --  >8  --  8<  --  ##
 
@@ -47,6 +41,24 @@ if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
    echo >&2 '$SHELL seems to be nologin, overwriting to /bin/sh!'
    SHELL=/bin/sh
    export SHELL
+fi
+
+if [ -z "${UTF8_LOCALE}" ]; then
+   UTF8_LOCALE=
+   if command -v locale >/dev/null 2>&1; then
+      UTF8_LOCALE=`locale -a | { m=
+         while read n; do
+            if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
+               m=${n}
+               if { echo ${n} | ${grep} -e POSIX -e en_EN -e en_US; }; then
+                  exit 0
+               fi
+            fi
+            m=${n}
+         done
+         echo ${m}
+      }`
+   fi
 fi
 
 ESTAT=0
