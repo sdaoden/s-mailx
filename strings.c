@@ -647,17 +647,17 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_resize)(struct n_string *self, size_t nlen SMALLOC_DEBUG_ARGS){
-   ui32_t l;
    NYD_ENTER;
 
    assert(self != NULL);
+#if 0 /* FIXME memory alloc too large */
+   if(SI32_MAX - n_ALIGN(1) - l <= noof)
+      n_panic(_("Memory allocation too large"));
+#endif
 
-   if((l = self->s_len) > nlen)
-      self->s_len = nlen;
-   else{
-      nlen -= l;
+   if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen SMALLOC_DEBUG_ARGSCALL);
-   }
+   self->s_len = (ui32_t)nlen;
    NYD_LEAVE;
    return self;
 }

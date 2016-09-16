@@ -2033,7 +2033,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
-   (assert(UICMP(z, L, <=, (S)->s_len)),  (S)->s_len = (ui32_t)(L), (S))
+   (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
 /* Release buffer ownership */
 #define n_string_drop_ownership(S) \
@@ -2049,10 +2049,11 @@ FL struct n_string *n_string_clear(struct n_string *self SMALLOC_DEBUG_ARGS);
 # define n_string_clear(S)       ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
 #endif
 
-/* Reserve room for noof additional bytes.  The latter also adjusts the length
- * accordingly, but the (possible) additional storage isn't initialized */
+/* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
                      SMALLOC_DEBUG_ARGS);
+
+/* Resize to exactly nlen bytes; any new storage isn't initialized */
 FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
                      SMALLOC_DEBUG_ARGS);
 
