@@ -720,10 +720,6 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    case ok_b_skipemptybody:
       flag = OPT_E_FLAG;
       break;
-   case ok_v_TMPDIR:
-      if(enable) /* DEFVAL will soon ensure a value otherwise! */
-         tempdir = *val; /* XXX replace users with ok_vlook(TMPDIR) */
-      break;
    case ok_v_umask:
       assert(enable);
       if(**val != '\0'){

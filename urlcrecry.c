@@ -532,9 +532,9 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
          NULL)->s;
    env_addon[3] = str_concat_csvl(&s, AGENT_HOST_PORT, "=", urlp->url_h_p.s,
          NULL)->s;
-
-   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
-   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
+   u.cp = ok_vlook(TMPDIR);
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", u.cp, NULL)->s;
+   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", u.cp, NULL)->s;
 
    env_addon[6] = NULL;
 

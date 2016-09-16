@@ -1536,7 +1536,7 @@ FL int         Fclose(FILE *fp);
 /* Open file according to oflags (see popen.c).  Handles compressed files */
 FL FILE *      Zopen(char const *file, char const *oflags);
 
-/* Create a temporary file in tempdir, use namehint for its name (prefix
+/* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
  * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
  * part of the resulting filename, otherwise Ftmp() will fail), store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio

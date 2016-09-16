@@ -1655,7 +1655,7 @@ ok_v_spamd_user,
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,                        /* {vip=1,import=1,defval=VAL_TMPDIR} */
+   ok_v_TMPDIR,                        /* {import=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
@@ -2337,7 +2337,6 @@ VL int         scrnheight;          /* Screen height/guess (4 header) */
 
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
-VL char const  *tempdir;            /* The temporary directory */
 
 VL gid_t       group_id;            /* getgid() and getuid() */
 VL uid_t       user_id;

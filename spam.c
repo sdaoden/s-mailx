@@ -911,6 +911,7 @@ static void
 _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
 {
    struct str s;
+   char const *tmpdir;
    struct spam_cf *scfp;
    NYD2_ENTER;
    LCTA(3 < NELEM(scfp->cf_env));
@@ -929,8 +930,9 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
    scfp->cf_env[0] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
          getrandstring(MIN(NAME_MAX / 4, 16)), NULL)->s;
 
-   scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
-   scfp->cf_env[2] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
+   tmpdir = ok_vlook(TMPDIR);
+   scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tmpdir, NULL)->s;
+   scfp->cf_env[2] = str_concat_csvl(&s, "TMPDIR", "=", tmpdir, NULL)->s;
    scfp->cf_env[3] = NULL;
    NYD2_LEAVE;
 }

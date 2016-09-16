@@ -224,8 +224,9 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    env_addon[3] = str_concat_csvl(&s, NAILENV_CONTENT_EVIDENCE, "=", cp,
          NULL)->s;
 
-   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
-   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
+   cp = ok_vlook(TMPDIR);
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", cp, NULL)->s;
+   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", cp, NULL)->s;
 
    env_addon[6] = NULL;
 

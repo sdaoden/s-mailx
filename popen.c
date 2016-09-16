@@ -669,10 +669,11 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
     * POSIX minimum path length is 14, though we don't check that XXX).
     * 8 should be more than sufficient given that we use base64url encoding
     * for our random string */
-   enum {_RANDCHARS = 8};
+   enum {_RANDCHARS = 8u};
 
-   size_t maxname, xlen, i;
    char *cp_base, *cp;
+   size_t maxname, xlen, i;
+   char const *tmpdir;
    int osoflags, fd, e;
    bool_t relesigs;
    FILE *fp;
@@ -686,11 +687,12 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    fp = NULL;
    relesigs = FAL0;
    e = 0;
+   tmpdir = ok_vlook(TMPDIR);
    maxname = NAME_MAX;
 #ifdef HAVE_PATHCONF
    {  long pc;
 
-      if ((pc = pathconf(tempdir, _PC_NAME_MAX)) != -1)
+      if ((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1)
          maxname = (size_t)pc;
    }
 #endif
@@ -705,8 +707,8 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    /* Prepare the template string once, then iterate over the random range */
    cp_base =
-   cp = smalloc(strlen(tempdir) + 1 + maxname +1);
-   cp = sstpcpy(cp, tempdir);
+   cp = smalloc(strlen(tmpdir) + 1 + maxname +1);
+   cp = sstpcpy(cp, tmpdir);
    *cp++ = '/';
    {
       char *x = sstpcpy(cp, VAL_UAGENT);

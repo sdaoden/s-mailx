@@ -390,9 +390,10 @@ _nyd_oncrash(int signo)
    char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    struct sigaction xact;
    sigset_t xset;
-   size_t i, fnl;
-   int fd;
    struct nyd_info *nip;
+   int fd;
+   size_t i, fnl;
+   char const *tmpdir;
 
    LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX);
 
@@ -401,14 +402,14 @@ _nyd_oncrash(int signo)
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   i = strlen(tempdir);
+   i = strlen(tmpdir = ok_vlook(TMPDIR));
    fnl = sizeof(VAL_UAGENT) -1;
 
    if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {
       (cp = pathbuf)[0] = '.';
       i = 1;
    } else
-      memcpy(cp = pathbuf, tempdir, i);
+      memcpy(cp = pathbuf, tmpdir, i);
    cp[i++] = '/'; /* xxx pathsep */
    memcpy(cp += i, VAL_UAGENT, fnl);
    i += fnl;
