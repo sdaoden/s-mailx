@@ -2672,7 +2672,7 @@ A 0 byte will suppress further output for the quoted argument.
 the Unicode / ISO-10646 character with the hexadecimal codepoint value
 .Ql HHHHHHHH
 (one to eight hexadecimal digits) \(em note that Unicode defines the
-maximum code to be ever supported as
+maximum codepoint to be ever supported as
 .Ql 0x10FFFF
 (in planes of
 .Ql 0xFFFF
@@ -2680,7 +2680,7 @@ characters each).
 This escape is only supported in locales which support Unicode (see
 .Sx "Character sets" ) ,
 in other cases the sequence will remain unexpanded unless the given code
-point is ASCII compatible.
+point is ASCII compatible or can be represented in the current locale.
 The character NUL will suppress further output for the quoted argument.
 .It Ql \euHHHH
 Identical to
@@ -8793,7 +8793,6 @@ See
 .Xr locale 7
 and
 .Sx "Character sets" .
-(Only recognized by the system in the process environment.)
 .
 .Mx
 .It Ev LINES
@@ -8917,8 +8916,9 @@ Alse see
 .
 .Mx
 .It Ev PATH
-A list of directories that is searched by the shell when looking for
-commands (as such only recognized in the process environment).
+A colon-separated list of directories that is searched by the shell when
+looking for commands, e.g.,
+.Ql /bin:/usr/bin:/usr/local/bin .
 .
 .Mx
 .It Ev SHELL
