@@ -643,10 +643,11 @@ feat_bail_required() {
 option_parse() {
    # Parse one of our XOPTIONS* in $2 and assign the sh(1) compatible list of
    # options, without documentation, to $1
+   j=\'
    i="`${awk} -v input=\"${2}\" '
       BEGIN{
          for(i = 0;;){
-            voff = match(input, /[[:alnum:]_]+(='"'"'[^'"'"']+)?/)
+            voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
             if(voff == 0)
                break
             v = substr(input, voff, RLENGTH)
@@ -660,7 +661,7 @@ option_parse() {
          }
       }
       '`"
-      eval ${1}=\"${i}\"
+   eval ${1}=\"${i}\"
 }
 
 option_doc_of() {
