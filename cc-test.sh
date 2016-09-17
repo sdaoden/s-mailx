@@ -1064,11 +1064,9 @@ __behave_localopts() {
 #gv1 lv1 lv2 lv3 gv2, t2
 #gv1 gv2,
 #gv1    gv2, 
-#/dev/null: 0 messages
 #active trouble: gv1 gv2,
-#/dev/null: 0 messages
 #active null: ,
-   cksum_test behave:localopts "${MBOX}" '2679576177 236'
+   cksum_test behave:localopts "${MBOX}" '1936527193 192'
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!

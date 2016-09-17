@@ -301,17 +301,22 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 
    /* Copy the messages into /tmp and set pointers */
    if (!(fm & FEDIT_NEWMAIL)) {
-      mb.mb_type = MB_FILE;
-      mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
-            access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
-      if (shudclob) {
-         if (mb.mb_itf) {
-            fclose(mb.mb_itf);
-            mb.mb_itf = NULL;
-         }
-         if (mb.mb_otf) {
-            fclose(mb.mb_otf);
-            mb.mb_otf = NULL;
+      if (isdevnull) {
+         mb.mb_type = MB_VOID;
+         mb.mb_perm = 0;
+      } else {
+         mb.mb_type = MB_FILE;
+         mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
+               access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
+         if (shudclob) {
+            if (mb.mb_itf) {
+               fclose(mb.mb_itf);
+               mb.mb_itf = NULL;
+            }
+            if (mb.mb_otf) {
+               fclose(mb.mb_otf);
+               mb.mb_otf = NULL;
+            }
          }
       }
       shudclob = 1;
