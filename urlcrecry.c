@@ -749,9 +749,12 @@ juser:
       char *eptr;
       long l;
 
-      urlp->url_port = x = savestr(x = cp + 1);
-      if ((x = strchr(x, '/')) != NULL)
+      urlp->url_port = x = savestr(x = &cp[1]);
+      if ((x = strchr(x, '/')) != NULL) {
          *x = '\0';
+         while(*++x == '/')
+            ;
+      }
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
          n_err(_("URL with invalid port number: \"%s\"\n"), urlp->url_input);
@@ -759,20 +762,34 @@ juser:
       }
       urlp->url_portno = (ui16_t)l;
    } else {
-      if ((x = strchr(data, '/')) != NULL)
+      if ((x = strchr(data, '/')) != NULL) {
          data = savestrbuf(data, PTR2SIZE(x - data));
+         while(*++x == '/')
+            ;
+      }
       cp = UNCONST(data + strlen(data));
    }
 
    /* A (non-empty) path may only occur with IMAP */
-   if (x != NULL && x[1] != '\0') {
-      if (cproto != CPROTO_IMAP) {
-         n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
-            urlp->url_input);
-         goto jleave;
+   if (x != NULL && *x) {
+      /* Take care not to count adjacent slashes for real, on either end */
+      char *x2;
+      size_t i;
+
+      for(x2 = savestrbuf(x, i = strlen(x)); i > 0; --i)
+         if(x2[i - 1] != '/')
+            break;
+      x2[i] = '\0';
+
+      if (i > 0) {
+         if (cproto != CPROTO_IMAP) {
+            n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
+               urlp->url_input);
+            goto jleave;
+         }
+         urlp->url_path.l = i;
+         urlp->url_path.s = x2;
       }
-      urlp->url_path.l = strlen(++x);
-      urlp->url_path.s = savestrbuf(x, urlp->url_path.l);
    }
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
