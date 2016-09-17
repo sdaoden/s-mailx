@@ -286,7 +286,7 @@ jleave:
     * the lock and terminate once the pipe is closed, for whatever reason */
    if(pipe_cloexec(cpipe) == -1){
       serrno = errno;
-      emsg = N_("  Can't create file lock control pipe\n");
+      emsg = N_("  Can't create dotlock file control pipe\n");
       goto jemsg;
    }
 
@@ -349,17 +349,18 @@ jleave:
          break;
       case n_DLS_NOPERM:
          if(options & OPT_D_V)
-            emsg = N_("  Can't create a lock file! Please check permissions\n"
-                  "  (Maybe setting *dotlock-ignore-error* variable helps.)\n");
+            emsg = N_("  Can't create a dotlock file, "
+                  "please check permissions\n"
+                  "  (Or ignore by setting *dotlock-ignore-error* variable)\n");
          serrno = EACCES;
          break;
       case n_DLS_NOEXEC:
          if(options & OPT_D_V)
-            emsg = N_("  Can't find privilege-separated file lock program\n");
+            emsg = N_("  Can't find privilege-separated dotlock program\n");
          serrno = ENOENT;
          break;
       case n_DLS_PRIVFAILED:
-         emsg = N_("  Privilege-separated file lock program can't change "
+         emsg = N_("  Privilege-separated dotlock program can't change "
                "privileges\n");
          serrno = EPERM;
          break;
@@ -394,7 +395,7 @@ jleave:
             didmsg = TRUM1;
          }
          if(didmsg == TRUM1)
-            n_err("\n");
+            n_err(_(". failed\n"));
          didmsg = TRU1;
          n_err(V_(emsg));
          emsg = NULL;
@@ -409,13 +410,20 @@ jleave:
 
 jleave:
    if(didmsg == TRUM1)
-      n_err("\n");
+      n_err(". %s\n", (rv != NULL ? _("ok") : _("failed")));
    if(rv == NULL) {
-      if(flocked && (serrno == EROFS ||
-            (serrno != EAGAIN && serrno != EEXIST &&
-             ok_blook(dotlock_ignore_error))))
-         rv = (FILE*)-1;
-      else
+      if(flocked){
+         if(serrno == EROFS)
+            rv = (FILE*)-1;
+         else if(serrno != EAGAIN && serrno != EEXIST &&
+             ok_blook(dotlock_ignore_error)){
+            if(options & OPT_D_V)
+               n_err(_("  *dotlock-ignore-error* set: continuing\n"));
+            rv = (FILE*)-1;
+         }else
+            goto jserrno;
+      }else
+jserrno:
          errno = serrno;
    }
    NYD_LEAVE;
