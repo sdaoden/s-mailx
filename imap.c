@@ -2400,7 +2400,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp)
 
       if (bp == NULL ||
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
-             is_head(buf, buflen, FAL0))) {
+             is_head(buf, buflen, TRU1))) {
          if (off1 != (off_t)-1) {
             rv = imap_append1(mp, name, fp, off1, size, flag, tim);
             if (rv == STOP)
