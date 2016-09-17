@@ -1528,7 +1528,6 @@ ok_b_emptybox,
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
    ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
    ok_b_markanswered,
-   ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,
    ok_v_message_inject_head,

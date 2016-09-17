@@ -662,8 +662,7 @@ is_head(char const *linebuf, size_t linelen, bool_t compat)
    int rv;
    NYD2_ENTER;
 
-   if ((rv = (linelen >= 5 && !strncmp(linebuf, "From ", 5))) &&
-         (!compat || ok_blook(mbox_rfc4155)))
+   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && !compat)
       rv = (extract_date_from_from_(linebuf, linelen, date) && _is_date(date));
    NYD2_LEAVE;
    return rv;
@@ -693,12 +692,18 @@ extract_date_from_from_(char const *line, size_t linelen,
    /* It seems there are invalid MBOX archives in the wild, compare
     * . http://bugs.debian.org/624111
     * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
-    * What they do is that they obfuscate the address to "name at host".
-    * I think we should handle that */
+    * What they do is that they obfuscate the address to "name at host",
+    * and even "name at host dot dom dot dom.  I think we should handle that */
    else if(cp[0] == 'a' && cp[1] == 't' && cp[2] == ' '){
-      cp = _from__skipword(cp += 3);
+      cp += 3;
+jat_dot:
+      cp = _from__skipword(cp);
       if (cp == NULL)
          goto jerr;
+      if(cp[0] == 'd' && cp[1] == 'o' && cp[2] == 't' && cp[3] == ' '){
+         cp += 4;
+         goto jat_dot;
+      }
    }
 
    linelen -= PTR2SIZE(cp - line);
