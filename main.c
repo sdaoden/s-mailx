@@ -793,7 +793,7 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_cnt + 5 >= oargs_size)
+         if (oargs_cnt + 6 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          folder = "/dev/null";
@@ -801,13 +801,15 @@ joarg:
          ok_bset(header, FAL0);
          ok_bset(quiet, TRU1);
          ok_bset(sendwait, TRU1);
+         ok_vset(MAIL, folder);
          ok_vset(MBOX, folder);
          oargs[oargs_cnt + 0] = "emptystart";
          oargs[oargs_cnt + 1] = "noheader";
          oargs[oargs_cnt + 2] = "quiet";
          oargs[oargs_cnt + 3] = "sendwait";
-         oargs[oargs_cnt + 4] = "MBOX=/dev/null";
-         oargs_cnt += 5;
+         oargs[oargs_cnt + 4] = "MAIL=/dev/null";
+         oargs[oargs_cnt + 5] = "MBOX=/dev/null";
+         oargs_cnt += 6;
          break;
       case '.':
          options |= OPT_SENDMODE;
