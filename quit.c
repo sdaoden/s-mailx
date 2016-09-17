@@ -347,6 +347,8 @@ quit(void)
       goto jleave;
 #endif
    case MB_VOID:
+      rv = TRU1;
+      /* FALLTHRU */
    default:
       goto jleave;
    }
