@@ -1315,7 +1315,9 @@ jduppass:
    } else   /* same account */
       mb.mb_flags |= same_flags;
 
-   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
+   if (options & OPT_R_FLAG)
+      fm |= FEDIT_RDONLY;
+   mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
