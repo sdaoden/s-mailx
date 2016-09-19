@@ -89,7 +89,7 @@ the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
 variable in " UAGENT "(1).\n";
 static const char README5[] = "\n\
 For more information about " UAGENT "(1), visit\n\
-<http://sdaoden.users.sourceforge.net/code.html>.\n"; /* TODO MAGIC CONSTANT */
+<https://www.sdaoden.eu/code.html>.\n"; /* TODO MAGIC CONSTANT */
 
 static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
