@@ -416,7 +416,7 @@ jleave:
          if(serrno == EROFS)
             rv = (FILE*)-1;
          else if(serrno != EAGAIN && serrno != EEXIST &&
-             ok_blook(dotlock_ignore_error)){
+               ok_blook(dotlock_ignore_error)){
             if(options & OPT_D_V)
                n_err(_("  *dotlock-ignore-error* set: continuing\n"));
             rv = (FILE*)-1;
