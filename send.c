@@ -1247,6 +1247,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    int rv = -1, c;
    NYD_ENTER;
 
+   time_current_update(&time_current, TRU1);
+
    if (mp == dot && action != SEND_TOSRCH)
       pstate |= PS_DID_PRINT_DOT;
    if (stats != NULL)
