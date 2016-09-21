@@ -286,10 +286,10 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
     * TODO if it may happen in this path, we should just treat decryption
     * TODO as we do for the other input paths; i.e., handle it in SSL!! */
    if (action == SEND_MBOX || action == SEND_DECRYPT)
-      assert(!is_head(buf, len, TRU1));
+      assert(!is_head(buf, len, FAL0));
 #else
    if ((/*action == SEND_MBOX ||*/ action == SEND_DECRYPT) &&
-         is_head(buf, len, TRU1)) {
+         is_head(buf, len, FAL0)) {
       putc('>', fp);
       ++sz;
    }
