@@ -312,7 +312,7 @@ readin(char const *name, struct message *m)
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(buf, buflen, TRU1)) {
+      if (emptyline && is_head(buf, buflen, FAL0)) {
          putc('>', mb.mb_otf);
          ++size;
       }
@@ -859,7 +859,7 @@ maildir_append(char const *name, FILE *fp, long offset)
 
       if (bp == NULL ||
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
-             is_head(buf, buflen, TRU1))) {
+             is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
             if ((rv = maildir_append1(name, fp, off1, size, flag)) == STOP)
                goto jfree;

@@ -621,7 +621,7 @@ jretry:
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(lp, linelen, TRU1)) {
+      if (emptyline && is_head(lp, linelen, FAL0)) {
          putc('>', mp->mb_otf);
          ++size;
       }

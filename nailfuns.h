@@ -920,13 +920,16 @@ FL char const * myaddrs(struct header *hp);
 FL char const * myorigin(struct header *hp);
 
 /* See if the passed line buffer, which may include trailing newline (sequence)
- * is a mail From_ header line according to RFC 4155.
- * If compat is true laxe POSIX syntax is instead sufficient to match From_ */
-FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
+ * is a mail From_ header line according to POSIX ("From ").
+ * If check_rfc4155 is true we'll return TRUM1 instead if the From_ line
+ * matches POSIX but is _not_ compatible to RFC 4155 */
+FL bool_t      is_head(char const *linebuf, size_t linelen,
+                  bool_t check_rfc4155);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
- * Return wether the From_ line was parsed successfully */
+ * Return wether the From_ line was parsed successfully (-1 if the From_ line
+ * wasn't really RFC 4155 compliant) */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 

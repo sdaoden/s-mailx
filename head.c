@@ -643,15 +643,17 @@ myorigin(struct header *hp)
    return rv;
 }
 
-FL int
-is_head(char const *linebuf, size_t linelen, bool_t compat)
+FL bool_t
+is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 {
    char date[FROM_DATEBUF];
-   int rv;
+   bool_t rv;
    NYD2_ENTER;
 
-   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && !compat)
-      rv = (extract_date_from_from_(linebuf, linelen, date) && _is_date(date));
+   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
+         (extract_date_from_from_(linebuf, linelen, date) <= 0 ||
+          !_is_date(date)))
+      rv = TRUM1;
    NYD2_LEAVE;
    return rv;
 }
@@ -660,9 +662,11 @@ FL int
 extract_date_from_from_(char const *line, size_t linelen,
    char datebuf[FROM_DATEBUF])
 {
-   int rv = 0;
+   int rv;
    char const *cp = line;
    NYD_ENTER;
+
+   rv = 1;
 
    /* "From " */
    cp = _from__skipword(cp);
@@ -683,6 +687,7 @@ extract_date_from_from_(char const *line, size_t linelen,
     * What they do is that they obfuscate the address to "name at host",
     * and even "name at host dot dom dot dom.  I think we should handle that */
    else if(cp[0] == 'a' && cp[1] == 't' && cp[2] == ' '){
+      rv = -1;
       cp += 3;
 jat_dot:
       cp = _from__skipword(cp);
@@ -708,7 +713,6 @@ jat_dot:
    if (linelen >= FROM_DATEBUF)
       goto jerr;
 
-   rv = 1;
 jleave:
    memcpy(datebuf, cp, linelen);
    datebuf[linelen] = '\0';
@@ -719,6 +723,7 @@ jerr:
    linelen = strlen(cp);
    if (linelen >= FROM_DATEBUF)
       linelen = FROM_DATEBUF;
+   rv = 0;
    goto jleave;
 }
 
@@ -1515,7 +1520,7 @@ jnewname:
       goto jout;
    if ((cp = strchr(linebuf, 'F')) == NULL)
       goto jout;
-   if (strncmp(cp, "From", 4)) /* XXX is_head? */
+   if (strncmp(cp, "From", 4))
       goto jout;
    if (namesize <= linesize)
       namebuf = srealloc(namebuf, namesize = linesize + 1);

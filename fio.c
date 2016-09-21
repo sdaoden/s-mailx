@@ -997,7 +997,8 @@ setptr(FILE *ibuf, off_t offset)
    struct message self;
    char *cp, *linebuf = NULL;
    char const *cp2;
-   int c, maybe = 1, inhead = 0, selfcnt = 0;
+   int c, selfcnt = 0;
+   bool_t maybe, inhead, rfc4155;
    size_t linesize = 0, filesize, cnt;
    NYD_ENTER;
 
@@ -1005,6 +1006,8 @@ setptr(FILE *ibuf, off_t offset)
    self.m_flag = MUSED | MNEW | MNEWEST;
    filesize = mailsize - offset;
    offset = ftell(mb.mb_otf);
+   maybe = TRU1;
+   rfc4155 = inhead = FAL0;
 
    for (;;) {
       if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
@@ -1034,10 +1037,16 @@ setptr(FILE *ibuf, off_t offset)
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
-      if (maybe && linebuf[0] == 'F' && is_head(linebuf, cnt, TRU1)) {
+      if (maybe && linebuf[0] == 'F' &&
+            (rfc4155 = is_head(linebuf, cnt, TRU1))) {
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
+         if (rfc4155 == TRUM1 && (options & OPT_D_V) &&
+               !(mb.mb_active & MB_FROM__WARNED)) {
+            mb.mb_active |= MB_FROM__WARNED;
+            n_err(_("MBOX mailbox From_ line(s) don't conform to RFC 4155\n"));
+         }
          self.m_xsize = self.m_size;
          self.m_xlines = self.m_lines;
          self.m_have = HAVE_HEADER | HAVE_BODY;
@@ -1049,9 +1058,9 @@ setptr(FILE *ibuf, off_t offset)
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
          self.m_offset = mailx_offsetof(offset);
-         inhead = 1;
+         inhead = TRU1;
       } else if (linebuf[0] == 0) {
-         inhead = 0;
+         inhead = FAL0;
       } else if (inhead) {
          for (cp = linebuf, cp2 = "status";; ++cp) {
             if ((c = *cp2++) == 0) {
@@ -1091,7 +1100,7 @@ setptr(FILE *ibuf, off_t offset)
       offset += cnt;
       self.m_size += cnt;
       ++self.m_lines;
-      maybe = linebuf[0] == 0;
+      maybe = (linebuf[0] == 0);
    }
    NYD_LEAVE;
 }

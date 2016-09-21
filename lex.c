@@ -1428,6 +1428,7 @@ initbox(char const *name)
    Ftmp_release(&tempMesg);
 
    message_reset();
+   mb.mb_active = MB_NONE;
    mb.mb_threaded = 0;
    if (mb.mb_sorted != NULL) {
       free(mb.mb_sorted);

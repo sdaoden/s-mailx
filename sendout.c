@@ -1306,9 +1306,9 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
       /* Only if we are resending it can happen that we have to quote From_
        * lines here; we don't generate messages which are ambiguous ourselves */
       if(resend){
-         if(emptyline && is_head(buf, buflen, TRU1))
+         if(emptyline && is_head(buf, buflen, FAL0))
             putc('>', fo);
-      }DBG(else assert(!is_head(buf, buflen, TRU1)); )
+      }DBG(else assert(!is_head(buf, buflen, FAL0)); )
 
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
@@ -1786,11 +1786,9 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    while (cnt > 0) {
       if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
          break;
-      /* XXX more checks: The From_ line may be seen when resending */
-      /* During headers is_head() is actually overkill, so ^From_ is sufficient
-       * && !is_head(buf, c, TRU1) */
-      if (ascncasecmp("status:", buf, 7) && strncmp("From ", buf, 5) &&
-            ascncasecmp("disposition-notification-to:", buf, 28))
+      if (ascncasecmp("status:", buf, 7) &&
+            ascncasecmp("disposition-notification-to:", buf, 28) &&
+            !is_head(buf, c, FAL0))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
          break;
