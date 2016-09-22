@@ -666,11 +666,12 @@ option_parse() {
 
 option_doc_of() {
    # Return the "documentation string" for option $1, itself if none such
+   j=\'
    ${awk} -v want="${1}" \
       -v input="${XOPTIONS_DETECT}${XOPTIONS}${XOPTIONS_XTRA}" '
    BEGIN{
       for(;;){
-         voff = match(input, /[[:alnum:]_]+(='"'"'[^'"'"']+)?/)
+         voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
          if(voff == 0)
             break
          v = substr(input, voff, RLENGTH)
