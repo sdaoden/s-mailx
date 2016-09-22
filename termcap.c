@@ -844,8 +844,9 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
 
       if(tep->te_flags == 0
 #ifdef HAVE_TERMCAP
-            && !a_termcap_ent_query_tcp(UNCONST(tep),
-                  &a_termcap_control[n__TERMCAP_CMD_MAX + query])
+            && ((pstate & PS_TERMCAP_DISABLE) ||
+               !a_termcap_ent_query_tcp(UNCONST(tep),
+               &a_termcap_control[n__TERMCAP_CMD_MAX + query]))
 #endif
       )
          goto jleave;
@@ -862,9 +863,11 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
             goto jextok;
          }
 
-#ifndef HAVE_TERMCAP
-      goto jleave;
-#else
+#ifdef HAVE_TERMCAP
+      if(pstate & PS_TERMCAP_DISABLE)
+#endif
+         goto jleave;
+#ifdef HAVE_TERMCAP
       nlen = strlen(ndat) +1;
       teep = smalloc(sizeof(*teep) -
             VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + nlen);
