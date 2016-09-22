@@ -2855,7 +2855,8 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
 
       tbcp = smalloc(sizeof(*tbcp) -
             VFIELD_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
-            tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l + tbpcp->tbpc_cnv_len +3);
+            tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +
+            MAX(sizeof(si32_t), sizeof(wc_t)) + tbpcp->tbpc_cnv_len +3);
       if(tbpcp->tbpc_ltbcp != NULL){
          tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
          tbpcp->tbpc_ltbcp->tbc_next = tbcp;
@@ -2869,7 +2870,10 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
          tbpcp->tbpc_seq, i = (tbcp->tbc_seq_len = tbpcp->tbpc_seq_len) +1);
       memcpy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
          tbpcp->tbpc_exp.s, j = (tbcp->tbc_exp_len = tbpcp->tbpc_exp.l) +1);
-      memcpy(tbcp->tbc_cnv = &tbcp->tbc__buf[i += j],
+      i += j;
+      i = ((i + (MAX(sizeof(si32_t), sizeof(wc_t)) - 1)) &
+            ~(MAX(sizeof(si32_t), sizeof(wc_t)) - 1));
+      memcpy(tbcp->tbc_cnv = &tbcp->tbc__buf[i],
          tbpcp->tbpc_cnv, (tbcp->tbc_cnv_len = tbpcp->tbpc_cnv_len) +1);
       tbcp->tbc_flags = tbpcp->tbpc_flags;
    }
