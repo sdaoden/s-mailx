@@ -2402,7 +2402,7 @@ int main(void){
    r1 = tigetflag(UNCONST("bce"));
    r2 = tigetnum(UNCONST("colors"));
    r3 = tigetstr(UNCONST("cr"));
-   tp = tparm(r3, NULL);
+   tp = tparm(r3, NULL, NULL, 0,0,0,0,0,0,0);
    tputs(tp, 1, &my_putc);
    return (r0 == ERR || r1 == -1 || r2 == -2 || r2 == -1 ||
       r3 == (char*)-1 || r3 == NULL);
