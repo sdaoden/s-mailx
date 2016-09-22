@@ -194,7 +194,7 @@ if yesno 'Send announcement mail?'; then
    else
       echo > "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    fi
-   if [ -n "`git ls-tree ${relbr} NEWS`" ]; then
+   if `git cat-file -e ${relbr}:NEWS 2>/dev/null`; then
       git show ${relbr}:NEWS >> "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    fi
 
