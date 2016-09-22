@@ -1042,10 +1042,13 @@ setptr(FILE *ibuf, off_t offset)
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
-         if (rfc4155 == TRUM1 && (options & OPT_D_V) &&
-               !(mb.mb_active & MB_FROM__WARNED)) {
+         if (rfc4155 == TRUM1) {
+            if (options & OPT_D_V)
+               n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
+                  (int)cnt, linebuf);
+            else if (!(mb.mb_active & MB_FROM__WARNED))
+               n_err(_("MBOX mailbox contains non-conforming From_ line(s)\n"));
             mb.mb_active |= MB_FROM__WARNED;
-            n_err(_("MBOX mailbox From_ line(s) don't conform to RFC 4155\n"));
          }
          self.m_xsize = self.m_size;
          self.m_xlines = self.m_lines;
