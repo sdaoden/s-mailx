@@ -500,8 +500,8 @@ struct a_tty_bind_parse_ctx{
    char *tbpc_cnv;            /* Out: sequence when read(2)ing it */
    ui32_t tbpc_seq_len;
    ui32_t tbpc_cnv_len;
+   ui32_t tbpc_cnv_align_mask; /* For creating a_tty_bind_ctx.tbc_cnv */
    ui32_t tbpc_flags;         /* n_lexinput_flags | a_tty_bind_flags */
-   ui8_t tbpc__dummy[4];
 };
 
 /* Input character tree */
@@ -2871,8 +2871,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
       memcpy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
          tbpcp->tbpc_exp.s, j = (tbcp->tbc_exp_len = tbpcp->tbpc_exp.l) +1);
       i += j;
-      i = ((i + (MAX(sizeof(si32_t), sizeof(wc_t)) - 1)) &
-            ~(MAX(sizeof(si32_t), sizeof(wc_t)) - 1));
+      i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
       memcpy(tbcp->tbc_cnv = &tbcp->tbc__buf[i],
          tbpcp->tbpc_cnv, (tbcp->tbc_cnv_len = tbpcp->tbpc_cnv_len) +1);
       tbcp->tbc_flags = tbpcp->tbpc_flags;
@@ -3024,6 +3023,9 @@ jeempty:
       goto jleave;
    }
 
+   if(isbindcmd) /* (Or always, just "1st time init") */
+      tbpcp->tbpc_cnv_align_mask = MAX(sizeof(si32_t), sizeof(wc_t)) - 1;
+
    /* C99 */{
       struct a_tty_bind_ctx *ltbcp, *tbcp;
       char *cpbase, *cp, *cnv;
@@ -3072,9 +3074,7 @@ jeempty:
 
          j = i = sl + 1; /* Room for comma separator */
          if(isbindcmd){
-            size_t const al = MAX(sizeof(si32_t), sizeof(wc_t)) - 1;
-
-            i = (i + al) & ~al;
+            i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
             j = i;
             i += cl;
          }
