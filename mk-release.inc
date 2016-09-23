@@ -50,6 +50,7 @@ if [ "`git status --porcelain --ignored |
 fi
 
 echo 'Preparing a release on commit '"${headref}"
+#brname="`git branch | sed -e '/^* /b X' -e d -e :X -e 's/^* //'`"
 brname=`git symbolic-ref --short HEAD`
 echo '  That is '"${brname}"
 printf '  Name of release tag: '
@@ -102,29 +103,33 @@ LC_ALL=${ORIG_LC_ALL} git tag -s -f \
    -m "Bump ${UPROGRAM} v${REL}, ${DATE_ISO}" "v${REL}"
 
 ##
-echo 'Creating release/ branch and files'
 
-git checkout -b ${relbrname}
+if yesno 'Create release/ branch and files?'; then
+   git checkout -b ${relbrname}
 
-git rm -f .gitignore .mailmap TODO
-update_release_hook
+   git rm -f .gitignore .mailmap TODO
+   update_release_hook
 
-LC_ALL=${ORIG_LC_ALL} git commit -S \
-   -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
-LC_ALL=${ORIG_LC_ALL} git tag -s -f \
-   -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}" "v${REL}.ar"
+   LC_ALL=${ORIG_LC_ALL} git commit -S \
+      -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
+   LC_ALL=${ORIG_LC_ALL} git tag -s -f \
+      -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}" "v${REL}.ar"
 
-if yesno 'Shall i update release/latest "symlink"?'; then
-   git update-ref refs/heads/release/latest ${relbrname}
-fi
-if yesno 'Shall i update release/stable "symlink"?'; then
-   git update-ref refs/heads/release/stable ${relbrname}
+   if yesno 'Shall i update release/latest "symlink"?'; then
+      git update-ref refs/heads/release/latest ${relbrname}
+   fi
+   if yesno 'Shall i update release/stable "symlink"?'; then
+      git update-ref refs/heads/release/stable ${relbrname}
+   fi
+else
+   relbrname=${stblbrname}
 fi
 
 ##
 # [timeline]
 
-if `git rev-parse --verify timeline^{commit} >/dev/null 2>&1` &&
+if [ ${relbrname} != ${stblbrname} ] &&
+      `git rev-parse --verify timeline^{commit} >/dev/null 2>&1` &&
       yesno 'Shall i update [timeline]?'; then
    git checkout timeline
    git rm -rf '*'
@@ -136,14 +141,14 @@ fi
 ##
 # repo push
 
-git checkout ${stblbrname}
+[ ${relbrname} != ${stblbrname} ] && git checkout ${stblbrname}
 git log --no-walk --decorate --oneline --branches --remotes
 yesno 'Push git(1) repo?' && git push
 
 ##
 # Big balls
 
-if yesno 'Create tarballs'; then
+if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
    (
    # Repack with standard tar(1) to avoid new-style headers
    git archive --format=tar --prefix="${PROGRAM}-${REL}/" "v${REL}.ar" |
@@ -151,6 +156,7 @@ if yesno 'Create tarballs'; then
    cd "${TMPDIR}"
    tar -c -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
 
+   openssl md5 "${PROGRAM}-${REL}.tar" > "${PROGRAM}-${REL}.cksum"
    openssl sha1 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
    openssl sha256 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
    openssl sha512 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
@@ -199,7 +205,7 @@ if yesno 'Send announcement mail?'; then
    fi
 
    LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT}
-      -s "[ANNOUNCE] of ${UPROGRAM} v${REL}"
+      -s "[ANN] of ${UPROGRAM} v${REL}"
       -q "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
       -b ${MAILBCC} ${MAILTO}
 fi
