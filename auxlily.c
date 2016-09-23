@@ -501,7 +501,7 @@ jredo:
          continue;
       } else
 #endif
-      if ((c = n_shell_expand_escape(&ccp, TRU1)) > 0) {
+      if ((c = n_shexp_expand_escape(&ccp, TRU1)) > 0) {
             if (trigger)
                *cp++ = (char)c;
             --maxlen;
@@ -544,7 +544,7 @@ jredo:
    if(cp == NULL || strlen(cp) >= PATH_MAX){
       if(cp_base == NULL){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
-            VAL_DEAD, n_shell_quote_cp(cp, FAL0));
+            VAL_DEAD, n_shexp_quote_cp(cp, FAL0));
          ok_vclear(DEAD);
          goto jredo;
       }else{

@@ -148,7 +148,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          /* C99 */{
             enum n_shexp_state shs;
 
-            if((shs = n_shell_parse_token(&store, &input, n_SHEXP_PARSE_LOG)) &
+            if((shs = n_shexp_parse_token(&store, &input, n_SHEXP_PARSE_LOG)) &
                   n_SHEXP_STATE_ERR_MASK){
                if((shs & n_SHEXP_STATE_ERR_MASK) == n_SHEXP_STATE_ERR_UNICODE){
                   pstate |= PS_WYSHLIST_SAW_UNICODE;
@@ -256,7 +256,7 @@ jredo:
 
          shoup = n_string_creat_auto(&shou);
          ncap.ca_arg_flags =
-         shs = n_shell_parse_token(shoup, &shin, ncap.ca_ent_flags[1] |
+         shs = n_shexp_parse_token(shoup, &shin, ncap.ca_ent_flags[1] |
                n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG);
          ncap.ca_inlen = PTR2SIZE(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==

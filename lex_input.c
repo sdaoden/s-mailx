@@ -200,7 +200,7 @@ a_lex_c_ghost(void *v){
 
       for(i = 0, gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          fprintf(fp, "wysh ghost %s %s\n",
-            gp->lg_name, n_shell_quote_cp(gp->lg_cmd.s, TRU1));
+            gp->lg_name, n_shexp_quote_cp(gp->lg_cmd.s, TRU1));
 
       if(fp != stdout){
          page_or_print(fp, i);
@@ -212,7 +212,7 @@ a_lex_c_ghost(void *v){
    /* Verify the ghost name is a valid one */
    if(*argv[0] == '\0' || *a_lex_isolate(argv[0]) != '\0'){
       n_err(_("`ghost': can't canonicalize %s\n"),
-         n_shell_quote_cp(argv[0], FAL0));
+         n_shexp_quote_cp(argv[0], FAL0));
       v = NULL;
       goto jleave;
    }
@@ -222,7 +222,7 @@ a_lex_c_ghost(void *v){
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(argv[0], gp->lg_name)){
             printf("wysh ghost %s %s\n",
-               gp->lg_name, n_shell_quote_cp(gp->lg_cmd.s, TRU1));
+               gp->lg_name, n_shexp_quote_cp(gp->lg_cmd.s, TRU1));
             goto jleave;
          }
       n_err(_("`ghost': no such alias: %s\n"), argv[0]);
@@ -300,7 +300,7 @@ a_lex_c_unghost(void *v){
                goto jouter;
             }
          n_err(_("`unghost': no such alias: %s\n"),
-            n_shell_quote_cp(cp, FAL0));
+            n_shexp_quote_cp(cp, FAL0));
          rv = 1;
 jouter:  ;
       }
@@ -972,7 +972,7 @@ a_lex_load(struct a_lex_input_stack *lip){
 */
    pstate |= PS_ROBOT | PS_SOURCING;
    if(options & OPT_D_V)
-      n_err(_("Loading %s\n"), n_shell_quote_cp(lip->li_name, FAL0));
+      n_err(_("Loading %s\n"), n_shexp_quote_cp(lip->li_name, FAL0));
    a_lex_input = lip;
    if(!(rv = n_commands())){
       if(!(options & OPT_INTERACTIVE)){
@@ -1063,7 +1063,7 @@ jredo:
    }
 
    if(!rv && gp != NULL){
-      printf("%s\n", n_shell_quote_cp(comm, TRU1));
+      printf("%s\n", n_shexp_quote_cp(comm, TRU1));
       rv = TRU1;
    }
    NYD_LEAVE;

@@ -222,7 +222,7 @@ _maildir_subdir(char const *name, char const *sub, enum fedit_mode fm)
 
    if ((dirp = opendir(sub)) == NULL) {
       n_err(_("Cannot open directory %s\n"),
-         n_shell_quote_cp(savecatsep(name, '/', sub), FAL0));
+         n_shexp_quote_cp(savecatsep(name, '/', sub), FAL0));
       rv = -1;
       goto jleave;
    }
@@ -319,7 +319,7 @@ readin(char const *name, struct message *m)
 
    if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
       n_err(_("Cannot read %s for message %lu\n"),
-         n_shell_quote_cp(savecatsep(name, '/', m->m_maildir_file), FAL0),
+         n_shexp_quote_cp(savecatsep(name, '/', m->m_maildir_file), FAL0),
          (ul_i)PTR2SIZE(m - message + 1));
       m->m_flag |= MHIDDEN;
       goto jleave;
@@ -389,7 +389,7 @@ maildir_update(void)
       if (dodel) {
          if (unlink(m->m_maildir_file) < 0)
             n_err(_("Cannot delete file %s for message %lu\n"),
-               n_shell_quote_cp(savecatsep(mailname, '/', m->m_maildir_file),
+               n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file),
                   FAL0), (ul_i)PTR2SIZE(m - message + 1));
          else
             ++gotcha;
@@ -405,7 +405,7 @@ maildir_update(void)
    }
 jbypass:
    if ((gotcha || modflags) && (pstate & PS_EDIT)) {
-      printf(_("%s "), n_shell_quote_cp(displayname, FAL0));
+      printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
    } else if (held && !(pstate & PS_EDIT) && mb.mb_perm != 0) {
@@ -433,14 +433,14 @@ _maildir_move(struct message *m)
       goto jleave;
    if (link(m->m_maildir_file, new) == -1) {
       n_err(_("Cannot link %s to %s: message %lu not touched\n"),
-         n_shell_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0),
-         n_shell_quote_cp(savecatsep(mailname, '/', new), FAL0),
+         n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0),
+         n_shexp_quote_cp(savecatsep(mailname, '/', new), FAL0),
          (ul_i)PTR2SIZE(m - message + 1));
       goto jleave;
    }
    if (unlink(m->m_maildir_file) == -1)
       n_err(_("Cannot unlink %s\n"),
-         n_shell_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0));
+         n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0));
 jleave:
    NYD_LEAVE;
 }
@@ -543,7 +543,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
       nfn = (char*)(PTR2SIZE(nfn) - 1);
       if (nfn == NULL) {
          n_err(_("Can't create an unique file name in %s\n"),
-            n_shell_quote_cp(savecat(name, "/tmp"), FAL0));
+            n_shexp_quote_cp(savecat(name, "/tmp"), FAL0));
          goto jleave;
       }
    }
@@ -555,7 +555,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
 
       if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
-         n_err(_("Error writing to %s\n"), n_shell_quote_cp(tfn, FAL0));
+         n_err(_("Error writing to %s\n"), n_shexp_quote_cp(tfn, FAL0));
          Fclose(op);
          goto jerr;
       }
@@ -566,14 +566,14 @@ jtmperr:
    nfn = salloc(n = nlen + flen + 6);
    snprintf(nfn, n, "%s/new/%s", name, fn);
    if (link(tfn, nfn) == -1) {
-      n_err(_("Cannot link %s to %s\n"), n_shell_quote_cp(tfn, FAL0),
-         n_shell_quote_cp(nfn, FAL0));
+      n_err(_("Cannot link %s to %s\n"), n_shexp_quote_cp(tfn, FAL0),
+         n_shexp_quote_cp(nfn, FAL0));
       goto jerr;
    }
    rv = OKAY;
 jerr:
    if (unlink(tfn) == -1)
-      n_err(_("Cannot unlink %s\n"), n_shell_quote_cp(tfn, FAL0));
+      n_err(_("Cannot unlink %s\n"), n_shexp_quote_cp(tfn, FAL0));
 jleave:
    NYD_LEAVE;
    return rv;
@@ -588,11 +588,11 @@ trycreate(char const *name)
 
    if (!stat(name, &st)) {
       if (!S_ISDIR(st.st_mode)) {
-         n_err(_("%s is not a directory\n"), n_shell_quote_cp(name, FAL0));
+         n_err(_("%s is not a directory\n"), n_shexp_quote_cp(name, FAL0));
          goto jleave;
       }
    } else if (!n_path_mkdir(name)) {
-      n_err(_("Cannot create directory %s\n"), n_shell_quote_cp(name, FAL0));
+      n_err(_("Cannot create directory %s\n"), n_shexp_quote_cp(name, FAL0));
       goto jleave;
    }
    rv = OKAY;
@@ -761,7 +761,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    }
 
    if (chdir(name) < 0) {
-      n_err(_("Cannot change directory to %s\n"), n_shell_quote_cp(name, FAL0));
+      n_err(_("Cannot change directory to %s\n"), n_shexp_quote_cp(name, FAL0));
       mb.mb_type = MB_VOID;
       *mailname = '\0';
       msgCount = 0;
@@ -811,7 +811,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), n_shell_quote_cp(name, FAL0));
+         n_err(_("No mail at %s\n"), n_shexp_quote_cp(name, FAL0));
       i = 1;
       goto jleave;
    }
@@ -843,7 +843,7 @@ maildir_quit(void)
 
    if (chdir(mailname) == -1) {
       n_err(_("Cannot change directory to %s\n"),
-         n_shell_quote_cp(mailname, FAL0));
+         n_shexp_quote_cp(mailname, FAL0));
       cwrelse(&cw);
       safe_signal(SIGINT, saveint);
       goto jleave;

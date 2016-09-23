@@ -217,7 +217,7 @@ edstop(void) /* TODO oh my god */
       fflush_rewind(obuf);
    }
 
-   printf(_("%s "), n_shell_quote_cp(displayname, FAL0));
+   printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(stdout);
 
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
@@ -266,7 +266,7 @@ edstop(void) /* TODO oh my god */
 
          printf(_("removal error (ignored)\n"));
          n_err(_("Error removing %s (ignored):"),
-            n_shell_quote_cp(mailname, FAL0)); /* TODO */
+            n_shexp_quote_cp(mailname, FAL0)); /* TODO */
          n_perr(NULL, e); /* TODO */
       }
    } else

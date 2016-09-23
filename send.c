@@ -1176,11 +1176,11 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
 jgetname:
       f2 = n_lex_input_cp((n_LEXINPUT_CTX_BASE | n_LEXINPUT_HIST_ADD),
             prompt.s, ((f != (char*)-1 && f != NULL)
-               ? n_shell_quote_cp(f, FAL0) : NULL));
+               ? n_shexp_quote_cp(f, FAL0) : NULL));
       if(f2 != NULL){
          in.s = UNCONST(f2);
          in.l = UIZ_MAX;
-         if((n_shell_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
+         if((n_shexp_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
                   n_SHEXP_PARSE_IGNORE_EMPTY) &
                 (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
@@ -1220,7 +1220,7 @@ jgetname:
          n_perr(f, 0);
    } else {
       if ((fp = Fopen(f, "w")) == NULL)
-         n_err(_("Cannot open %s\n"), n_shell_quote_cp(f, FAL0));
+         n_err(_("Cannot open %s\n"), n_shexp_quote_cp(f, FAL0));
    }
 jleave:
    NYD_LEAVE;

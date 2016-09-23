@@ -156,7 +156,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
    snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " filename: "), number);
    for (;;) {
       if ((cp = ap->a_name) != NULL)
-         cp = n_shell_quote_cp(cp, FAL0);
+         cp = n_shexp_quote_cp(cp, FAL0);
       if ((cp = n_lex_input_cp(lif, prefix, cp)) == NULL) {
          ap->a_name = NULL;
          ap = NULL;
@@ -165,7 +165,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
 
       shin.s = UNCONST(cp);
       shin.l = UIZ_MAX;
-      if((n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+      if((n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY) &
              (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
@@ -278,7 +278,7 @@ jcs:
 jdone:
 #endif
    if (options & OPT_INTERACTIVE)
-      printf(_("Added attachment %s\n"), n_shell_quote_cp(ap->a_name, FAL0));
+      printf(_("Added attachment %s\n"), n_shexp_quote_cp(ap->a_name, FAL0));
 jleave:
    n_string_gut(shoup);
 
@@ -414,7 +414,7 @@ append_attachments(enum n_lexinput_flags lif, struct attachment **aphead,
       struct attachment *xaph, *nap;
       enum n_shexp_state shs;
 
-      shs = n_shell_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
+      shs = n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
              n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
              n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY);
       if(shs & n_SHEXP_STATE_ERR_MASK)
@@ -426,7 +426,7 @@ append_attachments(enum n_lexinput_flags lif, struct attachment **aphead,
             *aphead = xaph;
             if(options & OPT_INTERACTIVE)
                printf(_("Added attachment %s\n"),
-                  n_shell_quote_cp(nap->a_name, FAL0));
+                  n_shexp_quote_cp(nap->a_name, FAL0));
          }else
             n_perr(n_string_cp(shoup), 0);
       }

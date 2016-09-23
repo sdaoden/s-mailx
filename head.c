@@ -1251,7 +1251,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 j0print:
    cbuf[0] = '\0';
 jprint:
-   n_err(cs, n_shell_quote_cp(np->n_name, TRU1), cbuf);
+   n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
 jleave:
    NYD_LEAVE;
    return rv;

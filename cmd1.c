@@ -1104,7 +1104,7 @@ _pipe1(char *str, int doign)
       goto jleave;
    }
 
-   cmdq = n_shell_quote_cp(cmd, FAL0);
+   cmdq = n_shexp_quote_cp(cmd, FAL0);
    printf(_("Pipe to: %s\n"), cmdq);
    stats[0] = 0;
    if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, UNCONST(cmd), stats)) == 0)

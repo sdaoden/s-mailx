@@ -1316,7 +1316,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       msgp = n_string_assign_cp(msgp, _("No such variable: "));
       s.s = UNCONST(name);
       s.l = UIZ_MAX;
-      msgp = n_shell_quote(msgp, &s, FAL0);
+      msgp = n_shexp_quote(msgp, &s, FAL0);
       goto jleave;
    }
 
@@ -1360,7 +1360,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       msgp = n_string_push_cp(msgp, "# ");
    UNINIT(quote, NULL);
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
-      quote = n_shell_quote_cp(avc.avc_var->av_value, TRU1);
+      quote = n_shexp_quote_cp(avc.avc_var->av_value, TRU1);
       if(strcmp(quote, avc.avc_var->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
    }
@@ -1540,7 +1540,7 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
 jmac:
    if((amp = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) == NULL){
       n_err(_("Cannot call *folder-hook* for %s: macro does not exist: %s\n"),
-         n_shell_quote_cp(displayname, FAL0), cp);
+         n_shexp_quote_cp(displayname, FAL0), cp);
       rv = FAL0;
       goto jleave;
    }

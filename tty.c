@@ -1860,7 +1860,7 @@ a_tty_kht(struct a_tty_line *tlp){
             enum n_shexp_state shs;
 
             exp = sub;
-            shs = n_shell_parse_token(NULL, &sub, n_SHEXP_PARSE_DRYRUN |
+            shs = n_shexp_parse_token(NULL, &sub, n_SHEXP_PARSE_DRYRUN |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
             if(sub.l != 0){
                size_t x;
@@ -1876,7 +1876,7 @@ a_tty_kht(struct a_tty_line *tlp){
                   (int)exp.l, exp.s);
                goto jnope;
             }
-            n_shell_parse_token(shoup, &exp,
+            n_shexp_parse_token(shoup, &exp,
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
             break;
          }
@@ -1943,7 +1943,7 @@ jredo:
          --exp.l;
       exp.s[exp.l] = '\0';
 jset:
-      exp.l = strlen(exp.s = n_shell_quote_cp(exp.s, tlp->tl_quote_rndtrip));
+      exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
       tlp->tl_defc_cursor_byte = bot.l + exp.l -1;
       if(wedid)
          goto jnope;
@@ -2060,7 +2060,7 @@ jmulti:{
 
          /* Prepare display */
          input = sub;
-         shoup = n_shell_quote(n_string_trunc(shoup, 0), &input,
+         shoup = n_shexp_quote(n_string_trunc(shoup, 0), &input,
                tlp->tl_quote_rndtrip);
          memset(&vic, 0, sizeof vic);
          vic.vic_indat = shoup->s_dat;
@@ -2925,7 +2925,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       enum n_shexp_state shs;
 
       shin_save = shin;
-      shs = n_shell_parse_token(shoup, &shin,
+      shs = n_shexp_parse_token(shoup, &shin,
             n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIMSPACE |
             n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_IFS_IS_COMMA);
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
@@ -2951,7 +2951,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       tail = ep;
       ep->next = NULL;
       if(!(shs & n_SHEXP_STATE_ERR_UNICODE)){
-         i = strlen(ep->seq_dat = n_shell_quote_cp(n_string_cp(shoup), TRU1));
+         i = strlen(ep->seq_dat = n_shexp_quote_cp(n_string_cp(shoup), TRU1));
          if(i >= SI32_MAX - 1)
             goto jelen;
          ep->seq_len = (ui32_t)i;
@@ -4115,7 +4115,7 @@ c_bind(void *v){
                 * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
                   ? _("# <Defunctional> ") : ""),
                a_tty_bind_ctx_maps[lif].tbcm_name, tbcp->tbc_seq,
-               n_shell_quote_cp(tbcp->tbc_exp, TRU1),
+               n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
                (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : ""),
                (!(options & OPT_D_VV) ? ""
                   : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL

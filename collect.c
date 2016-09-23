@@ -305,7 +305,7 @@ jpager:
             else if (ascncasecmp(cp, "text/", 5))
                csi = "";
             fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs,
-               n_shell_quote_cp(ap->a_name, FAL0));
+               n_shexp_quote_cp(ap->a_name, FAL0));
          }
       }
    }
@@ -328,7 +328,7 @@ exwrite(char const *name, FILE *fp, int f)
    NYD_ENTER;
 
    if (f) {
-      printf("%s ", n_shell_quote_cp(name, FAL0));
+      printf("%s ", n_shexp_quote_cp(name, FAL0));
       fflush(stdout);
    }
    if ((of = Fopen(name, "a")) == NULL) {
@@ -439,7 +439,7 @@ mespipe(char *cmd)
    }
 
    if (fsize(nf) == 0) {
-      n_err(_("No bytes from %s !?\n"), n_shell_quote_cp(cmd, FAL0));
+      n_err(_("No bytes from %s !?\n"), n_shexp_quote_cp(cmd, FAL0));
       Fclose(nf);
       goto jout;
    }
@@ -999,7 +999,7 @@ jearg:
                break;
          }
          if(is_dir(cp)){
-            n_err(_("%s: is a directory\n"), n_shell_quote_cp(cp, FAL0));
+            n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             break;
          }
          if(_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0){
@@ -1007,7 +1007,7 @@ jearg:
                goto jerr;
             break;
          }
-         printf(_("%s %d/%d\n"), n_shell_quote_cp(cp, FAL0), lc, cc);
+         printf(_("%s %d/%d\n"), n_shexp_quote_cp(cp, FAL0), lc, cc);
          break;
       case 'i':
          /* Insert a variable into the file */
@@ -1166,10 +1166,10 @@ jout:
 
       if((cpq = file_expand(cp)) == NULL){
          n_err(_("*signature* expands to invalid file: %s\n"),
-            n_shell_quote_cp(cp, FAL0));
+            n_shexp_quote_cp(cp, FAL0));
          goto jerr;
       }
-      cpq = n_shell_quote_cp(cp = cpq, FAL0);
+      cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
       if((sigfp = Fopen(cp, "r")) == NULL){
          n_err(_("Can't open *signature* %s: %s\n"), cpq, strerror(errno));

@@ -1710,18 +1710,18 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
  * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
  * *s is advanced to after the expanded sequence (as possible).
  * If use_prompt_extensions is set, an enum prompt_exp may be returned */
-FL int         n_shell_expand_escape(char const **s,
+FL int         n_shexp_expand_escape(char const **s,
                   bool_t use_prompt_extensions);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store */
-FL enum n_shexp_state n_shell_parse_token(struct n_string *store,
+FL enum n_shexp_state n_shexp_parse_token(struct n_string *store,
                         struct str *input, enum n_shexp_parse_flags flags);
 
 /* Likewise, but strips n_SHEXP_STATE_STOP if input remains after parsing,
  * otherwise forcefully sets it.  Returns autoreclaimed storage */
-FL enum n_shexp_state n_shell_parse_token_buf(char **store,
+FL enum n_shexp_state n_shexp_parse_token_buf(char **store,
                         char const *indat, size_t inlen,
                         enum n_shexp_parse_flags flags);
 
@@ -1733,9 +1733,9 @@ FL enum n_shexp_state n_shell_parse_token_buf(char **store,
  * Resulting output is _appended_ to store.
  * TODO Note: last resort, since \u and $ expansions etc. are necessarily
  * TODO already expanded and can thus not be reverted, but ALL we have */
-FL struct n_string *n_shell_quote(struct n_string *store,
+FL struct n_string *n_shexp_quote(struct n_string *store,
                      struct str const *input, bool_t rndtrip);
-FL char *      n_shell_quote_cp(char const *cp, bool_t rndtrip);
+FL char *      n_shexp_quote_cp(char const *cp, bool_t rndtrip);
 
 /*
  * signal.c
@@ -1950,7 +1950,7 @@ FL int         anyof(char const *s1, char const *s2);
  * next entry, trimming surrounding whitespace, and point *iolist to the next
  * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
- * See n_shell_parse_token() for the new way that supports sh(1) quoting.
+ * See n_shexp_parse_token() for the new way that supports sh(1) quoting.
  * Return NULL or an entry */
 FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
 

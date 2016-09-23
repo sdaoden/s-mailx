@@ -200,7 +200,7 @@ _mt_init(void)
                   *srcs++ = ccp;
                else
                   n_err(_("*mimetypes-load-control*: too many sources, "
-                        "skipping %s\n"), n_shell_quote_cp(ccp, FAL0));
+                        "skipping %s\n"), n_shexp_quote_cp(ccp, FAL0));
                continue;
             }
             /* FALLTHRU */
@@ -229,7 +229,7 @@ jecontent:
             *srcs, &line, &linesize)) {
          if ((options & OPT_D_V) || j > 1)
             n_err(_("*mimetypes-load-control*: can't open or load %s\n"),
-               n_shell_quote_cp(*srcs, FAL0));
+               n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
       free(line);

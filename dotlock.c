@@ -217,10 +217,10 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 #undef _DOMSG
 #ifdef HAVE_DOTLOCK
 # define _DOMSG() \
-   n_err(_("Creating dotlock for %s "), n_shell_quote_cp(fname, FAL0))
+   n_err(_("Creating dotlock for %s "), n_shexp_quote_cp(fname, FAL0))
 #else
 # define _DOMSG() \
-   n_err(_("Trying to lock file %s "), n_shell_quote_cp(fname, FAL0))
+   n_err(_("Trying to lock file %s "), n_shexp_quote_cp(fname, FAL0))
 #endif
 
 #ifdef HAVE_DOTLOCK

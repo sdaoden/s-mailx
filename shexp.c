@@ -365,7 +365,7 @@ jleave:
 
 jerr:
    if(!(fexpm & FEXP_SILENT)){
-      name = n_shell_quote_cp(name, FAL0);
+      name = n_shexp_quote_cp(name, FAL0);
       n_err("%s: %s\n", V_(cp), name);
    }
    cp = NULL;
@@ -554,13 +554,13 @@ jerr:
       char const *s2, *s3;
 
       if(sgcp->sgc_outer->s_len > 0){
-         s2 = n_shell_quote_cp(n_string_cp(sgcp->sgc_outer), FAL0);
+         s2 = n_shexp_quote_cp(n_string_cp(sgcp->sgc_outer), FAL0);
          s3 = "/";
       }else
          s2 = s3 = "";
 
       n_err("%s: %s%s%s\n", V_(ccp), s2, s3,
-         n_shell_quote_cp(sgcp->sgc_patdat, FAL0));
+         n_shexp_quote_cp(sgcp->sgc_patdat, FAL0));
    }
    goto jleave;
 }
@@ -1038,7 +1038,7 @@ jislocal:
          break;
       default:
          n_err(_("Not a local file or directory: %s\n"),
-            n_shell_quote_cp(name, FAL0));
+            n_shexp_quote_cp(name, FAL0));
          res = NULL;
          break;
       }
@@ -1051,7 +1051,7 @@ jleave:
 }
 
 FL int
-n_shell_expand_escape(char const **s, bool_t use_nail_extensions)/* TODO DROP!*/
+n_shexp_expand_escape(char const **s, bool_t use_nail_extensions)/* TODO DROP!*/
 {
    char const *xs;
    int c, n;
@@ -1158,7 +1158,7 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shell_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
+n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
       enum n_shexp_parse_flags flags){
 #if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
    char utf[8];
@@ -1598,7 +1598,7 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shell_parse_token_buf(char **store, char const *indat, size_t inlen,
+n_shexp_parse_token_buf(char **store, char const *indat, size_t inlen,
       enum n_shexp_parse_flags flags){
    struct n_string ss;
    struct str is;
@@ -1612,7 +1612,7 @@ n_shell_parse_token_buf(char **store, char const *indat, size_t inlen,
    is.s = UNCONST(indat);
    is.l = inlen;
 
-   shs = n_shell_parse_token(&ss, &is, flags);
+   shs = n_shexp_parse_token(&ss, &is, flags);
    if(is.l > 0)
       shs &= ~n_SHEXP_STATE_STOP;
    else
@@ -1626,7 +1626,7 @@ n_shell_parse_token_buf(char **store, char const *indat, size_t inlen,
 }
 
 FL struct n_string *
-n_shell_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
+n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    struct a_shexp_quote_lvl sql;
    struct a_shexp_quote_ctx sqc;
    NYD2_ENTER;
@@ -1655,7 +1655,7 @@ n_shell_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
 }
 
 FL char *
-n_shell_quote_cp(char const *cp, bool_t rndtrip){
+n_shexp_quote_cp(char const *cp, bool_t rndtrip){
    struct n_string store;
    struct str input;
    char *rv;
@@ -1665,7 +1665,7 @@ n_shell_quote_cp(char const *cp, bool_t rndtrip){
 
    input.s = UNCONST(cp);
    input.l = UIZ_MAX;
-   rv = n_string_cp(n_shell_quote(n_string_creat_auto(&store), &input,
+   rv = n_string_cp(n_shexp_quote(n_string_creat_auto(&store), &input,
          rndtrip));
    n_string_gut(n_string_drop_ownership(&store));
    NYD2_LEAVE;

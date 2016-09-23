@@ -339,7 +339,7 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
       err = errno;
-      n_err(_("%s: %s\n"), n_shell_quote_cp(ap->a_name, FAL0), strerror(err));
+      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_name, FAL0), strerror(err));
       goto jleave;
    }
 
@@ -822,7 +822,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
 
       if(options & OPT_D_VV)
          n_err(_(">>> Writing message via %s\n"),
-            n_shell_quote_cp(np->n_name, FAL0));
+            n_shexp_quote_cp(np->n_name, FAL0));
       if(options & OPT_DEBUG)
          continue;
 
@@ -904,7 +904,7 @@ jcantfout:
                np->n_name + 1, NULL, NULL);
          if (pid < 0) {
             n_err(_("Piping message to %s failed\n"),
-               n_shell_quote_cp(np->n_name, FAL0));
+               n_shexp_quote_cp(np->n_name, FAL0));
             *senderror = TRU1;
             goto jcant;
          }
@@ -917,7 +917,7 @@ jcantfout:
             *senderror = TRU1;
             goto jcant;
          }
-         fnameq = n_shell_quote_cp(fname, FAL0);
+         fnameq = n_shexp_quote_cp(fname, FAL0);
 
          if ((fout = Zopen(fname, "a")) == NULL) {
             n_err(_("Writing message to %s failed: %s\n"),
@@ -1002,7 +1002,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend)
       if (!a_sendout__savemail(ep, fp, resend)) {
 jbail:
          n_err(_("Failed to save message in %s - message not sent\n"),
-            n_shell_quote_cp(ep, FAL0));
+            n_shexp_quote_cp(ep, FAL0));
          exit_status |= EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
@@ -1204,7 +1204,7 @@ __mta_start(struct sendbundle *sbp)
 
       if((mta = file_expand(mta_base = mta)) == NULL){
          n_err(_("*mta* variable expansion failure: %s\n"),
-            n_shell_quote_cp(mta_base, FAL0));
+            n_shexp_quote_cp(mta_base, FAL0));
          goto jstop;
       }
 
@@ -1262,7 +1262,7 @@ jstop:
          e = errno;
          ecp = (e != ENOENT) ? strerror(e)
                : _("executable not found (adjust *mta* variable)");
-         n_err(_("Cannot start %s: %s\n"), n_shell_quote_cp(mta, FAL0), ecp);
+         n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
       savedeadletter(sbp->sb_input, 1);
       n_err(_("... message not sent\n"));
@@ -1386,9 +1386,9 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    char *buf;
    NYD_ENTER;
 
-   n_err(_(">>> MTA: %s, arguments:"), n_shell_quote_cp(mta, FAL0));
+   n_err(_(">>> MTA: %s, arguments:"), n_shexp_quote_cp(mta, FAL0));
    for (; *args != NULL; ++args)
-      n_err(" %s", n_shell_quote_cp(*args, FAL0));
+      n_err(" %s", n_shexp_quote_cp(*args, FAL0));
    n_err("\n");
 
    fflush_rewind(sbp->sb_input);
@@ -2240,7 +2240,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
       goto jleave;
 
    cp = n_getdeadletter();
-   cpq = n_shell_quote_cp(cp, FAL0);
+   cpq = n_shexp_quote_cp(cp, FAL0);
 
    if(options & OPT_DEBUG){
       n_err(_(">>> Would (try to) write $DEAD %s\n"), cpq);

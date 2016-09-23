@@ -1081,7 +1081,7 @@ c_remove(void *v)
    do {
       if ((name = expand(*args)) == NULL)
          continue;
-      ename = n_shell_quote_cp(name, FAL0);
+      ename = n_shexp_quote_cp(name, FAL0);
 
       if (!strcmp(name, mailname)) {
          n_err(_("Cannot remove current mailbox %s\n"), ename);
@@ -1159,7 +1159,7 @@ c_rename(void *v)
 
    if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
       n_err(_("Cannot rename current mailbox %s\n"),
-         n_shell_quote_cp(old, FAL0));
+         n_shexp_quote_cp(old, FAL0));
       goto jleave;
    }
 
@@ -1203,7 +1203,7 @@ jnopop3:
    case PROTO_UNKNOWN:
    default:
       n_err(_("Unknown protocol in %s and %s; not renamed\n"),
-         n_shell_quote_cp(old, FAL0), n_shell_quote_cp(new, FAL0));
+         n_shexp_quote_cp(old, FAL0), n_shexp_quote_cp(new, FAL0));
       ec |= 1;
       break;
    }

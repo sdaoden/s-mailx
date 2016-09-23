@@ -752,7 +752,7 @@ pop3_update(struct mailbox *mp)
    /* C99 */{
       char const *dnq;
 
-      dnq = n_shell_quote_cp(displayname, FAL0);
+      dnq = n_shexp_quote_cp(displayname, FAL0);
 
       if (gotcha && (pstate & PS_EDIT)) {
          printf(_("%s "), dnq);

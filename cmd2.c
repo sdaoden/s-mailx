@@ -225,7 +225,7 @@ jferr:
 
    if (success) {
       printf("%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
-         n_shell_quote_cp(file, FAL0), disp,
+         n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
       for (ip = msgvec; *ip != 0 &&

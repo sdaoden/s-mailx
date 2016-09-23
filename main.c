@@ -1028,7 +1028,7 @@ jgetopt_done:
          }
       }else if((option_Mm_arg = mime_type_classify_filename(qf)) == NULL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
-            n_shell_quote_cp(qf, FAL0));
+            n_shexp_quote_cp(qf, FAL0));
          exit_status = EXIT_ERR;
          goto jleave;
       }else if(!asccasecmp(option_Mm_arg, "text/plain")) /* TODO no: magic!! */

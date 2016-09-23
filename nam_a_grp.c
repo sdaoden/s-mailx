@@ -747,13 +747,13 @@ _group_print(struct group const *gp, FILE *fo)
 
       fprintf(fo, "wysh %s %s",
          (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"),
-         n_shell_quote_cp(gp->g_id, TRU1));
+         n_shexp_quote_cp(gp->g_id, TRU1));
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
+      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shexp_quote_cp(cp, TRU1));
    } else if (gp->g_type & GT_CUSTOMHDR) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s %s", gp->g_id, n_shell_quote_cp(cp, TRU1));
+      fprintf(fo, "customhdr %s %s", gp->g_id, n_shexp_quote_cp(cp, TRU1));
    }
 
    putc('\n', fo);
@@ -829,14 +829,14 @@ jaster_entry:
                }
             } else {
                n_err(_("Mailing-list not `mlsubscribe'd: %s\n"),
-                  n_shell_quote_cp(*argv, FAL0));
+                  n_shexp_quote_cp(*argv, FAL0));
                rv = 1;
             }
             continue;
          }
       } else if (_group_del(gt, *argv))
          continue;
-      n_err(_("No such mailing-list: %s\n"), n_shell_quote_cp(*argv, FAL0));
+      n_err(_("No such mailing-list: %s\n"), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    }
    NYD_LEAVE;
@@ -1799,7 +1799,7 @@ c_customhdr(void *v){
 
       if(pstate & PS_WYSHLIST_SAW_CONTROL){
          n_err(_("`customhdr': control characters not allowed: %s: %s%s\n"),
-            hcp, n_shell_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
+            hcp, n_shexp_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
          rv = 1;
          goto jleave;
       }

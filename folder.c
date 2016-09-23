@@ -93,7 +93,7 @@ _update_mailname(char const *name)
 
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL && errno != ENOENT) {
-            n_err(_("Can't canonicalize %s\n"), n_shell_quote_cp(name, FAL0));
+            n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             rv = FAL0;
             goto jdocopy;
          }
@@ -229,7 +229,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       if ((fm & FEDIT_SYSBOX) && errno == ENOENT) {
          if (strcmp(who, myname) && getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
-               n_shell_quote_cp(who, FAL0));
+               n_shexp_quote_cp(who, FAL0));
             goto jem2;
          }
          if (!(options & OPT_QUICKRUN_MASK) && ok_blook(bsdcompat))
@@ -539,7 +539,7 @@ newfileinfo(void)
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   printf(_("%s: "), n_shell_quote_cp(
+   printf(_("%s: "), n_shexp_quote_cp(
       (_update_mailname(NULL) ? displayname : mailname), FAL0));
    if (msgCount == 1)
       printf(_("1 message"));
@@ -784,7 +784,7 @@ folder_query(void){
             rv = cp;
          else{
             n_err(_("Can't canonicalize *folder*: %s\n"),
-               n_shell_quote_cp(cp, FAL0));
+               n_shexp_quote_cp(cp, FAL0));
             err = TRU1;
             rv = "";
          }

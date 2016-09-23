@@ -187,7 +187,7 @@ _file_save(struct fp *fpp)
    if(!n_real_seek(fpp->fp, fpp->offset, SEEK_SET)){
       outfd = errno;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-         n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
       goto jleave;
    }
 
@@ -202,7 +202,7 @@ _file_save(struct fp *fpp)
    if (outfd == -1) {
       outfd = errno;
       n_err(_("Fatal: cannot create %s: %s\n"),
-         n_shell_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
       goto jleave;
    }
 

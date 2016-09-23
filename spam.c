@@ -350,7 +350,7 @@ jlearn:
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
    if (vcp->vc_verbose)
       n_err(_("spamc(1) via %s\n"),
-         n_shell_quote_cp(sscp->c_super.cf_cmd, FAL0));
+         n_shexp_quote_cp(sscp->c_super.cf_cmd, FAL0));
 
    _spam_cf_setup(vcp, FAL0);
 
@@ -435,7 +435,7 @@ _spamd_setup(struct spam_vc *vcp)
    }
    if ((l = strlen(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
       n_err(_("`%s': *spamd-socket* too long: %s\n"),
-         _spam_cmds[vcp->vc_action], n_shell_quote_cp(cp, FAL0));
+         _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0));
       goto jleave;
    }
    ssdp->d_sun.sun_family = AF_UNIX;
@@ -1077,7 +1077,7 @@ jtail:
                   (cp = strchr(vcp->vc_buffer, NETNL[1])) == NULL) {
                n_err(_("%s`%s': program generates too much output: %s\n"),
                   vcp->vc_esep, _spam_cmds[vcp->vc_action],
-                  n_shell_quote_cp(scfp->cf_cmd, FAL0));
+                  n_shexp_quote_cp(scfp->cf_cmd, FAL0));
                state |= _ERRORS;
             } else {
                scfp->cf_result = sbufdup(vcp->vc_buffer,

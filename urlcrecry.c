@@ -144,7 +144,7 @@ _nrc_init(void)
          goto j_leave;
 
       if ((fi = Fopen(netrc_load, "r")) == NULL) {
-         n_err(_("Cannot open %s\n"), n_shell_quote_cp(netrc_load, FAL0));
+         n_err(_("Cannot open %s\n"), n_shexp_quote_cp(netrc_load, FAL0));
          goto j_leave;
       }
 
@@ -152,7 +152,7 @@ _nrc_init(void)
       if (fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
             (sb.st_mode & (S_IRWXG | S_IRWXO))) {
          n_err(_("Not a regular file, or accessible by non-user: %s\n"),
-            n_shell_quote_cp(netrc_load, FAL0));
+            n_shexp_quote_cp(netrc_load, FAL0));
          goto jleave;
       }
    }
@@ -249,7 +249,7 @@ jm_h:
 jerr:
       if (options & OPT_D_V)
          n_err(_("Errors occurred while parsing %s\n"),
-            n_shell_quote_cp(netrc_load, FAL0));
+            n_shexp_quote_cp(netrc_load, FAL0));
       assert(nrc == NRC_NODE_ERR);
       goto jleave;
    }
