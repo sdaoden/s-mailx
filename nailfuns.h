@@ -2162,20 +2162,23 @@ FL void        n_iconv_close(iconv_t cd);
 /* Reset encoding state */
 FL void        n_iconv_reset(iconv_t cd);
 
-/* iconv(3), but return *errno* or 0; *skipilseq* forces step over invalid byte
- * sequences; likewise iconv_str(), but which auto-grows on E2BIG errors; *in*
- * and *in_rest_or_null* may be the same object.
+/* iconv(3), but return errno or 0 upon success.
+ * The errno may be ENOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
+ * iconv_str() auto-grows on E2BIG errors; in and in_rest_or_null may be the
+ * same object.
  * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
  * replacement character must be added manually if that happens at EOF! */
-FL int         n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,
-                  char **outb, size_t *outbleft, bool_t skipilseq);
-FL int         n_iconv_str(iconv_t icp, struct str *out, struct str const *in,
-                  struct str *in_rest_or_null, bool_t skipilseq);
+FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
+                  char const **inb, size_t *inbleft,
+                  char **outb, size_t *outbleft);
+FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
+                  struct str *out, struct str const *in,
+                  struct str *in_rest_or_null);
 
 /* If tocode==NULL, uses charset_get_lc().  If fromcode==NULL, uses UTF-8.
  * Returns a salloc()ed buffer or NULL */
-FL char *      n_iconv_onetime_cp(char const *tocode, char const *fromcode,
-                  char const *input, bool_t skipilseq);
+FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
+                  char const *tocode, char const *fromcode, char const *input);
 #endif
 
 /*

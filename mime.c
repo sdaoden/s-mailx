@@ -164,14 +164,14 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
          rest->l = 0;
       }
 
-      if (n_iconv_str(iconvd, &out, &in, &in, TRU1) != 0 && rest != NULL &&
-            in.l > 0) {
+      if (n_iconv_str(iconvd, n_ICONV_DEFAULT, &out, &in, &in) != 0 &&
+            rest != NULL && in.l > 0) {
          n_iconv_reset(iconvd);
          /* Incomplete multibyte at EOF is special */
          if (flags & _TD_EOF) {
             out.s = srealloc(out.s, out.l + 4);
             /* TODO 0xFFFD out.s[out.l++] = '[';*/
-            out.s[out.l++] = '?'; /* TODO 0xFFFD !!! */
+            out.s[out.l++] = '?'; /* TODO unicode replacement 0xFFFD !!! */
             /* TODO 0xFFFD out.s[out.l++] = ']';*/
          } else
             n_str_add(rest, &in);
@@ -513,7 +513,7 @@ convhdra(char const *str, size_t len, FILE *fp)
    ciconv.s = NULL;
    if (iconvd != (iconv_t)-1) {
       ciconv.l = 0;
-      if (n_iconv_str(iconvd, &ciconv, &cin, NULL, FAL0) != 0) {
+      if(n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &ciconv, &cin, NULL) != 0){
          n_iconv_reset(iconvd);
          goto jleave;
       }
@@ -924,11 +924,11 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 #ifdef HAVE_ICONV
          if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
-            convert = n_iconv_str(fhicd, &cin, &cout, NULL, TRU1);
+            convert = n_iconv_str(fhicd, n_ICONV_DEFAULT, &cin, &cout, NULL);
             out = n_str_add(out, &cin);
             if (convert) {/* EINVAL at EOS */
                n_iconv_reset(fhicd);
-               out = n_str_add_buf(out, "?", 1);
+               out = n_str_add_buf(out, "?", 1); /* TODO unicode replacement */
             }
             free(cin.s);
          } else
@@ -1088,7 +1088,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
    if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
-      if (n_iconv_str(iconvd, &out, &in, NULL, FAL0) != 0) {
+      if (n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &out, &in, NULL) != 0) {
          /* XXX report conversion error? */;
          n_iconv_reset(iconvd);
          sz = -1;

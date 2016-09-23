@@ -870,8 +870,8 @@ jpush:
             if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP))
                u.store = n_string_push_buf(u.store, ib, il);
 #ifdef HAVE_ICONV
-            else if((vic.vic_indat = n_iconv_onetime_cp("utf-8",
-                  charset_get_lc(), savestrbuf(ib, il), FAL0)) != NULL){
+            else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE,
+                  "utf-8", charset_get_lc(), savestrbuf(ib, il))) != NULL){
                ui32_t uc;
                char const *ib2;
                size_t il2, il3;
@@ -1452,7 +1452,8 @@ je_ib_save:
                         /* C99 */{
                            char *icp;
 
-                           icp = n_iconv_onetime_cp(NULL, NULL, utf, FAL0);
+                           icp = n_iconv_onetime_cp(n_ICONV_NONE,
+                                 NULL, NULL, utf);
                            if(icp != NULL){
                               rv |= n_SHEXP_STATE_OUTPUT;
                               if(!(flags & n_SHEXP_PARSE_DRYRUN))

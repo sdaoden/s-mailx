@@ -1012,48 +1012,50 @@ n_iconv_reset(iconv_t cd)
 # endif
 
 FL int
-n_iconv_buf(iconv_t cd, char const **inb, size_t *inbleft,/*XXX redo iconv use*/
-   char **outb, size_t *outbleft, bool_t skipilseq)
-{
-   int err = 0;
+n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
+   char const **inb, size_t *inbleft, char **outb, size_t *outbleft){
+   int err;
    NYD2_ENTER;
 
-   for (;;) {
-      size_t sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
-      if (sz != (size_t)-1)
+   for(;;){
+      size_t sz;
+
+      sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
+      if(sz > 0 && !(icf & n_ICONV_IGN_NOREVERSE)){
+         err = ENOENT;
+         goto jleave;
+      }
+      if(sz != (size_t)-1)
          break;
+
       err = errno;
-      if (!skipilseq || err != EILSEQ)
-         break;
-      if (*inbleft > 0) {
+      if(!(icf & n_ICONV_IGN_ILSEQ) || err != EILSEQ)
+         goto jleave;
+      if(*inbleft > 0){
          ++(*inb);
          --(*inbleft);
-      } else if (*outbleft > 0) {
+         if(*outbleft > 0/* TODO unicode replacement 0xFFFD */){
+             *(*outb)++ = '?';
+             --*outbleft;
+         }else{
+            err = E2BIG;
+            goto jleave;
+         }
+      }else if(*outbleft > 0){
          **outb = '\0';
-         break;
+         goto jleave;
       }
-      if (*outbleft > 0/* TODO 0xFFFD 2*/) {
-         /* TODO 0xFFFD (*outb)[0] = '[';
-          * TODO (*outb)[1] = '?';
-          * TODO 0xFFFD (*outb)[2] = ']';
-          * TODO (*outb) += 3;
-          * TODO (*outbleft) -= 3; */
-          *(*outb)++ = '?';
-          --*outbleft;
-      } else {
-         err = E2BIG;
-         break;
-      }
-      err = 0;
    }
+   err = 0;
+jleave:
    NYD2_LEAVE;
    return err;
 }
 # undef __INBCAST
 
 FL int
-n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
-   struct str *in_rest_or_null, bool_t skipilseq)
+n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
+   struct str *out, struct str const *in, struct str *in_rest_or_null)
 {
    int err;
    char *obb, *ob;
@@ -1077,8 +1079,7 @@ n_iconv_str(iconv_t cd, struct str *out, struct str const *in,
       il = in->l;
       ob = obb;
       ol = olb;
-      err = n_iconv_buf(cd, &ib, &il, &ob, &ol, skipilseq);
-      if (err == 0 || err != E2BIG)
+      if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 || err != E2BIG)
          break;
       err = 0;
       olb += in->l;
@@ -1097,8 +1098,8 @@ jrealloc:
 }
 
 FL char *
-n_iconv_onetime_cp(char const *tocode, char const *fromcode,
-      char const *input, bool_t skipilseq){
+n_iconv_onetime_cp(enum n_iconv_flags icf,
+      char const *tocode, char const *fromcode, char const *input){
    struct str out, in;
    iconv_t icd;
    char *rv;
@@ -1115,7 +1116,7 @@ n_iconv_onetime_cp(char const *tocode, char const *fromcode,
 
    in.l = strlen(in.s = UNCONST(input)); /* logical */
    out.s = NULL, out.l = 0;
-   if(!n_iconv_str(icd, &out, &in, NULL, skipilseq))
+   if(!n_iconv_str(icd, icf, &out, &in, NULL))
       rv = savestrbuf(out.s, out.l);
    if(out.s != NULL)
       free(out.s);

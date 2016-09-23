@@ -335,7 +335,7 @@ _attach_iconv(struct attachment *ap)
          goto jerr;
       }
 
-      if (n_iconv_str(icp, &oul, &inl, NULL, FAL0) != 0)
+      if (n_iconv_str(icp, n_ICONV_IGN_NOREVERSE, &oul, &inl, NULL) != 0)
          goto jeconv;
       if ((inl.l = fwrite(oul.s, sizeof *oul.s, oul.l, fo)) != oul.l) {
          n_perr(_("I/O write error occurred"), 0);

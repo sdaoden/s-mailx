@@ -892,6 +892,13 @@ enum n_file_lock_type{
    FLT_WRITE
 };
 
+enum n_iconv_flags{
+   n_ICONV_NONE = 0,
+   n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
+   n_ICONV_IGN_NOREVERSE = 1<<1, /* .. non-reversible conversions in output */
+   n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE
+};
+
 enum n_lexinput_flags{
    n_LEXINPUT_NONE,
    n_LEXINPUT_CTX_BASE = 0,            /* Input context (`bind'+): fallback */
