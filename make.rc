@@ -2,6 +2,7 @@
 #@ You should have read INSTALL first.
 #@ Notes:
 #@ . Choosing a predefined CONFIG= disallows further option fine-tuning.
+#@   (With some exceptions, e.g., OPT_DEBUG.)
 #@ . Features / options have an OPT_ prefix and need to be assigned
 #@   a boolean value, as in OPT_SSL=yes.  Booleans are 1/0, y/n,
 #@   true/false, yes/no and on/off (case doesn't matter).
