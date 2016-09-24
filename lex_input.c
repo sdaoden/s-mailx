@@ -1214,7 +1214,7 @@ jreadline:
 FL int
 (n_lex_input)(enum n_lexinput_flags lif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string SMALLOC_DEBUG_ARGS){
-   /* TODO readline: linebuf pool! */
+   /* TODO readline: linebuf pool!; n_lex_input should return si64_t */
    FILE *ifile;
    bool_t doprompt, dotty;
    char const *iftype;
@@ -1243,6 +1243,7 @@ FL int
 
       iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
             ? "-X OPTION" : "MACRO";
+      n = (int)*linesize;
       goto jhave_dat;
    }
    pstate &= ~PS_READLINE_NL;
@@ -1341,33 +1342,32 @@ jhave_dat:
       char *cp, c;
       size_t i;
 
-      for(cp = &(*linebuf)[i = *linesize];; --i){
+      for(cp = &(*linebuf)[i = (size_t)n];; --i){
          c = *--cp;
          if(!blankspacechar(c))
             break;
       }
-      (*linebuf)[*linesize = i] = '\0';
+      (*linebuf)[n = (int)i] = '\0';
    }
 
    if(lif & n_LEXINPUT_DROP_LEAD_SPC){
       char *cp, c;
       size_t j, i;
 
-      for(cp = &(*linebuf)[0], j = *linesize, i = 0; i < j; ++i){
+      for(cp = &(*linebuf)[0], j = (size_t)n, i = 0; i < j; ++i){
          c = *cp++;
          if(!blankspacechar(c))
             break;
       }
       if(i > 0){
          memcpy(&(*linebuf)[0], &(*linebuf)[i], j -= i);
-         (*linebuf)[*linesize = j] = '\0';
+         (*linebuf)[n = (int)j] = '\0';
       }
    }
 #endif /* 0 (notyet - must take care for backslash escaped space) */
 
    if(options & OPT_D_VV)
-      n_err(_("%s %" PRIuZ " bytes <%s>\n"), iftype, *linesize, *linebuf);
-   n = (int)*linesize; /* XXX si64_t */
+      n_err(_("%s %d bytes <%s>\n"), iftype, n, *linebuf);
 jleave:
    if (pstate & PS_PSTATE_PENDMASK)
       a_lex_update_pstate();
