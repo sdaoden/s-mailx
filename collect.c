@@ -854,7 +854,7 @@ jputnl:
          cnt = 2;
       }else{
          i = PTR2SIZE(cp - linebuf) - 3;
-         memcpy(&linebuf[3], cp, (cnt -= i));
+         memmove(&linebuf[3], cp, (cnt -= i));
          linebuf[2] = ' ';
          linebuf[cnt] = '\0';
 
