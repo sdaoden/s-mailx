@@ -136,8 +136,8 @@ static struct a_termcap_g *a_termcap_g;
 /* Query *termcap*, parse it and incorporate into a_termcap_g */
 static void a_termcap_init_var(struct str const *termvar);
 
-/* Expand ^CNTRL, \[Ee] and \OCT */
-static void a_termcap__strexp(struct n_string *store, char const *ibuf);
+/* Expand ^CNTRL, \[Ee] and \OCT.  False for parse error and empty results */
+static bool_t a_termcap__strexp(struct n_string *store, char const *ibuf);
 
 /* Initialize any _ent for which we have _F_ALTERN and which isn't yet set */
 static void a_termcap_init_altern(void);
@@ -214,8 +214,9 @@ jeinvent:
       /* Do we know about this one? */
       /* C99 */{
          struct a_termcap_control const *tcp;
-         si32_t tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX);
+         si32_t tci;
 
+         tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX);
          if(tci < 0){
             /* For key binding purposes, save any given string */
 #ifdef HAVE_KEY_BINDINGS
@@ -232,7 +233,9 @@ jeinvent:
                tep = &teep->tee_super;
                tep->te_flags = n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_QUERY;
                tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
-               a_termcap__strexp(&a_termcap_g->tg_dat, v);
+               if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
+                  tep->te_flags |= a_TERMCAP_F_DISABLED;
+               goto jlearned;
             }else
 #endif /* HAVE_KEY_BINDINGS */
                   if(options & OPT_D_V)
@@ -262,8 +265,16 @@ jeinvent:
          if(*eptr != '\0' || l < 0 || UICMP(32, l, >=, UI16_MAX))
             goto jeinvent;
          tep->te_off = (ui16_t)l;
-      }else
-         a_termcap__strexp(&a_termcap_g->tg_dat, v);
+      }else if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
+         tep->te_flags |= a_TERMCAP_F_DISABLED;
+#ifdef HAVE_KEY_BINDINGS
+jlearned:
+#endif
+      if(options & OPT_D_VV)
+         n_err(_("*termcap*: learned %.*s: %s\n"), (int)kl, ccp,
+            (tep->te_flags & a_TERMCAP_F_DISABLED ? "<disabled>"
+             : (f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL ? "true"
+               : v));
    }
    DBG( if(options & OPT_D_V) n_err("*termcap* parsed: buffer used=%lu\n",
       (ul_i)a_termcap_g->tg_dat.s_len) );
@@ -281,7 +292,7 @@ j_leave:
    NYD2_LEAVE;
 }
 
-static void
+static bool_t
 a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
    char c;
    char const *oibuf;
@@ -340,12 +351,14 @@ jpush:
       store = n_string_push_c(store, c);
    }
 
+   c = (store->s_len != olen) ? '\1' : '\0';
 jleave:
    n_string_push_c(store, '\0');
    NYD2_LEAVE;
-   return;
+   return (c != '\0');
 jerr:
    store = n_string_trunc(store, olen);
+   c = '\0';
    goto jleave;
 }
 
@@ -356,11 +369,12 @@ a_termcap_init_altern(void){
     * I.e., this allows users to explicitly disable some termcap(5) capability
     * and enforce usage of the builtin fallback */
    /* xxx Use table-based approach for fallback strategies */
-#define a_OK(CMD)       a_OOK(&a_termcap_g->tg_ents[CMD])
-#define a_OOK(TEP)      ((TEP)->te_flags != 0)
-#define a_SET(TEP,CMD,ALT)  \
-      (TEP)->te_flags = a_termcap_control[CMD].tc_flags |\
-            ((ALT) ? a_TERMCAP_F_ALTERN : 0)
+#define a_OK(CMD) a_OOK(&a_termcap_g->tg_ents[CMD])
+#define a_OOK(TEP) \
+   ((TEP)->te_flags != 0 && !((TEP)->te_flags & a_TERMCAP_F_NOENT))
+#define a_SET(TEP,CMD,ALT) \
+   (TEP)->te_flags = a_termcap_control[CMD].tc_flags |\
+      ((ALT) ? a_TERMCAP_F_ALTERN : 0)
 
    struct a_termcap_ent *tep;
    NYD2_ENTER;
@@ -449,6 +463,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
+   assert(!(pstate & PS_TERMCAP_DISABLE));
 
    if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -484,6 +499,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
+   assert(!(pstate & PS_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off] + 2,
       tcp->tc_flags);
 }
@@ -512,6 +528,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
+   assert(!(pstate & PS_TERMCAP_DISABLE));
 
    if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -553,6 +570,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
+   assert(!(pstate & PS_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off],
       tcp->tc_flags);
 }
