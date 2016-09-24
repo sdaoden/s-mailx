@@ -334,7 +334,7 @@ VAL_SYSCONFRC="${VAL_SID}${VAL_NAIL}.rc"
 OPT_DEBUG=no
 
 # Experimental code etc.
-# Note: this will be forcefully set (again) if $OPT_DEBUG=yes.
+# Note: this forcefully enables OPT_DEBUG
 OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..

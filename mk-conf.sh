@@ -186,7 +186,7 @@ option_update() {
       OPT_DEBUG=1
    fi
    if feat_yes DEBUG; then
-      OPT_NOALLOCA=1 OPT_DEVEL=1
+      OPT_NOALLOCA=1
    fi
 }
 
