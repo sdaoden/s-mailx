@@ -3090,20 +3090,20 @@ jeempty:
          if(isbindcmd){
             char * const save_cnv = cnv;
 
-            ((si32_t*)cnv)[0] = (si32_t)(i = tail->calc_cnv_len);
+            UNALIGN(si32_t*,cnv)[0] = (si32_t)(i = tail->calc_cnv_len);
             cnv += sizeof(si32_t);
             if(i & SI32_MIN){
                /* For now
                 * struct{si32_t buf_len_iscap; si32_t cap_len; wc_t name[];}
                 * later
                 * struct{si32_t buf_len_iscap; si32_t cap_len; char buf[];} */
-               ((si32_t*)cnv)[0] = tail->cnv_len;
+               UNALIGN(si32_t*,cnv)[0] = tail->cnv_len;
                cnv += sizeof(si32_t);
             }
             i = tail->cnv_len * sizeof(wc_t);
             memcpy(cnv, tail->cnv_dat, i);
             cnv += i;
-            *(wc_t*)cnv = '\0';
+            *UNALIGN(wc_t*,cnv) = '\0';
 
             cnv = save_cnv + (tail->calc_cnv_len & SI32_MAX);
          }
@@ -3176,7 +3176,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
       /* C99 */{
          si32_t i, j;
 
-         i = ((si32_t*)cp)[0];
+         i = UNALIGN(si32_t*,cp)[0];
          j = i & SI32_MAX;
          next = &cp[j];
          len -= j;
@@ -3185,10 +3185,10 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 
          /* struct{si32_t buf_len_iscap; si32_t cap_len; wc_t name[];} */
          cp += sizeof(si32_t);
-         i = ((si32_t*)cp)[0];
+         i = UNALIGN(si32_t*,cp)[0];
          cp += sizeof(si32_t);
          for(j = 0; j < i; ++j)
-            capname[j] = ((wc_t*)cp)[j];
+            capname[j] = UNALIGN(wc_t*,cp)[j];
          capname[j] = '\0';
       }
 
@@ -3235,7 +3235,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }
-         ((si32_t*)cp)[-1] = (si32_t)i;
+         UNALIGN(si32_t*,cp)[-1] = (si32_t)i;
          memcpy(cp, tv.tv_data.tvd_string, i);
          cp[i] = '\0';
       }
@@ -3323,12 +3323,12 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
       si32_t entlen;
 
       /* {si32_t buf_len_iscap;} */
-      entlen = *(si32_t const*)cnvdat;
+      entlen = *UNALIGN(si32_t const*,cnvdat);
 
       if(entlen & SI32_MIN){
          /* struct{si32_t buf_len_iscap; si32_t cap_len; char buf[]+NUL;}
           * Note that empty capabilities result in DEFUNCT */
-         for(u.cp = (char const*)&((si32_t const*)cnvdat)[2];
+         for(u.cp = (char const*)&UNALIGN(si32_t const*,cnvdat)[2];
                *u.cp != '\0'; ++u.cp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
          assert(ntbtp != NULL);
@@ -3338,7 +3338,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
          /* struct{si32_t buf_len_iscap; wc_t buf[]+NUL;} */
          bool_t isseq;
 
-         u.wp = (wchar_t const*)&((si32_t const*)cnvdat)[1];
+         u.wp = (wchar_t const*)&UNALIGN(si32_t const*,cnvdat)[1];
 
          /* May be a special shortcut function? */
          if(ntbtp == NULL && (tbcp->tbc_flags & a_TTY_BIND_MLE1CNTRL)){
@@ -4081,12 +4081,13 @@ c_bind(void *v){
                      putc(',', fp);
 
                   /* {si32_t buf_len_iscap;} */
-                  entlen = *(si32_t const*)cnvdat;
+                  entlen = *UNALIGN(si32_t const*,cnvdat);
                   if(entlen & SI32_MIN){
                      /* struct{si32_t buf_len_iscap; si32_t cap_len;
                       * char buf[]+NUL;} */
                      for(bsep = "",
-                              u.cp = (char const*)&((si32_t const*)cnvdat)[2];
+                              u.cp = (char const*)
+                                    &UNALIGN(si32_t const*,cnvdat)[2];
                            (c.c = *u.cp) != '\0'; ++u.cp){
                         if(asciichar(c.c) && !cntrlchar(c.c))
                            cbuf[1] = c.c, cbufp = cbuf;
