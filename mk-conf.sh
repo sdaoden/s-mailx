@@ -150,7 +150,7 @@ option_update() {
       WANT_DEBUG=1
    fi
    if feat_yes DEBUG; then
-      WANT_NOALLOCA=1 WANT_DEVEL=1
+      WANT_NOALLOCA=1
    fi
 }
 
