@@ -234,19 +234,18 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          }
          if (!(options & OPT_QUICKRUN_MASK) && ok_blook(bsdcompat))
             n_err(_("No mail for %s\n"), who);
-         if (fm & FEDIT_NEWMAIL)
-            goto jleave;
-         if (ok_blook(emptystart)) {
-            if (!(options & OPT_QUICKRUN_MASK) && !ok_blook(bsdcompat))
-               n_perr(name, 0);
-            /* We must avoid returning -1 and causing program exit */
-            mb.mb_type = MB_VOID;
-            rv = 1;
-            goto jleave;
-         }
-         goto jem2;
-      } else if (fm & FEDIT_NEWMAIL)
+      }
+      if (fm & FEDIT_NEWMAIL)
          goto jleave;
+
+      mb.mb_type = MB_VOID;
+      if (ok_blook(emptystart)) {
+         if (!(options & OPT_QUICKRUN_MASK) && !ok_blook(bsdcompat))
+            n_perr(name, 0);
+         /* We must avoid returning -1 and causing program exit */
+         rv = 1;
+         goto jleave;
+      }
       n_perr(name, 0);
       goto jem1;
    }
