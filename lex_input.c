@@ -422,11 +422,9 @@ a_lex_c_version(void *v){
       uagent, ok_vlook(version));
 
    /* *features* starts with dummy byte to avoid + -> *folder* expansions */
-   i = strlen(cp = &ok_vlook(features)[1]);
-   i2 = strlen(&cp[i + 1]) +1;
-   iop = salloc(i + i2);
+   i = strlen(cp = &ok_vlook(features)[1]) +1;
+   iop = salloc(i);
    memcpy(iop, cp, i);
-   memcpy(&iop[i], &cp[i + 1], i2);
 
    arr = salloc(sizeof(cp) * VAL_FEATURES_CNT);
    for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
