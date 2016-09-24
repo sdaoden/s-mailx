@@ -387,6 +387,8 @@
 #define UNUSED(X)       ((void)(X))
 #define UNCONST(P)      ((void*)(uintptr_t)(void const*)(P))
 #define UNVOLATILE(P)   ((void*)(uintptr_t)(void volatile*)(P))
+/* To avoid warnings with modern compilers for "char*i; *(si32_t*)i=;" */
+#define UNALIGN(T,P)    ((T)(uintptr_t)(P))
 #define UNXXX(T,C,P)    ((T)(uintptr_t)(C)(P))
 
 /* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
