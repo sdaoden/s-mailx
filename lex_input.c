@@ -638,6 +638,11 @@ jexec:
 
    if(wysh && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
+   /* TODO v15: strip PS_ARGLIST_MASK off, just in case the actual command
+    * TODO doesn't use any of those list commands which strip this mask,
+    * TODO and for now we misuse bits for checking relation to history;
+    * TODO argument state should be property of a per-command carrier instead */
+   pstate &= ~PS_ARGLIST_MASK;
    switch(cmd->lc_argtype & ARG_ARGMASK){
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
