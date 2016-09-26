@@ -150,17 +150,14 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
 
             if((shs = n_shexp_parse_token(&store, &input, n_SHEXP_PARSE_LOG)) &
                   n_SHEXP_STATE_ERR_MASK){
-               if((shs & n_SHEXP_STATE_ERR_MASK) == n_SHEXP_STATE_ERR_UNICODE){
-                  pstate |= PS_WYSHLIST_SAW_UNICODE;
-               }else{
+               /* Simply ignore Unicode error, just keep the normalized \[Uu] */
+               if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
                   res_no = -1;
                   break;
                }
             }
 
             if(shs & n_SHEXP_STATE_OUTPUT){
-               if(shs & n_SHEXP_STATE_UNICODE)
-                  pstate |= PS_WYSHLIST_SAW_UNICODE;
                if(shs & n_SHEXP_STATE_CONTROL)
                   pstate |= PS_WYSHLIST_SAW_CONTROL;
 

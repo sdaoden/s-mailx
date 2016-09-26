@@ -724,6 +724,7 @@ je96:
       evp->le_new_content = cp;
       goto jleave0;
    }
+   /* TODO v15 with PS_MSGLIST_SAW_NO the history entry is at least gabby */
    if(!(cmd->lc_argtype & ARG_H) && !(pstate & PS_MSGLIST_SAW_NO))
       evp->le_add_history = TRU1;
 

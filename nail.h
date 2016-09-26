@@ -1395,7 +1395,9 @@ enum program_state {
    PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
    PS_MSGLIST_SAW_NO = 1u<<17,      /* Last *LIST saw numerics */
    PS_MSGLIST_DIRECT = 1u<<18,      /* One msg was directly chosen by number */
-   PS_WYSHLIST_SAW_UNICODE = 1u<<17, /* ARG_WYSHLIST saw \[Uu] */
+   /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
+    * TODO may be placed in the history or not (grep this, see commands()),
+    * TODO so avoid reusing this bit */
    PS_WYSHLIST_SAW_CONTROL = 1u<<18, /* ..saw C0+ control characters */
 
    PS_EXPAND_MULTIRESULT = 1u<<19,  /* Last fexpand() with MULTIOK had .. */
