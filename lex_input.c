@@ -941,7 +941,7 @@ a_lex_source_file(char const *file, bool_t silent_error){
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
    lip->li_cond = condstack_release();
-   lip->li_flags = (ispipe ? a_LEX_PIPE : a_LEX_NONE) |
+   lip->li_flags = (ispipe ? a_LEX_FREE | a_LEX_PIPE : a_LEX_FREE) |
          (a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_SUPER_MACRO)
           ? a_LEX_SUPER_MACRO : 0);
    memcpy(lip->li_name, nbuf, nlen);
