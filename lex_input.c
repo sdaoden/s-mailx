@@ -1230,26 +1230,46 @@ FL int
    /* Special case macro mode: never need to prompt, lines have always been
     * unfolded already */
    if(a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO)){
-      char **lp = &a_lex_input->li_lines[a_lex_input->li_loff];
+      size_t i;
+      bool_t dodup;
+      char **lp, *cp;
 
       if(*linebuf != NULL)
          free(*linebuf);
 
+      lp = &a_lex_input->li_lines[a_lex_input->li_loff];
       if((*linebuf = *lp) == NULL){
          *linesize = 0;
          n = -1;
          goto jleave;
       }
 
-      ++a_lex_input->li_loff;
-      *linesize = strlen(*linebuf);
-      if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
-         *linebuf = sbufdup(*linebuf, *linesize);
-      pstate |= PS_READLINE_NL;
+      dodup = !(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA);
+      for(cp = *linebuf;; ++cp)
+         if(*cp == '\0'){
+            ++a_lex_input->li_loff;
+            i = PTR2SIZE(cp - *linebuf);
+            break;
+         }else if(*cp == '\n'){
+            i = PTR2SIZE(cp - *linebuf);
+            if(dodup)
+               *lp = &cp[1];
+            else{
+               *lp = sstrdup(&cp[1]);
+               cp = *linebuf;
+               *linebuf = sbufdup(*linebuf, i);
+               free(cp);
+            }
+            break;
+         }
+      *linesize = i;
+      if(dodup)
+         *linebuf = sbufdup(*linebuf, i);
 
       iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
             ? "-X OPTION" : "MACRO";
       n = (int)*linesize;
+      pstate |= PS_READLINE_NL;
       goto jhave_dat;
    }
    pstate &= ~PS_READLINE_NL;
