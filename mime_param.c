@@ -467,7 +467,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
                cp += 2;
                i -= 3;
             } else {
-   jhex_putc:
+jhex_putc:
                sin.s[sin.l++] = c;
                --i;
             }

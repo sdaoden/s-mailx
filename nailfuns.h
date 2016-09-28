@@ -1358,7 +1358,7 @@ FL enum mime_handler_flags mime_type_handler(struct mime_handler *mhp,
 
 /* Allocate a single element of a name list, initialize its name field to the
  * passed name and return it */
-FL struct name * nalloc(char *str, enum gfield ntype);
+FL struct name * nalloc(char const *str, enum gfield ntype);
 
 /* Like nalloc(), but initialize from content of np */
 FL struct name * ndup(struct name *np, enum gfield ntype);
@@ -2379,6 +2379,10 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
+
+/* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
+ * Return NULL or something that can be converted to a struct name */
+FL char *      url_mailto_to_address(char const *mailtop);
 
 /* Return port for proto (and set irv_or_null), or NULL if unknown.
  * For file:// this returns an empty string */
