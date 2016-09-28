@@ -918,10 +918,31 @@ a_lex_source_file(char const *file, bool_t silent_error){
 
    fip = NULL;
 
-   /* Being a command argument file is space-trimmed */
-   if((ispipe = (!silent_error && (nlen = strlen(file)) > 0 &&
-         file[--nlen] == '|'))){
-      if((fip = Popen(nbuf = savestrbuf(file, nlen), "r",
+   /* Being a command argument file is space-trimmed *//* TODO v15 with
+    * TODO WYRALIST this is no longer necessary true, and for that we
+    * TODO don't set _PARSE_TRIMSPACE because we cannot! -> cmd_tab.h!! */
+#if 0
+   ((ispipe = (!silent_error && (nlen = strlen(file)) > 0 &&
+         file[--nlen] == '|')))
+#else
+   ispipe = FAL0;
+   if(!silent_error)
+      for(nlen = strlen(file); nlen > 0;){
+         char c;
+
+         c = file[--nlen];
+         if(!blankchar(c)){
+            if(c == '|'){
+               nbuf = savestrbuf(file, nlen);
+               ispipe = TRU1;
+               break;
+            }
+         }
+      }
+#endif
+
+   if(ispipe){
+      if((fip = Popen(nbuf /* #if 0 above = savestrbuf(file, nlen)*/, "r",
             ok_vlook(SHELL), NULL, COMMAND_FD_NULL)) == NULL){
          if(!silent_error || (options & OPT_D_V))
             n_perr(nbuf, 0);
