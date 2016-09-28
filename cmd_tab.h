@@ -132,9 +132,9 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | R | RAWLIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (H | M | RAWLIST), 0, 1000
+   { "set", &c_set, (M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "setenv", &c_setenv, (H | M | RAWLIST), 1, 1000
+   { "setenv", &c_setenv, (M | RAWLIST), 1, 1000
      DS(N_("Set (a) <variable>(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -372,7 +372,7 @@
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (H | M | RAWLIST), 1, 1000
+   { "varshow", &c_varshow, (M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
