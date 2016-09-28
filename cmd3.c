@@ -314,15 +314,13 @@ jnext_msg:
    if (mft != NULL || (hf & HF_LIST_REPLY) || ok_blook(followup_to)) {
       /* Learn about a possibly sending mailing list; use do for break; */
       if ((cp = hfield1("list-post", mp)) != NULL) do {
-         struct name *x = lextract(cp, GEXTRA | GSKIN);
-         if (x == NULL || x->n_flink != NULL ||
-               !is_prefix("mailto:", x->n_name) ||
-               /* XXX the mailto: prefix causes failure (":" invalid character)
-                * XXX which is why need to recreate a struct name with an
-                * XXX updated name; this is terribly wasteful and can't we find
+         struct name *x;
+
+         if ((x = lextract(cp, GEXTRA | GSKIN)) == NULL || x->n_flink != NULL ||
+               (cp = url_mailto_to_address(x->n_name)) == NULL ||
+               /* XXX terribly wasteful to create a new name, and can't we find
                 * XXX a way to mitigate that?? */
-               is_addr_invalid(x = nalloc(x->n_name + sizeof("mailto:") -1,
-                  GEXTRA | GSKIN), EACM_STRICT)) {
+               is_addr_invalid(x = nalloc(cp, GEXTRA | GSKIN), EACM_STRICT)) {
             if (options & OPT_D_V)
                n_err(_("Message contains invalid \"List-Post:\" header\n"));
             cp = NULL;

@@ -587,6 +587,62 @@ FL char *
    return n;
 }
 
+FL char *
+url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
+   size_t i;
+   char *rv;
+   char const *mailtop_orig;
+   NYD_ENTER;
+
+   if(!is_prefix("mailto:", mailtop_orig = mailtop)){
+      rv = NULL;
+      goto jleave;
+   }
+   mailtop += sizeof("mailto:") -1;
+
+   /* TODO This is all intermediate, and for now just enough to understand
+    * TODO a little bit of a little more advanced List-Post: headers. */
+   /* Strip any hfield additions, keep only to addr-spec's */
+   if((rv = strchr(mailtop, '?')) != NULL)
+      rv = savestrbuf(mailtop, i = PTR2SIZE(rv - mailtop));
+   else
+      rv = savestrbuf(mailtop, i = strlen(mailtop));
+
+   i = strlen(rv);
+
+   /* Simply perform percent-decoding if there is a percent % */
+   if(memchr(rv, '%', i) != NULL){
+      char *rv_base;
+      bool_t err;
+
+      for(err = FAL0, mailtop = rv_base = rv; i > 0;){
+         char c;
+
+         if((c = *mailtop++) == '%'){
+            si32_t cc;
+
+            if(i < 3 || (cc = mime_hexseq_to_char(mailtop)) < 0){
+               if(!err && (err = TRU1, options & OPT_D_V))
+                  n_err(_("Invalid RFC 6068 'mailto' URL: %s\n"), mailtop_orig);
+               goto jhex_putc;
+            }
+            *rv++ = (char)cc;
+            mailtop += 2;
+            i -= 3;
+         }else{
+jhex_putc:
+            *rv++ = c;
+            --i;
+         }
+      }
+      *rv = '\0';
+      rv = rv_base;
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
 FL char const *
 url_servbyname(struct url const *urlp, ui16_t *irv_or_null)
