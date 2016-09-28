@@ -6,11 +6,20 @@ a single, massively backward incompatible change.
 Release S-mailx v20 on 2020-03-25, the 42nd anniversary of BSD Mail.
 With a clean, conforming and efficient codebase, then.
 
-- At least optionally disallow silent discarding of invalid addresses,
-  i.e., cause sending to be aborted if not all recipient addresses pass the
-  validity test.
+In general the code is in a pretty bad shape due to the signal handling.
+I should have sat back in 2012/13 and consider what i am doing.
+My fault.  If i would, we would have a blocked signal mask anywhere in
+this software except in a few cases where it is necessary and/or
+possible to deal with signals, and possibly we would not even have to
+consider to switch the entire codebase to (the much superior, and the
+only sane approach) SysV signal handling, without SA_RESTART.
 
-- Ditto if a resource file can't be found that has been explicitly set via
+But some things are already pretty good, except for normal iterations
+and a review once we have a better signal handling, and can be taken
+with us.  For example termcap.c, most of tty.c, shexp.c, memory.c, for
+example.
+
+- If a resource file can't be found that has been explicitly set via
   environment variables there should be some feedback.
 
 - We should possibly get away of using command line utilities for
@@ -82,9 +91,6 @@ With a clean, conforming and efficient codebase, then.
 -- NetBSD's mail(1) has nice *indentprefix* and *indentpostscript*
    variables (though prefix and appendix or prefix and suffix, but..).
    Note that our code is quite unflexible.
-
-- It irritates me that a message with 5 visible lines but 115 header lines
-  goes through the pager, even if i have *crt=*.
 
 Low-Level
 ---------
@@ -172,9 +178,10 @@ Low-Level
   RFC 2183 - The Content-Disposition Header
   RFC 2369 - The Use of URLs as Meta-Syntax for Core Mail List Commands
              and their Transport through Message Header Fields
-             (RFC 2368 - The mailto URL scheme)
+             (RFC 6068 - The 'mailto' URL scheme)
   RFC 2384,1738 - I.e., Much better URL support
   RFC 2387 - multipart/related  -- yet handled like /alternative
+  RFC 2392 - Content-ID and Message-ID Uniform Resource Locators
   RFC 2405 - The format of MIME message bodies.
   RFC 2406 - Common multimedia types.
   RFC 2407 - Encoding of non-ASCII text in message headers.
@@ -226,6 +233,7 @@ Low-Level
   rfc6857.txt Post-Delivery Message Downgrading for Internationalized
     Email Messages
   rfc6858.txt Simplified POP and IMAP Downgrading for Internationalized Email
+  RFC 8058 Signaling One-Click Functionality for List Email Headers
 
   draft-ietf-uta-email-tls-certs-01.txt
    SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
@@ -417,6 +425,14 @@ Low-Level
      selection of GSS-API (to avoid useless round-trips) etc. etc.
  80. The MIME rewrite: mime_parser <-> mime "DOM" analyzer <->
      selectively create filter chains per part and do XY.
+
+     This also affects sending, and it will allow us to dig MIME
+     (multipart) mail for -t/-m _correctly_.  Also in sofar as we can
+     hook a content-decoder before diving into the MIME structure, and
+     with a DOM, we can re-encode such things properly as we (re)send
+     such mails.  All this is wrong at the time of this writing!
+     We still need to special treat things like, e.g., RFC 2046, 5.2.1.
+     But on top of we-can, as opposed to the opposite.
  99. Now i'm dreaming some more: with the new object-based approach
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
@@ -452,9 +468,6 @@ Low-Level
     (forked+exec, I/O redirected) external handler, "returning the
     output I/O handle".
     Inspired by Gavin Troy and Bob Tennent.
-
-- Deal with faulty message selection that may occur when selecting threads
-  via & (when at least mixed with other selectors).
 
 -- Also (?same problem?) the thread sort doesn't get
 
@@ -533,7 +546,7 @@ Low-Level
      setpgid(2) and then tcsetpgrp(3) any processes we run synchronously,
      and properly deal with SIGTTOU, but it always has been like that and
      i won't do that before other things have been changed.
-  .. NOTE: TTY: place (at least run_command()) childs which go over
+  .. NOTE: TTY: place (at least n_child_run()) childs which go over
      terminal into own group.
      Introduce global "terminal state" manager which tracks who
      currently owns the terminal, so that we can gracefully switch it
@@ -554,13 +567,6 @@ Low-Level
     has the carrier.  Use flip states and add aux funs with only update the
     state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
     HANDLED!!
-  . Because of laststring() and because the evaluate()d line buffer is
-      not constant history entries sometimes do not 100% reflect what
-      was actually present on the command line, but i refrained from
-      hacking a solution since that buffer must end up as a constant
-      (TODOs or so in the source).
-      P.S.: i have hacked that in in [f1ded4c] (as a temporary user
-      goodie because of inconvenience for v14.7.6).
   . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
     Maybe our passed carrier should pass desired output newline (as
     opposed to data-embedded newlines)
@@ -586,10 +592,6 @@ Low-Level
     mainloop tick would close it (after X (configurable) unused ticks))
     otherwise.  I guess this would improve performance for searching
     etc. etc.
-  . Searching code *could* perform a prepass, joining stuff together,
-    dropping useless cases etc.
-    But anyway: if there are multiple search expressions, it shouldn't
-    be an error if at least one of them matches at least one message.
   . _(), N_(), V_():
     use GNU tools for extraction etc., and write a simple helper program
     which converts these files to a serialized hashmap, just like we did
@@ -604,29 +606,6 @@ Low-Level
     action anyway.  when we really make it even to the I/O rewrite, it
     should be possible to dis-/allow such -- it doesn't make sense to
     add something faulty to whatever was not faulty before!
-  . The message from Andy Switala on nail-devel made me think about some
-    mechanism that invokes a macro after a message has been sent.
-    Unless macros can have args (or do we introduce $*/$@/$1..).
-    Even if the codebase will at some future time be stable and really
-    reliable, sending a message via multiple channels will never be
-    atomic, so that it would make sense for a user to be able to restore
-    *the complete message* in a save place if any of the sends failed,
-    but to remove it from our temporary place otherwise.  A simple
-    version of this would be a matter of five minutes, but since
-    mightrecord() may internally (via _compress()) instantiate
-    a complete IMAP session and try to send incomplete data etc.,
-    and all that may jump, i refrained from doing so.
-  .. Note that mutt also has send-hooks with special triggers etc.,
-     which even allows setting some options which affect the mail to be
-     sent, like choosing a signing certificate dependend on the value in
-     From: and such;
-     That is (v15.0)
-      1. init send carrier enough for allowing
-      2. user compose mode
-      3. fully initialize send carrier according to what is "final"
-      4. run trigger macros WHICH MAY MODIFY THE MESSAGE AGAIN, so
-      5. fully reinitialize the send carrier (as necessary)
-      6. pass the _final_ message down the send/mime chain
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
   . When doing `~w FILE' and FILE cannot be written to (was a directory)
@@ -647,15 +626,10 @@ Low-Level
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
-  .. Unite
-      defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
-     into HAVE_NATCH_CHAR, solely keep that.  But improve the name
   . why not simply sucking in complete MIME messages via -t?  In a way
     that parses it as a MIME message, that is!
     (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
   . mutt list handling (`~') is very powerful
-  . Check what happens if an account switch or a network connection is
-    done while we are loading the resource files...
   . We have some use of *at() functions, especially anything which
     temporarily switches cwd.
   . *newmail* is terrible.  At some later time we need to do somethings
@@ -685,7 +659,6 @@ Low-Level
   . __narrow_suffix() is wrong (for stateful encodings that we
     don't support yet) and should inject a reset sequence if it shortens
     the string.
-  .. Ditto field_put_bidi_clip() and possibly more.
   .. THAT IS TO SAY: the entire codebase doesn't really support stateful
     encodings, including the bidi_ things that i've done (but the MLE
     does iirc?  what is this??).  We should have a global string that
@@ -713,9 +686,6 @@ Low-Level
   . The new internal ~/$ expansion mechanism should possibly get support
      for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
      There is no real way to get the functionality otherwise...
-  . struct ignoretab and handling can be merged with the new generic
-    struct group stuff (with some effort) and localized in nam_a_grp.c,
-    then.  Then -- rename that file to grpignnam.c??  :-)
   . Make S/MIME an option separate of SSL/TLS, i.e., optional.
   . With very long input Heirloom mailx(1) / S-nail(1) can produce
     encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
@@ -724,16 +694,6 @@ Low-Level
     "Bla": addresses; are missing.
   . It is terrible that -S sets variables twice, at once and after the
     resource files have been loaded.  Instead we should set a bit
-  . The Base64 decoder must become a filter with its own buffer, so that
-    we can join splitted sequences etc.; yes, that is invalid, but we
-    should be tolerant (tolerant on input, strict on output - right?).
-    mutt(1), e.g., even tolerates characters that are invalid ($,!,?++)
-    and simply ignores them.  This is great on the one and shit on the
-    other hand -- if like that, the error ring should at least mention
-    that the message WAS FAULTY.  E.g., mutt(1) ignores long,long
-    sequences of those bytes, which i don't consider a good thing..
-    And then, should we (really, see mime_enc.c) make a difference in
-    B64_T and B64, ... and regarding this??
   . Cleanup:  n_ is anything public / external,
     _n_ is public/e but not really, FILENAME/ABBREV_symbol are statics,
     FILENAME/ABBREV__symbol are helpers of a single other static
@@ -764,6 +724,7 @@ Low-Level
   . The new n_err() facility is nice, but we need n_msg() too, maybe
     more.  Maybe à la Log:: and macro wrappers with priority unrolled,
     then add user-settable treshold, too.  Btw. C99 adds vararg macros.
+    .. We must handle embedded newlines properly
     .. In PARTICULAR we MUST NOT use stdout when in batch mode:
          ssh X "echo 'move * |cat' | s-nail -#f %" >> download
        should do the right thing, but can't like that due to unwanted
@@ -777,12 +738,13 @@ Low-Level
     E.g., roff files often use controls as separators in conditionals,
     some shell scripts use controls for $IFS field separation, and that
     will end up with charset=binary.
+  .. *mime-allow-text-controls* is a no-brainer: instead we should
+     introduce something that allows us to switch and detect UTF-16 once
+     we run into the problematic situation, then start all over in an
+     Unicode mode?  I.e.: continue to force the user to set such
+     a switch, but do it in a sensible fashion, because the UTF-16 data
+     stream may nonetheless contain control characters??
 --
-
-  . rewrite make.rc/mk-conf.sh: features==options should be named
-    OPT_name, path,names,valuesr VAL_name.
-    (Also remember the idea of the automatic inter-dependency tracking
-    via simple text file
 
   . We can "steal" features from msmtp(1) that make sense: SOCKS support
     (primitive) and /etc/aliases ($mta_alias_file).  At least postfix(1)
