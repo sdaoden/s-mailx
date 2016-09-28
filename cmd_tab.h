@@ -88,9 +88,9 @@
      DS(N_("Delete the current message, then print the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(N_("Un\"delete\" <message-list>")) },
-   { "unset", &c_unset, (H | M | RAWLIST), 1, 1000
+   { "unset", &c_unset, (M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>")) },
-   { "unsetenv", &c_unsetenv, (H | M | RAWLIST), 1, 1000
+   { "unsetenv", &c_unsetenv, (M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>, also in the program environment")) },
    { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
