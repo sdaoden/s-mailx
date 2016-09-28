@@ -129,7 +129,7 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | R | WYRALIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (H | M | WYRALIST), 0, 1000
+   { "set", &c_set, (M | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -359,7 +359,7 @@
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (H | M | WYRALIST), 1, 1000
+   { "varshow", &c_varshow, (M | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (H | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
@@ -408,7 +408,7 @@
    { "uncolour", &c_uncolour, (M | WYSHLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (H | M | WYSHLIST), 2, 1000
+   { "environ", &c_environ, (M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
 #ifdef c_memtrace
