@@ -169,7 +169,6 @@ cc_all_configs() {
 cksum_test() {
    tid=${1} f=${2} s=${3}
    printf "${tid}: "
-#-e '/^Date:/d' \
    csum="`${sed} -e '/^From /d' \
          -e '/^ boundary=/d' -e '/^--=-=/d' < \"${f}\" \
          -e '/^\[-- Message/d' | ${cksum}`";
@@ -182,7 +181,7 @@ cksum_test() {
 }
 
 have_feat() {
-   ( "${SNAIL}" ${ARGS} -Xversion -Xx | ${grep} ${1} ) >/dev/null 2>&1
+   ( "${SNAIL}" ${ARGS} -X'echo $features' -Xx | ${grep} +${1} ) >/dev/null 2>&1
 }
 
 # t_behave()
@@ -196,7 +195,7 @@ t_behave() {
 
    # FIXME __behave_mlist
 
-   have_feat +smime && __behave_smime
+   have_feat smime && __behave_smime
 }
 
 __behave_wysh() {
@@ -926,7 +925,7 @@ __behave_ifelse() {
 	__EOT
    cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
-   if have_feat +regex; then
+   if have_feat regex; then
       ${rm} -f "${MBOX}"
       ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
@@ -1421,7 +1420,7 @@ gggggggggggggggg"
 }
 
 t_all() {
-   if have_feat +devel; then
+   if have_feat devel; then
       ARGS="${ARGS} -Smemdebug"
       export ARGS
    fi
