@@ -87,7 +87,7 @@
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(N_("Un`delete' <msglist>")) },
-   { "unset", &c_unset, (H | M | WYRALIST), 1, 1000
+   { "unset", &c_unset, (M | WYRALIST), 1, 1000
      DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -361,7 +361,7 @@
      DS(N_("Print current working directory (CWD)")) },
    { "varshow", &c_varshow, (M | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (H | I | M | WYRALIST), 1, 1000
+   { "varedit", &c_varedit, (I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "urlencode", &c_urlencode, (H | M | WYRALIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
