@@ -187,7 +187,7 @@ have_feat() {
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
-   __behave_input_command_stack
+   __behave_x_opt_input_command_stack
    __behave_wysh
    __behave_ifelse
    __behave_localopts
@@ -199,16 +199,63 @@ t_behave() {
    have_feat smime && __behave_smime
 }
 
-__behave_input_command_stack() {
+__behave_x_opt_input_command_stack() {
    ${rm} -f "${BODY}" "${MBOX}"
    ${cat} <<- '__EOT' > "${BODY}"
-   echo 1
+	echo 1
+	define mac0 {
+	   echo mac0-1
+	}
+	call mac0
+	echo 2
+	wysh source '\
+	   echo "define mac1 {";\
+	   echo "  echo mac1-1";\
+	   echo "  call mac0";\
+	   echo "  echo mac1-2";\
+	   echo "  call mac2";\
+	   echo "  echo mac1-3";\
+	   echo "}";\
+	   echo "echo 1-1";\
+	   echo "define mac2 {";\
+	   echo "  echo mac2-1";\
+	   echo "  call mac0";\
+	   echo "  echo mac2-2";\
+	   echo "}";\
+	   echo "echo 1-2";\
+	   echo "call mac1";\
+	   echo "echo 1-3";\
+	   echo "wysh source \"\
+	      echo echo 1-1-1;\
+	      echo call mac0;\
+	      echo echo 1-1-2;\
+	   | \"";\
+	   echo "echo 1-4";\
+	|  '
+	echo 3
+	call mac2
+	echo 4
+	undefine *
+	__EOT
+
+   # The -X option supports multiline arguments, and those can internally use
+   # reverse solidus newline escaping.  And all -X options are joined...
+   APO=\'
+   < "${BODY}" "${SNAIL}" ${ARGS} \
+      -X 'e\' \
+      -X ' c\' \
+      -X '  h\' \
+      -X '   o \' \
+      -X 1 \
+      -X'
    define mac0 {
       echo mac0-1
    }
    call mac0
    echo 2
-   wysh source '\
+   ' \
+      -X'
+   wysh source '${APO}'\
       echo "define mac1 {";\
       echo "  echo mac1-1";\
       echo "  call mac0";\
@@ -231,13 +278,15 @@ __behave_input_command_stack() {
          echo echo 1-1-2;\
       | \"";\
       echo "echo 1-4";\
-   |  '
+   |  '${APO}'
    echo 3
+   ' \
+      -X'
    call mac2
    echo 4
-	__EOT
-   < "${BODY}" "${SNAIL}" -d ${ARGS} > "${MBOX}" 2>/dev/null
-   cksum_test behave:input_command_stack "${MBOX}" '3769856063 120'
+   undefine *
+   ' > "${MBOX}" 2>/dev/null
+   cksum_test behave:x_opt_input_command_stack "${MBOX}" '270940651 240'
 }
 
 __behave_wysh() {
