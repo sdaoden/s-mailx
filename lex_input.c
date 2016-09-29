@@ -1251,41 +1251,19 @@ FL int
    /* Special case macro mode: never need to prompt, lines have always been
     * unfolded already */
    if(a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO)){
-      size_t i;
-      bool_t dodup;
-      char **lp, *cp;
-
       if(*linebuf != NULL)
          free(*linebuf);
 
-      lp = &a_lex_input->li_lines[a_lex_input->li_loff];
-      if((*linebuf = *lp) == NULL){
+      if((*linebuf = a_lex_input->li_lines[a_lex_input->li_loff]) == NULL){
          *linesize = 0;
          n = -1;
          goto jleave;
       }
 
-      dodup = !(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA);
-      for(cp = *linebuf;; ++cp)
-         if(*cp == '\0'){
-            ++a_lex_input->li_loff;
-            i = PTR2SIZE(cp - *linebuf);
-            break;
-         }else if(*cp == '\n'){
-            i = PTR2SIZE(cp - *linebuf);
-            if(dodup)
-               *lp = &cp[1];
-            else{
-               *lp = sstrdup(&cp[1]);
-               cp = *linebuf;
-               *linebuf = sbufdup(*linebuf, i);
-               free(cp);
-            }
-            break;
-         }
-      *linesize = i;
-      if(dodup)
-         *linebuf = sbufdup(*linebuf, i);
+      ++a_lex_input->li_loff;
+      *linesize = strlen(*linebuf);
+      if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
+         *linebuf = sbufdup(*linebuf, *linesize);
 
       iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
             ? "-X OPTION" : "MACRO";
@@ -1474,14 +1452,85 @@ n_load_Xargs(char const **lines){
    static char const name[] = "-X";
 
    ui8_t buf[sizeof(struct a_lex_input_stack) + sizeof name];
+   char const *srcp, *xsrcp;
+   char *cp;
+   size_t imax, i, len;
    struct a_lex_input_stack *lip;
    NYD_ENTER;
 
    memset(buf, 0, sizeof buf);
    lip = (void*)buf;
-   lip->li_flags = a_LEX_MACRO | a_LEX_MACRO_X_OPTION | a_LEX_SUPER_MACRO;
-   lip->li_lines = UNCONST(lines);
+   lip->li_flags = a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
+         a_LEX_MACRO_X_OPTION | a_LEX_SUPER_MACRO;
    memcpy(lip->li_name, name, sizeof name);
+
+   /* The problem being that we want to support reverse solidus newline
+    * escaping also within multiline -X, i.e., POSIX says:
+    *    An unquoted <backslash> at the end of a command line shall
+    *    be discarded and the next line shall continue the command
+    * Therefore instead of "lip->li_lines = UNCONST(lines)", duplicate the
+    * entire lines array and set _MACRO_FREE_DATA */
+   for(imax = 0; lines[imax++] != NULL;)
+      ;
+   lip->li_lines = smalloc(sizeof(*lip->li_lines) * imax);
+
+   /* For each of the input lines.. */
+   for(i = len = 0, cp = NULL; (srcp = *lines) != NULL;){
+      bool_t keep;
+      size_t j;
+
+      if((j = strlen(srcp)) == 0){
+         ++lines;
+         continue;
+      }
+
+      /* Separate one line from a possible multiline input string */
+      if((xsrcp = memchr(srcp, '\n', j)) != NULL){
+         *lines = &xsrcp[1];
+         j = PTR2SIZE(xsrcp - srcp);
+      }else
+         ++lines;
+
+      /* The (separated) string may itself indicate soft newline escaping */
+      if((keep = (srcp[j - 1] == '\\'))){
+         size_t xj, xk;
+
+         /* Need an uneven number of reverse solidus */
+         for(xk = 1, xj = j - 1; xj-- > 0; ++xk)
+            if(srcp[xj] != '\\')
+               break;
+         if(xk & 1)
+            --j;
+         else
+            keep = FAL0;
+      }
+
+      /* Strip any leading WS from follow lines, then */
+      if(cp != NULL)
+         while(j > 0 && blankspacechar(*srcp))
+            ++srcp, --j;
+
+      if(j > 0){
+         if(i + 2 >= imax){ /* TODO need a vector (main.c, here, ++) */
+            imax += 4;
+            lip->li_lines = srealloc(lip->li_lines, sizeof(*lip->li_lines) *
+                  imax);
+         }
+         lip->li_lines[i] = cp = srealloc(cp, len + j +1);
+         memcpy(&cp[len], srcp, j);
+         cp[len += j] = '\0';
+
+         if(!keep)
+            ++i;
+      }
+      if(!keep)
+         cp = NULL, len = 0;
+   }
+   if(cp != NULL){
+      assert(i + 1 < imax);
+      lip->li_lines[i++] = cp;
+   }
+   lip->li_lines[i] = NULL;
 
    a_lex_load(lip);
    if(pstate & PS_EXIT)
