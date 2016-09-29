@@ -1279,7 +1279,7 @@ jduppass:
 
       mb.mb_type = MB_VOID;
       mb.mb_active = MB_NONE;
-      rv = -1;
+      rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -1309,7 +1309,7 @@ jduppass:
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
          imaplock = 0;
-         rv = -1;
+         rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
          goto jleave;
       }
    } else   /* same account */
@@ -1328,7 +1328,7 @@ jduppass:
       safe_signal(SIGPIPE, savepipe);
       imaplock = 0;
       mb.mb_type = MB_VOID;
-      rv = -1;
+      rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
       goto jleave;
    }
 
