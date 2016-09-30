@@ -875,23 +875,26 @@ _matchsender(struct message *mp, char const *str, bool_t allnet)
       }
       rv = (sc == '\0');
    } else {
-      char const *real_base = name1(mp, 0);
-      bool_t again = ok_blook(showname);
-
       /* TODO POSIX says ~"match any address as shown in header overview",
        * TODO but a normalized match would be more sane i guess.
        * TODO struct name should gain a comparison method, normalize realname
        * TODO content (in TODO) and thus match as likewise
        * TODO "Buddy (Today) <here>" and "(Now) Buddy <here>" */
+      char const *real_base;
+      bool_t again;
+
+      real_base = name1(mp, 0);
+      again = ok_blook(showname);
 jagain:
       np_base = np = again ? realname(real_base) : skin(real_base);
-      for (;;) {
+      str = str_base;
+      for(;;){
          sc = *str++;
-         if ((nc = *np++) == '\0' || sc == '\0')
+         if((nc = *np++) == '\0' || sc == '\0')
             break;
          sc = upperconv(sc);
          nc = upperconv(nc);
-         if (sc != nc) {
+         if(sc != nc){
             np = ++np_base;
             str = str_base;
          }
@@ -899,7 +902,7 @@ jagain:
 
       /* And really if i want to match 'on@' then i want it to match even if
        * *showname* is set! */
-      if (!(rv = (sc == '\0')) && again) {
+      if(!(rv = (sc == '\0')) && again){
          again = FAL0;
          goto jagain;
       }
