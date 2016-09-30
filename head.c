@@ -1670,6 +1670,11 @@ msgidcmp(char const *s1, char const *s2)
    int q1 = 0, q2 = 0, c1, c2;
    NYD_ENTER;
 
+   while(*s1 == '<')
+      ++s1;
+   while(*s2 == '<')
+      ++s2;
+
    do {
       c1 = msgidnextc(&s1, &q1);
       c2 = msgidnextc(&s2, &q2);
