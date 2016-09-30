@@ -49,7 +49,7 @@ XOPTIONS_DETECT="\
 "
 
 # Rather special options, for custom building, or which always exist.
-# Mostly for generating the visual overview and the *feature* string
+# Mostly for generating the visual overview and the *features* string
 XOPTIONS_XTRA="\
    MIME='Multipurpose Internet Mail Extensions' \
    SMIME='S/MIME message signing, verification, en- and decryption' \
@@ -2538,7 +2538,7 @@ else
    echo '#else' >> ${h}
 fi
 
-# Finally, create the string that is used by *feature* and `version'.
+# Finally, create the string that is used by *features* and `version'.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
 msg '\nThe following features are included (+) or not (-):'
@@ -2561,6 +2561,7 @@ done
 #exec 5>&1 >>${h}
 #${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
 #   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
+#
 printf '"\n#endif /* n_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
