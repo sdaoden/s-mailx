@@ -1656,56 +1656,17 @@ will delete the messages that are located between (and including)
 messages 1 through 5 in the sorted/threaded order, as shown in the
 .Ic headers
 summary.
-Multiple colon modifiers can be joined into one, e.g.,
-.Ql :du .
 The following special message names exist:
 .
+.
 .Bl -tag -width ".It Ar _n_u"
-.It Ar :n
-All
-.Ql new
-messages.
-.It Ar :o
-All old messages (any not in state
-.Ql read
-or
-.Ql new ) .
-.It Ar :u
-All
-.Ql unread
-messages.
-.It Ar :d
-All
-.Ql deleted
-messages (for the
-.Ic undelete
-and
-.Ic from
-commands only).
-.It Ar :r
-All
-.Ql read
-messages.
-.It Ar :f
-All
-.Ic flag Ns
-ged messages.
-.It Ar :a
-All answered messages
-(cf. the
-.Va markanswered
-variable).
-.It Ar :t
-All messages marked as draft.
-.It Ar :s
-\*(OP All messages classified as spam.
-.It Ar :S
-\*(OP All messages with unsure spam classification.
 .It Ar \&.
 The current message, the so-called
 .Dq dot .
+.
 .It Ar \&;
 The message that was previously the current message.
+.
 .It Ar \&,
 The parent message of the current message,
 that is the message with the Message-ID given in the
@@ -1713,6 +1674,7 @@ that is the message with the Message-ID given in the
 field or the last entry of the
 .Ql References:
 field of the current message.
+.
 .It Ar -
 The next previous undeleted message,
 or the next previous deleted message for the
@@ -1720,6 +1682,7 @@ or the next previous deleted message for the
 command.
 In sorted/threaded mode,
 the next previous such message in the sorted/threaded order.
+.
 .It Ar +
 The next undeleted message,
 or the next deleted message for the
@@ -1727,6 +1690,7 @@ or the next deleted message for the
 command.
 In sorted/threaded mode,
 the next such message in the sorted/threaded order.
+.
 .It Ar ^
 The first undeleted message,
 or the first deleted message for the
@@ -1734,6 +1698,7 @@ or the first deleted message for the
 command.
 In sorted/threaded mode,
 the first such message in the sorted/threaded order.
+.
 .It Ar $
 The last message.
 In sorted/threaded mode,
@@ -1759,6 +1724,30 @@ All messages.
 .It Ar `
 All messages that were included in the message list for the previous
 command.
+.
+.It Ar x-y
+An inclusive range of message numbers.
+Selectors that may also be used as endpoints include any of
+.Ar .;-+^$ .
+.
+.It Ar address
+A case-insensitive
+.Dq any substring matches
+search against the
+.Ql From:
+header, which will match addresses (too) even if
+.Va showname
+is set (and POSIX says
+.Dq any address as shown in a header summary shall be matchable in this form ) ;
+However, if the
+.Va allnet
+variable is set, only the local part of the address is evaluated
+for the comparison, not ignoring case, and the setting of
+.Va showname
+is completely ignored.
+For finer control and match boundaries use the
+.Ql @
+search expression.
 .
 .It Ar / Ns Ar string
 All messages that contain
@@ -1840,27 +1829,52 @@ search expression is to be matched against, prefix the header name
 .Pp
 .Dl @~f@@a\e.safe\e.domain\e.match$
 .
-.It Ar address
-A case-insensitive
-.Dq any substring matches
-search against the
-.Ql From:
-header, which will match addresses (too) even if
-.Va showname
-is set (and POSIX says
-.Dq any address as shown in a header summary shall be matchable in this form ) ;
-However, if the
-.Va allnet
-variable is set, only the local part of the address is evaluated
-for the comparison, not ignoring case, and the setting of
-.Va showname
-is completely ignored.
-For finer control and match boundaries use the
-.Ql @
-search expression; the \*(OPal IMAP-style
-.Ql (from address)
-expression can also be used if substring matches are desired.
+.It Ar :c
+All messages of state
+.Ql c ,
+where
+.Ql c
+is one or multiple of the following colon modifiers:
+.Pp
+.Bl -tag -compact -width ".It Ar :M"
+.It Ar n
+.Ql new
+messages.
+.It Ar o
+Old messages (any not in state
+.Ql read
+or
+.Ql new ) .
+.It Ar u
+.Ql unread
+messages.
+.It Ar d
+.Ql deleted
+messages (for the
+.Ic undelete
+and
+.Ic from
+commands only).
+.It Ar r
+.Ql read
+messages.
+.It Ar f
+.Ic flag Ns
+ged messages.
+.It Ar a
+Answered messages
+(cf. the
+.Va markanswered
+variable).
+.It Ar t
+Messages marked as draft.
+.It Ar s
+\*(OP Messages classified as spam.
+.It Ar S
+\*(OP Messages with unsure spam classification.
 .El
+.El
+.
 .
 .Pp
 \*(OP IMAP-style SEARCH expressions may also be used.

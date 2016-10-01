@@ -1393,7 +1393,7 @@ enum program_state {
    PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
-   PS_MSGLIST_SAW_NO = 1u<<17,      /* Last *LIST saw numerics */
+   PS_MSGLIST_GABBY  = 1u<<17,      /* getmsglist() saw what it thinks: gabby */
    PS_MSGLIST_DIRECT = 1u<<18,      /* One msg was directly chosen by number */
    /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
     * TODO may be placed in the history or not (grep this, see commands()),

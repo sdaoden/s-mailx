@@ -953,8 +953,9 @@ FL bool_t      n_ignoretab_lookup(struct ignoretab *self, char const *dat,
  * imap_search.c
  */
 
+/* Return -1 on invalid spec etc., the number of matches otherwise */
 #ifdef HAVE_IMAP_SEARCH
-FL enum okay   imap_search(char const *spec, int f);
+FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
 /*

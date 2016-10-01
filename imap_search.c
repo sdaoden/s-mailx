@@ -817,14 +817,14 @@ around(char const *cp)
    return ab;
 }
 
-FL enum okay
+FL ssize_t
 imap_search(char const *spec, int f)
 {
    static char *lastspec;
 
    char const *xp;
    size_t i;
-   enum okay rv = STOP;
+   ssize_t rv;
    NYD_ENTER;
 
    if (strcmp(spec, "()")) {
@@ -834,6 +834,7 @@ imap_search(char const *spec, int f)
       lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {
       n_err(_("No last SEARCH criteria available\n"));
+      rv = -1;
       goto jleave;
    }
    spec =
@@ -844,12 +845,15 @@ imap_search(char const *spec, int f)
    if ((rv = imap_search1(spec, f) == OKAY))
       goto jleave;
 #endif
-   if (itparse(spec, &xp, 0) == STOP)
-      goto jleave;
-   if (_it_tree == NULL) {
-      rv = OKAY;
+   if (itparse(spec, &xp, 0) == STOP){
+      rv = -1;
       goto jleave;
    }
+
+   rv = 0;
+
+   if (_it_tree == NULL)
+      goto jleave;
 
 #if 0
    if (mb.mb_type == MB_IMAP && _it_need_headers)
@@ -861,14 +865,14 @@ imap_search(char const *spec, int f)
          continue;
       if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
          size_t j = (int)(i + 1);
-         if (itexecute(&mb, message + i, j, _it_tree))
+         if (itexecute(&mb, message + i, j, _it_tree)){
             mark((int)j, f);
+            ++rv;
+         }
          srelax();
       }
    }
    srelax_rele();
-
-   rv = OKAY;
 jleave:
    NYD_LEAVE;
    return rv;
