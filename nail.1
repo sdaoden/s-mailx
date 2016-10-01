@@ -669,10 +669,10 @@ it is likely that some configuration settings have to be adjusted before
 using it is a smooth experience.
 The default global
 .Pa \*(UR
-file already bends those standard imposed settings a bit towards more
-user friendliness and safety, e.g., it
-.Ic set Ns
-s the internal variables
+resource file bends those standard imposed settings of the
+.Sx "INTERNAL VARIABLES"
+a bit towards more user friendliness and safety, however, e.g., it
+.Ic set Ns s
 .Va hold
 and
 .Va keepsave
@@ -687,18 +687,14 @@ files eventually get recreated (\*(UA actively manages the file mode
 creation mask via
 .Va umask
 upon program startup).
-On the other hand
-.Va folder ,
-one of the many
-.Sx "INTERNAL VARIABLES" ,
-isn't set by default so that file grouping (via the
-.Ql +
-prefix as documented for
-.Ic file )
-is not functional by default.
+It also enables
+.Va sendwait
+in order to synchronize \*(UA with the exit status report of the used
+.Va mta
+when sending mails.
 The section
 .Sx EXAMPLES
-contains some suggestions.
+contains some more complete configuration examples.
 .\" }}}
 .
 .\" .Ss "On sending mail, and non-interactive mode" {{{

@@ -24,11 +24,12 @@
 # [s]   save, nosendwait, noshowto, nosign, noSign,
 # [t-z] toplines="5"
 # Notes:
+# - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
+# - *prompt* is "\\& " by default, which will act POSIX-compliant
+#   unless the user does set *bsdcompat*
 # - no*onehop* doesn't exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
 #   separator on the command line or set the *sendmail-arguments* variable.)
-# - *prompt* is "\\& " by default, which will act POSIX-compliant
-#   unless the user does set *bsdcompat*
 # (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 ## The remaining content adjusts the standard-imposed default settings.
@@ -150,7 +151,7 @@ set sendcharsets=utf-8,iso-8859-1
 # When sending a message wait until the MTA (including the builtin SMTP one)
 # exits before accepting further commands.  Only with this variable set errors
 # reported by the MTA will be recognizable!
-#set sendwait
+set sendwait
 
 # Display real sender names in header summaries instead of only addresses
 set showname
