@@ -145,8 +145,9 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
    char *cp;
    NYD_ENTER;
 
-   if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL)
-      goto jcopy;
+   if (!force && !strcmp(user, myname) && (cp = ok_vlook(folder)) != NULL)
+      if(which_protocol(cp) == CPROTO_IMAP)
+         goto jcopy;
 
    if (force || (cp = ok_vlook(MAIL)) == NULL)
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
