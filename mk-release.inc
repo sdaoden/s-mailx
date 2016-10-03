@@ -2,13 +2,13 @@
 #@ It also needs two hooks: update_stable_hook(), update_release_hook(),
 #@ which need to "git add" what they have modified.
 
-[ -z "${PROGRAM}" ] || { echo >&2 'Need $PROGRAM'; exit 1; }
-[ -z "${UPROGRAM}" ] || { echo >&2 'Need $UPROGRAM'; exit 1; }
-[ -z "${UPLOAD}" ] || { echo >&2 'Need $UPLOAD URL for scp(1)'; exit 1; }
+[ -z "${PROGRAM}" ] && { echo >&2 'Need $PROGRAM'; exit 1; }
+[ -z "${UPROGRAM}" ] && { echo >&2 'Need $UPROGRAM'; exit 1; }
+[ -z "${UPLOAD}" ] && { echo >&2 'Need $UPLOAD URL for scp(1)'; exit 1; }
 : ${MAILX:=mailx}
-[ -z "${ACCOUNT}" ] || { echo >&2 'Need mailx(1) -A $ACCOUNT'; exit 1; }
-[ -z "${MAILTO}" ] || { echo >&2 'Need $MAILTO for announcement'; exit 1; }
-[ -z "${MAILBCC}" ] || { echo >&2 'Need $MAILBCC for announcement'; exit 1; }
+[ -z "${ACCOUNT}" ] && { echo >&2 'Need mailx(1) -A $ACCOUNT'; exit 1; }
+[ -z "${MAILTO}" ] && { echo >&2 'Need $MAILTO for announcement'; exit 1; }
+[ -z "${MAILBCC}" ] && { echo >&2 'Need $MAILBCC for announcement'; exit 1; }
 
 ##  --  >8  --  8<  --  ##
 
@@ -195,7 +195,7 @@ fi
 # Announcement
 
 if yesno 'Send announcement mail?'; then
-   if `git rev-parse --verify announce^{blob}` >/dev/null 2>&1; then
+   if `git rev-parse --verify announce^{blob} >/dev/null 2>&1`; then
       git show announce > "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    else
       echo > "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
@@ -204,9 +204,9 @@ if yesno 'Send announcement mail?'; then
       git show ${relbr}:NEWS >> "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    fi
 
-   LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT}
-      -s "[ANN] of ${UPROGRAM} v${REL}"
-      -q "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
+   LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT} \
+      -s "[ANN] of ${UPROGRAM} v${REL}" \
+      -q "${TMPDIR}/${PROGRAM}-${REL}.ann.mail" \
       -b ${MAILBCC} ${MAILTO}
 fi
 
