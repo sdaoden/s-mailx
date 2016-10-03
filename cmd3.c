@@ -718,67 +718,6 @@ c_dosh(void *v)
 }
 
 FL int
-c_help(void *v)
-{
-   int ret = 0;
-   char *arg;
-   NYD_ENTER;
-
-   arg = *(char**)v;
-
-   if (arg != NULL) {
-#ifdef HAVE_DOCSTRINGS
-      ret = !n_print_comm_docstr(arg);
-      if (ret)
-         n_err(_("Unknown command: `%s'\n"), arg);
-#else
-      ret = c_cmdnotsupp(NULL);
-#endif
-      goto jleave;
-   }
-
-   /* Very ugly, but take care for compiler supported string lengths :( */
-   fputs(progname, stdout);
-   fputs(_(
-      " commands -- <msglist> denotes message specifications,\n"
-      "e.g., 1-5, :n or ., separated by spaces:\n"), stdout);
-   fputs(_(
-"\n"
-"type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
-"Type <msglist>         like `type' but always show all headers\n"
-"next                   goto and type next message\n"
-"from <msglist>         (search and) print header summary for the given list\n"
-"headers                header summary for messages surrounding \"dot\"\n"
-"delete <msglist>       delete messages (can be `undelete'd)\n"),
-      stdout);
-
-   fputs(_(
-"\n"
-"save <msglist> folder  append messages to folder and mark as saved\n"
-"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
-"write <msglist> file   write message contents to file (prompts for parts)\n"
-"Reply <msglist>        reply to message senders only\n"
-"reply <msglist>        like `Reply', but address all recipients\n"
-"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
-      stdout);
-
-   fputs(_(
-"\n"
-"mail <recipients>      compose a mail for the given recipients\n"
-"file folder            change to another mailbox\n"
-"File folder            like `file', but open readonly\n"
-"quit                   quit and apply changes to the current mailbox\n"
-"xit or exit            like `quit', but discard changes\n"
-"!shell command         shell escape\n"
-"list [<anything>]      all available commands [in search order]\n"),
-      stdout);
-
-jleave:
-   NYD_LEAVE;
-   return ret;
-}
-
-FL int
 c_cwd(void *v)
 {
    char buf[PATH_MAX]; /* TODO getcwd(3) may return a larger value */

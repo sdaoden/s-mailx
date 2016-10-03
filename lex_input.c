@@ -111,6 +111,9 @@ static int a_lex_c_list(void *v);
 
 static int a_lex__pcmd_cmp(void const *s1, void const *s2);
 
+/* `help' / `?' command */
+static int a_lex_c_help(void *v);
+
 /* `quit' command */
 static int a_lex_c_quit(void *v);
 
@@ -394,6 +397,118 @@ a_lex__pcmd_cmp(void const *s1, void const *s2){
    cp2 = s2;
    rv = strcmp((*cp1)->lc_name, (*cp2)->lc_name);
    NYD2_LEAVE;
+   return rv;
+}
+
+static int
+a_lex_c_help(void *v){
+   int rv;
+   char *arg;
+   NYD_ENTER;
+
+   /* Help for a single command? */
+   if((arg = *(char**)v) != NULL){
+      struct a_lex_ghost const *gp;
+      struct a_lex_cmd const *cp, *cpmax;
+
+      /* Ghosts take precedence */
+      for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
+         if(!strcmp(arg, gp->lg_name)){
+            printf("%s -> ", arg);
+            arg = gp->lg_cmd.s;
+            break;
+         }
+
+      cpmax = &(cp = a_lex_cmd_tab)[NELEM(a_lex_cmd_tab)];
+jredo:
+      for(; PTRCMP(cp, <, cpmax); ++cp){
+#ifdef HAVE_DOCSTRINGS
+# define a_DS V_(cp->lc_doc)
+#else
+# define a_DS ""
+#endif
+         if(!strcmp(arg, cp->lc_name))
+            printf("%s: %s", arg, a_DS);
+         else if(is_prefix(arg, cp->lc_name))
+            printf("%s (%s): %s", arg, cp->lc_name, a_DS);
+         else
+            continue;
+
+         if(options & OPT_D_V){
+            switch(cp->lc_argtype & ARG_ARGMASK){
+            case ARG_MSGLIST: arg = N_("message-list"); break;
+            case ARG_STRLIST: arg = N_("a \"string\""); break;
+            case ARG_RAWLIST: arg = N_("old-style quoting"); break;
+            case ARG_NOLIST: arg = N_("no arguments"); break;
+            case ARG_NDMLIST: arg = N_("message-list (no default)"); break;
+            case ARG_WYSHLIST: arg = N_("sh(1)ell-style quoting"); break;
+            default: arg = N_("`wysh' for sh(1)ell-style quoting"); break;
+            }
+#ifdef HAVE_DOCSTRINGS
+            printf(_("\n\tArgument type: %s"), V_(arg));
+#else
+            printf(_("argument type: %s"), V_(arg));
+#endif
+#undef a_DS
+         }
+         putchar('\n');
+         rv = 0;
+         goto jleave;
+      }
+
+      if(PTRCMP(cpmax, ==, &a_lex_cmd_tab[NELEM(a_lex_cmd_tab)])){
+         cpmax = &(cp = a_lex_special_cmd_tab)[NELEM(a_lex_special_cmd_tab)];
+         goto jredo;
+      }
+
+      if(gp != NULL){
+         printf("%s\n", n_shexp_quote_cp(arg, TRU1));
+         rv = 0;
+      }else{
+         n_err(_("Unknown command: `%s'\n"), arg);
+         rv = 1;
+      }
+   }else{
+      /* Very ugly, but take care for compiler supported string lengths :( */
+      fputs(progname, stdout);
+      fputs(_(
+         " commands -- <msglist> denotes message specifications,\n"
+         "e.g., 1-5, :n or ., separated by spaces:\n"), stdout);
+      fputs(_(
+"\n"
+"type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
+"Type <msglist>         like `type' but always show all headers\n"
+"next                   goto and type next message\n"
+"from <msglist>         (search and) print header summary for the given list\n"
+"headers                header summary for messages surrounding \"dot\"\n"
+"delete <msglist>       delete messages (can be `undelete'd)\n"),
+         stdout);
+
+      fputs(_(
+"\n"
+"save <msglist> folder  append messages to folder and mark as saved\n"
+"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
+"write <msglist> file   write message contents to file (prompts for parts)\n"
+"Reply <msglist>        reply to message senders only\n"
+"reply <msglist>        like `Reply', but address all recipients\n"
+"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
+         stdout);
+
+      fputs(_(
+"\n"
+"mail <recipients>      compose a mail for the given recipients\n"
+"file folder            change to another mailbox\n"
+"File folder            like `file', but open readonly\n"
+"quit                   quit and apply changes to the current mailbox\n"
+"xit or exit            like `quit', but discard changes\n"
+"!shell command         shell escape\n"
+"list [<anything>]      all available commands [in search order]\n"),
+         stdout);
+
+      rv = (ferror(stdout) != 0);
+   }
+jleave:
+   NYD_LEAVE;
    return rv;
 }
 
@@ -1053,48 +1168,6 @@ a_commands_recursive(enum n_lexinput_flags lif){
    NYD2_LEAVE;
    return rv;
 }
-
-#ifdef HAVE_DOCSTRINGS
-FL bool_t
-n_print_comm_docstr(char const *comm){
-   struct a_lex_ghost const *gp;
-   struct a_lex_cmd const *cp, *cpmax;
-   bool_t rv = FAL0;
-   NYD_ENTER;
-
-   /* Ghosts take precedence */
-   for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
-      if(!strcmp(comm, gp->lg_name)){
-         printf("%s -> ", comm);
-         comm = gp->lg_cmd.s;
-         break;
-      }
-
-   cpmax = &(cp = a_lex_cmd_tab)[NELEM(a_lex_cmd_tab)];
-jredo:
-   for(; PTRCMP(cp, <, cpmax); ++cp){
-      if(!strcmp(comm, cp->lc_name))
-         printf("%s: %s\n", comm, V_(cp->lc_doc));
-      else if(is_prefix(comm, cp->lc_name))
-         printf("%s (%s): %s\n", comm, cp->lc_name, V_(cp->lc_doc));
-      else
-         continue;
-      rv = TRU1;
-      break;
-   }
-   if(!rv && PTRCMP(cpmax, ==, &a_lex_cmd_tab[NELEM(a_lex_cmd_tab)])){
-      cpmax = &(cp = a_lex_special_cmd_tab)[NELEM(a_lex_special_cmd_tab)];
-      goto jredo;
-   }
-
-   if(!rv && gp != NULL){
-      printf("%s\n", n_shexp_quote_cp(comm, TRU1));
-      rv = TRU1;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-#endif /* HAVE_DOCSTRINGS */
 
 FL bool_t
 n_commands(void){ /* FIXME */

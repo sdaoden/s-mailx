@@ -471,9 +471,6 @@ FL int         c_shell(void *v);
 /* Fork an interactive shell */
 FL int         c_dosh(void *v);
 
-/* Show the help screen */
-FL int         c_help(void *v);
-
 /* Print user's working directory */
 FL int         c_cwd(void *v);
 
@@ -961,12 +958,6 @@ FL ssize_t     imap_search(char const *spec, int f);
 /*
  * lex_input.c
  */
-
-/* Print the docstring of `comm', which may be an abbreviation.
- * Return FAL0 if there is no such command */
-#ifdef HAVE_DOCSTRINGS
-FL bool_t      n_print_comm_docstr(char const *comm);
-#endif
 
 /* Interpret user commands.  If stdin is not a tty, print no prompt; return
  * whether last processed command returned error; this is *only* for main()! */

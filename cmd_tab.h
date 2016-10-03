@@ -159,9 +159,9 @@
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
-   { "help", &c_help, (H | M | WYRALIST), 0, 1
+   { "help", &a_lex_c_help, (H | M | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "?", &c_help, (H | M | WYRALIST), 0, 1
+   { "?", &a_lex_c_help, (H | M | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
