@@ -145,26 +145,8 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
    char *cp;
    NYD_ENTER;
 
-   if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL) {
-      switch (which_protocol(cp)) {
-      case PROTO_IMAP:{
-         char const *sep;
-         size_t i;
-
-         i = strlen(cp);
-         if(i > 0 && cp[i - 1] != '/'){
-            if(strcmp(cp, protbase(cp)))
-               goto jcopy;
-            sep = "/";
-         }else
-            sep = "";
-         snprintf(buf, bufsize, "%s%sINBOX", cp, sep);
-         goto jleave;
-      }
-      default:
-         break;
-      }
-   }
+   if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL)
+      goto jcopy;
 
    if (force || (cp = ok_vlook(MAIL)) == NULL)
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
@@ -1344,10 +1326,14 @@ jnext:
    }
 
    if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-      size_t i = strlen(cbuf);
+      size_t i;
 
-      res = str_concat_csvl(&s, cbuf,
-            ((i > 0 && cbuf[i - 1] == '/') ? "" : "/"), res + 1, NULL)->s;
+      i = strlen(cbuf);
+      if(which_protocol(cbuf) != PROTO_IMAP)
+         res = str_concat_csvl(&s, cbuf,
+               ((i > 0 && cbuf[i - 1] == '/') ? "" : "/"), res + 1, NULL)->s;
+      else
+         res = savestrbuf(cbuf, i);
       dyn = TRU1;
 
       if (res[0] == '%' && res[1] == ':') {
