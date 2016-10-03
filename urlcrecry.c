@@ -828,25 +828,34 @@ juser:
 
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && *x) {
-      /* Take care not to count adjacent slashes for real, on either end */
-      char *x2;
       size_t i;
 
-      for(x2 = savestrbuf(x, i = strlen(x)); i > 0; --i)
-         if(x2[i - 1] != '/')
-            break;
-      x2[i] = '\0';
-
-      if (i > 0) {
-         if (cproto != CPROTO_IMAP) {
+      if((i = strlen(x)) > 0){
+         if(x[i - 1] == '/'){
+            while(i-- > 0 && x[i - 1] == '/')
+               ;
+            /* If the name ends with a slash, we need to append INBOX for IMAP */
+            if(cproto == CPROTO_IMAP){
+               urlp->url_path.s = salloc(i + sizeof("/INBOX"));
+               memcpy(urlp->url_path.s, x, i);
+               memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
+               urlp->url_path.l = i + sizeof("/INBOX") -1;
+            }else
+               urlp->url_path.l = i;
+         }else if(cproto == CPROTO_IMAP){
+            urlp->url_path.s = x;
+            urlp->url_path.l = i;
+         }else{
             n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
                urlp->url_input);
             goto jleave;
          }
-         urlp->url_path.l = i;
-         urlp->url_path.s = x2;
       }
    }
+   /* */
+   if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
+      urlp->url_path.s = savestrbuf("INBOX",
+            urlp->url_path.l = sizeof("INBOX") -1);
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;

@@ -1260,8 +1260,8 @@ jduppass:
       }
       if (mb.mb_imap_mailbox != NULL)
          free(mb.mb_imap_mailbox);
-      mb.mb_imap_mailbox = sstrdup((urlp->url_path.s != NULL)
-            ? urlp->url_path.s : "INBOX");
+      assert(urlp->url_path.s != NULL);
+      mb.mb_imap_mailbox = sstrdup(urlp->url_path.s);
       initbox(urlp->url_p_eu_h_p_p);
    }
    mb.mb_type = MB_VOID;
@@ -2754,7 +2754,16 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
          return STOP;
       ok = OKAY;
    }
-   qname = imap_quotestr(name = imap_fileof(name));
+
+   /* C99 */{
+      size_t i;
+
+      i = strlen(name = imap_fileof(name));
+      if(i > 0 && name[i - 1] == '/')
+         name = savecat(name, "INBOX");
+      qname = imap_quotestr(name);
+   }
+
    /* Since it is not possible to set flags on the copy, recently
     * set flags must be set on the original to include it in the copy */
    if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS))
