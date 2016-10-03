@@ -147,11 +147,20 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 
    if (!strcmp(user, myname) && !force && (cp = ok_vlook(folder)) != NULL) {
       switch (which_protocol(cp)) {
-      case PROTO_IMAP:
-         if (strcmp(cp, protbase(cp)))
-            goto jcopy;
-         snprintf(buf, bufsize, "%s/INBOX", cp);
+      case PROTO_IMAP:{
+         char const *sep;
+         size_t i;
+
+         i = strlen(cp);
+         if(i > 0 && cp[i - 1] != '/'){
+            if(strcmp(cp, protbase(cp)))
+               goto jcopy;
+            sep = "/";
+         }else
+            sep = "";
+         snprintf(buf, bufsize, "%s%sINBOX", cp, sep);
          goto jleave;
+      }
       default:
          break;
       }

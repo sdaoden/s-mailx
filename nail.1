@@ -275,7 +275,7 @@ for the format of
 If the
 .Fl H
 option has been given in addition no header summary is produced,
-but \*(UA will instead indicate via its exit status wether
+but \*(UA will instead indicate via its exit status whether
 .Ar spec-list
 matched any messages
 .Pf ( Ql 0 )
@@ -856,7 +856,7 @@ active ignore or retain lists, use the command
 .Ic Print .
 The variable
 .Va crt
-controls wether and when \*(UA will use the configured
+controls whether and when \*(UA will use the configured
 .Ev PAGER
 for printing instead of directly writing to the terminal (generally
 speaking).
@@ -1035,7 +1035,7 @@ and
 .Ic Lreply )
 and
 .Va followup-to
-controls wether this header is created when sending mails; it will be
+controls whether this header is created when sending mails; it will be
 created automatically for a couple of reasons, too, like when the
 special
 .Dq mailing list specific
@@ -1784,18 +1784,18 @@ isn't truly the
 that had been found when doing the user chain lookup as is described
 below, i.e., this
 .Ql USER
-will never be in URL percent encoded form, wether it came from an URL or not.
+will never be in URL percent encoded form, whether it came from an URL or not.
 .
 .Pp
-For example, wether an hypothetical URL
+For example, whether an hypothetical URL
 .Ql smtp://hey%3Ayou@our.house
-had been given that includes a user, or wether the URL was
+had been given that includes a user, or whether the URL was
 .Ql smtp://our.house
 and the user had been found differently, to lookup the variable chain
 .Va smtp-use-starttls
-\*(UA first looks for wether
+\*(UA first looks for whether
 .Ql smtp-\:use-\:starttls-\:hey:you@our.house
-is defined, then wether
+is defined, then whether
 .Ql smtp-\:use-\:starttls-\:our.house
 exists before finally ending up looking at the plain variable itself.
 .
@@ -2074,7 +2074,7 @@ or its name includes the string
 .Pp
 On top of that the binary option
 .Va colour-pager
-defines wether these colour sequences are also generated when the output
+defines whether these colour sequences are also generated when the output
 of a command needs to go through the
 .Ev PAGER
 (also see
@@ -3777,7 +3777,7 @@ flag.
 to forget it has ever used them to train its Bayesian filter.
 Unless otherwise noted the
 .Ql is-spam
-flag of the message is inspected to chose wether a message shall be
+flag of the message is inspected to chose whether a message shall be
 forgotten to be
 .Dq ham
 or
@@ -4248,7 +4248,7 @@ and the rest of this section does not apply.
 If character set conversion has been compiled into \*(UA, then this mode
 gives the user the option to specify input and output character sets,
 unless the file extension indicates binary content, in which case \*(UA
-asks wether this step shall be skipped for the attachment in question.
+asks whether this step shall be skipped for the attachment in question.
 If not skipped, then the charset that succeeds to represent the
 attachment data will be used in the
 .Ql charset=
@@ -4296,7 +4296,7 @@ Note that the file extension check isn't performed in this mode, since
 no conversion will take place anyway.
 .Pp
 Note that in non-interactive mode, for reproduceabilities sake, there
-will always be two questions for each attachment, regardless of wether
+will always be two questions for each attachment, regardless of whether
 character set conversion is available and what the file extension is.
 The first asks for the filename, and the second asks for the input
 character set to be passed through to the corresponding MIME parameter;
@@ -4788,7 +4788,7 @@ Also see the section
 .
 .Mx
 .It Va colour-pager
-\*(OP Wether colour shall be used for output that is paged through
+\*(OP Whether colour shall be used for output that is paged through
 .Ev PAGER .
 Note that pagers may need special flags, e.g.,
 .Xr less 1
@@ -4946,7 +4946,7 @@ are not affected by the current setting of
 .
 .Mx
 .It Va followup-to
-Controls wether a
+Controls whether a
 .Ql Mail-Followup-To:
 header is generated when sending messages to known mailing lists.
 Also see
@@ -5809,7 +5809,7 @@ If it contains
 .Ql fail
 then the existence of disallowed specifications is treated as a hard
 send error instead of only filtering them out.
-The remaining values specify wether a specific type of recipient
+The remaining values specify whether a specific type of recipient
 address specification is allowed (optionally indicated by a plus sign
 .Ql +
 prefix) or disallowed (prefixed with a hyphen
@@ -5897,7 +5897,11 @@ begin with `+' refer to IMAP mailboxes below the
 .Va folder
 target box.
 .Pp
-Note: some IMAP servers do not accept the creation of mailboxes in
+Note: for IMAP it makes a difference whether
+.Va folder
+ends with a directory separator solidus or not in respect to the
+automatic append of `INBOX' strings.
+Ssome IMAP servers do not accept the creation of mailboxes in
 the hierarchy base, but require that they are created as subfolders of
 `INBOX' \(en with such servers a folder name of the form
 .Pp
@@ -5949,7 +5953,7 @@ first, but then followed by
 .
 .Mx
 .It Va followup-to-honour
-Controls wether a
+Controls whether a
 .Ql Mail-Followup-To:
 header is honoured when group-replying to a message via
 .Ic reply
@@ -6346,7 +6350,7 @@ upon program startup can also be suppressed by doing this.
 An unset or invalid value, or 0, causes a default value to be used.
 Dependent on the available command line editor this will also define the
 number of history entries in memory;
-it is also editor-specific wether runtime updates of this value will be
+it is also editor-specific whether runtime updates of this value will be
 honoured.
 .
 .Mx
@@ -6643,7 +6647,7 @@ list.
 .
 .Mx
 .It Va reply-to-honour
-Controls wether a
+Controls whether a
 .Ql Reply-To:
 header is honoured when replying to a message via
 .Ic reply
@@ -7716,7 +7720,7 @@ documents the file format.
 When sending messages \*(UA tries to determine the content type of all
 attachments.
 When displaying message content or attachments \*(UA uses the content
-type to decide wether it can directly display data or wether it needs to
+type to decide whether it can directly display data or whether it needs to
 deal with content handlers, as can be defined via
 .Va pipe-TYPE/SUBTYPE
 (and
