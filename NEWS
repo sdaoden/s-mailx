@@ -22,6 +22,130 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
+v14.8.11 ("Bubas"), 2016-10-03
+------------------------------
+
+A cumulated bugfix release.
+It also brings in some corrections to no-brainers of the past.
+
+Thanks to Antonio Radici and Stephen Isard.
+We welcome Antonio Radici in THANKS.
+
+Apologies to Stephen Isard, and John Dodson.
+
+  S-nail will become S-mailx after v14.9, and all project resources
+  will move to www.sdaoden.eu with v14.9; only the ML remains hosted
+  at Sourceforge.net as of this writing.
+  We thank Sourceforge.net for hosting this project so many years!
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The repository layout has been changed / extended!
+  Please see README on interest.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+  f01291d extract_date_from_from_(): dig more invalid MBOXes (Antonio Radici)..
+  98050a7 THANKS: Antonio Radici
+
+freedesktop.org obfuscates MBOX From_ lines, and S-nail was much too
+strict for quite some time.  This strict behaviour was introduced as
+part of the fixes which finally allowed roundtripping messages in
+between different mailbox types, but it didn't really work out.
+
+In the future we only warn if we see invalid MBOX files, and will print
+the invalid lines with *debug* or *verbose* set, but anyway accept what
+we get.
+
+  096809e popen.c:_file_save(): FIX false cherry-pick [41250b1] for IMAP..
+
+v14.8.10 couldn't do "copy * IMAP-SPEC" due to this.
+
+  788aad0 url_parse(): better take better care for path parts (Stephen Isard)..
+  fb32f8f IMAP: honour readonly via -R, not only via `File' (Stephen Isard)
+
+Please see below.
+
+  bd6090d sendout.c: fix HAVE_DEBUG From_ quoting..
+  e716a9c Many: drop support for *mbox-rfc4155* - a no-brainer..
+
+More on MBOX, as above.
+
+  603a3dd sendmp(), setfile(): FIX: ensure time_current is actualized
+
+Oh!  Yes, there were actually two code paths which suffered a lot from
+the "optimize date and time systemcalls" from years ago!  Now fixed. ._.
+
+  63e7ade is_head(): change compat argument to check_rfc4155..
+
+More on MBOX, as above.
+
+  c5b40e4 okeys.h: regenerate (Apologies: Stephen Isard)
+
+Sorry, Stephen!
+
+  3838ffd setptr(): tweak [63e7ade], log more invalid From_'s if verbose
+
+More on MBOX, as above.
+
+  2eb6ca1 mime_types.c:_mt_by_filename(): basename() path (fix/tweak relative
+          paths)
+  b9599b0 make.rc, mk-conf.sh: WANT_DEVEL includes WANT_DEBUG, but not vice
+          versa
+  ec81a41 cmd_tab.h: allow history for `set', `setenv', `varshow'
+
+Much better to see them in the `history'.
+
+  a715162 Add a RFC 6068 url_mailto_to_address() hack for List-Post:
+
+We will now strip off any hfield additions after a "?", and we will
+perform URL percent decoding before using the value given.
+(Is only used for "automatic mailing-list detection".)
+
+  e774dfb imap.c: do not hard error out if FEDIT_SYSBOX|FEDIT_NEWMAIL
+  39a7571 FIX "," message specification (since [1c4b8c9], v14.8.4)..
+
+Yes, you can say "f," again, and it should find the parent message.
+
+  171f111 FIX [44cec1f] (Fix "address" message specifications (John Dodson))..
+
+Sorry, Mr. John Dodson of Australia.  They now really work as
+standardized with our extensions, and there is nothing anyone can do
+to prevent it.
+
+  256da01 *folder*: IMAP: add /INBOX when there is a trailing slash (Stephen
+          Isard)
+  2afd5c8 Previous, IMAP now for much better (Stephen Isard)
+  e5eb5fe Fix + expansion for IMAP, broken since [edb2dcd], 2013-06!!
+  ce40a87 imap.c: do not print update message on readonly boxes
+  52fcb7e Oops, restore proper *folder* behaviour for non-IMAP
+
+More IMAP fixes.  Our state of affairs is:
+
+  ? var folder
+  "folder": (116) value: set=1 (ENVIRON=0) value<imap://user1@localhost/Mail>
+  ? Fi@Du
+  Held 20 messages in imap://user1@localhost/Mail
+  IMAP error: Mailbox isn't selectable (0.000 + 0.000 secs).
+  ? Fi@Du/
+  "imap://user1@localhost/Du/INBOX": 10 messages 10 new [Read only]
+  ? Fi+
+  "imap://user1@localhost/Mail": 20 messages [Read only]
+  ? Fi@
+  "imap://user1@localhost/INBOX": 10 messages [Read only]
+  ? Fi+/
+  "imap://user1@localhost/Mail": 20 messages [Read only]
+  ? Fi@/
+  "imap://user1@localhost/INBOX": 9 messages [Read only]
+  ? set folder=imap://user1@localhost/Mail/
+  ? Fi+
+  IMAP error: Mailbox doesn't exist: Mail/INBOX (0.000 + 0.000 + 0.001 secs).
+
+I.e., if *folder* includes a trailing solidus then we INBOX,
+otherwise not.
+
 v14.8.10 ("Anachalcos"), 2016-08-20
 -----------------------------------
 

@@ -352,9 +352,19 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
 
    memset(mtlp, 0, sizeof *mtlp);
 
-   if ((mtlp->mtl_nlen = nlen = strlen(mtlp->mtl_name = name)) == 0 ||
-         memchr(name, '.', nlen) == NULL)
+   if ((nlen = strlen(name)) == 0) /* TODO name should be a URI */
       goto jnull_leave;
+   /* We need a period TODO we should support names like README etc. */
+   for (i = nlen; name[--i] != '.';)
+      if (i == 0 || name[i] == '/') /* XXX no magics */
+         goto jnull_leave;
+   /* While here, basename() it */
+   while (i > 0 && name[i - 1] != '/')
+      --i;
+   name += i;
+   nlen -= i;
+   mtlp->mtl_name = name;
+   mtlp->mtl_nlen = nlen;
 
    if (!_mt_is_init)
       _mt_init();

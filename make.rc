@@ -330,7 +330,7 @@ WANT_NOEXTMD5=no
 WANT_NOALLOCA="${WANT_DEBUG}"
 
 # Experimental code etc.
-# Note: this will be forcefully set (again) if WANT_DEBUG=yes.
+# Note: this forcefully enables WANT_DEBUG.
 WANT_DEVEL=no
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print

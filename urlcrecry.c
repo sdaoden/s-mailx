@@ -587,6 +587,62 @@ FL char *
    return n;
 }
 
+FL char *
+url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
+   size_t i;
+   char *rv;
+   char const *mailtop_orig;
+   NYD_ENTER;
+
+   if(!is_prefix("mailto:", mailtop_orig = mailtop)){
+      rv = NULL;
+      goto jleave;
+   }
+   mailtop += sizeof("mailto:") -1;
+
+   /* TODO This is all intermediate, and for now just enough to understand
+    * TODO a little bit of a little more advanced List-Post: headers. */
+   /* Strip any hfield additions, keep only to addr-spec's */
+   if((rv = strchr(mailtop, '?')) != NULL)
+      rv = savestrbuf(mailtop, i = PTR2SIZE(rv - mailtop));
+   else
+      rv = savestrbuf(mailtop, i = strlen(mailtop));
+
+   i = strlen(rv);
+
+   /* Simply perform percent-decoding if there is a percent % */
+   if(memchr(rv, '%', i) != NULL){
+      char *rv_base;
+      bool_t err;
+
+      for(err = FAL0, mailtop = rv_base = rv; i > 0;){
+         char c;
+
+         if((c = *mailtop++) == '%'){
+            si32_t cc;
+
+            if(i < 3 || (cc = mime_hexseq_to_char(mailtop)) < 0){
+               if(!err && (err = TRU1, options & OPT_D_V))
+                  n_err(_("Invalid RFC 6068 'mailto' URL: %s\n"), mailtop_orig);
+               goto jhex_putc;
+            }
+            *rv++ = (char)cc;
+            mailtop += 2;
+            i -= 3;
+         }else{
+jhex_putc:
+            *rv++ = c;
+            --i;
+         }
+      }
+      *rv = '\0';
+      rv = rv_base;
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
 FL char const *
 url_servbyname(struct url const *urlp, ui16_t *irv_or_null)
@@ -749,9 +805,12 @@ juser:
       char *eptr;
       long l;
 
-      urlp->url_port = x = savestr(x = cp + 1);
-      if ((x = strchr(x, '/')) != NULL)
+      urlp->url_port = x = savestr(x = &cp[1]);
+      if ((x = strchr(x, '/')) != NULL) {
          *x = '\0';
+         while(*++x == '/')
+            ;
+      }
       l = strtol(urlp->url_port, &eptr, 10);
       if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
          n_err(_("URL with invalid port number: \"%s\"\n"), urlp->url_input);
@@ -759,21 +818,44 @@ juser:
       }
       urlp->url_portno = (ui16_t)l;
    } else {
-      if ((x = strchr(data, '/')) != NULL)
+      if ((x = strchr(data, '/')) != NULL) {
          data = savestrbuf(data, PTR2SIZE(x - data));
+         while(*++x == '/')
+            ;
+      }
       cp = UNCONST(data + strlen(data));
    }
 
    /* A (non-empty) path may only occur with IMAP */
-   if (x != NULL && x[1] != '\0') {
-      if (cproto != CPROTO_IMAP) {
-         n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
-            urlp->url_input);
-         goto jleave;
+   if (x != NULL && *x) {
+      size_t i;
+
+      if((i = strlen(x)) > 0){
+         if(x[i - 1] == '/'){
+            while(i-- > 0 && x[i - 1] == '/')
+               ;
+            /* If the name ends with a slash, we need to append INBOX for IMAP */
+            if(cproto == CPROTO_IMAP){
+               urlp->url_path.s = salloc(i + sizeof("/INBOX"));
+               memcpy(urlp->url_path.s, x, i);
+               memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
+               urlp->url_path.l = i + sizeof("/INBOX") -1;
+            }else
+               urlp->url_path.l = i;
+         }else if(cproto == CPROTO_IMAP){
+            urlp->url_path.s = x;
+            urlp->url_path.l = i;
+         }else{
+            n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
+               urlp->url_input);
+            goto jleave;
+         }
       }
-      urlp->url_path.l = strlen(++x);
-      urlp->url_path.s = savestrbuf(x, urlp->url_path.l);
    }
+   /* */
+   if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
+      urlp->url_path.s = savestrbuf("INBOX",
+            urlp->url_path.l = sizeof("INBOX") -1);
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;

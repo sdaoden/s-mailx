@@ -920,13 +920,16 @@ FL char const * myaddrs(struct header *hp);
 FL char const * myorigin(struct header *hp);
 
 /* See if the passed line buffer, which may include trailing newline (sequence)
- * is a mail From_ header line according to RFC 4155.
- * If compat is true laxe POSIX syntax is instead sufficient to match From_ */
-FL int         is_head(char const *linebuf, size_t linelen, bool_t compat);
+ * is a mail From_ header line according to POSIX ("From ").
+ * If check_rfc4155 is true we'll return TRUM1 instead if the From_ line
+ * matches POSIX but is _not_ compatible to RFC 4155 */
+FL bool_t      is_head(char const *linebuf, size_t linelen,
+                  bool_t check_rfc4155);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
- * Return wether the From_ line was parsed successfully */
+ * Return wether the From_ line was parsed successfully (-1 if the From_ line
+ * wasn't really RFC 4155 compliant) */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
@@ -1426,7 +1429,7 @@ FL char const * mime_type_mimepart_handler(struct mimepart const *mpp);
 
 /* Allocate a single element of a name list, initialize its name field to the
  * passed name and return it */
-FL struct name * nalloc(char *str, enum gfield ntype);
+FL struct name * nalloc(char const *str, enum gfield ntype);
 
 /* Like nalloc(), but initialize from content of np */
 FL struct name * ndup(struct name *np, enum gfield ntype);
@@ -2077,6 +2080,10 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
+
+/* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
+ * Return NULL or something that can be converted to a struct name */
+FL char *      url_mailto_to_address(char const *mailtop);
 
 #ifdef HAVE_SOCKETS
 /* Return port of urlp->url_proto (and set irv_or_null), or NULL if unknown */

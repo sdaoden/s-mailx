@@ -1260,8 +1260,8 @@ jduppass:
       }
       if (mb.mb_imap_mailbox != NULL)
          free(mb.mb_imap_mailbox);
-      mb.mb_imap_mailbox = sstrdup((urlp->url_path.s != NULL)
-            ? urlp->url_path.s : "INBOX");
+      assert(urlp->url_path.s != NULL);
+      mb.mb_imap_mailbox = sstrdup(urlp->url_path.s);
       initbox(urlp->url_p_eu_h_p_p);
    }
    mb.mb_type = MB_VOID;
@@ -1279,7 +1279,7 @@ jduppass:
 
       mb.mb_type = MB_VOID;
       mb.mb_active = MB_NONE;
-      rv = -1;
+      rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
       goto jleave;
    }
    if (saveint != SIG_IGN)
@@ -1309,13 +1309,15 @@ jduppass:
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
          imaplock = 0;
-         rv = -1;
+         rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
          goto jleave;
       }
    } else   /* same account */
       mb.mb_flags |= same_flags;
 
-   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
+   if (options & OPT_R_FLAG)
+      fm |= FEDIT_RDONLY;
+   mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
    if (imap_select(&mb, &mailsize, &msgCount,
@@ -1326,7 +1328,7 @@ jduppass:
       safe_signal(SIGPIPE, savepipe);
       imaplock = 0;
       mb.mb_type = MB_VOID;
-      rv = -1;
+      rv = (fm & (FEDIT_SYSBOX | FEDIT_NEWMAIL)) ? 1 : -1;
       goto jleave;
    }
 
@@ -1410,7 +1412,7 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(lp, linelen, TRU1)) {
+      if (emptyline && is_head(lp, linelen, FAL0)) {
          fputc('>', mp->mb_otf);
          ++size;
       }
@@ -1996,12 +1998,13 @@ jbypass:
       }
 
    /* XXX should be readonly (but our IMAP code is weird...) */
-   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))) {
+   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) &&
+         mb.mb_perm != 0) {
       if ((gotcha || modflags) && (pstate & PS_EDIT)) {
          printf(_("\"%s\" "), displayname);
          printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             ? _("complete\n") : _("updated.\n"));
-      } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
+      } else if (held && !(pstate & PS_EDIT)) {
          if (held == 1)
             printf(_("Held 1 message in %s\n"), displayname);
          else
@@ -2752,7 +2755,16 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
          return STOP;
       ok = OKAY;
    }
-   qname = imap_quotestr(name = imap_fileof(name));
+
+   /* C99 */{
+      size_t i;
+
+      i = strlen(name = imap_fileof(name));
+      if(i > 0 && name[i - 1] == '/')
+         name = savecat(name, "INBOX");
+      qname = imap_quotestr(name);
+   }
+
    /* Since it is not possible to set flags on the copy, recently
     * set flags must be set on the original to include it in the copy */
    if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS))

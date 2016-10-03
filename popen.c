@@ -165,6 +165,12 @@ _file_save(struct fp *fpp)
 
    fflush(fpp->fp);
    clearerr(fpp->fp);
+   if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
+      outfd = errno;
+      n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
+         fpp->realfile, strerror(outfd));
+      goto jleave;
+   }
 
 #ifdef HAVE_IMAP
    if ((fpp->flags & FP_MASK) == FP_IMAP) {
@@ -173,17 +179,11 @@ _file_save(struct fp *fpp)
    }
 #endif
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
-      if (fseek(fpp->fp, fpp->offset, SEEK_SET) == -1) {
-         outfd = errno;
-         n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-            fpp->realfile, strerror(outfd));
-         goto jleave;
-      }
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
 
-   /* Ensure the I/O library doesn't optimize the fseek(3) away! */
+   /* Ensure the I/O library didn't optimize the fseek(3) away! */
    if(lseek(infd = fileno(fpp->fp), fpp->offset, SEEK_SET) == -1){
       outfd = errno;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),

@@ -324,10 +324,10 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
     * TODO if it may happen in this path, we should just treat decryption
     * TODO as we do for the other input paths; i.e., handle it in SSL!! */
    if (action == SEND_MBOX || action == SEND_DECRYPT)
-      assert(!is_head(buf, len, TRU1));
+      assert(!is_head(buf, len, FAL0));
 #else
    if ((/*action == SEND_MBOX ||*/ action == SEND_DECRYPT) &&
-         is_head(buf, len, TRU1)) {
+         is_head(buf, len, FAL0)) {
       putc('>', fp);
       ++sz;
    }
@@ -1246,6 +1246,8 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    struct mimepart *ip;
    int rv = -1, c;
    NYD_ENTER;
+
+   time_current_update(&time_current, TRU1);
 
    if (mp == dot && action != SEND_TOSRCH)
       pstate |= PS_DID_PRINT_DOT;

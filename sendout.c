@@ -103,9 +103,9 @@ static int           sendmail_internal(void *v, int recipient_record);
 static struct name * _outof(struct name *names, FILE *fo, bool_t *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static bool_t        mightrecord(FILE *fp, struct name *to);
+static bool_t        mightrecord(FILE *fp, struct name *to, bool_t resend);
 
-static int           __savemail(char const *name, FILE *fp);
+static bool_t a_sendout__savemail(char const *name, FILE *fp, bool_t resend);
 
 /*  */
 static bool_t        _transfer(struct sendbundle *sbp);
@@ -1201,7 +1201,7 @@ jdelall:
 }
 
 static bool_t
-mightrecord(FILE *fp, struct name *to)
+mightrecord(FILE *fp, struct name *to, bool_t resend)
 {
    char *cp, *cq;
    char const *ep;
@@ -1237,7 +1237,7 @@ mightrecord(FILE *fp, struct name *to)
          }
       }
 
-      if (__savemail(ep, fp) != 0) {
+      if (!a_sendout__savemail(ep, fp, resend)) {
 jbail:
          n_err(_("Failed to save message in \"%s\" - message not sent\n"), ep);
          exit_status |= EXIT_ERR;
@@ -1249,79 +1249,84 @@ jbail:
    return rv;
 }
 
-static int
-__savemail(char const *name, FILE *fp)
-{
+static bool_t
+a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    FILE *fo;
-   char *buf;
    size_t bufsize, buflen, cnt;
-   int prependnl = 0, rv = -1;
-   bool_t emptyline;
+   bool_t rv, emptyline;
+   char *buf;
    NYD_ENTER;
 
    buf = smalloc(bufsize = LINESIZE);
+   rv = emptyline = FAL0;
 
-   if ((fo = Zopen(name, "a+")) == NULL) {
-      if ((fo = Zopen(name, "wx")) == NULL) {
+   if((fo = Zopen(name, "a+")) == NULL){
+      if((fo = Zopen(name, "wx")) == NULL){
          n_perr(name, 0);
-         goto jleave;
+         goto j_leave;
       }
-   } else {
-      if (fseek(fo, -2L, SEEK_END) == 0) {
-         switch (fread(buf, sizeof *buf, 2, fo)) {
+      emptyline = TRU1;
+   }
+
+   /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
+   file_lock(fileno(fo), FLT_WRITE, 0,0, 0);
+
+   rv = TRU1;
+
+   if(!emptyline){
+      if(fseek(fo, -2L, SEEK_END) == 0){ /* TODO Should be Mailbox::->append */
+         switch(fread(buf, sizeof *buf, 2, fo)){
          case 2:
-            if (buf[1] != '\n') {
-               prependnl = 1;
-               break;
-            }
-            /* FALLTHRU */
+            if(buf[1] != '\n')
+               emptyline = TRU1;
+            break;
          case 1:
-            if (buf[0] != '\n')
-               prependnl = 1;
+            if(buf[0] != '\n')
+               emptyline = TRU1;
             break;
          default:
-            if (ferror(fo)) {
+            if(ferror(fo)){
                n_perr(name, 0);
+               rv = FAL0;
                goto jleave;
             }
          }
-         if (prependnl) {
+         if(emptyline){
             putc('\n', fo);
+            fflush(fo);
          }
-         fflush(fo);
       }
    }
 
-   fprintf(fo, "From %s %s", myname, time_current.tc_ctime);
    fflush_rewind(fp);
-   cnt = fsize(fp);
-   buflen = 0;
-   emptyline = FAL0;
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL) {
-#ifdef HAVE_DEBUG /* TODO assert legacy */
-      assert(!is_head(buf, buflen, TRU1));
-      UNUSED(emptyline);
-#else
-      if (emptyline && is_head(buf, buflen, TRU1))
-         putc('>', fo);
-#endif
+
+   fprintf(fo, "From %s %s", myname, time_current.tc_ctime);
+   for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
+         fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL;){
+      /* Only if we are resending it can happen that we have to quote From_
+       * lines here; we don't generate messages which are ambiguous ourselves */
+      if(resend){
+         if(emptyline && is_head(buf, buflen, FAL0))
+            putc('>', fo);
+      }DBG(else assert(!is_head(buf, buflen, FAL0)); )
+
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
    }
-   if (buflen && *(buf + buflen - 1) != '\n')
+   if(buflen > 0 && buf[buflen - 1] != '\n')
       putc('\n', fo);
    putc('\n', fo);
    fflush(fo);
-
-   rv = 0;
-   if (ferror(fo)) {
+   if(ferror(fo)){
       n_perr(name, 0);
-      rv = -1;
+      rv = FAL0;
    }
-   if (Fclose(fo) != 0)
-      rv = -1;
-   fflush_rewind(fp);
+
 jleave:
+   really_rewind(fp);
+   if(Fclose(fo) != 0)
+      rv = FAL0;
+j_leave:
    free(buf);
    NYD_LEAVE;
    return rv;
@@ -1781,11 +1786,9 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    while (cnt > 0) {
       if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
          break;
-      /* XXX more checks: The From_ line may be seen when resending */
-      /* During headers is_head() is actually overkill, so ^From_ is sufficient
-       * && !is_head(buf, c, TRU1) */
-      if (ascncasecmp("status:", buf, 7) && strncmp("From ", buf, 5) &&
-            ascncasecmp("disposition-notification-to:", buf, 28))
+      if (ascncasecmp("status:", buf, 7) &&
+            ascncasecmp("disposition-notification-to:", buf, 28) &&
+            !is_head(buf, c, FAL0))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
          break;
@@ -2030,7 +2033,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    {  ui32_t cnt = count(to);
       if ((!recipient_record || cnt > 0) &&
-            !mightrecord(mtf, (recipient_record ? to : NULL)))
+            !mightrecord(mtf, (recipient_record ? to : NULL), FAL0))
          goto jleave;
       if (cnt > 0) {
          sb.sb_hp = hp;
@@ -2164,7 +2167,7 @@ jerr_o:
       savedeadletter(nfi, FAL0);
 
    if (count(to = elide(to)) != 0) {
-      if (!ok_blook(record_resent) || mightrecord(nfi, NULL)) {
+      if (!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)) {
          sb.sb_to = to;
          /*sb.sb_input = nfi;*/
          if (_transfer(&sb))

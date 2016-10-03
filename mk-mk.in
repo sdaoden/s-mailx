@@ -116,7 +116,6 @@ test: all
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
 	$(SHELL) ./cc-test.sh --check-only ./$(UAGENT)
 
-# Corresponds to same thing in makefile!
 _version_from_header = VERSION="`< version.h $(sed) \
 		-e '/ VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
@@ -275,7 +274,8 @@ distclean: clean
 	[ -n "$(VERBOSE)" ] && echo '  $$ $(rm) -f ./config.* ./*.mk';\
 	$(rm) -f ./config.* ./*.mk
 
-# MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise modify makefile
+# MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise need to change
+# mk-release.inc
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \

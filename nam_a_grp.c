@@ -886,7 +886,7 @@ _mlmux_linkout(struct group *gp)
 #endif /* HAVE_REGEX */
 
 FL struct name *
-nalloc(char *str, enum gfield ntype)
+nalloc(char const *str, enum gfield ntype)
 {
    struct addrguts ag;
    struct str in, out;
@@ -954,7 +954,7 @@ jskipfullextra:
 #ifdef HAVE_IDNA
       if (!(ag.ag_n_flags & NAME_IDNA)) {
 #endif
-         in.s = str;
+         in.s = UNCONST(str);
          in.l = ag.ag_ilen;
 #ifdef HAVE_IDNA
       } else {

@@ -482,6 +482,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    if ((name = expand(name)) == NULL)
       goto jem1;
 
+   /* For at least substdate() users */
+   time_current_update(&time_current, FAL0);
+
    switch (which_protocol(name)) {
    case PROTO_FILE:
       if (temporary_protocol_ext != NULL)
@@ -1425,6 +1428,7 @@ initbox(char const *name)
    Ftmp_release(&tempMesg);
 
    message_reset();
+   mb.mb_active = MB_NONE;
    mb.mb_threaded = 0;
    if (mb.mb_sorted != NULL) {
       free(mb.mb_sorted);
