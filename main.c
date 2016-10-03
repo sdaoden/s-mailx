@@ -617,11 +617,11 @@ main(int argc, char *argv[]){
          cc = cat(cc, lextract(_oarg, GCC | GFULL));
          break;
       case 'd':
-         ok_bset(debug, TRU1);
+         ok_bset(debug);
          okey = "debug";
          goto joarg;
       case 'E':
-         ok_bset(skipemptybody, TRU1);
+         ok_bset(skipemptybody);
          okey = "skipemptybody";
          goto joarg;
       case 'e':
@@ -644,7 +644,7 @@ main(int argc, char *argv[]){
          goto j_leave;
       case 'i':
          /* Ignore interrupts */
-         ok_bset(ignore, TRU1);
+         ok_bset(ignore);
          okey = "ignore";
          goto joarg;
       case 'L':
@@ -672,7 +672,7 @@ main(int argc, char *argv[]){
          break;
       case 'N':
          /* Avoid initial header printing */
-         ok_bset(header, FAL0);
+         ok_bclear(header);
          okey = "noheader";
          goto joarg;
       case 'n':
@@ -761,7 +761,7 @@ joarg:
          goto j_leave;
       case 'v':
          /* Be verbose */
-         ok_bset(verbose, TRU1);
+         ok_bset(verbose);
          okey = "verbose";
          goto joarg;
       case 'X':
@@ -797,10 +797,10 @@ joarg:
             oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          folder = "/dev/null";
-         ok_bset(emptystart, TRU1);
-         ok_bset(header, FAL0);
-         ok_bset(quiet, TRU1);
-         ok_bset(sendwait, TRU1);
+         ok_bset(emptystart);
+         ok_bclear(header);
+         ok_bset(quiet);
+         ok_bset(sendwait);
          ok_vset(MAIL, folder);
          ok_vset(MBOX, folder);
          oargs[oargs_cnt + 0] = "emptystart";

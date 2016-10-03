@@ -1112,7 +1112,7 @@ jerr:
    clearerr(stdout); /* xxx I/O layer rewrite */
    n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
       "  Setting *line-editor-disable* to get us through!\n"));
-   ok_bset(line_editor_disable, TRU1);
+   ok_bset(line_editor_disable);
    rv = FAL0;
    goto jleave;
 }

@@ -395,8 +395,8 @@ mesedit(int c, struct header *hp)
    FILE *nf;
    NYD_ENTER;
 
-   saved = ok_blook(add_file_recipients);
-   ok_bset(add_file_recipients, TRU1);
+   if(!(saved = ok_blook(add_file_recipients)))
+      ok_bset(add_file_recipients);
 
    sigint = safe_signal(SIGINT, SIG_IGN);
    nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
@@ -412,7 +412,8 @@ mesedit(int c, struct header *hp)
    }
    safe_signal(SIGINT, sigint);
 
-   ok_bset(add_file_recipients, saved);
+   if(!saved)
+      ok_bclear(add_file_recipients);
    NYD_LEAVE;
 }
 

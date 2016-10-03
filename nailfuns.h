@@ -191,7 +191,7 @@ FL char *      n_var_oklook(enum okeys okey);
 #define ok_vlook(C)              n_var_oklook(CONCAT(ok_v_, C))
 
 FL bool_t      n_var_okset(enum okeys okey, uintptr_t val);
-#define ok_bset(C,B)             n_var_okset(CONCAT(ok_b_, C), (uintptr_t)(B))
+#define ok_bset(C)               n_var_okset(CONCAT(ok_b_, C), (uintptr_t)TRU1)
 #define ok_vset(C,V)             n_var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
 
 FL bool_t      n_var_okclear(enum okeys okey);
