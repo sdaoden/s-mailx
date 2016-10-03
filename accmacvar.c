@@ -720,6 +720,13 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    case ok_b_skipemptybody:
       flag = OPT_E_FLAG;
       break;
+   case ok_b_typescript_mode:
+      if(enable){
+         ok_bset(colour_disable);
+         ok_bset(line_editor_disable);
+         if(!(pstate & PS_STARTED))
+            ok_bset(termcap_disable);
+      }
    case ok_v_umask:
       assert(enable);
       if(**val != '\0'){

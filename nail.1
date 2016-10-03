@@ -573,6 +573,7 @@ s
 .Pf no Va header ,
 .Va quiet ,
 .Va sendwait ,
+.Va typescript-mode
 as well as
 .Ev MAIL ,
 .Ev MBOX
@@ -8662,6 +8663,18 @@ locale environment.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.
+.
+.Mx
+.It Va typescript-mode
+\*(BO A special multiplex variable that disables all variables and
+settings which result in behaviour that interferes with running \*(UA in
+.Xr script 1 ,
+e.g., it sets
+.Va colour-disable ,
+.Va line-editor-disable
+and (before startup completed only)
+.Va termcap-disable .
+Unsetting it doesn't restore the former state of the covered settings.
 .
 .Mx
 .It Va umask

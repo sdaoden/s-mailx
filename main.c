@@ -793,23 +793,25 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
-         if (oargs_cnt + 6 >= oargs_size)
-            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
+         if (oargs_cnt + 7 >= oargs_size)
+            oargs_size = _grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          folder = "/dev/null";
+         ok_vset(MAIL, folder);
+         ok_vset(MBOX, folder);
          ok_bset(emptystart);
          ok_bclear(header);
          ok_bset(quiet);
          ok_bset(sendwait);
-         ok_vset(MAIL, folder);
-         ok_vset(MBOX, folder);
-         oargs[oargs_cnt + 0] = "emptystart";
-         oargs[oargs_cnt + 1] = "noheader";
-         oargs[oargs_cnt + 2] = "quiet";
-         oargs[oargs_cnt + 3] = "sendwait";
-         oargs[oargs_cnt + 4] = "MAIL=/dev/null";
-         oargs[oargs_cnt + 5] = "MBOX=/dev/null";
-         oargs_cnt += 6;
+         ok_bset(typescript_mode);
+         oargs[oargs_cnt + 0] = "MAIL=/dev/null";
+         oargs[oargs_cnt + 1] = "MBOX=/dev/null";
+         oargs[oargs_cnt + 2] = "emptystart";
+         oargs[oargs_cnt + 3] = "noheader";
+         oargs[oargs_cnt + 4] = "quiet";
+         oargs[oargs_cnt + 5] = "sendwait";
+         oargs[oargs_cnt + 6] = "typescript-mode";
+         oargs_cnt += 7;
          break;
       case '.':
          options |= OPT_SENDMODE;

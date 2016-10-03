@@ -1678,6 +1678,7 @@ ok_v_spamd_user,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
    ok_v_ttycharset,
+   ok_b_typescript_mode,               /* {vip=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
