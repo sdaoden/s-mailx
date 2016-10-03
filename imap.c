@@ -1998,12 +1998,13 @@ jbypass:
       }
 
    /* XXX should be readonly (but our IMAP code is weird...) */
-   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST))) {
+   if (!(options & (OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST)) &&
+         mb.mb_perm != 0) {
       if ((gotcha || modflags) && (pstate & PS_EDIT)) {
          printf(_("\"%s\" "), displayname);
          printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             ? _("complete\n") : _("updated.\n"));
-      } else if (held && !(pstate & PS_EDIT) && mp->mb_perm != 0) {
+      } else if (held && !(pstate & PS_EDIT)) {
          if (held == 1)
             printf(_("Held 1 message in %s\n"), displayname);
          else
