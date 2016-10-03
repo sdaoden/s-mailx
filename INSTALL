@@ -230,35 +230,13 @@ Unless otherwise noted the following applies to saying "$ make" and
     $WANT_AUTOCC then also pass "ADDCFLAGS=-std=c99", otherwise ensure
     -std=c99 is set in your $CFLAGS.
 
-. ArchLinux <https://www.archlinux.org/>
-  Latest as of 2016-03-26, clang(1) and gcc(1).
-
-. Void Linux <http://www.voidlinux.eu/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. CRUX Linux <http://www.crux.nu/>
-  CRUX 3.2 RC3, gcc(1).
-
-. FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.2, clang(1) and gcc6(1).
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. OpenBSD <http://www.openbsd.org/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. DragonFly BSD <https://www.dragonflybsd.org/>
-  Not tested for v14.8.8.
-  (My current working environment is restricted since i've lost
-  a machine in January.)
-
-. NetBSD <https://www.netbsd.org/>
-  + Show work.
+. In general anything looked good for v14.8.7, when my main development
+  machine died.
+  Until then i work mostly on Linux, and on FreeBSD, and the v14.8.*
+  series has only seen bugfixes that have been cherry-picked from the
+  development branch, or minimal changes.
+  stable/v14.8 "looked good" on an up-to-date ArchLinux and on FreeBSD
+  10.3 on 2016-10-03.
 
 . Solaris <http://opencsw.org/>
   * First of all: thanks to OpenCSW.org for offering SSH access to
@@ -278,7 +256,7 @@ Unless otherwise noted the following applies to saying "$ make" and
     be extended to check for UINTPTR_MAX being defined as the empty
     string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386, and it looked good on 2016-03-25.
+    under SPARC and i386, and it looked good on 2016-10-03.
     However, some notes:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen on earlier tests:
