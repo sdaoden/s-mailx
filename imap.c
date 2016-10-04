@@ -2760,7 +2760,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
       size_t i;
 
       i = strlen(name = imap_fileof(name));
-      if(i > 0 && name[i - 1] == '/')
+      if(i == 0 || (i > 0 && name[i - 1] == '/'))
          name = savecat(name, "INBOX");
       qname = imap_quotestr(name);
    }
