@@ -435,19 +435,21 @@ jredo:
             continue;
 
          if(options & OPT_D_V){
+            char const *atp;
+
             switch(cp->lc_argtype & ARG_ARGMASK){
-            case ARG_MSGLIST: arg = N_("message-list"); break;
-            case ARG_STRLIST: arg = N_("a \"string\""); break;
-            case ARG_RAWLIST: arg = N_("old-style quoting"); break;
-            case ARG_NOLIST: arg = N_("no arguments"); break;
-            case ARG_NDMLIST: arg = N_("message-list (no default)"); break;
-            case ARG_WYSHLIST: arg = N_("sh(1)ell-style quoting"); break;
-            default: arg = N_("`wysh' for sh(1)ell-style quoting"); break;
+            case ARG_MSGLIST: atp = N_("message-list"); break;
+            case ARG_STRLIST: atp = N_("a \"string\""); break;
+            case ARG_RAWLIST: atp = N_("old-style quoting"); break;
+            case ARG_NOLIST: atp = N_("no arguments"); break;
+            case ARG_NDMLIST: atp = N_("message-list (no default)"); break;
+            case ARG_WYSHLIST: atp = N_("sh(1)ell-style quoting"); break;
+            default: atp = N_("`wysh' for sh(1)ell-style quoting"); break;
             }
 #ifdef HAVE_DOCSTRINGS
-            printf(_("\n\tArgument type: %s"), V_(arg));
+            printf(_("\n\tArgument type: %s"), V_(atp));
 #else
-            printf(_("argument type: %s"), V_(arg));
+            printf(_("argument type: %s"), V_(atp));
 #endif
 #undef a_DS
          }
