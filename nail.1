@@ -2530,12 +2530,7 @@ The command
 .Ic list
 can be used to show the list of all commands, either alphabetically
 sorted or in prefix search order (these don't match, also because the
-POSIX standard prescribes a set of abbreviations); a more verbose
-listing will be produced if either of
-.Va debug
-or
-.Va verbose
-are set.
+POSIX standard prescribes a set of abbreviations).
 \*(OPally the command
 .Ic help
 (or
@@ -2545,6 +2540,9 @@ command matching the expanded argument, as in
 .Ql ?t ,
 which should be a shorthand of
 .Ql ?type .
+Both commands support a more
+.Va verbose
+listing mode which includes the argument type of the command.
 .
 .Pp
 For commands which take message lists as arguments, the next message
