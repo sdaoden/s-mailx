@@ -22,14 +22,14 @@ and "NEW" are the two versions to be compared.
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
 
-v14.8.11 ("Bubas"), 2016-10-03
-------------------------------
+v14.8.12 ("Bubas"), 2016-10-05  (v14.8.11 as of 2016-10-03 broken)
+------------------------------------------------------------------
 
 A cumulated bugfix release.
 It also brings in some corrections to no-brainers of the past.
 
-Thanks to Antonio Radici and Stephen Isard.
-We welcome Antonio Radici in THANKS.
+Thanks to Antonio Radici, Stephen Isard and Predrag Punosevac.
+We welcome Antonio Radici and Predrag Punosevac in THANKS.
 
 Apologies to Stephen Isard, and John Dodson.
 
@@ -121,30 +121,9 @@ to prevent it.
   e5eb5fe Fix + expansion for IMAP, broken since [edb2dcd], 2013-06!!
   ce40a87 imap.c: do not print update message on readonly boxes
   52fcb7e Oops, restore proper *folder* behaviour for non-IMAP
+  111f80a FixFix IMAP "+" expansion and more (Predrag Punosevac)
 
-More IMAP fixes.  Our state of affairs is:
-
-  ? var folder
-  "folder": (116) value: set=1 (ENVIRON=0) value<imap://user1@localhost/Mail>
-  ? Fi@Du
-  Held 20 messages in imap://user1@localhost/Mail
-  IMAP error: Mailbox isn't selectable (0.000 + 0.000 secs).
-  ? Fi@Du/
-  "imap://user1@localhost/Du/INBOX": 10 messages 10 new [Read only]
-  ? Fi+
-  "imap://user1@localhost/Mail": 20 messages [Read only]
-  ? Fi@
-  "imap://user1@localhost/INBOX": 10 messages [Read only]
-  ? Fi+/
-  "imap://user1@localhost/Mail": 20 messages [Read only]
-  ? Fi@/
-  "imap://user1@localhost/INBOX": 9 messages [Read only]
-  ? set folder=imap://user1@localhost/Mail/
-  ? Fi+
-  IMAP error: Mailbox doesn't exist: Mail/INBOX (0.000 + 0.000 + 0.001 secs).
-
-I.e., if *folder* includes a trailing solidus then we INBOX,
-otherwise not.
+More IMAP fixes.  Should really work now as good as never before.
 
 v14.8.10 ("Anachalcos"), 2016-08-20
 -----------------------------------
@@ -1439,7 +1418,15 @@ review with this codebase, it's always that i start off doing something
 non-reviewish; but i'll see the day (what i hope).
 
 NEWS entries for the S-nail releases before v14.8.0 have been cut off
-after release v14.8.5 and can be found in the git(1) repository, e.g.,:
-  $ git show v14.8.5:NEWS
+before release v14.8.5 and can be found in the git(1) repository:
+
+  v14.8.0 - v14.8.12: $ git show v14.8.12:NEWS
+  v13     - v14.8.5 : $ git show v14.8.5:NEWS
+  9.0     - 12.5    : $ git show heirloom:ChangeLog
+
+Also accessible via the following URL, just replace X.Y.Z accordingly:
+  https://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
+For even older releases you need to look into the [timeline] branch, but
+no changelog has been administrated for them.
 
 # s-ts-mode
