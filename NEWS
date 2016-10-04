@@ -5,22 +5,23 @@ v14.9.0 ("Crow"), 201?-??-??
 ----------------------------
 
 This is a major feature release.
-  Preview 1, 2016-09-16:
+  Preview 2, 2016-11-02:
     IMAP gone, better don't ^C during macros.  Misses major
-    components of the final release.
+    components of the final release.  All bugs of Preview 1 have
+    been fixed, and other usual progress happened.
 
 I didn't know where S-mailx will truly end up with, but only knew
-i wanted to overcome the technical shortcomings, have a better user
-experience (regarding the software) and that i wanted to have, e.g.,
-NNTP support.
+i wanted to overcome the technical shortcomings, have a better
+user experience (regarding the software) and that i wanted to
+have, e.g., NNTP support.
 
-During development of this release it became clear that the general
-usage will be changed in v15, backward incompatibly, and move towards
-sh(1)ell style command line usage, that is to say, we will turn over and
-will start parsing regular shell tokens, instead of comma-separated
-lists, OR space-separated lists or whatever, and will expand _any_ value
-content sh(1)ell-compatibly, instead of not at all in general and only
-\t and \n in some specific others etc.:
+During development of this release it became clear that the
+general usage will be changed, backward incompatibly, and move
+towards sh(1)ell style command line usage, that is to say, we will
+turn over and will start parsing regular shell tokens, instead of
+comma-separated lists, OR space-separated lists or whatever, and
+will expand _any_ value content sh(1)ell-compatibly, instead of
+not at all in general and only \t and \n in some others etc.
 
   wysh set a='${TMPDIR}\t/' b="${TMPDIR}\t/" c=$'\${TMPDIR}\t/'
   echo a=$a b=$b c=$c
@@ -32,34 +33,32 @@ content sh(1)ell-compatibly, instead of not at all in general and only
 
 (But don't do that).  All this is documented in COMMANDS#?.
 Today only new commands (like `bind', `customhdr' etc.), but also
-attachment selection, `remove' and `write' use this, others, like `set',
-can optionally support it with a new command prefix: `wysh'.
+attachment selection, `remove' and `write' use this, others, like
+`set', can optionally support it with a new command prefix: `wysh'.
 
-Credits, in order of commit appearance: Antonio Radici, Aharon Robbins,
-Mike Frysinger, Predrag Punosevac, Michael Convey, Hariskar,
-Rudolf Sykora, Martin Neitzel, Gavin Troy, Salvatore Bonaccorso,
-Todd C. Miller, Sergey Matveev, Robert Elz, Mantas Mikulėnas,
-Respiranto, Jens Schleusener, Walter Alejandro Iglesias, Ralph Corderoy,
-Thomas Dickey, Afan, Justin Ellingwood, Ingo Schwarze, Viktor Szépe,
-Gaetan Bisson, Juan RP, William Yodlowsky, Hilko Bengen, Matthew Dillon,
+Credits, in order of commit appearance: Antonio Radici,
+Aharon Robbins, Mike Frysinger, Predrag Punosevac, Michael Convey,
+Hariskar, Rudolf Sykora, Martin Neitzel, Gavin Troy,
+Salvatore Bonaccorso, Todd C.  Miller, Sergey Matveev, Robert Elz,
+Mantas Mikulėnas, Respiranto, Jens Schleusener,
+Walter Alejandro Iglesias, Ralph Corderoy, Thomas Dickey, Afan,
+Justin Ellingwood, Ingo Schwarze, Viktor Szépe, Gaetan Bisson,
+Juan RP, William Yodlowsky, Hilko Bengen, Matthew Dillon,
 Colin Watson and Donald Mugnai.
 
 We welcome Antonio Radici, Mike Frysinger, Predrag Punosevac,
 Michael Convey, Rudolf Sykora, Todd C. Miller, Robert Elz,
 Jens Schleusener, Walter Alejandro Iglesias, Thomas Dickey, Afan,
-Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon, Colin Watson
-and Donald Mugnai in THANKS.
+Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon,
+Colin Watson and Donald Mugnai in THANKS.
 
-Apologies: Sergey Matveev.  Members of the Roff community which await
-progress.
+Apologies: Sergey Matveev.
+Members of the Roff community which await progress.
 
-  In the following numbers in [] reference a commit hash or a topic
-  branch name.  mdocmx(7) anchors are denoted by a number-sign #:
-  typing "^A ANCHOR" while reading the man(1)ual in a capable less(1)
-  will scroll to the manual's Point-Of-Interest, and pointing a web-
-  browser to the "#ANCHOR" of the online manual will do so, too.
-  Commits can be browsed by appending the commit hash to
-    https://git.sdaoden.eu/cgit/s-nail.git/commit/?id=
+  mdocmx(7) anchors are denoted by a number-sign #: typing
+  "^A ANCHOR" while reading the man(1)ual in a capable less(1)
+  will scroll to the manual's Point-Of-Interest, and pointing
+  a web- browser to the "#ANCHOR" of the online manual works.
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,8 +82,7 @@ NOTES, ChangeLog (packager-affine)
 
   + The `build' phase can be parallelized by setting the MAILJOBS
     environment variable, e.g., "make MAILJOBS='-j 4' build".
-
-  + DESTDIR will no longer be tracked in the configuration.
+    Note this variable is not tracked in the configuration.
     (Gaetan Bisson)
 
   + Set the new OPT_CROSS_BUILD to avoid feature runtime tests,
@@ -99,10 +97,10 @@ NOTES, ChangeLog (packager-affine)
   + The LD_LIBRARY_PATH etc. building processes will skip any path
     which contains the string "fakeroot".  (Hilko Bengen)
 
-  + We honour a set SOURCE_DATE_EPOCH environment variable.
+  + We honour a set *SOURCE_DATE_EPOCH*#? environment variable.
     [df4954c]  (reproducible-builds.org; Colin Watson)
 
-  + Packagers should have received diffs against v14.8.10
+  + Packagers should have received diffs against v14.8.14
     packaging files.
 
   + These are upward compatible changes.
@@ -112,13 +110,13 @@ NOTES, ChangeLog (packager-affine)
   which may (rarely) affect existing values. [topic/mimepipe.2]
 
 - *NAIL_{HEAD,TAIL}* have been obsoleted in favour of
-  *message-inject-head*#? and *message-inject-tail*#?. [7064ef2]
+  *message-inject-head*#? and *message-inject-tail*#?.
 
 - *NAIL_HIST{FILE,SIZE}* have been obsoleted in favour of
-  *history-file*#? and *history-size*#?. [4fde608]
+  *history-file*#? and *history-size*#?.
 
-- -H#? and -L#? have been decoupled: it used to be -e#? -L#?
-  instead! [5296040]
+- `-H'#? and `-L'#? have been decoupled:
+   it used to be `-e'#? `-L'#? instead!
 
 - Colour support has been changed backward in- and upward (from user
   interface side) compatibly, manual section "Coloured display"#?
@@ -136,15 +134,14 @@ NOTES, ChangeLog (packager-affine)
       endif
 
   o The variable *colour-pager*#? defines whether colour and font
-    attribute sequences should be generated when viewing something in
-    $PAGER.
+    attribute sequences should be generated when viewing something
+    in $PAGER.
 
   o Set the variable *colour-disable*#? to turn colour off without
     affecting established settings.
 
-  o It is deduced via termcap(5) (see below) a.k.a. *termcap*#?
-    whether the terminal supports colors, e.g.,
-    "s-nail -Stermcap=Co#256".
+  o It is deduced via termcap(5) (see below) whether the terminal
+    supports colors, e.g., "s-nail -Stermcap=Co#256".
 
   o Support for 256-colour terminals. (Gavin Troy)
 
@@ -164,38 +161,36 @@ NOTES, ChangeLog (packager-affine)
   which can be covered by `localopts'#?. [topic/customhdr]
   (Sergey Matveev)
 
-  o Support for *ORGANIZATION* has been dropped.
-    This environment variable is a non-portable invention,
-    a custom header.
+  o Support of *ORGANIZATION* has been dropped.
 
   o In compose mode `~e'#? supports _any_ header.
 
 - New -:#? command line option can be used to more easily select
-  which startup files should be loaded. [5d52578]
+  which startup files should be loaded.
   (Robert Elz)
 
-- `account's#? and *folder-hook*s#? now have `localopts'#?
-   enabled by default. [3fd94e3]
+- `account'#?s and *folder-hook*#?s now have `localopts'#?
+   enabled by default.
 
    o Note: it is likely that in the future "scope-local" environments
      will be implemented, then also covering things like shortcuts etc.,
      and some thing like a "global" prefix to extend a setting to the
-     global namespace.  Just to make you aware.  (Think TeX.)
+     global namespace.  (Think TeX.)
 
 - A first simple form of compose-mode hooks has been implemented:
   *on-compose-enter*#? and *on-compose-leave*#? can be set to
-  macros which get invoked at appropriate times, with `localopts'
+  macros which get invoked at appropriate times, with `localopts'#?
   enabled (which extend until the message is sent). [d6902e1,3fd1db4]
   (Jens Schleusener, Rudolf Sykora)
 
 - "The .netrc file"#?
 
-  o gained support for comments. [abf2e5d]
+  o gained support for comments.
     (Walter Alejandro Iglesias, Ralph Corderoy)
 
-  o `netrc'#? now has a "load" subcommand. [30d0bb7]
+  o `netrc'#? now has a "load" subcommand.
 
-  o the new *netrc-pipe* obsoletes OPT_AGENT and
+  o the new *netrc-pipe*#? obsoletes OPT_AGENT and
     *agent-shell-lookup* and can be used to load an encrypted
     .netrc file, e.g.:
 
@@ -204,8 +199,8 @@ NOTES, ChangeLog (packager-affine)
     E.g., this is in usual .netrc syntax and thus possibly much
     nicer than saying "source 'gpg -qd ~/.credentials.gpg |'".
 
-- termcap(5) / terminfo(5) support has been changed backward in- and
-  upward (from user interface side) compatibly, please read
+- termcap(5) / terminfo(5) support has been changed backward in-
+  and upward (from user interface side) compatibly, please read
   "On terminal control and line editor"#? [topic/termcap.2]
 
   o OPT_TERMCAP is by default enabled.
@@ -213,13 +208,13 @@ NOTES, ChangeLog (packager-affine)
     OPT_TERMCAP_VIA_TERMINFO can be used to (try to) use terminfo(5)
     instead.
 
-  o The variable *termcap*#? can be used to freely define or override
-    terminal capabilities, *termcap-disable*#? will disable
-    interaction with the chosen library, leaving only *termcap* in
-    charge.
+  o The variable *termcap*#? can be used to freely define or
+    override terminal capabilities, *termcap-disable*#? will
+    disable interaction with the chosen library, leaving only
+    *termcap* in charge.
 
-  o The builtin command line editor has been rather completely rewritten
-    to be the Mailx-Line-Editor (OPT_MLE, default yes), and supports
+  o The builtin line editor has been rather completely rewritten to
+    be the Mailx-Line-Editor (OPT_MLE, default yes), and supports
     wide glyphs (if possible), infinite line lengths (2 GB) and more.
     Tabulator expansion is no longer an option (but needs
     fnmatch(3)).
@@ -235,23 +230,23 @@ NOTES, ChangeLog (packager-affine)
     Tip: in an UTF-8 locale try "touch /tmp/hall{,öchen}" and then
     autocomplete that: once, then ^Q, and again.
 
-- `source'#? can be used in `call'ed#? macros.
+- `source'#? can be used in `call'#?ed macros.
   What sounds so innocent replaced an entire machinery and got rid of
   a brilliant idea of Kurt Shoens from the 70s, but which never worked
   with Nail/Heirloom extensions, namely macros, and in right order.
 
-  Accompanying this -X#? can be used to define macros and run them
-  etc.  We're still not there, S-nail v15 -- then S-mailx! -- will
+  Accompanying this `-X'#? can be used to define macros and run
+  them etc.  We're still not there, S-nail v15 -- then S-mailx! -- will
   change the entire codebase to use SystemV signal handling, instead of
   going the BSD way that is, like used here, both, very expensive due to
   the immense amount of signal managing systemcalls and insecure due to
-  almost uncontrollable longjmp()s.  This should work:
+  almost uncontrollable longjmp()s.  Should work:
 
     s-nail -X'define x {' -Xversion -Xx -X'}' -X'call x'
+    s-nail -X'source \' -X'"echo version|"' -Xx
 
 - Internal and environment variables are now explicitly _defined_ and
   _tracked_ after variable handling has been rewritten completely.
-  This results in standard-compatible behaviour.
   [topic/okeys-attr.2]
 
   o Notes:
@@ -260,7 +255,7 @@ NOTES, ChangeLog (packager-affine)
 
     + But if you do, e.g., "set TMPDIR=~/tmp", then this will also be
       reflected in the program environment (it is an environment
-      variable) and thus affects child processes.
+      variable) and thus affect child processes.
 
     + Therefore we no longer have `setenv' and `unsetenv'.
 
@@ -269,52 +264,53 @@ NOTES, ChangeLog (packager-affine)
       needs to be used, e.g., "environ set NEWVAR=valye" or
       "environ link EXISTINGVAR".
 
-  o -u#? / *LOGNAME*#? (*USER*) handling has been redefined, and
-    "-u USER" is now exactly the same as "-f %USER", and *LOGNAME* (and
-    *USER*) is actively set to the active user. [d8f7cd7]  (Afan)
+  o `-u'#? / *LOGNAME*#? (*USER*) handling has been redefined, and
+    "-u USER" is now exactly the same as "-f %USER", and *LOGNAME*
+    (and *USER*) is actively set to the active user.  (Afan)
 
-   (*LOGNAME*#? is POSIX standardized and henceforth used and preferred
-   over *USER*, which came from BSD. [e96baaa]  (Todd C. Miller))
+    *LOGNAME*#? is POSIX standardized and henceforth used and
+    preferred over *USER*, which came from BSD.  (Todd C. Miller)
 
-  o *MAIL*#?, as the user's primary system mailbox, now supports the
-    usual file name expansions. [e337e00]
-
-- In the future (at least non-message-list) argument handling will be
-  changed backward-incompatibly to be sh(1)ell compatible (and thus
-  POSIX standardized).  New commands use it already today (`bind'#?,
-  `colour'#?, `customhdr'#?), some others (most importantly,
-  `set'#?) can be forced via the new `wysh' command prefix,
-  as in: [topic/wysh]
+- In the future (at least non-message-list) argument handling will
+  be changed backward-incompatibly to be sh(1)ell compatible (and
+  thus POSIX standardized).  New commands use it already today
+  (`bind'#?, `colour'#?, `customhdr'#?), some others (most
+  importantly, `set'#?) can be forced to do so via the new `wysh'
+  command prefix, as in: [topic/wysh]
 
     wysh set message-inject-tail=$'\n--steffen'
     bind base $'\cA,\x61' 'echo control-A and small a'
 
-- We now actively manage *umask*#?: 0077 by default, but an empty
-  string will use the setting that is active upon startup.
+- We now actively manage *umask*#?: 0077 by default, but an
+  empty string will use the setting that is active upon startup.
   Like any change to (known) environment variables this setting
-  will also be inherited by any child process. [1bd8e48]
+  will also be inherited by any child process.
   (Walter Alejandro Iglesias)
 
-- Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*,
-  e.g., *mta*#?, *mta-arguments*#?, *mta-no-default-arguments*#?,
-  *mta-argv0*#?.
+- Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*#?,
+  *mta-arguments*#?, *mta-no-default-argument*#?, *mta-argv0*#?.
 
   The reason is that in v15 we won't even have *smtp*: it is just
-  another form of MTA, and thus redundant.
+  another form of MTA, and thus obsolete by itself.
 
   For now we support a hack that understands a file:// URL in
   *mta*, too, but that is the default if there is no protocol.
   E.g.: "set mta=smtp://a:b@xy.z"
 
-- The "spamd" *spam-interface*#? is obsolete.  I haven't
-  tested it since my main machine died, it is error prone since it
-  assumes internals of the spamassassin interface, and there never
-  was a speed improvement against "spamc".  (However it could react
+- The "spamd" spam interface is obsolete.  I haven't tested it
+  since my main machine died, it is error prone since it assumes
+  internals of the spamassassin interface, and there never was
+  a speed improvement against "spamc".  (However it could react
   upon the current "is-spam" state of a message, which "spamc"
   doesn't allow.) [284db64]
 
 - Some commands, like `set'#?, `list'#?, `mlist'#? etc.,
   now react upon the setting of *verbose*#? and *debug*#?.
+
+- The new *inbox*#? variable will henceforth be looked up
+  when expanding "%" in filenames, followed by the usual
+  *MAIL*#? and compile-time mailspool search.
+  (Stephen Isard, Jürgen Daubert)
 
 ChangeLog
 ^^^^^^^^^
@@ -329,26 +325,25 @@ ChangeLog
   content inspection as necessary; set to 0xE for all bits).
   [topic/mimetype.2]  (Aharon Robbins)
 
-- Maildir paths are now created recursively as necessary. [3c57c83]
+- Maildir paths are now created recursively as necessary.
   (Justin Ellingwood)
 
-- -M#? and -m#? options have been added to enforce a special
+- `-M'#? and `-m'#? options have been added to enforce a special
   send mode that will flag standard input / the given file with the
   specified / detected MIME 'Content-Type:'.  This can be used to
   directly send, e.g., HTML log output.  Note that before v15 this
-  is a bit restricted: you are not free to do anything. [f1a775b]
+  is a bit restricted: you are not free to do anything.
   (Viktro Szépe, Ralph Corderoy)
 
 - Disallow symlinks on writable files (O_NOFOLLOW open(2)).
-  [10990e4]  (Matthew Dillon)
+  (Matthew Dillon)
 
 - `retain'#?, `ignore'#? etc. now differentiate in between
-  From (the From: header) and From_ (the MBOX ident).  [c83e153]
+  From (the From: header) and From_ (the MBOX ident).
 
 - `top'#? has been rewritten completely, `Top'#? is new.
-  [1dc9bb6]
 
-- `features' has been dropped, `version'#? extended. [b9e4e61]
+- `features' has been dropped, `version'#? extended.
 
 git(1) shortlog (edited)
 ''''''''''''''''''''''''
@@ -496,6 +491,77 @@ ae4f2df nail.1: talk on `localopts' in macros which change `account's
 b9e4e61 Drop `features', change `version', adjust make system..
 20f3cd2 nail.1: more explicit `set' references instead of saying 'Set' (Donald
         Mugnai)..
+==Preview 1==
+2fefcf6 n_dotlock(), n_file_lock(): oops, missed the pollmsecs==UIZ_MAX case
+fcd2892 cc-test.sh: detect utf-8, not only utf8 locales
+1b462ed -#: also set *MAIL* to /dev/null
+6fbf9da setfile(): if isdevnull, do not really init the box, it is MB_VOID
+fb4ddf3 quit(): do not fail when quit()ting away from a MB_VOID box
+2d53b46 url_parse(): better take better care for path parts (Stephen Isard)..
+8650fa6 sendmp(), setfile(): FIX: ensure time_current is actualized
+21f0eaa mk-conf.sh: find terminfo on Sun (Thomas Dickey)..
+e33dfa0 n_termcap_query(): FIX: did real work even with PS_TERMCAP_DISABLE..
+58423ea MLE.bind.a_tty_bind_create(): properly align durable buffer, too (sic)
+f449fe1 MLE.bind.a_tty_bind_create(): tweak previous (encapsulate+notify
+        knowledge)
+abd3631 Use ok_vlook(TMPDIR), drop global tempdir variable
+4496e9a Many: drop support for *mbox-rfc4155* - a no-brainer..
+a26d4c2 is_head(): change compat argument to check_rfc4155..
+5cf41d4 mime_types.c:_mt_by_filename(): basename() path (fix/tweak relative
+        paths)
+e4ddaa8 Change n_iconv*() protos, add enum n_iconv_flags (Ralph Corderoy)..
+b1b3896 setfile(): tweak/fix [36578d1] (Add PS_SETFILE_OPENED..)..
+26674da make.rc, mk-conf.sh: OPT_DEVEL includes OPT_DEBUG, but not vice versa
+8cbd815 make.rc: OPT_DEBUG (eg) is allowed even with a CONFIG=
+813802d FIX [b9e4e61d] (Drop features', change `version'..)..
+e486af5 termcap.c: fix: add missing _F_NOENT check..
+5bcef02 n_lex_input(): FIX [844bedb] (overwrote buffer size with used length)
+d59bd2a collect(): FIX [bb944266] (used memcpy() for overlapping region)
+f498291 a_lex_source_file(): fix resource leak, set a_LEX_FREE for these
+83313f1 Allow -X options to take multiline arguments..
+eaa5f01 nail.1: -X: note all are joined and treated as a unit
+204531f cmd_tab.h: allow history for `environ', `set', `varshow'
+a1eee83 Add a RFC 6068 url_mailto_to_address() hack for List-Post:
+9503e7d `source': due to wysh prefix allow space after | pipe indicator
+9fde9d7 lex_input.c: tweak/rethink [83313f1] (Allow multiline -X options)..
+99e96f3 FIX "," message specification (since [1c4b8c9], v14.8.4)..
+1587069 FIX [44cec1f] (Fix "address" message specifications (John Dodson))..
+e40e181 nail.1, nail.rc: set *sendwait* by default (Ralph Corderoy)
+7ea7734 make.rc: oops, set VAL_MBOX to ~/.mbox not ~/mbox in [94b3635]!
+0879986 First (rather small) step in reworking getmsglist()..
+3051546 Move `help' to lex_input.c, show argument type with *verbose*
+3c86507 getmsglist(): improve [0879986] a bit
+d5bdcaa getmsglist(): fix [0879986]: honour hidden/deleted for / and @
+0ef4291 `z': add ^: goes to first screen; fix max calc for 0 modulos
+7adcf99 `write'++: !interactive: urlxenc() attachment paths (Ralph Corderoy)..
+58393be getmsglist(): fix [0879986]: honour hidden/deleted for :colon
+        modifiers
+b14aae7 `write'++: !interactive:.. But now, really (Lyndon Nerenberg, David
+        Levine)..
+20082ee THANKS: David Levine and Lyndon Nerenberg
+5270bf1 Simplify *folder* (implicit trail solidus) (Stephen Isard, Ralph
+        Corderoy)
+dcd26bd Add FEXP_{NSPECIAL,NFOLDER}, disallow fatal user recursions
+f1313c0 Add `urlcodec', obsolete `url{en,de}code'
+610b952 `urlcodec': makeprint() when decoding
+a638bcf Add *typescript-mode*, set it for -# (Ralph Corderoy, Martin
+        Neitzel)..
+053e19f Add *inbox* (Stephen Isard, and Jürgen Daubert)..
+5d7b970 Add n_SHEXP_PARSE_QUOTE_AUTOCLOSE (simplifies tab completion)
+6a09b2c folder_query(): FIX [5270bf1]: strlen() may be 0, so don't [len-1]
+f67e8c3 folder_query(): err: real FIX for problem "fixed" with [6a09b2c]..
+4a4630d `folders': tweak return value (a bit)
+9d364e1 mk-conf.sh, auxlily.c: fix va_copy(3) detection with -std=c89
+4f581d4 getmsglist(): hey. If we cannot find threaded range end, reverse
+        direction
+830e15a n_verr(): even without va_copy(3), limit buffer to 1 KB!
+20e3240 Add OPT_ALWAYS_UNICODE_LOCALE (Predrag Punosevac)..
+14b5a3a Make combinetime() overflow safe (Vincent Lefevre)..
+2bf0888 getmsglist(): if user gives A-B, try fulfill even in threaded mode
+dfc5dac Fix off-by-one introduced in [57744f9] (Redefine *folder* ..)..
+c4522db Tweak [36578d1] (Add PS_SETFILE_OPENED..) by saving errno
+0bd7cbb Dotlock: O_TRUNC is meaningless with O_CREAT|O_EXCL; etc.
+==Preview 2==
 
 Appendix
 ^^^^^^^^
@@ -516,11 +582,17 @@ NEW can be inspected by using the git(1) `log' command:
 NEWS entries for the S-nail releases before v14.9.0 have been cut off
 before release v14.9.0 and can be found in the git(1) repository:
 
-  v14.8.0 - v14.8.10: $ git show v14.8.10:NEWS
-  v13     -  v14.8.5: $ git show v14.8.5:NEWS
+  v14.8.0 - v14.8.14: $ git show v14.8.14:NEWS
+  v13     - v14.8.5 : $ git show v14.8.5:NEWS
   9.0     - 12.5    : $ git show heirloom:ChangeLog
 
+Also accessible via the following URL, just replace X.Y.Z accordingly:
+  https://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
 For even older releases you need to look into the [timeline] branch, but
 no changelog has been administrated for them.
+
+Note:
+The content has been vaporised.  Ways to access the leakage are
+documented in the newest announcement at the top of this file.
 
 # s-ts-mode
