@@ -205,7 +205,7 @@ if yesno 'Send announcement mail?'; then
    fi
 
    LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT} \
-      -s "[ANN] of ${UPROGRAM} v${REL}" \
+      -s "[ANN]ounce of ${UPROGRAM} v${REL}" \
       -q "${TMPDIR}/${PROGRAM}-${REL}.ann.mail" \
       -b ${MAILBCC} ${MAILTO}
 fi
