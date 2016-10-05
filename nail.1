@@ -10191,6 +10191,27 @@ RFC 6762 standardized the link-local top-level domain
 .Ql .local .
 .\" }}}
 .
+.\" .Ss "\*(UA exits quick, and output is cleared away" {{{
+.Ss "\*(UA exits quick, and output is cleared away"
+.
+When this happens even with
+.Va emptystart
+set, then this most likely indicates a problem with the creation of
+so-called dotlock files: setting
+.Va dotlock-ignore-error
+should overcome this situation.
+This only avoids symptoms, it doesn't address the problem, though.
+Since the output is cleared away \*(UA has support for
+.Sx "On terminal control and line editor" ,
+and switches to the
+.Dq ca-mode ,
+which causes the output clearance: by doing
+.Ql set termcap='smcup='
+this mode can be suppressed, and by setting
+.Va verbose
+(twice) the actual problem should be reported.
+.\" }}}
+.
 .\" .Ss "I can't login to Google mail aka GMail" {{{
 .Ss "I can't login to Google mail aka GMail"
 .
