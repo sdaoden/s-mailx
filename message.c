@@ -596,8 +596,9 @@ jnumber__thr:
       if(ok_blook(allnet))
          flags |= a_ALLNET;
       for(i = 0; i < msgCount; ++i){
-         mp = &message[i];
-         if(mp->m_flag & MMARK)
+         if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
+            continue;
+         if(!a_message_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
             continue;
 
          flags &= ~a_TMP;
