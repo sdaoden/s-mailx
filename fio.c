@@ -1328,13 +1328,18 @@ jnext:
 
    if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
       size_t i;
+      bool_t soll;
 
       i = strlen(cbuf);
-      if(which_protocol(cbuf) != PROTO_IMAP)
-         res = str_concat_csvl(&s, cbuf,
-               ((i > 0 && cbuf[i - 1] == '/') ? "" : "/"), res + 1, NULL)->s;
-      else
-         res = savestrbuf(cbuf, i);
+      soll = (i > 0 && cbuf[i - 1] == '/');
+      if(which_protocol(cbuf) == PROTO_IMAP){
+         bool_t hpath;
+
+         hpath = (strcmp(cbuf, protbase(cbuf)) != 0);
+         res = str_concat_csvl(&s, cbuf, (hpath || soll ? "" : "/"),
+               &res[1], NULL)->s;
+      }else
+         res = str_concat_csvl(&s, cbuf, (soll ? "" : "/"), &res[1], NULL)->s;
       dyn = TRU1;
 
       if (res[0] == '%' && res[1] == ':') {
