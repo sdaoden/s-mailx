@@ -200,7 +200,13 @@ if yesno 'Send announcement mail?'; then
    else
       echo > "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    fi
+   if [ -f "${TMPDIR}/${PROGRAM}-${REL}.cksum" ]; then
+      echo >> "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
+      cat "${TMPDIR}/${PROGRAM}-${REL}.cksum" >>\
+         "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
+   fi
    if `git cat-file -e ${relbr}:NEWS 2>/dev/null`; then
+      echo >> "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
       git show ${relbr}:NEWS >> "${TMPDIR}/${PROGRAM}-${REL}.ann.mail"
    fi
 
