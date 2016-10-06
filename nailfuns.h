@@ -753,9 +753,9 @@ FL int         getmdot(int nmail);
 
 FL void        initbox(char const *name);
 
-/* Determine and expand the current *folder* name, return it or the empty
- * string also in case of errors: since POSIX mandates a default of CWD if not
- * set etc., that seems to be a valid fallback, then */
+/* Determine and expand the current *folder* name, return it (with trailing
+ * solidus) or the empty string also in case of errors: since POSIX mandates
+ * a default of CWD if not set etc., that seems to be a valid fallback, then */
 FL char const *folder_query(void);
 
 /*

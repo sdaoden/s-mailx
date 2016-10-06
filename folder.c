@@ -113,8 +113,6 @@ jdocopy:
       if(*(folderp = folder_query()) != '\0'){
          i = strlen(folderp);
          if(!strncmp(folderp, mailp, i)){
-            if(folderp[i -1] != '/' && mailp[i] == '/') /* XXX DIRSEP magic */
-               ++i;
             mailp += i;
             *dispp++ = '+';
          }
@@ -709,6 +707,8 @@ folder_query(void){
    bool_t err;
    NYD_ENTER;
 
+   sp = n_string_creat_auto(sp);
+
    /* *folder* is linked with *_folder_resolved*: we only use the latter */
    for(err = FAL0;;){
       if((rv = ok_vlook(_folder_resolved)) != NULL)
@@ -745,15 +745,19 @@ folder_query(void){
 
       /* Prefix HOME as necessary */
       if(*cp != '/'){
-         char const *home = ok_vlook(HOME);
-         size_t l1 = strlen(home), l2 = strlen(cp);
+         size_t l1, l2;
+         char const *home;
 
-         sp = n_string_creat_auto(sp);
+         home = ok_vlook(HOME);
+         l1 = strlen(home);
+         l2 = strlen(cp);
+
          sp = n_string_reserve(sp, l1 + 1 + l2 +1);
          sp = n_string_push_buf(sp, home, l1);
          sp = n_string_push_c(sp, '/');
          sp = n_string_push_buf(sp, cp, l2);
          cp = n_string_cp(sp);
+         sp = n_string_drop_ownership(sp);
       }
 
       rv = cp;
@@ -766,8 +770,6 @@ folder_query(void){
 #ifdef HAVE_REALPATH
       /* C99 */{
 # ifndef HAVE_REALPATH_NULL
-         if(cp == sp->s_dat)
-            sp = n_string_drop_ownership(sp);
          sp = n_string_reserve(sp, PATH_MAX +1);
 # else
          sp->s_dat = NULL;
@@ -775,7 +777,7 @@ folder_query(void){
 
          if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
 # ifdef HAVE_REALPATH_NULL
-            sp->s_dat = savestr(cp = sp->s_dat);
+            sp = n_string_assign_cp(sp, cp = sp->s_dat);
             (free)(cp);
 # endif
             rv = sp->s_dat;
@@ -788,7 +790,21 @@ folder_query(void){
             rv = "";
          }
       }
+      sp = n_string_drop_ownership(sp);
 #endif /* HAVE_REALPATH */
+
+      /* Always append a solidus to our result path upon success */
+      if(!err){
+         size_t i;
+
+         if(rv[(i = strlen(rv)) - 1] != '/'){
+            sp = n_string_reserve(sp, i + 1 +1);
+            sp = n_string_push_buf(sp, rv, i);
+            sp = n_string_push_c(sp, '/');
+            rv = n_string_cp(sp);
+            sp = n_string_drop_ownership(sp);
+         }
+      }
 
 jset:
       /* C99 */{

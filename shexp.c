@@ -978,10 +978,7 @@ jnext:
 
    /* POSIX: if *folder* unset or null, "+" shall be retained */
    if (*res == '+' && *(cp = folder_query()) != '\0') {
-      size_t i = strlen(cp);
-
-      res = str_concat_csvl(&s, cp,
-            ((i == 0 || cp[i -1] == '/') ? "" : "/"), res + 1, NULL)->s;
+      res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
       dyn = TRU1;
 
       /* TODO *folder* can't start with %[:], can it!?! */
