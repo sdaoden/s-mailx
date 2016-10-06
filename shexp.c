@@ -139,18 +139,36 @@ static char *
 a_shexp_findmail(char const *user, bool_t force){
    char *rv;
    char const *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (force || (cp = ok_vlook(MAIL)) == NULL) {
-      size_t ul = strlen(user), i = sizeof(VAL_MAIL) -1 + 1 + ul +1;
+   if(!force){
+      if((cp = ok_vlook(inbox)) != NULL && *cp != '\0'){
+         /* Folder extra introduced to avoid % recursion loops */
+         if((rv = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
+               ) != NULL)
+            goto jleave;
+         n_err(_("*inbox* expansion failed, using $MAIL / builtin: %s\n"), cp);
+      }
+
+      if((cp = ok_vlook(MAIL)) != NULL){
+         rv = savestr(cp);
+         goto jleave;
+      }
+   }
+
+   /* C99 */{
+      size_t ul, i;
+
+      ul = strlen(user) +1;
+      i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
       rv = salloc(i);
       memcpy(rv, VAL_MAIL, i = sizeof(VAL_MAIL));
       rv[i] = '/';
-      memcpy(&rv[++i], user, ul +1);
-   }else if((rv = fexpand(cp, FEXP_NSPECIAL|FEXP_NFOLDER|FEXP_NSHELL)) == NULL)
-      rv = savestr(cp);
-   NYD_LEAVE;
+      memcpy(&rv[++i], user, ul);
+   }
+jleave:
+   NYD2_LEAVE;
    return rv;
 }
 

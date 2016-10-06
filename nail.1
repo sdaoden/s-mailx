@@ -195,9 +195,9 @@ after program startup is complete.
 Being a special incarnation of
 .Ic define Ns d
 macros for the purpose of bundling longer-lived settings, activating
-such an email account also switches to the accounts
-.Ev MAIL Ns
-box, for example.
+such an email account also switches to the accounts system
+.Va inbox ,
+for example.
 .
 .Mx
 .It Fl a Ar file
@@ -256,8 +256,8 @@ This is useful for sending messages from scripts.
 .Mx
 .It Fl e
 Just check if mail is present (in the specified or system
-.Ev MAIL Ns
-box): if yes, return an exit status of zero, a non-zero value otherwise.
+.Va inbox ) :
+if yes, return an exit status of zero, a non-zero value otherwise.
 To restrict the set of mails to consider in this evaluation a message
 specification can be added with the option
 .Fl L .
@@ -297,9 +297,9 @@ that starts with a hyphen, prefix it with a (relative) path, as in
 .It Fl H
 Display a summary of the
 .Ic headers
-of all messages in the specified or system
-.Ev MAIL Ns
-box and exit.
+of all messages in the specified mailbox or system
+.Va inbox
+and exit.
 A configurable summary view is available via the
 .Fl L
 option.
@@ -321,9 +321,9 @@ to ignore tty interrupt signals.
 .It Fl L Ar spec-list
 Display a summary of all
 .Ic headers
-of only those messages in the specified or system
-.Ev MAIL Ns
-box that match the given
+of only those messages in the specified mailbox or the system
+.Va inbox
+that match the given
 .Ar spec-list ,
 then exit.
 See the section
@@ -578,7 +578,7 @@ as well as
 .Ev MAIL ,
 .Ev MBOX
 and
-.Va folder
+.Va inbox
 (the latter three to
 .Pa /dev/null ) ;
 processing of
@@ -955,8 +955,8 @@ $ \*(uA -d -Squiet -Semptystart
 When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
 When used like that the user's system
-.Ev MAIL Ns
-box (see the command
+.Va inbox
+(see the command
 .Ic file
 for an in-depth description of the different mailbox types that exist)
 is read in and a one line header of each message therein is displayed.
@@ -1091,8 +1091,8 @@ aims at making user experience with the many
 .Sx COMMANDS
 a bit nicer.
 When reading the system
-.Ev MAIL Ns
-box or when
+.Va inbox
+or when
 .Fl f
 (or
 .Ic file )
@@ -1540,8 +1540,8 @@ and messages can also be selected and be acted upon depending on their
 state (see
 .Sx "Specifying messages" ) .
 When operating on the system
-.Ev MAIL Ns
-box or in primary mailboxes opened with the special prefix
+.Va inbox
+or in primary mailboxes opened with the special prefix
 .Ql %:
 (see
 .Ic file )
@@ -2906,8 +2906,8 @@ The special account
 .Pp
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
-.Ev MAIL Ns
-box of that account will be activated (as via
+.Va inbox
+of that account will be activated (as via
 .Ic file ) ,
 and a possibly installed
 .Va folder-hook
@@ -2916,7 +2916,7 @@ The two argument form is identical to defining a macro as via
 .Ic define :
 .Bd -literal -offset indent
 account myisp {
-  set folder=~/mail MAIL=+syste.mbox record=+sent.mbox
+  set folder=~/mail inbox=+syste.mbox record=+sent.mbox
   set from='myname@myisp.example (My Name)'
   set mta=smtp://mylogin@smtp.myisp.example
 }
@@ -3617,14 +3617,17 @@ argument:
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
-(percent sign) means the invoking user's system
-.Ev MAIL Ns
-box,
+(percent sign) means the invoking user's system mailbox, which either
+is the (itself expandable)
+.Va inbox
+if that is set, the standardized absolute pathname indicated by
+.Ev MAIL
+if that is set, or a builtin compile-time default otherwise.
 .It Ar %user
 means the primary system mailbox of
 .Ar user
 (and never the value of
-.Va folder ,
+.Va inbox ,
 regardless of its actual setting),
 .It Ar &
 (ampersand) means the invoking user's
@@ -3680,9 +3683,10 @@ and \*(UA will work with an intermediate temporary file.
 MBOX files (flat file-based mailboxes) are generally locked during file
 operations in order to avoid inconsistencies due to concurrent
 modifications.
-\*(OPal Mailbox files which \*(UA treats as system
-.Ev MAIL Ns
-boxes or primary mailboxes will also be protected by so-called dotlock
+\*(OPal Mailbox files which \*(UA treats as the system
+.Va inbox
+.Pf ( Ev MAIL )
+and primary mailboxes will also be protected by so-called dotlock
 files, the traditional way of mail spool file locking: for any file
 .Ql a
 a lock file
@@ -3917,8 +3921,8 @@ The default mode if no arguments are given is
 .Ic preserve )
 Takes a message list and marks each message therein to be saved in the
 user's system
-.Ev MAIL Ns
-box instead of in
+.Va inbox
+instead of in
 .Ev MBOX .
 Does not override the
 .Ic delete
@@ -4395,8 +4399,8 @@ preserving all messages marked with
 or
 .Ic preserve
 or never referenced in the system
-.Ev MAIL Ns
-box, and removing all other messages from the primary system mailbox.
+.Va inbox ,
+and removing all other messages from the primary system mailbox.
 If new mail has arrived during the session,
 the message
 .Dq You have new mail
@@ -6703,8 +6707,8 @@ be honoured.
 .Mx
 .It Va hold
 \*(BO This option is used to hold messages in the system
-.Ev MAIL Ns
-box, and it is set by default.
+.Va inbox ,
+and it is set by default.
 .
 .Mx
 .It Va hostname
@@ -6767,6 +6771,15 @@ on a line by itself or by using the
 .Va ignoreeof
 overrides a setting of
 .Pf no Va dot .
+.
+.Mx
+.It Va inbox
+If this is set to a non-empty string it will be used for expansions of
+.Ql % ,
+see
+.Ic file
+for more.
+The value supports a subset of filename expansions itself.
 .
 .Mx
 .It Va indentprefix
@@ -8861,11 +8874,11 @@ name to any newly created child process.
 .
 .Mx
 .It Ev MAIL
-Is used as the user's primary system mailbox, if set.
-Otherwise, a system-dependent default is used.
-Supports the special syntax conventions that are documented for the
-.Ic file
-command.
+Is used as the user's primary system mailbox, unless
+.Va inbox
+is set, see
+.Ic file .
+This is assumed to be an absolute pathname.
 .
 .Mx
 .It Ev MAILCAPS
@@ -9726,7 +9739,7 @@ mlsubscribe '^xfans@xfans\e.xyz$'
 
 # A real life example of a very huge free mail provider
 account XooglX {
-  set folder=~/spool/XooglX MAIL=+syste.mbox sent=+sent
+  set folder=~/spool/XooglX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@examp.ple>'
   set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
 }
@@ -9738,7 +9751,7 @@ account XooglX {
 # with the mailing list under their project account (in from),
 # still sending the message through their normal mail provider
 account XandeX {
-  set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
+  set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
       hostname=yaXXex.com smtp-hostname=
@@ -9806,7 +9819,7 @@ that sets up SMTP and POP3:
 .
 .Bd -literal -offset indent
 account XandeX {
-  set folder=~/spool/XandeX MAIL=+syste.mbox sent=+sent
+  set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set netrc-lookup
   # Load an encrypted ~/.netrc by uncommenting the next line

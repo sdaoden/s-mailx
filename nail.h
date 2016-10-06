@@ -1530,6 +1530,7 @@ ok_b_emptybox,
    ok_b_idna_disable,
    ok_b_ignore,
    ok_b_ignoreeof,
+   ok_v_inbox,
    ok_v_indentprefix,
 
    ok_b_keep,
