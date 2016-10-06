@@ -827,10 +827,11 @@ enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
    FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
    FEXP_SHELL     = 1<<1,     /* No folder %,#,&,+ stuff, yet sh(1) */
-   FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
-   FEXP_SILENT    = 1<<3,     /* Don't print but only return errors */
-   FEXP_MULTIOK   = 1<<4,     /* Expansion to many entries is ok */
-   FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_FOLDER    = 1<<2,     /* No folder %,#,&, but + and so */
+   FEXP_NSHORTCUT = 1<<3,     /* Don't expand shortcuts */
+   FEXP_SILENT    = 1<<4,     /* Don't print but only return errors */
+   FEXP_MULTIOK   = 1<<5,     /* Expansion to many entries is ok */
+   FEXP_NSHELL    = 1<<6      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
 enum file_lock_type {
@@ -1240,6 +1241,7 @@ enum okeys {
    ok_v_imap_cache,
    ok_v_imap_keepalive,
    ok_v_imap_list_depth,
+   ok_v_inbox,
    ok_v_indentprefix,
    ok_v_line_editor_cursor_right,      /* {special=1} */
    ok_v_LISTER,

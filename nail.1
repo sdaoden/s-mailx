@@ -2646,16 +2646,25 @@ argument:
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
-(percent sign) means the invoking user's system mailbox
-(or the value of
+(percent sign) means the invoking user's system mailbox, which either is
+the (itself expandable)
+.Va inbox
+if that is set, the standardized absolute pathname indicating
+.Ev MAIL
+if that is set, or a builtin compile-time default otherwise.
+(\*(OB For IMAP folders only, and only if
+.Va inbox
+is not set, the value of
 .Va folder
-for IMAP folders),
+is inspected and used if found.)
 .It Ar %user
 means the system mailbox of
 .Ar user
 (and never the value of
+.Va inbox
+nor
 .Va folder ,
-regardless of its actual setting),
+regardless of their actual setting),
 .It Ar &
 (ampersand) means the invoking user's
 .Ev MBOX
@@ -6209,6 +6218,15 @@ this variable has no effect and the
 command does not descend to subfolders.
 .
 .Mx
+.It Va inbox
+If this is set it will be used for expansions of
+.Ql % ,
+see
+.Ic file
+for more.
+The value supports a subset of filename expansions itself.
+.
+.Mx
 .It Va indentprefix
 String used by the
 .Ic ~m , ~M
@@ -7612,6 +7630,13 @@ The fallback default is
 in the user's
 .Ev HOME
 directory.
+.
+.It Ev MAIL
+Is used as the user's primary system mailbox, unless
+.Va inbox
+is set, see
+.Ic file .
+This is assumed to be an absolute pathname.
 .
 .Mx
 .It Ev MAILRC
