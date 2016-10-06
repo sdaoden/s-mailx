@@ -965,6 +965,12 @@ can be adjusted through the variable
 .Va headline
 and the possible sorting criterion via
 .Va autosort .
+Scrolling through
+.Va screen Ns
+fuls of
+.Ic headers
+can be performed with the command
+.Ic z .
 If the initially opened mailbox is empty \*(UA will instead exit
 immediately (after displaying a message) unless the variable
 .Va emptystart
@@ -5208,20 +5214,29 @@ No special handling of compressed files is performed.
 .
 .Mx
 .It Ic z
-\*(UA presents message headers in windowfuls as described under the
+\*(UA presents message headers in
+.Va screen Ns
+fuls as described under the
 .Ic headers
 command.
-This command scrolls to the next window of messages.
-If an argument is given, it specifies the window to use.
-A number prefixed by
+Without arguments this command scrolls to the next window of messages,
+likewise if the argument is
+.Ql + .
+An argument of
+.Ql -
+scrolls to the last,
+.Ql ^
+scrolls to the first, and
+.Ql $
+to the last
+.Va \&\&screen
+of messages.
+A number argument prefixed by
 .Ql +
 or
 .Ql \-
-indicates that the window is calculated in relation to the current position.
-A number without a prefix specifies an absolute window number,
-and a
-.Ql $
-lets \*(UA scroll to the last window of messages.
+indicates that the window is calculated in relation to the current
+position, and a number without a prefix specifies an absolute position.
 .
 .Mx
 .It Ic Z
