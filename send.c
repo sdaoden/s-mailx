@@ -1084,6 +1084,8 @@ newfile(struct mimepart *ip, int *ispipe)
       free(out.s);
    }
 
+   /* In interactive mode, let user perform all kind of expansions as desired,
+    * and offer |SHELL-SPEC pipe targets, too */
    if (options & OPT_INTERACTIVE) {
       struct str prompt;
       char *f2, *f3;
@@ -1112,10 +1114,13 @@ jgetname:
       else
          f = f3;
    }
+
    if (f == NULL || f == (char*)-1) {
       fp = NULL;
       goto jleave;
-   }
+   } else if (!(options & OPT_INTERACTIVE))
+      /* Be very picky in non-interactive mode */
+      f = urlxenc(f, TRU1);
 
    if (*f == '|') {
       char const *cp;
