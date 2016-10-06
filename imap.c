@@ -1320,8 +1320,8 @@ jduppass:
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
-   if (imap_select(&mb, &mailsize, &msgCount,
-         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX"), fm) != OKAY) {
+   assert(urlp->url_path.s != NULL);
+   if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
       safe_signal(SIGINT, saveint);
@@ -2477,10 +2477,11 @@ imap_append(const char *xserver, FILE *fp)
 
    if (!url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
+   assert(url.url_path.s != NULL);
    if (!ok_blook(v15_compat) &&
          (!url.url_had_user || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
-   mbx = (url.url_path.s != NULL) ? url.url_path.s : "INBOX";
+   mbx = url.url_path.s;
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)

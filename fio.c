@@ -1327,19 +1327,7 @@ jnext:
    }
 
    if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-      size_t i;
-      bool_t soll;
-
-      i = strlen(cbuf);
-      soll = (i > 0 && cbuf[i - 1] == '/');
-      if(which_protocol(cbuf) == PROTO_IMAP){
-         bool_t hpath;
-
-         hpath = (strcmp(cbuf, protbase(cbuf)) != 0);
-         res = str_concat_csvl(&s, cbuf, (hpath || soll ? "" : "/"),
-               &res[1], NULL)->s;
-      }else
-         res = str_concat_csvl(&s, cbuf, (soll ? "" : "/"), &res[1], NULL)->s;
+      res = str_concat_csvl(&s, cbuf, &res[1], NULL)->s;
       dyn = TRU1;
 
       if (res[0] == '%' && res[1] == ':') {
@@ -1483,8 +1471,14 @@ getfold(char *name, size_t size)
    char const *folder;
    NYD_ENTER;
 
-   if ((folder = ok_vlook(folder)) != NULL)
+   if ((folder = ok_vlook(folder)) != NULL){
+      size_t i;
+
+      i = strlen(folder);
+      if(i > 0 && folder[i - 1] != '/')
+         folder = savecat(folder, "/");
       n_strlcpy(name, folder, size);
+   }
    NYD_LEAVE;
    return (folder != NULL);
 }
