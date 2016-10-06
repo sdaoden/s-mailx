@@ -1159,6 +1159,8 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
       free(out.s);
    }
 
+   /* In interactive mode, let user perform all kind of expansions as desired,
+    * and offer |SHELL-SPEC pipe targets, too */
    if (options & OPT_INTERACTIVE) {
       struct str prompt;
       struct n_string shou, *shoup;
@@ -1209,10 +1211,13 @@ jgetname:
 
       n_string_gut(shoup);
    }
+
    if (f == NULL || f == (char*)-1) {
       fp = NULL;
       goto jleave;
-   }
+   } else if (!(options & OPT_INTERACTIVE))
+      /* Be very picky in non-interactive mode */
+      f = urlxenc(f, TRU1);
 
    if (*f == '|') {
       fp = Popen(f + 1, "w", ok_vlook(SHELL), NULL, 1);
