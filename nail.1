@@ -6195,6 +6195,14 @@ existent or can be created by \*(UA.
 All contents of the cache can be deleted by \*(UA at any time;
 it is not safe to make assumptions about them.
 .
+.Mx Va imap-delim
+.It Va imap-delim-USER@HOST , imap-delim-HOST , imap-delim
+\*(OP The hierarchy separator used by the IMAP server.
+If set, all characters of the used path will be checked against all
+characters of the value set, and any occurrence is replaced with the
+first entry of the value, the default value is
+.Ql /. .
+.
 .Mx Va imap-keepalive
 .It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive
 \*(OP IMAP servers may close the connection after a period of

@@ -219,6 +219,9 @@
 #define DATE_HOURSDAY   24L
 #define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
+/* The default IMAP directory separator ([0] is used as a replacer, too) */
+#define IMAP_DELIM      "/."
+
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"
 
@@ -1239,6 +1242,7 @@ enum okeys {
    ok_v_hostname,
    ok_v_imap_auth,
    ok_v_imap_cache,
+   ok_v_imap_delim,
    ok_v_imap_keepalive,
    ok_v_imap_list_depth,
    ok_v_inbox,
@@ -1552,6 +1556,7 @@ struct mailbox {
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
+   char const  *mb_imap_delim;
 #endif
    struct sock mb_sock;       /* socket structure */
 };

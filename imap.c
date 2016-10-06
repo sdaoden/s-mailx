@@ -171,6 +171,7 @@ static int volatile     imaplock;
 static int              same_imap_account;
 static bool_t           _imap_rdonly;
 
+static char       *imap_quotepath(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
 static void       imap_response_parse(void);
@@ -257,6 +258,31 @@ static enum okay  imap_rename1(struct mailbox *mp, const char *old,
                      const char *new);
 static char *     imap_strex(char const *cp, char const **xp);
 static enum okay  check_expunged(void);
+
+static char *
+imap_quotepath(struct mailbox *mp, char const *cp){
+   char const *dcp;
+   char *rv_base, *rv, dc, c;
+   NYD2_ENTER;
+
+   rv = rv_base = salloc(strlen(cp) +1);
+   if((dcp = mp->mb_imap_delim) == NULL)
+      dcp = IMAP_DELIM;
+   dc = *dcp;
+
+   while((c = *cp++) != '\0'){
+      if(strchr(dcp, c) == NULL)
+         *rv++ = c;
+      else{
+         while((c = *cp) != '\0' && strchr(dcp, c) != NULL)
+            ++cp;
+         *rv++ = dc;
+      }
+   }
+   *rv = '\0';
+   NYD2_LEAVE;
+   return rv_base;
+}
 
 static void
 imap_other_get(char *pp)
@@ -957,7 +983,8 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
 
    mp->mb_uidvalidity = 0;
    snprintf(o, sizeof o, "%s %s %s\r\n", tag(1),
-      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), imap_quotestr(mbx));
+      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"),
+      imap_quotestr(imap_quotepath(mp, mbx)));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -1319,6 +1346,7 @@ jduppass:
       fm |= FEDIT_RDONLY;
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
+   mb.mb_imap_delim = xok_vlook(imap_delim, urlp, OXM_ALL);
    cache_dequeue(&mb);
    assert(urlp->url_path.s != NULL);
    if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
@@ -2311,7 +2339,7 @@ jagain:
    }
 
    snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
-         tag(1), imap_quotestr(name), imap_putflags(flag),
+         tag(1), imap_quotestr(imap_quotepath(mp, name)), imap_putflags(flag),
          imap_make_date_time(t), size);
    IMAP_XOUT(o, MB_COMD, goto jleave, rv=STOP;goto jleave)
    while (mp->mb_active & MB_COMD) {
@@ -2499,6 +2527,7 @@ imap_append(const char *xserver, FILE *fp)
       struct mailbox mx;
 
       memset(&mx, 0, sizeof mx);
+      mx.mb_imap_delim = xok_vlook(imap_delim, &url, OXM_ALL);
 
       if (!_imap_getcred(&mx, &ccred, &url))
          goto jleave;
@@ -2556,7 +2585,8 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
    NYD_X;
 
    *list = *lend = NULL;
-   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1), imap_quotestr(base));
+   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1),
+      imap_quotestr(imap_quotepath(mp, base)));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -2763,7 +2793,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
       i = strlen(name = imap_fileof(name));
       if(i == 0 || (i > 0 && name[i - 1] == '/'))
          name = savecat(name, "INBOX");
-      qname = imap_quotestr(name);
+      qname = imap_quotestr(imap_quotepath(mp, name));
    }
 
    /* Since it is not possible to set flags on the copy, recently
