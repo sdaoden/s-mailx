@@ -979,7 +979,8 @@ will give a listing of all available commands and
 .Ic help
 will give a summary of some common ones.
 If the \*(OPal documentation strings are available one can type
-.Ql ?X
+.Ql help X
+.Pf "(or " Ql ?X )
 and see the actual expansion of
 .Ql X
 and what it's purpose is, i.e., commands can be abbreviated
@@ -988,6 +989,9 @@ order of commands doesn't necessarily relate to the abbreviations; it is
 possible to define overwrites with the
 .Ic ghost
 command, however).
+These commands can also produce a more
+.Va verbose
+output.
 .
 .Pp
 Messages are given numbers (starting at 1) which uniquely identify
