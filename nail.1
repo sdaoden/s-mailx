@@ -4149,20 +4149,24 @@ and the user is asked for a filename to save each other part.
 For convience saving of each part may be skipped by giving an empty value;
 the same result can also be achieved by writing it to
 .Pa /dev/null .
-For the second and subsequent parts a leading
+.Pp
+In interactive mode the second and subsequent parts support shell piping
+the part content by specifying a leading vertical bar
 .Ql |
-character causes the part to be piped to the remainder of the user input
-interpreted as a shell command;
-otherwise the user input is expanded as usually for folders,
-e.g., tilde expansion is performed.
-In non-interactive mode, only the parts of the multipart message
-that have a filename given in the part header are written,
-the others are discarded.
+character as the filename.
+Other user input is expanded as usually for folders, e.g., tilde
+expansion is performed.
+\*(ID In non-interactive mode any part which does not specify a filename
+is ignored, the filename of the remaining parts is URL percent encoded
+.Pf ( Ic urlencode )
+to prevent injection of malicious character sequences, like absolute or
+relative paths, shell characters etc., causing the file to be written to
+into the current directory.
+.Pp
 The original message is never marked for deletion in the originating
 mail folder.
-For attachments,
-the contents of the destination file are overwritten if the file
-previously existed.
+\*(ID For attachments, the contents of the destination file are
+overwritten if the file previously existed.
 No special handling of compressed files is performed.
 .
 .Mx
