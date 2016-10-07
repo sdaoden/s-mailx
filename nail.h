@@ -1556,7 +1556,7 @@ struct mailbox {
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
-   char const  *mb_imap_delim;
+   char mb_imap_delim[8];
 #endif
    struct sock mb_sock;       /* socket structure */
 };

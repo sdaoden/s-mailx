@@ -171,7 +171,9 @@ static int volatile     imaplock;
 static int              same_imap_account;
 static bool_t           _imap_rdonly;
 
-static char       *imap_quotepath(struct mailbox *mp, char const *cp);
+static void imap_delim_init(struct mailbox *mp, struct url const *urlp);
+static char const *imap_normalize_path(struct mailbox *mp, char const *cp);
+static char *imap_quotepath(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
 static void       imap_response_parse(void);
@@ -259,29 +261,83 @@ static enum okay  imap_rename1(struct mailbox *mp, const char *old,
 static char *     imap_strex(char const *cp, char const **xp);
 static enum okay  check_expunged(void);
 
-static char *
-imap_quotepath(struct mailbox *mp, char const *cp){
-   char const *dcp;
-   char *rv_base, *rv, dc, c;
+static void
+imap_delim_init(struct mailbox *mp, struct url const *urlp){
+   size_t i;
+   char const *cp;
    NYD2_ENTER;
 
-   rv = rv_base = salloc(strlen(cp) +1);
-   if((dcp = mp->mb_imap_delim) == NULL)
-      dcp = IMAP_DELIM;
-   dc = *dcp;
+   mp->mb_imap_delim[0] = '\0';
 
-   while((c = *cp++) != '\0'){
-      if(strchr(dcp, c) == NULL)
+   if((cp = xok_vlook(imap_delim, urlp, OXM_ALL)) != NULL){
+      i = strlen(cp);
+
+      if(i < NELEM(mp->mb_imap_delim))
+         memcpy(&mb.mb_imap_delim[0], cp, i +1);
+      else
+         n_err(_("*imap-delim* for %s too long: %s\n"),
+            urlp->url_input, cp);
+   }
+   NYD2_LEAVE;
+}
+
+static char const *
+imap_normalize_path(struct mailbox *mp, char const *cp){ /* TODO btw: no utf7 */
+   char *rv_base, *rv, dc, dc2, c, lc;
+   char const *dcp;
+   NYD2_ENTER;
+
+   if(mp == NULL || (dcp = &mp->mb_imap_delim[0])[0] == '\0')
+      dcp = "/.";/*IMAP_DELIM;*/
+   dc = *dcp++;
+   dc2 = *dcp;
+
+   /* Plain names don't need path quoting */
+   /* C99 */{
+      size_t i, j;
+      char const *cpx;
+
+      for(cpx = cp;; ++cpx)
+         if((c = *cpx) == '\0')
+            goto jleave;
+         else if(c == dc)
+            break;
+         else if(dc2 && strchr(dcp, c) != NULL)
+            break;
+
+      /* And we don't need to reevaluate what we have seen yet */
+      i = PTR2SIZE(cpx - cp);
+      rv = rv_base = salloc(i + (j = strlen(cpx) +1));
+      if(i > 0)
+         memcpy(rv, cp, i);
+      memcpy(&rv[i], cpx, j);
+      rv += i;
+      cp = cpx;
+   }
+
+   /* Squeeze adjacent delimiters, convert remain to dc */
+   for(lc = '\0'; (c = *cp++) != '\0'; lc = c){
+      if(c == dc || (dc2 && strchr(dcp, c) != NULL))
+         c = dc;
+      if(c != dc || lc != dc)
          *rv++ = c;
-      else{
-         while((c = *cp) != '\0' && strchr(dcp, c) != NULL)
-            ++cp;
-         *rv++ = dc;
-      }
    }
    *rv = '\0';
+
+   cp = rv_base;
+jleave:
    NYD2_LEAVE;
-   return rv_base;
+   return cp;
+}
+
+static char *
+imap_quotepath(struct mailbox *mp, char const *cp){
+   char *rv;
+   NYD2_ENTER;
+
+   rv = imap_quotestr(imap_normalize_path(mp, cp));
+   NYD2_LEAVE;
+   return rv;
 }
 
 static void
@@ -983,8 +1039,7 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
 
    mp->mb_uidvalidity = 0;
    snprintf(o, sizeof o, "%s %s %s\r\n", tag(1),
-      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"),
-      imap_quotestr(imap_quotepath(mp, mbx)));
+      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), imap_quotepath(mp, mbx));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -1288,8 +1343,11 @@ jduppass:
       if (mb.mb_imap_mailbox != NULL)
          free(mb.mb_imap_mailbox);
       assert(urlp->url_path.s != NULL);
-      mb.mb_imap_mailbox = sstrdup(urlp->url_path.s);
-      initbox(urlp->url_p_eu_h_p_p);
+      imap_delim_init(&mb, urlp);
+      mb.mb_imap_mailbox = sstrdup(imap_normalize_path(&mb, urlp->url_path.s));
+      initbox(savecatsep(urlp->url_p_eu_h_p,
+         (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : IMAP_DELIM[0]),
+         mb.mb_imap_mailbox));
    }
    mb.mb_type = MB_VOID;
    mb.mb_active = MB_NONE;
@@ -1346,7 +1404,6 @@ jduppass:
       fm |= FEDIT_RDONLY;
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
-   mb.mb_imap_delim = xok_vlook(imap_delim, urlp, OXM_ALL);
    cache_dequeue(&mb);
    assert(urlp->url_path.s != NULL);
    if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
@@ -2339,7 +2396,7 @@ jagain:
    }
 
    snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
-         tag(1), imap_quotestr(imap_quotepath(mp, name)), imap_putflags(flag),
+         tag(1), imap_quotepath(mp, name), imap_putflags(flag),
          imap_make_date_time(t), size);
    IMAP_XOUT(o, MB_COMD, goto jleave, rv=STOP;goto jleave)
    while (mp->mb_active & MB_COMD) {
@@ -2382,7 +2439,8 @@ jtrycreate:
             rv = STOP;
             goto jleave;
          }
-         snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), imap_quotestr(name));
+         snprintf(o, sizeof o, "%s CREATE %s\r\n",
+            tag(1), imap_quotepath(mp, name));
          IMAP_XOUT(o, MB_COMD, goto jleave, rv=STOP;goto jleave)
          while (mp->mb_active & MB_COMD)
             rv = imap_answer(mp, 1);
@@ -2505,11 +2563,10 @@ imap_append(const char *xserver, FILE *fp)
 
    if (!url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
-   assert(url.url_path.s != NULL);
    if (!ok_blook(v15_compat) &&
          (!url.url_had_user || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
-   mbx = url.url_path.s;
+   assert(url.url_path.s != NULL);
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -2522,15 +2579,17 @@ imap_append(const char *xserver, FILE *fp)
 
    if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) && mb.mb_imap_account &&
          !strcmp(url.url_p_eu_h_p, mb.mb_imap_account)) {
-      rv = imap_append0(&mb, mbx, fp);
+      rv = imap_append0(&mb, url.url_path.s, fp);
    } else {
       struct mailbox mx;
 
       memset(&mx, 0, sizeof mx);
-      mx.mb_imap_delim = xok_vlook(imap_delim, &url, OXM_ALL);
 
       if (!_imap_getcred(&mx, &ccred, &url))
          goto jleave;
+
+      imap_delim_init(&mx, &url);
+      mx.mb_imap_mailbox = sstrdup(imap_normalize_path(&mx, url.url_path.s));
 
       if (disconnected(url.url_p_eu_h_p) == 0) {
          if (!sopen(&mx.mb_sock, &url))
@@ -2539,24 +2598,22 @@ imap_append(const char *xserver, FILE *fp)
          mx.mb_type = MB_IMAP;
          mx.mb_imap_account = UNCONST(url.url_p_eu_h_p);
          /* TODO the code now did
-          * TODO mx.mb_imap_mailbox = mbx;
+          * TODO mx.mb_imap_mailbox = mbx->url.url_patth.s;
           * TODO though imap_mailbox is sfree()d and mbx
           * TODO is possibly even a constant
           * TODO i changed this to sstrdup() sofar, as is used
           * TODO somewhere else in this file for this! */
-         mx.mb_imap_mailbox = sstrdup(mbx);
          if (imap_preauth(&mx, &url) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
             sclose(&mx.mb_sock);
             goto jfail;
          }
-         rv = imap_append0(&mx, mbx, fp);
+         rv = imap_append0(&mx, url.url_path.s, fp);
          imap_exit(&mx);
       } else {
          mx.mb_imap_account = UNCONST(url.url_p_eu_h_p);
-         mx.mb_imap_mailbox = sstrdup(mbx); /* TODO as above */
          mx.mb_type = MB_CACHE;
-         rv = imap_append0(&mx, mbx, fp);
+         rv = imap_append0(&mx, url.url_path.s, fp);
       }
 jfail:
       ;
@@ -2585,8 +2642,7 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
    NYD_X;
 
    *list = *lend = NULL;
-   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1),
-      imap_quotestr(imap_quotepath(mp, base)));
+   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1), imap_quotepath(mp, base));
    IMAP_OUT(o, MB_COMD, return STOP)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
@@ -2793,7 +2849,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
       i = strlen(name = imap_fileof(name));
       if(i == 0 || (i > 0 && name[i - 1] == '/'))
          name = savecat(name, "INBOX");
-      qname = imap_quotestr(imap_quotepath(mp, name));
+      qname = imap_quotepath(mp, name);
    }
 
    /* Since it is not possible to set flags on the copy, recently
@@ -2950,19 +3006,23 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    enum okay rv;
    NYD_ENTER;
 
+   rv = STOP;
+
    memset(&xmb, 0, sizeof xmb);
 
-   rv = STOP;
    if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
       goto jleave;
+
    rv = OKAY;
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    xmb.mb_imap_account = sstrdup(mp->mb_imap_account);
    xmb.mb_imap_pass = sstrdup(mp->mb_imap_pass);
-   xmb.mb_imap_mailbox = sstrdup(name);
+   memcpy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
+      sizeof(xmb.mb_imap_delim));
+   xmb.mb_imap_mailbox = sstrdup(imap_normalize_path(&xmb, name));
    if (mp->mb_cache_directory != NULL)
       xmb.mb_cache_directory = sstrdup(mp->mb_cache_directory);
    xmb.mb_uidvalidity = uidvalidity;
@@ -3009,16 +3069,18 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    enum okay rv;
    NYD_ENTER;
 
-   xmb.mb_imap_mailbox = NULL;
    rv = STOP;
+
    if ((cp = asccasestr(responded_text, "[APPENDUID ")) == NULL ||
          imap_appenduid_parse(&cp[11], &uidvalidity, &uid) == STOP)
       goto jleave;
+
    rv = OKAY;
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_mailbox = sstrdup(name);
+   /* XXX mb_imap_delim reused */
+   xmb.mb_imap_mailbox = sstrdup(imap_normalize_path(&xmb, name));
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
@@ -3033,9 +3095,9 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xm.m_uid = uid;
    xm.m_have = HAVE_HEADER | HAVE_BODY;
    putcache(&xmb, &xm);
+
+   free(xmb.mb_imap_mailbox);
 jleave:
-   if (xmb.mb_imap_mailbox != NULL)
-      free(xmb.mb_imap_mailbox);
    NYD_LEAVE;
    return rv;
 }
@@ -3274,7 +3336,7 @@ imap_remove1(struct mailbox *mp, const char *name)
    NYD_X;
 
    o = ac_alloc(os = 2*strlen(name) + 100);
-   snprintf(o, os, "%s DELETE %s\r\n", tag(1), imap_quotestr(name));
+   snprintf(o, os, "%s DELETE %s\r\n", tag(1), imap_quotepath(mp, name));
    IMAP_OUT(o, MB_COMD, goto out)
    while (mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);
@@ -3334,8 +3396,8 @@ imap_rename1(struct mailbox *mp, const char *old, const char *new)
    NYD_X;
 
    o = ac_alloc(os = 2*strlen(old) + 2*strlen(new) + 100);
-   snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), imap_quotestr(old),
-      imap_quotestr(new));
+   snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), imap_quotepath(mp, old),
+      imap_quotepath(mp, new));
    IMAP_OUT(o, MB_COMD, goto out)
    while (mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);

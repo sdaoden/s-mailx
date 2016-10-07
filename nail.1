@@ -6198,9 +6198,12 @@ it is not safe to make assumptions about them.
 .Mx Va imap-delim
 .It Va imap-delim-USER@HOST , imap-delim-HOST , imap-delim
 \*(OP The hierarchy separator used by the IMAP server.
-If set, all characters of the used path will be checked against all
-characters of the value set, and any occurrence is replaced with the
-first entry of the value, the default value is
+Whenever an IMAP path is specified it will undergo normalization.
+One of the normalization steps is the squeeze and adjustment of
+hierarchy separators.
+If this variable is set, any occurrence of any character of the given
+value that exists in the path will be replaced by the first member of
+the value; an empty value will cause the default to be used, it is
 .Ql /. .
 .
 .Mx Va imap-keepalive
