@@ -8841,6 +8841,8 @@ i.e., to advise it to do that from a network startup script.
 .
 .Sh BUGS
 .
+Interrupting an IMAP operation can lead to endless iterations of the
+same operation.
 With IMAP, at least if the IMAP cache is used, if multiple
 .Ic connect
 and
