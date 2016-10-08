@@ -1358,7 +1358,7 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
+   if (anyof(res, n_SHEXP_MAGIC_PATH_CHARS))
       switch (which_protocol(res)) {
       case PROTO_FILE:
       case PROTO_MAILDIR:

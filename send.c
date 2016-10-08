@@ -1115,24 +1115,51 @@ jgetname:
          f = f3;
    }
 
-   if (f == NULL || f == (char*)-1) {
+   if (f == NULL || f == (char*)-1 || *f == '\0')
       fp = NULL;
-      goto jleave;
-   } else if (!(options & OPT_INTERACTIVE))
-      /* Be very picky in non-interactive mode */
-      f = urlxenc(f, TRU1);
-
-   if (*f == '|') {
-      char const *cp;
-      cp = ok_vlook(SHELL);
-      if (cp == NULL)
-         cp = XSHELL;
-      fp = Popen(f + 1, "w", cp, NULL, 1);
-      if (!(*ispipe = (fp != NULL)))
-         n_perr(f, 0);
-   } else {
-      if ((fp = Fopen(f, "w")) == NULL)
+   else if (options & OPT_INTERACTIVE) {
+      if (*f == '|') {
+         char const *cp;
+         cp = ok_vlook(SHELL);
+         if (cp == NULL)
+            cp = XSHELL;
+         fp = Popen(f + 1, "w", cp, NULL, 1);
+         if (!(*ispipe = (fp != NULL)))
+            n_perr(f, 0);
+      } else if ((fp = Fopen(f, "w")) == NULL)
          n_err(_("Cannot open \"%s\"\n"), f);
+   } else {
+      /* Be very picky in non-interactive mode: actively disallow pipes,
+       * prevent directory separators, and any filename member that would
+       * become expanded by the shell if the name would be echo(1)ed */
+      if(anyof(f, "/" n_SHEXP_MAGIC_PATH_CHARS)){
+         char c;
+
+         for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)
+            if(strchr("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
+               out.s[out.l++] = '%';
+               mime_char_to_hexseq(&out.s[out.l], c);
+               out.l += 2;
+            }else
+               out.s[out.l++] = c;
+         out.s[out.l] = '\0';
+         f = out.s;
+      }
+
+      /* Avoid overwriting of existing files */
+      while((fp = Fopen(f, "wx")) == NULL){
+         int e;
+
+         if((e = errno) != EEXIST){
+            n_err(_("Cannot open \"%s\": %s\n"), f, strerror(e));
+            break;
+         }
+
+         if(ip->m_partstring != NULL)
+            f = savecatsep(f, '#', ip->m_partstring);
+         else
+            f = savecat(f, "#.");
+      }
    }
 jleave:
    NYD_LEAVE;
