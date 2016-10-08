@@ -6214,6 +6214,8 @@ If this variable is set, any occurrence of any character of the given
 value that exists in the path will be replaced by the first member of
 the value; an empty value will cause the default to be used, it is
 .Ql /. .
+If not set, we will reuse the first hierarchy separator character that
+is discovered in a user-given mailbox name.
 .
 .Mx Va imap-keepalive
 .It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive

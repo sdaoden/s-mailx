@@ -220,7 +220,7 @@
 #define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
 /* The default IMAP directory separator ([0] is used as a replacer, too) */
-#define IMAP_DELIM      "/."
+#define n_IMAP_DELIM    "/."
 
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"

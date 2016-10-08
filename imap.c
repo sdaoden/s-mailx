@@ -272,7 +272,14 @@ imap_delim_init(struct mailbox *mp, struct url const *urlp){
    if((cp = xok_vlook(imap_delim, urlp, OXM_ALL)) != NULL){
       i = strlen(cp);
 
+      if(i == 0){
+         cp = n_IMAP_DELIM;
+         i = sizeof(n_IMAP_DELIM) -1;
+         goto jcopy;
+      }
+
       if(i < NELEM(mp->mb_imap_delim))
+jcopy:
          memcpy(&mb.mb_imap_delim[0], cp, i +1);
       else
          n_err(_("*imap-delim* for %s too long: %s\n"),
@@ -283,14 +290,17 @@ imap_delim_init(struct mailbox *mp, struct url const *urlp){
 
 static char const *
 imap_normalize_path(struct mailbox *mp, char const *cp){ /* TODO btw: no utf7 */
-   char *rv_base, *rv, dc, dc2, c, lc;
+   char *rv_base, *rv, dc2, dc, c, lc;
    char const *dcp;
    NYD2_ENTER;
 
-   if(mp == NULL || (dcp = &mp->mb_imap_delim[0])[0] == '\0')
-      dcp = "/.";/*IMAP_DELIM;*/
-   dc = *dcp++;
-   dc2 = *dcp;
+   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean "use
+    * exactly what i have specified" */
+   dc2 = '\0';
+   if(mp == NULL)
+      dcp = n_IMAP_DELIM;
+   else if((dc = *(dcp = &mp->mb_imap_delim[0])) != '\0')
+      dc2 = *++dcp;
 
    /* Plain names don't need path quoting */
    /* C99 */{
@@ -300,7 +310,12 @@ imap_normalize_path(struct mailbox *mp, char const *cp){ /* TODO btw: no utf7 */
       for(cpx = cp;; ++cpx)
          if((c = *cpx) == '\0')
             goto jleave;
-         else if(c == dc)
+         else if(dc == '\0'){
+            if(strchr(n_IMAP_DELIM, c)){
+               dc = c;
+               break;
+            }
+         }else if(c == dc)
             break;
          else if(dc2 && strchr(dcp, c) != NULL)
             break;
@@ -1346,7 +1361,7 @@ jduppass:
       imap_delim_init(&mb, urlp);
       mb.mb_imap_mailbox = sstrdup(imap_normalize_path(&mb, urlp->url_path.s));
       initbox(savecatsep(urlp->url_p_eu_h_p,
-         (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : IMAP_DELIM[0]),
+         (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
          mb.mb_imap_mailbox));
    }
    mb.mb_type = MB_VOID;
