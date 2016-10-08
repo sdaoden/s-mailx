@@ -272,6 +272,9 @@
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define QUOTE_TAB_SPACES 8
 
+/* Smells fishy after, or asks for shell expansion, dependent on context */
+#define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
+
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE    420000
 

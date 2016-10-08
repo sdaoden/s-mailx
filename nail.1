@@ -5183,29 +5183,38 @@ variable is set.
 .Mx
 .It Ic write
 (w) For conventional messages the body without all headers is written.
+The original message is never marked for deletion in the originating
+mail folder.
 The output is decrypted and converted to its native format as necessary.
 If the output file exists, the text is appended.
 If a message is in MIME multipart format its first part is written to
-the specified file as for conventional messages,
-and the user is asked for a filename to save each other part.
-For convience saving of each part may be skipped by giving an empty value;
-the same result can also be achieved by writing it to
-.Pa /dev/null .
-For the second and subsequent parts a leading
-.Ql |
-character causes the part to be piped to the remainder of the user input
-interpreted as a shell command;
-otherwise the user input is expanded as usually for folders,
-e.g., tilde expansion is performed.
-In non-interactive mode, only the parts of the multipart message
-that have a filename given in the part header are written,
-the others are discarded.
-The original message is never marked for deletion in the originating
-mail folder.
-For attachments,
-the contents of the destination file are overwritten if the file
-previously existed.
+the specified file as for conventional messages, handling of the remains
+depends on the execution mode.
 No special handling of compressed files is performed.
+.Pp
+In interactive mode the user is consecutively asked for the filenames of
+the processed parts.
+For convience saving of each part may be skipped by giving an empty
+value, the same result as writing it to
+.Pa /dev/null .
+Shell piping the part content by specifying a leading vertical bar
+.Ql |
+character for the filename is supported.
+Other user input is expanded as usually for folders, e.g., tilde
+expansion is performed, and contents of the destination file are
+overwritten if the file previously existed.
+.Pp
+\*(ID In non-interactive mode any part which does not specify a filename
+is ignored, and suspicious parts of filenames of the remaining parts are
+URL percent encoded (as via
+.Ic urlencode )
+to prevent injection of malicious character sequences, resulting in
+a filename that will be written into the current directory.
+Existing files won't be overwritten, instead the part number or
+a dot are appended after a number sign
+.Ql #
+to the name until file creation succeeds (or fails due to other
+reasons).
 .
 .Mx
 .It Ic xit
