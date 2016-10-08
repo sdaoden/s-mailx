@@ -162,7 +162,8 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
       ibox = NULL;
    }
 
-   if (force || ((cp = ibox) == NULL && (cp = ok_vlook(MAIL)) == NULL))
+   if (force || (((cp = ibox) == NULL || *cp == '\0') &&
+         (cp = ok_vlook(MAIL)) == NULL))
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
    else
 jcopy:

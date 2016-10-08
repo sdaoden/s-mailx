@@ -2649,7 +2649,8 @@ argument:
 (percent sign) means the invoking user's system mailbox, which either is
 the (itself expandable)
 .Va inbox
-if that is set, the standardized absolute pathname indicating
+if that is set (\*(ID and non-empty), the standardized absolute pathname
+indicated by
 .Ev MAIL
 if that is set, or a builtin compile-time default otherwise.
 (\*(OB For IMAP folders only, and only if
@@ -6246,6 +6247,9 @@ If this is set it will be used for expansions of
 see
 .Ic file
 for more.
+\*(ID IMAP users may set this to the empty string to force bypassing the
+special handling of
+.Va folder .
 The value supports a subset of filename expansions itself.
 .
 .Mx
