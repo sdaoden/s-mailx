@@ -2146,16 +2146,17 @@ enum argtype {
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */
    ARG_F          = 1u<< 5,   /* Is a conditional command */
-   ARG_H          = 1u<< 6,   /* Never place in history */
-   ARG_I          = 1u<< 7,   /* Interactive command bit */
-   ARG_M          = 1u<< 8,   /* Legal from send mode bit */
-   ARG_P          = 1u<< 9,   /* Autoprint dot after command */
-   ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
-   ARG_S          = 1u<<11,   /* Cannot be called unless PS_STARTED (POSIX) */
-   ARG_T          = 1u<<12,   /* Is a transparent command */
-   ARG_V          = 1u<<13,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<14,   /* Invalid when read only bit */
-   ARG_O          = 1u<<15    /* OBSOLETE()d command */
+   ARG_G          = 1u<< 6,   /* Is supposed to produce "gabby" history */
+   ARG_H          = 1u<< 7,   /* Never place in `history' */
+   ARG_I          = 1u<< 8,   /* Interactive command bit */
+   ARG_M          = 1u<< 9,   /* Legal from send mode bit */
+   ARG_P          = 1u<<10,   /* Autoprint dot after command */
+   ARG_R          = 1u<<11,   /* Cannot be called from collect / recursion */
+   ARG_S          = 1u<<12,   /* Cannot be called unless PS_STARTED (POSIX) */
+   ARG_T          = 1u<<13,   /* Is a transparent command */
+   ARG_V          = 1u<<14,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<15,   /* Invalid when read only bit */
+   ARG_O          = 1u<<16    /* OBSOLETE()d command */
 };
 
 enum gfield {

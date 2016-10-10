@@ -45,6 +45,7 @@
 #define ARG_ARGMASK  ARG_ARGMASK
 #define A            ARG_A
 #define F            ARG_F
+#define G            ARG_G
 #define H            ARG_H
 #define I            ARG_I
 #define M            ARG_M
@@ -129,7 +130,7 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | R | WYRALIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (M | WYRALIST), 0, 1000
+   { "set", &c_set, (G | M | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -199,9 +200,9 @@
      DS(N_("Forward <message> to <address>")) },
    { "fwd", &c_forward, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Forward <message> to <address>")) },
-   { "edit", &c_editor, (A | I | S | MSGLIST), 0, MMNORM
+   { "edit", &c_editor, (G | A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
-   { "echo", &c_echo, (H | M | WYSHLIST), 0, 1000
+   { "echo", &c_echo, (G | M | WYSHLIST), 0, 1000
      DS(N_("Echo the given arguments (wysh: after expanding them)")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
@@ -221,13 +222,13 @@
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | S | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
-   { "if", &c_if, (F | M | RAWLIST), 1, 1000
+   { "if", &c_if, (G | F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "else", &c_else, (F | M | RAWLIST), 0, 0
+   { "else", &c_else, (G| F | M | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "elif", &c_elif, (F | M | RAWLIST), 1, 1000
+   { "elif", &c_elif, (G| F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "endif", &c_endif, (F | M | RAWLIST), 0, 0
+   { "endif", &c_endif, (G| F | M | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate address list for the invoking user")) },
@@ -359,13 +360,13 @@
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (M | WYRALIST), 1, 1000
+   { "varshow", &c_varshow, (G | M | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (I | M | WYRALIST), 1, 1000
+   { "varedit", &c_varedit, (G | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlencode", &c_urlencode, (H | M | WYRALIST), 1, 1000
+   { "urlencode", &c_urlencode, (G | M | WYRALIST), 1, 1000
      DS(N_("Encode <string-list> for usage in an URL")) },
-   { "urldecode", &c_urldecode, (H | M | WYRALIST), 1, 1000
+   { "urldecode", &c_urldecode, (G | M | WYRALIST), 1, 1000
      DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
@@ -408,7 +409,7 @@
    { "uncolour", &c_uncolour, (M | WYSHLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (M | WYSHLIST), 2, 1000
+   { "environ", &c_environ, (G | M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
 #ifdef c_memtrace
@@ -431,6 +432,7 @@
 #undef ARG_ARGMASK
 #undef A
 #undef F
+#undef G
 #undef H
 #undef I
 #undef M

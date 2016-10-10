@@ -78,7 +78,7 @@ struct a_lex_eval_ctx{
    ui32_t le_line_size;          /* May be used to store line memory size */
    bool_t le_is_recursive;       /* Evaluation in evaluation? (collect ~:) */
    ui8_t __dummy[3];
-   bool_t le_add_history;        /* Enter (final) command in history? */
+   bool_t le_add_history;        /* Add command to history (TRUM1=gabby)? */
    char const *le_new_content;   /* History: reenter line, start with this */
 };
 
@@ -846,9 +846,9 @@ je96:
       evp->le_new_content = cp;
       goto jleave0;
    }
-   /* TODO v15 with PS_MSGLIST_GABBY the history entry is at least gabby */
-   if(!(cmd->lc_argtype & ARG_H) && !(pstate & PS_MSGLIST_GABBY))
-      evp->le_add_history = TRU1;
+   if(!(cmd->lc_argtype & ARG_H))
+      evp->le_add_history = (((cmd->lc_argtype & ARG_G) ||
+            (pstate & PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
 jleave:
    /* Exit the current source file on error TODO what a mess! */
@@ -1297,7 +1297,7 @@ jreadline:
             goto jreadline;
          /* *Can* happen since _evaluate() n_unstack()s on error! XXX no more */
          if (temporary_orig_line != NULL)
-            n_tty_addhist(temporary_orig_line, !ev.le_add_history);
+            n_tty_addhist(temporary_orig_line, (ev.le_add_history != TRU1));
       }
 
       if(pstate & PS_EXIT)
