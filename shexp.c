@@ -111,7 +111,7 @@ struct a_shexp_quote_lvl{
 };
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */
-static char * _findmail(char const *user, bool_t force);
+static char *a_shexp_findmail(char const *user, bool_t force);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
@@ -136,8 +136,7 @@ static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp,
                struct a_shexp_quote_lvl *sqlp);
 
 static char *
-_findmail(char const *user, bool_t force)
-{
+a_shexp_findmail(char const *user, bool_t force){
    char *rv;
    char const *cp;
    NYD_ENTER;
@@ -149,7 +148,7 @@ _findmail(char const *user, bool_t force)
       memcpy(rv, VAL_MAIL, i = sizeof(VAL_MAIL));
       rv[i] = '/';
       memcpy(&rv[++i], user, ul +1);
-   } else if ((rv = fexpand(cp, FEXP_NSHELL)) == NULL)
+   }else if((rv = fexpand(cp, FEXP_NSPECIAL|FEXP_NFOLDER|FEXP_NSHELL)) == NULL)
       rv = savestr(cp);
    NYD_LEAVE;
    return rv;
@@ -950,34 +949,42 @@ fexpand(char const *name, enum fexp_mode fexpm)
    if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
       res = UNCONST(name);
 
+   if(!(fexpm & FEXP_NSPECIAL)){
 jnext:
-   dyn = FAL0;
-   switch (*res) {
-   case '%':
-      if (res[1] == ':' && res[2] != '\0') {
-         res = &res[2];
+      dyn = FAL0;
+      switch (*res) {
+      case '%':
+         if(res[1] == ':' && res[2] != '\0')
+            res = &res[2];
+         else{
+            bool_t force;
+
+            force = (res[1] != '\0');
+            res = a_shexp_findmail((force ? &res[1] : myname), force);
+            if(force)
+               goto jislocal;
+         }
          goto jnext;
-      }
-      res = _findmail((res[1] != '\0' ? res + 1 : myname), (res[1] != '\0'));
-      goto jislocal;
-   case '#':
-      if (res[1] != '\0')
+      case '#':
+         if (res[1] != '\0')
+            break;
+         if (prevfile[0] == '\0') {
+            n_err(_("No previous file\n"));
+            res = NULL;
+            goto jleave;
+         }
+         res = prevfile;
+         goto jislocal;
+      case '&':
+         if (res[1] == '\0')
+            res = ok_vlook(MBOX);
          break;
-      if (prevfile[0] == '\0') {
-         n_err(_("No previous file\n"));
-         res = NULL;
-         goto jleave;
       }
-      res = prevfile;
-      goto jislocal;
-   case '&':
-      if (res[1] == '\0')
-         res = ok_vlook(MBOX);
-      break;
    }
 
    /* POSIX: if *folder* unset or null, "+" shall be retained */
-   if (*res == '+' && *(cp = folder_query()) != '\0') {
+   if (!(fexpm & FEXP_NFOLDER) && *res == '+' &&
+         *(cp = folder_query()) != '\0') {
       res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
       dyn = TRU1;
 

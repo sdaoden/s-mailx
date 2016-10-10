@@ -730,7 +730,8 @@ folder_query(void){
       /* Expand the *folder*; skip %: prefix for simplicity of use */
       if(cp[0] == '%' && cp[1] == ':')
          cp += 2;
-      if((err = (cp = fexpand(cp, FEXP_NSHELL)) == NULL) || *cp == '\0')
+      if((err = (cp = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
+            ) == NULL) || *cp == '\0')
          goto jset;
 
       switch(which_protocol(cp)){

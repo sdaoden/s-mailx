@@ -886,12 +886,14 @@ enum fedit_mode {
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
    FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
-   FEXP_LOCAL = 1<<1,         /* Result must be local file/maildir */
-   FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
-   FEXP_SILENT = 1<<3,        /* Don't print but only return errors */
-   FEXP_MULTIOK = 1<<4,       /* Expansion to many entries is ok */
-   FEXP_NSHELL = 1<<5,        /* Don't do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1<<6           /* ..not even $VAR expansion */
+   FEXP_SILENT = 1<<1,        /* Don't print but only return errors */
+   FEXP_MULTIOK = 1<<2,       /* Expansion to many entries is ok */
+   FEXP_LOCAL = 1<<3,         /* Result must be local file/maildir */
+   FEXP_NSHORTCUT = 1<<4,     /* Don't expand shortcuts */
+   FEXP_NSPECIAL = 1<<5,      /* No %,#,& specials */
+   FEXP_NFOLDER = 1<<6,       /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1<<7,        /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1<<8           /* ..not even $VAR expansion */
 };
 
 enum n_file_lock_type{
