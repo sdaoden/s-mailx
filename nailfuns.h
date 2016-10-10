@@ -2372,6 +2372,9 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
 
+/* `urlcodec' */
+FL int         c_urlcodec(void *v);
+
 /* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
  * Return NULL or something that can be converted to a struct name */
 FL char *      url_mailto_to_address(char const *mailtop);

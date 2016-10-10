@@ -630,6 +630,39 @@ FL char *
    return n;
 }
 
+FL int
+c_urlcodec(void *v){
+   bool_t ispath;
+   char const **argv, *cp, *res;
+   NYD_ENTER;
+
+   if(*(cp = *(argv = v)) == 'p'){
+      if(!ascncasecmp(++cp, "ath", 3))
+         cp += 3;
+      ispath = TRU1;
+   }
+
+   if(is_prefix(cp, "encode")){
+      while((cp = *++argv) != NULL){
+         res = urlxenc(cp, ispath);
+         printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
+            cp, strlen(cp), res, strlen(res));
+      }
+   }else if(is_prefix(cp, "decode")){
+      while((cp = *++argv) != NULL){
+         res = urlxdec(cp);
+         printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
+            cp, strlen(cp), res, strlen(res));
+      }
+   }else{
+jeinval:
+      n_err(_("`urlcodec': invalid subcommand: %s\n"), *argv);
+      cp = NULL;
+   }
+   NYD_LEAVE;
+   return (cp != NULL ? OKAY : STOP);
+}
+
 FL char *
 url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    size_t i;

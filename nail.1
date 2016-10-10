@@ -2052,9 +2052,7 @@ and
 .Ql PASSWORD
 are specified they must be given in URL percent encoded form (RFC 3986;
 the commands
-.Ic urlencode
-and
-.Ic urldecode
+.Ic urlcodec
 may be helpful):
 .
 .Pp
@@ -3731,7 +3729,7 @@ contains special characters, in particular
 or
 .Ql % ,
 they must be escaped in URL notation \(en the command
-.Ic urlencode
+.Ic urlcodec
 can be used to show the necessary conversion.
 .
 .Mx
@@ -5127,18 +5125,29 @@ Same as
 .Ic unsort .
 .
 .Mx
-.It Ic urldecode
-Decode the given URL-encoded string arguments and show the results.
-Note the resulting strings may not be valid in the current locale, see
-.Ic urlencode .
-.
-.Mx
-.It Ic urlencode
-URL-encode the given arguments and show the results.
-Because the arguments effectively are in the character set of the
-current locale the results will vary accordingly unless the input solely
-consists of characters in the portable character set, see
+.It Ic urlcodec
+Perform URL percent codec operations, rather according to RFC 3986,
+on all given strings.
+This is character set agnostic and thus locale dependent, and it may
+decode bytes which are invalid in the current locale, unless the input
+solely consists of characters in the portable character set, see
 .Sx "Character sets" .
+The first argument specifies the operation:
+.Ar enc[ode]
+or
+.Ar dec[code]
+perform plain URL percent en- and decoding, respectively.
+.Ar p[ath]enc[ode]
+and
+.Ar p[ath]dec[ode]
+perform a slightly modified operation which should be better for
+pathnames: it doesn't allow a tilde
+.Ql ~ ,
+and will neither accept hyphen
+.Ql -
+nor dot
+.Ql .
+as an initial character.
 .
 .Mx
 .It Ic varedit
