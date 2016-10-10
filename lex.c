@@ -863,7 +863,7 @@ jreadline:
             goto jreadline;
          /* That *can* happen since evaluate() unstack()s on error! */
          if (temporary_orig_line != NULL)
-            tty_addhist(temporary_orig_line, !ev.ev_add_history);
+            tty_addhist(temporary_orig_line, (ev.ev_add_history != TRU1));
       }
    }
 
@@ -1113,8 +1113,9 @@ je96:
       evp->ev_new_content = cp;
       goto jleave0;
    }
-   if (!(com->argtype & ARG_H) && !(pstate & PS_MSGLIST_SAW_NO))
-      evp->ev_add_history = TRU1;
+   if (!(com->argtype & ARG_H))
+      evp->ev_add_history = (((com->argtype & ARG_G) ||
+            (pstate & PS_MSGLIST_SAW_NO)) ? TRUM1 : TRU1);
 
 jleave:
    /* Exit the current source file on error TODO what a mess! */
