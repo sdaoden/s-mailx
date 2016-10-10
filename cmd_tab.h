@@ -377,10 +377,12 @@
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | RAWLIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlencode", &c_urlencode, (G | M | RAWLIST), 1, 1000
-     DS(N_("Encode <string-list> for usage in an URL")) },
-   { "urldecode", &c_urldecode, (G | M | RAWLIST), 1, 1000
-     DS(N_("Decode the URL-encoded <URL-list> into strings")) },
+   { "urlcodec", &c_urlcodec, (G | M | RAWLIST), 2, 1000
+     DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <string-list>")) },
+      { "urlencode", &c_urlencode, (G | M | RAWLIST), 1, 1000
+        DS(N_("Encode <string-list> for usage in an URL")) },
+      { "urldecode", &c_urldecode, (G | M | RAWLIST), 1, 1000
+        DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "Folder", &c_File, (T | M | RAWLIST), 0, 1

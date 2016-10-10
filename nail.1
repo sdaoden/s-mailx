@@ -1762,12 +1762,12 @@ and
 .Ql PASSWORD
 are specified as part of an URL they must be given in URL percent
 encoded (RFC 3986) form \(en the command
-.Ic urlencode
+.Ic urlcodec
 can be used to perform the encoding and show the encoded value.
 (This doesn't really conform to any standard, but for one it isn't
 used for any data exchange over the internet, and second it's easier for
 users to simply call
-.Ic urlencode
+.Ic urlcodec
 on a string and use that instead of having to deal with several
 different standards.)
 On the other hand, values given in variables are expected not to be URL
@@ -2767,7 +2767,7 @@ contains special characters, in particular
 or
 .Ql % ,
 they must be escaped in URL notation \(en the command
-.Ic urlencode
+.Ic urlcodec
 can be used to show the necessary conversion.
 The optional `path' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
@@ -4085,12 +4085,29 @@ Same as
 .Ic unsort .
 .
 .Mx
-.It Ic urldecode
-Decode the given URL-encoded string arguments and show the results.
-.
-.Mx
-.It Ic urlencode
-URL-encode the given arguments and show the results.
+.It Ic urlcodec
+Perform URL percent codec operations, rather according to RFC 3986,
+on all given strings.
+This is character set agnostic and thus locale dependent, and it may
+decode bytes which are invalid in the current locale, unless the input
+solely consists of characters in the portable character set, see
+.Sx "Character sets" .
+The first argument specifies the operation:
+.Ar enc[ode]
+or
+.Ar dec[code]
+perform plain URL percent en- and decoding, respectively.
+.Ar p[ath]enc[ode]
+and
+.Ar p[ath]dec[ode]
+perform a slightly modified operation which should be better for
+pathnames: it doesn't allow a tilde
+.Ql ~ ,
+and will neither accept hyphen
+.Ql -
+nor dot
+.Ql .
+as an initial character.
 .
 .Mx
 .It Ic varedit
@@ -4166,7 +4183,7 @@ overwritten if the file previously existed.
 \*(ID In non-interactive mode any part which does not specify a filename
 is ignored, and suspicious parts of filenames of the remaining parts are
 URL percent encoded (as via
-.Ic urlencode )
+.Ic urlcodec )
 to prevent injection of malicious character sequences, resulting in
 a filename that will be written into the current directory.
 Existing files won't be overwritten, instead the part number or
@@ -8058,7 +8075,7 @@ set from="Your Name <youremail@domain>"
 
 # It may be necessary to set hostname and/or smtp-hostname
 # if the "SERVER" of smtp and "domain" of from don't match.
-# The `urlencode' command can be used to encode USER and PASS
+# The `urlcodec' command can be used to encode USER and PASS
 set smtp=(smtp[s]/submission)://[USER[:PASS]@]SERVER[:PORT] \e
     smtp-auth=login/plain... \e
     smtp-use-starttls

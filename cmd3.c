@@ -1404,6 +1404,8 @@ c_urlencode(void *v) /* XXX IDNA?? */
    char **ap;
    NYD_ENTER;
 
+   OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
+
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxenc(in, FAL0);
 
@@ -1419,6 +1421,8 @@ c_urldecode(void *v) /* XXX IDNA?? */
 {
    char **ap;
    NYD_ENTER;
+
+   OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
 
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxdec(in);
