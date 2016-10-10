@@ -651,7 +651,9 @@ jnamesearch_sepfree:
       for(i = 0; i < msgCount; ++i){
          struct a_message_coltab const *colp;
 
-         if((mp = &message[i])->m_flag & MMARK)
+         if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
+            continue;
+         if(!a_message_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
             continue;
 
          for(colp = a_message_coltabs;
