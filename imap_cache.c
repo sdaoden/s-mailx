@@ -663,7 +663,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      cp = sp = urlxdec(dp->d_name);
+      cp = sp = imap_path_decode(urlxdec(dp->d_name), NULL);
       for (bp = base; *bp && *bp == *sp; bp++)
          sp++;
       if (*bp)

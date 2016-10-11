@@ -265,6 +265,8 @@
      DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
+   { "imapcodec", &c_imapcodec, (G | M | RAWLIST), 2, 1000
+     DS(N_("IMAP mailbox name <enc[ode]|dec[ode]> <string-list>")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0

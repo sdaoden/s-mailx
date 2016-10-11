@@ -1043,7 +1043,7 @@ FL struct str *
  * UTF-8
  */
 
-#ifdef HAVE_NATCH_CHAR
+#if defined HAVE_NATCH_CHAR || defined HAVE_IMAP
 FL ui32_t
 n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
 {
@@ -1098,9 +1098,9 @@ jerr:
    c = UI32_MAX;
    goto jleave;
 }
-#endif /* HAVE_NATCH_CHAR */
+#endif /* HAVE_NATCH_CHAR || IMAP */
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#if defined HAVE_FILTER_HTML_TAGSOUP || defined HAVE_IMAP
 FL size_t
 n_utf32_to_utf8(ui32_t c, char *buf)
 {
@@ -1156,7 +1156,7 @@ j0:
    NYD2_LEAVE;
    return l;
 }
-#endif /* HAVE_FILTER_HTML_TAGSOUP */
+#endif /* HAVE_FILTER_HTML_TAGSOUP || IMAP */
 
 /*
  * Our iconv(3) wrapper
