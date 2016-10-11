@@ -296,11 +296,8 @@ imap_normalize_path(struct mailbox *mp, char const *cp){ /* TODO btw: no utf7 */
 
    /* Unless we operate in free fly, honour a non-set *imap-delim* to mean "use
     * exactly what i have specified" */
-   dc2 = '\0';
-   if(mp == NULL)
-      dcp = n_IMAP_DELIM;
-   else if((dc = *(dcp = &mp->mb_imap_delim[0])) != '\0')
-      dc2 = *++dcp;
+   dcp = (mp == NULL) ? &n_IMAP_DELIM[0] : &mp->mb_imap_delim[0];
+   dc2 = ((dc = *dcp) != '\0') ? *++dcp : dc;
 
    /* Plain names don't need path quoting */
    /* C99 */{
