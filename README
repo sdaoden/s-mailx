@@ -26,8 +26,12 @@ the Programmer's Manual, 1971-1986":
     survive crashes, to exploit uucp, to screen out foreign freeloaders,
     or whatever. Not until v7 did the interface change (Thompson). [.]
 
-Where?
-------
+1. Where?
+2. Repository layout
+3. Authors
+
+1. Where?
+---------
 
 Our latest release can be downloaded at [1], and the fully cross-
 referenced manual can also be viewed as HTML online[2].
@@ -45,9 +49,9 @@ We have a mailing list[7] (later: [8]!) with moderated unsubscribed
 posting possibilities; subscriptions can be managed via web interface[9];
 Gmane added the ML their NNTP archive[10], and The Mail Archive archives
 a browser-accessible and searchable web version[11] -- thank you!
-Commits to the [stable/*] and [master] branches will be posted to [12],
-and announcements will also be posted to [13], both are receive-only
-mailing-lists.
+Commits to the [master], [release/*] and [stable/*] branches will be
+posted to [12], and announcements will also be posted to [13], both are
+receive-only mailing-lists.
 
   [7] s-nail-users@lists.sourceforge.net
   [8] s-mailx@sdaoden.eu
@@ -66,8 +70,8 @@ Thank you!
 
   [+1] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
 
-Repository layout
------------------
+2. Repository layout
+--------------------
 
 - [release/*]
     A new branch within release/ is created for every release, e.g.,
@@ -160,8 +164,8 @@ And then, assuming the last had been done:
   $ git log --oneline --show-signature --max-count=1 HEAD
   $ make all && sudo make install
 
-AUTHORS
--------
+3. Authors
+----------
 
 Unix mail seems to have been written mostly by Ken Thompson.
 
