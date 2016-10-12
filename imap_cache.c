@@ -95,7 +95,6 @@ static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
 {
    char *cachedir, *eaccount, *ename, *res;
-   char const *emailbox;
    int resz;
    NYD2_ENTER;
 
@@ -105,21 +104,26 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
+      res = NULL;
+
       if ((cachedir = ok_vlook(imap_cache)) == NULL ||
-            (cachedir = file_expand(cachedir)) == NULL) {
-         res = NULL;
+            (cachedir = file_expand(cachedir)) == NULL)
          goto jleave;
-      }
       eaccount = urlxenc(mp->mb_imap_account, TRU1);
-      if (box)
-         emailbox = urlxenc(box, TRU1);
-      else if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-         emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
-      else
-         emailbox = "INBOX";
+
+      if (box != NULL || asccasecmp(box = mp->mb_imap_mailbox, "INBOX")) {
+         bool_t err;
+
+         box = imap_path_encode(box, &err);
+         if(err)
+            goto jleave;
+         box = urlxenc(box, TRU1);
+      } else
+         box = "INBOX";
+
       res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
-            strlen(emailbox) + strlen(ename) + 4);
-      snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, emailbox,
+            strlen(box) + strlen(ename) + 4);
+      snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
    }
 jleave:
@@ -431,10 +435,14 @@ clean(struct mailbox *mp, struct cw *cw)
          (cachedir = file_expand(cachedir)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-      emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
-   else
-      emailbox = "INBOX";
+   if (asccasecmp(emailbox = mp->mb_imap_mailbox, "INBOX")) {
+      bool_t err;
+
+      emailbox = imap_path_encode(emailbox, &err);
+      if(err)
+         goto jleave;
+      emailbox = urlxenc(emailbox, TRU1);
+   }
    buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
          strlen(emailbox) + 40);
    if (makedir(cachedir) != OKAY)

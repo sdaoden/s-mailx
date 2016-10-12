@@ -1057,6 +1057,8 @@ FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
  */
 
 #ifdef HAVE_IMAP
+/* The former returns the input again if no conversion is necessary */
+FL char const *imap_path_encode(char const *path, bool_t *err_or_null);
 FL char *      imap_path_decode(char const *path, bool_t *err_or_null);
 
 FL char const * imap_fileof(char const *xcp);

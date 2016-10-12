@@ -345,21 +345,20 @@ jleave:
    return cp;
 }
 
-static char const *
+FL char const *
 imap_path_encode(char const *cp, bool_t *err_or_null){
    /* To a large extend inspired by dovecot(1) */
    struct str in, out;
    bool_t err_def;
    ui8_t *be16p_base, *be16p;
-   char const *cpx, *emsg;
-   iconv_t icd;
+   char const *emsg;
    char c;
    size_t l, l_plain;
    NYD2_ENTER;
 
    if(err_or_null == NULL)
       err_or_null = &err_def;
-   *err_or_null = TRU1;
+   *err_or_null = FAL0;
 
    /* Is this a string that works out as "plain US-ASCII"? */
    for(l = 0;; ++l)
@@ -368,42 +367,38 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
       else if(c <= 0x1F || c >= 0x7F || c == '&')
          break;
 
+   *err_or_null = TRU1;
+
    /* We need to encode in mUTF-7!  For that, we first have to convert the
     * local charset to UTF-8, then convert all characters which need to be
     * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
     * We can skip the UTF-8 conversion occasionally, however */
    if(!(options & OPT_UNICODE)){
-      if((icd = iconv_open(cpx = charset_get_lc(), "utf-8")) == (iconv_t)-1){
-         int e;
+      int ir;
+      iconv_t icd;
 
-         e = errno;
-         n_err(_("Cannot encode IMAP path %s from %s: %s\n"),
-            cp, cpx, strerror(e));
-         goto jleave;
-      }
+      emsg = N_("iconv(3) from locale charset to UTF-8 failed");
+
+      if((icd = iconv_open(charset_get_lc(), "utf-8")) == (iconv_t)-1)
+         goto jerr;
 
       out.s = NULL, out.l = 0;
       in.s = UNCONST(cp); /* logical */
       l += strlen(&cp[l]);
       in.l = l;
-      if(n_iconv_str(icd, &out, &in, NULL, FAL0) != 0){
-         if(out.s != NULL)
-            free(out.s);
-         cpx = cp;
-jeclean:
-         n_err(_("Cannot cleanly convert characters for IMAP path %s\n"), cpx);
-         goto jleave;
-      }
+      if((ir = n_iconv_str(icd, &out, &in, NULL, FAL0)) == 0)
+         cp = savestrbuf(out.s, out.l);
 
+      if(out.s != NULL)
+         free(out.s);
       iconv_close(icd);
+
+      if(ir != 0)
+         goto jerr;
 
       /*
        * So: Why not start all over again?
        */
-
-      /* Maybe a little bit whacky to simply replace that thing? */
-      cpx = cp = savestrbuf(out.s, out.l);
-      free(out.s);
 
       /* Is this a string that works out as "plain US-ASCII"? */
       for(l = 0;; ++l)
@@ -431,21 +426,23 @@ jeclean:
       c = *cp++;
       --l;
 
-      if(c > 0x1F && c < 0x7F)
-         out.s[out.l++] = c;
-      else if(c == '&'){
+      if(c == '&'){
          out.s[out.l + 0] = '&';
          out.s[out.l + 1] = '-';
          out.l += 2;
-      }else{
+      }else if(c > 0x1F && c < 0x7F)
+         out.s[out.l++] = c;
+      else{
          static char const mb64ct[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
          ui32_t utf32;
 
          /* Convert consecutive non-representables */
+         emsg = N_("Invalid UTF-8 sequence, cannot convert to UTF-32");
+
          for(be16p = be16p_base, --cp, ++l;;){
             if((utf32 = n_utf8_to_utf32(&cp, &l)) == UI32_MAX)
-               goto jeclean;
+               goto jerr;
 
             /* TODO S-CText: magic utf16 conversions */
             if(utf32 < 0x10000){
@@ -504,6 +501,9 @@ jeclean:
 jleave:
    NYD2_LEAVE;
    return cp;
+jerr:
+   n_err(_("Cannot encode IMAP path %s\n  %s\n"), cp, V_(emsg));
+   goto jleave;
 }
 
 FL char *
@@ -512,16 +512,15 @@ imap_path_decode(char const *path, bool_t *err_or_null){
    struct str in, out;
    bool_t err_def;
    ui8_t *mb64p_base, *mb64p, *mb64xp;
+   char const *emsg, *cp;
    char *rv_base, *rv, c;
    size_t l_orig, l, i;
-   char const *emsg, *cp;
    NYD2_ENTER;
 
    if(err_or_null == NULL)
       err_or_null = &err_def;
-   *err_or_null = TRU1;
+   *err_or_null = FAL0;
 
-   emsg = NULL;
    l = l_orig = strlen(path);
    rv = rv_base = savestrbuf(path, l << 1);
 
@@ -529,6 +528,9 @@ imap_path_decode(char const *path, bool_t *err_or_null){
    if(l == 0 || (cp = memchr(path, '&', l)) == NULL)
       goto jleave;
 
+   *err_or_null = TRU1;
+
+   emsg = N_("Invalid mUTF-7 encoding");
    i = PTR2SIZE(cp - path);
    rv += i;
    l -= i;
@@ -536,11 +538,15 @@ imap_path_decode(char const *path, bool_t *err_or_null){
 
    while(l > 0){
       if((c = *cp) != '&'){
+         if(c <= 0x1F || c >= 0x7F){
+            emsg = N_("Invalid mUTF-7: unencoded control or 8-bit byte");
+            goto jerr;
+         }
          *rv++ = c;
          ++cp;
          --l;
       }else if(--l == 0){
-         emsg = N_("incomplete input");
+         emsg = N_("Invalid mUTF-7: incomplete input");
          goto jerr;
       }else if(*++cp == '-'){
          *rv++ = '&';
@@ -571,8 +577,6 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             mb64p_base = salloc(l);
 
          /* Decode the mUTF-7 to what is indeed UTF-16BE */
-         emsg = N_("invalid mUTF-7 encoding");
-
          for(mb64p = mb64p_base;;){
             if(l < 3)
                goto jerr;
@@ -597,8 +601,11 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             if((*mb64p++ = mb64dt[(ui8_t)c]) < 0)
                goto jerr;
          }
-         /* xxx Don't check that this isn't continued by any other encoded
-          * xxx sequence but "&-" */
+
+         if(l >= 2 && cp[0] == '&' && cp[1] != '-'){
+            emsg = N_("Invalid mUTF-7, consecutive encoded sequences");
+            goto jerr;
+         }
 
          /* Yet halfway decoded mUTF-7, go remaining way to gain UTF-16BE */
          i = PTR2SIZE(mb64p - mb64p_base);
@@ -626,12 +633,12 @@ imap_path_decode(char const *path, bool_t *err_or_null){
          /* UTF-16BE we convert to UTF-8 */
          i = PTR2SIZE(mb64p - mb64p_base);
          if(i & 1){
-            emsg = N_("odd bytecount for UTF-16BE input");
+            emsg = N_("Odd bytecount for UTF-16BE input");
             goto jerr;
          }
 
          /* TODO S-CText: magic utf16 conversions */
-         emsg = N_("invalid UTF-16BE encoding");
+         emsg = N_("Invalid UTF-16BE encoding");
 
          for(mb64p = mb64p_base; i > 0;){
             ui32_t utf32;
@@ -649,7 +656,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             }else if(uhi > 0xDBFF)
                goto jerr;
             else if(i < 4){
-               emsg = N_("incomplete UTF-16BE surrogate pair");
+               emsg = N_("Incomplete UTF-16BE surrogate pair");
                goto jerr;
             }else{
                ulo = mb64p[2];
@@ -681,7 +688,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
       int ir;
       iconv_t icd;
 
-      emsg = N_("iconv(3) to locale charset failed");
+      emsg = N_("iconv(3) from UTF-8 to locale charset failed");
 
       if((icd = iconv_open("utf-8", charset_get_lc())) == (iconv_t)-1)
          goto jerr;
@@ -706,9 +713,7 @@ jleave:
    NYD2_LEAVE;
    return rv;
 jerr:
-   n_err(_("Cannot decode IMAP path %s\n"), path);
-   if(emsg != NULL)
-      n_err("  %s\n", V_(emsg));
+   n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
    memcpy(rv = rv_base, path, ++l_orig);
    goto jleave;
 }
@@ -2649,7 +2654,6 @@ c_imapcodec(void *v){
             cp, strlen(cp), (err ? "ERROR " : ""), res, strlen(res));
       }
    }else{
-jeinval:
       n_err(_("`imapcodec': invalid subcommand: %s\n"), *argv);
       cp = NULL;
    }
