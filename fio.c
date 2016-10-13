@@ -149,7 +149,7 @@ _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 
    /* Heirloom compatibility: an IMAP *folder* becomes "%" */
    if (!force && ibox == NULL && !strcmp(user, myname) &&
-         (cp = ok_vlook(folder)) != NULL && which_protocol(cp) == CPROTO_IMAP) {
+         (cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP) {
       OBSOLETE("no more expansion of *folder* in \"%\": please set *inbox*");
       goto jcopy;
    }
