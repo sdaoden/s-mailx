@@ -552,23 +552,25 @@ imap_path_decode(char const *path, bool_t *err_or_null){
          --l;
       }else{
          /* mUTF-7 -> UTF-16BE -> UTF-8 */
-         static si8_t const mb64dt[256] = {
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, 63,-1,-1,-1,
-            52,53,54,55, 56,57,58,59, 60,61,-1,-1, -1,-1,-1,-1,
-            -1, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
-            15,16,17,18, 19,20,21,22, 23,24,25,-1, -1,-1,-1,-1,
-            -1,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
-            41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-            -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
+         static ui8_t const mb64dt[256] = {
+#undef XX
+#define XX 0xFFu
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,62, 63,XX,XX,XX,
+            52,53,54,55, 56,57,58,59, 60,61,XX,XX, XX,XX,XX,XX,
+            XX, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
+            15,16,17,18, 19,20,21,22, 23,24,25,XX, XX,XX,XX,XX,
+            XX,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
+            41,42,43,44, 45,46,47,48, 49,50,51,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX
          };
 
          if(mb64p_base == NULL)
@@ -578,8 +580,8 @@ imap_path_decode(char const *path, bool_t *err_or_null){
          for(mb64p = mb64p_base;;){
             if(l < 3)
                goto jerr;
-            if((si8_t)(mb64p[0] = mb64dt[(ui8_t)cp[0]]) < 0 ||
-                  (si8_t)(mb64p[1] = mb64dt[(ui8_t)cp[1]]) < 0)
+            if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) == XX ||
+                  (mb64p[1] = mb64dt[(ui8_t)cp[1]]) == XX)
                goto jerr;
             mb64p += 2;
 
@@ -588,7 +590,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             l -= 3;
             if(c == '-')
                break;
-            if((si8_t)(*mb64p++ = mb64dt[(ui8_t)c]) < 0)
+            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
                goto jerr;
 
             if(l == 0)
@@ -596,9 +598,10 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             --l;
             if((c = *cp++) == '-')
                break;
-            if((si8_t)(*mb64p++ = mb64dt[(ui8_t)c]) < 0)
+            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
                goto jerr;
          }
+#undef XX
 
          if(l >= 2 && cp[0] == '&' && cp[1] != '-'){
             emsg = N_("Invalid mUTF-7, consecutive encoded sequences");
@@ -1648,7 +1651,8 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(struct url *urlp, enum fedit_mode fm, int volatile transparent)
+_imap_setfile1(struct url *urlp, enum fedit_mode volatile fm,
+   int volatile transparent)
 {
    struct sock so;
    struct ccred ccred;
