@@ -612,7 +612,6 @@ c_urlcodec(void *v){
             cp, strlen(cp), res, strlen(res));
       }
    }else{
-jeinval:
       n_err(_("`urlcodec': invalid subcommand: %s\n"), *argv);
       cp = NULL;
    }

@@ -173,8 +173,6 @@ static bool_t           _imap_rdonly;
 
 static void imap_delim_init(struct mailbox *mp, struct url const *urlp);
 static char const *imap_path_normalize(struct mailbox *mp, char const *cp);
-/* Returns the original string on error */
-static char const *imap_path_encode(char const *cp, bool_t *err_or_null);
 /* Returns NULL on error */
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
@@ -580,8 +578,8 @@ imap_path_decode(char const *path, bool_t *err_or_null){
          for(mb64p = mb64p_base;;){
             if(l < 3)
                goto jerr;
-            if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) < 0 ||
-                  (mb64p[1] = mb64dt[(ui8_t)cp[1]]) < 0)
+            if((si8_t)(mb64p[0] = mb64dt[(ui8_t)cp[0]]) < 0 ||
+                  (si8_t)(mb64p[1] = mb64dt[(ui8_t)cp[1]]) < 0)
                goto jerr;
             mb64p += 2;
 
@@ -590,7 +588,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             l -= 3;
             if(c == '-')
                break;
-            if((*mb64p++ = mb64dt[(ui8_t)c]) < 0)
+            if((si8_t)(*mb64p++ = mb64dt[(ui8_t)c]) < 0)
                goto jerr;
 
             if(l == 0)
@@ -598,7 +596,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
             --l;
             if((c = *cp++) == '-')
                break;
-            if((*mb64p++ = mb64dt[(ui8_t)c]) < 0)
+            if((si8_t)(*mb64p++ = mb64dt[(ui8_t)c]) < 0)
                goto jerr;
          }
 
@@ -2991,7 +2989,6 @@ imap_append(const char *xserver, FILE *fp)
    sighandler_type volatile saveint, savepipe;
    struct url url;
    struct ccred ccred;
-   char const * volatile mbx;
    enum okay rv = STOP;
    NYD_ENTER;
 
