@@ -606,10 +606,15 @@ c_urlcodec(void *v){
             cp, strlen(cp), res, strlen(res));
       }
    }else if(is_prefix(cp, "decode")){
+      struct str in, out;
+
       while((cp = *++argv) != NULL){
          res = urlxdec(cp);
+         in.l = strlen(in.s = UNCONST(res)); /* logical */
+         makeprint(&in, &out);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
-            cp, strlen(cp), res, strlen(res));
+            cp, strlen(cp), out.s, in.l);
+         free(out.s);
       }
    }else{
       n_err(_("`urlcodec': invalid subcommand: %s\n"), *argv);
