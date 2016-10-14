@@ -1861,7 +1861,8 @@ a_tty_kht(struct a_tty_line *tlp){
 
             exp = sub;
             shs = n_shexp_parse_token(NULL, &sub, n_SHEXP_PARSE_DRYRUN |
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
+                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
             if(sub.l != 0){
                size_t x;
 
@@ -1877,7 +1878,8 @@ a_tty_kht(struct a_tty_line *tlp){
                goto jnope;
             }
             n_shexp_parse_token(shoup, &exp,
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY);
+                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
             break;
          }
 

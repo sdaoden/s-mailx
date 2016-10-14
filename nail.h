@@ -1115,7 +1115,8 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
-   n__SHEXP_PARSE_LAST = 7
+   n_SHEXP_PARSE_QUOTE_AUTOCLOSE = 1<<8, /* Ignore an open quote at EOS */
+   n__SHEXP_PARSE_LAST = 8
 };
 
 enum n_shexp_state{

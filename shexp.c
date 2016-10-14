@@ -1587,7 +1587,7 @@ j_dollar_ungetc:
       }
    }
 
-   if(quotec != '\0'){
+   if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTOCLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)
          n_err(_("no closing quote: %.*s\n"), (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
