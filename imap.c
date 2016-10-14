@@ -543,13 +543,16 @@ imap_path_decode(char const *path, bool_t *err_or_null){
          *rv++ = c;
          ++cp;
          --l;
-      }else if(--l == 0){
-         emsg = N_("Invalid mUTF-7: incomplete input");
-         goto jerr;
-      }else if(*++cp == '-'){
+      }else if(--l == 0)
+         goto jeincpl;
+      else if(*++cp == '-'){
          *rv++ = '&';
          ++cp;
          --l;
+      }else if(l < 3){
+jeincpl:
+         emsg = N_("Invalid mUTF-7: incomplete input");
+         goto jerr;
       }else{
          /* mUTF-7 -> UTF-16BE -> UTF-8 */
          static ui8_t const mb64dt[256] = {
@@ -578,8 +581,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
 
          /* Decode the mUTF-7 to what is indeed UTF-16BE */
          for(mb64p = mb64p_base;;){
-            if(l < 3)
-               goto jerr;
+            assert(l >= 3);
             if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) == XX ||
                   (mb64p[1] = mb64dt[(ui8_t)cp[1]]) == XX)
                goto jerr;
@@ -600,6 +602,15 @@ imap_path_decode(char const *path, bool_t *err_or_null){
                break;
             if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
                goto jerr;
+
+            if(l < 3){
+               if(l > 0 && *cp == '-'){
+                  --l;
+                  ++cp;
+                  break;
+               }
+               goto jerr;
+            }
          }
 #undef XX
 
@@ -2649,11 +2660,16 @@ c_imapcodec(void *v){
             cp, strlen(cp), (err ? "ERROR " : ""), res, strlen(res));
       }
    }else if(is_prefix(cp, "decode")){
+      struct str in, out;
+
       while((cp = *++argv) != NULL){
          res = imap_path_normalize(NULL, cp);
          res = imap_path_decode(res, &err);
+         in.l = strlen(in.s = UNCONST(res)); /* logical */
+         makeprint(&in, &out);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s%s (%" PRIuZ " bytes)\n",
-            cp, strlen(cp), (err ? "ERROR " : ""), res, strlen(res));
+            cp, strlen(cp), (err ? "ERROR " : ""), out.s, in.l);
+         free(out.s);
       }
    }else{
       n_err(_("`imapcodec': invalid subcommand: %s\n"), *argv);
