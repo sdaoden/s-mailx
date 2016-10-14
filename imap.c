@@ -461,7 +461,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
             if(l == 0)
                break;
-            if((c = *cp) > 0x1F && c < 0x7F && c != '&')
+            if((c = *cp) > 0x1F && c < 0x7F)
                break;
          }
 
