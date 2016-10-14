@@ -11,7 +11,7 @@ export LC_ALL
 XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    SOCKETS='Network support' \
-      SSL='SSL/TLS (OpenSSL)' \
+      SSL='SSL/TLS (OpenSSL / LibreSSL)' \
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
@@ -1993,9 +1993,9 @@ int main(void){
 !
 
 if feat_yes SSL; then
-   if link_check openssl 'OpenSSL (new style *_client_method(3ssl))' \
+   if link_check ssl_tls 'TLS/SSL (new style *_client_method(3ssl))' \
       '#define HAVE_SSL
-      #define HAVE_OPENSSL 10100' '-lssl -lcrypto' << \!
+      #define HAVE_SSL_TLS 10100' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -2014,9 +2014,9 @@ int main(void){
 !
    then
       :
-   elif link_check openssl 'OpenSSL (old style *_client_method(3ssl))' \
+   elif link_check ssl_tls 'TLS/SSL (old style *_client_method(3ssl))' \
       '#define HAVE_SSL
-      #define HAVE_OPENSSL 10000' '-lssl -lcrypto' << \!
+      #define HAVE_SSL_TLS 10000' '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -2040,9 +2040,9 @@ int main(void){
       feat_bail_required SSL
    fi
 
-   if [ "${have_openssl}" = 'yes' ]; then
-      compile_check stack_of 'OpenSSL STACK_OF()' \
-         '#define HAVE_OPENSSL_STACK_OF' << \!
+   if [ "${have_ssl_tls}" = 'yes' ]; then
+      compile_check ssl_tls_stack_of 'TLS/SSL STACK_OF()' \
+         '#define HAVE_SSL_TLS_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2057,8 +2057,8 @@ int main(void){
 }
 !
 
-      link_check ossl_conf 'OpenSSL_modules_load_file() support' \
-         '#define HAVE_OPENSSL_CONFIG' << \!
+      link_check ssl_tls_conf 'OpenSSL_modules_load_file() support' \
+         '#define HAVE_SSL_TLS_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
@@ -2068,13 +2068,13 @@ int main(void){
 }
 !
 
-      link_check ossl_conf_ctx 'OpenSSL SSL_CONF_CTX support' \
-         '#define HAVE_OPENSSL_CONF_CTX' << \!
+      link_check ssl_tls_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
+         '#define HAVE_SSL_TLS_CONF_CTX' << \!
 #include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
-#if HAVE_OPENSSL < 10100
+#if HAVE_SSL_TLS < 10100
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
 #else
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
@@ -2093,8 +2093,8 @@ int main(void){
 }
 !
 
-      link_check rand_egd 'OpenSSL RAND_egd(3ssl)' \
-         '#define HAVE_OPENSSL_RAND_EGD' << \!
+      link_check ssl_tls_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
+         '#define HAVE_SSL_TLS_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
    return RAND_egd("some.where") > 0;
@@ -2102,7 +2102,7 @@ int main(void){
 !
 
       if feat_yes SSL_ALL_ALGORITHMS; then
-         if link_check ssl_all_algo 'OpenSSL all-algorithms support' \
+         if link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
             '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 int main(void){
@@ -2120,8 +2120,8 @@ int main(void){
       fi # SSL_ALL_ALGORITHMS
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check openssl_md5 'MD5 digest in OpenSSL' \
-            '#define HAVE_OPENSSL_MD5' << \!
+         run_check ssl_md5 'MD5 digest in the used crypto library' \
+            '#define HAVE_SSL_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2152,7 +2152,7 @@ else
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # feat_yes SSL
 
-if [ "${have_openssl}" = 'yes' ]; then
+if [ "${have_ssl_tls}" = 'yes' ]; then
    OPT_SMIME=1
 else
    OPT_SMIME=1

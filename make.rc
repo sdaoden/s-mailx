@@ -160,6 +160,8 @@ OPT_SOCKETS=yes
 # If $OPT_SOCKETS: support for Secure Socket Layer (Transport Layer
 # Security, TLS), i.e., encrypted socket connections; can be "require"d.
 # This needs the OpenSSL libraries (<http://www.openssl.org>).
+# This needs the OpenSSL (https://www.openssl.org) or LibreSSL
+# (http://www.libressl.org) libraries.
 OPT_SSL=yes
 
 # If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
@@ -208,8 +210,8 @@ OPT_AGENT=yes
 # use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
 # which the IDNA algorithm would convert to
 # <www.xn--rksmrgsa-0zap8p.example>.  :)  This either needs idnkit
-# (<https://www.nic.ad.jp/ja/idn/idnkit/download/>) or the GNU Libidn
-# library (<https://www.gnu.org/software/libidn/>).  It can be
+# (https://www.nic.ad.jp/ja/idn/idnkit/download/) or the GNU Libidn
+# library (https://www.gnu.org/software/libidn/).  It can be
 # "require"d.
 OPT_IDNA=yes
 

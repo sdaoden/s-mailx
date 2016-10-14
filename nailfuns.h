@@ -887,7 +887,7 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct name const * check_from_and_sender(struct name const *fromfield,
                         struct name const *senderfield);
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL_TLS
 FL char *      getsender(struct message *m);
 #endif
 
@@ -1440,36 +1440,6 @@ FL int         c_uncustomhdr(void *v);
 FL struct n_header_field * n_customhdr_query(void);
 
 /*
- * openssl.c
- */
-
-#ifdef HAVE_OPENSSL
-/*  */
-FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
-
-/*  */
-FL void        ssl_gen_err(char const *fmt, ...);
-
-/*  */
-FL int         c_verify(void *vp);
-
-/*  */
-FL FILE *      smime_sign(FILE *ip, char const *addr);
-
-/*  */
-FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
-
-FL struct message * smime_decrypt(struct message *m, char const *to,
-                     char const *cc, int signcall);
-
-/*  */
-FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
-
-#else /* HAVE_OPENSSL */
-# define c_verify                c_cmdnotsupp
-#endif
-
-/*
  * path.c
  */
 
@@ -1890,6 +1860,36 @@ FL int         c_certsave(void *v);
 FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 #else /* HAVE_SSL */
 # define c_certsave              c_cmdnotsupp
+#endif
+
+/*
+ * ssl_tls.c
+ */
+
+#ifdef HAVE_SSL_TLS
+/*  */
+FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
+
+/*  */
+FL void        ssl_gen_err(char const *fmt, ...);
+
+/*  */
+FL int         c_verify(void *vp);
+
+/*  */
+FL FILE *      smime_sign(FILE *ip, char const *addr);
+
+/*  */
+FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
+
+FL struct message * smime_decrypt(struct message *m, char const *to,
+                     char const *cc, bool_t is_a_verify_call);
+
+/*  */
+FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
+
+#else /* HAVE_SSL_TLS */
+# define c_verify                c_cmdnotsupp
 #endif
 
 /*
@@ -2405,7 +2405,7 @@ FL int         c_netrc(void *v);
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
-# ifdef HAVE_OPENSSL_MD5
+# ifdef HAVE_SSL_MD5
 #  define md5_ctx	               MD5_CTX
 #  define md5_init	            MD5_Init
 #  define md5_update	            MD5_Update

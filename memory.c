@@ -571,11 +571,6 @@ c_memtrace(void *v)
       }
    }
 
-# if defined HAVE_OPENSSL && defined HAVE_OPENSSL_MEMHOOKS
-   fprintf(fp, "OpenSSL leak report:\n");
-      CRYPTO_mem_leaks_fp(fp);
-# endif
-
    page_or_print(fp, lines);
    Fclose(fp);
    v = NULL;

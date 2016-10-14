@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ OpenSSL functions. TODO this needs an overhaul -- there _are_ stack leaks!?
+ *@ TLS/SSL functions. TODO this needs an overhaul -- there _are_ stack leaks!?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -37,14 +37,14 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE openssl
+#define n_FILE ssl_tls
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL_TLS
 #include <sys/socket.h>
 
 #include <openssl/crypto.h>
@@ -56,7 +56,7 @@ EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef HAVE_OPENSSL_CONFIG
+#ifdef HAVE_SSL_TLS_CONFIG
 # include <openssl/conf.h>
 #endif
 
@@ -72,7 +72,7 @@ EMPTY_FILE()
 /* Update manual on changes (for all those)! */
 #define SSL_DISABLED_PROTOCOLS "-SSLv2"
 
-#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+#ifndef HAVE_SSL_TLS_CONF_CTX /* TODO obsolete the fallback */
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2     0
 # endif
@@ -97,13 +97,13 @@ EMPTY_FILE()
 # endif
 #endif
 
-#if HAVE_OPENSSL < 10100
+#if HAVE_SSL_TLS < 10100
 # define _SSL_CLIENT_METHOD() SSLv23_client_method()
 #else
 # define _SSL_CLIENT_METHOD() TLS_client_method()
 #endif
 
-#ifdef HAVE_OPENSSL_STACK_OF
+#ifdef HAVE_SSL_TLS_STACK_OF
 # define _STACKOF(X)          STACK_OF(X)
 #else
 # define _STACKOF(X)          /*X*/STACK
@@ -141,7 +141,7 @@ struct ssl_method { /* TODO obsolete */
    char const  sm_map[16];
 };
 
-#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+#ifndef HAVE_SSL_TLS_CONF_CTX /* TODO obsolete the fallback */
 struct ssl_protocol {
    char const  *sp_name;
    sl_i        sp_flag;
@@ -169,7 +169,7 @@ static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
 };
 
 /* Update manual on change! */
-#ifndef HAVE_OPENSSL_CONF_CTX /* TODO obsolete the fallback */
+#ifndef HAVE_SSL_TLS_CONF_CTX /* TODO obsolete the fallback */
 static struct ssl_protocol const _ssl_protocols[] = {
    {"ALL",     SSL_OP_NO_SSL_MASK},
    {"TLSv1.2", SSL_OP_NO_TLSv1_2},
@@ -231,7 +231,7 @@ static void       _ssl_init(void); /* TODO must return error! */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
 static void       _ssl_load_algos(void);
 #endif
-#if defined HAVE_OPENSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
+#if defined HAVE_SSL_TLS_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
 static void       _ssl_atexit(void);
 #endif
 
@@ -276,7 +276,7 @@ _ssl_rand_init(void){
 
    /* Shall use some external daemon? */
    if((cp = ok_vlook(ssl_rand_egd)) != NULL){
-#ifdef HAVE_OPENSSL_RAND_EGD
+#ifdef HAVE_SSL_TLS_RAND_EGD
       if((x = file_expand(cp)) != NULL && RAND_egd(cp = x) != -1){
          rv = TRU1;
          goto jleave;
@@ -340,7 +340,7 @@ jleave:
 static void
 _ssl_init(void)
 {
-#ifdef HAVE_OPENSSL_CONFIG
+#ifdef HAVE_SSL_TLS_CONFIG
    char const *cp;
 #endif
    NYD_ENTER;
@@ -352,7 +352,7 @@ _ssl_init(void)
    }
 
    /* Load openssl.cnf or whatever was given in *ssl-config-file* */
-#ifdef HAVE_OPENSSL_CONFIG
+#ifdef HAVE_SSL_TLS_CONFIG
    if (!(_ssl_state & SS_CONF_LOAD) &&
          (cp = ok_vlook(ssl_config_file)) != NULL) {
       ul_i flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
@@ -395,7 +395,7 @@ _ssl_load_algos(void)
 }
 #endif
 
-#if defined HAVE_OPENSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
+#if defined HAVE_SSL_TLS_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
 static void
 _ssl_atexit(void)
 {
@@ -404,7 +404,7 @@ _ssl_atexit(void)
    if (_ssl_state & SS_ALGO_LOAD)
       EVP_cleanup();
 # endif
-# ifdef HAVE_OPENSSL_CONFIG
+# ifdef HAVE_SSL_TLS_CONFIG
    if (_ssl_state & SS_CONF_LOAD)
       CONF_modules_free();
 # endif
@@ -481,7 +481,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_OPENSSL_CONF_CTX
+#ifdef HAVE_SSL_TLS_CONF_CTX
 static void *
 _ssl_conf_setup(SSL_CTX *ctxp)
 {
@@ -565,7 +565,7 @@ _ssl_conf_finish(void **confp, bool_t error)
    return rv;
 }
 
-#else /* HAVE_OPENSSL_CONF_CTX */
+#else /* HAVE_SSL_TLS_CONF_CTX */
 static void *
 _ssl_conf_setup(SSL_CTX* ctxp)
 {
@@ -655,7 +655,7 @@ _ssl_conf_finish(void **confp, bool_t error)
    UNUSED(error);
    return TRU1;
 }
-#endif /* !HAVE_OPENSSL_CONF_CTX */
+#endif /* !HAVE_SSL_TLS_CONF_CTX */
 
 static bool_t
 _ssl_load_verifications(SSL_CTX *ctxp)
@@ -1632,7 +1632,8 @@ jleave:
 }
 
 FL struct message *
-smime_decrypt(struct message *m, char const *to, char const *cc, int signcall)
+smime_decrypt(struct message *m, char const *to, char const *cc,
+   bool_t signcall)
 {
    struct message *rv;
    FILE *fp, *bp, *hp, *op;
@@ -1836,6 +1837,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif /* HAVE_OPENSSL */
+#endif /* HAVE_SSL_TLS */
 
 /* s-it-mode */

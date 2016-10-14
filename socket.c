@@ -48,7 +48,7 @@ EMPTY_FILE()
 # include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL_TLS
 # include <openssl/err.h>
 # include <openssl/rand.h>
 # include <openssl/ssl.h>
@@ -99,7 +99,7 @@ sclose(struct sock *sp)
          (*sp->s_onclose)();
       if (sp->s_wbuf != NULL)
          free(sp->s_wbuf);
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_SSL_TLS
       if (sp->s_use_ssl) {
          void *s_ssl = sp->s_ssl;
 
@@ -176,7 +176,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
       goto jleave;
    }
 
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_SSL_TLS
    if (sp->s_use_ssl) {
 jssl_retry:
       x = SSL_write(sp->s_ssl, data, sz);
@@ -196,7 +196,7 @@ jssl_retry:
       char o[512];
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_SSL_TLS
       if (sp->s_use_ssl)
          ssl_gen_err("%s", o);
       else
@@ -525,7 +525,7 @@ FL int
 
       if (sp->s_rbufptr == NULL ||
             PTRCMP(sp->s_rbufptr, >=, sp->s_rbuf + sp->s_rsz)) {
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_SSL_TLS
          if (sp->s_use_ssl) {
 jssl_retry:
             sp->s_rsz = SSL_read(sp->s_ssl, sp->s_rbuf, sizeof sp->s_rbuf);

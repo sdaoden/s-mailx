@@ -2001,7 +2001,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL_TLS
 FL char *
 getsender(struct message *mp)
 {

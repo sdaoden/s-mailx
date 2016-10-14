@@ -81,7 +81,7 @@
 # include <regex.h>
 #endif
 
-#ifdef HAVE_OPENSSL_MD5
+#ifdef HAVE_SSL_MD5
 # include <openssl/md5.h>
 #endif
 
@@ -1984,7 +1984,7 @@ struct sock {                 /* data associated with a socket */
    int         s_fd;          /* file descriptor */
 #ifdef HAVE_SSL
    int         s_use_ssl;     /* SSL is used */
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_SSL_TLS
    void        *s_ssl;        /* SSL object */
 # endif
 #endif
