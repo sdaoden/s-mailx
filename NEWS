@@ -5,6 +5,8 @@ In the following numbers in [] reference either the commit SHA1 hash or
 the name of a topic branch which relate to the NEWS entry;
 Likewise, numbers after an at-sign @ are mdocmx(7) manual anchor
 references which allow directly jumping to the given anchor.
+Likewise, but numbers after a number sign # refer to the web manual
+(courtesy of grohtml the manuals diverged in the meanwhile).
 Commits can be browsed by appending the commit hash to
   https://git.sdaoden.eu/cgit/s-nail.git/commit/?id=
 
@@ -21,6 +23,112 @@ and "NEW" are the two versions to be compared.
     while read c1 c2 c3 c4 c5 c6; do
       printf "%-24s: \$ git log --oneline --no-merges ${c1} ^${c2}\n" "${c6}";
     done
+
+v14.8.13 ("Cyrustrupidae"), 2016-10-19
+--------------------------------------
+
+We are happy to present you an Entomologic sensation, which
+counteracts the decline of life that can be seen all around us.
+Inspection of environments that mankind hasn't seen since ancient
+times reveiled a sofar undiscovered species of dung beetle: the
+Cyrustrupidae.
+
+Thanks to Stephen Isard, Ralph Corderoy, Jürgen (Juergen) Daubert,
+Lyndon Nerenberg and David Levine
+We welcome Lyndon Nerenberg and David Levine in THANKS.
+
+Apologies to Jürgen Daubert (false spelling of name in commit message).
+
+  S-nail will become S-mailx after v14.9, and all project resources
+  will move to www.sdaoden.eu with v14.9; only the ML remains hosted
+  at Sourceforge.net as of this writing.
+  We thank Sourceforge.net for hosting this project so many years!
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- We now support IMAP internationalized names.
+
+    ?0[tmail ]? imapc enc Trübe/Wölkchen
+     in: Trübe/Wölkchen (16 bytes)
+    out: Tr&APw-be/W&APY-lkchen (22 bytes)
+    ?0[tmail ]? imapcodec decode Tr&APw-be/W&APY-lkchen
+     in: Tr&APw-be/W&APY-lkchen (22 bytes)
+    out: Trübe/Wölkchen (16 bytes)
+    ?0[tmail ]? copy 1 +Trübe/Wölkchen
+    "imap://user1@localhost/Trübe/Wölkchen" [New file] 6850 bytes
+
+  Those who were used to get around the missing support by using
+  readily-encoded names have to update their resources because passing
+  in such a name will result in re-encoding.  [Quite a lot, see below]
+
+- The special handling of *folder*@382|#376 for IMAP boxes has been
+  deprecated after introduction of the new *inbox*@396|#_396 variable,
+  which will henceforth be regulary used for expansions of "%"
+  filenames.  If it is set to the empty string then _only_ that
+  special-casing of *folder* is bypassed, and the usual $MAIL /
+  compile-time mailspool search is applied. [c220e90,a324bf3]
+  (Stephen Isard, Jürgen Daubert)
+
+- Cyrus IMAP servers with their dot hierarchy delimiter should now be
+  supported.  The variable *imap-delim*@393|#_393 (and [-USER]@HOST
+  variants) will be used to normalize if set, otherwise the first seen
+  possible delimiter is used. [a65afca,9e23878,21568f8]
+  (Stephen Isard, Jürgen Daubert)
+
+    ?0[tmail ]? Fi+Trübe.............Wölkchen
+    IMAP error: Mailbox doesn't exist: Trübe.Wölkchen (0.000 + 0.000 secs).
+    #ERR#?1[tmail +Trübe.Wölkchen]? set imap-delim-user1@localhost=/.
+  Oh.  Mailbox changed.  Not before v15, sorry.
+    ?0[tmail +Trübe.Wölkchen]? Fi+Trübe.............Wölkchen
+    "+Trübe/Wölkchen": 1 message [Read only]
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+  44087f3 `z': add ^: goes to first screen; fix max calc for 0 modulos
+  1657626 Simplify *folder* (implicit trail solidus) (Stephen Isard, Ralph
+          Corderoy)
+  7a09af6 `write'++: !interactive: urlxenc() attachment paths (Ralph Corderoy)..
+
+If non-interactive batch mode would be commonly in use i would claim
+this to be a security fix, but not yet..  If messages are `write'n out
+in non-interactive mode then it is now ensured that attachments end in
+the current directory, that they don't overwrite yet existing files, and
+that shell pipes won't be executed (after the now applied name
+conversion the pipe command ends up as a normal filename).
+
+  c220e90 Add *inbox* (Stephen Isard, and Jürgen Daubert)..
+  a65afca Add *imap-delim{,-{{,USER@}HOST}}* (Stephen Isard, Jürgen Daubert)
+  8f0f225 IMAP: [a65afca] (Add *imap-delim{,-{{,USER@}HOST}}*) for real now
+
+All as above.
+
+  ba4f26f n_utf32_to_utf8(): fix upper limit (should be 0x10FFFF)
+  dfea333 page_or_print(): never use $PAGER unless startup complete
+  49fb63f `write'++: !interactive:.. But now, really (Lyndon Nerenberg, David
+          Levine)..
+
+As above.
+
+  fcd376f THANKS: David Levine and Lyndon Nerenberg
+  57c4ee3 cmd_tab.h: allow history for `unset', `unsetenv' (i.e.: tweak
+          [ec81a41])
+  9e23878 *imap-delim* if not set, use first delim user gave
+  a324bf3 *inbox*: if empty, only bypass *folder* to $MAIL or builtin default
+  202b1a6 Add `urlcodec', obsolete `url{en,de}code'
+  21568f8 *imap-delim*: aeh, just fix this even for mailbox==NULL
+  830f948 IMAP: add support for international mailbox names..
+  d015c46 IMAP: fix and tweak previous [830f948]
+  583a5bd IMAP cache: tweak previous two, i have forgotten an imap_path_decode()
+          call
+  2feab02 imap_path_decode(): better approach for [6121ff9]
+  36f06cc imap_path_decode(): fix corner case; `imapcodec': makeprint() when
+          decoding
+  b3803d5 `urlcodec': makeprint() when decoding
+  35506b0 imap_path_encode(): sigh.  Finally: do not simply include & in shifted
+          walk
+  f146b54 imap_path_{en,de}code(): fix iconv_open() to/from charset order
 
 v14.8.12 ("Bubas"), 2016-10-05  (v14.8.11 as of 2016-10-03 broken)
 ------------------------------------------------------------------
