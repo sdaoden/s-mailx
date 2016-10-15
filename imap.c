@@ -377,7 +377,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
       emsg = N_("iconv(3) from locale charset to UTF-8 failed");
 
-      if((icd = iconv_open(charset_get_lc(), "utf-8")) == (iconv_t)-1)
+      if((icd = iconv_open("utf-8", charset_get_lc())) == (iconv_t)-1)
          goto jerr;
 
       out.s = NULL, out.l = 0;
@@ -702,7 +702,7 @@ jeincpl:
 
       emsg = N_("iconv(3) from UTF-8 to locale charset failed");
 
-      if((icd = iconv_open("utf-8", charset_get_lc())) == (iconv_t)-1)
+      if((icd = iconv_open(charset_get_lc(), "utf-8")) == (iconv_t)-1)
          goto jerr;
 
       out.s = NULL, out.l = 0;
