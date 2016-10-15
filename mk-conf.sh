@@ -43,7 +43,7 @@ XOPTIONS="\
 # setlocale, C90AMEND1, NL_LANGINFO, wcwidth
 XOPTIONS_DETECT="\
    LOCALES='Locale support - printable characters etc. depend on environment' \
-   MBYTE_CHARSETS='Multibyte character sets' \
+   MULTIBYTE_CHARSETS='Multibyte character sets' \
    TERMINAL_CHARSET='Automatic detection of terminal character set' \
    WIDE_GLYPHS='Wide glyph support' \
 "
@@ -1710,7 +1710,7 @@ int main(void){
 !
 [ -n "${have_setlocale}" ] && OPT_LOCALES=1
 
-OPT_MBYTE_CHARSETS=0
+OPT_MULTIBYTE_CHARSETS=0
 OPT_WIDE_GLYPHS=0
 OPT_TERMINAL_CHARSET=0
 if [ -n "${have_setlocale}" ]; then
@@ -1732,7 +1732,7 @@ int main(void){
    return (mblen("\0", 1) == 0);
 }
 !
-   [ -n "${have_c90amend1}" ] && OPT_MBYTE_CHARSETS=1
+   [ -n "${have_c90amend1}" ] && OPT_MULTIBYTE_CHARSETS=1
 
    if [ -n "${have_c90amend1}" ]; then
       link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
