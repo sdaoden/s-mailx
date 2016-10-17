@@ -745,7 +745,7 @@ folder_query(void){
       }
 
       /* Prefix HOME as necessary */
-      if(*cp != '/'){
+      if(*cp != '/'){ /* XXX path_is_absolute() */
          size_t l1, l2;
          char const *home;
 
@@ -798,7 +798,7 @@ folder_query(void){
       if(!err){
          size_t i;
 
-         if(rv[(i = strlen(rv)) - 1] != '/'){
+         if((i = strlen(rv)) > 0 && rv[i - 1] != '/'){
             sp = n_string_reserve(sp, i + 1 +1);
             sp = n_string_push_buf(sp, rv, i);
             sp = n_string_push_c(sp, '/');
