@@ -766,30 +766,27 @@ folder_query(void){
       /* TODO Since our visual mailname is resolved via realpath(3) if available
        * TODO to avoid that we loose track of our currently open folder in case
        * TODO we chdir away, but still checks the leading path portion against
-       * TODO fold_query() to be able to abbreviate to the +FOLDER syntax if
+       * TODO folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
 #ifdef HAVE_REALPATH
-      /* C99 */{
+      assert(sp->s_len == 0 && sp->s_dat == NULL);
 # ifndef HAVE_REALPATH_NULL
-         sp = n_string_reserve(sp, PATH_MAX +1);
-# else
-         sp->s_dat = NULL;
+      sp = n_string_reserve(sp, PATH_MAX +1);
 # endif
 
-         if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
+      if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
 # ifdef HAVE_REALPATH_NULL
-            sp = n_string_assign_cp(sp, cp = sp->s_dat);
-            (free)(cp);
+         n_string_cp(sp = n_string_assign_cp(sp, cp = sp->s_dat));
+         (free)(cp);
 # endif
-            rv = sp->s_dat;
-         }else if(errno == ENOENT)
-            rv = cp;
-         else{
-            n_err(_("Can't canonicalize *folder*: %s\n"),
-               n_shexp_quote_cp(cp, FAL0));
-            err = TRU1;
-            rv = "";
-         }
+         rv = sp->s_dat;
+      }else if(errno == ENOENT)
+         rv = cp;
+      else{
+         n_err(_("Can't canonicalize *folder*: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         err = TRU1;
+         rv = "";
       }
       sp = n_string_drop_ownership(sp);
 #endif /* HAVE_REALPATH */
@@ -798,7 +795,7 @@ folder_query(void){
       if(!err){
          size_t i;
 
-         if((i = strlen(rv)) > 0 && rv[i - 1] != '/'){
+         if(rv[(i = strlen(rv)) - 1] != '/'){
             sp = n_string_reserve(sp, i + 1 +1);
             sp = n_string_push_buf(sp, rv, i);
             sp = n_string_push_c(sp, '/');
