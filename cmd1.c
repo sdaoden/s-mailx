@@ -1578,8 +1578,10 @@ c_folders(void *v)
    }else
       cp = folder_query();
 
-   run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, cp,
-      NULL, NULL, NULL);
+   rv = run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, cp,
+         NULL, NULL, NULL);
+   if(rv < 0)
+      rv = 1; /* XXX */
 jleave:
    NYD_LEAVE;
    return rv;
