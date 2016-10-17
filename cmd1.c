@@ -1403,13 +1403,16 @@ c_folders(void *v)
    if (which_protocol(name) == PROTO_IMAP) {
 #ifdef HAVE_IMAP
       imap_folders(name, *argv == NULL);
+      rv = 0;
 #else
       rv = c_cmdnotsupp(NULL);
 #endif
    } else {
       if ((cmd = ok_vlook(LISTER)) == NULL)
          cmd = XLISTER;
-      run_command(cmd, 0, -1, -1, name, NULL, NULL);
+      rv = run_command(cmd, 0, -1, -1, name, NULL, NULL);
+      if (rv < 0)
+         rv = 1;
    }
 jleave:
    NYD_LEAVE;
