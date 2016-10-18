@@ -450,10 +450,11 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
             }else{
                ui16_t s7e;
 
-               s7e = 0xD800u | ((utf32 - 0x10000) >> 10);
+               utf32 -= 0x10000;
+               s7e = 0xD800u | (utf32 >> 10);
                be16p[1] = s7e & 0xFF;
                be16p[0] = (s7e >>= 8, s7e &= 0xFF);
-               s7e = 0xDC00u | ((utf32 - 0x10000) & 0x03FF);
+               s7e = 0xDC00u | (utf32 &= 0x03FF);
                be16p[3] = s7e & 0xFF;
                be16p[2] = (s7e >>= 8, s7e &= 0xFF);
                be16p += 4;
@@ -675,16 +676,13 @@ jeincpl:
                ulo = mb64p[2];
                ulo <<= 8;
                ulo |= mb64p[3];
-               if(ulo < 0xDC00 || ulo > 0xDFFF){
+               if(ulo < 0xDC00 || ulo > 0xDFFF)
                   goto jerr;
-               }
 
-               uhi &= 0x03FF;
-               uhi <<= 10;
-               ulo &= 0x03FF;
-               uhi |= ulo;
-
-               utf32 = 0x10000u + uhi;
+               utf32 = (uhi &= 0x03FF);
+               utf32 <<= 10;
+               utf32 += 0x10000;
+               utf32 |= (ulo &= 0x03FF);
                mb64p += 4;
                i -= 4;
             }
