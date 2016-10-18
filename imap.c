@@ -520,7 +520,8 @@ imap_path_decode(char const *path, bool_t *err_or_null){
    *err_or_null = FAL0;
 
    l = l_orig = strlen(path);
-   rv = rv_base = savestrbuf(path, l << 1);
+   rv = rv_base = salloc(l << 1);
+   memcpy(rv, path, l +1);
 
    /* xxx Don't check for invalid characters from malicious servers */
    if(l == 0 || (cp = memchr(path, '&', l)) == NULL)
