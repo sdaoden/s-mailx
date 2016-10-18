@@ -47,7 +47,8 @@ Apologies to Jürgen Daubert (false spelling of name in commit message).
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- We now support IMAP internationalized names.
+- We now support IMAP internationalized names, to be "simulated" via the
+  new user command `imapcodec'@135|#_135:
 
     ?0[tmail ]? imapc enc Trübe/Wölkchen
      in: Trübe/Wölkchen (16 bytes)
@@ -81,6 +82,9 @@ NOTES, ChangeLog (packager-affine)
     #ERR#?1[tmail +Trübe.Wölkchen]? set imap-delim-user1@localhost=/.
   Oh.  Mailbox changed.  Not before v15, sorry.
     ?0[tmail +Trübe.Wölkchen]? Fi+Trübe.............Wölkchen
+    "+Trübe/Wölkchen": 1 message [Read only]
+    ?0[tmail +Trübe.Wölkchen]? unset imap-delim-user1@localhost
+    ?0[tmail +Trübe.Wölkchen]? Fi+Trübe/.............Wölkchen
     "+Trübe/Wölkchen": 1 message [Read only]
 
 git(1) shortlog (edited)
