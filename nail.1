@@ -1770,8 +1770,8 @@ users to simply call
 .Ic urlcodec
 on a string and use that instead of having to deal with several
 different standards.)
-On the other hand, values given in variables are expected not to be URL
-percent encoded.
+On the other hand, values given in variable names are expected not to be
+URL percent encoded.
 .
 .Pp
 Many variable options of \*(UA exist in multiple versions, called
@@ -2755,8 +2755,7 @@ The \*(OPally supported protocols are
 (POP3 with SSL/TLS encrypted transport).
 The
 .Ar [/path]
-part is valid only for IMAP; there it defaults to
-.Ar INBOX .
+part is valid only for IMAP.
 Also see the section
 .Sx "On URL syntax and credential lookup" .
 .Pp
@@ -2769,9 +2768,20 @@ or
 they must be escaped in URL notation \(en the command
 .Ic urlcodec
 can be used to show the necessary conversion.
+.Pp
 The optional `path' part applies to IMAP only;
 if it is omitted, the default `INBOX' is used.
-.Pp
+(IMAP paths undergo inspections and possible transformations before use
+(and the command
+.Ic imapcodec
+can be used to manually apply them to any given argument).
+Hierarchy delimiters are normalized, a step which is configurable via the
+.Va imap-delim
+variable chain, but defaults to the first seen delimiter otherwise.
+\*(UA supports internationalised IMAP names, and en- and decodes the
+names from and to the
+.Va ttycharset
+as necessary and possible.
 If \*(UA is connected to an IMAP server,
 a name of the form `@mailbox' refers to the `mailbox' on that server,
 but otherwise a `@' prefix has no special meaning.
@@ -3138,6 +3148,21 @@ inner parentheses separate them.
 For each namespace a prefix and a hierarchy separator is listed.
 Not all IMAP servers support this command.
 .El
+.
+.Mx
+.It Ic imapcodec
+\*(OP Perform IMAP path transformations on all the given strings.
+The first argument specifies the operation:
+.Ar enc[ode]
+normalizes hierarchy delimiters (see
+.Va imap-delim )
+and converts the strings from the locale
+.Va ttycharset
+to the internationalised variant used by IMAP,
+.Ar dec[code]
+does the reverse operation.
+Errors are indicated by prepending the output with the string
+.Ql ERROR .
 .
 .Mx
 .It Ic inc
@@ -4106,7 +4131,7 @@ pathnames: it doesn't allow a tilde
 and will neither accept hyphen
 .Ql -
 nor dot
-.Ql .
+.Ql \&.
 as an initial character.
 .
 .Mx
@@ -7663,6 +7688,7 @@ in the user's
 .Ev HOME
 directory.
 .
+.Mx
 .It Ev MAIL
 Is used as the user's primary system mailbox, unless
 .Va inbox
