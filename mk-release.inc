@@ -241,7 +241,7 @@ if yesno 'Prepare announcement?'; then
       res = ""
       s = $0
       while(match(s,
-            /(`|\*)[-_[:alnum:]]+('${APO}'|\*)@[0-9]+(\|#_?[0-9]+)?/)){
+            /(`|\*)[-/_[:alnum:]]+('${APO}'|\*)#[0-9]+(\|#_?[0-9]+)?/)){
          pre = substr(s, 1, RSTART - 1)
          mat = substr(s, RSTART, RLENGTH)
          s = substr(s, RSTART + RLENGTH)
@@ -250,7 +250,7 @@ if yesno 'Prepare announcement?'; then
             targ = substr(mat, RSTART + 2)
             mat = substr(mat, 1, RSTART - 1)
          }else{
-            match(mat, /@[0-9]+/)
+            match(mat, /#[0-9]+/)
             targ = substr(mat, RSTART + 1, RLENGTH)
          }
          res = res pre "<?lreft " manual "#" targ "<>" mat "?>"
