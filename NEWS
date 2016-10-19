@@ -133,6 +133,11 @@ As above.
   35506b0 imap_path_encode(): sigh.  Finally: do not simply include & in shifted
           walk
   f146b54 imap_path_{en,de}code(): fix iconv_open() to/from charset order
+  d94a0d2 imap_path_decode(): err: do not "savestrbuf(,buflen * 2)"
+  d7d7108 imap_path_decode(): fix UTF-16 arithmetic
+
+Ts, ts, looks like Freud had his Freude interpreting this staggering.
+But should be correct and working now.
 
 v14.8.12 ("Bubas"), 2016-10-05  (v14.8.11 as of 2016-10-03 broken)
 ------------------------------------------------------------------
