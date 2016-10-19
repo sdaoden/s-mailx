@@ -77,7 +77,7 @@ static const char README2[] = "\n\
 The first 128 bytes of these files are used to store message attributes; the\n\
 following data is equivalent to compress(1) output. So if you have to save a\n\
 message by hand because of an emergency, throw away the first 128 bytes and\n\
-decompress the rest, as e.g. 'dd if=MESSAGEFILE skip=1 bs=128 | zcat' does.\n";
+decompress the rest, as e.g. \"dd if=MESSAGEFILE skip=1 bs=128 | zcat\" does.\n";
 static const char README3[] = "\n\
 Files named QUEUE contain data that will be sent do the IMAP server next\n\
 time a connection is made in online mode.\n";
@@ -85,7 +85,7 @@ static const char README4[] = "\n\
 You can safely delete any file or directory here, unless it contains a QUEUE\n\
 file that is not empty; " UAGENT " will download the data again and will also\n\
 write new cache entries if configured in this way. If you do not wish to use\n\
-the cache anymore, delete the entire directory and unset the 'imap-cache'\n\
+the cache anymore, delete the entire directory and unset the *imap-cache*\n\
 variable in " UAGENT "(1).\n";
 static const char README5[] = "\n\
 For more information about " UAGENT "(1), visit\n\
@@ -95,7 +95,6 @@ static char *
 encname(struct mailbox *mp, const char *name, int same, const char *box)
 {
    char *cachedir, *eaccount, *ename, *res;
-   char const *emailbox;
    int resz;
    NYD2_ENTER;
 
@@ -105,21 +104,26 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
+      res = NULL;
+
       if ((cachedir = ok_vlook(imap_cache)) == NULL ||
-            (cachedir = file_expand(cachedir)) == NULL) {
-         res = NULL;
+            (cachedir = file_expand(cachedir)) == NULL)
          goto jleave;
-      }
       eaccount = urlxenc(mp->mb_imap_account, TRU1);
-      if (box)
-         emailbox = urlxenc(box, TRU1);
-      else if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-         emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
-      else
-         emailbox = "INBOX";
+
+      if (box != NULL || asccasecmp(box = mp->mb_imap_mailbox, "INBOX")) {
+         bool_t err;
+
+         box = imap_path_encode(box, &err);
+         if(err)
+            goto jleave;
+         box = urlxenc(box, TRU1);
+      } else
+         box = "INBOX";
+
       res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
-            strlen(emailbox) + strlen(ename) + 4);
-      snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, emailbox,
+            strlen(box) + strlen(ename) + 4);
+      snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
    }
 jleave:
@@ -431,10 +435,14 @@ clean(struct mailbox *mp, struct cw *cw)
          (cachedir = file_expand(cachedir)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   if (asccasecmp(mp->mb_imap_mailbox, "INBOX"))
-      emailbox = urlxenc(mp->mb_imap_mailbox, TRU1);
-   else
-      emailbox = "INBOX";
+   if (asccasecmp(emailbox = mp->mb_imap_mailbox, "INBOX")) {
+      bool_t err;
+
+      emailbox = imap_path_encode(emailbox, &err);
+      if(err)
+         goto jleave;
+      emailbox = urlxenc(emailbox, TRU1);
+   }
    buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
          strlen(emailbox) + 40);
    if (makedir(cachedir) != OKAY)
@@ -663,7 +671,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      cp = sp = urlxdec(dp->d_name);
+      cp = sp = imap_path_decode(urlxdec(dp->d_name), NULL);
       for (bp = base; *bp && *bp == *sp; bp++)
          sp++;
       if (*bp)
@@ -824,7 +832,8 @@ cache_dequeue(struct mailbox *mp)
          continue;
       /* FIXME MUST BLOCK SIGNALS IN ORDER TO ENSURE PROPER RESTORE!
        * (but wuuuuh, what a shit!) */
-      mp->mb_imap_mailbox = sstrdup(urlxdec(dp->d_name));
+      mp->mb_imap_mailbox = sstrdup(
+            imap_path_decode(urlxdec(dp->d_name), NULL));
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;

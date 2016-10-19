@@ -1057,6 +1057,10 @@ FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
  */
 
 #ifdef HAVE_IMAP
+/* The former returns the input again if no conversion is necessary */
+FL char const *imap_path_encode(char const *path, bool_t *err_or_null);
+FL char *      imap_path_decode(char const *path, bool_t *err_or_null);
+
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
@@ -1068,6 +1072,7 @@ FL void        imap_getheaders(int bot, int top);
 FL void        imap_quit(void);
 FL enum okay   imap_undelete(struct message *m, int n);
 FL enum okay   imap_unread(struct message *m, int n);
+FL int         c_imapcodec(void *v);
 FL int         c_imap_imap(void *vp);
 FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp);
@@ -1948,12 +1953,12 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, size_t buflen
 
 /* ..and update arguments to point after range; returns UI32_MAX on error, in
  * which case the arguments will have been stepped one byte */
-#ifdef HAVE_NATCH_CHAR
+#if defined HAVE_NATCH_CHAR || defined HAVE_IMAP
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
 #endif
 
 /* buf must be large enough also for NUL, it's new length will be returned */
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#if defined HAVE_FILTER_HTML_TAGSOUP || defined HAVE_IMAP
 FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 #endif
 
@@ -2080,6 +2085,9 @@ FL char *      urlxdec(char const *cp SALLOC_DEBUG_ARGS);
 # define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
+
+/* `urlcodec' */
+FL int         c_urlcodec(void *v);
 
 /* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
  * Return NULL or something that can be converted to a struct name */

@@ -43,6 +43,7 @@
 #define ARG_ARGMASK  ARG_ARGMASK
 #define A            ARG_A
 #define F            ARG_F
+#define G            ARG_G
 #define H            ARG_H
 #define I            ARG_I
 #define M            ARG_M
@@ -88,9 +89,9 @@
      DS(N_("Delete the current message, then print the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(N_("Un\"delete\" <message-list>")) },
-   { "unset", &c_unset, (H | M | RAWLIST), 1, 1000
+   { "unset", &c_unset, (G | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>")) },
-   { "unsetenv", &c_unsetenv, (H | M | RAWLIST), 1, 1000
+   { "unsetenv", &c_unsetenv, (G | M | RAWLIST), 1, 1000
      DS(N_("Unset <option-list>, also in the program environment")) },
    { "mail", &c_sendmail, (R | M | I | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -132,9 +133,9 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | R | RAWLIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (M | RAWLIST), 0, 1000
+   { "set", &c_set, (G | M | RAWLIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "setenv", &c_setenv, (M | RAWLIST), 1, 1000
+   { "setenv", &c_setenv, (G | M | RAWLIST), 1, 1000
      DS(N_("Set (a) <variable>(s) and export into the program environment")) },
    { "shell", &c_dosh, (I | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -202,9 +203,9 @@
      DS(N_("Forward <message> to <address>")) },
    { "fwd", &c_forward, (A | R | STRLIST), 0, MMNDEL
      DS(N_("Forward <message> to <address>")) },
-   { "edit", &c_editor, (A | I | MSGLIST), 0, MMNORM
+   { "edit", &c_editor, (G | A | I | MSGLIST), 0, MMNORM
      DS(N_("Edit <message-list>")) },
-   { "echo", &c_echo, (H | M | ECHOLIST), 0, 1000
+   { "echo", &c_echo, (G | M | ECHOLIST), 0, 1000
      DS(N_("Echo given arguments")) },
    { "quit", &_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
@@ -224,13 +225,13 @@
      DS(N_("Show size in characters for <message-list>")) },
    { "hold", &c_preserve, (A | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <message-list> in system mailbox instead of *MBOX*")) },
-   { "if", &c_if, (F | M | RAWLIST), 1, 1000
+   { "if", &c_if, (G | F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "else", &c_else, (F | M | RAWLIST), 0, 0
+   { "else", &c_else, (G | F | M | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "elif", &c_elif, (F | M | RAWLIST), 1, 1000
+   { "elif", &c_elif, (G | F | M | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "endif", &c_endif, (F | M | RAWLIST), 0, 0
+   { "endif", &c_endif, (G | F | M | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate list for the invoking user")) },
@@ -264,6 +265,8 @@
      DS(N_("Delete <shortcut-list> (\"*\" for all)")) },
    { "imap", &c_imap_imap, (A | STRLIST), 0, 1000
      DS(N_("Send command strings directly to the IMAP server")) },
+   { "imapcodec", &c_imapcodec, (G | M | RAWLIST), 2, 1000
+     DS(N_("IMAP mailbox name <enc[ode]|dec[ode]> <string-list>")) },
    { "account", &c_account, (M | RAWLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0
@@ -372,14 +375,16 @@
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (M | RAWLIST), 1, 1000
+   { "varshow", &c_varshow, (G | M | RAWLIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (H | I | M | RAWLIST), 1, 1000
+   { "varedit", &c_varedit, (G | I | M | RAWLIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlencode", &c_urlencode, (H| M | RAWLIST), 1, 1000
-     DS(N_("Encode <string-list> for usage in an URL")) },
-   { "urldecode", &c_urldecode, (H | M | RAWLIST), 1, 1000
-     DS(N_("Decode the URL-encoded <URL-list> into strings")) },
+   { "urlcodec", &c_urlcodec, (G | M | RAWLIST), 2, 1000
+     DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <string-list>")) },
+      { "urlencode", &c_urlencode, (G | M | RAWLIST), 1, 1000
+        DS(N_("Encode <string-list> for usage in an URL")) },
+      { "urldecode", &c_urldecode, (G | M | RAWLIST), 1, 1000
+        DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (T | M | RAWLIST), 0, 1
      DS(N_("Open a new mailbox readonly or show the current mailbox")) },
    { "Folder", &c_File, (T | M | RAWLIST), 0, 1
@@ -427,6 +432,7 @@
 #undef ARG_ARGMASK
 #undef A
 #undef F
+#undef G
 #undef H
 #undef I
 #undef M

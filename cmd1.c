@@ -688,14 +688,24 @@ a_cmd_scroll(char const *arg, bool_t onlynew){
    int msgspec, size, maxs;
    NYD2_ENTER;
 
+   /* TODO scroll problem: we do not know whether + and $ have already reached
+    * TODO the last screen in threaded mode */
    msgspec = onlynew ? -1 : 0;
    size = screensize();
-   maxs = msgCount / size;
+   if((maxs = msgCount / size) > 0 && msgCount % size == 0)
+      --maxs;
 
    switch(*arg){
    case '\0':
       ++_screen;
       goto jfwd;
+   case '^':
+      if(arg[1] != '\0')
+         goto jerr;
+      if(_screen == 0)
+         goto jerrbwd;
+      _screen = 0;
+      break;
    case '$':
       if(arg[1] != '\0')
          goto jerr;
@@ -1393,13 +1403,16 @@ c_folders(void *v)
    if (which_protocol(name) == PROTO_IMAP) {
 #ifdef HAVE_IMAP
       imap_folders(name, *argv == NULL);
+      rv = 0;
 #else
       rv = c_cmdnotsupp(NULL);
 #endif
    } else {
       if ((cmd = ok_vlook(LISTER)) == NULL)
          cmd = XLISTER;
-      run_command(cmd, 0, -1, -1, name, NULL, NULL);
+      rv = run_command(cmd, 0, -1, -1, name, NULL, NULL);
+      if (rv < 0)
+         rv = 1;
    }
 jleave:
    NYD_LEAVE;

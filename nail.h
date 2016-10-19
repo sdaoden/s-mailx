@@ -219,6 +219,9 @@
 #define DATE_HOURSDAY   24L
 #define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
 
+/* The default IMAP directory separator ([0] is used as a replacer, too) */
+#define n_IMAP_DELIM    "/."
+
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"
 
@@ -268,6 +271,9 @@
 
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define QUOTE_TAB_SPACES 8
+
+/* Smells fishy after, or asks for shell expansion, dependent on context */
+#define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
 
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE    420000
@@ -827,10 +833,11 @@ enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
    FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
    FEXP_SHELL     = 1<<1,     /* No folder %,#,&,+ stuff, yet sh(1) */
-   FEXP_NSHORTCUT = 1<<2,     /* Don't expand shortcuts */
-   FEXP_SILENT    = 1<<3,     /* Don't print but only return errors */
-   FEXP_MULTIOK   = 1<<4,     /* Expansion to many entries is ok */
-   FEXP_NSHELL    = 1<<5      /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_FOLDER    = 1<<2,     /* No folder %,#,&, but + and so */
+   FEXP_NSHORTCUT = 1<<3,     /* Don't expand shortcuts */
+   FEXP_SILENT    = 1<<4,     /* Don't print but only return errors */
+   FEXP_MULTIOK   = 1<<5,     /* Expansion to many entries is ok */
+   FEXP_NSHELL    = 1<<6      /* Don't do shell word exp. (but ~/, $VAR) */
 };
 
 enum file_lock_type {
@@ -1238,8 +1245,10 @@ enum okeys {
    ok_v_hostname,
    ok_v_imap_auth,
    ok_v_imap_cache,
+   ok_v_imap_delim,
    ok_v_imap_keepalive,
    ok_v_imap_list_depth,
+   ok_v_inbox,
    ok_v_indentprefix,
    ok_v_line_editor_cursor_right,      /* {special=1} */
    ok_v_LISTER,
@@ -1472,7 +1481,7 @@ struct eval_ctx {
    ui32_t      ev_line_size;     /* May be used to store line memory size */
    bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
    ui8_t       __dummy[3];
-   bool_t      ev_add_history;   /* Enter (final) command in history? */
+   bool_t      ev_add_history;   /* Add command to history (TRUM1=gabby)? */
    char const  *ev_new_content;  /* History: reenter line, start with this */
 };
 
@@ -1550,6 +1559,7 @@ struct mailbox {
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
+   char mb_imap_delim[8];
 #endif
    struct sock mb_sock;       /* socket structure */
 };
@@ -1677,15 +1687,16 @@ enum argtype {
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */
    ARG_F          = 1u<< 5,   /* Is a conditional command */
-   ARG_H          = 1u<< 6,   /* Never place in history */
-   ARG_I          = 1u<< 7,   /* Interactive command bit */
-   ARG_M          = 1u<< 8,   /* Legal from send mode bit */
-   ARG_P          = 1u<< 9,   /* Autoprint dot after command */
-   ARG_R          = 1u<<10,   /* Cannot be called from collect / recursion */
-   ARG_T          = 1u<<11,   /* Is a transparent command */
-   ARG_V          = 1u<<12,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<13,   /* Invalid when read only bit */
-   ARG_O          = 1u<<14    /* OBSOLETE()d command */
+   ARG_G          = 1u<< 6,   /* Is supposed to produce "gabby" history */
+   ARG_H          = 1u<< 7,   /* Never place in history */
+   ARG_I          = 1u<< 8,   /* Interactive command bit */
+   ARG_M          = 1u<< 9,   /* Legal from send mode bit */
+   ARG_P          = 1u<<10,   /* Autoprint dot after command */
+   ARG_R          = 1u<<11,   /* Cannot be called from collect / recursion */
+   ARG_T          = 1u<<12,   /* Is a transparent command */
+   ARG_V          = 1u<<13,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<14,   /* Invalid when read only bit */
+   ARG_O          = 1u<<15    /* OBSOLETE()d command */
 };
 
 enum gfield {

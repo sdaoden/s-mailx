@@ -15,6 +15,8 @@ cd ..
 
 : ${PROGRAM:=s-nail}
 : ${UPROGRAM:=S-nail}
+: ${MANUAL:=code-nail.html}
+
 : ${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads}
 
 # Mail

@@ -142,19 +142,32 @@ static bool_t     _source_file(char const *file, bool_t silent_error);
 static void
 _findmail(char *buf, size_t bufsize, char const *user, bool_t force)
 {
-   char *cp;
+   char const *ibox, *cp;
    NYD_ENTER;
 
-   if (!force && !strcmp(user, myname) && (cp = ok_vlook(folder)) != NULL)
-      if(which_protocol(cp) == CPROTO_IMAP)
-         goto jcopy;
+   ibox = ok_vlook(inbox);
 
-   if (force || (cp = ok_vlook(MAIL)) == NULL)
+   /* Heirloom compatibility: an IMAP *folder* becomes "%" */
+   if (!force && ibox == NULL && !strcmp(user, myname) &&
+         (cp = ok_vlook(folder)) != NULL && which_protocol(cp) == PROTO_IMAP) {
+      OBSOLETE("no more expansion of *folder* in \"%\": please set *inbox*");
+      goto jcopy;
+   }
+
+   if (!force && ibox != NULL) {
+      /* Folder extra introduced to avoid % recursion loops */
+      if ((cp = fexpand(ibox, FEXP_FOLDER | FEXP_NSHELL)) != NULL)
+         goto jcopy;
+      n_err(_("Failed to expand *ibox*, using $MAIL or default: %s\n"), ibox);
+      ibox = NULL;
+   }
+
+   if (force || (((cp = ibox) == NULL || *cp == '\0') &&
+         (cp = ok_vlook(MAIL)) == NULL))
       snprintf(buf, bufsize, "%s/%s", MAILSPOOL, user);
    else
 jcopy:
       n_strlcpy(buf, cp, bufsize);
-jleave:
    NYD_LEAVE;
 }
 
@@ -1285,10 +1298,13 @@ fexpand(char const *name, enum fexp_mode fexpm)
    if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
       res = UNCONST(name);
 
-   if (fexpm & FEXP_SHELL) {
+   if (fexpm & (FEXP_SHELL | FEXP_FOLDER)) {
       dyn = FAL0;
-      goto jshell;
+      if (fexpm & FEXP_SHELL)
+         goto jshell;
+      goto jfolder;
    }
+
 jnext:
    dyn = FAL0;
    switch (*res) {
@@ -1326,20 +1342,9 @@ jnext:
       dyn = TRU1;
    }
 
+jfolder:
    if (res[0] == '+' && getfold(cbuf, sizeof cbuf)) {
-      size_t i;
-      bool_t soll;
-
-      i = strlen(cbuf);
-      soll = (i > 0 && cbuf[i - 1] == '/');
-      if(which_protocol(cbuf) == PROTO_IMAP){
-         bool_t hpath;
-
-         hpath = (strcmp(cbuf, protbase(cbuf)) != 0);
-         res = str_concat_csvl(&s, cbuf, (hpath || soll ? "" : "/"),
-               &res[1], NULL)->s;
-      }else
-         res = str_concat_csvl(&s, cbuf, (soll ? "" : "/"), &res[1], NULL)->s;
+      res = str_concat_csvl(&s, cbuf, &res[1], NULL)->s;
       dyn = TRU1;
 
       if (res[0] == '%' && res[1] == ':') {
@@ -1354,7 +1359,7 @@ jshell:
       res = str_concat_csvl(&s, homedir, res + 1, NULL)->s;
       dyn = TRU1;
    }
-   if (anyof(res, "|&;<>{}()[]*?$`'\"\\"))
+   if (anyof(res, n_SHEXP_MAGIC_PATH_CHARS))
       switch (which_protocol(res)) {
       case PROTO_FILE:
       case PROTO_MAILDIR:
@@ -1483,8 +1488,14 @@ getfold(char *name, size_t size)
    char const *folder;
    NYD_ENTER;
 
-   if ((folder = ok_vlook(folder)) != NULL)
+   if ((folder = ok_vlook(folder)) != NULL){
+      size_t i;
+
+      i = strlen(folder);
+      if(i > 0 && folder[i - 1] != '/')
+         folder = savecat(folder, "/");
       n_strlcpy(name, folder, size);
+   }
    NYD_LEAVE;
    return (folder != NULL);
 }

@@ -171,6 +171,10 @@ static int volatile     imaplock;
 static int              same_imap_account;
 static bool_t           _imap_rdonly;
 
+static void imap_delim_init(struct mailbox *mp, struct url const *urlp);
+static char const *imap_path_normalize(struct mailbox *mp, char const *cp);
+/* Returns NULL on error */
+static char *imap_path_quote(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
 static void       imap_response_parse(void);
@@ -257,6 +261,486 @@ static enum okay  imap_rename1(struct mailbox *mp, const char *old,
                      const char *new);
 static char *     imap_strex(char const *cp, char const **xp);
 static enum okay  check_expunged(void);
+
+static void
+imap_delim_init(struct mailbox *mp, struct url const *urlp){
+   size_t i;
+   char const *cp;
+   NYD2_ENTER;
+
+   mp->mb_imap_delim[0] = '\0';
+
+   if((cp = xok_vlook(imap_delim, urlp, OXM_ALL)) != NULL){
+      i = strlen(cp);
+
+      if(i == 0){
+         cp = n_IMAP_DELIM;
+         i = sizeof(n_IMAP_DELIM) -1;
+         goto jcopy;
+      }
+
+      if(i < NELEM(mp->mb_imap_delim))
+jcopy:
+         memcpy(&mb.mb_imap_delim[0], cp, i +1);
+      else
+         n_err(_("*imap-delim* for %s is too long: %s\n"),
+            urlp->url_input, cp);
+   }
+   NYD2_LEAVE;
+}
+
+static char const *
+imap_path_normalize(struct mailbox *mp, char const *cp){
+   char *rv_base, *rv, dc2, dc, c, lc;
+   char const *dcp;
+   NYD2_ENTER;
+
+   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean "use
+    * exactly what i have specified" */
+   dcp = (mp == NULL) ? &n_IMAP_DELIM[0] : &mp->mb_imap_delim[0];
+   dc2 = ((dc = *dcp) != '\0') ? *++dcp : dc;
+
+   /* Plain names don't need path quoting */
+   /* C99 */{
+      size_t i, j;
+      char const *cpx;
+
+      for(cpx = cp;; ++cpx)
+         if((c = *cpx) == '\0')
+            goto jleave;
+         else if(dc == '\0'){
+            if(strchr(n_IMAP_DELIM, c)){
+               dc = c;
+               break;
+            }
+         }else if(c == dc)
+            break;
+         else if(dc2 && strchr(dcp, c) != NULL)
+            break;
+
+      /* And we don't need to reevaluate what we have seen yet */
+      i = PTR2SIZE(cpx - cp);
+      rv = rv_base = salloc(i + (j = strlen(cpx) +1));
+      if(i > 0)
+         memcpy(rv, cp, i);
+      memcpy(&rv[i], cpx, j);
+      rv += i;
+      cp = cpx;
+   }
+
+   /* Squeeze adjacent delimiters, convert remain to dc */
+   for(lc = '\0'; (c = *cp++) != '\0'; lc = c){
+      if(c == dc || (dc2 && strchr(dcp, c) != NULL))
+         c = dc;
+      if(c != dc || lc != dc)
+         *rv++ = c;
+   }
+   *rv = '\0';
+
+   cp = rv_base;
+jleave:
+   NYD2_LEAVE;
+   return cp;
+}
+
+FL char const *
+imap_path_encode(char const *cp, bool_t *err_or_null){
+   /* To a large extend inspired by dovecot(1) */
+   struct str in, out;
+   bool_t err_def;
+   ui8_t *be16p_base, *be16p;
+   char const *emsg;
+   char c;
+   size_t l, l_plain;
+   NYD2_ENTER;
+
+   if(err_or_null == NULL)
+      err_or_null = &err_def;
+   *err_or_null = FAL0;
+
+   /* Is this a string that works out as "plain US-ASCII"? */
+   for(l = 0;; ++l)
+      if((c = cp[l]) == '\0')
+         goto jleave;
+      else if(c <= 0x1F || c >= 0x7F || c == '&')
+         break;
+
+   *err_or_null = TRU1;
+
+   /* We need to encode in mUTF-7!  For that, we first have to convert the
+    * local charset to UTF-8, then convert all characters which need to be
+    * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
+    * We can skip the UTF-8 conversion occasionally, however */
+   if(!(options & OPT_UNICODE)){
+      int ir;
+      iconv_t icd;
+
+      emsg = N_("iconv(3) from locale charset to UTF-8 failed");
+
+      if((icd = iconv_open("utf-8", charset_get_lc())) == (iconv_t)-1)
+         goto jerr;
+
+      out.s = NULL, out.l = 0;
+      in.s = UNCONST(cp); /* logical */
+      l += strlen(&cp[l]);
+      in.l = l;
+      if((ir = n_iconv_str(icd, &out, &in, NULL, FAL0)) == 0)
+         cp = savestrbuf(out.s, out.l);
+
+      if(out.s != NULL)
+         free(out.s);
+      iconv_close(icd);
+
+      if(ir != 0)
+         goto jerr;
+
+      /*
+       * So: Why not start all over again?
+       */
+
+      /* Is this a string that works out as "plain US-ASCII"? */
+      for(l = 0;; ++l)
+         if((c = cp[l]) == '\0')
+            goto jleave;
+         else if(c <= 0x1F || c >= 0x7F || c == '&')
+            break;
+   }
+
+   /* We need to encode, save what we have, encode the rest */
+   l_plain = l;
+
+   for(cp += l, l = 0; cp[l] != '\0'; ++l)
+      ;
+   be16p_base = salloc((l << 1) +1); /* XXX use n_string, resize */
+
+   out.s = salloc(l_plain + (l << 2) +1); /* XXX use n_string, resize */
+   if(l_plain > 0)
+      memcpy(out.s, &cp[-l_plain], out.l = l_plain);
+   else
+      out.l = 0;
+   DBG( l_plain += (l << 2); )
+
+   while(l > 0){
+      c = *cp++;
+      --l;
+
+      if(c == '&'){
+         out.s[out.l + 0] = '&';
+         out.s[out.l + 1] = '-';
+         out.l += 2;
+      }else if(c > 0x1F && c < 0x7F)
+         out.s[out.l++] = c;
+      else{
+         static char const mb64ct[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
+         ui32_t utf32;
+
+         /* Convert consecutive non-representables */
+         emsg = N_("Invalid UTF-8 sequence, cannot convert to UTF-32");
+
+         for(be16p = be16p_base, --cp, ++l;;){
+            if((utf32 = n_utf8_to_utf32(&cp, &l)) == UI32_MAX)
+               goto jerr;
+
+            /* TODO S-CText: magic utf16 conversions */
+            if(utf32 < 0x10000){
+               be16p[1] = utf32 & 0xFF;
+               be16p[0] = (utf32 >>= 8, utf32 &= 0xFF);
+               be16p += 2;
+            }else{
+               ui16_t s7e;
+
+               utf32 -= 0x10000;
+               s7e = 0xD800u | (utf32 >> 10);
+               be16p[1] = s7e & 0xFF;
+               be16p[0] = (s7e >>= 8, s7e &= 0xFF);
+               s7e = 0xDC00u | (utf32 &= 0x03FF);
+               be16p[3] = s7e & 0xFF;
+               be16p[2] = (s7e >>= 8, s7e &= 0xFF);
+               be16p += 4;
+            }
+
+            if(l == 0)
+               break;
+            if((c = *cp) > 0x1F && c < 0x7F)
+               break;
+         }
+
+         /* And then warp that UTF-16BE to mUTF-7 */
+         out.s[out.l++] = '&';
+         utf32 = (ui32_t)PTR2SIZE(be16p - be16p_base);
+         be16p = be16p_base;
+
+         for(; utf32 >= 3; be16p += 3, utf32 -= 3){
+            out.s[out.l+0] = mb64ct[                            be16p[0] >> 2 ];
+            out.s[out.l+1] = mb64ct[((be16p[0] & 0x03) << 4) | (be16p[1] >> 4)];
+            out.s[out.l+2] = mb64ct[((be16p[1] & 0x0F) << 2) | (be16p[2] >> 6)];
+            out.s[out.l+3] = mb64ct[  be16p[2] & 0x3F];
+            out.l += 4;
+         }
+         if(utf32 > 0){
+            out.s[out.l + 0] = mb64ct[be16p[0] >> 2];
+            if(--utf32 == 0){
+               out.s[out.l + 1] = mb64ct[ (be16p[0] & 0x03) << 4];
+               out.l += 2;
+            }else{
+               out.s[out.l + 1] = mb64ct[((be16p[0] & 0x03) << 4) |
+                     (be16p[1] >> 4)];
+               out.s[out.l + 2] = mb64ct[ (be16p[1] & 0x0F) << 2];
+               out.l += 3;
+            }
+         }
+         out.s[out.l++] = '-';
+      }
+   }
+   out.s[out.l] = '\0';
+   assert(out.l <= l_plain);
+   *err_or_null = FAL0;
+   cp = out.s;
+jleave:
+   NYD2_LEAVE;
+   return cp;
+jerr:
+   n_err(_("Cannot encode IMAP path %s\n  %s\n"), cp, V_(emsg));
+   goto jleave;
+}
+
+FL char *
+imap_path_decode(char const *path, bool_t *err_or_null){
+   /* To a large extend inspired by dovecot(1) TODO use string */
+   struct str in, out;
+   bool_t err_def;
+   ui8_t *mb64p_base, *mb64p, *mb64xp;
+   char const *emsg, *cp;
+   char *rv_base, *rv, c;
+   size_t l_orig, l, i;
+   NYD2_ENTER;
+
+   if(err_or_null == NULL)
+      err_or_null = &err_def;
+   *err_or_null = FAL0;
+
+   l = l_orig = strlen(path);
+   rv = rv_base = salloc(l << 1);
+   memcpy(rv, path, l +1);
+
+   /* xxx Don't check for invalid characters from malicious servers */
+   if(l == 0 || (cp = memchr(path, '&', l)) == NULL)
+      goto jleave;
+
+   *err_or_null = TRU1;
+
+   emsg = N_("Invalid mUTF-7 encoding");
+   i = PTR2SIZE(cp - path);
+   rv += i;
+   l -= i;
+   mb64p_base = NULL;
+
+   while(l > 0){
+      if((c = *cp) != '&'){
+         if(c <= 0x1F || c >= 0x7F){
+            emsg = N_("Invalid mUTF-7: unencoded control or 8-bit byte");
+            goto jerr;
+         }
+         *rv++ = c;
+         ++cp;
+         --l;
+      }else if(--l == 0)
+         goto jeincpl;
+      else if(*++cp == '-'){
+         *rv++ = '&';
+         ++cp;
+         --l;
+      }else if(l < 3){
+jeincpl:
+         emsg = N_("Invalid mUTF-7: incomplete input");
+         goto jerr;
+      }else{
+         /* mUTF-7 -> UTF-16BE -> UTF-8 */
+         static ui8_t const mb64dt[256] = {
+#undef XX
+#define XX 0xFFu
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,62, 63,XX,XX,XX,
+            52,53,54,55, 56,57,58,59, 60,61,XX,XX, XX,XX,XX,XX,
+            XX, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
+            15,16,17,18, 19,20,21,22, 23,24,25,XX, XX,XX,XX,XX,
+            XX,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
+            41,42,43,44, 45,46,47,48, 49,50,51,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+            XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX
+         };
+
+         if(mb64p_base == NULL)
+            mb64p_base = salloc(l);
+
+         /* Decode the mUTF-7 to what is indeed UTF-16BE */
+         for(mb64p = mb64p_base;;){
+            assert(l >= 3);
+            if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) == XX ||
+                  (mb64p[1] = mb64dt[(ui8_t)cp[1]]) == XX)
+               goto jerr;
+            mb64p += 2;
+
+            c = cp[2];
+            cp += 3;
+            l -= 3;
+            if(c == '-')
+               break;
+            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
+               goto jerr;
+
+            if(l == 0)
+               goto jerr;
+            --l;
+            if((c = *cp++) == '-')
+               break;
+            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
+               goto jerr;
+
+            if(l < 3){
+               if(l > 0 && *cp == '-'){
+                  --l;
+                  ++cp;
+                  break;
+               }
+               goto jerr;
+            }
+         }
+#undef XX
+
+         if(l >= 2 && cp[0] == '&' && cp[1] != '-'){
+            emsg = N_("Invalid mUTF-7, consecutive encoded sequences");
+            goto jerr;
+         }
+
+         /* Yet halfway decoded mUTF-7, go remaining way to gain UTF-16BE */
+         i = PTR2SIZE(mb64p - mb64p_base);
+         mb64p = mb64xp = mb64p_base;
+
+         while(i > 0){
+            ui8_t ul, u0, u1, u2, u3;
+
+            ul = (i >= 4) ? 4 : i & 0x3;
+            i -= ul;
+            u0 = mb64xp[0];
+            u1 = mb64xp[1];
+            u2 = (ul < 3) ? 0 : mb64xp[2];
+            u3 = (ul < 4) ? 0 : mb64xp[3];
+            mb64xp += ul;
+            *mb64p++ = (u0 <<= 2) | (u1 >> 4);
+            if(ul < 3)
+               break;
+            *mb64p++ = (u1 <<= 4) | (u2 >> 2);
+            if(ul < 4)
+               break;
+            *mb64p++ = (u2 <<= 6, u2 &= 0xC0) | u3;
+         }
+
+         /* UTF-16BE we convert to UTF-8 */
+         i = PTR2SIZE(mb64p - mb64p_base);
+         if(i & 1){
+            emsg = N_("Odd bytecount for UTF-16BE input");
+            goto jerr;
+         }
+
+         /* TODO S-CText: magic utf16 conversions */
+         emsg = N_("Invalid UTF-16BE encoding");
+
+         for(mb64p = mb64p_base; i > 0;){
+            ui32_t utf32;
+            ui16_t uhi, ulo;
+
+            uhi = mb64p[0];
+            uhi <<= 8;
+            uhi |= mb64p[1];
+
+            /* Not a surrogate? */
+            if(uhi < 0xD800 || uhi > 0xDFFF){
+               utf32 = uhi;
+               mb64p += 2;
+               i -= 2;
+            }else if(uhi > 0xDBFF)
+               goto jerr;
+            else if(i < 4){
+               emsg = N_("Incomplete UTF-16BE surrogate pair");
+               goto jerr;
+            }else{
+               ulo = mb64p[2];
+               ulo <<= 8;
+               ulo |= mb64p[3];
+               if(ulo < 0xDC00 || ulo > 0xDFFF)
+                  goto jerr;
+
+               utf32 = (uhi &= 0x03FF);
+               utf32 <<= 10;
+               utf32 += 0x10000;
+               utf32 |= (ulo &= 0x03FF);
+               mb64p += 4;
+               i -= 4;
+            }
+
+            utf32 = n_utf32_to_utf8(utf32, rv);
+            rv += utf32;
+         }
+      }
+   }
+   *rv = '\0';
+
+   /* We can skip the UTF-8 conversion occasionally */
+   if(!(options & OPT_UNICODE)){
+      int ir;
+      iconv_t icd;
+
+      emsg = N_("iconv(3) from UTF-8 to locale charset failed");
+
+      if((icd = iconv_open(charset_get_lc(), "utf-8")) == (iconv_t)-1)
+         goto jerr;
+
+      out.s = NULL, out.l = 0;
+      in.l = strlen(in.s = rv_base);
+      if((ir = n_iconv_str(icd, &out, &in, NULL, FAL0)) == 0)
+         /* Because the length of this is unpredictable, copy*/
+         rv_base = savestrbuf(out.s, out.l);
+
+      if(out.s != NULL)
+         free(out.s);
+      iconv_close(icd);
+
+      if(ir != 0)
+         goto jerr;
+   }
+
+   *err_or_null = FAL0;
+   rv = rv_base;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
+   memcpy(rv = rv_base, path, ++l_orig);
+   goto jleave;
+}
+
+static char *
+imap_path_quote(struct mailbox *mp, char const *cp){
+   bool_t err;
+   char *rv;
+   NYD2_ENTER;
+
+   cp = imap_path_normalize(mp, cp);
+   cp = imap_path_encode(cp, &err);
+   rv = err ? NULL : imap_quotestr(cp);
+   NYD2_LEAVE;
+   return rv;
+}
 
 static void
 imap_other_get(char *pp)
@@ -948,17 +1432,25 @@ FL enum okay
 imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
    enum fedit_mode fm)
 {
-   enum okay ok = OKAY;
-   char const *cp;
    char o[LINESIZE];
-   FILE *queuefp = NULL;
+   char const *qname, *cp;
+   FILE *queuefp;
+   enum okay ok;
    NYD_X;
    UNUSED(size);
 
+   ok = STOP;
+   queuefp = NULL;
+
+   if((qname = imap_path_quote(mp, mbx)) == NULL)
+      goto jleave;
+
+   ok = OKAY;
+
    mp->mb_uidvalidity = 0;
    snprintf(o, sizeof o, "%s %s %s\r\n", tag(1),
-      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), imap_quotestr(mbx));
-   IMAP_OUT(o, MB_COMD, return STOP)
+      (fm & FEDIT_RDONLY ? "EXAMINE" : "SELECT"), qname);
+   IMAP_OUT(o, MB_COMD, ok = STOP;goto jleave)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER &&
@@ -969,6 +1461,7 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
    if (response_status != RESPONSE_OTHER &&
          ascncasecmp(responded_text, "[READ-ONLY] ", 12) == 0)
       mp->mb_perm = 0;
+jleave:
    return ok;
 }
 
@@ -1168,7 +1661,8 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(struct url *urlp, enum fedit_mode fm, int volatile transparent)
+_imap_setfile1(struct url *urlp, enum fedit_mode volatile fm,
+   int volatile transparent)
 {
    struct sock so;
    struct ccred ccred;
@@ -1261,8 +1755,11 @@ jduppass:
       if (mb.mb_imap_mailbox != NULL)
          free(mb.mb_imap_mailbox);
       assert(urlp->url_path.s != NULL);
-      mb.mb_imap_mailbox = sstrdup(urlp->url_path.s);
-      initbox(urlp->url_p_eu_h_p_p);
+      imap_delim_init(&mb, urlp);
+      mb.mb_imap_mailbox = sstrdup(imap_path_normalize(&mb, urlp->url_path.s));
+      initbox(savecatsep(urlp->url_p_eu_h_p,
+         (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
+         mb.mb_imap_mailbox));
    }
    mb.mb_type = MB_VOID;
    mb.mb_active = MB_NONE;
@@ -1320,8 +1817,8 @@ jduppass:
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
-   if (imap_select(&mb, &mailsize, &msgCount,
-         (urlp->url_path.s != NULL ? urlp->url_path.s : "INBOX"), fm) != OKAY) {
+   assert(urlp->url_path.s != NULL);
+   if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
       safe_signal(SIGINT, saveint);
@@ -2149,6 +2646,39 @@ tag(int new)
 }
 
 FL int
+c_imapcodec(void *v){
+   bool_t err;
+   char const **argv, *cp, *res;
+   NYD_ENTER;
+
+   if(is_prefix(cp = *(argv = v), "encode")){
+      while((cp = *++argv) != NULL){
+         res = imap_path_normalize(NULL, cp);
+         res = imap_path_encode(res, &err);
+         printf(" in: %s (%" PRIuZ " bytes)\nout: %s%s (%" PRIuZ " bytes)\n",
+            cp, strlen(cp), (err ? "ERROR " : ""), res, strlen(res));
+      }
+   }else if(is_prefix(cp, "decode")){
+      struct str in, out;
+
+      while((cp = *++argv) != NULL){
+         res = imap_path_normalize(NULL, cp);
+         res = imap_path_decode(res, &err);
+         in.l = strlen(in.s = UNCONST(res)); /* logical */
+         makeprint(&in, &out);
+         printf(" in: %s (%" PRIuZ " bytes)\nout: %s%s (%" PRIuZ " bytes)\n",
+            cp, strlen(cp), (err ? "ERROR " : ""), out.s, in.l);
+         free(out.s);
+      }
+   }else{
+      n_err(_("`imapcodec': invalid subcommand: %s\n"), *argv);
+      cp = NULL;
+   }
+   NYD_LEAVE;
+   return (cp != NULL ? OKAY : STOP);
+}
+
+FL int
 c_imap_imap(void *vp)
 {
    char o[LINESIZE];
@@ -2284,21 +2814,28 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    char o[LINESIZE], *buf;
    size_t bufsize, buflen, cnt;
    long size, lines, ysize;
-   int twice = 0;
-   FILE *queuefp = NULL;
+   char const *qname;
+   bool_t twice;
+   FILE *queuefp;
    enum okay rv;
    NYD_ENTER;
+
+   rv = STOP;
+   queuefp = NULL;
+   twice = FAL0;
+   buf = NULL;
+
+   if((qname = imap_path_quote(mp, name)) == NULL)
+      goto jleave;
 
    if (mp->mb_type == MB_CACHE) {
       queuefp = cache_queue(mp);
       if (queuefp == NULL) {
-         rv = STOP;
          buf = NULL;
          goto jleave;
       }
       rv = OKAY;
-   } else
-      rv = STOP;
+   }
 
    buf = smalloc(bufsize = LINESIZE);
    buflen = 0;
@@ -2311,8 +2848,7 @@ jagain:
    }
 
    snprintf(o, sizeof o, "%s APPEND %s %s%s {%ld}\r\n",
-         tag(1), imap_quotestr(name), imap_putflags(flag),
-         imap_make_date_time(t), size);
+         tag(1), qname, imap_putflags(flag), imap_make_date_time(t), size);
    IMAP_XOUT(o, MB_COMD, goto jleave, rv=STOP;goto jleave)
    while (mp->mb_active & MB_COMD) {
       rv = imap_answer(mp, twice);
@@ -2321,7 +2857,7 @@ jagain:
    }
 
    if (mp->mb_type != MB_CACHE && rv == STOP) {
-      if (twice == 0)
+      if (!twice)
          goto jtrycreate;
       else
          goto jleave;
@@ -2350,11 +2886,12 @@ jagain:
             ascncasecmp(responded_text,
                "[TRYCREATE] ", 12) == 0*/) {
 jtrycreate:
-         if (twice++) {
+         if (twice) {
             rv = STOP;
             goto jleave;
          }
-         snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), imap_quotestr(name));
+         twice = TRU1;
+         snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), qname);
          IMAP_XOUT(o, MB_COMD, goto jleave, rv=STOP;goto jleave)
          while (mp->mb_active & MB_COMD)
             rv = imap_answer(mp, 1);
@@ -2471,7 +3008,6 @@ imap_append(const char *xserver, FILE *fp)
    sighandler_type volatile saveint, savepipe;
    struct url url;
    struct ccred ccred;
-   char const * volatile mbx;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -2480,7 +3016,7 @@ imap_append(const char *xserver, FILE *fp)
    if (!ok_blook(v15_compat) &&
          (!url.url_had_user || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
-   mbx = (url.url_path.s != NULL) ? url.url_path.s : "INBOX";
+   assert(url.url_path.s != NULL);
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -2493,7 +3029,7 @@ imap_append(const char *xserver, FILE *fp)
 
    if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) && mb.mb_imap_account &&
          !strcmp(url.url_p_eu_h_p, mb.mb_imap_account)) {
-      rv = imap_append0(&mb, mbx, fp);
+      rv = imap_append0(&mb, url.url_path.s, fp);
    } else {
       struct mailbox mx;
 
@@ -2502,6 +3038,9 @@ imap_append(const char *xserver, FILE *fp)
       if (!_imap_getcred(&mx, &ccred, &url))
          goto jleave;
 
+      imap_delim_init(&mx, &url);
+      mx.mb_imap_mailbox = sstrdup(imap_path_normalize(&mx, url.url_path.s));
+
       if (disconnected(url.url_p_eu_h_p) == 0) {
          if (!sopen(&mx.mb_sock, &url))
             goto jfail;
@@ -2509,24 +3048,22 @@ imap_append(const char *xserver, FILE *fp)
          mx.mb_type = MB_IMAP;
          mx.mb_imap_account = UNCONST(url.url_p_eu_h_p);
          /* TODO the code now did
-          * TODO mx.mb_imap_mailbox = mbx;
+          * TODO mx.mb_imap_mailbox = mbx->url.url_patth.s;
           * TODO though imap_mailbox is sfree()d and mbx
           * TODO is possibly even a constant
           * TODO i changed this to sstrdup() sofar, as is used
           * TODO somewhere else in this file for this! */
-         mx.mb_imap_mailbox = sstrdup(mbx);
          if (imap_preauth(&mx, &url) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
             sclose(&mx.mb_sock);
             goto jfail;
          }
-         rv = imap_append0(&mx, mbx, fp);
+         rv = imap_append0(&mx, url.url_path.s, fp);
          imap_exit(&mx);
       } else {
          mx.mb_imap_account = UNCONST(url.url_p_eu_h_p);
-         mx.mb_imap_mailbox = sstrdup(mbx); /* TODO as above */
          mx.mb_type = MB_CACHE;
-         rv = imap_append0(&mx, mbx, fp);
+         rv = imap_append0(&mx, url.url_path.s, fp);
       }
 jfail:
       ;
@@ -2548,20 +3085,26 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
    struct list_item **lend, int level)
 {
    char o[LINESIZE], *cp;
-   const char *bp;
-   FILE *queuefp = NULL;
    struct list_item *lp;
-   enum okay ok = STOP;
+   const char *qname, *bp;
+   FILE *queuefp;
+   enum okay ok;
    NYD_X;
 
+   ok = STOP;
+   queuefp = NULL;
+
+   if((qname = imap_path_quote(mp, base)) == NULL)
+      goto jleave;
+
    *list = *lend = NULL;
-   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1), imap_quotestr(base));
-   IMAP_OUT(o, MB_COMD, return STOP)
+   snprintf(o, sizeof o, "%s LIST %s %%\r\n", tag(1), qname);
+   IMAP_OUT(o, MB_COMD, goto jleave)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
       if (response_status == RESPONSE_OTHER &&
             response_other == MAILBOX_DATA_LIST && imap_parse_list() == OKAY) {
-         cp = imap_unquotestr(list_name);
+         cp = imap_path_decode(imap_unquotestr(list_name), NULL);
          lp = csalloc(1, sizeof *lp);
          lp->l_name = cp;
          for (bp = base; *bp != '\0' && *bp == *cp; ++bp)
@@ -2577,6 +3120,7 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
             *list = *lend = lp;
       }
    }
+jleave:
    return ok;
 }
 
@@ -2745,16 +3289,14 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 {
    char o[LINESIZE];
    const char *qname;
-   int twice = 0, stored = 0;
-   FILE *queuefp = NULL;
-   enum okay ok = STOP;
+   bool_t twice, stored;
+   FILE *queuefp;
+   enum okay ok;
    NYD_X;
 
-   if (mp->mb_type == MB_CACHE) {
-      if ((queuefp = cache_queue(mp)) == NULL)
-         return STOP;
-      ok = OKAY;
-   }
+   ok = STOP;
+   queuefp = NULL;
+   twice = stored = FAL0;
 
    /* C99 */{
       size_t i;
@@ -2762,7 +3304,14 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
       i = strlen(name = imap_fileof(name));
       if(i == 0 || (i > 0 && name[i - 1] == '/'))
          name = savecat(name, "INBOX");
-      qname = imap_quotestr(name);
+      if((qname = imap_path_quote(mp, name)) == NULL)
+         goto jleave;
+   }
+
+   if (mp->mb_type == MB_CACHE) {
+      if ((queuefp = cache_queue(mp)) == NULL)
+         goto jleave;
+      ok = OKAY;
    }
 
    /* Since it is not possible to set flags on the copy, recently
@@ -2797,7 +3346,7 @@ again:
          response_status == RESPONSE_OK)
       imap_copyuid(mp, m, name);
 
-   if (response_status == RESPONSE_NO && twice++ == 0) {
+   if (response_status == RESPONSE_NO && !twice) {
       snprintf(o, sizeof o, "%s CREATE %s\r\n", tag(1), qname);
       IMAP_OUT(o, MB_COMD, goto out)
       while (mp->mb_active & MB_COMD)
@@ -2807,6 +3356,7 @@ again:
          goto again;
       }
    }
+   twice = TRU1;
 
    if (queuefp != NULL)
       Fclose(queuefp);
@@ -2816,36 +3366,37 @@ again:
 out:
    if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS)) {
       imap_store(mp, m, n, '-', "\\Seen", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MFLAG) {
       imap_store(mp, m, n, '-', "\\Flagged", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MUNFLAG) {
       imap_store(mp, m, n, '+', "\\Flagged", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MANSWER) {
       imap_store(mp, m, n, '-', "\\Answered", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MUNANSWER) {
       imap_store(mp, m, n, '+', "\\Answered", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MDRAFT) {
       imap_store(mp, m, n, '-', "\\Draft", 0);
-      stored++;
+      stored = TRU1;
    }
    if (m->m_flag & MUNDRAFT) {
       imap_store(mp, m, n, '+', "\\Draft", 0);
-      stored++;
+      stored = TRU1;
    }
    if (stored) {
       mp->mb_active |= MB_COMD;
       (void)imap_finish(mp);
    }
+jleave:
    return ok;
 }
 
@@ -2919,19 +3470,23 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    enum okay rv;
    NYD_ENTER;
 
+   rv = STOP;
+
    memset(&xmb, 0, sizeof xmb);
 
-   rv = STOP;
    if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
       goto jleave;
+
    rv = OKAY;
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    xmb.mb_imap_account = sstrdup(mp->mb_imap_account);
    xmb.mb_imap_pass = sstrdup(mp->mb_imap_pass);
-   xmb.mb_imap_mailbox = sstrdup(name);
+   memcpy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
+      sizeof(xmb.mb_imap_delim));
+   xmb.mb_imap_mailbox = sstrdup(imap_path_normalize(&xmb, name));
    if (mp->mb_cache_directory != NULL)
       xmb.mb_cache_directory = sstrdup(mp->mb_cache_directory);
    xmb.mb_uidvalidity = uidvalidity;
@@ -2978,16 +3533,18 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    enum okay rv;
    NYD_ENTER;
 
-   xmb.mb_imap_mailbox = NULL;
    rv = STOP;
+
    if ((cp = asccasestr(responded_text, "[APPENDUID ")) == NULL ||
          imap_appenduid_parse(&cp[11], &uidvalidity, &uid) == STOP)
       goto jleave;
+
    rv = OKAY;
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_mailbox = sstrdup(name);
+   /* XXX mb_imap_delim reused */
+   xmb.mb_imap_mailbox = sstrdup(imap_path_normalize(&xmb, name));
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
@@ -3002,9 +3559,9 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xm.m_uid = uid;
    xm.m_have = HAVE_HEADER | HAVE_BODY;
    putcache(&xmb, &xm);
+
+   free(xmb.mb_imap_mailbox);
 jleave:
-   if (xmb.mb_imap_mailbox != NULL)
-      free(xmb.mb_imap_mailbox);
    NYD_LEAVE;
    return rv;
 }
@@ -3236,19 +3793,25 @@ jleave:
 static enum okay
 imap_remove1(struct mailbox *mp, const char *name)
 {
-   FILE *queuefp = NULL;
    char *o;
    int os;
-   enum okay ok = STOP;
+   char const *qname;
+   FILE *queuefp;
+   enum okay ok;
    NYD_X;
 
-   o = ac_alloc(os = 2*strlen(name) + 100);
-   snprintf(o, os, "%s DELETE %s\r\n", tag(1), imap_quotestr(name));
-   IMAP_OUT(o, MB_COMD, goto out)
-   while (mp->mb_active & MB_COMD)
-      ok = imap_answer(mp, 1);
+   ok = STOP;
+   queuefp = NULL;
+
+   if((qname = imap_path_quote(mp, name)) != NULL){
+      o = ac_alloc(os = strlen(qname) + 100);
+      snprintf(o, os, "%s DELETE %s\r\n", tag(1), qname);
+      IMAP_OUT(o, MB_COMD, goto out)
+      while (mp->mb_active & MB_COMD)
+         ok = imap_answer(mp, 1);
 out:
-   ac_free(o);
+      ac_free(o);
+   }
    return ok;
 }
 
@@ -3296,20 +3859,26 @@ jleave:
 static enum okay
 imap_rename1(struct mailbox *mp, const char *old, const char *new)
 {
-   FILE *queuefp = NULL;
    char *o;
    int os;
-   enum okay ok = STOP;
+   char const *qoname, *qnname;
+   FILE *queuefp;
+   enum okay ok;
    NYD_X;
 
-   o = ac_alloc(os = 2*strlen(old) + 2*strlen(new) + 100);
-   snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), imap_quotestr(old),
-      imap_quotestr(new));
-   IMAP_OUT(o, MB_COMD, goto out)
-   while (mp->mb_active & MB_COMD)
-      ok = imap_answer(mp, 1);
+   ok = STOP;
+   queuefp = NULL;
+
+   if((qoname = imap_path_quote(mp, old)) != NULL &&
+         (qnname = imap_path_quote(mp, new)) != NULL){
+      o = ac_alloc(os = strlen(qoname) + strlen(qnname) + 100);
+      snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), qoname, qnname);
+      IMAP_OUT(o, MB_COMD, goto out)
+      while (mp->mb_active & MB_COMD)
+         ok = imap_answer(mp, 1);
 out:
-   ac_free(o);
+      ac_free(o);
+   }
    return ok;
 }
 
