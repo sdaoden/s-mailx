@@ -1,17 +1,6 @@
 S - n a i l  N e w s
 ====================
 
-  In the following numbers in [] reference a commit hash or a topic
-  branch name.  mdocmx(7) anchors are denoted by a number-sign #:
-  typing "^A ANCHOR" while reading the man(1)ual in a capable less(1)
-  will scroll to the manual's Point-Of-Interest, and pointing a web-
-  browser to the "#ANCHOR" of the online manual will do so, too.
-  An "|#ANCHOR" (or "|#_ANCHOR") that follows the normal anchor is for
-  the web manual only: it was manually adjusted since using grohtml
-  requires two days of fixup work.  Thanks for your understanding.
-  Commits can be browsed by appending the commit hash to
-    https://git.sdaoden.eu/cgit/s-nail.git/commit/?id=
-
 v14.8.13 ("Cyrustrupidae"), 2016-10-19
 --------------------------------------
 
@@ -31,6 +20,17 @@ Apologies to Jürgen Daubert (false spelling of name in commit message).
   will move to www.sdaoden.eu with v14.9; only the ML remains hosted
   at Sourceforge.net as of this writing.
   We thank Sourceforge.net for hosting this project so many years!
+
+  In the following numbers in [] reference a commit hash or a topic
+  branch name.  mdocmx(7) anchors are denoted by a number-sign #:
+  typing "^A ANCHOR" while reading the man(1)ual in a capable less(1)
+  will scroll to the manual's Point-Of-Interest, and pointing a web-
+  browser to the "#ANCHOR" of the online manual will do so, too.
+  An "|#ANCHOR" (or "|#_ANCHOR") that follows the normal anchor is for
+  the web manual only: it was manually adjusted since using grohtml
+  requires two days of fixup work.  Thanks for your understanding.
+  Commits can be browsed by appending the commit hash to
+    https://git.sdaoden.eu/cgit/s-nail.git/commit/?id=
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
