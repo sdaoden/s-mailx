@@ -137,6 +137,10 @@ option_update() {
       WANT_GSSAPI=0
    fi
 
+   if feat_no ICONV; then
+      WANT_IMAP=0
+   fi
+
    if feat_no READLINE && feat_no EDITLINE && feat_no NCL; then
       WANT_HISTORY=0 WANT_TABEXPAND=0
    fi
