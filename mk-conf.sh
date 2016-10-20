@@ -1209,7 +1209,7 @@ feat_def ERRORS
 feat_def NYD2
 feat_def NOMEMDBG
 
-if run_check inline '"inline" functions' \
+if run_check inline 'inline functions' \
    '#define HAVE_INLINE
    #define n_INLINE static inline' << \!
 static inline int ilf(int i){return ++i;}
@@ -1217,7 +1217,7 @@ int main(void){return ilf(-1);}
 !
 then
    :
-elif run_check inline '"__inline" functions' \
+elif run_check inline 'inline functions (via __inline)' \
    '#define HAVE_INLINE
    #define n_INLINE static __inline' << \!
 static __inline int ilf(int i){return ++i;}
