@@ -1,9 +1,7 @@
 #--MKRC-START--
 # /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
-#--MKREL-START--
 #@ S-nail(1): v14.8.14 / 2016-10-20
-#--MKREL-END--
 
 ## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
 # (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
