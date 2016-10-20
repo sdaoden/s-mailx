@@ -290,59 +290,89 @@ a_message_markall(char *buf, int f){
       case a_MESSAGE_T_NUMBER:
          pstate |= PS_MSGLIST_GABBY;
 jnumber:
-         if(flags & a_RANGE){
-            int i_base;
+         if(!a_message_check(a_message_lexno, f))
+            goto jerr;
 
+         if(flags & a_RANGE){
             flags ^= a_RANGE;
 
-            if(!a_message_check(a_message_lexno, f))
-               goto jerr;
-            if(beg < a_message_lexno){
-               i = beg;
-               beg = 1; /* TODO does not work: (i < a_message_lexno)
-               * TODO we need to detect whether both ends of a range
-               * TODO belong to the same thread first, then iterate
-               * TODO over the subset in between those points */
-            }else{
-               i = a_message_lexno;
-               a_message_lexno = beg;
-            }
-
-            /* Problem: until the TODO above can be worked and we simply get an
-             * iterator object for the thread (-range), we need to walk
-             * a threaded list two times */
-            i_base = (flags & a_THREADED) ? i : -1;
-jnumber__thr:
-            while((flags & a_THREADED) || i <= a_message_lexno){
-               mp = &message[i - 1];
-               if(i_base < 0 && !(mp->m_flag & MHIDDEN) &&
-                      (f == MDELETED || !(mp->m_flag & MDELETED))){
-                  mark(i, f);
-                  flags |= a_ANY;
+            if(!(flags & a_THREADED)){
+               if(beg < a_message_lexno)
+                  i = beg;
+               else{
+                  i = a_message_lexno;
+                  a_message_lexno = beg;
                }
-               if(flags & a_THREADED){
-                  if(i == a_message_lexno)
+
+               for(; i <= a_message_lexno; ++i){
+                  mp = &message[i - 1];
+                  if(!(mp->m_flag & MHIDDEN) &&
+                         (f == MDELETED || !(mp->m_flag & MDELETED))){
+                     mark(i, f);
+                     flags |= a_ANY;
+                  }
+               }
+            }else{
+               /* TODO threaded ranges are a mess */
+               enum{
+                  a_T_NONE,
+                  a_T_HOT = 1u<<0,
+                  a_T_DIR_PREV = 1u<<1
+               } tf;
+               int i_base;
+
+               if(beg < a_message_lexno)
+                  i = beg;
+               else{
+                  i = a_message_lexno;
+                  a_message_lexno = beg;
+               }
+
+               i_base = i;
+               tf = a_T_NONE;
+jnumber__thr:
+               for(;;){
+                  mp = &message[i - 1];
+                  if(!(mp->m_flag & MHIDDEN) &&
+                         (f == MDELETED || !(mp->m_flag & MDELETED))){
+                     if(tf & a_T_HOT){
+                        mark(i, f);
+                        flags |= a_ANY;
+                     }
+                  }
+
+                  /* We may have reached the endpoint.  If we were still
+                   * detecting the direction to search for it, restart.
+                   * Otherwise finished */
+                  if(i == a_message_lexno){ /* XXX */
+                     if(!(tf & a_T_HOT)){
+                        tf |= a_T_HOT;
+                        i = i_base;
+                        goto jnumber__thr;
+                     }
                      break;
-                  mx = beg ? next_in_thread(mp) : prev_in_thread(mp);
-                  if(mx == NULL){ 
+                  }
+
+                  mx = (tf & a_T_DIR_PREV) ? prev_in_thread(mp)
+                        : next_in_thread(mp);
+                  if(mx == NULL || mx->m_level == 0){
+                     /* We anyway have failed to reach the endpoint in this
+                      * direction;  if we already switched that, report error */
+                     if(!(tf & a_T_DIR_PREV)){
+                        tf |= a_T_DIR_PREV;
+                        i = i_base;
+                        goto jnumber__thr;
+                     }
                      id = N_("Range crosses multiple threads\n");
                      goto jerrmsg;
                   }
                   i = (int)PTR2SIZE(mx - message + 1);
-               }else
-                  ++i;
+               }
             }
-            if(i_base >= 0){
-               i = i_base;
-               i_base = -1;
-               goto jnumber__thr;
-            }
+
             beg = 0;
-            break;
          }else{
-            if(!a_message_check(a_message_lexno, f))
-               goto jerr;
-            /* Inclusive range? */
+            /* Could be an inclusive range? */
             if(bufp[0] == '-'){
                ++bufp;
                beg = a_message_lexno;
