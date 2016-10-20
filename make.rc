@@ -152,6 +152,7 @@ WANT_SMTP=yes
 WANT_POP3=yes
 
 # If $WANT_SOCKETS: support for IMAP protocol?
+# Requires $WANT_ICONV.
 # (Reading of mails directly on the server)  Can be "require"d.
 WANT_IMAP=yes
 

@@ -1094,6 +1094,7 @@ FL void        transflags(struct message *omessage, long omsgCount,
 FL time_t      imap_read_date_time(const char *cp);
 FL const char * imap_make_date_time(time_t t);
 #else
+# define c_imapcodec             c_cmdnotsupp
 # define c_imap_imap             c_cmdnotsupp
 # define c_connect               c_cmdnotsupp
 # define c_disconnect            c_cmdnotsupp
