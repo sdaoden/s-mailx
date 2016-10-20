@@ -944,22 +944,23 @@ jcreat:
          n_string_trunc(&enp->ae_str, 0);
       }
 
-# ifdef HAVE_VA_COPY
+# ifdef HAVE_N_VA_COPY
       imax = 64;
 # else
       imax = LINESIZE;
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
-# ifdef HAVE_VA_COPY
+# ifdef HAVE_N_VA_COPY
          va_list vac;
 
-         va_copy(vac, ap);
+         n_va_copy(vac, ap);
 # else
 #  define vac ap
 # endif
+
          n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (size_t)i);
          i = vsnprintf(&enp->ae_str.s_dat[len], (size_t)i, format, vac);
-# ifdef HAVE_VA_COPY
+# ifdef HAVE_N_VA_COPY
          va_end(vac);
 # else
 #  undef vac
@@ -967,7 +968,7 @@ jcreat:
          if(i <= 0)
             goto jleave;
          if(UICMP(z, i, >=, imax)){
-# ifdef HAVE_VA_COPY
+# ifdef HAVE_N_VA_COPY
             /* XXX Check overflow for upcoming LEN+++i! */
             n_string_trunc(&enp->ae_str, len);
             continue;

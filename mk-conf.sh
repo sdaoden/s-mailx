@@ -1484,7 +1484,7 @@ if link_check vsnprintf 'vsnprintf(3)' << \!
 static void dome(char *buf, size_t blen, ...){
    va_list ap;
 
-   va_start(ap, buf);
+   va_start(ap, blen);
    vsnprintf(buf, blen, "%s", ap);
    va_end(ap);
 }
@@ -1502,9 +1502,17 @@ else
 fi
 
 if [ "${have_vsnprintf}" = yes ]; then
-   link_check va_copy 'va_copy(3)' '#define HAVE_VA_COPY' << \!
+   __va_copy() {
+      link_check va_copy "va_copy(3) (as ${2})" \
+         "#define HAVE_N_VA_COPY
+#define n_va_copy ${2}" <<_EOT
 #include <stdarg.h>
 #include <stdio.h>
+#if ${1}
+# if defined __va_copy && !defined va_copy
+#  define va_copy __va_copy
+# endif
+#endif
 static void dome2(char *buf, size_t blen, va_list src){
    va_list ap;
 
@@ -1515,7 +1523,7 @@ static void dome2(char *buf, size_t blen, va_list src){
 static void dome(char *buf, size_t blen, ...){
    va_list ap;
 
-   va_start(ap, buf);
+   va_start(ap, blen);
    dome2(buf, blen, ap);
    va_end(ap);
 }
@@ -1525,7 +1533,9 @@ int main(void){
    dome(b, sizeof b, "string");
    return 0;
 }
-!
+_EOT
+   }
+   __va_copy 0 va_copy || __va_copy 1 __va_copy
 fi
 
 run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
