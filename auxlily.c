@@ -947,7 +947,7 @@ jcreat:
 # ifdef HAVE_N_VA_COPY
       imax = 64;
 # else
-      imax = LINESIZE;
+      imax = MIN(LINESIZE, 1024);
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
 # ifdef HAVE_N_VA_COPY
