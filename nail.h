@@ -1354,6 +1354,7 @@ enum user_options {
    OPT_TTYOUT     = 1u<<19,
    OPT_INTERACTIVE = 1u<<20,
    OPT_UNICODE    = 1u<<21,   /* We're in an UTF-8 environment */
+
    OPT_ENC_MBSTATE = 1u<<22,  /* Multibyte environment with shift states */
 
    /* Some easy-access shortcuts */

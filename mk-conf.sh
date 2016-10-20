@@ -1200,6 +1200,7 @@ ${cat} > ${makefile} << \!
 # May be multiline..
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
+feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION
 feat_def CROSS_BUILD
 feat_def DEBUG

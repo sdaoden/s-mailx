@@ -123,6 +123,20 @@ VAL_VISUAL=vi
 
 ## FEATURE SET ##
 
+# Some operating systems only support an UTF-8 locale, e.g., Plan9, Musl
+# based Linux variants and newer OpenBSD.  For such environments we can
+# avoid a lot of tests and may enable support for features which would
+# otherwise not be available.  For example, on a stock OpenBSD 6.0
+# install there is no OPT_ICONV installed, but we could support IMAP
+# path operations nonetheless because of the "only UTF-8" paradigm.
+# Note that $OS is available as normalized all-lowercase upon evaluation
+OPT_ALWAYS_UNICODE_LOCALE=`\
+   if [ "${OS}" = openbsd ]; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
+
 # For cross-compilation purposes it may be useful to not actually run
 # systemcall etc. tests (link and run the executable) but only to
 # perform the link tests necessary to detect host environment.

@@ -86,7 +86,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
                break;
             }
             memset(mbp, 0, sizeof *mbp);
-            vicp->vic_waccu = (options & OPT_UNICODE ? 0xFFFD : '?');
+            vicp->vic_waccu = (options & OPT_UNICODE) ? 0xFFFD : '?';
             i = 1;
          }else if(i == 0){
             il = 0;

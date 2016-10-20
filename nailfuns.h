@@ -2133,16 +2133,14 @@ n_INLINE struct n_string *
 # undef n_string_drop_ownership
 #endif /* HAVE_INLINE */
 
-/* UTF-8 stuff */
+/* UTF-8 / UTF-32 stuff */
 
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 /* ..and update arguments to point after range; returns UI32_MAX on error, in
  * which case the arguments will have been stepped one byte */
 FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
 
 /* buf must be large enough also for NUL, it's new length will be returned */
 FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
-#endif
 
 /* Our iconv(3) wrappers */
 

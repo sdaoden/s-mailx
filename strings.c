@@ -770,7 +770,6 @@ n_string_cp_const(struct n_string const *self){
  * UTF-8
  */
 
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
 FL ui32_t
 n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
 {
@@ -881,7 +880,6 @@ j0:
    NYD2_LEAVE;
    return l;
 }
-#endif /* HAVE_NATCH_CHAR || HAVE_ICONV */
 
 /*
  * Our iconv(3) wrapper

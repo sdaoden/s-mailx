@@ -254,29 +254,32 @@ _startup(void)
 
    /*  --  >8  --  8<  --  */
 
-#ifdef HAVE_SETLOCALE
+#ifndef HAVE_SETLOCALE
+   mb_cur_max = 1;
+#else
    setlocale(LC_ALL, "");
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
-   if (ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+   if(ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
       ok_vset(ttycharset, cp);
 # endif
 
 # ifdef HAVE_C90AMEND1
-   if (mb_cur_max > 1) {
-      wchar_t  wc;
-      if (mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+   if(mb_cur_max > 1){
+#  ifdef HAVE_ALWAYS_UNICODE_LOCALE
+      options |= OPT_UNICODE;
+#  else
+      wchar_t wc;
+      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
             mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
          options |= OPT_UNICODE;
       /* Reset possibly messed up state; luckily this also gives us an
        * indication whether the encoding has locking shift state sequences */
-      /* TODO temporary - use option bits! */
-      if (mbtowc(&wc, NULL, mb_cur_max))
+      if(mbtowc(&wc, NULL, mb_cur_max))
          options |= OPT_ENC_MBSTATE;
+#  endif
    }
 # endif
-#else
-   mb_cur_max = 1;
 #endif
 
 #ifdef HAVE_ICONV

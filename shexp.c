@@ -845,8 +845,8 @@ jpush:
             ++ib, --il;
          }else{
             /* Not an ASCII character, take care not to split up multibyte
-             * sequences etc. */
-#ifdef HAVE_NATCH_CHAR
+             * sequences etc.  For the sake of compile testing, don't enwrap in
+             * HAVE_ALWAYS_UNICODE_LOCALE || HAVE_NATCH_CHAR */
             if(options & OPT_UNICODE){
                ui32_t uc;
                char const *ib2;
@@ -874,7 +874,6 @@ jpush:
                   continue;
                }
             }
-#endif /* HAVE_NATCH_CHAR */
 
             memset(&vic, 0, sizeof vic);
             vic.vic_indat = ib;
@@ -1182,9 +1181,7 @@ jleave:
 FL enum n_shexp_state
 n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
       enum n_shexp_parse_flags flags){
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
    char utf[8];
-#endif
    char c2, c, quotec;
    enum{
       a_NONE = 0,
@@ -1459,19 +1456,16 @@ je_ib_save:
                            goto Je_uni_norm;
                         }
 
-#if defined HAVE_NATCH_CHAR || defined HAVE_ICONV
                         j = n_utf32_to_utf8(no, utf);
-#endif
-#ifdef HAVE_NATCH_CHAR
+
                         if(options & OPT_UNICODE){
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
                            if(!(flags & n_SHEXP_PARSE_DRYRUN))
                               store = n_string_push_buf(store, utf, j);
                            continue;
                         }
-#endif
 #ifdef HAVE_ICONV
-                        /* C99 */{
+                        else{
                            char *icp;
 
                            icp = n_iconv_onetime_cp(n_ICONV_NONE,
