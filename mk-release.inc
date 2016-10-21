@@ -209,6 +209,33 @@ if yesno 'Prepare announcement?'; then
       gsub("<", "\\&lt;")
       gsub(">", "\\&gt;")
    }
+   function urls(){
+      any = 0
+      res = ""
+      s = $0
+
+      while(match(s, /(\\?https?\??:\/\/[^ ]*)/)){
+         pre = substr(s, 1, RSTART - 1)
+         mat = substr(s, RSTART, RLENGTH)
+         s = substr(s, RSTART + RLENGTH)
+         if("\\" == substr(mat, 1, 1))
+            mat = substr(mat, 2)
+         else{
+            xt = 0
+            if(match(mat, /^https\?/))
+               mat = "https" substr(xt = mat, RSTART + 6)
+            if(match(mat, /sdaoden\.eu/))
+               mat = "<?lref" (xt ? "t " : " ") mat (xt ? "<>" xt : "") "?>"
+            else
+               mat = "<?href" (xt ? "t " : " ") mat (xt ? "<>" xt : "") "?>"
+         }
+         res = res pre mat
+         any = 1
+      }
+      if(any && length(s))
+         res = res s
+      $0 = any ? res : s
+   }
    /^[[:space:]]*s-.*-mode[[:space:]]*$/{
       header = 1
       next
@@ -233,6 +260,7 @@ if yesno 'Prepare announcement?'; then
          next
       }
       strips()
+      urls()
       if(hot <= 0){
          print
          next
@@ -275,7 +303,7 @@ if [ -n "${bigballs}" ] && yesno 'Upload archives'; then
    (
    cd "${TMPDIR}"
 
-      {
+   {
       echo "-put ${PROGRAM}-${REL}.tar"
       echo "-rm ${PROGRAM}-latest.tar"
       echo "-ln ${PROGRAM}-${REL}.tar ${PROGRAM}-latest.tar"
@@ -300,7 +328,7 @@ if [ -n "${bigballs}" ] && yesno 'Upload archives'; then
          echo "-ln ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
          echo "-chmod 0644 ${PROGRAM}-${REL}.txt"
       fi
-      } |
+   } |
    sftp -b - ${UPLOAD}
    )
 fi
