@@ -217,7 +217,8 @@
 #define DATE_SECSMIN    60L
 #define DATE_MINSHOUR   60L
 #define DATE_HOURSDAY   24L
-#define DATE_SECSDAY    (DATE_SECSMIN * DATE_MINSHOUR * DATE_HOURSDAY)
+#define DATE_SECSHOUR   (DATE_SECSMIN * DATE_MINSHOUR)
+#define DATE_SECSDAY    (DATE_SECSHOUR * DATE_HOURSDAY)
 
 /* The default IMAP directory separator ([0] is used as a replacer, too) */
 #define n_IMAP_DELIM    "/."
