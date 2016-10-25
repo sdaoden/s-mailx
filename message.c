@@ -355,7 +355,7 @@ jnumber__thr:
 
                   mx = (tf & a_T_DIR_PREV) ? prev_in_thread(mp)
                         : next_in_thread(mp);
-                  if(mx == NULL || mx->m_level == 0){
+                  if(mx == NULL){
                      /* We anyway have failed to reach the endpoint in this
                       * direction;  if we already switched that, report error */
                      if(!(tf & a_T_DIR_PREV)){
