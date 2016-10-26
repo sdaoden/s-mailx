@@ -163,7 +163,7 @@ a_shexp_findmail(char const *user, bool_t force){
       i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
       rv = salloc(i);
-      memcpy(rv, VAL_MAIL, i = sizeof(VAL_MAIL));
+      memcpy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
       memcpy(&rv[++i], user, ul);
    }
