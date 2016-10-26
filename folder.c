@@ -224,7 +224,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    }
 
    if ((ibuf = Zopen(name, "r")) == NULL) {
-      if ((fm & FEDIT_SYSBOX) && errno == ENOENT) {
+      int e = errno;
+
+      if ((fm & FEDIT_SYSBOX) && e == ENOENT) {
          if (strcmp(who, myname) && getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
@@ -239,12 +241,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       mb.mb_type = MB_VOID;
       if (ok_blook(emptystart)) {
          if (!(options & OPT_QUICKRUN_MASK) && !ok_blook(bsdcompat))
-            n_perr(name, 0);
+            n_perr(name, e);
          /* We must avoid returning -1 and causing program exit */
          rv = 1;
          goto jleave;
       }
-      n_perr(name, 0);
+      n_perr(name, e);
       goto jem1;
    }
 
