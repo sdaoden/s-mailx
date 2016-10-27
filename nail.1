@@ -6959,7 +6959,7 @@ even for plain text attachments like
 .Ql text/diff .
 If this variable is set then \*(UA will try to classify such MIME
 message parts on its own, if possible, for example via a possibly
-existent attachment filename.
+existing attachment filename.
 A non-empty value may also be given, in which case a number is expected,
 actually a carrier of bits.
 Creating the bit-carrying number is a simple addition:
@@ -7008,7 +7008,8 @@ directives found in the user file take precedence, letter matching is
 case-insensitive.
 If this option is not set \*(UA will try to load both files.
 Incorporation of the \*(UA-builtin MIME types cannot be suppressed,
-but they will be matched last.
+but they will be matched last (the order can be listed via
+.Ic mimetype ) .
 .Pp
 More sources can be specified by using a different syntax: if the
 value string contains an equals sign
@@ -9077,7 +9078,8 @@ attachments.
 When displaying message content or attachments \*(UA uses the content
 type to decide whether it can directly display data or whether it needs
 to deal with content handlers.
-It learns about MIME types and how to treat them by reading
+It learns about M(ultipurpose) I(nternet) M(ail) E(xtensions) types and
+how to treat them by reading
 .Pa mime.types
 files, the loading of which can be controlled by setting the variable
 .Va mimetypes-load-control .

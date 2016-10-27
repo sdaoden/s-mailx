@@ -881,7 +881,7 @@ c_mimetype(void *v)
          typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
                ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
 
-         fprintf(fp, "%c%s %s%.*s <%s>\n",
+         fprintf(fp, "%c%s %s%.*s  %s\n",
             (mtnp->mt_flags & _MT_USR ? 'U'
                : (mtnp->mt_flags & _MT_SYS ? 'S'
                : (mtnp->mt_flags & _MT_LOADED ? 'F' : 'B'))),
