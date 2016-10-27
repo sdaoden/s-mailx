@@ -4,7 +4,7 @@
  *@ to the configured VAL_PRIVSEP_USER (usually "root"), in order to create
  *@ a dotlock file with the same UID/GID as the mailbox to be locked.
  *@ It should be started when chdir(2)d to the lock file's directory,
- *@ and SIGPIPE should be ignored.
+ *@ with a symlink-resolved target and with SIGPIPE being ignored.
  *
  * Copyright (c) 2015 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
@@ -93,9 +93,9 @@ jeuse:
          "This is a helper program of " VAL_UAGENT " (in " VAL_BINDIR ").\n"
          "  It is capable of gaining more privileges than " VAL_UAGENT "\n"
          "  and will be used to create lock files.\n"
-         "  It's sole purpose is outsourcing of high privileges into\n"
+         "  The sole purpose is outsourcing of high privileges into\n"
          "  fewest lines of code in order to reduce attack surface.\n"
-         "  It cannot be run by itself.\n");
+         "  This program cannot be run by itself.\n");
       exit(EXIT_USE);
    }
 

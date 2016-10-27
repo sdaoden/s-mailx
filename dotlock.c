@@ -114,34 +114,38 @@ jislink:
 # endif
       int i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
 
-      /* fd is a file, not portable to use for _PC_NAME_MAX */
-      if(i < 0){
+      if(i < 0 || i >= sizeof name){
 jenametool:
          dls = n_DLS_NAMETOOLONG | n_DLS_ABANDON;
          goto jmsg;
       }
+
+      /* fd is a file, not portable to use for _PC_NAME_MAX */
 # ifdef HAVE_PATHCONF
       errno = 0;
       if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
          /* errno unchanged: no limit */
          if(errno == 0)
             break;
+# endif
+         if(UICMP(z, NAME_MAX - 1, <, i))
+            goto jenametool;
+# ifdef HAVE_PATHCONF
       }else if(pc - 1 >= (long)i)
          break;
       else
          goto jenametool;
 # endif
-      if(UICMP(z, NAME_MAX - 1, <, (uiz_t)i))
-         goto jenametool;
    }while(0);
 
    di.di_lock_name = name;
 
    /* We are in the directory of the mailbox for which we have to create
-    * a dotlock file for.  We don't know whether we have realpath(3) available,
-    * and manually resolving the path is due especially given that S-nail
-    * supports the special "%:" syntax to warp any file into a "system
-    * mailbox"; there may also be multiple system mailbox directories...
+    * a dotlock file for.  Any symbolic links have been resolved.
+    * We don't know whether we have realpath(3) available,and manually
+    * resolving the path is due especially given that S-nail supports the
+    * special "%:" syntax to warp any file into a "system mailbox"; there may
+    * also be multiple system mailbox directories...
     * So what we do is that we fstat(2) the mailbox and check its UID and
     * GID against that of our own process: if any of those mismatch we must
     * either assume a directory we are not allowed to write in, or that we run
@@ -293,7 +297,7 @@ jleave:
    /* And the locker process itself; it'll be a (rather cheap) thread only
     * unless the lock has to be placed in the system spool and we have our
     * privilege-separated dotlock program available, in which case that will be
-    * executed and do "it" with changed group-id */
+    * executed and do "it" */
    di.di_file_name = fname;
    di.di_pollmsecs = pollmsecs;
    /* Initialize some more stuff; query the two strings in the parent in order

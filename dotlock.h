@@ -96,9 +96,9 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
    for(tries = 0;; ++tries){
       fd = open(lname,
 #ifdef O_SYNC
-               (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_SYNC),
+               (O_WRONLY | O_CREAT | O_EXCL | O_SYNC),
 #else
-               (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL),
+               (O_WRONLY | O_CREAT | O_EXCL),
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if(fd != -1){
