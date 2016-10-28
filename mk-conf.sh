@@ -185,9 +185,6 @@ option_update() {
    if feat_yes DEVEL; then
       OPT_DEBUG=1
    fi
-   if feat_yes DEBUG; then
-      OPT_NOALLOCA=1
-   fi
 }
 
 rc=./make.rc
@@ -1650,21 +1647,6 @@ int main(void){
 fi
 
 ## optional and selectable
-
-if feat_no NOALLOCA; then
-   # Due to NetBSD PR lib/47120 it seems best not to use non-cc-builtin
-   # versions of alloca(3) since modern compilers just can't be trusted
-   # not to overoptimize and silently break some code
-   run_check alloca '__builtin_alloca()' \
-      '#define HAVE_ALLOCA __builtin_alloca' << \!
-#include <stdio.h> /* For C89 NULL */
-int main(void){
-   void *vp = __builtin_alloca(1);
-
-   return (vp != NULL);
-}
-!
-fi
 
 if feat_yes DOTLOCK; then
    if run_check readlink 'readlink(2)' << \!

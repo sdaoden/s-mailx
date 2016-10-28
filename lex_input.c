@@ -89,8 +89,11 @@ struct a_lex_input_stack{
    ui32_t li_flags;              /* enum a_lex_input_flags */
    ui32_t li_loff;               /* Pseudo (macro): index in .li_lines */
    char **li_lines;              /* Pseudo content, lines unfolded */
+   char li_autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF];
    char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
+n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
+   "Inacceptible size of structure buffer");
 
 static sighandler_type a_lex_oldpipe;
 static struct a_lex_ghost *a_lex_ghosts;
@@ -911,21 +914,21 @@ a_lex_hangup(int s){
 }
 
 static void
-a_lex_onintr(int s){
+a_lex_onintr(int s){ /* TODO block signals while acting */
    NYD_X; /* Signal handler */
    n_UNUSED(s);
 
    safe_signal(SIGINT, a_lex_onintr);
-   noreset = 0;
-   a_lex_unstack(TRUM1);
 
    termios_state_reset();
-   close_all_files(); /* FIXME .. to outer level ONLU! */
-
+   close_all_files(); /* FIXME .. of current level ONLU! */
    if(image >= 0){
       close(image);
       image = -1;
    }
+
+   a_lex_unstack(TRUM1);
+
    if(interrupts != 1)
       n_err_sighdl(_("Interrupt\n"));
    safe_signal(SIGPIPE, a_lex_oldpipe);
@@ -938,6 +941,8 @@ a_lex_unstack(bool_t eval_error){
    NYD_ENTER;
 
    if((lip = a_lex_input) == NULL){
+      n_memory_reset();
+
       /* If called from a_lex_onintr(), be silent FIXME */
       pstate &= ~(PS_SOURCING | PS_ROBOT);
       if(eval_error == TRUM1 || !(pstate & PS_STARTED))
@@ -975,6 +980,8 @@ a_lex_unstack(bool_t eval_error){
       eval_error = TRU1;
    }
 
+   n_memory_autorec_pop(&lip->li_autorecmem[0]);
+
    if((a_lex_input = lip->li_outer) == NULL){
       pstate &= ~(PS_SOURCING | PS_ROBOT);
    }else{
@@ -986,9 +993,9 @@ a_lex_unstack(bool_t eval_error){
 
    if(eval_error)
       goto jerr;
-   if(lip->li_flags & a_LEX_FREE)
-      free(lip);
 jleave:
+   if(lip != NULL && (lip->li_flags & a_LEX_FREE))
+      free(lip);
    if(n_UNLIKELY(a_lex_input != NULL && eval_error == TRUM1))
       a_lex_unstack(TRUM1);
    NYD_LEAVE;
@@ -1011,8 +1018,6 @@ jerr:
                 : _("loading initialization resource"))),
             lip->li_name,
             (options & OPT_DEBUG ? "" : _(" (enable *debug* for trace)")));
-      if(lip->li_flags & a_LEX_FREE)
-         free(lip);
    }
 
    if(!(options & OPT_INTERACTIVE) && !(pstate & PS_STARTED)){
@@ -1079,6 +1084,7 @@ a_lex_source_file(char const *file, bool_t silent_error){
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
    lip->li_cond = condstack_release();
+   n_memory_autorec_push(&lip->li_autorecmem[0]);
    lip->li_flags = (ispipe ? a_LEX_FREE | a_LEX_PIPE : a_LEX_FREE) |
          (a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_SUPER_MACRO)
           ? a_LEX_SUPER_MACRO : 0);
@@ -1107,6 +1113,7 @@ a_lex_load(struct a_lex_input_stack *lip){
     *    writing a diagnostic message, ignoring the remainder of the lines in
     *    the start-up file. */
    lip->li_cond = condstack_release();
+   n_memory_autorec_push(&lip->li_autorecmem[0]);
 
 /* FIXME won't work for now (PS_ROBOT needs PS_SOURCING anyway)
    pstate |= PS_ROBOT |
@@ -1156,6 +1163,7 @@ a_commands_recursive(enum n_lexinput_flags lif){
          rv = FAL0;
          break;
       }
+      n_memory_reset();
 
       if((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)){
          if(exit_status != EXIT_OK)
@@ -1175,8 +1183,10 @@ FL bool_t
 n_commands(void){ /* FIXME */
    struct a_lex_eval_ctx ev;
    int n;
-   bool_t volatile rv = TRU1;
+   bool_t volatile rv;
    NYD_ENTER;
+
+   rv = TRU1;
 
    if (!(pstate & PS_SOURCING)) {
       if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
@@ -1206,7 +1216,9 @@ n_commands(void){ /* FIXME */
       interrupts = 0;
 
       temporary_localopts_free(); /* XXX intermediate hack */
-      sreset((pstate & PS_SOURCING) != 0);
+
+      n_memory_reset();
+
       if (!(pstate & PS_SOURCING)) {
          char *cp;
 
@@ -1303,19 +1315,18 @@ jreadline:
       if(pstate & PS_EXIT)
          break;
    }
+
    a_lex_unstack(!rv);
 
    if (ev.le_line.s != NULL)
       free(ev.le_line.s);
-   if (pstate & PS_SOURCING)
-      sreset(FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
 (n_lex_input)(enum n_lexinput_flags lif, char const *prompt, char **linebuf,
-      size_t *linesize, char const *string SMALLOC_DEBUG_ARGS){
+      size_t *linesize, char const *string n_MEMORY_DEBUG_ARGS){
    /* TODO readline: linebuf pool!; n_lex_input should return si64_t */
    FILE *ifile;
    bool_t doprompt, dotty;
@@ -1373,14 +1384,14 @@ FL int
                *linesize += n +1;
             else
                *linesize = (size_t)n + LINESIZE +1;
-            *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
+            *linebuf = (n_realloc)(*linebuf, *linesize n_MEMORY_DEBUG_ARGSCALL);
            memcpy(*linebuf, string, (size_t)n +1);
          }
          string = NULL;
          /* TODO if nold>0, don't redisplay the entire line!
           * TODO needs complete redesign ... */
          n = (n_tty_readline)(lif, prompt, linebuf, linesize, n
-               SMALLOC_DEBUG_ARGSCALL);
+               n_MEMORY_DEBUG_ARGSCALL);
       }else{
          if(prompt != NULL) {
             if(*prompt != '\0')
@@ -1389,7 +1400,7 @@ FL int
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
-               SMALLOC_DEBUG_ARGSCALL);
+               n_MEMORY_DEBUG_ARGSCALL);
 
          if(n > 0 && nold > 0){
             int i = 0;
@@ -1587,10 +1598,10 @@ n_load_Xargs(char const **lines, size_t cnt){
       if(j > 0){
          if(i + 2 >= imax){ /* TODO need a vector (main.c, here, ++) */
             imax += 4;
-            lip->li_lines = srealloc(lip->li_lines, sizeof(*lip->li_lines) *
+            lip->li_lines = n_realloc(lip->li_lines, sizeof(*lip->li_lines) *
                   imax);
          }
-         lip->li_lines[i] = cp = srealloc(cp, len + j +1);
+         lip->li_lines[i] = cp = n_realloc(cp, len + j +1);
          memcpy(&cp[len], srcp, j);
          cp[len += j] = '\0';
 
@@ -1645,6 +1656,7 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines){
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
    lip->li_cond = condstack_release();
+   n_memory_autorec_push(&lip->li_autorecmem[0]);
    lip->li_flags = a_LEX_FREE | a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          (a_lex_input == NULL || (a_lex_input->li_flags & a_LEX_SUPER_MACRO)
           ? a_LEX_SUPER_MACRO : 0);
@@ -1676,6 +1688,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
    lip->li_cond = condstack_release();
+   n_memory_autorec_push(&lip->li_autorecmem[0]);
    lip->li_flags = a_LEX_FREE | a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          a_LEX_MACRO_CMD |
          (a_lex_input == NULL || (a_lex_input->li_flags & a_LEX_SUPER_MACRO)

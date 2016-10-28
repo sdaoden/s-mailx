@@ -1,7 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Memory functions.
+ *@ Heap memory and automatically reclaimed storage.
+ *@ TODO Back the _flux_ heap.
+ *@ TODO Add cache for "the youngest" two or three n_MEMORY_AUTOREC_SIZE arenas
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -23,921 +24,1336 @@
 # include "nail.h"
 #endif
 
+/*
+ * Our (main)loops _autorec_push() arenas for their lifetime, the
+ * n_memory_reset() that happens on loop ticks reclaims their memory, and
+ * performs debug checks also on the former #ifdef HAVE_MEMORY_DEBUG.
+ * There is one global anonymous autorec arena which is used during the
+ * startup phase and for the interactive n_commands() instance -- this special
+ * arena is autorec_fixate()d from within main.c to not waste space, i.e.,
+ * remaining arena memory is reused and topic to normal _reset() reclaiming.
+ * That was so in historical code with the globally shared single string dope
+ * implementation, too.
+ *
+ * AutoReclaimedStorage memory is the follow-up to the historical "stringdope"
+ * allocator from 1979 (see [timeline:a7342d9]:src/Mail/strings.c), it is
+ * a steadily growing pool (but srelax_hold()..[:srelax():]..srelax_rele() can
+ * be used to reduce pressure) until n_memory_reset() time.
+ *
+ * LastOutFirstIn memory is ment as an alloca(3) replacement but which requires
+ * lofi_free()ing pointers (otherwise growing until n_memory_reset()).
+ *
+ * TODO Flux heap memory is like LOFI except that any pointer can be freed (and
+ * TODO reused) at any time, just like normal heap memory.  It is notational in
+ * TODO that it clearly states that the allocation will go away after a loop
+ * TODO tick, and also we can use some buffer caches.
+ */
+
+/* Maximum allocation (directly) handled by A-R-Storage */
+#define a_MEMORY_ARS_MAX (n_MEMORY_AUTOREC_SIZE / 2 + n_MEMORY_AUTOREC_SIZE / 4)
+#define a_MEMORY_LOFI_MAX a_MEMORY_ARS_MAX
+
+n_CTA(a_MEMORY_ARS_MAX > 1024,
+   "Auto-reclaimed memory requires a larger buffer size"); /* Anway > 42! */
+n_CTA(n_ISPOW2(n_MEMORY_AUTOREC_SIZE),
+   "Buffers should be POW2 (may be wasteful on native allocators otherwise)");
+
+/* Alignment of ARS memory.  Simply go for pointer alignment */
+#define a_MEMORY_ARS_ROUNDUP(S) n_ALIGN_SMALL(S)
+#define a_MEMORY_LOFI_ROUNDUP(S) a_MEMORY_ARS_ROUNDUP(S)
+
 #ifdef HAVE_MEMORY_DEBUG
-CTA(sizeof(char) == sizeof(ui8_t));
+n_CTA(sizeof(char) == sizeof(ui8_t), "But POSIX says a byte is 8 bit");
 
-# define _HOPE_SIZE        (2 * 8 * sizeof(char))
-# define _HOPE_SET(C)   \
-do {\
-   union a_mem_ptr __xl, __xu;\
-   struct a_mem_chunk *__xc;\
-   __xl.p_p = (C).p_p;\
-   __xc = __xl.p_c - 1;\
-   __xu.p_p = __xc;\
-   (C).p_cp += 8;\
-   __xl.p_ui8p[0]=0xDE; __xl.p_ui8p[1]=0xAA;\
-   __xl.p_ui8p[2]=0x55; __xl.p_ui8p[3]=0xAD;\
-   __xl.p_ui8p[4]=0xBE; __xl.p_ui8p[5]=0x55;\
-   __xl.p_ui8p[6]=0xAA; __xl.p_ui8p[7]=0xEF;\
-   __xu.p_ui8p += __xc->mc_size - 8;\
-   __xu.p_ui8p[0]=0xDE; __xu.p_ui8p[1]=0xAA;\
-   __xu.p_ui8p[2]=0x55; __xu.p_ui8p[3]=0xAD;\
-   __xu.p_ui8p[4]=0xBE; __xu.p_ui8p[5]=0x55;\
-   __xu.p_ui8p[6]=0xAA; __xu.p_ui8p[7]=0xEF;\
-} while (0)
+# define a_MEMORY_HOPE_SIZE (2 * 8 * sizeof(char))
 
-# define _HOPE_GET_TRACE(C,BAD) \
-do {\
-   (C).p_cp += 8;\
-   _HOPE_GET(C, BAD);\
-   (C).p_cp += 8;\
-} while(0)
+/* We use address-induced canary values, inspiration (but he didn't invent)
+ * and primes from maxv@netbsd.org, src/sys/kern/subr_kmem.c */
+# define a_MEMORY_HOPE_LOWER(S,P) \
+do{\
+   ui64_t __h__ = (uintptr_t)(P);\
+   __h__ *= ((ui64_t)0x9E37FFFFu << 32) | 0xFFFC0000u;\
+   __h__ >>= 56;\
+   (S) = (ui8_t)__h__;\
+}while(0)
 
-# define _HOPE_GET(C,BAD) \
-do {\
-   union a_mem_ptr __xl, __xu;\
-   struct a_mem_chunk *__xc;\
+# define a_MEMORY_HOPE_UPPER(S,P) \
+do{\
+   ui32_t __i__;\
+   ui64_t __x__, __h__ = (uintptr_t)(P);\
+   __h__ *= ((ui64_t)0x9E37FFFFu << 32) | 0xFFFC0000u;\
+   for(__i__ = 56; __i__ != 0; __i__ -= 8)\
+      if((__x__ = (__h__ >> __i__)) != 0){\
+         (S) = (ui8_t)__x__;\
+         break;\
+      }\
+   if(__i__ == 0)\
+      (S) = 0xAAu;\
+}while(0)
+
+# define a_MEMORY_HOPE_SET(T,C) \
+do{\
+   union a_memory_ptr __xp;\
+   struct a_memory_chunk *__xc;\
+   __xp.p_vp = (C).p_vp;\
+   __xc = (struct a_memory_chunk*)(__xp.T - 1);\
+   (C).p_cp += 8;\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[0], &__xp.p_ui8p[0]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[1], &__xp.p_ui8p[1]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[2], &__xp.p_ui8p[2]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[3], &__xp.p_ui8p[3]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[4], &__xp.p_ui8p[4]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[5], &__xp.p_ui8p[5]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[6], &__xp.p_ui8p[6]);\
+   a_MEMORY_HOPE_LOWER(__xp.p_ui8p[7], &__xp.p_ui8p[7]);\
+   __xp.p_ui8p += 8 + __xc->mc_user_size;\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[0], &__xp.p_ui8p[0]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[1], &__xp.p_ui8p[1]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[2], &__xp.p_ui8p[2]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[3], &__xp.p_ui8p[3]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[4], &__xp.p_ui8p[4]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[5], &__xp.p_ui8p[5]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[6], &__xp.p_ui8p[6]);\
+   a_MEMORY_HOPE_UPPER(__xp.p_ui8p[7], &__xp.p_ui8p[7]);\
+}while(0)
+
+# define a_MEMORY_HOPE_GET_TRACE(T,C,BAD) \
+do{\
+   (C).p_cp += 8;\
+   a_MEMORY_HOPE_GET(T, C, BAD);\
+   (C).p_cp += 8;\
+}while(0)
+
+# define a_MEMORY_HOPE_GET(T,C,BAD) \
+do{\
+   union a_memory_ptr __xp;\
+   struct a_memory_chunk *__xc;\
    ui32_t __i;\
-   __xl.p_p = (C).p_p;\
-   __xl.p_cp -= 8;\
-   (C).p_cp = __xl.p_cp;\
-   __xc = __xl.p_c - 1;\
+   ui8_t __m;\
+   __xp.p_vp = (C).p_vp;\
+   __xp.p_cp -= 8;\
+   (C).p_cp = __xp.p_cp;\
+   __xc = (struct a_memory_chunk*)(__xp.T - 1);\
    (BAD) = FAL0;\
    __i = 0;\
-   if (__xl.p_ui8p[0] != 0xDE) __i |= 1<<0;\
-   if (__xl.p_ui8p[1] != 0xAA) __i |= 1<<1;\
-   if (__xl.p_ui8p[2] != 0x55) __i |= 1<<2;\
-   if (__xl.p_ui8p[3] != 0xAD) __i |= 1<<3;\
-   if (__xl.p_ui8p[4] != 0xBE) __i |= 1<<4;\
-   if (__xl.p_ui8p[5] != 0x55) __i |= 1<<5;\
-   if (__xl.p_ui8p[6] != 0xAA) __i |= 1<<6;\
-   if (__xl.p_ui8p[7] != 0xEF) __i |= 1<<7;\
-   if (__i != 0) {\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[0]);\
+      if(__xp.p_ui8p[0] != __m) __i |= 1<<0;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[1]);\
+      if(__xp.p_ui8p[1] != __m) __i |= 1<<1;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[2]);\
+      if(__xp.p_ui8p[2] != __m) __i |= 1<<2;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[3]);\
+      if(__xp.p_ui8p[3] != __m) __i |= 1<<3;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[4]);\
+      if(__xp.p_ui8p[4] != __m) __i |= 1<<4;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[5]);\
+      if(__xp.p_ui8p[5] != __m) __i |= 1<<5;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[6]);\
+      if(__xp.p_ui8p[6] != __m) __i |= 1<<6;\
+   a_MEMORY_HOPE_LOWER(__m, &__xp.p_ui8p[7]);\
+      if(__xp.p_ui8p[7] != __m) __i |= 1<<7;\
+   if(__i != 0){\
       (BAD) = TRU1;\
       n_alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
-         __xl.p_p, __i, mdbg_file, mdbg_line);\
+         (C).p_cp + 8, __i, mdbg_file, mdbg_line);\
    }\
-   __xu.p_p = __xc;\
-   __xu.p_ui8p += __xc->mc_size - 8;\
+   __xp.p_ui8p += 8 + __xc->mc_user_size;\
    __i = 0;\
-   if (__xu.p_ui8p[0] != 0xDE) __i |= 1<<0;\
-   if (__xu.p_ui8p[1] != 0xAA) __i |= 1<<1;\
-   if (__xu.p_ui8p[2] != 0x55) __i |= 1<<2;\
-   if (__xu.p_ui8p[3] != 0xAD) __i |= 1<<3;\
-   if (__xu.p_ui8p[4] != 0xBE) __i |= 1<<4;\
-   if (__xu.p_ui8p[5] != 0x55) __i |= 1<<5;\
-   if (__xu.p_ui8p[6] != 0xAA) __i |= 1<<6;\
-   if (__xu.p_ui8p[7] != 0xEF) __i |= 1<<7;\
-   if (__i != 0) {\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[0]);\
+      if(__xp.p_ui8p[0] != __m) __i |= 1<<0;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[1]);\
+      if(__xp.p_ui8p[1] != __m) __i |= 1<<1;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[2]);\
+      if(__xp.p_ui8p[2] != __m) __i |= 1<<2;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[3]);\
+      if(__xp.p_ui8p[3] != __m) __i |= 1<<3;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[4]);\
+      if(__xp.p_ui8p[4] != __m) __i |= 1<<4;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[5]);\
+      if(__xp.p_ui8p[5] != __m) __i |= 1<<5;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[6]);\
+      if(__xp.p_ui8p[6] != __m) __i |= 1<<6;\
+   a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[7]);\
+      if(__xp.p_ui8p[7] != __m) __i |= 1<<7;\
+   if(__i != 0){\
       (BAD) = TRU1;\
       n_alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
-         __xl.p_p, __i, mdbg_file, mdbg_line);\
+         (C).p_cp + 8, __i, mdbg_file, mdbg_line);\
    }\
-   if (BAD)\
-      n_alert("   ..canary last seen: %s, line %" PRIu16 "",\
+   if(BAD)\
+      n_alert("   ..canary last seen: %s, line %u",\
          __xc->mc_file, __xc->mc_line);\
-} while (0)
+}while(0)
 #endif /* HAVE_MEMORY_DEBUG */
 
 #ifdef HAVE_MEMORY_DEBUG
-struct a_mem_chunk{
-   struct a_mem_chunk *mc_prev;
-   struct a_mem_chunk *mc_next;
+struct a_memory_chunk{
    char const *mc_file;
-   ui16_t mc_line;
+   ui32_t mc_line;
    ui8_t mc_isfree;
-   ui8_t __dummy[1];
+   ui8_t mc__dummy[3];
+   ui32_t mc_user_size;
    ui32_t mc_size;
 };
 
-union a_mem_ptr{
-   void *p_p;
-   struct a_mem_chunk *p_c;
+/* The heap memory free() may become delayed to detect double frees.
+ * It is primitive, but ok: speed and memory usage don't matter here */
+struct a_memory_heap_chunk{
+   struct a_memory_chunk mhc_super;
+   struct a_memory_heap_chunk *mhc_prev;
+   struct a_memory_heap_chunk *mhc_next;
+};
+#endif /* HAVE_MEMORY_DEBUG */
+
+struct a_memory_ars_lofi_chunk{
+#ifdef HAVE_MEMORY_DEBUG
+   struct a_memory_chunk malc_super;
+#endif
+   struct a_memory_ars_lofi_chunk *malc_last; /* Bit 1 set: it's a heap alloc */
+};
+
+union a_memory_ptr{
+   void *p_vp;
    char *p_cp;
    ui8_t *p_ui8p;
-};
-#endif /* HAVE_MEMORY_DEBUG */
-
-/*
- * String dope -- this is a temporary left over
- */
-
-/* In debug mode the "string dope" allocations are enwrapped in canaries, just
- * as we do with our normal memory allocator */
 #ifdef HAVE_MEMORY_DEBUG
-# define _SHOPE_SIZE       (2u * 8 * sizeof(char) + sizeof(struct schunk))
-
-CTA(sizeof(char) == sizeof(ui8_t));
-
-struct schunk {
-   char const     *file;
-   ui32_t         line;
-   ui16_t         usr_size;
-   ui16_t         full_size;
+   struct a_memory_chunk *p_c;
+   struct a_memory_heap_chunk *p_hc;
+#endif
+   struct a_memory_ars_lofi_chunk *p_alc;
 };
 
-union sptr {
-   void           *p;
-   struct schunk  *c;
-   char           *cp;
-   ui8_t          *ui8p;
+struct a_memory_ars_ctx{
+   struct a_memory_ars_ctx *mac_outer;
+   struct a_memory_ars_buffer *mac_top;   /* Alloc stack */
+   struct a_memory_ars_buffer *mac_full;  /* Alloc stack, cpl. filled */
+   size_t mac_recur;                      /* srelax_hold() recursion */
+   struct a_memory_ars_huge *mac_huge;    /* Huge allocation bypass list */
+   struct a_memory_ars_lofi *mac_lofi;    /* Pseudo alloca */
+   struct a_memory_ars_lofi_chunk *mac_lofi_top;
 };
-#endif /* HAVE_MEMORY_DEBUG */
+n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF >= sizeof(struct a_memory_ars_ctx),
+   "Our command loops do not provide enough memory for auto-reclaimed storage");
 
-union __align__ {
-   char     *cp;
-   size_t   sz;
-   ul_i     ul;
+struct a_memory_ars_buffer{
+   struct a_memory_ars_buffer *mab_last;
+   char *mab_bot;    /* For _autorec_fixate().  Only used for the global _ctx */
+   char *mab_relax;  /* If !NULL, used by srelax() instead of .mab_bot */
+   char *mab_caster; /* Point of casting memory, NULL if full */
+   char mab_buf[n_MEMORY_AUTOREC_SIZE - (4 * sizeof(void*))];
 };
-#define SALIGN    (sizeof(union __align__) - 1)
-
-CTA(ISPOW2(SALIGN + 1));
-
-struct b_base {
-   struct buffer  *_next;
-   char           *_bot;      /* For spreserve() */
-   char           *_relax;    /* If !NULL, used by srelax() instead of ._bot */
-   char           *_max;      /* Max usable byte */
-   char           *_caster;   /* NULL if full */
-};
-
-/* Single instance builtin buffer.  Room for anything, most of the time */
-struct b_bltin {
-   struct b_base  b_base;
-   char           b_buf[SBUFFER_BUILTIN - sizeof(struct b_base)];
-};
-#define SBLTIN_SIZE  SIZEOF_FIELD(struct b_bltin, b_buf)
-
-/* Dynamically allocated buffers to overcome shortage, always released again
- * once the command loop ticks */
-struct b_dyn {
-   struct b_base  b_base;
-   char           b_buf[SBUFFER_SIZE - sizeof(struct b_base)];
-};
-#define SDYN_SIZE    SIZEOF_FIELD(struct b_dyn, b_buf)
-
-/* The multiplexer of the several real b_* */
-struct buffer {
-   struct b_base  b;
-   char           b_buf[VFIELD_SIZE(SALIGN + 1)];
-};
-
-/* Requests that exceed SDYN_SIZE-1 and thus cannot be handled by string dope
- * are always served by the normal memory allocator (which panics if memory
- * cannot be served).  Note such an allocation has not yet occurred, it is only
- * included as a security fallback bypass */
-struct hugebuf {
-   struct hugebuf *hb_next;
-   char           hb_buf[VFIELD_SIZE(SALIGN + 1)];
-};
-
-#ifdef HAVE_MEMORY_DEBUG
-static size_t a_mem_aall, a_mem_acur, a_mem_amax,
-   a_mem_mall, a_mem_mcur, a_mem_mmax;
-
-static struct a_mem_chunk *a_mem_list, *a_mem_free;
+n_CTA(sizeof(struct a_memory_ars_buffer) == n_MEMORY_AUTOREC_SIZE,
+   "Resulting structure size is not the expected one");
+#ifdef HAVE_DEBUG
+n_CTA(a_MEMORY_ARS_MAX + a_MEMORY_HOPE_SIZE + sizeof(struct a_memory_chunk)
+      < n_SIZEOF_FIELD(struct a_memory_ars_buffer, mab_buf),
+   "Memory layout of auto-reclaimed storage does not work out that way");
 #endif
 
-/*
- * String dope -- this is a temporary left over
- */
+/* Requests that exceed a_MEMORY_ARS_MAX are always served by the normal
+ * memory allocator (which panics if memory cannot be served).  This can be
+ * seen as a security fallback bypass only */
+struct a_memory_ars_huge{
+   struct a_memory_ars_huge *mah_last;
+   char mah_buf[n_VFIELD_SIZE(a_MEMORY_ARS_ROUNDUP(1))];
+};
 
-static struct b_bltin   _builtin_buf;
-static struct buffer    *_buf_head, *_buf_list, *_buf_server, *_buf_relax;
-static size_t           _relax_recur_no;
-static struct hugebuf   *_huge_list;
+struct a_memory_ars_lofi{
+   struct a_memory_ars_lofi *mal_last;
+   char *mal_caster;
+   char *mal_max;
+   char mal_buf[n_VFIELD_SIZE(a_MEMORY_ARS_ROUNDUP(1))];
+};
+
+/* */
 #ifdef HAVE_MEMORY_DEBUG
-static size_t           _all_cnt, _all_cycnt, _all_cycnt_max,
-                        _all_size, _all_cysize, _all_cysize_max, _all_min,
-                           _all_max, _all_wast,
-                        _all_bufcnt, _all_cybufcnt, _all_cybufcnt_max,
-                        _all_resetreqs, _all_resets;
+static size_t a_memory_heap_aall, a_memory_heap_acur, a_memory_heap_amax,
+      a_memory_heap_mall, a_memory_heap_mcur, a_memory_heap_mmax;
+static struct a_memory_heap_chunk *a_memory_heap_list, *a_memory_heap_free;
+
+static size_t a_memory_ars_ball, a_memory_ars_bcur, a_memory_ars_bmax,
+      a_memory_ars_hall, a_memory_ars_hcur, a_memory_ars_hmax,
+      a_memory_ars_aall, a_memory_ars_mall;
+
+static size_t a_memory_lofi_ball, a_memory_lofi_bcur, a_memory_lofi_bmax,
+      a_memory_lofi_aall, a_memory_lofi_acur, a_memory_lofi_amax,
+      a_memory_lofi_mall, a_memory_lofi_mcur, a_memory_lofi_mmax;
 #endif
 
-/* sreset() / srelax() release a buffer, check the canaries of all chunks */
+/* The anonymous global topmost auto-reclaimed storage instance, and the
+ * current top of the stack for recursions, `source's etc */
+static struct a_memory_ars_ctx a_memory_ars_global;
+static struct a_memory_ars_ctx *a_memory_ars_top;
+
+/* */
+SINLINE void a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp);
+
+/* Reset an ars_ctx */
+static void a_memory_ars_reset(struct a_memory_ars_ctx *macp);
+
+SINLINE void
+a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
+   struct a_memory_ars_lofi *malp;
+   union a_memory_ptr p;
+   NYD2_ENTER;
+
+   p.p_vp = vp;
 #ifdef HAVE_MEMORY_DEBUG
-static void    _salloc_bcheck(struct buffer *b);
+   --a_memory_lofi_acur;
+   a_memory_lofi_mcur -= p.p_c->mc_user_size;
 #endif
 
+   /* The heap allocations are released immediately */
+   if((uintptr_t)p.p_alc->malc_last & 0x1){
+      malp = macp->mac_lofi;
+      macp->mac_lofi = malp->mal_last;
+      macp->mac_lofi_top = (struct a_memory_ars_lofi_chunk*)
+            ((uintptr_t)p.p_alc->malc_last & ~0x1);
+      free(malp);
 #ifdef HAVE_MEMORY_DEBUG
-static void
-_salloc_bcheck(struct buffer *b)
-{
-   union sptr pmax, pp;
-   /*NYD2_ENTER;*/
+      --a_memory_lofi_bcur;
+#endif
+   }else{
+      macp->mac_lofi_top = p.p_alc->malc_last;
 
-   pmax.cp = (b->b._caster == NULL) ? b->b._max : b->b._caster;
-   pp.cp = b->b._bot;
-
-   while (pp.cp < pmax.cp) {
-      struct schunk *c;
-      union sptr x;
-      void *ux;
-      ui8_t i;
-
-      c = pp.c;
-      pp.cp += c->full_size;
-      x.p = c + 1;
-      ux = x.cp + 8;
-
-      i = 0;
-      if (x.ui8p[0] != 0xDE) i |= 1<<0;
-      if (x.ui8p[1] != 0xAA) i |= 1<<1;
-      if (x.ui8p[2] != 0x55) i |= 1<<2;
-      if (x.ui8p[3] != 0xAD) i |= 1<<3;
-      if (x.ui8p[4] != 0xBE) i |= 1<<4;
-      if (x.ui8p[5] != 0x55) i |= 1<<5;
-      if (x.ui8p[6] != 0xAA) i |= 1<<6;
-      if (x.ui8p[7] != 0xEF) i |= 1<<7;
-      if (i != 0)
-         n_alert("sdope %p: corrupt lower canary: 0x%02X, size %u: %s, line %u",
-            ux, i, c->usr_size, c->file, c->line);
-      x.cp += 8 + c->usr_size;
-
-      i = 0;
-      if (x.ui8p[0] != 0xDE) i |= 1<<0;
-      if (x.ui8p[1] != 0xAA) i |= 1<<1;
-      if (x.ui8p[2] != 0x55) i |= 1<<2;
-      if (x.ui8p[3] != 0xAD) i |= 1<<3;
-      if (x.ui8p[4] != 0xBE) i |= 1<<4;
-      if (x.ui8p[5] != 0x55) i |= 1<<5;
-      if (x.ui8p[6] != 0xAA) i |= 1<<6;
-      if (x.ui8p[7] != 0xEF) i |= 1<<7;
-      if (i != 0)
-         n_alert("sdope %p: corrupt upper canary: 0x%02X, size %u: %s, line %u",
-            ux, i, c->usr_size, c->file, c->line);
+      /* The normal arena ones only if the arena is empty, except for when
+       * it is the last - that we'll keep until _autorec_pop() or exit(3) */
+      if(p.p_cp == (malp = macp->mac_lofi)->mal_buf){
+         if(malp->mal_last != NULL){
+            macp->mac_lofi = malp->mal_last;
+            free(malp);
+#ifdef HAVE_MEMORY_DEBUG
+            --a_memory_lofi_bcur;
+#endif
+         }
+      }else
+         malp->mal_caster = p.p_cp;
    }
-   /*NYD2_LEAVE;*/
+   NYD2_LEAVE;
 }
-#endif /* HAVE_MEMORY_DEBUG */
+
+static void
+a_memory_ars_reset(struct a_memory_ars_ctx *macp){
+   union{
+      struct a_memory_ars_lofi_chunk *alcp;
+      struct a_memory_ars_lofi *alp;
+      struct a_memory_ars_buffer *abp;
+      struct a_memory_ars_huge *ahp;
+   } m, m2;
+   NYD2_ENTER;
+
+   /* Simply move all buffers away from .mac_full */
+   for(m.abp = macp->mac_full; m.abp != NULL; m.abp = m2.abp){
+      m2.abp = m.abp->mab_last;
+      m.abp->mab_last = macp->mac_top;
+      macp->mac_top = m.abp;
+   }
+   macp->mac_full = NULL;
+
+   for(m2.abp = NULL, m.abp = macp->mac_top; m.abp != NULL;){
+      struct a_memory_ars_buffer *x;
+
+      x = m.abp;
+      m.abp = m.abp->mab_last;
+
+      /* Give away all buffers that are not covered by autorec_fixate() */
+      if(x->mab_bot == x->mab_buf){
+         if(m2.abp == NULL)
+            macp->mac_top = m.abp;
+         else
+            m2.abp->mab_last = m.abp;
+         free(x);
+#ifdef HAVE_MEMORY_DEBUG
+         --a_memory_ars_bcur;
+#endif
+      }else{
+         m2.abp = x;
+         x->mab_caster = x->mab_bot;
+         x->mab_relax = NULL;
+#ifdef HAVE_MEMORY_DEBUG
+         memset(x->mab_caster, 0377,
+            PTR2SIZE(&x->mab_buf[sizeof(x->mab_buf)] - x->mab_caster));
+#endif
+      }
+   }
+
+   while((m.ahp = macp->mac_huge) != NULL){
+      macp->mac_huge = m.ahp->mah_last;
+      free(m.ahp);
+#ifdef HAVE_MEMORY_DEBUG
+      --a_memory_ars_hcur;
+#endif
+   }
+
+   /* "alloca(3)" memory goes away, too */
+#ifdef HAVE_MEMORY_DEBUG
+   if(macp->mac_lofi_top != NULL)
+      n_alert("There still is LOFI memory upon ARS reset!");
+#endif
+   while((m.alcp = macp->mac_lofi_top) != NULL)
+      a_memory_lofi_free(macp, m.alcp);
+   NYD2_LEAVE;
+}
+
+FL void
+n_memory_reset(void){
+#ifdef HAVE_MEMORY_DEBUG
+   union a_memory_ptr p;
+   size_t c, s;
+#endif
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   n_memory_check();
+
+   /* First of all reset auto-reclaimed storage so that heap freed during this
+    * can be handled in a second step */
+   /* TODO v15 active recursion can only happen after a jump */
+   if(macp->mac_recur > 0){
+      macp->mac_recur = 1;
+      srelax_rele();
+   }
+   a_memory_ars_reset(macp);
+
+   /* Now we are ready to deal with heap */
+#ifdef HAVE_MEMORY_DEBUG
+   c = s = 0;
+
+   for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;){
+      void *vp;
+
+      vp = p.p_hc;
+      ++c;
+      s += p.p_c->mc_size;
+      p.p_hc = p.p_hc->mhc_next;
+      (free)(vp);
+   }
+   a_memory_heap_free = NULL;
+
+   if(options & (OPT_DEBUG | OPT_MEMDEBUG))
+      n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
+#endif
+   NYD_LEAVE;
+}
 
 #ifndef HAVE_MEMORY_DEBUG
 FL void *
-smalloc(size_t s SMALLOC_DEBUG_ARGS)
-{
+n_alloc(size_t s){
    void *rv;
    NYD2_ENTER;
 
-   if (s == 0)
+   if(s == 0)
       s = 1;
-   if ((rv = malloc(s)) == NULL)
+   if((rv = malloc(s)) == NULL)
       n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
 }
 
 FL void *
-srealloc(void *v, size_t s SMALLOC_DEBUG_ARGS)
-{
+n_realloc(void *vp, size_t s){
    void *rv;
    NYD2_ENTER;
 
-   if (s == 0)
-      s = 1;
-   if (v == NULL)
-      rv = smalloc(s);
-   else if ((rv = realloc(v, s)) == NULL)
-      n_panic(_("no memory"));
+   if(vp == NULL)
+      rv = n_alloc(s);
+   else{
+      if(s == 0)
+         s = 1;
+      if((rv = realloc(vp, s)) == NULL)
+         n_panic(_("no memory"));
+   }
    NYD2_LEAVE;
    return rv;
 }
 
 FL void *
-scalloc(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
-{
+n_calloc(size_t nmemb, size_t size){
    void *rv;
    NYD2_ENTER;
 
-   if (size == 0)
+   if(size == 0)
       size = 1;
-   if ((rv = calloc(nmemb, size)) == NULL)
+   if((rv = calloc(nmemb, size)) == NULL)
       n_panic(_("no memory"));
    NYD2_LEAVE;
    return rv;
+}
+
+FL void
+(n_free)(void *vp){
+   NYD2_ENTER;
+   (free)(vp);
+   NYD2_LEAVE;
 }
 
 #else /* !HAVE_MEMORY_DEBUG */
 FL void *
-(smalloc)(size_t s SMALLOC_DEBUG_ARGS)
-{
-   union a_mem_ptr p;
+(n_alloc)(size_t s n_MEMORY_DEBUG_ARGS){
+   union a_memory_ptr p;
+   ui32_t user_s;
    NYD2_ENTER;
 
-   if (s == 0)
-      s = 1;
-   if (s > UI32_MAX - sizeof(struct a_mem_chunk) - _HOPE_SIZE)
-      n_panic("smalloc(): allocation too large: %s, line %d",
+   if(s > UI32_MAX - sizeof(struct a_memory_heap_chunk) - a_MEMORY_HOPE_SIZE)
+      n_panic("n_alloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
-   s += sizeof(struct a_mem_chunk) + _HOPE_SIZE;
+   if((user_s = (ui32_t)s) == 0)
+      s = 1;
+   s += sizeof(struct a_memory_heap_chunk) + a_MEMORY_HOPE_SIZE;
 
-   if ((p.p_p = (malloc)(s)) == NULL)
+   if((p.p_vp = (malloc)(s)) == NULL)
       n_panic(_("no memory"));
-   p.p_c->mc_prev = NULL;
-   if ((p.p_c->mc_next = a_mem_list) != NULL)
-      a_mem_list->mc_prev = p.p_c;
+
+   p.p_hc->mhc_prev = NULL;
+   if((p.p_hc->mhc_next = a_memory_heap_list) != NULL)
+      a_memory_heap_list->mhc_prev = p.p_hc;
+
    p.p_c->mc_file = mdbg_file;
    p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_user_size = user_s;
    p.p_c->mc_size = (ui32_t)s;
 
-   a_mem_list = p.p_c++;
-   _HOPE_SET(p);
+   a_memory_heap_list = p.p_hc++;
+   a_MEMORY_HOPE_SET(p_hc, p);
 
-   ++a_mem_aall;
-   ++a_mem_acur;
-   a_mem_amax = MAX(a_mem_amax, a_mem_acur);
-   a_mem_mall += s;
-   a_mem_mcur += s;
-   a_mem_mmax = MAX(a_mem_mmax, a_mem_mcur);
+   ++a_memory_heap_aall;
+   ++a_memory_heap_acur;
+   a_memory_heap_amax = n_MAX(a_memory_heap_amax, a_memory_heap_acur);
+   a_memory_heap_mall += user_s;
+   a_memory_heap_mcur += user_s;
+   a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
    NYD2_LEAVE;
-   return p.p_p;
+   return p.p_vp;
 }
 
 FL void *
-(srealloc)(void *v, size_t s SMALLOC_DEBUG_ARGS)
-{
-   union a_mem_ptr p;
+(n_realloc)(void *vp, size_t s n_MEMORY_DEBUG_ARGS){
+   union a_memory_ptr p;
+   ui32_t user_s;
    bool_t isbad;
    NYD2_ENTER;
 
-   if ((p.p_p = v) == NULL) {
-      p.p_p = (smalloc)(s, mdbg_file, mdbg_line);
+   if((p.p_vp = vp) == NULL){
+jforce:
+      p.p_vp = (n_alloc)(s, mdbg_file, mdbg_line);
       goto jleave;
    }
 
-   _HOPE_GET(p, isbad);
-   --p.p_c;
-   if (p.p_c->mc_isfree) {
-      n_err("srealloc(): region freed!  At %s, line %d\n"
+   a_MEMORY_HOPE_GET(p_hc, p, isbad);
+   --p.p_hc;
+
+   if(p.p_c->mc_isfree){
+      n_err("n_realloc(): region freed!  At %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
    }
 
-   if (p.p_c == a_mem_list)
-      a_mem_list = p.p_c->mc_next;
+   if(p.p_hc == a_memory_heap_list)
+      a_memory_heap_list = p.p_hc->mhc_next;
    else
-      p.p_c->mc_prev->mc_next = p.p_c->mc_next;
-   if (p.p_c->mc_next != NULL)
-      p.p_c->mc_next->mc_prev = p.p_c->mc_prev;
+      p.p_hc->mhc_prev->mhc_next = p.p_hc->mhc_next;
+   if (p.p_hc->mhc_next != NULL)
+      p.p_hc->mhc_next->mhc_prev = p.p_hc->mhc_prev;
 
-   --a_mem_acur;
-   a_mem_mcur -= p.p_c->mc_size;
-jforce:
-   if (s == 0)
-      s = 1;
-   if (s > UI32_MAX - sizeof(struct a_mem_chunk) - _HOPE_SIZE)
-      n_panic("srealloc(): allocation too large: %s, line %d",
+   --a_memory_heap_acur;
+   a_memory_heap_mcur -= p.p_c->mc_user_size;
+
+   if(s > UI32_MAX - sizeof(struct a_memory_heap_chunk) - a_MEMORY_HOPE_SIZE)
+      n_panic("n_realloc(): allocation too large: %s, line %d",
          mdbg_file, mdbg_line);
-   s += sizeof(struct a_mem_chunk) + _HOPE_SIZE;
+   if((user_s = (ui32_t)s) == 0)
+      s = 1;
+   s += sizeof(struct a_memory_heap_chunk) + a_MEMORY_HOPE_SIZE;
 
-   if ((p.p_p = (realloc)(p.p_c, s)) == NULL)
+   if((p.p_vp = (realloc)(p.p_c, s)) == NULL)
       n_panic(_("no memory"));
-   p.p_c->mc_prev = NULL;
-   if ((p.p_c->mc_next = a_mem_list) != NULL)
-      a_mem_list->mc_prev = p.p_c;
+   p.p_hc->mhc_prev = NULL;
+   if((p.p_hc->mhc_next = a_memory_heap_list) != NULL)
+      a_memory_heap_list->mhc_prev = p.p_hc;
+
    p.p_c->mc_file = mdbg_file;
    p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_user_size = user_s;
    p.p_c->mc_size = (ui32_t)s;
-   a_mem_list = p.p_c++;
-   _HOPE_SET(p);
 
-   ++a_mem_aall;
-   ++a_mem_acur;
-   a_mem_amax = MAX(a_mem_amax, a_mem_acur);
-   a_mem_mall += s;
-   a_mem_mcur += s;
-   a_mem_mmax = MAX(a_mem_mmax, a_mem_mcur);
+   a_memory_heap_list = p.p_hc++;
+   a_MEMORY_HOPE_SET(p_hc, p);
+
+   ++a_memory_heap_aall;
+   ++a_memory_heap_acur;
+   a_memory_heap_amax = n_MAX(a_memory_heap_amax, a_memory_heap_acur);
+   a_memory_heap_mall += user_s;
+   a_memory_heap_mcur += user_s;
+   a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
 jleave:
    NYD2_LEAVE;
-   return p.p_p;
+   return p.p_vp;
 }
 
 FL void *
-(scalloc)(size_t nmemb, size_t size SMALLOC_DEBUG_ARGS)
-{
-   union a_mem_ptr p;
+(n_calloc)(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS){
+   union a_memory_ptr p;
+   ui32_t user_s;
    NYD2_ENTER;
 
-   if (size == 0)
-      size = 1;
-   if (nmemb == 0)
+   if(nmemb == 0)
       nmemb = 1;
-   if (size > UI32_MAX - sizeof(struct a_mem_chunk) - _HOPE_SIZE)
-      n_panic("scalloc(): allocation size too large: %s, line %d",
+   if(size > UI32_MAX - sizeof(struct a_memory_heap_chunk) - a_MEMORY_HOPE_SIZE)
+      n_panic("n_calloc(): allocation size too large: %s, line %d",
          mdbg_file, mdbg_line);
-   if ((UI32_MAX - sizeof(struct a_mem_chunk) - _HOPE_SIZE) / nmemb < size)
-      n_panic("scalloc(): allocation count too large: %s, line %d",
+   if((user_s = (ui32_t)size) == 0)
+      size = 1;
+   if((UI32_MAX - sizeof(struct a_memory_heap_chunk) - a_MEMORY_HOPE_SIZE) /
+         nmemb < size)
+      n_panic("n_calloc(): allocation count too large: %s, line %d",
          mdbg_file, mdbg_line);
 
    size *= nmemb;
-   size += sizeof(struct a_mem_chunk) + _HOPE_SIZE;
+   size += sizeof(struct a_memory_heap_chunk) + a_MEMORY_HOPE_SIZE;
 
-   if ((p.p_p = (malloc)(size)) == NULL)
+   if((p.p_vp = (malloc)(size)) == NULL)
       n_panic(_("no memory"));
-   memset(p.p_p, 0, size);
-   p.p_c->mc_prev = NULL;
-   if ((p.p_c->mc_next = a_mem_list) != NULL)
-      a_mem_list->mc_prev = p.p_c;
+   memset(p.p_vp, 0, size);
+
+   p.p_hc->mhc_prev = NULL;
+   if((p.p_hc->mhc_next = a_memory_heap_list) != NULL)
+      a_memory_heap_list->mhc_prev = p.p_hc;
+
    p.p_c->mc_file = mdbg_file;
    p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_user_size = (user_s > 0) ? user_s *= nmemb : 0;
    p.p_c->mc_size = (ui32_t)size;
-   a_mem_list = p.p_c++;
-   _HOPE_SET(p);
 
-   ++a_mem_aall;
-   ++a_mem_acur;
-   a_mem_amax = MAX(a_mem_amax, a_mem_acur);
-   a_mem_mall += size;
-   a_mem_mcur += size;
-   a_mem_mmax = MAX(a_mem_mmax, a_mem_mcur);
+   a_memory_heap_list = p.p_hc++;
+   a_MEMORY_HOPE_SET(p_hc, p);
+
+   ++a_memory_heap_aall;
+   ++a_memory_heap_acur;
+   a_memory_heap_amax = n_MAX(a_memory_heap_amax, a_memory_heap_acur);
+   a_memory_heap_mall += user_s;
+   a_memory_heap_mcur += user_s;
+   a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
    NYD2_LEAVE;
-   return p.p_p;
+   return p.p_vp;
 }
 
 FL void
-(sfree)(void *v SMALLOC_DEBUG_ARGS)
-{
-   union a_mem_ptr p;
+(n_free)(void *vp n_MEMORY_DEBUG_ARGS){
+   union a_memory_ptr p;
    bool_t isbad;
    NYD2_ENTER;
 
-   if ((p.p_p = v) == NULL) {
-      n_err("sfree(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+   if((p.p_vp = vp) == NULL){
+      n_err("n_free(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
       goto jleave;
    }
 
-   _HOPE_GET(p, isbad);
-   --p.p_c;
-   if (p.p_c->mc_isfree) {
-      n_err("sfree(): double-free avoided at %s, line %d\n"
+   a_MEMORY_HOPE_GET(p_hc, p, isbad);
+   --p.p_hc;
+
+   if(p.p_c->mc_isfree){
+      n_err("n_free(): double-free avoided at %s, line %d\n"
          "\tLast seen: %s, line %" PRIu16 "\n",
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jleave;
    }
 
-   if (p.p_c == a_mem_list)
-      a_mem_list = p.p_c->mc_next;
-   else
-      p.p_c->mc_prev->mc_next = p.p_c->mc_next;
-   if (p.p_c->mc_next != NULL)
-      p.p_c->mc_next->mc_prev = p.p_c->mc_prev;
+   if(p.p_hc == a_memory_heap_list){
+      if((a_memory_heap_list = p.p_hc->mhc_next) != NULL)
+         a_memory_heap_list->mhc_prev = NULL;
+   }else
+      p.p_hc->mhc_prev->mhc_next = p.p_hc->mhc_next;
+   if(p.p_hc->mhc_next != NULL)
+      p.p_hc->mhc_next->mhc_prev = p.p_hc->mhc_prev;
+
    p.p_c->mc_isfree = TRU1;
    /* Trash contents (also see [21c05f8]) */
-   memset(v, 0377, p.p_c->mc_size - sizeof(struct a_mem_chunk) - _HOPE_SIZE);
+   memset(vp, 0377, p.p_c->mc_user_size);
 
-   --a_mem_acur;
-   a_mem_mcur -= p.p_c->mc_size;
+   --a_memory_heap_acur;
+   a_memory_heap_mcur -= p.p_c->mc_user_size;
 
-   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
-      p.p_c->mc_next = a_mem_free;
-      a_mem_free = p.p_c;
-   } else
-      (free)(p.p_c);
+   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+      p.p_hc->mhc_next = a_memory_heap_free;
+      a_memory_heap_free = p.p_hc;
+   }else
+      (free)(p.p_vp);
 jleave:
+   NYD2_LEAVE;
+}
+#endif /* HAVE_MEMORY_DEBUG */
+
+FL void
+n_memory_autorec_fixate(void){
+   struct a_memory_ars_buffer *mabp;
+   NYD_ENTER;
+
+   for(mabp = a_memory_ars_global.mac_top; mabp != NULL; mabp = mabp->mab_last)
+      mabp->mab_bot = mabp->mab_caster;
+   for(mabp = a_memory_ars_global.mac_full; mabp != NULL; mabp = mabp->mab_last)
+      mabp->mab_bot = mabp->mab_caster;
+   NYD_LEAVE;
+}
+
+FL void
+n_memory_autorec_push(void *vp){
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   macp = vp;
+   memset(macp, 0, sizeof *macp);
+   macp->mac_outer = a_memory_ars_top;
+   a_memory_ars_top = macp;
+   NYD_LEAVE;
+}
+
+FL void
+n_memory_autorec_pop(void *vp){
+   struct a_memory_ars_buffer *mabp;
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   if((macp = vp) == NULL)
+      macp = &a_memory_ars_global;
+   else{
+      while(a_memory_ars_top != macp)
+         n_memory_autorec_pop(a_memory_ars_top);
+      a_memory_ars_top = macp->mac_outer;
+   }
+
+   a_memory_ars_reset(macp);
+   assert(macp->mac_full == NULL);
+   assert(macp->mac_huge == NULL);
+
+   for(mabp = macp->mac_top; mabp != NULL;){
+      vp = mabp;
+      mabp = mabp->mab_last;
+      free(vp);
+   }
+
+   /* We (may) have kept one buffer for our pseudo alloca(3) */
+   if(macp->mac_lofi != NULL){
+      assert(macp->mac_lofi->mal_last == NULL);
+      free(macp->mac_lofi);
+#ifdef HAVE_MEMORY_DEBUG
+      --a_memory_lofi_bcur;
+#endif
+   }
+
+   memset(macp, 0, sizeof *macp);
+   NYD_LEAVE;
+}
+
+FL void *
+n_memory_autorec_current(void){
+   return (a_memory_ars_top != NULL ? a_memory_ars_top : &a_memory_ars_global);
+}
+
+FL void *
+(n_autorec_alloc)(void *vp, size_t size n_MEMORY_DEBUG_ARGS){
+#ifdef HAVE_MEMORY_DEBUG
+   ui32_t user_s;
+#endif
+   union a_memory_ptr p;
+   union{
+      struct a_memory_ars_buffer *abp;
+      struct a_memory_ars_huge *ahp;
+   } m, m2;
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
+
+   if((macp = vp) == NULL && (macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+#ifdef HAVE_MEMORY_DEBUG
+   user_s = (ui32_t)size;
+#endif
+   if(size == 0)
+      ++size;
+#ifdef HAVE_MEMORY_DEBUG
+   size += sizeof(struct a_memory_chunk) + a_MEMORY_HOPE_SIZE;
+#endif
+   size = a_MEMORY_ARS_ROUNDUP(size);
+
+   /* Huge allocations are special */
+   if(n_UNLIKELY(size > a_MEMORY_ARS_MAX)){
+#ifdef HAVE_MEMORY_DEBUG
+      n_alert("n_autorec_alloc() of %" PRIuZ " bytes from %s, line %d",
+         size, mdbg_file, mdbg_line);
+#endif
+      goto jhuge;
+   }
+
+   /* Search for a buffer with enough free space to serve request */
+   for(m2.abp = NULL, m.abp = macp->mac_top; m.abp != NULL;
+         m2.abp = m.abp, m.abp = m.abp->mab_last){
+      if((p.p_cp = m.abp->mab_caster) <=
+            &m.abp->mab_buf[sizeof(m.abp->mab_buf) - size]){
+         /* Alignment is the one thing, the other is what is usually allocated,
+          * and here about 40 bytes seems to be a good cut to avoid non-usable
+          * casters.  Reown buffers supposed to be "full" to .mac_full */
+         if(n_UNLIKELY((m.abp->mab_caster = &p.p_cp[size]) >=
+               &m.abp->mab_buf[sizeof(m.abp->mab_buf) - 42])){
+            if(m2.abp == NULL)
+               macp->mac_top = m.abp->mab_last;
+            else
+               m2.abp->mab_last = m.abp->mab_last;
+            m.abp->mab_last = macp->mac_full;
+            macp->mac_full = m.abp;
+         }
+         goto jleave;
+      }
+   }
+
+   /* Need a new buffer XXX "page" pool */
+   m.abp = n_alloc(sizeof *m.abp);
+   m.abp->mab_last = macp->mac_top;
+   m.abp->mab_caster = &(m.abp->mab_bot = m.abp->mab_buf)[size];
+   m.abp->mab_relax = NULL; /* Thus indicates allocation after srelax_hold() */
+   macp->mac_top = m.abp;
+   p.p_cp = m.abp->mab_bot;
+
+#ifdef HAVE_MEMORY_DEBUG
+   ++a_memory_ars_ball;
+   ++a_memory_ars_bcur;
+   a_memory_ars_bmax = n_MAX(a_memory_ars_bmax, a_memory_ars_bcur);
+#endif
+
+jleave:
+#ifdef HAVE_MEMORY_DEBUG
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
+   p.p_c->mc_user_size = user_s;
+   p.p_c->mc_size = (ui32_t)size;
+   ++p.p_c;
+   a_MEMORY_HOPE_SET(p_c, p);
+
+   ++a_memory_ars_aall;
+   a_memory_ars_mall += user_s;
+#endif
+   NYD2_LEAVE;
+   return p.p_vp;
+
+jhuge:
+   m.ahp = n_alloc(sizeof(*m.ahp) -
+         n_VFIELD_SIZEOF(struct a_memory_ars_huge, mah_buf) + size);
+   m.ahp->mah_last = macp->mac_huge;
+   macp->mac_huge = m.ahp;
+   p.p_cp = m.ahp->mah_buf;
+#ifdef HAVE_MEMORY_DEBUG
+   ++a_memory_ars_hall;
+   ++a_memory_ars_hcur;
+   a_memory_ars_hmax = n_MAX(a_memory_ars_hmax, a_memory_ars_hcur);
+#endif
+   goto jleave;
+}
+
+FL void *
+(n_autorec_calloc)(void *vp, size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS){
+   void *rv;
+   NYD2_ENTER;
+
+   size *= nmemb; /* XXX overflow, but only used for struct inits */
+   rv = (n_autorec_alloc)(vp, size n_MEMORY_DEBUG_ARGSCALL);
+   memset(rv, 0, size);
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL void
+srelax_hold(void){
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   if(macp->mac_recur++ == 0){
+      struct a_memory_ars_buffer *mabp;
+
+      for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_relax = mabp->mab_caster;
+      for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_relax = mabp->mab_caster;
+   }
+#ifdef HAVE_DEVEL
+   else
+      n_err("srelax_hold(): recursion >0\n");
+#endif
    NYD2_LEAVE;
 }
 
 FL void
-n_memreset(void)
-{
-   union a_mem_ptr p;
-   size_t c = 0, s = 0;
-   NYD_ENTER;
+srelax_rele(void){
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
 
-   n_memcheck();
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
 
-   for (p.p_c = a_mem_free; p.p_c != NULL;) {
-      void *vp = p.p_c;
-      ++c;
-      s += p.p_c->mc_size;
-      p.p_c = p.p_c->mc_next;
-      (free)(vp);
+   assert(macp->mac_recur > 0);
+
+   if(--macp->mac_recur == 0){
+      struct a_memory_ars_buffer *mabp;
+
+      macp->mac_recur = 1;
+      srelax();
+      macp->mac_recur = 0;
+
+      for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_relax = NULL;
+      for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_relax = NULL;
    }
-   a_mem_free = NULL;
-
-   if (options & (OPT_DEBUG | OPT_MEMDEBUG))
-      n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
-   NYD_LEAVE;
+#ifdef HAVE_DEVEL
+   else
+      n_err("srelax_rele(): recursion >0\n");
+#endif
+   NYD2_LEAVE;
 }
 
-FL int
-c_memtrace(void *v)
-{
-   /* For _HOPE_GET() */
-   char const * const mdbg_file = "memtrace()";
-   int const mdbg_line = -1;
-   FILE *fp;
-   union a_mem_ptr p, xp;
-   bool_t isbad;
-   size_t lines;
-   NYD_ENTER;
+FL void
+srelax(void){
+   /* The purpose of relaxation is only that it is possible to reset the
+    * casters, *not* to give back memory to the system.  We are presumably in
+    * an iteration over all messages of a mailbox, and it'd be quite
+    * counterproductive to give the system allocator a chance to waste time */
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
 
-   v = (void*)0x1;
-   if ((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
-      n_perr("tmpfile", 0);
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   assert(macp->mac_recur > 0);
+   n_memory_check();
+
+   if(macp->mac_recur == 1){
+      struct a_memory_ars_buffer *mabp, *x, *y;
+
+      /* Buffers in the full list may become usable again! */
+      for(x = NULL, mabp = macp->mac_full; mabp != NULL; mabp = y){
+         y = mabp->mab_last;
+
+         if(mabp->mab_relax == NULL ||
+               mabp->mab_relax < &mabp->mab_buf[sizeof(mabp->mab_buf) - 42]){
+            if(x == NULL)
+               macp->mac_full = y;
+            else
+               x->mab_last = y;
+            mabp->mab_last = macp->mac_top;
+            macp->mac_top = mabp;
+         }else
+            x = mabp;
+      }
+
+      for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last){
+         mabp->mab_caster = (mabp->mab_relax != NULL)
+               ? mabp->mab_relax : mabp->mab_bot;
+#ifdef HAVE_MEMORY_DEBUG
+         memset(mabp->mab_caster, 0377,
+            PTR2SIZE(&mabp->mab_buf[sizeof(mabp->mab_buf)] - mabp->mab_caster));
+#endif
+      }
+   }
+   NYD2_LEAVE;
+}
+
+FL void *
+(n_lofi_alloc)(size_t size n_MEMORY_DEBUG_ARGS){
+#ifdef HAVE_MEMORY_DEBUG
+   ui32_t user_s;
+#endif
+   union a_memory_ptr p;
+   struct a_memory_ars_lofi *malp;
+   bool_t isheap;
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+#ifdef HAVE_MEMORY_DEBUG
+   user_s = (ui32_t)size;
+#endif
+   if(size == 0)
+      ++size;
+   size += sizeof(struct a_memory_ars_lofi_chunk);
+#ifdef HAVE_MEMORY_DEBUG
+   size += a_MEMORY_HOPE_SIZE;
+#endif
+   size = a_MEMORY_LOFI_ROUNDUP(size);
+
+   /* Huge allocations are special */
+   if(n_UNLIKELY(isheap = (size > a_MEMORY_LOFI_MAX))){
+#ifdef HAVE_MEMORY_DEBUG
+      n_alert("n_lofi_alloc() of %" PRIuZ " bytes from %s, line %d",
+         size, mdbg_file, mdbg_line);
+#endif
+   }else if((malp = macp->mac_lofi) != NULL &&
+         ((p.p_cp = malp->mal_caster) <= &malp->mal_max[-size])){
+      malp->mal_caster = &p.p_cp[size];
       goto jleave;
    }
 
-   fprintf(fp, "Memory statistics:\n"
-      "  Count cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
-      "  Bytes cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n\n",
-      a_mem_acur, a_mem_amax, a_mem_aall, a_mem_mcur, a_mem_mmax, a_mem_mall);
+   /* Need a new buffer */
+   /* C99 */{
+      size_t i;
 
-   fprintf(fp, "Currently allocated memory chunks:\n");
-   for (lines = 0, p.p_c = a_mem_list; p.p_c != NULL;
-         ++lines, p.p_c = p.p_c->mc_next) {
-      xp = p;
-      ++xp.p_c;
-      _HOPE_GET_TRACE(xp, isbad);
-      fprintf(fp, "%s%p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
-         (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
-         (size_t)(p.p_c->mc_size - sizeof(struct a_mem_chunk)), p.p_c->mc_file,
-         p.p_c->mc_line);
+      i = size + sizeof(*malp) -
+            n_VFIELD_SIZEOF(struct a_memory_ars_lofi, mal_buf);
+      i = n_MAX(i, n_MEMORY_AUTOREC_SIZE);
+      malp = n_alloc(i);
+      malp->mal_last = macp->mac_lofi;
+      malp->mal_caster = &malp->mal_buf[size];
+      i -= sizeof(*malp) + n_VFIELD_SIZEOF(struct a_memory_ars_lofi, mal_buf);
+      malp->mal_max = &malp->mal_buf[i];
+      macp->mac_lofi = malp;
+      p.p_cp = malp->mal_buf;
+
+#ifdef HAVE_MEMORY_DEBUG
+      ++a_memory_lofi_ball;
+      ++a_memory_lofi_bcur;
+      a_memory_lofi_bmax = n_MAX(a_memory_lofi_bmax, a_memory_lofi_bcur);
+#endif
    }
 
-   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
-      fprintf(fp, "sfree()d memory chunks awaiting free():\n");
-      for (p.p_c = a_mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
+jleave:
+   p.p_alc->malc_last = macp->mac_lofi_top;
+   macp->mac_lofi_top = p.p_alc;
+   if(isheap)
+      p.p_alc->malc_last = (struct a_memory_ars_lofi_chunk*)
+            ((uintptr_t)p.p_alc->malc_last | 0x1);
+
+#ifndef HAVE_MEMORY_DEBUG
+   ++p.p_alc;
+#else
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
+   p.p_c->mc_isfree = FAL0;
+   p.p_c->mc_user_size = user_s;
+   p.p_c->mc_size = (ui32_t)size;
+   ++p.p_alc;
+   a_MEMORY_HOPE_SET(p_alc, p);
+
+   ++a_memory_lofi_aall;
+   ++a_memory_lofi_acur;
+   a_memory_lofi_amax = n_MAX(a_memory_lofi_amax, a_memory_lofi_acur);
+   a_memory_lofi_mall += user_s;
+   a_memory_lofi_mcur += user_s;
+   a_memory_lofi_mmax = n_MAX(a_memory_lofi_mmax, a_memory_lofi_mcur);
+#endif
+   NYD2_LEAVE;
+   return p.p_vp;
+}
+
+FL void
+(n_lofi_free)(void *vp n_MEMORY_DEBUG_ARGS){
+#ifdef HAVE_MEMORY_DEBUG
+   bool_t isbad;
+#endif
+   union a_memory_ptr p;
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   if((p.p_vp = vp) == NULL){
+#ifdef HAVE_MEMORY_DEBUG
+      n_err("n_lofi_free(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
+#endif
+      goto jleave;
+   }
+
+#ifdef HAVE_MEMORY_DEBUG
+   a_MEMORY_HOPE_GET(p_alc, p, isbad);
+   --p.p_alc;
+
+   if(p.p_c->mc_isfree){
+      n_err("n_lofi_free(): double-free avoided at %s, line %d\n"
+         "\tLast seen: %s, line %" PRIu16 "\n",
+         mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
+      goto jleave;
+   }
+   p.p_c->mc_isfree = TRU1;
+   memset(vp, 0377, p.p_c->mc_user_size);
+
+   if(p.p_alc != macp->mac_lofi_top){
+      n_err("n_lofi_free(): this is not alloca top at %s, line %d\n"
+         "\tLast seen: %s, line %" PRIu16 "\n",
+         mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
+      goto jleave;
+   }
+
+   ++p.p_alc;
+#endif /* HAVE_MEMORY_DEBUG */
+
+   a_memory_lofi_free(macp, --p.p_alc);
+jleave:
+   NYD2_LEAVE;
+}
+
+#ifdef HAVE_MEMORY_DEBUG
+FL int
+c_memtrace(void *vp){
+   /* For a_MEMORY_HOPE_GET() */
+   char const * const mdbg_file = "memtrace()";
+   int const mdbg_line = -1;
+   struct a_memory_ars_buffer *mabp;
+   struct a_memory_ars_lofi_chunk *malcp;
+   struct a_memory_ars_lofi *malp;
+   struct a_memory_ars_ctx *macp;
+   bool_t isbad;
+   union a_memory_ptr p, xp;
+   size_t lines;
+   FILE *fp;
+   NYD2_ENTER;
+
+   vp = (void*)0x1;
+   if((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      n_perr("tmpfile", 0);
+      goto jleave;
+   }
+   lines = 0;
+
+   fprintf(fp,
+      "Last-Out-First-In (alloca) storage:\n"
+      "       Buffer cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "  Allocations cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "        Bytes cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n\n",
+      a_memory_lofi_bcur, a_memory_lofi_bmax, a_memory_lofi_ball,
+      a_memory_lofi_acur, a_memory_lofi_amax, a_memory_lofi_aall,
+      a_memory_lofi_mcur, a_memory_lofi_mmax, a_memory_lofi_mall);
+   lines += 7;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+   for(; macp != NULL; macp = macp->mac_outer){
+      fprintf(fp, "  Evaluation stack context %p (outer: %p):\n",
+         (void*)macp, (void*)macp->mac_outer);
+      ++lines;
+
+      for(malp = macp->mac_lofi; malp != NULL;){
+         fprintf(fp, "    Buffer %p%s, %" PRIuZ "/%" PRIuZ " used/free:\n",
+            (void*)malp, ((uintptr_t)malp->mal_last & 0x1 ? " (huge)" : ""),
+            PTR2SIZE(malp->mal_caster - &malp->mal_buf[0]),
+            PTR2SIZE(malp->mal_max - malp->mal_caster));
+         ++lines;
+         malp = malp->mal_last;
+         malp = (struct a_memory_ars_lofi*)((uintptr_t)malp & ~1);
+      }
+
+      for(malcp = macp->mac_lofi_top; malcp != NULL;){
+         p.p_alc = malcp;
+         malcp = (struct a_memory_ars_lofi_chunk*)
+               ((uintptr_t)malcp->malc_last & ~0x1);
          xp = p;
-         ++xp.p_c;
-         _HOPE_GET_TRACE(xp, isbad);
-         fprintf(fp, "%s%p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
-            (isbad ? "! CANARY ERROR: " : ""), xp.p_p,
-            (size_t)(p.p_c->mc_size - sizeof(struct a_mem_chunk)),
-            p.p_c->mc_file, p.p_c->mc_line);
+         ++xp.p_alc;
+         a_MEMORY_HOPE_GET_TRACE(p_alc, xp, isbad);
+         fprintf(fp, "      %s%p (%u bytes): %s, line %u\n",
+            (isbad ? "! CANARY ERROR (LOFI): " : ""), xp.p_vp,
+            p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+      }
+   }
+
+   fprintf(fp,
+      "\nAuto-reclaimed storage:\n"
+      "           Buffers cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "  Huge allocations cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "                Allocations all: %" PRIuZ ", Bytes all: %" PRIuZ "\n\n",
+      a_memory_ars_bcur, a_memory_ars_bmax, a_memory_ars_ball,
+      a_memory_ars_hcur, a_memory_ars_hmax, a_memory_ars_hall,
+      a_memory_ars_aall, a_memory_ars_mall);
+   lines += 7;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+   for(; macp != NULL; macp = macp->mac_outer){
+      fprintf(fp, "  Evaluation stack context %p (outer: %p):\n",
+         (void*)macp, (void*)macp->mac_outer);
+      ++lines;
+
+      for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last){
+         fprintf(fp, "    Buffer %p, %" PRIuZ "/%" PRIuZ " used/free:\n",
+            (void*)mabp,
+            PTR2SIZE(mabp->mab_caster - &mabp->mab_buf[0]),
+            PTR2SIZE(&mabp->mab_buf[sizeof(mabp->mab_buf)] - mabp->mab_caster));
+         ++lines;
+
+         for(p.p_cp = mabp->mab_buf; p.p_cp < mabp->mab_caster;
+               ++lines, p.p_cp += p.p_c->mc_size){
+            xp = p;
+            ++xp.p_c;
+            a_MEMORY_HOPE_GET_TRACE(p_c, xp, isbad);
+            fprintf(fp, "      %s%p (%u bytes): %s, line %u\n",
+               (isbad ? "! CANARY ERROR (ARS, top): " : ""), xp.p_vp,
+               p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+         }
+         ++lines;
+      }
+
+      for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last){
+         fprintf(fp, "    Buffer %p, full:\n", (void*)mabp);
+         ++lines;
+
+         for(p.p_cp = mabp->mab_buf; p.p_cp < mabp->mab_caster;
+               ++lines, p.p_cp += p.p_c->mc_size){
+            xp = p;
+            ++xp.p_c;
+            a_MEMORY_HOPE_GET_TRACE(p_c, xp, isbad);
+            fprintf(fp, "      %s%p (%u bytes): %s, line %u\n",
+               (isbad ? "! CANARY ERROR (ARS, full): " : ""), xp.p_vp,
+               p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+         }
+         ++lines;
+      }
+   }
+
+   fprintf(fp,
+      "\nHeap memory buffers:\n"
+      "  Allocation cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n"
+      "       Bytes cur/peek/all: %7" PRIuZ "/%7" PRIuZ "/%10" PRIuZ "\n\n",
+      a_memory_heap_acur, a_memory_heap_amax, a_memory_heap_aall,
+      a_memory_heap_mcur, a_memory_heap_mmax, a_memory_heap_mall);
+   lines += 6;
+
+   for(p.p_hc = a_memory_heap_list; p.p_hc != NULL;
+         ++lines, p.p_hc = p.p_hc->mhc_next){
+      xp = p;
+      ++xp.p_hc;
+      a_MEMORY_HOPE_GET_TRACE(p_hc, xp, isbad);
+      fprintf(fp, "  %s%p (%u bytes): %s, line %u\n",
+         (isbad ? "! CANARY ERROR (heap): " : ""), xp.p_vp,
+         p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+   }
+
+   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+      fprintf(fp, "Heap buffers lingering for free():\n");
+      ++lines;
+
+      for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
+            ++lines, p.p_hc = p.p_hc->mhc_next){
+         xp = p;
+         ++xp.p_hc;
+         a_MEMORY_HOPE_GET_TRACE(p_hc, xp, isbad);
+         fprintf(fp, "  %s%p (%u bytes): %s, line %u\n",
+            (isbad ? "! CANARY ERROR (free): " : ""), xp.p_vp,
+            p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
       }
    }
 
    page_or_print(fp, lines);
    Fclose(fp);
-   v = NULL;
+   vp = NULL;
 jleave:
-   NYD_LEAVE;
-   return (v != NULL);
+   NYD2_LEAVE;
+   return (vp != NULL);
 }
 
 FL bool_t
-n__memcheck(char const *mdbg_file, int mdbg_line)
-{
-   union a_mem_ptr p, xp;
-   bool_t anybad = FAL0, isbad;
-   size_t lines;
-   NYD_ENTER;
+n__memory_check(char const *mdbg_file, int mdbg_line){
+   union a_memory_ptr p, xp;
+   struct a_memory_ars_buffer *mabp;
+   struct a_memory_ars_lofi_chunk *malcp;
+   struct a_memory_ars_ctx *macp;
+   bool_t anybad, isbad;
+   NYD2_ENTER;
 
-   for (lines = 0, p.p_c = a_mem_list; p.p_c != NULL;
-         ++lines, p.p_c = p.p_c->mc_next) {
+   anybad = FAL0;
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   /* Alloca */
+
+   for(malcp = macp->mac_lofi_top; malcp != NULL;){
+      p.p_alc = malcp;
+      malcp = (struct a_memory_ars_lofi_chunk*)
+            ((uintptr_t)malcp->malc_last & ~0x1);
       xp = p;
-      ++xp.p_c;
-      _HOPE_GET_TRACE(xp, isbad);
-      if (isbad) {
+      ++xp.p_alc;
+      a_MEMORY_HOPE_GET_TRACE(p_alc, xp, isbad);
+      if(isbad){
          anybad = TRU1;
          n_err(
-            "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
-            xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct a_mem_chunk)),
-            p.p_c->mc_file, p.p_c->mc_line);
+            "! CANARY ERROR (LOFI): %p (%u bytes): %s, line %u\n",
+            xp.p_vp, p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
       }
    }
 
-   if (options & (OPT_DEBUG | OPT_MEMDEBUG)) {
-      for (p.p_c = a_mem_free; p.p_c != NULL; ++lines, p.p_c = p.p_c->mc_next) {
+   /* Auto-reclaimed */
+
+   for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last){
+      for(p.p_cp = mabp->mab_buf; p.p_cp < mabp->mab_caster;
+            p.p_cp += p.p_c->mc_size){
          xp = p;
          ++xp.p_c;
-         _HOPE_GET_TRACE(xp, isbad);
-         if (isbad) {
+         a_MEMORY_HOPE_GET_TRACE(p_c, xp, isbad);
+         if(isbad){
             anybad = TRU1;
             n_err(
-               "! CANARY ERROR: %p (%5" PRIuZ " bytes): %s, line %" PRIu16 "\n",
-               xp.p_p, (size_t)(p.p_c->mc_size - sizeof(struct a_mem_chunk)),
-               p.p_c->mc_file, p.p_c->mc_line);
+               "! CANARY ERROR (ARS, top): %p (%u bytes): %s, line %u\n",
+               xp.p_vp, p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
          }
       }
    }
-   NYD_LEAVE;
+
+   for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last){
+      for(p.p_cp = mabp->mab_buf; p.p_cp < mabp->mab_caster;
+            p.p_cp += p.p_c->mc_size){
+         xp = p;
+         ++xp.p_c;
+         a_MEMORY_HOPE_GET_TRACE(p_c, xp, isbad);
+         if(isbad){
+            anybad = TRU1;
+            n_err(
+               "! CANARY ERROR (ARS, full): %p (%u bytes): %s, line %u\n",
+               xp.p_vp, p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+         }
+      }
+   }
+
+   /* Heap*/
+
+   for(p.p_hc = a_memory_heap_list; p.p_hc != NULL; p.p_hc = p.p_hc->mhc_next){
+      xp = p;
+      ++xp.p_hc;
+      a_MEMORY_HOPE_GET_TRACE(p_hc, xp, isbad);
+      if(isbad){
+         anybad = TRU1;
+         n_err(
+            "! CANARY ERROR (heap): %p (%u bytes): %s, line %u\n",
+            xp.p_vp, p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+      }
+   }
+
+   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+      for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
+            p.p_hc = p.p_hc->mhc_next){
+         xp = p;
+         ++xp.p_hc;
+         a_MEMORY_HOPE_GET_TRACE(p_hc, xp, isbad);
+         if(isbad){
+            anybad = TRU1;
+            n_err(
+              "! CANARY ERROR (free): %p (%u bytes): %s, line %u\n",
+               xp.p_vp, p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
+         }
+      }
+   }
+
+   if(anybad && ok_blook(memdebug))
+      n_panic("Memory errors encountered");
+   NYD2_LEAVE;
    return anybad;
 }
 #endif /* HAVE_MEMORY_DEBUG */
-
-FL void *
-(salloc)(size_t size SALLOC_DEBUG_ARGS)
-{
-#ifdef HAVE_MEMORY_DEBUG
-   size_t orig_size = size;
-#endif
-   union {struct buffer *b; struct hugebuf *hb; char *cp;} u;
-   char *x, *y, *z;
-   NYD2_ENTER;
-
-   if (size == 0)
-      ++size;
-   size += SALIGN;
-   size &= ~SALIGN;
-
-#ifdef HAVE_MEMORY_DEBUG
-   ++_all_cnt;
-   ++_all_cycnt;
-   _all_cycnt_max = MAX(_all_cycnt_max, _all_cycnt);
-   _all_size += size;
-   _all_cysize += size;
-   _all_cysize_max = MAX(_all_cysize_max, _all_cysize);
-   _all_min = (_all_max == 0) ? size : MIN(_all_min, size);
-   _all_max = MAX(_all_max, size);
-   _all_wast += size - orig_size;
-
-   size += _SHOPE_SIZE;
-
-   if (size >= SDYN_SIZE - 1)
-      n_alert("salloc() of %" PRIuZ " bytes from %s, line %d",
-         size, mdbg_file, mdbg_line);
-#endif
-
-   /* Huge allocations are special */
-   if (UNLIKELY(size >= SDYN_SIZE - 1))
-      goto jhuge;
-
-   /* Search for a buffer with enough free space to serve request */
-   if ((u.b = _buf_server) != NULL)
-      goto jumpin;
-jredo:
-   for (u.b = _buf_head; u.b != NULL; u.b = u.b->b._next) {
-jumpin:
-      x = u.b->b._caster;
-      if (x == NULL) {
-         if (u.b == _buf_server) {
-            if (u.b == _buf_head && (u.b = _buf_head->b._next) != NULL) {
-               _buf_server = u.b;
-               goto jumpin;
-            }
-            _buf_server = NULL;
-            goto jredo;
-         }
-         continue;
-      }
-      y = x + size;
-      z = u.b->b._max;
-      if (PTRCMP(y, <=, z)) {
-         /* Alignment is the one thing, the other is what is usually allocated,
-          * and here about 40 bytes seems to be a good cut to avoid non-usable
-          * non-NULL casters.  However, because of _salloc_bcheck(), we may not
-          * set ._caster to NULL because then it would check all chunks up to
-          * ._max, which surely doesn't work; speed is no issue with DEBUG */
-         u.b->b._caster = NDBG( PTRCMP(y + 42 + 16, >=, z) ? NULL : ) y;
-         u.cp = x;
-         goto jleave;
-      }
-   }
-
-   /* Need a new buffer */
-   if (_buf_head == NULL) {
-      struct b_bltin *b = &_builtin_buf;
-      b->b_base._max = b->b_buf + SBLTIN_SIZE - 1;
-      _buf_head = (struct buffer*)b;
-      u.b = _buf_head;
-   } else {
-#ifdef HAVE_MEMORY_DEBUG
-      ++_all_bufcnt;
-      ++_all_cybufcnt;
-      _all_cybufcnt_max = MAX(_all_cybufcnt_max, _all_cybufcnt);
-#endif
-      u.b = smalloc(sizeof(struct b_dyn));
-      u.b->b._max = u.b->b_buf + SDYN_SIZE - 1;
-   }
-   if (_buf_list != NULL)
-      _buf_list->b._next = u.b;
-   _buf_server = _buf_list = u.b;
-   u.b->b._next = NULL;
-   u.b->b._caster = (u.b->b._bot = u.b->b_buf) + size;
-   u.b->b._relax = NULL;
-   u.cp = u.b->b._bot;
-
-jleave:
-   /* Encapsulate user chunk in debug canaries */
-#ifdef HAVE_MEMORY_DEBUG
-   {
-      union sptr xl, xu;
-      struct schunk *xc;
-
-      xl.p = u.cp;
-      xc = xl.c;
-      xc->file = mdbg_file;
-      xc->line = mdbg_line;
-      xc->usr_size = (ui16_t)orig_size;
-      xc->full_size = (ui16_t)size;
-      xl.p = xc + 1;
-      xl.ui8p[0]=0xDE; xl.ui8p[1]=0xAA; xl.ui8p[2]=0x55; xl.ui8p[3]=0xAD;
-      xl.ui8p[4]=0xBE; xl.ui8p[5]=0x55; xl.ui8p[6]=0xAA; xl.ui8p[7]=0xEF;
-      u.cp = xl.cp + 8;
-      xu.p = u.cp;
-      xu.cp += orig_size;
-      xu.ui8p[0]=0xDE; xu.ui8p[1]=0xAA; xu.ui8p[2]=0x55; xu.ui8p[3]=0xAD;
-      xu.ui8p[4]=0xBE; xu.ui8p[5]=0x55; xu.ui8p[6]=0xAA; xu.ui8p[7]=0xEF;
-   }
-#endif
-   NYD2_LEAVE;
-   return u.cp;
-
-jhuge:
-   u.hb = smalloc(sizeof(*u.hb) - VFIELD_SIZEOF(struct hugebuf, hb_buf) +
-         size +1);
-   u.hb->hb_next = _huge_list;
-   _huge_list = u.hb;
-   u.cp = u.hb->hb_buf;
-   goto jleave;
-}
-
-FL void *
-(csalloc)(size_t nmemb, size_t size SALLOC_DEBUG_ARGS)
-{
-   void *vp;
-   NYD2_ENTER;
-
-   size *= nmemb;
-   vp = (salloc)(size SALLOC_DEBUG_ARGSCALL);
-   memset(vp, 0, size);
-   NYD2_LEAVE;
-   return vp;
-}
-
-FL void
-sreset(bool_t only_if_relaxed)
-{
-   struct buffer *blh, *bh;
-   NYD_ENTER;
-
-#ifdef HAVE_MEMORY_DEBUG
-   ++_all_resetreqs;
-#endif
-   if (noreset) {
-      /* Reset relaxation after any jump is a MUST */
-      if (_relax_recur_no > 0)
-         srelax_rele();
-      goto jleave;
-   }
-   if (only_if_relaxed && _relax_recur_no == 0)
-      goto jleave;
-
-#ifdef HAVE_MEMORY_DEBUG
-   _all_cycnt = _all_cysize = 0;
-   _all_cybufcnt = (_buf_head != NULL && _buf_head->b._next != NULL);
-   ++_all_resets;
-#endif
-
-   /* Reset relaxation after jump */
-   if (_relax_recur_no > 0) {
-      srelax_rele();
-      assert(_relax_recur_no == 0);
-   }
-
-   blh = NULL;
-   if ((bh = _buf_head) != NULL) {
-      do {
-         struct buffer *x = bh;
-         bh = x->b._next;
-#ifdef HAVE_MEMORY_DEBUG
-         _salloc_bcheck(x);
-#endif
-
-         /* Give away all buffers that are not covered by sreset().
-          * _buf_head is builtin and thus cannot be free()d */
-         if (blh != NULL && x->b._bot == x->b_buf) {
-            blh->b._next = bh;
-            free(x);
-         } else {
-            blh = x;
-            x->b._caster = x->b._bot;
-            x->b._relax = NULL;
-            DBG( memset(x->b._caster, 0377,
-               PTR2SIZE(x->b._max - x->b._caster)); )
-         }
-      } while (bh != NULL);
-
-      _buf_server = _buf_head;
-      _buf_list = blh;
-      _buf_relax = NULL;
-   }
-
-   while (_huge_list != NULL) {
-      struct hugebuf *hb = _huge_list;
-      _huge_list = hb->hb_next;
-      free(hb);
-   }
-
-   n_memreset();
-jleave:
-   NYD_LEAVE;
-}
-
-FL void
-srelax_hold(void)
-{
-   struct buffer *b;
-   NYD_ENTER;
-
-   if (_relax_recur_no++ == 0) {
-      for (b = _buf_head; b != NULL; b = b->b._next)
-         b->b._relax = b->b._caster;
-      _buf_relax = _buf_server;
-   }
-   NYD_LEAVE;
-}
-
-FL void
-srelax_rele(void)
-{
-   struct buffer *b;
-   NYD_ENTER;
-
-   assert(_relax_recur_no > 0);
-
-   if (--_relax_recur_no == 0) {
-      for (b = _buf_head; b != NULL; b = b->b._next) {
-#ifdef HAVE_MEMORY_DEBUG
-         _salloc_bcheck(b);
-#endif
-         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-         b->b._relax = NULL;
-      }
-
-      _buf_relax = NULL;
-   }
-#ifdef HAVE_DEVEL
-   else
-      n_err("srelax_rele(): recursion >0!\n");
-#endif
-   NYD_LEAVE;
-}
-
-FL void
-srelax(void)
-{
-   /* The purpose of relaxation is only that it is possible to reset the
-    * casters, *not* to give back memory to the system.  We are presumably in
-    * an iteration over all messages of a mailbox, and it'd be quite
-    * counterproductive to give the system allocator a chance to waste time */
-   struct buffer *b;
-   NYD_ENTER;
-
-   assert(_relax_recur_no > 0);
-
-   if (_relax_recur_no == 1) {
-      for (b = _buf_head; b != NULL; b = b->b._next) {
-#ifdef HAVE_MEMORY_DEBUG
-         _salloc_bcheck(b);
-#endif
-         b->b._caster = (b->b._relax != NULL) ? b->b._relax : b->b._bot;
-         DBG( memset(b->b._caster, 0377, PTR2SIZE(b->b._max - b->b._caster)); )
-      }
-   }
-   NYD_LEAVE;
-}
-
-FL void
-spreserve(void)
-{
-   struct buffer *b;
-   NYD_ENTER;
-
-   for (b = _buf_head; b != NULL; b = b->b._next)
-      b->b._bot = b->b._caster;
-   NYD_LEAVE;
-}
-
-#ifdef HAVE_MEMORY_DEBUG
-FL int
-c_sstats(void *v)
-{
-   size_t excess;
-   NYD_ENTER;
-   UNUSED(v);
-
-   excess = (_all_cybufcnt_max * SDYN_SIZE) + SBLTIN_SIZE;
-   excess = (excess >= _all_cysize_max) ? 0 : _all_cysize_max - excess;
-
-   printf("String usage statistics (cycle means one sreset() cycle):\n"
-      "  Buffer allocs ever/max a time : %" PRIuZ "/%" PRIuZ "\n"
-      "  .. size of the builtin/dynamic: %" PRIuZ "/%" PRIuZ "\n"
-      "  Overall alloc count/bytes     : %" PRIuZ "/%" PRIuZ "\n"
-      "  .. bytes min/max/align wastage: %" PRIuZ "/%" PRIuZ "/%" PRIuZ "\n"
-      "  sreset() cycles               : %" PRIuZ " (%" PRIuZ " performed)\n"
-      "  Cycle max.: alloc count/bytes : %" PRIuZ "/%" PRIuZ "+%" PRIuZ "\n",
-      _all_bufcnt, _all_cybufcnt_max,
-      SBLTIN_SIZE, SDYN_SIZE,
-      _all_cnt, _all_size,
-      _all_min, _all_max, _all_wast,
-      _all_resetreqs, _all_resets,
-      _all_cycnt_max, _all_cysize_max, excess);
-   NYD_LEAVE;
-   return 0;
-}
-#endif /* HAVE_MEMORY_DEBUG */
-
-#ifdef HAVE_MEMORY_DEBUG
-# undef _HOPE_SIZE
-# undef _HOPE_SET
-# undef _HOPE_GET_TRACE
-# undef _HOPE_GET
-#endif
 
 /* s-it-mode */

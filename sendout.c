@@ -1302,7 +1302,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
       /* Don't assume anything on the content but do allocate exactly j slots;
        * like this getrawlist will never overflow (and return -1) */
       j = strlen(cp);
-      vas = salloc(sizeof(*vas) * j);
+      vas = n_lofi_alloc(sizeof(*vas) * j);
       vas_cnt = (size_t)getrawlist(FAL0, vas, j, cp, j);
    }
 
@@ -1376,6 +1376,9 @@ __mta_prepare_args(struct name *to, struct header *hp)
       if (!(to->n_type & GDEL))
          args[i++] = to->n_name;
    args[i] = NULL;
+
+   if(vas != NULL)
+      n_lofi_free(vas);
    NYD_LEAVE;
    return args;
 }

@@ -414,13 +414,9 @@
    { "environ", &c_environ, (G | M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
-#ifdef c_memtrace
+#ifdef HAVE_MEMORY_DEBUG
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
-#endif
-#ifdef c_sstats
-   { "sstats", &c_sstats, (H | I | M | NOLIST), 0, 0
-     DS(N_("Print statistics about the auto-reclaimed string store")) },
 #endif
 
 #  undef WYRALIST

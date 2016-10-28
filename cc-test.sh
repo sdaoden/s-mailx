@@ -86,7 +86,6 @@ cc_all_configs() {
          NOTME["OPT_DEBUG"] = 1
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_NOEXTMD5"] = 1
-         NOTME["OPT_NOALLOCA"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
          NOTME["OPT_NYD2"] = 1
          i = 0

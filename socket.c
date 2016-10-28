@@ -498,7 +498,7 @@ jleave:
 
 FL int
 (sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
-   SMALLOC_DEBUG_ARGS)
+   n_MEMORY_DEBUG_ARGS)
 {
    int rv;
    size_t lsize;
@@ -519,7 +519,7 @@ FL int
       if (lp_base == NULL || PTRCMP(lp, >, lp_base + lsize - 128)) {
          size_t diff = PTR2SIZE(lp - lp_base);
          *linesize = (lsize += 256); /* XXX magic */
-         *line = lp_base = (srealloc)(lp_base, lsize SMALLOC_DEBUG_ARGSCALL);
+         *line = lp_base = (n_realloc)(lp_base, lsize n_MEMORY_DEBUG_ARGSCALL);
          lp = lp_base + diff;
       }
 

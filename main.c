@@ -291,7 +291,7 @@ _startup(void)
 static size_t
 _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 {
-   /* Before spreserve(): use our string pool instead of LibC heap */
+   /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
    NYD_ENTER;
 
@@ -867,7 +867,7 @@ jgetopt_done:
    _oind = i;
 
    /* ...BUT, since we use salloc() for the MTA smopts storage we need to
-    * allocate the necessary space for them before we call spreserve()! */
+    * allocate the necessary space for them before we fixate that storage! */
    while (argv[i] != NULL)
       ++i;
    if (smopts_cnt + i > smopts_size)
@@ -944,8 +944,9 @@ jgetopt_done:
    } else
       scrnheight = realscreenheight = 24, scrnwidth = 80;
 
-   /* Snapshot our string pools.  Memory is auto-reclaimed from now on */
-   spreserve();
+   /* Fixate the current snapshot of our global auto-reclaimed storage instance.
+    * Memory is auto-reclaimed from now on */
+   n_memory_autorec_fixate();
 
    /* load() any resource files */
    if(resfiles & a_RF_ALL){
@@ -1102,13 +1103,11 @@ jleave:
    if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
       n_termcap_destroy();
 #endif
-#ifdef HAVE_MEMORY_DEBUG
-   sreset(FAL0);
-#endif
 j_leave:
 #ifdef HAVE_MEMORY_DEBUG
-   n_memcheck();
+   n_memory_autorec_pop(NULL);
 #endif
+   n_memory_reset();
    NYD_LEAVE;
    return exit_status;
 }

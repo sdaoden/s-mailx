@@ -42,26 +42,26 @@
 #include <ctype.h>
 
 FL char *
-(savestr)(char const *str SALLOC_DEBUG_ARGS)
+(savestr)(char const *str n_MEMORY_DEBUG_ARGS)
 {
    size_t size;
    char *news;
    NYD_ENTER;
 
    size = strlen(str) +1;
-   news = (salloc)(size SALLOC_DEBUG_ARGSCALL);
+   news = (n_autorec_alloc)(NULL, size n_MEMORY_DEBUG_ARGSCALL);
    memcpy(news, str, size);
    NYD_LEAVE;
    return news;
 }
 
 FL char *
-(savestrbuf)(char const *sbuf, size_t sbuf_len SALLOC_DEBUG_ARGS)
+(savestrbuf)(char const *sbuf, size_t sbuf_len n_MEMORY_DEBUG_ARGS)
 {
    char *news;
    NYD_ENTER;
 
-   news = (salloc)(sbuf_len +1 SALLOC_DEBUG_ARGSCALL);
+   news = (n_autorec_alloc)(NULL, sbuf_len +1 n_MEMORY_DEBUG_ARGSCALL);
    memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
    NYD_LEAVE;
@@ -69,7 +69,7 @@ FL char *
 }
 
 FL char *
-(savecatsep)(char const *s1, char sep, char const *s2 SALLOC_DEBUG_ARGS)
+(savecatsep)(char const *s1, char sep, char const *s2 n_MEMORY_DEBUG_ARGS)
 {
    size_t l1, l2;
    char *news;
@@ -77,7 +77,8 @@ FL char *
 
    l1 = (s1 != NULL) ? strlen(s1) : 0;
    l2 = strlen(s2);
-   news = (salloc)(l1 + (sep != '\0') + l2 +1 SALLOC_DEBUG_ARGSCALL);
+   news = (n_autorec_alloc)(NULL, l1 + (sep != '\0') + l2 +1
+         n_MEMORY_DEBUG_ARGSCALL);
    if (l1 > 0) {
       memcpy(news + 0, s1, l1);
       if (sep != '\0')
@@ -94,14 +95,14 @@ FL char *
  */
 
 FL char *
-(i_strdup)(char const *src SALLOC_DEBUG_ARGS)
+(i_strdup)(char const *src n_MEMORY_DEBUG_ARGS)
 {
    size_t sz;
    char *dest;
    NYD_ENTER;
 
    sz = strlen(src) +1;
-   dest = (salloc)(sz SALLOC_DEBUG_ARGSCALL);
+   dest = (n_autorec_alloc)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
    i_strcpy(dest, src, sz);
    NYD_LEAVE;
    return dest;
@@ -137,7 +138,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
-   char const *sep_o_null SALLOC_DEBUG_ARGS)
+   char const *sep_o_null n_MEMORY_DEBUG_ARGS)
 {
    size_t sonl, l;
    char const * const *xcpa;
@@ -149,7 +150,7 @@ FL struct str *
       l += strlen(*xcpa) + sonl;
 
    self->l = l;
-   self->s = (salloc)(l +1 SALLOC_DEBUG_ARGSCALL);
+   self->s = (n_autorec_alloc)(NULL, l +1 n_MEMORY_DEBUG_ARGSCALL);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
       size_t i = strlen(*xcpa);
@@ -429,23 +430,23 @@ sstpcpy(char *dst, char const *src)
 }
 
 FL char *
-(sstrdup)(char const *cp SMALLOC_DEBUG_ARGS)
+(sstrdup)(char const *cp n_MEMORY_DEBUG_ARGS)
 {
    char *dp;
    NYD2_ENTER;
 
-   dp = (cp == NULL) ? NULL : (sbufdup)(cp, strlen(cp) SMALLOC_DEBUG_ARGSCALL);
+   dp = (cp == NULL) ? NULL : (sbufdup)(cp, strlen(cp) n_MEMORY_DEBUG_ARGSCALL);
    NYD2_LEAVE;
    return dp;
 }
 
 FL char *
-(sbufdup)(char const *cp, size_t len SMALLOC_DEBUG_ARGS)
+(sbufdup)(char const *cp, size_t len n_MEMORY_DEBUG_ARGS)
 {
    char *dp = NULL;
    NYD2_ENTER;
 
-   dp = (smalloc)(len +1 SMALLOC_DEBUG_ARGSCALL);
+   dp = (n_alloc)(len +1 n_MEMORY_DEBUG_ARGSCALL);
    if (cp != NULL)
       memcpy(dp, cp, len);
    dp[len] = '\0';
@@ -549,7 +550,7 @@ is_asccaseprefix(char const *as1, char const *as2)
 
 FL struct str *
 (n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
-      SMALLOC_DEBUG_ARGS){
+      n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : strlen(buf);
@@ -557,8 +558,8 @@ FL struct str *
    assert(buflen == 0 || buf != NULL);
 
    if(n_LIKELY(buflen > 0)){
-      self->s = (srealloc)(self->s, (self->l = buflen) +1
-            SMALLOC_DEBUG_ARGSCALL);
+      self->s = (n_realloc)(self->s, (self->l = buflen) +1
+            n_MEMORY_DEBUG_ARGSCALL);
       memcpy(self->s, buf, buflen);
       self->s[buflen] = '\0';
    }else
@@ -569,7 +570,7 @@ FL struct str *
 
 FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, uiz_t buflen
-      SMALLOC_DEBUG_ARGS){
+      n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : strlen(buf);
@@ -579,7 +580,8 @@ FL struct str *
    if(buflen > 0) {
       size_t osl = self->l, nsl = osl + buflen;
 
-      self->s = (srealloc)(self->s, (self->l = nsl) +1 SMALLOC_DEBUG_ARGSCALL);
+      self->s = (n_realloc)(self->s, (self->l = nsl) +1
+            n_MEMORY_DEBUG_ARGSCALL);
       memcpy(self->s + osl, buf, buflen);
       self->s[nsl] = '\0';
    }
@@ -592,18 +594,14 @@ FL struct str *
  */
 
 FL struct n_string *
-(n_string_clear)(struct n_string *self SMALLOC_DEBUG_ARGS){
+(n_string_clear)(struct n_string *self n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
 
    if(self->s_size != 0){
       if(!self->s_auto){
-#ifdef HAVE_MEMORY_DEBUG
-         sfree(self->s_dat SMALLOC_DEBUG_ARGSCALL);
-#else
-         free(self->s_dat);
-#endif
+         (n_free)(self->s_dat n_MEMORY_DEBUG_ARGSCALL);
       }
       self->s_len = self->s_auto = self->s_size = 0;
       self->s_dat = NULL;
@@ -613,7 +611,7 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_reserve)(struct n_string *self, size_t noof SMALLOC_DEBUG_ARGS){
+(n_string_reserve)(struct n_string *self, size_t noof n_MEMORY_DEBUG_ARGS){
    ui32_t i, l, s;
    NYD_ENTER;
 
@@ -632,9 +630,9 @@ FL struct n_string *
       self->s_size = i -1;
 
       if(!self->s_auto)
-         self->s_dat = (srealloc)(self->s_dat, i SMALLOC_DEBUG_ARGSCALL);
+         self->s_dat = (n_realloc)(self->s_dat, i n_MEMORY_DEBUG_ARGSCALL);
       else{
-         char *ndat = (salloc)(i SALLOC_DEBUG_ARGSCALL);
+         char *ndat = (n_autorec_alloc)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
 
          if(l > 0)
             memcpy(ndat, self->s_dat, l);
@@ -646,7 +644,7 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_resize)(struct n_string *self, size_t nlen SMALLOC_DEBUG_ARGS){
+(n_string_resize)(struct n_string *self, size_t nlen n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
@@ -656,7 +654,7 @@ FL struct n_string *
 #endif
 
    if(self->s_len < nlen)
-      self = (n_string_reserve)(self, nlen SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, nlen n_MEMORY_DEBUG_ARGSCALL);
    self->s_len = (ui32_t)nlen;
    NYD_LEAVE;
    return self;
@@ -664,7 +662,7 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_push_buf)(struct n_string *self, char const *buf, size_t buflen
-      SMALLOC_DEBUG_ARGS){
+      n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
@@ -676,7 +674,7 @@ FL struct n_string *
    if(buflen > 0){
       ui32_t i;
 
-      self = (n_string_reserve)(self, buflen SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, buflen n_MEMORY_DEBUG_ARGSCALL);
       memcpy(self->s_dat + (i = self->s_len), buf, buflen);
       self->s_len = (i += (ui32_t)buflen);
    }
@@ -685,13 +683,13 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_push_c)(struct n_string *self, char c SMALLOC_DEBUG_ARGS){
+(n_string_push_c)(struct n_string *self, char c n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
-      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
    self->s_dat[self->s_len++] = c;
    NYD_LEAVE;
    return self;
@@ -699,7 +697,7 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_unshift_buf)(struct n_string *self, char const *buf, size_t buflen
-      SMALLOC_DEBUG_ARGS){
+      n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
@@ -709,7 +707,7 @@ FL struct n_string *
       buflen = (buf == NULL) ? 0 : strlen(buf);
 
    if(buflen > 0){
-      self = (n_string_reserve)(self, buflen SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, buflen n_MEMORY_DEBUG_ARGSCALL);
       if(self->s_len > 0)
          memmove(self->s_dat + buflen, self->s_dat, self->s_len);
       memcpy(self->s_dat, buf, buflen);
@@ -720,13 +718,13 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_unshift_c)(struct n_string *self, char c SMALLOC_DEBUG_ARGS){
+(n_string_unshift_c)(struct n_string *self, char c n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
 
    assert(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
-      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
    if(self->s_len > 0)
       memmove(self->s_dat + 1, self->s_dat, self->s_len);
    self->s_dat[0] = c;
@@ -736,14 +734,14 @@ FL struct n_string *
 }
 
 FL char *
-(n_string_cp)(struct n_string *self SMALLOC_DEBUG_ARGS){
+(n_string_cp)(struct n_string *self n_MEMORY_DEBUG_ARGS){
    char *rv;
    NYD2_ENTER;
 
    assert(self != NULL);
 
    if(self->s_size == 0)
-      self = (n_string_reserve)(self, 1 SMALLOC_DEBUG_ARGSCALL);
+      self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
 
    (rv = self->s_dat)[self->s_len] = '\0';
    NYD2_LEAVE;
@@ -1082,7 +1080,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       err = 0;
       olb += in->l;
 jrealloc:
-      obb = srealloc(obb, olb +1);
+      obb = n_realloc(obb, olb +1);
    }
 
    if (in_rest_or_null != NULL) {

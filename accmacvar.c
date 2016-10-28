@@ -1856,8 +1856,10 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    assert(oxm & (OXM_PLAIN | OXM_H_P | OXM_U_H_P));
 
    /* For simplicity: allow this case too */
-   if(!(oxm & (OXM_H_P | OXM_U_H_P)))
+   if(!(oxm & (OXM_H_P | OXM_U_H_P))){
+      nbuf = NULL;
       goto jplain;
+   }
 
    avc.avc_map = avmp = &a_amv_var_map[okey];
    avc.avc_name = a_amv_var_names + avmp->avm_keyoff;
@@ -1865,7 +1867,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
 
    us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
    nlen = strlen(avc.avc_name);
-   nbuf = salloc(nlen + 1 + us->l +1);
+   nbuf = n_lofi_alloc(nlen + 1 + us->l +1);
    memcpy(nbuf, avc.avc_name, nlen);
    nbuf[nlen++] = '-';
 
@@ -1892,6 +1894,8 @@ jvar:
 jplain:
    rv = (oxm & OXM_PLAIN) ? n_var_oklook(okey) : NULL;
 jleave:
+   if(nbuf != NULL)
+      n_lofi_free(nbuf);
    NYD_LEAVE;
    return rv;
 }

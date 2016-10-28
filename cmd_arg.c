@@ -76,7 +76,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       /* And assuming result won't grow input */
       char c2, c, quotec, *cp2, *linebuf;
 
-      linebuf = salloc(linesize);
+      linebuf = n_lofi_alloc(linesize);
 
       for(;;){
          for(; blankchar(*line); ++line)
@@ -122,6 +122,8 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          if(c == '\0')
             break;
       }
+
+      n_lofi_free(linebuf);
    }else{
       /* sh(1) compat mode.  Prepare shell token-wise */
       struct n_string store;

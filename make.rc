@@ -343,10 +343,7 @@ VAL_SYSCONFRC="${VAL_SID}${VAL_NAIL}.rc"
 
 # Use debug compiler flags, enable some additional commands and code
 # assertions.  Note that setting this also enables our own memory
-# canaries, which require a rather large amount of runtime memory, and
-# forcefully disables alloca(3) stack memory usage (see $OPT_NOALLOCA
-# below), so as to be able to track usage of "stack memory" via our
-# memory canaries.
+# canaries, which require a rather large amount of runtime memory.
 OPT_DEBUG=no
 
 # Experimental code etc.
@@ -355,14 +352,6 @@ OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
-
-# The codebase makes a lot of use of alloca(3), and this will remain
-# since S-nail will continue to be compliant to ISO C89, which has no
-# variable ("flexible", sigh) arrays, etc.  For testing purposes it is
-# however nice to use the much slower normal S-nail heap memory
-# allocator instead.
-# Note: this will be forcefully set (again) if $OPT_DEBUG=yes.
-OPT_NOALLOCA="${OPT_DEBUG}"
 
 # If $OPT_DEBUG is true we'll use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or

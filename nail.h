@@ -223,6 +223,12 @@
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"
 
+/* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
+ * storage is that value /2, which is n_CTA()ed to be > 1024 */
+#define n_MEMORY_AUTOREC_SIZE 0x2000u
+/* Ugly, but avoid dynamic allocation for the management structure! */
+#define n_MEMORY_AUTOREC_TYPE_SIZEOF (7 * sizeof(void*))
+
 /* Default *encoding* as enum mime_enc below */
 #define MIME_DEFAULT_ENCODING MIMEE_QP
 
@@ -278,11 +284,6 @@
 
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE    420000
-
-/* String dope: dynamic buffer size, and size of the single builtin one that's
- * used first; note that these value include the size of the structure */
-#define SBUFFER_SIZE    ((0x10000u >> 1u) - 0x400)
-#define SBUFFER_BUILTIN (0x10000u >> 1u)
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
 #if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
@@ -2365,7 +2366,6 @@ VL char const  **smopts;            /* sendmail(1) opts from commline */
 VL size_t      smopts_cnt;          /* Entries in smopts */
 
 VL ui32_t      pstate;              /* Bits of enum program_state */
-VL size_t      noreset;             /* String resets suspended (recursive) */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */

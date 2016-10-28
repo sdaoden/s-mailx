@@ -641,7 +641,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
    pstate |= PS_RECURSED;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
-   ++noreset;
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("temporary mail file"), 0);
@@ -948,13 +947,6 @@ jearg:
             goto jearg;
          hp->h_subject = savestr(&linebuf[3]);
          break;
-#ifdef HAVE_MEMORY_DEBUG
-      case 'S':
-         if(cnt != 2)
-            goto jearg;
-         c_sstats(NULL);
-         break;
-#endif
       case '@':
          /* Edit the attachment list */
          if(cnt != 2)
@@ -1229,7 +1221,6 @@ jskiptails:
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   --noreset;
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    pstate &= ~PS_RECURSED;

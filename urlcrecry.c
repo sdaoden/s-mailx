@@ -576,12 +576,12 @@ jleave:
 #endif /* HAVE_AGENT */
 
 FL char *
-(urlxenc)(char const *cp, bool_t ispath SALLOC_DEBUG_ARGS)
+(urlxenc)(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS)
 {
    char *n, *np, c1;
    NYD2_ENTER;
 
-   np = n = (salloc)(strlen(cp) * 3 +1 SALLOC_DEBUG_ARGSCALL);
+   np = n = (n_autorec_alloc)(NULL, strlen(cp) * 3 +1 n_MEMORY_DEBUG_ARGSCALL);
 
    for (; (c1 = *cp) != '\0'; ++cp) {
       /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
@@ -608,13 +608,13 @@ jesc:
 }
 
 FL char *
-(urlxdec)(char const *cp SALLOC_DEBUG_ARGS)
+(urlxdec)(char const *cp n_MEMORY_DEBUG_ARGS)
 {
    char *n, *np;
    si32_t c;
    NYD2_ENTER;
 
-   np = n = (salloc)(strlen(cp) +1 SALLOC_DEBUG_ARGSCALL);
+   np = n = (n_autorec_alloc)(NULL, strlen(cp) +1 n_MEMORY_DEBUG_ARGSCALL);
 
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {

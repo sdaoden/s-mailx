@@ -45,7 +45,7 @@ static size_t     _length_of_line(char const *line, size_t linesize);
 
 /* Read a line, one character at a time */
 static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
-                     FILE *fp, int appendnl, size_t n SMALLOC_DEBUG_ARGS);
+                     FILE *fp, int appendnl, size_t n n_MEMORY_DEBUG_ARGS);
 
 /* Workhorse */
 static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off, off_t len);
@@ -67,7 +67,7 @@ _length_of_line(char const *line, size_t linesize)
 
 static char *
 _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
-   int appendnl, size_t n SMALLOC_DEBUG_ARGS)
+   int appendnl, size_t n n_MEMORY_DEBUG_ARGS)
 {
    char *rv;
    int c;
@@ -79,7 +79,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    for (rv = *line;;) {
       if (*linesize <= LINESIZE || n >= *linesize - 128) {
          *linesize += ((rv == NULL) ? LINESIZE + n + 1 : 256);
-         *line = rv = (srealloc)(rv, *linesize SMALLOC_DEBUG_ARGSCALL);
+         *line = rv = (n_realloc)(rv, *linesize n_MEMORY_DEBUG_ARGSCALL);
       }
       c = getc(fp);
       if (c != EOF) {
@@ -141,7 +141,7 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
 
 FL char *
 (fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen, FILE *fp,
-   int appendnl SMALLOC_DEBUG_ARGS)
+   int appendnl n_MEMORY_DEBUG_ARGS)
 {
    size_t i_llen, sz;
    char *rv;
@@ -151,14 +151,15 @@ FL char *
       /* Without count, we can't determine where the chars returned by fgets()
        * end if there's no newline.  We have to read one character by one */
       rv = _fgetline_byone(line, linesize, llen, fp, appendnl, 0
-            SMALLOC_DEBUG_ARGSCALL);
+            n_MEMORY_DEBUG_ARGSCALL);
       goto jleave;
    }
 
    pstate &= ~PS_READLINE_NL;
 
    if ((rv = *line) == NULL || *linesize < LINESIZE)
-      *line = rv = (srealloc)(rv, *linesize = LINESIZE SMALLOC_DEBUG_ARGSCALL);
+      *line = rv = (n_realloc)(rv, *linesize = LINESIZE
+            n_MEMORY_DEBUG_ARGSCALL);
    sz = (*linesize <= *cnt) ? *linesize : *cnt + 1;
    if (sz <= 1 || fgets(rv, sz, fp) == NULL) {
       /* Leave llen untouched; it is used to determine whether the last line
@@ -170,7 +171,7 @@ FL char *
    i_llen = _length_of_line(rv, sz);
    *cnt -= i_llen;
    while (rv[i_llen - 1] != '\n') {
-      *line = rv = (srealloc)(rv, *linesize += 256 SMALLOC_DEBUG_ARGSCALL);
+      *line = rv = (n_realloc)(rv, *linesize += 256 n_MEMORY_DEBUG_ARGSCALL);
       sz = *linesize - i_llen;
       sz = (sz <= *cnt) ? sz : *cnt + 1;
       if (sz <= 1 || fgets(rv + i_llen, sz, fp) == NULL) {
@@ -193,7 +194,7 @@ jleave:
 
 FL int
 (readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
+   n_MEMORY_DEBUG_ARGS)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
     * TODO should be configurable just as for fgetline(); ..or whatever..
@@ -212,7 +213,7 @@ FL int
       for (;;) {
          if (*linesize <= LINESIZE || n >= *linesize - 128) {
             *linesize += ((*linebuf == NULL) ? LINESIZE + n + 1 : 256);
-            *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
+            *linebuf = (n_realloc)(*linebuf, *linesize n_MEMORY_DEBUG_ARGSCALL);
          }
 jagain:
          sz = read(0, *linebuf + n, *linesize - n - 1);
@@ -243,7 +244,7 @@ jagain:
        * read one char at a time as it is the only way to get lines with
        * embedded NUL characters in standard stdio */
       if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
-            SMALLOC_DEBUG_ARGSCALL) == NULL)
+            n_MEMORY_DEBUG_ARGSCALL) == NULL)
          goto jleave;
    }
    if (n > 0 && (*linebuf)[n - 1] == '\n')

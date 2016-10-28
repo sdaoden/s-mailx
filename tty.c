@@ -746,7 +746,7 @@ static ui8_t a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
 static void a_tty_check_grow(struct a_tty_line *tlp, ui32_t no
-               SMALLOC_DEBUG_ARGS);
+               n_MEMORY_DEBUG_ARGS);
 static ssize_t a_tty_cell2dat(struct a_tty_line *tlp);
 static void a_tty_cell2save(struct a_tty_line *tlp);
 
@@ -796,7 +796,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
 
 /* Readline core */
 static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len
-                  SMALLOC_DEBUG_ARGS);
+                  n_MEMORY_DEBUG_ARGS);
 
 # ifdef HAVE_KEY_BINDINGS
 /* Find context or -1 */
@@ -901,7 +901,7 @@ a_tty_wcwidth(wchar_t wc){
 }
 
 static void
-a_tty_check_grow(struct a_tty_line *tlp, ui32_t no SMALLOC_DEBUG_ARGS){
+a_tty_check_grow(struct a_tty_line *tlp, ui32_t no n_MEMORY_DEBUG_ARGS){
    ui32_t cmax;
    NYD2_ENTER;
 
@@ -913,7 +913,8 @@ a_tty_check_grow(struct a_tty_line *tlp, ui32_t no SMALLOC_DEBUG_ARGS){
          hold_all_sigs(); /* XXX v15 drop */
          i <<= 1;
          tlp->tl_line.cbuf =
-         *tlp->tl_x_buf = (srealloc)(*tlp->tl_x_buf, i SMALLOC_DEBUG_ARGSCALL);
+         *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i
+               n_MEMORY_DEBUG_ARGSCALL);
          rele_all_sigs(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
@@ -2427,7 +2428,7 @@ jreset:
 }
 
 static ssize_t
-a_tty_readline(struct a_tty_line *tlp, size_t len SMALLOC_DEBUG_ARGS){
+a_tty_readline(struct a_tty_line *tlp, size_t len n_MEMORY_DEBUG_ARGS){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
@@ -2462,7 +2463,7 @@ jinput_loop:
 
       /* Ensure we have valid pointers, and room for grow */
       a_tty_check_grow(tlp, ((flags & a_BUFMODE) ? (ui32_t)len : 1)
-         SMALLOC_DEBUG_ARGSCALL);
+         n_MEMORY_DEBUG_ARGSCALL);
 
       /* Handle visual state flags, except in buffer mode */
       if(!(flags & a_BUFMODE) && (tlp->tl_vi_flags & a_TTY_VF_ALL_MASK))
@@ -3693,7 +3694,7 @@ n_tty_signal(int sig){
 
 FL int
 (n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n SMALLOC_DEBUG_ARGS){
+      char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
    struct a_tty_line tl;
 # ifdef HAVE_COLOUR
    char *posbuf, *pos;
@@ -3846,7 +3847,7 @@ jredo:
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
-   nn = a_tty_readline(&tl, n SMALLOC_DEBUG_ARGSCALL);
+   nn = a_tty_readline(&tl, n n_MEMORY_DEBUG_ARGSCALL);
    a_tty_term_mode(FAL0);
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
@@ -3863,7 +3864,7 @@ jredo:
       n = (nn <= 0) ? 0 : nn;
 # ifdef HAVE_KEY_BINDINGS
       nn = (n_lex_input)(lif, orig_prompt, linebuf, linesize,
-            (n == 0 ? "" : savestrbuf(*linebuf, n)) SMALLOC_DEBUG_ARGSCALL);
+            (n == 0 ? "" : savestrbuf(*linebuf, n)) n_MEMORY_DEBUG_ARGSCALL);
 # else
       goto jredo;
 # endif
@@ -4269,7 +4270,7 @@ n_tty_signal(int sig){
 
 FL int
 (n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n SMALLOC_DEBUG_ARGS){
+      char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
    int rv;
    NYD_ENTER;
 
@@ -4282,7 +4283,7 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
 # endif
-   rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
+   rv = (readline_restart)(stdin, linebuf, linesize,n n_MEMORY_DEBUG_ARGSCALL);
 # ifdef HAVE_TERMCAP
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
