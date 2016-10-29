@@ -2715,19 +2715,22 @@ Identical to
 .Ql \eUHHHHHHHH
 except it takes only one to four hexadecimal digits.
 .It Ql \ecX
-the
-.Ql control-X
-character.
-This is a mechanism that allows usage of the non-printable (ASCII and
-compatible) control codes 0 to 31: to be able to create a printable
-representation the numeric value 64 is added to the control code of
-desire, and the resulting ASCII character set code point is then
-printed, e.g., BEL is
+A mechanism that allows usage of the non-printable (ASCII and
+compatible) control codes 0 to 31: to create the printable
+representation of a control code the numeric value 64 is added, and the
+resulting ASCII character set code point is then printed, e.g., BEL is
 .Ql 7 + 64 = 71 = G .
-Often circumflex notation is used for the visualization purpose, e.g,
+Whereas historically circumflex notation has often been used for
+visualization purposes of control codes, e.g.,
 .Ql ^G ,
-but the reverse solid notation has been standardized:
+the reverse solidus notation has been standardized:
 .Ql \ecG .
+Some control codes also have standardized (ISO 10646, ISO C) alias
+representations, as shown above (e.g.,
+.Ql \ea ,
+.Ql \en ,
+.Ql \et ) :
+whenever such an alias exists \*(UA will use it for display purposes.
 The control code NUL
 .Pf ( Ql \ec@ )
 ends argument processing without producing further output.
