@@ -114,7 +114,7 @@ jislink:
 # endif
       int i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
 
-      if(i < 0 || i >= sizeof name){
+      if(i < 0 || UICMP(32, i, >=, sizeof name)){
 jenametool:
          dls = n_DLS_NAMETOOLONG | n_DLS_ABANDON;
          goto jmsg;
