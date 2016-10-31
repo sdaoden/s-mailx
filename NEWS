@@ -1,14 +1,25 @@
 S - n a i l / S - m a i l x  N e w s
 ====================================
 
-v14.9.0 ("Crow"), 201?-??-??
+v14.9.0 ("Crow"), 2017-0?-??
 ----------------------------
 
+  It introduces some **backward incompatibilities**!
+
 This is a major feature release.
-  Preview 2, 2016-11-02:
-    IMAP gone, better don't ^C during macros.  Misses major
-    components of the final release.  All bugs of Preview 1 have
-    been fixed, and other usual progress happened.
+  Preview 3, 2016-12-31:
+    IMAP still gone.  All known bugs have been fixed, and other
+    usual progress has happened.
+    Backward incompatible changes (to Preview 2):
+    - new "default" `bind' context to not stain the very "base"
+      with commands which don't make sense in other contexts
+    - -a has been extended, ~@ has been changed!
+    - Prompt handling has been changed.
+    - `customhdr' and `uncustomhdr' have been removed again.
+      The new `~^' command escape is much more powerful and
+      provides reliable scripting capabilities, especially via the
+      new *on-compose-done* and *on-compose-done-shell* hooks.
+      The *customhdr* variable remains, and forever.
 
 I didn't know where S-mailx will truly end up with, but only knew
 i wanted to overcome the technical shortcomings, have a better
@@ -32,7 +43,7 @@ not at all in general and only \t and \n in some others etc.
   a=${TMPDIR}\t/ b=${TMPDIR}\t/ c=$\${TMPDIR}\t/
 
 (But don't do that).  All this is documented in COMMANDS#?.
-Today only new commands (like `bind', `customhdr' etc.), but also
+Today only new commands (like `bind', `headerpick' etc.), but also
 attachment selection, `remove' and `write' use this, others, like
 `set', can optionally support it with a new command prefix: `wysh'.
 
@@ -44,13 +55,16 @@ Mantas Mikulėnas, Respiranto, Jens Schleusener,
 Walter Alejandro Iglesias, Ralph Corderoy, Thomas Dickey, Afan,
 Justin Ellingwood, Ingo Schwarze, Viktor Szépe, Gaetan Bisson,
 Juan RP, William Yodlowsky, Hilko Bengen, Matthew Dillon,
-Colin Watson and Donald Mugnai.
+Colin Watson, Donald Mugnai, Stephen Isard, Jürgen Daubert,
+Sven Neuhaus, trondd, Ismael Bouya, Felipe Gasper, Paul Eggert
+and Dr. Werner Fink.
 
 We welcome Antonio Radici, Mike Frysinger, Predrag Punosevac,
 Michael Convey, Rudolf Sykora, Todd C. Miller, Robert Elz,
 Jens Schleusener, Walter Alejandro Iglesias, Thomas Dickey, Afan,
 Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon,
-Colin Watson and Donald Mugnai in THANKS.
+Colin Watson, Donald Mugnai, Sven Neuhaus, Ismael Bouya,
+Felipe Gasper, Paul Eggert and Dr. Werner Fink in THANKS.
 
 Apologies: Sergey Matveev.
 Members of the Roff community which await progress.
@@ -142,28 +156,30 @@ NOTES, ChangeLog (packager-affine)
 
   o It is deduced via termcap(5) (see below) whether the terminal
     supports colors, e.g., "s-nail -Stermcap=Co#256".
+    This is also true if we don't have termcap support.
 
   o Support for 256-colour terminals. (Gavin Troy)
 
 - `source'#? series support shell pipes if the last character of
-   the "filename" ends with a vertical bar |, e.g. [c1c1ee5]
+   the "filename" ends with a vertical bar |, e.g.,
 
       source 'gpg -qd ~/.s-nailrc-private.gpg |'
 
 - Shell pipes are also supported as targets for `move'#?,
-  `copy'#? etc., e.g., [0d0c523]
+  `copy'#? etc., e.g.,
 
       copy . '| cat; echo huhu'
 
-- Support for custom headers via the new `customhdr'#? and
-  `uncustomhdr'#? commands.  Because we don't have "scope-local"
-  environments yet there temporarily is also *customhdr*#?,
-  which can be covered by `localopts'#?. [topic/customhdr]
+- Support for custom headers via the new `~^'#? compose-mode
+  command escape and the internal variable *customhdr*#?,
+  which can be covered by `localopts'#?.  [topic/customhdr]
   (Sergey Matveev)
 
   o Support of *ORGANIZATION* has been dropped.
 
   o In compose mode `~e'#? supports _any_ header.
+
+  o In compose mode `~^'#? supports _any_ header.
 
 - New -:#? command line option can be used to more easily select
   which startup files should be loaded.
@@ -172,16 +188,38 @@ NOTES, ChangeLog (packager-affine)
 - `account'#?s and *folder-hook*#?s now have `localopts'#?
    enabled by default.
 
-   o Note: it is likely that in the future "scope-local" environments
-     will be implemented, then also covering things like shortcuts etc.,
-     and some thing like a "global" prefix to extend a setting to the
-     global namespace.  (Think TeX.)
-
 - A first simple form of compose-mode hooks has been implemented:
   *on-compose-enter*#? and *on-compose-leave*#? can be set to
   macros which get invoked at appropriate times, with `localopts'#?
-  enabled (which extend until the message is sent). [d6902e1,3fd1db4]
+  enabled (which extend until the message is sent).
+
+  An even more powerful mechanism is available via the also new
+  *on-compose-done* and *on-compose-done-shell* hooks, e.g.,
   (Jens Schleusener, Rudolf Sykora)
+
+    set on-compose-done=ocdm
+    define ocdm {
+      read ver
+      echo version is $ver
+      if $features !@ +regex
+        echoerr 'Need regular-expression support, aborting send'
+        echo '~x'
+      endif
+      echo '~^header list'
+      read hl
+      if $hl !~ ^2
+        echoerr 'Failed to read header list, bailing out'
+        echo '~x'
+      endif
+      if $hl !@ ' cc'
+        echo '~^header insert cc Diet is your <mirr.or>'
+        read es
+        if $es !~ ^2
+          echoerr 'Failed to insert Cc: header, bailing out'
+          echo '~x'
+        endif
+      endif
+    }
 
 - "The .netrc file"#?
 
@@ -209,7 +247,7 @@ NOTES, ChangeLog (packager-affine)
     instead.
 
   o The variable *termcap*#? can be used to freely define or
-    override terminal capabilities, *termcap-disable*#? will
+    override terminal capabilities, and *termcap-disable*#? will
     disable interaction with the chosen library, leaving only
     *termcap* in charge.
 
@@ -259,14 +297,14 @@ NOTES, ChangeLog (packager-affine)
 
     + Therefore we no longer have `setenv' and `unsetenv'.
 
-    + To integrate other (unkown) environment variables transparently
+    + To integrate any other environment variable transparently
       into our variable management, the new command `environ'#?
-      needs to be used, e.g., "environ set NEWVAR=valye" or
+      needs to be used, e.g., "environ set NEWVAR=value" or
       "environ link EXISTINGVAR".
 
-  o `-u'#? / *LOGNAME*#? (*USER*) handling has been redefined, and
-    "-u USER" is now exactly the same as "-f %USER", and *LOGNAME*
-    (and *USER*) is actively set to the active user.  (Afan)
+  o `-u'#? / *LOGNAME*#? (*USER*) handling has been redefined,
+    and "-u USER" is now exactly the same as "-f %USER", and
+    *LOGNAME* (and *USER*) is actively set to the active user.  (Afan)
 
     *LOGNAME*#? is POSIX standardized and henceforth used and
     preferred over *USER*, which came from BSD.  (Todd C. Miller)
@@ -274,7 +312,7 @@ NOTES, ChangeLog (packager-affine)
 - In the future (at least non-message-list) argument handling will
   be changed backward-incompatibly to be sh(1)ell compatible (and
   thus POSIX standardized).  New commands use it already today
-  (`bind'#?, `colour'#?, `customhdr'#?), some others (most
+  (`bind'#?, `colour'#?, `headerpick'#?), some others (most
   importantly, `set'#?) can be forced to do so via the new `wysh'
   command prefix, as in: [topic/wysh]
 
@@ -288,29 +326,36 @@ NOTES, ChangeLog (packager-affine)
   (Walter Alejandro Iglesias)
 
 - Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*#?,
-  *mta-arguments*#?, *mta-no-default-argument*#?, *mta-argv0*#?.
+  *mta-arguments*#?, *mta-no-default-argument*#? and
+  *mta-argv0*#?.
 
   The reason is that in v15 we won't even have *smtp*: it is just
   another form of MTA, and thus obsolete by itself.
 
   For now we support a hack that understands a file:// URL in
-  *mta*, too, but that is the default if there is no protocol.
+  *mta*, too, but that is also the default if there is no protocol.
   E.g.: "set mta=smtp://a:b@xy.z"
 
 - The "spamd" spam interface is obsolete.  I haven't tested it
   since my main machine died, it is error prone since it assumes
-  internals of the spamassassin interface, and there never was
+  internals of the spamassassin wire protocol, and there never was
   a speed improvement against "spamc".  (However it could react
   upon the current "is-spam" state of a message, which "spamc"
-  doesn't allow.) [284db64]
+  doesn't allow.)
 
-- Some commands, like `set'#?, `list'#?, `mlist'#? etc.,
-  now react upon the setting of *verbose*#? and *debug*#?.
+- The new *inbox*#? variable will henceforth be looked up when
+  searching for a primary system mailbox (as in "? File %"),
+  followed by the usual *MAIL*#? and compile-time mailspool
+  search.  (Stephen Isard, Jürgen Daubert)
 
-- The new *inbox*#? variable will henceforth be looked up
-  when expanding "%" in filenames, followed by the usual
-  *MAIL*#? and compile-time mailspool search.
-  (Stephen Isard, Jürgen Daubert)
+- New "failinvaddr" keyword for *expandaddr*#?.
+
+- We finally "can" the so-called (by myself) "Dr. Problem" (a bit):
+
+    echo|./s-nail -:/ -sTrödel -dSencoding=8bit \
+      'Dr. Diet Curd <to@fu.soj>' 2>&1|\
+    grep To:
+    s-nail: >>> To: "Dr. Diet Curd" <to@fu.soj>
 
 ChangeLog
 ^^^^^^^^^
@@ -341,9 +386,85 @@ ChangeLog
 - `retain'#?, `ignore'#? etc. now differentiate in between
   From (the From: header) and From_ (the MBOX ident).
 
+  In fact we now have a new `headerpick'#? command which
+  is a multiplexer for all retain and ignore lists used, call it
+  without arguments to see the current setting of them all.
+  In v15 only `headerpick' and the standard-imposed wrappers
+  `retain' and `ignore' will remain, all other wrappers will
+  vanish.  Regular expressions can now be used if available:
+
+    ?0[ich /var/spool/mail/steffen]? headerpick
+    headerpick type retain add blahblahblah cc date from \
+      mail-followup-to message-id openpgp reply-to subject to \
+      user-agent
+    #headerpick type ignore currently covers no fields
+    #headerpick save retain currently covers no fields
+    headerpick save ignore add '^Original-.*$' '^X-.*$'
+    headerpick forward retain add cc date from list-id \
+      mail-followup-to reply-to subject to
+    #headerpick forward ignore currently covers no fields
+
 - `top'#? has been rewritten completely, `Top'#? is new.
+  It uses a builtin set of retain/ignore headers, but it is
+  possible to register a custom set via `headerpick:
+
+    ? headerpick top retain add subject
+    ? top
+    [-- Message  1 -- 87 lines, 4791 bytes --]:
+    Subject: Re: I can't dist to myself
+
+    I wrote:
+        3.22. bounce_delivered
 
 - `features' has been dropped, `version'#? extended.
+
+- The *prompt*#? handling has changed: we lost the capability to
+  expand \?, \@ and \$, instead new "private" variables
+  *-account-name*#?, *-exit-status*#?, *-mailbox-resolved*#?
+  and *-mailbox-display*#? have been introduced, and the prompt
+  is completely shell expanded (thus twice with `wysh' or in v15),
+  as if dollar-single-quote quoted.
+  We gained *prompt2*#? as a second level prompt.
+
+    ? var prompt
+    wysh set prompt='?\${-exit-status}[\${-account-name} \${-mailbox-display}]? '
+
+- The filename "-" can be used as a receiver, e.g.,
+
+    echo 'From Blödel'|s-nail -:/ -Sexpandaddr -sTrödel -
+
+- The `-s'#? command line option, the `~s'#? command escape
+  as well as the corresponding slots of `~^'#? will actively
+  strip [\r\n] from their value (Debian #419840).
+
+- New `read'#? and `echoerr'#? commands, mostly for
+  *on-compose-done*#?.
+
+- New variable *r-option-implicit*#? may be helpful to those
+  who regulary need the functionality of the `-r'#? command
+  line option.  (Felipe Gasper, Martin Neitzel)
+
+- By using new "pseudo-URLs" one can automatize the use of S/MIME
+  keys / (certificates / intermediate include certificates) with
+  passwords.  E.g., to drive bob@exam.ple, set
+  *smime-sign-cert-bob@example* to the private key / certificate
+  pair as usual, the password lookup will then be performed for
+  bob@exam.ple.smime-cert-key, bob@exam.ple.smime-cert-cert and
+  bob@exam.ple.smime-include-certs.
+  Like this the password can be stored in an encrypted .netrc file
+  when *netrc-lookup*#? is set, or it may be stored in an
+  encrypted resource file that has been loaded via `source'#?
+  as a simple *password*#? variable.
+
+  Note that the prompting that happens as a last resort will still
+  interfere with a possibly running $PAGER instance, dependent on
+  the setting of *crt*#?, of course.  Proper job control
+  handling and recognizing that we are running $PAGER when doing
+  that prompt is a TODO for v15.  Sorry.
+
+- Some commands, like `set'#?, `help'#?, `list'#?,
+  `mlist'#? etc., now react upon the setting of *verbose*#?
+  and(/or) *debug*#?.
 
 git(1) shortlog (edited)
 ''''''''''''''''''''''''
@@ -491,7 +612,7 @@ ae4f2df nail.1: talk on `localopts' in macros which change `account's
 b9e4e61 Drop `features', change `version', adjust make system..
 20f3cd2 nail.1: more explicit `set' references instead of saying 'Set' (Donald
         Mugnai)..
-==Preview 1==
+== Preview 1 ==
 2fefcf6 n_dotlock(), n_file_lock(): oops, missed the pollmsecs==UIZ_MAX case
 fcd2892 cc-test.sh: detect utf-8, not only utf8 locales
 1b462ed -#: also set *MAIL* to /dev/null
@@ -561,7 +682,67 @@ f67e8c3 folder_query(): err: real FIX for problem "fixed" with [6a09b2c]..
 dfc5dac Fix off-by-one introduced in [57744f9] (Redefine *folder* ..)..
 c4522db Tweak [36578d1] (Add PS_SETFILE_OPENED..) by saving errno
 0bd7cbb Dotlock: O_TRUNC is meaningless with O_CREAT|O_EXCL; etc.
-==Preview 2==
+== Preview 2 ==
+3fa035ac mk-conf.sh: fix bmake(1)/portable, it fails to import
+        $CFLAGS/$LDFLAGS
+7a657d9c cc-test.sh: add S/MIME disproofs via smime(1) (Sven Neuhaus)..
+a445996e THANKS: Sven Neuhaus
+8cc4fc48 collect(): fix [bb944266] and [d59bd2a] (loop did not dec ptr!)
+de8f750b n_termcap_suspend(): oops, fix capability reverse ke<>te, te<>ke
+9e08fe35 README: go away from Gitlab; hello, unagitated repo.or.cz!
+ae86c884 cmd1.c:__hprf(): compensate for add. bytes of UTF-8 seq.(s) (Martin
+        Neitzel)
+38426102 extract_header(): FIX: multiple In-Reply-To: names are allowed!
+0472b0d6 More or less completely rewrite memory.c..
+096e6021 Allow Base64 and QP en- and decoding to fail
+d91a4bd0 More or less completely rewrite mime_enc.c..
+d33285fa `bind': new "default" context and changed "base" semantics..
+abf00559 (BWDIC!) Rewrite prompt handling via new n_tty_create_prompt()..
+38fd5de7 (BWDIC!) *encoding*: change default to base64, provide
+        documentation..
+83115c3b Allow - as an output filename..
+675d825b nail.rc, nail.1: set *editheaders* by default, and pimp "A starter"
+44ff5125 TLS/SSL: make OPENSSL_API_COMPAT=0x10100000 clean..
+411e9f7a Allow `errors' in send mode, too
+eb3ad408 Hack: message/rfc822 may only be [78]bit/binary acc. RFC 2046, 5.2.1
+03309960 The time has come: $POSIXLY_CORRECT, *posix* have arrived
+975e6869 (BWDIC!) Only rm sysboxes, unless *posix* (Walter A. Iglesias,
+        trondd)..
+a3a1d38e Add `headerpick'; Localize stuff, and rename ignoretab.c ->
+        ignore.c..
+af741f6a Make macros interruptible again (i. hate. jumps.)
+81e33751 Throw away file_expand() (Ismael Bouya)..
+f1fdc933 THANKS: Ismael Bouya
+3779baad Obsolete -E and -B (-> STDOUT always LBF, STDIN with -#)
+ab17f686 mk-release.*: FTPS?, henceforth only .tar.{g,x}z{,.asc}
+0352f2f6 -s, ~s: normalize NL/CR characters (Debian #419840)
+791c5e97 Give error if compose failed (later better; Debian #37104)
+5026ea36 MLE: take advantage of new "default" `bind' context
+7745ea13 cmd_tab.h: allow `source', `source_if' and `shell' during composing?!
+c7d42236 Add *on-compose-done-shell* hook
+e4499f98 Add ~^ plumbing command escape
+d8737937 Add a `read' command (like read(1), but yet a bit basic)
+f8e9cc30 Drop `customhdr' again (keep *customhdr*): `~^' is better!
+0824682c collect(): fix twice dump of -q file (since [d6902e1], 2016-05-03)
+5ae556f8 Add *r-option-implicit* (Felipe Gasper, Martin Neitzel)..
+534fd725 THANKS: Felipe Gasper
+9fc22b15 Final step to support Base64 with multibyte charsets..
+a8897b02 Add an *on-compose-done* macro (running in a subprocess)
+645e44ec BWDIC! Add `echoerr'; FIX *bang* (bwdic!); and some cmd*.c ordering
+629035e1 Dump to a "-" file recipient even with *debug* enabled!
+33709163 nail.1: some more words for *inbox*, and such sort (Stephen Isard)
+88c19049 mk-release.inc: place OpenPGP signatures last (learned from Paul
+        Eggert)
+ebf2a584 THANKS: Paul Eggert
+5d345bd0 Finally use /dev/arandom not /dev/urandom for OpenBSD
+3d7835fc (BWDIC!) Extend semantics of -a and `~@' (bwdic!); attachments for
+        `~^'..
+2b33a8cb Add new "failinvaddr" keyword for *expandaddr*
+0ede309c Rudely fix the RFC 5322 dot-atom, the "Dr. Problem" (Dr. Werner Fink)
+261f205b THANKS: Dr. Werner Fink
+e441efb4 Integrate S/MIME passwords into usual credential lookups (a bit)..
+1ad6817d nail.1: disable "The Mailcap files" for v14.9.0; sigh and sorry
+== Preview 3 ==
 
 Appendix
 ^^^^^^^^
