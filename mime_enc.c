@@ -284,8 +284,8 @@ jleave: {
       if (rv == 0)
          rv = (ssize_t)i;
    }
-   in->l -= PTR2SIZE((char*)UNCONST(q) - in->s);
-   in->s = UNCONST(q);
+   in->l -= PTR2SIZE((char*)n_UNCONST(q) - in->s);
+   in->s = n_UNCONST(q);
    NYD2_LEAVE;
    return rv;
 }
@@ -412,7 +412,7 @@ qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
    struct str in;
    NYD_ENTER;
 
-   in.s = UNCONST(cp);
+   in.s = n_UNCONST(cp);
    in.l = strlen(cp);
    out = qp_encode(out, &in, flags);
    NYD_LEAVE;
@@ -426,7 +426,7 @@ qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
    struct str in;
    NYD_ENTER;
 
-   in.s = UNCONST(vp);
+   in.s = n_UNCONST(vp);
    in.l = vp_len;
    out = qp_encode(out, &in, flags);
    NYD_LEAVE;
@@ -765,7 +765,7 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
    struct str in;
    NYD_ENTER;
 
-   in.s = UNCONST(vp);
+   in.s = n_UNCONST(vp);
    in.l = vp_len;
    out = b64_encode(out, &in, flags);
    NYD_LEAVE;
@@ -779,7 +779,7 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
    struct str in;
    NYD_ENTER;
 
-   in.s = UNCONST(cp);
+   in.s = n_UNCONST(cp);
    in.l = strlen(cp);
    out = b64_encode(out, &in, flags);
    NYD_LEAVE;

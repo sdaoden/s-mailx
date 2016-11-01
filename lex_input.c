@@ -70,7 +70,7 @@ struct a_lex_cmd{
 struct a_lex_ghost{
    struct a_lex_ghost *lg_next;
    struct str lg_cmd;            /* Data follows after .lg_name */
-   char lg_name[VFIELD_SIZE(0)];
+   char lg_name[n_VFIELD_SIZE(0)];
 };
 
 struct a_lex_eval_ctx{
@@ -89,7 +89,7 @@ struct a_lex_input_stack{
    ui32_t li_flags;              /* enum a_lex_input_flags */
    ui32_t li_loff;               /* Pseudo (macro): index in .li_lines */
    char **li_lines;              /* Pseudo content, lines unfolded */
-   char li_name[VFIELD_SIZE(0)]; /* Name of file or macro */
+   char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
 static sighandler_type a_lex_oldpipe;
@@ -181,7 +181,7 @@ a_lex_isolate(char const *comm){
          strchr("~|? \t0123456789&%@$^.:/-+*'\",;(`", *comm) == NULL)
       ++comm;
    NYD2_LEAVE;
-   return UNCONST(comm);
+   return n_UNCONST(comm);
 }
 
 static int
@@ -234,7 +234,7 @@ a_lex_c_ghost(void *v){
    }
 
    /* Define command for ghost: verify command content */
-   for(cl = 0, i = 1; (cp = UNCONST(argv[i])) != NULL; ++i)
+   for(cl = 0, i = 1; (cp = n_UNCONST(argv[i])) != NULL; ++i)
       if(*cp != '\0')
          cl += strlen(cp) +1; /* SP or NUL */
    if(cl == 0){
@@ -255,7 +255,7 @@ a_lex_c_ghost(void *v){
       }
 
    nl = strlen(argv[0]) +1;
-   gp = smalloc(sizeof(*gp) - VFIELD_SIZEOF(struct a_lex_ghost, lg_name) +
+   gp = smalloc(sizeof(*gp) - n_VFIELD_SIZEOF(struct a_lex_ghost, lg_name) +
          nl + cl);
    gp->lg_next = a_lex_ghosts;
    a_lex_ghosts = gp;
@@ -319,15 +319,15 @@ a_lex_c_list(void *v){
    size_t l, i;
    NYD_ENTER;
 
-   i = NELEM(a_lex_cmd_tab) + NELEM(a_lex_special_cmd_tab) +1;
+   i = n_NELEM(a_lex_cmd_tab) + n_NELEM(a_lex_special_cmd_tab) +1;
    cpa = salloc(sizeof(cp) * i);
 
-   for(i = 0; i < NELEM(a_lex_cmd_tab); ++i)
+   for(i = 0; i < n_NELEM(a_lex_cmd_tab); ++i)
       cpa[i] = &a_lex_cmd_tab[i];
    /* C99 */{
       size_t j;
 
-      for(j = 0; j < NELEM(a_lex_special_cmd_tab); ++i, ++j)
+      for(j = 0; j < n_NELEM(a_lex_special_cmd_tab); ++i, ++j)
          cpa[i] = &a_lex_special_cmd_tab[j];
    }
    cpa[i] = NULL;
@@ -419,7 +419,7 @@ a_lex_c_help(void *v){
             break;
          }
 
-      cpmax = &(cp = a_lex_cmd_tab)[NELEM(a_lex_cmd_tab)];
+      cpmax = &(cp = a_lex_cmd_tab)[n_NELEM(a_lex_cmd_tab)];
 jredo:
       for(; PTRCMP(cp, <, cpmax); ++cp){
 #ifdef HAVE_DOCSTRINGS
@@ -458,8 +458,8 @@ jredo:
          goto jleave;
       }
 
-      if(PTRCMP(cpmax, ==, &a_lex_cmd_tab[NELEM(a_lex_cmd_tab)])){
-         cpmax = &(cp = a_lex_special_cmd_tab)[NELEM(a_lex_special_cmd_tab)];
+      if(PTRCMP(cpmax, ==, &a_lex_cmd_tab[n_NELEM(a_lex_cmd_tab)])){
+         cpmax = &(cp = a_lex_special_cmd_tab)[n_NELEM(a_lex_special_cmd_tab)];
          goto jredo;
       }
 
@@ -517,7 +517,7 @@ jleave:
 static int
 a_lex_c_quit(void *v){
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    /* If we are PS_SOURCING, then return 1 so _evaluate() can handle it.
     * Otherwise return -1 to abort command loop */
@@ -533,7 +533,7 @@ a_lex_c_version(void *v){
    char const *cp, **arr;
    size_t i, i2;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    printf(_("%s version %s\nFeatures included (+) or not (-)\n"),
       uagent, ok_vlook(version));
@@ -547,7 +547,7 @@ a_lex_c_version(void *v){
    for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
       arr[i] = cp;
       i2 = strlen(cp);
-      longest = MAX(longest, (int)i2);
+      longest = n_MAX(longest, (int)i2);
    }
    qsort(arr, i, sizeof(cp), &a_lex__version_cmp);
 
@@ -810,7 +810,7 @@ je96:
          }
       }
 
-      if((c = getrawlist((c != 0), arglist, NELEM(arglist), cp, line.l)) < 0){
+      if((c = getrawlist((c != 0), arglist, n_NELEM(arglist), cp, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          break;
       }
@@ -892,8 +892,8 @@ a_lex__firstfit(char const *comm){ /* TODO *hashtable*! linear list search!!! */
    struct a_lex_cmd const *cp;
    NYD2_ENTER;
 
-   for(cp = a_lex_cmd_tab; PTRCMP(cp, <, &a_lex_cmd_tab[NELEM(a_lex_cmd_tab)]);
-         ++cp)
+   for(cp = a_lex_cmd_tab;
+         PTRCMP(cp, <, &a_lex_cmd_tab[n_NELEM(a_lex_cmd_tab)]); ++cp)
       if(*comm == *cp->lc_name && is_prefix(comm, cp->lc_name))
          goto jleave;
    cp = NULL;
@@ -905,7 +905,7 @@ jleave:
 static void
 a_lex_hangup(int s){
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
    /* nothing to do? */
    exit(EXIT_ERR);
 }
@@ -913,7 +913,7 @@ a_lex_hangup(int s){
 static void
 a_lex_onintr(int s){
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
 
    safe_signal(SIGINT, a_lex_onintr);
    noreset = 0;
@@ -989,7 +989,7 @@ a_lex_unstack(bool_t eval_error){
    if(lip->li_flags & a_LEX_FREE)
       free(lip);
 jleave:
-   if(UNLIKELY(a_lex_input != NULL && eval_error == TRUM1))
+   if(n_UNLIKELY(a_lex_input != NULL && eval_error == TRUM1))
       a_lex_unstack(TRUM1);
    NYD_LEAVE;
    return;
@@ -1074,7 +1074,7 @@ a_lex_source_file(char const *file, bool_t silent_error){
    }
 
    lip = smalloc(sizeof(*lip) -
-         VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          (nlen = strlen(nbuf) +1));
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
@@ -1511,7 +1511,7 @@ n_load(char const *name){
 
    i = strlen(name) +1;
    lip = scalloc(1, sizeof(*lip) -
-         VFIELD_SIZEOF(struct a_lex_input_stack, li_name) + i);
+         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) + i);
    lip->li_file = fip;
    lip->li_flags = a_LEX_FREE;
    memcpy(lip->li_name, name, i);
@@ -1543,7 +1543,7 @@ n_load_Xargs(char const **lines, size_t cnt){
     * escaping also within multiline -X, i.e., POSIX says:
     *    An unquoted <backslash> at the end of a command line shall
     *    be discarded and the next line shall continue the command
-    * Therefore instead of "lip->li_lines = UNCONST(lines)", duplicate the
+    * Therefore instead of "lip->li_lines = n_UNCONST(lines)", duplicate the
     * entire lines array and set _MACRO_FREE_DATA */
    imax = cnt + 1;
    lip->li_lines = smalloc(sizeof(*lip->li_lines) * imax);
@@ -1640,7 +1640,7 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines){
    NYD_ENTER;
 
    lip = smalloc(sizeof(*lip) -
-         VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          (i = strlen(name) +1));
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
@@ -1671,7 +1671,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    ial = n_ALIGN(i);
 
    lip = smalloc(sizeof(*lip) -
-         VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          ial + 2*sizeof(char*));
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
@@ -1682,7 +1682,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
           ? a_LEX_SUPER_MACRO : 0);
    lip->li_loff = 0;
    lip->li_lines = (void*)(lip->li_name + ial);
-   lip->li_lines[0] = UNCONST(cmd); /* dup'ed above */
+   lip->li_lines[0] = n_UNCONST(cmd); /* dup'ed above */
    lip->li_lines[1] = NULL;
    memcpy(lip->li_name, cmd, i);
 

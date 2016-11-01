@@ -115,7 +115,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    char * volatile mnbuf;
    NYD_ENTER;
 
-   UNUSED(linesize);
+   n_UNUSED(linesize);
    mnbuf = NULL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -207,7 +207,7 @@ static void
 _collect_onpipe(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    siglongjmp(_coll_pipejmp, 1);
 }
 
@@ -530,7 +530,7 @@ static void
 collhup(int s)
 {
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
 
    savedeadletter(_coll_fp, TRU1);
    /* Let's pretend nobody else wants to clean up, a true statement at
@@ -671,7 +671,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          }
       }
    } else {
-      UNINIT(t, 0);
+      n_UNINIT(t, 0);
    }
 
    escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
@@ -867,7 +867,7 @@ jputnl:
                if(!blankspacechar(c))
                   break;
             }
-            ((char*)UNCONST(cp))[0] = '\0';
+            ((char*)n_UNCONST(cp))[0] = '\0';
             cnt = PTR2SIZE(cp - linebuf);
          }
       }
@@ -1182,7 +1182,7 @@ jout:
       if(linebuf == NULL)
          linebuf = smalloc(linesize = LINESIZE);
       c = '\0';
-      while((i = fread(linebuf, sizeof *linebuf, linesize, UNVOLATILE(sigfp)))
+      while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
             > 0){
          c = linebuf[i - 1];
          if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
@@ -1190,7 +1190,7 @@ jout:
       }
 
       /* C99 */{
-         FILE *x = UNVOLATILE(sigfp);
+         FILE *x = n_UNVOLATILE(sigfp);
          int e = errno, ise = ferror(x);
 
          sigfp = NULL;
@@ -1241,7 +1241,7 @@ jleave:
 
 jerr:
    if(sigfp != NULL)
-      Fclose(UNVOLATILE(sigfp));
+      Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {
       Fclose(_coll_fp);
       _coll_fp = NULL;

@@ -128,7 +128,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       struct str input;
 
       n_string_creat_auto(&store);
-      input.s = UNCONST(line);
+      input.s = n_UNCONST(line);
       input.l = linesize;
 
       for(;;){
@@ -144,7 +144,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          }
 
          input.l -= PTR2SIZE(line - input.s);
-         input.s = UNCONST(line);
+         input.s = n_UNCONST(line);
          /* C99 */{
             enum n_shexp_state shs;
 
@@ -208,7 +208,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    }
 #endif
 
-   shin.s = UNCONST(cacp->cac_indat); /* "logical" only */
+   shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
    shin.l = (cacp->cac_inlen == UIZ_MAX ? strlen(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
    cacp->cac_no = 0;

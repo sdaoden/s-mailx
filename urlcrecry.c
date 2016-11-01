@@ -47,7 +47,7 @@ struct nrc_node {
    ui32_t            nrc_mlen;      /* Length of machine name */
    ui32_t            nrc_ulen;      /* Length of user name */
    ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[VFIELD_SIZE(sizeof(ui32_t))];
+   char              nrc_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
@@ -101,7 +101,7 @@ _url_last_at_before_slash(char const *sp)
    if (*cp != '@')
       cp = NULL;
    NYD2_LEAVE;
-   return UNCONST(cp);
+   return n_UNCONST(cp);
 }
 #endif
 
@@ -119,7 +119,7 @@ _nrc_init(void)
    struct nrc_node *ntail, *nhead, *nrc;
    NYD_ENTER;
 
-   UNINIT(ntail, NULL);
+   n_UNINIT(ntail, NULL);
    nhead = NULL;
    nrc = NRC_NODE_ERR;
    ispipe = FAL0;
@@ -223,7 +223,8 @@ jm_h:
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
          size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
          struct nrc_node *nx = smalloc(sizeof(*nx) -
-               VFIELD_SIZEOF(struct nrc_node, nrc_dat) + hl +1 + ul +1 + pl +1);
+               n_VFIELD_SIZEOF(struct nrc_node, nrc_dat) +
+               hl +1 + ul +1 + pl +1);
 
          if (nhead != NULL)
             ntail->nrc_next = nx;
@@ -430,7 +431,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
 
    /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
-      if (LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
+      if (n_LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
       goto jleave;
    }
@@ -473,7 +474,7 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
          /* Fake it was part of URL otherwise XXX */
          urlp->url_had_user = TRU1;
          /* That buffer will be duplicated by url_parse() in this case! */
-         urlp->url_user.s = UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
+         urlp->url_user.s = n_UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
          urlp->url_user.l = nrc->nrc_ulen;
          break;
       }
@@ -564,7 +565,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    if (s.s != NULL)
       urlp->url_pass.s = savestrbuf(s.s, urlp->url_pass.l = s.l);
    else if (cl > 0)
-      urlp->url_pass.s = UNCONST(""), urlp->url_pass.l = 0;
+      urlp->url_pass.s = n_UNCONST(""), urlp->url_pass.l = 0;
    rv = TRU1;
 jleave:
    if (s.s != NULL)
@@ -618,7 +619,7 @@ FL char *
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
          si32_t o = c;
-         if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
+         if (n_LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
             c = o;
@@ -653,7 +654,7 @@ c_urlcodec(void *v){
 
       while((cp = *++argv) != NULL){
          res = urlxdec(cp);
-         in.l = strlen(in.s = UNCONST(res)); /* logical */
+         in.l = strlen(in.s = n_UNCONST(res)); /* logical */
          makeprint(&in, &out);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), out.s, in.l);
@@ -749,7 +750,7 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
          break;
    l = PTR2SIZE(rv - proto);
 
-   for(rv = NULL, i = 0; i < NELEM(tbl); ++i)
+   for(rv = NULL, i = 0; i < n_NELEM(tbl); ++i)
       if(!ascncasecmp(tbl[i].name, proto, l)){
          rv = tbl[i].port;
          if(irv_or_null != NULL)
@@ -773,7 +774,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
    bool_t rv = FAL0;
    NYD_ENTER;
-   UNUSED(data);
+   n_UNUSED(data);
 
    memset(urlp, 0, sizeof *urlp);
    urlp->url_input = data;
@@ -908,7 +909,7 @@ juser:
          while(*++x == '/')
             ;
       }
-      cp = UNCONST(data + strlen(data));
+      cp = n_UNCONST(data + strlen(data));
    }
 
    /* A (non-empty) path may only occur with IMAP */
@@ -970,7 +971,7 @@ juser:
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !_nrc_lookup(urlp, FAL0))
 # endif
-            urlp->url_user.s = UNCONST(myname);
+            urlp->url_user.s = n_UNCONST(myname);
       }
 
       urlp->url_user.l = strlen(urlp->url_user.s);
@@ -1123,7 +1124,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    if ((s = vok_vlook(vbuf)) == NULL) {
       vbuf[pxlen] = '\0';
       if ((s = vok_vlook(vbuf)) == NULL)
-         s = UNCONST(authdef);
+         s = n_UNCONST(authdef);
    }
 
    if (!asccasecmp(s, "none")) {
@@ -1270,7 +1271,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    /* Authentication type */
    if ((s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NULL)
-      s = UNCONST(authdef);
+      s = n_UNCONST(authdef);
 
    if (!asccasecmp(s, "none")) {
       ccp->cc_auth = "NONE";
@@ -1465,7 +1466,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
    NYD_ENTER;
 
    out.s = NULL;
-   in.s = UNCONST(b64);
+   in.s = n_UNCONST(b64);
    in.l = strlen(in.s);
    b64_decode(&out, &in, NULL);
    assert(out.s != NULL);

@@ -100,7 +100,7 @@ static char const             _mt_typnames[][16] = {
    "message/", "multipart/", "text/",
    "video/"
 };
-CTA(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
+n_CTAV(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
    _MT_MESSAGE == 3 && _MT_MULTIPART == 4 && _MT_TEXT == 5 &&
    _MT_VIDEO == 6);
 
@@ -155,7 +155,7 @@ _mt_init(void)
     *  goto jleave;*/
 
    /* Always load our builtins */
-   for (tail = NULL, i = 0; i < NELEM(_mt_bltin); ++i) {
+   for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
       struct mtnode *mtnp = smalloc(sizeof *mtnp);
 
@@ -196,7 +196,7 @@ _mt_init(void)
             break;
          case 'F': case 'f':
             if (*++ccp == '=' && *++ccp != '\0') {
-               if (PTR2SIZE(srcs - srcs_arr) < NELEM(srcs_arr))
+               if (PTR2SIZE(srcs - srcs_arr) < n_NELEM(srcs_arr))
                   *srcs++ = ccp;
                else
                   n_err(_("*mimetypes-load-control*: too many sources, "
@@ -637,7 +637,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
    assert(mpp->m_mime_enc != MIMEE_BIN);
 
    mc = MIME_UNKNOWN;
-   UNINIT(mtc, 0);
+   n_UNINIT(mtc, 0);
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
     * TODO directly using fseek() on mb.mb_itf -- the v15 rewrite will change
@@ -827,7 +827,7 @@ jnextc:
 
    if (!(rv & MIME_HDL_ALWAYS) && !(pstate & PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
-      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
             _("[-- Directly address message only for display --]\n")));
       rv |= MIME_HDL_MSG;
       goto jleave;
@@ -1030,7 +1030,7 @@ mime_type_classify_file(FILE *fp, char const **contenttype,
 
       _mt_classify_init(&mtca, mtc);
       for (;;) {
-         mtca.mtca_len = fread(buf, sizeof(buf[0]), NELEM(buf), fp);
+         mtca.mtca_len = fread(buf, sizeof(buf[0]), n_NELEM(buf), fp);
          mtca.mtca_buf = buf;
          if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE)
             break;
@@ -1196,7 +1196,7 @@ mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          *++es != '\0') ? strlen(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
          (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
-   if ((l = MAX(el, cl)) == 0) {
+   if ((l = n_MAX(el, cl)) == 0) {
       /* TODO this should be done during parse time! */
       goto jleave;
    }
@@ -1244,13 +1244,13 @@ mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       case _MT_SOUP_H:
          mhp->mh_ptf = &htmlflt_process_main;
          mhp->mh_msg.l = strlen(mhp->mh_msg.s =
-               UNCONST(_("Builtin HTML tagsoup filter")));
+               n_UNCONST(_("Builtin HTML tagsoup filter")));
          rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
          goto jleave;
 #endif
          /* FALLTHRU */
       case _MT_PLAIN:
-         mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(_("Plain text view")));
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(_("Plain text")));
          rv ^= MIME_HDL_NULL | MIME_HDL_TEXT;
          goto jleave;
       default:
@@ -1263,7 +1263,7 @@ jleave:
 
    mhp->mh_flags = rv;
    if ((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
-      mhp->mh_msg.l = strlen(mhp->mh_msg.s = UNCONST(
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
             _("[-- No MIME handler installed or none applicable --]")));
    NYD_LEAVE;
    return rv;

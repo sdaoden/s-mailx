@@ -192,9 +192,9 @@ jesyn:
       /* A null value is treated as the empty string */
       emsg = NULL;
       if (lhv == NULL)
-         lhv = UNCONST("");
+         lhv = n_UNCONST("");
       if (rhv == NULL)
-         rhv = UNCONST("");
+         rhv = n_UNCONST("");
 
 #ifdef HAVE_REGEX
       if (op[1] == '~') {
@@ -483,7 +483,7 @@ c_else(void *v)
 {
    int rv;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    if (_cond_stack == NULL || _cond_stack->c_else) {
       n_err(_("`else' without matching `if'\n"));
@@ -503,7 +503,7 @@ c_endif(void *v)
    struct cond_stack *csp;
    int rv;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    if ((csp = _cond_stack) == NULL) {
       n_err(_("`endif' without matching `if'\n"));

@@ -632,7 +632,7 @@ _ssl_conf(void *confp, enum ssl_conf_type sct, char const *value)
                   opts &= ~_ssl_protocols[i].sp_flag;
                break;
             }
-            if (++i < NELEM(_ssl_protocols))
+            if (++i < n_NELEM(_ssl_protocols))
                continue;
             n_err(_("*ssl-protocol*: unsupported value: %s\n"), cp);
             goto jleave;
@@ -651,8 +651,8 @@ jleave:
 static bool_t
 _ssl_conf_finish(void **confp, bool_t error)
 {
-   UNUSED(confp);
-   UNUSED(error);
+   n_UNUSED(confp);
+   n_UNUSED(error);
    return TRU1;
 }
 #endif /* !HAVE_SSL_TLS_CONF_CTX */
@@ -910,13 +910,13 @@ _smime_cipher(char const *name)
    }
    cipher = NULL;
 
-   for (i = 0; i < NELEM(_smime_ciphers); ++i)
+   for (i = 0; i < n_NELEM(_smime_ciphers); ++i)
       if (!asccasecmp(_smime_ciphers[i].sc_name, cp)) {
          cipher = (*_smime_ciphers[i].sc_fun)();
          goto jleave;
       }
 #ifndef OPENSSL_NO_AES
-   for (i = 0; i < NELEM(_smime_ciphers_obs); ++i) /* TODO obsolete */
+   for (i = 0; i < n_NELEM(_smime_ciphers_obs); ++i) /* TODO obsolete */
       if (!asccasecmp(_smime_ciphers_obs[i].sc_name, cp)) {
          OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
          cipher = (*_smime_ciphers_obs[i].sc_fun)();
@@ -943,8 +943,8 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    char *pass;
    size_t len;
    NYD_ENTER;
-   UNUSED(rwflag);
-   UNUSED(userdata);
+   n_UNUSED(rwflag);
+   n_UNUSED(userdata);
 
    if ((pass = getpassword("PEM pass phrase:")) != NULL) {
       len = strlen(pass);
@@ -1111,7 +1111,7 @@ jhave_name:
    }
    *digname = cp;
 
-   for (i = 0; i < NELEM(_smime_digests); ++i)
+   for (i = 0; i < n_NELEM(_smime_digests); ++i)
       if (!strcmp(_smime_digests[i].sd_name, cp)) {
          digest = (*_smime_digests[i].sd_fun)();
          goto jleave;
@@ -1263,7 +1263,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
             cp = _ssl_methods[i].sm_map;
             break;
          }
-         if (++i == NELEM(_ssl_methods)) {
+         if (++i == n_NELEM(_ssl_methods)) {
             n_err(_("Unsupported TLS/SSL method: %s\n"), cp);
             goto jerr1;
          }

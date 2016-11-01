@@ -74,7 +74,7 @@ struct a_colour_map /* : public n_colour_pen */{
 #endif
    ui32_t cm_refcnt;             /* Beware of reference drops in recursions */
    ui32_t cm_user_off;           /* User input offset in .cm_buf */
-   char cm_buf[VFIELD_SIZE(0)];
+   char cm_buf[n_VFIELD_SIZE(0)];
 };
 
 struct a_colour_g{
@@ -214,7 +214,7 @@ a_colour_type_find(char const *name){
    do if(!asccasecmp(ctmp->ctm_name, name)){
       rv = ctmp->ctm_type;
       goto jleave;
-   }while(PTRCMP(++ctmp, !=, a_colour_type_maps + NELEM(a_colour_type_maps)));
+   }while(PTRCMP(++ctmp, !=, a_colour_type_maps + n_NELEM(a_colour_type_maps)));
 
    rv = (enum a_colour_type)-1;
 jleave:
@@ -317,7 +317,8 @@ a_colour_mux(char **argv){
       }
 
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? strlen(ctag) : 0;
-      cmp = smalloc(sizeof(*cmp) - VFIELD_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = smalloc(sizeof(*cmp) -
+            n_VFIELD_SIZEOF(struct a_colour_map, cm_buf) +
             tl +1 + (ul = strlen(argv[1])) +1 + (cl = strlen(cp)) +1);
 
       /* .cm_buf stuff */
@@ -529,7 +530,7 @@ static char const *
 a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       void **regexpp){
    NYD2_ENTER;
-   UNUSED(regexpp);
+   n_UNUSED(regexpp);
 
    if((cmip->cmi_tt & a_COLOUR_TT_DOT) && !asccasecmp(ctag, "dot"))
       ctag = n_COLOUR_TAG_SUM_DOT;
@@ -684,7 +685,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
     * value, ensure we have enough room for that */
    /* C99 */{
       size_t i = strlen(spec) +1;
-      xspec = salloc(MAX(i, sizeof("\033[1;4;7;38;5;255;48;5;255m")));
+      xspec = salloc(n_MAX(i, sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       memcpy(xspec, spec, i);
       spec = xspec;
    }
@@ -695,7 +696,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
       char *y, *x = strchr(cp, '=');
       if(x == NULL){
 jbail:
-         *store = UNCONST(_("invalid attribute list"));
+         *store = n_UNCONST(_("invalid attribute list"));
          goto jleave;
       }
       *x++ = '\0';
@@ -703,17 +704,17 @@ jbail:
       if(!asccasecmp(cp, "ft")){
          if(!asccasecmp(x, "inverse")){
             OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
-            x = UNCONST("reverse");
+            x = n_UNCONST("reverse");
          }
          for(idp = fta;; ++idp)
-            if(idp == fta + NELEM(fta)){
-               *store = UNCONST(_("invalid font attribute"));
+            if(idp == fta + n_NELEM(fta)){
+               *store = n_UNCONST(_("invalid font attribute"));
                goto jleave;
             }else if(!asccasecmp(x, idp->id_name)){
-               if(ftno < NELEM(fg))
+               if(ftno < n_NELEM(fg))
                   fg[ftno++] = idp->id_modc;
                else{
-                  *store = UNCONST(_("too many font attributes"));
+                  *store = n_UNCONST(_("too many font attributes"));
                   goto jleave;
                }
                break;
@@ -725,7 +726,7 @@ jbail:
          y = cfg + 1;
 jiter_colour:
          if(ct == a_COLOUR_T_1){
-            *store = UNCONST(_("colours are not allowed"));
+            *store = n_UNCONST(_("colours are not allowed"));
             goto jleave;
          }
          /* Maybe 256 color spec */
@@ -733,21 +734,21 @@ jiter_colour:
             sl_i xv;
 
             if(ct == a_COLOUR_T_8){
-               *store = UNCONST(_("invalid colour for 8-colour mode"));
+               *store = n_UNCONST(_("invalid colour for 8-colour mode"));
                goto jleave;
             }
 
             xv = strtol(x, &cp, 10);
             if(xv < 0 || xv > 255 || *cp != '\0' || PTRCMP(&x[3], <, cp)){
-               *store = UNCONST(_("invalid 256-colour specification"));
+               *store = n_UNCONST(_("invalid 256-colour specification"));
                goto jleave;
             }
             y[0] = 5;
             memcpy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
                (x[1] == '\0' ? 2 : (x[2] == '\0' ? 3 : 4)));
          }else for(idp = ca;; ++idp)
-            if(idp == ca + NELEM(ca)){
-               *store = UNCONST(_("invalid colour attribute"));
+            if(idp == ca + n_NELEM(ca)){
+               *store = n_UNCONST(_("invalid colour attribute"));
                goto jleave;
             }else if(!asccasecmp(x, idp->id_name)){
                y[0] = 1;
@@ -759,7 +760,7 @@ jiter_colour:
    }
 
    /* Restore our salloc() buffer, create return value */
-   xspec = UNCONST(spec);
+   xspec = n_UNCONST(spec);
    if(ftno > 0 || cfg[0] || cfg[1]){ /* TODO unite/share colour setters */
       xspec[0] = '\033';
       xspec[1] = '[';
@@ -804,7 +805,7 @@ jiter_colour:
       *xspec++ = 'm';
    }
    *xspec = '\0';
-   *store = UNCONST(spec);
+   *store = n_UNCONST(spec);
    rv = TRU1;
 jleave:
    NYD_LEAVE;
@@ -842,10 +843,10 @@ n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
       goto jleave;
    }
 
-   if(UNLIKELY(a_colour_g == NULL))
+   if(n_UNLIKELY(a_colour_g == NULL))
       a_colour_init();
 
-   if(UNLIKELY(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)){
+   if(n_UNLIKELY(a_colour_g->cg_type == a_COLOUR_T_UNKNOWN)){
       struct n_termcap_value tv;
 
       if(!n_termcap_query(n_TERMCAP_QUERY_colors, &tv)){

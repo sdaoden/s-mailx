@@ -49,7 +49,7 @@ EMPTY_FILE()
 #endif
 
 #ifdef HAVE_SPAM_FILTER
-  /* NELEM() of regmatch_t groups */
+  /* n_NELEM() of regmatch_t groups */
 # define SPAM_FILTER_MATCHES  32u
 #endif
 
@@ -344,7 +344,7 @@ jlearn:
       *args++ = "-u";
       *args++ = cp;
    }
-   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= NELEM(sscp->c_cmd_arr));
+   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
 
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
@@ -425,7 +425,7 @@ _spamd_setup(struct spam_vc *vcp)
    if ((cp = ok_vlook(spamd_user)) != NULL) {
       if (*cp == '\0')
          cp = myname;
-      ssdp->d_user.l = strlen(ssdp->d_user.s = UNCONST(cp));
+      ssdp->d_user.l = strlen(ssdp->d_user.s = n_UNCONST(cp));
    }
 
    if ((cp = ok_vlook(spamd_socket)) == NULL) {
@@ -570,7 +570,7 @@ _spamd_interact(struct spam_vc *vcp)
    /* Then simply pass through the message "as-is" */
    for (size = vcp->vc_mp->m_size; size > 0;) {
       i = fread(vcp->vc_buffer, sizeof *vcp->vc_buffer,
-            MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+            n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             goto jeso;
@@ -868,7 +868,7 @@ _spamfilter_interact(struct spam_vc *vcp)
    assert(sfp->f_super.cf_result != NULL);
    remp = rem + sfp->f_score_grpno;
 
-   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
+   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
          "doesn't match filter output!\n"),
@@ -914,7 +914,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
    char const *tmpdir;
    struct spam_cf *scfp;
    NYD2_ENTER;
-   LCTA(3 < NELEM(scfp->cf_env));
+   n_LCTA(3 < n_NELEM(scfp->cf_env), "Preallocated buffer too small");
 
    scfp = &vcp->vc_t.cf;
 
@@ -928,7 +928,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
     * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
    scfp->cf_env[0] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
-         getrandstring(MIN(NAME_MAX / 4, 16)), NULL)->s;
+         getrandstring(n_MIN(NAME_MAX / 4, 16)), NULL)->s;
 
    tmpdir = ok_vlook(TMPDIR);
    scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tmpdir, NULL)->s;
@@ -1033,7 +1033,9 @@ _spam_cf_interact(struct spam_vc *vcp)
     * content does the same in effect, however much more efficiently.
     * XXX NOTE: this may mean we pass a message without From_ line! */
    for (size = vcp->vc_mp->m_size; size > 0;) {
-      size_t i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      size_t i;
+
+      i = fread(vcp->vc_buffer, 1, n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             state |= _ERRORS;

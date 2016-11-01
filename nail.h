@@ -293,6 +293,11 @@
  * OS, CC support, generic macros etc.
  */
 
+#define n_ISPOW2(X)     ((((X) - 1) & (X)) == 0)
+#define n_MIN(A, B)     ((A) < (B) ? (A) : (B))
+#define n_MAX(A, B)     ((A) < (B) ? (B) : (A))
+#define n_ABS(A)        ((A) < 0 ? -(A) : (A))
+
 /* OS: we're not a library, only set what needs special treatment somewhere */
 #define OS_DRAGONFLY    0
 #define OS_SOLARIS      0
@@ -360,10 +365,10 @@
 # endif
 #endif
 
-/* For injection macros like DBG(), NATCH_CHAR() */
+/* For injection macros like DBG(), n_NATCH_CHAR() */
 #define COMMA           ,
 
-#define EMPTY_FILE()    typedef int CONCAT(avoid_empty_file__, n_FILE);
+#define EMPTY_FILE()    typedef int n_CONCAT(avoid_empty_file__, n_FILE);
 
 /* Pointer to size_t */
 #define PTR2SIZE(X)     ((size_t)(uintptr_t)(X))
@@ -376,35 +381,35 @@
 #define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
 
 /* Align something to a size/boundary that cannot cause just any problem */
-#define n_ALIGN(X)      (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
-#define n_ALIGN_SMALL(X) (((X) + sizeof(void*)) & ~((sizeof(void*)) - 1))
+#define n_ALIGN(X) (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN_SMALL(X) \
+   (((X) + n_MAX(sizeof(size_t), sizeof(void*))) &\
+    ~(n_MAX(sizeof(size_t), sizeof(void*)) - 1))
 
 /* Members in constant array */
-#ifndef NELEM
-# define NELEM(A)       (sizeof(A) / sizeof(A[0]))
-#endif
+#define n_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
 /* sizeof() for member fields */
-#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+#define n_SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
 
 /* Casts-away (*NOT* cast-away) */
-#define UNUSED(X)       ((void)(X))
-#define UNCONST(P)      ((void*)(uintptr_t)(void const*)(P))
-#define UNVOLATILE(P)   ((void*)(uintptr_t)(void volatile*)(P))
+#define n_UNUSED(X) ((void)(X))
+#define n_UNCONST(P) ((void*)(uintptr_t)(void const*)(P))
+#define n_UNVOLATILE(P) ((void*)(uintptr_t)(void volatile*)(P))
 /* To avoid warnings with modern compilers for "char*i; *(si32_t*)i=;" */
-#define UNALIGN(T,P)    ((T)(uintptr_t)(P))
-#define UNXXX(T,C,P)    ((T)(uintptr_t)(C)(P))
+#define n_UNALIGN(T,P) ((T)(uintptr_t)(P))
+#define n_UNXXX(T,C,P) ((T)(uintptr_t)(C)(P))
 
 /* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
 #if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
-# define STRING(X)      #X
-# define XSTRING(X)     STRING(X)
-# define CONCAT(S1,S2)  _CONCAT(S1, S2)
-# define _CONCAT(S1,S2) S1 ## S2
+# define n_STRING(X) #X
+# define n_XSTRING(X) n_STRING(X)
+# define n_CONCAT(S1,S2) n__CONCAT_1(S1, S2)
+# define n__CONCAT_1(S1,S2) S1 ## S2
 #else
-# define STRING(X)      "X"
-# define XSTRING        STRING
-# define CONCAT(S1,S2)  S1/**/S2
+# define n_STRING(X) "X"
+# define n_XSTRING STRING
+# define n_CONCAT(S1,S2) S1/* won't work out */S2
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
@@ -416,15 +421,15 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define VFIELD_SIZE(X)
-# define VFIELD_SIZEOF(T,F) (0)
-# define VSTRUCT_SIZEOF(T,F) sizeof(T)
+# define n_VFIELD_SIZE(X)
+# define n_VFIELD_SIZEOF(T,F) (0)
+# define n_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
-# define VFIELD_SIZE(X) \
+# define n_VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
-   : ((ssize_t)(X) < 0 ? sizeof(size_t) - ABS(X) : (size_t)(X)))
-# define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
-# define VSTRUCT_SIZEOF(T,F) (sizeof(T) - SIZEOF_FIELD(T, F))
+   : ((ssize_t)(X) < 0 ? sizeof(size_t) - n_ABS(X) : (size_t)(X)))
+# define n_VFIELD_SIZEOF(T,F) n_SIZEOF_FIELD(T, F)
+# define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
 #endif
 
 #ifdef HAVE_INLINE
@@ -439,41 +444,37 @@
 #elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __extension__ __FUNCTION__
 #else
-# define __FUN__        uagent   /* Something that is not a literal */
+# define __FUN__        uagent /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
-# define LIKELY(X)      __predict_true(X)
-# define UNLIKELY(X)    __predict_false(X)
+# define n_LIKELY(X) __predict_true(X)
+# define n_UNLIKELY(X) __predict_false(X)
 #elif CC_CLANG || PREREQ_GCC(2, 96)
-# define LIKELY(X)      __builtin_expect(X, 1)
-# define UNLIKELY(X)    __builtin_expect(X, 0)
+# define n_LIKELY(X) __builtin_expect(X, 1)
+# define n_UNLIKELY(X) __builtin_expect(X, 0)
 #else
-# define LIKELY(X)      (X)
-# define UNLIKELY(X)    (X)
+# define n_LIKELY(X) (X)
+# define n_UNLIKELY(X) (X)
 #endif
 
 #undef HAVE_NATCH_CHAR
-#undef NATCH_CHAR
 #if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
 # define HAVE_NATCH_CHAR
-# define NATCH_CHAR(X)  X
+# define n_NATCH_CHAR(X) X
 #else
-# define NATCH_CHAR(X)
+# define n_NATCH_CHAR(X)
 #endif
 
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
-#define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
-
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 201112L
 # define n_CTA(T,M) _Static_assert(T, M)
 # define n_LCTA(T,M) _Static_assert(T, M)
 #else
-# define n_CTA(T,M)  _CTA_1(T, n_FILE, __LINE__)
-# define n_LCTA(T,M) _LCTA_1(T, n_FILE, __LINE__)
+# define n_CTA(T,M)  n__CTA_1(T, n_FILE, __LINE__)
+# define n_LCTA(T,M) n__LCTA_1(T, n_FILE, __LINE__)
 #endif
 #define n_CTAV(T) n_CTA(T, "Unexpected value of constant")
 #define n_LCTAV(T) n_LCTA(T, "Unexpected value of constant")
@@ -484,27 +485,18 @@
 # define n_MCTA(T,M)
 #endif
 
-#define _CTA_1(T,F,L)   _CTA_2(T, F, L)
-#define _CTA_2(T,F,L)  \
+#define n__CTA_1(T,F,L)   n__CTA_2(T, F, L)
+#define n__CTA_2(T,F,L) \
    typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1]
-#define _LCTA_1(T,F,L)  _LCTA_2(T, F, L)
-#define _LCTA_2(T,F,L) \
-do {\
+#define n__LCTA_1(T,F,L)  n__LCTA_2(T, F, L)
+#define n__LCTA_2(T,F,L) \
+do{\
    typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1];\
    ASSERTION_failed_in_file_## F ## _at_line_ ## L __i_am_unused__;\
-   UNUSED(__i_am_unused__);\
-} while (0)
+   n_UNUSED(__i_am_unused__);\
+}while(0)
 
-#define UNINIT(N,V)     N = V
-
-#undef ISPOW2
-#define ISPOW2(X)       ((((X) - 1) & (X)) == 0)
-#undef MIN
-#define MIN(A, B)       ((A) < (B) ? (A) : (B))
-#undef MAX
-#define MAX(A, B)       ((A) < (B) ? (B) : (A))
-#undef ABS
-#define ABS(A)          ((A) < 0 ? -(A) : (A))
+#define n_UNINIT(N,V)     N = V
 
 /* Create a bit mask for the bit range LO..HI -- HI can't use highest bit! */
 #define n_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
@@ -513,7 +505,7 @@ do {\
 #undef NDBG
 #ifndef HAVE_DEBUG
 # undef assert
-# define assert(X)      UNUSED(0)
+# define assert(X)      n_UNUSED(0)
 # define DBG(X)
 # define NDBG(X)        X
 # define DBGOR(X,Y)     Y
@@ -1732,11 +1724,11 @@ struct n_string{
 struct n_strlist{
    struct n_strlist *sl_next;
    size_t sl_len;
-   char sl_dat[VFIELD_SIZE(0)];
+   char sl_dat[n_VFIELD_SIZE(0)];
 };
 #define n_STRLIST_MALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
    smalloc(sizeof(struct n_strlist) - \
-      VFIELD_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+      n_VFIELD_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
@@ -1748,7 +1740,7 @@ struct n_cmd_arg_desc{
    char cad_name[12];   /* Name of command */
    ui32_t cad_no;       /* Number of entries in cad_ent_flags */
    /* [enum n_cmd_arg_desc_flags,arg-dep] */
-   ui32_t cad_ent_flags[VFIELD_SIZE(0)][2];
+   ui32_t cad_ent_flags[n_VFIELD_SIZE(0)][2];
 };
 /* ISO C(99) doesn't allow initialization of "flex array" */
 #define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
@@ -1844,7 +1836,7 @@ struct n_exec_ctx{
 struct n_mem_raw{
    struct n_mem_raw *mr_prev;
    struct n_mem_raw *mr_next;
-   char mr_buf[VFIELD_SIZE(0)];
+   char mr_buf[n_VFIELD_SIZE(0)];
 };
 
 struct n_mem_wrap{
@@ -2202,7 +2194,7 @@ struct n_header_field{
    struct n_header_field *hf_next;
    ui32_t hf_nl;              /* Field-name length */
    ui32_t hf_bl;              /* Field-body length*/
-   char hf_dat[VFIELD_SIZE(0)];
+   char hf_dat[n_VFIELD_SIZE(0)];
 };
 
 struct header {
@@ -2324,7 +2316,7 @@ struct ignoretab{
    ui8_t it__dummy[3];
    struct n_ignoretab_field{
       struct n_ignoretab_field *itf_next;
-      char itf_field[VFIELD_SIZE(0)];     /* Header field */
+      char itf_field[n_VFIELD_SIZE(0)]; /* Header field */
    } *it_head[5 /* TODO make dynamic hashmap */];
 };
 

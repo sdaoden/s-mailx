@@ -183,7 +183,7 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _PUTCB_UTF8_MASK = 3<<5
    } flags = _NONE;
    NYD_ENTER;
-   UNUSED(buf);
+   n_UNUSED(buf);
 
    if ((mp = message + msgno - 1) == dot)
       flags = _ISDOT;
@@ -359,7 +359,7 @@ jredo:
 #ifdef HAVE_SPAM
          if (n == 0)
             n = 5;
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          snprintf(buf, sizeof buf, "%u.%02u",
             (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
@@ -379,7 +379,7 @@ jputcb:
          if (cpen_new != cpen_cur)
             n_colour_pen_put(cpen_cur = cpen_new, f);
 #endif
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          cbuf[0] = c;
          n = fprintf(f, "%*s", n, cbuf);
@@ -410,7 +410,7 @@ jputcb:
          }
          if (n == 0)
             n = 16;
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          n = fprintf(f, "%*.*s", n, n, date);
          wleft = (n >= 0) ? wleft - n : 0;
@@ -418,7 +418,7 @@ jputcb:
       case 'e':
          if (n == 0)
             n = 2;
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
          wleft = (n >= 0) ? wleft - n : 0;
@@ -429,7 +429,7 @@ jputcb:
             if (s < 0)
                n = -n;
          }
-         i = ABS(n);
+         i = n_ABS(n);
          if (i > wleft) {
             i = wleft;
             n = (n < 0) ? -wleft : wleft;
@@ -450,7 +450,7 @@ jputcb:
             if (cpen_new != cpen_cur)
                n_colour_pen_put(cpen_cur = cpen_new, f);
 #endif
-            n = __putindent(f, mp, MIN(wleft, scrnwidth - 60));
+            n = __putindent(f, mp, n_MIN(wleft, scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
             if ((cpen_new = cpen_bas) != cpen_cur)
@@ -461,13 +461,13 @@ jputcb:
       case 'l':
          if (n == 0)
             n = 4;
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          if (mp->m_xlines) {
             n = fprintf(f, "%*ld", n, mp->m_xlines);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
-            n = ABS(n);
+            n = n_ABS(n);
             wleft -= n;
             while (n-- != 0)
                putc(' ', f);
@@ -480,7 +480,7 @@ jputcb:
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          n = fprintf(f, "%*lu", n, (ul_i)msgno);
          wleft = (n >= 0) ? wleft - n : 0;
@@ -488,7 +488,7 @@ jputcb:
       case 'o':
          if (n == 0)
             n = -5;
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
          wleft = (n >= 0) ? wleft - n : 0;
@@ -503,7 +503,7 @@ jputcb:
             n = -n;
          if (subjlen > wleft)
             subjlen = wleft;
-         if (UICMP(32, ABS(n), >, subjlen))
+         if (UICMP(32, n_ABS(n), >, subjlen))
             n = (n < 0) ? -subjlen : subjlen;
          if (flags & _SFMT)
             n -= (n < 0) ? -2 : 2;
@@ -516,7 +516,7 @@ jputcb:
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
             n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
-                  colalign(subjline, ABS(n), n, &wleft));
+                  colalign(subjline, n_ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;
          }
@@ -548,7 +548,7 @@ j_A_redo:
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, ABS(n), >, wleft))
+         if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          n = fprintf(f, "%*lu",
                n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
@@ -1130,7 +1130,8 @@ _pipe1(char *str, int doign)
    cmdq = n_shexp_quote_cp(cmd, FAL0);
    printf(_("Pipe to: %s\n"), cmdq);
    stats[0] = 0;
-   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, UNCONST(cmd), stats)) == 0)
+   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
+         ) == 0)
       printf("%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
    NYD_LEAVE;
@@ -1176,7 +1177,7 @@ a_cmd_top(void *vp, struct ignoretab *itp){
       if((l = strtol(ok_vlook(toplines), NULL, 0)) <= 0){
          tmax = (size_t)screensize();
          if(l < 0){
-            l = ABS(l);
+            l = n_ABS(l);
             tmax >>= l;
          }
       }else
@@ -1300,7 +1301,7 @@ FL int
 c_cmdnotsupp(void *v) /* TODO -> lex.c */
 {
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
    n_err(_("The requested feature is not compiled in\n"));
    NYD_LEAVE;
    return 1;
@@ -1462,7 +1463,7 @@ FL int
 c_pdot(void *v)
 {
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
    printf("%d\n", (int)PTR2SIZE(dot - message + 1));
    NYD_LEAVE;
    return 0;

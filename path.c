@@ -176,7 +176,7 @@ FL void
 cwrelse(struct cw *cw)
 {
    NYD_ENTER;
-   UNUSED(cw);
+   n_UNUSED(cw);
    NYD_LEAVE;
 }
 #endif /* !HAVE_FCHDIR */

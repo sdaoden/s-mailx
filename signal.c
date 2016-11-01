@@ -376,7 +376,7 @@ _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 {
    struct nyd_info *nip = _nyd_infos;
 
-   if (_nyd_curr != NELEM(_nyd_infos))
+   if (_nyd_curr != n_NELEM(_nyd_infos))
       nip += _nyd_curr++;
    else
       _nyd_curr = 1;
@@ -398,7 +398,8 @@ _nyd_oncrash(int signo)
    size_t i, fnl;
    char const *tmpdir;
 
-   LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX);
+   n_LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
+      "System limits too low for fixed-size buffer operation");
 
    xact.sa_handler = SIG_DFL;
    sigemptyset(&xact.sa_mask);
@@ -437,8 +438,8 @@ _nyd_oncrash(int signo)
 
    write(fd, _X(":\n"));
 
-   if (_nyd_infos[NELEM(_nyd_infos) - 1].ni_file != NULL)
-      for (i = _nyd_curr, nip = _nyd_infos + i; i < NELEM(_nyd_infos); ++i)
+   if (_nyd_infos[n_NELEM(_nyd_infos) - 1].ni_file != NULL)
+      for (i = _nyd_curr, nip = _nyd_infos + i; i < n_NELEM(_nyd_infos); ++i)
          _nyd_print(fd, nip++);
    for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
       _nyd_print(fd, nip++);

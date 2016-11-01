@@ -277,7 +277,7 @@ itscan(char const *spec, char const **xp)
       }
    }
    if (digitchar(*spec)) {
-      _it_number = strtoul(spec, UNCONST(xp), 10);
+      _it_number = strtoul(spec, n_UNCONST(xp), 10);
       if (!__GO(**xp)) {
          _it_token = ITSET;
          goto jleave;

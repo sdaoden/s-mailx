@@ -154,7 +154,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
    NYD_ENTER;
 
 #ifdef HAVE_NATCH_CHAR
-   maxlen = MIN(maxlen, blen);
+   maxlen = n_MIN(maxlen, blen);
    for (rv = 0; maxlen > 0;) {
       int ml = mblen(buf, maxlen);
       if (ml <= 0) {
@@ -166,7 +166,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
       maxlen -= ml;
    }
 #else
-   rv = MIN(blen, maxlen);
+   rv = n_MIN(blen, maxlen);
 #endif
    NYD_LEAVE;
    return rv;
@@ -175,8 +175,8 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
 FL size_t
 field_put_bidi_clip(char *store, size_t maxlen, char const *buf, size_t blen)
 {
-   NATCH_CHAR( struct bidi_info bi; )
-   size_t rv NATCH_CHAR( COMMA i );
+   n_NATCH_CHAR( struct bidi_info bi; )
+   size_t rv n_NATCH_CHAR( COMMA i );
    NYD_ENTER;
 
    rv = 0;
@@ -229,7 +229,7 @@ jleave:
    *store = '\0';
 
 #else
-   rv = MIN(blen, maxlen);
+   rv = n_MIN(blen, maxlen);
    memcpy(store, buf, rv);
    store[rv] = '\0';
 #endif
@@ -241,7 +241,7 @@ j_leave:
 FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
-   NATCH_CHAR( struct bidi_info bi; )
+   n_NATCH_CHAR( struct bidi_info bi; )
    int col_orig = col, n, sz;
    bool_t isbidi, isuni, istab, isrepl;
    char *nb, *np;
@@ -266,7 +266,7 @@ jnobidi:
 
    np = nb = salloc(mb_cur_max * strlen(cp) +
          ((fill ? col : 0)
-         NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
+         n_NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
          +1));
 
 #ifdef HAVE_NATCH_CHAR
@@ -456,7 +456,7 @@ prstr(char const *s)
    char *rp;
    NYD_ENTER;
 
-   in.s = UNCONST(s);
+   in.s = n_UNCONST(s);
    in.l = strlen(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
@@ -472,7 +472,7 @@ prout(char const *s, size_t sz, FILE *fp)
    int n;
    NYD_ENTER;
 
-   in.s = UNCONST(s);
+   in.s = n_UNCONST(s);
    in.l = sz;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
@@ -486,7 +486,7 @@ putuc(int u, int c, FILE *fp)
 {
    size_t rv;
    NYD_ENTER;
-   UNUSED(u);
+   n_UNUSED(u);
 
 #ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
@@ -552,11 +552,11 @@ bidi_info_create(struct bidi_info *bip)
     * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
     *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
     * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
-   NATCH_CHAR( char const *hb; )
+   n_NATCH_CHAR( char const *hb; )
    NYD_ENTER;
 
    memset(bip, 0, sizeof *bip);
-   bip->bi_start.s = bip->bi_end.s = UNCONST("");
+   bip->bi_start.s = bip->bi_end.s = n_UNCONST("");
 
 #ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
@@ -565,14 +565,14 @@ bidi_info_create(struct bidi_info *bip)
          bip->bi_pad = 2;
          /* FALLTHRU */
       case '2':
-         bip->bi_start.s = bip->bi_end.s = UNCONST("\xE2\x80\x8E");
+         bip->bi_start.s = bip->bi_end.s = n_UNCONST("\xE2\x80\x8E");
          break;
       case '1':
          bip->bi_pad = 2;
          /* FALLTHRU */
       default:
-         bip->bi_start.s = UNCONST("\xE2\x81\xA8");
-         bip->bi_end.s = UNCONST("\xE2\x81\xA9");
+         bip->bi_start.s = n_UNCONST("\xE2\x81\xA8");
+         bip->bi_end.s = n_UNCONST("\xE2\x81\xA9");
          break;
       }
       bip->bi_start.l = bip->bi_end.l = 3;

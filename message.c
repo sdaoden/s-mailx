@@ -187,7 +187,7 @@ static enum okay
 a_message_get_header(struct message *mp){
    enum okay rv;
    NYD2_ENTER;
-   UNUSED(mp);
+   n_UNUSED(mp);
 
    switch(mb.mb_type){
    case MB_FILE:
@@ -271,8 +271,8 @@ a_message_markall(char *buf, int f){
       goto jleave;
    }
 
-   UNINIT(beg, 0);
-   UNINIT(idfield, a_MESSAGE_ID_REFERENCES);
+   n_UNINIT(beg, 0);
+   n_UNINIT(idfield, a_MESSAGE_ID_REFERENCES);
    a_message_threadflag = FAL0;
    a_message_lexstr.s = ac_alloc(a_message_lexstr.l = 2 * strlen(buf) +1);
    np = namelist = smalloc((nmlsize = 8) * sizeof *namelist); /* TODO vector */
@@ -687,7 +687,7 @@ jnamesearch_sepfree:
             continue;
 
          for(colp = a_message_coltabs;
-               PTRCMP(colp, <, &a_message_coltabs[NELEM(a_message_coltabs)]);
+               PTRCMP(colp, <, &a_message_coltabs[n_NELEM(a_message_coltabs)]);
                ++colp)
             if((colp->mco_bit & colmod) &&
                   ((mp->m_flag & colp->mco_mask) == (unsigned)colp->mco_equal)){
@@ -735,7 +735,8 @@ a_message_evalcol(int col){
 
    rv = 0;
    for(colp = a_message_coltabs;
-         PTRCMP(colp, <, &a_message_coltabs[NELEM(a_message_coltabs)]); ++colp)
+         PTRCMP(colp, <, &a_message_coltabs[n_NELEM(a_message_coltabs)]);
+         ++colp)
       if(colp->mco_char == col){
          rv = colp->mco_bit;
          break;
@@ -858,7 +859,7 @@ jmtop:
 
    /* Check for single character tokens; return such if found */
    for(lp = a_message_singles;
-         PTRCMP(lp, <, &a_message_singles[NELEM(a_message_singles)]); ++lp)
+         PTRCMP(lp, <, &a_message_singles[n_NELEM(a_message_singles)]); ++lp)
       if(c == lp->ml_char){
          a_message_lexstr.s[0] = c;
          a_message_lexstr.s[1] = '\0';
@@ -1026,9 +1027,9 @@ a_message_match_dash(struct message *mp, char const *str){
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
       ac_free(hfield);
-      hfield = UNCONST(str + l + 1);
+      hfield = n_UNCONST(str + l + 1);
    }else{
-      hfield = UNCONST(str);
+      hfield = n_UNCONST(str);
       hbody = hfield1("subject", mp);
    }
    if(hbody == NULL)
@@ -1089,7 +1090,7 @@ jmsg:
             char c1;
 
             c1 = lowerconv(cfield[0]);
-            for(i = 0; i < NELEM(x); ++i){
+            for(i = 0; i < n_NELEM(x); ++i){
                if(c1 == x[i][0]){
                   cfield = x[i];
                   break;
@@ -1285,7 +1286,7 @@ FL enum okay
 get_body(struct message *mp){
    enum okay rv;
    NYD_ENTER;
-   UNUSED(mp);
+   n_UNUSED(mp);
 
    switch(mb.mb_type){
    case MB_FILE:

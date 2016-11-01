@@ -40,7 +40,7 @@
 #endif
 
 /* We use calloc() for struct attachment */
-CTA(AC_DEFAULT == 0);
+n_CTAV(AC_DEFAULT == 0);
 
 /* Fill in some attachment fields; don't be interactive if number==0 */
 static struct attachment * _fill_in(enum n_lexinput_flags lif,
@@ -126,7 +126,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
    char const *cslc, *cp, *defcs;
    NYD_ENTER;
 
-   UNINIT(cslc, NULL);
+   n_UNINIT(cslc, NULL);
    shoup = n_string_creat(&shou);
 
    hold_sigs(); /* TODO until we have signal manager (see TODO) */
@@ -163,7 +163,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
          goto jleave;
       }
 
-      shin.s = UNCONST(cp);
+      shin.s = n_UNCONST(cp);
       shin.l = UIZ_MAX;
       if((n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |

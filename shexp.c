@@ -272,7 +272,7 @@ a_shexp_var(struct a_shexp_var_stack *svsp)
             (rv = getenv(cp)) != NULL)
          svsp->svs_len = strlen(svsp->svs_dat = rv);
       else
-         svsp->svs_len = 0, svsp->svs_dat = UNCONST("");
+         svsp->svs_len = 0, svsp->svs_dat = n_UNCONST("");
    }
    if (c != '\0')
       goto jrecurse;
@@ -333,7 +333,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       goto jleave;
 
    if(slp == NULL){
-      cp = UNCONST(N_("File pattern does not match"));
+      cp = n_UNCONST(N_("File pattern does not match"));
       goto jerr;
    }else if(slp->sl_next == NULL)
       cp = savestrbuf(slp->sl_dat, slp->sl_len);
@@ -366,7 +366,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       free(sorta);
       pstate |= PS_EXPAND_MULTIRESULT;
    }else{
-      cp = UNCONST(N_("File pattern matches multiple results"));
+      cp = n_UNCONST(N_("File pattern matches multiple results"));
       goto jerr;
    }
 
@@ -389,7 +389,7 @@ jerr:
    goto jleave;
 
 #else /* HAVE_FNMATCH */
-   UNUSED(fexpm);
+   n_UNUSED(fexpm);
 
    if(!(fexpm & FEXP_SILENT))
       n_err(_("No filename pattern (fnmatch(3)) support compiled in\n"));
@@ -434,7 +434,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       /* Trim solidus */
       if(sgcp->sgc_patlen > 0){
          assert(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
-         ((char*)UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
+         ((char*)n_UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
       }
    }
 
@@ -938,7 +938,7 @@ jrecurse:
    sqlp->sql_dat.l -= il;
 
    sql.sql_link = sqlp;
-   sql.sql_dat.s = UNCONST(ib);
+   sql.sql_dat.s = n_UNCONST(ib);
    sql.sql_dat.l = il;
    sql.sql_flags = flags;
    a_shexp__quote(sqcp, &sql);
@@ -964,7 +964,7 @@ fexpand(char const *name, enum fexp_mode fexpm)
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
    if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
-      res = UNCONST(name);
+      res = n_UNCONST(name);
 
    if(!(fexpm & FEXP_NSPECIAL)){
 jnext:
@@ -1068,7 +1068,7 @@ jleave:
    if(res != NULL && !dyn)
       res = savestr(res);
    NYD_LEAVE;
-   return UNCONST(res);
+   return n_UNCONST(res);
 }
 
 FL int
@@ -1193,7 +1193,7 @@ n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
    size_t i, il;
    char const *ib_save, *ib;
    NYD2_ENTER;
-   UNINIT(c, '\0');
+   n_UNINIT(c, '\0');
 
    assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
    assert(input != NULL);
@@ -1218,7 +1218,7 @@ jrestart_empty:
          if(!blankspacechar(*ib))
             break;
    }
-   input->s = UNCONST(ib);
+   input->s = n_UNCONST(ib);
    input->l = il;
 
    if(il == 0){
@@ -1227,7 +1227,7 @@ jrestart_empty:
    }
 
    if(store != NULL)
-      store = n_string_reserve(store, MIN(il, 32)); /* XXX */
+      store = n_string_reserve(store, n_MIN(il, 32)); /* XXX */
 
    for(rv = n_SHEXP_STATE_NONE, state = a_NTOKEN, quotec = '\0'; il > 0;){
       --il, c = *ib++;
@@ -1416,7 +1416,7 @@ je_ib_save:
                      };
                      size_t no, j;
 
-                     i = MIN(il, i);
+                     i = n_MIN(il, i);
                      for(no = j = 0; i-- > 0; --il, ++ib, ++j){
                         c = *ib;
                         if(hexchar(c)){
@@ -1444,7 +1444,7 @@ je_ib_save:
                         state |= a_SKIPQ;
                      else if(!(state & a_SKIPQ)){
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
-                           store = n_string_reserve(store, MAX(j, 4));
+                           store = n_string_reserve(store, n_MAX(j, 4));
 
                         c2 = FAL0;
                         if(no > 0x10FFFF){ /* XXX magic; CText */
@@ -1599,7 +1599,7 @@ jleave:
             break;
    }
    input->l = il;
-   input->s = UNCONST(ib);
+   input->s = n_UNCONST(ib);
 
    if(!(rv & n_SHEXP_STATE_STOP)){
       if(il > 0 && !(rv & n_SHEXP_STATE_OUTPUT) &&
@@ -1626,7 +1626,7 @@ n_shexp_parse_token_buf(char **store, char const *indat, size_t inlen,
    assert(inlen == 0 || indat != NULL);
 
    n_string_creat_auto(&ss);
-   is.s = UNCONST(indat);
+   is.s = n_UNCONST(indat);
    is.l = inlen;
 
    shs = n_shexp_parse_token(&ss, &is, flags);
@@ -1680,7 +1680,7 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
 
    assert(cp != NULL);
 
-   input.s = UNCONST(cp);
+   input.s = n_UNCONST(cp);
    input.l = UIZ_MAX;
    rv = n_string_cp(n_shexp_quote(n_string_creat_auto(&store), &input,
          rndtrip));

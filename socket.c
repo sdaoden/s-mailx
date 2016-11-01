@@ -252,7 +252,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    int volatile sofd = -1, errval;
    NYD_ENTER;
 
-   UNINIT(errval, 0);
+   n_UNINIT(errval, 0);
 
    /* Connect timeouts after 30 seconds XXX configurable */
 # ifdef HAVE_SO_SNDTIMEO
@@ -354,7 +354,7 @@ jjumped:
 
 # else /* HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
-      if ((ep = getservbyname(UNCONST(serv), "tcp")) != NULL)
+      if ((ep = getservbyname(n_UNCONST(serv), "tcp")) != NULL)
          urlp->url_portno = ntohs(ep->s_port);
       else {
          if (options & OPT_VERB)

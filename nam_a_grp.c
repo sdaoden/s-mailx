@@ -64,12 +64,12 @@ struct group {
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
     * data follows thereafter, but note this is always used (i.e., for regular
     * expression entries this is still set to the plain string) */
-   char           g_id[VFIELD_SIZE(-1)];
+   char           g_id[n_VFIELD_SIZE(-1)];
 };
 #define GP_TO_SUBCLASS(X,G) \
 do {\
    union __group_subclass {void *gs_vp; char *gs_cp;} __gs__;\
-   __gs__.gs_cp = (char*)UNCONST(G) + (G)->g_subclass_off;\
+   __gs__.gs_cp = (char*)n_UNCONST(G) + (G)->g_subclass_off;\
    (X) = __gs__.gs_vp;\
 } while (0)
 
@@ -79,7 +79,7 @@ struct grp_names_head {
 
 struct grp_names {
    struct grp_names  *gn_next;
-   char              gn_id[VFIELD_SIZE(0)];
+   char              gn_id[n_VFIELD_SIZE(0)];
 };
 
 #ifdef HAVE_REGEX
@@ -505,7 +505,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       goto jleave;
 
    l = strlen(id) +1;
-   i = n_ALIGN(sizeof(*gp) - VFIELD_SIZEOF(struct group, g_id) + l);
+   i = n_ALIGN(sizeof(*gp) - n_VFIELD_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
       addsz = sizeof(struct grp_names_head);
@@ -701,7 +701,7 @@ __group_print_qsorter(void const *a, void const *b)
    int rv;
    NYD_ENTER;
 
-   rv = strcmp(*(char**)UNCONST(a), *(char**)UNCONST(b));
+   rv = strcmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
    NYD_LEAVE;
    return rv;
 }
@@ -908,7 +908,7 @@ a_nag_custom_sep(char **iolist){
          ++base;
 
       for(isesc = anyesc = FAL0, cp = base;; ++cp){
-         if(UNLIKELY((c = *cp) == '\0')){
+         if(n_UNLIKELY((c = *cp) == '\0')){
             *iolist = NULL;
             break;
          }else if(!isesc){
@@ -1014,7 +1014,7 @@ jskipfullextra:
 #ifdef HAVE_IDNA
       if (!(ag.ag_n_flags & NAME_IDNA)) {
 #endif
-         in.s = UNCONST(str);
+         in.s = n_UNCONST(str);
          in.l = ag.ag_ilen;
 #ifdef HAVE_IDNA
       } else {
@@ -1108,7 +1108,7 @@ namelist_dup(struct name const *np, enum gfield ntype)
    NYD_ENTER;
 
    for (nnp = NULL; np != NULL; np = np->n_flink) {
-      struct name *x = ndup(UNCONST(np), (np->n_type & ~GMASK) | ntype);
+      struct name *x = ndup(n_UNCONST(np), (np->n_type & ~GMASK) | ntype);
       x->n_flink = nnp;
       nnp = x;
    }
@@ -1556,7 +1556,7 @@ c_alias(void *v)
       for (++argv; *argv != NULL; ++argv) {
          size_t l = strlen(*argv) +1;
          struct grp_names *gnp = smalloc(sizeof(*gnp) -
-               VFIELD_SIZEOF(struct grp_names, gn_id) + l);
+               n_VFIELD_SIZEOF(struct grp_names, gn_id) + l);
          gnp->gn_next = gnhp->gnh_head;
          gnhp->gnh_head = gnp;
          memcpy(gnp->gn_id, *argv, l);
@@ -1863,7 +1863,7 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
          nl = (ui32_t)strlen(gp->g_id) +1;
          bl = (ui32_t)strlen(cp) +1;
 
-         *tail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+         *tail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
                nl + bl);
             tail = &hfp->hf_next;
          hfp->hf_next = NULL;
@@ -1911,7 +1911,8 @@ jch_badent:
                ++cp;
             bl = (ui32_t)strlen(cp) +1;
 
-            *tail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+            *tail =
+            hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
                   nl +1 + bl);
                tail = &hfp->hf_next;
             hfp->hf_next = NULL;

@@ -458,7 +458,7 @@ n_strscpy(char *dst, char const *src, size_t dstsize){
    ssize_t rv;
    NYD2_ENTER;
 
-   if(LIKELY(dstsize > 0)){
+   if(n_LIKELY(dstsize > 0)){
       rv = 0;
       do{
          if((dst[rv] = src[rv]) == '\0')
@@ -556,7 +556,7 @@ FL struct str *
 
    assert(buflen == 0 || buf != NULL);
 
-   if(LIKELY(buflen > 0)){
+   if(n_LIKELY(buflen > 0)){
       self->s = (srealloc)(self->s, (self->l = buflen) +1
             SMALLOC_DEBUG_ARGSCALL);
       memcpy(self->s, buf, buflen);
@@ -758,7 +758,7 @@ n_string_cp_const(struct n_string const *self){
    assert(self != NULL);
 
    if(self->s_size != 0){
-      ((struct n_string*)UNCONST(self))->s_dat[self->s_len] = '\0';
+      ((struct n_string*)n_UNCONST(self))->s_dat[self->s_len] = '\0';
       rv = self->s_dat;
    }else
       rv = "";
@@ -998,15 +998,15 @@ n_iconv_reset(iconv_t cd)
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
 #  if OS_DRAGONFLY
-#   define __INBCAST(S) (char ** __restrict__)UNCONST(S)
+#   define __INBCAST(S) (char ** __restrict__)n_UNCONST(S)
 #  else
-#   define __INBCAST(S) (char const **)UNCONST(S)
+#   define __INBCAST(S) (char const **)n_UNCONST(S)
 #  endif
 # elif OS_SUNOS || OS_SOLARIS
-#  define __INBCAST(S) (char const ** __restrict__)UNCONST(S)
+#  define __INBCAST(S) (char const ** __restrict__)n_UNCONST(S)
 # endif
 # ifndef __INBCAST
-#  define __INBCAST(S)  (char **)UNCONST(S)
+#  define __INBCAST(S)  (char **)n_UNCONST(S)
 # endif
 
 FL int
@@ -1086,7 +1086,7 @@ jrealloc:
    }
 
    if (in_rest_or_null != NULL) {
-      in_rest_or_null->s = UNCONST(ib);
+      in_rest_or_null->s = n_UNCONST(ib);
       in_rest_or_null->l = il;
    }
    out->s = obb;
@@ -1112,7 +1112,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    if((icd = iconv_open(tocode, fromcode)) == (iconv_t)-1)
       goto jleave;
 
-   in.l = strlen(in.s = UNCONST(input)); /* logical */
+   in.l = strlen(in.s = n_UNCONST(input)); /* logical */
    out.s = NULL, out.l = 0;
    if(!n_iconv_str(icd, icf, &out, &in, NULL))
       rv = savestrbuf(out.s, out.l);

@@ -391,7 +391,7 @@ jerr:
       if (msgCount == 0) {
          printf(_("At EOF\n"));
          rv = 0;
-      } else if (getmsglist(UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
+      } else if (getmsglist(n_UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
          setdot(message + msgvec[0] - 1);
          msgvec[1] = 0;
          rv = c_headers(msgvec);

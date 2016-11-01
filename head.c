@@ -964,8 +964,8 @@ jebadhead:
          bl = (ui32_t)strlen(cp) +1;
 
          ++seenfields;
-         *hftail = hfp = salloc(VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-               nl +1 + bl);
+         *hftail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
+               ) + nl +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NULL;
          hfp->hf_nl = nl;
@@ -1214,7 +1214,7 @@ expandaddr_to_eaf(void)
          if ((minus = (*cp == '-')) || *cp == '+')
             ++cp;
          for (eafp = eafa;; ++eafp) {
-            if (eafp == eafa + NELEM(eafa)) {
+            if (eafp == eafa + n_NELEM(eafa)) {
                if (options & OPT_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
@@ -1375,7 +1375,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
    memset(agp, 0, sizeof *agp);
 
    if ((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0) {
-      agp->ag_skinned = UNCONST(""); /* ok: NAME_SALLOC is not set */
+      agp->ag_skinned = n_UNCONST(""); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
       agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
@@ -1385,7 +1385,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
    if (!doskin || !anyof(name, "(< ")) {
       /*agp->ag_iaddr_start = 0;*/
       agp->ag_iaddr_aend = agp->ag_ilen;
-      agp->ag_skinned = UNCONST(name); /* (NAME_SALLOC not set) */
+      agp->ag_skinned = n_UNCONST(name); /* (NAME_SALLOC not set) */
       agp->ag_slen = agp->ag_ilen;
       agp->ag_n_flags = NAME_SKINNED;
       goto jcheck;
@@ -1511,7 +1511,7 @@ realname(char const *name)
    int quoted, good, nogood;
    NYD_ENTER;
 
-   if ((cp = UNCONST(name)) == NULL)
+   if ((cp = n_UNCONST(name)) == NULL)
       goto jleave;
    for (; *cp != '\0'; ++cp) {
       switch (*cp) {
@@ -1615,7 +1615,7 @@ jbrk:
    cp = (good * 3 < nogood) ? prstr(skin(name)) : rname;
 jleave:
    NYD_LEAVE;
-   return UNCONST(cp);
+   return n_UNCONST(cp);
 }
 
 FL char *

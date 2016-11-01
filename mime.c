@@ -146,7 +146,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
    struct str in, out;
    ssize_t rv;
    NYD_ENTER;
-   UNUSED(rest);
+   n_UNUSED(rest);
 
    in = *input;
    out.s = NULL;
@@ -390,13 +390,13 @@ jnoenc_retry:
           * separated from text and other encoded words with linear WS.
           * And if an encoded word was last, intermediate whitespace must
           * also be encoded, otherwise it would get stripped away! */
-         wcur = UNCONST("");
+         wcur = n_UNCONST("");
          if ((flags & (_ENC_LAST | _SPACE)) != _SPACE) {
             /* Reinclude whitespace */
             flags &= ~_SPACE;
             /* We don't need to place a separator at the very beginning */
             if (!(flags & _FIRST))
-               wcur = UNCONST(" ");
+               wcur = n_UNCONST(" ");
          } else
             wcur = wbot++;
 
@@ -414,7 +414,7 @@ jnoenc_retry:
           *    header field, each line of a header field that contains one
           *    or more 'encoded-word's is limited to 76 characters */
 jenc_retry:
-         cin.s = UNCONST(wbot);
+         cin.s = n_UNCONST(wbot);
          cin.l = PTR2SIZE(wend - wbot);
 
          if (flags & _ENC_B64)
@@ -452,7 +452,7 @@ jenc_retry_same:
             col = 1;
             if (!(flags & _SPACE)) {
                putc(' ', fo);
-               wcur = UNCONST("");
+               wcur = n_UNCONST("");
                /*flags |= _OVERLONG;*/
                goto jenc_retry_same;
             } else {
@@ -461,7 +461,7 @@ jenc_retry_same:
                   ++wbot;
                else {
                   flags &= ~_SPACE;
-                  wcur = UNCONST("");
+                  wcur = n_UNCONST("");
                }
                /*flags &= ~_OVERLONG;*/
                goto jenc_retry;
@@ -507,7 +507,7 @@ convhdra(char const *str, size_t len, FILE *fp)
    ssize_t ret = 0;
    NYD_ENTER;
 
-   cin.s = UNCONST(str);
+   cin.s = n_UNCONST(str);
    cin.l = len;
 #ifdef HAVE_ICONV
    ciconv.s = NULL;
@@ -596,7 +596,7 @@ _append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
    struct str in, out;
    NYD_ENTER;
 
-   in.s = UNCONST(str);
+   in.s = n_UNCONST(str);
    in.l = len;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
    _append_str(buf, sz, pos, out.s, out.l);
@@ -649,7 +649,7 @@ charset_iter_reset(char const *a_charset_to_try_first)
    size_t sarrl[3], len;
    char *cp;
    NYD_ENTER;
-   UNUSED(a_charset_to_try_first);
+   n_UNUSED(a_charset_to_try_first);
 
 #ifdef HAVE_ICONV
    sarr[0] = a_charset_to_try_first;
@@ -663,11 +663,11 @@ charset_iter_reset(char const *a_charset_to_try_first)
 
    sarrl[2] = len = strlen(sarr[2]);
 #ifdef HAVE_ICONV
-   if ((cp = UNCONST(sarr[1])) != NULL)
+   if ((cp = n_UNCONST(sarr[1])) != NULL)
       len += (sarrl[1] = strlen(cp));
    else
       sarrl[1] = 0;
-   if ((cp = UNCONST(sarr[0])) != NULL)
+   if ((cp = n_UNCONST(sarr[0])) != NULL)
       len += (sarrl[0] = strlen(cp));
    else
       sarrl[0] = 0;
@@ -1021,7 +1021,7 @@ mime_fromaddr(char const *name)
       _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
    /* TODO rescur==0: inserted to silence Coverity ...; check that */
    if (rescur == 0)
-      res = UNCONST("");
+      res = n_UNCONST("");
    else
       res[rescur] = '\0';
    {  char *x = res;
@@ -1072,7 +1072,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
    int state;
    NYD_ENTER;
 
-   in.s = UNCONST(ptr);
+   in.s = n_UNCONST(ptr);
    in.l = size;
    out.s = NULL;
    out.l = 0;

@@ -633,7 +633,7 @@ savequitflags(void)
    size_t i;
    NYD_ENTER;
 
-   for (i = 0; i < NELEM(_quitnames); ++i)
+   for (i = 0; i < n_NELEM(_quitnames); ++i)
       if (n_var_oklook(_quitnames[i].okey) != NULL)
          qf |= _quitnames[i].flag;
    NYD_LEAVE;
@@ -646,7 +646,7 @@ restorequitflags(int qf)
    size_t i;
    NYD_ENTER;
 
-   for (i = 0;  i < NELEM(_quitnames); ++i) {
+   for (i = 0;  i < n_NELEM(_quitnames); ++i) {
       char *x = n_var_oklook(_quitnames[i].okey);
       if (qf & _quitnames[i].flag) {
          if (x == NULL)

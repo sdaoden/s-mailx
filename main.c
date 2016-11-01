@@ -173,7 +173,7 @@ _getopt(int argc, char * const argv[], char const *optstring)
 
       if (optstring[1] == ':') {
          if (curp[1] != '\0') {
-            _oarg = UNCONST(curp + 1);
+            _oarg = n_UNCONST(curp + 1);
             ++_oind;
          } else {
             if ((_oind += 2) > argc) {
@@ -516,7 +516,7 @@ static void
 _hdrstop(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
 
    fflush(stdout);
    n_err_sighdl(_("\nInterrupt\n"));
@@ -565,7 +565,7 @@ main(int argc, char *argv[]){
    NYD_ENTER;
 
    a_head = NULL;
-   UNINIT(a_curr, NULL);
+   n_UNINIT(a_curr, NULL);
    to = cc = bcc = NULL;
    attach = NULL;
    cp = subject = qf =
@@ -1116,7 +1116,7 @@ j_leave:
 FL int
 c_exit(void *v){/* TODO program state machine */
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    if(pstate & PS_STARTED){
       if(!(pstate & PS_SOURCING)){

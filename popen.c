@@ -125,7 +125,7 @@ scan_mode(char const *mode, int *omode)
    int i;
    NYD2_ENTER;
 
-   for (i = 0; UICMP(z, i, <, NELEM(maps)); ++i)
+   for (i = 0; UICMP(z, i, <, n_NELEM(maps)); ++i)
       if (!strcmp(maps[i].mode, mode)) {
          *omode = maps[i].omode;
          i = 0;
@@ -390,7 +390,7 @@ _sigchld(int signo)
    int status;
    struct child *cp;
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
 
    for (;;) {
       pid = waitpid(-1, &status, WNOHANG);
@@ -581,7 +581,7 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 #undef _X2
 #define _X2 "file-hook-save-"
             size_t l = strlen(++ext);
-            char *vbuf = ac_alloc(l + MAX(sizeof(_X1), sizeof(_X2)));
+            char *vbuf = ac_alloc(l + n_MAX(sizeof(_X1), sizeof(_X2)));
 
             memcpy(vbuf, _X1, sizeof(_X1) -1);
             memcpy(vbuf + sizeof(_X1) -1, ext, l);
@@ -1134,7 +1134,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
                char const *ekvs = strchr(env[ei], '=');
                if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
                      !memcmp(ee, env[ei], kl)) {
-                  env[ei] = UNCONST(ee);
+                  env[ei] = n_UNCONST(ee);
                   env_addon[ai] = NULL;
                   break;
                }
@@ -1144,17 +1144,17 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
          /* And append the rest */
          for (ei = ei_orig, ai = ai_orig; ai-- > 0;)
             if (env_addon[ai] != NULL)
-               env[ei++] = UNCONST(env_addon[ai]);
+               env[ei++] = n_UNCONST(env_addon[ai]);
 
          env[ei] = NULL;
          environ = env;
       }
 
-      i = (int)getrawlist(FAL0, argv, NELEM(argv), cmd, strlen(cmd));
+      i = (int)getrawlist(FAL0, argv, n_NELEM(argv), cmd, strlen(cmd));
 
-      if ((argv[i++] = UNCONST(a0)) != NULL &&
-            (argv[i++] = UNCONST(a1)) != NULL &&
-            (argv[i++] = UNCONST(a2)) != NULL)
+      if ((argv[i++] = n_UNCONST(a0)) != NULL &&
+            (argv[i++] = n_UNCONST(a1)) != NULL &&
+            (argv[i++] = n_UNCONST(a2)) != NULL)
          argv[i] = NULL;
       prepare_child(mask, infd, outfd);
       execvp(argv[0], argv);

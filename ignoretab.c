@@ -99,7 +99,7 @@ a_ignoretab__show(struct ignoretab *itp, bool_t ignorret){
    }
 
    ring = salloc((itp->it_count +1) * sizeof *ring);
-   for(ap = ring, i = 0; i < NELEM(itp->it_head); ++i)
+   for(ap = ring, i = 0; i < n_NELEM(itp->it_head); ++i)
       for(itfp = itp->it_head[i]; itfp != NULL; itfp = itfp->itf_next)
          *ap++ = itfp->itf_field;
    *ap = NULL;
@@ -169,7 +169,7 @@ a_ignoretab__delall(struct ignoretab *itp){
    NYD2_ENTER;
 
    if(!(isauto = itp->it_auto))
-      for(i = 0; i < NELEM(itp->it_head); ++i)
+      for(i = 0; i < n_NELEM(itp->it_head); ++i)
          for(itfp = itp->it_head[i]; itfp != NULL; itfp = x){
             x = itfp->itf_next;
             free(itfp);
@@ -186,7 +186,7 @@ a_ignoretab__del(struct ignoretab *itp, char const *name){
    ui32_t h;
    NYD_ENTER;
 
-   h = torek_ihashn(name, UIZ_MAX) % NELEM(itp->it_head);
+   h = torek_ihashn(name, UIZ_MAX) % n_NELEM(itp->it_head);
 
    for(itfp = *(itfpp = &itp->it_head[h]); itfp != NULL;
          itfpp = &itfp->itf_next, itfp = itfp->itf_next)
@@ -393,7 +393,7 @@ n_ignoretab_insert(struct ignoretab *self, char const *dat, size_t len){
       goto jleave;
    else if(self->it_count == UI32_MAX){
       n_err(_("Hashtable size limit reached.  Cannot insert: %.*s\n"),
-         (int)MIN(len, SI32_MAX), dat);
+         (int)n_MIN(len, SI32_MAX), dat);
       goto jleave;
    }
 
@@ -401,13 +401,14 @@ n_ignoretab_insert(struct ignoretab *self, char const *dat, size_t len){
    /* C99 */{
       size_t i;
 
-      i = sizeof(*itfp)-VFIELD_SIZEOF(struct n_ignoretab_field,itf_field) + len;
+      i = sizeof(*itfp) - n_VFIELD_SIZEOF(struct n_ignoretab_field, itf_field
+            ) + len;
       itfp = self->it_auto ? salloc(i) : smalloc(i);
    }
    --len;
    memcpy(itfp->itf_field, dat, len);
    itfp->itf_field[len] = '\0';
-   h = torek_ihashn(dat, len) % NELEM(self->it_head);
+   h = torek_ihashn(dat, len) % n_NELEM(self->it_head);
    itfp->itf_next = self->it_head[h];
    self->it_head[h] = itfp;
    ++self->it_count;
@@ -425,7 +426,7 @@ n_ignoretab_lookup(struct ignoretab *self, char const *dat, size_t len){
    if(len == UIZ_MAX)
       len = strlen(dat);
 
-   for(itfp = self->it_head[torek_ihashn(dat, len) % NELEM(self->it_head)];
+   for(itfp = self->it_head[torek_ihashn(dat, len) % n_NELEM(self->it_head)];
          itfp != NULL; itfp = itfp->itf_next)
       if(!ascncasecmp(itfp->itf_field, dat, len))
          break;

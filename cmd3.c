@@ -706,7 +706,7 @@ c_dosh(void *v)
 {
    sighandler_type sigint;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    sigint = safe_signal(SIGINT, SIG_IGN);
    run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
@@ -962,7 +962,7 @@ c_newmail(void *v)
 {
    int val = 1, mdot;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    if ((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
@@ -979,7 +979,7 @@ c_noop(void *v)
 {
    int rv = 0;
    NYD_ENTER;
-   UNUSED(v);
+   n_UNUSED(v);
 
    switch (mb.mb_type) {
    case MB_POP3:

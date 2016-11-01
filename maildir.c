@@ -110,7 +110,7 @@ static void
 __maildircatch_hold(int s)
 {
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
    /* TODO no STDIO in signal handler, no _() tr's -- pre-translate interrupt
     * TODO globally; */
    n_err_sighdl(_("\nImportant operation in progress: "
@@ -254,7 +254,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    char const *cp;
    char *xp;
    NYD_ENTER;
-   UNUSED(name);
+   n_UNUSED(name);
 
    if (fn != NULL && sub != NULL) {
       if (!strcmp(sub, "new"))

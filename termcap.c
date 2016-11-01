@@ -112,7 +112,7 @@ struct a_termcap_ext_ent{
    struct a_termcap_ext_ent *tee_next;
    /* Resolvable termcap(5)/terminfo(5) name as given by user; the actual data
     * is stored just like for normal queries */
-   char tee_name[VFIELD_SIZE(0)];
+   char tee_name[n_VFIELD_SIZE(0)];
 };
 
 struct a_termcap_g{
@@ -128,7 +128,7 @@ struct a_termcap_g{
 #include "tcaps.h"
 n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");
-n_CTA(a_TERMCAP_ENT_MAX == NELEM(a_termcap_control),
+n_CTA(a_TERMCAP_ENT_MAX == n_NELEM(a_termcap_control),
    "Control array doesn't match command/query array to be controlled");
 
 static struct a_termcap_g *a_termcap_g;
@@ -224,7 +224,8 @@ jeinvent:
                struct a_termcap_ext_ent *teep;
 
                teep = smalloc(sizeof(*teep) -
-                     VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + kl +1);
+                     n_VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) +
+                     kl +1);
                teep->tee_next = a_termcap_g->tg_ext_ents;
                a_termcap_g->tg_ext_ents = teep;
                memcpy(teep->tee_name, ccp, kl);
@@ -378,7 +379,7 @@ a_termcap_init_altern(void){
 
    struct a_termcap_ent *tep;
    NYD2_ENTER;
-   UNUSED(tep);
+   n_UNUSED(tep);
 
    /* For simplicity in the rest of this file null flags of disabled commands,
     * as we won't check and try to lazy query any command */
@@ -465,7 +466,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    NYD2_ENTER;
    assert(!(pstate & PS_TERMCAP_DISABLE));
 
-   if(UNLIKELY(*cname == '\0'))
+   if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
@@ -476,7 +477,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tigetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
+         tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
    }  break;
@@ -530,7 +531,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    NYD2_ENTER;
    assert(!(pstate & PS_TERMCAP_DISABLE));
 
-   if(UNLIKELY(*cname == '\0'))
+   if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
@@ -541,7 +542,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tgetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
+         tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
    }  break;
@@ -623,7 +624,7 @@ n_termcap_init(void){
    a_termcap_g->tg_ext_ents = NULL;
    memset(&a_termcap_g->tg_ents[0], 0, sizeof(a_termcap_g->tg_ents));
    if((ccp = ok_vlook(termcap)) != NULL)
-      termvar.l = strlen(termvar.s = UNCONST(ccp));
+      termvar.l = strlen(termvar.s = n_UNCONST(ccp));
    else
       /*termvar.s = NULL,*/ termvar.l = 0;
    n_string_reserve(n_string_creat(&a_termcap_g->tg_dat),
@@ -722,8 +723,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    enum a_termcap_flags flags;
    ssize_t rv;
    NYD2_ENTER;
-   UNUSED(a1);
-   UNUSED(a2);
+   n_UNUSED(a1);
+   n_UNUSED(a2);
 
    rv = FAL0;
    if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) != OPT_INTERACTIVE)
@@ -863,7 +864,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
       if(tep->te_flags == 0
 #ifdef HAVE_TERMCAP
             && ((pstate & PS_TERMCAP_DISABLE) ||
-               !a_termcap_ent_query_tcp(UNCONST(tep),
+               !a_termcap_ent_query_tcp(n_UNCONST(tep),
                &a_termcap_control[n__TERMCAP_CMD_MAX + query]))
 #endif
       )
@@ -888,13 +889,13 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
 #ifdef HAVE_TERMCAP
       nlen = strlen(ndat) +1;
       teep = smalloc(sizeof(*teep) -
-            VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + nlen);
+            n_VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;
       a_termcap_g->tg_ext_ents = teep;
       memcpy(teep->tee_name, ndat, nlen);
 
-      if(!a_termcap_ent_query(UNCONST(tep), ndat,
+      if(!a_termcap_ent_query(n_UNCONST(tep), ndat,
                n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_QUERY))
          goto jleave;
 #endif

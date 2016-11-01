@@ -96,14 +96,14 @@ struct a_amv_mac{
    struct a_amv_mac_line **am_line_dat; /* TODO use deque? */
    struct a_amv_var *am_lopts;   /* `localopts' unroll list */
    ui8_t am_flags;               /* enum a_amv_mac_flags */
-   char am_name[VFIELD_SIZE(7)]; /* of this macro */
+   char am_name[n_VFIELD_SIZE(7)]; /* of this macro */
 };
 n_CTA(a_AMV_MF__MAX <= UI8_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_mac_line{
    ui32_t aml_len;
    ui32_t aml_prespc;   /* Number of leading SPC, for display purposes */
-   char aml_dat[VFIELD_SIZE(0)];
+   char aml_dat[n_VFIELD_SIZE(0)];
 };
 
 struct a_amv_mac_call_args{
@@ -132,7 +132,7 @@ struct a_amv_var{
    char *av_env;              /* Actively managed putenv(3) memory */
 #endif
    ui16_t av_flags;           /* enum a_amv_var_flags */
-   char av_name[VFIELD_SIZE(6)];
+   char av_name[n_VFIELD_SIZE(6)];
 };
 n_CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
 
@@ -303,7 +303,7 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
    for(amp = *ampp; amp != NULL; ampp = &(*ampp)->am_next, amp = amp->am_next){
       if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf &&
             !strcmp(amp->am_name, name)){
-         if(LIKELY((save_amf & a_AMV_MF_UNDEF) == 0))
+         if(n_LIKELY((save_amf & a_AMV_MF_UNDEF) == 0))
             goto jleave;
 
          *ampp = amp->am_next;
@@ -346,7 +346,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
       *(args++) = sbufdup((*amlp)->aml_dat, (*amlp)->aml_len);
    *args = NULL;
 
-   los.as_mac = UNCONST(amp); /* But not used.. */
+   los.as_mac = n_UNCONST(amp); /* But not used.. */
    los_save = a_amv_lopts;
    if(amcap->amca_unroller == NULL){
       los.as_up = los_save;
@@ -475,10 +475,10 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       if(n.ui == 0)
          continue;
 
-      maxlen = MAX(maxlen, n.ui);
+      maxlen = n_MAX(maxlen, n.ui);
       cp[n.ui++] = '\0';
 
-      if(LIKELY(++line_cnt < UI32_MAX)){
+      if(n_LIKELY(++line_cnt < UI32_MAX)){
          struct a_amv_mac_line *amlp;
 
          llp = salloc(sizeof *llp);
@@ -489,7 +489,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
          ll_tail = llp;
          llp->ll_next = NULL;
          llp->ll_amlp = amlp = smalloc(sizeof(*amlp) -
-               VFIELD_SIZEOF(struct a_amv_mac_line, aml_dat) + n.ui);
+               n_VFIELD_SIZEOF(struct a_amv_mac_line, aml_dat) + n.ui);
          amlp->aml_len = n.ui -1;
          amlp->aml_prespc = leaspc;
          memcpy(amlp->aml_dat, cp, n.ui);
@@ -502,7 +502,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
 
    /* Create the new macro */
    n.s = strlen(name) +1;
-   amp = smalloc(sizeof(*amp) - VFIELD_SIZEOF(struct a_amv_mac, am_name) + n.s);
+   amp = smalloc(sizeof(*amp) - n_VFIELD_SIZEOF(struct a_amv_mac, am_name) +
+         n.s);
    amp->am_next = NULL;
    amp->am_maxlen = maxlen;
    amp->am_line_cnt = line_cnt;
@@ -551,7 +552,7 @@ a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
 
    rv = TRU1;
 
-   if(LIKELY(name[0] != '*' || name[1] != '\0')){
+   if(n_LIKELY(name[0] != '*' || name[1] != '\0')){
       if((amp = a_amv_mac_lookup(name, NULL, amf | a_AMV_MF_UNDEF)) == NULL){
          n_err(_("%s not defined: %s\n"),
             (amf & a_AMV_MF_ACC ? "Account" : "Macro"), name);
@@ -560,7 +561,7 @@ a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
    }else{
       struct a_amv_mac **ampp, *lamp;
 
-      for(ampp = a_amv_macs; PTRCMP(ampp, <, &a_amv_macs[NELEM(a_amv_macs)]);
+      for(ampp = a_amv_macs; PTRCMP(ampp, <, &a_amv_macs[n_NELEM(a_amv_macs)]);
             ++ampp)
          for(lamp = NULL, amp = *ampp; amp != NULL;){
             if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf){
@@ -612,7 +613,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
 
    nl = strlen(name) +1;
    vl = (oavp != NULL) ? strlen(oavp->av_value) +1 : 0;
-   avp = smalloc(sizeof(*avp) - VFIELD_SIZEOF(struct a_amv_var, av_name) +
+   avp = smalloc(sizeof(*avp) - n_VFIELD_SIZEOF(struct a_amv_var, av_name) +
          nl + vl);
    avp->av_link = alp->as_lopts;
    alp->as_lopts = avp;
@@ -668,7 +669,7 @@ a_amv_var_copy(char const *str){
    NYD2_ENTER;
 
    if(*str == '\0')
-      news = UNCONST("");
+      news = n_UNCONST("");
    else{
       len = strlen(str) +1;
       news = smalloc(len);
@@ -895,10 +896,10 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
    /* If this is not an assembled variable we need to consider some special
     * initialization cases and eventually create the variable anew */
-   if(LIKELY((avmp = avcp->avc_map) != NULL)){
+   if(n_LIKELY((avmp = avcp->avc_map) != NULL)){
       /* Does it have an import-from-environment flag? */
-      if(UNLIKELY((avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
-         if(LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
+      if(n_UNLIKELY((avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
+         if(n_LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
             /* May be better not to use that one, though? */
             bool_t isempty, isbltin;
 
@@ -907,23 +908,23 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
             isbltin = ((avmp->avm_flags & (a_AMV_VF_I3VAL | a_AMV_VF_DEFVAL)
                   ) != 0);
 
-            if(UNLIKELY(isempty)){
+            if(n_UNLIKELY(isempty)){
                if(!isbltin)
                   goto jerr;
-            }else if(LIKELY(*cp != '\0')){
-                if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) &&
+            }else if(n_LIKELY(*cp != '\0')){
+                if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) &&
                      !a_amv_var_check_nocntrls(cp))){
                   n_err(_("Ignoring environment, control characters "
                      "invalid in variable: %s\n"), avcp->avc_name);
                   goto jerr;
                }
-               if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
+               if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
                      !a_amv_var_check_num(cp, FAL0))){
                   n_err(_("Environment variable value not a number "
                      "or out of range: %s\n"), avcp->avc_name);
                   goto jerr;
                }
-               if(UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
+               if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
                      !a_amv_var_check_num(cp, TRU1))){
                   n_err(_("Environment variable value not a number, "
                      "negative or out of range: %s\n"), avcp->avc_name);
@@ -935,7 +936,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       }
 
       /* A first-time init switch is to be handled now and here */
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_I3VAL) != 0)){
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_I3VAL) != 0)){
          static struct a_amv_var_defval const **arr,
             *arr_base[a_AMV_VAR_I3VALS_CNT +1];
 
@@ -964,10 +965,10 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       }
 
       /* The virtual variables */
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_VIRT) != 0)){
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIRT) != 0)){
          for(i = 0; i < a_AMV_VAR_VIRTS_CNT; ++i)
             if(a_amv_var_virts[i].avv_okey == avcp->avc_okey){
-               avp = UNCONST(a_amv_var_virts[i].avv_var);
+               avp = n_UNCONST(a_amv_var_virts[i].avv_var);
                goto jleave;
             }
          /* Not reached */
@@ -975,7 +976,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
       /* Place this last because once it is set first the variable will never
        * be removed again and thus match in the first block above */
-      if(UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
+      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
          for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
             if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
                cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? ""
@@ -998,7 +999,7 @@ jnewval: /* C99 */{
 
       l = strlen(avcp->avc_name) +1;
       avcp->avc_var = avp = smalloc(sizeof(*avp) -
-            VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
+            n_VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
       memcpy(avp->av_name, avcp->avc_name, l);
@@ -1033,34 +1034,34 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    if((avmp = avcp->avc_map) != NULL){
       rv = FAL0;
 
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(pstate & PS_ROOT))){
          n_err(_("Variable is readonly: %s\n"), avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
          n_err(_("Variable must not be empty: %s\n"), avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
             !a_amv_var_check_nocntrls(value))){
          n_err(_("Variable forbids control characters: %s\n"),
             avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
             !a_amv_var_check_num(value, FAL0))){
          n_err(_("Variable value not a number or out of range: %s\n"),
             avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
             !a_amv_var_check_num(value, TRU1))){
          n_err(_("Variable value not a number, negative or out of range: %s\n"),
             avcp->avc_name);
          goto jleave;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(pstate & (PS_ROOT | PS_STARTED)))){
          n_err(_("Variable cannot be set in a resource file: %s\n"),
             avcp->avc_name);
@@ -1080,7 +1081,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       size_t l = strlen(avcp->avc_name) +1;
 
       avcp->avc_var = avp = smalloc(sizeof(*avp) -
-            VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
+            n_VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
 #ifdef HAVE_PUTENV
@@ -1088,7 +1089,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 #endif
       memcpy(avp->av_name, avcp->avc_name, l);
       avp->av_flags = (avmp != NULL) ? avmp->avm_flags : 0;
-      oval = UNCONST("");
+      oval = n_UNCONST("");
    }else
       oval = avp->av_value;
 
@@ -1101,7 +1102,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          if((options & OPT_D_VV) && *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
-         avp->av_value = UNCONST(value = "");
+         avp->av_value = n_UNCONST(value = "");
       }else
          avp->av_value = a_amv_var_copy(value);
 
@@ -1161,8 +1162,8 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
 
    rv = FAL0;
 
-   if(LIKELY((avmp = avcp->avc_map) != NULL)){
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
+   if(n_LIKELY((avmp = avcp->avc_map) != NULL)){
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
             !(pstate & PS_ROOT))){
          n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
@@ -1174,7 +1175,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
 
    rv = TRU1;
 
-   if(UNLIKELY(!a_amv_var_lookup(avcp, TRUM1))){
+   if(n_UNLIKELY(!a_amv_var_lookup(avcp, TRUM1))){
       if(force_env){
 jforce_env:
          rv = a_amv_var__clearenv(avcp->avc_name, NULL);
@@ -1211,7 +1212,7 @@ jforce_env:
 
    /* XXX Fun part, extremely simple-minded for now: if this variable has
     * XXX a default value, immediately reinstantiate it! */
-   if(UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0))
+   if(n_UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0))
       a_amv_var_lookup(avcp, TRU1);
 jleave:
    NYD2_LEAVE;
@@ -1226,7 +1227,7 @@ a_amv_var__clearenv(char const *name, char *value){
 #endif
    bool_t rv;
    NYD2_ENTER;
-   UNUSED(value);
+   n_UNUSED(value);
 
 #ifdef HAVE_SETENV
    unsetenv(name);
@@ -1301,7 +1302,7 @@ a_amv_var__show_cmp(void const *s1, void const *s2){
    int rv;
    NYD2_ENTER;
 
-   rv = strcmp(*(char**)UNCONST(s1), *(char**)UNCONST(s2));
+   rv = strcmp(*(char**)n_UNCONST(s1), *(char**)n_UNCONST(s2));
    NYD2_LEAVE;
    return rv;
 }
@@ -1321,7 +1322,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       struct str s;
 
       msgp = n_string_assign_cp(msgp, _("No such variable: "));
-      s.s = UNCONST(name);
+      s.s = n_UNCONST(name);
       s.l = UIZ_MAX;
       msgp = n_shexp_quote(msgp, &s, FAL0);
       goto jleave;
@@ -1352,7 +1353,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_LINKED, "`environ' link"}
          }, *tp;
 
-         for(tp = tbase; PTRCMP(tp, <, &tbase[NELEM(tbase)]); ++tp)
+         for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
             if(avc.avc_var->av_flags & tp->flags){
                msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
                msgp = n_string_push_cp(msgp, tp->msg);
@@ -1365,7 +1366,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    if(avc.avc_var->av_flags & a_AMV_VF_RDONLY)
       msgp = n_string_push_cp(msgp, "# ");
-   UNINIT(quote, NULL);
+   n_UNINIT(quote, NULL);
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
       quote = n_shexp_quote_cp(avc.avc_var->av_value, TRU1);
       if(strcmp(quote, avc.avc_var->av_value))
@@ -1410,7 +1411,7 @@ jouter:
       }
       *cp2 = '\0';
       if(c == '\0')
-         cp = UNCONST("");
+         cp = n_UNCONST("");
       else
          ++cp;
 

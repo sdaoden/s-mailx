@@ -104,13 +104,11 @@ sub create_c_tool{
 #include <stdio.h>
 #include <string.h>
 
-#ifndef NELEM
-# define NELEM(A) (sizeof(A) / sizeof(A[0]))
-#endif
+#define n_NELEM(A) (sizeof(A) / sizeof(A[0]))
 
-#define ui32_t    uint32_t
-#define ui16_t    uint16_t
-#define ui8_t     uint8_t
+#define ui32_t uint32_t
+#define ui16_t uint16_t
+#define ui8_t uint8_t
 
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
@@ -174,12 +172,12 @@ jredo:
 static size_t *
 reversy(size_t size){
    struct a_amv_var_map const *vmp = a_amv_var_map,
-      *vmaxp = vmp + NELEM(a_amv_var_map);
+      *vmaxp = vmp + n_NELEM(a_amv_var_map);
    size_t ldist = 0, *arr;
 
    arr = malloc(sizeof *arr * size);
    for(size_t i = 0; i < size; ++i)
-      arr[i] = NELEM(a_amv_var_map);
+      arr[i] = n_NELEM(a_amv_var_map);
 
    seen_wraparound = 0;
    longest_distance = 0;
@@ -187,7 +185,7 @@ reversy(size_t size){
    while(vmp < vmaxp){
       ui32_t hash = vmp->avm_hash, i = hash % size, l;
 
-      for(l = 0; arr[i] != NELEM(a_amv_var_map); ++l)
+      for(l = 0; arr[i] != n_NELEM(a_amv_var_map); ++l)
          if(++i == size){
             seen_wraparound = 1;
             i = 0;
@@ -208,7 +206,7 @@ main(int argc, char **argv){
    printf("%lu\n", (unsigned long)h);
 
 #else
-   size_t *arr, size = NELEM(a_amv_var_map);
+   size_t *arr, size = n_NELEM(a_amv_var_map);
 
    fprintf(stderr, "Starting reversy, okeys=%zu\n", size);
    for(;;){
@@ -226,7 +224,7 @@ main(int argc, char **argv){
       "#define a_AMV_VAR_REV_LONGEST %zuu\n"
       "#define a_AMV_VAR_REV_WRAPAROUND %d\n"
       "static %s const a_amv_var_revmap[a_AMV_VAR_REV_PRIME] = {\n%s",
-      NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
+      n_NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
       argv[1], (argc > 2 ? "  " : ""));
    for(size_t i = 0; i < size; ++i)
       printf("%s%zuu", (i == 0 ? ""

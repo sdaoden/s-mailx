@@ -212,7 +212,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
     * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
    env_addon[1] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
-         getrandstring(MIN(NAME_MAX / 4, 16)), NULL)->s;
+         getrandstring(n_MIN(NAME_MAX / 4, 16)), NULL)->s;
 
    /* NAIL_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
@@ -320,7 +320,7 @@ static void
 _send_onpipe(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    siglongjmp(_send_pipejmp, 1);
 }
 
@@ -355,8 +355,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    sighandler_type volatile oldpipe = SIG_DFL;
    NYD_ENTER;
 
-   UNINIT(term_infd, 0);
-   UNINIT(cnt, 0);
+   n_UNINIT(term_infd, 0);
+   n_UNINIT(cnt, 0);
 
    if (ip->m_mimecontent == MIME_PKCS7 && ip->m_multipart &&
          action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
@@ -1020,7 +1020,7 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(&mh, ip, UNVOLATILE(&qbuf), tmpname, term_infd);
+      pbuf = _pipefile(&mh, ip, n_UNVOLATILE(&qbuf), tmpname, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;
@@ -1180,7 +1180,7 @@ jgetname:
             prompt.s, ((f != (char*)-1 && f != NULL)
                ? n_shexp_quote_cp(f, FAL0) : NULL));
       if(f2 != NULL){
-         in.s = UNCONST(f2);
+         in.s = n_UNCONST(f2);
          in.l = UIZ_MAX;
          if((n_shexp_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |

@@ -48,7 +48,7 @@ a_dotlock_main(void){
    /* Get the arguments "passed to us" */
    flt = a_dotlock_flt;
    fd = a_dotlock_fd;
-   UNUSED(fd);
+   n_UNUSED(fd);
    di = *a_dotlock_dip;
 
    /* chdir(2)? */
@@ -176,7 +176,7 @@ jenametool:
       args[ 8] = "randstr";   args[ 9] = di.di_randstr;
       args[10] = "pollmsecs"; args[11] = itoabuf;
       args[12] = NULL;
-      execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-privsep", UNCONST(args));
+      execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-privsep", n_UNCONST(args));
 
       dls = n_DLS_NOEXEC;
       write(STDOUT_FILENO, &dls, sizeof dls);
@@ -244,7 +244,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 
    rv = NULL;
    didmsg = FAL0;
-   UNINIT(serrno, 0);
+   n_UNINIT(serrno, 0);
 #ifdef HAVE_DOTLOCK
    emsg = NULL;
 #endif

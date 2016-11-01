@@ -471,7 +471,7 @@ print_header_summary(char const *Larg)
          freopen("/dev/null", "w", stderr);
       }
       assert(n_msgvec != NULL);
-      i = (getmsglist(/*TODO make arg const */UNCONST(Larg), n_msgvec, 0) <= 0);
+      i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
       if (options & OPT_EXISTONLY) {
          exit_status = (int)i;
          goto jleave;

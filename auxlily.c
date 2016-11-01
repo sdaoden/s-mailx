@@ -112,7 +112,7 @@ _rand_init(void)
    }
 
    for (seed = (uintptr_t)_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd) {
-      for (u.i = NELEM(_rand->b32); u.i-- != 0;) {
+      for (u.i = n_NELEM(_rand->b32); u.i-- != 0;) {
          ui32_t t, k;
 
 # ifdef HAVE_CLOCK_GETTIME
@@ -125,10 +125,10 @@ _rand_init(void)
          if (rnd & 1)
             t = (t >> 16) | (t << 16);
          _rand->b32[u.i] ^= _rand_weak(seed ^ t);
-         _rand->b32[t % NELEM(_rand->b32)] ^= seed;
+         _rand->b32[t % n_NELEM(_rand->b32)] ^= seed;
          if (rnd == 7 || rnd == 17)
             _rand->b32[u.i] ^= _rand_weak(seed ^ (ui32_t)ts.tv_sec);
-         k = _rand->b32[u.i] % NELEM(_rand->b32);
+         k = _rand->b32[u.i] % n_NELEM(_rand->b32);
          _rand->b32[k] ^= _rand->b32[u.i];
          seed ^= _rand_weak(_rand->b32[k]);
          if ((rnd & 3) == 3)
@@ -351,8 +351,8 @@ n_c_from_hex_base16(char const hex[2]){
    si32_t rv;
    NYD2_ENTER;
 
-   if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(atoi16) ||
-         (i2 = (ui8_t)hex[1] - '0') >= NELEM(atoi16))
+   if ((i1 = (ui8_t)hex[0] - '0') >= n_NELEM(atoi16) ||
+         (i2 = (ui8_t)hex[1] - '0') >= n_NELEM(atoi16))
       goto jerr;
    i1 = atoi16[i1];
    i2 = atoi16[i2];
@@ -413,14 +413,14 @@ nextprime(ui32_t n)
    ui32_t i, mprime;
    NYD_ENTER;
 
-   i = (n < primes[NELEM(primes) / 4] ? 0
-         : (n < primes[NELEM(primes) / 2] ? NELEM(primes) / 4
-         : NELEM(primes) / 2));
+   i = (n < primes[n_NELEM(primes) / 4] ? 0
+         : (n < primes[n_NELEM(primes) / 2] ? n_NELEM(primes) / 4
+         : n_NELEM(primes) / 2));
    do
       if ((mprime = primes[i]) > n)
          break;
-   while (++i < NELEM(primes));
-   if (i == NELEM(primes) && mprime < n)
+   while (++i < n_NELEM(primes));
+   if (i == n_NELEM(primes) && mprime < n)
       mprime = n;
    NYD_LEAVE;
    return mprime;
@@ -433,7 +433,7 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
 
    char *cp;
    char const *ccp_base, *ccp;
-   size_t NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
+   size_t n_NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
    bool_t trigger; /* 1.: `errors' ring note?  2.: first loop tick done */
    NYD_ENTER;
 
@@ -466,13 +466,13 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
    if (trigger)
       ccp_base = savecatsep(_("#ERR#"), '\0', ccp_base);
 #endif
-   NATCH_CHAR( cclen_base = strlen(ccp_base); )
+   n_NATCH_CHAR( cclen_base = strlen(ccp_base); )
 
    dfmaxlen = 0; /* keep CC happy */
    trigger = FAL0;
 jredo:
    ccp = ccp_base;
-   NATCH_CHAR( cclen = cclen_base; )
+   n_NATCH_CHAR( cclen = cclen_base; )
    maxlen = sizeof(buf) -1;
 
    for (;;) {
@@ -917,7 +917,7 @@ n_verr(char const *format, va_list ap){
 #ifdef HAVE_ERRORS
    else{
       int imax, i;
-      LCTA(ERRORS_MAX > 3);
+      n_LCTAV(ERRORS_MAX > 3);
 
       /* Link it into the `errors' message ring */
       if((enp = a_aux_err_tail) == NULL){
@@ -947,7 +947,7 @@ jcreat:
 # ifdef HAVE_N_VA_COPY
       imax = 64;
 # else
-      imax = MIN(LINESIZE, 1024);
+      imax = n_MIN(LINESIZE, 1024);
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
 # ifdef HAVE_N_VA_COPY

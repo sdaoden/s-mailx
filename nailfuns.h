@@ -187,16 +187,18 @@ FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
 
 /* Constant option key look/(un)set/clear */
 FL char *      n_var_oklook(enum okeys okey);
-#define ok_blook(C)              (n_var_oklook(CONCAT(ok_b_, C)) != NULL)
-#define ok_vlook(C)              n_var_oklook(CONCAT(ok_v_, C))
+#define ok_blook(C)              (n_var_oklook(n_CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C)              n_var_oklook(n_CONCAT(ok_v_, C))
 
 FL bool_t      n_var_okset(enum okeys okey, uintptr_t val);
-#define ok_bset(C)               n_var_okset(CONCAT(ok_b_, C), (uintptr_t)TRU1)
-#define ok_vset(C,V)             n_var_okset(CONCAT(ok_v_, C), (uintptr_t)(V))
+#define ok_bset(C) \
+   n_var_okset(n_CONCAT(ok_b_, C), (uintptr_t)TRU1)
+#define ok_vset(C,V) \
+   n_var_okset(n_CONCAT(ok_v_, C), (uintptr_t)(V))
 
 FL bool_t      n_var_okclear(enum okeys okey);
-#define ok_bclear(C)             n_var_okclear(CONCAT(ok_b_, C))
-#define ok_vclear(C)             n_var_okclear(CONCAT(ok_v_, C))
+#define ok_bclear(C)             n_var_okclear(n_CONCAT(ok_b_, C))
+#define ok_vclear(C)             n_var_okclear(n_CONCAT(ok_v_, C))
 
 /* Variable option key look/(un)set/clear */
 FL char *      n_var_voklook(char const *vokey);
@@ -218,8 +220,8 @@ FL char *      n_var_xoklook(enum okeys okey, struct url const *urlp,
                   enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M)      (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M)      n_var_xoklook(C, URL, M)
-# define xok_blook(C,URL,M)      xok_BLOOK(CONCAT(ok_b_, C), URL, M)
-# define xok_vlook(C,URL,M)      xok_VLOOK(CONCAT(ok_v_, C), URL, M)
+# define xok_blook(C,URL,M)      xok_BLOOK(n_CONCAT(ok_b_, C), URL, M)
+# define xok_vlook(C,URL,M)      xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
 #endif
 
 /* User variable access: `set' and `unset' */

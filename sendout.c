@@ -49,7 +49,8 @@ enum fmt_flags {
    FMT_FILES   = GFILES,
    _FMT_GMASK  = FMT_COMMA | FMT_FILES
 };
-CTA(!(_FMT_GMASK & FMT_DOMIME));
+n_CTA(!(_FMT_GMASK & FMT_DOMIME),
+   "Code-required condition not satisfied but actual bit carrier value");
 
 static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
@@ -745,7 +746,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
       goto jleave;
    }
 
-   if (fmt("Disposition-Notification-To:", nalloc(UNCONST(from), 0), fo, 0))
+   if (fmt("Disposition-Notification-To:", nalloc(n_UNCONST(from), 0), fo, 0))
       rv = FAL0;
 jleave:
    NYD_LEAVE;
@@ -1215,7 +1216,7 @@ __mta_start(struct sendbundle *sbp)
          goto jleave;
       }
    } else {
-      UNINIT(args, NULL);
+      n_UNINIT(args, NULL);
 #ifndef HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1258,7 +1259,7 @@ jstop:
          int e;
 
          prepare_child(&nset, fileno(sbp->sb_input), -1);
-         execv(mta, UNCONST(args));
+         execv(mta, n_UNCONST(args));
          e = errno;
          ecp = (e != ENOENT) ? strerror(e)
                : _("executable not found (adjust *mta* variable)");
@@ -1581,7 +1582,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
          fprintf(fo, "Resent-%s\n", cp);
    }
 
-   if ((mdn = UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+   if ((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
       goto jleave;
    if (!_check_dispo_notif(mdn, NULL, fo))
       goto jleave;
@@ -1911,7 +1912,7 @@ do {\
          ++gotcha;
       }
 
-      fromasender = UNCONST(check_from_and_sender(hp->h_from, hp->h_sender));
+      fromasender = n_UNCONST(check_from_and_sender(hp->h_from, hp->h_sender));
       if (fromasender == NULL)
          goto jleave;
       /* Note that fromasender is (NULL,) 0x1 or real sender here */

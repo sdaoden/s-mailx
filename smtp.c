@@ -76,7 +76,7 @@ static void
 _smtp_onterm(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    siglongjmp(_smtp_jmp, 1);
 }
 

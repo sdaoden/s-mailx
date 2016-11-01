@@ -69,7 +69,7 @@ ssl_set_verify_level(struct url const *urlp)
    cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
 
    if (cp != NULL) {
-      for (i = 0; i < NELEM(_ssl_verify_levels); ++i)
+      for (i = 0; i < n_NELEM(_ssl_verify_levels); ++i)
          if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
@@ -108,7 +108,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    struct myline {
       struct myline  *ml_next;
       size_t         ml_len;
-      char           ml_buf[VFIELD_SIZE(0)];
+      char           ml_buf[n_VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
    size_t bufsize, buflen, cnt;
@@ -136,7 +136,7 @@ jetmp:
             fputs("X-Encoded-", *hp);
          for (;;) {
             struct myline *ml = smalloc(sizeof *ml -
-                  VFIELD_SIZEOF(struct myline, ml_buf) + buflen +1);
+                  n_VFIELD_SIZEOF(struct myline, ml_buf) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
             else

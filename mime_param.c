@@ -250,7 +250,7 @@ jumpin:
             }
             memcpy(nobuf, hbp, i);
             nobuf[i] = '\0';
-            i = (size_t)strtol(nobuf, UNCONST(&eptr), 10);
+            i = (size_t)strtol(nobuf, n_UNCONST(&eptr), 10);
             if (i >= 999 || *eptr != '\0') {
                emsg = N_("invalid continuation sequence number");
                goto jerr;
@@ -390,7 +390,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
    NYD2_ENTER;
 
 #ifdef HAVE_ICONV
-   UNINIT(fhicd, (iconv_t)-1);
+   n_UNINIT(fhicd, (iconv_t)-1);
 
    if (head->rj_is_enc) {
       char const *tcs;
@@ -525,7 +525,7 @@ _mime_param_create(struct mime_param_builder *self)
     * multibyte sequences until sizeof(buf) is reached, but since we (a) don't
     * support stateful encodings and (b) will try to synchronize on UTF-8 this
     * problem is scarce, possibly even artificial */
-   char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
+   char buf[n_MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
       *bp, *bp_max, *bp_xmax, *bp_lanoenc;
    char const *vb, *vb_lanoenc;
    size_t vl;
@@ -536,7 +536,7 @@ _mime_param_create(struct mime_param_builder *self)
       _RAW     = 1<<2
    } f = _NONE;
    NYD2_ENTER;
-   LCTA(sizeof(buf) >= MIME_LINELEN * 2);
+   n_LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
 
 jneed_enc:
    self->mpb_buf = bp = bp_lanoenc = buf;
@@ -879,8 +879,8 @@ mime_param_create(struct str *result, char const *name, char const *value)
       goto jleave;
    top.mpb_charset = salloc((top.mpb_charset_len = (ui32_t)i) +1);
    for (i = 0; *name != '\0'; ++i, ++name)
-      ((char*)UNCONST(top.mpb_charset))[i] = lowerconv(*name);
-   ((char*)UNCONST(top.mpb_charset))[i] = '\0';
+      ((char*)n_UNCONST(top.mpb_charset))[i] = lowerconv(*name);
+   ((char*)n_UNCONST(top.mpb_charset))[i] = '\0';
    top.mpb_is_utf8 = !ascncasecmp(top.mpb_charset, "utf-8",
          top.mpb_charset_len);
 

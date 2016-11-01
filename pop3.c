@@ -222,7 +222,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    NYD_ENTER;
 
    md5_init(&ctx);
-   md5_update(&ctx, (uc_i*)UNCONST(ts), strlen(ts));
+   md5_update(&ctx, (uc_i*)n_UNCONST(ts), strlen(ts));
    md5_update(&ctx, (uc_i*)scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
    md5_final(digest, &ctx);
    md5tohex(hex, digest);
@@ -256,7 +256,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    NYD_ENTER;
 
    /* The USER/PASS plain text version */
-   cp = ac_alloc(MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
+   cp = ac_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
          sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
@@ -369,7 +369,7 @@ static void
 _pop3_maincatch(int s)
 {
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
    if (interrupts++ == 0)
       n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
    else
@@ -394,7 +394,7 @@ pop3alarm(int s)
 {
    sighandler_type volatile saveint, savepipe;
    NYD_X; /* Signal handler */
-   UNUSED(s);
+   n_UNUSED(s);
 
    if (_pop3_lock++ == 0) {
       hold_all_sigs();

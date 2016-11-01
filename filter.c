@@ -32,7 +32,7 @@
  */
 
 #ifdef HAVE_QUOTE_FOLD
-CTA(QUOTE_MAX > 3);
+n_CTAV(QUOTE_MAX > 3);
 
 enum qf_state {
    _QF_CLEAN,
@@ -349,7 +349,7 @@ FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
    NYD_ENTER;
-   UNUSED(self);
+   n_UNUSED(self);
    NYD_LEAVE;
 }
 
@@ -478,7 +478,7 @@ quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
    NYD_ENTER;
-   UNUSED(self);
+   n_UNUSED(self);
 
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
@@ -555,7 +555,7 @@ struct htmlflt_href {
    struct htmlflt_href *hfh_next;
    ui32_t      hfh_no;     /* Running sequence */
    ui32_t      hfh_len;    /* of .hfh_dat */
-   char        hfh_dat[VFIELD_SIZE(0)];
+   char        hfh_dat[n_VFIELD_SIZE(0)];
 };
 
 struct htmlflt_tag {
@@ -566,7 +566,8 @@ struct htmlflt_tag {
    ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
    char const  hft_tag[10]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
-CTA(SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE); /* .hf_ign_tag */
+n_CTA(n_SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE,
+   "Structure field too large a size"); /* .hf_ign_tag */
 
 struct hf_ent {
    ui8_t       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
@@ -1098,12 +1099,12 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    if(c == '"' || c == '\''){
       /* TODO oops i have forgotten whether backslash quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
-      store->s = UNCONST(cp);
+      store->s = n_UNCONST(cp);
       for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
          ;
       /* XXX ... and we simply ignore a missing trailing " :> */
    }else{
-      store->s = UNCONST(cp - 1);
+      store->s = n_UNCONST(cp - 1);
       if(!whitechar(c))
          while((c = *cp) != '\0' && !whitechar(c) && c != '>')
             ++cp;
@@ -1115,7 +1116,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
     * value content TODO join into the parse step above! */
    for (cp = store->s; i > 0 && spacechar(*cp); ++cp, --i)
       ;
-   store->s = UNCONST(cp);
+   store->s = n_UNCONST(cp);
    for (cp += i - 1; i > 0 && spacechar(*cp); --cp, --i)
       ;
    if ((store->l = i) == 0)
@@ -1197,7 +1198,7 @@ jput_as_is:
          if (c == '>' || c == '/' || whitechar(c))
             break;
       }
-      if (PTRCMP(++hftp, >=, _hf_tags + NELEM(_hf_tags)))
+      if (PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))
          goto jnotknown;
    }
 
@@ -1236,7 +1237,7 @@ jput_as_is:
       self = _hf_param(self, &param, "alt");
       self = _hf_putc(self, '[');
       if (param.s == NULL) {
-         param.s = UNCONST("IMG");
+         param.s = n_UNCONST("IMG");
          param.l = 3;
          goto jimg_put;
       } /* else */ if (memchr(param.s, '&', param.l) != NULL)
@@ -1252,7 +1253,7 @@ jimg_put:
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
          struct htmlflt_href *hhp = smalloc(sizeof(*hhp) -
-               VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
+               n_VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
          hhp->hfh_no = ++self->hf_href_no;
@@ -1355,7 +1356,8 @@ jputuni:
    } else {
       ui32_t f = self->hf_flags, hf;
 
-      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + NELEM(_hf_ents)); ++hfep)
+      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + n_NELEM(_hf_ents));
+            ++hfep)
          if (l == ((hf = hfep->hfe_flags) & _HFE_LENGTH_MASK) &&
                !strncmp(s, hfep->hfe_ent, l)) {
             if ((hf & _HFE_HAVE_UNI) && (f & _HF_UTF8)) {
@@ -1544,7 +1546,7 @@ static void
 __hf_onpipe(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    __hf_hadpipesig = TRU1;
 }
 
@@ -1564,7 +1566,7 @@ htmlflt_process_main(void)
    htmlflt_reset(&hf, stdout);
 
    for (;;) {
-      if ((i = fread(buf, sizeof(buf[0]), NELEM(buf), stdin)) == 0) {
+      if ((i = fread(buf, sizeof(buf[0]), n_NELEM(buf), stdin)) == 0) {
          rv = !feof(stdin);
          break;
       }
@@ -1623,7 +1625,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    memset(self, 0, sizeof *self);
 
    if (f != NULL) {
-      ui32_t sw = MAX(_HF_MINLEN, (ui32_t)scrnwidth);
+      ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)scrnwidth);
 
       self->hf_line = smalloc((size_t)sw * mb_cur_max +1);
       self->hf_lmax = sw;
