@@ -1523,7 +1523,7 @@ jleave:
 }
 
 FL void
-n_load_Xargs(char const **lines){
+n_load_Xargs(char const **lines, size_t cnt){
    static char const name[] = "-X";
 
    ui8_t buf[sizeof(struct a_lex_input_stack) + sizeof name];
@@ -1545,17 +1545,16 @@ n_load_Xargs(char const **lines){
     *    be discarded and the next line shall continue the command
     * Therefore instead of "lip->li_lines = UNCONST(lines)", duplicate the
     * entire lines array and set _MACRO_FREE_DATA */
-   for(imax = 0; lines[imax++] != NULL;)
-      ;
+   imax = cnt + 1;
    lip->li_lines = smalloc(sizeof(*lip->li_lines) * imax);
 
    /* For each of the input lines.. */
-   for(i = len = 0, cp = NULL; (srcp = *lines) != NULL;){
+   for(i = len = 0, cp = NULL; cnt > 0;){
       bool_t keep;
       size_t j;
 
-      if((j = strlen(srcp)) == 0){
-         ++lines;
+      if((j = strlen(srcp = *lines)) == 0){
+         ++lines, --cnt;
          continue;
       }
 
@@ -1564,7 +1563,7 @@ n_load_Xargs(char const **lines){
          *lines = &xsrcp[1];
          j = PTR2SIZE(xsrcp - srcp);
       }else
-         ++lines;
+         ++lines, --cnt;
 
       /* The (separated) string may itself indicate soft newline escaping */
       if((keep = (srcp[j - 1] == '\\'))){

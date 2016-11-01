@@ -995,7 +995,7 @@ FL char *      n_lex_input_cp(enum n_lexinput_flags lif,
 FL void        n_load(char const *name);
 
 /* "Load" all the -X command line definitions in order -- *only* for main() */
-FL void        n_load_Xargs(char const **lines);
+FL void        n_load_Xargs(char const **lines, size_t cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * PS_SOURCING so that others will realize that they are no longer reading from

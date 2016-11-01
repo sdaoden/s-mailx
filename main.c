@@ -1019,10 +1019,8 @@ jgetopt_done:
    }
 
    /* "load()" commands given on command line */
-   if (Xargs_cnt > 0){
-      Xargs[Xargs_cnt] = NULL;
-      n_load_Xargs(Xargs);
-   }
+   if(Xargs_cnt > 0)
+      n_load_Xargs(Xargs, Xargs_cnt);
 
    /* Final tests */
    if(options & OPT_Mm_FLAG){
