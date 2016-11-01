@@ -1228,7 +1228,7 @@ a_cmd_top(void *vp, struct ignoretab *itp){
                   c = '\1';
                else if(s.s_len > 8 &&
                      (xcp = strstr(cp, "[-- ")) != NULL &&
-                      PTRCMP(xcp, <, strstr(cp, " --]")))
+                      strstr(&xcp[1], " --]") != NULL)
                   c = '\0';
                else for(; (c = *cp) != '\0'; ++cp){
                   if(!asciichar(c))
