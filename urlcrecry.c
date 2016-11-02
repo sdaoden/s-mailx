@@ -581,7 +581,18 @@ FL char *
    char *n, *np, c1;
    NYD2_ENTER;
 
-   np = n = (n_autorec_alloc)(NULL, strlen(cp) * 3 +1 n_MEMORY_DEBUG_ARGSCALL);
+   /* C99 */{
+      size_t i;
+
+      i = strlen(cp);
+      if(i >= UIZ_MAX / 3){
+         n = NULL;
+         goto jleave;
+      }
+      i *= 3;
+      ++i;
+      np = n = (n_autorec_alloc)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
+   }
 
    for (; (c1 = *cp) != '\0'; ++cp) {
       /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
@@ -603,6 +614,7 @@ jesc:
       }
    }
    *np = '\0';
+jleave:
    NYD2_LEAVE;
    return n;
 }
@@ -645,7 +657,8 @@ c_urlcodec(void *v){
 
    if(is_prefix(cp, "encode")){
       while((cp = *++argv) != NULL){
-         res = urlxenc(cp, ispath);
+         if((res = urlxenc(cp, ispath)) == NULL)
+            res = _("<ERROR>");
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), res, strlen(res));
       }
@@ -653,7 +666,8 @@ c_urlcodec(void *v){
       struct str in, out;
 
       while((cp = *++argv) != NULL){
-         res = urlxdec(cp);
+         if((res = urlxdec(cp)) == NULL)
+            res = _("<ERROR>");
          in.l = strlen(in.s = n_UNCONST(res)); /* logical */
          makeprint(&in, &out);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
@@ -848,42 +862,52 @@ jeproto:
    /* User and password, I */
 juser:
    if ((cp = _url_last_at_before_slash(data)) != NULL) {
-      size_t l = PTR2SIZE(cp - data);
-      char const *d = data;
-      char *ub = ac_alloc(l +1);
+      size_t l;
+      char const *urlpe, *d;
+      char *ub;
 
+      l = PTR2SIZE(cp - data);
+      ub = ac_alloc(l +1);
+      d = data;
       urlp->url_had_user = TRU1;
-      data = cp + 1;
+      data = &cp[1];
 
       /* And also have a password? */
-      if ((cp = memchr(d, ':', l)) != NULL) {
+      if((cp = memchr(d, ':', l)) != NULL){
          size_t i = PTR2SIZE(cp - d);
 
          l -= i + 1;
          memcpy(ub, cp + 1, l);
          ub[l] = '\0';
-         urlp->url_pass.l = strlen(urlp->url_pass.s = urlxdec(ub));
 
-         if (strcmp(ub, urlxenc(urlp->url_pass.s, FAL0))) {
-            n_err(_("String is not properly URL percent encoded: %s\n"),
-               ub);
-            goto jleave;
-         }
+         if((urlp->url_pass.s = urlxdec(ub)) == NULL)
+            goto jurlp_err;
+         urlp->url_pass.l = strlen(urlp->url_pass.s);
+         if((urlpe = urlxenc(urlp->url_pass.s, FAL0)) == NULL)
+            goto jurlp_err;
+         if(strcmp(ub, urlpe))
+            goto jurlp_err;
          l = i;
       }
 
       memcpy(ub, d, l);
       ub[l] = '\0';
-      urlp->url_user.l = strlen(urlp->url_user.s = urlxdec(ub));
-      urlp->url_user_enc.l = strlen(
-            urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+      if((urlp->url_user.s = urlxdec(ub)) == NULL)
+         goto jurlp_err;
+      urlp->url_user.l = strlen(urlp->url_user.s);
+      if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL)
+         goto jurlp_err;
+      urlp->url_user_enc.l = strlen(urlp->url_user_enc.s);
 
-      if (urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)) {
+      if(urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)){
+jurlp_err:
          n_err(_("String is not properly URL percent encoded: %s\n"), ub);
-         goto jleave;
+         d = NULL;
       }
 
       ac_free(ub);
+      if(d == NULL)
+         goto jleave;
    }
 
    /* Servername and port -- and possible path suffix */
@@ -976,8 +1000,11 @@ juser:
 
       urlp->url_user.l = strlen(urlp->url_user.s);
       urlp->url_user.s = savestrbuf(urlp->url_user.s, urlp->url_user.l);
-      urlp->url_user_enc.l = strlen(
-            urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0));
+      if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL){
+         n_err(_("Cannot URL encode %s\n"), urlp->url_user.s);
+         goto jleave;
+      }
+      urlp->url_user_enc.l = strlen(urlp->url_user_enc.s);
    }
 
    /* And then there are a lot of prebuild string combinations TODO do lazy */
@@ -1176,7 +1203,15 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    if (!addr_is_nuser) {
       if ((s = _url_last_at_before_slash(addr)) != NULL) {
-         ccp->cc_user.s = urlxdec(savestrbuf(addr, PTR2SIZE(s - addr)));
+         char *cp;
+
+         cp = savestrbuf(addr, PTR2SIZE(s - addr));
+
+         if((ccp->cc_user.s = urlxdec(cp)) == NULL){
+            n_err(_("String is not properly URL percent encoded: %s\n"), cp);
+            ccp = NULL;
+            goto jleave;
+         }
          ccp->cc_user.l = strlen(ccp->cc_user.s);
       } else if (ware & REQ_USER)
          goto jgetuser;

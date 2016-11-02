@@ -2381,7 +2381,7 @@ FL void        bidi_info_create(struct bidi_info *bip);
  */
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly salloc()ated result */
+ * These return a newly salloc()ated result, or NULL on length excess */
 FL char *      urlxenc(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
