@@ -417,10 +417,19 @@ jenc_retry:
          cin.s = n_UNCONST(wbot);
          cin.l = PTR2SIZE(wend - wbot);
 
-         if (flags & _ENC_B64)
-            j = b64_encode(&cout, &cin, B64_ISHEAD | B64_ISENCWORD)->l;
-         else
-            j = qp_encode(&cout, &cin, QP_ISHEAD | QP_ISENCWORD)->l;
+         /* C99 */{
+            struct str *xout;
+
+            if(flags & _ENC_B64)
+               xout = b64_encode(&cout, &cin, B64_ISHEAD | B64_ISENCWORD);
+            else
+               xout = qp_encode(&cout, &cin, QP_ISHEAD | QP_ISENCWORD);
+            if(xout == NULL){
+               sz = -1;
+               break;
+            }
+            j = xout->l;
+         }
          /* (Avoid trigraphs in the RFC 2047 placeholder..) */
          i = j + (flags & _8BIT ? cset8_len : cset7_len) + sizeof("=!!B!!=") -1;
          if (*wcur != '\0')
@@ -912,13 +921,10 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          cout.s = NULL;
          cout.l = 0;
          if (convert == CONV_FROMB64) {
-            /* XXX Take care for, and strip LF from
-             * XXX [Invalid Base64 encoding ignored] */
-            if (b64_decode(&cout, &cin, NULL) == STOP &&
-                  cout.s[cout.l - 1] == '\n')
-               --cout.l;
-         } else
-            qp_decode(&cout, &cin, NULL);
+            if(!b64_decode(&cout, &cin, NULL))
+               n_str_assign_cp(&cout, _("[Invalid Base64 encoding]"));
+         }else if(!qp_decode(&cout, &cin, NULL))
+            n_str_assign_cp(&cout, _("[Invalid Quoted-Printable encoding]"));
 
          out->l = lastenc;
 #ifdef HAVE_ICONV
@@ -1108,10 +1114,19 @@ jconvert:
 
    switch (convert) {
    case CONV_FROMQP:
-      state = qp_decode(&out, &in, rest);
+      if(!qp_decode(&out, &in, rest)){
+         n_err(_("Invalid Quoted-Printable encoding ignored\n"));
+         sz = 0;
+         state = STOP; /* TODO sz = -1 stops outer levels! */
+         break;
+      }
+      state = OKAY;
       goto jqpb64_dec;
    case CONV_TOQP:
-      qp_encode(&out, &in, QP_NONE);
+      if(qp_encode(&out, &in, QP_NONE) == NULL){
+         sz = -1;
+         break;
+      }
       goto jqpb64_enc;
    case CONV_8BIT:
       sz = quoteflt_push(qf, in.s, in.l);
@@ -1120,7 +1135,13 @@ jconvert:
       rest = NULL;
       /* FALLTHRU */
    case CONV_FROMB64_T:
-      state = b64_decode(&out, &in, rest);
+      if(!b64_decode(&out, &in, rest)){
+         n_err(_("Invalid Base64 encoding ignored\n"));
+         sz = 0;
+         state = STOP; /* TODO sz = -1 stops outer levels! */
+         break;
+      }
+      state = OKAY;
 jqpb64_dec:
       if ((sz = out.l) != 0) {
          ui32_t opl = qf->qf_pfix_len;
@@ -1133,7 +1154,10 @@ jqpb64_dec:
          sz = -1;
       break;
    case CONV_TOB64:
-      b64_encode(&out, &in, B64_LF | B64_MULTILINE);
+      if(b64_encode(&out, &in, B64_LF | B64_MULTILINE) == NULL){
+         sz = -1;
+         break;
+      }
 jqpb64_enc:
       sz = fwrite(out.s, sizeof *out.s, out.l, f);
       if (sz != (ssize_t)out.l)

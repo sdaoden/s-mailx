@@ -1501,10 +1501,20 @@ cram_md5_string(struct str const *user, struct str const *pass,
    NYD_ENTER;
 
    out.s = NULL;
+   if(user->l >= UIZ_MAX - 1 - MD5TOHEX_SIZE - 1)
+      goto jleave;
+   if(pass->l >= INT_MAX)
+      goto jleave;
+
    in.s = n_UNCONST(b64);
    in.l = strlen(in.s);
-   b64_decode(&out, &in, NULL);
-   assert(out.s != NULL);
+   if(!b64_decode(&out, &in, NULL))
+      goto jleave;
+   if(out.l >= INT_MAX){
+      free(out.s);
+      out.s = NULL;
+      goto jleave;
+   }
 
    hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
    free(out.s);
@@ -1514,9 +1524,11 @@ cram_md5_string(struct str const *user, struct str const *pass,
    in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
    memcpy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
-   memcpy(in.s + user->l + 1, cp, MD5TOHEX_SIZE);
-   b64_encode(&out, &in, B64_SALLOC | B64_CRLF);
+   memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
+   if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NULL)
+      out.s = NULL;
    ac_free(in.s);
+jleave:
    NYD_LEAVE;
    return out.s;
 }

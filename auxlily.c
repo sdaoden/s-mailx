@@ -652,6 +652,7 @@ getrandstring(size_t length)
    }
 #endif
 
+   assert(length + 3 < UIZ_MAX / 4);
    b64_encode_buf(&b64, data, length + 3,
       B64_SALLOC | B64_RFC4648URL | B64_NOPAD);
    ac_free(data);

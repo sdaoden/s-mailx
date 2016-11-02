@@ -1250,13 +1250,13 @@ FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,
                   enum mime_enc_flags flags);
 
 /* How much space is necessary to encode len bytes in QP, worst case.
- * Includes room for terminator */
+ * Includes room for terminator, UIZ_MAX on overflow */
 FL size_t      qp_encode_calc_size(size_t len);
 
 /* If flags includes QP_ISHEAD these assume "word" input and use special
  * quoting rules in addition; soft line breaks are not generated.
  * Otherwise complete input lines are assumed and soft line breaks are
- * generated as necessary */
+ * generated as necessary.  Return NULL on error (overflow) */
 FL struct str * qp_encode(struct str *out, struct str const *in,
                   enum qpflags flags);
 #ifdef notyet
@@ -1272,19 +1272,19 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
  * to decode a header strings and (1) uses special decoding rules and (b)
  * directly produces output.
  * The buffers of out and possibly rest will be managed via srealloc().
- * Returns OKAY. XXX or STOP on error (in which case out is set to an error
- * XXX message); caller is responsible to free buffers */
-FL int         qp_decode(struct str *out, struct str const *in,
+ * Returns FAL0 on error; caller is responsible to free buffers */
+FL bool_t      qp_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /* How much space is necessary to encode len bytes in Base64, worst case.
- * Includes room for (CR/LF/CRLF and) terminator */
+ * Includes room for (CR/LF/CRLF and) terminator, UIZ_MAX on overflow */
 FL size_t      b64_encode_calc_size(size_t len);
 
 /* Note these simply convert all the input (if possible), including the
  * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
  * if B64_MULTILINE is set).
- * Thus, in the B64_BUF case, better call b64_encode_calc_size() first */
+ * Thus, in the B64_BUF case, better call b64_encode_calc_size() first.
+ * Return NULL on error (overflow; cannot happen for B64_BUF) */
 FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
@@ -1296,11 +1296,10 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
 
 /* If rest is set then decoding will assume text input.
  * The buffers of out and possibly rest will be managed via srealloc().
- * Returns OKAY or STOP on error (in which case out is set to an error
- * message); caller is responsible to free buffers.
- * XXX STOP is effectively not returned for text input (rest!=NULL), instead
+ * Returns FAL0 on error; caller is responsible to free buffers.
+ * XXX FAL0 is effectively not returned for text input (rest!=NULL), instead
  * XXX replacement characters are produced for invalid data */
-FL int         b64_decode(struct str *out, struct str const *in,
+FL bool_t      b64_decode(struct str *out, struct str const *in,
                   struct str *rest);
 
 /*
@@ -2437,7 +2436,7 @@ FL int         c_netrc(void *v);
 # define MD5TOHEX_SIZE           32
 FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
 
-/* CRAM-MD5 encode the *user* / *pass* / *b64* combo */
+/* CRAM-MD5 encode the *user* / *pass* / *b64* combo; NULL on overflow error */
 FL char *      cram_md5_string(struct str const *user, struct str const *pass,
                   char const *b64);
 

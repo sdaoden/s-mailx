@@ -685,14 +685,14 @@ jos_leave:
 jdobuf:
       switch (mpp->m_mime_enc) {
       case MIMEE_B64:
-         if (b64_decode(&dec, &in, &rest) == STOP) {
+         if (!b64_decode(&dec, &in, &rest)) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
          }
          break;
       case MIMEE_QP:
          /* Drin */
-         if (qp_decode(&dec, &in, &rest) == STOP) {
+         if (!qp_decode(&dec, &in, &rest)) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
          }

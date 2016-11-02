@@ -140,7 +140,7 @@ do {\
 } while (0)
 
 static bool_t
-_smtp_talk(struct sock *sp, struct sendbundle *sbp)
+_smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
 {
    char o[LINESIZE], *hostname;
    struct smtp_line _sl, *slp = &_sl;
@@ -193,39 +193,62 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    default:
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
+      cnt = sbp->sb_ccred.cc_user.l;
+      if(sbp->sb_ccred.cc_pass.l >= UIZ_MAX - 2 ||
+            cnt >= UIZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
+jerr_cred:
+         n_err(_("Credentials overflow buffer sizes\n"));
+         goto jleave;
+      }
+      cnt += sbp->sb_ccred.cc_pass.l;
+
+      if(cnt >= sizeof(o) - 2)
+         goto jerr_cred;
+      cnt += 2;
+      if(b64_encode_calc_size(cnt) == UIZ_MAX)
+         goto jerr_cred;
+
       _OUT(NETLINE("AUTH PLAIN"));
       _ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
          '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
-      b64_encode_buf(&b64, o,
-         sbp->sb_ccred.cc_user.l + sbp->sb_ccred.cc_pass.l + 2,
-         B64_SALLOC | B64_CRLF);
+      b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
+      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UIZ_MAX ||
+            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UIZ_MAX)
+         goto jerr_cred;
+
       _OUT(NETLINE("AUTH LOGIN"));
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, sbp->sb_ccred.cc_user.s, B64_SALLOC | B64_CRLF);
+      b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
+         B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, sbp->sb_ccred.cc_pass.s, B64_SALLOC | B64_CRLF);
+      b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
+         B64_SALLOC | B64_CRLF);
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
 #ifdef HAVE_MD5
-   case AUTHTYPE_CRAM_MD5:
+   case AUTHTYPE_CRAM_MD5:{
+      char *cp;
+
+      if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
+            slp->dat)) == NULL)
+         goto jerr_cred;
+
       _OUT(NETLINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
-      {  char *cp = cram_md5_string(&sbp->sb_ccred.cc_user,
-               &sbp->sb_ccred.cc_pass, slp->dat);
-         _OUT(cp);
-      }
+
+      _OUT(cp);
       _ANSWER(2, FAL0, FAL0);
-      break;
+   }  break;
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:

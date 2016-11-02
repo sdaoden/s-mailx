@@ -389,18 +389,32 @@ qp_encode_calc_size(size_t len)
     *    }' |
     *    MAILRC=/dev/null LC_ALL=en_US.UTF-8 s-nail -nvvd \
     *       -Ssendcharsets=utf8 -s testsub ./LETTER */
+
+   if(len >= UIZ_MAX / 3){
+      len = UIZ_MAX;
+      goto jleave;
+   }
    bytes = len * 3;
    lines = bytes / QP_LINESIZE;
    len += lines;
 
-   bytes = len * 3;
    /* Trailing hard NL may be missing, so there may be two lines.
     * Thus add soft + hard NL per line and a trailing NUL */
+   if(len >= UIZ_MAX / 3){
+      len = UIZ_MAX;
+      goto jleave;
+   }
+   bytes = len * 3;
    lines = (bytes / QP_LINESIZE) + 1;
    lines <<= 1;
+   ++bytes;
+   /*if(UIZ_MAX - bytes >= lines){
+      len = UIZ_MAX;
+      goto jleave;
+   }*/
    bytes += lines;
-   len = ++bytes;
-
+   len = bytes;
+jleave:
    NYD_LEAVE;
    return len;
 }
@@ -438,13 +452,16 @@ FL struct str *
 qp_encode(struct str *out, struct str const *in, enum qpflags flags)
 {
    bool_t sol = (flags & QP_ISHEAD ? FAL0 : TRU1), seenx;
-   ssize_t lnlen;
+   size_t lnlen;
    char *qp;
    char const *is, *ie;
    NYD_ENTER;
 
-   if (!(flags & QP_BUF)) {
-      lnlen = qp_encode_calc_size(in->l);
+   if(!(flags & QP_BUF)){
+      if((lnlen = qp_encode_calc_size(in->l)) == UIZ_MAX){
+         out = NULL;
+         goto jerr;
+      }
       out->s = (flags & QP_SALLOC) ? salloc(lnlen) : srealloc(out->s, lnlen);
    }
    qp = out->s;
@@ -530,23 +547,31 @@ jsoftnl:
 jleave:
    out->l = PTR2SIZE(qp - out->s);
    out->s[out->l] = '\0';
+jerr:
    NYD_LEAVE;
    return out;
 }
 
-FL int
+FL bool_t
 qp_decode(struct str *out, struct str const *in, struct str *rest)
 {
-   int rv = STOP;
    char *os, *oc;
    char const *is, *ie;
+   bool_t rv;
    NYD_ENTER;
+
+   rv = FAL0;
 
    if (rest != NULL && rest->l != 0) {
       os = out->s;
       *out = *rest;
       rest->s = os;
       rest->l = 0;
+   }
+
+   if(UIZ_MAX - 3 - out->l <= in->l){
+      out->l = 0;
+      goto jerr;
    }
 
    oc = os =
@@ -651,7 +676,8 @@ jsoftnl:
    /* XXX RFC: QP decode should check no trailing WS on line */
 jleave:
    out->l = PTR2SIZE(oc - os);
-   rv = OKAY;
+   rv = TRU1;
+jerr:
    NYD_LEAVE;
    return rv;
 }
@@ -660,9 +686,13 @@ FL size_t
 b64_encode_calc_size(size_t len)
 {
    NYD_ENTER;
-   len = (len * 4) / 3;
-   len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
-   len += 2 + 1; /* CRLF, \0 */
+   if(len >= UIZ_MAX / 4)
+      len = UIZ_MAX;
+   else{
+      len = (len * 4) / 3;
+      len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
+      len += 2 + 1; /* CRLF, \0 */
+   }
    NYD_LEAVE;
    return len;
 }
@@ -671,7 +701,7 @@ FL struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 {
    ui8_t const *p;
-   ssize_t i, lnlen;
+   size_t i, lnlen;
    char *b64;
    NYD_ENTER;
 
@@ -680,8 +710,12 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 
    p = (ui8_t const*)in->s;
 
-   if (!(flags & B64_BUF)) {
-      i = b64_encode_calc_size(in->l);
+   if(!(flags & B64_BUF)){
+      if((i = b64_encode_calc_size(in->l)) == UIZ_MAX){
+         out->l = 0; /* XXX legacy unless n_string + callers error adjusted */
+         out = NULL;
+         goto jleave;
+      }
       out->s = (flags & B64_SALLOC) ? salloc(i) : srealloc(out->s, i);
    }
    b64 = out->s;
@@ -689,7 +723,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    if (!(flags & (B64_CRLF | B64_LF)))
       flags &= ~B64_MULTILINE;
 
-   for (lnlen = 0, i = (ssize_t)in->l; i > 0; p += 3, i -= 3) {
+   for (lnlen = 0, i = in->l; (ssize_t)i > 0; p += 3, i -= 3) {
       ui32_t a = p[0], b, c;
 
       b64[0] = _b64_enctbl[a >> 2];
@@ -754,6 +788,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
          else if (c == '/')
                *b64 = '_';
    }
+jleave:
    NYD_LEAVE;
    return out;
 }
@@ -787,13 +822,13 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
 }
 #endif
 
-FL int
+FL bool_t
 b64_decode(struct str *out, struct str const *in, struct str *rest)
 {
    struct str work;
    char *x;
    size_t len;
-   int rv; /* XXX -> bool_t */
+   bool_t rv;
    NYD_ENTER;
 
    len = _b64_decode_prepare(&work, in);
@@ -865,35 +900,29 @@ b64_decode(struct str *out, struct str const *in, struct str *rest)
             }
          }
       }
-      rv = OKAY;
+      out->s[out->l] = '\0';
+      rv = TRU1;
       goto jleave;
    }
 
    /* Ignore an empty input, as may happen for an empty final line */
-   if (work.l == 0) {
+   if (work.l == 0)
       out->s = srealloc(out->s, 1);
-      rv = OKAY;
-   } else if (work.l >= 4 && !(work.l & 3)) {
+   else if (work.l >= 4 && !(work.l & 3)){
       out->s = srealloc(out->s, len +1);
       if ((ssize_t)(len = _b64_decode(out, &work)) < 0)
          goto jerr;
-      rv = OKAY;
-   } else
+   }else
       goto jerr;
 
-jleave:
    out->s[out->l] = '\0';
+   rv = TRU1;
+jleave:
    NYD_LEAVE;
    return rv;
-
-jerr: {
-   char const *err = _("[Invalid Base64 encoding]\n");
-   out->l = len = strlen(err);
-   out->s = srealloc(out->s, len +1);
-   memcpy(out->s, err, len);
-   rv = STOP;
+jerr:
+   rv = FAL0;
    goto jleave;
-   }
 }
 
 /* s-it-mode */

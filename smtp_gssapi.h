@@ -126,8 +126,13 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    gss_ctx_id_t gss_context;
    OM_uint32 maj_stat, min_stat, ret_flags;
    int conf_state;
-   bool_t ok = FAL0;
+   bool_t ok;
    NYD_ENTER;
+
+   ok = FAL0;
+
+   if(INT_MAX - 1 - 4 <= sbp->sb_ccred.cc_user.l)
+      goto j_leave;
 
    send_tok.value = salloc(send_tok.length = sbp->sb_url.url_host.l + 5 +1);
    memcpy(send_tok.value, "smtp@", 5);
@@ -138,7 +143,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
          &target_name);
    if (maj_stat != GSS_S_COMPLETE) {
       _smtp_gssapi_error(send_tok.value, maj_stat, min_stat);
-      goto jleave;
+      goto j_leave;
    }
 
    token_ptr = GSS_C_NO_BUFFER;
@@ -159,8 +164,10 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
       _smtp_gssapi_error("initializing GSS context", maj_stat, min_stat);
       gss_release_name(&min_stat, &target_name);
-      goto jleave;
+      goto j_leave;
    }
+   recv_tok.value = out.s = NULL;
+   recv_tok.length = out.l = 0;
 
    _OUT(NETLINE("AUTH GSSAPI"));
    _ANSWER(3, FAL0, FAL0);
@@ -175,7 +182,8 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
       out.s = NULL;
       in.s = slp->dat;
       in.l = slp->datlen;
-      b64_decode(&out, &in, NULL);
+      if(!b64_decode(&out, &in, NULL))
+         goto jebase64;
       recv_tok.value = out.s;
       recv_tok.length = out.l;
       token_ptr = &recv_tok;
@@ -210,7 +218,13 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    out.s = NULL;
    in.s = slp->dat;
    in.l = slp->datlen;
-   b64_decode(&out, &in, NULL);
+   if(!b64_decode(&out, &in, NULL)){
+jebase64:
+      if(out.s != NULL)
+         free(out.s);
+      n_err(_("Invalid base64 encoding from GSSAPI server\n"));
+      goto jleave;
+   }
    recv_tok.value = out.s;
    recv_tok.length = out.l;
    maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok, &send_tok,
@@ -241,11 +255,12 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    b64_encode_buf(&out, recv_tok.value, recv_tok.length, B64_SALLOC | B64_CRLF);
    _OUT(out.s);
    _ANSWER(2, FAL0, FAL0);
-   gss_delete_sec_context(&min_stat, &gss_context, &recv_tok);
-   gss_release_buffer(&min_stat, &recv_tok);
 
    ok = TRU1;
 jleave:
+   gss_delete_sec_context(&min_stat, &gss_context, &recv_tok);
+   gss_release_buffer(&min_stat, &recv_tok);
+j_leave:
    NYD_LEAVE;
    return ok;
 }
