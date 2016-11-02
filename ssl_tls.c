@@ -451,7 +451,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       _ssl_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
-      X509_STORE_CTX_get_error_depth(store), (success ? "" : _("ERROR")));
+      X509_STORE_CTX_get_error_depth(store), (success ? "" : V_(n_error)));
 
    if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
       X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);

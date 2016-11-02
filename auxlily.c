@@ -443,8 +443,9 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
       if (!(pstate & PS_ERRORS_NOTED) && a_aux_err_head != NULL) {
          pstate |= PS_ERRORS_NOTED;
          fprintf(stderr, _("There are new messages in the error message ring "
-               "(denoted by #ERR#)\n"
-            "  The `errors' command manages this message ring\n"));
+               "(denoted by %s)\n"
+            "  The `errors' command manages this message ring\n"),
+            V_(n_error));
       }
 
       if ((trigger = (a_aux_err_cnt_noted != a_aux_err_cnt)))
@@ -464,7 +465,7 @@ getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
    }
 #ifdef HAVE_ERRORS
    if (trigger)
-      ccp_base = savecatsep(_("#ERR#"), '\0', ccp_base);
+      ccp_base = savecatsep(V_(n_error), '\0', ccp_base);
 #endif
    n_NATCH_CHAR( cclen_base = strlen(ccp_base); )
 

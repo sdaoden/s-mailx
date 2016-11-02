@@ -1161,7 +1161,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
       char *in = *ap, *out = urlxenc(in, FAL0);
 
       if(out == NULL)
-         out = n_UNCONST(_("<ERROR>"));
+         out = n_UNCONST(V_(n_error));
       printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
@@ -1181,7 +1181,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
       char *in = *ap, *out = urlxdec(in);
 
       if(out == NULL)
-         out = n_UNCONST(_("<ERROR>"));
+         out = n_UNCONST(V_(n_error));
       printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }

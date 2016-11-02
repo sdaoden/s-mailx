@@ -278,7 +278,7 @@ _spam_action(enum spam_action sa, int *ip)
    if (vc.vc_progress) {
       if (curr > 0)
          fprintf(stdout, _(" %s (%" PRIuZ "/%" PRIuZ " all/skipped)\n"),
-            (ok ? "done" : "ERROR"), curr, skipped);
+            (ok ? _("done") : V_(n_error)), curr, skipped);
       fflush(stdout);
    }
 

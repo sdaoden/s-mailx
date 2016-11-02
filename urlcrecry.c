@@ -658,7 +658,7 @@ c_urlcodec(void *v){
    if(is_prefix(cp, "encode")){
       while((cp = *++argv) != NULL){
          if((res = urlxenc(cp, ispath)) == NULL)
-            res = _("<ERROR>");
+            res = V_(n_error);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), res, strlen(res));
       }
@@ -667,7 +667,7 @@ c_urlcodec(void *v){
 
       while((cp = *++argv) != NULL){
          if((res = urlxdec(cp)) == NULL)
-            res = _("<ERROR>");
+            res = V_(n_error);
          in.l = strlen(in.s = n_UNCONST(res)); /* logical */
          makeprint(&in, &out);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
