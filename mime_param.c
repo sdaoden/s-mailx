@@ -496,11 +496,10 @@ jhex_putc:
    if (f & _HAVE_ICONV) {
       sin.s = NULL;
       sin.l = 0;
-      if (n_iconv_str(fhicd, n_ICONV_DEFAULT, &sin, &sou, NULL) != 0) {
-         if (!(f & _ERRORS))
+      if (n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &sin, &sou, NULL) != 0) {
+         if (!(f & _ERRORS)) /* XXX won't be reported with _UNIDFEFAULT */
             *emsg = N_("character set conversion failed on value");
          f |= _ERRORS;
-         n_str_add_buf(&sin, "?", 1); /* XXX necessary? Unicode replacement */
       }
       free(sou.s);
       sou = sin;
