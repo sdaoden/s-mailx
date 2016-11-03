@@ -1013,6 +1013,9 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    int err;
    NYD2_ENTER;
 
+   if((icf & n_ICONV_UNIREPL) && !(options & OPT_UNICODE))
+      icf &= ~n_ICONV_UNIREPL;
+
    for(;;){
       size_t sz;
 
@@ -1030,13 +1033,22 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
       if(*inbleft > 0){
          ++(*inb);
          --(*inbleft);
-         if(*outbleft > 0/* TODO unicode replacement 0xFFFD */){
-             *(*outb)++ = '?';
-             --*outbleft;
-         }else{
-            err = E2BIG;
-            goto jleave;
+         if(icf & n_ICONV_UNIREPL){
+            if(*outbleft >= 3){
+               (*outb)[0] = '\xEF';
+               (*outb)[1] = '\xBF';
+               (*outb)[2] = '\xBD';
+               *outb += 3;
+               *outbleft -= 3;
+               continue;
+            }
+         }else if(*outbleft > 0){
+            *(*outb)++ = '?';
+            --*outbleft;
+            continue;
          }
+         err = E2BIG;
+         goto jleave;
       }else if(*outbleft > 0){
          **outb = '\0';
          goto jleave;

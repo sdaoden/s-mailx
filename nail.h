@@ -900,7 +900,9 @@ enum n_iconv_flags{
    n_ICONV_NONE = 0,
    n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
    n_ICONV_IGN_NOREVERSE = 1<<1, /* .. non-reversible conversions in output */
-   n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE
+   n_ICONV_UNIREPL = 1<<2,       /* Use Unicode replacement 0xFFFD = EF BF BD */
+   n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
+   n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
 
 enum n_lexinput_flags{
