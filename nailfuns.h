@@ -1221,7 +1221,8 @@ FL char *      mime_fromaddr(char const *name);
 /* fwrite(3) performing the given MIME conversion */
 FL ssize_t     mime_write(char const *ptr, size_t size, FILE *f,
                   enum conversion convert, enum tdflags dflags,
-                  struct quoteflt *qf, struct str *rest);
+                  struct quoteflt *qf, struct str *outrest,
+                  struct str *inrest);
 FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
                   FILE *f, enum conversion convert, enum tdflags dflags);
 
@@ -1230,8 +1231,9 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
- * TODO for now this is pretty mixed up regarding this external interface.
- * TODO in v15.0 CTE will be filter based, and explicit conversion will
+ * TODO For now this is pretty mixed up regarding this external interface
+ * TODO (and due to that the code is, too).
+ * TODO In v15.0 CTE will be filter based, and explicit conversion will
  * TODO gain clear error codes
  */
 
@@ -1266,15 +1268,12 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum qpflags flags);
 #endif
 
-/* If rest is set then decoding will assume body text input (assumes input
- * represents lines, only create output when input didn't end with soft line
- * break [except it finalizes an encoded CRLF pair]), otherwise it is assumed
- * to decode a header strings and (1) uses special decoding rules and (b)
- * directly produces output.
- * The buffers of out and possibly rest will be managed via srealloc().
- * Returns FAL0 on error; caller is responsible to free buffers */
-FL bool_t      qp_decode(struct str *out, struct str const *in,
-                  struct str *rest);
+/* The buffers of out and *rest* will be managed via srealloc().
+ * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
+ * Return FAL0 on error; caller is responsible to free buffers */
+FL bool_t      qp_decode_header(struct str *out, struct str const *in);
+FL bool_t      qp_decode_text(struct str *out, struct str const *in,
+                  struct str *outrest, struct str *inrest_or_null);
 
 /* How much space is necessary to encode len bytes in Base64, worst case.
  * Includes room for (CR/LF/CRLF and) terminator, UIZ_MAX on overflow */
@@ -1289,18 +1288,27 @@ FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
 FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum b64flags flags);
-#ifdef HAVE_SMTP
+#ifdef notyet
 FL struct str * b64_encode_cp(struct str *out, char const *cp,
                   enum b64flags flags);
 #endif
 
-/* If rest is set then decoding will assume text input.
- * The buffers of out and possibly rest will be managed via srealloc().
+/* The _{header,text}() variants are failure tolerant, the latter requires
+ * outrest to be set; due to the odd 4:3 relation inrest_or_null should be
+ * given, _then_, it is an error if it is needed but not set.
+ * TODO pre v15 callers should ensure that no endless loop is entered because
+ * TODO the inrest cannot be converted and ends up as inrest over and over:
+ * TODO give NULL to stop such loops.
+ * The buffers of out and possibly *rest* will be managed via srealloc().
  * Returns FAL0 on error; caller is responsible to free buffers.
- * XXX FAL0 is effectively not returned for text input (rest!=NULL), instead
- * XXX replacement characters are produced for invalid data */
-FL bool_t      b64_decode(struct str *out, struct str const *in,
-                  struct str *rest);
+ * XXX FAL0 is effectively not returned for _text() variant,
+ * XXX instead replacement characters are produced for invalid data.
+ * XXX _Unless_ operation could EOVERFLOW.
+ * XXX I.e. this is bad and is tolerant for text and otherwise not */
+FL bool_t      b64_decode(struct str *out, struct str const *in);
+FL bool_t      b64_decode_header(struct str *out, struct str const *in);
+FL bool_t      b64_decode_text(struct str *out, struct str const *in,
+                  struct str *outrest, struct str *inrest_or_null);
 
 /*
  * mime_param.c
@@ -2048,9 +2056,13 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 #define n_string_trunc(S,L) \
    (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
-/* Release buffer ownership */
-#define n_string_drop_ownership(S) \
-   ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S))
+/* Take/Release buffer ownership */
+#define n_string_take_ownership(SP,B,S,L) \
+   (assert((SP)->s_dat == NULL), assert((S) == 0 || (B) != NULL),\
+    assert((L) < (S) || (L) == 0),\
+    (SP)->s_dat = (B), (SP)->s_len = (L), (SP)->s_size = (S), (SP))
+#define n_string_drop_ownership(SP) \
+   ((SP)->s_dat = NULL, (SP)->s_len = (SP)->s_size = 0, (SP))
 
 /* Release all memory */
 FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);

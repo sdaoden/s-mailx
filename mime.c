@@ -59,7 +59,7 @@ static bool_t           _name_highbit(struct name *np);
 
 /* fwrite(3) while checking for displayability */
 static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
-                           struct str *rest, struct quoteflt *qf);
+                           struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 1522 format and write to the file fo */
 static ssize_t          mime_write_tohdr(struct str *in, FILE *fo);
@@ -126,7 +126,7 @@ __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static ssize_t
-_fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
+_fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
    struct quoteflt *qf)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
@@ -146,7 +146,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
    struct str in, out;
    ssize_t rv;
    NYD_ENTER;
-   n_UNUSED(rest);
+   n_UNUSED(outrest);
 
    in = *input;
    out.s = NULL;
@@ -156,25 +156,29 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *rest,
    if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
       char *buf = NULL;
 
-      if (rest != NULL && rest->l > 0) {
-         in.l = rest->l + input->l;
+      if (outrest != NULL && outrest->l > 0) {
+         in.l = outrest->l + input->l;
          in.s = buf = smalloc(in.l +1);
-         memcpy(in.s, rest->s, rest->l);
-         memcpy(in.s + rest->l, input->s, input->l);
-         rest->l = 0;
+         memcpy(in.s, outrest->s, outrest->l);
+         memcpy(&in.s[outrest->l], input->s, input->l);
+         outrest->l = 0;
       }
 
-      if (n_iconv_str(iconvd, n_ICONV_DEFAULT, &out, &in, &in) != 0 &&
-            rest != NULL && in.l > 0) {
+      if (n_iconv_str(iconvd, n_ICONV_UNIDEFAULT, &out, &in, &in) != 0 &&
+            outrest != NULL && in.l > 0) {
          n_iconv_reset(iconvd);
          /* Incomplete multibyte at EOF is special */
          if (flags & _TD_EOF) {
             out.s = srealloc(out.s, out.l + 4);
-            /* TODO 0xFFFD out.s[out.l++] = '[';*/
-            out.s[out.l++] = '?'; /* TODO unicode replacement 0xFFFD !!! */
-            /* TODO 0xFFFD out.s[out.l++] = ']';*/
+            if(options & OPT_UNICODE){
+               out.s[out.l+0] = '\xEF'; /* TODO magic */
+               out.s[out.l+1] = '\xBF';
+               out.s[out.l+2] = '\xBD';
+               out.l += 3;
+            }else
+               out.s[out.l++] = '?';
          } else
-            n_str_add(rest, &in);
+            n_str_add(outrest, &in);
       }
       in = out;
       out.l = 0;
@@ -921,16 +925,16 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          cout.s = NULL;
          cout.l = 0;
          if (convert == CONV_FROMB64) {
-            if(!b64_decode(&cout, &cin, NULL))
+            if(!b64_decode_header(&cout, &cin))
                n_str_assign_cp(&cout, _("[Invalid Base64 encoding]"));
-         }else if(!qp_decode(&cout, &cin, NULL))
+         }else if(!qp_decode_header(&cout, &cin))
             n_str_assign_cp(&cout, _("[Invalid Quoted-Printable encoding]"));
 
          out->l = lastenc;
 #ifdef HAVE_ICONV
          if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
-            convert = n_iconv_str(fhicd, n_ICONV_DEFAULT, &cin, &cout, NULL);
+            convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NULL);
             out = n_str_add(out, &cin);
             if (convert) {/* EINVAL at EOS */
                n_iconv_reset(fhicd);
@@ -1048,7 +1052,7 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
    NYD_ENTER;
 
    quoteflt_reset(qf = quoteflt_dummy(), f);
-   rv = mime_write(ptr, size, f, convert, dflags, qf, NULL);
+   rv = mime_write(ptr, size, f, convert, dflags, qf, NULL, NULL);
    quoteflt_flush(qf);
    NYD_LEAVE;
    return rv;
@@ -1068,24 +1072,36 @@ __mimemw_onsig(int sig) /* TODO someday, we won't need it no more */
 FL ssize_t
 mime_write(char const *ptr, size_t size, FILE *f,
    enum conversion convert, enum tdflags volatile dflags,
-   struct quoteflt *qf, struct str * volatile rest)
+   struct quoteflt *qf, struct str * volatile outrest,
+   struct str * volatile inrest)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
     * TODO so that memory allocation count drops down massively; for now,
     * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
    struct str in, out;
    ssize_t volatile sz;
-   int state;
    NYD_ENTER;
+
+   dflags |= _TD_BUFCOPY;
 
    in.s = n_UNCONST(ptr);
    in.l = size;
+   if(inrest != NULL && inrest->l > 0){
+      out.s = smalloc(inrest->l + size + 1);
+      memcpy(out.s, inrest->s, inrest->l);
+      if(size > 0)
+         memcpy(&out.s[inrest->l], in.s, size);
+      size += inrest->l;
+      inrest->l = 0;
+      (in.s = out.s)[in.l = size] = '\0';
+      dflags &= ~_TD_BUFCOPY;
+   }
+
    out.s = NULL;
    out.l = 0;
 
-   dflags |= _TD_BUFCOPY;
    if ((sz = size) == 0) {
-      if (rest != NULL && rest->l != 0)
+      if (outrest != NULL && outrest->l != 0)
          goto jconvert;
       goto jleave;
    }
@@ -1095,8 +1111,9 @@ mime_write(char const *ptr, size_t size, FILE *f,
          (convert == CONV_TOQP || convert == CONV_8BIT ||
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
       if (n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &out, &in, NULL) != 0) {
-         /* XXX report conversion error? */;
          n_iconv_reset(iconvd);
+         /* TODO This causes hard-failure.  We would need to have an action
+          * TODO policy FAIL|IGNORE|SETERROR(but continue).  Better huh? */
          sz = -1;
          goto jleave;
       }
@@ -1114,17 +1131,15 @@ jconvert:
 
    switch (convert) {
    case CONV_FROMQP:
-      if(!qp_decode(&out, &in, rest)){
+      if(!qp_decode_text(&out, &in, outrest, inrest)){
          n_err(_("Invalid Quoted-Printable encoding ignored\n"));
-         sz = 0;
-         state = STOP; /* TODO sz = -1 stops outer levels! */
+         sz = 0; /* TODO sz = -1 stops outer levels! */
          break;
       }
-      state = OKAY;
       goto jqpb64_dec;
    case CONV_TOQP:
       if(qp_encode(&out, &in, QP_NONE) == NULL){
-         sz = -1;
+         sz = 0; /* TODO sz = -1 stops outer levels! */
          break;
       }
       goto jqpb64_enc;
@@ -1132,26 +1147,25 @@ jconvert:
       sz = quoteflt_push(qf, in.s, in.l);
       break;
    case CONV_FROMB64:
-      rest = NULL;
+      if(!b64_decode_text(&out, &in, outrest, inrest))
+         goto jeb64;
+      outrest = NULL;
+      if(0){
       /* FALLTHRU */
    case CONV_FROMB64_T:
-      if(!b64_decode(&out, &in, rest)){
-         n_err(_("Invalid Base64 encoding ignored\n"));
-         sz = 0;
-         state = STOP; /* TODO sz = -1 stops outer levels! */
-         break;
+         if(!b64_decode_text(&out, &in, outrest, inrest)){
+jeb64:
+            n_err(_("Invalid Base64 encoding ignored\n"));
+            sz = 0; /* TODO sz = -1 stops outer levels! */
+            break;
+         }
       }
-      state = OKAY;
 jqpb64_dec:
       if ((sz = out.l) != 0) {
          ui32_t opl = qf->qf_pfix_len;
-         if (state != OKAY)
-            qf->qf_pfix_len = 0;
-         sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), rest, qf);
+         sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), outrest, qf);
          qf->qf_pfix_len = opl;
       }
-      if (state != OKAY)
-         sz = -1;
       break;
    case CONV_TOB64:
       if(b64_encode(&out, &in, B64_LF | B64_MULTILINE) == NULL){

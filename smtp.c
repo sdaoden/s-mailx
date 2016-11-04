@@ -213,7 +213,8 @@ jerr_cred:
 
       snprintf(o, sizeof o, "%c%s%c%s",
          '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
-      b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
@@ -225,13 +226,15 @@ jerr_cred:
       _OUT(NETLINE("AUTH LOGIN"));
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
-         B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
+            B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
-         B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
+            B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;

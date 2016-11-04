@@ -173,8 +173,11 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    _ANSWER(3, FAL0, FAL0);
    while (maj_stat == GSS_S_CONTINUE_NEEDED) {
       /* Pass token obtained from first gss_init_sec_context() call */
-      b64_encode_buf(&out, send_tok.value, send_tok.length,
-         B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&out, send_tok.value, send_tok.length,
+            B64_SALLOC | B64_CRLF) == NULL){
+         gss_release_buffer(&min_stat, &send_tok);
+         goto jleave;
+      }
       gss_release_buffer(&min_stat, &send_tok);
       _OUT(out.s);
       _ANSWER(3, FAL0, TRU1);
@@ -182,7 +185,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
       out.s = NULL;
       in.s = slp->dat;
       in.l = slp->datlen;
-      if(!b64_decode(&out, &in, NULL))
+      if(!b64_decode(&out, &in))
          goto jebase64;
       recv_tok.value = out.s;
       recv_tok.length = out.l;
@@ -210,7 +213,11 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
 
    /* Pass token obtained from second gss_init_sec_context() call */
    gss_release_name(&min_stat, &target_name);
-   b64_encode_buf(&out, send_tok.value, send_tok.length, B64_SALLOC | B64_CRLF);
+   if(b64_encode_buf(&out, send_tok.value, send_tok.length,
+         B64_SALLOC | B64_CRLF) == NULL){
+      gss_release_buffer(&min_stat, &send_tok);
+      goto jleave;
+   }
    gss_release_buffer(&min_stat, &send_tok);
    _OUT(out.s);
 
@@ -218,7 +225,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    out.s = NULL;
    in.s = slp->dat;
    in.l = slp->datlen;
-   if(!b64_decode(&out, &in, NULL)){
+   if(!b64_decode(&out, &in)){
 jebase64:
       if(out.s != NULL)
          free(out.s);
@@ -252,7 +259,9 @@ jebase64:
       goto jleave;
    }
 
-   b64_encode_buf(&out, recv_tok.value, recv_tok.length, B64_SALLOC | B64_CRLF);
+   if(b64_encode_buf(&out, recv_tok.value, recv_tok.length,
+         B64_SALLOC | B64_CRLF) == NULL)
+      goto jleave;
    _OUT(out.s);
    _ANSWER(2, FAL0, FAL0);
 

@@ -1,7 +1,10 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
+ *@ Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047;
+ *@ for _header() versions: including "encoded word" as of RFC 2049):
  *@ - Quoted-Printable, section 6.7
  *@ - Base64, section 6.8
+ *@ TODO We have no notion of a "current message context" and thus badly log.
+ *@ TODO This is not final yet, v15 will bring "filters".
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -43,52 +46,67 @@
 # include "nail.h"
 #endif
 
-enum _qact {
-    N =   0,   /* Do not quote */
-    Q =   1,   /* Must quote */
-   SP =   2,   /* sp */
-   XF =   3,   /* Special character 'F' - maybe quoted */
-   XD =   4,   /* Special character '.' - maybe quoted */
-   UU =   5,   /* In header, _ must be quoted in encoded word */
-   US = '_',   /* In header, ' ' must be quoted as _ in encoded word */
-   QM = '?',   /* In header, special character ? not always quoted */
-   EQ = '=',   /* In header, '=' must be quoted in encoded word */
-   HT ='\t',   /* In body HT=SP, in head HT=HT, but quote in encoded word */
-   NL =   N,   /* Don't quote '\n' (NL) */
-   CR =   Q    /* Always quote a '\r' (CR) */
+enum a_me_qact{
+   a_ME_N = 0,
+   a_ME_Q = 1,       /* Must quote */
+   a_ME_SP = 2,      /* sp */
+   a_ME_XF = 3,      /* Special character 'F' - maybe quoted */
+   a_ME_XD = 4,      /* Special character '.' - maybe quoted */
+   a_ME_UU = 5,      /* In header, _ must be quoted in encoded word */
+   a_ME_US = '_',    /* In header, ' ' must be quoted as _ in encoded word */
+   a_ME_QM = '?',    /* In header, special character ? not always quoted */
+   a_ME_EQ = '=',    /* In header, '=' must be quoted in encoded word */
+   a_ME_HT ='\t',    /* Body HT=SP.  Head HT=HT, BUT quote in encoded word */
+   a_ME_NL = 0,      /* Don't quote '\n' (NL) */
+   a_ME_CR = a_ME_Q  /* Always quote a '\r' (CR) */
 };
 
 /* Lookup tables to decide whether a character must be encoded or not.
  * Email header differences according to RFC 2047, section 4.2:
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
  * - don't care about the special ^F[rom] and ^.$ */
-static ui8_t const         _qtab_body[] = {
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,SP,NL, Q,  Q,CR, Q, Q,
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
-   SP, N, N, N,  N, N, N, N,  N, N, N, N,  N, N,XD, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, Q, N, N,
+static ui8_t const a_me_qp_body[] = {
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+    a_ME_Q, a_ME_SP, a_ME_NL,  a_ME_Q,  a_ME_Q, a_ME_CR,  a_ME_Q,  a_ME_Q,
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+   a_ME_SP,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_XD,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_Q,  a_ME_N,  a_ME_N,
 
-    N, N, N, N,  N, N,XF, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
-},
-                           _qtab_head[] = {
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q,HT, Q, Q,  Q, Q, Q, Q,
-    Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,  Q, Q, Q, Q,
-   US, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N,EQ, N,QM,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_XF,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_Q,
+}, a_me_qp_head[] = {
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+    a_ME_Q, a_ME_HT,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+    a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
+   a_ME_US,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_EQ,  a_ME_N, a_ME_QM,
 
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N,UU,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, N,
-    N, N, N, N,  N, N, N, N,  N, N, N, N,  N, N, N, Q,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_UU,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+    a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_Q,
 };
 
-/* The decoding table is only accessed via _B64_DECUI8() */
-static char const          _b64_enctbl[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static signed char const   _b64__dectbl[] = {
+/* The decoding table is only accessed via a_ME_B64_DECUI8() */
+static char const a_me_b64_enctbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz" "0123456789" "+/";
+static signed char const a_me_b64__dectbl[] = {
    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
    -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, -1,-1,-1,63,
@@ -98,83 +116,71 @@ static signed char const   _b64__dectbl[] = {
    -1,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
    41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1
 };
-#define _B64_EQU           (ui32_t)-2
-#define _B64_BAD           (ui32_t)-1
-#define _B64_DECUI8(C)     \
-   ((C) >= sizeof(_b64__dectbl) ? _B64_BAD : (ui32_t)_b64__dectbl[(ui8_t)(C)])
+#define a_ME_B64_EQU (ui32_t)-2
+#define a_ME_B64_BAD (ui32_t)-1
+#define a_ME_B64_DECUI8(C) \
+   ((ui8_t)(C) >= sizeof(a_me_b64__dectbl)\
+    ? a_ME_B64_BAD : (ui32_t)a_me_b64__dectbl[(ui8_t)(C)])
 
-/* ASCII case-insensitive check whether Content-Transfer-Encoding: header body
- * hbody defined this encoding type */
-static bool_t        _is_ct_enc(char const *hbody, char const *encoding);
+/* (Ugly to place an enum here) */
+static char const a_me_ctes[] = "7bit\0" "8bit\0" \
+      "base64\0" "quoted-printable\0" "binary\0";
+enum a_me_ctes_off{
+   a_ME_CTES_7B_OFF = 0, a_ME_CTES_7B_LEN = 4,
+   a_ME_CTES_8B_OFF = 5, a_ME_CTES_8B_LEN = 4,
+   a_ME_CTES_B64_OFF = 10, a_ME_CTES_B64_LEN = 6,
+   a_ME_CTES_QP_OFF = 17,  a_ME_CTES_QP_LEN = 16,
+   a_ME_CTES_BIN_OFF = 34, a_ME_CTES_BIN_LEN = 6
+};
 
 /* Check whether *s must be quoted according to flags, else body rules;
  * sol indicates whether we are at the first character of a line/field */
-SINLINE enum _qact   _mustquote(char const *s, char const *e, bool_t sol,
+SINLINE enum a_me_qact a_me_mustquote(char const *s, char const *e, bool_t sol,
                         enum mime_enc_flags flags);
 
-/* Trim WS and make work point to the decodable range of in*
- * Return the amount of bytes a b64_decode operation on that buffer requires */
-static size_t        _b64_decode_prepare(struct str *work,
-                        struct str const *in);
+/* Trim WS and make work point to the decodable range of in.
+ * Return the amount of bytes a b64_decode operation on that buffer requires,
+ * or UIZ_MAX on overflow error */
+static size_t a_me_b64_decode_prepare(struct str *work, struct str const *in);
 
-/* Perform b64_decode on sufficiently spaced & multiple-of-4 base in(put).
- * Return number of useful bytes in out or -1 on error */
-static ssize_t       _b64_decode(struct str *out, struct str *in);
+/* Perform b64_decode on in(put) to sufficiently spaced out(put).
+ * Return number of useful bytes in out or -1 on error.
+ * Note: may enter endless loop if in->l < 4 and 0 return is not handled! */
+static ssize_t a_me_b64_decode(struct str *out, struct str *in);
 
-static bool_t
-_is_ct_enc(char const *hbody, char const *encoding)
-{
-   bool_t quoted, rv;
-   int c;
-   NYD2_ENTER;
-
-   if (*hbody == '"')
-      quoted = TRU1, ++hbody;
-   else
-      quoted = FAL0;
-   rv = FAL0;
-
-   while (*hbody != '\0' && *encoding != '\0')
-      if ((c = *hbody++, lowerconv(c) != *encoding++))
-         goto jleave;
-   rv = TRU1;
-
-   if (quoted && *hbody == '"')
-      goto jleave;
-   if (*hbody == '\0' || whitechar(*hbody))
-      goto jleave;
-   rv = FAL0;
-jleave:
-   NYD2_LEAVE;
-   return rv;
-}
-
-SINLINE enum _qact
-_mustquote(char const *s, char const *e, bool_t sol, enum mime_enc_flags flags)
-{
+SINLINE enum a_me_qact
+a_me_mustquote(char const *s, char const *e, bool_t sol,
+      enum mime_enc_flags flags){
    ui8_t const *qtab;
-   enum _qact a, r;
+   enum a_me_qact a, r;
    NYD2_ENTER;
 
    qtab = (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD))
-         ? _qtab_head : _qtab_body;
-   a = ((ui8_t)*s > 0x7F) ? Q : qtab[(ui8_t)*s];
+         ? a_me_qp_head : a_me_qp_body;
 
-   if ((r = a) == N || (r = a) == Q)
+   if((ui8_t)*s > 0x7F){
+      r = a_ME_Q;
       goto jleave;
-   r = Q;
+   }
+
+   a = qtab[(ui8_t)*s];
+
+   if((r = a) == a_ME_N || a == a_ME_Q)
+      goto jleave;
+
+   r = a_ME_Q;
 
    /* Special header fields */
-   if (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD)) {
+   if(flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD)){
       /* Special massage for encoded words */
-      if (flags & MIMEEF_ISENCWORD) {
-         switch (a) {
-         case HT:
-         case US:
-         case EQ:
+      if(flags & MIMEEF_ISENCWORD){
+         switch(a){
+         case a_ME_HT:
+         case a_ME_US:
+         case a_ME_EQ:
             r = a;
             /* FALLTHRU */
-         case UU:
+         case a_ME_UU:
             goto jleave;
          default:
             break;
@@ -183,44 +189,43 @@ _mustquote(char const *s, char const *e, bool_t sol, enum mime_enc_flags flags)
 
       /* Treat '?' only special if part of '=?' .. '?=' (still too much quoting
        * since it's '=?CHARSET?CTE?stuff?=', and especially the trailing ?=
-       * should be hard too match */
-      if (a == QM && ((!sol && s[-1] == '=') || (s < e && s[1] == '=')))
+       * should be hard to match */
+      if(a == a_ME_QM && ((!sol && s[-1] == '=') || (s < e && s[1] == '=')))
          goto jleave;
       goto jnquote;
    }
 
    /* Body-only */
 
-   if (a == SP) {
+   if(a == a_ME_SP){
       /* WS only if trailing white space */
-      if (PTRCMP(s + 1, ==, e) || s[1] == '\n')
+      if(&s[1] == e || s[1] == '\n')
          goto jleave;
       goto jnquote;
    }
 
    /* Rest are special begin-of-line cases */
-   if (!sol)
+   if(!sol)
       goto jnquote;
 
    /* ^From */
-   if (a == XF) {
-      if (PTRCMP(s + 4, <, e) && s[1] == 'r' && s[2] == 'o' && s[3] == 'm')
+   if(a == a_ME_XF){
+      if(&s[4] < e && s[1] == 'r' && s[2] == 'o' && s[3] == 'm' && s[4] == ' ')
          goto jleave;
       goto jnquote;
    }
    /* ^.$ */
-   if (a == XD && (PTRCMP(s + 1, ==, e) || s[1] == '\n'))
+   if(a == a_ME_XD && (&s[1] == e || s[1] == '\n'))
       goto jleave;
 jnquote:
-   r = N;
+   r = 0;
 jleave:
    NYD2_LEAVE;
    return r;
 }
 
 static size_t
-_b64_decode_prepare(struct str *work, struct str const *in)
-{
+a_me_b64_decode_prepare(struct str *work, struct str const *in){
    char *cp;
    size_t cp_len;
    NYD2_ENTER;
@@ -228,84 +233,98 @@ _b64_decode_prepare(struct str *work, struct str const *in)
    cp = in->s;
    cp_len = in->l;
 
-   while (cp_len > 0 && spacechar(*cp))
+   while(cp_len > 0 && spacechar(*cp))
       ++cp, --cp_len;
    work->s = cp;
 
-   for (cp += cp_len; cp_len > 0; --cp_len) {
-      char c = *--cp;
-      if (!spacechar(c))
+   for(cp += cp_len; cp_len > 0; --cp_len){
+      --cp;
+      if(!spacechar(*cp))
          break;
    }
    work->l = cp_len;
 
-   if (cp_len > 16)
+   if(cp_len > 16){
+      /* EOVERFLOW */
+      if(UIZ_MAX / 3 <= cp_len){
+         cp_len = UIZ_MAX;
+         goto jleave;
+      }
       cp_len = ((cp_len * 3) >> 2) + (cp_len >> 3);
-   cp_len += 2*3 +1;
+   }
+   cp_len += (2 * 3) +1;
+jleave:
    NYD2_LEAVE;
    return cp_len;
 }
 
 static ssize_t
-_b64_decode(struct str *out, struct str *in)
-{
-   ssize_t rv = -1;
+a_me_b64_decode(struct str *out, struct str *in){
    ui8_t *p;
    ui8_t const *q, *end;
+   ssize_t rv;
    NYD2_ENTER;
 
-   p = (ui8_t*)out->s + out->l;
+   rv = -1;
+   p = (ui8_t*)&out->s[out->l];
    q = (ui8_t const*)in->s;
 
-   for (end = q + in->l; PTRCMP(q + 4, <=, end);) {
-      ui32_t a = _B64_DECUI8(q[0]), b = _B64_DECUI8(q[1]),
-         c = _B64_DECUI8(q[2]), d = _B64_DECUI8(q[3]);
-      q += 4;
+   for(end = &q[in->l]; PTR2SIZE(end - q) >= 4; q += 4){
+      ui32_t a, b, c, d;
 
-      if (a >= _B64_EQU || b >= _B64_EQU || c == _B64_BAD || d == _B64_BAD)
+      a = a_ME_B64_DECUI8(q[0]);
+      b = a_ME_B64_DECUI8(q[1]);
+      c = a_ME_B64_DECUI8(q[2]);
+      d = a_ME_B64_DECUI8(q[3]);
+
+      if(n_UNLIKELY(a >= a_ME_B64_EQU || b >= a_ME_B64_EQU ||
+            c == a_ME_B64_BAD || d == a_ME_B64_BAD))
          goto jleave;
 
       *p++ = ((a << 2) | ((b & 0x30) >> 4));
-      if (c == _B64_EQU)  { /* got '=' */
-         if (d != _B64_EQU)
+      if(c == a_ME_B64_EQU){ /* got '=' */
+         q += 4;
+         if(n_UNLIKELY(d != a_ME_B64_EQU))
             goto jleave;
          break;
       }
+
       *p++ = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
-      if (d == _B64_EQU) /* got '=' */
+      if(d == a_ME_B64_EQU) /* got '=' */
          break;
       *p++ = (((c & 0x03) << 6) | d);
    }
    rv ^= rv;
 
-jleave: {
-      size_t i = PTR2SIZE((char*)p - out->s);
+jleave:{
+      size_t i;
+
+      i = PTR2SIZE((char*)p - out->s);
       out->l = i;
-      if (rv == 0)
+      if(rv == 0)
          rv = (ssize_t)i;
    }
-   in->l -= PTR2SIZE((char*)n_UNCONST(q) - in->s);
+   in->l -= PTR2SIZE(q - (ui8_t*)in->s);
    in->s = n_UNCONST(q);
    NYD2_LEAVE;
    return rv;
 }
 
 FL enum mime_enc
-mime_enc_target(void)
-{
+mime_enc_target(void){
    char const *cp;
    enum mime_enc rv;
    NYD2_ENTER;
 
-   if ((cp = ok_vlook(encoding)) == NULL)
+   if((cp = ok_vlook(encoding)) == NULL)
       rv = MIME_DEFAULT_ENCODING;
-   else if (!asccasecmp(cp, "quoted-printable"))
-      rv = MIMEE_QP;
-   else if (!asccasecmp(cp, "8bit"))
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
       rv = MIMEE_8B;
-   else if (!asccasecmp(cp, "base64"))
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
+      rv = MIMEE_QP;
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_B64_OFF]))
       rv = MIMEE_B64;
-   else {
+   else{
       n_err(_("Warning: invalid *encoding*, using Base64: %s\n"), cp);
       rv = MIMEE_B64;
    }
@@ -314,72 +333,91 @@ mime_enc_target(void)
 }
 
 FL enum mime_enc
-mime_enc_from_ctehead(char const *hbody)
-{
+mime_enc_from_ctehead(char const *hbody){
    enum mime_enc rv;
    NYD2_ENTER;
 
-   if (hbody == NULL || _is_ct_enc(hbody, "7bit"))
+   if(hbody == NULL)
       rv = MIMEE_7B;
-   else if (_is_ct_enc(hbody, "8bit"))
-      rv = MIMEE_8B;
-   else if (_is_ct_enc(hbody, "base64"))
-      rv = MIMEE_B64;
-   else if (_is_ct_enc(hbody, "binary"))
-      rv = MIMEE_BIN;
-   else if (_is_ct_enc(hbody, "quoted-printable"))
-      rv = MIMEE_QP;
-   else
-      rv = MIMEE_NONE;
+   else{
+      struct{
+         ui8_t off;
+         ui8_t len;
+         ui8_t enc;
+         ui8_t __dummy;
+      } const *cte, cte_base[] = {
+         {a_ME_CTES_7B_OFF, a_ME_CTES_7B_LEN, MIMEE_7B, 0},
+         {a_ME_CTES_8B_OFF, a_ME_CTES_8B_LEN, MIMEE_8B, 0},
+         {a_ME_CTES_B64_OFF, a_ME_CTES_B64_LEN, MIMEE_B64, 0},
+         {a_ME_CTES_QP_OFF, a_ME_CTES_QP_LEN, MIMEE_QP, 0},
+         {a_ME_CTES_BIN_OFF, a_ME_CTES_BIN_LEN, MIMEE_BIN, 0},
+         {0, 0, MIMEE_NONE, 0}
+      };
+      union {char const *s; size_t l;} u;
+
+      if(*hbody == '"')
+         for(u.s = ++hbody; *u.s != '\0' && *u.s != '"'; ++u.s)
+            ;
+      else
+         for(u.s = hbody; *u.s != '\0' && !whitechar(*u.s); ++u.s)
+            ;
+      u.l = PTR2SIZE(u.s - hbody);
+
+      for(cte = cte_base;;)
+         if(cte->len == u.l && !asccasecmp(&a_me_ctes[cte->off], hbody)){
+            rv = cte->enc;
+            break;
+         }else if((++cte)->enc == MIMEE_NONE){
+            rv = MIMEE_NONE;
+            break;
+         }
+   }
    NYD2_LEAVE;
    return rv;
 }
 
 FL char const *
-mime_enc_from_conversion(enum conversion const convert) /* TODO booom */
-{
+mime_enc_from_conversion(enum conversion const convert){
    char const *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   switch (convert) {
-   case CONV_7BIT:   rv = "7bit"; break;
-   case CONV_8BIT:   rv = "8bit"; break;
-   case CONV_TOQP:   rv = "quoted-printable"; break;
-   case CONV_TOB64:  rv = "base64"; break;
-   default:          rv = ""; break;
+   switch(convert){
+   case CONV_7BIT: rv = &a_me_ctes[a_ME_CTES_7B_OFF]; break;
+   case CONV_8BIT: rv = &a_me_ctes[a_ME_CTES_8B_OFF]; break;
+   case CONV_TOQP: rv = &a_me_ctes[a_ME_CTES_QP_OFF]; break;
+   case CONV_TOB64: rv = &a_me_ctes[a_ME_CTES_B64_OFF]; break;
+   default: rv = ""; break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 FL size_t
-mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags)
-{
+mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
    size_t rv;
    bool_t sol;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   for (rv = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
-      switch (_mustquote(ln, ln + lnlen, sol, flags)) {
-      case US:
-      case EQ:
-      case HT:
+   for(rv = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
+      switch(a_me_mustquote(ln, ln + lnlen, sol, flags)){
+      case a_ME_US:
+      case a_ME_EQ:
+      case a_ME_HT:
          assert(flags & MIMEEF_ISENCWORD);
          /* FALLTHRU */
-      case N:
+      case 0:
          continue;
       default:
          ++rv;
       }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 FL size_t
-qp_encode_calc_size(size_t len)
-{
+qp_encode_calc_size(size_t len){
    size_t bytes, lines;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* The worst case sequence is 'CRLF' -> '=0D=0A=\n\0'.
     * However, we must be aware that (a) the output may span multiple lines
@@ -387,9 +425,9 @@ qp_encode_calc_size(size_t len)
     *    LC_ALL=C awk 'BEGIN{
     *       for (i = 1; i < 100000; ++i) printf "\xC3\xBC"
     *    }' |
-    *    MAILRC=/dev/null LC_ALL=en_US.UTF-8 s-nail -nvvd \
-    *       -Ssendcharsets=utf8 -s testsub ./LETTER */
+    *    s-nail -:/ -dSsendcharsets=utf8 -s testsub no@where */
 
+   /* Several EOVERFLOW */
    if(len >= UIZ_MAX / 3){
       len = UIZ_MAX;
       goto jleave;
@@ -398,12 +436,12 @@ qp_encode_calc_size(size_t len)
    lines = bytes / QP_LINESIZE;
    len += lines;
 
-   /* Trailing hard NL may be missing, so there may be two lines.
-    * Thus add soft + hard NL per line and a trailing NUL */
    if(len >= UIZ_MAX / 3){
       len = UIZ_MAX;
       goto jleave;
    }
+   /* Trailing hard NL may be missing, so there may be two lines.
+    * Thus add soft + hard NL per line and a trailing NUL */
    bytes = len * 3;
    lines = (bytes / QP_LINESIZE) + 1;
    lines <<= 1;
@@ -415,14 +453,13 @@ qp_encode_calc_size(size_t len)
    bytes += lines;
    len = bytes;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return len;
 }
 
 #ifdef notyet
 FL struct str *
-qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
-{
+qp_encode_cp(struct str *out, char const *cp, enum qpflags flags){
    struct str in;
    NYD_ENTER;
 
@@ -435,8 +472,7 @@ qp_encode_cp(struct str *out, char const *cp, enum qpflags flags)
 
 FL struct str *
 qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
-   enum qpflags flags)
-{
+      enum qpflags flags){
    struct str in;
    NYD_ENTER;
 
@@ -449,13 +485,14 @@ qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
 #endif /* notyet */
 
 FL struct str *
-qp_encode(struct str *out, struct str const *in, enum qpflags flags)
-{
-   bool_t sol = (flags & QP_ISHEAD ? FAL0 : TRU1), seenx;
+qp_encode(struct str *out, struct str const *in, enum qpflags flags){
    size_t lnlen;
    char *qp;
    char const *is, *ie;
+   bool_t sol, seenx;
    NYD_ENTER;
+
+   sol = (flags & QP_ISHEAD ? FAL0 : TRU1);
 
    if(!(flags & QP_BUF)){
       if((lnlen = qp_encode_calc_size(in->l)) == UIZ_MAX){
@@ -468,24 +505,27 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags)
    is = in->s;
    ie = is + in->l;
 
-   /* QP_ISHEAD? */
-   if (!sol) {
-      enum mime_enc_flags ef = MIMEEF_ISHEAD |
-            (flags & QP_ISENCWORD ? MIMEEF_ISENCWORD : 0);
+   if(flags & QP_ISHEAD){
+      enum mime_enc_flags ef;
 
-      for (seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp) {
-         enum _qact mq = _mustquote(is, ie, sol, ef);
-         char c = *is++;
+      ef = MIMEEF_ISHEAD | (flags & QP_ISENCWORD ? MIMEEF_ISENCWORD : 0);
 
-         if (mq == N) {
+      for(seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp){
+         char c;
+         enum a_me_qact mq;
+
+         mq = a_me_mustquote(is, ie, sol, ef);
+         c = *is++;
+
+         if(mq == a_ME_N){
             /* We convert into a single *encoded-word*, that'll end up in
              * =?C?Q??=; quote '?' from when we're inside there on */
-            if (seenx && c == '?')
+            if(seenx && c == '?')
                goto jheadq;
             *qp = c;
-         } else if (mq == US)
-            *qp = US;
-         else {
+         }else if(mq == a_ME_US)
+            *qp = a_ME_US;
+         else{
             seenx = TRU1;
 jheadq:
             *qp++ = '=';
@@ -496,13 +536,16 @@ jheadq:
    }
 
    /* The body needs to take care for soft line breaks etc. */
-   for (lnlen = 0, seenx = FAL0; is < ie; sol = FAL0) {
-      enum _qact mq = _mustquote(is, ie, sol, MIMEEF_NONE);
-      char c = *is++;
+   for(lnlen = 0, seenx = FAL0; is < ie; sol = FAL0){
+      char c;
+      enum a_me_qact mq;
 
-      if (mq == N && (c != '\n' || !seenx)) {
+      mq = a_me_mustquote(is, ie, sol, MIMEEF_NONE);
+      c = *is++;
+
+      if(mq == a_ME_N && (c != '\n' || !seenx)){
          *qp++ = c;
-         if (++lnlen < QP_LINESIZE - 1)
+         if(++lnlen < QP_LINESIZE - 1)
             continue;
          /* Don't write a soft line break when we're in the last possible
           * column and either an LF has been written or only an LF follows, as
@@ -510,7 +553,7 @@ jheadq:
          /* XXX but - ensure is+1>=ie, then??
           * xxx and/or - what about resetting lnlen; that contra
           * xxx dicts input==1 input line assertion, though */
-         if (c == '\n' || is == ie || is[0] == '\n' || is[1] == '\n')
+         if(c == '\n' || is == ie || is[0] == '\n' || is[1] == '\n')
             continue;
 jsoftnl:
          qp[0] = '=';
@@ -520,7 +563,7 @@ jsoftnl:
          continue;
       }
 
-      if (lnlen > QP_LINESIZE - 3 - 1) {
+      if(lnlen > QP_LINESIZE - 3 - 1){
          qp[0] = '=';
          qp[1] = '\n';
          qp += 2;
@@ -530,16 +573,16 @@ jsoftnl:
       qp = n_c_to_hex_base16(qp, c);
       qp += 2;
       lnlen += 3;
-      if (c != '\n' || !seenx)
+      if(c != '\n' || !seenx)
          seenx = (c == '\r');
-      else {
+      else{
          seenx = FAL0;
          goto jsoftnl;
       }
    }
 
    /* Enforce soft line break if we haven't seen LF */
-   if (in->l > 0 && *--is != '\n') {
+   if(in->l > 0 && *--is != '\n'){
       qp[0] = '=';
       qp[1] = '\n';
       qp += 2;
@@ -553,65 +596,95 @@ jerr:
 }
 
 FL bool_t
-qp_decode(struct str *out, struct str const *in, struct str *rest)
-{
-   char *os, *oc;
+qp_decode_header(struct str *out, struct str const *in){
+   struct n_string s;
    char const *is, *ie;
-   bool_t rv;
    NYD_ENTER;
 
-   rv = FAL0;
-
-   if (rest != NULL && rest->l != 0) {
-      os = out->s;
-      *out = *rest;
-      rest->s = os;
-      rest->l = 0;
-   }
-
-   if(UIZ_MAX - 3 - out->l <= in->l){
+   /* EOVERFLOW */
+   if(UIZ_MAX -1 - out->l <= in->l ||
+         SI32_MAX <= out->l + in->l){ /* XXX wrong, we may replace */
       out->l = 0;
-      goto jerr;
+      out = NULL;
+      goto jleave;
    }
 
-   oc = os =
-   out->s = srealloc(out->s, out->l + in->l + 3);
-   oc += out->l;
-   is = in->s;
-   ie = is + in->l;
+   n_string_creat(&s);
+   n_string_reserve(n_string_take_ownership(&s, out->s,
+         (out->l == 0 ? 0 : out->l +1), out->l),
+      in->l + (in->l >> 2));
 
-   /* Decoding encoded-word (RFC 2049) in a header field? */
-   if (rest == NULL) {
-      while (is < ie) {
-         si32_t c = *is++;
-         if (c == '=') {
-            if (PTRCMP(is + 1, >=, ie)) {
-               ++is;
-               goto jehead;
-            }
-            c = n_c_from_hex_base16(is);
+   for(is = in->s, ie = &is[in->l - 1]; is <= ie;){
+      si32_t c;
+
+      c = *is++;
+      if(c == '='){
+         if(is >= ie){
+            goto jpushc; /* TODO According to RFC 2045, 6.7,
+            * ++is; TODO we should warn the user, but have no context
+            * goto jehead; TODO to do so; can't over and over */
+         }else if((c = n_c_from_hex_base16(is)) >= 0){
             is += 2;
-            if (c >= 0)
-               *oc++ = (char)c;
-            else {
-               /* Invalid according to RFC 2045, section 6.7. Almost follow */
-jehead:
-               /* TODO 0xFFFD
-               *oc[0] = '['; oc[1] = '?'; oc[2] = ']';
-               *oc += 3; 0xFFFD TODO
-               */ *oc++ = '?';
-            }
-         } else
-            *oc++ = (c == '_' /* US */) ? ' ' : (char)c;
+            goto jpushc;
+         }else{
+            /* Invalid according to RFC 2045, section 6.7 */
+            /* TODO Follow RFC 2045, 6.7 advise and simply put through */
+            c = '=';
+            goto jpushc;
+/* TODO jehead:
+ * TODO      if(options & OPT_UNICODE)
+ *              n_string_push_buf(&s, "\xEF\xBF\xBD", 3); TODO magic
+ * TODO       else{
+ * TODO          c = '?';
+ * TODO          goto jpushc;
+ * TODO       }*/
+         }
+      }else{
+jpushc:
+         if(c == '_' /* a_ME_US */)
+            c = ' ';
+         n_string_push_c(&s, (char)c);
       }
-      goto jleave; /* XXX QP decode, header: errors not reported */
    }
 
-   /* Decoding a complete message/mimepart body line */
-   while (is < ie) {
-      si32_t c = *is++;
-      if (c != '=') {
-         *oc++ = (char)c;
+   out->s = n_string_cp(&s);
+   out->l = s.s_len;
+   n_string_gut(n_string_drop_ownership(&s));
+jleave:
+   NYD_LEAVE;
+   return (out != NULL);
+}
+
+FL bool_t
+qp_decode_text(struct str *out, struct str const *in, struct str *outrest,
+      struct str *inrest_or_null){
+   struct n_string s, *sp;
+   char const *is, *ie;
+   NYD_ENTER;
+
+   if(outrest->l != 0){
+      is = out->s;
+      *out = *outrest;
+      outrest->s = n_UNCONST(is);
+      outrest->l = 0;
+   }
+
+   /* EOVERFLOW */
+   if(UIZ_MAX -1 - out->l <= in->l ||
+         SI32_MAX <= out->l + in->l) /* XXX wrong, we may replace */
+      goto jerr;
+
+   sp = n_string_creat(&s);
+   sp = n_string_take_ownership(sp, out->s,
+         (out->l == 0 ? 0 : out->l +1), out->l);
+   sp = n_string_reserve(sp, in->l + (in->l >> 2));
+
+   for(is = in->s, ie = &is[in->l - 1]; is <= ie;){
+      si32_t c;
+
+      if((c = *is++) != '='){
+jpushc:
+         n_string_push_c(&s, (char)c);
          continue;
       }
 
@@ -620,72 +693,87 @@ jehead:
        *   trailing white space on a line must be deleted, as it will
        *   necessarily have been added by intermediate transport
        *   agents */
-      for (; is < ie && blankchar(*is); ++is)
+      for(; is <= ie && blankchar(*is); ++is)
          ;
-      if (PTRCMP(is + 1, >=, ie)) {
+      if(is >= ie){
          /* Soft line break? */
-         if (*is == '\n')
+         if(*is == '\n')
             goto jsoftnl;
-         ++is;
-         goto jebody;
+        goto jpushc; /* TODO According to RFC 2045, 6.7,
+         * ++is; TODO we should warn the user, but have no context
+         * goto jebody; TODO to do so; can't over and over */
       }
 
       /* Not a soft line break? */
-      if (*is != '\n') {
-         c = n_c_from_hex_base16(is);
-         is += 2;
-         if (c >= 0)
-            *oc++ = (char)c;
-         else {
-            /* Invalid according to RFC 2045, section 6.7.
-             * Almost follow it and include the = and the follow char */
-jebody:
-            /* TODO 0xFFFD
-            *oc[0] = '['; oc[1] = '?'; oc[2] = ']';
-            *oc += 3; 0xFFFD TODO
-            */ *oc++ = '?';
+      if(*is != '\n'){
+         if((c = n_c_from_hex_base16(is)) >= 0){
+            is += 2;
+            goto jpushc;
          }
-         continue;
+         /* Invalid according to RFC 2045, section 6.7 */
+         /* TODO Follow RFC 2045, 6.7 advise and simply put through */
+         c = '=';
+         goto jpushc;
+/* TODO jebody:
+ * TODO   if(options & OPT_UNICODE)
+ *           n_string_push_buf(&s, "\xEF\xBF\xBD", 3); TODO magic
+ * TODO    else{
+ * TODO       c = '?';
+ * TODO       goto jpushc;
+ * TODO    }*/
       }
 
       /* CRLF line endings are encoded as QP, followed by a soft line break, so
        * check for this special case, and simply forget we have seen one, so as
        * not to end up with the entire DOS file in a contiguous buffer */
 jsoftnl:
-      if (oc > os && oc[-1] == '\n') {
-#if 0       /* TODO qp_decode() we do not normalize CRLF
+      if(s.s_len > 0 && s.s_dat[s.s_len - 1] == '\n'){
+#if 0       /* TODO qp_decode_text() we do not normalize CRLF
           * TODO to LF because for that we would need
           * TODO to know if we are about to write to
           * TODO the display or do save the file!
           * TODO 'hope the MIME/send layer rewrite will
           * TODO offer the possibility to DTRT */
-         if (oc - 1 > os && oc[-2] == '\r') {
-            --oc;
-            oc[-1] = '\n';
-         }
+         if(s.s_len > 1 && s.s_dat[s.s_len - 2] == '\r')
+            n_string_push_c(n_string_trunc(&s, s.s_len - 2), '\n');
 #endif
          break;
       }
-      out->l = PTR2SIZE(oc - os);
-      rest->s = srealloc(rest->s, rest->l + out->l);
-      memcpy(rest->s + rest->l, out->s, out->l);
-      rest->l += out->l;
-      oc = os;
+
+      /* C99 */{
+         char *cp;
+         size_t l;
+
+         if((l = PTR2SIZE(ie - is)) > 0){
+            if(inrest_or_null == NULL)
+               goto jerr;
+            n_str_assign_buf(inrest_or_null, is, l);
+         }
+         cp = outrest->s;
+         outrest->s = n_string_cp(&s);
+         outrest->l = s.s_len;
+         n_string_drop_ownership(&s);
+         if(cp != NULL)
+            free(cp);
+      }
       break;
    }
-   /* XXX RFC: QP decode should check no trailing WS on line */
+
+   out->s = n_string_cp(&s);
+   out->l = s.s_len;
+   n_string_gut(n_string_drop_ownership(&s));
 jleave:
-   out->l = PTR2SIZE(oc - os);
-   rv = TRU1;
-jerr:
    NYD_LEAVE;
-   return rv;
+   return (out != NULL);
+jerr:
+   out->l = 0;
+   out = NULL;
+   goto jleave;
 }
 
 FL size_t
-b64_encode_calc_size(size_t len)
-{
-   NYD_ENTER;
+b64_encode_calc_size(size_t len){
+   NYD2_ENTER;
    if(len >= UIZ_MAX / 4)
       len = UIZ_MAX;
    else{
@@ -693,13 +781,12 @@ b64_encode_calc_size(size_t len)
       len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
       len += 2 + 1; /* CRLF, \0 */
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return len;
 }
 
 FL struct str *
-b64_encode(struct str *out, struct str const *in, enum b64flags flags)
-{
+b64_encode(struct str *out, struct str const *in, enum b64flags flags){
    ui8_t const *p;
    size_t i, lnlen;
    char *b64;
@@ -712,7 +799,6 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
 
    if(!(flags & B64_BUF)){
       if((i = b64_encode_calc_size(in->l)) == UIZ_MAX){
-         out->l = 0; /* XXX legacy unless n_string + callers error adjusted */
          out = NULL;
          goto jleave;
       }
@@ -720,56 +806,58 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
    }
    b64 = out->s;
 
-   if (!(flags & (B64_CRLF | B64_LF)))
+   if(!(flags & (B64_CRLF | B64_LF)))
       flags &= ~B64_MULTILINE;
 
-   for (lnlen = 0, i = in->l; (ssize_t)i > 0; p += 3, i -= 3) {
-      ui32_t a = p[0], b, c;
+   for(lnlen = 0, i = in->l; (ssize_t)i > 0; p += 3, i -= 3){
+      ui32_t a, b, c;
 
-      b64[0] = _b64_enctbl[a >> 2];
-      switch (i) {
+      a = p[0];
+      b64[0] = a_me_b64_enctbl[a >> 2];
+
+      switch(i){
       case 1:
-         b64[1] = _b64_enctbl[((a & 0x3) << 4)];
+         b64[1] = a_me_b64_enctbl[((a & 0x3) << 4)];
          b64[2] =
          b64[3] = '=';
          break;
       case 2:
          b = p[1];
-         b64[1] = _b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
-         b64[2] = _b64_enctbl[((b & 0x0F) << 2)];
+         b64[1] = a_me_b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = a_me_b64_enctbl[((b & 0x0F) << 2)];
          b64[3] = '=';
          break;
       default:
          b = p[1];
          c = p[2];
-         b64[1] = _b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
-         b64[2] = _b64_enctbl[((b & 0x0F) << 2) | ((c & 0xC0u) >> 6)];
-         b64[3] = _b64_enctbl[c & 0x3F];
+         b64[1] = a_me_b64_enctbl[((a & 0x03) << 4) | ((b & 0xF0u) >> 4)];
+         b64[2] = a_me_b64_enctbl[((b & 0x0F) << 2) | ((c & 0xC0u) >> 6)];
+         b64[3] = a_me_b64_enctbl[c & 0x3F];
          break;
       }
 
       b64 += 4;
-      if (!(flags & B64_MULTILINE))
+      if(!(flags & B64_MULTILINE))
          continue;
       lnlen += 4;
-      if (lnlen < B64_LINESIZE)
+      if(lnlen < B64_LINESIZE)
          continue;
 
       lnlen = 0;
-      if (flags & B64_CRLF)
+      if(flags & B64_CRLF)
          *b64++ = '\r';
-      if (flags & (B64_CRLF | B64_LF))
+      if(flags & (B64_CRLF | B64_LF))
          *b64++ = '\n';
    }
 
-   if ((flags & (B64_CRLF | B64_LF)) &&
-         (!(flags & B64_MULTILINE) || lnlen != 0)) {
-      if (flags & B64_CRLF)
+   if((flags & (B64_CRLF | B64_LF)) &&
+         (!(flags & B64_MULTILINE) || lnlen != 0)){
+      if(flags & B64_CRLF)
          *b64++ = '\r';
-      if (flags & (B64_CRLF | B64_LF))
+      if(flags & (B64_CRLF | B64_LF))
          *b64++ = '\n';
-   } else if (flags & B64_NOPAD)
-      while (b64 != out->s && b64[-1] == '=')
+   }else if(flags & B64_NOPAD)
+      while(b64 != out->s && b64[-1] == '=')
          --b64;
 
    out->l = PTR2SIZE(b64 - out->s);
@@ -779,13 +867,13 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags)
     * This is base64url according to RFC 4648, then.  Since we only support
     * that for encoding and it is only used for boundary strings, this is
     * yet a primitive implementation; xxx use tables; support decoding */
-   if (flags & B64_RFC4648URL) {
+   if(flags & B64_RFC4648URL){
       char c;
 
-      for (b64 = out->s; (c = *b64) != '\0'; ++b64)
-         if (c == '+')
+      for(b64 = out->s; (c = *b64) != '\0'; ++b64)
+         if(c == '+')
             *b64 = '-';
-         else if (c == '/')
+         else if(c == '/')
                *b64 = '_';
    }
 jleave:
@@ -795,8 +883,7 @@ jleave:
 
 FL struct str *
 b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
-   enum b64flags flags)
-{
+      enum b64flags flags){
    struct str in;
    NYD_ENTER;
 
@@ -807,10 +894,9 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
    return out;
 }
 
-#ifdef HAVE_SMTP
+#ifdef notyet
 FL struct str *
-b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
-{
+b64_encode_cp(struct str *out, char const *cp, enum b64flags flags){
    struct str in;
    NYD_ENTER;
 
@@ -820,108 +906,186 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags)
    NYD_LEAVE;
    return out;
 }
-#endif
+#endif /* notyet */
 
 FL bool_t
-b64_decode(struct str *out, struct str const *in, struct str *rest)
-{
+b64_decode(struct str *out, struct str const *in){
    struct str work;
-   char *x;
    size_t len;
-   bool_t rv;
    NYD_ENTER;
 
-   len = _b64_decode_prepare(&work, in);
    out->l = 0;
 
-   /* TODO B64_T is different since we must not fail for errors; in v15.0 this
-    * TODO will be filter based and B64_T will have a different one than B64,
-    * TODO for now special treat this all-horror */
-   if (rest != NULL) {
-      /* With B64_T there may be leftover decoded data for iconv(3), even if
-       * that means it's incomplete multibyte character we have to copy over */
-      /* TODO strictly speaking this should not be handled in here,
-       * TODO since its leftover decoded data from an iconv(3);
-       * TODO In v15.0 this path will be filter based, each filter having its
-       * TODO own buffer for such purpose; for now we are BUSTED since for
-       * TODO Base64 rest is owned by iconv(3) */
-      if (rest->l > 0) {
-         x = out->s;
-         *out = *rest;
-         rest->s = x; /* Just for ownership reasons (all TODO in here..) */
-         rest->l = 0;
-         len += out->l;
-      }
-
-      out->s = srealloc(out->s, len +1);
-
-      for (;;) {
-         if (_b64_decode(out, &work) >= 0) {
-            if (work.l == 0)
-               break;
-         }
-         x = out->s + out->l;
-
-         /* Partial/False last sequence.  TODO not solvable for non-EOF;
-          * TODO yes, invalid, but seen in the wild and should be handled,
-          * TODO but for that we had to have our v15.0 filter which doesn't
-          * TODO work line based but content buffer based */
-         if ((len = work.l) <= 4) {
-            switch (len) {
-            case 4:  /* FALLTHRU */
-            case 3:  x[2] = '?'; /* FALLTHRU */
-            case 2:  x[1] = '?'; /* FALLTHRU */
-            default: x[0] = '?'; break;
-            }
-            out->l += len;
-            break;
-         }
-
-         /* TODO Bad content: this problem is not solvable!  I've seen
-          * TODO messages which broke lines in the middle of a Base64
-          * TODO tuple, followed by an invalid character ("!"), the follow
-          * TODO line starting with whitespace and the remaining sequence.
-          * TODO OpenSSL bailed, mutt(1) got it right (silently..).
-          * TODO Since "rest" is not usable by us, we cannot continue
-          * TODO sequences.  We will be able to do so with the v15.0 filter
-          * TODO approach, if we */
-         /* Bad content: skip over a single sequence */
-         for (;;) {
-            *x++ = '?';
-            ++out->l;
-            if (--work.l == 0)
-               break;
-            else {
-               ui8_t bc = (ui8_t)*++work.s;
-               ui32_t state = _B64_DECUI8(bc);
-
-               if (state != _B64_EQU && state != _B64_BAD)
-                  break;
-            }
-         }
-      }
-      out->s[out->l] = '\0';
-      rv = TRU1;
-      goto jleave;
-   }
+   if((len = a_me_b64_decode_prepare(&work, in)) == UIZ_MAX)
+      goto jerr;
 
    /* Ignore an empty input, as may happen for an empty final line */
-   if (work.l == 0)
+   if(work.l == 0)
       out->s = srealloc(out->s, 1);
-   else if (work.l >= 4 && !(work.l & 3)){
+   else if(work.l >= 4 && !(work.l & 3)){
       out->s = srealloc(out->s, len +1);
-      if ((ssize_t)(len = _b64_decode(out, &work)) < 0)
+      if((ssize_t)(len = a_me_b64_decode(out, &work)) < 0)
          goto jerr;
    }else
       goto jerr;
-
    out->s[out->l] = '\0';
-   rv = TRU1;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return (out != NULL);
 jerr:
-   rv = FAL0;
+   out = NULL;
+   goto jleave;
+}
+
+FL bool_t
+b64_decode_header(struct str *out, struct str const *in){
+   struct str outr, inr;
+   NYD_ENTER;
+
+   if(!b64_decode(out, in)){
+      memset(&outr, 0, sizeof outr);
+      memset(&inr, 0, sizeof inr);
+
+      if(!b64_decode_text(out, in, &outr, &inr) || outr.l > 0 || inr.l > 0)
+         out = NULL;
+
+      if(inr.s != NULL)
+         free(inr.s);
+      if(outr.s != NULL)
+         free(outr.s);
+   }
+   NYD_LEAVE;
+   return (out != NULL);
+}
+
+FL bool_t
+b64_decode_text(struct str *out, struct str const *in, struct str *outrest,
+      struct str *inrest_or_null){
+   struct str work, save;
+   ui32_t a, b, c, b64l;
+   char ca, cb, cc, cx;
+   struct n_string s, workbuf;
+   size_t len;
+   NYD_ENTER;
+
+   n_string_creat(&s);
+   n_string_take_ownership(&s, out->s, out->l, out->l);
+   out->s = NULL, out->l = 0;
+   n_string_creat(&workbuf);
+
+   if((len = a_me_b64_decode_prepare(&work, in)) == UIZ_MAX)
+      goto jerr;
+
+   if(outrest->l > 0){
+      n_string_push_buf(&s, outrest->s, outrest->l);
+      outrest->l = 0;
+   }
+
+   /* EOVERFLOW */
+   if(UIZ_MAX - len <= s.s_len ||
+         SI32_MAX <= len + s.s_len) /* XXX wrong, we may replace */
+      goto jerr;
+
+   if(work.l == 0)
+      goto jok;
+
+   /* This text decoder is extremely expensive, especially given that in all
+    * but _invalid_ cases it is not even needed!  So try once to do the normal
+    * decoding, if that fails, go the hard way */
+   save = work;
+   out->s = n_string_resize(&s, len + (out->l = b64l = s.s_len))->s_dat;
+
+   if(work.l >= 4 && a_me_b64_decode(out, &work) >= 0){
+      n_string_trunc(&s, out->l);
+      if(work.l == 0)
+         goto jok;
+   }
+
+   n_string_trunc(&s, b64l);
+   work = save;
+   out->s = NULL, out->l = 0;
+
+   n_UNINIT(ca, 0);
+   n_UNINIT(cb, 0);
+   n_UNINIT(cc, 0);
+   for(b64l = 0;;){
+      ui32_t x;
+
+      x = a_ME_B64_DECUI8((ui8_t)(cx = *work.s));
+      switch(b64l){
+      case 0:
+         if(x >= a_ME_B64_EQU)
+            goto jrepl;
+         ca = cx;
+         a = x;
+         ++b64l;
+         break;
+      case 1:
+         if(x >= a_ME_B64_EQU)
+            goto jrepl;
+         cb = cx;
+         b = x;
+         ++b64l;
+         break;
+      case 2:
+         if(x == a_ME_B64_BAD)
+            goto jrepl;
+         cc = cx;
+         c = x;
+         ++b64l;
+         break;
+      case 3:
+         if(x == a_ME_B64_BAD){
+jrepl:
+            if(options & OPT_UNICODE)
+               n_string_push_buf(&s, "\xEF\xBF\xBD", 3); /* TODO magic */
+            else
+               n_string_push_c(&s, '?');
+         }else if(c == a_ME_B64_EQU && x != a_ME_B64_EQU){
+            /* This is not only invalid but bogus.  Skip it over! */
+            n_string_push_buf(&s, "\xEF\xBF\xBD" "\xEF\xBF\xBD" "\xEF\xBF\xBD"
+               "\xEF\xBF\xBD", 3*4); /* TODO magic */
+            b64l = 0;
+         }else{
+            n_string_push_c(&s, (char)((a << 2) | ((b & 0x30) >> 4)));
+            n_string_push_c(&s, (char)(((b & 0x0F) << 4) | ((c & 0x3C) >> 2)));
+            if(x != a_ME_B64_EQU)
+               n_string_push_c(&s, (char)(((c & 0x03) << 6) | x));
+            ++b64l;
+         }
+         break;
+      }
+
+      ++work.s;
+      if(--work.l == 0){
+         if(b64l > 0 && b64l != 4){
+            if(inrest_or_null == NULL)
+               goto jerr;
+            inrest_or_null->s = srealloc(inrest_or_null->s, b64l +1);
+            inrest_or_null->s[0] = ca;
+            if(b64l > 1)
+               inrest_or_null->s[1] = cb;
+            if(b64l > 2)
+               inrest_or_null->s[2] = cc;
+            inrest_or_null->s[inrest_or_null->l = b64l] = '\0';
+         }
+         goto jok;
+      }
+      if(b64l == 4)
+         b64l = 0;
+   }
+
+jok:
+   out->s = n_string_cp(&s);
+   out->l = s.s_len;
+   n_string_drop_ownership(&s);
+jleave:
+   n_string_gut(&workbuf);
+   n_string_gut(&s);
+   NYD_LEAVE;
+   return (out != NULL);
+jerr:
+   out = NULL;
    goto jleave;
 }
 

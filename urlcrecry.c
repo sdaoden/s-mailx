@@ -1508,7 +1508,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
 
    in.s = n_UNCONST(b64);
    in.l = strlen(in.s);
-   if(!b64_decode(&out, &in, NULL))
+   if(!b64_decode(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){
       free(out.s);

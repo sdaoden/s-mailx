@@ -55,7 +55,8 @@ static FILE *        _pipefile(struct mime_handler *mhp,
 /* Call mime_write() as approbiate and adjust statistics */
 SINLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         enum conversion convert, enum sendaction action,
-                        struct quoteflt *qf, ui64_t *stats, struct str *rest);
+                        struct quoteflt *qf, ui64_t *stats, struct str *outrest,
+                        struct str *inrest);
 
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
@@ -107,18 +108,18 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
       cp = "?";
    if (level || (cp[0] != '1' && cp[1] == '\0'))
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
    if (cpre != NULL)
-      _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-   _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-   _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
          (uiz_t)mpp->m_lines, (uiz_t)mpp->m_size);
-   _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
     if ((cp = mpp->m_ct_type_usr_ovwr) != NULL)
-      _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    else
       cp = mpp->m_ct_type_plain;
    if ((to.l = strlen(cp)) > 30 && is_asccaseprefix(cp, "application/")) {
@@ -131,24 +132,24 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       cp = x;
       to.l = al + i;
    }
-   _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL) {
-      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       if (to.l > 25 && !asccasecmp(cp, "quoted-printable"))
          cp = "qu.-pr.";
-      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    }
 
    if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_charset) != NULL) {
-      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    }
 
-   _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+   _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    if (csuf != NULL)
-      _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-   _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+      _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    if (is_ign("content-disposition", 19, doign) && mpp->m_filename != NULL &&
          *mpp->m_filename != '\0') {
@@ -157,13 +158,15 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       to.l = delctrl(to.s, to.l);
 
       if (cpre != NULL)
-         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
-         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
       free(to.s);
    }
@@ -267,7 +270,8 @@ jleave:
 
 SINLINE ssize_t
 _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
-   sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *rest)
+   sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *outrest,
+   struct str *inrest)
 {
    ssize_t sz = 0, n;
    int flags;
@@ -304,7 +308,7 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE)
             ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
-         qf, rest);
+         qf, outrest, inrest);
    if (n < 0)
       sz = n;
    else if (n > 0) {
@@ -342,7 +346,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 {
    int volatile rv = 0;
    struct mime_handler mh;
-   struct str rest;
+   struct str outrest, inrest;
    char *line = NULL, *cp, *cp2, *start;
    char const * volatile tmpname = NULL;
    size_t linesize = 0, linelen, cnt;
@@ -414,7 +418,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          if (dostat & 2)
             xstatusput(zmp, obuf, qf, stats);
          if (doign != allignore)
-            _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+            _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
          break;
       }
 
@@ -449,7 +453,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
                   xstatusput(zmp, obuf, qf, stats);
             }
             if (doign != allignore)
-               _out("\n", 1, obuf, CONV_NONE,SEND_MBOX, qf, stats, NULL);
+               _out("\n", 1, obuf, CONV_NONE,SEND_MBOX, qf, stats, NULL,NULL);
             break;
          }
 
@@ -544,7 +548,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             }
          }
 #endif
-         _out(start, len, obuf, convert, action, qf, stats, NULL);
+         _out(start, len, obuf, convert, action, qf, stats, NULL,NULL);
 #ifdef HAVE_COLOUR
          if (tmpname != NULL) {
             n_colour_reset(obuf);
@@ -611,7 +615,7 @@ jskip:
          switch (mime_type_handler(&mh, ip, action)) {
          case MIME_HDL_MSG:
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
-               stats, NULL);
+               stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          default:
@@ -640,7 +644,7 @@ jskip:
          switch (mime_type_handler(&mh, ip, action)) {
          case MIME_HDL_MSG:
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
-               stats, NULL);
+               stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:
@@ -652,7 +656,8 @@ jskip:
          case MIME_HDL_NULL:
             if (level == 0 && cnt) {
                char const *x = _("[-- Binary content --]\n");
-               _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+               _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
+                  NULL,NULL);
             }
             goto jleave;
          }
@@ -699,7 +704,8 @@ jalter_redo:
             for (; np != NULL; np = np->m_nextpart) {
                if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
                   if (neednl)
-                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+                        NULL, NULL);
                   _print_part_info(obuf, np, doign, level, qf, stats);
                }
                neednl = TRU1;
@@ -772,7 +778,7 @@ jalter_plain:
                   if (action == SEND_QUOTE && hadpart) {
                      struct quoteflt *dummy = quoteflt_dummy();
                      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                        NULL);
+                        NULL,NULL);
                      quoteflt_flush(dummy);
                   }
                   hadpart = TRU1;
@@ -817,7 +823,8 @@ jmulti:
              ip->m_multipart->m_nextpart == NULL) {
             char const *x = _("[Missing multipart boundary - use show "
                   "to display the raw message]\n");
-            _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
+            _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
+               NULL,NULL);
          }
 
          for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
@@ -875,7 +882,7 @@ jmulti:
                   np->m_multipart == NULL && ip->m_parent != NULL) {
                struct quoteflt *dummy = quoteflt_dummy();
                _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                  NULL);
+                  NULL,NULL);
                quoteflt_flush(dummy);
             }
             if (sendpart(zmp, np, obuf, doign, qf, action, stats, level+1) < 0)
@@ -964,18 +971,10 @@ jpipe_close:
        * TODO we send to the display or whatever, i.e., ensure
        * TODO makeprint() or something; to avoid this trap, *force*
        * TODO iconv(), in which case this layer will handle leftovers
-       * TODO correctly */
+       * TODO correctly.  It's a pre-v15 we-have-filters hack */
       if (convert == CONV_FROMB64_T || (asccasecmp(tcs, ip->m_charset) &&
             asccasecmp(charset_get_7bit(), ip->m_charset))) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         /*
-          * TODO errors should DEFINETELY not be scrolled away!
-          * TODO what about an error buffer (think old shsp(1)),
-          * TODO re-dump errors since last snapshot when the
-          * TODO command loop enters again?  i.e., at least print
-          * TODO "There were errors ?" before the next prompt,
-          * TODO so that the user can look at the error buffer?
-          */
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
@@ -1056,15 +1055,17 @@ jsend:
       stats = NULL;
    }
    eof = FAL0;
-   rest.s = NULL;
-   rest.l = 0;
+   outrest.s = inrest.s = NULL;
+   outrest.l = inrest.l = 0;
 
    if (pbuf == qbuf) {
       __sendp_sig = 0;
       __sendp_opipe = safe_signal(SIGPIPE, &__sendp_onsig);
       if (sigsetjmp(__sendp_actjmp, 1)) {
-         if (rest.s != NULL)
-            free(rest.s);
+         if (outrest.s != NULL)
+            free(outrest.s);
+         if (inrest.s != NULL)
+            free(inrest.s);
          free(line);
 #ifdef HAVE_ICONV
          if (iconvd != (iconv_t)-1)
@@ -1078,16 +1079,17 @@ jsend:
    quoteflt_reset(qf, pbuf);
    while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
-      if (_out(line, linelen, pbuf, convert, action, qf, stats, &rest) < 0 ||
-            ferror(pbuf)) {
+      if (_out(line, linelen, pbuf, convert, action, qf, stats, &outrest,
+            (action & _TD_EOF ? NULL : &inrest)) < 0 || ferror(pbuf)) {
          rv = -1; /* XXX Should bail away?! */
          break;
       }
    }
-   if (!eof && rv >= 0 && rest.l != 0) {
+   if(eof <= FAL0 && rv >= 0 && (outrest.l != 0 || inrest.l != 0)){
       linelen = 0;
-      eof = TRU1;
-      action |= _TD_EOF;
+      if(eof || inrest.l == 0)
+         action |= _TD_EOF;
+      eof = eof ? TRU1 : TRUM1;
       goto joutln;
    }
 
@@ -1111,8 +1113,10 @@ joutln:
    if (pbuf == qbuf)
       safe_signal(SIGPIPE, __sendp_opipe);
 
-   if (rest.s != NULL)
-      free(rest.s);
+   if (outrest.s != NULL)
+      free(outrest.s);
+   if (inrest.s != NULL)
+      free(inrest.s);
 
    if (pbuf != origobuf) {
       qf->qf_pfix_len = save_qf_pfix_len;

@@ -624,8 +624,9 @@ _mt_classify_round(struct mt_class_arg *mtcap)
 static enum mimecontent
 _mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
 {
-   struct str in = {NULL, 0}, rest = {NULL, 0}, dec = {NULL, 0};
+   struct str in = {NULL, 0}, outrest, inrest, dec;
    struct mt_class_arg mtca;
+   bool_t did_inrest;
    enum mime_type_class mtc;
    int lc, c;
    size_t cnt, lsz;
@@ -636,6 +637,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
 
    assert(mpp->m_mime_enc != MIMEE_BIN);
 
+   outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
    n_UNINIT(mtc, 0);
 
@@ -671,7 +673,7 @@ jos_leave:
          if (lsz == 0)
             continue;
       } else if ((dobuf = (c == EOF))) {
-         if (lsz == 0 && rest.l == 0)
+         if (lsz == 0 && outrest.l == 0)
             break;
       }
 
@@ -685,14 +687,15 @@ jos_leave:
 jdobuf:
       switch (mpp->m_mime_enc) {
       case MIMEE_B64:
-         if (!b64_decode(&dec, &in, &rest)) {
+         if (!b64_decode_text(&dec, &in, &outrest,
+               (did_inrest ? NULL : &inrest))) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
          }
          break;
       case MIMEE_QP:
          /* Drin */
-         if (!qp_decode(&dec, &in, &rest)) {
+         if (!qp_decode_text(&dec, &in, &outrest, &inrest)) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
          }
@@ -725,17 +728,23 @@ jdobuf:
       }
       in.l = dec.l = 0;
    }
-   if (rest.l > 0) {
-      in.l = 0;
+
+   if ((in.l = inrest.l) > 0) {
+      in.s = inrest.s;
+      did_inrest = TRU1;
       goto jdobuf;
    }
+   if (outrest.l > 0)
+      goto jdobuf;
 jstopit:
    if (in.s != NULL)
       free(in.s);
    if (dec.s != NULL)
       free(dec.s);
-   if (rest.s != NULL)
-      free(rest.s);
+   if (outrest.s != NULL)
+      free(outrest.s);
+   if (inrest.s != NULL)
+      free(inrest.s);
 
    fseek(mb.mb_itf, start_off, SEEK_SET);
 
