@@ -4265,8 +4265,8 @@ n_tty_signal(int sig){
 }
 
 FL int
-(n_tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-      SMALLOC_DEBUG_ARGS){
+(n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
+      char **linebuf, size_t *linesize, size_t n SMALLOC_DEBUG_ARGS){
    int rv;
    NYD_ENTER;
 
