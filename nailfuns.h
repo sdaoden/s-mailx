@@ -2045,7 +2045,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 /* struct n_string
  * May have NULL buffer, may contain embedded NULs */
 
-/* Lifetime */
+/* Lifetime.  n_string_gut() is optional for _creat_auto() strings */
 #define n_string_creat(S) \
    ((S)->s_dat = NULL, (S)->s_len = (S)->s_auto = (S)->s_size = 0, (S))
 #define n_string_creat_auto(S) \
@@ -2109,7 +2109,7 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 /* */
 FL struct n_string *n_string_unshift_buf(struct n_string *self, char const *buf,
                      size_t buflen n_MEMORY_DEBUG_ARGS);
-#define n_string_unshift(S, T) \
+#define n_string_unshift(S,T) \
    n_string_unshift_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_unshift_cp(S,CP) \
       n_string_unshift_buf(S, CP, UIZ_MAX)
@@ -2118,9 +2118,28 @@ FL struct n_string *n_string_unshift_c(struct n_string *self, char c
 
 #ifdef HAVE_MEMORY_DEBUG
 # define n_string_unshift_buf(S,B,BL) \
-   n_string_unshift_buf(S, B, BL, __FILE__, __LINE__)
+   n_string_unshift_buf(S,B,BL, __FILE__, __LINE__)
 # define n_string_unshift_c(S,C) n_string_unshift_c(S, C, __FILE__, __LINE__)
 #endif
+
+/* */
+FL struct n_string *n_string_insert_buf(struct n_string *self, size_t idx,
+                     char const *buf, size_t buflen n_MEMORY_DEBUG_ARGS);
+#define n_string_insert(S,I,T) \
+   n_string_insert_buf(S, I, (T)->s_len, (T)->s_dat)
+#define n_string_insert_cp(S,I,CP) \
+      n_string_insert_buf(S, I, CP, UIZ_MAX)
+FL struct n_string *n_string_insert_c(struct n_string *self, size_t idx,
+                     char c n_MEMORY_DEBUG_ARGS);
+
+#ifdef HAVE_MEMORY_DEBUG
+# define n_string_insert_buf(S,I,B,BL) \
+   n_string_insert_buf(S, I, B, BL, __FILE__, __LINE__)
+# define n_string_insert_c(S,I,C) n_string_insert_c(S, I, C, __FILE__, __LINE__)
+#endif
+
+/* */
+FL struct n_string *n_string_cut(struct n_string *self, size_t idx, size_t len);
 
 /* Ensure self has a - NUL terminated - buffer, and return that.
  * The latter may return the pointer to an internal empty RODATA instead */

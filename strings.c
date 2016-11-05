@@ -624,8 +624,8 @@ FL struct n_string *
       n_panic(_("Memory allocation too large"));
 #endif
 
-   if((i = s - l) <= noof){
-      i += 1 + l + (ui32_t)noof;
+   if((i = s - l) <= ++noof){
+      i += l + (ui32_t)noof;
       i = n_ALIGN(i);
       self->s_size = i -1;
 
@@ -675,7 +675,7 @@ FL struct n_string *
       ui32_t i;
 
       self = (n_string_reserve)(self, buflen n_MEMORY_DEBUG_ARGSCALL);
-      memcpy(self->s_dat + (i = self->s_len), buf, buflen);
+      memcpy(&self->s_dat[i = self->s_len], buf, buflen);
       self->s_len = (i += (ui32_t)buflen);
    }
    NYD_LEAVE;
@@ -709,7 +709,7 @@ FL struct n_string *
    if(buflen > 0){
       self = (n_string_reserve)(self, buflen n_MEMORY_DEBUG_ARGSCALL);
       if(self->s_len > 0)
-         memmove(self->s_dat + buflen, self->s_dat, self->s_len);
+         memmove(&self->s_dat[buflen], self->s_dat, self->s_len);
       memcpy(self->s_dat, buf, buflen);
       self->s_len += (ui32_t)buflen;
    }
@@ -726,9 +726,67 @@ FL struct n_string *
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
    if(self->s_len > 0)
-      memmove(self->s_dat + 1, self->s_dat, self->s_len);
+      memmove(&self->s_dat[1], self->s_dat, self->s_len);
    self->s_dat[0] = c;
    ++self->s_len;
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_insert_buf)(struct n_string *self, size_t idx,
+      char const *buf, size_t buflen n_MEMORY_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+   assert(buflen == 0 || buf != NULL);
+   assert(idx <= self->s_len);
+
+   if(buflen == UIZ_MAX)
+      buflen = (buf == NULL) ? 0 : strlen(buf);
+
+   if(buflen > 0){
+      self = (n_string_reserve)(self, buflen n_MEMORY_DEBUG_ARGSCALL);
+      if(self->s_len > 0)
+         memmove(&self->s_dat[idx + buflen], &self->s_dat[idx],
+            self->s_len - idx);
+      memcpy(&self->s_dat[idx], buf, buflen);
+      self->s_len += (ui32_t)buflen;
+   }
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+(n_string_insert_c)(struct n_string *self, size_t idx,
+      char c n_MEMORY_DEBUG_ARGS){
+   NYD_ENTER;
+
+   assert(self != NULL);
+   assert(idx <= self->s_len);
+
+   if(self->s_len + 1 >= self->s_size)
+      self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
+   if(self->s_len > 0)
+      memmove(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
+   self->s_dat[idx] = c;
+   ++self->s_len;
+   NYD_LEAVE;
+   return self;
+}
+
+FL struct n_string *
+n_string_cut(struct n_string *self, size_t idx, size_t len){
+   NYD_ENTER;
+
+   assert(self != NULL);
+   assert(UIZ_MAX - idx > len);
+   assert(SI32_MAX >= idx + len);
+   assert(idx + len <= self->s_len);
+
+   if(len > 0)
+      memmove(&self->s_dat[idx], &self->s_dat[idx + len],
+         (self->s_len -= len) - idx);
    NYD_LEAVE;
    return self;
 }
