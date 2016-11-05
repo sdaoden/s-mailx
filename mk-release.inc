@@ -307,26 +307,26 @@ if [ -n "${bigballs}" ] && yesno 'Upload archives'; then
    {
       echo "-put ${PROGRAM}-${REL}.tar"
       echo "-rm ${PROGRAM}-latest.tar"
-      echo "-ln ${PROGRAM}-${REL}.tar ${PROGRAM}-latest.tar"
+      echo "-ln -s ${PROGRAM}-${REL}.tar ${PROGRAM}-latest.tar"
 
       echo "-put ${PROGRAM}-${REL}.tar.gz"
       echo "-rm ${PROGRAM}-latest.tar.gz"
-      echo "-ln ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
 
       echo "-put ${PROGRAM}-${REL}.tar.xz"
       echo "-rm ${PROGRAM}-latest.tar.xz"
-      echo "-ln ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
 
       echo "-put ${PROGRAM}-${REL}.tar.asc"
       echo "-rm ${PROGRAM}-latest.tar.asc"
-      echo "-ln ${PROGRAM}-${REL}.tar.asc ${PROGRAM}-latest.tar.asc"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.asc ${PROGRAM}-latest.tar.asc"
 
       echo "-chmod 0644 ${PROGRAM}-${REL}.tar*"
 
       if [ -n "${anntxt}" ]; then
          echo "-put ${PROGRAM}-${REL}.txt"
          echo "-rm ${PROGRAM}-latest.txt"
-         echo "-ln ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
+         echo "-ln -s ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
          echo "-chmod 0644 ${PROGRAM}-${REL}.txt"
       fi
    } |
