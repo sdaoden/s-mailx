@@ -2398,7 +2398,7 @@ Prompts for a Unicode character (its hexadecimal number) to be inserted
 .Pf ( Cd mle-prompt-char ) .
 Note this command needs to be assigned to a single-letter control code
 in order to become recognized and executed during input of
-a key-sequence (only four single-letter control codes can be used for
+a key-sequence (only three single-letter control codes can be used for
 that shortcut purpose); this control code is special-treated and can't
 be part of any other sequence, because any occurrence will perform the
 .Cd mle-prompt-char
@@ -2423,7 +2423,7 @@ and \*(OPally a lingering, incomplete key binding
 .Pf ( Cd mle-cancel ) .
 This command needs to be assigned to a single-letter control code in
 order to become recognized and executed during input of a key-sequence
-(only four single-letter control codes can be used for that shortcut
+(only three single-letter control codes can be used for that shortcut
 purpose).
 This control code may also be part of a multi-byte sequence, but if
 a sequence is active and the very control code is currently also an
@@ -2975,20 +2975,22 @@ expansion shall instead be furtherly editable by the user, an at-sign
 .Ql @
 (that will be removed) can be placed last in the expansion, from which
 leading and trailing whitespace will finally be removed.
+Reverse solidus cannot be used as the last character of expansion.
 .
 .Pp
 Contexts define when a binding applies, i.e., a binding won't be seen
 unless the context for which it is defined for is currently active.
-This is not true for the binding
+This is not true for the shared binding
 .Ql base ,
-which always applies, but which will be searched secondarily to a more
-specialized context and may thus have some or all of its key bindings
-transparently replaced by equal bindings of more specialized contexts.
-The available contexts are
+which is the foundation for all other bindings and as such always
+applies, its bindings, however, only apply secondarily.
+The available contexts are the shared
 .Ql base ,
-which always applies, and
+the
+.Ql default
+context which is used in all not otherwise documented situations, and
 .Ql compose ,
-which applies to compose-mode.
+which applies to compose-mode only.
 .
 .Pp
 .Dq Keys
@@ -3013,9 +3015,10 @@ Examples:
 .Bd -literal -offset indent
 bind base $'\eE',d mle-snarf-word-fwd # Esc(ape)
 bind base $'\eE',$'\ec?' mle-snarf-word-bwd # Esc, Delete
+bind default $'\ecA',:khome,w 'echo An editable binding@'
+bind default a,b,c rm -rf / @  # Another editable binding
+bind default :kf1 File %
 bind compose :kf1 ~e
-bind base $'\ecA',:khome,w 'echo An editable binding@'
-bind base a,b,c rm -rf / @  # Another editable binding
 .Ed
 .
 .Pp

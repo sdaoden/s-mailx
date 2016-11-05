@@ -907,9 +907,10 @@ enum n_iconv_flags{
 
 enum n_lexinput_flags{
    n_LEXINPUT_NONE,
-   n_LEXINPUT_CTX_BASE = 0,            /* Input context (`bind'+): fallback */
-   n_LEXINPUT_CTX_COMPOSE = 1,
-   n__LEXINPUT_CTX_MASK = 1,
+   n_LEXINPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
+   n_LEXINPUT_CTX_DEFAULT = 1,         /* Default input */
+   n_LEXINPUT_CTX_COMPOSE = 2,         /* Compose mode input */
+   n__LEXINPUT_CTX_MASK = 3,
    n__LEXINPUT_CTX_MAX = n_LEXINPUT_CTX_COMPOSE + 1,
 
    n_LEXINPUT_NL_ESC = 1<<8,           /* Support "\\$" line continuation */

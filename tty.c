@@ -191,7 +191,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, prompt,
+   if (n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, prompt,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
@@ -226,7 +226,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, query,
+   if (n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, query,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
@@ -537,16 +537,21 @@ struct a_tty_global{
    ui32_t tg_bind_cnt;           /* Overall number of bindings */
    bool_t tg_bind_isdirty;
    bool_t tg_bind_isbuild;
-   char tg_bind_shcut_cancel[n__LEXINPUT_CTX_MAX][5];
-   char tg_bind_shcut_prompt_char[n__LEXINPUT_CTX_MAX][5];
+#  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
+   ui8_t tg_bind__dummy[2];
+   char tg_bind_shcut_cancel[n__LEXINPUT_CTX_MAX][a_TTY_SHCUT_MAX];
+   char tg_bind_shcut_prompt_char[n__LEXINPUT_CTX_MAX][a_TTY_SHCUT_MAX];
    struct a_tty_bind_ctx *tg_bind[n__LEXINPUT_CTX_MAX];
    struct a_tty_bind_tree *tg_bind_tree[n__LEXINPUT_CTX_MAX][HSHSIZE];
 # endif
    struct termios tg_tios_old;
    struct termios tg_tios_new;
 };
-n_CTA(n__LEXINPUT_CTX_MAX == 2,
+n_CTA(n__LEXINPUT_CTX_MAX == 3 && a_TTY_SHCUT_MAX == 4 &&
+   n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
+n_CTA(a_TTY_SHCUT_MAX > 1,
+   "Users need at least one shortcut, plus NUL terminator");
 
 # ifdef HAVE_HISTORY
 struct a_tty_hist{
@@ -572,8 +577,8 @@ struct a_tty_line{
    wchar_t tl_bind_takeover;     /* Leftover byte to consume next */
    ui8_t tl_bind_timeout;        /* In-seq. inter-byte-timer, in 1/10th secs */
    ui8_t tl__bind_dummy[3];
-   char (*tl_bind_shcut_cancel)[5];       /* Special _CANCEL shortcut control */
-   char (*tl_bind_shcut_prompt_char)[5];  /* ..for _PROMPT_CHAR */
+   char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
+   char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
    struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE]; /* Bind lookup tree */
    struct a_tty_bind_tree *tl_bind_tree;
 # endif
@@ -617,10 +622,12 @@ struct a_tty_line{
 # ifdef HAVE_KEY_BINDINGS
 /* C99: use [INDEX]={} */
 n_CTAV(n_LEXINPUT_CTX_BASE == 0);
-n_CTAV(n_LEXINPUT_CTX_COMPOSE == 1);
+n_CTAV(n_LEXINPUT_CTX_DEFAULT == 1);
+n_CTAV(n_LEXINPUT_CTX_COMPOSE == 2);
 static struct a_tty_bind_ctx_map const
       a_tty_bind_ctx_maps[n__LEXINPUT_CTX_MAX] = {
    {n_LEXINPUT_CTX_BASE, "base"},
+   {n_LEXINPUT_CTX_DEFAULT, "default"},
    {n_LEXINPUT_CTX_COMPOSE, "compose"}
 };
 
@@ -3142,6 +3149,15 @@ jeempty:
 
          exp[tbpcp->tbpc_exp.l = i] = '\0';
          tbpcp->tbpc_flags |= a_TTY_BIND_NOCOMMIT;
+      }
+
+      /* Reverse solidus cannot be placed last in expansion to avoid (at the
+       * time of this writing) possible problems with newline escaping.
+       * Don't care about (un)even number thereof */
+      if(i > 0 && exp[i - 1] == '\\'){
+         n_err(_("`%s': reverse solidus cannot be last in expansion: %s\n"),
+            tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
+         goto jleave;
       }
 
       /* It may map to an internal MLE command! */

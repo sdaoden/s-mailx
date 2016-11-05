@@ -450,7 +450,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       ui32_t leaspc;
       char *cp;
 
-      n.i = n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, "",
+      n.i = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, "",
             &line.s, &line.l, NULL);
       if(n.ui == 0)
          continue;

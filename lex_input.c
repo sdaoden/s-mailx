@@ -1270,7 +1270,7 @@ n_commands(void){ /* FIXME */
       /* Read a line of commands and handle end of file specially */
 jreadline:
       ev.le_line.l = ev.le_line_size;
-      n = n_lex_input(n_LEXINPUT_CTX_BASE | n_LEXINPUT_NL_ESC, NULL,
+      n = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, NULL,
             &ev.le_line.s, &ev.le_line.l, ev.le_new_content);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
