@@ -854,6 +854,15 @@ je96:
             (pstate & PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
 jleave:
+   /* C99 */{
+      bool_t reset = !(pstate & PS_ROOT);
+
+      pstate |= PS_ROOT;
+      ok_vset(_exit_status, (e == 0 ? "0" : "1")); /* TODO num=1 +real value! */
+      if(reset)
+         pstate &= ~PS_ROOT;
+   }
+
    /* Exit the current source file on error TODO what a mess! */
    if(e == 0)
       pstate &= ~PS_EVAL_ERROR;
@@ -1328,6 +1337,7 @@ FL int
 (n_lex_input)(enum n_lexinput_flags lif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string n_MEMORY_DEBUG_ARGS){
    /* TODO readline: linebuf pool!; n_lex_input should return si64_t */
+   struct n_string xprompt;
    FILE *ifile;
    bool_t doprompt, dotty;
    char const *iftype;
@@ -1365,12 +1375,16 @@ FL int
          (options & OPT_INTERACTIVE));
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if(!doprompt)
-      prompt = NULL;
-   else if(prompt == NULL)
-      prompt = getprompt();
+      lif |= n_LEXINPUT_PROMPT_NONE;
+   else{
+      if(!dotty)
+         n_string_creat_auto(&xprompt);
+      if(prompt == NULL)
+         lif |= n_LEXINPUT_PROMPT_EVAL;
+   }
 
    /* Ensure stdout is flushed first anyway */
-   if(!dotty && prompt == NULL)
+   if(!dotty && (lif & n_LEXINPUT_PROMPT_NONE))
       fflush(stdout);
 
    ifile = (a_lex_input != NULL) ? a_lex_input->li_file : stdin;
@@ -1393,10 +1407,12 @@ FL int
          n = (n_tty_readline)(lif, prompt, linebuf, linesize, n
                n_MEMORY_DEBUG_ARGSCALL);
       }else{
-         if(prompt != NULL) {
-            if(*prompt != '\0')
-               fputs(prompt, stdout);
-            fflush(stdout);
+         if(!(lif & n_LEXINPUT_PROMPT_NONE)){
+            n_tty_create_prompt(&xprompt, prompt, lif);
+            if(xprompt.s_len > 0){
+               fwrite(xprompt.s_dat, 1, xprompt.s_len, stdout);
+               fflush(stdout);
+            }
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
@@ -1439,8 +1455,7 @@ FL int
             break;
       }
       (*linebuf)[nold = --n] = '\0';
-      if(prompt != NULL && *prompt != '\0')
-         prompt = ".. "; /* XXX PS2 .. */
+      lif |= n_LEXINPUT_NL_FOLLOW;
    }
 
    if(n < 0)

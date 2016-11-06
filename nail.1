@@ -5725,16 +5725,7 @@ set to
 .Pf no Va page ,
 .Va prompt
 set to
-.Ql ?\0
-(note that \*(UA deviates from the standard by using
-.Ql \e&\0 ,
-but the
-.Ql \e&
-special prompt escape results in
-.Dq \&?
-being shown unless
-.Va bsdcompat
-is set),
+.Ql ?\0 ,
 .Pf no Va quiet ,
 .Pf no Va record ,
 .Va save ,
@@ -5774,6 +5765,31 @@ etc., and should thus be taken into account.
 .Ss "Variables"
 .
 .Bl -tag -width ".It Va _utoprin_"
+.Mx
+.It Va -account-name
+\*(RO Is set to the active
+.Ic account .
+.
+.Mx
+.It Va -exit-status
+\*(RO The status of the last command.
+.
+.Mx
+.It Va -folder-resolved
+\*(RO Set to the fully resolved path of
+.Va folder
+once that evaluation has occurred; rather internal.
+.
+.Mx
+.It Va -mailbox-display
+\*(RO The name of the current mailbox
+.Pf ( Ic file ) ,
+possibly abbreviated for display purposes.
+.
+.Mx
+.It Va -mailbox-resolved
+\*(RO The fully resolved path of the current mailbox.
+.
 .Mx
 .It Va add-file-recipients
 \*(BO When file or pipe recipients have been specified,
@@ -5994,10 +6010,7 @@ has the same affect as setting
 .Va askatend
 and all other variables prefixed with
 .Ql bsd ;
-it also changes the meaning of the \*(UA specific
-.Ql \e&
-.Va prompt
-escape sequence and changes behaviour of
+it also changes the behaviour of
 .Va emptystart
 (which doesn't exist in BSD).
 .
@@ -7523,49 +7536,31 @@ just as if the surrounding part was of type
 .
 .Mx
 .It Va prompt
-The string shown when a command is accepted.
+The string used as a prompt in interactive mode.
+Whenever the variable is evaluated the value is shell-expanded using
+dollar-single-quote expansion mode (see
+.Sx COMMANDS ) ,
+and it is an error if the prompt expands to more than a single token.
+This (post-assignment, i.e., second) expansion can be used to embed
+status information, for example
+.Va -account-name ,
+.Va -exit-status
+or
+.Va -mailbox-display .
+In order to embed characters which should not be counted when
+calculating the visual width of the resulting string, enclose the
+characters of interest in a pair of reverse solidus escaped brackets:
+.Ql \e[\eE[0m\e] .
 Prompting may be prevented by setting this to the null string
-(or by setting
-.Pf no Va prompt ) .
-If a value is assigned the following \*(UA specific additional sequences
-are understood:
-.Ql \e& ,
-which expands to
-.Dq \&?
-unless
-.Va bsdcompat
-is set, in which case it expands to
-.Dq \&& ;
-note that
-.Ql \e&\0
-is the default value of
-.Va \&\&prompt .
-.Ql \e? ,
-which will expand to
-.Dq 1
-if the last command failed and to
-.Dq 0
-otherwise,
-.Ql \e$ ,
-which will expand to the name of the currently active
-.Ic account ,
-if any, and to the empty string otherwise, and
-.Ql \e@ ,
-which will expand to the name of the currently active mailbox.
-(Note that the prompt buffer is size-limited, excess is cut off.)
-.Pp
-Even though
-.Va \&\&prompt
-checks for
-.Va headline-bidi
-to encapsulate the expansions of the
-.Ql \e$
-and
-.Ql \e@
-escape sequences as necessary to correctly display bidirectional text,
-this is not true for the final string that makes up
-.Va \&\&prompt
-as such, i.e., real BIDI handling is not supported.
+(a.k.a.\|
+.Ql set noprompt ) .
+.
+.Mx
+.It Va prompt2
+This string is used for secondary prompts, but is otherwise identical to
+.Va prompt .
+The default is
+.Ql ..\0 .
 .
 .Mx
 .It Va quiet
@@ -9726,18 +9721,18 @@ set from='Your Name <address@exam.ple>'
 # if the "SERVER" of mta and "domain" of from don't match.
 # The `urlencode' command can be used to encode USER and PASS
 set mta=(smtps?|submission)://[USER[:PASS]@]SERVER[:PORT] \e
-    smtp-auth=login/plain... \e
-    smtp-use-starttls
+  smtp-auth=login/plain... \e
+  smtp-use-starttls
 
 # Never refuse to start into interactive mode, and more
 set emptystart \e
-    colour-pager crt= \e
-    followup-to followup-to-honour=ask-yes \e
-    history-file=+.\*(uAhist history-size=-1 history-gabby \e
-    mime-counter-evidence=0xE \e
-    prompt='?\e?[\e$ \e@]\e& ' \e
-    reply-to-honour=ask-yes \e
-    umask=
+  colour-pager crt= \e
+  followup-to followup-to-honour=ask-yes \e
+  history-file=+.\*(uAhist history-size=-1 history-gabby \e
+  mime-counter-evidence=0xE \e
+  prompt='[\e${-account-name} \e${-mailbox-display}]? ' \e
+  reply-to-honour=ask-yes \e
+  umask=
 
 # When `t'yping messages, show only these headers
 # (use `T'ype for all headers and `S'how for raw message)
@@ -9764,7 +9759,7 @@ account XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
-      hostname=yaXXex.com smtp-hostname=
+    hostname=yaXXex.com smtp-hostname=
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..

@@ -292,6 +292,141 @@ jrestore:
 }
 #endif /* HAVE_SOCKETS */
 
+FL ui32_t
+n_tty_create_prompt(struct n_string *store, char const *xprompt,
+      enum n_lexinput_flags lif){
+   struct n_visual_info_ctx vic;
+   struct str in, out;
+   ui32_t pwidth;
+   char const *cp;
+   NYD2_ENTER;
+
+   /* Prompt creation indicates that prompt printing is directly ahead, so take
+    * this opportunity of UI-in-a-known-state and advertise the error ring */
+#ifdef HAVE_ERRORS
+   if((options & OPT_INTERACTIVE) &&
+         (pstate & (PS_ERRORS_PROMPT | PS_ERRORS_NOTED)) == PS_ERRORS_PROMPT){
+      pstate |= PS_ERRORS_NOTED;
+      fprintf(stderr, _("There are new messages in the error message ring "
+            "(denoted by %s)\n"
+         "  The `errors' command manages this message ring\n"),
+         V_(n_error));
+   }
+#endif
+
+jredo:
+   n_string_trunc(store, 0);
+
+   if(lif & n_LEXINPUT_PROMPT_NONE){
+      pwidth = 0;
+      goto jleave;
+   }
+#ifdef HAVE_ERRORS
+   if(pstate & PS_ERRORS_PROMPT){
+      pstate &= ~PS_ERRORS_PROMPT;
+      store = n_string_push_cp(store, V_(n_error));
+      store = n_string_push_c(store, '#');
+      store = n_string_push_c(store, ' ');
+   }
+#endif
+
+   cp = (lif & n_LEXINPUT_PROMPT_EVAL)
+         ? (lif & n_LEXINPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
+         : xprompt;
+   if(cp != NULL && *cp != '\0'){
+      enum n_shexp_state shs;
+
+      store = n_string_push_cp(store, cp);
+      in.s = n_string_cp(store);
+      in.l = store->s_len;
+      out = in;
+      store = n_string_drop_ownership(store);
+
+      shs = n_shexp_parse_token(store, &in, n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ);
+      if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
+         store = n_string_clear(store);
+         store = n_string_take_ownership(store, out.s, out.l +1, out.l);
+jeeval:
+         n_err(_("*prompt2?* evaluation failed, actively unsetting it\n"));
+         if(lif & n_LEXINPUT_NL_FOLLOW)
+            ok_vclear(prompt2);
+         else
+            ok_vclear(prompt);
+         goto jredo;
+      }
+
+      if(!store->s_auto)
+         free(out.s);
+   }
+
+   /* Make all printable TODO not know, we want to pass through ESC/CSI! */
+#if 0
+   in.s = n_string_cp(store);
+   in.l = store->s_len;
+   makeprint(&in, &out);
+   store = n_string_assign_buf(store, out.s, out.l);
+   free(out.s);
+#endif
+
+   /* We need the visual width.. */
+   memset(&vic, 0, sizeof vic);
+   vic.vic_indat = n_string_cp(store);
+   vic.vic_inlen = store->s_len;
+   for(pwidth = 0; vic.vic_inlen > 0;){
+      /* but \[ .. \] is not taken into account */
+      if(vic.vic_indat[0] == '\\' && vic.vic_inlen > 1 &&
+            vic.vic_indat[1] == '['){
+         size_t i;
+
+         i = PTR2SIZE(vic.vic_indat - store->s_dat);
+         store = n_string_cut(store, i, 2);
+         cp = &n_string_cp(store)[i];
+         i = store->s_len - i;
+         for(;; ++cp, --i){
+            if(i < 2){
+               n_err(_("Open \\[ sequence not closed in *prompt2?*\n"));
+               goto jeeval;
+            }
+            if(cp[0] == '\\' && cp[1] == ']')
+               break;
+         }
+         i = PTR2SIZE(cp - store->s_dat);
+         store = n_string_cut(store, i, 2);
+         vic.vic_indat = &n_string_cp(store)[i];
+         vic.vic_inlen = store->s_len - i;
+      }else if(!n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY |
+            n_VISUAL_INFO_ONE_CHAR)){
+         n_err(_("Character set error in evaluation of *prompt2?*\n"));
+         goto jeeval;
+      }else{
+         pwidth += (ui32_t)vic.vic_vi_width;
+         vic.vic_indat = vic.vic_oudat;
+         vic.vic_inlen = vic.vic_oulen;
+      }
+   }
+
+   /* And there may be colour support, too */
+#ifdef HAVE_COLOUR
+   /* C99 */{
+      struct str const *psp, *rsp;
+      struct n_colour_pen *ccp;
+
+      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL)) != NULL &&
+            (psp = n_colour_pen_to_str(ccp)) != NULL &&
+            (rsp = n_colour_reset_to_str()) != NULL){
+         store = n_string_unshift_buf(store, psp->s, psp->l);
+         store = n_string_push_buf(store, rsp->s, rsp->l);
+      }
+   }
+#endif /* HAVE_COLOUR */
+
+jleave:
+   NYD2_LEAVE;
+   return pwidth;
+}
+
 /*
  * MLE: the Mailx-Line-Editor, our homebrew editor
  * (inspired from NetBSDs sh(1) and dash(1)s hetio.c).
@@ -1152,7 +1287,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    tlp->tl_vi_flags = (f & ~(a_TTY_VF_REFRESH | a_PERSIST_MASK)) |
          a_TTY_VF_SYNC;
    f |= a_TRUE_RV;
-   if((w = tlp->tl_prompt_length) > 0)
+   if((w = tlp->tl_prompt_width) > 0)
       f |= a_HAVE_PROMPT;
    f |= a_HAVE_POSITION;
 
@@ -1874,7 +2009,7 @@ a_tty_kht(struct a_tty_line *tlp){
             exp = sub;
             shs = n_shexp_parse_token(NULL, &sub, n_SHEXP_PARSE_DRYRUN |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-                  n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE);
             if(sub.l != 0){
                size_t x;
 
@@ -1891,7 +2026,7 @@ a_tty_kht(struct a_tty_line *tlp){
             }
             n_shexp_parse_token(shoup, &exp,
                n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-               n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
+               n_SHEXP_PARSE_QUOTE_AUTO_CLOSE);
             break;
          }
 
@@ -3716,94 +3851,53 @@ FL int
 (n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
    struct a_tty_line tl;
+   struct n_string xprompt;
 # ifdef HAVE_COLOUR
    char *posbuf, *pos;
 # endif
-   ui32_t plen, pwidth;
    ssize_t nn;
+   ui32_t plen, pwidth;
    char const *orig_prompt;
    NYD_ENTER;
    n_UNUSED(lif);
+   n_UNINIT(pwidth, 0);
+   n_UNINIT(plen, 0);
 
    assert(!ok_blook(line_editor_disable));
    if(!(pstate & PS_LINE_EDITOR_INIT))
       n_tty_init();
    assert(pstate & PS_LINE_EDITOR_INIT);
 
+   if(!(lif & n_LEXINPUT_PROMPT_NONE))
+      n_string_creat_auto(&xprompt);
    orig_prompt = prompt;
-   /* xxx Likely overkill: avoid "bind base a,b,c set-line-editor-disable"
-    * xxx not being honoured at once: call n_lex_input() instead of goto */
-# ifndef HAVE_KEY_BINDINGS
 jredo:
-   prompt = orig_prompt;
-# endif
-
 # ifdef HAVE_COLOUR
    n_colour_env_create(n_COLOUR_CTX_MLE, FAL0);
 # endif
 
-   /* Classify prompt */
-   n_UNINIT(plen, 0);
-   n_UNINIT(pwidth, 0);
-   if(prompt != NULL){
-      size_t i = strlen(prompt);
-
-      if(i == 0 || i >= UI32_MAX)
-         prompt = NULL;
-      else{
-         /* TODO *prompt* is in multibyte and not in a_tty_cell, therefore
-          * TODO we cannot handle it in parts, it's all or nothing.
-          * TODO Later (S-CText, SysV signals) the prompt should be some global
-          * TODO carrier thing, fully evaluated and passed around as UI-enabled
-          * TODO string, then we can print it character by character */
-         struct n_visual_info_ctx vic;
-
-         memset(&vic, 0, sizeof vic);
-         vic.vic_indat = prompt;
-         vic.vic_inlen = i;
-         if(n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY)){
-            pwidth = (ui32_t)vic.vic_vi_width;
-            plen = (ui32_t)i;
-         }else{
-            n_err(_("Character set error in evaluation of prompt\n"));
-            prompt = NULL;
-         }
-      }
+   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
+      pwidth = n_tty_create_prompt(&xprompt, orig_prompt, lif);
+      plen = (ui32_t)xprompt.s_len;
+      prompt = (pwidth == 0) ? NULL : n_string_cp_const(&xprompt);
    }
 
 # ifdef HAVE_COLOUR
    /* C99 */{
+      char const *ccol;
       struct n_colour_pen *ccp;
       struct str const *sp;
-
-      if(prompt != NULL &&
-            (ccp = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL)) != NULL &&
-            (sp = n_colour_pen_to_str(ccp)) != NULL){
-         char const *ccol = sp->s;
-
-         if((sp = n_colour_reset_to_str()) != NULL){
-            size_t l1 = strlen(ccol), l2 = strlen(sp->s);
-            ui32_t nplen = (ui32_t)(l1 + plen + l2);
-            char *nprompt = salloc(nplen +1);
-
-            memcpy(nprompt, ccol, l1);
-            memcpy(&nprompt[l1], prompt, plen);
-            memcpy(&nprompt[l1 += plen], sp->s, ++l2);
-
-            prompt = nprompt;
-            plen = nplen;
-         }
-      }
 
       /* .tl_pos_buf is a hack */
       posbuf = pos = NULL;
       if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
             (sp = n_colour_pen_to_str(ccp)) != NULL){
-         char const *ccol = sp->s;
-
+         ccol = sp->s;
          if((sp = n_colour_reset_to_str()) != NULL){
-            size_t l1 = strlen(ccol), l2 = strlen(sp->s);
+            size_t l1, l2;
 
+            l1 = strlen(ccol);
+            l2 = strlen(sp->s);
             posbuf = salloc(l1 + 4 + l2 +1);
             memcpy(posbuf, ccol, l1);
             pos = &posbuf[l1];
@@ -3846,7 +3940,8 @@ jredo:
          &a_tty.tg_bind_shcut_prompt_char[lif & n__LEXINPUT_CTX_MASK];
 # endif /* HAVE_KEY_BINDINGS */
 
-   if((tl.tl_prompt = prompt) != NULL){ /* XXX not re-evaluated */
+   if(!(lif & n_LEXINPUT_PROMPT_NONE) && pwidth > 0){
+      tl.tl_prompt = prompt;
       tl.tl_prompt_length = plen;
       tl.tl_prompt_width = pwidth;
    }
@@ -3879,15 +3974,11 @@ jredo:
 
    if(tl.tl_reenter_after_cmd != NULL){
       n_source_command(lif, tl.tl_reenter_after_cmd);
-      /* TODO because of recursion we cannot use srelax()ation: would be good */
-      /* See above for why not simply using goto */
       n = (nn <= 0) ? 0 : nn;
-# ifdef HAVE_KEY_BINDINGS
+      if(!ok_blook(line_editor_disable))
+         goto jredo;
       nn = (n_lex_input)(lif, orig_prompt, linebuf, linesize,
             (n == 0 ? "" : savestrbuf(*linebuf, n)) n_MEMORY_DEBUG_ARGSCALL);
-# else
-      goto jredo;
-# endif
    }
    NYD_LEAVE;
    return (int)nn;
@@ -4291,14 +4382,17 @@ n_tty_signal(int sig){
 FL int
 (n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
+   struct n_string xprompt;
    int rv;
    NYD_ENTER;
 
-   if(prompt != NULL){
-      if(*prompt != '\0')
-         fputs(prompt, stdout);
-      fflush(stdout);
+   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
+      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, lif) > 0){
+         fwrite(xprompt.s_dat, 1, xprompt.s_len, stdout);
+         fflush(stdout);
+      }
    }
+
 # ifdef HAVE_TERMCAP
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);

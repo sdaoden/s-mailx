@@ -426,114 +426,6 @@ nextprime(ui32_t n)
    return mprime;
 }
 
-FL char *
-getprompt(void) /* TODO evaluate only as necessary (needs a bit) PART OF UI! */
-{ /* FIXME getprompt must mb->wc->mb+reset seq! */
-   static char buf[PROMPT_BUFFER_SIZE];
-
-   char *cp;
-   char const *ccp_base, *ccp;
-   size_t n_NATCH_CHAR( cclen_base COMMA cclen COMMA ) maxlen, dfmaxlen;
-   bool_t trigger; /* 1.: `errors' ring note?  2.: first loop tick done */
-   NYD_ENTER;
-
-   /* No other place to place this */
-#ifdef HAVE_ERRORS
-   if (options & OPT_INTERACTIVE) {
-      if (!(pstate & PS_ERRORS_NOTED) && a_aux_err_head != NULL) {
-         pstate |= PS_ERRORS_NOTED;
-         fprintf(stderr, _("There are new messages in the error message ring "
-               "(denoted by %s)\n"
-            "  The `errors' command manages this message ring\n"),
-            V_(n_error));
-      }
-
-      if ((trigger = (a_aux_err_cnt_noted != a_aux_err_cnt)))
-         a_aux_err_cnt_noted = a_aux_err_cnt;
-   } else
-      trigger = FAL0;
-#endif
-
-   cp = buf;
-   if ((ccp_base = ok_vlook(prompt)) == NULL || *ccp_base == '\0') {
-#ifdef HAVE_ERRORS
-      if (trigger)
-         ccp_base = "";
-      else
-#endif
-         goto jleave;
-   }
-#ifdef HAVE_ERRORS
-   if (trigger)
-      ccp_base = savecatsep(V_(n_error), '\0', ccp_base);
-#endif
-   n_NATCH_CHAR( cclen_base = strlen(ccp_base); )
-
-   dfmaxlen = 0; /* keep CC happy */
-   trigger = FAL0;
-jredo:
-   ccp = ccp_base;
-   n_NATCH_CHAR( cclen = cclen_base; )
-   maxlen = sizeof(buf) -1;
-
-   for (;;) {
-      size_t l;
-      int c;
-
-      if (maxlen == 0)
-         goto jleave;
-#ifdef HAVE_NATCH_CHAR
-      c = mblen(ccp, cclen); /* TODO use mbrtowc() */
-      if (c <= 0) {
-         mblen(NULL, 0);
-         if (c < 0) {
-            *buf = '?';
-            cp = buf + 1;
-            goto jleave;
-         }
-         break;
-      } else if ((l = c) > 1) {
-         if (trigger) {
-            memcpy(cp, ccp, l);
-            cp += l;
-         }
-         ccp += l;
-         maxlen -= l;
-         continue;
-      } else
-#endif
-      if ((c = n_shexp_expand_escape(&ccp, TRU1)) > 0) {
-            if (trigger)
-               *cp++ = (char)c;
-            --maxlen;
-            continue;
-      }
-      if (c == 0 || c == PROMPT_STOP)
-         break;
-
-      if (trigger) {
-         char const *a = (c == PROMPT_DOLLAR) ? account_name : displayname;
-         if (a == NULL)
-            a = "";
-         if ((l = field_put_bidi_clip(cp, dfmaxlen, a, strlen(a))) > 0) {
-            cp += l;
-            maxlen -= l;
-            dfmaxlen -= l;
-         }
-      }
-   }
-
-   if (!trigger) {
-      trigger = TRU1;
-      dfmaxlen = maxlen;
-      goto jredo;
-   }
-jleave:
-   *cp = '\0';
-   NYD_LEAVE;
-   return buf;
-}
-
 FL char const *
 n_getdeadletter(void){
    char const *cp_base, *cp;
@@ -897,6 +789,9 @@ n_verr(char const *format, va_list ap){
 
    if((len = strlen(format)) == 0)
       goto jleave;
+#ifdef HAVE_ERRORS
+   pstate |= PS_ERRORS_PROMPT;
+#endif
 
    if(doname || a_aux_err_linelen == 0)
       fputs(VAL_UAGENT ": ", stderr);
@@ -1096,9 +991,8 @@ jlist:{
       }
 
       for(i = 0, enp = a_aux_err_head; enp != NULL; enp = enp->ae_next)
-         fprintf(fp, "%4" PRIuZ ". %u B: %s",
-            ++i, enp->ae_str.s_len, n_string_cp(&enp->ae_str));
-      /* We don't know whether last string ended with NL; be simple */
+         fprintf(fp, "%4" PRIuZ ". %s", ++i, n_string_cp(&enp->ae_str));
+      /* We don't know whether last string ended with NL; be simple XXX */
       putc('\n', fp);
 
       page_or_print(fp, 0);

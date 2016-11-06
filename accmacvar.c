@@ -74,19 +74,20 @@ enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
    a_AMV_VF_BOOL = 1<<0,      /* ok_b_* */
    a_AMV_VF_VIRT = 1<<1,      /* "Stateless" automatic variable */
-   a_AMV_VF_RDONLY = 1<<2,    /* May not be set by user */
-   a_AMV_VF_NODEL = 1<<3,     /* May not be deleted */
-   a_AMV_VF_NOTEMPTY = 1<<4,  /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1<<5,  /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1<<6,       /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1<<7,    /* Value must be positive 32-bit number */
-   a_AMV_VF_VIP = 1<<8,       /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<9,    /* Import ONLY from environ (before PS_STARTED) */
-   a_AMV_VF_ENV = 1<<10,      /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<11,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<12,   /* Has a default value */
-   a_AMV_VF_LINKED = 1<<13,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(13+1)) - 1
+   a_AMV_VF_NOLOPTS = 1<<2,   /* May not be tracked by `localopts' */
+   a_AMV_VF_RDONLY = 1<<3,    /* May not be set by user */
+   a_AMV_VF_NODEL = 1<<4,     /* May not be deleted */
+   a_AMV_VF_NOTEMPTY = 1<<5,  /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1<<6,  /* Value may not contain control characters */
+   a_AMV_VF_NUM = 1<<7,       /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1<<8,    /* Value must be positive 32-bit number */
+   a_AMV_VF_VIP = 1<<9,       /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1<<10,   /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_ENV = 1<<11,      /* Update environment on change */
+   a_AMV_VF_I3VAL = 1<<12,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1<<13,   /* Has a default value */
+   a_AMV_VF_LINKED = 1<<14,   /* `environ' linked */
+   a_AMV_VF__MASK = (1<<(14+1)) - 1
 };
 
 struct a_amv_mac{
@@ -1086,7 +1087,8 @@ jeavmp:
    a_amv_var_lookup(avcp, TRU1);
 
    /* Don't care what happens later on, store this in the unroll list */
-   if(a_amv_lopts != NULL)
+   if(a_amv_lopts != NULL &&
+         (avmp == NULL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS)))
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
    if((avp = avcp->avc_var) == NULL){
@@ -1203,7 +1205,8 @@ jforce_env:
       goto jleave;
    }
 
-   if(a_amv_lopts != NULL)
+   if(a_amv_lopts != NULL &&
+         (avmp == NULL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS)))
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
    avp = avcp->avc_var;
@@ -1680,6 +1683,18 @@ c_account(void *v){
          n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
       }
+   }
+
+   /* C99 */{
+      bool_t reset = !(pstate & PS_ROOT);
+
+      pstate |= PS_ROOT;
+      if(amp != NULL)
+         ok_vset(_account_name, amp->am_name);
+      else
+         ok_vclear(_account_name);
+      if(reset)
+         pstate &= ~PS_ROOT;
    }
 
    if((pstate & (PS_STARTED | PS_HOOK_MASK)) == PS_STARTED){

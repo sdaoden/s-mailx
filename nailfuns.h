@@ -283,9 +283,6 @@ FL ui32_t      torek_ihashn(char const *dat, size_t len);
 /* Find a prime greater than n */
 FL ui32_t      nextprime(ui32_t n);
 
-/* Get *prompt*, or '& ' if *bsdcompat*, of '? ' otherwise */
-FL char *      getprompt(void);
-
 /* Return the name of the dead.letter file */
 FL char const * n_getdeadletter(void);
 
@@ -964,7 +961,6 @@ FL bool_t      n_commands(void);
 /* Actual cmd input */
 
 /* Read a complete line of input, with editing if interactive and possible.
- * If prompt is NULL we'll call getprompt() first, if necessary.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error.
@@ -980,7 +976,6 @@ FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
 /* Read a line of input, with editing if interactive and possible, return it
  * savestr()d or NULL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during PS_ROBOT).
- * If prompt is NULL we'll call getprompt() if necessary.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility */
 FL char *      n_lex_input_cp(enum n_lexinput_flags lif,
@@ -1694,13 +1689,6 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 #define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
 #define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
 
-/* Check whether *s is an escape sequence, expand it as necessary.
- * Returns the expanded sequence or 0 if **s is NUL or PROMPT_STOP if it is \c.
- * *s is advanced to after the expanded sequence (as possible).
- * If use_prompt_extensions is set, an enum prompt_exp may be returned */
-FL int         n_shexp_expand_escape(char const **s,
-                  bool_t use_prompt_extensions);
-
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store */
@@ -2321,6 +2309,13 @@ FL char *      getuser(char const *query);
 FL char *      getpassword(char const *query);
 #endif
 
+/* Create the prompt and return its visual width in columns, which may be 0
+ * if evaluation is disabled etc.  The data is placed in store.
+ * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
+ * takes place */
+FL ui32_t      n_tty_create_prompt(struct n_string *store,
+                  char const *xprompt, enum n_lexinput_flags lif);
+
 /* At least readline(3) (formerly supported) desires to handle SIGWINCH and
  * install its own handler */
 #if 0
@@ -2377,12 +2372,6 @@ FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
-
-/* Put maximally maxlen bytes of buf, a buffer of blen bytes, into store,
- * taking into account multibyte code point boundaries and possibly
- * encapsulating in bidi_info toggles as necessary */
-FL size_t      field_put_bidi_clip(char *store, size_t maxlen, char const *buf,
-                  size_t blen);
 
 /* Place cp in a salloc()ed buffer, column-aligned; for header display only */
 FL char *      colalign(char const *cp, int col, int fill,

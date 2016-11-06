@@ -25,8 +25,6 @@
 # [t-z] toplines="5"
 # Notes:
 # - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
-# - *prompt* is "\\& " by default, which will act POSIX-compliant
-#   unless the user does set *bsdcompat*
 # - no*onehop* doesn't exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
 #   separator on the command line or set the *sendmail-arguments* variable.)
@@ -126,8 +124,9 @@ set keepsave
 # became invalid; set this to include them nonetheless
 #set keep-content-length
 
-# An informational prompt (and see "Gimmicks" below)
-#set prompt="?\?[\$ \@]\& "
+# An informational prompt (and see "Gimmicks" below).
+# Note the _real_ evaluation occurs once used (see *prompt* manual entry)
+#wysh set prompt='?\${-exit-status}[\${-account-name} \${-mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to
 set quote

@@ -189,7 +189,6 @@
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
-#define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
 #define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
 
@@ -914,9 +913,12 @@ enum n_lexinput_flags{
    n__LEXINPUT_CTX_MAX = n_LEXINPUT_CTX_COMPOSE + 1,
 
    n_LEXINPUT_NL_ESC = 1<<8,           /* Support "\\$" line continuation */
+   n_LEXINPUT_NL_FOLLOW = 1<<9,        /* ..on such a follow line */
+   n_LEXINPUT_PROMPT_NONE = 1<<10,     /* Don't print prompt */
+   n_LEXINPUT_PROMPT_EVAL = 1<<11,     /* Instead, evaluate *prompt* */
 #if 0
-   n_LEXINPUT_DROP_TRAIL_SPC = 1<<9,   /* Drop any trailing space */
-   n_LEXINPUT_DROP_LEAD_SPC = 1<<10,   /* ..leading ones */
+   n_LEXINPUT_DROP_TRAIL_SPC = 1<<14,  /* Drop any trailing space */
+   n_LEXINPUT_DROP_LEAD_SPC = 1<<15,   /* ..leading ones */
    n_LEXINPUT_TRIM_SPACE = n_LEXINPUT_DROP_TRAIL_SPC | n_LEXINPUT_DROP_LEAD_SPC,
 #endif
 
@@ -1423,8 +1425,9 @@ enum program_state {
 
    PS_COLOUR_ACTIVE  = 1u<<22,      /* n_colour_env_create().._gut() cycle */
 
+   PS_ERRORS_PROMPT  = 1u<<24,      /* New error is to be reported in prompt */
    /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1u<<24,      /* Ring of `errors' content, print msg */
+   PS_ERRORS_NOTED   = 1u<<25,      /* Ring of `errors' advisory */
    PS_t_FLAG         = 1u<<26,      /* OPT_t_FLAG made persistant */
    PS_TERMCAP_DISABLE = 1u<<27,     /* HAVE_TERMCAP: *termcap-disable* was set */
    PS_TERMCAP_CA_MODE = 1u<<28,     /* HAVE_TERMCAP: ca_mode available & used */
@@ -1453,6 +1456,7 @@ enum okeys {
    ok_v_compose_bcc,
    ok_v_compose_subject,
 
+   ok_v__account_name,                 /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
    ok_v_agent_shell_lookup,
    ok_b_allnet,
@@ -1513,6 +1517,8 @@ ok_b_emptybox,
    ok_v_escape,
    ok_v_expandaddr,
    ok_v_expandargv,
+   /* TODO -exit-status should be num=1 */
+   ok_v__exit_status,                  /* {nolopts=1,rdonly=1,nodel=1} */
 
    ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,
@@ -1556,6 +1562,8 @@ ok_b_emptybox,
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
    ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
+   ok_v__mailbox_resolved,             /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v__mailbox_display,              /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_markanswered,
    ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,
@@ -1598,7 +1606,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
    ok_b_print_alternatives,
-   ok_v_prompt,                        /* {i3val="\\& "} */
+   ok_v_prompt,                        /* {i3val="? "} */
+   ok_v_prompt2,                       /* {i3val=".. "} */
 
    ok_b_quiet,
    ok_v_quote,

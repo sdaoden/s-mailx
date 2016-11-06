@@ -137,6 +137,16 @@ jdocopy:
       snprintf(dispp, sizeof(displayname), "%.*s...%s",
          (int)j, mailp, mailp + i);
    }
+
+   /* C99 */{
+      bool_t reset = !(pstate & PS_ROOT);
+
+      pstate |= PS_ROOT;
+      ok_vset(_mailbox_resolved, mailname);
+      ok_vset(_mailbox_display, displayname);
+      if(reset)
+         pstate &= ~PS_ROOT;
+   }
    NYD_LEAVE;
    return rv;
 }
