@@ -1810,6 +1810,7 @@ jleave:
 
 static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
+   ui8_t autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF], *autorec_persist;
    struct stat sb;
    struct str orig, bot, topp, sub, exp;
    struct n_string shou, *shoup;
@@ -1817,9 +1818,6 @@ a_tty_kht(struct a_tty_line *tlp){
    bool_t wedid, set_savec;
    ui32_t rv, f;
    NYD2_ENTER;
-
-   f = a_TTY_VF_NONE;
-   shoup = n_string_creat_auto(&shou);
 
    /* Get plain line data; if this is the first expansion/xy, update the
     * very original content so that ^G gets the origin back */
@@ -1832,6 +1830,12 @@ a_tty_kht(struct a_tty_line *tlp){
    }else
       set_savec = TRU1;
    orig = exp;
+
+   autorec_persist = n_memory_autorec_current();
+   n_memory_autorec_push(autorecmem);
+
+   shoup = n_string_creat_auto(&shou);
+   f = a_TTY_VF_NONE;
 
    /* Find the word to be expanded */
 
@@ -1886,8 +1890,8 @@ a_tty_kht(struct a_tty_line *tlp){
                goto jnope;
             }
             n_shexp_parse_token(shoup, &exp,
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-                  n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
+               n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+               n_SHEXP_PARSE_QUOTE_AUTOCLOSE);
             break;
          }
 
@@ -1960,7 +1964,7 @@ jset:
    }
 
    orig.l = bot.l + exp.l + topp.l;
-   orig.s = salloc(orig.l + 5 +1);
+   orig.s = n_autorec_alloc(autorec_persist, orig.l + 5 +1);
    if((rv = (ui32_t)bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
    memcpy(orig.s + rv, exp.s, exp.l);
@@ -1975,7 +1979,7 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   n_string_gut(shoup);
+   n_memory_autorec_pop(autorecmem);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;
