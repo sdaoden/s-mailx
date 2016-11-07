@@ -169,6 +169,12 @@ struct a_amv_var_carrier{
 #include "version.h"
 #include "okeys.h"
 
+/* True boolean visualization: this string will not be copied to heap memory
+ * in a_amv_var_copy(), but we must avoid confusion with identical user data.
+ * While here, add a special "0" one and speed up *.exit-status* assignments! */
+static char const a_amv_var_1[] = "1";
+static char const a_amv_var_0[] = "0";
+
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;
 
@@ -625,7 +631,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
       avp->av_env = NULL;
 #endif
    }else{
-      avp->av_value = avp->av_name + nl;
+      avp->av_value = &avp->av_name[nl];
       avp->av_flags = oavp->av_flags;
       memcpy(avp->av_value, oavp->av_value, vl);
 #ifdef HAVE_PUTENV
@@ -670,7 +676,15 @@ a_amv_var_copy(char const *str){
 
    if(*str == '\0')
       news = n_UNCONST("");
-   else{
+   else if(str[1] == '\0'){
+      if(str[0] == '1')
+         news = n_UNCONST(a_amv_var_1);
+      else if(str[0] == '0')
+         news = n_UNCONST(a_amv_var_0);
+      else
+         goto jheap;
+   }else{
+jheap:
       len = strlen(str) +1;
       news = smalloc(len);
       memcpy(news, str, len);
@@ -682,7 +696,7 @@ a_amv_var_copy(char const *str){
 static void
 a_amv_var_free(char *cp){
    NYD2_ENTER;
-   if(*cp != '\0')
+   if(cp[0] != '\0' && cp != a_amv_var_1 && cp != a_amv_var_0)
       free(cp);
    NYD2_LEAVE;
 }
@@ -840,9 +854,9 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
    avcp->avc_hash = hash = a_AMV_NAME2HASH(name);
 
    for(i = hash % a_AMV_VAR_REV_PRIME, j = 0; j <= a_AMV_VAR_REV_LONGEST; ++j){
-      ui32_t x = a_amv_var_revmap[i];
+      ui32_t x;
 
-      if(x == a_AMV_VAR_REV_ILL)
+      if((x = a_amv_var_revmap[i]) == a_AMV_VAR_REV_ILL)
          break;
 
       avmp = &a_amv_var_map[x];
@@ -1036,35 +1050,34 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(pstate & PS_ROOT))){
-         n_err(_("Variable is readonly: %s\n"), avcp->avc_name);
-         goto jleave;
+         value = N_("Variable is readonly: %s\n");
+         goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
-         n_err(_("Variable must not be empty: %s\n"), avcp->avc_name);
-         goto jleave;
+         value = N_("Variable must not be empty: %s\n");
+         goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
             !a_amv_var_check_nocntrls(value))){
-         n_err(_("Variable forbids control characters: %s\n"),
-            avcp->avc_name);
-         goto jleave;
+         value = N_("Variable forbids control characters: %s\n");
+         goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
             !a_amv_var_check_num(value, FAL0))){
-         n_err(_("Variable value not a number or out of range: %s\n"),
-            avcp->avc_name);
-         goto jleave;
+         value = N_("Variable value not a number or out of range: %s\n");
+         goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
             !a_amv_var_check_num(value, TRU1))){
-         n_err(_("Variable value not a number, negative or out of range: %s\n"),
-            avcp->avc_name);
-         goto jleave;
+         value = _("Variable value not a number, negative, "
+               "or out of range: %s\n");
+         goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(pstate & (PS_ROOT | PS_STARTED)))){
-         n_err(_("Variable cannot be set in a resource file: %s\n"),
-            avcp->avc_name);
+         value = N_("Variable cannot be set in a resource file: %s\n");
+jeavmp:
+         n_err(V_(value), avcp->avc_name);
          goto jleave;
       }
    }
@@ -1078,8 +1091,9 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
    if((avp = avcp->avc_var) == NULL){
       struct a_amv_var **avpp;
-      size_t l = strlen(avcp->avc_name) +1;
+      size_t l;
 
+      l = strlen(avcp->avc_name) +1;
       avcp->avc_var = avp = smalloc(sizeof(*avp) -
             n_VFIELD_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
@@ -1102,7 +1116,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          if((options & OPT_D_VV) && *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
-         avp->av_value = n_UNCONST(value = "");
+         avp->av_value = n_UNCONST(a_amv_var_1);
       }else
          avp->av_value = a_amv_var_copy(value);
 
@@ -1530,9 +1544,9 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
 
    /* If we are under *folder*, try the usual +NAME syntax, too */
    if(displayname[0] == '+'){
-      char *x = mailname + len;
+      char *x;
 
-      for(; x > mailname; --x)
+      for(x = &mailname[len]; x != mailname; --x)
          if(x[-1] == '/'){
             snprintf(var, len, "folder-hook-+%s", x);
             if((cp = vok_vlook(var)) != NULL)
@@ -1998,8 +2012,9 @@ c_varedit(void *v){
       if(nf != NULL){
          int c;
          char *base;
-         off_t l = fsize(nf);
+         off_t l;
 
+         l = fsize(nf);
          assert(l >= 0);
          base = salloc((size_t)l +1);
 
