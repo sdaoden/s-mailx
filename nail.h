@@ -1113,8 +1113,18 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
-   n_SHEXP_PARSE_QUOTE_AUTOCLOSE = 1<<8, /* Ignore an open quote at EOS */
-   n__SHEXP_PARSE_LAST = 8
+   /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
+    * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
+    * quote mode to be permanently active (cannot be closed) */
+   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1<<8,
+   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1<<9,
+   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1<<10,
+   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1<<11,
+   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1<<12, /* Ignore an open quote at EOS */
+   n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
+         n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
+
+   n__SHEXP_PARSE_LAST = 12
 };
 
 enum n_shexp_state{

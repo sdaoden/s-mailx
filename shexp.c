@@ -1201,9 +1201,13 @@ n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
    assert(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
    assert(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
       !(flags & n_SHEXP_PARSE_IFS_IS_COMMA));
+   assert(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
+      (flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK));
 
    if((flags & n_SHEXP_PARSE_LOG_D_V) && (options & OPT_D_V))
       flags |= n_SHEXP_PARSE_LOG;
+   if(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)
+      flags |= n_SHEXP_PARSE_QUOTE_AUTO_CLOSE;
 
    if((flags & n_SHEXP_PARSE_TRUNC) && store != NULL)
       store = n_string_trunc(store, 0);
@@ -1229,7 +1233,27 @@ jrestart_empty:
    if(store != NULL)
       store = n_string_reserve(store, n_MIN(il, 32)); /* XXX */
 
-   for(rv = n_SHEXP_STATE_NONE, state = a_NTOKEN, quotec = '\0'; il > 0;){
+   rv = n_SHEXP_STATE_NONE;
+   switch(flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK){
+   case n_SHEXP_PARSE_QUOTE_AUTO_SQ:
+      quotec = '\'';
+      state = a_NONE;
+      break;
+   case n_SHEXP_PARSE_QUOTE_AUTO_DQ:
+      quotec = '"';
+      if(0){
+   case n_SHEXP_PARSE_QUOTE_AUTO_DSQ:
+         quotec = '\'';
+      }
+      state = a_SURPLUS;
+      break;
+   default:
+      quotec = '\0';
+      state = a_NTOKEN;
+      break;
+   }
+
+   while(il > 0){
       --il, c = *ib++;
 
       /* If no quote-mode active.. */
@@ -1276,7 +1300,7 @@ jrestart_empty:
       }else{
          /* Quote-mode */
          assert(!(state & a_NTOKEN));
-         if(c == quotec){
+         if(c == quotec && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)){
             state = a_NONE;
             quotec = '\0';
             /* Users may need to recognize the presence of empty quotes */
@@ -1581,7 +1605,7 @@ j_dollar_ungetc:
       }
    }
 
-   if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTOCLOSE)){
+   if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)
          n_err(_("no closing quote: %.*s\n"), (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
