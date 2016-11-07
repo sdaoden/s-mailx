@@ -61,7 +61,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
          n_VISUAL_INFO_WOUT_PRINTABLE)
       vif |= n_VISUAL_INFO_WIDTH_QUERY;
 
-   vicp->vic_chars_seen = vicp->vic_vi_width = 0;
+   vicp->vic_chars_seen = vicp->vic_bytes_seen = vicp->vic_vi_width = 0;
    if(vif & n_VISUAL_INFO_WOUT_CREATE){
       if(vif & n_VISUAL_INFO_WOUT_SALLOC)
          vicp->vic_woudat = salloc(sizeof(*vicp->vic_woudat) * (il +1));
