@@ -311,9 +311,8 @@ sub dump_map{
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
       my $fa = join '|', @{$e->{flags}};
       $f .= '|' . $fa if length $fa;
-      my $n = $1 if $e->{enum} =~ /ok_._(.*)/;
       print F "${S}{$e->{hash}u, $e->{keyoff}u, $f},";
-      if($VERB) {print F "${S}/* $n */\n"}
+      if($VERB) {print F "${S}/* $e->{name} */\n"}
       else {print F "\n"}
    }
    print F '};', "\n\n";
