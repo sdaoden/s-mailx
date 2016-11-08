@@ -1439,39 +1439,40 @@ j_dollar_ungetc:
                for(i = 0; il > 0 && (c = *ib, a_SHEXP_ISVARC(c)); ++i)
                   --il, ++ib;
 
-               if(brace){
-                  if(il == 0 || *ib != '}'){
-                     if(state & a_SKIPQ){
-                        assert((state & a_SURPLUS) && quotec == '\'');
-                        continue;
-                     }
-                     if(flags & n_SHEXP_PARSE_LOG)
-                        n_err(_("Closing brace missing for ${VAR}: %.*s\n"),
-                           (int)input->l, input->s);
-                     rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
-                           n_SHEXP_STATE_ERR_BRACE;
-                     goto je_ib_save;
-                  }
-                  --il, ++ib;
-               }
-
-               if(state & a_SKIPQ)
+               if(state & a_SKIPQ){
+                  if(brace && il > 0 && *ib == '}')
+                     --il, ++ib;
                   continue;
+               }
 
                if(i == 0){
                   if(brace){
                      if(flags & n_SHEXP_PARSE_LOG)
-                        n_err(_("Bad substitution (${}): %.*s\n"),
-                           (int)input->l, input->s);
+                        n_err(_("Bad substitution (${}): %.*s\n  Near %.*s\n"),
+                           (int)input->l, input->s, (int)il, ib);
                      rv |= n_SHEXP_STATE_ERR_BADSUB;
                      goto je_ib_save;
                   }
                   c = '$';
-               }else if(flags & n_SHEXP_PARSE_DRYRUN)
-                  continue;
-               else{
-                  vp = savestrbuf(vp, i);
+               }else{
+                  if(brace){
+                     if(il == 0 || *ib != '}'){
+                        if(flags & n_SHEXP_PARSE_LOG)
+                           n_err(_("Closing brace missing for ${VAR}: %.*s\n"
+                                 "  Near: %.*s\n"),
+                              (int)input->l, input->s, (int)il, ib);
+                        rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
+                              n_SHEXP_STATE_ERR_BRACE;
+                        goto je_ib_save;
+                     }
+                     --il, ++ib;
+                  }
+
+                  if(flags & n_SHEXP_PARSE_DRYRUN)
+                     continue;
+
                   /* Check getenv(3) shall no internal variable exist! */
+                  vp = savestrbuf(vp, i);
                   if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
