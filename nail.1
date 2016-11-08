@@ -9891,17 +9891,15 @@ A set of CA certificates is usually delivered with OpenSSL and installed
 on your system.
 If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
-(Otherwise set
-.Va ssl-no-default-ca
-and use
+Otherwise set
+.Va smime-no-default-ca
+to avoid using the default certificate and point
 .Va smime-ca-file
 and/or
-.Va smime-ca-dir . )
+.Va smime-ca-dir
+to a trusted pool of certificates.
 In general, a certificate cannot be more secure than the method its CA
-certificate has been retrieved with, though.
-Thus if you download a CA certificate from the Internet,
-you can only trust the messages you verify using that certificate as
-much as you trust the download process.
+certificate has been retrieved with.
 .
 .Pp
 The first thing you need for participating in S/MIME message exchange is
