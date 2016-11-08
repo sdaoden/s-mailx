@@ -168,10 +168,9 @@ _read_attachment_data(enum n_lexinput_flags lif,
       if((n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY) &
-             (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
-             n_SHEXP_STATE_OUTPUT)
-         continue;
-      if(shin.l != 0)
+             (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT |
+              n_SHEXP_STATE_ERR_MASK)
+            ) != (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT))
          continue;
       cp = n_string_cp(shoup);
 

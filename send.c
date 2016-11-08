@@ -1189,10 +1189,9 @@ jgetname:
          if((n_shexp_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
                   n_SHEXP_PARSE_IGNORE_EMPTY) &
-                (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) !=
-                n_SHEXP_STATE_OUTPUT)
-            goto jgetname;
-         if(in.l != 0)
+                (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT |
+                 n_SHEXP_STATE_ERR_MASK)
+               ) != (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT))
             goto jgetname;
          f2 = n_string_cp(shoup);
       }

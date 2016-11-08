@@ -1523,7 +1523,7 @@ jleave:
       if(il > 0 && !(rv & n_SHEXP_STATE_OUTPUT) &&
             (flags & n_SHEXP_PARSE_IGNORE_EMPTY))
          goto jrestart_empty;
-      if(!(rv & n_SHEXP_STATE_OUTPUT) && il == 0)
+      if(/*!(rv & n_SHEXP_STATE_OUTPUT) &&*/ il == 0)
          rv |= n_SHEXP_STATE_STOP;
    }
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));

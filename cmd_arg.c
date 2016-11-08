@@ -268,7 +268,7 @@ jredo:
 
          if(shs & n_SHEXP_STATE_ERR_MASK)
             goto jerr;
-         if((shs & n_SHEXP_STATE_STOP) && /* XXX delay if output */
+         if((shs & n_SHEXP_STATE_STOP) &&
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_HONOUR_STOP)){
             if(!(shs & n_SHEXP_STATE_OUTPUT))
                goto jleave;
