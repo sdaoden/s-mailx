@@ -1201,8 +1201,18 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
-      ESTAT=1
       printf 'error: verification failed\n'
+      ESTAT=1
+      ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
+      return
+   fi
+   printf ' .. disproof via openssl smime(1): '
+   if openssl smime -verify -CAfile ./tcert.pem \
+         -in ./VERIFY >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
       ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
       return
    fi
@@ -1240,6 +1250,14 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
       ESTAT=1
       printf 'error: decryption+verification failed\n'
    fi
+   printf ' ..disproof via openssl smime(1): '
+   if (openssl smime -decrypt -inkey ./tkey.pem -in ./ENCRYPT |
+         openssl smime -verify -CAfile ./tcert.pem) >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+   fi
    ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
          -e \
          '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
@@ -1268,7 +1286,14 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
    else
       ESTAT=1
       printf 'error: decryption failed\n'
-      # FALLTHRU
+   fi
+   printf '.. disproof via openssl smime(1): '
+   if openssl smime -decrypt -inkey ./tkey.pem \
+         -in ./ENCRYPT >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
    fi
    ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
       < ./DECRYPT > ./ENCRYPT
