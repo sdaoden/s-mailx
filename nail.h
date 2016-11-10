@@ -230,7 +230,7 @@
 #define n_MEMORY_AUTOREC_TYPE_SIZEOF (7 * sizeof(void*))
 
 /* Default *encoding* as enum mime_enc below */
-#define MIME_DEFAULT_ENCODING MIMEE_QP
+#define MIME_DEFAULT_ENCODING MIMEE_B64
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
  * the real limit we go for */

@@ -124,13 +124,18 @@ static signed char const a_me_b64__dectbl[] = {
 
 /* (Ugly to place an enum here) */
 static char const a_me_ctes[] = "7bit\0" "8bit\0" \
-      "base64\0" "quoted-printable\0" "binary\0";
+      "base64\0" "quoted-printable\0" "binary\0" \
+      /* abbrevs */ "8b\0" "b64\0" "qp\0";
 enum a_me_ctes_off{
    a_ME_CTES_7B_OFF = 0, a_ME_CTES_7B_LEN = 4,
    a_ME_CTES_8B_OFF = 5, a_ME_CTES_8B_LEN = 4,
    a_ME_CTES_B64_OFF = 10, a_ME_CTES_B64_LEN = 6,
    a_ME_CTES_QP_OFF = 17,  a_ME_CTES_QP_LEN = 16,
-   a_ME_CTES_BIN_OFF = 34, a_ME_CTES_BIN_LEN = 6
+   a_ME_CTES_BIN_OFF = 34, a_ME_CTES_BIN_LEN = 6,
+
+   a_ME_CTES_S8B_OFF = 41, a_ME_CTES_S8B_LEN = 2,
+   a_ME_CTES_SB64_OFF = 44, a_ME_CTES_SB64_LEN = 3,
+   a_ME_CTES_SQP_OFF = 48, a_ME_CTES_SQP_LEN = 2
 };
 
 /* Check whether *s must be quoted according to flags, else body rules;
@@ -318,12 +323,15 @@ mime_enc_target(void){
 
    if((cp = ok_vlook(encoding)) == NULL)
       rv = MIME_DEFAULT_ENCODING;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_S8B_OFF]) ||
+         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
       rv = MIMEE_8B;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
-      rv = MIMEE_QP;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_B64_OFF]))
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_SB64_OFF]) ||
+         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_B64_OFF]))
       rv = MIMEE_B64;
+   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_SQP_OFF]) ||
+         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
+      rv = MIMEE_QP;
    else{
       n_err(_("Warning: invalid *encoding*, using Base64: %s\n"), cp);
       rv = MIMEE_B64;

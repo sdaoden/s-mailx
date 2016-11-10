@@ -275,7 +275,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
     * TODO any stateful encoding at all... (the standard says each encoded
     * TODO word must include all necessary reset sequences..., i.e., each
     * TODO encoded word must be a self-contained iconv(3) life cycle) */
-   if (!asccasecmp(cset8, "iso-2022-jp"))
+   if (!asccasecmp(cset8, "iso-2022-jp") || mime_enc_target() == MIMEE_B64)
       flags |= _NO_QP;
 
    wbot = in->s;

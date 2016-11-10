@@ -2,7 +2,7 @@
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
 SNAIL=./s-nail
-ARGS='-:/ -# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
+ARGS='-:/ -# -Sencoding=quoted-printable -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox

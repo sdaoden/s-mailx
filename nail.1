@@ -823,6 +823,9 @@ and reading the section
 .Sx "The mime.types files"
 should help to understand how the MIME-type of outgoing attachments are
 classified, and what can be done for fine-tuning.
+Over the wire an intermediate, configurable
+.Pf content-transfer-\: Va encoding
+may be applied to the raw message part data.
 .
 .Pp
 Message recipients (as specified on the command line or defined in
@@ -1441,7 +1444,10 @@ doesn't include the term
 then
 .Va ttycharset
 will be the only supported character set,
-it is simply assumed that it can be used to exchange 8-bit messages,
+it is simply assumed that it can be used to exchange 8-bit messages
+(over the wire an intermediate
+.Pf content-transfer-\: Va encoding
+may be applied),
 and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to the mentioned
@@ -3618,7 +3624,7 @@ Some special conventions are recognized for the
 .Ar name
 argument:
 .Pp
-.Bl -tag -compact -offset indent -width ".Ar %:__lespec"
+.Bl -tag -compact -width ".Ar %:__lespec"
 .It Ar #
 (number sign) means the previous file,
 .It Ar %
@@ -4721,7 +4727,7 @@ variable, as in, e.g.,
 .Ql set autosort=thread .
 Possible sorting criterions are:
 .Pp
-.Bl -tag -compact -offset indent -width "subject"
+.Bl -tag -compact -width "subject"
 .It date
 Sort the messages by their
 .Ql Date:
@@ -5895,7 +5901,7 @@ if the
 .Va bsdflags
 variable is set, in the following order:
 .Pp
-.Bl -tag -compact -offset indent -width ".It Ql _"
+.Bl -tag -compact -width ".It Ql _"
 .It Ql N
 new.
 .It Ql U
@@ -6263,21 +6269,39 @@ though).
 .
 .Mx
 .It Va encoding
-Suggestion for the MIME encoding to use in outgoing text messages
-and message parts.
-Valid values are the default
-.Ql quoted-printable ,
-.Ql 8bit
-and
-.Ql base64 .
-.Ql 8bit
-may cause problems when transferring mail messages over channels that
-are not ESMTP (RFC 1869) compliant.
-If there is no need to encode a message,
-.Ql 7bit
-transfer mode is always used regardless of this variable.
-Binary data is always encoded as
-.Ql base64 .
+The MIME
+.Ql Content-Transfer-Encoding
+to use in outgoing text messages and message parts, where applicable.
+(7-bit clean text messages are sent as-is, without a transfer encoding.)
+Valid values are:
+.Pp
+.Bl -tag -compact -width "_%%_"
+.It Ql 8bit
+.Pf (Or\0 Ql 8b . )
+8-bit transport effectively causes the raw data be passed through
+unchanged, but may cause problems when transferring mail messages over
+channels that are not ESMTP (RFC 1869) compliant.
+Also, several input data constructs are not allowed by the
+specifications and may cause a different transfer-encoding to be used.
+.It Ql quoted-printable
+.Pf (Or\0 Ql qp . )
+Quoted-printable encoding is 7-bit clean and has the property that ASCII
+characters are passed through unchanged, so that an english message can
+be read as-is; it is also acceptible for other single-byte locales that
+share many characters with ASCII, like, e.g., ISO-8859-1.
+The encoding will cause a large overhead for messages in other character
+sets: e.g., it will require up to twelve (12) bytes to encode a single
+UTF-8 character of four (4) bytes.
+.It Ql base64
+.Pf (Or\0 Ql b64 . )
+The default encoding, it is 7-bit clean and will always be used for
+binary data.
+This encoding has a constant input:output ratio of 3:4, regardless of
+the character set of the input data it will encode three bytes of input
+to four bytes of output.
+This transfer-encoding is not human readable without performing
+a decoding step.
+.El
 .
 .Mx
 .It Va escape
@@ -6578,7 +6602,7 @@ width \(em if that is negative, the field is to be left-aligned.
 Valid format specifiers are:
 .
 .Pp
-.Bl -tag -compact -offset indent -width "_%%_"
+.Bl -tag -compact -width "_%%_"
 .It Ql %%
 A plain percent character.
 .It Ql %>
@@ -9117,7 +9141,7 @@ and prepends an optional
 The following type markers are supported:
 .
 .Pp
-.Bl -tag -compact -offset indent -width ".It Ar _n_u"
+.Bl -tag -compact -width ".It Ar _n_u"
 .It Ar @
 Treat message parts with this content as plain text.
 .It Ar @t@
