@@ -920,7 +920,9 @@ jcantfout:
          }
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
-         if ((fout = Zopen(fname, "a")) == NULL) {
+         if(fname[0] == '-' && fname[1] == '\0')
+            fout = stdout;
+         else if ((fout = Zopen(fname, "a")) == NULL) {
             n_err(_("Writing message to %s failed: %s\n"),
                fnameq, strerror(errno));
             *senderror = TRU1;
@@ -934,7 +936,8 @@ jcantfout:
                fnameq, _("write error"));
             *senderror = TRU1;
          }
-         Fclose(fout);
+         if(fout != stdout)
+            Fclose(fout);
       }
 
 jcant:

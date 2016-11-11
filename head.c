@@ -445,7 +445,8 @@ _addrspec_check(int skinned, struct addrguts *agp)
       agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
       goto jleave;
    }
-   if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/'))
+   if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/') ||
+         (addr[0] == '-' && addr[1] == '\0'))
       goto jisfile;
    if (memchr(addr, '@', agp->ag_slen) == NULL) {
       if (*addr == '+')
