@@ -249,13 +249,14 @@
 #define MIME_TYPES_SYS  "/etc/mime.types"
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
+ * Note: must be lowercase!
  * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
-#define CHARSET_7BIT    "US-ASCII"
+#define CHARSET_7BIT    "us-ascii"
 #ifdef HAVE_ICONV
-# define CHARSET_8BIT      "UTF-8"
+# define CHARSET_8BIT      "utf-8"
 # define CHARSET_8BIT_OKEY charset_8bit
 #else
-# define CHARSET_8BIT      "ISO-8859-1"
+# define CHARSET_8BIT      "iso-8859-1"
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 

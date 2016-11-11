@@ -625,6 +625,13 @@ charset_get_7bit(void)
 
    if ((t = ok_vlook(charset_7bit)) == NULL)
       t = CHARSET_7BIT;
+   else{
+      char *cp;
+
+      cp = savestr(t);
+      for(t = cp; *cp != '\0'; ++cp)
+         *cp = lowerconv(*cp);
+   }
    NYD_LEAVE;
    return t;
 }
@@ -638,6 +645,13 @@ charset_get_8bit(void)
 
    if ((t = ok_vlook(CHARSET_8BIT_OKEY)) == NULL)
       t = CHARSET_8BIT;
+   else{
+      char *cp;
+
+      cp = savestr(t);
+      for(t = cp; *cp != '\0'; ++cp)
+         *cp = lowerconv(*cp);
+   }
    NYD_LEAVE;
    return t;
 }
@@ -651,6 +665,13 @@ charset_get_lc(void)
 
    if ((t = ok_vlook(ttycharset)) == NULL)
       t = CHARSET_8BIT;
+   else{
+      char *cp;
+
+      cp = savestr(t);
+      for(t = cp; *cp != '\0'; ++cp)
+         *cp = lowerconv(*cp);
+   }
    NYD_LEAVE;
    return t;
 }

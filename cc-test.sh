@@ -1396,18 +1396,18 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '2886124440 6413'
+   cksum_test content:001 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    < /dev/null "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '2886124440 6413'
+   cksum_test content:002 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '2886124440 6413'
+   cksum_test content:003 "${MBOX}" '2356108758 6413'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
@@ -1447,14 +1447,14 @@ gggggggggggggggg"
    echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   cksum_test content:008 "${MBOX}" '4279661351 326'
+   cksum_test content:008 "${MBOX}" '1563381297 326'
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
-   cksum_test content:009 "${MBOX}" '223283022 1669'
+   cksum_test content:009 "${MBOX}" '1996714851 1669'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
@@ -1465,7 +1465,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '2637105063 542'
+   cksum_test content:010 "${MBOX}" '2956039469 542'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
@@ -1475,7 +1475,7 @@ gggggggggggggggg"
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   cksum_test content:011 "${MBOX}" '979048840 610'
+   cksum_test content:011 "${MBOX}" '454973928 610'
 
    # Trailing WS
    ${rm} -f "${MBOX}"
