@@ -1948,7 +1948,7 @@ static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
    ui8_t autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF], *autorec_persist;
    struct stat sb;
-   struct str orig, bot, topp, sub, exp;
+   struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
    struct a_tty_cell *cword, *ctop, *cx;
    bool_t wedid, set_savec;
@@ -2043,6 +2043,8 @@ a_tty_kht(struct a_tty_line *tlp){
       sub.l = 1;
    }
 
+   preexp.s = n_UNCONST(n_empty);
+   preexp.l = 0;
    wedid = FAL0;
 jredo:
    /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
@@ -2050,8 +2052,38 @@ jredo:
    exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
    rele_all_sigs();
 
-   if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0)
+   if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0){
+      /* No.  But maybe the users' desire was to complete only a part of the
+       * shell token of interest!  TODO This can be improved, we would need to
+       * TODO have shexp_parse to create a DOM structure of parsed snippets, so
+       * TODO that we can tell for each snippet which quote is active and
+       * TODO whether we may cross its boundary and/or apply expansion for it */
+      if(wedid == TRU1){
+         size_t i, li;
+
+         wedid = TRUM1;
+         for(li = UIZ_MAX, i = sub.l; i-- > 0;){
+            char c;
+
+            if((c = sub.s[i]) == '/' || c == '+' /* *folder*! */)
+               li = i;
+            /* Do stop once some "magic" characters are seen XXX magic set */
+            else if(c == '<' || c == '>' || c == '=' || c == ':')
+               break;
+         }
+         if(li != UIZ_MAX){
+            preexp = sub;
+            preexp.l = li;
+            sub.l -= li;
+            sub.s += li;
+            goto jredo;
+         }
+      }
       goto jnope;
+   }
+
+   if(wedid == TRUM1 && preexp.l > 0)
+      preexp.s = savestrbuf(preexp.s, preexp.l);
 
    /* May be multi-return! */
    if(pstate & PS_EXPAND_MULTIRESULT)
@@ -2059,7 +2091,7 @@ jredo:
 
    /* xxx That is not really true since the limit counts characters not bytes */
    n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
-   if(exp.l + 1 >= a_TTY_LINE_MAX){
+   if(exp.l >= a_TTY_LINE_MAX - 1 || a_TTY_LINE_MAX - 1 - exp.l < preexp.l){
       n_err(_("Tabulator expansion would extend beyond line size limit\n"));
       goto jnope;
    }
@@ -2071,13 +2103,15 @@ jredo:
          goto jnope;
 
       wedid = TRU1;
-      sub.s[sub.l++] = '*';
-      sub.s[sub.l] = '\0';
+      shoup = n_string_push_c(shoup, '*');
+      sub.s = n_string_cp(shoup);
+      sub.l = shoup->s_len;
       goto jredo;
    }
+
    /* If it is a directory, and there is not yet a / appended, then we want the
     * user to confirm that he wants to dive in -- with only a HT */
-   else if(wedid && exp.l == --sub.l && !memcmp(exp.s, sub.s, exp.l) &&
+   if(wedid && exp.l == --sub.l && !memcmp(exp.s, sub.s, exp.l) &&
          exp.s[exp.l - 1] != '/'){
       if(stat(exp.s, &sb) || !S_ISDIR(sb.st_mode))
          goto jnope;
@@ -2094,19 +2128,23 @@ jredo:
       exp.s[exp.l] = '\0';
 jset:
       exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
-      tlp->tl_defc_cursor_byte = bot.l + exp.l -1;
+      tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
       if(wedid)
          goto jnope;
    }
 
-   orig.l = bot.l + exp.l + topp.l;
+   orig.l = bot.l + preexp.l + exp.l + topp.l;
    orig.s = n_autorec_alloc(autorec_persist, orig.l + 5 +1);
    if((rv = (ui32_t)bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
-   memcpy(orig.s + rv, exp.s, exp.l);
+   if(preexp.l > 0){
+      memcpy(&orig.s[rv], preexp.s, preexp.l);
+      rv += preexp.l;
+   }
+   memcpy(&orig.s[rv], exp.s, exp.l);
    rv += exp.l;
    if(topp.l > 0){
-      memcpy(orig.s + rv, topp.s, topp.l);
+      memcpy(&orig.s[rv], topp.s, topp.l);
       rv += topp.l;
    }
    orig.s[rv] = '\0';
@@ -2137,7 +2175,7 @@ jmulti:{
       /* How long is the result string for real?  Search the NUL NUL
        * terminator.  While here, detect the longest entry to perform an
        * initial allocation of our accumulator string */
-      locolen = 0;
+      locolen = preexp.l;
       do{
          size_t i;
 
