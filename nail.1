@@ -680,7 +680,7 @@ and
 in order to suppress the automatic moving of messages to
 .Ev MBOX
 that would otherwise occur (see
-.Sx "Message states" )
+.Sx "Message states" ) ,
 and
 .Va keep
 to not remove empty files in order not to mangle file permissions when
@@ -688,11 +688,24 @@ files eventually get recreated (\*(UA actively manages the file mode
 creation mask via
 .Va umask
 upon program startup).
+.
+.Pp
 It also enables
 .Va sendwait
 in order to synchronize \*(UA with the exit status report of the used
 .Va mta
 when sending mails.
+It sets
+.Va emptystart
+to enter interactive startup even if the initial mailbox is empty,
+.Va editheaders
+to allow editing of headers as well as
+.Va fullnames
+to not strip down addresses in compose mode, and
+.Va quote
+to include the message that is being responded to when
+.Ic reply Ns
+ing.
 The section
 .Sx EXAMPLES
 contains some more complete configuration examples.
@@ -768,6 +781,8 @@ ting (also via
 .Fl S )
 .Va editalong
 will automatically startup a text editor when compose mode is entered,
+.Va editheaders
+allows editing of headers additionally to plain body content,
 .Va askcc
 will cause the user to be prompted actively for carbon-copy recipients
 and the

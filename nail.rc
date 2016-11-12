@@ -74,6 +74,9 @@ set crt
 # Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
 #set editalong
 
+# When spawning an editor in compose mode (*editalong*, ~e), edit headers
+set editheaders
+
 # Startup into interactive mode even if the (given) mailbox is empty
 set emptystart
 
