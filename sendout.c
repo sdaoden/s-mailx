@@ -1924,24 +1924,50 @@ do {\
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
    }
 
+#if 1
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
       if (fmt("To:", hp->h_to, fo, ff))
          goto jleave;
       ++gotcha;
    }
+#else
+   /* TODO Thought about undisclosed recipients:;, but would be such a fake
+    * TODO given that we cannot handle group addresses.  Ridiculous */
+   if (w & GTO) {
+      struct name *xto;
+
+      if ((xto = hp->h_to) != NULL) {
+         char const ud[] = "To: Undisclosed recipients:;\n" /* TODO groups */;
+
+         if (count_nonlocal(xto) != 0 || ok_blook(add_file_recipients) ||
+               (hp->h_cc != NULL && count_nonlocal(hp->h_cc) > 0))
+            goto jto_fmt;
+         if (fwrite(ud, 1, sizeof(ud) -1, fo) != sizeof(ud) -1)
+            goto jleave;
+         ++gotcha;
+      } else if (nosend_msg == TRUM1) {
+jto_fmt:
+         if (fmt("To:", hp->h_to, fo, ff))
+            goto jleave;
+         ++gotcha;
+      }
+   }
+#endif
 
    if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
       FMT_CC_AND_BCC();
 
    if ((w & GSUBJECT) && (hp->h_subject != NULL || nosend_msg == TRUM1)) {
-      fwrite("Subject: ", sizeof(char), 9, fo);
+      if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
+         goto jleave;
       if (hp->h_subject != NULL) {
          char *sub = subject_re_trim(hp->h_subject);
          size_t sublen = strlen(sub);
 
          /* Trimmed something, (re-)add Re: */
          if (sub != hp->h_subject) {
-            fwrite("Re: ", sizeof(char), 4, fo); /* RFC mandates eng. "Re: " */
+            if (fwrite("Re: ", 1, 4, fo) != 4) /* RFC mandates eng. "Re: " */
+               goto jleave;
             if (sublen > 0 &&
                   xmime_write(sub, sublen, fo,
                      (!nodisp ? CONV_NONE : CONV_TOHDR),
@@ -1963,8 +1989,8 @@ do {\
       FMT_CC_AND_BCC();
 
    if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
-      fputs(addr, fo);
-      putc('\n', fo);
+      if (fputs(addr, fo) == EOF || putc('\n', fo) == EOF)
+         goto jleave;
       ++gotcha;
    }
 
@@ -1976,7 +2002,9 @@ do {\
             np = np->n_flink;
          if (!is_addr_invalid(np, /* TODO check that on parser side! */
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME)) {
-            fprintf(fo, "In-Reply-To: <%s>\n",np->n_name);/*TODO RFC5322 3.6.4*/
+            if (fprintf(fo,
+                  "In-Reply-To: <%s>\n", np->n_name /*TODO RFC5322 3.6.4*/) < 0)
+               goto jleave;
             ++gotcha;
          } else {
             n_err(_("Invalid address in mail header: %s\n"), np->n_name);
@@ -1985,7 +2013,9 @@ do {\
       }
    }
    if ((np = hp->h_in_reply_to) != NULL && (w & GREF)) {
-      fprintf(fo, "In-Reply-To: <%s>\n", np->n_name);/*TODO RFC 5322 3.6.4*/
+      if (fprintf(fo,
+            "In-Reply-To: <%s>\n", np->n_name /*TODO RFC 5322 3.6.4*/) < 0)
+         goto jleave;
       ++gotcha;
    }
 
@@ -2085,8 +2115,11 @@ j_mft_add:
          goto jleave;
    }
 
-   if ((w & GUA) && stealthmua == 0)
-      fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)), ++gotcha;
+   if ((w & GUA) && stealthmua == 0) {
+      if (fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)) < 0)
+         goto jleave;
+      ++gotcha;
+   }
 
    /* The user may have placed headers when editing */
    if(1){
@@ -2119,11 +2152,14 @@ j_mft_add:
          ((options & OPT_Mm_FLAG) && option_Mm_arg != NULL) ||
          convert != CONV_7BIT || asccasecmp(charset, "US-ASCII"))) {
       ++gotcha;
-      fputs("MIME-Version: 1.0\n", fo);
+      if (fputs("MIME-Version: 1.0\n", fo) == EOF)
+         goto jleave;
       if (hp->h_attach != NULL) {
          _sendout_boundary = mime_param_boundary_create();/*TODO carrier*/
-         fprintf(fo, "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
-            _sendout_boundary);
+         if (fprintf(fo,
+               "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
+               _sendout_boundary) < 0)
+            goto jleave;
       } else {
          if (_put_ct(fo, contenttype, charset) < 0 || _put_cte(fo, convert) < 0)
             goto jleave;
@@ -2131,7 +2167,8 @@ j_mft_add:
    }
 
    if (gotcha && (w & GNL))
-      putc('\n', fo);
+      if (putc('\n', fo) == EOF)
+         goto jleave;
    rv = 0;
 jleave:
    NYD_LEAVE;
