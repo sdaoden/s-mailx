@@ -207,7 +207,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
-      cp = "";
+      cp = n_empty;
    env_addon[0] = str_concat_csvl(&s, NAILENV_FILENAME, "=", cp, NULL)->s;
 
    /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
@@ -219,7 +219,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
 
    /* NAIL_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
-      cp = "";
+      cp = n_empty;
    env_addon[2] = str_concat_csvl(&s, NAILENV_CONTENT, "=", cp, NULL)->s;
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
@@ -1353,7 +1353,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
    } else {
       froma = myname;
       date = time_current.tc_ctime;
-      nl = "";
+      nl = n_empty;
    }
 
    n_COLOUR( n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_, NULL); )
@@ -1392,7 +1392,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    sz = 0;
    {
    bool_t nozap;
-   char const *cpre = "", *csuf = "";
+   char const *cpre = n_empty, *csuf = n_empty;
 #ifdef HAVE_COLOUR
    struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
    struct str const *sp = n_colour_pen_to_str(cpen);
@@ -1411,7 +1411,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
       if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
-               (qf.qf_pfix_len != 0 ? qf.qf_pfix : ""), fakefrom(mp),
+               (qf.qf_pfix_len != 0 ? qf.qf_pfix : n_empty), fakefrom(mp),
                fakedate(mp->m_time), csuf);
    } else if (nozap) {
       if (qf.qf_pfix_len > 0) {

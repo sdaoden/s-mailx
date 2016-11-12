@@ -64,7 +64,7 @@ save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
    int last = 0, *msgvec, *ip;
    struct message *mp;
    char *file = NULL, *cp, *cq;
-   char const *disp = "", *shell = NULL;
+   char const *disp = n_empty, *shell = NULL;
    FILE *obuf;
    bool_t success = FAL0, isflag;
    NYD_ENTER;

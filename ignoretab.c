@@ -117,7 +117,7 @@ a_ignoretab__show(struct ignoretab *itp, bool_t ignorret){
          putchar('\n');
          i = 2;
       }else if(i == 0)
-         pref = "";
+         pref = n_empty;
       i += len;
       printf("%s%s", pref, *ap);
    }

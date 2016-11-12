@@ -457,7 +457,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       ui32_t leaspc;
       char *cp;
 
-      n.i = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, "",
+      n.i = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, n_empty,
             &line.s, &line.l, NULL);
       if(n.ui == 0)
          continue;
@@ -676,7 +676,7 @@ a_amv_var_copy(char const *str){
    NYD2_ENTER;
 
    if(*str == '\0')
-      news = n_UNCONST("");
+      news = n_UNCONST(n_empty);
    else if(str[1] == '\0'){
       if(str[0] == '1')
          news = n_UNCONST(a_amv_var_1);
@@ -964,7 +964,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
          for(i = 0; arr[i] != NULL; ++i)
             if(arr[i]->avdv_okey == avcp->avc_okey){
-               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? ""
+               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_empty
                      : arr[i]->avdv_value;
                /* Remove this entry, hope entire block becomes no-op asap */
                do
@@ -994,7 +994,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
          for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
             if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
-               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? ""
+               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_empty
                      : a_amv_var_defvals[i].avdv_value;
                goto jnewval;
             }
@@ -1105,7 +1105,7 @@ jeavmp:
 #endif
       memcpy(avp->av_name, avcp->avc_name, l);
       avp->av_flags = (avmp != NULL) ? avmp->avm_flags : 0;
-      oval = n_UNCONST("");
+      oval = n_UNCONST(n_empty);
    }else
       oval = avp->av_value;
 
@@ -1428,7 +1428,7 @@ jouter:
       }
       *cp2 = '\0';
       if(c == '\0')
-         cp = n_UNCONST("");
+         cp = n_UNCONST(n_empty);
       else
          ++cp;
 
@@ -1810,7 +1810,7 @@ n_var_okset(enum okeys okey, uintptr_t val){
    avc.avc_hash = avmp->avm_hash;
    avc.avc_okey = okey;
 
-   ok = a_amv_var_set(&avc, (val == 0x1 ? "" : (char const*)val), FAL0);
+   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val), FAL0);
    NYD_LEAVE;
    return ok;
 }
@@ -1853,7 +1853,7 @@ n_var_vokset(char const *vokey, uintptr_t val){
 
    a_amv_var_revlookup(&avc, vokey);
 
-   ok = a_amv_var_set(&avc, (val == 0x1 ? "" : (char const*)val), FAL0);
+   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val), FAL0);
    NYD_LEAVE;
    return ok;
 }

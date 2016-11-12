@@ -394,7 +394,7 @@ jnoenc_retry:
           * separated from text and other encoded words with linear WS.
           * And if an encoded word was last, intermediate whitespace must
           * also be encoded, otherwise it would get stripped away! */
-         wcur = n_UNCONST("");
+         wcur = n_UNCONST(n_empty);
          if ((flags & (_ENC_LAST | _SPACE)) != _SPACE) {
             /* Reinclude whitespace */
             flags &= ~_SPACE;
@@ -465,7 +465,7 @@ jenc_retry_same:
             col = 1;
             if (!(flags & _SPACE)) {
                putc(' ', fo);
-               wcur = n_UNCONST("");
+               wcur = n_UNCONST(n_empty);
                /*flags |= _OVERLONG;*/
                goto jenc_retry_same;
             } else {
@@ -474,7 +474,7 @@ jenc_retry_same:
                   ++wbot;
                else {
                   flags &= ~_SPACE;
-                  wcur = n_UNCONST("");
+                  wcur = n_UNCONST(n_empty);
                }
                /*flags &= ~_OVERLONG;*/
                goto jenc_retry;
@@ -1052,7 +1052,7 @@ mime_fromaddr(char const *name)
       _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
    /* TODO rescur==0: inserted to silence Coverity ...; check that */
    if (rescur == 0)
-      res = n_UNCONST("");
+      res = n_UNCONST(n_empty);
    else
       res[rescur] = '\0';
    {  char *x = res;

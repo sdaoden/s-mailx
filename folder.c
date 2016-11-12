@@ -733,7 +733,7 @@ folder_query(void){
        *    If folder is unset or set to null, [.] filenames beginning with
        *    '+' shall refer to files in the current directory.
        * We may have the result already */
-      rv = "";
+      rv = n_empty;
       err = FAL0;
 
       if((cp = ok_vlook(folder)) == NULL)
@@ -798,7 +798,7 @@ folder_query(void){
          n_err(_("Can't canonicalize *folder*: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          err = TRU1;
-         rv = "";
+         rv = n_empty;
       }
       sp = n_string_drop_ownership(sp);
 #endif /* HAVE_REALPATH */

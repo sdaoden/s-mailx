@@ -303,7 +303,7 @@ jpager:
             if ((cp = ap->a_content_type) == NULL)
                cp = "?";
             else if (ascncasecmp(cp, "text/", 5))
-               csi = "";
+               csi = n_empty;
             fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs,
                n_shexp_quote_cp(ap->a_name, FAL0));
          }
@@ -583,22 +583,22 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
    hp = arg;
 
    if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_from, val);
    if((val = detract(hp->h_sender, 0)) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_sender, val);
    if((val = detract(hp->h_to, GNAMEONLY)) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_to, val);
    if((val = detract(hp->h_cc, GNAMEONLY)) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_cc, val);
    if((val = detract(hp->h_bcc, GNAMEONLY)) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_bcc, val);
    if((val = hp->h_subject) == NULL)
-      val = "";
+      val = n_empty;
    ok_vset(compose_subject, val);
    NYD2_LEAVE;
 }
@@ -797,7 +797,7 @@ jcont:
             if(!(options & OPT_t_FLAG))
                lif |= n_LEXINPUT_NL_ESC;
          }
-         cnt = n_lex_input(lif, "", &linebuf, &linesize, NULL);
+         cnt = n_lex_input(lif, n_empty, &linebuf, &linesize, NULL);
       }
 
       if (cnt < 0) {

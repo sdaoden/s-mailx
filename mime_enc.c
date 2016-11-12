@@ -394,7 +394,7 @@ mime_enc_from_conversion(enum conversion const convert){
    case CONV_8BIT: rv = &a_me_ctes[a_ME_CTES_8B_OFF]; break;
    case CONV_TOQP: rv = &a_me_ctes[a_ME_CTES_QP_OFF]; break;
    case CONV_TOB64: rv = &a_me_ctes[a_ME_CTES_B64_OFF]; break;
-   default: rv = ""; break;
+   default: rv = n_empty; break;
    }
    NYD2_LEAVE;
    return rv;

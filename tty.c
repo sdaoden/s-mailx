@@ -1163,7 +1163,8 @@ a_tty_vinuni(struct a_tty_line *tlp){
       cpre = csuf = NULL;
 #endif
       printf(_("%sPlease enter Unicode code point:%s "),
-         (cpre != NULL ? cpre->s : ""), (csuf != NULL ? csuf->s : ""));
+         (cpre != NULL ? cpre->s : n_empty),
+         (csuf != NULL ? csuf->s : n_empty));
    }
    fflush(stdout);
 
@@ -3978,7 +3979,8 @@ jredo:
       if(!ok_blook(line_editor_disable))
          goto jredo;
       nn = (n_lex_input)(lif, orig_prompt, linebuf, linesize,
-            (n == 0 ? "" : savestrbuf(*linebuf, n)) n_MEMORY_DEBUG_ARGSCALL);
+            (n == 0 ? n_empty : savestrbuf(*linebuf, n))
+            n_MEMORY_DEBUG_ARGSCALL);
    }
    NYD_LEAVE;
    return (int)nn;
@@ -4202,14 +4204,14 @@ c_bind(void *v){
                   if(entlen & SI32_MIN){
                      /* struct{si32_t buf_len_iscap; si32_t cap_len;
                       * char buf[]+NUL;} */
-                     for(bsep = "",
+                     for(bsep = n_empty,
                               u.cp = (char const*)
                                     &n_UNALIGN(si32_t const*,cnvdat)[2];
                            (c.c = *u.cp) != '\0'; ++u.cp){
                         if(asciichar(c.c) && !cntrlchar(c.c))
                            cbuf[1] = c.c, cbufp = cbuf;
                         else
-                           cbufp = "";
+                           cbufp = n_empty;
                         fprintf(fp, "%s%02X%s",
                            bsep, (ui32_t)(ui8_t)c.c, cbufp);
                         bsep = " ";
@@ -4231,13 +4233,13 @@ c_bind(void *v){
                /* I18N: `bind' sequence not working, either because it is
                 * I18N: using Unicode and that is not available in the locale,
                 * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
-                  ? _("# <Defunctional> ") : ""),
+                  ? _("# <Defunctional> ") : n_empty),
                a_tty_bind_ctx_maps[lif].tbcm_name, tbcp->tbc_seq,
                n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
-               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : ""),
-               (!(options & OPT_D_VV) ? ""
+               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : n_empty),
+               (!(options & OPT_D_VV) ? n_empty
                   : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL
-                     ? _(" # MLE internal") : ""))
+                     ? _(" # MLE internal") : n_empty))
                );
          }
          if(!aster || ++lif >= n__LEXINPUT_CTX_MAX)

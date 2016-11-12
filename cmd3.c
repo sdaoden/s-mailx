@@ -255,7 +255,7 @@ jnext_msg:
       size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
       char *sp = salloc(l);
 
-      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
       if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
          rcv = reply_to;
    }
@@ -300,7 +300,7 @@ jnext_msg:
       size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
       char *sp = salloc(l);
 
-      snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : ""));
+      snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : n_empty));
       if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
          head.h_cc = NULL;
          head.h_to = np;
@@ -450,7 +450,8 @@ _Reply(int *msgvec, bool_t recipient_record)
          size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
          char *sp = salloc(l);
 
-         snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : ""));
+         snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..."
+            : n_empty));
          if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0) {
             head.h_to = cat(head.h_to, rt);
             continue;

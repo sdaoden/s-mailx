@@ -1376,7 +1376,7 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
    memset(agp, 0, sizeof *agp);
 
    if ((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0) {
-      agp->ag_skinned = n_UNCONST(""); /* ok: NAME_SALLOC is not set */
+      agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
       agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);

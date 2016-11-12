@@ -451,7 +451,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       _ssl_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
-      X509_STORE_CTX_get_error_depth(store), (success ? "" : V_(n_error)));
+      X509_STORE_CTX_get_error_depth(store), (success ? n_empty : V_(n_error)));
 
    if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
       X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
@@ -681,10 +681,10 @@ _ssl_load_verifications(SSL_CTX *ctxp)
 
       if (ca_dir != NULL) {
          m1 = ca_dir;
-         m2 = (ca_file != NULL) ? _(" or ") : "";
+         m2 = (ca_file != NULL) ? _(" or ") : n_empty;
       } else
-         m1 = m2 = "";
-      m3 = (ca_file != NULL) ? ca_file : "";
+         m1 = m2 = n_empty;
+      m3 = (ca_file != NULL) ? ca_file : n_empty;
       ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
       goto jleave;
    }
@@ -1003,8 +1003,8 @@ jleave:
 jerr:
    if (dowarn)
       n_err(_("Could not find a certificate for %s%s%s\n"),
-         xname, (xname2 != NULL ? _("or ") : ""),
-         (xname2 != NULL ? xname2 : ""));
+         xname, (xname2 != NULL ? _("or ") : n_empty),
+         (xname2 != NULL ? xname2 : n_empty));
    goto jleave;
 }
 

@@ -751,7 +751,7 @@ c_sort(void *vp)
                ms[n].ms_u.ms_char = sstrdup(showname ? realname(cp) : skin(cp));
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup("");
+               ms[n].ms_u.ms_char = sstrdup(n_empty);
             break;
          default:
          case SORT_SUBJECT:
@@ -763,7 +763,7 @@ c_sort(void *vp)
                free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup("");
+               ms[n].ms_u.ms_char = sstrdup(n_empty);
             break;
          }
          ms[n++].ms_n = i;

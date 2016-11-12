@@ -65,6 +65,7 @@ VL char const        month_names[12 + 1][4] = {
 };
 VL char const        uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
+VL char const n_empty[1] = "";
 VL ui16_t const      class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL
@@ -258,7 +259,7 @@ _startup(void)
 #ifndef HAVE_SETLOCALE
    mb_cur_max = 1;
 #else
-   setlocale(LC_ALL, "");
+   setlocale(LC_ALL, n_empty);
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
    if(ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)

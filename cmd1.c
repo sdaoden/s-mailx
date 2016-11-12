@@ -80,9 +80,10 @@ static int a_cmd_top(void *vp, struct ignoretab *itp);
 static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 {
-   char const *cpre = "", *csuf = "";
+   char const *cpre, *csuf;
    NYD_ENTER;
 
+   cpre = csuf = n_empty;
 #ifdef HAVE_COLOUR
    if (pstate & PS_COLOUR_ACTIVE) {
       struct n_colour_pen *cpen;
@@ -245,7 +246,7 @@ jredo:
       }
    }
    if (name == NULL) {
-      name = "";
+      name = n_empty;
       flags &= ~_ISADDR;
    }
    if (flags & _ISADDR)
@@ -436,7 +437,7 @@ jputcb:
          }
          if (flags & _ISTO) /* XXX tr()! */
             i -= 3;
-         n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : ""),
+         n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : n_empty),
                colalign(name, i, n, &wleft));
          if (n < 0)
             wleft = 0;
@@ -512,7 +513,7 @@ jputcb:
          if (subjline == NULL)
             subjline = __subject(mp, (threaded && (flags & _IFMT)), yetprinted);
          if (subjline == (char*)-1) {
-            n = fprintf(f, "%*s", n, "");
+            n = fprintf(f, "%*s", n, n_empty);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
             n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),

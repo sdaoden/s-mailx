@@ -417,8 +417,8 @@ jredo:
 jemap:
          /* I18N: colour command, mapping and precondition (option in quotes) */
          n_err(_("`uncolour': non-existing mapping: %s%s%s\n"),
-            n_shexp_quote_cp(mapname, FAL0), (ctag == NULL ? "" : " "),
-            (ctag == NULL ? "" : n_shexp_quote_cp(ctag, FAL0)));
+            n_shexp_quote_cp(mapname, FAL0), (ctag == NULL ? n_empty : " "),
+            (ctag == NULL ? n_empty : n_shexp_quote_cp(ctag, FAL0)));
          goto jleave;
       }
 
@@ -498,9 +498,9 @@ jredo:
          while(cmp != NULL){
             char const *tagann, *tag;
 
-            tagann = "";
+            tagann = n_empty;
             if((tag = cmp->cm_tag) == NULL)
-               tag = "";
+               tag = n_empty;
             else if(tag == n_COLOUR_TAG_SUM_DOT)
                tag = "dot";
             else if(tag == n_COLOUR_TAG_SUM_OLDER)

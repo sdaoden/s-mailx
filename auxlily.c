@@ -905,7 +905,7 @@ n_perr(char const *msg, int errval){
 
    if(msg == NULL){
       fmt = "%s%s\n";
-      msg = "";
+      msg = n_empty;
    }else
       fmt = "%s: %s\n";
 

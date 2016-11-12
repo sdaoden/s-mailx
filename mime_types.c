@@ -431,7 +431,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
             goto jleave;
 
          if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
-            name = "";
+            name = n_empty;
             j = 0;
          } else {
             name = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
@@ -471,7 +471,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
    /* ..all the MIME types */
    for (mtnp = _mt_list; mtnp != NULL; mtnp = mtnp->mt_next) {
          if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
-            cp = "";
+            cp = n_empty;
             j = 0;
          } else {
             cp = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
@@ -888,7 +888,7 @@ c_mimetype(void *v)
          default:          tmark = "  "; break;
          }
          typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
-               ? "" : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+               ? n_empty : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
 
          fprintf(fp, "%c%s %s%.*s  %s\n",
             (mtnp->mt_flags & _MT_USR ? 'U'
@@ -948,7 +948,7 @@ jdelall:
          size_t i;
 
          if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
-            typ = "";
+            typ = n_empty;
             i = 0;
          } else {
             typ = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
@@ -1104,7 +1104,7 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
 
    mc = MIME_UNKNOWN;
    if ((ct = mpp->m_ct_type_plain) == NULL) /* TODO may not */
-      ct = "";
+      ct = n_empty;
 
    if ((mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
       char *eptr;

@@ -299,7 +299,7 @@ jsend:
 
       if (options & OPT_DEBUG) {
          slp->buf[blen - 1] = '\0';
-         n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : ""), slp->buf);
+         n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : n_empty), slp->buf);
          continue;
       }
       if (*slp->buf == '.')

@@ -565,7 +565,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    if (s.s != NULL)
       urlp->url_pass.s = savestrbuf(s.s, urlp->url_pass.l = s.l);
    else if (cl > 0)
-      urlp->url_pass.s = n_UNCONST(""), urlp->url_pass.l = 0;
+      urlp->url_pass.s = n_UNCONST(n_empty), urlp->url_pass.l = 0;
    rv = TRU1;
 jleave:
    if (s.s != NULL)
@@ -1267,8 +1267,8 @@ jleave:
    ac_free(vbuf);
    if (ccp != NULL && (options & OPT_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
-         addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
-         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
+         addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
+         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
    NYD_LEAVE;
    return (ccp != NULL);
 }
@@ -1390,8 +1390,8 @@ js2pass:
 jleave:
    if (ccp != NULL && (options & OPT_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
-         urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : ""),
-         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : ""));
+         urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
+         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
    NYD_LEAVE;
    return (ccp != NULL);
 }

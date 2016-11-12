@@ -196,7 +196,7 @@ _spam_action(enum spam_action sa, int *ip)
    vc.vc_action = sa;
    vc.vc_verbose = ((options & OPT_VERB) != 0);
    vc.vc_progress = (!vc.vc_verbose && ((options & OPT_INTERACTIVE) != 0));
-   vc.vc_esep = vc.vc_progress ? "\n" : "";
+   vc.vc_esep = vc.vc_progress ? "\n" : n_empty;
 
    /* Check and setup the desired spam interface */
    if ((cp = ok_vlook(spam_interface)) == NULL) {

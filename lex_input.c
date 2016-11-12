@@ -428,7 +428,7 @@ jredo:
 #ifdef HAVE_DOCSTRINGS
 # define a_DS V_(cp->lc_doc)
 #else
-# define a_DS ""
+# define a_DS n_empty
 #endif
          if(!strcmp(arg, cp->lc_name))
             printf("%s: %s", arg, a_DS);
@@ -704,7 +704,7 @@ jrestart:
 
       if(!(s = condstack_isskip()) || (options & OPT_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
-            (s ? _(" (ignored due to `if' condition)") : ""), word);
+            (s ? _(" (ignored due to `if' condition)") : n_empty), word);
       if(s)
          goto jleave0;
       if(cmd != NULL){
@@ -1026,7 +1026,7 @@ jerr:
                    ? _("evaluating command line") : _("evaluating macro"))
                 : _("loading initialization resource"))),
             lip->li_name,
-            (options & OPT_DEBUG ? "" : _(" (enable *debug* for trace)")));
+            (options & OPT_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
    }
 
    if(!(options & OPT_INTERACTIVE) && !(pstate & PS_STARTED)){

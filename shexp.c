@@ -272,7 +272,7 @@ a_shexp_var(struct a_shexp_var_stack *svsp)
             (rv = getenv(cp)) != NULL)
          svsp->svs_len = strlen(svsp->svs_dat = rv);
       else
-         svsp->svs_len = 0, svsp->svs_dat = n_UNCONST("");
+         svsp->svs_len = 0, svsp->svs_dat = n_UNCONST(n_empty);
    }
    if (c != '\0')
       goto jrecurse;
@@ -574,7 +574,7 @@ jerr:
          s2 = n_shexp_quote_cp(n_string_cp(sgcp->sgc_outer), FAL0);
          s3 = "/";
       }else
-         s2 = s3 = "";
+         s2 = s3 = n_empty;
 
       n_err("%s: %s%s%s\n", V_(ccp), s2, s3,
          n_shexp_quote_cp(sgcp->sgc_patdat, FAL0));

@@ -66,10 +66,10 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
 
    if (options & (OPT_INTERACTIVE | OPT_D_V)) {
       str_concat_cpa(&s, icp->ic_argv_base,
-         (*icp->ic_argv_base != NULL ? " " : ""));
+         (*icp->ic_argv_base != NULL ? " " : n_empty));
       n_err(_("   Expression: %s\n"), s.s);
 
-      str_concat_cpa(&s, icp->ic_argv, (*icp->ic_argv != NULL ? " " : ""));
+      str_concat_cpa(&s, icp->ic_argv, (*icp->ic_argv != NULL ? " " : n_empty));
       n_err(_("   Stopped at: %s\n"), s.s);
    }
 
@@ -192,9 +192,9 @@ jesyn:
       /* A null value is treated as the empty string */
       emsg = NULL;
       if (lhv == NULL)
-         lhv = n_UNCONST("");
+         lhv = n_UNCONST(n_empty);
       if (rhv == NULL)
-         rhv = n_UNCONST("");
+         rhv = n_UNCONST(n_empty);
 
 #ifdef HAVE_REGEX
       if (op[1] == '~') {

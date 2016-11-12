@@ -1799,7 +1799,8 @@ c_customhdr(void *v){
 
       if(pstate & PS_WYSHLIST_SAW_CONTROL){
          n_err(_("`customhdr': control characters not allowed: %s: %s%s\n"),
-            hcp, n_shexp_quote_cp(*argv, FAL0), (argv[1] != NULL ? "..." : ""));
+            hcp, n_shexp_quote_cp(*argv, FAL0),
+            (argv[1] != NULL ? "..." : n_empty));
          rv = 1;
          goto jleave;
       }

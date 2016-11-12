@@ -330,7 +330,7 @@ jpseudo_jump:
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
          n_err(_("%sConnecting to %s:%s ..."),
-               (res == res0 ? "" : "\n"), hbuf, serv);
+               (res == res0 ? n_empty : "\n"), hbuf, serv);
       }
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -413,7 +413,7 @@ jjumped:
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (options & OPT_VERB)
       n_err(_("%sConnecting to %s:%d ... "),
-         "", inet_ntoa(**pptr), (int)urlp->url_portno);
+         n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif

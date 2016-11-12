@@ -490,7 +490,7 @@ bidi_info_create(struct bidi_info *bip)
    NYD_ENTER;
 
    memset(bip, 0, sizeof *bip);
-   bip->bi_start.s = bip->bi_end.s = n_UNCONST("");
+   bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
 
 #ifdef HAVE_NATCH_CHAR
    if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {

@@ -817,7 +817,7 @@ n_string_cp_const(struct n_string const *self){
       ((struct n_string*)n_UNCONST(self))->s_dat[self->s_len] = '\0';
       rv = self->s_dat;
    }else
-      rv = "";
+      rv = n_empty;
    NYD2_LEAVE;
    return rv;
 }

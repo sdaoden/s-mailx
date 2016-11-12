@@ -2442,6 +2442,7 @@ VL char const  weekday_names[7 + 1][4];
 
 VL char const  uagent[sizeof VAL_UAGENT];
 VL char const  n_error[sizeof n_ERROR];
+VL char const  n_empty[1];
 
 VL ui16_t const class_char[1 + 0x7F];
 #endif

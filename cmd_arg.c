@@ -318,7 +318,7 @@ jerr:{
             "(need %" PRIuZ "%s)\n"
             "     Input: %.*s\n"
             "   Stopped: %.*s\n"),
-         cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? "" : "+"),
+         cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? n_empty : "+"),
          (int)shin_orig.l, shin_orig.s,
          (int)shin.l, shin.s);
    }
