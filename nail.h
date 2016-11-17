@@ -190,6 +190,7 @@
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
+#define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */
 #define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
@@ -2442,6 +2443,7 @@ VL char const  weekday_names[7 + 1][4];
 
 VL char const  uagent[sizeof VAL_UAGENT];
 VL char const  n_error[sizeof n_ERROR];
+VL char const  n_unirepl[sizeof n_UNIREPL];
 VL char const  n_empty[1];
 
 VL ui16_t const class_char[1 + 0x7F];

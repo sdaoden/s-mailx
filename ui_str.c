@@ -248,10 +248,9 @@ jnobidi:
 
       if (isrepl) {
          if (isuni) {
-            np[0] = (char)0xEFu;
-            np[1] = (char)0xBFu;
-            np[2] = (char)0xBDu;
-            np += 3;
+            /* Contained in mb_cur_max, then */
+            memcpy(np, n_unirepl, sizeof(n_unirepl) -1);
+            np += sizeof(n_unirepl) -1;
          } else
             *np++ = '?';
          cp += sz;

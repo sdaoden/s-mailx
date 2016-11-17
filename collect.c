@@ -878,9 +878,18 @@ jputnl:
             cp = &linebuf[1];
             --cnt;
             goto jputline;
+         }else{
+            char buf[sizeof(n_UNIREPL)];
+
+            if(asciichar(c))
+               buf[0] = c, buf[1] = '\0';
+            else if(options & OPT_UNICODE)
+               memcpy(buf, n_unirepl, sizeof n_unirepl);
+            else
+               buf[0] = '?', buf[1] = '\0';
+            n_err(_("Unknown tilde escape: ~%s\n"), buf);
+            continue;
          }
-         n_err(_("Unknown tilde escape: ~%c\n"), asciichar(c) ? c : '?');
-         continue;
 jearg:
          n_err(_("Invalid tilde escape usage: %s\n"), linebuf);
          continue;

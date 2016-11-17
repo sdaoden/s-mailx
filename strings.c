@@ -1092,12 +1092,10 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          ++(*inb);
          --(*inbleft);
          if(icf & n_ICONV_UNIREPL){
-            if(*outbleft >= 3){
-               (*outb)[0] = '\xEF';
-               (*outb)[1] = '\xBF';
-               (*outb)[2] = '\xBD';
-               *outb += 3;
-               *outbleft -= 3;
+            if(*outbleft >= sizeof(n_unirepl) -1){
+               memcpy(*outb, n_unirepl, sizeof(n_unirepl) -1);
+               *outb += sizeof(n_unirepl) -1;
+               *outbleft -= sizeof(n_unirepl) -1;
                continue;
             }
          }else if(*outbleft > 0){

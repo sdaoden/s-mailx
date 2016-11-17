@@ -169,12 +169,10 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
          n_iconv_reset(iconvd);
          /* Incomplete multibyte at EOF is special */
          if (flags & _TD_EOF) {
-            out.s = srealloc(out.s, out.l + 4);
+            out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
             if(options & OPT_UNICODE){
-               out.s[out.l+0] = '\xEF'; /* TODO magic */
-               out.s[out.l+1] = '\xBF';
-               out.s[out.l+2] = '\xBD';
-               out.l += 3;
+               memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
+               out.l += sizeof(n_unirepl) -1;
             }else
                out.s[out.l++] = '?';
          } else

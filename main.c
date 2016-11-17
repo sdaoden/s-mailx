@@ -65,6 +65,7 @@ VL char const        month_names[12 + 1][4] = {
 };
 VL char const        uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
+VL char const n_unirepl[sizeof n_UNIREPL] = n_UNIREPL;
 VL char const n_empty[1] = "";
 VL ui16_t const      class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL

@@ -641,7 +641,7 @@ qp_decode_header(struct str *out, struct str const *in){
             goto jpushc;
 /* TODO jehead:
  * TODO      if(options & OPT_UNICODE)
- *              n_string_push_buf(&s, "\xEF\xBF\xBD", 3); TODO magic
+ *              n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
  * TODO       else{
  * TODO          c = '?';
  * TODO          goto jpushc;
@@ -724,7 +724,7 @@ jpushc:
          goto jpushc;
 /* TODO jebody:
  * TODO   if(options & OPT_UNICODE)
- *           n_string_push_buf(&s, "\xEF\xBF\xBD", 3); TODO magic
+ *           n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
  * TODO    else{
  * TODO       c = '?';
  * TODO       goto jpushc;
@@ -1046,13 +1046,13 @@ b64_decode_text(struct str *out, struct str const *in, struct str *outrest,
          if(x == a_ME_B64_BAD){
 jrepl:
             if(options & OPT_UNICODE)
-               n_string_push_buf(&s, "\xEF\xBF\xBD", 3); /* TODO magic */
+               n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
             else
                n_string_push_c(&s, '?');
          }else if(c == a_ME_B64_EQU && x != a_ME_B64_EQU){
             /* This is not only invalid but bogus.  Skip it over! */
-            n_string_push_buf(&s, "\xEF\xBF\xBD" "\xEF\xBF\xBD" "\xEF\xBF\xBD"
-               "\xEF\xBF\xBD", 3*4); /* TODO magic */
+            n_string_push_buf(&s, n_UNIREPL n_UNIREPL n_UNIREPL n_UNIREPL,
+               (sizeof(n_UNIREPL) -1) * 4);
             b64l = 0;
          }else{
             n_string_push_c(&s, (char)((a << 2) | ((b & 0x30) >> 4)));
