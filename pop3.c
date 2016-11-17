@@ -370,10 +370,12 @@ _pop3_maincatch(int s)
 {
    NYD_X; /* Signal handler */
    n_UNUSED(s);
-   if (interrupts++ == 0)
+   if (interrupts == 0)
       n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
-   else
+   else {
+      interrupts = 1;
       siglongjmp(_pop3_jmp, 1);
+   }
 }
 
 static enum okay

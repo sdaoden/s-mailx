@@ -2426,7 +2426,7 @@ VL iconv_t     iconvd;
 #endif
 
 VL sigjmp_buf  srbuf;
-VL int         interrupts;
+VL volatile int interrupts; /* TODO rid! */
 VL sighandler_type dflpipe;
 
 /* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value

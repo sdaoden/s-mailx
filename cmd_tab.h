@@ -418,6 +418,10 @@
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
 #endif
+#ifdef HAVE_DEVEL
+   { "sigstate", &c_sigstate, (H | I | M | STRLIST), 0, 0
+     DS(N_("Show signal handler states")) },
+#endif
 
 #  undef WYRALIST
 #undef WYSHLIST

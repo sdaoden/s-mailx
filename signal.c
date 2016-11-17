@@ -131,6 +131,50 @@ _nyd_print(int fd, struct nyd_info *nip)
 }
 #endif
 
+#ifdef HAVE_DEVEL
+FL int
+c_sigstate(void *vp){ /* TODO remove again */
+   struct{
+      int val;
+      char const name[12];
+   } const *hdlp, hdla[] = {
+      {SIGINT, "SIGINT"}, {SIGHUP, "SIGHUP"}, {SIGQUIT, "SIGQUIT"},
+      {SIGTSTP, "SIGTSTP"}, {SIGTTIN, "SIGTTIN"}, {SIGTTOU, "SIGTTOU"},
+      {SIGCHLD, "SIGCHLD"}, {SIGPIPE, "SIGPIPE"}
+   };
+   char const *cp;
+   NYD2_ENTER;
+
+   if((cp = vp) != NULL && cp[0] != '\0'){
+      if(!asccasecmp(&cp[1], "all")){
+         if(cp[0] == '+')
+            hold_all_sigs();
+         else
+            rele_all_sigs();
+      }else if(!asccasecmp(&cp[1], "hold")){
+         if(cp[0] == '+')
+            hold_sigs();
+         else
+            rele_sigs();
+      }
+   }
+
+   printf("alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
+      _alls_depth, _hold_sigdepth);
+   for(hdlp = hdla; hdlp < &hdla[n_NELEM(hdla)]; ++hdlp){
+      sighandler_type shp;
+
+      shp = safe_signal(hdlp->val, SIG_IGN);
+      safe_signal(hdlp->val, shp);
+      printf("  %s: %p (%s)\n", hdlp->name, shp,
+         (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
+            : (shp == SIG_IGN ? "IGN" : "ptf?"))));
+   }
+   NYD2_LEAVE;
+   return OKAY;
+}
+#endif /* HAVE_DEVEL */
+
 FL void
 n_raise(int signo)
 {

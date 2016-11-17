@@ -1717,6 +1717,10 @@ FL char *      n_shexp_quote_cp(char const *cp, bool_t rndtrip);
  * signal.c
  */
 
+#ifdef HAVE_DEVEL
+FL int         c_sigstate(void *);
+#endif
+
 FL void        n_raise(int signo);
 
 /* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
