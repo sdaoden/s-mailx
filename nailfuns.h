@@ -882,7 +882,7 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct name const * check_from_and_sender(struct name const *fromfield,
                         struct name const *senderfield);
 
-#ifdef HAVE_SSL_TLS
+#ifdef HAVE_XSSL
 FL char *      getsender(struct message *m);
 #endif
 
@@ -1877,36 +1877,6 @@ FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
 #endif
 
 /*
- * ssl_tls.c
- */
-
-#ifdef HAVE_SSL_TLS
-/*  */
-FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
-
-/*  */
-FL void        ssl_gen_err(char const *fmt, ...);
-
-/*  */
-FL int         c_verify(void *vp);
-
-/*  */
-FL FILE *      smime_sign(FILE *ip, char const *addr);
-
-/*  */
-FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
-
-FL struct message * smime_decrypt(struct message *m, char const *to,
-                     char const *cc, bool_t is_a_verify_call);
-
-/*  */
-FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
-
-#else /* HAVE_SSL_TLS */
-# define c_verify                c_cmdnotsupp
-#endif
-
-/*
  * strings.c
  */
 
@@ -2441,7 +2411,7 @@ FL int         c_netrc(void *v);
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
-# ifdef HAVE_SSL_MD5
+# ifdef HAVE_XSSL_MD5
 #  define md5_ctx	               MD5_CTX
 #  define md5_init	            MD5_Init
 #  define md5_update	            MD5_Update
@@ -2469,6 +2439,36 @@ FL char *      cram_md5_string(struct str const *user, struct str const *pass,
 FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
                   int key_len, void *digest);
 #endif /* HAVE_MD5 */
+
+/*
+ * xssl.c
+ */
+
+#ifdef HAVE_XSSL
+/*  */
+FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
+
+/*  */
+FL void        ssl_gen_err(char const *fmt, ...);
+
+/*  */
+FL int         c_verify(void *vp);
+
+/*  */
+FL FILE *      smime_sign(FILE *ip, char const *addr);
+
+/*  */
+FL FILE *      smime_encrypt(FILE *ip, char const *certfile, char const *to);
+
+FL struct message * smime_decrypt(struct message *m, char const *to,
+                     char const *cc, bool_t is_a_verify_call);
+
+/*  */
+FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
+
+#else /* HAVE_XSSL */
+# define c_verify                c_cmdnotsupp
+#endif
 
 #ifndef HAVE_AMALGAMATION
 # undef FL

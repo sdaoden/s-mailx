@@ -2016,10 +2016,60 @@ int main(void){
 }
 !
 
-if feat_yes SSL; then
-   if link_check ssl_tls 'TLS/SSL (new style *_client_method(3ssl))' \
+if feat_yes SSL; then # {{{
+   # {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
+   # instead of keeping it at the one that corresponds to the OpenSSL at fork
+   # time: we need to test it first in order to get things right
+   if compile_check _xssl 'TLS/SSL (LibreSSL)' \
       '#define HAVE_SSL
-      #define HAVE_SSL_TLS 10100' '-lssl -lcrypto' << \!
+      #define HAVE_XSSL
+      #define HAVE_XSSL_RESSL
+      #define HAVE_XSSL_OPENSSL 0' << \!
+#include <openssl/opensslv.h>
+#ifdef LIBRESSL_VERSION_NUMBER
+#else
+# error nope
+#endif
+!
+   then
+      ossl_v1_1=
+   # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
+   elif compile_check _xssl 'TLS/SSL (OpenSSL >= v1.1.0)' \
+      '#define HAVE_SSL
+      #define HAVE_XSSL
+      #define HAVE_XSSL_OPENSSL 0x10100' << \!
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
+#else
+# error nope
+#endif
+!
+   then
+      ossl_v1_1=1
+   elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
+      '#define HAVE_SSL
+      #define HAVE_XSSL
+      #define HAVE_XSSL_OPENSSL 0x10000 /* pseudo */' << \!
+#include <openssl/opensslv.h>
+#ifdef OPENSSL_VERSION_NUMBER
+#else
+# error nope
+#endif
+!
+   then
+      ossl_v1_1=
+   else
+      feat_bail_required SSL
+   fi # }}}
+
+   if feat_yes SSL; then # {{{
+      if [ -n "${ossl_v1_1}" ]; then
+         without_check yes xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+            '-lssl -lcrypto'
+      elif link_check xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+            '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -2036,11 +2086,11 @@ int main(void){
    return 0;
 }
 !
-   then
-      :
-   elif link_check ssl_tls 'TLS/SSL (old style *_client_method(3ssl))' \
-      '#define HAVE_SSL
-      #define HAVE_SSL_TLS 10000' '-lssl -lcrypto' << \!
+      then
+         :
+      elif link_check xssl 'TLS/SSL (old style *_client_method(3ssl))' \
+            '#define n_XSSL_CLIENT_METHOD SSLv23_client_method' \
+            '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
@@ -2058,15 +2108,19 @@ int main(void){
    return 0;
 }
 !
-   then
-      :
-   else
-      feat_bail_required SSL
-   fi
+      then
+         :
+      else
+         feat_bail_required SSL
+      fi
+   fi # }}}
 
-   if [ "${have_ssl_tls}" = 'yes' ]; then
-      compile_check ssl_tls_stack_of 'TLS/SSL STACK_OF()' \
-         '#define HAVE_SSL_TLS_STACK_OF' << \!
+   if feat_yes SSL; then # {{{
+      if [ -n "${ossl_v1_1}" ]; then
+         without_check yes xssl_stack_of 'TLS/SSL STACK_OF()' \
+            '#define HAVE_XSSL_STACK_OF'
+      elif compile_check xssl_stack_of 'TLS/SSL STACK_OF()' \
+            '#define HAVE_XSSL_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2080,9 +2134,15 @@ int main(void){
    return 0;
 }
 !
+      then
+         :
+      fi
 
-      link_check ssl_tls_conf 'OpenSSL_modules_load_file() support' \
-         '#define HAVE_SSL_TLS_CONFIG' << \!
+      if [ -n "${ossl_v1_1}" ]; then
+         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file()' \
+            '#define HAVE_XSSL_CONFIG'
+      elif link_check xssl_conf 'TLS/SSL OpenSSL_modules_load_file() support' \
+            '#define HAVE_XSSL_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
@@ -2091,18 +2151,20 @@ int main(void){
    return 0;
 }
 !
+      then
+         :
+      fi
 
-      link_check ssl_tls_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
-         '#define HAVE_SSL_TLS_CONF_CTX' << \!
+      if [ -n "${ossl_v1_1}" ]; then
+         without_check yes xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
+            '#define HAVE_XSSL_CONF_CTX'
+      elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
+         '#define HAVE_XSSL_CONF_CTX' << \!
 #include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
-#if HAVE_SSL_TLS < 10100
-   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
-#else
-   SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-#endif
+   SSL_CTX *ctx = SSL_CTX_new(n_XSSL_CLIENT_METHOD());
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
 
    SSL_CONF_CTX_set_flags(cctx,
@@ -2116,17 +2178,29 @@ int main(void){
    return 0;
 }
 !
+      then
+         :
+      fi
 
-      link_check ssl_tls_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
-         '#define HAVE_SSL_TLS_RAND_EGD' << \!
+      if [ -n "${ossl_v1_1}" ]; then
+         without_check no xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
+            '#define HAVE_XSSL_RAND_EGD'
+      elif link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
+            '#define HAVE_XSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
    return RAND_egd("some.where") > 0;
 }
 !
+      then
+         :
+      fi
 
       if feat_yes SSL_ALL_ALGORITHMS; then
-         if link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
+         if [ -n "${ossl_v1_1}" ]; then
+            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
+               '#define HAVE_SSL_ALL_ALGORITHMS'
+         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
             '#define HAVE_SSL_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 int main(void){
@@ -2141,11 +2215,12 @@ int main(void){
          else
             feat_bail_required SSL_ALL_ALGORITHMS
          fi
-      fi # SSL_ALL_ALGORITHMS
+      fi
+   fi # feat_yes SSL }}}
 
-      if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check ssl_md5 'MD5 digest in the used crypto library' \
-            '#define HAVE_SSL_MD5' << \!
+   if feat_yes SSL && feat_yes MD5 && feat_no NOEXTMD5; then # {{{
+      run_check ssl_md5 'MD5 digest in the used crypto library' \
+            '#define HAVE_XSSL_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2170,13 +2245,12 @@ int main(void){
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
-      fi # feat_yes MD5 && feat_no NOEXTMD5
-   fi
+   fi # }}}
 else
    echo '/* OPT_SSL=0 */' >> ${h}
-fi # feat_yes SSL
+fi # }}} feat_yes SSL
 
-if [ "${have_ssl_tls}" = 'yes' ]; then
+if [ "${have_xssl}" = yes ]; then
    OPT_SMIME=1
 else
    OPT_SMIME=1
