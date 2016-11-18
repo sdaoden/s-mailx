@@ -384,7 +384,7 @@
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given <msglist>")) },
-   { "errors", &c_errors, (H | I | RAWLIST), 0, 1
+   { "errors", &c_errors, (H | I | M | RAWLIST), 0, 1
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
