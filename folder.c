@@ -277,15 +277,10 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       goto jem1;
    }
 
-   /* Looks like all will be well.  We must now relinquish our hold on the
-    * current set of stuff.  Must hold signals while we are reading the new
-    * file, else we will ruin the message[] data structure */
-
-   hold_sigs(); /* TODO note on this one in quit.c:quit() */
-   if (shudclob && !(fm & FEDIT_NEWMAIL) && !quit()) {
-      rele_sigs();
+   if (shudclob && !(fm & FEDIT_NEWMAIL) && !quit(FAL0))
       goto jem2;
-   }
+
+   hold_sigs();
 
 #ifdef HAVE_SOCKETS
    if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
@@ -389,12 +384,13 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       Pclose(lckfp, FAL0);
       /*lckfp = NULL;*/
    }
-   rele_sigs();
 
    if (!(fm & FEDIT_NEWMAIL)) {
       pstate &= ~PS_SAW_COMMAND;
       pstate |= PS_SETFILE_OPENED;
    }
+
+   rele_sigs();
 
    if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
       rv = (msgCount == 0);

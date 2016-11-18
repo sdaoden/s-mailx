@@ -825,7 +825,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
              : sc.sc_url.url_u_h_p.s))))
       goto jleave;
 
-   if (!quit())
+   if (!quit(FAL0))
       goto jleave;
 
    if (!sopen(&sc.sc_sock, &sc.sc_url))
@@ -945,11 +945,14 @@ pop3_body(struct message *m)
 }
 
 FL bool_t
-pop3_quit(void)
+pop3_quit(bool_t hold_sigs_on)
 {
    sighandler_type volatile saveint, savepipe;
    bool_t rv;
    NYD_ENTER;
+
+   if(hold_sigs_on)
+      rele_sigs();
 
    rv = FAL0;
 
@@ -982,6 +985,8 @@ pop3_quit(void)
 
    rv = TRU1;
 jleave:
+   if(hold_sigs_on)
+      hold_sigs();
    NYD_LEAVE;
    return rv;
 }

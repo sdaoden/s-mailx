@@ -1056,7 +1056,7 @@ FL void        mark(int mesg, int f);
 
 FL int         maildir_setfile(char const *name, enum fedit_mode fm);
 
-FL bool_t      maildir_quit(void);
+FL bool_t      maildir_quit(bool_t hold_sigs_on);
 
 FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
 
@@ -1497,7 +1497,7 @@ FL enum okay   pop3_header(struct message *m);
 FL enum okay   pop3_body(struct message *m);
 
 /*  */
-FL bool_t      pop3_quit(void);
+FL bool_t      pop3_quit(bool_t hold_sigs_on);
 #endif /* HAVE_POP3 */
 
 /*
@@ -1597,8 +1597,10 @@ FL bool_t      wait_child(int pid, int *wait_status);
 
 /* Save all of the undetermined messages at the top of "mbox".  Save all
  * untouched messages back in the system mailbox.  Remove the system mailbox,
- * if none saved there */
-FL bool_t      quit(void);
+ * if none saved there.
+ * TODO v15 Note: assumes hold_sigs() has been called _and_ can be temporarily
+ * TODO dropped via a single rele_sigs() if hold_sigs_on */
+FL bool_t      quit(bool_t hold_sigs_on);
 
 /* Adjust the message flags in each message */
 FL int         holdbits(void);

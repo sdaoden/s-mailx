@@ -738,7 +738,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (!(fm & FEDIT_NEWMAIL) && !quit())
+   if (!(fm & FEDIT_NEWMAIL) && !quit(FAL0))
       goto jleave;
 
    saveint = safe_signal(SIGINT, SIG_IGN);
@@ -825,12 +825,15 @@ jleave:
 }
 
 FL bool_t
-maildir_quit(void)
+maildir_quit(bool_t hold_sigs_on)
 {
    sighandler_type saveint;
    struct cw cw;
    bool_t rv;
    NYD_ENTER;
+
+   if(hold_sigs_on)
+      rele_sigs();
 
    rv = FAL0;
 
@@ -862,6 +865,8 @@ maildir_quit(void)
    cwrelse(&cw);
    rv = TRU1;
 jleave:
+   if(hold_sigs_on)
+      hold_sigs();
    NYD_LEAVE;
    return rv;
 }

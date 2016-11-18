@@ -509,7 +509,7 @@ _rcv_mode(char const *folder, char const *Larg)
    }
 jquit:
    save_mbox_for_possible_quitstuff();
-   quit();
+   quit(FAL0);
 jleave:
    NYD_LEAVE;
    return exit_status;

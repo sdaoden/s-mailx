@@ -176,8 +176,6 @@ edstop(void) /* TODO oh my god */
    if (mb.mb_perm == 0)
       goto j_leave;
 
-   hold_sigs();
-
    for (mp = message, gotcha = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
          mp->m_flag &= ~MNEW;
@@ -278,8 +276,6 @@ edstop(void) /* TODO oh my god */
 jleave:
    if (ibuf != NULL)
       Fclose(ibuf);
-   rele_sigs();
-
    if(!rv){
       /* TODO The codebase aborted by jumping to the main loop here.
        * TODO The OpenBSD mailx simply ignores this error.
@@ -308,7 +304,7 @@ _demail(void) /* TODO error handling */
 }
 
 FL bool_t
-quit(void)
+quit(bool_t hold_sigs_on)
 {
    int p, modify, anystat, c;
    FILE *fbuf = NULL, *lckfp = NULL, *rbuf, *abuf;
@@ -316,6 +312,9 @@ quit(void)
    struct stat minfo;
    bool_t rv;
    NYD_ENTER;
+
+   if(!hold_sigs_on)
+      hold_sigs();
 
    rv = FAL0;
    temporary_localopts_folder_hook_unroll();
@@ -327,23 +326,15 @@ quit(void)
     *   goto jleave;*/
    p = (mb.mb_perm == 0);
 
-   /* TODO lex.c:setfile() has just called hold_sigs(); before it called
-    * TODO us, but this causes uninterruptible hangs due to blocked sigs
-    * TODO anywhere except for MB_FILE (all others install their own
-    * TODO handlers, as it seems, properly); marked YYY */
    switch (mb.mb_type) {
    case MB_FILE:
       break;
    case MB_MAILDIR:
-      rele_sigs(); /* YYY */
-      rv = maildir_quit();
-      hold_sigs(); /* YYY */
+      rv = maildir_quit(TRU1);
       goto jleave;
 #ifdef HAVE_POP3
    case MB_POP3:
-      rele_sigs(); /* YYY */
-      rv = pop3_quit();
-      hold_sigs(); /* YYY */
+      rv = pop3_quit(TRU1);
       goto jleave;
 #endif
    case MB_VOID:
@@ -474,6 +465,8 @@ jleave:
       if (lckfp != NULL && lckfp != (FILE*)-1)
          Pclose(lckfp, FAL0);
    }
+   if(!hold_sigs_on)
+      rele_sigs();
    NYD_LEAVE;
    return rv;
 }
