@@ -880,6 +880,33 @@ _check_preface() {
    echo '*** results are'
 }
 
+without_check() {
+   yesno=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+
+   echo '**********'
+   msg_nonl ' . %s ... ' "${topic}"
+
+   echo '*** enforced unchecked results are'
+   if feat_val_yes ${yesno}; then
+      if [ -n "${incs}" ] || [ -n "${libs}" ]; then
+         echo "*** adding INCS<${incs}> LIBS<${libs}>"
+         LIBS="${LIBS} ${libs}"
+         echo "${libs}" >> ${lib}
+         INCS="${INCS} ${incs}"
+         echo "${incs}" >> ${inc}
+      fi
+      msg 'yes (deduced)'
+      echo "${define}" >> ${h}
+      eval have_${variable}=yes
+      return 0
+   else
+      echo "/* ${define} */" >> ${h}
+      msg 'no (deduced)'
+      eval unset have_${variable}
+      return 1
+   fi
+}
+
 compile_check() {
    variable=$1 topic=$2 define=$3
 
