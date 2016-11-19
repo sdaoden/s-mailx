@@ -200,7 +200,9 @@ for example.
 .
 .Mx
 .It Fl a Ar file
-Attach the given file to the message.
+Attach
+.Ar file
+to the message.
 The same filename conventions as described in the section
 .Sx COMMANDS
 apply: shell word expansion is restricted to the tilde
@@ -213,11 +215,13 @@ character, then anything after the
 .Ql =
 is assumed to specify the input character set and anything before
 .Ql =
-the filename: this is the only option to specify the input character set
-(and don't perform any character set conversion) for text attachments
-from the command line, not using the
+the filename: this is the only option to specify (and fixate) the input
+character set of text attachments from the command line, not using the
 .Ic ~@
-tilde escape command.
+command of and in the compose mode that follows
+(see
+.Sx "TILDE ESCAPES"
+for compose mode commands).
 .
 .Mx
 .It Fl B
