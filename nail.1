@@ -483,7 +483,7 @@ fields giving its recipients, which will be added to any recipients
 specified on the command line.
 If a message subject is specified via
 .Ql Subject:
-then it'll be used in favour of one given on the command line.
+then it will be used in favour of one given on the command line.
 .Pp
 Also understood are
 .Ql Reply-To:
@@ -752,7 +752,7 @@ special \(en these are so-called
 which can be used to read in files, process shell commands, add and edit
 attachments and more; e.g., the tilde escape
 .Ql Ic ~e
-will start the text editor to revise the message in it's current state,
+will start the text editor to revise the message in its current state,
 .Ql Ic ~h
 allows editing of the most important message headers and
 .Ql Ic ~?
@@ -1013,9 +1013,9 @@ If the \*(OPal documentation strings are available one can type
 .Pf "(or " Ql ?X )
 and see the actual expansion of
 .Ql X
-and what it's purpose is, i.e., commands can be abbreviated
+and what its purpose is, i.e., commands can be abbreviated
 (note that POSIX defines some abbreviations, so that the alphabetical
-order of commands doesn't necessarily relate to the abbreviations; it is
+order of commands does not necessarily relate to the abbreviations; it is
 possible to define overwrites with the
 .Ic ghost
 command, however).
@@ -1177,7 +1177,7 @@ messages come bundled with a bouquet of MIME attachments.
 Whereas \*(UA \*(OPally supports a simple HTML-to-text converter to deal
 with HTML messages (see
 .Sx "The mime.types files" ) ,
-it normally can't deal with any of these itself, but instead programs
+it normally cannot deal with any of these itself, but instead programs
 need to become registered to deal with specific MIME types or file
 extensions.
 These programs may either prepare plain text versions of their input
@@ -1260,7 +1260,7 @@ promotes all given arguments to known mailing lists, and
 sets their subscription attribute, creating them first as necessary.
 (On the other hand
 .Ic unmlsubscribe
-doesn't
+does not
 .Ic unmlist
 automatically, but only resets the subscription attribute.)
 Using the commands without arguments will show (a subset of) all
@@ -1436,7 +1436,7 @@ However, a user supplied
 .Va ttycharset
 value is not overwritten by this detection mechanism: this
 .Dq feature
-must be used if the detection doesn't work properly,
+must be used if the detection does not work properly,
 and it may be used to adjust the name of the locale character set.
 E.g., on BSD systems one may use a locale with the character set
 ISO8859-1, which is not a valid name for this character set; to be on
@@ -1445,7 +1445,7 @@ the safe side, one may set
 to the correct name, which is ISO-8859-1.
 .
 .Pp
-Note that changing the value doesn't mean much beside that,
+Note that changing the value does not mean much beside that,
 since several aspects of the real character set are implied by the
 locale environment of the system,
 and that stays unaffected by the content of an overwritten
@@ -1460,7 +1460,7 @@ locale environment, an option that \*(UA's test-suite uses excessively.)
 If no character set conversion capabilities have been compiled into
 \*(UA
 .Pf ( Va features
-doesn't include the term
+does not include the term
 .Ql +iconv ) ,
 then
 .Va ttycharset
@@ -2086,7 +2086,7 @@ may be helpful):
 .Dl PROTOCOL://[USER[:PASSWORD]@]server[:port][/path]
 .
 .Pp
-Note that these \*(UA URLs most often don't conform to any real
+Note that these \*(UA URLs most often do not conform to any real
 standard, but instead represent a normalized variant of RFC 1738 \(en
 they are not used in data exchange but only meant as a compact,
 easy-to-use way of defining and representing information in
@@ -2110,7 +2110,7 @@ had been specified in the respective URL, otherwise it refers to the plain
 .Ql server .
 Also,
 .Ql USER
-isn't truly the
+is not truly the
 .Ql USER
 that had been found when doing the user chain lookup as is described
 below, i.e., this
@@ -2319,7 +2319,7 @@ The following uses the
 .Xr sh 1 Ns
 ell-style quote notation that is documented in the introduction of
 .Sx COMMANDS ;
-combinations not mentioned either cause job control signals or don't
+combinations not mentioned either cause job control signals or do not
 generate a (unique) keycode:
 .
 .
@@ -2426,7 +2426,7 @@ Prompts for a Unicode character (its hexadecimal number) to be inserted
 Note this command needs to be assigned to a single-letter control code
 in order to become recognized and executed during input of
 a key-sequence (only three single-letter control codes can be used for
-that shortcut purpose); this control code is special-treated and can't
+that shortcut purpose); this control code is special-treated and cannot
 be part of any other sequence, because any occurrence will perform the
 .Cd mle-prompt-char
 function immediately.
@@ -2567,7 +2567,7 @@ matches the given prefix will be used.
 The command
 .Ic list
 can be used to show the list of all commands, either alphabetically
-sorted or in prefix search order (these don't match, also because the
+sorted or in prefix search order (these do not match, also because the
 POSIX standard prescribes a set of abbreviations).
 \*(OPally the command
 .Ic help
@@ -2623,7 +2623,7 @@ and the following character is treated literally as part of the argument.
 .
 .
 .Pp
-Some commands which don't take message-list arguments can also be
+Some commands which do not take message-list arguments can also be
 prefixed with the special keyword
 .Ic \&\&wysh
 to choose \*(INible argument quoting rules, and some new commands only
@@ -3005,7 +3005,7 @@ leading and trailing whitespace will finally be removed.
 Reverse solidus cannot be used as the last character of expansion.
 .
 .Pp
-Contexts define when a binding applies, i.e., a binding won't be seen
+Contexts define when a binding applies, i.e., a binding will not be seen
 unless the context for which it is defined for is currently active.
 This is not true for the shared binding
 .Ql base ,
@@ -3056,7 +3056,7 @@ whitespace needs to be properly quoted:
 shell-style quoting is documented in the introduction of
 .Sx COMMANDS .
 Using Unicode reverse solidus escape sequences renders a binding
-defunctional if the locale doesn't support Unicode (see
+defunctional if the locale does not support Unicode (see
 .Sx "Character sets" ) ,
 and using terminal capabilities does so if no terminal control support
 is (currently) available.
@@ -3255,7 +3255,7 @@ Mappings prefixed with
 .Ql mle-
 are used for the \*(OPal builtin Mailx-Line-Editor (MLE, see
 .Sx "On terminal control and line editor" )
-and don't support preconditions.
+and do not support preconditions.
 .Pp
 .Bl -tag -compact -width view-partinfo
 .It Cd mle-position
@@ -3388,13 +3388,13 @@ For a generic overview see the section
 .Mx
 .It Ic Copy
 (C) Copy messages to files whose names are derived from the author of
-the respective message and don't mark them as being saved;
+the respective message and do not mark them as being saved;
 otherwise identical to
 .Ic Save .
 .
 .Mx
 .It Ic copy
-(c) Copy messages to the named file and don't mark them as being saved;
+(c) Copy messages to the named file and do not mark them as being saved;
 otherwise identical to
 .Ic save .
 .
@@ -3700,7 +3700,7 @@ or
 respectively, and transparently handled through an intermediate
 (un)compression step (using a temporary file) with the according
 facility, sufficient support provided.
-Likewise, if the named file doesn't exist, but a file with one of the
+Likewise, if the named file does not exist, but a file with one of the
 mentioned compression extensions does, then the name is automatically
 expanded and the compressed file is used.
 .Pp
@@ -5178,7 +5178,7 @@ perform plain URL percent en- and decoding, respectively.
 and
 .Ar p[ath]dec[ode]
 perform a slightly modified operation which should be better for
-pathnames: it doesn't allow a tilde
+pathnames: it does not allow a tilde
 .Ql ~ ,
 and will neither accept hyphen
 .Ql -
@@ -5256,7 +5256,7 @@ URL percent encoded (as via
 .Ic urlencode )
 to prevent injection of malicious character sequences, resulting in
 a filename that will be written into the current directory.
-Existing files won't be overwritten, instead the part number or
+Existing files will not be overwritten, instead the part number or
 a dot are appended after a number sign
 .Ql #
 to the name until file creation succeeds (or fails due to other
@@ -5412,13 +5412,13 @@ current attachment selection, not only the character set selection.
 .El
 .Pp
 Without character set conversion support, \*(UA will ask for the input
-character set only, and it'll set the
+character set only, and it will set the
 .Ql charset=
 MIME parameter value to the given input, if any;
 if no user input is seen then the
 .Va ttycharset
 character set will be used for the parameter value instead.
-Note that the file extension check isn't performed in this mode, since
+Note that the file extension check is not performed in this mode, since
 no conversion will take place anyway.
 .Pp
 Note that in non-interactive mode, for reproduceabilities sake, there
@@ -5765,7 +5765,7 @@ set to
 .Ql 5 .
 .
 .Pp
-Notes: \*(UA doesn't support the
+Notes: \*(UA does not support the
 .Pf no Va onehop
 variable \(en use command line options or
 .Va mta-arguments
@@ -6039,7 +6039,7 @@ and all other variables prefixed with
 .Ql bsd ;
 it also changes the behaviour of
 .Va emptystart
-(which doesn't exist in BSD).
+(which does not exist in BSD).
 .
 .Mx
 .It Va bsdflags
@@ -6136,14 +6136,14 @@ the option
 .Fl \&\&c
 in order to support colours.
 Often doing manual adjustments is unnecessary since \*(UA may perform
-adjustments dependend on the value of the environment variable
+adjustments dependent on the value of the environment variable
 .Ev PAGER
 (see there for more).
 .
 .Mx
 .It Va crt
 In a(n interactive) terminal session, then if this valued option is set
-it'll be used as a threshold to determine how many lines the given
+it will be used as a threshold to determine how many lines the given
 output has to span before it will be displayed via the configured
 .Ev PAGER ;
 Usage of the
@@ -6184,7 +6184,7 @@ To control the display format of the date assign a valid
 format string.
 (Note that the
 .Ql %n
-format should not be used, because \*(UA doesn't take embedded newlines
+format should not be used, because \*(UA does not take embedded newlines
 into account when calculating how many lines fit onto the screen.)
 Also see
 .Va datefield-markout-older .
@@ -6282,7 +6282,7 @@ fields are accepted within the header, other fields are ignored.
 .It Va emptystart
 \*(BO When entering interactive mode \*(UA normally writes
 .Dq \&No mail for user
-and exits immediately if a mailbox is empty or doesn't exist.
+and exits immediately if a mailbox is empty or does not exist.
 If this option is set \*(UA starts even with an empty or nonexistent
 mailbox (the latter behaviour furtherly depends upon
 .Va bsdcompat ,
@@ -6458,7 +6458,7 @@ file names that begin with the plus-sign
 will be expanded by prefixing them with the value of this variable.
 The same special syntax conventions as documented for the
 .Ic file
-command may be used; if the non-empty value doesn't start with a solidus
+command may be used; if the non-empty value does not start with a solidus
 .Ql / ,
 then the value of
 .Ev HOME
@@ -6659,7 +6659,7 @@ The indenting level in threaded mode.
 The address of the message sender.
 .It Ql %i
 The message thread tree structure.
-(Note that this format doesn't support a field width.)
+(Note that this format does not support a field width.)
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m
@@ -6959,7 +6959,7 @@ also causes a
 option to be passed through to the
 .Va mta
 (Mail-Transfer-Agent); though most of the modern MTAs no longer document
-this flag, no MTA is known which doesn't support it (for historical
+this flag, no MTA is known which does not support it (for historical
 compatibility).
 .
 .Mx
@@ -7015,7 +7015,7 @@ contains topic subjects.)
 Normally the
 .Ql Content-Type:
 field is used to decide how to handle MIME parts.
-Some MUAs however don't use
+Some MUAs however do not use
 .Xr mime.types 5
 or a similar mechanism to correctly classify content, but simply specify
 .Ql application/octet-stream ,
@@ -7440,7 +7440,7 @@ of which will be made accessible via the environment variable
 If this trigger is given twice then the file will be unlinked
 automatically by \*(UA when the command loop is entered again at latest
 .Pf ( Cd x-mailx-tmpfile-unlink ) .
-(Don't use this for asynchronous handlers.)
+(Do not use this for asynchronous handlers.)
 .
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
@@ -7500,7 +7500,7 @@ Usually identical to
 but guaranteed to be set and usable by child processes;
 to ensure the latter condition for
 .Ev \&\&TMPDIR
-also, it'll be set.
+also, it will be set.
 .El
 .
 .
@@ -7666,7 +7666,7 @@ respectively, in a spirit rather equal to the
 .Xr fmt 1
 program, but line-, not paragraph-based.
 If not set explicitly the minimum will reflect the goal algorithmically.
-The goal can't be smaller than the length of
+The goal cannot be smaller than the length of
 .Va indentprefix
 plus some additional pad.
 Necessary adjustments take place silently.
@@ -7816,7 +7816,7 @@ had been set to the value of the variable
 In effect this combination passes through the message data in the
 character set of the current locale (given that
 .Va ttycharset
-hasn't been set manually), i.e., without converting it to the
+has not been set manually), i.e., without converting it to the
 .Va charset-8bit
 fallback character set.
 Thus, mail message text will be in ISO-8859-1 encoding when send from
@@ -7940,7 +7940,7 @@ Possible values are (case-insensitive and) in decreasing cipher strength:
 .Ql des3
 (DES EDE3 CBC, 168 bits; default if
 .Ql aes128
-isn't available) and
+is not available) and
 .Ql des
 (DES CBC, 56 bits).
 .Pp
@@ -7985,8 +7985,8 @@ variable.
 .
 .Mx
 .It Va smime-no-default-ca
-\*(BO\*(OP Don't load default CA locations when verifying S/MIME signed
-messages.
+\*(BO\*(OP Do not load default CA locations when verifying S/MIME
+signed messages.
 .
 .Mx
 .It Va smime-sign
@@ -8042,9 +8042,9 @@ be included in the S/MIME message in addition to the
 .Va smime-sign-cert
 certificate.
 This is most useful for long certificate chains if it is desired to aid
-the receiving party's verification process.
+the receiving parties verification process.
 Note that top level certificates may also be included in the chain but
-don't play a role for verification.
+do not play a role for verification.
 Also see
 .Va smime-sign-cert .
 Remember that for this
@@ -8105,7 +8105,7 @@ and
 .Ql gssapi .
 The
 .Ql none
-method doesn't need any user credentials,
+method does not need any user credentials,
 .Ql gssapi
 requires a user name and all other methods require a user name and
 a password.
@@ -8232,7 +8232,7 @@ can be used as in, e.g.,
 .Ql -d server.example.com -p 783 .
 It is also possible to specify a per-user configuration via
 .Va spamc-user .
-Note that this interface doesn't inspect the
+Note that this interface does not inspect the
 .Ql is-spam
 flag of a message for the command
 .Ic spamforget .
@@ -8267,7 +8267,7 @@ and
 set.
 Note that spam score support for
 .Ic spamrate
-isn't supported unless the \*(OPtional regular expression support is
+is not supported unless the \*(OPtional regular expression support is
 available and the
 .Va spamfilter-rate-scanscore
 variable is set.
@@ -8276,7 +8276,7 @@ variable is set.
 .
 .Mx
 .It Va spam-maxsize
-\*(OP Messages that exceed this size won't be passed through to the
+\*(OP Messages that exceed this size will not be passed through to the
 configured
 .Va spam-interface .
 If unset or 0, the default of 420000 bytes is used.
@@ -8378,7 +8378,7 @@ slot of the
 function of the OpenSSL library, if available; see
 .Xr ciphers 1
 for more information.
-By default \*(UA doesn't set a list of ciphers, which in effect will use a
+By default \*(UA does not set a list of ciphers, in effect using a
 .Va ssl-protocol
 specific cipher (protocol standards ship with a list of acceptable
 ciphers), possibly cramped to what the actually used SSL/TLS library
@@ -8448,7 +8448,7 @@ Note that SSLv2 is no longer supported at all.
 .
 .Mx
 .It Va ssl-no-default-ca
-\*(BO\*(OP Don't load default CA locations to verify SSL/TLS server
+\*(BO\*(OP Do not load default CA locations to verify SSL/TLS server
 certificates.
 .
 .Mx Va ssl-protocol
@@ -8504,8 +8504,8 @@ filename expansion failed, then
 will be used to create the filename if, and only if,
 .Xr RAND_status 3
 documents that the SSL PRNG is not yet sufficiently seeded.
-If \*(UA successfully seeded the SSL PRNG then it'll update the file via
-.Xr RAND_write_file 3 .
+If \*(UA successfully seeded the SSL PRNG then it will update the file
+.Pf ( Xr RAND_write_file 3 ) .
 This variable is only used if
 .Va ssl-rand-egd
 is not set (or not supported by the SSL/TLS library).
@@ -8542,7 +8542,7 @@ If set to the value
 .Ql noagent ,
 then the mentioned
 .Ql Message-ID:
-suppression doesn't occur.
+suppression does not occur.
 .
 .
 .Mx
@@ -8565,9 +8565,9 @@ pairs and are expected unless noted otherwise.
 Numerics have to be notated as
 .Ql cap#number
 where the number is expected in normal decimal notation.
-Finally, booleans don't have any value but indicate a true or false
+Finally, booleans do not have any value but indicate a true or false
 state simply by being defined or not; this indeed means that \*(UA
-doesn't support undefining an existing boolean.
+does not support undefining an existing boolean.
 String capability values will undergo some expansions before use:
 for one notations like
 .Ql ^LETTER
@@ -8601,7 +8601,7 @@ operation of the builtin line editor or \*(UA in general:
 .It Cd colors Ns \0or Cd Co
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
-Note that \*(UA doesn't actually care about the terminal beside that,
+Note that \*(UA does not actually care about the terminal beside that,
 but always emits ANSI / ISO 6429 escape sequences.
 .
 .\" HAVE_TERMCAP
@@ -8736,7 +8736,7 @@ e.g., it sets
 .Va line-editor-disable
 and (before startup completed only)
 .Va termcap-disable .
-Unsetting it doesn't restore the former state of the covered settings.
+Unsetting it does not restore the former state of the covered settings.
 .
 .Mx
 .It Va umask
@@ -8745,7 +8745,7 @@ For a safety-by-default policy \*(UA sets its process
 to
 .Ql 0077 ,
 but this variable can be used to override that:
-set it to an empty value to don't change the (current) setting,
+set it to an empty value to do not change the (current) setting,
 otherwise the process file mode creation mask is updated to the new value.
 Child processes inherit the process file mode creation mask.
 .
@@ -9228,8 +9228,8 @@ follow lines if newline characters are
 .Dq escaped
 by preceding them with the reverse solidus character
 .Ql \e .
-The standard doesn't specify how leading whitespace of follow lines is
-to be treated, therefore \*(UA retains it.
+The standard does not specify how leading whitespace of follow lines
+is to be treated, therefore \*(UA retains it.
 .
 .Pp
 .Dq Mailcap
@@ -9382,7 +9382,7 @@ Extension flag field that denotes that the given
 command shall be executed even if multiple messages will be displayed
 at once.
 Normally messages which require external viewers that produce output
-which doesn't integrate into \*(UA's visual display (i.e., don't have
+which does not integrate into \*(UA's visual display (i.e., do not have
 .Cd copiousoutput
 set) have to be addressed directly and individually.
 (To avoid cases where, e.g., a thousand PDF viewer instances are spawned
@@ -9440,7 +9440,7 @@ format.
 .It Cd x-mailx-tmpfile-unlink
 Extension flag field that requests that the temporary file shall be
 deleted automatically when the command loop is entered again at latest.
-(Don't use this for asynchronous handlers.)
+(Do not use this for asynchronous handlers.)
 It is an error to use this flag with commands that include a
 .Ql %s
 format, or without also setting
@@ -9516,9 +9516,9 @@ multipart/*; /usr/local/bin/showmulti \e
 .
 .Pp
 .\" TODO v15: Mailcap: %n,%F
-Note that \*(UA doesn't support handlers for multipart MIME parts as
+Note that \*(UA does not support handlers for multipart MIME parts as
 shown in this example (as of today).
-\*(UA doesn't support the additional formats
+\*(UA does not support the additional formats
 .Ql %n
 and
 .Ql %F .
@@ -9578,7 +9578,7 @@ be usable across multiple programs and platforms:
 .Pp
 .Bl -bullet -compact
 .It
-BSD doesn't support single, but only double quotation marks, e.g.,
+BSD does not support single, but only double quotation marks, e.g.,
 .Ql password="pass with spaces" .
 .It
 BSD (only?) supports escaping of single characters via a reverse solidus
@@ -9586,7 +9586,7 @@ BSD (only?) supports escaping of single characters via a reverse solidus
 .Ql \e\0 ) ,
 in- as well as outside of a quoted string.
 .It
-BSD doesn't require the final quotation mark of the final user input token.
+BSD does not require a final quotation mark of the last user input token.
 .It
 The original BSD (Berknet) parser also supported a format which allowed
 tokens to be separated with commas \(en whereas at least Hewlett-Packard
@@ -9633,7 +9633,7 @@ or a
 first-class token is bound (only related) to the machine
 .Ar name .
 .Pp
-As an extension that shouldn't be the cause of any worries
+As an extension that should not be the cause of any worries
 \*(UA supports a single wildcard prefix for
 .Ar name :
 .Bd -literal -offset indent
@@ -9710,12 +9710,12 @@ set v15-compat
 #set ssl-ca-dir=/etc/ssl/certs
 set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
 
-# (Since we manage up-to-date ones explicitly, don't use any,
+# (Since we manage up-to-date ones explicitly, do not use any,
 # possibly outdated, default certificates shipped with OpenSSL)
 set ssl-no-default-ca
 
-# Don't use protocols older than TLS v1.2.
-# Change this only when the remote server doesn't support it:
+# Do not use protocols older than TLS v1.2.
+# Change this only when the remote server does not support it:
 # maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
 # such explicit exceptions, then
 set ssl-protocol='-ALL,+TLSv1.2'
@@ -9743,7 +9743,7 @@ set reply-in-same-charset
 set fullnames
 
 # When sending messages, wait until the Mail-Transfer-Agent finishs.
-# Only like this you'll be able to see errors reported through the
+# Only like this you will be able to see errors reported through the
 # exit status of the MTA (including the builtin SMTP one)!
 set sendwait
 
@@ -9763,7 +9763,7 @@ shortcut mymbox %:+mbox.mbox myrec +sent.mbox
 set from='Your Name <address@exam.ple>'
 
 # It may be necessary to set hostname and/or smtp-hostname
-# if the "SERVER" of mta and "domain" of from don't match.
+# if the "SERVER" of mta and "domain" of from do not match.
 # The `urlencode' command can be used to encode USER and PASS
 set mta=(smtps?|submission)://[USER[:PASS]@]SERVER[:PORT] \e
   smtp-auth=login/plain... \e
@@ -9821,7 +9821,7 @@ wysh ghost lL '!ls ${LS_COLOR_FLAG} -aFlt'
 wysh ghost l '!ls ${LS_COLOR_FLAG} -aFtr'
 wysh ghost L '!ls ${LS_COLOR_FLAG} -aFt'
 
-# We don't support gpg(1) directly yet.  But simple --clearsign'd
+# We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
   wysh set pipe-text/plain=$'@*#++=@\e
@@ -9972,7 +9972,7 @@ including it in
 .Va smime-ca-dir
 or as a vivid member of the
 .Va smime-ca-file .
-But let's take a step-by-step tour on how to setup S/MIME with
+But let us take a step-by-step tour on how to setup S/MIME with
 a certificate from CAcert.org despite this situation!
 .
 .Pp
@@ -9981,7 +9981,7 @@ community, simply by registrating yourself via the web interface.
 Once you are, create and verify all email addresses you want to be able
 to create signed and encrypted messages for/with using the corresponding
 entries of the web interface.
-Now ready to create S/MIME certificates, so let's create a new
+Now ready to create S/MIME certificates, so let us create a new
 .Dq client certificate ,
 ensure to include all email addresses that should be covered by the
 certificate in the following web form, and also to use your name as the
@@ -10276,7 +10276,7 @@ In general it is a good idea to turn on
 and / or
 .Va verbose
 .Pf ( Fl v ,
-twice) if something doesn't work well.
+twice) if something does not work well.
 Very often a diagnostic message can be produced that leads to the
 problems' solution.
 .
@@ -10284,7 +10284,7 @@ problems' solution.
 .Ss "\*(UA shortly hangs on startup"
 .
 This can have two reasons, one is the necessity to wait for a file lock
-and can't be helped, the other being that \*(UA calls the function
+and cannot be helped, the other being that \*(UA calls the function
 .Xr uname 2
 in order to query the nodename of the box (sometimes the real one is
 needed instead of the one represented by the internal variable
@@ -10296,7 +10296,7 @@ have entries in
 or, more generally, that the name service is properly setup \(en
 and does
 .Xr hostname 1
-return what you'd expect?
+return what you would expect?
 Does this local hostname has a domain suffix?
 RFC 6762 standardized the link-local top-level domain
 .Ql .local .
@@ -10311,7 +10311,7 @@ set, then this most likely indicates a problem with the creation of
 so-called dotlock files: setting
 .Va dotlock-ignore-error
 should overcome this situation.
-This only avoids symptoms, it doesn't address the problem, though.
+This only avoids symptoms, it does not address the problem, though.
 Since the output is cleared away \*(UA has support for
 .Sx "On terminal control and line editor" ,
 and switches to the
@@ -10323,13 +10323,13 @@ this mode can be suppressed, and by setting
 (twice) the actual problem should be reported.
 .\" }}}
 .
-.\" .Ss "I can't login to Google mail aka GMail" {{{
-.Ss "I can't login to Google mail aka GMail"
+.\" .Ss "I cannot login to Google mail aka GMail" {{{
+.Ss "I cannot login to Google mail aka GMail"
 .
 Since 2014 some free service providers classify programs as
 .Dq less secure
 unless they use a special authentification method (OAuth 2.0) which
-wasn't standardized for non-HTTP protocol authentication token query
+was not standardized for non-HTTP protocol authentication token query
 until August 2015 (RFC 7628).
 .
 .Pp
@@ -10343,7 +10343,7 @@ local cache this query has to be performed whenever \*(UA is invoked
 from the command line (in interactive sessions situation may differ).
 .
 .Pp
-\*(UA doesn't support OAuth.
+\*(UA does not support OAuth.
 Because of this it is necessary to declare \*(UA a
 .Dq less secure app
 (on the providers account web page) in order to read and send mail.
@@ -10365,16 +10365,16 @@ use that special password instead of your real Google account password in
 .El
 .\" }}}
 .
-.\" .Ss "Not \(dqdefunctional\(dq, but the editor key won't work" {{{
-.Ss "Not \(dqdefunctional\(dq, but the editor key won't work"
+.\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{
+.Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
 .
 It can happen that the terminal library (see
 .Sx "On terminal control and line editor",
 .Ic bind ,
 .Va termcap )
 reports different codes than the terminal really sends, in which case
-\*(UA will tell that a key binding is functional, but won't be able to
-recognize it because the received data doesn't match anything expected.
+\*(UA will tell that a key binding is functional, but will not be able to
+recognize it because the received data does not match anything expected.
 The verbose listing of
 .Ic bind Ns
 ings will show the byte sequences that are expected.
