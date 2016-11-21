@@ -859,15 +859,17 @@ jputnl:
          linebuf[2] = ' ';
          linebuf[cnt] = '\0';
 
-         while(*cp != '\0') /* TODO trailing WS from lex_input */
-            ++cp;
-         for(;;){
-            c = cp[-1];
-            if(!blankspacechar(c))
-               break;
+         if(cnt > 0){ /* TODO v15 no more trailing WS from lex_input please */
+            cp = &linebuf[cnt];
+
+            for(;; --cp){
+               c = cp[-1];
+               if(!blankspacechar(c))
+                  break;
+            }
+            ((char*)UNCONST(cp))[0] = '\0';
+            cnt = PTR2SIZE(cp - linebuf);
          }
-         ((char*)UNCONST(cp))[0] = '\0';
-         cnt = PTR2SIZE(cp - linebuf);
       }
 
       switch((c = linebuf[1])){
