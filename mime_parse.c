@@ -96,7 +96,16 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          ip->m_ct_type != NULL)
       ip->m_filename = mime_param_get("name", ip->m_ct_type);
 
-   ip->m_mimecontent = mime_type_classify_part(ip);
+   if ((ip->m_mimecontent = mime_type_classify_part(ip)) == MIME_822) {
+      /* TODO (v15) HACK: message/rfc822 is treated special, that this one is
+       * TODO too stupid to apply content-decoding when (falsely) applied */
+      if (ip->m_mime_enc != MIMEE_8B && ip->m_mime_enc != MIMEE_7B) {
+         n_err(_("Pre-v15 %s cannot handle (falsely) encoded message/rfc822\n"
+            "  (not 7bit or 8bit)!  Interpreting as text/plain!\n"),
+            uagent);
+         ip->m_mimecontent = MIME_TEXT_PLAIN;
+      }
+   }
 
    if (mpf & MIME_PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */

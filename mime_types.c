@@ -58,7 +58,9 @@ enum mime_type_class {
    _MT_C_HASNUL   = 1<<6,     /* Contains \0 characters */
    _MT_C_NOTERMNL = 1<<7,     /* Lacks a final newline */
    _MT_C_FROM_    = 1<<8,     /* ^From_ seen */
-   _MT_C_SUGGEST_DONE = 1<<16 /* Inspector suggests to stop further parse */
+   _MT_C_FROM_1STLINE = 1<<9, /* From_ line seen */
+   _MT_C_SUGGEST_DONE = 1<<16, /* Inspector suggests to stop further parse */
+   _MT_C__1STLINE = 1<<17     /* .. */
 };
 
 struct mtbltin {
@@ -509,13 +511,13 @@ _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
    NYD2_ENTER;
    memset(mtcap, 0, sizeof *mtcap);
    mtcap->mtca_lastc = mtcap->mtca_c = EOF;
-   mtcap->mtca_mtc = initval;
+   mtcap->mtca_mtc = initval | _MT_C__1STLINE;
    NYD2_LEAVE;
    return mtcap;
 }
 
 static enum mime_type_class
-_mt_classify_round(struct mt_class_arg *mtcap)
+_mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
 {
    /* TODO BTW., after the MIME/send layer rewrite we could use a MIME
     * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
@@ -558,6 +560,7 @@ _mt_classify_round(struct mt_class_arg *mtcap)
          continue;
       }
       if (c == '\n' || c == EOF) {
+         mtc &= ~_MT_C__1STLINE;
          if (curlen >= MIME_LINELEN_LIMIT)
             mtc |= _MT_C_LONGLINES;
          if (c == EOF) {
@@ -605,8 +608,11 @@ _mt_classify_round(struct mt_class_arg *mtcap)
          *f_p++ = (char)c;
          if (UICMP(z, curlen, ==, F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
-               !memcmp(f_buf, F_, F_SIZEOF))
+               !memcmp(f_buf, F_, F_SIZEOF)){
             mtc |= _MT_C_FROM_;
+            if (mtc & _MT_C__1STLINE)
+               mtc |= _MT_C_FROM_1STLINE;
+         }
       }
    }
    if (c == EOF && lastc != '\n')
@@ -1014,22 +1020,34 @@ mime_type_classify_file(FILE *fp, char const **contenttype,
    char const **charset, int *do_iconv)
 {
    /* TODO classify once only PLEASE PLEASE PLEASE */
+   /* TODO message/rfc822 is special in that it may only be 7bit, 8bit or
+    * TODO binary according to RFC 2046, 5.2.1
+    * TODO The handling of which is a hack */
+   bool_t rfc822;
    enum mime_type_class mtc;
    enum mime_enc menc;
    off_t fpsz;
+   enum conversion c;
    NYD_ENTER;
 
    assert(ftell(fp) == 0x0l);
 
    *do_iconv = 0;
 
-   if (*contenttype == NULL)
+   if (*contenttype == NULL) {
       mtc = _MT_C_NCTT;
-   else if (!ascncasecmp(*contenttype, "text/", 5))
+      rfc822 = FAL0;
+   } else if (!ascncasecmp(*contenttype, "text/", 5)) {
       mtc = ok_blook(mime_allow_text_controls)
          ? _MT_C_ISTXT | _MT_C_ISTXTCOK : _MT_C_ISTXT;
-   else
+      rfc822 = FAL0;
+   } else if (!asccasecmp(*contenttype, "message/rfc822")) {
+      mtc = _MT_C_ISTXT;
+      rfc822 = TRU1;
+   } else {
       mtc = _MT_C_CLEAN;
+      rfc822 = FAL0;
+   }
 
    menc = mime_enc_target();
 
@@ -1087,11 +1105,26 @@ jcharset:
       *charset = (mtc & _MT_C_HIGHBIT) ? charset_iter_or_fallback()
             : charset_get_7bit();
 jleave:
-   NYD_LEAVE;
    /* TODO mime_type_file_classify() shouldn't return conversion */
-   return (menc == MIMEE_7B ? CONV_7BIT :
-      (menc == MIMEE_8B ? CONV_8BIT :
-      (menc == MIMEE_QP ? CONV_TOQP : CONV_TOB64)));
+   if (rfc822) {
+      if (mtc & _MT_C_FROM_1STLINE) {
+         n_err(_("Pre-v15 %s cannot handle message/rfc822 that "
+              "indeed is a RFC 4155 MBOX!\n"
+            "  Forcing a content-type of application/mbox!\n"),
+            uagent);
+         *contenttype = "application/mbox";
+         goto jnorfc822;
+      }
+      c = (menc == MIMEE_7B ? CONV_7BIT
+            : (menc == MIMEE_8B ? CONV_8BIT
+            : CONV_NONE));
+   } else
+jnorfc822:
+      c = (menc == MIMEE_7B ? CONV_7BIT
+            : (menc == MIMEE_8B ? CONV_8BIT
+            : (menc == MIMEE_QP ? CONV_TOQP : CONV_TOB64)));
+   NYD_LEAVE;
+   return c;
 }
 
 FL enum mimecontent
