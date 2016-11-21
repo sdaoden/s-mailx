@@ -36,9 +36,10 @@ enum mime_type {
    __MT_TMAX   = _MT_OTHER,
    __MT_TMASK  = 0x07,
 
-   _MT_LOADED  = 1<< 8,       /* Not struct mtbltin */
+   _MT_CMD     = 1<< 8,       /* Via `mimetype' (not struct mtbltin) */
    _MT_USR     = 1<< 9,       /* MIME_TYPES_USR */
    _MT_SYS     = 1<<10,       /* MIME_TYPES_SYS */
+   _MT_FSPEC   = 1<<11,       /* Loaded via f= *mimetypes-load-control* spec. */
 
    _MT_PLAIN   = 1<<16,       /* Without pipe handler display as text */
    _MT_SOUP_h  = 2<<16,       /* Ditto, but HTML tagsoup parser if possible */
@@ -225,8 +226,8 @@ jecontent:
          i > 0; ++j, ++srcs, --i)
       if (*srcs == NULL)
          continue;
-      else if (!__mt_load_file((j == 0 ? _MT_USR : (j == 1 ? _MT_SYS : 0)),
-            *srcs, &line, &linesize)) {
+      else if (!__mt_load_file((j == 0 ? _MT_USR
+               : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
          if ((options & OPT_D_V) || j > 1)
             n_err(_("*mimetypes-load-control*: can't open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
@@ -365,7 +366,7 @@ jeinval:
    /*  */
    mtnp = smalloc(sizeof(*mtnp) + tlen + len +1);
    mtnp->mt_next = NULL;
-   mtnp->mt_flags = (orflags |= _MT_LOADED);
+   mtnp->mt_flags = orflags;
    mtnp->mt_mtlen = (ui32_t)tlen;
    {  char *l = (char*)(mtnp + 1);
       mtnp->mt_line = l;
@@ -893,7 +894,8 @@ c_mimetype(void *v)
          fprintf(fp, "%c%s %s%.*s  %s\n",
             (mtnp->mt_flags & _MT_USR ? 'U'
                : (mtnp->mt_flags & _MT_SYS ? 'S'
-               : (mtnp->mt_flags & _MT_LOADED ? 'F' : 'B'))),
+               : (mtnp->mt_flags & _MT_FSPEC ? 'F'
+               : (mtnp->mt_flags & _MT_CMD ? 'C' : 'B')))),
             tmark, typ, (int)mtnp->mt_mtlen, mtnp->mt_line,
             mtnp->mt_line + mtnp->mt_mtlen);
       }
@@ -902,7 +904,7 @@ c_mimetype(void *v)
       Fclose(fp);
    } else {
       for (; *argv != NULL; ++argv) {
-         mtnp = _mt_create(TRU1, _MT_LOADED, *argv, strlen(*argv));
+         mtnp = _mt_create(TRU1, _MT_CMD, *argv, strlen(*argv));
          if (mtnp != NULL) {
             mtnp->mt_next = _mt_list;
             _mt_list = mtnp;
