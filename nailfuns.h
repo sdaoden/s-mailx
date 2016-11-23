@@ -892,52 +892,52 @@ FL int         grab_headers(enum n_lexinput_flags lif, struct header *hp,
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
 /*
- * ignoretab.c
+ * ignore.c
  */
 
-/* Add the given header fields to the retained list.  If no arguments, print
- * the current list of retained fields */
-FL int         c_retfield(void *v);
+/* `headerpick' */
+FL int         c_headerpick(void *v);
 
-/* Add the given header fields to the ignored list.  If no arguments, print the
- * current list of ignored fields */
-FL int         c_igfield(void *v);
-
-FL int         c_saveretfield(void *v);
-FL int         c_saveigfield(void *v);
-FL int         c_fwdretfield(void *v);
-FL int         c_fwdigfield(void *v);
-FL int         c_unignore(void *v);
+/* TODO Compat variants of the c_(un)?h*() series,
+ * except for `retain' and `ignore', which are standardized */
+FL int         c_retain(void *v);
+FL int         c_ignore(void *v);
 FL int         c_unretain(void *v);
-FL int         c_unsaveignore(void *v);
+FL int         c_unignore(void *v);
+
+FL int         c_saveretain(void *v);
+FL int         c_saveignore(void *v);
 FL int         c_unsaveretain(void *v);
-FL int         c_unfwdignore(void *v);
+FL int         c_unsaveignore(void *v);
+
+FL int         c_fwdretain(void *v);
+FL int         c_fwdignore(void *v);
 FL int         c_unfwdretain(void *v);
+FL int         c_unfwdignore(void *v);
 
-/* See if the given header field (not NUL terminated) is to be ignored.
- * For igta: [0] is ignore, [1] is retain -- TODO magic, enwrap in outer obj! */
-FL int         is_ign(char const *field, size_t fieldlen,
-                  struct ignoretab igta[2]);
+/* Ignore object lifecycle.  (Most of the time this interface deals with
+ * special n_IGNORE_* objects, e.g., n_IGNORE_TYPE, though.)
+ * isauto: whether auto-reclaimed storage is to be used for allocations;
+ * if so, _del() needn't be called */
+FL struct n_ignore *n_ignore_new(bool_t isauto);
+FL void        n_ignore_del(struct n_ignore *self);
 
-/* Future object stuff */
+/* Are there just _any_ user settings covered by self? */
+FL bool_t      n_ignore_is_any(struct n_ignore const *self);
 
-/* Ignore hashtable lifecycle.
- * isauto: whether auto-reclaimed storage is to be used for allocating childs;
- * if so, _gut() needn't be called */
-FL struct ignoretab *n_ignoretab_creat(struct ignoretab *self, bool_t isauto);
-FL void        n_ignoretab_gut(struct ignoretab *self);
+/* Set an entry to retain (or ignore).
+ * Returns FAL0 if dat is not a valid header field name or an invalid regular
+ * expression, TRU1 if insertion took place, and TRUM1 if already set */
+FL bool_t      n_ignore_insert(struct n_ignore *self, bool_t retain,
+                  char const *dat, size_t len);
+#define n_ignore_insert_cp(SELF,RT,CP) n_ignore_insert(SELF, RT, CP, UIZ_MAX)
 
-/* Set an entry in an ignore hashtable.
- * Returns FAL0 if cp is not a valid header field name, TRU1 if insertion took
- * place and TRUM1 if cp is already part of self */
-FL bool_t      n_ignoretab_insert(struct ignoretab *self, char const *dat,
-                  size_t len);
-#define n_ignoretab_insert_cp(SELF,CP) n_ignoretab_insert(SELF, CP, UIZ_MAX)
-
-/* */
-FL bool_t      n_ignoretab_lookup(struct ignoretab *self, char const *dat,
-                  size_t len);
-#define n_ignoretab_lookup_cp(SELF,CP) n_ignoretab_lookup(SELF, CP, UIZ_MAX)
+/* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
+FL bool_t      n_ignore_lookup(struct n_ignore const *self,
+                  char const *dat, size_t len);
+#define n_ignore_lookup_cp(SELF,CP) n_ignore_lookup(SELF, CP, UIZ_MAX)
+#define n_ignore_is_ign(SELF,FDAT,FLEN) \
+   (n_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)
 
 /*
  * imap_search.c
@@ -1619,13 +1619,14 @@ FL void        restorequitflags(int);
  */
 
 /* Send message described by the passed pointer to the passed output buffer.
- * Return -1 on error.  Adjust the status: field if need be.  If doign is
+ * Return -1 on error.  Adjust the status: field if need be.  If doitp is
  * given, suppress ignored header fields.  prefix is a string to prepend to
  * each output line.   action = data destination
  * (SEND_MBOX,_TOFILE,_TODISP,_QUOTE,_DECRYPT).  stats[0] is line count,
  * stats[1] is character count.  stats may be NULL.  Note that stats[0] is
  * valid for SEND_MBOX only */
-FL int         sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
+FL int         sendmp(struct message *mp, FILE *obuf,
+                  struct n_ignore const *doitp,
                   char const *prefix, enum sendaction action, ui64_t *stats);
 
 /*

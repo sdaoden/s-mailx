@@ -42,7 +42,7 @@
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int     save1(char *str, int domark, char const *cmd,
-                  struct ignoretab *ignoret, int convert, int sender_record,
+                  struct n_ignore const *itp, int convert, int sender_record,
                   int domove);
 
 /* Snarf the file from the end of the command line and return a pointer to it.
@@ -56,7 +56,7 @@ static char *  snarf(char *linebuf, bool_t *flag, bool_t usembox);
 static int     delm(int *msgvec);
 
 static int
-save1(char *str, int domark, char const *cmd, struct ignoretab *ignoret,
+save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    int convert, int sender_record, int domove)
 {
    ui64_t mstats[1], tstats[2];
@@ -190,7 +190,7 @@ jsend:
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
       mp = message + *ip - 1;
-      if (sendmp(mp, obuf, ignoret, NULL, convert, mstats) < 0) {
+      if (sendmp(mp, obuf, itp, NULL, convert, mstats) < 0) {
          success = FAL0;
          goto jferr;
       }
@@ -412,7 +412,7 @@ c_save(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 1, "save", saveignore, SEND_MBOX, 0, 0);
+   rv = save1(str, 1, "save", n_IGNORE_SAVE, SEND_MBOX, 0, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -424,7 +424,7 @@ c_Save(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 1, "save", saveignore, SEND_MBOX, 1, 0);
+   rv = save1(str, 1, "save", n_IGNORE_SAVE, SEND_MBOX, 1, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -436,7 +436,7 @@ c_copy(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "copy", saveignore, SEND_MBOX, 0, 0);
+   rv = save1(str, 0, "copy", n_IGNORE_SAVE, SEND_MBOX, 0, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -448,7 +448,7 @@ c_Copy(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "copy", saveignore, SEND_MBOX, 1, 0);
+   rv = save1(str, 0, "copy", n_IGNORE_SAVE, SEND_MBOX, 1, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -460,7 +460,7 @@ c_move(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "move", saveignore, SEND_MBOX, 0, 1);
+   rv = save1(str, 0, "move", n_IGNORE_SAVE, SEND_MBOX, 0, 1);
    NYD_LEAVE;
    return rv;
 }
@@ -472,7 +472,7 @@ c_Move(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "move", saveignore, SEND_MBOX, 1, 1);
+   rv = save1(str, 0, "move", n_IGNORE_SAVE, SEND_MBOX, 1, 1);
    NYD_LEAVE;
    return rv;
 }
@@ -484,7 +484,7 @@ c_decrypt(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "decrypt", saveignore, SEND_DECRYPT, 0, 0);
+   rv = save1(str, 0, "decrypt", n_IGNORE_SAVE, SEND_DECRYPT, 0, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -496,7 +496,7 @@ c_Decrypt(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "decrypt", saveignore, SEND_DECRYPT, 1, 0);
+   rv = save1(str, 0, "decrypt", n_IGNORE_SAVE, SEND_DECRYPT, 1, 0);
    NYD_LEAVE;
    return rv;
 }
@@ -510,7 +510,7 @@ c_write(void *v)
 
    if (str == NULL || *str == '\0')
       str = savestr("/dev/null");
-   rv = save1(str, 0, "write", allignore, SEND_TOFILE, 0, 0);
+   rv = save1(str, 0, "write", n_IGNORE_ALL, SEND_TOFILE, 0, 0);
    NYD_LEAVE;
    return rv;
 }

@@ -1088,12 +1088,11 @@ instead of their content, e.g., the following will search for subjects:
 .Pp
 In the default setup all header fields of a message will be
 .Ic type Ns
-d, but this can be changed: either by blacklisting a list of fields via
-.Ic ignore ,
-or by whitelisting only a given list with the
-.Ic retain
-command, e.g.,
-.Ql Ic \:retain Ns \0from_ date from to cc subject .
+d, but fields can be white- or blacklisted for a variety of
+applications by using the command
+.Ic headerpick ,
+e.g., to restrict display to a very restricted set:
+.Ql Ic \:headerpick Cd \:type retain add Ar \:from to cc subject .
 In order to display all header fields of a message regardless of
 currently active ignore or retain lists, use the commands
 .Ic Type
@@ -3484,8 +3483,8 @@ nor will they be available for most other commands.
 .It Ic discard
 (di) Identical to
 .Ic ignore .
-Also see
-.Ic retain .
+Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .Mx
@@ -3861,11 +3860,10 @@ The text of the original message is included in the new one,
 with the value of the
 .Va fwdheading
 variable preceding it.
-The
-.Ic fwdignore
-and
-.Ic fwdretain
-commands specify which header fields are included in the new message.
+To filter the included header fields to the desired subset use the
+.Ql foward
+slot of the white- and blacklisting command
+.Ic headerpick .
 Only the first part of a multipart message is included unless
 .Va forward-as-attachment ,
 and recipient addresses will be stripped from comments, names etc.
@@ -3875,22 +3873,13 @@ is set .
 .
 .Mx
 .It Ic fwdignore
-Specifies which header fields are to be ignored with the command
-.Ic fwd .
-This command has no effect when the internal variable
-.Va forward-as-attachment
-is set.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic fwdretain
-Specifies which header fields are to be retained with the command
-.Ic fwd .
-.Ic fwdretain
-overrides
-.Ic fwdignore .
-This command has no effect when the internal variable
-.Va forward-as-attachment
-is set.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic ghost
@@ -3917,6 +3906,71 @@ hello,
 ? xx world
 hello, world
 .Ed
+.
+.
+.Mx
+.It Ic headerpick
+\*(NQ Multiplexer command to establish white- and blacklisting
+selections of header fields for a variety of applications.
+Without any arguments the entire set of known contexts and their current
+settings is displayed.
+When given arguments, the first argument is the context to which the
+command applies, one of (case-insensitively)
+.Ql type
+for display purposes (via, e.g.,
+.Ic type ) ,
+.Ql save
+for selecting which headers shall be stored persistently when
+.Ic save ,
+.Ic copy ,
+.Ic move
+or even
+.Ic decrypt Ns
+ing messages (note that MIME related etc. header fields should not be
+ignored in order to not destroy usability of the message in this case),
+.Ql forward
+for stripping down messages when
+.Ic forward Ns
+ing message (has no effect if
+.Va forward-as-attachment
+is set), and
+.Ql top
+for defining user-defined set of fields for the command
+.Ic top .
+.
+.Pp
+The current settings of the given context are displayed if only the
+first argument is given.
+A second argument denotes the type of restriction that is to be chosen,
+it may be (a case-insensitive prefix of)
+.Ql retain
+or
+.Ql ignore
+for white- and blacklisting purposes, respectively.
+Establishing a whitelist suppresses inspection of the corresponding
+blacklist.
+If no further argument is given the current settings of the given type
+will be displayed.
+.
+.Pp
+With four or more arguments the third denotes the action to be applied,
+it may be
+.Ql add
+or
+.Ql +
+for addition of fields, and
+.Ql remove
+or
+.Ql -
+for removal of fields from the given type of the given context.
+The fourth, and any following arguments are expected to specify the
+fields of desire, or \*(OPally, regular expression matches ought to
+be applied.
+The special wildcard field (asterisk,
+.Ql * )
+will establish a (fast) shorthand setting which covers all fields, or
+remove all fields in one operation, respectively.
+.
 .
 .Mx
 .It Ic headers
@@ -4116,18 +4170,10 @@ endif
 .
 .Mx
 .It Ic ignore
-Without arguments the list of ignored header fields is shown,
-otherwise the given list of header fields is added to the ignore list:
-Header fields in the ignore list are not shown on the terminal when
-a message is displayed.
-To display a message in its entirety, use the commands
-.Ic Type
-or
-.Ic Print .
-Also see
-.Ic discard
-and
-.Ic retain .
+(ig) Identical to
+.Ic discard .
+Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic list
@@ -4297,7 +4343,9 @@ successfully.
 .It Ic More
 Like
 .Ic more ,
-but also displays ignored header fields and all MIME parts.
+but also displays header fields which would not pass the
+.Ic headerpick
+selection, and all MIME parts.
 Identical to
 .Ic Page .
 .
@@ -4374,7 +4422,9 @@ command is sent, otherwise no operation is performed.
 .It Ic Page
 Like
 .Ic page ,
-but also displays ignored header fields and all MIME parts.
+but also displays header fields which would not pass the
+.Ic headerpick
+selection, and all MIME parts.
 Identical to
 .Ic More .
 .
@@ -4391,7 +4441,9 @@ Identical to
 .It Ic Pipe
 Like
 .Ic pipe
-but also pipes ignored header fields and all parts of MIME
+but also pipes header fields which would not pass the
+.Ic headerpick
+selection, and all parts of MIME
 .Ql multipart/alternative
 messages.
 .
@@ -4558,20 +4610,8 @@ Same as
 .
 .Mx
 .It Ic retain
-(ret) Without arguments the list of retained header fields is shown,
-otherwise the given list of header fields is added to the retain list:
-Header fields in the retain list are shown on the terminal when
-a message is displayed, all other header fields are suppressed.
-To display a message in its entirety, use the commands
-.Ic Type
-or
-.Ic Print .
-Also see
-.Ic discard
-and
-.Ic ignore ;
-.Ic retain
-takes precedence over the mentioned.
+(ret) Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic Save
@@ -4598,47 +4638,18 @@ command is performed.
 .
 .Mx
 .It Ic savediscard
-Same as
-.Ic saveignore .
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic saveignore
-Is to
-.Ic save
-what
-.Ic ignore
-is to
-.Ic print
-and
-.Ic type .
-Header fields thus marked are filtered out when saving a message by
-.Ic save
-or when automatically saving to
-.Ev MBOX .
-This command should only be applied to header fields that do not contain
-information needed to decode the message,
-as MIME content fields do.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic saveretain
-Is to
-.Ic save
-what
-.Ic retain
-is to
-.Ic print
-and
-.Ic type .
-Header fields thus marked are the only ones saved with a message when
-saving by
-.Ic save
-or when automatically saving to
-.Ev MBOX .
-.Ic saveretain
-overrides
-.Ic saveignore .
-The use of this command is strongly discouraged since it may strip
-header fields that are needed to decode the message correctly.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic search
@@ -4891,25 +4902,31 @@ a header summary in threaded order is also displayed.
 .It Ic Top
 Like
 .Ic top
-but honours
-.Ic ignore
-and
-.Ic retain
-filter lists.
+but always uses the
+.Ic headerpick
+.Ql type
+slot for white- and blacklisting header fields.
 .
 .Mx
 .It Ic top
 (to) Takes a message list and types out the first
 .Va toplines
 lines of each message on the users' terminal.
-The only header fields that are displayed are
+Unless a special selection has been established for the
+.Ql top
+slot of the
+.Ic headerpick
+command, the only header fields that are displayed are
 .Ql From: ,
 .Ql To: ,
 .Ql CC: ,
 and
-.Ql Subject:
-.Pf ( Ic Top
-will instead honour configured lists).
+.Ql Subject: .
+.Ic Top
+will always use the
+.Ql type
+.Ic headerpick
+selection instead.
 It is possible to apply compression to what is displayed by setting
 .Va topsqueeze .
 Messages are decrypted and converted to the terminal character set
@@ -4928,7 +4945,9 @@ command will display the following message instead of the current one.
 .It Ic Type
 (T) Like
 .Ic type
-but also displays out ignored header fields and all parts of MIME
+but also displays header fields which would not pass the
+.Ic headerpick
+selection, and all parts of MIME
 .Ql multipart/alternative
 messages.
 .
@@ -4936,10 +4955,8 @@ messages.
 .It Ic type
 (t) Takes a message list and types out each message on the users'
 terminal, honouring
-.Ic ignore
-and
-.Ic retain
-lists.
+.Ic headerpick
+selections.
 For MIME multipart messages, all parts with a content type of
 .Ql text
 or
@@ -5036,21 +5053,13 @@ Takes a message list and marks each message as not being
 .
 .Mx
 .It Ic unfwdignore
-Removes the header field names from the list of ignored fields for the
-.Ic forward
-command.
-The special name
-.Ql *
-will remove all fields.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unfwdretain
-Removes the header field names from the list of retained fields for the
-.Ic forward
-command.
-The special name
-.Ql *
-will remove all fields.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unghost
@@ -5062,10 +5071,8 @@ will remove all ghosts.
 .
 .Mx
 .It Ic unignore
-Removes the header field names from the list of ignored fields.
-The special name
-.Ql *
-will remove all fields.
+Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unmimetype
@@ -5109,26 +5116,18 @@ Takes a message list and marks each message as not having been read.
 .
 .Mx
 .It Ic unretain
-Removes the header field names from the list of retained fields.
-The special name
-.Ql *
-will remove all fields.
+Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unsaveignore
-Removes the header field names from the list of ignored fields for
-saving.
-The special name
-.Ql *
-will remove all fields.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unsaveretain
-Removes the header field names from the list of retained fields for
-saving.
-The special name
-.Ql *
-will remove all fields.
+\*(OB Superseded by the multiplexer
+.Ic headerpick .
 .
 .Mx
 .It Ic unset
@@ -5502,10 +5501,10 @@ If no messages are specified, read in the current message.
 .It Ic ~f Ar messages
 Read the named messages into the message being sent.
 If no messages are specified, read in the current message.
-.Ic ignore
-and
-.Ic retain
-lists are used to modify the message headers.
+Strips down the list of header fields according to the
+.Ql type
+white- and blacklist selection of
+.Ic headerpick .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -5557,10 +5556,10 @@ Read the named messages into the message being sent,
 indented by
 .Va indentprefix .
 If no messages are specified, read the current message.
-.Ic ignore
-and
-.Ic retain
-lists are used to modify the message headers.
+Strips down the list of header fields according to the
+.Ql type
+white- and blacklist selection of
+.Ic headerpick .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -5786,9 +5785,9 @@ it sets the variables
 .Va keepsave
 and
 .Va keep ,
-to name a few, calls
-.Ic retain
-etc., and should thus be taken into account.
+to name a few, establishes a default
+.Ic headerpick
+selection etc., and should thus be taken into account.
 .\" }}}
 .
 .\" .Ss "Variables" {{{
@@ -7645,9 +7644,10 @@ is assigned to the
 variable, this heading is omitted.
 If the string
 .Ql headers
-is assigned, the headers selected by the
-.Ic ignore Ns / Ns Ic retain
-commands are put above the message body,
+is assigned, only the headers selected by the
+.Ql type
+.Ic headerpick
+selection are put above the message body,
 thus
 .Va \&\&quote
 acts like an automatic
@@ -9806,9 +9806,13 @@ set emptystart \e
   reply-to-honour=ask-yes \e
   umask=
 
-# When `t'yping messages, show only these headers
-# (use `T'ype for all headers and `S'how for raw message)
-retain date from to cc subject
+# Only include the selected header fields when typing messages
+headerpick type retain add from_ date from to cc subject \e
+  message-id mail-followup-to reply-to
+# ...when forwarding messages
+headerpick forward retain add subject date from to cc
+# ...when saving message, etc.
+#headerpick save ignore add ^Original-.*$ ^X-.*$
 
 # Some mailing lists
 mlist '@xyz-editor\e.xyz$' '@xyzf\e.xyz$'

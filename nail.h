@@ -906,6 +906,16 @@ enum n_iconv_flags{
    n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
 
+/* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
+ * _ALL is very special in that it doesn't have a backing object */
+#define n_IGNORE_ALL ((struct n_ignore*)-2)
+#define n_IGNORE_TYPE ((struct n_ignore*)-3)
+#define n_IGNORE_SAVE ((struct n_ignore*)-4)
+#define n_IGNORE_FWD ((struct n_ignore*)-5)
+#define n_IGNORE_TOP ((struct n_ignore*)-6)
+#define n__IGNORE_ADJUST 3
+#define n__IGNORE_MAX (6 - n__IGNORE_ADJUST)
+
 enum n_lexinput_flags{
    n_LEXINPUT_NONE,
    n_LEXINPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
@@ -2336,17 +2346,6 @@ struct sendbundle {
    struct ccred   sb_ccred;
 };
 
-/* Structure of the hash table of ignored header fields */
-struct ignoretab{
-   ui32_t it_count;
-   bool_t it_auto;     /* Stored in auto-reclaimed storage? */
-   ui8_t it__dummy[3];
-   struct n_ignoretab_field{
-      struct n_ignoretab_field *itf_next;
-      char itf_field[n_VFIELD_SIZE(0)]; /* Header field */
-   } *it_head[5 /* TODO make dynamic hashmap */];
-};
-
 /* For saving the current directory and later returning */
 struct cw {
 #ifdef HAVE_FCHDIR
@@ -2407,13 +2406,6 @@ VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
-
-VL struct ignoretab  ignore[2];        /* ignored and retained fields
-                                        * 0 is ignore, 1 is retain */
-VL struct ignoretab  saveignore[2];    /* ignored and retained fields
-                                        * on save to folder */
-VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
-#define allignore ((struct ignoretab*)-2) /* special, ignore all headers */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

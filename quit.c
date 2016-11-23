@@ -553,7 +553,7 @@ makembox(void) /* TODO oh my god */
    for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
-         if (sendmp(mp, obuf, saveignore, NULL, SEND_MBOX, NULL) < 0) {
+         if (sendmp(mp, obuf, n_IGNORE_SAVE, NULL, SEND_MBOX, NULL) < 0) {
             n_perr(mbox, 0);
             srelax_rele();
             if (ibuf != NULL)

@@ -458,7 +458,7 @@ static int
 forward(char *ms, FILE *fp, int f)
 {
    int *msgvec, rv = 0;
-   struct ignoretab *ig;
+   struct n_ignore const *itp;
    char const *tabst;
    enum sendaction action;
    NYD_ENTER;
@@ -480,9 +480,9 @@ forward(char *ms, FILE *fp, int f)
    else if ((tabst = ok_vlook(indentprefix)) == NULL)
       tabst = INDENT_DEFAULT;
    if (f == 'u' || f == 'U')
-      ig = allignore;
+      itp = n_IGNORE_ALL;
    else
-      ig = upperchar(f) ? NULL : ignore;
+      itp = upperchar(f) ? NULL : n_IGNORE_TYPE;
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
    printf(_("Interpolating:"));
@@ -492,7 +492,7 @@ forward(char *ms, FILE *fp, int f)
       touch(mp);
       printf(" %d", *msgvec);
       fflush(stdout);
-      if (sendmp(mp, fp, ig, tabst, action, NULL) < 0) {
+      if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
          n_perr(_("temporary mail file"), 0);
          rv = -1;
          break;
@@ -607,7 +607,7 @@ FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
    char *quotefile, int doprefix, si8_t *checkaddr_err)
 {
-   struct ignoretab *quoteig;
+   struct n_ignore const *quoteitp;
    int lc, cc, c;
    int volatile t;
    int volatile escape, getfields;
@@ -699,10 +699,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
          /* Quote an original message */
          if (mp != NULL && (doprefix || (cp = ok_vlook(quote)) != NULL)) {
-            quoteig = allignore;
+            quoteitp = n_IGNORE_ALL;
             action = SEND_QUOTE;
             if (doprefix) {
-               quoteig = fwdignore;
+               quoteitp = n_IGNORE_FWD;
                if ((cp = ok_vlook(fwdheading)) == NULL)
                   cp = "-------- Original Message --------";
                if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
@@ -710,9 +710,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
             } else if (!strcmp(cp, "noheading")) {
                /*EMPTY*/;
             } else if (!strcmp(cp, "headers")) {
-               quoteig = ignore;
+               quoteitp = n_IGNORE_TYPE;
             } else if (!strcmp(cp, "allheaders")) {
-               quoteig = NULL;
+               quoteitp = NULL;
                action = SEND_QUOTE_ALL;
             } else {
                cp = hfield1("from", mp);
@@ -729,7 +729,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
                cp = NULL;
             else if ((cp = ok_vlook(indentprefix)) == NULL)
                cp = INDENT_DEFAULT;
-            if (sendmp(mp, _coll_fp, quoteig, cp, action, NULL) < 0)
+            if (sendmp(mp, _coll_fp, quoteitp, cp, action, NULL) < 0)
                goto jerr;
          }
       }

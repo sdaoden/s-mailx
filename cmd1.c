@@ -75,7 +75,7 @@ static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 static int     _pipe1(char *str, int doign);
 
 /* `top' / `Top' */
-static int a_cmd_top(void *vp, struct ignoretab *itp);
+static int a_cmd_top(void *vp, struct n_ignore const *itp);
 
 static void
 _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
@@ -1062,7 +1062,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          fprintf(obuf, "\n");
       if (action != SEND_MBOX)
          _show_msg_overview(obuf, mp, *ip);
-      sendmp(mp, obuf, (doign ? ignore : NULL), NULL, action, mstats);
+      sendmp(mp, obuf, (doign ? n_IGNORE_TYPE : NULL), NULL, action, mstats);
       srelax();
       if (formfeed) /* TODO a nicer way to separate piped messages! */
          putc('\f', obuf);
@@ -1140,7 +1140,7 @@ jleave:
 }
 
 static int
-a_cmd_top(void *vp, struct ignoretab *itp){
+a_cmd_top(void *vp, struct n_ignore const *itp){
    struct n_string s;
    int *msgvec, *ip;
    enum{a_NONE, a_SQUEEZE = 1u<<0,
@@ -1551,18 +1551,21 @@ c_Pipe(void *v)
 
 FL int
 c_top(void *v){
-   struct ignoretab it[2];
+   struct n_ignore *itp;
    int rv;
    NYD_ENTER;
 
-   n_ignoretab_creat(&it[0], TRU1);
-   n_ignoretab_creat(&it[1], TRU1);
-   n_ignoretab_insert(&it[1], "from", sizeof("from") -1);
-   n_ignoretab_insert(&it[1], "to", sizeof("to") -1);
-   n_ignoretab_insert(&it[1], "cc", sizeof("cc") -1);
-   n_ignoretab_insert(&it[1], "subject", sizeof("subject") -1);
+   if(n_ignore_is_any(n_IGNORE_TOP))
+      itp = n_IGNORE_TOP;
+   else{
+      itp = n_ignore_new(TRU1);
+      n_ignore_insert(itp, TRU1, "from", sizeof("from") -1);
+      n_ignore_insert(itp, TRU1, "to", sizeof("to") -1);
+      n_ignore_insert(itp, TRU1, "cc", sizeof("cc") -1);
+      n_ignore_insert(itp, TRU1, "subject", sizeof("subject") -1);
+   }
 
-   rv = !a_cmd_top(v, it);
+   rv = !a_cmd_top(v, itp);
    NYD_LEAVE;
    return rv;
 }
@@ -1572,7 +1575,7 @@ c_Top(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = !a_cmd_top(v, ignore);
+   rv = !a_cmd_top(v, n_IGNORE_TYPE);
    NYD_LEAVE;
    return rv;
 }

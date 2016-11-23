@@ -43,7 +43,7 @@ static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
 static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
-                        struct ignoretab *doign, int level,
+                        struct n_ignore const *doitp, int level,
                         struct quoteflt *qf, ui64_t *stats);
 
 /* Create a pipe; if mpp is not NULL, place some NAILENV_* environment
@@ -63,7 +63,7 @@ static void          _send_onpipe(int signo);
 
 /* Send one part */
 static int           sendpart(struct message *zmp, struct mimepart *ip,
-                        FILE *obuf, struct ignoretab *doign,
+                        FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
                         ui64_t *stats, int level);
 
@@ -83,7 +83,7 @@ static void          put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats);
 
 static void
 _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
-   struct ignoretab *doign, int level, struct quoteflt *qf, ui64_t *stats)
+   struct n_ignore const *doitp, int level, struct quoteflt *qf, ui64_t *stats)
 {
    char buf[64];
    struct str ti = {NULL, 0}, to;
@@ -151,8 +151,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
-   if (is_ign("content-disposition", 19, doign) && mpp->m_filename != NULL &&
-         *mpp->m_filename != '\0') {
+   if (n_ignore_is_ign(doitp, "content-disposition", 19) &&
+         mpp->m_filename != NULL && *mpp->m_filename != '\0') {
       makeprint(n_str_add_cp(&ti, mpp->m_filename), &to);
       free(ti.s);
       to.l = delctrl(to.s, to.l);
@@ -341,7 +341,7 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
-   struct ignoretab *doign, struct quoteflt *qf,
+   struct n_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action, ui64_t * volatile stats, int level)
 {
    int volatile rv = 0;
@@ -368,10 +368,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    dostat = 0;
    if (level == 0) {
-      if (doign != NULL) {
-         if (!is_ign("status", 6, doign))
+      if (doitp != NULL) {
+         if (!n_ignore_is_ign(doitp, "status", 6))
             dostat |= 1;
-         if (!is_ign("x-status", 8, doign))
+         if (!n_ignore_is_ign(doitp, "x-status", 8))
             dostat |= 2;
       } else
          dostat = 3;
@@ -417,7 +417,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             statusput(zmp, obuf, qf, stats);
          if (dostat & 2)
             xstatusput(zmp, obuf, qf, stats);
-         if (doign != allignore)
+         if (doitp != n_IGNORE_ALL)
             _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
          break;
       }
@@ -452,7 +452,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
                if (dostat & 2)
                   xstatusput(zmp, obuf, qf, stats);
             }
-            if (doign != allignore)
+            if (doitp != n_IGNORE_ALL)
                _out("\n", 1, obuf, CONV_NONE,SEND_MBOX, qf, stats, NULL,NULL);
             break;
          }
@@ -463,7 +463,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             dostat |= 1 << 2;
          c = *cp2;
          *cp2 = 0; /* temporarily null terminate */
-         if ((doign && is_ign(line, PTR2SIZE(cp2 - line), doign)) ||
+         if ((doitp != NULL &&
+                  n_ignore_is_ign(doitp, line, PTR2SIZE(cp2 - line))) ||
                (action == SEND_MBOX && !(dostat & (1 << 2)) &&
                 (!asccasecmp(line, "content-length") ||
                 !asccasecmp(line, "lines"))))
@@ -706,7 +707,7 @@ jalter_redo:
                   if (neednl)
                      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats,
                         NULL, NULL);
-                  _print_part_info(obuf, np, doign, level, qf, stats);
+                  _print_part_info(obuf, np, doitp, level, qf, stats);
                }
                neednl = TRU1;
 
@@ -783,7 +784,7 @@ jalter_plain:
                   }
                   hadpart = TRU1;
                   neednl = FAL0;
-                  rv = sendpart(zmp, np, obuf, doign, qf, action, stats,
+                  rv = sendpart(zmp, np, obuf, doitp, qf, action, stats,
                         level + 1);
                   quoteflt_reset(qf, origobuf);
 
@@ -864,7 +865,7 @@ jmulti:
                      ip->m_mimecontent != MIME_DIGEST &&
                      ip->m_mimecontent != MIME_MULTI)
                   break;
-               _print_part_info(obuf, np, doign, level, qf, stats);
+               _print_part_info(obuf, np, doitp, level, qf, stats);
                break;
             case SEND_QUOTE:
             case SEND_QUOTE_ALL:
@@ -885,7 +886,7 @@ jmulti:
                   NULL,NULL);
                quoteflt_flush(dummy);
             }
-            if (sendpart(zmp, np, obuf, doign, qf, action, stats, level+1) < 0)
+            if (sendpart(zmp, np, obuf, doitp, qf, action, stats, level+1) < 0)
                rv = -1;
             quoteflt_reset(qf, origobuf);
 
@@ -914,7 +915,7 @@ jpipe_close:
    }
 
    /* Copy out message body */
-   if (doign == allignore && level == 0) /* skip final blank line */
+   if (doitp == n_IGNORE_ALL && level == 0) /* skip final blank line */
       --cnt;
    switch (ip->m_mime_enc) {
    case MIMEE_BIN:
@@ -1365,7 +1366,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
 }
 
 FL int
-sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
+sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    char const *prefix, enum sendaction action, ui64_t *stats)
 {
    struct quoteflt qf;
@@ -1405,8 +1406,9 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    }
 #endif
 
-   nozap = (doign != allignore && doign != fwdignore && action != SEND_RFC822 &&
-            !is_ign("from_", sizeof("from_") -1, doign));
+   nozap = (doitp != n_IGNORE_ALL && doitp != n_IGNORE_FWD &&
+         action != SEND_RFC822 &&
+         !n_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
    if (mp->m_flag & MNOFROM) {
       if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
@@ -1462,7 +1464,7 @@ sendmp(struct message *mp, FILE *obuf, struct ignoretab *doign,
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 
-   rv = sendpart(mp, ip, obuf, doign, &qf, action, stats, 0);
+   rv = sendpart(mp, ip, obuf, doitp, &qf, action, stats, 0);
 jleave:
    quoteflt_destroy(&qf);
    NYD_LEAVE;

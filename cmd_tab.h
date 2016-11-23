@@ -232,25 +232,27 @@
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate address list for the invoking user")) },
-   { "ignore", &c_igfield, (M | RAWLIST), 0, 1000
+   { "ignore", &c_ignore, (M | RAWLIST), 0, 1000
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "discard", &c_igfield, (M | RAWLIST), 0, 1000
+   { "discard", &c_ignore, (M | RAWLIST), 0, 1000
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "retain", &c_retfield, (M | RAWLIST), 0, 1000
+   { "retain", &c_retain, (M | RAWLIST), 0, 1000
      DS(N_("Add <header-list> to retained list, or show that list")) },
-   { "saveignore", &c_saveigfield, (M | RAWLIST), 0, 1000
+   { "headerpick", &c_headerpick, (M | WYSHLIST), 0, 1000
+     DS(N_("Header selection: [<context> [<type> [<action> <header-list>]]]"))},
+   { "saveignore", &c_saveignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
-   { "savediscard", &c_saveigfield, (M | RAWLIST), 0, 1000
+   { "savediscard", &c_saveignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
-   { "saveretain", &c_saveretfield, (M | RAWLIST), 0, 1000
+   { "saveretain", &c_saveretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Is to `save' what `retain' is to `type' / `print'")) },
    { "unignore", &c_unignore, (M | RAWLIST), 0, 1000
      DS(N_("Un`ignore' <header-list>")) },
    { "unretain", &c_unretain, (M | RAWLIST), 0, 1000
      DS(N_("Un`retain' <header-list>")) },
-   { "unsaveignore", &c_unsaveignore, (M | RAWLIST), 0, 1000
+   { "unsaveignore", &c_unsaveignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`saveignore' <header-list>")) },
-   { "unsaveretain", &c_unsaveretain, (M | RAWLIST), 0, 1000
+   { "unsaveretain", &c_unsaveretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`saveretain' <header-list>")) },
    { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
@@ -324,15 +326,15 @@
      DS(N_("Mark <msglist> as seen")) },
    { "Seen", &c_seen, (A | M | MSGLIST), 0, MMNDEL
      DS(N_("Mark <msglist> as seen")) },
-   { "fwdignore", &c_fwdigfield, (M | RAWLIST), 0, 1000
+   { "fwdignore", &c_fwdignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Control <header-list> to be ignored with `forward'")) },
-   { "fwddiscard", &c_fwdigfield, (M | RAWLIST), 0, 1000
+   { "fwddiscard", &c_fwdignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Control <header-list> to be ignored with `forward'")) },
-   { "fwdretain", &c_fwdretfield, (M | RAWLIST), 0, 1000
+   { "fwdretain", &c_fwdretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Control <header-list> to be retained with `forward'")) },
-   { "unfwdignore", &c_unfwdignore, (M | RAWLIST), 0, 1000
+   { "unfwdignore", &c_unfwdignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`fwdignore' <header-list>")) },
-   { "unfwdretain", &c_unfwdretain, (M | RAWLIST), 0, 1000
+   { "unfwdretain", &c_unfwdretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`fwdretain' <header-list>")) },
    { "mimetype", &c_mimetype, (M | WYRALIST), 0, 1000
      DS(N_("(Load and) show all known MIME types, or define some")) },
