@@ -86,7 +86,7 @@ struct a_colour_g{
    struct a_colour_map *cg_active;  /* The currently active colour */
    struct n_colour_pen cg_reset;    /* The reset sequence */
    struct a_colour_map
-      *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX][n__COLOUR_IDS];
+      *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX1][n__COLOUR_IDS];
    char cg_reset_buf[n_ALIGN_SMALL(sizeof("\033[0m"))];
 };
 
@@ -124,12 +124,12 @@ static struct a_colour_type_map const a_colour_type_maps[] = {
 n_CTA(n_COLOUR_CTX_SUM == 0, "Unexpected value of constant");
 n_CTA(n_COLOUR_CTX_VIEW == 1, "Unexpected value of constant");
 n_CTA(n_COLOUR_CTX_MLE == 2, "Unexpected value of constant");
-static char const a_colour_ctx_prefixes[n__COLOUR_CTX_MAX][8] = {
+static char const a_colour_ctx_prefixes[n__COLOUR_CTX_MAX1][8] = {
    "sum-", "view-", "mle-"
 };
 
 static struct a_colour_map_id const
-      a_colour_map_ids[n__COLOUR_CTX_MAX][n__COLOUR_IDS] = {{
+      a_colour_map_ids[n__COLOUR_CTX_MAX1][n__COLOUR_IDS] = {{
    {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_DOTMARK, a_COLOUR_TT_SUM, "dotmark"},
    {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_HEADER, a_COLOUR_TT_SUM, "header"},
    {n_COLOUR_CTX_SUM, n_COLOUR_ID_SUM_THREAD, a_COLOUR_TT_SUM, "thread"},
@@ -403,7 +403,7 @@ jredo:
       size_t i1, i2;
       struct a_colour_map *tmp;
 
-      for(i1 = 0; i1 < n__COLOUR_CTX_MAX; ++i1)
+      for(i1 = 0; i1 < n__COLOUR_CTX_MAX1; ++i1)
          for(i2 = 0; i2 < n__COLOUR_IDS; ++i2)
             for(cmp = *(cmap = &a_colour_g->cg_maps[ct][i1][i2]), *cmap = NULL;
                   cmp != NULL;){
@@ -490,7 +490,7 @@ a_colour__show(enum a_colour_type ct){
    if((rv = (ct == (enum a_colour_type)-1 ? TRU1 : FAL0)))
       ct = 0;
 jredo:
-   for(i1 = 0; i1 < n__COLOUR_CTX_MAX; ++i1)
+   for(i1 = 0; i1 < n__COLOUR_CTX_MAX1; ++i1)
       for(i2 = 0; i2 < n__COLOUR_IDS; ++i2){
          if((cmp = a_colour_g->cg_maps[ct][i1][i2]) == NULL)
             continue;

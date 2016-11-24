@@ -2220,7 +2220,7 @@ FL void        n_termcap_suspend(bool_t complete);
 FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
 # define n_termcap_cmdx(CMD)     n_termcap_cmd(CMD, -1, -1)
 
-/* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX then
+/* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX1 then
  * tvp->tv_data.tvd_string must contain the name of the query to look up; this
  * is used to lookup just about *any* (string) capability.
  * Returns TRU1 on success and TRUM1 for queries for which a builtin default

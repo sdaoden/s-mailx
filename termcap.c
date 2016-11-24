@@ -60,9 +60,9 @@ n_CTA(a_TERMCAP_ENTRYSIZE_MAX < UI16_MAX,
 
 /* For simplicity we store commands and queries in single continuous control
  * and entry structure arrays: to index queries one has to add
- * n__TERMCAP_CMD_MAX first!  And don't confound with ENTRYSIZE_MAX! */
+ * n__TERMCAP_CMD_MAX1 first!  And don't confound with ENTRYSIZE_MAX! */
 enum{
-   a_TERMCAP_ENT_MAX = n__TERMCAP_CMD_MAX + n__TERMCAP_QUERY_MAX
+   a_TERMCAP_ENT_MAX1 = n__TERMCAP_CMD_MAX1 + n__TERMCAP_QUERY_MAX1
 };
 
 enum a_termcap_flags{
@@ -83,7 +83,7 @@ enum a_termcap_flags{
 
    a_TERMCAP_F__LAST = a_TERMCAP_F_ARG_CNT
 };
-n_CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
+n_CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX1 <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
    "enum n_termcap_captype exceeds bit range of a_termcap_flags");
 
 struct a_termcap_control{
@@ -117,7 +117,7 @@ struct a_termcap_ext_ent{
 
 struct a_termcap_g{
    struct a_termcap_ext_ent *tg_ext_ents; /* List of extended queries */
-   struct a_termcap_ent tg_ents[a_TERMCAP_ENT_MAX];
+   struct a_termcap_ent tg_ents[a_TERMCAP_ENT_MAX1];
    struct n_string tg_dat;                /* Storage for resolved caps */
 # if !defined HAVE_TGETENT_NULL_BUF && !defined HAVE_TERMINFO
    char tg_lib_buf[a_TERMCAP_ENTRYSIZE_MAX];
@@ -128,7 +128,7 @@ struct a_termcap_g{
 #include "tcaps.h"
 n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");
-n_CTA(a_TERMCAP_ENT_MAX == n_NELEM(a_termcap_control),
+n_CTA(a_TERMCAP_ENT_MAX1 == n_NELEM(a_termcap_control),
    "Control array doesn't match command/query array to be controlled");
 
 static struct a_termcap_g *a_termcap_g;
@@ -161,9 +161,9 @@ static int a_termcap_putc(int c);
 static si32_t a_termcap_enum_for_name(char const *name, size_t nlen,
                si32_t min, si32_t max);
 #define a_termcap_cmd_for_name(NB,NL) \
-   a_termcap_enum_for_name(NB, NL, 0, n__TERMCAP_CMD_MAX)
+   a_termcap_enum_for_name(NB, NL, 0, n__TERMCAP_CMD_MAX1)
 #define a_termcap_query_for_name(NB,NL) \
-   a_termcap_enum_for_name(NB, NL, n__TERMCAP_CMD_MAX, a_TERMCAP_ENT_MAX)
+   a_termcap_enum_for_name(NB, NL, n__TERMCAP_CMD_MAX1, a_TERMCAP_ENT_MAX1)
 
 static void
 a_termcap_init_var(struct str const *termvar){
@@ -216,7 +216,7 @@ jeinvent:
          struct a_termcap_control const *tcp;
          si32_t tci;
 
-         tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX);
+         tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX1);
          if(tci < 0){
             /* For key binding purposes, save any given string */
 #ifdef HAVE_KEY_BINDINGS
@@ -386,7 +386,7 @@ a_termcap_init_altern(void){
    /* C99 */{
       size_t i;
 
-      for(i = n__TERMCAP_CMD_MAX;;){
+      for(i = n__TERMCAP_CMD_MAX1;;){
          if(i-- == 0)
             break;
          if((tep = &a_termcap_g->tg_ents[i])->te_flags & a_TERMCAP_F_DISABLED)
@@ -646,7 +646,7 @@ n_termcap_init(void){
       struct a_termcap_ent *tep;
       size_t i;
 
-      for(i = n__TERMCAP_CMD_MAX;;){
+      for(i = n__TERMCAP_CMD_MAX1;;){
          if(i-- == 0)
             break;
          if((tep = &a_termcap_g->tg_ents[i])->te_flags == 0)
@@ -858,14 +858,14 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    assert(a_termcap_g != NULL);
 
    /* Is it a builtin query? */
-   if(query != n__TERMCAP_QUERY_MAX){
-      tep = &a_termcap_g->tg_ents[n__TERMCAP_CMD_MAX + query];
+   if(query != n__TERMCAP_QUERY_MAX1){
+      tep = &a_termcap_g->tg_ents[n__TERMCAP_CMD_MAX1 + query];
 
       if(tep->te_flags == 0
 #ifdef HAVE_TERMCAP
             && ((pstate & PS_TERMCAP_DISABLE) ||
                !a_termcap_ent_query_tcp(n_UNCONST(tep),
-               &a_termcap_control[n__TERMCAP_CMD_MAX + query]))
+               &a_termcap_control[n__TERMCAP_CMD_MAX1 + query]))
 #endif
       )
          goto jleave;
@@ -937,7 +937,7 @@ n_termcap_query_for_name(char const *name, enum n_termcap_captype type){
             (tcp->tc_flags & a_TERMCAP_F_TYPE_MASK) != type)
          rv = -2;
       else
-         rv -= n__TERMCAP_CMD_MAX;
+         rv -= n__TERMCAP_CMD_MAX1;
    }
    NYD2_LEAVE;
    return rv;
@@ -949,7 +949,7 @@ n_termcap_name_of_query(enum n_termcap_query query){
    NYD2_ENTER;
 
    rv = &a_termcap_namedat[
-         a_termcap_control[n__TERMCAP_CMD_MAX + query].tc_off + 2];
+         a_termcap_control[n__TERMCAP_CMD_MAX1 + query].tc_off + 2];
    NYD2_LEAVE;
    return rv;
 }

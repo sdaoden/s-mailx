@@ -559,7 +559,7 @@ enum a_tty_bind_flags{
    a_TTY__BIND_LAST = 1<<25
 };
 # ifdef HAVE_KEY_BINDINGS
-n_CTA((ui32_t)a_TTY_BIND_RESOLVE > (ui32_t)n__LEXINPUT_CTX_MAX,
+n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__LEXINPUT_CTX_MAX1,
    "Bit carrier lower boundary must be raised to avoid value sharing");
 # endif
 n_CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
@@ -621,7 +621,7 @@ struct a_tty_bind_default_tuple{
    ui16_t tbdt_query;   /* enum n_termcap_query (instead) */
    char tbdt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
 };
-n_CTA(n__TERMCAP_QUERY_MAX <= UI16_MAX,
+n_CTA(n__TERMCAP_QUERY_MAX1 <= UI16_MAX,
    "Enumeration cannot be stored in datatype");
 
 # ifdef HAVE_KEY_BINDINGS
@@ -674,15 +674,15 @@ struct a_tty_global{
    bool_t tg_bind_isbuild;
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
    ui8_t tg_bind__dummy[2];
-   char tg_bind_shcut_cancel[n__LEXINPUT_CTX_MAX][a_TTY_SHCUT_MAX];
-   char tg_bind_shcut_prompt_char[n__LEXINPUT_CTX_MAX][a_TTY_SHCUT_MAX];
-   struct a_tty_bind_ctx *tg_bind[n__LEXINPUT_CTX_MAX];
-   struct a_tty_bind_tree *tg_bind_tree[n__LEXINPUT_CTX_MAX][HSHSIZE];
+   char tg_bind_shcut_cancel[n__LEXINPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   char tg_bind_shcut_prompt_char[n__LEXINPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   struct a_tty_bind_ctx *tg_bind[n__LEXINPUT_CTX_MAX1];
+   struct a_tty_bind_tree *tg_bind_tree[n__LEXINPUT_CTX_MAX1][HSHSIZE];
 # endif
    struct termios tg_tios_old;
    struct termios tg_tios_new;
 };
-n_CTA(n__LEXINPUT_CTX_MAX == 3 && a_TTY_SHCUT_MAX == 4 &&
+n_CTA(n__LEXINPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
    n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
 n_CTA(a_TTY_SHCUT_MAX > 1,
@@ -760,7 +760,7 @@ n_CTAV(n_LEXINPUT_CTX_BASE == 0);
 n_CTAV(n_LEXINPUT_CTX_DEFAULT == 1);
 n_CTAV(n_LEXINPUT_CTX_COMPOSE == 2);
 static struct a_tty_bind_ctx_map const
-      a_tty_bind_ctx_maps[n__LEXINPUT_CTX_MAX] = {
+      a_tty_bind_ctx_maps[n__LEXINPUT_CTX_MAX1] = {
    {n_LEXINPUT_CTX_BASE, "base"},
    {n_LEXINPUT_CTX_DEFAULT, "default"},
    {n_LEXINPUT_CTX_COMPOSE, "compose"}
@@ -3397,7 +3397,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
          tq = n_termcap_query_for_name(capname, n_TERMCAP_CAPTYPE_STRING);
          if(tq == -1){
             tv.tv_data.tvd_string = capname;
-            tq = n__TERMCAP_QUERY_MAX;
+            tq = n__TERMCAP_QUERY_MAX1;
          }
 
          if(tq < 0 || !n_termcap_query(tq, &tv)){
@@ -3464,7 +3464,7 @@ a_tty_bind_tree_build(void){
    size_t i;
    NYD2_ENTER;
 
-   for(i = 0; i < n__LEXINPUT_CTX_MAX; ++i){
+   for(i = 0; i < n__LEXINPUT_CTX_MAX1; ++i){
       struct a_tty_bind_ctx *tbcp;
       n_LCTAV(n_LEXINPUT_CTX_BASE == 0);
 
@@ -3496,7 +3496,7 @@ a_tty_bind_tree_teardown(void){
    memset(&a_tty.tg_bind_shcut_prompt_char[0], 0,
       sizeof(a_tty.tg_bind_shcut_prompt_char));
 
-   for(i = 0; i < n__LEXINPUT_CTX_MAX; ++i)
+   for(i = 0; i < n__LEXINPUT_CTX_MAX1; ++i)
       for(j = 0; j < HSHSIZE; ++j)
          a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
    memset(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
@@ -3543,7 +3543,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
             char *cp;
             ui32_t ctx, fun;
 
-            ctx = tbcp->tbc_flags & n__LEXINPUT_CTX_MAX;
+            ctx = tbcp->tbc_flags & n__LEXINPUT_CTX_MASK;
             fun = tbcp->tbc_flags & a_TTY__BIND_FUN_MASK;
 
             if(fun == a_TTY_BIND_FUN_CANCEL){
@@ -3750,7 +3750,7 @@ jhist_done:
       struct a_tty_bind_ctx *tbcp;
       enum n_lexinput_flags lif;
 
-      for(lif = 0; lif < n__LEXINPUT_CTX_MAX; ++lif)
+      for(lif = 0; lif < n__LEXINPUT_CTX_MAX1; ++lif)
          for(tbcp = a_tty.tg_bind[lif]; tbcp != NULL; tbcp = tbcp->tbc_next)
             if((tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
                   a_TTY_BIND_RESOLVE)
@@ -4280,7 +4280,7 @@ c_bind(void *v){
                      ? _(" # MLE internal") : n_empty))
                );
          }
-         if(!aster || ++lif >= n__LEXINPUT_CTX_MAX)
+         if(!aster || ++lif >= n__LEXINPUT_CTX_MAX1)
             break;
       }
       page_or_print(fp, lns);
@@ -4366,7 +4366,7 @@ jredo:
          a_tty_bind_del(&tbpc);
    }
 
-   if(aster && ++lif < n__LEXINPUT_CTX_MAX)
+   if(aster && ++lif < n__LEXINPUT_CTX_MAX1)
       goto jredo;
 jleave:
    NYD_LEAVE;

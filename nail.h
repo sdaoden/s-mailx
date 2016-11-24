@@ -800,7 +800,7 @@ enum n_colour_ctx{
    n_COLOUR_CTX_SUM,
    n_COLOUR_CTX_VIEW,
    n_COLOUR_CTX_MLE,
-   n__COLOUR_CTX_MAX
+   n__COLOUR_CTX_MAX1
 };
 
 enum n_colour_id{
@@ -912,7 +912,7 @@ enum n_lexinput_flags{
    n_LEXINPUT_CTX_DEFAULT = 1,         /* Default input */
    n_LEXINPUT_CTX_COMPOSE = 2,         /* Compose mode input */
    n__LEXINPUT_CTX_MASK = 3,
-   n__LEXINPUT_CTX_MAX = n_LEXINPUT_CTX_COMPOSE + 1,
+   n__LEXINPUT_CTX_MAX1 = n_LEXINPUT_CTX_COMPOSE + 1,
 
    n_LEXINPUT_NL_ESC = 1<<8,           /* Support "\\$" line continuation */
    n_LEXINPUT_NL_FOLLOW = 1<<9,        /* ..on such a follow line */
@@ -1206,7 +1206,7 @@ enum n_termcap_captype{
    n_TERMCAP_CAPTYPE_BOOL = 1,
    n_TERMCAP_CAPTYPE_NUMERIC,
    n_TERMCAP_CAPTYPE_STRING,
-   n__TERMCAP_CAPTYPE_MAX
+   n__TERMCAP_CAPTYPE_MAX1
 };
 
 /* Termcap commands; different to queries commands perform actions.
@@ -1242,7 +1242,7 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
 # endif
 
-   n__TERMCAP_CMD_MAX,
+   n__TERMCAP_CMD_MAX1,
    n__TERMCAP_CMD_MASK = (1<<24) - 1,
 
    /* Only perform command if ca-mode is used */
@@ -1319,7 +1319,7 @@ enum n_termcap_query{
    n_TERMCAP_QUERY_kf19,         /* kf19/F9, STRING */
 # endif /* HAVE_KEY_BINDINGS */
 
-   n__TERMCAP_QUERY_MAX
+   n__TERMCAP_QUERY_MAX1
 };
 #endif /* n_HAVE_TCAP */
 
