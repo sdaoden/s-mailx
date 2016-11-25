@@ -170,15 +170,23 @@ FL struct str *
  * Routines that are not related to auto-reclaimed storage follow.
  */
 
-FL int
-anyof(char const *s1, char const *s2)
-{
+FL bool_t
+n_anyof_buf(char const *template, char const *dat, size_t len){
+   char c;
    NYD2_ENTER;
-   for (; *s1 != '\0'; ++s1)
-      if (strchr(s2, *s1) != NULL)
-         break;
+
+   if(len == UIZ_MAX){
+      while((c = *template++) != '\0')
+         if(strchr(dat, c) != NULL)
+            break;
+   }else if(len > 0){
+      while((c = *template++) != '\0')
+         if(memchr(dat, c, len) != NULL)
+            break;
+   }else
+      c = '\0';
    NYD2_LEAVE;
-   return (*s1 != '\0');
+   return (c != '\0');
 }
 
 FL char *

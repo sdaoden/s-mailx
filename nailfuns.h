@@ -91,11 +91,9 @@
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
 /* Could the string contain a regular expression? */
-#if 0
-# define is_maybe_regex(S) anyof("^.[]*+?()|$", S)
-#else
-# define is_maybe_regex(S) anyof("^[]*+?|$", S)
-#endif
+#define is_maybe_regex(S) n_is_maybe_regex(S)
+#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, UIZ_MAX)
+#define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
 
 /* Single-threaded, use unlocked I/O */
 #ifdef HAVE_PUTC_UNLOCKED
@@ -1926,7 +1924,9 @@ FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
 /* Are any of the characters in the two strings the same? */
-FL int         anyof(char const *s1, char const *s2);
+FL bool_t      n_anyof_buf(char const *template, char const *dat, size_t len);
+#define n_anyof_cp(S1,S2) n_anyof_buf(S1, S2, UIZ_MAX)
+#define anyof(S1,S2) n_anyof_buf(S1, S2, UIZ_MAX)
 
 /* Treat *iolist as a sep separated list of strings; find and return the
  * next entry, trimming surrounding whitespace, and point *iolist to the next
