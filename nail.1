@@ -609,7 +609,7 @@ and
 .Fl v
 are implemented by means of
 .Ic set Ns
-ting the respective option, as via
+ting the respective internal variable, as via
 .Fl S .
 .Bk -words
 .Op Ar mta-option ...
@@ -789,10 +789,10 @@ will automatically startup a text editor when compose mode is entered,
 allows editing of headers additionally to plain body content,
 .Va askcc
 will cause the user to be prompted actively for carbon-copy recipients
-and the
+and setting
 .Va dot
-option will allow leaving compose mode by writing a line consisting
-solely of a dot
+will allow leaving compose mode by writing a line consisting solely of
+a dot
 .Pf ( Ql \&. ) .
 .Va on-compose-enter
 and
@@ -1028,7 +1028,7 @@ Messages are given numbers (starting at 1) which uniquely identify
 messages; the current message \(en the
 .Dq dot
 \(en will either be the first new message, or the first unread message,
-or the first message of the mailbox; the option
+or the first message of the mailbox; the internal variable
 .Va showlast
 will instead cause usage of the last message for this purpose.
 The command
@@ -1145,7 +1145,7 @@ Messages can also be
 ed (shorter alias is
 .Ic fwd Ns ).
 Note that when replying to or forwarding a message recipient addresses
-will be stripped from comments and names unless the option
+will be stripped from comments and names unless the internal variable
 .Va fullnames
 is set.
 Deletion causes \*(UA to forget about the message;
@@ -1631,7 +1631,7 @@ prefix and are in
 .Ql read
 state when the mailbox is left will be saved in
 .Ev MBOX
-unless the option
+unless the internal variable
 .Va hold
 it set.
 .
@@ -1663,7 +1663,7 @@ prefix and are in
 .Ql saved
 state when the mailbox is left will be deleted; they will be saved in
 .Ev MBOX
-when the option
+when the internal variable
 .Va keepsave
 is set.
 .El
@@ -2335,9 +2335,9 @@ Move the cursor backward one character
 .
 .It Ql \ecD
 Forward delete the character under the cursor;
-quits \*(UA if used on the empty line unless the
+quits \*(UA if used on the empty line unless the internal variable
 .Va ignoreeof
-option is set
+is set
 .Pf ( Cd mle-del-fwd ) .
 .
 .It Ql \ecE
@@ -3862,20 +3862,20 @@ The
 and
 .Ic fwdretain
 commands specify which header fields are included in the new message.
-Only the first part of a multipart message is included unless the
-.Va forward-as-attachment
-option is set.
-Unless the option
+Only the first part of a multipart message is included unless
+.Va forward-as-attachment ,
+and recipient addresses will be stripped from comments, names etc.
+unless the internal variable
 .Va fullnames
-is set recipient addresses will be stripped from comments, names etc.
+is set .
 .
 .Mx
 .It Ic fwdignore
 Specifies which header fields are to be ignored with the command
 .Ic fwd .
-This command has no effect when the
+This command has no effect when the internal variable
 .Va forward-as-attachment
-option is set.
+is set.
 .
 .Mx
 .It Ic fwdretain
@@ -3884,9 +3884,9 @@ Specifies which header fields are to be retained with the command
 .Ic fwdretain
 overrides
 .Ic fwdignore .
-This command has no effect when the
+This command has no effect when the internal variable
 .Va forward-as-attachment
-option is set.
+is set.
 .
 .Mx
 .It Ic ghost
@@ -4218,9 +4218,9 @@ then collects the remaining mail content and sends it out.
 .It Ic mbox
 (mb) The given message list is to be sent to
 .Ev MBOX
-when \*(UA is quit; this is the default action unless the
+when \*(UA is quit; this is the default action unless the variable
 .Va hold
-option is set.
+is set.
 \*(ID This command can only be used in a primary system mailbox (see
 .Ic file ) .
 .
@@ -4475,7 +4475,7 @@ Does not reply to other recipients of the original message.
 .Va flipr
 will exchange this command with
 .Ic reply .
-Unless the option
+Unless the internal variable
 .Va fullnames
 is set the recipient address will be stripped from comments, names etc.
 .
@@ -4492,7 +4492,7 @@ influence response behaviour.
 The command
 .Ic Lreply
 offers special support for replying to mailing lists.
-Unless the option
+Unless the internal variable
 .Va fullnames
 is set recipient addresses will be stripped from comments, names etc.
 If
@@ -5988,7 +5988,7 @@ The same as
 .It Va autosort
 Causes sorted mode (see the
 .Ic sort
-command) to be entered automatically with the value of this option as
+command) to be entered automatically with the value of this variable as
 sorting method when a folder is opened, e.g.,
 .Ql set autosort=thread .
 .
@@ -6141,8 +6141,8 @@ adjustments dependent on the value of the environment variable
 .
 .Mx
 .It Va crt
-In a(n interactive) terminal session, then if this valued option is set
-it will be used as a threshold to determine how many lines the given
+In a(n interactive) terminal session, then if this valued variable is
+set it will be used as a threshold to determine how many lines the given
 output has to span before it will be displayed via the configured
 .Ev PAGER ;
 Usage of the
@@ -6190,7 +6190,7 @@ Also see
 .
 .Mx
 .It Va datefield-markout-older
-This option, when set in addition to
+This variable, when set in addition to
 .Va datefield ,
 is used to display
 .Dq older
@@ -6282,7 +6282,7 @@ fields are accepted within the header, other fields are ignored.
 \*(BO When entering interactive mode \*(UA normally writes
 .Dq \&No mail for user
 and exits immediately if a mailbox is empty or does not exist.
-If this option is set \*(UA starts even with an empty or nonexistent
+If this variable is set \*(UA starts even with an empty or nonexistent
 mailbox (the latter behaviour furtherly depends upon
 .Va bsdcompat ,
 though).
@@ -6325,7 +6325,7 @@ a decoding step.
 .
 .Mx
 .It Va escape
-If defined, the first character of this option
+If defined, the first character of the value of this variable
 gives the character to use in place of
 .Ql ~
 to denote
@@ -6416,7 +6416,7 @@ will include this information.
 .
 .Mx
 .It Va flipr
-\*(BO This option reverses the meanings of a set of reply commands,
+\*(BO This setting reverses the meanings of a set of reply commands,
 turning the lowercase variants, which by default address all recipients
 included in the header of a message
 .Pf ( Ic reply , respond , followup )
@@ -6543,7 +6543,7 @@ and
 .Ic forward
 command,
 and only the first part of a multipart message is included.
-With this option messages are sent as unmodified MIME
+With this setting enabled messages are sent as unmodified MIME
 .Ql message/rfc822
 attachments with all of their parts included.
 .
@@ -6771,7 +6771,7 @@ be honoured.
 .
 .Mx
 .It Va hold
-\*(BO This option is used to hold messages in the system
+\*(BO This setting controls whether messages are held in the system
 .Va inbox ,
 and it is set by default.
 .
@@ -6892,7 +6892,7 @@ fields already marks the message as being modified.
 .It Va keepsave
 \*(BO When a message is saved it is usually discarded from the
 originating folder when \*(UA is quit.
-Setting this option causes all saved message to be retained.
+This setting causes all saved message to be retained.
 .
 .Mx
 .It Va line-editor-disable
@@ -6918,7 +6918,7 @@ and makes them specially addressable.
 .
 .Mx
 .It Va message-id-disable
-\*(BO By setting this option the generation of
+\*(BO By setting this variable the generation of
 .Ql Message-ID:
 can be completely suppressed, effectively leaving this task up to the
 .Va mta
@@ -6990,8 +6990,8 @@ If that actually happens a yet unset charset MIME parameter is set to
 effectively making it impossible for the receiving MUA to automatically
 interpret the contents of the part.
 .Pp
-If this option is set, and the data was unambiguously identified as text
-data at first glance (by a
+If this variable is set, and the data was unambiguously identified as
+text data at first glance (by a
 .Ql .txt
 or
 .Ql .html
@@ -7055,7 +7055,7 @@ treated as such.
 .
 .Mx
 .It Va mimetypes-load-control
-This option can be used to control which of the
+Can be used to control which of the
 .Xr mime.types 5
 databases are loaded by \*(UA, as furtherly described in the section
 .Sx "The mime.types files" .
@@ -7069,7 +7069,7 @@ controls loading of the system wide
 .Pa /etc/mime.types ;
 directives found in the user file take precedence, letter matching is
 case-insensitive.
-If this option is not set \*(UA will try to load both files.
+If this variable is not set \*(UA will try to load both files.
 Incorporation of the \*(UA-builtin MIME types cannot be suppressed,
 but they will be matched last (the order can be listed via
 .Ic mimetype ) .
@@ -7129,7 +7129,7 @@ separator.
 .
 .Pp
 The otherwise occurring implicit usage of the following MTA command
-line arguments can be disabled by setting the boolean option
+line arguments can be disabled by setting the boolean variable
 .Va mta-no-default-arguments
 (which will also disable passing
 .Fl \&\&-
@@ -7139,13 +7139,13 @@ to the MTA):
 .Ql \&.
 character as the end of input),
 .Fl \&\&m
-(shall the option
+(shall the variable
 .Va metoo
 be set) and
 .Fl \&\&v
 (if the
 .Va verbose
-option is set); in conjunction with the
+variable is set); in conjunction with the
 .Fl r
 command line option \*(UA will also pass
 .Fl \&\&f
@@ -7220,7 +7220,7 @@ a vector of arguments, to be joined onto other possible MTA options:
 .
 .Mx
 .It Va mta-no-default-arguments
-\*(BO Unless this option is set \*(UA will pass some well known
+\*(BO Unless this variable is set \*(UA will pass some well known
 standard command line options to a file-based
 .Va mta
 (Mail-Transfer-Agent), see there for more.
@@ -7528,7 +7528,7 @@ which is thus the default.
 the messages, and only requests the message bodies on user request.
 For the POP3 protocol this means that the message headers will be
 downloaded twice.
-If this option is set then \*(UA will download only complete messages
+If this variable is set then \*(UA will download only complete messages
 from the given POP3 server(s) instead.
 .
 .Mx Va pop3-keepalive
@@ -7872,7 +7872,7 @@ the exit status of \*(UA will also be non-zero.
 .
 .Mx
 .It Va showlast
-\*(BO Setting this option causes \*(UA to start at the last message
+\*(BO This setting causes \*(UA to start at the last message
 instead of the first one when opening a mail folder.
 .
 .Mx
@@ -8529,7 +8529,7 @@ The default is
 .
 .Mx
 .It Va stealthmua
-If only set without an assigned value, then this option inhibits the
+If only set without an assigned value, then this setting inhibits the
 generation of the
 .Ql Message-ID:
 and
@@ -8759,7 +8759,7 @@ This variable defaults to the name of the user who runs \*(UA.
 .
 .Mx
 .It Va v15-compat
-\*(BO Setting this option enables upward compatibility with \*(UA
+\*(BO Setting this enables upward compatibility with \*(UA
 version 15.0 in respect to which configuration options are available and
 how they are handled.
 This manual uses \*(IN and \*(OU to refer to the new and the old way of
@@ -8767,7 +8767,7 @@ doing things, respectively.
 .
 .Mx
 .It Va verbose
-\*(BO Setting this option, also controllable via the command line option
+\*(BO This setting, also controllable via the command line option
 .Fl v ,
 causes \*(UA to be more verbose, e.g., it will display obsoletion
 warnings and SSL/TLS certificate chains.
@@ -8959,9 +8959,9 @@ This variable is only used when it resides in the process environment.
 The name of the user's mbox file.
 A logical subset of the special conventions that are documented for the
 .Ic file
-command and the
+command and the internal variable
 .Va folder
-option may be used.
+may be used.
 The fallback default is
 .Pa mbox
 in the user's
@@ -9034,7 +9034,7 @@ the
 .Ic ~!
 .Sx "COMMAND ESCAPES"
 and when starting subprocesses.
-A default shell is used if this option is not defined.
+A default shell is used if this environment variable is not defined.
 .
 .Mx
 .It Ev SOURCE_DATE_EPOCH
