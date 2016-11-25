@@ -220,7 +220,7 @@ character set of text attachments from the command line, not using the
 .Ic ~@
 command of and in the compose mode that follows
 (see
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 for compose mode commands).
 .
 .Mx
@@ -507,7 +507,7 @@ Any other (even custom) header field is passed through entirely
 unchanged, and in conjunction with the option
 .Fl ~
 it is even possible to embed
-.Sx TILDE ESCAPES .
+.Sx "COMMAND ESCAPES" .
 Also see
 .Fl M , m , q .
 .
@@ -554,7 +554,7 @@ reading startup files is actively prohibited.
 .Mx
 .It Fl ~
 Enable
-.Sx TILDE ESCAPES
+.Sx "COMMAND ESCAPES"
 even if not in interactive mode.
 This can be used to, e.g., automatically format the composed message
 text before sending the message:
@@ -585,7 +585,7 @@ and
 (the latter three to
 .Pa /dev/null ) ;
 processing of
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 is enabled in compose mode.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
@@ -748,15 +748,15 @@ the user is expected to type in the message contents.
 In this compose mode \*(UA treats lines beginning with the character
 .Ql ~
 special \(en these are so-called
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 which can be used to read in files, process shell commands, add and edit
-attachments and more; e.g., the tilde escape
+attachments and more; e.g., the command escape
 .Ql Ic ~e
 will start the text editor to revise the message in its current state,
 .Ql Ic ~h
 allows editing of the most important message headers and
 .Ql Ic ~?
-gives an overview of available tilde escapes.
+gives an overview of available command escapes.
 Typing
 .Ql control-D
 .Pf ( Ql ^D )
@@ -5306,17 +5306,16 @@ ged message.
 .\" }}}
 .
 .
-.\" .Sh TILDE ESCAPES {{{
-.Sh "TILDE ESCAPES"
+.\" .Sh COMMAND ESCAPES {{{
+.Sh "COMMAND ESCAPES"
 .
-Here is a summary of the tilde escapes,
+Here is a summary of the command escapes available in compose mode,
 which are used to perform special functions when composing messages.
-Tilde escapes are only recognized at the beginning of lines.
-The name
-.Dq tilde escape
-is somewhat of a misnomer since the actual escape character can be
-changed by adjusting the option
-.Va escape .
+Command escapes are only recognized at the beginning of lines.
+The actual escape character can be set via the internal variable
+.Va escape ,
+it defaults to the tilde
+.Ql ~ .
 .
 .Bl -tag -width ".Ic __ filename"
 .Mx
@@ -5606,7 +5605,7 @@ Read in the given / current message(s), excluding all headers.
 .It Ic ~v
 Invoke an alternate editor (defined by the
 .Ev VISUAL
-option) on the message collected so far.
+environment variable) on the message collected so far.
 Usually, the alternate editor will be a screen editor.
 After the editor is quit,
 the user may resume appending text to the end of the message.
@@ -6063,7 +6062,7 @@ field to appear immediately after the
 .Ql To:
 field in message headers and with the
 .Ic ~h
-.Sx "TILDE ESCAPES" .
+.Sx "COMMAND ESCAPES" .
 .
 .Mx
 .It Va charset-7bit
@@ -6257,7 +6256,7 @@ fatal unless this variable is set.
 \*(BO If this variable is set then the editor is started automatically
 when a message is composed in interactive mode, as if the
 .Ic ~e
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 had been specified.
 The
 .Va editheaders
@@ -6330,7 +6329,7 @@ If defined, the first character of this option
 gives the character to use in place of
 .Ql ~
 to denote
-.Sx "TILDE ESCAPES" .
+.Sx "COMMAND ESCAPES" .
 .
 .Mx
 .It Va expandaddr
@@ -6833,7 +6832,7 @@ a period
 .Ql \&.
 on a line by itself or by using the
 .Ic ~.
-.Sx "TILDE ESCAPES" ;
+.Sx "COMMAND ESCAPES" ;
 .Va ignoreeof
 overrides a setting of
 .Pf no Va dot .
@@ -6853,7 +6852,7 @@ String used by the
 .Ic ~m , ~M
 and
 .Ic ~R
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 and by the
 .Va quote
 option for indenting messages,
@@ -7633,7 +7632,7 @@ thus
 .Va \&\&quote
 acts like an automatic
 .Pf ` Ic ~m Ns '
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 command, then.
 If the string
 .Ql allheaders
@@ -7888,15 +7887,17 @@ summary if the message was sent by the user.
 .
 .Mx
 .It Va Sign
-A string for use with the
+The string to expand
 .Ic ~A
-tilde escape.
+to (see
+.Sx "COMMAND ESCAPES" ) .
 .
 .Mx
 .It Va sign
-A string for use with the
+The string to expand
 .Ic ~a
-tilde escape.
+to (see
+.Sx "COMMAND ESCAPES" ) .
 .
 .Mx
 .It Va signature
@@ -8879,7 +8880,7 @@ Pathname of the text editor to use in the
 .Ic edit
 command and
 .Ic ~e
-.Sx "TILDE ESCAPES" .
+.Sx "COMMAND ESCAPES" .
 A default editor is used if this value is not defined.
 .
 .Mx
@@ -9031,7 +9032,7 @@ The shell to use for the commands
 .Ic shell ,
 the
 .Ic ~!
-.Sx "TILDE ESCAPES"
+.Sx "COMMAND ESCAPES"
 and when starting subprocesses.
 A default shell is used if this option is not defined.
 .
@@ -9070,7 +9071,7 @@ Pathname of the text editor to use in the
 .Ic visual
 command and
 .Ic ~v
-.Sx "TILDE ESCAPES" .
+.Sx "COMMAND ESCAPES" .
 .El
 .\" }}}
 .
