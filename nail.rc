@@ -111,7 +111,8 @@ set mime-counter-evidence=0xE
 # if the value contains an equal sign "=", see the manual for more
 #set mimetypes-load-control
 
-# Do not remove empty mail folders.
+# Do not remove empty (MBOX) system mailboxes (or _no_ empty (MBOX) mailbox
+# at all if $POSIXLY_CORRECT / *posix* are set!).
 # This may be relevant for privacy since other users could otherwise create
 # them with different permissions
 set keep

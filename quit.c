@@ -45,8 +45,7 @@ enum quitflags {
    QUITFLAG_HOLD      = 1<<0,
    QUITFLAG_KEEP      = 1<<1,
    QUITFLAG_KEEPSAVE  = 1<<2,
-   QUITFLAG_APPEND    = 1<<3,
-   QUITFLAG_EMPTYBOX  = 1<<4
+   QUITFLAG_APPEND    = 1<<3
 };
 
 struct quitnames {
@@ -58,8 +57,7 @@ static struct quitnames const _quitnames[] = {
    {QUITFLAG_HOLD, ok_b_hold},
    {QUITFLAG_KEEP, ok_b_keep},
    {QUITFLAG_KEEPSAVE, ok_b_keepsave},
-   {QUITFLAG_APPEND, ok_b_append},
-   {QUITFLAG_EMPTYBOX, ok_b_emptybox} /* TODO obsolete emptybox */
+   {QUITFLAG_APPEND, ok_b_append}
 };
 
 static char _mboxname[PATH_MAX];  /* Name of mbox */
@@ -75,9 +73,6 @@ static int  writeback(FILE *res, FILE *obuf);
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
 static bool_t edstop(void);
-
-/* Remove "mailname", unless *keep* says otherwise; force truncation, then */
-static void _demail(void);
 
 static void
 _alter(char const *name) /* TODO error handling */
@@ -202,7 +197,6 @@ edstop(void) /* TODO oh my god */
       }
       if ((ibuf = Zopen(mailname, "r")) == NULL) {
          n_perr(mailname, 0);
-         Fclose(obuf);
          goto jleave;
       }
 
@@ -213,16 +207,17 @@ edstop(void) /* TODO oh my god */
       Fclose(ibuf);
       ibuf = obuf;
       fflush_rewind(obuf);
+      /*obuf = NULL;*/
    }
 
    printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(stdout);
 
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
-      n_perr(mailname, 0);
+      int e = errno;
+      n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
-
    n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX); /* TODO ign. lock err! */
    ftrunc(obuf);
 
@@ -233,8 +228,8 @@ edstop(void) /* TODO oh my god */
          continue;
       ++c;
       if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-         n_perr(mailname, 0);
          srelax_rele();
+         n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
          goto jleave;
       }
       srelax();
@@ -248,32 +243,35 @@ edstop(void) /* TODO oh my god */
    }
    fflush(obuf);
    if (ferror(obuf)) {
-      n_perr(mailname, 0);
+      n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
       goto jleave;
    }
-   Fclose(obuf);
 
-   if (gotcha && !ok_blook(keep) && !ok_blook(emptybox)/* TODO obsolete eb*/) {
-      bool_t rms;
+   if(gotcha){
+      /* Non-system boxes are never removed except forced via POSIX mode */
+#ifdef HAVE_FTRUNCATE
+      ftruncate(fileno(obuf), 0);
+#else
+      int fd;
 
-      if ((rms = n_path_rm(mailname)) == TRU1)
-         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-            ? _("removed\n") : _("removed.\n"));
-      else {
-         int e = errno;
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
+            0600)) != -1)
+         close(fd);
+#endif
 
-         printf(_("removal error (ignored)\n"));
-         n_err(_("Error removing %s (ignored):"),
-            n_shexp_quote_cp(mailname, FAL0)); /* TODO */
-         n_perr(NULL, e); /* TODO */
-      }
+      if(ok_blook(posix) && !ok_blook(keep) && n_path_rm(mailname))
+         fputs(_("removed\n"), stdout);
+      else
+         fputs(_("truncated\n"), stdout);
    } else
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"));
+      fputs((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+         ? _("complete\n") : _("updated.\n"), stdout);
    fflush(stdout);
 
    rv = TRU1;
 jleave:
+   if (obuf != NULL)
+      Fclose(obuf);
    if (ibuf != NULL)
       Fclose(ibuf);
    if(!rv){
@@ -287,20 +285,6 @@ jleave:
 j_leave:
    NYD_LEAVE;
    return rv;
-}
-
-static void
-_demail(void) /* TODO error handling */
-{
-   NYD2_ENTER;
-   if (ok_blook(keep) || n_path_rm(mailname) <= FAL0) {
-      /* TODO demail(): try use f?truncate(2) instead?! */
-      int fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
-            0600);
-      if (fd >= 0)
-         close(fd);
-   }
-   NYD2_LEAVE;
 }
 
 FL bool_t
@@ -456,7 +440,17 @@ jcream:
       _alter(mailname);
       rv = TRU1;
    } else {
-      _demail();
+#ifdef HAVE_FTRUNCATE
+      ftruncate(fileno(fbuf), 0);
+#else
+      int fd;
+
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
+               0600)) != -1)
+         close(fd);
+#endif
+      if(!ok_blook(keep))
+         n_path_rm(mailname);
       rv = TRU1;
    }
 jleave:

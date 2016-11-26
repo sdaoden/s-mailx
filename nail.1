@@ -687,11 +687,15 @@ that would otherwise occur (see
 .Sx "Message states" ) ,
 and
 .Va keep
-to not remove empty files in order not to mangle file permissions when
-files eventually get recreated (\*(UA actively manages the file mode
-creation mask via
-.Va umask
-upon program startup).
+to not remove empty system (MBOX) mailbox files in order not to mangle
+file permissions when files eventually get recreated; be aware that
+\*(UA will (try to) remove all empty (MBOX) mailbox files unless this
+variable is set in case
+.Va posix
+.Pf ( Ev POSIXLY_CORRECT )
+mode has been enabled.
+The file mode creation mask is explicitly managed via
+.Va umask .
 .
 .Pp
 It also enables
@@ -6863,12 +6867,17 @@ Be sure to quote the value if it contains spaces or tabs.
 .
 .Mx
 .It Va keep
-\*(BO If set, an empty mailbox file is not removed.
+\*(BO If set, an empty system (MBOX) mailbox file is not removed.
+Note that, in conjunction with
+.Va posix
+(and, thus,
+.Ev POSIXLY_CORRECT )
+any empty file will be removed unless this variable is set.
 This may improve the interoperability with other mail user agents
 when using a common folder directory, and prevents malicious users
 from creating fake mailboxes in a world-writable spool directory.
-Note this only applies to local regular (MBOX) files, other mailbox
-types will never be removed.
+\*(ID Only local regular (MBOX) files are covered, Maildir or other
+mailbox types will never be removed, even if empty.
 .
 .Mx
 .It Va keep-content-length

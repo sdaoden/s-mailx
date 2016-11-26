@@ -1513,7 +1513,6 @@ ok_b_autothread,
    ok_v_EDITOR,                        /* {env=1,defval=VAL_EDITOR} */
    ok_b_editalong,
    ok_b_editheaders,
-ok_b_emptybox,
    ok_b_emptystart,
    ok_v_encoding,
    ok_v_escape,
