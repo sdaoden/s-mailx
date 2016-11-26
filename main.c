@@ -352,6 +352,8 @@ _setup_vars(void){
       pstate &= ~PS_ROOT;
    }
 
+   /* Ensure some variables get loaded */
+   (void)ok_blook(POSIXLY_CORRECT);
    (void)ok_vlook(TMPDIR);
    NYD_LEAVE;
 }

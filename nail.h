@@ -1599,6 +1599,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
 
    ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
    ok_v_PATH,                          /* {nodel=1,import=1} */
+   ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
    ok_v_password,
    ok_b_piperaw,
@@ -1607,6 +1608,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_pop3_keepalive,
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
+   ok_b_posix,                         /* {vip=1} */
    ok_b_print_alternatives,
    ok_v_prompt,                        /* {i3val="? "} */
    ok_v_prompt2,                       /* {i3val=".. "} */

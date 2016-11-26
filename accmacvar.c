@@ -733,6 +733,32 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    case ok_b_memdebug:
       flag = OPT_MEMDEBUG;
       break;
+   case ok_b_POSIXLY_CORRECT:
+      if(!(pstate & PS_ROOT)){
+         bool_t reset = !(pstate & PS_ROOT);
+
+         pstate |= PS_ROOT;
+         if(enable)
+            ok_bset(posix);
+         else
+            ok_bclear(posix);
+         if(reset)
+            pstate &= ~PS_ROOT;
+      }
+      break;
+   case ok_b_posix:
+      if(!(pstate & PS_ROOT)){
+         bool_t reset = !(pstate & PS_ROOT);
+
+         pstate |= PS_ROOT;
+         if(enable)
+            ok_bset(POSIXLY_CORRECT);
+         else
+            ok_bclear(POSIXLY_CORRECT);
+         if(reset)
+            pstate &= ~PS_ROOT;
+      }
+      break;
    case ok_b_skipemptybody:
       flag = OPT_E_FLAG;
       break;
