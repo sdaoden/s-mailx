@@ -960,9 +960,9 @@ jgetopt_done:
       if((resfiles & a_RF_SYSTEM) && !ok_blook(NAIL_NO_SYSTEM_RC))
          n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
       if(resfiles & a_RF_USER)
-         n_load(file_expand(ok_vlook(MAILRC)));
+         n_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
-         n_load(file_expand(cp));
+         n_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
    }
 
    /* Ensure the -S and other command line options take precedence over

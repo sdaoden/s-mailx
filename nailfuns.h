@@ -235,7 +235,7 @@ FL int         c_environ(void *v);
  * attachments.c
  */
 
-/* Try to add an attachment for file, file_expand()ed.
+/* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed.
  * Return the new head of list aphead, or NULL.
  * The newly created attachment will be stored in *newap, if given */
 FL struct attachment * add_attachment(enum n_lexinput_flags lif,
@@ -1687,8 +1687,7 @@ FL void        savedeadletter(FILE *fp, bool_t fflush_rewind_first);
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
-#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX obsolete */
-#define file_expand(N)           fexpand(N, FEXP_LOCAL)  /* XXX obsolete */
+#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX remove these */
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l

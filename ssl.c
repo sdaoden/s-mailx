@@ -374,7 +374,7 @@ c_certsave(void *v)
    val = 1;
 
    if ((file = laststring(str, &f, TRU1)) == NULL ||
-         (file = file_expand(file)) == NULL) {
+         (file = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
       n_err(_("No file to save certificate given\n"));
       goto jleave;
    }

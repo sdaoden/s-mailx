@@ -744,7 +744,7 @@ c_chdir(void *v)
 
    if (*arglist == NULL)
       cp = ok_vlook(HOME);
-   else if ((cp = file_expand(*arglist)) == NULL)
+   else if ((cp = fexpand(*arglist, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    if (chdir(cp) == -1) {
       n_perr(cp, 0);

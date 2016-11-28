@@ -140,7 +140,8 @@ _nrc_init(void)
          goto j_leave;
       }
    } else {
-      if ((netrc_load = file_expand(ok_vlook(NETRC))) == NULL)
+      if ((netrc_load = fexpand(ok_vlook(NETRC), FEXP_LOCAL | FEXP_NOPROTO)
+            ) == NULL)
          goto j_leave;
 
       if ((fi = Fopen(netrc_load, "r")) == NULL) {

@@ -999,7 +999,7 @@ jearg:
                insertcommand(_coll_fp, ++cp);
                goto jhistcont;
             }
-            if((cp = file_expand(cp)) == NULL)
+            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
                break;
          }
          if(is_dir(cp)){
@@ -1041,7 +1041,7 @@ jearg:
          /* Write the message on a file */
          if(cnt == 2)
             goto jearg;
-         if((cp = file_expand(&linebuf[3])) == NULL){
+         if((cp = fexpand(&linebuf[3], FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
             n_err(_("Write what file!?\n"));
             break;
          }
@@ -1168,7 +1168,7 @@ jout:
    if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
       char const *cpq;
 
-      if((cpq = file_expand(cp)) == NULL){
+      if((cpq = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
          n_err(_("*signature* expands to invalid file: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jerr;

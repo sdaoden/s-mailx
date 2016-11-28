@@ -289,7 +289,8 @@ a_xssl_rand_init(void){
    if((cp = ok_vlook(ssl_rand_egd)) != NULL){ /* TODO no one supports it now! */
       OBSOLETE(_("all *SSL libraries dropped support of *ssl-rand-egd*, thus"));
 #ifdef HAVE_XSSL_RAND_EGD
-      if((x = file_expand(cp)) != NULL && RAND_egd(cp = x) != -1){
+      if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL &&
+            RAND_egd(cp = x) != -1){
          rv = TRU1;
          goto jleave;
       }
@@ -306,7 +307,7 @@ a_xssl_rand_init(void){
    if((cp = ok_vlook(ssl_rand_file)) != NULL){
       x = NULL;
       if(*cp != '\0'){
-         if((x = file_expand(cp)) == NULL)
+         if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
             n_err(_("*ssl-rand-file*: filename expansion of %s failed\n"),
                n_shexp_quote_cp(cp, FAL0));
       }
@@ -698,9 +699,9 @@ _ssl_load_verifications(SSL_CTX *ctxp)
    }
 
    if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
-      ca_dir = file_expand(ca_dir);
+      ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
    if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
-      ca_file = file_expand(ca_file);
+      ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
    if ((ca_dir != NULL || ca_file != NULL) &&
          SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1) {
@@ -1021,7 +1022,7 @@ jloop:
    if ((cp = ok_vlook(smime_sign_cert)) == NULL)
       goto jerr;
 jopen:
-   if ((cp = file_expand(cp)) == NULL)
+   if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    if ((fp = Fopen(cp, "r")) == NULL)
       n_perr(cp, 0);
@@ -1075,7 +1076,7 @@ _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
 
    for (nfield = savestr(cfiles);
          (cfield = n_strsep(&nfield, ',', TRU1)) != NULL;) {
-      if ((x = file_expand(cfield)) == NULL ||
+      if ((x = fexpand(cfield, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
             (fp = Fopen(cfield = x, "r")) == NULL) {
          n_perr(cfiles, 0);
          goto jerr;
@@ -1200,7 +1201,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
 
    if ((crl_file = n_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
-      if ((crl_file = file_expand(crl_file)) == NULL ||
+      if ((crl_file = fexpand(crl_file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
             load_crl1(store, crl_file) != OKAY)
          goto jleave;
 #else
@@ -1212,7 +1213,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
    if ((crl_dir = n_var_oklook(dok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       char *x;
-      if ((x = file_expand(crl_dir)) == NULL ||
+      if ((x = fexpand(crl_dir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
             (dirp = opendir(crl_dir = x)) == NULL) {
          n_perr(crl_dir, 0);
          goto jleave;
@@ -1313,7 +1314,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
    if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
       if (options & OPT_VERB)
          n_err(_("*ssl-cert* %s\n"), n_shexp_quote_cp(cp, FAL0));
-      if ((cp_base = file_expand(cp)) == NULL) {
+      if ((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
          n_err(_("*ssl-cert* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jerr1;
@@ -1326,7 +1327,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
       if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
          if (options & OPT_VERB)
             n_err(_("*ssl-key* %s\n"), n_shexp_quote_cp(cp_base, FAL0));
-         if ((cp = file_expand(cp_base)) == NULL) {
+         if ((cp = fexpand(cp_base, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
             n_err(_("*ssl-key* value expansion failed: %s\n"),
                n_shexp_quote_cp(cp_base, FAL0));
             goto jerr1;
@@ -1422,9 +1423,9 @@ c_verify(void *vp)
    X509_STORE_set_verify_cb_func(store, &_ssl_verify_cb);
 
    if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
-      ca_dir = file_expand(ca_dir);
+      ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
    if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
-      ca_file = file_expand(ca_file);
+      ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
    if (ca_dir != NULL || ca_file != NULL) {
       if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
@@ -1588,7 +1589,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    bool_t bail = FAL0;
    NYD_ENTER;
 
-   if ((certfile = file_expand(xcertfile)) == NULL)
+   if ((certfile = fexpand(xcertfile, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
 
    a_xssl_init();

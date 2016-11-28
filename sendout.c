@@ -912,9 +912,9 @@ jcantfout:
          free_child(pid);
       } else {
          int c;
-         char const *fname = file_expand(np->n_name), *fnameq;
+         char const *fname, *fnameq;
 
-         if (fname == NULL) {
+         if ((fname = fexpand(np->n_name, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
             *senderror = TRU1;
             goto jcant;
          }
@@ -997,7 +997,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend)
          cq[0] = '+';
          memcpy(cq + 1, cp, i +1);
          cp = cq;
-         if ((ep = file_expand(cp)) == NULL) {
+         if ((ep = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
             ep = "NULL";
             goto jbail;
          }
@@ -1206,7 +1206,7 @@ __mta_start(struct sendbundle *sbp)
    if(!rv){
       char const *mta_base;
 
-      if((mta = file_expand(mta_base = mta)) == NULL){
+      if((mta = fexpand(mta_base = mta, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
          n_err(_("*mta* variable expansion failure: %s\n"),
             n_shexp_quote_cp(mta_base, FAL0));
          goto jstop;

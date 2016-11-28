@@ -250,7 +250,8 @@ __mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
    size_t len;
    NYD_ENTER;
 
-   if ((cp = file_expand(file)) == NULL || (fp = Fopen(cp, "r")) == NULL) {
+   if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
+         (fp = Fopen(cp, "r")) == NULL) {
       cp = NULL;
       goto jleave;
    }
