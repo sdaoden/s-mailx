@@ -385,7 +385,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 #endif
    }
 
-   /* "alloca(3)" memory goes away, too */
+   /* "alloca(3)" memory goes away, too.  XXX Must be last as long we jump */
 #ifdef HAVE_MEMORY_DEBUG
    if(macp->mac_lofi_top != NULL)
       n_alert("There still is LOFI memory upon ARS reset!");
@@ -723,8 +723,11 @@ n_memory_autorec_pop(void *vp){
    if((macp = vp) == NULL)
       macp = &a_memory_ars_global;
    else{
-      while(a_memory_ars_top != macp)
+      /* XXX May not be ARS top upon jump */
+      while(a_memory_ars_top != macp){
+         DBG( n_err("ARS pop %p to reach freed context\n", a_memory_ars_top); )
          n_memory_autorec_pop(a_memory_ars_top);
+      }
       a_memory_ars_top = macp->mac_outer;
    }
 

@@ -998,7 +998,7 @@ FL int         c_source_if(void *v);
 /* Evaluate a complete macro / a single command.  For the former lines will
  * always be free()d, for the latter cmd will always be duplicated internally */
 FL bool_t      n_source_macro(enum n_lexinput_flags lif, char const *name,
-                  char **lines);
+                  char **lines, void (*on_finalize)(void*), void *finalize_arg);
 FL bool_t      n_source_command(enum n_lexinput_flags lif, char const *cmd);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different

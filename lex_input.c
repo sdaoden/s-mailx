@@ -89,6 +89,8 @@ struct a_lex_input_stack{
    ui32_t li_flags;              /* enum a_lex_input_flags */
    ui32_t li_loff;               /* Pseudo (macro): index in .li_lines */
    char **li_lines;              /* Pseudo content, lines unfolded */
+   void (*li_macro_on_finalize)(void *);
+   void *li_macro_finalize_arg;
    char li_autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF];
    char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
@@ -991,6 +993,11 @@ a_lex_unstack(bool_t eval_error){
 
    n_memory_autorec_pop(&lip->li_autorecmem[0]);
 
+   /* XXX We need some kind of "is real macro" instead of that */
+   if((lip->li_flags & (a_LEX_MACRO | a_LEX_MACRO_X_OPTION | a_LEX_MACRO_CMD))
+         == a_LEX_MACRO && lip->li_macro_on_finalize != NULL)
+      (*lip->li_macro_on_finalize)(lip->li_macro_finalize_arg);
+
    if((a_lex_input = lip->li_outer) == NULL){
       pstate &= ~(PS_SOURCING | PS_ROBOT);
    }else{
@@ -1659,7 +1666,8 @@ c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
 }
 
 FL bool_t
-n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines){
+n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
+      void (*on_finalize)(void*), void *finalize_arg){
    struct a_lex_input_stack *lip;
    size_t i;
    int rv;
@@ -1677,6 +1685,8 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines){
           ? a_LEX_SUPER_MACRO : 0);
    lip->li_loff = 0;
    lip->li_lines = lines;
+   lip->li_macro_on_finalize = on_finalize;
+   lip->li_macro_finalize_arg = finalize_arg;
    memcpy(lip->li_name, name, i);
 
    pstate |= PS_ROBOT;
@@ -1694,7 +1704,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    NYD_ENTER;
 
    i = strlen(cmd);
-   cmd = sbufdup(cmd, i++);
+   cmd = sbufdup(cmd, i++); /* XXX Unfortunately need to dup cmd :( */
    ial = n_ALIGN(i);
 
    lip = smalloc(sizeof(*lip) -

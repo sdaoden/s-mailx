@@ -1946,7 +1946,7 @@ jleave:
 
 static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
-   ui8_t autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF], *autorec_persist;
+   ui8_t (*autorecmem)[n_MEMORY_AUTOREC_TYPE_SIZEOF], *autorec_persist;
    struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
@@ -1968,7 +1968,7 @@ a_tty_kht(struct a_tty_line *tlp){
    orig = exp;
 
    autorec_persist = n_memory_autorec_current();
-   n_memory_autorec_push(autorecmem);
+   n_memory_autorec_push(autorecmem = n_lofi_alloc(sizeof *autorecmem));
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2154,6 +2154,7 @@ jset:
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
    n_memory_autorec_pop(autorecmem);
+   n_lofi_free(autorecmem);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;

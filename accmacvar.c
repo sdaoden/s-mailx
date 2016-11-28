@@ -112,15 +112,17 @@ struct a_amv_mac_call_args{
    struct a_amv_mac const *amca_amp;
    struct a_amv_var **amca_unroller;
    void (*amca_hook_pre)(void *);
-   void (*amca_hook_post)(void *);
    void *amca_hook_arg;
    bool_t amca_lopts_on;
-   ui8_t amca__pad[7];
+   bool_t amca_ps_hook_mask;
+   ui8_t amca__pad[6];
 };
 
 struct a_amv_lostack{
-   struct a_amv_lostack *as_up;  /* Outer context */
+   struct a_amv_lostack *as_global_saved; /* Saved global XXX due to jump */
    struct a_amv_mac *as_mac;     /* Context (`account' or `define') */
+   struct a_amv_mac_call_args *as_amcap;
+   struct a_amv_lostack *as_up;  /* Outer context */
    struct a_amv_var *as_lopts;
    bool_t as_unroll;             /* Unrolling enabled? */
    ui8_t avs__pad[7];
@@ -201,8 +203,10 @@ static bool_t a_amv_mac_is_closing_angle(char const *cp);
 static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
 
-/* Execute a macro */
+/* Execute a macro; amcap must reside in LOFI memory */
 static bool_t a_amv_mac_exec(struct a_amv_mac_call_args *amcap);
+
+static void a_amv_mac__finalize(void *vp);
 
 /* User display helpers */
 static bool_t a_amv_mac_show(enum a_amv_mac_flags amf);
@@ -340,7 +344,7 @@ jleave:
 
 static bool_t
 a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
-   struct a_amv_lostack los, *los_save;
+   struct a_amv_lostack *losp;
    struct a_amv_mac_line **amlp;
    char **args_base, **args;
    struct a_amv_mac const *amp;
@@ -348,37 +352,54 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    NYD2_ENTER;
 
    amp = amcap->amca_amp;
+   /* XXX Unfortunately we yet need to dup the macro lines! :( */
    args_base = args = smalloc(sizeof(*args) * (amp->am_line_cnt +1));
    for(amlp = amp->am_line_dat; *amlp != NULL; ++amlp)
       *(args++) = sbufdup((*amlp)->aml_dat, (*amlp)->aml_len);
    *args = NULL;
 
-   los.as_mac = n_UNCONST(amp); /* But not used.. */
-   los_save = a_amv_lopts;
-   if(amcap->amca_unroller == NULL){
-      los.as_up = los_save;
-      los.as_lopts = NULL;
+   losp = n_lofi_alloc(sizeof *losp);
+   losp->as_global_saved = a_amv_lopts;
+   losp->as_mac = n_UNCONST(amp); /* But not used.. */
+   if((losp->as_amcap = amcap)->amca_unroller == NULL){
+      losp->as_up = losp->as_global_saved;
+      losp->as_lopts = NULL;
    }else{
-      los.as_up = NULL;
-      los.as_lopts = *amcap->amca_unroller;
+      losp->as_up = NULL;
+      losp->as_lopts = *amcap->amca_unroller;
    }
-   los.as_unroll = amcap->amca_lopts_on;
+   losp->as_unroll = amcap->amca_lopts_on;
 
-   a_amv_lopts = &los;
+   a_amv_lopts = losp;
    if(amcap->amca_hook_pre != NULL)
       (*amcap->amca_hook_pre)(amcap->amca_hook_arg);
-   rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base);
-   if(amcap->amca_hook_post != NULL)
-      (*amcap->amca_hook_post)(amcap->amca_hook_arg);
-   a_amv_lopts = los_save;
-
-   if(amcap->amca_unroller == NULL){
-      if(los.as_lopts != NULL)
-         a_amv_lopts_unroll(&los.as_lopts);
-   }else
-      *amcap->amca_unroller = los.as_lopts;
+   rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
+         &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
    return rv;
+}
+
+static void
+a_amv_mac__finalize(void *vp){
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_lostack *losp;
+   NYD2_ENTER;
+
+   losp = vp;
+   a_amv_lopts = losp->as_global_saved;
+
+   if((amcap = losp->as_amcap)->amca_unroller == NULL){
+      if(losp->as_lopts != NULL)
+         a_amv_lopts_unroll(&losp->as_lopts);
+   }else
+      *amcap->amca_unroller = losp->as_lopts;
+
+   if(amcap->amca_ps_hook_mask)
+      pstate &= ~PS_HOOK_MASK;
+
+   n_lofi_free(losp);
+   n_lofi_free(amcap);
+   NYD2_LEAVE;
 }
 
 static bool_t
@@ -1522,7 +1543,7 @@ c_undefine(void *v){
 
 FL int
 c_call(void *v){
-   struct a_amv_mac_call_args amca;
+   struct a_amv_mac_call_args *amcap;
    char const *errs, *name;
    struct a_amv_mac *amp;
    char **args;
@@ -1542,10 +1563,11 @@ c_call(void *v){
       goto jerr;
    }
 
-   memset(&amca, 0, sizeof amca);
-   amca.amca_name = name;
-   amca.amca_amp = amp;
-   rv = (a_amv_mac_exec(&amca) == FAL0);
+   amcap = n_lofi_alloc(sizeof *amcap);
+   memset(amcap, 0, sizeof *amcap);
+   amcap->amca_name = name;
+   amcap->amca_amp = amp;
+   rv = (a_amv_mac_exec(amcap) == FAL0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1556,7 +1578,7 @@ jerr:
 
 FL bool_t
 check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
-   struct a_amv_mac_call_args amca;
+   struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
    size_t len;
    char *var, *cp;
@@ -1596,19 +1618,21 @@ jmac:
       goto jleave;
    }
 
-   memset(&amca, 0, sizeof amca);
-   amca.amca_name = cp;
-   amca.amca_amp = amp;
+   amcap = n_lofi_alloc(sizeof *amcap);
+   memset(amcap, 0, sizeof *amcap);
+   amcap->amca_name = cp;
+   amcap->amca_amp = amp;
    pstate &= ~PS_HOOK_MASK;
    if(nmail){
-      amca.amca_unroller = NULL;
+      amcap->amca_unroller = NULL;
       pstate |= PS_HOOK_NEWMAIL;
    }else{
-      amca.amca_unroller = &a_amv_folder_hook_lopts;
+      amcap->amca_unroller = &a_amv_folder_hook_lopts;
       pstate |= PS_HOOK;
    }
-   amca.amca_lopts_on = TRU1;
-   rv = a_amv_mac_exec(&amca);
+   amcap->amca_lopts_on = TRU1;
+   amcap->amca_ps_hook_mask = TRU1;
+   rv = a_amv_mac_exec(amcap);
    pstate &= ~PS_HOOK_MASK;
 
 jleave:
@@ -1619,7 +1643,7 @@ jleave:
 FL void
 call_compose_mode_hook(char const *macname, /* TODO temporary, v15: drop */
       void (*hook_pre)(void *), void *hook_arg){
-   struct a_amv_mac_call_args amca;
+   struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
    NYD_ENTER;
 
@@ -1627,24 +1651,25 @@ call_compose_mode_hook(char const *macname, /* TODO temporary, v15: drop */
       n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
          macname);
    else{
-      memset(&amca, 0, sizeof amca);
-      amca.amca_name = macname;
-      amca.amca_amp = amp;
-      amca.amca_unroller = &a_amv_compose_lopts;
-      amca.amca_hook_pre = hook_pre;
-      amca.amca_hook_arg = hook_arg;
-      amca.amca_lopts_on = TRU1;
+      amcap = n_lofi_alloc(sizeof *amcap);
+      memset(amcap, 0, sizeof *amcap);
+      amcap->amca_name = macname;
+      amcap->amca_amp = amp;
+      amcap->amca_unroller = &a_amv_compose_lopts;
+      amcap->amca_hook_pre = hook_pre;
+      amcap->amca_hook_arg = hook_arg;
+      amcap->amca_lopts_on = TRU1;
+      amcap->amca_ps_hook_mask = TRU1;
       pstate &= ~PS_HOOK_MASK;
       pstate |= PS_HOOK;
-      a_amv_mac_exec(&amca);
-      pstate &= ~PS_HOOK_MASK;
+      a_amv_mac_exec(amcap);
    }
    NYD_LEAVE;
 }
 
 FL int
 c_account(void *v){
-   struct a_amv_mac_call_args amca;
+   struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
    char **args;
    int rv, i, oqf, nqf;
@@ -1698,13 +1723,16 @@ c_account(void *v){
    a_amv_acc_curr = amp;
 
    if(amp != NULL){
+      bool_t ok;
       assert(amp->am_lopts == NULL);
-      memset(&amca, 0, sizeof amca);
-      amca.amca_name = amp->am_name;
-      amca.amca_amp = amp;
-      amca.amca_unroller = &amp->am_lopts;
-      amca.amca_lopts_on = TRU1;
-      if(!a_amv_mac_exec(&amca)){
+      amcap = n_lofi_alloc(sizeof *amcap);
+      memset(amcap, 0, sizeof *amcap);
+      amcap->amca_name = amp->am_name;
+      amcap->amca_amp = amp;
+      amcap->amca_unroller = &amp->am_lopts;
+      amcap->amca_lopts_on = TRU1;
+      ok = a_amv_mac_exec(amcap);
+      if(!ok){
          /* XXX account switch incomplete, unroll? */
          n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
