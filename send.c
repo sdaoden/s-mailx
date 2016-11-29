@@ -247,7 +247,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       int pid;
 
       sigemptyset(&nset);
-      pid = run_command(sh, NULL, term_infd, COMMAND_FD_PASS, "-c",
+      pid = run_command(sh, &nset, term_infd, COMMAND_FD_PASS, "-c",
             mhp->mh_shell_cmd, NULL, env_addon);
       rbuf = (pid < 0) ? NULL : (FILE*)-1;
    } else {

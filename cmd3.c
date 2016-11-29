@@ -683,18 +683,15 @@ c_shell(void *v)
    char *str = v, *cmd;
    size_t cmdsize;
    sigset_t mask;
-   sighandler_type sigint;
    NYD_ENTER;
 
    cmd = smalloc(cmdsize = strlen(str) +1);
    memcpy(cmd, str, cmdsize);
    _bangexp(&cmd, &cmdsize);
 
-   sigint = safe_signal(SIGINT, SIG_IGN);
    sigemptyset(&mask);
    run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
       cmd, NULL, NULL);
-   safe_signal(SIGINT, sigint);
    printf("!\n");
 
    free(cmd);
@@ -705,14 +702,11 @@ c_shell(void *v)
 FL int
 c_dosh(void *v)
 {
-   sighandler_type sigint;
    NYD_ENTER;
    n_UNUSED(v);
 
-   sigint = safe_signal(SIGINT, SIG_IGN);
    run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
       NULL, NULL, NULL);
-   safe_signal(SIGINT, sigint);
    putchar('\n');
    NYD_LEAVE;
    return 0;

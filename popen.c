@@ -1039,6 +1039,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
    sigset_t nset, oset;
+   sighandler_t soldint;
    bool_t tio_set;
    int rv;
    NYD_ENTER;
@@ -1054,10 +1055,14 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
    if ((tio_set = ((options & OPT_INTERACTIVE) &&
          (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
+      /* TODO Simply ignore SIGINT then, it surely will be ment for the program
+       * TODO which takes the terminal */
+      soldint = safe_signal(SIGINT, SIG_IGN);
       tcgetattr((options & OPT_TTYIN ? STDIN_FILENO : STDOUT_FILENO), &a_popen_tios);
       n_TERMCAP_SUSPEND(FAL0);
       sigfillset(&nset);
       sigdelset(&nset, SIGCHLD);
+      sigdelset(&nset, SIGINT);
       /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
       sigprocmask(SIG_BLOCK, &nset, &oset);
       a_popen_hadsig = 0;
@@ -1082,6 +1087,8 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
       n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
       tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
          (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      if(soldint != SIG_IGN)
+         safe_signal(SIGINT, soldint);
       sigprocmask(SIG_SETMASK, &oset, NULL);
    }
    NYD_LEAVE;
