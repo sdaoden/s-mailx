@@ -2418,7 +2418,6 @@ VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 VL iconv_t     iconvd;
 #endif
 
-VL sigjmp_buf  srbuf;
 VL volatile int interrupts; /* TODO rid! */
 VL sighandler_type dflpipe;
 

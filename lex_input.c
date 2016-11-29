@@ -92,6 +92,7 @@ struct a_lex_input_stack{
    void (*li_macro_on_finalize)(void *);
    void *li_macro_finalize_arg;
    char li_autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF];
+   sigjmp_buf li_cmdrec_jmp;     /* TODO one day...  for command_recursive */
    char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
@@ -103,6 +104,8 @@ static struct a_lex_ghost *a_lex_ghosts;
 
 /* */
 static struct a_lex_input_stack *a_lex_input;
+
+static sigjmp_buf a_lex_srbuf; /* TODO GET RID */
 
 /* Isolate the command from the arguments */
 static char *a_lex_isolate(char const *comm);
@@ -943,7 +946,7 @@ a_lex_onintr(int s){ /* TODO block signals while acting */
    if(interrupts != 1)
       n_err_sighdl(_("Interrupt\n"));
    safe_signal(SIGPIPE, a_lex_oldpipe);
-   siglongjmp(srbuf, 0); /* FIXME get rid */
+   siglongjmp(a_lex_srbuf, 0); /* FIXME get rid */
 }
 
 static void
@@ -1151,15 +1154,36 @@ a_lex_load(struct a_lex_input_stack *lip){
    return rv;
 }
 
+static void
+a_lex__cmdrecint(int sig){ /* TODO one day, we don't need it no more */
+   NYD_X; /* Signal handler */
+   n_UNUSED(sig);
+   siglongjmp(a_lex_input->li_cmdrec_jmp, 1);
+}
+
 static bool_t
 a_commands_recursive(enum n_lexinput_flags lif){
+   volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
+   sighandler_type soldhdl;
+   sigset_t sintset, soldset;
    struct a_lex_eval_ctx ev;
    bool_t rv;
    NYD2_ENTER;
 
    memset(&ev, 0, sizeof ev);
 
-/* FIXME sigkondom */
+   sigfillset(&sintset);
+   sigprocmask(SIG_BLOCK, &sintset, &soldset);
+   hadint = FAL0;
+   if((soldhdl = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN){
+      safe_signal(SIGINT, &a_lex__cmdrecint);
+      if(sigsetjmp(a_lex_input->li_cmdrec_jmp, 1)){
+         hadint = TRU1;
+         goto jjump;
+      }
+   }
+   sigprocmask(SIG_SETMASK, &soldset, NULL);
+
    n_COLOUR( n_colour_env_push(); )
    rv = TRU1;
    for(;;){
@@ -1186,12 +1210,20 @@ a_commands_recursive(enum n_lexinput_flags lif){
             break;
       }
    }
+jjump: /* TODO */
    a_lex_unstack(!rv);
    n_COLOUR( n_colour_env_pop(FAL0); )
 
    if(ev.le_line.s != NULL)
       free(ev.le_line.s);
+
+   if(soldhdl != SIG_IGN)
+      safe_signal(SIGINT, soldhdl);
    NYD2_LEAVE;
+   if(hadint){
+      sigprocmask(SIG_SETMASK, &soldset, NULL);
+      n_raise(SIGINT);
+   }
    return rv;
 }
 
@@ -1215,7 +1247,7 @@ n_commands(void){ /* FIXME */
 
    memset(&ev, 0, sizeof ev);
 
-   (void)sigsetjmp(srbuf, 1); /* FIXME get rid */
+   (void)sigsetjmp(a_lex_srbuf, 1); /* FIXME get rid */
    for (;;) {
       char *temporary_orig_line; /* XXX eval_ctx.le_line not yet constant */
 
