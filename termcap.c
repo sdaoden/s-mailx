@@ -706,9 +706,9 @@ n_termcap_suspend(bool_t complete){
    NYD_ENTER;
    if(!(pstate & PS_TERMCAP_DISABLE) &&
          (options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE){
+      n_termcap_cmdx(n_TERMCAP_CMD_ke);
       if(complete && (pstate & PS_TERMCAP_CA_MODE))
-         n_termcap_cmdx(n_TERMCAP_CMD_ke);
-      n_termcap_cmdx(n_TERMCAP_CMD_te);
+         n_termcap_cmdx(n_TERMCAP_CMD_te);
       fflush(stdout);
    }
    NYD_LEAVE;
