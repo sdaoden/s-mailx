@@ -3843,9 +3843,11 @@ jredo:
 
    a_tty.tg_line = &tl;
    a_tty_sigs_up();
+   n_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
    nn = a_tty_readline(&tl, n SMALLOC_DEBUG_ARGSCALL);
    a_tty_term_mode(FAL0);
+   n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
    a_tty.tg_line = NULL;
 
@@ -4277,9 +4279,11 @@ FL int
    }
 # ifdef HAVE_TERMCAP
    a_tty_sigs_up();
+   n_TERMCAP_RESUME(FAL0);
 # endif
    rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
 # ifdef HAVE_TERMCAP
+   n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
 # endif
    NYD_LEAVE;
