@@ -265,6 +265,9 @@ n__sigman_enter(struct n_sigman *self, int flags){
             safe_signal(SIGPIPE, SIG_IGN);
       }
       rv = self->sm_signo;
+      /* The signal mask has been restored, but of course rele_sigs() has
+       * already been called: account for restoration due to jump */
+      ++_hold_sigdepth;
    }
    rele_sigs();
    NYD2_LEAVE;
