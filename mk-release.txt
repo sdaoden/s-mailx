@@ -1,0 +1,107 @@
+To: mailx-announce
+Bcc: mailx-announce-bcc
+# NOT YET, should be left alone for that! Mail-Followup-To: mailx
+Reply-To: mailx
+
+Hello list,
+
+hereby i announce S-nail vXX.X.X, the «».
+It is    .
+
+Credits .
+
+We welcome  in THANKS.
+
+Number games
+^^^^^^^^^^^^
+
+The tagged release commits are [master  stable/v]:[], and
+[release/v]:[] (actual release content).
+		The release has also been stored as [timeline]:[].
+The git(1) release commits and tags as well as the release tarball
+itself have been signed with the OpenPGP key
+  steffen@sdaoden.eu  /  95F382CE
+  (232C 220B CB56 90A3 7BD2  2FFD EB66 0227 95F3 82CE)
+available on OpenPGP key servers, my website and download area,
+and also in the repository (blob tagged steffen-pgp-pub).
+
+Release tarballs and signatures (.asc) can be downloaded via
+HTTPS/HTTP and anonymous active or passive FTPS/FTP (in fact still
+www.sdaoden.eu/downloads, but only via HTTPS/HTTP):
+
+  \https?://ftp.sdaoden.eu
+  \ftps?://ftp.sdaoden.eu
+
+s-nail-XX.X.X.tar.xz{,.asc}:
+  SHA1 =
+  SHA256 =
+  SHA512 =
+  -----BEGIN PGP SIGNATURE-----
+  -----END PGP SIGNATURE-----
+
+s-nail-XX.XX.XX.tar.gz{,.asc}:
+  SHA1 =
+  SHA256 =
+  SHA512 =
+  -----BEGIN PGP SIGNATURE-----
+  -----END PGP SIGNATURE-----
+
+All files are available as "-latest" symbolic links, too, e.g.,
+s-nail-latest.txt (a copy of this announcement text).
+
+  Announcement : https?://www.sdaoden.eu/code-nail-ann.html
+  Manual       : https?://www.sdaoden.eu/code-nail.html
+  Web          : https?://www.sdaoden.eu/code.html#s-mailx
+  git(1) clone : \https?://git.sdaoden.eu/scm/s-nail.git
+  git(1) browse: https?://git.sdaoden.eu/cgit/s-nail.git
+
+  In the following mdocmx(7) anchors are denoted by a number-sign #:
+  typing "^A ANCHOR" while reading the man(1)ual in a capable less(1)
+  will scroll to the manual's Point-Of-Interest, and pointing a web-
+  browser to the "#ANCHOR" of the online manual will do so, too.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- .tar files are no longer provided, and i have removed all old cruft
+  from the download area.
+
+ChangeLog
+^^^^^^^^^
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+:read!git shortlog -w78,0,8 --format="\%h \%s" x..y
+
+
+Appendix
+^^^^^^^^
+
+The complete changelog of commits in between two versions OLD and
+NEW can be inspected by using the git(1) `log' command:
+
+  $ git log --reverse --topo-order --abbrev-commit OLD..NEW
+  # Only topic branch headers (--no-merges for content commits only):
+  $ git log --oneline --reverse --topo-order --merges OLD..NEW
+  # Same, but truly accessible:
+  $ git log --oneline --reverse --topo-order --merges --parents OLD..NEW |
+    while read c1 c2 c3 c4 c5 c6; do
+      printf "%-24s: \$ git log --oneline --no-merges %s ^%s\n" \
+        "${c6}" "${c1}" "${c2}";
+    done
+
+The vXX.X.* announcements have been shortened at this point;
+to see the elder entries please have a look at [1].
+
+  [1] https://www.mail-archive.com/s-nail-users@lists.sourceforge.net/msgXXXXX.html
+
+Even elder announcements:
+  v14.8.0 - v14.8.6: 00292
+    v14.8.7 - v14.8.8: 00374, v14.8.9: 00435, v14.8.10: 00445
+    [v14.8.11: 00495], v14.8.12: 00502, [v14.8.13: 00514], v14.8.14: 00519
+  v14.7: 00094
+    v14.7.1: 00129, v14.7.2 - v14.7.8: 00193, v14.7.9 - v14.7.10: 00216,
+    v14.7.11: 00240
+Replace the XXX in the following URL with the shown number:
+  \https://www.mail-archive.com/s-nail-users@lists.sourceforge.net/msgXXX.html
