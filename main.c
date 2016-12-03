@@ -255,6 +255,9 @@ _startup(void)
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
    }
 
+   /* STDOUT is always line buffered from our point of view */
+   setvbuf(stdout, NULL, _IOLBF, 0);
+
    /*  --  >8  --  8<  --  */
 
 #ifndef HAVE_SETLOCALE
@@ -610,9 +613,7 @@ main(int argc, char *argv[]){
          }
          break;
       case 'B':
-         /* Make 0/1 line buffered */
-         setvbuf(stdin, NULL, _IOLBF, 0);
-         setvbuf(stdout, NULL, _IOLBF, 0);
+         OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;
       case 'b':
          /* Get Blind Carbon Copy Recipient list */
@@ -629,6 +630,7 @@ main(int argc, char *argv[]){
          okey = "debug";
          goto joarg;
       case 'E':
+         OBSOLETE(_("-E will be removed, please use \"-Sskipemptybody\""));
          ok_bset(skipemptybody);
          okey = "skipemptybody";
          goto joarg;
@@ -801,6 +803,8 @@ joarg:
          break;
       case '#':
          /* Work in batch mode, even if non-interactive */
+         if(!(options & OPT_INTERACTIVE))
+            setvbuf(stdin, NULL, _IOLBF, 0);
          options |= OPT_TILDE_FLAG | OPT_BATCH_FLAG;
          if (oargs_cnt + 8 >= oargs_size)
             oargs_size = _grow_cpp(&oargs, oargs_size + 9, oargs_cnt);

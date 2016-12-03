@@ -225,7 +225,9 @@ for compose mode commands).
 .
 .Mx
 .It Fl B
-Make standard input and standard output line-buffered.
+(\*(OB: \*(UA will always use line-buffered output, to gain
+line-buffered input even in batch mode enable batch mode via
+.Fl # . )
 .
 .Mx
 .It Fl b Ar addr
@@ -254,7 +256,7 @@ among others; effectively turns almost any operation into a dry-run.
 .Ic set
 .Va skipemptybody
 and thus discard messages with an empty message part body.
-This is useful for sending messages from scripts.
+This command line flag is \*(OB.
 .
 .Mx
 .It Fl e
@@ -503,10 +505,10 @@ and
 by default created automatically dependent on message context, will
 be used if specified (a special address massage will however still occur
 for the latter).
-Any other (even custom) header field is passed through entirely
+Any other (also custom) header field is passed through entirely
 unchanged, and in conjunction with the option
 .Fl ~
-it is even possible to embed
+it is possible to embed
 .Sx "COMMAND ESCAPES" .
 Also see
 .Fl M , m , q .
@@ -568,8 +570,9 @@ $ ( echo 'line    one. Word.     Word2.'; \e
 .It Fl #
 Enables batch mode.
 In batch mode the full set of commands is available, just like in
-interactive mode, and diverse variable settings and internal states are
-adjusted for batch necessities, e.g., it
+interactive mode, standard input is made line buffered, and diverse
+.Sx "INTERNAL VARIABLES"
+are adjusted for batch necessities, e.g., it
 .Ic set Ns
 s
 .Va emptystart ,
