@@ -110,7 +110,7 @@ LC_ALL=${ORIG_LC_ALL} git tag -s -f \
 if yesno 'Create release/ branch?'; then
    git checkout -b ${relbrname}
 
-   git rm -f .gitignore .mailmap TODO
+   git rm -f .gitignore .mailmap TODO mk-release.*
    update_release_hook
 
    LC_ALL=${ORIG_LC_ALL} git commit -S \
@@ -158,17 +158,23 @@ if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
    git archive --format=tar --prefix="${PROGRAM}-${REL}/" "v${REL}.ar" |
       ( cd "${TMPDIR}" && tar -x -f - )
    cd "${TMPDIR}"
+
    tar -c -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
-
-   openssl md5 "${PROGRAM}-${REL}.tar" > "${PROGRAM}-${REL}.cksum"
-   openssl sha1 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
-   openssl sha256 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
-   openssl sha512 "${PROGRAM}-${REL}.tar" >> "${PROGRAM}-${REL}.cksum"
-   gpg --detach-sign --armor "${PROGRAM}-${REL}.tar"
-   cat "${PROGRAM}-${REL}.tar.asc" >> "${PROGRAM}-${REL}.cksum"
-
-   < "${PROGRAM}-${REL}.tar" gzip > "${PROGRAM}-${REL}.tar.gz"
    < "${PROGRAM}-${REL}.tar" xz -e -C sha256 > "${PROGRAM}-${REL}.tar.xz"
+   < "${PROGRAM}-${REL}.tar" gzip > "${PROGRAM}-${REL}.tar.gz"
+   rm "${PROGRAM}-${REL}.tar"
+
+   openssl sha1 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+   openssl sha256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+   openssl sha512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+   gpg --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
+   cat "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
+
+   openssl sha1 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+   openssl sha256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+   openssl sha512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+   gpg --detach-sign --armor "${PROGRAM}-${REL}.tar.gz"
+   cat "${PROGRAM}-${REL}.tar.gz.asc" >> "${PROGRAM}-${REL}.cksum"
    )
 else
    bigballs=
@@ -179,8 +185,8 @@ fi
 
 if yesno 'Prepare announcement?'; then
    anntxt=y
-   if `git rev-parse --verify announce^{blob} >/dev/null 2>&1`; then
-      git show announce > "${TMPDIR}/${PROGRAM}-${REL}.txt"
+   if [ -f .git/mk-release.txt ]; then
+      cp .git/mk-release.txt "${TMPDIR}/${PROGRAM}-${REL}.txt"
    else
       : > "${TMPDIR}/${PROGRAM}-${REL}.txt"
    fi
@@ -214,7 +220,7 @@ if yesno 'Prepare announcement?'; then
       res = ""
       s = $0
 
-      while(match(s, /(\\?https?\??:\/\/[^ ]*)/)){
+      while(match(s, /(\\?(http|ftp)s?\??:\/\/[^ ]*)/)){
          pre = substr(s, 1, RSTART - 1)
          mat = substr(s, RSTART, RLENGTH)
          s = substr(s, RSTART + RLENGTH)
@@ -224,6 +230,8 @@ if yesno 'Prepare announcement?'; then
             xt = 0
             if(match(mat, /^https\?/))
                mat = "https" substr(xt = mat, RSTART + 6)
+            else if(match(mat, /^ftps\?/))
+               mat = "ftps" substr(xt = mat, RSTART + 5)
             if(match(mat, /sdaoden\.eu/))
                mat = "<?lref" (xt ? "t " : " ") mat (xt ? "<>" xt : "") "?>"
             else
@@ -305,30 +313,29 @@ if [ -n "${bigballs}" ] && yesno 'Upload archives'; then
    cd "${TMPDIR}"
 
    {
-      echo "-put ${PROGRAM}-${REL}.tar"
-      echo "-rm ${PROGRAM}-latest.tar"
-      echo "-ln -s ${PROGRAM}-${REL}.tar ${PROGRAM}-latest.tar"
+      echo "-put ${PROGRAM}-${REL}.tar.xz"
+      echo "-rm ${PROGRAM}-latest.tar.xz"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
 
       echo "-put ${PROGRAM}-${REL}.tar.gz"
       echo "-rm ${PROGRAM}-latest.tar.gz"
       echo "-ln -s ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
 
-      echo "-put ${PROGRAM}-${REL}.tar.xz"
-      echo "-rm ${PROGRAM}-latest.tar.xz"
-      echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
+      echo "-put ${PROGRAM}-${REL}.tar.xz.asc"
+      echo "-rm ${PROGRAM}-latest.tar.xz.asc"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.xz.asc ${PROGRAM}-latest.tar.xz.asc"
 
-      echo "-put ${PROGRAM}-${REL}.tar.asc"
-      echo "-rm ${PROGRAM}-latest.tar.asc"
-      echo "-ln -s ${PROGRAM}-${REL}.tar.asc ${PROGRAM}-latest.tar.asc"
-
-      echo "-chmod 0644 ${PROGRAM}-${REL}.tar*"
+      echo "-put ${PROGRAM}-${REL}.tar.gz.asc"
+      echo "-rm ${PROGRAM}-latest.tar.gz.asc"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.gz.asc ${PROGRAM}-latest.tar.gz.asc"
 
       if [ -n "${anntxt}" ]; then
          echo "-put ${PROGRAM}-${REL}.txt"
          echo "-rm ${PROGRAM}-latest.txt"
          echo "-ln -s ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
-         echo "-chmod 0644 ${PROGRAM}-${REL}.txt"
       fi
+
+      echo "-chmod 0644 ${PROGRAM}-${REL}.*"
    } |
    sftp -b - ${UPLOAD}
    )
@@ -345,7 +352,7 @@ if [ -n "${anntxt}" ] && yesno 'Send announcement mail?'; then
 fi
 
 # Finally remove the temporary instances than ran this
-rm -f .git/mk-release.sh .git/mk-release.inc
+rm -f .git/mk-release.*
 echo 'Done'
 exit
 # s-sh-mode

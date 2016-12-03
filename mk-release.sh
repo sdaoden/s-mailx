@@ -5,7 +5,7 @@
 # we must delete them, which some shells may not like while they are running.
 # So be safe and move instances temporarily to .git/, the .inc will remove them
 if [ "`basename \`pwd\``" != .git ]; then
-   cp mk-release.sh mk-release.inc .git/
+   cp mk-release.* .git/
    cd .git
    exec sh mk-release.sh
 fi
