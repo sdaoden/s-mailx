@@ -372,6 +372,8 @@ makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    }
 
    extract_header(fp, hp, checkaddr_err);
+   if (checkaddr_err != NULL && *checkaddr_err != 0)
+      goto jleave;
 
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
@@ -609,7 +611,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 {
    struct n_ignore const *quoteitp;
    int lc, cc, c;
-   int volatile t;
+   int volatile t, eofcnt;
    int volatile escape, getfields;
    char *linebuf;
    char const *cp;
@@ -624,6 +626,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    sigfp = NULL;
    linesize = 0;
    linebuf = NULL;
+   eofcnt = 0;
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
@@ -801,7 +804,6 @@ jcont:
       }
 
       if (cnt < 0) {
-         assert(!(pstate & PS_SOURCING));
          if (options & OPT_t_FLAG) {
             fflush_rewind(_coll_fp);
             /* It is important to set PS_t_FLAG before extract_header() *and*
@@ -811,7 +813,8 @@ jcont:
                goto jerr;
             options &= ~OPT_t_FLAG;
             continue;
-         } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
+         } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof) &&
+               ++eofcnt < 4) {
             printf(_("*ignoreeof* set, use `~.' to terminate letter\n"));
             continue;
          }
@@ -1254,6 +1257,11 @@ jerr:
       Fclose(_coll_fp);
       _coll_fp = NULL;
    }
+   assert(checkaddr_err != NULL);
+   if(*checkaddr_err != 0)
+      n_err(_("Some addressees were classified as \"hard error\"\n"));
+   else if(*checkaddr_err != 0) /* TODO ugly: "sendout_error" now.. */
+      n_err(_("Failed to prepare composed message (I/O error, disk full?)\n"));
    goto jleave;
 }
 

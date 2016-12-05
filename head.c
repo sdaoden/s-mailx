@@ -990,7 +990,7 @@ jebadhead:
       }
    }
 
-   if (seenfields > 0) {
+   if (seenfields > 0 && (checkaddr_err == NULL || *checkaddr_err == 0)) {
       hp->h_to = hq->h_to;
       hp->h_cc = hq->h_cc;
       hp->h_bcc = hq->h_bcc;
@@ -1279,7 +1279,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
          } else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
             cs = _("%s contains invalid %s sequence\n");
          else
-            cs = _("%s contains invalid character %s\n");
+            cs = _("%s contains invalid non-ASCII byte %s\n");
 
          c = NAME_ADDRSPEC_ERR_GETWC(f);
          snprintf(cbuf, sizeof cbuf,
