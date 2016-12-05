@@ -508,14 +508,15 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
    i = n_ALIGN(sizeof(*gp) - n_VFIELD_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
+   case GT_CUSTOMHDR:
       addsz = sizeof(struct grp_names_head);
       break;
    case GT_MLIST:
 #ifdef HAVE_REGEX
-      if (is_maybe_regex(id)) {
+      if (n_is_maybe_regex(id)) {
          addsz = sizeof(struct grp_regex);
          gt |= GT_REGEX;
-      } else
+      }
 #endif
    case GT_SHORTCUT:
    default:
@@ -527,8 +528,9 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
    gp->g_type = gt;
    memcpy(gp->g_id, id, l);
 
-   if (gt & GT_ALIAS) {
+   if (gt & (GT_ALIAS | GT_CUSTOMHDR)) {
       struct grp_names_head *gnhp;
+
       GP_TO_SUBCLASS(gnhp, gp);
       gnhp->gnh_head = NULL;
    }
@@ -602,7 +604,7 @@ __group_del(struct group_lookup *glp)
    }
    glp->gl_group = gp;
 
-   if (x->g_type & GT_ALIAS)
+   if (x->g_type & (GT_ALIAS | GT_CUSTOMHDR))
       __names_del(x);
 #ifdef HAVE_REGEX
    else if (/*(x->g_type & GT_MLIST) &&*/ x->g_type & GT_REGEX) {
@@ -650,7 +652,8 @@ _group_print_all(enum group_type gt)
    xgt = gt & GT_PRINT_MASK;
    gpa = (xgt & GT_ALIAS ? _alias_heads
          : (xgt & GT_MLIST ? _mlist_heads
-         : (xgt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads)));
+         : (xgt & GT_SHORTCUT ? _shortcut_heads
+         : _customhdr_heads)));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -719,7 +722,7 @@ _group_print(struct group const *gp, FILE *fo)
       struct grp_names_head *gnhp;
       struct grp_names *gnp;
 
-      fprintf(fo, "alias %s", gp->g_id);
+      fprintf(fo, "alias %s ", gp->g_id);
 
       GP_TO_SUBCLASS(gnhp, gp);
       if ((gnp = gnhp->gnh_head) != NULL) { /* xxx always 1+ entries */
@@ -729,6 +732,7 @@ _group_print(struct group const *gp, FILE *fo)
             fprintf(fo, " \"%s\"", string_quote(x->gn_id)); /* TODO shexp */
          } while (gnp != NULL);
       }
+      putc('\n', fo);
    } else if (gp->g_type & GT_MLIST) {
 #ifdef HAVE_REGEX
       if ((gp->g_type & GT_REGEX) && (options & OPT_D_V)){
@@ -745,18 +749,23 @@ _group_print(struct group const *gp, FILE *fo)
       }
 #endif
 
-      fprintf(fo, "wysh %s %s",
+      fprintf(fo, "wysh %s %s\n",
          (gp->g_type & GT_SUBSCRIBE ? "mlsubscribe" : "mlist"),
          n_shexp_quote_cp(gp->g_id, TRU1));
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "wysh shortcut %s %s", gp->g_id, n_shexp_quote_cp(cp, TRU1));
+      fprintf(fo, "wysh shortcut %s %s\n",
+      gp->g_id, n_shexp_quote_cp(cp, TRU1));
    } else if (gp->g_type & GT_CUSTOMHDR) {
-      GP_TO_SUBCLASS(cp, gp);
-      fprintf(fo, "customhdr %s %s", gp->g_id, n_shexp_quote_cp(cp, TRU1));
+      struct grp_names_head *gnhp;
+      struct grp_names *gnp;
+
+      GP_TO_SUBCLASS(gnhp, gp);
+      for(rv = 0, gnp = gnhp->gnh_head; gnp != NULL; ++rv, gnp = gnp->gn_next)
+         fprintf(fo, "customhdr %s %s\n",
+            gp->g_id, n_shexp_quote_cp(gnp->gn_id, TRU1));
    }
 
-   putc('\n', fo);
    NYD_LEAVE;
    return rv;
 }
@@ -1793,7 +1802,8 @@ c_customhdr(void *v){
          rv = 1;
       }
    }else{
-      /* Because one hardly ever redefines, anything is stored in one chunk */
+      struct grp_names_head *gnhp;
+      struct grp_names *gnp, *lgnp;
       size_t i, l;
       char *cp;
 
@@ -1805,14 +1815,23 @@ c_customhdr(void *v){
          goto jleave;
       }
 
-      if(_group_find(GT_CUSTOMHDR, hcp) != NULL)
-         _group_del(GT_CUSTOMHDR, hcp);
+      if((gp = _group_find(GT_CUSTOMHDR, hcp)) == NULL)
+         gp = _group_fetch(GT_CUSTOMHDR, hcp, 0);
 
-      for(l = i = 0; argv[i] != NULL; ++i)
+      for(l = 1, i = 0; argv[i] != NULL; ++i)
          l += strlen(argv[i]) + 1;
-      gp = _group_fetch(GT_CUSTOMHDR, hcp, l +1);
-      GP_TO_SUBCLASS(cp, gp);
-      for(i = 0; argv[i] != NULL; ++i){
+      gnp = smalloc(sizeof *gnp - n_VFIELD_SIZEOF(struct grp_names, gn_id) + l);
+
+      GP_TO_SUBCLASS(gnhp, gp);
+      if((lgnp = gnhp->gnh_head) != NULL){
+         while(lgnp->gn_next != NULL)
+            lgnp = lgnp->gn_next;
+         lgnp->gn_next = gnp;
+      }else
+         gnhp->gnh_head = gnp;
+
+      gnp->gn_next = NULL;
+      for(cp = &gnp->gn_id[0], i = 0; argv[i] != NULL; ++i){
          if(i > 0)
             *cp++ = ' ';
          l = strlen(argv[i]);
@@ -1857,21 +1876,27 @@ n_customhdr_query(void){ /* XXX Uses salloc()! */
 
    for(h = 0; h < HSHSIZE; ++h)
       for(gp = _customhdr_heads[h]; gp != NULL; gp = gp->g_next){
-         char const *cp;
-         ui32_t nl, bl;
+         struct grp_names *gnp;
+         struct grp_names_head *gnhp;
 
-         GP_TO_SUBCLASS(cp, gp);
-         nl = (ui32_t)strlen(gp->g_id) +1;
-         bl = (ui32_t)strlen(cp) +1;
+         GP_TO_SUBCLASS(gnhp, gp);
 
-         *tail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-               nl + bl);
-            tail = &hfp->hf_next;
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl - 1;
-         hfp->hf_bl = bl - 1;
-         memcpy(hfp->hf_dat, gp->g_id, nl);
-            memcpy(hfp->hf_dat + nl, cp, bl);
+         for(gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next){
+            ui32_t nl, bl;
+
+            nl = (ui32_t)strlen(gp->g_id) +1;
+            bl = (ui32_t)strlen(gnp->gn_id) +1;
+
+            *tail =
+            hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+                  nl + bl);
+               tail = &hfp->hf_next;
+            hfp->hf_next = NULL;
+            hfp->hf_nl = nl - 1;
+            hfp->hf_bl = bl - 1;
+            memcpy(hfp->hf_dat, gp->g_id, nl);
+               memcpy(hfp->hf_dat + nl, gnp->gn_id, bl);
+         }
       }
 
    /* TODO We have no copy-on-write environments yet, and since custom headers

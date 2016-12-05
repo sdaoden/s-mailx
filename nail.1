@@ -3410,8 +3410,8 @@ otherwise identical to
 .It Ic customhdr
 \*(NQ With no arguments, shows all currently-defined custom headers.
 With one argument, shows that custom header.
-With more than one argument, creates a new or replaces an existing
-custom header with the name given as the first argument, the content of
+With more than one argument, creates a new or an additional custom
+header with the name given as the first argument, the content of
 which being defined by the concatenated remaining arguments.
 .Ic uncustomhdr
 can be used to delete custom headers.
@@ -5029,6 +5029,8 @@ for the general picture.
 .Mx
 .It Ic uncustomhdr
 Deletes the custom headers given as arguments.
+It is not possible to delete a specific body of a custom header with
+multiple bodies (i.e., multiple instances of the same header).
 The special name
 .Ql *
 will remove all custom headers.
