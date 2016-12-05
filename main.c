@@ -576,7 +576,7 @@ main(int argc, char *argv[]){
    n_UNINIT(a_curr, NULL);
    to = cc = bcc = NULL;
    attach = NULL;
-   cp = subject = qf =
+   subject = qf =
          Aarg = Larg = NULL;
    oargs = Xargs = NULL;
    folder = emsg = NULL;
@@ -753,8 +753,13 @@ joarg:
          oargs[oargs_cnt++] = okey;
          break;
       case 's':
-         /* Subject: */
-         subject = _oarg;
+         /* Subject:; take care for Debian #419840 and strip any \r and \n */
+         if(n_anyof_cp("\n\r", subject = _oarg)){
+            n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
+            for(cp = subject = savestr(_oarg); *cp != '\0'; ++cp)
+               if(*cp == '\n' || *cp == '\r')
+                  *cp = ' ';
+         }
          options |= OPT_SENDMODE;
          break;
       case 't':

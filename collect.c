@@ -954,7 +954,15 @@ jearg:
          /* Set the Subject list */
          if(cnt == 2)
             goto jearg;
-         hp->h_subject = savestr(&linebuf[3]);
+         /* Subject:; take care for Debian #419840 and strip any \r and \n */
+         if(n_anyof_cp("\n\r", hp->h_subject = savestr(&linebuf[3]))){
+            char *xp;
+
+            n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
+            for(xp = hp->h_subject; *xp != '\0'; ++xp)
+               if(*xp == '\n' || *xp == '\r')
+                  *xp = ' ';
+         }
          break;
       case '@':
          /* Edit the attachment list */

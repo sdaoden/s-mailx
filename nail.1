@@ -471,7 +471,9 @@ have been loaded.
 .
 .Mx
 .It Fl s Ar subject
-Specify the subject of the to-be-sent message.
+Specify the subject of the message to be sent.
+Newline (NL) and carriage-return (CR) bytes are invalid and will be
+normalized to space (SP) characters.
 .
 .Mx
 .It Fl t
@@ -5593,6 +5595,8 @@ Read the named file into the message.
 .Mx
 .It Ic ~s Ar string
 Cause the named string to become the current subject field.
+Newline (NL) and carriage-return (CR) bytes are invalid and will be
+normalized to space (SP) characters.
 .
 .Mx
 .It Ic ~t Ar name ...
