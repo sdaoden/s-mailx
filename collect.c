@@ -82,7 +82,7 @@ static void       mesedit(int c, struct header *hp);
 static void       mespipe(char *cmd);
 
 /* Interpolate the named messages into the current message, possibly doing
- * indent stuff.  The flag argument is one of the tilde escapes: [mMfFuU].
+ * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return a count of the number of characters now in the message, or -1 if an
  * error is encountered writing the message temporary */
 static int        forward(char *ms, FILE *fp, int f);
@@ -778,7 +778,7 @@ jcont:
    /* We're done with -M or -m */
    if(options & OPT_Mm_FLAG)
       goto jout;
-   /* No tilde escapes, interrupts not expected.  Simply copy STDIN */
+   /* No command escapes, interrupts not expected.  Simply copy STDIN */
    if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))) {
       linebuf = srealloc(linebuf, linesize = LINESIZE);
       while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
@@ -890,11 +890,11 @@ jputnl:
                memcpy(buf, n_unirepl, sizeof n_unirepl);
             else
                buf[0] = '?', buf[1] = '\0';
-            n_err(_("Unknown tilde escape: ~%s\n"), buf);
+            n_err(_("Unknown command escape: ~%s\n"), buf);
             continue;
          }
 jearg:
-         n_err(_("Invalid tilde escape usage: %s\n"), linebuf);
+         n_err(_("Invalid command escape usage: %s\n"), linebuf);
          continue;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
@@ -1099,33 +1099,33 @@ jearg:
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
          puts(_(
-"TILDE ESCAPES (to be placed after a newline) excerpt:\n"
+"COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
 "~: <command>  Execute a mail command\n"
 "~<! <command> Insert output of command\n"
 "~@ [<files>]  Edit attachment list\n"
-"~A            Insert *Sign* variable (`~a' inserts *sign*)\n"
-"~c <users>    Add users to Cc: list (`~b' for Bcc:)\n"
-"~d            Read in *DEAD* (dead.letter)\n"
-"~e            Edit message via *EDITOR*"
+"~A            Insert *Sign* variable (`~a': insert *sign*)\n"
+"~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
+"~d            Read in $DEAD (dead.letter)\n"
+"~e            Edit message via $EDITOR"
          ));
          puts(_(
 "~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
 "~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
-"~h            Prompt for Subject:, To:, Cc: and blind Bcc:\n"
+"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
 "~i <variable> Insert a value and a newline\n"
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
-"~p            Print current message compose buffer\n"
-"~r <file>     Read in a file (`~R' *indentprefix* lines)"
+"~p            Show current message compose buffer\n"
+"~r <file>     Read in a file (`~R': *indentprefix* lines)"
          ));
          puts(_(
 "~s <subject>  Set Subject:\n"
 "~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in message(s) without headers (`~U' indents lines)\n"
-"~v            Edit message via *VISUAL*\n"
+"~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
+"~v            Edit message via $VISUAL\n"
 "~w <file>     Write message onto file\n"
-"~x            Abort composition, discard message (`~q' saves in *DEAD*)\n"
+"~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter"
          ));
          if(cnt != 2)

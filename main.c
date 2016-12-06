@@ -803,7 +803,7 @@ joarg:
             }
          break;
       case '~':
-         /* Enable tilde escapes even in non-interactive mode */
+         /* Enable command escapes even in non-interactive mode */
          options |= OPT_TILDE_FLAG;
          break;
       case '#':
