@@ -740,10 +740,19 @@ jexec:
          cmd->lc_name);
       goto jleave;
    }
-   if((cmd->lc_argtype & ARG_R) && (pstate & PS_RECURSED)){
-      n_err(_("Cannot invoke `%s' when in recursed mode (e.g., composing)\n"),
-         cmd->lc_name);
-      goto jleave;
+   if(cmd->lc_argtype & ARG_R){
+      if(pstate & PS_RECURSED){
+         /* TODO PS_RECURSED: should allow `reply' in compose mode: ~:reply! */
+         n_err(_("Cannot invoke `%s' when in compose mode\n"), cmd->lc_name);
+         goto jleave;
+      }
+      /* TODO Nothing should prevent ARG_R in conjunction with
+       * TODO PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
+      if(pstate & (PS_ROBOT | PS_SOURCING)){
+         n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
+            cmd->lc_name);
+         goto jleave;
+      }
    }
 
    if((cmd->lc_argtype & ARG_W) && !(mb.mb_perm & MB_DELE)){

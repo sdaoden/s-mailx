@@ -148,7 +148,7 @@
      DS(N_("Like `reply', but derive filename from first sender")) },
    { "followupall", &c_followupall, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `reply', but derive filename from first sender")) },
-   { "followupsender", &c_followupsender, (A | I | R | MSGLIST), 0, MMNDEL
+   { "followupsender", &c_followupsender, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `Followup', but always reply to the sender only")) },
    { "folder", &c_file, (T | M | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
@@ -184,21 +184,21 @@
      DS(N_("Reply to originators and recipients of <msglist>")) },
    { "respondsender", &c_replysender, (A | I | R | S | MSGLIST),0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
-   { "Resend", &c_Resend, (A | R | STRLIST), 0, MMNDEL
+   { "Resend", &c_Resend, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "Redirect", &c_Resend, (A | R | STRLIST), 0, MMNDEL
+   { "Redirect", &c_Resend, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "resend", &c_resend, (A | R | STRLIST), 0, MMNDEL
+   { "resend", &c_resend, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "redirect", &c_resend, (A | R | STRLIST), 0, MMNDEL
+   { "redirect", &c_resend, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "Forward", &c_Forward, (A | R | STRLIST), 0, MMNDEL
+   { "Forward", &c_Forward, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "Fwd", &c_Forward, (A | R | STRLIST), 0, MMNDEL
+   { "Fwd", &c_Forward, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "forward", &c_forward, (A | R | STRLIST), 0, MMNDEL
+   { "forward", &c_forward, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Forward <message> to <address>")) },
-   { "fwd", &c_forward, (A | R | STRLIST), 0, MMNDEL
+   { "fwd", &c_forward, (A | R | S | STRLIST), 0, MMNDEL
      DS(N_("Forward <message> to <address>")) },
    { "edit", &c_editor, (G | A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
