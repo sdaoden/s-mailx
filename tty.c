@@ -615,11 +615,11 @@ struct a_tty_bind_ctx_map{
 };
 # endif /* HAVE_KEY_BINDINGS */
 
-struct a_tty_bind_default_tuple{
-   bool_t tbdt_iskey;   /* Whether this is a control key; else termcap query */
-   char tbdt_ckey;      /* Control code */
-   ui16_t tbdt_query;   /* enum n_termcap_query (instead) */
-   char tbdt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
+struct a_tty_bind_builtin_tuple{
+   bool_t tbbt_iskey;   /* Whether this is a control key; else termcap query */
+   char tbbt_ckey;      /* Control code */
+   ui16_t tbbt_query;   /* enum n_termcap_query (instead) */
+   char tbbt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
 };
 n_CTA(n__TERMCAP_QUERY_MAX1 <= UI16_MAX,
    "Enumeration cannot be stored in datatype");
@@ -682,11 +682,13 @@ struct a_tty_global{
    struct termios tg_tios_old;
    struct termios tg_tios_new;
 };
+# ifdef HAVE_KEY_BINDINGS
 n_CTA(n__LEXINPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
    n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
 n_CTA(a_TTY_SHCUT_MAX > 1,
    "Users need at least one shortcut, plus NUL terminator");
+# endif
 
 # ifdef HAVE_HISTORY
 struct a_tty_hist{
@@ -799,8 +801,9 @@ static char const a_tty_bind_fun_names[][24] = {
 
 /* The default key bindings (unless disallowed).  Update manual upon change!
  * A logical subset of this table is also used if !HAVE_KEY_BINDINGS (more
- * expensive than a switch() on control codes directly, but less redundant) */
-static struct a_tty_bind_default_tuple const a_tty_bind_default_tuples[] = {
+ * expensive than a switch() on control codes directly, but less redundant).
+ * The table for the "base" context */
+static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # undef a_X
 # define a_X(K,S) \
    {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
@@ -840,14 +843,10 @@ static struct a_tty_bind_default_tuple const a_tty_bind_default_tuples[] = {
 
    a_X('?', DEL_BWD)
 
-#  undef a_X
-#  define a_X(K,S) {TRU1, K, 0, {S}},
+# undef a_X
+# define a_X(K,S) {TRU1, K, 0, {S}},
 
-   a_X('O', "dt")
-   a_X('\\', "z+")
-   a_X(']', "z$")
-   a_X('^', "z0")
-
+   /* The remains only if we have `bind' functionality available */
 # ifdef HAVE_KEY_BINDINGS
 #  undef a_X
 #  define a_X(Q,S) \
@@ -860,7 +859,26 @@ static struct a_tty_bind_default_tuple const a_tty_bind_default_tuples[] = {
    a_X(key_left, GO_BWD) a_X(key_right, GO_FWD)
    a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
    a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
+# endif /* HAVE_KEY_BINDINGS */
+};
 
+/* The table for the "default" context */
+static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
+# undef a_X
+# define a_X(K,S) \
+   {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
+
+# undef a_X
+# define a_X(K,S) {TRU1, K, 0, {S}},
+
+   a_X('O', "dt")
+
+   a_X('\\', "z+")
+   a_X(']', "z$")
+   a_X('^', "z0")
+
+   /* The remains only if we have `bind' functionality available */
+# ifdef HAVE_KEY_BINDINGS
 #  undef a_X
 #  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
 
@@ -868,10 +886,9 @@ static struct a_tty_bind_default_tuple const a_tty_bind_default_tuples[] = {
    a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
    a_X(key_ppage, "z-") a_X(key_npage, "z+")
    a_X(xkey_cup, "dotmove-") a_X(xkey_cdown, "dotmove+")
-
 # endif /* HAVE_KEY_BINDINGS */
-# undef a_X
 };
+# undef a_X
 
 static struct a_tty_global a_tty;
 
@@ -2849,7 +2866,7 @@ jinput_loop:
                    * something non-expected.  Something "atomic" broke.
                    * Maybe there is a second path without a timeout, that
                    * continues like we've seen it.  I.e., it may just have been
-                   * the user, typing two fast.  We definitely want to allow
+                   * the user, typing too fast.  We definitely want to allow
                    * bindings like \e,d etc. to succeed: users are so used to
                    * them that a timeout cannot be the mechanism to catch up!
                    * A single-layer implementation cannot "know" */
@@ -2904,7 +2921,7 @@ jmle_fun:
 
                         tbcp = tbtp->tbt_bind;
                         memcpy(tlp->tl_defc.s = salloc(
-                           (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
+                              (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
                            tbcp->tbc_exp, tbcp->tbc_exp_len +1);
                         goto jrestart;
                      }else{
@@ -2939,22 +2956,23 @@ jtake_over:
           * Otherwise, if it's a control byte check whether it is a MLE
           * function.  Remarks: initially a complete duplicate to be able to
           * switch(), later converted to simply iterate over (an #ifdef'd
-          * subset of) the MLE default_tuple table in order to have "a SPOF" */
+          * subset of) the MLE base_tuple table in order to have "a SPOF" */
          if(cbuf == cbuf_base && n_uasciichar(wc) && cntrlchar((char)wc)){
-            struct a_tty_bind_default_tuple const *tbdtp;
+            struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
             char c;
 
-            for(c = (char)wc ^ 0x40, tbdtp = a_tty_bind_default_tuples;
-                  PTRCMP(tbdtp, <, &a_tty_bind_default_tuples[
-                     n_NELEM(a_tty_bind_default_tuples)]);
-                  ++tbdtp){
+            c = (char)wc ^ 0x40;
+            tbbtp = a_tty_bind_base_tuples;
+            tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_base_tuples)];
+jbuiltin_redo:
+            for(; tbbtp < tbbtp_max; ++tbbtp){
                /* Assert default_tuple table is properly subset'ed */
-               assert(tbdtp->tbdt_iskey);
-               if(tbdtp->tbdt_ckey == c){
-                  if(tbdtp->tbdt_exp[0] == '\0'){
+               assert(tbbtp->tbdt_iskey);
+               if(tbbtp->tbbt_ckey == c){
+                  if(tbbtp->tbbt_exp[0] == '\0'){
                      enum a_tty_bind_flags tbf;
 
-                     tbf = a_TTY_BIND_FUN_EXPAND((ui8_t)tbdtp->tbdt_exp[1]);
+                     tbf = a_TTY_BIND_FUN_EXPAND((ui8_t)tbbtp->tbbt_exp[1]);
                      switch(a_tty_fun(tlp, tbf, &len)){
                      case a_TTY_FUN_STATUS_OK:
                         goto jinput_loop;
@@ -2967,10 +2985,16 @@ jtake_over:
                      }
                      assert(0);
                   }else{
-                     tlp->tl_reenter_after_cmd = tbdtp->tbdt_exp;
+                     tlp->tl_reenter_after_cmd = tbbtp->tbbt_exp;
                      goto jdone;
                   }
                }
+            }
+            if(tbbtp ==
+                  &a_tty_bind_base_tuples[n_NELEM(a_tty_bind_base_tuples)]){
+               tbbtp = a_tty_bind_default_tuples;
+               tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_default_tuples)];
+               goto jbuiltin_redo;
             }
          }
 #  endif /* !HAVE_KEY_BINDINGS */
@@ -3762,29 +3786,38 @@ jhist_done:
    if(!ok_blook(line_editor_no_defaults)){
       char buf[8];
       struct a_tty_bind_parse_ctx tbpc;
-      struct a_tty_bind_default_tuple const *tbdtp;
+      struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
+      ui32_t flags;
 
       buf[0] = '$', buf[1] = '\'', buf[2] = '\\', buf[3] = 'c',
          buf[5] = '\'', buf[6] = '\0';
-      for(tbdtp = a_tty_bind_default_tuples;
-            PTRCMP(tbdtp, <,
-               &a_tty_bind_default_tuples[n_NELEM(a_tty_bind_default_tuples)]);
-            ++tbdtp){
+
+      tbbtp = a_tty_bind_base_tuples;
+      tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_base_tuples)];
+      flags = n_LEXINPUT_CTX_BASE;
+jbuiltin_redo:
+      for(; tbbtp < tbbtp_max; ++tbbtp){
          memset(&tbpc, 0, sizeof tbpc);
          tbpc.tbpc_cmd = "bind";
-         if(tbdtp->tbdt_iskey){
-            buf[4] = tbdtp->tbdt_ckey;
+         if(tbbtp->tbbt_iskey){
+            buf[4] = tbbtp->tbbt_ckey;
             tbpc.tbpc_in_seq = buf;
          }else
             tbpc.tbpc_in_seq = savecatsep(":", '\0',
-               n_termcap_name_of_query(tbdtp->tbdt_query));
-         tbpc.tbpc_exp.s = n_UNCONST(tbdtp->tbdt_exp[0] == '\0'
-               ? a_tty_bind_fun_names[(ui8_t)tbdtp->tbdt_exp[1]]
-               : tbdtp->tbdt_exp);
+               n_termcap_name_of_query(tbbtp->tbbt_query));
+         tbpc.tbpc_exp.s = n_UNCONST(tbbtp->tbbt_exp[0] == '\0'
+               ? a_tty_bind_fun_names[(ui8_t)tbbtp->tbbt_exp[1]]
+               : tbbtp->tbbt_exp);
          tbpc.tbpc_exp.l = strlen(tbpc.tbpc_exp.s);
-         tbpc.tbpc_flags = n_LEXINPUT_CTX_BASE;
+         tbpc.tbpc_flags = flags;
          /* ..but don't want to overwrite any user settings */
          a_tty_bind_create(&tbpc, FAL0);
+      }
+      if(flags == n_LEXINPUT_CTX_BASE){
+         tbbtp = a_tty_bind_default_tuples;
+         tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_default_tuples)];
+         flags = n_LEXINPUT_CTX_DEFAULT;
+         goto jbuiltin_redo;
       }
    }
 # endif /* HAVE_KEY_BINDINGS */
