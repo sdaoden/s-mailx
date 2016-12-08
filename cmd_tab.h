@@ -126,13 +126,13 @@
      DS(N_("Append <msglist> to <file>")) },
    { "Save", &c_Save, (A | S | STRLIST), 0, 0
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "source", &c_source, (M | R | WYRALIST), 1, 1
+   { "source", &c_source, (M | WYRALIST), 1, 1
      DS(N_("Read commands from <file>")) },
-   { "source_if", &c_source_if, (M | R | WYRALIST), 1, 1
+   { "source_if", &c_source_if, (M | WYRALIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (G | M | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "shell", &c_dosh, (I | R | S | NOLIST), 0, 0
+   { "shell", &c_dosh, (I | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
      DS(N_("Un`alias' <name-list> (* for all)")) },
