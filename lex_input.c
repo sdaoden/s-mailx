@@ -47,8 +47,30 @@ enum a_lex_input_flags{
    a_LEX_PIPE = 1<<1,            /* Open on a pipe */
    a_LEX_MACRO = 1<<2,           /* Running a macro */
    a_LEX_MACRO_FREE_DATA = 1<<3, /* Lines are allocated, free(3) once done */
+   /* TODO For simplicity this is yet _MACRO plus specialization overlay
+    * TODO (_X_OPTION, _CMD) -- these should be types on their own! */
    a_LEX_MACRO_X_OPTION = 1<<4,  /* Macro indeed command line -X option */
    a_LEX_MACRO_CMD = 1<<5,       /* Macro indeed single-line: ~:COMMAND */
+   /* TODO a_LEX_SLICE: the right way to support *on-compose-done-shell* would
+    * TODO be a command_loop object that emits an on_read_line event, and
+    * TODO have a special handler for the compose mode; with that, then,
+    * TODO commands_recursive() would not call lex_evaluate() but
+    * TODO CTX->on_read_line, and lex_evaluate() would be the standard impl.,
+    * TODO whereas the COMMAND ESCAPE switch in collect.c would be another one.
+    * TODO With this generic approach accmacvar.c:call_compose_mode_hook()
+    * TODO could be dropped, and n_source_macro() could become extended,
+    * TODO and/or we would add a n_source_anything(), which would allow special
+    * TODO input handlers, special I/O input and output, special `localopts'
+    * TODO etc., to be glued to the new execution context.  And all I/O all
+    * TODO over this software should not use stdin/stdout, but CTX->in/out.
+    * TODO The pstate must be a property of the current execution context, too.
+    * TODO This not today. :(  For now we invent a special SLICE execution
+    * TODO context overlay that at least allows to temporarily modify the
+    * TODO global pstate, and the global stdin and stdout pointers.  HACK!
+    * TODO This slice thing is very special and has to go again.  HACK!!
+    * TODO a_lex_input() will drop it once it sees EOF (HACK!), but care for
+    * TODO jumps must be taken by slice creators.  HACK!!!  But works. ;} */
+   a_LEX_SLICE = 1<<6,
 
    a_LEX_SUPER_MACRO = 1<<16     /* *Not* inheriting PS_SOURCING state */
 };
@@ -89,10 +111,15 @@ struct a_lex_input_stack{
    ui32_t li_flags;              /* enum a_lex_input_flags */
    ui32_t li_loff;               /* Pseudo (macro): index in .li_lines */
    char **li_lines;              /* Pseudo content, lines unfolded */
-   void (*li_macro_on_finalize)(void *);
-   void *li_macro_finalize_arg;
+   void (*li_on_finalize)(void *);
+   void *li_finalize_arg;
    char li_autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF];
    sigjmp_buf li_cmdrec_jmp;     /* TODO one day...  for command_recursive */
+   /* SLICE hacks: saved stdin/stdout, saved pstate */
+   FILE *li_slice_stdin;
+   FILE *li_slice_stdout;
+   ui32_t li_slice_options;
+   ui8_t li_slice__dummy[4];
    char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
@@ -973,6 +1000,13 @@ a_lex_unstack(bool_t eval_error){
       goto jerr;
    }
 
+   if(lip->li_flags & a_LEX_SLICE){ /* TODO Temporary hack */
+      stdin = lip->li_slice_stdin;
+      stdout = lip->li_slice_stdout;
+      options = lip->li_slice_options;
+      goto jthe_slice_hack;
+   }
+
    if(lip->li_flags & a_LEX_MACRO){
       if(lip->li_flags & a_LEX_MACRO_FREE_DATA){
          char **lp;
@@ -1005,10 +1039,9 @@ a_lex_unstack(bool_t eval_error){
 
    n_memory_autorec_pop(&lip->li_autorecmem[0]);
 
-   /* XXX We need some kind of "is real macro" instead of that */
-   if((lip->li_flags & (a_LEX_MACRO | a_LEX_MACRO_X_OPTION | a_LEX_MACRO_CMD))
-         == a_LEX_MACRO && lip->li_macro_on_finalize != NULL)
-      (*lip->li_macro_on_finalize)(lip->li_macro_finalize_arg);
+jthe_slice_hack:
+   if(lip->li_on_finalize != NULL)
+      (*lip->li_on_finalize)(lip->li_finalize_arg);
 
    if((a_lex_input = lip->li_outer) == NULL){
       pstate &= ~(PS_SOURCING | PS_ROBOT);
@@ -1034,12 +1067,14 @@ jerr:
       if(options & OPT_D_V)
          n_alert(_("Stopped %s %s due to errors%s"),
             (pstate & PS_STARTED
-             ? (lip->li_flags & a_LEX_MACRO
+             ? (lip->li_flags & a_LEX_SLICE ? _("sliced in program")
+             : (lip->li_flags & a_LEX_MACRO
                 ? (lip->li_flags & a_LEX_MACRO_CMD
                    ? _("evaluating command") : _("evaluating macro"))
                 : (lip->li_flags & a_LEX_PIPE
                    ? _("executing `source'd pipe")
                    : _("loading `source'd file")))
+             )
              : (lip->li_flags & a_LEX_MACRO
                 ? (lip->li_flags & a_LEX_MACRO_X_OPTION
                    ? _("evaluating command line") : _("evaluating macro"))
@@ -1109,6 +1144,8 @@ a_lex_source_file(char const *file, bool_t silent_error){
    lip = smalloc(sizeof(*lip) -
          n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          (nlen = strlen(nbuf) +1));
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
    lip->li_cond = condstack_release();
@@ -1272,8 +1309,6 @@ n_commands(void){ /* FIXME */
 
       interrupts = 0;
 
-      temporary_localopts_free(); /* XXX intermediate hack */
-
       n_memory_reset();
 
       if (!(pstate & PS_SOURCING)) {
@@ -1410,7 +1445,8 @@ FL int
          *linebuf = sbufdup(*linebuf, *linesize);
 
       iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
-            ? "-X OPTION" : "MACRO";
+            ? "-X OPTION"
+            : (a_lex_input->li_flags & a_LEX_MACRO_CMD) ? "CMD" : "MACRO";
       n = (int)*linesize;
       pstate |= PS_READLINE_NL;
       goto jhave_dat;
@@ -1545,6 +1581,12 @@ jhave_dat:
 jleave:
    if (pstate & PS_PSTATE_PENDMASK)
       a_lex_update_pstate();
+
+   /* TODO We need to special case a_LEX_SLICE, since that is not managed by us
+    * TODO but only established from the outside and we need to drop this
+    * TODO overlay context somehow */
+   if(n < 0 && a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_SLICE))
+      a_lex_unstack(FAL0);
    NYD2_LEAVE;
    return n;
 }
@@ -1584,8 +1626,10 @@ n_load(char const *name){
       goto jleave;
 
    i = strlen(name) +1;
-   lip = scalloc(1, sizeof(*lip) -
+   lip = smalloc(sizeof(*lip) -
          n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) + i);
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_file = fip;
    lip->li_flags = a_LEX_FREE;
    memcpy(lip->li_name, name, i);
@@ -1607,8 +1651,9 @@ n_load_Xargs(char const **lines, size_t cnt){
    struct a_lex_input_stack *lip;
    NYD_ENTER;
 
-   memset(buf, 0, sizeof buf);
    lip = (void*)buf;
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_flags = a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          a_LEX_MACRO_X_OPTION | a_LEX_SUPER_MACRO;
    memcpy(lip->li_name, name, sizeof name);
@@ -1717,6 +1762,8 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
    lip = smalloc(sizeof(*lip) -
          n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          (i = strlen(name) +1));
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
    lip->li_cond = condstack_release();
@@ -1724,10 +1771,9 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
    lip->li_flags = a_LEX_FREE | a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          (a_lex_input == NULL || (a_lex_input->li_flags & a_LEX_SUPER_MACRO)
           ? a_LEX_SUPER_MACRO : 0);
-   lip->li_loff = 0;
    lip->li_lines = lines;
-   lip->li_macro_on_finalize = on_finalize;
-   lip->li_macro_finalize_arg = finalize_arg;
+   lip->li_on_finalize = on_finalize;
+   lip->li_finalize_arg = finalize_arg;
    memcpy(lip->li_name, name, i);
 
    pstate |= PS_ROBOT;
@@ -1744,26 +1790,23 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    bool_t rv;
    NYD_ENTER;
 
-   i = strlen(cmd);
-   cmd = sbufdup(cmd, i++); /* XXX Unfortunately need to dup cmd :( */
+   i = strlen(cmd) +1;
    ial = n_ALIGN(i);
 
    lip = smalloc(sizeof(*lip) -
          n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
          ial + 2*sizeof(char*));
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
-   lip->li_file = NULL;
    lip->li_cond = condstack_release();
    n_memory_autorec_push(&lip->li_autorecmem[0]);
-   lip->li_flags = a_LEX_FREE | a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
-         a_LEX_MACRO_CMD |
+   lip->li_flags = a_LEX_FREE | a_LEX_MACRO | a_LEX_MACRO_CMD |
          (a_lex_input == NULL || (a_lex_input->li_flags & a_LEX_SUPER_MACRO)
           ? a_LEX_SUPER_MACRO : 0);
-   lip->li_loff = 0;
-   lip->li_lines = (void*)(lip->li_name + ial);
-   lip->li_lines[0] = n_UNCONST(cmd); /* dup'ed above */
+   lip->li_lines = (void*)&lip->li_name[ial];
+   memcpy(lip->li_lines[0] = &lip->li_name[0], cmd, i);
    lip->li_lines[1] = NULL;
-   memcpy(lip->li_name, cmd, i);
 
    pstate |= PS_ROBOT;
    a_lex_input = lip;
@@ -1772,11 +1815,53 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    return rv;
 }
 
+FL void
+n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
+      ui32_t new_options, void (*on_finalize)(void*), void *finalize_arg){
+   struct a_lex_input_stack *lip;
+   size_t i;
+   NYD_ENTER;
+
+   lip = smalloc(sizeof(*lip) -
+         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+         (i = strlen(cmd) +1));
+   memset(lip, 0,
+      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   lip->li_outer = a_lex_input;
+   lip->li_file = new_stdin;
+   lip->li_flags = a_LEX_FREE | a_LEX_SLICE;
+   lip->li_on_finalize = on_finalize;
+   lip->li_finalize_arg = finalize_arg;
+   lip->li_slice_stdin = stdin;
+   lip->li_slice_stdout = stdout;
+   lip->li_slice_options = options;
+   memcpy(lip->li_name, cmd, i);
+
+   stdin = new_stdin;
+   stdout = new_stdout;
+   options = new_options;
+   pstate |= PS_ROBOT;
+   a_lex_input = lip;
+   NYD_LEAVE;
+}
+
+FL void
+n_source_slice_hack_remove_after_jump(void){
+   a_lex_unstack(FAL0);
+}
+
 FL bool_t
 n_source_may_yield_control(void){
    return ((options & OPT_INTERACTIVE) &&
       (pstate & PS_STARTED) &&
-      (!(pstate & PS_ROBOT) || (pstate & PS_RECURSED)) && /* Ok for ~: */
+      (!(pstate & PS_ROBOT) ||
+         /* But: ok for ~:, yet: unless in a hook.
+          * TODO This is obviously hacky in that it depends on _input_stack not
+          * TODO loosing any flags when creating new contexts...  Maybe this
+          * TODO function should instead walk all up the context stack when
+          * TODO there is one, and verify neither level prevents yielding! */
+         ((pstate & PS_RECURSED) && (a_lex_input == NULL ||
+            !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
       (a_lex_input == NULL || a_lex_input->li_outer == NULL));
 }
 

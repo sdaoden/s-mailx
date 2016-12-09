@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Collect input from standard input, handling ~ escapes.
+ *@ TODO This needs a complete rewrite, with carriers, etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -39,6 +40,16 @@
 # include "nail.h"
 #endif
 
+struct a_coll_ocds_arg{
+   sighandler_type coa_opipe;
+   sighandler_type coa_oint;
+   FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
+   FILE *coa_stdout; /* The Popen()ed pipe through which we write to the hook */
+   int coa_pipe[2];  /* ..backing .coa_stdin */
+   si8_t *coa_senderr; /* Set to 1 on failure */
+   char coa_cmd[n_VFIELD_SIZE(0)];
+};
+
 /* The following hookiness with global variables is so that on receipt of an
  * interrupt signal, the partial message can be salted away on *DEAD* */
 
@@ -64,7 +75,7 @@ static void       _collect_onpipe(int signo);
 static void       insertcommand(FILE *fp, char const *cmd);
 
 /* ~p command */
-static void       print_collf(FILE *collf, struct header *hp);
+static void       print_collf(FILE *collf, struct header *hp, bool_t pagerok);
 
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
@@ -95,8 +106,11 @@ static void       collhup(int s);
 
 static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 
-/* call_compose_mode_hook() setter hook */
+/* temporary_call_compose_mode_hook() setter hook */
 static void a_coll__hook_setter(void *arg);
+
+/* *on-compose-done-shell* finalizer */
+static void a_coll_ocds__finalize(void *vp);
 
 static void
 _execute_command(struct header *hp, char const *linebuf, size_t linesize){
@@ -158,6 +172,7 @@ _include_file(char const *name, int *linecount, int *charcount,
    size_t linesize = 0, indl, linelen, cnt;
    NYD_ENTER;
 
+   /* The -M case is special */
    if (name == (char*)-1)
       fbuf = stdin;
    else if ((fbuf = Fopen(name, "r")) == NULL) {
@@ -182,7 +197,7 @@ _include_file(char const *name, int *linecount, int *charcount,
          goto jleave;
       ++(*linecount);
       (*charcount) += linelen + indl;
-      if ((options & OPT_INTERACTIVE) && doecho) {
+      if (doecho) {
          if (indl > 0)
             fwrite(indb, sizeof *indb, indl, stdout);
          fwrite(linebuf, sizeof *linebuf, linelen, stdout);
@@ -190,7 +205,7 @@ _include_file(char const *name, int *linecount, int *charcount,
    }
    if (fflush(_coll_fp))
       goto jleave;
-   if ((options & OPT_INTERACTIVE) && doecho)
+   if (doecho)
       fflush(stdout);
 
    ret = 0;
@@ -228,7 +243,7 @@ insertcommand(FILE *fp, char const *cmd)
 }
 
 static void
-print_collf(FILE *cf, struct header *hp)
+print_collf(FILE *cf, struct header *hp, bool_t pagerok)
 {
    char *lbuf = NULL; /* TODO line pool */
    sighandler_type sigint;
@@ -244,7 +259,7 @@ print_collf(FILE *cf, struct header *hp)
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL) {
+   if (pagerok && (cp = ok_vlook(crt)) != NULL) {
       size_t l, m;
 
       m = 4;
@@ -323,39 +338,44 @@ static int
 exwrite(char const *name, FILE *fp, int f)
 {
    FILE *of;
-   int c, lc, rv = -1;
-   long cc;
+   int c, rv;
+   long lc, cc;
    NYD_ENTER;
 
    if (f) {
       printf("%s ", n_shexp_quote_cp(name, FAL0));
       fflush(stdout);
    }
+
    if ((of = Fopen(name, "a")) == NULL) {
-      n_perr(NULL, 0);
-      goto jleave;
+      n_perr(name, 0);
+      goto jerr;
    }
 
-   lc = 0;
-   cc = 0;
+   lc = cc = 0;
    while ((c = getc(fp)) != EOF) {
       ++cc;
       if (c == '\n')
          ++lc;
-      putc(c, of);
-      if (ferror(of)) {
+      if (putc(c, of) == EOF) {
          n_perr(name, 0);
-         Fclose(of);
-         goto jleave;
+         goto jerr;
       }
    }
-   Fclose(of);
-   printf(_("%d/%ld\n"), lc, cc);
-   fflush(stdout);
+   printf(_("%ld/%ld\n"), lc, cc);
+
    rv = 0;
 jleave:
+   if(of != NULL)
+      Fclose(of);
+   fflush(stdout);
    NYD_LEAVE;
    return rv;
+jerr:
+   putchar('-');
+   putchar('\n');
+   rv = -1;
+   goto jleave;
 }
 
 static enum okay
@@ -488,6 +508,7 @@ forward(char *ms, FILE *fp, int f)
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
    printf(_("Interpolating:"));
+   srelax_hold();
    for (; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;
 
@@ -499,7 +520,9 @@ forward(char *ms, FILE *fp, int f)
          rv = -1;
          break;
       }
+      srelax();
    }
+   srelax_rele();
    printf("\n");
 jleave:
    NYD_LEAVE;
@@ -514,7 +537,7 @@ _collint(int s)
    /* the control flow is subtle, because we can be called from ~q */
    if (_coll_hadintr == 0) {
       if (ok_blook(ignore)) {
-         puts("@");
+         fputs("@\n", stdout);
          fflush(stdout);
          clearerr(stdin);
       } else
@@ -605,11 +628,52 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
    NYD2_LEAVE;
 }
 
+static void
+a_coll_ocds__finalize(void *vp){
+   /* Note we use this for destruction upon setup errors, thus */
+   sighandler_type opipe;
+   sighandler_type oint;
+   struct a_coll_ocds_arg **coapp, *coap;
+   NYD2_ENTER;
+
+   temporary_call_compose_mode_hook((char*)-1, NULL, NULL);
+
+   coap = *(coapp = vp);
+   *coapp = (struct a_coll_ocds_arg*)-1;
+
+   if(coap->coa_stdout != NULL)
+      if(!Pclose(coap->coa_stdout, FAL0)){
+         *coap->coa_senderr = TRU1;
+         n_err(_("*on-compose-done-shell* failed: %s\n"),
+            n_shexp_quote_cp(coap->coa_cmd, FAL0));
+      }
+
+   if(coap->coa_stdin != NULL)
+      Fclose(coap->coa_stdin);
+   else if(coap->coa_pipe[0] != -1)
+      close(coap->coa_pipe[0]);
+
+   if(coap->coa_pipe[1] != -1)
+      close(coap->coa_pipe[1]);
+
+   opipe = coap->coa_opipe;
+   oint = coap->coa_oint;
+
+   n_lofi_free(coap);
+
+   hold_all_sigs();
+   safe_signal(SIGPIPE, opipe);
+   safe_signal(SIGINT, oint);
+   rele_all_sigs();
+   NYD2_LEAVE;
+}
+
 FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
    char *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct n_ignore const *quoteitp;
+   struct a_coll_ocds_arg *coap;
    int lc, cc, c;
    int volatile t, eofcnt;
    int volatile escape, getfields;
@@ -627,6 +691,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    linesize = 0;
    linebuf = NULL;
    eofcnt = 0;
+   coap = NULL;
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
@@ -687,9 +752,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
       /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
          setup_from_and_sender(hp);
-         call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
+         temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
       }
 
+      /* Cannot do since it may require turning this into a multipart one */
       if(!(options & OPT_Mm_FLAG)){
          char const *cp_obsolete = ok_vlook(NAIL_HEAD);
          if(cp_obsolete != NULL)
@@ -739,7 +805,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
       if (quotefile != NULL) {
          if (_include_file(quotefile, &lc, &cc,
-               !(options & OPT_Mm_FLAG), FAL0) != 0)
+               ((options & (OPT_INTERACTIVE | OPT_Mm_FLAG)) == OPT_INTERACTIVE),
+               FAL0) != 0)
             goto jerr;
       }
 
@@ -754,19 +821,15 @@ collect(struct header *hp, int printheaders, struct message *mp,
                putc(c, stdout);
             if (fseek(_coll_fp, 0, SEEK_END))
                goto jerr;
-
-            /* Ensure this is clean xxx not really necessary? */
-            fflush(stdout);
          } else {
             rewind(_coll_fp);
             mesedit('e', hp);
             /* As mandated by the Mail Reference Manual, print "(continue)" */
 jcont:
-            if(options & OPT_INTERACTIVE){
-               printf(_("(continue)\n"));
-               fflush(stdout);
-            }
+            if(options & OPT_INTERACTIVE)
+               fputs(_("(continue)\n"), stdout);
          }
+         fflush(stdout);
       }
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
@@ -775,17 +838,20 @@ jcont:
          n_err(_("\n(Interrupt -- one more to kill letter)\n"));
    }
 
-   /* We're done with -M or -m */
-   if(options & OPT_Mm_FLAG)
-      goto jout;
-   /* No command escapes, interrupts not expected.  Simply copy STDIN */
-   if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))) {
-      linebuf = srealloc(linebuf, linesize = LINESIZE);
-      while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
-         if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
-            goto jerr;
+   /* If not under shell hook control */
+   if(coap == NULL){
+      /* We're done with -M or -m (because we are too simple minded) */
+      if(options & OPT_Mm_FLAG)
+         goto jout;
+      /* No command escapes, interrupts not expected.  Simply copy STDIN */
+      if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))){
+         linebuf = srealloc(linebuf, linesize = LINESIZE);
+         while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
+            if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
+               goto jerr;
+         }
+         goto jout;
       }
-      goto jout;
    }
 
    /* The interactive collect loop.
@@ -804,6 +870,8 @@ jcont:
       }
 
       if (cnt < 0) {
+         if(coap != NULL)
+            break;
          if (options & OPT_t_FLAG) {
             fflush_rewind(_coll_fp);
             /* It is important to set PS_t_FLAG before extract_header() *and*
@@ -813,8 +881,8 @@ jcont:
                goto jerr;
             options &= ~OPT_t_FLAG;
             continue;
-         } else if ((options & OPT_INTERACTIVE) && ok_blook(ignoreeof) &&
-               ++eofcnt < 4) {
+         } else if ((options & OPT_INTERACTIVE) &&
+               ok_blook(ignoreeof) && ++eofcnt < 4) {
             printf(_("*ignoreeof* set, use `~.' to terminate letter\n"));
             continue;
          }
@@ -826,11 +894,13 @@ jcont:
       cp = linebuf;
       if(cnt == 0)
          goto jputnl;
-      else if(!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
-         goto jputline;
-      else if(cp[0] == '.'){
-         if(cnt == 1 && (ok_blook(dot) || ok_blook(ignoreeof)))
-            break;
+      else if(coap == NULL){
+         if(!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
+            goto jputline;
+         else if(cp[0] == '.'){
+            if(cnt == 1 && (ok_blook(dot) || ok_blook(ignoreeof)))
+               break;
+         }
       }
       if(cp[0] != escape){
 jputline:
@@ -898,7 +968,7 @@ jearg:
          continue;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
-         if(cnt == 2)
+         if(cnt == 2 || coap != NULL)
             goto jearg;
          c_shell(&linebuf[3]);
          goto jhistcont;
@@ -913,7 +983,7 @@ jearg:
          break;
       case '.':
          /* Simulate end of file on input */
-         if(cnt != 2)
+         if(cnt != 2 || coap != NULL)
             goto jearg;
          goto jout;
       case 'x':
@@ -1078,7 +1148,7 @@ jearg:
          /* Print current state of the message without altering anything */
          if(cnt != 2)
             goto jearg;
-         print_collf(_coll_fp, hp);
+         print_collf(_coll_fp, hp, ((options & OPT_INTERACTIVE) != 0));
          break;
       case '|':
          /* Pipe message through command. Collect output as new message */
@@ -1090,7 +1160,7 @@ jearg:
       case 'v':
       case 'e':
          /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
-         if(cnt != 2)
+         if(cnt != 2 || coap != NULL)
             goto jearg;
          rewind(_coll_fp);
          mesedit(c, ok_blook(editheaders) ? hp : NULL);
@@ -1139,20 +1209,74 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if(!(options & OPT_t_FLAG))
+      if(options & OPT_INTERACTIVE)
          n_tty_addhist(linebuf, TRU1);
       if(c != '\0')
          goto jcont;
    }
 
 jout:
+   /* Do we have *on-compose-done-shell*?
+    * TODO With the future improvements envisioned for a_LEX_SLICE in
+    * TODO lex_input.c we could easily offer a "normal" *on-compose-done*.
+    * TODO With either some kind of `capture_stdout [:VAR:] [--] COMMAND',
+    * TODO backtick (or ``{..}') operator support for `if' and WYSH lists,
+    * TODO and/or WYSH pipes (i.e., `|' on a WYSH command line) and a `read'
+    * TODO command this may become useful, e.g., the latter _could_ be:
+    * TODO "~^header list to | read x y; if $x == 210 ...", but granted that
+    * TODO this also needs ";" and some loop construct would be nice...
+    * TODO But maybe we will have better exit/return status support until then
+    * TODO and ~^ could return the "210" in this case as *-exit-status* without
+    * TODO causing any harm...
+    * TODO Finally: anyway we want `localopts' for _all_ these hooks!
+    * TODO Also: usual f...ed up state of signals and terminal etc. */
+   if(coap == NULL &&
+         (cp = ok_vlook(on_compose_done_shell)) != NULL){
+      i = strlen(cp) +1;
+      coap = n_lofi_alloc(sizeof *coap -
+            n_VFIELD_SIZEOF(struct a_coll_ocds_arg, coa_cmd) + i);
+      coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
+      coap->coa_stdin = coap->coa_stdout = NULL;
+      coap->coa_senderr = checkaddr_err;
+      memcpy(coap->coa_cmd, cp, i);
+
+      hold_all_sigs();
+      coap->coa_opipe = safe_signal(SIGPIPE, SIG_IGN);
+      coap->coa_oint = safe_signal(SIGINT, SIG_IGN);
+      rele_all_sigs();
+
+      if(pipe_cloexec(coap->coa_pipe) != -1 &&
+            (coap->coa_stdin = Fdopen(coap->coa_pipe[0], "r", FAL0)) != NULL &&
+            (coap->coa_stdout = Popen(coap->coa_cmd, "W", ok_vlook(SHELL), NULL,
+               coap->coa_pipe[1])) != NULL){
+         close(coap->coa_pipe[1]);
+         coap->coa_pipe[1] = -1;
+
+         temporary_call_compose_mode_hook(NULL, NULL, NULL);
+         n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
+            (options & ~OPT_INTERACTIVE), &a_coll_ocds__finalize, &coap);
+         /* Hook version protocol for ~^: update manual upon change! */
+         fputs("0 0 1\n", coap->coa_stdout);
+         goto jcont;
+      }
+
+      c = errno;
+      a_coll_ocds__finalize(coap);
+      n_perr(_("Cannot invoke *on-compose-done-shell*"), c);
+      goto jerr;
+   }
+   if(*checkaddr_err != 0){
+      *checkaddr_err = 0;
+      goto jerr;
+   }
+
    /* Execute compose-leave TODO completely v15-compat intermediate!! */
    if((cp = ok_vlook(on_compose_leave)) != NULL){
       setup_from_and_sender(hp);
-      call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
+      temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
    }
 
-   /* Final change to edit headers, if not already above */
+   /* Final chance to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
       if (hp->h_cc == NULL && ok_blook(askcc))
          grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GCC, 1);
@@ -1172,6 +1296,7 @@ jout:
    if (*checkaddr_err != 0)
       goto jerr;
 
+   /* Cannot do since it may require turning this into a multipart one */
    if(options & OPT_Mm_FLAG)
       goto jskiptails;
 
@@ -1239,6 +1364,7 @@ jskiptails:
    rewind(_coll_fp);
 
 jleave:
+   temporary_unroll_compose_mode();
    if (linebuf != NULL)
       free(linebuf);
    sigfillset(&nset);
@@ -1251,6 +1377,8 @@ jleave:
    return _coll_fp;
 
 jerr:
+   if(coap != NULL && coap != (struct a_coll_ocds_arg*)-1)
+      n_source_slice_hack_remove_after_jump();
    if(sigfp != NULL)
       Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {
@@ -1258,10 +1386,14 @@ jerr:
       _coll_fp = NULL;
    }
    assert(checkaddr_err != NULL);
+   /* TODO We don't save in $DEAD upon error because msg not readily composed?
+    * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
    if(*checkaddr_err != 0)
       n_err(_("Some addressees were classified as \"hard error\"\n"));
-   else if(*checkaddr_err != 0) /* TODO ugly: "sendout_error" now.. */
+   else if(_coll_hadintr == 0){
+      *checkaddr_err = TRU1; /* TODO ugly: "sendout_error" now.. */
       n_err(_("Failed to prepare composed message (I/O error, disk full?)\n"));
+   }
    goto jleave;
 }
 

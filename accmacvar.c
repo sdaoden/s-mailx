@@ -4,7 +4,11 @@
  *@ - add an entry to nail.h:enum okeys
  *@ - run mk-okey-map.pl
  *@ - update the manual!
- *@ TODO . should be recursive environment based
+ *@ TODO . should be recursive environment based.
+ *@ TODO   Otherwise, the `localopts' should be an attribute of the lex_input.c
+ *@ TODO   command context, so that it belongs to the execution context
+ *@ TODO   we are running in, instead of being global data.  See, e.g.,
+ *@ TODO   the a_LEX_SLICE comment in lex_input.c.
  *@ TODO . undefining and overwriting a macro should always be possible:
  *@ TODO   simply place the thing in a delete-later list and replace the
  *@ TODO   accessible entry!  (instant delete if on top recursion level.)
@@ -120,7 +124,6 @@ struct a_amv_mac_call_args{
 
 struct a_amv_lostack{
    struct a_amv_lostack *as_global_saved; /* Saved global XXX due to jump */
-   struct a_amv_mac *as_mac;     /* Context (`account' or `define') */
    struct a_amv_mac_call_args *as_amcap;
    struct a_amv_lostack *as_up;  /* Outer context */
    struct a_amv_var *as_lopts;
@@ -360,7 +363,6 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
 
    losp = n_lofi_alloc(sizeof *losp);
    losp->as_global_saved = a_amv_lopts;
-   losp->as_mac = n_UNCONST(amp); /* But not used.. */
    if((losp->as_amcap = amcap)->amca_unroller == NULL){
       losp->as_up = losp->as_global_saved;
       losp->as_lopts = NULL;
@@ -1640,33 +1642,6 @@ jleave:
    return rv;
 }
 
-FL void
-call_compose_mode_hook(char const *macname, /* TODO temporary, v15: drop */
-      void (*hook_pre)(void *), void *hook_arg){
-   struct a_amv_mac_call_args *amcap;
-   struct a_amv_mac *amp;
-   NYD_ENTER;
-
-   if((amp = a_amv_mac_lookup(macname, NULL, a_AMV_MF_NONE)) == NULL)
-      n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
-         macname);
-   else{
-      amcap = n_lofi_alloc(sizeof *amcap);
-      memset(amcap, 0, sizeof *amcap);
-      amcap->amca_name = macname;
-      amcap->amca_amp = amp;
-      amcap->amca_unroller = &a_amv_compose_lopts;
-      amcap->amca_hook_pre = hook_pre;
-      amcap->amca_hook_arg = hook_arg;
-      amcap->amca_lopts_on = TRU1;
-      amcap->amca_ps_hook_mask = TRU1;
-      pstate &= ~PS_HOOK_MASK;
-      pstate |= PS_HOOK;
-      a_amv_mac_exec(amcap);
-   }
-   NYD_LEAVE;
-}
-
 FL int
 c_account(void *v){
    struct a_amv_mac_call_args *amcap;
@@ -1792,8 +1767,8 @@ c_localopts(void *v){
    rv = 1;
 
    if(a_amv_lopts == NULL){
-      n_err(_("Cannot use `localopts' but from within a "
-         "`define' or `account'\n"));
+      n_err(_("Cannot use `localopts' in this context "
+         "(not in `define' or `account', nor special hook)\n"));
       goto jleave;
    }
 
@@ -1805,7 +1780,52 @@ jleave:
 }
 
 FL void
-temporary_localopts_free(void){ /* XXX intermediate hack */
+temporary_call_compose_mode_hook(char const *macname,
+      void (*hook_pre)(void *), void *hook_arg){
+   /* TODO call_compose_mode_hook() temporary, v15: generalize; see a_LEX_SLICE
+    * TODO comment in lex_input.c for the right way of doing things! */
+   static struct a_amv_lostack *cmh_losp;
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_mac *amp;
+   NYD_ENTER;
+
+   amp = NULL;
+
+   if(macname == (char*)-1){
+      a_amv_mac__finalize(cmh_losp);
+      cmh_losp = NULL;
+   }else if(macname != NULL &&
+         (amp = a_amv_mac_lookup(macname, NULL, a_AMV_MF_NONE)) == NULL)
+      n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
+         macname);
+   else{
+      amcap = n_lofi_alloc(sizeof *amcap);
+      memset(amcap, 0, sizeof *amcap);
+      amcap->amca_name = (macname != NULL) ? macname : "on-compose-done-shell";
+      amcap->amca_amp = amp;
+      amcap->amca_unroller = &a_amv_compose_lopts;
+      amcap->amca_hook_pre = hook_pre;
+      amcap->amca_hook_arg = hook_arg;
+      amcap->amca_lopts_on = TRU1;
+      amcap->amca_ps_hook_mask = TRU1;
+      pstate &= ~PS_HOOK_MASK;
+      pstate |= PS_HOOK;
+      if(macname != NULL)
+         a_amv_mac_exec(amcap);
+      else{
+         cmh_losp = n_lofi_alloc(sizeof *cmh_losp);
+         cmh_losp->as_global_saved = a_amv_lopts;
+         cmh_losp->as_up = NULL;
+         cmh_losp->as_lopts = *(cmh_losp->as_amcap = amcap)->amca_unroller;
+         cmh_losp->as_unroll = TRU1;
+         a_amv_lopts = cmh_losp;
+      }
+   }
+   NYD_LEAVE;
+}
+
+FL void
+temporary_unroll_compose_mode(void){ /* XXX intermediate hack */
    NYD_ENTER;
    if(a_amv_compose_lopts != NULL){
       void *save = a_amv_lopts;

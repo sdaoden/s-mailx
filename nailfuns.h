@@ -164,8 +164,9 @@ FL int         c_call(void *v);
 FL bool_t      check_folder_hook(bool_t nmail);
 
 /* TODO v15 drop Invoke compose hook macname */
-FL void        call_compose_mode_hook(char const *macname,
+FL void        temporary_call_compose_mode_hook(char const *macname,
                   void (*hook_pre)(void *), void *hook_arg);
+FL void        temporary_unroll_compose_mode(void);
 
 /* Accounts: `account', `unaccount' */
 FL int         c_account(void *v);
@@ -174,7 +175,6 @@ FL int         c_unaccount(void *v);
 /* `localopts' */
 FL int         c_localopts(void *v);
 
-FL void        temporary_localopts_free(void); /* XXX intermediate hack */
 FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
 
 /* Don't use n_var_* unless you *really* have to! */
@@ -1000,6 +1000,12 @@ FL int         c_source_if(void *v);
 FL bool_t      n_source_macro(enum n_lexinput_flags lif, char const *name,
                   char **lines, void (*on_finalize)(void*), void *finalize_arg);
 FL bool_t      n_source_command(enum n_lexinput_flags lif, char const *cmd);
+
+/* XXX See a_LEX_SLICE in source */
+FL void        n_source_slice_hack(char const *cmd, FILE *new_stdin,
+                  FILE *new_stdout, ui32_t new_options,
+                  void (*on_finalize)(void*), void *finalize_arg);
+FL void        n_source_slice_hack_remove_after_jump(void);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
