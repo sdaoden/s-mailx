@@ -3225,8 +3225,10 @@ in header summaries, unless they are in state
 .
 .Mx
 .It Ic colour
-\*(OP\*(NQ Manage colour mappings for the type of colour given as the
-(case-insensitive) first argument, which must be one of
+\*(OP\*(NQ Manage colour mappings of and for a
+.Sx "Coloured display" .
+The type of colour is given as the (case-insensitive) first argument,
+which must be one of
 .Ql 256
 for 256-colour terminals,
 .Ql 8 ,
@@ -3247,16 +3249,17 @@ for the given colour type is shown (as a special case giving
 .Ql all
 or
 .Ql *
-will iterate over all types in order).
-Otherwise the second argument defines the mappable slot, the third
+will show the mappings of all types).
+Otherwise the second argument defines the mappable slot, and the third
 argument a (comma-separated list of) colour and font attribute
 specification(s), and the optional fourth argument can be used to
 specify a precondition: if conditioned mappings exist they are tested in
 (creation) order unless a (case-insensitive) match has been found, and
 the default mapping (if any has been established) will only be chosen as
 a last resort.
-The types of precondition available depend on the mappable slot, the
-following of which exist:
+The types of precondition available depend on the mappable slot (see
+.Sx "Coloured display"
+for some examples), the following of which exist:
 .
 .Pp
 Mappings prefixed with
@@ -3266,10 +3269,10 @@ are used for the \*(OPal builtin Mailx-Line-Editor (MLE, see
 and do not support preconditions.
 .Pp
 .Bl -tag -compact -width view-partinfo
-.It Cd mle-position
+.It Ar mle-position
 This mapping is used for the position indicator that is visible when
 a line cannot be fully displayed on the screen.
-.It Cd mle-prompt
+.It Ar mle-prompt
 Used for the
 .Va prompt .
 .El
@@ -3285,7 +3288,7 @@ for elder messages (only honoured in conjunction with
 .Va datefield-markout-older ) .
 .Pp
 .Bl -tag -compact -width view-partinfo
-.It Cd sum-dotmark
+.It Ar sum-dotmark
 This mapping is used for the
 .Dq dotmark
 that can be created with the
@@ -3294,11 +3297,11 @@ or
 .Ql %<
 formats of the variable
 .Va headline .
-.It Cd sum-header
+.It Ar sum-header
 For the complete header summary line except the
 .Dq dotmark
 and the thread structure.
-.It Cd sum-thread
+.It Ar sum-thread
 For the thread structure which can be created with the
 .Ql %i
 format of the variable
@@ -3311,11 +3314,11 @@ Mappings prefixed with
 are used when displaying messages.
 .Pp
 .Bl -tag -compact -width view-partinfo
-.It Cd view-from_
+.It Ar view-from_
 This mapping is used for so-called
 .Ql From_
 lines, which are MBOX file format specific header lines.
-.It Cd view-header
+.It Ar view-header
 For header lines.
 A comma-separated list of headers to which the mapping applies may be
 given as a precondition; if the \*(OPal regular expression support is
@@ -3323,9 +3326,9 @@ available then if any of the
 .Dq magical
 (extended) regular expression characters is seen the precondition will
 be evaluated as (an extended) one.
-.It Cd view-msginfo
+.It Ar view-msginfo
 For the introductional message info line.
-.It Cd view-partinfo
+.It Ar view-partinfo
 For MIME part info lines.
 .El
 .
@@ -3335,7 +3338,7 @@ are understood, multiple of which can be specified in a comma-separated
 list:
 .
 .Bl -tag -width ft=
-.It Cd ft=
+.It Ar ft=
 a font attribute:
 .Ql bold ,
 .Ql reverse
@@ -3344,7 +3347,7 @@ or
 It is possible (and often applicable) to specify multiple font
 attributes for a single mapping.
 .
-.It Cd fg=
+.It Ar fg=
 foreground colour attribute:
 .Ql black ,
 .Ql blue ,
@@ -3380,7 +3383,7 @@ while [ $i -lt 256 ]; do bg $i; i=$(($i + 1)); done
 printf "\e033[0m\en"
 .Ed
 .
-.It Cd bg=
+.It Ar bg=
 background colour attribute (see
 .Cd fg=
 for possible values).
@@ -4769,29 +4772,29 @@ variable, as in, e.g.,
 Possible sorting criterions are:
 .Pp
 .Bl -tag -compact -width "subject"
-.It date
+.It Ar date
 Sort the messages by their
 .Ql Date:
 field, that is by the time they were sent.
-.It from
+.It Ar from
 Sort messages by the value of their
 .Ql From:
 field, that is by the address of the sender.
 If the
 .Va showname
 variable is set, the sender's real name (if any) is used.
-.It size
+.It Ar size
 Sort the messages by their size.
 .It spam
 \*(OP Sort the message by their spam score, as has been classified by
 .Ic spamrate .
-.It status
+.It Ar status
 Sort the messages by their message status.
-.It subject
+.It Ar subject
 Sort the messages by their subject.
-.It thread
+.It Ar thread
 Create a threaded display.
-.It to
+.It Ar to
 Sort messages by the value of their
 .Ql To:
 field, that is by the address of the recipient.
