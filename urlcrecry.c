@@ -521,7 +521,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    char const *env_addon[8];
    struct str s;
    FILE *pbuf;
-   union {char const *cp; int c; sighandler_type sht;} u;
+   union {int c; sighandler_type sht;} u;
    size_t cl, l;
    bool_t rv = FAL0;
    NYD2_ENTER;
@@ -534,11 +534,10 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
          NULL)->s;
    env_addon[3] = str_concat_csvl(&s, AGENT_HOST_PORT, "=", urlp->url_h_p.s,
          NULL)->s;
-   u.cp = ok_vlook(TMPDIR);
-   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", u.cp, NULL)->s;
-   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", u.cp, NULL)->s;
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, /* TODO v15 */
+         "=", ok_vlook(TMPDIR), NULL)->s;
 
-   env_addon[6] = NULL;
+   env_addon[5] = NULL;
 
    if ((pbuf = Popen(comm, "r", ok_vlook(SHELL), env_addon, -1)) == NULL) {
       n_err(_("*agent-shell-lookup* startup failed (%s)\n"), comm);

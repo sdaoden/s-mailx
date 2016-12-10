@@ -255,17 +255,16 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    env_addon[3] = str_concat_csvl(&s, NAILENV_CONTENT_EVIDENCE, "=", cp,
          NULL)->s;
 
-   cp = ok_vlook(TMPDIR);
-   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", cp, NULL)->s;
-   env_addon[5] = str_concat_csvl(&s, "TMPDIR", "=", cp, NULL)->s;
+   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, /* TODO v15*/
+         "=", ok_vlook(TMPDIR), NULL)->s;
 
-   env_addon[6] = NULL;
+   env_addon[5] = NULL;
 
    /* NAIL_FILENAME_TEMPORARY? */
    if (tmpname != NULL) {
-      env_addon[6] = str_concat_csvl(&s, NAILENV_FILENAME_TEMPORARY, "=",
+      env_addon[5] = str_concat_csvl(&s, NAILENV_FILENAME_TEMPORARY, "=",
             tmpname, NULL)->s;
-      env_addon[7] = NULL;
+      env_addon[6] = NULL;
    }
 
    sh = ok_vlook(SHELL);
