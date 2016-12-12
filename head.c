@@ -906,8 +906,6 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          np = checkaddrs(lextract(val, GREF),
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                NULL);
-         if (np == NULL || np->n_flink != NULL)
-            goto jebadhead;
          ++seenfields;
          hq->h_in_reply_to = np;
       } else if ((pstate & PS_t_FLAG) &&
