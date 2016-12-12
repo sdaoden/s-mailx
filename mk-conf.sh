@@ -6,8 +6,8 @@ export LC_ALL
 
 # The feature set, to be kept in sync with make.rc
 # If no documentation given, the option is used as such; if doc is a hyphen,
-# entry is suppressed when configuration overview is printed: most likely for
-# obsolete features etc.
+# entry is suppressed when configuration overview is printed, and also in the
+# *features* string: most likely for obsolete features etc.
 XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    SOCKETS='Network support' \
@@ -2647,13 +2647,13 @@ printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES "#' >> ${h}
 sep=
 for opt
 do
+   sdoc=`option_doc_of ${opt}`
+   [ -z "${sdoc}" ] && continue
    sopt="`echo ${opt} | ${tr} '[A-Z]_' '[a-z]-'`"
    feat_yes ${opt} && sign=+ || sign=-
    printf -- "${sep}${sign}${sopt}" >> ${h}
    sep=','
-   i=`option_doc_of ${opt}`
-   [ -z "${i}" ] && continue
-   msg " %s %s: %s" ${sign} ${sopt} "${i}"
+   msg " %s %s: %s" ${sign} ${sopt} "${sdoc}"
 done
 # TODO instead of using sh+tr+awk+printf, use awk, drop option_doc_of, inc here
 #exec 5>&1 >>${h}
