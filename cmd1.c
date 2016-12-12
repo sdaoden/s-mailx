@@ -176,7 +176,11 @@ __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _ISTO       = 1<<2,
       _IFMT       = 1<<3,
       _LOOP_MASK  = (1<<4) - 1,
-      _SFMT       = 1<<4
+      _SFMT       = 1<<4,        /* It is 'S' */
+      /* For the simple byte-based counts in wleft and n we sometimes need
+       * adjustments to compensate for additional bytes of UTF-8 sequences */
+      _PUTCB_UTF8_SHIFT = 5,
+      _PUTCB_UTF8_MASK = 3<<5
    } flags = _NONE;
    NYD_ENTER;
    UNUSED(buf);
@@ -346,6 +350,7 @@ jredo:
                   cbuf[1] = (char)0x97, cbuf[2] = (char)0x82;
                c = (char)0xE2;
                cbuf[3] = '\0';
+               flags |= 2 << _PUTCB_UTF8_SHIFT;
             }
          } else
             c = ' ';
@@ -378,7 +383,15 @@ jputcb:
             n = (n < 0) ? -wleft : wleft;
          cbuf[0] = c;
          n = fprintf(f, "%*s", n, cbuf);
-         wleft = (n >= 0) ? wleft - n : 0;
+         if (n >= 0) {
+            wleft -= n;
+            if ((n = (flags & _PUTCB_UTF8_MASK)) != 0) {
+               n >>= _PUTCB_UTF8_SHIFT;
+               wleft += n;
+            }
+         } else {
+            wleft = 0; /* TODO I/O error.. ? break? */
+         }
 #ifdef HAVE_COLOUR
          if ((cpen_new = cpen_bas) != cpen_cur)
             n_colour_pen_put(cpen_cur = cpen_new, f);
