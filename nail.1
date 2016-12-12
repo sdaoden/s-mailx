@@ -5333,7 +5333,8 @@ The actual escape character can be set via the internal variable
 it defaults to the tilde
 .Ql ~ .
 .
-.Bl -tag -width ".Ic __ filename"
+.
+.Bl -tag -width indent
 .Mx
 .It Ic ~~ Ar string
 Insert the string of text in the message prefaced by a single
@@ -5648,6 +5649,108 @@ retain the original text of the message.
 E.g., the command
 .Xr fmt 1
 is often used as a rejustifying filter.
+.
+.
+.Mx
+.It Ic ~^ Op Ar cmd Op Ar subcmd Op Ar header-name Op Ar header-body
+Low-level command ment for scripted message access, i.e., for
+.Va on-compose-done-shell .
+The used protocol is likely subject to changes, and therefore the
+mentioned hook outputs the used protocol version as an initial line.
+In general the first field of a response line represents a status code
+which specifies whether a command was successful or not, whether result
+data is to be expected, and if, the format of the result data.
+The status codes are:
+.
+.Pp
+.Bl -tag -compact -width _210_
+.It Ql 210
+Status ok; the remains of the line are the result.
+.It Ql 211
+Status ok; the rest of the line is optionally used for more status.
+What follows are lines of result addresses, terminated by an empty line.
+The address lines consist of two fields, the first of which is the
+plain address, e.g.,
+.Ql bob@exam.ple ,
+separated by a single ASCII SP space from the second which contains the
+unstripped address, even if that is identical to the first field, e.g.,
+.Ql (Lovely) Bob <bob@exam.ple> .
+.It Ql 212
+Status ok; the rest of the line is optionally used for more status.
+What follows are lines of furtherly unspecified string content,
+terminated by an empty line.
+.It Ql 500
+Syntax error; invalid command.
+.It Ql 501
+Syntax error in parameters or arguments.
+.It Ql 505
+Error: an argument fails verification.
+For example an invalid address has been specified.
+.It Ql 506
+Error: an otherwise valid argument is rendered invalid due to context.
+For example, a second address is added to a header which may consist of
+a single address only.
+.El
+.
+.Pp
+If a command indicates failure then the message will have remained
+unmodified.
+The following commands are supported:
+.
+.
+.Pp
+.Bl -tag -compact -width headers
+.It Ar header
+This command allows listing, inspection, and editing of message headers.
+The second argument specifies the subcommand to apply, one of:
+.
+.Pp
+.Bl -tag -compact -width remove
+.It Ar list
+Without a third argument a list of all yet existing headers is given via
+.Ql 210 .
+A third argument restricts output to the given header only, which may
+fail with
+.Ql 501
+if no such field is defined.
+.
+.It Ar show
+Shows the content of the header given as the third argument.
+Dependent on the header type this may respond with
+.Ql 211
+or
+.Ql 212 ;
+any failure results in
+.Ql 501 .
+.
+.It Ar remove
+This will remove all instances of the header given as the third
+argument, reporting
+.Ql 210
+upon success or
+.Ql 501
+if no such header can be found.
+.
+.It Ar insert
+Create a new or an additional instance of the header given in the third
+argument, with the header body content as given in the fourth argument
+(the remains of the line).
+It may return
+.Ql 501
+if the third argument specifies a free-form header field name that is
+invalid, or if body content extraction fails to succeed,
+.Ql 505
+if any extracted address does not pass syntax and/or security checks, and
+.Ql 506
+to indicate prevention of excessing a single-instance header \(em note that
+.Ql Subject:
+can be appended to (a space separator will be added automatically first).
+.Ql 210
+is returned upon success.
+.El
+.El
+.
+.
 .El
 .\" }}}
 .
