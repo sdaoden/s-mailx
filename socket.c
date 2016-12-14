@@ -329,7 +329,7 @@ jpseudo_jump:
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
-         n_err(_("%sConnecting to %s:%s ..."),
+         n_err(_("%sConnecting to %s:%s ... "),
                (res == res0 ? n_empty : "\n"), hbuf, serv);
       }
 
