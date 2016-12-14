@@ -1719,6 +1719,9 @@ FL struct n_string *n_shexp_quote(struct n_string *store,
                      struct str const *input, bool_t rndtrip);
 FL char *      n_shexp_quote_cp(char const *cp, bool_t rndtrip);
 
+/* Can name be used as a variable name? */
+FL bool_t      n_shexp_is_valid_varname(char const *name);
+
 /*
  * signal.c
  */

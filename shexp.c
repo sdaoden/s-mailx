@@ -1607,4 +1607,19 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
    return rv;
 }
 
+FL bool_t
+n_shexp_is_valid_varname(char const *name){
+   char c;
+   bool_t rv;
+   NYD2_ENTER;
+
+   for(rv = TRU1; (c = *name++) != '\0';)
+      if(!a_SHEXP_ISVARC(c)){
+         rv = FAL0;
+         break;
+      }
+   NYD2_LEAVE;
+   return rv;
+}
+
 /* s-it-mode */
