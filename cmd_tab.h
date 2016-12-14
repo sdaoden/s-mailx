@@ -416,6 +416,9 @@
    { "environ", &c_environ, (G | M | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
+   { "read", &c_read, (G | M | WYSHLIST), 1, 1000
+     DS(N_("Read a line from standard input into <variable>(s)")) },
+
 #ifdef HAVE_MEMORY_DEBUG
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },

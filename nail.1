@@ -4512,6 +4512,26 @@ unless the rewrite of edit file fails,
 in which case the user can escape with the exit command.
 .
 .Mx
+.It Ic read
+\*(NQ Read a line from standard input, and assign the splitted and
+trimmed line data to the given variables.
+If there are more fields than variables, assign successive fields to the
+last given variable.
+If there are less fields than variables, assign the empty string to the
+remains.
+\*(ID This command will likely be extended towards more
+.Xr read 1
+compatibility: for now splitting always occurs at whitespace, reverse
+solidus newline escaping is always supported, and the \*(OPal line
+editing features are always available when on an interactive terminal.
+.Bd -literal -offset indent
+? read a b c
+   H  e  l  l  o
+? echo "<$a> <$b> <$c>"
+<H> <e> <l  l  o>
+.Ed
+.
+.Mx
 .It Ic redirect
 Same as
 .Ic resend .

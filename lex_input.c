@@ -1616,6 +1616,66 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
    return rv;
 }
 
+FL int
+c_read(void *v){ /* TODO IFS? how? -r */
+   char const **argv, *cp, *cp2;
+   int rv;
+   NYD2_ENTER;
+
+   rv = 0;
+   for(argv = v; (cp = *argv++) != NULL;)
+      if(!n_shexp_is_valid_varname(cp)){
+         n_err(_("`read': not a valid variable name: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         rv = 1;
+      }
+   if(rv)
+      goto jleave;
+
+   cp = n_lex_input_cp(((pstate & PS_RECURSED /* TODO this IS compose-mode! */
+            ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
+         n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
+         n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
+         NULL, NULL);
+   if(cp == NULL)
+      cp = n_empty;
+
+   for(argv = v; *argv != NULL; ++argv){
+      char c;
+
+      while(blankchar(*cp))
+         ++cp;
+      if(*cp == '\0')
+         break;
+
+      /* The last variable gets the remaining line less trailing IFS */
+      if(argv[1] == NULL){
+         for(cp2 = cp; *cp2 != '\0'; ++cp2)
+            ;
+         for(; cp2 > cp; --cp2){
+            c = cp2[-1];
+            if(!blankchar(c))
+               break;
+         }
+      }else
+         for(cp2 = cp; (c = *++cp2) != '\0';)
+            if(blankchar(c))
+               break;
+
+      vok_vset(*argv, savestrbuf(cp, PTR2SIZE(cp2 - cp)));
+      cp = cp2;
+   }
+
+   /* Set the remains to the empty string */
+   for(; *argv != NULL; ++argv)
+      vok_vset(*argv, "");
+
+   rv = 0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL void
 n_load(char const *name){
    struct a_lex_input_stack *lip;
