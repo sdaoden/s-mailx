@@ -142,7 +142,7 @@
      DS(N_("Type (matching) headers of <msglist> (a search specification)")) },
    { "search", &c_from, (A | MSGLIST), 0, MMNORM
      DS(N_("Search for <msglist>, type matching headers")) },
-   { "file", &c_file, (T | M | WYRALIST), 0, 1
+   { "file", &c_file, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `reply', but derive filename from first sender")) },
@@ -150,9 +150,9 @@
      DS(N_("Like `reply', but derive filename from first sender")) },
    { "followupsender", &c_followupsender, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Like `Followup', but always reply to the sender only")) },
-   { "folder", &c_file, (T | M | WYRALIST), 0, 1
+   { "folder", &c_file, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new <mailbox> or show the current one")) },
-   { "folders", &c_folders, (T | M | WYRALIST), 0, 1
+   { "folders", &c_folders, (M | T | WYRALIST), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
    { "z", &c_scroll, (A | M | STRLIST), 0, 0
      DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
@@ -372,9 +372,9 @@
         DS(N_("Encode <string-list> for usage in an URL")) },
       { "urldecode", &c_urldecode, (G | M | WYRALIST), 1, 1000
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
-   { "File", &c_File, (T | M | WYRALIST), 0, 1
+   { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
-   { "Folder", &c_File, (T | M | WYRALIST), 0, 1
+   { "Folder", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "mlist", &c_mlist, (M | WYRALIST), 0, 1000
      DS(N_("Show all known mailing lists or define some")) },
