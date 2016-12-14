@@ -125,6 +125,9 @@ static int                 charcount(char *str, int c);
 
 static char const *        nexttoken(char const *cp);
 
+/* TODO v15: change *customhdr* syntax and use shell tokens?! */
+static char *a_head_customhdr__sep(char **iolist);
+
 static char const *
 _from__skipword(char const *wp)
 {
@@ -687,6 +690,54 @@ nexttoken(char const *cp)
    }
    NYD2_LEAVE;
    return cp;
+}
+
+static char *
+a_head_customhdr__sep(char **iolist){
+   char *cp, c, *base;
+   bool_t isesc, anyesc;
+   NYD2_ENTER;
+
+   for(base = *iolist; base != NULL; base = *iolist){
+      while((c = *base) != '\0' && blankspacechar(c))
+         ++base;
+
+      for(isesc = anyesc = FAL0, cp = base;; ++cp){
+         if(n_UNLIKELY((c = *cp) == '\0')){
+            *iolist = NULL;
+            break;
+         }else if(!isesc){
+            if(c == ','){
+               *iolist = cp + 1;
+               break;
+            }
+            isesc = (c == '\\');
+         }else{
+            isesc = FAL0;
+            anyesc |= (c == ',');
+         }
+      }
+
+      while(cp > base && blankspacechar(cp[-1]))
+         --cp;
+      *cp = '\0';
+
+      if(*base != '\0'){
+         if(anyesc){
+            char *ins;
+
+            for(ins = cp = base;; ++ins)
+               if((c = *cp) == '\\' && cp[1] == ','){
+                  *ins = ',';
+                  cp += 2;
+               }else if((*ins = (++cp, c)) == '\0')
+                  break;
+         }
+         break;
+      }
+   }
+   NYD2_LEAVE;
+   return base;
 }
 
 FL char const *
@@ -2191,6 +2242,65 @@ header_match(struct message *mp, struct search_expr const *sep)
 jleave:
    if (linebuf != NULL)
       free(linebuf);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL struct n_header_field *
+n_customhdr_query(void){
+   char const *vp;
+   struct n_header_field *rv, **tail, *hfp;
+   NYD_ENTER;
+
+   rv = NULL;
+
+   if((vp = ok_vlook(customhdr)) != NULL){
+      char *buf;
+
+      tail = &rv;
+      buf = savestr(vp);
+jch_outer:
+      while((vp = a_head_customhdr__sep(&buf)) != NULL){
+         ui32_t nl, bl;
+         char const *nstart, *cp;
+
+         for(nstart = cp = vp;; ++cp){
+            if(fieldnamechar(*cp))
+               continue;
+            if(*cp == '\0'){
+               if(cp == nstart){
+                  n_err(_("Invalid nameless *customhdr* entry\n"));
+                  goto jch_outer;
+               }
+            }else if(*cp != ':' && !blankchar(*cp)){
+jch_badent:
+               n_err(_("Invalid *customhdr* entry: %s\n"), vp);
+               goto jch_outer;
+            }
+            break;
+         }
+         nl = (ui32_t)PTR2SIZE(cp - nstart);
+
+         while(blankchar(*cp))
+            ++cp;
+         if(*cp++ != ':')
+            goto jch_badent;
+         while(blankchar(*cp))
+            ++cp;
+         bl = (ui32_t)strlen(cp) +1;
+
+         *tail =
+         hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
+               nl +1 + bl);
+            tail = &hfp->hf_next;
+         hfp->hf_next = NULL;
+         hfp->hf_nl = nl;
+         hfp->hf_bl = bl - 1;
+         memcpy(hfp->hf_dat, nstart, nl);
+            hfp->hf_dat[nl++] = '\0';
+            memcpy(hfp->hf_dat + nl, cp, bl);
+      }
+   }
    NYD_LEAVE;
    return rv;
 }

@@ -56,6 +56,7 @@ static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
 static si8_t   _sendout_error;
 
+/* */
 static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
                         char const *prefix, FILE *fo, struct name **xp,
@@ -2132,7 +2133,7 @@ j_mft_add:
       }
    }
 
-   /* Custom headers, as via `customhdr' */
+   /* Custom headers, as via *customhdr* */
    if(!nosend_msg){
       struct n_header_field *hfp;
 

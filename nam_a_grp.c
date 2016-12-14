@@ -44,8 +44,7 @@ enum group_type {
    GT_ALIAS       = 1<< 0,
    GT_MLIST       = 1<< 1,
    GT_SHORTCUT    = 1<< 2,
-   GT_CUSTOMHDR   = 1<< 3,
-   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CUSTOMHDR,
+   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT,
 
    /* Subtype bits and flags */
    GT_SUBSCRIBE   = 1<< 4,
@@ -124,9 +123,6 @@ static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 /* `shortcut' */
 static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hash */
 
-/* `customhdr' */
-static struct group     *_customhdr_heads[HSHSIZE]; /* TODO dynamic hash */
-
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
 
@@ -198,9 +194,6 @@ static void          _mlmux_linkout(struct group *gp);
 # define _MLMUX_LINKIN(GP)
 # define _MLMUX_LINKOUT(GP)
 #endif
-
-/* TODO v15: drop *customhdr* (OR change syntax and use shell tokens) */
-static char *a_nag_custom_sep(char **iolist);
 
 static bool_t
 _same_name(char const *n1, char const *n2)
@@ -425,7 +418,7 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
    gp = *(glp->gl_htable = glp->gl_slot =
           ((gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
-            (gt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads))) +
+            (/*gt & GT_SHORTCUT ?*/ _shortcut_heads /*: NULL */))) +
            torek_hash(id) % HSHSIZE));
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
@@ -459,7 +452,7 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
 
    for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
-            (gt & GT_SHORTCUT ? _shortcut_heads : _customhdr_heads))), i = 0;
+            (/*gt & GT_SHORTCUT ?*/ _shortcut_heads /*: NULL */))), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -508,7 +501,6 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
    i = n_ALIGN(sizeof(*gp) - n_VFIELD_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
-   case GT_CUSTOMHDR:
       addsz = sizeof(struct grp_names_head);
       break;
    case GT_MLIST:
@@ -528,7 +520,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
    gp->g_type = gt;
    memcpy(gp->g_id, id, l);
 
-   if (gt & (GT_ALIAS | GT_CUSTOMHDR)) {
+   if (gt & GT_ALIAS) {
       struct grp_names_head *gnhp;
 
       GP_TO_SUBCLASS(gnhp, gp);
@@ -604,7 +596,7 @@ __group_del(struct group_lookup *glp)
    }
    glp->gl_group = gp;
 
-   if (x->g_type & (GT_ALIAS | GT_CUSTOMHDR))
+   if (x->g_type & GT_ALIAS)
       __names_del(x);
 #ifdef HAVE_REGEX
    else if (/*(x->g_type & GT_MLIST) &&*/ x->g_type & GT_REGEX) {
@@ -652,8 +644,8 @@ _group_print_all(enum group_type gt)
    xgt = gt & GT_PRINT_MASK;
    gpa = (xgt & GT_ALIAS ? _alias_heads
          : (xgt & GT_MLIST ? _mlist_heads
-         : (xgt & GT_SHORTCUT ? _shortcut_heads
-         : _customhdr_heads)));
+         : (/*xgt & GT_SHORTCUT ?*/ _shortcut_heads
+         /*: NULL */)));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -756,14 +748,6 @@ _group_print(struct group const *gp, FILE *fo)
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "wysh shortcut %s %s\n",
       gp->g_id, n_shexp_quote_cp(cp, TRU1));
-   } else if (gp->g_type & GT_CUSTOMHDR) {
-      struct grp_names_head *gnhp;
-      struct grp_names *gnp;
-
-      GP_TO_SUBCLASS(gnhp, gp);
-      for(rv = 0, gnp = gnhp->gnh_head; gnp != NULL; ++rv, gnp = gnp->gn_next)
-         fprintf(fo, "customhdr %s %s\n",
-            gp->g_id, n_shexp_quote_cp(gnp->gn_id, TRU1));
    }
 
    NYD_LEAVE;
@@ -905,54 +889,6 @@ _mlmux_linkout(struct group *gp)
    NYD_LEAVE;
 }
 #endif /* HAVE_REGEX */
-
-static char *
-a_nag_custom_sep(char **iolist){
-   char *cp, c, *base;
-   bool_t isesc, anyesc;
-   NYD2_ENTER;
-
-   for(base = *iolist; base != NULL; base = *iolist){
-      while((c = *base) != '\0' && blankspacechar(c))
-         ++base;
-
-      for(isesc = anyesc = FAL0, cp = base;; ++cp){
-         if(n_UNLIKELY((c = *cp) == '\0')){
-            *iolist = NULL;
-            break;
-         }else if(!isesc){
-            if(c == ','){
-               *iolist = cp + 1;
-               break;
-            }
-            isesc = (c == '\\');
-         }else{
-            isesc = FAL0;
-            anyesc |= (c == ',');
-         }
-      }
-
-      while(cp > base && blankspacechar(cp[-1]))
-         --cp;
-      *cp = '\0';
-
-      if(*base != '\0'){
-         if(anyesc){
-            char *ins;
-
-            for(ins = cp = base;; ++ins)
-               if((c = *cp) == '\\' && cp[1] == ','){
-                  *ins = ',';
-                  cp += 2;
-               }else if((*ins = (++cp, c)) == '\0')
-                  break;
-         }
-         break;
-      }
-   }
-   NYD2_LEAVE;
-   return base;
-}
 
 FL struct name *
 nalloc(char const *str, enum gfield ntype)
@@ -1761,197 +1697,6 @@ shortcut_expand(char const *str)
       str = NULL;
    NYD_LEAVE;
    return str;
-}
-
-FL int
-c_customhdr(void *v){
-   struct group *gp;
-   char const **argv, *hcp;
-   int rv;
-   NYD_ENTER;
-
-   rv = 0;
-
-   if((hcp = *(argv = v)) == NULL){
-      _group_print_all(GT_CUSTOMHDR);
-      goto jleave;
-   }
-
-   /* Verify the header field name */
-   for(rv = 1;; ++hcp){
-      if(fieldnamechar(*hcp))
-         continue;
-      if(*hcp == '\0'){
-         if(hcp == *argv){
-            n_err(_("`customhdr': no name specified\n"));
-            goto jleave;
-         }
-         hcp = *argv;
-         break;
-      }
-      n_err(_("`customhdr': invalid name: %s\n"), *argv);
-      goto jleave;
-   }
-   rv = 0;
-
-   if(*++argv == NULL){
-      if((gp = _group_find(GT_CUSTOMHDR, hcp)) != NULL)
-         _group_print(gp, stdout);
-      else{
-         n_err(_("No such `customhdr': %s\n"), hcp);
-         rv = 1;
-      }
-   }else{
-      struct grp_names_head *gnhp;
-      struct grp_names *gnp, *lgnp;
-      size_t i, l;
-      char *cp;
-
-      if(pstate & PS_WYSHLIST_SAW_CONTROL){
-         n_err(_("`customhdr': control characters not allowed: %s: %s%s\n"),
-            hcp, n_shexp_quote_cp(*argv, FAL0),
-            (argv[1] != NULL ? "..." : n_empty));
-         rv = 1;
-         goto jleave;
-      }
-
-      if((gp = _group_find(GT_CUSTOMHDR, hcp)) == NULL)
-         gp = _group_fetch(GT_CUSTOMHDR, hcp, 0);
-
-      for(l = 1, i = 0; argv[i] != NULL; ++i)
-         l += strlen(argv[i]) + 1;
-      gnp = smalloc(sizeof *gnp - n_VFIELD_SIZEOF(struct grp_names, gn_id) + l);
-
-      GP_TO_SUBCLASS(gnhp, gp);
-      if((lgnp = gnhp->gnh_head) != NULL){
-         while(lgnp->gn_next != NULL)
-            lgnp = lgnp->gn_next;
-         lgnp->gn_next = gnp;
-      }else
-         gnhp->gnh_head = gnp;
-
-      gnp->gn_next = NULL;
-      for(cp = &gnp->gn_id[0], i = 0; argv[i] != NULL; ++i){
-         if(i > 0)
-            *cp++ = ' ';
-         l = strlen(argv[i]);
-         memcpy(cp, argv[i], l);
-         cp += l;
-      }
-      *cp = '\0';
-   }
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_uncustomhdr(void *v){
-   int rv;
-   char **argv;
-   NYD_ENTER;
-
-   rv = 0;
-
-   argv = v;
-   do{
-      if(!_group_del(GT_CUSTOMHDR, *argv)){
-         n_err(_("No such custom header: %s\n"), *argv);
-         rv = 1;
-      }
-   }while(*++argv != NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL struct n_header_field *
-n_customhdr_query(void){ /* XXX Uses salloc()! */
-   struct group const *gp;
-   ui32_t h;
-   struct n_header_field *rv, **tail, *hfp;
-   NYD_ENTER;
-
-   rv = NULL;
-   tail = &rv;
-
-   for(h = 0; h < HSHSIZE; ++h)
-      for(gp = _customhdr_heads[h]; gp != NULL; gp = gp->g_next){
-         struct grp_names *gnp;
-         struct grp_names_head *gnhp;
-
-         GP_TO_SUBCLASS(gnhp, gp);
-
-         for(gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next){
-            ui32_t nl, bl;
-
-            nl = (ui32_t)strlen(gp->g_id) +1;
-            bl = (ui32_t)strlen(gnp->gn_id) +1;
-
-            *tail =
-            hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-                  nl + bl);
-               tail = &hfp->hf_next;
-            hfp->hf_next = NULL;
-            hfp->hf_nl = nl - 1;
-            hfp->hf_bl = bl - 1;
-            memcpy(hfp->hf_dat, gp->g_id, nl);
-               memcpy(hfp->hf_dat + nl, gnp->gn_id, bl);
-         }
-      }
-
-   /* TODO We have no copy-on-write environments yet, and since custom headers
-    * TODO are a perfect subject for localization, add the OBSOLETE variable
-    * TODO *customhdr*, too */
-   {
-      char const *vp = ok_vlook(customhdr);
-
-      if(vp != NULL){
-         char *buf = savestr(vp);
-jch_outer:
-         while((vp = a_nag_custom_sep(&buf)) != NULL){
-            ui32_t nl, bl;
-            char const *nstart, *cp;
-
-            for(nstart = cp = vp;; ++cp){
-               if(fieldnamechar(*cp))
-                  continue;
-               if(*cp == '\0'){
-                  if(cp == nstart){
-                     n_err(_("Invalid nameless *customhdr* entry\n"));
-                     goto jch_outer;
-                  }
-               }else if(*cp != ':' && !blankchar(*cp)){
-jch_badent:
-                  n_err(_("Invalid *customhdr* entry: %s\n"), vp);
-                  goto jch_outer;
-               }
-               break;
-            }
-            nl = (ui32_t)PTR2SIZE(cp - nstart);
-
-            while(blankchar(*cp))
-               ++cp;
-            if(*cp++ != ':')
-               goto jch_badent;
-            while(blankchar(*cp))
-               ++cp;
-            bl = (ui32_t)strlen(cp) +1;
-
-            *tail =
-            hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-                  nl +1 + bl);
-               tail = &hfp->hf_next;
-            hfp->hf_next = NULL;
-            hfp->hf_nl = nl;
-            hfp->hf_bl = bl - 1;
-            memcpy(hfp->hf_dat, nstart, nl);
-               hfp->hf_dat[nl++] = '\0';
-               memcpy(hfp->hf_dat + nl, cp, bl);
-         }
-      }
-   }
-   NYD_LEAVE;
-   return rv;
 }
 
 /* s-it-mode */

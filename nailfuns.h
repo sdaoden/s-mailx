@@ -891,6 +891,9 @@ FL int         grab_headers(enum n_lexinput_flags lif, struct header *hp,
 /* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
 FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
 
+/* Query *customhdr* */
+FL struct n_header_field *n_customhdr_query(void);
+
 /*
  * ignore.c
  */
@@ -1459,13 +1462,6 @@ FL int         c_shortcut(void *v);
 FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
-
-/* `(un)?customhdr'.
- * Query a list of all currently defined custom headers (salloc()ed) */
-FL int         c_customhdr(void *v);
-FL int         c_uncustomhdr(void *v);
-
-FL struct n_header_field * n_customhdr_query(void);
 
 /*
  * path.c

@@ -390,10 +390,6 @@
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
-   { "customhdr", &c_customhdr, (M | WYSHLIST), 0, 1000
-     DS(N_("Show [all]/<header>, or define a custom <header> to <:data:>")) },
-   { "uncustomhdr", &c_uncustomhdr, (M | WYSHLIST), 1, 1000
-     DS(N_("Delete custom <:header:> (* for all)")) },
 
    { "version", &a_lex_c_version, (H | M | NOLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
