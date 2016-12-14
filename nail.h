@@ -924,10 +924,11 @@ enum n_lexinput_flags{
    n__LEXINPUT_CTX_MASK = 3,
    n__LEXINPUT_CTX_MAX1 = n_LEXINPUT_CTX_COMPOSE + 1,
 
-   n_LEXINPUT_NL_ESC = 1<<8,           /* Support "\\$" line continuation */
-   n_LEXINPUT_NL_FOLLOW = 1<<9,        /* ..on such a follow line */
-   n_LEXINPUT_PROMPT_NONE = 1<<10,     /* Don't print prompt */
-   n_LEXINPUT_PROMPT_EVAL = 1<<11,     /* Instead, evaluate *prompt* */
+   n_LEXINPUT_FORCE_STDIN = 1<<8,      /* Even in macro, use stdin (`read')! */
+   n_LEXINPUT_NL_ESC = 1<<9,           /* Support "\\$" line continuation */
+   n_LEXINPUT_NL_FOLLOW = 1<<10,       /* ..on such a follow line */
+   n_LEXINPUT_PROMPT_NONE = 1<<11,     /* Don't print prompt */
+   n_LEXINPUT_PROMPT_EVAL = 1<<12,     /* Instead, evaluate *prompt* */
 #if 0
    n_LEXINPUT_DROP_TRAIL_SPC = 1<<14,  /* Drop any trailing space */
    n_LEXINPUT_DROP_LEAD_SPC = 1<<15,   /* ..leading ones */

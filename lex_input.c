@@ -1429,7 +1429,8 @@ FL int
 
    /* Special case macro mode: never need to prompt, lines have always been
     * unfolded already */
-   if(a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO)){
+   if(!(lif & n_LEXINPUT_FORCE_STDIN) &&
+         a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO)){
       if(*linebuf != NULL)
          free(*linebuf);
 
