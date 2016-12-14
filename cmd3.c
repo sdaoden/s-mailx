@@ -959,7 +959,9 @@ c_newmail(void *v)
    NYD_ENTER;
    n_UNUSED(v);
 
-   if ((val = setfile(mailname,
+   if (pstate & PS_HOOK_MASK)
+      n_err(_("Cannot call `newmail' from within a hook\n"));
+   else if ((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
          ) == 0) {
       mdot = getmdot(1);
