@@ -290,8 +290,7 @@ a_lex_c_ghost(void *v){
       }
 
    nl = strlen(argv[0]) +1;
-   gp = smalloc(sizeof(*gp) - n_VFIELD_SIZEOF(struct a_lex_ghost, lg_name) +
-         nl + cl);
+   gp = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_ghost, lg_name) + nl + cl);
    gp->lg_next = a_lex_ghosts;
    a_lex_ghosts = gp;
    memcpy(gp->lg_name, argv[0], nl);
@@ -1141,11 +1140,9 @@ a_lex_source_file(char const *file, bool_t silent_error){
       goto jleave;
    }
 
-   lip = smalloc(sizeof(*lip) -
-         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
          (nlen = strlen(nbuf) +1));
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
    lip->li_cond = condstack_release();
@@ -1687,10 +1684,8 @@ n_load(char const *name){
       goto jleave;
 
    i = strlen(name) +1;
-   lip = smalloc(sizeof(*lip) -
-         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) + i);
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) + i);
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_file = fip;
    lip->li_flags = a_LEX_FREE;
    memcpy(lip->li_name, name, i);
@@ -1713,8 +1708,7 @@ n_load_Xargs(char const **lines, size_t cnt){
    NYD_ENTER;
 
    lip = (void*)buf;
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_flags = a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          a_LEX_MACRO_X_OPTION | a_LEX_SUPER_MACRO;
    memcpy(lip->li_name, name, sizeof name);
@@ -1820,11 +1814,9 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
    int rv;
    NYD_ENTER;
 
-   lip = smalloc(sizeof(*lip) -
-         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
          (i = strlen(name) +1));
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
    lip->li_cond = condstack_release();
@@ -1854,11 +1846,9 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    i = strlen(cmd) +1;
    ial = n_ALIGN(i);
 
-   lip = smalloc(sizeof(*lip) -
-         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
          ial + 2*sizeof(char*));
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_cond = condstack_release();
    n_memory_autorec_push(&lip->li_autorecmem[0]);
@@ -1883,11 +1873,9 @@ n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    size_t i;
    NYD_ENTER;
 
-   lip = smalloc(sizeof(*lip) -
-         n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
          (i = strlen(cmd) +1));
-   memset(lip, 0,
-      sizeof(*lip) - n_VFIELD_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = new_stdin;
    lip->li_flags = a_LEX_FREE | a_LEX_SLICE;

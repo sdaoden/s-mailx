@@ -317,8 +317,7 @@ a_colour_mux(char **argv){
       }
 
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? strlen(ctag) : 0;
-      cmp = smalloc(sizeof(*cmp) -
-            n_VFIELD_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = smalloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
             tl +1 + (ul = strlen(argv[1])) +1 + (cl = strlen(cp)) +1);
 
       /* .cm_buf stuff */

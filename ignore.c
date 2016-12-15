@@ -745,7 +745,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       struct a_ignore_re *x;
       size_t i;
 
-      i = ++len + sizeof(*irp) - n_VFIELD_SIZEOF(struct a_ignore_re, ir_input);
+      i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
       irp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
       memcpy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
@@ -771,8 +771,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       ui32_t hi;
       size_t i;
 
-      i = sizeof(*ifp) - n_VFIELD_SIZEOF(struct a_ignore_field, if_field) +
-            len + 1;
+      i = n_VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
       ifp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
       memcpy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';

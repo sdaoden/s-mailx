@@ -845,8 +845,7 @@ jleave:
    return p.p_vp;
 
 jhuge:
-   m.ahp = n_alloc(sizeof(*m.ahp) -
-         n_VFIELD_SIZEOF(struct a_memory_ars_huge, mah_buf) + size);
+   m.ahp = n_alloc(n_VSTRUCT_SIZEOF(struct a_memory_ars_huge, mah_buf) + size);
    m.ahp->mah_last = macp->mac_huge;
    macp->mac_huge = m.ahp;
    p.p_cp = m.ahp->mah_buf;
@@ -1009,13 +1008,12 @@ FL void *
    /* C99 */{
       size_t i;
 
-      i = size + sizeof(*malp) -
-            n_VFIELD_SIZEOF(struct a_memory_ars_lofi, mal_buf);
+      i = n_VSTRUCT_SIZEOF(struct a_memory_ars_lofi, mal_buf) + size;
       i = n_MAX(i, n_MEMORY_AUTOREC_SIZE);
       malp = n_alloc(i);
       malp->mal_last = macp->mac_lofi;
       malp->mal_caster = &malp->mal_buf[size];
-      i -= sizeof(*malp) + n_VFIELD_SIZEOF(struct a_memory_ars_lofi, mal_buf);
+      i -= n_VSTRUCT_SIZEOF(struct a_memory_ars_lofi, mal_buf);
       malp->mal_max = &malp->mal_buf[i];
       macp->mac_lofi = malp;
       p.p_cp = malp->mal_buf;

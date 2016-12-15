@@ -425,13 +425,11 @@
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
 # define n_VFIELD_SIZE(X)
-# define n_VFIELD_SIZEOF(T,F) (0)
 # define n_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define n_VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
    : ((ssize_t)(X) < 0 ? sizeof(size_t) - n_ABS(X) : (size_t)(X)))
-# define n_VFIELD_SIZEOF(T,F) n_SIZEOF_FIELD(T, F)
 # define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
 #endif
 
@@ -1769,8 +1767,7 @@ struct n_strlist{
    char sl_dat[n_VFIELD_SIZE(0)];
 };
 #define n_STRLIST_MALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
-   smalloc(sizeof(struct n_strlist) - \
-      n_VFIELD_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   smalloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */

@@ -3067,8 +3067,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
    /* C99 */{
       size_t i, j;
 
-      tbcp = smalloc(sizeof(*tbcp) -
-            n_VFIELD_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+      tbcp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
             tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +
             n_MAX(sizeof(si32_t), sizeof(wc_t)) + tbpcp->tbpc_cnv_len +3);
       if(tbpcp->tbpc_ltbcp != NULL){
@@ -4111,8 +4110,7 @@ n_tty_addhist(char const *s, bool_t isgabby){
       }
    }
 
-   thp = smalloc((sizeof(struct a_tty_hist) -
-         n_VFIELD_SIZEOF(struct a_tty_hist, th_dat)) + l +1);
+   thp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
    thp->th_isgabby = !!isgabby;
    thp->th_len = l;
    memcpy(thp->th_dat, s, l +1);

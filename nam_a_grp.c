@@ -498,7 +498,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       goto jleave;
 
    l = strlen(id) +1;
-   i = n_ALIGN(sizeof(*gp) - n_VFIELD_SIZEOF(struct group, g_id) + l);
+   i = n_ALIGN(n_VSTRUCT_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
       addsz = sizeof(struct grp_names_head);
@@ -1500,8 +1500,8 @@ c_alias(void *v)
 
       for (++argv; *argv != NULL; ++argv) {
          size_t l = strlen(*argv) +1;
-         struct grp_names *gnp = smalloc(sizeof(*gnp) -
-               n_VFIELD_SIZEOF(struct grp_names, gn_id) + l);
+         struct grp_names *gnp = smalloc(n_VSTRUCT_SIZEOF(struct grp_names,
+               gn_id) + l);
          gnp->gn_next = gnhp->gnh_head;
          gnhp->gnh_head = gnp;
          memcpy(gnp->gn_id, *argv, l);

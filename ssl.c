@@ -135,8 +135,8 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = smalloc(sizeof *ml -
-                  n_VFIELD_SIZEOF(struct myline, ml_buf) + buflen +1);
+            struct myline *ml = smalloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+                  ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
             else

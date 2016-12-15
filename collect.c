@@ -1624,8 +1624,8 @@ jout:
    if(coap == NULL &&
          (cp = ok_vlook(on_compose_done_shell)) != NULL){
       i = strlen(cp) +1;
-      coap = n_lofi_alloc(sizeof *coap -
-            n_VFIELD_SIZEOF(struct a_coll_ocds_arg, coa_cmd) + i);
+      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocds_arg, coa_cmd
+            ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
       coap->coa_senderr = checkaddr_err;

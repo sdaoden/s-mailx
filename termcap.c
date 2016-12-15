@@ -223,9 +223,8 @@ jeinvent:
             if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_STRING){
                struct a_termcap_ext_ent *teep;
 
-               teep = smalloc(sizeof(*teep) -
-                     n_VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) +
-                     kl +1);
+               teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
+                     tee_name) + kl +1);
                teep->tee_next = a_termcap_g->tg_ext_ents;
                a_termcap_g->tg_ext_ents = teep;
                memcpy(teep->tee_name, ccp, kl);
@@ -888,8 +887,8 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          goto jleave;
 #ifdef HAVE_TERMCAP
       nlen = strlen(ndat) +1;
-      teep = smalloc(sizeof(*teep) -
-            n_VFIELD_SIZEOF(struct a_termcap_ext_ent, tee_name) + nlen);
+      teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
+            nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;
       a_termcap_g->tg_ext_ents = teep;

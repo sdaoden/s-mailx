@@ -1252,8 +1252,8 @@ jimg_put:
       self = _hf_param(self, &param, "href");
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
-         struct htmlflt_href *hhp = smalloc(sizeof(*hhp) -
-               n_VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
+         struct htmlflt_href *hhp = smalloc(
+               n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
          hhp->hfh_no = ++self->hf_href_no;
