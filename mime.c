@@ -185,8 +185,39 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
 
       if (buf != NULL)
          free(buf);
-   }
+   }else
 #endif
+   /* Else, if we will modify the data bytes and thus introduce the potential
+    * of messing up multibyte sequences which become splitted over buffer
+    * boundaries TODO and unless we don't have our filter chain which will
+    * TODO make these hacks go by, buffer data until we see a NL */
+         if((flags & (TD_ISPR | TD_DELCTRL)) && outrest != NULL &&
+#ifdef HAVE_ICONV
+         iconvd == (iconv_t)-1 &&
+#endif
+         (!(flags & _TD_EOF) || outrest->l > 0)
+   ) {
+      size_t i;
+      char *cp;
+
+      for (cp = &in.s[in.l]; cp > in.s && cp[-1] != '\n'; --cp)
+         ;
+      i = PTR2SIZE(cp - in.s);
+
+      if (i != in.l) {
+         if (i > 0) {
+            n_str_assign_buf(outrest, cp, in.l - i);
+            cp = smalloc(i +1);
+            memcpy(cp, in.s, in.l = i);
+            (in.s = cp)[in.l = i] = '\0';
+            flags &= ~_TD_BUFCOPY;
+         } else {
+            n_str_add_buf(outrest, input->s, input->l);
+            rv = 0;
+            goto jleave;
+         }
+      }
+   }
 
    if (flags & TD_ISPR)
       makeprint(&in, &out);
@@ -214,6 +245,7 @@ j__sig:
    safe_signal(SIGPIPE, __mimefwtd_opipe);
    if (__mimefwtd_sig != 0)
       n_raise(__mimefwtd_sig);
+jleave:
    NYD_LEAVE;
    return rv;
 }

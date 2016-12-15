@@ -986,6 +986,15 @@ jpipe_close:
       convert = CONV_NONE;
    }
 
+   /* TODO Unless we have filters, ensure iconvd==-1 so that mime.c:fwrite_td()
+    * TODO cannot mess things up misusing outrest as line buffer */
+#ifdef HAVE_ICONV
+   if (iconvd != (iconv_t)-1) {
+      n_iconv_close(iconvd);
+      iconvd = (iconv_t)-1;
+   }
+#endif
+
    if (action == SEND_DECRYPT || action == SEND_MBOX ||
          action == SEND_RFC822 || action == SEND_SHOW)
       convert = CONV_NONE;
@@ -1000,17 +1009,8 @@ jpipe_close:
           (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
       char const *tcs = charset_get_lc();
 
-      if (iconvd != (iconv_t)-1)
-         n_iconv_close(iconvd);
-      /* TODO Since Base64 has an odd 4:3 relation in between input
-       * TODO and output an input line may end with a partial
-       * TODO multibyte character; this is no problem at all unless
-       * TODO we send to the display or whatever, i.e., ensure
-       * TODO makeprint() or something; to avoid this trap, *force*
-       * TODO iconv(), in which case this layer will handle leftovers
-       * TODO correctly.  It's a pre-v15 we-have-filters hack */
-      if (convert == CONV_FROMB64_T || (asccasecmp(tcs, ip->m_charset) &&
-            asccasecmp(charset_get_7bit(), ip->m_charset))) {
+      if (asccasecmp(tcs, ip->m_charset) &&
+            asccasecmp(charset_get_7bit(), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
