@@ -65,9 +65,9 @@ static sigjmp_buf       _coll_pipejmp;    /* On broken pipe */
 static void       _execute_command(struct header *hp, char const *linebuf,
                      size_t linesize);
 
-/* If *interactive* is set and *doecho* is, too, also dump to *stdout* */
+/* */
 static int        _include_file(char const *name, int *linecount,
-                     int *charcount, bool_t doecho, bool_t indent);
+                     int *charcount, bool_t indent);
 
 static void       _collect_onpipe(int signo);
 
@@ -165,8 +165,7 @@ jleave:
 }
 
 static int
-_include_file(char const *name, int *linecount, int *charcount,
-   bool_t doecho, bool_t indent)
+_include_file(char const *name, int *linecount, int *charcount, bool_t indent)
 {
    FILE *fbuf;
    char const *indb;
@@ -200,16 +199,9 @@ _include_file(char const *name, int *linecount, int *charcount,
          goto jleave;
       ++(*linecount);
       (*charcount) += linelen + indl;
-      if (doecho) {
-         if (indl > 0)
-            fwrite(indb, sizeof *indb, indl, stdout);
-         fwrite(linebuf, sizeof *linebuf, linelen, stdout);
-      }
    }
    if (fflush(_coll_fp))
       goto jleave;
-   if (doecho)
-      fflush(stdout);
 
    ret = 0;
 jleave:
@@ -1191,9 +1183,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       }
 
       if (quotefile != NULL) {
-         if (_include_file(quotefile, &lc, &cc,
-               ((options & (OPT_INTERACTIVE | OPT_Mm_FLAG)) == OPT_INTERACTIVE),
-               FAL0) != 0)
+         if (_include_file(quotefile, &lc, &cc, FAL0) != 0)
             goto jerr;
       }
 
@@ -1472,7 +1462,7 @@ jearg:
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             break;
          }
-         if(_include_file(cp, &lc, &cc, FAL0, (c == 'R')) != 0){
+         if(_include_file(cp, &lc, &cc, (c == 'R')) != 0){
             if(ferror(_coll_fp))
                goto jerr;
             break;
