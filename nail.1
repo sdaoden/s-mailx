@@ -410,38 +410,55 @@ Also see
 .It Fl R
 Any folder opened will be in read-only mode.
 .
+.
 .Mx
 .It Fl r Ar from-addr
-If
-.Ar from-addr
-is a valid address then it specifies the envelope sender address to be
+The source address that appears in the
+.Ql From:
+.Pf ( Va from )
+header of a message (or in the
+.Ql Sender:
+.Pf ( Va sender )
+header if the former contains multiple addresses) is not used for
+relaying and delegating a message over the wire via SMTP, but instead an
+envelope will enwrap the message content and provide the necessary
+information (i.e., the RFC 5321 reverse-path, also used to report, e.g.,
+delivery errors) to transmit the message to its destination(s).
+Whereas the said headers and internal variables will be used by \*(UA to
+create the envelope if the builtin SMTP
+.Va mta
+(Mail-Transfer-Agent) is used, a file-based MTA will instead use the
+identity of the message-originating user.
+.Pp
+This command line option can be used to specify the reverse-path, to be
 passed to a file-based
 .Va mta
-(Mail-Transfer-Agent) as
-.Ql -f Ar address
-when a message is send.
+when a message is sent, via
+.Ql -f Ar from-addr .
 Shall
 .Ar from-addr
 include a user name, then the address components will be separated and
-the name part will be passed to file-based
+the name part will be passed to a file-based
 .Va mta
 individually via
 .Ql -F Ar name .
 The given
 .Ar from-addr
-will also be assigned to the
-.Va from
-variable (as via
-.Ql -Sfrom=from-addr ) ,
-therefore affecting possible SMTP
+is also assigned to the internal variable
+.Va from .
+Many default installations and sites disallow explicit overriding of the
+user identity which could be adjusted by this option, unless either
 .Va mta
-data transfer; note this assignment does not cause value fixation.
+has been configured accordingly, or the user is member of a group with
+special privileges, respectively.
 .Pp
-If instead an empty string is passed as
+If an empty string is passed as
 .Ar from-addr
 then the content of the variable
 .Va from
-will be evaluated and used for this purpose whenever the
+(or, if that contains multiple addresses,
+.Va sender )
+will be evaluated and used for this purpose whenever the file-based
 .Va mta
 is contacted.
 Note that \*(UA by default, without
@@ -450,7 +467,12 @@ that is, neither passes
 .Fl \&\&f
 nor
 .Fl \&\&F
-flags to a file-based MTA by itself.
+flags to a file-based MTA by itself, unless this automatic deduction is
+enforced by
+.Ic set Ns
+ing the internal variable
+.Va r-option-implicit .
+.
 .
 .Mx
 .It Fl S Ar var Ns Op = Ns value
@@ -6691,6 +6713,17 @@ contains more than one address,
 setting the
 .Va sender
 variable is required (according to the standard RFC 5322).
+.Pp
+If a file-based MTA is used, then
+.Va from
+(or, if that contains multiple addresses,
+.Va sender )
+can nonetheless be enforced to appear as the envelope sender address at
+the MTA protocol level (the RFC 5321 reverse-path), either by using the
+.Fl r
+command line option (with an empty argument; see there for the complete
+picture on this topic), or by setting the internal variable
+.Va r-option-implicit .
 .
 .Mx
 .It Va fullnames
@@ -7269,7 +7302,7 @@ be set) and
 .Va verbose
 variable is set); in conjunction with the
 .Fl r
-command line option \*(UA will also pass
+command line option \*(UA will also (not) pass
 .Fl \&\&f
 as well as possibly
 .Fl \&\&F .
@@ -7844,6 +7877,16 @@ plus some additional pad.
 Necessary adjustments take place silently.
 .
 .Mx
+.It Va r-option-implicit
+\*(BO Setting this option evaluates the contents of
+.Va from
+(or, if that contains multiple addresses,
+.Va sender )
+and passes the results onto the used (file-based) MTA as described for the
+.Fl r
+option (empty argument case).
+.
+.Mx
 .It Va recipients-in-cc
 \*(BO On group replies, specify only the sender of the original mail in
 .Ql To:
@@ -8005,13 +8048,15 @@ An address that is put into the
 field of outgoing messages, quoting RFC 5322: the mailbox of the agent
 responsible for the actual transmission of the message.
 This field should normally not be used unless the
-.Ql From:
+.Va from
 field contains more than one address, on which case it is required.
 The
 .Va \&\&sender
 address is handled as if it were in the
 .Ic alternates
-list.
+list; also see
+.Fl r ,
+.Va r-option-implicit .
 .
 .Mx
 .It Va sendmail

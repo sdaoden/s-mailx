@@ -1630,6 +1630,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_quote_as_attachment,
    ok_v_quote_fold,
 
+   ok_b_r_option_implicit,
    ok_b_recipients_in_cc,
    ok_v_record,
    ok_b_record_resent,

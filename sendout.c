@@ -1345,7 +1345,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
     * The interdependency with -t has been resolved in puthead() */
-   if (!snda && (options & OPT_r_FLAG)) {
+   if (!snda && ((options & OPT_r_FLAG) || ok_blook(r_option_implicit))) {
       struct name const *np;
 
       if (hp != NULL && (np = hp->h_from) != NULL) {
