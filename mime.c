@@ -1150,7 +1150,7 @@ jconvert:
 
    switch (convert) {
    case CONV_FROMQP:
-      if(!qp_decode_text(&out, &in, outrest, inrest)){
+      if(!qp_decode_part(&out, &in, outrest, inrest)){
          n_err(_("Invalid Quoted-Printable encoding ignored\n"));
          sz = 0; /* TODO sz = -1 stops outer levels! */
          break;
@@ -1166,13 +1166,13 @@ jconvert:
       sz = quoteflt_push(qf, in.s, in.l);
       break;
    case CONV_FROMB64:
-      if(!b64_decode_text(&out, &in, outrest, inrest))
+      if(!b64_decode_part(&out, &in, outrest, inrest))
          goto jeb64;
       outrest = NULL;
       if(0){
       /* FALLTHRU */
    case CONV_FROMB64_T:
-         if(!b64_decode_text(&out, &in, outrest, inrest)){
+         if(!b64_decode_part(&out, &in, outrest, inrest)){
 jeb64:
             n_err(_("Invalid Base64 encoding ignored\n"));
             sz = 0; /* TODO sz = -1 stops outer levels! */

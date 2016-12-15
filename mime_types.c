@@ -695,7 +695,7 @@ jos_leave:
 jdobuf:
       switch (mpp->m_mime_enc) {
       case MIMEE_B64:
-         if (!b64_decode_text(&dec, &in, &outrest,
+         if (!b64_decode_part(&dec, &in, &outrest,
                (did_inrest ? NULL : &inrest))) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
@@ -703,7 +703,7 @@ jdobuf:
          break;
       case MIMEE_QP:
          /* Drin */
-         if (!qp_decode_text(&dec, &in, &outrest, &inrest)) {
+         if (!qp_decode_part(&dec, &in, &outrest, &inrest)) {
             mtca.mtca_mtc = _MT_C_HASNUL;
             goto jstopit; /* break;break; */
          }

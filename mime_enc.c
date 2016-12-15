@@ -665,7 +665,7 @@ jleave:
 }
 
 FL bool_t
-qp_decode_text(struct str *out, struct str const *in, struct str *outrest,
+qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
       struct str *inrest_or_null){
    struct n_string s, *sp;
    char const *is, *ie;
@@ -737,7 +737,7 @@ jpushc:
        * not to end up with the entire DOS file in a contiguous buffer */
 jsoftnl:
       if(s.s_len > 0 && s.s_dat[s.s_len - 1] == '\n'){
-#if 0       /* TODO qp_decode_text() we do not normalize CRLF
+#if 0       /* TODO qp_decode_part() we do not normalize CRLF
           * TODO to LF because for that we would need
           * TODO to know if we are about to write to
           * TODO the display or do save the file!
@@ -955,7 +955,7 @@ b64_decode_header(struct str *out, struct str const *in){
       memset(&outr, 0, sizeof outr);
       memset(&inr, 0, sizeof inr);
 
-      if(!b64_decode_text(out, in, &outr, &inr) || outr.l > 0 || inr.l > 0)
+      if(!b64_decode_part(out, in, &outr, &inr) || outr.l > 0 || inr.l > 0)
          out = NULL;
 
       if(inr.s != NULL)
@@ -968,7 +968,7 @@ b64_decode_header(struct str *out, struct str const *in){
 }
 
 FL bool_t
-b64_decode_text(struct str *out, struct str const *in, struct str *outrest,
+b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
       struct str *inrest_or_null){
    struct str work, save;
    ui32_t a, b, c, b64l;
@@ -1046,14 +1046,21 @@ b64_decode_text(struct str *out, struct str const *in, struct str *outrest,
       case 3:
          if(x == a_ME_B64_BAD){
 jrepl:
+            /* TODO This would be wrong since iconv(3) may be applied first! */
+#if 0
             if(options & OPT_UNICODE)
                n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
             else
                n_string_push_c(&s, '?');
+#endif
+            ;
          }else if(c == a_ME_B64_EQU && x != a_ME_B64_EQU){
             /* This is not only invalid but bogus.  Skip it over! */
+            /* TODO This would be wrong since iconv(3) may be applied first! */
+#if 0
             n_string_push_buf(&s, n_UNIREPL n_UNIREPL n_UNIREPL n_UNIREPL,
                (sizeof(n_UNIREPL) -1) * 4);
+#endif
             b64l = 0;
          }else{
             n_string_push_c(&s, (char)((a << 2) | ((b & 0x30) >> 4)));

@@ -1277,7 +1277,7 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
  * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
  * Return FAL0 on error; caller is responsible to free buffers */
 FL bool_t      qp_decode_header(struct str *out, struct str const *in);
-FL bool_t      qp_decode_text(struct str *out, struct str const *in,
+FL bool_t      qp_decode_part(struct str *out, struct str const *in,
                   struct str *outrest, struct str *inrest_or_null);
 
 /* How much space is necessary to encode len bytes in Base64, worst case.
@@ -1298,7 +1298,7 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
                   enum b64flags flags);
 #endif
 
-/* The _{header,text}() variants are failure tolerant, the latter requires
+/* The _{header,part}() variants are failure tolerant, the latter requires
  * outrest to be set; due to the odd 4:3 relation inrest_or_null should be
  * given, _then_, it is an error if it is needed but not set.
  * TODO pre v15 callers should ensure that no endless loop is entered because
@@ -1306,13 +1306,13 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * TODO give NULL to stop such loops.
  * The buffers of out and possibly *rest* will be managed via srealloc().
  * Returns FAL0 on error; caller is responsible to free buffers.
- * XXX FAL0 is effectively not returned for _text() variant,
- * XXX instead replacement characters are produced for invalid data.
- * XXX _Unless_ operation could EOVERFLOW.
+ * XXX FAL0 is effectively not returned for _part*() variants,
+ * XXX (instead replacement characters are produced for invalid data.
+ * XXX _Unless_ operation could EOVERFLOW.)
  * XXX I.e. this is bad and is tolerant for text and otherwise not */
 FL bool_t      b64_decode(struct str *out, struct str const *in);
 FL bool_t      b64_decode_header(struct str *out, struct str const *in);
-FL bool_t      b64_decode_text(struct str *out, struct str const *in,
+FL bool_t      b64_decode_part(struct str *out, struct str const *in,
                   struct str *outrest, struct str *inrest_or_null);
 
 /*
