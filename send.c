@@ -1129,6 +1129,7 @@ joutln:
       eof = eof ? TRU1 : TRUM1;
       goto joutln;
    }
+   action &= ~_TD_EOF;
 
    /* TODO HACK: when sending to the display we yet get fooled if a message
     * TODO doesn't end in a newline, because of our input/output 1:1.
