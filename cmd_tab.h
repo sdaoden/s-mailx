@@ -49,13 +49,14 @@
 #define H            ARG_H
 #define I            ARG_I
 #define M            ARG_M
+#define O            ARG_O
 #define P            ARG_P
 #define R            ARG_R
 #define S            ARG_S
 #define T            ARG_T
 #define V            ARG_V
 #define W            ARG_W
-#define O            ARG_O
+#define X            ARG_X
 
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
@@ -88,7 +89,7 @@
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | MSGLIST), MDELETED,MMNDEL
      DS(N_("Un`delete' <msglist>")) },
-   { "unset", &c_unset, (G | M | WYRALIST), 1, 1000
+   { "unset", &c_unset, (G | M | X | WYRALIST), 1, 1000
      DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | STRLIST), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -120,7 +121,7 @@
      DS(N_("Like `copy', but derive filename from first sender")) },
    { "chdir", &c_chdir, (M | WYRALIST), 0, 1
      DS(N_("Change CWD to the specified/the login directory")) },
-   { "cd", &c_chdir, (M | WYRALIST), 0, 1
+   { "cd", &c_chdir, (M | X | WYRALIST), 0, 1
      DS(N_("Change working directory to the specified/the login directory")) },
    { "save", &c_save, (A | STRLIST), 0, 0
      DS(N_("Append <msglist> to <file>")) },
@@ -130,7 +131,7 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | WYRALIST), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (G | M | WYRALIST), 0, 1000
+   { "set", &c_set, (G | M | X | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
@@ -160,9 +161,9 @@
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
-   { "help", &a_lex_c_help, (H | M | WYRALIST), 0, 1
+   { "help", &a_lex_c_help, (H | M | X | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "?", &a_lex_c_help, (H | M | WYRALIST), 0, 1
+   { "?", &a_lex_c_help, (H | M | X | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
@@ -202,15 +203,15 @@
      DS(N_("Forward <message> to <address>")) },
    { "edit", &c_editor, (G | A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
-   { "echo", &c_echo, (G | M | WYSHLIST), 0, 1000
+   { "echo", &c_echo, (G | M | X | WYSHLIST), 0, 1000
      DS(N_("Echo the given arguments (wysh: after expanding them)")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
    { "list", &a_lex_c_list, (H | M | STRLIST), 0, 0
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "xit", &c_exit, (M | NOLIST), 0, 0
+   { "xit", &c_exit, (M | X | NOLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
-   { "exit", &c_exit, (M | NOLIST), 0, 0
+   { "exit", &c_exit, (M | X | NOLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
    { "pipe", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
@@ -222,13 +223,13 @@
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | S | W | MSGLIST), 0, MMNDEL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
-   { "if", &c_if, (G | F | M | RAWLIST), 1, 1000
+   { "if", &c_if, (G | F | M | X | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "else", &c_else, (G| F | M | RAWLIST), 0, 0
+   { "else", &c_else, (G| F | M | X | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "elif", &c_elif, (G| F | M | RAWLIST), 1, 1000
+   { "elif", &c_elif, (G| F | M | X | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "endif", &c_endif, (G| F | M | RAWLIST), 0, 0
+   { "endif", &c_endif, (G| F | M | X | RAWLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
      DS(N_("Show or define an alternate address list for the invoking user")) },
@@ -282,15 +283,15 @@
      DS(N_("Mark <msglist> as draft")) },
    { "undraft", &c_undraft, (A | M | MSGLIST), 0, 0
      DS(N_("Un`draft' <msglist>")) },
-   { "define", &c_define, (M | RAWLIST), 0, 2
+   { "define", &c_define, (M | X | RAWLIST), 0, 2
      DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "undefine", &c_undefine, (M | RAWLIST), 1, 1000
+   { "undefine", &c_undefine, (M | X | RAWLIST), 1, 1000
      DS(N_("Un`define' all given <macros> (* for all)")) },
    { "unaccount", &c_unaccount, (M | RAWLIST), 1, 1000
      DS(N_("Delete all given <accounts> (* for all)")) },
-   { "call", &c_call, (M | RAWLIST), 0, 1
+   { "call", &c_call, (M | X | RAWLIST), 0, 1
      DS(N_("Call a macro")) },
-   { "~", &c_call, (M | RAWLIST), 0, 1
+   { "~", &c_call, (M | X | RAWLIST), 0, 1
      DS(N_("Call a macro")) },
    { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
@@ -352,25 +353,25 @@
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <msglist>")) },
-   { "ghost", &a_lex_c_ghost, (M | WYRALIST), 0, 1000
+   { "ghost", &a_lex_c_ghost, (M | X | WYRALIST), 0, 1000
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-   { "unghost", &a_lex_c_unghost, (M | WYRALIST), 1, 1000
+   { "unghost", &a_lex_c_unghost, (M | X | WYRALIST), 1, 1000
      DS(N_("Delete <ghost-list>")) },
-   { "localopts", &c_localopts, (H | M | RAWLIST), 1, 1
+   { "localopts", &c_localopts, (H | M | X | RAWLIST), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
-   { "cwd", &c_cwd, (M | NOLIST), 0, 0
+   { "cwd", &c_cwd, (M | X | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "pwd", &c_cwd, (M | NOLIST), 0, 0
+   { "pwd", &c_cwd, (M | X | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (G | M | WYRALIST), 1, 1000
+   { "varshow", &c_varshow, (G | M | X | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlcodec", &c_urlcodec, (G | M | WYSHLIST), 2, 1000
+   { "urlcodec", &c_urlcodec, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <string-list>")) },
-      { "urlencode", &c_urlencode, (G | M | WYRALIST), 1, 1000
+      { "urlencode", &c_urlencode, (G | M | X | WYRALIST), 1, 1000
         DS(N_("Encode <string-list> for usage in an URL")) },
-      { "urldecode", &c_urldecode, (G | M | WYRALIST), 1, 1000
+      { "urldecode", &c_urldecode, (G | M | X | WYRALIST), 1, 1000
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
@@ -391,7 +392,7 @@
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
-   { "version", &a_lex_c_version, (H | M | NOLIST), 0, 0
+   { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
    { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
@@ -409,10 +410,10 @@
    { "uncolour", &c_uncolour, (M | WYSHLIST), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (G | M | WYSHLIST), 2, 1000
+   { "environ", &c_environ, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
-   { "read", &c_read, (G | M | WYSHLIST), 1, 1000
+   { "read", &c_read, (G | M | X | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
 
 #ifdef HAVE_MEMORY_DEBUG
@@ -439,11 +440,12 @@
 #undef H
 #undef I
 #undef M
+#undef O
 #undef P
 #undef R
 #undef T
 #undef V
 #undef W
-#undef O
+#undef X
 
 /* s-it-mode */

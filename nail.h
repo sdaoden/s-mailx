@@ -184,7 +184,7 @@
 #define FILE_LOCK_MILLIS 200     /* If UIZ_MAX, fall back to that */
 #define n_ERROR "ERROR"          /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
-#define ESCAPE          '~'      /* Default escape for sending */
+#define n_ESCAPE        '~'      /* Default escape for sending */
 #define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
@@ -1405,18 +1405,19 @@ enum program_state {
 
    PS_EXIT           = 1u<< 1,      /* Exit request pending */
    PS_SOURCING       = 1u<< 2,      /* During load() or `source' */
-   PS_RECURSED       = 1u<< 3,      /* State machine recursed, e.g. `~:CMD' */
-   PS_ROBOT          = 1u<< 4,      /* State machine in non-interactive state */
+   PS_COMPOSE_MODE   = 1u<< 3,      /* State machine recursed */
+   PS_COMPOSE_FORKHOOK = 1u<<4,     /* *on-compose-done* running (fork(2)ed!) */
+   PS_ROBOT          = 1u<< 5,      /* State machine in non-interactive state */
 
-   PS_EVAL_ERROR     = 1u<< 5,      /* Last evaluate() command failed */
+   PS_EVAL_ERROR     = 1u<< 6,      /* Last evaluate() command failed */
 
-   PS_HOOK_NEWMAIL   = 1u<< 6,
-   PS_HOOK           = 1u<< 7,
+   PS_HOOK_NEWMAIL   = 1u<< 7,
+   PS_HOOK           = 1u<< 8,
    PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
 
-   PS_EDIT           = 1u<< 8,      /* Current mailbox not a "system mailbox" */
-   PS_SETFILE_OPENED = 1u<< 9,      /* (hack) setfile() opened a new box */
-   PS_SAW_COMMAND    = 1u<<10,      /* ..after mailbox switch */
+   PS_EDIT           = 1u<< 9,      /* Current mailbox not a "system mailbox" */
+   PS_SETFILE_OPENED = 1u<<10,      /* (hack) setfile() opened a new box */
+   PS_SAW_COMMAND    = 1u<<11,      /* ..after mailbox switch */
 
    PS_DID_PRINT_DOT  = 1u<<12,      /* Current message has been printed */
 
@@ -1461,8 +1462,6 @@ enum program_state {
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_on_compose_enter,
-   ok_v_on_compose_leave,
    ok_v_compose_from,
    ok_v_compose_sender,
    ok_v_compose_to,
@@ -1606,7 +1605,10 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
+   ok_v_on_compose_done,               /* {notempty=1} */
    ok_v_on_compose_done_shell,         /* {notempty=1} */
+   ok_v_on_compose_enter,              /* {notempty=1} */
+   ok_v_on_compose_leave,              /* {notempty=1} */
    ok_b_outfolder,
 
    ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
@@ -2195,13 +2197,14 @@ enum argtype {
    ARG_H          = 1u<< 7,   /* Never place in `history' */
    ARG_I          = 1u<< 8,   /* Interactive command bit */
    ARG_M          = 1u<< 9,   /* Legal from send mode bit */
-   ARG_P          = 1u<<10,   /* Autoprint dot after command */
-   ARG_R          = 1u<<11,   /* Cannot be called from collect / recursion */
-   ARG_S          = 1u<<12,   /* Cannot be called unless PS_STARTED (POSIX) */
-   ARG_T          = 1u<<13,   /* Is a transparent command */
-   ARG_V          = 1u<<14,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<15,   /* Invalid when read only bit */
-   ARG_O          = 1u<<16    /* OBSOLETE()d command */
+   ARG_O          = 1u<<10,   /* OBSOLETE()d command */
+   ARG_P          = 1u<<11,   /* Autoprint dot after command */
+   ARG_R          = 1u<<12,   /* Cannot be called in compose mode recursion */
+   ARG_S          = 1u<<13,   /* Cannot be called unless PS_STARTED (POSIX) */
+   ARG_T          = 1u<<14,   /* Is a transparent command */
+   ARG_V          = 1u<<15,   /* Places data in temporary_arg_v_store */
+   ARG_W          = 1u<<16,   /* Invalid when read only bit */
+   ARG_X          = 1u<<17    /* Valid command in PS_COMPOSE_FORKHOOK mode */
 };
 
 enum gfield {

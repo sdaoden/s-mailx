@@ -752,23 +752,19 @@ jexec:
       goto jleave0;
 
    /* Process the arguments to the command, depending on the type it expects */
-   if(!(cmd->lc_argtype & ARG_M) && (options & OPT_SENDMODE)){
-      n_err(_("May not execute `%s' while sending\n"), cmd->lc_name);
-      goto jleave;
-   }
-   if((cmd->lc_argtype & ARG_S) && !(pstate & PS_STARTED)){
-      n_err(_("May not execute `%s' during startup\n"), cmd->lc_name);
-      goto jleave;
-   }
    if((cmd->lc_argtype & ARG_I) &&
          !(options & (OPT_INTERACTIVE | OPT_BATCH_FLAG))){
       n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
          cmd->lc_name);
       goto jleave;
    }
+   if(!(cmd->lc_argtype & ARG_M) && (options & OPT_SENDMODE)){
+      n_err(_("May not execute `%s' while sending\n"), cmd->lc_name);
+      goto jleave;
+   }
    if(cmd->lc_argtype & ARG_R){
-      if(pstate & PS_RECURSED){
-         /* TODO PS_RECURSED: should allow `reply' in compose mode: ~:reply! */
+      if(pstate & PS_COMPOSE_MODE){
+         /* TODO PS_COMPOSE_MODE: should allow `reply': ~:reply! */
          n_err(_("Cannot invoke `%s' when in compose mode\n"), cmd->lc_name);
          goto jleave;
       }
@@ -780,14 +776,23 @@ jexec:
          goto jleave;
       }
    }
-
-   if((cmd->lc_argtype & ARG_W) && !(mb.mb_perm & MB_DELE)){
-      n_err(_("May not execute `%s' -- message file is read only\n"),
+   if((cmd->lc_argtype & ARG_S) && !(pstate & PS_STARTED)){
+      n_err(_("May not execute `%s' during startup\n"), cmd->lc_name);
+      goto jleave;
+   }
+   if(!(cmd->lc_argtype & ARG_X) && (pstate & PS_COMPOSE_FORKHOOK)){
+      n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
          cmd->lc_name);
       goto jleave;
    }
+
    if((cmd->lc_argtype & ARG_A) && mb.mb_type == MB_VOID){
       n_err(_("Cannot execute `%s' without active mailbox\n"), cmd->lc_name);
+      goto jleave;
+   }
+   if((cmd->lc_argtype & ARG_W) && !(mb.mb_perm & MB_DELE)){
+      n_err(_("May not execute `%s' -- message file is read only\n"),
+         cmd->lc_name);
       goto jleave;
    }
 
@@ -1470,7 +1475,11 @@ FL int
       fflush(stdout);
 
    ifile = (a_lex_input != NULL) ? a_lex_input->li_file : stdin;
-   assert(ifile != NULL);
+   if(ifile == NULL){
+      assert((pstate & PS_COMPOSE_FORKHOOK) &&
+         a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO));
+      ifile = stdin;
+   }
 
    for(nold = n = 0;;){
       if(dotty){
@@ -1629,7 +1638,7 @@ c_read(void *v){ /* TODO IFS? how? -r */
    if(rv)
       goto jleave;
 
-   cp = n_lex_input_cp(((pstate & PS_RECURSED /* TODO this IS compose-mode! */
+   cp = n_lex_input_cp(((pstate & PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
          n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
          n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
@@ -1909,7 +1918,7 @@ n_source_may_yield_control(void){
           * TODO loosing any flags when creating new contexts...  Maybe this
           * TODO function should instead walk all up the context stack when
           * TODO there is one, and verify neither level prevents yielding! */
-         ((pstate & PS_RECURSED) && (a_lex_input == NULL ||
+         ((pstate & PS_COMPOSE_MODE) && (a_lex_input == NULL ||
             !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
       (a_lex_input == NULL || a_lex_input->li_outer == NULL));
 }

@@ -60,6 +60,7 @@ static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static sigjmp_buf       _coll_pipejmp;    /* On broken pipe */
+static char const *a_coll_ocds__macname;  /* *on-compose-done* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
@@ -112,7 +113,8 @@ static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 /* temporary_call_compose_mode_hook() setter hook */
 static void a_coll__hook_setter(void *arg);
 
-/* *on-compose-done-shell* finalizer */
+/* *on-compose-done* driver and *on-compose-done(-shell)?* finalizer */
+static int a_coll_ocds__mac(void);
 static void a_coll_ocds__finalize(void *vp);
 
 static void
@@ -1007,6 +1009,15 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
    NYD2_LEAVE;
 }
 
+static int
+a_coll_ocds__mac(void){
+   /* Executes in a fork(2)ed child */
+   setvbuf(stdout, NULL, _IOLBF, 0);
+   pstate |= PS_COMPOSE_FORKHOOK;
+   temporary_call_compose_mode_hook(a_coll_ocds__macname, NULL, NULL);
+   _exit(EXIT_OK);
+}
+
 static void
 a_coll_ocds__finalize(void *vp){
    /* Note we use this for destruction upon setup errors, thus */
@@ -1023,7 +1034,7 @@ a_coll_ocds__finalize(void *vp){
    if(coap->coa_stdout != NULL)
       if(!Pclose(coap->coa_stdout, FAL0)){
          *coap->coa_senderr = TRU1;
-         n_err(_("*on-compose-done-shell* failed: %s\n"),
+         n_err(_("*on-compose-done(-shell)?* failed: %s\n"),
             n_shexp_quote_cp(coap->coa_cmd, FAL0));
       }
 
@@ -1054,10 +1065,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
    struct n_ignore const *quoteitp;
    struct a_coll_ocds_arg *coap;
    int lc, cc, c;
-   int volatile t, eofcnt;
-   int volatile escape, getfields;
-   char *linebuf;
-   char const *cp;
+   int volatile t, eofcnt, getfields;
+   char *linebuf, escape_saved, escape;
+   char const *cp, *coapm;
    size_t i, linesize; /* TODO line pool */
    long cnt;
    enum sendaction action;
@@ -1070,6 +1080,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    linesize = 0;
    linebuf = NULL;
    eofcnt = 0;
+   coapm = NULL;
    coap = NULL;
 
    /* Start catching signals from here, but we're still die on interrupts
@@ -1085,7 +1096,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
       goto jerr;
-   pstate |= PS_RECURSED;
+   pstate |= PS_COMPOSE_MODE;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
@@ -1120,7 +1131,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       n_UNINIT(t, 0);
    }
 
-   escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : ESCAPE;
+   escape_saved = escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : n_ESCAPE;
    _coll_hadintr = 0;
 
    if (!sigsetjmp(_coll_jmp, 1)) {
@@ -1597,22 +1608,24 @@ jhistcont:
    }
 
 jout:
-   /* Do we have *on-compose-done-shell*?
-    * TODO With the future improvements envisioned for a_LEX_SLICE in
-    * TODO lex_input.c we could easily offer a "normal" *on-compose-done*.
-    * TODO With either some kind of `capture_stdout [:VAR:] [--] COMMAND',
-    * TODO backtick (or ``{..}') operator support for `if' and WYSH lists,
-    * TODO and/or WYSH pipes (i.e., `|' on a WYSH command line) and a `read'
-    * TODO command this may become useful, e.g., the latter _could_ be:
-    * TODO "~^header list to | read x y; if $x == 210 ...", but granted that
-    * TODO this also needs ";" and some loop construct would be nice...
-    * TODO But maybe we will have better exit/return status support until then
-    * TODO and ~^ could return the "210" in this case as *-exit-status* without
-    * TODO causing any harm...
-    * TODO Finally: anyway we want `localopts' for _all_ these hooks!
-    * TODO Also: usual f...ed up state of signals and terminal etc. */
-   if(coap == NULL &&
-         (cp = ok_vlook(on_compose_done_shell)) != NULL){
+   /* Do we have *on-compose-done-shell*, or *on-compose-done*?
+    * TODO Usual f...ed up state of signals and terminal etc. */
+   if(coap == NULL && (cp = ok_vlook(on_compose_done_shell)) != NULL) Jocds:{
+      union {int (*ptf)(void); char const *sh;} u;
+      char const *cmd;
+
+      /* Reset *escape* to be available and guaranteed! */
+      escape = n_ESCAPE;
+
+      if(coapm != NULL){
+         u.ptf = &a_coll_ocds__mac;
+         cmd = (char*)-1;
+         a_coll_ocds__macname = cp = coapm;
+      }else{
+         u.sh = ok_vlook(SHELL);
+         cmd = cp;
+      }
+
       i = strlen(cp) +1;
       coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocds_arg, coa_cmd
             ) + i);
@@ -1628,8 +1641,8 @@ jout:
 
       if(pipe_cloexec(coap->coa_pipe) != -1 &&
             (coap->coa_stdin = Fdopen(coap->coa_pipe[0], "r", FAL0)) != NULL &&
-            (coap->coa_stdout = Popen(coap->coa_cmd, "W", ok_vlook(SHELL), NULL,
-               coap->coa_pipe[1])) != NULL){
+            (coap->coa_stdout = Popen(cmd, "W", u.sh, NULL, coap->coa_pipe[1])
+             ) != NULL){
          close(coap->coa_pipe[1]);
          coap->coa_pipe[1] = -1;
 
@@ -1644,19 +1657,16 @@ jout:
 
       c = errno;
       a_coll_ocds__finalize(coap);
-      n_perr(_("Cannot invoke *on-compose-done-shell*"), c);
+      n_perr(_("Cannot invoke *on-compose-done(-shell)?*"), c);
       goto jerr;
    }
    if(*checkaddr_err != 0){
       *checkaddr_err = 0;
       goto jerr;
    }
-
-   /* Execute compose-leave TODO completely v15-compat intermediate!! */
-   if((cp = ok_vlook(on_compose_leave)) != NULL){
-      setup_from_and_sender(hp);
-      temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
-   }
+   if(coapm == NULL && (coapm = ok_vlook(on_compose_done)) != NULL)
+      goto Jocds;
+   escape = escape_saved;
 
    /* Final chance to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
@@ -1678,7 +1688,13 @@ jout:
    if (*checkaddr_err != 0)
       goto jerr;
 
-   /* Cannot do since it may require turning this into a multipart one */
+   /* Execute compose-leave */
+   if((cp = ok_vlook(on_compose_leave)) != NULL){
+      setup_from_and_sender(hp);
+      temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
+   }
+
+   /* TODO Cannot do since it may require turning this into a multipart one */
    if(options & OPT_Mm_FLAG)
       goto jskiptails;
 
@@ -1751,7 +1767,7 @@ jleave:
       free(linebuf);
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
-   pstate &= ~PS_RECURSED;
+   pstate &= ~PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    sigprocmask(SIG_SETMASK, &oset, NULL);

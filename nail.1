@@ -831,8 +831,10 @@ and
 hook macros may be set to automatically adjust some settings dependent
 on receiver, sender or subject contexts, and
 .Va on-compose-done-shell
-is an increasingly powerful mechanism to perform automated message
-adjustments.
+as well as
+.Va on-compose-done
+are increasingly powerful mechanisms to perform automated message
+adjustments in between.
 .
 .Pp
 Especially for using public mail provider accounts with the SMTP
@@ -5387,7 +5389,33 @@ Its standard output is inserted into the message.
 .
 .Mx
 .It Ic ~@ Op Ar filename...
-With no arguments, edit the attachment list interactively.
+If
+.Ar filename
+arguments are specified they are treated as a file list of
+.Xr sh 1 Ns
+-style quoted (see
+.Sx COMMANDS )
+arguments, optionally also separated by commas, which are expanded and
+then appended to the existing list of message attachments.
+It is not possible to add message attachments with this method, and
+(text) attachments are implicitly assumed to be in
+.Va ttycharset
+encoding, and will thus be evaluated as documented in the section
+.Sx "Character sets" .
+.Pp
+Without arguments, in non-interactive mode, for reproduceabilities sake,
+there will always be two questions for each attachment, regardless of
+whether character set conversion is available and what the file
+extension is.
+The first question expects the filename, and the second the the input
+character set to be passed through to the corresponding MIME parameter;
+no conversion will be tried if there is input to the latter question,
+otherwise the usual conversion algorithm as documented in
+.Sx "Character sets" ,
+is applied.
+For message attachments, the input to the second question is ignored.
+.Pp
+In interactive mode, without arguments, the attachment list is edited.
 If an attachment's file name is left empty,
 that attachment is deleted from the list.
 When the end of the attachment list is reached,
@@ -5397,7 +5425,7 @@ If a given file name solely consists of the number sign
 followed by a valid message number of the currently active mailbox, then
 the given message is attached as a MIME
 .Ql message/rfc822
-and the rest of this section does not apply.
+part and the rest of this section does not apply.
 .Pp
 If character set conversion has been compiled into \*(UA, then this mode
 gives the user the option to specify input and output character sets,
@@ -5435,7 +5463,7 @@ The character set selection loop can be left by typing
 .Ql control-C ,
 i.e., causing an interrupt.
 .\" \*(OU next sentence
-Note that before \*(UA version 15.0 this terminates the entire
+Note that before \*(UA v15.0 this terminates the entire
 current attachment selection, not only the character set selection.
 .El
 .Pp
@@ -5448,30 +5476,6 @@ if no user input is seen then the
 character set will be used for the parameter value instead.
 Note that the file extension check is not performed in this mode, since
 no conversion will take place anyway.
-.Pp
-Note that in non-interactive mode, for reproduceabilities sake, there
-will always be two questions for each attachment, regardless of whether
-character set conversion is available and what the file extension is.
-The first asks for the filename, and the second asks for the input
-character set to be passed through to the corresponding MIME parameter;
-no conversion will be tried if there is input to the latter question,
-otherwise the usual conversion algorithm, as above, is applied.
-For message attachments, the answer to the second question is completely
-ignored.
-.Pp
-If (instead)
-.Ar filename
-arguments are specified for the
-.Ic \&\&~@
-command they are treated as a file list of
-.Xr sh 1 Ns
--style quoted arguments, optionally also separated by commas, which are
-expanded and then appended to the existing list of message attachments.
-Message attachments can only be added via the first method.
-In this mode the (text) attachments are assumed to be in
-.Va ttycharset
-encoding, and will be evaluated as documented in the section
-.Sx "Character sets" .
 .
 .Mx
 .It Ic ~A
@@ -5479,7 +5483,11 @@ Inserts the string contained in the
 .Va Sign
 variable (same as
 .Ql Ic ~i Ns \0Sign ) .
-The escape sequences tabulator
+\*(OB (Use the
+.Ql wysh
+prefix when
+.Ic set Ns
+ting the variable(s) instead!) The escape sequences tabulator
 .Ql \et
 and newline
 .Ql \en
@@ -5491,7 +5499,11 @@ Inserts the string contained in the
 .Va sign
 variable (same as
 .Ql Ic ~i Ns \0sign ) .
-The escape sequences tabulator
+\*(OB (Use the
+.Ql wysh
+prefix when
+.Ic set Ns
+ting the variable(s) instead!) The escape sequences tabulator
 .Ql \et
 and newline
 .Ql \en
@@ -5563,7 +5575,11 @@ by typing each one in turn and allowing the user to edit the field.
 Insert the value of the specified variable into the message,
 adding a newline character at the end.
 The message remains unaltered if the variable is unset or empty.
-The escape sequences tabulator
+\*(OB (Use the
+.Ql wysh
+prefix when
+.Ic set Ns
+ting the variable(s) instead!) The escape sequences tabulator
 .Ql \et
 and newline
 .Ql \en
@@ -5666,9 +5682,11 @@ is often used as a rejustifying filter.
 .Mx
 .It Ic ~^ Op Ar cmd Op Ar subcmd Op Ar header-name Op Ar header-body
 Low-level command ment for scripted message access, i.e., for
-.Va on-compose-done-shell .
+.Va on-compose-done-shell
+and
+.Va on-compose-done .
 The used protocol is likely subject to changes, and therefore the
-mentioned hook outputs the used protocol version as an initial line.
+mentioned hooks receive the used protocol version as an initial line.
 In general the first field of a response line represents a status code
 which specifies whether a command was successful or not, whether result
 data is to be expected, and if, the format of the result data.
@@ -5720,7 +5738,10 @@ The second argument specifies the subcommand to apply, one of:
 .Bl -tag -compact -width remove
 .It Ar list
 Without a third argument a list of all yet existing headers is given via
-.Ql 210 .
+.Ql 210 ;
+this command is the default command of
+.Ar header
+if no second argument has been given.
 A third argument restricts output to the given header only, which may
 fail with
 .Ql 501
@@ -6293,10 +6314,12 @@ and
 .It Va customhdr
 Define a set of custom headers to be injected into newly composed or
 forwarded messages; it is also possible to create custom headers in
-compose-mode with
+compose mode with
 .Ic ~^ ,
-which can be automated by setting the hook
-.Va on-compose-done-shell .
+which can be automated by setting one of the hooks
+.Va on-compose-done-shell
+or
+.Va on-compose-done .
 The value is interpreted as a comma-separated list of custom headers to
 be injected, to include commas in the header bodies escape them with
 reverse solidus.
@@ -6465,10 +6488,11 @@ a decoding step.
 .Mx
 .It Va escape
 If defined, the first character of the value of this variable
-gives the character to use in place of
+gives the character to use in place of tilde
 .Ql ~
 to denote
 .Sx "COMMAND ESCAPES" .
+If set to the empty string, command escapes are disabled.
 .
 .Mx
 .It Va expandaddr
@@ -7452,51 +7476,91 @@ then a Maildir folder will not be rescanned completely, but only
 timestamp changes are detected.
 .
 .Mx
-.It Va on-compose-done-shell
-The specified shell command will be run once the normal compose mode is
-finished, but before the
+.Mx
+.It Va on-compose-done-shell , on-compose-done
+These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
 macro hook is called, the
 .Va signature
-is injected etc., with its input and output are connected to \*(UA
-that makes it appear and act as if it would be an interactive user.
+is injected etc.
+Both hooks will be executed in a subprocess, with their input and output
+connected to \*(UA such that they can act as if they would be an
+interactive user.
+The difference in between them is that the former is a
+.Ev SHELL
+command, whereas the latter is a normal \*(UA macro, but which is
+restricted to a small set of commands (the
+.Va verbose
+output of, e.g.,
+.Ic list
+will indicate the said capability), just enough for the purpose of
+controlling the real \*(UA instance sufficiently.
 .Ic localopts
-are by default enabled for this hook, causing any setting to be
-forgotten after the message has been sent.
+are by default enabled (in the parent) for (the lifetime of) these
+hooks, causing covered setting to be forgotten after the message has
+been sent.
 .Pp
-During execution of this hook \*(UA will temporarily forget whether it
-has been started in interactive mode though, (a restricted set of)
+During execution of these hook \*(UA will temporarily forget whether it
+has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
-will always be available, and soft newline escaping via a trailing
-reverse solidus character is not supported.
-\*(ID because most \*(UA commands do not take this new functionality
-into account but are ment for human interaction special care must be
-taken to avoid deadlocks because of unexpected control flow!
-The compose-mode command
+will always be available, and for guaranteed reproduceabilities sake
+.Va escape
+will be set to its default.
+The compose mode command
 .Ic ~^
-has been especially designed for scriptability (via this hook).
+has been especially designed for scriptability (via these hooks).
 The first line the hook will read on its standard input is the protocol
 version of said command escape, currently
 .Dq 0 0 1 :
 backward incompatible protocol changes are to be expected in the
 future, and it is advisable to make use of the protocol version.
+\*(ID because most \*(UA commands do not take this new functionality
+into account but are ment for human interaction special care must be
+taken to avoid deadlocks because of unexpected control flow; i.e., that
+both involved processes wait for more input to happen at the same time,
+or one doesn't expect more input but the other is stuck waiting for
+consumation of its output.
 .Bd -literal -offset indent
 wysh set on-compose-done-shell=$'\e
   read version;\e
-  echo \e'!^header list\e';\e
   printf "hello $version!  Headers: ";\e
+  echo \e'~^header list\e';\e
   read status result;\e
   echo "status=$status result=$result";\e
   '
+
+set on-compose-done=ocdm
+define ocdm {
+  read ver
+  echo version is $ver, escape=$escape
+  if $features !@ +regex
+    echoerr 'Need regular-expression support, aborting send'
+    echo '~x'
+  endif
+  echo '~^header list'
+  read hl
+  if $hl !~ ^2
+    echoerr 'Failed to read header list, bailing out'
+    echo '~x'
+  endif
+  if $hl !@ ' cc'
+    echo '~^header insert cc Diet is your <mirr.or>'
+    read es
+    if $es !~ ^2
+      echoerr 'Failed to insert Cc: header, bailing out'
+      echo '~x'
+    endif
+  endif
+}
 .Ed
 .
 .Mx
 .Mx
 .It Va on-compose-enter , on-compose-leave
-\*(ID Macro hooks which will be executed before compose mode is
-entered, and after composing has been finished, respectively.
-Please note that this interface is very likely to change in v15, and
-should therefore possibly even be seen as experimental.
+Macro hooks which will be executed before compose mode is entered, and
+after composing has been finished (but before the
+.Va signature
+is injected, etc.), respectively.
 .Ic localopts
 are by default enabled for these hooks, causing any setting to be
 forgotten after the message has been sent.
