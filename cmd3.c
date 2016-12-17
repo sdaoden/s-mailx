@@ -1146,44 +1146,4 @@ jleave:
    return ec;
 }
 
-FL int
-c_urlencode(void *v) /* XXX IDNA?? */
-{
-   char **ap;
-   NYD_ENTER;
-
-   OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
-
-   for (ap = v; *ap != NULL; ++ap) {
-      char *in = *ap, *out = urlxenc(in, FAL0);
-
-      if(out == NULL)
-         out = n_UNCONST(V_(n_error));
-      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, strlen(in), out, strlen(out));
-   }
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_urldecode(void *v) /* XXX IDNA?? */
-{
-   char **ap;
-   NYD_ENTER;
-
-   OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
-
-   for (ap = v; *ap != NULL; ++ap) {
-      char *in = *ap, *out = urlxdec(in);
-
-      if(out == NULL)
-         out = n_UNCONST(V_(n_error));
-      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, strlen(in), out, strlen(out));
-   }
-   NYD_LEAVE;
-   return 0;
-}
-
 /* s-it-mode */

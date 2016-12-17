@@ -369,9 +369,9 @@
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "urlcodec", &c_urlcodec, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <string-list>")) },
-      { "urlencode", &c_urlencode, (G | M | X | WYRALIST), 1, 1000
+      { "urlencode", &c_urlencode, (O | G | M | X | WYRALIST), 1, 1000
         DS(N_("Encode <string-list> for usage in an URL")) },
-      { "urldecode", &c_urldecode, (G | M | X | WYRALIST), 1, 1000
+      { "urldecode", &c_urldecode, (O | G | M | X | WYRALIST), 1, 1000
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },

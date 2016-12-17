@@ -681,6 +681,46 @@ c_urlcodec(void *v){
    return (cp != NULL ? OKAY : STOP);
 }
 
+FL int
+c_urlencode(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxenc(in, FAL0);
+
+      if(out == NULL)
+         out = n_UNCONST(V_(n_error));
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
+}
+
+FL int
+c_urldecode(void *v) /* XXX IDNA?? */
+{
+   char **ap;
+   NYD_ENTER;
+
+   OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
+
+   for (ap = v; *ap != NULL; ++ap) {
+      char *in = *ap, *out = urlxdec(in);
+
+      if(out == NULL)
+         out = n_UNCONST(V_(n_error));
+      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
+         in, strlen(in), out, strlen(out));
+   }
+   NYD_LEAVE;
+   return 0;
+}
+
 FL char *
 url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    size_t i;
