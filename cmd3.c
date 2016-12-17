@@ -121,11 +121,13 @@ _bangexp(char **str, size_t *size)
    while ((*str)[i]) {
       if (dobang) {
          if ((*str)[i] == '!') {
-            sz = strlen(_bang_buf);
-            bangbuf = srealloc(bangbuf, bangbufsize += sz);
+            if (_bang_buf != NULL) {
+               sz = strlen(_bang_buf);
+               bangbuf = srealloc(bangbuf, bangbufsize += sz);
+               memcpy(bangbuf + j, _bang_buf, sz + 1);
+               j += sz;
+            }
             ++changed;
-            memcpy(bangbuf + j, _bang_buf, sz + 1);
-            j += sz;
             i++;
             continue;
          }
