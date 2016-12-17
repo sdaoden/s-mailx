@@ -141,6 +141,9 @@ static char *a_lex_isolate(char const *comm);
 static int a_lex_c_ghost(void *v);
 static int a_lex_c_unghost(void *v);
 
+/* */
+static char const *a_lex_cmdinfo(struct a_lex_cmd const *lcp);
+
 /* Print a list of all commands */
 static int a_lex_c_list(void *v);
 
@@ -346,6 +349,47 @@ jouter:  ;
    return rv;
 }
 
+static char const *
+a_lex_cmdinfo(struct a_lex_cmd const *lcp){
+   struct n_string rvb, *rv;
+   char const *cp;
+   NYD2_ENTER;
+
+   rv = n_string_creat_auto(&rvb);
+   rv = n_string_reserve(rv, 80);
+
+   switch(lcp->lc_argtype & ARG_ARGMASK){
+   case ARG_MSGLIST: cp = N_("message-list"); break;
+   case ARG_STRLIST: cp = N_("string data"); break;
+   case ARG_RAWLIST: cp = N_("old-style quoting"); break;
+   case ARG_NOLIST: cp = N_("no arguments"); break;
+   case ARG_NDMLIST: cp = N_("message-list (no default)"); break;
+   case ARG_WYSHLIST: cp = N_("sh(1)ell-style quoting"); break;
+   default: cp = N_("`wysh' for sh(1)ell-style quoting"); break;
+   }
+   rv = n_string_push_cp(rv, V_(cp));
+
+   if(lcp->lc_argtype & (ARG_A | ARG_I | ARG_M | ARG_R | ARG_S | ARG_X))
+      rv = n_string_push_buf(rv, " |", 2);
+
+   if(lcp->lc_argtype & ARG_A)
+      rv = n_string_push_cp(rv, _(" needs box"));
+   if(lcp->lc_argtype & ARG_I)
+      rv = n_string_push_cp(rv, _(" only interactive"));
+   if(lcp->lc_argtype & ARG_M)
+      rv = n_string_push_cp(rv, _(" send mode"));
+   if(lcp->lc_argtype & ARG_R)
+      rv = n_string_push_cp(rv, _(" no compose mode"));
+   if(lcp->lc_argtype & ARG_S)
+      rv = n_string_push_cp(rv, _(" after startup"));
+   if(lcp->lc_argtype & ARG_X)
+      rv = n_string_push_cp(rv, _(" subprocess"));
+
+   cp = n_string_cp(rv);
+   NYD2_LEAVE;
+   return cp;
+}
+
 static int
 a_lex_c_list(void *v){
    FILE *fp;
@@ -382,25 +426,14 @@ a_lex_c_list(void *v){
       if(cp->lc_func == &c_cmdnotsupp)
          continue;
       if(options & OPT_D_V){
-         char const *argt;
-
-         switch(cp->lc_argtype & ARG_ARGMASK){
-         case ARG_MSGLIST: argt = N_("message-list"); break;
-         case ARG_STRLIST: argt = N_("a \"string\""); break;
-         case ARG_RAWLIST: argt = N_("old-style quoting"); break;
-         case ARG_NOLIST: argt = N_("no arguments"); break;
-         case ARG_NDMLIST: argt = N_("message-list (without a default)"); break;
-         case ARG_WYSHLIST: argt = N_("sh(1)ell-style quoting"); break;
-         default: argt = N_("`wysh' for sh(1)ell-style quoting"); break;
-         }
+         fprintf(fp, "%s\n", cp->lc_name);
+         ++l;
 #ifdef HAVE_DOCSTRINGS
-         fprintf(fp, _("`%s'.  Argument type: %s.\n\t%s\n"),
-            cp->lc_name, V_(argt), V_(cp->lc_doc));
-         l += 2;
-#else
-         fprintf(fp, "`%s' (%s)\n", cp->lc_name, argt);
+         fprintf(fp, "  : %s\n", V_(cp->lc_doc));
          ++l;
 #endif
+         fprintf(fp, "  : %s\n", a_lex_cmdinfo(cp));
+         ++l;
       }else{
          size_t j = strlen(cp->lc_name) + 2;
 
@@ -443,7 +476,7 @@ a_lex_c_help(void *v){
    /* Help for a single command? */
    if((arg = *(char**)v) != NULL){
       struct a_lex_ghost const *gp;
-      struct a_lex_cmd const *cp, *cpmax;
+      struct a_lex_cmd const *lcp, *lcpmax;
 
       /* Ghosts take precedence */
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
@@ -453,47 +486,29 @@ a_lex_c_help(void *v){
             break;
          }
 
-      cpmax = &(cp = a_lex_cmd_tab)[n_NELEM(a_lex_cmd_tab)];
+      lcpmax = &(lcp = a_lex_cmd_tab)[n_NELEM(a_lex_cmd_tab)];
 jredo:
-      for(; PTRCMP(cp, <, cpmax); ++cp){
-#ifdef HAVE_DOCSTRINGS
-# define a_DS V_(cp->lc_doc)
-#else
-# define a_DS n_empty
-#endif
-         if(!strcmp(arg, cp->lc_name))
-            printf("%s: %s", arg, a_DS);
-         else if(is_prefix(arg, cp->lc_name))
-            printf("%s (%s): %s", arg, cp->lc_name, a_DS);
-         else
+      for(; lcp < lcpmax; ++lcp){
+         if(is_prefix(arg, lcp->lc_name)){
+            fputs(arg, stdout);
+            if(strcmp(arg, lcp->lc_name))
+               printf(" (%s)", lcp->lc_name);
+         }else
             continue;
 
-         if(options & OPT_D_V){
-            char const *atp;
-
-            switch(cp->lc_argtype & ARG_ARGMASK){
-            case ARG_MSGLIST: atp = N_("message-list"); break;
-            case ARG_STRLIST: atp = N_("a \"string\""); break;
-            case ARG_RAWLIST: atp = N_("old-style quoting"); break;
-            case ARG_NOLIST: atp = N_("no arguments"); break;
-            case ARG_NDMLIST: atp = N_("message-list (no default)"); break;
-            case ARG_WYSHLIST: atp = N_("sh(1)ell-style quoting"); break;
-            default: atp = N_("`wysh' for sh(1)ell-style quoting"); break;
-            }
 #ifdef HAVE_DOCSTRINGS
-            printf(_("\n\tArgument type: %s"), V_(atp));
-#else
-            printf(_("argument type: %s"), V_(atp));
+         printf(": %s", V_(lcp->lc_doc));
 #endif
-#undef a_DS
-         }
+         if(options & OPT_D_V)
+            printf("\n  : %s", a_lex_cmdinfo(lcp));
          putchar('\n');
          rv = 0;
          goto jleave;
       }
 
-      if(PTRCMP(cpmax, ==, &a_lex_cmd_tab[n_NELEM(a_lex_cmd_tab)])){
-         cpmax = &(cp = a_lex_special_cmd_tab)[n_NELEM(a_lex_special_cmd_tab)];
+      if(PTRCMP(lcpmax, ==, &a_lex_cmd_tab[n_NELEM(a_lex_cmd_tab)])){
+         lcpmax = &(lcp =
+               a_lex_special_cmd_tab)[n_NELEM(a_lex_special_cmd_tab)];
          goto jredo;
       }
 
