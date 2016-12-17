@@ -2889,9 +2889,10 @@ The following commands are available:
 .It Ic \&!
 Executes the
 .Ev SHELL
-(see
-.Xr sh 1 Ns
-) command which follows.
+command which follows, replacing unescaped exclamation marks with the
+previously executed command if the internal variable
+.Va bang
+is set.
 .
 .Mx
 .It Ic #
@@ -3052,7 +3053,7 @@ the
 .Ql default
 context which is used in all not otherwise documented situations, and
 .Ql compose ,
-which applies to compose-mode only.
+which applies to compose mode only.
 .
 .Pp
 .Dq Keys
@@ -3526,10 +3527,16 @@ and makes them specially addressable.
 .
 .Mx
 .It Ic echo
-(ec) Echoes its arguments after applying
+\*(NQ (ec) Echoes its arguments to standard output after applying
 .Xr sh 1 Ns -style
 expansions and filename transformations, as documented for
 .Sx COMMANDS .
+.
+.Mx
+.It Ic echoerr
+\*(NQ Identical to
+.Ic echo
+except that is echoes to standard error.
 .
 .Mx
 .It Ic edit
@@ -5360,8 +5367,11 @@ in order to send it at the beginning of a line.)
 .Mx
 .It Ic ~! Ar command
 Execute the indicated shell
-.Ar command ,
-then return to the message.
+.Ar command
+which follows, replacing unescaped exclamation marks with the previously
+executed command if the internal variable
+.Va bang
+is set, then return to the message.
 .
 .Mx
 .It Ic ~.
@@ -6148,9 +6158,16 @@ sorting method when a folder is opened, e.g.,
 .
 .Mx
 .It Va bang
-\*(BO Enables the substitution of
+\*(BO Enables the substitution of all not (reverse-solidus) escaped
+exclamation mark
 .Ql \&!
-by the contents of the last command line in shell escapes.
+characters by the contents of the last executed command for the
+.Ic \&!
+shell escape command and
+.Ic ~! ,
+one of the compose mode
+.Sx "COMMAND ESCAPES" .
+If this variable is not set no reverse solidus stripping is performed.
 .
 .Mx
 .It Va batch-exit-on-error

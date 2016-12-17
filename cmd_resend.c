@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Still more user commands.
+ *@ All sorts of `reply', `resend', `forward', and similar user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -33,21 +33,14 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE cmd3
+#define n_FILE cmd_resend
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
-static char                *_bang_buf;
-static size_t              _bang_size;
-
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *     _reedit(char *subj);
-
-/* Expand the shell escape by expanding unescaped !'s into the last issued
- * command where possible */
-static void       _bangexp(char **str, size_t *size);
 
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
@@ -73,9 +66,6 @@ static char *     __fwdedit(char *subj);
 
 /* Do the real work of resending */
 static int        _resend1(void *v, bool_t add_resent);
-
-/* c_file, c_File */
-static int        _c_file(void *v, enum fedit_mode fm);
 
 static char *
 _reedit(char *subj)
@@ -103,54 +93,6 @@ _reedit(char *subj)
 jleave:
    NYD_LEAVE;
    return newsubj;
-}
-
-static void
-_bangexp(char **str, size_t *size)
-{
-   char *bangbuf;
-   int changed = 0;
-   bool_t dobang;
-   size_t sz, i, j, bangbufsize;
-   NYD_ENTER;
-
-   dobang = ok_blook(bang);
-
-   bangbuf = smalloc(bangbufsize = *size);
-   i = j = 0;
-   while ((*str)[i]) {
-      if (dobang) {
-         if ((*str)[i] == '!') {
-            sz = strlen(_bang_buf);
-            bangbuf = srealloc(bangbuf, bangbufsize += sz);
-            ++changed;
-            memcpy(bangbuf + j, _bang_buf, sz + 1);
-            j += sz;
-            i++;
-            continue;
-         }
-      }
-      if ((*str)[i] == '\\' && (*str)[i + 1] == '!') {
-         bangbuf[j++] = '!';
-         i += 2;
-         ++changed;
-      }
-      bangbuf[j++] = (*str)[i++];
-   }
-   bangbuf[j] = '\0';
-   if (changed) {
-      printf("!%s\n", bangbuf);
-      fflush(stdout);
-   }
-   sz = j + 1;
-   if (sz > *size)
-      *str = srealloc(*str, *size = sz);
-   memcpy(*str, bangbuf, sz);
-   if (sz > _bang_size)
-      _bang_buf = srealloc(_bang_buf, _bang_size = sz);
-   memcpy(_bang_buf, bangbuf, sz);
-   free(bangbuf);
-   NYD_LEAVE;
 }
 
 static void
@@ -629,126 +571,6 @@ jleave:
    return (f != FAL0);
 }
 
-static int
-_c_file(void *v, enum fedit_mode fm)
-{
-   char **argv = v;
-   int i;
-   NYD2_ENTER;
-
-   if (*argv == NULL) {
-      newfileinfo();
-      i = 0;
-      goto jleave;
-   }
-
-   if (pstate & PS_HOOK_MASK) {
-      n_err(_("Cannot change folder from within a hook\n"));
-      i = 1;
-      goto jleave;
-   }
-
-   save_mbox_for_possible_quitstuff();
-
-   i = setfile(*argv, fm);
-   if (i < 0) {
-      i = 1;
-      goto jleave;
-   }
-   assert(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
-   if (pstate & PS_SETFILE_OPENED)
-      check_folder_hook(FAL0);
-
-   if (i > 0) {
-      /* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
-       * TODO a macro: because that recursed commando loop will terminate the
-       * TODO entire macro due to that!  So either the user needs to be able
-       * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
-       * TODO if $?", then "overriding an "error"), or we need a different
-       * TODO return that differentiates */
-      i = (pstate & PS_ROBOT) ? 0 : 1;
-      goto jleave;
-   }
-   if (pstate & PS_SETFILE_OPENED)
-      announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
-   i = 0;
-jleave:
-   NYD2_LEAVE;
-   return i;
-}
-
-FL int
-c_shell(void *v)
-{
-   char *str = v, *cmd;
-   size_t cmdsize;
-   sigset_t mask;
-   NYD_ENTER;
-
-   cmd = smalloc(cmdsize = strlen(str) +1);
-   memcpy(cmd, str, cmdsize);
-   _bangexp(&cmd, &cmdsize);
-
-   sigemptyset(&mask);
-   run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
-      cmd, NULL, NULL);
-   printf("!\n");
-
-   free(cmd);
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_dosh(void *v)
-{
-   NYD_ENTER;
-   n_UNUSED(v);
-
-   run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
-      NULL, NULL, NULL);
-   putchar('\n');
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_cwd(void *v)
-{
-   char buf[PATH_MAX]; /* TODO getcwd(3) may return a larger value */
-   NYD_ENTER;
-
-   if (getcwd(buf, sizeof buf) != NULL) {
-      puts(buf);
-      v = (void*)0x1;
-   } else {
-      n_perr(_("getcwd"), 0);
-      v = NULL;
-   }
-   NYD_LEAVE;
-   return (v == NULL);
-}
-
-FL int
-c_chdir(void *v)
-{
-   char **arglist = v;
-   char const *cp;
-   NYD_ENTER;
-
-   if (*arglist == NULL)
-      cp = ok_vlook(HOME);
-   else if ((cp = fexpand(*arglist, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
-      goto jleave;
-   if (chdir(cp) == -1) {
-      n_perr(cp, 0);
-      cp = NULL;
-   }
-jleave:
-   NYD_LEAVE;
-   return (cp == NULL);
-}
-
 FL int
 c_reply(void *v)
 {
@@ -890,260 +712,6 @@ c_Resend(void *v)
    rv = _resend1(v, FAL0);
    NYD_LEAVE;
    return rv;
-}
-
-FL int
-c_messize(void *v)
-{
-   int *msgvec = v, *ip, mesg;
-   struct message *mp;
-   NYD_ENTER;
-
-   for (ip = msgvec; *ip != 0; ++ip) {
-      mesg = *ip;
-      mp = message + mesg - 1;
-      printf("%d: ", mesg);
-      if (mp->m_xlines > 0)
-         printf("%ld", mp->m_xlines);
-      else
-         putchar(' ');
-      printf("/%lu\n", (ul_i)mp->m_xsize);
-   }
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_file(void *v)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = _c_file(v, FEDIT_NONE);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_File(void *v)
-{
-   int rv;
-   NYD_ENTER;
-
-   rv = _c_file(v, FEDIT_RDONLY);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_echo(void *v){
-   char const **argv, **ap, *cp;
-   NYD_ENTER;
-
-   for(ap = argv = v; *ap != NULL; ++ap){
-      if(ap != argv)
-         putchar(' ');
-      if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
-         cp = *ap;
-      fputs(cp, stdout);
-   }
-   putchar('\n');
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_newmail(void *v)
-{
-   int val = 1, mdot;
-   NYD_ENTER;
-   n_UNUSED(v);
-
-   if (pstate & PS_HOOK_MASK)
-      n_err(_("Cannot call `newmail' from within a hook\n"));
-   else if ((val = setfile(mailname,
-            FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
-         ) == 0) {
-      mdot = getmdot(1);
-      setdot(message + mdot - 1);
-   }
-   NYD_LEAVE;
-   return val;
-}
-
-FL int
-c_noop(void *v)
-{
-   int rv = 0;
-   NYD_ENTER;
-   n_UNUSED(v);
-
-   switch (mb.mb_type) {
-   case MB_POP3:
-#ifdef HAVE_POP3
-      pop3_noop();
-#else
-      rv = c_cmdnotsupp(NULL);
-#endif
-      break;
-   default:
-      break;
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_remove(void *v)
-{
-   char const *fmt;
-   size_t fmt_len;
-   char **args, *name, *ename;
-   int ec;
-   NYD_ENTER;
-
-   if (*(args = v) == NULL) {
-      n_err(_("Synopsis: remove: <mailbox>...\n"));
-      ec = 1;
-      goto jleave;
-   }
-
-   ec = 0;
-
-   fmt = _("Remove %s");
-   fmt_len = strlen(fmt);
-   do {
-      if ((name = expand(*args)) == NULL)
-         continue;
-      ename = n_shexp_quote_cp(name, FAL0);
-
-      if (!strcmp(name, mailname)) {
-         n_err(_("Cannot remove current mailbox %s\n"), ename);
-         ec |= 1;
-         continue;
-      }
-      {
-         size_t vl = strlen(ename) + fmt_len +1;
-         char *vb = salloc(vl);
-         bool_t asw;
-         snprintf(vb, vl, fmt, ename);
-         asw = getapproval(vb, TRU1);
-         if (!asw)
-            continue;
-      }
-
-      switch (which_protocol(name)) {
-      case PROTO_FILE:
-         if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
-            int se = errno;
-
-            if (se == EISDIR) {
-               struct stat sb;
-
-               if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
-                  if (!rmdir(name))
-                     break;
-                  se = errno;
-               }
-            }
-            n_perr(name, se);
-            ec |= 1;
-         }
-         break;
-      case PROTO_POP3:
-         n_err(_("Cannot remove POP3 mailbox %s\n"), ename);
-         ec |= 1;
-         break;
-      case PROTO_MAILDIR:
-         if (maildir_remove(name) != OKAY)
-            ec |= 1;
-         break;
-      case PROTO_UNKNOWN:
-         n_err(_("Not removed: unknown protocol: %s\n"), ename);
-         ec |= 1;
-         break;
-      }
-   } while (*++args != NULL);
-jleave:
-   NYD_LEAVE;
-   return ec;
-}
-
-FL int
-c_rename(void *v)
-{
-   char **args = v, *old, *new;
-   enum protocol oldp, newp;
-   int ec;
-   NYD_ENTER;
-
-   ec = 1;
-
-   if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      n_err(_("Synopsis: rename: <old> <new>\n"));
-      goto jleave;
-   }
-
-   if ((old = expand(args[0])) == NULL)
-      goto jleave;
-   oldp = which_protocol(old);
-   if ((new = expand(args[1])) == NULL)
-      goto jleave;
-   newp = which_protocol(new);
-
-   if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
-      n_err(_("Cannot rename current mailbox %s\n"),
-         n_shexp_quote_cp(old, FAL0));
-      goto jleave;
-   }
-
-   ec = 0;
-
-   if (newp == PROTO_POP3)
-      goto jnopop3;
-   switch (oldp) {
-   case PROTO_FILE:
-      if (link(old, new) == -1) {
-         switch (errno) {
-         case EACCES:
-         case EEXIST:
-         case ENAMETOOLONG:
-         case ENOENT:
-         case ENOSPC:
-         case EXDEV:
-            n_perr(new, 0);
-            break;
-         default:
-            n_perr(old, 0);
-            break;
-         }
-         ec |= 1;
-      } else if (unlink(old) == -1) {
-         n_perr(old, 0);
-         ec |= 1;
-      }
-      break;
-   case PROTO_MAILDIR:
-      if (rename(old, new) == -1) {
-         n_perr(old, 0);
-         ec |= 1;
-      }
-      break;
-   case PROTO_POP3:
-jnopop3:
-      n_err(_("Cannot rename POP3 mailboxes\n"));
-      ec |= 1;
-      break;
-   case PROTO_UNKNOWN:
-   default:
-      n_err(_("Unknown protocol in %s and %s; not renamed\n"),
-         n_shexp_quote_cp(old, FAL0), n_shexp_quote_cp(new, FAL0));
-      ec |= 1;
-      break;
-   }
-jleave:
-   NYD_LEAVE;
-   return ec;
 }
 
 /* s-it-mode */

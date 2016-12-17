@@ -1275,6 +1275,15 @@ jjump: /* TODO */
    return rv;
 }
 
+FL int
+c_cmdnotsupp(void *vp){
+   NYD_ENTER;
+   n_UNUSED(vp);
+   n_err(_("The requested feature is not compiled in\n"));
+   NYD_LEAVE;
+   return 1;
+}
+
 FL bool_t
 n_commands(void){ /* FIXME */
    struct a_lex_eval_ctx ev;

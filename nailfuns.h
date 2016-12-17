@@ -342,187 +342,6 @@ FL int         c_errors(void *vp);
 #endif
 
 /*
- * cmd1.c
- */
-
-FL int         c_cmdnotsupp(void *v);
-
-/* `headers' (show header group, possibly after setting dot) */
-FL int         c_headers(void *v);
-
-/* Like c_headers(), but pre-prepared message vector */
-FL int         print_header_group(int *vector);
-
-/* Scroll to the next/previous screen */
-FL int         c_scroll(void *v);
-FL int         c_Scroll(void *v);
-
-/* Print out the headlines for each message in the passed message list */
-FL int         c_from(void *v);
-
-/* Print all message in between and including bottom and topx if they are
- * visible and either only_marked is false or they are MMARKed */
-FL void        print_headers(size_t bottom, size_t topx, bool_t only_marked);
-
-/* Print out the value of dot */
-FL int         c_pdot(void *v);
-
-/* Paginate messages, honor/don't honour ignored fields, respectively */
-FL int         c_more(void *v);
-FL int         c_More(void *v);
-
-/* Type out messages, honor/don't honour ignored fields, respectively */
-FL int         c_type(void *v);
-FL int         c_Type(void *v);
-
-/* Show MIME-encoded message text, including all fields */
-FL int         c_show(void *v);
-
-/* Pipe messages, honor/don't honour ignored fields, respectively */
-FL int         c_pipe(void *v);
-FL int         c_Pipe(void *v);
-
-/* Print the first *toplines* of each desired message */
-FL int         c_top(void *v);
-FL int         c_Top(void *v);
-
-/* List the folders the user currently has */
-FL int         c_folders(void *v);
-
-/*
- * cmd2.c
- */
-
-/* If any arguments were given, go to the next applicable argument following
- * dot, otherwise, go to the next applicable message.  If given as first
- * command with no arguments, print first message */
-FL int         c_next(void *v);
-
-/* Move the dot up or down by one message */
-FL int         c_dotmove(void *v);
-
-/* Save a message in a file.  Mark the message as saved so we can discard when
- * the user quits */
-FL int         c_save(void *v);
-FL int         c_Save(void *v);
-
-/* Copy a message to a file without affected its saved-ness */
-FL int         c_copy(void *v);
-FL int         c_Copy(void *v);
-
-/* Move a message to a file */
-FL int         c_move(void *v);
-FL int         c_Move(void *v);
-
-/* Decrypt and copy a message to a file */
-FL int         c_decrypt(void *v);
-FL int         c_Decrypt(void *v);
-
-/* Write the indicated messages at the end of the passed file name, minus
- * header and trailing blank line.  This is the MIME save function */
-FL int         c_write(void *v);
-
-/* Delete messages */
-FL int         c_delete(void *v);
-
-/* Delete messages, then type the new dot */
-FL int         c_deltype(void *v);
-
-/* Undelete the indicated messages */
-FL int         c_undelete(void *v);
-
-/* Touch all the given messages so that they will get mboxed */
-FL int         c_stouch(void *v);
-
-/* Make sure all passed messages get mboxed */
-FL int         c_mboxit(void *v);
-
-/* Preserve messages, so that they will be sent back to the system mailbox */
-FL int         c_preserve(void *v);
-
-/* Mark all given messages as unread */
-FL int         c_unread(void *v);
-
-/* Mark all given messages as read */
-FL int         c_seen(void *v);
-
-/* Message flag manipulation */
-FL int         c_flag(void *v);
-FL int         c_unflag(void *v);
-FL int         c_answered(void *v);
-FL int         c_unanswered(void *v);
-FL int         c_draft(void *v);
-FL int         c_undraft(void *v);
-
-/*
- * cmd3.c
- */
-
-/* Process a shell escape by saving signals, ignoring signals and a sh -c */
-FL int         c_shell(void *v);
-
-/* Fork an interactive shell */
-FL int         c_dosh(void *v);
-
-/* Print user's working directory */
-FL int         c_cwd(void *v);
-
-/* Change user's working directory */
-FL int         c_chdir(void *v);
-
-/* All thinkable sorts of `reply' / `respond' and `followup'.. */
-FL int         c_reply(void *v);
-FL int         c_replyall(void *v);
-FL int         c_replysender(void *v);
-FL int         c_Reply(void *v);
-FL int         c_followup(void *v);
-FL int         c_followupall(void *v);
-FL int         c_followupsender(void *v);
-FL int         c_Followup(void *v);
-
-/* ..and a mailing-list reply */
-FL int         c_Lreply(void *v);
-
-/* The 'forward' command */
-FL int         c_forward(void *v);
-
-/* Similar to forward, saving the message in a file named after the first
- * recipient */
-FL int         c_Forward(void *v);
-
-/* Resend a message list to a third person */
-FL int         c_resend(void *v);
-
-/* Resend a message list to a third person without adding headers */
-FL int         c_Resend(void *v);
-
-/* Print the size of each message */
-FL int         c_messize(void *v);
-
-/* `file' (`folder') and `File' (`Folder') */
-FL int         c_file(void *v);
-FL int         c_File(void *v);
-
-/* Expand file names like echo */
-FL int         c_echo(void *v);
-
-/* 'newmail' command: Check for new mail without writing old mail back */
-FL int         c_newmail(void *v);
-
-/* noop */
-FL int         c_noop(void *v);
-
-/* Remove mailbox */
-FL int         c_remove(void *v);
-
-/* Rename mailbox */
-FL int         c_rename(void *v);
-
-/* `urlencode' and `urldecode' */
-FL int         c_urlencode(void *v);
-FL int         c_urldecode(void *v);
-
-/*
  * cmd_arg.c
  */
 
@@ -551,13 +370,201 @@ FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
  * condstack_release() and condstack_take() rotate the current condition stack;
  * condstack_take() returns a false boolean if the current condition stack has
  * unclosed conditionals */
-FL int         c_if(void *v);
-FL int         c_elif(void *v);
-FL int         c_else(void *v);
-FL int         c_endif(void *v);
-FL bool_t      condstack_isskip(void);
-FL void *      condstack_release(void);
-FL bool_t      condstack_take(void *self);
+FL int c_if(void *v);
+FL int c_elif(void *v);
+FL int c_else(void *v);
+FL int c_endif(void *v);
+FL bool_t condstack_isskip(void);
+FL void *condstack_release(void);
+FL bool_t condstack_take(void *self);
+
+/*
+ * cmd_folder.c
+ */
+
+/* `file' (`folder') and `File' (`Folder') */
+FL int c_file(void *v);
+FL int c_File(void *v);
+
+/* 'newmail' command: Check for new mail without writing old mail back */
+FL int c_newmail(void *v);
+
+/* noop */
+FL int c_noop(void *v);
+
+/* Remove mailbox */
+FL int c_remove(void *v);
+
+/* Rename mailbox */
+FL int c_rename(void *v);
+
+/* List the folders the user currently has */
+FL int c_folders(void *v);
+
+/*
+ * cmd_headers.c
+ */
+
+/* `headers' (show header group, possibly after setting dot) */
+FL int c_headers(void *v);
+
+/* Like c_headers(), but pre-prepared message vector */
+FL int print_header_group(int *vector);
+
+/* Scroll to the next/previous screen */
+FL int c_scroll(void *v);
+FL int c_Scroll(void *v);
+
+/* Move the dot up or down by one message */
+FL int c_dotmove(void *v);
+
+/* Print out the headlines for each message in the passed message list */
+FL int c_from(void *v);
+
+/* Print all message in between and including bottom and topx if they are
+ * visible and either only_marked is false or they are MMARKed */
+FL void print_headers(size_t bottom, size_t topx, bool_t only_marked);
+
+/*
+ * cmd_message.c
+ */
+
+/* Paginate messages, honour/don't honour ignored fields, respectively */
+FL int c_more(void *v);
+FL int c_More(void *v);
+
+/* Type out messages, honour/don't honour ignored fields, respectively */
+FL int c_type(void *v);
+FL int c_Type(void *v);
+
+/* Show raw message content */
+FL int c_show(void *v);
+
+/* Pipe messages, honour/don't honour ignored fields, respectively */
+FL int c_pipe(void *v);
+FL int c_Pipe(void *v);
+
+/* Print the first *toplines* of each desired message */
+FL int c_top(void *v);
+FL int c_Top(void *v);
+
+/* If any arguments were given, go to the next applicable argument following
+ * dot, otherwise, go to the next applicable message.  If given as first
+ * command with no arguments, print first message */
+FL int c_next(void *v);
+
+/* Print out the value of dot */
+FL int c_pdot(void *v);
+
+/* Print the size of each message */
+FL int c_messize(void *v);
+
+/* Delete messages */
+FL int c_delete(void *v);
+
+/* Delete messages, then type the new dot */
+FL int c_deltype(void *v);
+
+/* Undelete the indicated messages */
+FL int c_undelete(void *v);
+
+/* Touch all the given messages so that they will get mboxed */
+FL int c_stouch(void *v);
+
+/* Make sure all passed messages get mboxed */
+FL int c_mboxit(void *v);
+
+/* Preserve messages, so that they will be sent back to the system mailbox */
+FL int c_preserve(void *v);
+
+/* Mark all given messages as unread */
+FL int c_unread(void *v);
+
+/* Mark all given messages as read */
+FL int c_seen(void *v);
+
+/* Message flag manipulation */
+FL int c_flag(void *v);
+FL int c_unflag(void *v);
+FL int c_answered(void *v);
+FL int c_unanswered(void *v);
+FL int c_draft(void *v);
+FL int c_undraft(void *v);
+
+/*
+ * cmd_misc.c
+ */
+
+/* Process a shell escape by saving signals, ignoring signals and a sh -c */
+FL int c_shell(void *v);
+
+/* Fork an interactive shell */
+FL int c_dosh(void *v);
+
+/* Print user's working directory */
+FL int c_cwd(void *v);
+
+/* Change user's working directory */
+FL int c_chdir(void *v);
+
+/* Expand file names like echo (to stdout/stderr) */
+FL int c_echo(void *v);
+FL int c_echoerr(void *v);
+
+/*
+ * cmd_resend.c
+ */
+
+/* All thinkable sorts of `reply' / `respond' and `followup'.. */
+FL int c_reply(void *v);
+FL int c_replyall(void *v);
+FL int c_replysender(void *v);
+FL int c_Reply(void *v);
+FL int c_followup(void *v);
+FL int c_followupall(void *v);
+FL int c_followupsender(void *v);
+FL int c_Followup(void *v);
+
+/* ..and a mailing-list reply */
+FL int c_Lreply(void *v);
+
+/* The 'forward' command */
+FL int c_forward(void *v);
+
+/* Similar to forward, saving the message in a file named after the first
+ * recipient */
+FL int c_Forward(void *v);
+
+/* Resend a message list to a third person */
+FL int c_resend(void *v);
+
+/* Resend a message list to a third person without adding headers */
+FL int c_Resend(void *v);
+
+/*
+ * cmd_write.c
+ */
+
+/* Save a message in a file.  Mark the message as saved so we can discard when
+ * the user quits */
+FL int c_save(void *v);
+FL int c_Save(void *v);
+
+/* Copy a message to a file without affected its saved-ness */
+FL int c_copy(void *v);
+FL int c_Copy(void *v);
+
+/* Move a message to a file */
+FL int c_move(void *v);
+FL int c_Move(void *v);
+
+/* Decrypt and copy a message to a file */
+FL int c_decrypt(void *v);
+FL int c_Decrypt(void *v);
+
+/* Write the indicated messages at the end of the passed file name, minus
+ * header and trailing blank line.  This is the MIME save function */
+FL int c_write(void *v);
 
 /*
  * collect.c
@@ -954,6 +961,9 @@ FL ssize_t     imap_search(char const *spec, int f);
 /*
  * lex_input.c
  */
+
+/* */
+FL int         c_cmdnotsupp(void *v);
 
 /* Interpret user commands.  If stdin is not a tty, print no prompt; return
  * whether last processed command returned error; this is *only* for main()! */
@@ -2394,6 +2404,9 @@ FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
 
 /* `urlcodec' */
 FL int         c_urlcodec(void *v);
+
+FL int         c_urlencode(void *v); /* TODO obsolete*/
+FL int         c_urldecode(void *v); /* TODO obsolete */
 
 /* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
  * Return NULL or something that can be converted to a struct name */

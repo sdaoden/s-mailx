@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ User commands.
+ *@ Header display, search, etc., related user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -33,16 +33,13 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE cmd1
+#define n_FILE cmd_headers
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 static int        _screen;
-
-/* Prepare and print "[Message: xy]:" intro */
-static void    _show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* ... And place the extracted date in `date' */
 static void    _parse_from_(struct message *mp, char date[FROM_DATEBUF]);
@@ -66,42 +63,6 @@ static int a_cmd_scroll(char const *arg, bool_t onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
-
-/* Show the requested messages */
-static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-                  bool_t donotdecode, char *cmd, ui64_t *tstats);
-
-/* Pipe the requested messages */
-static int     _pipe1(char *str, int doign);
-
-/* `top' / `Top' */
-static int a_cmd_top(void *vp, struct n_ignore const *itp);
-
-static void
-_show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
-{
-   char const *cpre, *csuf;
-   NYD_ENTER;
-
-   cpre = csuf = n_empty;
-#ifdef HAVE_COLOUR
-   if (pstate & PS_COLOUR_ACTIVE) {
-      struct n_colour_pen *cpen;
-
-      if ((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
-         struct str const *sp;
-
-         if ((sp = n_colour_pen_to_str(cpen)) != NULL)
-            cpre = sp->s;
-         if ((sp = n_colour_reset_to_str()) != NULL)
-            csuf = sp->s;
-      }
-   }
-#endif
-   fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-      cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf);
-   NYD_LEAVE;
-}
 
 static void
 _parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
@@ -983,331 +944,6 @@ jleave:
    return !flag;
 }
 
-static int
-_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-   bool_t donotdecode, char *cmd, ui64_t *tstats)
-{
-   struct n_sigman sm;
-   ui64_t mstats[1];
-   int volatile rv = 1;
-   int *ip;
-   struct message *mp;
-   char const *cp;
-   FILE * volatile obuf;
-   bool_t volatile isrelax = FAL0;
-   NYD_ENTER;
-   {/* C89.. */
-   enum sendaction const action = ((dopipe && ok_blook(piperaw))
-         ? SEND_MBOX : donotdecode
-         ? SEND_SHOW : doign
-         ? SEND_TODISP : SEND_TODISP_ALL);
-   bool_t const volatile formfeed = (dopipe && ok_blook(page));
-   obuf = stdout;
-
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
-
-   if (dopipe) {
-      if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
-         n_perr(cmd, 0);
-         obuf = stdout;
-      }
-   } else if ((options & OPT_TTYOUT) && (dopage ||
-         ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      size_t nlines = 0;
-
-      if (!dopage) {
-         for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
-            mp = message + *ip - 1;
-            if (!(mp->m_content_info & CI_HAVE_BODY))
-               if (get_body(mp) != OKAY)
-                  goto jcleanup_leave;
-            nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
-         }
-      }
-
-      /* >= not <: we return to the prompt */
-      if (dopage || UICMP(z, nlines, >=,
-            (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)realscreenheight))) {
-         if ((obuf = n_pager_open()) == NULL)
-            obuf = stdout;
-      }
-#ifdef HAVE_COLOUR
-      if ((options & OPT_INTERACTIVE) &&
-            (action == SEND_TODISP || action == SEND_TODISP_ALL ||
-             action == SEND_SHOW))
-         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != stdout);
-#endif
-   }
-#ifdef HAVE_COLOUR
-   else if ((options & OPT_INTERACTIVE) &&
-         (action == SEND_TODISP || action == SEND_TODISP_ALL))
-      n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
-#endif
-
-   /*TODO unless we have our signal manager special care must be taken */
-   srelax_hold();
-   isrelax = TRU1;
-   for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
-      mp = message + *ip - 1;
-      touch(mp);
-      setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
-      uncollapse1(mp, 1);
-      if (!dopipe && ip != msgvec)
-         fprintf(obuf, "\n");
-      if (action != SEND_MBOX)
-         _show_msg_overview(obuf, mp, *ip);
-      sendmp(mp, obuf, (doign ? n_IGNORE_TYPE : NULL), NULL, action, mstats);
-      srelax();
-      if (formfeed) /* TODO a nicer way to separate piped messages! */
-         putc('\f', obuf);
-      if (tstats != NULL)
-         tstats[0] += mstats[0];
-   }
-   srelax_rele();
-   isrelax = FAL0;
-
-   rv = 0;
-jcleanup_leave:
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
-   if (obuf != stdout)
-      n_pager_close(obuf);
-   }
-   NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
-   return rv;
-}
-
-static int
-_pipe1(char *str, int doign)
-{
-   ui64_t stats[1];
-   char const *cmd, *cmdq;
-   int *msgvec, rv = 1;
-   bool_t needs_list;
-   NYD_ENTER;
-
-   if ((cmd = laststring(str, &needs_list, TRU1)) == NULL) {
-      cmd = ok_vlook(cmd);
-      if (cmd == NULL || *cmd == '\0') {
-         n_err(_("Variable *cmd* not set\n"));
-         goto jleave;
-      }
-   }
-
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
-
-   if (!needs_list) {
-      *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
-         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
-            rv = 0;
-            goto jleave;
-         }
-         puts(_("No messages to pipe."));
-         goto jleave;
-      }
-      msgvec[1] = 0;
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-   if (*msgvec == 0) {
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
-         rv = 0;
-         goto jleave;
-      }
-      printf("No applicable messages.\n");
-      goto jleave;
-   }
-
-   cmdq = n_shexp_quote_cp(cmd, FAL0);
-   printf(_("Pipe to: %s\n"), cmdq);
-   stats[0] = 0;
-   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
-         ) == 0)
-      printf("%s %" PRIu64 " bytes\n", cmdq, stats[0]);
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
-a_cmd_top(void *vp, struct n_ignore const *itp){
-   struct n_string s;
-   int *msgvec, *ip;
-   enum{a_NONE, a_SQUEEZE = 1u<<0,
-      a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
-   size_t tmax, plines;
-   FILE *iobuf, *pbuf;
-   NYD2_ENTER;
-
-   if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
-      n_perr(_("`top': I/O temporary file"), 0);
-      vp = NULL;
-      goto jleave;
-   }
-   if((pbuf = Ftmp(NULL, "toppag", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
-      n_perr(_("`top': temporary pager file"), 0);
-      vp = NULL;
-      goto jleave1;
-   }
-
-   /* TODO In v15 we should query the m_message object, and directly send only
-    * TODO those parts, optionally over empty-line-squeeze and quote-strip
-    * TODO filters, in which we are interested in: only text content!
-    * TODO And: with *topsqueeze*, header/content separating empty line.. */
-   pstate &= ~PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
-   plines = 0;
-
-#ifdef HAVE_COLOUR
-   if (options & OPT_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_VIEW, TRU1);
-#endif
-   n_string_creat_auto(&s);
-   /* C99 */{
-      long l;
-
-      if((l = strtol(ok_vlook(toplines), NULL, 0)) <= 0){
-         tmax = (size_t)screensize();
-         if(l < 0){
-            l = n_ABS(l);
-            tmax >>= l;
-         }
-      }else
-         tmax = (size_t)l;
-   }
-   f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
-
-   for(ip = msgvec = vp;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip){
-      struct message *mp;
-
-      mp = &message[*ip - 1];
-      touch(mp);
-      setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
-      uncollapse1(mp, 1);
-
-      rewind(iobuf);
-      if(ftruncate(fileno(iobuf), 0)){
-         n_perr(_("`top': ftruncate(2)"), 0);
-         vp = NULL;
-         break;
-      }
-      if(sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
-         n_err(_("`top': failed to prepare message %d\n"), *ip);
-         vp = NULL;
-         break;
-      }
-      fflush_rewind(iobuf);
-
-      _show_msg_overview(pbuf, mp, *ip);
-      ++plines;
-      /* C99 */{
-         size_t l;
-
-         n_string_trunc(&s, 0);
-         for(l = 0, f &= ~a_WORKMASK; !(f & a_STOP);){
-            int c;
-
-            if((c = getc(iobuf)) == EOF){
-               f |= a_STOP;
-               c = '\n';
-            }
-
-            if(c != '\n')
-               n_string_push_c(&s, c);
-            else if((f & a_SQUEEZE) && s.s_len == 0){
-               if(!(f & a_STOP) && ((f & a_EMPTY) || tmax - 1 <= l))
-                  continue;
-               if(putc('\n', pbuf) == EOF){
-                  vp = NULL;
-                  break;
-               }
-               f |= a_EMPTY;
-               ++l;
-            }else{
-               char const *cp, *xcp;
-
-               cp = n_string_cp_const(&s);
-               /* TODO Brute simple skip part overviews; see above.. */
-               if(!(f & a_SQUEEZE))
-                  c = '\1';
-               else if(s.s_len > 8 &&
-                     (xcp = strstr(cp, "[-- ")) != NULL &&
-                      strstr(&xcp[1], " --]") != NULL)
-                  c = '\0';
-               else for(; (c = *cp) != '\0'; ++cp){
-                  if(!asciichar(c))
-                     break;
-                  if(!blankspacechar(c)){
-                     if(!ISQUOTE(c))
-                        break;
-                     c = '\0';
-                     break;
-                  }
-               }
-
-               if(c != '\0'){
-                  if(fputs(n_string_cp_const(&s), pbuf) == EOF ||
-                        putc('\n', pbuf) == EOF){
-                     vp = NULL;
-                     break;
-                  }
-                  if(++l >= tmax)
-                     break;
-                  f &= ~a_EMPTY;
-               }else
-                  f |= a_EMPTY;
-               n_string_trunc(&s, 0);
-            }
-         }
-         if(vp == NULL)
-            break;
-         if(l > 0)
-            plines += l;
-         else{
-            if(!(f & a_EMPTY) && putc('\n', pbuf) == EOF){
-               vp = NULL;
-               break;
-            }
-            ++plines;
-         }
-      }
-   }
-
-   n_string_gut(&s);
-   n_COLOUR( n_colour_env_gut(pbuf); )
-
-   fflush(pbuf);
-   page_or_print(pbuf, plines);
-
-   Fclose(pbuf);
-jleave1:
-   Fclose(iobuf);
-jleave:
-   NYD2_LEAVE;
-   return (vp != NULL);
-}
-
-FL int
-c_cmdnotsupp(void *v) /* TODO -> lex.c */
-{
-   NYD_ENTER;
-   n_UNUSED(v);
-   n_err(_("The requested feature is not compiled in\n"));
-   NYD_LEAVE;
-   return 1;
-}
-
 FL int
 c_headers(void *v)
 {
@@ -1349,6 +985,37 @@ c_Scroll(void *v)
    NYD_ENTER;
 
    rv = a_cmd_scroll(v, TRU1);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_dotmove(void *v)
+{
+   char const *args;
+   int msgvec[2], rv;
+   NYD_ENTER;
+
+   if (*(args = v) == '\0' || args[1] != '\0') {
+jerr:
+      n_err(_("Synopsis: dotmove: up <-> or down <+> by one message\n"));
+      rv = 1;
+   } else switch (args[0]) {
+   case '-':
+   case '+':
+      if (msgCount == 0) {
+         printf(_("At EOF\n"));
+         rv = 0;
+      } else if (getmsglist(n_UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
+         setdot(message + msgvec[0] - 1);
+         msgvec[1] = 0;
+         rv = c_headers(msgvec);
+      } else
+         rv = 1;
+      break;
+   default:
+      goto jerr;
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -1458,151 +1125,6 @@ jleave:
    n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? stdout : NULL); )
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
-}
-
-FL int
-c_pdot(void *v)
-{
-   NYD_ENTER;
-   n_UNUSED(v);
-   printf("%d\n", (int)PTR2SIZE(dot - message + 1));
-   NYD_LEAVE;
-   return 0;
-}
-
-FL int
-c_more(void *v)
-{
-   int *msgvec = v, rv;
-   NYD_ENTER;
-
-   rv = _type1(msgvec, TRU1, TRU1, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_More(void *v)
-{
-   int *msgvec = v, rv;
-   NYD_ENTER;
-
-   rv = _type1(msgvec, FAL0, TRU1, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_type(void *v)
-{
-   int *msgvec = v, rv;
-   NYD_ENTER;
-
-   rv = _type1(msgvec, TRU1, FAL0, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_Type(void *v)
-{
-   int *msgvec = v, rv;
-   NYD_ENTER;
-
-   rv = _type1(msgvec, FAL0, FAL0, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_show(void *v)
-{
-   int *msgvec = v, rv;
-   NYD_ENTER;
-
-   rv = _type1(msgvec, FAL0, FAL0, FAL0, TRU1, NULL, NULL);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_pipe(void *v)
-{
-   char *str = v;
-   int rv;
-   NYD_ENTER;
-
-   rv = _pipe1(str, 1);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_Pipe(void *v)
-{
-   char *str = v;
-   int rv;
-   NYD_ENTER;
-
-   rv = _pipe1(str, 0);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_top(void *v){
-   struct n_ignore *itp;
-   int rv;
-   NYD_ENTER;
-
-   if(n_ignore_is_any(n_IGNORE_TOP))
-      itp = n_IGNORE_TOP;
-   else{
-      itp = n_ignore_new(TRU1);
-      n_ignore_insert(itp, TRU1, "from", sizeof("from") -1);
-      n_ignore_insert(itp, TRU1, "to", sizeof("to") -1);
-      n_ignore_insert(itp, TRU1, "cc", sizeof("cc") -1);
-      n_ignore_insert(itp, TRU1, "subject", sizeof("subject") -1);
-   }
-
-   rv = !a_cmd_top(v, itp);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_Top(void *v){
-   int rv;
-   NYD_ENTER;
-
-   rv = !a_cmd_top(v, n_IGNORE_TYPE);
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-c_folders(void *v)
-{
-   char const *cp;
-   char **argv;
-   int rv;
-   NYD_ENTER;
-
-   rv = 1;
-
-   if(*(argv = v) != NULL){
-      if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL)
-         goto jleave;
-   }else
-      cp = folder_query();
-
-   rv = run_command(ok_vlook(LISTER), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, cp,
-         NULL, NULL, NULL);
-   if(rv < 0)
-      rv = 1; /* XXX */
-jleave:
-   NYD_LEAVE;
-   return rv;
 }
 
 /* s-it-mode */
