@@ -291,7 +291,8 @@ _attach_file(struct attachment *ap, FILE *fo)
       ap->a_charset = ap->a_input_charset;
       err = __attach_file(ap, fo);
       goto jleave;
-   }
+   } else
+      assert(ap->a_input_charset != NULL);
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
@@ -384,12 +385,12 @@ jerr_header:
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
    if (do_iconv) {
-      char const *tcs = charset_get_lc();
-      if (asccasecmp(charset, tcs) &&
-            (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = errno) != 0) {
+      if (asccasecmp(charset, ap->a_input_charset) &&
+            (iconvd = n_iconv_open(charset, ap->a_input_charset)
+               ) == (iconv_t)-1 && (err = errno) != 0) {
          if (err == EINVAL)
-            n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
+            n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
+               charset);
          else
             n_err(_("iconv_open: %s\n"), strerror(err));
          goto jerr_fclose;

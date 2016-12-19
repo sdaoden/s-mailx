@@ -50,9 +50,9 @@
 # include <locale.h>
 #endif
 
-struct a_arg {
-   struct a_arg   *aa_next;
-   char           *aa_file;
+struct a_arg{
+   struct a_arg *aa_next;
+   char const *aa_file;
 };
 
 /* (extern, but not with amalgamation, so define here) */
@@ -603,7 +603,7 @@ main(int argc, char *argv[]){
       case 'a':
          options |= OPT_SENDMODE;
          {  struct a_arg *nap = salloc(sizeof(struct a_arg));
-            if (a_head == NULL)
+            if(a_head == NULL)
                a_head = nap;
             else
                a_curr->aa_next = nap;
@@ -1069,41 +1069,14 @@ jgetopt_done:
     * attachments which we had delayed due to this.
     * This may use savestr(), but since we won't enter the command loop we
     * don't need to care about that */
-   for (cp = NULL; a_head != NULL;) {
-      struct attachment *nahp, *nap;
+   for(; a_head != NULL; a_head = a_head->aa_next){
+      enum n_attach_error aerr;
 
-      if ((nahp = add_attachment(n_LEXINPUT_CTX_DEFAULT, attach,
-            a_head->aa_file, &nap)) != NULL) {
-         attach = nahp;
-         /* Did we split a charset set name for fixation purposes? */
-         if (cp != NULL) {
-            nap->a_conv = AC_FIX_INCS;
-            nap->a_input_charset = cp;
-            cp = NULL;
-         }
-         a_head = a_head->aa_next;
-         continue;
+      attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
+      if(aerr != n_ATTACH_ERR_NONE){
+         exit_status = EXIT_ERR;
+         goto jleave;
       }
-      i = errno;
-
-      /* It may not have worked because of an appended character set name, so
-       * try to split name and charset and retry once */
-      if (cp == NULL && (cp = strrchr(a_head->aa_file, '=')) != NULL) {
-         char *ncp, *nfp = savestrbuf(a_head->aa_file,
-               PTR2SIZE(cp - a_head->aa_file));
-
-         for (ncp = ++cp; *ncp != '\0'; ++ncp)
-            if (!alnumchar(*ncp) && !punctchar(*ncp))
-               break;
-         if (*ncp == '\0') {
-            a_head->aa_file = nfp;
-            continue;
-         }
-      }
-
-      n_perr(a_head->aa_file, i);
-      exit_status = EXIT_ERR;
-      goto jleave;
    }
 
    if (options & OPT_INTERACTIVE)

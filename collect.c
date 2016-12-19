@@ -59,7 +59,6 @@ static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
-static sigjmp_buf       _coll_pipejmp;    /* On broken pipe */
 static char const *a_coll_ocds__macname;  /* *on-compose-done* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
@@ -70,13 +69,11 @@ static void       _execute_command(struct header *hp, char const *linebuf,
 static int        _include_file(char const *name, int *linecount,
                      int *charcount, bool_t indent);
 
-static void       _collect_onpipe(int signo);
-
 /* Execute cmd and insert its standard output into fp */
 static void       insertcommand(FILE *fp, char const *cmd);
 
 /* ~p command */
-static void       print_collf(FILE *collf, struct header *hp, bool_t pagerok);
+static void       print_collf(FILE *collf, struct header *hp);
 
 /* Write a file, ex-like if f set */
 static int        exwrite(char const *name, FILE *fp, int f);
@@ -144,7 +141,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
       goto jleave;
    }
 
-   /* If the above todo is worked, remove or outsource to attachments.c! */
+   /* If the above todo is worked, remove or outsource to attachment.c! */
    if(hp != NULL && (ap = hp->h_attach) != NULL) do
       if(ap->a_msgno){
          mnbuf = sstrdup(mailname);
@@ -216,14 +213,6 @@ jleave:
 }
 
 static void
-_collect_onpipe(int signo)
-{
-   NYD_X; /* Signal handler */
-   n_UNUSED(signo);
-   siglongjmp(_coll_pipejmp, 1);
-}
-
-static void
 insertcommand(FILE *fp, char const *cmd)
 {
    FILE *ibuf = NULL;
@@ -240,95 +229,45 @@ insertcommand(FILE *fp, char const *cmd)
 }
 
 static void
-print_collf(FILE *cf, struct header *hp, bool_t pagerok)
+print_collf(FILE *cf, struct header *hp)
 {
-   char *lbuf = NULL; /* TODO line pool */
-   sighandler_type sigint;
-   FILE * volatile obuf = stdout;
-   struct attachment *ap;
-   char const *cp;
-   enum gfield gf;
-   size_t linesize = 0, linelen, cnt, cnt2;
+   char *lbuf;
+   FILE *obuf;
+   size_t cnt, linesize, linelen;
    NYD_ENTER;
 
    fflush_rewind(cf);
-   cnt = cnt2 = (size_t)fsize(cf);
+   cnt = (size_t)fsize(cf);
 
-   sigint = safe_signal(SIGINT, SIG_IGN);
-
-   if (pagerok && (cp = ok_vlook(crt)) != NULL) {
-      size_t l, m;
-
-      m = 4;
-      if (hp->h_to != NULL)
-         ++m;
-      if (hp->h_subject != NULL)
-         ++m;
-      if (hp->h_cc != NULL)
-         ++m;
-      if (hp->h_bcc != NULL)
-         ++m;
-      if (hp->h_attach != NULL)
-         ++m;
-      m += (hp->h_from != NULL || myaddrs(hp) != NULL);
-      m += (hp->h_sender != NULL || ok_vlook(sender) != NULL);
-      m += (hp->h_replyto != NULL || ok_vlook(replyto) != NULL);
-
-      l = (*cp == '\0') ? (size_t)screensize() : strtoul(cp, NULL, 0);
-      if (m > l)
-         goto jpager;
-      l -= m;
-
-      for (m = 0; fgetline(&lbuf, &linesize, &cnt2, NULL, cf, 0); ++m)
-         ;
-      rewind(cf);
-      if (l < m) {
-jpager:
-         if (sigsetjmp(_coll_pipejmp, 1))
-            goto jendpipe;
-         if ((obuf = n_pager_open()) == NULL)
-            obuf = stdout;
-         else
-            safe_signal(SIGPIPE, &_collect_onpipe);
-      }
+   if((obuf = Ftmp(NULL, "collfp", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      n_perr(_("Can't create temporary file for `~p' command"), 0);
+      goto jleave;
    }
+
+   hold_all_sigs();
 
    fprintf(obuf, _("-------\nMessage contains:\n"));
-   gf = GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA;
-   puthead(TRU1, hp, obuf, gf, SEND_TODISP, CONV_NONE, NULL, NULL);
-   while (fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
-      prout(lbuf, linelen, obuf);
-   if (hp->h_attach != NULL) {
-      fputs(_("-------\nAttachments:\n"), obuf);
-      for (ap = hp->h_attach; ap != NULL; ap = ap->a_flink) {
-         if (ap->a_msgno)
-            fprintf(obuf, " - message %u\n", ap->a_msgno);
-         else {
-            /* TODO after MIME/send layer rewrite we *know*
-             * TODO the details of the attachment here,
-             * TODO so adjust this again, then */
-            char const *cs, *csi = "-> ";
+   puthead(TRU1, hp, obuf,
+      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
+      SEND_TODISP, CONV_NONE, NULL, NULL);
 
-            if ((cs = ap->a_charset) == NULL &&
-                  (csi = "<- ", cs = ap->a_input_charset) == NULL)
-               cs = charset_get_lc();
-            if ((cp = ap->a_content_type) == NULL)
-               cp = "?";
-            else if (ascncasecmp(cp, "text/", 5))
-               csi = n_empty;
-            fprintf(obuf, " - [%s, %s%s] %s (%s)\n", cp, csi, cs,
-               n_shexp_quote_cp(ap->a_name, FAL0),
-               n_shexp_quote_cp(ap->a_path, FAL0));
-         }
-      }
+   lbuf = NULL;
+   linesize = 0;
+   while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
+      prout(lbuf, linelen, obuf);
+   if(lbuf != NULL)
+      free(lbuf);
+
+   if(hp->h_attach != NULL){
+      fputs(_("-------\nAttachments:\n"), obuf);
+      n_attachment_list_print(hp->h_attach, obuf);
    }
 
-jendpipe:
-   if (obuf != stdout)
-      n_pager_close(obuf);
-   if (lbuf != NULL)
-      free(lbuf);
-   safe_signal(SIGINT, sigint);
+   rele_all_sigs();
+
+   page_or_print(obuf, 0);
+jleave:
+   Fclose(obuf);
    NYD_LEAVE;
 }
 
@@ -531,7 +470,7 @@ static bool_t
 a_collect_plumbing(char const *ms, struct header *hp){
    /* TODO _collect_plumbing: instead of fields the basic headers should
     * TODO be in an array and have IDs, like in termcap etc., so then this
-    * TODO could be simplified as table-walks */
+    * TODO could be simplified as table-walks.  Also true for arg-checks! */
    char const *cp, *cmd[4];
    NYD2_ENTER;
 
@@ -565,11 +504,11 @@ a_collect_plumbing(char const *ms, struct header *hp){
 
    if(n_UNLIKELY(cmd[0] == NULL))
       goto jecmd;
-   if(!asccasecmp(cmd[0], "header")){
+   if(is_asccaseprefix(cmd[0], "header")){
       struct n_header_field *hfp;
       struct name *np, **npp;
 
-      if(cmd[1] == NULL || !asccasecmp(cmd[1], "list")){
+      if(cmd[1] == NULL || is_asccaseprefix(cmd[1], "list")){
          if(cmd[2] == NULL){
             fputs("210", stdout);
             if(hp->h_from != NULL) fputs(" From", stdout);
@@ -645,7 +584,7 @@ jlist:
                }
             }
          }
-      }else if(!asccasecmp(cmd[1], "show")){
+      }else if(is_asccaseprefix(cmd[1], "show")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
          if(!asccasecmp(cmd[2], "from")){
@@ -716,7 +655,7 @@ jshow:
             else
                goto j501cp;
          }
-      }else if(!asccasecmp(cmd[1], "remove")){
+      }else if(is_asccaseprefix(cmd[1], "remove")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
          if(!asccasecmp(cmd[2], "from")){
@@ -784,7 +723,7 @@ jrem:
             if(!any)
                goto j501cp;
          }
-      }else if(!asccasecmp(cmd[1], "insert")){ /* TODO LOGIC BELONGS head.c!
+      }else if(is_asccaseprefix(cmd[1], "insert")){ /* TODO LOGIC BELONGS head.c
           * TODO That is: Header::factory(string) -> object (blahblah).
           * TODO I.e., as long as we don't have regular RFC compliant parsers
           * TODO which differentiate in between structured and unstructured
@@ -793,6 +732,16 @@ jrem:
          enum expand_addr_check_mode eacm;
          enum gfield ntype;
          bool_t mult_ok;
+
+         /* Strip [\r\n] which would render a body invalid XXX all controls? */
+         /* C99 */{
+            char *xp, c;
+
+            cmd[3] = xp = savestr(cmd[3]);
+            for(; (c = *xp) != '\0'; ++xp)
+               if(c == '\n' || c == '\r')
+                  *xp = ' ';
+         }
 
          mult_ok = TRU1;
          ntype = GEXTRA | GFULL | GFULLEXTRA;
@@ -860,7 +809,7 @@ jins:
                if(hp->h_subject != NULL)
                   hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
                else
-                  hp->h_subject = savestr(cmd[3]);
+                  hp->h_subject = n_UNCONST(cmd[3]);
                fprintf(stdout, "210 %s\n", cp);
             }else
                goto j501cp;
@@ -890,6 +839,186 @@ jins:
                hfp->hf_dat[nl++] = '\0';
                memcpy(hfp->hf_dat + nl, cmd[3], bl);
             fprintf(stdout, "210 %s\n", cp);
+         }
+      }else
+         goto jecmd;
+   }else if(is_asccaseprefix(cmd[0], "attachment")){
+      bool_t status;
+      struct attachment *ap;
+
+      if(cmd[1] == NULL || is_asccaseprefix(cmd[1], "list")){
+         if(cmd[2] != NULL)
+            goto jecmd;
+         if((ap = hp->h_attach) != NULL){
+            fputs("212\n", stdout);
+            do
+               fprintf(stdout, "%s\n", ap->a_path_user);
+            while((ap = ap->a_flink) != NULL);
+            putc('\n', stdout);
+         }else
+            fputs("501\n", stdout);
+      }else if(is_asccaseprefix(cmd[1], "remove")){
+         if(cmd[2] == NULL)
+            goto jecmd;
+         if((ap = n_attachment_find(hp->h_attach, cmd[2], &status)) != NULL){
+            if(status == TRUM1)
+               fputs("506\n", stdout);
+            else{
+               hp->h_attach = n_attachment_remove(hp->h_attach, ap);
+               fprintf(stdout, "210 %s\n", cmd[2]);
+            }
+         }else
+            fputs("501\n", stdout);
+      }else if(is_asccaseprefix(cmd[1], "remove-at")){
+         char *eptr;
+         long l;
+
+         if(cmd[2] == NULL)
+            goto jecmd;
+         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+            fputs("505\n", stdout);
+         else{
+            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+               ;
+            if(ap != NULL){
+               hp->h_attach = n_attachment_remove(hp->h_attach, ap);
+               fprintf(stdout, "210 %s\n", cmd[2]);
+            }else
+               fputs("501\n", stdout);
+         }
+      }else if(is_asccaseprefix(cmd[1], "insert")){
+         enum n_attach_error aerr;
+
+         if(cmd[2] == NULL)
+            goto jecmd;
+         hp->h_attach = n_attachment_append(hp->h_attach, cmd[2], &aerr, &ap);
+         switch(aerr){
+         case n_ATTACH_ERR_FILE_OPEN: cp = "505\n"; goto jatt_ins;
+         case n_ATTACH_ERR_ICONV_FAILED: cp = "506\n"; goto jatt_ins;
+         case n_ATTACH_ERR_ICONV_NAVAIL:
+         case n_ATTACH_ERR_OTHER:
+         default:
+            cp = "501\n";
+jatt_ins:
+            fputs(cp, stdout);
+            break;
+         case n_ATTACH_ERR_NONE:{
+            size_t i;
+
+            for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
+               ;
+            fprintf(stdout, "210 %" PRIuZ "\n", i);
+         }  break;
+         }
+      }else if(is_asccaseprefix(cmd[1], "attribute")){
+         if(cmd[2] == NULL)
+            goto jecmd;
+         if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
+jatt_att:
+            fprintf(stdout, "212 %s\n", cmd[2]);
+            if(ap->a_msgno > 0)
+               fprintf(stdout, "message-number %d\n\n", ap->a_msgno);
+            else{
+               fprintf(stdout, "creation-name %s\nopen-path %s\nfilename %s\n",
+                  ap->a_path_user, ap->a_path, ap->a_name);
+               if(ap->a_content_description != NULL)
+                  fprintf(stdout, "content-description %s\n",
+                     ap->a_content_description);
+               if(ap->a_content_id != NULL)
+                  fprintf(stdout, "content-id %s\n", ap->a_content_id);
+               if(ap->a_content_type != NULL)
+                  fprintf(stdout, "content-type %s\n", ap->a_content_type);
+               if(ap->a_content_disposition != NULL)
+                  fprintf(stdout, "content-disposition %s\n",
+                     ap->a_content_disposition);
+               putc('\n', stdout);
+            }
+         }else
+            fputs("501\n", stdout);
+      }else if(is_asccaseprefix(cmd[1], "attribute-at")){
+         char *eptr;
+         long l;
+
+         if(cmd[2] == NULL)
+            goto jecmd;
+         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+            fputs("505\n", stdout);
+         else{
+            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+               ;
+            if(ap != NULL)
+               goto jatt_att;
+            else
+               fputs("501\n", stdout);
+         }
+      }else if(is_asccaseprefix(cmd[1], "attribute-set")){
+         if(cmd[2] == NULL || cmd[3] == NULL)
+            goto jecmd;
+         if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
+jatt_attset:
+            if(ap->a_msgno > 0)
+               fputs("505\n", stdout);
+            else{
+               char c, *keyw;
+
+               cp = cmd[3];
+               while((c = *cp) != '\0' && !blankchar(c))
+                  ++cp;
+               keyw = savestrbuf(cmd[3], PTR2SIZE(cp - cmd[3]));
+               if(c != '\0'){
+                  for(; (c = *++cp) != '\0' && blankchar(c);)
+                     ;
+                  if(c != '\0'){
+                     char *xp;
+
+                     /* Strip [\r\n] which would render a parameter invalid XXX
+                      * XXX all controls? */
+                     cp = xp = savestr(cp);
+                     for(; (c = *xp) != '\0'; ++xp)
+                        if(c == '\n' || c == '\r')
+                           *xp = ' ';
+                  }
+               }
+
+               if(!asccasecmp(keyw, "filename"))
+                  ap->a_name = (c == '\0') ? ap->a_path_bname : cp;
+               else if(!asccasecmp(keyw, "content-description"))
+                  ap->a_content_description = (c == '\0') ? NULL : cp;
+               else if(!asccasecmp(keyw, "content-id"))
+                  ap->a_content_id = (c == '\0') ? NULL : cp;
+               else if(!asccasecmp(keyw, "content-type"))
+                  ap->a_content_type = (c == '\0') ? NULL : cp;
+               else if(!asccasecmp(keyw, "content-disposition"))
+                  ap->a_content_disposition = (c == '\0') ? NULL : cp;
+               else
+                  cp = NULL;
+
+               if(cp != NULL){
+                  size_t i;
+
+                  for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
+                     ;
+                  fprintf(stdout, "210 %" PRIuZ "\n", i);
+               }else
+                  fputs("505\n", stdout);
+            }
+         }else
+            fputs("501\n", stdout);
+      }else if(is_asccaseprefix(cmd[1], "attribute-set-at")){
+         char *eptr;
+         long l;
+
+         if(cmd[2] == NULL || cmd[3] == NULL)
+            goto jecmd;
+         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+            fputs("505\n", stdout);
+         else{
+            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+               ;
+            if(ap != NULL)
+               goto jatt_attset;
+            else
+               fputs("501\n", stdout);
          }
       }else
          goto jecmd;
@@ -1424,14 +1553,18 @@ jearg:
                   *xp = ' ';
          }
          break;
-      case '@':
+      case '@':{
+         struct attachment *aplist;
+
          /* Edit the attachment list */
+         aplist = hp->h_attach;
+         hp->h_attach = NULL;
          if(cnt != 2)
-            append_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach,
-               &linebuf[3]);
+            hp->h_attach = n_attachment_append_list(aplist, &linebuf[3]);
          else
-            edit_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach);
-         break;
+            hp->h_attach = n_attachment_list_edit(aplist,
+                  n_LEXINPUT_CTX_COMPOSE);
+      }  break;
       case 'c':
          /* Add to the CC list */
          if(cnt == 2)
@@ -1535,7 +1668,7 @@ jearg:
          /* Print current state of the message without altering anything */
          if(cnt != 2)
             goto jearg;
-         print_collf(_coll_fp, hp, ((options & OPT_INTERACTIVE) != 0));
+         print_collf(_coll_fp, hp);
          break;
       case '|':
          /* Pipe message through command. Collect output as new message */
@@ -1580,7 +1713,7 @@ jearg:
 "~i <variable> Insert a value and a newline\n"
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
 "~p            Show current message compose buffer\n"
-"~r <file>     Read in a file (`~R': *indentprefix* lines)"
+"~r <file>     Read in a file (`~<': likewise; `~R': *indentprefix* lines)"
          ));
          puts(_(
 "~s <subject>  Set Subject:\n"
@@ -1677,7 +1810,8 @@ jout:
          grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GBCC, 1);
    }
    if (hp->h_attach == NULL && ok_blook(askattach))
-      edit_attachments(n_LEXINPUT_CTX_COMPOSE, &hp->h_attach);
+      hp->h_attach = n_attachment_list_edit(hp->h_attach,
+            n_LEXINPUT_CTX_COMPOSE);
 
    /* Add automatic receivers */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')

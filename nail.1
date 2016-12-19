@@ -205,13 +205,21 @@ such an email account also switches to the accounts
 .Va inbox ) .
 .
 .Mx
-.It Fl a Ar file
+.It Fl a Ar file Ns Op Ar =input-charset Ns Op Ar #output-charset
 Attach
 .Ar file
-to the message.
-The same filename conventions as described in the section
+to the message (for compose mode opportunities refer to
+.Ic ~@
+and
+.Ic ~^ ) .
+The same
+.Mx -sx
+.Sx "filename transformations"
+as described in the section
 .Sx COMMANDS
-apply: shell word expansion is restricted to the tilde
+and for the command
+.Ic file
+apply, but shell word expansion is restricted to the tilde
 .Ql ~ .
 Shall
 .Ar file
@@ -219,15 +227,33 @@ not be accessible but contain a
 .Ql =
 character, then anything after the
 .Ql =
-is assumed to specify the input character set and anything before
-.Ql =
-the filename: this is the only option to specify (and fixate) the input
-character set of text attachments from the command line, not using the
-.Ic ~@
-command of and in the compose mode that follows
-(see
-.Sx "COMMAND ESCAPES"
-for compose mode commands).
+is treated as a character-set conversion specification.
+.Pp
+If an input character-set is specified,
+.Mx -ix "character-set specification"
+but no output character-set, then the given input character-set is fixed
+as-is, and no conversion will be applied;
+giving the special string hyphen
+.Ql -
+will be treated as if
+.Va ttycharset
+has been specified (the default).
+If an output character-set has also been given then the conversion will
+be performed exactly as specified and on-the-fly, not considering the
+file's type and content.
+As an exception, if the output character-set is specified as the hyphen
+.Ql - ,
+then the default conversion algorithm (see
+.Sx "Character sets" )
+is applied (therefore no conversion is performed on-the-fly,
+.Ar file
+will be MIME-classified and its contents will be inspected first).
+It is an error to specify anything but
+.Ql -
+if no character-set conversion is available
+.Pf ( Va features
+does not include the term
+.Ql +iconv ) .
 .
 .Mx
 .It Fl B
@@ -5441,93 +5467,31 @@ Its standard output is inserted into the message.
 .
 .Mx
 .It Ic ~@ Op Ar filename...
+Append or edit the list of attachments.
 If
 .Ar filename
-arguments are specified they are treated as a file list of
+arguments are specified they are treated as a
 .Xr sh 1 Ns
 -style quoted (see
-.Sx COMMANDS )
-arguments, optionally also separated by commas, which are expanded and
-then appended to the existing list of message attachments.
-It is not possible to add message attachments with this method, and
-(text) attachments are implicitly assumed to be in
-.Va ttycharset
-encoding, and will thus be evaluated as documented in the section
-.Sx "Character sets" .
-.Pp
-Without arguments, in non-interactive mode, for reproduceabilities sake,
-there will always be two questions for each attachment, regardless of
-whether character set conversion is available and what the file
-extension is.
-The first question expects the filename, and the second the the input
-character set to be passed through to the corresponding MIME parameter;
-no conversion will be tried if there is input to the latter question,
-otherwise the usual conversion algorithm as documented in
-.Sx "Character sets" ,
-is applied.
-For message attachments, the input to the second question is ignored.
-.Pp
-In interactive mode, without arguments, the attachment list is edited.
-If an attachment's file name is left empty,
-that attachment is deleted from the list.
-When the end of the attachment list is reached,
-\*(UA will ask for further attachments until an empty name is given.
-If a given file name solely consists of the number sign
+.Sx COMMANDS ,
+token-separating commas are ignored) list of filenames, to be
+interpreted as documented for the command line option
+.Fl a ,
+with the message number exception as below.
+Without
+.Ar filename
+arguments the attachment list is edited, entry by entry;
+if a filename is left empty, that attachment is deleted from the list;
+once the end of the list is reached either new attachments may be
+entered or the session can be quit by committing an empty
+.Dq new
+attachment.
+For each mode, if a given file name solely consists of the number sign
 .Ql #
 followed by a valid message number of the currently active mailbox, then
 the given message is attached as a MIME
 .Ql message/rfc822
-part and the rest of this section does not apply.
-.Pp
-If character set conversion has been compiled into \*(UA, then this mode
-gives the user the option to specify input and output character sets,
-unless the file extension indicates binary content, in which case \*(UA
-asks whether this step shall be skipped for the attachment in question.
-If not skipped, then the charset that succeeds to represent the
-attachment data will be used in the
-.Ql charset=
-MIME parameter of the mail message:
-.Pp
-.Bl -bullet -compact
-.It
-If input and output character sets are specified, then the conversion is
-performed on the fly.
-The user will be asked repeatedly until the desired conversion succeeds.
-.It
-If only an output character set is specified, then the input is assumed
-to be in the
-.Va ttycharset
-charset and will be converted to the given output charset on the fly.
-The user will be asked repeatedly until the desired conversion succeeds.
-.It
-If no character sets are specified at all then the algorithm that is
-documented in the section
-.Sx "Character sets"
-is applied, but directly and on the fly.
-The user will be asked repeatedly until the desired conversion succeeds.
-.It
-Finally, if an input-, but no output character set is specified, then no
-conversion is ever performed, but the
-.Ql charset=
-MIME parameter value will still be set to the user input.
-.It
-The character set selection loop can be left by typing
-.Ql control-C ,
-i.e., causing an interrupt.
-.\" \*(OU next sentence
-Note that before \*(UA v15.0 this terminates the entire
-current attachment selection, not only the character set selection.
-.El
-.Pp
-Without character set conversion support, \*(UA will ask for the input
-character set only, and it will set the
-.Ql charset=
-MIME parameter value to the given input, if any;
-if no user input is seen then the
-.Va ttycharset
-character set will be used for the parameter value instead.
-Note that the file extension check is not performed in this mode, since
-no conversion will take place anyway.
+part (note the number sign is the comment character and must be quoted).
 .
 .Mx
 .It Ic ~A
@@ -5732,7 +5696,7 @@ is often used as a rejustifying filter.
 .
 .
 .Mx
-.It Ic ~^ Op Ar cmd Op Ar subcmd Op Ar header-name Op Ar header-body
+.It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
 Low-level command ment for scripted message access, i.e., for
 .Va on-compose-done-shell
 and
@@ -5777,17 +5741,19 @@ a single address only.
 .Pp
 If a command indicates failure then the message will have remained
 unmodified.
-The following commands are supported:
+Most commands can fail with
+.Ql 500
+if required arguments are missing (false command usage).
+The following commands are supported, and, as usual, case-insensitive:
 .
 .
-.Pp
-.Bl -tag -compact -width headers
+.Bl -hang -width header
 .It Ar header
 This command allows listing, inspection, and editing of message headers.
 The second argument specifies the subcommand to apply, one of:
 .
 .Pp
-.Bl -tag -compact -width remove
+.Bl -hang -compact -width remove
 .It Ar list
 Without a third argument a list of all yet existing headers is given via
 .Ql 210 ;
@@ -5832,6 +5798,131 @@ to indicate prevention of excessing a single-instance header \(em note that
 can be appended to (a space separator will be added automatically first).
 .Ql 210
 is returned upon success.
+.El
+.
+.
+.It Ar attachment
+This command allows listing, removal and addition of message attachments.
+The second argument specifies the subcommand to apply, one of:
+.
+.Pp
+.Bl -hang -compact -width remove
+.It Ar list
+List all attachments via
+.Ql 212 ,
+or report
+.Ql 501
+if no attachments exist.
+This command is the default command of
+.Ar attachment
+if no second argument has been given.
+.
+.It Ar remove
+This will remove the attachment given as the third argument, and report
+.Ql 210
+upon success or
+.Ql 501
+if no such attachment can be found.
+If there exists any path component in the given argument, then an exact
+match of the path which has been used to create the attachment is used
+directly, but if only the basename of that path matches then all
+attachments are traversed to find an exact match first, and the removal
+occurs afterwards; if multiple basenames match, a
+.Ql 506
+error occurs.
+Message attachments are treated as absolute pathnames.
+.Pp
+If no path component exists in the given argument, then all attachments
+will be searched for
+.Ql filename=
+parameter matches as well as for matches of the basename of the path
+which has been used when the attachment has been created; multiple
+matches result in a
+.Ql 506 .
+.
+.It Ar remove-at
+This will interpret the third argument as a number and remove the
+attachment at that list position (counting from one!), reporting
+.Ql 210
+upon success or
+.Ql 505
+if the argument is not a number or
+.Ql 501
+if no such attachment exists.
+.
+.It Ar insert
+Adds the attachment given as the third argument, specified exactly as
+documented for the command line flag
+.Fl a ,
+and supporting the message number extension as documented for
+.Ic ~@ .
+This reports
+.Ql 210
+upon success, with the index of the new attachment following,
+.Ql 505
+if the given file cannot be opened,
+.Ql 506
+if an on-the-fly performed character set conversion fails, otherwise
+.Ql 501
+is reported; this is also reported if character-set conversion is
+requested but not available.
+.
+.It Ar attribute
+This uses the same search mechanism as described for
+.Ar remove
+and prints any known attributes of the first found attachment via
+.Ql 212
+upon success or
+.Ql 501
+if no such attachment can be found.
+The attributes are written as lines of keyword and value tuples, the
+keyword being separated from the rest of the line with an ASCII SP space
+character.
+.
+.It Ar attribute-at
+This uses the same search mechanism as described for
+.Ar remove-at
+and is otherwise identical to
+.Ar attribute .
+.
+.It Ar attribute-set
+This uses the same search mechanism as described for
+.Ar remove ,
+and will assign the attribute given as the fourth argument, which is
+expected to be a value tuple of keyword and other data, separated by
+a ASCII SP space or TAB tabulator character.
+If the value part is empty, then the given attribute is removed, or
+reset to a default value if existence of the attribute is crucial.
+It returns via
+.Ql 210
+upon success, with the index of the found attachment following,
+.Ql 505
+for message attachments or if the given keyword is invalid, and
+.Ql 501
+if no such attachment can be found.
+The following keywords may be used (case-insensitively):
+.Pp
+.Bl -hang -compact -width ".Ql filename"
+.It Ql filename
+Sets the filename of the MIME part, i.e., the name that is used for
+display and when (suggesting a name for) saving (purposes).
+.It Ql content-description
+Associate some descriptive information to the attachment's content, used
+in favour of the plain filename by some MUAs.
+.It Ql content-id
+May be used for uniquely identifying MIME entities in several contexts.
+.It Ql content-type
+Specifies the media type and subtype of the part; managed automatically.
+.It Ql content-disposition
+Automatically set to the string
+.Ql attachment .
+.El
+.
+.It Ar attribute-set-at
+This uses the same search mechanism as described for
+.Ar remove-at
+and is otherwise identical to
+.Ar attribute-set .
 .El
 .El
 .
@@ -6093,21 +6184,6 @@ variable is ignored when this variable is set.
 .It Va asksub
 \*(BO Alternative name for
 .Va ask .
-.
-.Mx
-.Mx
-.Mx
-.Mx
-.It Va attachment-ask-content-description , \
-  attachment-ask-content-disposition , \
-  attachment-ask-content-id , \
-  attachment-ask-content-type
-\*(BO If set then the user will be prompted for some attachment
-information when editing the attachment list.
-It is advisable to not use these but for the first of the variables;
-even for that it has to be noted that the data is used
-.Dq as is .
-.
 .
 .Mx
 .It Va attrlist

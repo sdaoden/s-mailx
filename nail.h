@@ -1485,10 +1485,6 @@ enum okeys {
    ok_b_askcc,
    ok_b_asksign,
    ok_b_asksub,                        /* {i3val=TRU1} */
-   ok_b_attachment_ask_content_description,
-   ok_b_attachment_ask_content_disposition,
-   ok_b_attachment_ask_content_id,
-   ok_b_attachment_ask_content_type,
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
@@ -2337,16 +2333,25 @@ struct addrguts {
 /* MIME attachments */
 enum attach_conv {
    AC_DEFAULT,       /* _get_lc() -> _iter_*() */
-   AC_FIX_OUTCS,     /* _get_lc() -> "charset=" .a_charset */
    AC_FIX_INCS,      /* "charset=".a_input_charset (nocnv) */
    AC_TMPFILE        /* attachment.a_tmpf is converted */
+};
+
+enum n_attach_error{
+   n_ATTACH_ERR_NONE,
+   n_ATTACH_ERR_FILE_OPEN,
+   n_ATTACH_ERR_ICONV_FAILED,
+   n_ATTACH_ERR_ICONV_NAVAIL,
+   n_ATTACH_ERR_OTHER
 };
 
 struct attachment {
    struct attachment *a_flink; /* Forward link in list. */
    struct attachment *a_blink; /* Backward list link */
+   char const  *a_path_user;  /* Path as given (maybe including iconv spec) */
    char const  *a_path;       /* Path as opened */
-   char const  *a_name;       /* File name to be stored */
+   char const  *a_path_bname; /* Basename of path as opened */
+   char const  *a_name;       /* File name to be stored (EQ a_path_bname) */
    char const  *a_content_type;  /* content type */
    char const  *a_content_disposition; /* content disposition */
    char const  *a_content_id; /* content id */

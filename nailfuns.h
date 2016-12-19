@@ -232,23 +232,44 @@ FL int         c_varedit(void *v);
 FL int         c_environ(void *v);
 
 /*
- * attachments.c
+ * attachment.c
+ * xxx Interface quite sick
  */
 
 /* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed.
- * Return the new head of list aphead, or NULL.
- * The newly created attachment will be stored in *newap, if given */
-FL struct attachment * add_attachment(enum n_lexinput_flags lif,
-                        struct attachment *aphead, char *file,
-                        struct attachment **newap);
+ * Return the new aplist aphead.
+ * The newly created attachment may be stored in *newap, or NULL on error */
+FL struct attachment *n_attachment_append(struct attachment *aplist,
+                        char const *file, enum n_attach_error *aerr_or_null,
+                        struct attachment **newap_or_null);
 
-/* Append comma-separated list of file names to the end of attachment list */
-FL void        append_attachments(enum n_lexinput_flags lif,
-                  struct attachment **aphead, char *names);
+/* Shell-token parse names, and append resulting file names to aplist, return
+ * (new) aplist head */
+FL struct attachment *n_attachment_append_list(struct attachment *aplist,
+                        char const *names);
 
-/* Interactively edit the attachment list */
-FL void        edit_attachments(enum n_lexinput_flags lif,
-                  struct attachment **aphead);
+/* Remove ap from aplist, and return the new aplist head */
+FL struct attachment *n_attachment_remove(struct attachment *aplist,
+                        struct attachment *ap);
+
+/* Find by file-name.  If any path component exists in name then an exact match
+ * of the creation-path is used directly; if instead the basename of that path
+ * matches all attachments are traversed to find an exact match first, the
+ * first of all basename matches is returned as a last resort;
+ * If no path component exists the filename= parameter is searched (and also
+ * returned) in preference over the basename, otherwise likewise.
+ * If name is in fact a message number the first match is taken.
+ * If stat_or_null is given: FAL0 on NULL return, TRU1 for exact/single match,
+ * TRUM1 for ambiguous matches */
+FL struct attachment *n_attachment_find(struct attachment *aplist,
+                        char const *name, bool_t *stat_or_null);
+
+/* Interactively edit the attachment list, return updated list */
+FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
+                        enum n_lexinput_flags lif);
+
+/* Print all attachments to fp, return number of lines written, -1 on error */
+FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
 
 /*
  * auxlily.c
@@ -1371,7 +1392,7 @@ FL bool_t      mime_type_check_mtname(char const *name);
 FL char *      mime_type_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * left alone unless it's non-NULL */
+ * set to charset_get_7bit() or charset_iter_or_fallback() if NULL */
 FL enum conversion mime_type_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
