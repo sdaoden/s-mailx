@@ -825,7 +825,9 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
       if(options & OPT_D_VV)
          n_err(_(">>> Writing message via %s\n"),
             n_shexp_quote_cp(np->n_name, FAL0));
-      if(options & OPT_DEBUG)
+      /* We _do_ write to STDOUT, anyway! */
+      if((options & OPT_DEBUG) && ((np->n_flags & NAME_ADDRSPEC_ISPIPE) ||
+            np->n_name[0] != '-' || np->n_name[1] != '\0'))
          continue;
 
       /* See if we have copied the complete message out yet.  If not, do so */
