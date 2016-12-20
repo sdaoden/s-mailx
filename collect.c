@@ -316,8 +316,9 @@ jpager:
                cp = "?";
             else if (ascncasecmp(cp, "text/", 5))
                csi = n_empty;
-            fprintf(obuf, " - [%s, %s%s] %s\n", cp, csi, cs,
-               n_shexp_quote_cp(ap->a_name, FAL0));
+            fprintf(obuf, " - [%s, %s%s] %s (%s)\n", cp, csi, cs,
+               n_shexp_quote_cp(ap->a_name, FAL0),
+               n_shexp_quote_cp(ap->a_path, FAL0));
          }
       }
    }

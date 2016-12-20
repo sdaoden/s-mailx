@@ -2339,9 +2339,10 @@ enum attach_conv {
 };
 
 struct attachment {
-   struct attachment *a_flink;   /* Forward link in list. */
-   struct attachment *a_blink;   /* Backward list link */
-   char const  *a_name;       /* file name */
+   struct attachment *a_flink; /* Forward link in list. */
+   struct attachment *a_blink; /* Backward list link */
+   char const  *a_path;       /* Path as opened */
+   char const  *a_name;       /* File name to be stored */
    char const  *a_content_type;  /* content type */
    char const  *a_content_disposition; /* content disposition */
    char const  *a_content_id; /* content id */

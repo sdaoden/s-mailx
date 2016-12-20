@@ -339,17 +339,15 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
       assert(ftell(fi) == 0);
-   } else if ((fi = Fopen(ap->a_name, "r")) == NULL) {
+   } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
       err = errno;
-      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_name, FAL0), strerror(err));
+      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0), strerror(err));
       goto jleave;
    }
 
    /* MIME part header for attachment */
-   {  char const *bn = ap->a_name, *ct;
+   {  char const *ct, *cp;
 
-      if ((ct = strrchr(bn, '/')) != NULL)
-         bn = ++ct;
       ct = ap->a_content_type;
       charset = ap->a_charset;
       convert = mime_type_classify_file(fi, (char const**)&ct,
@@ -360,19 +358,19 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
 
       if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
             _put_ct(fo, ct, charset) < 0 || _put_cte(fo, convert) < 0 ||
-            _put_cd(fo, ap->a_content_disposition, bn) < 0)
+            _put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
          goto jerr_header;
 
-      if ((bn = ap->a_content_id) != NULL &&
-            fputs("Content-ID: ", fo) == EOF ||
-            xmime_write(bn, strlen(bn), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
-               ) < 0 || putc('\n', fo) == EOF)
+      if ((cp = ap->a_content_id) != NULL &&
+            (fputs("Content-ID: ", fo) == EOF ||
+             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
+               ) < 0 || putc('\n', fo) == EOF))
          goto jerr_header;
 
-      if ((bn = ap->a_content_description) != NULL &&
-            fputs("Content-Description: ", fo) == EOF ||
-            xmime_write(bn, strlen(bn), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
-               ) < 0 || putc('\n', fo) == EOF)
+      if ((cp = ap->a_content_description) != NULL &&
+            (fputs("Content-Description: ", fo) == EOF ||
+             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
+               ) < 0 || putc('\n', fo) == EOF))
          goto jerr_header;
 
       if (putc('\n', fo) == EOF) {

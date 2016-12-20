@@ -67,9 +67,9 @@ _fill_in(enum n_lexinput_flags lif, struct attachment *ap, char const *file,
 
    ap->a_input_charset = ap->a_charset = NULL;
 
-   ap->a_name = file;
+   ap->a_path = ap->a_name = file;
    if ((file = strrchr(file, '/')) != NULL)
-      ++file;
+      ap->a_name = ++file;
    else
       file = ap->a_name;
 
@@ -145,7 +145,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
       snprintf(ecp, 24, "#%" PRIu32, (ui32_t)ap->a_msgno);
       ap->a_msgno = 0;
       ap->a_content_description = NULL;
-      ap->a_name = ecp;
+      ap->a_path = ap->a_name = ecp;
    } else if (ap->a_conv == AC_TMPFILE) {
       Fclose(ap->a_tmpf);
       DBG( ap->a_tmpf = NULL; )
@@ -155,7 +155,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
    snprintf(prefix, sizeof prefix, _("#%-5" PRIu32 " filename: "), number);
    for (;;) {
-      if ((cp = ap->a_name) != NULL)
+      if ((cp = ap->a_path) != NULL)
          cp = n_shexp_quote_cp(cp, FAL0);
       if ((cp = n_lex_input_cp(lif, prefix, cp)) == NULL) {
          ap->a_name = NULL;
@@ -180,7 +180,7 @@ _read_attachment_data(enum n_lexinput_flags lif,
          int msgno = (int)strtol(cp + 1, &ecp, 10);
 
          if (msgno > 0 && msgno <= msgCount && *ecp == '\0') {
-            ap->a_name = cp;
+            ap->a_path = ap->a_name = cp;
             ap->a_msgno = msgno;
             ap->a_content_type = ap->a_content_disposition =
                   ap->a_content_id = NULL;
@@ -192,10 +192,8 @@ _read_attachment_data(enum n_lexinput_flags lif,
       }
 
       if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NVAR)) != NULL &&
-            !access(cp, R_OK)) {
-         ap->a_name = cp;
+            !access(cp, R_OK))
          break;
-      }
       n_perr(cp, 0);
    }
 
@@ -277,7 +275,9 @@ jcs:
 jdone:
 #endif
    if (options & OPT_INTERACTIVE)
-      printf(_("Added attachment %s\n"), n_shexp_quote_cp(ap->a_name, FAL0));
+      printf(_("Added attachment %s (%s)\n"),
+         n_shexp_quote_cp(ap->a_name, FAL0),
+         n_shexp_quote_cp(ap->a_path, FAL0));
 jleave:
    n_string_gut(shoup);
 
@@ -314,8 +314,8 @@ _attach_iconv(struct attachment *ap)
       goto jerr;
    }
 
-   if ((fi = Fopen(ap->a_name, "r")) == NULL) {
-      n_perr(ap->a_name, 0);
+   if ((fi = Fopen(ap->a_path, "r")) == NULL) {
+      n_perr(ap->a_path, 0);
       goto jerr;
    }
    cnt = (size_t)fsize(fi);
@@ -424,8 +424,9 @@ append_attachments(enum n_lexinput_flags lif, struct attachment **aphead,
                ) != NULL){
             *aphead = xaph;
             if(options & OPT_INTERACTIVE)
-               printf(_("Added attachment %s\n"),
-                  n_shexp_quote_cp(nap->a_name, FAL0));
+               printf(_("Added attachment %s (%s)\n"),
+                  n_shexp_quote_cp(nap->a_name, FAL0),
+                  n_shexp_quote_cp(nap->a_path, FAL0));
          }else
             n_perr(n_string_cp(shoup), 0);
       }
