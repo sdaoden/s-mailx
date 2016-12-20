@@ -153,7 +153,7 @@ line editing, S/MIME, SMTP and POP3 among others.
 .\" .Ss "Options" {{{
 .Ss "Options"
 .
-.Bl -tag -width ".Fl _ Ar _ddr"
+.Bl -tag -width ".It Fl BaNg"
 .Mx
 .It Fl \&: Ar spec
 Explicitly control which of the
@@ -190,13 +190,19 @@ Executes an
 .Ic account
 command for the given user email
 .Ar account
-after program startup is complete.
+after program startup is complete (all resource files are loaded, any
+.Fl S
+setting is being established; only
+.Fl X
+commands have not been evaluated yet).
 Being a special incarnation of
 .Ic define Ns d
 macros for the purpose of bundling longer-lived settings, activating
-such an email account also switches to the accounts system
-.Va inbox ,
-for example.
+such an email account also switches to the accounts
+.Mx -sx
+.Sx "primary system mailbox"
+(most likely the
+.Va inbox ) .
 .
 .Mx
 .It Fl a Ar file
@@ -282,11 +288,15 @@ when \*(UA is quit, it writes undeleted messages back to this file
 (but be aware of the
 .Va hold
 option).
-Some special conventions are recognized for the optional
+The optional
 .Ar file
-argument which are documented for the
-.Ic file
-command below.
+argument will undergo some special
+.Mx -sx
+.Sx "filename transformations" ,
+which are documented in the introductional section of
+.Sx COMMANDS
+as well as for the command
+.Ic file .
 Note that
 .Ar file
 is not a argument to the flag
@@ -539,7 +549,10 @@ Also see
 .
 .Mx
 .It Fl u Ar user
-Initially read the primary system mailbox of
+Initially read the
+.Mx -sx
+.Sx "primary system mailbox"
+of
 .Ar user ,
 appropriate privileges presumed; effectively identical to
 .Ql -f %user .
@@ -569,7 +582,7 @@ Add the given (or multiple for a multiline argument)
 .Ar cmd
 to the list of commands to be executed (as a unit, just as via
 .Ic source )
-before normal operation starts.
+as a last step of program startup, before normal operation starts.
 Correlates with
 .Fl #
 and
@@ -843,10 +856,14 @@ it is often necessary to set
 .Va from ,
 and saving a copy of sent messages in a
 .Va record
-may be desirable \(en as for most mailbox file targets some special
-syntax conventions are recognized (see the
+may be desirable \(en as for most mailbox
 .Ic file
-command for more on that).
+targets the value will undergo
+.Mx -sx
+.Sx "filename transformations" ,
+also see the introduction of
+.Sx COMMANDS
+for more on that.
 Defining user email
 .Ic account Ns s
 for the purpose of arranging a complete environment of settings that can
@@ -1156,8 +1173,13 @@ or when
 .Ic file )
 specified a mailbox explicitly prefixed with the special
 .Ql %:
-modifier (propagating the mailbox to a primary one) then messages which
-have been read will be moved to a secondary mailbox, the user's
+modifier (propagating the mailbox to a
+.Mx -sx
+.Sx "primary system mailbox" ) ,
+then messages which have been read will be moved to a
+.Mx -sx
+.Sx "secondary mailbox" ,
+the users
 .Ev MBOX
 file, automatically when the mailbox is left, either by changing the
 active mailbox or by quitting \*(UA (also see
@@ -1373,7 +1395,7 @@ a single address which resides on the same domain as what is stated in
 .
 Upon startup \*(UA reads in several resource files:
 .
-.Bl -tag -width ".It Pa _AIL_EXTRA_R_"
+.Bl -tag -width ".It Pa BaNg"
 .Mx
 .It Pa \*(UR
 System wide initialization file.
@@ -1601,14 +1623,15 @@ and messages can also be selected and be acted upon depending on their
 state (see
 .Sx "Specifying messages" ) .
 When operating on the system
-.Va inbox
-or in primary mailboxes opened with the special prefix
-.Ql %:
-(see
-.Ic file )
-special actions, like the automatic moving of messages to the secondary
-.Ev MBOX
-mailbox may be applied when the mailbox is left (also implicitly via
+.Va inbox ,
+or in any other
+.Mx -sx
+.Sx "primary system mailbox" ,
+special actions, like the automatic moving of messages to the
+.Mx -sx
+.Sx "secondary mailbox"
+.Ev MBOX ,
+may be applied when the mailbox is left (also implicitly via
 a successful exit of \*(UA, but not if the special command
 .Ic exit
 is used) \(en however, because this may be irritating to users which
@@ -1622,15 +1645,19 @@ and
 .Va keepsave
 variables in order to suppress this behaviour.
 .
-.Bl -tag -width ".It Ql _reserved"
+.Bl -tag -width ".It Ql BaNg"
 .It Ql new
 Message has neither been viewed nor moved to any other state.
-Such messages are retained even in the primary system mailbox.
+Such messages are retained even in the
+.Mx -sx
+.Sx "primary system mailbox" .
 .
 .It Ql unread
 Message has neither been viewed nor moved to any other state, but the
 message was present already when the mailbox has been opened last:
-Such messages are retained even in the primary system mailbox.
+Such messages are retained even in the
+.Mx -sx
+.Sx "primary system mailbox" .
 .
 .It Ql read
 The message has been processed by one of the following commands:
@@ -1659,10 +1686,10 @@ on the value of the
 variable.
 Except when the
 .Ic exit
-command is used, messages that are in the primary system mailbox or in
-mailboxes which were opened with the special
-.Ql %:
-prefix and are in
+command is used, messages that are in a
+.Mx -sx
+.Sx "primary system mailbox"
+and are in
 .Ql read
 state when the mailbox is left will be saved in
 .Ev MBOX
@@ -1691,10 +1718,10 @@ or
 .Ic write .
 Unless when the
 .Ic exit
-command is used, messages that are in the primary system mailbox or in
-mailboxes which were opened with the special
-.Ql %:
-prefix and are in
+command is used, messages that are in a
+.Mx -sx
+.Sx "primary system mailbox"
+and are in
 .Ql saved
 state when the mailbox is left will be deleted; they will be saved in
 .Ev MBOX
@@ -1731,7 +1758,7 @@ summary.
 The following special message names exist:
 .
 .
-.Bl -tag -width ".It Ar _n_u"
+.Bl -tag -width ".It Ar BaNg"
 .It Ar \&.
 The current message, the so-called
 .Dq dot .
@@ -2359,7 +2386,7 @@ generate a (unique) keycode:
 .
 .
 .Pp
-.Bl -tag -compact -width "Ql _M"
+.Bl -tag -compact -width ".It Ql Ba"
 .It Ql \ecA
 Go to the start of the line
 .Pf ( Cd mle-go-home ) .
@@ -2397,9 +2424,11 @@ Backspace: backward delete one character
 .It Ql \ecI
 \*(NQ
 Horizontal tabulator:
-try to expand the word before the cursor, also supporting \*(UA
-.Ic file
-expansions
+try to expand the word before the cursor, supporting the usual \*(UA
+.Mx -sx
+.Sx "filename transformations" ,
+as documented in
+.Sx COMMANDS
 .Pf ( Cd mle-complete ) .
 This is affected by
 .Cd mle-quote-rndtrip .
@@ -2837,24 +2866,66 @@ In any event an unquoted reverse solidus at the end of a command line is
 discarded and the next line continues the command.
 \*(ID Note that line continuation is handled before the above parsing is
 applied, i.e., the parsers documented above will see merged lines.
-Filenames, where expected, are subsequently subjected to the following
-transformations, in sequence:
+Filenames, where expected, and unless documented otherwise, are
+subsequently subjected to the following
+.Mx -ix "filename transformations"
+filename transformations, in sequence:
 .
+.
+.Bl -bullet -offset indent
+.It
+If the given name is a registered
+.Ic shortcut ,
+it will be replaced with the expanded shortcut.
+.
+.It
+The filename is matched against the following patterns or strings:
 .Pp
-.Bl -bullet -compact -offset indent
-.It
-If the filename begins with an unquoted plus sign, and the
+.Bl -hang -compact -width ".Ar %user"
+.It Ar #
+(Number sign) is expanded to the previous file.
+.It Ar %
+(Percent sign) is replaced by the invoking
+.Mx -ix "primary system mailbox"
+user's primary system mailbox, which either is the (itself expandable)
+.Va inbox
+if that is set, the standardized absolute pathname indicated by
+.Ev MAIL
+if that is set, or a builtin compile-time default otherwise.
+.It Ar %user
+Expands to the primary system mailbox of
+.Ar user
+(and never the value of
+.Va inbox ,
+regardless of its actual setting).
+.It Ar &
+(Ampersand) is replaced with the invoking users
+.Mx -ix "secondary mailbox"
+secondary mailbox, the
+.Ev MBOX .
+.It Ar +file
+Refers to a
+.Ar file
+in the
 .Va folder
-variable is defined,
-the plus sign will be replaced by the value of the
-.Va folder
-variable followed by a solidus.
-If the
-.Va folder
-variable is unset or is set to null, the filename will be unchanged.
+directory (if that variable is set).
+.It Ar %:filespec
+Expands to the same value as
+.Ar filespec ,
+but has special meaning for when used with, e.g., the command
+.Ic file :
+the file will be treated as a primary system mailbox by, e.g., the
+.Ic mbox
+and
+.Ic save
+commands, meaning that messages that have been read in the current
+session will be moved to the
+.Ev MBOX
+mailbox instead of simply being flagged as read.
+.El
 .
 .It
-Meta expansions are applied to the filename: a leading tilde
+Meta expansions are applied to the resulting filename: a leading tilde
 .Ql ~
 character will be replaced by the expansion of
 .Ev HOME ,
@@ -2881,10 +2952,11 @@ may be displayed as
 .Ql 'diet\e is \ecurd.txt' .
 .El
 .
+.
 .Pp
 The following commands are available:
 .
-.Bl -tag -width ".Ic _ccount"
+.Bl -tag -width ".It Ic BaNg"
 .Mx
 .It Ic \&!
 Executes the
@@ -3665,52 +3737,15 @@ but open the mailbox readonly.
 Without arguments it shows status information of the current mailbox.
 If an argument is given, it will write out changes (such as deletions)
 the user has made and open a new mailbox.
-Some special conventions are recognized for the
+Some special
+.Mx -sx
+.Sx "filename transformations"
+are recognized for the
 .Ar name
-argument:
+argument, as documented in the introduction of
+.Sx COMMANDS .
+.Mx -sx
 .Pp
-.Bl -tag -compact -width ".Ar %:__lespec"
-.It Ar #
-(number sign) means the previous file,
-.It Ar %
-(percent sign) means the invoking user's system mailbox, which either
-is the (itself expandable)
-.Va inbox
-if that is set, the standardized absolute pathname indicated by
-.Ev MAIL
-if that is set, or a builtin compile-time default otherwise.
-.It Ar %user
-means the primary system mailbox of
-.Ar user
-(and never the value of
-.Va inbox ,
-regardless of its actual setting),
-.It Ar &
-(ampersand) means the invoking user's
-.Ev MBOX
-file and
-.It Ar +file
-means a
-.Ar file
-in the
-.Va folder
-directory.
-.It Ar %:filespec
-expands to the same value as
-.Ar filespec ,
-but the file is handled as a primary system mailbox by, e.g., the
-.Ic mbox
-and
-.Ic save
-commands, meaning that messages that have been read in the current
-session will be moved to the
-.Ev MBOX
-mailbox instead of simply being flagged as read.
-.El
-.Pp
-If the name matches one of the strings defined with the command
-.Ic shortcut ,
-it is replaced by its long form and expanded.
 If the name ends with
 .Ql .gz ,
 .Ql .bz2
@@ -3741,9 +3776,12 @@ operations in order to avoid inconsistencies due to concurrent
 modifications.
 \*(OPal Mailbox files which \*(UA treats as the system
 .Va inbox
-.Pf ( Ev MAIL )
-and primary mailboxes will also be protected by so-called dotlock
-files, the traditional way of mail spool file locking: for any file
+.Pf ( Ev MAIL ) ,
+and
+.Mx -sx
+.Sx "primary system mailbox" Ns
+es in general will also be protected by so-called dotlock files, the
+traditional way of mail spool file locking: for any file
 .Ql a
 a lock file
 .Ql a.lock
@@ -4292,8 +4330,9 @@ then collects the remaining mail content and sends it out.
 when \*(UA is quit; this is the default action unless the variable
 .Va hold
 is set.
-\*(ID This command can only be used in a primary system mailbox (see
-.Ic file ) .
+\*(ID This command can only be used in a
+.Mx -sx
+.Sx "primary system mailbox" .
 .
 .Mx
 .It Ic mimetype
@@ -4509,7 +4548,9 @@ or
 .Ic preserve
 or never referenced in the system
 .Va inbox ,
-and removing all other messages from the primary system mailbox.
+and removing all other messages from the
+.Mx -sx
+.Sx "primary system mailbox" .
 If new mail has arrived during the session,
 the message
 .Dq You have new mail
@@ -4672,10 +4713,15 @@ If no filename is given, the
 file is used.
 The filename in quotes, followed by the generated character count
 is echoed on the user's terminal.
-If editing a primary system mailbox the messages are marked for deletion.
-Filename interpretation as described for the
-.Ic file
-command is performed.
+If editing a
+.Mx -sx
+.Sx "primary system mailbox"
+the messages are marked for deletion.
+The usual
+.Mx -sx
+.Sx "filename transformations"
+are recognized, as documented in the introduction of
+.Sx COMMANDS .
 .
 .Mx
 .It Ic savediscard
@@ -4768,10 +4814,6 @@ whitespace) are treated as pairs of shortcuts and their expansions,
 creating new or changing already existing shortcuts, as necessary.
 Shortcuts may be removed via the command
 .Ic unshortcut .
-The expansion strings should be in the syntax that has been described
-for the
-.Ic file
-command.
 .
 .Mx
 .It Ic show
@@ -5355,7 +5397,7 @@ it defaults to the tilde
 .Ql ~ .
 .
 .
-.Bl -tag -width indent
+.Bl -tag -width ".It Ic BaNg"
 .Mx
 .It Ic ~~ Ar string
 Insert the string of text in the message prefaced by a single
@@ -5954,7 +5996,7 @@ selection etc., and should thus be taken into account.
 .\" .Ss "Variables" {{{
 .Ss "Variables"
 .
-.Bl -tag -width ".It Va _utoprin_"
+.Bl -tag -width ".It Va BaNg"
 .Mx
 .It Va -account-name
 \*(RO Is set to the active
@@ -6420,8 +6462,15 @@ is ignored.
 .
 .Mx
 .It Va dotlock-ignore-error
-\*(BO\*(OP Synchronization of mailboxes which \*(UA treats as system
-mailboxes (see the command
+\*(BO\*(OP Synchronization of mailboxes which \*(UA treats as
+.Mx -sx
+.Sx "primary system mailbox" Ns
+es (see, e.g., the notes on
+.Mx -sx
+.Sx "filename transformations"
+in the
+.Sx COMMANDS
+sections as well as the documentation of
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
 spool file locking method\(emin addition to system file locking.
@@ -6634,17 +6683,21 @@ set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
 The default path under which mailboxes are to be saved:
 file names that begin with the plus-sign
 .Ql +
-will be expanded by prefixing them with the value of this variable.
-The same special syntax conventions as documented for the
+will have the plus-sign replaced with the value of this variable if set,
+otherwise the plus-sign will remain unchanged when doing
+.Mx -sx
+.Sx "filename transformations" ;
+see the introduction of
+.Sx COMMANDS
+as well as the documentation of
 .Ic file
-command may be used; if the non-empty value does not start with a solidus
+for more on this topic.
+The value supports a subset of transformations itself, and if the
+non-empty value does not start with a solidus
 .Ql / ,
 then the value of
 .Ev HOME
 will be prefixed automatically.
-If unset or the empty string any
-.Ql +
-prefixing file names will remain unexpanded.
 .
 .Mx
 .It Va folder-hook
@@ -7030,12 +7083,22 @@ overrides a setting of
 .
 .Mx
 .It Va inbox
-If this is set to a non-empty string it will be used for expansions of
-.Ql % ,
-see
+If this is set to a non-empty string it will specify the users
+.Mx -sx
+.Sx "primary system mailbox" ,
+overriding
+.Ev MAIL
+and the system-dependent default, and (thus) be used to replace
+.Ql %
+when doing
+.Mx -sx
+.Sx "filename transformations" ;
+see the introduction of
+.Sx COMMANDS
+as well as the command
 .Ic file
-for more.
-The value supports a subset of filename expansions itself.
+for more on this topic.
+The value supports a subset of transformations itself.
 .
 .Mx
 .It Va indentprefix
@@ -9147,7 +9210,7 @@ $ export EDITOR
 $ COLUMNS=80 \*(uA -R
 .Ed
 .
-.Bl -tag -width ".It Ev _AILR_"
+.Bl -tag -width ".It Ev BaNg"
 .Mx
 .It Ev COLUMNS
 The user's preferred width in column positions for the terminal screen
@@ -9223,10 +9286,12 @@ name to any newly created child process.
 .
 .Mx
 .It Ev MAIL
-Is used as the user's primary system mailbox, unless
+Is used as the users
+.Mx -sx
+.Sx "primary system mailbox"
+unless
 .Va inbox
-is set, see
-.Ic file .
+is set.
 This is assumed to be an absolute pathname.
 .
 .Mx
@@ -9255,19 +9320,27 @@ This variable is only used when it resides in the process environment.
 .
 .Mx
 .It Ev MBOX
-The name of the user's mbox file.
-A logical subset of the special conventions that are documented for the
+The name of the users mbox file.
+A logical subset of the special
+.Mx -sx
+.Sx "filename transformations"
+that are documented for
+.Sx COMMANDS
+and
 .Ic file
-command and the internal variable
-.Va folder
-may be used.
+is supported.
 The fallback default is
 .Pa mbox
 in the user's
 .Ev HOME
 directory.
-Traditionally this secondary mailbox is used as the file to save
-messages from the primary system mailbox that have been read.
+Traditionally this
+.Mx -sx
+.Sx "secondary mailbox"
+is used as the file to save messages from the
+.Mx -sx
+.Sx "primary system mailbox"
+that have been read.
 Also see
 .Sx "Message states" .
 .
@@ -9384,7 +9457,7 @@ command and
 .\" .Sh FILES {{{
 .Sh FILES
 .
-.Bl -tag -width ".It Pa _etc/mime.type_"
+.Bl -tag -width ".It Pa BaNg"
 .It Pa \*(ur
 File giving initial commands.
 .
@@ -9602,7 +9675,7 @@ content any whitespace surrounding the equals sign will be removed, too.
 Optional fields include the following:
 .
 .
-.Bl -tag -width textualnewlines
+.Bl -tag -width ".It Cd BaNg"
 .It Cd compose
 A program that can be used to compose a new body or body part in the
 given format.
@@ -9927,7 +10000,7 @@ can be used to control \*(UA's
 .Pa .netrc
 cache.
 .
-.Bl -tag -width password
+.Bl -tag -width ".It Cd BaNg"
 .It Cd machine Ar name
 The hostname of the entries' machine, lowercase-normalized by \*(UA
 before use.
@@ -10609,7 +10682,8 @@ and does
 return what you would expect?
 Does this local hostname has a domain suffix?
 RFC 6762 standardized the link-local top-level domain
-.Ql .local .
+.Ql .local ,
+try again after adding an (additional) entry with this extension.
 .\" }}}
 .
 .\" .Ss "\*(UA exits quick, and output is cleared away" {{{
@@ -10649,8 +10723,8 @@ her- and himself with the locally installed
 .Xr kinit 1
 program, that protocol has no such local part but instead requires
 a world-wide-web query to create or fetch a token; since there is no
-local cache this query has to be performed whenever \*(UA is invoked
-from the command line (in interactive sessions situation may differ).
+local cache this query would have to be performed whenever \*(UA is
+invoked (in interactive sessions situation may differ).
 .
 .Pp
 \*(UA does not support OAuth.
@@ -10685,7 +10759,9 @@ It can happen that the terminal library (see
 reports different codes than the terminal really sends, in which case
 \*(UA will tell that a key binding is functional, but will not be able to
 recognize it because the received data does not match anything expected.
-The verbose listing of
+The
+.Va verbose
+listing of
 .Ic bind Ns
 ings will show the byte sequences that are expected.
 .
