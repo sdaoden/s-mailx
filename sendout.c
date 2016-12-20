@@ -364,11 +364,15 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
          goto jerr_header;
 
       if ((bn = ap->a_content_id) != NULL &&
-            fprintf(fo, "Content-ID: %s\n", bn) == -1)
+            fputs("Content-ID: ", fo) == EOF ||
+            xmime_write(bn, strlen(bn), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
+               ) < 0 || putc('\n', fo) == EOF)
          goto jerr_header;
 
       if ((bn = ap->a_content_description) != NULL &&
-            fprintf(fo, "Content-Description: %s\n", bn) == -1) /* TODO MIME! */
+            fputs("Content-Description: ", fo) == EOF ||
+            xmime_write(bn, strlen(bn), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
+               ) < 0 || putc('\n', fo) == EOF)
          goto jerr_header;
 
       if (putc('\n', fo) == EOF) {
