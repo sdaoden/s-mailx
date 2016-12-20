@@ -86,7 +86,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    struct n_ignore const *doitp, int level, struct quoteflt *qf, ui64_t *stats)
 {
    char buf[64];
-   struct str ti = {NULL, 0}, to;
+   struct str ti, to;
    struct str const *cpre, *csuf;
    char const *cp;
    NYD2_ENTER;
@@ -163,8 +163,27 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
       ti.l = strlen(ti.s = n_UNCONST(_("Defective MIME structure")));
       makeprint(&ti, &to);
-      ti.s = NULL; /* Not allocated! */
       to.l = delctrl(to.s, to.l);
+      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      free(to.s);
+
+      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if (csuf != NULL)
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   }
+
+   /* Content-Description */
+   if (n_ignore_is_ign(doitp, "content-description", 19) &&
+         (cp = mpp->m_content_description) != NULL && *cp != '\0') {
+      if (cpre != NULL)
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            NULL, NULL);
+      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+      ti.l = strlen(ti.s = n_UNCONST(mpp->m_content_description));
+      mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       free(to.s);
 
@@ -183,8 +202,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
-      ti.l = 0;
-      makeprint(n_str_add_cp(&ti, mpp->m_filename), &to);
+      ti.l = strlen(ti.s = mpp->m_filename);
+      makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       free(to.s);
@@ -195,9 +214,6 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
    }
-
-   if (ti.s != NULL)
-      free(ti.s);
    NYD2_LEAVE;
 }
 

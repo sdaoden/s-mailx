@@ -2141,12 +2141,14 @@ struct mimepart {
    char const  *m_ct_type;          /* content-type */
    char const  *m_ct_type_plain;    /* content-type without specs */
    char const  *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
-   enum mimecontent m_mimecontent;  /* same in enum */
-   char const  *m_charset;    /* charset */
-   char const  *m_ct_enc;     /* content-transfer-encoding */
-   enum mime_enc m_mime_enc;     /* same in enum */
-   char        *m_partstring; /* part level string */
-   char        *m_filename;   /* attachment filename */
+   enum mimecontent m_mimecontent;  /* ..in enum */
+   char const  *m_charset;
+   char const  *m_ct_enc;           /* Content-Transfer-Encoding */
+   enum mime_enc m_mime_enc;        /* ..in enum */
+   char        *m_partstring;       /* Part level string */
+   char        *m_filename;         /* ..of attachment */
+   char const  *m_content_description;
+   struct mime_handler *m_handler;  /* MIME handler if yet classified */
 };
 
 struct message {
