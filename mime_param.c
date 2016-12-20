@@ -875,9 +875,13 @@ mime_param_create(struct str *result, char const *name, char const *value)
       goto jleave;
    top.mpb_value_len = (ui32_t)i;
    top.mpb_charset_len = (ui32_t)strlen(top.mpb_charset = charset_get_lc());
-   top.mpb_is_utf8 = !ascncasecmp(top.mpb_charset, "utf-8",
-         top.mpb_charset_len);
-
+   if(top.mpb_charset_len >= 4 && !ascncasecmp(top.mpb_charset, "utf", 3) &&
+         ((top.mpb_charset[3] == '-' && top.mpb_charset[4] == '8' &&
+          top.mpb_charset_len == 5) || (top.mpb_charset[3] == '8' &&
+          top.mpb_charset_len == 4)))
+      top.mpb_is_utf8 = TRU1;
+   else
+      top.mpb_is_utf8 = FAL0;
    _mime_param_create(&top);
 jleave:
    NYD_LEAVE;
