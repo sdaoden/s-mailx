@@ -85,13 +85,14 @@ enum a_amv_var_flags{
    a_AMV_VF_NOCNTRLS = 1<<6,  /* Value may not contain control characters */
    a_AMV_VF_NUM = 1<<7,       /* Value must be a 32-bit number */
    a_AMV_VF_POSNUM = 1<<8,    /* Value must be positive 32-bit number */
-   a_AMV_VF_VIP = 1<<9,       /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<10,   /* Import ONLY from environ (before PS_STARTED) */
-   a_AMV_VF_ENV = 1<<11,      /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<12,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<13,   /* Has a default value */
-   a_AMV_VF_LINKED = 1<<14,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(14+1)) - 1
+   a_AMV_VF_LOWER = 1<<9,     /* Values will be stored in a lowercase version */
+   a_AMV_VF_VIP = 1<<10,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1<<11,   /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_ENV = 1<<12,      /* Update environment on change */
+   a_AMV_VF_I3VAL = 1<<13,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1<<14,   /* Has a default value */
+   a_AMV_VF_LINKED = 1<<15,   /* `environ' linked */
+   a_AMV_VF__MASK = (1<<(15+1)) - 1
 };
 
 struct a_amv_mac{
@@ -1096,6 +1097,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    if((avmp = avcp->avc_map) != NULL){
       rv = FAL0;
 
+      /* Validity checks */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(pstate & PS_ROOT))){
          value = N_("Variable is readonly: %s\n");
@@ -1127,6 +1129,16 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 jeavmp:
          n_err(V_(value), avcp->avc_name);
          goto jleave;
+      }
+
+      /* Transformations */
+      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_LOWER)){
+         char c;
+
+         oval = savestr(value);
+         value = oval;
+         for(; (c = *oval) != '\0'; ++oval)
+            *oval = lowerconv(c);
       }
    }
 

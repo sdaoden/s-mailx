@@ -1504,9 +1504,9 @@ ok_b_autothread,
    ok_b_bsdorder,
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
-   ok_v_charset_7bit,
-   ok_v_charset_8bit,
-   ok_v_charset_unknown_8bit,
+   ok_v_charset_7bit,                  /* {lower=1} */
+   ok_v_charset_8bit,                  /* {lower=1} */
+   ok_v_charset_unknown_8bit,          /* {lower=1} */
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
@@ -1647,7 +1647,7 @@ ok_b_SYSV3,                         /* {env=1} */
    ok_b_save,                          /* {i3val=TRU1} */
    ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
-   ok_v_sendcharsets,
+   ok_v_sendcharsets,                  /* {lower=1} */
    ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,
 ok_v_sendmail,
@@ -1716,7 +1716,7 @@ ok_v_spamd_user,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
-   ok_v_ttycharset,
+   ok_v_ttycharset,                    /* {lower=1} */
    ok_b_typescript_mode,               /* {vip=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */

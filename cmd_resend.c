@@ -146,8 +146,13 @@ make_ref_and_cs(struct message *mp, struct header *head) /* TODO rewrite FAST */
    n->n_blink = NULL;
    head->h_ref = n;
    if (ok_blook(reply_in_same_charset) &&
-         (cp = hfield1("content-type", mp)) != NULL)
-      head->h_charset = mime_param_get("charset", cp);
+         (cp = hfield1("content-type", mp)) != NULL){
+      char *cpo, c;
+
+      head->h_charset = cp = mime_param_get("charset", cp);
+      for(cpo = cp; (c = *cpo) != '\0'; ++cpo)
+         *cpo = lowerconv(c);
+   }
 jleave:
    NYD_LEAVE;
 }
