@@ -302,20 +302,24 @@
 #define n_ABS(A)        ((A) < 0 ? -(A) : (A))
 
 /* OS: we're not a library, only set what needs special treatment somewhere */
-#define OS_DRAGONFLY    0
-#define OS_SOLARIS      0
-#define OS_SUNOS        0
+#define n_OS_DRAGONFLY 0
+#define n_OS_OPENBSD 0
+#define n_OS_SOLARIS 0
+#define n_OS_SUNOS 0
 
 #ifdef __DragonFly__
-# undef OS_DRAGONFLY
-# define OS_DRAGONFLY   1
+# undef n_OS_DRAGONFLY
+# define n_OS_DRAGONFLY 1
+#elif defined __OpenBSD__
+# undef n_OS_OPENBSD
+# define n_OS_OPENBSD 1
 #elif defined __solaris__ || defined __sun
 # if defined __SVR4 || defined __svr4__
-#  undef OS_SOLARIS
-#  define OS_SOLARIS    1
+#  undef n_OS_SOLARIS
+#  define n_OS_SOLARIS 1
 # else
-#  undef OS_SUNOS
-#  define OS_SUNOS      1
+#  undef n_OS_SUNOS
+#  define n_OS_SUNOS 1
 # endif
 #endif
 

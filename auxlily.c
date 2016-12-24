@@ -103,7 +103,13 @@ _rand_init(void)
 
    _rand = smalloc(sizeof *_rand);
 
-   if ((u.fd = open("/dev/urandom", O_RDONLY)) != -1) {
+   if ((u.fd = open(
+# if n_OS_OPENBSD
+         "/dev/arandom"
+# else
+         "/dev/urandom"
+# endif
+         , O_RDONLY)) != -1) {
       bool_t ok = (sizeof *_rand == (size_t)read(u.fd, _rand, sizeof *_rand));
 
       close(u.fd);
