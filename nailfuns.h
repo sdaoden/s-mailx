@@ -1215,28 +1215,17 @@ FL bool_t      n__memory_check(char const *file, int line);
  * mime.c
  */
 
-/* *charset-7bit*, else CHARSET_7BIT */
-FL char const * charset_get_7bit(void);
-
-/* *charset-8bit*, else CHARSET_8BIT */
-#ifdef HAVE_ICONV
-FL char const * charset_get_8bit(void);
-#endif
-
-/* LC_CTYPE:CODESET / *ttycharset*, else *charset-8bit*, else CHARSET_8BIT */
-FL char const * charset_get_lc(void);
-
 /* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
  * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
  * The returned boolean indicates charset_iter_is_valid().
- * Without HAVE_ICONV, this "iterates" over charset_get_lc() only */
+ * Without HAVE_ICONV, this "iterates" over *ttycharset* only */
 FL bool_t      charset_iter_reset(char const *a_charset_to_try_first);
 FL bool_t      charset_iter_next(void);
 FL bool_t      charset_iter_is_valid(void);
 FL char const * charset_iter(void);
 
 /* And this is (xxx temporary?) which returns the iterator if that is valid and
- * otherwise either charset_get_8bit() or charset_get_lc() dep. on HAVE_ICONV */
+ * otherwise either *charset-8bit* or *ttycharset*, dep. on HAVE_ICONV */
 FL char const * charset_iter_or_fallback(void);
 
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
@@ -1392,7 +1381,7 @@ FL bool_t      mime_type_check_mtname(char const *name);
 FL char *      mime_type_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * set to charset_get_7bit() or charset_iter_or_fallback() if NULL */
+ * set to *charset-7bit* or charset_iter_or_fallback() if NULL */
 FL enum conversion mime_type_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
@@ -2217,7 +2206,7 @@ FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
                   struct str *out, struct str const *in,
                   struct str *in_rest_or_null);
 
-/* If tocode==NULL, uses charset_get_lc().  If fromcode==NULL, uses UTF-8.
+/* If tocode==NULL, uses *ttycharset*.  If fromcode==NULL, uses UTF-8.
  * Returns a salloc()ed buffer or NULL */
 FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
                   char const *tocode, char const *fromcode, char const *input);

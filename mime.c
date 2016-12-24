@@ -45,9 +45,10 @@
 
 static char                   *_cs_iter_base, *_cs_iter;
 #ifdef HAVE_ICONV
-# define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_8bit())
+# define _CS_ITER_GET() \
+   ((_cs_iter != NULL) ? _cs_iter : ok_vlook(CHARSET_8BIT_OKEY))
 #else
-# define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : charset_get_lc())
+# define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : ok_vlook(ttycharset))
 #endif
 #define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
 
@@ -293,7 +294,7 @@ mime_write_tohdr(struct str *in, FILE *fo)
    NYD_ENTER;
 
    cout.s = NULL, cout.l = 0;
-   cset7 = charset_get_7bit();
+   cset7 = ok_vlook(charset_7bit);
    cset7_len = (ui32_t)strlen(cset7);
    cset8 = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
    cset8_len = (ui32_t)strlen(cset8);
@@ -647,44 +648,6 @@ _append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
    NYD_LEAVE;
 }
 
-FL char const *
-charset_get_7bit(void)
-{
-   char const *t;
-   NYD_ENTER;
-
-   if ((t = ok_vlook(charset_7bit)) == NULL)
-      t = CHARSET_7BIT;
-   NYD_LEAVE;
-   return t;
-}
-
-#ifdef HAVE_ICONV
-FL char const *
-charset_get_8bit(void)
-{
-   char const *t;
-   NYD_ENTER;
-
-   if ((t = ok_vlook(CHARSET_8BIT_OKEY)) == NULL)
-      t = CHARSET_8BIT;
-   NYD_LEAVE;
-   return t;
-}
-#endif
-
-FL char const *
-charset_get_lc(void)
-{
-   char const *t;
-   NYD_ENTER;
-
-   if ((t = ok_vlook(ttycharset)) == NULL)
-      t = CHARSET_8BIT;
-   NYD_LEAVE;
-   return t;
-}
-
 FL bool_t
 charset_iter_reset(char const *a_charset_to_try_first)
 {
@@ -698,10 +661,10 @@ charset_iter_reset(char const *a_charset_to_try_first)
    sarr[0] = a_charset_to_try_first;
    if ((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
          ok_blook(sendcharsets_else_ttycharset))
-      sarr[1] = charset_get_lc();
-   sarr[2] = charset_get_8bit();
+      sarr[1] = ok_vlook(ttycharset);
+   sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
 #else
-   sarr[2] = charset_get_lc();
+   sarr[2] = ok_vlook(ttycharset);
 #endif
 
    sarrl[2] = len = strlen(sarr[2]);
@@ -892,7 +855,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
    out->s = NULL;
 
 #ifdef HAVE_ICONV
-   tcs = charset_get_lc();
+   tcs = ok_vlook(ttycharset);
 #endif
    p = in->s;
    upper = p + in->l;

@@ -250,14 +250,14 @@
 #define MIME_TYPES_SYS  "/etc/mime.types"
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
- * Note: must be lowercase!
+ * Note: must be lowercase!  Changes affect enum okeys!
  * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
-#define CHARSET_7BIT    "us-ascii"
+#define CHARSET_7BIT "us-ascii"
 #ifdef HAVE_ICONV
-# define CHARSET_8BIT      "utf-8"
+# define CHARSET_8BIT "utf-8"
 # define CHARSET_8BIT_OKEY charset_8bit
 #else
-# define CHARSET_8BIT      "iso-8859-1"
+# define CHARSET_8BIT "iso-8859-1"
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
@@ -1504,8 +1504,9 @@ ok_b_autothread,
    ok_b_bsdorder,
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
-   ok_v_charset_7bit,                  /* {lower=1} */
-   ok_v_charset_8bit,                  /* {lower=1} */
+   ok_v_charset_7bit,                  /* {lower=1,defval=CHARSET_7BIT} */
+   /* But unused without HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
+   ok_v_charset_8bit,                  /* {lower=1,defval=CHARSET_8BIT} */
    ok_v_charset_unknown_8bit,          /* {lower=1} */
    ok_v_cmd,
    ok_b_colour_disable,
@@ -1716,7 +1717,7 @@ ok_v_spamd_user,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
-   ok_v_ttycharset,                    /* {lower=1} */
+   ok_v_ttycharset,                    /* {lower=1,defval=CHARSET_8BIT} */
    ok_b_typescript_mode,               /* {vip=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */

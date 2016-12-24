@@ -312,7 +312,7 @@ _idna_apply(struct addrguts *agp)
    /* GNU Libidn settles on top of iconv(3) without any fallback, so let's just
     * let it perform the charset conversion, if any should be necessary */
    if (!(options & OPT_UNICODE)) {
-      char const *tcs = charset_get_lc();
+      char const *tcs = ok_vlook(ttycharset);
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
       i = (idna_utf8 == NULL && errno == EINVAL);
@@ -380,7 +380,8 @@ _idna_apply(struct addrguts *agp)
       case idn_buffer_overflow:
          break;
       case idn_invalid_encoding:
-         n_err(_("Cannot convert from %s to %s\n"), charset_get_lc(), "UTF-8");
+         n_err(_("Cannot convert from %s to %s\n"),
+            ok_vlook(ttycharset), "utf-8");
          /* FALLTHRU */
       default:
          agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;

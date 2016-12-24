@@ -47,7 +47,7 @@ struct mime_param_builder {
    si8_t       mpb_rv;
    char const  *mpb_name;
    char const  *mpb_value;       /* Remains of, once the level was entered */
-   char const  *mpb_charset;     /* charset_get_lc() */
+   char const  *mpb_charset;     /* *ttycharset* */
    char        *mpb_buf;         /* Pointer to on-stack buffer */
 };
 
@@ -401,7 +401,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
           * cannot convert characters, let aside that we don't use it at all */
          *emsg = N_("MIME RFC 2231 invalidity: missing character set\n");
          f |= _ERRORS;
-      } else if (ascncasecmp(tcs = charset_get_lc(),
+      } else if (ascncasecmp(tcs = ok_vlook(ttycharset),
             head->rj_dat, head->rj_cs_len)) {
          char *cs = ac_alloc(head->rj_cs_len +1);
 
@@ -874,7 +874,7 @@ mime_param_create(struct str *result, char const *name, char const *value)
    if ((i = strlen(top.mpb_value = value)) > UI32_MAX)
       goto jleave;
    top.mpb_value_len = (ui32_t)i;
-   if ((i = strlen(name = charset_get_lc())) > UI32_MAX)
+   if ((i = strlen(name = ok_vlook(ttycharset))) > UI32_MAX)
       goto jleave;
    top.mpb_charset = salloc((top.mpb_charset_len = (ui32_t)i) +1);
    for (i = 0; *name != '\0'; ++i, ++name)

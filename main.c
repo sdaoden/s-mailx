@@ -266,7 +266,7 @@ _startup(void)
    setlocale(LC_ALL, n_empty);
    mb_cur_max = MB_CUR_MAX;
 # ifdef HAVE_NL_LANGINFO
-   if(ok_vlook(ttycharset) == NULL && (cp = nl_langinfo(CODESET)) != NULL)
+   if((cp = nl_langinfo(CODESET)) != NULL)
       ok_vset(ttycharset, cp);
 # endif
 

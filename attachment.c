@@ -293,7 +293,7 @@ jrefexp:
       nap = a_attachment_setup_msg(nap, file, msgno);
    else{
       nap->a_input_charset = (incs == NULL || incs == (char*)-1)
-            ? savestr(charset_get_lc()) : incs;
+            ? savestr(ok_vlook(ttycharset)) : incs;
 #ifdef HAVE_ICONV
       if(cnvfp != NULL){
          nap->a_charset = oucs;

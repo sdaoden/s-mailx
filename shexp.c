@@ -887,7 +887,7 @@ jpush:
                u.store = n_string_push_buf(u.store, ib, il);
 #ifdef HAVE_ICONV
             else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE,
-                  "utf-8", charset_get_lc(), savestrbuf(ib, il))) != NULL){
+                  "utf-8", ok_vlook(ttycharset), savestrbuf(ib, il))) != NULL){
                ui32_t uc;
                char const *ib2;
                size_t il2, il3;

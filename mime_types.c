@@ -1104,7 +1104,7 @@ j7bit:
 jcharset:
    if (*charset == NULL) /* TODO MIME/send: iter active? iter! else */
       *charset = (mtc & _MT_C_HIGHBIT) ? charset_iter_or_fallback()
-            : charset_get_7bit();
+            : ok_vlook(charset_7bit);
 jleave:
    /* TODO mime_type_file_classify() shouldn't return conversion */
    if (rfc822) {

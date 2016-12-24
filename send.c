@@ -1023,10 +1023,11 @@ jpipe_close:
           ip->m_mimecontent == MIME_TEXT ||
           (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
           (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
-      char const *tcs = charset_get_lc();
+      char const *tcs;
 
+      tcs = ok_vlook(ttycharset);
       if (asccasecmp(tcs, ip->m_charset) &&
-            asccasecmp(charset_get_7bit(), ip->m_charset)) {
+            asccasecmp(ok_vlook(charset_7bit), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
          if (iconvd == (iconv_t)-1 && errno == EINVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);

@@ -227,7 +227,7 @@ not be accessible but contain a
 .Ql =
 character, then anything after the
 .Ql =
-is treated as a character-set conversion specification.
+is treated as a character-set specification.
 .Pp
 If an input character-set is specified,
 .Mx -ix "character-set specification"
@@ -626,7 +626,7 @@ text before sending the message:
 .Bd -literal -offset indent
 $ ( echo 'line    one. Word.     Word2.'; \e
     echo '~| /usr/bin/fmt -tuw66' ) |\e
-  LC_ALL=C \*(uA -:/ -Sttycharset=UTF-8 -d~ bob@exam.ple
+  LC_ALL=C \*(uA -:/ -Sttycharset=utf-8 -d~ bob@exam.ple
 .Ed
 .
 .Mx
@@ -6369,10 +6369,11 @@ US-ASCII compatible.
 \*(OP The default 8-bit character set that is used as an implicit last
 member of the variable
 .Va sendcharsets .
-This defaults to UTF-8.
-If no character set conversion capabilities are available in \*(UA then
-the only supported character set is
-.Va ttycharset .
+This defaults to UTF-8 if character-set conversion capabilities are
+available, and to ISO-8859-1 otherwise, in which case the only supported
+character set is
+.Va ttycharset
+and this variable is effectively ignored.
 Refer to the section
 .Sx "Character sets"
 for the complete picture of character set conversion in \*(UA.
@@ -9161,6 +9162,7 @@ in which case it defaults to ISO-8859-1 unless it can deduce a value
 from the
 .Ev LC_CTYPE
 locale environment.
+It defaults to UTF-8 if conversion is available.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.

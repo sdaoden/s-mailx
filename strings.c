@@ -986,7 +986,7 @@ n_iconv_open(char const *tocode, char const *fromcode)
    if ((!asccasecmp(fromcode, "unknown-8bit") ||
             !asccasecmp(fromcode, "binary")) &&
          (fromcode = ok_vlook(charset_unknown_8bit)) == NULL)
-      fromcode = charset_get_8bit();
+      fromcode = ok_vlook(CHARSET_8BIT_OKEY);
 
    if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
       goto jleave;
@@ -1179,7 +1179,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
 
    rv = NULL;
    if(tocode == NULL)
-      tocode = charset_get_lc();
+      tocode = ok_vlook(ttycharset);
    if(fromcode == NULL)
       fromcode = "utf-8";
 

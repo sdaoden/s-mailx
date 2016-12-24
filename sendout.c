@@ -629,7 +629,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    convert = mime_type_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
-   tcs = charset_get_lc();
+   tcs = ok_vlook(ttycharset);
    if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
