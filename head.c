@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Routines for processing and detecting headlines.
+ *@ TODO Mostly a hackery, we need RFC compliant parsers instead.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -102,14 +103,14 @@ static void a_head_jdn_to_gregorian(size_t jdn,
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
 #ifdef HAVE_IDNA
-static struct addrguts *   _idna_apply(struct addrguts *agp);
+static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
 #endif
 
 /* Classify and check a (possibly skinned) header body according to RFC
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA) */
-static int                 _addrspec_check(int doskin, struct addrguts *agp);
+static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned);
 
 /* Return the next header field found in the given message.
  * Return >= 0 if something found, < 0 elsewise.
@@ -296,8 +297,8 @@ a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
 
 #ifdef HAVE_IDNA
 # if HAVE_IDNA == HAVE_IDNA_LIBIDNA
-static struct addrguts *
-_idna_apply(struct addrguts *agp)
+static struct n_addrguts *
+a_head_idna_apply(struct n_addrguts *agp)
 {
    char *idna_utf8, *idna_ascii, *cs;
    size_t sz, i;
@@ -314,13 +315,13 @@ _idna_apply(struct addrguts *agp)
    if (!(options & OPT_UNICODE)) {
       char const *tcs = ok_vlook(ttycharset);
       idna_ascii = idna_utf8;
-      idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", tcs);
+      idna_utf8 = stringprep_convert(idna_ascii, "utf-8", tcs);
       i = (idna_utf8 == NULL && errno == EINVAL);
       ac_free(idna_ascii);
 
       if (idna_utf8 == NULL) {
          if (i)
-            n_err(_("Cannot convert from %s to %s\n"), tcs, "UTF-8");
+            n_err(_("Cannot convert from %s to %s\n"), tcs, "utf-8");
          agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
          goto jleave;
       }
@@ -357,8 +358,8 @@ jleave:
 }
 
 # elif HAVE_IDNA == HAVE_IDNA_IDNKIT /* IDNA==LIBIDNA */
-static struct addrguts *
-_idna_apply(struct addrguts *agp)
+static struct n_addrguts *
+a_head_idna_apply(struct n_addrguts *agp)
 {
    char *idna_in, *idna_out, *cs;
    size_t sz, i;
@@ -416,13 +417,13 @@ jleave:
 # endif /* IDNA==IDNKIT */
 #endif /* HAVE_IDNA */
 
-static int
-_addrspec_check(int skinned, struct addrguts *agp)
+static bool_t
+a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned)
 {
    char *addr, *p;
    bool_t in_quote;
    ui8_t in_domain, hadat;
-   union {char c; unsigned char u;} c;
+   union {char c; unsigned char u; ui32_t ui32;} c;
 #ifdef HAVE_IDNA
    ui8_t use_idna;
 #endif
@@ -470,6 +471,7 @@ jaddr_check:
    in_quote = FAL0;
    in_domain = hadat = 0;
 
+   /* TODO addrspec_check: we need a real RFC 5322 parser! */
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
          in_quote = !in_quote;
@@ -501,8 +503,8 @@ jaddr_check:
          in_domain = (*p == '[') ? 2 : 1;
          continue;
       } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
-            c.c == ',' || c.c == ';' || c.c == ':' || c.c == '\\' ||
-            c.c == '[' || c.c == ']')
+            c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
+            c.c == '\\' || c.c == ',')
          break;
       hadat = 0;
    }
@@ -513,11 +515,214 @@ jaddr_check:
 
    if (!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
+   else{
+      /* If we seem to know that this is an address.  Perform some simple checks
+       * for dot-atom as of RFC 5322 and ensure we fix that "Dr. problem".
+       * TODO We need a real RFC 5322 parser which produces tokens, to store them
+       * TODO in a list including typeattr, as in atom-text, dot-atom-text,
+       * TODO quote, comment address, so then we could simply join as many
+       * TODO consecutive -text tokens and convert them to quote as possible
+       * TODO For now bad and expensive; wrong for some comments in tokens.
+       * TODO In fact i haven't read RFC 5322 so much, esp. before doing this */
+      struct n_string ost, *ostp;
+      char lastc;
+      size_t rangestart, lastpoi;
+      char const *cp, *cpmax, *xp;
 
 #ifdef HAVE_IDNA
-   if (use_idna == 2)
-      agp = _idna_apply(agp);
+      if(use_idna == 2)
+         agp = a_head_idna_apply(agp);
 #endif
+
+      ostp = n_string_creat_auto(&ost);
+      if((c.ui32 = agp->ag_ilen) <= UI32_MAX >> 1)
+         ostp = n_string_reserve(ostp, c.ui32 <<= 1);
+
+      hadat = FAL0;
+      cp = agp->ag_input;
+      if((c.ui32 = agp->ag_iaddr_start) > 0)
+         --c.ui32;
+      cpmax = &cp[c.ui32];
+      rangestart = 0;
+
+      while(cp < cpmax && blankchar(*cp))
+         ++cp;
+
+      lastc = '\0';
+jdotatom_redo:
+      for(lastpoi = UIZ_MAX; cp < cpmax;){
+         switch((c.c = *cp)){
+         case '(':
+jdotatom_comment:
+            lastc = 0;
+            if((c.ui32 = ostp->s_len) > 0){
+               while(c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]))
+                  --c.ui32;
+               ostp = n_string_trunc(ostp, c.ui32);
+
+               if(c.ui32 > 0){
+                  --c.ui32;
+                  /* Can we join two comments? */
+                  if(ostp->s_dat[c.ui32] == ')'){
+                     ostp->s_dat[c.ui32] = ' ';
+                     lastc = 1;
+                  }
+                  /* Otherwise ensure it is separated! */
+                  else if(!blankchar(ostp->s_dat[c.ui32]))
+                     ostp = n_string_push_c(ostp, ' ');
+               }
+            }
+            if(!lastc)
+               ostp = n_string_push_c(ostp, '(');
+
+            xp = skip_comment(++cp);
+            c.ui32 = (ui32_t)PTR2SIZE(xp - cp);
+            if(c.ui32 > 0){
+               if(xp[-1] == ')')
+                  --c.ui32;
+               /* Run out of buffer while searching for comment close, this is
+                * artificial and we strip all blanks at EOS */
+               else while(blankchar(xp[-1])){
+                  --xp;
+                  if(--c.ui32 == 0)
+                     break;
+               }
+            }
+            ostp = n_string_push_buf(ostp, cp, c.ui32);
+
+            ostp = n_string_push_c(ostp, ')');
+            lastpoi = ostp->s_len - 1;
+            lastc = '\0';
+            cp = xp;
+            break;
+         case '"':
+            lastc = 0;
+jdotatom_quote:
+            xp = ++cp;
+            if((c.ui32 = ostp->s_len) > 0){
+               while(c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]))
+                  --c.ui32;
+               ostp = n_string_trunc(ostp, c.ui32);
+
+               if(c.ui32 > 0){
+                  --c.ui32;
+                  /* Can we join two quotes? */
+                  if(ostp->s_dat[c.ui32] == '"'){
+                     ostp->s_dat[c.ui32] = ' ';
+                     lastc = 1;
+                  }
+                  /* Otherwise ensure it is separated! */
+                  else if(!blankchar(ostp->s_dat[c.ui32]))
+                     ostp = n_string_push_c(ostp, ' ');
+               }
+            }
+            if(!lastc)
+               ostp = n_string_push_c(ostp, '"');
+
+            for(; xp < cpmax; ++xp){
+               if((c.c = *xp) == '"')
+                  break;
+               if(c.c == '\\' && xp[1] != '\0')
+                  ++xp;
+            }
+            c.ui32 = (ui32_t)PTR2SIZE(xp - cp);
+            if(c.ui32 > 0){
+               if(xp != cpmax && *xp == '"')
+                  ++xp;
+               /* Run out of buffer while searching for quote close, this is
+                * artificial and we strip all blanks at EOS */
+               else while(blankchar(xp[-1])){
+                  --xp;
+                  if(--c.ui32 == 0)
+                     break;
+               }
+            }
+            ostp = n_string_push_buf(ostp, cp, c.ui32);
+
+            ostp = n_string_push_c(ostp, '"');
+            lastpoi = ostp->s_len - 1;
+            lastc = '\0';
+            cp = xp;
+            break;
+         case '.':
+            if(lastpoi != UIZ_MAX){
+               if(ostp->s_dat[lastpoi] == '"')
+                  /* Simply join backward to a yet existing quote */
+                  ostp = n_string_cut(ostp, lastpoi, 1);
+            }else
+               /* Otherwise convert anything before to a quote */
+               ostp = n_string_insert_c(ostp, rangestart, '"');
+
+            for(xp = cp; cp < cpmax; ++cp){
+               /* If we reach another quote, join forward */
+               if((c.c = *cp) == '"'){
+                  lastc = 1;
+                  goto jdotatom_quote;
+               }
+               else if(c.c == '('){
+                  /* End the quote before the whitespace before the comment */
+                  for(c.ui32 = 0; blankchar(cp[-1 - c.ui32]); ++c.ui32)
+                     ;
+                  if(c.ui32 > 0)
+                     ostp = n_string_trunc(ostp, ostp->s_len - c.ui32);
+                  ostp = n_string_push_c(ostp, '"');
+                  goto jdotatom_comment;
+               }
+               ostp = n_string_push_c(ostp, c.c);
+            }
+
+            /* Since we have created this quote it would be false to let it end
+             * in a series of whitespace */
+            for(c.ui32 = ostp->s_len;
+                  c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]); --c.ui32)
+               ;
+            ostp = n_string_trunc(ostp, c.ui32);
+
+            ostp = n_string_push_c(ostp, '"');
+            lastpoi = ostp->s_len - 1;
+            lastc = '\0';
+            break;
+         default:
+            if(lastc == '\0' || !blankchar(c.c) || !blankchar(lastc))
+               ostp = n_string_push_c(ostp, lastc = c.c);
+            ++cp;
+            break;
+         }
+      }
+
+      if(hadat == FAL0){
+         hadat = TRU1;
+         if((c.ui32 = ostp->s_len) > 0 && !blankchar(ostp->s_dat[c.ui32 - 1])){
+            ostp = n_string_push_c(ostp, ' ');
+            ++c.ui32;
+         }
+         if(c.ui32 != 0)
+            ++c.ui32;
+         agp->ag_iaddr_start = c.ui32;
+         cp = &agp->ag_input[agp->ag_iaddr_aend];
+         if(cp != &agp->ag_input[agp->ag_ilen])
+            ++cp;
+         c.ui32 = (ui32_t)PTR2SIZE(cp - cpmax);
+         ostp = n_string_push_buf(ostp, cpmax, c.ui32);
+         agp->ag_iaddr_aend = ostp->s_len - 1;
+         cpmax = &agp->ag_input[agp->ag_ilen];
+
+         c.ui32 = (ui32_t)PTR2SIZE(cpmax - cp);
+         if(c.ui32 > 0){
+            ostp = n_string_push_c(ostp, lastc = ' ');
+            rangestart = ostp->s_len;
+            goto jdotatom_redo;
+         }
+      }else if((c.ui32 = ostp->s_len) > 0){
+         while(blankchar(ostp->s_dat[c.ui32 - 1]))
+            --c.ui32;
+         ostp = n_string_trunc(ostp, c.ui32);
+      }
+
+      agp->ag_input = n_string_cp(ostp);
+      agp->ag_ilen = ostp->s_len;
+      ostp = n_string_drop_ownership(ostp);
+   }
 jleave:
    NYD_LEAVE;
    return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
@@ -1309,12 +1514,13 @@ FL si8_t
 is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
 {
    char cbuf[sizeof "'\\U12340'"];
-   enum expand_addr_flags eaf;
    char const *cs;
    int f;
    si8_t rv;
+   enum expand_addr_flags eaf;
    NYD_ENTER;
 
+   eaf = expandaddr_to_eaf();
    f = np->n_flags;
 
    if ((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))) {
@@ -1348,8 +1554,6 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    /* *expandaddr* stuff */
    if (!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
       goto jleave;
-
-   eaf = expandaddr_to_eaf();
 
    if ((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)) {
       if (eaf & EAF_FAIL)
@@ -1405,41 +1609,45 @@ jleave:
 FL char *
 skin(char const *name)
 {
-   struct addrguts ag;
-   char *ret = NULL;
+   struct n_addrguts ag;
+   char *rv;
    NYD_ENTER;
 
-   if (name != NULL) {
-      addrspec_with_guts(1, name, &ag);
-      ret = ag.ag_skinned;
-      if (!(ag.ag_n_flags & NAME_NAME_SALLOC))
-         ret = savestrbuf(ret, ag.ag_slen);
-   }
+   if(name != NULL){
+      name = n_addrspec_with_guts(&ag,name, TRU1);
+      rv = ag.ag_skinned;
+      if(!(ag.ag_n_flags & NAME_NAME_SALLOC))
+         rv = savestrbuf(rv, ag.ag_slen);
+   }else
+      rv = NULL;
    NYD_LEAVE;
-   return ret;
+   return rv;
 }
 
 /* TODO addrspec_with_guts: RFC 5322
  * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
-FL int
-addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
-{
+FL char const *
+n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
    char const *cp;
-   char *cp2, *bufend, *nbuf, c, gotlt, gotaddr, lastsp;
-   int rv = 1;
+   char *cp2, *bufend, *nbuf, c;
+   enum{
+      a_NONE,
+      a_GOTLT = 1<<0,
+      a_GOTADDR = 1<<1,
+      a_GOTSPACE = 1<<2,
+      a_LASTSP = 1<<3
+   } flags;
    NYD_ENTER;
 
    memset(agp, 0, sizeof *agp);
 
-   if ((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0) {
+   if((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0){
       agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
       agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
       goto jleave;
-   }
-
-   if (!doskin || !anyof(name, "(< ")) {
+   }else if(!doskin){
       /*agp->ag_iaddr_start = 0;*/
       agp->ag_iaddr_aend = agp->ag_ilen;
       agp->ag_skinned = n_UNCONST(name); /* (NAME_SALLOC not set) */
@@ -1448,28 +1656,26 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
       goto jcheck;
    }
 
-   /* Something makes us think we have to perform the skin operation */
-   nbuf = ac_alloc(agp->ag_ilen + 1);
+   flags = a_NONE;
+   nbuf = n_lofi_alloc(agp->ag_ilen +1);
    /*agp->ag_iaddr_start = 0;*/
    cp2 = bufend = nbuf;
-   gotlt = gotaddr = lastsp = 0;
 
-   for (cp = name++; (c = *cp++) != '\0'; ) {
+   for(cp = name++; (c = *cp++) != '\0';){
       switch (c) {
       case '(':
          cp = skip_comment(cp);
-         lastsp = 0;
+         flags &= ~a_LASTSP;
          break;
       case '"':
-         /* Start of a "quoted-string".
-          * Copy it in its entirety */
+         /* Start of a "quoted-string".  Copy it in its entirety */
          /* XXX RFC: quotes are "semantically invisible"
           * XXX But it was explicitly added (Changelog.Heirloom,
           * XXX [9.23] released 11/15/00, "Do not remove quotes
           * XXX when skinning names"?  No more info.. */
          *cp2++ = c;
          while ((c = *cp) != '\0') { /* TODO improve */
-            cp++;
+            ++cp;
             if (c == '"') {
                *cp2++ = c;
                break;
@@ -1478,15 +1684,15 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
                *cp2++ = c;
             else if ((c = *cp) != '\0') {
                *cp2++ = c;
-               cp++;
+               ++cp;
             }
          }
-         lastsp = 0;
+         flags &= ~a_LASTSP;
          break;
       case ' ':
       case '\t':
-         if (gotaddr == 1) {
-            gotaddr = 2;
+         if((flags & (a_GOTADDR | a_GOTSPACE)) == a_GOTADDR){
+            flags |= a_GOTADDR | a_GOTSPACE;
             agp->ag_iaddr_aend = PTR2SIZE(cp - name);
          }
          if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
@@ -1494,69 +1700,73 @@ addrspec_with_guts(int doskin, char const *name, struct addrguts *agp)
          else if (cp[0] == '@' && blankchar(cp[1]))
             cp += 2, *cp2++ = '@';
          else
-            lastsp = 1;
+            flags |= a_LASTSP;
          break;
       case '<':
          agp->ag_iaddr_start = PTR2SIZE(cp - (name - 1));
          cp2 = bufend;
-         gotlt = gotaddr = 1;
-         lastsp = 0;
+         flags &= ~(a_GOTSPACE | a_LASTSP);
+         flags |= a_GOTLT | a_GOTADDR;
          break;
       case '>':
-         if (gotlt) {
+         if(flags & a_GOTLT){
             /* (_addrspec_check() verifies these later!) */
+            flags &= ~(a_GOTLT | a_LASTSP);
             agp->ag_iaddr_aend = PTR2SIZE(cp - name);
-            gotlt = 0;
-            while ((c = *cp) != '\0' && c != ',') {
-               cp++;
+
+            /* Skip over the entire remaining field */
+            while((c = *cp) != '\0' && c != ','){
+               ++cp;
                if (c == '(')
                   cp = skip_comment(cp);
                else if (c == '"')
                   while ((c = *cp) != '\0') {
-                     cp++;
+                     ++cp;
                      if (c == '"')
                         break;
                      if (c == '\\' && *cp != '\0')
                         ++cp;
                   }
             }
-            lastsp = 0;
             break;
          }
-         /* FALLTRHOUGH */
+         /* FALLTHRU */
       default:
-         if (lastsp) {
-            lastsp = 0;
-            if (gotaddr)
+         if(flags & a_LASTSP){
+            flags &= ~a_LASTSP;
+            if(flags & a_GOTADDR)
                *cp2++ = ' ';
          }
          *cp2++ = c;
-         if (c == ',') {
-            if (!gotlt) {
+         if(c == ','){
+            if(!(flags & a_GOTLT)){
                *cp2++ = ' ';
-               for (; blankchar(*cp); ++cp)
+               for(; blankchar(*cp); ++cp)
                   ;
-               lastsp = 0;
+               flags &= ~a_LASTSP;
                bufend = cp2;
             }
-         } else if (!gotaddr) {
-            gotaddr = 1;
+         }else if(!(flags & a_GOTADDR)){
+            flags |= a_GOTADDR;
             agp->ag_iaddr_start = PTR2SIZE(cp - name);
          }
       }
    }
+   --name;
    agp->ag_slen = PTR2SIZE(cp2 - nbuf);
    if (agp->ag_iaddr_aend == 0)
       agp->ag_iaddr_aend = agp->ag_ilen;
-
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
-   ac_free(nbuf);
+   n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   rv = _addrspec_check(doskin, agp);
+   if(a_head_addrspec_check(agp, doskin) <= 0)
+      name = NULL;
+   else
+      name = agp->ag_input;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return name;
 }
 
 FL char *

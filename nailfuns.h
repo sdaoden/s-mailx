@@ -862,10 +862,10 @@ FL char *      skin(char const *name);
 /* Skin *name* and extract the *addr-spec* according to RFC 5322.
  * Store the result in .ag_skinned and also fill in those .ag_ fields that have
  * actually been seen.
- * Return 0 if something good has been parsed, 1 if fun didn't exactly know how
- * to deal with the input, or if that was plain invalid */
-FL int         addrspec_with_guts(int doskin, char const *name,
-                  struct addrguts *agp);
+ * Return NULL on error, or name again, but which may have been replaced by
+ * a version with fixed quotation etc.! */
+FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
+                  bool_t doskin);
 
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);

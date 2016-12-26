@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ MIME support functions.
+ *@ TODO Complete rewrite.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -43,6 +44,13 @@
 # include "nail.h"
 #endif
 
+/* Don't ask, but it keeps body and soul together */
+enum a_mime_structure_hack{
+   a_MIME_SH_NONE,
+   a_MIME_SH_COMMENT,
+   a_MIME_SH_QUOTE
+};
+
 static char                   *_cs_iter_base, *_cs_iter;
 #ifdef HAVE_ICONV
 # define _CS_ITER_GET() \
@@ -62,15 +70,22 @@ static bool_t           _name_highbit(struct name *np);
 static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
                            struct str *outrest, struct quoteflt *qf);
 
-/* Convert header fields to RFC 1522 format and write to the file fo */
-static ssize_t          mime_write_tohdr(struct str *in, FILE *fo);
+/* Convert header fields to RFC 2047 format and write to the file fo */
+static ssize_t          mime_write_tohdr(struct str *in, FILE *fo,
+                           size_t *colp, enum a_mime_structure_hack msh);
 
 /* Write len characters of the passed string to the passed file, doing charset
  * and header conversion */
-static ssize_t          convhdra(char const *str, size_t len, FILE *fp);
 
 /* Write an address to a header field */
-static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f);
+static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f,
+                           size_t *colp);
+#ifdef HAVE_ICONV
+static ssize_t a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
+                  enum a_mime_structure_hack msh);
+#else
+# define a_mime__convhdra(S,F,C,MSH) mime_write_tohdr(S, F, C, MSH)
+#endif
 
 /* Append to buf, handling resizing */
 static void             _append_str(char **buf, size_t *sz, size_t *pos,
@@ -252,12 +267,23 @@ jleave:
 }
 
 static ssize_t
-mime_write_tohdr(struct str *in, FILE *fo)
+mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
+   enum a_mime_structure_hack msh)
 {
    /* TODO mime_write_tohdr(): we don't know the name of our header->maxcol..
     * TODO  MIME/send layer rewrite: more available state!!
     * TODO   Because of this we cannot make a difference in between structured
     * TODO   and unstructured headers (RFC 2047, 5. (2))
+    * TODO   This means, e.g., that this gets called multiple times for a
+    * TODO   structured header and always starts thinking it is at column 0.
+    * TODO   I.e., it may get called for only the content of a comment etc.,
+    * TODO   not knowing anything of its context.
+    * TODO   Instead we should have a list of header body content tokens,
+    * TODO   convert them, and then dump the converted tokens, breaking lines.
+    * TODO   I.e., get rid of convhdra, mime_write_tohdr_a and such...
+    * TODO   Somewhen, the following should produce smooth stuff:
+    * TODO   '  "Hallo\"," Dr. Backe "Bl\"ö\"d" (Gell) <ha@llöch.en>
+    * TODO    "Nochm\"a\"l"<ta@tu.da>(Dümm)'
     * TODO NOT MULTIBYTE SAFE IF AN ENCODED WORD HAS TO BE SPLITTED!
     * TODO  To be better we had to mbtowc_l() (non-std! and no locale!!) and
     * TODO   work char-wise!  ->  S-CText..
@@ -271,26 +297,28 @@ mime_write_tohdr(struct str *in, FILE *fo)
        * XXX MIME_LINELEN unless an RFC 2047 encoding was actually used */
       _MAXCOL  = MIME_LINELEN_RFC2047
    };
+
+   struct str cout, cin;
    enum {
       _FIRST      = 1<<0,  /* Nothing written yet, start of string */
-      _NO_QP      = 1<<1,  /* No quoted-printable allowed */
-      _NO_B64     = 1<<2,  /* Ditto, base64 */
-      _ENC_LAST   = 1<<3,  /* Last round generated encoded word */
-      _SHOULD_BEE = 1<<4,  /* Avoid lines longer than SHOULD via encoding */
-      _RND_SHIFT  = 5,
+      _MSH_NOTHING = 1<<1,  /* Now, really: nothing at all has been written */
+      _NO_QP      = 1<<2,  /* No quoted-printable allowed */
+      _NO_B64     = 1<<3,  /* Ditto, base64 */
+      _ENC_LAST   = 1<<4,  /* Last round generated encoded word */
+      _SHOULD_BEE = 1<<5,  /* Avoid lines longer than SHOULD via encoding */
+      _RND_SHIFT  = 6,
       _RND_MASK   = (1<<_RND_SHIFT) - 1,
       _SPACE      = 1<<(_RND_SHIFT+1),    /* Leading whitespace */
       _8BIT       = 1<<(_RND_SHIFT+2),    /* High bit set */
       _ENCODE     = 1<<(_RND_SHIFT+3),    /* Need encoding */
       _ENC_B64    = 1<<(_RND_SHIFT+4),    /* - let it be base64 */
       _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily rised limit */
-   } flags = _FIRST;
-
-   struct str cout, cin;
+   } flags;
    char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
    ui32_t cset7_len, cset8_len;
    size_t col, i, j;
    ssize_t sz;
+
    NYD_ENTER;
 
    cout.s = NULL, cout.l = 0;
@@ -298,6 +326,10 @@ mime_write_tohdr(struct str *in, FILE *fo)
    cset7_len = (ui32_t)strlen(cset7);
    cset8 = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
    cset8_len = (ui32_t)strlen(cset8);
+
+   flags = _FIRST;
+   if(msh != a_MIME_SH_NONE)
+      flags |= _MSH_NOTHING;
 
    /* RFC 1468, "MIME Considerations":
     *     ISO-2022-JP may also be used in MIME Part 2 headers.  The "B"
@@ -311,7 +343,9 @@ mime_write_tohdr(struct str *in, FILE *fo)
 
    wbot = in->s;
    upper = wbot + in->l;
-   col = sizeof("Mail-Followup-To: ") -1; /* dreadful thing */
+
+   if(colp == NULL || (col = *colp) == 0)
+      col = sizeof("Mail-Followup-To: ") -1; /* dreadful thing */
 
    for (sz = 0; wbot < upper; flags &= ~_FIRST, wbot = wend) {
       flags &= _RND_MASK;
@@ -376,6 +410,12 @@ j_beejump:
                ++sz;
                col = 0;
             }
+            if(flags & _MSH_NOTHING){
+               flags &= ~_MSH_NOTHING;
+               putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
+               ++sz;
+               ++col;
+            }
             putc(' ', fo);
             ++sz;
             ++col;
@@ -390,6 +430,12 @@ jnoenc_putws:
 jnoenc_retry:
          i = PTR2SIZE(wend - wbot);
          if (i + col <= (flags & _OVERLONG ? MIME_LINELEN_MAX : _MAXCOL)) {
+            if(flags & _MSH_NOTHING){
+               flags &= ~_MSH_NOTHING;
+               putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
+               ++sz;
+               ++col;
+            }
             i = fwrite(wbot, sizeof *wbot, i, fo);
             sz += i;
             col += i;
@@ -406,6 +452,12 @@ jnoenc_retry:
                putc(' ', fo); /* Bad standard: artificial data! */
             sz += 2;
             col = 1;
+            if(flags & _MSH_NOTHING){
+               flags &= ~_MSH_NOTHING;
+               putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
+               ++sz;
+               ++col;
+            }
             flags |= _OVERLONG;
             goto jnoenc_retry;
          }
@@ -476,6 +528,12 @@ jenc_retry_same:
           * 998 characters long"), so we cannot use the _OVERLONG mechanism,
           * even though all tested mailers seem to support it */
          if (i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ _MAXCOL)) {
+            if(flags & _MSH_NOTHING){
+               flags &= ~_MSH_NOTHING;
+               putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
+               ++sz;
+               ++col;
+            }
             fprintf(fo, "%.1s=?%s?%c?%.*s?=",
                wcur, (flags & _8BIT ? cset8 : cset7),
                (flags & _ENC_B64 ? 'B' : 'Q'),
@@ -535,94 +593,134 @@ jenc_retry_same:
       }
    }
 
+   if(!(flags & _MSH_NOTHING) && msh != a_MIME_SH_NONE){
+      putc((msh == a_MIME_SH_COMMENT ? ')' : '"'), fo);
+      ++sz;
+      ++col;
+   }
+
    if (cout.s != NULL)
       free(cout.s);
+
+   if(colp != NULL)
+      *colp = col;
    NYD_LEAVE;
    return sz;
 }
 
 static ssize_t
-convhdra(char const *str, size_t len, FILE *fp)
+mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp)
 {
-#ifdef HAVE_ICONV
-   struct str ciconv;
-#endif
-   struct str cin;
-   ssize_t ret = 0;
-   NYD_ENTER;
-
-   cin.s = n_UNCONST(str);
-   cin.l = len;
-#ifdef HAVE_ICONV
-   ciconv.s = NULL;
-   if (iconvd != (iconv_t)-1) {
-      ciconv.l = 0;
-      if(n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &ciconv, &cin, NULL) != 0){
-         n_iconv_reset(iconvd);
-         goto jleave;
-      }
-      cin = ciconv;
-   }
-#endif
-   ret = mime_write_tohdr(&cin, fp);
-#ifdef HAVE_ICONV
-jleave:
-   if (ciconv.s != NULL)
-      free(ciconv.s);
-#endif
-   NYD_LEAVE;
-   return ret;
-}
-
-static ssize_t
-mime_write_tohdr_a(struct str *in, FILE *f) /* TODO error handling */
-{
+   struct str xin;
+   size_t i;
    char const *cp, *lastcp;
    ssize_t sz, x;
    NYD_ENTER;
 
    in->s[in->l] = '\0';
    lastcp = in->s;
-   if ((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
-      if ((sz = convhdra(lastcp, PTR2SIZE(cp - lastcp), f)) < 0)
+   if((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
+      xin.s = in->s;
+      xin.l = PTR2SIZE(cp - in->s);
+      if ((sz = mime_write_tohdr_a(&xin, f, colp)) < 0)
          goto jleave;
+      xin.s[xin.l] = '<';
       lastcp = cp;
    } else {
       cp = in->s;
       sz = 0;
    }
 
-   for ( ; *cp != '\0'; ++cp) {
-      switch (*cp) {
+   for( ; *cp != '\0'; ++cp){
+      switch(*cp){
       case '(':
-         sz += fwrite(lastcp, 1, PTR2SIZE(cp - lastcp + 1), f);
+         i = PTR2SIZE(cp - lastcp);
+         if(i > 0){
+            if(fwrite(lastcp, 1, i, f) != i)
+               goto jerr;
+            sz += i;
+         }
          lastcp = ++cp;
          cp = skip_comment(cp);
-         if (--cp > lastcp) {
-            if ((x = convhdra(lastcp, PTR2SIZE(cp - lastcp), f)) < 0) {
-               sz = x;
-               goto jleave;
-            }
+         if(--cp > lastcp){
+            i = PTR2SIZE(cp - lastcp);
+            xin.s = n_UNCONST(lastcp);
+            xin.l = i;
+            if ((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_COMMENT)) < 0)
+               goto jerr;
             sz += x;
          }
-         lastcp = cp;
+         lastcp = &cp[1];
          break;
       case '"':
-         while (*cp) {
-            if (*++cp == '"')
+         i = PTR2SIZE(cp - lastcp);
+         if(i > 0){
+            if(fwrite(lastcp, 1, i, f) != i)
+               goto jerr;
+            sz += i;
+         }
+         for(lastcp = ++cp; *cp != '\0'; ++cp){
+            if(*cp == '"')
                break;
-            if (*cp == '\\' && cp[1] != '\0')
+            if(*cp == '\\' && cp[1] != '\0')
                ++cp;
          }
+         i = PTR2SIZE(cp - lastcp);
+         if(i > 0){
+            xin.s = n_UNCONST(lastcp);
+            xin.l = i;
+            if((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_QUOTE)) < 0)
+               goto jerr;
+            sz += x;
+         }
+         ++sz;
+         lastcp = &cp[1];
          break;
       }
    }
-   if (cp > lastcp)
-      sz += fwrite(lastcp, 1, PTR2SIZE(cp - lastcp), f);
+
+   i = PTR2SIZE(cp - lastcp);
+   if(i > 0){
+      if(fwrite(lastcp, 1, i, f) != i)
+         goto jerr;
+      sz += i;
+   }
 jleave:
    NYD_LEAVE;
    return sz;
+jerr:
+   sz = -1;
+   goto jleave;
 }
+
+#ifdef HAVE_ICONV
+static ssize_t
+a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
+      enum a_mime_structure_hack msh){
+   struct str ciconv;
+   ssize_t rv;
+   NYD_ENTER;
+
+   rv = 0;
+   ciconv.s = NULL;
+
+   if(iconvd != (iconv_t)-1){
+      ciconv.l = 0;
+      if(n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &ciconv, inp, NULL) != 0){
+         n_iconv_reset(iconvd);
+         goto jleave;
+      }
+      *inp = ciconv;
+   }
+
+   rv = mime_write_tohdr(inp, fp, colp, msh);
+jleave:
+   if(ciconv.s != NULL)
+      free(ciconv.s);
+   NYD_LEAVE;
+   return rv;
+}
+#endif /* HAVE_ICONV */
 
 static void
 _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
@@ -1084,9 +1182,9 @@ mime_write(char const *ptr, size_t size, FILE *f,
    NYD_ENTER;
 
    dflags |= _TD_BUFCOPY;
-
    in.s = n_UNCONST(ptr);
    in.l = size;
+
    if(inrest != NULL && inrest->l > 0){
       out.s = smalloc(inrest->l + size + 1);
       memcpy(out.s, inrest->s, inrest->l);
@@ -1183,11 +1281,20 @@ jqpb64_enc:
       sz = quoteflt_push(qf, out.s, out.l);
       break;
    case CONV_TOHDR:
-      sz = mime_write_tohdr(&in, f);
+      sz = mime_write_tohdr(&in, f, NULL, a_MIME_SH_NONE);
       break;
-   case CONV_TOHDR_A:
-      sz = mime_write_tohdr_a(&in, f);
-      break;
+   case CONV_TOHDR_A:{
+      size_t col;
+
+      if(dflags & _TD_BUFCOPY){
+         n_str_dup(&out, &in);
+         in = out;
+         out.s = NULL;
+         dflags &= ~_TD_BUFCOPY;
+      }
+      col = 0;
+      sz = mime_write_tohdr_a(&in, f, &col);
+   }  break;
    default:
       sz = _fwrite_td(&in, dflags, NULL, qf);
       break;

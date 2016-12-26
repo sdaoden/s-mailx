@@ -285,10 +285,8 @@ yankname(char const *ap, char *wbuf, char const *separators, int keepcomms)
       c = *cp;
       if (c == '\0')
          break;
-      if (c == '\\') {
-         lastsp = 0;
-         continue;
-      }
+      if (c == '\\')
+         goto jwpwc;
       if (c == '"') {
          if (lc != '\\')
             inquote = !inquote;
@@ -893,13 +891,22 @@ _mlmux_linkout(struct group *gp)
 FL struct name *
 nalloc(char const *str, enum gfield ntype)
 {
-   struct addrguts ag;
+   struct n_addrguts ag;
    struct str in, out;
    struct name *np;
    NYD_ENTER;
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
-   addrspec_with_guts(((ntype & (GFULL | GSKIN | GREF)) != 0), str, &ag);
+   str = n_addrspec_with_guts(&ag, str,
+         ((ntype & (GFULL | GSKIN | GREF)) != 0));
+   if(str == NULL){
+      /*
+      np = NULL; TODO We cannot return NULL,
+      goto jleave; TODO thus handle failures in here!
+      */
+      str = ag.ag_input;
+   }
+
    if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
       ag.ag_n_flags |= NAME_NAME_SALLOC;
       np = salloc(sizeof(*np) + ag.ag_slen +1);
@@ -936,10 +943,20 @@ nalloc(char const *str, enum gfield ntype)
          if (s == 0 || str[--s] != '<' || str[e++] != '>')
             goto jskipfullextra;
          i = ag.ag_ilen - e;
-         in.s = ac_alloc(s + i +1);
+         in.s = n_lofi_alloc(s + 1 + i +1);
+         while(s > 0 && blankchar(str[s - 1]))
+            --s;
          memcpy(in.s, str, s);
-         if (i > 0)
-            memcpy(in.s + s, str + e, i);
+         if (i > 0) {
+            in.s[s++] = ' ';
+            while (blankchar(str[e])) {
+               ++e;
+               if (--i == 0)
+                  break;
+            }
+            if (i > 0)
+               memcpy(&in.s[s], &str[e], i);
+         }
          s += i;
          in.s[in.l = s] = '\0';
          mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
@@ -950,8 +967,8 @@ nalloc(char const *str, enum gfield ntype)
             --i;
          np->n_fullextra = savestrbuf(cp, i);
 
+         n_lofi_free(in.s);
          free(out.s);
-         ac_free(in.s);
       }
 jskipfullextra:
 
@@ -966,6 +983,7 @@ jskipfullextra:
          /* The domain name was IDNA and has been converted.  We also have to
           * ensure that the domain name in .n_fullname is replaced with the
           * converted version, since MIME doesn't perform encoding of addrs */
+         /* TODO This definetely doesn't belong here! */
          size_t l = ag.ag_iaddr_start,
             lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
          in.s = ac_alloc(l + ag.ag_slen + lsuff +1);
