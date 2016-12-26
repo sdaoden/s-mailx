@@ -265,14 +265,19 @@ line-buffered input even in batch mode enable batch mode via
 .It Fl b Ar addr
 Send a blind carbon copy to
 .Ar addr Ns
-ess.
-May be used multiple times.
+ess, if the setting of
+.Va expandaddr ,
+one of the
+.Sx "INTERNAL VARIABLES" ,
+allows.
+The option may be used multiple times.
 Also see the section
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Fl c Ar addr
-Send carbon copies to the given receiver.
+Send carbon copies to the given receiver, if so allowed by
+.Va expandaddr .
 May be used multiple times.
 .
 .Mx
@@ -416,10 +421,11 @@ Also see
 .
 .Mx
 .It Fl N
-.Pf Un Ic set
-.Va header
-and thus inhibit initial display of message headers when reading mail or
-editing a mail folder.
+inhibit the initial display of message headers when reading mail or
+editing a mail folder by calling
+.Ic unset
+for the internal variable
+.Va header .
 .
 .Mx
 .It Fl n
@@ -669,14 +675,18 @@ It also forcefully puts \*(UA into send mode, see
 .El
 .
 .Pp
-In the above list of supported command line options,
-.Fl d , E , i , N
+Any given
+.Bk -words
+.Ar to-addr ...
+.Ek
+argument, as well as all receivers established by the command line options
+.Fl b
 and
-.Fl v
-are implemented by means of
-.Ic set Ns
-ting the respective internal variable, as via
-.Fl S .
+.Fl c ,
+are subject to checks established via
+.Va expandaddr ,
+one of the
+.Sx "INTERNAL VARIABLES" .
 .Bk -words
 .Op Ar mta-option ...
 .Ek
@@ -685,7 +695,7 @@ arguments that are given at the end of the command line after a
 separator will be passed through to a file-based
 .Va mta
 (Mail-Transfer-Agent) and persist for an entire (interactive) session
-\(en if the setting of
+\(en if the setting of the internal variable
 .Va expandargv
 allows their recognition; no such constraints apply to the variable
 .Va mta-arguments .
@@ -6652,8 +6662,9 @@ or
 .Fl # ,
 set this to the (case-insensitive) value
 .Ql restrict
-(note right now this is actually like setting
-.Ql restrict,-all,+name,+addr ) .
+(it actually acts like
+.Ql restrict,-all,+name,+addr ,
+so that care for ordering issues must be taken) .
 .Pp
 In fact the value is interpreted as a comma-separated list of values.
 If it contains
@@ -6688,6 +6699,16 @@ unless \*(UA is in interactive mode or has been started with the
 or
 .Fl #
 command line option; in the latter case(s) any address may be used, then.
+.Pp
+Historically invalid network addressees are silently stripped off.
+To change this and ensure that any encountered invalid email address
+instead causes a hard error, ensure the string
+.Ql failinvaddr
+is an entry in the above list.
+Setting this automatically enables network addressees
+(it actually acts like
+.Ql failinvaddr,+addr ,
+so that care for ordering issues must be taken) .
 .
 .Mx
 .It Va expandargv

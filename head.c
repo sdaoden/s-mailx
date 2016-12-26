@@ -1242,6 +1242,7 @@ expandaddr_to_eaf(void)
    } const eafa[] = {
       {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
+      {"failinvaddr", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"file", TRU1, EAF_NONE, EAF_FILE},
          {"pipe", TRU1, EAF_NONE, EAF_PIPE},
@@ -1317,6 +1318,9 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    f = np->n_flags;
 
    if ((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))) {
+      if (eaf & EAF_FAILINVADDR)
+         rv = -rv;
+
       if ((eacm & EACM_NOLOG) || (f & NAME_ADDRSPEC_ERR_EMPTY)) {
          ;
       } else {

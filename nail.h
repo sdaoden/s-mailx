@@ -751,6 +751,7 @@ enum expand_addr_flags {
    EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
    EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
    EAF_FAIL       = 1<<1,     /* "fail" */
+   EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
    /* Bits reused by enum expand_addr_check_mode! */
    EAF_FILE       = 1<<3,     /* +"file" targets */
    EAF_PIPE       = 1<<4,     /* +"pipe" command pipe targets */
