@@ -649,7 +649,7 @@ _append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 }
 
 FL bool_t
-charset_iter_reset(char const *a_charset_to_try_first)
+charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 {
    char const *sarr[3];
    size_t sarrl[3], len;
@@ -658,11 +658,19 @@ charset_iter_reset(char const *a_charset_to_try_first)
    n_UNUSED(a_charset_to_try_first);
 
 #ifdef HAVE_ICONV
-   sarr[0] = a_charset_to_try_first;
-   if ((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
-         ok_blook(sendcharsets_else_ttycharset))
-      sarr[1] = ok_vlook(ttycharset);
    sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
+
+   if(a_charset_to_try_first != NULL && strcmp(a_charset_to_try_first, sarr[2]))
+      sarr[0] = a_charset_to_try_first;
+   else
+      sarr[0] = NULL;
+
+   if((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
+         ok_blook(sendcharsets_else_ttycharset)){
+      cp = n_UNCONST(ok_vlook(ttycharset));
+      if(strcmp(cp, sarr[2]) && (sarr[0] == NULL || strcmp(cp, sarr[0])))
+         sarr[1] = cp;
+   }
 #else
    sarr[2] = ok_vlook(ttycharset);
 #endif
