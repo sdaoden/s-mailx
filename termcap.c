@@ -45,7 +45,6 @@ EMPTY_FILE()
  * find a capability we use it and assume it works.  E.g., if "Co" indicates
  * colours we simply use ISO 6429 also for font attributes etc.  That is,
  * we don't use the ncurses/terminfo interface with all its internal logic.
- * TODO After I/O layer rewrite, "output to STDIN_FILENO".
  */
 
 /* Unless HAVE_TERMINFO or HAVE_TGETENT_NULL_BUF are defined we will use this
@@ -452,7 +451,7 @@ a_termcap_load(char const *term){
    int err;
    NYD2_ENTER;
 
-   if(!(rv = (setupterm(term, STDOUT_FILENO, &err) == OK)))
+   if(!(rv = (setupterm(term, fileno(n_tty_fp), &err) == OK)))
       n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
    NYD2_LEAVE;
    return rv;
@@ -578,7 +577,7 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
 
 static int
 a_termcap_putc(int c){
-   return putchar(c);
+   return putc(c, n_tty_fp);
 }
 #endif /* HAVE_TERMCAP */
 
@@ -696,7 +695,7 @@ n_termcap_resume(bool_t complete){
       if(complete && (pstate & PS_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_ti);
       n_termcap_cmdx(n_TERMCAP_CMD_ks);
-      fflush(stdout);
+      fflush(n_tty_fp);
    }
    NYD_LEAVE;
 }
@@ -709,7 +708,7 @@ n_termcap_suspend(bool_t complete){
       n_termcap_cmdx(n_TERMCAP_CMD_ke);
       if(complete && (pstate & PS_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_te);
-      fflush(stdout);
+      fflush(n_tty_fp);
    }
    NYD_LEAVE;
 }
@@ -785,7 +784,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
                break;
          }else
 #endif
-               if(fputs(cp, stdout) == EOF)
+               if(fputs(cp, n_tty_fp) == EOF)
             break;
          if(!(tep->te_flags & a_TERMCAP_F_ARG_CNT) || --a1 <= 0){
             rv = TRU1;
@@ -813,7 +812,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
             --a1;
          if((rv = n_termcap_cmd(n_TERMCAP_CMD_ch, a1, 0)) > 0){
             for(a2 = scrnwidth - a1 - 1; a2 > 0; --a2)
-               if(putchar(' ') == EOF){
+               if(putc(' ', n_tty_fp) == EOF){
                   rv = FAL0;
                   break;
                }
@@ -832,8 +831,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
 
 jflush:
       if(flags & n_TERMCAP_CMD_FLAG_FLUSH)
-         fflush(stdout);
-      if(ferror(stdout))
+         fflush(n_tty_fp);
+      if(ferror(n_tty_fp))
          rv = FAL0;
    }
 

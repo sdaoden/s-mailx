@@ -246,9 +246,19 @@ _startup(void)
 #endif
    command_manager_start();
 
-   if (isatty(STDIN_FILENO)) /* TODO should be isatty(0) && isatty(2)?? */
+   /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
+    * TODO For now we get this wrong, all over the place, as this software
+    * TODO has always been developed with stdout as an output channel.
+    * TODO Start doing it right for at least explicit terminal-related things,
+    * TODO but v15 should use ONLY this, also for terminal input! */
+   if(isatty(STDIN_FILENO)){
       options |= OPT_TTYIN;
-   if (isatty(STDOUT_FILENO))
+#if defined HAVE_MLE || defined HAVE_TERMCAP
+      n_tty_fp = fdopen(fileno(stdin), "w");
+      setvbuf(n_tty_fp, NULL, _IOLBF, 0);
+#endif
+   }
+   if(isatty(STDOUT_FILENO))
       options |= OPT_TTYOUT;
    if ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT)) {
       options |= OPT_INTERACTIVE;
@@ -257,6 +267,8 @@ _startup(void)
 
    /* STDOUT is always line buffered from our point of view */
    setvbuf(stdout, NULL, _IOLBF, 0);
+   if(n_tty_fp == NULL)
+      n_tty_fp = stdout;
 
    /*  --  >8  --  8<  --  */
 

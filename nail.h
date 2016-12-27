@@ -1975,7 +1975,7 @@ struct termios_state {
 #define termios_state_reset() \
 do {\
    if (termios_state.ts_needs_reset) {\
-      tcsetattr(0, TCSADRAIN, &termios_state.ts_tios);\
+      tcsetattr(STDIN_FILENO, TCSADRAIN, &termios_state.ts_tios);\
       termios_state.ts_needs_reset = FAL0;\
    }\
 } while (0)
@@ -2404,6 +2404,7 @@ VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
 VL int         realscreenheight;    /* The real screen height */
 VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
+VL FILE        *n_tty_fp;           /* Our terminal output TODO input channel */
 
 VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */

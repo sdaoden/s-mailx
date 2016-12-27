@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ TTY (command line) editing interaction.
- *@ Because we have multiple line-editor implementations, including our own
- *@ M(ailx) L(ine) E(ditor), change the file layout a bit and place those
+ *@ Because we have (had) multiple line-editor implementations, including our
+ *@ own M(ailx) L(ine) E(ditor), change the file layout a bit and place those
  *@ one after the other below the other externals.
  *
  * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -251,13 +251,13 @@ getpassword(char const *query)
 
    if (query == NULL)
       query = _("Password: ");
-   fputs(query, stdout);
-   fflush(stdout);
+   fputs(query, n_tty_fp);
+   fflush(n_tty_fp);
 
    /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
     * FIXME foreground pgrp, and can fail with EINTR!! also affects
     * FIXME termios_state_reset() */
-   if (options & OPT_TTYIN) {
+   if (options & OPT_TTYIN) { /* TODO v15: use _only_ n_tty_fp! */
       tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
       memcpy(&tios, &termios_state.ts_tios, sizeof tios);
       termios_state.ts_needs_reset = TRU1;
@@ -280,8 +280,8 @@ getpassword(char const *query)
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   if (options & OPT_TTYIN)
-      putc('\n', stdout);
+   if (options & OPT_TTYIN) /* TODO v15: use _only_ n_tty_fp! */
+      putc('\n', n_tty_fp);
 
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
@@ -431,9 +431,8 @@ jleave:
  * MLE: the Mailx-Line-Editor, our homebrew editor
  * (inspired from NetBSDs sh(1) and dash(1)s hetio.c).
  *
- * Only used in interactive mode, simply use STDIN_FILENO as point of interest.
+ * Only used in interactive mode.
  * TODO . This code should be splitted in funs/raw input/bind modules.
- * TODO . After I/O layer rewrite, also "output to STDIN_FILENO".
  * TODO . We work with wide characters, but not for buffer takeovers and
  * TODO   cell2save()ings.  This should be changed.  For the former the buffer
  * TODO   thus needs to be converted to wide first, and then simply be fed in.
@@ -1002,7 +1001,7 @@ a_tty_term_mode(bool_t raw){
     * to foreground or however else in between sessions */
    /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
     * XXX as we don't properly deal with TTIN and TTOU etc. */
-   tcgetattr(STDIN_FILENO, tiosp);
+   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ n_tty_fp! */
    tiosp->c_lflag |= ECHO | ICANON;
 
    memcpy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
@@ -1179,11 +1178,11 @@ a_tty_vinuni(struct a_tty_line *tlp){
 #else
       cpre = csuf = NULL;
 #endif
-      printf(_("%sPlease enter Unicode code point:%s "),
+      fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
          (cpre != NULL ? cpre->s : n_empty),
          (csuf != NULL ? csuf->s : n_empty));
    }
-   fflush(stdout);
+   fflush(n_tty_fp);
 
    buf[sizeof(buf) -1] = '\0';
    for(u.i = 0;;){
@@ -1202,8 +1201,8 @@ a_tty_vinuni(struct a_tty_line *tlp){
          goto jerr;
       }
 
-      putc(buf[u.i], stdout);
-      fflush(stdout);
+      putc(buf[u.i], n_tty_fp);
+      fflush(n_tty_fp);
       if(++u.i == sizeof buf)
          goto jerr;
    }
@@ -1230,7 +1229,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_BELL){
       tlp->tl_vi_flags |= a_TTY_VF_SYNC;
-      if(putchar('\a') == EOF)
+      if(putc('\a', n_tty_fp) == EOF)
          goto jerr;
    }
 
@@ -1259,7 +1258,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_SYNC){
       tlp->tl_vi_flags &= ~a_TTY_VF_SYNC;
-      if(fflush(stdout))
+      if(fflush(n_tty_fp))
          goto jerr;
    }
 
@@ -1270,7 +1269,7 @@ jleave:
    return rv;
 
 jerr:
-   clearerr(stdout); /* xxx I/O layer rewrite */
+   clearerr(n_tty_fp); /* xxx I/O layer rewrite */
    n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
       "  Setting *line-editor-disable* to get us through!\n"));
    ok_bset(line_editor_disable);
@@ -1350,7 +1349,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) ==
             (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
-         if(fputs(tlp->tl_prompt, stdout) == EOF)
+         if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
             goto jerr;
          phy_cur = tlp->tl_prompt_width + 1;
       }
@@ -1524,7 +1523,7 @@ jpaint:
 
    if(f & a_SHOW_PROMPT){
       assert(phy_base == tlp->tl_prompt_width);
-      if(fputs(tlp->tl_prompt, stdout) == EOF)
+      if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
       f |= a_VISIBLE_PROMPT;
@@ -1539,7 +1538,7 @@ jpaint:
 
       if(n_LIKELY(!tcp_left->tc_novis)){
          if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf,
-               tcp_left->tc_count, stdout) != tcp_left->tc_count)
+               tcp_left->tc_count, n_tty_fp) != tcp_left->tc_count)
             goto jerr;
       }else{ /* XXX Shouldn't be here <-> CText, ui_str.c */
          char wbuf[8]; /* XXX magic */
@@ -1558,7 +1557,7 @@ jpaint:
          }else
             wbuf[0] = '?', wbuf[1] = '\0';
 
-         if(fputs(wbuf, stdout) == EOF)
+         if(fputs(wbuf, n_tty_fp) == EOF)
             goto jerr;
          cw = 1;
       }
@@ -1610,7 +1609,7 @@ jpaint:
          pos[2] = '%';
       }
 
-      if(fputs(posbuf, stdout) == EOF)
+      if(fputs(posbuf, n_tty_fp) == EOF)
          goto jerr;
       phy_cur += 4;
    }
@@ -1799,8 +1798,8 @@ a_tty_kdel(struct a_tty_line *tlp){
       }
       f = a_TTY_VF_MOD_CONTENT;
    }else if(cnt == 0 && !ok_blook(ignoreeof)){
-      putchar('^');
-      putchar('D');
+      putc('^', n_tty_fp);
+      putc('D', n_tty_fp);
       i = -1;
       f = a_TTY_VF_NONE;
    }else{
@@ -2187,7 +2186,7 @@ jmulti:{
 
       if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
          n_perr(_("tmpfile"), 0);
-         fp = stdout;
+         fp = n_tty_fp;
       }
 
       /* How long is the result string for real?  Search the NUL NUL
@@ -2329,7 +2328,7 @@ jsep:
       ++lncnt;
 
       page_or_print(fp, lncnt);
-      if(fp != stdout)
+      if(fp != n_tty_fp)
          Fclose(fp);
 
       n_string_gut(shoup);
@@ -3017,8 +3016,8 @@ jkother:
 jdone:
    rv = a_tty_cell2dat(tlp);
 jleave:
-   putchar('\n');
-   fflush(stdout);
+   putc('\n', n_tty_fp);
+   fflush(n_tty_fp);
    NYD_LEAVE;
    return rv;
 }
@@ -4041,7 +4040,7 @@ jredo:
    a_tty.tg_line = NULL;
 
 # ifdef HAVE_COLOUR
-   n_colour_env_gut(stdout);
+   n_colour_env_gut(n_tty_fp);
 # endif
 
    if(tl.tl_reenter_after_cmd != NULL){
@@ -4460,8 +4459,8 @@ FL int
 
    if(!(lif & n_LEXINPUT_PROMPT_NONE)){
       if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, lif) > 0){
-         fwrite(xprompt.s_dat, 1, xprompt.s_len, stdout);
-         fflush(stdout);
+         fwrite(xprompt.s_dat, 1, xprompt.s_len, n_tty_fp);
+         fflush(n_tty_fp);
       }
    }
 
