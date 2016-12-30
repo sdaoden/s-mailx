@@ -207,7 +207,7 @@ FL int
 
    /* Interrupts will cause trouble if we are inside a stdio call. As this is
     * only relevant if input is from tty, bypass it by read(), then */
-   if (fileno(ibuf) == 0 && (options & OPT_TTYIN)) {
+   if ((options & OPT_TTYIN) && fileno(ibuf) == 0) {
       assert(*linesize == 0 || *linebuf != NULL);
       pstate &= ~PS_READLINE_NL;
       for (;;) {

@@ -241,13 +241,17 @@ jrestore:
 }
 
 FL char *
-getpassword(char const *query)
+getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
 {
    sighandler_type volatile oint, ohup;
    struct termios tios;
-   char * volatile pass = NULL;
+   char * volatile pass;
    int volatile sig;
    NYD_ENTER;
+
+   pass = NULL;
+   if(!(options & OPT_TTYIN))
+      goto j_leave;
 
    if (query == NULL)
       query = _("Password: ");
@@ -257,13 +261,11 @@ getpassword(char const *query)
    /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
     * FIXME foreground pgrp, and can fail with EINTR!! also affects
     * FIXME termios_state_reset() */
-   if (options & OPT_TTYIN) { /* TODO v15: use _only_ n_tty_fp! */
-      tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
-      memcpy(&tios, &termios_state.ts_tios, sizeof tios);
-      termios_state.ts_needs_reset = TRU1;
-      tios.c_iflag &= ~(ISTRIP);
-      tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-   }
+   tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
+   memcpy(&tios, &termios_state.ts_tios, sizeof tios);
+   termios_state.ts_needs_reset = TRU1;
+   tios.c_iflag &= ~(ISTRIP);
+   tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
@@ -272,22 +274,20 @@ getpassword(char const *query)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (options & OPT_TTYIN)
-      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-
+   tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
    if (readline_restart(stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   if (options & OPT_TTYIN) /* TODO v15: use _only_ n_tty_fp! */
-      putc('\n', n_tty_fp);
+   putc('\n', n_tty_fp);
 
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
    NYD_LEAVE;
    if (sig != 0)
       n_raise(sig);
+j_leave:
    return pass;
 }
 #endif /* HAVE_SOCKETS */
