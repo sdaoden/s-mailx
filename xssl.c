@@ -266,10 +266,10 @@ static EVP_CIPHER const * _smime_cipher(char const *name);
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
-                     bool_t dowarn);
+                     bool_t dowarn, char const **match);
 static char *     _smime_sign_include_certs(char const *name);
 static bool_t     _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
-                     char const *cfiles);
+                     char const *cfiles, char const *addr);
 static EVP_MD const * _smime_sign_digest(char const *name,
                         char const **digname);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
@@ -975,20 +975,43 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    n_UNUSED(rwflag);
    n_UNUSED(userdata);
 
+   /* New-style */
+   if(userdata != NULL){
+      struct url url;
+      struct ccred cred;
+
+      if(url_parse(&url, CPROTO_CCRED, userdata)){
+         if(ccred_lookup(&cred, &url)){
+            ssize_t slen;
+
+            if((slen = n_strscpy(buf, cred.cc_pass.s, size)) >= 0){
+               size = (int)slen;
+               goto jleave;
+            }
+         }
+         size = 0;
+         goto jleave;
+      }
+   }
+
+   /* Old-style */
    if ((pass = getpassword("PEM pass phrase:")) != NULL) {
       len = strlen(pass);
       if (UICMP(z, len, >=, size))
          len = size -1;
       memcpy(buf, pass, len);
       buf[len] = '\0';
+      size = (int)len;
    } else
-      len = 0;
+      size = 0;
+jleave:
    NYD_LEAVE;
-   return (int)len;
+   return size;
 }
 
 static FILE *
-smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn)
+smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn,
+   char const **match)
 {
    char *vn, *cp;
    int vs;
@@ -1008,8 +1031,11 @@ jloop:
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
          cp = vok_vlook(vn);
          ac_free(vn);
-         if (cp != NULL)
+         if (cp != NULL) {
+            if (match != NULL)
+               *match = np->n_name;
             goto jopen;
+         }
          np = np->n_flink;
       }
       if (name2 != NULL) {
@@ -1021,6 +1047,8 @@ jloop:
 
    if ((cp = ok_vlook(smime_sign_cert)) == NULL)
       goto jerr;
+   if(match != NULL)
+      *match = NULL;
 jopen:
    if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
@@ -1065,7 +1093,7 @@ jleave:
 
 static bool_t
 _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
-   char const *cfiles)
+   char const *cfiles, char const *addr)
 {
    X509 *tmp;
    FILE *fp;
@@ -1081,7 +1109,8 @@ _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
          n_perr(cfiles, 0);
          goto jerr;
       }
-      if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
+      if ((tmp = PEM_read_X509(fp, NULL, &ssl_password_cb, n_UNCONST(addr))
+            ) == NULL) {
          ssl_gen_err(_("Error reading certificate from %s"),
             n_shexp_quote_cp(cfield, FAL0));
          Fclose(fp);
@@ -1142,7 +1171,7 @@ jhave_name:
    *digname = cp;
 
    for (i = 0; i < n_NELEM(a_xssl_smime_digests); ++i)
-      if (!strcmp(a_xssl_smime_digests[i].sd_name, cp)) {
+      if (!asccasecmp(a_xssl_smime_digests[i].sd_name, cp)) {
          digest = (*a_xssl_smime_digests[i].sd_fun)();
          goto jleave;
       }
@@ -1484,16 +1513,18 @@ smime_sign(FILE *ip, char const *addr)
       n_err(_("No *from* address for signing specified\n"));
       goto jleave;
    }
-   if ((fp = smime_sign_cert(addr, NULL, 1)) == NULL)
+   if ((fp = smime_sign_cert(addr, NULL, 1, NULL)) == NULL)
       goto jleave;
 
-   if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
+   if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb,
+         savecat(addr, ".smime-cert-key"))) == NULL) {
       ssl_gen_err(_("Error reading private key from"));
       goto jleave;
    }
 
    rewind(fp);
-   if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
+   if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb,
+         savecat(addr, ".smime-cert-cert"))) == NULL) {
       ssl_gen_err(_("Error reading signer certificate from"));
       goto jleave;
    }
@@ -1501,7 +1532,8 @@ smime_sign(FILE *ip, char const *addr)
    fp = NULL;
 
    if ((name = _smime_sign_include_certs(addr)) != NULL &&
-         !_smime_sign_include_chain_creat(&chain, name))
+         !_smime_sign_include_chain_creat(&chain, name,
+            savecat(addr, ".smime-include-certs")))
       goto jleave;
 
    name = NULL;
@@ -1677,6 +1709,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
    PKCS7 *pkcs7;
    EVP_PKEY *pkey;
    BIO *bb, *pb, *ob;
+   char const *myaddr;
    long size;
    FILE *yp;
    NYD_ENTER;
@@ -1691,8 +1724,9 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
 
    a_xssl_init();
 
-   if ((fp = smime_sign_cert(to, cc, 0)) != NULL) {
-      pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb, NULL);
+   if ((fp = smime_sign_cert(to, cc, 0, &myaddr)) != NULL) {
+      pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb,
+            savecat(myaddr, ".smime-cert-key"));
       if (pkey == NULL) {
          ssl_gen_err(_("Error reading private key"));
          Fclose(fp);
@@ -1700,7 +1734,8 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
       }
       rewind(fp);
 
-      if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
+      if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb,
+            savecat(myaddr, ".smime-cert-cert"))) == NULL) {
          ssl_gen_err(_("Error reading decryption certificate"));
          Fclose(fp);
          EVP_PKEY_free(pkey);

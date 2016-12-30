@@ -3591,8 +3591,8 @@ Macros can be deleted via
 .Pp
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
-Please be aware of that and possibly embed a version check in a resource
-file of yours!
+One should be aware of that and possibly embed version checks in the
+used resource file(s).
 .
 .Mx
 .It Ic delete
@@ -6813,8 +6813,8 @@ to be reverted once the folder is left again.
 .Pp
 .Sy \*(ID:
 Macro behaviour, including option localization, will change in v15.
-Please be aware of that and possibly embed a version check in a resource
-file of yours.
+One should be aware of that and possibly embed version checks in the
+used resource file(s).
 .
 .Mx
 .It Va folder-hook-FOLDER
@@ -7135,7 +7135,7 @@ then it is normally the responsibility of the MTA to create these
 fields, \*(IN in conjunction with SMTP however
 .Va smtp-hostname
 also influences the results:
-you should produce some test messages with the desired combination of
+one should produce some test messages with the desired combination of
 .Va \&\&hostname ,
 and/or
 .Va from ,
@@ -7280,8 +7280,8 @@ and makes them specially addressable.
 can be completely suppressed, effectively leaving this task up to the
 .Va mta
 (Mail-Transfer-Agent) or the SMTP server.
-(According to RFC 5321 your SMTP server is not required to add this
-field by itself, so you should ensure that it accepts messages without a
+(According to RFC 5321 a SMTP server is not required to add this
+field by itself, so it should be ensured that it accepts messages without
 .Ql Message-ID . )
 .
 .Mx
@@ -8494,6 +8494,27 @@ a variable is set.
 \*(UA always uses the first address that matches,
 so if the same message is sent to more than one of the user's addresses
 using different encryption keys, decryption might fail.
+.Pp
+For signing and decryption purposes it is possible to use encrypted
+keys, and the pseudo-host(s)
+.Ql USER@HOST.smime-cert-key
+for the private key
+(and
+.Ql USER@HOST.smime-cert-cert
+for the certificate stored in the same file)
+will be used for performing any necessary password lookup,
+therefore the lookup can be automatized via the mechanisms described in
+.Sx "On URL syntax and credential lookup" .
+For example, the hypothetical address
+.Ql bob@exam.ple
+could be driven with a private key / certificate pair path defined in
+.Va \&\&smime-sign-cert-bob@exam.ple ,
+and needed passwords would then be looked up via the pseudo hosts
+.Ql bob@exam.ple.smime-cert-key
+(and
+.Ql bob@exam.ple.smime-cert-cert ) .
+To include intermediate certificates, use
+.Va smime-sign-include-certs .
 .
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
@@ -8502,18 +8523,26 @@ of files, each of which containing a single certificate in PEM format to
 be included in the S/MIME message in addition to the
 .Va smime-sign-cert
 certificate.
-This is most useful for long certificate chains if it is desired to aid
-the receiving parties verification process.
-Note that top level certificates may also be included in the chain but
-do not play a role for verification.
-Also see
+This can be used to include intermediate certificates of the certificate
+authority, in order to allow the receiver's S/MIME implementation to
+perform a verification of the entire certificate chain, starting from
+a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
-Remember that for this
+Even though top level certificates may also be included in the chain,
+they won't be used for the verification on the receiver's side.
+.Pp
+For the purpose of the mechanisms involved here,
 .Ql USER@HOST
-refers to the variable
+refers to the content of the internal variable
 .Va from
 (or, if that contains multiple addresses,
 .Va sender ) .
+The pseudo-host
+.Ql USER@HOST.smime-include-certs
+will be used for performing password lookups for these certificates,
+shall they have been given one, therefore the lookup can be automatized
+via the mechanisms described in
+.Sx "On URL syntax and credential lookup" .
 .
 .Mx Va smime-sign-message-digest
 .It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
@@ -10493,8 +10522,8 @@ Download and store or copy-and-paste it as
 .
 .Pp
 Yay.
-In order to use your new S/MIME setup you will have to create
-a combined private key/public key (certificate) file:
+In order to use your new S/MIME setup a combined private key/public key
+(certificate) file has to be created:
 .
 .Pp
 .Dl cat key.pem pub.crt > ME@HERE.com.paired
@@ -10593,7 +10622,7 @@ an up-to-date CRL is required for each trusted CA.
 There is otherwise no method to distinguish between valid and
 invalidated certificates.
 \*(UA currently offers no mechanism to fetch CRLs, nor to access them on
-the Internet, so you have to retrieve them by some external mechanism.
+the Internet, so they have to be retrieved by some external mechanism.
 .
 .Pp
 \*(UA accepts CRLs in PEM format only;
@@ -10771,14 +10800,14 @@ and cannot be helped, the other being that \*(UA calls the function
 in order to query the nodename of the box (sometimes the real one is
 needed instead of the one represented by the internal variable
 .Va hostname ) .
-You may have varying success by ensuring that the real hostname and
+One may have varying success by ensuring that the real hostname and
 .Ql localhost
 have entries in
 .Pa /etc/hosts ,
 or, more generally, that the name service is properly setup \(en
 and does
 .Xr hostname 1
-return what you would expect?
+return the expected value?
 Does this local hostname has a domain suffix?
 RFC 6762 standardized the link-local top-level domain
 .Ql .local ,
@@ -10842,7 +10871,7 @@ enable
 .It
 create an application specific password (16 characters), and
 .It
-use that special password instead of your real Google account password in
+use that special password instead of the real Google account password in
 \*(UA (for more on that see the section
 .Sx "On URL syntax and credential lookup" ) .
 .El
@@ -10999,7 +11028,7 @@ that is capable of message queuing.
 .Sh BUGS
 .
 After deleting some message of a POP3 mailbox the header summary falsely
-claims that there are no messages to display, you need to perform
+claims that there are no messages to display, one needs to perform
 a scroll or dot movement to restore proper state.
 .
 In threaded display a power user may encounter crashes very

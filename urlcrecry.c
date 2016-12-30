@@ -113,10 +113,11 @@ _nrc_init(void)
    char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
       user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
    struct stat sb;
-   FILE * fi;
+   FILE * volatile fi;
    enum nrc_token t;
-   bool_t ispipe, seen_default, nl_last;
-   struct nrc_node *ntail, *nhead, *nrc;
+   bool_t volatile ispipe;
+   bool_t seen_default, nl_last;
+   struct nrc_node * volatile ntail, * volatile nhead, * volatile nrc;
    NYD_ENTER;
 
    n_UNINIT(ntail, NULL);
@@ -855,6 +856,14 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
 
    switch (cproto) {
+   case CPROTO_CCRED:
+      /* The special S/MIME etc. credential lookup */
+#if defined HAVE_SSL
+      _protox("ccred", 0);
+      break;
+#else
+      goto jeproto;
+#endif
    case CPROTO_SMTP:
 #ifdef HAVE_SMTP
       _if ("smtp", 25)
@@ -1291,7 +1300,7 @@ jpass:
       vbuf[--i] = '\0';
       if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
             (ware & REQ_PASS)) {
-         if ((s = getpassword(NULL)) == NULL) {
+         if ((s = getpassword(savecat(_("Password for "), pname))) == NULL) {
             n_err(_("A password is necessary for %s authentication\n"),
                pname);
             ccp = NULL;
@@ -1315,36 +1324,45 @@ jleave:
 FL bool_t
 ccred_lookup(struct ccred *ccp, struct url *urlp)
 {
-   char const *pstr, *authdef;
    char *s;
-   enum okeys authokey;
+   char const *pstr, *authdef;
    ui8_t authmask;
+   enum okeys authokey;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
-      ware = NONE;
+      ware;
    NYD_ENTER;
 
    memset(ccp, 0, sizeof *ccp);
    ccp->cc_user = urlp->url_user;
 
+   ware = NONE;
+
    switch ((ccp->cc_cproto = urlp->url_cproto)) {
+   case CPROTO_CCRED:
+      authokey = (enum okeys)-1;
+      authmask = AUTHTYPE_PLAIN;
+      authdef = "plain";
+      pstr = "ccred";
+      break;
    default:
    case CPROTO_SMTP:
-      pstr = "smtp";
       authokey = ok_v_smtp_auth;
       authmask = AUTHTYPE_NONE | AUTHTYPE_PLAIN | AUTHTYPE_LOGIN |
             AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
       authdef = "plain";
+      pstr = "smtp";
       break;
    case CPROTO_POP3:
-      pstr = "pop3";
       authokey = ok_v_pop3_auth;
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
+      pstr = "pop3";
       break;
    }
 
    /* Authentication type */
-   if ((s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NULL)
+   if (authokey == (enum okeys)-1 ||
+         (s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NULL)
       s = n_UNCONST(authdef);
 
    if (!asccasecmp(s, "none")) {
@@ -1417,7 +1435,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    }
 # endif
    if (ware & REQ_PASS) {
-      if ((s = getpassword(NULL)) != NULL)
+      if((s = getpassword(savecat(urlp->url_u_h.s, _(" requires a password: ")))
+            ) != NULL)
 js2pass:
          ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
       else {

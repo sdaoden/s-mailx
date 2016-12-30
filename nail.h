@@ -847,6 +847,7 @@ enum conversion {
 };
 
 enum cproto {
+   CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
    CPROTO_SMTP,
    CPROTO_POP3
 };
