@@ -1294,8 +1294,9 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       a__LAST = a_PERSIST_MASK
    };
 
-   ui32_t f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt, lstcur, cur,
-      vi_left, vi_right, phy_nxtcur;
+   ui32_t f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
+      DBG(lstcur COMMA) cur,
+      vi_left, /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    NYD2_ENTER;
    n_LCTA(UICMP(64, a__LAST, <, UI32_MAX), "Flag bits excess storage datatype");
@@ -1326,7 +1327,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    phy_base = 0;
    phy_cur = tlp->tl_phy_cursor;
    cnt = tlp->tl_count;
-   lstcur = tlp->tl_lst_cursor;
+   DBG( lstcur = tlp->tl_lst_cursor; )
 
    /* XXX Assume dirty screen if shrunk */
    if(cnt < tlp->tl_lst_count)
@@ -1415,7 +1416,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       w = i;
       ++tccp;
    }
-   vi_right = w - vi_left;
+   /*vi_right = w - vi_left;*/
 
    /* If the complete line including prompt fits on the screen, show prompt */
    if(--tcp_right == tccp){
