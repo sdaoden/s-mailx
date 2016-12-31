@@ -12,7 +12,7 @@
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.  No other form of comments exist.
 #--MKREL-START--
-#@ S-nail(1): v14.9.0-pre2 / 2016-10-31
+#@ S-nail(1): v14.9.0-pre3 / 2016-12-31
 #--MKREL-END--
 
 ## The standard POSIX 2008/Cor 2-2016 mandates the following initial settings:
