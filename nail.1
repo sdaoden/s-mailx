@@ -571,7 +571,10 @@ and
 by default created automatically dependent on message context, will
 be used if specified (a special address massage will however still occur
 for the latter).
-Any other (also custom) header field is passed through entirely
+Any other custom header field (also see
+.Va customhdr ,
+.Ic ~^ )
+is passed through entirely
 unchanged, and in conjunction with the option
 .Fl ~
 it is possible to embed
