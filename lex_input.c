@@ -152,7 +152,8 @@ static int a_lex__pcmd_cmp(void const *s1, void const *s2);
 /* `help' / `?' command */
 static int a_lex_c_help(void *v);
 
-/* `quit' command */
+/* `exit' and `quit' commands */
+static int a_lex_c_exit(void *v);
 static int a_lex_c_quit(void *v);
 
 /* Print the binaries version number */
@@ -561,6 +562,27 @@ jredo:
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+static int
+a_lex_c_exit(void *v){
+   NYD_ENTER;
+   n_UNUSED(v);
+
+   if(pstate & PS_STARTED){
+      /* In recursed state, return error to just pop the input level */
+      if(!(pstate & PS_SOURCING)){
+#ifdef n_HAVE_TCAP
+         if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) ==
+               OPT_INTERACTIVE)
+            n_termcap_destroy();
+#endif
+         exit(EXIT_OK);
+      }
+   }
+   pstate |= PS_EXIT;
+   NYD_LEAVE;
+   return 0;
 }
 
 static int

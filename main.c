@@ -1098,37 +1098,21 @@ jgetopt_done:
       n_tty_destroy();
 
 jleave:
+  /* Be aware of identical code for `exit' command! */
 #ifdef n_HAVE_TCAP
    if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE)
       n_termcap_destroy();
 #endif
+
 j_leave:
 #ifdef HAVE_MEMORY_DEBUG
    n_memory_autorec_pop(NULL);
 #endif
+#if (defined HAVE_DEBUG || defined HAVE_DEVEL)
    n_memory_reset();
+#endif
    NYD_LEAVE;
    return exit_status;
-}
-
-FL int
-c_exit(void *v){/* TODO program state machine */
-   NYD_ENTER;
-   n_UNUSED(v);
-
-   if(pstate & PS_STARTED){
-      if(!(pstate & PS_SOURCING)){
-#ifdef n_HAVE_TCAP
-         if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) ==
-               OPT_INTERACTIVE)
-            n_termcap_destroy();
-#endif
-         exit(EXIT_OK);
-      }
-   }
-   pstate |= PS_EXIT;
-   NYD_LEAVE;
-   return 0;
 }
 
 /* Source the others in that case! */

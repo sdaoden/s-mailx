@@ -1104,13 +1104,6 @@ FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
 FL enum okay   maildir_remove(char const *name);
 
 /*
- * main.c
- */
-
-/* Quit quickly.  In recursed state, return error to just pop the input level */
-FL int         c_exit(void *v);
-
-/*
  * memory.c
  * Heap memory and automatically reclaimed storage, plus pseudo "alloca"
  */

@@ -211,9 +211,9 @@
      DS(N_("Terminate session, saving messages as necessary")) },
    { "list", &a_lex_c_list, (H | M | STRLIST), 0, 0
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "xit", &c_exit, (M | X | NOLIST), 0, 0
+   { "xit", &a_lex_c_exit, (M | X | NOLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
-   { "exit", &c_exit, (M | X | NOLIST), 0, 0
+   { "exit", &a_lex_c_exit, (M | X | NOLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
    { "pipe", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
