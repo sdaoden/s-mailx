@@ -364,6 +364,7 @@ static struct name *
 _gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
    int ntype)
 {
+   char const *logname;
    struct grp_names_head *gnhp;
    struct grp_names *gnp;
    NYD_ENTER;
@@ -374,6 +375,7 @@ _gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
    }
 
    GP_TO_SUBCLASS(gnhp, gp);
+   logname = ok_vlook(LOGNAME);
    for (gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next) {
       char *cp;
       struct group *ngp;
@@ -390,14 +392,14 @@ _gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
 
          assert(ngnhp->gnh_head != NULL);
          if (metoo || ngnhp->gnh_head->gn_next != NULL ||
-               !_same_name(cp, myname))
+               !_same_name(cp, logname))
             nlist = _gexpand(level, nlist, ngp, metoo, ntype);
          continue;
       }
 
       /* Here we should allow to expand to itself if only person in alias */
 jquote:
-      if (metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, myname))
+      if (metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, logname))
          nlist = put(nlist, nalloc(cp, ntype | GFULL));
    }
 jleave:
@@ -1426,7 +1428,7 @@ delete_alternates(struct name *np)
    char **ap;
    NYD_ENTER;
 
-   np = delname(np, myname);
+   np = delname(np, ok_vlook(LOGNAME));
    if (_altnames != NULL)
       for (ap = _altnames; *ap != '\0'; ++ap)
          np = delname(np, *ap);
@@ -1460,7 +1462,7 @@ is_myname(char const *name)
    char **ap;
    NYD_ENTER;
 
-   if (_same_name(myname, name))
+   if (_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
    if (_altnames != NULL)
       for (ap = _altnames; *ap != NULL; ++ap)

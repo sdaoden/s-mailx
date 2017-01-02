@@ -978,13 +978,15 @@ jleave:
    return rv;
 
 jnodename:{
-      char *hn, *cp;
+      char *cp;
+      char const *hn, *ln;
       size_t i;
 
       hn = nodename(1);
-      i = strlen(myname) + strlen(hn) + 1 +1;
+      ln = ok_vlook(LOGNAME);
+      i = strlen(ln) + strlen(hn) + 1 +1;
       rv = cp = salloc(i);
-      sstpcpy(sstpcpy(sstpcpy(cp, myname), "@"), hn);
+      sstpcpy(sstpcpy(sstpcpy(cp, ln), "@"), hn);
    }
    goto jleave;
 }

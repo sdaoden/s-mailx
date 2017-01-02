@@ -154,9 +154,6 @@ jdocopy:
 FL int
 setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 {
-   /* Note we don't 'userid(myname) != getuid()', preliminary steps are usually
-    * necessary to make a mailbox accessible by a different user, and if that
-    * has happened, let's just let the usual file perms decide */
    static int shudclob;
 
    struct stat stb;
@@ -183,9 +180,10 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          if(*(who = &name[1]) == ':')
             ++who;
          if(*who == '\0')
-            who = myname;
+            goto jlogname;
       }else
-         who = myname;
+jlogname:
+         who = ok_vlook(LOGNAME);
 
       if ((name = fexpand(name, fexpm)) == NULL)
          goto jem1;
@@ -237,7 +235,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       int e = errno;
 
       if ((fm & FEDIT_SYSBOX) && e == ENOENT) {
-         if (strcmp(who, myname) && getpwnam(who) == NULL) {
+         if (strcmp(who, ok_vlook(LOGNAME)) && getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
             goto jem2;

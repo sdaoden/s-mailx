@@ -867,7 +867,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
             goto jcant;
          }
 
-         fprintf(fout, "From %s %s", myname, time_current.tc_ctime);
+         fprintf(fout, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
          c = EOF;
          while (i = c, (c = getc(fo)) != EOF)
             putc(c, fout);
@@ -1073,7 +1073,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
 
    fflush_rewind(fp);
 
-   fprintf(fo, "From %s %s", myname, time_current.tc_ctime);
+   fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
    for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
          fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL;){
       /* Only if we are resending it can happen that we have to quote From_
@@ -2311,7 +2311,8 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
     * TODO MIME is completely missing, we use MBOXO quoting!!  Yuck.
     * TODO I/O error handling missing.  Yuck! */
    n_string_reserve(n_string_creat_auto(&line), 2 * SEND_LINESIZE);
-   bytes = (ul_i)fprintf(dbuf, "From %s %s", myname, time_current.tc_ctime);
+   bytes = (ul_i)fprintf(dbuf, "From %s %s",
+         ok_vlook(LOGNAME), time_current.tc_ctime);
    lines = 1;
    for(flags = a_NONE, c = '\0'; c != EOF; bytes += line.s_len, ++lines){
       n_string_trunc(&line, 0);

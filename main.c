@@ -332,27 +332,26 @@ _setup_vars(void){
    group_id = getgid();
    if((pwuid = getpwuid(user_id = getuid())) == NULL)
       n_panic(_("Cannot associate a name with uid %lu"), (ul_i)user_id);
-   myname = savestr(pwuid->pw_name); /* XXX replace uses with vlook(LOGNAME)! */
 
    /* C99 */{
       char const *ep;
       bool_t doenv;
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
-            (doenv = strcmp(myname, ep)))
+            (doenv = strcmp(pwuid->pw_name, ep)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
-            ep, myname);
+            ep, pwuid->pw_name);
       if(doenv){
          pstate |= PS_ROOT;
-         ok_vset(LOGNAME, myname);
+         ok_vset(LOGNAME, pwuid->pw_name);
          pstate &= ~PS_ROOT;
       }
 
-      if((ep = ok_vlook(USER)) != NULL && strcmp(myname, ep)){
+      if((ep = ok_vlook(USER)) != NULL && strcmp(pwuid->pw_name, ep)){
          n_err(_("Warning: $USER (%s) not identical to user (%s)!\n"),
-            ep, myname);
+            ep, pwuid->pw_name);
          pstate |= PS_ROOT;
-         ok_vset(USER, myname);
+         ok_vset(USER, pwuid->pw_name);
          pstate &= ~PS_ROOT;
       }
    }
@@ -571,7 +570,7 @@ main(int argc, char *argv[]){
    struct a_arg *a_head, *a_curr;
    struct name *to, *cc, *bcc;
    struct attachment *attach;
-   char *cp, *subject, *qf, *Aarg, *Larg;
+   char *cp, *subject, *qf, *Aarg, *Larg, *uarg;
    char const *okey, **oargs, **Xargs, *folder, *emsg;
    size_t oargs_size, oargs_cnt, Xargs_size, Xargs_cnt, smopts_size;
    enum{
@@ -589,7 +588,7 @@ main(int argc, char *argv[]){
    to = cc = bcc = NULL;
    attach = NULL;
    subject = qf =
-         Aarg = Larg = NULL;
+         Aarg = Larg = uarg = NULL;
    oargs = Xargs = NULL;
    folder = emsg = NULL;
    oargs_size = oargs_cnt = Xargs_size = Xargs_cnt = smopts_size = 0;
@@ -779,8 +778,7 @@ joarg:
          options |= OPT_SENDMODE | OPT_t_FLAG;
          break;
       case 'u':
-         /* Temporarily set myname so that we can recognize the -u condition */
-         myname = savecat("%", _oarg);
+         uarg = savecat("%", _oarg);
          break;
       case 'V':
          printf(_("%s version %s\n"), uagent, ok_vlook(version));
@@ -907,7 +905,7 @@ jgetopt_done:
          emsg = N_("Cannot give -f and people to send to.");
          goto jusage;
       }
-      if (myname != NULL) {
+      if (uarg != NULL) {
          emsg = N_("The -u option cannot be used in send mode");
          goto jusage;
       }
@@ -936,7 +934,7 @@ jgetopt_done:
          }
       }
    } else {
-      if (myname != NULL && folder != NULL) {
+      if (uarg != NULL && folder != NULL) {
          emsg = N_("The options -u and -f (and -#) are mutually exclusive");
          goto jusage;
       }
@@ -949,8 +947,8 @@ jgetopt_done:
             (OPT_HEADERSONLY | OPT_HEADERLIST))
          OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
 
-      if(myname != NULL)
-         folder = myname;
+      if(uarg != NULL)
+         folder = uarg;
    }
 
    /*

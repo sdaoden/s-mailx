@@ -1406,7 +1406,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       date = fakedate(ip->m_time);
       nl = "\n";
    } else {
-      froma = myname;
+      froma = ok_vlook(LOGNAME);
       date = time_current.tc_ctime;
       nl = n_empty;
    }

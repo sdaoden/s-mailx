@@ -1043,7 +1043,7 @@ jurlp_err:
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !_nrc_lookup(urlp, FAL0))
 # endif
-            urlp->url_user.s = n_UNCONST(myname);
+            urlp->url_user.s = n_UNCONST(ok_vlook(LOGNAME));
       }
 
       urlp->url_user.l = strlen(urlp->url_user.s);

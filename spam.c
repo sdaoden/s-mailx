@@ -340,7 +340,7 @@ jlearn:
 
    if ((cp = ok_vlook(spamc_user)) != NULL) {
       if (*cp == '\0')
-         cp = myname;
+         cp = ok_vlook(LOGNAME);
       *args++ = "-u";
       *args++ = cp;
    }
@@ -424,7 +424,7 @@ _spamd_setup(struct spam_vc *vcp)
 
    if ((cp = ok_vlook(spamd_user)) != NULL) {
       if (*cp == '\0')
-         cp = myname;
+         cp = ok_vlook(LOGNAME);
       ssdp->d_user.l = strlen(ssdp->d_user.s = n_UNCONST(cp));
    }
 

@@ -977,7 +977,8 @@ jnext:
             bool_t force;
 
             force = (res[1] != '\0');
-            res = a_shexp_findmail((force ? &res[1] : myname), force);
+            res = a_shexp_findmail((force ? &res[1] : ok_vlook(LOGNAME)),
+                  force);
             if(force)
                goto jislocal;
          }

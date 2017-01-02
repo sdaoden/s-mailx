@@ -2408,7 +2408,6 @@ VL int         scrnwidth;           /* Screen width, or best guess */
 VL int         scrnheight;          /* Screen height/guess (4 header) */
 VL FILE        *n_tty_fp;           /* Our terminal output TODO input channel */
 
-VL char const  *myname;             /* My login name */
 VL char const  *progname;           /* Our name */
 
 VL gid_t       group_id;            /* getgid() and getuid() */
