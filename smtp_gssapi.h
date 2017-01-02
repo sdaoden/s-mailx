@@ -2,7 +2,7 @@
  *@ Implementation of SMTP GSS-API authentication according to RFC 4954.
  *@ TODO GSS-API should also be joined into "a VFS".  TODO LEAKS (error path)
  *
- * Copyright (c) 2014 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 
 /* Derived from `imap_gssapi.h', which is:

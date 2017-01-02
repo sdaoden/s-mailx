@@ -3,7 +3,7 @@
  *@ TODO Back the _flux_ heap.
  *@ TODO Add cache for "the youngest" two or three n_MEMORY_AUTOREC_SIZE arenas
  *
- * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

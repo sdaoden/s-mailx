@@ -2,7 +2,7 @@
  *@ `headerpick', `retain' and `ignore'.
  *@ XXX Should these be in nam_a_grp.c?!
  *
- * Copyright (c) 2012 - 2016 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
