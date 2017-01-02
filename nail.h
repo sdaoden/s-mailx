@@ -2134,8 +2134,8 @@ struct mimepart {
    size_t      m_offset;      /* offset in block of part */
    size_t      m_size;        /* Bytes in the part */
    size_t      m_xsize;       /* Bytes in the full part */
-   long        m_lines;       /* Lines in the message */
-   long        m_xlines;      /* Lines in the full message */
+   long        m_lines;       /* Lines in the message: write format! */
+   long        m_xlines;      /* Lines in the full message; ditto */
    time_t      m_time;        /* time the message was sent */
    char const  *m_from;       /* message sender */
    struct mimepart *m_nextpart;     /* next part at same level */

@@ -293,7 +293,7 @@ among others; effectively turns almost any operation into a dry-run.
 .Ic set
 .Va skipemptybody
 and thus discard messages with an empty message part body.
-This command line flag is \*(OB.
+This command line option is \*(OB.
 .
 .Mx
 .It Fl e
@@ -509,8 +509,8 @@ that is, neither passes
 .Fl \&\&f
 nor
 .Fl \&\&F
-flags to a file-based MTA by itself, unless this automatic deduction is
-enforced by
+command line options to a file-based MTA by itself, unless this
+automatic deduction is enforced by
 .Ic set Ns
 ing the internal variable
 .Va r-option-implicit .
@@ -834,12 +834,15 @@ special \(en these are so-called
 .Sx "COMMAND ESCAPES"
 which can be used to read in files, process shell commands, add and edit
 attachments and more; e.g., the command escape
-.Ql Ic ~e
+.Ic ~e
 will start the text editor to revise the message in its current state,
-.Ql Ic ~h
-allows editing of the most important message headers and
-.Ql Ic ~?
-gives an overview of available command escapes.
+.Ic ~h
+allows editing of the most important message headers, with
+.Ic ~^
+custom headers can be created (more specifically than with
+.Va customhdr ) .
+.Ic ~?
+gives an overview of most other available command escapes.
 Typing
 .Ql control-D
 .Pf ( Ql ^D )
@@ -992,7 +995,7 @@ $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
     \*(uA -:/ -Sv15-compat -Ssendwait -Snosave \e
-      -Sexpandaddr=fail,-all,+addr -s test \e
+      -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
 .Ed
 .
@@ -1033,7 +1036,7 @@ to specify variables:
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
     -Sv15-compat -Ssendwait -Snosave -Sttycharset=utf-8 \e
-    -Sexpandaddr=fail,-all,+addr \e
+    -Sexpandaddr=fail,-all,failinvaddr \e
     -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@exam.ple' \e
     -s 'subject' -a attachment_file \e
@@ -1135,15 +1138,30 @@ will display only the summaries of the given messages, defaulting to the
 .Dq dot .
 .
 .Pp
-Message content can be displayed on the users' terminal with the
+Message content can be displayed with the command
 .Ic type
-command (shortcut
-.Ql t ) .
-If instead the command
+.Pf ( Ql t ,
+alias
+.Ic print ) .
+Here the variable
+.Va crt
+controls whether and when \*(UA will use the configured
+.Ev PAGER
+for display instead of directly writing to the user terminal
+.Va screen ,
+the sole difference to the command
+.Ic more ,
+which will always use the
+.Ev PAGER .
+The command
 .Ic top
-is used, only the first
+will instead only show the first
 .Va toplines
-of a message will be shown.
+of a message (maybe even compressed if
+.Va topsqueeze
+is set).
+.
+.Pp
 By default the current message
 .Pf ( Dq dot )
 is displayed, but like with many other commands it is possible to give
@@ -1165,7 +1183,7 @@ and
 will display the last and the next message, respectively.
 The command
 .Ic search
-(a more substantial alias of the standard command
+(a more substantial alias for
 .Ic from )
 will display a header summary of the given message specification list
 instead of their content, e.g., the following will search for subjects:
@@ -1186,13 +1204,6 @@ currently active ignore or retain lists, use the commands
 .Ic Type
 and
 .Ic Top .
-The variable
-.Va crt
-controls whether and when \*(UA will use the configured
-.Ev PAGER
-for display instead of directly writing to the user terminal
-.Va screen
-(generally speaking).
 Note that historically the global
 .Pa \*(UR
 not only adjusts the list of displayed headers, but also sets
@@ -1684,7 +1695,7 @@ and
 .Va keepsave
 variables in order to suppress this behaviour.
 .
-.Bl -tag -width ".It Ql BaNg"
+.Bl -hang -width ".It Ql new"
 .It Ql new
 Message has neither been viewed nor moved to any other state.
 Such messages are retained even in the
@@ -1714,15 +1725,21 @@ The message has been processed by one of the following commands:
 .Ic Type ,
 .Ic type ,
 .Ic undelete .
-The
-.Ic delete ,
-.Ic dp ,
+The commands
+.Ic dp
 and
 .Ic dt
-commands may also cause the next message to be marked as read, depending
-on the value of the
+will always try to automatically
+.Dq step
+and
+.Ic type
+the
+.Dq next
+logical message, and may thus mark multiple messages as read, the
+.Ic delete
+command will do so if  the internal variable
 .Va autoprint
-variable.
+is set.
 Except when the
 .Ic exit
 command is used, messages that are in a
@@ -1767,6 +1784,24 @@ state when the mailbox is left will be deleted; they will be saved in
 when the internal variable
 .Va keepsave
 is set.
+.El
+.
+.Pp
+In addition to these message states, flags which otherwise have no
+technical meaning in the mail system except allowing special ways of
+addressing them when
+.Sx "Specifying messages"
+can be set on messages.
+These flags are saved with messages and are thus persistent, and are
+portable between a set of widely used MUAs.
+.
+.Bl -hang -width ".It Ic answered"
+.It Ic answered
+Mark messages as having been answered.
+.It Ic draft
+Mark messages as being a draft.
+.It Ic flag
+Mark messages which need special attention.
 .El
 .\" }}}
 .
@@ -2000,14 +2035,15 @@ messages.
 .Ic flag Ns
 ged messages.
 .It Ar a
-Answered messages
-(cf. the
-.Va markanswered
-variable).
+.Ic answered
+messages (cf. the variable
+.Va markanswered ) .
 .It Ar t
-Messages marked as draft.
+Messages marked as
+.Ic draft .
 .It Ar s
-\*(OP Messages classified as spam.
+\*(OP Messages classified as spam (see
+.Sx "Handling spam" . )
 .It Ar S
 \*(OP Messages with unsure spam classification.
 .El
@@ -3120,9 +3156,13 @@ without arguments the current set is displayed.
 .Mx
 .It Ic answered
 Takes a message list and marks each message as having been answered.
-This mark has no technical meaning in the mail system;
-it just causes messages to be marked in the header summary,
-and makes them specially addressable.
+Messages will be marked answered when being
+.Ic reply Ns d
+to automatically if the
+.Va markanswered
+variable is set.
+See the section
+.Sx "Message states" .
 .
 .
 .Mx
@@ -3604,6 +3644,16 @@ used resource file(s).
 Deleted messages will neither be saved in
 .Ev MBOX
 nor will they be available for most other commands.
+If the
+.Va autoprint
+variable is set, automatically
+.Ic type
+the new
+.Dq dot .
+Also see
+.Ic undelete ,
+.Ic dp ,
+.Ic dt .
 .
 .Mx
 .It Ic discard
@@ -3615,9 +3665,12 @@ Superseded by the multiplexer
 .Mx
 .Mx
 .It Ic dp , dt
-Deletes the current message and displays the next message.
-If there is no next message, \*(UA says
-.Dq at EOF .
+Delete the given messages and automatically
+.Ic type
+the new
+.Dq dot
+if one exists, regardless of the setting of
+.Va autoprint .
 .
 .Mx
 .It Ic dotmove
@@ -3632,9 +3685,8 @@ argument, respectively.
 .Mx
 .It Ic draft
 Takes a message list and marks each given message as a draft.
-This mark has no technical meaning in the mail system;
-it just causes messages to be marked in the header summary,
-and makes them specially addressable.
+See the section
+.Sx "Message states" .
 .
 .Mx
 .It Ic echo
@@ -3872,12 +3924,10 @@ can be used to show the necessary conversion.
 .
 .Mx
 .It Ic flag
-Takes a message list and marks the messages as
-.Ic flag Ns
-ged for urgent/special attention.
-This mark has no technical meaning in the mail system;
-it just causes messages to be highlighted in the header summary,
-and makes them specially addressable.
+Takes a message list and marks the messages as flagged for
+urgent/special attention.
+See the section
+.Sx "Message states" .
 .
 .Mx
 .It Ic folder
@@ -4010,8 +4060,7 @@ hello, world
 .It Ic headerpick
 \*(NQ Multiplexer command to establish white- and blacklisting
 selections of header fields for a variety of applications.
-Without any arguments the entire set of known contexts and their current
-settings is displayed.
+Without arguments the set of contexts that have settings is displayed.
 When given arguments, the first argument is the context to which the
 command applies, one of (case-insensitively)
 .Ql type
@@ -4594,7 +4643,7 @@ If new mail has arrived during the session,
 the message
 .Dq You have new mail
 will be shown.
-If given while editing a mailbox file with the command line flag
+If given while editing a mailbox file with the command line option
 .Fl f ,
 then the edit file is rewritten.
 A return to the shell is effected,
@@ -5154,6 +5203,18 @@ will discard all existing macros.
 .Mx
 .It Ic undelete
 (u) Takes a message list and marks each message as not being deleted.
+If the
+.Va autoprint
+variable is set, the last message restored will be
+.Ic type Ns
+d automatically; if no message list had been specified then the usual
+search for a visible message is performed, as documented for
+.Sx COMMANDS ,
+showing only the next input prompt if the search fails.
+Also see
+.Ic delete ,
+.Ic dp ,
+.Ic dt .
 .
 .Mx
 .It Ic undraft
@@ -5738,6 +5799,8 @@ unstripped address, even if that is identical to the first field, e.g.,
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of furtherly unspecified string content,
 terminated by an empty line.
+(All the input, including the empty line, must be consumed before
+further commands can be issued.)
 .It Ql 500
 Syntax error; invalid command.
 .It Ql 501
@@ -5865,7 +5928,7 @@ if no such attachment exists.
 .
 .It Ar insert
 Adds the attachment given as the third argument, specified exactly as
-documented for the command line flag
+documented for the command line option
 .Fl a ,
 and supporting the message number extension as documented for
 .Ic ~@ .
@@ -6088,10 +6151,11 @@ And the default global
 .Pa \*(UR
 file (which is loaded unless the
 .Fl n
-command line flag has been used or the
+command line option has been used or the
 .Ev NAIL_NO_SYSTEM_RC
-environment variable is set) bends those initial settings a bit, e.g.,
-it sets the variables
+environment variable is set, see
+.Sx "Resource files" )
+bends those initial settings a bit, e.g., it sets the variables
 .Va hold ,
 .Va keepsave
 and
@@ -6271,9 +6335,20 @@ command).
 .
 .Mx
 .It Va autoprint
-\*(BO Causes the delete command to behave like
-.Ql dp - ;
-thus, after deleting a message the next one will be typed automatically.
+\*(BO Enable automatic
+.Ic type Ns
+ing of a(n existing)
+.Dq successive
+message after
+.Ic delete
+and
+.Ic undelete
+commands, e.g., the message that becomes the new
+.Dq dot
+is shown automatically, as via
+.Ic dp
+or
+.Ic dt .
 .
 .Mx
 .It Va autothread
@@ -6432,7 +6507,7 @@ Also see the section
 .It Va colour-pager
 \*(BO\*(OP Whether colour shall be used for output that is paged through
 .Ev PAGER .
-Note that pagers may need special flags, e.g.,
+Note that pagers may need special command line options, e.g.,
 .Xr less 1
 requires the option
 .Fl \&\&R
@@ -6462,6 +6537,11 @@ terminal screen to compute the treshold (see
 .Va screen
 and
 .Xr stty 1 ) .
+\*(ID At the moment this uses the count of lines of the message in wire
+format, which, dependent on the
+.Va encoding
+of the message, is unrelated to the number of display lines.
+(The software is old and historically the relation was a given thing.)
 .
 .Mx
 .It Va customhdr
@@ -7271,10 +7351,10 @@ for more).
 .Mx
 .It Va markanswered
 \*(BO When a message is replied to and this variable is set,
-it is marked as having been answered.
-This mark has no technical meaning in the mail system;
-it just causes messages to be marked in the header summary,
-and makes them specially addressable.
+it is marked as having been
+.Ic answered .
+See the section
+.Sx "Message states" .
 .
 .Mx
 .It Va memdebug
@@ -8045,10 +8125,13 @@ status information, for example
 .Va -exit-status
 or
 .Va -mailbox-display .
+.Pp
 In order to embed characters which should not be counted when
 calculating the visual width of the resulting string, enclose the
 characters of interest in a pair of reverse solidus escaped brackets:
-.Ql \e[\eE[0m\e] .
+.Ql \e[\eE[0m\e] ;
+a slot for coloured prompts is also available with the \*(OPal command
+.Ic colour .
 Prompting may be prevented by setting this to the null string
 (a.k.a.\|
 .Ql set noprompt ) .
@@ -10905,9 +10988,9 @@ ings will show the byte sequences that are expected.
 .Pp
 To overcome the situation, use, e.g., the program
 .Xr cat 1 ,
-in conjunction with the
-.Fl \&\&v
-flag if available, to see the byte sequences which are actually produced
+in conjunction with the command line option
+.Fl \&\&v ,
+if available, to see the byte sequences which are actually produced
 by keypresses, and use the variable
 .Va termcap
 to make \*(UA aware of them.
@@ -10989,7 +11072,7 @@ Mail has then seen further development in open source
 .Bx
 variants, noticeably by Christos Zoulas in
 .Pf Net Bx .
-Basing upon this Nail, later Heirloom Mailx, was developed by Gunnar
+Based upon this Nail, later Heirloom Mailx, was developed by Gunnar
 Ritter in the years 2000 until 2008.
 Since 2012 S-nail is maintained by Steffen (Daode) Nurpmeso.
 This man page is derived from

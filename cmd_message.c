@@ -76,6 +76,7 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
       }
    }
 #endif
+   /* XXX Message info uses wire format for line count */
    fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
       cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf);
    NYD_LEAVE;
@@ -124,7 +125,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             if (!(mp->m_content_info & CI_HAVE_BODY))
                if (get_body(mp) != OKAY)
                   goto jcleanup_leave;
-            nlines += mp->m_lines + 1; /* Message info XXX and PARTS... */
+            nlines += mp->m_lines + 1; /* TODO BUT wire format, not display! */
          }
       }
 
