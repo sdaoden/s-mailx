@@ -404,10 +404,10 @@ n_memory_reset(void){
    struct a_memory_ars_ctx *macp;
    NYD_ENTER;
 
+   n_memory_check();
+
    if((macp = a_memory_ars_top) == NULL)
       macp = &a_memory_ars_global;
-
-   n_memory_check();
 
    /* First of all reset auto-reclaimed storage so that heap freed during this
     * can be handled in a second step */
@@ -719,6 +719,8 @@ n_memory_autorec_pop(void *vp){
    struct a_memory_ars_buffer *mabp;
    struct a_memory_ars_ctx *macp;
    NYD_ENTER;
+
+   n_memory_check();
 
    if((macp = vp) == NULL)
       macp = &a_memory_ars_global;
