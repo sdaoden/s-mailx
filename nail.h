@@ -1496,7 +1496,7 @@ ok_b_autothread,
    ok_v_autosort,
 
    ok_b_bang,
-   ok_b_batch_exit_on_error,
+   ok_v_batch_exit_on_error,           /* {posnum=1} */
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
    ok_b_bsdannounce,
    ok_b_bsdcompat,

@@ -944,7 +944,6 @@ jleave:
       if(reset)
          pstate &= ~PS_ROOT;
    }
-
    /* Exit the current source file on error TODO what a mess! */
    if(e == 0)
       pstate &= ~PS_EVAL_ERROR;
@@ -1232,6 +1231,11 @@ a_lex_load(struct a_lex_input_stack *lip){
          if(options & OPT_D_V)
             n_alert(_("Non-interactive program mode, forced exit"));
          exit(EXIT_ERR);
+      }else if(options & OPT_BATCH_FLAG){
+         char const *beoe;
+
+         if((beoe = ok_vlook(batch_exit_on_error)) != NULL && *beoe == '1')
+            pstate |= PS_EXIT;
       }
    }
    /* PS_EXIT handled by callers */
@@ -1252,7 +1256,7 @@ a_commands_recursive(enum n_lexinput_flags lif){
    sighandler_type soldhdl;
    sigset_t sintset, soldset;
    struct a_lex_eval_ctx ev;
-   bool_t rv;
+   bool_t rv, ever;
    NYD2_ENTER;
 
    memset(&ev, 0, sizeof ev);
@@ -1271,8 +1275,12 @@ a_commands_recursive(enum n_lexinput_flags lif){
 
    n_COLOUR( n_colour_env_push(); )
    rv = TRU1;
-   for(;;){
+   for(ever = FAL0;; ever = TRU1){
+      char const *beoe;
       int n;
+
+      if(ever)
+         n_memory_reset();
 
       /* Read a line of commands and handle end of file specially */
       ev.le_line.l = ev.le_line_size;
@@ -1284,13 +1292,18 @@ a_commands_recursive(enum n_lexinput_flags lif){
       if(n < 0)
          break;
 
-      if(a_lex_evaluate(&ev)){
+      n = a_lex_evaluate(&ev);
+      beoe = (options & OPT_BATCH_FLAG) ? ok_vlook(batch_exit_on_error) : NULL;
+
+      if(n){
+         if(beoe != NULL && *beoe == '1'){
+            if(exit_status == EXIT_OK)
+               exit_status = EXIT_ERR;
+         }
          rv = FAL0;
          break;
       }
-      n_memory_reset();
-
-      if((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)){
+      if(beoe != NULL){
          if(exit_status != EXIT_OK)
             break;
       }
@@ -1429,21 +1442,44 @@ jreadline:
       temporary_orig_line = ((pstate & PS_SOURCING) ||
          !(options & OPT_INTERACTIVE)) ? NULL
           : savestrbuf(ev.le_line.s, ev.le_line.l);
-      pstate &= ~PS_HOOK_MASK;
-      if (a_lex_evaluate(&ev)) {
-         if (!(pstate & PS_STARTED)) /* TODO mess; join PS_EVAL_ERROR.. */
-            rv = FAL0;
-         break;
-      }
 
-      if ((options & OPT_BATCH_FLAG) && ok_blook(batch_exit_on_error)) {
-         if (exit_status != EXIT_OK)
-            break;
-         if ((pstate & (PS_SOURCING | PS_EVAL_ERROR)) == PS_EVAL_ERROR) {
-            exit_status = EXIT_ERR;
-            break;
+      pstate &= ~PS_HOOK_MASK;
+      /* C99 */{
+         char const *beoe;
+         int estat;
+
+         estat = a_lex_evaluate(&ev);
+         beoe = (options & OPT_BATCH_FLAG) ? ok_vlook(batch_exit_on_error)
+               : NULL;
+
+         if(estat){
+            if(beoe != NULL && *beoe == '1'){
+               if(exit_status == EXIT_OK)
+                  exit_status = EXIT_ERR;
+               rv = FAL0;
+               break;
+            }
+            if(!(pstate & PS_STARTED)){ /* TODO mess; join PS_EVAL_ERROR.. */
+               if(a_lex_input == NULL ||
+                     !(a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)){
+                  rv = FAL0;
+                  break;
+               }
+            }else
+               break;
+         }
+
+         if(beoe != NULL){
+            if(exit_status != EXIT_OK)
+               break;
+            /* TODO PS_EVAL_ERROR and PS_SOURCING!  Sigh!! */
+            if((pstate & (PS_SOURCING | PS_EVAL_ERROR)) == PS_EVAL_ERROR){
+               exit_status = EXIT_ERR;
+               break;
+            }
          }
       }
+
       if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
          if (ev.le_new_content != NULL)
             goto jreadline;
@@ -1837,7 +1873,7 @@ n_load_Xargs(char const **lines, size_t cnt){
 
    a_lex_load(lip);
    if(pstate & PS_EXIT)
-      exit(EXIT_OK);
+      exit(exit_status);
    NYD_LEAVE;
 }
 

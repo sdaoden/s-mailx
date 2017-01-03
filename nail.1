@@ -615,15 +615,17 @@ Using it twice increases the level of verbosity.
 .It Fl X Ar cmd
 Add the given (or multiple for a multiline argument)
 .Ar cmd
-to the list of commands to be executed (as a unit, just as via
-.Ic source )
+to the list of commands to be executed,
 as a last step of program startup, before normal operation starts.
+This is the only possibility to execute commands in non-interactive mode
+when reading startup files is actively prohibited.
+The commands will be evaluated as a unit, just as via
+.Ic source ,
+but different to that errors won't stop evaluation.
 Correlates with
 .Fl #
 and
-.Va batch-exit-on-error ;
-the only possibility to execute commands in non-interactive mode when
-reading startup files is actively prohibited.
+.Va batch-exit-on-error .
 .
 .Mx
 .It Fl ~
@@ -6381,11 +6383,25 @@ If this variable is not set no reverse solidus stripping is performed.
 .
 .Mx
 .It Va batch-exit-on-error
-\*(BO If the batch mode has been enabled via the
+If the batch mode has been enabled via the
 .Fl #
 command line option, then this variable will be consulted whenever \*(UA
-completes one operation (returns to the command prompt); if it is set
-then \*(UA will terminate if the last operation generated an error.
+completes one operation.
+It is ment as a convenient alternative to manually testing
+.Va -exit-status .
+If any value is set, a number is expected; if it is
+.Ql 1
+then each failed operation will cause \*(UA to exit.
+.Pp
+\*(ID If it is set without a value, then only top-level operations that
+happen directly
+.Dq on the command-prompt ,
+i.e., neither in running macros nor from within source files etc., are
+considered, unless a main operation that directly affects the return
+value, like, e.g., a failed
+.Ic mail
+command, is affected; this mode of operation is likely to change in v15,
+and tests should be performed to see whether the desired effect is seen.
 .
 .Mx
 .It Va bind-timeout
