@@ -2235,7 +2235,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    time_t t;
    NYD2_ENTER;
 
-   if(UICMP(32, second, >=, DATE_SECSMIN) || /* XXX (leap- */
+   if(UICMP(32, second, >/*XXX leap=*/, DATE_SECSMIN) ||
          UICMP(32, minute, >=, DATE_MINSHOUR) ||
          UICMP(32, hour, >=, DATE_HOURSDAY) ||
          day < 1 || day > 31 ||
