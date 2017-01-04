@@ -185,8 +185,10 @@ static void a_lex_onintr(int s);
  * doesn't exist at all */
 static void a_lex_unstack(bool_t eval_error);
 
-/* `source' and `source_if' (if silent_error: no pipes allowed, then) */
-static bool_t a_lex_source_file(char const *file, bool_t silent_error);
+/* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
+ * Returns FAL0 if file is somehow not usable (unless silent_open_error) or
+ * upon evaluation error, and TRU1 on success */
+static bool_t a_lex_source_file(char const *file, bool_t silent_open_error);
 
 /* System resource file load()ing or -X command line option array traversal */
 static bool_t a_lex_load(struct a_lex_input_stack *lip);
@@ -1104,7 +1106,17 @@ jleave:
 
 jerr:
    if(lip != NULL){
-      if(options & OPT_D_V)
+      /* POSIX says
+       *    Any errors in the start-up file shall either cause mailx to
+       *    terminate with a diagnostic message and a non-zero status or to
+       *    continue after writing a diagnostic message, ignoring the
+       *    remainder of the lines in the start-up file
+       * But print the diagnostic only for the outermost resource unless the
+       * user is debugging or in verbose mode */
+      if((options & OPT_D_V) ||
+            (!(pstate & PS_STARTED) &&
+             !(lip->li_flags & (a_LEX_SLICE | a_LEX_MACRO)) &&
+             lip->li_outer == NULL))
          n_alert(_("Stopped %s %s due to errors%s"),
             (pstate & PS_STARTED
              ? (lip->li_flags & a_LEX_SLICE ? _("sliced in program")
@@ -1133,7 +1145,7 @@ jerr:
 }
 
 static bool_t
-a_lex_source_file(char const *file, bool_t silent_error){
+a_lex_source_file(char const *file, bool_t silent_open_error){
    struct a_lex_input_stack *lip;
    size_t nlen;
    char *nbuf;
@@ -1147,11 +1159,11 @@ a_lex_source_file(char const *file, bool_t silent_error){
     * TODO WYRALIST this is no longer necessary true, and for that we
     * TODO don't set _PARSE_TRIMSPACE because we cannot! -> cmd_tab.h!! */
 #if 0
-   ((ispipe = (!silent_error && (nlen = strlen(file)) > 0 &&
+   ((ispipe = (!silent_open_error && (nlen = strlen(file)) > 0 &&
          file[--nlen] == '|')))
 #else
    ispipe = FAL0;
-   if(!silent_error)
+   if(!silent_open_error)
       for(nlen = strlen(file); nlen > 0;){
          char c;
 
@@ -1168,16 +1180,16 @@ a_lex_source_file(char const *file, bool_t silent_error){
 
    if(ispipe){
       if((fip = Popen(nbuf /* #if 0 above = savestrbuf(file, nlen)*/, "r",
-            ok_vlook(SHELL), NULL, COMMAND_FD_NULL)) == NULL){
-         if(!silent_error || (options & OPT_D_V))
-            n_perr(nbuf, 0);
-         goto jleave;
-      }
+            ok_vlook(SHELL), NULL, COMMAND_FD_NULL)) == NULL)
+         goto jeopencheck;
    }else if((nbuf = fexpand(file, FEXP_LOCAL)) == NULL)
-      goto jleave;
+      goto jeopencheck;
    else if((fip = Fopen(nbuf, "r")) == NULL){
-      if(!silent_error || (options & OPT_D_V))
+jeopencheck:
+      if(!silent_open_error || (options & OPT_D_V))
          n_perr(nbuf, 0);
+      if(silent_open_error)
+         fip = (FILE*)-1;
       goto jleave;
    }
 
@@ -1195,11 +1207,11 @@ a_lex_source_file(char const *file, bool_t silent_error){
 
    pstate |= PS_SOURCING | PS_ROBOT;
    a_lex_input = lip;
-   a_commands_recursive(n_LEXINPUT_NONE | n_LEXINPUT_NL_ESC);
-/* FIXME return TRUM1 if file can't be opened, FAL0 on eval error */
+   if(!a_commands_recursive(n_LEXINPUT_NONE | n_LEXINPUT_NL_ESC))
+      fip = NULL;
 jleave:
    NYD_LEAVE;
-   return silent_error ? TRU1 : (fip != NULL);
+   return (fip != NULL);
 }
 
 static bool_t
@@ -1892,7 +1904,7 @@ c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
    int rv;
    NYD_ENTER;
 
-   rv = (a_lex_source_file(*(char**)v, TRU1) != FAL0) ? 0 : 1;
+   rv = (a_lex_source_file(*(char**)v, TRU1) == TRU1) ? 0 : 1;
    NYD_LEAVE;
    return rv;
 }
