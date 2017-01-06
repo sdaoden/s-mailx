@@ -1174,7 +1174,7 @@ jeavmp:
       /* Via `set' etc. the user may give even boolean options non-boolean
        * values, ignore that and force boolean */
       if(avp->av_flags & a_AMV_VF_BOOL){
-         if((options & OPT_D_VV) && *value != '\0')
+         if(!(pstate & PS_ROOT) && (options & OPT_D_VV) && *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
          avp->av_value = n_UNCONST(a_amv_var_1);
