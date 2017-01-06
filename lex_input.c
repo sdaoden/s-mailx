@@ -1962,7 +1962,7 @@ jleave:
 FL char *
 n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
       char const *string){
-   /* FIXME n_lex_input_cp_addhist(): leaks on sigjmp without linepool */
+   struct n_sigman sm;
    size_t linesize;
    char *linebuf, *rv;
    int n;
@@ -1972,14 +1972,24 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
    linebuf = NULL;
    rv = NULL;
 
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
+
    n = n_lex_input(lif, prompt, &linebuf, &linesize, string);
    if(n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
          (lif & n_LEXINPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE))
       n_tty_addhist(rv, ((lif & n_LEXINPUT_HIST_GABBY) != 0));
 
+   n_sigman_cleanup_ping(&sm);
+jleave:
    if(linebuf != NULL)
       free(linebuf);
    NYD2_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
