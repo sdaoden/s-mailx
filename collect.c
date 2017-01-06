@@ -1897,7 +1897,6 @@ jskiptails:
    rewind(_coll_fp);
 
 jleave:
-   temporary_unroll_compose_mode();
    if (linebuf != NULL)
       free(linebuf);
    sigfillset(&nset);

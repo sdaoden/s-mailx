@@ -1687,15 +1687,25 @@ FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
    char *quotefile, int recipient_record, int doprefix)
 {
+   struct n_sigman sm;
    struct sendbundle sb;
    struct name *to;
-   FILE *mtf, *nmtf;
    bool_t dosign;
-   enum okay rv = STOP;
+   FILE *mtf, *nmtf;
+   enum okay rv;
    NYD_ENTER;
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
+   rv = STOP;
+   mtf = NULL;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -1703,7 +1713,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    /* Collect user's mail from standard input.  Get the result as mtf */
    mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
    if (mtf == NULL)
-      goto j_leave;
+      goto jleave;
 
    dosign = TRUM1;
 
@@ -1830,12 +1840,17 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       } else if (!_sendout_error)
          rv = OKAY;
    }
+
+   n_sigman_cleanup_ping(&sm);
 jleave:
-   Fclose(mtf);
-j_leave:
+   if(mtf != NULL){
+      Fclose(mtf);
+      temporary_unroll_compose_mode();
+   }
    if (_sendout_error)
       exit_status |= EXIT_SEND_ERROR;
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 
 jfail_dead:
