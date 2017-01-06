@@ -677,12 +677,19 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
    char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
    struct a_lex_ghost *gp;
    struct a_lex_cmd const *cmd;
-   int c, e;
-   bool_t wysh;
+   int rv, c;
+   enum {
+      a_NONE = 0,
+      a_GHOST_MASK = (1<<3) - 1, /* Ghost recursion counter bits */
+      a_NOPREFIX = 1<<4,         /* Modifier prefix not allowed right now */
+      a_NOGHOST = 1<<5,          /* No ghost expansion modifier */
+      a_IGNERR = 1<<6,           /* ignerr modifier prefix */
+      a_WYSH = 1<<7              /* XXX v15+ drop wysh modifier prefix */
+   } flags;
    NYD_ENTER;
 
-   wysh = FAL0;
-   e = 1;
+   flags = a_NONE;
+   rv = 1;
    cmd = NULL;
    gp = NULL;
    line = evp->le_line; /* XXX don't change original (buffer pointer) */
@@ -726,6 +733,24 @@ jrestart:
    memcpy(word, arglist[0], c);
    word[c] = '\0';
 
+   /* No-expansion modifier? */
+   if(!(flags & a_NOPREFIX) && *word == '\\'){
+      ++word;
+      --c;
+      flags |= a_NOGHOST;
+   }
+
+   /* It may be a modifier prefix */
+   if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
+      flags |= a_NOPREFIX | a_IGNERR;
+      line.s = cp;
+      goto jrestart;
+   }else if(c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
+      flags |= a_NOPREFIX | a_WYSH;
+      line.s = cp;
+      goto jrestart;
+   }
+
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
     * table; while PS_SOURCING, however, we ignore blank lines to eliminate
@@ -737,19 +762,17 @@ jrestart:
       goto jexec;
    }
 
-   /* XXX It may be the argument parse adjuster */
-   if(!wysh && c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
-      wysh = TRU1;
-      line.s = cp;
-      goto jrestart;
-   }
-
-   /* If this is the first evaluation, check command ghosts */
-   if(gp == NULL){
+   if(!(flags & a_NOGHOST) && (flags & a_GHOST_MASK) != a_GHOST_MASK){
       /* TODO relink list head, so it's sorted on usage over time?
        * TODO in fact, there should be one hashmap over all commands and ghosts
        * TODO so that the lookup could be made much more efficient than it is
        * TODO now (two adjacent list searches! */
+      ui8_t expcnt;
+
+      expcnt = (flags & a_GHOST_MASK);
+      ++expcnt;
+      flags = (flags & ~(a_GHOST_MASK | a_NOPREFIX)) | expcnt;
+
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(word, gp->lg_name)){
             if(line.l > 0){
@@ -840,7 +863,7 @@ jexec:
    if(cmd->lc_argtype & ARG_V)
       temporary_arg_v_store = NULL;
 
-   if(wysh && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
+   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
    /* TODO v15: strip PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
@@ -863,7 +886,7 @@ jexec:
             printf(_("No applicable messages\n"));
          break;
       }
-      e = (*cmd->lc_func)(n_msgvec);
+      rv = (*cmd->lc_func)(n_msgvec);
       break;
 
    case ARG_NDMLIST:
@@ -875,14 +898,14 @@ je96:
       }
       if((c = getmsglist(cp, n_msgvec, cmd->lc_msgflag)) < 0)
          break;
-      e = (*cmd->lc_func)(n_msgvec);
+      rv = (*cmd->lc_func)(n_msgvec);
       break;
 
    case ARG_STRLIST:
       /* Just the straight string, with leading blanks removed */
       while(whitechar(*cp))
          ++cp;
-      e = (*cmd->lc_func)(cp);
+      rv = (*cmd->lc_func)(cp);
       break;
 
    case ARG_WYSHLIST:
@@ -890,7 +913,7 @@ je96:
       if(0){
          /* FALLTHRU */
    case ARG_WYRALIST:
-         c = wysh ? 1 : 0;
+         c = (flags & a_WYSH) ? 1 : 0;
          if(0){
    case ARG_RAWLIST:
             c = 0;
@@ -913,12 +936,12 @@ je96:
          break;
       }
 #undef lc_maxargs
-      e = (*cmd->lc_func)(arglist);
+      rv = (*cmd->lc_func)(arglist);
       break;
 
    case ARG_NOLIST:
       /* Just the constant zero, for exiting, eg. */
-      e = (*cmd->lc_func)(0);
+      rv = (*cmd->lc_func)(0);
       break;
 
    default:
@@ -927,7 +950,7 @@ je96:
       goto jleave0;
    }
 
-   if(e == 0 && (cmd->lc_argtype & ARG_V) &&
+   if(rv == 0 && (cmd->lc_argtype & ARG_V) &&
          (cp = temporary_arg_v_store) != NULL){
       temporary_arg_v_store = NULL;
       evp->le_new_content = cp;
@@ -942,17 +965,23 @@ jleave:
       bool_t reset = !(pstate & PS_ROOT);
 
       pstate |= PS_ROOT;
-      ok_vset(_exit_status, (e == 0 ? "0" : "1")); /* TODO num=1 +real value! */
+      ok_vset(_exit_status, (rv == 0 ? "0" : "1")); /* TODO num=1 +realval */
       if(reset)
          pstate &= ~PS_ROOT;
    }
+
+   if(flags & a_IGNERR){
+      rv = 0;
+      exit_status = EXIT_OK;
+   }
+
    /* Exit the current source file on error TODO what a mess! */
-   if(e == 0)
+   if(rv == 0)
       pstate &= ~PS_EVAL_ERROR;
    else{
       pstate |= PS_EVAL_ERROR;
-      if(e < 0 || (pstate & PS_ROBOT)){ /* FIXME */
-         e = 1;
+      if(rv < 0 || (pstate & PS_ROBOT)){ /* FIXME */
+         rv = 1;
          goto jret;
       }
       goto jret0;
@@ -960,11 +989,11 @@ jleave:
 
    if(cmd == NULL)
       goto jret0;
-   if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint))
+   if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint)) /* TODO rid of that! */
       if(visible(dot)){
          line.s = savestr("type");
          line.l = sizeof("type") -1;
-         gp = (struct a_lex_ghost*)-1; /* Avoid `ghost' interpretation */
+         flags = a_GHOST_MASK; /* Avoid `ghost' lookups.. */
          goto jrestart;
       }
 
@@ -973,13 +1002,10 @@ jleave:
 jleave0:
    pstate &= ~PS_EVAL_ERROR;
 jret0:
-   e = 0;
+   rv = 0;
 jret:
-/*
-fprintf(stderr, "a_lex_evaluate returns %d for <%s>\n",e,line.s);
-*/
    NYD_LEAVE;
-   return e;
+   return rv;
 }
 
 static struct a_lex_cmd const *
