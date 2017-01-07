@@ -5923,7 +5923,11 @@ display and when (suggesting a name for) saving (purposes).
 Associate some descriptive information to the attachment's content, used
 in favour of the plain filename by some MUAs.
 .It Ql content-id
-May be used for uniquely identifying MIME entities in several contexts.
+May be used for uniquely identifying MIME entities in several contexts;
+this expects a special reference address format as defined in RFC 2045
+and generates a
+.Ql 505
+upon address content verification failure.
 .It Ql content-type
 Specifies the media type and subtype of the part; managed automatically.
 .It Ql content-disposition

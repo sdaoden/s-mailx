@@ -2358,7 +2358,7 @@ struct attachment {
    char const  *a_name;       /* File name to be stored (EQ a_path_bname) */
    char const  *a_content_type;  /* content type */
    char const  *a_content_disposition; /* content disposition */
-   char const  *a_content_id; /* content id */
+   struct name *a_content_id; /* content id */
    char const  *a_content_description; /* content description */
    char const  *a_input_charset; /* Interpretation depends on .a_conv */
    char const  *a_charset;    /* ... */

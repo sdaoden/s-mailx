@@ -362,10 +362,8 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
             _put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
          goto jerr_header;
 
-      if ((cp = ap->a_content_id) != NULL &&
-            (fputs("Content-ID: ", fo) == EOF ||
-             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
-               ) < 0 || putc('\n', fo) == EOF))
+      if(ap->a_content_id != NULL &&
+            fprintf(fo, "Content-ID: <%s>\n", ap->a_content_id->n_name) < 0)
          goto jerr_header;
 
       if ((cp = ap->a_content_description) != NULL &&

@@ -530,6 +530,7 @@ a_collect_plumbing(char const *ms, struct header *hp){
          }else{
             if(cmd[3] != NULL)
                goto jecmd;
+
             if(!asccasecmp(cmd[2], "from")){
                np = hp->h_from;
 jlist:
@@ -587,6 +588,7 @@ jlist:
       }else if(is_asccaseprefix(cmd[1], "show")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if(!asccasecmp(cmd[2], "from")){
             np = hp->h_from;
 jshow:
@@ -658,6 +660,7 @@ jshow:
       }else if(is_asccaseprefix(cmd[1], "remove")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if(!asccasecmp(cmd[2], "from")){
             npp = &hp->h_from;
 jrem:
@@ -733,6 +736,9 @@ jrem:
          enum gfield ntype;
          bool_t mult_ok;
 
+         if(cmd[2] == NULL || cmd[3] == NULL)
+            goto jecmd;
+
          /* Strip [\r\n] which would render a body invalid XXX all controls? */
          /* C99 */{
             char *xp, c;
@@ -747,8 +753,6 @@ jrem:
          ntype = GEXTRA | GFULL | GFULLEXTRA;
          eacm = EACM_STRICT;
 
-         if(cmd[2] == NULL || cmd[3] == NULL)
-            goto jecmd;
          if(!asccasecmp(cmd[2], "from")){
             npp = &hp->h_from;
 jins:
@@ -849,6 +853,7 @@ jins:
       if(cmd[1] == NULL || is_asccaseprefix(cmd[1], "list")){
          if(cmd[2] != NULL)
             goto jecmd;
+
          if((ap = hp->h_attach) != NULL){
             fputs("212\n", stdout);
             do
@@ -858,8 +863,9 @@ jins:
          }else
             fputs("501\n", stdout);
       }else if(is_asccaseprefix(cmd[1], "remove")){
-         if(cmd[2] == NULL)
+         if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if((ap = n_attachment_find(hp->h_attach, cmd[2], &status)) != NULL){
             if(status == TRUM1)
                fputs("506\n", stdout);
@@ -873,8 +879,9 @@ jins:
          char *eptr;
          long l;
 
-         if(cmd[2] == NULL)
+         if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
             fputs("505\n", stdout);
          else{
@@ -889,8 +896,9 @@ jins:
       }else if(is_asccaseprefix(cmd[1], "insert")){
          enum n_attach_error aerr;
 
-         if(cmd[2] == NULL)
+         if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          hp->h_attach = n_attachment_append(hp->h_attach, cmd[2], &aerr, &ap);
          switch(aerr){
          case n_ATTACH_ERR_FILE_OPEN: cp = "505\n"; goto jatt_ins;
@@ -911,8 +919,9 @@ jatt_ins:
          }  break;
          }
       }else if(is_asccaseprefix(cmd[1], "attribute")){
-         if(cmd[2] == NULL)
+         if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
 jatt_att:
             fprintf(stdout, "212 %s\n", cmd[2]);
@@ -925,7 +934,7 @@ jatt_att:
                   fprintf(stdout, "content-description %s\n",
                      ap->a_content_description);
                if(ap->a_content_id != NULL)
-                  fprintf(stdout, "content-id %s\n", ap->a_content_id);
+                  fprintf(stdout, "content-id %s\n", ap->a_content_id->n_name);
                if(ap->a_content_type != NULL)
                   fprintf(stdout, "content-type %s\n", ap->a_content_type);
                if(ap->a_content_disposition != NULL)
@@ -939,8 +948,9 @@ jatt_att:
          char *eptr;
          long l;
 
-         if(cmd[2] == NULL)
+         if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
+
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
             fputs("505\n", stdout);
          else{
@@ -954,6 +964,7 @@ jatt_att:
       }else if(is_asccaseprefix(cmd[1], "attribute-set")){
          if(cmd[2] == NULL || cmd[3] == NULL)
             goto jecmd;
+
          if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
 jatt_attset:
             if(ap->a_msgno > 0)
@@ -977,6 +988,7 @@ jatt_attset:
                      for(; (c = *xp) != '\0'; ++xp)
                         if(c == '\n' || c == '\r')
                            *xp = ' ';
+                     c = *cp;
                   }
                }
 
@@ -984,9 +996,21 @@ jatt_attset:
                   ap->a_name = (c == '\0') ? ap->a_path_bname : cp;
                else if(!asccasecmp(keyw, "content-description"))
                   ap->a_content_description = (c == '\0') ? NULL : cp;
-               else if(!asccasecmp(keyw, "content-id"))
-                  ap->a_content_id = (c == '\0') ? NULL : cp;
-               else if(!asccasecmp(keyw, "content-type"))
+               else if(!asccasecmp(keyw, "content-id")){
+                  ap->a_content_id = NULL;
+
+                  if(c != '\0'){
+                     struct name *np;
+
+                     np = checkaddrs(lextract(cp, GREF),
+                           /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG |
+                           EACM_NONAME, NULL);
+                     if(np != NULL && np->n_flink == NULL)
+                        ap->a_content_id = np;
+                     else
+                        cp = NULL;
+                  }
+               }else if(!asccasecmp(keyw, "content-type"))
                   ap->a_content_type = (c == '\0') ? NULL : cp;
                else if(!asccasecmp(keyw, "content-disposition"))
                   ap->a_content_disposition = (c == '\0') ? NULL : cp;
@@ -1010,6 +1034,7 @@ jatt_attset:
 
          if(cmd[2] == NULL || cmd[3] == NULL)
             goto jecmd;
+
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
             fputs("505\n", stdout);
          else{

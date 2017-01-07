@@ -91,7 +91,7 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
       file = ap->a_name;
    ap->a_content_type = mime_type_classify_filename(file);
    ap->a_content_disposition = "attachment";
-   ap->a_content_description =
+   ap->a_content_description = NULL;
    ap->a_content_id = NULL;
    NYD2_LEAVE;
    return ap;
@@ -104,7 +104,7 @@ a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
    ap->a_msgno = msgno;
    ap->a_content_type =
    ap->a_content_description =
-   ap->a_content_disposition =
+   ap->a_content_disposition = NULL;
    ap->a_content_id = NULL;
    NYD2_LEAVE;
    return ap;
