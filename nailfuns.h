@@ -1930,7 +1930,7 @@ FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
 /* Case-independent ASCII string find s2 in s1, return it or NULL */
 FL char const *asccasestr(char const *s1, char const *s2);
 
-/* Case-independent ASCII check wether as2 is the initial substring of as1 */
+/* Case-independent ASCII check whether as1 is the initial substring of as2 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
 
 /* struct str related support funs */

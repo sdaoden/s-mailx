@@ -695,7 +695,7 @@ i_strcpy(char *dest, char const *src, size_t size)
 }
 
 FL int
-is_prefix(char const *as1, char const *as2)
+is_prefix(char const *as1, char const *as2) /* TODO arg order */
 {
    char c;
    NYD2_ENTER;
@@ -981,7 +981,7 @@ asccasestr(char const *s1, char const *s2)
          s1 = NULL;
          break;
       }
-      if (lowerconv(c1) == c2 && is_asccaseprefix(s1, s2)) {
+      if (lowerconv(c1) == c2 && is_asccaseprefix(s2, s1)) {
          --s1;
          break;
       }
@@ -991,21 +991,24 @@ asccasestr(char const *s1, char const *s2)
 }
 
 FL bool_t
-is_asccaseprefix(char const *as1, char const *as2)
+is_asccaseprefix(char const *as1, char const *as2) /* TODO arg order */
 {
-   bool_t rv = FAL0;
+   char c1, c2;
    NYD2_ENTER;
 
-   for (;; ++as1, ++as2) {
-      char c1 = lowerconv(*as1), c2 = lowerconv(*as2);
+   for(;; ++as1, ++as2){
+      c1 = *as1;
+      c1 = lowerconv(c1);
+      c2 = *as2;
+      c2 = lowerconv(c2);
 
-      if ((rv = (c2 == '\0')))
+      if(c1 != c2 || c1 == '\0')
          break;
-      if (c1 != c2)
+      if(c2 == '\0')
          break;
    }
    NYD2_LEAVE;
-   return rv;
+   return (c1 == '\0');
 }
 
 FL struct str *
