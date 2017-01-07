@@ -1580,6 +1580,7 @@ ok_b_autothread,
    ok_v__mailbox_resolved,             /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__mailbox_display,              /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_markanswered,
+   ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,
    ok_v_message_inject_head,

@@ -320,27 +320,20 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    int flags;
    NYD_ENTER;
 
-#if 0
-   Well ... it turns out to not work like that since of course a valid
-   RFC 4155 compliant parser, like S-nail, takes care for From_ lines only
-   after an empty line has been seen, which cannot be detected that easily
-   right here!
-ifdef HAVE_DEBUG /* TODO assert legacy */
-   /* TODO if at all, this CAN only happen for SEND_DECRYPT, since all
-    * TODO other input situations handle RFC 4155 OR, if newly generated,
-    * TODO enforce quoted-printable if there is From_, as "required" by
-    * TODO RFC 5751.  The SEND_DECRYPT case is not yet overhauled;
-    * TODO if it may happen in this path, we should just treat decryption
-    * TODO as we do for the other input paths; i.e., handle it in SSL!! */
-   if (action == SEND_MBOX || action == SEND_DECRYPT)
-      assert(!is_head(buf, len, FAL0));
-#else
-   if ((/*action == SEND_MBOX ||*/ action == SEND_DECRYPT) &&
-         is_head(buf, len, FAL0)) {
-      putc('>', fp);
-      ++sz;
+   /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
+    * TODO subclass should detect such From_ cases and either reencode the part
+    * TODO in question, or perform From_ quoting as necessary!?!?!?  How?!? */
+   /* C99 */{
+      bool_t from_;
+
+      if((action == SEND_MBOX || action == SEND_DECRYPT) &&
+            (from_ = is_head(buf, len, TRU1))){
+         if(from_ != TRUM1 || ok_blook(mbox_rfc4155)){
+            putc('>', fp);
+            ++sz;
+         }
+      }
    }
-#endif
 
    flags = ((int)action & _TD_EOF);
    action &= ~_TD_EOF;

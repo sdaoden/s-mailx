@@ -262,7 +262,7 @@ setptr(FILE *ibuf, off_t offset)
    char *cp, *linebuf = NULL;
    char const *cp2;
    int c, selfcnt = 0;
-   bool_t maybe, inhead, rfc4155;
+   bool_t need_rfc4155, maybe, inhead, from_;
    size_t linesize = 0, filesize, cnt;
    NYD_ENTER;
 
@@ -270,8 +270,9 @@ setptr(FILE *ibuf, off_t offset)
    self.m_flag = MUSED | MNEW | MNEWEST;
    filesize = mailsize - offset;
    offset = ftell(mb.mb_otf);
+   need_rfc4155 = ok_blook(mbox_rfc4155);
    maybe = TRU1;
-   rfc4155 = inhead = FAL0;
+   from_ = inhead = FAL0;
 
    for (;;) {
       if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
@@ -301,17 +302,27 @@ setptr(FILE *ibuf, off_t offset)
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
+      /* TODO In v15 this should use a/the flat MIME parser in order to ignore
+       * TODO "From " when MIME boundaries are active -- whereas this opens
+       * TODO another can of worms, it very likely is better than messing up
+       * TODO MIME because of a "From " line! */
       if (maybe && linebuf[0] == 'F' &&
-            (rfc4155 = is_head(linebuf, cnt, TRU1))) {
+            (from_ = is_head(linebuf, cnt, TRU1)) &&
+            (from_ == TRU1 || !need_rfc4155)) {
          /* TODO char date[FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
-         if (rfc4155 == TRUM1) {
+         if (from_ == TRUM1) {
             if (options & OPT_D_V)
                n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
                   (int)cnt, linebuf);
             else if (!(mb.mb_active & MB_FROM__WARNED))
-               n_err(_("MBOX mailbox contains non-conforming From_ line(s)\n"));
+               n_err(_("MBOX mailbox contains non-conforming From_ line(s)!\n"
+                  "  Message boundaries may have been falsely detected!\n"
+                  "  Setting variable *mbox-rfc4155* and reopen may improve "
+                     "the result!\n"
+                  "  If so, unset *mbox-rfc4155* again, then "
+                     "\"copy * SOME-FILE\"\n"));
             mb.mb_active |= MB_FROM__WARNED;
          }
          self.m_xsize = self.m_size;
