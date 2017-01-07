@@ -1173,7 +1173,7 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
 
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (is_asccaseprefix(ct, "text/")) {
+   else if (is_asccaseprefix("text/", ct)) {
       ct += sizeof("text/") -1;
       if (!asccasecmp(ct, "plain"))
          mc = MIME_TEXT_PLAIN;
@@ -1181,13 +1181,13 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
          mc = MIME_TEXT_HTML;
       else
          mc = MIME_TEXT;
-   } else if (is_asccaseprefix(ct, "message/")) {
+   } else if (is_asccaseprefix("message/", ct)) {
       ct += sizeof("message/") -1;
       if (!asccasecmp(ct, "rfc822"))
          mc = MIME_822;
       else
          mc = MIME_MESSAGE;
-   } else if (!ascncasecmp(ct, "multipart/", 10)) {
+   } else if (is_asccaseprefix("multipart/", ct)) {
       struct multi_types {
          char              mt_name[12];
          enum mimecontent  mt_mc;
@@ -1207,7 +1207,7 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
             mc = MIME_MULTI;
             break;
          }
-   } else if (is_asccaseprefix(ct, "application/")) {
+   } else if (is_asccaseprefix("application/", ct)) {
       if (is_os)
          goto jos_content_check;
       ct += sizeof("application/") -1;
