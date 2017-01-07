@@ -7834,9 +7834,8 @@ output of, e.g.,
 will indicate the said capability), just enough for the purpose of
 controlling the real \*(UA instance sufficiently.
 .Ic localopts
-are by default enabled (in the parent) for (the lifetime of) these
-hooks, causing covered setting to be forgotten after the message has
-been sent.
+are enabled for these hooks (in the parent process), causing any setting
+to be forgotten after the message has been sent.
 .Pp
 During execution of these hook \*(UA will temporarily forget whether it
 has been started in interactive mode, (a restricted set of)
@@ -7889,6 +7888,7 @@ define ocdm {
       echo '~x'
     endif
   endif
+  echo '~:set from="Hoola Hoop <hh@exam.ple>"'
 }
 .Ed
 .
@@ -7900,10 +7900,10 @@ after composing has been finished (but before the
 .Va signature
 is injected, etc.), respectively.
 .Ic localopts
-are by default enabled for these hooks, causing any setting to be
-forgotten after the message has been sent.
-The following variables will be set temporarily during execution of the
-macros.
+are enabled for these hooks, causing any setting to be forgotten after
+the message has been sent.
+The following (readonly) variables will be set temporarily during
+execution of the macros:
 .Pp
 .Bl -tag -compact -width ".It Va compose_subject"
 .It Va compose-from

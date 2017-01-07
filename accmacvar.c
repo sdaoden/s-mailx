@@ -374,8 +374,13 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    losp->as_unroll = amcap->amca_lopts_on;
 
    a_amv_lopts = losp;
-   if(amcap->amca_hook_pre != NULL)
+   if(amcap->amca_hook_pre != NULL){
+      bool_t reset = !(pstate & PS_ROOT);
+      pstate |= PS_ROOT;
       (*amcap->amca_hook_pre)(amcap->amca_hook_arg);
+      if(reset)
+         pstate &= ~PS_ROOT;
+   }
    rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
          &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
@@ -1783,8 +1788,15 @@ c_localopts(void *v){
       goto jleave;
    }
 
-   a_amv_lopts->as_unroll = (boolify(*(argv = v), UIZ_MAX, FAL0) > 0);
    rv = 0;
+
+   if(pstate & (PS_HOOK | PS_COMPOSE_MODE)){
+      if(options & OPT_D_V)
+         n_err(_("Cannot turn off `localopts' for compose-mode hooks\n"));
+      goto jleave;
+   }
+
+   a_amv_lopts->as_unroll = (boolify(*(argv = v), UIZ_MAX, FAL0) > 0);
 jleave:
    NYD_LEAVE;
    return rv;

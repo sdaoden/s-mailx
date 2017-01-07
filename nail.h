@@ -1468,12 +1468,12 @@ enum program_state {
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_compose_from,
-   ok_v_compose_sender,
-   ok_v_compose_to,
-   ok_v_compose_cc,
-   ok_v_compose_bcc,
-   ok_v_compose_subject,
+   ok_v_compose_from,                  /* {rdonly=1} */
+   ok_v_compose_sender,                /* {rdonly=1} */
+   ok_v_compose_to,                    /* {rdonly=1} */
+   ok_v_compose_cc,                    /* {rdonly=1} */
+   ok_v_compose_bcc,                   /* {rdonly=1} */
+   ok_v_compose_subject,               /* {rdonly=1} */
 
    ok_v__account_name,                 /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
