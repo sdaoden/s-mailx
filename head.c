@@ -529,6 +529,13 @@ jaddr_check:
       size_t rangestart, lastpoi;
       char const *cp, *cpmax, *xp;
 
+      /* Name and domain must be non-empty */
+      if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
+         c.c = '@';
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+         goto jleave;
+      }
+
 #ifdef HAVE_IDNA
       if(use_idna == 2)
          agp = a_head_idna_apply(agp);
@@ -947,7 +954,7 @@ a_head_customhdr__sep(char **iolist){
 }
 
 FL char const *
-myaddrs(struct header *hp)
+myaddrs(struct header *hp) /* TODO */
 {
    struct name *np;
    char const *rv, *mta;
@@ -960,8 +967,15 @@ myaddrs(struct header *hp)
          goto jleave;
    }
 
-   if ((rv = ok_vlook(from)) != NULL)
+   if((rv = ok_vlook(from)) != NULL){
+      if((np = lextract(rv, GEXTRA | GFULL)) == NULL)
+jefrom:
+         n_err(_("An address given in *from* is invalid: %s\n"), rv);
+      else for(; np != NULL; np = np->n_flink)
+         if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+            goto jefrom;
       goto jleave;
+   }
 
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
@@ -992,15 +1006,25 @@ jnodename:{
 }
 
 FL char const *
-myorigin(struct header *hp)
+myorigin(struct header *hp) /* TODO */
 {
    char const *rv = NULL, *ccp;
    struct name *np;
    NYD_ENTER;
 
-   if ((ccp = myaddrs(hp)) != NULL &&
-         (np = lextract(ccp, GEXTRA | GFULL)) != NULL)
-      rv = (np->n_flink != NULL) ? ok_vlook(sender) : ccp;
+   if((ccp = myaddrs(hp)) != NULL &&
+         (np = lextract(ccp, GEXTRA | GFULL)) != NULL){
+      if(np->n_flink == NULL)
+         rv = ccp;
+      else if((ccp = ok_vlook(sender)) != NULL) {
+         if((np = lextract(ccp, GEXTRA | GFULL)) == NULL ||
+               np->n_flink != NULL ||
+               is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+            n_err(_("The address given in *sender* is invalid: %s\n"), ccp);
+         else
+            rv = ccp;
+      }
+   }
    NYD_LEAVE;
    return rv;
 }
