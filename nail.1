@@ -466,7 +466,7 @@ relaying and delegating a message over the wire via SMTP, but instead an
 envelope will enwrap the message content and provide the necessary
 information (i.e., the RFC 5321 reverse-path, also used to report, e.g.,
 delivery errors) to transmit the message to its destination(s).
-Whereas the said headers and internal variables will be used by \*(UA to
+Whereas said headers and internal variables will be used by \*(UA to
 create the envelope if the builtin SMTP
 .Va mta
 (Mail-Transfer-Agent) is used, a file-based MTA will instead use the
@@ -897,10 +897,20 @@ adjustments in between.
 Especially for using public mail provider accounts with the SMTP
 .Va mta
 it is often necessary to set
-.Va from ,
-and saving a copy of sent messages in a
+.Va from
+and/or
+.Va hostname
+(even finer control via
+.Va smtp-hostname ) ,
+which also causes creation of
+.Ql Message-ID:
+and
+.Ql Content-ID:
+header fields (even if empty) unless
+.Va stealthmua
+is set; saving a copy of sent messages in a
 .Va record
-may be desirable \(en as for most mailbox
+mailbox may be desirable \(en as for most mailbox
 .Ic file
 targets the value will undergo
 .Mx -sx
@@ -6074,7 +6084,7 @@ program
 .Sx ENVIRONMENT
 implicitly, others can be explicitly imported with the command
 .Ic environ
-and henceforth share the said properties.
+and henceforth share said properties.
 .
 .Pp
 Two different kind of internal variables exist.
@@ -7254,16 +7264,18 @@ Use this string as hostname when expanding local addresses instead of
 the value obtained from
 .Xr uname 3
 and
-.Xr getaddrinfo 3 ,
-i.e., in
+.Xr getaddrinfo 3 .
+It is used, e.g., in
 .Ql Message-ID:
 and
 .Ql From:
-fields.
-Note that when SMTP transport is not used (via
-.Va mta ) ,
-then it is normally the responsibility of the MTA to create these
-fields, \*(IN in conjunction with SMTP however
+fields, as well as when generating
+.Ql Content-ID:
+MIME part related unique ID fields.
+Setting it to the empty string will cause the normal hostname to be
+used, but nonetheless enables creation of said ID fields.
+\*(IN in conjunction with the builtin SMTP
+.Va mta
 .Va smtp-hostname
 also influences the results:
 one should produce some test messages with the desired combination of
@@ -7443,6 +7455,9 @@ can be completely suppressed, effectively leaving this task up to the
 (According to RFC 5321 a SMTP server is not required to add this
 field by itself, so it should be ensured that it accepts messages without
 .Ql Message-ID . )
+This variable also affects automatic generation of
+.Va Content-ID:
+MIME header fields.
 .
 .Mx
 .It Va message-inject-head
@@ -7831,7 +7846,7 @@ restricted to a small set of commands (the
 .Va verbose
 output of, e.g.,
 .Ic list
-will indicate the said capability), just enough for the purpose of
+will indicate said capability), just enough for the purpose of
 controlling the real \*(UA instance sufficiently.
 .Ic localopts
 are enabled for these hooks (in the parent process), causing any setting
@@ -8838,8 +8853,11 @@ This often allows using an address that is itself valid but hosted by
 a provider other than which (in
 .Va from )
 is about to send the message.
-Setting this variable also influences the generated
-.Ql Message-ID: .
+Setting this variable also influences generated
+.Ql Message-ID:
+and
+.Ql Content-ID:
+header fields.
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
@@ -9183,7 +9201,8 @@ The default is
 .It Va stealthmua
 If only set without an assigned value, then this setting inhibits the
 generation of the
-.Ql Message-ID:
+.Ql Message-ID: ,
+.Ql Content-ID:
 and
 .Ql User-Agent:
 header fields that include obvious references to \*(UA.
@@ -9195,6 +9214,8 @@ If set to the value
 .Ql noagent ,
 then the mentioned
 .Ql Message-ID:
+and
+.Ql Content-ID:
 suppression does not occur.
 .
 .

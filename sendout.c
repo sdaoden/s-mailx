@@ -74,15 +74,18 @@ static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
                         bool_t nodisp);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static int           _attach_file(struct attachment *ap, FILE *fo);
-static int           __attach_file(struct attachment *ap, FILE *fo);
+static int a_sendout_attach_file(struct header *hp, struct attachment *ap,
+            FILE *fo);
+static int a_sendout__attach_file(struct header *hp, struct attachment *ap,
+            FILE *fo);
 
 /* There are non-local receivers, collect credentials etc. */
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         bool_t signing_caps);
 
 /* Attach a message to the file buffer */
-static int           attach_message(struct attachment *ap, FILE *fo);
+static int a_sendout_attach_msg(struct header *hp, struct attachment *ap,
+               FILE *fo);
 
 /* Generate the body of a MIME multipart message */
 static int           make_multipart(struct header *hp, int convert, FILE *fi,
@@ -115,7 +118,7 @@ static void          __mta_debug(struct sendbundle *sbp, char const *mta,
                         char const **args);
 
 /* Create a Message-ID: header field.  Use either host name or from address */
-static char *        _message_id(struct header *hp);
+static char const *a_sendout_random_id(struct header *hp, bool_t msgid);
 
 /* Format the given header line to not exceed 72 characters */
 static int           fmt(char const *str, struct name *np, FILE *fo,
@@ -268,7 +271,7 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
 }
 
 static int
-_attach_file(struct attachment *ap, FILE *fo)
+a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 {
    /* TODO of course, the MIME classification needs to performed once
     * TODO only, not for each and every charset anew ... ;-// */
@@ -279,7 +282,7 @@ _attach_file(struct attachment *ap, FILE *fo)
 
    /* Is this already in target charset?  Simply copy over */
    if (ap->a_conv == AC_TMPFILE) {
-      err = __attach_file(ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo);
       Fclose(ap->a_tmpf);
       DBG( ap->a_tmpf = NULL; )
       goto jleave;
@@ -289,7 +292,7 @@ _attach_file(struct attachment *ap, FILE *fo)
     * we also simply copy over, since it's the users desire */
    if (ap->a_conv == AC_FIX_INCS) {
       ap->a_charset = ap->a_input_charset;
-      err = __attach_file(ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo);
       goto jleave;
    } else
       assert(ap->a_input_charset != NULL);
@@ -305,7 +308,7 @@ _attach_file(struct attachment *ap, FILE *fo)
          err = EILSEQ;
          break;
       }
-      err = __attach_file(ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo);
       if (err == 0 || (err != EILSEQ && err != EINVAL))
          break;
       clearerr(fo);
@@ -326,7 +329,7 @@ jleave:
 }
 
 static int
-__attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
+a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 {
    int err = 0, do_iconv;
    FILE *fi;
@@ -362,9 +365,17 @@ __attach_file(struct attachment *ap, FILE *fo) /* XXX linelength */
             _put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
          goto jerr_header;
 
-      if(ap->a_content_id != NULL &&
-            fprintf(fo, "Content-ID: <%s>\n", ap->a_content_id->n_name) < 0)
-         goto jerr_header;
+      if((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")){
+         struct name *np;
+
+         if((np = ap->a_content_id) != NULL)
+            cp = np->n_name;
+         else
+            cp = a_sendout_random_id(hp, FAL0);
+
+         if(cp != NULL && fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
+            goto jerr_header;
+      }
 
       if ((cp = ap->a_content_description) != NULL &&
             (fputs("Content-Description: ", fo) == EOF ||
@@ -507,12 +518,13 @@ jleave:
 }
 
 static int
-attach_message(struct attachment *ap, FILE *fo)
+a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
 {
    struct message *mp;
    char const *ccp;
    int rv;
    NYD_ENTER;
+   n_UNUSED(hp);
 
    fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
        "Content-Disposition: inline\n", _sendout_boundary);
@@ -537,13 +549,20 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
    fputs("This is a multi-part message in MIME format.\n", fo);
    if (fsize(fi) != 0) {
+      char const *cp;
       char *buf;
       size_t sz, bufsize, cnt;
 
       if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
             _put_ct(fo, contenttype, charset) < 0 ||
             _put_cte(fo, convert) < 0 ||
-            fprintf(fo, "Content-Disposition: inline\n\n") < 0)
+            fprintf(fo, "Content-Disposition: inline\n") < 0)
+         goto jleave;
+      if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
+            (cp = a_sendout_random_id(hp, FAL0)) != NULL &&
+            fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
+         goto jleave;
+      if(putc('\n', fo) == EOF)
          goto jleave;
 
       buf = smalloc(bufsize = SEND_LINESIZE);
@@ -579,9 +598,9 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
    for (att = hp->h_attach; att != NULL; att = att->a_flink) {
       if (att->a_msgno) {
-         if (attach_message(att, fo) != 0)
+         if (a_sendout_attach_msg(hp, att, fo) != 0)
             goto jleave;
-      } else if (_attach_file(att, fo) != 0)
+      } else if (a_sendout_attach_file(hp, att, fo) != 0)
          goto jleave;
    }
 
@@ -1416,51 +1435,44 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    NYD_LEAVE;
 }
 
-static char *
-_message_id(struct header *hp)
+static char const *
+a_sendout_random_id(struct header *hp, bool_t msgid)
 {
-   char *rv = NULL, sep;
+   struct tm *tmp;
    char const *h;
    size_t rl, i;
-   struct tm *tmp;
+   char *rv, sep;
    NYD_ENTER;
 
-   if (hp != NULL && hp->h_message_id != NULL) {
-      i = strlen(hp->h_message_id->n_name);
-      rl = sizeof("Message-ID: <>") -1;
-      rv = salloc(rl + i +1);
-      memcpy(rv, "Message-ID: <", --rl);
-      memcpy(rv + rl, hp->h_message_id->n_name, i);
-      rl += i;
-      rv[rl++] = '>';
-      rv[rl] = '\0';
+   rv = NULL;
+
+   if(msgid && hp != NULL && hp->h_message_id != NULL){
+      rv = hp->h_message_id->n_name;
       goto jleave;
    }
 
-   if (ok_blook(message_id_disable))
+   if(ok_blook(message_id_disable))
       goto jleave;
 
    sep = '%';
    rl = 9;
-   if ((h = __sendout_ident) != NULL)
+   if((h = __sendout_ident) != NULL)
       goto jgen;
-   if (ok_vlook(hostname) != NULL) {
+   if(ok_vlook(hostname) != NULL){
       h = nodename(1);
       sep = '@';
       rl = 15;
       goto jgen;
    }
-   if (hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+   if(hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
       goto jgen;
-   /* Up to MTA */
    goto jleave;
 
 jgen:
    tmp = &time_current.tc_gm;
-   i = sizeof("Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>") -1 +
-         rl + strlen(h);
+   i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + strlen(h);
    rv = salloc(i +1);
-   snprintf(rv, i, "Message-ID: <%04d%02d%02d%02d%02d%02d.%s%c%s>",
+   snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
       getrandstring(rl), sep, h);
@@ -1594,8 +1606,9 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       if (fmt("Resent-To:", to, fo, FMT_COMMA))
          goto jleave;
       if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
-            (cp = _message_id(NULL)) != NULL)
-         fprintf(fo, "Resent-%s\n", cp);
+            (cp = a_sendout_random_id(NULL, TRU1)) != NULL &&
+            fprintf(fo, "Resent-Message-ID: <%s>\n", cp) < 0)
+         goto jleave;
    }
 
    if ((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
@@ -2013,8 +2026,9 @@ jto_fmt:
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
       FMT_CC_AND_BCC();
 
-   if ((w & GMSGID) && stealthmua <= 0 && (addr = _message_id(hp)) != NULL) {
-      if (fputs(addr, fo) == EOF || putc('\n', fo) == EOF)
+   if ((w & GMSGID) && stealthmua <= 0 &&
+         (addr = a_sendout_random_id(hp, TRU1)) != NULL) {
+      if (fprintf(fo, "Message-ID: <%s>\n", addr) < 0)
          goto jleave;
       ++gotcha;
    }
