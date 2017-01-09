@@ -1995,7 +1995,7 @@ jouter:
          ++s;
 
       for (pp = ignored; pp->len > 0; ++pp)
-         if (is_asccaseprefix(s, pp->dat)) {
+         if (is_asccaseprefix(pp->dat, s)) {
             s += pp->len;
             any = TRU1;
             goto jouter;
@@ -2006,7 +2006,7 @@ jouter:
 
          memcpy(re_st_x = re_st + re_l, re_st, re_l);
          while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
-            if (is_asccaseprefix(s, cp)) {
+            if (is_asccaseprefix(cp, s)) {
                s += strlen(cp);
                any = TRU1;
                goto jouter;
