@@ -448,19 +448,16 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    } hps = HPS_NONE;
    size_t lineno = 0;
 
-   while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
-      ++lineno;
-      if (line[0] == '\n') {
-         /* If line is blank, we've reached end of headers, so force out
-          * status: field and note that we are no longer in header fields */
-         if (dostat & 1)
-            statusput(zmp, obuf, qf, stats);
-         if (dostat & 2)
-            xstatusput(zmp, obuf, qf, stats);
-         if (doitp != n_IGNORE_ALL)
-            _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   for(;;){
+      size_t lcnt;
+
+      lcnt = cnt;
+      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0) == NULL)
          break;
-      }
+      ++lineno;
+      if (line[0] == '\n')
+         /* If line is blank, we've reached end of headers */
+         break;
 
       hps &= ~HPS_ISENC_1;
       if ((hps & HPS_IN_FIELD) && blankchar(line[0])) {
@@ -481,19 +478,16 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          while (spacechar(*cp))
             ++cp;
          if (cp[0] != ':') {
+            /* That won't work with MIME when saving etc., before v15 */
             if (lineno != 1)
+               /* XXX This disturbs, and may happen multiple times, and we
+                * XXX cannot heal it for multipart except for display <v15 */
                n_err(_("Malformed message: headers and body not separated "
                   "(with empty line)\n"));
-            /* Not a header line, force out status: This happens in uucp style
-             * mail where there are no headers at all */
-            if (level == 0 /*&& lineno == 1*/) {
-               if (dostat & 1)
-                  statusput(zmp, obuf, qf, stats);
-               if (dostat & 2)
-                  xstatusput(zmp, obuf, qf, stats);
-            }
-            if (doitp != n_IGNORE_ALL)
-               _out("\n", 1, obuf, CONV_NONE,SEND_MBOX, qf, stats, NULL,NULL);
+            if (level != 0)
+               dostat &= ~(1 | 2);
+            fseek(ibuf, -(off_t)(lcnt - cnt), SEEK_CUR);
+            cnt = lcnt;
             break;
          }
 
@@ -509,21 +503,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
                 (!asccasecmp(line, "content-length") ||
                 !asccasecmp(line, "lines"))))
             hps |= HPS_IGNORE;
-         else if (!asccasecmp(line, "status")) {
-             /* If field is "status," go compute and print real Status: field */
-            if (dostat & 1) {
-               statusput(zmp, obuf, qf, stats);
-               dostat &= ~1;
-               hps |= HPS_IGNORE;
-            }
-         } else if (!asccasecmp(line, "x-status")) {
-            /* If field is "status," go compute and print real Status: field */
-            if (dostat & 2) {
-               xstatusput(zmp, obuf, qf, stats);
-               dostat &= ~2;
-               hps |= HPS_IGNORE;
-            }
-         } else {
+         else if (!asccasecmp(line, "status") || !asccasecmp(line, "x-status"))
+            hps |= HPS_IGNORE;
+         else {
             hps &= ~HPS_IGNORE;
             /* For colourization we need the complete line, so save it */
             /* XXX This is all temporary (colour belongs into backend), so
@@ -605,6 +587,15 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          }
       }
    }
+
+   /* We've reached end of headers, so eventually force out status: field and
+    * note that we are no longer in header fields */
+   if (dostat & 1)
+      statusput(zmp, obuf, qf, stats);
+   if (dostat & 2)
+      xstatusput(zmp, obuf, qf, stats);
+   if (doitp != n_IGNORE_ALL)
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    } /* C99 */
    quoteflt_flush(qf);
    free(line);
