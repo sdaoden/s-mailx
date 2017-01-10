@@ -1168,6 +1168,7 @@ static int
 a_coll_ocds__mac(void){
    /* Executes in a fork(2)ed child */
    setvbuf(stdout, NULL, _IOLBF, 0);
+   options &= ~(OPT_TTYIN | OPT_TTYOUT | OPT_INTERACTIVE);
    pstate |= PS_COMPOSE_FORKHOOK;
    temporary_call_compose_mode_hook(a_coll_ocds__macname, NULL, NULL);
    _exit(EXIT_OK);
@@ -1807,7 +1808,8 @@ jout:
 
          temporary_call_compose_mode_hook(NULL, NULL, NULL);
          n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
-            (options & ~OPT_INTERACTIVE), &a_coll_ocds__finalize, &coap);
+            (options & ~(OPT_TTYIN | OPT_TTYOUT | OPT_INTERACTIVE)),
+            &a_coll_ocds__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
          fputs(a_COLL_PLUMBING_VERSION "\n", coap->coa_stdout);
 #undef a_COLL_PLUMBING_VERSION
