@@ -3401,8 +3401,16 @@ may help shall keys and sequences be falsely recognized.
 .
 .Mx
 .It Ic call
-Calls a macro that has been created via
+Calls the given macro, which must have been created via
 .Ic define .
+.
+.Mx
+.It Ic call_if
+Identical to
+.Ic call
+if the given macro has been created via
+.Ic define ,
+but doesn't fail nor warn if the macro doesn't exist.
 .
 .Mx
 .It Ic cd
@@ -4387,12 +4395,12 @@ the
 of an account is left once it is switched off again.
 .Bd -literal -offset indent
 define temporary_settings {
-  set global_option1
+  set possibly_global_option1
   localopts on
   set local_option1
   set local_option2
   localopts off
-  set global_option2
+  set possibly_global_option2
 }
 .Ed
 .Pp
@@ -5030,8 +5038,8 @@ i.e., it can only be called from macros that were
 The difference to
 .Ic source
 (beside not supporting pipe syntax aka shell command input) is that
-this command will not generate an error if the given file argument
-cannot be opened successfully.
+this command will not generate an error nor warn if the given file
+argument cannot be opened successfully.
 .
 .Mx
 .It Ic spamclear

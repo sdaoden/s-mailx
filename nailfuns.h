@@ -155,10 +155,11 @@ do{\
  * accmacvar.c
  */
 
-/* Macros: `define', `undefine', `call' / `~' */
+/* Macros: `define', `undefine', `call' / `~', `call_if' */
 FL int         c_define(void *v);
 FL int         c_undefine(void *v);
 FL int         c_call(void *v);
+FL int         c_call_if(void *v);
 
 /* TODO Check whether a *folder-hook* exists for the currently active mailbox */
 FL bool_t      check_folder_hook(bool_t nmail);

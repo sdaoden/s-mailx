@@ -200,12 +200,12 @@ static struct a_amv_var *a_amv_folder_hook_lopts;
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_var *a_amv_compose_lopts;
 
-/* Does cp consist solely of WS and a } */
-static bool_t a_amv_mac_is_closing_angle(char const *cp);
-
 /* Lookup for macros/accounts */
 static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
+
+/* `call', `call_if' */
+static int a_amv_mac_call(void *v, bool_t silent_nexist);
 
 /* Execute a macro; amcap must reside in LOFI memory */
 static bool_t a_amv_mac_exec(struct a_amv_mac_call_args *amcap);
@@ -284,23 +284,6 @@ static size_t a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 /* Shared c_set() and c_environ():set impl, return success */
 static bool_t a_amv_var_c_set(char **ap, bool_t issetenv);
 
-static bool_t
-a_amv_mac_is_closing_angle(char const *cp){
-   bool_t rv;
-   NYD2_ENTER;
-
-   while(spacechar(*cp))
-      ++cp;
-
-   if((rv = (*cp++ == '}'))){
-      while(spacechar(*cp))
-         ++cp;
-      rv = (*cp == '\0');
-   }
-   NYD2_LEAVE;
-   return rv;
-}
-
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       enum a_amv_mac_flags amf){
@@ -344,6 +327,29 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
 jleave:
    NYD2_LEAVE;
    return amp;
+}
+
+static int
+a_amv_mac_call(void *v, bool_t silent_nexist){
+   int rv;
+   struct a_amv_mac *amp;
+   char const *name;
+   NYD_ENTER;
+
+   name = *(char const**)v;
+
+   if((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)) != NULL){
+      struct a_amv_mac_call_args *amcap;
+
+      amcap = n_lofi_alloc(sizeof *amcap);
+      memset(amcap, 0, sizeof *amcap);
+      amcap->amca_name = name;
+      amcap->amca_amp = amp;
+      rv = (a_amv_mac_exec(amcap) == FAL0);
+   }else if((rv = (silent_nexist == FAL0)))
+      n_err(_("Undefined macro `call'ed: %s\n"), n_shexp_quote_cp(name, FAL0));
+   NYD_LEAVE;
+   return rv;
 }
 
 static bool_t
@@ -481,6 +487,9 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    rv = FAL0;
    amp = NULL;
 
+   /* TODO We should have our input state machine which emits Line events,
+    * TODO and hook different consumers dependent on our content, as state
+    * TODO in i think lex_input; */
    /* Read in the lines which form the macro content */
    for(ll_tail = ll_head = NULL, line_cnt = maxlen = 0;;){
       ui32_t leaspc;
@@ -495,8 +504,6 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
             (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
          goto jerr;
       }
-      if(a_amv_mac_is_closing_angle(line.s))
-         break;
 
       /* Trim WS, remember amount of leading spaces for display purposes */
       for(cp = line.s, leaspc = 0; n.ui > 0; ++cp, --n.ui)
@@ -506,13 +513,17 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
             ++leaspc;
          else
             break;
-      for(; n.ui > 0 && whitechar(cp[n.ui - 1]); --n.ui)
+      for(; n.ui > 0 && spacechar(cp[n.ui - 1]); --n.ui)
          ;
       if(n.ui == 0)
          continue;
 
       maxlen = n_MAX(maxlen, n.ui);
       cp[n.ui++] = '\0';
+
+      /* Is is the closing brace? */
+      if(*cp == '}')
+         break;
 
       if(n_LIKELY(++line_cnt < UI32_MAX)){
          struct a_amv_mac_line *amlp;
@@ -1483,7 +1494,7 @@ jouter:
       cp2 = varbuf = salloc(strlen(cp) +1);
 
       for(; (c = *cp) != '=' && c != '\0'; ++cp){
-         if(cntrlchar(c) || whitechar(c)){
+         if(cntrlchar(c) || spacechar(c)){
             n_err(_("Variable name with control character ignored: %s\n"),
                ap[-1]);
             ++errs;
@@ -1561,37 +1572,22 @@ c_undefine(void *v){
 
 FL int
 c_call(void *v){
-   struct a_amv_mac_call_args *amcap;
-   char const *errs, *name;
-   struct a_amv_mac *amp;
-   char **args;
    int rv;
    NYD_ENTER;
 
-   rv = 1;
-
-   if((args = v)[0] == NULL || (args[1] != NULL && args[2] != NULL)){
-      errs = _("Synopsis: call: <%s>\n");
-      name = "name";
-      goto jerr;
-   }
-
-   if((amp = a_amv_mac_lookup(name = *args, NULL, a_AMV_MF_NONE)) == NULL){
-      errs = _("Undefined macro `call'ed: %s\n");
-      goto jerr;
-   }
-
-   amcap = n_lofi_alloc(sizeof *amcap);
-   memset(amcap, 0, sizeof *amcap);
-   amcap->amca_name = name;
-   amcap->amca_amp = amp;
-   rv = (a_amv_mac_exec(amcap) == FAL0);
-jleave:
+   rv = a_amv_mac_call(v, FAL0);
    NYD_LEAVE;
    return rv;
-jerr:
-   n_err(errs, name);
-   goto jleave;
+}
+
+FL int
+c_call_if(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = a_amv_mac_call(v, TRU1);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL bool_t
