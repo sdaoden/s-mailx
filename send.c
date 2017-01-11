@@ -497,17 +497,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             break;
          }
 
-         /* If it is an ignored field and we care about such things, skip it.
-          * Misuse dostat also for another bit xxx use a bitenum + for more */
-         if (ok_blook(keep_content_length))
-            dostat |= 1 << 2;
+         /* If it is an ignored field and we care about such things, skip it */
          c = *cp2;
          *cp2 = 0; /* temporarily null terminate */
          if ((doitp != NULL &&
                   n_ignore_is_ign(doitp, line, PTR2SIZE(cp2 - line))) ||
-               (action == SEND_MBOX && !(dostat & (1 << 2)) &&
+               (action == SEND_MBOX &&
                 (!asccasecmp(line, "content-length") ||
-                !asccasecmp(line, "lines"))))
+                 !asccasecmp(line, "lines")) && !ok_blook(keep_content_length)))
             hps |= HPS_IGNORE;
          else if (!asccasecmp(line, "status") || !asccasecmp(line, "x-status"))
             hps |= HPS_IGNORE;
@@ -522,7 +519,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 #endif
          }
          *cp2 = c;
-         dostat &= ~(1 << 2);
          hps |= HPS_IN_FIELD;
       }
 
