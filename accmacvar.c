@@ -993,8 +993,9 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
                      "negative or out of range: %s\n"), avcp->avc_name);
                   goto jerr;
                }
-            }
-            goto jnewval;
+               goto jnewval;
+            }else
+               goto jnewval;
          }
       }
 
