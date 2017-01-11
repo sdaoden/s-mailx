@@ -1164,7 +1164,7 @@ _ncl_kbwddelw(struct line *l)
    l->cursor = c;
    cap = l->line.cells + c;
 
-   if (t != l->cursor) {
+   if (l->topins != l->cursor) {
       j = t - c + i;
       memmove(cap, cap + i, j * sizeof(*cap));
    }
