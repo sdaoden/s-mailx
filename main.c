@@ -324,7 +324,6 @@ _grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt)
 
 static void
 _setup_vars(void){
-   /* XXX furtherly check paths? */
    struct passwd *pwuid;
    char const *cp;
    NYD_ENTER;
@@ -359,16 +358,21 @@ _setup_vars(void){
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
    /* */
-   if((cp = ok_vlook(HOME)) == NULL){
+   if((cp = ok_vlook(HOME)) == NULL ||
+         !is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
       cp = pwuid->pw_dir;
       pstate |= PS_ROOT;
       ok_vset(HOME, cp);
       pstate &= ~PS_ROOT;
    }
 
+   cp = ok_vlook(TMPDIR);
+   assert(cp != NULL);
+   if(!is_dir(cp) || access(cp, R_OK | W_OK | X_OK))
+      ok_vclear(TMPDIR);
+
    /* Ensure some variables get loaded */
    (void)ok_blook(POSIXLY_CORRECT);
-   (void)ok_vlook(TMPDIR);
    NYD_LEAVE;
 }
 

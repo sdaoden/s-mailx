@@ -9754,7 +9754,9 @@ and for terminal management in general to
 Used as directory for temporary files instead of
 .Pa /tmp ,
 if set.
-This variable is only used when it resides in the process environment.
+This variable is only used when it resides in the process environment,
+but \*(UA will ensure at startup that this environment variable is
+updated to contain a usable temporary directory.
 .
 .Mx
 .It Ev USER
