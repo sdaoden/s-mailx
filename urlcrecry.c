@@ -1166,6 +1166,10 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
    NYD_ENTER;
 
+   OBSOLETE(_("You are using old-style credentials, which will vanish in v15!\n"
+      "  Please read the manual section "
+         "\"On URL syntax and credential lookup\""));
+
    memset(ccp, 0, sizeof *ccp);
 
    switch (cproto) {

@@ -1477,7 +1477,7 @@ enum okeys {
 
    ok_v__account_name,                 /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
-   ok_v_agent_shell_lookup,
+ok_v_agent_shell_lookup,
    ok_b_allnet,
    ok_b_append,
    ok_b_ask,
