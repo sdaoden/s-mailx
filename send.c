@@ -390,7 +390,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    int volatile rv = 0;
    struct mime_handler mh;
    struct str outrest, inrest;
-   char *line = NULL, *cp, *cp2, *start;
+   char *line = NULL, *cp;
    char const * volatile tmpname = NULL;
    size_t linesize = 0, linelen, cnt;
    int volatile term_infd;
@@ -445,164 +445,133 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    /* Work the headers */
    /* C99 */{
-   enum {
-      HPS_NONE = 0,
-      HPS_IN_FIELD = 1<<0,
-      HPS_IGNORE = 1<<1,
-      HPS_ISENC_1 = 1<<2,
-      HPS_ISENC_2 = 1<<3
-   } hps = HPS_NONE;
+   struct n_string hl, *hlp;
    size_t lineno = 0;
+   bool_t hstop;
 
-   for(;;){
+   hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
+   /* Reserve three lines, still not enough for references and DKIM etc. */
+   hlp = n_string_reserve(hlp, n_MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
+
+   for(hstop = FAL0; !hstop;){
       size_t lcnt;
 
       lcnt = cnt;
       if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0) == NULL)
          break;
       ++lineno;
-      if (line[0] == '\n')
+      if (linelen == 0 || (cp = line)[0] == '\n')
          /* If line is blank, we've reached end of headers */
          break;
+      if(cp[linelen - 1] == '\n')
+         cp[--linelen] = '\0';
 
-      hps &= ~HPS_ISENC_1;
-      if ((hps & HPS_IN_FIELD) && blankchar(line[0])) {
-         /* If this line is a continuation (SP / HT) of a previous header
-          * field, determine if the start of the line is a MIME encoded word */
-         if (hps & HPS_ISENC_2) {
-            for (cp = line; blankchar(*cp); ++cp)
-               ;
-            if (cp > line && linelen - PTR2SIZE(cp - line) > 8 &&
-                  cp[0] == '=' && cp[1] == '?')
-               hps |= HPS_ISENC_1;
+      /* Are we in a header? */
+      if(hlp->s_len > 0){
+         if(!blankchar(*cp)){
+            fseek(ibuf, -(off_t)(lcnt - cnt), SEEK_CUR);
+            cnt = lcnt;
+            goto jhdrput;
          }
-      } else {
+         goto jhdrpush;
+      }else{
          /* Pick up the header field if we have one */
-         for (cp = line; (c = *cp & 0377) && c != ':' && !spacechar(c); ++cp)
-            ;
-         cp2 = cp;
-         while (spacechar(*cp))
+         while(*cp != ':' && !spacechar(*cp))
             ++cp;
-         if (cp[0] != ':') {
+         while(spacechar(*cp))
+            ++cp;
+         if(*cp != ':'){
             /* That won't work with MIME when saving etc., before v15 */
             if (lineno != 1)
                /* XXX This disturbs, and may happen multiple times, and we
                 * XXX cannot heal it for multipart except for display <v15 */
                n_err(_("Malformed message: headers and body not separated "
                   "(with empty line)\n"));
-            if (level != 0)
+            if(level != 0)
                dostat &= ~(1 | 2);
             fseek(ibuf, -(off_t)(lcnt - cnt), SEEK_CUR);
             cnt = lcnt;
             break;
          }
+         cp = line;
+jhdrpush:
+         if(convert == CONV_NONE){
+            hlp = n_string_push_buf(hlp, cp, (ui32_t)linelen);
+            hlp = n_string_push_c(hlp, '\n');
+         }else{
+            bool_t lblank, isblank;
 
-         /* If it is an ignored field and we care about such things, skip it */
-         c = *cp2;
-         *cp2 = 0; /* temporarily null terminate */
-         if ((doitp != NULL &&
-                  n_ignore_is_ign(doitp, line, PTR2SIZE(cp2 - line))) ||
-               (action == SEND_MBOX &&
-                (!asccasecmp(line, "content-length") ||
-                 !asccasecmp(line, "lines")) && !ok_blook(keep_content_length)))
-            hps |= HPS_IGNORE;
-         else if (!asccasecmp(line, "status") || !asccasecmp(line, "x-status"))
-            hps |= HPS_IGNORE;
-         else {
-            hps &= ~HPS_IGNORE;
-            /* For colourization we need the complete line, so save it */
-            /* XXX This is all temporary (colour belongs into backend), so
-             * XXX use tmpname as a temporary storage in the meanwhile */
-#ifdef HAVE_COLOUR
-            if (n_pstate & n_PS_COLOUR_ACTIVE)
-               tmpname = savestrbuf(line, PTR2SIZE(cp2 - line));
-#endif
-         }
-         *cp2 = c;
-         hps |= HPS_IN_FIELD;
-      }
+            for(lblank = FAL0, lcnt = 0; lcnt < linelen; ++cp, ++lcnt){
+               char c8;
 
-      /* Determine if the end of the line is a MIME encoded word */
-      /* TODO geeeh!  all this lengthy stuff that follows is about is dealing
-       * TODO with header follow lines, and it should be up to the backend
-       * TODO what happens and what not, i.e., it doesn't matter whether it's
-       * TODO a MIME-encoded word or not, as long as a single separating space
-       * TODO remains in between lines (the MIME stuff will correctly remove
-       * TODO whitespace in between multiple adjacent encoded words) */
-      hps &= ~HPS_ISENC_2;
-      if (cnt && (c = getc(ibuf)) != EOF) {
-         if (blankchar(c)) {
-            cp = line + linelen - 1;
-            if (linelen > 0 && *cp == '\n')
-               --cp;
-            while (cp >= line && whitechar(*cp))
-               --cp;
-            if (PTR2SIZE(cp - line > 8) && cp[0] == '=' && cp[-1] == '?')
-               hps |= HPS_ISENC_2;
-         }
-         ungetc(c, ibuf);
-      }
-
-      if (!(hps & HPS_IGNORE)) {
-         size_t len = linelen;
-         start = line;
-         if (action == SEND_TODISP || action == SEND_TODISP_ALL ||
-               action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-               action == SEND_TOSRCH) {
-            /* Strip blank characters if two MIME-encoded words follow on
-             * continuing lines */
-            if (hps & HPS_ISENC_1)
-               while (len > 0 && blankchar(*start)) {
-                  ++start;
-                  --len;
+               c8 = *cp;
+               if(!(isblank = blankchar(c8)) || !lblank){
+                  if((lblank = isblank))
+                     c8 = ' ';
+                  hlp = n_string_push_c(hlp, c8);
                }
-            if (hps & HPS_ISENC_2)
-               if (len > 0 && start[len - 1] == '\n')
-                  --len;
-            while (len > 0 && blankchar(start[len - 1]))
-               --len;
-         }
-#ifdef HAVE_COLOUR
-         {
-         bool_t colour_stripped = FAL0;
-         if (tmpname != NULL) {
-            n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, tmpname);
-            if (len > 0 && start[len - 1] == '\n') {
-               colour_stripped = TRU1;
-               --len;
             }
          }
-#endif
-         _out(start, len, obuf, convert, action, qf, stats, NULL,NULL);
-#ifdef HAVE_COLOUR
-         if (tmpname != NULL) {
-            n_colour_reset(obuf);
-            if (colour_stripped)
-               putc('\n', obuf);
-         }
-         }
-#endif
-         if (ferror(obuf)) {
-            free(line);
-            rv = -1;
-            goto jleave;
-         }
+         continue;
       }
+
+jhdrput:
+      /* If it is an ignored header, skip it */
+      *(cp = memchr(hlp->s_dat, ':', hlp->s_len)) = '\0';
+      /* C99 */{
+         size_t i;
+
+         i = PTR2SIZE(cp - hlp->s_dat);
+         if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
+               !asccasecmp(hlp->s_dat, "status") ||
+               !asccasecmp(hlp->s_dat, "x-status") ||
+               (action == SEND_MBOX &&
+                  (!asccasecmp(hlp->s_dat, "content-length") ||
+                   !asccasecmp(hlp->s_dat, "lines")) &&
+                !ok_blook(keep_content_length)))
+            goto jhdrtrunc;
+      }
+
+      /* Dump it */
+#ifdef HAVE_COLOUR
+      if(n_pstate & n_PS_COLOUR_ACTIVE)
+         n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+#endif
+      *cp = ':';
+      _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NULL,NULL);
+#ifdef HAVE_COLOUR
+      if(n_pstate & n_PS_COLOUR_ACTIVE)
+         n_colour_reset(obuf);
+#endif
+      if(convert != CONV_NONE)
+         putc('\n', obuf);
+
+jhdrtrunc:
+      hlp = n_string_trunc(hlp, 0);
    }
+   hstop = TRU1;
+   if(hlp->s_len > 0)
+      goto jhdrput;
 
    /* We've reached end of headers, so eventually force out status: field and
     * note that we are no longer in header fields */
-   if (dostat & 1)
+   if(dostat & 1)
       statusput(zmp, obuf, qf, stats);
-   if (dostat & 2)
+   if(dostat & 2)
       xstatusput(zmp, obuf, qf, stats);
-   if (doitp != n_IGNORE_ALL)
+   if(doitp != n_IGNORE_ALL)
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    } /* C99 */
+
    quoteflt_flush(qf);
-   free(line);
+   cp = line;
    line = NULL;
-   tmpname = NULL;
+   free(cp);
+
+   if(ferror(obuf)){
+      rv = -1;
+      goto jleave;
+   }
 
 jheaders_skip:
    memset(&mh, 0, sizeof mh);
