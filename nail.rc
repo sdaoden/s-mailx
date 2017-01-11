@@ -181,9 +181,9 @@ headerpick forward retain add subject date from to cc
 
 # PDF display, asynchronous display
 #wysh set pipe-application/pdf='@=&@\
-#   trap "rm -f \"${NAIL_FILENAME_TEMPORARY}\"" EXIT;\
+#   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
-#   mupdf "${NAIL_FILENAME_TEMPORARY}"'
+#   mupdf "${MAILX_FILENAME_TEMPORARY}"'
 
 ## Gimmicks
 

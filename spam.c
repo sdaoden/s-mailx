@@ -911,6 +911,7 @@ static void
 _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
 {
    struct str s;
+   char const *cp;
    struct spam_cf *scfp;
    NYD2_ENTER;
    n_LCTA(2 < n_NELEM(scfp->cf_env), "Preallocated buffer too small");
@@ -922,15 +923,16 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
       scfp->cf_a0 = "-c";
    }
 
-   /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
+   /* MAILX_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
-    * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
+    * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   scfp->cf_env[0] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
-         getrandstring(n_MIN(NAME_MAX / 4, 16)), NULL)->s;
-
-   scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, /* TODO v15 */
-         "=", ok_vlook(TMPDIR), NULL)->s;
+   cp = getrandstring(n_MIN(NAME_MAX / 4, 16));
+   scfp->cf_env[0] = str_concat_csvl(&s,
+         n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
+   /* v15 compat NAIL_ environments vanish! */
+   scfp->cf_env[1] = str_concat_csvl(&s,
+         "NAIL_FILENAME_GENERATED", "=", cp, NULL)->s;
    scfp->cf_env[2] = NULL;
    NYD2_LEAVE;
 }

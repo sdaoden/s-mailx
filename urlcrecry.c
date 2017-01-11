@@ -526,18 +526,15 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    bool_t rv = FAL0;
    NYD2_ENTER;
 
-   env_addon[0] = str_concat_csvl(&s, AGENT_USER, "=", urlp->url_user.s,
+   env_addon[0] = str_concat_csvl(&s, "NAIL_USER", "=", urlp->url_user.s,
          NULL)->s;
-   env_addon[1] = str_concat_csvl(&s, AGENT_USER_ENC, "=", urlp->url_user_enc.s,
+   env_addon[1] = str_concat_csvl(&s,
+         "NAIL_USER_ENC", "=", urlp->url_user_enc.s, NULL)->s;
+   env_addon[2] = str_concat_csvl(&s, "NAIL_HOST", "=", urlp->url_host.s,
          NULL)->s;
-   env_addon[2] = str_concat_csvl(&s, AGENT_HOST, "=", urlp->url_host.s,
+   env_addon[3] = str_concat_csvl(&s, "NAIL_HOST_PORT", "=", urlp->url_h_p.s,
          NULL)->s;
-   env_addon[3] = str_concat_csvl(&s, AGENT_HOST_PORT, "=", urlp->url_h_p.s,
-         NULL)->s;
-   env_addon[4] = str_concat_csvl(&s, NAILENV_TMPDIR, /* TODO v15 */
-         "=", ok_vlook(TMPDIR), NULL)->s;
-
-   env_addon[5] = NULL;
+   env_addon[4] = NULL;
 
    if ((pbuf = Popen(comm, "r", ok_vlook(SHELL), env_addon, -1)) == NULL) {
       n_err(_("*agent-shell-lookup* startup failed (%s)\n"), comm);

@@ -1347,9 +1347,9 @@ if $features !@ +filter-html-tagsoup
 endif
 mimetype '@ application/mathml+xml mathml'
 wysh set pipe-application/pdf='@&=@ \e
-  trap "rm -f \e"${NAIL_FILENAME_TEMPORARY}\e"" EXIT;\e
+  trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
   trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
-  mupdf "${NAIL_FILENAME_TEMPORARY}"'
+  mupdf "${MAILX_FILENAME_TEMPORARY}"'
 .Ed
 .
 .Pp
@@ -1468,7 +1468,7 @@ or
 command line options, or by setting the
 .Sx ENVIRONMENT
 variable
-.Ev NAIL_NO_SYSTEM_RC .
+.Ev MAILX_NO_SYSTEM_RC .
 .
 .Mx
 .It Pa \*(ur
@@ -1481,7 +1481,7 @@ Reading of this file can be suppressed with the
 .Fl \&:
 command line option.
 .
-.It Va NAIL_EXTRA_RC
+.It Va mailx-extra-rc
 Can be used to define an optional startup file to be read after all
 other resource files.
 It can be used to specify settings that are not understood by other
@@ -3867,6 +3867,7 @@ as well as a possibly tracked line editor history file.
 .Ic file ,
 but open the mailbox readonly.
 .
+.
 .Mx
 .It Ic file
 (fi) The file command switches to a new mailbox.
@@ -3878,9 +3879,8 @@ Some special
 .Sx "filename transformations"
 are recognized for the
 .Ar name
-argument, as documented in the introduction of
-.Sx COMMANDS .
-.Mx -sx
+argument.
+.
 .Pp
 If the name ends with
 .Ql .gz ,
@@ -3898,6 +3898,7 @@ facility, sufficient support provided.
 Likewise, if the named file does not exist, but a file with one of the
 mentioned compression extensions does, then the name is automatically
 expanded and the compressed file is used.
+.
 .Pp
 Otherwise, if the name ends with an extension for which
 .Va file-hook-load-EXTENSION
@@ -3926,6 +3927,16 @@ as necessary a privilege-separated dotlock child process will be used
 to accommodate for necessary privilege adjustments in order to create
 the dotlock file in the same directory
 and with the same user and group identities as the file of interest.
+.
+.Pp
+\*(UA by default uses tolerant POSIX rules when reading MBOX database
+files, but it will detect invalid message boundaries in this mode and
+complain (even more with
+.Va debug )
+if any is seen: in this case
+.Va mbox-rfc4155
+can be used to create a valid MBOX database from the invalid input.
+.
 .Pp
 If
 .Ar name
@@ -3940,9 +3951,11 @@ format; \*(ID the variable
 .Va newfolders
 can be used to control the format of yet non-existent folders.
 A name of the form
+.
 .Pp
 .Dl \*(IN protocol://[user[:password]@]host[:port][/path]
 .Dl \*(OU protocol://[user@]host[:port][/path]
+.
 .Pp
 is taken as an Internet mailbox specification.
 The \*(OPally supported protocols are
@@ -3956,6 +3969,7 @@ part is valid only for IMAP; there it defaults to
 .Ar INBOX .
 Also see the section
 .Sx "On URL syntax and credential lookup" .
+.
 .Pp
 \*(OU If
 .Ar user
@@ -3966,6 +3980,7 @@ or
 they must be escaped in URL notation \(en the command
 .Ic urlcodec
 can be used to show the necessary conversion.
+.
 .
 .Mx
 .It Ic flag
@@ -6200,7 +6215,7 @@ And the default global
 file (which is loaded unless the
 .Fl n
 command line option has been used or the
-.Ev NAIL_NO_SYSTEM_RC
+.Ev MAILX_NO_SYSTEM_RC
 environment variable is set, see
 .Sx "Resource files" )
 bends those initial settings a bit, e.g., it sets the variables
@@ -7413,6 +7428,14 @@ for more).
 \*(BO\*(OP Do not establish any default key binding.
 .
 .Mx
+.It Va mailx-extra-rc
+An additional startup file that is loaded as the last of the
+.Sx "Resource files" .
+Use this file for commands that are not understood by other POSIX
+.Xr mailx 1
+implementations.
+.
+.Mx
 .It Va markanswered
 \*(BO When a message is replied to and this variable is set,
 it is marked as having been
@@ -7780,16 +7803,6 @@ will treat its contents as that name.
 The default is
 .Ql sendmail .
 .
-.Mx
-.It Va NAIL_EXTRA_RC
-The name of an optional startup file to be read last.
-This variable has an effect only if it is set in any of the
-.Sx "Resource files" ,
-it is not imported from the environment.
-Use this file for commands that are not understood by other POSIX
-.Xr mailx 1
-implementations.
-.
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 \*(BO\*(IN\*(OP Used to control usage of the users
@@ -8014,7 +8027,7 @@ can in fact be used to adjust usage and behaviour of a following shell
 command specification by appending trigger characters to it, e.g., the
 following hypothetical command specification could be used:
 .Bd -literal -offset indent
-set pipe-X/Y='@*!++=@vim ${NAIL_FILENAME_TEMPORARY}'
+set pipe-X/Y='@*!++=@vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .
 .Pp
@@ -8053,7 +8066,7 @@ will only be used in interactive mode and implies
 .It Ql +
 Request creation of a zero-sized temporary file, the absolute pathname
 of which will be made accessible via the environment variable
-.Ev NAIL_FILENAME_TEMPORARY
+.Ev MAILX_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile ) .
 If this trigger is given twice then the file will be unlinked
 automatically by \*(UA when the command loop is entered again at latest
@@ -8063,7 +8076,7 @@ automatically by \*(UA when the command loop is entered again at latest
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
 input; if this flag is set then the data will instead be written into
-.Ev NAIL_FILENAME_TEMPORARY
+.Ev MAILX_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile-fill ) ,
 the creation of which is implied; note however that in order to cause
 deletion of the temporary file you still have to use two plus signs
@@ -8084,41 +8097,31 @@ the environment of the shell command:
 .Pp
 .Bl -tag -compact -width ".It Ev _AIL__ILENAME__ENERATED"
 .Mx
-.It Ev NAIL_CONTENT
+.It Ev MAILX_CONTENT
 The MIME content-type of the part, if known, the empty string otherwise.
 .
 .Mx
-.It Ev NAIL_CONTENT_EVIDENCE
+.It Ev MAILX_CONTENT_EVIDENCE
 If
 .Va mime-counter-evidence
 includes the carry-around-bit (2), then this will be set to the detected
 MIME content-type; not only then identical to
-.Ev \&\&NAIL_CONTENT
+.Ev \&\&MAILX_CONTENT
 otherwise.
 .
 .Mx
-.It Ev NAIL_FILENAME
+.It Ev MAILX_FILENAME
 The filename, if any is set, the empty string otherwise.
 .
 .Mx
-.It Ev NAIL_FILENAME_GENERATED
+.It Ev MAILX_FILENAME_GENERATED
 A random string.
 .
 .Mx
-.It Ev NAIL_FILENAME_TEMPORARY
+.It Ev MAILX_FILENAME_TEMPORARY
 If temporary file creation has been requested through the command prefix
 this variable will be set and contain the absolute pathname of the
 temporary file.
-.
-.Mx
-.It Ev NAIL_TMPDIR
-The temporary directory that \*(UA uses.
-Usually identical to
-.Ev TMPDIR ,
-but guaranteed to be set and usable by child processes;
-to ensure the latter condition for
-.Ev \&\&TMPDIR
-also, it will be set.
 .El
 .
 .
@@ -8939,10 +8942,8 @@ and
 the manual section
 .Sx "Handling spam"
 contains examples for some programs.
-The process environment of the hooks will have the variables
-.Ev NAIL_TMPDIR , TMPDIR
-and
-.Ev NAIL_FILENAME_GENERATED
+The process environment of the hooks will have the variable
+.Ev MAILX_FILENAME_GENERATED
 set.
 Note that spam score support for
 .Ic spamrate
@@ -9639,6 +9640,15 @@ reading their configuration files.
 This variable is only used when it resides in the process environment.
 .
 .Mx
+.It Ev MAILX_NO_SYSTEM_RC
+If this variable is set then reading of
+.Pa \*(UR
+at startup is inhibited, i.e., the same effect is achieved as if \*(UA
+had been started up with the option
+.Fl n .
+This variable is only used when it resides in the process environment.
+.
+.Mx
 .It Ev MBOX
 The name of the users mbox file.
 A logical subset of the special
@@ -9663,15 +9673,6 @@ is used as the file to save messages from the
 that have been read.
 Also see
 .Sx "Message states" .
-.
-.Mx
-.It Ev NAIL_NO_SYSTEM_RC
-If this variable is set then reading of
-.Pa \*(UR
-at startup is inhibited, i.e., the same effect is achieved as if \*(UA
-had been started up with the option
-.Fl n .
-This variable is only used when it resides in the process environment.
 .
 .Mx
 .It Ev NETRC
@@ -10061,7 +10062,7 @@ This field gives a file name format, in which
 .Ql %s
 will be replaced by a random string, the joined combination of which
 will be used as the filename denoted by
-.Ev NAIL_FILENAME_TEMPORARY .
+.Ev MAILX_FILENAME_TEMPORARY .
 One could specify that a GIF file being passed to an image viewer should
 have a name ending in
 .Ql .gif
@@ -10123,7 +10124,7 @@ This is handy if some global unchanging condition is to be queried, like
 .It Cd x-mailx-tmpfile
 Extension flag field that requests creation of a zero-sized temporary
 file, the name of which is to be placed in the environment variable
-.Ev NAIL_FILENAME_TEMPORARY .
+.Ev MAILX_FILENAME_TEMPORARY .
 It is an error to use this flag with commands that include a
 .Ql %s
 format.
@@ -10532,8 +10533,8 @@ wysh ghost L '!ls ${LS_COLOR_FLAG} -aFt'
 # message parts can be dealt with as follows:
 define V {
   wysh set pipe-text/plain=$'@*#++=@\e
-    < "${NAIL_FILENAME_TEMPORARY}" awk \e
-        -v TMPFILE="${NAIL_FILENAME_TEMPORARY}" \e'\e
+    < "${MAILX_FILENAME_TEMPORARY}" awk \e
+        -v TMPFILE="${MAILX_FILENAME_TEMPORARY}" \e'\e
       BEGIN {done=0}\e
       /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/{\e
         if (done++ != 0)\e

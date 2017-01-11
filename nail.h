@@ -195,12 +195,6 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 
-/* Some environment variables for pipe hooks */
-#define AGENT_USER      "NAIL_USER"
-#define AGENT_USER_ENC  "NAIL_USER_ENC"
-#define AGENT_HOST      "NAIL_HOST"
-#define AGENT_HOST_PORT "NAIL_HOST_PORT"
-
 /* Colour stuff */
 #ifdef HAVE_COLOUR
 # define n_COLOUR(X)       X
@@ -262,12 +256,11 @@
 #endif
 
 /* Some environment variables for pipe hooks etc. */
-#define NAILENV_TMPDIR              "NAIL_TMPDIR"
-#define NAILENV_FILENAME            "NAIL_FILENAME"
-#define NAILENV_FILENAME_GENERATED  "NAIL_FILENAME_GENERATED"
-#define NAILENV_FILENAME_TEMPORARY  "NAIL_FILENAME_TEMPORARY"
-#define NAILENV_CONTENT             "NAIL_CONTENT"
-#define NAILENV_CONTENT_EVIDENCE    "NAIL_CONTENT_EVIDENCE"
+#define n_PIPEENV_FILENAME "MAILX_FILENAME"
+#define n_PIPEENV_FILENAME_GENERATED "MAILX_FILENAME_GENERATED"
+#define n_PIPEENV_FILENAME_TEMPORARY "MAILX_FILENAME_TEMPORARY"
+#define n_PIPEENV_CONTENT "MAILX_CONTENT"
+#define n_PIPEENV_CONTENT_EVIDENCE "MAILX_CONTENT_EVIDENCE"
 
 /* Is *W* a quoting (ASCII only) character? */
 #define ISQUOTE(W) \
@@ -1576,9 +1569,11 @@ ok_b_autothread,
 
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
+   ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
    ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
    ok_v__mailbox_resolved,             /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__mailbox_display,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailx_extra_rc,
    ok_b_markanswered,
    ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {vip=1} */
@@ -1597,8 +1592,8 @@ ok_b_autothread,
     /* TODO v15: (not yet due to <-> sendmail-progname {defval=VAL_MTA_ARGV0} */
    ok_v_mta_argv0,
 
-   ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
-   ok_b_NAIL_NO_SYSTEM_RC,             /* {import=1} */
+ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
+ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
 ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
 ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
 ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
@@ -1715,7 +1710,7 @@ ok_v_spamd_user,
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,                        /* {import=1,defval=VAL_TMPDIR} */
+   ok_v_TMPDIR,                  /* {import=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */

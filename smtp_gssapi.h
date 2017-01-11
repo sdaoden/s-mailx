@@ -75,7 +75,7 @@
 # ifdef GSSAPI_OLD_STYLE
 #  include <gssapi/gssapi_generic.h>
 #  define GSS_C_NT_HOSTBASED_SERVICE   gss_nt_service_name
-#  define NAIL_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+#  define m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 # endif
 #else
 # include <gssapi.h>
@@ -274,7 +274,7 @@ j_leave:
    return ok;
 }
 
-# ifdef NAIL_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+# ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 #  undef GSS_C_NT_HOSTBASED_SERVICE
 # endif
 #endif /* HAVE_GSSAPI */

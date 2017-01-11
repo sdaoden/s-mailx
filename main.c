@@ -980,11 +980,22 @@ jgetopt_done:
    if(resfiles & a_RF_ALL){
       /* *expand() returns a savestr(), but load only uses the file name for
        * fopen(), so it's safe to do this */
-      if((resfiles & a_RF_SYSTEM) && !ok_blook(NAIL_NO_SYSTEM_RC))
-         n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
+      if(resfiles & a_RF_SYSTEM){
+         bool_t nload;
+
+         if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
+            OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
+               "$NAIL_NO_SYSTEM_RC"));
+         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC))
+            n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
+      }
+
       if(resfiles & a_RF_USER)
          n_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
+
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+         OBSOLETE(_("Please use *mailx-extra-rc*, instead of *NAIL_EXTRA_RC*"));
+      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL)
          n_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
    }
 
