@@ -1702,10 +1702,12 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       }
 
       len = strlen(np->n_fullname);
-      if (np->n_flags & GREF)
+      if (np->n_type & GREF)
          len += 2;
       ++col; /* The separating space */
-      if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
+      if ((m & m_INIT) && /*col > 1 &&*/
+            UICMP(z, col + len, >,
+               (np->n_type & GREF ? MIME_LINELEN : 72))) {
          if (fputs("\n ", fo) == EOF)
             goto jleave;
          col = 1;
@@ -1718,11 +1720,12 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          char *hb = np->n_fullname;
          /* GREF needs to be placed in angle brackets, but which are missing */
          if (np->n_type & GREF) {
-            hb = ac_alloc(len + 2 +1);
+            hb = ac_alloc(len +1);
+            len -= 2;
             hb[0] = '<';
             hb[len + 1] = '>';
             hb[len + 2] = '\0';
-            memcpy(hb + 1, np->n_fullname, len);
+            memcpy(&hb[1], np->n_fullname, len);
             len += 2;
          }
          len = xmime_write(hb, len, fo,
