@@ -1517,10 +1517,12 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       }
 
       len = strlen(np->n_fullname);
-      if (np->n_flags & GREF)
+      if (np->n_type & GREF)
          len += 2;
       ++col; /* The separating space */
-      if ((m & m_INIT) && /*col > 1 &&*/ UICMP(z, col + len, >, 72)) {
+      if ((m & m_INIT) && /*col > 1 &&*/
+            UICMP(z, col + len, >,
+               (np->n_type & GREF ? MIME_LINELEN : 72))) {
          if (fputs("\n ", fo) == EOF)
             goto jleave;
          col = 1;
@@ -1529,21 +1531,25 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          putc(' ', fo);
       m = (m & ~m_CSEEN) | m_INIT;
 
-      {
-         char *hb = np->n_fullname;
+      /* C99 */{
+         char *hb;
+
          /* GREF needs to be placed in angle brackets, but which are missing */
-         if (np->n_type & GREF) {
-            hb = ac_alloc(len + 2 +1);
+         hb = np->n_fullname;
+         if(np->n_type & GREF){
+            assert(len == strlen(np->n_fullname) + 2);
+            hb = n_lofi_alloc(len +1);
+            len -= 2;
             hb[0] = '<';
             hb[len + 1] = '>';
             hb[len + 2] = '\0';
-            memcpy(hb + 1, np->n_fullname, len);
+            memcpy(&hb[1], np->n_fullname, len);
             len += 2;
          }
          len = xmime_write(hb, len, fo,
                ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
-         if (np->n_type & GREF)
-            ac_free(hb);
+         if(np->n_type & GREF)
+            n_lofi_free(hb);
       }
       if (len < 0)
          goto jleave;
