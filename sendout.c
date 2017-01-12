@@ -1456,13 +1456,13 @@ a_sendout_random_id(struct header *hp, bool_t msgid)
       goto jleave;
 
    sep = '%';
-   rl = 9;
+   rl = 5;
    if((h = __sendout_ident) != NULL)
       goto jgen;
    if(ok_vlook(hostname) != NULL){
       h = nodename(1);
       sep = '@';
-      rl = 15;
+      rl = 8;
       goto jgen;
    }
    if(hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
