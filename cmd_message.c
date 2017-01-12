@@ -137,8 +137,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 #ifdef HAVE_COLOUR
       if ((options & OPT_INTERACTIVE) &&
-            (action == SEND_TODISP || action == SEND_TODISP_ALL ||
-             action == SEND_SHOW))
+            (action == SEND_TODISP || action == SEND_TODISP_ALL))
          n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != stdout);
 #endif
    }
