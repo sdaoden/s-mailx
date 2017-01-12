@@ -1487,7 +1487,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '1497528261 248'
+   cksum_test content:012 "${MBOX}" '1014122962 248'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
@@ -1497,7 +1497,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '1588208111 187'
+   cksum_test content:013 "${MBOX}" '3212167908 187'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot

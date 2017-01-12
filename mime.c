@@ -293,20 +293,21 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
     * TODO   encoded word and then iconv(3)+MIME encode in one go, in which
     * TODO   case multibyte errors could be catched! */
    enum {
-      /* Maximum line length *//* XXX we are too inflexible and could use
-       * XXX MIME_LINELEN unless an RFC 2047 encoding was actually used */
-      _MAXCOL  = MIME_LINELEN_RFC2047
+      /* Maximum line length */
+      a_MAXCOL_NENC = MIME_LINELEN,
+      a_MAXCOL = MIME_LINELEN_RFC2047
    };
 
    struct str cout, cin;
    enum {
       _FIRST      = 1<<0,  /* Nothing written yet, start of string */
-      _MSH_NOTHING = 1<<1,  /* Now, really: nothing at all has been written */
-      _NO_QP      = 1<<2,  /* No quoted-printable allowed */
-      _NO_B64     = 1<<3,  /* Ditto, base64 */
-      _ENC_LAST   = 1<<4,  /* Last round generated encoded word */
-      _SHOULD_BEE = 1<<5,  /* Avoid lines longer than SHOULD via encoding */
-      _RND_SHIFT  = 6,
+      _MSH_NOTHING = 1<<1, /* Now, really: nothing at all has been written */
+      a_ANYENC = 1<<2,     /* We have RFC 2047 anything at least once */
+      _NO_QP      = 1<<3,  /* No quoted-printable allowed */
+      _NO_B64     = 1<<4,  /* Ditto, base64 */
+      _ENC_LAST   = 1<<5,  /* Last round generated encoded word */
+      _SHOULD_BEE = 1<<6,  /* Avoid lines longer than SHOULD via encoding */
+      _RND_SHIFT  = 7,
       _RND_MASK   = (1<<_RND_SHIFT) - 1,
       _SPACE      = 1<<(_RND_SHIFT+1),    /* Leading whitespace */
       _8BIT       = 1<<(_RND_SHIFT+2),    /* High bit set */
@@ -387,7 +388,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
       i = PTR2SIZE(wend - wcur);
       j = mime_enc_mustquote(wcur, i, MIMEEF_ISHEAD);
       /* If it just cannot fit on a SHOULD line length, force encode */
-      if (i >= _MAXCOL) {
+      if (i > a_MAXCOL_NENC) {
          flags |= _SHOULD_BEE; /* (Sigh: SHOULD only, not MUST..) */
          goto j_beejump;
       }
@@ -405,7 +406,7 @@ j_beejump:
          /* Encoded word produced, but no linear whitespace for necessary RFC
           * 2047 separation?  Generate artificial data (bad standard!) */
          if ((flags & (_ENC_LAST | _SPACE)) == _ENC_LAST) {
-            if (col >= _MAXCOL) {
+            if (col >= a_MAXCOL) {
                putc('\n', fo);
                ++sz;
                col = 0;
@@ -429,7 +430,9 @@ jnoenc_putws:
           * todo word only, and why be smarter than the standard? */
 jnoenc_retry:
          i = PTR2SIZE(wend - wbot);
-         if (i + col <= (flags & _OVERLONG ? MIME_LINELEN_MAX : _MAXCOL)) {
+         if (i + col + ((flags & _MSH_NOTHING) != 0) <=
+                  (flags & _OVERLONG ? MIME_LINELEN_MAX
+                   : (flags & a_ANYENC ? a_MAXCOL : a_MAXCOL_NENC))) {
             if(flags & _MSH_NOTHING){
                flags &= ~_MSH_NOTHING;
                putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
@@ -487,7 +490,7 @@ jnoenc_retry:
          } else
             wcur = wbot++;
 
-         flags |= _ENC_LAST;
+         flags |= a_ANYENC | _ENC_LAST;
          pstate |= PS_HEADER_NEEDED_MIME;
 
          /* RFC 2047:
@@ -527,7 +530,7 @@ jenc_retry_same:
           * longer (just like RFC 5322's "a line SHOULD fit in 78 but MAY be
           * 998 characters long"), so we cannot use the _OVERLONG mechanism,
           * even though all tested mailers seem to support it */
-         if (i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ _MAXCOL)) {
+         if (i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ a_MAXCOL)) {
             if(flags & _MSH_NOTHING){
                flags &= ~_MSH_NOTHING;
                putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
@@ -586,7 +589,7 @@ jenc_retry_same:
             i -= j;
             /* (Note the problem most likely is the transfer-encoding blow,
              * which is why we test this *after* the decrements.. */
-            if (i <= _MAXCOL)
+            if (i <= a_MAXCOL)
                break;
          }
          goto jenc_retry;
