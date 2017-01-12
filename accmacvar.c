@@ -95,6 +95,18 @@ enum a_amv_var_flags{
    a_AMV_VF__MASK = (1<<(15+1)) - 1
 };
 
+
+/* We support some special parameter names for one-letter variable names;
+ * note these have counterparts in the code that manages shell expansion! */
+enum a_amv_var_special_type{
+   a_AMV_VST_STAR,   /* * */
+   a_AMV_VST_AT,     /* @ */
+   a_AMV_VST_NOSIGN  /* # */
+   /* ?  This is different in that it is not a macro-local variable, but in
+    * fact a real variable! */
+   /*a_AMV_VST_QM*/
+};
+
 struct a_amv_mac{
    struct a_amv_mac *am_next;
    ui32_t am_maxlen;             /* of any line in .am_line_dat */
@@ -120,7 +132,9 @@ struct a_amv_mac_call_args{
    void *amca_hook_arg;
    bool_t amca_lopts_on;
    bool_t amca_ps_hook_mask;
-   ui8_t amca__pad[6];
+   ui8_t amca__pad[4];
+   ui16_t amca_argc;                /* Max is SI16_MAX */
+   char const **amca_argv;
 };
 
 struct a_amv_lostack{
@@ -169,7 +183,10 @@ struct a_amv_var_carrier{
    struct a_amv_var *avc_var;
    struct a_amv_var_map const *avc_map;
    enum okeys avc_okey;
-   ui8_t avc__pad[4];
+   ui8_t avc__pad[1];
+   bool_t avc_is_special;     /* Only if avc_okey == ok_v___special_param */
+   /* Numeric if .avc_is_special==TRUM1, else enum a_amv_var_special_type */
+   ui16_t avc_special_prop;
 };
 
 /* Include the constant mk-okey-map.pl output */
@@ -178,7 +195,7 @@ struct a_amv_var_carrier{
 
 /* True boolean visualization: this string will not be copied to heap memory
  * in a_amv_var_copy(), but we must avoid confusion with identical user data.
- * While here, add a special "0" one and speed up *.exit-status* assignments! */
+ * While here, add a special "0" one and speed up *?* assignments! */
 static char const a_amv_var_1[] = "1";
 static char const a_amv_var_0[] = "0";
 
@@ -345,6 +362,17 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
       memset(amcap, 0, sizeof *amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
+      /* C99 */{
+         char const **argv;
+         ui32_t argc;
+
+         for(argc = 0, argv = v; *++argv != NULL; ++argc)
+            ;
+         if(argc > 0){
+            amcap->amca_argc = argc;
+            amcap->amca_argv = &(argv = v)[1];
+         }
+      }
       rv = (a_amv_mac_exec(amcap) == FAL0);
    }else if((rv = (silent_nexist == FAL0)))
       n_err(_("Undefined macro `call'ed: %s\n"), n_shexp_quote_cp(name, FAL0));
@@ -913,8 +941,53 @@ static bool_t
 a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
    ui32_t hash, i, j;
    struct a_amv_var_map const *avmp;
+   char c;
    NYD2_ENTER;
 
+   /* It may be a special a.k.a. macro-local or one-letter parameter */
+   c = name[0];
+   if(n_UNLIKELY(digitchar(c))){
+      /* (Inline dec. atoi, ugh) */
+      for(j = (ui8_t)c - '0', i = 1;; ++i){
+         c = name[i];
+         if(c == '\0')
+            break;
+         if(!digitchar(c))
+            goto jno_special_param;
+         j = j * 10 + (ui8_t)c - '0';
+      }
+      if(j != 0 && j <= SI16_MAX){
+         avcp->avc_is_special = TRUM1;
+         goto jspecial_param_m1;
+      }
+   }else if(n_UNLIKELY(name[1] == '\0')){
+      switch(c){
+      case '*':
+         j = a_AMV_VST_STAR;
+         goto jspecial_param;
+      case '@':
+         j = a_AMV_VST_AT;
+         goto jspecial_param;
+      case '#':
+         j = a_AMV_VST_NOSIGN;
+         goto jspecial_param;
+      case '?':
+         /* Not function local, could also simply look it up, but faster */
+         avcp->avc_name = name;
+         avmp = &a_amv_var_map[a_AMV_VAR_QM_MAP_IDX];
+         avcp->avc_hash = avmp->avm_hash;
+         avcp->avc_map = avmp;
+         avcp->avc_okey = ok_v___qm;
+         avcp->avc_is_special = FAL0;
+         goto jleave;
+      default:
+         break;
+      }
+   }
+
+   /* Normal reverse lookup, walk over the hashtable */
+jno_special_param:
+   avcp->avc_is_special = FAL0;
    avcp->avc_name = name = a_amv_var_canonify(name);
    avcp->avc_hash = hash = a_AMV_NAME2HASH(name);
 
@@ -945,6 +1018,18 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
 jleave:
    NYD2_LEAVE;
    return (avcp != NULL);
+
+   /* All these are mapped to *--special-param* */
+jspecial_param:
+   avcp->avc_is_special = TRU1;
+jspecial_param_m1:
+   avcp->avc_name = name;
+   avcp->avc_special_prop = (ui16_t)j;
+   avmp = &a_amv_var_map[a_AMV_VAR_SPECIAL_PARAM_MAP_IDX];
+   avcp->avc_hash = avmp->avm_hash;
+   avcp->avc_map = avmp;
+   avcp->avc_okey = ok_v___special_param;
+   goto jleave;
 }
 
 static bool_t
@@ -1078,8 +1163,8 @@ jnewval: /* C99 */{
       size_t l;
 
       l = strlen(avcp->avc_name) +1;
-      avcp->avc_var = avp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name
-            ) + l);
+      avcp->avc_var =
+      avp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
       memcpy(avp->av_name, avcp->avc_name, l);
@@ -1304,7 +1389,7 @@ jforce_env:
    free(avp);
 
    /* XXX Fun part, extremely simple-minded for now: if this variable has
-    * XXX a default value, immediately reinstantiate it! */
+    * XXX a default value, immediately reinstantiate it!  TODO Heh? */
    if(n_UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0))
       a_amv_var_lookup(avcp, TRU1);
 jleave:
@@ -1933,7 +2018,61 @@ n_var_voklook(char const *vokey){
 
    a_amv_var_revlookup(&avc, vokey);
 
-   rv = a_amv_var_lookup(&avc, FAL0) ? avc.avc_var->av_value : NULL;
+   /* Here, and only here we need to take care for the special macro-local
+    * parameters... */
+   if(n_LIKELY(!avc.avc_is_special))
+      rv = a_amv_var_lookup(&avc, FAL0) ? avc.avc_var->av_value : NULL;
+   else{
+      rv = NULL;
+      /* These may occur only in a macro.. */
+      if(n_LIKELY(a_amv_lopts != NULL)){
+         struct a_amv_mac const *amp;
+         struct a_amv_mac_call_args *amcap;
+
+         /* ..in a `call'ed macro only, to be exact */
+         amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
+         if((amp->am_flags & a_AMV_MF_TYPE_MASK) != a_AMV_MF_ACC){
+            if(avc.avc_is_special == TRUM1){
+               if(avc.avc_special_prop > 0){
+                  if(amcap->amca_argc >= avc.avc_special_prop)
+                     rv = n_UNCONST(amcap->amca_argv[avc.avc_special_prop - 1]);
+               } /* TODO $0 is a function return value, not yet supported */
+            }else switch(avc.avc_special_prop){
+            case a_AMV_VST_STAR:
+            case a_AMV_VST_AT:{
+               /* TODO Expansion of $* and $@ not shell compatible, if
+                * TODO that occurs within double quotes.
+                * TODO Same notes on that in accmacvar.c, shexp.c */
+               ui32_t i, j, l;
+
+               for(i = j = 0; i < amcap->amca_argc; ++i)
+                  j += strlen(amcap->amca_argv[i]) + 1;
+               if(j == 0)
+                  rv = n_UNCONST(n_empty);
+               else{
+                  rv = salloc(j);
+                  for(i = j = l = 0; i < amcap->amca_argc; ++i){
+                     l = strlen(amcap->amca_argv[i]);
+                     memcpy(&rv[j], amcap->amca_argv[i], l);
+                     j += l;
+                     rv[j++] = ' ';
+                  }
+                  rv[--j] = '\0';
+               }
+            }  break;
+            case a_AMV_VST_NOSIGN:
+               rv = salloc(sizeof("65535"));
+               snprintf(rv, sizeof("65535"), "%hu", amcap->amca_argc);
+               break;
+            default:
+               rv = n_UNCONST(n_empty);
+               break;
+            }
+         }
+      }else if(options & OPT_D_V)
+         n_err(_("Cannot use macro local variable in this context: %s\n"),
+            n_shexp_quote_cp(vokey, FAL0));
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -2161,7 +2300,8 @@ c_environ(void *v){
    bool_t islnk;
    NYD_ENTER;
 
-   if((islnk = !strcmp(*(ap = v), "link")) || !strcmp(*ap, "unlink")){
+   if((islnk = is_asccaseprefix(*(ap = v), "link")) ||
+         is_asccaseprefix(*ap, "unlink")){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap);
 
@@ -2193,9 +2333,9 @@ c_environ(void *v){
             }
          }
       }
-   }else if(!strcmp(*ap, "set"))
+   }else if(is_asccaseprefix(*ap, "set"))
       err = !a_amv_var_c_set(++ap, TRU1);
-   else if(!strcmp(*ap, "unset")){
+   else if(is_asccaseprefix(*ap, "unset")){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap);
 

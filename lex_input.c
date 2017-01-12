@@ -965,7 +965,7 @@ jleave:
       bool_t reset = !(pstate & PS_ROOT);
 
       pstate |= PS_ROOT;
-      ok_vset(_exit_status, (rv == 0 ? "0" : "1")); /* TODO num=1 +realval */
+      ok_vset(__qm, (rv == 0 ? "0" : "1")); /* TODO num=1 +realval */
       if(reset)
          pstate &= ~PS_ROOT;
    }

@@ -1460,13 +1460,10 @@ enum program_state {
  * - most default VAL_ues come from in from build system via ./make.rc
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
-   /* TODO likely temporary hook data, v15 drop */
-   ok_v_compose_from,                  /* {rdonly=1} */
-   ok_v_compose_sender,                /* {rdonly=1} */
-   ok_v_compose_to,                    /* {rdonly=1} */
-   ok_v_compose_cc,                    /* {rdonly=1} */
-   ok_v_compose_bcc,                   /* {rdonly=1} */
-   ok_v_compose_subject,               /* {rdonly=1} */
+   /* This is used for all macro arguments etc., i.e., [*@#]|[1-9][0-9]*... */
+   ok_v___special_param,               /* {nolopts=1,rdonly=1,nodel=1} */
+   /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
+   ok_v___qm,                          /* {name=?,nolopts=1,rdonly=1,nodel=1} */
 
    ok_v__account_name,                 /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
@@ -1509,6 +1506,14 @@ ok_b_autothread,
    ok_v_crt,                           /* {posnum=1} */
    ok_v_customhdr,                     /* {nocntrls=1} */
 
+   /* TODO likely temporary hook data, v15 drop */
+   ok_v_compose_from,                  /* {rdonly=1} */
+   ok_v_compose_sender,                /* {rdonly=1} */
+   ok_v_compose_to,                    /* {rdonly=1} */
+   ok_v_compose_cc,                    /* {rdonly=1} */
+   ok_v_compose_bcc,                   /* {rdonly=1} */
+   ok_v_compose_subject,               /* {rdonly=1} */
+
    ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
    ok_v_datefield,
    ok_v_datefield_markout_older,
@@ -1525,8 +1530,6 @@ ok_b_autothread,
    ok_v_escape,
    ok_v_expandaddr,
    ok_v_expandargv,
-   /* TODO -exit-status should be num=1 */
-   ok_v__exit_status,                  /* {nolopts=1,rdonly=1,nodel=1} */
 
    ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,

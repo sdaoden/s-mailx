@@ -291,11 +291,11 @@
      DS(N_("Un`define' all given <macros> (* for all)")) },
    { "unaccount", &c_unaccount, (M | RAWLIST), 1, 1000
      DS(N_("Delete all given <accounts> (* for all)")) },
-   { "call", &c_call, (M | X | RAWLIST), 1, 1
+   { "call", &c_call, (M | X | WYRALIST), 1, 100
      DS(N_("Call macro <name>")) },
-   { "~", &c_call, (M | X | RAWLIST), 1, 1
+   { "~", &c_call, (M | X | WYRALIST), 1, 100
      DS(N_("Call a macro")) },
-   { "call_if", &c_call_if, (M | X | RAWLIST), 1, 1
+   { "call_if", &c_call_if, (M | X | WYRALIST), 1, 100
      DS(N_("Call macro <name> if it exists")) },
    { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },

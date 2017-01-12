@@ -390,8 +390,21 @@ _EOT
    }
    print F "};\n";
 
-   print F "#endif /* __CREATE_OKEY_MAP_PL */\n\n";
+   print F "#endif /* __CREATE_OKEY_MAP_PL */\n";
 
+   # Special var backing -[#@*0-9]
+   $i = 0;
+   print F "\n";
+   foreach my $e (@ENTS){
+      if($e->{name} eq '--special-param'){
+         print F "#define a_AMV_VAR_SPECIAL_PARAM_MAP_IDX ${i}u\n"
+      }elsif($e->{name} eq '?'){
+         print F "#define a_AMV_VAR_QM_MAP_IDX ${i}u\n"
+      }
+      ++$i
+   }
+
+   print F "\n";
    die "$OUT: close: $^E" unless close F
 }
 

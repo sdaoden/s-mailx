@@ -56,8 +56,12 @@
  *   defined in Portable Character Set and do not begin with a digit.
  *   Other characters may be permitted by an implementation;
  *   applications shall tolerate the presence of such names.
- * We do support the hyphen "-" because it is common for mailx. */
+ * We do support the hyphen "-" because it is common for mailx.
+ * We support some special parameter names for one-letter variable names;
+ * note these have counterparts in the code that manages internal variables! */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
+#define a_SHEXP_ISVARC_SPECIAL1(C) \
+   ((C) == '*' || (C) == '@' || (C) == '#' || (C) == '?')
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
@@ -252,8 +256,11 @@ a_shexp_var(struct a_shexp_var_stack *svsp)
 
       svsp->svs_dat = vp;
       for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
-         if (!a_SHEXP_ISVARC(c))
+         if (!a_SHEXP_ISVARC(c)){
+            if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c))
+               ++i, ++vp;
             break;
+         }
 
       if (lc) {
          if (c != '}') {
@@ -1437,8 +1444,18 @@ j_dollar_ungetc:
                il -= brace;
                vp = (ib += brace);
 
-               for(i = 0; il > 0 && (c = *ib, a_SHEXP_ISVARC(c)); ++i)
-                  --il, ++ib;
+               for(i = 0; il > 0; --il, ++ib, ++i){
+                  /* We have some special cases regarding macro-local special
+                   * parameters, so ensure these don't cause failure */
+                  c = *ib;
+                  if(!a_SHEXP_ISVARC(c)){
+                     if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c)){
+                        --il, ++ib;
+                        ++i;
+                     }
+                     break;
+                  }
+               }
 
                if(state & a_SKIPQ){
                   if(brace && il > 0 && *ib == '}')
@@ -1459,7 +1476,7 @@ j_dollar_ungetc:
                   if(brace){
                      if(il == 0 || *ib != '}'){
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("Closing brace missing for ${VAR}: %.*s\n"
+                           n_err(_("Missing closing brace for ${VAR}: %.*s\n"
                                  "  Near: %.*s\n"),
                               (int)input->l, input->s, (int)il, ib);
                         rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
@@ -1473,6 +1490,9 @@ j_dollar_ungetc:
                      continue;
 
                   /* Check getenv(3) shall no internal variable exist! */
+                  /* TODO Expansion of $-* and $-@ not shell compatible, if
+                   * TODO that occurs within double quotes.
+                   * TODO Same notes on that in accmacvar.c, shexp.c */
                   vp = savestrbuf(vp, i);
                   if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
