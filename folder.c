@@ -170,10 +170,10 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       enum fexp_mode fexpm;
 
       if((who = shortcut_expand(name)) != NULL){
-         fexpm = FEXP_NSHORTCUT | FEXP_NSHELL;
+         fexpm = FEXP_NSHORTCUT/* XXX | FEXP_NSHELL*/;
          name = who;
       }else
-         fexpm = FEXP_NSHELL;
+         fexpm = FEXP_FULL/* XXX FEXP_NSHELL*/;
 
       if(name[0] == '%'){
          fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */

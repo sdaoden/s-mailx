@@ -317,7 +317,7 @@ c_folders(void *v)
    rv = 1;
 
    if(*(argv = v) != NULL){
-      if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL)
+      if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL) /* XXX NSH? */
          goto jleave;
    }else
       cp = folder_query();
