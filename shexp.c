@@ -77,15 +77,6 @@ enum a_shexp_quote_flags{
    a_SHEXP_QUOTE__FREESHIFT = 16u
 };
 
-struct a_shexp_var_stack {
-   struct a_shexp_var_stack *svs_next; /* Outer stack frame */
-   char const *svs_value;  /* Remaining value to expand */
-   size_t svs_len;         /* gth of .svs_dat this level */
-   char const *svs_dat;    /* Result data of this level */
-   bool_t svs_bsesc;       /* Shall backslash escaping be performed */
-   ui8_t svs__dummy[7];
-};
-
 #ifdef HAVE_FNMATCH
 struct a_shexp_glob_ctx{
    char const *sgc_patdat;       /* Remaining pattern (at and below level) */
@@ -121,11 +112,6 @@ static char *a_shexp_findmail(char const *user, bool_t force);
  * Returns the completely resolved (maybe empty or identical to input)
  * salloc()ed string */
 static char *a_shexp_tilde(char const *s);
-
-/* (Try to) Expand any shell variable in s.
- * Returns the completely resolved (maybe empty) salloc()ed string.
- * Logs on error */
-static char *a_shexp_var(struct a_shexp_var_stack *svsp);
 
 /* Perform fnmatch(3).  May return NULL on error */
 static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
@@ -213,106 +199,6 @@ a_shexp_tilde(char const *s){
 jleave:
    NYD2_LEAVE;
    return rv;
-}
-
-static char *
-a_shexp_var(struct a_shexp_var_stack *svsp)
-{
-   struct a_shexp_var_stack next, *np, *tmp;
-   char const *vp;
-   char lc, c, *cp, *rv;
-   size_t i;
-   NYD2_ENTER;
-
-   if (*(vp = svsp->svs_value) != '$') {
-      bool_t bsesc = svsp->svs_bsesc;
-      union {bool_t hadbs; char c;} u = {FAL0};
-
-      svsp->svs_dat = vp;
-      for (lc = '\0', i = 0; ((c = *vp) != '\0'); ++i, ++vp) {
-         if (c == '$' && lc != '\\')
-            break;
-         if (!bsesc)
-            continue;
-         lc = (lc == '\\') ? (u.hadbs = TRU1, '\0') : c;
-      }
-      svsp->svs_len = i;
-
-      if (u.hadbs) {
-         svsp->svs_dat = cp = savestrbuf(svsp->svs_dat, i);
-
-         for (lc = '\0', rv = cp; (u.c = *cp++) != '\0';) {
-            if (u.c != '\\' || lc == '\\')
-               *rv++ = u.c;
-            lc = (lc == '\\') ? '\0' : u.c;
-         }
-         *rv = '\0';
-
-         svsp->svs_len = PTR2SIZE(rv - svsp->svs_dat);
-      }
-   } else {
-      if ((lc = (*++vp == '{')))
-         ++vp;
-
-      svsp->svs_dat = vp;
-      for (i = 0; (c = *vp) != '\0'; ++i, ++vp)
-         if (!a_SHEXP_ISVARC(c)){
-            if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c))
-               ++i, ++vp;
-            break;
-         }
-
-      if (lc) {
-         if (c != '}') {
-            n_err(_("Variable name misses closing }: %s\n"),
-               svsp->svs_value);
-            svsp->svs_len = strlen(svsp->svs_value);
-            svsp->svs_dat = svsp->svs_value;
-            goto junroll;
-         }
-         c = *++vp;
-      }
-
-      svsp->svs_len = i;
-      /* Check getenv(3) shall no internal variable exist! */
-      if ((rv = vok_vlook(cp = savestrbuf(svsp->svs_dat, i))) != NULL ||
-            (rv = getenv(cp)) != NULL)
-         svsp->svs_len = strlen(svsp->svs_dat = rv);
-      else
-         svsp->svs_len = 0, svsp->svs_dat = n_UNCONST(n_empty);
-   }
-   if (c != '\0')
-      goto jrecurse;
-
-   /* That level made the great and completed encoding.  Build result */
-junroll:
-   for (i = 0, np = svsp, svsp = NULL; np != NULL;) {
-      i += np->svs_len;
-      tmp = np->svs_next;
-      np->svs_next = svsp;
-      svsp = np;
-      np = tmp;
-   }
-
-   cp = rv = salloc(i +1);
-   while (svsp != NULL) {
-      np = svsp;
-      svsp = svsp->svs_next;
-      memcpy(cp, np->svs_dat, np->svs_len);
-      cp += np->svs_len;
-   }
-   *cp = '\0';
-
-jleave:
-   NYD2_LEAVE;
-   return rv;
-jrecurse:
-   memset(&next, 0, sizeof next);
-   next.svs_next = svsp;
-   next.svs_value = vp;
-   next.svs_bsesc = svsp->svs_bsesc;
-   rv = a_shexp_var(&next);
-   goto jleave;
 }
 
 static char *
@@ -1039,12 +925,25 @@ jnext:
       }
 
       if(doexp){
-         struct a_shexp_var_stack top;
+         struct str shin;
+         struct n_string shou, *shoup;
 
-         memset(&top, 0, sizeof top);
-         top.svs_value = res;
-         top.svs_bsesc = TRU1;
-         res = a_shexp_var(&top);
+         shin.s = n_UNCONST(res);
+         shin.l = UIZ_MAX;
+         shoup = n_string_creat_auto(&shou);
+         for(;;){
+            enum n_shexp_state shs;
+
+            /* TODO shexp: take care to not include backtick eval once avail! */
+            shs = n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_LOG_D_V |
+                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DQ |
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE);
+            if(shs & n_SHEXP_STATE_STOP)
+               break;
+         }
+         res = n_string_cp(shoup);
+         shoup = n_string_drop_ownership(shoup);
+         dyn = TRU1;
 
          if(res[0] == '~')
             res = a_shexp_tilde(res);
