@@ -12,7 +12,7 @@ all: config build
 config:
 	@$(_prego)
 build:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
 install packager-install: build
 	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk DESTDIR="$(DESTDIR)" install
 uninstall:
@@ -29,14 +29,14 @@ test:
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
 d-b:
 	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAILJOBS) all
+	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
 
 d-gettext:
 	LC_ALL=C xgettext --sort-by-file --strict --add-location \

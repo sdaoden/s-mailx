@@ -40,7 +40,7 @@ configuration / building and the installation tasks and give the last
 step higher privileges via super(1), sudo(1), su(1) or a similar
 mechanism, e.g.:
 
-  $ make VAL_PREFIX=/usr config && make MAILJOBS='-j 4' &&
+  $ make VAL_PREFIX=/usr config && make MAKEJOBS='-j 4' &&
     super make DESTDIR=./xy install
 
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
@@ -53,18 +53,18 @@ The following make(1) targets exists, the default being `build':
               install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
-              In order to parallelize the `build' step pass a $MAILJOBS
+              In order to parallelize the `build' step pass a $MAKEJOBS
               variable, as shown below.
 - all         Shorthand for "$ make config build".
-              In order to parallelize the `build' step pass a $MAILJOBS
+              In order to parallelize the `build' step pass a $MAKEJOBS
               variable, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
               This can be parallelized, either by a corresponding make(1)
               invocation when the target is run by itself, or by setting
-              the $MAILJOBS variable otherwise, e.g., "MAILJOBS='-j 4'".
-              $MAILJOBS is not tracked in the configuration.
+              the $MAKEJOBS variable otherwise, e.g., "MAKEJOBS='-j 4'".
+              $MAKEJOBS is not tracked in the configuration.
 - install     Only install using the built files of the existing
               configuration.
               The variable $DESTDIR will be honoured (see make.rc),
