@@ -335,9 +335,9 @@ a_head_idna_apply(struct n_addrguts *agp)
    /* Replace the domain part of .ag_skinned with IDNA version */
    sz = strlen(idna_ascii);
    i = agp->ag_sdom_start;
-   cs = salloc(agp->ag_slen - i + sz +1);
+   cs = salloc(i + sz +1);
    memcpy(cs, agp->ag_skinned, i);
-   memcpy(cs + i, idna_ascii, sz);
+   memcpy(&cs[i], idna_ascii, sz);
    i += sz;
    cs[i] = '\0';
 
@@ -397,9 +397,9 @@ a_head_idna_apply(struct n_addrguts *agp)
    /* Replace the domain part of .ag_skinned with IDNA version */
    sz = strlen(idna_out);
    i = agp->ag_sdom_start;
-   cs = salloc(agp->ag_slen - i + sz +1);
+   cs = salloc(i + sz +1);
    memcpy(cs, agp->ag_skinned, i);
-   memcpy(cs + i, idna_out, sz);
+   memcpy(&cs[i], idna_out, sz);
    i += sz;
    cs[i] = '\0';
 
