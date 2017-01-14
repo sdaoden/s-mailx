@@ -1030,7 +1030,11 @@ and
 .Xr sendmail 1 ) .
 Personal aliases will be expanded by \*(UA before the message is sent,
 and are thus a convenient alternative to specifying each addressee by
-itself:
+itself; they correlate with the active set of
+.Ic alternates
+and are subject to
+.Va metoo
+filtering.
 .
 .Pp
 .Dl alias cohorts bill jkf mark kridle@ucbcory ~/mail/cohorts.mbox
@@ -3184,13 +3188,16 @@ can be used to delete aliases.
 .
 .Mx
 .It Ic alternates
-(alt) Manage a list of alternate addresses / names of the active user,
+(alt) Manage a list of alternate addresses or names of the active user,
 members of which will be removed from recipient lists when replying to
 messages (and the
 .Va metoo
 variable is not set).
-If arguments are given the set of alternate names is replaced by them,
-without arguments the current set is displayed.
+Without arguments the current set of alternates is displayed, otherwise
+the set of alternate names is replaced by the given arguments, and the
+internal variable
+.Va -alternates
+is updated accordingly.
 .
 .Mx
 .It Ic answered
@@ -6293,6 +6300,11 @@ etc.
 .It Va -account
 \*(RO Is set to the active
 .Ic account .
+.
+.Mx
+.It Va -alternates
+\*(RO Is set to the list of
+.Ic alternates .
 .
 .Mx
 .It Va -folder-resolved

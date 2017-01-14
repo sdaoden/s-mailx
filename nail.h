@@ -1466,6 +1466,7 @@ enum okeys {
    ok_v___qm,                          /* {name=?,nolopts=1,rdonly=1,nodel=1} */
 
    ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup,
    ok_b_allnet,

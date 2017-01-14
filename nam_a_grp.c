@@ -99,7 +99,7 @@ struct group_lookup {
 };
 
 /* List of alternate names of user */
-static char             **_altnames;
+static char **a_nag_altnames;
 
 /* `alias' */
 static struct group     *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
@@ -1382,43 +1382,87 @@ jleave:
 }
 
 FL int
-c_alternates(void *v)
-{
-   size_t l;
-   char **namelist = v, **ap, **ap2, *cp;
+c_alternates(void *v){
+   char **namelist, **ap, **ap2, *cp;
+   size_t l, sl;
+   int rv;
    NYD_ENTER;
 
-   for (namelist = v, l = 0; namelist[l] != NULL; ++l)
+   rv = 0;
+
+   l = 0;
+   for(namelist = v; namelist[l] != NULL; ++l)
       ;
 
-   if (l == 0) {
-      if (_altnames != NULL) {
+   if(l == 0){
+      if(a_nag_altnames != NULL){
          printf("alternates ");
-         for (ap = _altnames; *ap != NULL; ++ap)
+         for(ap = a_nag_altnames; *ap != NULL; ++ap)
             printf("%s ", *ap);
          printf("\n");
       }
-      goto jleave;
-   }
+   }else{
+      if(a_nag_altnames != NULL){
+         for(ap = a_nag_altnames; *ap != NULL; ++ap)
+            free(*ap);
+         free(a_nag_altnames);
+      }
 
-   if (_altnames != NULL) {
-      for (ap = _altnames; *ap != NULL; ++ap)
-         free(*ap);
-      free(_altnames);
-   }
+      ++l;
+      ap2 =
+      a_nag_altnames = smalloc(l * sizeof(*a_nag_altnames));
 
-   ++l;
-   _altnames = smalloc(l * sizeof(*_altnames));
-   for (ap = namelist, ap2 = _altnames; *ap != NULL; ++ap, ++ap2) {
-      l = strlen(*ap) +1;
-      cp = smalloc(l);
-      memcpy(cp, *ap, l);
-      *ap2 = cp;
+      sl = 0;
+      for(ap = namelist; *ap != NULL; ++ap)
+         if(*ap != '\0'){
+            struct name *np;
+
+            if((np = lextract(*ap, GSKIN)) == NULL || np->n_flink != NULL ||
+                  (np = checkaddrs(np, EACM_STRICT, NULL)) == NULL){
+               n_err(_("Invalid `alternates' argument: %s\n"),
+                  n_shexp_quote_cp(*ap, FAL0));
+               rv = 1;
+               continue;
+            }
+            l = strlen(np->n_name) +1;
+            sl += l;
+            cp = smalloc(l);
+            memcpy(cp, np->n_name, l);
+            *ap2++ = cp;
+         }
+      *ap2 = NULL;
+
+      /* And put it into *-alternates* */
+      if(sl > 0){
+         cp = salloc(sl);
+         for(sl = 0, ap = a_nag_altnames; *ap != NULL; ++ap)
+            if((l = strlen(*ap)) > 0){
+               memcpy(&cp[sl], *ap, l);
+               cp[sl += l] = ' ';
+               ++sl;
+            }
+         if(sl > 0)
+            --sl;
+         cp[sl] = '\0';
+      }else{
+         free(a_nag_altnames);
+         a_nag_altnames = NULL;
+      }
+
+      /* C99 */{
+         bool_t reset = !(pstate & PS_ROOT);
+
+         pstate |= PS_ROOT;
+         if(sl > 0)
+            ok_vset(_alternates, cp);
+         else
+            ok_vclear(_alternates);
+         if(reset)
+            pstate &= ~PS_ROOT;
+      }
    }
-   *ap2 = NULL;
-jleave:
    NYD_LEAVE;
-   return 0;
+   return rv;
 }
 
 FL struct name *
@@ -1429,8 +1473,8 @@ delete_alternates(struct name *np)
    NYD_ENTER;
 
    np = delname(np, ok_vlook(LOGNAME));
-   if (_altnames != NULL)
-      for (ap = _altnames; *ap != '\0'; ++ap)
+   if (a_nag_altnames != NULL)
+      for (ap = a_nag_altnames; *ap != '\0'; ++ap)
          np = delname(np, *ap);
 
    if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
@@ -1464,8 +1508,8 @@ is_myname(char const *name)
 
    if (_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
-   if (_altnames != NULL)
-      for (ap = _altnames; *ap != NULL; ++ap)
+   if (a_nag_altnames != NULL)
+      for (ap = a_nag_altnames; *ap != NULL; ++ap)
          if (_same_name(*ap, name))
             goto jleave;
 
