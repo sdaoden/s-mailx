@@ -1816,9 +1816,9 @@ c_account(void *v){
 
       pstate |= PS_ROOT;
       if(amp != NULL)
-         ok_vset(_account_name, amp->am_name);
+         ok_vset(_account, amp->am_name);
       else
-         ok_vclear(_account_name);
+         ok_vclear(_account);
       if(reset)
          pstate &= ~PS_ROOT;
    }

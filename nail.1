@@ -3158,9 +3158,11 @@ With one argument the given account is activated: the system
 .Va inbox
 of that account will be activated (as via
 .Ic file ) ,
-and a possibly installed
+a possibly installed
 .Va folder-hook
-will be run.
+will be run, and the internal variable
+.Va -account
+will be updated.
 The two argument form is identical to defining a macro as via
 .Ic define :
 .Bd -literal -offset indent
@@ -6288,7 +6290,7 @@ etc.
 \*(RO The status of the last command.
 .
 .Mx
-.It Va -account-name
+.It Va -account
 \*(RO Is set to the active
 .Ic account .
 .
@@ -8272,7 +8274,7 @@ and it is an error if the prompt expands to more than a single token.
 This (post-assignment, i.e., second) expansion can be used to embed
 status information, for example
 .Va \&? ,
-.Va -account-name
+.Va -account
 or
 .Va -mailbox-display .
 .Pp
@@ -10530,7 +10532,7 @@ set emptystart \e
   followup-to followup-to-honour=ask-yes \e
   history-file=+.\*(uAhist history-size=-1 history-gabby \e
   mime-counter-evidence=0xE \e
-  prompt='[\e${-account-name} \e${-mailbox-display}]? ' \e
+  prompt='[\e${-account} \e${-mailbox-display}]? ' \e
   reply-to-honour=ask-yes \e
   umask=
 
