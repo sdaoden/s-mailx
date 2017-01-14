@@ -504,6 +504,7 @@ a_collect_plumbing(char const *ms, struct header *hp){
 
    if(n_UNLIKELY(cmd[0] == NULL))
       goto jecmd;
+
    if(is_asccaseprefix(cmd[0], "header")){
       struct n_header_field *hfp;
       struct name *np, **npp;
@@ -527,65 +528,82 @@ a_collect_plumbing(char const *ms, struct header *hp){
                fputs(&hfp->hf_dat[0], stdout);
             }
             putc('\n', stdout);
-         }else{
-            if(cmd[3] != NULL)
-               goto jecmd;
+            goto jleave;
+         }
 
-            if(!asccasecmp(cmd[2], "from")){
-               np = hp->h_from;
+         if(cmd[3] != NULL)
+            goto jecmd;
+
+         if(!asccasecmp(cmd[2], "from")){
+            np = hp->h_from;
 jlist:
-               fprintf(stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
-            }else if(!asccasecmp(cmd[2], cp = "Sender")){
-               np = hp->h_sender;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "To")){
-               np = hp->h_to;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Cc")){
-               np = hp->h_cc;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Bcc")){
-               np = hp->h_bcc;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Subject")){
-               np = (struct name*)-1;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Reply-To")){
-               np = hp->h_replyto;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-               np = hp->h_mft;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "Message-ID")){
-               np = hp->h_message_id;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "References")){
-               np = hp->h_ref;
-               goto jlist;
-            }else if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-               np = hp->h_in_reply_to;
-               goto jlist;
-            }else{
-               /* Primitive name normalization XXX header object should
-                * XXX have a more sophisticated accessible one */
-               char *xp;
+            fprintf(stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
+            goto jleave;
+         }
+         if(!asccasecmp(cmd[2], cp = "Sender")){
+            np = hp->h_sender;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "To")){
+            np = hp->h_to;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Cc")){
+            np = hp->h_cc;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Bcc")){
+            np = hp->h_bcc;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Subject")){
+            np = (struct name*)-1;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Reply-To")){
+            np = hp->h_replyto;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
+            np = hp->h_mft;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "Message-ID")){
+            np = hp->h_message_id;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "References")){
+            np = hp->h_ref;
+            goto jlist;
+         }
+         if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
+            np = hp->h_in_reply_to;
+            goto jlist;
+         }
 
-               cp = xp = savestr(cmd[2]);
-               xp[0] = upperchar(xp[0]);
-               while(*++xp != '\0')
-                  xp[0] = lowerchar(xp[0]);
+         /* Primitive name normalization XXX header object should
+          * XXX have a more sophisticated accessible one */
+         /* C99 */{
+            char *xp;
 
-               for(hfp = hp->h_user_headers;; hfp = hfp->hf_next){
-                  if(hfp == NULL)
-                     goto j501cp;
-                  else if(!asccasecmp(cp, &hfp->hf_dat[0])){
-                     fprintf(stdout, "210 %s\n", cp);
-                     break;
-                  }
+            cp = xp = savestr(cmd[2]);
+            xp[0] = upperchar(xp[0]);
+            while(*++xp != '\0')
+               xp[0] = lowerchar(xp[0]);
+
+            for(hfp = hp->h_user_headers;; hfp = hfp->hf_next){
+               if(hfp == NULL)
+                  goto j501cp;
+               else if(!asccasecmp(cp, &hfp->hf_dat[0])){
+                  fprintf(stdout, "210 %s\n", cp);
+                  break;
                }
             }
          }
-      }else if(is_asccaseprefix(cmd[1], "show")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "show")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
@@ -594,47 +612,62 @@ jlist:
 jshow:
             if(np != NULL){
                fprintf(stdout, "211 %s\n", cp);
-               do
+               do if(!(np->n_type & GDEL))
                   fprintf(stdout, "%s %s\n", np->n_name, np->n_fullname);
                while((np = np->n_flink) != NULL);
                putc('\n', stdout);
+               goto jleave;
             }else
                goto j501cp;
-         }else if(!asccasecmp(cmd[2], cp = "Sender")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Sender")){
             np = hp->h_sender;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "To")){
             np = hp->h_to;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Cc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Cc")){
             np = hp->h_cc;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Bcc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Bcc")){
             np = hp->h_bcc;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Reply-To")){
             np = hp->h_replyto;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
             np = hp->h_mft;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Message-ID")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Message-ID")){
             np = hp->h_message_id;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "References")){
+         }
+         if(!asccasecmp(cmd[2], cp = "References")){
             np = hp->h_ref;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
             np = hp->h_in_reply_to;
             goto jshow;
-         }else if(!asccasecmp(cmd[2], cp = "Subject")){
+         }
+
+         if(!asccasecmp(cmd[2], cp = "Subject")){
             if(hp->h_subject != NULL)
                fprintf(stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
             else
                fprintf(stdout, "501 %s\n", cp);
-         }else{
-            /* Primitive name normalization XXX header object should
-             * XXX have a more sophisticated accessible one */
+            goto jleave;
+         }
+
+         /* Primitive name normalization XXX header object should
+          * XXX have a more sophisticated accessible one */
+         /* C99 */{
             bool_t any;
             char *xp;
 
@@ -657,7 +690,10 @@ jshow:
             else
                goto j501cp;
          }
-      }else if(is_asccaseprefix(cmd[1], "remove")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "remove")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
@@ -667,44 +703,59 @@ jrem:
             if(*npp != NULL){
                *npp = NULL;
                fprintf(stdout, "210 %s\n", cp);
+               goto jleave;
             }else
                goto j501cp;
-         }else if(!asccasecmp(cmd[2], cp = "Sender")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Sender")){
             npp = &hp->h_sender;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "To")){
             npp = &hp->h_to;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Cc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Cc")){
             npp = &hp->h_cc;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Bcc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Bcc")){
             npp = &hp->h_bcc;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Reply-To")){
             npp = &hp->h_replyto;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
             npp = &hp->h_mft;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Message-ID")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Message-ID")){
             npp = &hp->h_message_id;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "References")){
+         }
+         if(!asccasecmp(cmd[2], cp = "References")){
             npp = &hp->h_ref;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
             npp = &hp->h_in_reply_to;
             goto jrem;
-         }else if(!asccasecmp(cmd[2], cp = "Subject")){
+         }
+
+         if(!asccasecmp(cmd[2], cp = "Subject")){
             if(hp->h_subject != NULL){
                hp->h_subject = NULL;
                fprintf(stdout, "210 %s\n", cp);
+               goto jleave;
             }else
                goto j501cp;
-         }else{
-            /* Primitive name normalization XXX header object should
-             * XXX have a more sophisticated accessible one */
+         }
+
+         /* Primitive name normalization XXX header object should
+          * XXX have a more sophisticated accessible one */
+         /* C99 */{
             struct n_header_field **hfpp;
             bool_t any;
             char *xp;
@@ -726,7 +777,10 @@ jrem:
             if(!any)
                goto j501cp;
          }
-      }else if(is_asccaseprefix(cmd[1], "insert")){ /* TODO LOGIC BELONGS head.c
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "insert")){ /* TODO LOGIC BELONGS head.c
           * TODO That is: Header::factory(string) -> object (blahblah).
           * TODO I.e., as long as we don't have regular RFC compliant parsers
           * TODO which differentiate in between structured and unstructured
@@ -759,67 +813,94 @@ jins:
             aerr = 0;
             if((np = lextract(cmd[3], ntype)) == NULL)
                goto j501cp;
-            else if((np = checkaddrs(np, eacm, &aerr), aerr != 0))
+
+            if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
                fprintf(stdout, "505 %s\n", cp);
-            else if(!mult_ok && (np->n_flink != NULL || *npp != NULL))
-               fprintf(stdout, "506 %s\n", cp);
-            else{
-               *npp = cat(*npp, np);
-               fprintf(stdout, "210 %s\n", cp);
+               goto jleave;
             }
-         }else if(!asccasecmp(cmd[2], cp = "Sender")){
+
+            if(!mult_ok){
+               struct name *xnp;
+
+               for(xnp = *npp; xnp != NULL && !(xnp->n_type & GDEL);
+                     xnp = xnp->n_flink)
+                  ;
+               if(xnp != NULL || np->n_flink != NULL){
+                  fprintf(stdout, "506 %s\n", cp);
+                  goto jleave;
+               }
+            }
+
+            *npp = cat(*npp, np);
+            fprintf(stdout, "210 %s\n", cp);
+            goto jleave;
+         }
+         if(!asccasecmp(cmd[2], cp = "Sender")){
             mult_ok = FAL0;
             npp = &hp->h_sender;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "To")){
             npp = &hp->h_to;
             ntype = GTO | GFULL;
             eacm = EACM_NORMAL | EAF_NAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Cc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Cc")){
             npp = &hp->h_cc;
             ntype = GCC | GFULL;
             eacm = EACM_NORMAL | EAF_NAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Bcc")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Bcc")){
             npp = &hp->h_bcc;
             ntype = GCC | GFULL;
             eacm = EACM_NORMAL | EAF_NAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Reply-To")){
             npp = &hp->h_replyto;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
             npp = &hp->h_mft;
             eacm = EACM_NONAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Message-ID")){
+         }
+         if(!asccasecmp(cmd[2], cp = "Message-ID")){
             mult_ok = FAL0;
             npp = &hp->h_message_id;
             eacm = EACM_NONAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "References")){
+         }
+         if(!asccasecmp(cmd[2], cp = "References")){
             npp = &hp->h_ref;
             ntype = GREF;
             eacm = EACM_NONAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
+         }
+         if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
             npp = &hp->h_in_reply_to;
             ntype = GREF;
             eacm = EACM_NONAME;
             goto jins;
-         }else if(!asccasecmp(cmd[2], cp = "Subject")){
+         }
+
+         if(!asccasecmp(cmd[2], cp = "Subject")){
             if(cmd[3][0] != '\0'){
                if(hp->h_subject != NULL)
                   hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
                else
                   hp->h_subject = n_UNCONST(cmd[3]);
                fprintf(stdout, "210 %s\n", cp);
+               goto jleave;
             }else
                goto j501cp;
-         }else{
-            /* Primitive name normalization XXX header object should
-             * XXX have a more sophisticated accessible one */
+         }
+
+         /* Primitive name normalization XXX header object should
+          * XXX have a more sophisticated accessible one */
+         /* C99 */{
             size_t nl, bl;
             struct n_header_field **hfpp;
 
@@ -844,9 +925,13 @@ jins:
                memcpy(hfp->hf_dat + nl, cmd[3], bl);
             fprintf(stdout, "210 %s\n", cp);
          }
-      }else
-         goto jecmd;
-   }else if(is_asccaseprefix(cmd[0], "attachment")){
+         goto jleave;
+      }
+
+      goto jecmd;
+   }
+
+   if(is_asccaseprefix(cmd[0], "attachment")){
       bool_t status;
       struct attachment *ap;
 
@@ -862,7 +947,10 @@ jins:
             putc('\n', stdout);
          }else
             fputs("501\n", stdout);
-      }else if(is_asccaseprefix(cmd[1], "remove")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "remove")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
@@ -875,7 +963,10 @@ jins:
             }
          }else
             fputs("501\n", stdout);
-      }else if(is_asccaseprefix(cmd[1], "remove-at")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "remove-at")){
          char *eptr;
          long l;
 
@@ -893,7 +984,10 @@ jins:
             }else
                fputs("501\n", stdout);
          }
-      }else if(is_asccaseprefix(cmd[1], "insert")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "insert")){
          enum n_attach_error aerr;
 
          if(cmd[2] == NULL || cmd[3] != NULL)
@@ -918,7 +1012,10 @@ jatt_ins:
             fprintf(stdout, "210 %" PRIuZ "\n", i);
          }  break;
          }
-      }else if(is_asccaseprefix(cmd[1], "attribute")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "attribute")){
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
@@ -944,7 +1041,10 @@ jatt_att:
             }
          }else
             fputs("501\n", stdout);
-      }else if(is_asccaseprefix(cmd[1], "attribute-at")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "attribute-at")){
          char *eptr;
          long l;
 
@@ -961,7 +1061,10 @@ jatt_att:
             else
                fputs("501\n", stdout);
          }
-      }else if(is_asccaseprefix(cmd[1], "attribute-set")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "attribute-set")){
          if(cmd[2] == NULL || cmd[3] == NULL)
             goto jecmd;
 
@@ -1028,7 +1131,10 @@ jatt_attset:
             }
          }else
             fputs("501\n", stdout);
-      }else if(is_asccaseprefix(cmd[1], "attribute-set-at")){
+         goto jleave;
+      }
+
+      if(is_asccaseprefix(cmd[1], "attribute-set-at")){
          char *eptr;
          long l;
 
@@ -1045,14 +1151,15 @@ jatt_attset:
             else
                fputs("501\n", stdout);
          }
-      }else
-         goto jecmd;
-   }else{
-jecmd:
-      fputs("500\n", stdout);
-      ms = NULL;
+         goto jleave;
+      }
+
+      goto jecmd;
    }
 
+jecmd:
+   fputs("500\n", stdout);
+   ms = NULL;
 jleave:
    fflush(stdout);
    NYD2_LEAVE;
