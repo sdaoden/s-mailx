@@ -889,7 +889,7 @@ jins:
             if(!mult_ok){
                struct name *xnp;
 
-               for(xnp = *npp; xnp != NULL && !(xnp->n_type & GDEL);
+               for(xnp = *npp; xnp != NULL && (xnp->n_type & GDEL);
                      xnp = xnp->n_flink)
                   ;
                if(xnp != NULL || np->n_flink != NULL){
