@@ -641,7 +641,7 @@ qp_decode_header(struct str *out, struct str const *in){
             c = '=';
             goto jpushc;
 /* TODO jehead:
- * TODO      if(options & OPT_UNICODE)
+ * TODO      if(n_psonce & n_PSO_UNICODE)
  *              n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
  * TODO       else{
  * TODO          c = '?';
@@ -724,7 +724,7 @@ jpushc:
          c = '=';
          goto jpushc;
 /* TODO jebody:
- * TODO   if(options & OPT_UNICODE)
+ * TODO   if(n_psonce & n_PSO_UNICODE)
  *           n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
  * TODO    else{
  * TODO       c = '?';
@@ -1055,7 +1055,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 jrepl:
             /* TODO This would be wrong since iconv(3) may be applied first! */
 #if 0
-            if(options & OPT_UNICODE)
+            if(n_psonce & n_PSO_UNICODE)
                n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
             else
                n_string_push_c(&s, '?');

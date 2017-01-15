@@ -369,7 +369,7 @@ n_sigman_leave(struct n_sigman *self,
    case SIGPIPE:
       if((reraise_flags & n_SIGMAN_PIPE) ||
             ((reraise_flags & n_SIGMAN_NTTYOUT_PIPE) &&
-             !(options & OPT_TTYOUT)))
+             !(n_psonce & n_PSO_TTYOUT)))
          sig = SIGPIPE;
       break;
    case SIGHUP:
@@ -504,7 +504,7 @@ _nyd_oncrash(int signo)
    sigprocmask(SIG_UNBLOCK, &xset, NULL);
    n_raise(signo);
    for (;;)
-      _exit(EXIT_ERR);
+      _exit(n_EXIT_ERR);
 }
 #endif /* HAVE_NYD */
 

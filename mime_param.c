@@ -343,7 +343,7 @@ jeeqaaster:
    assert(head != NULL); /* (always true due to jumpin:, but..) */
 
    errors |= __rfc2231_join(head, &rv, &emsg);
-   if (errors && (options & OPT_D_V_VV)) {
+   if (errors && (n_poption & n_PO_D_V_VV)) {
       /* TODO should set global flags so that at the end of an operation
        * TODO (for a message) a summary can be printed: faulty MIME, xy */
       if (emsg == NULL)
@@ -359,7 +359,7 @@ jerr:
       head = np->rj_next;
       free(np);
    }
-   if (options & OPT_D_V) {
+   if (n_poption & n_PO_D_V) {
       if (emsg == NULL)
          emsg = N_("expected asterisk *");
       n_err(_("Faulty RFC 2231 MIME parameter value: %s: %s\n"
@@ -654,7 +654,7 @@ jleave:
    /* Need to recurse, take care not to excess magical limit of 999 levels */
 jrecurse:
    if (self->mpb_level == 999) {
-      if (options & OPT_D_V_VV)
+      if (n_poption & n_PO_D_V_VV)
          n_err(_("Message RFC 2231 parameters nested too deeply!\n"));
       goto jleave;
    }

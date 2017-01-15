@@ -607,9 +607,9 @@ _imap_read_date(char const *cp)
       goto jleave;
 
    for (i = 0;;) {
-      if (!ascncasecmp(xp, month_names[i], 3))
+      if (!ascncasecmp(xp, n_month_names[i], 3))
          break;
-      if (month_names[++i][0] == '\0')
+      if (n_month_names[++i][0] == '\0')
          goto jleave;
    }
    month = i + 1;

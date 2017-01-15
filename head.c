@@ -312,7 +312,7 @@ a_head_idna_apply(struct n_addrguts *agp)
 
    /* GNU Libidn settles on top of iconv(3) without any fallback, so let's just
     * let it perform the charset conversion, if any should be necessary */
-   if (!(options & OPT_UNICODE)) {
+   if (!(n_psonce & n_PSO_UNICODE)) {
       char const *tcs = ok_vlook(ttycharset);
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "utf-8", tcs);
@@ -348,7 +348,7 @@ a_head_idna_apply(struct n_addrguts *agp)
 
    idn_free(idna_ascii);
 jleave1:
-   if (options & OPT_UNICODE)
+   if (n_psonce & n_PSO_UNICODE)
       ac_free(idna_utf8);
    else
       idn_free(idna_utf8);
@@ -1117,7 +1117,7 @@ FL void
 extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 {
    /* See the prototype declaration for the hairy relationship of
-    * options&OPT_t_FLAG and/or pstate&PS_t_FLAG in here */
+    * n_poption&n_PO_t_FLAG and/or n_psonce&n_PSO_t_FLAG in here */
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
@@ -1127,7 +1127,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
-   if ((pstate & PS_t_FLAG) && (options & OPT_t_FLAG)) {
+   if ((n_psonce & n_PSO_t_FLAG) && (n_poption & n_PO_t_FLAG)) {
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;
@@ -1157,7 +1157,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
                EACM_NORMAL | EAF_NAME, checkaddr_err));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
             ++seenfields;
             hq->h_from = cat(hq->h_from,
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1168,7 +1168,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          hq->h_replyto = cat(hq->h_replyto,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         if (!(pstate & PS_t_FLAG) || (options & OPT_t_FLAG)) {
+         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
             ++seenfields;
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1186,7 +1186,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
       else if((val = thisfield(linebuf, "message-id")) != NULL){
-         if(pstate & PS_t_FLAG){
+         if(n_psonce & n_PSO_t_FLAG){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1197,7 +1197,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
-         if(pstate & PS_t_FLAG){
+         if(n_psonce & n_PSO_t_FLAG){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1206,7 +1206,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "references")) != NULL){
-         if(pstate & PS_t_FLAG){
+         if(n_psonce & n_PSO_t_FLAG){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
             hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
@@ -1217,7 +1217,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       }
       /* and that is very hairy */
       else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
-         if(pstate & PS_t_FLAG){
+         if(n_psonce & n_PSO_t_FLAG){
             ++seenfields;
             hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
                   /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
@@ -1280,12 +1280,12 @@ jebadhead:
       hp->h_from = hq->h_from;
       hp->h_replyto = hq->h_replyto;
       hp->h_sender = hq->h_sender;
-      if (hq->h_subject != NULL || !(pstate & PS_t_FLAG) ||
-            !(options & OPT_t_FLAG))
+      if (hq->h_subject != NULL || !(n_psonce & n_PSO_t_FLAG) ||
+            !(n_poption & n_PO_t_FLAG))
          hp->h_subject = hq->h_subject;
       hp->h_user_headers = hq->h_user_headers;
 
-      if (pstate & PS_t_FLAG) {
+      if (n_psonce & n_PSO_t_FLAG) {
          hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
@@ -1294,13 +1294,11 @@ jebadhead:
          /* And perform additional validity checks so that we don't bail later
           * on TODO this is good and the place where this should occur,
           * TODO unfortunately a lot of other places do again and blabla */
-         if (pstate & PS_t_FLAG) {
-            if (hp->h_from == NULL)
-               hp->h_from = option_r_arg;
-            else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
-               hp->h_sender = lextract(ok_vlook(sender),
-                     GEXTRA | GFULL | GFULLEXTRA);
-         }
+         if (hp->h_from == NULL)
+            hp->h_from = n_poption_arg_r;
+         else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
+            hp->h_sender = lextract(ok_vlook(sender),
+                  GEXTRA | GFULL | GFULLEXTRA);
       }
    } else
       n_err(_("Restoring deleted header lines\n"));
@@ -1500,7 +1498,7 @@ expandaddr_to_eaf(void)
             ++cp;
          for (eafp = eafa;; ++eafp) {
             if (eafp == eafa + n_NELEM(eafa)) {
-               if (options & OPT_D_V)
+               if (n_poption & n_PO_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
             } else if (!asccasecmp(cp, eafp->eafd_name)) {
@@ -1510,25 +1508,26 @@ expandaddr_to_eaf(void)
                } else {
                   if (eafp->eafd_is_target)
                      rv &= ~eafp->eafd_or;
-                  else if (options & OPT_D_V)
+                  else if (n_poption & n_PO_D_V)
                      n_err(_("minus - prefix invalid for *expandaddr* value: "
                         "%s\n"), --cp);
                }
                break;
             } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
-               OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
+               n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
                break;
             }
          }
       }
 
-      if ((rv & EAF_RESTRICT) && (options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
+      if((rv & EAF_RESTRICT) && ((n_psonce & n_PSO_INTERACTIVE) ||
+            (n_poption & n_PO_TILDE_FLAG)))
          rv |= EAF_TARGET_MASK;
-      else if (options & OPT_D_V) {
-         if (!(rv & EAF_TARGET_MASK))
+      else if(n_poption & n_PO_D_V){
+         if(!(rv & EAF_TARGET_MASK))
             n_err(_("*expandaddr* doesn't allow any addressees\n"));
-         else if ((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
+         else if((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
             n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
       }
    }
@@ -2125,9 +2124,9 @@ unixtime(char const *fromline)
    if (fp[3] != ' ')
       goto jinvalid;
    for (i = 0;;) {
-      if (!strncmp(fp + 4, month_names[i], 3))
+      if (!strncmp(fp + 4, n_month_names[i], 3))
          break;
-      if (month_names[++i][0] == '\0')
+      if (n_month_names[++i][0] == '\0')
          goto jinvalid;
    }
    month = i + 1;
@@ -2184,9 +2183,9 @@ rfctime(char const *date)
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
    for (i = 0;;) {
-      if (!strncmp(cp, month_names[i], 3))
+      if (!strncmp(cp, n_month_names[i], 3))
          break;
-      if (month_names[++i][0] == '\0')
+      if (n_month_names[++i][0] == '\0')
          goto jinvalid;
    }
    month = i + 1;
@@ -2343,7 +2342,7 @@ setup_from_and_sender(struct header *hp)
     * a behaviour that is compatible with what users would expect from e.g.
     * postfix(1) */
    if ((np = hp->h_from) != NULL ||
-         ((pstate & PS_t_FLAG) && (np = option_r_arg) != NULL)) {
+         ((n_psonce & n_PSO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
       ;
    } else if ((addr = myaddrs(hp)) != NULL)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);

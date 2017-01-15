@@ -891,7 +891,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
    /* In interactive mode both STDIN and STDOUT point to the terminal.  If we
     * pass through the TTY restore terminal attributes after pipe returns.
     * XXX It shouldn't matter which FD we actually use in this case */
-   if ((options & OPT_INTERACTIVE) && (fd0 == COMMAND_FD_PASS ||
+   if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == COMMAND_FD_PASS ||
          fd1 == COMMAND_FD_PASS)) {
       tiosp = smalloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
@@ -980,7 +980,7 @@ n_pager_open(void)
    FILE *rv;
    NYD_ENTER;
 
-   assert(options & OPT_INTERACTIVE);
+   assert(n_psonce & n_PSO_INTERACTIVE);
 
    pager = n_pager_get(env_add + 0);
    env_add[1] = NULL;
@@ -1053,12 +1053,13 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
     * TODO any action, and shall we find we need to run programs dump it
     * TODO all into a temporary file which is then passed through to the
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
-   if ((tio_set = ((options & OPT_INTERACTIVE) &&
+   if ((tio_set = ((n_psonce & n_PSO_INTERACTIVE) &&
          (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
       /* TODO Simply ignore SIGINT then, it surely will be ment for the program
        * TODO which takes the terminal */
       soldint = safe_signal(SIGINT, SIG_IGN);
-      tcgetattr((options & OPT_TTYIN ? STDIN_FILENO : STDOUT_FILENO), &a_popen_tios);
+      tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
+         &a_popen_tios);
       n_TERMCAP_SUSPEND(FAL0);
       sigfillset(&nset);
       sigdelset(&nset, SIGCHLD);
@@ -1083,7 +1084,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 
    if (tio_set) {
       a_popen_jobsigs_down();
-      tio_set = ((options & OPT_TTYIN) != 0);
+      tio_set = ((n_psonce & n_PSO_TTYIN) != 0);
       n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
       tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
          (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
@@ -1166,7 +1167,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
       prepare_child(mask, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
-      _exit(EXIT_ERR);
+      _exit(n_EXIT_ERR);
    }
    NYD_LEAVE;
    return rv;

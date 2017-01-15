@@ -245,7 +245,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    int i, autocollapse;
    NYD2_ENTER;
 
-   autocollapse = (!nmail && !(pstate & PS_HOOK_NEWMAIL) &&
+   autocollapse = (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL) &&
          ok_blook(autocollapse));
    ms = smalloc(sizeof *ms * cnt);
 
@@ -402,7 +402,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
       }
       m[i].m_child = m[i].m_younger = m[i].m_elder = m[i].m_parent = NULL;
       m[i].m_level = 0;
-      if (!nmail && !(pstate & PS_HOOK_NEWMAIL))
+      if (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL))
          m[i].m_collapsed = 0;
       srelax();
    }
@@ -530,7 +530,7 @@ c_thread(void *vp)
       mb.mb_sorted = sstrdup("thread");
    }
 
-   if (vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+   if (vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
          ok_blook(header))
       rv = print_header_group(vp);
    else
@@ -554,7 +554,7 @@ c_unthread(void *vp)
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
       m->m_collapsed = 0;
 
-   if (vp && !(pstate & PS_HOOK_MASK) && ok_blook(header))
+   if (vp && !(n_pstate & n_PS_HOOK_MASK) && ok_blook(header))
       rv = print_header_group(vp);
    else
       rv = 0;
@@ -800,7 +800,7 @@ c_sort(void *vp)
    }
    ac_free(ms);
 
-   i = ((vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+   i = ((vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);
 jleave:
    NYD_LEAVE;

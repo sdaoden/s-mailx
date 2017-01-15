@@ -348,13 +348,13 @@ makelow(char *cp) /* TODO isn't that crap? --> */
 {
       NYD_ENTER;
 #ifdef HAVE_C90AMEND1
-   if (mb_cur_max > 1) {
+   if (n_mb_cur_max > 1) {
       char *tp = cp;
       wchar_t wc;
       int len;
 
       while (*cp != '\0') {
-         len = mbtowc(&wc, cp, mb_cur_max);
+         len = mbtowc(&wc, cp, n_mb_cur_max);
          if (len < 0)
             *tp++ = *cp++;
          else {
@@ -385,20 +385,20 @@ substr(char const *str, char const *sub)
    backup = str;
    while (*str != '\0' && *cp != '\0') {
 #ifdef HAVE_C90AMEND1
-      if (mb_cur_max > 1) {
+      if (n_mb_cur_max > 1) {
          wchar_t c, c2;
          int sz;
 
-         if ((sz = mbtowc(&c, cp, mb_cur_max)) == -1)
+         if ((sz = mbtowc(&c, cp, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
          cp += sz;
-         if ((sz = mbtowc(&c2, str, mb_cur_max)) == -1)
+         if ((sz = mbtowc(&c2, str, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
          str += sz;
          c = towupper(c);
          c2 = towupper(c2);
          if (c != c2) {
-            if ((sz = mbtowc(&c, backup, mb_cur_max)) > 0) {
+            if ((sz = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
                backup += sz;
                str = backup;
             } else
@@ -1082,7 +1082,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    int err;
    NYD2_ENTER;
 
-   if((icf & n_ICONV_UNIREPL) && !(options & OPT_UNICODE))
+   if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE))
       icf &= ~n_ICONV_UNIREPL;
 
    for(;;){

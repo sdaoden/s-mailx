@@ -88,7 +88,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
          success = TRU1;
          goto jleave;
       }

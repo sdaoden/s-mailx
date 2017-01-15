@@ -163,7 +163,7 @@ jenametool:
       }
       cp = NULL;
    }
-   if(cp == NULL || stb.st_uid != user_id || stb.st_gid != group_id){
+   if(cp == NULL || stb.st_uid != n_user_id || stb.st_gid != n_group_id){
       char itoabuf[64];
       char const *args[13];
 
@@ -211,7 +211,7 @@ jmsg:
       unlink(name);
    }
    NYD_LEAVE;
-   return EXIT_OK;
+   return n_EXIT_OK;
 }
 #endif /* HAVE_DOTLOCK */
 
@@ -249,7 +249,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    emsg = NULL;
 #endif
 
-   if(options & OPT_D_VV){
+   if(n_poption & n_PO_D_VV){
       _DOMSG();
       didmsg = TRUM1;
    }
@@ -337,7 +337,7 @@ jleave:
       case n_DLS_NONE:
          goto jleave;
       case n_DLS_CANT_CHDIR:
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             emsg = N_("  Can't change directory!  Please check permissions\n");
          serrno = EACCES;
          break;
@@ -347,19 +347,19 @@ jleave:
          break;
       case n_DLS_ROFS:
          assert(dls & n_DLS_ABANDON);
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             emsg = N_("  Read-only filesystem, not creating lock file\n");
          serrno = EROFS;
          break;
       case n_DLS_NOPERM:
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             emsg = N_("  Can't create a dotlock file, "
                   "please check permissions\n"
                   "  (Or ignore by setting *dotlock-ignore-error* variable)\n");
          serrno = EACCES;
          break;
       case n_DLS_NOEXEC:
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             emsg = N_("  Can't find privilege-separated dotlock program\n");
          serrno = ENOENT;
          break;
@@ -421,7 +421,7 @@ jleave:
             rv = (FILE*)-1;
          else if(serrno != EAGAIN && serrno != EEXIST &&
                ok_blook(dotlock_ignore_error)){
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("  *dotlock-ignore-error* set: continuing\n"));
             rv = (FILE*)-1;
          }else

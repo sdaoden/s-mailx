@@ -187,7 +187,7 @@ screensize(void){
    NYD2_ENTER;
 
    if((cp = ok_vlook(screen)) == NULL || (s = strtoul(cp, NULL, 0)) == 0)
-      s = (ul_i)scrnheight;
+      s = (ul_i)n_scrnheight;
    s -= 2; /* XXX no magics */
    if(s > INT_MAX) /* TODO function should return unsigned */
       s = INT_MAX;
@@ -210,8 +210,8 @@ n_pager_get(char const **env_addon){
          if(getenv("LESS") == NULL)
             *env_addon =
 #ifdef HAVE_TERMCAP
-                  (pstate & PS_TERMCAP_CA_MODE) ? "LESS=Ri"
-                     : !(pstate & PS_TERMCAP_DISABLE) ? "LESS=FRi" :
+                  (n_psonce & n_PSO_TERMCAP_CA_MODE) ? "LESS=Ri"
+                     : !(n_psonce & n_PSO_TERMCAP_DISABLE) ? "LESS=FRi" :
 #endif
                         "LESS=FRXi";
       }else if(strstr(rv, "lv") != NULL){
@@ -235,7 +235,7 @@ page_or_print(FILE *fp, size_t lines)
    if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
       size_t rows;
 
-      rows = (*cp == '\0') ? (size_t)scrnheight : strtoul(cp, NULL, 0);
+      rows = (*cp == '\0') ? (size_t)n_scrnheight : strtoul(cp, NULL, 0);
 
       if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
@@ -623,7 +623,7 @@ quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
    else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
          !ascncasecmp(inbuf, "ask-", 4) &&
          (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
-         (options & OPT_INTERACTIVE))
+         (n_psonce & n_PSO_INTERACTIVE))
       rv = getapproval(prompt, rv);
    NYD_LEAVE;
    return rv;
@@ -722,7 +722,7 @@ n_err(char const *format, ...){
 
    va_start(ap, format);
 #ifdef HAVE_ERRORS
-   if(options & OPT_INTERACTIVE)
+   if(n_psonce & n_PSO_INTERACTIVE)
       n_verr(format, ap);
    else
 #endif
@@ -766,7 +766,6 @@ n_err(char const *format, ...){
 
 FL void
 n_verr(char const *format, va_list ap){
-   /* Check use cases of PS_ERRORS_NOTED, too! */
 #ifdef HAVE_ERRORS
    struct a_aux_err_node *enp;
 #endif
@@ -784,7 +783,7 @@ n_verr(char const *format, va_list ap){
    if((doname = doflush)){
       a_aux_err_linelen = 0;
 #ifdef HAVE_ERRORS
-      if(options & OPT_INTERACTIVE){
+      if(n_psonce & n_PSO_INTERACTIVE){
          if((enp = a_aux_err_tail) != NULL &&
                (enp->ae_str.s_len > 0 &&
                 enp->ae_str.s_dat[enp->ae_str.s_len - 1] != '\n'))
@@ -796,7 +795,7 @@ n_verr(char const *format, va_list ap){
    if((len = strlen(format)) == 0)
       goto jleave;
 #ifdef HAVE_ERRORS
-   pstate |= PS_ERRORS_PROMPT;
+   n_pstate |= n_PS_ERRORS_PROMPT;
 #endif
 
    if(doname || a_aux_err_linelen == 0)
@@ -814,7 +813,7 @@ n_verr(char const *format, va_list ap){
    }
 
 #ifdef HAVE_ERRORS
-   if(!(options & OPT_INTERACTIVE))
+   if(!(n_psonce & n_PSO_INTERACTIVE))
 #endif
       vfprintf(stderr, format, ap);
 #ifdef HAVE_ERRORS
@@ -955,7 +954,7 @@ n_panic(char const *format, ...){
    putc('\n', stderr);
    fflush(stderr);
    NYD2_LEAVE;
-   abort(); /* Was exit(EXIT_ERR); for a while, but no */
+   abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
 
 #ifdef HAVE_ERRORS

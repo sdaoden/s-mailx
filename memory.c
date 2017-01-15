@@ -433,7 +433,7 @@ n_memory_reset(void){
    }
    a_memory_heap_free = NULL;
 
-   if(options & (OPT_DEBUG | OPT_MEMDEBUG))
+   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
       n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
 #endif
    NYD_LEAVE;
@@ -680,7 +680,7 @@ FL void
    --a_memory_heap_acur;
    a_memory_heap_mcur -= p.p_c->mc_user_size;
 
-   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
       p.p_hc->mhc_next = a_memory_heap_free;
       a_memory_heap_free = p.p_hc;
    }else
@@ -1237,7 +1237,7 @@ c_memtrace(void *vp){
          p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
    }
 
-   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
       fprintf(fp, "Heap buffers lingering for free():\n");
       ++lines;
 
@@ -1337,7 +1337,7 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
       }
    }
 
-   if(options & (OPT_DEBUG | OPT_MEMDEBUG)){
+   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
       for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
             p.p_hc = p.p_hc->mhc_next){
          xp = p;

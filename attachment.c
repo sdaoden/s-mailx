@@ -349,7 +349,7 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
       if(shs & n_SHEXP_STATE_OUTPUT){
          aplist = n_attachment_append(aplist, n_string_cp(shoup), NULL, &nap);
          if(nap != NULL){
-            if(options & OPT_INTERACTIVE)
+            if(n_psonce & n_PSO_INTERACTIVE)
                a_attachment_yay(nap);
          }
       }
@@ -456,13 +456,10 @@ n_attachment_list_edit(struct attachment *aplist, enum n_lexinput_flags lif){
    ui32_t attno;
    NYD_ENTER;
 
-   if(options & OPT_INTERACTIVE){
-      static bool_t note_given; /* v15-compat: DROP */
-
-      if(!note_given){
-         note_given = TRU1;
-         printf(_("# Only supports sh(1)ell-style quoting for file names\n"));
-      }
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
+         ) == n_PSO_INTERACTIVE){
+      n_psonce |= n_PSO_ATTACH_QUOTE_NOTED;
+      printf(_("# Only supports sh(1)ell-style quoting for file names\n"));
    }
 
    /* Modify already present ones?  Append some more? */
@@ -487,7 +484,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_lexinput_flags lif){
       if((filename = n_lex_input_cp(lif, prefix, filename)) != NULL){
          naplist = n_attachment_append(naplist, filename, NULL, &ap);
          if(ap != NULL){
-            if(options & OPT_INTERACTIVE)
+            if(n_psonce & n_PSO_INTERACTIVE)
                a_attachment_yay(ap);
             ++attno;
          }

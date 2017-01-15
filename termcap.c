@@ -237,7 +237,7 @@ jeinvent:
                goto jlearned;
             }else
 #endif /* HAVE_KEY_BINDINGS */
-                  if(options & OPT_D_V)
+                  if(n_poption & n_PO_D_V)
                n_err(_("*termcap*: unknown capability: %s\n"), ccp);
             continue;
          }
@@ -269,13 +269,13 @@ jeinvent:
 #ifdef HAVE_KEY_BINDINGS
 jlearned:
 #endif
-      if(options & OPT_D_VV)
+      if(n_poption & n_PO_D_VV)
          n_err(_("*termcap*: learned %.*s: %s\n"), (int)kl, ccp,
             (tep->te_flags & a_TERMCAP_F_DISABLED ? "<disabled>"
              : (f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL ? "true"
                : v));
    }
-   DBG( if(options & OPT_D_V) n_err("*termcap* parsed: buffer used=%lu\n",
+   DBG( if(n_poption & n_PO_D_V) n_err("*termcap* parsed: buffer used=%lu\n",
       (ul_i)a_termcap_g->tg_dat.s_len) );
 
    /* Catch some inter-dependencies the user may have triggered */
@@ -462,7 +462,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
-   assert(!(pstate & PS_TERMCAP_DISABLE));
+   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -498,7 +498,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
-   assert(!(pstate & PS_TERMCAP_DISABLE));
+   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off] + 2,
       tcp->tc_flags);
 }
@@ -527,7 +527,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_ENTER;
-   assert(!(pstate & PS_TERMCAP_DISABLE));
+   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -569,7 +569,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
-   assert(!(pstate & PS_TERMCAP_DISABLE));
+   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off],
       tcp->tc_flags);
 }
@@ -616,7 +616,7 @@ n_termcap_init(void){
    char const *ccp;
    NYD_ENTER;
 
-   assert((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE);
+   assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
    a_termcap_g = smalloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
@@ -632,13 +632,13 @@ n_termcap_init(void){
       a_termcap_init_var(&termvar);
 
    if(ok_blook(termcap_disable))
-      pstate |= PS_TERMCAP_DISABLE;
+      n_psonce |= n_PSO_TERMCAP_DISABLE;
 #ifdef HAVE_TERMCAP
    else if((ccp = ok_vlook(TERM)) == NULL){
       n_err(_("Environment variable $TERM is not set, using only *termcap*\n"));
-      pstate |= PS_TERMCAP_DISABLE;
+      n_psonce |= n_PSO_TERMCAP_DISABLE;
    }else if(!a_termcap_load(ccp))
-      pstate |= PS_TERMCAP_DISABLE;
+      n_psonce |= n_PSO_TERMCAP_DISABLE;
    else{
       /* Query termcap(5) for each command slot that is not yet set */
       struct a_termcap_ent *tep;
@@ -657,7 +657,7 @@ n_termcap_init(void){
 
 #ifdef HAVE_TERMCAP
    if(a_termcap_g->tg_ents[n_TERMCAP_CMD_te].te_flags != 0)
-      pstate |= PS_TERMCAP_CA_MODE;
+      n_psonce |= n_PSO_TERMCAP_CA_MODE;
 #endif
    n_TERMCAP_RESUME(TRU1);
    NYD_LEAVE;
@@ -666,7 +666,7 @@ n_termcap_init(void){
 FL void
 n_termcap_destroy(void){
    NYD_ENTER;
-   assert((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE);
+   assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
    n_TERMCAP_SUSPEND(TRU1);
 
@@ -690,9 +690,9 @@ n_termcap_destroy(void){
 FL void
 n_termcap_resume(bool_t complete){
    NYD_ENTER;
-   if(!(pstate & PS_TERMCAP_DISABLE) &&
-         (options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE){
-      if(complete && (pstate & PS_TERMCAP_CA_MODE))
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_TERMCAP_DISABLE)
+         ) == n_PSO_INTERACTIVE && !(n_poption & n_PO_QUICKRUN_MASK)){
+      if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_ti);
       n_termcap_cmdx(n_TERMCAP_CMD_ks);
       fflush(n_tty_fp);
@@ -703,10 +703,10 @@ n_termcap_resume(bool_t complete){
 FL void
 n_termcap_suspend(bool_t complete){
    NYD_ENTER;
-   if(!(pstate & PS_TERMCAP_DISABLE) &&
-         (options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) == OPT_INTERACTIVE){
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_TERMCAP_DISABLE)
+         ) == n_PSO_INTERACTIVE && !(n_poption & n_PO_QUICKRUN_MASK)){
       n_termcap_cmdx(n_TERMCAP_CMD_ke);
-      if(complete && (pstate & PS_TERMCAP_CA_MODE))
+      if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_te);
       fflush(n_tty_fp);
    }
@@ -725,7 +725,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    n_UNUSED(a2);
 
    rv = FAL0;
-   if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) != OPT_INTERACTIVE)
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_QUICKRUN_MASK))
       goto jleave;
    assert(a_termcap_g != NULL);
 
@@ -733,7 +733,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    cmd &= n__TERMCAP_CMD_MASK;
    tep = a_termcap_g->tg_ents;
 
-   if((flags & n_TERMCAP_CMD_FLAG_CA_MODE) && !(pstate & PS_TERMCAP_CA_MODE))
+   if((flags & n_TERMCAP_CMD_FLAG_CA_MODE) &&
+         !(n_psonce & n_PSO_TERMCAP_CA_MODE))
       rv = TRU1;
    else if((tep += cmd)->te_flags == 0 || (tep->te_flags & a_TERMCAP_F_NOENT))
       rv = TRUM1;
@@ -745,8 +746,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
 
 #ifdef HAVE_TERMCAP
       if(tep->te_flags & (a_TERMCAP_F_ARG_IDX1 | a_TERMCAP_F_ARG_IDX2)){
-         if(pstate & PS_TERMCAP_DISABLE){
-            if(options & OPT_D_V){
+         if(n_psonce & n_PSO_TERMCAP_DISABLE){
+            if(n_poption & n_PO_D_V){
                char const *cnam = &a_termcap_namedat[
                      a_termcap_control[cmd].tc_off];
 
@@ -779,7 +780,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
 
       for(;;){
 #ifdef HAVE_TERMCAP
-         if(!(pstate & PS_TERMCAP_DISABLE)){
+         if(!(n_psonce & n_PSO_TERMCAP_DISABLE)){
             if(tputs(cp, 1, &a_termcap_putc) != OK)
                break;
          }else
@@ -811,7 +812,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
          if(a1 > 0)
             --a1;
          if((rv = n_termcap_cmd(n_TERMCAP_CMD_ch, a1, 0)) > 0){
-            for(a2 = scrnwidth - a1 - 1; a2 > 0; --a2)
+            for(a2 = n_scrnwidth - a1 - 1; a2 > 0; --a2)
                if(putc(' ', n_tty_fp) == EOF){
                   rv = FAL0;
                   break;
@@ -851,7 +852,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    assert(tvp != NULL);
    rv = FAL0;
 
-   if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) != OPT_INTERACTIVE)
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_QUICKRUN_MASK))
       goto jleave;
    assert(a_termcap_g != NULL);
 
@@ -861,7 +862,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
 
       if(tep->te_flags == 0
 #ifdef HAVE_TERMCAP
-            && ((pstate & PS_TERMCAP_DISABLE) ||
+            && ((n_psonce & n_PSO_TERMCAP_DISABLE) ||
                !a_termcap_ent_query_tcp(n_UNCONST(tep),
                &a_termcap_control[n__TERMCAP_CMD_MAX1 + query]))
 #endif
@@ -881,7 +882,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          }
 
 #ifdef HAVE_TERMCAP
-      if(pstate & PS_TERMCAP_DISABLE)
+      if(n_psonce & n_PSO_TERMCAP_DISABLE)
 #endif
          goto jleave;
 #ifdef HAVE_TERMCAP

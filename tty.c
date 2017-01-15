@@ -35,7 +35,7 @@
 do{\
    char const *__hist_obsolete = ok_vlook(NAIL_HISTFILE);\
    if(__hist_obsolete != NULL)\
-      OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));\
+      n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));\
    S = ok_vlook(history_file);\
    if((S) == NULL)\
       (S) = __hist_obsolete;\
@@ -49,7 +49,7 @@ do{\
    char const *__sv = ok_vlook(history_size);\
    long __rv;\
    if(__hist_obsolete != NULL)\
-      OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));\
+      n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));\
    if(__sv == NULL)\
       __sv = __hist_obsolete;\
    if(__sv == NULL || (__rv = strtol(__sv, NULL, 10)) == 0)\
@@ -61,7 +61,7 @@ do{\
 
 # define a_TTY_CHECK_ADDHIST(S,ISGABBY,NOACT) \
 do{\
-   if(!(pstate & (PS_ROOT | PS_LINE_EDITOR_INIT)) ||\
+   if((!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||\
          ok_blook(line_editor_disable) ||\
          ((ISGABBY) && !ok_blook(history_gabby)) ||\
          spacechar(*(S)) || *(S) == '\0')\
@@ -77,9 +77,9 @@ do{\
       n_err(_("history: *line-editor-disable* is set\n"));\
       goto jerr;\
    }\
-   if(!(pstate & PS_LINE_EDITOR_INIT)){\
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){\
       n_tty_init();\
-      assert(pstate & PS_LINE_EDITOR_INIT);\
+      assert(n_psonce & n_PSO_LINE_EDITOR_INIT);\
    }\
    if(*argv == NULL)\
       goto jlist;\
@@ -168,7 +168,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    int volatile sig;
    NYD_ENTER;
 
-   if (!(options & OPT_INTERACTIVE)) {
+   if(!(n_psonce & n_PSO_INTERACTIVE)){
       sig = 0;
       rv = noninteract_default;
       goto jleave;
@@ -250,7 +250,7 @@ getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
    NYD_ENTER;
 
    pass = NULL;
-   if(!(options & OPT_TTYIN))
+   if(!(n_psonce & n_PSO_TTYIN))
       goto j_leave;
 
    if (query == NULL)
@@ -304,11 +304,11 @@ n_tty_create_prompt(struct n_string *store, char const *xprompt,
    /* Prompt creation indicates that prompt printing is directly ahead, so take
     * this opportunity of UI-in-a-known-state and advertise the error ring */
 #ifdef HAVE_ERRORS
-   if((options & OPT_INTERACTIVE) &&
-         (pstate & (PS_ERRORS_PROMPT | PS_ERRORS_NOTED)) == PS_ERRORS_PROMPT){
-      pstate |= PS_ERRORS_NOTED;
-      fprintf(stderr, _("There are new messages in the error message ring "
-            "(denoted by %s)\n"
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ERRORS_NOTED)
+         ) == n_PSO_INTERACTIVE && (n_pstate & n_PS_ERRORS_PROMPT)){
+      n_psonce |= n_PSO_ERRORS_NOTED;
+      printf(_("There are new messages in the error message ring "
+         "(denoted by %s)\n"
          "  The `errors' command manages this message ring\n"),
          V_(n_error));
    }
@@ -322,8 +322,8 @@ jredo:
       goto jleave;
    }
 #ifdef HAVE_ERRORS
-   if(pstate & PS_ERRORS_PROMPT){
-      pstate &= ~PS_ERRORS_PROMPT;
+   if(n_pstate & n_PS_ERRORS_PROMPT){
+      n_pstate &= ~n_PS_ERRORS_PROMPT;
       store = n_string_push_cp(store, V_(n_error));
       store = n_string_push_c(store, '#');
       store = n_string_push_c(store, ' ');
@@ -476,7 +476,7 @@ n_CTAV(a_TTY_BIND_TIMEOUT_MAX <= UI8_MAX);
  * specify *termcap-disable* and let it mean exactly that.
  * On the other hand users can be expected to use `bind' in resource file(s).
  * Therefore bindings which involve termcap/terminfo sequences, and which are
- * defined before PS_STARTED signals usability of termcap/terminfo, will be
+ * defined before n_PSO_STARTED signals usability of termcap/terminfo, will be
  * (partially) delayed until tty_init() is called.
  * And we preallocate space for the expansion of the resolved capability */
 #  define a_TTY_BIND_CAPNAME_MAX 15
@@ -1312,7 +1312,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    /* XXX We don't have a OnTerminalResize event (see main.c) yet, so we need
     * XXX to reevaluate our circumstances over and over again */
    /* Don't display prompt or position indicator on very small screens */
-   if((phy_wid_base = (ui32_t)scrnwidth) <= a_TTY_WIDTH_RIPOFF)
+   if((phy_wid_base = (ui32_t)n_scrnwidth) <= a_TTY_WIDTH_RIPOFF)
       f &= ~(a_HAVE_PROMPT | a_HAVE_POSITION);
    else{
       phy_wid_base -= a_TTY_WIDTH_RIPOFF;
@@ -1544,7 +1544,7 @@ jpaint:
       }else{ /* XXX Shouldn't be here <-> CText, ui_str.c */
          char wbuf[8]; /* XXX magic */
 
-         if(options & OPT_UNICODE){
+         if(n_psonce & n_PSO_UNICODE){
             ui32_t wc;
 
             wc = (ui32_t)tcp_left->tc_wc;
@@ -1925,7 +1925,7 @@ jemb:
       }
       tc.tc_count = (ui16_t)l;
 
-      if(n_UNLIKELY((options & OPT_ENC_MBSTATE) != 0)){
+      if(n_UNLIKELY((n_psonce & n_PSO_ENC_MBSTATE) != 0)){
          l = wcrtomb(&tc.tc_cbuf[l], L'\0', &ps);
          if(n_LIKELY(l == 1))
             /* Only NUL terminator */;
@@ -2103,7 +2103,7 @@ jredo:
       preexp.s = savestrbuf(preexp.s, preexp.l);
 
    /* May be multi-return! */
-   if(pstate & PS_EXPAND_MULTIRESULT)
+   if(n_pstate & n_PS_EXPAND_MULTIRESULT)
       goto jmulti;
 
    /* xxx That is not really true since the limit counts characters not bytes */
@@ -2206,7 +2206,7 @@ jmulti:{
             locolen + (locolen >> 1));
 
       /* Iterate (once again) over all results */
-      scrwid = (size_t)scrnwidth - ((size_t)scrnwidth >> 3);
+      scrwid = (size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3);
       lnlen = lncnt = 0;
       n_UNINIT(prefixlen, 0);
       n_UNINIT(lococp, NULL);
@@ -3091,7 +3091,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
    }
 
    /* Directly resolve any termcap(5) symbol if we are already setup */
-   if((pstate & PS_STARTED) &&
+   if((n_psonce & n_PSO_STARTED) &&
          (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
           a_TTY_BIND_RESOLVE)
       a_tty_bind_resolve(tbcp);
@@ -3143,7 +3143,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
             n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_IFS_IS_COMMA);
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
-         if(isbindcmd && (options & OPT_D_V))
+         if(isbindcmd && (n_poption & n_PO_D_V))
             n_err(_("`%s': \\uNICODE not available in locale: %s\n"),
                tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       }
@@ -3202,7 +3202,7 @@ jelen:
       if(ep->cnv_len > 1 && ep->cnv_dat[0] == ':'){
          i = --ep->cnv_len, ++ep->cnv_dat;
 #  ifndef HAVE_TERMCAP
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
@@ -3368,7 +3368,8 @@ jeempty:
             tbpcp->tbpc_flags |= a_TTY_BIND_FUN_EXPAND(i) |
                   a_TTY_BIND_FUN_INTERNAL |
                   (head->next == NULL ? a_TTY_BIND_MLE1CNTRL : 0);
-            if((options & OPT_D_V) && (tbpcp->tbpc_flags & a_TTY_BIND_NOCOMMIT))
+            if((n_poption & n_PO_D_V) &&
+                  (tbpcp->tbpc_flags & a_TTY_BIND_NOCOMMIT))
                n_err(_("`%s': MLE commands can't be made editable via @: %s\n"),
                   tbpcp->tbpc_cmd, exp);
             tbpcp->tbpc_flags &= ~a_TTY_BIND_NOCOMMIT;
@@ -3425,7 +3426,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
          }
 
          if(tq < 0 || !n_termcap_query(tq, &tv)){
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("`bind': unknown or unsupported capability: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
@@ -3439,19 +3440,19 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 
          i = strlen(tv.tv_data.tvd_string);
          if(/*i > SI32_MAX ||*/ i >= PTR2SIZE(next - cp)){
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("`bind': capability expansion too long: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(i == 0){
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("`bind': empty capability expansion: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(isfirst && !cntrlchar(*tv.tv_data.tvd_string)){
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("`bind': capability expansion doesn't start with "
                   "control: %s: %s\n"), capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
@@ -3736,8 +3737,8 @@ n_tty_init(void){
          goto jhist_done;
       (void)n_file_lock(fileno(f), FLT_READ, 0,0, UIZ_MAX);
 
-      assert(!(pstate & PS_ROOT));
-      pstate |= PS_ROOT; /* Allow calling addhist() */
+      assert(!(n_pstate & n_PS_ROOT));
+      n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
       lbuf = NULL;
       lsize = 0;
       cnt = (size_t)fsize(f);
@@ -3755,7 +3756,7 @@ n_tty_init(void){
       }
       if(lbuf != NULL)
          free(lbuf);
-      pstate &= ~PS_ROOT;
+      n_pstate &= ~n_PS_ROOT;
 
       fclose(f);
 jhist_done:
@@ -3764,7 +3765,7 @@ jhist_done:
 # endif /* HAVE_HISTORY */
 
    /* Force immediate resolve for anything which follows */
-   pstate |= PS_LINE_EDITOR_INIT;
+   n_psonce |= n_PSO_LINE_EDITOR_INIT;
 
 # ifdef HAVE_KEY_BINDINGS
    /* `bind's (and `unbind's) done from within resource files couldn't be
@@ -3829,7 +3830,7 @@ FL void
 n_tty_destroy(void){
    NYD_ENTER;
 
-   if(!(pstate & PS_LINE_EDITOR_INIT))
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
 # ifdef HAVE_HISTORY
@@ -3882,7 +3883,7 @@ jhist_done:
 # ifdef HAVE_DEBUG
    memset(&a_tty, 0, sizeof a_tty);
 # endif
-   DBG( pstate &= ~PS_LINE_EDITOR_INIT; )
+   DBG( n_psonce &= ~n_PSO_LINE_EDITOR_INIT; )
 jleave:
    NYD_LEAVE;
 }
@@ -3896,7 +3897,7 @@ n_tty_signal(int sig){
 # ifdef SIGWINCH
    case SIGWINCH:
       /* We don't deal with SIGWINCH, yet get called from main.c.
-       * Note this case might get called even if !PS_LINE_EDITOR_INIT */
+       * Note this case might get called even if !n_PO_LINE_EDITOR_INIT */
       break;
 # endif
    default:
@@ -3936,9 +3937,9 @@ FL int
    n_UNINIT(plen, 0);
 
    assert(!ok_blook(line_editor_disable));
-   if(!(pstate & PS_LINE_EDITOR_INIT))
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       n_tty_init();
-   assert(pstate & PS_LINE_EDITOR_INIT);
+   assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
    if(!(lif & n_LEXINPUT_PROMPT_NONE))
       n_string_creat_auto(&xprompt);
@@ -3996,7 +3997,7 @@ jredo:
                /* Convert to tenths of a second, unfortunately */
                (ul = (ul + 99) / 100) <= a_TTY_BIND_TIMEOUT_MAX)
             tl.tl_bind_timeout = (ui8_t)ul;
-         else if(options & OPT_D_V)
+         else if(n_poption & n_PO_D_V)
             n_err(_("Ignoring invalid *bind-timeout*: %s\n"), cp);
       }
    }
@@ -4077,7 +4078,7 @@ n_tty_addhist(char const *s, bool_t isgabby){
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
-   if(pstate & PS_LINE_EDITOR_INIT)
+   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
       for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
          if(thp->th_len == l && !strcmp(thp->th_dat, s)){
             hold_all_sigs(); /* TODO */
@@ -4098,7 +4099,7 @@ n_tty_addhist(char const *s, bool_t isgabby){
    hold_all_sigs();
 
    ++a_tty.tg_hist_size;
-   if((pstate & PS_LINE_EDITOR_INIT) &&
+   if((n_psonce & n_PSO_LINE_EDITOR_INIT) &&
          a_tty.tg_hist_size > a_tty.tg_hist_size_max){
       --a_tty.tg_hist_size;
       if((thp = a_tty.tg_hist_tail) != NULL){
@@ -4251,7 +4252,7 @@ c_bind(void *v){
          for(tbcp = a_tty.tg_bind[lif]; tbcp != NULL;
                ++lns, tbcp = tbcp->tbc_next){
             /* Print the bytes of resolved terminal capabilities, then */
-            if((options & OPT_D_V) &&
+            if((n_poption & n_PO_D_V) &&
                   (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)
                   ) == a_TTY_BIND_RESOLVE){
                char cbuf[8];
@@ -4307,7 +4308,7 @@ c_bind(void *v){
                a_tty_bind_ctx_maps[lif].tbcm_name, tbcp->tbc_seq,
                n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
                (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : n_empty),
-               (!(options & OPT_D_VV) ? n_empty
+               (!(n_poption & n_PO_D_VV) ? n_empty
                   : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL
                      ? _(" # MLE internal") : n_empty))
                );
@@ -4335,7 +4336,7 @@ c_bind(void *v){
    }
 jleave:
    NYD_LEAVE;
-   return (v != NULL) ? EXIT_OK : EXIT_ERR;
+   return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
 }
 
 FL int
@@ -4402,7 +4403,7 @@ jredo:
       goto jredo;
 jleave:
    NYD_LEAVE;
-   return (v != NULL) ? EXIT_OK : EXIT_ERR;
+   return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
 }
 # endif /* HAVE_KEY_BINDINGS */
 

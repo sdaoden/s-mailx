@@ -95,7 +95,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
          rv = -1;
          goto jleave;
       }
-      if (options & OPT_VERBVERB)
+      if (n_poption & n_PO_VERBVERB)
          n_err(slp->buf);
       switch (slp->buf[0]) {
       case '1':   rv = 1; break;
@@ -125,7 +125,7 @@ jleave:
 
 /* Indirect SMTP I/O */
 #define _ANSWER(X, IGNEOF, WANTDAT) \
-do if (!(options & OPT_DEBUG)) {\
+do if (!(n_poption & n_PO_DEBUG)) {\
    int y;\
    if ((y = _smtp_read(sp, slp, X, IGNEOF, WANTDAT)) != (X) &&\
          (!(IGNEOF) || y != -1))\
@@ -133,9 +133,9 @@ do if (!(options & OPT_DEBUG)) {\
 } while (0)
 #define _OUT(X) \
 do {\
-   if (options & OPT_VERBVERB)\
+   if (n_poption & n_PO_VERBVERB)\
       n_err(">>> %s", X);\
-   if (!(options & OPT_DEBUG))\
+   if (!(n_poption & n_PO_DEBUG))\
       swrite(sp, X);\
 } while (0)
 
@@ -166,7 +166,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if (!(options & OPT_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
+      if (!(n_poption & n_PO_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
          goto jleave;
    }
 #else
@@ -255,7 +255,7 @@ jerr_cred:
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (options & OPT_DEBUG)
+      if (n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
       else if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
@@ -297,7 +297,7 @@ jsend:
             inbcc = FAL0;
       }
 
-      if (options & OPT_DEBUG) {
+      if (n_poption & n_PO_DEBUG) {
          slp->buf[blen - 1] = '\0';
          n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : n_empty), slp->buf);
          continue;
@@ -343,13 +343,13 @@ smtp_mta(struct sendbundle *sbp)
       safe_signal(SIGTERM, &_smtp_onterm);
 
    memset(&so, 0, sizeof so);
-   if (!(options & OPT_DEBUG) && !sopen(&so, &sbp->sb_url))
+   if (!(n_poption & n_PO_DEBUG) && !sopen(&so, &sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";
    rv = _smtp_talk(&so, sbp);
 
-   if (!(options & OPT_DEBUG))
+   if (!(n_poption & n_PO_DEBUG))
       sclose(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);

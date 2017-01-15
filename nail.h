@@ -442,7 +442,7 @@
 #elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __extension__ __FUNCTION__
 #else
-# define __FUN__        uagent /* Something that is not a literal */
+# define __FUN__        n_uagent /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
@@ -860,19 +860,19 @@ enum n_dotlock_state{
    n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
-enum exit_status {
-   EXIT_OK        = EXIT_SUCCESS,
-   EXIT_ERR       = EXIT_FAILURE,
-   EXIT_USE       = 64,       /* sysexits.h:EX_USAGE */
-   EXIT_NOUSER    = 67,       /* :EX_NOUSER */
-   EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
-   EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
+enum n_exit_status{
+   n_EXIT_OK = EXIT_SUCCESS,
+   n_EXIT_ERR = EXIT_FAILURE,
+   n_EXIT_USE = 64,           /* sysexits.h:EX_USAGE */
+   n_EXIT_NOUSER = 67,        /* :EX_NOUSER */
+   n_EXIT_COLL_ABORT = 1<<1,  /* Message collection was aborted */
+   n_EXIT_SEND_ERROR = 1<<2   /* Unspecified send error occurred */
 };
 
 enum fedit_mode {
    FEDIT_NONE     = 0,
    FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
-   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, OPT_R_FLAG is global) */
+   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, n_OPT_R_FLAG is global) */
    FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
 };
 
@@ -1124,7 +1124,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_TRUNC = 1<<1,         /* Truncate result storage on entry */
    n_SHEXP_PARSE_TRIMSPACE = 1<<2,     /* Ignore space surrounding tokens */
    n_SHEXP_PARSE_LOG = 1<<3,           /* Log errors */
-   n_SHEXP_PARSE_LOG_D_V = 1<<4,       /* Log errors if OPT_D_V */
+   n_SHEXP_PARSE_LOG_D_V = 1<<4,       /* Log errors if n_OPT_D_V */
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
@@ -1154,7 +1154,7 @@ enum n_shexp_state{
    n_SHEXP_STATE_CONTROL = 1<<4,       /* Control characters seen */
 
    n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
-   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !OPT_UNICODE */
+   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
    n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
    n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
@@ -1349,103 +1349,109 @@ enum n_visual_info_flags{
          n_VISUAL_INFO_WOUT_SALLOC | n_VISUAL_INFO_WOUT_PRINTABLE
 };
 
-enum user_options {
-   OPT_NONE,
-   OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
-   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
-   OPT_VERBVERB   = 1u<< 2,   /* .. even more verbosity */
-   OPT_EXISTONLY  = 1u<< 3,   /* -e */
-   OPT_HEADERSONLY = 1u<<4,   /* -H */
-   OPT_HEADERLIST = 1u<< 5,   /* -L */
-   OPT_QUICKRUN_MASK = OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST,
-   OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 8,   /* -F */
-   OPT_Mm_FLAG    = 1u<< 9,   /* -M or -m (plus option_Mm_arg) */
-   OPT_N_FLAG     = 1u<<10,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<<11,   /* -R */
-   OPT_r_FLAG     = 1u<<12,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<13,   /* -t */
-   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<15,   /* -# */
+enum n_program_option{
+   n_PO_DEBUG = 1u<<0,        /* -d / *debug* */
+   n_PO_VERB = 1u<<1,         /* -v / *verbose* */
+   n_PO_VERBVERB = 1u<<2,     /* .. even more verbosity */
+   n_PO_EXISTONLY = 1u<<3,    /* -e */
+   n_PO_HEADERSONLY = 1u<<4,  /* -H */
+   n_PO_HEADERLIST = 1u<<5,   /* -L */
+   n_PO_QUICKRUN_MASK = n_PO_EXISTONLY | n_PO_HEADERSONLY | n_PO_HEADERLIST,
+   n_PO_E_FLAG = 1u<<6,       /* -E / *skipemptybody* */
+   n_PO_F_FLAG = 1u<<7,       /* -F */
+   n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
+   n_PO_N_FLAG = 1u<<9,       /* -N / *header* */
+   n_PO_R_FLAG = 1u<<10,      /* -R */
+   n_PO_r_FLAG = 1u<<11,      /* -r (plus n_poption_arg_r) */
+   n_PO_t_FLAG = 1u<<12,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<14,  /* -# */
 
    /*  */
-   OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
-
-   /*  */
-   OPT_SENDMODE   = 1u<<17,   /* Usage case forces send mode */
-   OPT_TTYIN      = 1u<<18,
-   OPT_TTYOUT     = 1u<<19,
-   OPT_INTERACTIVE = 1u<<20,
-   OPT_UNICODE    = 1u<<21,   /* We're in an UTF-8 environment */
-
-   OPT_ENC_MBSTATE = 1u<<22,  /* Multibyte environment with shift states */
+   n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
    /* Some easy-access shortcuts */
-   OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB,
-   OPT_D_V_VV     = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
+   n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
+   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
+   n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
 };
 
-#define OBSOLETE(X) \
-do {\
-   if (options & OPT_D_V_VV)\
+#define n_OBSOLETE(X) \
+do{\
+   if(n_poption & n_PO_D_V_VV)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
-} while (0)
-#define OBSOLETE2(X,Y) \
-do {\
-   if (options & OPT_D_V_VV)\
+}while(0)
+#define n_OBSOLETE2(X,Y) \
+do{\
+   if(n_poption & n_PO_D_V_VV)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
-} while (0)
+}while(0)
 
-enum program_state {
-   PS_NONE           = 0,
-   PS_STARTED        = 1u<< 0,      /* main.c startup code passed, functional */
-   PS_ROOT           = 1u<<30,      /* Temporary "bypass any checks" bit */
+/* Program state bits which may regulary fluctuate */
+enum n_program_state{
+   n_PS_ROOT = 1u<<30,                 /* Temporary "bypass any checks" bit */
 
-   PS_EXIT           = 1u<< 1,      /* Exit request pending */
-   PS_SOURCING       = 1u<< 2,      /* During load() or `source' */
-   PS_COMPOSE_MODE   = 1u<< 3,      /* State machine recursed */
-   PS_COMPOSE_FORKHOOK = 1u<<4,     /* *on-compose-done* running (fork(2)ed!) */
-   PS_ROBOT          = 1u<< 5,      /* State machine in non-interactive state */
+   n_PS_EXIT = 1u<<1,                  /* Exit request pending */
+   n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
+   n_PS_ROBOT = 1u<<3,                 /* .. even more robotic */
+   n_PS_COMPOSE_MODE = 1u<<4,          /* State machine recursed */
+   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* *on-compose-done* running (fork(2)) */
 
-   PS_EVAL_ERROR     = 1u<< 6,      /* Last evaluate() command failed */
+   n_PS_EVAL_ERROR = 1u<<6,            /* Last evaluate() command failed */
 
-   PS_HOOK_NEWMAIL   = 1u<< 7,
-   PS_HOOK           = 1u<< 8,
-   PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
+   n_PS_HOOK_NEWMAIL = 1u<<7,
+   n_PS_HOOK = 1u<<8,
+   n_PS_HOOK_MASK = n_PS_HOOK_NEWMAIL | n_PS_HOOK,
 
-   PS_EDIT           = 1u<< 9,      /* Current mailbox not a "system mailbox" */
-   PS_SETFILE_OPENED = 1u<<10,      /* (hack) setfile() opened a new box */
-   PS_SAW_COMMAND    = 1u<<11,      /* ..after mailbox switch */
+   n_PS_EDIT = 1u<<9,                  /* Current mailbox no "system mailbox" */
+   n_PS_SETFILE_OPENED = 1u<<10,       /* (hack) setfile() opened a new box */
+   n_PS_SAW_COMMAND = 1u<<11,          /* ..after mailbox switch */
+   n_PS_DID_PRINT_DOT = 1u<<12,        /* Current message has been printed */
 
-   PS_DID_PRINT_DOT  = 1u<<12,      /* Current message has been printed */
+   n_PS_SIGWINCH_PEND = 1u<<13,        /* Need update of $COLUMNS/$LINES */
+   n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   PS_SIGWINCH_PEND  = 1u<<14,      /* Need update of $COLUMNS/$LINES */
-   PS_PSTATE_PENDMASK = PS_SIGWINCH_PEND, /* pstate housekeeping needed */
-
-   PS_ARGLIST_MASK   = n_BITENUM_MASK(17, 18),
-   PS_MSGLIST_GABBY  = 1u<<17,      /* getmsglist() saw what it thinks: gabby */
-   PS_MSGLIST_DIRECT = 1u<<18,      /* One msg was directly chosen by number */
+   n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 15),
+   n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
+   n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
    /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
     * TODO may be placed in the history or not (grep this, see commands()),
     * TODO so avoid reusing this bit */
-   PS_WYSHLIST_SAW_CONTROL = 1u<<18, /* ..saw C0+ control characters */
+   n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
-   PS_EXPAND_MULTIRESULT = 1u<<19,  /* Last fexpand() with MULTIOK had .. */
+   n_PS_EXPAND_MULTIRESULT = 1u<<16,   /* Last fexpand() with MULTIOK had .. */
+   n_PS_ERRORS_PROMPT = 1u<<17,        /* New error to be reported in prompt */
 
-   PS_HEADER_NEEDED_MIME = 1u<<20,  /* mime_write_tohdr() needed x TODO HACK! */
+   /* Bad hacks */
+   n_PS_HEADER_NEEDED_MIME = 1u<<18,   /* mime_write_tohdr() not ASCII clean */
+   n_PS_READLINE_NL = 1u<<19,          /* readline_input()+ saw a \n */
+   n_PS_COLOUR_ACTIVE = 1u<<20         /* n_colour_env_create().._gut() cycle */
+};
 
-   PS_READLINE_NL = 1u<<21,         /* readline_input()+ saw a \n TODO HACK! */
+/* Various states set once, and first time messages or initializers */
+enum n_program_state_once{
+   /* Pre _STARTED */
+   n_PSO_SENDMODE = 1u<<1,
+   n_PSO_INTERACTIVE = 1u<<2,
+   n_PSO_TTYIN = 1u<<3,
+   n_PSO_TTYOUT = 1u<<4, /* TODO should be TTYERR! */
 
-   PS_COLOUR_ACTIVE  = 1u<<22,      /* n_colour_env_create().._gut() cycle */
+   n_PSO_UNICODE = 1u<<8,
+   n_PSO_ENC_MBSTATE = 1u<<9,
 
-   PS_ERRORS_PROMPT  = 1u<<24,      /* New error is to be reported in prompt */
-   /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1u<<25,      /* Ring of `errors' advisory */
-   PS_t_FLAG         = 1u<<26,      /* OPT_t_FLAG made persistant */
-   PS_TERMCAP_DISABLE = 1u<<27,     /* HAVE_TERMCAP: *termcap-disable* was set */
-   PS_TERMCAP_CA_MODE = 1u<<28,     /* HAVE_TERMCAP: ca_mode available & used */
-   PS_LINE_EDITOR_INIT = 1u<<29     /* MLE is initialized */
+   /* main.c startup code passed, we are functional! */
+   n_PSO_STARTED = 1u<<0,
+
+   /* (Likely) Post _STARTED */
+   n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
+   n_PSO_ERRORS_NOTED = 1u<<17,
+   n_PSO_TERMCAP_DISABLE = 1u<<18,
+   n_PSO_TERMCAP_CA_MODE = 1u<<19,
+   n_PSO_LINE_EDITOR_INIT = 1u<<20,
+
+   /* A subtile hack which works in conjunction with n_OPT_t_FLAG so as to
+    * allow to have multiple states regarding the related header setup */
+   n_PSO_t_FLAG = 1u<<30
 };
 
 /* A large enum with all the boolean and value options a.k.a their keys.
@@ -2202,14 +2208,14 @@ enum argtype {
    ARG_H          = 1u<< 7,   /* Never place in `history' */
    ARG_I          = 1u<< 8,   /* Interactive command bit */
    ARG_M          = 1u<< 9,   /* Legal from send mode bit */
-   ARG_O          = 1u<<10,   /* OBSOLETE()d command */
+   ARG_O          = 1u<<10,   /* n_OBSOLETE()d command */
    ARG_P          = 1u<<11,   /* Autoprint dot after command */
    ARG_R          = 1u<<12,   /* Cannot be called in compose mode recursion */
-   ARG_S          = 1u<<13,   /* Cannot be called unless PS_STARTED (POSIX) */
+   ARG_S          = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
    ARG_T          = 1u<<14,   /* Is a transparent command */
    ARG_V          = 1u<<15,   /* Places data in temporary_arg_v_store */
    ARG_W          = 1u<<16,   /* Invalid when read only bit */
-   ARG_X          = 1u<<17    /* Valid command in PS_COMPOSE_FORKHOOK mode */
+   ARG_X          = 1u<<17    /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
 };
 
 enum gfield {
@@ -2402,25 +2408,26 @@ struct cw {
 # define VL             extern
 #endif
 
-VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
-VL int         realscreenheight;    /* The real screen height */
-VL int         scrnwidth;           /* Screen width, or best guess */
-VL int         scrnheight;          /* Screen height/guess (4 header) */
-VL FILE        *n_tty_fp;           /* Our terminal output TODO input channel */
+VL int n_mb_cur_max;             /* Value of MB_CUR_MAX */
+VL int n_realscreenheight;       /* The real screen height */
+VL int n_scrnwidth;              /* Screen width, or best guess */
+VL int n_scrnheight;             /* Screen height/guess (4 header) */
+VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
 
-VL char const  *progname;           /* Our name */
+VL char const *n_progname;       /* Our name */
 
-VL gid_t       group_id;            /* getgid() and getuid() */
-VL uid_t       user_id;
+VL gid_t n_group_id;             /* getgid() and getuid() */
+VL uid_t n_user_id;
 
-VL int         exit_status;         /* Exit status */
-VL ui32_t      options;             /* Bits of enum user_options */
-VL char const *option_Mm_arg;       /* Argument for -[Mm] aka OPT_[Mm]_FLAG */
-VL struct name *option_r_arg;       /* Argument to -r option */
-VL char const  **smopts;            /* sendmail(1) opts from commline */
-VL size_t      smopts_cnt;          /* Entries in smopts */
+VL int n_exit_status;            /* Exit status */
+VL ui32_t n_poption;             /* Bits of enum n_program_option */
+VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
+VL struct name *n_poption_arg_r; /* Argument to -r option */
+VL char const **n_smopts;        /* sendmail(1) opts from commline */
+VL size_t n_smopts_cnt;          /* Entries in smopts */
 
-VL ui32_t      pstate;              /* Bits of enum program_state */
+VL ui32_t n_pstate;              /* Bits of enum n_program_state */
+VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
@@ -2460,15 +2467,15 @@ VL char const  *temporary_protocol_ext;
 /* The remaining variables need initialization */
 
 #ifndef HAVE_AMALGAMATION
-VL char const  month_names[12 + 1][4];
-VL char const  weekday_names[7 + 1][4];
+VL char const n_month_names[12 + 1][4];
+VL char const n_weekday_names[7 + 1][4];
 
-VL char const  uagent[sizeof VAL_UAGENT];
-VL char const  n_error[sizeof n_ERROR];
-VL char const  n_unirepl[sizeof n_UNIREPL];
-VL char const  n_empty[1];
+VL char const n_uagent[sizeof VAL_UAGENT];
+VL char const n_error[sizeof n_ERROR];
+VL char const n_unirepl[sizeof n_UNIREPL];
+VL char const n_empty[1];
 
-VL ui16_t const class_char[1 + 0x7F];
+VL ui16_t const n_class_char[1 + 0x7F];
 #endif
 
 /*

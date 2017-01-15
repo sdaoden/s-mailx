@@ -56,7 +56,7 @@ do {\
    if (((RV) = pop3_finish(mp)) == STOP) {\
       ACTIONSTOP;\
    }\
-   if (options & OPT_VERBVERB)\
+   if (n_poption & n_PO_VERBVERB)\
       n_err(">>> %s", X);\
    mp->mb_active |= Y;\
    if (((RV) = swrite(&mp->mb_sock, X)) == STOP) {\
@@ -301,7 +301,7 @@ jretry:
    if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, &blen, &mp->mb_sock)) > 0) {
       if ((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
-      if (options & OPT_VERBVERB)
+      if (n_poption & n_PO_VERBVERB)
          n_err(_pop3_buf);
       switch (*_pop3_buf) {
       case '+':
@@ -728,7 +728,7 @@ pop3_update(struct mailbox *mp)
    int dodel, c, gotcha, held;
    NYD_ENTER;
 
-   if (!(pstate & PS_EDIT)) {
+   if (!(n_pstate & n_PS_EDIT)) {
       holdbits();
       c = 0;
       for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -740,7 +740,7 @@ pop3_update(struct mailbox *mp)
 
    gotcha = held = 0;
    for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
-      if (pstate & PS_EDIT)
+      if (n_pstate & n_PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -756,11 +756,11 @@ pop3_update(struct mailbox *mp)
 
       dnq = n_shexp_quote_cp(displayname, FAL0);
 
-      if (gotcha && (pstate & PS_EDIT)) {
+      if (gotcha && (n_pstate & n_PS_EDIT)) {
          printf(_("%s "), dnq);
          printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             ? _("complete\n") : _("updated\n"));
-      } else if (held && !(pstate & PS_EDIT)) {
+      } else if (held && !(n_pstate & n_PS_EDIT)) {
          if (held == 1)
             printf(_("Held 1 message in %s\n"), dnq);
          else
@@ -834,9 +834,9 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    rv = 1;
 
    if (fm & FEDIT_SYSBOX)
-      pstate &= ~PS_EDIT;
+      n_pstate &= ~n_PS_EDIT;
    else
-      pstate |= PS_EDIT;
+      n_pstate |= n_PS_EDIT;
    if (mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock);
    if (mb.mb_itf) {
@@ -892,24 +892,25 @@ pop3_setfile(char const *server, enum fedit_mode fm)
 
    setmsize(msgCount);
    mb.mb_type = MB_POP3;
-   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
+   mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY))
+         ? 0 : MB_DELE;
    pop3_setptr(&mb, &sc);
 
    /*if (!(fm & FEDIT_NEWMAIL)) */{
-      pstate &= ~PS_SAW_COMMAND;
-      pstate |= PS_SETFILE_OPENED;
+      n_pstate &= ~n_PS_SAW_COMMAND;
+      n_pstate |= n_PS_SETFILE_OPENED;
    }
 
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
 
-   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
+   if ((n_poption & (n_PO_EXISTONLY | n_PO_HEADERLIST)) == n_PO_EXISTONLY) {
       rv = (msgCount == 0);
       goto jleave;
    }
 
-   if (!(pstate & PS_EDIT) && msgCount == 0) {
+   if (!(n_pstate & n_PS_EDIT) && msgCount == 0) {
       if (!ok_blook(emptystart))
          n_err(_("No mail at %s\n"), server);
       goto jleave;

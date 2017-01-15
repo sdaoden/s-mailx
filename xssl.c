@@ -287,7 +287,7 @@ a_xssl_rand_init(void){
 
    /* Shall use some external daemon? */ /* TODO obsolete *ssl_rand_egd* */
    if((cp = ok_vlook(ssl_rand_egd)) != NULL){ /* TODO no one supports it now! */
-      OBSOLETE(_("all *SSL libraries dropped support of *ssl-rand-egd*, thus"));
+      n_OBSOLETE(_("all *SSL libraries removed *ssl-rand-egd* support"));
 #ifdef HAVE_XSSL_RAND_EGD
       if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL &&
             RAND_egd(cp = x) != -1){
@@ -297,7 +297,7 @@ a_xssl_rand_init(void){
       n_err(_("*ssl_rand_egd* daemon at %s not available\n"),
          n_shexp_quote_cp(cp, FAL0));
 #else
-      if(options & OPT_D_VV)
+      if(n_poption & n_PO_D_VV)
          n_err(_("*ssl_rand_egd* (%s): unsupported by SSL library\n"),
             n_shexp_quote_cp(cp, FAL0));
 #endif
@@ -386,7 +386,7 @@ a_xssl_init(void)
          cp = NULL;
          flags = 0;
       }
-      if(CONF_modules_load_file(cp, uagent, flags) == 1){
+      if(CONF_modules_load_file(cp, n_uagent, flags) == 1){
          a_xssl_state |= a_XSSL_S_CONF_LOAD;
 # if HAVE_XSSL_OPENSSL < 0x10100
          if(!(a_xssl_state & a_XSSL_S_EXIT_HDL)){
@@ -471,7 +471,7 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    int rv = TRU1;
    NYD_ENTER;
 
-   if (success && !(options & OPT_VERB))
+   if (success && !(n_poption & n_PO_D_V))
       goto jleave;
 
    if (a_xssl_msgno != 0) {
@@ -568,7 +568,7 @@ _ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
          ssl_gen_err(_("SSL_CONF_CTX_cmd() failed for *%s*"), cmsg);
       else
          n_err(_("%s: *%s* implementation error, please report this\n"),
-            uagent, cmsg);
+            n_uagent, cmsg);
       rv = 1;
    }
 
@@ -758,7 +758,7 @@ ssl_check_host(struct sock *sp, struct url const *urlp)
       for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
          gen = sk_GENERAL_NAME_value(gens, i);
          if (gen->type == GEN_DNS) {
-            if (options & OPT_VERB)
+            if (n_poption & n_PO_D_V)
                n_err(_("Comparing subject_alt_name: need<%s> is<%s>\n"),
                   urlp->url_host.s, (char*)gen->d.ia5->data);
             rv = rfc2595_hostname_match(urlp->url_host.s,
@@ -773,7 +773,7 @@ ssl_check_host(struct sock *sp, struct url const *urlp)
          X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data)
             > 0) {
       data[sizeof data - 1] = '\0';
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_D_V)
          n_err(_("Comparing commonName: need<%s> is<%s>\n"),
             urlp->url_host.s, data);
       rv = rfc2595_hostname_match(urlp->url_host.s, data);
@@ -884,7 +884,7 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
          for (j = 0; j < sk_GENERAL_NAME_num(gens); ++j) {
             gen = sk_GENERAL_NAME_value(gens, j);
             if (gen->type == GEN_EMAIL) {
-               if (options & OPT_VERB)
+               if (n_poption & n_PO_D_V)
                   n_err(_("Comparing subject_alt_name: need<%s> is<%s>)\n"),
                      sender, (char*)gen->d.ia5->data);
                if (!asccasecmp((char*)gen->d.ia5->data, sender))
@@ -897,7 +897,7 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
             X509_NAME_get_text_by_NID(subj, NID_pkcs9_emailAddress,
                data, sizeof data) > 0) {
          data[sizeof data -1] = '\0';
-         if (options & OPT_VERB)
+         if (n_poption & n_PO_D_V)
             n_err(_("Comparing emailAddress: need<%s> is<%s>\n"),
                sender, data);
          if (!asccasecmp(data, sender))
@@ -947,7 +947,7 @@ _smime_cipher(char const *name)
 #ifndef OPENSSL_NO_AES
    for (i = 0; i < n_NELEM(a_xssl_smime_ciphers_obs); ++i) /* TODO obsolete */
       if (!asccasecmp(a_xssl_smime_ciphers_obs[i].sc_name, cp)) {
-         OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
+         n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
          cipher = (*a_xssl_smime_ciphers_obs[i].sc_fun)();
          goto jleave;
       }
@@ -1198,7 +1198,7 @@ load_crl1(X509_STORE *store, char const *name)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if (options & OPT_VERB)
+   if (n_poption & n_PO_D_V)
       n_err(_("Loading CRL from %s\n"), n_shexp_quote_cp(name, FAL0));
    if ((lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file())) == NULL) {
       ssl_gen_err(_("Error creating X509 lookup object"));
@@ -1314,8 +1314,8 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
    if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
-      OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
-      if (options & OPT_VERB)
+      n_OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
+      if (n_poption & n_PO_D_V)
          n_err(_("*ssl-method*: %s\n"), cp);
       for (i = 0;;) {
          if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
@@ -1330,7 +1330,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
    }
    /* *ssl-protocol* */
    if ((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_D_V)
          n_err(_("*ssl-protocol*: %s\n"), cp_base);
       cp = cp_base;
    }
@@ -1341,7 +1341,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    /* *ssl-cert* */
    if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_D_V)
          n_err(_("*ssl-cert* %s\n"), n_shexp_quote_cp(cp, FAL0));
       if ((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
          n_err(_("*ssl-cert* value expansion failed: %s\n"),
@@ -1354,7 +1354,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
       /* *ssl-key* */
       if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
-         if (options & OPT_VERB)
+         if (n_poption & n_PO_D_V)
             n_err(_("*ssl-key* %s\n"), n_shexp_quote_cp(cp_base, FAL0));
          if ((cp = fexpand(cp_base, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
             n_err(_("*ssl-key* value expansion failed: %s\n"),
@@ -1483,7 +1483,7 @@ c_verify(void *vp)
    srelax_rele();
 
    if ((rv = ec) != 0)
-      exit_status |= EXIT_ERR;
+      n_exit_status |= n_EXIT_ERR;
 jleave:
    if (store != NULL)
       X509_STORE_free(store);

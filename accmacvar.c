@@ -87,7 +87,7 @@ enum a_amv_var_flags{
    a_AMV_VF_POSNUM = 1<<8,    /* Value must be positive 32-bit number */
    a_AMV_VF_LOWER = 1<<9,     /* Values will be stored in a lowercase version */
    a_AMV_VF_VIP = 1<<10,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<11,   /* Import ONLY from environ (before PS_STARTED) */
+   a_AMV_VF_IMPORT = 1<<11,   /* Import ONLY from environ (pre n_PSO_STARTED) */
    a_AMV_VF_ENV = 1<<12,      /* Update environment on change */
    a_AMV_VF_I3VAL = 1<<13,    /* Has an initial value */
    a_AMV_VF_DEFVAL = 1<<14,   /* Has a default value */
@@ -409,11 +409,13 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
 
    a_amv_lopts = losp;
    if(amcap->amca_hook_pre != NULL){
-      bool_t reset = !(pstate & PS_ROOT);
-      pstate |= PS_ROOT;
+      bool_t reset;
+
+      reset = !(n_pstate & n_PS_ROOT);
+      n_pstate |= n_PS_ROOT;
       (*amcap->amca_hook_pre)(amcap->amca_hook_arg);
       if(reset)
-         pstate &= ~PS_ROOT;
+         n_pstate &= ~n_PS_ROOT;
    }
    rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
          &a_amv_mac__finalize, losp);
@@ -437,7 +439,7 @@ a_amv_mac__finalize(void *vp){
       *amcap->amca_unroller = losp->as_lopts;
 
    if(amcap->amca_ps_hook_mask)
-      pstate &= ~PS_HOOK_MASK;
+      n_pstate &= ~n_PS_HOOK_MASK;
 
    n_lofi_free(losp);
    n_lofi_free(amcap);
@@ -718,17 +720,17 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
 
    avp = *avpp;
    *avpp = NULL;
-   reset = !(pstate & PS_ROOT);
+   reset = !(n_pstate & n_PS_ROOT);
 
    save_alp = a_amv_lopts;
    a_amv_lopts = NULL;
    while(avp != NULL){
       x = avp;
       avp = avp->av_link;
-      pstate |= PS_ROOT;
+      n_pstate |= n_PS_ROOT;
       vok_vset(x->av_name, x->av_value);
       if(reset)
-         pstate &= ~PS_ROOT;
+         n_pstate &= ~n_PS_ROOT;
       free(x);
    }
    a_amv_lopts = save_alp;
@@ -771,68 +773,63 @@ a_amv_var_free(char *cp){
 static bool_t
 a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    int flag;
-   bool_t ok;
+   bool_t ok, reset;
    NYD2_ENTER;
 
    ok = TRU1;
+   reset = !(n_pstate & n_PS_ROOT);
    flag = 0;
 
    switch(okey){
    case ok_b_debug:
-      flag = OPT_DEBUG;
+      flag = n_PO_DEBUG;
       break;
    case ok_v_HOME:
       /* Invalidate any resolved folder then, too
        * FALLTHRU */
    case ok_v_folder:
-      ok = !(pstate & PS_ROOT);
-      pstate |= PS_ROOT;
+      n_pstate |= n_PS_ROOT;
       ok_vclear(_folder_resolved);
-      if(ok)
-         pstate &= ~PS_ROOT;
-      ok = TRU1;
+      if(reset)
+         n_pstate &= ~n_PS_ROOT;
       break;
    case ok_b_header:
-      flag = OPT_N_FLAG;
+      flag = n_PO_N_FLAG;
       enable = !enable;
       break;
    case ok_b_memdebug:
-      flag = OPT_MEMDEBUG;
+      flag = n_PO_MEMDEBUG;
       break;
    case ok_b_POSIXLY_CORRECT:
-      if(!(pstate & PS_ROOT)){
-         bool_t reset = !(pstate & PS_ROOT);
-
-         pstate |= PS_ROOT;
+      if(!(n_pstate & n_PS_ROOT)){
+         n_pstate |= n_PS_ROOT;
          if(enable)
             ok_bset(posix);
          else
             ok_bclear(posix);
          if(reset)
-            pstate &= ~PS_ROOT;
+            n_pstate &= ~n_PS_ROOT;
       }
       break;
    case ok_b_posix:
-      if(!(pstate & PS_ROOT)){
-         bool_t reset = !(pstate & PS_ROOT);
-
-         pstate |= PS_ROOT;
+      if(!(n_pstate & n_PS_ROOT)){
+         n_pstate |= n_PS_ROOT;
          if(enable)
             ok_bset(POSIXLY_CORRECT);
          else
             ok_bclear(POSIXLY_CORRECT);
          if(reset)
-            pstate &= ~PS_ROOT;
+            n_pstate &= ~n_PS_ROOT;
       }
       break;
    case ok_b_skipemptybody:
-      flag = OPT_E_FLAG;
+      flag = n_PO_E_FLAG;
       break;
    case ok_b_typescript_mode:
       if(enable){
          ok_bset(colour_disable);
          ok_bset(line_editor_disable);
-         if(!(pstate & PS_STARTED))
+         if(!(n_psonce & n_PSO_STARTED))
             ok_bset(termcap_disable);
       }
    case ok_v_umask:
@@ -848,8 +845,8 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       }
       break;
    case ok_b_verbose:
-      flag = (enable && !(options & OPT_VERB))
-            ? OPT_VERB : OPT_VERB | OPT_VERBVERB;
+      flag = (enable && !(n_poption & n_PO_VERB))
+            ? n_PO_VERB : n_PO_VERB | n_PO_VERBVERB;
       break;
    default:
       DBG( n_err("Implementation error: never heard of %u\n", ok); )
@@ -858,9 +855,9 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
 
    if(flag){
       if(enable)
-         options |= flag;
+         n_poption |= flag;
       else
-         options &= ~flag;
+         n_poption &= ~flag;
    }
    NYD2_LEAVE;
    return ok;
@@ -1201,7 +1198,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       /* Validity checks */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
-            !(pstate & PS_ROOT))){
+            !(n_pstate & n_PS_ROOT))){
          value = N_("Variable is readonly: %s\n");
          goto jeavmp;
       }
@@ -1226,7 +1223,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
-            !(pstate & (PS_ROOT | PS_STARTED)))){
+            !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");
 jeavmp:
          n_err(V_(value), avcp->avc_name);
@@ -1276,7 +1273,8 @@ jeavmp:
       /* Via `set' etc. the user may give even boolean options non-boolean
        * values, ignore that and force boolean */
       if(avp->av_flags & a_AMV_VF_BOOL){
-         if(!(pstate & PS_ROOT) && (options & OPT_D_VV) && *value != '\0')
+         if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_VV) &&
+               *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
          avp->av_value = n_UNCONST(a_amv_var_1);
@@ -1341,7 +1339,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
 
    if(n_LIKELY((avmp = avcp->avc_map) != NULL)){
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NODEL) != 0 &&
-            !(pstate & PS_ROOT))){
+            !(n_pstate & n_PS_ROOT))){
          n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
       }
@@ -1356,7 +1354,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
       if(force_env){
 jforce_env:
          rv = a_amv_var__clearenv(avcp->avc_name, NULL);
-      }else if(!(pstate & (PS_ROOT | PS_ROBOT)) && (options & OPT_D_V))
+      }else if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
          n_err(_("Can't unset undefined variable: %s\n"), avcp->avc_name);
       goto jleave;
    }else if(avcp->avc_var == (struct a_amv_var*)-1){
@@ -1506,7 +1504,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       goto jleave;
    }
 
-   if(options & OPT_D_V){
+   if(n_poption & n_PO_D_V){
       if(avc.avc_map == NULL){
          msgp = n_string_push_c(msgp, '#');
          msgp = n_string_push_cp(msgp, "assembled");
@@ -1721,18 +1719,18 @@ jmac:
    memset(amcap, 0, sizeof *amcap);
    amcap->amca_name = cp;
    amcap->amca_amp = amp;
-   pstate &= ~PS_HOOK_MASK;
+   n_pstate &= ~n_PS_HOOK_MASK;
    if(nmail){
       amcap->amca_unroller = NULL;
-      pstate |= PS_HOOK_NEWMAIL;
+      n_pstate |= n_PS_HOOK_NEWMAIL;
    }else{
       amcap->amca_unroller = &a_amv_folder_hook_lopts;
-      pstate |= PS_HOOK;
+      n_pstate |= n_PS_HOOK;
    }
    amcap->amca_lopts_on = TRU1;
    amcap->amca_ps_hook_mask = TRU1;
    rv = a_amv_mac_exec(amcap);
-   pstate &= ~PS_HOOK_MASK;
+   n_pstate &= ~n_PS_HOOK_MASK;
 
 jleave:
    NYD_LEAVE;
@@ -1768,7 +1766,7 @@ c_account(void *v){
       goto jleave;
    }
 
-   if(pstate & PS_HOOK_MASK){
+   if(n_pstate & n_PS_HOOK_MASK){
       n_err(_("`account': can't change account from within a hook\n"));
       goto jleave;
    }
@@ -1812,18 +1810,18 @@ c_account(void *v){
    }
 
    /* C99 */{
-      bool_t reset = !(pstate & PS_ROOT);
+      bool_t reset = !(n_pstate & n_PS_ROOT);
 
-      pstate |= PS_ROOT;
+      n_pstate |= n_PS_ROOT;
       if(amp != NULL)
          ok_vset(_account, amp->am_name);
       else
          ok_vclear(_account);
       if(reset)
-         pstate &= ~PS_ROOT;
+         n_pstate &= ~n_PS_ROOT;
    }
 
-   if((pstate & (PS_STARTED | PS_HOOK_MASK)) == PS_STARTED){
+   if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if((i = setfile("%", 0)) < 0)
@@ -1871,8 +1869,8 @@ c_localopts(void *v){
 
    rv = 0;
 
-   if(pstate & (PS_HOOK | PS_COMPOSE_MODE)){
-      if(options & OPT_D_V)
+   if(n_pstate & (n_PS_HOOK | n_PS_COMPOSE_MODE)){
+      if(n_poption & n_PO_D_V)
          n_err(_("Cannot turn off `localopts' for compose-mode hooks\n"));
       goto jleave;
    }
@@ -1912,8 +1910,8 @@ temporary_call_compose_mode_hook(char const *macname,
       amcap->amca_hook_arg = hook_arg;
       amcap->amca_lopts_on = TRU1;
       amcap->amca_ps_hook_mask = TRU1;
-      pstate &= ~PS_HOOK_MASK;
-      pstate |= PS_HOOK;
+      n_pstate &= ~n_PS_HOOK_MASK;
+      n_pstate |= n_PS_HOOK;
       if(macname != NULL)
          a_amv_mac_exec(amcap);
       else{
@@ -2069,7 +2067,7 @@ n_var_voklook(char const *vokey){
                break;
             }
          }
-      }else if(options & OPT_D_V)
+      }else if(n_poption & n_PO_D_V)
          n_err(_("Cannot use macro local variable in this context: %s\n"),
             n_shexp_quote_cp(vokey, FAL0));
    }
@@ -2311,7 +2309,7 @@ c_environ(void *v){
                avc.avc_var->av_flags &= ~a_AMV_VF_LINKED;
                continue;
             }else if(avc.avc_var->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)){
-               if(options & OPT_D_V)
+               if(n_poption & n_PO_D_V)
                   n_err(_("`environ': link: already established: %s\n"), *ap);
                continue;
             }

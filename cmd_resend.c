@@ -269,7 +269,7 @@ jnext_msg:
                /* XXX terribly wasteful to create a new name, and can't we find
                 * XXX a way to mitigate that?? */
                is_addr_invalid(x = nalloc(cp, GEXTRA | GSKIN), EACM_STRICT)) {
-            if (options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("Message contains invalid List-Post: header\n"));
             cp = NULL;
             break;
@@ -453,7 +453,7 @@ _fwd(char *str, int recipient_record)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+         if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
             rv = 0;
             goto jleave;
          }
@@ -465,7 +465,7 @@ _fwd(char *str, int recipient_record)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
          rv = 0;
          goto jleave;
       }
@@ -545,7 +545,7 @@ _resend1(void *v, bool_t add_resent)
    if (!f) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+         if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
             f = FAL0;
             goto jleave;
          }
@@ -557,7 +557,7 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
 
    if (*msgvec == 0) {
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
          f = FAL0;
          goto jleave;
       }

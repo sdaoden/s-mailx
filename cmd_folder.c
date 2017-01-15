@@ -55,7 +55,7 @@ _c_file(void *v, enum fedit_mode fm)
       goto jleave;
    }
 
-   if (pstate & PS_HOOK_MASK) {
+   if (n_pstate & n_PS_HOOK_MASK) {
       n_err(_("Cannot change folder from within a hook\n"));
       i = 1;
       goto jleave;
@@ -69,7 +69,7 @@ _c_file(void *v, enum fedit_mode fm)
       goto jleave;
    }
    assert(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
-   if (pstate & PS_SETFILE_OPENED)
+   if (n_pstate & n_PS_SETFILE_OPENED)
       check_folder_hook(FAL0);
 
    if (i > 0) {
@@ -79,10 +79,10 @@ _c_file(void *v, enum fedit_mode fm)
        * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
        * TODO if $?", then "overriding an "error"), or we need a different
        * TODO return that differentiates */
-      i = (pstate & PS_ROBOT) ? 0 : 1;
+      i = (n_pstate & n_PS_ROBOT) ? 0 : 1;
       goto jleave;
    }
-   if (pstate & PS_SETFILE_OPENED)
+   if (n_pstate & n_PS_SETFILE_OPENED)
       announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
    i = 0;
 jleave:
@@ -119,7 +119,7 @@ c_newmail(void *v)
    NYD_ENTER;
    n_UNUSED(v);
 
-   if (pstate & PS_HOOK_MASK)
+   if (n_pstate & n_PS_HOOK_MASK)
       n_err(_("Cannot call `newmail' from within a hook\n"));
    else if ((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))

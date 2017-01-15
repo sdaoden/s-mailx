@@ -230,7 +230,7 @@ jecontent:
          continue;
       else if (!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
-         if ((options & OPT_D_V) || j > 1)
+         if ((n_poption & n_PO_D_V) || j > 1)
             n_err(_("*mimetypes-load-control*: can't open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
@@ -335,7 +335,7 @@ jexttypmar:
 
    if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
 jeinval:
-      if (cmdcalled || (options & OPT_D_V))
+      if (cmdcalled || (n_poption & n_PO_D_V))
          n_err(_("%s MIME type: %s\n"),
             (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")), typ);
       goto jleave;
@@ -838,11 +838,11 @@ jnextc:
       }
 
       /* needsterminal needs a terminal */
-      if (!(options & OPT_INTERACTIVE))
+      if (!(n_psonce & n_PSO_INTERACTIVE))
          goto jerr;
    }
 
-   if (!(rv & MIME_HDL_ALWAYS) && !(pstate & PS_MSGLIST_DIRECT)) {
+   if (!(rv & MIME_HDL_ALWAYS) && !(n_pstate & n_PS_MSGLIST_DIRECT)) {
       /* Viewing multiple messages in one go, don't block system */
       mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
             _("[-- Directly address message only for display --]\n")));
@@ -984,7 +984,7 @@ jdelall:
             lnp = mtnp, mtnp = mtnp->mt_next;
       }
       if (!match) {
-         if (!(pstate & PS_ROBOT) || (options & OPT_D_V))
+         if (!(n_pstate & n_PS_ROBOT) || (n_poption & n_PO_D_V))
             n_err(_("No such MIME type: %s\n"), *argv);
          v = NULL;
       }
@@ -1112,7 +1112,7 @@ jleave:
          n_err(_("Pre-v15 %s cannot handle message/rfc822 that "
               "indeed is a RFC 4155 MBOX!\n"
             "  Forcing a content-type of application/mbox!\n"),
-            uagent);
+            n_uagent);
          *contenttype = "application/mbox";
          goto jnorfc822;
       }

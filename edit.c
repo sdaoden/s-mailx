@@ -69,7 +69,7 @@ edit1(int *msgvec, int viored)
 
       mp = message + msgvec[i] - 1;
       setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
       touch(mp);
 
       sigint = safe_signal(SIGINT, SIG_IGN);

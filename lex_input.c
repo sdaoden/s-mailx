@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Command input, lexing and evaluation, resource file loading and `source'ing.
- *@ TODO PS_ROBOT requires yet PS_SOURCING, which REALLY sucks.
+ *@ TODO n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
  *@ TODO Commands and ghosts deserve a hashmap.  Or so.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -72,7 +72,7 @@ enum a_lex_input_flags{
     * TODO jumps must be taken by slice creators.  HACK!!!  But works. ;} */
    a_LEX_SLICE = 1<<6,
 
-   a_LEX_SUPER_MACRO = 1<<16     /* *Not* inheriting PS_SOURCING state */
+   a_LEX_SUPER_MACRO = 1<<16     /* *Not* inheriting n_PS_SOURCING state */
 };
 
 struct a_lex_cmd{
@@ -118,7 +118,7 @@ struct a_lex_input_stack{
    /* SLICE hacks: saved stdin/stdout, saved pstate */
    FILE *li_slice_stdin;
    FILE *li_slice_stdout;
-   ui32_t li_slice_options;
+   ui32_t li_slice_psonce;
    ui8_t li_slice__dummy[4];
    char li_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
@@ -161,7 +161,7 @@ static int a_lex_c_version(void *v);
 
 static int a_lex__version_cmp(void const *s1, void const *s2);
 
-/* PS_STATE_PENDMASK requires some actions */
+/* n_PS_STATE_PENDMASK requires some actions */
 static void a_lex_update_pstate(void);
 
 /* Evaluate a single command.
@@ -428,7 +428,7 @@ a_lex_c_list(void *v){
    for(i = 0, cursor = cpa; (cp = *cursor++) != NULL;){
       if(cp->lc_func == &c_cmdnotsupp)
          continue;
-      if(options & OPT_D_V){
+      if(n_poption & n_PO_D_V){
          fprintf(fp, "%s\n", cp->lc_name);
          ++l;
 #ifdef HAVE_DOCSTRINGS
@@ -502,7 +502,7 @@ jredo:
 #ifdef HAVE_DOCSTRINGS
          printf(": %s", V_(lcp->lc_doc));
 #endif
-         if(options & OPT_D_V)
+         if(n_poption & n_PO_D_V)
             printf("\n  : %s", a_lex_cmdinfo(lcp));
          putchar('\n');
          rv = 0;
@@ -524,7 +524,7 @@ jredo:
       }
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
-      fputs(progname, stdout);
+      fputs(n_progname, stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
          "e.g., 1-5, :n or ., separated by spaces:\n"), stdout);
@@ -571,18 +571,17 @@ a_lex_c_exit(void *v){
    NYD_ENTER;
    n_UNUSED(v);
 
-   if(pstate & PS_STARTED){
+   if(n_psonce & n_PSO_STARTED){
       /* In recursed state, return error to just pop the input level */
-      if(!(pstate & PS_SOURCING)){
+      if(!(n_pstate & n_PS_SOURCING)){
 #ifdef n_HAVE_TCAP
-         if((options & (OPT_INTERACTIVE | OPT_QUICKRUN_MASK)) ==
-               OPT_INTERACTIVE)
+         if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
             n_termcap_destroy();
 #endif
-         exit(EXIT_OK);
+         exit(n_EXIT_OK);
       }
    }
-   pstate |= PS_EXIT;
+   n_pstate |= n_PS_EXIT;
    NYD_LEAVE;
    return 0;
 }
@@ -592,9 +591,9 @@ a_lex_c_quit(void *v){
    NYD_ENTER;
    n_UNUSED(v);
 
-   /* If we are PS_SOURCING, then return 1 so _evaluate() can handle it.
+   /* If we are n_PS_SOURCING, then return 1 so _evaluate() can handle it.
     * Otherwise return -1 to abort command loop */
-   pstate |= PS_EXIT;
+   n_pstate |= n_PS_EXIT;
    NYD_LEAVE;
    return 0;
 }
@@ -609,7 +608,7 @@ a_lex_c_version(void *v){
    n_UNUSED(v);
 
    printf(_("%s version %s\nFeatures included (+) or not (-)\n"),
-      uagent, ok_vlook(version));
+      n_uagent, ok_vlook(version));
 
    /* *features* starts with dummy byte to avoid + -> *folder* expansions */
    i = strlen(cp = &ok_vlook(features)[1]) +1;
@@ -628,7 +627,7 @@ a_lex_c_version(void *v){
       cp = *(arr++);
       printf("%-*s ", longest, cp);
       i2 += longest;
-      if(UICMP(z, ++i2 + longest, >=, scrnwidth) || i == 0){
+      if(UICMP(z, ++i2 + longest, >=, n_scrnwidth) || i == 0){
          i2 = 0;
          putchar('\n');
       }
@@ -657,16 +656,16 @@ static void
 a_lex_update_pstate(void){
    NYD_ENTER;
 
-   if(pstate & PS_SIGWINCH_PEND){
+   if(n_pstate & n_PS_SIGWINCH_PEND){
       char buf[32];
 
-      snprintf(buf, sizeof buf, "%d", scrnwidth);
+      snprintf(buf, sizeof buf, "%d", n_scrnwidth);
       ok_vset(COLUMNS, buf);
-      snprintf(buf, sizeof buf, "%d", scrnheight);
+      snprintf(buf, sizeof buf, "%d", n_scrnheight);
       ok_vset(LINES, buf);
    }
 
-   pstate &= ~PS_PSTATE_PENDMASK;
+   n_pstate &= ~n_PS_PSTATE_PENDMASK;
    NYD_LEAVE;
 }
 
@@ -753,10 +752,10 @@ jrestart:
 
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
-    * table; while PS_SOURCING, however, we ignore blank lines to eliminate
+    * table; while n_PS_SOURCING, however, we ignore blank lines to eliminate
     * confusion; act just the same for ghosts */
    if(*word == '\0'){
-      if((pstate & PS_ROBOT) || gp != NULL)
+      if((n_pstate & n_PS_ROBOT) || gp != NULL)
          goto jleave0;
       cmd = a_lex_cmd_tab + 0;
       goto jexec;
@@ -795,7 +794,7 @@ jrestart:
    if((cmd = a_lex__firstfit(word)) == NULL || cmd->lc_func == &c_cmdnotsupp){
       bool_t s;
 
-      if(!(s = condstack_isskip()) || (options & OPT_D_V))
+      if(!(s = condstack_isskip()) || (n_poption & n_PO_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
             (s ? _(" (ignored due to `if' condition)") : n_empty), word);
       if(s)
@@ -814,35 +813,35 @@ jexec:
       goto jleave0;
 
    /* Process the arguments to the command, depending on the type it expects */
-   if((cmd->lc_argtype & ARG_I) &&
-         !(options & (OPT_INTERACTIVE | OPT_BATCH_FLAG))){
+   if((cmd->lc_argtype & ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
+         !(n_poption & n_PO_BATCH_FLAG)){
       n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
          cmd->lc_name);
       goto jleave;
    }
-   if(!(cmd->lc_argtype & ARG_M) && (options & OPT_SENDMODE)){
+   if(!(cmd->lc_argtype & ARG_M) && (n_psonce & n_PSO_SENDMODE)){
       n_err(_("May not execute `%s' while sending\n"), cmd->lc_name);
       goto jleave;
    }
    if(cmd->lc_argtype & ARG_R){
-      if(pstate & PS_COMPOSE_MODE){
-         /* TODO PS_COMPOSE_MODE: should allow `reply': ~:reply! */
+      if(n_pstate & n_PS_COMPOSE_MODE){
+         /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
          n_err(_("Cannot invoke `%s' when in compose mode\n"), cmd->lc_name);
          goto jleave;
       }
       /* TODO Nothing should prevent ARG_R in conjunction with
-       * TODO PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
-      if(pstate & (PS_ROBOT | PS_SOURCING)){
+       * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
+      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)){
          n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
             cmd->lc_name);
          goto jleave;
       }
    }
-   if((cmd->lc_argtype & ARG_S) && !(pstate & PS_STARTED)){
+   if((cmd->lc_argtype & ARG_S) && !(n_psonce & n_PSO_STARTED)){
       n_err(_("May not execute `%s' during startup\n"), cmd->lc_name);
       goto jleave;
    }
-   if(!(cmd->lc_argtype & ARG_X) && (pstate & PS_COMPOSE_FORKHOOK)){
+   if(!(cmd->lc_argtype & ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
       n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
          cmd->lc_name);
       goto jleave;
@@ -859,17 +858,17 @@ jexec:
    }
 
    if(cmd->lc_argtype & ARG_O)
-      OBSOLETE2(_("this command will be removed"), cmd->lc_name);
+      n_OBSOLETE2(_("this command will be removed"), cmd->lc_name);
    if(cmd->lc_argtype & ARG_V)
       temporary_arg_v_store = NULL;
 
    if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
-   /* TODO v15: strip PS_ARGLIST_MASK off, just in case the actual command
+   /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
     * TODO argument state should be property of a per-command carrier instead */
-   pstate &= ~PS_ARGLIST_MASK;
+   n_pstate &= ~n_PS_ARGLIST_MASK;
    switch(cmd->lc_argtype & ARG_ARGMASK){
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
@@ -882,7 +881,7 @@ jexec:
             n_msgvec[1] = 0;
       }
       if(n_msgvec[0] == 0){
-         if(!(pstate & PS_HOOK_MASK))
+         if(!(n_pstate & n_PS_HOOK_MASK))
             printf(_("No applicable messages\n"));
          break;
       }
@@ -958,29 +957,29 @@ je96:
    }
    if(!(cmd->lc_argtype & ARG_H))
       evp->le_add_history = (((cmd->lc_argtype & ARG_G) ||
-            (pstate & PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
+            (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
 jleave:
    /* C99 */{
-      bool_t reset = !(pstate & PS_ROOT);
+      bool_t reset = !(n_pstate & n_PS_ROOT);
 
-      pstate |= PS_ROOT;
+      n_pstate |= n_PS_ROOT;
       ok_vset(__qm, (rv == 0 ? "0" : "1")); /* TODO num=1 +realval */
       if(reset)
-         pstate &= ~PS_ROOT;
+         n_pstate &= ~n_PS_ROOT;
    }
 
    if(flags & a_IGNERR){
       rv = 0;
-      exit_status = EXIT_OK;
+      n_exit_status = n_EXIT_OK;
    }
 
    /* Exit the current source file on error TODO what a mess! */
    if(rv == 0)
-      pstate &= ~PS_EVAL_ERROR;
+      n_pstate &= ~n_PS_EVAL_ERROR;
    else{
-      pstate |= PS_EVAL_ERROR;
-      if(rv < 0 || (pstate & PS_ROBOT)){ /* FIXME */
+      n_pstate |= n_PS_EVAL_ERROR;
+      if(rv < 0 || (n_pstate & n_PS_ROBOT)){ /* FIXME */
          rv = 1;
          goto jret;
       }
@@ -997,10 +996,11 @@ jleave:
          goto jrestart;
       }
 
-   if(!(pstate & (PS_SOURCING | PS_HOOK_MASK)) && !(cmd->lc_argtype & ARG_T))
-      pstate |= PS_SAW_COMMAND;
+   if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
+         !(cmd->lc_argtype & ARG_T))
+      n_pstate |= n_PS_SAW_COMMAND;
 jleave0:
-   pstate &= ~PS_EVAL_ERROR;
+   n_pstate &= ~n_PS_EVAL_ERROR;
 jret0:
    rv = 0;
 jret:
@@ -1028,7 +1028,7 @@ a_lex_hangup(int s){
    NYD_X; /* Signal handler */
    n_UNUSED(s);
    /* nothing to do? */
-   exit(EXIT_ERR);
+   exit(n_EXIT_ERR);
 }
 
 static void
@@ -1062,8 +1062,8 @@ a_lex_unstack(bool_t eval_error){
       n_memory_reset();
 
       /* If called from a_lex_onintr(), be silent FIXME */
-      pstate &= ~(PS_SOURCING | PS_ROBOT);
-      if(eval_error == TRUM1 || !(pstate & PS_STARTED))
+      n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
+      if(eval_error == TRUM1 || !(n_psonce & n_PSO_STARTED))
          goto jleave;
       goto jerr;
    }
@@ -1071,7 +1071,7 @@ a_lex_unstack(bool_t eval_error){
    if(lip->li_flags & a_LEX_SLICE){ /* TODO Temporary hack */
       stdin = lip->li_slice_stdin;
       stdout = lip->li_slice_stdout;
-      options = lip->li_slice_options;
+      n_psonce = lip->li_slice_psonce;
       goto jthe_slice_hack;
    }
 
@@ -1112,12 +1112,12 @@ jthe_slice_hack:
       (*lip->li_on_finalize)(lip->li_finalize_arg);
 
    if((a_lex_input = lip->li_outer) == NULL){
-      pstate &= ~(PS_SOURCING | PS_ROBOT);
+      n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
    }else{
       if((a_lex_input->li_flags & (a_LEX_MACRO | a_LEX_SUPER_MACRO)) ==
             (a_LEX_MACRO | a_LEX_SUPER_MACRO))
-         pstate &= ~PS_SOURCING;
-      assert(pstate & PS_ROBOT);
+         n_pstate &= ~n_PS_SOURCING;
+      assert(n_pstate & n_PS_ROBOT);
    }
 
    if(eval_error)
@@ -1139,12 +1139,12 @@ jerr:
        *    remainder of the lines in the start-up file
        * But print the diagnostic only for the outermost resource unless the
        * user is debugging or in verbose mode */
-      if((options & OPT_D_V) ||
-            (!(pstate & PS_STARTED) &&
+      if((n_poption & n_PO_D_V) ||
+            (!(n_psonce & n_PSO_STARTED) &&
              !(lip->li_flags & (a_LEX_SLICE | a_LEX_MACRO)) &&
              lip->li_outer == NULL))
          n_alert(_("Stopped %s %s due to errors%s"),
-            (pstate & PS_STARTED
+            (n_psonce & n_PSO_STARTED
              ? (lip->li_flags & a_LEX_SLICE ? _("sliced in program")
              : (lip->li_flags & a_LEX_MACRO
                 ? (lip->li_flags & a_LEX_MACRO_CMD
@@ -1158,14 +1158,15 @@ jerr:
                    ? _("evaluating command line") : _("evaluating macro"))
                 : _("loading initialization resource"))),
             lip->li_name,
-            (options & OPT_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
+            (n_poption & n_PO_DEBUG
+               ? n_empty : _(" (enable *debug* for trace)")));
    }
 
-   if(!(options & OPT_INTERACTIVE) && !(pstate & PS_STARTED)){
-      if(options & OPT_D_V)
+   if(!(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED))){
+      if(n_poption & n_PO_D_V)
          n_alert(_("Non-interactive, bailing out due to errors "
             "in startup load phase"));
-      exit(EXIT_ERR);
+      exit(n_EXIT_ERR);
    }
    goto jleave;
 }
@@ -1212,7 +1213,7 @@ a_lex_source_file(char const *file, bool_t silent_open_error){
       goto jeopencheck;
    else if((fip = Fopen(nbuf, "r")) == NULL){
 jeopencheck:
-      if(!silent_open_error || (options & OPT_D_V))
+      if(!silent_open_error || (n_poption & n_PO_D_V))
          n_perr(nbuf, 0);
       if(silent_open_error)
          fip = (FILE*)-1;
@@ -1231,7 +1232,7 @@ jeopencheck:
           ? a_LEX_SUPER_MACRO : 0);
    memcpy(lip->li_name, nbuf, nlen);
 
-   pstate |= PS_SOURCING | PS_ROBOT;
+   n_pstate |= n_PS_SOURCING | n_PS_ROBOT;
    a_lex_input = lip;
    if(!a_commands_recursive(n_LEXINPUT_NONE | n_LEXINPUT_NL_ESC))
       fip = NULL;
@@ -1245,7 +1246,7 @@ a_lex_load(struct a_lex_input_stack *lip){
    bool_t rv;
    NYD2_ENTER;
 
-   assert(!(pstate & PS_STARTED));
+   assert(!(n_psonce & n_PSO_STARTED));
    assert(a_lex_input == NULL);
 
    /* POSIX:
@@ -1256,27 +1257,27 @@ a_lex_load(struct a_lex_input_stack *lip){
    lip->li_cond = condstack_release();
    n_memory_autorec_push(&lip->li_autorecmem[0]);
 
-/* FIXME won't work for now (PS_ROBOT needs PS_SOURCING anyway)
-   pstate |= PS_ROBOT |
-         (lip->li_flags & a_LEX_MACRO_X_OPTION ? 0 : PS_SOURCING);
+/* FIXME won't work for now (n_PS_ROBOT needs n_PS_SOURCING sofar)
+   n_pstate |= n_PS_ROBOT |
+         (lip->li_flags & a_LEX_MACRO_X_OPTION ? 0 : n_PS_SOURCING);
 */
-   pstate |= PS_ROBOT | PS_SOURCING;
-   if(options & OPT_D_V)
+   n_pstate |= n_PS_ROBOT | n_PS_SOURCING;
+   if(n_poption & n_PO_D_V)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(lip->li_name, FAL0));
    a_lex_input = lip;
    if(!(rv = n_commands())){
-      if(!(options & OPT_INTERACTIVE)){
-         if(options & OPT_D_V)
+      if(!(n_psonce & n_PSO_INTERACTIVE)){
+         if(n_poption & n_PO_D_V)
             n_alert(_("Non-interactive program mode, forced exit"));
-         exit(EXIT_ERR);
-      }else if(options & OPT_BATCH_FLAG){
+         exit(n_EXIT_ERR);
+      }else if(n_poption & n_PO_BATCH_FLAG){
          char const *beoe;
 
          if((beoe = ok_vlook(batch_exit_on_error)) != NULL && *beoe == '1')
-            pstate |= PS_EXIT;
+            n_pstate |= n_PS_EXIT;
       }
    }
-   /* PS_EXIT handled by callers */
+   /* n_PS_EXIT handled by callers */
    NYD2_LEAVE;
    return rv;
 }
@@ -1331,18 +1332,19 @@ a_commands_recursive(enum n_lexinput_flags lif){
          break;
 
       n = a_lex_evaluate(&ev);
-      beoe = (options & OPT_BATCH_FLAG) ? ok_vlook(batch_exit_on_error) : NULL;
+      beoe = (n_poption & n_PO_BATCH_FLAG)
+            ? ok_vlook(batch_exit_on_error) : NULL;
 
       if(n){
          if(beoe != NULL && *beoe == '1'){
-            if(exit_status == EXIT_OK)
-               exit_status = EXIT_ERR;
+            if(n_exit_status == n_EXIT_OK)
+               n_exit_status = n_EXIT_ERR;
          }
          rv = FAL0;
          break;
       }
       if(beoe != NULL){
-         if(exit_status != EXIT_OK)
+         if(n_exit_status != n_EXIT_OK)
             break;
       }
    }
@@ -1381,7 +1383,7 @@ n_commands(void){ /* FIXME */
 
    rv = TRU1;
 
-   if (!(pstate & PS_SOURCING)) {
+   if (!(n_pstate & n_PS_SOURCING)) {
       if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
          safe_signal(SIGINT, &a_lex_onintr);
       if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
@@ -1403,14 +1405,14 @@ n_commands(void){ /* FIXME */
        * TODO protected by signal handlers (in between start and setup
        * TODO completed).  close_all_files() is only called from onintr()
        * TODO so those may linger possibly forever */
-      if(!(pstate & PS_SOURCING))
+      if(!(n_pstate & n_PS_SOURCING))
          close_all_files();
 
       interrupts = 0;
 
       n_memory_reset();
 
-      if (!(pstate & PS_SOURCING)) {
+      if (!(n_pstate & n_PS_SOURCING)) {
          char *cp;
 
          /* TODO Note: this buffer may contain a password.  We should redefine
@@ -1428,11 +1430,10 @@ n_commands(void){ /* FIXME */
          }
       }
 
-      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
+      if (!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE)) {
          char *cp;
 
-         cp = ok_vlook(newmail);
-         if ((options & OPT_TTYIN) && cp != NULL) {
+         if ((cp = ok_vlook(newmail)) != NULL) {
             struct stat st;
 
 /* FIXME TEST WITH NOPOLL ETC. !!! */
@@ -1441,21 +1442,21 @@ n_commands(void){ /* FIXME */
                      st.st_size > mailsize) ||
                   (mb.mb_type == MB_MAILDIR && n != 0)) {
                size_t odot = PTR2SIZE(dot - message);
-               ui32_t odid = (pstate & PS_DID_PRINT_DOT);
+               ui32_t odid = (n_pstate & n_PS_DID_PRINT_DOT);
 
                if (setfile(mailname,
                      FEDIT_NEWMAIL |
                      ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)) < 0) {
-                  exit_status |= EXIT_ERR;
+                  n_exit_status |= n_EXIT_ERR;
                   rv = FAL0;
                   break;
                }
                dot = message + odot;
-               pstate |= odid;
+               n_pstate |= odid;
             }
          }
 
-         exit_status = EXIT_OK;
+         n_exit_status = n_EXIT_OK;
       }
 
       /* Read a line of commands and handle end of file specially */
@@ -1467,9 +1468,9 @@ jreadline:
       ev.le_line.l = (ui32_t)n;
 
       if (n < 0) {
-/* FIXME did unstack() when PS_SOURCING, only break with PS_LOADING*/
-         if (!(pstate & PS_ROBOT) &&
-               (options & OPT_INTERACTIVE) && ok_blook(ignoreeof)) {
+/* FIXME did unstack() when n_PS_SOURCING, only break with n_PS_LOADING */
+         if (!(n_pstate & n_PS_ROBOT) &&
+               (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof)) {
             printf(_("*ignoreeof* set, use `quit' to quit.\n"));
             n_msleep(500, FAL0);
             continue;
@@ -1477,27 +1478,27 @@ jreadline:
          break;
       }
 
-      temporary_orig_line = ((pstate & PS_SOURCING) ||
-         !(options & OPT_INTERACTIVE)) ? NULL
-          : savestrbuf(ev.le_line.s, ev.le_line.l);
+      temporary_orig_line = ((n_pstate & n_PS_SOURCING) ||
+               !(n_psonce & n_PSO_INTERACTIVE))
+            ? NULL : savestrbuf(ev.le_line.s, ev.le_line.l);
 
-      pstate &= ~PS_HOOK_MASK;
+      n_pstate &= ~n_PS_HOOK_MASK;
       /* C99 */{
          char const *beoe;
          int estat;
 
          estat = a_lex_evaluate(&ev);
-         beoe = (options & OPT_BATCH_FLAG) ? ok_vlook(batch_exit_on_error)
-               : NULL;
+         beoe = (n_poption & n_PO_BATCH_FLAG)
+               ? ok_vlook(batch_exit_on_error) : NULL;
 
          if(estat){
             if(beoe != NULL && *beoe == '1'){
-               if(exit_status == EXIT_OK)
-                  exit_status = EXIT_ERR;
+               if(n_exit_status == n_EXIT_OK)
+                  n_exit_status = n_EXIT_ERR;
                rv = FAL0;
                break;
             }
-            if(!(pstate & PS_STARTED)){ /* TODO mess; join PS_EVAL_ERROR.. */
+            if(!(n_psonce & n_PSO_STARTED)){ /* TODO join n_PS_EVAL_ERROR */
                if(a_lex_input == NULL ||
                      !(a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)){
                   rv = FAL0;
@@ -1508,17 +1509,18 @@ jreadline:
          }
 
          if(beoe != NULL){
-            if(exit_status != EXIT_OK)
+            if(n_exit_status != n_EXIT_OK)
                break;
-            /* TODO PS_EVAL_ERROR and PS_SOURCING!  Sigh!! */
-            if((pstate & (PS_SOURCING | PS_EVAL_ERROR)) == PS_EVAL_ERROR){
-               exit_status = EXIT_ERR;
+            /* TODO n_PS_EVAL_ERROR and n_PS_SOURCING!  Sigh!! */
+            if((n_pstate & (n_PS_SOURCING | n_PS_EVAL_ERROR)
+                  ) == n_PS_EVAL_ERROR){
+               n_exit_status = n_EXIT_ERR;
                break;
             }
          }
       }
 
-      if (!(pstate & PS_SOURCING) && (options & OPT_INTERACTIVE)) {
+      if (!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE)) {
          if (ev.le_new_content != NULL)
             goto jreadline;
          /* *Can* happen since _evaluate() n_unstack()s on error! XXX no more */
@@ -1526,7 +1528,7 @@ jreadline:
             n_tty_addhist(temporary_orig_line, (ev.le_add_history != TRU1));
       }
 
-      if(pstate & PS_EXIT)
+      if(n_pstate & n_PS_EXIT)
          break;
    }
 
@@ -1571,15 +1573,15 @@ FL int
             ? "-X OPTION"
             : (a_lex_input->li_flags & a_LEX_MACRO_CMD) ? "CMD" : "MACRO";
       n = (int)*linesize;
-      pstate |= PS_READLINE_NL;
+      n_pstate |= n_PS_READLINE_NL;
       goto jhave_dat;
    }
-   pstate &= ~PS_READLINE_NL;
+   n_pstate &= ~n_PS_READLINE_NL;
 
-   iftype = (!(pstate & PS_STARTED) ? "LOAD"
-          : (pstate & PS_SOURCING) ? "SOURCE" : "READ");
-   doprompt = ((pstate & (PS_STARTED | PS_ROBOT)) == PS_STARTED &&
-         (options & OPT_INTERACTIVE));
+   iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
+          : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
+   doprompt = ((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+         (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT));
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if(!doprompt)
       lif |= n_LEXINPUT_PROMPT_NONE;
@@ -1596,7 +1598,7 @@ FL int
 
    ifile = (a_lex_input != NULL) ? a_lex_input->li_file : stdin;
    if(ifile == NULL){
-      assert((pstate & PS_COMPOSE_FORKHOOK) &&
+      assert((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO));
       ifile = stdin;
    }
@@ -1651,7 +1653,7 @@ FL int
        *    be discarded and the next line shall continue the command */
       if(!(lif & n_LEXINPUT_NL_ESC) || (*linebuf)[n - 1] != '\\'){
          if(dotty)
-            pstate |= PS_READLINE_NL;
+            n_pstate |= n_PS_READLINE_NL;
          break;
       }
       /* Definitely outside of quotes, thus the quoting rules are so that an
@@ -1703,10 +1705,10 @@ jhave_dat:
    }
 #endif /* 0 (notyet - must take care for backslash escaped space) */
 
-   if(options & OPT_D_VV)
+   if(n_poption & n_PO_D_VV)
       n_err(_("%s %d bytes <%s>\n"), iftype, n, *linebuf);
 jleave:
-   if (pstate & PS_PSTATE_PENDMASK)
+   if (n_pstate & n_PS_PSTATE_PENDMASK)
       a_lex_update_pstate();
 
    /* TODO We need to special case a_LEX_SLICE, since that is not managed by us
@@ -1733,7 +1735,7 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
 
    n = n_lex_input(lif, prompt, &linebuf, &linesize, string);
    if(n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
-         (lif & n_LEXINPUT_HIST_ADD) && (options & OPT_INTERACTIVE))
+         (lif & n_LEXINPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE))
       n_tty_addhist(rv, ((lif & n_LEXINPUT_HIST_GABBY) != 0));
 
    if(linebuf != NULL)
@@ -1758,7 +1760,7 @@ c_read(void *v){ /* TODO IFS? how? -r */
    if(rv)
       goto jleave;
 
-   cp = n_lex_input_cp(((pstate & PS_COMPOSE_MODE
+   cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
          n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
          n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
@@ -1820,7 +1822,7 @@ n_load(char const *name){
    memcpy(lip->li_name, name, i);
 
    a_lex_load(lip);
-   pstate &= ~PS_EXIT;
+   n_pstate &= ~n_PS_EXIT;
 jleave:
    NYD_LEAVE;
 }
@@ -1910,8 +1912,8 @@ n_load_Xargs(char const **lines, size_t cnt){
    lip->li_lines[i] = NULL;
 
    a_lex_load(lip);
-   if(pstate & PS_EXIT)
-      exit(exit_status);
+   if(n_pstate & n_PS_EXIT)
+      exit(n_exit_status);
    NYD_LEAVE;
 }
 
@@ -1958,7 +1960,7 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
    lip->li_finalize_arg = finalize_arg;
    memcpy(lip->li_name, name, i);
 
-   pstate |= PS_ROBOT;
+   n_pstate |= n_PS_ROBOT;
    a_lex_input = lip;
    rv = a_commands_recursive(lif);
    NYD_LEAVE;
@@ -1988,7 +1990,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    memcpy(lip->li_lines[0] = &lip->li_name[0], cmd, i);
    lip->li_lines[1] = NULL;
 
-   pstate |= PS_ROBOT;
+   n_pstate |= n_PS_ROBOT;
    a_lex_input = lip;
    rv = a_commands_recursive(lif);
    NYD_LEAVE;
@@ -1997,7 +1999,7 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
 
 FL void
 n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
-      ui32_t new_options, void (*on_finalize)(void*), void *finalize_arg){
+      ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg){
    struct a_lex_input_stack *lip;
    size_t i;
    NYD_ENTER;
@@ -2012,13 +2014,13 @@ n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    lip->li_finalize_arg = finalize_arg;
    lip->li_slice_stdin = stdin;
    lip->li_slice_stdout = stdout;
-   lip->li_slice_options = options;
+   lip->li_slice_psonce = n_psonce;
    memcpy(lip->li_name, cmd, i);
 
    stdin = new_stdin;
    stdout = new_stdout;
-   options = new_options;
-   pstate |= PS_ROBOT;
+   n_psonce = new_psonce;
+   n_pstate |= n_PS_ROBOT;
    a_lex_input = lip;
    NYD_LEAVE;
 }
@@ -2030,15 +2032,15 @@ n_source_slice_hack_remove_after_jump(void){
 
 FL bool_t
 n_source_may_yield_control(void){
-   return ((options & OPT_INTERACTIVE) &&
-      (pstate & PS_STARTED) &&
-      (!(pstate & PS_ROBOT) ||
+   return (((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+         (n_PSO_INTERACTIVE | n_PSO_STARTED)) &&
+      (!(n_pstate & n_PS_ROBOT) ||
          /* But: ok for ~:, yet: unless in a hook.
           * TODO This is obviously hacky in that it depends on _input_stack not
           * TODO loosing any flags when creating new contexts...  Maybe this
           * TODO function should instead walk all up the context stack when
           * TODO there is one, and verify neither level prevents yielding! */
-         ((pstate & PS_COMPOSE_MODE) && (a_lex_input == NULL ||
+         ((n_pstate & n_PS_COMPOSE_MODE) && (a_lex_input == NULL ||
             !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
       (a_lex_input == NULL || a_lex_input->li_outer == NULL));
 }

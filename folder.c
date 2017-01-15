@@ -139,13 +139,13 @@ jdocopy:
    }
 
    /* C99 */{
-      bool_t reset = !(pstate & PS_ROOT);
+      bool_t reset = !(n_pstate & n_PS_ROOT);
 
-      pstate |= PS_ROOT;
+      n_pstate |= n_PS_ROOT;
       ok_vset(_mailbox_resolved, mailname);
       ok_vset(_mailbox_display, displayname);
       if(reset)
-         pstate &= ~PS_ROOT;
+         n_pstate &= ~n_PS_ROOT;
    }
    NYD_LEAVE;
    return rv;
@@ -164,7 +164,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    bool_t isdevnull = FAL0;
    NYD_ENTER;
 
-   pstate &= ~PS_SETFILE_OPENED;
+   n_pstate &= ~n_PS_SETFILE_OPENED;
 
    /* C99 */{
       enum fexp_mode fexpm;
@@ -196,7 +196,7 @@ jlogname:
    case PROTO_FILE:
       if (temporary_protocol_ext != NULL)
          name = savecat(name, temporary_protocol_ext);
-      isdevnull = ((options & OPT_BATCH_FLAG) && !strcmp(name, "/dev/null"));
+      isdevnull = ((n_poption & n_PO_BATCH_FLAG) && !strcmp(name, "/dev/null"));
 #ifdef HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
 # ifdef HAVE_REALPATH_NULL
@@ -240,7 +240,7 @@ jlogname:
                n_shexp_quote_cp(who, FAL0));
             goto jem2;
          }
-         if (!(options & OPT_QUICKRUN_MASK) && ok_blook(bsdcompat))
+         if (!(n_poption & n_PO_QUICKRUN_MASK) && ok_blook(bsdcompat))
             n_err(_("No mail for %s\n"), who);
       }
       if (fm & FEDIT_NEWMAIL)
@@ -248,7 +248,7 @@ jlogname:
 
       mb.mb_type = MB_VOID;
       if (ok_blook(emptystart)) {
-         if (!(options & OPT_QUICKRUN_MASK) && !ok_blook(bsdcompat))
+         if (!(n_poption & n_PO_QUICKRUN_MASK) && !ok_blook(bsdcompat))
             n_perr(name, e);
          /* We must avoid returning -1 and causing program exit */
          rv = 1;
@@ -311,7 +311,7 @@ jlogname:
          mb.mb_perm = 0;
       } else {
          mb.mb_type = MB_FILE;
-         mb.mb_perm = (((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY) ||
+         mb.mb_perm = (((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY) ||
                access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
          if (shudclob) {
             if (mb.mb_itf) {
@@ -326,9 +326,9 @@ jlogname:
       }
       shudclob = 1;
       if (fm & FEDIT_SYSBOX)
-         pstate &= ~PS_EDIT;
+         n_pstate &= ~n_PS_EDIT;
       else
-         pstate |= PS_EDIT;
+         n_pstate |= n_PS_EDIT;
       initbox(name);
       offset = 0;
    } else {
@@ -341,7 +341,7 @@ jlogname:
 
    if (isdevnull)
       lckfp = (FILE*)-1;
-   else if (!(pstate & PS_EDIT))
+   else if (!(n_pstate & n_PS_EDIT))
       lckfp = n_dotlock(name, fileno(ibuf), FLT_READ, offset,0,
             (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX));
    else if (n_file_lock(fileno(ibuf), FLT_READ, offset,0,
@@ -350,7 +350,7 @@ jlogname:
 
    if (lckfp == NULL) {
       if (!(fm & FEDIT_NEWMAIL)) {
-         char const *emsg = (pstate & PS_EDIT)
+         char const *emsg = (n_pstate & n_PS_EDIT)
                ? N_("Unable to lock mailbox, aborting operation")
                : N_("Unable to (dot) lock mailbox, aborting operation");
          n_perr(V_(emsg), 0);
@@ -384,18 +384,18 @@ jlogname:
    }
 
    if (!(fm & FEDIT_NEWMAIL)) {
-      pstate &= ~PS_SAW_COMMAND;
-      pstate |= PS_SETFILE_OPENED;
+      n_pstate &= ~n_PS_SAW_COMMAND;
+      n_pstate |= n_PS_SETFILE_OPENED;
    }
 
    rele_sigs();
 
-   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
+   if ((n_poption & n_PO_EXISTONLY) && !(n_poption & n_PO_HEADERLIST)) {
       rv = (msgCount == 0);
       goto jleave;
    }
 
-   if ((!(pstate & PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
+   if ((!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
       if (!(fm & FEDIT_NEWMAIL)) {
          if (!ok_blook(emptystart))
             n_err(_("No mail for %s\n"), who);
@@ -470,14 +470,14 @@ print_header_summary(char const *Larg)
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
-      if ((options & (OPT_VERB | OPT_EXISTONLY)) == OPT_EXISTONLY) {
+      if ((n_poption & (n_PO_VERB | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
          freopen("/dev/null", "w", stdout);
          freopen("/dev/null", "w", stderr);
       }
       assert(n_msgvec != NULL);
       i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
-      if (options & OPT_EXISTONLY) {
-         exit_status = (int)i;
+      if (n_poption & n_PO_EXISTONLY) {
+         n_exit_status = (int)i;
          goto jleave;
       }
       if (i)
@@ -579,7 +579,7 @@ getmdot(int nmail)
 
    if (!nmail) {
       if (ok_blook(autothread)) {
-         OBSOLETE(_("please use *autosort=thread* instead of *autothread*"));
+         n_OBSOLETE(_("please use *autosort=thread* instead of *autothread*"));
          c_thread(NULL);
       } else if ((cp = ok_vlook(autosort)) != NULL) {
          if (mb.mb_sorted != NULL)
@@ -686,11 +686,11 @@ initbox(char const *name)
    if ((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
          NULL) {
       n_perr(_("temporary mail message file"), 0);
-      exit(EXIT_ERR);
+      exit(n_EXIT_ERR);
    }
    if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
       n_perr(_("temporary mail message file"), 0);
-      exit(EXIT_ERR);
+      exit(n_EXIT_ERR);
    }
    Ftmp_release(&tempMesg);
 
@@ -701,7 +701,7 @@ initbox(char const *name)
       mb.mb_sorted = NULL;
    }
    dot = prevdot = threadroot = NULL;
-   pstate &= ~PS_DID_PRINT_DOT;
+   n_pstate &= ~n_PS_DID_PRINT_DOT;
    NYD_LEAVE;
 }
 
@@ -812,12 +812,12 @@ folder_query(void){
 
 jset:
       /* C99 */{
-         bool_t reset = !(pstate & PS_ROOT);
+         bool_t reset = !(n_pstate & n_PS_ROOT);
 
-         pstate |= PS_ROOT;
+         n_pstate |= n_PS_ROOT;
          ok_vset(_folder_resolved, rv);
          if(reset)
-            pstate &= ~PS_ROOT;
+            n_pstate &= ~n_PS_ROOT;
       }
    }
 

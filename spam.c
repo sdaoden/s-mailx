@@ -194,8 +194,8 @@ _spam_action(enum spam_action sa, int *ip)
 
    memset(&vc, 0, sizeof vc);
    vc.vc_action = sa;
-   vc.vc_verbose = ((options & OPT_VERB) != 0);
-   vc.vc_progress = (!vc.vc_verbose && ((options & OPT_INTERACTIVE) != 0));
+   vc.vc_verbose = ((n_poption & n_PO_VERB) != 0);
+   vc.vc_progress = (!vc.vc_verbose && ((n_psonce & n_PSO_INTERACTIVE) != 0));
    vc.vc_esep = vc.vc_progress ? "\n" : n_empty;
 
    /* Check and setup the desired spam interface */
@@ -209,7 +209,7 @@ _spam_action(enum spam_action sa, int *ip)
 #endif
 #ifdef HAVE_SPAM_SPAMD
    } else if (!asccasecmp(cp, "spamd")) { /* TODO v15: remove */
-      OBSOLETE(_("*spam-interface*=spamd will be removed; please use =spamc"));
+      n_OBSOLETE(_("*spam-interface*=spamd is obsolete, please use =spamc"));
       if (!_spamd_setup(&vc))
          goto jleave;
 #endif
@@ -562,7 +562,7 @@ _spamd_interact(struct spam_vc *vcp)
 # undef _X
 
    i = PTR2SIZE(lp - headbuf);
-   if (options & OPT_VERBVERB)
+   if (n_poption & n_PO_VERBVERB)
       n_err(">>> %.*s <<<\n", (int)i, headbuf);
    if (i != (size_t)write(dsfd, headbuf, i))
       goto jeso;
@@ -611,7 +611,7 @@ jebogus:
       n_err(_("%s`%s': bogus spamd(1) I/O interaction (%lu)\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul_i)i);
 # ifdef HAVE_DEVEL
-      if (options & OPT_VERBVERB)
+      if (n_poption & n_PO_VERBVERB)
          n_err(">>> BUFFER: %s <<<\n", vcp->vc_buffer);
 # endif
       goto jleave;

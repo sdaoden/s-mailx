@@ -86,7 +86,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
                break;
             }
             memset(mbp, 0, sizeof *mbp);
-            vicp->vic_waccu = (options & OPT_UNICODE) ? 0xFFFD : '?';
+            vicp->vic_waccu = (n_psonce & n_PSO_UNICODE) ? 0xFFFD : '?';
             i = 1;
          }else if(i == 0){
             il = 0;
@@ -184,7 +184,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
 #ifdef HAVE_NATCH_CHAR
-   isuni = ((options & OPT_UNICODE) != 0);
+   isuni = ((n_psonce & n_PSO_UNICODE) != 0);
    bidi_info_create(&bi);
    if (bi.bi_start.l == 0)
       goto jnobidi;
@@ -198,7 +198,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 jnobidi:
 #endif
 
-   np = nb = salloc(mb_cur_max * strlen(cp) +
+   np = nb = salloc(n_mb_cur_max * strlen(cp) +
          ((fill ? col : 0)
          n_NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
          +1));
@@ -213,12 +213,12 @@ jnobidi:
    while (*cp != '\0') {
       istab = FAL0;
 #ifdef HAVE_C90AMEND1
-      if (mb_cur_max > 1) {
+      if (n_mb_cur_max > 1) {
          wchar_t  wc;
 
          n = 1;
          isrepl = TRU1;
-         if ((sz = mbtowc(&wc, cp, mb_cur_max)) == -1)
+         if ((sz = mbtowc(&wc, cp, n_mb_cur_max)) == -1)
             sz = 1;
          else if (wc == L'\t') {
             cp += sz - 1; /* Silly, no such charset known (.. until S-Ctext) */
@@ -248,7 +248,7 @@ jnobidi:
 
       if (isrepl) {
          if (isuni) {
-            /* Contained in mb_cur_max, then */
+            /* Contained in n_mb_cur_max, then */
             memcpy(np, n_unirepl, sizeof(n_unirepl) -1);
             np += sizeof(n_unirepl) -1;
          } else
@@ -294,16 +294,17 @@ makeprint(struct str const *in, struct str *out)
    DBG( size_t msz; )
    NYD_ENTER;
 
-   out->s = outp = smalloc(DBG( msz = ) in->l*mb_cur_max + 2u*mb_cur_max +1);
+   out->s =
+   outp = smalloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 
 #ifdef HAVE_NATCH_CHAR
-   if (mb_cur_max > 1) {
+   if (n_mb_cur_max > 1) {
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      bool_t isuni = ((options & OPT_UNICODE) != 0);
+      bool_t isuni = ((n_psonce & n_PSO_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
@@ -320,7 +321,7 @@ makeprint(struct str const *in, struct str *out)
              * FIXME THUS - we'd need special "known points"
              * FIXME to do so - say, after a newline!!
              * FIXME WE NEED TO CHANGE ALL USES +MBLEN! */
-            mbtowc(&wc, NULL, mb_cur_max);
+            mbtowc(&wc, NULL, n_mb_cur_max);
             wc = isuni ? 0xFFFD : '?';
             n = 1;
          } else if (n == 0)
@@ -422,7 +423,7 @@ putuc(int u, int c, FILE *fp)
    n_UNUSED(u);
 
 #ifdef HAVE_NATCH_CHAR
-   if ((options & OPT_UNICODE) && (u & ~(wchar_t)0177)) {
+   if ((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177)) {
       char mbb[MB_LEN_MAX];
       int i, n;
 
@@ -451,7 +452,7 @@ bidi_info_needed(char const *bdat, size_t blen)
    NYD_ENTER;
 
 #ifdef HAVE_NATCH_CHAR
-   if (options & OPT_UNICODE)
+   if (n_psonce & n_PSO_UNICODE)
       while (blen > 0) {
          /* TODO Checking for BIDI character: use S-CText fromutf8
           * TODO plus isrighttoleft (or whatever there will be)! */
@@ -492,7 +493,7 @@ bidi_info_create(struct bidi_info *bip)
    bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
 
 #ifdef HAVE_NATCH_CHAR
-   if ((options & OPT_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
+   if ((n_psonce & n_PSO_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
       switch (*hb) {
       case '3':
          bip->bi_pad = 2;

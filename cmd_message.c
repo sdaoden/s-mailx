@@ -63,7 +63,7 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 
    cpre = csuf = n_empty;
 #ifdef HAVE_COLOUR
-   if (pstate & PS_COLOUR_ACTIVE) {
+   if (n_pstate & n_PS_COLOUR_ACTIVE) {
       struct n_colour_pen *cpen;
 
       if ((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
@@ -115,8 +115,8 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          n_perr(cmd, 0);
          obuf = stdout;
       }
-   } else if ((options & OPT_TTYOUT) && (dopage ||
-         ((options & OPT_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
+   } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
+         ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
       size_t nlines = 0;
 
       if (!dopage) {
@@ -130,19 +130,19 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 
       /* >= not <: we return to the prompt */
-      if (dopage || UICMP(z, nlines, >=,
-            (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)realscreenheight))) {
-         if ((obuf = n_pager_open()) == NULL)
+      if(dopage || UICMP(z, nlines, >=,
+            (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)n_realscreenheight))){
+         if((obuf = n_pager_open()) == NULL)
             obuf = stdout;
       }
 #ifdef HAVE_COLOUR
-      if ((options & OPT_INTERACTIVE) &&
+      if ((n_psonce & n_PSO_INTERACTIVE) &&
             (action == SEND_TODISP || action == SEND_TODISP_ALL))
          n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if ((options & OPT_INTERACTIVE) &&
+   else if ((n_psonce & n_PSO_INTERACTIVE) &&
          (action == SEND_TODISP || action == SEND_TODISP_ALL))
       n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
 #endif
@@ -154,7 +154,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
       uncollapse1(mp, 1);
       if (!dopipe && ip != msgvec)
          fprintf(obuf, "\n");
@@ -207,7 +207,7 @@ _pipe1(char *str, int doign)
    if (!needs_list) {
       *msgvec = first(0, MMNORM);
       if (*msgvec == 0) {
-         if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+         if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
             rv = 0;
             goto jleave;
          }
@@ -218,7 +218,7 @@ _pipe1(char *str, int doign)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT)) {
+      if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
          rv = 0;
          goto jleave;
       }
@@ -262,11 +262,11 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
     * TODO those parts, optionally over empty-line-squeeze and quote-strip
     * TODO filters, in which we are interested in: only text content!
     * TODO And: with *topsqueeze*, header/content separating empty line.. */
-   pstate &= ~PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
+   n_pstate &= ~n_PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
    plines = 0;
 
 #ifdef HAVE_COLOUR
-   if (options & OPT_INTERACTIVE)
+   if (n_psonce & n_PSO_INTERACTIVE)
       n_colour_env_create(n_COLOUR_CTX_VIEW, TRU1);
 #endif
    n_string_creat_auto(&s);
@@ -291,7 +291,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       mp = &message[*ip - 1];
       touch(mp);
       setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
       uncollapse1(mp, 1);
 
       rewind(iobuf);
@@ -573,7 +573,7 @@ c_next(void *v)
 
    /* If this is the first command, select message 1.  Note that this must
     * exist for us to get here at all */
-   if (!(pstate & PS_SAW_COMMAND)) {
+   if (!(n_pstate & n_PS_SAW_COMMAND)) {
       if (msgCount == 0)
          goto jateof;
       goto jhitit;
@@ -581,15 +581,15 @@ c_next(void *v)
 
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
-      for (mp = dot + !!(pstate & PS_DID_PRINT_DOT);
+      for (mp = dot + !!(n_pstate & n_PS_DID_PRINT_DOT);
             PTRCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
       /* TODO The threading code had some bugs that caused crashes.
        * TODO The last thing (before the deep look) happens here,
-       * TODO so let's not trust PS_DID_PRINT_DOT but check & hope it fixes */
-      if ((mp = dot) != NULL && (pstate & PS_DID_PRINT_DOT))
+       * TODO so let's not trust n_PS_DID_PRINT_DOT but check & hope it fixes */
+      if ((mp = dot) != NULL && (n_pstate & n_PS_DID_PRINT_DOT))
          mp = next_in_thread(mp);
       while (mp != NULL && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);
@@ -708,7 +708,7 @@ c_stouch(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH;
       dot->m_flag &= ~MPRESERVE;
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;
@@ -720,7 +720,7 @@ c_mboxit(void *v)
    int *msgvec = v, *ip;
    NYD_ENTER;
 
-   if (pstate & PS_EDIT) {
+   if (n_pstate & n_PS_EDIT) {
       n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
       goto jleave;
    }
@@ -729,7 +729,7 @@ c_mboxit(void *v)
       setdot(message + *ip - 1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
    }
 jleave:
    NYD_LEAVE;
@@ -743,7 +743,7 @@ c_preserve(void *v)
    struct message *mp;
    NYD_ENTER;
 
-   if (pstate & PS_EDIT) {
+   if (n_pstate & n_PS_EDIT) {
       printf(_("Cannot `preserve' in a system mailbox\n"));
       goto jleave;
    }
@@ -754,7 +754,7 @@ c_preserve(void *v)
       mp->m_flag |= MPRESERVE;
       mp->m_flag &= ~MBOX;
       setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
    }
    rv = 0;
 jleave:
@@ -772,7 +772,7 @@ c_unread(void *v)
       setdot(message + *ip - 1);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;
    return 0;

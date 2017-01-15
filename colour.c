@@ -79,7 +79,7 @@ struct a_colour_map /* : public n_colour_pen */{
 
 struct a_colour_g{
    ui8_t cg_type;                   /* a_colour_type */
-   /* TODO cg_has_env not used, we have to go for PS_COLOUR_ACTIVE */
+   /* TODO cg_has_env not used, we have to go for n_PS_COLOUR_ACTIVE */
    bool_t cg_has_env;
    ui8_t cg_ctx;                    /* If .cg_has_env, enum n_colour_ctx */
    ui8_t __cg_pad[5];
@@ -542,7 +542,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       /* Can this be a valid list of headers?  However, with regular expressions
        * simply use the input as such if it appears to be a regex */
 #ifdef HAVE_REGEX
-      if(is_maybe_regex(ctag)){
+      if(n_is_maybe_regex(ctag)){
          if(regexpp != NULL && regcomp(*regexpp = smalloc(sizeof(regex_t)),
                ctag, REG_EXTENDED | REG_ICASE | REG_NOSUB)){
             free(*regexpp);
@@ -702,7 +702,7 @@ jbail:
 
       if(!asccasecmp(cp, "ft")){
          if(!asccasecmp(x, "inverse")){
-            OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
+            n_OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
             x = n_UNCONST("reverse");
          }
          for(idp = fta;; ++idp)
@@ -834,7 +834,7 @@ c_uncolour(void *v){
 FL void
 n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
    NYD_ENTER;
-   if(!(options & OPT_INTERACTIVE))
+   if(!(n_psonce & n_PSO_INTERACTIVE))
       goto jleave;
 
    if (ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager))){
@@ -857,7 +857,7 @@ n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
          case 8:     a_colour_g->cg_type = a_COLOUR_T_8;    break;
          case 1:     a_colour_g->cg_type = a_COLOUR_T_1;    break;
          default:
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("Ignoring unsupported termcap entry for Co(lors)\n"));
             /* FALLTHRU */
          case 0:
@@ -871,7 +871,7 @@ n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used){
 
    a_colour_g->cg_ctx = cctx;
    a_colour_g->cg_active = NULL;
-   pstate |= PS_COLOUR_ACTIVE;
+   n_pstate |= n_PS_COLOUR_ACTIVE;
 jleave:
    NYD_LEAVE;
 }
@@ -881,7 +881,7 @@ n_colour_env_push(void){
    struct a_colour_env *cep;
    NYD_ENTER;
 
-   if(!(options & OPT_INTERACTIVE))
+   if(!(n_psonce & n_PSO_INTERACTIVE))
       goto jleave;
 
    cep = smalloc(sizeof *cep);
@@ -890,10 +890,10 @@ n_colour_env_push(void){
       cep->ce_ctx = a_colour_g->cg_ctx;
       a_colour_g->cg_active = NULL;
    }
-   cep->ce_is_active = ((pstate & PS_COLOUR_ACTIVE) != 0);
+   cep->ce_is_active = ((n_pstate & n_PS_COLOUR_ACTIVE) != 0);
    a_colour_env = cep;
 
-   pstate &= ~PS_COLOUR_ACTIVE;
+   n_pstate &= ~n_PS_COLOUR_ACTIVE;
 jleave:
    NYD_LEAVE;
 }
@@ -901,16 +901,16 @@ jleave:
 FL void
 n_colour_env_pop(bool_t any_env_till_root){
    NYD_ENTER;
-   if(!(options & OPT_INTERACTIVE))
+   if(!(n_psonce & n_PSO_INTERACTIVE))
       goto jleave;
 
    while(a_colour_env != NULL){
       struct a_colour_env *cep;
 
       if((cep = a_colour_env)->ce_is_active)
-         pstate |= PS_COLOUR_ACTIVE;
+         n_pstate |= n_PS_COLOUR_ACTIVE;
       else
-         pstate &= ~PS_COLOUR_ACTIVE;
+         n_pstate &= ~n_PS_COLOUR_ACTIVE;
 
       if(a_colour_g != NULL){
          a_colour_g->cg_active = NULL;
@@ -923,8 +923,9 @@ n_colour_env_pop(bool_t any_env_till_root){
          break;
    }
 
-   if(any_env_till_root && a_colour_g != NULL && (pstate & PS_COLOUR_ACTIVE)){
-      pstate &= ~PS_COLOUR_ACTIVE;
+   if(any_env_till_root && a_colour_g != NULL &&
+         (n_pstate & n_PS_COLOUR_ACTIVE)){
+      n_pstate &= ~n_PS_COLOUR_ACTIVE;
       a_colour_g->cg_active = NULL;
    }
 jleave:
@@ -934,8 +935,8 @@ jleave:
 FL void
 n_colour_env_gut(FILE *fp){
    NYD_ENTER;
-   if((options & OPT_INTERACTIVE) && (pstate & PS_COLOUR_ACTIVE)){
-      pstate &= ~PS_COLOUR_ACTIVE;
+   if((n_psonce & n_PSO_INTERACTIVE) && (n_pstate & n_PS_COLOUR_ACTIVE)){
+      n_pstate &= ~n_PS_COLOUR_ACTIVE;
 
       if(a_colour_g->cg_active != NULL){
          a_colour_g->cg_active = NULL;
@@ -950,7 +951,7 @@ n_colour_env_gut(FILE *fp){
 FL void
 n_colour_put(FILE *fp, enum n_colour_id cid, char const *ctag){
    NYD_ENTER;
-   if(pstate & PS_COLOUR_ACTIVE){
+   if(n_pstate & n_PS_COLOUR_ACTIVE){
       if(a_colour_g->cg_active != NULL)
          fwrite(a_colour_g->cg_reset.cp_dat.s, a_colour_g->cg_reset.cp_dat.l, 1,
             fp);
@@ -964,7 +965,7 @@ n_colour_put(FILE *fp, enum n_colour_id cid, char const *ctag){
 FL void
 n_colour_reset(FILE *fp){
    NYD_ENTER;
-   if((pstate & PS_COLOUR_ACTIVE) && a_colour_g->cg_active != NULL){
+   if((n_pstate & n_PS_COLOUR_ACTIVE) && a_colour_g->cg_active != NULL){
       a_colour_g->cg_active = NULL;
       fwrite(a_colour_g->cg_reset.cp_dat.s, a_colour_g->cg_reset.cp_dat.l, 1,
          fp);
@@ -977,7 +978,7 @@ n_colour_reset_to_str(void){
    struct str *rv;
    NYD_ENTER;
 
-   if(pstate & PS_COLOUR_ACTIVE)
+   if(n_pstate & n_PS_COLOUR_ACTIVE)
       rv = &a_colour_g->cg_reset.cp_dat;
    else
       rv = NULL;
@@ -991,7 +992,7 @@ n_colour_pen_create(enum n_colour_id cid, char const *ctag){
    struct n_colour_pen *rv;
    NYD_ENTER;
 
-   if((pstate & PS_COLOUR_ACTIVE) &&
+   if((n_pstate & n_PS_COLOUR_ACTIVE) &&
          (cmp = a_colour_map_find(cid, ctag)) != NULL){
       union {void *vp; char *cp; struct n_colour_pen *cpp;} u;
       u.vp = cmp;
@@ -1005,7 +1006,7 @@ n_colour_pen_create(enum n_colour_id cid, char const *ctag){
 FL void
 n_colour_pen_put(struct n_colour_pen *self, FILE *fp){
    NYD_ENTER;
-   if(pstate & PS_COLOUR_ACTIVE){
+   if(n_pstate & n_PS_COLOUR_ACTIVE){
       union {void *vp; char *cp; struct a_colour_map *cmp;} u;
 
       u.vp = self;
@@ -1026,7 +1027,7 @@ n_colour_pen_to_str(struct n_colour_pen *self){
    struct str *rv;
    NYD_ENTER;
 
-   if((pstate & PS_COLOUR_ACTIVE) && self != NULL)
+   if((n_pstate & n_PS_COLOUR_ACTIVE) && self != NULL)
       rv = &self->cp_dat;
    else
       rv = NULL;

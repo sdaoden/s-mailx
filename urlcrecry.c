@@ -249,7 +249,7 @@ jm_h:
       break;
    case NRC_ERROR:
 jerr:
-      if (options & OPT_D_V)
+      if(n_poption & n_PO_D_V)
          n_err(_("Errors occurred while parsing %s\n"),
             n_shexp_quote_cp(netrc_load, FAL0));
       assert(nrc == NRC_NODE_ERR);
@@ -652,14 +652,14 @@ c_urlcodec(void *v){
       ispath = TRU1;
    }
 
-   if(is_prefix(cp, "encode")){
+   if(is_asccaseprefix(cp, "encode")){
       while((cp = *++argv) != NULL){
          if((res = urlxenc(cp, ispath)) == NULL)
             res = V_(n_error);
          printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), res, strlen(res));
       }
-   }else if(is_prefix(cp, "decode")){
+   }else if(is_asccaseprefix(cp, "decode")){
       struct str in, out;
 
       while((cp = *++argv) != NULL){
@@ -685,7 +685,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
    char **ap;
    NYD_ENTER;
 
-   OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
+   n_OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
 
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxenc(in, FAL0);
@@ -705,7 +705,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
    char **ap;
    NYD_ENTER;
 
-   OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
+   n_OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
 
    for (ap = v; *ap != NULL; ++ap) {
       char *in = *ap, *out = urlxdec(in);
@@ -754,7 +754,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
             si32_t cc;
 
             if(i < 3 || (cc = n_c_from_hex_base16(mailtop)) < 0){
-               if(!err && (err = TRU1, options & OPT_D_V))
+               if(!err && (err = TRU1, n_poption & n_PO_D_V))
                   n_err(_("Invalid RFC 6068 'mailto' URL: %s\n"),
                      n_shexp_quote_cp(mailtop_orig, FAL0));
                goto jhex_putc;
@@ -1163,7 +1163,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
    NYD_ENTER;
 
-   OBSOLETE(_("You are using old-style credentials, which will vanish in v15!\n"
+   n_OBSOLETE(_("Use of old-style credentials, which will vanish in v15!\n"
       "  Please read the manual section "
          "\"On URL syntax and credential lookup\""));
 
@@ -1314,7 +1314,7 @@ jpass:
 
 jleave:
    ac_free(vbuf);
-   if (ccp != NULL && (options & OPT_D_VV))
+   if (ccp != NULL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
@@ -1418,7 +1418,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       goto js2pass;
 # ifdef HAVE_AGENT /* TODO v15-compat obsolete */
    if ((s = xok_vlook(agent_shell_lookup, urlp, OXM_ALL)) != NULL) {
-      OBSOLETE(_("*agent-shell-lookup* will vanish.  Please use encrypted "
+      n_OBSOLETE(_("*agent-shell-lookup* will vanish.  Please use encrypted "
          "~/.netrc (via *netrc-pipe*), or simply `source' an encrypted file"));
       if (!_agent_shell_lookup(urlp, s)) {
          ccp = NULL;
@@ -1447,7 +1447,7 @@ js2pass:
    }
 
 jleave:
-   if (ccp != NULL && (options & OPT_D_VV))
+   if(ccp != NULL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));

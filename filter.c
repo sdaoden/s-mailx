@@ -338,8 +338,8 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_qfold_max = qmax;
 
       /* Add pad for takeover copies, backslash and newline */
-      self->qf_dat.s = salloc((qmax + 3) * mb_cur_max);
-      self->qf_currq.s = salloc((QUOTE_MAX + 1) * mb_cur_max);
+      self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
+      self->qf_currq.s = salloc((QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;
@@ -730,7 +730,7 @@ _hf_dump_hrefs(struct htmlflt *self)
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
-   self->hf_href_dist = (ui32_t)realscreenheight >> 1;
+   self->hf_href_dist = (ui32_t)n_realscreenheight >> 1;
 jleave:
    NYD2_LEAVE;
    return self;
@@ -803,7 +803,7 @@ _hf_store(struct htmlflt *self, char c)
 
    i = l;
 # ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
-   if (mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
+   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
       wchar_t wc;
       int w, x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
 
@@ -824,8 +824,8 @@ _hf_store(struct htmlflt *self, char c)
          i = (self->hf_mbwidth += w);
       } else {
          if (x < 0) {
-            mbtowc(&wc, NULL, mb_cur_max);
-            if (UICMP(32, l - self->hf_mboff, >=, mb_cur_max)) { /* XXX */
+            mbtowc(&wc, NULL, n_mb_cur_max);
+            if (UICMP(32, l - self->hf_mboff, >=, n_mb_cur_max)) { /* XXX */
                ++self->hf_mboff;
                ++self->hf_mbwidth;
             }
@@ -909,7 +909,7 @@ __hf_sync_mbstuff(struct htmlflt *self)
       ++w;
       --l;
 jumpin:
-      mbtowc(&wc, NULL, mb_cur_max);
+      mbtowc(&wc, NULL, n_mb_cur_max);
    }
 
    self->hf_mboff = o;
@@ -1625,12 +1625,12 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    memset(self, 0, sizeof *self);
 
    if (f != NULL) {
-      ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)scrnwidth);
+      ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
 
-      self->hf_line = smalloc((size_t)sw * mb_cur_max +1);
+      self->hf_line = smalloc((size_t)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
-      if (options & OPT_UNICODE) /* TODO not truly generic */
+      if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
          self->hf_flags = _HF_UTF8;
       self->hf_os = f;
    }

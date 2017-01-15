@@ -261,7 +261,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
 # endif
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
-   if (options & OPT_VERB)
+   if (n_poption & n_PO_VERB)
       n_err(_("Resolving host %s:%s ... "), urlp->url_host.s, serv);
 
    /* Signal handling (in respect to __sopen_sig dealing) is heavy, but no
@@ -296,7 +296,7 @@ jpseudo_jump:
       if (errval == 0)
          break;
 
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_VERB)
          n_err(_("failed\n"));
       n_err(_("Lookup of %s:%s failed: %s\n"),
          urlp->url_host.s, serv, gai_strerror(errval));
@@ -321,11 +321,11 @@ jpseudo_jump:
       errval = 0;
       goto jjumped;
    }
-   if (options & OPT_VERB)
+   if (n_poption & n_PO_VERB)
       n_err(_("done\n"));
 
    for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
-      if (options & OPT_VERB) {
+      if (n_poption & n_PO_VERB) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
             memcpy(hbuf, "unknown host", sizeof("unknown host"));
@@ -357,7 +357,7 @@ jjumped:
       if ((ep = getservbyname(n_UNCONST(serv), "tcp")) != NULL)
          urlp->url_portno = ntohs(ep->s_port);
       else {
-         if (options & OPT_VERB)
+         if (n_poption & n_PO_VERB)
             n_err(_("failed\n"));
          if ((serv = n_servbyname(urlp->url_proto, &urlp->url_portno)) != NULL)
             n_err(_("  Unknown service: %s\n"), urlp->url_proto);
@@ -385,7 +385,7 @@ jjumped:
    if (hp == NULL) {
       char const *emsg;
 
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_VERB)
          n_err(_("failed\n"));
       switch (h_errno) {
       case HOST_NOT_FOUND: emsg = N_("host not found"); break;
@@ -397,7 +397,7 @@ jjumped:
       n_err(_("Lookup of %s:%s failed: %s\n"),
          urlp->url_host.s, serv, V_(emsg));
       goto jjumped;
-   } else if (options & OPT_VERB)
+   } else if (n_poption & n_PO_VERB)
       n_err(_("done\n"));
 
    pptr = (struct in_addr**)hp->h_addr_list;
@@ -411,7 +411,7 @@ jjumped:
    servaddr.sin_family = AF_INET;
    servaddr.sin_port = htons(urlp->url_portno);
    memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
-   if (options & OPT_VERB)
+   if (n_poption & n_PO_VERB)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
 #  ifdef HAVE_SO_SNDTIMEO
@@ -438,7 +438,7 @@ jjumped:
       goto jleave;
    }
 
-   if (options & OPT_VERB)
+   if (n_poption & n_PO_VERB)
       n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */

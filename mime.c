@@ -186,7 +186,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
          /* Incomplete multibyte at EOF is special */
          if (flags & _TD_EOF) {
             out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
-            if(options & OPT_UNICODE){
+            if(n_psonce & n_PSO_UNICODE){
                memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
                out.l += sizeof(n_unirepl) -1;
             }else
@@ -469,7 +469,7 @@ jnoenc_retry:
           * artificial spaces to be inserted (bad standard), yuck */
          /* todo This is not multibyte safe, as above; and completely stupid
           * todo P.S.: our _SHOULD_BEE prevents these cases in the meanwhile */
-/* FIXME OPT_UNICODE and parse using UTF-8 sync possibility! */
+/* FIXME n_PSO_UNICODE and parse using UTF-8 sync possibility! */
          wcur = wbot + MIME_LINELEN_MAX - 8;
          while (wend > wcur)
             wend -= 4;
@@ -491,7 +491,7 @@ jnoenc_retry:
             wcur = wbot++;
 
          flags |= a_ANYENC | _ENC_LAST;
-         pstate |= PS_HEADER_NEEDED_MIME;
+         n_pstate |= n_PS_HEADER_NEEDED_MIME;
 
          /* RFC 2047:
           *    An 'encoded-word' may not be more than 75 characters long,
@@ -581,7 +581,7 @@ jenc_retry_same:
             goto jenc_retry;
          }*/
 
-/* FIXME OPT_UNICODE and parse using UTF-8 sync possibility! */
+/* FIXME n_PSO_UNICODE and parse using UTF-8 sync possibility! */
          i = PTR2SIZE(wend - wbot) + !!(flags & _SPACE);
          j = 3 + !(flags & _ENC_B64);
          for (;;) {

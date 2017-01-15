@@ -103,7 +103,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
    } else if (ok_blook(SYSV3)) {
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
       memcpy(attrlist, bsdattr, sizeof bsdattr);
-      OBSOLETE(_("*SYSV3*: please use *bsdcompat* or *bsdflags*, "
+      n_OBSOLETE(_("*SYSV3*: please use *bsdcompat* or *bsdflags*, "
          "or set *attrlist*"));
    } else {
       char const pattr[attrlen +1]   = "NUROSPMFAT+-$~";
@@ -218,7 +218,7 @@ jredo:
    /* Detect the width of the non-format characters in *headline*;
     * like that we can simply use putc() in the next loop, since we have
     * already calculated their column widths (TODO it's sick) */
-   wleft = subjlen = scrnwidth;
+   wleft = subjlen = n_scrnwidth;
 
    for (fp = fmt; *fp != '\0'; ++fp) {
       if (*fp == '%') {
@@ -240,9 +240,9 @@ jredo:
             break;
       } else {
 #ifdef HAVE_WCWIDTH
-         if (mb_cur_max > 1) {
+         if (n_mb_cur_max > 1) {
             wchar_t  wc;
-            if ((s = mbtowc(&wc, fp, mb_cur_max)) == -1)
+            if ((s = mbtowc(&wc, fp, n_mb_cur_max)) == -1)
                n = s = 1;
             else if ((n = wcwidth(wc)) == -1)
                n = 1;
@@ -303,7 +303,7 @@ jredo:
          if (flags & _ISDOT) {
             n_COLOUR( cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
                   colo_tag); );
-            if (options & OPT_UNICODE) {
+            if (n_psonce & n_PSO_UNICODE) {
                if (c == '>')
                   /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE: ▸ */
                   cbuf[1] = (char)0x96, cbuf[2] = (char)0xB8;
@@ -412,7 +412,7 @@ jputcb:
             if (cpen_new != cpen_cur)
                n_colour_pen_put(cpen_cur = cpen_new, f);
 #endif
-            n = __putindent(f, mp, n_MIN(wleft, scrnwidth - 60));
+            n = __putindent(f, mp, n_MIN(wleft, n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
             if ((cpen_new = cpen_bas) != cpen_cur)
@@ -517,7 +517,7 @@ j_A_redo:
          wleft = (n >= 0) ? wleft - n : 0;
          break;
       default:
-         if (options & OPT_D_V)
+         if (n_poption & n_PO_D_V)
             n_err(_("Unkown *headline* format: %%%c\n"), c);
          c = '?';
          goto jputcb;
@@ -807,7 +807,7 @@ _headers(int msgspec) /* TODO rework v15 */
    }
 
 #ifdef HAVE_COLOUR
-   if (options & OPT_INTERACTIVE)
+   if (n_psonce & n_PSO_INTERACTIVE)
       n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
 #endif
 
@@ -930,7 +930,7 @@ _headers(int msgspec) /* TODO rework v15 */
 
    if (!flag) {
       printf(_("No more mail.\n"));
-      if (pstate & (PS_HOOK_MASK | PS_ROBOT))
+      if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
 
@@ -1041,7 +1041,7 @@ c_from(void *v)
       goto jleave;
    }
 
-   if (options & OPT_INTERACTIVE) {
+   if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
@@ -1099,7 +1099,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
    }
 
 #ifdef HAVE_COLOUR
-   if (options & OPT_INTERACTIVE)
+   if (n_psonce & n_PSO_INTERACTIVE)
       n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
 #endif
 

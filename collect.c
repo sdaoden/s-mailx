@@ -1187,7 +1187,7 @@ _collint(int s)
          _coll_hadintr = 1;
       siglongjmp(_coll_jmp, 1);
    }
-   exit_status |= EXIT_SEND_ERROR;
+   n_exit_status |= n_EXIT_SEND_ERROR;
    if (s != 0)
       savedeadletter(_coll_fp, TRU1);
    /* Aborting message, no need to fflush() .. */
@@ -1203,7 +1203,7 @@ collhup(int s)
    savedeadletter(_coll_fp, TRU1);
    /* Let's pretend nobody else wants to clean up, a true statement at
     * this time */
-   exit(EXIT_ERR);
+   exit(n_EXIT_ERR);
 }
 
 static int
@@ -1275,10 +1275,10 @@ static int
 a_coll_ocds__mac(void){
    /* Executes in a fork(2)ed child */
    setvbuf(stdout, NULL, _IOLBF, 0);
-   options &= ~(OPT_TTYIN | OPT_TTYOUT | OPT_INTERACTIVE);
-   pstate |= PS_COMPOSE_FORKHOOK;
+   n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
+   n_pstate |= n_PS_COMPOSE_FORKHOOK;
    temporary_call_compose_mode_hook(a_coll_ocds__macname, NULL, NULL);
-   _exit(EXIT_OK);
+   _exit(n_EXIT_OK);
 }
 
 static void
@@ -1323,7 +1323,7 @@ a_coll_ocds__finalize(void *vp){
 
 FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
-   char *quotefile, int doprefix, si8_t *checkaddr_err)
+   char const *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct n_ignore const *quoteitp;
    struct a_coll_ocds_arg *coap;
@@ -1359,7 +1359,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       goto jerr;
    if (sigsetjmp(_coll_jmp, 1))
       goto jerr;
-   pstate |= PS_COMPOSE_MODE;
+   n_pstate |= n_PS_COMPOSE_MODE;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
@@ -1371,12 +1371,12 @@ collect(struct header *hp, int printheaders, struct message *mp,
    /* If we are going to prompt for a subject, refrain from printing a newline
     * after the headers (since some people mind) */
    getfields = 0;
-   if (!(options & OPT_t_FLAG)) {
+   if (!(n_poption & n_PO_t_FLAG)) {
       t = GTO | GSUBJECT | GCC | GNL;
       if (ok_blook(fullnames))
          t |= GCOMMA;
 
-      if (options & OPT_INTERACTIVE) {
+      if (n_psonce & n_PSO_INTERACTIVE) {
          if (hp->h_subject == NULL && (ok_blook(ask) || ok_blook(asksub)))
             t &= ~GNL, getfields |= GSUBJECT;
 
@@ -1409,11 +1409,10 @@ collect(struct header *hp, int printheaders, struct message *mp,
       }
 
       /* Cannot do since it may require turning this into a multipart one */
-      if(!(options & OPT_Mm_FLAG)){
+      if(!(n_poption & n_PO_Mm_FLAG)){
          char const *cp_obsolete = ok_vlook(NAIL_HEAD);
          if(cp_obsolete != NULL)
-            OBSOLETE(_("please use *message-inject-head* "
-               "instead of *NAIL_HEAD*"));
+            n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
 
          if(((cp = ok_vlook(message_inject_head)) != NULL ||
             (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
@@ -1461,7 +1460,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
       }
 
-      if ((options & (OPT_Mm_FLAG | OPT_INTERACTIVE)) == OPT_INTERACTIVE) {
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_Mm_FLAG)){
          /* Print what we have sofar also on the terminal (if useful) */
          if (!ok_blook(editalong)) {
             if (printheaders)
@@ -1477,7 +1476,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
             mesedit('e', hp);
             /* As mandated by the Mail Reference Manual, print "(continue)" */
 jcont:
-            if(options & OPT_INTERACTIVE)
+            if(n_psonce & n_PSO_INTERACTIVE)
                fputs(_("(continue)\n"), stdout);
          }
          fflush(stdout);
@@ -1492,10 +1491,11 @@ jcont:
    /* If not under shell hook control */
    if(coap == NULL){
       /* We're done with -M or -m (because we are too simple minded) */
-      if(options & OPT_Mm_FLAG)
+      if(n_poption & n_PO_Mm_FLAG)
          goto jout;
       /* No command escapes, interrupts not expected.  Simply copy STDIN */
-      if (!(options & (OPT_INTERACTIVE | OPT_t_FLAG | OPT_TILDE_FLAG))){
+      if(!(n_psonce & n_PSO_INTERACTIVE) &&
+            !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
          linebuf = srealloc(linebuf, linesize = LINESIZE);
          while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
             if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
@@ -1511,8 +1511,8 @@ jcont:
          enum n_lexinput_flags lif;
 
          lif = n_LEXINPUT_CTX_COMPOSE;
-         if(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)){
-            if(!(options & OPT_t_FLAG))
+         if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
+            if(!(n_poption & n_PO_t_FLAG))
                lif |= n_LEXINPUT_NL_ESC;
          }
          cnt = n_lex_input(lif, n_empty, &linebuf, &linesize, NULL);
@@ -1521,17 +1521,17 @@ jcont:
       if (cnt < 0) {
          if(coap != NULL)
             break;
-         if (options & OPT_t_FLAG) {
+         if(n_poption & n_PO_t_FLAG){
             fflush_rewind(_coll_fp);
-            /* It is important to set PS_t_FLAG before extract_header() *and*
-             * keep OPT_t_FLAG for the first parse of the message, too! */
-            pstate |= PS_t_FLAG;
+            /* It is important to set n_PSO_t_FLAG before extract_header()
+             * *and* keep n_PO_t_FLAG for the first parse of the message! */
+            n_psonce |= n_PSO_t_FLAG;
             if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
                goto jerr;
-            options &= ~OPT_t_FLAG;
+            n_poption &= ~n_PO_t_FLAG;
             continue;
-         } else if ((options & OPT_INTERACTIVE) &&
-               ok_blook(ignoreeof) && ++eofcnt < 4) {
+         }else if((n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
+               ++eofcnt < 4){
             printf(_("*ignoreeof* set, use `~.' to terminate letter\n"));
             continue;
          }
@@ -1544,7 +1544,7 @@ jcont:
       if(cnt == 0)
          goto jputnl;
       else if(coap == NULL){
-         if(!(options & (OPT_INTERACTIVE | OPT_TILDE_FLAG)))
+         if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_TILDE_FLAG))
             goto jputline;
          else if(cp[0] == '.'){
             if(cnt == 1 && (ok_blook(dot) || ok_blook(ignoreeof)))
@@ -1555,12 +1555,12 @@ jcont:
 jputline:
          if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (size_t)cnt)
             goto jerr;
-         /* TODO PS_READLINE_NL is a terrible hack to ensure that _in_all_-
+         /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
           * TODO to continue one; the "saw-newline" needs to be part of an
           * TODO I/O input machinery object */
 jputnl:
-         if(pstate & PS_READLINE_NL){
+         if(n_pstate & n_PS_READLINE_NL){
             if(putc('\n', _coll_fp) == EOF)
                goto jerr;
          }
@@ -1605,7 +1605,7 @@ jputnl:
 
             if(asciichar(c))
                buf[0] = c, buf[1] = '\0';
-            else if(options & OPT_UNICODE)
+            else if(n_psonce & n_PSO_UNICODE)
                memcpy(buf, n_unirepl, sizeof n_unirepl);
             else
                buf[0] = '?', buf[1] = '\0';
@@ -1644,7 +1644,7 @@ jearg:
             goto jearg;
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
-         exit(EXIT_ERR);
+         exit(n_EXIT_ERR);
          /*NOTREACHED*/
       case 'h':
          /* Grab a bunch of headers */
@@ -1755,7 +1755,7 @@ jearg:
             break;
          if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
             goto jerr;
-         if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+         if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
             goto jerr;
          break;
       case 'a':
@@ -1767,7 +1767,7 @@ jearg:
          if(cp != NULL && *cp != '\0'){
             if(putesc(cp, _coll_fp) < 0) /* TODO v15: user upon `set' time */
                goto jerr;
-            if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+            if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
                goto jerr;
          }
          break;
@@ -1821,7 +1821,7 @@ jearg:
       case '^':
          if(!a_collect_plumbing(&linebuf[3], hp))
             goto jearg;
-         if(options & OPT_INTERACTIVE)
+         if(n_psonce & n_PSO_INTERACTIVE)
             break;
          continue;
       case '?':
@@ -1868,7 +1868,7 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if(options & OPT_INTERACTIVE)
+      if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_addhist(linebuf, TRU1);
       if(c != '\0')
          goto jcont;
@@ -1915,7 +1915,7 @@ jout:
 
          temporary_call_compose_mode_hook(NULL, NULL, NULL);
          n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
-            (options & ~(OPT_TTYIN | OPT_TTYOUT | OPT_INTERACTIVE)),
+            (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocds__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
          fputs(a_COLL_PLUMBING_VERSION "\n", coap->coa_stdout);
@@ -1964,7 +1964,7 @@ jout:
       goto jerr;
 
    /* TODO Cannot do since it may require turning this into a multipart one */
-   if(options & OPT_Mm_FLAG)
+   if(n_poption & n_PO_Mm_FLAG)
       goto jskiptails;
 
    /* Place signature? */
@@ -2014,13 +2014,13 @@ jout:
    {  char const *cp_obsolete = ok_vlook(NAIL_TAIL);
 
       if(cp_obsolete != NULL)
-         OBSOLETE(_("please use *message-inject-tail* instead of *NAIL_TAIL*"));
+         n_OBSOLETE(_("please use *message-inject-tail*, not *NAIL_TAIL*"));
 
    if((cp = ok_vlook(message_inject_tail)) != NULL ||
          (cp = cp_obsolete) != NULL){
       if(putesc(cp, _coll_fp) < 0)
          goto jerr;
-      if((options & OPT_INTERACTIVE) && putesc(cp, stdout) < 0)
+      if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
          goto jerr;
    }
    }
@@ -2035,7 +2035,7 @@ jleave:
       free(linebuf);
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
-   pstate &= ~PS_COMPOSE_MODE;
+   n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    sigprocmask(SIG_SETMASK, &oset, NULL);

@@ -638,11 +638,11 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (nfi == NULL)
       goto jleave;
 
-   pstate &= ~PS_HEADER_NEEDED_MIME; /* TODO a hack should be carrier tracked */
+   n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
 
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
-   if((options & OPT_Mm_FLAG) && option_Mm_arg != NULL)
-      contenttype = option_Mm_arg;
+   if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL)
+      contenttype = n_poption_arg_Mm;
    convert = mime_type_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
@@ -762,7 +762,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
    if (mdn != NULL && mdn != (struct name*)0x1)
       from = mdn->n_name;
    else if ((from = myorigin(hp)) == NULL) {
-      if (options & OPT_D_V)
+      if (n_poption & n_PO_D_V)
          n_err(_("*disposition-notification-send*: no *from* set\n"));
       goto jleave;
    }
@@ -823,7 +823,7 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
     * to deal with that.
     * To make our life a bit easier let's just use the auto-reclaimed
     * string storage */
-   if (pipecnt == 0 || (options & OPT_DEBUG)) {
+   if (pipecnt == 0 || (n_poption & n_PO_DEBUG)) {
       pipecnt = 0;
       fda = NULL;
       sh = NULL;
@@ -842,11 +842,11 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
        * header expansion we leave it in and mark it as deleted */
       np->n_type |= GDEL;
 
-      if(options & OPT_D_VV)
+      if(n_poption & n_PO_D_VV)
          n_err(_(">>> Writing message via %s\n"),
             n_shexp_quote_cp(np->n_name, FAL0));
       /* We _do_ write to STDOUT, anyway! */
-      if((options & OPT_DEBUG) && ((np->n_flags & NAME_ADDRSPEC_ISPIPE) ||
+      if((n_poption & n_PO_DEBUG) && ((np->n_flags & NAME_ADDRSPEC_ISPIPE) ||
             np->n_name[0] != '-' || np->n_name[1] != '\0'))
          continue;
 
@@ -997,7 +997,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend)
    bool_t rv = TRU1;
    NYD_ENTER;
 
-   if (options & OPT_DEBUG)
+   if (n_poption & n_PO_DEBUG)
       cp = NULL;
    else if (to != NULL) {
       cp = savestr(skinned_name(to));
@@ -1030,7 +1030,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend)
 jbail:
          n_err(_("Failed to save message in %s - message not sent\n"),
             n_shexp_quote_cp(ep, FAL0));
-         exit_status |= EXIT_ERR;
+         n_exit_status |= n_EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
       }
@@ -1196,7 +1196,7 @@ __mta_start(struct sendbundle *sbp)
 
    /* Let rv mean "is smtp-based MTA" */
    if((mta = ok_vlook(smtp)) != NULL){
-      OBSOLETE(_("please don't use *smtp*, but assign an SMTP URL to *mta*"));
+      n_OBSOLETE(_("please don't use *smtp*, but assign an SMTP URL to *mta*"));
       /* For *smtp* the smtp:// protocol was optional; be simple: don't check
        * that *smtp* is misused with file:// or so */
       if(n_servbyname(mta, NULL) == NULL)
@@ -1206,7 +1206,7 @@ __mta_start(struct sendbundle *sbp)
       char const *proto;
 
       if((proto = ok_vlook(sendmail)) != NULL)
-         OBSOLETE(_("please use *mta* instead of *sendmail*"));
+         n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
       if((mta = ok_vlook(mta)) == NULL){ /* TODO v15: mta = ok_vlook(mta); */
          if(proto == NULL){
             mta = VAL_MTA;
@@ -1237,7 +1237,7 @@ __mta_start(struct sendbundle *sbp)
       }
 
       args = __mta_prepare_args(sbp->sb_to, sbp->sb_hp);
-      if (options & OPT_DEBUG) {
+      if (n_poption & n_PO_DEBUG) {
          __mta_debug(sbp, mta, args);
          rv = TRU1;
          goto jleave;
@@ -1248,7 +1248,7 @@ __mta_start(struct sendbundle *sbp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-      if (options & OPT_DEBUG) {
+      if (n_poption & n_PO_DEBUG) {
          (void)smtp_mta(sbp);
          rv = TRU1;
          goto jleave;
@@ -1278,7 +1278,7 @@ jstop:
       if (rv) {
          prepare_child(&nset, 0, 1);
          if (smtp_mta(sbp))
-            _exit(EXIT_OK);
+            _exit(n_EXIT_OK);
       } else
 #endif
       {
@@ -1294,10 +1294,10 @@ jstop:
       }
       savedeadletter(sbp->sb_input, 1);
       n_err(_("... message not sent\n"));
-      _exit(EXIT_ERR);
+      _exit(n_EXIT_ERR);
    }
 
-   if ((options & (OPT_DEBUG | OPT_VERB)) || ok_blook(sendwait)) {
+   if ((n_poption & n_PO_D_V) || ok_blook(sendwait)) {
       if (!(rv = wait_child(pid, NULL)))
          _sendout_error = TRU1;
    } else {
@@ -1319,7 +1319,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    NYD_ENTER;
 
    if((cp_v15compat = ok_vlook(sendmail_arguments)) != NULL)
-      OBSOLETE(_("please use *mta-arguments*, not *sendmail-arguments*"));
+      n_OBSOLETE(_("please use *mta-arguments*, not *sendmail-arguments*"));
    if((cp = ok_vlook(mta_arguments)) == NULL)
       cp = cp_v15compat;
    if ((cp /* TODO v15: = ok_vlook(mta_arguments)*/) == NULL) {
@@ -1333,11 +1333,11 @@ __mta_prepare_args(struct name *to, struct header *hp)
       vas_cnt = (size_t)getrawlist(FAL0, vas, j, cp, j);
    }
 
-   i = 4 + smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
+   i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
    args = salloc(i * sizeof(char*));
 
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
-      OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
+      n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
    if((cp = ok_vlook(mta_argv0)) == NULL)
       cp = cp_v15compat;
    if(cp == NULL)
@@ -1345,7 +1345,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    args[0] = cp/* TODO v15: = ok_vlook(mta_argv0) */;
 
    if ((snda = ok_blook(sendmail_no_default_arguments)))
-      OBSOLETE(_("please use *mta-no-default-arguments*, "
+      n_OBSOLETE(_("please use *mta-no-default-arguments*, "
          "not *sendmail-no-default-arguments*"));
    snda |= ok_blook(mta_no_default_arguments);
    if ((snda /* TODO v15: = ok_blook(mta_no_default_arguments)*/))
@@ -1355,12 +1355,12 @@ __mta_prepare_args(struct name *to, struct header *hp)
       i = 2;
       if (ok_blook(metoo))
          args[i++] = "-m";
-      if (options & OPT_VERB)
+      if (n_poption & n_PO_VERB)
          args[i++] = "-v";
    }
 
-   for (j = 0; j < smopts_cnt; ++j, ++i)
-      args[i] = smopts[j];
+   for (j = 0; j < n_smopts_cnt; ++j, ++i)
+      args[i] = n_smopts[j];
 
    for (j = 0; j < vas_cnt; ++j, ++i)
       args[i] = vas[j];
@@ -1368,13 +1368,13 @@ __mta_prepare_args(struct name *to, struct header *hp)
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
     * The interdependency with -t has been resolved in puthead() */
-   if (!snda && ((options & OPT_r_FLAG) || ok_blook(r_option_implicit))) {
+   if (!snda && ((n_poption & n_PO_r_FLAG) || ok_blook(r_option_implicit))) {
       struct name const *np;
 
       if (hp != NULL && (np = hp->h_from) != NULL) {
          /* However, what wasn't resolved there was the case that the message
           * specified multiple From: addresses and a Sender: */
-         if ((pstate & PS_t_FLAG) && hp->h_sender != NULL)
+         if ((n_psonce & n_PSO_t_FLAG) && hp->h_sender != NULL)
             np = hp->h_sender;
 
          if (np->n_fullextra != NULL) {
@@ -1383,7 +1383,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
          }
          cp = np->n_name;
       } else {
-         assert(option_r_arg == NULL);
+         assert(n_poption_arg_r == NULL);
          cp = skin(myorigin(NULL));
       }
 
@@ -1550,7 +1550,7 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
          /* GREF needs to be placed in angle brackets, but which are missing */
          hb = np->n_fullname;
          if(np->n_type & GREF){
-            assert(len == strlen(np->n_fullname) + 2);
+            assert(UICMP(z, len, ==, strlen(np->n_fullname) + 2));
             hb = n_lofi_alloc(len +1);
             len -= 2;
             hb[0] = '<';
@@ -1650,8 +1650,8 @@ jleave:
 }
 
 FL int
-mail(struct name *to, struct name *cc, struct name *bcc, char *subject,
-   struct attachment *attach, char *quotefile, int recipient_record)
+mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
+   struct attachment *attach, char const *quotefile, int recipient_record)
 {
    struct header head;
    struct str in, out;
@@ -1661,7 +1661,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char *subject,
 
    /* The given subject may be in RFC1522 format. */
    if (subject != NULL) {
-      in.s = subject;
+      in.s = n_UNCONST(subject);
       in.l = strlen(subject);
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
@@ -1703,7 +1703,7 @@ c_Sendmail(void *v)
 
 FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
-   char *quotefile, int recipient_record, int doprefix)
+   char const *quotefile, int recipient_record, int doprefix)
 {
    struct n_sigman sm;
    struct sendbundle sb;
@@ -1736,13 +1736,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    dosign = TRUM1;
 
    /* */
-   if (options & OPT_INTERACTIVE) {
+   if(n_psonce & n_PSO_INTERACTIVE){
       if (ok_blook(asksign))
          dosign = getapproval(_("Sign this message"), TRU1);
    }
 
    if (fsize(mtf) == 0) {
-      if (options & OPT_E_FLAG)
+      if (n_poption & n_PO_E_FLAG)
          goto jleave;
       if (hp->h_subject == NULL)
          printf(_("No message, no subject; hope that's ok\n"));
@@ -1866,7 +1866,7 @@ jleave:
       temporary_unroll_compose_mode();
    }
    if (_sendout_error)
-      exit_status |= EXIT_SEND_ERROR;
+      n_exit_status |= n_EXIT_SEND_ERROR;
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -1895,8 +1895,8 @@ mkdate(FILE *fo, char const *field)
       ++tzdiff_hour;
    rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
          field,
-         weekday_names[tmptr->tm_wday],
-         tmptr->tm_mday, month_names[tmptr->tm_mon],
+         n_weekday_names[tmptr->tm_wday],
+         tmptr->tm_mday, n_month_names[tmptr->tm_mon],
          tmptr->tm_year + 1900, tmptr->tm_hour,
          tmptr->tm_min, tmptr->tm_sec,
          tzdiff_hour * 100 + tzdiff_min);
@@ -2156,7 +2156,7 @@ j_mft_add:
    }
 
    if ((w & GUA) && stealthmua == 0) {
-      if (fprintf(fo, "User-Agent: %s %s\n", uagent, ok_vlook(version)) < 0)
+      if (fprintf(fo, "User-Agent: %s %s\n", n_uagent, ok_vlook(version)) < 0)
          goto jleave;
       ++gotcha;
    }
@@ -2187,9 +2187,9 @@ j_mft_add:
    }
 
    /* We don't need MIME unless.. we need MIME?! */
-   if ((w & GMIME) && ((pstate & PS_HEADER_NEEDED_MIME) ||
+   if ((w & GMIME) && ((n_pstate & n_PS_HEADER_NEEDED_MIME) ||
          hp->h_attach != NULL ||
-         ((options & OPT_Mm_FLAG) && option_Mm_arg != NULL) ||
+         ((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL) ||
          convert != CONV_7BIT || asccasecmp(charset, "US-ASCII"))) {
       ++gotcha;
       if (fputs("MIME-Version: 1.0\n", fo) == EOF)
@@ -2298,7 +2298,7 @@ jerr_o:
    Fclose(nfi);
 jleave:
    if (_sendout_error)
-      exit_status |= EXIT_SEND_ERROR;
+      n_exit_status |= n_EXIT_SEND_ERROR;
    NYD_LEAVE;
    return rv;
 }
@@ -2326,7 +2326,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
    cp = n_getdeadletter();
    cpq = n_shexp_quote_cp(cp, FAL0);
 
-   if(options & OPT_DEBUG){
+   if(n_poption & n_PO_DEBUG){
       n_err(_(">>> Would (try to) write $DEAD %s\n"), cpq);
       goto jleave;
    }

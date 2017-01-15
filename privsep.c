@@ -99,7 +99,7 @@ jeuse:
          "  The sole purpose is outsourcing of high privileges into\n"
          "  fewest lines of code in order to reduce attack surface.\n"
          "  This program cannot be run by itself.\n");
-      exit(EXIT_USE);
+      exit(n_EXIT_USE);
    }else{
       /* Prevent one more path injection attack vector, but be friendly */
       char const *ccp;
@@ -181,7 +181,7 @@ jmsg:
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   return (dls == n_DLS_NONE ? EXIT_OK : EXIT_ERR);
+   return (dls == n_DLS_NONE ? n_EXIT_OK : n_EXIT_ERR);
 }
 
 /* s-it-mode */

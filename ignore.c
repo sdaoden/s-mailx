@@ -281,7 +281,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
             rv = FAL0;
             break;
          case TRUM1:
-            if(options & OPT_D_V)
+            if(n_poption & n_PO_D_V)
                n_err(_("Field already %s: %s\n"),
                   (retain ? _("retained") : _("ignored")), *ap);
             /* FALLTHRU */
@@ -332,7 +332,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
    i = printf("headerpick %s %s add",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
       (retain ? "retain" : "ignore"));
-   sw = scrnwidth;
+   sw = n_scrnwidth;
 
    for(ap = ring; *ap != NULL; ++ap){
       /* These fields are all ASCII, no visual width needed */

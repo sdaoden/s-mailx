@@ -61,25 +61,25 @@
  */
 
 /* ASCII char classification */
-#define __ischarof(C, FLAGS)  \
-   (asciichar(C) && (class_char[(ui8_t)(C)] & (FLAGS)) != 0)
+#define n__ischarof(C, FLAGS)  \
+   (asciichar(C) && (n_class_char[(ui8_t)(C)] & (FLAGS)) != 0)
 
 #define n_uasciichar(U) ((size_t)(U) <= 0x7F)
-#define asciichar(c)    ((uc_i)(c) <= 0x7F)
-#define alnumchar(c)    __ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
-#define alphachar(c)    __ischarof(c, C_UPPER | C_LOWER)
-#define blankchar(c)    __ischarof(c, C_BLANK)
-#define blankspacechar(c) __ischarof(c, C_BLANK | C_SPACE)
-#define cntrlchar(c)    __ischarof(c, C_CNTRL)
-#define digitchar(c)    __ischarof(c, C_DIGIT | C_OCTAL)
-#define lowerchar(c)    __ischarof(c, C_LOWER)
-#define punctchar(c)    __ischarof(c, C_PUNCT)
-#define spacechar(c)    __ischarof(c, C_BLANK | C_SPACE | C_WHITE)
-#define upperchar(c)    __ischarof(c, C_UPPER)
-#define whitechar(c)    __ischarof(c, C_BLANK | C_WHITE)
-#define octalchar(c)    __ischarof(c, C_OCTAL)
+#define asciichar(c) ((uc_i)(c) <= 0x7F)
+#define alnumchar(c) n__ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
+#define alphachar(c) n__ischarof(c, C_UPPER | C_LOWER)
+#define blankchar(c) n__ischarof(c, C_BLANK)
+#define blankspacechar(c) n__ischarof(c, C_BLANK | C_SPACE)
+#define cntrlchar(c) n__ischarof(c, C_CNTRL)
+#define digitchar(c) n__ischarof(c, C_DIGIT | C_OCTAL)
+#define lowerchar(c) n__ischarof(c, C_LOWER)
+#define punctchar(c) n__ischarof(c, C_PUNCT)
+#define spacechar(c) n__ischarof(c, C_BLANK | C_SPACE | C_WHITE)
+#define upperchar(c) n__ischarof(c, C_UPPER)
+#define whitechar(c) n__ischarof(c, C_BLANK | C_WHITE)
+#define octalchar(c) n__ischarof(c, C_OCTAL)
 #define hexchar(c) /* TODO extend bits, add C_HEX */\
-   (__ischarof(c, C_DIGIT | C_OCTAL) || ((c) >= 'A' && (c) <= 'F') ||\
+   (n__ischarof(c, C_DIGIT | C_OCTAL) || ((c) >= 'A' && (c) <= 'F') ||\
     ((c) >= 'a' && (c) <= 'f'))
 
 #define upperconv(c) \
@@ -91,7 +91,6 @@
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
 /* Could the string contain a regular expression? */
-#define is_maybe_regex(S) n_is_maybe_regex(S)
 #define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, UIZ_MAX)
 #define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
 
@@ -596,7 +595,7 @@ FL int c_write(void *v);
  * If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
-                  char *quotefile, int doprefix, si8_t *checkaddr_err);
+                  char const *quotefile, int doprefix, si8_t *checkaddr_err);
 
 /*
  * colour.c
@@ -713,7 +712,7 @@ FL ssize_t     htmlflt_flush(struct htmlflt *self);
  * llen - length_of_line(*line).
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.
- * Manages the PS_READLINE_NL hack */
+ * Manages the n_PS_READLINE_NL hack */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
                   size_t *llen, FILE *fp, int appendnl n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -725,7 +724,7 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
  * Return the number of characters read.  Do not include the newline at EOL.
  * n is the number of characters already read and present in *linebuf; it'll be
  * treated as _the_ line if no more (successful) reads are possible.
- * Manages the PS_READLINE_NL hack */
+ * Manages the n_PS_READLINE_NL hack */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
                   size_t n n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -805,11 +804,11 @@ FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[FROM_DATEBUF]);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
- * If options&OPT_t_FLAG *and* pstate&PS_t_FLAG are both set a number of
- * additional header fields are understood and address joining is performed as
- * necessary, and the subject is treated with additional care, too.
- * If pstate&PS_t_FLAG is set but OPT_t_FLAG is no more, From: will not be
- * assigned no more.
+ * If n_poption&n_PO_t_FLAG *and* n_psonce&n_PSO_t_FLAG are both set a number
+ * of additional header fields are understood and address joining is performed
+ * as necessary, and the subject is treated with additional care, too.
+ * If n_psonce&n_PSO_t_FLAG is set but n_PO_t_FLAG is no more, From: will not
+ * be assigned no more.
  * This calls expandaddr() on some headers and sets checkaddr_err if that is
  * not NULL -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
@@ -839,7 +838,7 @@ FL char const * skip_comment(char const *cp);
 FL char const * routeaddr(char const *name);
 
 /* Query *expandaddr*, parse it and return flags.
- * The flags are already adjusted for OPT_INTERACTIVE / OPT_TILDE_FLAG etc. */
+ * The flags are already adjusted for n_PSO_INTERACTIVE, n_PO_TILDE_FLAG etc. */
 FL enum expand_addr_flags expandaddr_to_eaf(void);
 
 /* Check if an address is invalid, either because it is malformed or, if not,
@@ -998,7 +997,7 @@ FL bool_t      n_commands(void);
  * mode, otherwise this argument is ignored for reproducibility.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
- * Manages the PS_READLINE_NL hack */
+ * Manages the n_PS_READLINE_NL hack */
 FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
                   char **linebuf, size_t *linesize, char const *string
                   n_MEMORY_DEBUG_ARGS);
@@ -1008,7 +1007,7 @@ FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
 
 /* Read a line of input, with editing if interactive and possible, return it
  * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during PS_ROBOT).
+ * This may only be called from toplevel (not during n_PS_ROBOT).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility */
 FL char *      n_lex_input_cp(enum n_lexinput_flags lif,
@@ -1027,8 +1026,8 @@ FL void        n_load(char const *name);
 FL void        n_load_Xargs(char const **lines, size_t cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
- * PS_SOURCING so that others will realize that they are no longer reading from
- * a tty (in all probability).
+ * n_PS_SOURCING so that others will realize that they are no longer reading
+ * from a tty (in all probability).
  * The latter won't return failure (TODO should be replaced by "-f FILE") */
 FL int         c_source(void *v);
 FL int         c_source_if(void *v);
@@ -1041,7 +1040,7 @@ FL bool_t      n_source_command(enum n_lexinput_flags lif, char const *cmd);
 
 /* XXX See a_LEX_SLICE in source */
 FL void        n_source_slice_hack(char const *cmd, FILE *new_stdin,
-                  FILE *new_stdout, ui32_t new_options,
+                  FILE *new_stdout, ui32_t new_psonce,
                   void (*on_finalize)(void*), void *finalize_arg);
 FL void        n_source_slice_hack_remove_after_jump(void);
 
@@ -1567,7 +1566,7 @@ FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
                   char const **env_addon, int newfd1);
 FL bool_t      Pclose(FILE *fp, bool_t dowait);
 
-/* In OPT_INTERACTIVE, we want to go over $PAGER.
+/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
  * These are specialized version of Popen()/Pclose() which also encapsulate
  * error message printing, terminal handling etc. additionally */
 FL FILE *      n_pager_open(void);
@@ -1604,7 +1603,7 @@ FL void        prepare_child(sigset_t *nset, int infd, int outfd);
 /* Mark a child as don't care - pid */
 FL void        free_child(int pid);
 
-/* Wait for pid, return whether we've had a normal EXIT_SUCCESS exit.
+/* Wait for pid, return whether we've had a normal n_EXIT_OK exit.
  * If wait_status is set, set it to the reported waitpid(2) wait status */
 FL bool_t      wait_child(int pid, int *wait_status);
 
@@ -1655,8 +1654,8 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
 FL int         mail(struct name *to, struct name *cc, struct name *bcc,
-                  char *subject, struct attachment *attach, char *quotefile,
-                  int recipient_record);
+                  char const *subject, struct attachment *attach,
+                  char const *quotefile, int recipient_record);
 
 /* `mail' and `Mail' commands, respectively */
 FL int         c_sendmail(void *v);
@@ -1665,8 +1664,8 @@ FL int         c_Sendmail(void *v);
 /* Mail a message on standard input to the people indicated in the passed
  * header.  (Internal interface) */
 FL enum okay   mail1(struct header *hp, int printheaders,
-                  struct message *quote, char *quotefile, int recipient_record,
-                  int doprefix);
+                  struct message *quote, char const *quotefile,
+                  int recipient_record, int doprefix);
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because
@@ -1702,7 +1701,7 @@ FL void        savedeadletter(FILE *fp, bool_t fflush_rewind_first);
  * . any shell meta character (except for FEXP_NSHELL).
  * a poor man's vis(3), on name before calling this (and showing the user).
  * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
- * result string is terminated via \0\0 and PS_EXPAND_MULTIRESULT is set.
+ * result string is terminated via \0\0 and n_PS_EXPAND_MULTIRESULT is set.
  * Returns the file name as an auto-reclaimed string */
 FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
@@ -2214,8 +2213,8 @@ FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
  */
 
 #ifdef n_HAVE_TCAP
-/* termcap(3) / xy lifetime handling -- only called if we're OPT_INTERACTIVE
- * but not doing something in OPT_QUICKRUN_MASK */
+/* termcap(3) / xy lifetime handling -- only called if we're n_PSO_INTERACTIVE
+ * but not doing something in n_PO_QUICKRUN_MASK */
 FL void        n_termcap_init(void);
 FL void        n_termcap_destroy(void);
 

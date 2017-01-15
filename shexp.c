@@ -257,7 +257,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       cp[l] = '\0';
 
       free(sorta);
-      pstate |= PS_EXPAND_MULTIRESULT;
+      n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = n_UNCONST(N_("File pattern matches multiple results"));
       goto jerr;
@@ -740,7 +740,7 @@ jpush:
             /* Not an ASCII character, take care not to split up multibyte
              * sequences etc.  For the sake of compile testing, don't enwrap in
              * HAVE_ALWAYS_UNICODE_LOCALE || HAVE_NATCH_CHAR */
-            if(options & OPT_UNICODE){
+            if(n_psonce & n_PSO_UNICODE){
                ui32_t uc;
                char const *ib2;
                size_t il2, il3;
@@ -850,7 +850,7 @@ fexpand(char const *name, enum fexp_mode fexpm)
    bool_t dyn;
    NYD_ENTER;
 
-   pstate &= ~PS_EXPAND_MULTIRESULT;
+   n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
 
    /* The order of evaluation is "%" and "#" expand into constants.
     * "&" can expand into "+".  "+" can expand into shell meta characters.
@@ -1004,7 +1004,7 @@ n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
    assert(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
       (flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK));
 
-   if((flags & n_SHEXP_PARSE_LOG_D_V) && (options & OPT_D_V))
+   if((flags & n_SHEXP_PARSE_LOG_D_V) && (n_poption & n_PO_D_V))
       flags |= n_SHEXP_PARSE_LOG;
    if(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)
       flags |= n_SHEXP_PARSE_QUOTE_AUTO_CLOSE;
@@ -1282,7 +1282,7 @@ je_ib_save:
 
                         j = n_utf32_to_utf8(no, utf);
 
-                        if(options & OPT_UNICODE){
+                        if(n_psonce & n_PSO_UNICODE){
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
                            if(!(flags & n_SHEXP_PARSE_DRYRUN))
                               store = n_string_push_buf(store, utf, j);

@@ -74,7 +74,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    NYD2_ENTER;
 
    assert(*linesize == 0 || *line != NULL);
-   pstate &= ~PS_READLINE_NL;
+   n_pstate &= ~n_PS_READLINE_NL;
 
    for (rv = *line;;) {
       if (*linesize <= LINESIZE || n >= *linesize - 128) {
@@ -86,7 +86,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
          rv[n++] = c;
          rv[n] = '\0';
          if (c == '\n') {
-            pstate |= PS_READLINE_NL;
+            n_pstate |= n_PS_READLINE_NL;
             break;
          }
       } else {
@@ -155,7 +155,7 @@ FL char *
       goto jleave;
    }
 
-   pstate &= ~PS_READLINE_NL;
+   n_pstate &= ~n_PS_READLINE_NL;
 
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = (n_realloc)(rv, *linesize = LINESIZE
@@ -207,9 +207,9 @@ FL int
 
    /* Interrupts will cause trouble if we are inside a stdio call. As this is
     * only relevant if input is from tty, bypass it by read(), then */
-   if ((options & OPT_TTYIN) && fileno(ibuf) == 0) {
+   if ((n_psonce & n_PSO_TTYIN) && fileno(ibuf) == 0) {
       assert(*linesize == 0 || *linebuf != NULL);
-      pstate &= ~PS_READLINE_NL;
+      n_pstate &= ~n_PS_READLINE_NL;
       for (;;) {
          if (*linesize <= LINESIZE || n >= *linesize - 128) {
             *linesize += ((*linebuf == NULL) ? LINESIZE + n + 1 : 256);
@@ -221,7 +221,7 @@ jagain:
             n += sz;
             (*linebuf)[n] = '\0';
             if ((*linebuf)[n - 1] == '\n') {
-               pstate |= PS_READLINE_NL;
+               n_pstate |= n_PS_READLINE_NL;
                break;
             }
          } else {
@@ -233,7 +233,7 @@ jagain:
                   (*linebuf)[n++] = '\n';
                   (*linebuf)[n] = '\0';
                } else
-                  pstate |= PS_READLINE_NL;
+                  n_pstate |= n_PS_READLINE_NL;
                break;
             } else
                goto jleave;
@@ -298,7 +298,7 @@ setptr(FILE *ibuf, off_t offset)
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if (ferror(mb.mb_otf)) {
          n_perr(_("/tmp"), 0);
-         exit(EXIT_ERR);
+         exit(n_EXIT_ERR);
       }
       if (linebuf[cnt - 1] == '\n')
          linebuf[cnt - 1] = '\0';
@@ -313,7 +313,7 @@ setptr(FILE *ibuf, off_t offset)
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
          if (from_ == TRUM1) {
-            if (options & OPT_D_V)
+            if (n_poption & n_PO_D_V)
                n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
                   (int)cnt, linebuf);
             else if (!(mb.mb_active & MB_FROM__WARNED))

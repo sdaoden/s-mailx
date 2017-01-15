@@ -288,7 +288,7 @@ a_message_markall(char *buf, int f){
 
       switch(tok){
       case a_MESSAGE_T_NUMBER:
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate |= n_PS_MSGLIST_GABBY;
 jnumber:
          if(!a_message_check(a_message_lexno, f))
             goto jerr;
@@ -384,8 +384,8 @@ jnumber__thr:
          }
          break;
       case a_MESSAGE_T_PLUS:
-         pstate &= ~PS_MSGLIST_DIRECT;
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
+         n_pstate |= n_PS_MSGLIST_GABBY;
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -402,8 +402,8 @@ jnumber__thr:
          a_message_lexno = i;
          goto jnumber;
       case a_MESSAGE_T_MINUS:
-         pstate &= ~PS_MSGLIST_DIRECT;
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
+         n_pstate |= n_PS_MSGLIST_GABBY;
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -420,7 +420,7 @@ jnumber__thr:
          a_message_lexno = i;
          goto jnumber;
       case a_MESSAGE_T_STRING:
-         pstate &= ~PS_MSGLIST_DIRECT;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -444,7 +444,7 @@ jnumber__thr:
          }
          break;
       case a_MESSAGE_T_OPEN:
-         pstate &= ~PS_MSGLIST_DIRECT;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
          flags |= a_TOPEN;
@@ -467,16 +467,16 @@ jnumber__thr:
       case a_MESSAGE_T_DOLLAR:
       case a_MESSAGE_T_UP:
       case a_MESSAGE_T_SEMI:
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate |= n_PS_MSGLIST_GABBY;
          /* FALLTHRU */
       case a_MESSAGE_T_DOT: /* Don't set _GABBY for dot, to _allow_ history.. */
-         pstate &= ~PS_MSGLIST_DIRECT;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          a_message_lexno = a_message_metamess(a_message_lexstr.s[0], f);
          if(a_message_lexno == -1)
             goto jerr;
          goto jnumber;
       case a_MESSAGE_T_BACK:
-         pstate &= ~PS_MSGLIST_DIRECT;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -497,14 +497,14 @@ jnumber__thr:
          }
          break;
       case a_MESSAGE_T_ASTER:
-         pstate &= ~PS_MSGLIST_DIRECT;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
          flags |= a_ASTER;
          break;
       case a_MESSAGE_T_COMMA:
-         pstate &= ~PS_MSGLIST_DIRECT;
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
+         n_pstate |= n_PS_MSGLIST_GABBY;
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -529,18 +529,18 @@ jnumber__thr:
                id = N_("Message-ID of parent of \"dot\" is indeterminable\n");
                goto jerrmsg;
             }
-         }else if(!(pstate & PS_HOOK) && (options & OPT_D_V))
+         }else if(!(n_pstate & n_PS_HOOK) && (n_poption & n_PO_D_V))
             n_err(_("Ignoring redundant specification of , selector\n"));
          break;
       case a_MESSAGE_T_ERROR:
-         pstate &= ~PS_MSGLIST_DIRECT;
-         pstate |= PS_MSGLIST_GABBY;
+         n_pstate &= ~n_PS_MSGLIST_DIRECT;
+         n_pstate |= n_PS_MSGLIST_GABBY;
          goto jerr;
       }
 
       /* Explicitly disallow invalid ranges for future safety */
       if(bufp[0] == '-' && !(flags & a_RANGE)){
-         if(!(pstate & PS_HOOK))
+         if(!(n_pstate & n_PS_HOOK))
             n_err(_("Ignoring invalid range before: %s\n"), bufp);
          ++bufp;
       }
@@ -604,11 +604,11 @@ jnumber__thr:
                continue;
             }
 #ifdef HAVE_REGEX
-            if(is_maybe_regex(x)){
+            if(n_is_maybe_regex(x)){
                sep[j].ss_sexpr = NULL;
                if(regcomp(&sep[j].ss_regex, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0){
-                  if(!(pstate & PS_HOOK) && (options & OPT_D_V))
+                  if(!(n_pstate & n_PS_HOOK) && (n_poption & n_PO_D_V))
                      n_err(_("Invalid regular expression: >>> %s <<<\n"), x);
                   flags |= a_ERROR;
                   continue;
@@ -720,7 +720,7 @@ jebadrange:
 jenoapp:
    id = N_("No applicable messages\n");
 jerrmsg:
-   if(!(pstate & PS_HOOK_MASK))
+   if(!(n_pstate & n_PS_HOOK_MASK))
       n_err(V_(id));
 jerr:
    flags |= a_ERROR;
@@ -1168,7 +1168,7 @@ a_message_metamess(int meta, int f)
          } else
             ++mp;
       }
-      if (!(pstate & PS_HOOK_MASK))
+      if (!(n_pstate & n_PS_HOOK_MASK))
          n_err(_("No applicable messages\n"));
       goto jem1;
 
@@ -1187,7 +1187,7 @@ a_message_metamess(int meta, int f)
          } else
             --mp;
       }
-      if (!(pstate & PS_HOOK_MASK))
+      if (!(n_pstate & n_PS_HOOK_MASK))
          n_err(_("No applicable messages\n"));
       goto jem1;
 
@@ -1402,7 +1402,7 @@ setdot(struct message *mp){
    NYD_ENTER;
    if(dot != mp){
       prevdot = dot;
-      pstate &= ~PS_DID_PRINT_DOT;
+      n_pstate &= ~n_PS_DID_PRINT_DOT;
    }
    dot = mp;
    uncollapse1(dot, 0);
@@ -1426,7 +1426,7 @@ getmsglist(char *buf, int *vector, int flags)
    struct message *mp;
    NYD_ENTER;
 
-   pstate &= ~PS_ARGLIST_MASK;
+   n_pstate &= ~n_PS_ARGLIST_MASK;
    a_message_list_last_saw_d = a_message_list_saw_d;
    a_message_list_saw_d = FAL0;
 
@@ -1436,7 +1436,7 @@ getmsglist(char *buf, int *vector, int flags)
       goto jleave;
    }
 
-   pstate |= PS_MSGLIST_DIRECT;
+   n_pstate |= n_PS_MSGLIST_DIRECT;
 
    if(a_message_markall(buf, flags) < 0){
       mc = -1;
@@ -1444,7 +1444,7 @@ getmsglist(char *buf, int *vector, int flags)
    }
 
    ip = vector;
-   if(pstate & PS_HOOK_NEWMAIL){
+   if(n_pstate & n_PS_HOOK_NEWMAIL){
       mc = 0;
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK){
@@ -1471,7 +1471,7 @@ getmsglist(char *buf, int *vector, int flags)
    *ip = 0;
    mc = (int)PTR2SIZE(ip - vector);
    if(mc != 1)
-      pstate &= ~PS_MSGLIST_DIRECT;
+      n_pstate &= ~n_PS_MSGLIST_DIRECT;
 jleave:
    NYD_LEAVE;
    return mc;

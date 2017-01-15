@@ -173,7 +173,8 @@ _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
    if (!(fm & FEDIT_NEWMAIL))
       _cleantmp();
 
-   mb.mb_perm = ((options & OPT_R_FLAG) || (fm & FEDIT_RDONLY)) ? 0 : MB_DELE;
+   mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY))
+         ? 0 : MB_DELE;
    if ((i = _maildir_subdir(name, "cur", fm)) != 0)
       goto jleave;
    if ((i = _maildir_subdir(name, "new", fm)) != 0)
@@ -370,7 +371,7 @@ maildir_update(void)
    if (mb.mb_perm == 0)
       goto jfree;
 
-   if (!(pstate & PS_EDIT)) {
+   if (!(n_pstate & n_PS_EDIT)) {
       holdbits();
       for (m = message, c = 0; PTRCMP(m, <, message + msgCount); ++m) {
          if (m->m_flag & MBOX)
@@ -382,7 +383,7 @@ maildir_update(void)
    }
    for (m = message, gotcha = 0, held = 0; PTRCMP(m, <, message + msgCount);
          ++m) {
-      if (pstate & PS_EDIT)
+      if (n_pstate & n_PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
@@ -404,11 +405,11 @@ maildir_update(void)
       }
    }
 jbypass:
-   if ((gotcha || modflags) && (pstate & PS_EDIT)) {
+   if ((gotcha || modflags) && (n_pstate & n_PS_EDIT)) {
       printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
       printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
          ? _("complete\n") : _("updated.\n"));
-   } else if (held && !(pstate & PS_EDIT) && mb.mb_perm != 0) {
+   } else if (held && !(n_pstate & n_PS_EDIT) && mb.mb_perm != 0) {
       if (held == 1)
          printf(_("Held 1 message in %s\n"), displayname);
       else
@@ -745,9 +746,9 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 
    if (!(fm & FEDIT_NEWMAIL)) {
       if (fm & FEDIT_SYSBOX)
-         pstate &= ~PS_EDIT;
+         n_pstate &= ~n_PS_EDIT;
       else
-         pstate |= PS_EDIT;
+         n_pstate |= n_PS_EDIT;
       if (mb.mb_itf) {
          fclose(mb.mb_itf);
          mb.mb_itf = NULL;
@@ -800,11 +801,11 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
    }
 
    if (!(fm & FEDIT_NEWMAIL)) {
-      pstate &= ~PS_SAW_COMMAND;
-      pstate |= PS_SETFILE_OPENED;
+      n_pstate &= ~n_PS_SAW_COMMAND;
+      n_pstate |= n_PS_SETFILE_OPENED;
    }
 
-   if ((options & OPT_EXISTONLY) && !(options & OPT_HEADERLIST)) {
+   if ((n_poption & n_PO_EXISTONLY) && !(n_poption & n_PO_HEADERLIST)) {
       i = (msgCount == 0);
       goto jleave;
    }

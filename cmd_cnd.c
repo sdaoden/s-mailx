@@ -64,7 +64,7 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
    else
       n_err(_("`if' conditional: %s\n"), msg_or_null);
 
-   if (options & (OPT_INTERACTIVE | OPT_D_V)) {
+   if ((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)) {
       str_concat_cpa(&s, icp->ic_argv_base,
          (*icp->ic_argv_base != NULL ? " " : n_empty));
       n_err(_("   Expression: %s\n"), s.s);
@@ -111,16 +111,16 @@ jesyn:
       }
       break;
    case 'R': case 'r':
-      rv = !(options & OPT_SENDMODE);
+      rv = !(n_psonce & n_PSO_SENDMODE);
       break;
    case 'S': case 's':
-      rv = ((options & OPT_SENDMODE) != 0);
+      rv = ((n_psonce & n_PSO_SENDMODE) != 0);
       break;
    case 'T': case 't':
       if (!asccasecmp(cp, "true")) /* Beware! */
          rv = TRU1;
       else
-         rv = ((options & OPT_TTYIN) != 0);
+         rv = ((n_psonce & n_PSO_TTYIN) != 0);
       break;
    case '$':
       /* Look up the value in question, we need it anyway */

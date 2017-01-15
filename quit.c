@@ -333,7 +333,7 @@ quit(bool_t hold_sigs_on)
    }
 
    /* If editing (not reading system mail box), then do the work in edstop() */
-   if (pstate & PS_EDIT) {
+   if (n_pstate & n_PS_EDIT) {
       rv = edstop();
       goto jleave;
    }

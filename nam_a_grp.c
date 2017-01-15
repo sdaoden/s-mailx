@@ -674,7 +674,7 @@ _group_print_all(enum group_type gt)
          i = (ui32_t)_mlsub_size, h = (ui32_t)_mlsub_hits;
       else
          i = (ui32_t)_mlist_size, h = (ui32_t)_mlist_hits;
-      if (i > 0 && (options & OPT_D_V)){
+      if (i > 0 && (n_poption & n_PO_D_V)){
          fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
             (gt & GT_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
             i, h);
@@ -727,7 +727,7 @@ _group_print(struct group const *gp, FILE *fo)
       putc('\n', fo);
    } else if (gp->g_type & GT_MLIST) {
 #ifdef HAVE_REGEX
-      if ((gp->g_type & GT_REGEX) && (options & OPT_D_V)){
+      if ((gp->g_type & GT_REGEX) && (n_poption & n_PO_D_V)){
          size_t i;
          struct grp_regex *grp,
             *lp = (gp->g_type & GT_SUBSCRIBE ? _mlsub_regex : _mlist_regex);
@@ -1450,15 +1450,15 @@ c_alternates(void *v){
       }
 
       /* C99 */{
-         bool_t reset = !(pstate & PS_ROOT);
+         bool_t reset = !(n_pstate & n_PS_ROOT);
 
-         pstate |= PS_ROOT;
+         n_pstate |= n_PS_ROOT;
          if(sl > 0)
             ok_vset(_alternates, cp);
          else
             ok_vclear(_alternates);
          if(reset)
-            pstate &= ~PS_ROOT;
+            n_pstate &= ~n_PS_ROOT;
       }
    }
    NYD_LEAVE;

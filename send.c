@@ -514,7 +514,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             /* XXX This is all temporary (colour belongs into backend), so
              * XXX use tmpname as a temporary storage in the meanwhile */
 #ifdef HAVE_COLOUR
-            if (pstate & PS_COLOUR_ACTIVE)
+            if (n_pstate & n_PS_COLOUR_ACTIVE)
                tmpname = savestrbuf(line, PTR2SIZE(cp2 - line));
 #endif
          }
@@ -1207,7 +1207,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
 
    /* In interactive mode, let user perform all kind of expansions as desired,
     * and offer |SHELL-SPEC pipe targets, too */
-   if (options & OPT_INTERACTIVE) {
+   if (n_psonce & n_PSO_INTERACTIVE) {
       struct str prompt;
       struct n_string shou, *shoup;
       char *f2, *f3;
@@ -1238,7 +1238,7 @@ jgetname:
          f2 = n_string_cp(shoup);
       }
       if (f2 == NULL || *f2 == '\0') {
-         if (options & OPT_D_V)
+         if (n_poption & n_PO_D_V)
             n_err(_("... skipping this\n"));
          n_string_gut(shoup);
          fp = NULL;
@@ -1259,7 +1259,7 @@ jgetname:
 
    if (f == NULL || f == (char*)-1 || *f == '\0')
       fp = NULL;
-   else if (options & OPT_INTERACTIVE) {
+   else if (n_psonce & n_PSO_INTERACTIVE) {
       if (*f == '|') {
          fp = Popen(&f[1], "w", ok_vlook(SHELL), NULL, 1);
          if (!(*ispipe = (fp != NULL)))
@@ -1421,7 +1421,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    time_current_update(&time_current, TRU1);
 
    if (mp == dot && action != SEND_TOSRCH)
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
    if (stats != NULL)
       *stats = 0;
    quoteflt_init(&qf, prefix);
