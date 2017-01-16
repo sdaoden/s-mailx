@@ -433,7 +433,7 @@ n_memory_reset(void){
    }
    a_memory_heap_free = NULL;
 
-   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
+   if((n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)) && c > 0)
       n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
 #endif
    NYD_LEAVE;
