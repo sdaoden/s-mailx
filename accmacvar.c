@@ -1881,6 +1881,56 @@ jleave:
    return rv;
 }
 
+FL int
+c_shift(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = 1;
+
+   if(a_amv_lopts != NULL){
+      ui16_t i, j;
+      struct a_amv_mac const *amp;
+      struct a_amv_mac_call_args *amcap;
+
+      amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
+      if((amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACC)
+         goto jerr;
+
+      v = *(char**)v;
+      if(v == NULL)
+         i = 1;
+      else{
+         char *eptr;
+         long l;
+
+         l = strtol(v, &eptr, 10);
+         if(*eptr != '\0' || l < 0 || l > SI16_MAX){
+            n_err(_("`shift': invalid argument: %s\n"), v);
+            goto jleave;
+         }
+         i = (ui16_t)l;
+      }
+
+      if(i > (j = amcap->amca_argc)){
+         n_err(_("`shift': cannot shift %hu of %hu parameters\n"), i, j);
+         goto jleave;
+      }else{
+         rv = 0;
+         if(j > 0){
+            j -= i;
+            amcap->amca_argc = j;
+            amcap->amca_argv += i;
+         }
+      }
+   }else
+jerr:
+      n_err(_("Can only use `shift' in a `call'ed macro\n"));
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 temporary_call_compose_mode_hook(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){

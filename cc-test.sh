@@ -190,6 +190,7 @@ t_behave() {
    __behave_wysh
    __behave_ifelse
    __behave_localopts
+   __behave_macro_param_shift
 
    # FIXME __behave_alias
 
@@ -1158,7 +1159,82 @@ __behave_localopts() {
    cksum_test behave:localopts "${MBOX}" '1936527193 192'
 }
 
-__behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
+__behave_macro_param_shift() {
+   ${rm} -f "${MBOX}"
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+	define t2 {
+	   echo in: t2
+	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   localopts on
+	   wysh set ignerr=$1
+	   shift
+	   localopts off
+	   echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   if [ $# > 1 ] || [ $ignerr == '' ]
+	      shift 2
+	   else
+	      ignerr shift 2
+	   endif
+	   echo t2.2:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   shift 0
+	   echo t2.3:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   if [ $# > 0 ]
+	      shift
+	   endif
+	   echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	}
+	define t1 {
+	   echo in: t1
+	   call t2 1 you get four args
+	   echo t1.1: $?; ignerr ($ignerr) should not exist
+	   call t2 1 you get 'three args'
+	   echo t1.2: $?; ignerr ($ignerr) should not exist
+	   call t2 1 you 'get two args'
+	   echo t1.3: $?; ignerr ($ignerr) should not exist
+	   call t2 1 'you get one arg'
+	   echo t1.4: $?; ignerr ($ignerr) should not exist
+	   ignerr call t2 '' 'you get one arg'
+	   echo t1.5: $?; ignerr ($ignerr) should not exist
+	}
+	call t1
+	__EOT
+#in: t1
+#in: t2
+#t2.0 has 5/5 parameters: 1,you,get (1 you get four args) [1 you get four args]
+#t2.1 has 4/4 parameters: you,get,four (you get four args) [you get four args]
+#t2.2:0 has 2/2 parameters: four,args, (four args) [four args]
+#t2.3:0 has 2/2 parameters: four,args, (four args) [four args]
+#t2.4:0 has 1/1 parameters: args,, (args) [args]
+#t1.1: 0; ignerr () should not exist
+#in: t2
+#t2.0 has 4/4 parameters: 1,you,get (1 you get three args) [1 you get three args]
+#t2.1 has 3/3 parameters: you,get,three args (you get three args) [you get three args]
+#t2.2:0 has 1/1 parameters: three args,, (three args) [three args]
+#t2.3:0 has 1/1 parameters: three args,, (three args) [three args]
+#t2.4:0 has 0/0 parameters: ,, () []
+#t1.2: 0; ignerr () should not exist
+#in: t2
+#t2.0 has 3/3 parameters: 1,you,get two args (1 you get two args) [1 you get two args]
+#t2.1 has 2/2 parameters: you,get two args, (you get two args) [you get two args]
+#t2.2:0 has 0/0 parameters: ,, () []
+#t2.3:0 has 0/0 parameters: ,, () []
+#t2.4:0 has 0/0 parameters: ,, () []
+#t1.3: 0; ignerr () should not exist
+#in: t2
+#t2.0 has 2/2 parameters: 1,you get one arg, (1 you get one arg) [1 you get one arg]
+#t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
+#t2.2:0 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
+#t2.3:0 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
+#t2.4:0 has 0/0 parameters: ,, () []
+#t1.4: 0; ignerr () should not exist
+#in: t2
+#t2.0 has 2/2 parameters: ,you get one arg, ( you get one arg) [ you get one arg]
+#t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
+#t1.5: 1; ignerr () should not exist
+   cksum_test behave:macro_param_shift "${MBOX}" '1402489146 1682'
+}
+
+__behave_smime() { # FIXME add test/ dir, unroll tests therein
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
    ${cat} <<-_EOT > ./t.conf
 		[ req ]

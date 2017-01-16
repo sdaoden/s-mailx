@@ -885,13 +885,17 @@ a dot
 .Va on-compose-enter
 and
 .Va on-compose-leave
-hook macros may be set to automatically adjust some settings dependent
-on receiver, sender or subject contexts, and
+hook variables may be set to
+.Ic define Ns
+d macros to automatically adjust some settings dependent
+on receiver, sender or subject contexts, and via the
 .Va on-compose-done-shell
 as well as
 .Va on-compose-done
-are increasingly powerful mechanisms to perform automated message
-adjustments in between.
+variables, the latter also to be set to a
+.Ic define Ns
+d macro, increasingly powerful mechanisms to perform automated message
+adjustments in between are available.
 .
 .Pp
 Especially for using public mail provider accounts with the SMTP
@@ -3412,14 +3416,17 @@ may help shall keys and sequences be falsely recognized.
 .It Ic call
 Calls the given macro, which must have been created via
 .Ic define .
-Arguments given to macros are implicitly local to the macro's scope, and
+Parameters given to macros are implicitly local to the macro's scope, and
 may be accessed via the special parameter syntax that is known from the
 .Xr sh 1 ,
 e.g.,
 .Va 1 ,
 .Va * ,
 .Va @ ,
-.Va # :
+.Va # .
+Positional parameters may be removed by
+.Ic shift Ns
+ing them off the stack.
 .Bd -literal -offset indent
 define exmac {
   echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
@@ -3692,18 +3699,16 @@ or
 .Ic ~
 commands, or implicitly if a macro hook is triggered, e.g., a
 .Va folder-hook .
-Note that interpretation of
+It is possible to localize adjustments, like creation, deletion and
+modification of
+.Sx "INTERNAL VARIABLES" ,
+by using the
 .Ic localopts
-depends on how (i.e.,
+command; the scope which is localized depends on how (i.e.,
 .Dq as what :
 normal macro, folder hook, hook, account switch) the macro is invoked.
 Macros can be deleted via
 .Ic undefine .
-.Pp
-.Sy \*(ID:
-Macro behaviour, including option localization, will change in v15.
-One should be aware of that and possibly embed version checks in the
-used resource file(s).
 .
 .Mx
 .It Ic delete
@@ -4988,6 +4993,16 @@ whitespace) are treated as pairs of shortcuts and their expansions,
 creating new or changing already existing shortcuts, as necessary.
 Shortcuts may be removed via the command
 .Ic unshortcut .
+.
+.Mx
+.It Ic shift
+Only available inside the scope of a
+.Ic call Ns
+ed macro, this will shift the positional parameters (starting at
+.Va 1 )
+by the given number, or 1 if no argument has been given.
+It is an error if the value exceeds the number of positional parameters.
+If the given number is 0, no action is performed, successfully.
 .
 .Mx
 .It Ic show
@@ -6286,11 +6301,12 @@ decimal.
 .It Va 1
 \*(RO Only available inside the scope of a
 .Ic call Ns
-ed macro, this will access the first parameter passed.
+ed macro, this will access the first positional parameter passed.
 All further parameters can be accessed with this syntax, too, e.g.,
 .Ql 2 ,
 .Ql 3
-etc.
+etc.; positional parameters can be shifted (removed) by calling
+.Ic shift .
 .
 .Mx
 .It Va \&?

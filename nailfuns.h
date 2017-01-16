@@ -172,8 +172,9 @@ FL void        temporary_unroll_compose_mode(void);
 FL int         c_account(void *v);
 FL int         c_unaccount(void *v);
 
-/* `localopts' */
+/* `localopts', `shift' */
 FL int         c_localopts(void *v);
+FL int         c_shift(void *v);
 
 FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
 

@@ -297,6 +297,8 @@
      DS(N_("Call a macro")) },
    { "call_if", &c_call_if, (M | X | WYRALIST), 1, 100
      DS(N_("Call macro <name> if it exists")) },
+   { "shift", &c_shift, (M | X | WYSHLIST), 0, 1
+     DS(N_("Inside a `call'ed macro, shift positional parameters")) },
    { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
    { "mv", &c_move, (A | M | STRLIST), 0, 0
