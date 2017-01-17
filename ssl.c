@@ -208,7 +208,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    fprintf(op, "\n--%s\n", boundary);
    fputs("Content-Type: application/pkcs7-signature; name=\"smime.p7s\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7s\"\n\n", op);
+      "Content-Disposition: attachment; filename=\"smime.p7s\"\n"
+      "Content-Description: S/MIME digital signature\n\n", op);
    while ((c = getc(sp)) != EOF) {
       if (c == '-') {
          while ((c = getc(sp)) != EOF && c != '\n');
@@ -255,9 +256,10 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
       lastc = c;
    }
 
-   fprintf(op, "Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
+   fputs("Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7m\"\n\n");
+      "Content-Disposition: attachment; filename=\"smime.p7m\"\n"
+      "Content-Description: S/MIME encrypted message\n\n", op);
    while ((c = getc(yp)) != EOF) {
       if (c == '-') {
          while ((c = getc(yp)) != EOF && c != '\n');

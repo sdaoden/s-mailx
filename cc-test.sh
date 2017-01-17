@@ -1337,7 +1337,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
          -e \
          '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
       < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '82649489 454'
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '3090916509 510'
 
    ${rm} -f ./DECRYPT
    printf "behave:s/mime:encrypt/decrypt: "
@@ -1372,7 +1372,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
    fi
    ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
       < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2694938815 239'
+   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '999887248 295'
 
    ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
       ./tkey.pem ./tcert.pem ./tpair.pem
