@@ -18,20 +18,16 @@ Number games
 The tagged release commits are [master  stable/v]:[], and
 [release/v]:[] (actual release content).
 		The release has also been stored as [timeline]:[].
-The git(1) release commits and tags as well as the release tarball
-itself have been signed with the OpenPGP key
+The git(1) release commits and tags, as well as the release balls
+have been signed with the OpenPGP key
   steffen@sdaoden.eu  /  95F382CE
   (232C 220B CB56 90A3 7BD2  2FFD EB66 0227 95F3 82CE)
 available on OpenPGP key servers, my website and download area,
 and also in the repository (blob tagged steffen-pgp-pub).
 
 Release balls and OpenPGP signatures (.asc) can be downloaded via
-HTTPS/HTTP and anonymous active or passive FTPS/FTP (truly: still
-www.sdaoden.eu/downloads, but only via HTTPS/HTTP).  Copies of the
-signatures also far below, usable from within your favourite MUA.
-
-  \https?://ftp.sdaoden.eu
-  \ftps?://ftp.sdaoden.eu
+HTTPS/HTTP at \https?://ftp.sdaoden.eu.  Copies of the signatures
+can also be found at the end of this message.
 
 -----CHECKSUMS-----
 
@@ -51,9 +47,6 @@ s-nail-latest.txt (a copy of this announcement text).
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- .tar files are no longer provided, and i have removed all old cruft
-  from the download area.
 
 ChangeLog
 ^^^^^^^^^
@@ -89,7 +82,8 @@ to see the elder entries please have a look at [1].
 Even elder announcements:
   v14.8.0 - v14.8.6: 00292
     v14.8.7 - v14.8.8: 00374, v14.8.9: 00435, v14.8.10: 00445
-    [v14.8.11: 00495], v14.8.12: 00502, [v14.8.13: 00514], v14.8.14: 00519
+    [v14.8.11: 00495], v14.8.12: 00502, [v14.8.13: 00514],
+    v14.8.14: 00519, v14.8.15: 00547, v14.8.16: 00551
   v14.7: 00094
     v14.7.1: 00129, v14.7.2 - v14.7.8: 00193, v14.7.9 - v14.7.10: 00216,
     v14.7.11: 00240
