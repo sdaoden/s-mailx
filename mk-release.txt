@@ -5,7 +5,7 @@ Reply-To: mailx
 
 Hello list,
 
-hereby i announce S-nail vXX.X.X, the «».
+hereby i announce S-nail vXX.X.X, the "".
 It is    .
 
 Credits .
@@ -22,29 +22,18 @@ The git(1) release commits and tags as well as the release tarball
 itself have been signed with the OpenPGP key
   steffen@sdaoden.eu  /  95F382CE
   (232C 220B CB56 90A3 7BD2  2FFD EB66 0227 95F3 82CE)
-available on OpenPGP key servers, my website and in the repository
-(blob tagged steffen-pgp-pub).
+available on OpenPGP key servers, my website and download area,
+and also in the repository (blob tagged steffen-pgp-pub).
 
-Release tarballs and signatures (.asc) can be downloaded via
-HTTPS/HTTP and anonymous active or passive FTPS/FTP (latter also
-"AUTH TLS", e.g., "curl --ssl") at, respectively:
+Release balls and OpenPGP signatures (.asc) can be downloaded via
+HTTPS/HTTP and anonymous active or passive FTPS/FTP (truly: still
+www.sdaoden.eu/downloads, but only via HTTPS/HTTP).  Copies of the
+signatures also far below, usable from within your favourite MUA.
 
-  \https?://www.sdaoden.eu/downloads/
+  \https?://ftp.sdaoden.eu
   \ftps?://ftp.sdaoden.eu
 
-s-nail-XX.X.X.tar.xz{,.asc}:
-  SHA1 =
-  SHA256 =
-  SHA512 =
-  -----BEGIN PGP SIGNATURE-----
-  -----END PGP SIGNATURE-----
-
-s-nail-XX.XX.XX.tar.gz{,.asc}:
-  SHA1 =
-  SHA256 =
-  SHA512 =
-  -----BEGIN PGP SIGNATURE-----
-  -----END PGP SIGNATURE-----
+-----CHECKSUMS-----
 
 All files are available as "-latest" symbolic links, too, e.g.,
 s-nail-latest.txt (a copy of this announcement text).
@@ -69,11 +58,12 @@ NOTES, ChangeLog (packager-affine)
 ChangeLog
 ^^^^^^^^^
 
+-----NEWS-----
+
 git(1) shortlog (edited)
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 :read!git shortlog -w78,0,8 --format="\%h \%s" x..y
-
 
 Appendix
 ^^^^^^^^
@@ -105,3 +95,5 @@ Even elder announcements:
     v14.7.11: 00240
 Replace the XXX in the following URL with the shown number:
   \https://www.mail-archive.com/s-nail-users@lists.sourceforge.net/msgXXX.html
+
+-----SIGNATURES-----

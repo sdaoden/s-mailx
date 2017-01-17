@@ -20,7 +20,7 @@ cd ..
 : ${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads}
 
 # Mail
-: ${MAILX:=s-nail -Snofollowup-to}
+: ${MAILX:=s-nail -Snofollowup-to -Ssmime-sign}
 : ${ACCOUNT:=ich}
 : ${MAILBCC:=mailx-announce-bcc}
 : ${MAILTO:=mailx-announce}
@@ -63,6 +63,8 @@ update_stable_hook() {
       mv -f nail.rcx nail.rc
       git add nail.rc
    fi
+
+   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl && git add okeys.h
 }
 
 update_release_hook() {
@@ -86,6 +88,8 @@ update_release_hook() {
       mv -f nail.rcx nail.rc
       git add nail.rc
    fi
+
+   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl noverbose && git add okeys.h
 }
 
 . ./mk-release.inc

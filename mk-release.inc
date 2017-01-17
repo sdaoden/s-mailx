@@ -92,6 +92,23 @@ if [ -z "${brref}" ]; then :; else
    exit 5
 fi
 
+RELSYM=
+stblmsg= relmsg=
+if yesno 'Shall '${PROGRAM}' v'${REL}' have a symbolic name?'; then
+   printf '  ..and it shall be known as: '
+   read RELSYM
+   if yesno 'Is '"${RELSYM}"' correct?'; then :; else
+      echo >&2 'Bailing out'
+      exit 3
+   fi
+   stblmsg="Bump ${UPROGRAM} v${REL} (\"${RELSYM}\"), ${DATE_ISO}"
+   relmsg="Bump ${UPROGRAM} v${REL}.ar (\"${RELSYM}\"), ${DATE_ISO}"
+   RELSYM=" (\"${RELSYM}\")"
+else
+   stblmsg="Bump ${UPROGRAM} v${REL}, ${DATE_ISO}"
+   relmsg="Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
+fi
+
 ##
 echo 'Updating stable/ files to match the release'
 
@@ -101,9 +118,8 @@ if [ -f version.h ] && [ -f mk-mk.in ]; then
 fi
 update_stable_hook
 
-LC_ALL=${ORIG_LC_ALL} git commit -S -m "Bump ${UPROGRAM} v${REL}, ${DATE_ISO}"
-LC_ALL=${ORIG_LC_ALL} git tag -s -f \
-   -m "Bump ${UPROGRAM} v${REL}, ${DATE_ISO}" "v${REL}"
+LC_ALL=${ORIG_LC_ALL} git commit -S -m "${stblmsg}"
+LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${stblmsg}" v${REL}
 
 ##
 
@@ -113,10 +129,8 @@ if yesno 'Create release/ branch?'; then
    git rm -f .gitignore .mailmap TODO mk-release.*
    update_release_hook
 
-   LC_ALL=${ORIG_LC_ALL} git commit -S \
-      -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
-   LC_ALL=${ORIG_LC_ALL} git tag -s -f \
-      -m "Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}" "v${REL}.ar"
+   LC_ALL=${ORIG_LC_ALL} git commit -S -m "${relmsg}"
+   LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${relmsg}" v${REL}.ar
 
    if yesno 'Shall i update release/latest "symlink"?'; then
       git update-ref refs/heads/release/latest ${relbrname}
@@ -138,7 +152,7 @@ if [ ${relbrname} != ${stblbrname} ] &&
    git rm -rf '*'
    git archive --format=tar "v${REL}.ar" | tar -x -f -
    git add .
-   LC_ALL=${ORIG_LC_ALL} git commit -S -m "${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
+   LC_ALL=${ORIG_LC_ALL} git commit -S -m "${relmsg}"
 fi
 
 ##
@@ -155,7 +169,7 @@ if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
    bigballs=y
    (
    # Repack with standard tar(1) to avoid new-style headers
-   git archive --format=tar --prefix="${PROGRAM}-${REL}/" "v${REL}.ar" |
+   git archive --format=tar --prefix="${PROGRAM}-${REL}/" v${REL}.ar |
       ( cd "${TMPDIR}" && tar -x -f - )
    cd "${TMPDIR}"
 
@@ -164,15 +178,17 @@ if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
    < "${PROGRAM}-${REL}.tar" gzip > "${PROGRAM}-${REL}.tar.gz"
    rm "${PROGRAM}-${REL}.tar"
 
+   : > "${PROGRAM}-${REL}.cksum"
    openssl sha1 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
    openssl sha256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
    openssl sha512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-   gpg --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
-   cat "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
-
    openssl sha1 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
    openssl sha256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
    openssl sha512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+
+   echo >> "${PROGRAM}-${REL}.cksum"
+   gpg --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
+   cat "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
    gpg --detach-sign --armor "${PROGRAM}-${REL}.tar.gz"
    cat "${PROGRAM}-${REL}.tar.gz.asc" >> "${PROGRAM}-${REL}.cksum"
    )
@@ -185,20 +201,68 @@ fi
 
 if yesno 'Prepare announcement?'; then
    anntxt=y
-   if [ -f .git/mk-release.txt ]; then
-      cp .git/mk-release.txt "${TMPDIR}/${PROGRAM}-${REL}.txt"
+
+   if `git cat-file -e ${relbr}:NEWS 2>/dev/null`; then
+      git show ${relbr}:NEWS > "${TMPDIR}/.${PROGRAM}-${REL}.news"
    else
-      : > "${TMPDIR}/${PROGRAM}-${REL}.txt"
+      : > "${TMPDIR}/.${PROGRAM}-${REL}.news"
    fi
-   if [ -n "${bigballs}" ] && [ -f "${TMPDIR}/${PROGRAM}-${REL}.cksum" ]; then
-      echo >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
-      cat "${TMPDIR}/${PROGRAM}-${REL}.cksum" >>\
+
+   { echo "${relmsg}"; echo; } > "${TMPDIR}/${PROGRAM}-${REL}.txt"
+   if [ -f .git/mk-release.txt ]; then
+      # For the checksums
+      if [ -n "${bigballs}" ] && [ -f "${TMPDIR}/${PROGRAM}-${REL}.cksum" ]
+      then
+         cks=`< "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed -e 's/ //' -e '/^$/,$d'`
+         < "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed '1,/^$/d' \
+            > "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
+         < .git/mk-release.txt awk \
+               -v INS="${cks}" -v SIGS="${TMPDIR}/.${PROGRAM}-${REL}.sigs" \
+               -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
+            /-----CHECKSUMS-----/{
+               atop = split(INS, a)
+               fn = ""
+               for(i = 1; i <= atop; ++i){
+                  match(a[i], /(\(.+\))/)
+                  tfn = substr(a[i], RSTART + 1, RLENGTH - 2)
+                  tpre = substr(a[i], 1, RSTART - 1)
+                  tsuf = substr(a[i], RSTART + RLENGTH + 1)
+                  if(fn == "" || fn != tfn)
+                     printf "%s:\n", (fn = tfn)
+                  printf "  %6s %s\n", tpre, tsuf
+               }
+               next
+            }
+            /-----SIGNATURES-----/{
+               while(getline sl < SIGS)
+                  print sl
+               next
+            }
+            /-----NEWS-----/{
+               while(getline sl < NEWS)
+                  print sl
+               next
+            }
+            {print}
+         ' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
+         rm -f "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
+      else
+         < .git/mk-release.txt awk \
+               -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
+            /-----NEWS-----/{
+               while(getline sl < NEWS)
+                  print sl
+               next
+            }
+            {print}
+         ' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
+      fi
+   elif [ -f "${TMPDIR}/.${PROGRAM}-${REL}.news" ]; then
+      cat "${TMPDIR}/.${PROGRAM}-${REL}.news" >> \
          "${TMPDIR}/${PROGRAM}-${REL}.txt"
    fi
-   if `git cat-file -e ${relbr}:NEWS 2>/dev/null`; then
-      echo >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
-      git show ${relbr}:NEWS >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
-   fi
+
+   rm -f "${TMPDIR}/.${PROGRAM}-${REL}.news"
 
    LC_ALL=${ORIG_LC_ALL} ${EDITOR} "${TMPDIR}/${PROGRAM}-${REL}.txt"
 
@@ -317,13 +381,13 @@ if [ -n "${bigballs}" ] && yesno 'Upload archives'; then
       echo "-rm ${PROGRAM}-latest.tar.xz"
       echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
 
-      echo "-put ${PROGRAM}-${REL}.tar.gz"
-      echo "-rm ${PROGRAM}-latest.tar.gz"
-      echo "-ln -s ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
-
       echo "-put ${PROGRAM}-${REL}.tar.xz.asc"
       echo "-rm ${PROGRAM}-latest.tar.xz.asc"
       echo "-ln -s ${PROGRAM}-${REL}.tar.xz.asc ${PROGRAM}-latest.tar.xz.asc"
+
+      echo "-put ${PROGRAM}-${REL}.tar.gz"
+      echo "-rm ${PROGRAM}-latest.tar.gz"
+      echo "-ln -s ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
 
       echo "-put ${PROGRAM}-${REL}.tar.gz.asc"
       echo "-rm ${PROGRAM}-latest.tar.gz.asc"
@@ -346,7 +410,7 @@ fi
 
 if [ -n "${anntxt}" ] && yesno 'Send announcement mail?'; then
    LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT} \
-      -s "[ANN]ounce of ${UPROGRAM} v${REL}" \
+      -s "[ANN]ounce of ${UPROGRAM} v${REL}${RELSYM}" \
       -q "${TMPDIR}/${PROGRAM}-${REL}.txt" \
       -b ${MAILBCC} ${MAILTO}
 fi
