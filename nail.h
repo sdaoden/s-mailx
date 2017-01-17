@@ -191,6 +191,7 @@
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
 #define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */
 #define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
+#define n_VEXPR_REGEX_MAX 10     /* Maximum address. `vexpr' regex(7) matches */
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 
@@ -634,18 +635,22 @@ typedef unsigned long   ui64_t;
 typedef signed long     si64_t;
 #endif
 
-#if !defined PRIu64 || !defined PRId64 || !defined PRIX64
+/* PRIo64 for `vexpr' */
+#if !defined PRIu64 || !defined PRId64 || !defined PRIX64 || !defined PRIo64
 # undef PRIu64
 # undef PRId64
 # undef PRIX64
+# undef PRIo64
 # if defined ULLONG_MAX && UI64_MAX == ULLONG_MAX
 #  define PRIu64        "llu"
 #  define PRId64        "lld"
 #  define PRIX64        "llX"
+#  define PRIo64        "llo"
 # else
 #  define PRIu64        "lu"
 #  define PRId64        "ld"
 #  define PRIX64        "lX"
+#  define PRIo64        "lo"
 # endif
 #endif
 

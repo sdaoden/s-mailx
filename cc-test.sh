@@ -192,6 +192,7 @@ t_behave() {
    __behave_localopts
    __behave_macro_param_shift
    __behave_addrcodec
+   __behave_vexpr
 
    # FIXME __behave_alias
 
@@ -1281,6 +1282,338 @@ __behave_addrcodec() {
 #0 "Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
 #0 (Ma) "Braten Dr." (Heu) <doog@def>
    cksum_test behave:addrcodec "${MBOX}" '199353623 460'
+}
+
+__behave_vexpr() {
+   ${rm} -f "${MBOX}"
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+	vput vexpr res = 9223372036854775807
+	echo $0 $res
+	vput vexpr res = 9223372036854775808
+	echo $0 $res
+	vput vexpr res =@ 9223372036854775808
+	echo $0 $res
+	vput vexpr res = -9223372036854775808
+	echo $0 $res
+	vput vexpr res = -9223372036854775809
+	echo $0 $res
+	vput vexpr res =@ -9223372036854775809
+	echo $0 $res
+	echo ' #1'
+	vput vexpr res ~ 0
+	echo $0 $res
+	vput vexpr res ~ 1
+	echo $0 $res
+	vput vexpr res ~ -1
+	echo $0 $res
+	echo ' #2'
+	vput vexpr res + 0 0
+	echo $0 $res
+	vput vexpr res + 0 1
+	echo $0 $res
+	vput vexpr res + 1 1
+	echo $0 $res
+	echo ' #3'
+	vput vexpr res + 9223372036854775807 0
+	echo $0 $res
+	vput vexpr res + 9223372036854775807 1
+	echo $0 $res
+	vput vexpr res +@ 9223372036854775807 1
+	echo $0 $res
+	vput vexpr res + 0 9223372036854775807
+	echo $0 $res
+	vput vexpr res + 1 9223372036854775807
+	echo $0 $res
+	vput vexpr res +@ 1 9223372036854775807
+	echo $0 $res
+	echo ' #4'
+	vput vexpr res + -9223372036854775808 0
+	echo $0 $res
+	vput vexpr res + -9223372036854775808 -1
+	echo $0 $res
+	vput vexpr res +@ -9223372036854775808 -1
+	echo $0 $res
+	vput vexpr res + 0 -9223372036854775808
+	echo $0 $res
+	vput vexpr res + -1 -9223372036854775808
+	echo $0 $res
+	vput vexpr res +@ -1 -9223372036854775808
+	echo $0 $res
+	echo ' #5'
+	vput vexpr res - 0 0
+	echo $0 $res
+	vput vexpr res - 0 1
+	echo $0 $res
+	vput vexpr res - 1 1
+	echo $0 $res
+	echo ' #6'
+	vput vexpr res - 9223372036854775807 0
+	echo $0 $res
+	vput vexpr res - 9223372036854775807 -1
+	echo $0 $res
+	vput vexpr res -@ 9223372036854775807 -1
+	echo $0 $res
+	vput vexpr res - 0 9223372036854775807
+	echo $0 $res
+	vput vexpr res - -1 9223372036854775807
+	echo $0 $res
+	vput vexpr res - -2 9223372036854775807
+	echo $0 $res
+	vput vexpr res -@ -2 9223372036854775807
+	echo $0 $res
+	echo ' #7'
+	vput vexpr res - -9223372036854775808 +0
+	echo $0 $res
+	vput vexpr res - -9223372036854775808 +1
+	echo $0 $res
+	vput vexpr res -@ -9223372036854775808 +1
+	echo $0 $res
+	vput vexpr res - 0 -9223372036854775808
+	echo $0 $res
+	vput vexpr res - +1 -9223372036854775808
+	echo $0 $res
+	vput vexpr res -@ +1 -9223372036854775808
+	echo $0 $res
+	echo ' #8'
+	vput vexpr res + -13 -2
+	echo $0 $res
+	vput vexpr res - 0 0
+	echo $0 $res
+	vput vexpr res - 0 1
+	echo $0 $res
+	vput vexpr res - 1 1
+	echo $0 $res
+	vput vexpr res - -13 -2
+	echo $0 $res
+	echo ' #9'
+	vput vexpr res * 0 0
+	echo $0 $res
+	vput vexpr res * 0 1
+	echo $0 $res
+	vput vexpr res * 1 1
+	echo $0 $res
+	vput vexpr res * -13 -2
+	echo $0 $res
+	echo ' #10'
+	vput vexpr res / 0 0
+	echo $0 $res
+	vput vexpr res / 0 1
+	echo $0 $res
+	vput vexpr res / 1 1
+	echo $0 $res
+	vput vexpr res / -13 -2
+	echo $0 $res
+	echo ' #11'
+	vput vexpr res % 0 0
+	echo $0 $res
+	vput vexpr res % 0 1
+	echo $0 $res
+	vput vexpr res % 1 1
+	echo $0 $res
+	vput vexpr res % -13 -2
+	echo $0 $res
+	__EOT
+#0 9223372036854775807
+#1 -1
+#1 9223372036854775807
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+# #1
+#0 -1
+#0 -2
+#0 0
+# #2
+#0 0
+#0 1
+#0 2
+# #3
+#0 9223372036854775807
+#1 -1
+#1 9223372036854775807
+#0 9223372036854775807
+#1 -1
+#1 9223372036854775807
+# #4
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+# #5
+#0 0
+#0 -1
+#0 0
+# #6
+#0 9223372036854775807
+#1 -1
+#1 9223372036854775807
+#0 -9223372036854775807
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+# #7
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+#0 -9223372036854775808
+#1 -1
+#1 -9223372036854775808
+# #8
+#0 -15
+#0 0
+#0 -1
+#0 0
+#0 -11
+# #9
+#0 0
+#0 0
+#0 1
+#0 26
+# #10
+#1 -1
+#0 0
+#0 1
+#0 6
+# #11
+#1 -1
+#0 0
+#0 0
+#0 -1
+   cksum_test behave:vexpr-numeric "${MBOX}" '2147139513 687'
+
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+	vput vexpr res find 'bananarama' 'nana'
+	echo $0 $res
+	vput vexpr res find 'bananarama' 'bana'
+	echo $0 $res
+	vput vexpr res find 'bananarama' 'Bana'
+	echo $0 $res
+	vput vexpr res find 'bananarama' 'rama'
+	echo $0 $res
+	echo ' #1'
+	vput vexpr res ifind 'bananarama' 'nana'
+	echo $0 $res
+	vput vexpr res ifind 'bananarama' 'bana'
+	echo $0 $res
+	vput vexpr res ifind 'bananarama' 'Bana'
+	echo $0 $res
+	vput vexpr res ifind 'bananarama' 'rama'
+	echo $0 $res
+	echo ' #2'
+	vput vexpr res substring 'bananarama' 1
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 5
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 7
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 9
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 10
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 1 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 3 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 5 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 7 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 9 3
+	echo $0 $res
+	vput vexpr res substring 'bananarama' 10 3
+	echo $0 $res
+	echo ' #3'
+	__EOT
+#0 2
+#0 0
+#1 -1
+#0 6
+# #1
+#0 2
+#0 0
+#0 0
+#0 6
+# #2
+#0 ananarama
+#0 anarama
+#0 arama
+#0 ama
+#0 a
+#0 
+#0 ana
+#0 ana
+#0 ara
+#0 ama
+#1 a
+#1 
+# #3
+   cksum_test behave:vexpr-string "${MBOX}" '2171181036 119'
+
+   if have_feat regex; then
+      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+		vput vexpr res regex 'bananarama' 'nana'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' 'bana'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' 'Bana'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' 'rama'
+		echo $0 $res
+		echo ' #1'
+		vput vexpr res iregex 'bananarama' 'nana'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' 'bana'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' 'Bana'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' 'rama'
+		echo $0 $res
+		echo ' #2'
+		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}au{\$2}'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}au\$2'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1'
+		echo $0 $res
+		vput vexpr res regex 'bananarama' '(.+)rama' '\$1'
+		echo $0 $res
+		echo ' #3'
+		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}au{\$2}'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}au\$2'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1'
+		echo $0 $res
+		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1'
+		echo $0 $res
+		echo ' #4'
+		__EOT
+#0 2
+#0 0
+#1 -1
+#0 6
+# #1
+#0 2
+#0 0
+#0 0
+#0 6
+# #2
+#0 baau{rama}
+#0 aunarama
+#1 -1
+#0 banana
+# #3
+#0 baau{rama}
+#0 aunarama
+#0 narama
+#0 banana
+# #4
+      cksum_test behave:vexpr-regex "${MBOX}" '2350800158 129'
+   fi
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein

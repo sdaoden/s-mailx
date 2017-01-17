@@ -226,6 +226,9 @@ FL int c_varedit(void *v);
 /* `environ' */
 FL int c_environ(void *v);
 
+/* `vexpr' */
+FL int c_vexpr(void *v);
+
 /*
  * attachment.c
  * xxx Interface quite sick

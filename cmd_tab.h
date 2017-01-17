@@ -376,6 +376,8 @@
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
+   { "vexpr", &c_vexpr, (G | M | V | X | _0 | WYSHLIST), 2, 1000
+     DS(N_("Evaluate according to <operator> any <:arguments:>")) },
    { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | WYRALIST), 0, 1

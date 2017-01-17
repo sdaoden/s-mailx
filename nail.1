@@ -1960,7 +1960,10 @@ support is available
 .Ar expr
 will be interpreted as (an extended) one if any of the
 .Dq magical
-(extended) regular expression characters is seen.
+(extended) regular expression characters is seen: in this case this
+should match strings correctly which are in the locale
+.Ev LC_CTYPE
+encoding.
 If the optional
 .Ar @ Ns Ar name-list
 part is missing, the search is restricted to the subject field body,
@@ -3450,6 +3453,8 @@ Positional parameters may be removed by
 ing them off the stack.
 Macro execution can be terminated at any time by calling
 .Ic return .
+Numeric and string operations can be performed via
+.Ic vexpr .
 .Bd -literal -offset indent
 define exmac {
   echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
@@ -5579,6 +5584,115 @@ and
 .Va features
 of \*(UA.
 .
+.
+.Mx
+.It Ic vexpr
+\*(NQ Evaluate arguments according to a given operator.
+This is a multiplexer command which can be used to perform signed 64-bit
+numeric calculations as well as string operations.
+It uses polish notation, i.e., the operator is the first argument and
+defines the number and type, and the meaning of the remaining arguments.
+An empty argument is replaced with a 0 if a number is expected.
+It supports the
+.Mx -sx
+.Sx "command modifier"
+.Ql vput .
+The return status is tracked via
+.Va \&0 ,
+the result that is shown in case of (soft) errors is
+.Ql -1 .
+In general only invalid use cases cause hard errors which are reflected in
+.Va \&?
+and affect the state machine.
+.
+.Pp
+Numeric operations work on one or two signed 64-bit integers.
+One integer is expected by assignment (equals sign
+.Ql = ) ,
+which does nothing but parsing the argument, thus detecting validity and
+possible overflow conditions, and unary not (tilde
+.Ql ~ ) ,
+which creates the bitwise complement.
+Two integers are used by addition (plus
+.Ql + ) ,
+subtraction (minus
+.Ql - ) ,
+multiplication (asterisk
+.Ql * ) ,
+division (solidus
+.Ql / )
+and modulo (percent
+.Ql % ) .
+All numeric operators can be suffixed with an at sign
+.Ql @ ,
+e.g.,
+.Ql *@ :
+this will turn the operation into a saturated one, which means that
+overflow errors and division and modulo by zero are still reflected in
+the return status, but the result will linger at the minimum or maximum
+possible value, instead of overflowing (or trapping).
+If in saturated mode the overflow occurs during parsing the numbers,
+then the actual operation will not be performed but the given maximum
+value is used as the result immediately.
+.
+.Pp
+String operations that take one argument are
+.Ql length ,
+which queries the length of the given argument, and
+.Ql file-expand ,
+which performs the usual
+.Mx -sx
+.Sx "filename transformations" ,
+as documented in the section
+.Sx COMMANDS ,
+on its argument.
+Two or more arguments are used by
+.Ql find ,
+which searches in the first for the second argument, and shows the
+resulting 0-based offset shall it have been found,
+.Ql ifind ,
+which is identical to
+.Ql find ,
+but works case-insensitively according to the rules of the ASCII
+character set.
+.Ql substring
+will show a substring of its first argument:
+the second argument is the 0-based starting offset, the optional third
+argument can be used to specify the length of the desired substring,
+by default the entire string is used;
+this operation tries to work around faulty arguments, but the (soft)
+return status will still reflect them (set
+.Va verbose
+for error logs).
+.
+.Pp
+\*(OP
+.Ql regex
+will try to match the first argument with the regular expression given
+in the second argument, as does
+.Ql iregex ,
+but which is case-insensitive.
+These operators match according to the active
+.Ev LC_CTYPE
+locale and thus should match correctly strings in the locale encoding.
+If the optional third argument has been given then instead of showing
+the match offset a replacement operation is performed:
+the third argument is treated as if specified via dollar-single-quote
+.Mx -sx
+.Sx "shell-style argument quoting" ,
+as documented in
+.Sx COMMANDS ,
+and any occurrence of a positional parameter, e.g.,
+.Va 1 ,
+is replaced by the corresponding match group of the regular expression.
+.
+.Bd -literal -offset indent
+? vexpr -@ +1 -9223372036854775808
+? vput vexpr res ir bananarama (.*)nana(.*) '\e${1}au\e$2'
+? echo $0 $res
+.Ed
+.
+.
 .Mx
 .It Ic visual
 (v) Takes a message list and invokes the display editor on each message.
@@ -6392,7 +6506,7 @@ d and
 .Ic call Ns
 ed macro or an
 .Ic account .
-In fact an increasing number of \*(UA commands use this to indicate a
+In addition an increasing number of \*(UA commands use it to indicate a
 .Dq soft
 exit status, since the normal exit status of a command
 .Pf ( Va \&? )
@@ -6401,7 +6515,7 @@ has a meaning in the state machine for, e.g.,
 .
 .Mx
 .It Va 1
-\*(RO Only available inside the scope of a
+\*(RO Available inside the scope of a
 .Ic define Ns
 d and
 .Ic call Ns
@@ -6409,8 +6523,11 @@ ed macro, this will access the first positional parameter passed.
 All further parameters can be accessed with this syntax, too, e.g.,
 .Ql 2 ,
 .Ql 3
-etc.; positional parameters can be shifted (removed) by calling
+etc.; positional parameters can be shifted off the stack by calling
 .Ic shift .
+Positional parameters are also accessible in the \*(OPal regular
+expression search and replace expression of
+.Ic vexpr .
 .
 .Mx
 .It Va \&?
