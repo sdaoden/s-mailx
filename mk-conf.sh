@@ -981,7 +981,9 @@ compile_check() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if ${make} -f ${makefile} XINCS="${INCS}" ./${tmp}.o &&
+   if ${make} -f ${makefile} XINCS="${INCS}" \
+            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
+            ./${tmp}.o &&
          [ -f ./${tmp}.o ]; then
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1001,6 +1003,7 @@ _link_mayrun() {
    _check_preface "${variable}" "${topic}" "${define}"
 
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
+            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ./${tmp} &&
          [ -f ./${tmp} ] &&
          { [ ${run} -eq 0 ] || ./${tmp}; }; then

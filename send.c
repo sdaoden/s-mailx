@@ -125,7 +125,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL);
    else
       cp = mpp->m_ct_type_plain;
-   if ((to.l = strlen(cp)) > 30 && is_asccaseprefix(cp, "application/")) {
+   if ((to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
       char *x = salloc(al + i +1);

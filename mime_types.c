@@ -805,7 +805,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
 
    if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (is_asccaseprefix(ct, "text/")) {
+   else if (is_asccaseprefix("text/", ct)) {
       ct += sizeof("text/") -1;
       if (!asccasecmp(ct, "plain"))
          mc = MIME_TEXT_PLAIN;
@@ -813,7 +813,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
          mc = MIME_TEXT_HTML;
       else
          mc = MIME_TEXT;
-   } else if (is_asccaseprefix(ct, "message/")) {
+   } else if (is_asccaseprefix("message/", ct)) {
       ct += sizeof("message/") -1;
       if (!asccasecmp(ct, "rfc822"))
          mc = MIME_822;
@@ -829,7 +829,7 @@ mime_type_mimepart_content(struct mimepart *mpp)
          mc = MIME_DIGEST;
       else
          mc = MIME_MULTI;
-   } else if (is_asccaseprefix(ct, "application/")) {
+   } else if (is_asccaseprefix("application/", ct)) {
       ct += sizeof("application/") -1;
       if (!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
          mc = MIME_PKCS7;

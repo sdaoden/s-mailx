@@ -91,6 +91,13 @@ static int                 _cmatch(size_t len, char const *date,
  * (Rather ctime(3) generated dates, according to RFC 4155) */
 static int                 _is_date(char const *date);
 
+/* JulianDayNumber converter(s) */
+static size_t a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
+#if 0
+static void a_head_jdn_to_gregorian(size_t jdn,
+               ui32_t *yp, ui32_t *mp, ui32_t *dp);
+#endif
+
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
@@ -201,6 +208,89 @@ _is_date(char const *date)
    return rv;
 }
 
+static size_t
+a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
+   /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
+    * (via third hand, plus adjustments).
+    * This algorithm is supposed to work for all dates in between 1582-10-15
+    * (0001-01-01 but that not Gregorian) and 65535-12-31 */
+   size_t jdn;
+   NYD2_ENTER;
+
+#if 0
+   if(y == 0)
+      y = 1;
+   if(m == 0)
+      m = 1;
+   if(d == 0)
+      d = 1;
+#endif
+
+   if(m > 2)
+      m -= 3;
+   else{
+      m += 9;
+      --y;
+   }
+   jdn = y;
+   jdn /= 100;
+   y -= 100 * jdn;
+   y *= 1461;
+   y >>= 2;
+   jdn *= 146097;
+   jdn >>= 2;
+   jdn += y;
+   jdn += d;
+   jdn += 1721119;
+   m *= 153;
+   m += 2;
+   m /= 5;
+   jdn += m;
+   NYD2_LEAVE;
+   return jdn;
+}
+
+#if 0
+static void
+a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
+   /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
+    * (via third hand, plus adjustments) */
+   size_t y, x;
+   NYD2_ENTER;
+
+   jdn -= 1721119;
+   jdn <<= 2;
+   --jdn;
+   y =   jdn / 146097;
+         jdn %= 146097;
+   jdn |= 3;
+   y *= 100;
+   y +=  jdn / 1461;
+         jdn %= 1461;
+   jdn += 4;
+   jdn >>= 2;
+   x = jdn;
+   jdn <<= 2;
+   jdn += x;
+   jdn -= 3;
+   x =   jdn / 153;  /* x -> month */
+         jdn %= 153;
+   jdn += 5;
+   jdn /= 5; /* jdn -> day */
+   if(x < 10)
+      x += 3;
+   else{
+      x -= 9;
+      ++y;
+   }
+
+   *yp = (ui32_t)(y & 0xFFFF);
+   *mp = (ui32_t)(x & 0xFF);
+   *dp = (ui32_t)(jdn & 0xFF);
+   NYD2_LEAVE;
+}
+#endif /* 0 */
+
 #ifdef HAVE_IDNA
 # if HAVE_IDNA == HAVE_IDNA_LIBIDNA
 static struct addrguts *
@@ -241,9 +331,9 @@ _idna_apply(struct addrguts *agp)
    /* Replace the domain part of .ag_skinned with IDNA version */
    sz = strlen(idna_ascii);
    i = agp->ag_sdom_start;
-   cs = salloc(agp->ag_slen - i + sz +1);
+   cs = salloc(i + sz +1);
    memcpy(cs, agp->ag_skinned, i);
-   memcpy(cs + i, idna_ascii, sz);
+   memcpy(&cs[i], idna_ascii, sz);
    i += sz;
    cs[i] = '\0';
 
@@ -302,9 +392,9 @@ _idna_apply(struct addrguts *agp)
    /* Replace the domain part of .ag_skinned with IDNA version */
    sz = strlen(idna_out);
    i = agp->ag_sdom_start;
-   cs = salloc(agp->ag_slen - i + sz +1);
+   cs = salloc(i + sz +1);
    memcpy(cs, agp->ag_skinned, i);
-   memcpy(cs + i, idna_out, sz);
+   memcpy(&cs[i], idna_out, sz);
    i += sz;
    cs[i] = '\0';
 
@@ -816,8 +906,6 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          np = checkaddrs(lextract(val, GREF),
                /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                NULL);
-         if (np == NULL || np->n_flink != NULL)
-            goto jebadhead;
          ++seenfields;
          hq->h_in_reply_to = np;
       } else if ((pstate & PS_t_FLAG) &&
@@ -1865,48 +1953,47 @@ jinvalid:
    goto jleave;
 }
 
-#define is_leapyear(Y)  ((((Y) % 100 ? (Y) : (Y) / 100) & 3) == 0)
-
 FL time_t
-combinetime(int year, int month, int day, int hour, int minute, int second)
-{
+combinetime(int year, int month, int day, int hour, int minute, int second){
+   size_t const jdn_epoch = 2440588;
+   bool_t const y2038p = (sizeof(time_t) == 4);
+
+   size_t jdn;
    time_t t;
    NYD2_ENTER;
 
-   if (second < 0 || minute < 0 || hour < 0 || day < 1) {
-      t = (time_t)-1;
-      goto jleave;
+   if(UICMP(32, second, >=, DATE_SECSMIN) || /* XXX (leap- */
+         UICMP(32, minute, >=, DATE_MINSHOUR) ||
+         UICMP(32, hour, >=, DATE_HOURSDAY) ||
+         day < 1 || day > 31 ||
+         month < 1 || month > 12 ||
+         year < 1970)
+      goto jerr;
+
+   if(year >= 1970 + ((y2038p ? SI32_MAX : SI64_MAX) /
+         (DATE_SECSDAY * DATE_DAYSYEAR))){
+      /* Be a coward regarding Y2038, many people (mostly myself, that is) do
+       * test by stepping second-wise around the flip.  Don't care otherwise */
+      if(!y2038p)
+         goto jerr;
+      if(year > 2038 || month > 1 || day > 19 ||
+            hour > 3 || minute > 14 || second > 7)
+         goto jerr;
    }
 
-   t = second + minute * 60 + hour * 3600 + (day - 1) * 86400;
-   if (month > 1)
-      t += 86400 * 31;
-   if (month > 2)
-      t += 86400 * (is_leapyear(year) ? 29 : 28);
-   if (month > 3)
-      t += 86400 * 31;
-   if (month > 4)
-      t += 86400 * 30;
-   if (month > 5)
-      t += 86400 * 31;
-   if (month > 6)
-      t += 86400 * 30;
-   if (month > 7)
-      t += 86400 * 31;
-   if (month > 8)
-      t += 86400 * 31;
-   if (month > 9)
-      t += 86400 * 30;
-   if (month > 10)
-      t += 86400 * 31;
-   if (month > 11)
-      t += 86400 * 30;
-   year -= 1900;
-   t += (year - 70) * 31536000 + ((year - 69) / 4) * 86400 -
-         ((year - 1) / 100) * 86400 + ((year + 299) / 400) * 86400;
+   t = second;
+   t += minute * DATE_SECSMIN;
+   t += hour * DATE_SECSHOUR;
+
+   jdn = a_head_gregorian_to_jdn(year, month, day);
+   jdn -= jdn_epoch;
+   t += (time_t)jdn * DATE_SECSDAY;
 jleave:
    NYD2_LEAVE;
    return t;
+jerr:
+   t = (time_t)-1;
+   goto jleave;
 }
 
 FL void

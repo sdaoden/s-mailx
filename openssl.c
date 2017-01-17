@@ -745,7 +745,7 @@ smime_verify(struct message *m, int n, _STACKOF(X509) *chain, X509_STORE *store)
 #undef _Y
 #define _X     (sizeof("application/") -1)
 #define _Y(X)  X, sizeof(X) -1
-      if (cnttype && is_asccaseprefix(cnttype, "application/") &&
+      if (cnttype && is_asccaseprefix("application/", cnttype) &&
             (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
              !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y
@@ -1727,7 +1727,7 @@ jloop:
 #undef _Y
 #define _X     (sizeof("application/") -1)
 #define _Y(X)  X, sizeof(X) -1
-   if (cnttype && is_asccaseprefix(cnttype, "application/") &&
+   if (cnttype && is_asccaseprefix("application/", cnttype) &&
          (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
           !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y

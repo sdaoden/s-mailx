@@ -36,14 +36,14 @@ the Programmer's Manual, 1971-1986":
 Our latest release can be downloaded at [1], and the fully cross-
 referenced manual can also be viewed as HTML online[2].
 There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
-cloning purposes), with mirrors at Sourceforge[5] and GitLab.com[6].
+cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
 
   [1] https?://www.sdaoden.eu/downloads/s-nail-latest.tar{,.{asc,gz,xz}}
   [2] https?://www.sdaoden.eu/code.html#s-mailx
   [3] https?://git.sdaoden.eu/cgit/s-nail.git
   [4] https?://git.sdaoden.eu/scm/s-nail.git
   [5] http://sourceforge.net/projects/s-nail
-  [6] https://gitlab.com/sdaoden/s-nail
+  [6] http://repo.or.cz/s-mailx.git
 
 We have a mailing list[7] (later: [8]!) with moderated unsubscribed
 posting possibilities; subscriptions can be managed via web interface[9];
