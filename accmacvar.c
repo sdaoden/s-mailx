@@ -728,7 +728,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
       x = avp;
       avp = avp->av_link;
       n_pstate |= n_PS_ROOT;
-      vok_vset(x->av_name, x->av_value);
+      n_var_vset(x->av_name, (uintptr_t)x->av_value);
       if(reset)
          n_pstate &= ~n_PS_ROOT;
       free(x);
@@ -1678,7 +1678,8 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
    size_t len;
-   char *var, *cp;
+   char const *cp;
+   char *var;
    bool_t rv;
    NYD_ENTER;
 
@@ -1687,7 +1688,7 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
 
    /* First try the fully resolved path */
    snprintf(var, len, "folder-hook-%s", mailname);
-   if((cp = vok_vlook(var)) != NULL)
+   if((cp = n_var_vlook(var, FAL0)) != NULL)
       goto jmac;
 
    /* If we are under *folder*, try the usual +NAME syntax, too */
@@ -1697,7 +1698,7 @@ check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
       for(x = &mailname[len]; x != mailname; --x)
          if(x[-1] == '/'){
             snprintf(var, len, "folder-hook-+%s", x);
-            if((cp = vok_vlook(var)) != NULL)
+            if((cp = n_var_vlook(var, FAL0)) != NULL)
                goto jmac;
             break;
          }
@@ -2058,20 +2059,24 @@ n_var_okclear(enum okeys okey){
    return rv;
 }
 
-FL char *
-n_var_voklook(char const *vokey){
+FL char const *
+n_var_vlook(char const *vokey, bool_t try_getenv){
    struct a_amv_var_carrier avc;
-   char *rv;
+   char const *rv;
    NYD_ENTER;
 
    a_amv_var_revlookup(&avc, vokey);
+   rv = NULL;
 
    /* Here, and only here we need to take care for the special macro-local
     * parameters... */
-   if(n_LIKELY(!avc.avc_is_special))
-      rv = a_amv_var_lookup(&avc, FAL0) ? avc.avc_var->av_value : NULL;
-   else{
-      rv = NULL;
+   if(n_LIKELY(!avc.avc_is_special)){
+      if(a_amv_var_lookup(&avc, FAL0))
+         rv = avc.avc_var->av_value;
+      /* Only check the environment for something that is otherwise unknown */
+      else if(try_getenv && avc.avc_map == NULL)
+         rv = getenv(vokey);
+   }else{
       /* These may occur only in a macro.. */
       if(n_LIKELY(a_amv_lopts != NULL)){
          struct a_amv_mac const *amp;
@@ -2083,7 +2088,7 @@ n_var_voklook(char const *vokey){
             if(avc.avc_is_special == TRUM1){
                if(avc.avc_special_prop > 0){
                   if(amcap->amca_argc >= avc.avc_special_prop)
-                     rv = n_UNCONST(amcap->amca_argv[avc.avc_special_prop - 1]);
+                     rv = amcap->amca_argv[avc.avc_special_prop - 1];
                } /* TODO $0 is a function return value, not yet supported */
             }else switch(avc.avc_special_prop){
             case a_AMV_VST_STAR:
@@ -2091,29 +2096,33 @@ n_var_voklook(char const *vokey){
                /* TODO Expansion of $* and $@ not shell compatible, if
                 * TODO that occurs within double quotes.
                 * TODO Same notes on that in accmacvar.c, shexp.c */
-               ui32_t i, j, l;
+               ui32_t i, l;
 
-               for(i = j = 0; i < amcap->amca_argc; ++i)
-                  j += strlen(amcap->amca_argv[i]) + 1;
-               if(j == 0)
-                  rv = n_UNCONST(n_empty);
+               for(i = l = 0; i < amcap->amca_argc; ++i)
+                  l += strlen(amcap->amca_argv[i]) + 1;
+               if(l == 0)
+                  rv = n_empty;
                else{
-                  rv = salloc(j);
-                  for(i = j = l = 0; i < amcap->amca_argc; ++i){
+                  char *cp;
+
+                  rv = cp = salloc(l);
+                  for(i = l = 0; i < amcap->amca_argc; ++i){
                      l = strlen(amcap->amca_argv[i]);
-                     memcpy(&rv[j], amcap->amca_argv[i], l);
-                     j += l;
-                     rv[j++] = ' ';
+                     memcpy(cp, amcap->amca_argv[i], l);
+                     cp += l;
+                     *cp++ = ' ';
                   }
-                  rv[--j] = '\0';
+                  *--cp = '\0';
                }
             }  break;
-            case a_AMV_VST_NOSIGN:
-               rv = salloc(sizeof("65535"));
-               snprintf(rv, sizeof("65535"), "%hu", amcap->amca_argc);
-               break;
+            case a_AMV_VST_NOSIGN:{
+               char *cp;
+
+               rv = cp = salloc(sizeof("65535"));
+               snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
+            }  break;
             default:
-               rv = n_UNCONST(n_empty);
+               rv = n_empty;
                break;
             }
          }
@@ -2126,7 +2135,7 @@ n_var_voklook(char const *vokey){
 }
 
 FL bool_t
-n_var_vokset(char const *vokey, uintptr_t val){
+n_var_vset(char const *vokey, uintptr_t val){
    struct a_amv_var_carrier avc;
    bool_t ok;
    NYD_ENTER;
@@ -2139,7 +2148,7 @@ n_var_vokset(char const *vokey, uintptr_t val){
 }
 
 FL bool_t
-n_var_vokclear(char const *vokey){
+n_var_vclear(char const *vokey){
    struct a_amv_var_carrier avc;
    bool_t ok;
    NYD_ENTER;
@@ -2232,7 +2241,7 @@ c_unset(void *v){
    NYD_ENTER;
 
    for(err = 0, ap = v; *ap != NULL; ++ap)
-      err |= !n_var_vokclear(*ap);
+      err |= !n_var_vclear(*ap);
    NYD_LEAVE;
    return err;
 }

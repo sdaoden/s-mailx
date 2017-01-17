@@ -267,7 +267,7 @@ static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      bool_t dowarn, char const **match);
-static char *     _smime_sign_include_certs(char const *name);
+static char const * _smime_sign_include_certs(char const *name);
 static bool_t     _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
 static EVP_MD const * _smime_sign_digest(char const *name,
@@ -930,7 +930,7 @@ _smime_cipher(char const *name)
 
    vn = ac_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
-   cp = vok_vlook(vn);
+   cp = n_var_vlook(vn, FAL0);
    ac_free(vn);
 
    if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
@@ -1013,10 +1013,10 @@ static FILE *
 smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn,
    char const **match)
 {
-   char *vn, *cp;
+   char *vn;
    int vs;
    struct name *np;
-   char const *name = xname, *name2 = xname2;
+   char const *name = xname, *name2 = xname2, *cp;
    FILE *fp = NULL;
    NYD_ENTER;
 
@@ -1029,7 +1029,7 @@ jloop:
           * whether it is the right one for the message */
          vn = ac_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-         cp = vok_vlook(vn);
+         cp = n_var_vlook(vn, FAL0);
          ac_free(vn);
          if (cp != NULL) {
             if (match != NULL)
@@ -1065,10 +1065,10 @@ jerr:
    goto jleave;
 }
 
-static char *
+static char const *
 _smime_sign_include_certs(char const *name)
 {
-   char *rv;
+   char const *rv;
    NYD_ENTER;
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
@@ -1077,9 +1077,11 @@ _smime_sign_include_certs(char const *name)
 
       for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
          int vs;
-         char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         char *vn;
+
+         vn = ac_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
-         rv = vok_vlook(vn);
+         rv = n_var_vlook(vn, FAL0);
          ac_free(vn);
          if (rv != NULL)
             goto jleave;
@@ -1149,7 +1151,7 @@ _smime_sign_digest(char const *name, char const **digname)
          int vs;
          char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
-         cp = vok_vlook(vn);
+         cp = n_var_vlook(vn, FAL0);
          ac_free(vn);
          if (cp != NULL)
             goto jhave_name;

@@ -195,18 +195,11 @@ FL bool_t      n_var_okclear(enum okeys okey);
 #define ok_bclear(C)             n_var_okclear(n_CONCAT(ok_b_, C))
 #define ok_vclear(C)             n_var_okclear(n_CONCAT(ok_v_, C))
 
-/* Variable option key look/(un)set/clear */
-FL char *      n_var_voklook(char const *vokey);
-#define vok_blook(S)              (n_var_voklook(S) != NULL)
-#define vok_vlook(S)              n_var_voklook(S)
-
-FL bool_t      n_var_vokset(char const *vokey, uintptr_t val);
-#define vok_bset(S,B)            n_var_vokset(S, (uintptr_t)(B))
-#define vok_vset(S,V)            n_var_vokset(S, (uintptr_t)(V))
-
-FL bool_t      n_var_vokclear(char const *vokey);
-#define vok_bclear(S)            n_var_vokclear(S)
-#define vok_vclear(S)            n_var_vokclear(S)
+/* Variable option key lookup/(un)set/clear.
+ * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey */
+FL char const *n_var_vlook(char const *vokey, bool_t try_getenv);
+FL bool_t n_var_vset(char const *vokey, uintptr_t val);
+FL bool_t n_var_vclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */

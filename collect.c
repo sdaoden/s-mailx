@@ -1751,7 +1751,7 @@ jearg:
          /* Insert a variable into the file */
          if(cnt == 2)
             goto jearg;
-         if((cp = vok_vlook(&linebuf[3])) == NULL || *cp == '\0')
+         if((cp = n_var_vlook(&linebuf[3], TRU1)) == NULL || *cp == '\0')
             break;
          if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
             goto jerr;

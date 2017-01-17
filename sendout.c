@@ -1137,7 +1137,7 @@ _transfer(struct sendbundle *sbp)
       memcpy(vs, k, sizeof(k) -1);
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
 
-      if ((cp = vok_vlook(vs)) != NULL) {
+      if ((cp = n_var_vlook(vs, FAL0)) != NULL) {
 #ifdef HAVE_SSL
          FILE *ef;
 

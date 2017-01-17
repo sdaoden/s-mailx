@@ -1790,13 +1790,13 @@ c_read(void *v){ /* TODO IFS? how? -r */
             if(blankchar(c))
                break;
 
-      vok_vset(*argv, savestrbuf(cp, PTR2SIZE(cp2 - cp)));
+      n_var_vset(*argv, (uintptr_t)savestrbuf(cp, PTR2SIZE(cp2 - cp)));
       cp = cp2;
    }
 
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
-      vok_vset(*argv, "");
+      n_var_vset(*argv, (uintptr_t)n_empty);
 
    rv = 0;
 jleave:

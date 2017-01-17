@@ -1269,7 +1269,7 @@ mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       for (cp = buf + __L; *cp != '\0'; ++cp)
          *cp = lowerconv(*cp);
 
-      if ((mhp->mh_shell_cmd = ccp = vok_vlook(buf)) != NULL) {
+      if ((mhp->mh_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NULL) {
          rv = _mt_pipe_check(mhp);
          goto jleave;
       }
@@ -1283,7 +1283,7 @@ mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    for (cp = buf + __L; *cp != '\0'; ++cp)
       *cp = lowerconv(*cp);
 
-   if ((mhp->mh_shell_cmd = vok_vlook(buf)) != NULL) {
+   if ((mhp->mh_shell_cmd = n_var_vlook(buf, FAL0)) != NULL) {
       rv = _mt_pipe_check(mhp);
       goto jleave;
    }

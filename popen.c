@@ -586,11 +586,11 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
             memcpy(vbuf, _X1, sizeof(_X1) -1);
             memcpy(vbuf + sizeof(_X1) -1, ext, l);
             vbuf[sizeof(_X1) -1 + l] = '\0';
-            cload = vok_vlook(vbuf);
+            cload = n_var_vlook(vbuf, FAL0);
             memcpy(vbuf, _X2, sizeof(_X2) -1);
             memcpy(vbuf + sizeof(_X2) -1, ext, l);
             vbuf[sizeof(_X2) -1 + l] = '\0';
-            csave = vok_vlook(vbuf);
+            csave = n_var_vlook(vbuf, FAL0);
 #undef _X2
 #undef _X1
             ac_free(vbuf);

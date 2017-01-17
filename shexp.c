@@ -1393,7 +1393,7 @@ j_dollar_ungetc:
                    * TODO that occurs within double quotes.
                    * TODO Same notes on that in accmacvar.c, shexp.c */
                   vp = savestrbuf(vp, i);
-                  if((cp = vok_vlook(vp)) != NULL || (cp = getenv(vp)) != NULL){
+                  if((cp = n_var_vlook(vp, TRU1)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
                      for(; (c = *cp) != '\0'; ++cp)

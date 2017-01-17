@@ -1154,9 +1154,9 @@ jleave:
 FL bool_t
 ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 {
-   char const *pname, *pxstr, *authdef;
+   char const *pname, *pxstr, *authdef, *s;
    size_t pxlen, addrlen, i;
-   char *vbuf, *s;
+   char *vbuf;
    ui8_t authmask;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware = NONE;
@@ -1197,9 +1197,9 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    /* Authentication type */
    vbuf[pxlen] = '-';
    memcpy(vbuf + pxlen + 1, addr, addrlen +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
+   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[pxlen] = '\0';
-      if ((s = vok_vlook(vbuf)) == NULL)
+      if ((s = n_var_vlook(vbuf, FAL0)) == NULL)
          s = n_UNCONST(authdef);
    }
 
@@ -1270,9 +1270,9 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    memcpy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
    i += pxlen;
    memcpy(vbuf + i, addr, addrlen +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
+   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
-      if ((s = vok_vlook(vbuf)) == NULL && (ware & REQ_USER)) {
+      if ((s = n_var_vlook(vbuf, FAL0)) == NULL && (ware & REQ_USER)) {
          if ((s = getuser(NULL)) == NULL) {
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
@@ -1297,9 +1297,9 @@ jpass:
       i += pxlen;
    }
    memcpy(vbuf + i, addr, addrlen +1);
-   if ((s = vok_vlook(vbuf)) == NULL) {
+   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
-      if ((!addr_is_nuser || (s = vok_vlook(vbuf)) == NULL) &&
+      if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
             (ware & REQ_PASS)) {
          if ((s = getpassword(savecat(_("Password for "), pname))) == NULL) {
             n_err(_("A password is necessary for %s authentication\n"),

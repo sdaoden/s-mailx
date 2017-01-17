@@ -134,8 +134,8 @@ jesyn:
       }
       if(noop)
          lhv = NULL;
-      else if((lhv = vok_vlook(cp)) == NULL)
-         lhv = getenv(cp);
+      else
+         lhv = n_var_vlook(cp, TRU1);
 
       /* Single argument, "implicit boolean" form? */
       if (argc == 1) {
@@ -185,8 +185,8 @@ jesyn:
          }
          if(noop)
             rhv = NULL;
-         else if((rhv = vok_vlook(cp = rhv)) == NULL)
-            rhv = getenv(cp);
+         else
+            rhv = n_var_vlook(cp = rhv, TRU1);
       }
 
       /* A null value is treated as the empty string */
