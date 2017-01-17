@@ -442,7 +442,7 @@ newmailinfo(int omsgCount)
    } else
       printf(_("Loaded %d messages.\n"), msgCount);
 
-   check_folder_hook(TRU1);
+   temporary_folder_hook_check(TRU1);
 
    mdot = getmdot(1);
 

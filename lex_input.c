@@ -57,7 +57,7 @@ enum a_lex_input_flags{
     * TODO commands_recursive() would not call lex_evaluate() but
     * TODO CTX->on_read_line, and lex_evaluate() would be the standard impl.,
     * TODO whereas the COMMAND ESCAPE switch in collect.c would be another one.
-    * TODO With this generic approach accmacvar.c:call_compose_mode_hook()
+    * TODO With this generic accmacvar.c:temporary_compose_mode_hook_call()
     * TODO could be dropped, and n_source_macro() could become extended,
     * TODO and/or we would add a n_source_anything(), which would allow special
     * TODO input handlers, special I/O input and output, special `localopts'

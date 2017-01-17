@@ -301,7 +301,7 @@ quit(bool_t hold_sigs_on)
       hold_sigs();
 
    rv = FAL0;
-   temporary_localopts_folder_hook_unroll();
+   temporary_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */
    /* TODO yet we cannot return quickly if resources have to be released!

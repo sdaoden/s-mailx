@@ -1863,7 +1863,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 jleave:
    if(mtf != NULL){
       Fclose(mtf);
-      temporary_unroll_compose_mode();
+      temporary_compose_mode_hook_unroll();
    }
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;

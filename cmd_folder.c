@@ -70,7 +70,7 @@ _c_file(void *v, enum fedit_mode fm)
    }
    assert(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
    if (n_pstate & n_PS_SETFILE_OPENED)
-      check_folder_hook(FAL0);
+      temporary_folder_hook_check(FAL0);
 
    if (i > 0) {
       /* TODO Don't report "no messages" == 1 == error when we're in, e.g.,

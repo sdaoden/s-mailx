@@ -155,45 +155,44 @@ do{\
  */
 
 /* Macros: `define', `undefine', `call' / `~', `call_if' */
-FL int         c_define(void *v);
-FL int         c_undefine(void *v);
-FL int         c_call(void *v);
-FL int         c_call_if(void *v);
-
-/* TODO Check whether a *folder-hook* exists for the currently active mailbox */
-FL bool_t      check_folder_hook(bool_t nmail);
-
-/* TODO v15 drop Invoke compose hook macname */
-FL void        temporary_call_compose_mode_hook(char const *macname,
-                  void (*hook_pre)(void *), void *hook_arg);
-FL void        temporary_unroll_compose_mode(void);
+FL int c_define(void *v);
+FL int c_undefine(void *v);
+FL int c_call(void *v);
+FL int c_call_if(void *v);
 
 /* Accounts: `account', `unaccount' */
-FL int         c_account(void *v);
-FL int         c_unaccount(void *v);
+FL int c_account(void *v);
+FL int c_unaccount(void *v);
 
 /* `localopts', `shift' */
-FL int         c_localopts(void *v);
-FL int         c_shift(void *v);
+FL int c_localopts(void *v);
+FL int c_shift(void *v);
 
-FL void        temporary_localopts_folder_hook_unroll(void); /* XXX im. hack */
+/* TODO Check whether a *folder-hook* exists for the currently active mailbox */
+FL bool_t temporary_folder_hook_check(bool_t nmail);
+FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
+
+/* TODO v15 drop Invoke compose hook macname */
+FL void temporary_compose_mode_hook_call(char const *macname,
+            void (*hook_pre)(void *), void *hook_arg);
+FL void temporary_compose_mode_hook_unroll(void);
 
 /* Don't use n_var_* unless you *really* have to! */
 
 /* Constant option key look/(un)set/clear */
-FL char *      n_var_oklook(enum okeys okey);
-#define ok_blook(C)              (n_var_oklook(n_CONCAT(ok_b_, C)) != NULL)
-#define ok_vlook(C)              n_var_oklook(n_CONCAT(ok_v_, C))
+FL char *n_var_oklook(enum okeys okey);
+#define ok_blook(C) (n_var_oklook(n_CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C) n_var_oklook(n_CONCAT(ok_v_, C))
 
-FL bool_t      n_var_okset(enum okeys okey, uintptr_t val);
+FL bool_t n_var_okset(enum okeys okey, uintptr_t val);
 #define ok_bset(C) \
    n_var_okset(n_CONCAT(ok_b_, C), (uintptr_t)TRU1)
 #define ok_vset(C,V) \
    n_var_okset(n_CONCAT(ok_v_, C), (uintptr_t)(V))
 
-FL bool_t      n_var_okclear(enum okeys okey);
-#define ok_bclear(C)             n_var_okclear(n_CONCAT(ok_b_, C))
-#define ok_vclear(C)             n_var_okclear(n_CONCAT(ok_v_, C))
+FL bool_t n_var_okclear(enum okeys okey);
+#define ok_bclear(C) n_var_okclear(n_CONCAT(ok_b_, C))
+#define ok_vclear(C) n_var_okclear(n_CONCAT(ok_v_, C))
 
 /* Variable option key lookup/(un)set/clear.
  * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey */
@@ -204,26 +203,26 @@ FL bool_t n_var_vclear(char const *vokey);
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
 #ifdef HAVE_SOCKETS
-FL char *      n_var_xoklook(enum okeys okey, struct url const *urlp,
-                  enum okey_xlook_mode oxm);
-# define xok_BLOOK(C,URL,M)      (n_var_xoklook(C, URL, M) != NULL)
-# define xok_VLOOK(C,URL,M)      n_var_xoklook(C, URL, M)
-# define xok_blook(C,URL,M)      xok_BLOOK(n_CONCAT(ok_b_, C), URL, M)
-# define xok_vlook(C,URL,M)      xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
+FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
+            enum okey_xlook_mode oxm);
+# define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
+# define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
+# define xok_blook(C,URL,M) xok_BLOOK(n_CONCAT(ok_b_, C), URL, M)
+# define xok_vlook(C,URL,M) xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
 #endif
 
 /* User variable access: `set' and `unset' */
-FL int         c_set(void *v);
-FL int         c_unset(void *v);
+FL int c_set(void *v);
+FL int c_unset(void *v);
 
 /* `varshow' */
-FL int         c_varshow(void *v);
+FL int c_varshow(void *v);
 
 /* Ditto: `varedit' */
-FL int         c_varedit(void *v);
+FL int c_varedit(void *v);
 
 /* `environ' */
-FL int         c_environ(void *v);
+FL int c_environ(void *v);
 
 /*
  * attachment.c

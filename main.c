@@ -492,7 +492,7 @@ a_main_rcv_mode(char const *folder, char const *Larg){
          print_header_summary(Larg);
       goto jquit;
    }
-   check_folder_hook(FAL0);
+   temporary_folder_hook_check(FAL0);
 
    if(i > 0 && !ok_blook(emptystart)){
       n_exit_status = n_EXIT_ERR;

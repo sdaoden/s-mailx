@@ -107,7 +107,7 @@ static void       collhup(int s);
 
 static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 
-/* temporary_call_compose_mode_hook() setter hook */
+/* temporary_compose_mode_hook_call() setter hook */
 static void a_coll__hook_setter(void *arg);
 
 /* *on-compose-done* driver and *on-compose-done(-shell)?* finalizer */
@@ -1277,7 +1277,7 @@ a_coll_ocds__mac(void){
    setvbuf(stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
-   temporary_call_compose_mode_hook(a_coll_ocds__macname, NULL, NULL);
+   temporary_compose_mode_hook_call(a_coll_ocds__macname, NULL, NULL);
    _exit(n_EXIT_OK);
 }
 
@@ -1289,7 +1289,7 @@ a_coll_ocds__finalize(void *vp){
    struct a_coll_ocds_arg **coapp, *coap;
    NYD2_ENTER;
 
-   temporary_call_compose_mode_hook((char*)-1, NULL, NULL);
+   temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
 
    coap = *(coapp = vp);
    *coapp = (struct a_coll_ocds_arg*)-1;
@@ -1405,7 +1405,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
          setup_from_and_sender(hp);
-         temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
+         temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
       }
 
       /* Cannot do since it may require turning this into a multipart one */
@@ -1913,7 +1913,7 @@ jout:
          close(coap->coa_pipe[1]);
          coap->coa_pipe[1] = -1;
 
-         temporary_call_compose_mode_hook(NULL, NULL, NULL);
+         temporary_compose_mode_hook_call(NULL, NULL, NULL);
          n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocds__finalize, &coap);

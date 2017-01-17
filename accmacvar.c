@@ -1673,71 +1673,6 @@ c_call_if(void *v){
    return rv;
 }
 
-FL bool_t
-check_folder_hook(bool_t nmail){ /* TODO temporary, v15: drop */
-   struct a_amv_mac_call_args *amcap;
-   struct a_amv_mac *amp;
-   size_t len;
-   char const *cp;
-   char *var;
-   bool_t rv;
-   NYD_ENTER;
-
-   rv = TRU1;
-   var = salloc(len = strlen(mailname) + sizeof("folder-hook-") -1  +1);
-
-   /* First try the fully resolved path */
-   snprintf(var, len, "folder-hook-%s", mailname);
-   if((cp = n_var_vlook(var, FAL0)) != NULL)
-      goto jmac;
-
-   /* If we are under *folder*, try the usual +NAME syntax, too */
-   if(displayname[0] == '+'){
-      char *x;
-
-      for(x = &mailname[len]; x != mailname; --x)
-         if(x[-1] == '/'){
-            snprintf(var, len, "folder-hook-+%s", x);
-            if((cp = n_var_vlook(var, FAL0)) != NULL)
-               goto jmac;
-            break;
-         }
-   }
-
-   /* Plain *folder-hook* is our last try */
-   if((cp = ok_vlook(folder_hook)) == NULL)
-      goto jleave;
-
-jmac:
-   if((amp = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) == NULL){
-      n_err(_("Cannot call *folder-hook* for %s: macro does not exist: %s\n"),
-         n_shexp_quote_cp(displayname, FAL0), cp);
-      rv = FAL0;
-      goto jleave;
-   }
-
-   amcap = n_lofi_alloc(sizeof *amcap);
-   memset(amcap, 0, sizeof *amcap);
-   amcap->amca_name = cp;
-   amcap->amca_amp = amp;
-   n_pstate &= ~n_PS_HOOK_MASK;
-   if(nmail){
-      amcap->amca_unroller = NULL;
-      n_pstate |= n_PS_HOOK_NEWMAIL;
-   }else{
-      amcap->amca_unroller = &a_amv_folder_hook_lopts;
-      n_pstate |= n_PS_HOOK;
-   }
-   amcap->amca_lopts_on = TRU1;
-   amcap->amca_ps_hook_mask = TRU1;
-   rv = a_amv_mac_exec(amcap);
-   n_pstate &= ~n_PS_HOOK_MASK;
-
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
 FL int
 c_account(void *v){
    struct a_amv_mac_call_args *amcap;
@@ -1827,7 +1762,7 @@ c_account(void *v){
       restorequitflags(oqf);
       if((i = setfile("%", 0)) < 0)
          goto jleave;
-      check_folder_hook(FAL0);
+      temporary_folder_hook_check(FAL0);
       if(i > 0 && !ok_blook(emptystart))
          goto jleave;
       announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
@@ -1932,10 +1867,89 @@ jleave:
    return rv;
 }
 
+FL bool_t
+temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_mac *amp;
+   size_t len;
+   char const *cp;
+   char *var;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = TRU1;
+   var = salloc(len = strlen(mailname) + sizeof("folder-hook-") -1  +1);
+
+   /* First try the fully resolved path */
+   snprintf(var, len, "folder-hook-%s", mailname);
+   if((cp = n_var_vlook(var, FAL0)) != NULL)
+      goto jmac;
+
+   /* If we are under *folder*, try the usual +NAME syntax, too */
+   if(displayname[0] == '+'){
+      char *x;
+
+      for(x = &mailname[len]; x != mailname; --x)
+         if(x[-1] == '/'){
+            snprintf(var, len, "folder-hook-+%s", x);
+            if((cp = n_var_vlook(var, FAL0)) != NULL)
+               goto jmac;
+            break;
+         }
+   }
+
+   /* Plain *folder-hook* is our last try */
+   if((cp = ok_vlook(folder_hook)) == NULL)
+      goto jleave;
+
+jmac:
+   if((amp = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) == NULL){
+      n_err(_("Cannot call *folder-hook* for %s: macro does not exist: %s\n"),
+         n_shexp_quote_cp(displayname, FAL0), cp);
+      rv = FAL0;
+      goto jleave;
+   }
+
+   amcap = n_lofi_alloc(sizeof *amcap);
+   memset(amcap, 0, sizeof *amcap);
+   amcap->amca_name = cp;
+   amcap->amca_amp = amp;
+   n_pstate &= ~n_PS_HOOK_MASK;
+   if(nmail){
+      amcap->amca_unroller = NULL;
+      n_pstate |= n_PS_HOOK_NEWMAIL;
+   }else{
+      amcap->amca_unroller = &a_amv_folder_hook_lopts;
+      n_pstate |= n_PS_HOOK;
+   }
+   amcap->amca_lopts_on = TRU1;
+   amcap->amca_ps_hook_mask = TRU1;
+   rv = a_amv_mac_exec(amcap);
+   n_pstate &= ~n_PS_HOOK_MASK;
+
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
-temporary_call_compose_mode_hook(char const *macname,
+temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
+   NYD_ENTER;
+   if(a_amv_folder_hook_lopts != NULL){
+      void *save = a_amv_lopts;
+
+      a_amv_lopts = NULL;
+      a_amv_lopts_unroll(&a_amv_folder_hook_lopts);
+      a_amv_folder_hook_lopts = NULL;
+      a_amv_lopts = save;
+   }
+   NYD_LEAVE;
+}
+
+FL void
+temporary_compose_mode_hook_call(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){
-   /* TODO call_compose_mode_hook() temporary, v15: generalize; see a_LEX_SLICE
+   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SLICE
     * TODO comment in lex_input.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
@@ -1978,7 +1992,7 @@ temporary_call_compose_mode_hook(char const *macname,
 }
 
 FL void
-temporary_unroll_compose_mode(void){ /* XXX intermediate hack */
+temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
    NYD_ENTER;
    if(a_amv_compose_lopts != NULL){
       void *save = a_amv_lopts;
@@ -1986,20 +2000,6 @@ temporary_unroll_compose_mode(void){ /* XXX intermediate hack */
       a_amv_lopts = NULL;
       a_amv_lopts_unroll(&a_amv_compose_lopts);
       a_amv_compose_lopts = NULL;
-      a_amv_lopts = save;
-   }
-   NYD_LEAVE;
-}
-
-FL void
-temporary_localopts_folder_hook_unroll(void){ /* XXX intermediate hack */
-   NYD_ENTER;
-   if(a_amv_folder_hook_lopts != NULL){
-      void *save = a_amv_lopts;
-
-      a_amv_lopts = NULL;
-      a_amv_lopts_unroll(&a_amv_folder_hook_lopts);
-      a_amv_folder_hook_lopts = NULL;
       a_amv_lopts = save;
    }
    NYD_LEAVE;
