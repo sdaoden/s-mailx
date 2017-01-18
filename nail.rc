@@ -175,7 +175,7 @@ headerpick forward retain add subject date from to cc
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1)
-#if $features !@ +filter-html-tagsoup
+#if [ "$features" !@ +filter-html-tagsoup ]
 #   set pipe-text/html='lynx -stdin -dump -force_html'
 #endif
 
@@ -188,7 +188,7 @@ headerpick forward retain add subject date from to cc
 ## Gimmicks
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode)
-#if terminal && $features =@ +key-bindings
+#if terminal && [ "$features" =@ +key-bindings ]
 #   bind base $'\e',d mle-snarf-word-fwd
 #   bind base $'\e',$'\c?' mle-snarf-word-bwd
 #   bind base $'\e',f mle-go-word-fwd
@@ -196,7 +196,7 @@ headerpick forward retain add subject date from to cc
 #endif
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode)
-#if terminal && $features =@ +mle && $features =@ +colour
+#if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
 #   colour 256 mle-position   fg=202
 #   colour 256 mle-prompt     fg=red
 #   colour iso mle-position   ft=reverse

@@ -1347,7 +1347,7 @@ text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
-if $features !@ +filter-html-tagsoup
+if [ "$features" !@ +filter-html-tagsoup ]
   #set pipe-text/html='elinks -force-html -dump 1'
   set pipe-text/html='lynx -stdin -dump -force_html'
   # Display HTML as plain text instead
@@ -4379,27 +4379,27 @@ will reverse the result.
 if $debug
   echo *debug* is set
 endif
-if $ttycharset == "UTF-8"
+if [ "$ttycharset" == UTF-8 ] || [ "$ttycharset" == UTF8 ]
   echo *ttycharset* is set to UTF-8, case-insensitively
 endif
 set t1=one t2=one
-if ${t1} == ${t2}
+if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if $version-major >= 15
+if [ "$version-major" >= 15 ]
   echo Running a new version..
-  if $features =@ +regex
-    if $TERM =~ "^xterm\&.*"
+  if [ "$features" =@ +regex ]
+    if [ "$TERM" =~ "^xterm\&.*" ]
       echo ..in an X terminal
     endif
   endif
-  if [ [ true ] && [ [ ${debug} ] || [ $verbose ] ] ]
+  if [ [ true ] && [ [ "${debug}" != '' ] || [ "$verbose" != '' ] ] ]
     echo Noisy, noisy
   endif
-  if true && $debug || ${verbose}
+  if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
     echo Left associativity, as is known from the shell
   endif
-  if ! ! true && ! [ ! $debug && ! $verbose ]
+  if ! ! true && ! [ ! "$debug" && ! "$verbose" ]
     echo Unary operator support
   endif
 endif
@@ -7987,20 +7987,20 @@ set on-compose-done=ocdm
 define ocdm {
   read ver
   echo version is $ver, escape=$escape
-  if $features !@ +regex
+  if [ "$features" !@ +regex ]
     echoerr 'Need regular-expression support, aborting send'
     echo '~x'
   endif
   echo '~^header list'
   read hl
-  if $hl !~ ^2
+  if [ "$hl" !~ ^2 ]
     echoerr 'Failed to read header list, bailing out'
     echo '~x'
   endif
-  if $hl !@ ' cc'
+  if [ "$hl" !@ ' cc' ]
     echo '~^header insert cc Diet is your <mirr.or>'
     read es
-    if $es !~ ^2
+    if [ "$es" !~ ^2 ]
       echoerr 'Failed to insert Cc: header, bailing out'
       echo '~x'
     endif
@@ -10510,7 +10510,9 @@ set ssl-protocol='-ALL,+TLSv1.2'
 # Including "@STRENGTH" will sort the final list by algorithm strength.
 # In reality it is possibly best to only use ssl-cipher-list-HOST
 # (or -USER@HOST), as necessary, again..
-set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:!MEDIUM:!LOW:!EXPORT:@STRENGTH
+set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+# TLSv1.2:!aNULL:!eNULL:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
+    DHE-RSA-AES256-SHA:@STRENGTH
 # ALL:!aNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
 
 # Request strict transport security checks!
@@ -10658,6 +10660,9 @@ that sets up SMTP and POP3:
 .
 .Bd -literal -offset indent
 account XandeX {
+  call XandeX
+}
+define XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set netrc-lookup
