@@ -3427,9 +3427,12 @@ e.g.,
 Positional parameters may be removed by
 .Ic shift Ns
 ing them off the stack.
+Macro execution can be terminated at any time by calling
+.Ic return .
 .Bd -literal -offset indent
 define exmac {
   echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
+  return 1000 0
 }
 call exmac Hello macro exmac!
 .Ed
@@ -3706,7 +3709,16 @@ by using the
 .Ic localopts
 command; the scope which is localized depends on how (i.e.,
 .Dq as what :
-normal macro, folder hook, hook, account switch) the macro is invoked.
+normal macro, folder hook, hook,
+.Ic account
+switch) the macro is invoked.
+Execution of a macro body can be stopped from within by calling
+.Ic return .
+Inside a
+.Ic call Ns
+ed macro, given positional parameters can be
+.Ic shift Ns
+ed.
 Macros can be deleted via
 .Ic undefine .
 .
@@ -4875,6 +4887,30 @@ Same as
 .Ic headerpick .
 .
 .Mx
+.It Ic return
+Only available inside the scope of a
+.Ic define Ns
+d macro or an
+.Ic account ,
+this will stop evaluation of any further macro content, and return
+execution control to the caller.
+If no arguments are specified, the return value, which will be stored in
+.Va \&0 ,
+as well as the macro command exit status, which is made available in
+.Va \&? ,
+are both set to 0.
+If only the return value is given the command exit status will be 0.
+Both optional parameters must be specified as unsigned (positive)
+decimal numbers.
+.Pp
+\*(ID Notes: any non-0 command exit status is treated as a hard error
+by the state machinery, and will be propagated up and cause, e.g.,
+a file inclusion via
+.Ic source
+to fail; this two argument form likely is a temporary hack that will
+vanish in v15.
+.
+.Mx
 .It Ic Save
 (S) Similar to
 .Ic save,
@@ -5000,7 +5036,8 @@ Only available inside the scope of a
 .Ic call Ns
 ed macro, this will shift the positional parameters (starting at
 .Va 1 )
-by the given number, or 1 if no argument has been given.
+by the given number (which must be an unsigned, positive, decimal),
+or 1 if no argument has been given.
 It is an error if the value exceeds the number of positional parameters.
 If the given number is 0, no action is performed, successfully.
 .
@@ -6298,8 +6335,27 @@ ed macro, this will expand to the number of positional parameters in
 decimal.
 .
 .Mx
+.It Va \&0
+\*(RO This is a global variable which stores the last
+.Ic return
+value of a
+.Ic define Ns
+d and
+.Ic call Ns
+ed macro or an
+.Ic account .
+In fact an increasing number of \*(UA commands use this to indicate a
+.Dq soft
+exit status, since the normal exit status of a command
+.Pf ( Va \&? )
+has a meaning in the state machine for, e.g.,
+.Va batch-exit-on-error .
+.
+.Mx
 .It Va 1
 \*(RO Only available inside the scope of a
+.Ic define Ns
+d and
 .Ic call Ns
 ed macro, this will access the first positional parameter passed.
 All further parameters can be accessed with this syntax, too, e.g.,
@@ -6310,7 +6366,7 @@ etc.; positional parameters can be shifted (removed) by calling
 .
 .Mx
 .It Va \&?
-\*(RO The status of the last command.
+\*(RO The exit status of the last command.
 .
 .Mx
 .It Va -account

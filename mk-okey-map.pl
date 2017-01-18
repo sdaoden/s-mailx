@@ -392,14 +392,18 @@ _EOT
 
    print F "#endif /* __CREATE_OKEY_MAP_PL */\n";
 
-   # Special var backing -[#@*0-9]
+   # Special var backing [#@*?]|[1-9][0-9]*|0
    $i = 0;
    print F "\n";
    foreach my $e (@ENTS){
       if($e->{name} eq '--special-param'){
          print F "#define a_AMV_VAR_SPECIAL_PARAM_MAP_IDX ${i}u\n"
-      }elsif($e->{name} eq '?'){
+      }
+      # The rest are only speedups
+      elsif($e->{name} eq '?'){
          print F "#define a_AMV_VAR_QM_MAP_IDX ${i}u\n"
+      }elsif($e->{name} eq '0'){
+         print F "#define a_AMV_VAR_RV_MAP_IDX ${i}u\n"
       }
       ++$i
    }

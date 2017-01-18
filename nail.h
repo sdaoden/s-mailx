@@ -1470,6 +1470,8 @@ enum okeys {
    ok_v___special_param,               /* {nolopts=1,rdonly=1,nodel=1} */
    /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
    ok_v___qm,                          /* {name=?,nolopts=1,rdonly=1,nodel=1} */
+   /* xxx __rv a.k.a. 0 should be num=1 but that more expensive than what now */
+   ok_v___rv,                          /* {name=0,nolopts=1,rdonly=1,nodel=1} */
 
    ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */

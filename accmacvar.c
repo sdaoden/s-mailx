@@ -953,7 +953,16 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
             goto jno_special_param;
          j = j * 10 + (ui8_t)c - '0';
       }
-      if(j != 0 && j <= SI16_MAX){
+      if(j == 0){
+         /* Not function local, could also simply look it up, but faster */
+         avcp->avc_name = name;
+         avmp = &a_amv_var_map[a_AMV_VAR_RV_MAP_IDX];
+         avcp->avc_hash = avmp->avm_hash;
+         avcp->avc_map = avmp;
+         avcp->avc_okey = ok_v___rv;
+         avcp->avc_is_special = FAL0;
+         goto jleave;
+      }else if(j <= SI16_MAX){
          avcp->avc_is_special = TRUM1;
          goto jspecial_param_m1;
       }
@@ -1867,6 +1876,58 @@ jleave:
    return rv;
 }
 
+FL int
+c_return(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = 1;
+
+   if(a_amv_lopts != NULL){
+      char const * const m1 = "-1", **argv, *mrv;
+
+      n_source_force_eof();
+
+      if((argv = v)[0] != NULL){
+         char *eptr;
+         long l;
+
+         l = strtol(argv[0], &eptr, 10);
+         if(*eptr != '\0' || l < 0 || l > SI32_MAX){
+            n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
+            mrv = m1;
+         }else
+            mrv = argv[0];
+
+         if(argv[1] != NULL){
+            l = strtol(argv[1], &eptr, 10);
+            if(*eptr != '\0' || l < 0 || l > SI32_MAX){
+               n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
+               mrv = m1;
+            }else
+               rv = (int)l;
+         }else
+            rv = 0;
+      }else{
+         rv = 0;
+         mrv = "0";
+      }
+
+      /* C99 */{
+         bool_t reset;
+
+         reset = !(n_pstate & n_PS_ROOT);
+         n_pstate |= n_PS_ROOT;
+         ok_vset(__rv, mrv);
+         if(reset)
+            n_pstate &= ~n_PS_ROOT;
+      }
+   }else
+      n_err(_("Can only use `return' in a macro\n"));
+   NYD_LEAVE;
+   return rv;
+}
+
 FL bool_t
 temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
@@ -2089,7 +2150,7 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
                if(avc.avc_special_prop > 0){
                   if(amcap->amca_argc >= avc.avc_special_prop)
                      rv = amcap->amca_argv[avc.avc_special_prop - 1];
-               } /* TODO $0 is a function return value, not yet supported */
+               }
             }else switch(avc.avc_special_prop){
             case a_AMV_VST_STAR:
             case a_AMV_VST_AT:{
