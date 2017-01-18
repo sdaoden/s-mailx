@@ -976,12 +976,12 @@ FL ssize_t     imap_search(char const *spec, int f);
  * lex_input.c
  */
 
-/* */
-FL int         c_cmdnotsupp(void *v);
+/* Fallback implementation for commands which are unavailable in this config */
+FL int c_cmdnotsupp(void *v);
 
 /* Interpret user commands.  If stdin is not a tty, print no prompt; return
  * whether last processed command returned error; this is *only* for main()! */
-FL bool_t      n_commands(void);
+FL bool_t n_commands(void);
 
 /* Actual cmd input */
 
@@ -991,9 +991,9 @@ FL bool_t      n_commands(void);
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
  * Manages the n_PS_READLINE_NL hack */
-FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
-                  char **linebuf, size_t *linesize, char const *string
-                  n_MEMORY_DEBUG_ARGS);
+FL int n_lex_input(enum n_lexinput_flags lif, char const *prompt,
+         char **linebuf, size_t *linesize, char const *string
+         n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
 # define n_lex_input(A,B,C,D,E) n_lex_input(A,B,C,D,E,__FILE__,__LINE__)
 #endif
@@ -1003,43 +1003,44 @@ FL int         n_lex_input(enum n_lexinput_flags lif, char const *prompt,
  * This may only be called from toplevel (not during n_PS_ROBOT).
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility */
-FL char *      n_lex_input_cp(enum n_lexinput_flags lif,
-                  char const *prompt, char const *string);
+FL char *n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
+            char const *string);
 
 /* `read' */
-FL int         c_read(void *v);
+FL int c_read(void *v);
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
 
 /* Load a file of user definitions -- this is *only* for main()! */
-FL void        n_load(char const *name);
+FL void n_load(char const *name);
 
 /* "Load" all the -X command line definitions in order -- *only* for main() */
-FL void        n_load_Xargs(char const **lines, size_t cnt);
+FL void n_load_Xargs(char const **lines, size_t cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * n_PS_SOURCING so that others will realize that they are no longer reading
- * from a tty (in all probability).
- * The latter won't return failure (TODO should be replaced by "-f FILE") */
-FL int         c_source(void *v);
-FL int         c_source_if(void *v);
+ * from a tty (in all probability) */
+FL int c_source(void *v);
+FL int c_source_if(void *v);
 
 /* Evaluate a complete macro / a single command.  For the former lines will
  * always be free()d, for the latter cmd will always be duplicated internally */
-FL bool_t      n_source_macro(enum n_lexinput_flags lif, char const *name,
-                  char **lines, void (*on_finalize)(void*), void *finalize_arg);
-FL bool_t      n_source_command(enum n_lexinput_flags lif, char const *cmd);
+FL bool_t n_source_macro(enum n_lexinput_flags lif, char const *name,
+            char **lines, void (*on_finalize)(void*), void *finalize_arg);
+FL bool_t n_source_command(enum n_lexinput_flags lif, char const *cmd);
 
 /* XXX See a_LEX_SLICE in source */
-FL void        n_source_slice_hack(char const *cmd, FILE *new_stdin,
-                  FILE *new_stdout, ui32_t new_psonce,
-                  void (*on_finalize)(void*), void *finalize_arg);
-FL void        n_source_slice_hack_remove_after_jump(void);
+FL void n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
+            ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg);
+FL void n_source_slice_hack_remove_after_jump(void);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
-FL bool_t      n_source_may_yield_control(void);
+FL bool_t n_source_may_yield_control(void);
+
+/* Force n_lex_input() to read EOF next */
+FL void n_source_force_eof(void);
 
 /*
  * message.c

@@ -72,6 +72,8 @@ enum a_lex_input_flags{
     * TODO jumps must be taken by slice creators.  HACK!!!  But works. ;} */
    a_LEX_SLICE = 1<<6,
 
+   a_LEX_FORCE_EOF = 1<<8,       /* lex_input() shall return EOF next */
+
    a_LEX_SUPER_MACRO = 1<<16     /* *Not* inheriting n_PS_SOURCING state */
 };
 
@@ -1551,6 +1553,11 @@ FL int
    int n, nold;
    NYD2_ENTER;
 
+   if(a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_FORCE_EOF)){
+      n = -1;
+      goto jleave;
+   }
+
    /* Special case macro mode: never need to prompt, lines have always been
     * unfolded already */
    if(!(lif & n_LEXINPUT_FORCE_STDIN) &&
@@ -2043,6 +2050,14 @@ n_source_may_yield_control(void){
          ((n_pstate & n_PS_COMPOSE_MODE) && (a_lex_input == NULL ||
             !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
       (a_lex_input == NULL || a_lex_input->li_outer == NULL));
+}
+
+FL void
+n_source_force_eof(void){
+   NYD_ENTER;
+   assert(a_lex_input != NULL);
+   a_lex_input->li_flags |= a_LEX_FORCE_EOF;
+   NYD_LEAVE;
 }
 
 /* s-it-mode */
