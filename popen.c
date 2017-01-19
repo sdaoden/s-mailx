@@ -1039,7 +1039,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
    sigset_t nset, oset;
-   sighandler_t soldint;
+   sighandler_type soldint;
    bool_t tio_set;
    int rv;
    NYD_ENTER;
