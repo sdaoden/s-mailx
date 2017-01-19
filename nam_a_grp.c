@@ -1214,12 +1214,14 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
    struct name *n;
    NYD_ENTER;
 
-   for (n = np; n != NULL;) {
+   for (n = np; n != NULL; n = n->n_flink) {
       si8_t rv;
 
       if ((rv = is_addr_invalid(n, eacm)) != 0) {
          if (set_on_error != NULL)
             *set_on_error |= rv; /* don't loose -1! */
+         else if (eacm & EAF_MAYKEEP) /* TODO HACK!  See definition! */
+            continue;
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
          if (n->n_flink)
@@ -1227,7 +1229,6 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
          if (n == np)
             np = n->n_flink;
       }
-      n = n->n_flink;
    }
    NYD_LEAVE;
    return np;

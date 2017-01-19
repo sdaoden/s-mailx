@@ -1147,15 +1147,15 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
-               EACM_NORMAL | EAF_NAME, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
          hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
-               EACM_NORMAL | EAF_NAME, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
-               EACM_NORMAL | EAF_NAME, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
             ++seenfields;

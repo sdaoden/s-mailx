@@ -43,13 +43,14 @@
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
-enum fmt_flags {
-   FMT_DOMIME  = 1<<0,
-   FMT_COMMA   = GCOMMA,
-   FMT_FILES   = GFILES,
-   _FMT_GMASK  = FMT_COMMA | FMT_FILES
+enum fmt_flags{
+   FMT_INC_INVADDR = 1<<0, /* _Do_ include invalid addresses */
+   FMT_DOMIME = 1<<1,      /* Perform MIME conversion */
+   FMT_COMMA = GCOMMA,
+   FMT_FILES = GFILES,
+   _FMT_GMASK = FMT_COMMA | FMT_FILES
 };
-n_CTA(!(_FMT_GMASK & FMT_DOMIME),
+n_CTA(!(_FMT_GMASK & (FMT_INC_INVADDR | FMT_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
 static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
@@ -763,7 +764,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
       from = mdn->n_name;
    else if ((from = myorigin(hp)) == NULL) {
       if (n_poption & n_PO_D_V)
-         n_err(_("*disposition-notification-send*: no *from* set\n"));
+         n_err(_("*disposition-notification-send*: *from* not set\n"));
       goto jleave;
    }
 
@@ -1515,9 +1516,14 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
    }
 
    for (; np != NULL; np = np->n_flink) {
-      if (is_addr_invalid(np,
-            EACM_NOLOG | (m & m_NONAME ? EACM_NONAME : EACM_NONE)))
+      if(np->n_type & GDEL)
          continue;
+      if(is_addr_invalid(np,
+               ((ff & FMT_INC_INVADDR ? 0 : EACM_NOLOG) |
+                (m & m_NONAME ? EACM_NONAME : EACM_NONE))) &&
+            !(ff & FMT_INC_INVADDR))
+         continue;
+
       /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
          continue;
@@ -1938,6 +1944,8 @@ do {\
    gotcha = 0;
    nodisp = (action != SEND_TODISP);
    ff = (w & (GCOMMA | GFILES)) | (nodisp ? FMT_DOMIME : 0);
+   if(nosend_msg)
+      ff |= FMT_INC_INVADDR;
 
    if (w & GDATE)
       mkdate(fo, "Date"), ++gotcha;

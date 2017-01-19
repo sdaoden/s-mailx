@@ -745,11 +745,24 @@ enum expand_addr_flags {
    EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
    EAF_FAIL       = 1<<1,     /* "fail" */
    EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
+   /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
+    * TODO design problem): if collect() calls makeheader(), e.g., for -t or
+    * TODO because of ~e diting, then that will checkaddr() and that will
+    * TODO remove invalid headers.  However, this code path does not know
+    * TODO about keeping track of senderrors unless a pointer has been passed,
+    * TODO but which it doesn't for ~e, and shall not, too.  Thus, invalid
+    * TODO addresses may be automatically removed, silently, and noone will
+    * TODO ever know, in particular not regarding "failinvaddr".
+    * TODO The hacky solution is this bit -- which can ONLY be used for fields
+    * TODO which will be subject to namelist_vaporise_head() later on!! --,
+    * TODO if it is set (by extract_header()) then checkaddr() will NOT strip
+    * TODO invalid headers off IF it deals with a NULL senderror pointer */
+   EAF_MAYKEEP    = 1<<3,
    /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FILE       = 1<<3,     /* +"file" targets */
-   EAF_PIPE       = 1<<4,     /* +"pipe" command pipe targets */
-   EAF_NAME       = 1<<5,     /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR       = 1<<6,     /* +"addr" network address (contain "@") */
+   EAF_FILE       = 1<<4,     /* +"file" targets */
+   EAF_PIPE       = 1<<5,     /* +"pipe" command pipe targets */
+   EAF_NAME       = 1<<6,     /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1<<7,     /* +"addr" network address (contain "@") */
 
    EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
    EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
