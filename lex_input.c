@@ -1797,7 +1797,13 @@ c_read(void *v){ /* TODO IFS? how? -r */
             if(blankchar(c))
                break;
 
-      n_var_vset(*argv, (uintptr_t)savestrbuf(cp, PTR2SIZE(cp2 - cp)));
+      /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
+         char *vcp;
+
+         vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
+         n_var_vset(*argv, (uintptr_t)vcp);
+      }
+
       cp = cp2;
    }
 
