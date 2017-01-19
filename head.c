@@ -704,7 +704,7 @@ jdotatom_quote:
             ++cp;
          c.ui32 = (ui32_t)PTR2SIZE(cp - cpmax);
          ostp = n_string_push_buf(ostp, cpmax, c.ui32);
-         agp->ag_iaddr_aend = ostp->s_len - 1;
+         agp->ag_iaddr_aend = ostp->s_len;
          cpmax = &agp->ag_input[agp->ag_ilen];
 
          c.ui32 = (ui32_t)PTR2SIZE(cpmax - cp);
@@ -725,7 +725,7 @@ jdotatom_quote:
    }
 jleave:
    NYD_LEAVE;
-   return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) != 0);
+   return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) == 0);
 }
 
 static int
@@ -1762,7 +1762,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   if(a_head_addrspec_check(agp, doskin) <= 0)
+   if(a_head_addrspec_check(agp, doskin) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;
