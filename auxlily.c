@@ -41,6 +41,10 @@
 
 #include <sys/utsname.h>
 
+#ifdef HAVE_GETRANDOM
+# include HAVE_GETRANDOM_HEADER
+#endif
+
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_GETADDRINFO
 #  include <sys/socket.h>
@@ -50,15 +54,15 @@
 #endif
 
 #ifndef HAVE_POSIX_RANDOM
-union rand_state {
-   struct rand_arc4 {
-      ui8_t    __pad[6];
-      ui8_t    _i;
-      ui8_t    _j;
-      ui8_t    _dat[256];
-   }        a;
-   ui8_t    b8[sizeof(struct rand_arc4)];
-   ui32_t   b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
+union rand_state{
+   struct rand_arc4{
+      ui8_t _dat[256];
+      ui8_t _i;
+      ui8_t _j;
+      ui8_t __pad[6];
+   } a;
+   ui8_t b8[sizeof(struct rand_arc4)];
+   ui32_t b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
 };
 #endif
 
@@ -70,7 +74,7 @@ struct a_aux_err_node{
 #endif
 
 #ifndef HAVE_POSIX_RANDOM
-static union rand_state *_rand;
+static union rand_state *a_aux_rand;
 #endif
 
 /* Error ring, for `errors' */
@@ -83,102 +87,122 @@ static size_t a_aux_err_linelen;
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
 #ifndef HAVE_POSIX_RANDOM
-static void    _rand_init(void);
-static ui32_t  _rand_weak(ui32_t seed);
-SINLINE ui8_t  _rand_get8(void);
+static void a_aux_rand_init(void);
+SINLINE ui8_t a_aux_rand_get8(void);
+# ifndef HAVE_GETRANDOM
+static ui32_t a_aux_rand_weak(ui32_t seed);
+# endif
 #endif
 
 #ifndef HAVE_POSIX_RANDOM
 static void
-_rand_init(void)
-{
-# ifdef HAVE_CLOCK_GETTIME
+a_aux_rand_init(void){
+# ifndef HAVE_GETRANDOM
+#  ifdef HAVE_CLOCK_GETTIME
    struct timespec ts;
-# else
+#  else
    struct timeval ts;
-# endif
+#  endif
    union {int fd; size_t i;} u;
    ui32_t seed, rnd;
+# endif
    NYD2_ENTER;
 
-   _rand = smalloc(sizeof *_rand);
+   a_aux_rand = smalloc(sizeof *a_aux_rand);
 
-   if ((u.fd = open(
-# if n_OS_OPENBSD
-         "/dev/arandom"
+# ifdef HAVE_GETRANDOM
+   /* getrandom(2) guarantees 256 without EINTR.. */
+   n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
+      "Buffer to large to be served without EINTR error");
+   for(;;){
+      ssize_t gr;
+
+      gr = HAVE_GETRANDOM(a_aux_rand->a._dat, sizeof a_aux_rand->a._dat);
+      a_aux_rand->a._i = a_aux_rand->a._dat[42];
+      a_aux_rand->a._j = a_aux_rand->a._dat[84];
+      /* ..but be on the safe side */
+      if(UICMP(z, gr, ==, sizeof(a_aux_rand->a._dat)))
+         break;
+      n_msleep(250, FAL0);
+   }
+
 # else
-         "/dev/urandom"
-# endif
-         , O_RDONLY)) != -1) {
-      bool_t ok = (sizeof *_rand == (size_t)read(u.fd, _rand, sizeof *_rand));
+   if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
+      bool_t ok;
 
+      ok = (sizeof(a_aux_rand->a._dat) == (size_t)read(u.fd, a_aux_rand->a._dat,
+            sizeof(a_aux_rand->a._dat)));
       close(u.fd);
-      if (ok)
+
+      a_aux_rand->a._i = a_aux_rand->a._dat[42];
+      a_aux_rand->a._j = a_aux_rand->a._dat[84];
+      if(ok)
          goto jleave;
    }
 
-   for (seed = (uintptr_t)_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd) {
-      for (u.i = n_NELEM(_rand->b32); u.i-- != 0;) {
+   for(seed = (uintptr_t)a_aux_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd){
+      for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
          ui32_t t, k;
 
-# ifdef HAVE_CLOCK_GETTIME
+#  ifdef HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
          t = (ui32_t)ts.tv_nsec;
-# else
+#  else
          gettimeofday(&ts, NULL);
          t = (ui32_t)ts.tv_usec;
-# endif
-         if (rnd & 1)
+#  endif
+         if(rnd & 1)
             t = (t >> 16) | (t << 16);
-         _rand->b32[u.i] ^= _rand_weak(seed ^ t);
-         _rand->b32[t % n_NELEM(_rand->b32)] ^= seed;
-         if (rnd == 7 || rnd == 17)
-            _rand->b32[u.i] ^= _rand_weak(seed ^ (ui32_t)ts.tv_sec);
-         k = _rand->b32[u.i] % n_NELEM(_rand->b32);
-         _rand->b32[k] ^= _rand->b32[u.i];
-         seed ^= _rand_weak(_rand->b32[k]);
-         if ((rnd & 3) == 3)
+         a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
+         a_aux_rand->b32[t % n_NELEM(a_aux_rand->b32)] ^= seed;
+         if(rnd == 7 || rnd == 17)
+            a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ (ui32_t)ts.tv_sec);
+         k = a_aux_rand->b32[u.i] % n_NELEM(a_aux_rand->b32);
+         a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
+         seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
+         if((rnd & 3) == 3)
             seed ^= nextprime(seed);
       }
    }
 
-   for (u.i = 5 * sizeof(_rand->b8); u.i != 0; --u.i)
-      _rand_get8();
+   for(u.i = 5 * sizeof(a_aux_rand->b8); u.i != 0; --u.i)
+      a_aux_rand_get8();
 jleave:
+# endif /* !HAVE_GETRANDOM */
    NYD2_LEAVE;
 }
 
+SINLINE ui8_t
+a_aux_rand_get8(void){
+   ui8_t si, sj;
+
+   si = a_aux_rand->a._dat[++a_aux_rand->a._i];
+   sj = a_aux_rand->a._dat[a_aux_rand->a._j += si];
+   a_aux_rand->a._dat[a_aux_rand->a._i] = sj;
+   a_aux_rand->a._dat[a_aux_rand->a._j] = si;
+   return a_aux_rand->a._dat[(ui8_t)(si + sj)];
+}
+
+# ifndef HAVE_GETRANDOM
 static ui32_t
-_rand_weak(ui32_t seed)
-{
+a_aux_rand_weak(ui32_t seed){
    /* From "Random number generators: good ones are hard to find",
     * Park and Miller, Communications of the ACM, vol. 31, no. 10,
     * October 1988, p. 1195.
     * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
    ui32_t hi;
 
-   if (seed == 0)
+   if(seed == 0)
       seed = 123459876;
    hi =  seed /  127773;
          seed %= 127773;
    seed = (seed * 16807) - (hi * 2836);
-   if ((si32_t)seed < 0)
+   if((si32_t)seed < 0)
       seed += SI32_MAX;
    return seed;
 }
-
-SINLINE ui8_t
-_rand_get8(void)
-{
-   ui8_t si, sj;
-
-   si = _rand->a._dat[++_rand->a._i];
-   sj = _rand->a._dat[_rand->a._j += si];
-   _rand->a._dat[_rand->a._i] = sj;
-   _rand->a._dat[_rand->a._j] = si;
-   return _rand->a._dat[(ui8_t)(si + sj)];
-}
-#endif /* HAVE_POSIX_RANDOM */
+# endif /* HAVE_GETRANDOM */
+#endif /* !HAVE_POSIX_RANDOM */
 
 FL int
 screensize(void){
@@ -512,34 +536,33 @@ nodename(int mayoverride)
 }
 
 FL char *
-getrandstring(size_t length)
-{
+getrandstring(size_t length){
    struct str b64;
    char *data;
    size_t i;
    NYD_ENTER;
 
 #ifndef HAVE_POSIX_RANDOM
-   if (_rand == NULL)
-      _rand_init();
+   if(a_aux_rand == NULL)
+      a_aux_rand_init();
 #endif
 
    /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
     * with PAD stripped is still longer than what the user requests, easy way */
-   data = ac_alloc(i = length + 3);
+   data = n_lofi_alloc(i = length + 3);
 
 #ifndef HAVE_POSIX_RANDOM
-   while (i-- > 0)
-      data[i] = (char)_rand_get8();
+   while(i-- > 0)
+      data[i] = (char)a_aux_rand_get8();
 #else
-   {  char *cp = data;
+   {  char *cp;
 
-      while (i > 0) {
+      for(cp = data; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
          r.i4 = (ui32_t)arc4random();
-         switch ((j = i & 3)) {
+         switch((j = i & 3)){
          case 0:  cp[3] = r.c[3]; j = 4;
          case 3:  cp[2] = r.c[2];
          case 2:  cp[1] = r.c[1];

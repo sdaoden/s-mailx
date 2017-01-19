@@ -1626,11 +1626,36 @@ int main(void){
 !
 then
    :
+elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
+      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
+#include <sys/random.h>
+int main(void){
+   char buf[256];
+   getrandom(buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
+elif link_check getrandom 'getrandom(2) (via syscall(2))' \
+      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
+#include <sys/syscall.h>
+int main(void){
+   char buf[256];
+   syscall(SYS_getrandom, buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
 elif [ -n "${have_no_subsecond_time}" ]; then
    msg 'ERROR: %s %s' 'without a native random' \
       'one of clock_gettime(2) and gettimeofday(2) is required.'
    config_exit 1
 fi
+
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
