@@ -2319,7 +2319,7 @@ c_varshow(void *v){
 
       msgp = n_string_creat(msgp);
       for(; *ap != NULL; ++ap)
-         a_amv_var_show(*ap, stdout, msgp);
+         a_amv_var_show(*ap, n_stdout, msgp);
       n_string_gut(msgp);
    }
    NYD_LEAVE;

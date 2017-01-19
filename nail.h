@@ -2404,11 +2404,15 @@ struct cw {
 # ifndef HAVE_AMALGAMATION
 #  define VL
 # else
-#  define VL            static
+#  define VL static
 # endif
 #else
-# define VL             extern
+# define VL extern
 #endif
+
+VL FILE *n_stdin;
+VL FILE *n_stdout;
+VL FILE *n_stderr;
 
 VL int n_mb_cur_max;             /* Value of MB_CUR_MAX */
 VL int n_realscreenheight;       /* The real screen height */

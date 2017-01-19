@@ -909,7 +909,7 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
 jfound:
    rv = ((a_xssl_state & a_XSSL_S_VERIFY_ERROR) != 0);
    if (!rv)
-      printf(_("Message %d was verified successfully\n"), n);
+      fprintf(n_stdout, _("Message %d was verified successfully\n"), n);
 jleave:
    if (fb != NULL)
       BIO_free(fb);

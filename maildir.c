@@ -406,16 +406,17 @@ maildir_update(void)
    }
 jbypass:
    if ((gotcha || modflags) && (n_pstate & n_PS_EDIT)) {
-      printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
-      printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"));
+      fprintf(n_stdout, "%s %s\n",
+         n_shexp_quote_cp(displayname, FAL0),
+         ((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+          ? _("complete") : _("updated.")));
    } else if (held && !(n_pstate & n_PS_EDIT) && mb.mb_perm != 0) {
       if (held == 1)
-         printf(_("Held 1 message in %s\n"), displayname);
+         fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
       else
-         printf(_("Held %d messages in %s\n"), held, displayname);
+         fprintf(n_stdout, _("Held %d messages in %s\n"), held, displayname);
    }
-   fflush(stdout);
+   fflush(n_stdout);
 jfree:
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
       free(m->m_maildir_file);

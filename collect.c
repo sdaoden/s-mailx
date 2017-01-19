@@ -175,7 +175,7 @@ _include_file(char const *name, int *linecount, int *charcount, bool_t indent)
 
    /* The -M case is special */
    if (name == (char*)-1)
-      fbuf = stdin;
+      fbuf = n_stdin;
    else if ((fbuf = Fopen(name, "r")) == NULL) {
       n_perr(name, 0);
       goto jleave;
@@ -206,7 +206,7 @@ _include_file(char const *name, int *linecount, int *charcount, bool_t indent)
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   if (fbuf != NULL && fbuf != stdin)
+   if (fbuf != NULL && fbuf != n_stdin)
       Fclose(fbuf);
    NYD_LEAVE;
    return ret;
@@ -280,8 +280,8 @@ exwrite(char const *name, FILE *fp, int f)
    NYD_ENTER;
 
    if (f) {
-      printf("%s ", n_shexp_quote_cp(name, FAL0));
-      fflush(stdout);
+      fprintf(n_stdout, "%s ", n_shexp_quote_cp(name, FAL0));
+      fflush(n_stdout);
    }
 
    if ((of = Fopen(name, "a")) == NULL) {
@@ -299,18 +299,18 @@ exwrite(char const *name, FILE *fp, int f)
          goto jerr;
       }
    }
-   printf(_("%ld/%ld\n"), lc, cc);
+   fprintf(n_stdout, _("%ld/%ld\n"), lc, cc);
 
    rv = 0;
 jleave:
    if(of != NULL)
       Fclose(of);
-   fflush(stdout);
+   fflush(n_stdout);
    NYD_LEAVE;
    return rv;
 jerr:
-   putchar('-');
-   putchar('\n');
+   putc('-', n_stdout);
+   putc('\n', n_stdout);
    rv = -1;
    goto jleave;
 }
@@ -444,14 +444,14 @@ forward(char *ms, FILE *fp, int f)
       itp = upperchar(f) ? NULL : n_IGNORE_TYPE;
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
-   printf(_("Interpolating:"));
+   fprintf(n_stdout, _("Interpolating:"));
    srelax_hold();
    for (; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;
 
       touch(mp);
-      printf(" %d", *msgvec);
-      fflush(stdout);
+      fprintf(n_stdout, " %d", *msgvec);
+      fflush(n_stdout);
       if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
          n_perr(_("temporary mail file"), 0);
          rv = -1;
@@ -460,7 +460,7 @@ forward(char *ms, FILE *fp, int f)
       srelax();
    }
    srelax_rele();
-   printf("\n");
+   fprintf(n_stdout, "\n");
 jleave:
    NYD_LEAVE;
    return rv;
@@ -511,23 +511,23 @@ a_collect_plumbing(char const *ms, struct header *hp){
 
       if(cmd[1] == NULL || is_asccaseprefix(cmd[1], "list")){
          if(cmd[2] == NULL){
-            fputs("210", stdout);
-            if(hp->h_from != NULL) fputs(" From", stdout);
-            if(hp->h_sender != NULL) fputs(" Sender", stdout);
-            if(hp->h_to != NULL) fputs(" To", stdout);
-            if(hp->h_cc != NULL) fputs(" Cc", stdout);
-            if(hp->h_bcc != NULL) fputs(" Bcc", stdout);
-            if(hp->h_subject != NULL) fputs(" Subject", stdout);
-            if(hp->h_replyto != NULL) fputs(" Reply-To", stdout);
-            if(hp->h_mft != NULL) fputs(" Mail-Followup-To", stdout);
-            if(hp->h_message_id != NULL) fputs(" Message-ID", stdout);
-            if(hp->h_ref != NULL) fputs(" References", stdout);
-            if(hp->h_in_reply_to != NULL) fputs(" In-Reply-To", stdout);
+            fputs("210", n_stdout);
+            if(hp->h_from != NULL) fputs(" From", n_stdout);
+            if(hp->h_sender != NULL) fputs(" Sender", n_stdout);
+            if(hp->h_to != NULL) fputs(" To", n_stdout);
+            if(hp->h_cc != NULL) fputs(" Cc", n_stdout);
+            if(hp->h_bcc != NULL) fputs(" Bcc", n_stdout);
+            if(hp->h_subject != NULL) fputs(" Subject", n_stdout);
+            if(hp->h_replyto != NULL) fputs(" Reply-To", n_stdout);
+            if(hp->h_mft != NULL) fputs(" Mail-Followup-To", n_stdout);
+            if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
+            if(hp->h_ref != NULL) fputs(" References", n_stdout);
+            if(hp->h_in_reply_to != NULL) fputs(" In-Reply-To", n_stdout);
             for(hfp = hp->h_user_headers; hfp != NULL; hfp = hfp->hf_next){
-               putc(' ', stdout);
-               fputs(&hfp->hf_dat[0], stdout);
+               putc(' ', n_stdout);
+               fputs(&hfp->hf_dat[0], n_stdout);
             }
-            putc('\n', stdout);
+            putc('\n', n_stdout);
             goto jleave;
          }
 
@@ -537,7 +537,7 @@ a_collect_plumbing(char const *ms, struct header *hp){
          if(!asccasecmp(cmd[2], "from")){
             np = hp->h_from;
 jlist:
-            fprintf(stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
+            fprintf(n_stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
             goto jleave;
          }
          if(!asccasecmp(cmd[2], cp = "Sender")){
@@ -595,7 +595,7 @@ jlist:
                if(hfp == NULL)
                   goto j501cp;
                else if(!asccasecmp(cp, &hfp->hf_dat[0])){
-                  fprintf(stdout, "210 %s\n", cp);
+                  fprintf(n_stdout, "210 %s\n", cp);
                   break;
                }
             }
@@ -611,11 +611,11 @@ jlist:
             np = hp->h_from;
 jshow:
             if(np != NULL){
-               fprintf(stdout, "211 %s\n", cp);
+               fprintf(n_stdout, "211 %s\n", cp);
                do if(!(np->n_type & GDEL))
-                  fprintf(stdout, "%s %s\n", np->n_name, np->n_fullname);
+                  fprintf(n_stdout, "%s %s\n", np->n_name, np->n_fullname);
                while((np = np->n_flink) != NULL);
-               putc('\n', stdout);
+               putc('\n', n_stdout);
                goto jleave;
             }else
                goto j501cp;
@@ -659,9 +659,9 @@ jshow:
 
          if(!asccasecmp(cmd[2], cp = "Subject")){
             if(hp->h_subject != NULL)
-               fprintf(stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
+               fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
             else
-               fprintf(stdout, "501 %s\n", cp);
+               fprintf(n_stdout, "501 %s\n", cp);
             goto jleave;
          }
 
@@ -680,13 +680,13 @@ jshow:
                   hfp = hfp->hf_next){
                if(!asccasecmp(cp, &hfp->hf_dat[0])){
                   if(!any)
-                     fprintf(stdout, "212 %s\n", cp);
+                     fprintf(n_stdout, "212 %s\n", cp);
                   any = TRU1;
-                  fprintf(stdout, "%s\n", &hfp->hf_dat[hfp->hf_nl +1]);
+                  fprintf(n_stdout, "%s\n", &hfp->hf_dat[hfp->hf_nl +1]);
                }
             }
             if(any)
-               putc('\n', stdout);
+               putc('\n', n_stdout);
             else
                goto j501cp;
          }
@@ -702,7 +702,7 @@ jshow:
 jrem:
             if(*npp != NULL){
                *npp = NULL;
-               fprintf(stdout, "210 %s\n", cp);
+               fprintf(n_stdout, "210 %s\n", cp);
                goto jleave;
             }else
                goto j501cp;
@@ -747,7 +747,7 @@ jrem:
          if(!asccasecmp(cmd[2], cp = "Subject")){
             if(hp->h_subject != NULL){
                hp->h_subject = NULL;
-               fprintf(stdout, "210 %s\n", cp);
+               fprintf(n_stdout, "210 %s\n", cp);
                goto jleave;
             }else
                goto j501cp;
@@ -769,7 +769,7 @@ jrem:
                if(!asccasecmp(cp, &hfp->hf_dat[0])){
                   *hfpp = hfp->hf_next;
                   if(!any)
-                     fprintf(stdout, "210 %s\n", cp);
+                     fprintf(n_stdout, "210 %s\n", cp);
                   any = TRU1;
                }else
                   hfp = *(hfpp = &hfp->hf_next);
@@ -815,7 +815,7 @@ jins:
                goto j501cp;
 
             if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
-               fprintf(stdout, "505 %s\n", cp);
+               fprintf(n_stdout, "505 %s\n", cp);
                goto jleave;
             }
 
@@ -826,13 +826,13 @@ jins:
                      xnp = xnp->n_flink)
                   ;
                if(xnp != NULL || np->n_flink != NULL){
-                  fprintf(stdout, "506 %s\n", cp);
+                  fprintf(n_stdout, "506 %s\n", cp);
                   goto jleave;
                }
             }
 
             *npp = cat(*npp, np);
-            fprintf(stdout, "210 %s\n", cp);
+            fprintf(n_stdout, "210 %s\n", cp);
             goto jleave;
          }
          if(!asccasecmp(cmd[2], cp = "Sender")){
@@ -892,7 +892,7 @@ jins:
                   hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
                else
                   hp->h_subject = n_UNCONST(cmd[3]);
-               fprintf(stdout, "210 %s\n", cp);
+               fprintf(n_stdout, "210 %s\n", cp);
                goto jleave;
             }else
                goto j501cp;
@@ -923,7 +923,7 @@ jins:
             memcpy(hfp->hf_dat, cp, nl);
                hfp->hf_dat[nl++] = '\0';
                memcpy(hfp->hf_dat + nl, cmd[3], bl);
-            fprintf(stdout, "210 %s\n", cp);
+            fprintf(n_stdout, "210 %s\n", cp);
          }
          goto jleave;
       }
@@ -940,13 +940,13 @@ jins:
             goto jecmd;
 
          if((ap = hp->h_attach) != NULL){
-            fputs("212\n", stdout);
+            fputs("212\n", n_stdout);
             do
-               fprintf(stdout, "%s\n", ap->a_path_user);
+               fprintf(n_stdout, "%s\n", ap->a_path_user);
             while((ap = ap->a_flink) != NULL);
-            putc('\n', stdout);
+            putc('\n', n_stdout);
          }else
-            fputs("501\n", stdout);
+            fputs("501\n", n_stdout);
          goto jleave;
       }
 
@@ -956,13 +956,13 @@ jins:
 
          if((ap = n_attachment_find(hp->h_attach, cmd[2], &status)) != NULL){
             if(status == TRUM1)
-               fputs("506\n", stdout);
+               fputs("506\n", n_stdout);
             else{
                hp->h_attach = n_attachment_remove(hp->h_attach, ap);
-               fprintf(stdout, "210 %s\n", cmd[2]);
+               fprintf(n_stdout, "210 %s\n", cmd[2]);
             }
          }else
-            fputs("501\n", stdout);
+            fputs("501\n", n_stdout);
          goto jleave;
       }
 
@@ -974,15 +974,15 @@ jins:
             goto jecmd;
 
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
-            fputs("505\n", stdout);
+            fputs("505\n", n_stdout);
          else{
             for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
                ;
             if(ap != NULL){
                hp->h_attach = n_attachment_remove(hp->h_attach, ap);
-               fprintf(stdout, "210 %s\n", cmd[2]);
+               fprintf(n_stdout, "210 %s\n", cmd[2]);
             }else
-               fputs("501\n", stdout);
+               fputs("501\n", n_stdout);
          }
          goto jleave;
       }
@@ -1002,14 +1002,14 @@ jins:
          default:
             cp = "501\n";
 jatt_ins:
-            fputs(cp, stdout);
+            fputs(cp, n_stdout);
             break;
          case n_ATTACH_ERR_NONE:{
             size_t i;
 
             for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
                ;
-            fprintf(stdout, "210 %" PRIuZ "\n", i);
+            fprintf(n_stdout, "210 %" PRIuZ "\n", i);
          }  break;
          }
          goto jleave;
@@ -1021,26 +1021,28 @@ jatt_ins:
 
          if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
 jatt_att:
-            fprintf(stdout, "212 %s\n", cmd[2]);
+            fprintf(n_stdout, "212 %s\n", cmd[2]);
             if(ap->a_msgno > 0)
-               fprintf(stdout, "message-number %d\n\n", ap->a_msgno);
+               fprintf(n_stdout, "message-number %d\n\n", ap->a_msgno);
             else{
-               fprintf(stdout, "creation-name %s\nopen-path %s\nfilename %s\n",
+               fprintf(n_stdout,
+                  "creation-name %s\nopen-path %s\nfilename %s\n",
                   ap->a_path_user, ap->a_path, ap->a_name);
                if(ap->a_content_description != NULL)
-                  fprintf(stdout, "content-description %s\n",
+                  fprintf(n_stdout, "content-description %s\n",
                      ap->a_content_description);
                if(ap->a_content_id != NULL)
-                  fprintf(stdout, "content-id %s\n", ap->a_content_id->n_name);
+                  fprintf(n_stdout, "content-id %s\n",
+                     ap->a_content_id->n_name);
                if(ap->a_content_type != NULL)
-                  fprintf(stdout, "content-type %s\n", ap->a_content_type);
+                  fprintf(n_stdout, "content-type %s\n", ap->a_content_type);
                if(ap->a_content_disposition != NULL)
-                  fprintf(stdout, "content-disposition %s\n",
+                  fprintf(n_stdout, "content-disposition %s\n",
                      ap->a_content_disposition);
-               putc('\n', stdout);
+               putc('\n', n_stdout);
             }
          }else
-            fputs("501\n", stdout);
+            fputs("501\n", n_stdout);
          goto jleave;
       }
 
@@ -1052,14 +1054,14 @@ jatt_att:
             goto jecmd;
 
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
-            fputs("505\n", stdout);
+            fputs("505\n", n_stdout);
          else{
             for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
                ;
             if(ap != NULL)
                goto jatt_att;
             else
-               fputs("501\n", stdout);
+               fputs("501\n", n_stdout);
          }
          goto jleave;
       }
@@ -1071,7 +1073,7 @@ jatt_att:
          if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
 jatt_attset:
             if(ap->a_msgno > 0)
-               fputs("505\n", stdout);
+               fputs("505\n", n_stdout);
             else{
                char c, *keyw;
 
@@ -1125,12 +1127,12 @@ jatt_attset:
 
                   for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
                      ;
-                  fprintf(stdout, "210 %" PRIuZ "\n", i);
+                  fprintf(n_stdout, "210 %" PRIuZ "\n", i);
                }else
-                  fputs("505\n", stdout);
+                  fputs("505\n", n_stdout);
             }
          }else
-            fputs("501\n", stdout);
+            fputs("501\n", n_stdout);
          goto jleave;
       }
 
@@ -1142,14 +1144,14 @@ jatt_attset:
             goto jecmd;
 
          if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
-            fputs("505\n", stdout);
+            fputs("505\n", n_stdout);
          else{
             for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
                ;
             if(ap != NULL)
                goto jatt_attset;
             else
-               fputs("501\n", stdout);
+               fputs("501\n", n_stdout);
          }
          goto jleave;
       }
@@ -1158,17 +1160,17 @@ jatt_attset:
    }
 
 jecmd:
-   fputs("500\n", stdout);
+   fputs("500\n", n_stdout);
    ms = NULL;
 jleave:
-   fflush(stdout);
+   fflush(n_stdout);
    NYD2_LEAVE;
    return (ms != NULL);
 
 j501cp:
-   fputs("501 ", stdout);
-   fputs(cp, stdout);
-   putc('\n', stdout);
+   fputs("501 ", n_stdout);
+   fputs(cp, n_stdout);
+   putc('\n', n_stdout);
    goto jleave;
 }
 
@@ -1180,9 +1182,9 @@ _collint(int s)
    /* the control flow is subtle, because we can be called from ~q */
    if (_coll_hadintr == 0) {
       if (ok_blook(ignore)) {
-         fputs("@\n", stdout);
-         fflush(stdout);
-         clearerr(stdin);
+         fputs("@\n", n_stdout);
+         fflush(n_stdout);
+         clearerr(n_stdin);
       } else
          _coll_hadintr = 1;
       siglongjmp(_coll_jmp, 1);
@@ -1274,7 +1276,7 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
 static int
 a_coll_ocds__mac(void){
    /* Executes in a fork(2)ed child */
-   setvbuf(stdout, NULL, _IOLBF, 0);
+   setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    temporary_compose_mode_hook_call(a_coll_ocds__macname, NULL, NULL);
@@ -1464,11 +1466,12 @@ collect(struct header *hp, int printheaders, struct message *mp,
          /* Print what we have sofar also on the terminal (if useful) */
          if (!ok_blook(editalong)) {
             if (printheaders)
-               puthead(TRU1, hp, stdout, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+               puthead(TRU1, hp, n_stdout, t,
+                  SEND_TODISP, CONV_NONE, NULL, NULL);
 
             rewind(_coll_fp);
             while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-               putc(c, stdout);
+               putc(c, n_stdout);
             if (fseek(_coll_fp, 0, SEEK_END))
                goto jerr;
          } else {
@@ -1477,9 +1480,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
             /* As mandated by the Mail Reference Manual, print "(continue)" */
 jcont:
             if(n_psonce & n_PSO_INTERACTIVE)
-               fputs(_("(continue)\n"), stdout);
+               fputs(_("(continue)\n"), n_stdout);
          }
-         fflush(stdout);
+         fflush(n_stdout);
       }
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
@@ -1497,7 +1500,7 @@ jcont:
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
          linebuf = srealloc(linebuf, linesize = LINESIZE);
-         while ((i = fread(linebuf, sizeof *linebuf, linesize, stdin)) > 0) {
+         while ((i = fread(linebuf, sizeof *linebuf, linesize, n_stdin)) > 0) {
             if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
          }
@@ -1532,7 +1535,8 @@ jcont:
             continue;
          }else if((n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
                ++eofcnt < 4){
-            printf(_("*ignoreeof* set, use `~.' to terminate letter\n"));
+            fprintf(n_stdout,
+               _("*ignoreeof* set, use `~.' to terminate letter\n"));
             continue;
          }
          break;
@@ -1745,7 +1749,7 @@ jearg:
                goto jerr;
             break;
          }
-         printf(_("%s %d/%d\n"), n_shexp_quote_cp(cp, FAL0), lc, cc);
+         fprintf(n_stdout, _("%s %d/%d\n"), n_shexp_quote_cp(cp, FAL0), lc, cc);
          break;
       case 'i':
          /* Insert a variable into the file */
@@ -1755,7 +1759,7 @@ jearg:
             break;
          if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
             goto jerr;
-         if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
+         if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
             goto jerr;
          break;
       case 'a':
@@ -1767,7 +1771,7 @@ jearg:
          if(cp != NULL && *cp != '\0'){
             if(putesc(cp, _coll_fp) < 0) /* TODO v15: user upon `set' time */
                goto jerr;
-            if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
+            if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
                goto jerr;
          }
          break;
@@ -1827,7 +1831,7 @@ jearg:
       case '?':
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
-         puts(_(
+         fputs(_(
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
 "~: <command>  Execute a mail command\n"
@@ -1836,9 +1840,9 @@ jearg:
 "~A            Insert *Sign* variable (`~a': insert *sign*)\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
 "~d            Read in $DEAD (dead.letter)\n"
-"~e            Edit message via $EDITOR"
-         ));
-         puts(_(
+"~e            Edit message via $EDITOR\n"
+            ), n_stdout);
+         fputs(_(
 "~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
 "~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
@@ -1846,17 +1850,17 @@ jearg:
 "~i <variable> Insert a value and a newline\n"
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
 "~p            Show current message compose buffer\n"
-"~r <file>     Read in a file (`~<': likewise; `~R': *indentprefix* lines)"
-         ));
-         puts(_(
+"~r <file>     Read in a file (`~<': likewise; `~R': *indentprefix* lines)\n"
+            ), n_stdout);
+         fputs(_(
 "~s <subject>  Set Subject:\n"
 "~t <users>    Add users to To: list\n"
 "~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
 "~v            Edit message via $VISUAL\n"
 "~w <file>     Write message onto file\n"
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter"
-         ));
+"~| <command>  Pipe message through shell filter\n"
+            ), n_stdout);
          if(cnt != 2)
             goto jearg;
          break;
@@ -2020,7 +2024,7 @@ jout:
          (cp = cp_obsolete) != NULL){
       if(putesc(cp, _coll_fp) < 0)
          goto jerr;
-      if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, stdout) < 0)
+      if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
          goto jerr;
    }
    }

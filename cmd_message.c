@@ -101,7 +101,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
    bool_t const volatile formfeed = (dopipe && ok_blook(page));
-   obuf = stdout;
+   obuf = n_stdout;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
    case 0:
@@ -113,7 +113,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    if (dopipe) {
       if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
          n_perr(cmd, 0);
-         obuf = stdout;
+         obuf = n_stdout;
       }
    } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
          ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
@@ -133,12 +133,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       if(dopage || UICMP(z, nlines, >=,
             (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)n_realscreenheight))){
          if((obuf = n_pager_open()) == NULL)
-            obuf = stdout;
+            obuf = n_stdout;
       }
 #ifdef HAVE_COLOUR
       if ((n_psonce & n_PSO_INTERACTIVE) &&
             (action == SEND_TODISP || action == SEND_TODISP_ALL))
-         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != stdout);
+         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != n_stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
@@ -177,7 +177,7 @@ jleave:
    if (isrelax)
       srelax_rele();
    n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
-   if (obuf != stdout)
+   if (obuf != n_stdout)
       n_pager_close(obuf);
    }
    NYD_LEAVE;
@@ -211,7 +211,7 @@ _pipe1(char *str, int doign)
             rv = 0;
             goto jleave;
          }
-         puts(_("No messages to pipe."));
+         fputs(_("No messages to pipe.\n"), n_stdout);
          goto jleave;
       }
       msgvec[1] = 0;
@@ -222,16 +222,16 @@ _pipe1(char *str, int doign)
          rv = 0;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      fprintf(n_stdout, "No applicable messages.\n");
       goto jleave;
    }
 
    cmdq = n_shexp_quote_cp(cmd, FAL0);
-   printf(_("Pipe to: %s\n"), cmdq);
+   fprintf(n_stdout, _("Pipe to: %s\n"), cmdq);
    stats[0] = 0;
    if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
          ) == 0)
-      printf("%s %" PRIu64 " bytes\n", cmdq, stats[0]);
+      fprintf(n_stdout, "%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -567,7 +567,7 @@ c_next(void *v)
          if (*ip2 == 0)
             ip2 = msgvec;
       } while (ip2 != ip);
-      printf(_("No messages applicable\n"));
+      fprintf(n_stdout, _("No messages applicable\n"));
       goto jleave;
    }
 
@@ -596,7 +596,7 @@ c_next(void *v)
    }
    if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {
 jateof:
-      printf(_("At EOF\n"));
+      fprintf(n_stdout, _("At EOF\n"));
       rv = 0;
       goto jleave;
    }
@@ -617,7 +617,7 @@ c_pdot(void *vp)
 {
    NYD_ENTER;
    n_UNUSED(vp);
-   printf("%d\n", (int)PTR2SIZE(dot - message + 1));
+   fprintf(n_stdout, "%d\n", (int)PTR2SIZE(dot - message + 1));
    NYD_LEAVE;
    return 0;
 }
@@ -632,12 +632,12 @@ c_messize(void *v)
    for (ip = msgvec; *ip != 0; ++ip) {
       mesg = *ip;
       mp = message + mesg - 1;
-      printf("%d: ", mesg);
+      fprintf(n_stdout, "%d: ", mesg);
       if (mp->m_xlines > 0)
-         printf("%ld", mp->m_xlines);
+         fprintf(n_stdout, "%ld", mp->m_xlines);
       else
-         putchar(' ');
-      printf("/%lu\n", (ul_i)mp->m_xsize);
+         putc(' ', n_stdout);
+      fprintf(n_stdout, "/%lu\n", (ul_i)mp->m_xsize);
    }
    NYD_LEAVE;
    return 0;
@@ -669,9 +669,9 @@ c_deltype(void *v)
          rv = c_type(list);
          goto jleave;
       }
-      printf(_("At EOF\n"));
+      fprintf(n_stdout, _("At EOF\n"));
    } else
-      printf(_("No more messages\n"));
+      fprintf(n_stdout, _("No more messages\n"));
 jleave:
    NYD_LEAVE;
    return rv;
@@ -744,7 +744,7 @@ c_preserve(void *v)
    NYD_ENTER;
 
    if (n_pstate & n_PS_EDIT) {
-      printf(_("Cannot `preserve' in a system mailbox\n"));
+      fprintf(n_stdout, _("Cannot `preserve' in a system mailbox\n"));
       goto jleave;
    }
 

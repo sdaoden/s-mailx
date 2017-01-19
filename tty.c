@@ -275,7 +275,7 @@ getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-   if (readline_restart(stdin, &termios_state.ts_linebuf,
+   if (readline_restart(n_stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
 jrestore:
@@ -307,7 +307,7 @@ n_tty_create_prompt(struct n_string *store, char const *xprompt,
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ERRORS_NOTED)
          ) == n_PSO_INTERACTIVE && (n_pstate & n_PS_ERRORS_PROMPT)){
       n_psonce |= n_PSO_ERRORS_NOTED;
-      printf(_("There are new messages in the error message ring "
+      fprintf(n_stdout, _("There are new messages in the error message ring "
          "(denoted by %s)\n"
          "  The `errors' command manages this message ring\n"),
          V_(n_error));
@@ -4470,7 +4470,7 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
 # endif
-   rv = (readline_restart)(stdin, linebuf, linesize,n n_MEMORY_DEBUG_ARGSCALL);
+   rv = (readline_restart)(n_stdin, linebuf, linesize,n n_MEMORY_DEBUG_ARGSCALL);
 # ifdef HAVE_TERMCAP
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();

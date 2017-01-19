@@ -249,18 +249,18 @@ _spam_action(enum spam_action sa, int *ip)
                _spam_cmds[sa], (ul_i)vc.vc_mno, (ul_i)(size_t)vc.vc_mp->m_size,
                (ul_i)maxsize);
          else if (vc.vc_progress) {
-            fprintf(stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
+            fprintf(n_stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
-            fflush(stdout);
+            fflush(n_stdout);
          }
          ++skipped;
       } else {
          if (vc.vc_verbose)
             n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul_i)vc.vc_mno);
          else if (vc.vc_progress) {
-            fprintf(stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
+            fprintf(n_stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
-            fflush(stdout);
+            fflush(n_stdout);
          }
 
          setdot(vc.vc_mp);
@@ -277,9 +277,9 @@ _spam_action(enum spam_action sa, int *ip)
    }
    if (vc.vc_progress) {
       if (curr > 0)
-         fprintf(stdout, _(" %s (%" PRIuZ "/%" PRIuZ " all/skipped)\n"),
+         fprintf(n_stdout, _(" %s (%" PRIuZ "/%" PRIuZ " all/skipped)\n"),
             (ok ? _("done") : V_(n_error)), curr, skipped);
-      fflush(stdout);
+      fflush(n_stdout);
    }
 
    if (vc.vc_dtor != NULL)

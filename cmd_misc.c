@@ -84,7 +84,7 @@ a_cmisc_bangexp(char const *cp){
 
    cp = last_bang.s;
    if(changed)
-      printf("!%s\n", cp);
+      fprintf(n_stdout, "!%s\n", cp);
 jleave:
    NYD_LEAVE;
    return cp;
@@ -120,7 +120,7 @@ c_shell(void *v)
    sigemptyset(&mask);
    run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
       cp, NULL, NULL);
-   printf("!\n");
+   fprintf(n_stdout, "!\n");
    NYD_LEAVE;
    return 0;
 }
@@ -133,7 +133,7 @@ c_dosh(void *v)
 
    run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
       NULL, NULL, NULL);
-   putchar('\n');
+   putc('\n', n_stdout);
    NYD_LEAVE;
    return 0;
 }
@@ -145,7 +145,8 @@ c_cwd(void *v)
    NYD_ENTER;
 
    if (getcwd(buf, sizeof buf) != NULL) {
-      puts(buf);
+      fputs(buf, n_stdout);
+      putc('\n', n_stdout);
       v = (void*)0x1;
    } else {
       n_perr(_("getcwd"), 0);
@@ -180,7 +181,7 @@ c_echo(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = a_cmisc_echo(v, stdout);
+   rv = a_cmisc_echo(v, n_stdout);
    NYD_LEAVE;
    return rv;
 }
@@ -190,7 +191,7 @@ c_echoerr(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = a_cmisc_echo(v, stderr);
+   rv = a_cmisc_echo(v, n_stderr);
    NYD_LEAVE;
    return rv;
 }

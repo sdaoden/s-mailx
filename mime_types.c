@@ -875,7 +875,8 @@ c_mimetype(void *v)
       size_t l;
 
       if (_mt_list == NULL) {
-         printf(_("*mimetypes-load-control*: no mime.types(5) available\n"));
+         fprintf(n_stdout,
+            _("*mimetypes-load-control*: no mime.types(5) available\n"));
          goto jleave;
       }
 

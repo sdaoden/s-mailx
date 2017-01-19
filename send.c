@@ -240,8 +240,8 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       union {int (*ptf)(void); char const *sh;} u;
 
       fflush(*qbuf);
-      if (*qbuf != stdout) /* xxx never?  v15: it'll be a filter anyway */
-         fflush(stdout);
+      if (*qbuf != n_stdout) /* xxx never?  v15: it'll be a filter anyway */
+         fflush(n_stdout);
 
       u.ptf = mhp->mh_ptf;
       if((rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf))) == NULL)
@@ -308,8 +308,8 @@ jerror:
             mhp->mh_msg, strerror(errno));
       else {
          fflush(*qbuf);
-         if (*qbuf != stdout)
-            fflush(stdout);
+         if (*qbuf != n_stdout)
+            fflush(n_stdout);
       }
    }
 jleave:

@@ -226,6 +226,9 @@ a_main_startup(void){
    char *cp;
    NYD_ENTER;
 
+   n_stdin = stdin;
+   n_stdout = stdout;
+   n_stderr = stderr;
    image = -1;
    dflpipe = SIG_DFL;
    a_main_oind = /*_oerr =*/ 1;
@@ -254,7 +257,7 @@ a_main_startup(void){
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
 #if defined HAVE_MLE || defined HAVE_TERMCAP
-      n_tty_fp = fdopen(fileno(stdin), "w");
+      n_tty_fp = fdopen(fileno(n_stdin), "w");
       setvbuf(n_tty_fp, NULL, _IOLBF, 0);
 #endif
    }
@@ -267,9 +270,9 @@ a_main_startup(void){
    }
 
    /* STDOUT is always line buffered from our point of view */
-   setvbuf(stdout, NULL, _IOLBF, 0);
+   setvbuf(n_stdout, NULL, _IOLBF, 0);
    if(n_tty_fp == NULL)
-      n_tty_fp = stdout;
+      n_tty_fp = n_stdout;
 
    /*  --  >8  --  8<  --  */
 
@@ -504,10 +507,10 @@ a_main_rcv_mode(char const *folder, char const *Larg){
          safe_signal(SIGINT, &a_main_hdrstop);
       if(!(n_poption & n_PO_N_FLAG)){
          if(!ok_blook(quiet))
-            printf(_("%s version %s.  Type `?' for help\n"),
+            fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
                (ok_blook(bsdcompat) ? "Mail" : n_uagent), ok_vlook(version));
          announce(1);
-         fflush(stdout);
+         fflush(n_stdout);
       }
       safe_signal(SIGINT, prevint);
    }
@@ -537,7 +540,7 @@ a_main_hdrstop(int signo){
    NYD_X; /* Signal handler */
    n_UNUSED(signo);
 
-   fflush(stdout);
+   fflush(n_stdout);
    n_err_sighdl(_("\nInterrupt\n"));
    siglongjmp(a_main__hdrjmp, 1);
 }
@@ -791,7 +794,7 @@ joarg:
          uarg = savecat("%", a_main_oarg);
          break;
       case 'V':
-         printf(_("%s version %s\n"), n_uagent, ok_vlook(version));
+         fprintf(n_stdout, _("%s version %s\n"), n_uagent, ok_vlook(version));
          n_exit_status = n_EXIT_OK;
          goto j_leave;
       case 'v':
@@ -829,7 +832,7 @@ joarg:
       case '#':
          /* Work in batch mode, even if non-interactive */
          if(!(n_psonce & n_PSO_INTERACTIVE))
-            setvbuf(stdin, NULL, _IOLBF, 0);
+            setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
          if (oargs_cnt + 8 >= oargs_size)
             oargs_size = a_main_grow_cpp(&oargs, oargs_size + 9, oargs_cnt);

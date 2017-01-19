@@ -220,7 +220,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
    if (__sopen_sig == -1) {
-      fprintf(stderr, _("\nInterrupting this operation may turn "
+      fprintf(n_stderr, _("\nInterrupting this operation may turn "
          "the DNS resolver unusable\n"));
       __sopen_sig = 0;
    } else {

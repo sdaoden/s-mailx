@@ -944,7 +944,7 @@ jcantfout:
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
          if(fname[0] == '-' && fname[1] == '\0')
-            fout = stdout;
+            fout = n_stdout;
          else if ((fout = Zopen(fname, "a")) == NULL) {
             n_err(_("Writing message to %s failed: %s\n"),
                fnameq, strerror(errno));
@@ -959,7 +959,7 @@ jcantfout:
                fnameq, _("write error"));
             *senderror = TRU1;
          }
-         if(fout != stdout)
+         if(fout != n_stdout)
             Fclose(fout);
       }
 
@@ -1273,7 +1273,7 @@ jstop:
       sigaddset(&nset, SIGTSTP);
       sigaddset(&nset, SIGTTIN);
       sigaddset(&nset, SIGTTOU);
-      freopen("/dev/null", "r", stdin);
+      /* n_stdin = */freopen("/dev/null", "r", stdin);
 #ifdef HAVE_SMTP
       if (rv) {
          prepare_child(&nset, 0, 1);
@@ -1745,9 +1745,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       if (n_poption & n_PO_E_FLAG)
          goto jleave;
       if (hp->h_subject == NULL)
-         printf(_("No message, no subject; hope that's ok\n"));
+         fprintf(n_stdout, _("No message, no subject; hope that's ok\n"));
       else if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         printf(_("Null message body; hope that's ok\n"));
+         fprintf(n_stdout, _("Null message body; hope that's ok\n"));
    }
 
    if (dosign == TRUM1)
@@ -2337,8 +2337,8 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
    }
    n_file_lock(fileno(dbuf), FLT_WRITE, 0,0, UIZ_MAX); /* XXX Natomic */
 
-   printf("%s ", cpq);
-   fflush(stdout);
+   fprintf(n_stdout, "%s ", cpq);
+   fflush(n_stdout);
 
    /* TODO savedeadletter() non-conforming: should check whether we have any
     * TODO headers, if not we need to place "something", anything will do.
@@ -2399,8 +2399,8 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
    n_string_gut(&line);
 
    Fclose(dbuf);
-   printf("%lu/%lu\n", lines, bytes);
-   fflush(stdout);
+   fprintf(n_stdout, "%lu/%lu\n", lines, bytes);
+   fflush(n_stdout);
 
    rewind(fp);
 jleave:

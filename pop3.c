@@ -757,17 +757,17 @@ pop3_update(struct mailbox *mp)
       dnq = n_shexp_quote_cp(displayname, FAL0);
 
       if (gotcha && (n_pstate & n_PS_EDIT)) {
-         printf(_("%s "), dnq);
-         printf((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+         fprintf(n_stdout, _("%s "), dnq);
+         fprintf(n_stdout, (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             ? _("complete\n") : _("updated\n"));
       } else if (held && !(n_pstate & n_PS_EDIT)) {
          if (held == 1)
-            printf(_("Held 1 message in %s\n"), dnq);
+            fprintf(n_stdout, _("Held 1 message in %s\n"), dnq);
          else
-            printf(_("Held %d messages in %s\n"), held, dnq);
+            fprintf(n_stdout, _("Held %d messages in %s\n"), held, dnq);
       }
    }
-   fflush(stdout);
+   fflush(n_stdout);
    NYD_LEAVE;
    return OKAY;
 }

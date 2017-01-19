@@ -440,7 +440,7 @@ _colpt(int *msgvec, int cl)
    NYD2_ENTER;
 
    if (mb.mb_threaded != 1) {
-      puts("Not in threaded mode.");
+      fputs("Not in threaded mode.\n", n_stdout);
       rv = 1;
    } else {
       for (ip = msgvec; *ip != 0; ++ip)
@@ -676,7 +676,7 @@ c_sort(void *vp)
       _args[1] = NULL;
       args = _args;
    } else if (args[0] == NULL) {
-      printf("Current sorting criterion is: %s\n",
+      fprintf(n_stdout, "Current sorting criterion is: %s\n",
             (mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       i = 0;
       goto jleave;

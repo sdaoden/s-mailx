@@ -656,7 +656,8 @@ c_urlcodec(void *v){
       while((cp = *++argv) != NULL){
          if((res = urlxenc(cp, ispath)) == NULL)
             res = V_(n_error);
-         printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
+         fprintf(n_stdout,
+            " in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), res, strlen(res));
       }
    }else if(is_asccaseprefix(cp, "decode")){
@@ -667,7 +668,8 @@ c_urlcodec(void *v){
             res = V_(n_error);
          in.l = strlen(in.s = n_UNCONST(res)); /* logical */
          makeprint(&in, &out);
-         printf(" in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
+         fprintf(n_stdout,
+            " in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
             cp, strlen(cp), out.s, in.l);
          free(out.s);
       }
@@ -692,7 +694,8 @@ c_urlencode(void *v) /* XXX IDNA?? */
 
       if(out == NULL)
          out = n_UNCONST(V_(n_error));
-      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
+      fprintf(n_stdout,
+         " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;
@@ -712,7 +715,8 @@ c_urldecode(void *v) /* XXX IDNA?? */
 
       if(out == NULL)
          out = n_UNCONST(V_(n_error));
-      printf(" in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
+      fprintf(n_stdout,
+         " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, strlen(in), out, strlen(out));
    }
    NYD_LEAVE;

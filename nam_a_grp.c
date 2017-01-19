@@ -663,7 +663,7 @@ _group_print_all(enum group_type gt)
       qsort(ida, i, sizeof *ida, &__group_print_qsorter);
 
    if ((fp = Ftmp(NULL, "prgroup", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-      fp = stdout;
+      fp = n_stdout;
    lines = 0;
 
    for (i = 0; ida[i] != NULL; ++i)
@@ -683,7 +683,7 @@ _group_print_all(enum group_type gt)
    }
 #endif
 
-   if (fp != stdout) {
+   if (fp != n_stdout) {
       page_or_print(fp, lines);
       Fclose(fp);
    }
@@ -1396,10 +1396,10 @@ c_alternates(void *v){
 
    if(l == 0){
       if(a_nag_altnames != NULL){
-         printf("alternates ");
+         fprintf(n_stdout, "alternates ");
          for(ap = a_nag_altnames; *ap != NULL; ++ap)
-            printf("%s ", *ap);
-         printf("\n");
+            fprintf(n_stdout, "%s ", *ap);
+         putc('\n', n_stdout);
       }
    }else{
       if(a_nag_altnames != NULL){
@@ -1551,7 +1551,7 @@ c_alias(void *v)
       _group_print_all(GT_ALIAS);
    else if (argv[1] == NULL) {
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
-         _group_print(gp, stdout);
+         _group_print(gp, n_stdout);
       else {
          n_err(_("No such alias: %s\n"), *argv);
          rv = 1;

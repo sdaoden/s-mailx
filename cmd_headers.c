@@ -746,7 +746,7 @@ jfwd:
       if(_screen > maxs){
 jerrfwd:
          _screen = maxs;
-         printf(_("On last screenful of messages\n"));
+         fprintf(n_stdout, _("On last screenful of messages\n"));
       }
       break;
 
@@ -765,7 +765,7 @@ jerrfwd:
       if(_screen < 0){
 jerrbwd:
          _screen = 0;
-         printf(_("On first screenful of messages\n"));
+         fprintf(n_stdout, _("On first screenful of messages\n"));
       }
       if(msgspec == -1)
          msgspec = -2;
@@ -870,7 +870,7 @@ _headers(int msgspec) /* TODO rework v15 */
             continue;
          if (UICMP(32, flag++, >=, size))
             break;
-         _print_head(0, mesg, stdout, 0);
+         _print_head(0, mesg, n_stdout, 0);
          srelax();
       }
       srelax_rele();
@@ -918,7 +918,7 @@ _headers(int msgspec) /* TODO rework v15 */
                 PTRCMP(mp, ==, message + msgspec - 1))) {
             if (UICMP(32, flag++, >=, size))
                break;
-            _print_head(flag - 1, PTR2SIZE(mp - message + 1), stdout,
+            _print_head(flag - 1, PTR2SIZE(mp - message + 1), n_stdout,
                mb.mb_threaded);
             srelax();
          }
@@ -929,7 +929,7 @@ _headers(int msgspec) /* TODO rework v15 */
    }
 
    if (!flag) {
-      printf(_("No more mail.\n"));
+      fprintf(n_stdout, _("No more mail.\n"));
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
@@ -938,7 +938,7 @@ _headers(int msgspec) /* TODO rework v15 */
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? stdout : NULL); )
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return !flag;
@@ -1004,7 +1004,7 @@ jerr:
    case '-':
    case '+':
       if (msgCount == 0) {
-         printf(_("At EOF\n"));
+         fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
       } else if (getmsglist(n_UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
          setdot(message + msgvec[0] - 1);
@@ -1032,7 +1032,7 @@ c_from(void *v)
 
    time_current_update(&time_current, FAL0);
 
-   obuf = stdout;
+   obuf = n_stdout;
    isrelax = FAL0;
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
    case 0:
@@ -1048,9 +1048,9 @@ c_from(void *v)
          if (UICMP(z, n, >, (*cp == '\0'
                   ? (size_t)screensize() : strtoul(cp, NULL, 0)) + 3) &&
                (obuf = n_pager_open()) == NULL)
-            obuf = stdout;
+            obuf = n_stdout;
       }
-      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != stdout); )
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != n_stdout); )
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
@@ -1073,7 +1073,7 @@ jleave:
    if (isrelax)
       srelax_rele();
    n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
-   if (obuf != stdout)
+   if (obuf != n_stdout)
       n_pager_close(obuf);
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
@@ -1112,7 +1112,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
             continue;
       } else if (!visible(mp))
          continue;
-      _print_head(printed++, bottom, stdout, FAL0);
+      _print_head(printed++, bottom, n_stdout, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1122,7 +1122,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? stdout : NULL); )
+   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }

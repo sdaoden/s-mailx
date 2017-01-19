@@ -280,7 +280,7 @@ page_or_print(FILE *fp, size_t lines)
    }
 
    while ((c = getc(fp)) != EOF)
-      putchar(c);
+      putc(c, n_stdout);
 jleave:
    NYD_LEAVE;
 }
@@ -756,7 +756,7 @@ n_err(char const *format, ...){
       doflush = FAL0;
       while(*format == '\n'){
          doflush = TRU1;
-         putc('\n', stderr);
+         putc('\n', n_stderr);
          ++format;
       }
 
@@ -765,8 +765,8 @@ n_err(char const *format, ...){
 
       if((len = strlen(format)) > 0){
          if(doname || a_aux_err_linelen == 0)
-            fputs(VAL_UAGENT ": ", stderr);
-         vfprintf(stderr, format, ap);
+            fputs(VAL_UAGENT ": ", n_stderr);
+         vfprintf(n_stderr, format, ap);
 
          /* C99 */{
             size_t i = len;
@@ -781,7 +781,7 @@ n_err(char const *format, ...){
       }
 
       if(doflush)
-         fflush(stderr);
+         fflush(n_stderr);
    }
    va_end(ap);
    NYD2_LEAVE;
@@ -799,7 +799,7 @@ n_verr(char const *format, va_list ap){
    doflush = FAL0;
    while(*format == '\n'){
       doflush = TRU1;
-      putc('\n', stderr);
+      putc('\n', n_stderr);
       ++format;
    }
 
@@ -822,7 +822,7 @@ n_verr(char const *format, va_list ap){
 #endif
 
    if(doname || a_aux_err_linelen == 0)
-      fputs(VAL_UAGENT ": ", stderr);
+      fputs(VAL_UAGENT ": ", n_stderr);
 
    /* C99 */{
       size_t i = len;
@@ -838,7 +838,7 @@ n_verr(char const *format, va_list ap){
 #ifdef HAVE_ERRORS
    if(!(n_psonce & n_PSO_INTERACTIVE))
 #endif
-      vfprintf(stderr, format, ap);
+      vfprintf(n_stderr, format, ap);
 #ifdef HAVE_ERRORS
    else{
       int imax, i;
@@ -905,13 +905,13 @@ jcreat:
       }
       n_string_trunc(&enp->ae_str, len + (size_t)i);
 
-      fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, stderr);
+      fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, n_stderr);
    }
 #endif /* HAVE_ERRORS */
 
 jleave:
    if(doflush)
-      fflush(stderr);
+      fflush(n_stderr);
    NYD2_LEAVE;
 }
 
@@ -921,9 +921,9 @@ n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
    NYD_X;
 
    va_start(ap, format);
-   vfprintf(stderr, format, ap);
+   vfprintf(n_stderr, format, ap);
    va_end(ap);
-   fflush(stderr);
+   fflush(n_stderr);
 }
 
 FL void
@@ -965,17 +965,17 @@ n_panic(char const *format, ...){
    NYD2_ENTER;
 
    if(a_aux_err_linelen > 0){
-      putc('\n', stderr);
+      putc('\n', n_stderr);
       a_aux_err_linelen = 0;
    }
-   fprintf(stderr, VAL_UAGENT ": Panic: ");
+   fprintf(n_stderr, VAL_UAGENT ": Panic: ");
 
    va_start(ap, format);
-   vfprintf(stderr, format, ap);
+   vfprintf(n_stderr, format, ap);
    va_end(ap);
 
-   putc('\n', stderr);
-   fflush(stderr);
+   putc('\n', n_stderr);
+   fflush(n_stderr);
    NYD2_LEAVE;
    abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
@@ -996,7 +996,8 @@ c_errors(void *v){
    if(!asccasecmp(*argv, "clear"))
       goto jclear;
 jerr:
-   fprintf(stderr, _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
+   fprintf(n_stderr,
+      _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
    v = NULL;
 jleave:
    NYD_LEAVE;
@@ -1007,13 +1008,13 @@ jlist:{
       size_t i;
 
       if(a_aux_err_head == NULL){
-         fprintf(stderr, _("The error ring is empty\n"));
+         fprintf(n_stderr, _("The error ring is empty\n"));
          goto jleave;
       }
 
       if((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
             NULL){
-         fprintf(stderr, _("tmpfile"));
+         fprintf(n_stderr, _("tmpfile"));
          v = NULL;
          goto jleave;
       }

@@ -405,7 +405,7 @@ c_certsave(void *v)
    Fclose(fp);
 
    if (val == 0)
-      printf("Certificate(s) saved\n");
+      fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
    NYD_LEAVE;
    return val;

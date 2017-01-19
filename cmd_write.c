@@ -92,13 +92,13 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
          success = TRU1;
          goto jleave;
       }
-      printf(_("No messages to %s.\n"), cmd);
+      fprintf(n_stdout, _("No messages to %s.\n"), cmd);
       goto jleave;
    }
 
    if (sender_record) {
       if ((cp = nameof(message + *msgvec - 1, 0)) == NULL) {
-         printf(_("Cannot determine message sender to %s.\n"), cmd);
+         fprintf(n_stdout, _("Cannot determine message sender to %s.\n"), cmd);
          goto jleave;
       }
 
@@ -221,7 +221,7 @@ jferr:
       success = FAL0;
 
    if (success) {
-      printf("%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
+      fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
          n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {

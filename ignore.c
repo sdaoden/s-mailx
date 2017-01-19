@@ -315,7 +315,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
          pre = "#", attr = _("currently covers no fields");
       else
          break;
-      printf(_("%sheaderpick %s %s %s\n"),
+      fprintf(n_stdout, _("%sheaderpick %s %s %s\n"),
          pre, a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
          (retain ? "retain" : "ignore"), attr);
       goto jleave;
@@ -329,7 +329,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
 
    qsort(ring, PTR2SIZE(ap - ring), sizeof *ring, &a_ignore__cmp);
 
-   i = printf("headerpick %s %s add",
+   i = fprintf(n_stdout, "headerpick %s %s add",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
       (retain ? "retain" : "ignore"));
    sw = n_scrnwidth;
@@ -340,12 +340,12 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
 
       len = strlen(*ap) + 1;
       if(UICMP(z, len, >=, sw - i)){
-         fputs(" \\\n ", stdout);
+         fputs(" \\\n ", n_stdout);
          i = 1;
       }
       i += len;
-      putc(' ', stdout);
-      fputs(*ap, stdout);
+      putc(' ', n_stdout);
+      fputs(*ap, n_stdout);
    }
 
    /* Regular expression in FIFO order */
@@ -357,18 +357,18 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       cp = n_shexp_quote_cp(irp->ir_input, FAL0);
       len = strlen(cp) + 1;
       if(UICMP(z, len, >=, sw - i)){
-         fputs(" \\\n ", stdout);
+         fputs(" \\\n ", n_stdout);
          i = 1;
       }
       i += len;
-      putc(' ', stdout);
-      fputs(cp, stdout);
+      putc(' ', n_stdout);
+      fputs(cp, n_stdout);
    }
 #endif
 
-   putchar('\n');
+   putc('\n', n_stdout);
 jleave:
-   fflush(stdout);
+   fflush(n_stdout);
    NYD2_LEAVE;
 }
 

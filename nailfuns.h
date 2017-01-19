@@ -100,8 +100,6 @@
 # define getc(c)        getc_unlocked(c)
 # undef putc
 # define putc(c, f)     putc_unlocked(c, f)
-# undef putchar
-# define putchar(c)     putc_unlocked((c), stdout)
 #endif
 
 /* There are problems with dup()ing of file-descriptors for child processes.

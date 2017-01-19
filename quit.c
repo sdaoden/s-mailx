@@ -145,9 +145,9 @@ jerror:
 
    _alter(mailname);
    if (p == 1)
-      printf(_("Held 1 message in %s\n"), displayname);
+      fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
    else
-      printf(_("Held %d messages in %s\n"), p, displayname);
+      fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
    rv = 0;
 jleave:
    if (res != NULL)
@@ -210,8 +210,8 @@ edstop(void) /* TODO oh my god */
       /*obuf = NULL;*/
    }
 
-   printf(_("%s "), n_shexp_quote_cp(displayname, FAL0));
-   fflush(stdout);
+   fprintf(n_stdout, _("%s "), n_shexp_quote_cp(displayname, FAL0));
+   fflush(n_stdout);
 
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
       int e = errno;
@@ -260,13 +260,13 @@ edstop(void) /* TODO oh my god */
 #endif
 
       if(ok_blook(posix) && !ok_blook(keep) && n_path_rm(mailname))
-         fputs(_("removed\n"), stdout);
+         fputs(_("removed\n"), n_stdout);
       else
-         fputs(_("truncated\n"), stdout);
+         fputs(_("truncated\n"), n_stdout);
    } else
       fputs((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         ? _("complete\n") : _("updated.\n"), stdout);
-   fflush(stdout);
+         ? _("complete\n") : _("updated.\n"), n_stdout);
+   fflush(n_stdout);
 
    rv = TRU1;
 jleave:
@@ -349,7 +349,7 @@ quit(bool_t hold_sigs_on)
    if (fbuf == NULL) {
       if (errno != ENOENT)
 jnewmail:
-         printf(_("Thou hast new mail.\n"));
+         fprintf(n_stdout, _("Thou hast new mail.\n"));
       rv = TRU1;
       goto jleave;
    }
@@ -365,7 +365,7 @@ jnewmail:
 
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
-      printf(_("New mail has arrived.\n"));
+      fprintf(n_stdout, _("New mail has arrived.\n"));
       rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
@@ -398,9 +398,9 @@ jnewmail:
    if (p == msgCount && !modify && !anystat) {
       rv = TRU1;
       if (p == 1)
-         printf(_("Held 1 message in %s\n"), displayname);
+         fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
       else if (p > 1)
-         printf(_("Held %d messages in %s\n"), p, displayname);
+         fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
       goto jleave;
    }
 
@@ -592,9 +592,9 @@ makembox(void) /* TODO oh my god */
       goto jleave;
    }
    if (mcount == 1)
-      printf(_("Saved 1 message in mbox\n"));
+      fprintf(n_stdout, _("Saved 1 message in mbox\n"));
    else
-      printf(_("Saved %d messages in mbox\n"), mcount);
+      fprintf(n_stdout, _("Saved %d messages in mbox\n"), mcount);
    rv = OKAY;
 jleave:
    NYD_LEAVE;

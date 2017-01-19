@@ -242,13 +242,13 @@ a_lex_c_ghost(void *v){
       FILE *fp;
 
       if((fp = Ftmp(NULL, "ghost", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-         fp = stdout;
+         fp = n_stdout;
 
       for(i = 0, gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          fprintf(fp, "wysh ghost %s %s\n",
             gp->lg_name, n_shexp_quote_cp(gp->lg_cmd.s, TRU1));
 
-      if(fp != stdout){
+      if(fp != n_stdout){
          page_or_print(fp, i);
          Fclose(fp);
       }
@@ -267,7 +267,7 @@ a_lex_c_ghost(void *v){
    if(argv[1] == NULL){
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(argv[0], gp->lg_name)){
-            printf("wysh ghost %s %s\n",
+            fprintf(n_stdout, "wysh ghost %s %s\n",
                gp->lg_name, n_shexp_quote_cp(gp->lg_cmd.s, TRU1));
             goto jleave;
          }
@@ -423,7 +423,7 @@ a_lex_c_list(void *v){
    }
 
    if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-      fp = stdout;
+      fp = n_stdout;
 
    fprintf(fp, _("Commands are:\n"));
    l = 1;
@@ -451,7 +451,7 @@ a_lex_c_list(void *v){
       }
    }
 
-   if(fp != stdout){
+   if(fp != n_stdout){
       page_or_print(fp, l);
       Fclose(fp);
    }
@@ -486,7 +486,7 @@ a_lex_c_help(void *v){
       /* Ghosts take precedence */
       for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(arg, gp->lg_name)){
-            printf("%s -> ", arg);
+            fprintf(n_stdout, "%s -> ", arg);
             arg = gp->lg_cmd.s;
             break;
          }
@@ -495,18 +495,18 @@ a_lex_c_help(void *v){
 jredo:
       for(; lcp < lcpmax; ++lcp){
          if(is_prefix(arg, lcp->lc_name)){
-            fputs(arg, stdout);
+            fputs(arg, n_stdout);
             if(strcmp(arg, lcp->lc_name))
-               printf(" (%s)", lcp->lc_name);
+               fprintf(n_stdout, " (%s)", lcp->lc_name);
          }else
             continue;
 
 #ifdef HAVE_DOCSTRINGS
-         printf(": %s", V_(lcp->lc_doc));
+         fprintf(n_stdout, ": %s", V_(lcp->lc_doc));
 #endif
          if(n_poption & n_PO_D_V)
-            printf("\n  : %s", a_lex_cmdinfo(lcp));
-         putchar('\n');
+            fprintf(n_stdout, "\n  : %s", a_lex_cmdinfo(lcp));
+         putc('\n', n_stdout);
          rv = 0;
          goto jleave;
       }
@@ -518,7 +518,7 @@ jredo:
       }
 
       if(gp != NULL){
-         printf("%s\n", n_shexp_quote_cp(arg, TRU1));
+         fprintf(n_stdout, "%s\n", n_shexp_quote_cp(arg, TRU1));
          rv = 0;
       }else{
          n_err(_("Unknown command: `%s'\n"), arg);
@@ -526,10 +526,10 @@ jredo:
       }
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
-      fputs(n_progname, stdout);
+      fputs(n_progname, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or ., separated by spaces:\n"), stdout);
+         "e.g., 1-5, :n or ., separated by spaces:\n"), n_stdout);
       fputs(_(
 "\n"
 "type <msglist>         type (alias: `print') messages (honour `retain' etc.)\n"
@@ -538,7 +538,7 @@ jredo:
 "from <msglist>         (search and) print header summary for the given list\n"
 "headers                header summary for messages surrounding \"dot\"\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
-         stdout);
+         n_stdout);
 
       fputs(_(
 "\n"
@@ -548,7 +548,7 @@ jredo:
 "Reply <msglist>        reply to message senders only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
 "Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
-         stdout);
+         n_stdout);
 
       fputs(_(
 "\n"
@@ -559,9 +559,9 @@ jredo:
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
 "list [<anything>]      all available commands [in search order]\n"),
-         stdout);
+         n_stdout);
 
-      rv = (ferror(stdout) != 0);
+      rv = (ferror(n_stdout) != 0);
    }
 jleave:
    NYD_LEAVE;
@@ -609,7 +609,7 @@ a_lex_c_version(void *v){
    NYD_ENTER;
    n_UNUSED(v);
 
-   printf(_("%s version %s\nFeatures included (+) or not (-)\n"),
+   fprintf(n_stdout, _("%s version %s\nFeatures included (+) or not (-)\n"),
       n_uagent, ok_vlook(version));
 
    /* *features* starts with dummy byte to avoid + -> *folder* expansions */
@@ -627,16 +627,16 @@ a_lex_c_version(void *v){
 
    for(++longest, i2 = 0; i-- > 0;){
       cp = *(arr++);
-      printf("%-*s ", longest, cp);
+      fprintf(n_stdout, "%-*s ", longest, cp);
       i2 += longest;
       if(UICMP(z, ++i2 + longest, >=, n_scrnwidth) || i == 0){
          i2 = 0;
-         putchar('\n');
+         putc('\n', n_stdout);
       }
    }
 
-   if((rv = ferror(stdout) != 0))
-      clearerr(stdout);
+   if((rv = ferror(n_stdout) != 0))
+      clearerr(n_stdout);
    NYD_LEAVE;
    return rv;
 }
@@ -884,7 +884,7 @@ jexec:
       }
       if(n_msgvec[0] == 0){
          if(!(n_pstate & n_PS_HOOK_MASK))
-            printf(_("No applicable messages\n"));
+            fprintf(n_stdout, _("No applicable messages\n"));
          break;
       }
       rv = (*cmd->lc_func)(n_msgvec);
@@ -1071,8 +1071,8 @@ a_lex_unstack(bool_t eval_error){
    }
 
    if(lip->li_flags & a_LEX_SLICE){ /* TODO Temporary hack */
-      stdin = lip->li_slice_stdin;
-      stdout = lip->li_slice_stdout;
+      n_stdin = lip->li_slice_stdin;
+      n_stdout = lip->li_slice_stdout;
       n_psonce = lip->li_slice_psonce;
       goto jthe_slice_hack;
    }
@@ -1473,7 +1473,7 @@ jreadline:
 /* FIXME did unstack() when n_PS_SOURCING, only break with n_PS_LOADING */
          if (!(n_pstate & n_PS_ROBOT) &&
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof)) {
-            printf(_("*ignoreeof* set, use `quit' to quit.\n"));
+            fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
             n_msleep(500, FAL0);
             continue;
          }
@@ -1601,18 +1601,18 @@ FL int
 
    /* Ensure stdout is flushed first anyway */
    if(!dotty && (lif & n_LEXINPUT_PROMPT_NONE))
-      fflush(stdout);
+      fflush(n_stdout);
 
-   ifile = (a_lex_input != NULL) ? a_lex_input->li_file : stdin;
+   ifile = (a_lex_input != NULL) ? a_lex_input->li_file : n_stdin;
    if(ifile == NULL){
       assert((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO));
-      ifile = stdin;
+      ifile = n_stdin;
    }
 
    for(nold = n = 0;;){
       if(dotty){
-         assert(ifile == stdin);
+         assert(ifile == n_stdin);
          if(string != NULL && (n = (int)strlen(string)) > 0){
             if(*linesize > 0)
                *linesize += n +1;
@@ -1630,8 +1630,8 @@ FL int
          if(!(lif & n_LEXINPUT_PROMPT_NONE)){
             n_tty_create_prompt(&xprompt, prompt, lif);
             if(xprompt.s_len > 0){
-               fwrite(xprompt.s_dat, 1, xprompt.s_len, stdout);
-               fflush(stdout);
+               fwrite(xprompt.s_dat, 1, xprompt.s_len, n_stdout);
+               fflush(n_stdout);
             }
          }
 
@@ -2025,13 +2025,13 @@ n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    lip->li_flags = a_LEX_FREE | a_LEX_SLICE;
    lip->li_on_finalize = on_finalize;
    lip->li_finalize_arg = finalize_arg;
-   lip->li_slice_stdin = stdin;
-   lip->li_slice_stdout = stdout;
+   lip->li_slice_stdin = n_stdin;
+   lip->li_slice_stdout = n_stdout;
    lip->li_slice_psonce = n_psonce;
    memcpy(lip->li_name, cmd, i);
 
-   stdin = new_stdin;
-   stdout = new_stdout;
+   n_stdin = new_stdin;
+   n_stdout = new_stdout;
    n_psonce = new_psonce;
    n_pstate |= n_PS_ROBOT;
    a_lex_input = lip;

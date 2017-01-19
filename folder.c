@@ -434,13 +434,13 @@ newmailinfo(int omsgCount)
    if (msgCount > omsgCount) {
       for (i = omsgCount; i < msgCount; ++i)
          message[i].m_flag |= MNEWEST;
-      printf(_("New mail has arrived.\n"));
+      fprintf(n_stdout, _("New mail has arrived.\n"));
       if ((i = msgCount - omsgCount) == 1)
-         printf(_("Loaded 1 new message.\n"));
+         fprintf(n_stdout, _("Loaded 1 new message.\n"));
       else
-         printf(_("Loaded %d new messages.\n"), i);
+         fprintf(n_stdout, _("Loaded %d new messages.\n"), i);
    } else
-      printf(_("Loaded %d messages.\n"), msgCount);
+      fprintf(n_stdout, _("Loaded %d messages.\n"), msgCount);
 
    temporary_folder_hook_check(TRU1);
 
@@ -471,8 +471,8 @@ print_header_summary(char const *Larg)
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
       if ((n_poption & (n_PO_VERB | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
-         freopen("/dev/null", "w", stdout);
-         freopen("/dev/null", "w", stderr);
+         n_stdout = freopen("/dev/null", "w", stdout);
+         n_stderr = freopen("/dev/null", "w", stderr);
       }
       assert(n_msgvec != NULL);
       i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
@@ -542,27 +542,27 @@ newfileinfo(void)
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   printf(_("%s: "), n_shexp_quote_cp(
+   fprintf(n_stdout, _("%s: "), n_shexp_quote_cp(
       (_update_mailname(NULL) ? displayname : mailname), FAL0));
    if (msgCount == 1)
-      printf(_("1 message"));
+      fprintf(n_stdout, _("1 message"));
    else
-      printf(_("%d messages"), msgCount);
+      fprintf(n_stdout, _("%d messages"), msgCount);
    if (n > 0)
-      printf(_(" %d new"), n);
+      fprintf(n_stdout, _(" %d new"), n);
    if (u-n > 0)
-      printf(_(" %d unread"), u);
+      fprintf(n_stdout, _(" %d unread"), u);
    if (d > 0)
-      printf(_(" %d deleted"), d);
+      fprintf(n_stdout, _(" %d deleted"), d);
    if (s > 0)
-      printf(_(" %d saved"), s);
+      fprintf(n_stdout, _(" %d saved"), s);
    if (moved > 0)
-      printf(_(" %d moved"), moved);
+      fprintf(n_stdout, _(" %d moved"), moved);
    if (hidden > 0)
-      printf(_(" %d hidden"), hidden);
+      fprintf(n_stdout, _(" %d hidden"), hidden);
    else if (mb.mb_perm == 0)
-      printf(_(" [Read only]"));
-   printf("\n");
+      fprintf(n_stdout, _(" [Read only]"));
+   putc('\n', n_stdout);
 jleave:
    NYD_LEAVE;
    return mdot;

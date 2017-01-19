@@ -159,14 +159,14 @@ c_sigstate(void *vp){ /* TODO remove again */
       }
    }
 
-   printf("alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
+   fprintf(n_stdout, "alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
       _alls_depth, _hold_sigdepth);
    for(hdlp = hdla; hdlp < &hdla[n_NELEM(hdla)]; ++hdlp){
       sighandler_type shp;
 
       shp = safe_signal(hdlp->val, SIG_IGN);
       safe_signal(hdlp->val, shp);
-      printf("  %s: %p (%s)\n", hdlp->name, shp,
+      fprintf(n_stdout, "  %s: %p (%s)\n", hdlp->name, shp,
          (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
             : (shp == SIG_IGN ? "IGN" : "ptf?"))));
    }

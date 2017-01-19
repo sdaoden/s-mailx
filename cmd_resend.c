@@ -336,8 +336,9 @@ j_lt_redo:
 
    if (*++msgvec != 0) {
       /* TODO message (error) ring.., less sleep */
-      printf(_("Waiting a second before proceeding to the next message..\n"));
-      fflush(stdout);
+      fprintf(n_stdout,
+         _("Waiting a second before proceeding to the next message..\n"));
+      fflush(n_stdout);
       n_msleep(1000, FAL0);
       goto jnext_msg;
    }
@@ -443,7 +444,7 @@ _fwd(char *str, int recipient_record)
    NYD_ENTER;
 
    if ((recipient = laststring(str, &f, TRU1)) == NULL) {
-      puts(_("No recipient specified."));
+      fputs(_("No recipient specified.\n"), n_stdout);
       goto jleave;
    }
 
@@ -457,7 +458,7 @@ _fwd(char *str, int recipient_record)
             rv = 0;
             goto jleave;
          }
-         printf(_("No messages to forward.\n"));
+         fprintf(n_stdout, _("No messages to forward.\n"));
          goto jleave;
       }
       msgvec[1] = 0;
@@ -469,11 +470,11 @@ _fwd(char *str, int recipient_record)
          rv = 0;
          goto jleave;
       }
-      printf(_("No applicable messages.\n"));
+      fprintf(n_stdout, _("No applicable messages.\n"));
       goto jleave;
    }
    if (msgvec[1] != 0) {
-      printf(_("Cannot forward multiple messages at once\n"));
+      fprintf(n_stdout, _("Cannot forward multiple messages at once\n"));
       goto jleave;
    }
 
@@ -538,7 +539,7 @@ _resend1(void *v, bool_t add_resent)
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    name = laststring(str, &f, TRU1);
    if (name == NULL) {
-      puts(_("No recipient specified."));
+      fputs(_("No recipient specified.\n"), n_stdout);
       goto jleave;
    }
 
@@ -549,7 +550,7 @@ _resend1(void *v, bool_t add_resent)
             f = FAL0;
             goto jleave;
          }
-         puts(_("No applicable messages."));
+         fputs(_("No applicable messages.\n"), n_stdout);
          goto jleave;
       }
       msgvec[1] = 0;
@@ -561,7 +562,7 @@ _resend1(void *v, bool_t add_resent)
          f = FAL0;
          goto jleave;
       }
-      printf("No applicable messages.\n");
+      fprintf(n_stdout, "No applicable messages.\n");
       goto jleave;
    }
 

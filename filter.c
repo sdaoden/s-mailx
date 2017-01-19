@@ -1563,11 +1563,11 @@ htmlflt_process_main(void)
    safe_signal(SIGPIPE, &__hf_onpipe);
 
    htmlflt_init(&hf);
-   htmlflt_reset(&hf, stdout);
+   htmlflt_reset(&hf, n_stdout);
 
    for (;;) {
-      if ((i = fread(buf, sizeof(buf[0]), n_NELEM(buf), stdin)) == 0) {
-         rv = !feof(stdin);
+      if ((i = fread(buf, sizeof(buf[0]), n_NELEM(buf), n_stdin)) == 0) {
+         rv = !feof(n_stdin);
          break;
       }
 

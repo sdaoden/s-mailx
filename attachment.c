@@ -185,10 +185,10 @@ static void
 a_attachment_yay(struct attachment const *ap){
    NYD2_ENTER;
    if(ap->a_msgno > 0)
-      printf(_("Added message/rfc822 attachment for message #%u\n"),
+      fprintf(n_stdout, _("Added message/rfc822 attachment for message #%u\n"),
          ap->a_msgno);
    else
-      printf(_("Added attachment %s (%s)\n"),
+      fprintf(n_stdout, _("Added attachment %s (%s)\n"),
          n_shexp_quote_cp(ap->a_name, FAL0),
          n_shexp_quote_cp(ap->a_path_user, FAL0));
    NYD2_LEAVE;
@@ -459,7 +459,8 @@ n_attachment_list_edit(struct attachment *aplist, enum n_lexinput_flags lif){
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
          ) == n_PSO_INTERACTIVE){
       n_psonce |= n_PSO_ATTACH_QUOTE_NOTED;
-      printf(_("# Only supports sh(1)ell-style quoting for file names\n"));
+      fprintf(n_stdout,
+         _("# Only supports sh(1)ell-style quoting for file names\n"));
    }
 
    /* Modify already present ones?  Append some more? */
