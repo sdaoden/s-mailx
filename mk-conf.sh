@@ -2049,7 +2049,7 @@ if feat_yes SSL; then # {{{
    elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
       '#define HAVE_SSL
       #define HAVE_XSSL
-      #define HAVE_XSSL_OPENSSL 0x10000 /* pseudo */' << \!
+      #define HAVE_XSSL_OPENSSL 0x10000' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2253,7 +2253,7 @@ fi # }}} feat_yes SSL
 if [ "${have_xssl}" = yes ]; then
    OPT_SMIME=1
 else
-   OPT_SMIME=1
+   OPT_SMIME=0
 fi
 
 if feat_yes SMTP; then
