@@ -961,21 +961,19 @@ jurlp_err:
 
    /* Servername and port -- and possible path suffix */
    if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, IPv6 support */
-      char *eptr;
-      long l;
-
       urlp->url_port = x = savestr(x = &cp[1]);
       if ((x = strchr(x, '/')) != NULL) {
          *x = '\0';
          while(*++x == '/')
             ;
       }
-      l = strtol(urlp->url_port, &eptr, 10);
-      if (*eptr != '\0' || l <= 0 || UICMP(32, l, >=, 0xFFFFu)) {
+
+      if((n_idec_ui16_cp(&urlp->url_portno, urlp->url_port, 10, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED){
          n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
          goto jleave;
       }
-      urlp->url_portno = (ui16_t)l;
    } else {
       if ((x = strchr(data, '/')) != NULL) {
          data = savestrbuf(data, PTR2SIZE(x - data));

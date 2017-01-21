@@ -117,7 +117,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
    } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
          ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      size_t nlines = 0;
+      uiz_t nlines, lib;
+
+      nlines = 0;
 
       if (!dopage) {
          for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
@@ -130,8 +132,9 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
 
       /* >= not <: we return to the prompt */
-      if(dopage || UICMP(z, nlines, >=,
-            (*cp != '\0' ? strtoul(cp, NULL, 0) : (size_t)n_realscreenheight))){
+      if(dopage || nlines >= (*cp != '\0'
+               ? (n_idec_uiz_cp(&lib, cp, 0, NULL), lib)
+               : (uiz_t)n_realscreenheight)){
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
@@ -271,10 +274,14 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 #endif
    n_string_creat_auto(&s);
    /* C99 */{
-      long l;
+      siz_t l;
 
-      if((l = strtol(ok_vlook(toplines), NULL, 0)) <= 0){
-         tmax = (size_t)screensize();
+      if((n_idec_siz_cp(&l, ok_vlook(toplines), 0, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED)
+         l = 0;
+      if(l <= 0){
+         tmax = n_screensize();
          if(l < 0){
             l = n_ABS(l);
             tmax >>= l;

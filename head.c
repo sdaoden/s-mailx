@@ -2109,10 +2109,9 @@ fakedate(time_t t)
 FL time_t
 unixtime(char const *fromline)
 {
-   char const *fp;
-   char *xp;
+   char const *fp, *xp;
    time_t t;
-   int i, year, month, day, hour, minute, second, tzdiff;
+   si32_t i, year, month, day, hour, minute, second, tzdiff;
    struct tm *tmptr;
    NYD2_ENTER;
 
@@ -2132,19 +2131,19 @@ unixtime(char const *fromline)
    month = i + 1;
    if (fp[7] != ' ')
       goto jinvalid;
-   day = strtol(fp + 8, &xp, 10);
+   n_idec_si32_cp(&day, &fp[8], 10, &xp);
    if (*xp != ' ' || xp != fp + 10)
       goto jinvalid;
-   hour = strtol(fp + 11, &xp, 10);
+   n_idec_si32_cp(&hour, &fp[11], 10, &xp);
    if (*xp != ':' || xp != fp + 13)
       goto jinvalid;
-   minute = strtol(fp + 14, &xp, 10);
+   n_idec_si32_cp(&minute, &fp[14], 10, &xp);
    if (*xp != ':' || xp != fp + 16)
       goto jinvalid;
-   second = strtol(fp + 17, &xp, 10);
+   n_idec_si32_cp(&second, &fp[17], 10, &xp);
    if (*xp != ' ' || xp != fp + 19)
       goto jinvalid;
-   year = strtol(fp + 20, &xp, 10);
+   n_idec_si32_cp(&year, &fp[20], 10, &xp);
    if (xp != fp + 24)
       goto jinvalid;
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
@@ -2164,13 +2163,14 @@ jinvalid:
 #endif /* HAVE_IMAP_SEARCH */
 
 FL time_t
-rfctime(char const *date)
+rfctime(char const *date) /* TODO n_idec_ return tests */
 {
-   char const *cp = date;
-   char *x;
+   char const *cp, *x;
    time_t t;
-   int i, year, month, day, hour, minute, second;
+   si32_t i, year, month, day, hour, minute, second;
    NYD2_ENTER;
+
+   cp = date;
 
    if ((cp = nexttoken(cp)) == NULL)
       goto jinvalid;
@@ -2179,7 +2179,7 @@ rfctime(char const *date)
       if ((cp = nexttoken(&cp[4])) == NULL)
          goto jinvalid;
    }
-   day = strtol(cp, &x, 10); /* XXX strtol */
+   n_idec_si32_cp(&day, cp, 10, &x);
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
    for (i = 0;;) {
@@ -2198,7 +2198,7 @@ rfctime(char const *date)
     *  ending up with a value between 2000 and 2049.  If a two digit year
     *  is encountered with a value between 50 and 99, or any three digit
     *  year is encountered, the year is interpreted by adding 1900 */
-   year = strtol(cp, &x, 10); /* XXX strtol */
+   n_idec_si32_cp(&year, cp, 10, &x);
    i = (int)PTR2SIZE(x - cp);
    if (i == 2 && year >= 0 && year <= 49)
       year += 2000;
@@ -2206,14 +2206,14 @@ rfctime(char const *date)
       year += 1900;
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
-   hour = strtol(cp, &x, 10); /* XXX strtol */
+   n_idec_si32_cp(&hour, cp, 10, &x);
    if (*x != ':')
       goto jinvalid;
    cp = &x[1];
-   minute = strtol(cp, &x, 10);
+   n_idec_si32_cp(&minute, cp, 10, &x);
    if (*x == ':') {
-      cp = x + 1;
-      second = strtol(cp, &x, 10);
+      cp = &x[1];
+      n_idec_si32_cp(&second, cp, 10, &x);
    } else
       second = 0;
 
@@ -2233,17 +2233,20 @@ rfctime(char const *date)
       }
       if (digitchar(cp[0]) && digitchar(cp[1]) && digitchar(cp[2]) &&
             digitchar(cp[3])) {
-         long tadj;
+         si64_t tadj;
+
          buf[2] = '\0';
          buf[0] = cp[0];
          buf[1] = cp[1];
-         tadj = strtol(buf, NULL, 10) * 3600;/*XXX strtrol*/
+         n_idec_si32_cp(&i, buf, 10, NULL);
+         tadj = (si64_t)i * 3600; /* XXX */
          buf[0] = cp[2];
          buf[1] = cp[3];
-         tadj += strtol(buf, NULL, 10) * 60; /* XXX strtol*/
+         n_idec_si32_cp(&i, buf, 10, NULL);
+         tadj += (si64_t)i * 60; /* XXX */
          if (sign < 0)
             tadj = -tadj;
-         t += tadj;
+         t += (time_t)tadj;
       }
       /* TODO WE DO NOT YET PARSE (OBSOLETE) ZONE NAMES
        * TODO once again, Christos Zoulas and NetBSD Mail have done

@@ -226,33 +226,34 @@ jesyn:
          rv = (asccasestr(lhv, rhv) == NULL) ^ (c == '=');
       else {
          /* Try to interpret as integers, prefer those, then */
-         char *eptr;
-         sl_i sli2, sli1;
+         si64_t lhvi, rhvi;
 
-         sli2 = strtol(rhv, &eptr, 0);
-         if (*rhv != '\0' && *eptr == '\0') {
-            sli1 = strtol((cp = lhv), &eptr, 0);
-            if (*cp != '\0' && *eptr == '\0') {
-               sli1 -= sli2;
-               switch (c) {
-               default:
-               case '=': rv = (sli1 == 0); break;
-               case '!': rv = (sli1 != 0); break;
-               case '<': rv = (op[1] == '\0') ? sli1 < 0 : sli1 <= 0; break;
-               case '>': rv = (op[1] == '\0') ? sli1 > 0 : sli1 >= 0; break;
-               }
-               break;
+         if((n_idec_si64_cp(&lhvi, lhv, 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) == n_IDEC_STATE_CONSUMED && (n_idec_si64_cp(&rhvi, rhv, 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) == n_IDEC_STATE_CONSUMED){
+            lhvi -= rhvi;
+            switch (c) {
+            default:
+            case '=': rv = (lhvi == 0); break;
+            case '!': rv = (lhvi != 0); break;
+            case '<': rv = (op[1] == '\0') ? lhvi < 0 : lhvi <= 0; break;
+            case '>': rv = (op[1] == '\0') ? lhvi > 0 : lhvi >= 0; break;
             }
-         }
+            break;
+         }else{
+            /* It is not an integer, perform string comparison */
+            si32_t scmp;
 
-         /* It is not an integer, perform string comparison */
-         sli1 = asccasecmp(lhv, rhv);
-         switch (c) {
-         default:
-         case '=': rv = (sli1 == 0); break;
-         case '!': rv = (sli1 != 0); break;
-         case '<': rv = (op[1] == '\0') ? sli1 < 0 : sli1 <= 0; break;
-         case '>': rv = (op[1] == '\0') ? sli1 > 0 : sli1 >= 0; break;
+            scmp = asccasecmp(lhv, rhv);
+            switch (c) {
+            default:
+            case '=': rv = (scmp == 0); break;
+            case '!': rv = (scmp != 0); break;
+            case '<': rv = (op[1] == '\0') ? scmp < 0 : scmp <= 0; break;
+            case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
+            }
          }
       }
       break;

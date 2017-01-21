@@ -185,7 +185,6 @@
 #define n_ERROR "ERROR"          /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE        '~'      /* Default escape for sending */
-#define HIST_SIZE       242      /* tty.c: history list default size */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
 #define MAXARGC         1024     /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
@@ -1611,7 +1610,7 @@ ok_b_autothread,
    ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
-   ok_v_history_size,                  /* {notempty=1,num=1} */
+   ok_v_history_size,                  /* {notempty=1,posnum=1} */
    ok_b_hold,
    ok_v_hostname,
 
@@ -1682,7 +1681,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_piperaw,
    ok_v_pop3_auth,
    ok_b_pop3_bulk_load,
-   ok_v_pop3_keepalive,
+   ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
    ok_b_posix,                         /* {vip=1} */
@@ -2460,12 +2459,12 @@ struct cw {
 VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
-
-VL int n_mb_cur_max;             /* Value of MB_CUR_MAX */
-VL int n_realscreenheight;       /* The real screen height */
-VL int n_scrnwidth;              /* Screen width, or best guess */
-VL int n_scrnheight;             /* Screen height/guess (4 header) */
 VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
+
+VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
+VL ui32_t n_realscreenheight;    /* The real screen height */
+VL ui32_t n_scrnwidth;           /* Screen width, or best guess */
+VL ui32_t n_scrnheight;          /* Screen height/guess (4 header) */
 
 VL char const *n_progname;       /* Our name */
 

@@ -735,15 +735,16 @@ jiter_colour:
          }
          /* Maybe 256 color spec */
          if(digitchar(x[0])){
-            sl_i xv;
+            ui8_t xv;
 
             if(ct == a_COLOUR_T_8){
                *store = n_UNCONST(_("invalid colour for 8-colour mode"));
                goto jleave;
             }
 
-            xv = strtol(x, &cp, 10);
-            if(xv < 0 || xv > 255 || *cp != '\0' || PTRCMP(&x[3], <, cp)){
+            if((n_idec_ui8_cp(&xv, x, 10, NULL
+                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                  ) != n_IDEC_STATE_CONSUMED){
                *store = n_UNCONST(_("invalid 256-colour specification"));
                goto jleave;
             }

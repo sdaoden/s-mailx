@@ -7377,6 +7377,8 @@ again reserves room for two spaces in addition.
 .It Va history-file
 \*(OP If a line editor is available then this can be set to
 name the (expandable) path of the location of a permanent history file.
+Also see
+.Va history-size .
 .
 .Mx
 .It Va history-gabby
@@ -7394,18 +7396,14 @@ Also see
 .
 .Mx
 .It Va history-size
-\*(OP If a line editor is available this value restricts the
-amount of history entries that are saved into a set and valid
-.Va history-file .
-A value of less than 0 disables this feature;
-note that loading and incorporation of
+\*(OP Setting this variable imposes a limit on the number of concurrent
+history entries.
+If set to the value 0 then no further history entries will be added, and
+loading and incorporation of the
 .Va history-file
 upon program startup can also be suppressed by doing this.
-If unset or 0, a default value will be used.
-Dependent on the available line editor this will also define the
-number of history entries in memory;
-it is also editor-specific whether runtime updates of this value will
-be honoured.
+Runtime changes will not be reflected, but will affect the number of
+entries saved to permanent storage.
 .
 .Mx
 .It Va hold

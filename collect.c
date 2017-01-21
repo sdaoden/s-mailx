@@ -967,16 +967,17 @@ jins:
       }
 
       if(is_asccaseprefix(cmd[1], "remove-at")){
-         char *eptr;
-         long l;
+         uiz_t i;
 
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
-         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+         if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED || i == 0)
             fputs("505\n", n_stdout);
          else{
-            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+            for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
                ;
             if(ap != NULL){
                hp->h_attach = n_attachment_remove(hp->h_attach, ap);
@@ -1047,16 +1048,17 @@ jatt_att:
       }
 
       if(is_asccaseprefix(cmd[1], "attribute-at")){
-         char *eptr;
-         long l;
+         uiz_t i;
 
          if(cmd[2] == NULL || cmd[3] != NULL)
             goto jecmd;
 
-         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+         if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED || i == 0)
             fputs("505\n", n_stdout);
          else{
-            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+            for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
                ;
             if(ap != NULL)
                goto jatt_att;
@@ -1137,16 +1139,17 @@ jatt_attset:
       }
 
       if(is_asccaseprefix(cmd[1], "attribute-set-at")){
-         char *eptr;
-         long l;
+         uiz_t i;
 
          if(cmd[2] == NULL || cmd[3] == NULL)
             goto jecmd;
 
-         if((l = strtol(cmd[2], &eptr, 0)) <= 0 || *eptr != '\0')
+         if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED || i == 0)
             fputs("505\n", n_stdout);
          else{
-            for(ap = hp->h_attach; ap != NULL && --l != 0; ap = ap->a_flink)
+            for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
                ;
             if(ap != NULL)
                goto jatt_attset;

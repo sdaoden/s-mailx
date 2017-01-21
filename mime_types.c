@@ -1143,55 +1143,51 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
    if ((ct = mpp->m_ct_type_plain) == NULL) /* TODO may not */
       ct = n_empty;
 
-   if ((mce.cp = ok_vlook(mime_counter_evidence)) != NULL) {
-      char *eptr;
-      ul_i ul;
-
-      ul = strtoul(mce.cp, &eptr, 0); /* XXX strtol */
-      if (*mce.cp == '\0')
+   if((mce.cp = ok_vlook(mime_counter_evidence)) != NULL && *mce.cp != '\0'){
+      if((n_idec_ui32_cp(&mce.f, mce.cp, 0, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED){
+         n_err(_("Invalid *mime-counter-evidence* value content\n"));
          is_os = FAL0;
-      else if (*eptr != '\0' || (ui64_t)ul >= UI32_MAX) {
-         n_err(_("Can't parse *mime-counter-evidence* value: %s\n"), mce.cp);
-         is_os = FAL0;
-      } else {
-         mce.f = (ui32_t)ul | MIMECE_SET;
+      }else{
+         mce.f |= MIMECE_SET;
          is_os = !asccasecmp(ct, "application/octet-stream");
 
-         if (mpp->m_filename != NULL && (is_os || (mce.f & MIMECE_ALL_OVWR))) {
-            if (_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL) {
-               if (is_os)
+         if(mpp->m_filename != NULL && (is_os || (mce.f & MIMECE_ALL_OVWR))){
+            if(_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL){
+               if(is_os)
                   goto jos_content_check;
-            } else if (is_os || asccasecmp(ct, mtl.mtl_result)) {
-               if (mce.f & MIMECE_ALL_OVWR)
+            }else if(is_os || asccasecmp(ct, mtl.mtl_result)){
+               if(mce.f & MIMECE_ALL_OVWR)
                   mpp->m_ct_type_plain = ct = mtl.mtl_result;
-               if (mce.f & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
+               if(mce.f & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
                   mpp->m_ct_type_usr_ovwr = ct = mtl.mtl_result;
             }
          }
       }
-   } else
+   }else
       is_os = FAL0;
 
-   if (strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
+   if(strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
       mc = MIME_TEXT;
-   else if (is_asccaseprefix("text/", ct)) {
+   else if(is_asccaseprefix("text/", ct)){
       ct += sizeof("text/") -1;
-      if (!asccasecmp(ct, "plain"))
+      if(!asccasecmp(ct, "plain"))
          mc = MIME_TEXT_PLAIN;
-      else if (!asccasecmp(ct, "html"))
+      else if(!asccasecmp(ct, "html"))
          mc = MIME_TEXT_HTML;
       else
          mc = MIME_TEXT;
-   } else if (is_asccaseprefix("message/", ct)) {
+   }else if(is_asccaseprefix("message/", ct)){
       ct += sizeof("message/") -1;
-      if (!asccasecmp(ct, "rfc822"))
+      if(!asccasecmp(ct, "rfc822"))
          mc = MIME_822;
       else
          mc = MIME_MESSAGE;
-   } else if (is_asccaseprefix("multipart/", ct)) {
-      struct multi_types {
-         char              mt_name[12];
-         enum mimecontent  mt_mc;
+   }else if(is_asccaseprefix("multipart/", ct)){
+      struct multi_types{
+         char mt_name[12];
+         enum mimecontent mt_mc;
       } const mta[] = {
          {"alternative\0", MIME_ALTERNATIVE},
          {"related", MIME_RELATED},
@@ -1200,19 +1196,19 @@ mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
          {"encrypted", MIME_ENCRYPTED}
       }, *mtap;
 
-      for (ct += sizeof("multipart/") -1, mtap = mta;;)
-         if (!asccasecmp(ct, mtap->mt_name)) {
+      for(ct += sizeof("multipart/") -1, mtap = mta;;)
+         if(!asccasecmp(ct, mtap->mt_name)){
             mc = mtap->mt_mc;
             break;
-         } else if (++mtap == mta + n_NELEM(mta)) {
+         }else if(++mtap == mta + n_NELEM(mta)){
             mc = MIME_MULTI;
             break;
          }
-   } else if (is_asccaseprefix("application/", ct)) {
-      if (is_os)
+   }else if(is_asccaseprefix("application/", ct)){
+      if(is_os)
          goto jos_content_check;
       ct += sizeof("application/") -1;
-      if (!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
+      if(!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
          mc = MIME_PKCS7;
    }
 jleave:
@@ -1220,7 +1216,7 @@ jleave:
    return mc;
 
 jos_content_check:
-   if ((mce.f & MIMECE_BIN_PARSE) && mpp->m_mime_enc != MIMEE_BIN &&
+   if((mce.f & MIMECE_BIN_PARSE) && mpp->m_mime_enc != MIMEE_BIN &&
          mpp->m_charset != NULL && asccasecmp(mpp->m_charset, "binary"))
       mc = _mt_classify_os_part(mce.f, mpp);
    goto jleave;

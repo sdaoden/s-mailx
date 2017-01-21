@@ -68,7 +68,7 @@ static char             *_pop3_buf;
 static size_t           _pop3_bufsize;
 static sigjmp_buf       _pop3_jmp;
 static sighandler_type  _pop3_savealrm;
-static int              _pop3_keepalive;
+static si32_t           _pop3_keepalive;
 static int volatile     _pop3_lock;
 
 /* Perform entire login handshake */
@@ -429,7 +429,7 @@ jleave:
 static enum okay
 pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 {
-   char *cp;
+   char const *cp;
    enum okay rv;
    NYD_ENTER;
 
@@ -441,20 +441,31 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
    while (*cp != '\0' && spacechar(*cp))
       ++cp;
 
+   rv = STOP;
    if (*cp != '\0') {
-      *cnt = (int)strtol(cp, NULL, 10);
-      while (*cp != '\0' && !spacechar(*cp))
+      size_t i;
+
+      if(n_idec_uiz_cp(&i, cp, 10, &cp) & n_IDEC_STATE_EMASK)
+         goto jerr;
+      if(i > INT_MAX)
+         goto jerr;
+      *cnt = (int)i;
+
+      while(*cp != '\0' && !spacechar(*cp))
          ++cp;
-      while (*cp != '\0' && spacechar(*cp))
+      while(*cp != '\0' && spacechar(*cp))
          ++cp;
-      if (*cp != '\0')
-         *size = (int)strtol(cp, NULL, 10);
-      else
-         rv = STOP;
-   } else
-      rv = STOP;
+
+      if(*cp == '\0')
+         goto jerr;
+      if(n_idec_uiz_cp(&i, cp, 10, NULL) & n_IDEC_STATE_EMASK)
+         goto jerr;
+      *size = (off_t)i;
+      rv = OKAY;
+   }
 
    if (rv == STOP)
+jerr:
       n_err(_("Invalid POP3 STAT response: %s\n"), _pop3_buf);
 jleave:
    NYD_LEAVE;
@@ -481,7 +492,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    while (*cp != '\0' && spacechar(*cp))
       ++cp;
    if (*cp != '\0')
-      *size = (size_t)strtol(cp, NULL, 10);
+      n_idec_uiz_cp(size, cp, 10, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -872,7 +883,8 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       safe_signal(SIGPIPE, pop3catch);
 
    if ((cp = xok_vlook(pop3_keepalive, &sc.sc_url, OXM_ALL)) != NULL) {
-      if ((_pop3_keepalive = (int)strtol(cp, NULL, 10)) > 0) {
+      n_idec_si32_cp(&_pop3_keepalive, cp, 10, NULL);
+      if (_pop3_keepalive > 0) {
          _pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
          alarm(_pop3_keepalive);
       }

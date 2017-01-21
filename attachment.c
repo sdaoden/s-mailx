@@ -63,18 +63,21 @@ static void a_attachment_yay(struct attachment const *ap);
 
 static int
 a_attachment_is_msg(char const *file){
-   char *ecp;
    int rv;
    NYD2_ENTER;
 
    rv = -1;
 
    if(file[0] == '#'){
-      rv = (int)strtol(&file[1], &ecp, 10);
+      uiz_t ib;
 
-      /* xxx 0 may later be a valid message number?!? */
-      if(rv <= 0 || rv > msgCount || *ecp != '\0')
+      /* TODO Message numbers should be size_t, and 0 may be a valid one */
+      if((n_idec_uiz_cp(&ib, file, 10, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || rv == 0 || UICMP(z, rv, >, msgCount))
          rv = -1;
+      else
+         rv = (int)ib;
    }
    NYD2_LEAVE;
    return rv;

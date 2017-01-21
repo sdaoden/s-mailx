@@ -248,7 +248,7 @@ static bool_t a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val);
 
 /* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_nocntrls(char const *val);
-static bool_t a_amv_var_check_num(char const *val, bool_t pos);
+static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
 
 /* If a variable name begins with a lowercase-character and contains at
  * least one '@', it is converted to all-lowercase. This is necessary
@@ -754,7 +754,7 @@ a_amv_var_free(char *cp){
 
 static bool_t
 a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
-   int flag;
+   ui32_t flag;
    bool_t ok;
    NYD2_ENTER;
 
@@ -800,13 +800,14 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    case ok_v_umask:
       assert(enable);
       if(**val != '\0'){
-         ul_i ul;
+         ui64_t uib;
 
-         if((ul = strtoul(*val, NULL, 0)) & ~0777u){ /* (is valid _VF_POSNUM) */
+         n_idec_ui64_cp(&uib, *val, 0, NULL);
+         if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
             n_err(_("Invalid *umask* setting: %s\n"), *val);
             ok = FAL0;
          }else
-            umask((mode_t)ul);
+            umask((mode_t)uib);
       }
       break;
    case ok_b_verbose:
@@ -841,45 +842,29 @@ a_amv_var_check_nocntrls(char const *val){
 }
 
 static bool_t
-a_amv_var_check_num(char const *val, bool_t pos){ /* TODO intmax_t anywhere! */
+a_amv_var_check_num(char const *val, bool_t posnum){
    /* TODO The internal/environment  variables which are num= or posnum= should
     * TODO gain special lookup functions, or the return should be void* and
     * TODO castable to integer; i.e. no more strtoX() should be needed.
-    * TODO I.e., the result of this function should instead be stored.
-    * TODO Use intmax_t IF that is sizeof(void*) only? */
+    * TODO I.e., the result of this function should instead be stored */
    bool_t rv;
    NYD2_ENTER;
 
    rv = TRU1;
 
    if(*val != '\0'){ /* Would be _VF_NOTEMPTY if not allowed */
-      char *eptr;
-      union {long s; unsigned long u;} i;
+      ui64_t uib;
+      enum n_idec_state ids;
 
-      if(!pos){
-         i.s = strtol(val, &eptr, 0); /* TODO strtoimax() */
-
-         if(*eptr != '\0' ||
-               ((i.s == LONG_MIN || i.s == LONG_MAX) && errno == ERANGE))
-            rv = FAL0;
-#if INT_MIN != LONG_MIN
-         else if(i.s < INT_MIN)
-            rv = FAL0;
-#endif
-#if INT_MAX != LONG_MAX
-         else if(i.s > INT_MAX)
-            rv = FAL0;
-#endif
-      }else{
-         i.u = strtoul(val, &eptr, 0); /* TODO strtoumax() */
-
-         if(*eptr != '\0' || (i.u == ULONG_MAX && errno == ERANGE))
-            rv = FAL0;
-#if UINT_MAX != ULONG_MAX
-         else if(i.u > UINT_MAX)
-            rv = FAL0;
-#endif
-      }
+      ids = n_idec_cp(&uib, val, 0,
+            (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE), NULL);
+      if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED)
+         rv = FAL0;
+      /* TODO Unless we store integers we need to look and forbid, because
+       * TODO callee may not be able to swallow, e.g., "-1" */
+      if(posnum && (ids & n_IDEC_STATE_SEEN_MINUS))
+         rv = FAL0;
    }
    NYD2_LEAVE;
    return rv;
@@ -1802,15 +1787,15 @@ c_shift(void *v){
       if(v == NULL)
          i = 1;
       else{
-         char *eptr;
-         long l;
+         si16_t sib;
 
-         l = strtol(v, &eptr, 10);
-         if(*eptr != '\0' || l < 0 || l > SI16_MAX){
+         if((n_idec_si16_cp(&sib, v, 10, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED || sib < 0){
             n_err(_("`shift': invalid argument: %s\n"), v);
             goto jleave;
          }
-         i = (ui16_t)l;
+         i = (ui16_t)sib;
       }
 
       if(i > (j = amcap->amca_argc)){
@@ -1845,23 +1830,24 @@ c_return(void *v){
       n_source_force_eof();
 
       if((argv = v)[0] != NULL){
-         char *eptr;
-         long l;
+         si32_t i;
 
-         l = strtol(argv[0], &eptr, 10);
-         if(*eptr != '\0' || l < 0 || l > SI32_MAX){
+         if((n_idec_si32_cp(&i, argv[0], 10, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED || i < 0){
             n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
             mrv = m1;
          }else
             mrv = argv[0];
 
          if(argv[1] != NULL){
-            l = strtol(argv[1], &eptr, 10);
-            if(*eptr != '\0' || l < 0 || l > SI32_MAX){
+            if((n_idec_si32_cp(&i, argv[1], 10, NULL
+                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                  ) != n_IDEC_STATE_CONSUMED || i < 0){
                n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
                mrv = m1;
             }else
-               rv = (int)l;
+               rv = (int)i;
          }else
             rv = 0;
       }else{

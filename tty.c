@@ -29,78 +29,6 @@
 # define a_TTY_SIGNALS
 #endif
 
-/* History support macros */
-#ifdef HAVE_HISTORY
-# define a_TTY_HISTFILE(S) \
-do{\
-   char const *__hist_obsolete = ok_vlook(NAIL_HISTFILE);\
-   if(__hist_obsolete != NULL)\
-      n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));\
-   S = ok_vlook(history_file);\
-   if((S) == NULL)\
-      (S) = __hist_obsolete;\
-   if((S) != NULL)\
-      S = fexpand(S, FEXP_LOCAL | FEXP_NSHELL);\
-}while(0)
-
-# define a_TTY_HISTSIZE(V) \
-do{\
-   char const *__hist_obsolete = ok_vlook(NAIL_HISTSIZE);\
-   char const *__sv = ok_vlook(history_size);\
-   long __rv;\
-   if(__hist_obsolete != NULL)\
-      n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));\
-   if(__sv == NULL)\
-      __sv = __hist_obsolete;\
-   if(__sv == NULL || (__rv = strtol(__sv, NULL, 10)) == 0)\
-      __rv = HIST_SIZE;\
-   else if(__rv < 0)\
-      __rv = 0;\
-   (V) = __rv;\
-}while(0)
-
-# define a_TTY_CHECK_ADDHIST(S,ISGABBY,NOACT) \
-do{\
-   if((!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||\
-         ok_blook(line_editor_disable) ||\
-         ((ISGABBY) && !ok_blook(history_gabby)) ||\
-         spacechar(*(S)) || *(S) == '\0')\
-      NOACT;\
-}while(0)
-
-# define C_HISTORY_SHARED \
-   char **argv = v;\
-   long entry;\
-   NYD_ENTER;\
-\
-   if(ok_blook(line_editor_disable)){\
-      n_err(_("history: *line-editor-disable* is set\n"));\
-      goto jerr;\
-   }\
-   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){\
-      n_tty_init();\
-      assert(n_psonce & n_PSO_LINE_EDITOR_INIT);\
-   }\
-   if(*argv == NULL)\
-      goto jlist;\
-   if(argv[1] != NULL)\
-      goto jerr;\
-   if(!asccasecmp(*argv, "show"))\
-      goto jlist;\
-   if(!asccasecmp(*argv, "clear"))\
-      goto jclear;\
-   if((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
-      goto jentry;\
-jerr:\
-   n_err(_("Synopsis: history: %s\n"),\
-      /* Same string as in cmd_tab.h, still hoping...) */\
-      _("<show> (default), <clear> or select <NO> from editor history"));\
-   v = NULL;\
-jleave:\
-   NYD_LEAVE;\
-   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
-#endif /* HAVE_HISTORY */
-
 #ifdef a_TTY_SIGNALS
 static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
    a_tty_ohup,
@@ -889,6 +817,11 @@ static struct a_tty_global a_tty;
 /* Change from canonical to raw, non-canonical mode, and way back */
 static void a_tty_term_mode(bool_t raw);
 
+/* Initialize .tg_hist_size_max and return desired history file, or NULL */
+# ifdef HAVE_HISTORY
+static char const *a_tty_hist_query_config(void);
+# endif
+
 /* Adjust an active raw mode to use / not use a timeout */
 # ifdef HAVE_KEY_BINDINGS
 static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable);
@@ -1011,6 +944,32 @@ jleave:
    tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
    NYD2_LEAVE;
 }
+
+# ifdef HAVE_HISTORY
+static char const *
+a_tty_hist_query_config(void){
+   char const *rv, *cp;
+   NYD2_ENTER;
+
+   if((cp = ok_vlook(NAIL_HISTSIZE)) != NULL)
+      n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));
+   if((rv = ok_vlook(history_size)) == NULL)
+      rv = cp;
+   if(rv == NULL)
+      a_tty.tg_hist_size_max = UIZ_MAX;
+   else
+      (void)n_idec_uiz_cp(&a_tty.tg_hist_size_max, rv, 10, NULL);
+
+   if((cp = ok_vlook(NAIL_HISTFILE)) != NULL)
+      n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));
+   if((rv = ok_vlook(history_file)) == NULL)
+      rv = cp;
+   if(rv != NULL)
+      rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
+   NYD2_LEAVE;
+   return rv;
+}
+# endif /* HAVE_HISTORY */
 
 # ifdef HAVE_KEY_BINDINGS
 static void
@@ -1149,8 +1108,8 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
 
 static wchar_t
 a_tty_vinuni(struct a_tty_line *tlp){
-   char buf[16], *eptr;
-   union {size_t i; long l;} u;
+   char buf[16];
+   uiz_t i;
    wchar_t wc;
    NYD2_ENTER;
 
@@ -1180,15 +1139,15 @@ a_tty_vinuni(struct a_tty_line *tlp){
    fflush(n_tty_fp);
 
    buf[sizeof(buf) -1] = '\0';
-   for(u.i = 0;;){
-      if(read(STDIN_FILENO, &buf[u.i], 1) != 1){
+   for(i = 0;;){
+      if(read(STDIN_FILENO, &buf[i], 1) != 1){
          if(errno == EINTR) /* xxx #if !SA_RESTART ? */
             continue;
          goto jleave;
       }
-      if(buf[u.i] == '\n')
+      if(buf[i] == '\n')
          break;
-      if(!hexchar(buf[u.i])){
+      if(!hexchar(buf[i])){
          char const emsg[] = "[0-9a-fA-F]";
 
          n_LCTA(sizeof emsg <= sizeof(buf), "Preallocated buffer too small");
@@ -1196,21 +1155,22 @@ a_tty_vinuni(struct a_tty_line *tlp){
          goto jerr;
       }
 
-      putc(buf[u.i], n_tty_fp);
+      putc(buf[i], n_tty_fp);
       fflush(n_tty_fp);
-      if(++u.i == sizeof buf)
+      if(++i == sizeof buf)
          goto jerr;
    }
-   buf[u.i] = '\0';
+   buf[i] = '\0';
 
-   u.l = strtol(buf, &eptr, 16);
-   if(u.l <= 0 || u.l >= 0x10FFFF/* XXX magic; CText */ || *eptr != '\0'){
+   if((n_idec_uiz_cp(&i, buf, 16, NULL
+            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED || i > 0x10FFFF/* XXX magic; CText */){
 jerr:
       n_err(_("\nInvalid input: %s\n"), buf);
       goto jleave;
    }
 
-   wc = (wchar_t)u.l;
+   wc = (wchar_t)i;
 jleave:
    tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | (wc == '\0' ? a_TTY_VF_BELL : 0);
    NYD2_LEAVE;
@@ -3710,20 +3670,13 @@ n_tty_init(void){
    /* Load the history file */
 # ifdef HAVE_HISTORY
    do/* for break */{
-      long hs;
       char const *v;
       char *lbuf;
       FILE *f;
       size_t lsize, cnt, llen;
 
-      a_TTY_HISTSIZE(hs);
-      a_tty.tg_hist_size = 0;
-      a_tty.tg_hist_size_max = (size_t)hs;
-      if(hs == 0)
-         break;
-
-      a_TTY_HISTFILE(v);
-      if(v == NULL)
+      if((v = a_tty_hist_query_config()) == NULL ||
+            a_tty.tg_hist_size_max == 0)
          break;
 
       hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
@@ -3830,25 +3783,22 @@ n_tty_destroy(void){
 
 # ifdef HAVE_HISTORY
    do/* for break */{
-      long hs;
+      size_t i;
       char const *v;
       struct a_tty_hist *thp;
       bool_t dogabby;
       FILE *f;
 
-      a_TTY_HISTSIZE(hs);
-      if(hs == 0)
-         break;
-
-      a_TTY_HISTFILE(v);
-      if(v == NULL)
+      if((v = a_tty_hist_query_config()) == NULL ||
+            a_tty.tg_hist_size_max == 0)
          break;
 
       dogabby = ok_blook(history_gabby_persist);
 
       if((thp = a_tty.tg_hist) != NULL)
-         for(; thp->th_older != NULL; thp = thp->th_older)
-            if((dogabby || !thp->th_isgabby) && --hs == 0)
+         for(i = a_tty.tg_hist_size_max; thp->th_older != NULL;
+               thp = thp->th_older)
+            if((dogabby || !thp->th_isgabby) && --i == 0)
                break;
 
       hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
@@ -3983,15 +3933,17 @@ jredo:
 
 # ifdef HAVE_KEY_BINDINGS
    /* C99 */{
-      char const *cp = ok_vlook(bind_timeout);
+      char const *cp;
 
-      if(cp != NULL){
-         ul_i ul;
+      if((cp = ok_vlook(bind_timeout)) != NULL){
+         ui64_t uib;
 
-         if((ul = strtoul(cp, NULL, 0)) > 0 &&
+         n_idec_ui64_cp(&uib, cp, 0, NULL);
+
+         if(uib > 0 &&
                /* Convert to tenths of a second, unfortunately */
-               (ul = (ul + 99) / 100) <= a_TTY_BIND_TIMEOUT_MAX)
-            tl.tl_bind_timeout = (ui8_t)ul;
+               (uib = (uib + 99) / 100) <= a_TTY_BIND_TIMEOUT_MAX)
+            tl.tl_bind_timeout = (ui8_t)uib;
          else if(n_poption & n_PO_D_V)
             n_err(_("Ignoring invalid *bind-timeout*: %s\n"), cp);
       }
@@ -4065,8 +4017,11 @@ n_tty_addhist(char const *s, bool_t isgabby){
    n_UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   a_TTY_CHECK_ADDHIST(s, isgabby, goto j_leave);
-   if(a_tty.tg_hist_size_max == 0)
+   if(spacechar(*s) || *s == '\0' ||
+         (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
+         a_tty.tg_hist_size_max == 0 ||
+         ok_blook(line_editor_disable) ||
+         (isgabby && !ok_blook(history_gabby)))
       goto j_leave;
 
    l = (ui32_t)strlen(s);
@@ -4120,14 +4075,47 @@ jleave:
 
    rele_all_sigs();
 j_leave:
-# endif
+# endif /* HAVE_HISTORY */
    NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
 FL int
 c_history(void *v){
-   C_HISTORY_SHARED;
+   size_t entry;
+   char **argv;
+   NYD_ENTER;
+
+   if(ok_blook(line_editor_disable)){
+      n_err(_("history: *line-editor-disable* is set\n"));
+      goto jerr;
+   }
+
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
+      n_tty_init();
+      assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
+   }
+
+   if(*(argv = v) == NULL)
+      goto jlist;
+   if(argv[1] != NULL)
+      goto jerr;
+   if(!asccasecmp(*argv, "show"))
+      goto jlist;
+   if(!asccasecmp(*argv, "clear"))
+      goto jclear;
+   if((n_idec_uiz_cp(&entry, *argv, 10, NULL
+            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) == n_IDEC_STATE_CONSUMED)
+      goto jentry;
+jerr:
+   n_err(_("Synopsis: history: %s\n"),
+      /* Same string as in cmd_tab.h, still hoping...) */
+      _("<show> (default), <clear> or select <NO> from editor history"));
+   v = NULL;
+jleave:
+   NYD_LEAVE;
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
    FILE *fp;
@@ -4172,7 +4160,7 @@ jentry:{
    struct a_tty_hist *thp;
 
    if(UICMP(z, entry, <=, a_tty.tg_hist_size)){
-      entry = (long)a_tty.tg_hist_size - entry;
+      entry = a_tty.tg_hist_size - entry;
       for(thp = a_tty.tg_hist;; thp = thp->th_older)
          if(thp == NULL)
             break;

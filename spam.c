@@ -226,7 +226,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    /* *spam-maxsize* we do handle ourselfs instead */
    if ((cp = ok_vlook(spam_maxsize)) == NULL ||
-         (maxsize = (size_t)strtoul(cp, NULL, 0)) == 0)
+         (n_idec_ui32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
@@ -774,7 +774,6 @@ jecmd:
          (cp = ok_vlook(spamfilter_rate_scanscore)) != NULL) {
       int s;
       char const *bp;
-      char *ep;
 
       var = strchr(cp, ';');
       if (var == NULL) {
@@ -782,11 +781,12 @@ jecmd:
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
-      bp = var + 1;
+      bp = &var[1];
 
-      var = savestrbuf(cp, PTR2SIZE(var - cp));
-      sfp->f_score_grpno = (ui32_t)strtoul(var, &ep, 0);
-      if (var == ep || *ep != '\0') {
+      if((n_idec_buf(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
+                  n_IDEC_MODE_LIMIT_32BIT, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED){
          n_err(_("`%s': *spamfilter-rate-scanscore*: bad group: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
@@ -1129,37 +1129,48 @@ jtail:
 #if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_SPAMD ||\
    (defined HAVE_SPAM_FILTER && defined HAVE_REGEX)
 static void
-_spam_rate2score(struct spam_vc *vcp, char *buf)
-{
-   char *cp;
+_spam_rate2score(struct spam_vc *vcp, char *buf){
    ui32_t m, s;
+   enum n_idec_state ids;
    NYD2_ENTER;
 
-   m = (ui32_t)strtol(buf, &cp, 10);
-   if (cp == buf)
-      goto jleave;
+   /* C99 */{ /* Overcome ISO C / compiler weirdness */
+      char const *cp;
+
+      cp = buf;
+      ids = n_idec_ui32_cp(&m, buf, 10, &cp);
+      if((ids & n_IDEC_STATE_EMASK) & ~n_IDEC_STATE_EBASE)
+         goto jleave;
+      buf = n_UNCONST(cp);
+   }
 
    s = 0;
-   if (*cp++ != '\0') {
+   if(!(ids & n_IDEC_STATE_CONSUMED)){
       /* Floating-point rounding for non-mathematicians */
       char c1, c2, c3;
-      if ((c1 = cp[0]) != '\0' && (c2 = cp[1]) != '\0' &&
-            (c3 = cp[2]) != '\0') {
-         cp[2] = '\0';
-         if (c3 >= '5') {
-            if (c2 == '9') {
-               if (c1 == '9') {
+
+      ++buf; /* '.' */
+      if((c1 = buf[0]) != '\0' && (c2 = buf[1]) != '\0' &&
+            (c3 = buf[2]) != '\0'){
+         buf[2] = '\0';
+         if(c3 >= '5'){
+            if(c2 == '9'){
+               if(c1 == '9'){
                   ++m;
                   goto jscore_ok;
-               } else
-                  cp[0] = ++c1;
+               }else
+                  buf[0] = ++c1;
                c2 = '0';
-            } else
+            }else
                ++c2;
-            cp[1] = c2;
+            buf[1] = c2;
          }
       }
-      s = (ui32_t)strtol(cp, NULL, 10);
+
+      ids = n_idec_ui32_cp(&s, buf, 10, NULL);
+      if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED)
+         goto jleave;
    }
 
 jscore_ok:

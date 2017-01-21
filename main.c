@@ -404,10 +404,12 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
       if(n_psonce & n_PSO_INTERACTIVE)
          n_pstate |= n_PS_SIGWINCH_PEND;
 
-      if((cp = ok_vlook(LINES)) != NULL)
-         n_scrnheight = n_realscreenheight = (int)strtoul(cp, NULL, 0); /*TODO*/
+      if((cp = ok_vlook(LINES)) != NULL){
+         n_idec_ui32_cp(&n_scrnheight, cp, 0, NULL);
+         n_realscreenheight = n_scrnheight;
+      }
       if((cp = ok_vlook(COLUMNS)) != NULL)
-         n_scrnwidth = (int)strtoul(cp, NULL, 0); /* TODO posui32= not posnum */
+         n_idec_ui32_cp(&n_scrnwidth, cp, 0, NULL);
 
       if(n_scrnwidth != 0 && n_scrnheight != 0)
          goto jleave;

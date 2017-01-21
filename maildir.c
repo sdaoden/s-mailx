@@ -252,15 +252,21 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    size_t sz, i;
    time_t t = 0;
    enum mflag f = MUSED | MNOFROM | MNEWEST;
-   char const *cp;
-   char *xp;
+   char const *cp, *xp;
    NYD_ENTER;
    n_UNUSED(name);
 
    if (fn != NULL && sub != NULL) {
       if (!strcmp(sub, "new"))
          f |= MNEW;
-      t = strtol(fn, &xp, 10);
+
+      /* C99 */{
+         si64_t tib;
+
+         (void)/*TODO*/n_idec_si64_cp(&tib, fn, 10, &xp);
+         t = (time_t)tib;
+      }
+
       if ((cp = strrchr(xp, ',')) != NULL && PTRCMP(cp, >, xp + 2) &&
             cp[-1] == '2' && cp[-2] == ':') {
          while (*++cp != '\0') {

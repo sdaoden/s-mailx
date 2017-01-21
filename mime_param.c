@@ -250,8 +250,9 @@ jumpin:
             }
             memcpy(nobuf, hbp, i);
             nobuf[i] = '\0';
-            i = (size_t)strtol(nobuf, n_UNCONST(&eptr), 10);
-            if (i >= 999 || *eptr != '\0') {
+            if((n_idec_uiz_cp(&i, nobuf, 10, NULL
+                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                  ) != n_IDEC_STATE_CONSUMED || i >= 999){
                emsg = N_("invalid continuation sequence number");
                goto jerr;
             }

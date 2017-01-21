@@ -268,7 +268,7 @@ FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
  */
 
 /* Compute screen size */
-FL int         screensize(void);
+FL size_t n_screensize(void);
 
 /* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
  * some environment variable that supports colour+ and set *env_addon to that,

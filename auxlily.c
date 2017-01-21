@@ -243,19 +243,23 @@ a_aux_rand_weak(ui32_t seed){
 # endif /* HAVE_GETRANDOM */
 #endif /* !HAVE_POSIX_RANDOM */
 
-FL int
-screensize(void){
-   ul_i s;
-   char *cp;
+FL size_t
+n_screensize(void){
+   char const *cp;
+   uiz_t rv;
    NYD2_ENTER;
 
-   if((cp = ok_vlook(screen)) == NULL || (s = strtoul(cp, NULL, 0)) == 0)
-      s = (ul_i)n_scrnheight;
-   s -= 2; /* XXX no magics */
-   if(s > INT_MAX) /* TODO function should return unsigned */
-      s = INT_MAX;
+   if((cp = ok_vlook(screen)) != NULL){
+      n_idec_uiz_cp(&rv, cp, 0, NULL);
+      if(rv == 0)
+         rv = n_scrnheight;
+   }else
+      rv = n_scrnheight;
+
+   if(rv > 2)
+      rv -= 2;
    NYD2_LEAVE;
-   return (int)s;
+   return rv;
 }
 
 FL char const *
@@ -298,7 +302,10 @@ page_or_print(FILE *fp, size_t lines)
    if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
       size_t rows;
 
-      rows = (*cp == '\0') ? (size_t)n_scrnheight : strtoul(cp, NULL, 0);
+      if(*cp == '\0')
+         rows = (size_t)n_scrnheight;
+      else
+         n_idec_uiz_cp(&rows, cp, 0, NULL);
 
       if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
@@ -830,8 +837,6 @@ getrandstring(size_t length){
 FL si8_t
 boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
 {
-   char *dat, *eptr;
-   sl_i sli;
    si8_t rv;
    NYD_ENTER;
 
@@ -855,17 +860,14 @@ boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
             !ascncasecmp(inbuf, "off", inlen))
          rv = 0;
       else {
-         dat = ac_alloc(inlen +1);
-         memcpy(dat, inbuf, inlen);
-         dat[inlen] = '\0';
+         ui64_t ib;
 
-         sli = strtol(dat, &eptr, 0);
-         if (*dat != '\0' && *eptr == '\0')
-            rv = (sli != 0);
-         else
+         if((n_idec_buf(&ib, inbuf, inlen, 0, 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED)
             rv = -1;
-
-         ac_free(dat);
+         else
+            rv = (ib != 0);
       }
    }
    NYD_LEAVE;
@@ -916,22 +918,24 @@ n_time_epoch(void)
    char const *cp;
    NYD2_ENTER;
 
-   if((cp = ok_vlook(SOURCE_DATE_EPOCH)) != NULL){ /* TODO */
-      /* TODO This is marked "posnum", b and therefore 0<=X<=UINT_MAX.
-       * TODO This means we have a Sun, 07 Feb 2106 07:28:15 +0100 problem.
-       * TODO Therefore we need a num_ui64= type in v15 */
-      rv = (time_t)strtoul(cp, NULL, 0);
-   }else{
-#ifdef HAVE_CLOCK_GETTIME
-      clock_gettime(CLOCK_REALTIME, &ts);
-      rv = (time_t)ts.tv_sec;
-#elif defined HAVE_GETTIMEOFDAY
-      gettimeofday(&ts, NULL);
-      rv = (time_t)ts.tv_sec;
-#else
-      rv = time(NULL);
-#endif
+   if((cp = ok_vlook(SOURCE_DATE_EPOCH)) != NULL){
+      ui64_t tib;
+
+      (void)/* XXX ?? posnum= */n_idec_ui64_cp(&tib, cp, 0, NULL);
+      rv = (time_t)tib;
+      goto jleave;
    }
+
+#ifdef HAVE_CLOCK_GETTIME
+   clock_gettime(CLOCK_REALTIME, &ts);
+   rv = (time_t)ts.tv_sec;
+#elif defined HAVE_GETTIMEOFDAY
+   gettimeofday(&ts, NULL);
+   rv = (time_t)ts.tv_sec;
+#else
+   rv = time(NULL);
+#endif
+jleave:
    NYD2_LEAVE;
    return rv;
 }

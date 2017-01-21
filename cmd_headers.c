@@ -412,7 +412,7 @@ jputcb:
             if (cpen_new != cpen_cur)
                n_colour_pen_put(cpen_cur = cpen_new, f);
 #endif
-            n = __putindent(f, mp, n_MIN(wleft, n_scrnwidth - 60));
+            n = __putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
             if ((cpen_new = cpen_bas) != cpen_cur)
@@ -692,8 +692,7 @@ _dispc(struct message *mp, char const *a)
 
 static int
 a_cmd_scroll(char const *arg, bool_t onlynew){
-   long l;
-   char *eptr;
+   siz_t l;
    bool_t isabs;
    int msgspec, size, maxs;
    NYD2_ENTER;
@@ -701,7 +700,7 @@ a_cmd_scroll(char const *arg, bool_t onlynew){
    /* TODO scroll problem: we do not know whether + and $ have already reached
     * TODO the last screen in threaded mode */
    msgspec = onlynew ? -1 : 0;
-   size = screensize();
+   size = (int)/*TODO*/n_screensize();
    if((maxs = msgCount / size) > 0 && msgCount % size == 0)
       --maxs;
 
@@ -735,8 +734,9 @@ a_cmd_scroll(char const *arg, bool_t onlynew){
    case '6': case '7': case '8': case '9': case '0':
             isabs = TRU1;
          }
-         l = strtol(arg, &eptr, 10);
-         if(*eptr != '\0')
+         if((n_idec_siz_cp(&l, arg, 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED)
             goto jerr;
          if(l > maxs - (isabs ? 0 : _screen))
             goto jerrfwd;
@@ -754,9 +754,9 @@ jerrfwd:
       if(arg[1] == '\0')
          --_screen;
       else{
-         ++arg;
-         l = strtol(arg, &eptr, 10);
-         if(*eptr != '\0')
+         if((n_idec_siz_cp(&l, ++arg, 0, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED)
             goto jerr;
          if(l > _screen)
             goto jerrbwd;
@@ -811,7 +811,7 @@ _headers(int msgspec) /* TODO rework v15 */
       n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
 #endif
 
-   size = screensize();
+   size = (int)/*TODO*/n_screensize();
    if (_screen < 0)
       _screen = 0;
 #if 0 /* FIXME original code path */
@@ -1043,11 +1043,16 @@ c_from(void *v)
 
    if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
+         uiz_t ib;
+
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
-         if (UICMP(z, n, >, (*cp == '\0'
-                  ? (size_t)screensize() : strtoul(cp, NULL, 0)) + 3) &&
-               (obuf = n_pager_open()) == NULL)
+
+         if(*cp == '\0')
+            ib = n_screensize();
+         else
+            n_idec_uiz_cp(&ib, cp, 0, NULL);
+         if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
       n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != n_stdout); )

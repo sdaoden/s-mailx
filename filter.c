@@ -307,7 +307,7 @@ FL void
 quoteflt_init(struct quoteflt *self, char const *prefix)
 {
 #ifdef HAVE_QUOTE_FOLD
-   char *xcp, *cp;
+   char const *xcp, *cp;
 #endif
    NYD_ENTER;
 
@@ -320,15 +320,17 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
    /* TODO *quote-fold*: QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmin, qmax = (ui32_t)strtol(cp, &xcp, 10);
-      /* These magic values ensure we don't bail :) */
+      ui32_t qmin, qmax;
+
+      /* These magic values ensure we don't bail */
+      n_idec_ui32_cp(&qmax, cp, 10, &xcp);
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
       --qmax; /* The newline escape */
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         qmin = (ui32_t)strtol(xcp + 1, NULL, 10);
+         n_idec_ui32_cp(&qmin, &xcp[1], 10, NULL);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
@@ -1324,7 +1326,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
    char const *s_save;
    size_t l_save;
    struct hf_ent const *hfep;
-   long i;
+   size_t i;
    NYD2_ENTER;
 
    s_save = s;
@@ -1342,7 +1344,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
       if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
          memcpy(nobuf, s, l);
          nobuf[l] = '\0';
-         i = strtol(nobuf, NULL, i);
+         n_idec_uiz_cp(&i, nobuf, i, NULL);
          if (i <= 0x7F)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {

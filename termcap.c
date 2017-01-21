@@ -258,12 +258,10 @@ jeinvent:
       else if(*v == '\0')
          tep->te_flags |= a_TERMCAP_F_DISABLED;
       else if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_NUMERIC){
-         char *eptr;
-         long l = strtol(v, &eptr, 10);
-
-         if(*eptr != '\0' || l < 0 || UICMP(32, l, >=, UI16_MAX))
+         if((n_idec_ui16_cp(&tep->te_off, v, 10, NULL
+                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+               ) != n_IDEC_STATE_CONSUMED)
             goto jeinvent;
-         tep->te_off = (ui16_t)l;
       }else if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
          tep->te_flags |= a_TERMCAP_F_DISABLED;
 #ifdef HAVE_KEY_BINDINGS

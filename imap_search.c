@@ -74,7 +74,7 @@ struct itlex {
 
 struct itnode {
    enum itoken    n_token;
-   unsigned long  n_n;
+   uiz_t          n_n;
    void           *n_v;
    void           *n_w;
    struct itnode  *n_x;
@@ -123,7 +123,7 @@ static struct itlex const  _it_strings[] = {
 static struct itnode    *_it_tree;
 static char             *_it_begin;
 static enum itoken      _it_token;
-static unsigned long    _it_number;
+static uiz_t            _it_number;
 static void             *_it_args[2];
 static size_t           _it_need_headers;
 
@@ -277,7 +277,7 @@ itscan(char const *spec, char const **xp)
       }
    }
    if (digitchar(*spec)) {
-      _it_number = strtoul(spec, n_UNCONST(xp), 10);
+      n_idec_uiz_cp(&_it_number, spec, 10, xp);
       if (!__GO(**xp)) {
          _it_token = ITSET;
          goto jleave;
@@ -300,7 +300,7 @@ jleave:
 static enum okay
 itsplit(char const *spec, char const **xp)
 {
-   char *cp;
+   char const *cp;
    time_t t;
    enum okay rv;
    NYD_ENTER;
@@ -371,7 +371,9 @@ itsplit(char const *spec, char const **xp)
       /* <n> */
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
-      _it_number = strtoul(_it_args[0], &cp, 10);
+      else{
+         n_idec_uiz_cp(&_it_number, _it_args[0], 10, &cp);
+      }
       if (spacechar(*cp) || *cp == '\0')
          break;
       n_err(_("Invalid size: >>> %s <<<\n"), around(*xp));
@@ -475,7 +477,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = itexecute(mp, m, c, n->n_x) & itexecute(mp, m, c, n->n_y);
       break;
    case ITSET:
-      rv = UICMP(z, c, ==, n->n_n);
+      rv = (c == n->n_n);
       break;
    case ITALL:
       rv = 1;
@@ -595,14 +597,14 @@ static time_t
 _imap_read_date(char const *cp)
 {
    time_t t = (time_t)-1;
-   int year, month, day, i, tzdiff;
+   si32_t year, month, day, i, tzdiff;
    struct tm *tmptr;
-   char *xp, *yp;
+   char const *xp, *yp;
    NYD_ENTER;
 
    if (*cp == '"')
       ++cp;
-   day = strtol(cp, &xp, 10);
+   n_idec_si32_cp(&day, cp, 10, &xp);
    if (day <= 0 || day > 31 || *xp++ != '-')
       goto jleave;
 
@@ -615,7 +617,7 @@ _imap_read_date(char const *cp)
    month = i + 1;
    if (xp[3] != '-')
       goto jleave;
-   year = strtol(xp + 4, &yp, 10);
+   n_idec_si32_cp(&year, &xp[4], 10, &yp);
    if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
       goto jleave;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
