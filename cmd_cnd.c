@@ -79,12 +79,14 @@ _if_error(struct if_cmd const *icp, char const *msg_or_null,
 static si8_t
 _if_test(struct if_cmd *icp, bool_t noop)
 {
-   char const *emsg = NULL, * const *argv, *cp, *lhv, *op, *rhv;
+   char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
    size_t argc;
    char c;
-   si8_t rv = -1;
+   si8_t rv;
    NYD2_ENTER;
 
+   rv = -1;
+   emsg = NULL;
    argv = icp->ic_argv;
    argc = PTR2SIZE(icp->ic_argv_max - icp->ic_argv);
    cp = argv[0];
@@ -95,7 +97,14 @@ _if_test(struct if_cmd *icp, bool_t noop)
    } else if (cp[1] == '\0')
       goto jesyn;
    else if (argc > 3) {
+#ifdef HAVE_REGEX
+jesyn_ntr:
+#endif
+      if(0){
 jesyn:
+         if(emsg != NULL)
+            emsg = V_(emsg);
+      }
       _if_error(icp, emsg, cp);
       goto jleave;
    }
@@ -199,10 +208,12 @@ jesyn:
 #ifdef HAVE_REGEX
       if (op[1] == '~') {
          regex_t re;
+         int s;
 
-         if (regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-            emsg = N_("invalid regular expression");
-            goto jesyn;
+         if((s = regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+            emsg = savecat(_("invalid regular expression: "),
+                  n_regex_err_to_str(&re, s));
+            goto jesyn_ntr;
          }
          if (!noop)
             rv = (regexec(&re, lhv, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');

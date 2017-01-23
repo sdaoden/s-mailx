@@ -605,11 +605,15 @@ jnumber__thr:
             }
 #ifdef HAVE_REGEX
             if(n_is_maybe_regex(x)){
+               int s;
+
                sep[j].ss_sexpr = NULL;
-               if(regcomp(&sep[j].ss_regex, x,
-                     REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0){
-                  if(!(n_pstate & n_PS_HOOK) && (n_poption & n_PO_D_V))
-                     n_err(_("Invalid regular expression: >>> %s <<<\n"), x);
+               if((s = regcomp(&sep[j].ss_regex, x,
+                     REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+                  if(!(n_pstate & n_PS_HOOK))
+                     n_err(_("Invalid regular expression: %s: %s\n"),
+                        n_shexp_quote_cp(x, FAL0),
+                        n_regex_err_to_str(&sep[j].ss_regex, s));
                   flags |= a_ERROR;
                   continue;
                }

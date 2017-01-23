@@ -543,8 +543,13 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
        * simply use the input as such if it appears to be a regex */
 #ifdef HAVE_REGEX
       if(n_is_maybe_regex(ctag)){
-         if(regexpp != NULL && regcomp(*regexpp = smalloc(sizeof(regex_t)),
-               ctag, REG_EXTENDED | REG_ICASE | REG_NOSUB)){
+         int s;
+
+         if(regexpp != NULL &&
+               (s = regcomp(*regexpp = smalloc(sizeof(regex_t)), ctag,
+                  REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+            n_err(_("`colour': invalid regular expression: %s: %s\n"),
+               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_str(*regexpp, s));
             free(*regexpp);
             goto jetag;
          }

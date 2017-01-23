@@ -2436,11 +2436,12 @@ if feat_yes REGEX; then
 #include <regex.h>
 #include <stdlib.h>
 int main(void){
+   size_t xret;
    int status;
    regex_t re;
 
-   if (regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB) != 0)
-      return 1;
+   status = regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB);
+   xret = regerror(status, &re, NULL, 0);
    status = regexec(&re, "plan9", 0,NULL, 0);
    regfree(&re);
    return !(status == REG_NOMATCH);

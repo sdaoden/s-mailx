@@ -354,6 +354,11 @@ FL int         c_errors(void *vp);
 # define c_errors                c_cmdnotsupp
 #endif
 
+/* */
+#ifdef HAVE_REGEX
+FL char const *n_regex_err_to_str(const regex_t *rep, int e);
+#endif
+
 /*
  * cmd_arg.c
  */

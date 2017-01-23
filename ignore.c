@@ -743,6 +743,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
 #ifdef HAVE_REGEX
    if(isre){
       struct a_ignore_re *x;
+      int s;
       size_t i;
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
@@ -750,9 +751,11 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       memcpy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
-      if(regcomp(&irp->ir_regex, irp->ir_input,
-            REG_EXTENDED | REG_ICASE | REG_NOSUB)){
-         n_err(_("Invalid regular expression: %s\n"), irp->ir_input);
+      if((s = regcomp(&irp->ir_regex, irp->ir_input,
+            REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+         n_err(_("Invalid regular expression: %s: %s\n"),
+            n_shexp_quote_cp(irp->ir_input, FAL0),
+            n_regex_err_to_str(&irp->ir_regex, s));
          if(!self->i_auto)
             n_free(irp);
          rv = FAL0;

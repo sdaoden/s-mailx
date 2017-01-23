@@ -1042,4 +1042,19 @@ jclear:
 }
 #endif /* HAVE_ERRORS */
 
+#ifdef HAVE_REGEX
+FL char const *
+n_regex_err_to_str(const regex_t *rep, int e){
+   char *cp;
+   size_t i;
+   NYD2_ENTER;
+
+   i = regerror(e, rep, NULL, 0) +1;
+   cp = salloc(i);
+   regerror(e, rep, cp, i);
+   NYD2_LEAVE;
+   return cp;
+}
+#endif
+
 /* s-it-mode */

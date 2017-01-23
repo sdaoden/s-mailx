@@ -772,6 +772,7 @@ jecmd:
 # ifdef HAVE_REGEX
    if (vcp->vc_action == _SPAM_RATE &&
          (cp = ok_vlook(spamfilter_rate_scanscore)) != NULL) {
+      int s;
       char const *bp;
       char *ep;
 
@@ -798,9 +799,11 @@ jecmd:
          goto jleave;
       }
 
-      if (regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE)) {
-         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s\n"),
-            _spam_cmds[vcp->vc_action], cp);
+      if ((s = regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE))
+            != 0) {
+         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
+            _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
+            n_regex_err_to_str(&sfp->f_score_regex, s));
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
