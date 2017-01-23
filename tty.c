@@ -693,13 +693,8 @@ n_CTA(a_TTY_SHCUT_MAX > 1,
 struct a_tty_hist{
    struct a_tty_hist *th_older;
    struct a_tty_hist *th_younger;
-#  ifdef HAVE_BYTE_ORDER_LITTLE
    ui32_t th_isgabby : 1;
-#  endif
    ui32_t th_len : 31;
-#  ifndef HAVE_BYTE_ORDER_LITTLE
-   ui32_t th_isgabby : 1;
-#  endif
    char th_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
 };
 # endif

@@ -933,7 +933,11 @@ _link_mayrun() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   feat_yes CROSS_BUILD && run=0
+   if feat_yes CROSS_BUILD; then
+      if [ ${run} = 1 ]; then
+         run=0
+      fi
+   fi
 
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
@@ -964,6 +968,10 @@ link_check() {
 
 run_check() {
    _link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
+}
+
+xrun_check() {
+   _link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
 feat_def() {
@@ -1238,7 +1246,7 @@ feat_def ERRORS
 feat_def NYD2
 feat_def NOMEMDBG
 
-if run_check inline 'inline functions' \
+if xrun_check inline 'inline functions' \
    '#define HAVE_INLINE
    #define n_INLINE static inline' << \!
 static inline int ilf(int i){return ++i;}
@@ -1246,24 +1254,11 @@ int main(void){return ilf(-1);}
 !
 then
    :
-elif run_check inline 'inline functions (via __inline)' \
+elif xrun_check inline 'inline functions (via __inline)' \
    '#define HAVE_INLINE
    #define n_INLINE static __inline' << \!
 static __inline int ilf(int i){return ++i;}
 int main(void){return ilf(-1);}
-!
-then
-   :
-fi
-
-if run_check endian 'Little endian byteorder' \
-   '#define HAVE_BYTE_ORDER_LITTLE' << \!
-int main(void){
-   enum {vBig = 1, vLittle = 0};
-   union {unsigned short bom; unsigned char buf[2];} u;
-   u.bom = 0xFEFF;
-   return((u.buf[1] == 0xFE) ? vLittle : vBig);
-}
 !
 then
    :

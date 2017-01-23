@@ -1787,13 +1787,8 @@ struct str {
 struct n_string{
    char *s_dat;         /*@ May contain NULs, not automatically terminated */
    ui32_t s_len;        /*@ gth of string */
-#ifdef HAVE_BYTE_ORDER_LITTLE
    ui32_t s_auto : 1;   /* Stored in auto-reclaimed storage? */
-#endif
    ui32_t s_size : 31;  /* of .s_dat, -1 */
-#ifndef HAVE_BYTE_ORDER_LITTLE
-   ui32_t s_auto : 1;
-#endif
 };
 
 struct n_strlist{
