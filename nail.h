@@ -289,10 +289,11 @@
  * OS, CC support, generic macros etc.
  */
 
-#define n_ISPOW2(X)     ((((X) - 1) & (X)) == 0)
-#define n_MIN(A, B)     ((A) < (B) ? (A) : (B))
-#define n_MAX(A, B)     ((A) < (B) ? (B) : (A))
-#define n_ABS(A)        ((A) < 0 ? -(A) : (A))
+#define n_ISPOW2(X) ((((X) - 1) & (X)) == 0)
+#define n_MIN(A,B) ((A) < (B) ? (A) : (B))
+#define n_MAX(A,B) ((A) < (B) ? (B) : (A))
+#define n_CLIP(X,A,B) (((X) <= (A)) ? (A) : (((X) >= (B)) ? (B) : (X)))
+#define n_ABS(A) ((A) < 0 ? -(A) : (A))
 
 /* OS: we're not a library, only set what needs special treatment somewhere */
 #define n_OS_DRAGONFLY 0
