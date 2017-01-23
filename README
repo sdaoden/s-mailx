@@ -1,12 +1,16 @@
 W e l c o m e  t o  S - n a i l / S - m a i l x
 ===============================================
 
-S-nail (later S-mailx) is a mail processing system with a command
-syntax reminiscent of ed(1) with lines replaced by messages.
-It is intended to provide the functionality of the POSIX mailx(1)
-command, but is MIME capable and optionally offers extensions for
-line editing, IDNA, MIME, S/MIME, SMTP and POP3.
-It is usable as a mail batch language.
+S-nail (later S-mailx) provides a simple and friendly environment for
+sending and receiving mail.  It is intended to provide the functionality
+of the POSIX mailx(1) command, but is MIME capable and optionally offers
+extensions for line editing, S/MIME, SMTP and POP3, among others.
+S-nail divides incoming mail into its constituent messages and allows
+the user to deal with them in any order.  It offers many commands and
+internal variables for manipulating messages and sending mail.  It
+provides the user simple editing capabilities to ease the composition of
+outgoing messages, and increasingly powerful and reliable
+non-interactive scripting capabilities.
 
 Please refer to the file INSTALL for build and installation remarks,
 and to NEWS for release update information.  The file THANKS mentions
@@ -33,34 +37,33 @@ the Programmer's Manual, 1971-1986":
 1. Where?
 ---------
 
-Our latest release can be downloaded at [1,2], and the fully cross-
-referenced manual can also be viewed as HTML online[3].
-There are browsable git(1) repositories at sdaoden.eu[4] (use [5] for
-cloning purposes), with mirrors at Sourceforge[6] and repo.or.cz[7].
+Our latest release can be downloaded at [1], and the fully cross-
+referenced manual can also be viewed as HTML online[2].
+There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
+cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
 
   [1] https?://www.sdaoden.eu/downloads/s-nail-latest.tar.{gz,xz}{,.asc}
-  [2] ftps?://ftp.sdaoden.eu/s-nail-latest.tar.{gz,xz}{,.asc}
-  [3] https?://www.sdaoden.eu/code.html#s-mailx
-  [4] https?://git.sdaoden.eu/cgit/s-nail.git
-  [5] https?://git.sdaoden.eu/scm/s-nail.git
-  [6] http://sourceforge.net/projects/s-nail
-  [7] http://repo.or.cz/s-mailx.git
+  [2] https?://www.sdaoden.eu/code.html#s-mailx
+  [3] https?://git.sdaoden.eu/cgit/s-nail.git
+  [4] https?://git.sdaoden.eu/scm/s-nail.git
+  [5] http://sourceforge.net/projects/s-nail
+  [6] http://repo.or.cz/s-mailx.git
 
-We have a mailing list[8] (later: [9]!) with moderated unsubscribed
-posting possibilities; subscriptions can be managed via web interface[10];
-Gmane added the ML their NNTP archive[11], and The Mail Archive archives
-a browser-accessible and searchable web version[12] -- thank you!
+We have a mailing list[7] (later: [8]!) with moderated unsubscribed
+posting possibilities; subscriptions can be managed via web interface[9];
+Gmane added the ML their NNTP archive[10], and The Mail Archive archives
+a browser-accessible and searchable web version[11] -- thank you!
 Commits to the [master], [release/*] and [stable/*] branches will be
-posted to [13], and announcements will also be posted to [14], both are
+posted to [12], and announcements will also be posted to [13], both are
 receive-only mailing-lists.
 
-  [8] s-nail-users@lists.sourceforge.net
-  [9] s-mailx@sdaoden.eu
-  [10] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
-  [11] news.gmane.org/gmane.mail.s-nail.user
-  [12] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
-  [13] s-mailx-commit@sdaoden.eu
-  [14] s-announce@sdaoden.eu
+  [7] s-nail-users@lists.sourceforge.net
+  [8] s-mailx@sdaoden.eu
+  [9] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
+  [10] news.gmane.org/gmane.mail.s-nail.user
+  [11] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
+  [12] s-mailx-commit@sdaoden.eu
+  [13] s-announce@sdaoden.eu
 
 These and all other mailings-lists at sdaoden.eu are hosted by MLMMJ, so
 users can manage their subscriptions by appending keywords to the plain
@@ -94,14 +97,15 @@ Thank you!
       v14.8.7.ar~113
 
 - [release/latest] and [release/stable]
-    "Symbolic links" to the latest (stable) release branches.
+    "Symbolic links" to the latest and stable, respectively, release
+    branches.
 
 - [stable/*]
     A new branch within stable/ will be created for each new minor
     version, e.g., [stable/v14.8].  History won't be rewritten.
 
-    These are de-facto the [master] branches for their respective minor
-    release, which extend for the full lifetime of that, e.g., the
+    These are the de-facto [master] branches for their respective minor
+    release, which extend for the full lifetime of the said, e.g., the
     branch [stable/v14.7] has been created once the v14.7.0 release was
     made, and it extends until the release of v14.7.11, the last v14.7
     update release made.
@@ -112,16 +116,19 @@ Thank you!
     in release/.
 
 - [stable/latest] and [stable/stable]
-    "Symbolic links" to the latest (stable) stable branches.
+    "Symbolic links" to the latest and stable, respectively, stable
+    branches.
 
     These are possibly what users should track which want to have the
     newest non-release bugfixes and stable, backward-compatible commits.
+    See below for examples how to accomplish that.
 
 - [master]
     Rooted on top of [heirloom].  It gains only stable, but possibly
-    backward-incompatible changes, and will be used to create new
-    entries in stable/.  It may gain signed commits for sealing purposes
-    from time to time.  History won't be rewritten.
+    backward-incompatible changes (usually mentioned on the ML), and
+    will be used to create new entries in stable/.  It may gain signed
+    commits for sealing purposes from time to time.
+    History won't be rewritten.
 
 - [next]
     Rooted on top of [master], this consists of a furious mixture of
@@ -154,14 +161,14 @@ To create a full clone of the repository, with all the data and history:
   $ git clone https://git.sdaoden.eu/scm/s-nail.git
 
 With a newer git(1), and only tracking the latest stable branch:
-  $ git clone --single-branch --branch='stable/latest' \
+  $ git clone --single-branch --branch=stable/latest \
       https://git.sdaoden.eu/scm/s-nail.git
 
-Or, selectively:
+Or, being selective, also with older git(1)s:
   $ mkdir s-nail.git
   $ cd s-nail.git
   $ git init
-  $ git remote add origin -t 'release/*' -t 'stable/stable' -t master \
+  $ git remote add origin -t 'release/*' -t stable/stable -t master \
       https://git.sdaoden.eu/scm/s-nail.git
   $ git fetch -v
 

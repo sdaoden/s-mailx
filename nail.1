@@ -143,13 +143,22 @@ enables obsoletion warnings.
 .Ed
 .
 .Pp
-\*(UA is a mail processing system with a command syntax reminiscent of
-.Xr ed 1
-with lines replaced by messages.
+\*(UA provides a simple and friendly environment for sending and
+receiving mail.
 It is intended to provide the functionality of the POSIX
 .Xr mailx 1
 command, but is MIME capable and optionally offers extensions for
-line editing, S/MIME, SMTP and POP3 among others.
+line editing, S/MIME, SMTP and POP3, among others.
+\*(UA divides incoming mail into its constituent messages and allows
+the user to deal with them in any order.
+It offers many
+.Sx COMMANDS
+and
+.Sx "INTERNAL VARIABLES"
+for manipulating messages and sending mail.
+It provides the user simple editing capabilities to ease the composition
+of outgoing messages, and increasingly powerful and reliable
+non-interactive scripting capabilities.
 .
 .\" .Ss "Options" {{{
 .Ss "Options"
@@ -718,25 +727,7 @@ mail which
 .Dq was there from the start
 according to
 .Sx HISTORY .
-The
-.Bx
-Mail reference manual begins with the following words:
-.
-.Bd -ragged -offset indent
-Mail provides a simple and friendly environment for sending and
-receiving mail.
-It divides incoming mail into its constituent messages and allows the
-user to deal with them in any order.
-In addition, it provides a set of
-.Xr ed 1 Ns
--like commands for manipulating messages and sending mail.
-Mail offers the user simple editing capabilities to ease the composition
-of outgoing messages, as well as providing the ability to define and
-send to names which address groups of users.
-.Ed
-.
-.Pp
-\*(UA is thus the user side of the
+It thus represents the user side of the
 .Ux
 mail system, whereas the system side (Mail-Transfer-Agent, MTA) was
 traditionally taken by
@@ -815,13 +806,16 @@ and
 can be used to add (blind) carbon copy receivers:
 .
 .Bd -literal -offset indent
+# Via sendmail(1)
 $ \*(uA -s ubject -a ttach.txt bill@exam.ple
-# But... try it in an isolated dry-run mode first
-$ LC_ALL=C \*(uA -:/ -d -vv -Ssendwait \e
-   -b bcc@exam.ple -c cc@exam.ple -. \e
-   '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
+
+# But... try it in an isolated dry-run mode (-d) first
+$ LC_ALL=C \*(uA -d -:/ -Ssendwait \e
+   -b bcc@exam.ple -c cc@exam.ple \e
+   -. '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
+
 # With SMTP
-$ LC_ALL=C \*(uA -:/ -d -vv -Sv15-compat -Ssendwait \e
+$ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait \e
     -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
     -S 'from=scriptreply@exam.ple' \e
     -a /etc/mail.rc \e
