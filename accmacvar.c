@@ -408,15 +408,8 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    losp->as_unroll = amcap->amca_lopts_on;
 
    a_amv_lopts = losp;
-   if(amcap->amca_hook_pre != NULL){
-      bool_t reset;
-
-      reset = !(n_pstate & n_PS_ROOT);
-      n_pstate |= n_PS_ROOT;
-      (*amcap->amca_hook_pre)(amcap->amca_hook_arg);
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
-   }
+   if(amcap->amca_hook_pre != NULL)
+      n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
    rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
          &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
@@ -714,23 +707,18 @@ jleave:
 static void
 a_amv_lopts_unroll(struct a_amv_var **avpp){
    struct a_amv_lostack *save_alp;
-   bool_t reset;
    struct a_amv_var *x, *avp;
    NYD2_ENTER;
 
    avp = *avpp;
    *avpp = NULL;
-   reset = !(n_pstate & n_PS_ROOT);
 
    save_alp = a_amv_lopts;
    a_amv_lopts = NULL;
    while(avp != NULL){
       x = avp;
       avp = avp->av_link;
-      n_pstate |= n_PS_ROOT;
-      n_var_vset(x->av_name, (uintptr_t)x->av_value);
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
+      n_PS_ROOT_BLOCK(n_var_vset(x->av_name, (uintptr_t)x->av_value));
       free(x);
    }
    a_amv_lopts = save_alp;
@@ -773,11 +761,10 @@ a_amv_var_free(char *cp){
 static bool_t
 a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
    int flag;
-   bool_t ok, reset;
+   bool_t ok;
    NYD2_ENTER;
 
    ok = TRU1;
-   reset = !(n_pstate & n_PS_ROOT);
    flag = 0;
 
    switch(okey){
@@ -788,10 +775,7 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       /* Invalidate any resolved folder then, too
        * FALLTHRU */
    case ok_v_folder:
-      n_pstate |= n_PS_ROOT;
-      ok_vclear(_folder_resolved);
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
+      n_PS_ROOT_BLOCK(ok_vclear(_folder_resolved));
       break;
    case ok_b_header:
       flag = n_PO_N_FLAG;
@@ -801,26 +785,13 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       flag = n_PO_MEMDEBUG;
       break;
    case ok_b_POSIXLY_CORRECT:
-      if(!(n_pstate & n_PS_ROOT)){
-         n_pstate |= n_PS_ROOT;
-         if(enable)
-            ok_bset(posix);
-         else
-            ok_bclear(posix);
-         if(reset)
-            n_pstate &= ~n_PS_ROOT;
-      }
+      if(!(n_pstate & n_PS_ROOT))
+         n_PS_ROOT_BLOCK(enable ? ok_bset(posix) : ok_bclear(posix));
       break;
    case ok_b_posix:
-      if(!(n_pstate & n_PS_ROOT)){
-         n_pstate |= n_PS_ROOT;
-         if(enable)
-            ok_bset(POSIXLY_CORRECT);
-         else
-            ok_bclear(POSIXLY_CORRECT);
-         if(reset)
-            n_pstate &= ~n_PS_ROOT;
-      }
+      if(!(n_pstate & n_PS_ROOT))
+         n_PS_ROOT_BLOCK(enable ? ok_bset(POSIXLY_CORRECT)
+            : ok_bclear(POSIXLY_CORRECT));
       break;
    case ok_b_skipemptybody:
       flag = n_PO_E_FLAG;
@@ -1754,17 +1725,8 @@ c_account(void *v){
       }
    }
 
-   /* C99 */{
-      bool_t reset = !(n_pstate & n_PS_ROOT);
-
-      n_pstate |= n_PS_ROOT;
-      if(amp != NULL)
-         ok_vset(_account, amp->am_name);
-      else
-         ok_vclear(_account);
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
-   }
+   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(_account, amp->am_name)
+      : ok_vclear(_account)));
 
    if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
@@ -1913,15 +1875,7 @@ c_return(void *v){
          mrv = "0";
       }
 
-      /* C99 */{
-         bool_t reset;
-
-         reset = !(n_pstate & n_PS_ROOT);
-         n_pstate |= n_PS_ROOT;
-         ok_vset(__rv, mrv);
-         if(reset)
-            n_pstate &= ~n_PS_ROOT;
-      }
+      n_PS_ROOT_BLOCK(ok_vset(__rv, mrv));
    }else
       n_err(_("Can only use `return' in a macro\n"));
    NYD_LEAVE;

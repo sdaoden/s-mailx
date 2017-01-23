@@ -138,15 +138,8 @@ jdocopy:
          (int)j, mailp, mailp + i);
    }
 
-   /* C99 */{
-      bool_t reset = !(n_pstate & n_PS_ROOT);
-
-      n_pstate |= n_PS_ROOT;
-      ok_vset(_mailbox_resolved, mailname);
-      ok_vset(_mailbox_display, displayname);
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
-   }
+   n_PS_ROOT_BLOCK((ok_vset(_mailbox_resolved, mailname),
+      ok_vset(_mailbox_display, displayname)));
    NYD_LEAVE;
    return rv;
 }
@@ -811,14 +804,7 @@ folder_query(void){
       }
 
 jset:
-      /* C99 */{
-         bool_t reset = !(n_pstate & n_PS_ROOT);
-
-         n_pstate |= n_PS_ROOT;
-         ok_vset(_folder_resolved, rv);
-         if(reset)
-            n_pstate &= ~n_PS_ROOT;
-      }
+      n_PS_ROOT_BLOCK(ok_vset(_folder_resolved, rv));
    }
 
    if(err){

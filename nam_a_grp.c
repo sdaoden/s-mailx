@@ -1450,17 +1450,8 @@ c_alternates(void *v){
          a_nag_altnames = NULL;
       }
 
-      /* C99 */{
-         bool_t reset = !(n_pstate & n_PS_ROOT);
-
-         n_pstate |= n_PS_ROOT;
-         if(sl > 0)
-            ok_vset(_alternates, cp);
-         else
-            ok_vclear(_alternates);
-         if(reset)
-            n_pstate &= ~n_PS_ROOT;
-      }
+      n_PS_ROOT_BLOCK(sl > 0 ? ok_vset(_alternates, cp)
+         : ok_vclear(_alternates));
    }
    NYD_LEAVE;
    return rv;

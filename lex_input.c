@@ -962,14 +962,7 @@ je96:
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
 jleave:
-   /* C99 */{
-      bool_t reset = !(n_pstate & n_PS_ROOT);
-
-      n_pstate |= n_PS_ROOT;
-      ok_vset(__qm, (rv == 0 ? "0" : "1")); /* TODO num=1 +realval */
-      if(reset)
-         n_pstate &= ~n_PS_ROOT;
-   }
+   n_PS_ROOT_BLOCK(ok_vset(__qm, (rv == 0 ? "0" : "1"))); /* TODO num=1/real */
 
    if(flags & a_IGNERR){
       rv = 0;

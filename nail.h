@@ -1403,6 +1403,14 @@ do{\
 /* Program state bits which may regulary fluctuate */
 enum n_program_state{
    n_PS_ROOT = 1u<<30,                 /* Temporary "bypass any checks" bit */
+#define n_PS_ROOT_BLOCK(ACT) \
+do{\
+   bool_t a___reset___ = !(n_pstate & n_PS_ROOT);\
+   n_pstate |= n_PS_ROOT;\
+   ACT;\
+   if(a___reset___)\
+      n_pstate &= ~n_PS_ROOT;\
+}while(0)
 
    n_PS_EXIT = 1u<<1,                  /* Exit request pending */
    n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
