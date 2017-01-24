@@ -191,6 +191,7 @@ t_behave() {
    __behave_ifelse
    __behave_localopts
    __behave_macro_param_shift
+   __behave_addrcodec
 
    # FIXME __behave_alias
 
@@ -1232,6 +1233,54 @@ __behave_macro_param_shift() {
 #t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
 #t1.5: 1; ignerr () should not exist
    cksum_test behave:macro_param_shift "${MBOX}" '1402489146 1682'
+}
+
+__behave_addrcodec() {
+   ${rm} -f "${MBOX}"
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+	vput addrcodec res <doog@def>
+	echo $0 $res
+	vput addrcodec res . <doog@def>
+	echo $0 $res
+	vput addrcodec res Sauer Dr. <doog@def>
+	echo $0 $res
+	vput addrcodec res Sauer (Ma) Dr. <doog@def>
+	echo $0 $res
+	vput addrcodec res Sauer (Ma) Braten Dr. <doog@def>
+	echo $0 $res
+	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def>
+	echo $0 $res
+	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	echo $0 $res
+	vput addrcodec res Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	echo $0 $res
+	vput addrcodec res Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+	echo $0 $res
+	vput addrcodec res (Ma)Braten Dr. (Heu) <doog@def>
+	echo $0 $res
+	vput addrcodec res (Ma)Braten Dr'"."' (Heu) <doog@def>
+	echo $0 $res
+	vput addrcodec res \
+		'   Dr.  ' '  Sauer ' (Ma) '  Braten  ' '  Dr.   ' (u) <doog@def>
+	echo $0 $res
+	vput addrcodec res (Ma)Braten    Dr.     (Heu)     <doog@def>
+	echo $0 $res
+	__EOT
+#0 <doog@def>
+#0 "." <doog@def>
+#0 "Dr." <doog@def>
+#0 "Sauer Dr." <doog@def>
+#0 Sauer (Ma) "Dr." <doog@def>
+#0 Sauer (Ma) "Braten Dr." <doog@def>
+#0 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
+#0 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
+#0 "Dr. Sauer" (Ma) "Braten Dr." (Heu bu) <doog@def>
+#0 "Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
+#0 (Ma) "Braten Dr." (Heu) <doog@def>
+#0 (Ma)Braten Dr "." (Heu) <doog@def>
+#0 "Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
+#0 (Ma) "Braten Dr." (Heu) <doog@def>
+   cksum_test behave:addrcodec "${MBOX}" '199353623 460'
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein

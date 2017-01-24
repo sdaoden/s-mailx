@@ -1535,6 +1535,58 @@ jleave:
 }
 
 FL int
+c_addrcodec(void *v){
+   struct n_addrguts ag;
+   struct n_string s_b, *sp;
+   char const **argv, *varname, *varres, *var0;
+   int rv;
+   NYD_ENTER;
+
+   sp = n_string_creat_auto(&s_b);
+   rv = 0;
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+
+   for(; *argv != NULL; ++argv){
+      if(sp->s_len > 0)
+         sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, *argv);
+   }
+
+   /* TODO nalloc() cannot yet fail, thus need to do the work twice!! */
+   for(var0 = n_string_cp(sp); blankchar(*var0); ++var0)
+      ;
+   if(var0 != sp->s_dat)
+      sp = n_string_cut(sp, 0, PTR2SIZE(var0 - sp->s_dat));
+   for(varres = var0 = &sp->s_dat[sp->s_len];
+         var0 > sp->s_dat && blankchar(var0[-1]); --var0)
+      ;
+   if(var0 != varres)
+      sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - var0));
+
+   if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL){
+      varres = sp->s_dat;
+      var0 = n_1;
+   }else{
+      struct name *np;
+
+      np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
+      varres = np->n_fullname;
+      var0 = n_0;
+   }
+
+   if(varname == NULL)
+      fprintf(n_stdout, "%s\n", varres);
+   else if(!n_var_vset(varname, (uintptr_t)varres)){
+      var0 = n_1;
+      rv = 1;
+   }
+   n__RV_SET(var0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_alias(void *v)
 {
    char **argv = v;

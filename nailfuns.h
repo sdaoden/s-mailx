@@ -1506,6 +1506,9 @@ FL struct name * delete_alternates(struct name *np);
 
 FL int         is_myname(char const *name);
 
+/* `addrcodec' */
+FL int c_addrcodec(void *v);
+
 /* `(un)?alias' */
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);

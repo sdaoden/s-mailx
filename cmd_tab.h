@@ -425,6 +425,9 @@
    { "read", &c_read, (G | M | X | _0 | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
 
+   { "addrcodec", &c_addrcodec, (G | M | V | X | _0 | WYSHLIST), 1, 1000
+     DS(N_("Form an address of <:arguments:>")) },
+
 #ifdef HAVE_MEMORY_DEBUG
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },

@@ -3184,6 +3184,17 @@ account myisp {
 .Ed
 .
 .Mx
+.It Ic addrcodec
+\*(NQ Interprets the given line as an email address specification,
+formats it as induced by email standards and then shows the result.
+Supports the
+.Mx -sx
+.Sx "command modifier"
+.Ql vput .
+The return status is tracked via
+.Va \&0 .
+.
+.Mx
 .It Ic alias
 (a) With no arguments, shows all currently-defined aliases.
 With one argument, shows that alias.
