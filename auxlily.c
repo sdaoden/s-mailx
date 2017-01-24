@@ -73,6 +73,45 @@ struct a_aux_err_node{
 };
 #endif
 
+static ui8_t a_aux_idec_atoi[256] = {
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0x01,
+   0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,
+   0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,
+   0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,0x21,0x22,
+   0x23,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x0A,0x0B,0x0C,
+   0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,
+   0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,
+   0x21,0x22,0x23,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
+};
+
+#define a_X(X) ((ui64_t)-1 / (X))
+static ui64_t const a_aux_idec_cutlimit[35] = {
+   a_X( 2), a_X( 3), a_X( 4), a_X( 5), a_X( 6), a_X( 7), a_X( 8),
+   a_X( 9), a_X(10), a_X(11), a_X(12), a_X(13), a_X(14), a_X(15),
+   a_X(16), a_X(17), a_X(18), a_X(19), a_X(20), a_X(21), a_X(22),
+   a_X(23), a_X(24), a_X(25), a_X(26), a_X(27), a_X(28), a_X(29),
+   a_X(30), a_X(31), a_X(32), a_X(33), a_X(34), a_X(35), a_X(36)
+};
+#undef a_X
+
 #ifndef HAVE_POSIX_RANDOM
 static union rand_state *a_aux_rand;
 #endif
@@ -396,6 +435,209 @@ jleave:
    return rv;
 jerr:
    rv = -1;
+   goto jleave;
+}
+
+FL enum n_idec_state
+n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
+      enum n_idec_mode idm, char const **endptr_or_null){
+   /* XXX Brute simple and */
+   ui8_t currc;
+   ui64_t res, cut;
+   enum n_idec_state rv;
+   NYD_ENTER;
+
+   idm &= n__IDEC_MODE_MASK;
+   rv = n_IDEC_STATE_NONE | idm;
+   res = 0;
+
+   if(clen == UIZ_MAX){
+      if(*cbuf == '\0')
+         goto jeinval;
+   }else if(clen == 0)
+      goto jeinval;
+
+   /* Leading WS */
+   while(spacechar(*cbuf))
+      if(*++cbuf == '\0' || --clen == 0)
+         goto jeinval;
+
+   /* Check sign */
+   switch(*cbuf){
+   case '-':
+      rv |= n_IDEC_STATE_SEEN_MINUS;
+      /* FALLTHROUGH */
+   case '+':
+      if(*++cbuf == '\0' || --clen == 0)
+         goto jeinval;
+      break;
+   }
+
+   /* Base detection/skip */
+   if(*cbuf != '0'){
+      if(base == 0)
+         base = 10;
+      /* Character must be valid for base */
+      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
+      if(currc >= base)
+         goto jeinval;
+   }else{
+      /* 0 always valid as is, fallback base 10 */
+      if(*++cbuf == '\0' || --clen == 0)
+         goto jleave;
+
+      /* Base "detection" */
+      if(base == 0 || base == 2 || base == 16){
+         switch(*cbuf){
+         case 'x':
+         case 'X':
+            if((base & 2) == 0){
+               base = 0x10;
+               goto jprefix_skip;
+            }
+            break;
+         case 'b':
+         case 'B':
+            if((base & 16) == 0){
+               base = 2; /* 0b10 */
+               /* Char after prefix must be valid */
+jprefix_skip:
+               if(*++cbuf == '\0' || --clen == 0)
+                  goto jeinval;
+
+               /* Character must be valid for base, invalid otherwise */
+               currc = a_aux_idec_atoi[(ui8_t)*cbuf];
+               if(currc >= base)
+                  goto jeinval;
+            }
+            break;
+         default:
+            if(base == 0)
+               base = 010;
+            break;
+         }
+      }
+
+      /* Character must be valid for base, EBASE otherwise */
+      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
+      if(currc >= base)
+         goto jebase;
+   }
+
+   for(cut = a_aux_idec_cutlimit[base - 2];;){
+      if(res >= cut){
+         if(res == cut){
+            res *= base;
+            if(res > UI64_MAX - currc)
+               goto jeover;
+            res += currc;
+         }else
+            goto jeover;
+      }else{
+         res *= base;
+         res += currc;
+      }
+
+      if(*++cbuf == '\0' || --clen == 0)
+         break;
+
+      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
+      if(currc >= base)
+         goto jebase;
+   }
+
+jleave:
+   do{
+      ui64_t uimask;
+
+      switch(rv & n__IDEC_MODE_LIMIT_MASK){
+      case n_IDEC_MODE_LIMIT_8BIT: uimask = UI8_MAX; break;
+      case n_IDEC_MODE_LIMIT_16BIT: uimask = UI16_MAX; break;
+      case n_IDEC_MODE_LIMIT_32BIT: uimask = UI32_MAX; break;
+      default: uimask = UI64_MAX; break;
+      }
+      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+         uimask >>= 1;
+
+      if(res & ~uimask){
+         if((rv & (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)
+               ) == (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)){
+            if(res > uimask + 1){
+               res = uimask << 1;
+               res &= ~uimask;
+            }else{
+               res = -res;
+               break;
+            }
+         }else
+            res = uimask;
+         if(!(rv & n_IDEC_MODE_LIMIT_NOERROR))
+            rv |= n_IDEC_STATE_EOVERFLOW;
+      }else if(rv & n_IDEC_STATE_SEEN_MINUS)
+         res = -res;
+   }while(0);
+
+   switch(rv & n__IDEC_MODE_LIMIT_MASK){
+   case n_IDEC_MODE_LIMIT_8BIT:
+      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+         *(si8_t*)resp = (si8_t)res;
+      else
+         *(ui8_t*)resp = (ui8_t)res;
+      break;
+   case n_IDEC_MODE_LIMIT_16BIT:
+      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+         *(si16_t*)resp = (si16_t)res;
+      else
+         *(ui16_t*)resp = (ui16_t)res;
+      break;
+   case n_IDEC_MODE_LIMIT_32BIT:
+      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+         *(si32_t*)resp = (si32_t)res;
+      else
+         *(ui32_t*)resp = (ui32_t)res;
+      break;
+   default:
+      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+         *(si64_t*)resp = (si64_t)res;
+      else
+         *(ui64_t*)resp = (ui64_t)res;
+      break;
+   }
+
+   if(endptr_or_null != NULL)
+      *endptr_or_null = cbuf;
+   if(*cbuf == '\0' || clen == 0)
+      rv |= n_IDEC_STATE_CONSUMED;
+   NYD_LEAVE;
+   return rv;
+
+jeinval:
+   rv |= n_IDEC_STATE_EINVAL;
+   goto j_maxval;
+jebase:
+   /* Not a base error for terminator and whitespace! */
+   if(*cbuf != '\0' && !spacechar(*cbuf))
+      rv |= n_IDEC_STATE_EBASE;
+   goto jleave;
+
+jeover:
+   /* Overflow error: consume input until bad character or length out */
+   for(;;){
+      if(*++cbuf == '\0' || --clen == 0)
+         break;
+      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
+      if(currc >= base)
+         break;
+   }
+
+   rv |= n_IDEC_STATE_EOVERFLOW;
+j_maxval:
+   if(rv & n_IDEC_MODE_SIGNED_TYPE)
+      res = (rv & n_IDEC_STATE_SEEN_MINUS) ? (ui64_t)SI64_MIN
+         : (ui64_t)SI64_MAX;
+   else
+      res = UI64_MAX;
+   rv &= ~n_IDEC_STATE_SEEN_MINUS;
    goto jleave;
 }
 
