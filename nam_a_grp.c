@@ -1554,7 +1554,9 @@ c_addrcodec(void *v){
       sp = n_string_push_cp(sp, *argv);
    }
 
-   /* TODO nalloc() cannot yet fail, thus need to do the work twice!! */
+   /* */
+   /* TODO nalloc() cannot yet fail, thus need to do the work twice!!
+    * TODO I.e. later on this could be a simple nalloc() wrapper.. */
    for(cp = n_string_cp(sp); blankchar(*cp); ++cp)
       ;
    if(cp != sp->s_dat)
@@ -1564,6 +1566,18 @@ c_addrcodec(void *v){
       ;
    if(cp != varres)
       sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - cp));
+
+   /* C99 */{
+      size_t i;
+
+      /* However, the difference for this command is that the user enters what
+       * she wants to have, and we should make something of it.  Therefore any
+       * quotes are necessarily to be turned to quoted-pair! */
+      n_string_cp(sp);
+      for(i = 0; i < sp->s_len; ++i)
+         if(sp->s_dat[i] == '"' || sp->s_dat[i] == '\\')
+            sp = n_string_insert_c(sp, i++, '\\');
+   }
 
    if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL){
       varres = sp->s_dat;

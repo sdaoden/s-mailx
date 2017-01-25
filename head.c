@@ -423,7 +423,7 @@ a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned)
    char *addr, *p;
    bool_t in_quote;
    ui8_t in_domain, hadat;
-   union {char c; unsigned char u; ui32_t ui32;} c;
+   union {bool_t b; char c; unsigned char u; ui32_t ui32; si32_t si32;} c;
 #ifdef HAVE_IDNA
    ui8_t use_idna;
 #endif
@@ -471,7 +471,7 @@ jaddr_check:
    in_quote = FAL0;
    in_domain = hadat = 0;
 
-   /* TODO addrspec_check: we need a real RFC 5322 parser! */
+   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser! */
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
          in_quote = !in_quote;
@@ -516,18 +516,31 @@ jaddr_check:
    if (!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
    else{
-      /* If we seem to know that this is an address.  Perform some simple checks
-       * for dot-atom as of RFC 5322 and ensure we fix that "Dr. problem".
-       * TODO We need a real RFC 5322 parser which produces tokens, to store them
-       * TODO in a list including typeattr, as in atom-text, dot-atom-text,
-       * TODO quote, comment address, so then we could simply join as many
-       * TODO consecutive -text tokens and convert them to quote as possible
-       * TODO For now bad and expensive; wrong for some comments in tokens.
-       * TODO In fact i haven't read RFC 5322 so much, esp. before doing this */
+      /* If we seem to know that this is an address.  Ensure this is correct
+       * according to RFC 5322 TODO the entire address parser should be like
+       * TODO that for one, and then we should now whether structured or
+       * TODO unstructured, and just parse correctly overall!
+       * TODO In addition, this can be optimised a lot */
+      struct a_token{
+         struct a_token *t_last;
+         struct a_token *t_next;
+         enum{
+            a_T_TATOM = 1<<0,
+            a_T_TCOMM = 1<<1,
+            a_T_TQUOTE = 1<<2,
+            a_T_TADDR = 1<<3,
+            a_T_TMASK = (1<<4) - 1,
+
+            a_T_SPECIAL = 1<<8      /* An atom actually needs to go TQUOTE */
+         } t_f;
+         ui8_t t__pad[4];
+         size_t t_start;
+         size_t t_end;
+      } *thead, *tcurr, *tp;
+
       struct n_string ost, *ostp;
-      char lastc;
-      size_t rangestart, lastpoi;
-      char const *cp, *cpmax, *xp;
+      char const *cp, *cp1st, *cpmax, *xp;
+      void *lofi_snap;
 
       /* Name and domain must be non-empty */
       if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
@@ -541,190 +554,280 @@ jaddr_check:
          agp = a_head_idna_apply(agp);
 #endif
 
-      ostp = n_string_creat_auto(&ost);
-      if((c.ui32 = agp->ag_ilen) <= UI32_MAX >> 1)
-         ostp = n_string_reserve(ostp, c.ui32 <<= 1);
-
-      hadat = FAL0;
       cp = agp->ag_input;
+
+      /* Nothing to do if there is only an address (in angle brackets) */
+      if(agp->ag_iaddr_start == 0){
+         if(agp->ag_iaddr_aend == agp->ag_ilen)
+            goto jleave;
+      }else if(agp->ag_iaddr_start == 1 && *cp == '<' &&
+            agp->ag_iaddr_aend == agp->ag_ilen - 1 &&
+            cp[agp->ag_iaddr_aend] == '>')
+         goto jleave;
+
+      /* It is not, so parse off all tokens, then resort and rejoin */
+      lofi_snap = n_lofi_snap_create();
+
+      cp1st = cp;
       if((c.ui32 = agp->ag_iaddr_start) > 0)
          --c.ui32;
       cpmax = &cp[c.ui32];
-      rangestart = 0;
 
-      while(cp < cpmax && blankchar(*cp))
-         ++cp;
-
-      lastc = '\0';
-jdotatom_redo:
-      for(lastpoi = UIZ_MAX; cp < cpmax;){
+      thead = tcurr = NULL;
+      hadat = FAL0;
+jnode_redo:
+      for(tp = NULL; cp < cpmax;){
          switch((c.c = *cp)){
          case '(':
-jdotatom_comment:
-            lastc = 0;
-            if((c.ui32 = ostp->s_len) > 0){
-               while(c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]))
-                  --c.ui32;
-               ostp = n_string_trunc(ostp, c.ui32);
-
-               if(c.ui32 > 0){
-                  --c.ui32;
-                  /* Can we join two comments? */
-                  if(ostp->s_dat[c.ui32] == ')'){
-                     ostp->s_dat[c.ui32] = ' ';
-                     lastc = 1;
-                  }
-                  /* Otherwise ensure it is separated! */
-                  else if(!blankchar(ostp->s_dat[c.ui32]))
-                     ostp = n_string_push_c(ostp, ' ');
-               }
-            }
-            if(!lastc)
-               ostp = n_string_push_c(ostp, '(');
-
-            xp = skip_comment(++cp);
-            c.ui32 = (ui32_t)PTR2SIZE(xp - cp);
-            if(c.ui32 > 0){
-               if(xp[-1] == ')')
-                  --c.ui32;
-               /* Run out of buffer while searching for comment close, this is
-                * artificial and we strip all blanks at EOS */
-               else while(blankchar(xp[-1])){
-                  --xp;
-                  if(--c.ui32 == 0)
-                     break;
-               }
-            }
-            ostp = n_string_push_buf(ostp, cp, c.ui32);
-
-            ostp = n_string_push_c(ostp, ')');
-            lastpoi = ostp->s_len - 1;
-            lastc = '\0';
+            if(tp != NULL)
+               tp->t_end = PTR2SIZE(cp - cp1st);
+            tp = n_lofi_alloc(sizeof *tp);
+            tp->t_next = NULL;
+            if((tp->t_last = tcurr) != NULL)
+               tcurr->t_next = tp;
+            else
+               thead = tp;
+            tcurr = tp;
+            tp->t_f = a_T_TCOMM;
+            tp->t_start = PTR2SIZE(++cp - cp1st);
+            xp = skip_comment(cp);
+            tp->t_end = PTR2SIZE(xp - cp1st);
             cp = xp;
-            break;
-         case '"':
-            lastc = 0;
-jdotatom_quote:
-            xp = ++cp;
-            if((c.ui32 = ostp->s_len) > 0){
-               while(c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]))
-                  --c.ui32;
-               ostp = n_string_trunc(ostp, c.ui32);
-
-               if(c.ui32 > 0){
-                  --c.ui32;
-                  /* Can we join two quotes? */
-                  if(ostp->s_dat[c.ui32] == '"'){
-                     ostp->s_dat[c.ui32] = ' ';
-                     lastc = 1;
-                  }
-                  /* Otherwise ensure it is separated! */
-                  else if(!blankchar(ostp->s_dat[c.ui32]))
-                     ostp = n_string_push_c(ostp, ' ');
+            if(tp->t_end > tp->t_start){
+               if(xp[-1] == ')')
+                  --tp->t_end;
+               else{
+                  /* No closing comment - strip trailing whitespace */
+                  while(blankchar(*--xp))
+                     if(--tp->t_end == tp->t_start)
+                        break;
                }
             }
-            if(!lastc)
-               ostp = n_string_push_c(ostp, '"');
+            tp = NULL;
+            break;
 
-            for(; xp < cpmax; ++xp){
+         case '"':
+            if(tp != NULL)
+               tp->t_end = PTR2SIZE(cp - cp1st);
+            tp = n_lofi_alloc(sizeof *tp);
+            tp->t_next = NULL;
+            if((tp->t_last = tcurr) != NULL)
+               tcurr->t_next = tp;
+            else
+               thead = tp;
+            tcurr = tp;
+            tp->t_f = a_T_TQUOTE;
+            tp->t_start = PTR2SIZE(++cp - cp1st);
+            for(xp = cp; xp < cpmax; ++xp){
                if((c.c = *xp) == '"')
                   break;
                if(c.c == '\\' && xp[1] != '\0')
                   ++xp;
             }
-            c.ui32 = (ui32_t)PTR2SIZE(xp - cp);
-            if(c.ui32 > 0){
-               if(xp != cpmax && *xp == '"')
-                  ++xp;
-               /* Run out of buffer while searching for quote close, this is
-                * artificial and we strip all blanks at EOS */
-               else while(blankchar(xp[-1])){
-                  --xp;
-                  if(--c.ui32 == 0)
-                     break;
+            tp->t_end = PTR2SIZE(xp - cp1st);
+            cp = &xp[1];
+            if(tp->t_end > tp->t_start){
+               /* No closing quote - strip trailing whitespace */
+               if(*xp != '"'){
+                  while(blankchar(*xp--))
+                     if(--tp->t_end == tp->t_start)
+                        break;
                }
             }
-            ostp = n_string_push_buf(ostp, cp, c.ui32);
-
-            ostp = n_string_push_c(ostp, '"');
-            lastpoi = ostp->s_len - 1;
-            lastc = '\0';
-            cp = xp;
+            tp = NULL;
             break;
-         case '.':
-            if(lastpoi != UIZ_MAX){
-               if(ostp->s_dat[lastpoi] == '"')
-                  /* Simply join backward to a yet existing quote */
-                  ostp = n_string_cut(ostp, lastpoi, 1);
-            }else
-               /* Otherwise convert anything before to a quote */
-               ostp = n_string_insert_c(ostp, rangestart, '"');
 
-            for(xp = cp; cp < cpmax; ++cp){
-               /* If we reach another quote, join forward */
-               if((c.c = *cp) == '"'){
-                  lastc = 1;
-                  goto jdotatom_quote;
-               }
-               else if(c.c == '('){
-                  /* End the quote before the whitespace before the comment */
-                  for(c.ui32 = 0; blankchar(cp[-1 - c.ui32]); ++c.ui32)
-                     ;
-                  if(c.ui32 > 0)
-                     ostp = n_string_trunc(ostp, ostp->s_len - c.ui32);
-                  ostp = n_string_push_c(ostp, '"');
-                  goto jdotatom_comment;
-               }
-               ostp = n_string_push_c(ostp, c.c);
-            }
-
-            /* Since we have created this quote it would be false to let it end
-             * in a series of whitespace */
-            for(c.ui32 = ostp->s_len;
-                  c.ui32 > 0 && blankchar(ostp->s_dat[c.ui32 - 1]); --c.ui32)
-               ;
-            ostp = n_string_trunc(ostp, c.ui32);
-
-            ostp = n_string_push_c(ostp, '"');
-            lastpoi = ostp->s_len - 1;
-            lastc = '\0';
-            break;
          default:
-            if(lastc == '\0' || !blankchar(c.c) || !blankchar(lastc))
-               ostp = n_string_push_c(ostp, lastc = c.c);
+            if(blankchar(c.c)){
+               if(tp != NULL)
+                  tp->t_end = PTR2SIZE(cp - cp1st);
+               tp = NULL;
+               ++cp;
+               break;
+            }
+
+            if(tp == NULL){
+               tp = n_lofi_alloc(sizeof *tp);
+               tp->t_next = NULL;
+               if((tp->t_last = tcurr) != NULL)
+                  tcurr->t_next = tp;
+               else
+                  thead = tp;
+               tcurr = tp;
+               tp->t_f = a_T_TATOM;
+               tp->t_start = PTR2SIZE(cp - cp1st);
+            }
             ++cp;
+
+            /* Reverse solidus transforms the following into a quoted-pair, and
+             * therefore (must occur in comment or quoted-string only) the
+             * entire atom into a quoted string */
+            if(c.c == '\\'){
+               tp->t_f |= a_T_SPECIAL;
+               if(cp < cpmax)
+                  ++cp;
+            }
+            /* Is this plain RFC 5322 "atext", or "specials"?  Because we don't
+             * TODO know structured/unstructured, nor anything else, we need to
+             * TODO treat "dot-atom" as being identical to "specials" */
+            else if(!alnumchar(c.c) &&
+                  c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
+                  c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
+                  c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
+                  c.c != '^' && c.c != '_' && c.c != '`' && c.c != '{' &&
+                  c.c != '}' && c.c != '|' && c.c != '}' && c.c != '~')
+               tp->t_f |= a_T_SPECIAL;
             break;
          }
       }
+      if(tp != NULL)
+         tp->t_end = PTR2SIZE(cp - cp1st);
 
       if(hadat == FAL0){
          hadat = TRU1;
-         if((c.ui32 = ostp->s_len) > 0 && !blankchar(ostp->s_dat[c.ui32 - 1])){
-            ostp = n_string_push_c(ostp, ' ');
-            ++c.ui32;
-         }
-         if(c.ui32 != 0)
-            ++c.ui32;
-         agp->ag_iaddr_start = c.ui32;
-         cp = &agp->ag_input[agp->ag_iaddr_aend];
-         if(cp != &agp->ag_input[agp->ag_ilen])
-            ++cp;
-         c.ui32 = (ui32_t)PTR2SIZE(cp - cpmax);
-         ostp = n_string_push_buf(ostp, cpmax, c.ui32);
-         agp->ag_iaddr_aend = ostp->s_len;
-         cpmax = &agp->ag_input[agp->ag_ilen];
+         tp = n_lofi_alloc(sizeof *tp);
+         tp->t_next = NULL;
+         if((tp->t_last = tcurr) != NULL)
+            tcurr->t_next = tp;
+         else
+            thead = tp;
+         tcurr = tp;
+         tp->t_f = a_T_TADDR;
+         tp->t_start = agp->ag_iaddr_start;
+         tp->t_end = agp->ag_iaddr_aend;
+         tp = NULL;
 
-         c.ui32 = (ui32_t)PTR2SIZE(cpmax - cp);
-         if(c.ui32 > 0){
-            ostp = n_string_push_c(ostp, lastc = ' ');
-            rangestart = ostp->s_len;
-            goto jdotatom_redo;
-         }
-      }else if((c.ui32 = ostp->s_len) > 0){
-         while(blankchar(ostp->s_dat[c.ui32 - 1]))
-            --c.ui32;
-         ostp = n_string_trunc(ostp, c.ui32);
+         cp = &agp->ag_input[agp->ag_iaddr_aend + 1];
+         cpmax = &agp->ag_input[agp->ag_ilen];
+         if(cp < cpmax)
+            goto jnode_redo;
       }
+
+      /* Nothing may follow the address, move it to the end */
+      if(!(tcurr->t_f & a_T_TADDR)){
+         for(tp = thead; tp != NULL; tp = tp->t_next)
+            if(tp->t_f & a_T_TADDR){
+               if(tp->t_last != NULL)
+                  tp->t_last->t_next = tp->t_next;
+               else
+                  thead = tp->t_next;
+               if(tp->t_next != NULL)
+                  tp->t_next->t_last = tp->t_last;
+
+               tcurr = tp;
+               while(tp->t_next != NULL)
+                  tp = tp->t_next;
+               tp->t_next = tcurr;
+               tcurr->t_last = tp;
+               tcurr->t_next = NULL;
+               break;
+            }
+      }
+
+      /* Make ranges contiguous: ensure a continuous range of atoms is converted
+       * to a SPECIAL one if at least one of them requires it */
+      for(tp = thead; tp != NULL; tp = tp->t_next){
+         if(tp->t_f & a_T_SPECIAL){
+            tcurr = tp;
+            while((tp = tp->t_last) != NULL && (tp->t_f & a_T_TATOM))
+               tp->t_f |= a_T_SPECIAL;
+            tp = tcurr;
+            while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
+               tp->t_f |= a_T_SPECIAL;
+         }
+      }
+      /* And yes, we want quotes to extend as much as possible */
+      for(tp = thead; tp != NULL; tp = tp->t_next){
+         if(tp->t_f & a_T_TQUOTE){
+            tcurr = tp;
+            while((tp = tp->t_last) != NULL && (tp->t_f & a_T_TATOM))
+               tp->t_f |= a_T_SPECIAL;
+            tp = tcurr;
+            while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
+               tp->t_f |= a_T_SPECIAL;
+         }
+      }
+
+      /* Then rejoin */
+      ostp = n_string_creat_auto(&ost);
+      if((c.ui32 = agp->ag_ilen) <= UI32_MAX >> 1)
+         ostp = n_string_reserve(ostp, c.ui32 <<= 1);
+
+      for(tcurr = thead; tcurr != NULL;){
+         if(tcurr != thead)
+            ostp = n_string_push_c(ostp, ' ');
+         if(tcurr->t_f & a_T_TADDR){
+            ostp = n_string_push_c(ostp, '<');
+            agp->ag_iaddr_start = ostp->s_len;
+            ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                  (tcurr->t_end - tcurr->t_start));
+            agp->ag_iaddr_aend = ostp->s_len;
+            ostp = n_string_push_c(ostp, '>');
+            tcurr = tcurr->t_next;
+         }else if(tcurr->t_f & a_T_TCOMM){
+            ostp = n_string_push_c(ostp, '(');
+            ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                  (tcurr->t_end - tcurr->t_start));
+            while((tp = tcurr->t_next) != NULL && (tp->t_f & a_T_TCOMM)){
+               tcurr = tp;
+               ostp = n_string_push_c(ostp, ' ');
+               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                     (tcurr->t_end - tcurr->t_start));
+            }
+            ostp = n_string_push_c(ostp, ')');
+            tcurr = tcurr->t_next;
+         }else if(tcurr->t_f & a_T_TQUOTE){
+jput_quote:
+            ostp = n_string_push_c(ostp, '"');
+            tp = tcurr;
+            do/* while tcurr && TATOM||TQUOTE */{
+               if(tcurr != tp)
+                  ostp = n_string_push_c(ostp, ' ');
+               if((tcurr->t_f & (a_T_TATOM | a_T_SPECIAL)) == a_T_TATOM)
+                  ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                        (tcurr->t_end - tcurr->t_start));
+               else{
+                  bool_t esc;
+
+                  cp = &cp1st[tcurr->t_start];
+                  cpmax = &cp1st[tcurr->t_end];
+
+                  for(esc = FAL0; cp < cpmax;){
+                     if((c.c = *cp++) == '\\' && !esc)
+                        esc = TRU1;
+                     else{
+                        if(esc || c.c == '"'){
+jput_quote_esc:
+                           ostp = n_string_push_c(ostp, '\\');
+                        }
+                        ostp = n_string_push_c(ostp, c.c);
+                        esc = FAL0;
+                     }
+                  }
+                  if(esc){
+                     c.c = '\\';
+                     goto jput_quote_esc;
+                  }
+               }
+            }while((tcurr = tcurr->t_next) != NULL &&
+               (tcurr->t_f & (a_T_TATOM | a_T_TQUOTE)));
+            ostp = n_string_push_c(ostp, '"');
+         }else if(tcurr->t_f & a_T_SPECIAL)
+            goto jput_quote;
+         else{
+            /* Can we use a fast join mode? */
+            for(tp = tcurr; tcurr != NULL; tcurr = tcurr->t_next){
+               if(!(tcurr->t_f & a_T_TATOM))
+                  break;
+               if(tcurr != tp)
+                  ostp = n_string_push_c(ostp, ' ');
+               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                     (tcurr->t_end - tcurr->t_start));
+            }
+         }
+      }
+
+      n_lofi_snap_unroll(lofi_snap);
 
       agp->ag_input = n_string_cp(ostp);
       agp->ag_ilen = ostp->s_len;
@@ -1764,6 +1867,11 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
                *cp2++ = ' ';
          }
          *cp2++ = c;
+         /* This character is forbidden here, but it may nonetheless be
+          * present: ensure we turn this into something valid!  (E.g., if the
+          * next character would be a "..) */
+         if(c == '\\' && *cp != '\0')
+            *cp2++ = *cp++;
          if(c == ','){
             if(!(flags & a_GOTLT)){
                *cp2++ = ' ';

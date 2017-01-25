@@ -1299,49 +1299,72 @@ __behave_macro_param_shift() {
 
 __behave_addrcodec() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
-	vput addrcodec res <doog@def>
+	vput addrcodec res 1 <doog@def>
 	echo $! $res
-	vput addrcodec res . <doog@def>
+	vput addrcodec res 2 . <doog@def>
 	echo $! $res
-	vput addrcodec res Sauer Dr. <doog@def>
+	vput addrcodec res 3 Sauer Dr. <doog@def>
 	echo $! $res
-	vput addrcodec res Sauer (Ma) Dr. <doog@def>
+	vput addrcodec res 4 Sauer (Ma) Dr. <doog@def>
 	echo $! $res
-	vput addrcodec res Sauer (Ma) Braten Dr. <doog@def>
+	vput addrcodec res 5 Sauer (Ma) Braten Dr. <doog@def>
 	echo $! $res
-	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def>
+	vput addrcodec res 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
 	echo $! $res
-	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	vput addrcodec res 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
 	echo $! $res
-	vput addrcodec res Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	vput addrcodec res 8 \
+		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
 	echo $! $res
-	vput addrcodec res Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+	vput addrcodec res 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
 	echo $! $res
-	vput addrcodec res (Ma)Braten Dr. (Heu) <doog@def>
+	vput addrcodec res 10 (Ma)Braten Dr. (Heu) <doog@def>
 	echo $! $res
-	vput addrcodec res (Ma)Braten Dr'"."' (Heu) <doog@def>
+	vput addrcodec res 11 (Ma)Braten Dr'"."' (Heu) <doog@def>
 	echo $! $res
-	vput addrcodec res \
+	vput addrcodec res 12 \
 		'   Dr.  ' '  Sauer ' (Ma) '  Braten  ' '  Dr.   ' (u) <doog@def>
 	echo $! $res
-	vput addrcodec res (Ma)Braten    Dr.     (Heu)     <doog@def>
+	vput addrcodec res 13(Ma)Braten    Dr.     (Heu)     <doog@def>
+	echo $! $res
+	vput addrcodec res 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
+	echo $! $res
+	vput addrcodec res 15 \
+		Hey, Du <doog@def> Wie() findet '""' Dr. '""' das? ()
+	echo $! $res
+	vput addrcodec res 16 \
+		\"Hey,\" \"Du\" <doog@def> \"Wie()\" findet \"\" Dr. \"\" das? ()
+	echo $! $res
+	vput addrcodec res 17 \
+		\"Hey\" Du <doog@def> \"Wie() findet \" \" Dr. \"\"\" das? ()
+	echo $! $res
+	vput addrcodec res 18 \
+		<doog@def> \"Hey\" Du \"Wie() findet \" \" Dr. \"\"\" das? ()
+	echo $! $res
+	vput addrcodec res 19 \
+		'Hey\,\" ' <doog@def> '"Wie()" findet \" Dr. \"' das? ()
 	echo $! $res
 	__EOT
-#0 <doog@def>
-#0 "." <doog@def>
-#0 "Dr." <doog@def>
-#0 "Sauer Dr." <doog@def>
-#0 Sauer (Ma) "Dr." <doog@def>
-#0 Sauer (Ma) "Braten Dr." <doog@def>
-#0 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
-#0 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
-#0 "Dr. Sauer" (Ma) "Braten Dr." (Heu bu) <doog@def>
-#0 "Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
-#0 (Ma) "Braten Dr." (Heu) <doog@def>
-#0 (Ma)Braten Dr "." (Heu) <doog@def>
-#0 "Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
-#0 (Ma) "Braten Dr." (Heu) <doog@def>
-   cksum_test behave:addrcodec "${MBOX}" '199353623 460'
+#0 1 <doog@def>
+#0 "2 ." <doog@def>
+#0 "3 Sauer Dr." <doog@def>
+#0 4 Sauer (Ma) "Dr." <doog@def>
+#0 5 Sauer (Ma) "Braten Dr." <doog@def>
+#0 6 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
+#0 7 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
+#0 "8 Dr. Sauer" (Ma) "Braten Dr." (Heu bu) "Boom. Boom" <doog@def>
+#0 "9 Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
+#0 10 (Ma) "Braten Dr." (Heu) <doog@def>
+#0 11 (Ma) "Braten Dr\".\"" (Heu) <doog@def>
+#0 "12 Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
+#0 13 (Ma) "Braten Dr." (Heu) <doog@def>
+#0 "14 Hey, Du Wie" () "findet Dr. das?" () <doog@def>
+#0 "15 Hey, Du Wie" () "findet \"\" Dr. \"\" das?" () <doog@def>
+#0 "16 \"Hey,\" \"Du\" \"Wie" () "\" findet \"\" Dr. \"\" das?" () <doog@def>
+#0 "17 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+#0 "18 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+#0 "19 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" () <doog@def>
+   cksum_test behave:addrcodec "${MBOX}" '1997352922 927'
 }
 
 __behave_vexpr() {
