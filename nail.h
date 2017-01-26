@@ -2497,6 +2497,8 @@ VL char const n_uagent[sizeof VAL_UAGENT];
 VL char const n_error[sizeof n_ERROR];
 VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_empty[1];
+VL char const n_0[2];
+VL char const n_1[2];
 
 VL ui16_t const n_class_char[1 + 0x7F];
 #endif

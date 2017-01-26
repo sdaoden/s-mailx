@@ -67,6 +67,8 @@ VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
 VL char const n_unirepl[sizeof n_UNIREPL] = n_UNIREPL;
 VL char const n_empty[1] = "";
+VL char const n_0[2] = "0";
+VL char const n_1[2] = "1";
 VL ui16_t const n_class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL

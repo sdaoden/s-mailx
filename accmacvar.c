@@ -193,12 +193,6 @@ struct a_amv_var_carrier{
 #include "version.h"
 #include "okeys.h"
 
-/* True boolean visualization: this string will not be copied to heap memory
- * in a_amv_var_copy(), but we must avoid confusion with identical user data.
- * While here, add a special "0" one and speed up *?* assignments! */
-static char const a_amv_var_1[] = "1";
-static char const a_amv_var_0[] = "0";
-
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;
 
@@ -735,9 +729,9 @@ a_amv_var_copy(char const *str){
       news = n_UNCONST(n_empty);
    else if(str[1] == '\0'){
       if(str[0] == '1')
-         news = n_UNCONST(a_amv_var_1);
+         news = n_UNCONST(n_1);
       else if(str[0] == '0')
-         news = n_UNCONST(a_amv_var_0);
+         news = n_UNCONST(n_0);
       else
          goto jheap;
    }else{
@@ -753,7 +747,7 @@ jheap:
 static void
 a_amv_var_free(char *cp){
    NYD2_ENTER;
-   if(cp[0] != '\0' && cp != a_amv_var_1 && cp != a_amv_var_0)
+   if(cp[0] != '\0' && cp != n_1 && cp != n_0)
       free(cp);
    NYD2_LEAVE;
 }
@@ -1257,7 +1251,7 @@ jeavmp:
                *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
-         avp->av_value = n_UNCONST(a_amv_var_1);
+         avp->av_value = n_UNCONST(n_1);
       }else
          avp->av_value = a_amv_var_copy(value);
 
