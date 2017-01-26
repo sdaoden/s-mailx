@@ -2230,7 +2230,7 @@ If any of
 and
 .Ql PASSWORD
 are specified they must be given in URL percent encoded form (RFC 3986;
-the commands
+the command
 .Ic urlcodec
 may be helpful):
 .
@@ -5500,12 +5500,19 @@ Same as
 .
 .Mx
 .It Ic urlcodec
-Perform URL percent codec operations, rather according to RFC 3986,
-on all given strings.
-This is character set agnostic and thus locale dependent, and it may
-decode bytes which are invalid in the current locale, unless the input
-solely consists of characters in the portable character set, see
+\*(NQ Perform URL percent codec operations, rather according to RFC 3986.
+Supports the
+.Mx -sx
+.Sx "command modifier"
+.Ql vput .
+The return status is tracked via
+.Va \&0 .
+This is a character set agnostic and thus locale dependent operation,
+and it may decode bytes which are invalid in the current locale, unless
+the input solely consists of characters in the portable character set, see
 .Sx "Character sets" .
+\*(ID This command does not about URLs beside that.
+.Pp
 The first argument specifies the operation:
 .Ar enc[ode]
 or
@@ -5522,6 +5529,7 @@ and will neither accept hyphen
 nor dot
 .Ql .
 as an initial character.
+The remaining arguments form the URL data which is to be converted.
 .
 .Mx
 .It Ic varedit

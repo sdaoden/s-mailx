@@ -376,12 +376,6 @@
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "urlcodec", &c_urlcodec, (G | M | X | WYSHLIST), 2, 1000
-     DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <string-list>")) },
-      { "urlencode", &c_urlencode, (O | G | M | X | WYRALIST), 1, 1000
-        DS(N_("Encode <string-list> for usage in an URL")) },
-      { "urldecode", &c_urldecode, (O | G | M | X | WYRALIST), 1, 1000
-        DS(N_("Decode the URL-encoded <URL-list> into strings")) },
    { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | WYRALIST), 0, 1
@@ -427,6 +421,12 @@
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | _0 | WYSHLIST), 1, 1000
      DS(N_("Form an address of <:arguments:>")) },
+   { "urlcodec", &c_urlcodec, (G | M | V | X | _0 | WYSHLIST), 2, 1000
+     DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <:arguments:>")) },
+      { "urlencode", &c_urlencode, (O | G | M | X | WYRALIST), 1, 1000
+        DS(N_("Encode <string-list> for usage in an URL")) },
+      { "urldecode", &c_urldecode, (O | G | M | X | WYRALIST), 1, 1000
+        DS(N_("Decode the URL-encoded <URL-list> into strings")) },
 
 #ifdef HAVE_MEMORY_DEBUG
    { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0

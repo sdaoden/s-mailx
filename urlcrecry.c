@@ -642,43 +642,62 @@ FL char *
 
 FL int
 c_urlcodec(void *v){
+   struct n_string s_b, *sp;
    bool_t ispath;
-   char const **argv, *cp, *res;
+   char const **argv, *varname, *varres, *var0, *cp;
    NYD_ENTER;
 
-   if(*(cp = *(argv = v)) == 'p'){
+   sp = n_string_creat_auto(&s_b);
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+
+   if(*(cp = *argv) == 'p'){
       if(!ascncasecmp(++cp, "ath", 3))
          cp += 3;
       ispath = TRU1;
    }
 
+   while(*++argv != NULL){
+      if(sp->s_len > 0)
+         sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, *argv);
+   }
+
+   var0 = n_0;
    if(is_asccaseprefix(cp, "encode")){
-      while((cp = *++argv) != NULL){
-         if((res = urlxenc(cp, ispath)) == NULL)
-            res = V_(n_error);
-         fprintf(n_stdout,
-            " in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
-            cp, strlen(cp), res, strlen(res));
+      if((varres = urlxenc(n_string_cp(sp), ispath)) == NULL){
+         varres = sp->s_dat;
+         var0 = n_1;
       }
    }else if(is_asccaseprefix(cp, "decode")){
-      struct str in, out;
-
-      while((cp = *++argv) != NULL){
-         if((res = urlxdec(cp)) == NULL)
-            res = V_(n_error);
-         in.l = strlen(in.s = n_UNCONST(res)); /* logical */
-         makeprint(&in, &out);
-         fprintf(n_stdout,
-            " in: %s (%" PRIuZ " bytes)\nout: %s (%" PRIuZ " bytes)\n",
-            cp, strlen(cp), out.s, in.l);
-         free(out.s);
+      if((varres = urlxdec(n_string_cp(sp))) == NULL){
+         varres = sp->s_dat;
+         var0 = n_1;
       }
    }else{
-      n_err(_("`urlcodec': invalid subcommand: %s\n"), *argv);
+      n_err(_("`urlcodec': invalid subcommand: %s\n"), cp);
       cp = NULL;
+      goto jleave;
    }
+
+   assert(cp != NULL);
+   if(varname != NULL){
+      if(!n_var_vset(varname, (uintptr_t)varres)){
+         var0 = n_1;
+         cp = NULL;
+      }
+   }else{
+      struct str in, out;
+
+      in.l = strlen(in.s = n_UNCONST(varres));
+      makeprint(&in, &out);
+      fprintf(n_stdout, "%s\n", out.s);
+      free(out.s);
+   }
+   n__RV_SET(var0);
+jleave:
    NYD_LEAVE;
-   return (cp != NULL ? OKAY : STOP);
+   return (cp != NULL ? 0 : 1);
 }
 
 FL int
