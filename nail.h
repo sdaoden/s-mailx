@@ -2261,7 +2261,6 @@ enum argtype {
    ARG_R          = 1u<<12,   /* Cannot be called in compose mode recursion */
    ARG_S          = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
    ARG_T          = 1u<<14,   /* Is a transparent command */
-   ARG_V          = 1u<<15,   /* Places data in temporary_arg_v_store */
    ARG_W          = 1u<<16,   /* Invalid when read only bit */
    ARG_X          = 1u<<17    /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
 };
@@ -2510,9 +2509,6 @@ VL iconv_t     iconvd;
 VL volatile int interrupts; /* TODO rid! */
 VL sighandler_type dflpipe;
 
-/* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value
- * TODO carrier structs instead of locals */
-VL char        *temporary_arg_v_store;
 /* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
 VL char const  *temporary_protocol_ext;
 

@@ -641,7 +641,6 @@ struct a_tty_line{
    struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE]; /* Bind lookup tree */
    struct a_tty_bind_tree *tl_bind_tree;
 # endif
-   char const *tl_reenter_after_cmd; /* `bind' cmd to exec, then re-readline */
    /* Line data / content handling */
    ui32_t tl_count;              /* ..of a_tty_cell's (<= a_TTY_LINE_MAX) */
    ui32_t tl_cursor;             /* Current a_tty_cell insertion point */
@@ -784,14 +783,15 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # endif /* HAVE_KEY_BINDINGS */
 };
 
-/* The table for the "default" context */
+/* The table for the "default" context.
+ * We don't want commands to end up in history, so place an initial space */
 static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 # undef a_X
 # define a_X(K,S) \
    {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
 
 # undef a_X
-# define a_X(K,S) {TRU1, K, 0, {S}},
+# define a_X(K,S) {TRU1, K, 0, {" " S}},
 
    a_X('O', "dt")
 
@@ -802,7 +802,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
    /* The remains only if we have `bind' functionality available */
 # ifdef HAVE_KEY_BINDINGS
 #  undef a_X
-#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
+#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {" " S}},
 
    a_X(key_shome, "z0") a_X(key_send, "z$")
    a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
@@ -2880,8 +2880,8 @@ jmle_fun:
                            tbcp->tbc_exp, tbcp->tbc_exp_len +1);
                         goto jrestart;
                      }else{
-                        tlp->tl_reenter_after_cmd = tbtp->tbt_bind->tbc_exp;
-                        goto jdone;
+                        cbufp = tbtp->tbt_bind->tbc_exp;
+                        goto jinject_input;
                      }
                   }
                }
@@ -2940,8 +2940,8 @@ jbuiltin_redo:
                      }
                      assert(0);
                   }else{
-                     tlp->tl_reenter_after_cmd = tbbtp->tbbt_exp;
-                     goto jdone;
+                     cbufp = tbbtp->tbbt_exp;
+                     goto jinject_input;
                   }
                }
             }
@@ -2976,6 +2976,23 @@ jleave:
    fflush(n_tty_fp);
    NYD_LEAVE;
    return rv;
+
+jinject_input:{
+   size_t i;
+
+   hold_all_sigs(); /* XXX v15 drop */
+   i = a_tty_cell2dat(tlp);
+   n_source_inject_input(tlp->tl_line.cbuf, i, FAL0);
+   i = strlen(cbufp) +1;
+   if(i >= *tlp->tl_x_bufsize){
+      *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i n_MEMORY_DEBUG_ARGSCALL);
+      *tlp->tl_x_bufsize = i;
+   }
+   memcpy(*tlp->tl_x_buf, cbufp, i);
+   rele_all_sigs(); /* XXX v15 drop */
+   rv = (ssize_t)i -1;
+   }
+   goto jleave;
 }
 
 # ifdef HAVE_KEY_BINDINGS
@@ -3874,33 +3891,16 @@ FL int
    char *posbuf, *pos;
 # endif
    ssize_t nn;
-   ui32_t plen, pwidth;
-   char const *orig_prompt;
    NYD_ENTER;
    n_UNUSED(lif);
-   n_UNINIT(pwidth, 0);
-   n_UNINIT(plen, 0);
 
    assert(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       n_tty_init();
    assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
-   if(!(lif & n_LEXINPUT_PROMPT_NONE))
-      n_string_creat_auto(&xprompt);
-   orig_prompt = prompt;
-jredo:
 # ifdef HAVE_COLOUR
    n_colour_env_create(n_COLOUR_CTX_MLE, FAL0);
-# endif
-
-   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
-      pwidth = n_tty_create_prompt(&xprompt, orig_prompt, lif);
-      plen = (ui32_t)xprompt.s_len;
-      prompt = (pwidth == 0) ? NULL : n_string_cp_const(&xprompt);
-   }
-
-# ifdef HAVE_COLOUR
    /* C99 */{
       char const *ccol;
       struct n_colour_pen *ccp;
@@ -3960,15 +3960,20 @@ jredo:
          &a_tty.tg_bind_shcut_prompt_char[lif & n__LEXINPUT_CTX_MASK];
 # endif /* HAVE_KEY_BINDINGS */
 
-   if(!(lif & n_LEXINPUT_PROMPT_NONE) && pwidth > 0){
-      tl.tl_prompt = prompt;
-      tl.tl_prompt_length = plen;
-      tl.tl_prompt_width = pwidth;
-   }
 # ifdef HAVE_COLOUR
    tl.tl_pos_buf = posbuf;
    tl.tl_pos = pos;
 # endif
+
+   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
+      n_string_creat_auto(&xprompt);
+
+      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, lif)
+               ) > 0){
+         tl.tl_prompt = n_string_cp_const(&xprompt);
+         tl.tl_prompt_length = (ui32_t)xprompt.s_len;
+      }
+   }
 
    tl.tl_line.cbuf = *linebuf;
    if(n != 0){
@@ -3991,16 +3996,6 @@ jredo:
 # ifdef HAVE_COLOUR
    n_colour_env_gut(n_tty_fp);
 # endif
-
-   if(tl.tl_reenter_after_cmd != NULL){
-      n_source_command(lif, tl.tl_reenter_after_cmd);
-      n = (nn <= 0) ? 0 : nn;
-      if(!ok_blook(line_editor_disable))
-         goto jredo;
-      nn = (n_lex_input)(lif, orig_prompt, linebuf, linesize,
-            (n == 0 ? n_empty : savestrbuf(*linebuf, n))
-            n_MEMORY_DEBUG_ARGSCALL);
-   }
    NYD_LEAVE;
    return (int)nn;
 }
@@ -4083,6 +4078,7 @@ j_leave:
 FL int
 c_history(void *v){
    size_t entry;
+   struct a_tty_hist *thp;
    char **argv;
    NYD_ENTER;
 
@@ -4120,7 +4116,6 @@ jleave:
 jlist:{
    FILE *fp;
    size_t i, b;
-   struct a_tty_hist *thp;
 
    if(a_tty.tg_hist == NULL)
       goto jleave;
@@ -4144,34 +4139,28 @@ jlist:{
    }
    goto jleave;
 
-jclear:{
-   struct a_tty_hist *thp;
-
+jclear:
    while((thp = a_tty.tg_hist) != NULL){
       a_tty.tg_hist = thp->th_older;
       free(thp);
    }
    a_tty.tg_hist_tail = NULL;
    a_tty.tg_hist_size = 0;
-   }
    goto jleave;
 
-jentry:{
-   struct a_tty_hist *thp;
-
+jentry:
    if(UICMP(z, entry, <=, a_tty.tg_hist_size)){
       entry = a_tty.tg_hist_size - entry;
-      for(thp = a_tty.tg_hist;; thp = thp->th_older)
-         if(thp == NULL)
+      for(thp = a_tty.tg_hist;; thp = thp->th_older){
+         assert(thp != NULL);
+         if(entry-- == 0){
+            n_source_inject_input(v = thp->th_dat, thp->th_len, TRU1);
             break;
-         else if(entry-- != 0)
-            continue;
-         else{
-            v = temporary_arg_v_store = thp->th_dat;
-            goto jleave;
          }
-   }
-   v = NULL;
+      }
+   }else{
+      n_err(_("`history': no such entry: %" PRIuZ "\n"), entry);
+      v = NULL;
    }
    goto jleave;
 }

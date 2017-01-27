@@ -103,7 +103,6 @@ struct a_lex_eval_ctx{
    bool_t le_is_recursive;       /* Evaluation in evaluation? (collect ~:) */
    ui8_t __dummy[3];
    bool_t le_add_history;        /* Add command to history (TRUM1=gabby)? */
-   char const *le_new_content;   /* History: reenter line, start with this */
 };
 
 struct a_lex_input_stack{
@@ -127,12 +126,22 @@ struct a_lex_input_stack{
 n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
    "Inacceptible size of structure buffer");
 
+struct a_lex_input_inject{
+   struct a_lex_input_inject *lii_next;
+   size_t lii_len;
+   bool_t lii_commit;
+   char lii_dat[n_VFIELD_SIZE(7)];
+};
+
 static sighandler_type a_lex_oldpipe;
 static struct a_lex_ghost *a_lex_ghosts;
 /* a_lex_cmd_tab[] after fun protos */
 
 /* */
 static struct a_lex_input_stack *a_lex_input;
+
+/* For n_source_inject_input() */
+static struct a_lex_input_inject *a_lex_input_inject;
 
 static sigjmp_buf a_lex_srbuf; /* TODO GET RID */
 
@@ -167,7 +176,7 @@ static int a_lex__version_cmp(void const *s1, void const *s2);
 static void a_lex_update_pstate(void);
 
 /* Evaluate a single command.
- * .le_add_history and .le_new_content will be updated upon success.
+ * .le_add_history will be updated upon success.
  * Command functions return 0 for success, 1 for error, and -1 for abort.
  * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
 static int a_lex_evaluate(struct a_lex_eval_ctx *evp);
@@ -696,7 +705,6 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
    line = evp->le_line; /* XXX don't change original (buffer pointer) */
    assert(line.s[line.l] == '\0');
    evp->le_add_history = FAL0;
-   evp->le_new_content = NULL;
 
    /* Command ghosts that refer to shell commands or macro expansion restart */
 jrestart:
@@ -861,8 +869,6 @@ jexec:
 
    if(cmd->lc_argtype & ARG_O)
       n_OBSOLETE2(_("this command will be removed"), cmd->lc_name);
-   if(cmd->lc_argtype & ARG_V)
-      temporary_arg_v_store = NULL;
 
    if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
@@ -951,12 +957,6 @@ je96:
       goto jleave0;
    }
 
-   if(rv == 0 && (cmd->lc_argtype & ARG_V) &&
-         (cp = temporary_arg_v_store) != NULL){
-      temporary_arg_v_store = NULL;
-      evp->le_new_content = cp;
-      goto jleave0;
-   }
    if(!(cmd->lc_argtype & ARG_H))
       evp->le_add_history = (((cmd->lc_argtype & ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
@@ -984,12 +984,8 @@ jleave:
    if(cmd == NULL)
       goto jret0;
    if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint)) /* TODO rid of that! */
-      if(visible(dot)){
-         line.s = savestr("type");
-         line.l = sizeof("type") -1;
-         flags = a_GHOST_MASK; /* Avoid `ghost' lookups.. */
-         goto jrestart;
-      }
+      if(visible(dot))
+         n_source_inject_input("\\type", sizeof("\\type") -1, TRU1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
          !(cmd->lc_argtype & ARG_T))
@@ -1054,6 +1050,13 @@ a_lex_unstack(bool_t eval_error){
    NYD_ENTER;
 
    if((lip = a_lex_input) == NULL){
+      struct a_lex_input_inject *liip;
+
+      while((liip = a_lex_input_inject) != NULL){
+         a_lex_input_inject = liip->lii_next;
+         free(liip);
+      }
+
       n_memory_reset();
 
       /* If called from a_lex_onintr(), be silent FIXME */
@@ -1318,8 +1321,7 @@ a_commands_recursive(enum n_lexinput_flags lif){
 
       /* Read a line of commands and handle end of file specially */
       ev.le_line.l = ev.le_line_size;
-      n = n_lex_input(lif, NULL, &ev.le_line.s, &ev.le_line.l,
-            ev.le_new_content);
+      n = n_lex_input(lif, NULL, &ev.le_line.s, &ev.le_line.l, NULL);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
 
@@ -1391,8 +1393,6 @@ n_commands(void){ /* FIXME */
 
    (void)sigsetjmp(a_lex_srbuf, 1); /* FIXME get rid */
    for (;;) {
-      char *temporary_orig_line; /* XXX eval_ctx.le_line not yet constant */
-
       n_COLOUR( n_colour_env_pop(TRU1); )
 
       /* TODO Unless we have our signal manager (or however we do it) child
@@ -1455,10 +1455,9 @@ n_commands(void){ /* FIXME */
       }
 
       /* Read a line of commands and handle end of file specially */
-jreadline:
       ev.le_line.l = ev.le_line_size;
       n = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, NULL,
-            &ev.le_line.s, &ev.le_line.l, ev.le_new_content);
+            &ev.le_line.s, &ev.le_line.l, NULL);
       ev.le_line_size = (ui32_t)ev.le_line.l;
       ev.le_line.l = (ui32_t)n;
 
@@ -1472,10 +1471,6 @@ jreadline:
          }
          break;
       }
-
-      temporary_orig_line = ((n_pstate & n_PS_SOURCING) ||
-               !(n_psonce & n_PSO_INTERACTIVE))
-            ? NULL : savestrbuf(ev.le_line.s, ev.le_line.l);
 
       n_pstate &= ~n_PS_HOOK_MASK;
       /* C99 */{
@@ -1515,13 +1510,8 @@ jreadline:
          }
       }
 
-      if (!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE)) {
-         if (ev.le_new_content != NULL)
-            goto jreadline;
-         /* *Can* happen since _evaluate() n_unstack()s on error! XXX no more */
-         if (temporary_orig_line != NULL)
-            n_tty_addhist(temporary_orig_line, (ev.le_add_history != TRU1));
-      }
+      if(!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE))
+         n_tty_addhist(ev.le_line.s, (ev.le_add_history != TRU1));
 
       if(n_pstate & n_PS_EXIT)
          break;
@@ -1543,7 +1533,7 @@ FL int
    FILE *ifile;
    bool_t doprompt, dotty;
    char const *iftype;
-   int n, nold;
+   int nold, n;
    NYD2_ENTER;
 
    if(a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_FORCE_EOF)){
@@ -1576,8 +1566,31 @@ FL int
       n_pstate |= n_PS_READLINE_NL;
       goto jhave_dat;
    }
-   n_pstate &= ~n_PS_READLINE_NL;
 
+   /* Injection in progress? */
+   if(a_lex_input == NULL && a_lex_input_inject != NULL){
+      struct a_lex_input_inject *liip;
+
+      liip = a_lex_input_inject;
+      a_lex_input_inject = liip->lii_next;
+
+      if(liip->lii_commit){
+         if(*linebuf != NULL)
+            free(*linebuf);
+
+         n = (int)(*linesize = liip->lii_len);
+         *linebuf = (char*)liip;
+         memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
+         iftype = "INJECTION";
+         n_pstate |= n_PS_READLINE_NL;
+         goto jhave_dat;
+      }else{
+         string = savestrbuf(liip->lii_dat, liip->lii_len);
+         free(liip);
+      }
+   }
+
+   n_pstate &= ~n_PS_READLINE_NL;
    iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
           : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
    doprompt = ((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
@@ -2049,6 +2062,24 @@ n_source_may_yield_control(void){
          ((n_pstate & n_PS_COMPOSE_MODE) && (a_lex_input == NULL ||
             !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
       (a_lex_input == NULL || a_lex_input->li_outer == NULL));
+}
+
+FL void
+n_source_inject_input(char const *buf, size_t len, bool_t commit){
+   NYD_ENTER;
+   if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat) -1 > len){
+      struct a_lex_input_inject *liip;
+
+      liip = n_alloc(n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat
+            ) + len +1);
+      liip->lii_next = a_lex_input_inject;
+      liip->lii_len = len;
+      liip->lii_commit = commit;
+      memcpy(liip->lii_dat, buf, len);
+      liip->lii_dat[len] = '\0';
+      a_lex_input_inject = liip;
+   }
+   NYD_LEAVE;
 }
 
 FL void

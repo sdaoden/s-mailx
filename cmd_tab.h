@@ -54,7 +54,6 @@
 #define R            ARG_R
 #define S            ARG_S
 #define T            ARG_T
-#define V            ARG_V
 #define W            ARG_W
 #define X            ARG_X
 
@@ -403,7 +402,7 @@
    { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
-   { "history", &c_history, (H | I | M | V | RAWLIST), 0, 1
+   { "history", &c_history, (H | I | M | RAWLIST), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
    { "bind", &c_bind, (M | STRLIST), 1, 1000
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
@@ -452,7 +451,6 @@
 #undef P
 #undef R
 #undef T
-#undef V
 #undef W
 #undef X
 
