@@ -383,21 +383,23 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    }
    rv = n_string_push_cp(rv, V_(cp));
 
-   if(lcp->lc_argtype & (ARG_A | ARG_I | ARG_M | ARG_R | ARG_S | ARG_X))
-      rv = n_string_push_buf(rv, " |", 2);
+   if(lcp->lc_argtype & ARG_V)
+      rv = n_string_push_cp(rv, _(" | `vput' modifier"));
+   if(lcp->lc_argtype & ARG_0)
+      rv = n_string_push_cp(rv, _(" | status in *0*"));
 
    if(lcp->lc_argtype & ARG_A)
-      rv = n_string_push_cp(rv, _(" needs box"));
+      rv = n_string_push_cp(rv, _(" | needs box"));
    if(lcp->lc_argtype & ARG_I)
-      rv = n_string_push_cp(rv, _(" only interactive"));
+      rv = n_string_push_cp(rv, _(" | only interactive"));
    if(lcp->lc_argtype & ARG_M)
-      rv = n_string_push_cp(rv, _(" send mode"));
+      rv = n_string_push_cp(rv, _(" | send mode"));
    if(lcp->lc_argtype & ARG_R)
-      rv = n_string_push_cp(rv, _(" no compose mode"));
+      rv = n_string_push_cp(rv, _(" | no compose mode"));
    if(lcp->lc_argtype & ARG_S)
-      rv = n_string_push_cp(rv, _(" after startup"));
+      rv = n_string_push_cp(rv, _(" | after startup"));
    if(lcp->lc_argtype & ARG_X)
-      rv = n_string_push_cp(rv, _(" subprocess"));
+      rv = n_string_push_cp(rv, _(" | subprocess"));
 
    cp = n_string_cp(rv);
    NYD2_LEAVE;
@@ -694,7 +696,8 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
       a_NOPREFIX = 1<<4,         /* Modifier prefix not allowed right now */
       a_NOGHOST = 1<<5,          /* No ghost expansion modifier */
       a_IGNERR = 1<<6,           /* ignerr modifier prefix */
-      a_WYSH = 1<<7              /* XXX v15+ drop wysh modifier prefix */
+      a_WYSH = 1<<7,             /* XXX v15+ drop wysh modifier prefix */
+      a_VPUT = 1<<8              /* vput modifier prefix */
    } flags;
    NYD_ENTER;
 
@@ -756,6 +759,10 @@ jrestart:
       goto jrestart;
    }else if(c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
       flags |= a_NOPREFIX | a_WYSH;
+      line.s = cp;
+      goto jrestart;
+   }else if(c == sizeof("vput") -1 && !asccasecmp(word, "vput")){
+      flags |= a_NOPREFIX | a_VPUT;
       line.s = cp;
       goto jrestart;
    }
@@ -870,8 +877,15 @@ jexec:
    if(cmd->lc_argtype & ARG_O)
       n_OBSOLETE2(_("this command will be removed"), cmd->lc_name);
 
-   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST)
+   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST){
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
+      flags &= ~a_WYSH;
+   }
+   if((flags & a_VPUT) && !(cmd->lc_argtype & ARG_V)){
+      n_err(_("`vput' prefix doesn't affect `%s'\n"), cmd->lc_name);
+      flags &= ~a_VPUT;
+   }
+
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
@@ -926,11 +940,12 @@ je96:
             c = 0;
          }
       }
-
       if((c = getrawlist((c != 0), arglist, n_NELEM(arglist), cp, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          break;
       }
+      c -= ((flags & a_VPUT) != 0); /* XXX c=int */
+
       if(c < cmd->lc_minargs){
          n_err(_("`%s' requires at least %d arg(s)\n"),
             cmd->lc_name, cmd->lc_minargs);
@@ -943,6 +958,25 @@ je96:
          break;
       }
 #undef lc_maxargs
+
+      if(flags & a_VPUT){
+         char const *emsg;
+
+         if(!n_shexp_is_valid_varname(arglist[0]))
+            emsg = N_("not a valid variable name");
+         else if(!n_var_is_user_writable(arglist[0]))
+            emsg = N_("not a user writable variable");
+         else
+            emsg = NULL;
+         if(emsg != NULL){
+            n_err(_("`%s': %s: %s\n"),
+                  cmd->lc_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
+            break;
+         }
+
+         ++c;
+         n_pstate |= n_PS_ARGMOD_VPUT;
+      }
       rv = (*cmd->lc_func)(arglist);
       break;
 
@@ -1759,19 +1793,21 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
 
 FL int
 c_read(void *v){ /* TODO IFS? how? -r */
-   char const **argv, *cp, *cp2;
+   char const **argv, *cp, *var0, *cp2;
    int rv;
    NYD2_ENTER;
 
    rv = 0;
    for(argv = v; (cp = *argv++) != NULL;)
-      if(!n_shexp_is_valid_varname(cp)){
-         n_err(_("`read': not a valid variable name: %s\n"),
+      if(!n_shexp_is_valid_varname(cp) || !n_var_is_user_writable(cp)){
+         n_err(_("`read': variable (name) cannot be used: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          rv = 1;
       }
    if(rv)
       goto jleave;
+
+   var0 = n_0;
 
    cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
@@ -1807,7 +1843,8 @@ c_read(void *v){ /* TODO IFS? how? -r */
          char *vcp;
 
          vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
-         n_var_vset(*argv, (uintptr_t)vcp);
+         if(!n_var_vset(*argv, (uintptr_t)vcp))
+            var0 = n_1;
       }
 
       cp = cp2;
@@ -1815,8 +1852,10 @@ c_read(void *v){ /* TODO IFS? how? -r */
 
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
-      n_var_vset(*argv, (uintptr_t)n_empty);
+      if(!n_var_vset(*argv, (uintptr_t)n_empty))
+         var0 = n_1;
 
+   n__RV_SET(var0);
    rv = 0;
 jleave:
    NYD2_LEAVE;

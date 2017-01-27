@@ -1855,7 +1855,7 @@ c_return(void *v){
          mrv = "0";
       }
 
-      n_PS_ROOT_BLOCK(ok_vset(__rv, mrv));
+      n__RV_SET(mrv);
    }else
       n_err(_("Can only use `return' in a macro\n"));
    NYD_LEAVE;
@@ -1998,6 +1998,22 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
       a_amv_lopts = save;
    }
    NYD_LEAVE;
+}
+
+FL bool_t
+n_var_is_user_writable(char const *name){
+   struct a_amv_var_carrier avc;
+   struct a_amv_var_map const *avmp;
+   bool_t rv;
+   NYD_ENTER;
+
+   a_amv_var_revlookup(&avc, name);
+   if((avmp = avc.avc_map) == NULL)
+      rv = TRU1;
+   else
+      rv = ((avmp->avm_flags & a_AMV_VF_RDONLY) == 0);
+   NYD_LEAVE;
+   return rv;
 }
 
 FL char *

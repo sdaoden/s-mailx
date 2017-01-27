@@ -34,28 +34,30 @@
  */
 
 /* Some shorter aliases to be able to define a command in two lines */
-#define MSGLIST      ARG_MSGLIST
-#define STRLIST      ARG_STRLIST
-#define RAWLIST      ARG_RAWLIST
-#define NOLIST       ARG_NOLIST
-#define NDMLIST      ARG_NDMLIST
-#define WYSHLIST     ARG_WYSHLIST
-#  define WYRALIST   ARG_WYRALIST
+#define MSGLIST ARG_MSGLIST
+#define STRLIST ARG_STRLIST
+#define RAWLIST ARG_RAWLIST
+#define NOLIST ARG_NOLIST
+#define NDMLIST ARG_NDMLIST
+#define WYSHLIST ARG_WYSHLIST
+#  define WYRALIST ARG_WYRALIST
 
-#define ARG_ARGMASK  ARG_ARGMASK
-#define A            ARG_A
-#define F            ARG_F
-#define G            ARG_G
-#define H            ARG_H
-#define I            ARG_I
-#define M            ARG_M
-#define O            ARG_O
-#define P            ARG_P
-#define R            ARG_R
-#define S            ARG_S
-#define T            ARG_T
-#define W            ARG_W
-#define X            ARG_X
+#define ARG_ARGMASK ARG_ARGMASK
+#define A ARG_A
+#define F ARG_F
+#define G ARG_G
+#define H ARG_H
+#define I ARG_I
+#define M ARG_M
+#define O ARG_O
+#define P ARG_P
+#define R ARG_R
+#define S ARG_S
+#define T ARG_T
+#define V ARG_V
+#define W ARG_W
+#define X ARG_X
+#define _0 ARG_0
 
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
@@ -298,7 +300,7 @@
      DS(N_("Call macro <name> if it exists")) },
    { "shift", &c_shift, (M | X | WYSHLIST), 0, 1
      DS(N_("In a `call'ed macro, shift positional parameters")) },
-   { "return", &c_return, (M | X | WYSHLIST), 0, 2
+   { "return", &c_return, (M | X | _0 | WYSHLIST), 0, 2
      DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
    { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
@@ -420,7 +422,7 @@
    { "environ", &c_environ, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
-   { "read", &c_read, (G | M | X | WYSHLIST), 1, 1000
+   { "read", &c_read, (G | M | X | _0 | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
 
 #ifdef HAVE_MEMORY_DEBUG
@@ -451,7 +453,9 @@
 #undef P
 #undef R
 #undef T
+#undef V
 #undef W
 #undef X
+#undef _0
 
 /* s-it-mode */

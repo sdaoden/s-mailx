@@ -2734,10 +2734,13 @@ which should be a shorthand of
 .Ql ?type .
 Both commands support a more
 .Va verbose
-listing mode which includes the argument type of the command.
+listing mode which includes the argument type of the command,
+and other information which applies.
 .
 .Pp
-Command modifiers may be placed on a command line, prefixing the command.
+Commands may be prefixed by one or multiple
+.Mx -ix "command modifier"
+command modifiers.
 The modifier reverse solidus
 .Ql \e ,
 to be placed first, prevents
@@ -2756,7 +2759,11 @@ ignored by, e.g.,
 one of the many
 .Sx "INTERNAL VARIABLES" ,
 will be set to the real exit status of the command regardless.
-The modifiers may be stacked upon each other, and expanded
+Some commands support the
+.Ql vput
+modifier: they expect the name of a variable as their first argument,
+then, and will place their computation result in it instead of writing
+it to standard output.
 .Ic ghost
 content may itself contain further command modifiers, including
 an initial reverse solidus to prevent further expansions.
@@ -4750,10 +4757,19 @@ in which case the user can escape with the exit command.
 .It Ic read
 \*(NQ Read a line from standard input, and assign the splitted and
 trimmed line data to the given variables.
+The variable names must adhere to the stricter
+.Xr sh 1
+naming rules, because it is expected that they will be used in shell
+expansions.
 If there are more fields than variables, assign successive fields to the
 last given variable.
 If there are less fields than variables, assign the empty string to the
 remains.
+The return status is tracked via
+.Va \&0 :
+even though variable names are checked errors may still happen if it is
+tried to set, e.g., strings to variables which expect number settings;
+it thus only happens if names are used which have special meaning to \*(UA.
 \*(ID This command will likely be extended towards more
 .Xr read 1
 compatibility: for now splitting always occurs at whitespace, reverse

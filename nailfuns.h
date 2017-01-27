@@ -176,6 +176,9 @@ FL void temporary_compose_mode_hook_call(char const *macname,
             void (*hook_pre)(void *), void *hook_arg);
 FL void temporary_compose_mode_hook_unroll(void);
 
+/* Can name freely be used as a variable by users? */
+FL bool_t n_var_is_user_writable(char const *name);
+
 /* Don't use n_var_* unless you *really* have to! */
 
 /* Constant option key look/(un)set/clear */

@@ -1462,7 +1462,8 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<13,        /* Need update of $COLUMNS/$LINES */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 15),
+   n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
+   n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
    /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
@@ -1470,13 +1471,13 @@ do{\
     * TODO so avoid reusing this bit */
    n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
-   n_PS_EXPAND_MULTIRESULT = 1u<<16,   /* Last fexpand() with MULTIOK had .. */
-   n_PS_ERRORS_PROMPT = 1u<<17,        /* New error to be reported in prompt */
+   n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
+   n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
 
    /* Bad hacks */
-   n_PS_HEADER_NEEDED_MIME = 1u<<18,   /* mime_write_tohdr() not ASCII clean */
-   n_PS_READLINE_NL = 1u<<19,          /* readline_input()+ saw a \n */
-   n_PS_COLOUR_ACTIVE = 1u<<20         /* n_colour_env_create().._gut() cycle */
+   n_PS_HEADER_NEEDED_MIME = 1u<<19,   /* mime_write_tohdr() not ASCII clean */
+   n_PS_READLINE_NL = 1u<<20,          /* readline_input()+ saw a \n */
+   n_PS_COLOUR_ACTIVE = 1u<<21         /* n_colour_env_create().._gut() cycle */
 };
 
 /* Various states set once, and first time messages or initializers */
@@ -1523,6 +1524,7 @@ enum okeys {
    ok_v___qm,                          /* {name=?,nolopts=1,rdonly=1,nodel=1} */
    /* xxx __rv a.k.a. 0 should be num=1 but that more expensive than what now */
    ok_v___rv,                          /* {name=0,nolopts=1,rdonly=1,nodel=1} */
+#define n__RV_SET(RV) n_PS_ROOT_BLOCK(ok_vset(__rv,RV)) /* TODO struct CmdCtx */
 
    ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
@@ -2261,8 +2263,10 @@ enum argtype {
    ARG_R          = 1u<<12,   /* Cannot be called in compose mode recursion */
    ARG_S          = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
    ARG_T          = 1u<<14,   /* Is a transparent command */
+   ARG_V          = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    ARG_W          = 1u<<16,   /* Invalid when read only bit */
-   ARG_X          = 1u<<17    /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   ARG_X          = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   ARG_0          = 1u<<30    /* Stores computation status result in *0* */
 };
 
 enum gfield {
