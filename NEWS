@@ -1,6 +1,28 @@
 S - n a i l  N e w s
 ====================
 
+v14.8.16 ("Copris lunaris"), 2017-01-27
+---------------------------------------
+
+Fixes an at least theoretical security vulnerability of the
+privilege-separated child, which does not strip path separators
+from arguments.
+
+It thus can be forced (by a local attacker) to create an exclusive
+file for a very short time -- if that happens to be in a PolicyKit
+directory, and if the supervising program is capable to inject
+some PolicyKit directives, and if PolicyKit reads those directives
+before the file is unlink(2)ed again (after an fchown(2) followed
+by link(2)), then the written directives could force PolicyKit to
+do bad things.
+
+Anyway inotifyd hooks could be triggered when they shouldn't.
+Sorry.
+
+Thanks to wapiflapi for reporting this issue!
+
+We welcome wapiflapi in THANKS!
+
 v14.8.15 ("Scarabaeus sacer"), 2017-01-17
 -----------------------------------------
 

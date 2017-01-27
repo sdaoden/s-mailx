@@ -44,6 +44,7 @@ _ign_signal(int signum)
 int
 main(int argc, char **argv)
 {
+   char hostbuf[64];
    struct dotlock_info di;
    struct stat stb;
    sigset_t nset, oset;
@@ -58,6 +59,7 @@ main(int argc, char **argv)
          strcmp(argv[ 4], "name") ||
          strcmp(argv[ 6], "hostname") ||
          strcmp(argv[ 8], "randstr") ||
+         strchr(argv[ 9], '/') != NULL /* Seal path injection vector */ ||
          strcmp(argv[10], "pollmsecs") ||
          fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
@@ -70,6 +72,21 @@ jeuse:
          "  fewest lines of code in order to reduce attack surface.\n"
          "  It cannot be run by itself.\n");
       exit(EXIT_USE);
+   }else{
+      /* Prevent one more path injection attack vector, but be friendly */
+      char const *ccp;
+      size_t i;
+      char *cp, c;
+
+      for(ccp = argv[7], cp = hostbuf, i = 0; (c = *ccp) != '\0'; ++cp, ++ccp){
+         *cp = (c == '/' ? '_' : c);
+         if(++i == sizeof(hostbuf) -1)
+            break;
+      }
+      *cp = '\0';
+      if(cp == hostbuf)
+         goto jeuse;
+      argv[7] = hostbuf;
    }
 
    di.di_file_name = argv[3];
