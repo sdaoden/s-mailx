@@ -58,6 +58,7 @@ main(int argc, char **argv)
          strcmp(argv[ 4], "name") ||
          strcmp(argv[ 6], "hostname") ||
          strcmp(argv[ 8], "randstr") ||
+         strchr(argv[ 9], '/') != NULL /* Seal path injection vector */ ||
          strcmp(argv[10], "pollmsecs") ||
          fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
