@@ -56,10 +56,11 @@ main(int argc, char **argv)
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||
          strcmp(argv[ 1] + 1, "dotlock") ||
          strcmp(argv[ 2], "mailbox") ||
+         strchr(argv[ 3], '/') != NULL /* Seal path injection.. */ ||
          strcmp(argv[ 4], "name") ||
          strcmp(argv[ 6], "hostname") ||
          strcmp(argv[ 8], "randstr") ||
-         strchr(argv[ 9], '/') != NULL /* Seal path injection vector */ ||
+         strchr(argv[ 9], '/') != NULL /* ..attack vector */ ||
          strcmp(argv[10], "pollmsecs") ||
          fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)) {
@@ -94,7 +95,9 @@ jeuse:
    di.di_hostname = argv[7];
    di.di_randstr = argv[9];
    di.di_pollmsecs = (size_t)strtoul(argv[11], NULL, 10);
-   {
+
+   /* Ensure the lock name and the file name are identical */
+   /* C99 */{
       size_t i = strlen(di.di_file_name);
 
       if (i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
