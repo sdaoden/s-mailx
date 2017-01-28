@@ -373,8 +373,11 @@ a_main_setup_vars(void){
 
    cp = ok_vlook(TMPDIR);
    assert(cp != NULL);
-   if(!is_dir(cp) || access(cp, R_OK | W_OK | X_OK))
+   if(!is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
+      n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
+         n_shexp_quote_cp(cp, FAL0));
       ok_vclear(TMPDIR);
+   }
 
    /* Ensure some variables get loaded */
    (void)ok_blook(POSIXLY_CORRECT);
