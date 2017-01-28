@@ -219,9 +219,9 @@ static struct a_lex_cmd const a_lex_cmd_tab[] = {
 #include "cmd_tab.h"
 },
       a_lex_special_cmd_tab[] = {
-   { "#", NULL, 0, 0, 0
+   { "#", NULL, ARG_STRLIST, 0, 0
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", NULL, 0, 0, 0
+   { "-", NULL, ARG_NOLIST, 0, 0
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
