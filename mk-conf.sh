@@ -444,9 +444,9 @@ _cc_flags_generic() {
       cc_check -O
    fi
 
-   if feat_yes DEVEL && cc_check -Weverything; then
-      :
-   else
+   #if feat_yes DEVEL && cc_check -Weverything; then
+   #   :
+   #else
       cc_check -Wall
       cc_check -Wextra
       cc_check -Wbad-function-cast
@@ -458,7 +458,7 @@ _cc_flags_generic() {
       cc_check -Wunused
       cc_check -Wwrite-strings
       cc_check -Wno-long-long
-   fi
+   #fi
    cc_check -pedantic
 
    if feat_yes AMALGAMATION && feat_no DEVEL; then
