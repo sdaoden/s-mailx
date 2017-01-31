@@ -80,10 +80,10 @@ static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
    {n_IGNORE_FWD, "fwd\0"}
 };
 #ifdef HAVE_DEVEL /* Avoid gcc warn cascade since n_ignore is defined locally */
-n_CTAV(-(uintptr_t)n_IGNORE_TYPE - n__IGNORE_ADJUST == 0);
-n_CTAV(-(uintptr_t)n_IGNORE_SAVE - n__IGNORE_ADJUST == 1);
-n_CTAV(-(uintptr_t)n_IGNORE_FWD - n__IGNORE_ADJUST == 2);
-n_CTAV(-(uintptr_t)n_IGNORE_TOP - n__IGNORE_ADJUST == 3);
+n_CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
+n_CTAV(-n__IGNORE_SAVE - n__IGNORE_ADJUST == 1);
+n_CTAV(-n__IGNORE_FWD - n__IGNORE_ADJUST == 2);
+n_CTAV(-n__IGNORE_TOP - n__IGNORE_ADJUST == 3);
 n_CTAV(n__IGNORE_MAX == 3);
 #endif
 
