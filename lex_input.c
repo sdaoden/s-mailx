@@ -264,8 +264,10 @@ a_lex_c_ghost(void *v){
       goto jleave;
    }
 
-   /* Verify the ghost name is a valid one */
-   if(*argv[0] == '\0' || *a_lex_isolate(argv[0]) != '\0'){
+   /* Verify the ghost name is a valid one, and not a command modifier */
+   if(*argv[0] == '\0' || *a_lex_isolate(argv[0]) != '\0' ||
+         !asccasecmp(argv[0], "ignerr") || !asccasecmp(argv[0], "wysh") ||
+         !asccasecmp(argv[0], "vput")){
       n_err(_("`ghost': can't canonicalize %s\n"),
          n_shexp_quote_cp(argv[0], FAL0));
       v = NULL;
@@ -695,6 +697,7 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
       a_GHOST_MASK = (1<<3) - 1, /* Ghost recursion counter bits */
       a_NOPREFIX = 1<<4,         /* Modifier prefix not allowed right now */
       a_NOGHOST = 1<<5,          /* No ghost expansion modifier */
+      /* New command modifier prefixes must be reflected in a_lex_c_ghost()! */
       a_IGNERR = 1<<6,           /* ignerr modifier prefix */
       a_WYSH = 1<<7,             /* XXX v15+ drop wysh modifier prefix */
       a_VPUT = 1<<8              /* vput modifier prefix */
