@@ -127,9 +127,9 @@ S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
 Backward incompatibility has to be expected \(en
 .Sx COMMANDS
 will use
-.Xr \&\&sh 1 Ns
--style argument quoting rules, for example, and shell metacharacters
-will become meaningful.
+.Mx -sx
+.Sx "shell-style argument quoting"
+rules, for example, and shell metacharacters will become meaningful.
 New and old behaviour is flagged \*(IN and \*(OU, and setting
 .Va v15-compat ,
 one of the many
@@ -761,9 +761,9 @@ that would otherwise occur (see
 and
 .Va keep
 to not remove empty system (MBOX) mailbox files in order not to mangle
-file permissions when files eventually get recreated; be aware that
-\*(UA will (try to) remove all empty (MBOX) mailbox files unless this
-variable is set in case
+file permissions when files eventually get recreated \(en
+\*(UA will remove all empty (MBOX) mailbox files unless this variable is
+set whenever
 .Va posix
 .Pf ( Ev POSIXLY_CORRECT )
 mode has been enabled.
@@ -828,7 +828,7 @@ the user is expected to type in the message contents.
 In this compose mode \*(UA treats lines beginning with the character
 .Ql ~
 special \(en these are so-called
-.Sx "COMMAND ESCAPES"
+.Sx "COMMAND ESCAPES" ,
 which can be used to read in files, process shell commands, add and edit
 attachments and more; e.g., the command escape
 .Ic ~e
@@ -890,7 +890,7 @@ as well as
 variables, the latter also to be set to a
 .Ic define Ns
 d macro, increasingly powerful mechanisms to perform automated message
-adjustments in between are available.
+adjustments are available.
 .
 .Pp
 Especially for using public mail provider accounts with the SMTP
@@ -1466,7 +1466,7 @@ Upon startup \*(UA reads in several resource files:
 System wide initialization file.
 Reading of this file can be suppressed, either by using the
 .Fl \&:
-or
+(and according argument) or
 .Fl n
 command line options, or by setting the
 .Sx ENVIRONMENT
@@ -2468,8 +2468,9 @@ to establish its builtin key bindings
 an action which can then be suppressed completely by setting
 .Va line-editor-no-defaults .
 The following uses the
-.Xr sh 1 Ns
-ell-style quote notation that is documented in the introduction of
+.Mx -sx
+.Sx "shell-style argument quoting"
+notation that is documented in the introduction of
 .Sx COMMANDS ;
 combinations not mentioned either cause job control signals or do not
 generate a (unique) keycode:
@@ -2812,14 +2813,17 @@ and the following character is treated literally as part of the argument.
 Some commands which do not take message-list arguments can also be
 prefixed with the special keyword
 .Ic \&\&wysh
-to choose \*(INible argument quoting rules, and some new commands only
-support the new rules (without that keyword) and are flagged \*(NQ.
-In the future \*(UA will (mostly) use
+to choose \*(INible,
+.Xr sh 1 Ns
+ell-style argument parsing and quoting rules, and some new commands only
+support the new rules (without that keyword) and are flagged \*(NQ:
+in the future \*(UA will (mostly) use this
 .Xr sh 1
-compatible argument parsing:
-Non-message-list arguments can be quoted using the following shell-style
-mechanisms: the escape character, single-quotes, double-quotes and
-dollar-single-quotes; any unquoted number sign
+compatible argument parsing!
+Non-message-list arguments can be quoted using the following, rather
+.Mx -ix "shell-style argument quoting"
+compatible mechanisms: the escape character, single-quotes,
+double-quotes and dollar-single-quotes; any unquoted number sign
 .Ql #
 that parses as a new token starts a comment that ends argument processing.
 The overall granularity of error reporting and diagnostics, also
@@ -2972,8 +2976,10 @@ like to see things like
 and
 .Ql ? top 2 5 10; type 3 22
 become possible.
-Before \*(UA will switch entirely to shell-style argument parsing there
-will be a transition phase where using
+Before \*(UA will switch entirely to
+.Mx -sx
+.Sx "shell-style argument quoting"
+there will be a transition phase where using
 .Ic \&\&wysh
 will emit obsoletion warnings.
 .
@@ -3303,7 +3309,9 @@ Note that the entire comma-separated list is first parsed (over) as a
 shell-token with whitespace as the field separator, before being parsed
 and expanded for real with comma as the field separator, therefore
 whitespace needs to be properly quoted:
-shell-style quoting is documented in the introduction of
+.Mx -sx
+.Sx "shell-style argument quoting"
+is documented in the introduction of
 .Sx COMMANDS .
 Using Unicode reverse solidus escape sequences renders a binding
 defunctional if the locale does not support Unicode (see
@@ -3788,9 +3796,13 @@ See the section
 .
 .Mx
 .It Ic echo
-\*(NQ (ec) Echoes its arguments to standard output after applying
-.Xr sh 1 Ns -style
-expansions and filename transformations, as documented for
+\*(NQ (ec) Uses
+.Mx -sx
+.Sx "shell-style argument quoting"
+and echoes arguments to standard output after performing the usual \*(UA
+.Mx -sx
+.Sx "filename transformations"
+on them, as documented for
 .Sx COMMANDS .
 .
 .Mx
@@ -5127,8 +5139,11 @@ variable is set, the recipient's real name (if any) is used.
 .Mx
 .It Ic source
 (so) The source command reads commands from the given file, which is
-subject to the usual filename expansions (see introductional words of
-.Sx COMMANDS ) .
+subject to the usual
+.Mx -sx
+.Sx "filename transformations" ,
+as documented in
+.Sx COMMANDS .
 If the given argument ends with a vertical bar
 .Ql |
 then the argument will instead be interpreted as a shell command and
@@ -5591,9 +5606,11 @@ value, the same result as writing it to
 Shell piping the part content by specifying a leading vertical bar
 .Ql |
 character for the filename is supported.
-Other user input is expanded as usually for folders, e.g., tilde
-expansion is performed, and contents of the destination file are
-overwritten if the file previously existed.
+Other user input undergoes the usual
+.Mx -sx
+.Sx "filename transformations" ,
+and contents of the destination file are overwritten if the file
+previously existed.
 .Pp
 \*(ID In non-interactive mode any part which does not specify a filename
 is ignored, and suspicious parts of filenames of the remaining parts are
@@ -5708,13 +5725,14 @@ Its standard output is inserted into the message.
 .Mx
 .It Ic ~@ Op Ar filename...
 Append or edit the list of attachments.
-If
+A list of
 .Ar filename
-arguments are specified they are treated as a
-.Xr sh 1 Ns
--style quoted (see
+arguments can be specified by using
+.Mx -sx
+.Sx "shell-style argument quoting"
+(see
 .Sx COMMANDS ,
-token-separating commas are ignored) list of filenames, to be
+any token-separating commas are ignored), to be
 interpreted as documented for the command line option
 .Fl a ,
 with the message number exception as below.
@@ -6315,9 +6333,11 @@ to pass options through to a
 .Va mta .
 And the default global
 .Pa \*(UR
-file (which is loaded unless the
+file, which is loaded unless the
+.Fl \&:
+(with according argument) or
 .Fl n
-command line option has been used or the
+command line options have been used, or the
 .Ev MAILX_NO_SYSTEM_RC
 environment variable is set, see
 .Sx "Resource files" )
@@ -8377,10 +8397,11 @@ just as if the surrounding part was of type
 .Mx
 .It Va prompt
 The string used as a prompt in interactive mode.
-Whenever the variable is evaluated the value is shell-expanded using
-dollar-single-quote expansion mode (see
-.Sx COMMANDS ) ,
-and it is an error if the prompt expands to more than a single token.
+Whenever the variable is evaluated the value is expanded as via
+dollar-single-quote
+.Sx "shell-style argument quoting" ,
+documented in
+.Sx COMMANDS .
 This (post-assignment, i.e., second) expansion can be used to embed
 status information, for example
 .Va \&? ,
@@ -9341,8 +9362,10 @@ Not all SSL/TLS libraries support this.
 .It Va ssl-rand-file
 \*(OP Gives the filename to a file with random entropy data, see
 .Xr RAND_load_file 3 .
-If this variable is not set, or set to the empty string, or if the
-filename expansion failed, then
+If this variable is not set, or set to the empty string, or if
+.Mx -sx
+.Sx "filename transformations"
+failed, then
 .Xr RAND_file_name 3
 will be used to create the filename if, and only if,
 .Xr RAND_status 3
@@ -9808,6 +9831,8 @@ If this variable is set then reading of
 .Pa \*(UR
 at startup is inhibited, i.e., the same effect is achieved as if \*(UA
 had been started up with the option
+.Fl \&:
+(and according argument) or
 .Fl n .
 This variable is only used when it resides in the process environment.
 .
