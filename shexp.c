@@ -61,7 +61,7 @@
  * note these have counterparts in the code that manages internal variables! */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
 #define a_SHEXP_ISVARC_SPECIAL1(C) \
-   ((C) == '*' || (C) == '@' || (C) == '#' || (C) == '?')
+   ((C) == '*' || (C) == '@' || (C) == '#' || (C) == '?' || (C) == '!')
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
@@ -1389,7 +1389,7 @@ j_dollar_ungetc:
                      continue;
 
                   /* Check getenv(3) shall no internal variable exist! */
-                  /* TODO Expansion of $-* and $-@ not shell compatible, if
+                  /* TODO Expansion of $* and $@ not shell compatible, if
                    * TODO that occurs within double quotes.
                    * TODO Same notes on that in accmacvar.c, shexp.c */
                   vp = savestrbuf(vp, i);

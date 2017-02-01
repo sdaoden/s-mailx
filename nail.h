@@ -1533,12 +1533,12 @@ enum n_program_state_once{
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
    /* This is used for all macro arguments etc., i.e., [*@#]|[1-9][0-9]*... */
-   ok_v___special_param,               /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
    /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
-   ok_v___qm,                          /* {name=?,nolopts=1,rdonly=1,nodel=1} */
-   /* xxx __rv a.k.a. 0 should be num=1 but that more expensive than what now */
-   ok_v___rv,                          /* {name=0,nolopts=1,rdonly=1,nodel=1} */
-#define n__RV_SET(RV) n_PS_ROOT_BLOCK(ok_vset(__rv,RV)) /* TODO struct CmdCtx */
+   ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
+   /* xxx __em a.k.a. ! should be num=1 but that more expensive than what now */
+   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1,i3val="0"} */
+#define n__EM_SET(RS) n_PS_ROOT_BLOCK(ok_vset(__em,RS)) /* TODO struct CmdCtx */
 
    ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
@@ -2280,7 +2280,7 @@ enum argtype {
    ARG_V          = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    ARG_W          = 1u<<16,   /* Invalid when read only bit */
    ARG_X          = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   ARG_0          = 1u<<30    /* Stores computation status result in *0* */
+   ARG_EM         = 1u<<30    /* Stores computation status result in *!* */
 };
 
 enum gfield {
@@ -2542,6 +2542,7 @@ VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_empty[1];
 VL char const n_0[2];
 VL char const n_1[2];
+VL char const n_m1[3];
 
 VL ui16_t const n_class_char[1 + 0x7F];
 #endif

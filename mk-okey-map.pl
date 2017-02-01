@@ -274,7 +274,7 @@ sub dump_map{
          $virts{$k} = $e;
          push @fa, 'a_AMV_VF_VIRT'
       }
-      if($e->{i3val}){
+      if(defined $e->{i3val}){
          $i3vals{$k} = $e;
          push @fa, 'a_AMV_VF_I3VAL'
       }
@@ -402,8 +402,8 @@ _EOT
       # The rest are only speedups
       elsif($e->{name} eq '?'){
          print F "#define a_AMV_VAR_QM_MAP_IDX ${i}u\n"
-      }elsif($e->{name} eq '0'){
-         print F "#define a_AMV_VAR_RV_MAP_IDX ${i}u\n"
+      }elsif($e->{name} eq '!'){
+         print F "#define a_AMV_VAR_EM_MAP_IDX ${i}u\n"
       }
       ++$i
    }

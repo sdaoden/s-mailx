@@ -104,9 +104,10 @@ enum a_amv_var_special_type{
    a_AMV_VST_STAR,   /* * */
    a_AMV_VST_AT,     /* @ */
    a_AMV_VST_NOSIGN  /* # */
-   /* ?  This is different in that it is not a macro-local variable, but in
-    * fact a real variable! */
-   /*a_AMV_VST_QM*/
+   /* ?  These are different in that they are no macro-local variables, but in
+    * fact real ones! */
+   /*a_AMV_VST_QM * ? *
+    *a_AMV_VST_EM * ! */
 };
 
 struct a_amv_mac{
@@ -736,7 +737,9 @@ a_amv_var_copy(char const *str){
          news = n_UNCONST(n_0);
       else
          goto jheap;
-   }else{
+   }else if(str[2] == '\0' && str[0] == '-' && str[1] == '1')
+      news = n_UNCONST(n_m1);
+   else{
 jheap:
       len = strlen(str) +1;
       news = smalloc(len);
@@ -749,7 +752,7 @@ jheap:
 static void
 a_amv_var_free(char *cp){
    NYD2_ENTER;
-   if(cp[0] != '\0' && cp != n_1 && cp != n_0)
+   if(cp[0] != '\0' && cp != n_0 && cp != n_1 && cp != n_m1)
       free(cp);
    NYD2_LEAVE;
 }
@@ -905,16 +908,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
             goto jno_special_param;
          j = j * 10 + (ui8_t)c - '0';
       }
-      if(j == 0){
-         /* Not function local, could also simply look it up, but faster */
-         avcp->avc_name = name;
-         avmp = &a_amv_var_map[a_AMV_VAR_RV_MAP_IDX];
-         avcp->avc_hash = avmp->avm_hash;
-         avcp->avc_map = avmp;
-         avcp->avc_okey = ok_v___rv;
-         avcp->avc_is_special = FAL0;
-         goto jleave;
-      }else if(j <= SI16_MAX){
+      if(j <= SI16_MAX){
          avcp->avc_is_special = TRUM1;
          goto jspecial_param_m1;
       }
@@ -930,12 +924,18 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
          j = a_AMV_VST_NOSIGN;
          goto jspecial_param;
       case '?':
+      case '!':
          /* Not function local, could also simply look it up, but faster */
          avcp->avc_name = name;
-         avmp = &a_amv_var_map[a_AMV_VAR_QM_MAP_IDX];
+         if(c == '?'){
+            avmp = &a_amv_var_map[a_AMV_VAR_QM_MAP_IDX];
+            avcp->avc_okey = ok_v___qm;
+         }else{
+            avmp = &a_amv_var_map[a_AMV_VAR_EM_MAP_IDX];
+            avcp->avc_okey = ok_v___em;
+         }
          avcp->avc_hash = avmp->avm_hash;
          avcp->avc_map = avmp;
-         avcp->avc_okey = ok_v___qm;
          avcp->avc_is_special = FAL0;
          goto jleave;
       default:
@@ -1827,7 +1827,7 @@ c_return(void *v){
    rv = 1;
 
    if(a_amv_lopts != NULL){
-      char const * const m1 = "-1", **argv, *mrv;
+      char const **argv, *emv;
 
       n_source_force_eof();
 
@@ -1838,26 +1838,26 @@ c_return(void *v){
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED || i < 0){
             n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
-            mrv = m1;
+            emv = n_m1;
          }else
-            mrv = argv[0];
+            emv = argv[0];
 
          if(argv[1] != NULL){
             if((n_idec_si32_cp(&i, argv[1], 10, NULL
                      ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                   ) != n_IDEC_STATE_CONSUMED || i < 0){
                n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
-               mrv = m1;
+               emv = n_m1;
             }else
                rv = (int)i;
          }else
             rv = 0;
       }else{
          rv = 0;
-         mrv = "0";
+         emv = n_0;
       }
 
-      n__RV_SET(mrv);
+      n__EM_SET(emv);
    }else
       n_err(_("Can only use `return' in a macro\n"));
    NYD_LEAVE;
@@ -2440,7 +2440,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    enum n_idec_state ids;
    si64_t lhv, rhv;
    char op, varbuf[64 + 64 / 8 +1];
-   char const *var0, **argv, *varname, *varres, *cp;
+   char const *emv, **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1<<0,
       a_ISNUM = 1<<1,
@@ -2451,7 +2451,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    NYD_ENTER;
 
    f = a_ERR;
-   var0 = n_0;
+   emv = n_0;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
@@ -2476,7 +2476,7 @@ jnumop:
                ) != n_IDEC_STATE_CONSUMED){
             if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                goto jenum_range;
-            var0 = n_1;
+            emv = n_1;
             break;
          }
          if(op == '~')
@@ -2500,7 +2500,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               var0 = n_1;
+               emv = n_1;
                break;
             }
 
@@ -2512,7 +2512,7 @@ jnumop:
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
                lhv = rhv;
-               var0 = n_1;
+               emv = n_1;
                break;
             }
 
@@ -2553,7 +2553,7 @@ jnumop_again:
 jeplusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
-                  var0 = n_1;
+                  emv = n_1;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
                }else
                   lhv -= rhv;
@@ -2568,7 +2568,7 @@ jeplusminus:
                   if(rhv != 0 && lhv != 0 && SI64_MAX / rhv > lhv){
                      if(!(f & a_SATURATED))
                         goto jenum_overflow;
-                     var0 = n_1;
+                     emv = n_1;
                      lhv = SI64_MAX;
                   }else
                      lhv *= rhv;
@@ -2577,7 +2577,7 @@ jeplusminus:
                      if(lhv != 0 && SI64_MIN / lhv < rhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        var0 = n_1;
+                        emv = n_1;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2585,7 +2585,7 @@ jeplusminus:
                      if(rhv != 0 && lhv != 0 && SI64_MIN / rhv < lhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        var0 = n_1;
+                        emv = n_1;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2596,7 +2596,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  var0 = n_1;
+                  emv = n_1;
                   lhv = SI64_MAX;
                }else
                   lhv /= rhv;
@@ -2605,7 +2605,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  var0 = n_1;
+                  emv = n_1;
                   lhv = SI64_MAX;
                }else
                   lhv %= rhv;
@@ -2678,7 +2678,7 @@ jeplusminus:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
-         var0 = n_1;
+         emv = n_1;
       }
 
       if(argv[1] != NULL){
@@ -2695,7 +2695,7 @@ jeplusminus:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
-            var0 = n_1;
+            emv = n_1;
          }
       }
 #ifdef HAVE_REGEX
@@ -2819,9 +2819,9 @@ jleave:
          fprintf(n_stdout, "%s\n", varres);
    }else if(!n_var_vset(varname, (uintptr_t)varres)){
       f |= a_ERR;
-      var0 = n_1;
+      emv = n_1;
    }
-   n__RV_SET(var0);
+   n__EM_SET(emv);
    NYD_LEAVE;
    return (f & a_ERR) ? 1 : 0;
 
@@ -2830,7 +2830,7 @@ jsofterr:
 jerr:
    f &= ~(a_ISNUM | a_ISDECIMAL);
    f |= a_ISNUM;
-   var0 = n_1;
+   emv = n_1;
    lhv = -1;
    goto jleave;
 jesubcmd:

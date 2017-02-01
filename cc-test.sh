@@ -206,13 +206,13 @@ __behave_x_opt_input_command_stack() {
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
 	define mac0 {
-	   echo mac0-1
+	   echo mac0-1 via1 $0
 	}
 	call mac0
 	echo 2
 	wysh source '\
 	   echo "define mac1 {";\
-	   echo "  echo mac1-1";\
+	   echo "  echo mac1-1 via1 \$0";\
 	   echo "  call mac0";\
 	   echo "  echo mac1-2";\
 	   echo "  call mac2";\
@@ -220,7 +220,7 @@ __behave_x_opt_input_command_stack() {
 	   echo "}";\
 	   echo "echo 1-1";\
 	   echo "define mac2 {";\
-	   echo "  echo mac2-1";\
+	   echo "  echo mac2-1 via1 \$0";\
 	   echo "  call mac0";\
 	   echo "  echo mac2-2";\
 	   echo "}";\
@@ -228,7 +228,7 @@ __behave_x_opt_input_command_stack() {
 	   echo "call mac1";\
 	   echo "echo 1-3";\
 	   echo "wysh source \"\
-	      echo echo 1-1-1;\
+	      echo echo 1-1-1 via1 \$0;\
 	      echo call mac0;\
 	      echo echo 1-1-2;\
 	   | \"";\
@@ -251,7 +251,7 @@ __behave_x_opt_input_command_stack() {
       -X 1 \
       -X'
    define mac0 {
-      echo mac0-1
+      echo mac0-1 via2 $0
    }
    call mac0
    echo 2
@@ -259,7 +259,7 @@ __behave_x_opt_input_command_stack() {
       -X'
    wysh source '${APO}'\
       echo "define mac1 {";\
-      echo "  echo mac1-1";\
+      echo "  echo mac1-1 via2 \$0";\
       echo "  call mac0";\
       echo "  echo mac1-2";\
       echo "  call mac2";\
@@ -267,7 +267,7 @@ __behave_x_opt_input_command_stack() {
       echo "}";\
       echo "echo 1-1";\
       echo "define mac2 {";\
-      echo "  echo mac2-1";\
+      echo "  echo mac2-1 via2 \$0";\
       echo "  call mac0";\
       echo "  echo mac2-2";\
       echo "}";\
@@ -275,7 +275,7 @@ __behave_x_opt_input_command_stack() {
       echo "call mac1";\
       echo "echo 1-3";\
       echo "wysh source \"\
-         echo echo 1-1-1;\
+         echo echo 1-1-1 via2 \$0;\
          echo call mac0;\
          echo echo 1-1-2;\
       | \"";\
@@ -288,7 +288,51 @@ __behave_x_opt_input_command_stack() {
    echo 4
    undefine *
    ' > "${MBOX}" 2>/dev/null
-   cksum_test behave:x_opt_input_command_stack "${MBOX}" '270940651 240'
+#1
+#mac0-1 via2 
+#2
+#1-1
+#1-2
+#mac1-1 via2 
+#mac0-1 via2 mac1
+#mac1-2
+#mac2-1 via2 mac1
+#mac0-1 via2 mac2
+#mac2-2
+#mac1-3
+#1-3
+#1-1-1 via2
+#mac0-1 via2 
+#1-1-2
+#1-4
+#3
+#mac2-1 via2 
+#mac0-1 via2 mac2
+#mac2-2
+#4
+#1
+#mac0-1 via1 
+#2
+#1-1
+#1-2
+#mac1-1 via1 
+#mac0-1 via1 mac1
+#mac1-2
+#mac2-1 via1 mac1
+#mac0-1 via1 mac2
+#mac2-2
+#mac1-3
+#1-3
+#1-1-1 via1
+#mac0-1 via1 
+#1-1-2
+#1-4
+#3
+#mac2-1 via1 
+#mac0-1 via1 mac2
+#mac2-2
+#4
+   cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
 }
 
 __behave_wysh() {
@@ -1240,32 +1284,32 @@ __behave_addrcodec() {
    ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput addrcodec res <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res . <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Sauer Dr. <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Sauer (Ma) Dr. <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Sauer (Ma) Braten Dr. <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res (Ma)Braten Dr. (Heu) <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res (Ma)Braten Dr'"."' (Heu) <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res \
 		'   Dr.  ' '  Sauer ' (Ma) '  Braten  ' '  Dr.   ' (u) <doog@def>
-	echo $0 $res
+	echo $! $res
 	vput addrcodec res (Ma)Braten    Dr.     (Heu)     <doog@def>
-	echo $0 $res
+	echo $! $res
 	__EOT
 #0 <doog@def>
 #0 "." <doog@def>
@@ -1288,130 +1332,130 @@ __behave_vexpr() {
    ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res = 9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res =@ 9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res = -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res = -9223372036854775809
-	echo $0 $res
+	echo $! $res
 	vput vexpr res =@ -9223372036854775809
-	echo $0 $res
+	echo $! $res
 	echo ' #1'
 	vput vexpr res ~ 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res ~ 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res ~ -1
-	echo $0 $res
+	echo $! $res
 	echo ' #2'
 	vput vexpr res + 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 1 1
-	echo $0 $res
+	echo $! $res
 	echo ' #3'
 	vput vexpr res + 9223372036854775807 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 9223372036854775807 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res +@ 9223372036854775807 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 0 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 1 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res +@ 1 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	echo ' #4'
 	vput vexpr res + -9223372036854775808 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + -9223372036854775808 -1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res +@ -9223372036854775808 -1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + 0 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res + -1 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res +@ -1 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	echo ' #5'
 	vput vexpr res - 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 1 1
-	echo $0 $res
+	echo $! $res
 	echo ' #6'
 	vput vexpr res - 9223372036854775807 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 9223372036854775807 -1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res -@ 9223372036854775807 -1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 0 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - -1 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - -2 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	vput vexpr res -@ -2 9223372036854775807
-	echo $0 $res
+	echo $! $res
 	echo ' #7'
 	vput vexpr res - -9223372036854775808 +0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - -9223372036854775808 +1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res -@ -9223372036854775808 +1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 0 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - +1 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	vput vexpr res -@ +1 -9223372036854775808
-	echo $0 $res
+	echo $! $res
 	echo ' #8'
 	vput vexpr res + -13 -2
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - 1 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res - -13 -2
-	echo $0 $res
+	echo $! $res
 	echo ' #9'
 	vput vexpr res * 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res * 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res * 1 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res * -13 -2
-	echo $0 $res
+	echo $! $res
 	echo ' #10'
 	vput vexpr res / 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res / 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res / 1 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res / -13 -2
-	echo $0 $res
+	echo $! $res
 	echo ' #11'
 	vput vexpr res % 0 0
-	echo $0 $res
+	echo $! $res
 	vput vexpr res % 0 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res % 1 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res % -13 -2
-	echo $0 $res
+	echo $! $res
 	__EOT
 #0 9223372036854775807
 #1 -1
@@ -1483,49 +1527,49 @@ __behave_vexpr() {
 #0 -1
    cksum_test behave:vexpr-numeric "${MBOX}" '2147139513 687'
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
 	vput vexpr res find 'bananarama' 'nana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res find 'bananarama' 'bana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res find 'bananarama' 'Bana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res find 'bananarama' 'rama'
-	echo $0 $res
+	echo $! $res
 	echo ' #1'
 	vput vexpr res ifind 'bananarama' 'nana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res ifind 'bananarama' 'bana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res ifind 'bananarama' 'Bana'
-	echo $0 $res
+	echo $! $res
 	vput vexpr res ifind 'bananarama' 'rama'
-	echo $0 $res
+	echo $! $res
 	echo ' #2'
 	vput vexpr res substring 'bananarama' 1
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 5
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 7
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 9
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 10
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 1 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 3 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 5 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 7 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 9 3
-	echo $0 $res
+	echo $! $res
 	vput vexpr res substring 'bananarama' 10 3
-	echo $0 $res
+	echo $! $res
 	echo ' #3'
 	__EOT
 #0 2
@@ -1554,42 +1598,42 @@ __behave_vexpr() {
    cksum_test behave:vexpr-string "${MBOX}" '2171181036 119'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
 		vput vexpr res regex 'bananarama' 'nana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res regex 'bananarama' 'bana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res regex 'bananarama' 'Bana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res regex 'bananarama' 'rama'
-		echo $0 $res
+		echo $! $res
 		echo ' #1'
 		vput vexpr res iregex 'bananarama' 'nana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res iregex 'bananarama' 'bana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res iregex 'bananarama' 'Bana'
-		echo $0 $res
+		echo $! $res
 		vput vexpr res iregex 'bananarama' 'rama'
-		echo $0 $res
+		echo $! $res
 		echo ' #2'
-		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}au{\$2}'
-		echo $0 $res
-		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}au\$2'
-		echo $0 $res
-		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1'
-		echo $0 $res
-		vput vexpr res regex 'bananarama' '(.+)rama' '\$1'
-		echo $0 $res
+		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
+		echo $! $res
+		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
+		echo $! $res
+		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
+		echo $! $res
+		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0'
+		echo $! $res
 		echo ' #3'
-		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}au{\$2}'
-		echo $0 $res
-		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}au\$2'
-		echo $0 $res
-		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1'
-		echo $0 $res
-		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1'
-		echo $0 $res
+		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
+		echo $! $res
+		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
+		echo $! $res
+		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0'
+		echo $! $res
+		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0'
+		echo $! $res
 		echo ' #4'
 		__EOT
 #0 2
@@ -1602,17 +1646,17 @@ __behave_vexpr() {
 #0 0
 #0 6
 # #2
-#0 baau{rama}
-#0 aunarama
+#0 baabananaramau{rama}
+#0 abananaramaunarama
 #1 -1
-#0 banana
+#0 bananabananarama
 # #3
-#0 baau{rama}
-#0 aunarama
-#0 narama
-#0 banana
+#0 baabananaramau{rama}
+#0 abananaramaunarama
+#0 naramabananarama
+#0 bananabananarama
 # #4
-      cksum_test behave:vexpr-regex "${MBOX}" '2350800158 129'
+      cksum_test behave:vexpr-regex "${MBOX}" '3419299180 199'
    fi
 }
 

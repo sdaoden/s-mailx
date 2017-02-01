@@ -1538,12 +1538,13 @@ FL int
 c_addrcodec(void *v){
    struct n_addrguts ag;
    struct n_string s_b, *sp;
-   char const **argv, *varname, *varres, *var0;
+   char const **argv, *emv, *varname, *varres, *cp;
    int rv;
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
    rv = 0;
+   emv = n_0;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
@@ -1554,34 +1555,33 @@ c_addrcodec(void *v){
    }
 
    /* TODO nalloc() cannot yet fail, thus need to do the work twice!! */
-   for(var0 = n_string_cp(sp); blankchar(*var0); ++var0)
+   for(cp = n_string_cp(sp); blankchar(*cp); ++cp)
       ;
-   if(var0 != sp->s_dat)
-      sp = n_string_cut(sp, 0, PTR2SIZE(var0 - sp->s_dat));
-   for(varres = var0 = &sp->s_dat[sp->s_len];
-         var0 > sp->s_dat && blankchar(var0[-1]); --var0)
+   if(cp != sp->s_dat)
+      sp = n_string_cut(sp, 0, PTR2SIZE(cp - sp->s_dat));
+   for(varres = cp = &sp->s_dat[sp->s_len];
+         cp > sp->s_dat && blankchar(cp[-1]); --cp)
       ;
-   if(var0 != varres)
-      sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - var0));
+   if(cp != varres)
+      sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - cp));
 
    if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL){
       varres = sp->s_dat;
-      var0 = n_1;
+      emv = n_1;
    }else{
       struct name *np;
 
       np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
       varres = np->n_fullname;
-      var0 = n_0;
    }
 
    if(varname == NULL)
       fprintf(n_stdout, "%s\n", varres);
    else if(!n_var_vset(varname, (uintptr_t)varres)){
-      var0 = n_1;
+      emv = n_1;
       rv = 1;
    }
-   n__RV_SET(var0);
+   n__EM_SET(emv);
    NYD_LEAVE;
    return rv;
 }

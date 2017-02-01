@@ -57,7 +57,7 @@
 #define V ARG_V
 #define W ARG_W
 #define X ARG_X
-#define _0 ARG_0
+#define EM ARG_EM
 
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
@@ -300,7 +300,7 @@
      DS(N_("Call macro <name> if it exists")) },
    { "shift", &c_shift, (M | X | WYSHLIST), 0, 1
      DS(N_("In a `call'ed macro, shift positional parameters")) },
-   { "return", &c_return, (M | X | _0 | WYSHLIST), 0, 2
+   { "return", &c_return, (M | X | EM | WYSHLIST), 0, 2
      DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
    { "move", &c_move, (A | M | STRLIST), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
@@ -376,7 +376,7 @@
      DS(N_("Show some informations about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | WYRALIST), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "vexpr", &c_vexpr, (G | M | V | X | _0 | WYSHLIST), 2, 1000
+   { "vexpr", &c_vexpr, (G | M | V | X | EM | WYSHLIST), 2, 1000
      DS(N_("Evaluate according to <operator> any <:arguments:>")) },
    { "File", &c_File, (M | T | WYRALIST), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
@@ -418,12 +418,12 @@
    { "environ", &c_environ, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
-   { "read", &c_read, (G | M | X | _0 | WYSHLIST), 1, 1000
+   { "read", &c_read, (G | M | X | EM | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
 
-   { "addrcodec", &c_addrcodec, (G | M | V | X | _0 | WYSHLIST), 1, 1000
+   { "addrcodec", &c_addrcodec, (G | M | V | X | EM | WYSHLIST), 1, 1000
      DS(N_("Form an address of <:arguments:>")) },
-   { "urlcodec", &c_urlcodec, (G | M | V | X | _0 | WYSHLIST), 2, 1000
+   { "urlcodec", &c_urlcodec, (G | M | V | X | EM | WYSHLIST), 2, 1000
      DS(N_("URL percent <[path]enc[ode]|[path]dec[ode]> <:arguments:>")) },
       { "urlencode", &c_urlencode, (O | G | M | X | WYRALIST), 1, 1000
         DS(N_("Encode <string-list> for usage in an URL")) },
@@ -461,6 +461,6 @@
 #undef V
 #undef W
 #undef X
-#undef _0
+#undef EM
 
 /* s-it-mode */

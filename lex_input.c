@@ -387,8 +387,8 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
 
    if(lcp->lc_argtype & ARG_V)
       rv = n_string_push_cp(rv, _(" | `vput' modifier"));
-   if(lcp->lc_argtype & ARG_0)
-      rv = n_string_push_cp(rv, _(" | status in *0*"));
+   if(lcp->lc_argtype & ARG_EM)
+      rv = n_string_push_cp(rv, _(" | status in *!*"));
 
    if(lcp->lc_argtype & ARG_A)
       rv = n_string_push_cp(rv, _(" | needs box"));
@@ -1796,7 +1796,7 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
 
 FL int
 c_read(void *v){ /* TODO IFS? how? -r */
-   char const **argv, *cp, *var0, *cp2;
+   char const **argv, *cp, *emv, *cp2;
    int rv;
    NYD2_ENTER;
 
@@ -1810,7 +1810,7 @@ c_read(void *v){ /* TODO IFS? how? -r */
    if(rv)
       goto jleave;
 
-   var0 = n_0;
+   emv = n_0;
 
    cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
@@ -1847,7 +1847,7 @@ c_read(void *v){ /* TODO IFS? how? -r */
 
          vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
          if(!n_var_vset(*argv, (uintptr_t)vcp))
-            var0 = n_1;
+            emv = n_1;
       }
 
       cp = cp2;
@@ -1856,9 +1856,9 @@ c_read(void *v){ /* TODO IFS? how? -r */
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
       if(!n_var_vset(*argv, (uintptr_t)n_empty))
-         var0 = n_1;
+         emv = n_1;
 
-   n__RV_SET(var0);
+   n__EM_SET(emv);
    rv = 0;
 jleave:
    NYD2_LEAVE;
