@@ -77,6 +77,10 @@ CHECK_ONLY=
    CHECK_ONLY=1
 }
 
+TRAP_EXIT_ADDONS=
+trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
+trap "exit 1" HUP INT TERM
+
 # cc_all_configs()
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
@@ -188,6 +192,7 @@ have_feat() {
 t_behave() {
    __behave_x_opt_input_command_stack
    __behave_wysh
+   __behave_ghost
    __behave_ifelse
    __behave_localopts
    __behave_macro_param_shift
@@ -202,7 +207,6 @@ t_behave() {
 }
 
 __behave_x_opt_input_command_stack() {
-   ${rm} -f "${BODY}" "${MBOX}"
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
 	define mac0 {
@@ -336,8 +340,6 @@ __behave_x_opt_input_command_stack() {
 }
 
 __behave_wysh() {
-   # Nestable conditions test
-   ${rm} -f "${BODY}" "${MBOX}"
    ${cat} <<- '__EOT' > "${BODY}"
 	#
 	echo abcd
@@ -498,12 +500,30 @@ __behave_wysh() {
 #a	b
 #a
    cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
-   ${rm} -f "${BODY}" "${MBOX}"
 }
+
+__behave_ghost() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+	ghost X Xx
+	ghost Xx XxX
+	ghost XxX XxXx
+	ghost XxXx XxXxX
+	ghost XxXxX XxXxXx
+	ghost XxXxXx echo huhu
+	ghost XxXxXxX echo huhu
+	ghost echo \echo hoho
+	X
+	ghost XxXxXx XxXxXxX
+	X
+	__EOT
+#hoho huhu
+#huhu
+   cksum_test behave:ghost "${MBOX}" '3239685744 15'
+}
+
 
 __behave_ifelse() {
    # Nestable conditions test
-   ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 		if 0
 		   echo 1.err
@@ -1063,7 +1083,6 @@ __behave_ifelse() {
    cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
    if have_feat regex; then
-      ${rm} -f "${MBOX}"
       ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
@@ -1150,7 +1169,6 @@ __behave_ifelse() {
 
 __behave_localopts() {
    # Nestable conditions test
-   ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define t2 {
 	   echo in: t2
@@ -1206,7 +1224,6 @@ __behave_localopts() {
 }
 
 __behave_macro_param_shift() {
-   ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	define t2 {
 	   echo in: t2
@@ -1281,7 +1298,6 @@ __behave_macro_param_shift() {
 }
 
 __behave_addrcodec() {
-   ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput addrcodec res <doog@def>
 	echo $! $res
@@ -1329,7 +1345,6 @@ __behave_addrcodec() {
 }
 
 __behave_vexpr() {
-   ${rm} -f "${MBOX}"
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
 	echo $! $res
@@ -1661,8 +1676,12 @@ __behave_vexpr() {
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein
+   TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
+   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
+   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
+
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
-   ${cat} <<-_EOT > ./t.conf
+   ${cat} <<-_EOT > ./.t.conf
 		[ req ]
 		default_bits           = 1024
 		default_keyfile        = keyfile.pem
@@ -1683,68 +1702,69 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
 		[ req_attributes ]
 		challengePassword =
 	_EOT
-   openssl req -x509 -nodes -days 3650 -config ./t.conf \
-      -newkey rsa:1024 -keyout ./tkey.pem -out ./tcert.pem >/dev/null 2>&1
-   ${rm} -f ./t.conf
-   ${cat} ./tkey.pem ./tcert.pem > ./tpair.pem
+   openssl req -x509 -nodes -days 3650 -config ./.t.conf \
+      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >/dev/null 2>&1
+   ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
    printf "behave:s/mime:sign/verify: "
    echo bla | "${SNAIL}" ${ARGS} \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
-      -s 'S/MIME test' ./VERIFY
+      -s 'S/MIME test' ./.VERIFY
    printf 'verify\nx\n' |
    "${SNAIL}" ${ARGS} \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
-      -f ./VERIFY >/dev/null 2>&1
+      -f ./.VERIFY >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
       printf 'error: verification failed\n'
       ESTAT=1
-      ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
+      ${rm} -f ${TRAP_EXIT_ADDONS}
+      TRAP_EXIT_ADDONS=
       return
    fi
    printf ' .. disproof via openssl smime(1): '
-   if openssl smime -verify -CAfile ./tcert.pem \
-         -in ./VERIFY >/dev/null 2>&1; then
+   if openssl smime -verify -CAfile ./.tcert.pem \
+         -in ./.VERIFY >/dev/null 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
       ESTAT=1
-      ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
+      ${rm} -f ${TRAP_EXIT_ADDONS}
+      TRAP_EXIT_ADDONS=
       return
    fi
-   ${rm} -rf ./VERIFY
 
    # (signing +) encryption / decryption
-   ${cat} <<-_EOT > ./tsendmail.sh
+   ${cat} <<-_EOT > ./.tsendmail.sh
 		#!/bin/sh -
-		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
+      ${rm} -f ./.ENCRYPT
+		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./.ENCRYPT
 	_EOT
-   chmod 0755 ./tsendmail.sh
+   chmod 0755 ./.tsendmail.sh
 
    printf "behave:s/mime:encrypt+sign/decrypt+verify: "
    echo bla |
    "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Smta=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    # TODO CHECK
-   printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
+   printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
    "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Smta=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
-      -f ./ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -1752,8 +1772,8 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
       printf 'error: decryption+verification failed\n'
    fi
    printf ' ..disproof via openssl smime(1): '
-   if (openssl smime -decrypt -inkey ./tkey.pem -in ./ENCRYPT |
-         openssl smime -verify -CAfile ./tcert.pem) >/dev/null 2>&1; then
+   if (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
+         openssl smime -verify -CAfile ./.tcert.pem) >/dev/null 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -1762,26 +1782,26 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
    ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
          -e \
          '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
-      < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '3090916509 510'
+      < ./.DECRYPT > ./.ENCRYPT
+   cksum_test ".. checksum of decrypted content" "./.ENCRYPT" '3090916509 510'
 
-   ${rm} -f ./DECRYPT
    printf "behave:s/mime:encrypt/decrypt: "
+   ${rm} -f ./.DECRYPT
    echo bla | "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Smta=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
-   printf 'decrypt ./DECRYPT\nx\n' | "${SNAIL}" ${ARGS} \
+   printf 'decrypt ./.DECRYPT\nx\n' | "${SNAIL}" ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Smta=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -Sbatch-exit-on-error -R \
-      -f ./ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -1789,19 +1809,19 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
       printf 'error: decryption failed\n'
    fi
    printf '.. disproof via openssl smime(1): '
-   if openssl smime -decrypt -inkey ./tkey.pem \
-         -in ./ENCRYPT >/dev/null 2>&1; then
+   if openssl smime -decrypt -inkey ./.tkey.pem \
+         -in ./.ENCRYPT >/dev/null 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
       ESTAT=1
    fi
    ${sed} -e '/^Date:/d' -e '/^X-Decoding-Date/d' \
-      < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '999887248 295'
+      < ./.DECRYPT > ./.ENCRYPT
+   cksum_test ".. checksum of decrypted content" ./.ENCRYPT '999887248 295'
 
-   ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
-      ./tkey.pem ./tcert.pem ./tpair.pem
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
 }
 
 # t_content()
@@ -1810,8 +1830,6 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
 # Note we unfortunately need to place some statements without proper
 # indentation because of continuation problems
 t_content() {
-   ${rm} -f "${BODY}" "${MBOX}"
-
    # MIME encoding (QP) stress message body
 printf \
 'Ich bin eine DÖS-Datäi mit sehr langen Zeilen und auch '\
@@ -2004,36 +2022,34 @@ gggggggggggggggg"
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot
    ${rm} -f "${MBOX}"
-   : > "ma'ger.txt"
-   : > "mä'ger.txt"
-   : > 'diet\ is \curd.txt'
-   : > 'diet "is" curd.txt'
-   : > höde-tröge.txt
-   : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
-   : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
-   : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
-   : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   TRAP_EXIT_ADDONS=./.ttt
+   (
+      mkdir ./.ttt || exit 1
+      cd ./.ttt || exit 2
+      : > "ma'ger.txt"
+      : > "mä'ger.txt"
+      : > 'diet\ is \curd.txt'
+      : > 'diet "is" curd.txt'
+      : > höde-tröge.txt
+      : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+      : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+      : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+      : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   )
    echo bla | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
-      -a "ma'ger.txt" -a "mä'ger.txt" \
-      -a 'diet\ is \curd.txt' -a 'diet "is" curd.txt' \
-      -a höde-tröge.txt \
-      -a höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-      -a höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-      -a hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-      -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+      -a "./.ttt/ma'ger.txt" -a "./.ttt/mä'ger.txt" \
+      -a './.ttt/diet\ is \curd.txt' -a './.ttt/diet "is" curd.txt' \
+      -a ./.ttt/höde-tröge.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
-   ${rm} -f "ma'ger.txt" "mä'ger.txt" 'diet\ is \curd.txt' \
-      'diet "is" curd.txt' höde-tröge.txt \
-      höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-      höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-      hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-      ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   ${rm} -rf ./.ttt
    cksum_test content:14 "${MBOX}" '589846634 2491'
    # `resend' test
    printf "Resend ${BODY}\nx\n" | "${SNAIL}" ${ARGS} -f "${MBOX}"
    cksum_test content:14-2 "${MBOX}" '589846634 2491'
-
-   ${rm} -f "${BODY}" "${MBOX}"
 }
 
 t_all() {
