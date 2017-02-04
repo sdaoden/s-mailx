@@ -2117,9 +2117,6 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
             else switch(avc.avc_special_prop){
             case a_AMV_VST_STAR:
             case a_AMV_VST_AT:{
-               /* TODO Expansion of $* and $@ not shell compatible, if
-                * TODO that occurs within double quotes.
-                * TODO Same notes on that in accmacvar.c, shexp.c */
                ui32_t i, l;
 
                for(i = l = 0; i < amcap->amca_argc; ++i)
@@ -2832,10 +2829,10 @@ jeplusminus:
 
             templ.s = n_UNCONST(argv[3]);
             templ.l = UIZ_MAX;
-            shs = n_shexp_parse_token(n_string_creat_auto(&s_b), &templ,
-                  n_SHEXP_PARSE_LOG |
-                  n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                  n_SHEXP_PARSE_QUOTE_AUTO_DSQ);
+            shs = n_shexp_parse_token(n_string_creat_auto(&s_b), &templ, NULL,
+                  (n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                  n_SHEXP_PARSE_QUOTE_AUTO_DSQ));
             if((shs & (n_SHEXP_STATE_ERR_MASK | n_SHEXP_STATE_STOP)
                   ) == n_SHEXP_STATE_STOP){
                varres = n_string_cp(&s_b);

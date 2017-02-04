@@ -935,9 +935,10 @@ jnext:
             enum n_shexp_state shs;
 
             /* TODO shexp: take care to not include backtick eval once avail! */
-            shs = n_shexp_parse_token(shoup, &shin, n_SHEXP_PARSE_LOG_D_V |
-                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DQ |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE);
+            shs = n_shexp_parse_token(shoup, &shin, NULL,
+                  (n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                  n_SHEXP_PARSE_QUOTE_AUTO_DQ |
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE));
             if(shs & n_SHEXP_STATE_STOP)
                break;
          }
@@ -979,21 +980,23 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
-      enum n_shexp_parse_flags flags){
-   char utf[8];
-   char c2, c, quotec;
+n_shexp_parse_token(struct n_string *store, struct str *input,
+      void const **cookie, enum n_shexp_parse_flags flags){
+   /* TODO shexp_parse_token: WCHAR; $IFS (sp20='   '; echo a $sp20 b; ..) */
+   char c2, c, quotec, utf[8];
+   enum n_shexp_state rv;
+   size_t i, il;
+   char const *ib_save, *ib;
    enum{
       a_NONE = 0,
       a_SKIPQ = 1<<0,   /* Skip rest of this quote (\c0 ..) */
       a_SURPLUS = 1<<1, /* Extended sequence interpretation */
-      a_NTOKEN = 1<<2   /* "New token": e.g., comments are possible */
+      a_NTOKEN = 1<<2,  /* "New token": e.g., comments are possible */
+      a_ROUND_MASK = ~((1<<8) - 1),
+      a_COOKIE = 1<<8,
+      a_EXPLODE = 1<<9
    } state;
-   enum n_shexp_state rv;
-   size_t i, il;
-   char const *ib_save, *ib;
    NYD2_ENTER;
-   n_UNINIT(c, '\0');
 
    assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
    assert(input != NULL);
@@ -1012,32 +1015,68 @@ n_shexp_parse_token(struct n_string *store, struct str *input, /* TODO WCHAR */
    if((flags & n_SHEXP_PARSE_TRUNC) && store != NULL)
       store = n_string_trunc(store, 0);
 
+   state = a_NONE;
    ib = input->s;
    if((il = input->l) == UIZ_MAX)
-      il = strlen(ib);
+      input->l = il = strlen(ib);
+   n_UNINIT(c, '\0');
+
+   if(cookie != NULL && *cookie != NULL){
+      assert(!(flags & n_SHEXP_PARSE_DRYRUN));
+      state |= a_COOKIE;
+   }
 
 jrestart_empty:
-   if(flags & n_SHEXP_PARSE_TRIMSPACE){
-      for(; il > 0; ++ib, --il)
-         if(!blankspacechar(*ib))
+   rv = n_SHEXP_STATE_NONE;
+   state &= a_ROUND_MASK;
+
+   /* In cookie mode, the next ARGV entry is the token already, unchanged,
+    * since it has already been expanded before! */
+   if(state & a_COOKIE){
+      char const * const *xcookie, *cp;
+
+      i = store->s_len;
+      xcookie = *cookie;
+      if((store = n_string_push_cp(store, *xcookie))->s_len > 0)
+         rv |= n_SHEXP_STATE_OUTPUT;
+      if(*++xcookie == NULL){
+         *cookie = NULL;
+         state &= ~a_COOKIE;
+         flags |= n_SHEXP_PARSE_QUOTE_AUTO_DQ; /* ..why we are here! */
+      }else
+         *cookie = n_UNCONST(xcookie);
+
+      for(cp = &n_string_cp(store)[i]; (c = *cp++) != '\0';)
+         if(cntrlchar(c)){
+            rv |= n_SHEXP_STATE_CONTROL;
             break;
+         }
+
+      /* The last exploded cookie will join with the yielded input token, so
+       * simply fall through in this case */
+      if(state & a_COOKIE)
+         goto jleave_quick;
+   }else{
+      if(flags & n_SHEXP_PARSE_TRIMSPACE){
+         for(; il > 0; ++ib, --il)
+            if(!blankspacechar(*ib))
+               break;
+      }
+      input->s = n_UNCONST(ib);
+      input->l = il;
    }
-   input->s = n_UNCONST(ib);
-   input->l = il;
 
    if(il == 0){
-      rv = n_SHEXP_STATE_STOP;
+      rv |= n_SHEXP_STATE_STOP;
       goto jleave;
    }
 
    if(store != NULL)
       store = n_string_reserve(store, n_MIN(il, 32)); /* XXX */
 
-   rv = n_SHEXP_STATE_NONE;
    switch(flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK){
    case n_SHEXP_PARSE_QUOTE_AUTO_SQ:
       quotec = '\'';
-      state = a_NONE;
       break;
    case n_SHEXP_PARSE_QUOTE_AUTO_DQ:
       quotec = '"';
@@ -1045,11 +1084,11 @@ jrestart_empty:
    case n_SHEXP_PARSE_QUOTE_AUTO_DSQ:
          quotec = '\'';
       }
-      state = a_SURPLUS;
+      state |= a_SURPLUS;
       break;
    default:
       quotec = '\0';
-      state = a_NTOKEN;
+      state |= a_NTOKEN;
       break;
    }
 
@@ -1101,7 +1140,7 @@ jrestart_empty:
          /* Quote-mode */
          assert(!(state & a_NTOKEN));
          if(c == quotec && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)){
-            state = a_NONE;
+            state &= a_ROUND_MASK;
             quotec = '\0';
             /* Users may need to recognize the presence of empty quotes */
             rv |= n_SHEXP_STATE_OUTPUT;
@@ -1328,7 +1367,7 @@ je_ib_save:
 
                default:
 j_dollar_ungetc:
-                  /* Follow bash behaviour, print sequence unchanged */
+                  /* Follow bash(1) behaviour, print sequence unchanged */
                   ++il, --ib;
                   break;
                }
@@ -1342,6 +1381,7 @@ j_dollar_ungetc:
                ib_save = ib - 1;
                il -= brace;
                vp = (ib += brace);
+               state &= ~a_EXPLODE;
 
                for(i = 0; il > 0; --il, ++ib, ++i){
                   /* We have some special cases regarding macro-local special
@@ -1349,6 +1389,8 @@ j_dollar_ungetc:
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
                      if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c)){
+                        if(c == '@' && quotec == '"')
+                           state |= a_EXPLODE;
                         --il, ++ib;
                         ++i;
                      }
@@ -1388,10 +1430,18 @@ j_dollar_ungetc:
                   if(flags & n_SHEXP_PARSE_DRYRUN)
                      continue;
 
+                  /* We may shall explode "${@}" to a series of successive,
+                   * properly quoted tokens (instead).  The first exploded
+                   * cookie will join with the current token */
+                  if((state & a_EXPLODE) && !(flags & n_SHEXP_PARSE_DRYRUN) &&
+                        cookie != NULL && n_var_vexplode(cookie)){
+                     state |= a_COOKIE;
+                     input->s = n_UNCONST(ib);
+                     input->l = il;
+                     goto jrestart_empty;
+                  }
+
                   /* Check getenv(3) shall no internal variable exist! */
-                  /* TODO Expansion of $* and $@ not shell compatible, if
-                   * TODO that occurs within double quotes.
-                   * TODO Same notes on that in accmacvar.c, shexp.c */
                   vp = savestrbuf(vp, i);
                   if((cp = n_var_vlook(vp, TRU1)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
@@ -1426,6 +1476,7 @@ j_dollar_ungetc:
    }
 
 jleave:
+   assert(!(state & a_COOKIE));
    if((flags & n_SHEXP_PARSE_DRYRUN) && store != NULL){
       store = n_string_push_buf(store, input->s, PTR2SIZE(ib - input->s));
       rv |= n_SHEXP_STATE_OUTPUT;
@@ -1440,44 +1491,17 @@ jleave:
    input->s = n_UNCONST(ib);
 
    if(!(rv & n_SHEXP_STATE_STOP)){
-      if(il > 0 && !(rv & n_SHEXP_STATE_OUTPUT) &&
-            (flags & n_SHEXP_PARSE_IGNORE_EMPTY))
+      if(!(rv & n_SHEXP_STATE_OUTPUT) && (flags & n_SHEXP_PARSE_IGNORE_EMPTY) &&
+            il > 0)
          goto jrestart_empty;
       if(/*!(rv & n_SHEXP_STATE_OUTPUT) &&*/ il == 0)
          rv |= n_SHEXP_STATE_STOP;
    }
+jleave_quick:
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
    NYD2_LEAVE;
    return rv;
-}
-
-FL enum n_shexp_state
-n_shexp_parse_token_buf(char **store, char const *indat, size_t inlen,
-      enum n_shexp_parse_flags flags){
-   struct n_string ss;
-   struct str is;
-   enum n_shexp_state shs;
-   NYD2_ENTER;
-
-   assert(store != NULL);
-   assert(inlen == 0 || indat != NULL);
-
-   n_string_creat_auto(&ss);
-   is.s = n_UNCONST(indat);
-   is.l = inlen;
-
-   shs = n_shexp_parse_token(&ss, &is, flags);
-   if(is.l > 0)
-      shs &= ~n_SHEXP_STATE_STOP;
-   else
-      shs |= n_SHEXP_STATE_STOP;
-   *store = n_string_cp(&ss);
-   n_string_drop_ownership(&ss);
-
-   n_string_gut(&ss);
-   NYD2_LEAVE;
-   return shs;
 }
 
 FL struct n_string *

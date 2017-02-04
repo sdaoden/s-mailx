@@ -1772,14 +1772,11 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
- * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store */
+ * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store.
+ * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
+ * just as known from the sh(1)ell in that case */
 FL enum n_shexp_state n_shexp_parse_token(struct n_string *store,
-                        struct str *input, enum n_shexp_parse_flags flags);
-
-/* Likewise, but strips n_SHEXP_STATE_STOP if input remains after parsing,
- * otherwise forcefully sets it.  Returns autoreclaimed storage */
-FL enum n_shexp_state n_shexp_parse_token_buf(char **store,
-                        char const *indat, size_t inlen,
+                        struct str *input, void const **cookie,
                         enum n_shexp_parse_flags flags);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.

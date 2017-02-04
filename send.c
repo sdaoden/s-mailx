@@ -1197,11 +1197,10 @@ jgetname:
       if(f2 != NULL){
          in.s = n_UNCONST(f2);
          in.l = UIZ_MAX;
-         if((n_shexp_parse_token(shoup, &in, n_SHEXP_PARSE_TRUNC |
+         if((n_shexp_parse_token(shoup, &in, NULL, (n_SHEXP_PARSE_TRUNC |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
-                  n_SHEXP_PARSE_IGNORE_EMPTY) &
-                (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT |
-                 n_SHEXP_STATE_ERR_MASK)
+                  n_SHEXP_PARSE_IGNORE_EMPTY)) & (n_SHEXP_STATE_STOP |
+                  n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT))
             goto jgetname;
          f2 = n_string_cp(shoup);

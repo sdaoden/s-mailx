@@ -128,16 +128,20 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       /* sh(1) compat mode.  Prepare shell token-wise */
       struct n_string store;
       struct str input;
+      void const *cookie;
 
       n_string_creat_auto(&store);
       input.s = n_UNCONST(line);
       input.l = linesize;
+      cookie = NULL;
 
       for(;;){
-         for(; blankchar(*line); ++line)
-            ;
-         if(*line == '\0')
-            break;
+         if(cookie == NULL){
+            for(; blankchar(*line); ++line)
+               ;
+            if(*line == '\0')
+               break;
+         }
 
          if(UICMP(z, res_no, >=, res_size)){
             n_err(_("Too many input tokens for result storage\n"));
@@ -150,8 +154,8 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          /* C99 */{
             enum n_shexp_state shs;
 
-            if((shs = n_shexp_parse_token(&store, &input, n_SHEXP_PARSE_LOG)) &
-                  n_SHEXP_STATE_ERR_MASK){
+            if((shs = n_shexp_parse_token(&store, &input, &cookie,
+                     n_SHEXP_PARSE_LOG)) & n_SHEXP_STATE_ERR_MASK){
                /* Simply ignore Unicode error, just keep the normalized \[Uu] */
                if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
                   res_no = -1;
@@ -188,6 +192,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg ncap, *lcap;
    struct str shin_orig, shin;
    bool_t addca;
+   void const *cookie;
    size_t cad_no, parsed_args;
    struct n_cmd_arg_desc const *cadp;
    NYD_ENTER;
@@ -216,6 +221,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    cacp->cac_no = 0;
    cacp->cac_arg = lcap = NULL;
 
+   cookie = NULL;
    parsed_args = 0;
    for(cadp = cacp->cac_desc, cad_no = 0; shin.l > 0 && cad_no < cadp->cad_no;
          ++cad_no){
@@ -255,8 +261,10 @@ jredo:
 
          shoup = n_string_creat_auto(&shou);
          ncap.ca_arg_flags =
-         shs = n_shexp_parse_token(shoup, &shin, ncap.ca_ent_flags[1] |
-               n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG);
+         shs = n_shexp_parse_token(shoup, &shin,
+               (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL),
+               (ncap.ca_ent_flags[1] | n_SHEXP_PARSE_TRIMSPACE |
+                n_SHEXP_PARSE_LOG));
          ncap.ca_inlen = PTR2SIZE(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
@@ -295,7 +303,8 @@ jredo:
             goto jleave;
       }
 
-      if(shin.l > 0 && (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY))
+      if((shin.l > 0 || cookie != NULL) &&
+            (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY))
          goto jredo;
    }
 
