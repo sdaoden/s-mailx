@@ -5623,7 +5623,20 @@ multiplication (asterisk
 division (solidus
 .Ql / )
 and modulo (percent
-.Ql % ) .
+.Ql % ) ,
+as well as for the bitwise operators logical or (vertical bar
+.Ql | ) ,
+bitwise and (ampersand
+.Ql \&& ) ,
+bitwise xor (circumflex
+.Ql ^ ) ,
+the bitwise signed left- and right shifts
+.Pf ( Ql << ,
+.Ql >> ) ,
+as well as for the unsigned right shift
+.Ql >>> .
+.
+.Pp
 All numeric operators can be suffixed with an at sign
 .Ql @ ,
 e.g.,
@@ -5632,6 +5645,7 @@ this will turn the operation into a saturated one, which means that
 overflow errors and division and modulo by zero are still reflected in
 the return status, but the result will linger at the minimum or maximum
 possible value, instead of overflowing (or trapping).
+For the bitwise shifts, the saturated maximum is 63.
 If in saturated mode the overflow occurs during parsing the numbers,
 then the actual operation will not be performed but the given maximum
 value is used as the result immediately.

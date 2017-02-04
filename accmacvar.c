@@ -2446,7 +2446,9 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
       a_ISNUM = 1<<1,
       a_ISDECIMAL = 1<<2,  /* Print only decimal result */
       a_SATURATED = 1<<3,
-      a_ICASE = 1<<4
+      a_ICASE = 1<<4,
+      a_UNSIGNED = 1<<4,   /* Unsigned right shift (share bit ok) */
+      a_TMP = 1<<30
    } f;
    NYD_ENTER;
 
@@ -2456,11 +2458,11 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
 
-   if(argv[0][0] == '\0')
+   if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
 
-   if(argv[0][1] == '\0'){
-      op = argv[0][0];
+   if(cp[1] == '\0'){
+      op = cp[0];
 jnumop:
       f |= a_ISNUM;
       switch(op){
@@ -2488,6 +2490,11 @@ jnumop:
       case '*':
       case '/':
       case '%':
+      case '|':
+      case '&':
+      case '^':
+      case '<':
+      case '>':
          if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
             goto jesynopsis;
          else{
@@ -2610,17 +2617,70 @@ jeplusminus:
                }else
                   lhv %= rhv;
                break;
+            case '|':
+               lhv |= rhv;
+               break;
+            case '&':
+               lhv &= rhv;
+               break;
+            case '^':
+               lhv ^= rhv;
+               break;
+            case '<':
+            case '>':
+               if(!(f & a_TMP))
+                  goto jesubcmd;
+               if(rhv > 63){ /* xxx 63? */
+                  if(!(f & a_SATURATED))
+                     goto jenum_overflow;
+                  rhv = 63;
+               }
+               if(op == '<')
+                  lhv <<= (ui8_t)rhv;
+               else if(f & a_UNSIGNED)
+                  lhv = (ui64_t)lhv >> (ui8_t)rhv;
+               else
+                  lhv >>= (ui8_t)rhv;
+               break;
             }
          }
          break;
       default:
          goto jesubcmd;
       }
-   }else if(argv[0][2] == '\0' && argv[0][1] == '@'){
+   }else if(cp[2] == '\0' && cp[1] == '@'){
       f |= a_SATURATED;
-      op = argv[0][0];
+      op = cp[0];
       goto jnumop;
-   }else if(is_asccaseprefix(argv[0], "length")){
+   }else if(cp[0] == '<'){
+      if(*++cp != '<')
+         goto jesubcmd;
+      if(*++cp == '@'){
+         f |= a_SATURATED;
+         ++cp;
+      }
+      if(*cp != '\0')
+         goto jesubcmd;
+      f |= a_TMP;
+      op = '<';
+      goto jnumop;
+   }else if(cp[0] == '>'){
+      if(*++cp != '>')
+         goto jesubcmd;
+      if(*++cp == '>'){
+         f |= a_UNSIGNED;
+         ++cp;
+      }
+      if(*cp == '@'){
+         f |= a_SATURATED;
+         ++cp;
+      }
+      if(*cp != '\0')
+         goto jesubcmd;
+      f |= a_TMP;
+      op = '>';
+      goto jnumop;
+   }else if(is_asccaseprefix(cp, "length")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
@@ -2629,13 +2689,13 @@ jeplusminus:
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(argv[0], "file-expand")){
+   }else if(is_asccaseprefix(cp, "file-expand")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
       if((varres = fexpand(argv[1], FEXP_NVAR)) == NULL)
          goto jsofterr;
-   }else if(is_asccaseprefix(argv[0], "find")){
+   }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
@@ -2646,7 +2706,7 @@ jeplusminus:
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(argv[0], "ifind")){
+   }else if(is_asccaseprefix(cp, "ifind")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
@@ -2657,7 +2717,7 @@ jeplusminus:
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(argv[0], "substring")){
+   }else if(is_asccaseprefix(cp, "substring")){
       if(argv[1] == NULL || argv[2] == NULL)
          goto jesynopsis;
       if(argv[3] != NULL && argv[4] != NULL)
@@ -2699,7 +2759,7 @@ jeplusminus:
          }
       }
 #ifdef HAVE_REGEX
-   }else if(is_asccaseprefix(argv[0], "regex")) Jregex:{
+   }else if(is_asccaseprefix(cp, "regex")) Jregex:{
       regmatch_t rema[1 + n_VEXPR_REGEX_MAX];
       regex_t re;
       int reflrv;
