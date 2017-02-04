@@ -1161,98 +1161,103 @@ FL enum okay   maildir_remove(char const *name);
 
 /* Called from the (main)loops upon tick and break-off time to perform debug
  * checking and memory cleanup, including stack-top of auto-reclaimed storage */
-FL void        n_memory_reset(void);
+FL void n_memory_reset(void);
 
 /* Generic heap memory */
 
-FL void *      n_alloc(size_t s n_MEMORY_DEBUG_ARGS);
-FL void *      n_realloc(void *v, size_t s n_MEMORY_DEBUG_ARGS);
-FL void *      n_calloc(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS);
-FL void        n_free(void *vp n_MEMORY_DEBUG_ARGS);
+FL void *n_alloc(size_t s n_MEMORY_DEBUG_ARGS);
+FL void *n_realloc(void *v, size_t s n_MEMORY_DEBUG_ARGS);
+FL void *n_calloc(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS);
+FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 
 /* TODO obsolete c{m,re,c}salloc -> n_* */
 #ifdef HAVE_MEMORY_DEBUG
-# define n_alloc(S)              (n_alloc)(S, __FILE__, __LINE__)
-# define n_realloc(P,S)          (n_realloc)(P, S, __FILE__, __LINE__)
-# define n_calloc(N,S)           (n_calloc)(N, S, __FILE__, __LINE__)
-# define n_free(P)               (n_free)(P, __FILE__, __LINE__)
-# define free(P)                 (n_free)(P, __FILE__, __LINE__)
+# define n_alloc(S) (n_alloc)(S, __FILE__, __LINE__)
+# define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
+# define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
+# define n_free(P) (n_free)(P, __FILE__, __LINE__)
+# define free(P) (n_free)(P, __FILE__, __LINE__)
 #else
-# define n_free(P)               free(P)
+# define n_free(P) free(P)
 #endif
-#define smalloc(SZ)              n_alloc(SZ)
-#define srealloc(P,SZ)           n_realloc(P, SZ)
-#define scalloc(N,SZ)            n_calloc(N, SZ)
+#define smalloc(SZ) n_alloc(SZ)
+#define srealloc(P,SZ) n_realloc(P, SZ)
+#define scalloc(N,SZ) n_calloc(N, SZ)
 
 /* Fluctuating heap memory (supposed to exist for one command loop tick) */
 
-#define n_flux_alloc(S)          n_alloc(S)
-#define n_flux_realloc(P,S)      n_realloc(P, S)
-#define n_flux_calloc(N,S)       n_calloc(N, S)
-#define n_flux_free(P)           n_free(P)
+#define n_flux_alloc(S) n_alloc(S)
+#define n_flux_realloc(P,S) n_realloc(P, S)
+#define n_flux_calloc(N,S) n_calloc(N, S)
+#define n_flux_free(P) n_free(P)
 
 /* Auto-reclaimed storage */
 
 /* Fixate the current snapshot of our global auto-reclaimed storage instance,
  * so that further allocations become auto-reclaimed.
  * This is only called from main.c for the global anon arena */
-FL void        n_memory_autorec_fixate(void);
+FL void n_memory_autorec_fixate(void);
 
 /* Lifetime management of a per-execution level arena.  vp provides
  * n_MEMORY_AUTOREC_TYPE_SIZEOF bytes of storage to allocate that.
  * Note that anyone can anywhere _push() a storage level, and _pop() will drop
  * all possible levels "above" vp, too! */
-FL void        n_memory_autorec_push(void *vp);
-FL void        n_memory_autorec_pop(void *vp);
-FL void *      n_memory_autorec_current(void);
+FL void n_memory_autorec_push(void *vp);
+FL void n_memory_autorec_pop(void *vp);
+FL void *n_memory_autorec_current(void);
 
 /* Lower memory pressure on auto-reclaimed storage for code which has
  * a sinus-curve looking style of memory usage, i.e., peak followed by release,
  * like, e.g., doing a task on all messages of a box in order.
  * Such code should call srelax_hold(), successively call srelax() after
  * a single message has been handled, and finally srelax_rele() */
-FL void        srelax_hold(void);
-FL void        srelax_rele(void);
-FL void        srelax(void);
+FL void srelax_hold(void);
+FL void srelax_rele(void);
+FL void srelax(void);
 
 /* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the
  * space will always be on a word boundary */
-FL void *      n_autorec_alloc(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
-FL void *      n_autorec_calloc(void *vp, size_t nmemb, size_t size
-                  n_MEMORY_DEBUG_ARGS);
+FL void *n_autorec_alloc(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
+FL void *n_autorec_calloc(void *vp, size_t nmemb, size_t size
+            n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
-# define n_autorec_alloc(VP,SZ)  (n_autorec_alloc)(VP, SZ, __FILE__, __LINE__)
+# define n_autorec_alloc(VP,SZ) (n_autorec_alloc)(VP, SZ, __FILE__, __LINE__)
 # define n_autorec_calloc(VP,NM,SZ) \
    (n_autorec_calloc)(VP, NM, SZ, __FILE__, __LINE__)
 #endif
 
 /* TODO obsolete c?salloc -> n_autorec_* */
-#define salloc(SZ)               n_autorec_alloc(NULL, SZ)
-#define csalloc(NM,SZ)           n_autorec_calloc(NULL, NM, SZ)
+#define salloc(SZ) n_autorec_alloc(NULL, SZ)
+#define csalloc(NM,SZ) n_autorec_calloc(NULL, NM, SZ)
 
 /* Pseudo alloca (and also auto-reclaimed in autorec_pop()) */
-FL void *      n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
-FL void        n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
+FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
+FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
 
 #ifdef HAVE_MEMORY_DEBUG
-# define n_lofi_alloc(SZ)        (n_lofi_alloc)(SZ, __FILE__, __LINE__)
-# define n_lofi_free(P)          (n_lofi_free)(P, __FILE__, __LINE__)
+# define n_lofi_alloc(SZ) (n_lofi_alloc)(SZ, __FILE__, __LINE__)
+# define n_lofi_free(P) (n_lofi_free)(P, __FILE__, __LINE__)
 #endif
 
+/* The snapshot can be used in a local context, in order to free many
+ * allocations in one go */
+FL void *n_lofi_snap_create(void);
+FL void n_lofi_snap_unroll(void *cookie);
+
 /* TODO obsolete ac_alloc / ac_free -> n_lofi_* */
-#define ac_alloc(SZ)             n_lofi_alloc(SZ)
-#define ac_free(P)               n_lofi_free(P)
+#define ac_alloc(SZ) n_lofi_alloc(SZ)
+#define ac_free(P) n_lofi_free(P)
 
 /* */
 #ifdef HAVE_MEMORY_DEBUG
-FL int         c_memtrace(void *v);
+FL int c_memtrace(void *v);
 
 /* For immediate debugging purposes, it is possible to check on request */
-FL bool_t      n__memory_check(char const *file, int line);
-# define n_memory_check()        n__memory_check(__FILE__, __LINE__)
+FL bool_t n__memory_check(char const *file, int line);
+# define n_memory_check() n__memory_check(__FILE__, __LINE__)
 #else
-# define n_memory_check()        do{;}while(0)
+# define n_memory_check() do{;}while(0)
 #endif
 
 /*

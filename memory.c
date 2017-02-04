@@ -66,6 +66,8 @@ n_CTA(n_ISPOW2(n_MEMORY_AUTOREC_SIZE),
 n_CTA(sizeof(char) == sizeof(ui8_t), "But POSIX says a byte is 8 bit");
 
 # define a_MEMORY_HOPE_SIZE (2 * 8 * sizeof(char))
+# define a_MEMORY_HOPE_INC(P) (P) += 8
+# define a_MEMORY_HOPE_DEC(P) (P) -= 8
 
 /* We use address-induced canary values, inspiration (but he didn't invent)
  * and primes from maxv@netbsd.org, src/sys/kern/subr_kmem.c */
@@ -97,7 +99,7 @@ do{\
    struct a_memory_chunk *__xc;\
    __xp.p_vp = (C).p_vp;\
    __xc = (struct a_memory_chunk*)(__xp.T - 1);\
-   (C).p_cp += 8;\
+   a_MEMORY_HOPE_INC((C).p_cp);\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[0], &__xp.p_ui8p[0]);\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[1], &__xp.p_ui8p[1]);\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[2], &__xp.p_ui8p[2]);\
@@ -106,7 +108,7 @@ do{\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[5], &__xp.p_ui8p[5]);\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[6], &__xp.p_ui8p[6]);\
    a_MEMORY_HOPE_LOWER(__xp.p_ui8p[7], &__xp.p_ui8p[7]);\
-   __xp.p_ui8p += 8 + __xc->mc_user_size;\
+   a_MEMORY_HOPE_INC(__xp.p_ui8p) + __xc->mc_user_size;\
    a_MEMORY_HOPE_UPPER(__xp.p_ui8p[0], &__xp.p_ui8p[0]);\
    a_MEMORY_HOPE_UPPER(__xp.p_ui8p[1], &__xp.p_ui8p[1]);\
    a_MEMORY_HOPE_UPPER(__xp.p_ui8p[2], &__xp.p_ui8p[2]);\
@@ -119,9 +121,9 @@ do{\
 
 # define a_MEMORY_HOPE_GET_TRACE(T,C,BAD) \
 do{\
-   (C).p_cp += 8;\
+   a_MEMORY_HOPE_INC((C).p_cp);\
    a_MEMORY_HOPE_GET(T, C, BAD);\
-   (C).p_cp += 8;\
+   a_MEMORY_HOPE_INC((C).p_cp);\
 }while(0)
 
 # define a_MEMORY_HOPE_GET(T,C,BAD) \
@@ -131,7 +133,7 @@ do{\
    ui32_t __i;\
    ui8_t __m;\
    __xp.p_vp = (C).p_vp;\
-   __xp.p_cp -= 8;\
+   a_MEMORY_HOPE_DEC(__xp.p_cp);\
    (C).p_cp = __xp.p_cp;\
    __xc = (struct a_memory_chunk*)(__xp.T - 1);\
    (BAD) = FAL0;\
@@ -154,10 +156,12 @@ do{\
       if(__xp.p_ui8p[7] != __m) __i |= 1<<7;\
    if(__i != 0){\
       (BAD) = TRU1;\
+      a_MEMORY_HOPE_INC((C).p_cp);\
       n_alert("%p: corrupt lower canary: 0x%02X: %s, line %d",\
-         (C).p_cp + 8, __i, mdbg_file, mdbg_line);\
+         (C).p_cp, __i, mdbg_file, mdbg_line);\
+      a_MEMORY_HOPE_DEC((C).p_cp);\
    }\
-   __xp.p_ui8p += 8 + __xc->mc_user_size;\
+   a_MEMORY_HOPE_INC(__xp.p_ui8p) + __xc->mc_user_size;\
    __i = 0;\
    a_MEMORY_HOPE_UPPER(__m, &__xp.p_ui8p[0]);\
       if(__xp.p_ui8p[0] != __m) __i |= 1<<0;\
@@ -177,8 +181,10 @@ do{\
       if(__xp.p_ui8p[7] != __m) __i |= 1<<7;\
    if(__i != 0){\
       (BAD) = TRU1;\
+      a_MEMORY_HOPE_INC((C).p_cp);\
       n_alert("%p: corrupt upper canary: 0x%02X: %s, line %d",\
-         (C).p_cp + 8, __i, mdbg_file, mdbg_line);\
+         (C).p_cp, __i, mdbg_file, mdbg_line);\
+      a_MEMORY_HOPE_DEC((C).p_cp);\
    }\
    if(BAD)\
       n_alert("   ..canary last seen: %s, line %u",\
@@ -1100,6 +1106,40 @@ FL void
 
    a_memory_lofi_free(macp, --p.p_alc);
 jleave:
+   NYD2_LEAVE;
+}
+
+FL void *
+n_lofi_snap_create(void){ /* TODO avoid temporary alloc */
+   void *rv;
+   NYD2_ENTER;
+
+   rv = n_lofi_alloc(1);
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL void
+n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
+   union a_memory_ptr p;
+   struct a_memory_ars_ctx *macp;
+   NYD2_ENTER;
+
+   n_memory_check();
+
+   if((macp = a_memory_ars_top) == NULL)
+      macp = &a_memory_ars_global;
+
+   for(;;){
+      p.p_alc = macp->mac_lofi_top;
+      a_memory_lofi_free(macp, p.p_vp);
+      ++p.p_alc;
+#ifdef HAVE_DEBUG
+      a_MEMORY_HOPE_INC(p.p_ui8p);
+#endif
+      if(p.p_vp == cookie)
+         break;
+   }
    NYD2_LEAVE;
 }
 
