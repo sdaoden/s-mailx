@@ -197,8 +197,12 @@ FL bool_t n_var_okclear(enum okeys okey);
 #define ok_vclear(C) n_var_okclear(n_CONCAT(ok_v_, C))
 
 /* Variable option key lookup/(un)set/clear.
- * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey */
+ * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey.
+ * _vexplode() is to be used by the shell expansion stuff when encountering
+ * ${@} in double-quotes, in order to provide sh(1)ell compatible behaviour;
+ * it returns whether there are any elements in argv (*cookie) */
 FL char const *n_var_vlook(char const *vokey, bool_t try_getenv);
+FL bool_t n_var_vexplode(void const **cookie);
 FL bool_t n_var_vset(char const *vokey, uintptr_t val);
 FL bool_t n_var_vclear(char const *vokey);
 

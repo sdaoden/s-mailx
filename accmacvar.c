@@ -2082,7 +2082,7 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
    rv = NULL;
 
    /* Here, and only here we need to take care for the special macro-local
-    * parameters... */
+    * parameters... (except for n_var_vexplode()) */
    if(n_LIKELY(!avc.avc_is_special)){
       if(a_amv_var_lookup(&avc, FAL0))
          rv = avc.avc_var->av_value;
@@ -2159,6 +2159,15 @@ jmaylog:
    }
    NYD_LEAVE;
    return rv;
+}
+
+FL bool_t
+n_var_vexplode(void const **cookie){
+   NYD_ENTER;
+   /* These may occur only in a macro.. */
+   *cookie = (a_amv_lopts != NULL) ? a_amv_lopts->as_amcap->amca_argv : NULL;
+   NYD_LEAVE;
+   return (*cookie != NULL);
 }
 
 FL bool_t
