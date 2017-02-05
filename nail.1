@@ -3147,8 +3147,8 @@ command.
 .
 .Mx
 .It Ic ~
-Interprets the remainder of the word as a macro name and passes it
-through to the
+\*(NQ Interprets the remainder of the word as a macro name and passes
+it through to the
 .Ic call
 command; e.g.,
 .Ql ~ Ns Ar mymacro
@@ -3439,7 +3439,7 @@ may help shall keys and sequences be falsely recognized.
 .
 .Mx
 .It Ic call
-Calls the given macro, which must have been created via
+\*(NQ Calls the given macro, which must have been created via
 .Ic define .
 Parameters given to macros are implicitly local to the macro's scope, and
 may be accessed via the special parameter syntax that is known from the
