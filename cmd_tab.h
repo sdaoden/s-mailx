@@ -362,10 +362,6 @@
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <msglist>")) },
-   { "ghost", &a_lex_c_ghost, (M | X | WYRALIST), 0, 1000
-     DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-   { "unghost", &a_lex_c_unghost, (M | X | WYRALIST), 1, 1000
-     DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | X | RAWLIST), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "cwd", &c_cwd, (M | X | NOLIST), 0, 0
@@ -397,6 +393,14 @@
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
+   { "eval", &a_lex_c_eval, (G | M | X | EM | WYSHLIST), 1, 1000
+     DS(N_("Construct command from <:arguments:>, reuse its $?")) },
+   { "ghost", &a_lex_c_ghost, (M | X | WYRALIST), 0, 1000
+     DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
+   { "unghost", &a_lex_c_unghost, (M | X | WYRALIST), 1, 1000
+     DS(N_("Delete <ghost-list>")) },
+   { "read", &a_lex_c_read, (G | M | X | EM | WYSHLIST), 1, 1000
+     DS(N_("Read a line from standard input into <variable>(s)")) },
    { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
@@ -417,9 +421,6 @@
 
    { "environ", &c_environ, (G | M | X | WYSHLIST), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
-
-   { "read", &c_read, (G | M | X | EM | WYSHLIST), 1, 1000
-     DS(N_("Read a line from standard input into <variable>(s)")) },
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | WYSHLIST), 1, 1000
      DS(N_("Form an address of <:arguments:>")) },

@@ -3455,7 +3455,10 @@ ing them off the stack.
 Macro execution can be terminated at any time by calling
 .Ic return .
 Numeric and string operations can be performed via
-.Ic vexpr .
+.Ic vexpr ,
+and
+.Ic eval
+may be helpful to recreate argument lists.
 .Bd -literal -offset indent
 define exmac {
   echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
@@ -3924,6 +3927,39 @@ can be used to manage this message queue: if given
 or no argument the queue will be displayed and cleared,
 .Ar clear
 will only clear all messages from the queue.
+.
+.Mx
+.It Ic eval
+\*(NQ Construct a command by concatenating the arguments, separated with
+a single space character, and then evaluate the result.
+This command passes through the status of the evaluated command.
+Also see
+.Ic call .
+.Bd -literal -offset indent
+define xverbose {
+   localopts yes
+   set verbose
+   ignerr eval "${@}"
+   return ${?} # This ends up in $!, then
+}
+ghost xv '\ecall xverbose'
+
+# E.g.:
+define xxx {
+  echo "xxx arg <$1>"
+  shift
+  if [ $# > 0 ]
+    call xxx "$@"
+  endif
+}
+define yyy {
+  eval "$@ ' ball"
+}
+call yyy '~xxx' "b\e$'\et'u ' "
+xxx arg <b      u>
+xxx arg <  >
+xxx arg <ball>
+.Ed
 .
 .Mx
 .It Ic exit

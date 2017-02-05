@@ -1062,9 +1062,6 @@ FL int n_lex_input(enum n_lexinput_flags lif, char const *prompt,
 FL char *n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
             char const *string);
 
-/* `read' */
-FL int c_read(void *v);
-
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
 

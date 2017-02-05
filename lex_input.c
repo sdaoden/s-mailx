@@ -148,6 +148,9 @@ static sigjmp_buf a_lex_srbuf; /* TODO GET RID */
 /* Isolate the command from the arguments */
 static char *a_lex_isolate(char const *comm);
 
+/* `eval' */
+static int a_lex_c_eval(void *v);
+
 /* Command ghost handling */
 static int a_lex_c_ghost(void *v);
 static int a_lex_c_unghost(void *v);
@@ -207,6 +210,9 @@ static bool_t a_lex_load(struct a_lex_input_stack *lip);
 /* A simplified command loop for recursed state machines */
 static bool_t a_commands_recursive(enum n_lexinput_flags lif);
 
+/* `read' */
+static int a_lex_c_read(void *v);
+
 /* List of all commands, and list of commands which are specially treated
  * and deduced in _evaluate(), but we need a list for _c_list() and
  * print_comm_docstr() */
@@ -234,6 +240,50 @@ a_lex_isolate(char const *comm){
       ++comm;
    NYD2_LEAVE;
    return n_UNCONST(comm);
+}
+
+static int
+a_lex_c_eval(void *v){
+   /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
+    * TODO ARGV with shell rules, but if that is not possible then simply
+    * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
+   struct n_string s_b, *sp;
+   si32_t rv;
+   size_t i, j;
+   char const **argv, *cp;
+   NYD_ENTER;
+
+   argv = v;
+
+   for(j = i = 0; (cp = argv[i]) != NULL; ++i)
+      j += strlen(cp);
+
+   sp = n_string_creat_auto(&s_b);
+   sp = n_string_reserve(sp, j);
+
+   for(i = 0; (cp = argv[i]) != NULL; ++i){
+      if(i > 0)
+         sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, cp);
+   }
+
+   /* TODO HACK! We should inherit the current n_lexinput_flags via CmdCtx,
+    * TODO for now we don't have such sort of!  n_PS_COMPOSE_MODE is a hack
+    * TODO by itself, since ever: misuse the hack for a hack.
+    * TODO Further more, exit handling is very grazy */
+   (void)/*XXX*/n_source_command((n_pstate & n_PS_COMPOSE_MODE
+         ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT), n_string_cp(sp));
+   cp = ok_vlook(__qm);
+   if(cp == n_0) /* This is a hack, but since anything is a hack, be hacky */
+      rv = 0;
+   else if(cp == n_1)
+      rv = 1;
+   else if(cp == n_m1)
+      rv = -1;
+   else
+      n_idec_si32_cp(&rv, cp, 10, NULL);
+   NYD_LEAVE;
+   return rv;
 }
 
 static int
@@ -729,7 +779,7 @@ jrestart:
 
    /* Ignore null commands (comments) */
    if(*cp == '#')
-      goto jleave0;
+      goto jerr0;
 
    /* Handle ! differently to get the correct lexical conventions */
    arglist[0] = cp;
@@ -776,7 +826,7 @@ jrestart:
     * confusion; act just the same for ghosts */
    if(*word == '\0'){
       if((n_pstate & n_PS_ROBOT) || gp != NULL)
-         goto jleave0;
+         goto jerr0;
       cmd = a_lex_cmd_tab + 0;
       goto jexec;
    }
@@ -818,7 +868,7 @@ jrestart:
          n_err(_("Unknown command%s: `%s'\n"),
             (s ? _(" (ignored due to `if' condition)") : n_empty), word);
       if(s)
-         goto jleave0;
+         goto jerr0;
       if(cmd != NULL){
          c_cmdnotsupp(NULL);
          cmd = NULL;
@@ -830,7 +880,7 @@ jrestart:
     * execute it, otherwise, check the state of cond */
 jexec:
    if(!(cmd->lc_argtype & ARG_F) && condstack_isskip())
-      goto jleave0;
+      goto jerr0;
 
    /* Process the arguments to the command, depending on the type it expects */
    if((cmd->lc_argtype & ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
@@ -991,7 +1041,7 @@ je96:
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cmd->lc_argtype & ARG_ARGMASK); )
-      goto jleave0;
+      goto jerr0;
    }
 
    if(!(cmd->lc_argtype & ARG_H))
@@ -999,7 +1049,7 @@ je96:
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
 jleave:
-   n_PS_ROOT_BLOCK(ok_vset(__qm, (rv == 0 ? "0" : "1"))); /* TODO num=1/real */
+   n_PS_ROOT_BLOCK(ok_vset(__qm, (rv == 0 ? n_0 : n_1))); /* TODO num=1/real */
 
    if(flags & a_IGNERR){
       rv = 0;
@@ -1034,6 +1084,9 @@ jret0:
 jret:
    NYD_LEAVE;
    return rv;
+jerr0:
+   n_PS_ROOT_BLOCK(ok_vset(__qm, n_0)); /* TODO num=1/real */
+   goto jleave0;
 }
 
 static struct a_lex_cmd const *
@@ -1396,6 +1449,77 @@ jjump: /* TODO */
       sigprocmask(SIG_SETMASK, &soldset, NULL);
       n_raise(SIGINT);
    }
+   return rv;
+}
+
+static int
+a_lex_c_read(void *v){ /* TODO IFS? how? -r */
+   char const **argv, *cp, *emv, *cp2;
+   int rv;
+   NYD2_ENTER;
+
+   rv = 0;
+   for(argv = v; (cp = *argv++) != NULL;)
+      if(!n_shexp_is_valid_varname(cp) || !n_var_is_user_writable(cp)){
+         n_err(_("`read': variable (name) cannot be used: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         rv = 1;
+      }
+   if(rv)
+      goto jleave;
+
+   emv = n_0;
+
+   cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
+            ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
+         n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
+         n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
+         NULL, NULL);
+   if(cp == NULL)
+      cp = n_empty;
+
+   for(argv = v; *argv != NULL; ++argv){
+      char c;
+
+      while(blankchar(*cp))
+         ++cp;
+      if(*cp == '\0')
+         break;
+
+      /* The last variable gets the remaining line less trailing IFS */
+      if(argv[1] == NULL){
+         for(cp2 = cp; *cp2 != '\0'; ++cp2)
+            ;
+         for(; cp2 > cp; --cp2){
+            c = cp2[-1];
+            if(!blankchar(c))
+               break;
+         }
+      }else
+         for(cp2 = cp; (c = *++cp2) != '\0';)
+            if(blankchar(c))
+               break;
+
+      /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
+         char *vcp;
+
+         vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
+         if(!n_var_vset(*argv, (uintptr_t)vcp))
+            emv = n_1;
+      }
+
+      cp = cp2;
+   }
+
+   /* Set the remains to the empty string */
+   for(; *argv != NULL; ++argv)
+      if(!n_var_vset(*argv, (uintptr_t)n_empty))
+         emv = n_1;
+
+   n__EM_SET(emv);
+   rv = 0;
+jleave:
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1790,77 +1914,6 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
 
    if(linebuf != NULL)
       free(linebuf);
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL int
-c_read(void *v){ /* TODO IFS? how? -r */
-   char const **argv, *cp, *emv, *cp2;
-   int rv;
-   NYD2_ENTER;
-
-   rv = 0;
-   for(argv = v; (cp = *argv++) != NULL;)
-      if(!n_shexp_is_valid_varname(cp) || !n_var_is_user_writable(cp)){
-         n_err(_("`read': variable (name) cannot be used: %s\n"),
-            n_shexp_quote_cp(cp, FAL0));
-         rv = 1;
-      }
-   if(rv)
-      goto jleave;
-
-   emv = n_0;
-
-   cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
-            ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
-         n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
-         n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
-         NULL, NULL);
-   if(cp == NULL)
-      cp = n_empty;
-
-   for(argv = v; *argv != NULL; ++argv){
-      char c;
-
-      while(blankchar(*cp))
-         ++cp;
-      if(*cp == '\0')
-         break;
-
-      /* The last variable gets the remaining line less trailing IFS */
-      if(argv[1] == NULL){
-         for(cp2 = cp; *cp2 != '\0'; ++cp2)
-            ;
-         for(; cp2 > cp; --cp2){
-            c = cp2[-1];
-            if(!blankchar(c))
-               break;
-         }
-      }else
-         for(cp2 = cp; (c = *++cp2) != '\0';)
-            if(blankchar(c))
-               break;
-
-      /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
-         char *vcp;
-
-         vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
-         if(!n_var_vset(*argv, (uintptr_t)vcp))
-            emv = n_1;
-      }
-
-      cp = cp2;
-   }
-
-   /* Set the remains to the empty string */
-   for(; *argv != NULL; ++argv)
-      if(!n_var_vset(*argv, (uintptr_t)n_empty))
-         emv = n_1;
-
-   n__EM_SET(emv);
-   rv = 0;
-jleave:
    NYD2_LEAVE;
    return rv;
 }
