@@ -2505,7 +2505,6 @@ VL int            image;               /* File descriptor for msg image */
 VL char           mailname[PATH_MAX];  /* Name of current file TODO URL/object*/
 VL char           displayname[80 - 40]; /* Prettyfied for display TODO URL/obj*/
 VL char           prevfile[PATH_MAX];  /* Name of previous file TODO URL/obj */
-VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
 VL struct message *prevdot;            /* Previous current message */

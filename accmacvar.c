@@ -9,10 +9,6 @@
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
  *@ TODO   the a_LEX_SLICE comment in lex_input.c.
- *@ TODO . undefining and overwriting a macro should always be possible:
- *@ TODO   simply place the thing in a delete-later list and replace the
- *@ TODO   accessible entry!  (instant delete if on top recursion level.)
- *@ TODO . Likewise, overwriting an existing should be like delete+create
  *@ TODO . once we can have non-fatal !0 returns for commands, we should
  *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
@@ -71,7 +67,7 @@ enum a_amv_mac_flags{
    a_AMV_MF_ACC = 1<<0,    /* This macro is an `account' */
    a_AMV_MF_TYPE_MASK = a_AMV_MF_ACC,
    a_AMV_MF_UNDEF = 1<<1,  /* Unlink after lookup */
-   a_AMV_MF_DEL = 1<<7,    /* Current `account': deleted while active */
+   a_AMV_MF_DEL = 1<<7,    /* Delete in progress, free once refcnt==0 */
    a_AMV_MF__MAX = 0xFF
 };
 
@@ -116,8 +112,9 @@ struct a_amv_mac{
    ui32_t am_line_cnt;           /* of *.am_line_dat (but NULL terminated) */
    struct a_amv_mac_line **am_line_dat; /* TODO use deque? */
    struct a_amv_var *am_lopts;   /* `localopts' unroll list */
+   ui32_t am_refcnt;             /* 0-based for `un{account,define}' purposes */
    ui8_t am_flags;               /* enum a_amv_mac_flags */
-   char am_name[n_VFIELD_SIZE(7)]; /* of this macro */
+   char am_name[n_VFIELD_SIZE(3)]; /* of this macro */
 };
 n_CTA(a_AMV_MF__MAX <= UI8_MAX, "Enumeration excesses storage datatype");
 
@@ -129,7 +126,7 @@ struct a_amv_mac_line{
 
 struct a_amv_mac_call_args{
    char const *amca_name;           /* For MACKY_MACK, this is *0*! */
-   struct a_amv_mac const *amca_amp;
+   struct a_amv_mac *amca_amp;      /* "const", but for am_refcnt */
    struct a_amv_var **amca_unroller;
    void (*amca_hook_pre)(void *);
    void *amca_hook_arg;
@@ -214,7 +211,12 @@ static struct a_amv_var *a_amv_folder_hook_lopts;
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_var *a_amv_compose_lopts;
 
-/* Lookup for macros/accounts */
+/* Lookup for macros/accounts: if newamp is not NULL it will be linked in the
+ * map, if _MF_UNDEF is set a possibly existing entry will be removed (first).
+ * Returns NULL if a lookup failed, or if newamp was set, the found entry in
+ * plain lookup cases or when _UNDEF was performed on a currently active entry
+ * (the entry will have been unlinked, and the _MF_DEL will be honoured once
+ * the reference count reaches 0), and (*)-1 if an _UNDEF was performed */
 static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
 
@@ -320,15 +322,16 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
 
          *ampp = amp->am_next;
 
-         if((amf & a_AMV_MF_ACC) &&
-               account_name != NULL && !strcmp(account_name, name)){
+         if(amp->am_refcnt > 0){
             amp->am_flags |= a_AMV_MF_DEL;
-            n_err(_("Delayed deletion of active account: %s\n"), name);
+            if(n_poption & n_PO_D_V)
+               n_err(_("Delayed deletion of currently active %s: %s\n"),
+                  (amp->am_flags & a_AMV_MF_ACC ? "account" : "define"), name);
          }else{
             a_amv_mac_free(amp);
             amp = (struct a_amv_mac*)-1;
          }
-         goto jleave;
+         break;
       }
    }
 
@@ -382,11 +385,13 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    struct a_amv_lostack *losp;
    struct a_amv_mac_line **amlp;
    char **args_base, **args;
-   struct a_amv_mac const *amp;
+   struct a_amv_mac *amp;
    bool_t rv;
    NYD2_ENTER;
 
    amp = amcap->amca_amp;
+   assert(amp != NULL && amp != a_AMV_MACKY_MACK);
+   ++amp->am_refcnt;
    /* XXX Unfortunately we yet need to dup the macro lines! :( */
    args_base = args = smalloc(sizeof(*args) * (amp->am_line_cnt +1));
    for(amlp = amp->am_line_dat; *amlp != NULL; ++amlp)
@@ -415,6 +420,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
 
 static void
 a_amv_mac__finalize(void *vp){
+   struct a_amv_mac *amp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_lostack *losp;
    NYD2_ENTER;
@@ -430,6 +436,10 @@ a_amv_mac__finalize(void *vp){
 
    if(amcap->amca_ps_hook_mask)
       n_pstate &= ~n_PS_HOOK_MASK;
+
+   if((amp = amcap->amca_amp) != a_AMV_MACKY_MACK && amp != NULL &&
+         --amp->am_refcnt == 0 && (amp->am_flags & a_AMV_MF_DEL))
+      a_amv_mac_free(amp);
 
    n_lofi_free(losp);
    n_lofi_free(amcap);
@@ -508,7 +518,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    amp = NULL;
 
    /* TODO We should have our input state machine which emits Line events,
-    * TODO and hook different consumers dependent on our content, as state
+    * TODO and hook different consumers dependent on our content, as stated
     * TODO in i think lex_input; */
    /* Read in the lines which form the macro content */
    for(ll_tail = ll_head = NULL, line_cnt = maxlen = 0;;){
@@ -573,6 +583,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    amp->am_next = NULL;
    amp->am_maxlen = maxlen;
    amp->am_line_cnt = line_cnt;
+   amp->am_refcnt = 0;
    amp->am_flags = amf;
    amp->am_lopts = NULL;
    memcpy(amp->am_name, name, n.s);
@@ -585,14 +596,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       *amlpp = NULL;
    }
 
-   /* Finally check whether such a macro already exists, in which case we throw
-    * it all away again.  At least we know it would have worked */
-   if(a_amv_mac_lookup(name, amp, amf) != NULL){
-      n_err(_("There is already a %s of name: %s\n"),
-         (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
-      goto jerr;
-   }
-
+   /* Create entry, replace a yet existing one as necessary */
+   a_amv_mac_lookup(name, amp, amf | a_AMV_MF_UNDEF);
    rv = TRU1;
 jleave:
    if(line.s != NULL)
@@ -1682,11 +1687,12 @@ c_account(void *v){
    if(a_amv_acc_curr != NULL){
       if(a_amv_acc_curr->am_lopts != NULL)
          a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+      /* For accounts this lingers */
+      --a_amv_acc_curr->am_refcnt;
       if(a_amv_acc_curr->am_flags & a_AMV_MF_DEL)
          a_amv_mac_free(a_amv_acc_curr);
    }
 
-   account_name = (amp != NULL) ? amp->am_name : NULL;
    a_amv_acc_curr = amp;
 
    if(amp != NULL){
@@ -1698,6 +1704,7 @@ c_account(void *v){
       amcap->amca_amp = amp;
       amcap->amca_unroller = &amp->am_lopts;
       amcap->amca_lopts_on = TRU1;
+      ++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
       ok = a_amv_mac_exec(amcap);
       if(!ok){
          /* XXX account switch incomplete, unroll? */
@@ -1782,7 +1789,8 @@ c_shift(void *v){
       struct a_amv_mac_call_args *amcap;
 
       amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
-      if((amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACC)
+      if(amp == NULL || amcap->amca_ps_hook_mask ||
+            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACC)
          goto jerr;
 
       v = *(char**)v;
@@ -2090,62 +2098,64 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
       else if(try_getenv && avc.avc_map == NULL)
          rv = getenv(vokey);
    }else{
+      bool_t ismacky;
+      struct a_amv_mac_call_args *amcap;
+
       /* These may occur only in a macro.. */
-      if(n_LIKELY(a_amv_lopts != NULL)){
-         bool_t ismacky;
-         struct a_amv_mac_call_args *amcap;
+      if(n_UNLIKELY(a_amv_lopts == NULL))
+         goto jmaylog;
 
-         /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
-         amcap = a_amv_lopts->as_amcap;
+      amcap = a_amv_lopts->as_amcap;
 
-         if((ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) ||
-               (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
-                  ) != a_AMV_MF_ACC){
-            if(avc.avc_is_special == TRUM1){
-               if(avc.avc_special_prop > 0){
-                  if(amcap->amca_argc >= avc.avc_special_prop)
-                     rv = amcap->amca_argv[avc.avc_special_prop - 1];
-               }else if(ismacky)
-                  rv = amcap->amca_name;
-               else
-                  rv = (a_amv_lopts->as_up != NULL
-                        ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
-            }
-            /* MACKY_MACK doesn't know about [*@#] */
-            else if(ismacky)
-               goto jmaylog;
-            else switch(avc.avc_special_prop){
-            case a_AMV_VST_STAR:
-            case a_AMV_VST_AT:{
-               ui32_t i, l;
+      /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
+      if((ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) ||
+            (!amcap->amca_ps_hook_mask &&
+             (assert(amcap->amca_amp != NULL), TRU1) &&
+             (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK) != a_AMV_MF_ACC)){
+         if(avc.avc_is_special == TRUM1){
+            if(avc.avc_special_prop > 0){
+               if(amcap->amca_argc >= avc.avc_special_prop)
+                  rv = amcap->amca_argv[avc.avc_special_prop - 1];
+            }else if(ismacky)
+               rv = amcap->amca_name;
+            else
+               rv = (a_amv_lopts->as_up != NULL
+                     ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
+         }
+         /* MACKY_MACK doesn't know about [*@#] */
+         else if(ismacky)
+            goto jmaylog;
+         else switch(avc.avc_special_prop){
+         case a_AMV_VST_STAR:
+         case a_AMV_VST_AT:{
+            ui32_t i, l;
 
-               for(i = l = 0; i < amcap->amca_argc; ++i)
-                  l += strlen(amcap->amca_argv[i]) + 1;
-               if(l == 0)
-                  rv = n_empty;
-               else{
-                  char *cp;
-
-                  rv = cp = salloc(l);
-                  for(i = l = 0; i < amcap->amca_argc; ++i){
-                     l = strlen(amcap->amca_argv[i]);
-                     memcpy(cp, amcap->amca_argv[i], l);
-                     cp += l;
-                     *cp++ = ' ';
-                  }
-                  *--cp = '\0';
-               }
-            }  break;
-            case a_AMV_VST_NOSIGN:{
+            for(i = l = 0; i < amcap->amca_argc; ++i)
+               l += strlen(amcap->amca_argv[i]) + 1;
+            if(l == 0)
+               rv = n_empty;
+            else{
                char *cp;
 
-               rv = cp = salloc(sizeof("65535"));
-               snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
-            }  break;
-            default:
-               rv = n_empty;
-               break;
+               rv = cp = salloc(l);
+               for(i = l = 0; i < amcap->amca_argc; ++i){
+                  l = strlen(amcap->amca_argv[i]);
+                  memcpy(cp, amcap->amca_argv[i], l);
+                  cp += l;
+                  *cp++ = ' ';
+               }
+               *--cp = '\0';
             }
+         }  break;
+         case a_AMV_VST_NOSIGN:{
+            char *cp;
+
+            rv = cp = salloc(sizeof("65535"));
+            snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
+         }  break;
+         default:
+            rv = n_empty;
+            break;
          }
       }else{
 jmaylog:
@@ -2442,6 +2452,8 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
+   /* This needs to be here because we need to apply MACKY_MACK for
+    * search+replace regular expression support :( */
    size_t i;
    enum n_idec_state ids;
    si64_t lhv, rhv;
