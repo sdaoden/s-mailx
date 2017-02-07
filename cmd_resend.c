@@ -40,7 +40,7 @@
 #endif
 
 /* Modify subject we reply to to begin with Re: if it does not already */
-static char *     _reedit(char *subj);
+static char *a_crese_reedit(char const *subj);
 
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
@@ -68,29 +68,28 @@ static char *     __fwdedit(char *subj);
 static int        _resend1(void *v, bool_t add_resent);
 
 static char *
-_reedit(char *subj)
-{
-   struct str in, out;
-   char *newsubj = NULL;
+a_crese_reedit(char const *subj){
+   char *newsubj;
    NYD_ENTER;
 
-   if (subj == NULL || *subj == '\0')
-      goto jleave;
+   newsubj = NULL;
 
-   in.s = subj;
-   in.l = strlen(subj);
-   mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+   if(subj != NULL && *subj != '\0'){
+      struct str in, out;
+      size_t i;
+      char const *cp;
 
-   if ((newsubj = subject_re_trim(out.s)) != out.s)
-      newsubj = savestr(out.s);
-   else {
+      in.l = strlen(in.s = n_UNCONST(subj));
+      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+
+      i = strlen(cp = subject_re_trim(out.s)) +1;
       /* RFC mandates english "Re: " */
-      newsubj = salloc(out.l + 4 +1);
-      sstpcpy(sstpcpy(newsubj, "Re: "), out.s);
-   }
+      newsubj = salloc(sizeof("Re: ") -1 + i);
+      memcpy(newsubj, "Re: ", sizeof("Re: ") -1);
+      memcpy(&newsubj[sizeof("Re: ") -1], cp, i);
 
-   free(out.s);
-jleave:
+      free(out.s);
+   }
    NYD_LEAVE;
    return newsubj;
 }
@@ -190,7 +189,7 @@ jnext_msg:
    memset(&head, 0, sizeof head);
    head.h_flags = hf;
 
-   head.h_subject = _reedit(hfield1("subject", mp));
+   head.h_subject = a_crese_reedit(hfield1("subject", mp));
    gf = ok_blook(fullnames) ? GFULL : GSKIN;
    rt = mft = NULL;
 
@@ -416,7 +415,7 @@ _Reply(int *msgvec, bool_t recipient_record)
 
    mp = message + msgvec[0] - 1;
    head.h_subject = hfield1("subject", mp);
-   head.h_subject = _reedit(head.h_subject);
+   head.h_subject = a_crese_reedit(head.h_subject);
    make_ref_and_cs(mp, &head);
 
    if (ok_blook(quote_as_attachment)) {

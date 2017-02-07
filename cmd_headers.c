@@ -541,8 +541,10 @@ static char *
 __subject(struct message *mp, bool_t threaded, size_t yetprinted)
 {
    struct str in, out;
-   char *rv = (char*)-1, *ms;
+   char *rv, *ms;
    NYD_ENTER;
+
+   rv = (char*)-1;
 
    if ((ms = hfield1("subject", mp)) == NULL)
       goto jleave;
@@ -558,7 +560,7 @@ __subject(struct message *mp, bool_t threaded, size_t yetprinted)
     * Subject: as it's parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
-   ms = subject_re_trim(ms);
+   ms = n_UNCONST(subject_re_trim(n_UNCONST(ms)));
 
    for (; (mp = prev_in_thread(mp)) != NULL && yetprinted-- > 0;) {
       char *os;

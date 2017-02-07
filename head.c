@@ -2106,47 +2106,53 @@ jleave:
    return cp;
 }
 
-FL char *
-subject_re_trim(char *s)
-{
-   struct {
+FL char const *
+subject_re_trim(char const *s){
+   struct{
       ui8_t len;
       char  dat[7];
-   } const *pp, ignored[] = { /* Update *reply-strings* manual upon change! */
-      { 3, "re:" },
-      { 3, "aw:" }, { 5, "antw:" }, /* de */
-      { 0, "" }
+   }const *pp, ignored[] = { /* Update *reply-strings* manual upon change! */
+      {3, "re:"},
+      {3, "aw:"}, {5, "antw:"}, /* de */
+      {3, "wg:"}, /* Seen too often in the wild */
+      {0, ""}
    };
 
-   bool_t any = FAL0;
-   char *orig_s = s, *re_st = NULL, *re_st_x;
-   size_t re_l = 0 /* pacify CC */;
+   bool_t any;
+   char *re_st, *re_st_x;
+   char const *orig_s;
+   size_t re_l;
    NYD_ENTER;
 
-   if ((re_st_x = ok_vlook(reply_strings)) != NULL &&
-         (re_l = strlen(re_st_x)) > 0) {
-      re_st = ac_alloc(++re_l * 2);
+   any = FAL0;
+   orig_s = s;
+   re_st = NULL;
+   n_UNINIT(re_l, 0);
+
+   if((re_st_x = ok_vlook(reply_strings)) != NULL &&
+         (re_l = strlen(re_st_x)) > 0){
+      re_st = n_lofi_alloc(++re_l * 2);
       memcpy(re_st, re_st_x, re_l);
    }
 
 jouter:
-   while (*s != '\0') {
-      while (spacechar(*s))
+   while(*s != '\0'){
+      while(spacechar(*s))
          ++s;
 
-      for (pp = ignored; pp->len > 0; ++pp)
-         if (is_asccaseprefix(pp->dat, s)) {
+      for(pp = ignored; pp->len > 0; ++pp)
+         if(is_asccaseprefix(pp->dat, s)){
             s += pp->len;
             any = TRU1;
             goto jouter;
          }
 
-      if (re_st != NULL) {
+      if(re_st != NULL){
          char *cp;
 
-         memcpy(re_st_x = re_st + re_l, re_st, re_l);
-         while ((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
-            if (is_asccaseprefix(cp, s)) {
+         memcpy(re_st_x = &re_st[re_l], re_st, re_l);
+         while((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
+            if(is_asccaseprefix(cp, s)){
                s += strlen(cp);
                any = TRU1;
                goto jouter;
@@ -2155,8 +2161,8 @@ jouter:
       break;
    }
 
-   if (re_st != NULL)
-      ac_free(re_st);
+   if(re_st != NULL)
+      n_lofi_free(re_st);
    NYD_LEAVE;
    return any ? s : orig_s;
 }

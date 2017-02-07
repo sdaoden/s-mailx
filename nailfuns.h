@@ -927,7 +927,7 @@ FL char *      name1(struct message *mp, int reptype);
 
 /* Trim away all leading Re: etc., return pointer to plain subject.
  * Note it doesn't perform any MIME decoding by itself */
-FL char *      subject_re_trim(char *cp);
+FL char const *subject_re_trim(char const *cp);
 
 FL int         msgidcmp(char const *s1, char const *s2);
 

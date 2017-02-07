@@ -8726,7 +8726,7 @@ If this fails, the mechanism described in
 is evaluated as usual.
 .
 .Mx
-.It Va reply_strings
+.It Va reply-strings
 Can be set to a comma-separated list of (case-insensitive according to
 ASCII rules) strings which shall be recognized in addition to the
 builtin strings as
@@ -8734,7 +8734,12 @@ builtin strings as
 reply message indicators \(en builtin are
 .Ql Re: ,
 which is mandated by RFC 5322, as well as the german
-.Ql Aw: .
+.Ql Aw: ,
+.Ql Antw: ,
+and the
+.Ql Wg:
+which often has been seen in the wild;
+I.e., the separating colon has to be specified explicitly.
 .
 .Mx
 .It Va replyto

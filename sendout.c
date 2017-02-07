@@ -2008,8 +2008,10 @@ jto_fmt:
       if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
          goto jleave;
       if (hp->h_subject != NULL) {
-         char *sub = subject_re_trim(hp->h_subject);
-         size_t sublen = strlen(sub);
+         size_t sublen;
+         char const *sub;
+
+         sublen = strlen(sub = subject_re_trim(hp->h_subject));
 
          /* Trimmed something, (re-)add Re: */
          if (sub != hp->h_subject) {
