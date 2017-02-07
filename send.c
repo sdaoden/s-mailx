@@ -349,7 +349,8 @@ ifdef HAVE_DEBUG /* TODO assert legacy */
          flags | ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
             action == SEND_QUOTE || action == SEND_QUOTE_ALL)
          ?  TD_ISPR | TD_ICONV
-         : (action == SEND_TOSRCH || action == SEND_TOPIPE)
+         : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
+               action == SEND_TOFILE)
             ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
          qf, outrest, inrest);
    if (n < 0)
@@ -1016,8 +1017,8 @@ jpipe_close:
       convert = CONV_NONE;
 #ifdef HAVE_ICONV
    else if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
-         action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-         action == SEND_TOSRCH) &&
+          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+          action == SEND_TOSRCH || action == SEND_TOFILE) &&
          (ip->m_mimecontent == MIME_TEXT_PLAIN ||
           ip->m_mimecontent == MIME_TEXT_HTML ||
           ip->m_mimecontent == MIME_TEXT ||
