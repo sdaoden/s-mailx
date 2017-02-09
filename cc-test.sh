@@ -504,6 +504,8 @@ __behave_wysh() {
 
 __behave_ghost() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+	ghost echo echo hoho
+	echo stop.
 	ghost X Xx
 	ghost Xx XxX
 	ghost XxX XxXx
@@ -511,14 +513,14 @@ __behave_ghost() {
 	ghost XxXxX XxXxXx
 	ghost XxXxXx echo huhu
 	ghost XxXxXxX echo huhu
-	ghost echo \echo hoho
 	X
 	ghost XxXxXx XxXxXxX
 	X
 	__EOT
+#hoho stop.
 #hoho huhu
 #huhu
-   cksum_test behave:ghost "${MBOX}" '3239685744 15'
+   cksum_test behave:ghost "${MBOX}" '776950759 26'
 }
 
 

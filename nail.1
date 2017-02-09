@@ -4199,23 +4199,28 @@ is set .
 .Mx
 .It Ic ghost
 Define or list command aliases, so-called ghosts.
+A ghost can be used everywhere a normal command can be used, but always
+takes precedence: any arguments that are given to the command alias are
+joined onto the alias content, and the resulting string forms the
+command line that is, in effect, executed.
+Command ghosts can be removed with
+.Ic unghost .
 Without arguments a list of all currently known aliases is shown.
 With one argument the expansion of the given alias is shown.
+.Pp
 With two or more arguments a command alias is defined or updated: the
 first argument is the name under which the remaining command line should
 be accessible, the content of which can be just about anything.
 A ghost may itself expand to another ghost, but to avoid expansion loops
-the expansion depth is finite, and no further expansion takes place once
-the limit is reached.
-A ghost can be used everywhere a normal command can be used, but always
-takes precedence; any arguments that are given to the command alias are
-joined onto the alias content, and the resulting string forms the
-command line that is, in effect, executed.
-Also see
-.Ic unghost .
+further expansion will be prevented if a ghost refers to itself or if an
+expansion depth limit is reached.
+Explicit expansion prevention is available via the reverse solidus
+.Ql \e
+.Mx -sx
+.Sx "command modifier" .
 .Bd -literal -offset indent
 ? gh xx
-`ghost': no such alias: xx
+\*(uA: `ghost': no such alias: xx
 ? gh xx echo hello,
 ? gh xx
 ghost xx "echo hello,"

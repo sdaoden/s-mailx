@@ -842,7 +842,12 @@ jrestart:
       ++expcnt;
       flags = (flags & ~(a_GHOST_MASK | a_NOPREFIX)) | expcnt;
 
-      for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
+      /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
+      if(gp != NULL && !strcmp(word, gp->lg_name)){
+         if(n_poption & n_PO_D_V)
+            n_err(_("Actively avoiding self-recursion of `ghost': %s\n"),
+               word);
+      }else for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(word, gp->lg_name)){
             if(line.l > 0){
                size_t i;
