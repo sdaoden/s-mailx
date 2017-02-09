@@ -2940,6 +2940,13 @@ compatible) control codes 0 to 31: to create the printable
 representation of a control code the numeric value 64 is added, and the
 resulting ASCII character set code point is then printed, e.g., BEL is
 .Ql 7 + 64 = 71 = G .
+In reality, however, this is not true, because the calculation is not an
+addition, but a logical bitwise XOR operation (see
+.Ic vexpr ) :
+this explains why the ASCII control character DEL with the numeric value
+127 ends up as a question mark, with the numeric value 63:
+.Ql vexpr ^ 127 64 .
+.Pp
 Whereas historically circumflex notation has often been used for
 visualization purposes of control codes, e.g.,
 .Ql ^G ,
@@ -4478,7 +4485,8 @@ if [ "$version-major" >= 15 ]
       echo ..in an X terminal
     endif
   endif
-  if [ [ true ] && [ [ "${debug}" != '' ] || [ "$verbose" != '' ] ] ]
+  if [ [ true ] && [ [ "${debug}" != '' ] || \e
+      [ "$verbose" != '' ] ] ]
     echo Noisy, noisy
   endif
   if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
