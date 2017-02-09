@@ -4076,7 +4076,7 @@ j_leave:
 # ifdef HAVE_HISTORY
 FL int
 c_history(void *v){
-   size_t entry;
+   siz_t entry;
    struct a_tty_hist *thp;
    char **argv;
    NYD_ENTER;
@@ -4099,7 +4099,7 @@ c_history(void *v){
       goto jlist;
    if(!asccasecmp(*argv, "clear"))
       goto jclear;
-   if((n_idec_uiz_cp(&entry, *argv, 10, NULL
+   if((n_idec_siz_cp(&entry, *argv, 10, NULL
             ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
          ) == n_IDEC_STATE_CONSUMED)
       goto jentry;
@@ -4147,19 +4147,27 @@ jclear:
    a_tty.tg_hist_size = 0;
    goto jleave;
 
-jentry:
-   if(UICMP(z, entry, <=, a_tty.tg_hist_size)){
-      entry = a_tty.tg_hist_size - entry;
+jentry:{
+   siz_t ep;
+
+   ep = (entry < 0) ? -entry : entry;
+
+   if(ep != 0 && UICMP(z, ep, <=, a_tty.tg_hist_size)){
+      if(ep != entry)
+         --ep;
+      else
+         ep = (siz_t)a_tty.tg_hist_size - ep;
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
          assert(thp != NULL);
-         if(entry-- == 0){
+         if(ep-- == 0){
             n_source_inject_input(v = thp->th_dat, thp->th_len, TRU1);
             break;
          }
       }
    }else{
-      n_err(_("`history': no such entry: %" PRIuZ "\n"), entry);
+      n_err(_("`history': no such entry: %" PRIdZ "\n"), entry);
       v = NULL;
+   }
    }
    goto jleave;
 }

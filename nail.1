@@ -4316,7 +4316,10 @@ the list of history entries;
 a decimal
 .Ar NUMBER
 argument selects and evaluates the respective history entry,
-which will become the new history top.
+which will become the new history top; a negative number is used as an
+offset to the current command, e.g.,
+.Ql -1
+will select the last command, the history top.
 The default mode if no arguments are given is
 .Ar show .
 .
