@@ -24,7 +24,7 @@ distclean:
 	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk distclean
 
 test:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk test
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) test
 
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
