@@ -2920,7 +2920,7 @@ A 0 byte will suppress further output for the quoted argument.
 the Unicode / ISO-10646 character with the hexadecimal codepoint value
 .Ql HHHHHHHH
 (one to eight hexadecimal digits) \(em note that Unicode defines the
-maximum codepoint to be ever supported as
+maximum codepoint ever to be supported as
 .Ql 0x10FFFF
 (in planes of
 .Ql 0xFFFF
@@ -2935,16 +2935,15 @@ Identical to
 .Ql \eUHHHHHHHH
 except it takes only one to four hexadecimal digits.
 .It Ql \ecX
-A mechanism that allows usage of the non-printable (ASCII and
-compatible) control codes 0 to 31: to create the printable
-representation of a control code the numeric value 64 is added, and the
-resulting ASCII character set code point is then printed, e.g., BEL is
+Emits the non-printable (ASCII and compatible) C0 control codes
+0 (NUL) to 31 (US), and 127 (DEL).
+Printable representations of ASCII control codes can be created by
+mapping them to a different part of the ASCII character set, which is
+possible by adding the number 64 for the codes 0 to 31, e.g., 7 (BEL) is
 .Ql 7 + 64 = 71 = G .
-In reality, however, this is not true, because the calculation is not an
-addition, but a logical bitwise XOR operation (see
-.Ic vexpr ) :
-this explains why the ASCII control character DEL with the numeric value
-127 ends up as a question mark, with the numeric value 63:
+The real operation is a bitwise logical XOR with 64 (bit 7 set, see
+.Ic vexpr ) ,
+thus also covering code 127 (DEL), which is mapped to 63 (question mark):
 .Ql vexpr ^ 127 64 .
 .Pp
 Whereas historically circumflex notation has often been used for
@@ -2952,15 +2951,16 @@ visualization purposes of control codes, e.g.,
 .Ql ^G ,
 the reverse solidus notation has been standardized:
 .Ql \ecG .
-Some control codes also have standardized (ISO 10646, ISO C) alias
-representations, as shown above (e.g.,
+Some control codes also have standardized (ISO 10646, ISO C) aliases,
+as shown above (e.g.,
 .Ql \ea ,
 .Ql \en ,
 .Ql \et ) :
-whenever such an alias exists \*(UA will use it for display purposes.
+whenever such an alias exists it will be used for display purposes.
 The control code NUL
-.Pf ( Ql \ec@ )
-ends argument processing without producing further output.
+.Pf ( Ql \ec@ ,
+a non-standard extension) ends argument processing without producing
+further output.
 .It Ql \e$NAME
 Non-standard extension: expand the given variable name, as above.
 Brace enclosing the name is supported.
