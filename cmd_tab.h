@@ -366,8 +366,6 @@
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <msglist>")) },
-   { "localopts", &c_localopts, (H | M | X | RAWLIST), 1, 1
-     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "cwd", &c_cwd, (M | X | NOLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
    { "pwd", &c_cwd, (M | X | NOLIST), 0, 0
@@ -401,8 +399,10 @@
      DS(N_("Construct command from <:arguments:>, reuse its $?")) },
    { "ghost", &a_lex_c_ghost, (M | X | WYRALIST), 0, 1000
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-   { "unghost", &a_lex_c_unghost, (M | X | WYRALIST), 1, 1000
-     DS(N_("Delete <ghost-list>")) },
+      { "unghost", &a_lex_c_unghost, (M | X | WYRALIST), 1, 1000
+        DS(N_("Delete <ghost-list>")) },
+   { "localopts", &c_localopts, (H | M | X | WYSHLIST), 1, 1
+     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "read", &a_lex_c_read, (G | M | X | EM | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
    { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0

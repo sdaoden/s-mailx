@@ -270,9 +270,9 @@ jredo:
       out = in;
       store = n_string_drop_ownership(store);
 
-      shs = n_shexp_parse_token(store, &in, NULL, (n_SHEXP_PARSE_LOG |
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
             n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-            n_SHEXP_PARSE_QUOTE_AUTO_DSQ));
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), store, &in, NULL);
       if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
          store = n_string_clear(store);
          store = n_string_take_ownership(store, out.s, out.l +1, out.l);
@@ -1980,9 +1980,9 @@ a_tty_kht(struct a_tty_line *tlp){
             enum n_shexp_state shs;
 
             exp = sub;
-            shs = n_shexp_parse_token(NULL, &sub, NULL, (n_SHEXP_PARSE_DRYRUN |
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE));
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NULL, &sub, NULL);
             if(sub.l != 0){
                size_t x;
 
@@ -1997,8 +1997,9 @@ a_tty_kht(struct a_tty_line *tlp){
                   (int)exp.l, exp.s);
                goto jnope;
             }
-            n_shexp_parse_token(shoup, &exp, NULL, (n_SHEXP_PARSE_TRIMSPACE |
-               n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE));
+            n_shexp_parse_token((n_SHEXP_PARSE_TRIMSPACE |
+                  n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
+                  shoup, &exp, NULL);
             break;
          }
 
@@ -3109,9 +3110,9 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       enum n_shexp_state shs;
 
       shin_save = shin;
-      shs = n_shexp_parse_token(shoup, &shin, NULL, (n_SHEXP_PARSE_TRUNC |
-            n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-            n_SHEXP_PARSE_IFS_IS_COMMA));
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIMSPACE |
+            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_IFS_IS_COMMA),
+            shoup, &shin, NULL);
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
          if(isbindcmd && (n_poption & n_PO_D_V))

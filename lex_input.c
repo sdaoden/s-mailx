@@ -1007,14 +1007,14 @@ je96:
       c -= ((flags & a_VPUT) != 0); /* XXX c=int */
 
       if(c < cmd->lc_minargs){
-         n_err(_("`%s' requires at least %d arg(s)\n"),
-            cmd->lc_name, cmd->lc_minargs);
+         n_err(_("`%s' requires at least %u arg(s)\n"),
+            cmd->lc_name, (ui32_t)cmd->lc_minargs + ((flags & a_VPUT) != 0));
          break;
       }
 #undef lc_minargs
       if(c > cmd->lc_maxargs){
-         n_err(_("`%s' takes no more than %d arg(s)\n"),
-            cmd->lc_name, cmd->lc_maxargs);
+         n_err(_("`%s' takes no more than %u arg(s)\n"),
+            cmd->lc_name, (ui32_t)cmd->lc_maxargs + ((flags & a_VPUT) != 0));
          break;
       }
 #undef lc_maxargs
@@ -1025,7 +1025,7 @@ je96:
          if(!n_shexp_is_valid_varname(arglist[0]))
             emsg = N_("not a valid variable name");
          else if(!n_var_is_user_writable(arglist[0]))
-            emsg = N_("not a user writable variable");
+            emsg = N_("either not a user writable, or a boolean variable");
          else
             emsg = NULL;
          if(emsg != NULL){

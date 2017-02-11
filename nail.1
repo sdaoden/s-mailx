@@ -127,8 +127,7 @@ S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2018).
 Backward incompatibility has to be expected \(en
 .Sx COMMANDS
 will use
-.Mx -sx
-.Sx "shell-style argument quoting"
+.Sx "Shell-style argument quoting"
 rules, for example, and shell metacharacters will become meaningful.
 New and old behaviour is flagged \*(IN and \*(OU, and setting
 .Va v15-compat ,
@@ -222,28 +221,25 @@ to the message (for compose mode opportunities refer to
 .Ic ~@
 and
 .Ic ~^ ) .
-The same
-.Mx -sx
-.Sx "filename transformations"
-as described in the section
-.Sx COMMANDS
-and for the command
-.Ic file
-apply, but shell word expansion is restricted to the tilde
+.Sx "Filename transformations"
+(also see
+.Ic file )
+will be performed, but shell word expansion is restricted to the tilde
 .Ql ~ .
 Shall
 .Ar file
 not be accessible but contain a
 .Ql =
-character, then anything after the
+character, then anything before the
 .Ql =
-is treated as a character-set specification.
+will be used as the filename, anything thereafter as a character-set
+specification.
 .Pp
 If an input character-set is specified,
 .Mx -ix "character-set specification"
 but no output character-set, then the given input character-set is fixed
 as-is, and no conversion will be applied;
-giving the special string hyphen
+giving the special string hyphen-minus
 .Ql -
 will be treated as if
 .Va ttycharset
@@ -251,7 +247,7 @@ has been specified (the default).
 If an output character-set has also been given then the conversion will
 be performed exactly as specified and on-the-fly, not considering the
 file's type and content.
-As an exception, if the output character-set is specified as the hyphen
+As an exception, if the output character-set is specified as hyphen-minus
 .Ql - ,
 then the default conversion algorithm (see
 .Sx "Character sets" )
@@ -332,12 +328,9 @@ option).
 The optional
 .Ar file
 argument will undergo some special
-.Mx -sx
-.Sx "filename transformations" ,
-which are documented in the introductional section of
-.Sx COMMANDS
-as well as for the command
-.Ic file .
+.Sx "Filename transformations"
+(also see
+.Ic file ) .
 Note that
 .Ar file
 is not a argument to the flag
@@ -346,7 +339,7 @@ but is instead taken from the command line after option processing has
 been completed.
 In order to use a
 .Ar file
-that starts with a hyphen, prefix it with a (relative) path, as in
+that starts with a hyphen-minus, prefix with a relative path, as in
 .Ql ./-hyphenbox.mbox .
 .
 .Mx
@@ -912,11 +905,7 @@ is set; saving a copy of sent messages in a
 mailbox may be desirable \(en as for most mailbox
 .Ic file
 targets the value will undergo
-.Mx -sx
-.Sx "filename transformations" ,
-also see the introduction of
-.Sx COMMANDS
-for more on that.
+.Sx "Filename transformations" .
 Defining user email
 .Ic account Ns s
 for the purpose of arranging a complete environment of settings that can
@@ -984,7 +973,7 @@ Likewise, any name that starts with the character solidus
 or the character sequence dot solidus
 .Ql ./
 is treated as a file, regardless of the remaining content;
-likewise a name that solely consists of a hyphen
+likewise a name that solely consists of a hyphen-minus
 .Ql - .
 Any other name which contains an at sign
 .Ql @
@@ -1671,9 +1660,8 @@ consisting of A-Z, a-z, 0-9, period
 .Ql \&. ,
 underscore
 .Ql _
-and
-.Ql -
-hyphen.
+and hyphen-minus
+.Ql - .
 .\" }}}
 .
 .\" .Ss "Message states" {{{
@@ -1910,8 +1898,9 @@ the thread beginning with the current message is selected.
 .It Ar *
 All messages.
 .It Ar `
-All messages that were included in the message list for the previous
-command.
+All messages that were included in the
+.Sx "Message list arguments"
+of the previous command.
 .
 .It Ar x-y
 An inclusive range of message numbers.
@@ -2470,11 +2459,8 @@ to establish its builtin key bindings
 (more of them if the \*(OPal terminal control is available),
 an action which can then be suppressed completely by setting
 .Va line-editor-no-defaults .
-The following uses the
-.Mx -sx
-.Sx "shell-style argument quoting"
-notation that is documented in the introduction of
-.Sx COMMANDS ;
+.Sx "Shell-style argument quoting"
+notation is used in the following;
 combinations not mentioned either cause job control signals or do not
 generate a (unique) keycode:
 .
@@ -2518,11 +2504,8 @@ Backspace: backward delete one character
 .It Ql \ecI
 \*(NQ
 Horizontal tabulator:
-try to expand the word before the cursor, supporting the usual \*(UA
-.Mx -sx
-.Sx "filename transformations" ,
-as documented in
-.Sx COMMANDS
+try to expand the word before the cursor, supporting the usual
+.Sx "Filename transformations"
 .Pf ( Cd mle-complete ) .
 This is affected by
 .Cd mle-quote-rndtrip .
@@ -2720,6 +2703,16 @@ endif
 .
 Each command is typed on a line by itself,
 and may take arguments following the command word.
+An unquoted reverse solidus
+.Ql \e
+at the end of a command line
+.Dq escapes
+the newline character: it is discarded and the next line of input is
+used as a follow-up line, with all leading whitespace removed;
+once the entire command line is completed, the processing that is
+documented in the following begins.
+.
+.Pp
 Command names may be abbreviated, in which case the first command that
 matches the given prefix will be used.
 The command
@@ -2739,14 +2732,29 @@ which should be a shorthand of
 Both commands support a more
 .Va verbose
 listing mode which includes the argument type of the command,
-and other information which applies.
+and other information which applies; a handy suggestion might be:
 .
-.Pp
-Commands may be prefixed by one or multiple
-.Mx -ix "command modifier"
-command modifiers.
+.Bd -literal -offset indent
+? define __xv {
+  # Be careful to choose sh(1)ell-style on _entire_ line!
+  # Result status ends up in $!
+  localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
+}
+? ghost xv '\ecall __xv'
+? xv help set
+.Ed
+.
+.\" .Ss "Command modifiers" {{{
+.Ss "Command modifiers"
+.
+Commands may be prefixed by one or multiple command modifiers.
+.
+.
+.Bl -bullet
+.It
 The modifier reverse solidus
-.Ql \e ,
+.Mx
+.Cm \e ,
 to be placed first, prevents
 .Ic ghost
 expansions on the remains of the line, e.g.,
@@ -2754,36 +2762,91 @@ expansions on the remains of the line, e.g.,
 will always evaluate the command
 .Ic echo ,
 even if a ghost of the same name exists.
-The modifier
-.Ql ignerr
-indicates that any error generated by the following command should be
-ignored by, e.g.,
-.Va batch-exit-on-error ;
-.Va \&?
-one of the many
-.Sx "INTERNAL VARIABLES" ,
-will be set to the real exit status of the command regardless.
-Some commands support the
-.Ql vput
-modifier: they expect the name of a variable as their first argument,
-then, and will place their computation result in it instead of writing
-it to standard output.
 .Ic ghost
 content may itself contain further command modifiers, including
 an initial reverse solidus to prevent further expansions.
 .
-.Pp
-For commands which take message lists as arguments, the next message
-forward that satisfies the command's requirements will be used shall no
-explicit message list have been specified.
-If there are no messages forward of the current message,
-the search proceeds backwards,
-and if there are no good messages at all,
-\*(UA shows an error message and aborts the command.
-\*(ID Non-message-list arguments can be quoted using the following methods:
+.It
+The modifier
+.Mx
+.Cm ignerr
+indicates that any error generated by the following command should be
+ignored by the state machine, via, e.g.,
+.Va batch-exit-on-error .
+.Va \&? ,
+one of the many
+.Sx "INTERNAL VARIABLES" ,
+will be set to the real exit status of the command regardless.
 .
-.Pp
-.Bl -bullet -compact -offset indent
+.It
+Some commands support the
+.Mx
+.Cm vput
+modifier: if used, they expect the name of a variable as their first
+argument, and will place their computation result in it instead of the
+default location (it is usually written to standard output).
+The given name will be tested for being a valid
+.Xr sh 1
+variable name, and may therefore only consist of upper- and lowercase
+characters, digits, and the underscore; the hyphen-minus may be used as
+a non-portable extension.
+In addition the name may either not be one of the known
+.Sx "INTERNAL VARIABLES" ,
+or must otherwise refer to a writable (non-boolean) value variable.
+It is a hard error that is tracked in
+.Va \&?
+if any of these tests fail.
+The actual put operation may fail nonetheless, e.g., if the variable
+expects a number argument only a number will be accepted.
+Some commands may report this as a hard failure in
+.Va \&? ,
+but most will use the soft exit status
+.Va \&!
+to indicate these failures.
+.
+.It
+Last, but not least, the modifier
+.Mx
+.Cm wysh
+can be used for some old and established commands to choose the new
+.Sx "Shell-style argument quoting"
+rules over the traditional
+.Sx "Old-style argument quoting" .
+.El
+.\" }}}
+.
+.\" .Ss "Message list arguments" {{{
+.Ss "Message list arguments"
+.
+Some commands expect arguments that represent messages (actually
+their symbolic message numbers), as has been documented above under
+.Sx "Specifying messages"
+already.
+If no explicit message list has been specified, the next message
+forward that satisfies the command's requirements will be used,
+and if there are no messages forward of the current message,
+the search proceeds backwards;
+if there are no good messages at all to be found, an error message is
+shown and the command is aborted.
+.\" }}}
+.
+.\" .Ss "Old-style argument quoting" {{{
+.Ss "Old-style argument quoting"
+.
+\*(ID This section documents the old, traditional style of quoting
+non-message-list arguments to commands which expect this type of
+arguments: whereas still used by the majority of such commands, the new
+.Sx "Shell-style argument quoting"
+may be available even for those via
+.Cm wysh ,
+one of the
+.Sx "Command modifiers" .
+Nonetheless care must be taken, because only new commands have been
+designed with all the capabilities of the new quoting rules in mind,
+which can, e.g., generate control characters.
+.
+.
+.Bl -bullet -offset indent
 .It
 An argument can be enclosed between paired double-quotes
 .Ql """argument"""
@@ -2810,43 +2873,89 @@ contain space characters if those spaces are reverse solidus escaped, as in
 A reverse solidus outside of the enclosing quotes is discarded
 and the following character is treated literally as part of the argument.
 .El
+.\" }}}
 .
+.\" .Ss "Shell-style argument quoting" {{{
+.Ss "Shell-style argument quoting"
 .
-.Pp
-Some commands which do not take message-list arguments can also be
-prefixed with the special keyword
-.Ic \&\&wysh
-to choose \*(INible,
+Commands which don't expect message-list arguments use
 .Xr sh 1 Ns
-ell-style argument parsing and quoting rules, and some new commands only
-support the new rules (without that keyword) and are flagged \*(NQ:
-in the future \*(UA will (mostly) use this
-.Xr sh 1
-compatible argument parsing!
-Non-message-list arguments can be quoted using the following, rather
-.Mx -ix "shell-style argument quoting"
-compatible mechanisms: the escape character, single-quotes,
-double-quotes and dollar-single-quotes; any unquoted number sign
-.Ql #
-that parses as a new token starts a comment that ends argument processing.
-The overall granularity of error reporting and diagnostics, also
-regarding function arguments and their content, will improve.
-.
+ell-style, and therefore POSIX standardized, argument parsing and
+quoting rules.
+\*(ID Most new commands only support these new rules and are flagged
+\*(NQ, some elder ones can use them with the command modifier
+.Cm wysh ;
+in the future only this type of argument quoting will remain.
 .
 .Pp
-.Bl -bullet -compact -offset indent
-.It
-The literal value of any character can be preserved by preceding it
-with the escape character reverse solidus
-.Ql \e .
+A command line is parsed from left to right and an input token is
+completed whenever an unquoted, otherwise ignored, metacharacter is seen.
+Metacharacters are vertical bar
+.Cm \&| ,
+ampersand
+.Cm & ,
+semicolon
+.Cm \&; ,
+as well as
+.Cm space , tabulator , newline .
+The additional metacharacters left and right parenthesis
+.Cm \&( , \&)
+and less-than and greater-than signs
+.Cm < , >
+that the
+.Xr sh 1
+supports are not used, and are treated as ordinary characters: for one
+these characters are a vivid part of email addresses, and it also seems
+highly unlikely that their function will become meaningful to \*(UA.
+.
+.Pp
+Any unquoted number sign
+.Ql #
+at the beginning of new token starts a comment that extends to the end
+of the line, and therefore ends argument processing.
 An unquoted dollar
 .Ql $
-will cause variable expansion of the given name: \*(UA
+will cause variable expansion of the given name:
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
 (shell) variables can be accessed through this mechanism, brace
-enclosing the name is supported.
+enclosing the name is supported (i.e., to subdivide a token).
+.
+.Pp
+Whereas the metacharacters
+.Cm space , tabulator , newline
+only complete an input token, vertical bar
+.Cm \&| ,
+ampersand
+.Cm &
+and semicolon
+.Cm \&;
+also act as control operators and perform control functions.
+For now supported is semicolon
+.Cm \&; ,
+which terminates a single command, therefore sequencing the command line
+and making the remainder of the line a subject to reevaluation.
+With sequencing, multiple command argument types and quoting rules may
+therefore apply to a single line, which can become problematic before
+v15: e.g., the first of the following will cause surprising results.
+.
+.Pp
+.Dl ? echo one; set verbose; echo verbose=$verbose.
+.Dl ? echo one; wysh set verbose; echo verbose=$verbose.
+.
+.Pp
+Quoting is a mechanism that will remove the special meaning of
+metacharacters and reserved words, and will prevent expansion.
+There are four quoting mechanisms: the escape character, single-quotes,
+double-quotes and dollar-single-quotes:
+.
+.
+.Bl -bullet -offset indent
+.It
+The literal value of any character can be preserved by preceding it
+with the escape character reverse solidus
+.Ql \e .
 .
 .It
 Arguments which are enclosed in
@@ -2944,7 +3053,7 @@ possible by adding the number 64 for the codes 0 to 31, e.g., 7 (BEL) is
 The real operation is a bitwise logical XOR with 64 (bit 7 set, see
 .Ic vexpr ) ,
 thus also covering code 127 (DEL), which is mapped to 63 (question mark):
-.Ql vexpr ^ 127 64 .
+.Ql ? vexpr ^ 127 64 .
 .Pp
 Whereas historically circumflex notation has often been used for
 visualization purposes of control codes, e.g.,
@@ -2969,46 +3078,22 @@ Not yet supported, just to raise awareness: Non-standard extension.
 .El
 .El
 .
-.
 .Pp
-.Sy Compatibility notes:
-\*(ID Note these are new mechanisms which are not supported by all
-commands.
-Round-tripping (feeding in things shown in list modes again) are not yet
-stable or possible at all.
-On new-style command lines it is wise to quote semicolon
-.Ql \&;
-and vertical bar
-.Ql |
-characters in order to ensure upward compatibility: the author would
-like to see things like
-.Ql ? echo $'trouble\etahead' | cat >> in_the_shell.txt
-and
-.Ql ? top 2 5 10; type 3 22
-become possible.
-Before \*(UA will switch entirely to
-.Mx -sx
-.Sx "shell-style argument quoting"
-there will be a transition phase where using
-.Ic \&\&wysh
-will emit obsoletion warnings.
+Caveats:
 .
 .Bd -literal -offset indent
 echo 'Quotes '${HOME}' and 'tokens" differ!"# no comment
 echo Quotes ${HOME} and tokens differ! # comment
 echo Don"'"t you worry$'\ex21' The sun shines on us. $'\eu263A'
 .Ed
+.\" }}}
 .
-.Pp
-In any event an unquoted reverse solidus at the end of a command line is
-discarded and the next line continues the command.
-\*(ID Note that line continuation is handled before the above parsing is
-applied, i.e., the parsers documented above will see merged lines.
+.\" .Ss "Filename transformations" {{{
+.Ss "Filename transformations"
+.
 Filenames, where expected, and unless documented otherwise, are
-subsequently subjected to the following
-.Mx -ix "filename transformations"
-filename transformations, in sequence:
-.
+subsequently subject to the following filename transformations, in
+sequence:
 .
 .Bl -bullet -offset indent
 .It
@@ -3050,7 +3135,7 @@ directory (if that variable is set).
 .It Ar %:filespec
 Expands to the same value as
 .Ar filespec ,
-but has special meaning for when used with, e.g., the command
+but has special meaning when used with, e.g., the command
 .Ic file :
 the file will be treated as a primary system mailbox by, e.g., the
 .Ic mbox
@@ -3063,24 +3148,29 @@ mailbox instead of simply being flagged as read.
 .El
 .
 .It
-Meta expansions are applied to the resulting filename: a leading tilde
+Meta expansions are applied to the resulting filename, as applicable to
+the resulting file access protocol (also see
+.Sx "On URL syntax and credential lookup" ) .
+If the fully expanded filename results in multiple pathnames and the
+command is expecting only one file, an error results.
+.Pp
+For the file-protocol, a leading tilde
 .Ql ~
 character will be replaced by the expansion of
 .Ev HOME ,
 except when followed by a valid user name, in which case the home
 directory of the given user is used instead.
+.Pp
 Any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
-will be replaced by the expansion of the variable, if possible; \*(UA
+will be replaced by the expansion of the variable, if possible;
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
 (shell) variables can be accessed through this mechanism, and the usual
 escape mechanism has to be applied to prevent interpretation.
-If the fully expanded filename results in multiple pathnames and the
-command is expecting only one file, an error results.
 .Pp
 In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
@@ -3089,9 +3179,11 @@ arguments will usually be displayed in a properly quoted form, e.g., a file
 may be displayed as
 .Ql 'diet\e is \ecurd.txt' .
 .El
+.\" }}}
 .
+.\" .Ss "Commands" {{{
+.Ss "Commands"
 .
-.Pp
 The following commands are available:
 .
 .Bl -tag -width ".It Ic BaNg"
@@ -3203,10 +3295,10 @@ account myisp {
 .It Ic addrcodec
 \*(NQ Interprets the given line as an email address specification,
 formats it as induced by email standards and then shows the result.
-Supports the
-.Mx -sx
-.Sx "command modifier"
-.Ql vput .
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&! .
 \*(ID This is pretty restricted for now, and experience may vary.
@@ -3319,11 +3411,8 @@ bind compose :kf1 ~e
 Note that the entire comma-separated list is first parsed (over) as a
 shell-token with whitespace as the field separator, before being parsed
 and expanded for real with comma as the field separator, therefore
-whitespace needs to be properly quoted:
-.Mx -sx
-.Sx "shell-style argument quoting"
-is documented in the introduction of
-.Sx COMMANDS .
+whitespace needs to be properly quoted, see
+.Sx "Shell-style argument quoting" .
 Using Unicode reverse solidus escape sequences renders a binding
 defunctional if the locale does not support Unicode (see
 .Sx "Character sets" ) ,
@@ -3812,17 +3901,14 @@ See the section
 .
 .Mx
 .It Ic echo
-\*(NQ (ec) Uses
-.Mx -sx
-.Sx "shell-style argument quoting"
-and echoes arguments to standard output, after performing the usual \*(UA
-.Mx -sx
-.Sx "filename transformations"
-on them, as documented for
-.Sx COMMANDS .
-It also writes a trailing newline, whereas the otherwise identical
+\*(NQ (ec) Echoes arguments to standard output and writes a trailing
+newline, whereas the otherwise identical
 .Ic echon
 does not.
+.Sx "Shell-style argument quoting"
+is used,
+.Sx "Filename transformations"
+are applied to the expanded arguments.
 .
 .Mx
 .It Ic echoerr
@@ -3961,10 +4047,9 @@ Also see
 .Ic call .
 .Bd -literal -offset indent
 define xverbose {
-   localopts yes
-   set verbose
-   ignerr eval "${@}"
-   return ${?} # This ends up in $!, then
+  # Like this, sh(1)ell-stylish from begin to end: works!
+  # Result status ends up in $!, then
+  localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
 }
 ghost xv '\ecall xverbose'
 
@@ -3996,7 +4081,7 @@ as well as a possibly tracked line editor history file.
 .It Ic File
 (Fi) Like
 .Ic file ,
-but open the mailbox readonly.
+but open the mailbox read-only.
 .
 .
 .Mx
@@ -4005,10 +4090,8 @@ but open the mailbox readonly.
 Without arguments it shows status information of the current mailbox.
 If an argument is given, it will write out changes (such as deletions)
 the user has made and open a new mailbox.
-Some special
-.Mx -sx
-.Sx "filename transformations"
-are recognized for the
+.Sx "Filename transformations"
+will be applied to the
 .Ar name
 argument.
 .
@@ -4238,10 +4321,10 @@ be accessible, the content of which can be just about anything.
 A ghost may itself expand to another ghost, but to avoid expansion loops
 further expansion will be prevented if a ghost refers to itself or if an
 expansion depth limit is reached.
-Explicit expansion prevention is available via the reverse solidus
-.Ql \e
-.Mx -sx
-.Sx "command modifier" .
+Explicit expansion prevention is available via reverse solidus
+.Cm \e ,
+see
+.Sx "Command modifiers" .
 .Bd -literal -offset indent
 ? gh xx
 \*(uA: `ghost': no such alias: xx
@@ -4855,10 +4938,8 @@ in which case the user can escape with the exit command.
 .It Ic read
 \*(NQ Read a line from standard input, and assign the splitted and
 trimmed line data to the given variables.
-The variable names must adhere to the stricter
-.Xr sh 1
-naming rules, because it is expected that they will be used in shell
-expansions.
+The variable names are check by the same rules as documented for
+.Cm vput .
 If there are more fields than variables, assign successive fields to the
 last given variable.
 If there are less fields than variables, assign the empty string to the
@@ -5039,11 +5120,8 @@ If editing a
 .Mx -sx
 .Sx "primary system mailbox"
 the messages are marked for deletion.
-The usual
-.Mx -sx
-.Sx "filename transformations"
-are recognized, as documented in the introduction of
-.Sx COMMANDS .
+.Sx "Filename transformations"
+will be applied.
 .
 .Mx
 .It Ic savediscard
@@ -5213,13 +5291,10 @@ variable is set, the recipient's real name (if any) is used.
 .
 .Mx
 .It Ic source
-(so) The source command reads commands from the given file, which is
-subject to the usual
-.Mx -sx
-.Sx "filename transformations" ,
-as documented in
-.Sx COMMANDS .
-If the given argument ends with a vertical bar
+(so) The source command reads commands from the given file.
+.Sx "Filename transformations"
+will be applied.
+If the given expanded argument ends with a vertical bar
 .Ql |
 then the argument will instead be interpreted as a shell command and
 \*(UA will read the output generated by it.
@@ -5591,10 +5666,10 @@ Same as
 .Mx
 .It Ic urlcodec
 \*(NQ Perform URL percent codec operations, rather according to RFC 3986.
-Supports the
-.Mx -sx
-.Sx "command modifier"
-.Ql vput .
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&! .
 This is a character set agnostic and thus locale dependent operation,
@@ -5614,7 +5689,7 @@ and
 perform a slightly modified operation which should be better for
 pathnames: it does not allow a tilde
 .Ql ~ ,
-and will neither accept hyphen
+and will neither accept hyphen-minus
 .Ql -
 nor dot
 .Ql .
@@ -5663,10 +5738,10 @@ numeric calculations as well as string operations.
 It uses polish notation, i.e., the operator is the first argument and
 defines the number and type, and the meaning of the remaining arguments.
 An empty argument is replaced with a 0 if a number is expected.
-It supports the
-.Mx -sx
-.Sx "command modifier"
-.Ql vput .
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&! ,
 the result that is shown in case of (soft) errors is
@@ -5694,9 +5769,11 @@ division (solidus
 and modulo (percent
 .Ql % ) ,
 as well as for the bitwise operators logical or (vertical bar
-.Ql | ) ,
+.Ql | ,
+to be quoted) ,
 bitwise and (ampersand
-.Ql \&& ) ,
+.Ql \&& ,
+to be quoted) ,
 bitwise xor (circumflex
 .Ql ^ ) ,
 the bitwise signed left- and right shifts
@@ -5725,10 +5802,7 @@ String operations that take one argument are
 which queries the length of the given argument, and
 .Ql file-expand ,
 which performs the usual
-.Mx -sx
-.Sx "filename transformations" ,
-as documented in the section
-.Sx COMMANDS ,
+.Sx "Filename transformations" ,
 on its argument.
 Two or more arguments are used by
 .Ql find ,
@@ -5762,10 +5836,8 @@ locale and thus should match correctly strings in the locale encoding.
 If the optional third argument has been given then instead of showing
 the match offset a replacement operation is performed:
 the third argument is treated as if specified via dollar-single-quote
-.Mx -sx
-.Sx "shell-style argument quoting" ,
-as documented in
-.Sx COMMANDS ,
+(see
+.Sx "Shell-style argument quoting" ) ,
 and any occurrence of a positional parameter, e.g.,
 .Va 1 ,
 is replaced by the corresponding match group of the regular expression.
@@ -5805,8 +5877,7 @@ Shell piping the part content by specifying a leading vertical bar
 .Ql |
 character for the filename is supported.
 Other user input undergoes the usual
-.Mx -sx
-.Sx "filename transformations" ,
+.Sx "Filename transformations" ,
 and contents of the destination file are overwritten if the file
 previously existed.
 .Pp
@@ -5863,6 +5934,7 @@ or
 .Ic flag Ns
 ged message.
 .El
+.\" }}}
 .\" }}}
 .
 .
@@ -5925,11 +5997,8 @@ Its standard output is inserted into the message.
 Append or edit the list of attachments.
 A list of
 .Ar filename
-arguments can be specified by using
-.Mx -sx
-.Sx "shell-style argument quoting"
-(see
-.Sx COMMANDS ,
+arguments is expected (see
+.Sx "Shell-style argument quoting" ;
 any token-separating commas are ignored), to be
 interpreted as documented for the command line option
 .Fl a ,
@@ -5956,7 +6025,7 @@ Inserts the string contained in the
 variable (same as
 .Ql Ic ~i Ns \0Sign ) .
 \*(OB (Use the
-.Ql wysh
+.Cm wysh
 prefix when
 .Ic set Ns
 ting the variable(s) instead!) The escape sequences tabulator
@@ -5972,7 +6041,7 @@ Inserts the string contained in the
 variable (same as
 .Ql Ic ~i Ns \0sign ) .
 \*(OB (Use the
-.Ql wysh
+.Cm wysh
 prefix when
 .Ic set Ns
 ting the variable(s) instead!) The escape sequences tabulator
@@ -6048,7 +6117,7 @@ Insert the value of the specified variable into the message,
 adding a newline character at the end.
 The message remains unaltered if the variable is unset or empty.
 \*(OB (Use the
-.Ql wysh
+.Cm wysh
 prefix when
 .Ic set Ns
 ting the variable(s) instead!) The escape sequences tabulator
@@ -7119,11 +7188,8 @@ is ignored.
 .Mx -sx
 .Sx "primary system mailbox" Ns
 es (see, e.g., the notes on
-.Mx -sx
-.Sx "filename transformations"
-in the
-.Sx COMMANDS
-sections as well as the documentation of
+.Sx "Filename transformations" ,
+as well as the documentation of
 .Ic file )
 will be protected with so-called dotlock files\(emthe traditional mail
 spool file locking method\(emin addition to system file locking.
@@ -7240,7 +7306,7 @@ send error instead of only filtering them out.
 The remaining values specify whether a specific type of recipient
 address specification is allowed (optionally indicated by a plus sign
 .Ql +
-prefix) or disallowed (prefixed with a hyphen
+prefix) or disallowed (prefixed with a hyphen-minus
 .Ql - ) .
 The value
 .Ql all
@@ -7349,11 +7415,8 @@ file names that begin with the plus-sign
 .Ql +
 will have the plus-sign replaced with the value of this variable if set,
 otherwise the plus-sign will remain unchanged when doing
-.Mx -sx
-.Sx "filename transformations" ;
-see the introduction of
-.Sx COMMANDS
-as well as the documentation of
+.Sx "Filename transformations" ;
+also see
 .Ic file
 for more on this topic.
 The value supports a subset of transformations itself, and if the
@@ -7755,11 +7818,8 @@ overriding
 and the system-dependent default, and (thus) be used to replace
 .Ql %
 when doing
-.Mx -sx
-.Sx "filename transformations" ;
-see the introduction of
-.Sx COMMANDS
-as well as the command
+.Sx "Filename transformations" ;
+also see
 .Ic file
 for more on this topic.
 The value supports a subset of transformations itself.
@@ -8338,7 +8398,7 @@ is injected, etc.), respectively.
 .Ic localopts
 are enabled for these hooks, causing any setting to be forgotten after
 the message has been sent.
-The following (readonly) variables will be set temporarily during
+The following (read-only) variables will be set temporarily during
 execution of the macros:
 .Pp
 .Bl -tag -compact -width ".It Va compose_subject"
@@ -8615,10 +8675,8 @@ just as if the surrounding part was of type
 .It Va prompt
 The string used as a prompt in interactive mode.
 Whenever the variable is evaluated the value is expanded as via
-dollar-single-quote
-.Sx "shell-style argument quoting" ,
-documented in
-.Sx COMMANDS .
+dollar-single-quote expansion (see
+.Sx "Shell-style argument quoting" ) .
 This (post-assignment, i.e., second) expansion can be used to embed
 status information, for example
 .Va \&? ,
@@ -9585,10 +9643,9 @@ Not all SSL/TLS libraries support this.
 .It Va ssl-rand-file
 \*(OP Gives the filename to a file with random entropy data, see
 .Xr RAND_load_file 3 .
-If this variable is not set, or set to the empty string, or if
-.Mx -sx
-.Sx "filename transformations"
-failed, then
+If this variable is not set, or set to the empty string, or if the
+.Sx "Filename transformations"
+fail, then
 .Xr RAND_file_name 3
 will be used to create the filename if, and only if,
 .Xr RAND_status 3
@@ -10063,13 +10120,10 @@ This variable is only used when it resides in the process environment.
 .It Ev MBOX
 The name of the users mbox file.
 A logical subset of the special
-.Mx -sx
-.Sx "filename transformations"
-that are documented for
-.Sx COMMANDS
-and
-.Ic file
-is supported.
+.Sx "Filename transformations"
+(also see
+.Ic file )
+are supported.
 The fallback default is
 .Pa mbox
 in the user's

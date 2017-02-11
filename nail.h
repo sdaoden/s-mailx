@@ -1185,6 +1185,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
+
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
     * quote mode to be permanently active (cannot be closed) */
@@ -1196,7 +1197,14 @@ enum n_shexp_parse_flags{
    n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
          n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
 
-   n__SHEXP_PARSE_LAST = 12
+   /* Recognize metacharacters to separate tokens */
+   n_SHEXP_PARSE_META_VERTBAR = 1<<13,
+   n_SHEXP_PARSE_META_AMPERSAND = 1<<14,
+   /* Interpret ; as a sequencing operator, source_inject_input() remainder */
+   n_SHEXP_PARSE_META_SEMICOLON = 1<<15,
+   /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
+
+   n__SHEXP_PARSE_LAST = 15
 };
 
 enum n_shexp_state{
@@ -1209,6 +1217,9 @@ enum n_shexp_state{
    n_SHEXP_STATE_STOP = 1<<1,
    n_SHEXP_STATE_UNICODE = 1<<3,       /* \[Uu] used */
    n_SHEXP_STATE_CONTROL = 1<<4,       /* Control characters seen */
+   n_SHEXP_STATE_META_VERTBAR = 1<<5,  /* Metacharacter | follows/ed */
+   n_SHEXP_STATE_META_AMPERSAND = 1<<6, /* Metacharacter & follows/ed */
+   n_SHEXP_STATE_META_SEMICOLON = 1<<7, /* Metacharacter ; follows/ed */
 
    n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
    n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !n_PSO_UNICODE */

@@ -2021,7 +2021,7 @@ n_var_is_user_writable(char const *name){
    if((avmp = avc.avc_map) == NULL)
       rv = TRU1;
    else
-      rv = ((avmp->avm_flags & a_AMV_VF_RDONLY) == 0);
+      rv = ((avmp->avm_flags & (a_AMV_VF_BOOL | a_AMV_VF_RDONLY)) == 0);
    NYD_LEAVE;
    return rv;
 }
@@ -2841,10 +2841,10 @@ jeplusminus:
 
             templ.s = n_UNCONST(argv[3]);
             templ.l = UIZ_MAX;
-            shs = n_shexp_parse_token(n_string_creat_auto(&s_b), &templ, NULL,
-                  (n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY |
-                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                  n_SHEXP_PARSE_QUOTE_AUTO_DSQ));
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+                  n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                  n_SHEXP_PARSE_QUOTE_AUTO_DSQ),
+                  n_string_creat_auto(&s_b), &templ, NULL);
             if((shs & (n_SHEXP_STATE_ERR_MASK | n_SHEXP_STATE_STOP)
                   ) == n_SHEXP_STATE_STOP){
                varres = n_string_cp(&s_b);

@@ -511,10 +511,10 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
    union {struct a_shexp_quote_lvl *head; struct n_string *store;} u;
    ui32_t flags;
    size_t il;
-   char const *ib;
+   char const *ib, *ib_base;
    NYD2_ENTER;
 
-   ib = sqlp->sql_dat.s;
+   ib_base = ib = sqlp->sql_dat.s;
    il = sqlp->sql_dat.l;
    flags = sqlp->sql_flags;
 
@@ -536,7 +536,10 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #endif
          flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
          goto jrecurse;
-      }else if(blankspacechar(c) || c == '"' || c == '$'){
+      }else if(blankspacechar(c) || c == '|' || c == '&' || c == ';' ||
+            /* Whereas we don't support those, quote them for the sh(1)ell */
+            c == '(' || c == ')' || c == '<' || c == '>' ||
+            c == '"' || c == '$'){
          if(flags & a_SHEXP_QUOTE_T_MASK)
             goto jstep;
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -552,7 +555,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #endif
          flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
          goto jrecurse;
-      }else if(c == '\\'){
+      }else if(c == '\\' || (c == '#' && ib == ib_base)){
          if(flags & a_SHEXP_QUOTE_T_MASK)
             goto jstep;
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -712,7 +715,10 @@ jstep:
                c ^= 0x40;
             }
             goto jpush;
-         }else if(blankspacechar(c) || c == '"' || c == '$'){
+         }else if(blankspacechar(c) || c == '|' || c == '&' || c == ';' ||
+               /* Whereas we don't support those, quote them for the sh(1)ell */
+               c == '(' || c == ')' || c == '<' || c == '>' ||
+               c == '"' || c == '$'){
             if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
                goto jpush;
             assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
@@ -724,7 +730,7 @@ jstep:
             assert(!(flags & a_SHEXP_QUOTE_T_SINGLE));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
-         }else if(c == '\\'){
+         }else if(c == '\\' || (c == '#' && ib == ib_base)){
             if(flags & a_SHEXP_QUOTE_T_SINGLE)
                goto jpush;
             assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
@@ -935,10 +941,9 @@ jnext:
             enum n_shexp_state shs;
 
             /* TODO shexp: take care to not include backtick eval once avail! */
-            shs = n_shexp_parse_token(shoup, &shin, NULL,
-                  (n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                  n_SHEXP_PARSE_QUOTE_AUTO_DQ |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE));
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
+                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DQ |
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NULL);
             if(shs & n_SHEXP_STATE_STOP)
                break;
          }
@@ -980,8 +985,8 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shexp_parse_token(struct n_string *store, struct str *input,
-      void const **cookie, enum n_shexp_parse_flags flags){
+n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
+      struct str *input, void const **cookie){
    /* TODO shexp_parse_token: WCHAR; $IFS (sp20='   '; echo a $sp20 b; ..) */
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
@@ -994,7 +999,8 @@ n_shexp_parse_token(struct n_string *store, struct str *input,
       a_NTOKEN = 1<<2,  /* "New token": e.g., comments are possible */
       a_ROUND_MASK = ~((1<<8) - 1),
       a_COOKIE = 1<<8,
-      a_EXPLODE = 1<<9
+      a_EXPLODE = 1<<9,
+      a_CONSUME = 1<<10 /* When done, "consume" remaining input */
    } state;
    NYD2_ENTER;
 
@@ -1122,15 +1128,55 @@ jrestart_empty:
              if(il > 0)
                --il, c = *ib++;
             state &= ~a_NTOKEN;
-         }else if(c == '#' && (state & a_NTOKEN)){
+         }
+         /* A comment may it be if no token has yet started */
+         else if(c == '#' && (state & a_NTOKEN)){
             rv |= n_SHEXP_STATE_STOP;
             goto jleave;
-         }else if(c == ',' && (flags &
-               (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA)))
-            break;
-         else if(blankchar(c)){
-            if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
+         }
+         /* Metacharacters which separate tokens must be turned on explicitly */
+         else if(c == '|'){
+            rv |= n_SHEXP_STATE_META_VERTBAR;
+            /* The parsed sequence may be _the_ output, so ensure we don't
+             * include the metacharacter, then. */
+            if(flags & n_SHEXP_PARSE_DRYRUN)
                ++il, --ib;
+            /*else if(flags & n_SHEXP_PARSE_META_VERTBAR)*/
+            break;
+         }else if(c == '&'){
+            rv |= n_SHEXP_STATE_META_AMPERSAND;
+            /* The parsed sequence may be _the_ output, so ensure we don't
+             * include the metacharacter, then. */
+            if(flags & n_SHEXP_PARSE_DRYRUN)
+               ++il, --ib;
+            /*else if(flags & n_SHEXP_PARSE_META_AMPERSAND)*/
+            break;
+         }else if(c == ';'){
+            rv |= n_SHEXP_STATE_META_SEMICOLON;
+            /* The parsed sequence may be _the_ output, so ensure we don't
+             * include the metacharacter, then. */
+            if(flags & n_SHEXP_PARSE_DRYRUN)
+               ++il, --ib;
+            else if(flags & n_SHEXP_PARSE_META_SEMICOLON){
+               if(il > 0)
+                  n_source_inject_input(ib, il, TRU1);
+               state |= a_CONSUME;
+               rv |= n_SHEXP_STATE_STOP;
+            }
+            break;
+         }else if(c == ',' && (flags &
+               (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
+            /* The parsed sequence may be _the_ output, so ensure we don't
+             * include the metacharacter, then. */
+            if(flags & n_SHEXP_PARSE_DRYRUN)
+               ++il, --ib;
+            break;
+         }else if(blankchar(c)){
+            if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
+               /* The parsed sequence may be _the_ output, so ensure we don't
+                * include the metacharacter, then. */
+               if(flags & n_SHEXP_PARSE_DRYRUN)
+                  ++il, --ib;
                break;
             }
             state |= a_NTOKEN;
@@ -1482,13 +1528,18 @@ jleave:
       rv |= n_SHEXP_STATE_OUTPUT;
    }
 
-   if(flags & n_SHEXP_PARSE_TRIMSPACE){
-      for(; il > 0; ++ib, --il)
-         if(!blankchar(*ib))
-            break;
+   if(state & a_CONSUME){
+      input->s = n_UNCONST(&ib[il]);
+      input->l = 0;
+   }else{
+      if(flags & n_SHEXP_PARSE_TRIMSPACE){
+         for(; il > 0; ++ib, --il)
+            if(!blankchar(*ib))
+               break;
+      }
+      input->l = il;
+      input->s = n_UNCONST(ib);
    }
-   input->l = il;
-   input->s = n_UNCONST(ib);
 
    if(!(rv & n_SHEXP_STATE_STOP)){
       if(!(rv & n_SHEXP_STATE_OUTPUT) && (flags & n_SHEXP_PARSE_IGNORE_EMPTY) &&

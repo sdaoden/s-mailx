@@ -1774,9 +1774,9 @@ FL char *      fexpand(char const *name, enum fexp_mode fexpm);
  * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store.
  * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
  * just as known from the sh(1)ell in that case */
-FL enum n_shexp_state n_shexp_parse_token(struct n_string *store,
-                        struct str *input, void const **cookie,
-                        enum n_shexp_parse_flags flags);
+FL enum n_shexp_state n_shexp_parse_token(enum n_shexp_parse_flags flags,
+                        struct n_string *store, struct str *input,
+                        void const **cookie);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.

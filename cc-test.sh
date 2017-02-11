@@ -192,6 +192,7 @@ have_feat() {
 t_behave() {
    __behave_x_opt_input_command_stack
    __behave_wysh
+   __behave_input_inject_semicolon_seq
    __behave_ghost
    __behave_ifelse
    __behave_localopts
@@ -500,6 +501,25 @@ __behave_wysh() {
 #a	b
 #a
    cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
+}
+
+__behave_input_inject_semicolon_seq() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+	define mydeepmac {
+		echon '(mydeepmac)';
+	}
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ';';
+	}
+	echon one';';~mymac;echon two";";call mymac;echo three$';';
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ,TOO'!;';
+	}
+	echon one';';~mymac;echon two";";call mymac;echo three$';';
+	__EOT
+#one;this_is_mymac(mydeepmac);two;this_is_mymac(mydeepmac);three;
+#one;this_is_mymac(mydeepmac),TOO!;two;this_is_mymac(mydeepmac),TOO!;three;
+   cksum_test behave:input_inject_semicolon_seq "${MBOX}" '512117110 140'
 }
 
 __behave_ghost() {
@@ -1251,15 +1271,15 @@ __behave_macro_param_shift() {
 	define t1 {
 	   echo in: t1
 	   call t2 1 you get four args
-	   echo t1.1: $?; ignerr ($ignerr) should not exist
+	   echo t1.1: $?';' ignerr ($ignerr) should not exist
 	   call t2 1 you get 'three args'
-	   echo t1.2: $?; ignerr ($ignerr) should not exist
+	   echo t1.2: $?';' ignerr ($ignerr) should not exist
 	   call t2 1 you 'get two args'
-	   echo t1.3: $?; ignerr ($ignerr) should not exist
+	   echo t1.3: $?';' ignerr ($ignerr) should not exist
 	   call t2 1 'you get one arg'
-	   echo t1.4: $?; ignerr ($ignerr) should not exist
+	   echo t1.4: $?';' ignerr ($ignerr) should not exist
 	   ignerr call t2 '' 'you get one arg'
-	   echo t1.5: $?; ignerr ($ignerr) should not exist
+	   echo t1.5: $?';' ignerr ($ignerr) should not exist
 	}
 	call t1
 	__EOT
