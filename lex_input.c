@@ -105,6 +105,13 @@ struct a_lex_eval_ctx{
    bool_t le_add_history;        /* Add command to history (TRUM1=gabby)? */
 };
 
+struct a_lex_input_inject{
+   struct a_lex_input_inject *lii_next;
+   size_t lii_len;
+   bool_t lii_commit;
+   char lii_dat[n_VFIELD_SIZE(7)];
+};
+
 struct a_lex_input_stack{
    struct a_lex_input_stack *li_outer;
    FILE *li_file;                /* File we were in */
@@ -112,6 +119,7 @@ struct a_lex_input_stack{
    ui32_t li_flags;              /* enum a_lex_input_flags */
    ui32_t li_loff;               /* Pseudo (macro): index in .li_lines */
    char **li_lines;              /* Pseudo content, lines unfolded */
+   struct a_lex_input_inject *li_inject; /* To be consumed first */
    void (*li_on_finalize)(void *);
    void *li_finalize_arg;
    char li_autorecmem[n_MEMORY_AUTOREC_TYPE_SIZEOF];
@@ -126,13 +134,6 @@ struct a_lex_input_stack{
 n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
    "Inacceptible size of structure buffer");
 
-struct a_lex_input_inject{
-   struct a_lex_input_inject *lii_next;
-   size_t lii_len;
-   bool_t lii_commit;
-   char lii_dat[n_VFIELD_SIZE(7)];
-};
-
 static sighandler_type a_lex_oldpipe;
 static struct a_lex_ghost *a_lex_ghosts;
 /* a_lex_cmd_tab[] after fun protos */
@@ -140,7 +141,7 @@ static struct a_lex_ghost *a_lex_ghosts;
 /* */
 static struct a_lex_input_stack *a_lex_input;
 
-/* For n_source_inject_input() */
+/* For n_source_inject_input(), if a_lex_input==NULL */
 static struct a_lex_input_inject *a_lex_input_inject;
 
 static sigjmp_buf a_lex_srbuf; /* TODO GET RID */
@@ -1144,16 +1145,25 @@ a_lex_unstack(bool_t eval_error){
    struct a_lex_input_stack *lip;
    NYD_ENTER;
 
-   if((lip = a_lex_input) == NULL){
-      struct a_lex_input_inject *liip;
+   /* Free input injections of this level first */
+   /* C99 */{
+      struct a_lex_input_inject **liipp, *liip;
 
-      while((liip = a_lex_input_inject) != NULL){
-         a_lex_input_inject = liip->lii_next;
+      if((lip = a_lex_input) == NULL)
+         liipp = &a_lex_input_inject;
+      else
+         liipp = &lip->li_inject;
+
+      while((liip = *liipp) != NULL){
+         *liipp = liip->lii_next;
          free(liip);
       }
 
-      n_memory_reset();
+      if(lip == NULL || !(lip->li_flags & a_LEX_SLICE))
+         n_memory_reset();
+   }
 
+   if(lip == NULL){
       /* If called from a_lex_onintr(), be silent FIXME */
       n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
       if(eval_error == TRUM1 || !(n_psonce & n_PSO_STARTED))
@@ -1711,48 +1721,65 @@ FL int
     * unfolded already */
    if(!(lif & n_LEXINPUT_FORCE_STDIN) &&
          a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO)){
+      struct a_lex_input_inject *liip;
+
       if(*linebuf != NULL)
          free(*linebuf);
 
-      if((*linebuf = a_lex_input->li_lines[a_lex_input->li_loff]) == NULL){
-         *linesize = 0;
-         n = -1;
-         goto jleave;
+      /* Injection in progress?  Don't care about the autocommit state here */
+      if((liip = a_lex_input->li_inject) != NULL){
+         a_lex_input->li_inject = liip->lii_next;
+
+         *linesize = liip->lii_len;
+         *linebuf = (char*)liip;
+         memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
+         iftype = "INJECTION";
+      }else{
+         if((*linebuf = a_lex_input->li_lines[a_lex_input->li_loff]) == NULL){
+            *linesize = 0;
+            n = -1;
+            goto jleave;
+         }
+
+         ++a_lex_input->li_loff;
+         *linesize = strlen(*linebuf);
+         if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
+            *linebuf = sbufdup(*linebuf, *linesize);
+
+         iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
+               ? "-X OPTION"
+               : (a_lex_input->li_flags & a_LEX_MACRO_CMD) ? "CMD" : "MACRO";
       }
-
-      ++a_lex_input->li_loff;
-      *linesize = strlen(*linebuf);
-      if(!(a_lex_input->li_flags & a_LEX_MACRO_FREE_DATA))
-         *linebuf = sbufdup(*linebuf, *linesize);
-
-      iftype = (a_lex_input->li_flags & a_LEX_MACRO_X_OPTION)
-            ? "-X OPTION"
-            : (a_lex_input->li_flags & a_LEX_MACRO_CMD) ? "CMD" : "MACRO";
       n = (int)*linesize;
       n_pstate |= n_PS_READLINE_NL;
       goto jhave_dat;
    }
 
    /* Injection in progress? */
-   if(a_lex_input == NULL && a_lex_input_inject != NULL){
-      struct a_lex_input_inject *liip;
+   if(!(lif & n_LEXINPUT_FORCE_STDIN)){
+      struct a_lex_input_inject **liipp, *liip;
 
-      liip = a_lex_input_inject;
-      a_lex_input_inject = liip->lii_next;
+      liipp = (a_lex_input == NULL) ? &a_lex_input_inject
+            : &a_lex_input->li_inject;
 
-      if(liip->lii_commit){
-         if(*linebuf != NULL)
-            free(*linebuf);
+      if((liip = *liipp) != NULL){
+         *liipp = liip->lii_next;
 
-         n = (int)(*linesize = liip->lii_len);
-         *linebuf = (char*)liip;
-         memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
-         iftype = "INJECTION";
-         n_pstate |= n_PS_READLINE_NL;
-         goto jhave_dat;
-      }else{
-         string = savestrbuf(liip->lii_dat, liip->lii_len);
-         free(liip);
+         if(liip->lii_commit){
+            if(*linebuf != NULL)
+               free(*linebuf);
+
+            /* Simply reuse the buffer */
+            n = (int)(*linesize = liip->lii_len);
+            *linebuf = (char*)liip;
+            memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
+            iftype = "INJECTION";
+            n_pstate |= n_PS_READLINE_NL;
+            goto jhave_dat;
+         }else{
+            string = savestrbuf(liip->lii_dat, liip->lii_len);
+            free(liip);
+         }
       }
    }
 
@@ -2168,16 +2195,18 @@ FL void
 n_source_inject_input(char const *buf, size_t len, bool_t commit){
    NYD_ENTER;
    if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat) -1 > len){
-      struct a_lex_input_inject *liip;
+      struct a_lex_input_inject *liip,  **liipp;
 
       liip = n_alloc(n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat
             ) + len +1);
-      liip->lii_next = a_lex_input_inject;
+      liipp = (a_lex_input == NULL) ? &a_lex_input_inject
+            : &a_lex_input->li_inject;
+      liip->lii_next = *liipp;
       liip->lii_len = len;
       liip->lii_commit = commit;
       memcpy(liip->lii_dat, buf, len);
       liip->lii_dat[len] = '\0';
-      a_lex_input_inject = liip;
+      *liipp = liip;
    }
    NYD_LEAVE;
 }
