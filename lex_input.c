@@ -1687,7 +1687,8 @@ n_commands(void){ /* FIXME */
          }
       }
 
-      if(!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE))
+      if(!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE) &&
+            ev.le_add_history)
          n_tty_addhist(ev.le_line.s, (ev.le_add_history != TRU1));
 
       if(n_pstate & n_PS_EXIT)

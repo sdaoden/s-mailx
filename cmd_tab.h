@@ -162,9 +162,9 @@
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | MSGLIST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
-   { "help", &a_lex_c_help, (H | M | X | WYRALIST), 0, 1
+   { "help", &a_lex_c_help, (M | X | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "?", &a_lex_c_help, (H | M | X | WYRALIST), 0, 1
+   { "?", &a_lex_c_help, (M | X | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { "=", &c_pdot, (A | NOLIST), 0, 0
      DS(N_("Show current message number")) },
@@ -214,7 +214,7 @@
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &a_lex_c_list, (H | M | STRLIST), 0, 0
+   { "list", &a_lex_c_list, (M | STRLIST), 0, 0
      DS(N_("List all commands (with argument: in prefix search order)")) },
    { "xit", &a_lex_c_exit, (M | X | NOLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
@@ -436,11 +436,11 @@
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
 
 #ifdef HAVE_MEMORY_DEBUG
-   { "memtrace", &c_memtrace, (H | I | M | NOLIST), 0, 0
+   { "memtrace", &c_memtrace, (I | M | NOLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
 #endif
 #ifdef HAVE_DEVEL
-   { "sigstate", &c_sigstate, (H | I | M | STRLIST), 0, 0
+   { "sigstate", &c_sigstate, (I | M | STRLIST), 0, 0
      DS(N_("Show signal handler states")) },
 #endif
 
