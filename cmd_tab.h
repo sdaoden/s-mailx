@@ -205,9 +205,13 @@
    { "edit", &c_editor, (G | A | I | S | MSGLIST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
    { "echo", &c_echo, (G | M | X | WYSHLIST), 0, 1000
-     DS(N_("Echo arguments to standard output")) },
+     DS(N_("Echo arguments, and a trailing newline, to standard output")) },
    { "echoerr", &c_echoerr, (G | M | X | WYSHLIST), 0, 1000
-     DS(N_("Echo arguments to standard error")) },
+     DS(N_("Echo arguments, and a trailing newline, to standard error")) },
+   { "echon", &c_echon, (G | M | X | WYSHLIST), 0, 1000
+     DS(N_("Echo arguments, without a trailing newline, to standard output")) },
+   { "echoerrn", &c_echoerrn, (G | M | X | WYSHLIST), 0, 1000
+     DS(N_("Echo arguments, without a trailing newline, to standard error")) },
    { "quit", &a_lex_c_quit, NOLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
    { "list", &a_lex_c_list, (H | M | STRLIST), 0, 0

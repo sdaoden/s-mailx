@@ -3815,17 +3815,34 @@ See the section
 \*(NQ (ec) Uses
 .Mx -sx
 .Sx "shell-style argument quoting"
-and echoes arguments to standard output after performing the usual \*(UA
+and echoes arguments to standard output, after performing the usual \*(UA
 .Mx -sx
 .Sx "filename transformations"
 on them, as documented for
 .Sx COMMANDS .
+It also writes a trailing newline, whereas the otherwise identical
+.Ic echon
+does not.
 .
 .Mx
 .It Ic echoerr
 \*(NQ Identical to
 .Ic echo
 except that is echoes to standard error.
+Also see
+.Ic echoerrn .
+.
+.Mx
+.It Ic echon
+\*(NQ Identical to
+.Ic echo ,
+but does not write a trailing newline.
+.
+.Mx
+.It Ic echoerrn
+\*(NQ Identical to
+.Ic echoerr ,
+but does not write a trailing newline.
 .
 .Mx
 .It Ic edit

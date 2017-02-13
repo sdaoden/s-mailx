@@ -577,9 +577,11 @@ FL int c_cwd(void *v);
 /* Change user's working directory */
 FL int c_chdir(void *v);
 
-/* Expand file names like echo (to stdout/stderr) */
+/* Expand file names like echo (to stdout/stderr, with/out trailing newline) */
 FL int c_echo(void *v);
 FL int c_echoerr(void *v);
+FL int c_echon(void *v);
+FL int c_echoerrn(void *v);
 
 /*
  * cmd_resend.c

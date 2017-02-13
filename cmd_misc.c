@@ -43,8 +43,8 @@
  * command where possible */
 static char const *a_cmisc_bangexp(char const *cp);
 
-/* c_echo(), c_echoerr() */
-static int a_cmisc_echo(void *vp, FILE *fp);
+/* c_n?echo(), c_n?echoerr() */
+static int a_cmisc_echo(void *vp, FILE *fp, bool_t donl);
 
 static char const *
 a_cmisc_bangexp(char const *cp){
@@ -91,7 +91,7 @@ jleave:
 }
 
 static int
-a_cmisc_echo(void *vp, FILE *fp){
+a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    char const **argv, **ap, *cp;
    NYD2_ENTER;
 
@@ -102,7 +102,8 @@ a_cmisc_echo(void *vp, FILE *fp){
          cp = *ap;
       fputs(cp, fp);
    }
-   putc('\n', fp);
+   if(donl)
+      putc('\n', fp);
    fflush(fp);
    NYD2_LEAVE;
    return 0;
@@ -181,7 +182,7 @@ c_echo(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = a_cmisc_echo(v, n_stdout);
+   rv = a_cmisc_echo(v, n_stdout, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -191,7 +192,27 @@ c_echoerr(void *v){
    int rv;
    NYD_ENTER;
 
-   rv = a_cmisc_echo(v, n_stderr);
+   rv = a_cmisc_echo(v, n_stderr, TRU1);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_echon(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = a_cmisc_echo(v, n_stdout, FAL0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_echoerrn(void *v){
+   int rv;
+   NYD_ENTER;
+
+   rv = a_cmisc_echo(v, n_stderr, FAL0);
    NYD_LEAVE;
    return rv;
 }
