@@ -71,6 +71,7 @@ enum a_lex_input_flags{
     * TODO a_lex_input() will drop it once it sees EOF (HACK!), but care for
     * TODO jumps must be taken by slice creators.  HACK!!!  But works. ;} */
    a_LEX_SLICE = 1<<6,
+   /* TODO If it is none of those, we are sourcing or loading a file */
 
    a_LEX_FORCE_EOF = 1<<8,       /* lex_input() shall return EOF next */
 
@@ -112,8 +113,8 @@ struct a_lex_input_inject{
    char lii_dat[n_VFIELD_SIZE(7)];
 };
 
-struct a_lex_input_stack{
-   struct a_lex_input_stack *li_outer;
+struct a_lex_input{
+   struct a_lex_input *li_outer;
    FILE *li_file;                /* File we were in */
    void *li_cond;                /* Saved state of conditional stack */
    ui32_t li_flags;              /* enum a_lex_input_flags */
@@ -139,7 +140,7 @@ static struct a_lex_ghost *a_lex_ghosts;
 /* a_lex_cmd_tab[] after fun protos */
 
 /* */
-static struct a_lex_input_stack *a_lex_input;
+static struct a_lex_input *a_lex_input;
 
 /* For n_source_inject_input(), if a_lex_input==NULL */
 static struct a_lex_input_inject *a_lex_input_inject;
@@ -206,7 +207,7 @@ static void a_lex_unstack(bool_t eval_error);
 static bool_t a_lex_source_file(char const *file, bool_t silent_open_error);
 
 /* System resource file load()ing or -X command line option array traversal */
-static bool_t a_lex_load(struct a_lex_input_stack *lip);
+static bool_t a_lex_load(struct a_lex_input *lip);
 
 /* A simplified command loop for recursed state machines */
 static bool_t a_commands_recursive(enum n_lexinput_flags lif);
@@ -1142,7 +1143,7 @@ a_lex_onintr(int s){ /* TODO block signals while acting */
 
 static void
 a_lex_unstack(bool_t eval_error){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    NYD_ENTER;
 
    /* Free input injections of this level first */
@@ -1276,7 +1277,7 @@ jerr:
 
 static bool_t
 a_lex_source_file(char const *file, bool_t silent_open_error){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    size_t nlen;
    char *nbuf;
    bool_t ispipe;
@@ -1323,9 +1324,9 @@ jeopencheck:
       goto jleave;
    }
 
-   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input, li_name) +
          (nlen = strlen(nbuf) +1));
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = fip;
    lip->li_cond = condstack_release();
@@ -1345,7 +1346,7 @@ jleave:
 }
 
 static bool_t
-a_lex_load(struct a_lex_input_stack *lip){
+a_lex_load(struct a_lex_input *lip){
    bool_t rv;
    NYD2_ENTER;
 
@@ -1952,7 +1953,7 @@ n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
 
 FL void
 n_load(char const *name){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    size_t i;
    FILE *fip;
    NYD_ENTER;
@@ -1961,8 +1962,8 @@ n_load(char const *name){
       goto jleave;
 
    i = strlen(name) +1;
-   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) + i);
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input, li_name) + i);
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_file = fip;
    lip->li_flags = a_LEX_FREE;
    memcpy(lip->li_name, name, i);
@@ -1977,15 +1978,15 @@ FL void
 n_load_Xargs(char const **lines, size_t cnt){
    static char const name[] = "-X";
 
-   ui8_t buf[sizeof(struct a_lex_input_stack) + sizeof name];
+   ui8_t buf[sizeof(struct a_lex_input) + sizeof name];
    char const *srcp, *xsrcp;
    char *cp;
    size_t imax, i, len;
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    NYD_ENTER;
 
    lip = (void*)buf;
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_flags = a_LEX_MACRO | a_LEX_MACRO_FREE_DATA |
          a_LEX_MACRO_X_OPTION | a_LEX_SUPER_MACRO;
    memcpy(lip->li_name, name, sizeof name);
@@ -2086,14 +2087,14 @@ c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
 FL bool_t
 n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
       void (*on_finalize)(void*), void *finalize_arg){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    size_t i;
    int rv;
    NYD_ENTER;
 
-   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input, li_name) +
          (i = strlen(name) +1));
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = NULL;
    lip->li_cond = condstack_release();
@@ -2115,7 +2116,7 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
 
 FL bool_t
 n_source_command(enum n_lexinput_flags lif, char const *cmd){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    size_t i, ial;
    bool_t rv;
    NYD_ENTER;
@@ -2123,9 +2124,9 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
    i = strlen(cmd) +1;
    ial = n_ALIGN(i);
 
-   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input, li_name) +
          ial + 2*sizeof(char*));
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_outer = a_lex_input;
    lip->li_cond = condstack_release();
    n_memory_autorec_push(&lip->li_autorecmem[0]);
@@ -2146,13 +2147,13 @@ n_source_command(enum n_lexinput_flags lif, char const *cmd){
 FL void
 n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
       ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg){
-   struct a_lex_input_stack *lip;
+   struct a_lex_input *lip;
    size_t i;
    NYD_ENTER;
 
-   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name) +
+   lip = smalloc(n_VSTRUCT_SIZEOF(struct a_lex_input, li_name) +
          (i = strlen(cmd) +1));
-   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input_stack, li_name));
+   memset(lip, 0, n_VSTRUCT_SIZEOF(struct a_lex_input, li_name));
    lip->li_outer = a_lex_input;
    lip->li_file = new_stdin;
    lip->li_flags = a_LEX_FREE | a_LEX_SLICE;
@@ -2177,18 +2178,44 @@ n_source_slice_hack_remove_after_jump(void){
 }
 
 FL bool_t
-n_source_may_yield_control(void){
-   return (((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
-         (n_PSO_INTERACTIVE | n_PSO_STARTED)) &&
-      (!(n_pstate & n_PS_ROBOT) ||
-         /* But: ok for ~:, yet: unless in a hook.
-          * TODO This is obviously hacky in that it depends on _input_stack not
-          * TODO loosing any flags when creating new contexts...  Maybe this
-          * TODO function should instead walk all up the context stack when
-          * TODO there is one, and verify neither level prevents yielding! */
-         ((n_pstate & n_PS_COMPOSE_MODE) && (a_lex_input == NULL ||
-            !(a_lex_input->li_flags & a_LEX_SLICE)))) &&
-      (a_lex_input == NULL || a_lex_input->li_outer == NULL));
+n_source_may_yield_control(void){ /* TODO this is a terrible hack */
+   /* TODO This is obviously hacky in that it depends on _input_stack not
+    * TODO loosing any flags when creating new contexts...  Maybe this
+    * TODO function should instead walk all up the context stack when
+    * TODO there is one, and verify neither level prevents yielding! */
+   struct a_lex_input *lip;
+   bool_t rv;
+   NYD2_ENTER;
+
+   rv = FAL0;
+
+   /* Only when interactive and startup completed */
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) !=
+         (n_PSO_INTERACTIVE | n_PSO_STARTED))
+      goto jleave;
+
+   /* Not when running any hook */
+   if(n_pstate & n_PS_HOOK_MASK)
+      goto jleave;
+
+   /* Traverse up the stack:
+    * . not when controlled by a child process
+    * TODO . not when there are pipes involved, we neither handle job control,
+    * TODO   nor process groups, that is, controlling terminal acceptably
+    * . not when sourcing a file */
+   for(lip = a_lex_input; lip != NULL; lip = lip->li_outer){
+      ui32_t f;
+
+      if((f = lip->li_flags) & (a_LEX_PIPE | a_LEX_SLICE))
+         goto jleave;
+      if(!(f & a_LEX_MACRO))
+         goto jleave;
+   }
+
+   rv = TRU1;
+jleave:
+   NYD2_LEAVE;
+   return rv;
 }
 
 FL void
