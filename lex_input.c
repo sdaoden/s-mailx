@@ -1079,7 +1079,8 @@ jleave:
       goto jret0;
    if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint)) /* TODO rid of that! */
       if(visible(dot))
-         n_source_inject_input("\\type", sizeof("\\type") -1, TRU1);
+         n_source_inject_input(n_INPUT_INJECT_COMMIT, "\\type",
+            sizeof("\\type") -1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
          !(cmd->lc_argtype & ARG_T))
@@ -2220,20 +2221,28 @@ jleave:
 }
 
 FL void
-n_source_inject_input(char const *buf, size_t len, bool_t commit){
+n_source_inject_input(enum n_input_inject_flags iif, char const *buf,
+      size_t len){
    NYD_ENTER;
-   if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat) -1 > len){
+   if(len == UIZ_MAX)
+      len = strlen(buf);
+
+   if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat) -1 > len &&
+         len > 0){
+      size_t i;
       struct a_lex_input_inject *liip,  **liipp;
 
       liip = n_alloc(n_VSTRUCT_SIZEOF(struct a_lex_input_inject, lii_dat
-            ) + len +1);
+            ) + 1 + len +1);
       liipp = (a_lex_input == NULL) ? &a_lex_input_inject
             : &a_lex_input->li_inject;
       liip->lii_next = *liipp;
-      liip->lii_len = len;
-      liip->lii_commit = commit;
-      memcpy(liip->lii_dat, buf, len);
-      liip->lii_dat[len] = '\0';
+      liip->lii_commit = ((iif & n_INPUT_INJECT_COMMIT) != 0);
+      if(buf[i = 0] != ' ' && !(iif & n_INPUT_INJECT_HISTORY))
+         liip->lii_dat[i++] = ' '; /* TODO prim. hack to avoid history put! */
+      memcpy(&liip->lii_dat[i], buf, len);
+      i += len;
+      liip->lii_dat[liip->lii_len = i] = '\0';
       *liipp = liip;
    }
    NYD_LEAVE;

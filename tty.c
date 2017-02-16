@@ -2982,7 +2982,7 @@ jinject_input:{
 
    hold_all_sigs(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
-   n_source_inject_input(tlp->tl_line.cbuf, i, FAL0);
+   n_source_inject_input(n_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = strlen(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i n_MEMORY_DEBUG_ARGSCALL);
@@ -4161,7 +4161,8 @@ jentry:{
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
          assert(thp != NULL);
          if(ep-- == 0){
-            n_source_inject_input(v = thp->th_dat, thp->th_len, TRU1);
+            n_source_inject_input((n_INPUT_INJECT_COMMIT |
+               n_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
             break;
          }
       }

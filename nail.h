@@ -993,6 +993,12 @@ enum n_lexinput_flags{
    n_LEXINPUT_HIST_GABBY = 1<<17       /* Consider history entry as gabby */
 };
 
+enum n_input_inject_flags{
+   n_INPUT_INJECT_NONE = 0,
+   n_INPUT_INJECT_COMMIT = 1<<0,       /* Auto-commit input */
+   n_INPUT_INJECT_HISTORY = 1<<1       /* Allow history addition */
+};
+
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
    MIME_SUBHDR,      /* inside a multipart subheader */

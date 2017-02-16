@@ -1097,7 +1097,8 @@ FL bool_t n_source_may_yield_control(void);
 /* Force n_lex_input() to read that buffer next -- for `history', and the MLE.
  * If commit is not true then we'll reenter the line editor with buf as default
  * line content.  Only to be used in interactive and non-robot mode! */
-FL void n_source_inject_input(char const *buf, size_t len, bool_t commit);
+FL void n_source_inject_input(enum n_input_inject_flags iif, char const *buf,
+            size_t len);
 
 /* Force n_lex_input() to read EOF next */
 FL void n_source_force_eof(void);
