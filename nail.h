@@ -2277,10 +2277,9 @@ enum argtype {
    ARG_MSGLIST    = 0,        /* Message list type */
    ARG_STRLIST    = 1,        /* A pure string */
    ARG_RAWLIST    = 2,        /* getrawlist(), old style */
-   ARG_NOLIST     = 3,        /* Just plain 0 */
-   ARG_NDMLIST    = 4,        /* Message list, no defaults */
-   ARG_WYSHLIST   = 5,        /* getrawlist(), sh(1) compatible */
-     ARG_WYRALIST = 6,        /* _RAWLIST or _WYSHLIST (with `wysh') */
+   ARG_NDMLIST    = 3,        /* Message list, no defaults */
+   ARG_WYSHLIST   = 4,        /* getrawlist(), sh(1) compatible */
+     ARG_WYRALIST = 5,        /* _RAWLIST or _WYSHLIST (with `wysh') */
    ARG_ARGMASK    = 7,        /* Mask of the above */
 
    ARG_A          = 1u<< 4,   /* Needs an active mailbox */

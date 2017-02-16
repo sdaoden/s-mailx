@@ -229,7 +229,7 @@ static struct a_lex_cmd const a_lex_cmd_tab[] = {
       a_lex_special_cmd_tab[] = {
    { "#", NULL, ARG_STRLIST, 0, 0
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", NULL, ARG_NOLIST, 0, 0
+   { "-", NULL, ARG_WYSHLIST, 0, 0
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
@@ -430,10 +430,14 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    case ARG_MSGLIST: cp = N_("message-list"); break;
    case ARG_STRLIST: cp = N_("string data"); break;
    case ARG_RAWLIST: cp = N_("old-style quoting"); break;
-   case ARG_NOLIST: cp = N_("no arguments"); break;
    case ARG_NDMLIST: cp = N_("message-list (no default)"); break;
-   case ARG_WYSHLIST: cp = N_("sh(1)ell-style quoting"); break;
-   default: cp = N_("`wysh' for sh(1)ell-style quoting"); break;
+   case ARG_WYRALIST: cp = N_("`wysh' for sh(1)ell-style quoting"); break;
+   default:
+   case ARG_WYSHLIST:
+      cp = (lcp->lc_minargs == 0 && lcp->lc_maxargs == 0)
+            ? N_("sh(1)ell-style quoting (takes no arguments)")
+            : N_("sh(1)ell-style quoting");
+      break;
    }
    rv = n_string_push_cp(rv, V_(cp));
 
@@ -454,6 +458,9 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
       rv = n_string_push_cp(rv, _(" | not ok: during startup"));
    if(lcp->lc_argtype & ARG_X)
       rv = n_string_push_cp(rv, _(" | ok: in subprocess"));
+
+   if(lcp->lc_argtype & ARG_G)
+      rv = n_string_push_cp(rv, _(" | gabby history"));
 
    cp = n_string_cp(rv);
    NYD2_LEAVE;
@@ -984,7 +991,7 @@ je96:
 
    case ARG_STRLIST:
       /* Just the straight string, with leading blanks removed */
-      while(whitechar(*cp))
+      while(blankspacechar(*cp))
          ++cp;
       rv = (*cmd->lc_func)(cp);
       break;
@@ -1038,11 +1045,6 @@ je96:
          n_pstate |= n_PS_ARGMOD_VPUT;
       }
       rv = (*cmd->lc_func)(arglist);
-      break;
-
-   case ARG_NOLIST:
-      /* Just the constant zero, for exiting, eg. */
-      rv = (*cmd->lc_func)(0);
       break;
 
    default:

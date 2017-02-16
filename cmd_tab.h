@@ -37,7 +37,6 @@
 #define MSGLIST ARG_MSGLIST
 #define STRLIST ARG_STRLIST
 #define RAWLIST ARG_RAWLIST
-#define NOLIST ARG_NOLIST
 #define NDMLIST ARG_NDMLIST
 #define WYSHLIST ARG_WYSHLIST
 #  define WYRALIST ARG_WYRALIST
@@ -134,7 +133,7 @@
      DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (G | M | X | WYRALIST), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "shell", &c_dosh, (I | S | NOLIST), 0, 0
+   { "shell", &c_dosh, (I | S | WYSHLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | WYRALIST), 1, 1000
      DS(N_("Un`alias' <name-list> (* for all)")) },
@@ -166,7 +165,7 @@
      DS(N_("Show help [[Option] for the given command]]")) },
    { "?", &a_lex_c_help, (M | X | WYRALIST), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "=", &c_pdot, (A | NOLIST), 0, 0
+   { "=", &c_pdot, (A | WYSHLIST), 0, 0
      DS(N_("Show current message number")) },
    { "Reply", &c_Reply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
@@ -212,13 +211,13 @@
      DS(N_("Echo arguments, without a trailing newline, to standard output")) },
    { "echoerrn", &c_echoerrn, (G | M | X | WYSHLIST), 0, 1000
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
-   { "quit", &a_lex_c_quit, NOLIST, 0, 0
+   { "quit", &a_lex_c_quit, WYSHLIST, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
    { "list", &a_lex_c_list, (M | STRLIST), 0, 0
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "xit", &a_lex_c_exit, (M | X | NOLIST), 0, 0
+   { "xit", &a_lex_c_exit, (M | X | WYSHLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
-   { "exit", &a_lex_c_exit, (M | X | NOLIST), 0, 0
+   { "exit", &a_lex_c_exit, (M | X | WYSHLIST), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
    { "pipe", &c_pipe, (A | STRLIST), 0, MMNDEL
      DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
@@ -262,7 +261,7 @@
      DS(N_("Un`saveignore' <header-list>")) },
    { "unsaveretain", &c_unsaveretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`saveretain' <header-list>")) },
-   { "newmail", &c_newmail, (A | T | NOLIST), 0, 0
+   { "newmail", &c_newmail, (A | T | WYSHLIST), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | WYRALIST), 0, 1000
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
@@ -403,7 +402,7 @@
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "read", &a_lex_c_read, (G | M | X | EM | WYSHLIST), 1, 1000
      DS(N_("Read a line from standard input into <variable>(s)")) },
-   { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0
+   { "version", &a_lex_c_version, (H | M | X | WYSHLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
    { "history", &c_history, (H | I | M | WYSHLIST), 0, 1
@@ -434,11 +433,11 @@
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
 
 #ifdef HAVE_MEMORY_DEBUG
-   { "memtrace", &c_memtrace, (I | M | NOLIST), 0, 0
+   { "memtrace", &c_memtrace, (I | M | WYSHLIST), 0, 0
      DS(N_("Trace current memory usage afap")) },
 #endif
 #ifdef HAVE_DEVEL
-   { "sigstate", &c_sigstate, (I | M | NOLIST), 0, 0
+   { "sigstate", &c_sigstate, (I | M | WYSHLIST), 0, 0
      DS(N_("Show signal handler states")) },
 #endif
 
@@ -447,7 +446,6 @@
 #undef MSGLIST
 #undef STRLIST
 #undef RAWLIST
-#undef NOLIST
 #undef NDMLIST
 
 #undef ARG_ARGMASK
