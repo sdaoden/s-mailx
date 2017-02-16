@@ -62,7 +62,7 @@
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | NDMLIST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
-   { "alias", &c_alias, (M | RAWLIST), 0, 1000
+   { "alias", &c_alias, (M | WYRALIST), 0, 1000
      DS(N_("Show all (or <alias>), or (re)define <alias> to <:data:>")) },
    { "print", &c_type, (A | MSGLIST), 0, MMNDEL
      DS(N_("Type all messages of <msglist>, honouring `ignore' / `retain'")) },
@@ -136,7 +136,7 @@
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | S | NOLIST), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_unalias, (M | RAWLIST), 1, 1000
+   { "unalias", &c_unalias, (M | WYRALIST), 1, 1000
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | STRLIST), 0, 0
      DS(N_("Write (append) to <file>")) },
@@ -232,19 +232,19 @@
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
    { "if", &c_if, (G | F | M | X | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "else", &c_else, (G| F | M | X | RAWLIST), 0, 0
+   { "else", &c_else, (G | F | M | X | WYSHLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "elif", &c_elif, (G| F | M | X | RAWLIST), 1, 1000
+   { "elif", &c_elif, (G | F | M | X | RAWLIST), 1, 1000
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "endif", &c_endif, (G| F | M | X | RAWLIST), 0, 0
+   { "endif", &c_endif, (G | F | M | X | WYSHLIST), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "alternates", &c_alternates, (M | RAWLIST), 0, 1000
+   { "alternates", &c_alternates, (M | WYRALIST), 0, 1000
      DS(N_("Show or define an alternate address list for the invoking user")) },
-   { "ignore", &c_ignore, (M | RAWLIST), 0, 1000
+   { "ignore", &c_ignore, (M | WYRALIST), 0, 1000
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "discard", &c_ignore, (M | RAWLIST), 0, 1000
+   { "discard", &c_ignore, (M | WYRALIST), 0, 1000
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "retain", &c_retain, (M | RAWLIST), 0, 1000
+   { "retain", &c_retain, (M | WYRALIST), 0, 1000
      DS(N_("Add <header-list> to retained list, or show that list")) },
    { "headerpick", &c_headerpick, (M | WYSHLIST), 0, 1000
      DS(N_("Header selection: [<context> [<type> [<action> <header-list>]]]"))},
@@ -254,9 +254,9 @@
      DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
    { "saveretain", &c_saveretain, (O | M | RAWLIST), 0, 1000
      DS(N_("Is to `save' what `retain' is to `type' / `print'")) },
-   { "unignore", &c_unignore, (M | RAWLIST), 0, 1000
+   { "unignore", &c_unignore, (M | WYRALIST), 0, 1000
      DS(N_("Un`ignore' <header-list>")) },
-   { "unretain", &c_unretain, (M | RAWLIST), 0, 1000
+   { "unretain", &c_unretain, (M | WYRALIST), 0, 1000
      DS(N_("Un`retain' <header-list>")) },
    { "unsaveignore", &c_unsaveignore, (O | M | RAWLIST), 0, 1000
      DS(N_("Un`saveignore' <header-list>")) },
@@ -268,13 +268,13 @@
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
    { "unshortcut", &c_unshortcut, (M | WYRALIST), 1, 1000
      DS(N_("Delete <shortcut-list> (* for all)")) },
-   { "account", &c_account, (M | RAWLIST), 0, 1000
+   { "account", &c_account, (M | WYSHLIST), 0, 1000
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | MSGLIST), 0, 0
      DS(N_("Create threaded view of the current `file'")) },
    { "unthread", &c_unthread, (A | O | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
-   { "sort", &c_sort, (A | RAWLIST), 0, 1
+   { "sort", &c_sort, (A | WYSHLIST), 0, 1
      DS(N_("Change sorting to: date,from,size,spam,status,subject,thread,to"))},
    { "unsort", &c_unthread, (A | MSGLIST), 0, 0
      DS(N_("Disable sorted or threaded mode")) },
@@ -290,11 +290,11 @@
      DS(N_("Mark <msglist> as draft")) },
    { "undraft", &c_undraft, (A | M | MSGLIST), 0, 0
      DS(N_("Un`draft' <msglist>")) },
-   { "define", &c_define, (M | X | RAWLIST), 0, 2
+   { "define", &c_define, (M | X | WYSHLIST), 0, 2
      DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "undefine", &c_undefine, (M | X | RAWLIST), 1, 1000
+   { "undefine", &c_undefine, (M | X | WYSHLIST), 1, 1000
      DS(N_("Un`define' all given <macros> (* for all)")) },
-   { "unaccount", &c_unaccount, (M | RAWLIST), 1, 1000
+   { "unaccount", &c_unaccount, (M | WYSHLIST), 1, 1000
      DS(N_("Delete all given <accounts> (* for all)")) },
    { "call", &c_call, (M | X | WYSHLIST), 1, 1000
      DS(N_("Call macro <name>")) },
@@ -314,7 +314,7 @@
      DS(N_("Like `move', but derive filename from first sender")) },
    { "Mv", &c_Move, (A | M | S | STRLIST), 0, 0
      DS(N_("Like `move', but derive filename from first sender")) },
-   { "noop", &c_noop, (A | M | RAWLIST), 0, 0
+   { "noop", &c_noop, (A | M | WYSHLIST), 0, 0
      DS(N_("NOOP command if current `file' is accessed via network")) },
    { "collapse", &c_collapse, (A | MSGLIST), 0, 0
      DS(N_("Collapse thread views for <msglist>")) },
@@ -328,7 +328,7 @@
      DS(N_("Like `decrypt', but derive filename from first sender")) },
    { "certsave", &c_certsave, (A | STRLIST), 0, 0
      DS(N_("Save S/MIME certificates of <msglist> to <file>")) },
-   { "rename", &c_rename, (M | RAWLIST), 0, 2
+   { "rename", &c_rename, (M | WYRALIST), 0, 2
      DS(N_("Rename <existing-folder> to <new-folder>")) },
    { "remove", &c_remove, (M | WYRALIST), 0, 1000
      DS(N_("Remove the named folders")) },
@@ -390,7 +390,7 @@
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | MSGLIST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given <msglist>")) },
-   { "errors", &c_errors, (H | I | M | RAWLIST), 0, 1
+   { "errors", &c_errors, (H | I | M | WYSHLIST), 0, 1
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | STRLIST), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
@@ -408,14 +408,14 @@
    { "version", &a_lex_c_version, (H | M | X | NOLIST), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
-   { "history", &c_history, (H | I | M | RAWLIST), 0, 1
+   { "history", &c_history, (H | I | M | WYSHLIST), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
    { "bind", &c_bind, (M | STRLIST), 1, 1000
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
    { "unbind", &c_unbind, (M | STRLIST), 2, 2
      DS(N_("Un`bind' <context> <key[:,key:]> (* for all)")) },
 
-   { "netrc", &c_netrc, (M | RAWLIST), 0, 1
+   { "netrc", &c_netrc, (M | WYSHLIST), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
    { "colour", &c_colour, (M | WYSHLIST), 1, 4
@@ -440,7 +440,7 @@
      DS(N_("Trace current memory usage afap")) },
 #endif
 #ifdef HAVE_DEVEL
-   { "sigstate", &c_sigstate, (I | M | STRLIST), 0, 0
+   { "sigstate", &c_sigstate, (I | M | NOLIST), 0, 0
      DS(N_("Show signal handler states")) },
 #endif
 
