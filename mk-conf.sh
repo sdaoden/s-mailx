@@ -418,6 +418,7 @@ _cc_flags_tcc() {
 
    if ld_check -Wl,-rpath =./ no; then
       need_R_ldflags=-Wl,-rpath=
+      ld_check -Wl,--enable-new-dtags
       ld_runtime_flags # update!
    fi
 
@@ -510,9 +511,12 @@ _cc_flags_generic() {
    ld_check -Wl,-z,noexecstack
    if ld_check -Wl,-rpath =./ no; then
       need_R_ldflags=-Wl,-rpath=
+      # Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
+      ld_check -Wl,--enable-new-dtags
       ld_runtime_flags # update!
    elif ld_check -Wl,-R ./ no; then
       need_R_ldflags=-Wl,-R
+      ld_check -Wl,--enable-new-dtags
       ld_runtime_flags # update!
    fi
 
