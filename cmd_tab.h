@@ -366,9 +366,7 @@
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | MSGLIST), 0, 0
      DS(N_("Clear the spam flag for each message in <msglist>")) },
-   { "cwd", &c_cwd, (M | X | NOLIST), 0, 0
-     DS(N_("Print current working directory (CWD)")) },
-   { "pwd", &c_cwd, (M | X | NOLIST), 0, 0
+   { "cwd", &c_cwd, (M | V | X | WYSHLIST), 0, 0
      DS(N_("Print current working directory (CWD)")) },
    { "varshow", &c_varshow, (G | M | X | WYRALIST), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },

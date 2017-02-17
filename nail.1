@@ -3795,7 +3795,14 @@ otherwise identical to
 .
 .Mx
 .It Ic cwd
-Show the name of the current working directory.
+Show the name of the current working directory, as reported by
+.Xr getcwd 3 .
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
+The return status is tracked via
+.Va \&! .
 .
 .Mx
 .It Ic Decrypt

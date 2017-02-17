@@ -140,19 +140,44 @@ c_dosh(void *v)
 }
 
 FL int
-c_cwd(void *v)
-{
-   char buf[PATH_MAX]; /* TODO getcwd(3) may return a larger value */
+c_cwd(void *v){
+   struct n_string s_b, *sp;
+   size_t l;
+   char const *varname;
    NYD_ENTER;
 
-   if (getcwd(buf, sizeof buf) != NULL) {
-      fputs(buf, n_stdout);
-      putc('\n', n_stdout);
-      v = (void*)0x1;
-   } else {
-      n_perr(_("getcwd"), 0);
-      v = NULL;
+   sp = n_string_creat_auto(&s_b);
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *(char const**)v : NULL;
+   l = PATH_MAX;
+
+   for(;; l += PATH_MAX){
+      sp = n_string_resize(n_string_trunc(sp, 0), l);
+
+      if(getcwd(sp->s_dat, sp->s_len) == NULL){
+         int e;
+
+         e = errno;
+         if(e == ERANGE)
+            continue;
+         n_perr(_("Failed to getcwd(3)"), e);
+         v = NULL;
+         break;
+      }
+
+      if(varname != NULL){
+         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
+            v = NULL;
+      }else{
+         l = strlen(sp->s_dat);
+         sp = n_string_trunc(sp, l);
+         if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) != sp->s_len ||
+               putc('\n', n_stdout) == EOF)
+            v = NULL;
+      }
+      break;
    }
+   n__EM_SET(v == NULL ? n_1 : n_0);
+
    NYD_LEAVE;
    return (v == NULL);
 }
