@@ -18,7 +18,7 @@
 ORIG_LC_ALL=${LC_ALL} LC_ALL=C
 export LC_ALL
 
-DATE_MAN=`date -u +'%b %d, %Y'`
+DATE_MAN=`date -u +'%B %d, %Y'`
 DATE_ISO=`date -u +%Y-%m-%d`
 
 yesno() {
