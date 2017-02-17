@@ -3225,9 +3225,6 @@ Show the current message number (the
 .Mx
 .It Ic \&?
 Show a brief summary of commands.
-A more
-.Va verbose
-output is available.
 \*(OP Given an argument a synopsis for the command in question is
 shown instead; commands can be abbreviated in general and this command
 can be used to see the full expansion of an abbreviation including the
@@ -3237,6 +3234,10 @@ synopsis, try, e.g.,
 and
 .Ql ?help
 and see how the output changes.
+This mode also supports a more
+.Va verbose
+output, which will provide the informations documented for
+.Ic list .
 .
 .Mx
 .It Ic \&|
@@ -4611,9 +4612,38 @@ Superseded by the multiplexer
 Shows the names of all available commands, alphabetically sorted.
 If given any non-whitespace argument the list will be shown in the order
 in which command prefixes are searched.
-A more
+In conjunction with a set variable
 .Va verbose
-output is available.
+additional information will be provided for each command: the argument
+type will be indicated, the \*(OPal documentation string will be shown,
+and the set of command flags will show up:
+.Pp
+.Bl -tag -compact -width ".It Ql BaNg"
+.It Ql "vput modifier"
+command supports the command modifier
+.Cm vput .
+.It Ql "status in *!*"
+the soft exit status is tracked in
+.Va \&! .
+.It Ql "needs box"
+commands needs an active mailbox, a
+.Ic file .
+.It Ql "ok: batch or interactive"
+command may only be used in interactive or
+.Fl #
+batch mode.
+.It Ql "ok: send mode"
+command can be used in send mode.
+.It Ql "not ok: compose mode"
+command is not available when in compose-mode.
+.It Ql "not ok: during startup"
+command cannot be used during program startup, e.g., while loading
+.Sx "Resource files" .
+.It Ql "ok: in subprocess"
+command is allowed to be used when running in a subprocess instance,
+e.g., from within a macro that is called via
+.Va on-compose-done .
+.El
 .
 .Mx
 .It Ic localopts

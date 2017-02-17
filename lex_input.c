@@ -157,7 +157,7 @@ static int a_lex_c_eval(void *v);
 static int a_lex_c_ghost(void *v);
 static int a_lex_c_unghost(void *v);
 
-/* */
+/* Create a multiline info string about all known additional infos for lcp */
 static char const *a_lex_cmdinfo(struct a_lex_cmd const *lcp);
 
 /* Print a list of all commands */
@@ -438,22 +438,22 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    rv = n_string_push_cp(rv, V_(cp));
 
    if(lcp->lc_argtype & ARG_V)
-      rv = n_string_push_cp(rv, _(" | `vput' modifier"));
+      rv = n_string_push_cp(rv, _(" | vput modifier"));
    if(lcp->lc_argtype & ARG_EM)
       rv = n_string_push_cp(rv, _(" | status in *!*"));
 
    if(lcp->lc_argtype & ARG_A)
       rv = n_string_push_cp(rv, _(" | needs box"));
    if(lcp->lc_argtype & ARG_I)
-      rv = n_string_push_cp(rv, _(" | only interactive"));
+      rv = n_string_push_cp(rv, _(" | ok: batch or interactive"));
    if(lcp->lc_argtype & ARG_M)
-      rv = n_string_push_cp(rv, _(" | send mode"));
+      rv = n_string_push_cp(rv, _(" | ok: send mode"));
    if(lcp->lc_argtype & ARG_R)
-      rv = n_string_push_cp(rv, _(" | no compose mode"));
+      rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
    if(lcp->lc_argtype & ARG_S)
-      rv = n_string_push_cp(rv, _(" | after startup"));
+      rv = n_string_push_cp(rv, _(" | not ok: during startup"));
    if(lcp->lc_argtype & ARG_X)
-      rv = n_string_push_cp(rv, _(" | subprocess"));
+      rv = n_string_push_cp(rv, _(" | ok: in subprocess"));
 
    cp = n_string_cp(rv);
    NYD2_LEAVE;
