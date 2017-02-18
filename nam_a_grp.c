@@ -1578,7 +1578,9 @@ c_addrcodec(void *v){
             sp = n_string_insert_c(sp, i++, '\\');
    }
 
-   if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL){
+   if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL ||
+         (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
+            ) != NAME_ADDRSPEC_ISADDR){
       varres = sp->s_dat;
       v = NULL;
    }else{

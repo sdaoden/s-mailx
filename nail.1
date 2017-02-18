@@ -956,6 +956,9 @@ is not set then only network addresses (see
 for a description of mail addresses) and plain user names (including MTA
 aliases) may be used, other types will be filtered out, giving a warning
 message.
+The command
+.Ic addrcodec
+can be used to generate standard compliant network addresses.
 .
 .\" When changing any of the following adjust any RECIPIENTADDRSPEC;
 .\" grep the latter for the complete picture
@@ -3294,15 +3297,15 @@ account myisp {
 .
 .Mx
 .It Ic addrcodec
-\*(NQ Interprets the given line as an email address specification,
-formats it as induced by email standards and then shows the result.
+\*(NQ Interprets the given arguments as an email address specification,
+formats it as induced by email standards, and then shows the result.
 Supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&! .
-\*(ID This is pretty restricted for now, and experience may vary.
+\*(ID This will improve further.
 .
 .Mx
 .It Ic alias
