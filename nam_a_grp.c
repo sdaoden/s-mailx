@@ -1538,13 +1538,12 @@ FL int
 c_addrcodec(void *v){
    struct n_addrguts ag;
    struct n_string s_b, *sp;
-   char const **argv, *emv, *varname, *varres, *cp;
+   char const **argv, *varname, *varres, *cp;
    int rv;
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
    rv = 0;
-   emv = n_0;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
@@ -1581,7 +1580,7 @@ c_addrcodec(void *v){
 
    if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL){
       varres = sp->s_dat;
-      emv = n_1;
+      v = NULL;
    }else{
       struct name *np;
 
@@ -1589,13 +1588,16 @@ c_addrcodec(void *v){
       varres = np->n_fullname;
    }
 
-   if(varname == NULL)
-      fprintf(n_stdout, "%s\n", varres);
-   else if(!n_var_vset(varname, (uintptr_t)varres)){
-      emv = n_1;
+   if(varname == NULL){
+      if(fprintf(n_stdout, "%s\n", varres) < 0)
+         rv = 1;
+   }else if(!n_var_vset(varname, (uintptr_t)varres)){
       rv = 1;
+      v = NULL;
    }
-   n__EM_SET(emv);
+
+   if(v != NULL)
+      n_pstate_var__em = n_0;
    NYD_LEAVE;
    return rv;
 }

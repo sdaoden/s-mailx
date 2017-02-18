@@ -6662,27 +6662,33 @@ selection etc., and should thus be taken into account.
 .
 .Mx
 .It Va \&?
-\*(RO The exit status of the last command.
-This exit status has a meaning for the state machine, e.g., for
-.Va batch-exit-on-error ,
-which is why \*(UA also knows about a return status, tracked in
+\*(RO The (hard) exit status of the last command.
+This exit status has a meaning for the state machine, in parts
+prescribed by the POSIX standard, and, e.g., for
+.Cm ignerr
+and
+.Va batch-exit-on-error .
+This is why \*(UA also knows about a
+.Dq soft
+exit status, which is tracked in
 .Va \&! .
 .
 .Mx
 .It Va \&!
-\*(RO This is a global variable which stores the last
+\*(RO The so-called
+.Dq soft
+exit status of the last command, which, different to
+.Va \&? ,
+has no meaning for the state machine, and can therefore easily transport
+different error-indicating values.
+It is directly addressable with the command
 .Ic return
-value of a
+from within a
 .Ic define Ns
 d and
 .Ic call Ns
-ed macro or an
+ed macro, or an
 .Ic account .
-In addition an increasing number of \*(UA commands use it to indicate a
-.Dq soft
-exit status, since the normal exit status of a command
-.Pf ( Va \&? )
-has a meaning for the state machine.
 .
 .Mx
 .It Va *

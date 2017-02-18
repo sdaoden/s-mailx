@@ -933,10 +933,10 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
          /* Not function local, could also simply look it up, but faster */
          avcp->avc_name = name;
          if(c == '?'){
-            avmp = &a_amv_var_map[a_AMV_VAR_QM_MAP_IDX];
+            avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
             avcp->avc_okey = ok_v___qm;
          }else{
-            avmp = &a_amv_var_map[a_AMV_VAR_EM_MAP_IDX];
+            avmp = &a_amv_var_map[a_AMV_VAR__EM_MAP_IDX];
             avcp->avc_okey = ok_v___em;
          }
          avcp->avc_hash = avmp->avm_hash;
@@ -988,7 +988,7 @@ jspecial_param:
 jspecial_param_m1:
    avcp->avc_name = name;
    avcp->avc_special_prop = (ui16_t)j;
-   avmp = &a_amv_var_map[a_AMV_VAR_SPECIAL_PARAM_MAP_IDX];
+   avmp = &a_amv_var_map[a_AMV_VAR__SPECIAL_PARAM_MAP_IDX];
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
    avcp->avc_okey = ok_v___special_param;
@@ -1835,7 +1835,7 @@ c_return(void *v){
    rv = 1;
 
    if(a_amv_lopts != NULL){
-      char const **argv, *emv;
+      char const **argv;
 
       n_source_force_eof();
 
@@ -1844,28 +1844,26 @@ c_return(void *v){
 
          if((n_idec_si32_cp(&i, argv[0], 10, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED || i < 0){
+               ) == n_IDEC_STATE_CONSUMED && i >= 0)
+            n_pstate_var__em = argv[0];
+         else
             n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
-            emv = n_m1;
-         }else
-            emv = argv[0];
 
          if(argv[1] != NULL){
             if((n_idec_si32_cp(&i, argv[1], 10, NULL
                      ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED || i < 0){
-               n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
-               emv = n_m1;
-            }else
+                  ) == n_IDEC_STATE_CONSUMED && i >= 0)
                rv = (int)i;
+            else{
+               n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
+               n_pstate_var__em = n_1;
+            }
          }else
             rv = 0;
       }else{
          rv = 0;
-         emv = n_0;
+         n_pstate_var__em = n_0;
       }
-
-      n__EM_SET(emv);
    }else
       n_err(_("Can only use `return' in a macro\n"));
    NYD_LEAVE;
@@ -2458,20 +2456,20 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    enum n_idec_state ids;
    si64_t lhv, rhv;
    char op, varbuf[64 + 64 / 8 +1];
-   char const *emv, **argv, *varname, *varres, *cp;
+   char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1<<0,
-      a_ISNUM = 1<<1,
-      a_ISDECIMAL = 1<<2,  /* Print only decimal result */
-      a_SATURATED = 1<<3,
-      a_ICASE = 1<<4,
-      a_UNSIGNED = 1<<4,   /* Unsigned right shift (share bit ok) */
+      a_SOFTERR = 1<<1,
+      a_ISNUM = 1<<2,
+      a_ISDECIMAL = 1<<3,  /* Print only decimal result */
+      a_SATURATED = 1<<4,
+      a_ICASE = 1<<5,
+      a_UNSIGNED = 1<<6,   /* Unsigned right shift (share bit ok) */
       a_TMP = 1<<30
    } f;
    NYD_ENTER;
 
    f = a_ERR;
-   emv = n_0;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
@@ -2496,7 +2494,7 @@ jnumop:
                ) != n_IDEC_STATE_CONSUMED){
             if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                goto jenum_range;
-            emv = n_1;
+            f |= a_SOFTERR;
             break;
          }
          if(op == '~')
@@ -2525,7 +2523,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               emv = n_1;
+               f |= a_SOFTERR;
                break;
             }
 
@@ -2536,8 +2534,8 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
+               f |= a_SOFTERR;
                lhv = rhv;
-               emv = n_1;
                break;
             }
 
@@ -2578,7 +2576,7 @@ jnumop_again:
 jeplusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
-                  emv = n_1;
+                  f |= a_SOFTERR;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
                }else
                   lhv -= rhv;
@@ -2593,7 +2591,7 @@ jeplusminus:
                   if(rhv != 0 && lhv != 0 && SI64_MAX / rhv > lhv){
                      if(!(f & a_SATURATED))
                         goto jenum_overflow;
-                     emv = n_1;
+                     f |= a_SOFTERR;
                      lhv = SI64_MAX;
                   }else
                      lhv *= rhv;
@@ -2602,7 +2600,7 @@ jeplusminus:
                      if(lhv != 0 && SI64_MIN / lhv < rhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        emv = n_1;
+                        f |= a_SOFTERR;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2610,7 +2608,7 @@ jeplusminus:
                      if(rhv != 0 && lhv != 0 && SI64_MIN / rhv < lhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        emv = n_1;
+                        f |= a_SOFTERR;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2621,7 +2619,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  emv = n_1;
+                  f |= a_SOFTERR;
                   lhv = SI64_MAX;
                }else
                   lhv /= rhv;
@@ -2630,7 +2628,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  emv = n_1;
+                  f |= a_SOFTERR;
                   lhv = SI64_MAX;
                }else
                   lhv %= rhv;
@@ -2756,7 +2754,7 @@ jeplusminus:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
-         emv = n_1;
+         f |= a_SOFTERR;
       }
 
       if(argv[1] != NULL){
@@ -2773,7 +2771,7 @@ jeplusminus:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
-            emv = n_1;
+            f |= a_SOFTERR;
          }
       }
 #ifdef HAVE_REGEX
@@ -2895,11 +2893,10 @@ jleave:
             varbuf, lhv, lhv, lhv);
       }else
          fprintf(n_stdout, "%s\n", varres);
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
-      f |= a_ERR;
-      emv = n_1;
-   }
-   n__EM_SET(emv);
+   }else if(!n_var_vset(varname, (uintptr_t)varres))
+      f |= a_ERR | a_SOFTERR;
+   else if(!(f & a_SOFTERR))
+      n_pstate_var__em = n_0;
    NYD_LEAVE;
    return (f & a_ERR) ? 1 : 0;
 
@@ -2907,8 +2904,7 @@ jsofterr:
    f &= ~a_ERR;
 jerr:
    f &= ~(a_ISNUM | a_ISDECIMAL);
-   f |= a_ISNUM;
-   emv = n_1;
+   f |= a_SOFTERR | a_ISNUM;
    lhv = -1;
    goto jleave;
 jesubcmd:

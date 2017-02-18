@@ -397,13 +397,13 @@ _EOT
    print F "\n";
    foreach my $e (@ENTS){
       if($e->{name} eq '--special-param'){
-         print F "#define a_AMV_VAR_SPECIAL_PARAM_MAP_IDX ${i}u\n"
+         print F "#define a_AMV_VAR__SPECIAL_PARAM_MAP_IDX ${i}u\n"
       }
       # The rest are only speedups
       elsif($e->{name} eq '?'){
-         print F "#define a_AMV_VAR_QM_MAP_IDX ${i}u\n"
+         print F "#define a_AMV_VAR__QM_MAP_IDX ${i}u\n"
       }elsif($e->{name} eq '!'){
-         print F "#define a_AMV_VAR_EM_MAP_IDX ${i}u\n"
+         print F "#define a_AMV_VAR__EM_MAP_IDX ${i}u\n"
       }
       ++$i
    }

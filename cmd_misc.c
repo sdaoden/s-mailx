@@ -165,19 +165,21 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
+         if(n_var_vset(varname, (uintptr_t)sp->s_dat))
+            n_pstate_var__em = n_0;
+         else
             v = NULL;
       }else{
          l = strlen(sp->s_dat);
          sp = n_string_trunc(sp, l);
-         if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) != sp->s_len ||
-               putc('\n', n_stdout) == EOF)
+         if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
+               putc('\n', n_stdout) != EOF)
+            n_pstate_var__em = n_0;
+         else
             v = NULL;
       }
       break;
    }
-   n__EM_SET(v == NULL ? n_1 : n_0);
-
    NYD_LEAVE;
    return (v == NULL);
 }

@@ -644,7 +644,7 @@ FL int
 c_urlcodec(void *v){
    struct n_string s_b, *sp;
    bool_t ispath;
-   char const **argv, *varname, *varres, *emv, *cp;
+   char const **argv, *varname, *varres, *cp;
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
@@ -663,16 +663,15 @@ c_urlcodec(void *v){
       sp = n_string_push_cp(sp, *argv);
    }
 
-   emv = n_0;
    if(is_asccaseprefix(cp, "encode")){
       if((varres = urlxenc(n_string_cp(sp), ispath)) == NULL){
          varres = sp->s_dat;
-         emv = n_1;
+         v = NULL;
       }
    }else if(is_asccaseprefix(cp, "decode")){
       if((varres = urlxdec(n_string_cp(sp))) == NULL){
          varres = sp->s_dat;
-         emv = n_1;
+         v = NULL;
       }
    }else{
       n_err(_("`urlcodec': invalid subcommand: %s\n"), cp);
@@ -683,18 +682,21 @@ c_urlcodec(void *v){
    assert(cp != NULL);
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
-         emv = n_1;
          cp = NULL;
+         v = NULL;
       }
    }else{
       struct str in, out;
 
       in.l = strlen(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
-      fprintf(n_stdout, "%s\n", out.s);
+      if(fprintf(n_stdout, "%s\n", out.s) < 0)
+         cp = NULL;
       free(out.s);
    }
-   n__EM_SET(emv);
+
+   if(v != NULL)
+      n_pstate_var__em = n_0;
 jleave:
    NYD_LEAVE;
    return (cp != NULL ? 0 : 1);

@@ -836,7 +836,7 @@ jrestart:
    if(*word == '\0'){
       if((n_pstate & n_PS_ROBOT) || gp != NULL)
          goto jerr0;
-      cmd = a_lex_cmd_tab + 0;
+      cmd = &a_lex_cmd_tab[0];
       goto jexec;
    }
 
@@ -854,8 +854,7 @@ jrestart:
       /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
       if(gp != NULL && !strcmp(word, gp->lg_name)){
          if(n_poption & n_PO_D_V)
-            n_err(_("Actively avoiding self-recursion of `ghost': %s\n"),
-               word);
+            n_err(_("Actively avoiding self-recursion of `ghost': %s\n"), word);
       }else for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
          if(!strcmp(word, gp->lg_name)){
             if(line.l > 0){
@@ -887,6 +886,7 @@ jrestart:
          c_cmdnotsupp(NULL);
          cmd = NULL;
       }
+      n_pstate_var__em = n_m1;
       goto jleave;
    }
 
@@ -895,6 +895,8 @@ jrestart:
 jexec:
    if(!(cmd->lc_argtype & ARG_F) && condstack_isskip())
       goto jerr0;
+
+   n_pstate_var__em = n_1;
 
    /* Process the arguments to the command, depending on the type it expects */
    if((cmd->lc_argtype & ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
@@ -1057,8 +1059,13 @@ je96:
       evp->le_add_history = (((cmd->lc_argtype & ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
+   if(!(cmd->lc_argtype & ARG_EM) && rv == 0)
+      n_pstate_var__em = n_0;
 jleave:
-   n_PS_ROOT_BLOCK(ok_vset(__qm, (rv == 0 ? n_0 : n_1))); /* TODO num=1/real */
+   n_PS_ROOT_BLOCK(
+      ok_vset(__qm, (rv == 0 ? n_0 : n_1));
+      ok_vset(__em, n_pstate_var__em)
+   );
 
    if(flags & a_IGNERR){
       rv = 0;
@@ -1079,7 +1086,7 @@ jleave:
 
    if(cmd == NULL)
       goto jret0;
-   if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint)) /* TODO rid of that! */
+   if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint))
       if(visible(dot))
          n_source_inject_input(n_INPUT_INJECT_COMMIT, "\\type",
             sizeof("\\type") -1);
@@ -1095,7 +1102,10 @@ jret:
    NYD_LEAVE;
    return rv;
 jerr0:
-   n_PS_ROOT_BLOCK(ok_vset(__qm, n_0)); /* TODO num=1/real */
+   n_PS_ROOT_BLOCK(
+      ok_vset(__qm, n_0);
+      ok_vset(__em, n_0)
+   );
    goto jleave0;
 }
 
@@ -1473,11 +1483,12 @@ jjump: /* TODO */
 
 static int
 a_lex_c_read(void *v){ /* TODO IFS? how? -r */
-   char const **argv, *cp, *emv, *cp2;
+   char const **argv, *cp, *cp2;
    int rv;
    NYD2_ENTER;
 
    rv = 0;
+
    for(argv = v; (cp = *argv++) != NULL;)
       if(!n_shexp_is_valid_varname(cp) || !n_var_is_user_writable(cp)){
          n_err(_("`read': variable (name) cannot be used: %s\n"),
@@ -1487,20 +1498,20 @@ a_lex_c_read(void *v){ /* TODO IFS? how? -r */
    if(rv)
       goto jleave;
 
-   emv = n_0;
-
    cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
          n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
          n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
          NULL, NULL);
-   if(cp == NULL)
+   if(cp == NULL){
       cp = n_empty;
+      rv = 1;
+   }
 
    for(argv = v; *argv != NULL; ++argv){
       char c;
 
-      while(blankchar(*cp))
+      while(blankspacechar(*cp))
          ++cp;
       if(*cp == '\0')
          break;
@@ -1511,12 +1522,12 @@ a_lex_c_read(void *v){ /* TODO IFS? how? -r */
             ;
          for(; cp2 > cp; --cp2){
             c = cp2[-1];
-            if(!blankchar(c))
+            if(!blankspacechar(c))
                break;
          }
       }else
          for(cp2 = cp; (c = *++cp2) != '\0';)
-            if(blankchar(c))
+            if(blankspacechar(c))
                break;
 
       /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
@@ -1524,7 +1535,7 @@ a_lex_c_read(void *v){ /* TODO IFS? how? -r */
 
          vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
          if(!n_var_vset(*argv, (uintptr_t)vcp))
-            emv = n_1;
+            rv = 1;
       }
 
       cp = cp2;
@@ -1533,9 +1544,10 @@ a_lex_c_read(void *v){ /* TODO IFS? how? -r */
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
       if(!n_var_vset(*argv, (uintptr_t)n_empty))
-         emv = n_1;
+         rv = 1;
 
-   n__EM_SET(emv);
+   if(rv == 0)
+      n_pstate_var__em = n_0;
    rv = 0;
 jleave:
    NYD2_LEAVE;

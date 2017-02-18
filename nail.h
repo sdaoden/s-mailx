@@ -1555,7 +1555,6 @@ enum okeys {
    ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
    /* xxx __em a.k.a. ! should be num=1 but that more expensive than what now */
    ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1,i3val="0"} */
-#define n__EM_SET(RS) n_PS_ROOT_BLOCK(ok_vset(__em,RS)) /* TODO struct CmdCtx */
 
    ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
@@ -2296,7 +2295,7 @@ enum argtype {
    ARG_V          = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    ARG_W          = 1u<<16,   /* Invalid when read only bit */
    ARG_X          = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   ARG_EM         = 1u<<30    /* Stores computation status result in *!* */
+   ARG_EM         = 1u<<30    /* Stores soft exit status in n_pstate_var__em */
 };
 
 enum gfield {
@@ -2508,11 +2507,16 @@ VL int n_exit_status;            /* Exit status */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct name *n_poption_arg_r; /* Argument to -r option */
-VL char const **n_smopts;        /* sendmail(1) opts from commline */
-VL size_t n_smopts_cnt;          /* Entries in smopts */
+VL char const **n_smopts;        /* MTA options from command line */
+VL size_t n_smopts_cnt;          /* Entries in n_smopts */
 
 VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
+/* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
+ * TODO struct CmdCtx where each command has its own ARGC/ARGV, soft/hard exit
+ * TODO status and may-place-in-history bit, we need to manage the soft exit
+ * TODO status with this global bypass, it is thus a.. */
+VL char const *n_pstate_var__em; /* TODO ..HACK */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
