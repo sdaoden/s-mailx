@@ -2230,8 +2230,15 @@ jmulti:{
                n_VISUAL_INFO_SKIP_ERRORS | n_VISUAL_INFO_WIDTH_QUERY))
             vic.vic_vi_width = shoup->s_len;
 
-         /* Put on screen.  Indent follow lines of same sort slot */
-         c1 = (c1 != c2);
+         /* Put on screen.  Indent follow lines of same sort slot.
+          * Leave enough room for filename tagging */
+         if((c1 = (c1 != c2))){
+#ifdef HAVE_C90AMEND1
+            c1 = (iswalnum(c2) != 0);
+#else
+            c1 = (alnumchar(c2) != 0);
+#endif
+         }
          if(isfirst || c1 ||
                scrwid < lnlen || scrwid - lnlen <= vic.vic_vi_width + 2){
             putc('\n', fp);
@@ -2248,7 +2255,7 @@ jsep:
          fputs(n_string_cp(shoup), fp);
          lnlen += vic.vic_vi_width;
 
-         /* Support the known file name tagging
+         /* Support the known filename tagging
           * XXX *line-editor-completion-filetype* or so */
          if(!lstat(fullpath, &sb)){
             char c = '\0';
