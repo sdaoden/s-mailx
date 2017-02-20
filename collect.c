@@ -1284,6 +1284,8 @@ a_coll_ocds__mac(void){
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    temporary_compose_mode_hook_call(a_coll_ocds__macname, NULL, NULL);
    _exit(n_EXIT_OK);
+   /* NOTREACHED */
+   return 0;
 }
 
 static void
