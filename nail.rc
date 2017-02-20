@@ -65,9 +65,6 @@ set bsdannounce
 # the screen.  (Set crt=0 to always page; value treated as number of lines)
 set crt
 
-# Define date display in header summary
-#set datefield="%R %m-%d" datefield-markout-older="   %g-%m-%d"
-
 # When composing messages a line consisting of `.' finalizes a message
 #set dot
 

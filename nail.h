@@ -1607,8 +1607,8 @@ ok_b_autothread,
    ok_v_compose_subject,               /* {rdonly=1} */
 
    ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
-   ok_v_datefield,
-   ok_v_datefield_markout_older,
+   ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
+   ok_v_datefield_markout_older,       /* {i3val="%Y-%m-%d"} */
    ok_b_debug,                         /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,

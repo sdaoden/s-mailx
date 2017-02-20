@@ -113,8 +113,8 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
 jattrok:
    if ((fmt = ok_vlook(headline)) == NULL) {
       fmt = ((ok_blook(bsdcompat) || ok_blook(bsdheadline))
-            ? "%>%a%m %-20f  %16d %3l/%-5o %i%-S"
-            : "%>%a%m %-18f %16d %4l/%-5o %i%-s");
+            ? "%>%a%m %-20f  %16d %4l/%-5o %i%-S"
+            : "%>%a%m %-18f %-16d %4l/%-5o %i%-s");
    }
 
    __hprf(yetprinted, fmt, msgno, f, threaded, attrlist);
@@ -374,7 +374,7 @@ jputcb:
             n = 16;
          if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*.*s", n, n, date);
+         n = fprintf(f, "%*.*s", n, n_ABS(n), date);
          wleft = (n >= 0) ? wleft - n : 0;
          break;
       case 'e':

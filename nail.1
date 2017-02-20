@@ -7157,38 +7157,41 @@ nor prevented.
 .
 .Mx
 .It Va datefield
-In the summary of
-.Ic headers
-the message date, if any is to be displayed according to the format of
-.Va headline ,
-is by default taken from the
-.Ql From_
-line of the message.
-If this variable is set the date as given in the
-.Ql Date:
-header field is used instead, converted to local time.
-To control the display format of the date assign a valid
+Controls the appearance of the
+.Ql %d
+date and time format specification of the
+.Va headline
+variable, that is used, for example, when viewing the summary of
+.Ic headers .
+If unset, then the local receiving date is used and displayed
+unformatted, otherwise the message sending
+.Ql Date: .
+It is possible to assign a
 .Xr strftime 3
-format string.
-(Note that the
+format string and control formatting, but embedding newlines via the
 .Ql %n
-format should not be used, because \*(UA does not take embedded newlines
-into account when calculating how many lines fit onto the screen.)
-Also see
+format is not supported, and will result in display errors.
+The default is
+.Ql %Y-%m-%d %H:%M ,
+and also see
 .Va datefield-markout-older .
 .
 .Mx
 .It Va datefield-markout-older
-This variable, when set in addition to
-.Va datefield ,
-is used to display
-.Dq older
-messages (concept is rather comparable to the
+Only used in conjunction with
+.Va datefield .
+Can be used to create a visible distinction of messages dated more than
+a day in the future, or older than six months, a concept comparable to the
 .Fl \&\&l
 option of the POSIX utility
-.Xr ls 1 ) .
-The content interpretation is identical to
-.Va \&\&datefield .
+.Xr ls 1 .
+If set to the empty string, then the plain month, day and year of the
+.Ql Date:
+will be displayed, but a
+.Xr strftime 3
+format string to control formatting can be assigned.
+The default is
+.Ql %Y-%m-%d .
 .
 .Mx
 .It Va debug
@@ -7664,11 +7667,15 @@ Message attribute character (status flag); the actual content can be
 adjusted by setting
 .Va attrlist .
 .It Ql %d
-The date when the message was received, or the date found in the
+The date found in the
 .Ql From:
-header when the
+header of the message when
 .Va datefield
-variable is set (optionally to a date display format string).
+is set (the default), otherwise the date when the message was received.
+Formatting can be controlled by assigning a
+.Xr strftime 3
+format string to
+.Va datefield .
 .It Ql %e
 The indenting level in threaded mode.
 .It Ql %f
