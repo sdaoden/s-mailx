@@ -1749,7 +1749,7 @@ FL int
 
          *linesize = liip->lii_len;
          *linebuf = (char*)liip;
-         memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
+         memmove(*linebuf, liip->lii_dat, liip->lii_len +1);
          iftype = "INJECTION";
       }else{
          if((*linebuf = a_lex_input->li_lines[a_lex_input->li_loff]) == NULL){
@@ -1789,7 +1789,7 @@ FL int
             /* Simply reuse the buffer */
             n = (int)(*linesize = liip->lii_len);
             *linebuf = (char*)liip;
-            memcpy(*linebuf, liip->lii_dat, liip->lii_len +1);
+            memmove(*linebuf, liip->lii_dat, liip->lii_len +1);
             iftype = "INJECTION";
             n_pstate |= n_PS_READLINE_NL;
             goto jhave_dat;
@@ -1922,7 +1922,7 @@ jhave_dat:
             break;
       }
       if(i > 0){
-         memcpy(&(*linebuf)[0], &(*linebuf)[i], j -= i);
+         memmove(&(*linebuf)[0], &(*linebuf)[i], j -= i);
          (*linebuf)[n = (int)j] = '\0';
       }
    }
