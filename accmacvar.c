@@ -1453,6 +1453,7 @@ static size_t
 a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var_carrier avc;
    char const *quote;
+   bool_t isset;
    size_t i;
    NYD2_ENTER;
 
@@ -1460,25 +1461,15 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    i = 0;
 
    a_amv_var_revlookup(&avc, name);
-   if(!a_amv_var_lookup(&avc, FAL0)){
-      struct str s;
-
-      msgp = n_string_assign_cp(msgp, _("No such variable: "));
-      s.s = n_UNCONST(name);
-      s.l = UIZ_MAX;
-      msgp = n_shexp_quote(msgp, &s, FAL0);
-      goto jleave;
-   }
+   isset = a_amv_var_lookup(&avc, FAL0);
 
    if(n_poption & n_PO_D_V){
       if(avc.avc_map == NULL){
-         msgp = n_string_push_c(msgp, '#');
-         msgp = n_string_push_cp(msgp, "assembled");
+         msgp = n_string_push_cp(msgp, "#assembled variable with value");
          i = 1;
-      }
-      /* C99 */{
+      }else{
          struct{
-            ui16_t flags;
+            ui16_t flag;
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_VIRT, "virtual"},
@@ -1496,24 +1487,34 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
-            if(avc.avc_var->av_flags & tp->flags){
+            if(isset ? (avc.avc_var->av_flags & tp->flag)
+                  : (avc.avc_map->avm_flags & tp->flag)){
                msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
                msgp = n_string_push_cp(msgp, tp->msg);
             }
-
       }
       if(i > 0)
          msgp = n_string_push_cp(msgp, "\n  ");
    }
 
-   if(avc.avc_var->av_flags & a_AMV_VF_RDONLY)
-      msgp = n_string_push_cp(msgp, "# ");
+   if(!isset || (avc.avc_var->av_flags & a_AMV_VF_RDONLY)){
+      msgp = n_string_push_cp(msgp, "#");
+      if(!isset){
+         if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
+            msgp = n_string_push_cp(msgp, "boolean; ");
+         msgp = n_string_push_cp(msgp, "variable not set: ");
+         msgp = n_string_push_cp(msgp, n_shexp_quote_cp(name, FAL0));
+         goto jleave;
+      }
+   }
+
    n_UNINIT(quote, NULL);
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
       quote = n_shexp_quote_cp(avc.avc_var->av_value, TRU1);
       if(strcmp(quote, avc.avc_var->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
-   }
+   }else if(n_poption & n_PO_D_V)
+      msgp = n_string_push_cp(msgp, "wysh ");
    if(avc.avc_var->av_flags & a_AMV_VF_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
@@ -1521,7 +1522,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
       msgp = n_string_push_c(msgp, '=');
       msgp = n_string_push_cp(msgp, quote);
-   }
+   }else if(n_poption & n_PO_D_V)
+      msgp = n_string_push_cp(msgp, " #boolean");
 
 jleave:
    msgp = n_string_push_c(msgp, '\n');
