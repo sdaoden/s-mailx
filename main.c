@@ -232,7 +232,6 @@ a_main_startup(void){
    n_stdin = stdin;
    n_stdout = stdout;
    n_stderr = stderr;
-   image = -1;
    dflpipe = SIG_DFL;
    a_main_oind = /*_oerr =*/ 1;
 

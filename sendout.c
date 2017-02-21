@@ -103,7 +103,8 @@ static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
 static int           sendmail_internal(void *v, int recipient_record);
 
 /* Deal with file and pipe addressees */
-static struct name * _outof(struct name *names, FILE *fo, bool_t *senderror);
+static struct name *a_sendout_file_a_pipe(struct name *names, FILE *fo,
+                     bool_t *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
 static bool_t        mightrecord(FILE *fp, struct name *to, bool_t resend);
@@ -791,31 +792,27 @@ sendmail_internal(void *v, int recipient_record)
 }
 
 static struct name *
-_outof(struct name *names, FILE *fo, bool_t *senderror)
-{
+a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
    ui32_t pipecnt, xcnt, i;
-   int *fda;
    char const *sh;
    struct name *np;
-   FILE *fin = NULL, *fout;
+   FILE *fp, **fppa;
    NYD_ENTER;
+
+   fp = NULL;
+   fppa = NULL;
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */
-   fda = NULL; /* Silence cc */
-   for (pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink) {
-      if (np->n_type & GDEL)
+   for(pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink){
+      if(np->n_type & GDEL)
          continue;
-      switch (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) {
-      case NAME_ADDRSPEC_ISFILE:
-         ++xcnt;
-         break;
-      case NAME_ADDRSPEC_ISPIPE:
-         ++pipecnt;
-         break;
+      switch(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE){
+      case NAME_ADDRSPEC_ISFILE: ++xcnt; break;
+      case NAME_ADDRSPEC_ISPIPE: ++pipecnt; break;
       }
    }
-   if (pipecnt == 0 && xcnt == 0)
+   if((pipecnt | xcnt) == 0)
       goto jleave;
 
    /* Otherwise create an array of file descriptors for each found pipe
@@ -824,19 +821,18 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
     * to deal with that.
     * To make our life a bit easier let's just use the auto-reclaimed
     * string storage */
-   if (pipecnt == 0 || (n_poption & n_PO_DEBUG)) {
+   if(pipecnt == 0 || (n_poption & n_PO_DEBUG)){
       pipecnt = 0;
-      fda = NULL;
       sh = NULL;
-   } else {
-      fda = salloc(sizeof(int) * pipecnt);
-      for (i = 0; i < pipecnt; ++i)
-         fda[i] = -1;
+   }else{
+      i = sizeof(FILE*) * pipecnt;
+      fppa = n_lofi_alloc(i);
+      memset(fppa, 0, i);
       sh = ok_vlook(SHELL);
    }
 
-   for (np = names; np != NULL; np = np->n_flink) {
-      if (!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE))
+   for(np = names; np != NULL; np = np->n_flink){
+      if(!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) || (np->n_type & GDEL))
          continue;
 
       /* In days of old we removed the entry from the the list; now for sake of
@@ -852,63 +848,41 @@ _outof(struct name *names, FILE *fo, bool_t *senderror)
          continue;
 
       /* See if we have copied the complete message out yet.  If not, do so */
-      if (image < 0) {
+      if(fp == NULL){
          int c;
          char *tempEdit;
 
-         if ((fout = Ftmp(&tempEdit, "outof",
-               OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)) == NULL) {
+         if((fp = Ftmp(&tempEdit, "outof", OF_RDWR | OF_HOLDSIGS | OF_REGISTER)
+               ) == NULL){
             n_perr(_("Creation of temporary image"), 0);
-            *senderror = TRU1;
-            goto jcant;
+            pipecnt = 0;
+            goto jerror;
          }
-         if ((image = open(tempEdit, O_RDWR | _O_CLOEXEC)) >= 0) {
-            _CLOEXEC_SET(image);
-            for (i = 0; i < pipecnt; ++i) {
-               int fd = open(tempEdit, O_RDONLY | _O_CLOEXEC);
-               if (fd < 0) {
-                  close(image);
-                  image = -1;
-                  pipecnt = i;
-                  break;
-               }
-               fda[i] = fd;
-               _CLOEXEC_SET(fd);
+
+         for(i = 0; i < pipecnt; ++i)
+            if((fppa[i] = Fopen(tempEdit, "r")) == NULL){
+               n_perr(_("Creation of pipe image descriptor"), 0);
+               break;
             }
-         }
+
          Ftmp_release(&tempEdit);
-
-         if (image < 0) {
-            n_perr(_("Creating descriptor duplicate of temporary image"), 0);
-            *senderror = TRU1;
-            Fclose(fout);
-            goto jcant;
+         if(i != pipecnt){
+            pipecnt = i;
+            goto jerror;
          }
 
-         fprintf(fout, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
+         fprintf(fp, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
          c = EOF;
-         while (i = c, (c = getc(fo)) != EOF)
-            putc(c, fout);
+         while(i = c, (c = getc(fo)) != EOF)
+            putc(c, fp);
          rewind(fo);
-         if ((int)i != '\n')
-            putc('\n', fout);
-         putc('\n', fout);
-         fflush(fout);
-         if (ferror(fout)) {
+         if((int)i != '\n')
+            putc('\n', fp);
+         putc('\n', fp);
+         fflush(fp);
+         if(ferror(fp)){
             n_perr(_("Finalizing write of temporary image"), 0);
-            Fclose(fout);
-            goto jcantfout;
-         }
-         Fclose(fout);
-
-         /* If we have to serve file addressees, open reader */
-         if (xcnt != 0 && (fin = Fdopen(image, "r", FAL0)) == NULL) {
-            n_perr(_("Failed to open a temporary image duplicate"), 0);
-jcantfout:
-            *senderror = TRU1;
-            close(image);
-            image = -1;
-            goto jcant;
+            goto jerror;
          }
 
          /* From now on use xcnt as a counter for pipecnt */
@@ -917,7 +891,7 @@ jcantfout:
 
       /* Now either copy "image" to the desired file or give it as the standard
        * input to the desired program as appropriate */
-      if (np->n_flags & NAME_ADDRSPEC_ISPIPE) {
+      if(np->n_flags & NAME_ADDRSPEC_ISPIPE){
          int pid;
          sigset_t nset;
 
@@ -925,65 +899,61 @@ jcantfout:
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = start_command(sh, &nset, fda[xcnt++], COMMAND_FD_NULL, "-c",
-               np->n_name + 1, NULL, NULL);
-         if (pid < 0) {
+         pid = start_command(sh, &nset, fileno(fppa[xcnt++]), COMMAND_FD_NULL,
+               "-c", &np->n_name[1], NULL, NULL);
+         if(pid < 0){
             n_err(_("Piping message to %s failed\n"),
                n_shexp_quote_cp(np->n_name, FAL0));
-            *senderror = TRU1;
-            goto jcant;
+            goto jerror;
          }
          free_child(pid);
-      } else {
+      }else{
          int c;
+         FILE *fout;
          char const *fname, *fnameq;
 
-         if ((fname = fexpand(np->n_name, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-            *senderror = TRU1;
-            goto jcant;
-         }
+         if((fname = fexpand(np->n_name, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+            goto jerror;
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
          if(fname[0] == '-' && fname[1] == '\0')
             fout = n_stdout;
-         else if ((fout = Zopen(fname, "a")) == NULL) {
+         else if((fout = Zopen(fname, "a")) == NULL){
             n_err(_("Writing message to %s failed: %s\n"),
                fnameq, strerror(errno));
-            *senderror = TRU1;
-            goto jcant;
+            goto jerror;
          }
-         rewind(fin);
-         while ((c = getc(fin)) != EOF)
+
+         rewind(fp);
+         while((c = getc(fp)) != EOF)
             putc(c, fout);
-         if (ferror(fout)) {
+         if(ferror(fout)){
             n_err(_("Writing message to %s failed: %s\n"),
                fnameq, _("write error"));
             *senderror = TRU1;
          }
+
          if(fout != n_stdout)
             Fclose(fout);
       }
-
-jcant:
-      if (image < 0)
-         goto jdelall;
    }
 
 jleave:
-   if (fin != NULL)
-      Fclose(fin);
-   for (i = 0; i < pipecnt; ++i)
-      close(fda[i]);
-   if (image >= 0) {
-      close(image);
-      image = -1;
+   if(fp != NULL)
+      Fclose(fp);
+   if(fppa != NULL){
+      for(i = 0; i < pipecnt; ++i)
+         if((fp = fppa[i]) != NULL)
+            Fclose(fp);
+      n_lofi_free(fppa);
    }
    NYD_LEAVE;
    return names;
 
-jdelall:
-   while (np != NULL) {
-      if (np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
+jerror:
+   *senderror = TRU1;
+   while(np != NULL){
+      if(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
          np->n_type |= GDEL;
       np = np->n_flink;
    }
@@ -1845,11 +1815,11 @@ mail1(struct header *hp, int printheaders, struct message *quote,
     * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
 
    /* Deliver pipe and file addressees */
-   to = _outof(to, mtf, &_sendout_error);
+   to = a_sendout_file_a_pipe(to, mtf, &_sendout_error);
    if (_sendout_error)
       savedeadletter(mtf, FAL0);
 
-   to = elide(to); /* XXX needed only to drop GDELs due to _outof()! */
+   to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
 
    {  ui32_t cnt = count(to);
       if ((!recipient_record || cnt > 0) &&
@@ -2290,7 +2260,7 @@ jerr_o:
    Fclose(nfo);
    rewind(nfi);
 
-   to = _outof(to, nfi, &_sendout_error);
+   to = a_sendout_file_a_pipe(to, nfi, &_sendout_error);
 
    if (_sendout_error)
       savedeadletter(nfi, FAL0);

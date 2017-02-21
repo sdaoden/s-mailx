@@ -1141,10 +1141,6 @@ a_lex_onintr(int s){ /* TODO block signals while acting */
 
    termios_state_reset();
    close_all_files(); /* FIXME .. of current level ONLU! */
-   if(image >= 0){
-      close(image);
-      image = -1;
-   }
 
    a_lex_unstack(TRUM1);
 

@@ -2521,7 +2521,6 @@ VL char const *n_pstate_var__em; /* TODO ..HACK */
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
 VL struct mailbox mb;                  /* Current mailbox */
-VL int            image;               /* File descriptor for msg image */
 VL char           mailname[PATH_MAX];  /* Name of current file TODO URL/object*/
 VL char           displayname[80 - 40]; /* Prettyfied for display TODO URL/obj*/
 VL char           prevfile[PATH_MAX];  /* Name of previous file TODO URL/obj */
