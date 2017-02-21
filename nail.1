@@ -3309,12 +3309,19 @@ The return status is tracked via
 .
 .Mx
 .It Ic alias
-(a) With no arguments, shows all currently-defined aliases.
-With one argument, shows that alias.
-With more than one argument,
-creates a new alias or appends to an existing one.
-.Ic unalias
-can be used to delete aliases.
+(a) Aliases are a method of creating personal distribution lists that
+map a single alias name to none to multiple real receivers;
+these aliases become expanded after message composing is completed; to
+delete aliases, use the command
+.Ic unalias .
+With no arguments the command shows all currently defined aliases.
+With one argument, shows the expansion of the given alias.
+With more than one argument, creates or appends to the alias name given
+as the first argument the remaining arguments.
+Alias names are restricted to alphabetic characters, digits, the
+underscore, hyphen-minus, the number sign, colon, commercial at and
+period, the last character can also be the dollar sign:
+.Ql [[:alnum:]_#:@.-]+$? .
 .
 .Mx
 .It Ic alternates

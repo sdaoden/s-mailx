@@ -1521,6 +1521,9 @@ FL int         is_myname(char const *name);
 /* `addrcodec' */
 FL int c_addrcodec(void *v);
 
+/* Is name a valid alias */
+FL bool_t n_alias_is_valid_name(char const *name);
+
 /* `(un)?alias' */
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);

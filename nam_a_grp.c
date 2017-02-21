@@ -1604,6 +1604,28 @@ c_addrcodec(void *v){
    return rv;
 }
 
+FL bool_t
+n_alias_is_valid_name(char const *name){
+   char c;
+   char const *cp;
+   bool_t rv;
+   NYD2_ENTER;
+
+   for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
+      /* User names, plus things explicitly mentioned in Postfix aliases(5).
+       * As an extension, allow period: [[:alnum:]_#:@.-]+$? */
+      if(!alnumchar(c) && c != '_' && c != '-' &&
+            c != '#' && c != ':' && c != '@' &&
+            c != '.'){
+         if(c == '$' && cp != name && *cp == '\0')
+            break;
+         rv = FAL0;
+         break;
+      }
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL int
 c_alias(void *v)
 {
@@ -1614,7 +1636,10 @@ c_alias(void *v)
 
    if (*argv == NULL)
       _group_print_all(GT_ALIAS);
-   else if (argv[1] == NULL) {
+   else if (!n_alias_is_valid_name(*argv)) {
+      n_err(_("Not a valid alias name: %s\n"), *argv);
+      rv = 1;
+   } else if (argv[1] == NULL) {
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
          _group_print(gp, n_stdout);
       else {

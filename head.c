@@ -513,9 +513,11 @@ jaddr_check:
       goto jleave;
    }
 
-   if (!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
-   else{
+      if(!n_alias_is_valid_name(agp->ag_input))
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_NAME, '.');
+   }else{
       /* If we seem to know that this is an address.  Ensure this is correct
        * according to RFC 5322 TODO the entire address parser should be like
        * TODO that for one, and then we should now whether structured or
@@ -1668,8 +1670,10 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
             ok8bit = FAL0;
          } else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
             cs = _("%s contains invalid %s sequence\n");
-         else
-            cs = _("%s contains invalid non-ASCII byte %s\n");
+         else if (f & NAME_ADDRSPEC_ERR_NAME) {
+            cs = _("%s is an invalid alias name\n");
+         } else
+            cs = _("%s contains invalid byte %s\n");
 
          c = NAME_ADDRSPEC_ERR_GETWC(f);
          snprintf(cbuf, sizeof cbuf,

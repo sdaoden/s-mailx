@@ -2372,20 +2372,21 @@ enum nameflags {
    NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
    NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is a valid mail network address */
-   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a valid mail network address */
+   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is an alias name */
+   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a mail network address */
 
    NAME_ADDRSPEC_ERR_EMPTY = 1<< 9, /* An empty string (or NULL) */
    NAME_ADDRSPEC_ERR_ATSEQ = 1<<10, /* Weird @ sequence */
    NAME_ADDRSPEC_ERR_CHAR  = 1<<11, /* Invalid character */
    NAME_ADDRSPEC_ERR_IDNA  = 1<<12, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ERR_NAME = 1<<13, /* Alias with invalid content */
    NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
-         NAME_ADDRSPEC_ERR_IDNA,
+         NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_NAME,
 
    /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC  = 13,
-   _NAME_MAXWC    = 0x3FFFF,
+   _NAME_SHIFTWC  = 14,
+   _NAME_MAXWC    = 0x1FFFF,
    _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
 };
 
