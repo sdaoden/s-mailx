@@ -1766,9 +1766,7 @@ FL void        savedeadletter(FILE *fp, bool_t fflush_rewind_first);
  * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
  * result string is terminated via \0\0 and n_PS_EXPAND_MULTIRESULT is set.
  * Returns the file name as an auto-reclaimed string */
-FL char *      fexpand(char const *name, enum fexp_mode fexpm);
-
-#define expand(N)                fexpand(N, FEXP_FULL)   /* XXX remove these */
+FL char *fexpand(char const *name, enum fexp_mode fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
@@ -1789,11 +1787,11 @@ FL enum n_shexp_state n_shexp_parse_token(enum n_shexp_parse_flags flags,
  * TODO already expanded and can thus not be reverted, but ALL we have */
 FL struct n_string *n_shexp_quote(struct n_string *store,
                      struct str const *input, bool_t rndtrip);
-FL char *      n_shexp_quote_cp(char const *cp, bool_t rndtrip);
+FL char *n_shexp_quote_cp(char const *cp, bool_t rndtrip);
 
 /* Can name be used as a variable name?  I.e., this returns false for special
  * parameter names like $# etc. */
-FL bool_t      n_shexp_is_valid_varname(char const *name);
+FL bool_t n_shexp_is_valid_varname(char const *name);
 
 /*
  * signal.c

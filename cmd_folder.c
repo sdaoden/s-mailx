@@ -173,7 +173,7 @@ c_remove(void *v)
    fmt = _("Remove %s");
    fmt_len = strlen(fmt);
    do {
-      if ((name = expand(*args)) == NULL)
+      if ((name = fexpand(*args, FEXP_FULL)) == NULL)
          continue;
       ename = n_shexp_quote_cp(name, FAL0);
 
@@ -244,10 +244,10 @@ c_rename(void *v)
       goto jleave;
    }
 
-   if ((old = expand(args[0])) == NULL)
+   if ((old = fexpand(args[0], FEXP_FULL)) == NULL)
       goto jleave;
    oldp = which_protocol(old);
-   if ((new = expand(args[1])) == NULL)
+   if ((new = fexpand(args[1], FEXP_FULL)) == NULL)
       goto jleave;
    newp = which_protocol(new);
 

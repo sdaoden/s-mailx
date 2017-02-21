@@ -979,7 +979,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend)
       cp = ok_vlook(record);
 
    if (cp != NULL) {
-      if ((ep = expand(cp)) == NULL) {
+      if ((ep = fexpand(cp, FEXP_FULL)) == NULL) {
          ep = "NULL";
          goto jbail;
       }

@@ -602,15 +602,14 @@ jleave:
 }
 
 FL void
-save_mbox_for_possible_quitstuff(void) /* TODO try to get rid of that */
-{
+save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
    char const *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if ((cp = expand("&")) == NULL)
+   if((cp = fexpand("&", FEXP_FULL)) == NULL)
       cp = n_empty;
    n_strscpy(_mboxname, cp, sizeof _mboxname);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL int

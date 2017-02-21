@@ -128,7 +128,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       goto jsend;
    }
 
-   if ((file = expand(file)) == NULL)
+   if ((file = fexpand(file, FEXP_FULL)) == NULL)
       goto jleave;
 
    obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
@@ -257,7 +257,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
    if ((cp = laststring(linebuf, flag, TRU1)) == NULL) {
       if (usembox) {
          *flag = FAL0;
-         cp = expand("&");
+         cp = fexpand("&", FEXP_FULL);
       } else
          n_err(_("No file specified\n"));
    }
