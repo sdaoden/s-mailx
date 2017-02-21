@@ -1219,6 +1219,19 @@ __mta_start(struct sendbundle *sbp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
+      /* C99 */{
+         struct name *np;
+
+         for(np = sbp->sb_to; np != NULL; np = np->n_flink)
+            if(!(np->n_type & GDEL) && (np->n_flags & NAME_ADDRSPEC_ISNAME)){
+               n_err(_("SMTP *mta* cannot send to alias name: %s\n"),
+                  n_shexp_quote_cp(np->n_name, FAL0));
+               rv = FAL0;
+            }
+         if(!rv)
+            goto jstop;
+      }
+
       if (n_poption & n_PO_DEBUG) {
          (void)smtp_mta(sbp);
          rv = TRU1;
