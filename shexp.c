@@ -1644,4 +1644,77 @@ n_shexp_is_valid_varname(char const *name){
    return rv;
 }
 
+FL int
+c_shcodec(void *v){
+   struct str in;
+   struct n_string sou_b, *soup;
+   size_t alen;
+   bool_t norndtrip;
+   char const **argv, *varname, *act, *cp;
+
+   soup = n_string_creat_auto(&sou_b);
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+      ;
+   if((norndtrip = (*act == '+')))
+      ++act;
+   if(act == cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
+
+   in.l = strlen(in.s = n_UNCONST(cp));
+
+   if(is_ascncaseprefix(act, "encode", alen))
+      soup = n_shexp_quote(soup, &in, !norndtrip);
+   else if(!norndtrip && is_ascncaseprefix(act, "decode", alen)){
+      for(;;){
+         enum n_shexp_state shs;
+
+         shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);
+         if(shs & n_SHEXP_STATE_ERR_MASK){
+            soup = n_string_assign_cp(soup, cp);
+            v = NULL;
+            break;
+         }
+         if(shs & n_SHEXP_STATE_STOP)
+            break;
+      }
+   }else
+      goto jesynopsis;
+
+   assert(cp != NULL);
+   if(varname != NULL){
+      cp = n_string_cp(soup);
+      if(!n_var_vset(varname, (uintptr_t)cp)){
+         cp = NULL;
+         v = NULL;
+      }
+   }else{
+      struct str out;
+
+      in.s = n_string_cp(soup);
+      in.l = soup->s_len;
+      makeprint(&in, &out);
+      if(fprintf(n_stdout, "%s\n", out.s) < 0)
+         cp = NULL;
+      free(out.s);
+   }
+
+   if(v != NULL)
+      n_pstate_var__em = n_0;
+jleave:
+   NYD_LEAVE;
+   return (cp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   cp = NULL;
+   goto jleave;
+}
+
 /* s-it-mode */

@@ -783,16 +783,18 @@ jput_quote:
             ostp = n_string_push_c(ostp, '"');
             tp = tcurr;
             do/* while tcurr && TATOM||TQUOTE */{
+               cp = &cp1st[tcurr->t_start];
+               cpmax = &cp1st[tcurr->t_end];
+               if(cp == cpmax)
+                  continue;
+
                if(tcurr != tp)
                   ostp = n_string_push_c(ostp, ' ');
+
                if((tcurr->t_f & (a_T_TATOM | a_T_SPECIAL)) == a_T_TATOM)
-                  ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                        (tcurr->t_end - tcurr->t_start));
+                  ostp = n_string_push_buf(ostp, cp, PTR2SIZE(cpmax - cp));
                else{
                   bool_t esc;
-
-                  cp = &cp1st[tcurr->t_start];
-                  cpmax = &cp1st[tcurr->t_end];
 
                   for(esc = FAL0; cp < cpmax;){
                      if((c.c = *cp++) == '\\' && !esc)

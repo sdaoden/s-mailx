@@ -1810,6 +1810,9 @@ FL char *n_shexp_quote_cp(char const *cp, bool_t rndtrip);
  * parameter names like $# etc. */
 FL bool_t n_shexp_is_valid_varname(char const *name);
 
+/* `shcodec' */
+FL int c_shcodec(void *v);
+
 /*
  * signal.c
  */

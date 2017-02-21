@@ -1555,70 +1555,112 @@ FL int
 c_addrcodec(void *v){
    struct n_addrguts ag;
    struct n_string s_b, *sp;
-   char const **argv, *varname, *varres, *cp;
-   int rv;
+   size_t alen;
+   int mode;
+   char const **argv, *varname, *act, *cp;
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
-   rv = 0;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
-   for(; *argv != NULL; ++argv){
-      if(sp->s_len > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, *argv);
-   }
-
-   /* */
-   /* TODO nalloc() cannot yet fail, thus need to do the work twice!!
-    * TODO I.e. later on this could be a simple nalloc() wrapper.. */
-   for(cp = n_string_cp(sp); blankchar(*cp); ++cp)
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
       ;
-   if(cp != sp->s_dat)
-      sp = n_string_cut(sp, 0, PTR2SIZE(cp - sp->s_dat));
-   for(varres = cp = &sp->s_dat[sp->s_len];
-         cp > sp->s_dat && blankchar(cp[-1]); --cp)
-      ;
-   if(cp != varres)
-      sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - cp));
+   mode = 0;
+   if(*act == '+')
+      mode = 1, ++act;
+   if(*act == '+')
+      mode = 2, ++act;
+   if(act >= cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
 
    /* C99 */{
       size_t i;
 
-      /* However, the difference for this command is that the user enters what
-       * she wants to have, and we should make something of it.  Therefore any
-       * quotes are necessarily to be turned to quoted-pair! */
-      n_string_cp(sp);
-      for(i = 0; i < sp->s_len; ++i)
-         if(sp->s_dat[i] == '"' || sp->s_dat[i] == '\\')
-            sp = n_string_insert_c(sp, i++, '\\');
+      i = strlen(cp);
+      if(i <= UIZ_MAX / 4)
+         i <<= 1;
+      sp = n_string_reserve(sp, i);
    }
 
-   if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL ||
-         (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
-            ) != NAME_ADDRSPEC_ISADDR){
-      varres = sp->s_dat;
-      v = NULL;
-   }else{
-      struct name *np;
+   if(is_ascncaseprefix(act, "encode", alen)){
+      /* This function cannot be a simple nalloc() wrapper even later on, since
+       * we may need to turn any " or \ into a quoted-pair */
+      char c;
 
-      np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
-      varres = np->n_fullname;
-   }
+      while((c = *cp++) != '\0'){
+         if(mode != 2){
+            if(c == '\\' || (mode == 0 && c == '"'))
+               sp = n_string_push_c(sp, '\\');
+         }
+         sp = n_string_push_c(sp, c);
+      }
+
+      if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL ||
+            (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
+               ) != NAME_ADDRSPEC_ISADDR){
+         cp = sp->s_dat;
+         v = NULL;
+      }else{
+         struct name *np;
+
+         np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
+         cp = np->n_fullname;
+      }
+   }else if(mode == 0 && is_ascncaseprefix(act, "decode", alen)){
+      char c;
+
+      while((c = *cp++) != '\0'){
+         switch(c){
+         case '(':
+            sp = n_string_push_c(sp, '(');
+            act = skip_comment(cp);
+            if(--act > cp)
+               sp = n_string_push_buf(sp, cp, PTR2SIZE(act - cp));
+            sp = n_string_push_c(sp, ')');
+            cp = ++act;
+            break;
+         case '"':
+            while(*cp != '\0'){
+               if((c = *cp++) == '"')
+                  break;
+               if(c == '\\' && (c = *cp) != '\0')
+                  ++cp;
+               sp = n_string_push_c(sp, c);
+            }
+            break;
+         default:
+            if(c == '\\' && (c = *cp++) == '\0')
+               break;
+            sp = n_string_push_c(sp, c);
+            break;
+         }
+      }
+      cp = n_string_cp(sp);
+   }else
+      goto jesynopsis;
 
    if(varname == NULL){
-      if(fprintf(n_stdout, "%s\n", varres) < 0)
-         rv = 1;
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
-      rv = 1;
+      if(fprintf(n_stdout, "%s\n", cp) < 0)
+         cp = NULL;
+   }else if(!n_var_vset(varname, (uintptr_t)cp)){
+      cp = NULL;
       v = NULL;
    }
 
    if(v != NULL)
       n_pstate_var__em = n_0;
+jleave:
    NYD_LEAVE;
-   return rv;
+   return (cp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: addrcodec: <[+[+]]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   cp = NULL;
+   goto jleave;
 }
 
 FL bool_t

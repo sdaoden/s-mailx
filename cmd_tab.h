@@ -428,10 +428,12 @@
    { "environ", &c_environ, (G | M | X | TWYSH), 2, 1000
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
-   { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TSTRING), 0, 0
-     DS(N_("Form an address of <:arguments:>")) },
-   { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TSTRING), 0, 0
-     DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <:arguments:>")) },
+   { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
+     DS(N_("Email address <[+[+]]e[ncode]|d[ecode]> <rest-of-line>")) },
+   { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
+     DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
+   { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
+     DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
       { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, 1000
         DS(N_("Encode <string-list> for usage in an URL")) },
       { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, 1000

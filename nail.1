@@ -2562,7 +2562,8 @@ on and off
 .Mx
 .Pf ( Cd mle-quote-rndtrip ) .
 This setting is temporary, and will be forgotten once the command line
-is committed.
+is committed; also see
+.Ic shcodec .
 .
 .It Ql \ecR
 \*(OP Complete the current line from (the remaining) older history entries
@@ -3123,6 +3124,35 @@ echo Don"'"t you worry$'\ex21' The sun shines on us. $'\eu263A'
 .Ed
 .\" }}}
 .
+.\" .Ss "Raw data arguments for codec commands" {{{
+.Ss "Raw data arguments for codec commands"
+.
+A special set of commands, which all have the string
+.Dq codec
+in their name, e.g.,
+.Ic addrcodec ,
+.Ic shcodec ,
+.Ic urlcodec ,
+take raw string data as input, which means that the content of the
+command input line is passed completely unexpanded and otherwise
+unchanged: like this the effect of the actual codec is visible without
+any noise of possible shell quoting rules etc., i.e., the user can input
+one-to-one the desired or questionable data.
+To gain a level of expansion, the entire command line can be
+.Ic eval Ns
+uated first, e.g.,
+.
+.Bd -literal -offset indent
+? vput shcodec res encode /usr/Sch\[:o]nes Wetter/heute.txt
+? echo $res
+$'/usr/Sch\eu00F6nes Wetter/heute.txt'
+? shcodec d $res
+$'/usr/Sch\eu00F6nes Wetter/heute.txt'
+? eval shcodec d $res
+/usr/Sch\[:o]nes Wetter/heute.txt
+.Ed
+.\" }}}
+.
 .\" .Ss "Filename transformations" {{{
 .Ss "Filename transformations"
 .
@@ -3322,22 +3352,56 @@ The two argument form is identical to defining a macro as via
 .Bd -literal -offset indent
 account myisp {
   set folder=~/mail inbox=+syste.mbox record=+sent.mbox
-  set from='myname@myisp.example (My Name)'
+  set from='(My Name) myname@myisp.example'
   set mta=smtp://mylogin@smtp.myisp.example
 }
 .Ed
 .
 .Mx
 .It Ic addrcodec
-\*(NQ Interprets the given arguments as an email address specification,
-formats it as induced by email standards, and then shows the result.
+Perform email address codec transformations on raw-data argument, rather
+according to email standards (RFC 5322; \*(ID will furtherly improve).
 Supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&! .
-\*(ID This will improve further.
+The first argument must be either
+.Ar [+[+]]e[ncode]
+or
+.Ar d[ecode]
+and specifies the operation to perform on the rest of the line.
+Decoding will show how a standard-compliant MUA will display the given
+argument, which should be a prepared address.
+Please be aware that most MUAs have difficulties with the address
+standards, and vary wildly when (comments) in parenthesis,
+.Dq double-quoted
+strings, or quoted-pairs, as below, become involved.
+\*(ID \*(UA currently does not perform decoding when displaying addresses.
+.Pp
+Encoding supports three different modes, lesser automated versions can be
+chosen by prefixing one or two plus signs: the standard imposes
+a special meaning on some characters, which thus have to be transformed
+to so-called quoted-pairs by pairing them with a reverse solidus
+.Ql \e
+in order to remove the special meaning; this might change interpretation
+of the entire argument from what has been desired, however!
+Specify one plus sign to remark that double quotation marks are not be
+turned into quoted-pairs, and two for also leaving any user-specified
+reverse solidus alone.
+The result will always be valid, if a successful exit status is reported.
+\*(ID Addresses need to be specified in between angle brackets
+.Ql < ,
+.Ql >
+if the construct becomes more difficult, otherwise the current parser
+will fail; it is not smart enough to guess right.
+.Bd -literal -offset indent
+? addrc enc "Hey, you",<diet@exam.ple>\e out\e there
+"\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
+? addrc d "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
+"Hey, you", \e out\e there <diet@exam.ple>
+.Ed
 .
 .Mx
 .It Ic alias
@@ -5321,6 +5385,26 @@ and
 .Sx ENVIRONMENT .
 .
 .Mx
+.It Ic shcodec
+Apply shell quoting rules to the given raw-data arguments.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
+The return status is tracked via
+.Va \&! .
+The first argument specifies the operation:
+.Ar [+]e[ncode]
+or
+.Ar d[ecode]
+cause shell quoting to be applied to the remains of the line, and
+expanded away thereof, respectively.
+If the former is prefixed with a plus-sign, the quoted result will not
+be roundtrip enabled, and thus can be decoded only in the very same
+environment that was used to perform the encode; also see
+.Cd mle-quote-rndtrip .
+.
+.Mx
 .It Ic shell
 (sh) Invokes an interactive version of the shell.
 .
@@ -5785,7 +5869,8 @@ Same as
 .
 .Mx
 .It Ic urlcodec
-\*(NQ Perform URL percent codec operations, rather according to RFC 3986.
+Perform URL percent codec operations on the raw-data argument, rather
+according to RFC 3986.
 Supports
 .Cm vput
 (see
@@ -5799,9 +5884,9 @@ the input solely consists of characters in the portable character set, see
 \*(ID This command does not about URLs beside that.
 .Pp
 The first argument specifies the operation:
-.Ar enc[ode]
+.Ar e[ncode]
 or
-.Ar dec[code]
+.Ar d[ecode]
 perform plain URL percent en- and decoding, respectively.
 .Ar p[ath]enc[ode]
 and
@@ -5814,7 +5899,7 @@ and will neither accept hyphen-minus
 nor dot
 .Ql .
 as an initial character.
-The remaining arguments form the URL data which is to be converted.
+The remains of the line form the URL data which is to be converted.
 .
 .Mx
 .It Ic varedit

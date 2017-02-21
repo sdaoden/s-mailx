@@ -642,42 +642,39 @@ FL char *
 
 FL int
 c_urlcodec(void *v){
-   struct n_string s_b, *sp;
    bool_t ispath;
-   char const **argv, *varname, *varres, *cp;
+   size_t alen;
+   char const **argv, *varname, *varres, *act, *cp;
    NYD_ENTER;
 
-   sp = n_string_creat_auto(&s_b);
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
-   if(*(cp = *argv) == 'p'){
-      if(!ascncasecmp(++cp, "ath", 3))
-         cp += 3;
-      ispath = TRU1;
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+      ;
+   if((ispath = (*act == 'p'))){
+      if(!ascncasecmp(++act, "ath", 3))
+         act += 3;
    }
+   if(act >= cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
 
-   while(*++argv != NULL){
-      if(sp->s_len > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, *argv);
-   }
-
-   if(is_asccaseprefix(cp, "encode")){
-      if((varres = urlxenc(n_string_cp(sp), ispath)) == NULL){
-         varres = sp->s_dat;
+   if(is_ascncaseprefix(act, "encode", alen)){
+      if((varres = urlxenc(cp, ispath)) == NULL){
+         varres = cp;
          v = NULL;
       }
-   }else if(is_asccaseprefix(cp, "decode")){
-      if((varres = urlxdec(n_string_cp(sp))) == NULL){
-         varres = sp->s_dat;
+   }else if(is_ascncaseprefix(act, "decode", alen)){
+      if((varres = urlxdec(cp)) == NULL){
+         varres = cp;
          v = NULL;
       }
-   }else{
-      n_err(_("`urlcodec': invalid subcommand: %s\n"), cp);
-      cp = NULL;
-      goto jleave;
-   }
+   }else
+      goto jesynopsis;
 
    assert(cp != NULL);
    if(varname != NULL){
@@ -700,6 +697,11 @@ c_urlcodec(void *v){
 jleave:
    NYD_LEAVE;
    return (cp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: urlcodec: "
+      "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
+   cp = NULL;
+   goto jleave;
 }
 
 FL int
