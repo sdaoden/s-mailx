@@ -1165,7 +1165,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       /* Validity checks */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
             !(n_pstate & n_PS_ROOT))){
-         value = N_("Variable is readonly: %s\n");
+         value = N_("Variable is read-only: %s\n");
          goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
@@ -1473,7 +1473,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_VIRT, "virtual"},
-            {a_AMV_VF_RDONLY, "readonly"},
+            {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
             {a_AMV_VF_NOCNTRLS, "no-control-chars"},
@@ -2331,7 +2331,7 @@ c_varedit(void *v){
             continue;
          }
          if(avc.avc_map->avm_flags & a_AMV_VF_RDONLY){
-            n_err(_("`varedit': cannot edit readonly variable: %s\n"),
+            n_err(_("`varedit': cannot edit read-only variable: %s\n"),
                avc.avc_name);
             continue;
          }

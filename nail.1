@@ -978,7 +978,7 @@ or the character sequence dot solidus
 is treated as a file, regardless of the remaining content;
 likewise a name that solely consists of a hyphen-minus
 .Ql - .
-Any other name which contains an at sign
+Any other name which contains a commercial at
 .Ql @
 character is treated as a network address;
 Any other name which starts with a plus sign
@@ -2916,7 +2916,7 @@ Any unquoted number sign
 .Ql #
 at the beginning of new token starts a comment that extends to the end
 of the line, and therefore ends argument processing.
-An unquoted dollar
+An unquoted dollar sign
 .Ql $
 will cause variable expansion of the given name:
 .Sx "INTERNAL VARIABLES"
@@ -2969,13 +2969,13 @@ A single-quote cannot occur within single-quotes.
 .It
 The literal value of all characters enclosed in
 .Ql \(dqdouble-\:quotes\(dq
-is retained, with the exception of dollar
+is retained, with the exception of dollar sign
 .Ql $ ,
 which will cause variable expansion, as above, backquote (grave accent)
 .Ql ` ,
 (which not yet means anything special), reverse solidus
 .Ql \e ,
-which will escape any of the characters dollar
+which will escape any of the characters dollar sign
 .Ql $
 (to prevent variable expansion), backquote (grave accent)
 .Ql ` ,
@@ -3368,7 +3368,7 @@ the second argument is a comma-separated list of the
 .Dq keys
 which form the binding, and any remaining arguments form the expansion.
 To indicate that a binding shall not be auto-committed, but that the
-expansion shall instead be furtherly editable by the user, an at-sign
+expansion shall instead be furtherly editable by the user, a commercial at
 .Ql @
 (that will be removed) can be placed last in the expansion, from which
 leading and trailing whitespace will finally be removed.
@@ -5805,15 +5805,15 @@ which does nothing but parsing the argument, thus detecting validity and
 possible overflow conditions, and unary not (tilde
 .Ql ~ ) ,
 which creates the bitwise complement.
-Two integers are used by addition (plus
+Two integers are used by addition (plus sign
 .Ql + ) ,
-subtraction (minus
+subtraction (hyphen-minus
 .Ql - ) ,
 multiplication (asterisk
 .Ql * ) ,
 division (solidus
 .Ql / )
-and modulo (percent
+and modulo (percent sign
 .Ql % ) ,
 as well as for the bitwise operators logical or (vertical bar
 .Ql | ,
@@ -5830,7 +5830,7 @@ as well as for the unsigned right shift
 .Ql >>> .
 .
 .Pp
-All numeric operators can be suffixed with an at sign
+All numeric operators can be suffixed with a commercial at
 .Ql @ ,
 e.g.,
 .Ql *@ :
@@ -7420,9 +7420,9 @@ or
 .
 .Mx
 .It Va features
-\*(RO String giving a list of features \*(UA, preceded with a plus-sign
+\*(RO String giving a list of features \*(UA, preceded with a plus sign
 .Ql +
-if the feature is available, and a minus-sign
+if the feature is available, and a hyphen-minus
 .Ql -
 otherwise.
 The output of the command
@@ -7467,10 +7467,10 @@ set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
 .Mx
 .It Va folder
 The default path under which mailboxes are to be saved:
-file names that begin with the plus-sign
+file names that begin with the plus sign
 .Ql +
-will have the plus-sign replaced with the value of this variable if set,
-otherwise the plus-sign will remain unchanged when doing
+will have the plus sign replaced with the value of this variable if set,
+otherwise the plus sign will remain unchanged when doing
 .Sx "Filename transformations" ;
 also see
 .Ic file
@@ -7642,7 +7642,7 @@ A format string to use for the summary of
 similar to the ones used for
 .Xr printf 3
 formats.
-Format specifiers in the given string start with a percent character
+Format specifiers in the given string start with a percent sign
 .Ql %
 and may be followed by an optional decimal number indicating the field
 width \(em if that is negative, the field is to be left-aligned.
@@ -7651,7 +7651,7 @@ Valid format specifiers are:
 .Pp
 .Bl -tag -compact -width "_%%_"
 .It Ql %%
-A plain percent character.
+A plain percent sign.
 .It Ql %>
 .Dq Dotmark :
 a space character but for the current message
@@ -8123,7 +8123,7 @@ deciding which
 .Va pipe-TYPE/SUBTYPE
 is responsible for the MIME part, shall that question arise;
 when displaying such a MIME part the part-info will indicate the
-overridden content-type by showing a plus-sign
+overridden content-type by showing a plus sign
 .Ql + .
 .It
 If bit three is set (4) then the counter-evidence is always produced
@@ -8605,8 +8605,8 @@ explicitly!
 .
 .It Ql @
 To avoid ambiguities with normal shell command content you can use
-another at-sign to forcefully terminate interpretation of remaining
-characters.
+another commercial at to forcefully terminate interpretation of
+remaining characters.
 (Any character not in this list will have the same effect.)
 .El
 .
@@ -9677,9 +9677,9 @@ Multiple specifications may be given via a comma-separated list which
 ignores any whitespace.
 An optional
 .Ql +
-plus prefix will enable a protocol, a
+plus sign prefix will enable a protocol, a
 .Ql -
-minus prefix will disable it, so that
+hyphen-minus prefix will disable it, so that
 .Ql -ALL, TLSv1.2
 will enable only the TLSv1.2 protocol.
 .Pp

@@ -554,7 +554,7 @@ newfileinfo(void)
    if (hidden > 0)
       fprintf(n_stdout, _(" %d hidden"), hidden);
    else if (mb.mb_perm == 0)
-      fprintf(n_stdout, _(" [Read only]"));
+      fprintf(n_stdout, _(" [Read-only]"));
    putc('\n', n_stdout);
 jleave:
    NYD_LEAVE;
@@ -735,7 +735,7 @@ folder_query(void){
 
       switch(which_protocol(cp)){
       case PROTO_POP3:
-         n_err(_("*folder* can't be set to a flat, readonly POP3 account\n"));
+         n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
          err = TRU1;
          goto jset;
       default:
