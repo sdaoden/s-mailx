@@ -215,6 +215,8 @@ static bool_t a_commands_recursive(enum n_lexinput_flags lif);
 /* `read' */
 static int a_lex_c_read(void *v);
 
+static bool_t a_lex__read_set(char const *cp, char const *value);
+
 /* List of all commands, and list of commands which are specially treated
  * and deduced in _evaluate(), but we need a list for _c_list() and
  * print_comm_docstr() */
@@ -1479,72 +1481,108 @@ jjump: /* TODO */
 
 static int
 a_lex_c_read(void *v){ /* TODO IFS? how? -r */
+   struct n_sigman sm;
    char const **argv, *cp, *cp2;
+   char *linebuf;
+   size_t linesize;
    int rv;
    NYD2_ENTER;
 
    rv = 0;
+   linesize = 0;
+   linebuf = NULL;
+   argv = v;
 
-   for(argv = v; (cp = *argv++) != NULL;)
-      if(!n_shexp_is_valid_varname(cp) || !n_var_is_user_writable(cp)){
-         n_err(_("`read': variable (name) cannot be used: %s\n"),
-            n_shexp_quote_cp(cp, FAL0));
-         rv = 1;
-      }
-   if(rv)
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      rv = 1;
       goto jleave;
-
-   cp = n_lex_input_cp(((n_pstate & n_PS_COMPOSE_MODE
+   }
+   rv = n_lex_input(((n_pstate & n_PS_COMPOSE_MODE
             ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT) |
          n_LEXINPUT_FORCE_STDIN | n_LEXINPUT_NL_ESC |
          n_LEXINPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
-         NULL, NULL);
-   if(cp == NULL){
-      cp = n_empty;
-      rv = 1;
-   }
+         NULL, &linebuf, &linesize, NULL);
+   if(rv < 0)
+      goto jleave;
 
-   for(argv = v; *argv != NULL; ++argv){
-      char c;
+   if(rv > 0){
+      cp = linebuf;
 
-      while(blankspacechar(*cp))
-         ++cp;
-      if(*cp == '\0')
-         break;
+      for(rv = 0; *argv != NULL; ++argv){
+         char c;
 
-      /* The last variable gets the remaining line less trailing IFS */
-      if(argv[1] == NULL){
-         for(cp2 = cp; *cp2 != '\0'; ++cp2)
-            ;
-         for(; cp2 > cp; --cp2){
-            c = cp2[-1];
-            if(!blankspacechar(c))
+         while(blankspacechar(*cp))
+            ++cp;
+         if(*cp == '\0')
+            break;
+
+         /* The last variable gets the remaining line less trailing IFS */
+         if(argv[1] == NULL){
+            for(cp2 = cp; *cp2 != '\0'; ++cp2)
+               ;
+            for(; cp2 > cp; --cp2){
+               c = cp2[-1];
+               if(!blankspacechar(c))
+                  break;
+            }
+         }else
+            for(cp2 = cp; (c = *++cp2) != '\0';)
+               if(blankspacechar(c))
+                  break;
+
+         /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
+            char *vcp;
+
+            vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
+            if(!a_lex__read_set(*argv, vcp)){
+               rv = 1;
                break;
+            }
          }
-      }else
-         for(cp2 = cp; (c = *++cp2) != '\0';)
-            if(blankspacechar(c))
-               break;
 
-      /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
-         char *vcp;
-
-         vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
-         if(!n_var_vset(*argv, (uintptr_t)vcp))
-            rv = 1;
+         cp = cp2;
       }
-
-      cp = cp2;
    }
 
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
-      if(!n_var_vset(*argv, (uintptr_t)n_empty))
+      if(!a_lex__read_set(*argv, n_empty)){
          rv = 1;
+         break;
+      }
 
    if(rv == 0)
       n_pstate_var__em = n_0;
-   rv = 0;
+
+   n_sigman_cleanup_ping(&sm);
+jleave:
+   if(linebuf != NULL)
+      free(linebuf);
+   NYD2_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
+   return rv;
+}
+
+static bool_t
+a_lex__read_set(char const *cp, char const *value){
+   bool_t rv;
+   NYD2_ENTER;
+
+   if(!n_shexp_is_valid_varname(cp))
+      value = N_("not a valid variable name");
+   else if(!n_var_is_user_writable(cp))
+      value = N_("variable is read-only");
+   else if(!n_var_vset(cp, (uintptr_t)value))
+      value = N_("failed to update variable value");
+   else{
+      rv = TRU1;
+      goto jleave;
+   }
+   n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
+   rv = FAL0;
 jleave:
    NYD2_LEAVE;
    return rv;
