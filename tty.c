@@ -427,7 +427,8 @@ n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
 # define a_TTY_SCROLL_MARGIN_RIGHT 10
 
 /* fexpand() flags for expand-on-tab */
-# define a_TTY_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
+# define a_TTY_TAB_FEXP_FL \
+   (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
 
 /* Columns to ripoff: outermost may not be touched, plus position indicator.
  * Must thus be at least 1, but should be >= 1+4 to dig the position indicator
