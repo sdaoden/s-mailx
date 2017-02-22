@@ -1562,7 +1562,7 @@ c_cmdnotsupp(void *vp){
 FL bool_t
 n_commands(void){ /* FIXME */
    struct a_lex_eval_ctx ev;
-   int n;
+   int n, eofcnt;
    bool_t volatile rv;
    NYD_ENTER;
 
@@ -1580,7 +1580,7 @@ n_commands(void){ /* FIXME */
    memset(&ev, 0, sizeof ev);
 
    (void)sigsetjmp(a_lex_srbuf, 1); /* FIXME get rid */
-   for (;;) {
+   for (eofcnt = 0;;) {
       n_COLOUR( n_colour_env_pop(TRU1); )
 
       /* TODO Unless we have our signal manager (or however we do it) child
@@ -1652,9 +1652,10 @@ n_commands(void){ /* FIXME */
       if (n < 0) {
 /* FIXME did unstack() when n_PS_SOURCING, only break with n_PS_LOADING */
          if (!(n_pstate & n_PS_ROBOT) &&
-               (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof)) {
+               (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
+               ++eofcnt < 4) {
             fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
-            n_msleep(500, FAL0);
+            n_lex_input_clearerr();
             continue;
          }
          break;
@@ -1712,6 +1713,24 @@ n_commands(void){ /* FIXME */
       free(ev.le_line.s);
    NYD_LEAVE;
    return rv;
+}
+
+FL void
+n_lex_input_clearerr(void){
+   FILE *fp;
+   NYD2_ENTER;
+
+   fp = NULL;
+
+   if(a_lex_input == NULL)
+      fp = n_stdin;
+   else if(!(a_lex_input->li_flags & (a_LEX_FORCE_EOF |
+            a_LEX_PIPE | a_LEX_MACRO | a_LEX_SLICE)))
+      fp = a_lex_input->li_file;
+
+   if(fp != NULL)
+      clearerr(fp);
+   NYD2_LEAVE;
 }
 
 FL int

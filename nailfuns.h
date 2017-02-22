@@ -1043,6 +1043,9 @@ FL bool_t n_commands(void);
 
 /* Actual cmd input */
 
+/* */
+FL void n_lex_input_clearerr(void);
+
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.

@@ -1542,6 +1542,7 @@ jcont:
                ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
+            n_lex_input_clearerr();
             continue;
          }
          break;
