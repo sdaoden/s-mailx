@@ -1834,7 +1834,8 @@ FL int
    if(!dotty && (lif & n_LEXINPUT_PROMPT_NONE))
       fflush(n_stdout);
 
-   ifile = (a_lex_input != NULL) ? a_lex_input->li_file : n_stdin;
+   ifile = ((lif & n_LEXINPUT_FORCE_STDIN) || a_lex_input == NULL) ? n_stdin
+         : a_lex_input->li_file;
    if(ifile == NULL){
       assert((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          a_lex_input != NULL && (a_lex_input->li_flags & a_LEX_MACRO));
