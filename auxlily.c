@@ -1174,6 +1174,7 @@ n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
 
 FL void
 n_perr(char const *msg, int errval){
+   int e;
    char const *fmt;
    NYD2_ENTER;
 
@@ -1183,10 +1184,10 @@ n_perr(char const *msg, int errval){
    }else
       fmt = "%s: %s\n";
 
+   e = (errval == 0) ? errno : errval;
+   n_err(fmt, msg, strerror(e));
    if(errval == 0)
-      errval = errno;
-
-   n_err(fmt, msg, strerror(errval));
+      errno = e;
    NYD2_LEAVE;
 }
 

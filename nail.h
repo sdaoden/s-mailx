@@ -514,7 +514,7 @@ do{\
 # define DBGOR(X,Y)     X
 #endif
 
-/* Translation (init in main.c) */
+/* Translation (init in main.c): may NOT set errno! */
 #undef _
 #undef N_
 #undef V_
