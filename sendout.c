@@ -1314,7 +1314,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
        * like this getrawlist will never overflow (and return -1) */
       j = strlen(cp);
       vas = n_lofi_alloc(sizeof(*vas) * j);
-      vas_cnt = (size_t)getrawlist(FAL0, vas, j, cp, j);
+      vas_cnt = (size_t)getrawlist(TRU1, vas, j, cp, j);
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;

@@ -8320,10 +8320,12 @@ Assign a value like \*(IN
 .It Va mta-arguments
 Arguments to pass through to a file-based
 .Va mta
-can be given via this variable, the content of which will be split up in
-a vector of arguments, to be joined onto other possible MTA options:
+can be given via this variable, which is parsed according to
+.Sx "Shell-style argument quoting"
+into an array of arguments, and which will be joined onto MTA options
+from other sources, and then passed individually to the MTA:
 .Pp
-.Dl set mta-arguments='-t -X \&"/tmp/my log\&"'
+.Dl wysh set mta-arguments='-t -X \&"/tmp/my log\&"'
 .
 .Mx
 .It Va mta-no-default-arguments
