@@ -5850,8 +5850,17 @@ which queries the length of the given argument, and
 .Ql file-expand ,
 which performs the usual
 .Sx "Filename transformations" ,
-on its argument.
-Two or more arguments are used by
+on its argument, as well as
+.Ql random ,
+which generates a random string of the given length, or of
+.Dv \&\&PATH_MAX
+bytes (a constant from
+.Pa /usr/include )
+if the value 0 is given; the random string will be base64url encoded
+according to RFC 4648, and thus be usable as a file name.
+.
+.Pp
+String operations with two or more arguments are
 .Ql find ,
 which searches in the first for the second argument, and shows the
 resulting 0-based offset shall it have been found,
