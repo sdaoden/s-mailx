@@ -1038,18 +1038,19 @@ n_verr(char const *format, va_list ap){
 #ifdef HAVE_ERRORS
    struct a_aux_err_node *enp;
 #endif
-   bool_t doname, doflush;
+   bool_t doname;
    size_t len;
    NYD2_ENTER;
 
-   doflush = FAL0;
+   doname = FAL0;
+
    while(*format == '\n'){
-      doflush = TRU1;
       putc('\n', n_stderr);
+      doname = TRU1;
       ++format;
    }
 
-   if((doname = doflush)){
+   if(doname){
       a_aux_err_linelen = 0;
 #ifdef HAVE_ERRORS
       if(n_psonce & n_PSO_INTERACTIVE){
@@ -1156,8 +1157,7 @@ jcreat:
 #endif /* HAVE_ERRORS */
 
 jleave:
-   if(doflush)
-      fflush(n_stderr);
+   fflush(n_stderr);
    NYD2_LEAVE;
 }
 
