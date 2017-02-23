@@ -66,11 +66,11 @@ static void       _execute_command(struct header *hp, char const *linebuf,
                      size_t linesize);
 
 /* */
-static int        _include_file(char const *name, int *linecount,
-                     int *charcount, bool_t indent);
+static bool_t a_coll_include_file(char const *name, bool_t indent,
+               bool_t writestat);
 
 /* Execute cmd and insert its standard output into fp */
-static void       insertcommand(FILE *fp, char const *cmd);
+static bool_t a_coll_insert_cmd(FILE *fp, char const *cmd);
 
 /* ~p command */
 static void       print_collf(FILE *collf, struct header *hp);
@@ -163,69 +163,136 @@ jleave:
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
-static int
-_include_file(char const *name, int *linecount, int *charcount, bool_t indent)
-{
+static bool_t
+a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    FILE *fbuf;
-   char const *indb;
-   int ret = -1;
-   char *linebuf = NULL; /* TODO line pool */
-   size_t linesize = 0, indl, linelen, cnt;
+   char const *heredb, *indb;
+   char *linebuf;
+   size_t linesize, heredl, indl, cnt, linelen;
+   si64_t lc, cc;
+   bool_t rv;
    NYD_ENTER;
 
+   rv = FAL0;
+   lc = cc = 0;
+   linebuf = 0; /* TODO line pool */
+   linesize = 0;
+   heredb = NULL;
+   heredl = 0;
+
    /* The -M case is special */
-   if (name == (char*)-1)
+   if(name == (char*)-1){
       fbuf = n_stdin;
-   else if ((fbuf = Fopen(name, "r")) == NULL) {
+      name = "-";
+   }else if(name[0] == '-' &&
+         (name[1] == '\0' || blankspacechar(name[1]))){
+      fbuf = n_stdin;
+      if(name[1] == '\0'){
+         if(!(n_psonce & n_PSO_INTERACTIVE)){
+            n_err(_("~< -: HERE-delimiter required in non-interactive mode\n"));
+            goto jleave;
+         }
+      }else{
+         for(heredb = &name[2]; *heredb != '\0' && blankspacechar(*heredb);
+               ++heredb)
+            ;
+         if((heredl = strlen(heredb)) == 0){
+            n_err(_("~< - HERE-delimiter: delimiter must not be empty\n"));
+            goto jleave;
+         }
+      }
+      name = "-";
+   }else if((fbuf = Fopen(name, "r")) == NULL){
       n_perr(name, 0);
       goto jleave;
    }
 
-   if (!indent)
-      indb = NULL, indl = 0;
-   else {
-      if ((indb = ok_vlook(indentprefix)) == NULL)
+   if(!indent)
+      indl = 0;
+   else{
+      if((indb = ok_vlook(indentprefix)) == NULL)
          indb = INDENT_DEFAULT;
       indl = strlen(indb);
    }
 
-   *linecount = *charcount = 0;
-   cnt = fsize(fbuf);
-   while (fgetline(&linebuf, &linesize, &cnt, &linelen, fbuf, 0) != NULL) {
-      if (indl > 0 && fwrite(indb, sizeof *indb, indl, _coll_fp) != indl)
+   if(fbuf != n_stdin)
+      cnt = fsize(fbuf);
+   while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NULL : &cnt),
+         &linelen, fbuf, 0) != NULL){
+      if(heredl > 0 && heredl == linelen - 1 &&
+            !memcmp(heredb, linebuf, heredl)){
+         heredb = NULL;
+         break;
+      }
+
+      if(indl > 0){
+         if(fwrite(indb, sizeof *indb, indl, _coll_fp) != indl)
+            goto jleave;
+         cc += indl;
+      }
+
+      if(fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen)
          goto jleave;
-      if (fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen)
-         goto jleave;
-      ++(*linecount);
-      (*charcount) += linelen + indl;
+      cc += linelen;
+      ++lc;
    }
-   if (fflush(_coll_fp))
+   if(fflush(_coll_fp))
       goto jleave;
 
-   ret = 0;
+   if(heredb == NULL)
+      rv = TRU1;
 jleave:
-   if (linebuf != NULL)
+   if(linebuf != NULL)
       free(linebuf);
-   if (fbuf != NULL && fbuf != n_stdin)
-      Fclose(fbuf);
+   if(fbuf != NULL){
+      if(fbuf != n_stdin)
+         Fclose(fbuf);
+      else if(heredl > 0)
+         clearerr(n_stdin);
+   }
+
+   if(writestat)
+      fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
+         n_shexp_quote_cp(name, FAL0), (rv ? n_empty : " " n_ERROR), lc, cc);
    NYD_LEAVE;
-   return ret;
+   return rv;
 }
 
-static void
-insertcommand(FILE *fp, char const *cmd)
-{
-   FILE *ibuf = NULL;
-   int c;
+static bool_t
+a_coll_insert_cmd(FILE *fp, char const *cmd){
+   bool_t rv;
+   FILE *ibuf;
+   si64_t lc, cc;
    NYD_ENTER;
 
-   if ((ibuf = Popen(cmd, "r", ok_vlook(SHELL), NULL, 0)) != NULL) {
-      while ((c = getc(ibuf)) != EOF) /* XXX bytewise, yuck! */
-         putc(c, fp);
-      Pclose(ibuf, TRU1);
-   } else
+   lc = cc = 0;
+
+   if((ibuf = Popen(cmd, "r", ok_vlook(SHELL), NULL, 0)) != NULL){
+      int c;
+
+      rv = TRU1;
+      while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
+         if(putc(c, fp) == EOF){
+            rv = FAL0;
+            break;
+         }
+         ++cc;
+         if(c == '\n')
+            ++lc;
+      }
+      if(!feof(ibuf) || ferror(ibuf))
+         rv = FAL0;
+      if(!Pclose(ibuf, TRU1))
+         rv = FAL0;
+   }else{
       n_perr(cmd, 0);
+      rv = FAL0;
+   }
+
+   fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
+      (rv ? n_empty : " " n_ERROR), lc, cc);
    NYD_LEAVE;
+   return rv;
 }
 
 static void
@@ -276,10 +343,10 @@ exwrite(char const *name, FILE *fp, int f)
 {
    FILE *of;
    int c, rv;
-   long lc, cc;
+   si64_t lc, cc;
    NYD_ENTER;
 
-   if (f) {
+   if(f) {
       fprintf(n_stdout, "%s ", n_shexp_quote_cp(name, FAL0));
       fflush(n_stdout);
    }
@@ -299,7 +366,7 @@ exwrite(char const *name, FILE *fp, int f)
          goto jerr;
       }
    }
-   fprintf(n_stdout, _("%ld/%ld\n"), lc, cc);
+   fprintf(n_stdout, _("%" PRId64 "/%" PRId64 "\n"), lc, cc);
 
    rv = 0;
 jleave:
@@ -1334,7 +1401,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 {
    struct n_ignore const *quoteitp;
    struct a_coll_ocds_arg *coap;
-   int lc, cc, c;
+   int c;
    int volatile t, eofcnt, getfields;
    char *linebuf, escape_saved, escape;
    char const *cp, *coapm;
@@ -1463,7 +1530,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       }
 
       if (quotefile != NULL) {
-         if (_include_file(quotefile, &lc, &cc, FAL0) != 0)
+         if(!a_coll_include_file(quotefile, FAL0, FAL0))
             goto jerr;
       }
 
@@ -1739,23 +1806,29 @@ jearg:
                n_err(_("Interpolate what file?\n"));
                break;
             }
-            if(*(cp = &linebuf[3]) == '!'){
-               insertcommand(_coll_fp, ++cp);
+            if(*(cp = &linebuf[3]) == '!' && c == '<'){
+               if(!a_coll_insert_cmd(_coll_fp, ++cp)){
+                  if(ferror(_coll_fp))
+                     goto jerr;
+                  break;
+               }
                goto jhistcont;
             }
-            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+            /* Note this also expands things like
+             *    !:vput vexpr delim random 0
+             *    !< - $delim */
+            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)) == NULL)
                break;
          }
          if(is_dir(cp)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             break;
          }
-         if(_include_file(cp, &lc, &cc, (c == 'R')) != 0){
+         if(!a_coll_include_file(cp, (c == 'R'), TRU1)){
             if(ferror(_coll_fp))
                goto jerr;
             break;
          }
-         fprintf(n_stdout, _("%s %d/%d\n"), n_shexp_quote_cp(cp, FAL0), lc, cc);
          break;
       case 'i':
          /* Insert a variable into the file */
@@ -1841,7 +1914,7 @@ jearg:
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
 "~: <command>  Execute a mail command\n"
-"~<! <command> Insert output of command\n"
+"~< <file>     Insert <file> (\"~<! <command>\" inserts output of command)\n"
 "~@ [<files>]  Edit attachment list\n"
 "~A            Insert *Sign* variable (`~a': insert *sign*)\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
@@ -1856,7 +1929,7 @@ jearg:
 "~i <variable> Insert a value and a newline\n"
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
 "~p            Show current message compose buffer\n"
-"~r <file>     Read in a file (`~<': likewise; `~R': *indentprefix* lines)\n"
+"~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
             ), n_stdout);
          fputs(_(
 "~s <subject>  Set Subject:\n"

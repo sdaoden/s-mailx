@@ -6210,12 +6210,26 @@ is set.
 .
 .Mx
 .It Ic ~R Ar filename
-Read the named file into the message, indented by
+Identical to
+.Ic ~r ,
+but indent each line that has been read by
 .Va indentprefix .
 .
 .Mx
-.It Ic ~r Ar filename
+.It Ic ~r Ar filename Op Ar HERE-delimiter
 Read the named file into the message.
+.Ar filename
+can also be a hyphen-minus
+.Ql - ,
+in which case standard input is used, e.g., for pasting purposes.
+Only in this latter mode
+.Ar HERE-delimiter
+may be given: if it is data will be read in until the given
+.Ar HERE-delimiter
+is seen on a line by itself, and encountering EOF is an error; the
+.Ar HERE-delimiter
+is a required argument in non-interactive mode;
+note that variables expansion is performed on the delimiter.
 .
 .Mx
 .It Ic ~s Ar string
