@@ -1783,6 +1783,11 @@ FL enum n_shexp_state n_shexp_parse_token(enum n_shexp_parse_flags flags,
                         struct n_string *store, struct str *input,
                         void const **cookie);
 
+/* Quick+dirty simplified : if an error occurs, returns a copy of *cp and set
+ * *cp to NULL, otherwise advances *cp to over the parsed token */
+FL char *n_shexp_parse_token_cp(enum n_shexp_parse_flags flags,
+            char const **cp);
+
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
  * If rndtrip is true we try to make the resulting string "portable" (by

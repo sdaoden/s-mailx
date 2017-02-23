@@ -1555,6 +1555,33 @@ jleave_quick:
    return rv;
 }
 
+FL char *
+n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
+   struct str input;
+   struct n_string sou, *soup;
+   char *rv;
+   enum n_shexp_state shs;
+   NYD2_ENTER;
+
+   assert(cp != NULL);
+
+   input.s = n_UNCONST(*cp);
+   input.l = UIZ_MAX;
+   soup = n_string_creat_auto(&sou);
+
+   shs = n_shexp_parse_token(flags, soup, &input, NULL);
+   if(shs & n_SHEXP_STATE_ERR_MASK){
+      soup = n_string_assign_cp(soup, *cp);
+      *cp = NULL;
+   }else
+      *cp = input.s;
+
+   rv = n_string_cp(soup);
+   /*n_string_gut(n_string_drop_ownership(soup));*/
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL struct n_string *
 n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    struct a_shexp_quote_lvl sql;
