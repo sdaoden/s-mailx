@@ -1158,7 +1158,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
          environ = env;
       }
 
-      i = (int)getrawlist(FAL0, argv, n_NELEM(argv), cmd, strlen(cmd));
+      i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, strlen(cmd));
 
       if ((argv[i++] = n_UNCONST(a0)) != NULL &&
             (argv[i++] = n_UNCONST(a1)) != NULL &&
