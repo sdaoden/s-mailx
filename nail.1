@@ -2785,7 +2785,8 @@ will be set to the real exit status of the command regardless.
 Some commands support the
 .Mx
 .Cm vput
-modifier: if used, they expect the name of a variable as their first
+modifier: if used, they expect the name of a variable, which can itself
+be a variable, i.e., shell expansion is applied, as their first
 argument, and will place their computation result in it instead of the
 default location (it is usually written to standard output).
 The given name will be tested for being a valid

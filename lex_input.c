@@ -749,7 +749,7 @@ static int
 a_lex_evaluate(struct a_lex_eval_ctx *evp){
    /* xxx old style(9), but also old code */
    struct str line;
-   char _wordbuf[2], *arglist[MAXARGC], *cp, *word;
+   char _wordbuf[2], *arglist_base[MAXARGC], **arglist, *cp, *word;
    struct a_lex_ghost *gp;
    struct a_lex_cmd const *cmd;
    int rv, c;
@@ -769,6 +769,7 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
    rv = 1;
    cmd = NULL;
    gp = NULL;
+   arglist = arglist_base;
    line = evp->le_line; /* XXX don't change original (buffer pointer) */
    assert(line.s[line.l] == '\0');
    evp->le_add_history = FAL0;
@@ -843,10 +844,6 @@ jrestart:
    }
 
    if(!(flags & a_NOGHOST) && (flags & a_GHOST_MASK) != a_GHOST_MASK){
-      /* TODO relink list head, so it's sorted on usage over time?
-       * TODO in fact, there should be one hashmap over all commands and ghosts
-       * TODO so that the lookup could be made much more efficient than it is
-       * TODO now (two adjacent list searches! */
       ui8_t expcnt;
 
       expcnt = (flags & a_GHOST_MASK);
@@ -857,7 +854,7 @@ jrestart:
       if(gp != NULL && !strcmp(word, gp->lg_name)){
          if(n_poption & n_PO_D_V)
             n_err(_("Actively avoiding self-recursion of `ghost': %s\n"), word);
-      }else for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)
+      }else for(gp = a_lex_ghosts; gp != NULL; gp = gp->lg_next)/* TODO BSRCH */
          if(!strcmp(word, gp->lg_name)){
             if(line.l > 0){
                size_t i;
@@ -948,20 +945,49 @@ jexec:
    if(cmd->lc_argtype & ARG_O)
       n_OBSOLETE2(_("this command will be removed"), cmd->lc_name);
 
-   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST){
-      n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
-      flags &= ~a_WYSH;
-   }
-   if((flags & a_VPUT) && !(cmd->lc_argtype & ARG_V)){
-      n_err(_("`vput' prefix doesn't affect `%s'\n"), cmd->lc_name);
-      flags &= ~a_VPUT;
-   }
-
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
     * TODO argument state should be property of a per-command carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
+
+   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST){
+      n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
+      flags &= ~a_WYSH;
+   }
+
+   if(flags & a_VPUT){
+      if(cmd->lc_argtype & ARG_V){
+         char const *xcp;
+
+         xcp = cp;
+         arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIMSPACE |
+               n_SHEXP_PARSE_LOG), &xcp);
+         line.l -= PTR2SIZE(xcp - cp);
+         cp = n_UNCONST(xcp);
+         if(cp == NULL)
+            xcp = N_("could not parse input token");
+         else if(!n_shexp_is_valid_varname(arglist[0]))
+            xcp = N_("not a valid variable name");
+         else if(!n_var_is_user_writable(arglist[0]))
+            xcp = N_("either not a user writable, or a boolean variable");
+         else
+            xcp = NULL;
+         if(xcp != NULL){
+            n_err("`%s': vput: %s: %s\n",
+                  cmd->lc_name, V_(xcp), n_shexp_quote_cp(arglist[0], FAL0));
+            goto jleave;
+         }
+         ++arglist;
+         n_pstate |= n_PS_ARGMOD_VPUT; /* TODO YET useless since stripped later
+         * TODO on in getrawlist() etc., i.e., the argument vector producers,
+         * TODO therefore yet needs to be set again based on flags&a_VPUT! */
+      }else{
+         n_err(_("`vput' prefix doesn't affect `%s'\n"), cmd->lc_name);
+         flags &= ~a_VPUT;
+      }
+   }
+
    switch(cmd->lc_argtype & ARG_ARGMASK){
    case ARG_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
@@ -1011,44 +1037,29 @@ je96:
             c = 0;
          }
       }
-      if((c = getrawlist((c != 0), arglist, n_NELEM(arglist), cp, line.l)) < 0){
+      if((c = getrawlist((c != 0), arglist,
+            n_NELEM(arglist_base) - PTR2SIZE(arglist - arglist_base),
+            cp, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          break;
       }
-      c -= ((flags & a_VPUT) != 0); /* XXX c=int */
 
       if(c < cmd->lc_minargs){
          n_err(_("`%s' requires at least %u arg(s)\n"),
-            cmd->lc_name, (ui32_t)cmd->lc_minargs + ((flags & a_VPUT) != 0));
+            cmd->lc_name, (ui32_t)cmd->lc_minargs);
          break;
       }
 #undef lc_minargs
       if(c > cmd->lc_maxargs){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
-            cmd->lc_name, (ui32_t)cmd->lc_maxargs + ((flags & a_VPUT) != 0));
+            cmd->lc_name, (ui32_t)cmd->lc_maxargs);
          break;
       }
 #undef lc_maxargs
 
-      if(flags & a_VPUT){
-         char const *emsg;
-
-         if(!n_shexp_is_valid_varname(arglist[0]))
-            emsg = N_("not a valid variable name");
-         else if(!n_var_is_user_writable(arglist[0]))
-            emsg = N_("either not a user writable, or a boolean variable");
-         else
-            emsg = NULL;
-         if(emsg != NULL){
-            n_err(_("`%s': %s: %s\n"),
-                  cmd->lc_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
-            break;
-         }
-
-         ++c;
+      if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT;
-      }
-      rv = (*cmd->lc_func)(arglist);
+      rv = (*cmd->lc_func)(arglist_base);
       break;
 
    default:
