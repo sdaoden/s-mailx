@@ -559,6 +559,29 @@ is_asccaseprefix(char const *as1, char const *as2) /* TODO arg order */
    return (c1 == '\0');
 }
 
+FL bool_t
+is_ascncaseprefix(char const *as1, char const *as2, size_t sz)
+{
+   char c1, c2;
+   bool_t rv;
+   NYD2_ENTER;
+
+   for(rv = TRU1; sz-- > 0; ++as1, ++as2){
+      c1 = *as1;
+      c1 = lowerconv(c1);
+      c2 = *as2;
+      c2 = lowerconv(c2);
+
+      if(!(rv = (c1 == c2)) || c1 == '\0')
+         break;
+      if(c2 == '\0')
+         break;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+
 FL struct str *
 (n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
       n_MEMORY_DEBUG_ARGS){

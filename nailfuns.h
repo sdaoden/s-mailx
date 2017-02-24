@@ -2072,6 +2072,7 @@ FL char const *asccasestr(char const *s1, char const *s2);
 
 /* Case-independent ASCII check whether as1 is the initial substring of as2 */
 FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
+FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
 
 /* struct str related support funs TODO _cp->_cs! */
 
