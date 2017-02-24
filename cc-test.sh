@@ -670,34 +670,34 @@ __behave_ifelse() {
 		endif
 		# integer conversion, <..>..
 		set dietcurd=10
-		if $dietcurd < 11
+		if $dietcurd -lt 11
 		   echo 11.ok1
-		   if $dietcurd > 9
+		   if $dietcurd -gt 9
 		      echo 11.ok2
 		   else
 		      echo 11.err2
 		   endif
-		   if $dietcurd == 10
+		   if $dietcurd -eq 10
 		      echo 11.ok3
 		   else
 		      echo 11.err3
 		   endif
-		   if $dietcurd >= 10
+		   if $dietcurd -ge 10
 		      echo 11.ok4
 		   else
 		      echo 11.err4
 		   endif
-		   if $dietcurd <= 10
+		   if $dietcurd -le 10
 		      echo 11.ok5
 		   else
 		      echo 11.err5
 		   endif
-		   if $dietcurd >= 11
+		   if $dietcurd -ge 11
 		      echo 11.err6
 		   else
 		      echo 11.ok6
 		   endif
-		   if $dietcurd <= 9
+		   if $dietcurd -le 9
 		      echo 11.err7
 		   else
 		      echo 11.ok7

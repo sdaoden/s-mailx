@@ -22,63 +22,69 @@
 # include "nail.h"
 #endif
 
-struct cond_stack {
-   struct cond_stack *c_outer;
-   bool_t            c_error; /* Bad expression, skip entire if..endif */
-   bool_t            c_noop;  /* Outer stack !c_go, entirely no-op */
-   bool_t            c_go;    /* Green light */
-   bool_t            c_else;  /* In `else' clause */
-   ui8_t             __dummy[4];
+#define a_CCND_CONDSTACK_ISSKIP() \
+   (a_ccnd_if_stack != NULL &&\
+      (a_ccnd_if_stack->cin_noop || !a_ccnd_if_stack->cin_go))
+
+struct a_ccnd_if_node{
+   struct a_ccnd_if_node *cin_outer;
+   bool_t cin_error;    /* Bad expression, skip entire if..endif */
+   bool_t cin_noop;     /* Outer stack !cin_go, entirely no-op */
+   bool_t cin_go;       /* Green light */
+   bool_t cin_else;     /* In `else' clause */
+   ui8_t cin__dummy[4];
 };
 
-struct if_cmd {
-   char const  * const *ic_argv_base;
-   char const  * const *ic_argv_max;   /* BUT: .ic_argv MUST be terminated! */
-   char const  * const *ic_argv;
+struct a_ccnd_if_ctx{
+   char const * const *cic_argv_base;
+   char const * const *cic_argv_max;   /* BUT: .cic_argv MUST be terminated! */
+   char const * const *cic_argv;
 };
 
-static struct cond_stack   *_cond_stack;
+static struct a_ccnd_if_node *a_ccnd_if_stack; /* TODO -> member of Lex CTX! */
 
 /* */
-static void    _if_error(struct if_cmd const *icp, char const *msg_or_null,
-                  char const *nearby_or_null);
+static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
+               char const *msg_or_null, char const *nearby_or_null);
 
 /* noop and (1) don't work for real, only syntax-check and
  * (2) non-error return is ignored */
-static si8_t   _if_test(struct if_cmd *icp, bool_t noop);
-static si8_t   _if_group(struct if_cmd *icp, size_t level, bool_t noop);
+static si8_t a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop);
+static si8_t a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level,
+               bool_t noop);
+
+/* Shared `if' / `elif' implementation */
+static int a_ccnd_if(void *v, bool_t iselif);
 
 static void
-_if_error(struct if_cmd const *icp, char const *msg_or_null,
-   char const *nearby_or_null)
-{
+a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
+      char const *nearby_or_null){
    struct str s;
    NYD2_ENTER;
 
-   if (msg_or_null == NULL)
+   if(msg_or_null == NULL)
       msg_or_null = _("invalid expression syntax");
 
-   if (nearby_or_null != NULL)
+   if(nearby_or_null != NULL)
       n_err(_("`if' conditional: %s -- near: %s\n"),
          msg_or_null, nearby_or_null);
    else
       n_err(_("`if' conditional: %s\n"), msg_or_null);
 
-   if ((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)) {
-      str_concat_cpa(&s, icp->ic_argv_base,
-         (*icp->ic_argv_base != NULL ? " " : n_empty));
+   if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)){
+      str_concat_cpa(&s, cicp->cic_argv_base,
+         (*cicp->cic_argv_base != NULL ? " " : n_empty));
       n_err(_("   Expression: %s\n"), s.s);
 
-      str_concat_cpa(&s, icp->ic_argv, (*icp->ic_argv != NULL ? " " : n_empty));
+      str_concat_cpa(&s, cicp->cic_argv,
+         (*cicp->cic_argv != NULL ? " " : n_empty));
       n_err(_("   Stopped at: %s\n"), s.s);
    }
-
    NYD2_LEAVE;
 }
 
 static si8_t
-_if_test(struct if_cmd *icp, bool_t noop)
-{
+a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
    char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
    size_t argc;
    char c;
@@ -87,16 +93,16 @@ _if_test(struct if_cmd *icp, bool_t noop)
 
    rv = -1;
    emsg = NULL;
-   argv = icp->ic_argv;
-   argc = PTR2SIZE(icp->ic_argv_max - icp->ic_argv);
+   argv = cicp->cic_argv;
+   argc = PTR2SIZE(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
-   if (*cp != '$') {
-      if (argc > 1)
+   if(*cp != '$'){
+      if(argc > 1)
          goto jesyn;
-   } else if (cp[1] == '\0')
+   }else if(cp[1] == '\0')
       goto jesyn;
-   else if (argc > 3) {
+   else if(argc > 3){
 #ifdef HAVE_REGEX
 jesyn_ntr:
 #endif
@@ -105,13 +111,13 @@ jesyn:
          if(emsg != NULL)
             emsg = V_(emsg);
       }
-      _if_error(icp, emsg, cp);
+      a_ccnd_oif_error(cicp, emsg, cp);
       goto jleave;
    }
 
-   switch (*cp) {
+   switch(*cp){
    default:
-      switch (boolify(cp, UIZ_MAX, -1)) {
+      switch(boolify(cp, UIZ_MAX, -1)){
       case 0: rv = FAL0; break;
       case 1: rv = TRU1; break;
       default:
@@ -126,7 +132,7 @@ jesyn:
       rv = ((n_psonce & n_PSO_SENDMODE) != 0);
       break;
    case 'T': case 't':
-      if (!asccasecmp(cp, "true")) /* Beware! */
+      if(!asccasecmp(cp, "true")) /* Beware! */
          rv = TRU1;
       else
          rv = ((n_psonce & n_PSO_TTYIN) != 0);
@@ -147,7 +153,7 @@ jesyn:
          lhv = n_var_vlook(cp, TRU1);
 
       /* Single argument, "implicit boolean" form? */
-      if (argc == 1) {
+      if(argc == 1){
          rv = (lhv != NULL);
          break;
       }
@@ -155,32 +161,46 @@ jesyn:
 
       /* Three argument comparison form required, check syntax */
       emsg = N_("unrecognized condition");
-      if (argc == 2 || (c = op[0]) == '\0')
+      if(argc == 2 || (c = op[0]) == '\0')
          goto jesyn;
-      if (op[1] == '\0') {
-         if (c != '<' && c != '>')
+      if(op[1] == '\0'){
+         if(c != '<' && c != '>')
             goto jesyn;
-      } else if (op[2] != '\0')
+      }else if(c != '-' && op[2] != '\0')
          goto jesyn;
-      else if (c == '<' || c == '>') {
-         if (op[1] != '=')
+      else if(c == '<' || c == '>'){
+         if(op[1] != '=')
             goto jesyn;
-      } else if (c == '=' || c == '!') {
-         if (op[1] != '=' && op[1] != '@'
+      }else if(c == '=' || c == '!'){
+         if(op[1] != '=' && op[1] != '@'
 #ifdef HAVE_REGEX
                && op[1] != '~'
 #endif
          )
             goto jesyn;
-      } else
+      }else if(c == '-'){
+         if(op[1] == '\0' || op[2] == '\0' || op[3] != '\0')
+            goto jesyn;
+         if(op[1] == 'e'){
+            if(op[2] != 'q')
+               goto jesyn;
+         }else if(op[1] == 'g' || op[1] == 'l'){
+            if(op[2] != 'e' && op[2] != 't')
+               goto jesyn;
+         }else if(op[1] == 'n'){
+            if(op[2] != 'e')
+               goto jesyn;
+         }else
+            goto jesyn;
+      }else
          goto jesyn;
 
       /* The right hand side may also be a variable, more syntax checking */
       emsg = N_("invalid right hand side");
-      if ((rhv = argv[2]) == NULL /* Can't happen */)
+      if((rhv = argv[2]) == NULL /* Can't happen */)
          goto jesyn;
-      if (*rhv == '$') {
-         if (*++rhv == '\0')
+      if(*rhv == '$'){
+         if(*++rhv == '\0')
             goto jesyn;
          else if(*rhv == '{'){
             size_t i = strlen(rhv);
@@ -200,13 +220,13 @@ jesyn:
 
       /* A null value is treated as the empty string */
       emsg = NULL;
-      if (lhv == NULL)
+      if(lhv == NULL)
          lhv = n_UNCONST(n_empty);
-      if (rhv == NULL)
+      if(rhv == NULL)
          rhv = n_UNCONST(n_empty);
 
 #ifdef HAVE_REGEX
-      if (op[1] == '~') {
+      if(op[1] == '~'){
          regex_t re;
          int s;
 
@@ -215,51 +235,56 @@ jesyn:
                   n_regex_err_to_str(&re, s));
             goto jesyn_ntr;
          }
-         if (!noop)
+         if(!noop)
             rv = (regexec(&re, lhv, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
          regfree(&re);
-      } else
+      }else
 #endif
-      if (noop)
+            if(noop)
          break;
-      else if (op[1] == '@')
+      else if(op[1] == '@')
          rv = (asccasestr(lhv, rhv) == NULL) ^ (c == '=');
-      else {
-         /* Try to interpret as integers, prefer those, then */
+      else if(c == '-'){
          si64_t lhvi, rhvi;
 
+         if(*lhv == '\0')
+            lhv = n_0;
+         if(*rhv == '\0')
+            rhv = n_0;
          if((n_idec_si64_cp(&lhvi, lhv, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) == n_IDEC_STATE_CONSUMED && (n_idec_si64_cp(&rhvi, rhv, 0, NULL
+               ) != n_IDEC_STATE_CONSUMED || (n_idec_si64_cp(&rhvi, rhv, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) == n_IDEC_STATE_CONSUMED){
-            lhvi -= rhvi;
-            switch (c) {
-            default:
-            case '=': rv = (lhvi == 0); break;
-            case '!': rv = (lhvi != 0); break;
-            case '<': rv = (op[1] == '\0') ? lhvi < 0 : lhvi <= 0; break;
-            case '>': rv = (op[1] == '\0') ? lhvi > 0 : lhvi >= 0; break;
-            }
-            break;
-         }else{
-            /* It is not an integer, perform string comparison */
-            si32_t scmp;
+               ) != n_IDEC_STATE_CONSUMED){
+            emsg = N_("integer expression expected");
+            goto jesyn;
+         }
 
-            scmp = asccasecmp(lhv, rhv);
-            switch (c) {
-            default:
-            case '=': rv = (scmp == 0); break;
-            case '!': rv = (scmp != 0); break;
-            case '<': rv = (op[1] == '\0') ? scmp < 0 : scmp <= 0; break;
-            case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
-            }
+         lhvi -= rhvi;
+         switch(op[1]){
+         default:
+         case 'e': rv = (lhvi == 0); break;
+         case 'n': rv = (lhvi != 0); break;
+         case 'l': rv = (op[2] == 't') ? lhvi < 0 : lhvi <= 0; break;
+         case 'g': rv = (op[2] == 't') ? lhvi > 0 : lhvi >= 0; break;
+         }
+         break;
+      }else{
+         si32_t scmp;
+
+         scmp = asccasecmp(lhv, rhv);
+         switch(c){
+         default:
+         case '=': rv = (scmp == 0); break;
+         case '!': rv = (scmp != 0); break;
+         case '<': rv = (op[1] == '\0') ? scmp < 0 : scmp <= 0; break;
+         case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
          }
       }
       break;
    }
 
-   if (noop && rv < 0)
+   if(noop && rv < 0)
       rv = TRU1;
 jleave:
    NYD2_LEAVE;
@@ -267,142 +292,146 @@ jleave:
 }
 
 static si8_t
-_if_group(struct if_cmd *icp, size_t level, bool_t noop)
-{
-   char const *emsg = NULL, *arg0, * const *argv, * const *argv_max_save;
+a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
+   char const *emsg, *arg0, * const *argv, * const *argv_max_save;
    size_t i;
-   char unary = '\0', c;
-   enum {
-      _FIRST         = 1<<0,
-      _END_OK        = 1<<1,
-      _NEED_LIST     = 1<<2,
+   char unary, c;
+   enum{
+      a_FIRST = 1<<0,
+      a_END_OK = 1<<1,
+      a_NEED_LIST = 1<<2,
 
-      _CANNOT_UNARY  = _NEED_LIST,
-      _CANNOT_OBRACK = _NEED_LIST,
-      _CANNOT_CBRACK = _FIRST,
-      _CANNOT_LIST   = _FIRST,
-      _CANNOT_COND   = _NEED_LIST
-   } state = _FIRST;
-   si8_t rv = -1, xrv;
+      a_CANNOT_UNARY = a_NEED_LIST,
+      a_CANNOT_OBRACK = a_NEED_LIST,
+      a_CANNOT_CBRACK = a_FIRST,
+      a_CANNOT_LIST = a_FIRST,
+      a_CANNOT_COND = a_NEED_LIST
+   } state;
+   si8_t rv, xrv;
    NYD2_ENTER;
 
-   for (;;) {
-      arg0 = *(argv = icp->ic_argv);
-      if (arg0 == NULL) {
-         if (!(state & _END_OK)) {
+   rv = -1;
+   state = a_FIRST;
+   unary = '\0';
+   emsg = NULL;
+
+   for(;;){
+      arg0 = *(argv = cicp->cic_argv);
+      if(arg0 == NULL){
+         if(!(state & a_END_OK)){
             emsg = N_("missing expression (premature end)");
             goto jesyn;
          }
-         if (noop && rv < 0)
+         if(noop && rv < 0)
             rv = TRU1;
          break; /* goto jleave; */
       }
 
-      switch ((c = *arg0)) {
+      switch((c = *arg0)){
       case '!':
-         if (arg0[1] != '\0')
+         if(arg0[1] != '\0')
             goto jneed_cond;
 
-         if (state & _CANNOT_UNARY) {
+         if(state & a_CANNOT_UNARY){
             emsg = N_("cannot use a unary operator here");
             goto jesyn;
          }
 
          unary = (unary != '\0') ? '\0' : c;
-         state &= ~(_FIRST | _END_OK);
-         icp->ic_argv = ++argv;
+         state &= ~(a_FIRST | a_END_OK);
+         cicp->cic_argv = ++argv;
          continue;
 
       case '[':
       case ']':
-         if (arg0[1] != '\0')
+         if(arg0[1] != '\0')
             goto jneed_cond;
 
-         if (c == '[') {
-            if (state & _CANNOT_OBRACK) {
+         if(c == '['){
+            if(state & a_CANNOT_OBRACK){
                emsg = N_("cannot open a group here");
                goto jesyn;
             }
 
-            icp->ic_argv = ++argv;
-            if ((xrv = _if_group(icp, level + 1, noop)) < 0) {
+            cicp->cic_argv = ++argv;
+            if((xrv = a_ccnd_oif_group(cicp, level + 1, noop)) < 0){
                rv = xrv;
                goto jleave;
-            } else if (!noop)
+            }else if(!noop)
                rv = (unary != '\0') ? !xrv : xrv;
 
             unary = '\0';
-            state &= ~(_FIRST | _END_OK);
-            state |= (level == 0 ? _END_OK : 0) | _NEED_LIST;
+            state &= ~(a_FIRST | a_END_OK);
+            state |= (level == 0 ? a_END_OK : 0) | a_NEED_LIST;
             continue;
-         } else {
-            if (state & _CANNOT_CBRACK) {
+         }else{
+            if(state & a_CANNOT_CBRACK){
                emsg = N_("cannot use closing bracket here");
                goto jesyn;
             }
 
-            if (level == 0) {
+            if(level == 0){
                emsg = N_("no open groups to be closed here");
                goto jesyn;
             }
 
-            icp->ic_argv = ++argv;
-            if (noop && rv < 0)
+            cicp->cic_argv = ++argv;
+            if(noop && rv < 0)
                rv = TRU1;
             goto jleave;/* break;break; */
          }
 
       case '|':
       case '&':
-         if (c != arg0[1] || arg0[2] != '\0')
+         if(c != arg0[1] || arg0[2] != '\0')
             goto jneed_cond;
 
-         if (state & _CANNOT_LIST) {
+         if(state & a_CANNOT_LIST){
             emsg = N_("cannot use a AND-OR list here");
             goto jesyn;
          }
 
          noop = ((c == '&') ^ (rv == TRU1));
-         state &= ~(_FIRST | _END_OK | _NEED_LIST);
-         icp->ic_argv = ++argv;
+         state &= ~(a_FIRST | a_END_OK | a_NEED_LIST);
+         cicp->cic_argv = ++argv;
          continue;
 
       default:
 jneed_cond:
-         if (state & _CANNOT_COND) {
+         if(state & a_CANNOT_COND){
             emsg = N_("cannot use a `if' condition here");
             goto jesyn;
          }
 
-         for (i = 0;; ++i) {
-            if ((arg0 = argv[i]) == NULL)
+         for(i = 0;; ++i){
+            if((arg0 = argv[i]) == NULL)
                break;
             c = *arg0;
-            if (c == '!' && arg0[1] == '\0')
+            if(c == '!' && arg0[1] == '\0')
                break;
-            if ((c == '[' || c == ']') && arg0[1] == '\0')
+            if((c == '[' || c == ']') && arg0[1] == '\0')
                break;
-            if ((c == '&' || c == '|') && c == arg0[1] && arg0[2] == '\0')
+            if((c == '&' || c == '|') && c == arg0[1] && arg0[2] == '\0')
                break;
          }
-         if (i == 0) {
+         if(i == 0){
             emsg = N_("empty conditional group");
             goto jesyn;
          }
 
-         argv_max_save = icp->ic_argv_max;
-         icp->ic_argv_max = argv + i;
-         if ((xrv = _if_test(icp, noop)) < 0) {
+         argv_max_save = cicp->cic_argv_max;
+         cicp->cic_argv_max = argv + i;
+         if((xrv = a_ccnd_oif_test(cicp, noop)) < 0){
             rv = xrv;
             goto jleave;
-         } else if (!noop)
+         }else if(!noop)
             rv = (unary != '\0') ? !xrv : xrv;
-         icp->ic_argv_max = argv_max_save;
+         cicp->cic_argv_max = argv_max_save;
 
-         icp->ic_argv = (argv += i);
+         cicp->cic_argv = (argv += i);
          unary = '\0';
-         state &= ~_FIRST;
-         state |= _END_OK | _NEED_LIST;
+         state &= ~a_FIRST;
+         state |= a_END_OK | a_NEED_LIST;
          break;
       }
    }
@@ -411,38 +440,43 @@ jleave:
    NYD2_LEAVE;
    return rv;
 jesyn:
-   if (emsg == NULL)
+   if(emsg == NULL)
       emsg = N_("invalid grouping");
-   _if_error(icp, V_(emsg), arg0);
+   a_ccnd_oif_error(cicp, V_(emsg), arg0);
    rv = -1;
    goto jleave;
 }
 
-FL int
-c_if(void *v)
-{
-   struct if_cmd ic;
+static int
+a_ccnd_if(void *v, bool_t iselif){
+   struct a_ccnd_if_ctx cic;
    char const * const *argv;
-   struct cond_stack *csp;
    size_t argc;
    si8_t xrv, rv;
+   struct a_ccnd_if_node *cinp;
    NYD_ENTER;
 
-   csp = smalloc(sizeof *csp);
-   csp->c_outer = _cond_stack;
-   csp->c_error = FAL0;
-   csp->c_noop = condstack_isskip();
-   csp->c_go = TRU1;
-   csp->c_else = FAL0;
-   _cond_stack = csp;
+   if(!iselif){
+      cinp = smalloc(sizeof *cinp);
+      cinp->cin_outer = a_ccnd_if_stack;
+   }else{
+      cinp = a_ccnd_if_stack;
+      assert(cinp != NULL);
+   }
+   cinp->cin_error = FAL0;
+   cinp->cin_noop = a_CCND_CONDSTACK_ISSKIP();
+   cinp->cin_go = TRU1;
+   cinp->cin_else = FAL0;
+   if(!iselif)
+      a_ccnd_if_stack = cinp;
 
-   if (csp->c_noop) {
+   if(cinp->cin_noop){
       rv = 0;
       goto jleave;
    }
 
    /* For heaven's sake, support comments _today_ TODO wyshlist.. */
-   for (argc = 0, argv = v; argv[argc] != NULL; ++argc)
+   for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
       if(argv[argc][0] == '#'){
          char const **nav = salloc(sizeof(char*) * (argc + 1));
          size_t i;
@@ -453,15 +487,15 @@ c_if(void *v)
          argv = nav;
          break;
       }
-   ic.ic_argv_base = ic.ic_argv = argv;
-   ic.ic_argv_max = &argv[argc];
-   xrv = _if_group(&ic, 0, FAL0);
+   cic.cic_argv_base = cic.cic_argv = argv;
+   cic.cic_argv_max = &argv[argc];
+   xrv = a_ccnd_oif_group(&cic, 0, FAL0);
 
-   if (xrv >= 0) {
-      csp->c_go = (bool_t)xrv;
+   if(xrv >= 0){
+      cinp->cin_go = (bool_t)xrv;
       rv = 0;
-   } else {
-      csp->c_error = csp->c_noop = TRU1;
+   }else{
+      cinp->cin_error = cinp->cin_noop = TRU1;
       rv = 1;
    }
 jleave:
@@ -470,39 +504,45 @@ jleave:
 }
 
 FL int
-c_elif(void *v)
-{
-   struct cond_stack *csp;
+c_if(void *v){
    int rv;
    NYD_ENTER;
 
-   if ((csp = _cond_stack) == NULL || csp->c_else) {
-      n_err(_("`elif' without matching `if'\n"));
+   rv = a_ccnd_if(v, FAL0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_elif(void *v){
+   struct a_ccnd_if_node *cinp;
+   int rv;
+   NYD_ENTER;
+
+   if((cinp = a_ccnd_if_stack) == NULL || cinp->cin_else){
+      n_err(_("`elif' without a matching `if'\n"));
       rv = 1;
-   } else if (!csp->c_error) {
-      csp->c_go = !csp->c_go;
-      rv = c_if(v);
-      _cond_stack->c_outer = csp->c_outer;
-      free(csp);
-   } else
+   }else if(!cinp->cin_error){
+      cinp->cin_go = !cinp->cin_go; /* Cause right CONDSTACK_ISSKIP() result */
+      rv = a_ccnd_if(v, TRU1);
+   }else
       rv = 0;
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_else(void *v)
-{
+c_else(void *v){
    int rv;
    NYD_ENTER;
    n_UNUSED(v);
 
-   if (_cond_stack == NULL || _cond_stack->c_else) {
-      n_err(_("`else' without matching `if'\n"));
+   if(a_ccnd_if_stack == NULL || a_ccnd_if_stack->cin_else){
+      n_err(_("`else' without a matching `if'\n"));
       rv = 1;
-   } else {
-      _cond_stack->c_else = TRU1;
-      _cond_stack->c_go = !_cond_stack->c_go;
+   }else{
+      a_ccnd_if_stack->cin_else = TRU1;
+      a_ccnd_if_stack->cin_go = !a_ccnd_if_stack->cin_go;
       rv = 0;
    }
    NYD_LEAVE;
@@ -510,19 +550,18 @@ c_else(void *v)
 }
 
 FL int
-c_endif(void *v)
-{
-   struct cond_stack *csp;
+c_endif(void *v){
+   struct a_ccnd_if_node *cinp;
    int rv;
    NYD_ENTER;
    n_UNUSED(v);
 
-   if ((csp = _cond_stack) == NULL) {
-      n_err(_("`endif' without matching `if'\n"));
+   if((cinp = a_ccnd_if_stack) == NULL){
+      n_err(_("`endif' without a matching `if'\n"));
       rv = 1;
-   } else {
-      _cond_stack = csp->c_outer;
-      free(csp);
+   }else{
+      a_ccnd_if_stack = cinp->cin_outer;
+      free(cinp);
       rv = 0;
    }
    NYD_LEAVE;
@@ -530,43 +569,40 @@ c_endif(void *v)
 }
 
 FL bool_t
-condstack_isskip(void)
-{
+condstack_isskip(void){
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   rv = (_cond_stack != NULL && (_cond_stack->c_noop || !_cond_stack->c_go));
-   NYD_LEAVE;
+   rv = a_CCND_CONDSTACK_ISSKIP();
+   NYD2_LEAVE;
    return rv;
 }
 
 FL void *
-condstack_release(void)
-{
+condstack_release(void){
    void *rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   rv = _cond_stack;
-   _cond_stack = NULL;
-   NYD_LEAVE;
+   rv = a_ccnd_if_stack;
+   a_ccnd_if_stack = NULL;
+   NYD2_LEAVE;
    return rv;
 }
 
 FL bool_t
-condstack_take(void *self)
-{
-   struct cond_stack *csp;
+condstack_take(void *self){
+   struct a_ccnd_if_node *cinp;
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (!(rv = ((csp = _cond_stack) == NULL)))
-      do {
-         _cond_stack = csp->c_outer;
-         free(csp);
-      } while ((csp = _cond_stack) != NULL);
+   if(!(rv = ((cinp = a_ccnd_if_stack) == NULL)))
+      do{
+         a_ccnd_if_stack = cinp->cin_outer;
+         free(cinp);
+      }while((cinp = a_ccnd_if_stack) != NULL);
 
-   _cond_stack = self;
-   NYD_LEAVE;
+   a_ccnd_if_stack = self;
+   NYD2_LEAVE;
    return rv;
 }
 

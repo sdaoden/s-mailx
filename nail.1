@@ -4581,7 +4581,31 @@ mechanism.
 The variable names may be enclosed in a pair of matching braces.
 .
 .Pp
-The available comparison operators are
+Integer operators treat the left and right hand side as integral numbers
+and compare them arithmetically.
+It is an error if any of the operands is not a valid integer, an empty
+operand is treated as if it were 0.
+Available operators are
+.Ql -lt
+(less than),
+.Ql -le
+(less than or equal to),
+.Ql -eq
+(equal),
+.Ql -ne
+(not equal),
+.Ql -ge
+(greater than or equal to), and
+.Ql -gt
+(greater than).
+.
+.Pp
+String operators compare the left and right hand side 8-bit byte-wise,
+ignoring case according to the rules of the US-ASCII encoding
+(therefore, dependent on the active locale, possibly producing false
+results for strings in the locale encoding).
+An unset variable is treated as the empty string.
+Available operators are
 .Ql <
 (less than),
 .Ql <=
@@ -4598,18 +4622,10 @@ The available comparison operators are
 (is substring of) and
 .Ql !@
 (is not substring of).
-The values of the left and right hand side are treated as strings and
-are compared 8-bit byte-wise, ignoring case according to the rules of
-the US-ASCII encoding (therefore, dependent on the active locale,
-possibly producing false results for strings in the locale encoding).
-Except for the substring checks the comparison will instead be performed
-arithmetically if both, the user given value as well as the variable
-content, can be parsed as numbers (integers).
-An unset variable is treated as the empty string.
 .
 .Pp
 When the \*(OPal regular expression support is available, the additional
-test cases
+string operators
 .Ql =~
 and
 .Ql !~
@@ -4651,6 +4667,7 @@ set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
+# This is a string test, -ge was added for v14.9.0
 if [ "$version-major" >= 15 ]
   echo Running a new version..
   if [ "$features" =@ +regex ]
