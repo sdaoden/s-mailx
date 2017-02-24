@@ -81,7 +81,7 @@ enum a_lex_input_flags{
 struct a_lex_cmd{
    char const *lc_name;       /* Name of command */
    int (*lc_func)(void*);     /* Implementor of command */
-   enum argtype lc_argtype;   /* Arglist type (see below) */
+   enum n_cmd_arg_flags lc_caflags;
    si16_t lc_msgflag;         /* Required flags of msgs */
    si16_t lc_msgmask;         /* Relevant flags of msgs */
 #ifdef HAVE_DOCSTRINGS
@@ -229,9 +229,9 @@ static struct a_lex_cmd const a_lex_cmd_tab[] = {
 #include "cmd_tab.h"
 },
       a_lex_special_cmd_tab[] = {
-   { "#", NULL, ARG_STRLIST, 0, 0
+   { "#", NULL, n_CMD_ARG_TYPE_STRING, 0, 0
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", NULL, ARG_WYSHLIST, 0, 0
+   { "-", NULL, n_CMD_ARG_TYPE_WYSH, 0, 0
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
@@ -428,14 +428,25 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    rv = n_string_creat_auto(&rvb);
    rv = n_string_reserve(rv, 80);
 
-   switch(lcp->lc_argtype & ARG_ARGMASK){
-   case ARG_MSGLIST: cp = N_("message-list"); break;
-   case ARG_STRLIST: cp = N_("string data"); break;
-   case ARG_RAWLIST: cp = N_("old-style quoting"); break;
-   case ARG_NDMLIST: cp = N_("message-list (no default)"); break;
-   case ARG_WYRALIST: cp = N_("`wysh' for sh(1)ell-style quoting"); break;
+   switch(lcp->lc_caflags & n_CMD_ARG_TYPE_MASK){
+   case n_CMD_ARG_TYPE_MSGLIST:
+      cp = N_("message-list");
+      break;
+   case n_CMD_ARG_TYPE_STRING:
+   case n_CMD_ARG_TYPE_RAWDAT:
+      cp = N_("string data");
+      break;
+   case n_CMD_ARG_TYPE_RAWLIST:
+      cp = N_("old-style quoting");
+      break;
+   case n_CMD_ARG_TYPE_NDMLIST:
+      cp = N_("message-list (no default)");
+      break;
+   case n_CMD_ARG_TYPE_WYRA:
+      cp = N_("`wysh' for sh(1)ell-style quoting");
+      break;
    default:
-   case ARG_WYSHLIST:
+   case n_CMD_ARG_TYPE_WYSH:
       cp = (lcp->lc_minargs == 0 && lcp->lc_maxargs == 0)
             ? N_("sh(1)ell-style quoting (takes no arguments)")
             : N_("sh(1)ell-style quoting");
@@ -443,25 +454,25 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    }
    rv = n_string_push_cp(rv, V_(cp));
 
-   if(lcp->lc_argtype & ARG_V)
+   if(lcp->lc_caflags & n_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | vput modifier"));
-   if(lcp->lc_argtype & ARG_EM)
+   if(lcp->lc_caflags & n_CMD_ARG_EM)
       rv = n_string_push_cp(rv, _(" | status in *!*"));
 
-   if(lcp->lc_argtype & ARG_A)
+   if(lcp->lc_caflags & n_CMD_ARG_A)
       rv = n_string_push_cp(rv, _(" | needs box"));
-   if(lcp->lc_argtype & ARG_I)
+   if(lcp->lc_caflags & n_CMD_ARG_I)
       rv = n_string_push_cp(rv, _(" | ok: batch or interactive"));
-   if(lcp->lc_argtype & ARG_M)
+   if(lcp->lc_caflags & n_CMD_ARG_M)
       rv = n_string_push_cp(rv, _(" | ok: send mode"));
-   if(lcp->lc_argtype & ARG_R)
+   if(lcp->lc_caflags & n_CMD_ARG_R)
       rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
-   if(lcp->lc_argtype & ARG_S)
+   if(lcp->lc_caflags & n_CMD_ARG_S)
       rv = n_string_push_cp(rv, _(" | not ok: during startup"));
-   if(lcp->lc_argtype & ARG_X)
+   if(lcp->lc_caflags & n_CMD_ARG_X)
       rv = n_string_push_cp(rv, _(" | ok: in subprocess"));
 
-   if(lcp->lc_argtype & ARG_G)
+   if(lcp->lc_caflags & n_CMD_ARG_G)
       rv = n_string_push_cp(rv, _(" | gabby history"));
 
    cp = n_string_cp(rv);
@@ -892,29 +903,29 @@ jrestart:
    /* See if we should execute the command -- if a conditional we always
     * execute it, otherwise, check the state of cond */
 jexec:
-   if(!(cmd->lc_argtype & ARG_F) && condstack_isskip())
+   if(!(cmd->lc_caflags & n_CMD_ARG_F) && condstack_isskip())
       goto jerr0;
 
    n_pstate_var__em = n_1;
 
    /* Process the arguments to the command, depending on the type it expects */
-   if((cmd->lc_argtype & ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
+   if((cmd->lc_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
       n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
          cmd->lc_name);
       goto jleave;
    }
-   if(!(cmd->lc_argtype & ARG_M) && (n_psonce & n_PSO_SENDMODE)){
+   if(!(cmd->lc_caflags & n_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
       n_err(_("May not execute `%s' while sending\n"), cmd->lc_name);
       goto jleave;
    }
-   if(cmd->lc_argtype & ARG_R){
+   if(cmd->lc_caflags & n_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
          n_err(_("Cannot invoke `%s' when in compose mode\n"), cmd->lc_name);
          goto jleave;
       }
-      /* TODO Nothing should prevent ARG_R in conjunction with
+      /* TODO Nothing should prevent n_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
       if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)){
          n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
@@ -922,27 +933,27 @@ jexec:
          goto jleave;
       }
    }
-   if((cmd->lc_argtype & ARG_S) && !(n_psonce & n_PSO_STARTED)){
+   if((cmd->lc_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED)){
       n_err(_("May not execute `%s' during startup\n"), cmd->lc_name);
       goto jleave;
    }
-   if(!(cmd->lc_argtype & ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
+   if(!(cmd->lc_caflags & n_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
       n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
          cmd->lc_name);
       goto jleave;
    }
 
-   if((cmd->lc_argtype & ARG_A) && mb.mb_type == MB_VOID){
+   if((cmd->lc_caflags & n_CMD_ARG_A) && mb.mb_type == MB_VOID){
       n_err(_("Cannot execute `%s' without active mailbox\n"), cmd->lc_name);
       goto jleave;
    }
-   if((cmd->lc_argtype & ARG_W) && !(mb.mb_perm & MB_DELE)){
+   if((cmd->lc_caflags & n_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
       n_err(_("May not execute `%s' -- message file is read only\n"),
          cmd->lc_name);
       goto jleave;
    }
 
-   if(cmd->lc_argtype & ARG_O)
+   if(cmd->lc_caflags & n_CMD_ARG_O)
       n_OBSOLETE2(_("this command will be removed"), cmd->lc_name);
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
@@ -951,13 +962,14 @@ jexec:
     * TODO argument state should be property of a per-command carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
-   if((flags & a_WYSH) && (cmd->lc_argtype & ARG_ARGMASK) != ARG_WYRALIST){
+   if((flags & a_WYSH) &&
+         (cmd->lc_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
       n_err(_("`wysh' prefix doesn't affect `%s'\n"), cmd->lc_name);
       flags &= ~a_WYSH;
    }
 
    if(flags & a_VPUT){
-      if(cmd->lc_argtype & ARG_V){
+      if(cmd->lc_caflags & n_CMD_ARG_V){
          char const *xcp;
 
          xcp = cp;
@@ -988,8 +1000,8 @@ jexec:
       }
    }
 
-   switch(cmd->lc_argtype & ARG_ARGMASK){
-   case ARG_MSGLIST:
+   switch(cmd->lc_caflags & n_CMD_ARG_TYPE_MASK){
+   case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
          goto je96;
@@ -1007,7 +1019,7 @@ jexec:
       rv = (*cmd->lc_func)(n_msgvec);
       break;
 
-   case ARG_NDMLIST:
+   case n_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL){
 je96:
@@ -1019,21 +1031,29 @@ je96:
       rv = (*cmd->lc_func)(n_msgvec);
       break;
 
-   case ARG_STRLIST:
-      /* Just the straight string, with leading blanks removed */
+   case n_CMD_ARG_TYPE_STRING:
+      /* Just the straight string, old style, with leading blanks removed */
       while(blankspacechar(*cp))
          ++cp;
       rv = (*cmd->lc_func)(cp);
       break;
+   case n_CMD_ARG_TYPE_RAWDAT:
+      /* Just the straight string, leading blanks removed, placed in argv[] */
+      while(blankspacechar(*cp))
+         ++cp;
+      *arglist++ = cp;
+      *arglist = NULL;
+      rv = (*cmd->lc_func)(arglist_base);
+      break;
 
-   case ARG_WYSHLIST:
+   case n_CMD_ARG_TYPE_WYSH:
       c = 1;
       if(0){
          /* FALLTHRU */
-   case ARG_WYRALIST:
+   case n_CMD_ARG_TYPE_WYRA:
          c = (flags & a_WYSH) ? 1 : 0;
          if(0){
-   case ARG_RAWLIST:
+   case n_CMD_ARG_TYPE_RAWLIST:
             c = 0;
          }
       }
@@ -1064,15 +1084,15 @@ je96:
 
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),
-         cmd->lc_argtype & ARG_ARGMASK); )
+         cmd->lc_caflags & n_CMD_ARG_TYPE_MASK); )
       goto jerr0;
    }
 
-   if(!(cmd->lc_argtype & ARG_H))
-      evp->le_add_history = (((cmd->lc_argtype & ARG_G) ||
+   if(!(cmd->lc_caflags & n_CMD_ARG_H))
+      evp->le_add_history = (((cmd->lc_caflags & n_CMD_ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
-   if(!(cmd->lc_argtype & ARG_EM) && rv == 0)
+   if(!(cmd->lc_caflags & n_CMD_ARG_EM) && rv == 0)
       n_pstate_var__em = n_0;
 jleave:
    n_PS_ROOT_BLOCK(
@@ -1099,13 +1119,13 @@ jleave:
 
    if(cmd == NULL)
       goto jret0;
-   if((cmd->lc_argtype & ARG_P) && ok_blook(autoprint))
+   if((cmd->lc_caflags & n_CMD_ARG_P) && ok_blook(autoprint))
       if(visible(dot))
          n_source_inject_input(n_INPUT_INJECT_COMMIT, "\\type",
             sizeof("\\type") -1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
-         !(cmd->lc_argtype & ARG_T))
+         !(cmd->lc_caflags & n_CMD_ARG_T))
       n_pstate |= n_PS_SAW_COMMAND;
 jleave0:
    n_pstate &= ~n_PS_EVAL_ERROR;

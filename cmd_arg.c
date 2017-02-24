@@ -235,7 +235,7 @@ jredo:
       addca = FAL0;
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
-      case n_CMD_ARG_DESC_STRING:{
+      case n_CMD_ARG_DESC_STRING:{ /* TODO \ escaping? additional type!? */
          char /*const*/ *cp = shin.s;
          size_t i = shin.l;
 

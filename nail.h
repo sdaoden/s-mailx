@@ -2271,31 +2271,33 @@ struct message {
 #define mailx_offsetof(off)               ((int) ((off) % 4096))
 #define mailx_positionof(block, offset)   ((off_t)(block) * 4096 + (offset))
 
-/* Argument types */
-enum argtype {
-   ARG_MSGLIST    = 0,        /* Message list type */
-   ARG_STRLIST    = 1,        /* A pure string */
-   ARG_RAWLIST    = 2,        /* getrawlist(), old style */
-   ARG_NDMLIST    = 3,        /* Message list, no defaults */
-   ARG_WYSHLIST   = 4,        /* getrawlist(), sh(1) compatible */
-     ARG_WYRALIST = 5,        /* _RAWLIST or _WYSHLIST (with `wysh') */
-   ARG_ARGMASK    = 7,        /* Mask of the above */
+enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
+   * TODO i rather see the mechanism that is used in c_bind() extended and used
+   * TODO anywhere, i.e. n_cmd_arg_parse() */
+   n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
+   n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
+   n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
+     n_CMD_ARG_TYPE_STRING = 3,  /* A pure string TODO obsolete */
+   n_CMD_ARG_TYPE_WYSH = 4,      /* getrawlist(), sh(1) compatible */
+      n_CMD_ARG_TYPE_RAWLIST = 5, /* getrawlist(), old style TODO obsolete */
+     n_CMD_ARG_TYPE_WYRA = 6,    /* _RAWLIST or _WYSH (with `wysh') TODO obs. */
+   n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
 
-   ARG_A          = 1u<< 4,   /* Needs an active mailbox */
-   ARG_F          = 1u<< 5,   /* Is a conditional command */
-   ARG_G          = 1u<< 6,   /* Is supposed to produce "gabby" history */
-   ARG_H          = 1u<< 7,   /* Never place in `history' */
-   ARG_I          = 1u<< 8,   /* Interactive command bit */
-   ARG_M          = 1u<< 9,   /* Legal from send mode bit */
-   ARG_O          = 1u<<10,   /* n_OBSOLETE()d command */
-   ARG_P          = 1u<<11,   /* Autoprint dot after command */
-   ARG_R          = 1u<<12,   /* Cannot be called in compose mode recursion */
-   ARG_S          = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
-   ARG_T          = 1u<<14,   /* Is a transparent command */
-   ARG_V          = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   ARG_W          = 1u<<16,   /* Invalid when read only bit */
-   ARG_X          = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   ARG_EM         = 1u<<30    /* Stores soft exit status in n_pstate_var__em */
+   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
+   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
+   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
+   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
+   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
+   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
+   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
+   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
+   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
+   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   n_CMD_ARG_EM = 1u<<30   /* Stores soft exit status in n_pstate_var__em */
 };
 
 enum gfield {
