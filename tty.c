@@ -997,7 +997,7 @@ a_tty_wcwidth(wchar_t wc){
    ui8_t rv;
    NYD2_ENTER;
 
-   /* Special case the backslash at first */
+   /* Special case the reverse solidus at first */
    if(wc == '\t')
       rv = UI8_MAX;
    else{

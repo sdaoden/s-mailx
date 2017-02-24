@@ -1180,7 +1180,7 @@ enum sendaction {
 
 enum n_shexp_parse_flags{
    n_SHEXP_PARSE_NONE,
-   /* Don't perform any expansions or interpret backslash escape sequences etc.
+   /* Don't perform expansions or interpret reverse solidus escape sequences.
     * Output may be NULL, otherwise the possibly trimmed non-expanded input is
     * used as output */
    n_SHEXP_PARSE_DRYRUN = 1<<0,

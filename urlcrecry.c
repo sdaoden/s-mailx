@@ -315,7 +315,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 
       /* Not requiring the closing QM is (Net)BSD syntax */
       while ((c = getc(fi)) != EOF && c != quotec) {
-         /* Backslash escaping the next character is (Net)BSD syntax */
+         /* Reverse solidus escaping the next character is (Net)BSD syntax */
          if (c == '\\')
             if ((c = getc(fi)) == EOF)
                break;
@@ -328,7 +328,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
    } else {
       *cp++ = c;
       while ((c = getc(fi)) != EOF && !whitechar(c)) {
-         /* Backslash escaping the next character is (Net)BSD syntax */
+         /* Rverse solidus  escaping the next character is (Net)BSD syntax */
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;

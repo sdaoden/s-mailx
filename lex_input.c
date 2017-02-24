@@ -1945,7 +1945,7 @@ FL int
          break;
       }
       /* Definitely outside of quotes, thus the quoting rules are so that an
-       * uneven number of successive backslashs at EOL is a continuation */
+       * uneven number of successive reverse solidus at EOL is a continuation */
       if(n > 1){
          size_t i, j;
 
@@ -1991,7 +1991,7 @@ jhave_dat:
          (*linebuf)[n = (int)j] = '\0';
       }
    }
-#endif /* 0 (notyet - must take care for backslash escaped space) */
+#endif /* 0 (notyet - must take care for reverse solidus escaped space) */
 
    if(n_poption & n_PO_D_VV)
       n_err(_("%s %d bytes <%s>\n"), iftype, n, *linebuf);

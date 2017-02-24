@@ -585,8 +585,8 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
          /* RFC 2045, 6.7, as above ... */
          if (c != '\t' && c != '\r')
             mtc |= _MT_C_CTRLCHAR;
-         /* If there is a escape sequence in backslash notation defined for
-          * this in ANSI X3.159-1989 (ANSI C89), don't treat it as a control
+         /* If there is a escape sequence in reverse solidus notation defined
+          * for this in ANSI X3.159-1989 (ANSI C89), don't treat it as a control
           * for real.  I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.  Don't follow
           * libmagic(1) in respect to \v=\x0B=VT.  \f=\x0C=NP; do ignore
           * \e=\x1B=ESC */

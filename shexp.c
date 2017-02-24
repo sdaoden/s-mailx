@@ -1124,7 +1124,7 @@ jrestart_empty:
             }
          }else if(c == '\\'){
             /* Outside of quotes this just escapes any next character, but a sole
-             * <backslash> at EOS is left unchanged */
+             * <reverse solidus> at EOS is left unchanged */
              if(il > 0)
                --il, c = *ib++;
             state &= ~a_NTOKEN;
@@ -1193,15 +1193,15 @@ jrestart_empty:
             continue;
          }else if(c == '\\' && (state & a_SURPLUS)){
             ib_save = ib - 1;
-            /* A sole <backslash> at EOS is treated as-is!  This is ok since
-             * the "closing quote" error will occur next, anyway */
+            /* A sole <reverse solidus> at EOS is treated as-is!  This is ok
+             * since the "closing quote" error will occur next, anyway */
             if(il == 0)
                break;
             else if((c2 = *ib) == quotec){
                --il, ++ib;
                c = quotec;
             }else if(quotec == '"'){
-               /* Double quotes:
+               /* Double quotes, POSIX says:
                 *    The <backslash> shall retain its special meaning as an
                 *    escape character (see Section 2.2.1) only when followed
                 *    by one of the following characters when considered

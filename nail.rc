@@ -6,9 +6,9 @@
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines can be spread over
 #@   multiple lines if the newline character is "escaped" by placing
-#@   a backslash character \ as the last character of the line; any leading
-#@   whitespace of follow lines is ignored, trailing whitespace before the
-#@   escaped newline is not.
+#@   a reverse solidus character \ as the last character of the line; any
+#@   leading whitespace of follow lines is ignored, trailing whitespace before
+#@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.  No other form of comments exist.
 #--MKREL-START--

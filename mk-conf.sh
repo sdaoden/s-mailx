@@ -697,9 +697,9 @@ option_join_rc() {
    # Join the values from make.rc into what currently is defined, not
    # overwriting yet existing settings
    ${rm} -f ${tmp}
-   # We want read(1) to perform backslash escaping in order to be able to use
-   # multiline values in make.rc; the resulting sh(1)/sed(1) code was very slow
-   # in VMs (see [fa2e248]), Aharon Robbins suggested the following
+   # We want read(1) to perform reverse solidus escaping in order to be able to
+   # use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
+   # slow in VMs (see [fa2e248]), Aharon Robbins suggested the following
    < ${rc} ${awk} 'BEGIN{line = ""}{
       gsub(/^[[:space:]]+/, "", $0)
       gsub(/[[:space:]]+$/, "", $0)

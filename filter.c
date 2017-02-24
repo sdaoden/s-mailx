@@ -339,7 +339,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
 
-      /* Add pad for takeover copies, backslash and newline */
+      /* Add pad for takeover copies, reverse solidus and newline */
       self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
       self->qf_currq.s = salloc((QUOTE_MAX + 1) * n_mb_cur_max);
    }
@@ -1079,7 +1079,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          continue;
       /* If so, properly skip over the value */
       if(c == '"' || c == '\''){
-         /* TODO oops i have forgotten whether backslash quoting is allowed in
+         /* TODO i have forgotten whether reverse solidus quoting is allowed
           * TODO quoted HTML parameter values?  not supporting that for now.. */
          for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
             ;
@@ -1099,7 +1099,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    }
 
    if(c == '"' || c == '\''){
-      /* TODO oops i have forgotten whether backslash quoting is allowed in
+      /* TODO i have forgotten whether reverse solisud quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
       store->s = n_UNCONST(cp);
       for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
