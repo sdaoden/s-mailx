@@ -2472,10 +2472,12 @@ generate a (unique) keycode:
 .Bl -tag -compact -width ".It Ql Ba"
 .It Ql \ecA
 Go to the start of the line
+.Mx
 .Pf ( Cd mle-go-home ) .
 .
 .It Ql \ecB
 Move the cursor backward one character
+.Mx
 .Pf ( Cd mle-go-bwd ) .
 .
 .It Ql \ecD
@@ -2483,14 +2485,17 @@ Forward delete the character under the cursor;
 quits \*(UA if used on the empty line unless the internal variable
 .Va ignoreeof
 is set
+.Mx
 .Pf ( Cd mle-del-fwd ) .
 .
 .It Ql \ecE
 Go to the end of the line
+.Mx
 .Pf ( Cd mle-go-end ) .
 .
 .It Ql \ecF
 Move the cursor forward one character
+.Mx
 .Pf ( Cd mle-go-fwd ) .
 .
 .It Ql \ecG
@@ -2498,10 +2503,12 @@ Cancel current operation, full reset.
 If there is an active history search or tabulator expansion then this
 command will first reset that, reverting to the former line content;
 thus a second reset is needed for a full reset in this case
+.Mx
 .Pf ( Cd mle-reset ) .
 .
 .It Ql \ecH
 Backspace: backward delete one character
+.Mx
 .Pf ( Cd mle-del-bwd ) .
 .
 .It Ql \ecI
@@ -2509,6 +2516,7 @@ Backspace: backward delete one character
 Horizontal tabulator:
 try to expand the word before the cursor, supporting the usual
 .Sx "Filename transformations"
+.Mx
 .Pf ( Cd mle-complete ) .
 This is affected by
 .Cd mle-quote-rndtrip .
@@ -2516,18 +2524,22 @@ This is affected by
 .It Ql \ecJ
 Newline:
 commit the current line
+.Mx
 .Pf ( Cd mle-commit ) .
 .
 .It Ql \ecK
 Cut all characters from the cursor to the end of the line
+.Mx
 .Pf ( Cd mle-snarf-end ) .
 .
 .It Ql \ecL
 Repaint the line
+.Mx
 .Pf ( Cd mle-repaint ) .
 .
 .It Ql \ecN
 \*(OP Go to the next history entry
+.Mx
 .Pf ( Cd mle-hist-fwd ) .
 .
 .It Ql \ecO
@@ -2536,25 +2548,30 @@ Repaint the line
 .
 .It Ql \ecP
 \*(OP Go to the previous history entry
+.Mx
 .Pf ( Cd mle-hist-bwd ) .
 .
 .It Ql \ecQ
 Toggle roundtrip mode shell quotes, where produced,
 on and off
+.Mx
 .Pf ( Cd mle-quote-rndtrip ) .
 This setting is temporary, and will be forgotten once the command line
 is committed.
 .
 .It Ql \ecR
 \*(OP Complete the current line from (the remaining) older history entries
+.Mx
 .Pf ( Cd mle-hist-srch-bwd ) .
 .
 .It Ql \ecS
 \*(OP Complete the current line from (the remaining) newer history entries
+.Mx
 .Pf ( Cd mle-hist-srch-fwd ) .
 .
 .It Ql \ecT
 Paste the snarf buffer
+.Mx
 .Pf ( Cd mle-paste ) .
 .
 .It Ql \ecU
@@ -2562,10 +2579,12 @@ The same as
 .Ql \ecA
 followed by
 .Ql \ecK
+.Mx
 .Pf ( Cd mle-snarf-line ) .
 .
 .It Ql \ecV
 Prompts for a Unicode character (its hexadecimal number) to be inserted
+.Mx
 .Pf ( Cd mle-prompt-char ) .
 Note this command needs to be assigned to a single-letter control code
 in order to become recognized and executed during input of
@@ -2578,19 +2597,23 @@ function immediately.
 .It Ql \ecW
 Cut the characters from the one preceding the cursor to the preceding
 word boundary
+.Mx
 .Pf ( Cd mle-snarf-word-bwd ) .
 .
 .It Ql \ecX
 Move the cursor forward one word boundary
+.Mx
 .Pf ( Cd mle-go-word-fwd ) .
 .
 .It Ql \ecY
 Move the cursor backward one word boundary
+.Mx
 .Pf ( Cd mle-go-word-bwd ) .
 .
 .It Ql \ec[
 Escape: reset a possibly used multibyte character input state machine
 and \*(OPally a lingering, incomplete key binding
+.Mx
 .Pf ( Cd mle-cancel ) .
 This command needs to be assigned to a single-letter control code in
 order to become recognized and executed during input of a key-sequence
@@ -2615,6 +2638,7 @@ expected input, then it will first be consumed by the active sequence.
 .It Ql \ec_
 Cut the characters from the one after the cursor to the succeeding word
 boundary
+.Mx
 .Pf ( Cd mle-snarf-word-fwd ) .
 .
 .It Ql \ec?
@@ -2622,12 +2646,14 @@ Backspace:
 .Cd mle-del-bwd .
 .
 .It \(en
+.Mx
 .Cd mle-fullreset :
 in difference to
 .Cd mle-reset
 this will immediately reset a possibly active search etc.
 .
 .It \(en
+.Mx
 .Cd mle-bell :
 ring the audible bell.
 .El
