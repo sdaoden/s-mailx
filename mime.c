@@ -344,11 +344,20 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
 
    wbot = in->s;
    upper = wbot + in->l;
+   sz = 0;
 
    if(colp == NULL || (col = *colp) == 0)
-      col = sizeof("Mail-Followup-To: ") -1; /* dreadful thing */
+      col = sizeof("Mail-Followup-To: ") -1; /* TODO dreadful thing */
 
-   for (sz = 0; wbot < upper; flags &= ~_FIRST, wbot = wend) {
+   /* The user may specify empy quoted-strings or comments, keep them! */
+   if(wbot == upper) {
+      if(flags & _MSH_NOTHING){
+         flags &= ~_MSH_NOTHING;
+         putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
+         sz = 1;
+         ++col;
+      }
+   } else for (; wbot < upper; flags &= ~_FIRST, wbot = wend) {
       flags &= _RND_MASK;
       wcur = wbot;
       while (wcur < upper && whitechar(*wcur)) {
@@ -645,14 +654,14 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp)
          }
          lastcp = ++cp;
          cp = skip_comment(cp);
-         if(--cp > lastcp){
-            i = PTR2SIZE(cp - lastcp);
-            xin.s = n_UNCONST(lastcp);
-            xin.l = i;
-            if ((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_COMMENT)) < 0)
-               goto jerr;
-            sz += x;
-         }
+         if(cp > lastcp)
+            --cp;
+         /* We want to keep empty comments, too! */
+         xin.s = n_UNCONST(lastcp);
+         xin.l = PTR2SIZE(cp - lastcp);
+         if ((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_COMMENT)) < 0)
+            goto jerr;
+         sz += x;
          lastcp = &cp[1];
          break;
       case '"':
@@ -668,14 +677,12 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp)
             if(*cp == '\\' && cp[1] != '\0')
                ++cp;
          }
-         i = PTR2SIZE(cp - lastcp);
-         if(i > 0){
-            xin.s = n_UNCONST(lastcp);
-            xin.l = i;
-            if((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_QUOTE)) < 0)
-               goto jerr;
-            sz += x;
-         }
+         /* We want to keep empty quoted-strings, too! */
+         xin.s = n_UNCONST(lastcp);
+         xin.l = PTR2SIZE(cp - lastcp);
+         if((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_QUOTE)) < 0)
+            goto jerr;
+         sz += x;
          ++sz;
          lastcp = &cp[1];
          break;
@@ -707,7 +714,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
    rv = 0;
    ciconv.s = NULL;
 
-   if(iconvd != (iconv_t)-1){
+   if(inp->l > 0 && iconvd != (iconv_t)-1){
       ciconv.l = 0;
       if(n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &ciconv, inp, NULL) != 0){
          n_iconv_reset(iconvd);
