@@ -40,7 +40,7 @@
 # include "nail.h"
 #endif
 
-struct a_coll_ocds_arg{
+struct a_coll_ocs_arg{
    sighandler_type coa_opipe;
    sighandler_type coa_oint;
    FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
@@ -59,7 +59,7 @@ static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
-static char const *a_coll_ocds__macname;  /* *on-compose-done* */
+static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
@@ -110,9 +110,9 @@ static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 /* temporary_compose_mode_hook_call() setter hook */
 static void a_coll__hook_setter(void *arg);
 
-/* *on-compose-done* driver and *on-compose-done(-shell)?* finalizer */
-static int a_coll_ocds__mac(void);
-static void a_coll_ocds__finalize(void *vp);
+/* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
+static int a_coll_ocs__mac(void);
+static void a_coll_ocs__finalize(void *vp);
 
 static void
 _execute_command(struct header *hp, char const *linebuf, size_t linesize){
@@ -541,7 +541,7 @@ a_collect_plumbing(char const *ms, struct header *hp){
    char const *cp, *cmd[4];
    NYD2_ENTER;
 
-   /* Protcol version for *on-compose-done-shell* -- update manual on change! */
+   /* Protcol version for *on-compose-splice** -- update manual on change! */
 #define a_COLL_PLUMBING_VERSION "0 0 1"
    cp = ms;
 
@@ -1344,34 +1344,34 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
 }
 
 static int
-a_coll_ocds__mac(void){
+a_coll_ocs__mac(void){
    /* Executes in a fork(2)ed child */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
-   temporary_compose_mode_hook_call(a_coll_ocds__macname, NULL, NULL);
+   temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
    _exit(n_EXIT_OK);
    /* NOTREACHED */
    return 0;
 }
 
 static void
-a_coll_ocds__finalize(void *vp){
+a_coll_ocs__finalize(void *vp){
    /* Note we use this for destruction upon setup errors, thus */
    sighandler_type opipe;
    sighandler_type oint;
-   struct a_coll_ocds_arg **coapp, *coap;
+   struct a_coll_ocs_arg **coapp, *coap;
    NYD2_ENTER;
 
    temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
 
    coap = *(coapp = vp);
-   *coapp = (struct a_coll_ocds_arg*)-1;
+   *coapp = (struct a_coll_ocs_arg*)-1;
 
    if(coap->coa_stdout != NULL)
       if(!Pclose(coap->coa_stdout, FAL0)){
          *coap->coa_senderr = TRU1;
-         n_err(_("*on-compose-done(-shell)?* failed: %s\n"),
+         n_err(_("*on-compose-splice(-shell)?* failed: %s\n"),
             n_shexp_quote_cp(coap->coa_cmd, FAL0));
       }
 
@@ -1400,7 +1400,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    char const *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct n_ignore const *quoteitp;
-   struct a_coll_ocds_arg *coap;
+   struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
    char *linebuf, escape_saved, escape;
@@ -1958,9 +1958,9 @@ jhistcont:
    }
 
 jout:
-   /* Do we have *on-compose-done-shell*, or *on-compose-done*?
+   /* Do we have *on-compose-splice-shell*, or *on-compose-splice*?
     * TODO Usual f...ed up state of signals and terminal etc. */
-   if(coap == NULL && (cp = ok_vlook(on_compose_done_shell)) != NULL) Jocds:{
+   if(coap == NULL && (cp = ok_vlook(on_compose_splice_shell)) != NULL) Jocs:{
       union {int (*ptf)(void); char const *sh;} u;
       char const *cmd;
 
@@ -1968,16 +1968,16 @@ jout:
       escape = n_ESCAPE;
 
       if(coapm != NULL){
-         u.ptf = &a_coll_ocds__mac;
+         u.ptf = &a_coll_ocs__mac;
          cmd = (char*)-1;
-         a_coll_ocds__macname = cp = coapm;
+         a_coll_ocs__macname = cp = coapm;
       }else{
          u.sh = ok_vlook(SHELL);
          cmd = cp;
       }
 
       i = strlen(cp) +1;
-      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocds_arg, coa_cmd
+      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
@@ -1997,9 +1997,9 @@ jout:
          coap->coa_pipe[1] = -1;
 
          temporary_compose_mode_hook_call(NULL, NULL, NULL);
-         n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
+         n_source_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
-            &a_coll_ocds__finalize, &coap);
+            &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
          fputs(a_COLL_PLUMBING_VERSION "\n", coap->coa_stdout);
 #undef a_COLL_PLUMBING_VERSION
@@ -2007,16 +2007,16 @@ jout:
       }
 
       c = errno;
-      a_coll_ocds__finalize(coap);
-      n_perr(_("Cannot invoke *on-compose-done(-shell)?*"), c);
+      a_coll_ocs__finalize(coap);
+      n_perr(_("Cannot invoke *on-compose-splice(-shell)?*"), c);
       goto jerr;
    }
    if(*checkaddr_err != 0){
       *checkaddr_err = 0;
       goto jerr;
    }
-   if(coapm == NULL && (coapm = ok_vlook(on_compose_done)) != NULL)
-      goto Jocds;
+   if(coapm == NULL && (coapm = ok_vlook(on_compose_splice)) != NULL)
+      goto Jocs;
    escape = escape_saved;
 
    /* Final chance to edit headers, if not already above */
@@ -2126,8 +2126,8 @@ jleave:
    return _coll_fp;
 
 jerr:
-   if(coap != NULL && coap != (struct a_coll_ocds_arg*)-1)
-      n_source_slice_hack_remove_after_jump();
+   if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1)
+      n_source_splice_hack_remove_after_jump();
    if(sigfp != NULL)
       Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {

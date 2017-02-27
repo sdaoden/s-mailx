@@ -846,30 +846,29 @@ denoted by
 unless
 .Pf no Va save
 is set).
-Messages are sent asynchronously, without supervision, unless the variable
-.Va sendwait
-is set, therefore send errors are not recognizable until then.
 .
 .Pp
 A number of
 .Sx ENVIRONMENT
 and
 .Sx "INTERNAL VARIABLES"
-can be used to alter default behavior; e.g.,
+can be used to alter default behavior.
+E.g., messages are sent asynchronously, without supervision, unless the
+internal variable
+.Va sendwait
+is set, therefore send errors will not be recognizable until then.
 .Ic set Ns
 ting (also via
 .Fl S )
 .Va editalong
 will automatically startup a text editor when compose mode is entered,
 .Va editheaders
-allows editing of headers additionally to plain body content,
+allows editing of headers additionally to plain body content, whereas
 .Va askcc
-will cause the user to be prompted actively for carbon-copy recipients
-and setting
-.Va dot
-will allow leaving compose mode by writing a line consisting solely of
-a dot
-.Pf ( Ql \&. ) .
+and
+.Va askbcc
+will cause the user to be prompted actively for (blind) carbon-copy
+recipients, respectively, if the given list is empty.
 .Va on-compose-enter
 and
 .Va on-compose-leave
@@ -877,9 +876,9 @@ hook variables may be set to
 .Ic define Ns
 d macros to automatically adjust some settings dependent
 on receiver, sender or subject contexts, and via the
-.Va on-compose-done-shell
+.Va on-compose-splice-shell
 as well as
-.Va on-compose-done
+.Va on-compose-splice
 variables, the latter also to be set to a
 .Ic define Ns
 d macro, increasingly powerful mechanisms to perform automated message
@@ -4795,7 +4794,7 @@ command cannot be used during program startup, e.g., while loading
 .It Ql "ok: in subprocess"
 command is allowed to be used when running in a subprocess instance,
 e.g., from within a macro that is called via
-.Va on-compose-done .
+.Va on-compose-splice .
 .El
 .
 .Mx
@@ -6455,9 +6454,9 @@ is often used as a rejustifying filter.
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
 Low-level command ment for scripted message access, i.e., for
-.Va on-compose-done-shell
+.Va on-compose-splice-shell
 and
-.Va on-compose-done .
+.Va on-compose-splice .
 The used protocol is likely subject to changes, and therefore the
 mentioned hooks receive the used protocol version as an initial line.
 In general the first field of a response line represents a status code
@@ -6838,7 +6837,7 @@ file, which is loaded unless the
 .Fl n
 command line options have been used, or the
 .Ev MAILX_NO_SYSTEM_RC
-environment variable is set, see
+environment variable is set (see
 .Sx "Resource files" )
 bends those initial settings a bit, e.g., it sets the variables
 .Va hold ,
@@ -7336,9 +7335,9 @@ forwarded messages; it is also possible to create custom headers in
 compose mode with
 .Ic ~^ ,
 which can be automated by setting one of the hooks
-.Va on-compose-done-shell
+.Va on-compose-splice-shell
 or
-.Va on-compose-done .
+.Va on-compose-splice .
 The value is interpreted as a comma-separated list of custom headers to
 be injected, to include commas in the header bodies escape them with
 reverse solidus.
@@ -8558,7 +8557,7 @@ timestamp changes are detected.
 .
 .Mx
 .Mx
-.It Va on-compose-done-shell , on-compose-done
+.It Va on-compose-splice-shell , on-compose-splice
 These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
 macro hook is called, the
@@ -8580,7 +8579,7 @@ controlling the real \*(UA instance sufficiently.
 are enabled for these hooks (in the parent process), causing any setting
 to be forgotten after the message has been sent.
 .Pp
-During execution of these hook \*(UA will temporarily forget whether it
+During execution of these hooks \*(UA will temporarily forget whether it
 has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
 will always be available, and for guaranteed reproduceabilities sake
@@ -8594,14 +8593,12 @@ version of said command escape, currently
 .Dq 0 0 1 :
 backward incompatible protocol changes are to be expected in the
 future, and it is advisable to make use of the protocol version.
-\*(ID because most \*(UA commands do not take this new functionality
-into account but are ment for human interaction special care must be
-taken to avoid deadlocks because of unexpected control flow; i.e., that
-both involved processes wait for more input to happen at the same time,
-or one doesn't expect more input but the other is stuck waiting for
-consumation of its output.
+Care must be taken to avoid deadlocks because of unexpected control
+flow: if both involved processes wait for more input to happen at the
+same time, or one doesn't expect more input but the other is stuck
+waiting for consumption of its output.
 .Bd -literal -offset indent
-wysh set on-compose-done-shell=$'\e
+wysh set on-compose-splice-shell=$'\e
   read version;\e
   printf "hello $version!  Headers: ";\e
   echo \e'~^header list\e';\e
@@ -8609,29 +8606,21 @@ wysh set on-compose-done-shell=$'\e
   echo "status=$status result=$result";\e
   '
 
-set on-compose-done=ocdm
-define ocdm {
+set on-compose-splice=ocsm
+define ocsm {
   read ver
-  echo version is $ver, escape=$escape
-  if [ "$features" !@ +regex ]
-    echoerr 'Need regular-expression support, aborting send'
-    echo '~x'
-  endif
-  echo '~^header list'
-  read hl
-  if [ "$hl" !~ ^2 ]
-    echoerr 'Failed to read header list, bailing out'
-    echo '~x'
+  echo Splice protocol version is $ver
+  echo '~^h l'; read hl; vput vexpr es substr "${hl}" 0 1
+  if [ "$es" != 2 ]
+    echoerr 'Cannot read header list'; echo '~x'
   endif
   if [ "$hl" !@ ' cc' ]
-    echo '~^header insert cc Diet is your <mirr.or>'
-    read es
-    if [ "$es" !~ ^2 ]
-      echoerr 'Failed to insert Cc: header, bailing out'
-      echo '~x'
+    echo '~^h i cc Diet is your <mirr.or>'; read es;\e
+      vput vexpr es substr "${es}" 0 1
+    if [ "$es" != 2 ]
+      echoerr 'Cannot insert Cc: header'; echo '~x'
     endif
   endif
-  echo '~:set from="Hoola Hoop <hh@exam.ple>"'
 }
 .Ed
 .

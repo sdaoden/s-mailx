@@ -1485,7 +1485,7 @@ do{\
    n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
    n_PS_ROBOT = 1u<<3,                 /* .. even more robotic */
    n_PS_COMPOSE_MODE = 1u<<4,          /* State machine recursed */
-   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* *on-compose-done* running (fork(2)) */
+   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* A hook running in a subprocess */
 
    n_PS_EVAL_ERROR = 1u<<6,            /* Last evaluate() command failed */
 
@@ -1707,10 +1707,10 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
-   ok_v_on_compose_done,               /* {notempty=1} */
-   ok_v_on_compose_done_shell,         /* {notempty=1} */
    ok_v_on_compose_enter,              /* {notempty=1} */
    ok_v_on_compose_leave,              /* {notempty=1} */
+   ok_v_on_compose_splice,             /* {notempty=1} */
+   ok_v_on_compose_splice_shell,       /* {notempty=1} */
    ok_b_outfolder,
 
    ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */

@@ -8,7 +8,7 @@
  *@ TODO   Otherwise, the `localopts' should be an attribute of the lex_input.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
- *@ TODO   the a_LEX_SLICE comment in lex_input.c.
+ *@ TODO   the a_LEX_SPLICE comment in lex_input.c.
  *@ TODO . once we can have non-fatal !0 returns for commands, we should
  *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
@@ -1954,7 +1954,7 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 FL void
 temporary_compose_mode_hook_call(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){
-   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SLICE
+   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SPLICE
     * TODO comment in lex_input.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
@@ -1973,7 +1973,8 @@ temporary_compose_mode_hook_call(char const *macname,
    else{
       amcap = n_lofi_alloc(sizeof *amcap);
       memset(amcap, 0, sizeof *amcap);
-      amcap->amca_name = (macname != NULL) ? macname : "on-compose-done-shell";
+      amcap->amca_name = (macname != NULL) ? macname
+            : "on-compose-splice-shell";
       amcap->amca_amp = amp;
       amcap->amca_unroller = &a_amv_compose_lopts;
       amcap->amca_hook_pre = hook_pre;

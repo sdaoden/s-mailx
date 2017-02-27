@@ -1088,10 +1088,10 @@ FL bool_t n_source_macro(enum n_lexinput_flags lif, char const *name,
             char **lines, void (*on_finalize)(void*), void *finalize_arg);
 FL bool_t n_source_command(enum n_lexinput_flags lif, char const *cmd);
 
-/* XXX See a_LEX_SLICE in source */
-FL void n_source_slice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
+/* XXX See a_LEX_SPLICE in source */
+FL void n_source_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
             ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg);
-FL void n_source_slice_hack_remove_after_jump(void);
+FL void n_source_splice_hack_remove_after_jump(void);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
