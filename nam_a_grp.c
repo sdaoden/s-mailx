@@ -1453,7 +1453,7 @@ c_alternates(void *v){
          }
       *ap2 = NULL;
 
-      /* And put it into *-alternates* */
+      /* And put it into *alternates* */
       if(sl > 0){
          cp = salloc(sl);
          for(sl = 0, ap = a_nag_altnames; *ap != NULL; ++ap)
@@ -1470,8 +1470,7 @@ c_alternates(void *v){
          a_nag_altnames = NULL;
       }
 
-      n_PS_ROOT_BLOCK(sl > 0 ? ok_vset(_alternates, cp)
-         : ok_vclear(_alternates));
+      n_PS_ROOT_BLOCK(sl > 0 ? ok_vset(alternates, cp) : ok_vclear(alternates));
    }
    NYD_LEAVE;
    return rv;

@@ -779,7 +779,7 @@ a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
       /* Invalidate any resolved folder then, too
        * FALLTHRU */
    case ok_v_folder:
-      n_PS_ROOT_BLOCK(ok_vclear(_folder_resolved));
+      n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
       break;
    case ok_b_header:
       flag = n_PO_N_FLAG;
@@ -1715,8 +1715,8 @@ c_account(void *v){
       }
    }
 
-   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(_account, amp->am_name)
-      : ok_vclear(_account)));
+   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
+      : ok_vclear(account)));
 
    if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */

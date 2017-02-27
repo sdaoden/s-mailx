@@ -1564,11 +1564,11 @@ enum okeys {
    /* xxx __em a.k.a. ! should be num=1 but that more expensive than what now */
    ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1,i3val="0"} */
 
-   ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup,
    ok_b_allnet,
+   ok_v_alternates,                    /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_append,
    ok_b_ask,
    ok_b_askatend,
@@ -1634,7 +1634,7 @@ ok_b_autothread,
    ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,
    ok_v_folder,                        /* {vip=1} */
-   ok_v__folder_resolved,              /* {rdonly=1,nodel=1} */
+   ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_v_followup_to_honour,
@@ -1674,8 +1674,8 @@ ok_b_autothread,
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
    ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
    ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
-   ok_v__mailbox_resolved,             /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v__mailbox_display,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailx_extra_rc,
    ok_b_markanswered,
    ok_b_mbox_rfc4155,

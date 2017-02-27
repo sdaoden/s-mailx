@@ -138,8 +138,8 @@ jdocopy:
          (int)j, mailp, mailp + i);
    }
 
-   n_PS_ROOT_BLOCK((ok_vset(_mailbox_resolved, mailname),
-      ok_vset(_mailbox_display, displayname)));
+   n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),
+      ok_vset(mailbox_display, displayname)));
    NYD_LEAVE;
    return rv;
 }
@@ -708,9 +708,9 @@ folder_query(void){
 
    sp = n_string_creat_auto(sp);
 
-   /* *folder* is linked with *_folder_resolved*: we only use the latter */
+   /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
-      if((rv = ok_vlook(_folder_resolved)) != NULL)
+      if((rv = ok_vlook(folder_resolved)) != NULL)
          break;
 
       /* POSIX says:
@@ -804,7 +804,7 @@ folder_query(void){
       }
 
 jset:
-      n_PS_ROOT_BLOCK(ok_vset(_folder_resolved, rv));
+      n_PS_ROOT_BLOCK(ok_vset(folder_resolved, rv));
    }
 
    if(err){

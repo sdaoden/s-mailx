@@ -3344,7 +3344,7 @@ of that account will be activated (as via
 a possibly installed
 .Va folder-hook
 will be run, and the internal variable
-.Va -account
+.Va account
 will be updated.
 The two argument form is identical to defining a macro as via
 .Ic define :
@@ -3428,7 +3428,7 @@ variable is not set).
 Without arguments the current set of alternates is displayed, otherwise
 the set of alternate names is replaced by the given arguments, and the
 internal variable
-.Va -alternates
+.Va alternates
 is updated accordingly.
 .
 .Mx
@@ -4225,7 +4225,10 @@ but open the mailbox read-only.
 (fi) The file command switches to a new mailbox.
 Without arguments it shows status information of the current mailbox.
 If an argument is given, it will write out changes (such as deletions)
-the user has made and open a new mailbox.
+the user has made, open a new mailbox and update the internal variables
+.Va mailbox-resolved
+and
+.Va mailbox-display .
 .Sx "Filename transformations"
 will be applied to the
 .Ar name
@@ -6780,7 +6783,7 @@ boolean as the default value.
 .
 .\" .Ss "Initial settings" {{{
 .\" (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
-.Ss "Initial Settings"
+.Ss "Initial settings"
 .
 The standard POSIX 2008/Cor 2-2016 mandates the following initial
 variable settings:
@@ -6940,30 +6943,9 @@ expression search and replace expression of
 .Ic vexpr .
 .
 .Mx
-.It Va -account
+.It Va account
 \*(RO Is set to the active
 .Ic account .
-.
-.Mx
-.It Va -alternates
-\*(RO Is set to the list of
-.Ic alternates .
-.
-.Mx
-.It Va -folder-resolved
-\*(RO Set to the fully resolved path of
-.Va folder
-once that evaluation has occurred; rather internal.
-.
-.Mx
-.It Va -mailbox-display
-\*(RO The name of the current mailbox
-.Pf ( Ic file ) ,
-possibly abbreviated for display purposes.
-.
-.Mx
-.It Va -mailbox-resolved
-\*(RO The fully resolved path of the current mailbox.
 .
 .Mx
 .It Va add-file-recipients
@@ -6976,6 +6958,11 @@ By default such addressees are not mentioned.
 .It Va allnet
 \*(BO Causes only the local part to be evaluated
 when comparing addresses.
+.
+.Mx
+.It Va alternates
+\*(RO Is set to the list of
+.Ic alternates .
 .
 .Mx
 .It Va append
@@ -7665,6 +7652,9 @@ non-empty value does not start with a solidus
 then the value of
 .Ev HOME
 will be prefixed automatically.
+Once the actual value is evaluated first, the internal variable
+.Va folder-resolved
+will be updated for caching purposes.
 .
 .Mx
 .It Va folder-hook
@@ -7707,6 +7697,12 @@ will be tried as
 .Ql folder-hook-/home/usr1/mail/sent
 first, but then followed by
 .Ql folder-hook-+sent .
+.
+.Mx
+.It Va folder-resolved
+\*(RO Set to the fully resolved path of
+.Va folder
+once that evaluation has occurred; rather internal.
 .
 .Mx
 .It Va followup-to
@@ -8132,12 +8128,23 @@ for more).
 \*(BO\*(OP Do not establish any default key binding.
 .
 .Mx
+.It Va mailbox-display
+\*(RO The name of the current mailbox
+.Pf ( Ic file ) ,
+possibly abbreviated for display purposes.
+.
+.Mx
+.It Va mailbox-resolved
+\*(RO The fully resolved path of the current mailbox.
+.
+.Mx
 .It Va mailx-extra-rc
 An additional startup file that is loaded as the last of the
 .Sx "Resource files" .
 Use this file for commands that are not understood by other POSIX
 .Xr mailx 1
-implementations.
+implementations, i.e., mostly anything which is not covered by
+.Sx "Initial settings" .
 .
 .Mx
 .It Va markanswered
@@ -8917,9 +8924,9 @@ This (post-assignment, i.e., second) expansion can be used to embed
 status information, for example
 .Va \&? ,
 .Va \&! ,
-.Va -account
+.Va account
 or
-.Va -mailbox-display .
+.Va mailbox-display .
 .Pp
 In order to embed characters which should not be counted when
 calculating the visual width of the resulting string, enclose the
@@ -11249,7 +11256,7 @@ set emptystart \e
   followup-to followup-to-honour=ask-yes \e
   history-file=+.\*(uAhist history-size=-1 history-gabby \e
   mime-counter-evidence=0xE \e
-  prompt='?\e?!\e![\e${-account}#\e${-mailbox-display}]? ' \e
+  prompt='?\e?!\e![\e${account}#\e${mailbox-display}]? ' \e
   reply-to-honour=ask-yes \e
   umask=
 
