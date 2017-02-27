@@ -89,7 +89,7 @@
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | TMSGLST), MDELETED,MMNDEL
      DS(N_("Un`delete' <msglist>")) },
-   { "unset", &c_unset, (G | M | X | TWYRA), 1, 1000
+   { "unset", &c_unset, (G | M | X | TWYSH), 1, 1000
      DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | TSTRING), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -367,9 +367,9 @@
      DS(N_("Clear the spam flag for each message in <msglist>")) },
    { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (G | M | X | TWYRA), 1, 1000
+   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, 1000
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (G | I | M | TWYRA), 1, 1000
+   { "varedit", &c_varedit, (G | I | M | TWYSH), 1, 1000
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, 1000
      DS(N_("Evaluate according to <operator> any <:arguments:>")) },

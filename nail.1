@@ -5704,7 +5704,7 @@ Superseded by the multiplexer
 .
 .Mx
 .It Ic unset
-(uns) Takes a list of internal variable names and discards their
+\*(NQ (uns) Takes a list of internal variable names and discards their
 remembered values; the reverse of
 .Ic set .
 Also see
@@ -5772,13 +5772,15 @@ The remaining arguments form the URL data which is to be converted.
 .
 .Mx
 .It Ic varedit
-Edit the values of or create the given variable(s) in the
+\*(NQ Edit the values of or create the given variable(s) in the
 .Ev EDITOR .
-Boolean variables cannot be edited.
+Boolean variables cannot be edited, and variables can also not be
+.Ic unset
+with this command.
 .
 .Mx
 .It Ic varshow
-This command produces the same output as the listing mode of
+\*(NQ This command produces the same output as the listing mode of
 .Ic set ,
 including
 .Va verbose Ns
@@ -6608,8 +6610,8 @@ documents the supported quoting rules.
 .
 .Bd -literal -offset indent
 wysh set one=val\e 1 two="val 2" \e
-    three='val "3"' four=$'val \e'4\e''
-varshow one two three four
+    three='val "3"' four=$'val \e'4\e''; \e
+varshow one two three four; \e
 unset one two three four
 .Ed
 .
