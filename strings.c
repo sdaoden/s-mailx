@@ -994,7 +994,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * used to check the validity of the input even with identical encoding
     * names */
    if (id == (iconv_t)-1 && !asccasecmp(tocode, fromcode))
-      errno = 0;
+      n_err_no = n_ERR_NONE;
    NYD_LEAVE;
    return id;
 }
@@ -1049,14 +1049,14 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
 
       sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
       if(sz > 0 && !(icf & n_ICONV_IGN_NOREVERSE)){
-         err = ENOENT;
+         err = n_ERR_NOENT;
          goto jleave;
       }
       if(sz != (size_t)-1)
          break;
 
-      err = errno;
-      if(!(icf & n_ICONV_IGN_ILSEQ) || err != EILSEQ)
+      err = n_err_no;
+      if(!(icf & n_ICONV_IGN_ILSEQ) || err != n_ERR_ILSEQ)
          goto jleave;
       if(*inbleft > 0){
          ++(*inb);

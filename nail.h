@@ -878,6 +878,9 @@ enum n_dotlock_state{
    n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
+/* enum n_err_number from config.h via mk-conf.sh, which is in sync with
+ * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
+
 enum n_exit_status{
    n_EXIT_OK = EXIT_SUCCESS,
    n_EXIT_ERR = EXIT_FAILURE,
@@ -2536,6 +2539,7 @@ VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
  * TODO status and may-place-in-history bit, we need to manage the soft exit
  * TODO status with this global bypass, it is thus a.. */
 VL char const *n_pstate_var__em; /* TODO ..HACK */
+#define n_err_no errno
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */

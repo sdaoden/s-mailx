@@ -3,7 +3,7 @@
  *@ in between n_dotlock() and the privilege-separated "dotlocker"..
  *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
- *@ that SIGPIPE is ignored (we react upon EPIPE).
+ *@ that SIGPIPE is ignored (we react upon ERR_PIPE).
  *@ It furtherly assumes that it can create a file name that is at least one
  *@ byte longer than the dotlock file's name!
  *
@@ -76,7 +76,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
 
       xrv = n_DLS_PING;
       w = write(STDOUT_FILENO, &xrv, sizeof xrv);
-      if(w == -1 && errno == EPIPE){
+      if(w == -1 && n_err_no == n_ERR_PIPE){
          rv = n_DLS_DUNNO | n_DLS_ABANDON;
          break;
       }
@@ -88,7 +88,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
 static enum n_dotlock_state
 a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
    struct stat stb;
-   int fd;
+   int fd, e;
    size_t tries;
    enum n_dotlock_state rv = n_DLS_NONE;
 
@@ -105,16 +105,16 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 #ifdef n_PRIVSEP_SOURCE
          if(dip->di_stb != NULL &&
                fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)){
-            int x = errno;
+            int x = n_err_no;
             close(fd);
-            errno = x;
+            n_err_no = x;
             goto jbados;
          }
 #endif
          close(fd);
          break;
-      }else if(errno != EEXIST){
-         rv = (errno == EROFS) ? n_DLS_ROFS | n_DLS_ABANDON : n_DLS_NOPERM;
+      }else if((e = n_err_no) != n_ERR_EXIST){
+         rv = (e == n_ERR_ROFS) ? n_DLS_ROFS | n_DLS_ABANDON : n_DLS_NOPERM;
          goto jleave;
       }else if(tries >= DOTLOCK_TRIES){
          rv = n_DLS_EXIST;
@@ -140,7 +140,7 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 jleave:
    return rv;
 jbados:
-   rv = (errno == EEXIST) ? n_DLS_EXIST : n_DLS_NOPERM | n_DLS_ABANDON;
+   rv = (n_err_no == n_ERR_EXIST) ? n_DLS_EXIST : n_DLS_NOPERM | n_DLS_ABANDON;
    unlink(lname);
    goto jleave;
 }

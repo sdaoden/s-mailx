@@ -89,7 +89,7 @@ struct a_termcap_control{
    ui16_t tc_flags;
    /* Offset base into a_termcap_namedat[], which stores the two-letter
     * termcap(5) name directly followed by a NUL terminated terminfo(5) name.
-    * A termcap(5) name may consist of two NULs meaning ENOENT,
+    * A termcap(5) name may consist of two NULs meaning ERR_NOENT,
     * a terminfo(5) name may be empty for the same purpose */
    ui16_t tc_off;
 };

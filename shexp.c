@@ -337,14 +337,14 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    if((dp = opendir(myp)) == NULL){
       int err;
 
-      switch((err = errno)){
-      case ENOTDIR:
+      switch((err = n_err_no)){
+      case n_ERR_NOTDIR:
          ccp = N_("cannot access paths under non-directory");
          goto jerr;
-      case ENOENT:
+      case n_ERR_NOENT:
          ccp = N_("path component of (sub)pattern non-existent");
          goto jerr;
-      case EACCES:
+      case n_ERR_ACCES:
          ccp = N_("file permission for file (sub)pattern denied");
          goto jerr;
       default:

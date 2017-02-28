@@ -156,8 +156,8 @@ c_cwd(void *v){
       if(getcwd(sp->s_dat, sp->s_len) == NULL){
          int e;
 
-         e = errno;
-         if(e == ERANGE)
+         e = n_err_no;
+         if(e == n_ERR_RANGE)
             continue;
          n_perr(_("Failed to getcwd(3)"), e);
          v = NULL;

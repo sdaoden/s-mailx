@@ -392,7 +392,7 @@ FL void        n_verr(char const *format, va_list ap);
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);
 
-/* Our perror(3); if errval is 0 errno(3) is used; newline appended */
+/* Our perror(3); if errval is 0 n_err_no is used; newline appended */
 FL void        n_perr(char const *msg, int errval);
 
 /* Announce a fatal error (and die); newline appended */
@@ -406,9 +406,14 @@ FL int         c_errors(void *vp);
 # define c_errors                c_cmdnotsupp
 #endif
 
+/* strerror(3), and enum n_err_number <-> error name conversions */
+FL char const *n_err_to_doc(si32_t eno);
+FL char const *n_err_to_name(si32_t eno);
+FL si32_t n_err_from_name(char const *name);
+
 /* */
 #ifdef HAVE_REGEX
-FL char const *n_regex_err_to_str(const regex_t *rep, int e);
+FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
 /*
@@ -701,7 +706,7 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
  * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
  * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established, otherwise errno is usable on error */
+ * normal file lock could be established, otherwise n_err_no is usable on err */
 FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
                   off_t off, off_t len, size_t pollmsecs);
 
@@ -2266,11 +2271,11 @@ FL void        n_iconv_close(iconv_t cd);
 /* Reset encoding state */
 FL void        n_iconv_reset(iconv_t cd);
 
-/* iconv(3), but return errno or 0 upon success.
- * The errno may be ENOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
- * iconv_str() auto-grows on E2BIG errors; in and in_rest_or_null may be the
- * same object.
- * Note: EINVAL (incomplete sequence at end of input) is NOT handled, so the
+/* iconv(3), but return n_err_no or 0 upon success.
+ * The err_no may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
+ * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_null may be
+ * the same object.
+ * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the
  * replacement character must be added manually if that happens at EOF! */
 FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
                   char const **inb, size_t *inbleft,

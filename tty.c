@@ -1142,7 +1142,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
    buf[sizeof(buf) -1] = '\0';
    for(i = 0;;){
       if(read(STDIN_FILENO, &buf[i], 1) != 1){
-         if(errno == EINTR) /* xxx #if !SA_RESTART ? */
+         if(n_err_no == n_ERR_INTR) /* xxx #if !SA_RESTART ? */
             continue;
          goto jleave;
       }
@@ -2695,7 +2695,7 @@ jinput_loop:
 
                   while((rv = read(STDIN_FILENO, cbufp, 1)) < 1){
                      if(rv == -1){
-                        if(errno == EINTR){
+                        if(n_err_no == n_ERR_INTR){
                            if((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
                                  !a_tty_vi_refresh(tlp))
                               break;

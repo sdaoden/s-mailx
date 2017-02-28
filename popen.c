@@ -133,7 +133,7 @@ scan_mode(char const *mode, int *omode)
       }
 
    n_alert(_("Internal error: bad stdio open mode %s"), mode);
-   errno = EINVAL;
+   n_err_no = n_ERR_INVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
 jleave:
@@ -185,9 +185,9 @@ _file_save(struct fp *fpp)
 
    /* Ensure the I/O library doesn't optimize the fseek(3) away! */
    if(!n_real_seek(fpp->fp, fpp->offset, SEEK_SET)){
-      outfd = errno;
+      outfd = n_err_no;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
       goto jleave;
    }
 
@@ -200,9 +200,9 @@ _file_save(struct fp *fpp)
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
             n_O_NOFOLLOW) & ~O_EXCL), 0666);
    if (outfd == -1) {
-      outfd = errno;
+      outfd = n_err_no;
       n_err(_("Fatal: cannot create %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
       goto jleave;
    }
 
@@ -395,7 +395,7 @@ _sigchld(int signo)
    for (;;) {
       pid = waitpid(-1, &status, WNOHANG);
       if (pid <= 0) {
-         if (pid == -1 && errno == EINTR)
+         if (pid == -1 && n_err_no == n_ERR_INTR)
             continue;
          break;
       }
@@ -614,7 +614,7 @@ jraw:
       }
 
       if ((infd = open(file, (mode & W_OK) ? O_RDWR : O_RDONLY)) == -1 &&
-            (!(osflags & O_CREAT) || errno != ENOENT))
+            (!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT))
          goto jleave;
    }
 
@@ -699,7 +699,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    if ((oflags & OF_SUFFIX) && *namehint != '\0') {
       if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
-         errno = ENAMETOOLONG;
+         n_err_no = n_ERR_NAMETOOLONG;
          goto jleave;
       }
    } else
@@ -746,7 +746,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
          break;
       }
       if (i >= FTMP_OPEN_TRIES) {
-         e = errno;
+         e = n_err_no;
          goto jfree;
       }
       relesigs = FAL0;
@@ -766,7 +766,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
-      e = errno;
+      e = n_err_no;
       unlink(cp_base);
       goto jfree;
    }
@@ -779,7 +779,7 @@ jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
    if (fp == NULL)
-      errno = e;
+      n_err_no = e;
    NYD_LEAVE;
    return fp;
 jfree:

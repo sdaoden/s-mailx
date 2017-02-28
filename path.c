@@ -50,7 +50,7 @@ is_dir(char const *name)
       if (!stat(name, &sbuf)) {
          rv = (S_ISDIR(sbuf.st_mode) != 0);
          break;
-      } else if (errno != EINTR)
+      } else if (n_err_no != n_ERR_INTR)
          break;
    NYD_LEAVE;
    return rv;
@@ -67,10 +67,10 @@ jredo:
    if(!mkdir(name, 0777))
       rv = TRU1;
    else{
-      int e = errno;
+      int e = n_err_no;
 
       /* Try it recursively */
-      if(e == ENOENT){
+      if(e == n_ERR_NOENT){
          char const *vp;
 
 
@@ -84,7 +84,7 @@ jredo:
          }
       }
 
-      rv = ((e == EEXIST || e == ENOSYS) && !stat(name, &st) &&
+      rv = ((e == n_ERR_EXIST || e == n_ERR_NOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode));
    }
    NYD_LEAVE;

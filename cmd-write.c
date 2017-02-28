@@ -117,10 +117,11 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    /* Pipe target is special TODO hacked in later, normalize flow! */
    if (shell != NULL) {
       if ((obuf = Popen(file, "w", shell, NULL, 1)) == NULL) {
-         int esave = errno;
+         int esave;
 
+         esave = n_err_no;
          n_perr(file, esave);
-         errno = esave;
+         n_err_no = esave;
          goto jleave;
       }
       isflag = FAL0;

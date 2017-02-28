@@ -73,6 +73,13 @@ struct a_aux_err_node{
 };
 #endif
 
+struct a_aux_err_map{
+   ui32_t aem_hash;     /* Hash of name */
+   ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
+   ui32_t aem_docoff;   /* Into a_aux_err docs[] */
+   si32_t aem_errno;    /* The OS errno value for this one */
+};
+
 static ui8_t a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -112,6 +119,17 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
 };
 #undef a_X
 
+/* Include the constant mk-errors.sh output */
+#include "gen-errors.h"
+
+/* And these things come from config.h (config-time mk-errors.sh output) */
+static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {
+#undef a_X
+#define a_X(N,I) {N,I},
+n__ERR_NUMBER_TO_MAPOFF
+#undef a_X
+};
+
 #ifndef HAVE_POSIX_RANDOM
 static union rand_state *a_aux_rand;
 #endif
@@ -133,6 +151,9 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 # endif
 #endif
 
+/* Find the descriptive mapping for errno, or _ERR_INVAL */
+static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
+
 #ifndef HAVE_POSIX_RANDOM
 static void
 a_aux_rand_init(void){
@@ -150,9 +171,9 @@ a_aux_rand_init(void){
    a_aux_rand = smalloc(sizeof *a_aux_rand);
 
 # ifdef HAVE_GETRANDOM
-   /* getrandom(2) guarantees 256 without EINTR.. */
+   /* getrandom(2) guarantees 256 without n_ERR_INTR.. */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer to large to be served without EINTR error");
+      "Buffer to large to be served without n_ERR_INTR error");
    for(;;){
       ssize_t gr;
 
@@ -246,6 +267,34 @@ a_aux_rand_weak(ui32_t seed){
 }
 # endif /* HAVE_GETRANDOM */
 #endif /* !HAVE_POSIX_RANDOM */
+
+static struct a_aux_err_map const *
+a_aux_err_map_from_no(si32_t eno){
+   si32_t ecmp;
+   size_t asz;
+   n__ERR_NUMBER_TYPE const (*adat)[2], (*tmp)[2];
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = &a_aux_err_map[n__ERR_NUMBER_VOIDOFF];
+
+   if(UICMP(z, n_ABS(eno), <=, (n__ERR_NUMBER_TYPE)-1)){
+      for(adat = a_aux_err_no2mapoff, asz = n_NELEM(a_aux_err_no2mapoff);
+            asz != 0; asz >>= 1){
+         tmp = &adat[asz >> 1];
+         if((ecmp = (si32_t)((n__ERR_NUMBER_TYPE)eno - (*tmp)[0])) == 0){
+            aemp = &a_aux_err_map[(*tmp)[1]];
+            break;
+         }
+         if(ecmp > 0){
+            adat = &tmp[1];
+            --asz;
+         }
+      }
+   }
+   NYD2_LEAVE;
+   return aemp;
+}
 
 FL size_t
 n_screensize(void){
@@ -529,7 +578,7 @@ jprefix_skip:
          }
       }
 
-      /* Character must be valid for base, EBASE otherwise */
+      /* Character must be valid for base, _EBASE otherwise */
       currc = a_aux_idec_atoi[(ui8_t)*cbuf];
       if(currc >= base)
          goto jebase;
@@ -1188,10 +1237,10 @@ n_perr(char const *msg, int errval){
    }else
       fmt = "%s: %s\n";
 
-   e = (errval == 0) ? errno : errval;
-   n_err(fmt, msg, strerror(e));
+   e = (errval == 0) ? n_err_no : errval;
+   n_err(fmt, msg, n_err_to_doc(e));
    if(errval == 0)
-      errno = e;
+      n_err_no = e;
    NYD2_LEAVE;
 }
 
@@ -1293,9 +1342,78 @@ jclear:
 }
 #endif /* HAVE_ERRORS */
 
+FL char const *
+n_err_to_doc(si32_t eno){
+   char const *rv;
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = a_aux_err_map_from_no(eno);
+   rv = &a_aux_err_docs[aemp->aem_docoff];
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char const *
+n_err_to_name(si32_t eno){
+   char const *rv;
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = a_aux_err_map_from_no(eno);
+   rv = &a_aux_err_names[aemp->aem_nameoff];
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL si32_t
+n_err_from_name(char const *name){
+   struct a_aux_err_map const *aemp;
+   ui32_t hash, i, j, x;
+   si32_t rv;
+   NYD2_ENTER;
+
+   hash = torek_hash(name);
+
+   for(i = hash % a_AUX_ERR_REV_PRIME, j = 0; j <= a_AUX_ERR_REV_LONGEST; ++j){
+      if((x = a_aux_err_revmap[i]) == a_AUX_ERR_REV_ILL)
+         break;
+
+      aemp = &a_aux_err_map[x];
+      if(aemp->aem_hash == hash &&
+            !strcmp(&a_aux_err_names[aemp->aem_nameoff], name)){
+         rv = aemp->aem_errno;
+         goto jleave;
+      }
+
+      if(++i == a_AUX_ERR_REV_PRIME){
+#ifdef a_AUX_ERR_REV_WRAPAROUND
+         i = 0;
+#else
+         break;
+#endif
+      }
+   }
+
+   /* Have not found it.  But wait, it could be that the user did, e.g.,
+    *    eval echo \$^ERR-$: \$^ERRDOC-$!: \$^ERRNAME-$! */
+   if((n_idec_si32_cp(&rv, name, 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) == n_IDEC_STATE_CONSUMED){
+      aemp = a_aux_err_map_from_no(rv);
+      rv = aemp->aem_errno;
+      goto jleave;
+   }
+
+   rv = a_aux_err_map[n__ERR_NUMBER_VOIDOFF].aem_errno;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_REGEX
 FL char const *
-n_regex_err_to_str(const regex_t *rep, int e){
+n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;
    size_t i;
    NYD2_ENTER;

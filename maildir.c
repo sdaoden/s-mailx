@@ -544,7 +544,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if ((!stat(tfn, &st) || errno == ENOENT) &&
+      if ((!stat(tfn, &st) || n_err_no == n_ERR_NOENT) &&
             (op = Fopen(tfn, "wx")) != NULL)
          break;
 

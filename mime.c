@@ -1045,7 +1045,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
             convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NULL);
             out = n_str_add(out, &cin);
-            if (convert) {/* EINVAL at EOS */
+            if (convert) {/* n_ERR_INVAL at EOS */
                n_iconv_reset(fhicd);
                out = n_str_add_buf(out, "?", 1); /* TODO unicode replacement */
             }

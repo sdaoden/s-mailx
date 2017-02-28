@@ -232,7 +232,7 @@ jesyn:
 
          if((s = regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             emsg = savecat(_("invalid regular expression: "),
-                  n_regex_err_to_str(&re, s));
+                  n_regex_err_to_doc(&re, s));
             goto jesyn_ntr;
          }
          if(!noop)

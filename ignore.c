@@ -755,7 +755,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(irp->ir_input, FAL0),
-            n_regex_err_to_str(&irp->ir_regex, s));
+            n_regex_err_to_doc(&irp->ir_regex, s));
          if(!self->i_auto)
             n_free(irp);
          rv = FAL0;

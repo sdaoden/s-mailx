@@ -548,7 +548,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       if((s = regcomp(&grp->gr_regex, id,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(id, FAL0), n_regex_err_to_str(&grp->gr_regex, s));
+            n_shexp_quote_cp(id, FAL0), n_regex_err_to_doc(&grp->gr_regex, s));
          free(gp);
          gp = NULL;
          goto jleave;

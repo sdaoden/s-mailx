@@ -195,15 +195,15 @@ c_remove(void *v)
       switch (which_protocol(name)) {
       case PROTO_FILE:
          if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
-            int se = errno;
+            int se = n_err_no;
 
-            if (se == EISDIR) {
+            if (se == n_ERR_ISDIR) {
                struct stat sb;
 
                if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
                   if (!rmdir(name))
                      break;
-                  se = errno;
+                  se = n_err_no;
                }
             }
             n_perr(name, se);
@@ -264,13 +264,13 @@ c_rename(void *v)
    switch (oldp) {
    case PROTO_FILE:
       if (link(old, new) == -1) {
-         switch (errno) {
-         case EACCES:
-         case EEXIST:
-         case ENAMETOOLONG:
-         case ENOENT:
-         case ENOSPC:
-         case EXDEV:
+         switch (n_err_no) {
+         case n_ERR_ACCES:
+         case n_ERR_EXIST:
+         case n_ERR_NAMETOOLONG:
+         case n_ERR_NOENT:
+         case n_ERR_NOSPC:
+         case n_ERR_XDEV:
             n_perr(new, 0);
             break;
          default:

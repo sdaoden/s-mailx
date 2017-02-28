@@ -2811,7 +2811,7 @@ jeplusminus:
          reflrv |= REG_ICASE;
       if((reflrv = regcomp(&re, argv[2], reflrv))){
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_str(&re, reflrv));
+            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(&re, reflrv));
          assert(f & a_ERR);
          goto jerr;
       }

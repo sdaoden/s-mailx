@@ -2006,7 +2006,7 @@ jout:
          goto jcont;
       }
 
-      c = errno;
+      c = n_err_no;
       a_coll_ocs__finalize(coap);
       n_perr(_("Cannot invoke *on-compose-splice(-shell)?*"), c);
       goto jerr;
@@ -2062,7 +2062,8 @@ jout:
       cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
       if((sigfp = Fopen(cp, "r")) == NULL){
-         n_err(_("Can't open *signature* %s: %s\n"), cpq, strerror(errno));
+         n_err(_("Can't open *signature* %s: %s\n"),
+            cpq, n_err_to_doc(n_err_no));
          goto jerr;
       }
 
@@ -2078,14 +2079,14 @@ jout:
 
       /* C99 */{
          FILE *x = n_UNVOLATILE(sigfp);
-         int e = errno, ise = ferror(x);
+         int e = n_err_no, ise = ferror(x);
 
          sigfp = NULL;
          Fclose(x);
 
          if(ise){
             n_err(_("Errors while reading *signature* %s: %s\n"),
-               cpq, strerror(e));
+               cpq, n_err_to_doc(e));
             goto jerr;
          }
       }

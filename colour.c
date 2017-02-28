@@ -549,7 +549,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
                (s = regcomp(*regexpp = smalloc(sizeof(regex_t)), ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             n_err(_("`colour': invalid regular expression: %s: %s\n"),
-               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_str(*regexpp, s));
+               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(*regexpp, s));
             free(*regexpp);
             goto jetag;
          }

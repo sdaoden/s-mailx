@@ -1238,7 +1238,7 @@ a_lex_unstack(bool_t eval_error){
    }else{
       if(lip->li_flags & a_LEX_PIPE)
          /* XXX command manager should -TERM then -KILL instead of hoping
-          * XXX for exit of provider due to EPIPE / SIGPIPE */
+          * XXX for exit of provider due to n_ERR_PIPE / SIGPIPE */
          Pclose(lip->li_file, TRU1);
       else
          Fclose(lip->li_file);

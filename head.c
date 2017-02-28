@@ -316,7 +316,7 @@ a_head_idna_apply(struct n_addrguts *agp)
       char const *tcs = ok_vlook(ttycharset);
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "utf-8", tcs);
-      i = (idna_utf8 == NULL && errno == EINVAL);
+      i = (idna_utf8 == NULL && n_err_no == n_ERR_INVAL);
       ac_free(idna_ascii);
 
       if (idna_utf8 == NULL) {

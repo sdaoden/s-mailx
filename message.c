@@ -613,7 +613,7 @@ jnumber__thr:
                   if(!(n_pstate & n_PS_HOOK))
                      n_err(_("Invalid regular expression: %s: %s\n"),
                         n_shexp_quote_cp(x, FAL0),
-                        n_regex_err_to_str(&sep[j].ss_regex, s));
+                        n_regex_err_to_doc(&sep[j].ss_regex, s));
                   flags |= a_ERROR;
                   continue;
                }

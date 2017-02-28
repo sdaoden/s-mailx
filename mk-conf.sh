@@ -1240,7 +1240,15 @@ ${cat} > ${makefile} << \!
 ## Generics
 
 # May be multiline..
+echo >> ${h}
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+
+# Generate n_err_number OS mappings
+(
+   feat_yes DEVEL && NV= || NV=noverbose
+   TARGET="${h}" awk="${awk}" ./mk-errors.sh ${NV} config
+) |
+   xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION

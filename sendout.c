@@ -301,25 +301,25 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
-      err = EIO;
+      err = n_ERR_IO;
       goto jleave;
    }
    charset_iter_recurse(charset_iter_orig);
    for (charset_iter_reset(NULL);; charset_iter_next()) {
       if (!charset_iter_is_valid()) {
-         err = EILSEQ;
+         err = n_ERR_ILSEQ;
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
-      if (err == 0 || (err != EILSEQ && err != EINVAL))
+      if (err == 0 || (err != n_ERR_ILSEQ && err != n_ERR_INVAL))
          break;
       clearerr(fo);
       if (fseek(fo, offs, SEEK_SET) == -1) {
-         err = EIO;
+         err = n_ERR_IO;
          break;
       }
       if (ap->a_conv != AC_DEFAULT) {
-         err = EILSEQ;
+         err = n_ERR_ILSEQ;
          break;
       }
       ap->a_charset = NULL;
@@ -346,8 +346,9 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
       fi = ap->a_tmpf;
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
-      err = errno;
-      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0), strerror(err));
+      err = n_err_no;
+      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
+         n_err_to_doc(err));
       goto jleave;
    }
 
@@ -387,7 +388,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = errno;
+         err = n_err_no;
          goto jerr_fclose;
       }
    }
@@ -398,12 +399,12 @@ jerr_header:
    if (do_iconv) {
       if (asccasecmp(charset, ap->a_input_charset) &&
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
-               ) == (iconv_t)-1 && (err = errno) != 0) {
-         if (err == EINVAL)
+               ) == (iconv_t)-1 && (err = n_err_no) != 0) {
+         if (err == n_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
                charset);
          else
-            n_err(_("iconv_open: %s\n"), strerror(err));
+            n_err(_("iconv_open: %s\n"), n_err_to_doc(err));
          goto jerr_fclose;
       }
    }
@@ -428,12 +429,12 @@ jerr_header:
       } else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
       if (xmime_write(buf, inlen, fo, convert, TD_ICONV) < 0) {
-         err = errno;
+         err = n_err_no;
          goto jerr;
       }
    }
    if (ferror(fi))
-      err = EDOM;
+      err = n_ERR_DOM;
 jerr:
    free(buf);
 jerr_fclose:
@@ -655,7 +656,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
-            (err = errno) != 0)
+            (err = n_err_no) != 0)
          goto jiconv_err;
    }
 #endif
@@ -672,9 +673,9 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (do_iconv && charset != NULL) { /*TODO charset->mime_type_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = errno) != 0) {
+            (err = n_err_no) != 0) {
 jiconv_err:
-         if (err == EINVAL)
+         if (err == n_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
             n_perr("iconv_open", 0);
@@ -921,7 +922,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             fout = n_stdout;
          else if((fout = Zopen(fname, "a")) == NULL){
             n_err(_("Writing message to %s failed: %s\n"),
-               fnameq, strerror(errno));
+               fnameq, n_err_to_doc(n_err_no));
             goto jerror;
          }
 
@@ -1272,8 +1273,8 @@ jstop:
 
          prepare_child(&nset, fileno(sbp->sb_input), -1);
          execv(mta, n_UNCONST(args));
-         e = errno;
-         ecp = (e != ENOENT) ? strerror(e)
+         e = n_err_no;
+         ecp = (e != n_ERR_NOENT) ? n_err_to_doc(e)
                : _("executable not found (adjust *mta* variable)");
          n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
@@ -1804,7 +1805,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
-      else if ((err = errno) == EILSEQ || err == EINVAL) {
+      else if ((err = n_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL) {
          rewind(mtf);
          continue;
       }

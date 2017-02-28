@@ -68,7 +68,7 @@ a_sock_xwrite(int fd, char const *data, size_t sz)
 
    do {
       if ((wo = write(fd, data + wt, sz - wt)) < 0) {
-         if (errno == EINTR)
+         if (n_err_no == n_ERR_INTR)
             continue;
          else
             goto jleave;
@@ -339,7 +339,7 @@ jpseudo_jump:
          (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
          if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
-            errval = errno;
+            errval = n_err_no;
             close(sofd);
             sofd = -1;
          }
@@ -418,7 +418,7 @@ jjumped:
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      errval = errno;
+      errval = n_err_no;
       close(sofd);
       sofd = -1;
    }
@@ -432,7 +432,7 @@ jjumped:
 
    if (sofd < 0) {
       if (errval != 0) {
-         errno = errval;
+         n_err_no = errval;
          n_perr(_("Could not connect"), 0);
       }
       goto jleave;
@@ -567,7 +567,7 @@ jagain:
             if (sp->s_rsz <= 0) {
                if (sp->s_rsz < 0) {
                   char o[512];
-                  if (errno == EINTR)
+                  if (n_err_no == n_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sp->s_desc ?  sp->s_desc : "socket"));

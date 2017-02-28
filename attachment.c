@@ -128,7 +128,7 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
 
    icp = n_iconv_open(ap->a_charset, ap->a_input_charset);
    if(icp == (iconv_t)-1){
-      if(errno == EINVAL)
+      if(n_err_no == n_ERR_INVAL)
          goto jeconv;
       else
          n_perr(_("iconv_open"), 0);
@@ -223,7 +223,7 @@ n_attachment_append(struct attachment *aplist, char const *file,
 
 jrefexp:
       if((file = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL){
-         e = errno;
+         e = n_err_no;
          aerr = n_ATTACH_ERR_OTHER;
          goto jleave;
       }
@@ -243,7 +243,7 @@ jrefexp:
                ? (cnvfp = Fopen(file, "r")) == NULL :
 #endif
                access(file, R_OK) != 0)){
-         e = errno;
+         e = n_err_no;
 
          /* It may not have worked because of a character-set specification,
           * so try to extract that and retry once */
@@ -284,7 +284,7 @@ jrefexp:
          }
 
          n_err(_("Failed to access attachment %s: %s\n"),
-            n_shexp_quote_cp(file, FAL0), strerror(e));
+            n_shexp_quote_cp(file, FAL0), n_err_to_doc(e));
          aerr = n_ATTACH_ERR_FILE_OPEN;
          goto jleave;
       }
