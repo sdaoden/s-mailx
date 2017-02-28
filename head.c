@@ -1103,7 +1103,7 @@ jnodename:{
       char const *hn, *ln;
       size_t i;
 
-      hn = nodename(1);
+      hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
       rv = cp = salloc(i);
@@ -1748,7 +1748,7 @@ skin(char const *name)
    NYD_ENTER;
 
    if(name != NULL){
-      name = n_addrspec_with_guts(&ag,name, TRU1);
+      name = n_addrspec_with_guts(&ag,name, TRU1, FAL0);
       rv = ag.ag_skinned;
       if(!(ag.ag_n_flags & NAME_NAME_SALLOC))
          rv = savestrbuf(rv, ag.ag_slen);
@@ -1761,7 +1761,8 @@ skin(char const *name)
 /* TODO addrspec_with_guts: RFC 5322
  * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
 FL char const *
-n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
+n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
+      bool_t issingle_hack){
    char const *cp;
    char *cp2, *bufend, *nbuf, c;
    enum{
@@ -1878,7 +1879,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
           * next character would be a "..) */
          if(c == '\\' && *cp != '\0')
             *cp2++ = *cp++;
-         if(c == ','){
+         if(c == ',' && !issingle_hack){
             if(!(flags & a_GOTLT)){
                *cp2++ = ' ';
                for(; blankchar(*cp); ++cp)

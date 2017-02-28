@@ -296,13 +296,13 @@
      DS(N_("Un`define' all given <macros> (* for all)")) },
    { "unaccount", &c_unaccount, (M | TWYSH), 1, MAC
      DS(N_("Delete all given <accounts> (* for all)")) },
-   { "call", &c_call, (M | X | TWYSH), 1, MAC
+   { "call", &c_call, (M | X | EM | TWYSH), 1, MAC
      DS(N_("Call macro <name>")) },
-   { "xcall", &a_go_c_xcall, (M | X | TWYSH), 1, MAC
+   { "xcall", &a_go_c_xcall, (M | X | EM | TWYSH), 1, MAC
      DS(N_("Replace currently executing macro with macro <name>")) },
-   { "~", &c_call, (M | X | TWYSH), 1, MAC
+   { "~", &c_call, (M | X | EM | TWYSH), 1, MAC
      DS(N_("Call a macro")) },
-   { "call_if", &c_call_if, (M | X | TWYRA), 1, 100
+   { "call_if", &c_call_if, (M | X | EM | TWYRA), 1, 100
      DS(N_("Call macro <name> if it exists")) },
    { "shift", &c_shift, (M | X | TWYSH), 0, 1
      DS(N_("In a `call'ed macro, shift positional parameters")) },
@@ -405,12 +405,12 @@
         DS(N_("Obsoleted by `uncommandalias'")) },
 
    { "eval", &a_go_c_eval, (G | M | X | EM | TWYSH), 1, MAC
-     DS(N_("Construct command from <:arguments:>, reuse its $?")) },
+     DS(N_("Construct command from <:arguments:>, reuse its $? and $!")) },
    { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "read", &a_go_c_read, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Read a line from standard input into <variable>(s)")) },
-   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 2
+   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 3
      DS(N_("Sleep for <seconds> [<milliseconds>]"))},
    { "version", &a_go_c_version, (H | M | X | TWYSH), 0, 0
      DS(N_("Show the version and feature set of the program")) },

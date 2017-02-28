@@ -59,7 +59,7 @@
 
 /* Note: changing the hash function must be reflected in mk-okey-map.pl */
 #define a_AMV_PRIME HSHSIZE
-#define a_AMV_NAME2HASH(N) torek_hash(N)
+#define a_AMV_NAME2HASH(N) n_torek_hash(N)
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
 enum a_amv_mac_flags{
@@ -404,9 +404,16 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
             amcap->amca_argv = &(argv = v)[1];
          }
       }
-      rv = (a_amv_mac_exec(amcap) == FAL0);
-   }else if((rv = (silent_nexist == FAL0)))
-      n_err(_("Undefined macro `call'ed: %s\n"), n_shexp_quote_cp(name, FAL0));
+
+      rv = a_amv_mac_exec(amcap);
+      rv = n_pstate_ex_no;
+   }else{
+      if((rv = (silent_nexist == FAL0)))
+         n_err(_("Undefined macro `call'ed: %s\n"),
+            n_shexp_quote_cp(name, FAL0));
+      n_pstate_err_no = n_ERR_NOENT;
+      rv = 1;
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -2102,16 +2109,16 @@ jleave:
 }
 
 FL int
-c_return(void *v){
+c_return(void *v){ /* TODO the exit status should be m_si64! */
    int rv;
    NYD_ENTER;
-
-   rv = 1;
 
    if(a_amv_lopts != NULL){
       char const **argv;
 
       n_go_input_force_eof();
+      n_pstate_err_no = n_ERR_NONE;
+      rv = 0;
 
       if((argv = v)[0] != NULL){
          si32_t i;
@@ -2119,27 +2126,32 @@ c_return(void *v){
          if((n_idec_si32_cp(&i, argv[0], 10, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) == n_IDEC_STATE_CONSUMED && i >= 0)
-            n_pstate_var__em = argv[0];
-         else
-            n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
+            rv = (int)i;
+         else{
+            n_err(_("`return': return value argument is invalid: %s\n"),
+               argv[0]);
+            n_pstate_err_no = n_ERR_INVAL;
+            rv = 1;
+         }
 
          if(argv[1] != NULL){
             if((n_idec_si32_cp(&i, argv[1], 10, NULL
                      ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                   ) == n_IDEC_STATE_CONSUMED && i >= 0)
-               rv = (int)i;
+               n_pstate_err_no = i;
             else{
-               n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
-               n_pstate_var__em = n_1;
+               n_err(_("`return': error number argument is invalid: %s\n"),
+                  argv[1]);
+               n_pstate_err_no = n_ERR_INVAL;
+               rv = 1;
             }
-         }else
-            rv = 0;
-      }else{
-         rv = 0;
-         n_pstate_var__em = n_0;
+         }
       }
-   }else
+   }else{
       n_err(_("Can only use `return' in a macro\n"));
+      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      rv = 1;
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -2680,7 +2692,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1<<0,
-      a_SOFTERR = 1<<1,
+      a_SOFTOVERFLOW = 1<<1,
       a_ISNUM = 1<<2,
       a_ISDECIMAL = 1<<3,  /* Print only decimal result */
       a_SATURATED = 1<<4,
@@ -2715,7 +2727,7 @@ jnumop:
                ) != n_IDEC_STATE_CONSUMED){
             if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                goto jenum_range;
-            f |= a_SOFTERR;
+            f |= a_SOFTOVERFLOW;
             break;
          }
          if(op == '~')
@@ -2744,7 +2756,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               f |= a_SOFTERR;
+               f |= a_SOFTOVERFLOW;
                break;
             }
 
@@ -2755,7 +2767,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               f |= a_SOFTERR;
+               f |= a_SOFTOVERFLOW;
                lhv = rhv;
                break;
             }
@@ -2770,14 +2782,14 @@ jnumop_again:
                      xop = '-';
                      goto jnumop_again;
                   }else if(lhv < 0)
-                     goto jeplusminus;
+                     goto jenum_plusminus;
                   else if(lhv == 0){
                      lhv = rhv;
                      break;
                   }
                }
                if(SI64_MAX - rhv < lhv)
-                  goto jeplusminus;
+                  goto jenum_plusminus;
                lhv += rhv;
                break;
             case '-':
@@ -2787,17 +2799,17 @@ jnumop_again:
                      xop = '+';
                      goto jnumop_again;
                   }else if(lhv > 0)
-                     goto jeplusminus;
+                     goto jenum_plusminus;
                   else if(lhv == 0){
                      lhv = rhv;
                      break;
                   }
                }
                if(SI64_MIN + rhv > lhv){
-jeplusminus:
+jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
                }else
                   lhv -= rhv;
@@ -2812,7 +2824,7 @@ jeplusminus:
                   if(rhv != 0 && lhv != 0 && SI64_MAX / rhv > lhv){
                      if(!(f & a_SATURATED))
                         goto jenum_overflow;
-                     f |= a_SOFTERR;
+                     f |= a_SOFTOVERFLOW;
                      lhv = SI64_MAX;
                   }else
                      lhv *= rhv;
@@ -2821,7 +2833,7 @@ jeplusminus:
                      if(lhv != 0 && SI64_MIN / lhv < rhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        f |= a_SOFTERR;
+                        f |= a_SOFTOVERFLOW;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2829,7 +2841,7 @@ jeplusminus:
                      if(rhv != 0 && lhv != 0 && SI64_MIN / rhv < lhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        f |= a_SOFTERR;
+                        f |= a_SOFTOVERFLOW;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2840,7 +2852,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = SI64_MAX;
                }else
                   lhv /= rhv;
@@ -2849,7 +2861,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = SI64_MAX;
                }else
                   lhv %= rhv;
@@ -2931,14 +2943,14 @@ jeplusminus:
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      i = torek_hash(*++argv);
+      i = n_torek_hash(*++argv);
       lhv = (si64_t)i;
    }else if(is_asccaseprefix(cp, "file-expand")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
    }else if(is_asccaseprefix(cp, "random")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
@@ -2946,17 +2958,17 @@ jeplusminus:
       if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
-         goto jenum_range;
+         goto jestr_numrange;
       if(lhv == 0)
          lhv = NAME_MAX;
-      varres = getrandstring((size_t)lhv);
+      varres = n_random_create_cp((size_t)lhv);
    }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
       if((cp = strstr(argv[1], argv[2])) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
@@ -2967,7 +2979,7 @@ jeplusminus:
          goto jesynopsis;
 
       if((cp = asccasestr(argv[1], argv[2])) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
@@ -2985,7 +2997,7 @@ jeplusminus:
       else if((n_idec_si64_cp(&lhv, cp, 0, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
-         goto jenum_range;
+         goto jestr_numrange;
       if(UICMP(64, i, >=, lhv)){
          i -= lhv;
          varres += lhv;
@@ -2993,7 +3005,7 @@ jeplusminus:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
-         f |= a_SOFTERR;
+         f |= a_SOFTOVERFLOW;
       }
 
       if(argv[1] != NULL){
@@ -3002,7 +3014,7 @@ jeplusminus:
          else if((n_idec_si64_cp(&lhv, cp, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
-            goto jenum_range;
+            goto jestr_numrange;
          if(UICMP(64, i, >=, lhv)){
             if(UICMP(64, i, !=, lhv))
                varres = savestrbuf(varres, (size_t)lhv);
@@ -3010,7 +3022,7 @@ jeplusminus:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
-            f |= a_SOFTERR;
+            f |= a_SOFTOVERFLOW;
          }
       }
 #ifdef HAVE_REGEX
@@ -3031,12 +3043,13 @@ jeplusminus:
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(&re, reflrv));
          assert(f & a_ERR);
-         goto jerr;
+         n_pstate_err_no = n_ERR_INVAL;
+         goto jestr;
       }
       reflrv = regexec(&re, argv[1], n_NELEM(rema), rema, 0);
       regfree(&re);
       if(reflrv == REG_NOMATCH)
-         goto jsofterr;
+         goto jestr_nodata;
 
       /* Search only?  Else replace, which is a bit */
       if(argv[3] == NULL){
@@ -3094,7 +3107,7 @@ jeplusminus:
          rele_all_sigs(); /* TODO DISLIKE! */
 
          if(varres == NULL)
-            goto jsofterr;
+            goto jestr_nodata;
          f &= ~(a_ISNUM | a_ISDECIMAL);
       }
    }else if(is_asccaseprefix(argv[0], "iregex")){
@@ -3104,6 +3117,7 @@ jeplusminus:
    }else
       goto jesubcmd;
 
+   n_pstate_err_no = (f & a_SOFTOVERFLOW) ? n_ERR_OVERFLOW : n_ERR_NONE;
    f &= ~a_ERR;
 
    /* Generate the variable value content for numerics.
@@ -3128,47 +3142,65 @@ jleave:
             }
          }
          varbuf[64 + 64 / 8 -1] = '\0';
-         fprintf(n_stdout, "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
-            varbuf, lhv, lhv, lhv);
-      }else
-         fprintf(n_stdout, "%s\n", varres);
-   }else if(!n_var_vset(varname, (uintptr_t)varres))
-      f |= a_ERR | a_SOFTERR;
-   else if(!(f & a_SOFTERR))
-      n_pstate_var__em = n_0;
+         if(fprintf(n_stdout,
+               "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
+               varbuf, lhv, lhv, lhv) < 0){
+            n_pstate_err_no = n_err_no;
+            f |= a_ERR;
+         }
+      }else if(fprintf(n_stdout, "%s\n", varres) < 0){
+         n_pstate_err_no = n_err_no;
+         f |= a_ERR;
+      }
+   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      f |= a_ERR;
+   }
    NYD_LEAVE;
    return (f & a_ERR) ? 1 : 0;
 
-jsofterr:
-   f &= ~a_ERR;
 jerr:
-   f &= ~(a_ISNUM | a_ISDECIMAL);
-   f |= a_SOFTERR | a_ISNUM;
+   f = a_ERR | a_ISNUM;
    lhv = -1;
    goto jleave;
 jesubcmd:
-   assert(f & a_ERR);
    n_err(_("`vexpr': invalid subcommand: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
+   n_pstate_err_no = n_ERR_INVAL;
    goto jerr;
 jesynopsis:
-   assert(f & a_ERR);
-   n_err(_("Synopsis: vexpr: <target-variable> <operator> <:argument:>\n"));
+   n_err(_("Synopsis: vexpr: <operator> <:argument:>\n"));
+   n_pstate_err_no = n_ERR_INVAL;
    goto jerr;
+
 jenum_range:
-   assert(f & a_ERR);
    n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_RANGE;
+   goto jerr;
 jenum_overflow:
-   assert(f & a_ERR);
    n_err(_("`vexpr': expression overflows datatype: %" PRId64 " %c %" PRId64
       "\n"), lhv, op, rhv);
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jerr;
+
+jestr_numrange:
+   n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
+      n_shexp_quote_cp(*argv, FAL0));
+   n_pstate_err_no = n_ERR_RANGE;
+   goto jestr;
 jestr_overflow:
-   assert(f & a_ERR);
    n_err(_("`vexpr': string length or offset overflows datatype\n"));
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jestr;
+jestr_nodata:
+   n_pstate_err_no = n_ERR_NODATA;
+   /* FALLTHRU */
+jestr:
+   varres = n_empty;
+   f &= ~a_ISNUM;
+   f |= a_ERR;
+   goto jleave;
 }
 
 /* s-it-mode */

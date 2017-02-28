@@ -150,7 +150,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    NYD_ENTER;
 
-   hostname = nodename(TRU1);
+   hostname = n_nodename(TRU1);
    slp->buf = NULL;
    slp->bufsize = 0;
 

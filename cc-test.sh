@@ -1301,6 +1301,7 @@ __behave_macro_param_shift() {
 	   echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
 	}
 	define t1 {
+	   set errexit
 	   echo in: t1
 	   call t2 1 you get four args
 	   echo t1.1: $?';' ignerr ($ignerr) should not exist
@@ -1354,94 +1355,94 @@ __behave_macro_param_shift() {
 __behave_addrcodec() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 2 . <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 3 Sauer Dr. <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 4 Sauer (Ma) Dr. <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 5 Sauer (Ma) Braten Dr. <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 8 \
 		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 10 (Ma)Braten Dr. (Heu) <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 11 (Ma)Braten Dr"." (Heu) <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 12 Dr.     Sauer  (Ma)   Braten    Dr.    (u) <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 15 \
 		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 16 \
 		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 17 "Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 18 <doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res +e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $! $res
+	echo $? $res
 	vput addrcodec res +e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	vput addrcodec res ++e 22 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $! $res
+	echo $? $res
 	eval vput addrcodec res d $res
-	echo $! $res
+	echo $? $res
 	__EOT
 #0 1 <doog@def>
 #0 1 <doog@def>
@@ -1492,331 +1493,331 @@ __behave_addrcodec() {
 __behave_vexpr() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res = 9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res =@ 9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775809
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res =@ -9223372036854775809
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #1'
 	vput vexpr res ~ 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res ~ 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res ~ -1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #2'
 	vput vexpr res + 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #3'
 	vput vexpr res + 9223372036854775807 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 9223372036854775807 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res +@ 9223372036854775807 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 1 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res +@ 1 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #4'
 	vput vexpr res + -9223372036854775808 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + -9223372036854775808 -1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res +@ -9223372036854775808 -1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res + -1 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res +@ -1 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #5'
 	vput vexpr res - 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #6'
 	vput vexpr res - 9223372036854775807 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 9223372036854775807 -1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res -@ 9223372036854775807 -1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - -1 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - -2 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res -@ -2 9223372036854775807
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #7'
 	vput vexpr res - -9223372036854775808 +0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - -9223372036854775808 +1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res -@ -9223372036854775808 +1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - +1 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res -@ +1 -9223372036854775808
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #8'
 	vput vexpr res + -13 -2
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res - -13 -2
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #9'
 	vput vexpr res * 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res * 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res * 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res * -13 -2
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #10'
 	vput vexpr res / 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res / 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res / 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res / -13 -2
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	echo ' #11'
 	vput vexpr res % 0 0
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res % 0 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res % 1 1
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	vput vexpr res % -13 -2
-	echo $! $res
+	echo $?/$^ERRNAME $res
 	__EOT
-#0 9223372036854775807
-#1 -1
-#1 9223372036854775807
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
+#0/NONE 9223372036854775807
+#1/RANGE -1
+#0/OVERFLOW 9223372036854775807
+#0/NONE -9223372036854775808
+#1/RANGE -1
+#0/OVERFLOW -9223372036854775808
 # #1
-#0 -1
-#0 -2
-#0 0
+#0/NONE -1
+#0/NONE -2
+#0/NONE 0
 # #2
-#0 0
-#0 1
-#0 2
+#0/NONE 0
+#0/NONE 1
+#0/NONE 2
 # #3
-#0 9223372036854775807
-#1 -1
-#1 9223372036854775807
-#0 9223372036854775807
-#1 -1
-#1 9223372036854775807
+#0/NONE 9223372036854775807
+#1/OVERFLOW -1
+#0/OVERFLOW 9223372036854775807
+#0/NONE 9223372036854775807
+#1/OVERFLOW -1
+#0/OVERFLOW 9223372036854775807
 # #4
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
+#0/NONE -9223372036854775808
+#1/OVERFLOW -1
+#0/OVERFLOW -9223372036854775808
+#0/NONE -9223372036854775808
+#1/OVERFLOW -1
+#0/OVERFLOW -9223372036854775808
 # #5
-#0 0
-#0 -1
-#0 0
+#0/NONE 0
+#0/NONE -1
+#0/NONE 0
 # #6
-#0 9223372036854775807
-#1 -1
-#1 9223372036854775807
-#0 -9223372036854775807
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
+#0/NONE 9223372036854775807
+#1/OVERFLOW -1
+#0/OVERFLOW 9223372036854775807
+#0/NONE -9223372036854775807
+#0/NONE -9223372036854775808
+#1/OVERFLOW -1
+#0/OVERFLOW -9223372036854775808
 # #7
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
-#0 -9223372036854775808
-#1 -1
-#1 -9223372036854775808
+#0/NONE -9223372036854775808
+#1/OVERFLOW -1
+#0/OVERFLOW -9223372036854775808
+#0/NONE -9223372036854775808
+#1/OVERFLOW -1
+#0/OVERFLOW -9223372036854775808
 # #8
-#0 -15
-#0 0
-#0 -1
-#0 0
-#0 -11
+#0/NONE -15
+#0/NONE 0
+#0/NONE -1
+#0/NONE 0
+#0/NONE -11
 # #9
-#0 0
-#0 0
-#0 1
-#0 26
+#0/NONE 0
+#0/NONE 0
+#0/NONE 1
+#0/NONE 26
 # #10
-#1 -1
-#0 0
-#0 1
-#0 6
+#1/RANGE -1
+#0/NONE 0
+#0/NONE 1
+#0/NONE 6
 # #11
-#1 -1
-#0 0
-#0 0
-#0 -1
-   cksum_test behave:vexpr-numeric "${MBOX}" '2147139513 687'
+#1/RANGE -1
+#0/NONE 0
+#0/NONE 0
+#0/NONE -1
+   cksum_test behave:vexpr-numeric "${MBOX}" '1723609217 1048'
 
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
 	vput vexpr res find 'bananarama' 'nana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'bana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'Bana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'rama'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	echo ' #1'
 	vput vexpr res ifind 'bananarama' 'nana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res ifind 'bananarama' 'bana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res ifind 'bananarama' 'Bana'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res ifind 'bananarama' 'rama'
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	echo ' #2'
 	vput vexpr res substring 'bananarama' 1
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 5
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 7
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 9
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 10
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 1 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 3 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 5 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 7 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 9 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	vput vexpr res substring 'bananarama' 10 3
-	echo $! $res
+	echo $?/$^ERRNAME :$res:
 	echo ' #3'
 	__EOT
-#0 2
-#0 0
-#1 -1
-#0 6
+#0/NONE :2:
+#0/NONE :0:
+#1/NODATA ::
+#0/NONE :6:
 # #1
-#0 2
-#0 0
-#0 0
-#0 6
+#0/NONE :2:
+#0/NONE :0:
+#0/NONE :0:
+#0/NONE :6:
 # #2
-#0 ananarama
-#0 anarama
-#0 arama
-#0 ama
-#0 a
-#0 
-#0 ana
-#0 ana
-#0 ara
-#0 ama
-#1 a
-#1 
+#0/NONE :ananarama:
+#0/NONE :anarama:
+#0/NONE :arama:
+#0/NONE :ama:
+#0/NONE :a:
+#0/NONE ::
+#0/NONE :ana:
+#0/NONE :ana:
+#0/NONE :ara:
+#0/NONE :ama:
+#0/OVERFLOW :a:
+#0/OVERFLOW ::
 # #3
-   cksum_test behave:vexpr-string "${MBOX}" '2171181036 119'
+   cksum_test behave:vexpr-string "${MBOX}" '265398700 267'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
 		vput vexpr res regex 'bananarama' 'nana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'bana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'Bana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'rama'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		echo ' #1'
 		vput vexpr res iregex 'bananarama' 'nana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' 'bana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' 'Bana'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' 'rama'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		echo ' #2'
 		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		echo ' #3'
 		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0'
-		echo $! $res
+		echo $?/$^ERRNAME :$res:
 		echo ' #4'
 		__EOT
-#0 2
-#0 0
-#1 -1
-#0 6
+#0/NONE :2:
+#0/NONE :0:
+#1/NODATA ::
+#0/NONE :6:
 # #1
-#0 2
-#0 0
-#0 0
-#0 6
+#0/NONE :2:
+#0/NONE :0:
+#0/NONE :0:
+#0/NONE :6:
 # #2
-#0 baabananaramau{rama}
-#0 abananaramaunarama
-#1 -1
-#0 bananabananarama
+#0/NONE :baabananaramau{rama}:
+#0/NONE :abananaramaunarama:
+#1/NODATA ::
+#0/NONE :bananabananarama:
 # #3
-#0 baabananaramau{rama}
-#0 abananaramaunarama
-#0 naramabananarama
-#0 bananabananarama
+#0/NONE :baabananaramau{rama}:
+#0/NONE :abananaramaunarama:
+#0/NONE :naramabananarama:
+#0/NONE :bananabananarama:
 # #4
-      cksum_test behave:vexpr-regex "${MBOX}" '3419299180 199'
+      cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
 }
 
@@ -1860,7 +1861,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
    "${SNAIL}" ${ARGS} \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
+      -Serrexit -R \
       -f ./.VERIFY >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
@@ -1908,7 +1909,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
       -Smta=./.tsendmail.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
+      -Serrexit -R \
       -f ./.ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
@@ -1945,7 +1946,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein
       -Smta=./.tsendmail.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
+      -Serrexit -R \
       -f ./.ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'

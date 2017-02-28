@@ -1446,7 +1446,7 @@ a_sendout_random_id(struct header *hp, bool_t msgid)
    if((h = __sendout_ident) != NULL)
       goto jgen;
    if(ok_vlook(hostname) != NULL){
-      h = nodename(1);
+      h = n_nodename(TRU1);
       sep = '@';
       rl = 8;
       goto jgen;
@@ -1462,7 +1462,7 @@ jgen:
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      getrandstring(rl), sep, h);
+      n_random_create_cp(rl), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    NYD_LEAVE;

@@ -304,8 +304,8 @@ jleave:
     * to cache the result of the former and anyway minimalize child page-ins.
     * Especially uname(3) may hang for multiple seconds when it is called the
     * first time! */
-   di.di_hostname = nodename(FAL0);
-   di.di_randstr = getrandstring(16);
+   di.di_hostname = n_nodename(FAL0);
+   di.di_randstr = n_random_create_cp(16);
    a_dotlock_flt = flt;
    a_dotlock_fd = fd;
    a_dotlock_dip = &di;

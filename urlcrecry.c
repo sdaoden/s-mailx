@@ -657,15 +657,17 @@ c_urlcodec(void *v){
    if(*cp != '\0')
       ++cp;
 
+   n_pstate_err_no = n_ERR_NONE;
+
    if(is_ascncaseprefix(act, "encode", alen)){
       if((varres = urlxenc(cp, ispath)) == NULL){
+         n_pstate_err_no = n_ERR_CANCELED;
          varres = cp;
-         v = NULL;
       }
    }else if(is_ascncaseprefix(act, "decode", alen)){
       if((varres = urlxdec(cp)) == NULL){
+         n_pstate_err_no = n_ERR_CANCELED;
          varres = cp;
-         v = NULL;
       }
    }else
       goto jesynopsis;
@@ -673,27 +675,28 @@ c_urlcodec(void *v){
    assert(cp != NULL);
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
+         n_pstate_err_no = n_ERR_NOTSUP;
          cp = NULL;
-         v = NULL;
       }
    }else{
       struct str in, out;
 
       in.l = strlen(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
-      if(fprintf(n_stdout, "%s\n", out.s) < 0)
+      if(fprintf(n_stdout, "%s\n", out.s) < 0){
+         n_pstate_err_no = n_err_no;
          cp = NULL;
+      }
       free(out.s);
    }
 
-   if(v != NULL)
-      n_pstate_var__em = n_0;
 jleave:
    NYD_LEAVE;
    return (cp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
       "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
+   n_pstate_err_no = n_ERR_INVAL;
    cp = NULL;
    goto jleave;
 }
@@ -1086,7 +1089,7 @@ jurlp_err:
       if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
          if (*cp == '\0')
-            cp = nodename(1);
+            cp = n_nodename(TRU1);
          h.s = savestrbuf(cp, h.l = strlen(cp));
       } else
          h = urlp->url_host;

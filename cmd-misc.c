@@ -137,17 +137,19 @@ c_sleep(void *v){
       goto jeover;
    msec += sec;
 
-   n_msleep(msec, TRU1);
-   n_pstate_var__em = n_0;
+   n_pstate_err_no = (n_msleep(msec, (argv[2] == NULL)) > 0)
+         ? n_ERR_INTR : n_ERR_NONE;
 jleave:
    NYD_LEAVE;
    return (argv == NULL);
 jeover:
-   n_err(_("`sleep': argument overflows datatype\n"));
+   n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
+   n_pstate_err_no = n_ERR_OVERFLOW;
    argv = NULL;
    goto jleave;
 jesyn:
-   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>]\n"));
+   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>] [uninterruptible]\n"));
+   n_pstate_err_no = n_ERR_INVAL;
    argv = NULL;
    goto jleave;
 }
@@ -210,17 +212,13 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(n_var_vset(varname, (uintptr_t)sp->s_dat))
-            n_pstate_var__em = n_0;
-         else
+         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
             v = NULL;
       }else{
          l = strlen(sp->s_dat);
          sp = n_string_trunc(sp, l);
          if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
-               putc('\n', n_stdout) != EOF)
-            n_pstate_var__em = n_0;
-         else
+               putc('\n', n_stdout) == EOF)
             v = NULL;
       }
       break;

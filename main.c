@@ -523,17 +523,19 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
    n_go_main_loop();
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_destroy();
+   if(!(n_psonce & n_PSO_XIT)){
+      if(n_psonce & n_PSO_INTERACTIVE)
+         n_tty_destroy();
 
-   if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
-      safe_signal(SIGHUP, SIG_IGN);
-      safe_signal(SIGINT, SIG_IGN);
-      safe_signal(SIGQUIT, SIG_IGN);
-   }
+      if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
+         safe_signal(SIGHUP, SIG_IGN);
+         safe_signal(SIGINT, SIG_IGN);
+         safe_signal(SIGQUIT, SIG_IGN);
+      }
 jquit:
-   save_mbox_for_possible_quitstuff();
-   quit(FAL0);
+      save_mbox_for_possible_quitstuff();
+      quit(FAL0);
+   }
 jleave:
    NYD_LEAVE;
    return n_exit_status;
@@ -838,26 +840,22 @@ joarg:
          if(!(n_psonce & n_PSO_INTERACTIVE))
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-         if (oargs_cnt + 8 >= oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 9, oargs_cnt);
          folder = "/dev/null";
-         ok_vset(MAIL, folder);
-         ok_vset(MBOX, folder);
-         ok_bset(emptystart);
-         ok_bclear(header);
-         ok_vset(inbox, folder);
-         ok_bset(quiet);
-         ok_bset(sendwait);
-         ok_bset(typescript_mode);
-         oargs[oargs_cnt + 0] = "MAIL=/dev/null";
-         oargs[oargs_cnt + 1] = "MBOX=/dev/null";
-         oargs[oargs_cnt + 2] = "emptystart";
-         oargs[oargs_cnt + 3] = "noheader";
-         oargs[oargs_cnt + 4] = "inbox=/dev/null";
-         oargs[oargs_cnt + 5] = "quiet";
-         oargs[oargs_cnt + 6] = "sendwait";
-         oargs[oargs_cnt + 7] = "typescript-mode";
-         oargs_cnt += 8;
+         if(oargs_cnt + 10 >= oargs_size)
+            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
+
+         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=/dev/null";
+         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=/dev/null";
+         ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
+         ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
+         ok_bclear(header), oargs[oargs_cnt++] = "noheader";
+
+         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=/dev/null";
+         ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
+         ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
+         ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
+         ok_bset(typescript_mode), oargs[oargs_cnt++] = "typescript-mode";
+
          break;
       case '.':
          n_psonce |= n_PSO_SENDMODE;
@@ -1000,17 +998,26 @@ jgetopt_done:
          if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
-         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC))
+         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC)){
             n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
+            if(n_psonce & n_PSO_EXIT_MASK)
+               goto j_leave;
+         }
       }
 
-      if(resfiles & a_RF_USER)
+      if(resfiles & a_RF_USER){
          n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
+         if(n_psonce & n_PSO_EXIT_MASK)
+            goto j_leave;
+      }
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
-      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL)
+      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL){
          n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
+         if(n_psonce & n_PSO_EXIT_MASK)
+            goto j_leave;
+      }
    }
 
    /* Ensure the -S and other command line options take precedence over
@@ -1076,8 +1083,11 @@ jgetopt_done:
    }
 
    /* "load()" commands given on command line */
-   if(Xargs_cnt > 0)
+   if(Xargs_cnt > 0){
       n_go_Xargs(Xargs, Xargs_cnt);
+      if(n_psonce & n_PSO_EXIT_MASK)
+         goto jleave;
+   }
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1124,7 +1134,7 @@ jgetopt_done:
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
    mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
-   if(n_psonce & n_PSO_INTERACTIVE)
+   if((n_psonce & (n_PSO_XIT | n_PSO_INTERACTIVE)) == n_PSO_INTERACTIVE)
       n_tty_destroy();
 
 jleave:

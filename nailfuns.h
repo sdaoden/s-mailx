@@ -340,20 +340,20 @@ FL enum n_idec_state n_idec_buf(void *resp, char const *cbuf, uiz_t clen,
 /* Hash the passed string -- uses Chris Torek's hash algorithm.
  * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
-FL ui32_t      torek_hash(char const *name);
-FL ui32_t      torek_ihashn(char const *dat, size_t len);
+FL ui32_t n_torek_hash(char const *name);
+FL ui32_t n_torek_ihashn(char const *dat, size_t len);
 
 /* Find a prime greater than n */
-FL ui32_t      nextprime(ui32_t n);
+FL ui32_t n_prime_next(ui32_t n);
 
 /* Return the name of the dead.letter file */
 FL char const * n_getdeadletter(void);
 
 /* Detect and query the hostname to use */
-FL char *      nodename(int mayoverride);
+FL char *n_nodename(bool_t mayoverride);
 
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
-FL char *      getrandstring(size_t length);
+FL char *n_random_create_cp(size_t length);
 
 /* Check whether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
@@ -370,10 +370,10 @@ FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
                   si8_t emptyrv);
 
 /* Is the argument "all" (case-insensitive) or "*" */
-FL bool_t      n_is_all_or_aster(char const *name);
+FL bool_t n_is_all_or_aster(char const *name);
 
 /* Get seconds since epoch */
-FL time_t      n_time_epoch(void);
+FL time_t n_time_epoch(void);
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
@@ -382,7 +382,7 @@ FL void        time_current_update(struct time_current *tc,
 /* Returns 0 if fully slept, number of millis left if ignint is true and we
  * were interrupted.  Actual resolution may be second or less.
  * Note in case of HAVE_SLEEP this may be SIGALARM based. */
-FL uiz_t       n_msleep(uiz_t millis, bool_t ignint);
+FL uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
 /* Our error print series..  Note: these reverse scan format in order to know
  * whether a newline was included or not -- this affects the output! */
@@ -1003,9 +1003,10 @@ FL char *      skin(char const *name);
  * Store the result in .ag_skinned and also fill in those .ag_ fields that have
  * actually been seen.
  * Return NULL on error, or name again, but which may have been replaced by
- * a version with fixed quotation etc.! */
+ * a version with fixed quotation etc.!
+ * issingle_hack is a HACK that allows usage for `addrcodec' */
 FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
-                  bool_t doskin);
+                  bool_t doskin, bool_t issingle_hack);
 
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);

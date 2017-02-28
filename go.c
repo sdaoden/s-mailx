@@ -98,7 +98,9 @@ enum a_go_flags{
     * optimization loop.  If no `xcall' is desired that loop is simply left and
     * the _event_loop() of the outer a_go_ctx will perform a loop tick and
     * clear this bit again OR become teardown itself */
-   a_GO_XCALL_LOOP = 1u<<24   /* `xcall' optimization barrier level */
+   a_GO_XCALL_LOOP = 1u<<24,  /* `xcall' optimization barrier level */
+   a_GO_XCALL_LOOP_ERROR = 1u<<25, /* .. state machine error transporter */
+   a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR
 };
 
 enum a_go_cleanup_mode{
@@ -231,11 +233,8 @@ static int a_go__version_cmp(void const *s1, void const *s2);
 /* n_PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
 
-/* Evaluate a single command.
- * .gec_add_history will be updated upon success.
- * TODO Command functions return 0 for success, 1 for error, and -1 for abort.
- * 1 or -1 aborts a load or source, a -1 aborts the interactive command loop */
-static int a_go_evaluate(struct a_go_eval_ctx *gecp);
+/* Evaluate a single command */
+static bool_t a_go_evaluate(struct a_go_eval_ctx *gecp);
 
 /* Get first-fit, or NULL */
 static struct a_go_cmd_desc const *a_go__firstfit(char const *comm);
@@ -257,7 +256,7 @@ static void a_go_cleanup(enum a_go_cleanup_mode gcm);
 static bool_t a_go_file(char const *file, bool_t silent_open_error);
 
 /* System resource file load()ing or -X command line option array traversal */
-static bool_t a_go_load(struct a_go_ctx *gcp);
+static void a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
 static bool_t a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
@@ -327,19 +326,8 @@ a_go_c_eval(void *vp){
    (void)/*XXX*/n_go_command((n_pstate & n_PS_COMPOSE_MODE
          ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT), n_string_cp(sp));
 
-   if(a_go_xcall != NULL)
-      rv = 0;
-   else{
-      cp = ok_vlook(__qm);
-      if(cp == n_0) /* This is a hack, but since anything is a hack, be hacky */
-         rv = 0;
-      else if(cp == n_1)
-         rv = 1;
-      else if(cp == n_m1)
-         rv = -1;
-      else
-         n_idec_si32_cp(&rv, cp, 10, NULL);
-   }
+   /* n_pstate_err_no = n_pstate_err_no; */
+   rv = (a_go_xcall != NULL) ? 0 : n_pstate_ex_no;
    NYD_LEAVE;
    return rv;
 }
@@ -402,6 +390,7 @@ jleave:
    return rv;
 jerr:
    n_err(_("`xcall': can only be used inside a macro\n"));
+   n_pstate_err_no = n_ERR_INVAL;
    rv = 1;
    goto jleave;
 }
@@ -576,7 +565,7 @@ a_go_cmdinfo(struct a_go_cmd_desc const *gcdp){
    if(gcdp->gcd_caflags & n_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | vput modifier"));
    if(gcdp->gcd_caflags & n_CMD_ARG_EM)
-      rv = n_string_push_cp(rv, _(" | status in *!*"));
+      rv = n_string_push_cp(rv, _(" | error in *!*"));
 
    if(gcdp->gcd_caflags & n_CMD_ARG_A)
       rv = n_string_push_cp(rv, _(" | needs box"));
@@ -589,7 +578,7 @@ a_go_cmdinfo(struct a_go_cmd_desc const *gcdp){
    if(gcdp->gcd_caflags & n_CMD_ARG_S)
       rv = n_string_push_cp(rv, _(" | not ok: during startup"));
    if(gcdp->gcd_caflags & n_CMD_ARG_X)
-      rv = n_string_push_cp(rv, _(" | ok: in subprocess"));
+      rv = n_string_push_cp(rv, _(" | ok: subprocess"));
 
    if(gcdp->gcd_caflags & n_CMD_ARG_G)
       rv = n_string_push_cp(rv, _(" | gabby history"));
@@ -774,18 +763,7 @@ static int
 a_go_c_exit(void *vp){
    NYD_ENTER;
    n_UNUSED(vp);
-
-   if(n_psonce & n_PSO_STARTED){
-      /* In recursed state, return error to just pop the input level */
-      if(!(n_pstate & n_PS_SOURCING)){ /* FIXME a_go_ctx->gc_outer == NULL */
-#ifdef n_HAVE_TCAP
-         if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
-            n_termcap_destroy();
-#endif
-         exit(n_EXIT_OK);
-      }
-   }
-   n_pstate |= n_PS_EXIT; /* FIXME Always like this here, then CLEANUP_UNWIND!*/
+   n_psonce |= n_PSO_XIT;
    NYD_LEAVE;
    return 0;
 }
@@ -794,7 +772,7 @@ static int
 a_go_c_quit(void *vp){
    NYD_ENTER;
    n_UNUSED(vp);
-   n_pstate |= n_PS_EXIT;
+   n_psonce |= n_PSO_QUIT;
    NYD_LEAVE;
    return 0;
 }
@@ -873,28 +851,34 @@ a_go_update_pstate(void){
    NYD_LEAVE;
 }
 
-static int
+static bool_t
 a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* xxx old style(9), but also old code */
+   /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
+    * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
    struct str line;
    char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
    struct a_go_alias *gap;
    struct a_go_cmd_desc const *gcdp;
+   si32_t nerrn, nexn;     /* TODO n_pstate_ex_no -> si64_t! */
    int rv, c;
-   enum {
+   enum{
       a_NONE = 0,
       a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
-      a_NOPREFIX = 1<<4,   /* Modifier prefix not allowed right now */
-      a_NOALIAS = 1<<5,    /* "No alias!" expansion modifier */
+      a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
+      a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
       /* New modifier prefixes must be reflected in a_go_c_alias()! */
-      a_IGNERR = 1<<6,     /* ignerr modifier prefix */
-      a_WYSH = 1<<7,       /* XXX v15+ drop wysh modifier prefix */
-      a_VPUT = 1<<8        /* vput modifier prefix */
+      a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
+      a_WYSH = 1u<<7,      /* XXX v15+ drop wysh modifier prefix */
+      a_VPUT = 1u<<8,      /* vput modifier prefix */
+      a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_ENTER;
 
    flags = a_NONE;
    rv = 1;
+   nerrn = n_ERR_NONE;
+   nexn = n_EXIT_OK;
    gcdp = NULL;
    gap = NULL;
    arglist =
@@ -921,7 +905,7 @@ jrestart:
 
    /* Ignore null commands (comments) */
    if(*cp == '#')
-      goto jerr0;
+      goto jret0;
 
    /* Handle ! differently to get the correct lexical conventions */
    arglist[0] = cp;
@@ -969,7 +953,7 @@ jrestart:
    if(*word == '\0'){
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
             gap != NULL)
-         goto jerr0;
+         goto jret0;
       gcdp = &a_go_cmd_tab[0];
       goto jexec;
    }
@@ -1012,12 +996,12 @@ jrestart:
          n_err(_("Unknown command%s: `%s'\n"),
             (s ? _(" (ignored due to `if' condition)") : n_empty), word);
       if(s)
-         goto jerr0;
+         goto jret0;
       if(gcdp != NULL){
          c_cmdnotsupp(NULL);
          gcdp = NULL;
       }
-      n_pstate_var__em = n_m1;
+      nerrn = n_ERR_NOSYS;
       goto jleave;
    }
 
@@ -1025,9 +1009,9 @@ jrestart:
     * execute it, otherwise, check the state of cond */
 jexec:
    if(!(gcdp->gcd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip())
-      goto jerr0;
+      goto jret0;
 
-   n_pstate_var__em = n_1;
+   nerrn = n_ERR_INVAL;
 
    /* Process the arguments to the command, depending on the type it expects */
    if((gcdp->gcd_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
@@ -1109,6 +1093,7 @@ jexec:
          if(xcp != NULL){
             n_err("`%s': vput: %s: %s\n",
                   gcdp->gcd_name, V_(xcp), n_shexp_quote_cp(arglist[0], FAL0));
+            nerrn = n_ERR_NOTSUP;
             goto jleave;
          }
          ++arglist;
@@ -1125,16 +1110,22 @@ jexec:
    case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
-         goto je96;
-      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0)
+         goto jemsglist;
+      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0){
+         nerrn = n_ERR_NOMSG;
+         flags |= a_NO_ERRNO;
          break;
+      }
       if(c == 0){
          if((n_msgvec[0] = first(gcdp->gcd_msgflag, gcdp->gcd_msgmask)) != 0)
             n_msgvec[1] = 0;
       }
       if(n_msgvec[0] == 0){
+jemsglist:
          if(!(n_pstate & n_PS_HOOK_MASK))
             fprintf(n_stdout, _("No applicable messages\n"));
+         nerrn = n_ERR_NOMSG;
+         flags |= a_NO_ERRNO;
          break;
       }
       rv = (*gcdp->gcd_func)(n_msgvec);
@@ -1142,13 +1133,13 @@ jexec:
 
    case n_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
-      if(n_msgvec == NULL){
-je96:
-         n_err(_("Invalid use of message list\n"));
+      if(n_msgvec == NULL)
+         goto jemsglist;
+      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0){
+         nerrn = n_ERR_NOMSG;
+         flags |= a_NO_ERRNO;
          break;
       }
-      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0)
-         break;
       rv = (*gcdp->gcd_func)(n_msgvec);
       break;
 
@@ -1182,18 +1173,21 @@ je96:
             n_MAXARGC - PTR2SIZE(arglist - arglist_base),
             cp, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
+         flags |= a_NO_ERRNO;
          break;
       }
 
       if(c < gcdp->gcd_minargs){
          n_err(_("`%s' requires at least %u arg(s)\n"),
             gcdp->gcd_name, (ui32_t)gcdp->gcd_minargs);
+         flags |= a_NO_ERRNO;
          break;
       }
 #undef gcd_minargs
       if(c > gcdp->gcd_maxargs){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
             gcdp->gcd_name, (ui32_t)gcdp->gcd_maxargs);
+         flags |= a_NO_ERRNO;
          break;
       }
 #undef gcd_maxargs
@@ -1209,36 +1203,58 @@ je96:
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),
          gcdp->gcd_caflags & n_CMD_ARG_TYPE_MASK); )
-      goto jerr0;
+      nerrn = n_ERR_NOTOBACCO;
+      nexn = 1;
+      goto jret0;
    }
 
    if(!(gcdp->gcd_caflags & n_CMD_ARG_H))
       gecp->gec_add_history = (((gcdp->gcd_caflags & n_CMD_ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY)) ? TRUM1 : TRU1);
 
-   if(!(gcdp->gcd_caflags & n_CMD_ARG_EM) && rv == 0)
-      n_pstate_var__em = n_0;
+   if(rv != 0){
+      if(!(flags & a_NO_ERRNO)){
+         if(gcdp->gcd_caflags & n_CMD_ARG_EM)
+            flags |= a_NO_ERRNO;
+         else if((nerrn = n_err_no) == 0)
+            nerrn = n_ERR_INVAL;
+      }else
+         flags ^= a_NO_ERRNO;
+   }else if(gcdp->gcd_caflags & n_CMD_ARG_EM)
+      flags |= a_NO_ERRNO;
+   else
+      nerrn = n_ERR_NONE;
 jleave:
-   n_PS_ROOT_BLOCK(
-      ok_vset(__qm, (rv == 0 ? n_0 : n_1));
-      ok_vset(__em, n_pstate_var__em)
-   );
+   nexn = rv;
 
    if(flags & a_IGNERR){
-      rv = 0;
+      n_pstate &= ~n_PS_ERR_EXIT_MASK;
       n_exit_status = n_EXIT_OK;
-   }
+   }else if(rv != 0){
+      bool_t bo;
 
-   /* Exit the current source file on error TODO what a mess! */
-   if(rv == 0)
-      n_pstate &= ~n_PS_EVAL_ERROR;
-   else{
-      n_pstate |= n_PS_EVAL_ERROR;
-      if(rv < 0 || (n_pstate & n_PS_ROBOT)){ /* FIXME */
-         rv = 1;
+      if((bo = ok_blook(batch_exit_on_error))){
+         n_OBSOLETE(_("please use *errexit*, not *batch-exit-on-error*"));
+         if(!(n_poption & n_PO_BATCH_FLAG))
+            bo = FAL0;
+      }
+      if(ok_blook(errexit) || bo) /* TODO v15: drop bo */
+         n_pstate |= n_PS_ERR_QUIT;
+      else if(!(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) &&
+            ok_blook(posix))
+         n_pstate |= n_PS_ERR_XIT;
+      else
+         rv = 0;
+
+      if(rv != 0){
+         if(n_exit_status == n_EXIT_OK)
+            n_exit_status = n_EXIT_ERR;
+         if((n_poption & n_PO_D_V) &&
+               !(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)))
+            n_alert(_("Non-interactive, bailing out due to errors "
+               "in startup load phase"));
          goto jret;
       }
-      goto jret0;
    }
 
    if(gcdp == NULL)
@@ -1251,19 +1267,14 @@ jleave:
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
          !(gcdp->gcd_caflags & n_CMD_ARG_T))
       n_pstate |= n_PS_SAW_COMMAND;
-jleave0:
-   n_pstate &= ~n_PS_EVAL_ERROR;
 jret0:
    rv = 0;
 jret:
+   if(!(flags & a_NO_ERRNO))
+      n_pstate_err_no = nerrn;
+   n_pstate_ex_no = nexn;
    NYD_LEAVE;
-   return rv;
-jerr0:
-   n_PS_ROOT_BLOCK(
-      ok_vset(__qm, n_0);
-      ok_vset(__em, n_0)
-   );
-   goto jleave0;
+   return (rv == 0);
 }
 
 static struct a_go_cmd_desc const *
@@ -1336,16 +1347,19 @@ jrestart:
    if(gcp->gc_outer == NULL){
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
          a_go_xcall = NULL;
-         gcp->gc_flags &= ~a_GO_XCALL_LOOP;
+         gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
+         n_pstate &= ~n_PS_ERR_EXIT_MASK;
          close_all_files();
-      }else if(!(n_pstate & n_PS_SOURCING))
-         close_all_files();
+      }else{
+         if(!(n_pstate & n_PS_SOURCING))
+            close_all_files();
+      }
 
       n_memory_reset();
 
       n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
       assert(a_go_xcall == NULL);
-      assert(!(gcp->gc_flags & a_GO_XCALL_LOOP));
+      assert(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
       assert(gcp->gc_on_finalize == NULL);
       assert(gcp->gc_data.gdc_colour == NULL);
       goto jxleave;
@@ -1362,7 +1376,8 @@ jrestart:
    /* Cleanup crucial external stuff */
    if(gcp->gc_data.gdc_ifcond != NULL){
       n_cnd_if_stack_del(gcp->gc_data.gdc_ifcond);
-      if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
+      if(!(gcp->gc_flags & a_GO_FORCE_EOF) &&
+            !(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
             a_go_xcall == NULL)
          n_err(_("Unmatched `if' at end of %s %s\n"),
             ((gcp->gc_flags & a_GO_MACRO
@@ -1412,8 +1427,11 @@ jstackpop:
    if(gcp->gc_on_finalize != NULL)
       (*gcp->gc_on_finalize)(gcp->gc_finalize_arg);
 
-   if(gcm & a_GO_CLEANUP_ERROR)
+   if(gcm & a_GO_CLEANUP_ERROR){
+      if(a_go_ctx->gc_flags & a_GO_XCALL_LOOP)
+         a_go_ctx->gc_flags |= a_GO_XCALL_LOOP_ERROR;
       goto jerr;
+   }
 jleave:
    if(gcp->gc_flags & a_GO_FREE)
       n_free(gcp);
@@ -1457,13 +1475,6 @@ jerr:
              : _("loading initialization resource"))),
          gcp->gc_name,
          (n_poption & n_PO_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
-
-   if(!(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) && ok_blook(posix)){
-      if(n_poption & n_PO_D_V)
-         n_alert(_("Non-interactive, bailing out due to errors "
-            "in startup load phase"));
-      exit(n_EXIT_ERR);
-   }
    goto jleave;
 }
 
@@ -1543,9 +1554,8 @@ jleave:
    return (fip != NULL);
 }
 
-static bool_t
+static void
 a_go_load(struct a_go_ctx *gcp){
-   bool_t rv;
    NYD2_ENTER;
 
    assert(!(n_psonce & n_PSO_STARTED));
@@ -1572,21 +1582,8 @@ a_go_load(struct a_go_ctx *gcp){
 
    rele_all_sigs();
 
-   if(!(rv = n_go_main_loop())){
-      if(!(n_psonce & n_PSO_INTERACTIVE)){
-         if(n_poption & n_PO_D_V)
-            n_alert(_("Non-interactive program mode, forced exit"));
-         exit(n_EXIT_ERR);
-      }else if(n_poption & n_PO_BATCH_FLAG){
-         char const *beoe;
-
-         if((beoe = ok_vlook(batch_exit_on_error)) != NULL && *beoe == '1')
-            n_pstate |= n_PS_EXIT;
-      }
-   }
-   /* n_PS_EXIT handled by callers */
+   n_go_main_loop();
    NYD2_LEAVE;
-   return rv;
 }
 
 static void
@@ -1598,34 +1595,34 @@ a_go__eloopint(int sig){ /* TODO one day, we don't need it no more */
 
 static bool_t
 a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
-   volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
    sighandler_type soldhdl;
    struct a_go_eval_ctx gec;
-   bool_t rv, ever;
+   enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
+   volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
    sigset_t osigmask;
    NYD2_ENTER;
 
    memset(&gec, 0, sizeof gec);
    osigmask = gcp->gc_osigmask;
    hadint = FAL0;
+   f = a_RETOK;
 
    if((soldhdl = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN){
       safe_signal(SIGINT, &a_go__eloopint);
       if(sigsetjmp(gcp->gc_eloop_jmp, 1)){
          hold_all_sigs();
          hadint = TRU1;
+         f &= ~a_RETOK;
          a_go_xcall = NULL;
-         gcp->gc_flags &= ~a_GO_XCALL_LOOP;
+         gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          goto jjump;
       }
    }
 
-   rv = TRU1;
-   for(ever = FAL0;; ever = TRU1){
-      char const *beoe;
+   for(;; f |= a_TICKED){
       int n;
 
-      if(ever)
+      if(f & a_TICKED)
          n_memory_reset();
 
       /* Read a line of commands and handle end of file specially */
@@ -1640,30 +1637,18 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          break;
 
       rele_all_sigs();
-      n = a_go_evaluate(&gec);
+      if(!a_go_evaluate(&gec))
+         f &= ~a_RETOK;
       hold_all_sigs();
 
-      if(a_go_xcall != NULL)
+      if(!(f & a_RETOK) || a_go_xcall != NULL ||
+            (n_psonce & n_PSO_EXIT_MASK) || (n_pstate & n_PS_ERR_EXIT_MASK))
          break;
-
-      beoe = (n_poption & n_PO_BATCH_FLAG)
-            ? ok_vlook(batch_exit_on_error) : NULL;
-
-      if(n){
-         if(beoe != NULL && *beoe == '1'){
-            if(n_exit_status == n_EXIT_OK)
-               n_exit_status = n_EXIT_ERR;
-         }
-         rv = FAL0;
-         break;
-      }
-      if(beoe != NULL){
-         if(n_exit_status != n_EXIT_OK)
-            break;
-      }
    }
+
 jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
-   a_go_cleanup(a_GO_CLEANUP_TEARDOWN | (rv ? 0 : a_GO_CLEANUP_ERROR) |
+   a_go_cleanup(a_GO_CLEANUP_TEARDOWN |
+      (f & a_RETOK ? 0 : a_GO_CLEANUP_ERROR) |
       (hadint ? a_GO_CLEANUP_SIGINT : 0) | a_GO_CLEANUP_HOLDALLSIGS);
 
    if(gec.gec_line.s != NULL)
@@ -1677,7 +1662,7 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
       sigprocmask(SIG_SETMASK, &osigmask, NULL);
       n_raise(SIGINT);
    }
-   return rv;
+   return (f & a_RETOK);
 }
 
 static int
@@ -1698,6 +1683,7 @@ a_go_c_read(void *v){ /* TODO IFS? how? -r */
    case 0:
       break;
    default:
+      n_pstate_err_no = n_ERR_INTR;
       rv = 1;
       goto jleave;
    }
@@ -1706,6 +1692,7 @@ a_go_c_read(void *v){ /* TODO IFS? how? -r */
          n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
          n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
          NULL, &linebuf, &linesize, NULL);
+   n_pstate_err_no = n_ERR_NONE; /* TODO I/O error if rv<0! */
    if(rv < 0)
       goto jleave;
 
@@ -1739,6 +1726,7 @@ a_go_c_read(void *v){ /* TODO IFS? how? -r */
 
             vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
             if(!a_go__read_set(*argv, vcp)){
+               n_pstate_err_no = n_ERR_NOTSUP;
                rv = 1;
                break;
             }
@@ -1751,12 +1739,10 @@ a_go_c_read(void *v){ /* TODO IFS? how? -r */
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
       if(!a_go__read_set(*argv, n_empty)){
+         n_pstate_err_no = n_ERR_NOTSUP;
          rv = 1;
          break;
       }
-
-   if(rv == 0)
-      n_pstate_var__em = n_0;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -1838,11 +1824,13 @@ n_go_main_loop(void){ /* FIXME */
    memset(&gec, 0, sizeof gec);
 
    (void)sigsetjmp(a_go_srbuf, 1); /* FIXME get rid */
+   hold_all_sigs();
+
    for (eofcnt = 0;; gec.gec_ever_seen = TRU1) {
       interrupts = 0;
 
       if(gec.gec_ever_seen)
-         a_go_cleanup(a_GO_CLEANUP_LOOPTICK);
+         a_go_cleanup(a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
       if (!(n_pstate & n_PS_SOURCING)) {
          char *cp;
@@ -1874,10 +1862,14 @@ n_go_main_loop(void){ /* FIXME */
                   (mb.mb_type == MB_MAILDIR && n != 0)) {
                size_t odot = PTR2SIZE(dot - message);
                ui32_t odid = (n_pstate & n_PS_DID_PRINT_DOT);
+               int i;
 
-               if (setfile(mailname,
+               rele_all_sigs();
+               i = setfile(mailname,
                      FEDIT_NEWMAIL |
-                     ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)) < 0) {
+                     ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
+               hold_all_sigs();
+               if(i < 0) {
                   n_exit_status |= n_EXIT_ERR;
                   rv = FAL0;
                   break;
@@ -1892,8 +1884,10 @@ n_go_main_loop(void){ /* FIXME */
 
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
+      rele_all_sigs();
       n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
             &gec.gec_line.s, &gec.gec_line.l, NULL);
+      hold_all_sigs();
       gec.gec_line_size = (ui32_t)gec.gec_line.l;
       gec.gec_line.l = (ui32_t)n;
 
@@ -1909,55 +1903,33 @@ n_go_main_loop(void){ /* FIXME */
       }
 
       n_pstate &= ~n_PS_HOOK_MASK;
-      /* C99 */{
-         char const *beoe;
-         int estat;
-
-         estat = a_go_evaluate(&gec);
-         beoe = (n_poption & n_PO_BATCH_FLAG)
-               ? ok_vlook(batch_exit_on_error) : NULL;
-
-         if(estat){
-            if(beoe != NULL && *beoe == '1'){
-               if(n_exit_status == n_EXIT_OK)
-                  n_exit_status = n_EXIT_ERR;
-               rv = FAL0;
-               break;
-            }
-            if(!(n_psonce & n_PSO_STARTED)){ /* TODO join n_PS_EVAL_ERROR */
-               if(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK) ||
-                     !(a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)){
-                  rv = FAL0;
-                  break;
-               }
-            }else
-               break;
-         }
-
-         if(beoe != NULL){
-            if(n_exit_status != n_EXIT_OK)
-               break;
-            /* TODO n_PS_EVAL_ERROR and n_PS_SOURCING!  Sigh!! */
-            if((n_pstate & (n_PS_SOURCING | n_PS_EVAL_ERROR)
-                  ) == n_PS_EVAL_ERROR){
-               n_exit_status = n_EXIT_ERR;
-               break;
-            }
-         }
-      }
+      rele_all_sigs();
+      rv = a_go_evaluate(&gec);
+      hold_all_sigs();
 
       if(!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE) &&
             gec.gec_add_history)
          n_tty_addhist(gec.gec_line.s, (gec.gec_add_history != TRU1));
 
-      if(n_pstate & n_PS_EXIT)
+      switch(n_pstate & n_PS_ERR_EXIT_MASK){
+      case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
+      case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
+      default: break;
+      }
+      if(n_psonce & n_PSO_EXIT_MASK)
+         break;
+
+      if(!rv)
          break;
    }
 
-   a_go_cleanup(a_GO_CLEANUP_TEARDOWN | (rv ? 0 : a_GO_CLEANUP_ERROR));
+   a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
+      (rv ? 0 : a_GO_CLEANUP_ERROR));
 
    if (gec.gec_line.s != NULL)
       n_free(gec.gec_line.s);
+
+   rele_all_sigs();
    NYD_LEAVE;
    return rv;
 }
@@ -2316,7 +2288,6 @@ n_go_load(char const *name){
    if(n_poption & n_PO_D_V)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(gcp->gc_name, FAL0));
    a_go_load(gcp);
-   n_pstate &= ~n_PS_EXIT;
 jleave:
    NYD_LEAVE;
 }
@@ -2410,8 +2381,6 @@ n_go_Xargs(char const **lines, size_t cnt){
    gcp->gc_lines[i] = NULL;
 
    a_go_load(gcp);
-   if(n_pstate & n_PS_EXIT)
-      exit(n_exit_status);
    NYD_LEAVE;
 }
 
@@ -2480,6 +2449,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
             hold_all_sigs();
 
+            a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
             gxp = a_go_xcall;
             a_go_xcall = NULL;
 
@@ -2503,11 +2473,12 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
             rele_all_sigs();
 
-            rv = (c_call(argv) == 0);
+            (void)c_call(argv);
 
             n_lofi_free(argv);
          }
-         a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP;
+         rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) != 0);
+         a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
       }
    }
    NYD_LEAVE;

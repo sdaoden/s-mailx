@@ -1492,13 +1492,16 @@ do{\
       n_pstate &= ~n_PS_ROOT;\
 }while(0)
 
-   n_PS_EXIT = 1u<<1,                  /* Exit request pending */
+   /* XXX These are internal to the state machine and do not belong here,
+    * XXX yet this was the easiest (accessible) approach */
+   n_PS_ERR_XIT = 1u<<0,               /* Unless `ignerr' seen -> n_PSO_XIT */
+   n_PS_ERR_QUIT = 1u<<1,              /* ..ditto: -> n_PSO_QUIT */
+   n_PS_ERR_EXIT_MASK = n_PS_ERR_XIT | n_PS_ERR_QUIT,
+
    n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
    n_PS_ROBOT = 1u<<3,                 /* .. even more robotic */
    n_PS_COMPOSE_MODE = 1u<<4,          /* State machine recursed */
    n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* A hook running in a subprocess */
-
-   n_PS_EVAL_ERROR = 1u<<6,            /* Last evaluate() command failed */
 
    n_PS_HOOK_NEWMAIL = 1u<<7,
    n_PS_HOOK = 1u<<8,
@@ -1531,17 +1534,22 @@ do{\
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
+   /* Exit request pending (quick) */
+   n_PSO_XIT = 1u<<0,
+   n_PSO_QUIT = 1u<<1,
+   n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
+
    /* Pre _STARTED */
-   n_PSO_SENDMODE = 1u<<1,
-   n_PSO_INTERACTIVE = 1u<<2,
-   n_PSO_TTYIN = 1u<<3,
-   n_PSO_TTYOUT = 1u<<4, /* TODO should be TTYERR! */
+   n_PSO_SENDMODE = 1u<<2,
+   n_PSO_INTERACTIVE = 1u<<3,
+   n_PSO_TTYIN = 1u<<4,
+   n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
 
    n_PSO_UNICODE = 1u<<8,
    n_PSO_ENC_MBSTATE = 1u<<9,
 
    /* main.c startup code passed, we are functional! */
-   n_PSO_STARTED = 1u<<0,
+   n_PSO_STARTED = 1u<<15,
 
    /* (Likely) Post _STARTED */
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
@@ -1571,10 +1579,9 @@ enum okeys {
     * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
     * It is also used for the ${^.+} multiplexer */
    ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
-   /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
+   /*__qm/__em aka ?/! should be num=1 but that more expensive than what now */
    ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
-   /* xxx __em a.k.a. ! should be num=1 but that more expensive than what now */
-   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1,i3val="0"} */
+   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1} */
 
    ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
@@ -1598,7 +1605,7 @@ ok_b_autothread,
    ok_v_autosort,
 
    ok_b_bang,
-   ok_v_batch_exit_on_error,           /* {posnum=1} */
+ok_b_batch_exit_on_error,
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
    ok_b_bsdannounce,
    ok_b_bsdcompat,
@@ -1639,6 +1646,7 @@ ok_b_autothread,
    ok_b_editheaders,
    ok_b_emptystart,
    ok_v_encoding,
+   ok_b_errexit,
    ok_v_escape,
    ok_v_expandaddr,
    ok_v_expandargv,
@@ -2330,7 +2338,7 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
    n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   n_CMD_ARG_EM = 1u<<30   /* Stores soft exit status in n_pstate_var__em */
+   n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
 enum gfield {
@@ -2524,6 +2532,21 @@ struct cw {
 # define VL extern
 #endif
 
+#ifndef HAVE_AMALGAMATION
+VL char const n_month_names[12 + 1][4];
+VL char const n_weekday_names[7 + 1][4];
+
+VL char const n_uagent[sizeof VAL_UAGENT];
+VL char const n_error[sizeof n_ERROR];
+VL char const n_unirepl[sizeof n_UNIREPL];
+VL char const n_empty[1];
+VL char const n_0[2];
+VL char const n_1[2];
+VL char const n_m1[3];
+
+VL ui16_t const n_class_char[1 + 0x7F];
+#endif
+
 VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
@@ -2539,7 +2562,7 @@ VL char const *n_progname;       /* Our name */
 VL gid_t n_group_id;             /* getgid() and getuid() */
 VL uid_t n_user_id;
 
-VL int n_exit_status;            /* Exit status */
+VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct name *n_poption_arg_r; /* Argument to -r option */
@@ -2551,14 +2574,11 @@ VL struct n_go_data_ctx *n_go_data;
 VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
 VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
- * TODO struct CmdCtx where each command has its own ARGC/ARGV, soft/hard exit
- * TODO status and may-place-in-history bit, we need to manage the soft exit
- * TODO status with this global bypass, it is thus a.. */
-VL char const *n_pstate_var__em; /* TODO ..HACK */
-#define n_err_no errno
-VL int n__temporary_dummy;
-#define n_pstate_err_no n__temporary_dummy
-#define n_pstate_ex_no n__temporary_dummy
+ * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
+ * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
+VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
+#define n_err_no errno           /* Don't use errno directly, for later XXX */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
@@ -2589,23 +2609,6 @@ VL sighandler_type dflpipe;
 
 /* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
 VL char const  *temporary_protocol_ext;
-
-/* The remaining variables need initialization */
-
-#ifndef HAVE_AMALGAMATION
-VL char const n_month_names[12 + 1][4];
-VL char const n_weekday_names[7 + 1][4];
-
-VL char const n_uagent[sizeof VAL_UAGENT];
-VL char const n_error[sizeof n_ERROR];
-VL char const n_unirepl[sizeof n_UNIREPL];
-VL char const n_empty[1];
-VL char const n_0[2];
-VL char const n_1[2];
-VL char const n_m1[3];
-
-VL ui16_t const n_class_char[1 + 0x7F];
-#endif
 
 /*
  * Finally, let's include the function prototypes XXX embed

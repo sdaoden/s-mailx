@@ -162,7 +162,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
 
    if(len == UIZ_MAX)
       len = strlen(dat);
-   hi = torek_ihashn(dat, len) % n_NELEM(self->i_retain.it_ht);
+   hi = n_torek_ihashn(dat, len) % n_NELEM(self->i_retain.it_ht);
 
    /* Again: doesn't handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
@@ -437,7 +437,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
       struct a_ignore_field **ifpp, *ifp;
       ui32_t hi;
 
-      hi = torek_ihashn(field, UIZ_MAX) % n_NELEM(itp->it_ht);
+      hi = n_torek_ihashn(field, UIZ_MAX) % n_NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
@@ -800,7 +800,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
-      hi = torek_ihashn(dat, len) % n_NELEM(itp->it_ht);
+      hi = n_torek_ihashn(dat, len) % n_NELEM(itp->it_ht);
       ifp->if_next = itp->it_ht[hi];
       itp->it_ht[hi] = ifp;
    }

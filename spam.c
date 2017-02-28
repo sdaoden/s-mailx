@@ -931,7 +931,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = getrandstring(n_MIN(NAME_MAX / 4, 16));
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16));
    scfp->cf_env[0] = str_concat_csvl(&s,
          n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
    /* v15 compat NAIL_ environments vanish! */

@@ -1695,6 +1695,7 @@ FL int
 c_shcodec(void *v){
    struct str in;
    struct n_string sou_b, *soup;
+   si32_t nerrn;
    size_t alen;
    bool_t norndtrip;
    char const **argv, *varname, *act, *cp;
@@ -1715,6 +1716,7 @@ c_shcodec(void *v){
       ++cp;
 
    in.l = strlen(in.s = n_UNCONST(cp));
+   nerrn = n_ERR_NONE;
 
    if(is_ascncaseprefix(act, "encode", alen))
       soup = n_shexp_quote(soup, &in, !norndtrip);
@@ -1726,6 +1728,7 @@ c_shcodec(void *v){
                n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);
          if(shs & n_SHEXP_STATE_ERR_MASK){
             soup = n_string_assign_cp(soup, cp);
+            nerrn = n_ERR_CANCELED;
             v = NULL;
             break;
          }
@@ -1739,8 +1742,8 @@ c_shcodec(void *v){
    if(varname != NULL){
       cp = n_string_cp(soup);
       if(!n_var_vset(varname, (uintptr_t)cp)){
+         nerrn = n_ERR_NOTSUP;
          cp = NULL;
-         v = NULL;
       }
    }else{
       struct str out;
@@ -1748,18 +1751,20 @@ c_shcodec(void *v){
       in.s = n_string_cp(soup);
       in.l = soup->s_len;
       makeprint(&in, &out);
-      if(fprintf(n_stdout, "%s\n", out.s) < 0)
+      if(fprintf(n_stdout, "%s\n", out.s) < 0){
+         nerrn = n_err_no;
          cp = NULL;
+      }
       free(out.s);
    }
 
-   if(v != NULL)
-      n_pstate_var__em = n_0;
 jleave:
+   n_pstate_err_no = nerrn;
    NYD_LEAVE;
    return (cp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   nerrn = n_ERR_INVAL;
    cp = NULL;
    goto jleave;
 }

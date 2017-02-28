@@ -424,7 +424,7 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
             (gt & GT_MLIST ? _mlist_heads :
             (gt & GT_SHORTCUT ? _shortcut_heads :
             (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
-            )[torek_hash(id) % HSHSIZE]);
+            )[n_torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
       if ((gp->g_type & gt) && *gp->g_id == *id) {
@@ -920,7 +920,7 @@ nalloc(char const *str, enum gfield ntype)
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
    str = n_addrspec_with_guts(&ag, str,
-         ((ntype & (GFULL | GSKIN | GREF)) != 0));
+         ((ntype & (GFULL | GSKIN | GREF)) != 0), FAL0);
    if(str == NULL){
       /*
       np = NULL; TODO We cannot return NULL,
@@ -1551,7 +1551,7 @@ jleave:
 }
 
 FL int
-c_addrcodec(void *v){
+c_addrcodec(void *vp){
    struct n_addrguts ag;
    struct n_string s_b, *sp;
    size_t alen;
@@ -1560,7 +1560,7 @@ c_addrcodec(void *v){
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
-   argv = v;
+   argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
@@ -1586,6 +1586,8 @@ c_addrcodec(void *v){
       sp = n_string_reserve(sp, i);
    }
 
+   n_pstate_err_no = n_ERR_NONE;
+
    if(is_ascncaseprefix(act, "encode", alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
        * we may need to turn any " or \ into a quoted-pair */
@@ -1599,15 +1601,16 @@ c_addrcodec(void *v){
          sp = n_string_push_c(sp, c);
       }
 
-      if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL ||
+      if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1, TRU1) == NULL ||
             (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
                ) != NAME_ADDRSPEC_ISADDR){
          cp = sp->s_dat;
-         v = NULL;
+         n_pstate_err_no = n_ERR_INVAL;
+         vp = NULL;
       }else{
          struct name *np;
 
-         np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
+         np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
          cp = np->n_fullname;
       }
    }else if(mode == 0 && is_ascncaseprefix(act, "decode", alen)){
@@ -1644,21 +1647,22 @@ c_addrcodec(void *v){
       goto jesynopsis;
 
    if(varname == NULL){
-      if(fprintf(n_stdout, "%s\n", cp) < 0)
-         cp = NULL;
+      if(fprintf(n_stdout, "%s\n", cp) < 0){
+         n_pstate_err_no = n_err_no;
+         vp = NULL;
+      }
    }else if(!n_var_vset(varname, (uintptr_t)cp)){
-      cp = NULL;
-      v = NULL;
+      n_pstate_err_no = n_ERR_NOTSUP;
+      vp = NULL;
    }
 
-   if(v != NULL)
-      n_pstate_var__em = n_0;
 jleave:
    NYD_LEAVE;
-   return (cp != NULL ? 0 : 1);
+   return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: addrcodec: <[+[+]]e[ncode]|d[ecode]> <rest-of-line>\n"));
-   cp = NULL;
+   n_pstate_err_no = n_ERR_INVAL;
+   vp = NULL;
    goto jleave;
 }
 

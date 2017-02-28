@@ -77,7 +77,7 @@ struct a_aux_err_map{
    ui32_t aem_hash;     /* Hash of name */
    ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
    ui32_t aem_docoff;   /* Into a_aux_err docs[] */
-   si32_t aem_errno;    /* The OS errno value for this one */
+   si32_t aem_err_no;   /* The OS error value for this one */
 };
 
 static ui8_t a_aux_idec_atoi[256] = {
@@ -151,7 +151,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 # endif
 #endif
 
-/* Find the descriptive mapping for errno, or _ERR_INVAL */
+/* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
 #ifndef HAVE_POSIX_RANDOM
@@ -225,7 +225,7 @@ a_aux_rand_init(void){
          a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
          seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
          if((rnd & 3) == 3)
-            seed ^= nextprime(seed);
+            seed ^= n_prime_next(seed);
       }
    }
 
@@ -702,38 +702,35 @@ j_maxval:
 }
 
 FL ui32_t
-torek_hash(char const *name)
-{
+n_torek_hash(char const *name){
    /* Chris Torek's hash.
     * NOTE: need to change *at least* mk-okey-map.pl when changing the
     * algorithm!! */
-   ui32_t h = 0;
-   NYD_ENTER;
+   char c;
+   ui32_t h;
+   NYD2_ENTER;
 
-   while (*name != '\0') {
-      h *= 33;
-      h += *name++;
-   }
-   NYD_LEAVE;
+   for(h = 0; (c = *name++) != '\0';)
+      h = (h * 33) + c;
+   NYD2_LEAVE;
    return h;
 }
 
 FL ui32_t
-torek_ihashn(char const *dat, size_t len){
-   /* See torek_hash() */
+n_torek_ihashn(char const *dat, size_t len){
+   /* See n_torek_hash() */
    char c;
    ui32_t h;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for(h = 0; len > 0 && (c = *dat++) != '\0'; --len)
       h = (h * 33) + lowerconv(c);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return h;
 }
 
 FL ui32_t
-nextprime(ui32_t n)
-{
+n_prime_next(ui32_t n){
    static ui32_t const primes[] = {
       5, 11, 23, 47, 97, 157, 283,
       509, 1021, 2039, 4093, 8191, 16381, 32749, 65521,
@@ -741,20 +738,20 @@ nextprime(ui32_t n)
       8388593, 16777213, 33554393, 67108859, 134217689,
       268435399, 536870909, 1073741789, 2147483647
    };
-
    ui32_t i, mprime;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (n < primes[n_NELEM(primes) / 4] ? 0
          : (n < primes[n_NELEM(primes) / 2] ? n_NELEM(primes) / 4
          : n_NELEM(primes) / 2));
-   do
-      if ((mprime = primes[i]) > n)
-         break;
-   while (++i < n_NELEM(primes));
-   if (i == n_NELEM(primes) && mprime < n)
+
+   do if((mprime = primes[i]) > n)
+      break;
+   while(++i < n_NELEM(primes));
+
+   if(i == n_NELEM(primes) && mprime < n)
       mprime = n;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return mprime;
 }
 
@@ -782,8 +779,7 @@ jredo:
 }
 
 FL char *
-nodename(int mayoverride)
-{
+n_nodename(bool_t mayoverride){
    static char *sys_hostname, *hostname; /* XXX free-at-exit */
 
    struct utsname ut;
@@ -795,11 +791,11 @@ nodename(int mayoverride)
    struct hostent *hent;
 # endif
 #endif
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
+   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
-   } else if ((hn = sys_hostname) == NULL) {
+   }else if((hn = sys_hostname) == NULL){
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
@@ -807,38 +803,39 @@ nodename(int mayoverride)
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_CANONNAME;
-      if (getaddrinfo(hn, NULL, &hints, &res) == 0) {
-         if (res->ai_canonname != NULL) {
-            size_t l = strlen(res->ai_canonname) +1;
+      if(getaddrinfo(hn, NULL, &hints, &res) == 0){
+         if(res->ai_canonname != NULL){
+            size_t l;
 
-            hn = ac_alloc(l);
+            l = strlen(res->ai_canonname) +1;
+            hn = n_lofi_alloc(l);
             memcpy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
       }
 # else
       hent = gethostbyname(hn);
-      if (hent != NULL)
+      if(hent != NULL)
          hn = hent->h_name;
 # endif
 #endif
       sys_hostname = sstrdup(hn);
 #if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
-      if (hn != ut.nodename)
-         ac_free(hn);
+      if(hn != ut.nodename)
+         n_lofi_free(hn);
 #endif
       hn = sys_hostname;
    }
 
-   if (hostname != NULL && hostname != sys_hostname)
-      free(hostname);
+   if(hostname != NULL && hostname != sys_hostname)
+      n_free(hostname);
    hostname = sstrdup(hn);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return hostname;
 }
 
 FL char *
-getrandstring(size_t length){
+n_random_create_cp(size_t length){
    struct str b64;
    char *data;
    size_t i;
@@ -1373,7 +1370,7 @@ n_err_from_name(char const *name){
    si32_t rv;
    NYD2_ENTER;
 
-   hash = torek_hash(name);
+   hash = n_torek_hash(name);
 
    for(i = hash % a_AUX_ERR_REV_PRIME, j = 0; j <= a_AUX_ERR_REV_LONGEST; ++j){
       if((x = a_aux_err_revmap[i]) == a_AUX_ERR_REV_ILL)
@@ -1382,7 +1379,7 @@ n_err_from_name(char const *name){
       aemp = &a_aux_err_map[x];
       if(aemp->aem_hash == hash &&
             !strcmp(&a_aux_err_names[aemp->aem_nameoff], name)){
-         rv = aemp->aem_errno;
+         rv = aemp->aem_err_no;
          goto jleave;
       }
 
@@ -1401,11 +1398,11 @@ n_err_from_name(char const *name){
          (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) == n_IDEC_STATE_CONSUMED){
       aemp = a_aux_err_map_from_no(rv);
-      rv = aemp->aem_errno;
+      rv = aemp->aem_err_no;
       goto jleave;
    }
 
-   rv = a_aux_err_map[n__ERR_NUMBER_VOIDOFF].aem_errno;
+   rv = a_aux_err_map[n__ERR_NUMBER_VOIDOFF].aem_err_no;
 jleave:
    NYD2_LEAVE;
    return rv;
