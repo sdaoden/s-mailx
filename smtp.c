@@ -322,7 +322,7 @@ jleave:
 }
 
 #ifdef HAVE_GSSAPI
-# include "smtp_gssapi.h"
+# include "smtp-gssapi.h"
 #endif
 
 #undef _OUT

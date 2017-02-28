@@ -226,7 +226,7 @@ static bool_t a_lex__read_set(char const *cp, char const *value);
 # define DS(S)
 #endif
 static struct a_lex_cmd const a_lex_cmd_tab[] = {
-#include "cmd_tab.h"
+#include "cmd-tab.h"
 },
       a_lex_special_cmd_tab[] = {
    { "#", NULL, n_CMD_ARG_TYPE_STRING, 0, 0
@@ -1332,7 +1332,7 @@ a_lex_source_file(char const *file, bool_t silent_open_error){
 
    /* Being a command argument file is space-trimmed *//* TODO v15 with
     * TODO WYRALIST this is no longer necessary true, and for that we
-    * TODO don't set _PARSE_TRIMSPACE because we cannot! -> cmd_tab.h!! */
+    * TODO don't set _PARSE_TRIMSPACE because we cannot! -> cmd-tab.h!! */
 #if 0
    ((ispipe = (!silent_open_error && (nlen = strlen(file)) > 0 &&
          file[--nlen] == '|')))

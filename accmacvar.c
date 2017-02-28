@@ -5,10 +5,10 @@
  *@ - run mk-okey-map.pl
  *@ - update the manual!
  *@ TODO . should be recursive environment based.
- *@ TODO   Otherwise, the `localopts' should be an attribute of the lex_input.c
+ *@ TODO   Otherwise, the `localopts' should be an attribute of the lex-input.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
- *@ TODO   the a_LEX_SPLICE comment in lex_input.c.
+ *@ TODO   the a_LEX_SPLICE comment in lex-input.c.
  *@ TODO . once we can have non-fatal !0 returns for commands, we should
  *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
@@ -189,9 +189,9 @@ struct a_amv_var_carrier{
    ui16_t avc_special_prop;
 };
 
-/* Include the constant mk-okey-map.pl output */
-#include "version.h"
-#include "okeys.h"
+/* Include the constant mk-okey-map.pl output, and the generated version data */
+#include "gen-version.h"
+#include "gen-okeys.h"
 
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;
@@ -1955,7 +1955,7 @@ FL void
 temporary_compose_mode_hook_call(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){
    /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SPLICE
-    * TODO comment in lex_input.c for the right way of doing things! */
+    * TODO comment in lex-input.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;

@@ -4114,7 +4114,7 @@ c_history(void *v){
       goto jentry;
 jerr:
    n_err(_("Synopsis: history: %s\n"),
-      /* Same string as in cmd_tab.h, still hoping...) */
+      /* Same string as in cmd-tab.h, still hoping...) */
       _("<show> (default), <clear> or select <NO> from editor history"));
    v = NULL;
 jleave:
@@ -4186,7 +4186,7 @@ jentry:{
 # ifdef HAVE_KEY_BINDINGS
 FL int
 c_bind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_tty_bind_cad) { /* TODO cmd_tab.h */
+   n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_tty_bind_cad) { /* TODO cmd-tab.h */
       {n_CMD_ARG_DESC_STRING, 0},
       {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
             n_CMD_ARG_DESC_HONOUR_STOP,
@@ -4330,7 +4330,7 @@ jleave:
 
 FL int
 c_unbind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_tty_unbind_cad) {/* TODO cmd_tab.h*/
+   n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_tty_unbind_cad) {/* TODO cmd-tab.h*/
       {n_CMD_ARG_DESC_STRING, 0},
       {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
          n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_LOG}

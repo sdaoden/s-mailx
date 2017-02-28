@@ -112,9 +112,9 @@ fi
 ##
 echo 'Updating stable/ files to match the release'
 
-if [ -f version.h ] && [ -f mk-mk.in ]; then
+if [ -f gen-version.h ] && [ -f mk-mk.in ]; then
    grep=grep sed=sed cmp=cmp mv=mv make -f mk-mk.in _update-version
-   git add version.h
+   git add gen-version.h
 fi
 update_stable_hook
 

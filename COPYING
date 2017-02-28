@@ -82,7 +82,7 @@
  */
 
 ==========================================================================
-mime_enc.c:
+mime-enc.c:
 QP quoting idea, _b64_decode(), b64_encode():
 
 /*
@@ -115,7 +115,7 @@ QP quoting idea, _b64_decode(), b64_encode():
  */
 
 ==========================================================================
-smtp_gssapi.h:
+smtp-gssapi.h:
 partially derived from sample code in:
 
 /*

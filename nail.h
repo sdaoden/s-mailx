@@ -1832,10 +1832,10 @@ ok_b_ssl_no_default_ca,
    ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
    ok_b_verbose,                       /* {vip=1} */
-   ok_v_version,                       /* {virt=VERSION} */
-   ok_v_version_major,                 /* {virt=VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {virt=VERSION_MINOR} */
-   ok_v_version_update,                /* {virt=VERSION_UPDATE} */
+   ok_v_version,                       /* {virt=n_VERSION} */
+   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
+   ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
 
    ok_b_writebackedited
 };

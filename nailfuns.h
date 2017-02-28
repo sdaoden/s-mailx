@@ -412,7 +412,7 @@ FL char const *n_regex_err_to_str(const regex_t *rep, int e);
 #endif
 
 /*
- * cmd_arg.c
+ * cmd-arg.c
  */
 
 /* Scan out the list of string arguments according to rm, return -1 on error;
@@ -431,7 +431,7 @@ FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
                      struct n_string *store);
 
 /*
- * cmd_cnd.c
+ * cmd-cnd.c
  */
 
 /* if.elif.else.endif conditional execution.
@@ -449,7 +449,7 @@ FL void *condstack_release(void);
 FL bool_t condstack_take(void *self);
 
 /*
- * cmd_folder.c
+ * cmd-folder.c
  */
 
 /* `file' (`folder') and `File' (`Folder') */
@@ -472,7 +472,7 @@ FL int c_rename(void *v);
 FL int c_folders(void *v);
 
 /*
- * cmd_headers.c
+ * cmd-headers.c
  */
 
 /* `headers' (show header group, possibly after setting dot) */
@@ -496,7 +496,7 @@ FL int c_from(void *v);
 FL void print_headers(size_t bottom, size_t topx, bool_t only_marked);
 
 /*
- * cmd_message.c
+ * cmd-message.c
  */
 
 /* Paginate messages, honour/don't honour ignored fields, respectively */
@@ -562,7 +562,7 @@ FL int c_draft(void *v);
 FL int c_undraft(void *v);
 
 /*
- * cmd_misc.c
+ * cmd-misc.c
  */
 
 /* Process a shell escape by saving signals, ignoring signals and a sh -c */
@@ -584,7 +584,7 @@ FL int c_echon(void *v);
 FL int c_echoerrn(void *v);
 
 /*
- * cmd_resend.c
+ * cmd-resend.c
  */
 
 /* All thinkable sorts of `reply' / `respond' and `followup'.. */
@@ -614,7 +614,7 @@ FL int c_resend(void *v);
 FL int c_Resend(void *v);
 
 /*
- * cmd_write.c
+ * cmd-write.c
  */
 
 /* Save a message in a file.  Mark the message as saved so we can discard when
@@ -1022,7 +1022,7 @@ FL bool_t      n_ignore_lookup(struct n_ignore const *self,
    (n_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)
 
 /*
- * imap_search.c
+ * imap-search.c
  */
 
 /* Return -1 on invalid spec etc., the number of matches otherwise */
@@ -1031,7 +1031,7 @@ FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
 /*
- * lex_input.c
+ * lex-input.c
  */
 
 /* Fallback implementation for commands which are unavailable in this config */
@@ -1308,7 +1308,7 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
                   FILE *f, enum conversion convert, enum tdflags dflags);
 
 /*
- * mime_enc.c
+ * mime-enc.c
  * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8
@@ -1392,7 +1392,7 @@ FL bool_t      b64_decode_part(struct str *out, struct str const *in,
                   struct str *outrest, struct str *inrest_or_null);
 
 /*
- * mime_param.c
+ * mime-param.c
  */
 
 /* Get a mime style parameter from a header body */
@@ -1415,7 +1415,7 @@ FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 FL char *      mime_param_boundary_create(void);
 
 /*
- * mime_parse.c
+ * mime-parse.c
  */
 
 /* Create MIME part object tree for and of mp */
@@ -1423,7 +1423,7 @@ FL struct mimepart * mime_parse_msg(struct message *mp,
                         enum mime_parse_flags mpf);
 
 /*
- * mime_types.c
+ * mime-types.c
  */
 
 /* `(un)?mimetype' commands */
@@ -1452,7 +1452,7 @@ FL enum mime_handler_flags mime_type_handler(struct mime_handler *mhp,
                               enum sendaction action);
 
 /*
- * nam_a_grp.c
+ * nam-a-grp.c
  */
 
 /* Allocate a single element of a name list, initialize its name field to the
@@ -2437,7 +2437,7 @@ FL int         c_unbind(void *v);
 #endif
 
 /*
- * ui_str.c
+ * ui-str.c
  */
 
 /* Parse (onechar of) a given buffer, and generate infos along the way.

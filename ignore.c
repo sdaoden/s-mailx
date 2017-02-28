@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ `headerpick', `retain' and `ignore'.
- *@ XXX Should these be in nam_a_grp.c?!
+ *@ XXX Should these be in nam-a-grp.c?!
  *
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
