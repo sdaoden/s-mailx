@@ -174,8 +174,13 @@ in textual output.  Maybe that makes it obvious what can be done (header
 files could not be found because of missing entries in $C_INCLUDE_PATH,
 libraries could not be linked because of incomplete $LD_LIBRARY_PATH,
 etc.).
+
 Otherwise it is getting complicated, and it would be appreciated if you
 would contact the mailing-list!
+
+If you hit an actual bug in the configuration system, and "make
+distclean" will not help you out, please "reset" the state by doing
+a simple "$ rm config.*".
 
 1.2 What if building fails?
 ---------------------------
