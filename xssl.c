@@ -119,6 +119,39 @@ EMPTY_FILE()
 # define a_xssl_X509_get_notAfter X509_get_notAfter
 #endif
 
+/* X509_STORE_set_flags */
+#undef a_XSSL_X509_V_ANY
+#ifndef X509_V_FLAG_NO_ALT_CHAINS
+# define X509_V_FLAG_NO_ALT_CHAINS -1
+#else
+# undef a_XSSL_X509_V_ANY
+# define a_XSSL_X509_V_ANY
+#endif
+#ifndef X509_V_FLAG_NO_CHECK_TIME
+# define X509_V_FLAG_NO_CHECK_TIME -1
+#else
+# undef a_XSSL_X509_V_ANY
+# define a_XSSL_X509_V_ANY
+#endif
+#ifndef X509_V_FLAG_PARTIAL_CHAIN
+# define X509_V_FLAG_PARTIAL_CHAIN -1
+#else
+# undef a_XSSL_X509_V_ANY
+# define a_XSSL_X509_V_ANY
+#endif
+#ifndef X509_V_FLAG_X509_STRICT
+# define X509_V_FLAG_X509_STRICT -1
+#else
+# undef a_XSSL_X509_V_ANY
+# define a_XSSL_X509_V_ANY
+#endif
+#ifndef X509_V_FLAG_TRUSTED_FIRST
+# define X509_V_FLAG_TRUSTED_FIRST -1
+#else
+# undef a_XSSL_X509_V_ANY
+# define a_XSSL_X509_V_ANY
+#endif
+
 /* Some became meaningless with HAVE_XSSL_OPENSSL>=0x10100 */
 enum a_xssl_state{
    a_XSSL_S_INIT = 1<<0,
@@ -161,6 +194,11 @@ struct a_xssl_smime_cipher{
 struct a_xssl_smime_digest{
    char const sd_name[8];
    EVP_MD const *(*sd_fun)(void);
+};
+
+struct a_xssl_x509_v_flags{
+   char const xvf_name[20];
+   si32_t xvf_flag;
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
@@ -229,6 +267,15 @@ static struct a_xssl_smime_digest const a_xssl_smime_digests[] = { /* Manual! */
 #endif
 };
 
+/* X509_STORE_set_flags() for *{smime,ssl}-ca-flags* */
+static struct a_xssl_x509_v_flags const a_xssl_x509_v_flags[] = { /* Manual! */
+   {"no-alt-chains", X509_V_FLAG_NO_ALT_CHAINS},
+   {"no-check-time", X509_V_FLAG_NO_CHECK_TIME},
+   {"partial-chain", X509_V_FLAG_PARTIAL_CHAIN},
+   {"strict", X509_V_FLAG_X509_STRICT},
+   {"trusted-first", X509_V_FLAG_TRUSTED_FIRST},
+};
+
 static enum a_xssl_state a_xssl_state;
 static size_t a_xssl_msgno;
 
@@ -249,6 +296,9 @@ static void a_xssl_atexit(void);
 static bool_t     _ssl_parse_asn1_time(ASN1_TIME const *atp,
                      char *bdat, size_t blen);
 static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
+
+/* *smime-ca-flags*, *ssl-ca-flags* */
+static void a_xssl_ca_flags(X509_STORE *store, char const *flags);
 
 /* SSL_CTX configuration */
 static void *     _ssl_conf_setup(SSL_CTX *ctxp);
@@ -509,6 +559,36 @@ jleave:
    return rv;
 }
 
+static void
+a_xssl_ca_flags(X509_STORE *store, char const *flags){
+   NYD2_ENTER;
+   if(flags != NULL){
+      char *iolist, *cp;
+
+      iolist = savestr(flags);
+jouter:
+      while((cp = n_strsep(&iolist, ',', TRU1)) != NULL){
+         struct a_xssl_x509_v_flags const *xvfp;
+
+         for(xvfp = &a_xssl_x509_v_flags[0];
+               xvfp < &a_xssl_x509_v_flags[n_NELEM(a_xssl_x509_v_flags)];
+               ++xvfp)
+            if(!asccasecmp(cp, xvfp->xvf_name)){
+               if(xvfp->xvf_flag != -1){
+#ifdef a_XSSL_X509_V_ANY
+                  X509_STORE_set_flags(store, xvfp->xvf_flag);
+#endif
+               }else if(n_poption & n_PO_D_V)
+                  n_err(_("*{smime,ssl}-ca-flags*: "
+                     "directive not supported: %s\n"), cp);
+               goto jouter;
+            }
+         n_err(_("*{smime,ssl}-ca-flags*: invalid directive: %s\n"), cp);
+      }
+   }
+   NYD2_LEAVE;
+}
+
 #ifdef HAVE_XSSL_CONF_CTX
 static void *
 _ssl_conf_setup(SSL_CTX *ctxp)
@@ -717,10 +797,17 @@ _ssl_load_verifications(SSL_CTX *ctxp)
       goto jleave;
    }
 
-   if (!ok_blook(ssl_no_default_ca) &&
-         SSL_CTX_set_default_verify_paths(ctxp) != 1) {
-      ssl_gen_err(_("Error loading default CA locations\n"));
-      goto jleave;
+   /* C99 */{
+      bool_t xv15;
+
+      if((xv15 = ok_blook(ssl_no_default_ca)))
+         n_OBSOLETE(_("please use *ssl-ca-no-defaults*, "
+            "not *ssl-no-default-ca*"));
+      if(!ok_blook(ssl_ca_no_defaults) && !xv15 &&
+            SSL_CTX_set_default_verify_paths(ctxp) != 1) {
+         ssl_gen_err(_("Error loading builtin default CA locations\n"));
+         goto jleave;
+      }
    }
 
    a_xssl_state &= ~a_XSSL_S_VERIFY_ERROR;
@@ -728,6 +815,7 @@ _ssl_load_verifications(SSL_CTX *ctxp)
    SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
+   a_xssl_ca_flags(store, ok_vlook(ssl_ca_flags));
 
    rv = TRU1;
 jleave:
@@ -1465,15 +1553,24 @@ c_verify(void *vp)
          goto jleave;
       }
    }
-   if (!ok_blook(smime_no_default_ca)) {
-      if (X509_STORE_set_default_paths(store) != 1) {
-         ssl_gen_err(_("Error loading default CA locations"));
+
+   /* C99 */{
+      bool_t xv15;
+
+      if((xv15 = ok_blook(smime_no_default_ca)))
+         n_OBSOLETE(_("please use *smime-ca-no-defaults*, "
+            "not *smime-no-default-ca*"));
+      if(!ok_blook(smime_ca_no_defaults) && !xv15 &&
+            X509_STORE_set_default_paths(store) != 1) {
+         ssl_gen_err(_("Error loading builtin default CA locations\n"));
          goto jleave;
       }
    }
 
    if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
       goto jleave;
+
+   a_xssl_ca_flags(store, ok_vlook(smime_ca_flags));
 
    srelax_hold();
    for (ip = msgvec; *ip != 0; ++ip) {

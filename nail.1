@@ -9145,14 +9145,30 @@ command line option
 .Fl E ) .
 .
 .Mx
-.It Va smime-ca-dir
-\*(OP Specifies a directory with CA certificates in PEM (Privacy
-Enhanced Mail) format for verification of S/MIME signed messages.
+.Mx
+.It Va smime-ca-dir , smime-ca-file
+\*(OP Specify the location of trusted CA certificates in PEM (Privacy
+Enhanced Mail) format as a directory and a file, respectively, for the
+purpose of verification of S/MIME signed messages.
+It is possible to set both, the file will be loaded immediately, the
+directory will be searched whenever no match has yet been found.
+The set of CA certificates which are built into the SSL/TLS library can
+be explicitly turned off by setting
+.Va smime-ca-no-defaults ,
+and further fine-tuning is possible via
+.Va smime-ca-flags .
 .
 .Mx
-.It Va smime-ca-file
-\*(OP Specifies a file with CA certificates in PEM format for
-verification of S/MIME signed messages.
+.It Va smime-ca-flags
+\*(OP Can be used to fine-tune behaviour of the X509 CA certificate
+storage, and the certificate verification that is used.
+The actual values and their meanings are documented for
+.Va ssl-ca-flags .
+.
+.Mx
+.It Va smime-ca-no-defaults
+\*(BO\*(OP Do not load the default CA locations that are built into the
+used to SSL/TLS library to verify S/MIME signed messages.
 .
 .Mx Va smime-cipher
 .It Va smime-cipher-USER@HOST , smime-cipher
@@ -9215,11 +9231,6 @@ variable.
 \*(BO\*(OP Causes \*(UA to refuse sending unencrypted messages.
 .
 .Mx
-.It Va smime-no-default-ca
-\*(BO\*(OP Do not load default CA locations when verifying S/MIME
-signed messages.
-.
-.Mx
 .It Va smime-sign
 \*(BO\*(OP S/MIME sign outgoing messages with the user's private key
 and include the user's certificate as a MIME attachment.
@@ -9238,7 +9249,7 @@ and
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
 \*(OP Points to a file in PEM format.
 For the purpose of signing and decryption this file needs to contain the
-user's private key as well as his certificate.
+user's private key, followed by his certificate.
 .Pp
 For message signing
 .Ql USER@HOST
@@ -9591,7 +9602,7 @@ contains examples for some programs.
 \*(OP Because of the generic nature of the
 .Ql filter
 .Va spam-interface
-spam scores are not supported for it by default, but if the \*(OPtional
+spam scores are not supported for it by default, but if the \*(OPnal
 regular expression support is available then setting this variable can
 be used to overcome this restriction.
 It is interpreted as follows: first a number (digits) is parsed that
@@ -9604,20 +9615,74 @@ hook, and, in case the evaluation is successful, the group that has been
 specified via the number is interpreted as a floating point scan score.
 .
 .Mx
-.It Va ssl-ca-dir
-\*(OP Specifies a directory with CA certificates in PEM (Pricacy
-Enhanced Mail) for verification of of SSL/TLS server certificates.
-See
+.Mx
+.It Va ssl-ca-dir , ssl-ca-file
+\*(OP Specify the location of trusted CA certificates in PEM (Privacy
+Enhanced Mail) format as a directory and a file, respectively, for the
+purpose of verification of SSL/TLS server certificates.
+It is possible to set both, the file will be loaded immediately, the
+directory will be searched whenever no match has yet been found.
+The set of CA certificates which are built into the SSL/TLS library can
+be explicitly turned off by setting
+.Va ssl-ca-no-defaults ,
+and further fine-tuning is possible via
+.Va ssl-ca-flags ;
+also see
 .Xr SSL_CTX_load_verify_locations 3
 for more information.
 .
+.
 .Mx
-.It Va ssl-ca-file
-\*(OP Specifies a file with CA certificates in PEM format for
-verification of SSL/TLS server certificates.
-See
+.It Va ssl-ca-flags
+\*(OP Can be used to fine-tune behaviour of the X509 CA certificate
+storage, and the certificate verification that is used (also see
+.Va ssl-verify ) .
+The value is expected to consist of a comma-separated list of
+configuration directives, with any intervening whitespace being ignored.
+The directives directly map to flags that can be passed to
+.Xr X509_STORE_set_flags 3 ,
+which are usually defined in a file
+.Pa openssl/x509_vfy.h ,
+and the availability of which depends on the used SSL/TLS library
+version: a directive without mapping is ignored (error log subject to
+.Va debug ) .
+Directives currently understood (case-insensitively) include:
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd no-alt-chains
+If the initial chain is not trusted, do not attempt to build an
+alternative chain.
+Setting this flag will make OpenSSL certificate verification match that
+of older OpenSSL versions, before automatic building and checking of
+alternative chains has been implemented; also see
+.Cd trusted-first .
+.It Cd no-check-time
+Do not check certificate/CRL validity against current time.
+.It Cd partial-chain
+By default partial, incomplete chains which cannot be verified up to the
+chain top, a self-signed root certificate, will not verify.
+With this flag set, a chain succeeds to verify if at least one signing
+certificate of the chain is in any of the configured trusted stores of
+CA certificates.
+The OpenSSL manual page
 .Xr SSL_CTX_load_verify_locations 3
-for more information.
+gives some advise how to manage your own trusted store of CA certificates.
+.It Cd strict
+Disable workarounds for broken certificates.
+.It Cd trusted-first
+Try building a chain using issuers in the trusted store first to avoid
+problems with server-sent legacy intermediate certificates.
+Newer versions of OpenSSL support alternative chain checking and enable
+it by default, resulting in the same behaviour; also see
+.Cd no-alt-chains .
+.El
+.
+.
+.Mx
+.It Va ssl-ca-no-defaults
+\*(BO\*(OP Do not load the default CA locations that are built into the
+used to SSL/TLS library to verify SSL/TLS server certificates.
 .
 .Mx Va ssl-cert
 .It Va ssl-cert-USER@HOST , ssl-cert-HOST , ssl-cert
@@ -9660,14 +9725,10 @@ The application name will always be passed as
 .Dq \*(uA .
 .
 .Mx
-.It Va ssl-crl-file
-\*(OP Specifies a file that contains a CRL in PEM format to use when
-verifying SSL/TLS server certificates.
-.
 .Mx
-.It Va ssl-crl-dir
-\*(OP Specifies a directory that contains files with CRLs in PEM format
-to use when verifying SSL/TLS server certificates.
+.It Va ssl-crl-dir , ssl-crl-file
+\*(OP Specify a directory / a file, respectively that contains a CRL in
+PEM format to use when verifying SSL/TLS server certificates.
 .
 .Mx Va ssl-key
 .It Va ssl-key-USER@HOST , ssl-key-HOST , ssl-key
@@ -9706,11 +9767,6 @@ is mapped to
 .Ql ALL, -SSLv2
 and thus includes the SSLv3 protocol.
 Note that SSLv2 is no longer supported at all.
-.
-.Mx
-.It Va ssl-no-default-ca
-\*(BO\*(OP Do not load default CA locations to verify SSL/TLS server
-certificates.
 .
 .Mx Va ssl-protocol
 .It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
@@ -9775,7 +9831,14 @@ is not set (or not supported by the SSL/TLS library).
 .Mx Va ssl-verify
 .It Va ssl-verify-USER@HOST , ssl-verify-HOST , ssl-verify
 \*(OP Variable chain that sets the action to be performed if an error
-occurs during SSL/TLS server certificate validation.
+occurs during SSL/TLS server certificate validation against the
+specified or default trust stores
+.Va ssl-ca-dir ,
+.Va ssl-ca-file ,
+or the SSL/TLS library builtin defaults (unless usage disallowed via
+.Va ssl-ca-no-defaults ) ,
+and as fine-tuned via
+.Va ssl-ca-flags .
 Valid (case-insensitive) values are
 .Ql strict
 (fail and close connection immediately),
@@ -10992,18 +11055,24 @@ This is merely for FTP purposes.
 # This example assumes v15.0 compatibility mode
 set v15-compat
 
-# Where are the up-to-date SSL certificates?
-#set ssl-ca-dir=/etc/ssl/certs
-set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
+# Request strict transport security checks!
+set ssl-verify=strict
 
+# Where are the up-to-date SSL certificates?
 # (Since we manage up-to-date ones explicitly, do not use any,
 # possibly outdated, default certificates shipped with OpenSSL)
-set ssl-no-default-ca
+#set ssl-ca-dir=/etc/ssl/certs
+set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
+set ssl-ca-no-defaults
+#set ssl-ca-flags=partial-chain
+wysh set smime-ca-file="${ssl-ca-file}" \e
+  smime-ca-no-defaults #smime-ca-flags="${ssl-ca-flags}"
 
 # Do not use protocols older than TLS v1.2.
 # Change this only when the remote server does not support it:
 # maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
-# such explicit exceptions, then
+# such explicit exceptions, then, e.g.
+#   set ssl-protocol-exam.ple='-ALL,+TLSv1.1'
 set ssl-protocol='-ALL,+TLSv1.2'
 
 # Explicitly define the list of ciphers, which may improve security,
@@ -11014,10 +11083,7 @@ set ssl-protocol='-ALL,+TLSv1.2'
 set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
 # TLSv1.2:!aNULL:!eNULL:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
     DHE-RSA-AES256-SHA:@STRENGTH
-# ALL:!aNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
-
-# Request strict transport security checks!
-set ssl-verify=strict
+# ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1
@@ -11116,12 +11182,13 @@ wysh ghost L '!ls ${LS_COLOR_FLAG} -aFt'
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
+  localopts yes
   wysh set pipe-text/plain=$'@*#++=@\e
     < "${MAILX_FILENAME_TEMPORARY}" awk \e
         -v TMPFILE="${MAILX_FILENAME_TEMPORARY}" \e'\e
-      BEGIN {done=0}\e
-      /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/{\e
-        if (done++ != 0)\e
+      BEGIN{done=0}\e
+      /^-----BEGIN PGP SIGNED MESSAGE-----/,/^$/ {\e
+        if(done++ != 0)\e
           next;\e
         print "--- GPG --verify ---";\e
         system("gpg --verify " TMPFILE " 2>&1");\e
@@ -11134,10 +11201,10 @@ define V {
         next;\e
       }\e
       {print}\e
-      \e''
-  print
+    \e''
+    print
 }
-ghost V call V
+ghost V '\e'call V
 
 define RK {
   !printf 'Key IDs to gpg --recv-keys: ';\e
@@ -11230,7 +11297,7 @@ on your system.
 If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
 Otherwise set
-.Va smime-no-default-ca
+.Va smime-ca-no-defaults
 to avoid using the default certificate and point
 .Va smime-ca-file
 and/or
@@ -11339,9 +11406,10 @@ command to check the validity of the certificate.
 Variables of interest for S/MIME signing:
 .Va smime-ca-dir ,
 .Va smime-ca-file ,
+.Va smime-ca-flags ,
+.Va smime-ca-no-defaults ,
 .Va smime-crl-dir ,
 .Va smime-crl-file ,
-.Va smime-no-default-ca ,
 .Va smime-sign ,
 .Va smime-sign-cert ,
 .Va smime-sign-include-certs
