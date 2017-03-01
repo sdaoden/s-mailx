@@ -2707,6 +2707,30 @@ jeplusminus:
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
+   }else if(is_asccaseprefix(cp, "hash")){
+      f |= a_ISNUM | a_ISDECIMAL;
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      i = torek_hash(*++argv);
+      lhv = (si64_t)i;
+   }else if(is_asccaseprefix(cp, "file-expand")){
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
+         goto jsofterr;
+   }else if(is_asccaseprefix(cp, "random")){
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
+         goto jenum_range;
+      if(lhv == 0)
+         lhv = NAME_MAX;
+      varres = getrandstring((size_t)lhv);
    }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
@@ -2858,23 +2882,6 @@ jeplusminus:
       f |= a_ICASE;
       goto Jregex;
 #endif /* HAVE_REGEX */
-   }else if(is_asccaseprefix(cp, "file-expand")){
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-
-      if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
-         goto jsofterr;
-   }else if(is_asccaseprefix(cp, "random")){
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-
-      if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
-         goto jenum_range;
-      if(lhv == 0)
-         lhv = NAME_MAX;
-      varres = getrandstring((size_t)lhv);
    }else
       goto jesubcmd;
 

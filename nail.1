@@ -5875,7 +5875,9 @@ value is used as the result immediately.
 .Pp
 String operations that take one argument are
 .Ql length ,
-which queries the length of the given argument, and
+which queries the length of the given argument,
+.Ql hash ,
+which calculates the Chris Torek hash of the given string, and
 .Ql file-expand ,
 which performs the usual
 .Sx "Filename transformations" ,
@@ -9964,11 +9966,12 @@ with the command
 if unset, the first five lines are printed, if set to 0 the variable
 .Va screen
 is inspected.
-If the value is negative then its absolute value will be used for right
-shifting the
+If the value is negative then its absolute value will be used for
+unsigned right shifting (see
+.Ic vexpr )
+the
 .Va screen
-height;  (shifting bitwise is like dividing algorithmically, but since
-it takes away bits the value decreases pretty fast).
+height.
 .
 .Mx
 .It Va topsqueeze
