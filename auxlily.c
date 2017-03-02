@@ -703,9 +703,7 @@ j_maxval:
 
 FL ui32_t
 n_torek_hash(char const *name){
-   /* Chris Torek's hash.
-    * NOTE: need to change *at least* mk-okey-map.pl when changing the
-    * algorithm!! */
+   /* Chris Torek's hash */
    char c;
    ui32_t h;
    NYD2_ENTER;

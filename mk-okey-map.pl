@@ -10,6 +10,7 @@ my $MAXDISTANCE_PENALTY = 5;
 # Generate a more verbose output.  Not for shipout versions.
 my $VERB = 1;
 
+my $MAILX = 'LC_ALL=C s-nail -#:/';
 my $OUT = 'gen-okeys.h';
 
 ##  --  >8  --  8<  --  ##
@@ -17,6 +18,9 @@ my $OUT = 'gen-okeys.h';
 use diagnostics -verbose;
 use strict;
 use warnings;
+
+use FileHandle;
+use IPC::Open2;
 
 use sigtrap qw(handler cleanup normal-signals);
 
@@ -30,6 +34,7 @@ sub main_fun{
    create_c_tool();
 
    hash_em();
+
    dump_map();
 
    reverser();
@@ -95,7 +100,6 @@ sub create_c_tool{
    $CTOOL_EXE = $CTOOL . '.exe';
 
    die "$CTOOL: open: $^E" unless open F, '>', $CTOOL;
-   # xxx optimize: could read lines and write lines in HASH_MODE..
    print F '#define MAX_DISTANCE_PENALTY ', $MAXDISTANCE_PENALTY, "\n";
 # >>>>>>>>>>>>>>>>>>>
    print F <<'_EOT';
@@ -138,26 +142,8 @@ struct a_amv_var_map{
    ui16_t avm_flags;    /* enum a_amv_var_flags */
 };
 
-#ifdef HASH_MODE
-/* NOTE: copied over verbatim from auxlily.c */
-static ui32_t
-torek_hash(char const *name){
-   /* Chris Torek's hash.
-    * NOTE: need to change *at least* mk-okey-map.pl when changing the
-    * algorithm!! */
-   ui32_t h = 0;
-
-   while(*name != '\0'){
-      h *= 33;
-      h += *name++;
-   }
-   return h;
-}
-
-#else
-  /* Include what has been written in HASH_MODE */
-# define n_CTA(A,S)
-# include "gen-okeys.h"
+#define n_CTA(A,S)
+#include "gen-okeys.h"
 
 static ui8_t seen_wraparound;
 static size_t longest_distance;
@@ -199,16 +185,9 @@ reversy(size_t size){
    }
    return arr;
 }
-#endif /* !HASH_MODE */
 
 int
 main(int argc, char **argv){
-#ifdef HASH_MODE
-   size_t h = torek_hash(argv[1]);
-
-   printf("%lu\n", (unsigned long)h);
-
-#else
    size_t *arr, size = n_NELEM(a_amv_var_map);
 
    fprintf(stderr, "Starting reversy, okeys=%zu\n", size);
@@ -235,7 +214,6 @@ main(int argc, char **argv){
             : (argc > 2 ? ", " : ","))),
          arr[i]);
    printf("\n};\n");
-#endif
    return 0;
 }
 _EOT
@@ -244,13 +222,16 @@ _EOT
 }
 
 sub hash_em{
-   system("c99 -DHASH_MODE -I. -o $CTOOL_EXE $CTOOL");
-
+   die "hash_em: open: $^E"
+      unless my $pid = open2 *RFD, *WFD, $MAILX;
    foreach my $e (@ENTS){
-      my $h = `$CTOOL_EXE $e->{name}`;
+      print WFD "vexpr hash $e->{name}\n";
+      my $h = <RFD>;
       chomp $h;
       $e->{hash} = $h
    }
+   print WFD "x\n";
+   waitpid $pid, 0;
 }
 
 sub dump_map{

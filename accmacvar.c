@@ -57,7 +57,8 @@
 /* Special "pseudo macro" that stabs you from the back */
 #define a_AMV_MACKY_MACK ((struct a_amv_mac*)-1)
 
-/* Note: changing the hash function must be reflected in mk-okey-map.pl */
+/* Note: changing the hash function must be reflected in `vexpr' "hash",
+ * because that is used by the hashtable creator scripts! */
 #define a_AMV_PRIME HSHSIZE
 #define a_AMV_NAME2HASH(N) n_torek_hash(N)
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
