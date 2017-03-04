@@ -157,8 +157,10 @@ a_aux_rand_init(void){
       ssize_t gr;
 
       gr = HAVE_GETRANDOM(a_aux_rand->a._dat, sizeof a_aux_rand->a._dat);
-      a_aux_rand->a._i = a_aux_rand->a._dat[42];
-      a_aux_rand->a._j = a_aux_rand->a._dat[84];
+      a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+            a_aux_rand->a._dat[84]];
+      a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+            a_aux_rand->a._dat[42]];
       /* ..but be on the safe side */
       if(UICMP(z, gr, ==, sizeof(a_aux_rand->a._dat)))
          break;
@@ -173,8 +175,10 @@ a_aux_rand_init(void){
             sizeof(a_aux_rand->a._dat)));
       close(u.fd);
 
-      a_aux_rand->a._i = a_aux_rand->a._dat[42];
-      a_aux_rand->a._j = a_aux_rand->a._dat[84];
+      a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+            a_aux_rand->a._dat[84]];
+      a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+            a_aux_rand->a._dat[42]];
       if(ok)
          goto jleave;
    }
