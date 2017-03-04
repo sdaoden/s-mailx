@@ -34,6 +34,7 @@ TZ=UTC
 SOURCE_DATE_EPOCH=844221007
 
 export LC_ALL LANG ADDARG_UNI TZ SOURCE_DATE_EPOCH
+unset POSIXLY_CORRECT
 
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
 # use nologin(?), but we need a real shell for command execution
