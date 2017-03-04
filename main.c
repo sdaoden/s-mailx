@@ -404,8 +404,8 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 
       /* We manage those variables for our child processes, so ensure they
        * are up to date, always */
-      if(n_psonce & n_PSO_INTERACTIVE)
-         n_pstate |= n_PS_SIGWINCH_PEND;
+      assert(n_psonce & n_PSO_INTERACTIVE);
+      n_pstate |= n_PS_SIGWINCH_PEND;
 
       if((cp = ok_vlook(LINES)) != NULL){
          n_idec_ui32_cp(&n_scrnheight, cp, 0, NULL);
@@ -470,9 +470,9 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 jleave:
 #ifdef SIGWINCH
    if(is_sighdl){
+      assert(n_psonce & n_PSO_INTERACTIVE);
       n_pstate |= n_PS_SIGWINCH_PEND; /* XXX Not atomic */
-      if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_signal(SIGWINCH);
+      n_tty_signal(SIGWINCH);
    }
 #endif
    NYD_LEAVE;
