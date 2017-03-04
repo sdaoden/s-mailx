@@ -1883,7 +1883,6 @@ fi
 
 if feat_yes SOCKETS; then
    ${cat} > ${tmp2}.c << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -1913,7 +1912,6 @@ fi # feat_yes SOCKETS
 if feat_yes SOCKETS; then
    link_check getaddrinfo 'getaddrinfo(3)' \
       '#define HAVE_GETADDRINFO' << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -1938,7 +1936,6 @@ fi
 if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -1947,7 +1944,6 @@ if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
 !
 
    ${cat} > ${tmp2}.c << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -2194,7 +2190,6 @@ int main(void){
             '#define HAVE_XSSL_CONF_CTX'
       elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
          '#define HAVE_XSSL_CONF_CTX' << \!
-#include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
