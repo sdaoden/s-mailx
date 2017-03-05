@@ -57,11 +57,14 @@
  *   Other characters may be permitted by an implementation;
  *   applications shall tolerate the presence of such names.
  * We do support the hyphen "-" because it is common for mailx.
- * We support some special parameter names for one-letter variable names;
- * note these have counterparts in the code that manages internal variables! */
+ * We support some special parameter names for one-letter(++) variable names;
+ * note these have counterparts in the code that manages internal variables,
+ * and some more special treatment below! */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
 #define a_SHEXP_ISVARC_SPECIAL1(C) \
-   ((C) == '*' || (C) == '@' || (C) == '#' || (C) == '?' || (C) == '!')
+   ((C) == '*' || (C) == '@' || (C) == '#' || \
+    (C) == '?' || (C) == '!' || (C) == '^')
+#define a_SHEXP_ISVARC_SPECIAL1_MULTIPLEX(C) ((C) == '^')
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
@@ -1435,8 +1438,12 @@ j_dollar_ungetc:
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
                      if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c)){
-                        if(c == '@' && quotec == '"')
-                           state |= a_EXPLODE;
+                        if(a_SHEXP_ISVARC_SPECIAL1_MULTIPLEX(c))
+                           continue;
+                        if(c == '@'){
+                           if(quotec == '"')
+                              state |= a_EXPLODE;
+                        }
                         --il, ++ib;
                         ++i;
                      }

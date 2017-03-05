@@ -1560,7 +1560,9 @@ enum n_program_state_once{
  * - most default VAL_ues come from in from build system via ./make.rc
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
-   /* This is used for all macro arguments etc., i.e., [*@#]|[1-9][0-9]*... */
+   /* This is used for all macro(-local) variables etc., i.e.,
+    * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
+    * It is also used for the ${^.+} multiplexer */
    ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
    /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
    ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
@@ -2540,6 +2542,9 @@ VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
  * TODO status with this global bypass, it is thus a.. */
 VL char const *n_pstate_var__em; /* TODO ..HACK */
 #define n_err_no errno
+VL int n__temporary_dummy;
+#define n_pstate_err_no n__temporary_dummy
+#define n_pstate_ex_no n__temporary_dummy
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
