@@ -1445,12 +1445,11 @@ enum n_program_option{
    n_PO_E_FLAG = 1u<<6,       /* -E / *skipemptybody* */
    n_PO_F_FLAG = 1u<<7,       /* -F */
    n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
-   n_PO_N_FLAG = 1u<<9,       /* -N / *header* */
-   n_PO_R_FLAG = 1u<<10,      /* -R */
-   n_PO_r_FLAG = 1u<<11,      /* -r (plus n_poption_arg_r) */
-   n_PO_t_FLAG = 1u<<12,      /* -t */
-   n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
-   n_PO_BATCH_FLAG = 1u<<14,  /* -# */
+   n_PO_R_FLAG = 1u<<9,       /* -R */
+   n_PO_r_FLAG = 1u<<10,      /* -r (plus n_poption_arg_r) */
+   n_PO_t_FLAG = 1u<<11,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<12,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<13,  /* -# */
 
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
@@ -1648,8 +1647,8 @@ ok_b_autothread,
    ok_b_fullnames,
    ok_v_fwdheading,
 
-   ok_v_HOME,                          /* {vip=1,nodel=1,import=1} */
-   ok_b_header,                        /* {vip=1,i3val=TRU1} */
+   ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
+   ok_b_header,                        /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
    ok_v_history_file,
@@ -1822,7 +1821,7 @@ ok_b_ssl_no_default_ca,
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,                  /* {import=1,notempty=1,defval=VAL_TMPDIR} */
+   ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */

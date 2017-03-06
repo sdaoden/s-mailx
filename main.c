@@ -362,24 +362,18 @@ a_main_setup_vars(void){
 
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
-   /* */
-   if((cp = ok_vlook(HOME)) == NULL ||
-         !is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
+   /* Ensure some variables get loaded and/or verified */
+
+   /* This is not automatized just as $TMPDIR is for the initial setting, since
+    * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
+   if((cp = ok_vlook(HOME)) == NULL){
       cp = pwuid->pw_dir;
       n_pstate |= n_PS_ROOT;
       ok_vset(HOME, cp);
       n_pstate &= ~n_PS_ROOT;
    }
 
-   cp = ok_vlook(TMPDIR);
-   assert(cp != NULL);
-   if(!is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
-      n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
-         n_shexp_quote_cp(cp, FAL0));
-      ok_vclear(TMPDIR);
-   }
-
-   /* Ensure some variables get loaded */
+   (void)ok_vlook(TMPDIR);
    (void)ok_blook(POSIXLY_CORRECT);
    NYD_LEAVE;
 }
@@ -512,7 +506,7 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    if(sigsetjmp(a_main__hdrjmp, 1) == 0){
       if((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &a_main_hdrstop);
-      if(!(n_poption & n_PO_N_FLAG)){
+      if(ok_blook(header)){
          if(!ok_blook(quiet))
             fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
                (ok_blook(bsdcompat) ? "Mail" : n_uagent), ok_vlook(version));

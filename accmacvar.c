@@ -121,6 +121,12 @@ enum a_amv_var_special_type{
    a_AMV_VST_NOSIGN  /* # */
 };
 
+enum a_amv_var_vip_mode{
+   a_AMV_VIP_SET_PRE,
+   a_AMV_VIP_SET_POST,
+   a_AMV_VIP_CLEAR
+};
+
 struct a_amv_mac{
    struct a_amv_mac *am_next;
    ui32_t am_maxlen;             /* of any line in .am_line_dat */
@@ -264,8 +270,10 @@ static void a_amv_lopts_unroll(struct a_amv_var **avpp);
 static char *a_amv_var_copy(char const *str);
 static void a_amv_var_free(char *cp);
 
-/* Check for special housekeeping */
-static bool_t a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val);
+/* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail
+ * (or propagate errors), _VIP_SET_PRE may and should case abortion */
+static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
+               enum okeys okey, char const *val);
 
 /* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_nocntrls(char const *val);
@@ -786,77 +794,122 @@ a_amv_var_free(char *cp){
 }
 
 static bool_t
-a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
-   ui32_t flag;
+a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
+      char const *val){
    bool_t ok;
    NYD2_ENTER;
 
    ok = TRU1;
-   flag = 0;
 
-   switch(okey){
-   case ok_b_debug:
-      flag = n_PO_DEBUG;
-      break;
-   case ok_v_HOME:
-      /* Invalidate any resolved folder then, too
-       * FALLTHRU */
-   case ok_v_folder:
-      n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
-      break;
-   case ok_b_header:
-      flag = n_PO_N_FLAG;
-      enable = !enable;
-      break;
-   case ok_b_memdebug:
-      flag = n_PO_MEMDEBUG;
-      break;
-   case ok_b_POSIXLY_CORRECT:
-      if(!(n_pstate & n_PS_ROOT))
-         n_PS_ROOT_BLOCK(enable ? ok_bset(posix) : ok_bclear(posix));
-      break;
-   case ok_b_posix:
-      if(!(n_pstate & n_PS_ROOT))
-         n_PS_ROOT_BLOCK(enable ? ok_bset(POSIXLY_CORRECT)
-            : ok_bclear(POSIXLY_CORRECT));
-      break;
-   case ok_b_skipemptybody:
-      flag = n_PO_E_FLAG;
-      break;
-   case ok_b_typescript_mode:
-      if(enable){
+   if(avvm == a_AMV_VIP_SET_PRE){
+      switch(okey){
+      default:
+         break;
+      case ok_v_HOME:
+         /* Note this gets called from main.c during initialization, and they
+          * simply set this to pw_dir as a fallback: don't verify _that_ call.
+          * See main.c! */
+         if(!(n_pstate & n_PS_ROOT) &&
+               (!is_dir(val) || access(val, R_OK | W_OK | X_OK))){
+            n_err(_("$HOME is not a directory or not accessible: %s\n"),
+               n_shexp_quote_cp(val, FAL0));
+            ok = FAL0;
+            break;
+         }
+      case ok_v_TMPDIR:
+         if((!is_dir(val) || access(val, R_OK | W_OK | X_OK))){
+            n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
+               n_shexp_quote_cp(val, FAL0));
+            ok = FAL0;
+         }
+         break;
+      case ok_v_umask:
+         if(*val != '\0'){
+            ui64_t uib;
+
+            n_idec_ui64_cp(&uib, val, 0, NULL);
+            if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
+               n_err(_("Invalid *umask* setting: %s\n"), val);
+               ok = FAL0;
+            }
+         }
+         break;
+      }
+   }else if(avvm == a_AMV_VIP_SET_POST){
+      switch(okey){
+      default:
+         break;
+      case ok_b_debug:
+         n_poption |= n_PO_DEBUG;
+         break;
+      case ok_v_HOME:
+         /* Invalidate any resolved folder then, too
+          * FALLTHRU */
+      case ok_v_folder:
+         n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
+         break;
+      case ok_b_memdebug:
+         n_poption |= n_PO_MEMDEBUG;
+         break;
+      case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bset(posix));
+         break;
+      case ok_b_posix: /* <-> $POSIXLY_CORRECT */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bset(POSIXLY_CORRECT));
+         break;
+      case ok_b_skipemptybody:
+         n_poption |= n_PO_E_FLAG;
+         break;
+      case ok_b_typescript_mode:
          ok_bset(colour_disable);
          ok_bset(line_editor_disable);
          if(!(n_psonce & n_PSO_STARTED))
             ok_bset(termcap_disable);
-      }
-   case ok_v_umask:
-      assert(enable);
-      if(**val != '\0'){
-         ui64_t uib;
+      case ok_v_umask:
+         if(*val != '\0'){
+            ui64_t uib;
 
-         n_idec_ui64_cp(&uib, *val, 0, NULL);
-         if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
-            n_err(_("Invalid *umask* setting: %s\n"), *val);
-            ok = FAL0;
-         }else
+            n_idec_ui64_cp(&uib, val, 0, NULL);
             umask((mode_t)uib);
+         }
+         break;
+      case ok_b_verbose:
+         n_poption |= (n_poption & n_PO_VERB) ? n_PO_VERBVERB : n_PO_VERB;
+         break;
       }
-      break;
-   case ok_b_verbose:
-      flag = (enable && !(n_poption & n_PO_VERB))
-            ? n_PO_VERB : n_PO_VERB | n_PO_VERBVERB;
-      break;
-   default:
-      DBG( n_err("Implementation error: never heard of %u\n", ok); )
-      break;
-   }
-
-   if(flag){
-      if(enable)
-         n_poption |= flag;
-      else
-         n_poption &= ~flag;
+   }else{
+      switch(okey){
+      default:
+         break;
+      case ok_b_debug:
+         n_poption &= ~n_PO_DEBUG;
+         break;
+      case ok_v_HOME:
+         /* Invalidate any resolved folder then, too
+          * FALLTHRU */
+      case ok_v_folder:
+         n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
+         break;
+      case ok_b_memdebug:
+         n_poption &= ~n_PO_MEMDEBUG;
+         break;
+      case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bclear(posix));
+         break;
+      case ok_b_posix: /* <-> $POSIXLY_CORRECT */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bclear(POSIXLY_CORRECT));
+         break;
+      case ok_b_skipemptybody:
+         n_poption &= ~n_PO_E_FLAG;
+         break;
+      case ok_b_verbose:
+         n_poption &= ~(n_PO_VERB | n_PO_VERBVERB);
+         break;
+      }
    }
    NYD2_LEAVE;
    return ok;
@@ -1125,6 +1178,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
       /* Place this last because once it is set first the variable will never
        * be removed again and thus match in the first block above */
+jdefval:
       if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
          for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
             if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
@@ -1142,7 +1196,19 @@ jleave:
    NYD2_LEAVE;
    return (avp != NULL);
 
-jnewval: /* C99 */{
+jnewval:
+   /* E.g., $TMPDIR may be set to non-existent, so we need to be able to catch
+    * that and redirect to a possible default value */
+   if((avmp->avm_flags & a_AMV_VF_VIP) &&
+         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, cp)){
+#ifdef HAVE_SETENV
+      if(avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
+         unsetenv(avcp->avc_name);
+#endif
+      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0)
+         goto jdefval;
+      goto jerr;
+   }else{
       struct a_amv_var **avpp;
       size_t l;
 
@@ -1152,16 +1218,16 @@ jnewval: /* C99 */{
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
       memcpy(avp->av_name, avcp->avc_name, l);
-      avp->av_value = a_amv_var_copy(cp);
 #ifdef HAVE_PUTENV
       avp->av_env = NULL;
 #endif
       avp->av_flags = avmp->avm_flags;
+      avp->av_value = a_amv_var_copy(cp);
 
-      if(avp->av_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value);
       if(avp->av_flags & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
+      if(avmp->avm_flags & a_AMV_VF_VIP)
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, cp);
       goto jleave;
    }
 }
@@ -1395,6 +1461,13 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");
+         goto jeavmp;
+      }
+
+      /* Any more complicated inter-dependency? */
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
+            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, value))){
+         value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
          n_err(V_(value), avcp->avc_name);
          goto jleave;
@@ -1450,22 +1523,14 @@ jeavmp:
          avp->av_value = n_UNCONST(n_1);
       }else
          avp->av_value = a_amv_var_copy(value);
-
-      /* Check if update allowed XXX wasteful on error! */
-      if((avp->av_flags & a_AMV_VF_VIP) &&
-            !(rv = a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value))){
-         char *cp = avp->av_value;
-
-         avp->av_value = oval;
-         oval = cp;
-      }
    }
 
    if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
       avp->av_flags |= a_AMV_VF_LINKED;
    if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED))
       rv = a_amv_var__putenv(avcp, avp);
-
+   if(avp->av_flags & a_AMV_VF_VIP)
+      a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
    a_amv_var_free(oval);
 jleave:
    NYD2_LEAVE;
@@ -1513,9 +1578,11 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
          n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
       }
-      if((avmp->avm_flags & a_AMV_VF_VIP) &&
-            !a_amv_var_check_vips(avcp->avc_okey, FAL0, NULL))
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
+            !a_amv_var_check_vips(a_AMV_VIP_CLEAR, avcp->avc_okey, NULL))){
+         n_err(_("Clearance of variable aborted: %s\n"), avcp->avc_name);
          goto jleave;
+      }
    }
 
    rv = TRU1;
