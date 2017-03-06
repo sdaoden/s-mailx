@@ -1234,10 +1234,11 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
    n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
-   n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
-   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<21, /* Quote remains open at EOS */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1<<20, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1<<21,   /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<22, /* Quote remains open at EOS */
 
-   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 21)
+   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
 };
 
 enum n_sigman_flags{

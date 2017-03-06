@@ -56,15 +56,13 @@
  *   defined in Portable Character Set and do not begin with a digit.
  *   Other characters may be permitted by an implementation;
  *   applications shall tolerate the presence of such names.
- * We do support the hyphen "-" because it is common for mailx.
+ * We do support the hyphen-minus "-" (except in last position for ${x[:]-y}).
  * We support some special parameter names for one-letter(++) variable names;
- * note these have counterparts in the code that manages internal variables,
+ * these have counterparts in the code that manages internal variables,
  * and some more special treatment below! */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
-#define a_SHEXP_ISVARC_SPECIAL1(C) \
-   ((C) == '*' || (C) == '@' || (C) == '#' || \
-    (C) == '?' || (C) == '!' || (C) == '^')
-#define a_SHEXP_ISVARC_SPECIAL1_MULTIPLEX(C) ((C) == '^')
+#define a_SHEXP_ISVARC_BAD1ST(C) (digitchar(C)) /* (Actually assumed below!) */
+#define a_SHEXP_ISVARC_BADNST(C) ((C) == '-')
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
@@ -997,13 +995,18 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    char const *ib_save, *ib;
    enum{
       a_NONE = 0,
-      a_SKIPQ = 1<<0,   /* Skip rest of this quote (\c0 ..) */
-      a_SURPLUS = 1<<1, /* Extended sequence interpretation */
-      a_NTOKEN = 1<<2,  /* "New token": e.g., comments are possible */
-      a_ROUND_MASK = ~((1<<8) - 1),
+      a_SKIPQ = 1<<0,      /* Skip rest of this quote (\c0 ..) */
+      a_SURPLUS = 1<<1,    /* Extended sequence interpretation */
+      a_NTOKEN = 1<<2,     /* "New token": e.g., comments are possible */
+      a_BRACE = 1<<3,      /* Variable substitution: brace enclosed */
+      a_DIGIT1 = 1<<4,     /* ..first character was digit */
+      a_NONDIGIT = 1<<5,   /* ..has seen any non-digits */
+      a_VARSUBST_MASK = n_BITENUM_MASK(3, 5),
+
+      a_ROUND_MASK = (int)~n_BITENUM_MASK(0, 7),
       a_COOKIE = 1<<8,
       a_EXPLODE = 1<<9,
-      a_CONSUME = 1<<10 /* When done, "consume" remaining input */
+      a_CONSUME = 1<<10    /* When done, "consume" remaining input */
    } state;
    NYD2_ENTER;
 
@@ -1422,23 +1425,30 @@ j_dollar_ungetc:
                }
             }
          }else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{
-            bool_t brace;
+            state &= ~a_VARSUBST_MASK;
+            if(*ib == '{')
+               state |= a_BRACE;
 
-            if(!(brace = (*ib == '{')) || il > 1){
+            if(!(state & a_BRACE) || il > 1){
                char const *cp, *vp;
 
                ib_save = ib - 1;
-               il -= brace;
-               vp = (ib += brace);
+               if(state & a_BRACE)
+                  --il, ++ib;
+               vp = ib;
                state &= ~a_EXPLODE;
 
                for(i = 0; il > 0; --il, ++ib, ++i){
                   /* We have some special cases regarding macro-local special
-                   * parameters, so ensure these don't cause failure */
+                   * parameters, so ensure these don't cause failure.
+                   * This has counterparts in the code that manages internal
+                   * variables! */
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
-                     if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c)){
-                        if(a_SHEXP_ISVARC_SPECIAL1_MULTIPLEX(c))
+                     if(i == 0 && (c == '*' || c == '@' || c == '#' ||
+                              c == '?' || c == '!' || c == '^')){
+                        /* Skip over multiplexer */
+                        if(c == '^')
                            continue;
                         if(c == '@'){
                            if(quotec == '"')
@@ -1448,31 +1458,54 @@ j_dollar_ungetc:
                         ++i;
                      }
                      break;
-                  }
+                  }else if(a_SHEXP_ISVARC_BAD1ST(c)){
+                     if(i == 0)
+                        state |= a_DIGIT1;
+                  }else
+                     state |= a_NONDIGIT;
                }
 
                if(state & a_SKIPQ){
-                  if(brace && il > 0 && *ib == '}')
+                  if((state & a_BRACE) && il > 0 && *ib == '}')
                      --il, ++ib;
                   continue;
                }
 
-               if(i == 0){
-                  if(brace){
+               /* XXX Digit in first place is not supported, however we do
+                * XXX support all digits because these refer to macro-local
+                * XXX variables; if we would have a notion of whether we're in
+                * XXX a macro this could be made more fine grained */
+               if((state & (a_DIGIT1 | a_NONDIGIT)) == (a_DIGIT1 | a_NONDIGIT)){
+                  if(state & a_BRACE){
+                     if(il > 0 && *ib == '}')
+                        --il, ++ib;
+                     else
+                        rv |= n_SHEXP_STATE_ERR_BRACE;
+                  }
+                  if(flags & n_SHEXP_PARSE_LOG)
+                     n_err(_("Invalid identifier for ${}: %.*s\n"),
+                        (int)input->l, input->s);
+                  rv |= n_SHEXP_STATE_ERR_IDENTIFIER;
+                  goto je_ib_save;
+               }else if(i == 0){
+                  if(state & a_BRACE){
                      if(flags & n_SHEXP_PARSE_LOG)
-                        n_err(_("Bad substitution (${}): %.*s\n  Near %.*s\n"),
-                           (int)input->l, input->s, (int)il, ib);
+                        n_err(_("Bad substitution for ${}: %.*s\n"),
+                           (int)input->l, input->s);
                      rv |= n_SHEXP_STATE_ERR_BADSUB;
+                     if(il > 0 && *ib == '}')
+                        --il, ++ib;
+                     else
+                        rv |= n_SHEXP_STATE_ERR_BRACE;
                      goto je_ib_save;
                   }
                   c = '$';
                }else{
-                  if(brace){
+                  if(state & a_BRACE){
                      if(il == 0 || *ib != '}'){
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("Missing closing brace for ${VAR}: %.*s\n"
-                                 "  Near: %.*s\n"),
-                              (int)input->l, input->s, (int)il, ib);
+                           n_err(_("No closing brace for ${}: %.*s\n"),
+                              (int)input->l, input->s);
                         rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
                               n_SHEXP_STATE_ERR_BRACE;
                         goto je_ib_save;
@@ -1524,7 +1557,7 @@ j_dollar_ungetc:
 
    if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)
-         n_err(_("no closing quote: %.*s\n"), (int)input->l, input->s);
+         n_err(_("No closing quote: %.*s\n"), (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
    }
 
@@ -1638,15 +1671,22 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
 
 FL bool_t
 n_shexp_is_valid_varname(char const *name){
-   char c;
+   char lc, c;
    bool_t rv;
    NYD2_ENTER;
 
-   for(rv = TRU1; (c = *name++) != '\0';)
-      if(!a_SHEXP_ISVARC(c)){
-         rv = FAL0;
-         break;
-      }
+   rv = FAL0;
+
+   for(lc = '\0'; (c = *name++) != '\0'; lc = c)
+      if(!a_SHEXP_ISVARC(c))
+         goto jleave;
+      else if(lc == '\0' && a_SHEXP_ISVARC_BAD1ST(c))
+         goto jleave;
+   if(a_SHEXP_ISVARC_BADNST(lc))
+      goto jleave;
+
+   rv = TRU1;
+jleave:
    NYD2_LEAVE;
    return rv;
 }

@@ -2824,7 +2824,8 @@ The given name will be tested for being a valid
 .Xr sh 1
 variable name, and may therefore only consist of upper- and lowercase
 characters, digits, and the underscore; the hyphen-minus may be used as
-a non-portable extension.
+a non-portable extension; digits may not be used as first, hyphen-minus
+may not be used as last characters.
 In addition the name may either not be one of the known
 .Sx "INTERNAL VARIABLES" ,
 or must otherwise refer to a writable (non-boolean) value variable.
@@ -2946,11 +2947,14 @@ highly unlikely that their function will become meaningful to \*(UA.
 .Pp
 Any unquoted number sign
 .Ql #
-at the beginning of new token starts a comment that extends to the end
+at the beginning of a new token starts a comment that extends to the end
 of the line, and therefore ends argument processing.
 An unquoted dollar sign
 .Ql $
-will cause variable expansion of the given name:
+will cause variable expansion of the given name, which must be a valid
+.Xr sh 1 Ns
+ell-style variable name (see
+.Cm vput ) :
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
@@ -5123,7 +5127,7 @@ in which case the user can escape with the exit command.
 .It Ic read
 \*(NQ Read a line from standard input, and assign the splitted and
 trimmed line data to the given variables.
-The variable names are check by the same rules as documented for
+The variable names are checked by the same rules as documented for
 .Cm vput .
 If there are more fields than variables, assign successive fields to the
 last given variable.
