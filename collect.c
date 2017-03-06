@@ -1820,7 +1820,7 @@ jearg:
             if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)) == NULL)
                break;
          }
-         if(is_dir(cp)){
+         if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             break;
          }

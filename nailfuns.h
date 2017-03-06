@@ -1560,15 +1560,16 @@ FL char const *n_charsetalias_expand(char const *cp);
  * path.c
  */
 
-/* Test to see if the passed file name is a directory, return true if it is */
-FL bool_t      is_dir(char const *name);
+/* Test to see if the passed file name is a directory, return true if it is.
+ * If check_access is set, we also access(2) */
+FL bool_t n_is_dir(char const *name, bool_t check_access);
 
 /* Recursively create a directory */
-FL bool_t      n_path_mkdir(char const *name);
+FL bool_t n_path_mkdir(char const *name);
 
 /* Delete a file, but only if the file is a plain file; return FAL0 on system
  * error and TRUM1 if name is not a plain file, return TRU1 on success */
-FL bool_t      n_path_rm(char const *name);
+FL bool_t n_path_rm(char const *name);
 
 /* A get-wd..restore-wd approach */
 FL enum okay   cwget(struct cw *cw);
