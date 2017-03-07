@@ -186,7 +186,7 @@
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE        '~'      /* Default escape for sending */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
-#define MAXARGC         1024     /* Maximum list of raw strings */
+#define n_MAXARGC       512      /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
 #define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */

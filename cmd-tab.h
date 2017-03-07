@@ -33,6 +33,9 @@
  * SUCH DAMAGE.
  */
 
+#undef MAC
+#define MAC (n_MAXARGC - 1)
+
 /* Some shorter aliases to be able to define a command in two lines */
 #define TMSGLST n_CMD_ARG_TYPE_MSGLIST
 #define TNDMLST n_CMD_ARG_TYPE_NDMLIST
@@ -61,7 +64,7 @@
    /* Note: the first command in here may NOT expand to an unsupported one! */
    { "next", &c_next, (A | TNDMLST), 0, MMNDEL
      DS(N_("Goes to the next message (-list) and prints it")) },
-   { "alias", &c_alias, (M | TWYRA), 0, 1000
+   { "alias", &c_alias, (M | TWYRA), 0, MAC
      DS(N_("Show all (or <alias>), or (re)define <alias> to <:data:>")) },
    { "print", &c_type, (A | TMSGLST), 0, MMNDEL
      DS(N_("Type all messages of <msglist>, honouring `ignore' / `retain'")) },
@@ -89,7 +92,7 @@
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | TMSGLST), MDELETED,MMNDEL
      DS(N_("Un`delete' <msglist>")) },
-   { "unset", &c_unset, (G | M | X | TWYSH), 1, 1000
+   { "unset", &c_unset, (G | M | X | TWYSH), 1, MAC
      DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | TSTRING), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
@@ -131,11 +134,11 @@
      DS(N_("Read commands from <file>")) },
    { "source_if", &c_source_if, (M | TWYSH), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
-   { "set", &c_set, (G | M | X | TWYRA), 0, 1000
+   { "set", &c_set, (G | M | X | TWYRA), 0, MAC
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "shell", &c_dosh, (I | S | TWYSH), 0, 0
      DS(N_("Invoke an interactive shell")) },
-   { "unalias", &c_unalias, (M | TWYRA), 1, 1000
+   { "unalias", &c_unalias, (M | TWYRA), 1, MAC
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | TSTRING), 0, 0
      DS(N_("Write (append) to <file>")) },
@@ -203,13 +206,13 @@
      DS(N_("Forward <message> to <address>")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
-   { "echo", &c_echo, (G | M | X | TWYSH), 0, 1000
+   { "echo", &c_echo, (G | M | X | TWYSH), 0, MAC
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },
-   { "echoerr", &c_echoerr, (G | M | X | TWYSH), 0, 1000
+   { "echoerr", &c_echoerr, (G | M | X | TWYSH), 0, MAC
      DS(N_("Echo arguments, and a trailing newline, to standard error")) },
-   { "echon", &c_echon, (G | M | X | TWYSH), 0, 1000
+   { "echon", &c_echon, (G | M | X | TWYSH), 0, MAC
      DS(N_("Echo arguments, without a trailing newline, to standard output")) },
-   { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, 1000
+   { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, MAC
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
    { "quit", &a_lex_c_quit, TWYSH, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
@@ -229,45 +232,45 @@
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | S | W | TMSGLST), 0, MMNDEL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
-   { "if", &c_if, (G | F | M | X | TRAWLST), 1, 1000
+   { "if", &c_if, (G | F | M | X | TRAWLST), 1, MAC
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "else", &c_else, (G | F | M | X | TWYSH), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "elif", &c_elif, (G | F | M | X | TRAWLST), 1, 1000
+   { "elif", &c_elif, (G | F | M | X | TRAWLST), 1, MAC
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "alternates", &c_alternates, (M | TWYRA), 0, 1000
+   { "alternates", &c_alternates, (M | TWYRA), 0, MAC
      DS(N_("Show or define an alternate address list for the invoking user")) },
-   { "ignore", &c_ignore, (M | TWYRA), 0, 1000
+   { "ignore", &c_ignore, (M | TWYRA), 0, MAC
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "discard", &c_ignore, (M | TWYRA), 0, 1000
+   { "discard", &c_ignore, (M | TWYRA), 0, MAC
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
-   { "retain", &c_retain, (M | TWYRA), 0, 1000
+   { "retain", &c_retain, (M | TWYRA), 0, MAC
      DS(N_("Add <header-list> to retained list, or show that list")) },
-   { "headerpick", &c_headerpick, (M | TWYSH), 0, 1000
+   { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC
      DS(N_("Header selection: [<context> [<type> [<action> <header-list>]]]"))},
-   { "saveignore", &c_saveignore, (O | M | TRAWLST), 0, 1000
+   { "saveignore", &c_saveignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
-   { "savediscard", &c_saveignore, (O | M | TRAWLST), 0, 1000
+   { "savediscard", &c_saveignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
-   { "saveretain", &c_saveretain, (O | M | TRAWLST), 0, 1000
+   { "saveretain", &c_saveretain, (O | M | TRAWLST), 0, MAC
      DS(N_("Is to `save' what `retain' is to `type' / `print'")) },
-   { "unignore", &c_unignore, (M | TWYRA), 0, 1000
+   { "unignore", &c_unignore, (M | TWYRA), 0, MAC
      DS(N_("Un`ignore' <header-list>")) },
-   { "unretain", &c_unretain, (M | TWYRA), 0, 1000
+   { "unretain", &c_unretain, (M | TWYRA), 0, MAC
      DS(N_("Un`retain' <header-list>")) },
-   { "unsaveignore", &c_unsaveignore, (O | M | TRAWLST), 0, 1000
+   { "unsaveignore", &c_unsaveignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Un`saveignore' <header-list>")) },
-   { "unsaveretain", &c_unsaveretain, (O | M | TRAWLST), 0, 1000
+   { "unsaveretain", &c_unsaveretain, (O | M | TRAWLST), 0, MAC
      DS(N_("Un`saveretain' <header-list>")) },
    { "newmail", &c_newmail, (A | T | TWYSH), 0, 0
      DS(N_("Check for new mail in current folder")) },
-   { "shortcut", &c_shortcut, (M | TWYRA), 0, 1000
+   { "shortcut", &c_shortcut, (M | TWYRA), 0, MAC
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | TWYRA), 1, 1000
+   { "unshortcut", &c_unshortcut, (M | TWYRA), 1, MAC
      DS(N_("Delete <shortcut-list> (* for all)")) },
-   { "account", &c_account, (M | TWYSH), 0, 1000
+   { "account", &c_account, (M | TWYSH), 0, MAC
      DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (A | O | TMSGLST), 0, 0
      DS(N_("Create threaded view of the current `file'")) },
@@ -291,13 +294,13 @@
      DS(N_("Un`draft' <msglist>")) },
    { "define", &c_define, (M | X | TWYSH), 0, 2
      DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "undefine", &c_undefine, (M | X | TWYSH), 1, 1000
+   { "undefine", &c_undefine, (M | X | TWYSH), 1, MAC
      DS(N_("Un`define' all given <macros> (* for all)")) },
-   { "unaccount", &c_unaccount, (M | TWYSH), 1, 1000
+   { "unaccount", &c_unaccount, (M | TWYSH), 1, MAC
      DS(N_("Delete all given <accounts> (* for all)")) },
-   { "call", &c_call, (M | X | TWYSH), 1, 1000
+   { "call", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call macro <name>")) },
-   { "~", &c_call, (M | X | TWYSH), 1, 1000
+   { "~", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call a macro")) },
    { "call_if", &c_call_if, (M | X | TWYRA), 1, 100
      DS(N_("Call macro <name> if it exists")) },
@@ -329,7 +332,7 @@
      DS(N_("Save S/MIME certificates of <msglist> to <file>")) },
    { "rename", &c_rename, (M | TWYRA), 0, 2
      DS(N_("Rename <existing-folder> to <new-folder>")) },
-   { "remove", &c_remove, (M | TWYRA), 0, 1000
+   { "remove", &c_remove, (M | TWYRA), 0, MAC
      DS(N_("Remove the named folders")) },
    { "show", &c_show, (A | TMSGLST), 0, MMNDEL
      DS(N_("Like `type', but show raw message content of <msglist>")) },
@@ -339,19 +342,19 @@
      DS(N_("Mark <msglist> as seen")) },
    { "Seen", &c_seen, (A | M | TMSGLST), 0, MMNDEL
      DS(N_("Mark <msglist> as seen")) },
-   { "fwdignore", &c_fwdignore, (O | M | TRAWLST), 0, 1000
+   { "fwdignore", &c_fwdignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Control <header-list> to be ignored with `forward'")) },
-   { "fwddiscard", &c_fwdignore, (O | M | TRAWLST), 0, 1000
+   { "fwddiscard", &c_fwdignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Control <header-list> to be ignored with `forward'")) },
-   { "fwdretain", &c_fwdretain, (O | M | TRAWLST), 0, 1000
+   { "fwdretain", &c_fwdretain, (O | M | TRAWLST), 0, MAC
      DS(N_("Control <header-list> to be retained with `forward'")) },
-   { "unfwdignore", &c_unfwdignore, (O | M | TRAWLST), 0, 1000
+   { "unfwdignore", &c_unfwdignore, (O | M | TRAWLST), 0, MAC
      DS(N_("Un`fwdignore' <header-list>")) },
-   { "unfwdretain", &c_unfwdretain, (O | M | TRAWLST), 0, 1000
+   { "unfwdretain", &c_unfwdretain, (O | M | TRAWLST), 0, MAC
      DS(N_("Un`fwdretain' <header-list>")) },
-   { "mimetype", &c_mimetype, (M | TWYRA), 0, 1000
+   { "mimetype", &c_mimetype, (M | TWYRA), 0, MAC
      DS(N_("(Load and) show all known MIME types, or define some")) },
-   { "unmimetype", &c_unmimetype, (M | TWYRA), 1, 1000
+   { "unmimetype", &c_unmimetype, (M | TWYRA), 1, MAC
      DS(N_("Delete <type>s (reset, * for all; former reinitializes)")) },
    { "spamrate", &c_spam_rate, (A | M | TMSGLST), 0, 0
      DS(N_("Rate <msglist> via the spam detector")) },
@@ -367,23 +370,23 @@
      DS(N_("Clear the spam flag for each message in <msglist>")) },
    { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0
      DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, 1000
+   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC
      DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (G | I | M | TWYSH), 1, 1000
+   { "varedit", &c_varedit, (G | I | M | TWYSH), 1, MAC
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, 1000
+   { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC
      DS(N_("Evaluate according to <operator> any <:arguments:>")) },
    { "File", &c_File, (M | T | TWYRA), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | TWYRA), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
-   { "mlist", &c_mlist, (M | TWYRA), 0, 1000
+   { "mlist", &c_mlist, (M | TWYRA), 0, MAC
      DS(N_("Show all known mailing lists or define some")) },
-   { "unmlist", &c_unmlist, (M | TWYRA), 1, 1000
+   { "unmlist", &c_unmlist, (M | TWYRA), 1, MAC
      DS(N_("Un`mlist' <name-list> (* for all)")) },
-   { "mlsubscribe", &c_mlsubscribe, (M | TWYRA), 0, 1000
+   { "mlsubscribe", &c_mlsubscribe, (M | TWYRA), 0, MAC
      DS(N_("Show all mailing list subscriptions or define some")) },
-   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYRA), 1, 1000
+   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYRA), 1, MAC
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | TMSGLST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given <msglist>")) },
@@ -392,22 +395,22 @@
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
-   { "eval", &a_lex_c_eval, (G | M | X | EM | TWYSH), 1, 1000
+   { "eval", &a_lex_c_eval, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Construct command from <:arguments:>, reuse its $?")) },
-   { "ghost", &a_lex_c_ghost, (M | X | TWYRA), 0, 1000
+   { "ghost", &a_lex_c_ghost, (M | X | TWYRA), 0, MAC
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-      { "unghost", &a_lex_c_unghost, (M | X | TWYRA), 1, 1000
+      { "unghost", &a_lex_c_unghost, (M | X | TWYRA), 1, MAC
         DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
-   { "read", &a_lex_c_read, (G | M | X | EM | TWYSH), 1, 1000
+   { "read", &a_lex_c_read, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Read a line from standard input into <variable>(s)")) },
    { "version", &a_lex_c_version, (H | M | X | TWYSH), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
    { "history", &c_history, (H | I | M | TWYSH), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
-   { "bind", &c_bind, (M | TSTRING), 1, 1000
+   { "bind", &c_bind, (M | TSTRING), 1, MAC
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
    { "unbind", &c_unbind, (M | TSTRING), 2, 2
      DS(N_("Un`bind' <context> <key[:,key:]> (* for all)")) },
@@ -415,9 +418,9 @@
    { "netrc", &c_netrc, (M | TWYSH), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
-   { "charsetalias", &c_charsetalias, (M | TWYSH), 0, 1000
+   { "charsetalias", &c_charsetalias, (M | TWYSH), 0, MAC
      DS(N_("Define [:<charset> <charset-alias>:]s, or list mappings")) },
-   { "uncharsetalias", &c_uncharsetalias, (M | TWYSH), 1, 1000
+   { "uncharsetalias", &c_uncharsetalias, (M | TWYSH), 1, MAC
      DS(N_("Delete <charset-mapping-list> (* for all)")) },
 
    { "colour", &c_colour, (M | TWYSH), 1, 4
@@ -425,7 +428,7 @@
    { "uncolour", &c_uncolour, (M | TWYSH), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (G | M | X | TWYSH), 2, 1000
+   { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
@@ -434,9 +437,9 @@
      DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
-      { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, 1000
+      { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, MAC
         DS(N_("Encode <string-list> for usage in an URL")) },
-      { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, 1000
+      { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC
         DS(N_("Decode the URL-encoded <URL-list> into strings")) },
 
 #ifdef HAVE_MEMORY_DEBUG
@@ -448,6 +451,7 @@
      DS(N_("Show signal handler states")) },
 #endif
 
+#undef MAC
 #undef TMSGLST
 #undef TNDMLST
 #undef TRAWDAT

@@ -3660,6 +3660,10 @@ Positional parameters may be removed by
 ing them off the stack.
 Macro execution can be terminated at any time by calling
 .Ic return .
+\*(ID \*(UA is not yet a fully featured programming language, and using
+macro recursion for loop control etc. will more sooner than later (a few
+thousand iterations) result in stack memory exhaustion and therefore
+a segmentation violation that causes program abortion.
 Numeric and string operations can be performed via
 .Ic vexpr ,
 and

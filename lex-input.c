@@ -762,7 +762,7 @@ static int
 a_lex_evaluate(struct a_lex_eval_ctx *evp){
    /* xxx old style(9), but also old code */
    struct str line;
-   char _wordbuf[2], *arglist_base[MAXARGC], **arglist, *cp, *word;
+   char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
    struct a_lex_ghost *gp;
    struct a_lex_cmd const *cmd;
    int rv, c;
@@ -782,7 +782,8 @@ a_lex_evaluate(struct a_lex_eval_ctx *evp){
    rv = 1;
    cmd = NULL;
    gp = NULL;
-   arglist = arglist_base;
+   arglist =
+   arglist_base = n_autorec_alloc(NULL, sizeof(*arglist_base) * n_MAXARGC);
    line = evp->le_line; /* XXX don't change original (buffer pointer) */
    assert(line.s[line.l] == '\0');
    evp->le_add_history = FAL0;
@@ -1060,7 +1061,7 @@ je96:
          }
       }
       if((c = getrawlist((c != 0), arglist,
-            n_NELEM(arglist_base) - PTR2SIZE(arglist - arglist_base),
+            n_MAXARGC - PTR2SIZE(arglist - arglist_base),
             cp, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          break;
