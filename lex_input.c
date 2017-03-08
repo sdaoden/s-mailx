@@ -741,9 +741,13 @@ a_lex__version_cmp(void const *s1, void const *s2){
 
 static void
 a_lex_update_pstate(void){
+   bool_t act;
    NYD_ENTER;
 
-   if(n_pstate & n_PS_SIGWINCH_PEND){
+   act = ((n_pstate & n_PS_SIGWINCH_PEND) != 0);
+   n_pstate &= ~n_PS_PSTATE_PENDMASK;
+
+   if(act){
       char buf[32];
 
       snprintf(buf, sizeof buf, "%d", n_scrnwidth);
@@ -751,8 +755,6 @@ a_lex_update_pstate(void){
       snprintf(buf, sizeof buf, "%d", n_scrnheight);
       ok_vset(LINES, buf);
    }
-
-   n_pstate &= ~n_PS_PSTATE_PENDMASK;
    NYD_LEAVE;
 }
 
