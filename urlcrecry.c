@@ -473,7 +473,7 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
    for (; nrc != NULL; nrc = nrc->nrc_result)
       if (nrc->nrc_ulen > 0) {
          /* Fake it was part of URL otherwise XXX */
-         urlp->url_had_user = TRU1;
+         urlp->url_flags |= n_URL_HAD_USER;
          /* That buffer will be duplicated by url_parse() in this case! */
          urlp->url_user.s = n_UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
          urlp->url_user.l = nrc->nrc_ulen;
@@ -842,10 +842,10 @@ FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
 #if defined HAVE_SMTP && defined HAVE_POP3
-# define __ALLPROTO
+# define a_ALLPROTO
 #endif
 #if defined HAVE_SMTP || defined HAVE_POP3
-# define __ANYPROTO
+# define a_ANYPROTO
    char *cp, *x;
 #endif
    bool_t rv = FAL0;
@@ -857,77 +857,81 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    urlp->url_cproto = cproto;
 
    /* Network protocol */
-#define _protox(X,Y)  \
+#define a_PROTOX(X,Y,Z)  \
    urlp->url_portno = Y;\
    memcpy(urlp->url_proto, X "://", sizeof(X "://"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
-   urlp->url_proto_xlen = sizeof(X "://") -1
-#define __if(X,Y,Z)  \
-   if (!ascncasecmp(data, X "://", sizeof(X "://") -1)) {\
-      _protox(X, Y);\
+   urlp->url_proto_xlen = sizeof(X "://") -1;\
+   do{ Z; }while(0)
+#define a__IF(X,Y,Z)  \
+   if(!ascncasecmp(data, X "://", sizeof(X "://") -1)){\
+      a_PROTOX(X, Y, Z);\
       data += sizeof(X "://") -1;\
-      do { Z; } while (0);\
       goto juser;\
    }
-#define _if(X,Y)     __if(X, Y, (void)0)
+#define a_IF(X,Y) a__IF(X, Y, (void)0)
 #ifdef HAVE_SSL
-# define _ifs(X,Y)   __if(X, Y, urlp->url_needs_tls = TRU1)
+# define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_REQUIRED)
+# define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_OPTIONAL)
 #else
-# define _ifs(X,Y)   goto jeproto;
+# define a_IFS(X,Y) goto jeproto;
+# define a_IFs(X,Y) a_IF(X, Y)
 #endif
 
-   switch (cproto) {
+   switch(cproto){
    case CPROTO_CCRED:
       /* The special S/MIME etc. credential lookup */
-#if defined HAVE_SSL
-      _protox("ccred", 0);
+#ifdef HAVE_SSL
+      a_PROTOX("ccred", 0, (void)0);
       break;
 #else
       goto jeproto;
 #endif
    case CPROTO_SMTP:
 #ifdef HAVE_SMTP
-      _if ("smtp", 25)
-      _if ("submission", 587)
-      _ifs ("smtps", 465)
-      _protox("smtp", 25);
+      a_IFS("smtps", 465)
+      a_IFs("smtp", 25)
+      a_IFs("submission", 587)
+      a_PROTOX("smtp", 25, urlp->url_flags |= n_URL_TLS_OPTIONAL);
       break;
 #else
       goto jeproto;
 #endif
    case CPROTO_POP3:
 #ifdef HAVE_POP3
-      _if ("pop3", 110)
-      _ifs ("pop3s", 995)
-      _protox("pop3", 110);
+      a_IFS("pop3s", 995)
+      a_IFs("pop3", 110)
+      a_PROTOX("pop3", 110, urlp->url_flags |= n_URL_TLS_OPTIONAL);
       break;
 #else
       goto jeproto;
 #endif
 #if 0
    case CPROTO_IMAP:
-      _if ("imap", 143)
-      _ifs ("imaps", 993)
-      _protox("imap", 143);
+      a_IFS("imaps", 993)
+      a_IFs("imap", 143)
+      a_PROTOX("imap", 143, urlp->url_flags |= n_URL_TLS_OPTIONAL);
       break;
+else
       goto jeproto;
 #endif
    }
 
-#undef _ifs
-#undef _if
-#undef __if
-#undef _protox
+#undef a_PROTOX
+#undef a__IF
+#undef a_IF
+#undef a_IFS
+#undef a_IFs
 
    if (strstr(data, "://") != NULL) {
-#if !defined __ALLPROTO || !defined HAVE_SSL
+#if !defined a_ALLPROTO || !defined HAVE_SSL
 jeproto:
 #endif
       n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
       goto jleave;
    }
-#ifdef __ANYPROTO
+#ifdef a_ANYPROTO
 
    /* User and password, I */
 juser:
@@ -939,7 +943,7 @@ juser:
       l = PTR2SIZE(cp - data);
       ub = ac_alloc(l +1);
       d = data;
-      urlp->url_had_user = TRU1;
+      urlp->url_flags |= n_URL_HAD_USER;
       data = &cp[1];
 
       /* And also have a password? */
@@ -981,7 +985,7 @@ jurlp_err:
    }
 
    /* Servername and port -- and possible path suffix */
-   if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, IPv6 support */
+   if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, use IPAddress! */
       urlp->url_port = x = savestr(x = &cp[1]);
       if ((x = strchr(x, '/')) != NULL) {
          *x = '\0';
@@ -1054,7 +1058,7 @@ jurlp_err:
 
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
-   if (!urlp->url_had_user) {
+   if (!(urlp->url_flags & n_URL_HAD_USER)) {
       if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
             == NULL) {
          /* No, check whether .netrc lookup is desired */
@@ -1166,12 +1170,12 @@ jurlp_err:
    }
 
    rv = TRU1;
-#endif /* __ANYPROTO */
+#endif /* a_ANYPROTO */
 jleave:
    NYD_LEAVE;
    return rv;
-#undef __ANYPROTO
-#undef __ALLPROTO
+#undef a_ANYPROTO
+#undef a_ALLPROTO
 }
 
 FL bool_t

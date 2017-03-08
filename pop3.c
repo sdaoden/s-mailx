@@ -124,7 +124,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    /* If not yet secured, can we upgrade to TLS? */
 #ifdef HAVE_SSL
-   if (!scp->sc_url.url_needs_tls &&
+   if (!(scp->sc_url.url_flags & n_URL_TLS_REQUIRED) &&
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
@@ -825,14 +825,15 @@ pop3_setfile(char const *server, enum fedit_mode fm)
    if (!url_parse(&sc.sc_url, CPROTO_POP3, server))
       goto jleave;
    if (!ok_blook(v15_compat) &&
-         (!sc.sc_url.url_had_user || sc.sc_url.url_pass.s != NULL)) {
+         (!(sc.sc_url.url_flags & n_URL_HAD_USER) ||
+            sc.sc_url.url_pass.s != NULL)) {
       n_err(_("New-style URL used without *v15-compat* being set\n"));
       goto jleave;
    }
 
    if (!(ok_blook(v15_compat) ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
          : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3,
-            (sc.sc_url.url_had_user ? sc.sc_url.url_eu_h_p.s
+            ((sc.sc_url.url_flags & n_URL_HAD_USER) ? sc.sc_url.url_eu_h_p.s
              : sc.sc_url.url_u_h_p.s))))
       goto jleave;
 
@@ -890,7 +891,8 @@ pop3_setfile(char const *server, enum fedit_mode fm)
       }
    }
 
-   mb.mb_sock.s_desc = sc.sc_url.url_needs_tls ? "POP3S" : "POP3";
+   mb.mb_sock.s_desc = (sc.sc_url.url_flags & n_URL_TLS_REQUIRED)
+         ? "POP3S" : "POP3";
    mb.mb_sock.s_onclose = pop3_timer_off;
    if (_pop3_login(&mb, &sc) != OKAY ||
          pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {

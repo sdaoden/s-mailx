@@ -494,7 +494,8 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
          goto jleave;
    } else {
-      if (sbp->sb_url.url_had_user || sbp->sb_url.url_pass.s != NULL) {
+      if ((sbp->sb_url.url_flags & n_URL_HAD_USER) ||
+            sbp->sb_url.url_pass.s != NULL) {
          n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
       }

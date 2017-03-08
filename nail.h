@@ -1408,6 +1408,14 @@ enum n_termcap_query{
 };
 #endif /* n_HAVE_TCAP */
 
+enum n_url_flags{
+   n_URL_TLS_REQUIRED = 1<<0, /* Whether protocol always uses SSL/TLS.. */
+   n_URL_TLS_OPTIONAL = 1<<1, /* ..may later upgrade to SSL/TLS */
+   n_URL_TLS_MASK = n_URL_TLS_REQUIRED | n_URL_TLS_OPTIONAL,
+   n_URL_HAD_USER = 1<<2,     /* Whether .url_user was part of the URL */
+   n_URL_HOST_IS_NAME = 1<<3  /* .url_host not numeric address */
+};
+
 enum n_visual_info_flags{
    n_VISUAL_INFO_NONE,
    n_VISUAL_INFO_ONE_CHAR = 1<<0,         /* Step only one char, then return */
@@ -1913,9 +1921,9 @@ struct n_colour_pen;
 
 struct url {
    char const     *url_input;       /* Input as given (really) */
-   enum cproto    url_cproto;       /* Communication protocol as given */
-   bool_t         url_needs_tls;    /* Whether the protocol uses SSL/TLS */
-   bool_t         url_had_user;     /* Whether .url_user was part of the URL */
+   ui32_t         url_flags;
+   ui8_t          url_cproto;       /* enum cproto as given */
+   ui8_t          url__pad1[1];
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
    char const     *url_port;        /* Port (if given) or NULL */
    char           url_proto[14];    /* Communication protocol as 'xy\0//' */
@@ -1924,7 +1932,11 @@ struct url {
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
-   struct str     url_host;         /* Service hostname */
+   /* TODO we don't know whether .url_host is a name or an address.  Us
+    * TODO Net::IPAddress::fromString() to check that, then set
+    * TODO n_URL_HOST_IS_NAME solely based on THAT!  Until then,
+    * TODO n_URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK and HAVE_GETADDRINFO */
+   struct str     url_host;         /* Service hostname TODO we don't know */
    struct str     url_path;         /* Path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
    struct str     url_h_p;          /* .url_host[:.url_port] */

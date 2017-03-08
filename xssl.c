@@ -1475,6 +1475,21 @@ ssl_open(struct url const *urlp, struct sock *sp)
       goto jerr0;
    }
 
+   /* Try establish SNI extension; even though this is a TLS extension the
+    * protocol isn't checked once the host name is set, and therefore i've
+    * refrained from changing so much code just to check out whether we are
+    * using SSLv3, which should become rarer and rarer */
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+   if((urlp->url_flags & n_URL_TLS_MASK) &&
+         (urlp->url_flags & n_URL_HOST_IS_NAME)){
+      if(!SSL_set_tlsext_host_name(sp->s_ssl, urlp->url_host.s) &&
+            (n_poption & n_PO_D_V))
+         n_err(_("Hostname cannot be used with ServerNameIndication "
+               "TLS extension: %s\n"),
+            n_shexp_quote_cp(urlp->url_host.s, FAL0));
+   }
+#endif
+
    SSL_set_fd(sp->s_ssl, sp->s_fd);
 
    if (SSL_connect(sp->s_ssl) < 0) {

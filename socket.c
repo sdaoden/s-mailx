@@ -459,8 +459,23 @@ jjumped:
 
    /* SSL/TLS upgrade? */
 # ifdef HAVE_SSL
-   if (urlp->url_needs_tls) {
-      hold_sigs();
+   hold_sigs();
+
+#  if defined HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME /* TODO
+      * TODO the SSL_ def check should NOT be here */
+   if(urlp->url_flags & n_URL_TLS_MASK){
+      memset(&hints, 0, sizeof hints);
+      hints.ai_family = AF_UNSPEC;
+      hints.ai_flags = AI_NUMERICHOST;
+      res0 = NULL;
+      if(getaddrinfo(urlp->url_host.s, NULL, &hints, &res0) == 0)
+         freeaddrinfo(res0);
+      else
+         urlp->url_flags |= n_URL_HOST_IS_NAME;
+   }
+#  endif
+
+   if (urlp->url_flags & n_URL_TLS_REQUIRED) {
       ohup = safe_signal(SIGHUP, &__sopen_onsig);
       oint = safe_signal(SIGINT, &__sopen_onsig);
       if (sigsetjmp(__sopen_actjmp, 0)) {
@@ -479,8 +494,9 @@ jsclose:
       hold_sigs();
       safe_signal(SIGINT, oint);
       safe_signal(SIGHUP, ohup);
-      rele_sigs();
    }
+
+   rele_sigs();
 # endif /* HAVE_SSL */
 
 jleave:
