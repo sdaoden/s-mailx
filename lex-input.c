@@ -158,7 +158,9 @@ static int a_lex_c_ghost(void *v);
 static int a_lex_c_unghost(void *v);
 
 /* Create a multiline info string about all known additional infos for lcp */
+#ifdef HAVE_DOCSTRINGS
 static char const *a_lex_cmdinfo(struct a_lex_cmd const *lcp);
+#endif
 
 /* Print a list of all commands */
 static int a_lex_c_list(void *v);
@@ -419,6 +421,7 @@ jouter:  ;
    return rv;
 }
 
+#ifdef HAVE_DOCSTRINGS
 static char const *
 a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    struct n_string rvb, *rv;
@@ -479,6 +482,7 @@ a_lex_cmdinfo(struct a_lex_cmd const *lcp){
    NYD2_LEAVE;
    return cp;
 }
+#endif /* HAVE_DOCSTRINGS */
 
 static int
 a_lex_c_list(void *v){
@@ -521,9 +525,9 @@ a_lex_c_list(void *v){
 #ifdef HAVE_DOCSTRINGS
          fprintf(fp, "  : %s\n", V_(cp->lc_doc));
          ++l;
-#endif
          fprintf(fp, "  : %s\n", a_lex_cmdinfo(cp));
          ++l;
+#endif
       }else{
          size_t j = strlen(cp->lc_name) + 2;
 
@@ -588,9 +592,9 @@ jredo:
 
 #ifdef HAVE_DOCSTRINGS
          fprintf(n_stdout, ": %s", V_(lcp->lc_doc));
-#endif
          if(n_poption & n_PO_D_V)
             fprintf(n_stdout, "\n  : %s", a_lex_cmdinfo(lcp));
+#endif
          putc('\n', n_stdout);
          rv = 0;
          goto jleave;

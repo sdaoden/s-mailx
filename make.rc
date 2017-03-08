@@ -284,9 +284,7 @@ OPT_SPAM_SPAMC=no
 OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
 
-# If given an optional argument the `help' command will print a help
-# string only for the mentioned command; those strings take up space and
-# so one may disable this feature.
+# We may include help strings for commands, increasing size a bit
 OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the

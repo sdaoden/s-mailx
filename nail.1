@@ -2762,16 +2762,15 @@ when given an argument, will show a documentation string for the
 command matching the expanded argument, as in
 .Ql ?t ,
 which should be a shorthand of
-.Ql ?type .
-Both commands support a more
+.Ql ?type ;
+with these documentation strings both commands support a more
 .Va verbose
-listing mode which includes the argument type of the command,
-and other information which applies; a handy suggestion might be:
+listing mode which includes the argument type of the command and other
+information which applies; a handy suggestion might thus be:
 .
 .Bd -literal -offset indent
 ? define __xv {
   # Be careful to choose sh(1)ell-style on _entire_ line!
-  # Result status ends up in $!
   localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
 }
 ? ghost xv '\ecall __xv'
@@ -4775,10 +4774,10 @@ Superseded by the multiplexer
 Shows the names of all available commands, alphabetically sorted.
 If given any non-whitespace argument the list will be shown in the order
 in which command prefixes are searched.
-In conjunction with a set variable
+\*(OP In conjunction with a set variable
 .Va verbose
 additional information will be provided for each command: the argument
-type will be indicated, the \*(OPal documentation string will be shown,
+type will be indicated, the documentation string will be shown,
 and the set of command flags will show up:
 .Pp
 .Bl -tag -compact -width ".It Ql BaNg"
