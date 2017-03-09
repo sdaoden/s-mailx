@@ -300,6 +300,8 @@
      DS(N_("Delete all given <accounts> (* for all)")) },
    { "call", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call macro <name>")) },
+   { "xcall", &a_lex_c_xcall, (M | X | TWYSH), 1, MAC
+     DS(N_("Replace currently executing macro with macro <name>")) },
    { "~", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call a macro")) },
    { "call_if", &c_call_if, (M | X | TWYRA), 1, 100

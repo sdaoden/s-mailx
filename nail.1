@@ -3659,10 +3659,13 @@ Positional parameters may be removed by
 ing them off the stack.
 Macro execution can be terminated at any time by calling
 .Ic return .
-\*(ID \*(UA is not yet a fully featured programming language, and using
-macro recursion for loop control etc. will more sooner than later (a few
-thousand iterations) result in stack memory exhaustion and therefore
-a segmentation violation that causes program abortion.
+.Pp
+Calling macros recursively will at some time excess the stack size
+limit, causing a hard program abortion; if recursively calling a macro
+is the last command of the current macro, consider to use the command
+.Ic xcall ,
+which will first release all resources of the current macro before
+replacing the current macro with the called one.
 Numeric and string operations can be performed via
 .Ic vexpr ,
 and
@@ -4201,7 +4204,7 @@ define xxx {
   echo "xxx arg <$1>"
   shift
   if [ $# > 0 ]
-    call xxx "$@"
+    \excall xxx "$@"
   endif
 }
 define yyy {
@@ -6121,6 +6124,16 @@ to the name until file creation succeeds (or fails due to other
 reasons).
 .
 .Mx
+.It Ic xcall
+\*(NQ This command works only inside of a
+.Ic call Ns
+ed macro: the sole difference to
+.Ic call
+is that the new macro is executed in place of the current one, which
+will not regain control; all resources of the current macro will be
+released before control is given to the replacer.
+.
+.Mx
 .It Ic xit
 (x) A synonym for
 .Ic exit .
@@ -6918,9 +6931,9 @@ Note this is a direct mapping of (a subset of) the system error values:
 .Bd -literal -offset indent
 define work {
   eval echo \e$1: \e$^ERR-$1: ERR-\e$^ERRNAME-$1: \e$^ERRDOC-$1
-  vput vexpr i + $1 1
+  vput vexpr i + "$1" 1
   if [ $i -lt 16 ]
-    call work $i
+    \excall work $i
   end
 }
 call work 0
@@ -11314,10 +11327,16 @@ mlist '@xyz-editor\e.xyz$' '@xyzf\e.xyz$'
 mlsubscribe '^xfans@xfans\e.xyz$'
 
 # A real life example of a very huge free mail provider
-account XooglX {
+# Instead of directly placing content inside `account',
+# we `define' a macro: like that we can switch "accounts"
+# from within *on-compose-splice*, for example!
+define XooglX {
   set folder=~/spool/XooglX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@examp.ple>'
   set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
+}
+account XooglX {
+  \ecall XooglX
 }
 
 # Here is a pretty large one which does not allow sending mails
@@ -11326,11 +11345,14 @@ account XooglX {
 # for people who have a sXXXXeforge project and want to speak
 # with the mailing list under their project account (in from),
 # still sending the message through their normal mail provider
-account XandeX {
+define XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
   set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
     hostname=yaXXex.com smtp-hostname=
+}
+account XandeX {
+  \ecall Xandex
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
@@ -11395,9 +11417,6 @@ file instead; e.g., here is a different version of the example account
 that sets up SMTP and POP3:
 .
 .Bd -literal -offset indent
-account XandeX {
-  call XandeX
-}
 define XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
@@ -11409,6 +11428,9 @@ define XandeX {
       smtp-hostname= hostname=yXXXXx.com
   set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
   ghost xp fi pop3s://pop.yXXXXx.ru
+}
+account XandeX {
+  \ecall XandeX
 }
 .Ed
 .

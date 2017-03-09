@@ -43,14 +43,14 @@
 
 enum a_lex_input_flags{
    a_LEX_NONE,
-   a_LEX_FREE = 1<<0,            /* Structure was allocated, free() it */
-   a_LEX_PIPE = 1<<1,            /* Open on a pipe */
-   a_LEX_MACRO = 1<<2,           /* Running a macro */
-   a_LEX_MACRO_FREE_DATA = 1<<3, /* Lines are allocated, free(3) once done */
+   a_LEX_FREE = 1u<<0,           /* Structure was allocated, free() it */
+   a_LEX_PIPE = 1u<<1,           /* Open on a pipe */
+   a_LEX_MACRO = 1u<<2,          /* Running a macro */
+   a_LEX_MACRO_FREE_DATA = 1u<<3, /* Lines are allocated, free(3) once done */
    /* TODO For simplicity this is yet _MACRO plus specialization overlay
     * TODO (_X_OPTION, _CMD) -- these should be types on their own! */
-   a_LEX_MACRO_X_OPTION = 1<<4,  /* Macro indeed command line -X option */
-   a_LEX_MACRO_CMD = 1<<5,       /* Macro indeed single-line: ~:COMMAND */
+   a_LEX_MACRO_X_OPTION = 1u<<4, /* Macro indeed command line -X option */
+   a_LEX_MACRO_CMD = 1u<<5,      /* Macro indeed single-line: ~:COMMAND */
    /* TODO a_LEX_SPLICE: the right way to support *on-compose-splice-shell*
     * TODO would be a command_loop object that emits an on_read_line event, and
     * TODO have a special handler for the compose mode; with that, then,
@@ -70,12 +70,28 @@ enum a_lex_input_flags{
     * TODO This splice thing is very special and has to go again.  HACK!!
     * TODO a_lex_input() will drop it once it sees EOF (HACK!), but care for
     * TODO jumps must be taken by splice creators.  HACK!!!  But works. ;} */
-   a_LEX_SPLICE = 1<<6,
+   a_LEX_SPLICE = 1u<<6,
    /* TODO If it is none of those, we are sourcing or loading a file */
 
-   a_LEX_FORCE_EOF = 1<<8,       /* lex_input() shall return EOF next */
+   a_LEX_FORCE_EOF = 1u<<8,      /* lex_input() shall return EOF next */
 
-   a_LEX_SUPER_MACRO = 1<<16     /* *Not* inheriting n_PS_SOURCING state */
+   a_LEX_SUPER_MACRO = 1u<<16,   /* *Not* inheriting n_PS_SOURCING state */
+
+   /* `xcall' optimization barrier: n_source_macro() has been finished with
+    * a `xcall' request, and `xcall' set this in the parent a_lex_input of the
+    * said n_source_macro() to indicate a barrier: we unstack the a_lex_input of
+    * the n_source_macro() away after leaving its a_command_recursive() event
+    * loop, but then, back in n_source_macro(), that enters a for(;;) loop that
+    * directly calls c_call() -- our `xcall' stack avoidance optimization --,
+    * yet this call will itself end up in a new n_source_macro(), and if that
+    * again ends up with `xcall' this should unstack and leave its own
+    * n_source_macro(), unrolling the stack "up to the barrier level", but
+    * which effectively still is the n_source_macro() that lost its a_lex_input
+    * and is looping the `xcall' optimization loop.
+    * If no `xcall' is desired that loop is simply left and the
+    * a_commands_recursive() of the outer a_lex_input context will perform
+    * a loop tick and clear this bit again OR become unstacked itself */
+   a_LEX_XCALL_LOOP = 1u<<24     /* `xcall' optimization barrier level */
 };
 
 struct a_lex_cmd{
@@ -135,12 +151,22 @@ struct a_lex_input{
 n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF % sizeof(void*) == 0,
    "Inacceptible size of structure buffer");
 
+struct a_lex_xcall{
+   struct a_lex_input *alx_upto; /* Unroll stack up to this level */
+   size_t alx_buflen;            /* ARGV requires that much bytes, all in all */
+   size_t alx_argc;
+   struct str alx_argv[n_VFIELD_SIZE(0)];
+};
+
 static sighandler_type a_lex_oldpipe;
 static struct a_lex_ghost *a_lex_ghosts;
 /* a_lex_cmd_tab[] after fun protos */
 
 /* */
 static struct a_lex_input *a_lex_input;
+
+/* `xcall' stack-avoidance bypass optimization */
+static struct a_lex_xcall *a_lex_xcall;
 
 /* For n_source_inject_input(), if a_lex_input==NULL */
 static struct a_lex_input_inject *a_lex_input_inject;
@@ -152,6 +178,9 @@ static char *a_lex_isolate(char const *comm);
 
 /* `eval' */
 static int a_lex_c_eval(void *v);
+
+/* `xcall' */
+static int a_lex_c_xcall(void *vp);
 
 /* Command ghost handling */
 static int a_lex_c_ghost(void *v);
@@ -279,17 +308,89 @@ a_lex_c_eval(void *v){
     * TODO Further more, exit handling is very grazy */
    (void)/*XXX*/n_source_command((n_pstate & n_PS_COMPOSE_MODE
          ? n_LEXINPUT_CTX_COMPOSE : n_LEXINPUT_CTX_DEFAULT), n_string_cp(sp));
-   cp = ok_vlook(__qm);
-   if(cp == n_0) /* This is a hack, but since anything is a hack, be hacky */
+
+   if(a_lex_xcall != NULL)
       rv = 0;
-   else if(cp == n_1)
-      rv = 1;
-   else if(cp == n_m1)
-      rv = -1;
-   else
-      n_idec_si32_cp(&rv, cp, 10, NULL);
+   else{
+      cp = ok_vlook(__qm);
+      if(cp == n_0) /* This is a hack, but since anything is a hack, be hacky */
+         rv = 0;
+      else if(cp == n_1)
+         rv = 1;
+      else if(cp == n_m1)
+         rv = -1;
+      else
+         n_idec_si32_cp(&rv, cp, 10, NULL);
+   }
    NYD_LEAVE;
    return rv;
+}
+
+static int
+a_lex_c_xcall(void *vp){
+   struct a_lex_xcall *alxp;
+   size_t i, j;
+   char *xcp;
+   char const **oargv, *cp;
+   int rv;
+   struct a_lex_input *lip;
+   NYD2_ENTER;
+
+   if((lip = a_lex_input) == NULL)
+      goto jerr;
+
+   /* The context can only be a macro context, except that possibly a single
+    * level of `eval' was used to double-expand our arguments */
+   if((lip->li_flags & a_LEX_MACRO_CMD) && (lip = lip->li_outer) == NULL)
+      goto jerr;
+   if((lip->li_flags & (a_LEX_MACRO | a_LEX_MACRO_CMD)) != a_LEX_MACRO)
+      goto jerr;
+
+   /* Try to roll up the stack as much as possible.
+    * See a_LEX_XCALL_LOOP flag description for more */
+   if(lip->li_outer != NULL){
+      if(lip->li_outer->li_flags & a_LEX_XCALL_LOOP)
+         lip = lip->li_outer; /* Or NULL: yield back up till "in-loop" */
+      else
+         lip->li_outer->li_flags |= a_LEX_XCALL_LOOP;
+   }else{
+      /* Otherwise this macro is invoked from the top level, in which case we
+       * silently act as if we were `call'... */
+      rv = c_call(vp);
+      /* ...which means we must ensure the rest of the macro that was us
+       * doesn't get evaluated! */
+      a_lex_xcall = (struct a_lex_xcall*)-1;
+      goto jleave;
+   }
+
+   oargv = vp;
+
+   for(j = i = 0; (cp = oargv[i]) != NULL; ++i)
+      j += strlen(cp) +1;
+
+   alxp = n_alloc(n_VSTRUCT_SIZEOF(struct a_lex_xcall, alx_argv) +
+         (sizeof(struct str) * i) + ++j);
+   alxp->alx_upto = lip;
+   alxp->alx_buflen = (sizeof(char*) * (i + 1)) + j; /* ARGV inc. strings! */
+   alxp->alx_argc = i;
+   xcp = (char*)&alxp->alx_argv[i];
+
+   for(i = 0; (cp = oargv[i]) != NULL; ++i){
+      alxp->alx_argv[i].l = j = strlen(cp);
+      alxp->alx_argv[i].s = xcp;
+      memcpy(xcp, cp, ++j);
+      xcp += j;
+   }
+
+   a_lex_xcall = alxp;
+   rv = 0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   n_err(_("`xcall': can only be used inside a macro\n"));
+   rv = 1;
+   goto jleave;
 }
 
 static int
@@ -1086,7 +1187,10 @@ je96:
 
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT;
+
       rv = (*cmd->lc_func)(arglist_base);
+      if(a_lex_xcall != NULL)
+         goto jret0;
       break;
 
    default:
@@ -1249,7 +1353,8 @@ a_lex_unstack(bool_t eval_error){
          Fclose(lip->li_file);
    }
 
-   if(!condstack_take(lip->li_cond)){
+   /* FIXME no log on interrupt! */
+   if(!condstack_take(lip->li_cond) && !eval_error && a_lex_xcall == NULL){
       n_err(_("Unmatched `if' at end of %s %s\n"),
          ((lip->li_flags & a_LEX_MACRO
           ? (lip->li_flags & a_LEX_MACRO_CMD ? _("command") : _("macro"))
@@ -1460,6 +1565,7 @@ a_commands_recursive(enum n_lexinput_flags lif){
       safe_signal(SIGINT, &a_lex__cmdrecint);
       if(sigsetjmp(a_lex_input->li_cmdrec_jmp, 1)){
          hadint = TRU1;
+         a_lex_xcall = NULL;
          goto jjump;
       }
    }
@@ -1484,6 +1590,12 @@ a_commands_recursive(enum n_lexinput_flags lif){
          break;
 
       n = a_lex_evaluate(&ev);
+      if(a_lex_xcall != NULL)
+         break;
+      /* This level no longer hosts a former n_source_macro() child which
+       * entered a `xcall' optimization; see flag description */
+      a_lex_input->li_flags &= ~a_LEX_XCALL_LOOP;
+
       beoe = (n_poption & n_PO_BATCH_FLAG)
             ? ok_vlook(batch_exit_on_error) : NULL;
 
@@ -2228,6 +2340,42 @@ n_source_macro(enum n_lexinput_flags lif, char const *name, char **lines,
    n_pstate |= n_PS_ROBOT;
    a_lex_input = lip;
    rv = a_commands_recursive(lif);
+
+   /* Shall this enter a `xcall' stack avoidance optimization (loop)? */
+   if(a_lex_xcall != NULL){
+      if(a_lex_xcall == (struct a_lex_xcall*)-1)
+         a_lex_xcall = NULL;
+      else if(a_lex_xcall->alx_upto == lip) do{
+         char *cp, **argv;
+         struct a_lex_xcall *alxp;
+
+         alxp = a_lex_xcall;
+         a_lex_xcall = NULL;
+
+         /* Recreate the ARGV of this command on the LOFI memory of the hosting
+          * a_lex_input context, so that it will become auto-reclaimed */
+         /* C99 */{
+            void *vp;
+
+            vp = n_lofi_alloc(alxp->alx_buflen);
+            cp = vp;
+            argv = vp;
+         }
+         cp += sizeof(*argv) * (alxp->alx_argc + 1);
+         for(i = 0; i < alxp->alx_argc; ++i){
+            argv[i] = cp;
+            memcpy(cp, alxp->alx_argv[i].s, alxp->alx_argv[i].l +1);
+            cp += alxp->alx_argv[i].l +1;
+         }
+         argv[i] = NULL;
+
+         n_free(alxp);
+
+         rv = (c_call(argv) == 0);
+
+         n_lofi_free(argv);
+      }while(a_lex_xcall != NULL);
+   }
    NYD_LEAVE;
    return rv;
 }

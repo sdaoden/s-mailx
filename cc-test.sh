@@ -200,6 +200,7 @@ t_behave() {
    __behave_macro_param_shift
    __behave_addrcodec
    __behave_vexpr
+   __behave_xcall
 
    # FIXME __behave_alias
 
@@ -339,6 +340,33 @@ __behave_x_opt_input_command_stack() {
 #mac2-2
 #4
    cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
+}
+
+__behave_xcall() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define work {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 1111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall work $i
+		end
+		echo ! The end for $1
+	}
+	define xwork {
+		\xcall work 0
+	}
+	call work 0
+	echo ?=$?
+	call xwork
+	echo ?=$?
+	xcall xwork
+	echo ?=$?
+	__EOT
+   cksum_test behave:xcall "${MBOX}" '1717228546 9555'
 }
 
 __behave_wysh() {
