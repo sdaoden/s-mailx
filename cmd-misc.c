@@ -110,6 +110,49 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
 }
 
 FL int
+c_sleep(void *v){
+   uiz_t sec, msec;
+   char **argv;
+   NYD_ENTER;
+
+   argv = v;
+
+   if((n_idec_uiz_cp(&sec, argv[0], 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      goto jesyn;
+
+   if(argv[1] == NULL)
+      msec = 0;
+   else if((n_idec_uiz_cp(&msec, argv[1], 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      goto jesyn;
+
+   if(UIZ_MAX / n_DATE_MILLISSEC < sec)
+      goto jeover;
+   sec *= n_DATE_MILLISSEC;
+
+   if(UIZ_MAX - sec < msec)
+      goto jeover;
+   msec += sec;
+
+   n_msleep(msec, TRU1);
+   n_pstate_var__em = n_0;
+jleave:
+   NYD_LEAVE;
+   return (argv == NULL);
+jeover:
+   n_err(_("`sleep': argument overflows datatype\n"));
+   argv = NULL;
+   goto jleave;
+jesyn:
+   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>]\n"));
+   argv = NULL;
+   goto jleave;
+}
+
+FL int
 c_shell(void *v)
 {
    sigset_t mask;

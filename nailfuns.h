@@ -570,6 +570,9 @@ FL int c_undraft(void *v);
  * cmd-misc.c
  */
 
+/* `sleep' */
+FL int c_sleep(void *v);
+
 /* Process a shell escape by saving signals, ignoring signals and a sh -c */
 FL int c_shell(void *v);
 
@@ -857,7 +860,7 @@ FL bool_t      is_head(char const *linebuf, size_t linelen,
  * Return whether the From_ line was parsed successfully (-1 if the From_ line
  * wasn't really RFC 4155 compliant) */
 FL int         extract_date_from_from_(char const *line, size_t linelen,
-                  char datebuf[FROM_DATEBUF]);
+                  char datebuf[n_FROM_DATEBUF]);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
  * If n_poption&n_PO_t_FLAG *and* n_psonce&n_PSO_t_FLAG are both set a number

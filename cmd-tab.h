@@ -407,6 +407,8 @@
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "read", &a_lex_c_read, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Read a line from standard input into <variable>(s)")) },
+   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 2
+     DS(N_("Sleep for <seconds> [<milliseconds>]"))},
    { "version", &a_lex_c_version, (H | M | X | TWYSH), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 

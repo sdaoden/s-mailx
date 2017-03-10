@@ -309,7 +309,7 @@ setptr(FILE *ibuf, off_t offset)
       if (maybe && linebuf[0] == 'F' &&
             (from_ = is_head(linebuf, cnt, TRU1)) &&
             (from_ == TRU1 || !need_rfc4155)) {
-         /* TODO char date[FROM_DATEBUF];
+         /* TODO char date[n_FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
          if (from_ == TRUM1) {

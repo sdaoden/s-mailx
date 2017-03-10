@@ -78,7 +78,7 @@ static struct cmatch_data const  _cmatch_data[] = {
    { 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
    { 0, NULL }
 };
-#define _DATE_MINLEN 21
+#define a_HEAD_DATE_MINLEN 21
 
 /* Skip over "word" as found in From_ line */
 static char const *        _from__skipword(char const *wp);
@@ -204,7 +204,7 @@ _is_date(char const *date)
    int rv = 0;
    NYD2_ENTER;
 
-   if ((dl = strlen(date)) >= _DATE_MINLEN)
+   if ((dl = strlen(date)) >= a_HEAD_DATE_MINLEN)
       for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
          if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
             break;
@@ -1139,7 +1139,7 @@ myorigin(struct header *hp) /* TODO */
 FL bool_t
 is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 {
-   char date[FROM_DATEBUF];
+   char date[n_FROM_DATEBUF];
    bool_t rv;
    NYD2_ENTER;
 
@@ -1153,7 +1153,7 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 
 FL int
 extract_date_from_from_(char const *line, size_t linelen,
-   char datebuf[FROM_DATEBUF])
+   char datebuf[n_FROM_DATEBUF])
 {
    int rv;
    char const *cp = line;
@@ -1193,17 +1193,17 @@ jat_dot:
    }
 
    linelen -= PTR2SIZE(cp - line);
-   if (linelen < _DATE_MINLEN)
+   if (linelen < a_HEAD_DATE_MINLEN)
       goto jerr;
    if (cp[linelen - 1] == '\n') {
       --linelen;
       /* (Rather IMAP/POP3 only) */
       if (cp[linelen - 1] == '\r')
          --linelen;
-      if (linelen < _DATE_MINLEN)
+      if (linelen < a_HEAD_DATE_MINLEN)
          goto jerr;
    }
-   if (linelen >= FROM_DATEBUF)
+   if (linelen >= n_FROM_DATEBUF)
       goto jerr;
 
 jleave:
@@ -1214,8 +1214,8 @@ jleave:
 jerr:
    cp = _("<Unknown date>");
    linelen = strlen(cp);
-   if (linelen >= FROM_DATEBUF)
-      linelen = FROM_DATEBUF;
+   if (linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF;
    rv = 0;
    goto jleave;
 }
@@ -2392,16 +2392,16 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    time_t t;
    NYD2_ENTER;
 
-   if(UICMP(32, second, >/*XXX leap=*/, DATE_SECSMIN) ||
-         UICMP(32, minute, >=, DATE_MINSHOUR) ||
-         UICMP(32, hour, >=, DATE_HOURSDAY) ||
+   if(UICMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
+         UICMP(32, minute, >=, n_DATE_MINSHOUR) ||
+         UICMP(32, hour, >=, n_DATE_HOURSDAY) ||
          day < 1 || day > 31 ||
          month < 1 || month > 12 ||
          year < 1970)
       goto jerr;
 
    if(year >= 1970 + ((y2038p ? SI32_MAX : SI64_MAX) /
-         (DATE_SECSDAY * DATE_DAYSYEAR))){
+         (n_DATE_SECSDAY * n_DATE_DAYSYEAR))){
       /* Be a coward regarding Y2038, many people (mostly myself, that is) do
        * test by stepping second-wise around the flip.  Don't care otherwise */
       if(!y2038p)
@@ -2412,12 +2412,12 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    }
 
    t = second;
-   t += minute * DATE_SECSMIN;
-   t += hour * DATE_SECSHOUR;
+   t += minute * n_DATE_SECSMIN;
+   t += hour * n_DATE_SECSHOUR;
 
    jdn = a_head_gregorian_to_jdn(year, month, day);
    jdn -= jdn_epoch;
-   t += (time_t)jdn * DATE_SECSDAY;
+   t += (time_t)jdn * n_DATE_SECSDAY;
 jleave:
    NYD2_LEAVE;
    return t;

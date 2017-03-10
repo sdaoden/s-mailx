@@ -207,13 +207,14 @@
 #define COMMAND_FD_NULL -2
 
 /*  */
-#define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
-#define DATE_DAYSYEAR   365L
-#define DATE_SECSMIN    60L
-#define DATE_MINSHOUR   60L
-#define DATE_HOURSDAY   24L
-#define DATE_SECSHOUR   (DATE_SECSMIN * DATE_MINSHOUR)
-#define DATE_SECSDAY    (DATE_SECSHOUR * DATE_HOURSDAY)
+#define n_FROM_DATEBUF 64        /* Size of RFC 4155 From_ line date */
+#define n_DATE_DAYSYEAR 365u
+#define n_DATE_MILLISSEC 1000u
+#define n_DATE_SECSMIN 60u
+#define n_DATE_MINSHOUR 60u
+#define n_DATE_HOURSDAY 24u
+#define n_DATE_SECSHOUR (n_DATE_SECSMIN * n_DATE_MINSHOUR)
+#define n_DATE_SECSDAY (n_DATE_SECSHOUR * n_DATE_HOURSDAY)
 
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"

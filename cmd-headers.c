@@ -42,7 +42,7 @@
 static int        _screen;
 
 /* ... And place the extracted date in `date' */
-static void    _parse_from_(struct message *mp, char date[FROM_DATEBUF]);
+static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * __hprf: handle *headline*
@@ -65,7 +65,7 @@ static int a_cmd_scroll(char const *arg, bool_t onlynew);
 static int     _headers(int msgspec);
 
 static void
-_parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
+_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
 {
    FILE *ibuf;
    int hlen;
@@ -125,7 +125,7 @@ static void
 __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, char const *attrlist)
 {
-   char buf[16], datebuf[FROM_DATEBUF], cbuf[8], *cp, *subjline;
+   char buf[16], datebuf[n_FROM_DATEBUF], cbuf[8], *cp, *subjline;
    char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
    int i, n, s, wleft, subjlen;
    struct message *mp;
@@ -173,12 +173,12 @@ jredo:
          memcpy(&time_current.tc_local, localtime(&datet),
             sizeof time_current.tc_local);
 
-      if ((i & 2) && (datet > time_current.tc_time + DATE_SECSDAY ||
-#define _6M ((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
+      if ((i & 2) && (datet > time_current.tc_time + n_DATE_SECSDAY ||
+#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
             (datet + _6M < time_current.tc_time))) {
 #undef _6M
          if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
-            memset(datebuf, ' ', FROM_DATEBUF); /* xxx ur */
+            memset(datebuf, ' ', n_FROM_DATEBUF); /* xxx ur */
             memcpy(datebuf + 4, date + 4, 7);
             datebuf[4 + 7] = ' ';
             memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
