@@ -233,12 +233,11 @@ a_main_startup(void){
    n_stdout = stdout;
    n_stderr = stderr;
    dflpipe = SIG_DFL;
+
    a_main_oind = /*_oerr =*/ 1;
 
    if((cp = strrchr(n_progname, '/')) != NULL)
       n_progname = ++cp;
-
-   /* Set up a reasonable environment */
 
 #ifdef HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
@@ -249,7 +248,11 @@ a_main_startup(void){
    safe_signal(SIGILL, &_nyd_oncrash);
    safe_signal(SIGSEGV, &_nyd_oncrash);
 #endif
-   command_manager_start();
+
+   /* Initialize our input, loop and command machinery */
+   n_go_init();
+
+   /* Set up a reasonable environment */
 
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
     * TODO For now we get this wrong, all over the place, as this software
@@ -519,7 +522,7 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    /* Enter the command loop */
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
-   n_commands();
+   n_go_main_loop();
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_destroy();
 
@@ -983,9 +986,9 @@ jgetopt_done:
    }else
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
 
-   /* Fixate the current snapshot of our global auto-reclaimed storage instance.
+   /* Fixate the current memory pool snapshot.
     * Memory is auto-reclaimed from now on */
-   n_memory_autorec_fixate();
+   n_memory_pool_fixate();
 
    /* load() any resource files */
    if(resfiles & a_RF_ALL){
@@ -998,16 +1001,16 @@ jgetopt_done:
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC))
-            n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
+            n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
       }
 
       if(resfiles & a_RF_USER)
-         n_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
+         n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
       if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL)
-         n_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
+         n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
    }
 
    /* Ensure the -S and other command line options take precedence over
@@ -1074,7 +1077,7 @@ jgetopt_done:
 
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0)
-      n_load_Xargs(Xargs, Xargs_cnt);
+      n_go_Xargs(Xargs, Xargs_cnt);
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1133,7 +1136,7 @@ jleave:
 
 j_leave:
 #ifdef HAVE_MEMORY_DEBUG
-   n_memory_autorec_pop(NULL);
+   n_memory_pool_pop(NULL);
 #endif
 #if (defined HAVE_DEBUG || defined HAVE_DEVEL)
    n_memory_reset();

@@ -195,16 +195,16 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 
+/* Special FD requests for n_child_run(), n_child_start() */
+#define n_CHILD_FD_PASS -1
+#define n_CHILD_FD_NULL -2
+
 /* Colour stuff */
 #ifdef HAVE_COLOUR
 # define n_COLOUR(X)       X
 #else
 # define n_COLOUR(X)
 #endif
-
-/* Special FD requests for run_command() / start_command() */
-#define COMMAND_FD_PASS -1
-#define COMMAND_FD_NULL -2
 
 /*  */
 #define n_FROM_DATEBUF 64        /* Size of RFC 4155 From_ line date */
@@ -223,7 +223,7 @@
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
 #define n_MEMORY_AUTOREC_SIZE 0x2000u
 /* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_AUTOREC_TYPE_SIZEOF (7 * sizeof(void*))
+#define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
 
 /* Default *encoding* as enum mime_enc below */
 #define MIME_DEFAULT_ENCODING MIMEE_B64
@@ -274,6 +274,10 @@
 
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define QUOTE_TAB_SPACES 8
+
+/* For long iterative output, like `list', tabulator-completion, etc.,
+ * determine the screen width that should be used */
+#define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
 
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
@@ -916,6 +920,38 @@ enum n_file_lock_type{
    FLT_WRITE
 };
 
+enum n_go_input_flags{
+   n_GO_INPUT_NONE,
+   n_GO_INPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
+   n_GO_INPUT_CTX_DEFAULT = 1,         /* Default input */
+   n_GO_INPUT_CTX_COMPOSE = 2,         /* Compose mode input */
+   n__GO_INPUT_CTX_MASK = 3,
+   n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
+
+   n_GO_INPUT_HOLDALLSIGS = 1u<<8,     /* hold_all_sigs() active TODO */
+   n_GO_INPUT_FORCE_STDIN = 1u<<9,     /* Even in macro, use stdin (`read')! */
+   n_GO_INPUT_NL_ESC = 1u<<10,         /* Support "\\$" line continuation */
+   n_GO_INPUT_NL_FOLLOW = 1u<<11,      /* ..on such a follow line */
+   n_GO_INPUT_PROMPT_NONE = 1u<<12,    /* Don't print prompt */
+   n_GO_INPUT_PROMPT_EVAL = 1u<<13,    /* Instead, evaluate *prompt* */
+#if 0
+   n_GO_INPUT_DROP_TRAIL_SPC = 1u<<14, /* Drop any trailing space */
+   n_GO_INPUT_DROP_LEAD_SPC = 1u<<15,  /* ..leading ones */
+   n_GO_INPUT_TRIM_SPACE = n_GO_INPUT_DROP_TRAIL_SPC | n_GO_INPUT_DROP_LEAD_SPC,
+#endif
+
+   n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
+   n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */
+
+   n__GO_FREEBIT = 24
+};
+
+enum n_go_input_inject_flags{
+   n_GO_INPUT_INJECT_NONE = 0,
+   n_GO_INPUT_INJECT_COMMIT = 1u<<0,   /* Auto-commit input */
+   n_GO_INPUT_INJECT_HISTORY = 1u<<1   /* Allow history addition */
+};
+
 enum n_iconv_flags{
    n_ICONV_NONE = 0,
    n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
@@ -973,35 +1009,6 @@ enum n_idec_state{
    n__IDEC_PRIVATE_SHIFT1 = 24
 };
 n_MCTA(n__IDEC_MODE_MASK <= (1<<8) - 1, "Shared bit range overlaps")
-
-enum n_lexinput_flags{
-   n_LEXINPUT_NONE,
-   n_LEXINPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
-   n_LEXINPUT_CTX_DEFAULT = 1,         /* Default input */
-   n_LEXINPUT_CTX_COMPOSE = 2,         /* Compose mode input */
-   n__LEXINPUT_CTX_MASK = 3,
-   n__LEXINPUT_CTX_MAX1 = n_LEXINPUT_CTX_COMPOSE + 1,
-
-   n_LEXINPUT_FORCE_STDIN = 1<<8,      /* Even in macro, use stdin (`read')! */
-   n_LEXINPUT_NL_ESC = 1<<9,           /* Support "\\$" line continuation */
-   n_LEXINPUT_NL_FOLLOW = 1<<10,       /* ..on such a follow line */
-   n_LEXINPUT_PROMPT_NONE = 1<<11,     /* Don't print prompt */
-   n_LEXINPUT_PROMPT_EVAL = 1<<12,     /* Instead, evaluate *prompt* */
-#if 0
-   n_LEXINPUT_DROP_TRAIL_SPC = 1<<14,  /* Drop any trailing space */
-   n_LEXINPUT_DROP_LEAD_SPC = 1<<15,   /* ..leading ones */
-   n_LEXINPUT_TRIM_SPACE = n_LEXINPUT_DROP_TRAIL_SPC | n_LEXINPUT_DROP_LEAD_SPC,
-#endif
-
-   n_LEXINPUT_HIST_ADD = 1<<16,        /* Add the result to history list */
-   n_LEXINPUT_HIST_GABBY = 1<<17       /* Consider history entry as gabby */
-};
-
-enum n_input_inject_flags{
-   n_INPUT_INJECT_NONE = 0,
-   n_INPUT_INJECT_COMMIT = 1<<0,       /* Auto-commit input */
-   n_INPUT_INJECT_HISTORY = 1<<1       /* Allow history addition */
-};
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
@@ -1210,7 +1217,7 @@ enum n_shexp_parse_flags{
    /* Recognize metacharacters to separate tokens */
    n_SHEXP_PARSE_META_VERTBAR = 1<<13,
    n_SHEXP_PARSE_META_AMPERSAND = 1<<14,
-   /* Interpret ; as a sequencing operator, source_inject_input() remainder */
+   /* Interpret ; as a sequencing operator, go_input_inject() remainder */
    n_SHEXP_PARSE_META_SEMICOLON = 1<<15,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
@@ -1519,8 +1526,7 @@ do{\
 
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<19,   /* mime_write_tohdr() not ASCII clean */
-   n_PS_READLINE_NL = 1u<<20,          /* readline_input()+ saw a \n */
-   n_PS_COLOUR_ACTIVE = 1u<<21         /* n_colour_env_create().._gut() cycle */
+   n_PS_READLINE_NL = 1u<<20           /* readline_input()+ saw a \n */
 };
 
 /* Various states set once, and first time messages or initializers */
@@ -1922,6 +1928,16 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
 };
 
 #ifdef HAVE_COLOUR
+struct n_colour_env{
+   struct n_colour_env *ce_last;
+   bool_t ce_enabled;   /* Colour enabled on this level */
+   ui8_t ce_ctx;        /* enum n_colour_ctx */
+   ui8_t ce_ispipe;     /* .ce_outfp known to be a pipe */
+   ui8_t ce__pad[5];
+   FILE *ce_outfp;
+   struct a_colour_map *ce_current; /* Active colour or NULL */
+};
+
 struct n_colour_pen;
 #endif
 
@@ -1976,28 +1992,23 @@ struct n_dotlock_info{
 };
 #endif
 
-/* Execution context bundles  */
-struct n_exec_ctx{
-
-   void *l_smem;                 /* salloc() memory TODO -> memraw? */
-   /* TODO our new per-exec-ctx memory "allocators" are yet very dumb.
-    * TODO for v15 those should not be wrapping nodes but real allocators */
-   struct n_mem_raw *l_memraw;   /* n_mem_alloc() (/ n_mem_free()) */
-   struct n_mem_wrap *l_memwrap; /* n_mem_wrap() (/ n_mem_unwrap()) */
+struct n_go_data_ctx{
+   /* The memory pool may be inherited from outer context, so we
+    * .gdc_mempool may be NE .gdc__mempool_buf */
+   void *gdc_mempool;
+   void *gdc_ifcond; /* Saved state of conditional stack */
+#ifdef HAVE_COLOUR
+   struct n_colour_env *gdc_colour;
+   bool_t gdc_colour_active;
+   ui8_t gdc__colour_pad[7];
+# define n_COLOUR_IS_ACTIVE() \
+   (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
+    /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
+#endif
+   char gdc__mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF];
 };
-
-struct n_mem_raw{
-   struct n_mem_raw *mr_prev;
-   struct n_mem_raw *mr_next;
-   char mr_buf[n_VFIELD_SIZE(0)];
-};
-
-struct n_mem_wrap{
-   struct n_mem_wrap *mw_prev;
-   struct n_mem_wrap *mw_next;
-   void *mw_obj;
-   void (*mw_dtor)(void *obj);
-};
+n_MCTA(n_MEMORY_POOL_TYPE_SIZEOF % sizeof(void*) == 0,
+   "Inacceptible size of n_go_data_ctx.gdc_mempool")
 
 struct mime_handler {
    enum mime_handler_flags mh_flags;
@@ -2520,8 +2531,8 @@ VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
 
 VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */
-VL ui32_t n_scrnwidth;           /* Screen width, or best guess */
-VL ui32_t n_scrnheight;          /* Screen height/guess (4 header) */
+VL ui32_t n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
+VL ui32_t n_scrnheight;          /* Screen height/guess (for header summary+) */
 
 VL char const *n_progname;       /* Our name */
 
@@ -2535,8 +2546,10 @@ VL struct name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts;        /* MTA options from command line */
 VL size_t n_smopts_cnt;          /* Entries in n_smopts */
 
-VL ui32_t n_pstate;              /* Bits of enum n_program_state */
+/* The current execution data context */
+VL struct n_go_data_ctx *n_go_data;
 VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
+VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, soft/hard exit
  * TODO status and may-place-in-history bit, we need to manage the soft exit

@@ -453,7 +453,7 @@ jleave:
 }
 
 FL struct attachment *
-n_attachment_list_edit(struct attachment *aplist, enum n_lexinput_flags lif){
+n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    char prefix[32];
    struct attachment *naplist, *ap;
    ui32_t attno;
@@ -485,7 +485,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_lexinput_flags lif){
          filename = n_empty;
 
       ap = NULL;
-      if((filename = n_lex_input_cp(lif, prefix, filename)) != NULL){
+      if((filename = n_go_input_cp(gif, prefix, filename)) != NULL){
          naplist = n_attachment_append(naplist, filename, NULL, &ap);
          if(ap != NULL){
             if(n_psonce & n_PSO_INTERACTIVE)

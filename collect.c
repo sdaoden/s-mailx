@@ -149,7 +149,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
       }
    while((ap = ap->a_flink) != NULL);
 
-   n_source_command(n_LEXINPUT_CTX_COMPOSE, linebuf);
+   n_go_command(n_GO_INPUT_CTX_COMPOSE, linebuf);
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -459,7 +459,7 @@ mespipe(char *cmd)
 
    /* stdin = current message.  stdout = new message */
    fflush(_coll_fp);
-   if (run_command(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
+   if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
          cmd, NULL, NULL) < 0) {
       Fclose(nf);
       goto jout;
@@ -1403,7 +1403,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
-   char *linebuf, escape_saved, escape;
+   char volatile escape;
+   char *linebuf, escape_saved;
    char const *cp, *coapm;
    size_t i, linesize; /* TODO line pool */
    long cnt;
@@ -1424,7 +1425,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-/* FIXME have dropped handlerpush() and localized onintr() in lex.c! */
+/* FIXME have dropped handlerpush() and localized onintr() in go.c! */
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
@@ -1474,7 +1475,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    if (!sigsetjmp(_coll_jmp, 1)) {
       /* Ask for some headers first, as necessary */
       if (getfields)
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, getfields, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
       /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
@@ -1583,14 +1584,14 @@ jcont:
    /* The interactive collect loop */
    for(;;){
       /* C99 */{
-         enum n_lexinput_flags lif;
+         enum n_go_input_flags gif;
 
-         lif = n_LEXINPUT_CTX_COMPOSE;
+         gif = n_GO_INPUT_CTX_COMPOSE;
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
             if(!(n_poption & n_PO_t_FLAG))
-               lif |= n_LEXINPUT_NL_ESC;
+               gif |= n_GO_INPUT_NL_ESC;
          }
-         cnt = n_lex_input(lif, n_empty, &linebuf, &linesize, NULL);
+         cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL);
       }
 
       if (cnt < 0) {
@@ -1609,7 +1610,7 @@ jcont:
                ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
-            n_lex_input_clearerr();
+            n_go_input_clearerr();
             continue;
          }
          break;
@@ -1728,7 +1729,7 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp,
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),
               (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while(hp->h_to == NULL);
@@ -1738,7 +1739,7 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GEXTRA, 0);
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          break;
       case 't':
@@ -1773,7 +1774,7 @@ jearg:
             hp->h_attach = n_attachment_append_list(aplist, &linebuf[3]);
          else
             hp->h_attach = n_attachment_list_edit(aplist,
-                  n_LEXINPUT_CTX_COMPOSE);
+                  n_GO_INPUT_CTX_COMPOSE);
       }  break;
       case 'c':
          /* Add to the CC list */
@@ -1997,7 +1998,7 @@ jout:
          coap->coa_pipe[1] = -1;
 
          temporary_compose_mode_hook_call(NULL, NULL, NULL);
-         n_source_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
+         n_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
@@ -2022,13 +2023,13 @@ jout:
    /* Final chance to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
       if (hp->h_cc == NULL && ok_blook(askcc))
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GCC, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GCC, 1);
       if (hp->h_bcc == NULL && ok_blook(askbcc))
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GBCC, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GBCC, 1);
    }
    if (hp->h_attach == NULL && ok_blook(askattach))
       hp->h_attach = n_attachment_list_edit(hp->h_attach,
-            n_LEXINPUT_CTX_COMPOSE);
+            n_GO_INPUT_CTX_COMPOSE);
 
    /* Execute compose-leave */
    if((cp = ok_vlook(on_compose_leave)) != NULL){
@@ -2128,7 +2129,7 @@ jleave:
 
 jerr:
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1)
-      n_source_splice_hack_remove_after_jump();
+      n_go_splice_hack_remove_after_jump();
    if(sigfp != NULL)
       Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {

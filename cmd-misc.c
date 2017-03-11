@@ -162,9 +162,10 @@ c_shell(void *v)
    cp = a_cmisc_bangexp(v);
 
    sigemptyset(&mask);
-   run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
-      cp, NULL, NULL);
+   n_child_run(ok_vlook(SHELL), &mask, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
+      "-c", cp, NULL, NULL);
    fprintf(n_stdout, "!\n");
+   /* Line buffered fflush(n_stdout); */
    NYD_LEAVE;
    return 0;
 }
@@ -175,9 +176,10 @@ c_dosh(void *v)
    NYD_ENTER;
    n_UNUSED(v);
 
-   run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
+   n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
       NULL, NULL, NULL);
    putc('\n', n_stdout);
+   /* Line buffered fflush(n_stdout); */
    NYD_LEAVE;
    return 0;
 }

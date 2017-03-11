@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ This is included by ./lex-input.c and defines the command array.
+ *@ This is included by ./go.c and defines the command array.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -164,9 +164,9 @@
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | TMSGLST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
-   { "help", &a_lex_c_help, (M | X | TWYRA), 0, 1
+   { "help", &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "?", &a_lex_c_help, (M | X | TWYRA), 0, 1
+   { "?", &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { "=", &c_pdot, (A | TWYSH), 0, 0
      DS(N_("Show current message number")) },
@@ -214,13 +214,13 @@
      DS(N_("Echo arguments, without a trailing newline, to standard output")) },
    { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, MAC
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
-   { "quit", &a_lex_c_quit, TWYSH, 0, 0
+   { "quit", &a_go_c_quit, TWYSH, 0, 0
      DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &a_lex_c_list, (M | TSTRING), 0, 0
+   { "list", &a_go_c_list, (M | TWYSH), 0, 1
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "xit", &a_lex_c_exit, (M | X | TWYSH), 0, 0
+   { "xit", &a_go_c_exit, (M | X | TWYSH), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
-   { "exit", &a_lex_c_exit, (M | X | TWYSH), 0, 0
+   { "exit", &a_go_c_exit, (M | X | TWYSH), 0, 0
      DS(N_("Immediately return to the shell without saving")) },
    { "pipe", &c_pipe, (A | TSTRING), 0, MMNDEL
      DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
@@ -298,7 +298,7 @@
      DS(N_("Delete all given <accounts> (* for all)")) },
    { "call", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call macro <name>")) },
-   { "xcall", &a_lex_c_xcall, (M | X | TWYSH), 1, MAC
+   { "xcall", &a_go_c_xcall, (M | X | TWYSH), 1, MAC
      DS(N_("Replace currently executing macro with macro <name>")) },
    { "~", &c_call, (M | X | TWYSH), 1, MAC
      DS(N_("Call a macro")) },
@@ -395,19 +395,19 @@
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
-   { "eval", &a_lex_c_eval, (G | M | X | EM | TWYSH), 1, MAC
+   { "eval", &a_go_c_eval, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Construct command from <:arguments:>, reuse its $?")) },
-   { "ghost", &a_lex_c_ghost, (M | X | TWYRA), 0, MAC
+   { "ghost", &a_go_c_ghost, (M | X | TWYRA), 0, MAC
      DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-      { "unghost", &a_lex_c_unghost, (M | X | TWYRA), 1, MAC
+      { "unghost", &a_go_c_unghost, (M | X | TWYRA), 1, MAC
         DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
-   { "read", &a_lex_c_read, (G | M | X | EM | TWYSH), 1, MAC
+   { "read", &a_go_c_read, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Read a line from standard input into <variable>(s)")) },
    { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 2
      DS(N_("Sleep for <seconds> [<milliseconds>]"))},
-   { "version", &a_lex_c_version, (H | M | X | TWYSH), 0, 0
+   { "version", &a_go_c_version, (H | M | X | TWYSH), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 
    { "history", &c_history, (H | I | M | TWYSH), 0, 1

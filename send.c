@@ -91,17 +91,15 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    char const *cp;
    NYD2_ENTER;
 
-#ifdef HAVE_COLOUR
-   {
-   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO,
-         NULL);
-   if ((cpre = n_colour_pen_to_str(cpen)) != NULL)
-      csuf = n_colour_reset_to_str();
-   else
-      csuf = NULL;
-   }
-#else
    cpre = csuf = NULL;
+#ifdef HAVE_COLOUR
+   if(n_COLOUR_IS_ACTIVE()){
+      struct n_colour_pen *cpen;
+
+      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO, NULL);
+      if((cpre = n_colour_pen_to_str(cpen)) != NULL)
+         csuf = n_colour_reset_to_str();
+   }
 #endif
 
    /* Take care of "99.99", i.e., 5 */
@@ -296,7 +294,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       int pid;
 
       sigemptyset(&nset);
-      pid = run_command(sh, &nset, term_infd, COMMAND_FD_PASS, "-c",
+      pid = n_child_run(sh, &nset, term_infd, n_CHILD_FD_PASS, "-c",
             mhp->mh_shell_cmd, NULL, env_addon);
       rbuf = (pid < 0) ? NULL : (FILE*)-1;
    } else {
@@ -533,16 +531,16 @@ jhdrput:
       }
 
       /* Dump it */
-#ifdef HAVE_COLOUR
-      if(n_pstate & n_PS_COLOUR_ACTIVE)
-         n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
-#endif
+      n_COLOUR(
+         if(n_COLOUR_IS_ACTIVE())
+            n_colour_put(n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+      )
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NULL,NULL);
-#ifdef HAVE_COLOUR
-      if(n_pstate & n_PS_COLOUR_ACTIVE)
-         n_colour_reset(obuf);
-#endif
+      n_COLOUR(
+         if(n_COLOUR_IS_ACTIVE())
+            n_colour_reset();
+      )
       if(convert != CONV_NONE)
          putc('\n', obuf);
 
@@ -999,7 +997,7 @@ jpipe_close:
       tmpname = NULL;
       qbuf = obuf;
 
-      term_infd = COMMAND_FD_PASS;
+      term_infd = n_CHILD_FD_PASS;
       if (mh.mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
          enum oflags of;
 
@@ -1191,7 +1189,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
          (ip->m_partstring != NULL) ? ip->m_partstring : _("?"),
          _(" ("), ip->m_ct_type_plain, _("): "), NULL);
 jgetname:
-      f2 = n_lex_input_cp(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_HIST_ADD,
+      f2 = n_go_input_cp(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_HIST_ADD,
             prompt.s, ((f != (char*)-1 && f != NULL)
                ? n_shexp_quote_cp(f, FAL0) : NULL));
       if(f2 != NULL){
@@ -1367,9 +1365,15 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       nl = n_empty;
    }
 
-   n_COLOUR( n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_, NULL); )
+   n_COLOUR(
+      if(n_COLOUR_IS_ACTIVE())
+         n_colour_put(n_COLOUR_ID_VIEW_FROM_, NULL);
+   )
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   n_COLOUR( n_colour_reset(fp); )
+   n_COLOUR(
+      if(n_COLOUR_IS_ACTIVE())
+         n_colour_reset();
+   )
    if (i > 0 && stats != NULL)
       *stats += i;
    NYD_LEAVE;
@@ -1404,15 +1408,19 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    {
    bool_t nozap;
    char const *cpre = n_empty, *csuf = n_empty;
-#ifdef HAVE_COLOUR
-   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
-   struct str const *sp = n_colour_pen_to_str(cpen);
 
-   if (sp != NULL) {
-      cpre = sp->s;
-      sp = n_colour_reset_to_str();
-      if (sp != NULL)
-         csuf = sp->s;
+#ifdef HAVE_COLOUR
+   if(n_COLOUR_IS_ACTIVE()){
+      struct n_colour_pen *cpen;
+      struct str const *sp;
+
+      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
+      if((sp = n_colour_pen_to_str(cpen)) != NULL){
+         cpre = sp->s;
+         sp = n_colour_reset_to_str();
+         if(sp != NULL)
+            csuf = sp->s;
+      }
    }
 #endif
 
@@ -1433,7 +1441,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          sz += i;
       }
 #ifdef HAVE_COLOUR
-      if (cpre != NULL) {
+      if(*cpre != '\0'){
          fputs(cpre, obuf);
          cpre = (char const*)0x1;
       }
@@ -1441,7 +1449,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {
 #ifdef HAVE_COLOUR
-         if (c == '\n' && csuf != NULL) {
+         if(c == '\n' && *csuf != '\0'){
             cpre = (char const*)0x1;
             fputs(csuf, obuf);
          }
@@ -1454,7 +1462,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       }
 
 #ifdef HAVE_COLOUR
-      if (csuf != NULL && cpre != (char const*)0x1)
+      if(*csuf != '\0' && cpre != (char const*)0x1 && *cpre != '\0')
          fputs(csuf, obuf);
 #endif
    } else {

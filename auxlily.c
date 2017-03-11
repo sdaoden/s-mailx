@@ -352,7 +352,7 @@ page_or_print(FILE *fp, size_t lines)
 
    fflush_rewind(fp);
 
-   if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
+   if (n_go_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
       size_t rows;
 
       if(*cp == '\0')
@@ -372,7 +372,7 @@ page_or_print(FILE *fp, size_t lines)
 
          pager = n_pager_get(&env_add[0]);
          env_add[1] = NULL;
-         run_command(pager, NULL, fileno(fp), COMMAND_FD_PASS, NULL,NULL,NULL,
+         n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
             env_add);
          goto jleave;
       }

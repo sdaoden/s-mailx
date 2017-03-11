@@ -258,20 +258,23 @@ jredo:
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
 #ifdef HAVE_COLOUR
-   if (flags & _ISDOT)
-      colo_tag = n_COLOUR_TAG_SUM_DOT;
-   cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
-   n_colour_pen_put(cpen_new = cpen_cur = cpen_bas, f);
+   if(n_COLOUR_IS_ACTIVE()){
+      if(flags & _ISDOT)
+         colo_tag = n_COLOUR_TAG_SUM_DOT;
+      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
+      n_colour_pen_put(cpen_new = cpen_cur = cpen_bas);
+   }else
+      cpen_new = cpen_bas = cpen_cur = NULL;
 #endif
 
    for (fp = fmt; *fp != '\0'; ++fp) {
       char c;
 
       if ((c = *fp & 0xFF) != '%') {
-#ifdef HAVE_COLOUR
-         if ((cpen_new = cpen_bas) != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
-#endif
+         n_COLOUR(
+            if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
+         );
          putc(c, f);
          continue;
       }
@@ -301,8 +304,11 @@ jredo:
       case '>':
       case '<':
          if (flags & _ISDOT) {
-            n_COLOUR( cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
-                  colo_tag); );
+            n_COLOUR(
+               if(n_COLOUR_IS_ACTIVE())
+                  cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
+                        colo_tag);
+            );
             if (n_psonce & n_PSO_UNICODE) {
                if (c == '>')
                   /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE: ▸ */
@@ -336,10 +342,12 @@ jredo:
          c = _dispc(mp, attrlist);
 jputcb:
 #ifdef HAVE_COLOUR
-         if (cpen_new == cpen_cur)
-            cpen_new = cpen_bas;
-         if (cpen_new != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
+         if(n_COLOUR_IS_ACTIVE()){
+            if(cpen_new == cpen_cur)
+               cpen_new = cpen_bas;
+            if(cpen_new != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
+         }
 #endif
          if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
@@ -355,8 +363,8 @@ jputcb:
             wleft = 0; /* TODO I/O error.. ? break? */
          }
 #ifdef HAVE_COLOUR
-         if ((cpen_new = cpen_bas) != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
+         if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+            n_colour_pen_put(cpen_cur = cpen_new);
 #endif
          break;
       case 'd':
@@ -408,15 +416,17 @@ jputcb:
       case 'i':
          if (threaded) {
 #ifdef HAVE_COLOUR
-            cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
-            if (cpen_new != cpen_cur)
-               n_colour_pen_put(cpen_cur = cpen_new, f);
+            if(n_COLOUR_IS_ACTIVE()){
+               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
+               if(cpen_new != cpen_cur)
+                  n_colour_pen_put(cpen_cur = cpen_new);
+            }
 #endif
             n = __putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
-            if ((cpen_new = cpen_bas) != cpen_cur)
-               n_colour_pen_put(cpen_cur = cpen_new, f);
+            if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
 #endif
          }
          break;
@@ -527,9 +537,7 @@ j_A_redo:
          break;
    }
 
-#ifdef HAVE_COLOUR
-   n_colour_reset(f);
-#endif
+   n_COLOUR( n_colour_reset(); )
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
@@ -810,10 +818,7 @@ _headers(int msgspec) /* TODO rework v15 */
       goto jleave;
    }
 
-#ifdef HAVE_COLOUR
-   if (n_psonce & n_PSO_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
-#endif
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
 
    size = (int)/*TODO*/n_screensize();
    if (_screen < 0)
@@ -942,7 +947,7 @@ _headers(int msgspec) /* TODO rework v15 */
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
+   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return !flag;
@@ -1059,8 +1064,8 @@ c_from(void *v)
          if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
-      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != n_stdout); )
    }
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
 
    /* Update dot before display so that the dotmark etc. are correct */
    for (ip = msgvec; *ip != 0; ++ip)
@@ -1081,7 +1086,7 @@ c_from(void *v)
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
+   n_COLOUR( n_colour_env_gut(); )
    if (obuf != n_stdout)
       n_pager_close(obuf);
    NYD_LEAVE;
@@ -1107,10 +1112,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       goto jleave;
    }
 
-#ifdef HAVE_COLOUR
-   if (n_psonce & n_PSO_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
-#endif
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
 
    srelax_hold();
    isrelax = TRU1;
@@ -1131,7 +1133,7 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
+   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }

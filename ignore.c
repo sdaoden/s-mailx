@@ -672,8 +672,7 @@ n_ignore_new(bool_t isauto){
    struct n_ignore *self;
    NYD_ENTER;
 
-   self = isauto ? n_autorec_calloc(NULL, 1, sizeof *self)
-         : n_calloc(1, sizeof *self);
+   self = isauto ? n_autorec_calloc(1, sizeof *self) : n_calloc(1,sizeof *self);
    self->i_auto = isauto;
    NYD_LEAVE;
    return self;
@@ -770,7 +769,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       size_t i;
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
-      irp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
+      irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
@@ -798,7 +797,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       size_t i;
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
-      ifp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
+      ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
       hi = torek_ihashn(dat, len) % n_NELEM(itp->it_ht);

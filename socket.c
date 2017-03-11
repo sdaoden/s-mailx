@@ -500,7 +500,7 @@ jsclose:
 # endif /* HAVE_SSL */
 
 jleave:
-   /* May need to bounce the signal to the lex.c trampoline (or wherever) */
+   /* May need to bounce the signal to the go.c trampoline (or wherever) */
    if (__sopen_sig != 0) {
       sigset_t cset;
       sigemptyset(&cset);

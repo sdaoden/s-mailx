@@ -101,10 +101,10 @@ static void a_popen_jobsigs_down(void);
 static void a_popen_jobsig(int sig);
 
 /* Handle SIGCHLD */
-static void          _sigchld(int signo);
+static void a_popen_sigchld(int signo);
 
-static struct child *_findchild(int pid, bool_t create);
-static void          _delchild(struct child *cp);
+static struct child *a_popen_child_find(int pid, bool_t create);
+static void a_popen_child_del(struct child *cp);
 
 static int
 scan_mode(char const *mode, int *omode)
@@ -221,7 +221,7 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd,
+   if (n_child_run(cmd[0], 0, fileno(fpp->fp), outfd,
          cmd[1], cmd[2], NULL, NULL) >= 0)
       rv = OKAY;
 
@@ -254,7 +254,7 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
       goto jleave;
    }
 
-   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
+   rv = n_child_run(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -384,8 +384,7 @@ a_popen_jobsig(int sig){
 }
 
 static void
-_sigchld(int signo)
-{
+a_popen_sigchld(int signo){
    pid_t pid;
    int status;
    struct child *cp;
@@ -400,7 +399,7 @@ _sigchld(int signo)
          break;
       }
 
-      if ((cp = _findchild(pid, FAL0)) != NULL) {
+      if ((cp = a_popen_child_find(pid, FAL0)) != NULL) {
          if (cp->free)
             cp->pid = -1; /* XXX Was _delchild(cp);# */
          else {
@@ -412,53 +411,48 @@ _sigchld(int signo)
 }
 
 static struct child *
-_findchild(int pid, bool_t create)
-{
-   struct child **cpp;
-   NYD_ENTER;
+a_popen_child_find(int pid, bool_t create){
+   struct child **cpp, *cp;
+   NYD2_ENTER;
 
-   for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
+   for(cpp = &_popen_child; (cp = *cpp) != NULL && cp->pid != pid;
          cpp = &(*cpp)->link)
       ;
 
-   if (*cpp == NULL && create) {
-      *cpp = smalloc(sizeof **cpp);
-      (*cpp)->pid = pid;
-      (*cpp)->done = (*cpp)->free = 0;
-      (*cpp)->link = NULL;
-   }
-   NYD_LEAVE;
-   return *cpp;
+   if(cp == NULL && create)
+      (*cpp = cp = scalloc(1, sizeof *cp))->pid = pid;
+   NYD2_LEAVE;
+   return cp;
 }
 
 static void
-_delchild(struct child *cp)
-{
+a_popen_child_del(struct child *cp){
    struct child **cpp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    cpp = &_popen_child;
-   for (;;) {
-      if (*cpp == cp) {
+
+   for(;;){
+      if(*cpp == cp){
          *cpp = cp->link;
          free(cp);
          break;
       }
-      if (*(cpp = &(*cpp)->link) == NULL) {
-         DBG( n_err("! popen.c:_delchild(): implementation error\n"); )
+      if(*(cpp = &(*cpp)->link) == NULL){
+         DBG( n_err("! a_popen_child_del(): implementation error\n"); )
          break;
       }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
-command_manager_start(void)
+n_child_manager_start(void)
 {
    struct sigaction nact, oact;
    NYD_ENTER;
 
-   nact.sa_handler = &_sigchld;
+   nact.sa_handler = &a_popen_sigchld;
    sigemptyset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART
 #ifdef SA_NOCLDSTOP
@@ -475,7 +469,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 {
    int osflags, fd;
    FILE *fp = NULL;
-   NYD2_ENTER; /* (only for Fopen() and once in lex.c) */
+   NYD2_ENTER; /* (only for Fopen() and once in go.c) */
 
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
@@ -850,12 +844,10 @@ Popen(char const *cmd, char const *mode, char const *sh,
    NYD_ENTER;
 
    /* First clean up child structures */
-   {  sigset_t oset;
+   /* C99 */{
       struct child **cpp, *cp;
 
-      sigfillset(&nset);
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-
+      hold_all_sigs();
       for (cpp = &_popen_child; *cpp != NULL;) {
          if ((*cpp)->pid == -1) {
             cp = *cpp;
@@ -864,8 +856,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          } else
             cpp = &(*cpp)->link;
       }
-
-      sigprocmask(SIG_SETMASK, &oset, NULL);
+      rele_all_sigs();
    }
 
    if (!pipe_cloexec(p))
@@ -873,7 +864,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    if (*mode == 'r') {
       myside = p[READ];
-      fd0 = COMMAND_FD_PASS;
+      fd0 = n_CHILD_FD_PASS;
       hisside = fd1 = p[WRITE];
       mod[0] = *mode;
    } else if (*mode == 'W') {
@@ -884,15 +875,15 @@ Popen(char const *cmd, char const *mode, char const *sh,
    } else {
       myside = p[WRITE];
       hisside = fd0 = p[READ];
-      fd1 = COMMAND_FD_PASS;
+      fd1 = n_CHILD_FD_PASS;
       mod[0] = 'w';
    }
 
    /* In interactive mode both STDIN and STDOUT point to the terminal.  If we
     * pass through the TTY restore terminal attributes after pipe returns.
     * XXX It shouldn't matter which FD we actually use in this case */
-   if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == COMMAND_FD_PASS ||
-         fd1 == COMMAND_FD_PASS)) {
+   if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == n_CHILD_FD_PASS ||
+         fd1 == n_CHILD_FD_PASS)) {
       tiosp = smalloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
       n_TERMCAP_SUSPEND(TRU1);
@@ -902,11 +893,11 @@ Popen(char const *cmd, char const *mode, char const *sh,
    sigemptyset(&nset);
 
    if (cmd == (char*)-1) {
-      if ((pid = fork_child()) == -1)
+      if ((pid = n_child_fork()) == -1)
          n_perr(_("fork"), 0);
       else if (pid == 0) {
          union {char const *ccp; int (*ptf)(void); int es;} u;
-         prepare_child(&nset, fd0, fd1);
+         n_child_prepare(&nset, fd0, fd1);
          close(p[READ]);
          close(p[WRITE]);
          u.ccp = sh;
@@ -914,9 +905,9 @@ Popen(char const *cmd, char const *mode, char const *sh,
          _exit(u.es);
       }
    } else if (sh == NULL) {
-      pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
+      pid = n_child_start(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
-      pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
+      pid = n_child_start(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
    }
    if (pid < 0) {
       close(p[READ]);
@@ -939,34 +930,31 @@ FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
    struct termios *tiosp;
-   sigset_t nset, oset;
    int pid;
    bool_t rv = FAL0;
    NYD_ENTER;
 
    pid = file_pid(ptr);
-   if (pid < 0)
+   if(pid < 0)
       goto jleave;
 
    unregister_file(ptr, &tiosp);
    fclose(ptr);
 
-   if (dowait) {
-      sigemptyset(&nset);
-      sigaddset(&nset, SIGINT);
-      sigaddset(&nset, SIGHUP);
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-      rv = wait_child(pid, NULL);
-      if (tiosp != NULL) {
+   if(dowait){
+      hold_all_sigs();
+      rv = n_child_wait(pid, NULL);
+      if(tiosp != NULL){
          n_TERMCAP_RESUME(TRU1);
          tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
       }
-      sigprocmask(SIG_SETMASK, &oset, NULL);
-   } else {
-      free_child(pid);
+      rele_all_sigs();
+   }else{
+      n_child_free(pid);
       rv = TRU1;
    }
-   if (tiosp != NULL)
+
+   if(tiosp != NULL)
       free(tiosp);
 jleave:
    NYD_LEAVE;
@@ -985,7 +973,7 @@ n_pager_open(void)
    pager = n_pager_get(env_add + 0);
    env_add[1] = NULL;
 
-   if ((rv = Popen(pager, "w", NULL, env_add, COMMAND_FD_PASS)) == NULL)
+   if ((rv = Popen(pager, "w", NULL, env_add, n_CHILD_FD_PASS)) == NULL)
       n_perr(pager, 0);
    NYD_LEAVE;
    return rv;
@@ -1018,24 +1006,7 @@ close_all_files(void)
 }
 
 FL int
-fork_child(void)
-{
-   struct child *cp;
-   int pid;
-   NYD_ENTER;
-
-   cp = _findchild(0, TRU1);
-
-   if ((cp->pid = pid = fork()) == -1) {
-      _delchild(cp);
-      n_perr(_("fork"), 0);
-   }
-   NYD_LEAVE;
-   return pid;
-}
-
-FL int
-run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
    sigset_t nset, oset;
@@ -1054,7 +1025,7 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
     * TODO all into a temporary file which is then passed through to the
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
    if ((tio_set = ((n_psonce & n_PSO_INTERACTIVE) &&
-         (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
+         (infd == n_CHILD_FD_PASS || outfd == n_CHILD_FD_PASS)))) {
       /* TODO Simply ignore SIGINT then, it surely will be ment for the program
        * TODO which takes the terminal */
       soldint = safe_signal(SIGINT, SIG_IGN);
@@ -1070,10 +1041,10 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
       a_popen_jobsigs_up();
    }
 
-   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
+   if ((rv = n_child_start(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
    else {
-      if (wait_child(rv, NULL))
+      if (n_child_wait(rv, NULL))
          rv = 0;
       else {
          if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
@@ -1097,14 +1068,14 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
 }
 
 FL int
-start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2,
    char const **env_addon)
 {
    int rv;
    NYD_ENTER;
 
-   if ((rv = fork_child()) == -1) {
+   if ((rv = n_child_fork()) == -1) {
       n_perr(_("fork"), 0);
       rv = -1;
    } else if (rv == 0) {
@@ -1164,7 +1135,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
             (argv[i++] = n_UNCONST(a1)) != NULL &&
             (argv[i++] = n_UNCONST(a2)) != NULL)
          argv[i] = NULL;
-      prepare_child(mask, infd, outfd);
+      n_child_prepare(mask, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
       _exit(n_EXIT_ERR);
@@ -1173,8 +1144,24 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    return rv;
 }
 
+FL int
+n_child_fork(void){
+   struct child *cp;
+   int pid;
+   NYD2_ENTER;
+
+   cp = a_popen_child_find(0, TRU1);
+
+   if((cp->pid = pid = fork()) == -1){
+      a_popen_child_del(cp);
+      n_perr(_("fork"), 0);
+   }
+   NYD2_LEAVE;
+   return pid;
+}
+
 FL void
-prepare_child(sigset_t *nset, int infd, int outfd)
+n_child_prepare(sigset_t *nset, int infd, int outfd)
 {
    int i;
    sigset_t fset;
@@ -1182,7 +1169,7 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
    /* TODO WHAT IS WITH STDERR_FILENO DAMN? */
-   if ((i = (infd == COMMAND_FD_NULL)))
+   if ((i = (infd == n_CHILD_FD_NULL)))
       infd = open("/dev/null", O_RDONLY);
    if (infd >= 0) {
       dup2(infd, STDIN_FILENO);
@@ -1190,7 +1177,7 @@ prepare_child(sigset_t *nset, int infd, int outfd)
          close(infd);
    }
 
-   if ((i = (outfd == COMMAND_FD_NULL)))
+   if ((i = (outfd == n_CHILD_FD_NULL)))
       outfd = open("/dev/null", O_WRONLY);
    if (outfd >= 0) {
       dup2(outfd, STDOUT_FILENO);
@@ -1212,30 +1199,28 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 }
 
 FL void
-free_child(int pid)
-{
+n_child_free(int pid){
    sigset_t nset, oset;
    struct child *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   if ((cp = _findchild(pid, FAL0)) != NULL) {
-      if (cp->done)
-         _delchild(cp);
+   if((cp = a_popen_child_find(pid, FAL0)) != NULL){
+      if(cp->done)
+         a_popen_child_del(cp);
       else
-         cp->free = 1;
+         cp->free = TRU1;
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL bool_t
-wait_child(int pid, int *wait_status)
-{
+n_child_wait(int pid, int *wait_status){
    sigset_t nset, oset;
    struct child *cp;
    int ws;
@@ -1246,18 +1231,17 @@ wait_child(int pid, int *wait_status)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = _findchild(pid, FAL0);
-   if (cp != NULL) {
-      while (!cp->done)
+   if((cp = a_popen_child_find(pid, FAL0)) != NULL){
+      while(!cp->done)
          sigsuspend(&oset);
       ws = cp->status;
-      _delchild(cp);
-   } else
+      a_popen_child_del(cp);
+   }else
       ws = 0;
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
 
-   if (wait_status != NULL)
+   if(wait_status != NULL)
       *wait_status = ws;
    rv = (WIFEXITED(ws) && WEXITSTATUS(ws) == 0);
    NYD_LEAVE;

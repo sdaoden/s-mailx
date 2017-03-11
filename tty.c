@@ -119,7 +119,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, prompt,
+   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
@@ -154,7 +154,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, query,
+   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
@@ -222,7 +222,7 @@ j_leave:
 
 FL ui32_t
 n_tty_create_prompt(struct n_string *store, char const *xprompt,
-      enum n_lexinput_flags lif){
+      enum n_go_input_flags gif){
    struct n_visual_info_ctx vic;
    struct str in, out;
    ui32_t pwidth;
@@ -245,7 +245,7 @@ n_tty_create_prompt(struct n_string *store, char const *xprompt,
 jredo:
    n_string_trunc(store, 0);
 
-   if(lif & n_LEXINPUT_PROMPT_NONE){
+   if(gif & n_GO_INPUT_PROMPT_NONE){
       pwidth = 0;
       goto jleave;
    }
@@ -258,8 +258,8 @@ jredo:
    }
 #endif
 
-   cp = (lif & n_LEXINPUT_PROMPT_EVAL)
-         ? (lif & n_LEXINPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
+   cp = (gif & n_GO_INPUT_PROMPT_EVAL)
+         ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
          : xprompt;
    if(cp != NULL && *cp != '\0'){
       enum n_shexp_state shs;
@@ -278,7 +278,7 @@ jredo:
          store = n_string_take_ownership(store, out.s, out.l +1, out.l);
 jeeval:
          n_err(_("*prompt2?* evaluation failed, actively unsetting it\n"));
-         if(lif & n_LEXINPUT_NL_FOLLOW)
+         if(gif & n_GO_INPUT_NL_FOLLOW)
             ok_vclear(prompt2);
          else
             ok_vclear(prompt);
@@ -337,7 +337,7 @@ jeeval:
 
    /* And there may be colour support, too */
 #ifdef HAVE_COLOUR
-   /* C99 */{
+   if(n_COLOUR_IS_ACTIVE()){
       struct str const *psp, *rsp;
       struct n_colour_pen *ccp;
 
@@ -487,7 +487,7 @@ enum a_tty_bind_flags{
    a_TTY__BIND_LAST = 1<<25
 };
 # ifdef HAVE_KEY_BINDINGS
-n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__LEXINPUT_CTX_MAX1,
+n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
    "Bit carrier lower boundary must be raised to avoid value sharing");
 # endif
 n_CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
@@ -538,7 +538,7 @@ struct a_tty_bind_ctx{
 };
 
 struct a_tty_bind_ctx_map{
-   enum n_lexinput_flags tbcm_ctx;
+   enum n_go_input_flags tbcm_ctx;
    char const tbcm_name[12];  /* Name of `bind' context */
 };
 # endif /* HAVE_KEY_BINDINGS */
@@ -564,7 +564,7 @@ struct a_tty_bind_parse_ctx{
    ui32_t tbpc_seq_len;
    ui32_t tbpc_cnv_len;
    ui32_t tbpc_cnv_align_mask; /* For creating a_tty_bind_ctx.tbc_cnv */
-   ui32_t tbpc_flags;         /* n_lexinput_flags | a_tty_bind_flags */
+   ui32_t tbpc_flags;         /* n_go_input_flags | a_tty_bind_flags */
 };
 
 /* Input character tree */
@@ -602,16 +602,16 @@ struct a_tty_global{
    bool_t tg_bind_isbuild;
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
    ui8_t tg_bind__dummy[2];
-   char tg_bind_shcut_cancel[n__LEXINPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-   char tg_bind_shcut_prompt_char[n__LEXINPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-   struct a_tty_bind_ctx *tg_bind[n__LEXINPUT_CTX_MAX1];
-   struct a_tty_bind_tree *tg_bind_tree[n__LEXINPUT_CTX_MAX1][HSHSIZE];
+   char tg_bind_shcut_cancel[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   char tg_bind_shcut_prompt_char[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
+   struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][HSHSIZE];
 # endif
    struct termios tg_tios_old;
    struct termios tg_tios_new;
 };
 # ifdef HAVE_KEY_BINDINGS
-n_CTA(n__LEXINPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
+n_CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
    n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
 n_CTA(a_TTY_SHCUT_MAX > 1,
@@ -680,14 +680,14 @@ struct a_tty_line{
 
 # ifdef HAVE_KEY_BINDINGS
 /* C99: use [INDEX]={} */
-n_CTAV(n_LEXINPUT_CTX_BASE == 0);
-n_CTAV(n_LEXINPUT_CTX_DEFAULT == 1);
-n_CTAV(n_LEXINPUT_CTX_COMPOSE == 2);
+n_CTAV(n_GO_INPUT_CTX_BASE == 0);
+n_CTAV(n_GO_INPUT_CTX_DEFAULT == 1);
+n_CTAV(n_GO_INPUT_CTX_COMPOSE == 2);
 static struct a_tty_bind_ctx_map const
-      a_tty_bind_ctx_maps[n__LEXINPUT_CTX_MAX1] = {
-   {n_LEXINPUT_CTX_BASE, "base"},
-   {n_LEXINPUT_CTX_DEFAULT, "default"},
-   {n_LEXINPUT_CTX_COMPOSE, "compose"}
+      a_tty_bind_ctx_maps[n__GO_INPUT_CTX_MAX1] = {
+   {n_GO_INPUT_CTX_BASE, "base"},
+   {n_GO_INPUT_CTX_DEFAULT, "default"},
+   {n_GO_INPUT_CTX_COMPOSE, "compose"}
 };
 
 /* Special functions which our MLE provides internally.
@@ -887,7 +887,7 @@ static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len
 
 # ifdef HAVE_KEY_BINDINGS
 /* Find context or -1 */
-static enum n_lexinput_flags a_tty_bind_ctx_find(char const *name);
+static enum n_go_input_flags a_tty_bind_ctx_find(char const *name);
 
 /* Create (or replace, if allowed) a binding */
 static bool_t a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp,
@@ -1122,16 +1122,16 @@ a_tty_vinuni(struct a_tty_line *tlp){
 
    /* C99 */{
       struct str const *cpre, *csuf;
-#ifdef HAVE_COLOUR
-      struct n_colour_pen *cpen;
 
-      cpen = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL);
-      if((cpre = n_colour_pen_to_str(cpen)) != NULL)
-         csuf = n_colour_reset_to_str();
-      else
-         csuf = NULL;
-#else
       cpre = csuf = NULL;
+#ifdef HAVE_COLOUR
+      if(n_COLOUR_IS_ACTIVE()){
+         struct n_colour_pen *cpen;
+
+         cpen = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL);
+         if((cpre = n_colour_pen_to_str(cpen)) != NULL)
+            csuf = n_colour_reset_to_str();
+      }
 #endif
       fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
          (cpre != NULL ? cpre->s : n_empty),
@@ -1919,7 +1919,7 @@ jleave:
 
 static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
-   ui8_t (*autorecmem)[n_MEMORY_AUTOREC_TYPE_SIZEOF], *autorec_persist;
+   ui8_t (*mempool)[n_MEMORY_POOL_TYPE_SIZEOF], *mempool_persist;
    struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
@@ -1940,8 +1940,8 @@ a_tty_kht(struct a_tty_line *tlp){
       set_savec = TRU1;
    orig = exp;
 
-   autorec_persist = n_memory_autorec_current();
-   n_memory_autorec_push(autorecmem = n_lofi_alloc(sizeof *autorecmem));
+   mempool_persist = n_go_data->gdc_mempool;
+   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool));
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2107,7 +2107,7 @@ jset:
    }
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
-   orig.s = n_autorec_alloc(autorec_persist, orig.l + 5 +1);
+   orig.s = n_autorec_alloc_from_pool(mempool_persist, orig.l + 5 +1);
    if((rv = (ui32_t)bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
    if(preexp.l > 0){
@@ -2126,8 +2126,8 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   n_memory_autorec_pop(autorecmem);
-   n_lofi_free(autorecmem);
+   n_memory_pool_pop(mempool);
+   n_lofi_free(mempool);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;
@@ -2162,7 +2162,7 @@ jmulti:{
             locolen + (locolen >> 1));
 
       /* Iterate (once again) over all results */
-      scrwid = (size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3);
+      scrwid = n_SCRNWIDTH_FOR_LISTS;
       lnlen = lncnt = 0;
       n_UNINIT(prefixlen, 0);
       n_UNINIT(lococp, NULL);
@@ -2990,7 +2990,7 @@ jinject_input:{
 
    hold_all_sigs(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
-   n_source_inject_input(n_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
+   n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = strlen(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i n_MEMORY_DEBUG_ARGSCALL);
@@ -3004,9 +3004,9 @@ jinject_input:{
 }
 
 # ifdef HAVE_KEY_BINDINGS
-static enum n_lexinput_flags
+static enum n_go_input_flags
 a_tty_bind_ctx_find(char const *name){
-   enum n_lexinput_flags rv;
+   enum n_go_input_flags rv;
    struct a_tty_bind_ctx_map const *tbcmp;
    NYD2_ENTER;
 
@@ -3017,7 +3017,7 @@ a_tty_bind_ctx_find(char const *name){
    }while(PTRCMP(++tbcmp, <,
       &a_tty_bind_ctx_maps[n_NELEM(a_tty_bind_ctx_maps)]));
 
-   rv = (enum n_lexinput_flags)-1;
+   rv = (enum n_go_input_flags)-1;
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -3054,10 +3054,11 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
          tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
          tbpcp->tbpc_ltbcp->tbc_next = tbcp;
       }else{
-         enum n_lexinput_flags lif = tbpcp->tbpc_flags & n__LEXINPUT_CTX_MASK;
+         enum n_go_input_flags gif;
 
-         tbcp->tbc_next = a_tty.tg_bind[lif];
-         a_tty.tg_bind[lif] = tbcp;
+         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+         tbcp->tbc_next = a_tty.tg_bind[gif];
+         a_tty.tg_bind[gif] = tbcp;
       }
       memcpy(tbcp->tbc_seq = &tbcp->tbc__buf[0],
          tbpcp->tbpc_seq, i = (tbcp->tbc_seq_len = tbpcp->tbpc_seq_len) +1);
@@ -3108,7 +3109,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
    n_LCTA(UICMP(64, a_TRUE_RV, <, UI32_MAX),
       "Flag bits excess storage datatype");
 
-   f = n_LEXINPUT_NONE;
+   f = n_GO_INPUT_NONE;
    shoup = n_string_creat_auto(&shou);
    head = tail = NULL;
 
@@ -3469,19 +3470,19 @@ a_tty_bind_tree_build(void){
    size_t i;
    NYD2_ENTER;
 
-   for(i = 0; i < n__LEXINPUT_CTX_MAX1; ++i){
+   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
       struct a_tty_bind_ctx *tbcp;
-      n_LCTAV(n_LEXINPUT_CTX_BASE == 0);
+      n_LCTAV(n_GO_INPUT_CTX_BASE == 0);
 
       /* Somewhat wasteful, but easier to handle: simply clone the entire
        * primary key onto the secondary one, then only modify it */
-      for(tbcp = a_tty.tg_bind[n_LEXINPUT_CTX_BASE]; tbcp != NULL;
+      for(tbcp = a_tty.tg_bind[n_GO_INPUT_CTX_BASE]; tbcp != NULL;
             tbcp = tbcp->tbc_next)
          if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
-            a_tty__bind_tree_add(n_LEXINPUT_CTX_BASE, &a_tty.tg_bind_tree[i][0],
+            a_tty__bind_tree_add(n_GO_INPUT_CTX_BASE, &a_tty.tg_bind_tree[i][0],
                tbcp);
 
-      if(i != n_LEXINPUT_CTX_BASE)
+      if(i != n_GO_INPUT_CTX_BASE)
          for(tbcp = a_tty.tg_bind[i]; tbcp != NULL; tbcp = tbcp->tbc_next)
             if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
                a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
@@ -3501,7 +3502,7 @@ a_tty_bind_tree_teardown(void){
    memset(&a_tty.tg_bind_shcut_prompt_char[0], 0,
       sizeof(a_tty.tg_bind_shcut_prompt_char));
 
-   for(i = 0; i < n__LEXINPUT_CTX_MAX1; ++i)
+   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i)
       for(j = 0; j < HSHSIZE; ++j)
          a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
    memset(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
@@ -3548,7 +3549,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
             char *cp;
             ui32_t ctx, fun;
 
-            ctx = tbcp->tbc_flags & n__LEXINPUT_CTX_MASK;
+            ctx = tbcp->tbc_flags & n__GO_INPUT_CTX_MASK;
             fun = tbcp->tbc_flags & a_TTY__BIND_FUN_MASK;
 
             if(fun == a_TTY_BIND_FUN_CANCEL){
@@ -3746,10 +3747,10 @@ jhist_done:
     * can't perform automatic init since the user may have disallowed so */
    /* C99 */{
       struct a_tty_bind_ctx *tbcp;
-      enum n_lexinput_flags lif;
+      enum n_go_input_flags gif;
 
-      for(lif = 0; lif < n__LEXINPUT_CTX_MAX1; ++lif)
-         for(tbcp = a_tty.tg_bind[lif]; tbcp != NULL; tbcp = tbcp->tbc_next)
+      for(gif = 0; gif < n__GO_INPUT_CTX_MAX1; ++gif)
+         for(tbcp = a_tty.tg_bind[gif]; tbcp != NULL; tbcp = tbcp->tbc_next)
             if((tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
                   a_TTY_BIND_RESOLVE)
                a_tty_bind_resolve(tbcp);
@@ -3767,7 +3768,7 @@ jhist_done:
 
       tbbtp = a_tty_bind_base_tuples;
       tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_base_tuples)];
-      flags = n_LEXINPUT_CTX_BASE;
+      flags = n_GO_INPUT_CTX_BASE;
 jbuiltin_redo:
       for(; tbbtp < tbbtp_max; ++tbbtp){
          memset(&tbpc, 0, sizeof tbpc);
@@ -3786,10 +3787,10 @@ jbuiltin_redo:
          /* ..but don't want to overwrite any user settings */
          a_tty_bind_create(&tbpc, FAL0);
       }
-      if(flags == n_LEXINPUT_CTX_BASE){
+      if(flags == n_GO_INPUT_CTX_BASE){
          tbbtp = a_tty_bind_default_tuples;
          tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_default_tuples)];
-         flags = n_LEXINPUT_CTX_DEFAULT;
+         flags = n_GO_INPUT_CTX_DEFAULT;
          goto jbuiltin_redo;
       }
    }
@@ -3891,7 +3892,7 @@ n_tty_signal(int sig){
 }
 
 FL int
-(n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
+(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
    struct a_tty_line tl;
    struct n_string xprompt;
@@ -3900,7 +3901,7 @@ FL int
 # endif
    ssize_t nn;
    NYD_ENTER;
-   n_UNUSED(lif);
+   n_UNUSED(gif);
 
    assert(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
@@ -3908,14 +3909,16 @@ FL int
    assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 # ifdef HAVE_COLOUR
-   n_colour_env_create(n_COLOUR_CTX_MLE, FAL0);
-   /* C99 */{
+   n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0);
+
+   /* .tl_pos_buf is a hack */
+   posbuf = pos = NULL;
+
+   if(n_COLOUR_IS_ACTIVE()){
       char const *ccol;
       struct n_colour_pen *ccp;
       struct str const *sp;
 
-      /* .tl_pos_buf is a hack */
-      posbuf = pos = NULL;
       if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
             (sp = n_colour_pen_to_str(ccp)) != NULL){
          ccol = sp->s;
@@ -3930,10 +3933,11 @@ FL int
             memcpy(&pos[4], sp->s, ++l2);
          }
       }
-      if(posbuf == NULL){
-         posbuf = pos = salloc(4 +1);
-         pos[4] = '\0';
-      }
+   }
+
+   if(posbuf == NULL){
+      posbuf = pos = salloc(4 +1);
+      pos[4] = '\0';
    }
 # endif /* HAVE_COLOUR */
 
@@ -3961,11 +3965,11 @@ FL int
       a_tty_bind_tree_teardown();
    if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
       a_tty_bind_tree_build();
-   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[lif & n__LEXINPUT_CTX_MASK];
+   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & n__GO_INPUT_CTX_MASK];
    tl.tl_bind_shcut_cancel =
-         &a_tty.tg_bind_shcut_cancel[lif & n__LEXINPUT_CTX_MASK];
+         &a_tty.tg_bind_shcut_cancel[gif & n__GO_INPUT_CTX_MASK];
    tl.tl_bind_shcut_prompt_char =
-         &a_tty.tg_bind_shcut_prompt_char[lif & n__LEXINPUT_CTX_MASK];
+         &a_tty.tg_bind_shcut_prompt_char[gif & n__GO_INPUT_CTX_MASK];
 # endif /* HAVE_KEY_BINDINGS */
 
 # ifdef HAVE_COLOUR
@@ -3973,10 +3977,10 @@ FL int
    tl.tl_pos = pos;
 # endif
 
-   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
+   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
-      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, lif)
+      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, gif)
                ) > 0){
          tl.tl_prompt = n_string_cp_const(&xprompt);
          tl.tl_prompt_length = (ui32_t)xprompt.s_len;
@@ -4001,9 +4005,7 @@ FL int
    a_tty_sigs_down();
    a_tty.tg_line = NULL;
 
-# ifdef HAVE_COLOUR
-   n_colour_env_gut(n_tty_fp);
-# endif
+   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
    return (int)nn;
 }
@@ -4169,8 +4171,8 @@ jentry:{
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
          assert(thp != NULL);
          if(ep-- == 0){
-            n_source_inject_input((n_INPUT_INJECT_COMMIT |
-               n_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
+            n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
+               n_GO_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
             break;
          }
       }
@@ -4197,7 +4199,7 @@ c_bind(void *v){
    } n_CMD_ARG_DESC_SUBCLASS_DEF_END;
    struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
-   enum n_lexinput_flags lif;
+   enum n_go_input_flags gif;
    bool_t aster, show;
    union {char const *cp; char *p; char c;} c;
    NYD_ENTER;
@@ -4217,13 +4219,13 @@ c_bind(void *v){
       show = !asccasecmp(cac.cac_arg->ca_next->ca_arg.ca_str.s, "show");
    aster = FAL0;
 
-   if((lif = a_tty_bind_ctx_find(c.cp)) == (enum n_lexinput_flags)-1){
+   if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
       if(!(aster = n_is_all_or_aster(c.cp)) || !show){
          n_err(_("`bind': invalid context: %s\n"), c.cp);
          v = NULL;
          goto jleave;
       }
-      lif = 0;
+      gif = 0;
    }
 
    if(show){
@@ -4238,7 +4240,7 @@ c_bind(void *v){
 
       lns = 0;
       for(;;){
-         for(tbcp = a_tty.tg_bind[lif]; tbcp != NULL;
+         for(tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
                ++lns, tbcp = tbcp->tbc_next){
             /* Print the bytes of resolved terminal capabilities, then */
             if((n_poption & n_PO_D_V) &&
@@ -4294,7 +4296,7 @@ c_bind(void *v){
                 * I18N: using Unicode and that is not available in the locale,
                 * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
                   ? _("# <Defunctional> ") : n_empty),
-               a_tty_bind_ctx_maps[lif].tbcm_name, tbcp->tbc_seq,
+               a_tty_bind_ctx_maps[gif].tbcm_name, tbcp->tbc_seq,
                n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
                (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : n_empty),
                (!(n_poption & n_PO_D_VV) ? n_empty
@@ -4302,7 +4304,7 @@ c_bind(void *v){
                      ? _(" # MLE internal") : n_empty))
                );
          }
-         if(!aster || ++lif >= n__LEXINPUT_CTX_MAX1)
+         if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
             break;
       }
       page_or_print(fp, lns);
@@ -4318,7 +4320,7 @@ c_bind(void *v){
       tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(&cac,
             n_string_creat_auto(&store)));
       tbpc.tbpc_exp.l = store.s_len;
-      tbpc.tbpc_flags = lif;
+      tbpc.tbpc_flags = gif;
       if(!a_tty_bind_create(&tbpc, TRU1))
          v = NULL;
       n_string_gut(&store);
@@ -4338,7 +4340,7 @@ c_unbind(void *v){
    struct a_tty_bind_parse_ctx tbpc;
    struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
-   enum n_lexinput_flags lif;
+   enum n_go_input_flags gif;
    bool_t aster;
    union {char const *cp; char *p;} c;
    NYD_ENTER;
@@ -4354,41 +4356,41 @@ c_unbind(void *v){
    c.cp = cac.cac_arg->ca_arg.ca_str.s;
    aster = FAL0;
 
-   if((lif = a_tty_bind_ctx_find(c.cp)) == (enum n_lexinput_flags)-1){
+   if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
       if(!(aster = n_is_all_or_aster(c.cp))){
          n_err(_("`unbind': invalid context: %s\n"), c.cp);
          v = NULL;
          goto jleave;
       }
-      lif = 0;
+      gif = 0;
    }
 
    c.cp = cac.cac_arg->ca_next->ca_arg.ca_str.s;
 jredo:
    if(n_is_all_or_aster(c.cp)){
-      while((tbcp = a_tty.tg_bind[lif]) != NULL){
+      while((tbcp = a_tty.tg_bind[gif]) != NULL){
          memset(&tbpc, 0, sizeof tbpc);
          tbpc.tbpc_tbcp = tbcp;
-         tbpc.tbpc_flags = lif;
+         tbpc.tbpc_flags = gif;
          a_tty_bind_del(&tbpc);
       }
    }else{
       memset(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = a_tty_unbind_cad.cad_name;
       tbpc.tbpc_in_seq = c.cp;
-      tbpc.tbpc_flags = lif;
+      tbpc.tbpc_flags = gif;
 
       if(n_UNLIKELY(!a_tty_bind_parse(FAL0, &tbpc)))
          v = NULL;
       else if(n_UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NULL)){
          n_err(_("`unbind': no such `bind'ing: %s  %s\n"),
-            a_tty_bind_ctx_maps[lif].tbcm_name, c.cp);
+            a_tty_bind_ctx_maps[gif].tbcm_name, c.cp);
          v = NULL;
       }else
          a_tty_bind_del(&tbpc);
    }
 
-   if(aster && ++lif < n__LEXINPUT_CTX_MAX1)
+   if(aster && ++gif < n__GO_INPUT_CTX_MAX1)
       goto jredo;
 jleave:
    NYD_LEAVE;
@@ -4442,14 +4444,14 @@ n_tty_signal(int sig){
 }
 
 FL int
-(n_tty_readline)(enum n_lexinput_flags lif, char const *prompt,
+(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
    struct n_string xprompt;
    int rv;
    NYD_ENTER;
 
-   if(!(lif & n_LEXINPUT_PROMPT_NONE)){
-      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, lif) > 0){
+   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
          fwrite(xprompt.s_dat, 1, xprompt.s_len, n_tty_fp);
          fflush(n_tty_fp);
       }

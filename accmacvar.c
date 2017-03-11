@@ -5,10 +5,10 @@
  *@ - run mk-okey-map.pl
  *@ - update the manual!
  *@ TODO . should be recursive environment based.
- *@ TODO   Otherwise, the `localopts' should be an attribute of the lex-input.c
+ *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
- *@ TODO   the a_LEX_SPLICE comment in lex-input.c.
+ *@ TODO   the a_GO_SPLICE comment in go.c.
  *@ TODO . once we can have non-fatal !0 returns for commands, we should
  *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
@@ -443,7 +443,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    a_amv_lopts = losp;
    if(amcap->amca_hook_pre != NULL)
       n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
-   rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
+   rv = n_go_macro(n_GO_INPUT_NONE, amp->am_name, args_base,
          &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
    return rv;
@@ -556,7 +556,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       ui32_t leaspc;
       char *cp;
 
-      n.i = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, n_empty,
+      n.i = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, n_empty,
             &line.s, &line.l, NULL);
       if(n.ui == 0)
          continue;
@@ -2111,7 +2111,7 @@ c_return(void *v){
    if(a_amv_lopts != NULL){
       char const **argv;
 
-      n_source_force_eof();
+      n_go_input_force_eof();
 
       if((argv = v)[0] != NULL){
          si32_t i;
@@ -2226,8 +2226,8 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 FL void
 temporary_compose_mode_hook_call(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){
-   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SPLICE
-    * TODO comment in lex-input.c for the right way of doing things! */
+   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_GO_SPLICE
+    * TODO comment in go.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;

@@ -25,22 +25,23 @@
 #endif
 
 /*
- * Our (main)loops _autorec_push() arenas for their lifetime, the
+ * We use per-execution context memory arenas, to be found in
+ * n_go_data->gdc_mempool; if NULL, set to ->gdc__mempool_buf.
  * n_memory_reset() that happens on loop ticks reclaims their memory, and
  * performs debug checks also on the former #ifdef HAVE_MEMORY_DEBUG.
- * There is one global anonymous autorec arena which is used during the
- * startup phase and for the interactive n_commands() instance -- this special
- * arena is autorec_fixate()d from within main.c to not waste space, i.e.,
- * remaining arena memory is reused and topic to normal _reset() reclaiming.
+ * The arena that is used already during program startup is special in that
+ * _pool_fixate() will set "a lower bound" in order not to reclaim memory that
+ * must be kept vivid during the lifetime of the program.
  * That was so in historical code with the globally shared single string dope
- * implementation, too.
+ * implementation, too.  (And it still seems easier than bypassing to normal
+ * heap memory before _fixate() is called, today.)
  *
  * AutoReclaimedStorage memory is the follow-up to the historical "stringdope"
  * allocator from 1979 (see [timeline:a7342d9]:src/Mail/strings.c), it is
- * a steadily growing pool (but srelax_hold()..[:srelax():]..srelax_rele() can
- * be used to reduce pressure) until n_memory_reset() time.
+ * a steadily growing pool (but _relax_hold()..[:_relax_unroll():]..relax_gut()
+ * can be used to reduce pressure) until n_memory_reset() time.
  *
- * LastOutFirstIn memory is ment as an alloca(3) replacement but which requires
+ * LastOutFirstIn memory is meant as an alloca(3) replacement but which requires
  * lofi_free()ing pointers (otherwise growing until n_memory_reset()).
  *
  * TODO Flux heap memory is like LOFI except that any pointer can be freed (and
@@ -202,7 +203,7 @@ struct a_memory_chunk{
    ui32_t mc_size;
 };
 
-/* The heap memory free() may become delayed to detect double frees.
+/* The heap memory n_free() may become delayed to detect double frees.
  * It is primitive, but ok: speed and memory usage don't matter here */
 struct a_memory_heap_chunk{
    struct a_memory_chunk mhc_super;
@@ -233,18 +234,18 @@ struct a_memory_ars_ctx{
    struct a_memory_ars_ctx *mac_outer;
    struct a_memory_ars_buffer *mac_top;   /* Alloc stack */
    struct a_memory_ars_buffer *mac_full;  /* Alloc stack, cpl. filled */
-   size_t mac_recur;                      /* srelax_hold() recursion */
+   size_t mac_recur;                      /* _relax_create() recursion */
    struct a_memory_ars_huge *mac_huge;    /* Huge allocation bypass list */
    struct a_memory_ars_lofi *mac_lofi;    /* Pseudo alloca */
    struct a_memory_ars_lofi_chunk *mac_lofi_top;
 };
-n_CTA(n_MEMORY_AUTOREC_TYPE_SIZEOF >= sizeof(struct a_memory_ars_ctx),
-   "Our command loops do not provide enough memory for auto-reclaimed storage");
+n_CTA(n_MEMORY_POOL_TYPE_SIZEOF >= sizeof(struct a_memory_ars_ctx),
+   "struct n_go_data_ctx.gdc_mempool is not large enough for memory pool");
 
 struct a_memory_ars_buffer{
    struct a_memory_ars_buffer *mab_last;
    char *mab_bot;    /* For _autorec_fixate().  Only used for the global _ctx */
-   char *mab_relax;  /* If !NULL, used by srelax() instead of .mab_bot */
+   char *mab_relax;  /* If !NULL, used by _relax_unroll() instead of .mab_bot */
    char *mab_caster; /* Point of casting memory, NULL if full */
    char mab_buf[n_MEMORY_AUTOREC_SIZE - (4 * sizeof(void*))];
 };
@@ -286,11 +287,6 @@ static size_t a_memory_lofi_ball, a_memory_lofi_bcur, a_memory_lofi_bmax,
       a_memory_lofi_mall, a_memory_lofi_mcur, a_memory_lofi_mmax;
 #endif
 
-/* The anonymous global topmost auto-reclaimed storage instance, and the
- * current top of the stack for recursions, `source's etc */
-static struct a_memory_ars_ctx a_memory_ars_global;
-static struct a_memory_ars_ctx *a_memory_ars_top;
-
 /* */
 SINLINE void a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp);
 
@@ -315,7 +311,7 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
       macp->mac_lofi = malp->mal_last;
       macp->mac_lofi_top = (struct a_memory_ars_lofi_chunk*)
             ((uintptr_t)p.p_alc->malc_last & ~0x1);
-      free(malp);
+      n_free(malp);
 #ifdef HAVE_MEMORY_DEBUG
       --a_memory_lofi_bcur;
 #endif
@@ -323,11 +319,11 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
       macp->mac_lofi_top = p.p_alc->malc_last;
 
       /* The normal arena ones only if the arena is empty, except for when
-       * it is the last - that we'll keep until _autorec_pop() or exit(3) */
+       * it is the last - that we'll keep until _pool_pop() or exit(3) */
       if(p.p_cp == (malp = macp->mac_lofi)->mal_buf){
          if(malp->mal_last != NULL){
             macp->mac_lofi = malp->mal_last;
-            free(malp);
+            n_free(malp);
 #ifdef HAVE_MEMORY_DEBUG
             --a_memory_lofi_bcur;
 #endif
@@ -368,7 +364,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
             macp->mac_top = m.abp;
          else
             m2.abp->mab_last = m.abp;
-         free(x);
+         n_free(x);
 #ifdef HAVE_MEMORY_DEBUG
          --a_memory_ars_bcur;
 #endif
@@ -385,7 +381,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 
    while((m.ahp = macp->mac_huge) != NULL){
       macp->mac_huge = m.ahp->mah_last;
-      free(m.ahp);
+      n_free(m.ahp);
 #ifdef HAVE_MEMORY_DEBUG
       --a_memory_ars_hcur;
 #endif
@@ -412,17 +408,16 @@ n_memory_reset(void){
 
    n_memory_check();
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
-
-   /* First of all reset auto-reclaimed storage so that heap freed during this
-    * can be handled in a second step */
-   /* TODO v15 active recursion can only happen after a jump */
-   if(macp->mac_recur > 0){
-      macp->mac_recur = 1;
-      srelax_rele();
+   if((macp = n_go_data->gdc_mempool) != NULL){
+      /* First of all reset auto-reclaimed storage so that heap freed during
+       * this can be handled in a second step */
+      /* TODO v15 active recursion can only happen after a jump */
+      if(macp->mac_recur > 0){
+         macp->mac_recur = 1;
+         n_memory_autorec_relax_gut();
+      }
+      a_memory_ars_reset(macp);
    }
-   a_memory_ars_reset(macp);
 
    /* Now we are ready to deal with heap */
 #ifdef HAVE_MEMORY_DEBUG
@@ -442,6 +437,80 @@ n_memory_reset(void){
    if((n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)) && c > 0)
       n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
 #endif
+   NYD_LEAVE;
+}
+
+FL void
+n_memory_pool_fixate(void){
+   struct a_memory_ars_buffer *mabp;
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   if((macp = n_go_data->gdc_mempool) != NULL){
+      for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_bot = mabp->mab_caster;
+      for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
+         mabp->mab_bot = mabp->mab_caster;
+   }
+   NYD_LEAVE;
+}
+
+FL void
+n_memory_pool_push(void *vp){
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   if(n_go_data->gdc_mempool == NULL)
+      n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
+
+   memset(macp = vp, 0, sizeof *macp);
+   macp->mac_outer = n_go_data->gdc_mempool;
+   n_go_data->gdc_mempool = macp;
+   NYD_LEAVE;
+}
+
+FL void
+n_memory_pool_pop(void *vp){
+   struct a_memory_ars_buffer *mabp;
+   struct a_memory_ars_ctx *macp;
+   NYD_ENTER;
+
+   n_memory_check();
+
+   if((macp = vp) == NULL){
+      macp = n_go_data->gdc_mempool;
+      assert(macp != NULL);
+   }else{
+      /* XXX May not be ARS top upon jump */
+      while(n_go_data->gdc_mempool != macp){
+         DBG( n_err("ARS pop %p to reach freed context\n",
+            n_go_data->gdc_mempool); )
+         n_memory_pool_pop(n_go_data->gdc_mempool);
+      }
+   }
+   n_go_data->gdc_mempool = macp->mac_outer;
+
+   a_memory_ars_reset(macp);
+   assert(macp->mac_full == NULL);
+   assert(macp->mac_huge == NULL);
+
+   mabp = macp->mac_top;
+   macp->mac_top = NULL;
+   while(mabp != NULL){
+      vp = mabp;
+      mabp = mabp->mab_last;
+      n_free(vp);
+   }
+
+   /* We (may) have kept one buffer for our pseudo alloca(3) */
+   if((vp = macp->mac_lofi) != NULL){
+      assert(macp->mac_lofi->mal_last == NULL);
+      macp->mac_lofi = NULL;
+#ifdef HAVE_MEMORY_DEBUG
+      --a_memory_lofi_bcur;
+#endif
+      n_free(vp);
+   }
    NYD_LEAVE;
 }
 
@@ -696,79 +765,8 @@ jleave:
 }
 #endif /* HAVE_MEMORY_DEBUG */
 
-FL void
-n_memory_autorec_fixate(void){
-   struct a_memory_ars_buffer *mabp;
-   NYD_ENTER;
-
-   for(mabp = a_memory_ars_global.mac_top; mabp != NULL; mabp = mabp->mab_last)
-      mabp->mab_bot = mabp->mab_caster;
-   for(mabp = a_memory_ars_global.mac_full; mabp != NULL; mabp = mabp->mab_last)
-      mabp->mab_bot = mabp->mab_caster;
-   NYD_LEAVE;
-}
-
-FL void
-n_memory_autorec_push(void *vp){
-   struct a_memory_ars_ctx *macp;
-   NYD_ENTER;
-
-   macp = vp;
-   memset(macp, 0, sizeof *macp);
-   macp->mac_outer = a_memory_ars_top;
-   a_memory_ars_top = macp;
-   NYD_LEAVE;
-}
-
-FL void
-n_memory_autorec_pop(void *vp){
-   struct a_memory_ars_buffer *mabp;
-   struct a_memory_ars_ctx *macp;
-   NYD_ENTER;
-
-   n_memory_check();
-
-   if((macp = vp) == NULL)
-      macp = &a_memory_ars_global;
-   else{
-      /* XXX May not be ARS top upon jump */
-      while(a_memory_ars_top != macp){
-         DBG( n_err("ARS pop %p to reach freed context\n", a_memory_ars_top); )
-         n_memory_autorec_pop(a_memory_ars_top);
-      }
-      a_memory_ars_top = macp->mac_outer;
-   }
-
-   a_memory_ars_reset(macp);
-   assert(macp->mac_full == NULL);
-   assert(macp->mac_huge == NULL);
-
-   for(mabp = macp->mac_top; mabp != NULL;){
-      vp = mabp;
-      mabp = mabp->mab_last;
-      free(vp);
-   }
-
-   /* We (may) have kept one buffer for our pseudo alloca(3) */
-   if(macp->mac_lofi != NULL){
-      assert(macp->mac_lofi->mal_last == NULL);
-      free(macp->mac_lofi);
-#ifdef HAVE_MEMORY_DEBUG
-      --a_memory_lofi_bcur;
-#endif
-   }
-
-   memset(macp, 0, sizeof *macp);
-   NYD_LEAVE;
-}
-
 FL void *
-n_memory_autorec_current(void){
-   return (a_memory_ars_top != NULL ? a_memory_ars_top : &a_memory_ars_global);
-}
-
-FL void *
-(n_autorec_alloc)(void *vp, size_t size n_MEMORY_DEBUG_ARGS){
+(n_autorec_alloc_from_pool)(void *vp, size_t size n_MEMORY_DEBUG_ARGS){
 #ifdef HAVE_MEMORY_DEBUG
    ui32_t user_s;
 #endif
@@ -780,8 +778,8 @@ FL void *
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = vp) == NULL && (macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = vp) == NULL && (macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
 #ifdef HAVE_MEMORY_DEBUG
    user_s = (ui32_t)size;
@@ -827,7 +825,7 @@ FL void *
    m.abp = n_alloc(sizeof *m.abp);
    m.abp->mab_last = macp->mac_top;
    m.abp->mab_caster = &(m.abp->mab_bot = m.abp->mab_buf)[size];
-   m.abp->mab_relax = NULL; /* Thus indicates allocation after srelax_hold() */
+   m.abp->mab_relax = NULL; /* Indicates allocation after _relax_create() */
    macp->mac_top = m.abp;
    p.p_cp = m.abp->mab_bot;
 
@@ -866,24 +864,25 @@ jhuge:
 }
 
 FL void *
-(n_autorec_calloc)(void *vp, size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS){
+(n_autorec_calloc_from_pool)(void *vp, size_t nmemb, size_t size
+      n_MEMORY_DEBUG_ARGS){
    void *rv;
    NYD2_ENTER;
 
    size *= nmemb; /* XXX overflow, but only used for struct inits */
-   rv = (n_autorec_alloc)(vp, size n_MEMORY_DEBUG_ARGSCALL);
+   rv = (n_autorec_alloc_from_pool)(vp, size n_MEMORY_DEBUG_ARGSCALL);
    memset(rv, 0, size);
    NYD2_LEAVE;
    return rv;
 }
 
 FL void
-srelax_hold(void){
+n_memory_autorec_relax_create(void){
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    if(macp->mac_recur++ == 0){
       struct a_memory_ars_buffer *mabp;
@@ -895,18 +894,18 @@ srelax_hold(void){
    }
 #ifdef HAVE_DEVEL
    else
-      n_err("srelax_hold(): recursion >0\n");
+      n_err("n_memory_autorec_relax_create(): recursion >0\n");
 #endif
    NYD2_LEAVE;
 }
 
 FL void
-srelax_rele(void){
+n_memory_autorec_relax_gut(void){
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    assert(macp->mac_recur > 0);
 
@@ -914,7 +913,7 @@ srelax_rele(void){
       struct a_memory_ars_buffer *mabp;
 
       macp->mac_recur = 1;
-      srelax();
+      n_memory_autorec_relax_unroll();
       macp->mac_recur = 0;
 
       for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
@@ -924,13 +923,13 @@ srelax_rele(void){
    }
 #ifdef HAVE_DEVEL
    else
-      n_err("srelax_rele(): recursion >0\n");
+      n_err("n_memory_autorec_relax_unroll(): recursion >0\n");
 #endif
    NYD2_LEAVE;
 }
 
 FL void
-srelax(void){
+n_memory_autorec_relax_unroll(void){
    /* The purpose of relaxation is only that it is possible to reset the
     * casters, *not* to give back memory to the system.  We are presumably in
     * an iteration over all messages of a mailbox, and it'd be quite
@@ -938,8 +937,8 @@ srelax(void){
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    assert(macp->mac_recur > 0);
    n_memory_check();
@@ -986,8 +985,8 @@ FL void *
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
 #ifdef HAVE_MEMORY_DEBUG
    user_s = (ui32_t)size;
@@ -1071,8 +1070,8 @@ FL void
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    if((p.p_vp = vp) == NULL){
 #ifdef HAVE_MEMORY_DEBUG
@@ -1127,8 +1126,8 @@ n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
 
    n_memory_check();
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    for(;;){
       p.p_alc = macp->mac_lofi_top;
@@ -1176,8 +1175,8 @@ c_memtrace(void *vp){
       a_memory_lofi_mcur, a_memory_lofi_mmax, a_memory_lofi_mall);
    lines += 7;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
    for(; macp != NULL; macp = macp->mac_outer){
       fprintf(fp, "  Evaluation stack context %p (outer: %p):\n",
          (void*)macp, (void*)macp->mac_outer);
@@ -1216,9 +1215,7 @@ c_memtrace(void *vp){
       a_memory_ars_aall, a_memory_ars_mall);
    lines += 7;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
-   for(; macp != NULL; macp = macp->mac_outer){
+   for(macp = n_go_data->gdc_mempool; macp != NULL; macp = macp->mac_outer){
       fprintf(fp, "  Evaluation stack context %p (outer: %p):\n",
          (void*)macp, (void*)macp->mac_outer);
       ++lines;
@@ -1278,7 +1275,7 @@ c_memtrace(void *vp){
    }
 
    if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
-      fprintf(fp, "Heap buffers lingering for free():\n");
+      fprintf(fp, "Heap buffers lingering for n_free():\n");
       ++lines;
 
       for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
@@ -1311,8 +1308,8 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
 
    anybad = FAL0;
 
-   if((macp = a_memory_ars_top) == NULL)
-      macp = &a_memory_ars_global;
+   if((macp = n_go_data->gdc_mempool) == NULL)
+      macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    /* Alloca */
 

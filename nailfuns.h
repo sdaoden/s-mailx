@@ -268,7 +268,7 @@ FL struct attachment *n_attachment_find(struct attachment *aplist,
 
 /* Interactively edit the attachment list, return updated list */
 FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
-                        enum n_lexinput_flags lif);
+                        enum n_go_input_flags gif);
 
 /* Print all attachments to fp, return number of lines written, -1 on error */
 FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
@@ -440,18 +440,16 @@ FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
  */
 
 /* if.elif.else.endif conditional execution.
- * condstack_isskip() returns whether the current condition state doesn't allow
- * execution of commands.
- * condstack_release() and condstack_take() rotate the current condition stack;
- * condstack_take() returns a false boolean if the current condition stack has
- * unclosed conditionals */
+ * _isskip() tests whether current state doesn't allow execution of commands */
 FL int c_if(void *v);
 FL int c_elif(void *v);
 FL int c_else(void *v);
 FL int c_endif(void *v);
-FL bool_t condstack_isskip(void);
-FL void *condstack_release(void);
-FL bool_t condstack_take(void *self);
+
+FL bool_t n_cnd_if_isskip(void);
+
+/* An execution context is teared down, and it finds to have an if stack */
+FL void n_cnd_if_stack_del(void *vp);
 
 /*
  * cmd-folder.c
@@ -662,21 +660,24 @@ FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
 
 #ifdef HAVE_COLOUR
 /* `(un)?colour' */
-FL int         c_colour(void *v);
-FL int         c_uncolour(void *v);
+FL int c_colour(void *v);
+FL int c_uncolour(void *v);
 
-/* We want coloured output (in this salloc() cycle).  pager_used is used to
- * test whether *colour-pager* is to be inspected.
- * The push/pop functions deal with recursive execute()ions, for now. TODO
- * env_gut() will reset() as necessary */
-FL void        n_colour_env_create(enum n_colour_ctx cctx, bool_t pager_used);
-FL void        n_colour_env_push(void);
-FL void        n_colour_env_pop(bool_t any_env_till_root);
-FL void        n_colour_env_gut(FILE *fp);
+/* An execution context is teared down, and it finds to have a colour stack.
+ * If NULL is passed, go for n_go_data->gdc_colour stuff */
+FL void n_colour_stack_del(void *vp);
+
+/* We want coloured output (in this salloc() cycle), pager_used is used to
+ * test whether *colour-pager* is to be inspected, if fp is given, the reset
+ * sequence will be written as necessary by _stack_del()
+ * env_gut() will reset() as necessary if fp is not NULL */
+FL void n_colour_env_create(enum n_colour_ctx cctx, FILE *fp,
+         bool_t pager_used);
+FL void n_colour_env_gut(void);
 
 /* Putting anything (for pens: including NULL) resets current state first */
-FL void        n_colour_put(FILE *fp, enum n_colour_id cid, char const *ctag);
-FL void        n_colour_reset(FILE *fp);
+FL void n_colour_put(enum n_colour_id cid, char const *ctag);
+FL void n_colour_reset(void);
 
 /* Of course temporary only and may return NULL.  Doesn't affect state! */
 FL struct str const *n_colour_reset_to_str(void);
@@ -686,15 +687,15 @@ FL struct str const *n_colour_reset_to_str(void);
  * This includes pen_to_str() -- which doesn't affect state! */
 FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
                            char const *ctag);
-FL void        n_colour_pen_put(struct n_colour_pen *self, FILE *fp);
+FL void n_colour_pen_put(struct n_colour_pen *self);
 
 FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
 
 #else /* HAVE_COLOUR */
-# define c_colour                c_cmdnotsupp
-# define c_uncolour              c_cmdnotsupp
-# define c_mono                  c_cmdnotsupp
-# define c_unmono                c_cmdnotsupp
+# define c_colour c_cmdnotsupp
+# define c_uncolour c_cmdnotsupp
+# define c_mono c_cmdnotsupp
+# define c_unmono c_cmdnotsupp
 #endif
 
 /*
@@ -839,6 +840,86 @@ FL void        initbox(char const *name);
 FL char const *folder_query(void);
 
 /*
+ * go.c
+ * Program input of all sorts, input lexing, event loops, command evaluation.
+ */
+
+/* Fallback implementation for commands which are unavailable in this config */
+FL int c_cmdnotsupp(void *v);
+
+/* Setup the run environment; this i *only* for main() */
+FL void n_go_init(void);
+
+/* Interpret user commands.  If stdin is not a tty, print no prompt; return
+ * whether last processed command returned error; this is *only* for main()! */
+FL bool_t n_go_main_loop(void);
+
+/* Actual cmd input */
+
+/* */
+FL void n_go_input_clearerr(void);
+
+/* Force n_go_input() to read EOF next */
+FL void n_go_input_force_eof(void);
+
+/* Force n_go_input() to read that buffer next -- for `history', and the MLE.
+ * If commit is not true then we'll reenter the line editor with buf as default
+ * line content.  Only to be used in interactive and non-robot mode! */
+FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
+            size_t len);
+
+/* Read a complete line of input, with editing if interactive and possible.
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility.
+ * Return number of octets or a value <0 on error.
+ * Note: may use the currently `source'd file stream instead of stdin!
+ * Manages the n_PS_READLINE_NL hack */
+FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
+         char **linebuf, size_t *linesize, char const *string
+         n_MEMORY_DEBUG_ARGS);
+#ifdef HAVE_MEMORY_DEBUG
+# define n_go_input(A,B,C,D,E) n_go_input(A,B,C,D,E,__FILE__,__LINE__)
+#endif
+
+/* Read a line of input, with editing if interactive and possible, return it
+ * savestr()d or NULL in case of errors or if an empty line would be returned.
+ * This may only be called from toplevel (not during n_PS_ROBOT).
+ * If string is set it is used as the initial line content if in interactive
+ * mode, otherwise this argument is ignored for reproducibility */
+FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
+            char const *string);
+
+/* Deal with loading of resource files and dealing with a stack of files for
+ * the source command */
+
+/* Load a file of user definitions -- this is *only* for main()! */
+FL void n_go_load(char const *name);
+
+/* "Load" all the -X command line definitions in order -- *only* for main() */
+FL void n_go_Xargs(char const **lines, size_t cnt);
+
+/* Pushdown current input file and switch to a new one.  Set the global flag
+ * n_PS_SOURCING so that others will realize that they are no longer reading
+ * from a tty (in all probability) */
+FL int c_source(void *v);
+FL int c_source_if(void *v);
+
+/* Evaluate a complete macro / a single command.  For the former lines will
+ * always be free()d, for the latter cmd will always be duplicated internally */
+FL bool_t n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
+            void (*on_finalize)(void*), void *finalize_arg);
+FL bool_t n_go_command(enum n_go_input_flags gif, char const *cmd);
+
+/* XXX See a_GO_SPLICE in source */
+FL void n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
+         ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg);
+FL void n_go_splice_hack_remove_after_jump(void);
+
+/* XXX Hack: may we release our (interactive) (terminal) control to a different
+ * XXX program, e.g., a $PAGER? */
+FL bool_t n_go_may_yield_control(void);
+
+/*
  * head.c
  */
 
@@ -972,7 +1053,7 @@ FL char *      getsender(struct message *m);
 #endif
 
 /* Fill in / reedit the desired header fields */
-FL int         grab_headers(enum n_lexinput_flags lif, struct header *hp,
+FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
                   enum gfield gflags, int subjfirst);
 
 /* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
@@ -1040,82 +1121,6 @@ FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
 /*
- * lex-input.c
- */
-
-/* Fallback implementation for commands which are unavailable in this config */
-FL int c_cmdnotsupp(void *v);
-
-/* Interpret user commands.  If stdin is not a tty, print no prompt; return
- * whether last processed command returned error; this is *only* for main()! */
-FL bool_t n_commands(void);
-
-/* Actual cmd input */
-
-/* */
-FL void n_lex_input_clearerr(void);
-
-/* Read a complete line of input, with editing if interactive and possible.
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * Return number of octets or a value <0 on error.
- * Note: may use the currently `source'd file stream instead of stdin!
- * Manages the n_PS_READLINE_NL hack */
-FL int n_lex_input(enum n_lexinput_flags lif, char const *prompt,
-         char **linebuf, size_t *linesize, char const *string
-         n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
-# define n_lex_input(A,B,C,D,E) n_lex_input(A,B,C,D,E,__FILE__,__LINE__)
-#endif
-
-/* Read a line of input, with editing if interactive and possible, return it
- * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during n_PS_ROBOT).
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility */
-FL char *n_lex_input_cp(enum n_lexinput_flags lif, char const *prompt,
-            char const *string);
-
-/* Deal with loading of resource files and dealing with a stack of files for
- * the source command */
-
-/* Load a file of user definitions -- this is *only* for main()! */
-FL void n_load(char const *name);
-
-/* "Load" all the -X command line definitions in order -- *only* for main() */
-FL void n_load_Xargs(char const **lines, size_t cnt);
-
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * n_PS_SOURCING so that others will realize that they are no longer reading
- * from a tty (in all probability) */
-FL int c_source(void *v);
-FL int c_source_if(void *v);
-
-/* Evaluate a complete macro / a single command.  For the former lines will
- * always be free()d, for the latter cmd will always be duplicated internally */
-FL bool_t n_source_macro(enum n_lexinput_flags lif, char const *name,
-            char **lines, void (*on_finalize)(void*), void *finalize_arg);
-FL bool_t n_source_command(enum n_lexinput_flags lif, char const *cmd);
-
-/* XXX See a_LEX_SPLICE in source */
-FL void n_source_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
-            ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg);
-FL void n_source_splice_hack_remove_after_jump(void);
-
-/* XXX Hack: may we release our (interactive) (terminal) control to a different
- * XXX program, e.g., a $PAGER? */
-FL bool_t n_source_may_yield_control(void);
-
-/* Force n_lex_input() to read that buffer next -- for `history', and the MLE.
- * If commit is not true then we'll reenter the line editor with buf as default
- * line content.  Only to be used in interactive and non-robot mode! */
-FL void n_source_inject_input(enum n_input_inject_flags iif, char const *buf,
-            size_t len);
-
-/* Force n_lex_input() to read EOF next */
-FL void n_source_force_eof(void);
-
-/*
  * message.c
  */
 
@@ -1179,6 +1184,24 @@ FL enum okay   maildir_remove(char const *name);
  * checking and memory cleanup, including stack-top of auto-reclaimed storage */
 FL void n_memory_reset(void);
 
+/* Fixate the current snapshot of our global auto-reclaimed storage instance,
+ * so that further allocations become auto-reclaimed.
+ * This is only called from main.c for the global arena */
+FL void n_memory_pool_fixate(void);
+
+/* Lifetime management of a per-execution level arena (to be found in
+ * n_go_data_ctx.gdc_mempool, lazy initialized).
+ * _push() can be used by anyone to create a new stack layer in the current
+ * per-execution level arena, which is layered upon the normal one (usually
+ * provided by .gdc__mempool_buf, initialized as necessary).
+ * This can be pop()ped again: popping a stack will remove all stacks "above"
+ * it, i.e., those which have been pushed thereafter.
+ * If NULL is popped then this means that the current per-execution level is
+ * left and n_go_data_ctx.gdc_mempool is not NULL; an event loop tick also
+ * causes all _push()ed stacks to be dropped (via n_memory_reset()) */
+FL void n_memory_pool_push(void *vp);
+FL void n_memory_pool_pop(void *vp);
+
 /* Generic heap memory */
 
 FL void *n_alloc(size_t s n_MEMORY_DEBUG_ARGS);
@@ -1209,45 +1232,40 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 
 /* Auto-reclaimed storage */
 
-/* Fixate the current snapshot of our global auto-reclaimed storage instance,
- * so that further allocations become auto-reclaimed.
- * This is only called from main.c for the global anon arena */
-FL void n_memory_autorec_fixate(void);
-
-/* Lifetime management of a per-execution level arena.  vp provides
- * n_MEMORY_AUTOREC_TYPE_SIZEOF bytes of storage to allocate that.
- * Note that anyone can anywhere _push() a storage level, and _pop() will drop
- * all possible levels "above" vp, too! */
-FL void n_memory_autorec_push(void *vp);
-FL void n_memory_autorec_pop(void *vp);
-FL void *n_memory_autorec_current(void);
-
 /* Lower memory pressure on auto-reclaimed storage for code which has
  * a sinus-curve looking style of memory usage, i.e., peak followed by release,
  * like, e.g., doing a task on all messages of a box in order.
- * Such code should call srelax_hold(), successively call srelax() after
- * a single message has been handled, and finally srelax_rele() */
-FL void srelax_hold(void);
-FL void srelax_rele(void);
-FL void srelax(void);
+ * Such code should call _create(), successively call _unroll() after
+ * a single message has been handled, and finally _gut() */
+FL void n_memory_autorec_relax_create(void);
+FL void n_memory_autorec_relax_gut(void);
+FL void n_memory_autorec_relax_unroll(void);
+
+/* TODO obsolete srelax -> n_memory_autorec_relax_* */
+#define srelax_hold() n_memory_autorec_relax_create()
+#define srelax_rele() n_memory_autorec_relax_gut()
+#define srelax() n_memory_autorec_relax_unroll()
 
 /* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the
  * space will always be on a word boundary */
-FL void *n_autorec_alloc(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
-FL void *n_autorec_calloc(void *vp, size_t nmemb, size_t size
+FL void *n_autorec_alloc_from_pool(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
+FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
             n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
-# define n_autorec_alloc(VP,SZ) (n_autorec_alloc)(VP, SZ, __FILE__, __LINE__)
-# define n_autorec_calloc(VP,NM,SZ) \
-   (n_autorec_calloc)(VP, NM, SZ, __FILE__, __LINE__)
+# define n_autorec_alloc_from_pool(VP,SZ) \
+   (n_autorec_alloc_from_pool)(VP, SZ, __FILE__, __LINE__)
+# define n_autorec_calloc_from_pool(VP,NM,SZ) \
+   (n_autorec_calloc_from_pool)(VP, NM, SZ, __FILE__, __LINE__)
 #endif
+#define n_autorec_alloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
+#define n_autorec_calloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
 
 /* TODO obsolete c?salloc -> n_autorec_* */
-#define salloc(SZ) n_autorec_alloc(NULL, SZ)
-#define csalloc(NM,SZ) n_autorec_calloc(NULL, NM, SZ)
+#define salloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
+#define csalloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
 
-/* Pseudo alloca (and also auto-reclaimed in autorec_pop()) */
+/* Pseudo alloca (and also auto-reclaimed in _memory_reset()/_pool_pop()) */
 FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
 FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
 
@@ -1493,8 +1511,8 @@ FL struct name * lextract(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);
 
-/* Get a lextract() list via n_lex_input_cp_addhist(), reassigning to *np* */
-FL struct name * grab_names(enum n_lexinput_flags lif, char const *field,
+/* Get a lextract() list via n_go_input_cp(), reassigning to *np* */
+FL struct name * grab_names(enum n_go_input_flags gif, char const *field,
                      struct name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 n2 share the domain name */
@@ -1607,7 +1625,7 @@ FL bool_t      pop3_quit(bool_t hold_sigs_on);
  */
 
 /* For program startup in main.c: initialize process manager */
-FL void        command_manager_start(void);
+FL void        n_child_manager_start(void);
 
 /* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
@@ -1660,37 +1678,34 @@ FL bool_t      n_pager_close(FILE *fp);
 /*  */
 FL void        close_all_files(void);
 
-/* Fork a child process, enable use of the *child() series below */
-FL int         fork_child(void);
-
 /* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  FDs may also be COMMAND_FD_NULL and COMMAND_FD_PASS, meaning to
- * redirect from/to /dev/null or pass through our own set of FDs; in the
+ * and stdout.  FDs may also be n_CHILD_FD_NULL and n_CHILD_FD_PASS, meaning
+ * to redirect from/to /dev/null or pass through our own set of FDs; in the
  * latter case terminal capabilities are saved/restored if possible.
  * The command name can be a sequence of words.
  * Signals must be handled by the caller.  "Mask" contains the signals to
  * ignore in the new process.  SIGINT is enabled unless it's in the mask.
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment */
-FL int         run_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2,
-                  char const **env_addon);
+FL int n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
+         char const *a0, char const *a1, char const *a2,
+         char const **env_addon);
 
-/* Like run_command, but don't wait for the command to finish.
- * Also it is usually an error to use COMMAND_FD_PASS for this one */
-FL int         start_command(char const *cmd, sigset_t *mask, int infd,
-                  int outfd, char const *a0, char const *a1, char const *a2,
-                  char const **env_addon);
+/* Like n_child_run(), but don't wait for the command to finish.
+ * Also it is usually an error to use n_CHILD_FD_PASS for this one */
+FL int n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
+         char const *a0, char const *a1, char const *a2,
+         char const **env_addon);
 
-/* In-child process */
-FL void        prepare_child(sigset_t *nset, int infd, int outfd);
-
-/* Mark a child as don't care - pid */
-FL void        free_child(int pid);
-
-/* Wait for pid, return whether we've had a normal n_EXIT_OK exit.
- * If wait_status is set, set it to the reported waitpid(2) wait status */
-FL bool_t      wait_child(int pid, int *wait_status);
+/* Fork a child process, enable the other three:
+ * - in-child image preparation
+ * - mark a child as don't care
+ * - wait for child pid, return whether we've had a normal n_EXIT_OK exit.
+ *   If wait_status is set, set it to the reported waitpid(2) wait status */
+FL int n_child_fork(void);
+FL void n_child_prepare(sigset_t *nset, int infd, int outfd);
+FL void n_child_free(int pid);
+FL bool_t n_child_wait(int pid, int *wait_status);
 
 /*
  * quit.c
@@ -2401,7 +2416,7 @@ FL char *      getpassword(char const *query);
  * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
  * takes place */
 FL ui32_t      n_tty_create_prompt(struct n_string *store,
-                  char const *xprompt, enum n_lexinput_flags lif);
+                  char const *xprompt, enum n_go_input_flags gif);
 
 /* At least readline(3) (formerly supported) desires to handle SIGWINCH and
  * install its own handler */
@@ -2419,7 +2434,7 @@ FL void        n_tty_signal(int sig);
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content.
  * Only the _CTX_ bits in lif are used */
-FL int         n_tty_readline(enum n_lexinput_flags lif, char const *prompt,
+FL int         n_tty_readline(enum n_go_input_flags gif, char const *prompt,
                   char **linebuf, size_t *linesize, size_t n
                   n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG

@@ -135,7 +135,7 @@ _nrc_init(void)
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
-      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, COMMAND_FD_NULL)
+      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)
             ) == NULL) {
          n_perr(netrc_load, 0);
          goto j_leave;
@@ -588,7 +588,7 @@ FL char *
       }
       i *= 3;
       ++i;
-      np = n = (n_autorec_alloc)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
+      np = n = (n_autorec_alloc_from_pool)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
    }
 
    for (; (c1 = *cp) != '\0'; ++cp) {
@@ -623,7 +623,8 @@ FL char *
    si32_t c;
    NYD2_ENTER;
 
-   np = n = (n_autorec_alloc)(NULL, strlen(cp) +1 n_MEMORY_DEBUG_ARGSCALL);
+   np = n = (n_autorec_alloc_from_pool)(NULL, strlen(cp) +1
+         n_MEMORY_DEBUG_ARGSCALL);
 
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {

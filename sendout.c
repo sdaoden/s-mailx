@@ -901,14 +901,14 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = start_command(sh, &nset, fileno(fppa[xcnt++]), COMMAND_FD_NULL,
+         pid = n_child_start(sh, &nset, fileno(fppa[xcnt++]), n_CHILD_FD_NULL,
                "-c", &np->n_name[1], NULL, NULL);
          if(pid < 0){
             n_err(_("Piping message to %s failed\n"),
                n_shexp_quote_cp(np->n_name, FAL0));
             goto jerror;
          }
-         free_child(pid);
+         n_child_free(pid);
       }else{
          int c;
          FILE *fout;
@@ -1244,7 +1244,7 @@ __mta_start(struct sendbundle *sbp)
 
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
-   if ((pid = fork_child()) == -1) {
+   if ((pid = n_child_fork()) == -1) {
       n_perr("fork", 0);
 jstop:
       savedeadletter(sbp->sb_input, 0);
@@ -1262,7 +1262,7 @@ jstop:
       /* n_stdin = */freopen("/dev/null", "r", stdin);
 #ifdef HAVE_SMTP
       if (rv) {
-         prepare_child(&nset, 0, 1);
+         n_child_prepare(&nset, 0, 1);
          if (smtp_mta(sbp))
             _exit(n_EXIT_OK);
       } else
@@ -1271,7 +1271,7 @@ jstop:
          char const *ecp;
          int e;
 
-         prepare_child(&nset, fileno(sbp->sb_input), -1);
+         n_child_prepare(&nset, fileno(sbp->sb_input), -1);
          execv(mta, n_UNCONST(args));
          e = n_err_no;
          ecp = (e != n_ERR_NOENT) ? n_err_to_doc(e)
@@ -1284,10 +1284,10 @@ jstop:
    }
 
    if ((n_poption & n_PO_D_V) || ok_blook(sendwait)) {
-      if (!(rv = wait_child(pid, NULL)))
+      if (!(rv = n_child_wait(pid, NULL)))
          _sendout_error = TRU1;
    } else {
-      free_child(pid);
+      n_child_free(pid);
       rv = TRU1;
    }
 jleave:

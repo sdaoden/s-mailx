@@ -1898,7 +1898,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
       agp->ag_iaddr_aend = agp->ag_ilen;
    /* Misses > */
    else if (agp->ag_iaddr_aend < agp->ag_iaddr_start) {
-      cp2 = n_autorec_alloc(NULL, agp->ag_ilen + 1 +1);
+      cp2 = n_autorec_alloc(agp->ag_ilen + 1 +1);
       memcpy(cp2, agp->ag_input, agp->ag_ilen);
       agp->ag_iaddr_aend = agp->ag_ilen;
       cp2[agp->ag_ilen++] = '>';
@@ -2531,7 +2531,7 @@ getsender(struct message *mp)
 #endif
 
 FL int
-grab_headers(enum n_lexinput_flags lif, struct header *hp, enum gfield gflags,
+grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       int subjfirst)
 {
    /* TODO grab_headers: again, check counts etc. against RFC;
@@ -2544,31 +2544,31 @@ grab_headers(enum n_lexinput_flags lif, struct header *hp, enum gfield gflags,
    comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
 
    if (gflags & GTO)
-      hp->h_to = grab_names(lif, "To: ", hp->h_to, comma, GTO | GFULL);
+      hp->h_to = grab_names(gif, "To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_lex_input_cp(lif, "Subject: ", hp->h_subject);
+      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
    if (gflags & GCC)
-      hp->h_cc = grab_names(lif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
+      hp->h_cc = grab_names(gif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
-      hp->h_bcc = grab_names(lif, "Bcc: ", hp->h_bcc, comma, GBCC | GFULL);
+      hp->h_bcc = grab_names(gif, "Bcc: ", hp->h_bcc, comma, GBCC | GFULL);
 
    if (gflags & GEXTRA) {
       if (hp->h_from == NULL)
          hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
-      hp->h_from = grab_names(lif, "From: ", hp->h_from, comma,
+      hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
             GEXTRA | GFULL | GFULLEXTRA);
       if (hp->h_replyto == NULL)
          hp->h_replyto = lextract(ok_vlook(replyto), GEXTRA | GFULL);
-      hp->h_replyto = grab_names(lif, "Reply-To: ", hp->h_replyto, comma,
+      hp->h_replyto = grab_names(gif, "Reply-To: ", hp->h_replyto, comma,
             GEXTRA | GFULL);
       if (hp->h_sender == NULL)
          hp->h_sender = extract(ok_vlook(sender), GEXTRA | GFULL);
-      hp->h_sender = grab_names(lif, "Sender: ", hp->h_sender, comma,
+      hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
             GEXTRA | GFULL);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_lex_input_cp(lif, "Subject: ", hp->h_subject);
+      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
 
    NYD_LEAVE;
    return errs;

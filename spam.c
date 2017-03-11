@@ -1021,7 +1021,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    /* Start our command as requested */
    sigemptyset(&cset);
-   if ((pid = start_command(
+   if ((pid = n_child_start(
          (scfp->cf_acmd != NULL ? scfp->cf_acmd : scfp->cf_cmd),
          &cset, p2c[0], c2p[1],
          scfp->cf_a0, (scfp->cf_acmd != NULL ? scfp->cf_cmd : NULL), NULL,
@@ -1095,7 +1095,7 @@ jtail:
       }
 
       state &= ~_RUNNING;
-      wait_child(pid, &scfp->cf_waitstat);
+      n_child_wait(pid, &scfp->cf_waitstat);
       if (WIFEXITED(scfp->cf_waitstat))
          state |= _GOODRUN;
    }

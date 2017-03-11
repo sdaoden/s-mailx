@@ -625,8 +625,7 @@ as a last step of program startup, before normal operation starts.
 This is the only possibility to execute commands in non-interactive mode
 when reading startup files is actively prohibited.
 The commands will be evaluated as a unit, just as via
-.Ic source ,
-but different to that errors won't stop evaluation.
+.Ic source .
 Correlates with
 .Fl #
 and
@@ -12057,9 +12056,15 @@ that was originally written by Kurt Shoens.
 .Dv \&\&SIGINT
 aka
 .Ql control-C
-is often problematic: many library functions cannot deal with the
+from anywhere else but a command prompt is very problematic and likely
+to leave the program in an undefined state: many library functions
+cannot deal with the
 .Fn siglongjmp 3
-that this software (still) performs.
+that this software (still) performs; even though efforts have been taken
+to address this, no sooner but in v15 it will have been worked out:
+interruptions have not been disabled in order to allow forceful breakage
+of hanging network connections, for example (all this is unrelated to
+.Va ignore ) .
 .
 .Pp
 The SMTP and POP3 protocol support of \*(UA is very basic.

@@ -63,15 +63,15 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
 
    cpre = csuf = n_empty;
 #ifdef HAVE_COLOUR
-   if (n_pstate & n_PS_COLOUR_ACTIVE) {
+   if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
 
-      if ((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
+      if((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
          struct str const *sp;
 
-         if ((sp = n_colour_pen_to_str(cpen)) != NULL)
+         if((sp = n_colour_pen_to_str(cpen)) != NULL)
             cpre = sp->s;
-         if ((sp = n_colour_reset_to_str()) != NULL)
+         if((sp = n_colour_reset_to_str()) != NULL)
             csuf = sp->s;
       }
    }
@@ -139,15 +139,13 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             obuf = n_stdout;
       }
 #ifdef HAVE_COLOUR
-      if ((n_psonce & n_PSO_INTERACTIVE) &&
-            (action == SEND_TODISP || action == SEND_TODISP_ALL))
-         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf != n_stdout);
+      if(action == SEND_TODISP || action == SEND_TODISP_ALL)
+         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
 #endif
    }
 #ifdef HAVE_COLOUR
-   else if ((n_psonce & n_PSO_INTERACTIVE) &&
-         (action == SEND_TODISP || action == SEND_TODISP_ALL))
-      n_colour_env_create(n_COLOUR_CTX_VIEW, FAL0);
+   else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
+      n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
 #endif
 
    /*TODO unless we have our signal manager special care must be taken */
@@ -179,7 +177,7 @@ jcleanup_leave:
 jleave:
    if (isrelax)
       srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
+   n_COLOUR( n_colour_env_gut(); )
    if (obuf != n_stdout)
       n_pager_close(obuf);
    }
@@ -268,10 +266,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_pstate &= ~n_PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
    plines = 0;
 
-#ifdef HAVE_COLOUR
-   if (n_psonce & n_PSO_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_VIEW, TRU1);
-#endif
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_VIEW, iobuf, FAL0); )
    n_string_creat_auto(&s);
    /* C99 */{
       siz_t l;
@@ -307,6 +302,8 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
          vp = NULL;
          break;
       }
+
+      _show_msg_overview(iobuf, mp, *ip);
       if(sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
          n_err(_("`top': failed to prepare message %d\n"), *ip);
          vp = NULL;
@@ -314,8 +311,21 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       }
       fflush_rewind(iobuf);
 
-      _show_msg_overview(pbuf, mp, *ip);
+      /* TODO Skip over the _msg_overview line -- this is a hack to make
+       * TODO colours work: colour contexts should be objects */
+      for(;;){
+         int c;
+
+         if((c = getc(iobuf)) == EOF || putc(c, pbuf) == EOF){
+            vp = NULL;
+            break;
+         }else if(c == '\n')
+            break;
+      }
+      if(vp == NULL)
+         break;
       ++plines;
+
       /* C99 */{
          size_t l;
 
@@ -390,7 +400,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    }
 
    n_string_gut(&s);
-   n_COLOUR( n_colour_env_gut(pbuf); )
+   n_COLOUR( n_colour_env_gut(); )
 
    fflush(pbuf);
    page_or_print(pbuf, plines);

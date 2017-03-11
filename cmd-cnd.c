@@ -22,9 +22,10 @@
 # include "nail.h"
 #endif
 
-#define a_CCND_CONDSTACK_ISSKIP() \
-   (a_ccnd_if_stack != NULL &&\
-      (a_ccnd_if_stack->cin_noop || !a_ccnd_if_stack->cin_go))
+#define a_CCND_IF_ISSKIP() \
+   (n_go_data->gdc_ifcond != NULL &&\
+      (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
+       !((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_go))
 
 struct a_ccnd_if_node{
    struct a_ccnd_if_node *cin_outer;
@@ -40,8 +41,6 @@ struct a_ccnd_if_ctx{
    char const * const *cic_argv_max;   /* BUT: .cic_argv MUST be terminated! */
    char const * const *cic_argv;
 };
-
-static struct a_ccnd_if_node *a_ccnd_if_stack; /* TODO -> member of Lex CTX! */
 
 /* */
 static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
@@ -458,17 +457,17 @@ a_ccnd_if(void *v, bool_t iselif){
 
    if(!iselif){
       cinp = smalloc(sizeof *cinp);
-      cinp->cin_outer = a_ccnd_if_stack;
+      cinp->cin_outer = n_go_data->gdc_ifcond;
    }else{
-      cinp = a_ccnd_if_stack;
+      cinp = n_go_data->gdc_ifcond;
       assert(cinp != NULL);
    }
    cinp->cin_error = FAL0;
-   cinp->cin_noop = a_CCND_CONDSTACK_ISSKIP();
+   cinp->cin_noop = a_CCND_IF_ISSKIP();
    cinp->cin_go = TRU1;
    cinp->cin_else = FAL0;
    if(!iselif)
-      a_ccnd_if_stack = cinp;
+      n_go_data->gdc_ifcond = cinp;
 
    if(cinp->cin_noop){
       rv = 0;
@@ -519,11 +518,11 @@ c_elif(void *v){
    int rv;
    NYD_ENTER;
 
-   if((cinp = a_ccnd_if_stack) == NULL || cinp->cin_else){
+   if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`elif' without a matching `if'\n"));
       rv = 1;
    }else if(!cinp->cin_error){
-      cinp->cin_go = !cinp->cin_go; /* Cause right CONDSTACK_ISSKIP() result */
+      cinp->cin_go = !cinp->cin_go; /* Cause right _IF_ISSKIP() result */
       rv = a_ccnd_if(v, TRU1);
    }else
       rv = 0;
@@ -534,15 +533,16 @@ c_elif(void *v){
 FL int
 c_else(void *v){
    int rv;
+   struct a_ccnd_if_node *cinp;
    NYD_ENTER;
    n_UNUSED(v);
 
-   if(a_ccnd_if_stack == NULL || a_ccnd_if_stack->cin_else){
+   if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`else' without a matching `if'\n"));
       rv = 1;
    }else{
-      a_ccnd_if_stack->cin_else = TRU1;
-      a_ccnd_if_stack->cin_go = !a_ccnd_if_stack->cin_go;
+      cinp->cin_else = TRU1;
+      cinp->cin_go = !cinp->cin_go;
       rv = 0;
    }
    NYD_LEAVE;
@@ -551,16 +551,16 @@ c_else(void *v){
 
 FL int
 c_endif(void *v){
-   struct a_ccnd_if_node *cinp;
    int rv;
+   struct a_ccnd_if_node *cinp;
    NYD_ENTER;
    n_UNUSED(v);
 
-   if((cinp = a_ccnd_if_stack) == NULL){
+   if((cinp = n_go_data->gdc_ifcond) == NULL){
       n_err(_("`endif' without a matching `if'\n"));
       rv = 1;
    }else{
-      a_ccnd_if_stack = cinp->cin_outer;
+      n_go_data->gdc_ifcond = cinp->cin_outer;
       free(cinp);
       rv = 0;
    }
@@ -569,41 +569,26 @@ c_endif(void *v){
 }
 
 FL bool_t
-condstack_isskip(void){
+n_cnd_if_isskip(void){
    bool_t rv;
    NYD2_ENTER;
 
-   rv = a_CCND_CONDSTACK_ISSKIP();
+   rv = a_CCND_IF_ISSKIP();
    NYD2_LEAVE;
    return rv;
 }
 
-FL void *
-condstack_release(void){
-   void *rv;
-   NYD2_ENTER;
-
-   rv = a_ccnd_if_stack;
-   a_ccnd_if_stack = NULL;
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL bool_t
-condstack_take(void *self){
+FL void
+n_cnd_if_stack_del(void *vp){
    struct a_ccnd_if_node *cinp;
-   bool_t rv;
    NYD2_ENTER;
 
-   if(!(rv = ((cinp = a_ccnd_if_stack) == NULL)))
-      do{
-         a_ccnd_if_stack = cinp->cin_outer;
-         free(cinp);
-      }while((cinp = a_ccnd_if_stack) != NULL);
-
-   a_ccnd_if_stack = self;
+   do{
+      cinp = vp;
+      vp = cinp->cin_outer;
+      free(cinp);
+   }while((cinp = vp) != NULL);
    NYD2_LEAVE;
-   return rv;
 }
 
 /* s-it-mode */

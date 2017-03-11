@@ -198,9 +198,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
       goto jleave;
 
    sigemptyset(&cset);
-   if (run_command((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
+   if (n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
          (oldint != SIG_IGN ? &cset : NULL),
-         COMMAND_FD_PASS, COMMAND_FD_PASS, tempEdit, NULL, NULL, NULL) < 0)
+         n_CHILD_FD_PASS, n_CHILD_FD_PASS, tempEdit, NULL, NULL, NULL) < 0)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary

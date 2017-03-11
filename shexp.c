@@ -1165,7 +1165,7 @@ jrestart_empty:
                ++il, --ib;
             else if(flags & n_SHEXP_PARSE_META_SEMICOLON){
                if(il > 0)
-                  n_source_inject_input(n_INPUT_INJECT_COMMIT, ib, il);
+                  n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
                state |= a_CONSUME;
                rv |= n_SHEXP_STATE_STOP;
             }
