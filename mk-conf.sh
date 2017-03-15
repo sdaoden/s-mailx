@@ -981,8 +981,10 @@ xrun_check() {
 feat_def() {
    if feat_yes ${1}; then
       echo '#define HAVE_'${1}'' >> ${h}
+      return 0
    else
       echo '/* OPT_'${1}'=0 */' >> ${h}
+      return 1
    fi
 }
 
@@ -2279,18 +2281,10 @@ if [ "${have_xssl}" = yes ]; then
 else
    OPT_SMIME=0
 fi
+feat_def SMIME
 
-if feat_yes SMTP; then
-   echo '#define HAVE_SMTP' >> ${h}
-else
-   echo '/* OPT_SMTP=0 */' >> ${h}
-fi
-
-if feat_yes POP3; then
-   echo '#define HAVE_POP3' >> ${h}
-else
-   echo '/* OPT_POP3=0 */' >> ${h}
-fi
+feat_def SMTP
+feat_def POP3
 
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
@@ -2353,17 +2347,8 @@ else
    echo '/* OPT_GSSAPI=0 */' >> ${h}
 fi # feat_yes GSSAPI
 
-if feat_yes NETRC; then
-   echo '#define HAVE_NETRC' >> ${h}
-else
-   echo '/* OPT_NETRC=0 */' >> ${h}
-fi
-
-if feat_yes AGENT; then
-   echo '#define HAVE_AGENT' >> ${h}
-else
-   echo '/* OPT_AGENT=0 */' >> ${h}
-fi
+feat_def NETRC
+feat_def AGENT
 
 if feat_yes IDNA; then
    if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
@@ -2424,11 +2409,7 @@ else
    echo '/* OPT_IDNA=0 */' >> ${h}
 fi
 
-if feat_yes IMAP_SEARCH; then
-   echo '#define HAVE_IMAP_SEARCH' >> ${h}
-else
-   echo '/* OPT_IMAP_SEARCH=0 */' >> ${h}
-fi
+feat_def IMAP_SEARCH
 
 if feat_yes REGEX; then
    if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
@@ -2575,13 +2556,10 @@ else
    echo '/* OPT_TERMCAP_VIA_TERMINFO=0 */' >> ${h}
 fi
 
-if feat_yes SPAM_SPAMC; then
-   echo '#define HAVE_SPAM_SPAMC' >> ${h}
+if feat_def SPAM_SPAMC; then
    if command -v spamc >/dev/null 2>&1; then
       echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
    fi
-else
-   echo '/* OPT_SPAM_SPAMC=0 */' >> ${h}
 fi
 
 if feat_yes SPAM_SPAMD && [ -n "${have_af_unix}" ]; then
