@@ -974,106 +974,42 @@ j0:
 /*
  * Our iconv(3) wrapper
  */
+
 #ifdef HAVE_ICONV
-
-static void _ic_toupper(char *dest, char const *src);
-static void _ic_stripdash(char *p);
-
-static void
-_ic_toupper(char *dest, char const *src)
-{
-   NYD2_ENTER;
-   do
-      *dest++ = upperconv(*src);
-   while (*src++ != '\0');
-   NYD2_LEAVE;
-}
-
-static void
-_ic_stripdash(char *p)
-{
-   char *q = p;
-   NYD2_ENTER;
-
-   do
-      if (*(q = p) != '-')
-         ++q;
-   while (*p++ != '\0');
-   NYD2_LEAVE;
-}
-
 FL iconv_t
-n_iconv_open(char const *tocode, char const *fromcode)
-{
+n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
-   char *t, *f;
    NYD_ENTER;
 
-   if ((!asccasecmp(fromcode, "unknown-8bit") ||
+   if((!asccasecmp(fromcode, "unknown-8bit") ||
             !asccasecmp(fromcode, "binary")) &&
          (fromcode = ok_vlook(charset_unknown_8bit)) == NULL)
       fromcode = ok_vlook(CHARSET_8BIT_OKEY);
 
-   if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-      goto jleave;
-
-   /* Remove the "iso-" prefixes for Solaris */
-   if (!ascncasecmp(tocode, "iso-", 4))
-      tocode += 4;
-   else if (!ascncasecmp(tocode, "iso", 3))
-      tocode += 3;
-   if (!ascncasecmp(fromcode, "iso-", 4))
-      fromcode += 4;
-   else if (!ascncasecmp(fromcode, "iso", 3))
-      fromcode += 3;
-   if (*tocode == '\0' || *fromcode == '\0') {
-      id = (iconv_t)-1;
-      goto jleave;
-   }
-   if ((id = iconv_open(tocode, fromcode)) != (iconv_t)-1)
-      goto jleave;
-
-   /* Solaris prefers upper-case charset names. Don't ask... */
-   t = salloc(strlen(tocode) +1);
-   _ic_toupper(t, tocode);
-   f = salloc(strlen(fromcode) +1);
-   _ic_toupper(f, fromcode);
-   if ((id = iconv_open(t, f)) != (iconv_t)-1)
-      goto jleave;
-
-   /* Strip dashes for UnixWare */
-   _ic_stripdash(t);
-   _ic_stripdash(f);
-   if ((id = iconv_open(t, f)) != (iconv_t)-1)
-      goto jleave;
-
-   /* Add your vendor's sillynesses here */
+   id = iconv_open(tocode, fromcode);
 
    /* If the encoding names are equal at this point, they are just not
     * understood by iconv(), and we cannot sensibly use it in any way.  We do
     * not perform this as an optimization above since iconv() can otherwise be
     * used to check the validity of the input even with identical encoding
     * names */
-   if (!strcmp(t, f))
+   if (id == (iconv_t)-1 && !asccasecmp(tocode, fromcode))
       errno = 0;
-jleave:
    NYD_LEAVE;
    return id;
 }
 
 FL void
-n_iconv_close(iconv_t cd)
-{
+n_iconv_close(iconv_t cd){
    NYD_ENTER;
    iconv_close(cd);
-   if (cd == iconvd)
+   if(cd == iconvd)
       iconvd = (iconv_t)-1;
    NYD_LEAVE;
 }
 
 FL void
-n_iconv_reset(iconv_t cd)
-{
+n_iconv_reset(iconv_t cd){
    NYD_ENTER;
    iconv(cd, NULL, NULL, NULL, NULL);
    NYD_LEAVE;

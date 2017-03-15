@@ -151,6 +151,8 @@ make_ref_and_cs(struct message *mp, struct header *head) /* TODO rewrite FAST */
 
          for(cpo = cp; (c = *cpo) != '\0'; ++cpo)
             *cpo = lowerconv(c);
+
+         head->h_charset = n_charsetalias_expand(cp);
       }
    }
 jleave:

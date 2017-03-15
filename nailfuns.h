@@ -1545,6 +1545,12 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
+/* `(un)?charsetalias', and try to expand a charset, return mapping or itself */
+FL int c_charsetalias(void *vp);
+FL int c_uncharsetalias(void *vp);
+
+FL char const *n_charsetalias_expand(char const *cp);
+
 /*
  * path.c
  */

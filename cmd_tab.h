@@ -415,6 +415,11 @@
    { "netrc", &c_netrc, (M | TWYSH), 0, 1
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
+   { "charsetalias", &c_charsetalias, (M | TWYSH), 0, 1000
+     DS(N_("Define [:<charset> <charset-alias>:]s, or list mappings")) },
+   { "uncharsetalias", &c_uncharsetalias, (M | TWYSH), 1, 1000
+     DS(N_("Delete <charset-mapping-list> (* for all)")) },
+
    { "colour", &c_colour, (M | TWYSH), 1, 4
      DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
    { "uncolour", &c_uncolour, (M | TWYSH), 2, 3

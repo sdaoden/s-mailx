@@ -2366,7 +2366,7 @@ struct header {
    struct name *h_bcc;        /* Blind carbon copies */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   char        *h_charset;    /* preferred charset */
+   char const  *h_charset;    /* preferred charset */
    struct name *h_from;       /* overridden "From:" field */
    struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */

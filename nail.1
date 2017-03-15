@@ -232,22 +232,22 @@ not be accessible but contain a
 .Ql =
 character, then anything before the
 .Ql =
-will be used as the filename, anything thereafter as a character-set
+will be used as the filename, anything thereafter as a character set
 specification.
 .Pp
-If an input character-set is specified,
-.Mx -ix "character-set specification"
-but no output character-set, then the given input character-set is fixed
+If an input character set is specified,
+.Mx -ix "character set specification"
+but no output character set, then the given input character set is fixed
 as-is, and no conversion will be applied;
 giving the special string hyphen-minus
 .Ql -
 will be treated as if
 .Va ttycharset
 has been specified (the default).
-If an output character-set has also been given then the conversion will
+If an output character set has also been given then the conversion will
 be performed exactly as specified and on-the-fly, not considering the
 file's type and content.
-As an exception, if the output character-set is specified as hyphen-minus
+As an exception, if the output character set is specified as hyphen-minus
 .Ql - ,
 then the default conversion algorithm (see
 .Sx "Character sets" )
@@ -256,7 +256,7 @@ is applied (therefore no conversion is performed on-the-fly,
 will be MIME-classified and its contents will be inspected first).
 It is an error to specify anything but
 .Ql -
-if no character-set conversion is available
+if no character set conversion is available
 .Pf ( Va features
 does not include the term
 .Ql +iconv ) .
@@ -1594,9 +1594,13 @@ When reading messages, their text is converted into
 .Va ttycharset
 as necessary in order to display them on the users terminal.
 Unprintable characters and invalid byte sequences are detected
-and replaced by proper substitution characters (unless the variable
-.Va print-all-chars
-was set once \*(UA was started).
+and replaced by proper substitution characters.
+Character set mappings for source character sets can be established with
+the command
+.Ic charsetalias ,
+which may be handy to work around faulty character set catalogues (e.g.,
+to add a missing LATIN1 to ISO-8859-1 mapping), or to enforce treatment
+of one character set as another one (e.g., to interpret LATIN1 as CP1252).
 Also see
 .Va charset-unknown-8bit
 to deal with another hairy aspect of message interpretation.
@@ -1613,14 +1617,15 @@ Permissible values for character sets can be declared using the
 variable, and
 .Va charset-8bit ,
 which defines a catch-all last-resort fallback character set that is
-implicitly appended to the list of character-sets in
+implicitly appended to the list of character sets in
 .Va sendcharsets .
 .
 .Pp
 When replying to a message and the variable
 .Va reply-in-same-charset
 is set then the character set of the message being replied to is tried
-first.
+first (after mapping via
+.Ic charsetalias ) .
 And it is also possible to make \*(UA work even more closely related to
 the current locale setting automatically by using the variable
 .Va sendcharsets-else-ttycharset ,
@@ -3629,6 +3634,29 @@ respective message senders by setting
 variables.
 .
 .Mx
+.Mx
+.It Ic charsetalias , uncharsetalias
+\*(NQ Manage (character set conversion) character set alias mappings,
+as documented in the section
+.Sx "Character sets" .
+Character set aliases are expanded recursively, but no expansion is
+performed on values of the user-settable variables, e.g.,
+.Va charset-8bit .
+These are effectively no-operations if character set conversion
+is not available (i.e., no
+.Ql +iconv
+in
+.Va features ) .
+Without arguments the list of all currently defined aliases is shown.
+Otherwise all given arguments are treated as pairs of character sets and
+their desired target alias name, creating new or changing already
+existing aliases, as necessary.
+.Pp
+The latter deletes all aliases given as arguments, the special argument
+.Ql *
+will remove all aliases.
+.
+.Mx
 .It Ic chdir
 (ch) Change the working directory to
 .Ev HOME
@@ -5283,10 +5311,10 @@ and
 .It Ic shortcut
 Without arguments the list of all currently defined shortcuts is
 shown.
-Otherwise all given arguments (which need not be quoted except for
-whitespace) are treated as pairs of shortcuts and their expansions,
-creating new or changing already existing shortcuts, as necessary.
-Shortcuts may be removed via the command
+Otherwise all given arguments are treated as pairs of shortcuts and
+their expansions, creating new or changing already existing shortcuts,
+as necessary.
+Shortcuts can be removed with the command
 .Ic unshortcut .
 .
 .Mx
@@ -5712,8 +5740,9 @@ Also see
 .
 .Mx
 .It Ic unshortcut
-Deletes the shortcut names given as arguments.
-The special name
+Delete the
+.Ic shortcut Ns
+s given as arguments, the special argument
 .Ql *
 will remove all shortcuts.
 .
@@ -6492,7 +6521,7 @@ if the given file cannot be opened,
 .Ql 506
 if an on-the-fly performed character set conversion fails, otherwise
 .Ql 501
-is reported; this is also reported if character-set conversion is
+is reported; this is also reported if character set conversion is
 requested but not available.
 .
 .It Ar attribute
@@ -7116,7 +7145,7 @@ US-ASCII compatible.
 \*(OP The default 8-bit character set that is used as an implicit last
 member of the variable
 .Va sendcharsets .
-This defaults to UTF-8 if character-set conversion capabilities are
+This defaults to UTF-8 if character set conversion capabilities are
 available, and to ISO-8859-1 otherwise, in which case the only supported
 character set is
 .Va ttycharset
@@ -9022,7 +9051,7 @@ The string search is case insensitive.
 outgoing internet mail.
 The value of the variable
 .Va charset-8bit
-is automatically appended to this list of character-sets.
+is automatically appended to this list of character sets.
 If no character set conversion capabilities are compiled into \*(UA then
 the only supported charset is
 .Va ttycharset .

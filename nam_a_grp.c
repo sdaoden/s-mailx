@@ -44,7 +44,8 @@ enum group_type {
    GT_ALIAS       = 1<< 0,
    GT_MLIST       = 1<< 1,
    GT_SHORTCUT    = 1<< 2,
-   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT,
+   GT_CHARSETALIAS = 1<< 3,
+   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CHARSETALIAS,
 
    /* Subtype bits and flags */
    GT_SUBSCRIBE   = 1<< 4,
@@ -122,6 +123,9 @@ static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 
 /* `shortcut' */
 static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hash */
+
+/* `charsetalias' */
+static struct group     *_charsetalias_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -416,14 +420,21 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
    gt &= GT_MASK;
    lgp = NULL;
    gp = *(glp->gl_htable = glp->gl_slot =
-          ((gt & GT_ALIAS ? _alias_heads :
+          &(gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
-            (/*gt & GT_SHORTCUT ?*/ _shortcut_heads /*: NULL */))) +
-           torek_hash(id) % HSHSIZE));
+            (gt & GT_SHORTCUT ? _shortcut_heads :
+            (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
+            )[torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
-      if ((gp->g_type & gt) && *gp->g_id == *id && !strcmp(gp->g_id, id))
-         break;
+      if ((gp->g_type & gt) && *gp->g_id == *id) {
+         if(!strcmp(gp->g_id, id))
+            break;
+         if(gt == GT_CHARSETALIAS){
+            if(!asccasecmp(gp->g_id, id))
+               break;
+         }
+      }
 
    glp->gl_slot_last = lgp;
    glp->gl_group = gp;
@@ -452,7 +463,8 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
 
    for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
-            (/*gt & GT_SHORTCUT ?*/ _shortcut_heads /*: NULL */))), i = 0;
+            (gt & GT_SHORTCUT ? _shortcut_heads :
+            (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -511,6 +523,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       }
 #endif
    case GT_SHORTCUT:
+   case GT_CHARSETALIAS:
    default:
       break;
    }
@@ -647,8 +660,8 @@ _group_print_all(enum group_type gt)
    xgt = gt & GT_PRINT_MASK;
    gpa = (xgt & GT_ALIAS ? _alias_heads
          : (xgt & GT_MLIST ? _mlist_heads
-         : (/*xgt & GT_SHORTCUT ?*/ _shortcut_heads
-         /*: NULL */)));
+         : (xgt & GT_SHORTCUT ? _shortcut_heads
+         : (xgt & GT_CHARSETALIAS ? _charsetalias_heads : NULL))));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -751,6 +764,10 @@ _group_print(struct group const *gp, FILE *fo)
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "wysh shortcut %s %s\n",
       gp->g_id, n_shexp_quote_cp(cp, TRU1));
+   } else if (gp->g_type & GT_CHARSETALIAS) {
+      GP_TO_SUBCLASS(cp, gp);
+      fprintf(fo, "charsetalias %s %s\n",
+      n_shexp_quote_cp(gp->g_id, TRU1), n_shexp_quote_cp(cp, TRU1));
    }
 
    NYD_LEAVE;
@@ -1808,7 +1825,7 @@ c_shortcut(void *v)
       char *cp;
 
       if (argv[1] == NULL) {
-         n_err(_("Shortcut expansion is missing: %s\n"), *argv);
+         n_err(_("Synopsis: shortcut: <shortcut> <expansion>\n"));
          rv = 1;
          break;
       }
@@ -1851,6 +1868,89 @@ shortcut_expand(char const *str)
       str = NULL;
    NYD_LEAVE;
    return str;
+}
+
+FL int
+c_charsetalias(void *vp){
+   char **argv;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   if(*argv == NULL)
+      _group_print_all(GT_CHARSETALIAS);
+   else for(; *argv != NULL; argv += 2){
+      /* Because one hardly ever redefines, anything is stored in one chunk */
+      char const *ccp;
+      char *cp, c;
+      struct group *gp;
+      size_t l;
+
+      if(argv[1] == NULL){
+         n_err(_("Synopsis: charsetalias: <charset> <charset-alias>\n"));
+         rv = 1;
+         break;
+      }
+
+      ccp = argv[0];
+      if(ccp[0] != '*' || ccp[1] != '\0')
+         _group_del(GT_CHARSETALIAS, ccp);
+
+      /* Lowercase it all (for display purposes) */
+      cp = savestr(ccp);
+      ccp = cp;
+      while((c = *cp) != '\0')
+         *cp++ = lowerconv(c);
+
+      l = strlen(argv[1]) +1;
+      gp = _group_fetch(GT_CHARSETALIAS, ccp, l);
+      GP_TO_SUBCLASS(cp, gp);
+      for(ccp = argv[1]; (c = *ccp++) != '\0';)
+         *cp++ = lowerconv(c);
+      *cp = '\0';
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_uncharsetalias(void *vp){
+   char **argv;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   do if(!_group_del(GT_CHARSETALIAS, *argv)){
+      n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(*argv, FAL0));
+      rv = 1;
+   }while(*++argv != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL char const *
+n_charsetalias_expand(char const *cp){
+   struct group *gp;
+   size_t i;
+   char const *cp_orig;
+   NYD_ENTER;
+
+   cp_orig = cp;
+
+   for(i = 0; (gp = _group_find(GT_CHARSETALIAS, cp)) != NULL;){
+      GP_TO_SUBCLASS(cp, gp);
+      if(++i == 8) /* XXX Magic (same as for `ghost' expansion) */
+         break;
+   }
+
+   if(cp != cp_orig)
+      cp = savestr(cp);
+   NYD_LEAVE;
+   return cp;
 }
 
 /* s-it-mode */

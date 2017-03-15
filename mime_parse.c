@@ -100,6 +100,8 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       ip->m_charset = mime_param_get("charset", ip->m_ct_type);
    if (ip->m_charset == NULL)
       ip->m_charset = ok_vlook(charset_7bit);
+   else
+      ip->m_charset = n_charsetalias_expand(ip->m_charset);
 
    if ((ip->m_ct_enc = hfield1("content-transfer-encoding",
          (struct message*)ip)) == NULL)
