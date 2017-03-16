@@ -727,7 +727,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
    }
 
    rv = TRUM1;
-   if(a_ignore_lookup(self, retain, dat, len) == TRU1)
+   if(a_ignore_lookup(self, retain, dat, len) == (retain ? TRU1 : TRUM1))
       goto jleave;
 
    itp = retain ? &self->i_retain : &self->i_ignore;
