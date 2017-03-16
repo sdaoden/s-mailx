@@ -319,6 +319,8 @@ first recipient's address (instead of in
 .Mx
 .It Fl f
 Read in the contents of the user's
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 (or the specified file) for processing;
 when \*(UA is quit, it writes undeleted messages back to this file
@@ -747,7 +749,9 @@ a bit towards more user friendliness and safety, however, e.g., it
 .Va hold
 and
 .Va keepsave
-in order to suppress the automatic moving of messages to
+in order to suppress the automatic moving of messages to the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 that would otherwise occur (see
 .Sx "Message states" ) ,
@@ -809,8 +813,8 @@ $ LC_ALL=C \*(uA -d -:/ -Ssendwait \e
 
 # With SMTP
 $ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait \e
-    -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
-    -S 'from=scriptreply@exam.ple' \e
+    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
+    -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc \e
     -. eric@exam.ple
 .Ed
@@ -893,11 +897,11 @@ and/or
 .Va hostname
 (even finer control via
 .Va smtp-hostname ) ,
-which also causes creation of
+which (even if empty) also causes creation of
 .Ql Message-ID:
 and
 .Ql Content-ID:
-header fields (even if empty) unless
+header fields unless
 .Va stealthmua
 is set; saving a copy of sent messages in a
 .Va record
@@ -996,7 +1000,7 @@ What remains is treated as a network address.
 $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
-    \*(uA -:/ -Sv15-compat -Ssendwait -Snosave \e
+    \*(uA -:/ -Sv15-compat -Ssendwait \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
 .Ed
@@ -1041,12 +1045,12 @@ to specify variables:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
-    -Sv15-compat -Ssendwait -Snosave -Sttycharset=utf-8 \e
+    -Sv15-compat -Ssendwait -Sttycharset=utf-8 \e
     -Sexpandaddr=fail,-all,failinvaddr \e
-    -S 'mta=smtps://mylogin@exam.ple:465' -Ssmtp-auth=login \e
-    -S 'from=scriptreply@exam.ple' \e
-    -s 'subject' -a attachment_file \e
-    -. "Recipient 1 <rec1@exam.ple>" rec2@exam.ple \e
+    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
+    -S from=scriptreply@exam.ple \e
+    -s 'Subject to go' -a attachment_file \e
+    -. 'Recipient 1 <rec1@exam.ple>' rec2@exam.ple \e
     < content_file
 .Ed
 .
@@ -1273,7 +1277,9 @@ command.
 To end a mail processing session one may either issue
 .Ic quit Ql q
 to cause a full program exit, which possibly includes
-automatic moving of read messages to
+automatic moving of read messages to the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 as well as updating the \*(OPal line editor
 .Va history-file ,
@@ -1757,7 +1763,9 @@ command is used, messages that are in a
 .Sx "primary system mailbox"
 and are in
 .Ql read
-state when the mailbox is left will be saved in
+state when the mailbox is left will be saved in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 unless the internal variable
 .Va hold
@@ -1789,7 +1797,9 @@ command is used, messages that are in a
 .Sx "primary system mailbox"
 and are in
 .Ql saved
-state when the mailbox is left will be deleted; they will be saved in
+state when the mailbox is left will be deleted; they will be saved in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 when the internal variable
 .Va keepsave
@@ -3323,8 +3333,9 @@ is a shorter synonym for
 .Ql call Ar mymacro .
 .
 .Mx
-.It Ic account
-(ac) Creates, selects or lists (an) account(s).
+.Mx
+.It Ic account , unaccount
+(ac, una) Creates, selects or lists (an) account(s).
 Accounts are special incarnations of
 .Ic define Ns d
 macros and group commands and variable settings which together usually
@@ -3336,8 +3347,9 @@ Different to normal macros settings which are covered by
 is changed again.
 The special account
 .Ql null
-(case-insensitive) always exists, and all but it can be deleted via
-.Ic unaccount .
+(case-insensitive) always exists, and all but it can be deleted by the
+latter command, and in one operation with the special name
+.Ql * .
 .Pp
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
@@ -3406,14 +3418,16 @@ will fail; it is not smart enough to guess right.
 .Ed
 .
 .Mx
-.It Ic alias
-(a) Aliases are a method of creating personal distribution lists that
-map a single alias name to none to multiple real receivers;
-these aliases become expanded after message composing is completed; to
-delete aliases, use the command
-.Ic unalias .
-With no arguments the command shows all currently defined aliases.
-With one argument, shows the expansion of the given alias.
+.Mx
+.It Ic alias , unalias
+(a, una) Aliases are a method of creating personal distribution lists
+that map a single alias name to none to multiple real receivers;
+these aliases become expanded after message composing is completed.
+The latter command removes the given list of aliases, the special name
+.Ql *
+will discard all existing aliases.
+The former command shows all currently defined aliases when used without
+arguments, and with one argument the expansion of the given alias.
 With more than one argument, creates or appends to the alias name given
 as the first argument the remaining arguments.
 Alias names are restricted to alphabetic characters, digits, the
@@ -3435,8 +3449,10 @@ internal variable
 is updated accordingly.
 .
 .Mx
-.It Ic answered
-Takes a message list and marks each message as having been answered.
+.Mx
+.It Ic answered , unanswered
+Take a message lists and mark each message as having been answered,
+having not been answered, respectively.
 Messages will be marked answered when being
 .Ic reply Ns d
 to automatically if the
@@ -3447,12 +3463,19 @@ See the section
 .
 .
 .Mx
-.It Ic bind
+.Mx
+.It Ic bind , unbind
 \*(OP\*(NQ The bind command extends the MLE (see
 .Sx "On terminal control and line editor" )
 with freely configurable key bindings.
-With one argument all bindings for the given context are shown,
-specifying an asterisk
+The latter command removes from the given context the given key binding,
+both of which may be specified as a wildcard
+.Ql * ,
+so that, e.g.,
+.Ql unbind * *
+will remove all bindings of all contexts.
+With one argument the former command shows all key bindings for the
+given context, specifying an asterisk
 .Ql *
 will show the bindings of all contexts; a more verbose listing will be
 produced if either of
@@ -3738,15 +3761,22 @@ Synonym for
 .Ic cd .
 .
 .Mx
-.It Ic collapse
+.Mx
+.It Ic collapse , uncollapse
 Only applicable to threaded mode.
 Takes a message list and makes all replies to these messages invisible
-in header summaries, unless they are in state
-.Ql new .
+in header summaries, except for
+.Ql new
+messages and the
+.Dq dot .
+Also when a message with collapsed replies is displayed,
+all of these are automatically uncollapsed.
+The latter command undoes collapsing.
 .
 .
 .Mx
-.It Ic colour
+.Mx
+.It Ic colour , uncolour
 \*(OP\*(NQ Manage colour mappings of and for a
 .Sx "Coloured display" .
 The type of colour is given as the (case-insensitive) first argument,
@@ -3912,10 +3942,17 @@ for possible values).
 .El
 .
 .Pp
-Mappings may be removed with the command
-.Ic uncolour .
-For a generic overview see the section
-.Sx "Coloured display" .
+The command
+.Ic \&uncolour
+will remove for the given colour type (the special type
+.Ql *
+selects all) the given mapping; if the optional precondition argument is
+given only the exact tuple of mapping and precondition is removed.
+The special name
+.Ql *
+will remove all mappings (no precondition allowed), thus
+.Ql uncolour * *
+will remove all established mappings.
 .
 .
 .Mx
@@ -3955,9 +3992,11 @@ Encrypted messages are first decrypted, if possible, and then copied.
 Encrypted messages are first decrypted, if possible, and then copied.
 .
 .Mx
-.It Ic define
+.Mx
+.It Ic define , undefine
 Without arguments the current list of macros, including their content,
-is shown, otherwise a macro is defined.
+is shown, otherwise a macro is defined, replacing an existing macro of
+the same name.
 A macro definition is a sequence of commands in the following form:
 .Bd -literal -offset indent
 define name {
@@ -3991,24 +4030,34 @@ Inside a
 ed macro, given positional parameters can be
 .Ic shift Ns
 ed.
-Macros can be deleted via
-.Ic undefine .
+.Pp
+The latter command deletes the given macro, the special name
+.Ql *
+will discard all existing macros.
+Creation and deletion of (a) macro(s) can be performed from within
+a running macro.
 .
 .Mx
-.It Ic delete
-(d) Marks the given message list as
-.Ql deleted .
-Deleted messages will neither be saved in
+.Mx
+.It Ic delete , undelete
+(d, u) Marks the given message list as being or not being
+.Ql deleted ,
+respectively; if no argument has been specified then the usual search
+for a visible message is performed, as documented for
+.Sx "Message list arguments" ,
+showing only the next input prompt if the search fails.
+Deleted messages will neither be saved in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 nor will they be available for most other commands.
 If the
 .Va autoprint
-variable is set, automatically
-.Ic type
-the new
-.Dq dot .
-Also see
-.Ic undelete ,
+variable is set, the new
+.Dq dot
+or the last message restored, respectively, is automatically
+.Ic type Ns
+d; also see
 .Ic dp ,
 .Ic dt .
 .
@@ -4040,9 +4089,10 @@ or
 argument, respectively.
 .
 .Mx
-.It Ic draft
-Takes a message list and marks each given message as a draft.
-See the section
+.Mx
+.It Ic draft , undraft
+Take message lists and mark each given message as being draft, or not
+being draft, respectively, as documented in the section
 .Sx "Message states" .
 .
 .Mx
@@ -4219,7 +4269,9 @@ xxx arg <ball>
 .Mx
 .It Ic exit
 (ex or x) Exit from \*(UA without changing the active mailbox and skip
-any saving of messages in
+any saving of messages in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 as well as a possibly tracked line editor history file.
 .
@@ -4346,9 +4398,10 @@ can be used to show the necessary conversion.
 .
 .
 .Mx
-.It Ic flag
-Takes a message list and marks the messages as flagged for
-urgent/special attention.
+.Mx
+.It Ic flag , unflag
+Take message lists and mark the messages as being flagged, or not being
+flagged, respectively, for urgent/special attention.
 See the section
 .Sx "Message states" .
 .
@@ -4453,16 +4506,18 @@ is set .
 .Ic headerpick .
 .
 .Mx
-.It Ic ghost
-Define or list command aliases, so-called ghosts.
+.Mx
+.It Ic ghost , unghost
+Define or list, and remove, respectively, command aliases.
 A ghost can be used everywhere a normal command can be used, but always
 takes precedence: any arguments that are given to the command alias are
 joined onto the alias content, and the resulting string forms the
 command line that is, in effect, executed.
-Command ghosts can be removed with
-.Ic unghost .
-Without arguments a list of all currently known aliases is shown.
-With one argument the expansion of the given alias is shown.
+The latter command removes all given aliases, the special name
+.Ql *
+will remove all ghosts.
+When used without arguments the former shows a list of all currently
+known aliases, with one argument only the expansion of the given one.
 .Pp
 With two or more arguments a command alias is defined or updated: the
 first argument is the name under which the remaining command line should
@@ -4584,7 +4639,9 @@ The default mode if no arguments are given is
 Takes a message list and marks each message therein to be saved in the
 user's system
 .Va inbox
-instead of in
+instead of in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX .
 Does not override the
 .Ic delete
@@ -4885,7 +4942,9 @@ then collects the remaining mail content and sends it out.
 .
 .Mx
 .It Ic mbox
-(mb) The given message list is to be sent to
+(mb) The given message list is to be sent to the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 when \*(UA is quit; this is the default action unless the variable
 .Va hold
@@ -4895,7 +4954,8 @@ is set.
 .Sx "primary system mailbox" .
 .
 .Mx
-.It Ic mimetype
+.Mx
+.It Ic mimetype , unmimetype
 Without any arguments the content of the MIME type cache will displayed.
 Otherwise each argument defines a complete MIME type specification of
 a type that shall be added (prepended) to the cache.
@@ -4905,33 +4965,48 @@ can be used to fine-tune which sources are actually loaded.
 Refer to the section on
 .Sx "The mime.types files"
 for more on MIME type specifications and this topic in general.
-MIME type unregistration and cache resets can be triggered with
-.Ic unmimetype .
+.Pp
+The latter command deleted all specifications of the given MIME type, so
+.Ql unmimetype text/plain
+will remove all registered specifications for the MIME type
+.Ql text/plain .
+The special name
+.Ql *
+will discard all existing MIME types, just as will
+.Ql reset ,
+but which also reenables cache initialization via
+.Va mimetypes-load-control .
 .
 .Mx
-.It Ic mlist
-Without arguments the list of all currently defined mailing lists
-(and their attributes, if any) is shown; a more verbose listing will be
-produced if either of
+.Mx
+.It Ic mlist , unmlist
+The latter command removes all given mailing-lists, the special name
+.Ql *
+can be used to remove all registered lists.
+The former will list all currently defined mailing lists (and their
+attributes, if any) when used without arguments; a more verbose listing
+will be produced if either of
 .Va debug
 or
 .Va verbose
 are set.
-Otherwise all given arguments (which need not be quoted except for
-whitespace) will be added and henceforth be recognized as mailing lists.
-Mailing lists may be removed via the command
-.Ic unmlist .
-.Pp
+Otherwise all given arguments will be added and henceforth be recognized
+as mailing lists.
 If the \*(OPal regular expression support is available then mailing
 lists may also be specified as (extended) regular expressions (see
 .Xr re_format 7
 for more on those).
 .
 .Mx
-.It Ic mlsubscribe
-Without arguments the list of all currently defined mailing lists which
-have a subscription attribute is shown; a more verbose listing will be
-produced if either of
+.Mx
+.It Ic mlsubscribe , unmlsubscribe
+The latter command removes the subscription attribute from all given
+mailing-lists, the special name
+.Ql *
+can be used to do so for any registered list.
+The former will list all currently defined mailing lists which have
+a subscription attribute when used without arguments; a more verbose
+listing will be produced if either of
 .Va debug
 or
 .Va verbose
@@ -4939,8 +5014,6 @@ are set.
 Otherwise this attribute will be set for all given mailing lists,
 newly creating them as necessary (as via
 .Ic mlist ) .
-Subscription attributes may be removed via the command
-.Ic unmlsubscribe .
 Also see
 .Va followup-to .
 .
@@ -5101,6 +5174,8 @@ equivalent of
 .It Ic quit
 (q) Terminates the session, saving all undeleted, unsaved messages in
 the current
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX ,
 preserving all messages marked with
 .Ic hold
@@ -5300,8 +5375,10 @@ and) taking a filename argument.
 (s) Takes a message list and a filename and appends each message in turn
 to the end of the file.
 If no filename is given, the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
-file is used.
+is used.
 The filename in quotes, followed by the generated character count
 is echoed on the user's terminal.
 If editing a
@@ -5342,15 +5419,16 @@ Takes a message list and marks all messages as having been read.
 .
 .
 .Mx
-.It Ic set
-(se) Without arguments this command shows all internal variables which
-are currently known to \*(UA (they have been set).
-A more verbose listing will be produced if either of
+.Mx
+.It Ic set , unset
+(se, \*(NQ uns) The latter commands will delete all given variables,
+the former, when used without arguments, will show all variables which
+are currently known to \*(UA; a more verbose listing will be produced if
+either of
 .Va debug
 or
 .Va verbose
-are set, in which case variables may be preceded with a comment line
-that gives some context of what \*(UA knows about the given variable.
+are set.
 .Pp
 Otherwise the given variables (and arguments) are set or adjusted.
 Arguments are of the form
@@ -5378,8 +5456,7 @@ Any
 .Ql name
 that is known to map to an environment variable will automatically cause
 updates in the program environment (unsetting a variable in the
-environment requires corresponding system support).
-Please use the command
+environment requires corresponding system support) \(em use the command
 .Ic environ
 for further environmental control.
 Also see
@@ -5416,14 +5493,16 @@ environment that was used to perform the encode; also see
 (sh) Invokes an interactive version of the shell.
 .
 .Mx
-.It Ic shortcut
+.Mx
+.It Ic shortcut , unshortcut
 Without arguments the list of all currently defined shortcuts is
 shown.
 Otherwise all given arguments are treated as pairs of shortcuts and
 their expansions, creating new or changing already existing shortcuts,
 as necessary.
-Shortcuts can be removed with the command
-.Ic unshortcut .
+The latter command will remove all given shortcuts, the special name
+.Ql *
+will remove all registered shortcuts.
 .
 .Mx
 .It Ic shift
@@ -5453,11 +5532,18 @@ message-list.
 \*(NQ Sleep for the specified number of seconds (and optionally
 milliseconds) interruptably.
 .
+.
 .Mx
-.It Ic sort
-Shows the current sorting criterion when used without an argument.
-Otherwise creates a sorted representation of the current folder,
-and changes the
+.Mx
+.It Ic sort , unsort
+The latter command disables sorted or threaded mode, returns to normal
+message order and, if the
+.Va header
+variable is set,
+displays a header summary.
+The former command shows the current sorting criterion when used without
+an argument, but creates a sorted representation of the current folder
+otherwise, and changes the
 .Ic next
 command and the addressing modes such that they refer to messages in
 the sorted order.
@@ -5471,6 +5557,7 @@ Automatic folder sorting can be enabled by setting the
 variable, as in, e.g.,
 .Ql set autosort=thread .
 Possible sorting criterions are:
+.
 .Pp
 .Bl -tag -compact -width "subject"
 .It Ar date
@@ -5503,6 +5590,7 @@ If the
 .Va showname
 variable is set, the recipient's real name (if any) is used.
 .El
+.
 .
 .Mx
 .It Ic source
@@ -5595,17 +5683,6 @@ flag of the messages in question.
 (consider using a
 .Ql ghost
 as necessary).
-Create a threaded representation of the current folder,
-i.\|e. indent messages that are replies to other messages in the header
-display and change the
-.Ic next
-command and the addressing modes such that they refer to messages in the
-threaded order.
-Message numbers are the same as in unthreaded mode.
-If the
-.Va header
-variable is set,
-a header summary in threaded order is also displayed.
 .
 .Mx
 .It Ic Top
@@ -5643,7 +5720,9 @@ if necessary.
 .
 .Mx
 .It Ic touch
-(tou) Takes a message list and marks the messages for saving in
+(tou) Takes a message list and marks the messages for saving in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX .
 \*(UA deviates from the POSIX standard with this command,
 as a following
@@ -5674,96 +5753,45 @@ are shown, the other are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
 .
-.Mx
 .It Ic unaccount
-Delete all given accounts.
-An error message is shown if a given account is not defined.
-The special name
-.Ql *
-will discard all existing accounts.
+See
+.Ic account .
 .
-.Mx
 .It Ic unalias
-(una) Takes a list of names defined by alias commands
-and discards the remembered groups of users.
-The special name
-.Ql *
-will discard all existing aliases.
+(una) See
+.Ic alias .
 .
-.Mx
 .It Ic unanswered
-Takes a message list and marks each message as not having been answered.
+See
+.Ic answered .
 .
-.Mx
 .It Ic unbind
-Forget about a key
-.Ic bind Ns
-ing, specified by its context and input sequence, both of which may be
-specified as a wildcard (asterisk,
-.Ql * ) ,
-e.g.,
-.Ql unbind * *
-will remove all bindings of all contexts.
+See
+.Ic bind .
 .
-.Mx
 .It Ic uncollapse
-Only applicable to threaded mode.
-Takes a message list and makes the message and all replies to it visible
-in header summaries again.
-When a message becomes the current message,
-it is automatically made visible.
-Also when a message with collapsed replies is displayed,
-all of these are automatically uncollapsed.
+See
+.Ic collapse .
 .
-.Mx
 .It Ic uncolour
-Forget about a
-.Ic colour
-mapping for the given colour type (see
-.Ic colour
-for a list of types) and mapping; if the optional precondition argument
-is used then only the exact tuple of mapping and precondition is removed.
-The special name
-.Ql *
-will remove all mappings (no precondition allowed).
-Also see
-.Sx "Coloured display"
-for the general picture.
+See
+.Ic colour .
 .
-.Mx
 .It Ic undefine
-Undefine all given macros.
-An error message is shown if a given macro is not defined.
-The special name
-.Ql *
-will discard all existing macros.
+See
+.Ic define .
 .
-.Mx
 .It Ic undelete
-(u) Takes a message list and marks each message as not being deleted.
-If the
-.Va autoprint
-variable is set, the last message restored will be
-.Ic type Ns
-d automatically; if no message list had been specified then the usual
-search for a visible message is performed, as documented for
-.Sx COMMANDS ,
-showing only the next input prompt if the search fails.
-Also see
-.Ic delete ,
-.Ic dp ,
-.Ic dt .
+See
+.Ic delete .
 .
-.Mx
 .It Ic undraft
-Takes a message list and
-.Pf un Ic draft Ns
-s each message.
+See
+.Ic draft .
 .
-.Mx
 .It Ic unflag
-Takes a message list and marks each message as not being
-.Ic flag Ns ged .
+See
+.Ic flag .
 .
 .Mx
 .It Ic unfwdignore
@@ -5775,48 +5803,25 @@ Takes a message list and marks each message as not being
 \*(OB Superseded by the multiplexer
 .Ic headerpick .
 .
-.Mx
 .It Ic unghost
-Remove all the given command
-.Ic ghost Ns s Ns .
-The special name
-.Ql *
-will remove all ghosts.
+See
+.Ic ghost .
 .
 .Mx
 .It Ic unignore
 Superseded by the multiplexer
 .Ic headerpick .
 .
-.Mx
 .It Ic unmimetype
-Delete all given MIME types, e.g.,
-.Ql unmimetype text/plain
-will remove all registered specifications for the MIME type
-.Ql text/plain .
-The special name
-.Ql *
-will discard all existing MIME types, just as will
-.Ql reset ,
-but which also reenables cache initialization via
-.Va mimetypes-load-control .
+See
+.Ic mimetype .
 .
-.Mx
 .It Ic unmlist
-Forget about all the given mailing lists.
-The special name
-.Ql *
-will remove all lists.
-Also see
+See
 .Ic mlist .
 .
-.Mx
 .It Ic unmlsubscribe
-Remove the subscription attribute from all given mailing lists.
-The special name
-.Ql *
-will clear the attribute from all lists which have it set.
-Also see
+See
 .Ic mlsubscribe .
 .
 .Mx
@@ -5843,35 +5848,17 @@ Superseded by the multiplexer
 \*(OB Superseded by the multiplexer
 .Ic headerpick .
 .
-.Mx
 .It Ic unset
-\*(NQ (uns) Takes a list of internal variable names and discards their
-remembered values; the reverse of
+\*(NQ (uns) See
 .Ic set .
-Also see
-.Ic environ .
 .
-.Mx
 .It Ic unshortcut
-Delete the
-.Ic shortcut Ns
-s given as arguments, the special argument
-.Ql *
-will remove all shortcuts.
+See
+.Ic shortcut .
 .
-.Mx
 .It Ic unsort
-Disable sorted or threaded mode
-(see the
-.Ic sort
-and
-.Ic thread
-commands),
-return to normal message order and,
-if the
-.Va header
-variable is set,
-displays a header summary.
+See
+.Ic short .
 .
 .Mx
 .It Ic unthread
@@ -7020,7 +7007,9 @@ when comparing addresses.
 .
 .Mx
 .It Va append
-\*(BO Causes messages saved in
+\*(BO Causes messages saved in the
+.Mx -sx
+.Sx "secondary mailbox"
 .Ev MBOX
 to be appended to the end rather than prepended.
 This should always be set.
@@ -8135,7 +8124,10 @@ Be sure to quote the value if it contains spaces or tabs.
 .
 .Mx
 .It Va keep
-\*(BO If set, an empty system (MBOX) mailbox file is not removed.
+\*(BO If set, an empty
+.Mx -sx
+.Sx "primary system mailbox"
+file is not removed.
 Note that, in conjunction with
 .Va posix
 (and, thus,
@@ -8149,9 +8141,8 @@ mailbox types will never be removed, even if empty.
 .
 .Mx
 .It Va keep-content-length
-\*(BO When (editing messages and) writing
-.Ev MBOX
-mailbox files \*(UA can be told to keep the
+\*(BO When (editing messages and) writing MBOX mailbox files \*(UA can
+be told to keep the
 .Ql Content-Length:
 and
 .Ql Lines:
@@ -8946,6 +8937,7 @@ Note that
 .Va pop3-use-starttls-HOST
 requires \*(IN.
 .
+.
 .Mx
 .It Va posix
 \*(BO This flag enables POSIX mode, which changes behaviour of \*(UA
@@ -8956,6 +8948,21 @@ are loaded if the environment variable
 .Ev POSIXLY_CORRECT
 is set, and adjusting any of those two will be reflected by the other
 one implicitly.
+The following behaviour is covered and enforced with this mechanism:
+.Pp
+.Bl -bullet -compact
+.It
+In non-interactive mode, any non-ignored error in resource files which
+are loaded during program startup will cause a program exit.
+.It
+The variable
+.Va keep
+is extended to cover any empty mailbox, not only empty
+.Mx -sx
+.Sx "primary system mailbox" Ns
+es: they will be removed when they are left in empty state otherwise.
+.El
+.
 .
 .Mx
 .It Va print-alternatives
@@ -10479,7 +10486,10 @@ This variable is only used when it resides in the process environment.
 .
 .Mx
 .It Ev MBOX
-The name of the users mbox file.
+The name of the users
+.Mx -sx
+.Sx "secondary mailbox"
+file.
 A logical subset of the special
 .Sx "Filename transformations"
 (also see
@@ -10490,10 +10500,7 @@ The fallback default is
 in the user's
 .Ev HOME
 directory.
-Traditionally this
-.Mx -sx
-.Sx "secondary mailbox"
-is used as the file to save messages from the
+Traditionally this MBOX is used as the file to save messages from the
 .Mx -sx
 .Sx "primary system mailbox"
 that have been read.
