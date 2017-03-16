@@ -1204,7 +1204,7 @@ d, but fields can be white- or blacklisted for a variety of
 applications by using the command
 .Ic headerpick ,
 e.g., to restrict display to a very restricted set:
-.Ql Ic \:headerpick Cd \:type retain add Ar \:from to cc subject .
+.Ql Ic \:headerpick Cd \:type retain Ar \:from to cc subject .
 In order to display all header fields of a message regardless of
 currently active ignore or retain lists, use the commands
 .Ic Type
@@ -4488,8 +4488,9 @@ hello, world
 .
 .
 .Mx
-.It Ic headerpick
-\*(NQ Multiplexer command to establish white- and blacklisting
+.Mx
+.It Ic headerpick , unheaderpick
+\*(NQ Multiplexer command to manage white- and blacklisting
 selections of header fields for a variety of applications.
 Without arguments the set of contexts that have settings is displayed.
 When given arguments, the first argument is the context to which the
@@ -4528,26 +4529,18 @@ for white- and blacklisting purposes, respectively.
 Establishing a whitelist suppresses inspection of the corresponding
 blacklist.
 If no further argument is given the current settings of the given type
-will be displayed.
-.
-.Pp
-With four or more arguments the third denotes the action to be applied,
-it may be
-.Ql add
-or
-.Ql +
-for addition of fields, and
-.Ql remove
-or
-.Ql -
-for removal of fields from the given type of the given context.
-The fourth, and any following arguments are expected to specify the
-fields of desire, or \*(OPally, regular expression matches ought to
-be applied.
+will be displayed, otherwise the remaining arguments specify header
+fields, which \*(OPally may be given as regular expressions, to be be
+added to the given type.
 The special wildcard field (asterisk,
 .Ql * )
-will establish a (fast) shorthand setting which covers all fields, or
-remove all fields in one operation, respectively.
+will establish a (fast) shorthand setting which covers all fields.
+.Pp
+The latter command always takes three or more arguments and can be used
+to remove fields from the given type of list of the given context, the
+special argument
+.Ql *
+will remove all fields.
 .
 .
 .Mx
@@ -11322,12 +11315,12 @@ set emptystart \e
   umask=
 
 # Only include the selected header fields when typing messages
-headerpick type retain add from_ date from to cc subject \e
+headerpick type retain from_ date from to cc subject \e
   message-id mail-followup-to reply-to
 # ...when forwarding messages
-headerpick forward retain add subject date from to cc
+headerpick forward retain subject date from to cc
 # ...when saving message, etc.
-#headerpick save ignore add ^Original-.*$ ^X-.*$
+#headerpick save ignore ^Original-.*$ ^X-.*$
 
 # Some mailing lists
 mlist '@xyz-editor\e.xyz$' '@xyzf\e.xyz$'

@@ -985,15 +985,16 @@ FL struct n_header_field *n_customhdr_query(void);
  * ignore.c
  */
 
-/* `headerpick' */
-FL int         c_headerpick(void *v);
+/* `(un)?headerpick' */
+FL int c_headerpick(void *vp);
+FL int c_unheaderpick(void *vp);
 
 /* TODO Compat variants of the c_(un)?h*() series,
  * except for `retain' and `ignore', which are standardized */
-FL int         c_retain(void *v);
-FL int         c_ignore(void *v);
-FL int         c_unretain(void *v);
-FL int         c_unignore(void *v);
+FL int c_retain(void *vp);
+FL int c_ignore(void *vp);
+FL int c_unretain(void *vp);
+FL int c_unignore(void *vp);
 
 FL int         c_saveretain(void *v);
 FL int         c_saveignore(void *v);
@@ -1010,21 +1011,21 @@ FL int         c_unfwdignore(void *v);
  * isauto: whether auto-reclaimed storage is to be used for allocations;
  * if so, _del() needn't be called */
 FL struct n_ignore *n_ignore_new(bool_t isauto);
-FL void        n_ignore_del(struct n_ignore *self);
+FL void n_ignore_del(struct n_ignore *self);
 
 /* Are there just _any_ user settings covered by self? */
-FL bool_t      n_ignore_is_any(struct n_ignore const *self);
+FL bool_t n_ignore_is_any(struct n_ignore const *self);
 
 /* Set an entry to retain (or ignore).
  * Returns FAL0 if dat is not a valid header field name or an invalid regular
  * expression, TRU1 if insertion took place, and TRUM1 if already set */
-FL bool_t      n_ignore_insert(struct n_ignore *self, bool_t retain,
-                  char const *dat, size_t len);
+FL bool_t n_ignore_insert(struct n_ignore *self, bool_t retain,
+            char const *dat, size_t len);
 #define n_ignore_insert_cp(SELF,RT,CP) n_ignore_insert(SELF, RT, CP, UIZ_MAX)
 
 /* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
-FL bool_t      n_ignore_lookup(struct n_ignore const *self,
-                  char const *dat, size_t len);
+FL bool_t n_ignore_lookup(struct n_ignore const *self, char const *dat,
+            size_t len);
 #define n_ignore_lookup_cp(SELF,CP) n_ignore_lookup(SELF, CP, UIZ_MAX)
 #define n_ignore_is_ign(SELF,FDAT,FLEN) \
    (n_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)

@@ -167,12 +167,12 @@ set showto
 #charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-headerpick type retain add from_ date from to cc subject \
+headerpick type retain from_ date from to cc subject \
    message-id mail-followup-to reply-to
 # ...when forwarding messages
-headerpick forward retain add subject date from to cc
+headerpick forward retain subject date from to cc
 # ...and don't include these when saving message, etc.
-#headerpick save ignore add ^Original-.*$ ^X-.*$
+#headerpick save ignore '^Original-.*$' '^X-.*$'
 
 ## Some pipe-TYPE/SUBTYPE entries
 

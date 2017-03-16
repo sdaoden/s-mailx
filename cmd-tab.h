@@ -248,22 +248,20 @@
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
    { "retain", &c_retain, (M | TWYRA), 0, MAC
      DS(N_("Add <header-list> to retained list, or show that list")) },
-   { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC
-     DS(N_("Header selection: [<context> [<type> [<action> <header-list>]]]"))},
    { "saveignore", &c_saveignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "savediscard", &c_saveignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Is to `save' what `ignore' is to `type' / `print'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "saveretain", &c_saveretain, (O | M | TRAWLST), 0, MAC
-     DS(N_("Is to `save' what `retain' is to `type' / `print'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "unignore", &c_unignore, (M | TWYRA), 0, MAC
      DS(N_("Un`ignore' <header-list>")) },
    { "unretain", &c_unretain, (M | TWYRA), 0, MAC
      DS(N_("Un`retain' <header-list>")) },
    { "unsaveignore", &c_unsaveignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Un`saveignore' <header-list>")) },
+     DS(N_("Obsoleted by `unheaderpick'")) },
    { "unsaveretain", &c_unsaveretain, (O | M | TRAWLST), 0, MAC
-     DS(N_("Un`saveretain' <header-list>")) },
+     DS(N_("Obsoleted by `unheaderpick'")) },
    { "newmail", &c_newmail, (A | T | TWYSH), 0, 0
      DS(N_("Check for new mail in current folder")) },
    { "shortcut", &c_shortcut, (M | TWYRA), 0, MAC
@@ -272,10 +270,10 @@
      DS(N_("Delete <shortcut-list> (* for all)")) },
    { "account", &c_account, (M | TWYSH), 0, MAC
      DS(N_("Create or select <account>, or list all accounts")) },
-   { "thread", &c_thread, (A | O | TMSGLST), 0, 0
-     DS(N_("Create threaded view of the current `file'")) },
-   { "unthread", &c_unthread, (A | O | TMSGLST), 0, 0
-     DS(N_("Disable sorted or threaded mode")) },
+   { "thread", &c_thread, (O | A | TMSGLST), 0, 0
+     DS(N_("Obsoleted by `sort' \"thread\"")) },
+   { "unthread", &c_unthread, (O | A | TMSGLST), 0, 0
+     DS(N_("Obsolete (use `unsort')")) },
    { "sort", &c_sort, (A | TWYSH), 0, 1
      DS(N_("Change sorting to: date,from,size,spam,status,subject,thread,to"))},
    { "unsort", &c_unthread, (A | TMSGLST), 0, 0
@@ -345,15 +343,15 @@
    { "Seen", &c_seen, (A | M | TMSGLST), 0, MMNDEL
      DS(N_("Mark <msglist> as seen")) },
    { "fwdignore", &c_fwdignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Control <header-list> to be ignored with `forward'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "fwddiscard", &c_fwdignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Control <header-list> to be ignored with `forward'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "fwdretain", &c_fwdretain, (O | M | TRAWLST), 0, MAC
-     DS(N_("Control <header-list> to be retained with `forward'")) },
+     DS(N_("Obsoleted by `headerpick'")) },
    { "unfwdignore", &c_unfwdignore, (O | M | TRAWLST), 0, MAC
-     DS(N_("Un`fwdignore' <header-list>")) },
+     DS(N_("Obsoleted by `unheaderpick'")) },
    { "unfwdretain", &c_unfwdretain, (O | M | TRAWLST), 0, MAC
-     DS(N_("Un`fwdretain' <header-list>")) },
+     DS(N_("Obsoleted by `unheaderpick'")) },
    { "mimetype", &c_mimetype, (M | TWYRA), 0, MAC
      DS(N_("(Load and) show all known MIME types, or define some")) },
    { "unmimetype", &c_unmimetype, (M | TWYRA), 1, MAC
@@ -435,6 +433,11 @@
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
 
+   { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC
+     DS(N_("Header selection: [<context> [<type> [<header-list>]]]"))},
+   { "unheaderpick", &c_unheaderpick, (M | TWYSH), 3, MAC
+     DS(N_("Header deselection: <context> <type> <header-list>"))},
+
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("Email address <[+[+]]e[ncode]|d[ecode]> <rest-of-line>")) },
    { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
@@ -442,9 +445,9 @@
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
       { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, MAC
-        DS(N_("Encode <string-list> for usage in an URL")) },
+        DS(N_("Obsoleted by `urlcodec'")) },
       { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC
-        DS(N_("Decode the URL-encoded <URL-list> into strings")) },
+        DS(N_("Obsoleted by `urlcodec'")) },
 
 #ifdef HAVE_MEMORY_DEBUG
    { "memtrace", &c_memtrace, (I | M | TWYSH), 0, 0

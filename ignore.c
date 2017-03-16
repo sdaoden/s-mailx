@@ -1,6 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `headerpick', `retain' and `ignore'.
- *@ XXX Should these be in nam-a-grp.c?!
+ *@ `headerpick', `retain' and `ignore', and `un..' variants.
  *
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
@@ -59,9 +58,9 @@ struct a_ignore_type{
 struct n_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
-   bool_t i_auto;                   /* In auto-reclaimed, not heap memory */
-   bool_t i_bltin;                  /* Is a builtin n_IGNORE* type */
-   ui8_t i_ibm_idx;                 /* If .i_bltin: a_ignore_bltin_map[] idx */
+   bool_t i_auto;       /* In auto-reclaimed, not heap memory */
+   bool_t i_bltin;      /* Is a builtin n_IGNORE* type */
+   ui8_t i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
    ui8_t i__dummy[5];
 };
 
@@ -111,14 +110,14 @@ static void a_ignore_del_allof(struct n_ignore *ip, bool_t retain);
 /* Try to map a string to one of the builtin types */
 static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
-/* Logic behind `headerpick T T add' (a.k.a. `retain'+) */
+/* Logic behind `headerpick T T' (a.k.a. `retain'+) */
 static bool_t a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
                bool_t retain);
 
 static void a_ignore__show(struct n_ignore const *ip, bool_t retain);
 static int a_ignore__cmp(void const *l, void const *r);
 
-/* Logic behind `headerpick T T remove' (a.k.a. `unretain'+) */
+/* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
 static bool_t a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
                bool_t retain);
 
@@ -329,7 +328,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
 
    qsort(ring, PTR2SIZE(ap - ring), sizeof *ring, &a_ignore__cmp);
 
-   i = fprintf(n_stdout, "headerpick %s %s add",
+   i = fprintf(n_stdout, "headerpick %s %s",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
       (retain ? "retain" : "ignore"));
    sw = n_scrnwidth;
@@ -458,7 +457,7 @@ jleave:
 }
 
 FL int
-c_headerpick(void *v){
+c_headerpick(void *vp){
    bool_t retain;
    struct a_ignore_bltin_map const *ibmp;
    char const **argv;
@@ -466,7 +465,7 @@ c_headerpick(void *v){
    NYD_ENTER;
 
    rv = 1;
-   argv = v;
+   argv = vp;
 
    /* Without arguments, show all settings of all contexts */
    if(*argv == NULL){
@@ -483,9 +482,10 @@ c_headerpick(void *v){
       n_err(_("`headerpick': invalid context: %s\n"), *argv);
       goto jleave;
    }
+   ++argv;
 
    /* With only <context>, show all settings of it */
-   if(*++argv == NULL){
+   if(*argv == NULL){
       rv = 0;
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, TRU1);
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, FAL0);
@@ -500,66 +500,89 @@ c_headerpick(void *v){
       n_err(_("`headerpick': invalid type (retain, ignore): %s\n"), *argv);
       goto jleave;
    }
+   ++argv;
 
    /* With only <context> and <type>, show its settings */
-   if(*++argv == NULL){
+   if(*argv == NULL){
       rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
       goto jleave;
    }
 
-   if(argv[1] == NULL){
-      n_err(_("Synopsis: headerpick: [<context> [<type> "
-         "[<action> <header-list>]]]\n"));
-      goto jleave;
-   }else if(is_asccaseprefix(*argv, "add") ||
-         (argv[0][0] == '+' && argv[0][1] == '\0'))
-      rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, ++argv, retain);
-   else if(is_asccaseprefix(*argv, "remove") ||
-         (argv[0][0] == '-' && argv[0][1] == '\0'))
-      rv = !a_ignore_delcmd_mux(ibmp->ibm_ip, ++argv, retain);
-   else
-      n_err(_("`headerpick': invalid action (add, +, remove, -): %s\n"), *argv);
+   rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_retain(void *v){
+c_unheaderpick(void *vp){
+   bool_t retain;
+   struct a_ignore_bltin_map const *ibmp;
+   char const **argv;
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, v, TRU1);
+   rv = 1;
+   argv = vp;
+
+   if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
+      n_err(_("`unheaderpick': invalid context: %s\n"), *argv);
+      goto jleave;
+   }
+   ++argv;
+
+   if(is_asccaseprefix(*argv, "retain"))
+      retain = TRU1;
+   else if(is_asccaseprefix(*argv, "ignore"))
+      retain = FAL0;
+   else{
+      n_err(_("`unheaderpick': invalid type (retain, ignore): %s\n"), *argv);
+      goto jleave;
+   }
+   ++argv;
+
+   rv = !a_ignore_delcmd_mux(ibmp->ibm_ip, argv, retain);
+jleave:
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_ignore(void *v){
+c_retain(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, v, FAL0);
+   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, TRU1);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_unretain(void *v){
+c_ignore(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, v, TRU1);
+   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_unignore(void *v){
+c_unretain(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, v, FAL0);
+   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unignore(void *vp){
+   int rv;
+   NYD_ENTER;
+
+   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
