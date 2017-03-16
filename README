@@ -32,7 +32,8 @@ the Programmer's Manual, 1971-1986":
 
 1. Where?
 2. Repository layout
-3. Authors
+3. Security record
+4. Authors
 
 1. Where?
 ---------
@@ -181,7 +182,27 @@ And then, assuming the last had been done:
   $ git log --oneline --show-signature --max-count=1 HEAD
   $ make all && sudo make install
 
-3. Authors
+3. Security record
+------------------
+
+- CVE-2004-2771, and CVE-2014-7844.
+  http://seclists.org/oss-sec/2014/q4/1066.
+  Fixed in: v14.7.9 (on day after announcement on oss-sec)
+
+  Affected all BSD Mail-based codebases.
+
+- CVE-2017-5899.
+  Credits: wapiflapi.
+  Fixed in: v14.8.16 (on day of disclosure)
+
+    > vulnerability in the setuid root helper binary
+
+    > The problem is that an O_EXCL file is created with a user controlled
+    > path because the di.di_hostname and di.di_randstr are never checked.
+    > This means that using s-nail-privsep a normal user can create a file
+    > anywhere on the filesystem, which is a security problem.
+
+4. Authors
 ----------
 
 Unix mail seems to have been written mostly by Ken Thompson.
