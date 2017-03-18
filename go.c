@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
  *@ TODO n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
- *@ TODO Commands and ghosts deserve a tree.  Or so.
+ *@ TODO Commands and -aliases deserve a tree.  Or so.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -126,10 +126,10 @@ struct a_go_cmd_desc{
 #define gcd_minargs gcd_msgflag  /* Minimum argcount for WYSH/WYRA/RAWLIST */
 #define gcd_maxargs gcd_msgmask  /* Max argcount for WYSH/WYRA/RAWLIST */
 
-struct a_go_ghost{ /* TODO binary search */
-   struct a_go_ghost *gg_next;
-   struct str gg_cmd;            /* Data follows after .gg_name */
-   char gg_name[n_VFIELD_SIZE(0)];
+struct a_go_alias{ /* TODO binary search */
+   struct a_go_alias *ga_next;
+   struct str ga_cmd;            /* Data follows after .ga_name */
+   char ga_name[n_VFIELD_SIZE(0)];
 };
 
 struct a_go_eval_ctx{
@@ -175,7 +175,7 @@ struct a_go_xcall{
 };
 
 static sighandler_type a_go_oldpipe;
-static struct a_go_ghost *a_go_ghosts;
+static struct a_go_alias *a_go_aliases;
 /* a_go_cmd_tab[] after fun protos */
 
 /* Our current execution context, and the buffer backing the outermost level */
@@ -202,9 +202,9 @@ static int a_go_c_eval(void *vp);
 /* `xcall' */
 static int a_go_c_xcall(void *vp);
 
-/* Command ghost handling */
-static int a_go_c_ghost(void *vp);
-static int a_go_c_unghost(void *vp);
+/* `(un)?commandalias' */
+static int a_go_c_alias(void *vp);
+static int a_go_c_unalias(void *vp);
 
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef HAVE_DOCSTRINGS
@@ -407,8 +407,8 @@ jerr:
 }
 
 static int
-a_go_c_ghost(void *vp){
-   struct a_go_ghost *lggp, *ggp;
+a_go_c_alias(void *vp){
+   struct a_go_alias *lgap, *gap;
    size_t i, cl, nl;
    char *cp;
    char const **argv;
@@ -420,12 +420,13 @@ a_go_c_ghost(void *vp){
    if(*argv == NULL){
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "ghost", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+      if((fp = Ftmp(NULL, "commandalias", OF_RDWR | OF_UNLINK | OF_REGISTER)
+            ) == NULL)
          fp = n_stdout;
 
-      for(i = 0, ggp = a_go_ghosts; ggp != NULL; ggp = ggp->gg_next)
-         fprintf(fp, "wysh ghost %s %s\n",
-            ggp->gg_name, n_shexp_quote_cp(ggp->gg_cmd.s, TRU1));
+      for(i = 0, gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
+         fprintf(fp, "commandalias %s %s\n",
+            gap->ga_name, n_shexp_quote_cp(gap->ga_cmd.s, TRU1));
 
       if(fp != n_stdout){
          page_or_print(fp, i);
@@ -434,58 +435,58 @@ a_go_c_ghost(void *vp){
       goto jleave;
    }
 
-   /* Verify the ghost name is a valid one, and not a command modifier */
+   /* Verify the name is a valid one, and not a command modifier */
    if(*argv[0] == '\0' || *a_go_isolate(argv[0]) != '\0' ||
          !asccasecmp(argv[0], "ignerr") || !asccasecmp(argv[0], "wysh") ||
          !asccasecmp(argv[0], "vput")){
-      n_err(_("`ghost': can't canonicalize %s\n"),
+      n_err(_("`commandalias': cannot canonicalize %s\n"),
          n_shexp_quote_cp(argv[0], FAL0));
       vp = NULL;
       goto jleave;
    }
 
-   /* Show command of single ghost? */
+   /* Show command of single alias? */
    if(argv[1] == NULL){
-      for(ggp = a_go_ghosts; ggp != NULL; ggp = ggp->gg_next)
-         if(!strcmp(argv[0], ggp->gg_name)){
-            fprintf(n_stdout, "wysh ghost %s %s\n",
-               ggp->gg_name, n_shexp_quote_cp(ggp->gg_cmd.s, TRU1));
+      for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
+         if(!strcmp(argv[0], gap->ga_name)){
+            fprintf(n_stdout, "commandalias %s %s\n",
+               gap->ga_name, n_shexp_quote_cp(gap->ga_cmd.s, TRU1));
             goto jleave;
          }
-      n_err(_("`ghost': no such alias: %s\n"), argv[0]);
+      n_err(_("`commandalias': no such alias: %s\n"), argv[0]);
       vp = NULL;
       goto jleave;
    }
 
-   /* Define command for ghost: verify command content */
+   /* Define command for alias: verify command content */
    for(cl = 0, i = 1; (cp = n_UNCONST(argv[i])) != NULL; ++i)
       if(*cp != '\0')
          cl += strlen(cp) +1; /* SP or NUL */
    if(cl == 0){
-      n_err(_("`ghost': empty command arguments after %s\n"), argv[0]);
+      n_err(_("`commandalias': empty arguments after %s\n"), argv[0]);
       vp = NULL;
       goto jleave;
    }
 
-   /* If the ghost already exists, recreate */
-   for(lggp = NULL, ggp = a_go_ghosts; ggp != NULL;
-         lggp = ggp, ggp = ggp->gg_next)
-      if(!strcmp(ggp->gg_name, argv[0])){
-         if(lggp != NULL)
-            lggp->gg_next = ggp->gg_next;
+   /* If the alias already exists, recreate */
+   for(lgap = NULL, gap = a_go_aliases; gap != NULL;
+         lgap = gap, gap = gap->ga_next)
+      if(!strcmp(gap->ga_name, argv[0])){
+         if(lgap != NULL)
+            lgap->ga_next = gap->ga_next;
          else
-            a_go_ghosts = ggp->gg_next;
-         n_free(ggp);
+            a_go_aliases = gap->ga_next;
+         n_free(gap);
          break;
       }
 
    nl = strlen(argv[0]) +1;
-   ggp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ghost, gg_name) + nl + cl);
-   ggp->gg_next = a_go_ghosts;
-   a_go_ghosts = ggp;
-   memcpy(ggp->gg_name, argv[0], nl);
-   cp = ggp->gg_cmd.s = &ggp->gg_name[nl];
-   ggp->gg_cmd.l = --cl;
+   gap = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_alias, ga_name) + nl + cl);
+   gap->ga_next = a_go_aliases;
+   a_go_aliases = gap;
+   memcpy(gap->ga_name, argv[0], nl);
+   cp = gap->ga_cmd.s = &gap->ga_name[nl];
+   gap->ga_cmd.l = --cl;
 
    while(*++argv != NULL)
       if((i = strlen(*argv)) > 0){
@@ -500,8 +501,8 @@ jleave:
 }
 
 static int
-a_go_c_unghost(void *vp){
-   struct a_go_ghost *lggp, *ggp;
+a_go_c_unalias(void *vp){
+   struct a_go_alias *lgap, *gap;
    char const **argv, *cp;
    int rv;
    NYD_ENTER;
@@ -511,22 +512,22 @@ a_go_c_unghost(void *vp){
 
    while((cp = *argv++) != NULL){
       if(cp[0] == '*' && cp[1] == '\0'){
-         while((ggp = a_go_ghosts) != NULL){
-            a_go_ghosts = ggp->gg_next;
-            n_free(ggp);
+         while((gap = a_go_aliases) != NULL){
+            a_go_aliases = gap->ga_next;
+            n_free(gap);
          }
       }else{
-         for(lggp = NULL, ggp = a_go_ghosts; ggp != NULL;
-               lggp = ggp, ggp = ggp->gg_next)
-            if(!strcmp(ggp->gg_name, cp)){
-               if(lggp != NULL)
-                  lggp->gg_next = ggp->gg_next;
+         for(lgap = NULL, gap = a_go_aliases; gap != NULL;
+               lgap = gap, gap = gap->ga_next)
+            if(!strcmp(gap->ga_name, cp)){
+               if(lgap != NULL)
+                  lgap->ga_next = gap->ga_next;
                else
-                  a_go_ghosts = ggp->gg_next;
-               n_free(ggp);
+                  a_go_aliases = gap->ga_next;
+               n_free(gap);
                goto jouter;
             }
-         n_err(_("`unghost': no such alias: %s\n"),
+         n_err(_("`uncommandalias': no such alias: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          rv = 1;
 jouter:  ;
@@ -681,14 +682,14 @@ a_go_c_help(void *vp){
 
    /* Help for a single command? */
    if((arg = *(char**)vp) != NULL){
-      struct a_go_ghost const *ggp;
+      struct a_go_alias const *gap;
       struct a_go_cmd_desc const *gcdp, *gcdp_max;
 
-      /* Ghosts take precedence */
-      for(ggp = a_go_ghosts; ggp != NULL; ggp = ggp->gg_next)
-         if(!strcmp(arg, ggp->gg_name)){
+      /* Aliases take precedence */
+      for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
+         if(!strcmp(arg, gap->ga_name)){
             fprintf(n_stdout, "%s -> ", arg);
-            arg = ggp->gg_cmd.s;
+            arg = gap->ga_cmd.s;
             break;
          }
 
@@ -718,7 +719,7 @@ jredo:
          goto jredo;
       }
 
-      if(ggp != NULL){
+      if(gap != NULL){
          fprintf(n_stdout, "%s\n", n_shexp_quote_cp(arg, TRU1));
          rv = 0;
       }else{
@@ -877,14 +878,14 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* xxx old style(9), but also old code */
    struct str line;
    char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
-   struct a_go_ghost *ggp;
+   struct a_go_alias *gap;
    struct a_go_cmd_desc const *gcdp;
    int rv, c;
    enum {
       a_NONE = 0,
-      a_GHOST_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
+      a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
       a_NOPREFIX = 1<<4,   /* Modifier prefix not allowed right now */
-      a_NOGHOST = 1<<5,    /* "No alias!" expansion modifier */
+      a_NOALIAS = 1<<5,    /* "No alias!" expansion modifier */
       /* New modifier prefixes must be reflected in a_go_c_alias()! */
       a_IGNERR = 1<<6,     /* ignerr modifier prefix */
       a_WYSH = 1<<7,       /* XXX v15+ drop wysh modifier prefix */
@@ -895,14 +896,14 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    flags = a_NONE;
    rv = 1;
    gcdp = NULL;
-   ggp = NULL;
+   gap = NULL;
    arglist =
    arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
    line = gecp->gec_line; /* XXX don't change original (buffer pointer) */
    assert(line.s[line.l] == '\0');
    gecp->gec_add_history = FAL0;
 
-   /* Command ghosts that refer to shell commands or macro expansion restart */
+   /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
 
    /* Strip the white space away from end and beginning of command */
@@ -943,7 +944,7 @@ jrestart:
    if(!(flags & a_NOPREFIX) && *word == '\\'){
       ++word;
       --c;
-      flags |= a_NOGHOST;
+      flags |= a_NOALIAS;
    }
 
    /* It may be a modifier prefix */
@@ -964,40 +965,41 @@ jrestart:
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
     * table; while n_PS_SOURCING, however, we ignore blank lines to eliminate
-    * confusion; act just the same for ghosts */
+    * confusion; act just the same for aliases */
    if(*word == '\0'){
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
-            ggp != NULL)
+            gap != NULL)
          goto jerr0;
       gcdp = &a_go_cmd_tab[0];
       goto jexec;
    }
 
-   if(!(flags & a_NOGHOST) && (flags & a_GHOST_MASK) != a_GHOST_MASK){
+   if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){
       ui8_t expcnt;
 
-      expcnt = (flags & a_GHOST_MASK);
+      expcnt = (flags & a_ALIAS_MASK);
       ++expcnt;
-      flags = (flags & ~(a_GHOST_MASK | a_NOPREFIX)) | expcnt;
+      flags = (flags & ~(a_ALIAS_MASK | a_NOPREFIX)) | expcnt;
 
       /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
-      if(ggp != NULL && !strcmp(word, ggp->gg_name)){
+      if(gap != NULL && !strcmp(word, gap->ga_name)){
          if(n_poption & n_PO_D_V)
-            n_err(_("Actively avoiding self-recursion of `ghost': %s\n"), word);
-      }else for(ggp = a_go_ghosts; ggp != NULL; ggp = ggp->gg_next)
-         if(!strcmp(word, ggp->gg_name)){
+            n_err(_("Actively avoiding self-recursion of `commandalias': %s\n"),
+               word);
+      }else for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
+         if(!strcmp(word, gap->ga_name)){
             if(line.l > 0){
                size_t i;
 
-               i = ggp->gg_cmd.l;
+               i = gap->ga_cmd.l;
                line.s = n_autorec_alloc(i + line.l +1);
-               memcpy(line.s, ggp->gg_cmd.s, i);
+               memcpy(line.s, gap->ga_cmd.s, i);
                memcpy(line.s + i, cp, line.l);
                line.s[i += line.l] = '\0';
                line.l = i;
             }else{
-               line.s = ggp->gg_cmd.s;
-               line.l = ggp->gg_cmd.l;
+               line.s = gap->ga_cmd.s;
+               line.l = gap->ga_cmd.l;
             }
             goto jrestart;
          }

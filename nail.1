@@ -1120,9 +1120,8 @@ and see the actual expansion of
 and what its purpose is, i.e., commands can be abbreviated
 (note that POSIX defines some abbreviations, so that the alphabetical
 order of commands does not necessarily relate to the abbreviations; it is
-possible to define overwrites with the
-.Ic ghost
-command, however).
+however possible to define overwrites with
+.Ic commandalias ) .
 These commands can also produce a more
 .Va verbose
 output.
@@ -2782,7 +2781,7 @@ information which applies; a handy suggestion might thus be:
   # Be careful to choose sh(1)ell-style on _entire_ line!
   localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
 }
-? ghost xv '\ecall __xv'
+? commandalias xv '\ecall __xv'
 ? xv help set
 .Ed
 .
@@ -2798,13 +2797,13 @@ The modifier reverse solidus
 .Mx
 .Cm \e ,
 to be placed first, prevents
-.Ic ghost
+.Ic commandalias
 expansions on the remains of the line, e.g.,
 .Ql \eecho
 will always evaluate the command
 .Ic echo ,
-even if a ghost of the same name exists.
-.Ic ghost
+even if an (command)alias of the same name exists.
+.Ic commandalias
 content may itself contain further command modifiers, including
 an initial reverse solidus to prevent further expansions.
 .
@@ -3955,6 +3954,42 @@ will remove all established mappings.
 .
 .
 .Mx
+.Mx
+.It Ic commandalias , uncommandalias
+\*(NQ Define or list, and remove, respectively, command aliases.
+An (command)alias can be used everywhere a normal command can be used,
+but always takes precedence: any arguments that are given to the command
+alias are joined onto the alias content, and the resulting string forms
+the command line that is, in effect, executed.
+The latter command removes all given aliases, the special name
+.Ql *
+will remove all existing aliases.
+When used without arguments the former shows a list of all currently
+known aliases, with one argument only the expansion of the given one.
+.Pp
+With two or more arguments a command alias is defined or updated: the
+first argument is the name under which the remaining command line should
+be accessible, the content of which can be just about anything.
+An alias may itself expand to another alias, but to avoid expansion loops
+further expansion will be prevented if an alias refers to itself or if
+an expansion depth limit is reached.
+Explicit expansion prevention is available via reverse solidus
+.Cm \e ,
+see
+.Sx "Command modifiers" .
+.Bd -literal -offset indent
+? commandalias xx
+\*(uA: `commandalias': no such alias: xx
+? commandalias xx echo hello,
+? commandalias xx
+commandalias xx 'echo hello,'
+? xx
+hello,
+? xx world
+hello, world
+.Ed
+.
+.Mx
 .It Ic Copy
 (C) Copy messages to files whose names are derived from the author of
 the respective message and do not mark them as being saved;
@@ -4246,7 +4281,7 @@ define xverbose {
   # Result status ends up in $!, then
   localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
 }
-ghost xv '\ecall xverbose'
+commandalias xv '\ecall xverbose'
 
 # E.g.:
 define xxx {
@@ -4507,39 +4542,9 @@ is set .
 .Mx
 .Mx
 .It Ic ghost , unghost
-Define or list, and remove, respectively, command aliases.
-A ghost can be used everywhere a normal command can be used, but always
-takes precedence: any arguments that are given to the command alias are
-joined onto the alias content, and the resulting string forms the
-command line that is, in effect, executed.
-The latter command removes all given aliases, the special name
-.Ql *
-will remove all ghosts.
-When used without arguments the former shows a list of all currently
-known aliases, with one argument only the expansion of the given one.
-.Pp
-With two or more arguments a command alias is defined or updated: the
-first argument is the name under which the remaining command line should
-be accessible, the content of which can be just about anything.
-A ghost may itself expand to another ghost, but to avoid expansion loops
-further expansion will be prevented if a ghost refers to itself or if an
-expansion depth limit is reached.
-Explicit expansion prevention is available via reverse solidus
-.Cm \e ,
-see
-.Sx "Command modifiers" .
-.Bd -literal -offset indent
-? gh xx
-\*(uA: `ghost': no such alias: xx
-? gh xx echo hello,
-? gh xx
-ghost xx "echo hello,"
-? xx
-hello,
-? xx world
-hello, world
-.Ed
-.
+\*(OB Replaced by
+.Ic commandalias ,
+.Ic uncommandalias .
 .
 .Mx
 .Mx
@@ -5680,7 +5685,7 @@ flag of the messages in question.
 \*(OB The same as
 .Ql sort thread
 (consider using a
-.Ql ghost
+.Ql commandalias
 as necessary).
 .
 .Mx
@@ -5801,10 +5806,6 @@ See
 .It Ic unfwdretain
 \*(OB Superseded by the multiplexer
 .Ic headerpick .
-.
-.It Ic unghost
-See
-.Ic ghost .
 .
 .Mx
 .It Ic unignore
@@ -11362,18 +11363,18 @@ account XandeX {
 }
 
 # Create some new commands so that, e.g., `ls /tmp' will..
-wysh ghost lls '!ls ${LS_COLOR_FLAG} -aFlrS'
-wysh ghost llS '!ls ${LS_COLOR_FLAG} -aFlS'
-wysh ghost ls '!ls ${LS_COLOR_FLAG} -aFrS'
-wysh ghost lS '!ls ${LS_COLOR_FLAG} -aFS'
-wysh ghost lla '!ls ${LS_COLOR_FLAG} -aFlr'
-wysh ghost llA '!ls ${LS_COLOR_FLAG} -aFl'
-wysh ghost la '!ls ${LS_COLOR_FLAG} -aFr'
-wysh ghost lA '!ls ${LS_COLOR_FLAG} -aF'
-wysh ghost ll '!ls ${LS_COLOR_FLAG} -aFltr'
-wysh ghost lL '!ls ${LS_COLOR_FLAG} -aFlt'
-wysh ghost l '!ls ${LS_COLOR_FLAG} -aFtr'
-wysh ghost L '!ls ${LS_COLOR_FLAG} -aFt'
+commandalias lls '!ls ${LS_COLOR_FLAG} -aFlrS'
+commandalias llS '!ls ${LS_COLOR_FLAG} -aFlS'
+commandalias ls '!ls ${LS_COLOR_FLAG} -aFrS'
+commandalias lS '!ls ${LS_COLOR_FLAG} -aFS'
+commandalias lla '!ls ${LS_COLOR_FLAG} -aFlr'
+commandalias llA '!ls ${LS_COLOR_FLAG} -aFl'
+commandalias la '!ls ${LS_COLOR_FLAG} -aFr'
+commandalias lA '!ls ${LS_COLOR_FLAG} -aF'
+commandalias ll '!ls ${LS_COLOR_FLAG} -aFltr'
+commandalias lL '!ls ${LS_COLOR_FLAG} -aFlt'
+commandalias l '!ls ${LS_COLOR_FLAG} -aFtr'
+commandalias L '!ls ${LS_COLOR_FLAG} -aFt'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
@@ -11400,14 +11401,14 @@ define V {
     \e''
     print
 }
-ghost V '\e'call V
+commandalias V '\e'call V
 
 define RK {
   !printf 'Key IDs to gpg --recv-keys: ';\e
     read keyids;\e
     gpg --recv-keys ${keyids};
 }
-ghost RK call RK
+commandalias RK call RK
 .Ed
 .
 .Pp
@@ -11433,7 +11434,7 @@ define XandeX {
   set mta=smtps://smtp.yXXXXx.ru:465 \e
       smtp-hostname= hostname=yXXXXx.com
   set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
-  ghost xp fi pop3s://pop.yXXXXx.ru
+  commandalias xp fi pop3s://pop.yXXXXx.ru
 }
 account XandeX {
   \ecall XandeX

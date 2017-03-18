@@ -395,12 +395,17 @@
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
+   { "commandalias", &a_go_c_alias, (M | X | TWYSH), 0, MAC
+     DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
+   { "uncommandalias", &a_go_c_unalias, (M | X | TWYSH), 1, MAC
+     DS(N_("Delete <command-alias-list> (* for all)")) },
+      { "ghost", &a_go_c_alias, (O | M | X | TWYRA), 0, MAC
+        DS(N_("Obsoleted by `commandalias'")) },
+      { "unghost", &a_go_c_unalias, (O | M | X | TWYRA), 1, MAC
+        DS(N_("Obsoleted by `uncommandalias'")) },
+
    { "eval", &a_go_c_eval, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Construct command from <:arguments:>, reuse its $?")) },
-   { "ghost", &a_go_c_ghost, (M | X | TWYRA), 0, MAC
-     DS(N_("Print or create <ghost> [<command>], or list all ghosts")) },
-      { "unghost", &a_go_c_unghost, (M | X | TWYRA), 1, MAC
-        DS(N_("Delete <ghost-list>")) },
    { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
      DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
    { "read", &a_go_c_read, (G | M | X | EM | TWYSH), 1, MAC

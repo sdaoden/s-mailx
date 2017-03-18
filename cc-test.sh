@@ -194,7 +194,7 @@ t_behave() {
    __behave_x_opt_input_command_stack
    __behave_wysh
    __behave_input_inject_semicolon_seq
-   __behave_ghost
+   __behave_commandalias
    __behave_ifelse
    __behave_localopts
    __behave_macro_param_shift
@@ -551,27 +551,30 @@ __behave_input_inject_semicolon_seq() {
    cksum_test behave:input_inject_semicolon_seq "${MBOX}" '512117110 140'
 }
 
-__behave_ghost() {
+__behave_commandalias() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
-	ghost echo echo hoho
+	commandalias echo echo hoho
 	echo stop.
-	ghost X Xx
-	ghost Xx XxX
-	ghost XxX XxXx
-	ghost XxXx XxXxX
-	ghost XxXxX XxXxXx
-	ghost XxXxXx echo huhu
-	ghost XxXxXxX echo huhu
+	commandalias X Xx
+	commandalias Xx XxX
+	commandalias XxX XxXx
+	commandalias XxXx XxXxX
+	commandalias XxXxX XxXxXx
+	commandalias XxXxXx echo huhu
+	commandalias XxXxXxX echo huhu
 	X
-	ghost XxXxXx XxXxXxX
+	commandalias XxXxXx XxXxXxX
+	X
+	uncommandalias echo
+	commandalias XxXxXx echo huhu
 	X
 	__EOT
 #hoho stop.
 #hoho huhu
 #huhu
-   cksum_test behave:ghost "${MBOX}" '776950759 26'
+#huhu
+   cksum_test behave:commandalias "${MBOX}" '3694143612 31'
 }
-
 
 __behave_ifelse() {
    # Nestable conditions test
