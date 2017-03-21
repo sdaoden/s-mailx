@@ -1161,8 +1161,8 @@ a_lex_source_file(char const *file, bool_t silent_error){
             if(c == '|'){
                nbuf = savestrbuf(file, nlen);
                ispipe = TRU1;
-               break;
             }
+            break;
          }
       }
 #endif
