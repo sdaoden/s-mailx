@@ -706,6 +706,8 @@ a_cmd_scroll(char const *arg, bool_t onlynew){
    if((maxs = msgCount / size) > 0 && msgCount % size == 0)
       --maxs;
 
+   if(arg == NULL)
+      arg = n_empty;
    switch(*arg){
    case '\0':
       ++_screen;
@@ -975,7 +977,7 @@ c_scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(v, FAL0);
+   rv = a_cmd_scroll(*(char const**)v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -986,7 +988,7 @@ c_Scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(v, TRU1);
+   rv = a_cmd_scroll(*(char const**)v, TRU1);
    NYD_LEAVE;
    return rv;
 }

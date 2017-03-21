@@ -155,9 +155,9 @@
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
-   { "z", &c_scroll, (A | M | TSTRING), 0, 0
+   { "z", &c_scroll, (A | M | TWYSH), 0, 1
      DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
-   { "Z", &c_Scroll, (A | M | TSTRING), 0, 0
+   { "Z", &c_Scroll, (A | M | TWYSH), 0, 1
      DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | TMSGLST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
