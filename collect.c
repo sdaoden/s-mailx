@@ -1947,6 +1947,12 @@ jout:
       hp->h_attach = n_attachment_list_edit(hp->h_attach,
             n_LEXINPUT_CTX_COMPOSE);
 
+   /* Execute compose-leave */
+   if((cp = ok_vlook(on_compose_leave)) != NULL){
+      setup_from_and_sender(hp);
+      temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
+   }
+
    /* Add automatic receivers */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
       hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
@@ -1956,12 +1962,6 @@ jout:
             EACM_NORMAL, checkaddr_err));
    if (*checkaddr_err != 0)
       goto jerr;
-
-   /* Execute compose-leave */
-   if((cp = ok_vlook(on_compose_leave)) != NULL){
-      setup_from_and_sender(hp);
-      temporary_call_compose_mode_hook(cp, &a_coll__hook_setter, hp);
-   }
 
    /* TODO Cannot do since it may require turning this into a multipart one */
    if(options & OPT_Mm_FLAG)
