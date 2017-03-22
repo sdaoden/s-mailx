@@ -127,9 +127,9 @@
      DS(N_("Append <msglist> to <file>")) },
    { "Save", &c_Save, (A | S | TSTRING), 0, 0
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "source", &c_source, (M | TWYRA), 1, 1
+   { "source", &c_source, (M | TWYSH), 1, 1
      DS(N_("Read commands from <file>")) },
-   { "source_if", &c_source_if, (M | TWYRA), 1, 1
+   { "source_if", &c_source_if, (M | TWYSH), 1, 1
      DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (G | M | X | TWYRA), 0, 1000
      DS(N_("Print all variables, or set (a) <variable>(s)")) },

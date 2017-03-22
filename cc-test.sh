@@ -216,7 +216,7 @@ __behave_x_opt_input_command_stack() {
 	}
 	call mac0
 	echo 2
-	wysh source '\
+	source '\
 	   echo "define mac1 {";\
 	   echo "  echo mac1-1 via1 \$0";\
 	   echo "  call mac0";\
@@ -233,7 +233,7 @@ __behave_x_opt_input_command_stack() {
 	   echo "echo 1-2";\
 	   echo "call mac1";\
 	   echo "echo 1-3";\
-	   echo "wysh source \"\
+	   echo "source \"\
 	      echo echo 1-1-1 via1 \$0;\
 	      echo call mac0;\
 	      echo echo 1-1-2;\
@@ -263,7 +263,7 @@ __behave_x_opt_input_command_stack() {
    echo 2
    ' \
       -X'
-   wysh source '${APO}'\
+   source '${APO}'\
       echo "define mac1 {";\
       echo "  echo mac1-1 via2 \$0";\
       echo "  call mac0";\
@@ -280,7 +280,7 @@ __behave_x_opt_input_command_stack() {
       echo "echo 1-2";\
       echo "call mac1";\
       echo "echo 1-3";\
-      echo "wysh source \"\
+      echo "source \"\
          echo echo 1-1-1 via2 \$0;\
          echo call mac0;\
          echo echo 1-1-2;\
