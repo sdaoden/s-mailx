@@ -208,6 +208,8 @@ t_behave() {
    # FIXME __behave_mlist
 
    have_feat smime && __behave_smime
+
+   __behave_compose_hooks
 }
 
 __behave_x_opt_input_command_stack() {
@@ -1842,6 +1844,71 @@ __behave_vexpr() {
 # #4
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
+}
+
+__behave_compose_hooks() {
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.tnotes"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!/bin/sh -
+		${rm} -f "${MBOX}"
+		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat}) > "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf 'm hook-test@exam.ple\nbody\n~.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
+   "${SNAIL}" ${ARGS} \
+      -Smta=./.tsendmail.sh \
+      -X'
+         define t_ocs {
+            read ver
+            echo t_ocs
+            echo "~^header list"; read hl; vput vexpr es substr "$hl" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to header list, aborting send"; echo "~x"
+            endif
+            echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
+               read es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be diet, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
+               read es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy, aborting send"; echo "~x"
+            endif
+            echo "~:set t_ocs"
+         }
+         define t_oce {
+            set t_oce autobcc=oce@exam.ple
+         }
+         define t_ocl {
+            set t_ocl autocc=ocl@exam.ple
+         }
+         wysh set on-compose-splice=t_ocs \
+            on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
+               ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
+            on-compose-enter=t_oce on-compose-leave=t_ocl
+      ' > ./.tnotes
+   ${cat} ./.tnotes >> ${MBOX}
+
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+
+#From PrimulaVeris Wed Apr 10 22:59:00 2017
+#Date: Wed, 02 Oct 1996 01:50:07 +0000
+#To: hook-test@exam.ple, shell@exam.ple
+#Cc: ocl@exam.ple, splicy diet spliced <splice@exam.ple>
+#Bcc: juicy juice spliced <juice@exam.ple>, oce@exam.ple
+#
+#body
+#t_ocs-shell
+#t_ocs
+##variable not set: t_oce
+##variable not set: t_ocs
+##variable not set: t_ocs_shell
+##variable not set: t_ocl
+   cksum_test behave:compose_hooks "${MBOX}" '3240856112 319'
 }
 
 __behave_smime() { # FIXME add test/ dir, unroll tests therein
