@@ -1663,6 +1663,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
    /*agp->ag_iaddr_start = 0;*/
    cp2 = bufend = nbuf;
 
+   /* TODO This is complete crap and should use a token parser */
    for(cp = name++; (c = *cp++) != '\0';){
       switch (c) {
       case '(':
@@ -1694,7 +1695,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
       case ' ':
       case '\t':
          if((flags & (a_GOTADDR | a_GOTSPACE)) == a_GOTADDR){
-            flags |= a_GOTADDR | a_GOTSPACE;
+            flags |= a_GOTSPACE;
             agp->ag_iaddr_aend = PTR2SIZE(cp - name);
          }
          if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
@@ -1758,6 +1759,14 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
    agp->ag_slen = PTR2SIZE(cp2 - nbuf);
    if (agp->ag_iaddr_aend == 0)
       agp->ag_iaddr_aend = agp->ag_ilen;
+   /* Misses > */
+   else if (agp->ag_iaddr_aend < agp->ag_iaddr_start) {
+      cp2 = n_autorec_alloc(NULL, agp->ag_ilen + 1 +1);
+      memcpy(cp2, agp->ag_input, agp->ag_ilen);
+      agp->ag_iaddr_aend = agp->ag_ilen;
+      cp2[agp->ag_ilen++] = '>';
+      cp2[agp->ag_ilen] = '\0';
+   }
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
