@@ -119,9 +119,9 @@ Thank you!
 
 - [master]
     Rooted on top of [heirloom].  It gains only stable, but possibly
-    backward-incompatible changes (those are usually mentioned on the
-    mailing-list), and will be used to create new entries in [stable/].
-    History won't be rewritten.
+    backward-incompatible changes, and will be used to create new
+    entries in stable/.  It may gain signed commits for sealing purposes
+    from time to time.  History won't be rewritten.
 
 - [next]
     Rooted on top of [master], this consists of a furious mixture of
@@ -132,11 +132,20 @@ Thank you!
 - [crawl]
     Developer chaos (distributed horror backup - don't use!).
 
-- [timeline]
-    A sketchy effort to collect the complete history of Unix mail and
-    its successor, BSD Mail.  Anything from the pre-Gunnar Ritter area
-    is taken from CSRG and other archives, for nail and Heirloom mailx
-    i've used release balls.
+- [unix-mail,bsd-Mail,timeline]
+    Sketchy efforts to collect the complete history of Unix mail and
+    its successor, BSD Mail.  Anything from the pre-nail era has been
+    taken from CSRG and TUHS, for nail and Heirloom mailx i have used
+    release balls.
+
+    The [timeline] branch was the original effort, and it will be
+    continuously be extended whenever new releases will be made, but its
+    history won't be rewritten, which is why it is a sketchy effort.
+    The [unix-mail] and [bsd-Mail] branches have been added later, and
+    will hopefully offer the most complete picture possible as time goes
+    by (not taking into account the "nupas" effort of Research Unix,
+    though) -- this means their history may change, but all commits are
+    signed with an OpenPGP key.
 
 - [heirloom]
     A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository.
