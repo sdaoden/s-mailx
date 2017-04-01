@@ -65,6 +65,7 @@ static void          _send_onpipe(int signo);
 static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
+                        char **linedat, size_t *linesize,
                         ui64_t *stats, int level);
 
 /* Get a file for an attachment */
@@ -383,14 +384,15 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct n_ignore const *doitp, struct quoteflt *qf,
-   enum sendaction volatile action, ui64_t * volatile stats, int level)
+   enum sendaction volatile action,
+   char **linedat, size_t *linesize, ui64_t * volatile stats, int level)
 {
    int volatile rv = 0;
    struct mime_handler mh;
    struct str outrest, inrest;
-   char *line = NULL, *cp;
+   char *cp;
    char const * volatile tmpname = NULL;
-   size_t linesize = 0, linelen, cnt;
+   size_t linelen, cnt;
    int volatile term_infd;
    int dostat, c;
    struct mimepart *volatile np;
@@ -455,10 +457,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       size_t lcnt;
 
       lcnt = cnt;
-      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0) == NULL)
+      if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0) == NULL)
          break;
       ++lineno;
-      if (linelen == 0 || (cp = line)[0] == '\n')
+      if (linelen == 0 || (cp = *linedat)[0] == '\n')
          /* If line is blank, we've reached end of headers */
          break;
       if(cp[linelen - 1] == '\n')
@@ -491,7 +493,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             cnt = lcnt;
             break;
          }
-         cp = line;
+         cp = *linedat;
 jhdrpush:
          if(convert == CONV_NONE){
             hlp = n_string_push_buf(hlp, cp, (ui32_t)linelen);
@@ -562,9 +564,6 @@ jhdrtrunc:
    } /* C99 */
 
    quoteflt_flush(qf);
-   cp = line;
-   line = NULL;
-   free(cp);
 
    if(ferror(obuf)){
       rv = -1;
@@ -786,8 +785,8 @@ jalter_plain:
                   }
                   hadpart = TRU1;
                   neednl = FAL0;
-                  rv = sendpart(zmp, np, obuf, doitp, qf, action, stats,
-                        level + 1);
+                  rv = sendpart(zmp, np, obuf, doitp, qf, action,
+                        linedat, linesize, stats, level + 1);
                   quoteflt_reset(qf, origobuf);
 
                   if (rv < 0)
@@ -892,7 +891,8 @@ jmulti:
                   NULL,NULL);
                quoteflt_flush(dummy);
             }
-            if (sendpart(zmp, np, obuf, doitp, qf, action, stats, level+1) < 0)
+            if (sendpart(zmp, np, obuf, doitp, qf, action, linedat, linesize,
+                  stats, level+1) < 0)
                rv = -1;
             quoteflt_reset(qf, origobuf);
 
@@ -1074,7 +1074,6 @@ jsend:
             free(outrest.s);
          if (inrest.s != NULL)
             free(inrest.s);
-         free(line);
 #ifdef HAVE_ICONV
          if (iconvd != (iconv_t)-1)
             n_iconv_close(iconvd);
@@ -1085,9 +1084,9 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
-   while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
+   while (!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
-      if (_out(line, linelen, pbuf, convert, action, qf, stats, &outrest,
+      if (_out(*linedat, linelen, pbuf, convert, action, qf, stats, &outrest,
             (action & _TD_EOF ? NULL : &inrest)) < 0 || ferror(pbuf)) {
          rv = -1; /* XXX Should bail away?! */
          break;
@@ -1134,8 +1133,6 @@ joutln:
    }
 
 jend:
-   if (line != NULL)
-      free(line);
    if (pbuf != qbuf) {
       safe_signal(SIGPIPE, SIG_IGN);
       Pclose(pbuf, !(mh.mh_flags & MIME_HDL_ASYNC));
@@ -1384,14 +1381,18 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    char const *prefix, enum sendaction action, ui64_t *stats)
 {
    struct quoteflt qf;
-   size_t cnt, sz, i;
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
-   int rv = -1, c;
+   size_t linesize, cnt, sz, i;
+   char *linedat;
+   int rv, c;
    NYD_ENTER;
 
    time_current_update(&time_current, TRU1);
+   rv = -1;
+   linedat = NULL;
+   linesize = 0;
 
    if (mp == dot && action != SEND_TOSRCH)
       n_pstate |= n_PS_DID_PRINT_DOT;
@@ -1482,9 +1483,12 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 
-   rv = sendpart(mp, ip, obuf, doitp, &qf, action, stats, 0);
+   rv = sendpart(mp, ip, obuf, doitp, &qf, action, &linedat, &linesize,
+         stats, 0);
 jleave:
    quoteflt_destroy(&qf);
+   if(linedat != NULL)
+      free(linedat);
    NYD_LEAVE;
    return rv;
 }
