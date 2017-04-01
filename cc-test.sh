@@ -192,27 +192,27 @@ have_feat() {
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
-   __behave_x_opt_input_command_stack
-   __behave_wysh
-   __behave_input_inject_semicolon_seq
-   __behave_commandalias
-   __behave_ifelse
-   __behave_localopts
-   __behave_macro_param_shift
-   __behave_addrcodec
-   __behave_vexpr
-   __behave_xcall
+   t_behave_X_opt_input_command_stack
+   t_behave_wysh
+   t_behave_input_inject_semicolon_seq
+   t_behave_commandalias
+   t_behave_ifelse
+   t_behave_localopts
+   t_behave_macro_param_shift
+   t_behave_addrcodec
+   t_behave_vexpr
+   t_behave_xcall
 
-   # FIXME __behave_alias
+   # FIXME t_behave_alias
 
-   # FIXME __behave_mlist
+   # FIXME t_behave_mlist
 
-   have_feat smime && __behave_smime
+   have_feat smime && t_behave_smime
 
-   __behave_compose_hooks
+   t_behave_compose_hooks
 }
 
-__behave_x_opt_input_command_stack() {
+t_behave_X_opt_input_command_stack() {
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
 	define mac0 {
@@ -345,7 +345,7 @@ __behave_x_opt_input_command_stack() {
    cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
 }
 
-__behave_xcall() {
+t_behave_xcall() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define work {
 		echon "$1 "
@@ -372,7 +372,7 @@ __behave_xcall() {
    cksum_test behave:xcall "${MBOX}" '3660556233 9556'
 }
 
-__behave_wysh() {
+t_behave_wysh() {
    ${cat} <<- '__EOT' > "${BODY}"
 	#
 	echo abcd
@@ -535,7 +535,7 @@ __behave_wysh() {
    cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
 }
 
-__behave_input_inject_semicolon_seq() {
+t_behave_input_inject_semicolon_seq() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define mydeepmac {
 		echon '(mydeepmac)';
@@ -554,7 +554,7 @@ __behave_input_inject_semicolon_seq() {
    cksum_test behave:input_inject_semicolon_seq "${MBOX}" '512117110 140'
 }
 
-__behave_commandalias() {
+t_behave_commandalias() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	commandalias echo echo hoho
 	echo stop.
@@ -579,7 +579,7 @@ __behave_commandalias() {
    cksum_test behave:commandalias "${MBOX}" '3694143612 31'
 }
 
-__behave_ifelse() {
+t_behave_ifelse() {
    # Nestable conditions test
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 		if 0
@@ -1224,7 +1224,7 @@ __behave_ifelse() {
    fi
 }
 
-__behave_localopts() {
+t_behave_localopts() {
    # Nestable conditions test
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define t2 {
@@ -1280,7 +1280,7 @@ __behave_localopts() {
    cksum_test behave:localopts "${MBOX}" '1936527193 192'
 }
 
-__behave_macro_param_shift() {
+t_behave_macro_param_shift() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	define t2 {
 	   echo in: t2
@@ -1355,7 +1355,7 @@ __behave_macro_param_shift() {
    cksum_test behave:macro_param_shift "${MBOX}" '1402489146 1682'
 }
 
-__behave_addrcodec() {
+t_behave_addrcodec() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
 	echo $?/$^ERRNAME $res
@@ -1515,7 +1515,7 @@ __behave_addrcodec() {
    cksum_test behave:addrcodec "${MBOX}" '3907388894 2416'
 }
 
-__behave_vexpr() {
+t_behave_vexpr() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -1846,7 +1846,7 @@ __behave_vexpr() {
    fi
 }
 
-__behave_compose_hooks() {
+t_behave_compose_hooks() {
    TRAP_EXIT_ADDONS="./.tsendmail.sh ./.tnotes"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -1890,7 +1890,7 @@ __behave_compose_hooks() {
                ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl
       ' > ./.tnotes
-   ${cat} ./.tnotes >> ${MBOX}
+   ${cat} ./.tnotes >> "${MBOX}"
 
    ${rm} -f ${TRAP_EXIT_ADDONS}
    TRAP_EXIT_ADDONS=
@@ -1911,7 +1911,7 @@ __behave_compose_hooks() {
    cksum_test behave:compose_hooks "${MBOX}" '3240856112 319'
 }
 
-__behave_smime() { # FIXME add test/ dir, unroll tests therein
+t_behave_smime() { # FIXME add test/ dir, unroll tests therein
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
