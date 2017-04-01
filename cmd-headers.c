@@ -798,8 +798,6 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   struct n_sigman sm;
-   bool_t volatile isrelax;
    ui32_t volatile flag;
    int g, k, mesg, size;
    int volatile lastg = 1;
@@ -808,17 +806,7 @@ _headers(int msgspec) /* TODO rework v15 */
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
-
    flag = 0;
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
-
-   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
 
    size = (int)/*TODO*/n_screensize();
    if (_screen < 0)
@@ -871,8 +859,8 @@ _headers(int msgspec) /* TODO rework v15 */
             }
       }
 
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      isrelax = TRU1;
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
          ++mesg;
          if (!visible(mp))
@@ -883,7 +871,7 @@ _headers(int msgspec) /* TODO rework v15 */
          srelax();
       }
       srelax_rele();
-      isrelax = FAL0;
+      n_COLOUR( n_colour_env_gut(); )
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -919,8 +907,8 @@ _headers(int msgspec) /* TODO rework v15 */
             }
       }
 
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      isrelax = TRU1;
       while (mp) {
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
@@ -934,7 +922,7 @@ _headers(int msgspec) /* TODO rework v15 */
          mp = next_in_thread(mp);
       }
       srelax_rele();
-      isrelax = FAL0;
+      n_COLOUR( n_colour_env_gut(); )
    }
 
    if (!flag) {
@@ -942,14 +930,7 @@ _headers(int msgspec) /* TODO rework v15 */
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return !flag;
 }
 
@@ -1032,23 +1013,14 @@ jerr:
 FL int
 c_from(void *v)
 {
-   struct n_sigman sm;
    int *msgvec = v, *ip, n;
    char *cp;
    FILE * volatile obuf;
-   bool_t volatile isrelax;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
    obuf = n_stdout;
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
 
    if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
@@ -1065,7 +1037,6 @@ c_from(void *v)
             obuf = n_stdout;
       }
    }
-   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
 
    /* Update dot before display so that the dotmark etc. are correct */
    for (ip = msgvec; *ip != 0; ++ip)
@@ -1073,49 +1044,31 @@ c_from(void *v)
    if (--ip >= msgvec)
       setdot(message + *ip - 1);
 
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
-   isrelax = TRU1;
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
       srelax();
    }
    srelax_rele();
-   isrelax = FAL0;
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
    n_COLOUR( n_colour_env_gut(); )
+
    if (obuf != n_stdout)
       n_pager_close(obuf);
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return 0;
 }
 
 FL void
 print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
-   struct n_sigman sm;
-   bool_t volatile isrelax;
    size_t printed;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
-
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
-
    srelax_hold();
-   isrelax = TRU1;
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1127,15 +1080,8 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       srelax();
    }
    srelax_rele();
-   isrelax = FAL0;
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
    n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 /* s-it-mode */

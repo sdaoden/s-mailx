@@ -40,7 +40,7 @@
 #endif
 
 /* Prepare and print "[Message: xy]:" intro */
-static void    _show_msg_overview(FILE *obuf, struct message *mp, int msg_no);
+static bool_t a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* Show the requested messages */
 static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
@@ -55,11 +55,11 @@ static int a_cmsg_top(void *vp, struct n_ignore const *itp);
 /* Delete the indicated messages.  Set dot to some nice place afterwards */
 static int     delm(int *msgvec);
 
-static void
-_show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
-{
+static bool_t
+a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
+   bool_t rv;
    char const *cpre, *csuf;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    cpre = csuf = n_empty;
 #ifdef HAVE_COLOUR
@@ -77,38 +77,33 @@ _show_msg_overview(FILE *obuf, struct message *mp, int msg_no)
    }
 #endif
    /* XXX Message info uses wire format for line count */
-   fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-      cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf);
-   NYD_LEAVE;
+   rv = (fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
+         cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf) > 0);
+   NYD2_LEAVE;
+   return rv;
 }
 
 static int
 _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t donotdecode, char *cmd, ui64_t *tstats)
 {
-   struct n_sigman sm;
    ui64_t mstats[1];
-   int volatile rv = 1;
    int *ip;
    struct message *mp;
    char const *cp;
+   enum sendaction action;
+   bool_t volatile formfeed;
    FILE * volatile obuf;
-   bool_t volatile isrelax = FAL0;
+   int volatile rv;
    NYD_ENTER;
-   {/* C89.. */
-   enum sendaction const action = ((dopipe && ok_blook(piperaw))
+
+   rv = 1;
+   obuf = n_stdout;
+   formfeed = (dopipe && ok_blook(page));
+   action = ((dopipe && ok_blook(piperaw))
          ? SEND_MBOX : donotdecode
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
-   bool_t const volatile formfeed = (dopipe && ok_blook(page));
-   obuf = n_stdout;
-
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
 
    if (dopipe) {
       if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
@@ -126,7 +121,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
             mp = message + *ip - 1;
             if (!(mp->m_content_info & CI_HAVE_BODY))
                if (get_body(mp) != OKAY)
-                  goto jcleanup_leave;
+                  goto jleave;
             nlines += mp->m_lines + 1; /* TODO BUT wire format, not display! */
          }
       }
@@ -138,51 +133,56 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
-#ifdef HAVE_COLOUR
-      if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-         n_colour_env_create(n_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
-#endif
+      n_COLOUR(
+         if(action == SEND_TODISP || action == SEND_TODISP_ALL)
+            n_colour_env_create(n_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
+      )
    }
-#ifdef HAVE_COLOUR
-   else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-      n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
-#endif
+   n_COLOUR(
+      else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
+         n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
+   )
 
-   /*TODO unless we have our signal manager special care must be taken */
+   rv = 0;
    srelax_hold();
-   isrelax = TRU1;
    for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
       n_pstate |= n_PS_DID_PRINT_DOT;
       uncollapse1(mp, 1);
-      if (!dopipe && ip != msgvec)
-         fprintf(obuf, "\n");
-      if (action != SEND_MBOX)
-         _show_msg_overview(obuf, mp, *ip);
-      sendmp(mp, obuf, (doign ? n_IGNORE_TYPE : NULL), NULL, action, mstats);
+      if(!dopipe && ip != msgvec && fprintf(obuf, "\n") < 0){
+         rv = 1;
+         break;
+      }
+      if(action != SEND_MBOX && !a_cmsg_show_overview(obuf, mp, *ip)){
+         rv = 1;
+         break;
+      }
+      if(sendmp(mp, obuf, (doign ? n_IGNORE_TYPE : NULL), NULL, action, mstats
+            ) < 0){
+         rv = 1;
+         break;
+      }
       srelax();
-      if (formfeed) /* TODO a nicer way to separate piped messages! */
-         putc('\f', obuf);
+      if(formfeed){ /* TODO a nicer way to separate piped messages! */
+         if(putc('\f', obuf) == EOF){
+            rv = 1;
+            break;
+         }
+      }
       if (tstats != NULL)
          tstats[0] += mstats[0];
    }
    srelax_rele();
-   isrelax = FAL0;
-
-   rv = 0;
-jcleanup_leave:
-   n_sigman_cleanup_ping(&sm);
+   n_COLOUR(
+      if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
+         n_colour_env_gut();
+   )
 jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut(); )
    if (obuf != n_stdout)
       n_pager_close(obuf);
-   }
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
@@ -303,8 +303,8 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
          break;
       }
 
-      _show_msg_overview(iobuf, mp, *ip);
-      if(sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
+      if(!a_cmsg_show_overview(iobuf, mp, *ip) ||
+            sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
          n_err(_("`top': failed to prepare message %d\n"), *ip);
          vp = NULL;
          break;

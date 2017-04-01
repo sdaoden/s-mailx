@@ -1380,6 +1380,7 @@ FL int
 sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    char const *prefix, enum sendaction action, ui64_t *stats)
 {
+   struct n_sigman linedat_protect;
    struct quoteflt qf;
    FILE *ibuf;
    enum mime_parse_flags mpf;
@@ -1393,12 +1394,19 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    rv = -1;
    linedat = NULL;
    linesize = 0;
+   quoteflt_init(&qf, prefix);
+
+   n_SIGMAN_ENTER_SWITCH(&linedat_protect, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    if (mp == dot && action != SEND_TOSRCH)
       n_pstate |= n_PS_DID_PRINT_DOT;
    if (stats != NULL)
       *stats = 0;
-   quoteflt_init(&qf, prefix);
 
    /* First line is the From_ line, so no headers there to worry about */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
@@ -1485,11 +1493,14 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 
    rv = sendpart(mp, ip, obuf, doitp, &qf, action, &linedat, &linesize,
          stats, 0);
+
+   n_sigman_cleanup_ping(&linedat_protect);
 jleave:
    quoteflt_destroy(&qf);
    if(linedat != NULL)
       free(linedat);
    NYD_LEAVE;
+   n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 

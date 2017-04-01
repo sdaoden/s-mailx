@@ -109,7 +109,6 @@ _url_last_at_before_slash(char const *sp)
 static void
 _nrc_init(void)
 {
-   struct n_sigman sm;
    char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
       user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
    struct stat sb;
@@ -126,12 +125,7 @@ _nrc_init(void)
    ispipe = FAL0;
    fi = NULL;
 
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
+   hold_all_sigs(); /* todo */
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
@@ -258,7 +252,6 @@ jerr:
 
    if (nhead != NULL)
       nrc = nhead;
-   n_sigman_cleanup_ping(&sm);
 jleave:
    if (fi != NULL) {
       if (ispipe)
@@ -274,8 +267,8 @@ jleave:
       }
 j_leave:
    _nrc_list = nrc;
+   rele_all_sigs();
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 static enum nrc_token
