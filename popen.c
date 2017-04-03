@@ -45,12 +45,7 @@
 #define WRITE              1
 
 struct fp {
-   FILE        *fp;
    struct fp   *link;
-   char        *realfile;
-   char        *save_cmd;
-   struct termios *fp_tios;
-   long        offset;
    int         omode;
    int         pid;
    enum {
@@ -67,6 +62,12 @@ struct fp {
       FP_UNLINK   = 1<<9,
       FP_TERMIOS  = 1<<10
    }           flags;
+   long        offset;
+   FILE        *fp;
+   char        *realfile;
+   char        *save_cmd;
+   struct termios *fp_tios;
+   n_sighdl_t fp_osigint;     /* Only if FP_TERMIOS */
 };
 
 struct child {
@@ -88,11 +89,13 @@ static volatile int a_popen_hadsig;
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int pid,
                         int flags, char const *realfile, long offset,
-                        char const *save_cmd, struct termios *tiosp);
+                        char const *save_cmd, struct termios *tiosp,
+                        n_sighdl_t osigint);
 static enum okay     _file_save(struct fp *fpp);
 static int           _file_load(int flags, int infd, int outfd,
                         char const *load_cmd);
-static enum okay     unregister_file(FILE *fp, struct termios **tiosp);
+static enum okay     unregister_file(FILE *fp, struct termios **tiosp,
+                        n_sighdl_t *osigint);
 static int           file_pid(FILE *fp);
 
 /* TODO Rather temporary: deal with job control with FD_PASS */
@@ -144,7 +147,7 @@ jleave:
 static void
 register_file(FILE *fp, int omode, int pid, int flags,
    char const *realfile, long offset, char const *save_cmd,
-   struct termios *tiosp)
+   struct termios *tiosp, n_sighdl_t osigint)
 {
    struct fp *fpp;
    NYD_ENTER;
@@ -161,6 +164,7 @@ register_file(FILE *fp, int omode, int pid, int flags,
    fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
    fpp->save_cmd = (save_cmd != NULL) ? sstrdup(save_cmd) : NULL;
    fpp->fp_tios = tiosp;
+   fpp->fp_osigint = osigint;
    fpp->offset = offset;
    fp_head = fpp;
    NYD_LEAVE;
@@ -261,7 +265,7 @@ jleave:
 }
 
 static enum okay
-unregister_file(FILE *fp, struct termios **tiosp)
+unregister_file(FILE *fp, struct termios **tiosp, n_sighdl_t *osigint)
 {
    struct fp **pp, *p;
    enum okay rv = OKAY;
@@ -289,9 +293,10 @@ unregister_file(FILE *fp, struct termios **tiosp)
          if (p->realfile != NULL)
             free(p->realfile);
          if (p->flags & FP_TERMIOS) {
-            if (tiosp != NULL)
+            if (tiosp != NULL) {
                *tiosp = p->fp_tios;
-            else
+               *osigint = p->fp_osigint;
+            } else
                free(p->fp_tios);
          }
          free(p);
@@ -495,7 +500,7 @@ Fopen(char const *file, char const *oflags)
    NYD_ENTER;
 
    if ((fp = safe_fopen(file, oflags, &osflags)) != NULL)
-      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL,NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -512,7 +517,7 @@ Fdopen(int fd, char const *oflags, bool_t nocloexec)
       osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
-      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL,NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -523,7 +528,7 @@ Fclose(FILE *fp)
    int i = 0;
    NYD_ENTER;
 
-   if (unregister_file(fp, NULL) == OKAY)
+   if (unregister_file(fp, NULL, NULL) == OKAY)
       i |= 1;
    if (fclose(fp) == 0)
       i |= 2;
@@ -650,7 +655,7 @@ jerr:
       goto jleave;
    }
 
-   register_file(rv, osflags, 0, flags, file, offset, csave, NULL);
+   register_file(rv, osflags, 0, flags, file, offset, csave, NULL,NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -755,7 +760,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       if ((fp = fdopen(fd, osflags)) != NULL)
          register_file(fp, osflagbits | _O_CLOEXEC, 0,
             (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),
-            cp_base, 0L, NULL, NULL);
+            cp_base, 0L, NULL, NULL,NULL);
    } else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
@@ -836,11 +841,12 @@ FL FILE *
 Popen(char const *cmd, char const *mode, char const *sh,
    char const **env_addon, int newfd1)
 {
-   struct termios *tiosp;
    int p[2], myside, hisside, fd0, fd1, pid;
-   char mod[2] = {'0', '\0'};
    sigset_t nset;
-   FILE *rv = NULL;
+   char mod[2];
+   n_sighdl_t osigint;
+   struct termios *tiosp;
+   FILE *rv;
    NYD_ENTER;
 
    /* First clean up child structures */
@@ -858,6 +864,11 @@ Popen(char const *cmd, char const *mode, char const *sh,
       }
       rele_all_sigs();
    }
+
+   rv = NULL;
+   tiosp = NULL;
+   n_UNINIT(osigint, SIG_ERR);
+   mod[0] = '0', mod[1] = '\0';
 
    if (!pipe_cloexec(p))
       goto jleave;
@@ -884,11 +895,11 @@ Popen(char const *cmd, char const *mode, char const *sh,
     * XXX It shouldn't matter which FD we actually use in this case */
    if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == n_CHILD_FD_PASS ||
          fd1 == n_CHILD_FD_PASS)) {
+      osigint = n_signal(SIGINT, SIG_IGN);
       tiosp = smalloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
       n_TERMCAP_SUSPEND(TRU1);
-   } else
-      tiosp = NULL;
+   }
 
    sigemptyset(&nset);
 
@@ -918,10 +929,16 @@ Popen(char const *cmd, char const *mode, char const *sh,
    if ((rv = fdopen(myside, mod)) != NULL)
       register_file(rv, 0, pid,
          (tiosp == NULL ? FP_PIPE : FP_PIPE | FP_TERMIOS),
-         NULL, 0L, NULL, tiosp);
+         NULL, 0L, NULL, tiosp, osigint);
    else
       close(myside);
 jleave:
+   if(rv == NULL && tiosp != NULL){
+      n_TERMCAP_RESUME(TRU1);
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+      n_free(tiosp);
+      n_signal(SIGINT, osigint);
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -929,6 +946,7 @@ jleave:
 FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
+   n_sighdl_t osigint;
    struct termios *tiosp;
    int pid;
    bool_t rv = FAL0;
@@ -938,7 +956,7 @@ Pclose(FILE *ptr, bool_t dowait)
    if(pid < 0)
       goto jleave;
 
-   unregister_file(ptr, &tiosp);
+   unregister_file(ptr, &tiosp, &osigint);
    fclose(ptr);
 
    if(dowait){
@@ -947,6 +965,7 @@ Pclose(FILE *ptr, bool_t dowait)
       if(tiosp != NULL){
          n_TERMCAP_RESUME(TRU1);
          tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+         n_signal(SIGINT, osigint);
       }
       rele_all_sigs();
    }else{
@@ -1011,9 +1030,12 @@ n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
 {
    sigset_t nset, oset;
    sighandler_type soldint;
-   bool_t tio_set;
    int rv;
+   enum {a_NONE = 0, a_INTIGN = 1<<0, a_TTY = 1<<1} f;
    NYD_ENTER;
+
+   f = a_NONE;
+   n_UNINIT(soldint, SIG_ERR);
 
    /* TODO Of course this is a joke given that during a "p*" the PAGER may
     * TODO be up and running while we play around like this... but i guess
@@ -1024,44 +1046,47 @@ n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
     * TODO any action, and shall we find we need to run programs dump it
     * TODO all into a temporary file which is then passed through to the
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
-   if ((tio_set = ((n_psonce & n_PSO_INTERACTIVE) &&
-         (infd == n_CHILD_FD_PASS || outfd == n_CHILD_FD_PASS)))) {
-      /* TODO Simply ignore SIGINT then, it surely will be ment for the program
-       * TODO which takes the terminal */
+   if(infd == n_CHILD_FD_PASS || outfd == n_CHILD_FD_PASS){
       soldint = safe_signal(SIGINT, SIG_IGN);
-      tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
-         &a_popen_tios);
-      n_TERMCAP_SUSPEND(FAL0);
-      sigfillset(&nset);
-      sigdelset(&nset, SIGCHLD);
-      sigdelset(&nset, SIGINT);
-      /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-      a_popen_hadsig = 0;
-      a_popen_jobsigs_up();
+      f = a_INTIGN;
+
+      if(n_psonce & n_PSO_INTERACTIVE){
+         f |= a_TTY;
+         tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
+            &a_popen_tios);
+         n_TERMCAP_SUSPEND(FAL0);
+         sigfillset(&nset);
+         sigdelset(&nset, SIGCHLD);
+         sigdelset(&nset, SIGINT);
+         /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
+         sigprocmask(SIG_BLOCK, &nset, &oset);
+         a_popen_hadsig = 0;
+         a_popen_jobsigs_up();
+      }
    }
 
-   if ((rv = n_child_start(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
+   if((rv = n_child_start(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
-   else {
-      if (n_child_wait(rv, NULL))
+   else{
+      if(n_child_wait(rv, NULL))
          rv = 0;
-      else {
-         if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+      else{
+         if(ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             n_err(_("Fatal error in process\n"));
          rv = -1;
       }
    }
 
-   if (tio_set) {
+   if(f & a_TTY){
       a_popen_jobsigs_down();
-      tio_set = ((n_psonce & n_PSO_TTYIN) != 0);
       n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
-      tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
-         (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      tcsetattr(((n_psonce & n_PSO_TTYIN) ? STDIN_FILENO : STDOUT_FILENO),
+         ((n_psonce & n_PSO_TTYIN) ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
+   if(f & a_INTIGN){
       if(soldint != SIG_IGN)
          safe_signal(SIGINT, soldint);
-      sigprocmask(SIG_SETMASK, &oset, NULL);
    }
    NYD_LEAVE;
    return rv;
