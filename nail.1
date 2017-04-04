@@ -75,29 +75,33 @@
 .Op Fl BdEFintv~
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
-.Op Fl a Ar attachment
-.Op Fl b Ar bcc-addr
-.Op Fl c Ar cc-addr
+.Op : Ns Fl a Ar attachment Ns \&:
+.Op : Ns Fl b Ar bcc-addr Ns \&:
+.Op : Ns Fl c Ar cc-addr Ns \&:
 .Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
-.Op Fl S Ar var Ns Op Ns = Ns Ar value
+.Oo : Ns
+.Fl S Ar var Ns Op Ns = Ns Ar value Ns
+.Pf \&: Oc
 .Op Fl s Ar subject
-.Op Fl X Ar cmd
+.Op : Ns Fl X Ar cmd Ns \&:
 .Op Fl \&.
-.Ar to-addr ...
-.Op Fl Fl \~ Ns Ar mta-option ...
+.Pf : Ar to-addr Ns \&:
+.Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Nm \*(uA
 .Bk -words
 .Op Fl BdEeHiNnRv~
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
-.Op Fl L Ar spec-list
+.Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Op Fl S Ar var Ns Op Ns = Ns Ar value
+.Oo : Ns
+.Fl S Ar var Ns Op Ns = Ns Ar value Ns
+.Pf \&: Oc
 .Op Fl u Ar user
-.Op Fl X Ar cmd
-.Op Fl Fl \~ Ns Ar mta-option ...
+.Op : Ns Fl X Ar cmd Ns \&:
+.Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Nm \*(uA
 .Bk -words
@@ -105,12 +109,14 @@
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Fl f
-.Op Fl L Ar spec-list
+.Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Op Fl S Ar var Ns Op Ns = Ns Ar value
-.Op Fl X Ar cmd
+.Oo : Ns
+.Fl S Ar var Ns Op Ns = Ns Ar value Ns
+.Pf \&: Oc
+.Op : Ns Fl X Ar cmd Ns \&:
 .Op Ar file
-.Op Fl Fl \~ Ns Ar mta-option ...
+.Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .\" }}}
 .
@@ -374,14 +380,14 @@ then exit.
 See the section
 .Sx "Specifying messages"
 for the format of
-.Ar spec-list .
+.Ar spec .
 If the
 .Fl e
 (\*(OB or
 .Fl H )
 option has been given in addition no header summary is produced,
 but \*(UA will instead indicate via its exit status whether
-.Ar spec-list
+.Ar spec
 matched any messages
 .Pf ( Ql 0 )
 or not

@@ -566,18 +566,18 @@ main(int argc, char *argv[]){
          "  %s -h\n"
 
          "  %s [-BdEFintv~] [-: spec] [-A account]\n"
-         "\t [-a attachment] [-b bcc-addr] [-c cc-addr]\n"
+         "\t [:-a attachment:] [:-b bcc-addr:] [:-c cc-addr:]\n"
          "\t [-M type | -m file | -q file | -t]\n"
-         "\t [-r from-addr] [-S var[=value]..]\n"
-         "\t [-s subject] [-X cmd] [-.] to-addr.. [-- mta-option..]\n"
+         "\t [-r from-addr] [:-S var[=value]:]\n"
+         "\t [-s subject] [:-X cmd:] [-.] :to-addr: [-- :mta-option:]\n"
 
          "  %s [-BdEeHiNnRv~] [-: spec] [-A account]\n"
-         "\t [-L spec-list] [-r from-addr] [-S var[=value]..]\n"
-         "\t [-u user] [-X cmd] [-- mta-option..]\n"
+         "\t [-L spec] [-r from-addr] [:-S var[=value]:]\n"
+         "\t [-u user] [:-X cmd:] [-- :mta-option:]\n"
 
          "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
-         "\t [-L spec-list] [-r from-addr] [-S var[=value]..]\n"
-         "\t [-X cmd] [file] [-- mta-option..]\n"
+         "\t [-L spec] [-r from-addr] [:-S var[=value]:]\n"
+         "\t [:-X cmd:] [file] [-- :mta-option:]\n"
       );
 #define _USAGE_ARGS , n_progname, n_progname, n_progname, n_progname
 
