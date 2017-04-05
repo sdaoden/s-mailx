@@ -1107,7 +1107,7 @@ jnodename:{
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
       rv = cp = salloc(i);
-      sstpcpy(sstpcpy(sstpcpy(cp, ln), "@"), hn);
+      sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
    }
    goto jleave;
 }

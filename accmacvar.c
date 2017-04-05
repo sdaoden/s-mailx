@@ -1777,7 +1777,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    }
 
    if(!isset || (avc.avc_var->av_flags & a_AMV_VF_RDONLY)){
-      msgp = n_string_push_cp(msgp, "#");
+      msgp = n_string_push_c(msgp, *n_ns);
       if(!isset){
          if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
             msgp = n_string_push_cp(msgp, "boolean; ");

@@ -2012,7 +2012,7 @@ a_tty_kht(struct a_tty_line *tlp){
    /* Leave room for "implicit asterisk" expansion, as below */
    if(sub.l == 0){
       wedid = TRU1;
-      sub.s = n_UNCONST("*");
+      sub.s = n_UNCONST(n_star);
       sub.l = 1;
    }
 
@@ -4298,7 +4298,7 @@ c_bind(void *v){
                   ? _("# <Defunctional> ") : n_empty),
                a_tty_bind_ctx_maps[gif].tbcm_name, tbcp->tbc_seq,
                n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
-               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? "@" : n_empty),
+               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? n_at : n_empty),
                (!(n_poption & n_PO_D_VV) ? n_empty
                   : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL
                      ? _(" # MLE internal") : n_empty))

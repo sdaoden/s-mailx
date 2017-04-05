@@ -277,7 +277,7 @@ static struct a_go_cmd_desc const a_go_cmd_tab[] = {
 #include "cmd-tab.h"
 },
       a_go_special_cmd_tab[] = {
-   { "#", NULL, n_CMD_ARG_TYPE_STRING, 0, 0
+   { n_ns, NULL, n_CMD_ARG_TYPE_STRING, 0, 0
       DS(N_("Comment command: ignore remaining (continuable) line")) },
    { "-", NULL, n_CMD_ARG_TYPE_WYSH, 0, 0
       DS(N_("Print out the preceding message")) }

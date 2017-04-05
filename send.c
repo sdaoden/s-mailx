@@ -105,7 +105,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
    /* Take care of "99.99", i.e., 5 */
    if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
-      cp = "?";
+      cp = n_qm;
    if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
          cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
@@ -840,7 +840,8 @@ jmulti:
             ispipe = FAL0;
             switch (action) {
             case SEND_TOFILE:
-               if (np->m_partstring && !strcmp(np->m_partstring, "1"))
+               if (np->m_partstring &&
+                     np->m_partstring[0] == '1' && np->m_partstring[1] == '\0')
                   break;
                stats = NULL;
                /* TODO Always open multipart on /dev/null, it's a hack to be
@@ -1183,8 +1184,8 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
        * TODO is implicit from outer `write' etc! */
       /* I18N: Filename input prompt with file type indication */
       str_concat_csvl(&prompt, _("Enter filename for part "),
-         (ip->m_partstring != NULL) ? ip->m_partstring : _("?"),
-         _(" ("), ip->m_ct_type_plain, _("): "), NULL);
+         (ip->m_partstring != NULL ? ip->m_partstring : n_qm),
+         " (", ip->m_ct_type_plain, "): ", NULL);
 jgetname:
       f2 = n_go_input_cp(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_HIST_ADD,
             prompt.s, ((f != (char*)-1 && f != NULL)

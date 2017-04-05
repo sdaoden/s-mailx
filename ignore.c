@@ -309,9 +309,9 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       char const *pre, *attr;
 
       if(itp->it_all)
-         pre = n_empty, attr = "*";
+         pre = n_empty, attr = n_star;
       else if(itp->it_count == 0)
-         pre = "#", attr = _("currently covers no fields");
+         pre = n_ns, attr = _("currently covers no fields");
       else
          break;
       fprintf(n_stdout, _("%sheaderpick %s %s %s\n"),

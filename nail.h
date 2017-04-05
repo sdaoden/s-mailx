@@ -2542,8 +2542,12 @@ VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_empty[1];
 VL char const n_0[2];
 VL char const n_1[2];
-VL char const n_m1[3];
-
+VL char const n_m1[3];     /* -1 */
+VL char const n_qm[2];     /* Question-mark ? */
+VL char const n_em[2];     /* Exclamation-mark ! */
+VL char const n_star[2];   /* Asterisk * */
+VL char const n_at[2];     /* Commercial at @ */
+VL char const n_ns[2];     /* Number sign # */
 VL ui16_t const n_class_char[1 + 0x7F];
 #endif
 

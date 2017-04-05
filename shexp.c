@@ -995,18 +995,19 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    char const *ib_save, *ib;
    enum{
       a_NONE = 0,
-      a_SKIPQ = 1<<0,      /* Skip rest of this quote (\c0 ..) */
-      a_SURPLUS = 1<<1,    /* Extended sequence interpretation */
-      a_NTOKEN = 1<<2,     /* "New token": e.g., comments are possible */
-      a_BRACE = 1<<3,      /* Variable substitution: brace enclosed */
-      a_DIGIT1 = 1<<4,     /* ..first character was digit */
-      a_NONDIGIT = 1<<5,   /* ..has seen any non-digits */
+      a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\c0 ..) */
+      a_SURPLUS = 1u<<1,   /* Extended sequence interpretation */
+      a_NTOKEN = 1u<<2,    /* "New token": e.g., comments are possible */
+      a_BRACE = 1u<<3,     /* Variable substitution: brace enclosed */
+      a_DIGIT1 = 1u<<4,    /* ..first character was digit */
+      a_NONDIGIT = 1u<<5,  /* ..has seen any non-digits */
       a_VARSUBST_MASK = n_BITENUM_MASK(3, 5),
 
       a_ROUND_MASK = (int)~n_BITENUM_MASK(0, 7),
-      a_COOKIE = 1<<8,
-      a_EXPLODE = 1<<9,
-      a_CONSUME = 1<<10    /* When done, "consume" remaining input */
+      a_COOKIE = 1u<<8,
+      a_EXPLODE = 1u<<9,
+      a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
+      a_TMP = 1u<<30
    } state;
    NYD2_ENTER;
 
@@ -1527,8 +1528,22 @@ j_dollar_ungetc:
                      goto jrestart_empty;
                   }
 
-                  /* Check getenv(3) shall no internal variable exist! */
-                  vp = savestrbuf(vp, i);
+                  /* Check getenv(3) shall no internal variable exist!
+                   * XXX We have some common idioms, avoid memory for them
+                   * XXX Even better would be var_vlook_buf()! */
+                  if(i == 1){
+                     switch(*vp){
+                     case '?': vp = n_qm; break;
+                     case '!': vp = n_em; break;
+                     case '*': vp = n_star; break;
+                     case '@': vp = n_at; break;
+                     case '#': vp = n_ns; break;
+                     default: goto j_var_look_buf;
+                     }
+                  }else
+j_var_look_buf:
+                     vp = savestrbuf(vp, i);
+
                   if((cp = n_var_vlook(vp, TRU1)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);

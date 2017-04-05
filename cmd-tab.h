@@ -116,7 +116,7 @@
      DS(N_("Mark <msglist> as not being read")) },
    { "New", &c_unread, (A | TMSGLST), 0, MMNDEL
      DS(N_("Mark <msglist> as not being read")) },
-   { "!", &c_shell, (S | TSTRING), 0, 0
+   { n_em, &c_shell, (S | TSTRING), 0, 0
      DS(N_("Execute <shell-command>")) },
    { "copy", &c_copy, (A | M | TSTRING), 0, 0
      DS(N_("Copy <msglist>, but don't mark them for deletion")) },
@@ -166,7 +166,7 @@
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
    { "help", &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "?", &a_go_c_help, (M | X | TWYRA), 0, 1
+   { n_qm, &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { "=", &c_pdot, (A | TWYSH), 0, 0
      DS(N_("Show current message number")) },

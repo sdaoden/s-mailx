@@ -70,6 +70,11 @@ VL char const n_empty[1] = "";
 VL char const n_0[2] = "0";
 VL char const n_1[2] = "1";
 VL char const n_m1[3] = "-1";
+VL char const n_qm[2] = "?";
+VL char const n_em[2] = "!";
+VL char const n_star[2] = "*";
+VL char const n_at[2] = "@";
+VL char const n_ns[2] = "#";
 VL ui16_t const n_class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL
