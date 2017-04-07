@@ -209,6 +209,7 @@ t_behave() {
 
    have_feat smime && t_behave_smime
 
+   t_behave_e_H_L_opts
    t_behave_compose_hooks
 }
 
@@ -1844,6 +1845,83 @@ t_behave_vexpr() {
 # #4
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
+}
+
+t_behave_e_H_L_opts() {
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
+
+   touch ./.t.mbox
+   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   echo ${?} > "${MBOX}"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!/bin/sh -
+		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
+			) >> "./.t.mbox"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+   printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
+   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+   printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
+   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+
+   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL @t@me ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL @t@you ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+
+   "${SNAIL}" ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   echo ${?} >> "${MBOX}"
+
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+
+#1
+#0
+#0
+#0
+#0
+#0
+#0
+#1
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+#0
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+#0
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#0
+   cksum_test behave:e_H_L_opts "${MBOX}" '1708955574 678'
 }
 
 t_behave_compose_hooks() {
