@@ -854,7 +854,7 @@ jins:
          }
          if(!asccasecmp(cmd[2], cp = "Bcc")){
             npp = &hp->h_bcc;
-            ntype = GCC | GFULL;
+            ntype = GBCC | GFULL;
             eacm = EACM_NORMAL | EAF_NAME;
             goto jins;
          }
