@@ -201,6 +201,7 @@ t_behave() {
    t_behave_macro_param_shift
    t_behave_addrcodec
    t_behave_vexpr
+   t_behave_call_ret
    t_behave_xcall
 
    # FIXME t_behave_alias
@@ -344,33 +345,6 @@ t_behave_X_opt_input_command_stack() {
 #mac2-2
 #4
    cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
-}
-
-t_behave_xcall() {
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
-	define work {
-		echon "$1 "
-		vput vexpr i + $1 1
-		if [ $i -le 1111 ]
-			vput vexpr j '&' $i 7
-			if [ $j -eq 7 ]
-				echo .
-			end
-			\xcall work $i
-		end
-		echo ! The end for $1
-	}
-	define xwork {
-		\xcall work 0
-	}
-	call work 0
-	echo ?=$?
-	call xwork
-	echo ?=$?
-	xcall xwork
-	echo ?=$?
-	__EOT
-   cksum_test behave:xcall "${MBOX}" '3660556233 9556'
 }
 
 t_behave_wysh() {
@@ -1845,6 +1819,110 @@ t_behave_vexpr() {
 # #4
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
+}
+
+t_behave_call_ret() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define w1 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 42 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			call w1 $i
+			wysh set i=$? k=$!
+			vput vexpr j '&' $i 7
+			echon "<$1/$i/$k "
+			if [ $j -eq 7 ]
+				echo .
+			end
+		else
+			echo ! The end for $1
+		end
+		return $1
+	}
+	# Transport $?/$! up the call chain
+	define w2 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w2 $i
+			wysh set i=$? j=$!
+			echon "<$1/$i/$j "
+			return $i $j
+		else
+			echo ! The end for $1
+			return $i $^ERR-BUSY
+		end
+		echoerr au
+	}
+	# Up and down it goes
+	define w3 {
+		echon ">$1/$2 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w3 $i $2
+			wysh set i=$? j=$!
+			vput vexpr k - $1 $2
+			if [ $k -eq 21 ]
+				vput vexpr i + $1 1
+				vput vexpr j + $2 1
+				echo "# <$i/$j> .. "
+				call w3 $i $j
+				wysh set i=$? j=$!
+			end
+			echon "<$1=$i/$j "
+			return $i $j
+		else
+			vput vexpr j + $^ERR-BUSY $2
+			echo ! The end for $1=$i/$j
+			return $i $j
+		end
+		echoerr au
+	}
+
+	call w1 0; echo ?=$? !=$!; echo -----;
+	call w2 0; echo ?=$? !=$!; echo -----;
+	call w3 0 1; echo ?=$? !=$!; echo -----;
+	__EOT
+   cksum_test behave:call_ret "${MBOX}" '2240086482 5844'
+}
+
+t_behave_xcall() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define work {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 1111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall work $i $2
+		end
+		echo ! The end for $1/$2
+		if [ "$2" != "" ]
+			return $i $^ERR-BUSY
+		end
+	}
+	define xwork {
+		\xcall work 0 $2
+	}
+	call work 0
+	echo ?=$? !=$!
+	call xwork
+	echo ?=$? !=$!
+	xcall xwork
+	echo ?=$? !=$!
+	#
+	call work 0 yes
+	echo ?=$? !=$!
+	call xwork 0 yes
+	echo ?=$? !=$!
+	__EOT
+   cksum_test behave:xcall "${MBOX}" '1579767783 19097'
 }
 
 t_behave_e_H_L_opts() {
