@@ -1355,139 +1355,161 @@ __behave_macro_param_shift() {
 __behave_addrcodec() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	vput addrcodec res e 2 . <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	vput addrcodec res e 3 Sauer Dr. <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 4 Sauer (Ma) Dr. <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 5 Sauer (Ma) Braten Dr. <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 8 \
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 8 \
 		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 10 (Ma)Braten Dr. (Heu) <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 11 (Ma)Braten Dr"." (Heu) <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 12 Dr.     Sauer  (Ma)   Braten    Dr.    (u) <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 12 Dr.     Sauer  (Ma)   Braten    Dr.   (u) <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 15 \
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 15 \
 		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 16 \
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 16 \
 		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
-	echo $? $res
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 17 "Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 17 \
+		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 18 <doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 18 \
+		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res +e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $? $res
-	vput addrcodec res +e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
+	vput addrcodec res ++e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
-	vput addrcodec res ++e 22 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res +++e 22 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
-	echo $? $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res s \
+		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+	echo $?/$^ERRNAME $res
 	__EOT
-#0 1 <doog@def>
-#0 1 <doog@def>
-#0 "2 ." <doog@def>
-#0 2 . <doog@def>
-#0 "3 Sauer Dr." <doog@def>
-#0 3 Sauer Dr. <doog@def>
-#0 4 Sauer (Ma) "Dr." <doog@def>
-#0 4 Sauer (Ma) Dr. <doog@def>
-#0 5 Sauer (Ma) "Braten Dr." <doog@def>
-#0 5 Sauer (Ma) Braten Dr. <doog@def>
-#0 6 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
-#0 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-#0 7 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
-#0 7 Sauer (Ma) Braten Dr. (Heu bu) <doog@def>
-#0 "8 Dr. Sauer" (Ma) "Braten Dr." (Heu bu) "Boom. Boom" <doog@def>
-#0 8 Dr. Sauer (Ma) Braten Dr. (Heu bu) Boom. Boom <doog@def>
-#0 "9 Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
-#0 9 Dr.Sauer (Ma) Braten Dr. (Heu) <doog@def>
-#0 10 (Ma) "Braten Dr." (Heu) <doog@def>
-#0 10 (Ma) Braten Dr. (Heu) <doog@def>
-#0 11 (Ma) "Braten Dr\".\"" (Heu) <doog@def>
-#0 11 (Ma) Braten Dr"." (Heu) <doog@def>
-#0 "12 Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
-#0 12 Dr. Sauer (Ma) Braten Dr. (u) <doog@def>
-#0 13 (Ma) "Braten Dr." (Heu) <doog@def>
-#0 13 (Ma) Braten Dr. (Heu) <doog@def>
-#0 "14 Hey, Du Wie" () "findet Dr. das?" () <doog@def>
-#0 14 Hey, Du Wie () findet Dr. das? () <doog@def>
-#0 "15 Hey, Du Wie" () "findet \"\" Dr. \"\" das?" () <doog@def>
-#0 15 Hey, Du Wie () findet "" Dr. "" das? () <doog@def>
-#0 "16 \"Hey,\" \"Du\" \"Wie" () "\" findet \"\" Dr. \"\" das?" () <doog@def>
-#0 16 "Hey," "Du" "Wie () " findet "" Dr. "" das? () <doog@def>
-#0 "17 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
-#0 17 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
-#0 "18 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
-#0 18 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
-#0 "19 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
-#0 19 Hey\,\" "Wie () " findet \" Dr. \" das? <doog@def>
-#1 20 Hey\\,\\"  <doog@def> "Wie()" findet \\" Dr. \\" das?
-#0 "21 Hey\\,\\ Wie() findet \\  Dr. \\ das?" <doog@def>
-#0 21 Hey\,\ Wie() findet \  Dr. \ das? <doog@def>
-#0 "22 Hey\,\" Wie() findet \" Dr. \" das?" <doog@def>
-#0 22 Hey," Wie() findet " Dr. " das? <doog@def>
-   cksum_test behave:addrcodec "${MBOX}" '2804134200 2018'
+#0/NONE 1 <doog@def>
+#0/NONE 1 <doog@def>
+#0/NONE "2 ." <doog@def>
+#0/NONE 2 . <doog@def>
+#0/NONE "3 Sauer Dr." <doog@def>
+#0/NONE 3 Sauer Dr. <doog@def>
+#0/NONE 3.50 "Sauer \(Ma\) Dr." <doog@def>
+#0/NONE 3.50 Sauer (Ma) Dr. <doog@def>
+#0/NONE 3.51 "Sauer \(Ma\) \"Dr.\"" <doog@def>
+#0/NONE 3.51 Sauer (Ma) "Dr." <doog@def>
+#0/NONE 4 Sauer (Ma) "Dr." <doog@def>
+#0/NONE 4 Sauer (Ma) Dr. <doog@def>
+#0/NONE 5 Sauer (Ma) "Braten Dr." <doog@def>
+#0/NONE 5 Sauer (Ma) Braten Dr. <doog@def>
+#0/NONE 6 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
+#0/NONE 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+#0/NONE 7 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
+#0/NONE 7 Sauer (Ma) Braten Dr. (Heu bu) <doog@def>
+#0/NONE "8 Dr. Sauer" (Ma) "Braten Dr." (Heu bu) "Boom. Boom" <doog@def>
+#0/NONE 8 Dr. Sauer (Ma) Braten Dr. (Heu bu) Boom. Boom <doog@def>
+#0/NONE "9 Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
+#0/NONE 9 Dr.Sauer (Ma) Braten Dr. (Heu) <doog@def>
+#0/NONE 10 (Ma) "Braten Dr." (Heu) <doog@def>
+#0/NONE 10 (Ma) Braten Dr. (Heu) <doog@def>
+#0/NONE 11 (Ma) "Braten Dr\".\"" (Heu) <doog@def>
+#0/NONE 11 (Ma) Braten Dr"." (Heu) <doog@def>
+#0/NONE "12 Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
+#0/NONE 12 Dr. Sauer (Ma) Braten Dr. (u) <doog@def>
+#0/NONE 13 (Ma) "Braten Dr." (Heu) <doog@def>
+#0/NONE 13 (Ma) Braten Dr. (Heu) <doog@def>
+#0/NONE "14 Hey, Du Wie" () "findet Dr. das?" () <doog@def>
+#0/NONE 14 Hey, Du Wie () findet Dr. das? () <doog@def>
+#0/NONE "15 Hey, Du Wie" () "findet \"\" Dr. \"\" das?" () <doog@def>
+#0/NONE 15 Hey, Du Wie () findet "" Dr. "" das? () <doog@def>
+#0/NONE "16 \"Hey,\" \"Du\" \"Wie" () "\" findet \"\" Dr. \"\" das?" () <doog@def>
+#0/NONE 16 "Hey," "Du" "Wie () " findet "" Dr. "" das? () <doog@def>
+#0/NONE "17 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+#0/NONE 17 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
+#0/NONE "18 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+#0/NONE 18 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
+#0/NONE "19 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+#0/NONE 19 Hey\,\" "Wie () " findet \" Dr. \" das? <doog@def>
+#1/INVAL 20 Hey\\,\\"  <doog@def> "Wie()" findet \\" Dr. \\" das?
+#0/NONE "21 Hey\\,\\ Wie() findet \\  Dr. \\ das?" <doog@def>
+#0/NONE 21 Hey\,\ Wie() findet \  Dr. \ das? <doog@def>
+#0/NONE "22 Hey\,\" Wie() findet \" Dr. \" das?" <doog@def>
+#0/NONE 22 Hey," Wie() findet " Dr. " das? <doog@def>
+#0/NONE doog@def
+   cksum_test behave:addrcodec "${MBOX}" '3907388894 2416'
 }
 
 __behave_vexpr() {

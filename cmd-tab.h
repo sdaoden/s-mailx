@@ -444,7 +444,8 @@
      DS(N_("Header deselection: <context> <type> <header-list>"))},
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
-     DS(N_("Email address <[+[+]]e[ncode]|d[ecode]> <rest-of-line>")) },
+     DS(N_("Email address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))
+      },
    { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0

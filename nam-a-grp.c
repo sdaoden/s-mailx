@@ -1571,6 +1571,8 @@ c_addrcodec(void *vp){
       mode = 1, ++act;
    if(*act == '+')
       mode = 2, ++act;
+   if(*act == '+')
+      mode = 3, ++act;
    if(act >= cp)
       goto jesynopsis;
    alen = PTR2SIZE(cp - act);
@@ -1590,14 +1592,13 @@ c_addrcodec(void *vp){
 
    if(is_ascncaseprefix(act, "encode", alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
-       * we may need to turn any " or \ into a quoted-pair */
+       * we may need to turn any ", () or \ into quoted-pairs */
       char c;
 
       while((c = *cp++) != '\0'){
-         if(mode != 2){
-            if(c == '\\' || (mode == 0 && c == '"'))
-               sp = n_string_push_c(sp, '\\');
-         }
+         if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) ||
+               (c == '\\' && mode < 3))
+            sp = n_string_push_c(sp, '\\');
          sp = n_string_push_c(sp, c);
       }
 
@@ -1613,36 +1614,52 @@ c_addrcodec(void *vp){
          np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
          cp = np->n_fullname;
       }
-   }else if(mode == 0 && is_ascncaseprefix(act, "decode", alen)){
-      char c;
+   }else if(mode == 0){
+      if(is_ascncaseprefix(act, "decode", alen)){
+         char c;
 
-      while((c = *cp++) != '\0'){
-         switch(c){
-         case '(':
-            sp = n_string_push_c(sp, '(');
-            act = skip_comment(cp);
-            if(--act > cp)
-               sp = n_string_push_buf(sp, cp, PTR2SIZE(act - cp));
-            sp = n_string_push_c(sp, ')');
-            cp = ++act;
-            break;
-         case '"':
-            while(*cp != '\0'){
-               if((c = *cp++) == '"')
-                  break;
-               if(c == '\\' && (c = *cp) != '\0')
-                  ++cp;
-               sp = n_string_push_c(sp, c);
-            }
-            break;
-         default:
-            if(c == '\\' && (c = *cp++) == '\0')
+         while((c = *cp++) != '\0'){
+            switch(c){
+            case '(':
+               sp = n_string_push_c(sp, '(');
+               act = skip_comment(cp);
+               if(--act > cp)
+                  sp = n_string_push_buf(sp, cp, PTR2SIZE(act - cp));
+               sp = n_string_push_c(sp, ')');
+               cp = ++act;
                break;
-            sp = n_string_push_c(sp, c);
-            break;
+            case '"':
+               while(*cp != '\0'){
+                  if((c = *cp++) == '"')
+                     break;
+                  if(c == '\\' && (c = *cp) != '\0')
+                     ++cp;
+                  sp = n_string_push_c(sp, c);
+               }
+               break;
+            default:
+               if(c == '\\' && (c = *cp++) == '\0')
+                  break;
+               sp = n_string_push_c(sp, c);
+               break;
+            }
          }
-      }
-      cp = n_string_cp(sp);
+         cp = n_string_cp(sp);
+      }else if(is_ascncaseprefix(act, "skin", alen)){
+         /* Let's just use the is-single-address hack for this one, too.. */
+         if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
+               (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
+                  ) != NAME_ADDRSPEC_ISADDR){
+            n_pstate_err_no = n_ERR_INVAL;
+            vp = NULL;
+         }else{
+            struct name *np;
+
+            np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
+            cp = np->n_name;
+         }
+      }else
+         goto jesynopsis;
    }else
       goto jesynopsis;
 
@@ -1660,7 +1677,8 @@ jleave:
    NYD_LEAVE;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: addrcodec: <[+[+]]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
+      "<rest-of-line>\n"));
    n_pstate_err_no = n_ERR_INVAL;
    vp = NULL;
    goto jleave;

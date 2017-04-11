@@ -3367,6 +3367,7 @@ account myisp {
 }
 .Ed
 .
+.
 .Mx
 .It Ic addrcodec
 Perform email address codec transformations on raw-data argument, rather
@@ -3378,40 +3379,58 @@ Supports
 and manages the error number
 .Va \&! .
 The first argument must be either
-.Ar [+[+]]e[ncode]
-or
+.Ar [+[+[+]]]e[ncode] ,
 .Ar d[ecode]
+or
+.Ar s[kin] ,
 and specifies the operation to perform on the rest of the line.
+.
+.Pp
 Decoding will show how a standard-compliant MUA will display the given
-argument, which should be a prepared address.
+argument, which should be an email address.
 Please be aware that most MUAs have difficulties with the address
 standards, and vary wildly when (comments) in parenthesis,
 .Dq double-quoted
 strings, or quoted-pairs, as below, become involved.
 \*(ID \*(UA currently does not perform decoding when displaying addresses.
+.
 .Pp
-Encoding supports three different modes, lesser automated versions can be
-chosen by prefixing one or two plus signs: the standard imposes
+Skinning is identical to decoding but only outputs the plain address,
+without any string, comment etc. components.
+Another difference is that it may fail with the error number
+.Va \&!
+set to
+.Va ^ERR Ns -INVAL
+if decoding fails to find a(n) (valid) email address, in which case the
+unmodified input will be output again.
+.
+.Pp
+Encoding supports four different modes, lesser automated versions can be
+chosen by prefixing one, two or three plus signs: the standard imposes
 a special meaning on some characters, which thus have to be transformed
 to so-called quoted-pairs by pairing them with a reverse solidus
 .Ql \e
 in order to remove the special meaning; this might change interpretation
 of the entire argument from what has been desired, however!
-Specify one plus sign to remark that double quotation marks are not be
-turned into quoted-pairs, and two for also leaving any user-specified
-reverse solidus alone.
+Specify one plus sign to remark that parenthesis shall be left alone,
+two for not turning double quotation marks into quoted-pairs, and three
+for also leaving any user-specified reverse solidus alone.
 The result will always be valid, if a successful exit status is reported.
 \*(ID Addresses need to be specified in between angle brackets
 .Ql < ,
 .Ql >
 if the construct becomes more difficult, otherwise the current parser
 will fail; it is not smart enough to guess right.
+.
 .Bd -literal -offset indent
 ? addrc enc "Hey, you",<diet@exam.ple>\e out\e there
 "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
 ? addrc d "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
 "Hey, you", \e out\e there <diet@exam.ple>
+? addrc s "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
+diet@exam.ple
 .Ed
+.
 .
 .Mx
 .Mx
