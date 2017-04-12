@@ -1,5 +1,6 @@
 #!/bin/mksh -
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
+# Public Domain
 
 ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
    ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
@@ -185,6 +186,19 @@ cksum_test() {
    fi
 }
 
+err() {
+   ESTAT=1
+   printf '%s: error: %s\n' ${1} "${2}"
+}
+
+ex0_test() {
+   [ $? -ne 0 ] && err $1 'unexpected non-0 exit status'
+}
+
+exn0_test() {
+   [ $? -eq 0 ] && err $1 'unexpected 0 exit status'
+}
+
 have_feat() {
    ( "${SNAIL}" ${ARGS} -X'echo $features' -Xx | ${grep} +${1} ) >/dev/null 2>&1
 }
@@ -193,6 +207,7 @@ have_feat() {
 # Basic (easily testable) behaviour tests
 t_behave() {
    t_behave_X_opt_input_command_stack
+   t_behave_X_errexit
    t_behave_wysh
    t_behave_input_inject_semicolon_seq
    t_behave_commandalias
@@ -344,7 +359,88 @@ t_behave_X_opt_input_command_stack() {
 #mac0-1 via1 mac2
 #mac2-2
 #4
+   ex0_test behave:x_opt_input_command_stack
    cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
+}
+
+t_behave_X_errexit() {
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo one
+	echos nono
+	echo two
+	__EOT
+
+   </dev/null "${SNAIL}" ${ARGS} -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+#two
+   ex0_test behave:x_errexit-1
+   cksum_test behave:x_errexit-1 "${MBOX}" '2893507350 42'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:x_errexit-2
+   cksum_test behave:x_errexit-2 "${MBOX}" '2893507350 42'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:x_errexit-3
+   cksum_test behave:x_errexit-3 "${MBOX}" '2893507350 42'
+
+   ##
+
+   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+   exn0_test behave:x_errexit-4
+   cksum_test behave:x_errexit-4 "${MBOX}" '3287572983 38'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:x_errexit-5
+   cksum_test behave:x_errexit-5 "${MBOX}" '3287572983 38'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+#classico:Alert: Stopped loading initialization resource ./.cc-body.txt due to errors (enable *debug* for trace)
+   exn0_test behave:x_errexit-6
+   cksum_test behave:x_errexit-6 "${MBOX}" '2718843754 150'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:x_errexit-7
+   cksum_test behave:x_errexit-7 "${MBOX}" '2718843754 150'
+
+   ## Repeat 4-7 with ignerr set
+
+   ${sed} -e 's/^echos /ignerr echos /' < "${BODY}" > "${MBOX}"
+
+   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X'ignerr echos nono ' -X'echo two' \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-8
+   cksum_test behave:x_errexit-8 "${BODY}" '2893507350 42'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-9
+   cksum_test behave:x_errexit-9 "${BODY}" '2893507350 42'
+
+   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-10
+   cksum_test behave:x_errexit-10 "${BODY}" '2893507350 42'
+
+   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-11
+   cksum_test behave:x_errexit-11 "${BODY}" '2893507350 42'
 }
 
 t_behave_wysh() {
@@ -457,6 +553,7 @@ t_behave_wysh() {
 #a	b
 #a	b
 #a
+      ex0_test behave:wysh_unicode
       cksum_test behave:wysh_unicode "${MBOX}" '475805847 317'
    fi
 
@@ -507,6 +604,7 @@ t_behave_wysh() {
 #a	b
 #a	b
 #a
+   ex0_test behave:wysh_c
    cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
 }
 
@@ -526,6 +624,7 @@ t_behave_input_inject_semicolon_seq() {
 	__EOT
 #one;this_is_mymac(mydeepmac);two;this_is_mymac(mydeepmac);three;
 #one;this_is_mymac(mydeepmac),TOO!;two;this_is_mymac(mydeepmac),TOO!;three;
+   ex0_test behave:input_inject_semicolon_seq
    cksum_test behave:input_inject_semicolon_seq "${MBOX}" '512117110 140'
 }
 
@@ -551,6 +650,7 @@ t_behave_commandalias() {
 #hoho huhu
 #huhu
 #huhu
+   ex0_test behave:commandalias
    cksum_test behave:commandalias "${MBOX}" '3694143612 31'
 }
 
@@ -1112,6 +1212,7 @@ t_behave_ifelse() {
 		   echo 98.err
 		endif
 	__EOT
+   ex0_test behave:if-normal
    cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
    if have_feat regex; then
@@ -1195,6 +1296,7 @@ t_behave_ifelse() {
 			   echo 15.err
 			endif
 		__EOT
+      ex0_test behave:if-regex
       cksum_test behave:if-regex "${MBOX}" '439960016 81'
    fi
 }
@@ -1252,6 +1354,7 @@ t_behave_localopts() {
 #gv1    gv2, 
 #active trouble: gv1 gv2,
 #active null: ,
+   ex0_test behave:localopts
    cksum_test behave:localopts "${MBOX}" '1936527193 192'
 }
 
@@ -1327,6 +1430,7 @@ t_behave_macro_param_shift() {
 #t2.0 has 2/2 parameters: ,you get one arg, ( you get one arg) [ you get one arg]
 #t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
 #t1.5: 1; ignerr () should not exist
+   ex0_test behave:macro_param_shift
    cksum_test behave:macro_param_shift "${MBOX}" '1402489146 1682'
 }
 
@@ -1487,6 +1591,7 @@ t_behave_addrcodec() {
 #0/NONE "22 Hey\,\" Wie() findet \" Dr. \" das?" <doog@def>
 #0/NONE 22 Hey," Wie() findet " Dr. " das? <doog@def>
 #0/NONE doog@def
+   ex0_test behave:addrcodec
    cksum_test behave:addrcodec "${MBOX}" '3907388894 2416'
 }
 
@@ -1686,6 +1791,7 @@ t_behave_vexpr() {
 #0/NONE 0
 #0/NONE 0
 #0/NONE -1
+   ex0_test behave:vexpr-numeric
    cksum_test behave:vexpr-numeric "${MBOX}" '1723609217 1048'
 
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
@@ -1756,6 +1862,7 @@ t_behave_vexpr() {
 #0/OVERFLOW :a:
 #0/OVERFLOW ::
 # #3
+   ex0_test behave:vexpr-string
    cksum_test behave:vexpr-string "${MBOX}" '265398700 267'
 
    if have_feat regex; then
@@ -1817,6 +1924,7 @@ t_behave_vexpr() {
 #0/NONE :naramabananarama:
 #0/NONE :bananabananarama:
 # #4
+      ex0_test behave:vexpr-regex
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
 }
@@ -1887,6 +1995,7 @@ t_behave_call_ret() {
 	call w2 0; echo ?=$? !=$!; echo -----;
 	call w3 0 1; echo ?=$? !=$!; echo -----;
 	__EOT
+   ex0_test behave:call_ret
    cksum_test behave:call_ret "${MBOX}" '2240086482 5844'
 }
 
@@ -1922,6 +2031,7 @@ t_behave_xcall() {
 	call xwork 0 yes
 	echo ?=$? !=$!
 	__EOT
+   ex0_test behave:xcall
    cksum_test behave:xcall "${MBOX}" '1579767783 19097'
 }
 
@@ -2046,6 +2156,7 @@ t_behave_compose_hooks() {
                ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl
       ' > ./.tnotes
+   ex0_test behave:compose_hooks
    ${cat} ./.tnotes >> "${MBOX}"
 
    ${rm} -f ${TRAP_EXIT_ADDONS}
@@ -2308,22 +2419,26 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" "${MBOX}"
+   ex0_test content:001
    cksum_test content:001 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    < /dev/null "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
+   ex0_test content:002
    cksum_test content:002 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
+   ex0_test content:003
    cksum_test content:003 "${MBOX}" '2356108758 6413'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | "${SNAIL}" ${ARGS} "${MBOX}"
+   ex0_test content:004
    cksum_test content:004 "${MBOX}" '4004005686 49'
 
    # Sending of multiple mails in a single invocation
@@ -2332,6 +2447,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
    ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI}
+   ex0_test content:005
    cksum_test content:005 "${MBOX}" '2157252578 260'
 
    ## $BODY CHANGED
@@ -2340,6 +2456,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
+   ex0_test content:006
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:006 "${MBOX}" '2273863401 83'
 
@@ -2350,6 +2467,7 @@ gggggggggggggggg"
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
       }' | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+   ex0_test content:007
    cksum_test content:007 "${MBOX}" '1754234717 61767'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
@@ -2359,6 +2477,7 @@ gggggggggggggggg"
    echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
+   ex0_test content:008
    cksum_test content:008 "${MBOX}" '1563381297 326'
 
    # Single word (overlong line split -- bad standard! Requires injection of
@@ -2366,6 +2485,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
+   ex0_test content:009
    cksum_test content:009 "${MBOX}" '1996714851 1669'
 
    # Combination of encoded words, space and tabs of varying sort
@@ -2377,6 +2497,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
+   ex0_test content:010
    cksum_test content:010 "${MBOX}" '2956039469 542'
 
    # Overlong multibyte sequence that must be forcefully split
@@ -2387,6 +2508,7 @@ gggggggggggggggg"
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
+   ex0_test content:011
    cksum_test content:011 "${MBOX}" '454973928 610'
 
    # Trailing WS
@@ -2399,6 +2521,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
+   ex0_test content:012
    cksum_test content:012 "${MBOX}" '1014122962 248'
 
    # Leading and trailing WS
@@ -2409,6 +2532,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
+   ex0_test content:013
    cksum_test content:013 "${MBOX}" '3212167908 187'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
@@ -2437,11 +2561,13 @@ gggggggggggggggg"
       -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
+   ex0_test content:014-1
    ${rm} -rf ./.ttt
-   cksum_test content:14 "${MBOX}" '589846634 2491'
+   cksum_test content:014-1 "${MBOX}" '589846634 2491'
    # `resend' test
    printf "Resend ${BODY}\nx\n" | "${SNAIL}" ${ARGS} -f "${MBOX}"
-   cksum_test content:14-2 "${MBOX}" '589846634 2491'
+   ex0_test content:014-2
+   cksum_test content:014-2 "${MBOX}" '589846634 2491'
 }
 
 t_all() {
