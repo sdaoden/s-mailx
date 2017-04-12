@@ -1072,10 +1072,10 @@ option_evaluate
 msg 'done'
 
 # Add the known utility and some other variables
-printf "#define VAL_UAGENT \"${VAL_SID}${VAL_NAIL}\"\n" >> ${newh}
-printf "VAL_UAGENT = ${VAL_SID}${VAL_NAIL}\n" >> ${newmk}
+printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
+printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
-printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_NAIL}-privsep\"\n" >> ${newh}
+printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
 printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
 if feat_yes DOTLOCK; then
    printf "OPTIONAL_PRIVSEP = \$(VAL_PRIVSEP)\n" >> ${newmk}
