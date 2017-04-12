@@ -1689,6 +1689,7 @@ ok_b_batch_exit_on_error,
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
    ok_b_line_editor_no_defaults,
+   ok_v_log_prefix,                    /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */

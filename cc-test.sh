@@ -1,8 +1,9 @@
-#!/bin/sh -
+#!/bin/mksh -
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
 
-SNAIL=./s-nail
-ARGS='-:/ -# -Sencoding=quoted-printable -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
+ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
+   ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
+   ARGS="${ARGS}"' -Slog-prefix=classico:'
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
@@ -366,7 +367,7 @@ __behave_xcall() {
 	xcall xwork
 	echo ?=$?
 	__EOT
-   cksum_test behave:xcall "${MBOX}" '1717228546 9555'
+   cksum_test behave:xcall "${MBOX}" '3660556233 9556'
 }
 
 __behave_wysh() {

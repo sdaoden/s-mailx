@@ -1060,8 +1060,12 @@ n_err(char const *format, ...){
          a_aux_err_linelen = 0;
 
       if((len = strlen(format)) > 0){
-         if(doname || a_aux_err_linelen == 0)
-            fputs(VAL_UAGENT ": ", n_stderr);
+         if(doname || a_aux_err_linelen == 0){
+            char const *cp;
+
+            if(*(cp = ok_vlook(log_prefix)) != '\0')
+               fputs(cp, n_stderr);
+         }
          vfprintf(n_stderr, format, ap);
 
          /* C99 */{
@@ -1118,8 +1122,12 @@ n_verr(char const *format, va_list ap){
    n_pstate |= n_PS_ERRORS_PROMPT;
 #endif
 
-   if(doname || a_aux_err_linelen == 0)
-      fputs(VAL_UAGENT ": ", n_stderr);
+   if(doname || a_aux_err_linelen == 0){
+      char const *cp;
+
+      if(*(cp = ok_vlook(log_prefix)) != '\0')
+         fputs(cp, n_stderr);
+   }
 
    /* C99 */{
       size_t i = len;
@@ -1265,7 +1273,7 @@ n_panic(char const *format, ...){
       putc('\n', n_stderr);
       a_aux_err_linelen = 0;
    }
-   fprintf(n_stderr, VAL_UAGENT ": Panic: ");
+   fprintf(n_stderr, "%sPanic: ", ok_vlook(log_prefix));
 
    va_start(ap, format);
    vfprintf(n_stderr, format, ap);
