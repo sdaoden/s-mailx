@@ -2032,7 +2032,58 @@ t_behave_xcall() {
 	echo ?=$? !=$!
 	__EOT
    ex0_test behave:xcall
-   cksum_test behave:xcall "${MBOX}" '1579767783 19097'
+   cksum_test behave:xcall-1 "${MBOX}" '1579767783 19097'
+
+   ##
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	define __w {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall __w $i $2
+		end
+		echo ! The end for $1
+		if [ $2 -eq 0 ]
+			nonexistingcommand
+			echo would be err with errexit
+			return
+		end
+		echo calling exit
+		exit
+	}
+	define work {
+		echo eins
+		call __w 0 0
+		echo zwei, ?=$? !=$!
+		localopts yes; set errexit
+		ignerr call __w 0 0
+		echo drei, ?=$? !=$!
+		call __w 0 $1
+		echo vier, ?=$? !=$!, this is an error
+	}
+	ignerr call work 0
+	echo outer 1, ?=$? !=$!
+	xxxign call work 0
+	echo outer 2, ?=$? !=$!, could be error if xxxign non-empty
+	call work 1
+	echo outer 3, ?=$? !=$!
+	echo this is definitely an error
+	__EOT
+
+   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:xcall-2
+   cksum_test behave:xcall-2 "${MBOX}" '4079235300 4097'
+
+   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:xcall-3
+   cksum_test behave:xcall-3 "${MBOX}" '1132745876 2724'
 }
 
 t_behave_e_H_L_opts() {
