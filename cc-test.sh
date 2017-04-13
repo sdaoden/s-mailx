@@ -1,5 +1,6 @@
 #!/bin/mksh -
 #@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
+# Public Domain
 
 ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
    ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
@@ -185,6 +186,19 @@ cksum_test() {
    fi
 }
 
+err() {
+   ESTAT=1
+   printf '%s: error: %s\n' ${1} "${2}"
+}
+
+ex0_test() {
+   [ $? -ne 0 ] && err $1 'unexpected non-0 exit status'
+}
+
+exn0_test() {
+   [ $? -eq 0 ] && err $1 'unexpected 0 exit status'
+}
+
 have_feat() {
    ( "${SNAIL}" ${ARGS} -X'echo $features' -Xx | ${grep} +${1} ) >/dev/null 2>&1
 }
@@ -192,25 +206,30 @@ have_feat() {
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
-   __behave_x_opt_input_command_stack
-   __behave_wysh
-   __behave_input_inject_semicolon_seq
-   __behave_commandalias
-   __behave_ifelse
-   __behave_localopts
-   __behave_macro_param_shift
-   __behave_addrcodec
-   __behave_vexpr
-   __behave_xcall
+   t_behave_X_opt_input_command_stack
+   t_behave_X_errexit
+   t_behave_wysh
+   t_behave_input_inject_semicolon_seq
+   t_behave_commandalias
+   t_behave_ifelse
+   t_behave_localopts
+   t_behave_macro_param_shift
+   t_behave_addrcodec
+   t_behave_vexpr
+   t_behave_call_ret
+   t_behave_xcall
 
-   # FIXME __behave_alias
+   # FIXME t_behave_alias
 
-   # FIXME __behave_mlist
+   # FIXME t_behave_mlist
 
-   have_feat smime && __behave_smime
+   have_feat smime && t_behave_smime
+
+   t_behave_e_H_L_opts
+   t_behave_compose_hooks
 }
 
-__behave_x_opt_input_command_stack() {
+t_behave_X_opt_input_command_stack() {
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
 	define mac0 {
@@ -340,37 +359,91 @@ __behave_x_opt_input_command_stack() {
 #mac0-1 via1 mac2
 #mac2-2
 #4
+   ex0_test behave:x_opt_input_command_stack
    cksum_test behave:x_opt_input_command_stack "${MBOX}" '1391275936 378'
 }
 
-__behave_xcall() {
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
-	define work {
-		echon "$1 "
-		vput vexpr i + $1 1
-		if [ $i -le 1111 ]
-			vput vexpr j '&' $i 7
-			if [ $j -eq 7 ]
-				echo .
-			end
-			\xcall work $i
-		end
-		echo ! The end for $1
-	}
-	define xwork {
-		\xcall work 0
-	}
-	call work 0
-	echo ?=$?
-	call xwork
-	echo ?=$?
-	xcall xwork
-	echo ?=$?
+t_behave_X_errexit() {
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo one
+	echos nono
+	echo two
 	__EOT
-   cksum_test behave:xcall "${MBOX}" '3660556233 9556'
+
+   </dev/null "${SNAIL}" ${ARGS} -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+#two
+   ex0_test behave:x_errexit-1
+   cksum_test behave:x_errexit-1 "${MBOX}" '2893507350 42'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:x_errexit-2
+   cksum_test behave:x_errexit-2 "${MBOX}" '2893507350 42'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:x_errexit-3
+   cksum_test behave:x_errexit-3 "${MBOX}" '2893507350 42'
+
+   ##
+
+   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+   exn0_test behave:x_errexit-4
+   cksum_test behave:x_errexit-4 "${MBOX}" '3287572983 38'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:x_errexit-5
+   cksum_test behave:x_errexit-5 "${MBOX}" '3287572983 38'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+#one
+#classico:Unknown command: `echos'
+#classico:Alert: Stopped loading initialization resource ./.cc-body.txt due to errors (enable *debug* for trace)
+   exn0_test behave:x_errexit-6
+   cksum_test behave:x_errexit-6 "${MBOX}" '2718843754 150'
+
+   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:x_errexit-7
+   cksum_test behave:x_errexit-7 "${MBOX}" '2718843754 150'
+
+   ## Repeat 4-7 with ignerr set
+
+   ${sed} -e 's/^echos /ignerr echos /' < "${BODY}" > "${MBOX}"
+
+   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X'ignerr echos nono ' -X'echo two' \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-8
+   cksum_test behave:x_errexit-8 "${BODY}" '2893507350 42'
+
+   </dev/null "${SNAIL}" ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-9
+   cksum_test behave:x_errexit-9 "${BODY}" '2893507350 42'
+
+   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-10
+   cksum_test behave:x_errexit-10 "${BODY}" '2893507350 42'
+
+   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${BODY}" 2>&1
+   ex0_test behave:x_errexit-11
+   cksum_test behave:x_errexit-11 "${BODY}" '2893507350 42'
 }
 
-__behave_wysh() {
+t_behave_wysh() {
    ${cat} <<- '__EOT' > "${BODY}"
 	#
 	echo abcd
@@ -480,6 +553,7 @@ __behave_wysh() {
 #a	b
 #a	b
 #a
+      ex0_test behave:wysh_unicode
       cksum_test behave:wysh_unicode "${MBOX}" '475805847 317'
    fi
 
@@ -530,10 +604,11 @@ __behave_wysh() {
 #a	b
 #a	b
 #a
+   ex0_test behave:wysh_c
    cksum_test behave:wysh_c "${MBOX}" '1473887148 321'
 }
 
-__behave_input_inject_semicolon_seq() {
+t_behave_input_inject_semicolon_seq() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define mydeepmac {
 		echon '(mydeepmac)';
@@ -549,10 +624,11 @@ __behave_input_inject_semicolon_seq() {
 	__EOT
 #one;this_is_mymac(mydeepmac);two;this_is_mymac(mydeepmac);three;
 #one;this_is_mymac(mydeepmac),TOO!;two;this_is_mymac(mydeepmac),TOO!;three;
+   ex0_test behave:input_inject_semicolon_seq
    cksum_test behave:input_inject_semicolon_seq "${MBOX}" '512117110 140'
 }
 
-__behave_commandalias() {
+t_behave_commandalias() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	commandalias echo echo hoho
 	echo stop.
@@ -574,10 +650,11 @@ __behave_commandalias() {
 #hoho huhu
 #huhu
 #huhu
+   ex0_test behave:commandalias
    cksum_test behave:commandalias "${MBOX}" '3694143612 31'
 }
 
-__behave_ifelse() {
+t_behave_ifelse() {
    # Nestable conditions test
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 		if 0
@@ -1135,6 +1212,7 @@ __behave_ifelse() {
 		   echo 98.err
 		endif
 	__EOT
+   ex0_test behave:if-normal
    cksum_test behave:if-normal "${MBOX}" '557629289 631'
 
    if have_feat regex; then
@@ -1218,11 +1296,12 @@ __behave_ifelse() {
 			   echo 15.err
 			endif
 		__EOT
+      ex0_test behave:if-regex
       cksum_test behave:if-regex "${MBOX}" '439960016 81'
    fi
 }
 
-__behave_localopts() {
+t_behave_localopts() {
    # Nestable conditions test
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	define t2 {
@@ -1275,10 +1354,11 @@ __behave_localopts() {
 #gv1    gv2, 
 #active trouble: gv1 gv2,
 #active null: ,
+   ex0_test behave:localopts
    cksum_test behave:localopts "${MBOX}" '1936527193 192'
 }
 
-__behave_macro_param_shift() {
+t_behave_macro_param_shift() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	define t2 {
 	   echo in: t2
@@ -1350,10 +1430,11 @@ __behave_macro_param_shift() {
 #t2.0 has 2/2 parameters: ,you get one arg, ( you get one arg) [ you get one arg]
 #t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
 #t1.5: 1; ignerr () should not exist
+   ex0_test behave:macro_param_shift
    cksum_test behave:macro_param_shift "${MBOX}" '1402489146 1682'
 }
 
-__behave_addrcodec() {
+t_behave_addrcodec() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
 	echo $?/$^ERRNAME $res
@@ -1510,10 +1591,11 @@ __behave_addrcodec() {
 #0/NONE "22 Hey\,\" Wie() findet \" Dr. \" das?" <doog@def>
 #0/NONE 22 Hey," Wie() findet " Dr. " das? <doog@def>
 #0/NONE doog@def
+   ex0_test behave:addrcodec
    cksum_test behave:addrcodec "${MBOX}" '3907388894 2416'
 }
 
-__behave_vexpr() {
+t_behave_vexpr() {
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -1709,6 +1791,7 @@ __behave_vexpr() {
 #0/NONE 0
 #0/NONE 0
 #0/NONE -1
+   ex0_test behave:vexpr-numeric
    cksum_test behave:vexpr-numeric "${MBOX}" '1723609217 1048'
 
    ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
@@ -1779,6 +1862,7 @@ __behave_vexpr() {
 #0/OVERFLOW :a:
 #0/OVERFLOW ::
 # #3
+   ex0_test behave:vexpr-string
    cksum_test behave:vexpr-string "${MBOX}" '265398700 267'
 
    if have_feat regex; then
@@ -1840,11 +1924,312 @@ __behave_vexpr() {
 #0/NONE :naramabananarama:
 #0/NONE :bananabananarama:
 # #4
+      ex0_test behave:vexpr-regex
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
    fi
 }
 
-__behave_smime() { # FIXME add test/ dir, unroll tests therein
+t_behave_call_ret() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define w1 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 42 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			call w1 $i
+			wysh set i=$? k=$!
+			vput vexpr j '&' $i 7
+			echon "<$1/$i/$k "
+			if [ $j -eq 7 ]
+				echo .
+			end
+		else
+			echo ! The end for $1
+		end
+		return $1
+	}
+	# Transport $?/$! up the call chain
+	define w2 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w2 $i
+			wysh set i=$? j=$!
+			echon "<$1/$i/$j "
+			return $i $j
+		else
+			echo ! The end for $1
+			return $i $^ERR-BUSY
+		end
+		echoerr au
+	}
+	# Up and down it goes
+	define w3 {
+		echon ">$1/$2 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w3 $i $2
+			wysh set i=$? j=$!
+			vput vexpr k - $1 $2
+			if [ $k -eq 21 ]
+				vput vexpr i + $1 1
+				vput vexpr j + $2 1
+				echo "# <$i/$j> .. "
+				call w3 $i $j
+				wysh set i=$? j=$!
+			end
+			echon "<$1=$i/$j "
+			return $i $j
+		else
+			vput vexpr j + $^ERR-BUSY $2
+			echo ! The end for $1=$i/$j
+			return $i $j
+		end
+		echoerr au
+	}
+
+	call w1 0; echo ?=$? !=$!; echo -----;
+	call w2 0; echo ?=$? !=$!; echo -----;
+	call w3 0 1; echo ?=$? !=$!; echo -----;
+	__EOT
+   ex0_test behave:call_ret
+   cksum_test behave:call_ret "${MBOX}" '2240086482 5844'
+}
+
+t_behave_xcall() {
+   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define work {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 1111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall work $i $2
+		end
+		echo ! The end for $1/$2
+		if [ "$2" != "" ]
+			return $i $^ERR-BUSY
+		end
+	}
+	define xwork {
+		\xcall work 0 $2
+	}
+	call work 0
+	echo ?=$? !=$!
+	call xwork
+	echo ?=$? !=$!
+	xcall xwork
+	echo ?=$? !=$!
+	#
+	call work 0 yes
+	echo ?=$? !=$!
+	call xwork 0 yes
+	echo ?=$? !=$!
+	__EOT
+   ex0_test behave:xcall
+   cksum_test behave:xcall-1 "${MBOX}" '1579767783 19097'
+
+   ##
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	define __w {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall __w $i $2
+		end
+		echo ! The end for $1
+		if [ $2 -eq 0 ]
+			nonexistingcommand
+			echo would be err with errexit
+			return
+		end
+		echo calling exit
+		exit
+	}
+	define work {
+		echo eins
+		call __w 0 0
+		echo zwei, ?=$? !=$!
+		localopts yes; set errexit
+		ignerr call __w 0 0
+		echo drei, ?=$? !=$!
+		call __w 0 $1
+		echo vier, ?=$? !=$!, this is an error
+	}
+	ignerr call work 0
+	echo outer 1, ?=$? !=$!
+	xxxign call work 0
+	echo outer 2, ?=$? !=$!, could be error if xxxign non-empty
+	call work 1
+	echo outer 3, ?=$? !=$!
+	echo this is definitely an error
+	__EOT
+
+   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   ex0_test behave:xcall-2
+   cksum_test behave:xcall-2 "${MBOX}" '4079235300 4097'
+
+   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   exn0_test behave:xcall-3
+   cksum_test behave:xcall-3 "${MBOX}" '1132745876 2724'
+}
+
+t_behave_e_H_L_opts() {
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
+
+   touch ./.t.mbox
+   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   echo ${?} > "${MBOX}"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!/bin/sh -
+		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
+			) >> "./.t.mbox"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+   printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
+   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+   printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
+   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+
+   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL @t@me ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL @t@you ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+
+   "${SNAIL}" ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   "${SNAIL}" ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   echo ${?} >> "${MBOX}"
+
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+
+#1
+#0
+#0
+#0
+#0
+#0
+#0
+#1
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+#0
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#>N  1 Alchemilla         1996-10-02 01:50    7/112                              
+#0
+# N  2 Alchemilla         1996-10-02 01:50    7/111                              
+#0
+#0
+   cksum_test behave:e_H_L_opts "${MBOX}" '1708955574 678'
+}
+
+t_behave_compose_hooks() {
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.tnotes"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!/bin/sh -
+		${rm} -f "${MBOX}"
+		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat}) > "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf 'm hook-test@exam.ple\nbody\n~.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
+   "${SNAIL}" ${ARGS} \
+      -Smta=./.tsendmail.sh \
+      -X'
+         define t_ocs {
+            read ver
+            echo t_ocs
+            echo "~^header list"; read hl; vput vexpr es substr "$hl" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to header list, aborting send"; echo "~x"
+            endif
+            echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
+               read es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be diet, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
+               read es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy, aborting send"; echo "~x"
+            endif
+            echo "~:set t_ocs"
+         }
+         define t_oce {
+            set t_oce autobcc=oce@exam.ple
+         }
+         define t_ocl {
+            set t_ocl autocc=ocl@exam.ple
+         }
+         wysh set on-compose-splice=t_ocs \
+            on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
+               ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
+            on-compose-enter=t_oce on-compose-leave=t_ocl
+      ' > ./.tnotes
+   ex0_test behave:compose_hooks
+   ${cat} ./.tnotes >> "${MBOX}"
+
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+
+#From PrimulaVeris Wed Apr 10 22:59:00 2017
+#Date: Wed, 02 Oct 1996 01:50:07 +0000
+#To: hook-test@exam.ple, shell@exam.ple
+#Cc: ocl@exam.ple, splicy diet spliced <splice@exam.ple>
+#Bcc: juicy juice spliced <juice@exam.ple>, oce@exam.ple
+#
+#body
+#t_ocs-shell
+#t_ocs
+##variable not set: t_oce
+##variable not set: t_ocs
+##variable not set: t_ocs_shell
+##variable not set: t_ocl
+   cksum_test behave:compose_hooks "${MBOX}" '3240856112 319'
+}
+
+t_behave_smime() { # FIXME add test/ dir, unroll tests therein
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
@@ -2085,22 +2470,26 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    < "${BODY}" "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" "${MBOX}"
+   ex0_test content:001
    cksum_test content:001 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    < /dev/null "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
+   ex0_test content:002
    cksum_test content:002 "${MBOX}" '2356108758 6413'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
    ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
+   ex0_test content:003
    cksum_test content:003 "${MBOX}" '2356108758 6413'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
    echo body | "${SNAIL}" ${ARGS} "${MBOX}"
+   ex0_test content:004
    cksum_test content:004 "${MBOX}" '4004005686 49'
 
    # Sending of multiple mails in a single invocation
@@ -2109,6 +2498,7 @@ gggggggggggggggg"
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
    ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI}
+   ex0_test content:005
    cksum_test content:005 "${MBOX}" '2157252578 260'
 
    ## $BODY CHANGED
@@ -2117,6 +2507,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
+   ex0_test content:006
    ${sed} -e 1d < "${BODY}" > "${MBOX}"
    cksum_test content:006 "${MBOX}" '2273863401 83'
 
@@ -2127,6 +2518,7 @@ gggggggggggggggg"
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
       }' | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+   ex0_test content:007
    cksum_test content:007 "${MBOX}" '1754234717 61767'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
@@ -2136,6 +2528,7 @@ gggggggggggggggg"
    echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
+   ex0_test content:008
    cksum_test content:008 "${MBOX}" '1563381297 326'
 
    # Single word (overlong line split -- bad standard! Requires injection of
@@ -2143,6 +2536,7 @@ gggggggggggggggg"
    ${rm} -f "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
+   ex0_test content:009
    cksum_test content:009 "${MBOX}" '1996714851 1669'
 
    # Combination of encoded words, space and tabs of varying sort
@@ -2154,6 +2548,7 @@ gggggggggggggggg"
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
+   ex0_test content:010
    cksum_test content:010 "${MBOX}" '2956039469 542'
 
    # Overlong multibyte sequence that must be forcefully split
@@ -2164,6 +2559,7 @@ gggggggggggggggg"
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
+   ex0_test content:011
    cksum_test content:011 "${MBOX}" '454973928 610'
 
    # Trailing WS
@@ -2176,6 +2572,7 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
+   ex0_test content:012
    cksum_test content:012 "${MBOX}" '1014122962 248'
 
    # Leading and trailing WS
@@ -2186,6 +2583,7 @@ gggggggggggggggg"
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
+   ex0_test content:013
    cksum_test content:013 "${MBOX}" '3212167908 187'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
@@ -2214,11 +2612,13 @@ gggggggggggggggg"
       -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
+   ex0_test content:014-1
    ${rm} -rf ./.ttt
-   cksum_test content:14 "${MBOX}" '589846634 2491'
+   cksum_test content:014-1 "${MBOX}" '589846634 2491'
    # `resend' test
    printf "Resend ${BODY}\nx\n" | "${SNAIL}" ${ARGS} -f "${MBOX}"
-   cksum_test content:14-2 "${MBOX}" '589846634 2491'
+   ex0_test content:014-2
+   cksum_test content:014-2 "${MBOX}" '589846634 2491'
 }
 
 t_all() {

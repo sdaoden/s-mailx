@@ -303,8 +303,10 @@ This command line option is \*(OB.
 .
 .Mx
 .It Fl e
-Just check if mail is present (in the specified or system
-.Va inbox ) :
+Just check if mail is present (in the system
+.Va inbox
+or the one specified via
+.Fl f ) :
 if yes, return an exit status of zero, a non-zero value otherwise.
 To restrict the set of mails to consider in this evaluation a message
 specification can be added with the option
@@ -346,21 +348,15 @@ that starts with a hyphen-minus, prefix with a relative path, as in
 .
 .Mx
 .It Fl H
-Display a summary of the
+Display a summary of
 .Ic headers
-of all messages in the specified mailbox or system
-.Va inbox
-and exit.
-A configurable summary view is available via the
+and exit; a configurable summary view is available via the
 .Fl L
 option.
 .
 .Mx
 .It Fl h
 Show a short usage summary.
-Because of widespread use a
-.Fl Fl help
-argument will have the same effect.
 .
 .Mx
 .It Fl i
@@ -369,13 +365,11 @@ argument will have the same effect.
 to ignore tty interrupt signals.
 .
 .Mx
-.It Fl L Ar spec-list
-Display a summary of all
+.It Fl L Ar spec
+Display a summary of
 .Ic headers
-of only those messages in the specified mailbox or the system
-.Va inbox
-that match the given
-.Ar spec-list ,
+of all messages that match the given
+.Ar spec ,
 then exit.
 See the section
 .Sx "Specifying messages"
@@ -931,8 +925,10 @@ account credentials, the
 variable chains, and accessing protocol-specific resources,
 the section
 .Sx "Character sets"
-goes into the details of character encoding and how to use them for
-representing messages and MIME part contents by specifying them in
+goes into the details of character encodings, and how to use them for
+interpreting the input data given in
+.Va ttycharset
+and representing messages and MIME part contents in
 .Va sendcharsets ,
 and reading the section
 .Sx "The mime.types files"
@@ -1539,9 +1535,9 @@ mechanisms that are controlled by the
 locale setting
 (the manual for
 .Xr setlocale 3
-should give an overview); the \*(UA internal variable
+should give an overview): the \*(UA internal variable
 .Va ttycharset
-will be set to the detected terminal character set accordingly
+will be set to the detected terminal character set accordingly,
 and will thus show up in the output of the commands
 .Ic set
 and
@@ -1550,27 +1546,18 @@ and
 .Pp
 However, a user supplied
 .Va ttycharset
-value is not overwritten by this detection mechanism: this
-.Dq feature
-must be used if the detection does not work properly,
-and it may be used to adjust the name of the locale character set.
-E.g., on BSD systems one may use a locale with the character set
-ISO8859-1, which is not a valid name for this character set; to be on
-the safe side, one may set
-.Va ttycharset
-to the correct name, which is ISO-8859-1.
-.
-.Pp
-Note that changing the value does not mean much beside that,
-since several aspects of the real character set are implied by the
-locale environment of the system,
-and that stays unaffected by the content of an overwritten
-.Va ttycharset
-variable.
-(This is mostly an issue when interactively using \*(UA, though.
-It is actually possible to send mail in a completely
+value is not overwritten by this detection mechanism.
+I.e., it is actually possible to send mail in a completely
 .Dq faked
-locale environment, an option that \*(UA's test-suite uses excessively.)
+locale environment, an option which can be used to generate and send,
+e.g., UTF-8 input data in a
+.Ql LC_ALL=C
+environment (an example of this can be found in the section
+.Sx "On sending mail, and non-interactive mode" ) .
+Changing the value does not mean much beside that, because several
+aspects of the real character set are implied by the locale environment
+of the system, which stays unaffected by
+.Va ttycharset .
 .
 .Pp
 If no character set conversion capabilities have been compiled into
@@ -10440,6 +10427,7 @@ Queried and used once on program startup, actively managed for child
 processes and the MLE (see
 .Sx "On terminal control and line editor" )
 in interactive mode thereafter.
+Ignored in non-interactive mode, which always uses 80 columns.
 .
 .Mx
 .It Ev DEAD
@@ -10488,6 +10476,7 @@ The user's preferred number of lines on a page or the vertical screen
 or window size in lines.
 Queried and used once on program startup, actively managed for child
 processes in interactive mode thereafter.
+Ignored in non-interactive mode, which always uses 24 lines.
 .
 .Mx
 .It Ev LISTER
