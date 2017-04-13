@@ -1004,23 +1004,20 @@ jgetopt_done:
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC)){
-            n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
-            if(n_psonce & n_PSO_EXIT_MASK)
+            if(!n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC))
                goto j_leave;
          }
       }
 
       if(resfiles & a_RF_USER){
-         n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
-         if(n_psonce & n_PSO_EXIT_MASK)
+         if(!n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
             goto j_leave;
       }
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
       if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL){
-         n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
-         if(n_psonce & n_PSO_EXIT_MASK)
+         if(!n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
             goto j_leave;
       }
    }
@@ -1089,8 +1086,7 @@ jgetopt_done:
 
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0){
-      n_go_Xargs(Xargs, Xargs_cnt);
-      if(n_psonce & n_PSO_EXIT_MASK)
+      if(!n_go_Xargs(Xargs, Xargs_cnt))
          goto jleave;
    }
 

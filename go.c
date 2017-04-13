@@ -256,7 +256,7 @@ static void a_go_cleanup(enum a_go_cleanup_mode gcm);
 static bool_t a_go_file(char const *file, bool_t silent_open_error);
 
 /* System resource file load()ing or -X command line option array traversal */
-static void a_go_load(struct a_go_ctx *gcp);
+static bool_t a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
 static bool_t a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
@@ -1554,7 +1554,7 @@ jleave:
    return (fip != NULL);
 }
 
-static void
+static bool_t
 a_go_load(struct a_go_ctx *gcp){
    NYD2_ENTER;
 
@@ -1584,6 +1584,8 @@ a_go_load(struct a_go_ctx *gcp){
 
    n_go_main_loop();
    NYD2_LEAVE;
+   return (((n_psonce & n_PSO_EXIT_MASK) |
+      (n_pstate & n_PS_ERR_EXIT_MASK)) == 0);
 }
 
 static void
@@ -2262,12 +2264,15 @@ jleave:
    return rv;
 }
 
-FL void
+FL bool_t
 n_go_load(char const *name){
    struct a_go_ctx *gcp;
    size_t i;
    FILE *fip;
+   bool_t rv;
    NYD_ENTER;
+
+   rv = TRU1;
 
    if(name == NULL || *name == '\0')
       goto jleave;
@@ -2287,16 +2292,18 @@ n_go_load(char const *name){
 
    if(n_poption & n_PO_D_V)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(gcp->gc_name, FAL0));
-   a_go_load(gcp);
+   rv = a_go_load(gcp);
 jleave:
    NYD_LEAVE;
+   return rv;
 }
 
-FL void
+FL bool_t
 n_go_Xargs(char const **lines, size_t cnt){
    static char const name[] = "-X";
 
    union{
+      bool_t rv;
       ui64_t align;
       char uf[n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + sizeof(name)];
    } b;
@@ -2380,8 +2387,9 @@ n_go_Xargs(char const **lines, size_t cnt){
    }
    gcp->gc_lines[i] = NULL;
 
-   a_go_load(gcp);
+   b.rv = a_go_load(gcp);
    NYD_LEAVE;
+   return b.rv;
 }
 
 FL int

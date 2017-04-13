@@ -892,11 +892,13 @@ FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
 
-/* Load a file of user definitions -- this is *only* for main()! */
-FL void n_go_load(char const *name);
+/* Load a file of user system startup resources.
+ * *Only* for main(), returns whether program shall continue */
+FL bool_t n_go_load(char const *name);
 
-/* "Load" all the -X command line definitions in order -- *only* for main() */
-FL void n_go_Xargs(char const **lines, size_t cnt);
+/* "Load" all the -X command line definitions in order.
+ * *Only* for main(), returns whether program shall continue */
+FL bool_t n_go_Xargs(char const **lines, size_t cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * n_PS_SOURCING so that others will realize that they are no longer reading
