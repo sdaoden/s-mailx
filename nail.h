@@ -1193,35 +1193,38 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_NONE,
    /* Don't perform expansions or interpret reverse solidus escape sequences.
     * Output may be NULL, otherwise the possibly trimmed non-expanded input is
-    * used as output */
-   n_SHEXP_PARSE_DRYRUN = 1<<0,
-   n_SHEXP_PARSE_TRUNC = 1<<1,         /* Truncate result storage on entry */
-   n_SHEXP_PARSE_TRIMSPACE = 1<<2,     /* Ignore space surrounding tokens */
-   n_SHEXP_PARSE_LOG = 1<<3,           /* Log errors */
-   n_SHEXP_PARSE_LOG_D_V = 1<<4,       /* Log errors if n_OPT_D_V */
-   n_SHEXP_PARSE_IFS_ADD_COMMA = 1<<5, /* Add comma , to normal "IFS" */
-   n_SHEXP_PARSE_IFS_IS_COMMA = 1<<6,  /* Let comma , be the sole "IFS" */
-   n_SHEXP_PARSE_IGNORE_EMPTY = 1<<7,  /* Ignore empty tokens, start over */
+    * used as output (implies _PARSE_META_KEEP) */
+   n_SHEXP_PARSE_DRYRUN = 1u<<0,
+   n_SHEXP_PARSE_TRUNC = 1u<<1,        /* Truncate result storage on entry */
+   n_SHEXP_PARSE_TRIMSPACE = 1u<<2,    /* Ignore space surrounding tokens */
+   n_SHEXP_PARSE_LOG = 1u<<3,          /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1u<<4,      /* Log errors if n_OPT_D_V */
+   n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<5, /* Add comma , to normal "IFS" */
+   n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<6, /* Let comma , be the sole "IFS" */
+   n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<7, /* Ignore empty tokens, start over */
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
     * quote mode to be permanently active (cannot be closed) */
-   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1<<8,
-   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1<<9,
-   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1<<10,
-   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1<<11,
-   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1<<12, /* Ignore an open quote at EOS */
+   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<8,
+   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<9,
+   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<10,
+   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<11,
+   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<12, /* Ignore an open quote at EOS */
    n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
          n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
 
    /* Recognize metacharacters to separate tokens */
-   n_SHEXP_PARSE_META_VERTBAR = 1<<13,
-   n_SHEXP_PARSE_META_AMPERSAND = 1<<14,
+   n_SHEXP_PARSE_META_VERTBAR = 1u<<13,
+   n_SHEXP_PARSE_META_AMPERSAND = 1u<<14,
    /* Interpret ; as a sequencing operator, go_input_inject() remainder */
-   n_SHEXP_PARSE_META_SEMICOLON = 1<<15,
+   n_SHEXP_PARSE_META_SEMICOLON = 1u<<15,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
-   n__SHEXP_PARSE_LAST = 15
+   /* Keep the metacharacter (or IFS character), do not skip over it */
+   n_SHEXP_PARSE_META_KEEP = 1u<<16,
+
+   n__SHEXP_PARSE_LAST = 16
 };
 
 enum n_shexp_state{

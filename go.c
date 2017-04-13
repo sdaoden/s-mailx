@@ -1079,7 +1079,7 @@ jexec:
 
          xcp = cp;
          arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIMSPACE |
-               n_SHEXP_PARSE_LOG), &xcp);
+               n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_KEEP), &xcp);
          line.l -= PTR2SIZE(xcp - cp);
          cp = n_UNCONST(xcp);
          if(cp == NULL)
