@@ -424,7 +424,7 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
             (gt & GT_MLIST ? _mlist_heads :
             (gt & GT_SHORTCUT ? _shortcut_heads :
             (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
-            )[torek_hash(id) % HSHSIZE]);
+            )[n_torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
       if ((gp->g_type & gt) && *gp->g_id == *id) {
@@ -548,7 +548,7 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       if((s = regcomp(&grp->gr_regex, id,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(id, FAL0), n_regex_err_to_str(&grp->gr_regex, s));
+            n_shexp_quote_cp(id, FAL0), n_regex_err_to_doc(&grp->gr_regex, s));
          free(gp);
          gp = NULL;
          goto jleave;
@@ -920,7 +920,7 @@ nalloc(char const *str, enum gfield ntype)
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
    str = n_addrspec_with_guts(&ag, str,
-         ((ntype & (GFULL | GSKIN | GREF)) != 0));
+         ((ntype & (GFULL | GSKIN | GREF)) != 0), FAL0);
    if(str == NULL){
       /*
       np = NULL; TODO We cannot return NULL,
@@ -1196,14 +1196,14 @@ jleave:
 }
 
 FL struct name *
-grab_names(enum n_lexinput_flags lif, char const *field, struct name *np,
+grab_names(enum n_go_input_flags gif, char const *field, struct name *np,
       int comma, enum gfield gflags)
 {
    struct name *nq;
    NYD_ENTER;
 
 jloop:
-   np = lextract(n_lex_input_cp(lif, field, detract(np, comma)), gflags);
+   np = lextract(n_go_input_cp(gif, field, detract(np, comma)), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
       if (is_addr_invalid(nq, EACM_NONE))
          goto jloop;
@@ -1453,7 +1453,7 @@ c_alternates(void *v){
          }
       *ap2 = NULL;
 
-      /* And put it into *-alternates* */
+      /* And put it into *alternates* */
       if(sl > 0){
          cp = salloc(sl);
          for(sl = 0, ap = a_nag_altnames; *ap != NULL; ++ap)
@@ -1470,8 +1470,7 @@ c_alternates(void *v){
          a_nag_altnames = NULL;
       }
 
-      n_PS_ROOT_BLOCK(sl > 0 ? ok_vset(_alternates, cp)
-         : ok_vclear(_alternates));
+      n_PS_ROOT_BLOCK(sl > 0 ? ok_vset(alternates, cp) : ok_vclear(alternates));
    }
    NYD_LEAVE;
    return rv;
@@ -1552,73 +1551,137 @@ jleave:
 }
 
 FL int
-c_addrcodec(void *v){
+c_addrcodec(void *vp){
    struct n_addrguts ag;
    struct n_string s_b, *sp;
-   char const **argv, *varname, *varres, *cp;
-   int rv;
+   size_t alen;
+   int mode;
+   char const **argv, *varname, *act, *cp;
    NYD_ENTER;
 
    sp = n_string_creat_auto(&s_b);
-   rv = 0;
-   argv = v;
+   argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
-   for(; *argv != NULL; ++argv){
-      if(sp->s_len > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, *argv);
-   }
-
-   /* */
-   /* TODO nalloc() cannot yet fail, thus need to do the work twice!!
-    * TODO I.e. later on this could be a simple nalloc() wrapper.. */
-   for(cp = n_string_cp(sp); blankchar(*cp); ++cp)
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
       ;
-   if(cp != sp->s_dat)
-      sp = n_string_cut(sp, 0, PTR2SIZE(cp - sp->s_dat));
-   for(varres = cp = &sp->s_dat[sp->s_len];
-         cp > sp->s_dat && blankchar(cp[-1]); --cp)
-      ;
-   if(cp != varres)
-      sp = n_string_trunc(sp, sp->s_len - (ui32_t)PTR2SIZE(varres - cp));
+   mode = 0;
+   if(*act == '+')
+      mode = 1, ++act;
+   if(*act == '+')
+      mode = 2, ++act;
+   if(*act == '+')
+      mode = 3, ++act;
+   if(act >= cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
 
    /* C99 */{
       size_t i;
 
-      /* However, the difference for this command is that the user enters what
-       * she wants to have, and we should make something of it.  Therefore any
-       * quotes are necessarily to be turned to quoted-pair! */
-      n_string_cp(sp);
-      for(i = 0; i < sp->s_len; ++i)
-         if(sp->s_dat[i] == '"' || sp->s_dat[i] == '\\')
-            sp = n_string_insert_c(sp, i++, '\\');
+      i = strlen(cp);
+      if(i <= UIZ_MAX / 4)
+         i <<= 1;
+      sp = n_string_reserve(sp, i);
    }
 
-   if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1) == NULL ||
-         (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
-            ) != NAME_ADDRSPEC_ISADDR){
-      varres = sp->s_dat;
-      v = NULL;
-   }else{
-      struct name *np;
+   n_pstate_err_no = n_ERR_NONE;
 
-      np = nalloc(n_string_cp(sp), GTO | GFULL | GSKIN);
-      varres = np->n_fullname;
-   }
+   if(is_ascncaseprefix(act, "encode", alen)){
+      /* This function cannot be a simple nalloc() wrapper even later on, since
+       * we may need to turn any ", () or \ into quoted-pairs */
+      char c;
+
+      while((c = *cp++) != '\0'){
+         if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) ||
+               (c == '\\' && mode < 3))
+            sp = n_string_push_c(sp, '\\');
+         sp = n_string_push_c(sp, c);
+      }
+
+      if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1, TRU1) == NULL ||
+            (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
+               ) != NAME_ADDRSPEC_ISADDR){
+         cp = sp->s_dat;
+         n_pstate_err_no = n_ERR_INVAL;
+         vp = NULL;
+      }else{
+         struct name *np;
+
+         np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
+         cp = np->n_fullname;
+      }
+   }else if(mode == 0){
+      if(is_ascncaseprefix(act, "decode", alen)){
+         char c;
+
+         while((c = *cp++) != '\0'){
+            switch(c){
+            case '(':
+               sp = n_string_push_c(sp, '(');
+               act = skip_comment(cp);
+               if(--act > cp)
+                  sp = n_string_push_buf(sp, cp, PTR2SIZE(act - cp));
+               sp = n_string_push_c(sp, ')');
+               cp = ++act;
+               break;
+            case '"':
+               while(*cp != '\0'){
+                  if((c = *cp++) == '"')
+                     break;
+                  if(c == '\\' && (c = *cp) != '\0')
+                     ++cp;
+                  sp = n_string_push_c(sp, c);
+               }
+               break;
+            default:
+               if(c == '\\' && (c = *cp++) == '\0')
+                  break;
+               sp = n_string_push_c(sp, c);
+               break;
+            }
+         }
+         cp = n_string_cp(sp);
+      }else if(is_ascncaseprefix(act, "skin", alen)){
+         /* Let's just use the is-single-address hack for this one, too.. */
+         if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
+               (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
+                  ) != NAME_ADDRSPEC_ISADDR){
+            n_pstate_err_no = n_ERR_INVAL;
+            vp = NULL;
+         }else{
+            struct name *np;
+
+            np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
+            cp = np->n_name;
+         }
+      }else
+         goto jesynopsis;
+   }else
+      goto jesynopsis;
 
    if(varname == NULL){
-      if(fprintf(n_stdout, "%s\n", varres) < 0)
-         rv = 1;
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
-      rv = 1;
-      v = NULL;
+      if(fprintf(n_stdout, "%s\n", cp) < 0){
+         n_pstate_err_no = n_err_no;
+         vp = NULL;
+      }
+   }else if(!n_var_vset(varname, (uintptr_t)cp)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      vp = NULL;
    }
 
-   if(v != NULL)
-      n_pstate_var__em = n_0;
+jleave:
    NYD_LEAVE;
-   return rv;
+   return (vp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
+      "<rest-of-line>\n"));
+   n_pstate_err_no = n_ERR_INVAL;
+   vp = NULL;
+   goto jleave;
 }
 
 FL bool_t

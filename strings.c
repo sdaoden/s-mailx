@@ -49,7 +49,7 @@ FL char *
    NYD_ENTER;
 
    size = strlen(str) +1;
-   news = (n_autorec_alloc)(NULL, size n_MEMORY_DEBUG_ARGSCALL);
+   news = (n_autorec_alloc_from_pool)(NULL, size n_MEMORY_DEBUG_ARGSCALL);
    memcpy(news, str, size);
    NYD_LEAVE;
    return news;
@@ -61,7 +61,8 @@ FL char *
    char *news;
    NYD_ENTER;
 
-   news = (n_autorec_alloc)(NULL, sbuf_len +1 n_MEMORY_DEBUG_ARGSCALL);
+   news = (n_autorec_alloc_from_pool)(NULL, sbuf_len +1
+         n_MEMORY_DEBUG_ARGSCALL);
    memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
    NYD_LEAVE;
@@ -77,7 +78,7 @@ FL char *
 
    l1 = (s1 != NULL) ? strlen(s1) : 0;
    l2 = strlen(s2);
-   news = (n_autorec_alloc)(NULL, l1 + (sep != '\0') + l2 +1
+   news = (n_autorec_alloc_from_pool)(NULL, l1 + (sep != '\0') + l2 +1
          n_MEMORY_DEBUG_ARGSCALL);
    if (l1 > 0) {
       memcpy(news + 0, s1, l1);
@@ -102,7 +103,7 @@ FL char *
    NYD_ENTER;
 
    sz = strlen(src) +1;
-   dest = (n_autorec_alloc)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
+   dest = (n_autorec_alloc_from_pool)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
    i_strcpy(dest, src, sz);
    NYD_LEAVE;
    return dest;
@@ -150,7 +151,7 @@ FL struct str *
       l += strlen(*xcpa) + sonl;
 
    self->l = l;
-   self->s = (n_autorec_alloc)(NULL, l +1 n_MEMORY_DEBUG_ARGSCALL);
+   self->s = (n_autorec_alloc_from_pool)(NULL, l +1 n_MEMORY_DEBUG_ARGSCALL);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
       size_t i = strlen(*xcpa);
@@ -666,7 +667,8 @@ FL struct n_string *
       if(!self->s_auto)
          self->s_dat = (n_realloc)(self->s_dat, i n_MEMORY_DEBUG_ARGSCALL);
       else{
-         char *ndat = (n_autorec_alloc)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
+         char *ndat = (n_autorec_alloc_from_pool)(NULL, i
+               n_MEMORY_DEBUG_ARGSCALL);
 
          if(l > 0)
             memcpy(ndat, self->s_dat, l);
@@ -994,7 +996,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * used to check the validity of the input even with identical encoding
     * names */
    if (id == (iconv_t)-1 && !asccasecmp(tocode, fromcode))
-      errno = 0;
+      n_err_no = n_ERR_NONE;
    NYD_LEAVE;
    return id;
 }
@@ -1049,14 +1051,14 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
 
       sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
       if(sz > 0 && !(icf & n_ICONV_IGN_NOREVERSE)){
-         err = ENOENT;
+         err = n_ERR_NOENT;
          goto jleave;
       }
       if(sz != (size_t)-1)
          break;
 
-      err = errno;
-      if(!(icf & n_ICONV_IGN_ILSEQ) || err != EILSEQ)
+      err = n_err_no;
+      if(!(icf & n_ICONV_IGN_ILSEQ) || err != n_ERR_ILSEQ)
          goto jleave;
       if(*inbleft > 0){
          ++(*inb);

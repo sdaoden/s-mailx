@@ -42,8 +42,8 @@ VAL_PREFIX=/usr/local
 # . the place of the S-nail program.
 VAL_BINDIR="${VAL_PREFIX}/bin"
 # . the place of the privilege-separated helper program, the name
-#   of which is [$VAL_SID$VAL_NAIL]-privsep (see below for $VAL_SID &
-#   $VAL_NAIL).
+#   of which is [$VAL_SID$VAL_MAILX]-privsep (see below for $VAL_SID &
+#   $VAL_MAILX).
 #   (Only with $OPT_DOTLOCK.)
 VAL_LIBEXECDIR="${VAL_PREFIX}/libexec"
 # . of the manual.
@@ -284,9 +284,7 @@ OPT_SPAM_SPAMC=no
 OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
 
-# If given an optional argument the `help' command will print a help
-# string only for the mentioned command; those strings take up space and
-# so one may disable this feature.
+# We may include help strings for commands, increasing size a bit
 OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
@@ -329,15 +327,15 @@ OPT_DOTLOCK=yes
 ## PATHS AND PROGRAMS, DEVELOPMENT ##
 
 # To ease the life of forkers and packagers "our" name can be changed.
-# The name is build by concatenating $VAL_SID and $VAL_NAIL, i.e.,
-# $(VAL_SID)$(VAL_NAIL).  Note that the final string must be longer than
-# tww characters and may not contain any whitespace.
+# The name is build by concatenating $VAL_SID and $VAL_MAILX, i.e.,
+# $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
+# than two characters and may not contain any whitespace.
 VAL_SID=s-
-VAL_NAIL=nail
+VAL_MAILX=nail
 
 # The name of the exemplary resource template.
 # Note 1: not overwritten by "make install" if yet existent!
-VAL_SYSCONFRC="${VAL_SID}${VAL_NAIL}.rc"
+VAL_SYSCONFRC="${VAL_SID}${VAL_MAILX}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 

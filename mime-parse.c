@@ -245,7 +245,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
 
       /* TODO using part "1" for decrypted content is a hack */
       if ((np->m_partstring = ip->m_partstring) == NULL)
-         ip->m_partstring = np->m_partstring = n_UNCONST("1");
+         ip->m_partstring = np->m_partstring = n_UNCONST(n_1);
 
       if (_mime_parse_part(zmp, np, mpf, level + 1) == OKAY) {
          ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_OK;

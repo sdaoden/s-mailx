@@ -64,8 +64,9 @@ update_stable_hook() {
       git add nail.rc
    fi
 
-   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl && git add okeys.h
-   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl && git add tcaps.h
+   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl && git add gen-okeys.h
+   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl && git add gen-tcaps.h
+   [ -f ./mk-errors.sh ] && ./mk-errors.sh && git add gen-errors.h
 }
 
 update_release_hook() {
@@ -90,8 +91,9 @@ update_release_hook() {
       git add nail.rc
    fi
 
-   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl noverbose && git add okeys.h
-   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl noverbose && git add tcaps.h
+   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl noverbose && git add gen-okeys.h
+   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl noverbose && git add gen-tcaps.h
+   [ -f ./mk-errors.sh ] && ./mk-errors.sh noverbose && git add gen-errors.h
 }
 
 . ./mk-release.inc

@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 require 5.008_001;
 use utf8;
-#@ Parse 'enum n_termcap_{cmd,query}' from nail.h and create tcaps.h.
+#@ Parse 'enum n_termcap_{cmd,query}' from nail.h and create gen-tcaps.h.
 #@ And see termcap.c.
 # Public Domain
 
-my $OUT = 'tcaps.h';
+my $OUT = 'gen-tcaps.h';
 
 # Generate a more verbose output.  Not for shipout versions.
 my $VERB = 1;

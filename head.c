@@ -78,7 +78,7 @@ static struct cmatch_data const  _cmatch_data[] = {
    { 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
    { 0, NULL }
 };
-#define _DATE_MINLEN 21
+#define a_HEAD_DATE_MINLEN 21
 
 /* Skip over "word" as found in From_ line */
 static char const *        _from__skipword(char const *wp);
@@ -204,7 +204,7 @@ _is_date(char const *date)
    int rv = 0;
    NYD2_ENTER;
 
-   if ((dl = strlen(date)) >= _DATE_MINLEN)
+   if ((dl = strlen(date)) >= a_HEAD_DATE_MINLEN)
       for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
          if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
             break;
@@ -316,7 +316,7 @@ a_head_idna_apply(struct n_addrguts *agp)
       char const *tcs = ok_vlook(ttycharset);
       idna_ascii = idna_utf8;
       idna_utf8 = stringprep_convert(idna_ascii, "utf-8", tcs);
-      i = (idna_utf8 == NULL && errno == EINVAL);
+      i = (idna_utf8 == NULL && n_err_no == n_ERR_INVAL);
       ac_free(idna_ascii);
 
       if (idna_utf8 == NULL) {
@@ -783,16 +783,18 @@ jput_quote:
             ostp = n_string_push_c(ostp, '"');
             tp = tcurr;
             do/* while tcurr && TATOM||TQUOTE */{
+               cp = &cp1st[tcurr->t_start];
+               cpmax = &cp1st[tcurr->t_end];
+               if(cp == cpmax)
+                  continue;
+
                if(tcurr != tp)
                   ostp = n_string_push_c(ostp, ' ');
+
                if((tcurr->t_f & (a_T_TATOM | a_T_SPECIAL)) == a_T_TATOM)
-                  ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                        (tcurr->t_end - tcurr->t_start));
+                  ostp = n_string_push_buf(ostp, cp, PTR2SIZE(cpmax - cp));
                else{
                   bool_t esc;
-
-                  cp = &cp1st[tcurr->t_start];
-                  cpmax = &cp1st[tcurr->t_end];
 
                   for(esc = FAL0; cp < cpmax;){
                      if((c.c = *cp++) == '\\' && !esc)
@@ -1101,11 +1103,11 @@ jnodename:{
       char const *hn, *ln;
       size_t i;
 
-      hn = nodename(1);
+      hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
       rv = cp = salloc(i);
-      sstpcpy(sstpcpy(sstpcpy(cp, ln), "@"), hn);
+      sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
    }
    goto jleave;
 }
@@ -1137,7 +1139,7 @@ myorigin(struct header *hp) /* TODO */
 FL bool_t
 is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 {
-   char date[FROM_DATEBUF];
+   char date[n_FROM_DATEBUF];
    bool_t rv;
    NYD2_ENTER;
 
@@ -1151,7 +1153,7 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 
 FL int
 extract_date_from_from_(char const *line, size_t linelen,
-   char datebuf[FROM_DATEBUF])
+   char datebuf[n_FROM_DATEBUF])
 {
    int rv;
    char const *cp = line;
@@ -1191,17 +1193,17 @@ jat_dot:
    }
 
    linelen -= PTR2SIZE(cp - line);
-   if (linelen < _DATE_MINLEN)
+   if (linelen < a_HEAD_DATE_MINLEN)
       goto jerr;
    if (cp[linelen - 1] == '\n') {
       --linelen;
       /* (Rather IMAP/POP3 only) */
       if (cp[linelen - 1] == '\r')
          --linelen;
-      if (linelen < _DATE_MINLEN)
+      if (linelen < a_HEAD_DATE_MINLEN)
          goto jerr;
    }
-   if (linelen >= FROM_DATEBUF)
+   if (linelen >= n_FROM_DATEBUF)
       goto jerr;
 
 jleave:
@@ -1212,8 +1214,8 @@ jleave:
 jerr:
    cp = _("<Unknown date>");
    linelen = strlen(cp);
-   if (linelen >= FROM_DATEBUF)
-      linelen = FROM_DATEBUF;
+   if (linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF;
    rv = 0;
    goto jleave;
 }
@@ -1746,7 +1748,7 @@ skin(char const *name)
    NYD_ENTER;
 
    if(name != NULL){
-      name = n_addrspec_with_guts(&ag,name, TRU1);
+      name = n_addrspec_with_guts(&ag,name, TRU1, FAL0);
       rv = ag.ag_skinned;
       if(!(ag.ag_n_flags & NAME_NAME_SALLOC))
          rv = savestrbuf(rv, ag.ag_slen);
@@ -1759,7 +1761,8 @@ skin(char const *name)
 /* TODO addrspec_with_guts: RFC 5322
  * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
 FL char const *
-n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
+n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
+      bool_t issingle_hack){
    char const *cp;
    char *cp2, *bufend, *nbuf, c;
    enum{
@@ -1876,7 +1879,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
           * next character would be a "..) */
          if(c == '\\' && *cp != '\0')
             *cp2++ = *cp++;
-         if(c == ','){
+         if(c == ',' && !issingle_hack){
             if(!(flags & a_GOTLT)){
                *cp2++ = ' ';
                for(; blankchar(*cp); ++cp)
@@ -1896,7 +1899,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin){
       agp->ag_iaddr_aend = agp->ag_ilen;
    /* Misses > */
    else if (agp->ag_iaddr_aend < agp->ag_iaddr_start) {
-      cp2 = n_autorec_alloc(NULL, agp->ag_ilen + 1 +1);
+      cp2 = n_autorec_alloc(agp->ag_ilen + 1 +1);
       memcpy(cp2, agp->ag_input, agp->ag_ilen);
       agp->ag_iaddr_aend = agp->ag_ilen;
       cp2[agp->ag_ilen++] = '>';
@@ -2390,16 +2393,16 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    time_t t;
    NYD2_ENTER;
 
-   if(UICMP(32, second, >/*XXX leap=*/, DATE_SECSMIN) ||
-         UICMP(32, minute, >=, DATE_MINSHOUR) ||
-         UICMP(32, hour, >=, DATE_HOURSDAY) ||
+   if(UICMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
+         UICMP(32, minute, >=, n_DATE_MINSHOUR) ||
+         UICMP(32, hour, >=, n_DATE_HOURSDAY) ||
          day < 1 || day > 31 ||
          month < 1 || month > 12 ||
          year < 1970)
       goto jerr;
 
    if(year >= 1970 + ((y2038p ? SI32_MAX : SI64_MAX) /
-         (DATE_SECSDAY * DATE_DAYSYEAR))){
+         (n_DATE_SECSDAY * n_DATE_DAYSYEAR))){
       /* Be a coward regarding Y2038, many people (mostly myself, that is) do
        * test by stepping second-wise around the flip.  Don't care otherwise */
       if(!y2038p)
@@ -2410,12 +2413,12 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    }
 
    t = second;
-   t += minute * DATE_SECSMIN;
-   t += hour * DATE_SECSHOUR;
+   t += minute * n_DATE_SECSMIN;
+   t += hour * n_DATE_SECSHOUR;
 
    jdn = a_head_gregorian_to_jdn(year, month, day);
    jdn -= jdn_epoch;
-   t += (time_t)jdn * DATE_SECSDAY;
+   t += (time_t)jdn * n_DATE_SECSDAY;
 jleave:
    NYD2_LEAVE;
    return t;
@@ -2529,7 +2532,7 @@ getsender(struct message *mp)
 #endif
 
 FL int
-grab_headers(enum n_lexinput_flags lif, struct header *hp, enum gfield gflags,
+grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       int subjfirst)
 {
    /* TODO grab_headers: again, check counts etc. against RFC;
@@ -2542,31 +2545,31 @@ grab_headers(enum n_lexinput_flags lif, struct header *hp, enum gfield gflags,
    comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
 
    if (gflags & GTO)
-      hp->h_to = grab_names(lif, "To: ", hp->h_to, comma, GTO | GFULL);
+      hp->h_to = grab_names(gif, "To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_lex_input_cp(lif, "Subject: ", hp->h_subject);
+      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
    if (gflags & GCC)
-      hp->h_cc = grab_names(lif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
+      hp->h_cc = grab_names(gif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
-      hp->h_bcc = grab_names(lif, "Bcc: ", hp->h_bcc, comma, GBCC | GFULL);
+      hp->h_bcc = grab_names(gif, "Bcc: ", hp->h_bcc, comma, GBCC | GFULL);
 
    if (gflags & GEXTRA) {
       if (hp->h_from == NULL)
          hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
-      hp->h_from = grab_names(lif, "From: ", hp->h_from, comma,
+      hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
             GEXTRA | GFULL | GFULLEXTRA);
       if (hp->h_replyto == NULL)
          hp->h_replyto = lextract(ok_vlook(replyto), GEXTRA | GFULL);
-      hp->h_replyto = grab_names(lif, "Reply-To: ", hp->h_replyto, comma,
+      hp->h_replyto = grab_names(gif, "Reply-To: ", hp->h_replyto, comma,
             GEXTRA | GFULL);
       if (hp->h_sender == NULL)
          hp->h_sender = extract(ok_vlook(sender), GEXTRA | GFULL);
-      hp->h_sender = grab_names(lif, "Sender: ", hp->h_sender, comma,
+      hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
             GEXTRA | GFULL);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_lex_input_cp(lif, "Subject: ", hp->h_subject);
+      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
 
    NYD_LEAVE;
    return errs;

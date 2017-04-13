@@ -45,12 +45,7 @@
 #define WRITE              1
 
 struct fp {
-   FILE        *fp;
    struct fp   *link;
-   char        *realfile;
-   char        *save_cmd;
-   struct termios *fp_tios;
-   long        offset;
    int         omode;
    int         pid;
    enum {
@@ -67,6 +62,12 @@ struct fp {
       FP_UNLINK   = 1<<9,
       FP_TERMIOS  = 1<<10
    }           flags;
+   long        offset;
+   FILE        *fp;
+   char        *realfile;
+   char        *save_cmd;
+   struct termios *fp_tios;
+   n_sighdl_t fp_osigint;     /* Only if FP_TERMIOS */
 };
 
 struct child {
@@ -88,11 +89,13 @@ static volatile int a_popen_hadsig;
 static int           scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int pid,
                         int flags, char const *realfile, long offset,
-                        char const *save_cmd, struct termios *tiosp);
+                        char const *save_cmd, struct termios *tiosp,
+                        n_sighdl_t osigint);
 static enum okay     _file_save(struct fp *fpp);
 static int           _file_load(int flags, int infd, int outfd,
                         char const *load_cmd);
-static enum okay     unregister_file(FILE *fp, struct termios **tiosp);
+static enum okay     unregister_file(FILE *fp, struct termios **tiosp,
+                        n_sighdl_t *osigint);
 static int           file_pid(FILE *fp);
 
 /* TODO Rather temporary: deal with job control with FD_PASS */
@@ -101,10 +104,10 @@ static void a_popen_jobsigs_down(void);
 static void a_popen_jobsig(int sig);
 
 /* Handle SIGCHLD */
-static void          _sigchld(int signo);
+static void a_popen_sigchld(int signo);
 
-static struct child *_findchild(int pid, bool_t create);
-static void          _delchild(struct child *cp);
+static struct child *a_popen_child_find(int pid, bool_t create);
+static void a_popen_child_del(struct child *cp);
 
 static int
 scan_mode(char const *mode, int *omode)
@@ -133,7 +136,7 @@ scan_mode(char const *mode, int *omode)
       }
 
    n_alert(_("Internal error: bad stdio open mode %s"), mode);
-   errno = EINVAL;
+   n_err_no = n_ERR_INVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
 jleave:
@@ -144,7 +147,7 @@ jleave:
 static void
 register_file(FILE *fp, int omode, int pid, int flags,
    char const *realfile, long offset, char const *save_cmd,
-   struct termios *tiosp)
+   struct termios *tiosp, n_sighdl_t osigint)
 {
    struct fp *fpp;
    NYD_ENTER;
@@ -161,6 +164,7 @@ register_file(FILE *fp, int omode, int pid, int flags,
    fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
    fpp->save_cmd = (save_cmd != NULL) ? sstrdup(save_cmd) : NULL;
    fpp->fp_tios = tiosp;
+   fpp->fp_osigint = osigint;
    fpp->offset = offset;
    fp_head = fpp;
    NYD_LEAVE;
@@ -185,9 +189,9 @@ _file_save(struct fp *fpp)
 
    /* Ensure the I/O library doesn't optimize the fseek(3) away! */
    if(!n_real_seek(fpp->fp, fpp->offset, SEEK_SET)){
-      outfd = errno;
+      outfd = n_err_no;
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
       goto jleave;
    }
 
@@ -200,9 +204,9 @@ _file_save(struct fp *fpp)
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
             n_O_NOFOLLOW) & ~O_EXCL), 0666);
    if (outfd == -1) {
-      outfd = errno;
+      outfd = n_err_no;
       n_err(_("Fatal: cannot create %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), strerror(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
       goto jleave;
    }
 
@@ -221,7 +225,7 @@ _file_save(struct fp *fpp)
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
    }
-   if (run_command(cmd[0], 0, fileno(fpp->fp), outfd,
+   if (n_child_run(cmd[0], 0, fileno(fpp->fp), outfd,
          cmd[1], cmd[2], NULL, NULL) >= 0)
       rv = OKAY;
 
@@ -254,14 +258,14 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
       goto jleave;
    }
 
-   rv = run_command(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
+   rv = n_child_run(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static enum okay
-unregister_file(FILE *fp, struct termios **tiosp)
+unregister_file(FILE *fp, struct termios **tiosp, n_sighdl_t *osigint)
 {
    struct fp **pp, *p;
    enum okay rv = OKAY;
@@ -289,9 +293,10 @@ unregister_file(FILE *fp, struct termios **tiosp)
          if (p->realfile != NULL)
             free(p->realfile);
          if (p->flags & FP_TERMIOS) {
-            if (tiosp != NULL)
+            if (tiosp != NULL) {
                *tiosp = p->fp_tios;
-            else
+               *osigint = p->fp_osigint;
+            } else
                free(p->fp_tios);
          }
          free(p);
@@ -384,8 +389,7 @@ a_popen_jobsig(int sig){
 }
 
 static void
-_sigchld(int signo)
-{
+a_popen_sigchld(int signo){
    pid_t pid;
    int status;
    struct child *cp;
@@ -395,12 +399,12 @@ _sigchld(int signo)
    for (;;) {
       pid = waitpid(-1, &status, WNOHANG);
       if (pid <= 0) {
-         if (pid == -1 && errno == EINTR)
+         if (pid == -1 && n_err_no == n_ERR_INTR)
             continue;
          break;
       }
 
-      if ((cp = _findchild(pid, FAL0)) != NULL) {
+      if ((cp = a_popen_child_find(pid, FAL0)) != NULL) {
          if (cp->free)
             cp->pid = -1; /* XXX Was _delchild(cp);# */
          else {
@@ -412,53 +416,48 @@ _sigchld(int signo)
 }
 
 static struct child *
-_findchild(int pid, bool_t create)
-{
-   struct child **cpp;
-   NYD_ENTER;
+a_popen_child_find(int pid, bool_t create){
+   struct child **cpp, *cp;
+   NYD2_ENTER;
 
-   for (cpp = &_popen_child; *cpp != NULL && (*cpp)->pid != pid;
+   for(cpp = &_popen_child; (cp = *cpp) != NULL && cp->pid != pid;
          cpp = &(*cpp)->link)
       ;
 
-   if (*cpp == NULL && create) {
-      *cpp = smalloc(sizeof **cpp);
-      (*cpp)->pid = pid;
-      (*cpp)->done = (*cpp)->free = 0;
-      (*cpp)->link = NULL;
-   }
-   NYD_LEAVE;
-   return *cpp;
+   if(cp == NULL && create)
+      (*cpp = cp = scalloc(1, sizeof *cp))->pid = pid;
+   NYD2_LEAVE;
+   return cp;
 }
 
 static void
-_delchild(struct child *cp)
-{
+a_popen_child_del(struct child *cp){
    struct child **cpp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    cpp = &_popen_child;
-   for (;;) {
-      if (*cpp == cp) {
+
+   for(;;){
+      if(*cpp == cp){
          *cpp = cp->link;
          free(cp);
          break;
       }
-      if (*(cpp = &(*cpp)->link) == NULL) {
-         DBG( n_err("! popen.c:_delchild(): implementation error\n"); )
+      if(*(cpp = &(*cpp)->link) == NULL){
+         DBG( n_err("! a_popen_child_del(): implementation error\n"); )
          break;
       }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL void
-command_manager_start(void)
+n_child_manager_start(void)
 {
    struct sigaction nact, oact;
    NYD_ENTER;
 
-   nact.sa_handler = &_sigchld;
+   nact.sa_handler = &a_popen_sigchld;
    sigemptyset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART
 #ifdef SA_NOCLDSTOP
@@ -475,7 +474,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
 {
    int osflags, fd;
    FILE *fp = NULL;
-   NYD2_ENTER; /* (only for Fopen() and once in lex.c) */
+   NYD2_ENTER; /* (only for Fopen() and once in go.c) */
 
    if (scan_mode(oflags, &osflags) < 0)
       goto jleave;
@@ -501,7 +500,7 @@ Fopen(char const *file, char const *oflags)
    NYD_ENTER;
 
    if ((fp = safe_fopen(file, oflags, &osflags)) != NULL)
-      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL,NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -518,7 +517,7 @@ Fdopen(int fd, char const *oflags, bool_t nocloexec)
       osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
    if ((fp = fdopen(fd, oflags)) != NULL)
-      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL);
+      register_file(fp, osflags, 0, FP_RAW, NULL, 0L, NULL, NULL,NULL);
    NYD_LEAVE;
    return fp;
 }
@@ -529,7 +528,7 @@ Fclose(FILE *fp)
    int i = 0;
    NYD_ENTER;
 
-   if (unregister_file(fp, NULL) == OKAY)
+   if (unregister_file(fp, NULL, NULL) == OKAY)
       i |= 1;
    if (fclose(fp) == 0)
       i |= 2;
@@ -614,7 +613,7 @@ jraw:
       }
 
       if ((infd = open(file, (mode & W_OK) ? O_RDWR : O_RDONLY)) == -1 &&
-            (!(osflags & O_CREAT) || errno != ENOENT))
+            (!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT))
          goto jleave;
    }
 
@@ -656,7 +655,7 @@ jerr:
       goto jleave;
    }
 
-   register_file(rv, osflags, 0, flags, file, offset, csave, NULL);
+   register_file(rv, osflags, 0, flags, file, offset, csave, NULL,NULL);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -699,7 +698,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    if ((oflags & OF_SUFFIX) && *namehint != '\0') {
       if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
-         errno = ENAMETOOLONG;
+         n_err_no = n_ERR_NAMETOOLONG;
          goto jleave;
       }
    } else
@@ -736,7 +735,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       osoflags |= O_APPEND;
 
    for (i = 0;; ++i) {
-      memcpy(cp, getrandstring(_RANDCHARS), _RANDCHARS);
+      memcpy(cp, n_random_create_cp(_RANDCHARS), _RANDCHARS);
 
       hold_all_sigs();
       relesigs = TRU1;
@@ -746,7 +745,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
          break;
       }
       if (i >= FTMP_OPEN_TRIES) {
-         e = errno;
+         e = n_err_no;
          goto jfree;
       }
       relesigs = FAL0;
@@ -761,12 +760,12 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       if ((fp = fdopen(fd, osflags)) != NULL)
          register_file(fp, osflagbits | _O_CLOEXEC, 0,
             (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),
-            cp_base, 0L, NULL, NULL);
+            cp_base, 0L, NULL, NULL,NULL);
    } else
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
-      e = errno;
+      e = n_err_no;
       unlink(cp_base);
       goto jfree;
    }
@@ -779,7 +778,7 @@ jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
    if (fp == NULL)
-      errno = e;
+      n_err_no = e;
    NYD_LEAVE;
    return fp;
 jfree:
@@ -842,20 +841,19 @@ FL FILE *
 Popen(char const *cmd, char const *mode, char const *sh,
    char const **env_addon, int newfd1)
 {
-   struct termios *tiosp;
    int p[2], myside, hisside, fd0, fd1, pid;
-   char mod[2] = {'0', '\0'};
    sigset_t nset;
-   FILE *rv = NULL;
+   char mod[2];
+   n_sighdl_t osigint;
+   struct termios *tiosp;
+   FILE *rv;
    NYD_ENTER;
 
    /* First clean up child structures */
-   {  sigset_t oset;
+   /* C99 */{
       struct child **cpp, *cp;
 
-      sigfillset(&nset);
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-
+      hold_all_sigs();
       for (cpp = &_popen_child; *cpp != NULL;) {
          if ((*cpp)->pid == -1) {
             cp = *cpp;
@@ -864,16 +862,20 @@ Popen(char const *cmd, char const *mode, char const *sh,
          } else
             cpp = &(*cpp)->link;
       }
-
-      sigprocmask(SIG_SETMASK, &oset, NULL);
+      rele_all_sigs();
    }
+
+   rv = NULL;
+   tiosp = NULL;
+   n_UNINIT(osigint, SIG_ERR);
+   mod[0] = '0', mod[1] = '\0';
 
    if (!pipe_cloexec(p))
       goto jleave;
 
    if (*mode == 'r') {
       myside = p[READ];
-      fd0 = COMMAND_FD_PASS;
+      fd0 = n_CHILD_FD_PASS;
       hisside = fd1 = p[WRITE];
       mod[0] = *mode;
    } else if (*mode == 'W') {
@@ -884,29 +886,29 @@ Popen(char const *cmd, char const *mode, char const *sh,
    } else {
       myside = p[WRITE];
       hisside = fd0 = p[READ];
-      fd1 = COMMAND_FD_PASS;
+      fd1 = n_CHILD_FD_PASS;
       mod[0] = 'w';
    }
 
    /* In interactive mode both STDIN and STDOUT point to the terminal.  If we
     * pass through the TTY restore terminal attributes after pipe returns.
     * XXX It shouldn't matter which FD we actually use in this case */
-   if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == COMMAND_FD_PASS ||
-         fd1 == COMMAND_FD_PASS)) {
+   if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == n_CHILD_FD_PASS ||
+         fd1 == n_CHILD_FD_PASS)) {
+      osigint = n_signal(SIGINT, SIG_IGN);
       tiosp = smalloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
       n_TERMCAP_SUSPEND(TRU1);
-   } else
-      tiosp = NULL;
+   }
 
    sigemptyset(&nset);
 
    if (cmd == (char*)-1) {
-      if ((pid = fork_child()) == -1)
+      if ((pid = n_child_fork()) == -1)
          n_perr(_("fork"), 0);
       else if (pid == 0) {
          union {char const *ccp; int (*ptf)(void); int es;} u;
-         prepare_child(&nset, fd0, fd1);
+         n_child_prepare(&nset, fd0, fd1);
          close(p[READ]);
          close(p[WRITE]);
          u.ccp = sh;
@@ -914,9 +916,9 @@ Popen(char const *cmd, char const *mode, char const *sh,
          _exit(u.es);
       }
    } else if (sh == NULL) {
-      pid = start_command(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
+      pid = n_child_start(cmd, &nset, fd0, fd1, NULL, NULL, NULL, env_addon);
    } else {
-      pid = start_command(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
+      pid = n_child_start(sh, &nset, fd0, fd1, "-c", cmd, NULL, env_addon);
    }
    if (pid < 0) {
       close(p[READ]);
@@ -927,10 +929,16 @@ Popen(char const *cmd, char const *mode, char const *sh,
    if ((rv = fdopen(myside, mod)) != NULL)
       register_file(rv, 0, pid,
          (tiosp == NULL ? FP_PIPE : FP_PIPE | FP_TERMIOS),
-         NULL, 0L, NULL, tiosp);
+         NULL, 0L, NULL, tiosp, osigint);
    else
       close(myside);
 jleave:
+   if(rv == NULL && tiosp != NULL){
+      n_TERMCAP_RESUME(TRU1);
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+      n_free(tiosp);
+      n_signal(SIGINT, osigint);
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -938,35 +946,34 @@ jleave:
 FL bool_t
 Pclose(FILE *ptr, bool_t dowait)
 {
+   n_sighdl_t osigint;
    struct termios *tiosp;
-   sigset_t nset, oset;
    int pid;
    bool_t rv = FAL0;
    NYD_ENTER;
 
    pid = file_pid(ptr);
-   if (pid < 0)
+   if(pid < 0)
       goto jleave;
 
-   unregister_file(ptr, &tiosp);
+   unregister_file(ptr, &tiosp, &osigint);
    fclose(ptr);
 
-   if (dowait) {
-      sigemptyset(&nset);
-      sigaddset(&nset, SIGINT);
-      sigaddset(&nset, SIGHUP);
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-      rv = wait_child(pid, NULL);
-      if (tiosp != NULL) {
+   if(dowait){
+      hold_all_sigs();
+      rv = n_child_wait(pid, NULL);
+      if(tiosp != NULL){
          n_TERMCAP_RESUME(TRU1);
          tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
+         n_signal(SIGINT, osigint);
       }
-      sigprocmask(SIG_SETMASK, &oset, NULL);
-   } else {
-      free_child(pid);
+      rele_all_sigs();
+   }else{
+      n_child_free(pid);
       rv = TRU1;
    }
-   if (tiosp != NULL)
+
+   if(tiosp != NULL)
       free(tiosp);
 jleave:
    NYD_LEAVE;
@@ -985,7 +992,7 @@ n_pager_open(void)
    pager = n_pager_get(env_add + 0);
    env_add[1] = NULL;
 
-   if ((rv = Popen(pager, "w", NULL, env_add, COMMAND_FD_PASS)) == NULL)
+   if ((rv = Popen(pager, "w", NULL, env_add, n_CHILD_FD_PASS)) == NULL)
       n_perr(pager, 0);
    NYD_LEAVE;
    return rv;
@@ -1018,31 +1025,17 @@ close_all_files(void)
 }
 
 FL int
-fork_child(void)
-{
-   struct child *cp;
-   int pid;
-   NYD_ENTER;
-
-   cp = _findchild(0, TRU1);
-
-   if ((cp->pid = pid = fork()) == -1) {
-      _delchild(cp);
-      n_perr(_("fork"), 0);
-   }
-   NYD_LEAVE;
-   return pid;
-}
-
-FL int
-run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2, char const **env_addon)
 {
    sigset_t nset, oset;
    sighandler_type soldint;
-   bool_t tio_set;
    int rv;
+   enum {a_NONE = 0, a_INTIGN = 1<<0, a_TTY = 1<<1} f;
    NYD_ENTER;
+
+   f = a_NONE;
+   n_UNINIT(soldint, SIG_ERR);
 
    /* TODO Of course this is a joke given that during a "p*" the PAGER may
     * TODO be up and running while we play around like this... but i guess
@@ -1053,58 +1046,61 @@ run_command(char const *cmd, sigset_t *mask, int infd, int outfd,
     * TODO any action, and shall we find we need to run programs dump it
     * TODO all into a temporary file which is then passed through to the
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */
-   if ((tio_set = ((n_psonce & n_PSO_INTERACTIVE) &&
-         (infd == COMMAND_FD_PASS || outfd == COMMAND_FD_PASS)))) {
-      /* TODO Simply ignore SIGINT then, it surely will be ment for the program
-       * TODO which takes the terminal */
+   if(infd == n_CHILD_FD_PASS || outfd == n_CHILD_FD_PASS){
       soldint = safe_signal(SIGINT, SIG_IGN);
-      tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
-         &a_popen_tios);
-      n_TERMCAP_SUSPEND(FAL0);
-      sigfillset(&nset);
-      sigdelset(&nset, SIGCHLD);
-      sigdelset(&nset, SIGINT);
-      /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
-      sigprocmask(SIG_BLOCK, &nset, &oset);
-      a_popen_hadsig = 0;
-      a_popen_jobsigs_up();
+      f = a_INTIGN;
+
+      if(n_psonce & n_PSO_INTERACTIVE){
+         f |= a_TTY;
+         tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
+            &a_popen_tios);
+         n_TERMCAP_SUSPEND(FAL0);
+         sigfillset(&nset);
+         sigdelset(&nset, SIGCHLD);
+         sigdelset(&nset, SIGINT);
+         /* sigdelset(&nset, SIGPIPE); TODO would need a handler */
+         sigprocmask(SIG_BLOCK, &nset, &oset);
+         a_popen_hadsig = 0;
+         a_popen_jobsigs_up();
+      }
    }
 
-   if ((rv = start_command(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
+   if((rv = n_child_start(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
       rv = -1;
-   else {
-      if (wait_child(rv, NULL))
+   else{
+      if(n_child_wait(rv, NULL))
          rv = 0;
-      else {
-         if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+      else{
+         if(ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             n_err(_("Fatal error in process\n"));
          rv = -1;
       }
    }
 
-   if (tio_set) {
+   if(f & a_TTY){
       a_popen_jobsigs_down();
-      tio_set = ((n_psonce & n_PSO_TTYIN) != 0);
       n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
-      tcsetattr((tio_set ? STDIN_FILENO : STDOUT_FILENO),
-         (tio_set ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      tcsetattr(((n_psonce & n_PSO_TTYIN) ? STDIN_FILENO : STDOUT_FILENO),
+         ((n_psonce & n_PSO_TTYIN) ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
+      sigprocmask(SIG_SETMASK, &oset, NULL);
+   }
+   if(f & a_INTIGN){
       if(soldint != SIG_IGN)
          safe_signal(SIGINT, soldint);
-      sigprocmask(SIG_SETMASK, &oset, NULL);
    }
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
+n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
    char const *a0, char const *a1, char const *a2,
    char const **env_addon)
 {
    int rv;
    NYD_ENTER;
 
-   if ((rv = fork_child()) == -1) {
+   if ((rv = n_child_fork()) == -1) {
       n_perr(_("fork"), 0);
       rv = -1;
    } else if (rv == 0) {
@@ -1164,7 +1160,7 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
             (argv[i++] = n_UNCONST(a1)) != NULL &&
             (argv[i++] = n_UNCONST(a2)) != NULL)
          argv[i] = NULL;
-      prepare_child(mask, infd, outfd);
+      n_child_prepare(mask, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
       _exit(n_EXIT_ERR);
@@ -1173,8 +1169,24 @@ start_command(char const *cmd, sigset_t *mask, int infd, int outfd,
    return rv;
 }
 
+FL int
+n_child_fork(void){
+   struct child *cp;
+   int pid;
+   NYD2_ENTER;
+
+   cp = a_popen_child_find(0, TRU1);
+
+   if((cp->pid = pid = fork()) == -1){
+      a_popen_child_del(cp);
+      n_perr(_("fork"), 0);
+   }
+   NYD2_LEAVE;
+   return pid;
+}
+
 FL void
-prepare_child(sigset_t *nset, int infd, int outfd)
+n_child_prepare(sigset_t *nset, int infd, int outfd)
 {
    int i;
    sigset_t fset;
@@ -1182,7 +1194,7 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
    /* TODO WHAT IS WITH STDERR_FILENO DAMN? */
-   if ((i = (infd == COMMAND_FD_NULL)))
+   if ((i = (infd == n_CHILD_FD_NULL)))
       infd = open("/dev/null", O_RDONLY);
    if (infd >= 0) {
       dup2(infd, STDIN_FILENO);
@@ -1190,7 +1202,7 @@ prepare_child(sigset_t *nset, int infd, int outfd)
          close(infd);
    }
 
-   if ((i = (outfd == COMMAND_FD_NULL)))
+   if ((i = (outfd == n_CHILD_FD_NULL)))
       outfd = open("/dev/null", O_WRONLY);
    if (outfd >= 0) {
       dup2(outfd, STDOUT_FILENO);
@@ -1212,30 +1224,28 @@ prepare_child(sigset_t *nset, int infd, int outfd)
 }
 
 FL void
-free_child(int pid)
-{
+n_child_free(int pid){
    sigset_t nset, oset;
    struct child *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   if ((cp = _findchild(pid, FAL0)) != NULL) {
-      if (cp->done)
-         _delchild(cp);
+   if((cp = a_popen_child_find(pid, FAL0)) != NULL){
+      if(cp->done)
+         a_popen_child_del(cp);
       else
-         cp->free = 1;
+         cp->free = TRU1;
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 FL bool_t
-wait_child(int pid, int *wait_status)
-{
+n_child_wait(int pid, int *wait_status){
    sigset_t nset, oset;
    struct child *cp;
    int ws;
@@ -1246,18 +1256,17 @@ wait_child(int pid, int *wait_status)
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   cp = _findchild(pid, FAL0);
-   if (cp != NULL) {
-      while (!cp->done)
+   if((cp = a_popen_child_find(pid, FAL0)) != NULL){
+      while(!cp->done)
          sigsuspend(&oset);
       ws = cp->status;
-      _delchild(cp);
-   } else
+      a_popen_child_del(cp);
+   }else
       ws = 0;
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
 
-   if (wait_status != NULL)
+   if(wait_status != NULL)
       *wait_status = ws;
    rv = (WIFEXITED(ws) && WEXITSTATUS(ws) == 0);
    NYD_LEAVE;

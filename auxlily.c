@@ -73,6 +73,13 @@ struct a_aux_err_node{
 };
 #endif
 
+struct a_aux_err_map{
+   ui32_t aem_hash;     /* Hash of name */
+   ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
+   ui32_t aem_docoff;   /* Into a_aux_err docs[] */
+   si32_t aem_err_no;   /* The OS error value for this one */
+};
+
 static ui8_t a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -112,6 +119,17 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
 };
 #undef a_X
 
+/* Include the constant mk-errors.sh output */
+#include "gen-errors.h"
+
+/* And these things come from config.h (config-time mk-errors.sh output) */
+static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {
+#undef a_X
+#define a_X(N,I) {N,I},
+n__ERR_NUMBER_TO_MAPOFF
+#undef a_X
+};
+
 #ifndef HAVE_POSIX_RANDOM
 static union rand_state *a_aux_rand;
 #endif
@@ -133,6 +151,9 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 # endif
 #endif
 
+/* Find the descriptive mapping of an error number, or _ERR_INVAL */
+static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
+
 #ifndef HAVE_POSIX_RANDOM
 static void
 a_aux_rand_init(void){
@@ -150,9 +171,9 @@ a_aux_rand_init(void){
    a_aux_rand = smalloc(sizeof *a_aux_rand);
 
 # ifdef HAVE_GETRANDOM
-   /* getrandom(2) guarantees 256 without EINTR.. */
+   /* getrandom(2) guarantees 256 without n_ERR_INTR.. */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer to large to be served without EINTR error");
+      "Buffer to large to be served without n_ERR_INTR error");
    for(;;){
       ssize_t gr;
 
@@ -204,7 +225,7 @@ a_aux_rand_init(void){
          a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
          seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
          if((rnd & 3) == 3)
-            seed ^= nextprime(seed);
+            seed ^= n_prime_next(seed);
       }
    }
 
@@ -246,6 +267,34 @@ a_aux_rand_weak(ui32_t seed){
 }
 # endif /* HAVE_GETRANDOM */
 #endif /* !HAVE_POSIX_RANDOM */
+
+static struct a_aux_err_map const *
+a_aux_err_map_from_no(si32_t eno){
+   si32_t ecmp;
+   size_t asz;
+   n__ERR_NUMBER_TYPE const (*adat)[2], (*tmp)[2];
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = &a_aux_err_map[n__ERR_NUMBER_VOIDOFF];
+
+   if(UICMP(z, n_ABS(eno), <=, (n__ERR_NUMBER_TYPE)-1)){
+      for(adat = a_aux_err_no2mapoff, asz = n_NELEM(a_aux_err_no2mapoff);
+            asz != 0; asz >>= 1){
+         tmp = &adat[asz >> 1];
+         if((ecmp = (si32_t)((n__ERR_NUMBER_TYPE)eno - (*tmp)[0])) == 0){
+            aemp = &a_aux_err_map[(*tmp)[1]];
+            break;
+         }
+         if(ecmp > 0){
+            adat = &tmp[1];
+            --asz;
+         }
+      }
+   }
+   NYD2_LEAVE;
+   return aemp;
+}
 
 FL size_t
 n_screensize(void){
@@ -303,7 +352,7 @@ page_or_print(FILE *fp, size_t lines)
 
    fflush_rewind(fp);
 
-   if (n_source_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
+   if (n_go_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
       size_t rows;
 
       if(*cp == '\0')
@@ -323,7 +372,7 @@ page_or_print(FILE *fp, size_t lines)
 
          pager = n_pager_get(&env_add[0]);
          env_add[1] = NULL;
-         run_command(pager, NULL, fileno(fp), COMMAND_FD_PASS, NULL,NULL,NULL,
+         n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
             env_add);
          goto jleave;
       }
@@ -529,7 +578,7 @@ jprefix_skip:
          }
       }
 
-      /* Character must be valid for base, EBASE otherwise */
+      /* Character must be valid for base, _EBASE otherwise */
       currc = a_aux_idec_atoi[(ui8_t)*cbuf];
       if(currc >= base)
          goto jebase;
@@ -653,38 +702,35 @@ j_maxval:
 }
 
 FL ui32_t
-torek_hash(char const *name)
-{
+n_torek_hash(char const *name){
    /* Chris Torek's hash.
     * NOTE: need to change *at least* mk-okey-map.pl when changing the
     * algorithm!! */
-   ui32_t h = 0;
-   NYD_ENTER;
+   char c;
+   ui32_t h;
+   NYD2_ENTER;
 
-   while (*name != '\0') {
-      h *= 33;
-      h += *name++;
-   }
-   NYD_LEAVE;
+   for(h = 0; (c = *name++) != '\0';)
+      h = (h * 33) + c;
+   NYD2_LEAVE;
    return h;
 }
 
 FL ui32_t
-torek_ihashn(char const *dat, size_t len){
-   /* See torek_hash() */
+n_torek_ihashn(char const *dat, size_t len){
+   /* See n_torek_hash() */
    char c;
    ui32_t h;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    for(h = 0; len > 0 && (c = *dat++) != '\0'; --len)
       h = (h * 33) + lowerconv(c);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return h;
 }
 
 FL ui32_t
-nextprime(ui32_t n)
-{
+n_prime_next(ui32_t n){
    static ui32_t const primes[] = {
       5, 11, 23, 47, 97, 157, 283,
       509, 1021, 2039, 4093, 8191, 16381, 32749, 65521,
@@ -692,20 +738,20 @@ nextprime(ui32_t n)
       8388593, 16777213, 33554393, 67108859, 134217689,
       268435399, 536870909, 1073741789, 2147483647
    };
-
    ui32_t i, mprime;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    i = (n < primes[n_NELEM(primes) / 4] ? 0
          : (n < primes[n_NELEM(primes) / 2] ? n_NELEM(primes) / 4
          : n_NELEM(primes) / 2));
-   do
-      if ((mprime = primes[i]) > n)
-         break;
-   while (++i < n_NELEM(primes));
-   if (i == n_NELEM(primes) && mprime < n)
+
+   do if((mprime = primes[i]) > n)
+      break;
+   while(++i < n_NELEM(primes));
+
+   if(i == n_NELEM(primes) && mprime < n)
       mprime = n;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return mprime;
 }
 
@@ -733,8 +779,7 @@ jredo:
 }
 
 FL char *
-nodename(int mayoverride)
-{
+n_nodename(bool_t mayoverride){
    static char *sys_hostname, *hostname; /* XXX free-at-exit */
 
    struct utsname ut;
@@ -746,11 +791,11 @@ nodename(int mayoverride)
    struct hostent *hent;
 # endif
 #endif
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0') {
+   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
-   } else if ((hn = sys_hostname) == NULL) {
+   }else if((hn = sys_hostname) == NULL){
       uname(&ut);
       hn = ut.nodename;
 #ifdef HAVE_SOCKETS
@@ -758,38 +803,39 @@ nodename(int mayoverride)
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_CANONNAME;
-      if (getaddrinfo(hn, NULL, &hints, &res) == 0) {
-         if (res->ai_canonname != NULL) {
-            size_t l = strlen(res->ai_canonname) +1;
+      if(getaddrinfo(hn, NULL, &hints, &res) == 0){
+         if(res->ai_canonname != NULL){
+            size_t l;
 
-            hn = ac_alloc(l);
+            l = strlen(res->ai_canonname) +1;
+            hn = n_lofi_alloc(l);
             memcpy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
       }
 # else
       hent = gethostbyname(hn);
-      if (hent != NULL)
+      if(hent != NULL)
          hn = hent->h_name;
 # endif
 #endif
       sys_hostname = sstrdup(hn);
 #if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
-      if (hn != ut.nodename)
-         ac_free(hn);
+      if(hn != ut.nodename)
+         n_lofi_free(hn);
 #endif
       hn = sys_hostname;
    }
 
-   if (hostname != NULL && hostname != sys_hostname)
-      free(hostname);
+   if(hostname != NULL && hostname != sys_hostname)
+      n_free(hostname);
    hostname = sstrdup(hn);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return hostname;
 }
 
 FL char *
-getrandstring(size_t length){
+n_random_create_cp(size_t length){
    struct str b64;
    char *data;
    size_t i;
@@ -1014,8 +1060,12 @@ n_err(char const *format, ...){
          a_aux_err_linelen = 0;
 
       if((len = strlen(format)) > 0){
-         if(doname || a_aux_err_linelen == 0)
-            fputs(VAL_UAGENT ": ", n_stderr);
+         if(doname || a_aux_err_linelen == 0){
+            char const *cp;
+
+            if(*(cp = ok_vlook(log_prefix)) != '\0')
+               fputs(cp, n_stderr);
+         }
          vfprintf(n_stderr, format, ap);
 
          /* C99 */{
@@ -1072,8 +1122,12 @@ n_verr(char const *format, va_list ap){
    n_pstate |= n_PS_ERRORS_PROMPT;
 #endif
 
-   if(doname || a_aux_err_linelen == 0)
-      fputs(VAL_UAGENT ": ", n_stderr);
+   if(doname || a_aux_err_linelen == 0){
+      char const *cp;
+
+      if(*(cp = ok_vlook(log_prefix)) != '\0')
+         fputs(cp, n_stderr);
+   }
 
    /* C99 */{
       size_t i = len;
@@ -1188,10 +1242,10 @@ n_perr(char const *msg, int errval){
    }else
       fmt = "%s: %s\n";
 
-   e = (errval == 0) ? errno : errval;
-   n_err(fmt, msg, strerror(e));
+   e = (errval == 0) ? n_err_no : errval;
+   n_err(fmt, msg, n_err_to_doc(e));
    if(errval == 0)
-      errno = e;
+      n_err_no = e;
    NYD2_LEAVE;
 }
 
@@ -1219,7 +1273,7 @@ n_panic(char const *format, ...){
       putc('\n', n_stderr);
       a_aux_err_linelen = 0;
    }
-   fprintf(n_stderr, VAL_UAGENT ": Panic: ");
+   fprintf(n_stderr, "%sPanic: ", ok_vlook(log_prefix));
 
    va_start(ap, format);
    vfprintf(n_stderr, format, ap);
@@ -1293,9 +1347,78 @@ jclear:
 }
 #endif /* HAVE_ERRORS */
 
+FL char const *
+n_err_to_doc(si32_t eno){
+   char const *rv;
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = a_aux_err_map_from_no(eno);
+   rv = &a_aux_err_docs[aemp->aem_docoff];
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL char const *
+n_err_to_name(si32_t eno){
+   char const *rv;
+   struct a_aux_err_map const *aemp;
+   NYD2_ENTER;
+
+   aemp = a_aux_err_map_from_no(eno);
+   rv = &a_aux_err_names[aemp->aem_nameoff];
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL si32_t
+n_err_from_name(char const *name){
+   struct a_aux_err_map const *aemp;
+   ui32_t hash, i, j, x;
+   si32_t rv;
+   NYD2_ENTER;
+
+   hash = n_torek_hash(name);
+
+   for(i = hash % a_AUX_ERR_REV_PRIME, j = 0; j <= a_AUX_ERR_REV_LONGEST; ++j){
+      if((x = a_aux_err_revmap[i]) == a_AUX_ERR_REV_ILL)
+         break;
+
+      aemp = &a_aux_err_map[x];
+      if(aemp->aem_hash == hash &&
+            !strcmp(&a_aux_err_names[aemp->aem_nameoff], name)){
+         rv = aemp->aem_err_no;
+         goto jleave;
+      }
+
+      if(++i == a_AUX_ERR_REV_PRIME){
+#ifdef a_AUX_ERR_REV_WRAPAROUND
+         i = 0;
+#else
+         break;
+#endif
+      }
+   }
+
+   /* Have not found it.  But wait, it could be that the user did, e.g.,
+    *    eval echo \$^ERR-$: \$^ERRDOC-$!: \$^ERRNAME-$! */
+   if((n_idec_si32_cp(&rv, name, 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) == n_IDEC_STATE_CONSUMED){
+      aemp = a_aux_err_map_from_no(rv);
+      rv = aemp->aem_err_no;
+      goto jleave;
+   }
+
+   rv = a_aux_err_map[n__ERR_NUMBER_VOIDOFF].aem_err_no;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_REGEX
 FL char const *
-n_regex_err_to_str(const regex_t *rep, int e){
+n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;
    size_t i;
    NYD2_ENTER;

@@ -301,25 +301,25 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
-      err = EIO;
+      err = n_ERR_IO;
       goto jleave;
    }
    charset_iter_recurse(charset_iter_orig);
    for (charset_iter_reset(NULL);; charset_iter_next()) {
       if (!charset_iter_is_valid()) {
-         err = EILSEQ;
+         err = n_ERR_ILSEQ;
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
-      if (err == 0 || (err != EILSEQ && err != EINVAL))
+      if (err == 0 || (err != n_ERR_ILSEQ && err != n_ERR_INVAL))
          break;
       clearerr(fo);
       if (fseek(fo, offs, SEEK_SET) == -1) {
-         err = EIO;
+         err = n_ERR_IO;
          break;
       }
       if (ap->a_conv != AC_DEFAULT) {
-         err = EILSEQ;
+         err = n_ERR_ILSEQ;
          break;
       }
       ap->a_charset = NULL;
@@ -346,8 +346,9 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
       fi = ap->a_tmpf;
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
-      err = errno;
-      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0), strerror(err));
+      err = n_err_no;
+      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
+         n_err_to_doc(err));
       goto jleave;
    }
 
@@ -387,7 +388,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = errno;
+         err = n_err_no;
          goto jerr_fclose;
       }
    }
@@ -398,12 +399,12 @@ jerr_header:
    if (do_iconv) {
       if (asccasecmp(charset, ap->a_input_charset) &&
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
-               ) == (iconv_t)-1 && (err = errno) != 0) {
-         if (err == EINVAL)
+               ) == (iconv_t)-1 && (err = n_err_no) != 0) {
+         if (err == n_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
                charset);
          else
-            n_err(_("iconv_open: %s\n"), strerror(err));
+            n_err(_("iconv_open: %s\n"), n_err_to_doc(err));
          goto jerr_fclose;
       }
    }
@@ -428,12 +429,12 @@ jerr_header:
       } else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
       if (xmime_write(buf, inlen, fo, convert, TD_ICONV) < 0) {
-         err = errno;
+         err = n_err_no;
          goto jerr;
       }
    }
    if (ferror(fi))
-      err = EDOM;
+      err = n_ERR_DOM;
 jerr:
    free(buf);
 jerr_fclose:
@@ -655,7 +656,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
-            (err = errno) != 0)
+            (err = n_err_no) != 0)
          goto jiconv_err;
    }
 #endif
@@ -672,9 +673,9 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (do_iconv && charset != NULL) { /*TODO charset->mime_type_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = errno) != 0) {
+            (err = n_err_no) != 0) {
 jiconv_err:
-         if (err == EINVAL)
+         if (err == n_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
             n_perr("iconv_open", 0);
@@ -900,14 +901,14 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = start_command(sh, &nset, fileno(fppa[xcnt++]), COMMAND_FD_NULL,
+         pid = n_child_start(sh, &nset, fileno(fppa[xcnt++]), n_CHILD_FD_NULL,
                "-c", &np->n_name[1], NULL, NULL);
          if(pid < 0){
             n_err(_("Piping message to %s failed\n"),
                n_shexp_quote_cp(np->n_name, FAL0));
             goto jerror;
          }
-         free_child(pid);
+         n_child_free(pid);
       }else{
          int c;
          FILE *fout;
@@ -921,7 +922,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             fout = n_stdout;
          else if((fout = Zopen(fname, "a")) == NULL){
             n_err(_("Writing message to %s failed: %s\n"),
-               fnameq, strerror(errno));
+               fnameq, n_err_to_doc(n_err_no));
             goto jerror;
          }
 
@@ -1243,7 +1244,7 @@ __mta_start(struct sendbundle *sbp)
 
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
-   if ((pid = fork_child()) == -1) {
+   if ((pid = n_child_fork()) == -1) {
       n_perr("fork", 0);
 jstop:
       savedeadletter(sbp->sb_input, 0);
@@ -1261,7 +1262,7 @@ jstop:
       /* n_stdin = */freopen("/dev/null", "r", stdin);
 #ifdef HAVE_SMTP
       if (rv) {
-         prepare_child(&nset, 0, 1);
+         n_child_prepare(&nset, 0, 1);
          if (smtp_mta(sbp))
             _exit(n_EXIT_OK);
       } else
@@ -1270,10 +1271,10 @@ jstop:
          char const *ecp;
          int e;
 
-         prepare_child(&nset, fileno(sbp->sb_input), -1);
+         n_child_prepare(&nset, fileno(sbp->sb_input), -1);
          execv(mta, n_UNCONST(args));
-         e = errno;
-         ecp = (e != ENOENT) ? strerror(e)
+         e = n_err_no;
+         ecp = (e != n_ERR_NOENT) ? n_err_to_doc(e)
                : _("executable not found (adjust *mta* variable)");
          n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
@@ -1283,10 +1284,10 @@ jstop:
    }
 
    if ((n_poption & n_PO_D_V) || ok_blook(sendwait)) {
-      if (!(rv = wait_child(pid, NULL)))
+      if (!(rv = n_child_wait(pid, NULL)))
          _sendout_error = TRU1;
    } else {
-      free_child(pid);
+      n_child_free(pid);
       rv = TRU1;
    }
 jleave:
@@ -1445,7 +1446,7 @@ a_sendout_random_id(struct header *hp, bool_t msgid)
    if((h = __sendout_ident) != NULL)
       goto jgen;
    if(ok_vlook(hostname) != NULL){
-      h = nodename(1);
+      h = n_nodename(TRU1);
       sep = '@';
       rl = 8;
       goto jgen;
@@ -1461,7 +1462,7 @@ jgen:
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      getrandstring(rl), sep, h);
+      n_random_create_cp(rl), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    NYD_LEAVE;
@@ -1804,7 +1805,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
-      else if ((err = errno) == EILSEQ || err == EINVAL) {
+      else if ((err = n_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL) {
          rewind(mtf);
          continue;
       }

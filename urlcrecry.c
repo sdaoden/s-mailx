@@ -109,7 +109,6 @@ _url_last_at_before_slash(char const *sp)
 static void
 _nrc_init(void)
 {
-   struct n_sigman sm;
    char buffer[NRC_TOKEN_MAXLEN], host[NRC_TOKEN_MAXLEN],
       user[NRC_TOKEN_MAXLEN], pass[NRC_TOKEN_MAXLEN], *netrc_load;
    struct stat sb;
@@ -126,16 +125,11 @@ _nrc_init(void)
    ispipe = FAL0;
    fi = NULL;
 
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
+   hold_all_sigs(); /* todo */
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
-      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, COMMAND_FD_NULL)
+      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)
             ) == NULL) {
          n_perr(netrc_load, 0);
          goto j_leave;
@@ -258,7 +252,6 @@ jerr:
 
    if (nhead != NULL)
       nrc = nhead;
-   n_sigman_cleanup_ping(&sm);
 jleave:
    if (fi != NULL) {
       if (ispipe)
@@ -274,8 +267,8 @@ jleave:
       }
 j_leave:
    _nrc_list = nrc;
+   rele_all_sigs();
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 static enum nrc_token
@@ -588,7 +581,7 @@ FL char *
       }
       i *= 3;
       ++i;
-      np = n = (n_autorec_alloc)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
+      np = n = (n_autorec_alloc_from_pool)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
    }
 
    for (; (c1 = *cp) != '\0'; ++cp) {
@@ -623,7 +616,8 @@ FL char *
    si32_t c;
    NYD2_ENTER;
 
-   np = n = (n_autorec_alloc)(NULL, strlen(cp) +1 n_MEMORY_DEBUG_ARGSCALL);
+   np = n = (n_autorec_alloc_from_pool)(NULL, strlen(cp) +1
+         n_MEMORY_DEBUG_ARGSCALL);
 
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
@@ -642,64 +636,69 @@ FL char *
 
 FL int
 c_urlcodec(void *v){
-   struct n_string s_b, *sp;
    bool_t ispath;
-   char const **argv, *varname, *varres, *cp;
+   size_t alen;
+   char const **argv, *varname, *varres, *act, *cp;
    NYD_ENTER;
 
-   sp = n_string_creat_auto(&s_b);
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
-   if(*(cp = *argv) == 'p'){
-      if(!ascncasecmp(++cp, "ath", 3))
-         cp += 3;
-      ispath = TRU1;
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+      ;
+   if((ispath = (*act == 'p'))){
+      if(!ascncasecmp(++act, "ath", 3))
+         act += 3;
    }
+   if(act >= cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
 
-   while(*++argv != NULL){
-      if(sp->s_len > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, *argv);
-   }
+   n_pstate_err_no = n_ERR_NONE;
 
-   if(is_asccaseprefix(cp, "encode")){
-      if((varres = urlxenc(n_string_cp(sp), ispath)) == NULL){
-         varres = sp->s_dat;
-         v = NULL;
+   if(is_ascncaseprefix(act, "encode", alen)){
+      if((varres = urlxenc(cp, ispath)) == NULL){
+         n_pstate_err_no = n_ERR_CANCELED;
+         varres = cp;
       }
-   }else if(is_asccaseprefix(cp, "decode")){
-      if((varres = urlxdec(n_string_cp(sp))) == NULL){
-         varres = sp->s_dat;
-         v = NULL;
+   }else if(is_ascncaseprefix(act, "decode", alen)){
+      if((varres = urlxdec(cp)) == NULL){
+         n_pstate_err_no = n_ERR_CANCELED;
+         varres = cp;
       }
-   }else{
-      n_err(_("`urlcodec': invalid subcommand: %s\n"), cp);
-      cp = NULL;
-      goto jleave;
-   }
+   }else
+      goto jesynopsis;
 
    assert(cp != NULL);
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
+         n_pstate_err_no = n_ERR_NOTSUP;
          cp = NULL;
-         v = NULL;
       }
    }else{
       struct str in, out;
 
       in.l = strlen(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
-      if(fprintf(n_stdout, "%s\n", out.s) < 0)
+      if(fprintf(n_stdout, "%s\n", out.s) < 0){
+         n_pstate_err_no = n_err_no;
          cp = NULL;
+      }
       free(out.s);
    }
 
-   if(v != NULL)
-      n_pstate_var__em = n_0;
 jleave:
    NYD_LEAVE;
    return (cp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: urlcodec: "
+      "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
+   n_pstate_err_no = n_ERR_INVAL;
+   cp = NULL;
+   goto jleave;
 }
 
 FL int
@@ -1090,7 +1089,7 @@ jurlp_err:
       if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
          if (*cp == '\0')
-            cp = nodename(1);
+            cp = n_nodename(TRU1);
          h.s = savestrbuf(cp, h.l = strlen(cp));
       } else
          h = urlp->url_host;

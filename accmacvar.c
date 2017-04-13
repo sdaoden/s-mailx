@@ -5,10 +5,10 @@
  *@ - run mk-okey-map.pl
  *@ - update the manual!
  *@ TODO . should be recursive environment based.
- *@ TODO   Otherwise, the `localopts' should be an attribute of the lex_input.c
+ *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
- *@ TODO   the a_LEX_SLICE comment in lex_input.c.
+ *@ TODO   the a_GO_SPLICE comment in go.c.
  *@ TODO . once we can have non-fatal !0 returns for commands, we should
  *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
@@ -59,15 +59,15 @@
 
 /* Note: changing the hash function must be reflected in mk-okey-map.pl */
 #define a_AMV_PRIME HSHSIZE
-#define a_AMV_NAME2HASH(N) torek_hash(N)
+#define a_AMV_NAME2HASH(N) n_torek_hash(N)
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
 enum a_amv_mac_flags{
    a_AMV_MF_NONE = 0,
-   a_AMV_MF_ACC = 1<<0,    /* This macro is an `account' */
-   a_AMV_MF_TYPE_MASK = a_AMV_MF_ACC,
-   a_AMV_MF_UNDEF = 1<<1,  /* Unlink after lookup */
-   a_AMV_MF_DEL = 1<<7,    /* Delete in progress, free once refcnt==0 */
+   a_AMV_MF_ACCOUNT = 1<<0,   /* This macro is an `account' */
+   a_AMV_MF_TYPE_MASK = a_AMV_MF_ACCOUNT,
+   a_AMV_MF_UNDEF = 1<<1,     /* Unlink after lookup */
+   a_AMV_MF_DELETE = 1<<7,    /* Delete in progress, free once refcnt==0 */
    a_AMV_MF__MAX = 0xFF
 };
 
@@ -95,15 +95,36 @@ enum a_amv_var_flags{
 };
 
 /* We support some special parameter names for one-letter variable names;
- * note these have counterparts in the code that manages shell expansion! */
+ * note these have counterparts in the code that manages shell expansion!
+ * Macro-local variables are solely backed by n_var_vlook(), and besides there
+ * is only a_amv_var_revlookup() which knows about them.
+ * The ARGV $[1-9][0-9]* variables are also special, but they are special ;] */
+enum a_amv_var_special_category{
+   a_AMV_VSC_NONE,      /* Normal variable, no special treatment */
+   a_AMV_VSC_GLOBAL,    /* ${[?!]} are specially mapped, but global */
+   a_AMV_VSC_MULTIPLEX, /* ${^.*} circumflex accent multiplexer */
+   a_AMV_VSC_MAC,       /* ${[*@#]} macro argument access */
+   a_AMV_VSC_MAC_ARGV   /* ${[1-9][0-9]*} macro ARGV access */
+};
+
 enum a_amv_var_special_type{
+   /* _VSC_GLOBAL */
+   a_AMV_VST_QM,     /* ? */
+   a_AMV_VST_EM,     /* ! */
+   /* _VSC_MULTIPLEX */
+   /* This is special in that it is a multiplex indicator, the ^ is followed by
+    * a normal variable */
+   a_AMV_VST_CACC,   /* ^ (circumflex accent) */
+   /* _VSC_MAC */
    a_AMV_VST_STAR,   /* * */
    a_AMV_VST_AT,     /* @ */
    a_AMV_VST_NOSIGN  /* # */
-   /* ?  These are different in that they are no macro-local variables, but in
-    * fact real ones! */
-   /*a_AMV_VST_QM * ? *
-    *a_AMV_VST_EM * ! */
+};
+
+enum a_amv_var_vip_mode{
+   a_AMV_VIP_SET_PRE,
+   a_AMV_VIP_SET_POST,
+   a_AMV_VIP_CLEAR
 };
 
 struct a_amv_mac{
@@ -184,14 +205,15 @@ struct a_amv_var_carrier{
    struct a_amv_var_map const *avc_map;
    enum okeys avc_okey;
    ui8_t avc__pad[1];
-   bool_t avc_is_special;     /* Only if avc_okey == ok_v___special_param */
-   /* Numeric if .avc_is_special==TRUM1, else enum a_amv_var_special_type */
+   ui8_t avc_special_cat;
+   /* Numerical parameter name if .avc_special_cat=a_AMV_VSC_MAC_ARGV,
+    * otherwise a enum a_amv_var_special_type */
    ui16_t avc_special_prop;
 };
 
-/* Include the constant mk-okey-map.pl output */
-#include "version.h"
-#include "okeys.h"
+/* Include the constant mk-okey-map.pl output, and the generated version data */
+#include "gen-version.h"
+#include "gen-okeys.h"
 
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;
@@ -215,7 +237,7 @@ static struct a_amv_var *a_amv_compose_lopts;
  * map, if _MF_UNDEF is set a possibly existing entry will be removed (first).
  * Returns NULL if a lookup failed, or if newamp was set, the found entry in
  * plain lookup cases or when _UNDEF was performed on a currently active entry
- * (the entry will have been unlinked, and the _MF_DEL will be honoured once
+ * (the entry will have been unlinked, and the _MF_DELETE will be honoured once
  * the reference count reaches 0), and (*)-1 if an _UNDEF was performed */
 static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
@@ -248,8 +270,10 @@ static void a_amv_lopts_unroll(struct a_amv_var **avpp);
 static char *a_amv_var_copy(char const *str);
 static void a_amv_var_free(char *cp);
 
-/* Check for special housekeeping */
-static bool_t a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val);
+/* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail
+ * (or propagate errors), _VIP_SET_PRE may and should case abortion */
+static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
+               enum okeys okey, char const *val);
 
 /* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_nocntrls(char const *val);
@@ -276,6 +300,12 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
  * return FAL0, then! */
 static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp,
                bool_t i3val_nonew);
+
+/* Lookup functions for special category variables, _mac drives all macro etc.
+ * local special categories */
+static char const *a_amv_var_vsc_global(struct a_amv_var_carrier *avcp);
+static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
+static char const *a_amv_var_vsc_mac(struct a_amv_var_carrier *avcp);
 
 /* Set var from .avc_(map|name|hash), return success */
 static bool_t a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
@@ -323,10 +353,11 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
          *ampp = amp->am_next;
 
          if(amp->am_refcnt > 0){
-            amp->am_flags |= a_AMV_MF_DEL;
+            amp->am_flags |= a_AMV_MF_DELETE;
             if(n_poption & n_PO_D_V)
                n_err(_("Delayed deletion of currently active %s: %s\n"),
-                  (amp->am_flags & a_AMV_MF_ACC ? "account" : "define"), name);
+                  (amp->am_flags & a_AMV_MF_ACCOUNT ? "account" : "define"),
+                  name);
          }else{
             a_amv_mac_free(amp);
             amp = (struct a_amv_mac*)-1;
@@ -373,9 +404,16 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
             amcap->amca_argv = &(argv = v)[1];
          }
       }
-      rv = (a_amv_mac_exec(amcap) == FAL0);
-   }else if((rv = (silent_nexist == FAL0)))
-      n_err(_("Undefined macro `call'ed: %s\n"), n_shexp_quote_cp(name, FAL0));
+
+      rv = a_amv_mac_exec(amcap);
+      rv = n_pstate_ex_no;
+   }else{
+      if((rv = (silent_nexist == FAL0)))
+         n_err(_("Undefined macro `call'ed: %s\n"),
+            n_shexp_quote_cp(name, FAL0));
+      n_pstate_err_no = n_ERR_NOENT;
+      rv = 1;
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -412,7 +450,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    a_amv_lopts = losp;
    if(amcap->amca_hook_pre != NULL)
       n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
-   rv = n_source_macro(n_LEXINPUT_NONE, amp->am_name, args_base,
+   rv = n_go_macro(n_GO_INPUT_NONE, amp->am_name, args_base,
          &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
    return rv;
@@ -438,7 +476,7 @@ a_amv_mac__finalize(void *vp){
       n_pstate &= ~n_PS_HOOK_MASK;
 
    if((amp = amcap->amca_amp) != a_AMV_MACKY_MACK && amp != NULL &&
-         --amp->am_refcnt == 0 && (amp->am_flags & a_AMV_MF_DEL))
+         --amp->am_refcnt == 0 && (amp->am_flags & a_AMV_MF_DELETE))
       a_amv_mac_free(amp);
 
    n_lofi_free(losp);
@@ -464,7 +502,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
    }
 
    amf &= a_AMV_MF_TYPE_MASK;
-   typestr = (amf & a_AMV_MF_ACC) ? "account" : "define";
+   typestr = (amf & a_AMV_MF_ACCOUNT) ? "account" : "define";
 
    for(lc = mc = ti = 0; ti < a_AMV_PRIME; ++ti){
       struct a_amv_mac *amp;
@@ -525,13 +563,13 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       ui32_t leaspc;
       char *cp;
 
-      n.i = n_lex_input(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_NL_ESC, n_empty,
+      n.i = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, n_empty,
             &line.s, &line.l, NULL);
       if(n.ui == 0)
          continue;
       if(n.i < 0){
          n_err(_("Unterminated %s definition: %s\n"),
-            (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
+            (amf & a_AMV_MF_ACCOUNT ? "account" : "macro"), name);
          goto jerr;
       }
 
@@ -572,7 +610,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
          memcpy(amlp->aml_dat, cp, n.ui);
       }else{
          n_err(_("Too much content in %s definition: %s\n"),
-            (amf & a_AMV_MF_ACC ? "account" : "macro"), name);
+            (amf & a_AMV_MF_ACCOUNT ? "account" : "macro"), name);
          goto jerr;
       }
    }
@@ -626,7 +664,7 @@ a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
    if(n_LIKELY(name[0] != '*' || name[1] != '\0')){
       if((amp = a_amv_mac_lookup(name, NULL, amf | a_AMV_MF_UNDEF)) == NULL){
          n_err(_("%s not defined: %s\n"),
-            (amf & a_AMV_MF_ACC ? "Account" : "Macro"), name);
+            (amf & a_AMV_MF_ACCOUNT ? "Account" : "Macro"), name);
          rv = FAL0;
       }
    }else{
@@ -763,77 +801,121 @@ a_amv_var_free(char *cp){
 }
 
 static bool_t
-a_amv_var_check_vips(enum okeys okey, bool_t enable, char **val){
-   ui32_t flag;
+a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
+      char const *val){
    bool_t ok;
    NYD2_ENTER;
 
    ok = TRU1;
-   flag = 0;
 
-   switch(okey){
-   case ok_b_debug:
-      flag = n_PO_DEBUG;
-      break;
-   case ok_v_HOME:
-      /* Invalidate any resolved folder then, too
-       * FALLTHRU */
-   case ok_v_folder:
-      n_PS_ROOT_BLOCK(ok_vclear(_folder_resolved));
-      break;
-   case ok_b_header:
-      flag = n_PO_N_FLAG;
-      enable = !enable;
-      break;
-   case ok_b_memdebug:
-      flag = n_PO_MEMDEBUG;
-      break;
-   case ok_b_POSIXLY_CORRECT:
-      if(!(n_pstate & n_PS_ROOT))
-         n_PS_ROOT_BLOCK(enable ? ok_bset(posix) : ok_bclear(posix));
-      break;
-   case ok_b_posix:
-      if(!(n_pstate & n_PS_ROOT))
-         n_PS_ROOT_BLOCK(enable ? ok_bset(POSIXLY_CORRECT)
-            : ok_bclear(POSIXLY_CORRECT));
-      break;
-   case ok_b_skipemptybody:
-      flag = n_PO_E_FLAG;
-      break;
-   case ok_b_typescript_mode:
-      if(enable){
+   if(avvm == a_AMV_VIP_SET_PRE){
+      switch(okey){
+      default:
+         break;
+      case ok_v_HOME:
+         /* Note this gets called from main.c during initialization, and they
+          * simply set this to pw_dir as a fallback: don't verify _that_ call.
+          * See main.c! */
+         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRU1)){
+            n_err(_("$HOME is not a directory or not accessible: %s\n"),
+               n_shexp_quote_cp(val, FAL0));
+            ok = FAL0;
+            break;
+         }
+      case ok_v_TMPDIR:
+         if(!n_is_dir(val, TRU1)){
+            n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
+               n_shexp_quote_cp(val, FAL0));
+            ok = FAL0;
+         }
+         break;
+      case ok_v_umask:
+         if(*val != '\0'){
+            ui64_t uib;
+
+            n_idec_ui64_cp(&uib, val, 0, NULL);
+            if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
+               n_err(_("Invalid *umask* setting: %s\n"), val);
+               ok = FAL0;
+            }
+         }
+         break;
+      }
+   }else if(avvm == a_AMV_VIP_SET_POST){
+      switch(okey){
+      default:
+         break;
+      case ok_b_debug:
+         n_poption |= n_PO_DEBUG;
+         break;
+      case ok_v_HOME:
+         /* Invalidate any resolved folder then, too
+          * FALLTHRU */
+      case ok_v_folder:
+         n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
+         break;
+      case ok_b_memdebug:
+         n_poption |= n_PO_MEMDEBUG;
+         break;
+      case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bset(posix));
+         break;
+      case ok_b_posix: /* <-> $POSIXLY_CORRECT */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bset(POSIXLY_CORRECT));
+         break;
+      case ok_b_skipemptybody:
+         n_poption |= n_PO_E_FLAG;
+         break;
+      case ok_b_typescript_mode:
          ok_bset(colour_disable);
          ok_bset(line_editor_disable);
          if(!(n_psonce & n_PSO_STARTED))
             ok_bset(termcap_disable);
-      }
-   case ok_v_umask:
-      assert(enable);
-      if(**val != '\0'){
-         ui64_t uib;
+      case ok_v_umask:
+         if(*val != '\0'){
+            ui64_t uib;
 
-         n_idec_ui64_cp(&uib, *val, 0, NULL);
-         if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
-            n_err(_("Invalid *umask* setting: %s\n"), *val);
-            ok = FAL0;
-         }else
+            n_idec_ui64_cp(&uib, val, 0, NULL);
             umask((mode_t)uib);
+         }
+         break;
+      case ok_b_verbose:
+         n_poption |= (n_poption & n_PO_VERB) ? n_PO_VERBVERB : n_PO_VERB;
+         break;
       }
-      break;
-   case ok_b_verbose:
-      flag = (enable && !(n_poption & n_PO_VERB))
-            ? n_PO_VERB : n_PO_VERB | n_PO_VERBVERB;
-      break;
-   default:
-      DBG( n_err("Implementation error: never heard of %u\n", ok); )
-      break;
-   }
-
-   if(flag){
-      if(enable)
-         n_poption |= flag;
-      else
-         n_poption &= ~flag;
+   }else{
+      switch(okey){
+      default:
+         break;
+      case ok_b_debug:
+         n_poption &= ~n_PO_DEBUG;
+         break;
+      case ok_v_HOME:
+         /* Invalidate any resolved folder then, too
+          * FALLTHRU */
+      case ok_v_folder:
+         n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
+         break;
+      case ok_b_memdebug:
+         n_poption &= ~n_PO_MEMDEBUG;
+         break;
+      case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bclear(posix));
+         break;
+      case ok_b_posix: /* <-> $POSIXLY_CORRECT */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_bclear(POSIXLY_CORRECT));
+         break;
+      case ok_b_skipemptybody:
+         n_poption &= ~n_PO_E_FLAG;
+         break;
+      case ok_b_verbose:
+         n_poption &= ~(n_PO_VERB | n_PO_VERBVERB);
+         break;
+      }
    }
    NYD2_LEAVE;
    return ok;
@@ -914,43 +996,43 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
          j = j * 10 + (ui8_t)c - '0';
       }
       if(j <= SI16_MAX){
-         avcp->avc_is_special = TRUM1;
-         goto jspecial_param_m1;
+         avcp->avc_special_cat = a_AMV_VSC_MAC_ARGV;
+         goto jspecial_param;
       }
    }else if(n_UNLIKELY(name[1] == '\0')){
       switch(c){
+      case '?':
+      case '!':
+         avcp->avc_special_cat = a_AMV_VSC_GLOBAL;
+         j = (c == '?') ? a_AMV_VST_QM : a_AMV_VST_EM;
+         goto jspecial_param;
+      case '^':
+         goto jmultiplex;
       case '*':
+         avcp->avc_special_cat = a_AMV_VSC_MAC;
          j = a_AMV_VST_STAR;
          goto jspecial_param;
       case '@':
+         avcp->avc_special_cat = a_AMV_VSC_MAC;
          j = a_AMV_VST_AT;
          goto jspecial_param;
       case '#':
+         avcp->avc_special_cat = a_AMV_VSC_MAC;
          j = a_AMV_VST_NOSIGN;
          goto jspecial_param;
-      case '?':
-      case '!':
-         /* Not function local, could also simply look it up, but faster */
-         avcp->avc_name = name;
-         if(c == '?'){
-            avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
-            avcp->avc_okey = ok_v___qm;
-         }else{
-            avmp = &a_amv_var_map[a_AMV_VAR__EM_MAP_IDX];
-            avcp->avc_okey = ok_v___em;
-         }
-         avcp->avc_hash = avmp->avm_hash;
-         avcp->avc_map = avmp;
-         avcp->avc_is_special = FAL0;
-         goto jleave;
       default:
          break;
       }
+   }else if(c == '^'){
+jmultiplex:
+      avcp->avc_special_cat = a_AMV_VSC_MULTIPLEX;
+      j = a_AMV_VST_CACC;
+      goto jspecial_param;
    }
 
    /* Normal reverse lookup, walk over the hashtable */
 jno_special_param:
-   avcp->avc_is_special = FAL0;
+   avcp->avc_special_cat = a_AMV_VSC_NONE;
    avcp->avc_name = name = a_amv_var_canonify(name);
    avcp->avc_hash = hash = a_AMV_NAME2HASH(name);
 
@@ -984,8 +1066,6 @@ jleave:
 
    /* All these are mapped to *--special-param* */
 jspecial_param:
-   avcp->avc_is_special = TRU1;
-jspecial_param_m1:
    avcp->avc_name = name;
    avcp->avc_special_prop = (ui16_t)j;
    avmp = &a_amv_var_map[a_AMV_VAR__SPECIAL_PARAM_MAP_IDX];
@@ -1104,6 +1184,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
       /* Place this last because once it is set first the variable will never
        * be removed again and thus match in the first block above */
+jdefval:
       if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
          for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
             if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
@@ -1121,7 +1202,19 @@ jleave:
    NYD2_LEAVE;
    return (avp != NULL);
 
-jnewval: /* C99 */{
+jnewval:
+   /* E.g., $TMPDIR may be set to non-existent, so we need to be able to catch
+    * that and redirect to a possible default value */
+   if((avmp->avm_flags & a_AMV_VF_VIP) &&
+         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, cp)){
+#ifdef HAVE_SETENV
+      if(avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
+         unsetenv(avcp->avc_name);
+#endif
+      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0)
+         goto jdefval;
+      goto jerr;
+   }else{
       struct a_amv_var **avpp;
       size_t l;
 
@@ -1131,18 +1224,201 @@ jnewval: /* C99 */{
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
       memcpy(avp->av_name, avcp->avc_name, l);
-      avp->av_value = a_amv_var_copy(cp);
 #ifdef HAVE_PUTENV
       avp->av_env = NULL;
 #endif
       avp->av_flags = avmp->avm_flags;
+      avp->av_value = a_amv_var_copy(cp);
 
-      if(avp->av_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value);
       if(avp->av_flags & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
+      if(avmp->avm_flags & a_AMV_VF_VIP)
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, cp);
       goto jleave;
    }
+}
+
+static char const *
+a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
+   char itoabuf[32];
+   char const *rv;
+   si32_t *ep;
+   struct a_amv_var_map const *avmp;
+   NYD2_ENTER;
+
+   /* Not function local, TODO but lazy evaluted for now */
+   if(avcp->avc_special_prop == a_AMV_VST_QM){
+      avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
+      avcp->avc_okey = ok_v___qm;
+      ep = &n_pstate_ex_no;
+   }else{
+      avmp = &a_amv_var_map[a_AMV_VAR__EM_MAP_IDX];
+      avcp->avc_okey = ok_v___em;
+      ep = &n_pstate_err_no;
+   }
+
+   /* XXX Oh heaven, we are responsible to ensure that $?/! is up-to-date
+    * XXX and represents n_pstate_err_no; TODO unfortunately
+    * TODO we could num=1 ok_v___[qe]m, but the thing is still a string
+    * TODO and thus conversion takes places over and over again; also
+    * TODO for now that would have to occur before we set _that_ value
+    * TODO so let's special treat it until we store ints as such */
+   if(*ep >= 0){
+      switch(*ep){
+      case 0: rv = n_0; break;
+      case 1: rv = n_1; break;
+      default:
+         snprintf(itoabuf, sizeof itoabuf, "%d", *ep);
+         rv = itoabuf;
+         break;
+      }
+      n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
+   }
+   avcp->avc_hash = avmp->avm_hash;
+   avcp->avc_map = avmp;
+
+   rv = a_amv_var_lookup(avcp, TRU1) ? avcp->avc_var->av_value : NULL;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char const *
+a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
+   char itoabuf[32];
+   si32_t e;
+   size_t i;
+   char const *rv;
+   NYD2_ENTER;
+
+   i = strlen(rv = &avcp->avc_name[1]);
+
+   /* ERR, ERRDOC, ERRNAME, plus *-NAME variants */
+   if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
+      if(i == 3){
+         e = n_pstate_err_no;
+         goto jeno;
+      }else if(rv[3] == '-'){
+         e = n_err_from_name(&rv[4]);
+jeno:
+         switch(e){
+         case 0: rv = n_0; break;
+         case 1: rv = n_1; break;
+         default:
+            snprintf(itoabuf, sizeof itoabuf, "%d", e);
+            rv = savestr(itoabuf); /* XXX yet, cannot do numbers */
+            break;
+         }
+         goto jleave;
+      }else if(i >= 6){
+         if(!memcmp(&rv[3], "DOC", 3)){
+            rv += 6;
+            switch(*rv){
+            case '\0': e = n_pstate_err_no; break;
+            case '-': e = n_err_from_name(&rv[1]); break;
+            default: goto jerr;
+            }
+            rv = n_err_to_doc(e);
+            goto jleave;
+         }else if(i >= 7 && !memcmp(&rv[3], "NAME", 4)){
+            rv += 7;
+            switch(*rv){
+            case '\0': e = n_pstate_err_no; break;
+            case '-': e = n_err_from_name(&rv[1]); break;
+            default: goto jerr;
+            }
+            rv = n_err_to_name(e);
+            goto jleave;
+         }
+      }
+   }
+
+jerr:
+   rv = NULL;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static char const *
+a_amv_var_vsc_mac(struct a_amv_var_carrier *avcp){
+   bool_t ismacky;
+   struct a_amv_mac_call_args *amcap;
+   char const *rv;
+   NYD2_ENTER;
+
+   rv = NULL;
+
+   /* These may occur only in a macro.. */
+   if(n_UNLIKELY(a_amv_lopts == NULL))
+      goto jmaylog;
+
+   amcap = a_amv_lopts->as_amcap;
+
+   /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
+   if(!(ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) &&
+         (amcap->amca_ps_hook_mask ||
+          (assert(amcap->amca_amp != NULL),
+           (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
+            ) == a_AMV_MF_ACCOUNT)))
+      goto jleave;
+
+   if(avcp->avc_special_cat == a_AMV_VSC_MAC_ARGV){
+      if(avcp->avc_special_prop > 0){
+         if(amcap->amca_argc >= avcp->avc_special_prop)
+            rv = amcap->amca_argv[avcp->avc_special_prop - 1];
+      }else if(ismacky)
+         rv = amcap->amca_name;
+      else
+         rv = (a_amv_lopts->as_up != NULL
+               ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
+      goto jleave;
+   }
+
+   /* MACKY_MACK doesn't know about [*@#] */
+   if(ismacky)
+      goto jmaylog;
+
+   switch(avcp->avc_special_prop){
+   case a_AMV_VST_STAR:
+   case a_AMV_VST_AT:{
+      ui32_t i, l;
+
+      for(i = l = 0; i < amcap->amca_argc; ++i)
+         l += strlen(amcap->amca_argv[i]) + 1;
+      if(l == 0)
+         rv = n_empty;
+      else{
+         char *cp;
+
+         rv = cp = salloc(l);
+         for(i = l = 0; i < amcap->amca_argc; ++i){
+            l = strlen(amcap->amca_argv[i]);
+            memcpy(cp, amcap->amca_argv[i], l);
+            cp += l;
+            *cp++ = ' ';
+         }
+         *--cp = '\0';
+      }
+   }  break;
+   case a_AMV_VST_NOSIGN:{
+      char *cp;
+
+      rv = cp = salloc(sizeof("65535"));
+      snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
+   }  break;
+   default:
+      rv = n_empty;
+      break;
+   }
+
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jmaylog:
+   if(n_poption & n_PO_D_V)
+      n_err(_("Cannot use macro local variable in this context: %s\n"),
+         n_shexp_quote_cp(avcp->avc_name, FAL0));
+   goto jleave;
 }
 
 static bool_t
@@ -1191,6 +1467,13 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");
+         goto jeavmp;
+      }
+
+      /* Any more complicated inter-dependency? */
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
+            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, value))){
+         value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
          n_err(V_(value), avcp->avc_name);
          goto jleave;
@@ -1246,22 +1529,14 @@ jeavmp:
          avp->av_value = n_UNCONST(n_1);
       }else
          avp->av_value = a_amv_var_copy(value);
-
-      /* Check if update allowed XXX wasteful on error! */
-      if((avp->av_flags & a_AMV_VF_VIP) &&
-            !(rv = a_amv_var_check_vips(avcp->avc_okey, TRU1, &avp->av_value))){
-         char *cp = avp->av_value;
-
-         avp->av_value = oval;
-         oval = cp;
-      }
    }
 
    if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
       avp->av_flags |= a_AMV_VF_LINKED;
    if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED))
       rv = a_amv_var__putenv(avcp, avp);
-
+   if(avp->av_flags & a_AMV_VF_VIP)
+      a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
    a_amv_var_free(oval);
 jleave:
    NYD2_LEAVE;
@@ -1309,9 +1584,11 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
          n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
       }
-      if((avmp->avm_flags & a_AMV_VF_VIP) &&
-            !a_amv_var_check_vips(avcp->avc_okey, FAL0, NULL))
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
+            !a_amv_var_check_vips(a_AMV_VIP_CLEAR, avcp->avc_okey, NULL))){
+         n_err(_("Clearance of variable aborted: %s\n"), avcp->avc_name);
          goto jleave;
+      }
    }
 
    rv = TRU1;
@@ -1341,10 +1618,12 @@ jforce_env:
    *avpp = (*avpp)->av_link;
 
    /* C99 */{
+      char *envval;
+
 #ifdef HAVE_SETENV
-      char *envval = NULL;
+      envval = NULL;
 #else
-      char *envval = avp->av_env;
+      envval = avp->av_env;
 #endif
       if((avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)) || envval != NULL)
          rv = a_amv_var__clearenv(avp->av_name, envval);
@@ -1498,7 +1777,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    }
 
    if(!isset || (avc.avc_var->av_flags & a_AMV_VF_RDONLY)){
-      msgp = n_string_push_cp(msgp, "#");
+      msgp = n_string_push_c(msgp, *n_ns);
       if(!isset){
          if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
             msgp = n_string_push_cp(msgp, "boolean; ");
@@ -1652,7 +1931,7 @@ c_account(void *v){
    rv = 1;
 
    if((args = v)[0] == NULL){
-      rv = (a_amv_mac_show(a_AMV_MF_ACC) == FAL0);
+      rv = (a_amv_mac_show(a_AMV_MF_ACCOUNT) == FAL0);
       goto jleave;
    }
 
@@ -1666,7 +1945,7 @@ c_account(void *v){
             ACCOUNT_NULL);
          goto jleave;
       }
-      rv = (a_amv_mac_def(args[0], a_AMV_MF_ACC) == FAL0);
+      rv = (a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT) == FAL0);
       goto jleave;
    }
 
@@ -1679,7 +1958,7 @@ c_account(void *v){
 
    amp = NULL;
    if(asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
-         (amp = a_amv_mac_lookup(args[0], NULL, a_AMV_MF_ACC)) == NULL) {
+         (amp = a_amv_mac_lookup(args[0], NULL, a_AMV_MF_ACCOUNT)) == NULL){
       n_err(_("`account': account does not exist: %s\n"), args[0]);
       goto jleave;
    }
@@ -1691,7 +1970,7 @@ c_account(void *v){
          a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
       /* For accounts this lingers */
       --a_amv_acc_curr->am_refcnt;
-      if(a_amv_acc_curr->am_flags & a_AMV_MF_DEL)
+      if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
          a_amv_mac_free(a_amv_acc_curr);
    }
 
@@ -1715,8 +1994,8 @@ c_account(void *v){
       }
    }
 
-   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(_account, amp->am_name)
-      : ok_vclear(_account)));
+   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
+      : ok_vclear(account)));
 
    if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
@@ -1744,7 +2023,7 @@ c_unaccount(void *v){
    rv = 0;
    args = v;
    do
-      rv |= !a_amv_mac_undef(*args, a_AMV_MF_ACC);
+      rv |= !a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT);
    while(*++args != NULL);
    NYD_LEAVE;
    return rv;
@@ -1792,7 +2071,7 @@ c_shift(void *v){
 
       amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
       if(amp == NULL || amcap->amca_ps_hook_mask ||
-            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACC)
+            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACCOUNT)
          goto jerr;
 
       v = *(char**)v;
@@ -1830,16 +2109,16 @@ jleave:
 }
 
 FL int
-c_return(void *v){
+c_return(void *v){ /* TODO the exit status should be m_si64! */
    int rv;
    NYD_ENTER;
-
-   rv = 1;
 
    if(a_amv_lopts != NULL){
       char const **argv;
 
-      n_source_force_eof();
+      n_go_input_force_eof();
+      n_pstate_err_no = n_ERR_NONE;
+      rv = 0;
 
       if((argv = v)[0] != NULL){
          si32_t i;
@@ -1847,27 +2126,32 @@ c_return(void *v){
          if((n_idec_si32_cp(&i, argv[0], 10, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) == n_IDEC_STATE_CONSUMED && i >= 0)
-            n_pstate_var__em = argv[0];
-         else
-            n_err(_("`return': argument one is invalid: %s\n"), argv[0]);
+            rv = (int)i;
+         else{
+            n_err(_("`return': return value argument is invalid: %s\n"),
+               argv[0]);
+            n_pstate_err_no = n_ERR_INVAL;
+            rv = 1;
+         }
 
          if(argv[1] != NULL){
             if((n_idec_si32_cp(&i, argv[1], 10, NULL
                      ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                   ) == n_IDEC_STATE_CONSUMED && i >= 0)
-               rv = (int)i;
+               n_pstate_err_no = i;
             else{
-               n_err(_("`return': argument two is invalid: %s\n"), argv[1]);
-               n_pstate_var__em = n_1;
+               n_err(_("`return': error number argument is invalid: %s\n"),
+                  argv[1]);
+               n_pstate_err_no = n_ERR_INVAL;
+               rv = 1;
             }
-         }else
-            rv = 0;
-      }else{
-         rv = 0;
-         n_pstate_var__em = n_0;
+         }
       }
-   }else
+   }else{
       n_err(_("Can only use `return' in a macro\n"));
+      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      rv = 1;
+   }
    NYD_LEAVE;
    return rv;
 }
@@ -1954,8 +2238,8 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 FL void
 temporary_compose_mode_hook_call(char const *macname,
       void (*hook_pre)(void *), void *hook_arg){
-   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_LEX_SLICE
-    * TODO comment in lex_input.c for the right way of doing things! */
+   /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_GO_SPLICE
+    * TODO comment in go.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
@@ -1973,7 +2257,8 @@ temporary_compose_mode_hook_call(char const *macname,
    else{
       amcap = n_lofi_alloc(sizeof *amcap);
       memset(amcap, 0, sizeof *amcap);
-      amcap->amca_name = (macname != NULL) ? macname : "on-compose-done-shell";
+      amcap->amca_name = (macname != NULL) ? macname
+            : "on-compose-splice-shell";
       amcap->amca_amp = amp;
       amcap->amca_unroller = &a_amv_compose_lopts;
       amcap->amca_hook_pre = hook_pre;
@@ -2087,82 +2372,28 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
    NYD_ENTER;
 
    a_amv_var_revlookup(&avc, vokey);
-   rv = NULL;
 
-   /* Here, and only here we need to take care for the special macro-local
-    * parameters... (except for n_var_vexplode()) */
-   if(n_LIKELY(!avc.avc_is_special)){
+   switch((enum a_amv_var_special_category)avc.avc_special_cat){
+   default: /* silence CC */
+   case a_AMV_VSC_NONE:
       if(a_amv_var_lookup(&avc, FAL0))
          rv = avc.avc_var->av_value;
       /* Only check the environment for something that is otherwise unknown */
       else if(try_getenv && avc.avc_map == NULL)
          rv = getenv(vokey);
-   }else{
-      bool_t ismacky;
-      struct a_amv_mac_call_args *amcap;
-
-      /* These may occur only in a macro.. */
-      if(n_UNLIKELY(a_amv_lopts == NULL))
-         goto jmaylog;
-
-      amcap = a_amv_lopts->as_amcap;
-
-      /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
-      if((ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) ||
-            (!amcap->amca_ps_hook_mask &&
-             (assert(amcap->amca_amp != NULL), TRU1) &&
-             (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK) != a_AMV_MF_ACC)){
-         if(avc.avc_is_special == TRUM1){
-            if(avc.avc_special_prop > 0){
-               if(amcap->amca_argc >= avc.avc_special_prop)
-                  rv = amcap->amca_argv[avc.avc_special_prop - 1];
-            }else if(ismacky)
-               rv = amcap->amca_name;
-            else
-               rv = (a_amv_lopts->as_up != NULL
-                     ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
-         }
-         /* MACKY_MACK doesn't know about [*@#] */
-         else if(ismacky)
-            goto jmaylog;
-         else switch(avc.avc_special_prop){
-         case a_AMV_VST_STAR:
-         case a_AMV_VST_AT:{
-            ui32_t i, l;
-
-            for(i = l = 0; i < amcap->amca_argc; ++i)
-               l += strlen(amcap->amca_argv[i]) + 1;
-            if(l == 0)
-               rv = n_empty;
-            else{
-               char *cp;
-
-               rv = cp = salloc(l);
-               for(i = l = 0; i < amcap->amca_argc; ++i){
-                  l = strlen(amcap->amca_argv[i]);
-                  memcpy(cp, amcap->amca_argv[i], l);
-                  cp += l;
-                  *cp++ = ' ';
-               }
-               *--cp = '\0';
-            }
-         }  break;
-         case a_AMV_VST_NOSIGN:{
-            char *cp;
-
-            rv = cp = salloc(sizeof("65535"));
-            snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
-         }  break;
-         default:
-            rv = n_empty;
-            break;
-         }
-      }else{
-jmaylog:
-         if(n_poption & n_PO_D_V)
-            n_err(_("Cannot use macro local variable in this context: %s\n"),
-               n_shexp_quote_cp(vokey, FAL0));
-      }
+      else
+         rv = NULL;
+      break;
+   case a_AMV_VSC_GLOBAL:
+      rv = a_amv_var_vsc_global(&avc);
+      break;
+   case a_AMV_VSC_MULTIPLEX:
+      rv = a_amv_var_vsc_multiplex(&avc);
+      break;
+   case a_AMV_VSC_MAC:
+   case a_AMV_VSC_MAC_ARGV:
+      rv = a_amv_var_vsc_mac(&avc);
+      break;
    }
    NYD_LEAVE;
    return rv;
@@ -2461,7 +2692,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1<<0,
-      a_SOFTERR = 1<<1,
+      a_SOFTOVERFLOW = 1<<1,
       a_ISNUM = 1<<2,
       a_ISDECIMAL = 1<<3,  /* Print only decimal result */
       a_SATURATED = 1<<4,
@@ -2496,7 +2727,7 @@ jnumop:
                ) != n_IDEC_STATE_CONSUMED){
             if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                goto jenum_range;
-            f |= a_SOFTERR;
+            f |= a_SOFTOVERFLOW;
             break;
          }
          if(op == '~')
@@ -2525,7 +2756,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               f |= a_SOFTERR;
+               f |= a_SOFTOVERFLOW;
                break;
             }
 
@@ -2536,7 +2767,7 @@ jnumop:
                   ) != n_IDEC_STATE_CONSUMED){
                if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
-               f |= a_SOFTERR;
+               f |= a_SOFTOVERFLOW;
                lhv = rhv;
                break;
             }
@@ -2551,14 +2782,14 @@ jnumop_again:
                      xop = '-';
                      goto jnumop_again;
                   }else if(lhv < 0)
-                     goto jeplusminus;
+                     goto jenum_plusminus;
                   else if(lhv == 0){
                      lhv = rhv;
                      break;
                   }
                }
                if(SI64_MAX - rhv < lhv)
-                  goto jeplusminus;
+                  goto jenum_plusminus;
                lhv += rhv;
                break;
             case '-':
@@ -2568,17 +2799,17 @@ jnumop_again:
                      xop = '+';
                      goto jnumop_again;
                   }else if(lhv > 0)
-                     goto jeplusminus;
+                     goto jenum_plusminus;
                   else if(lhv == 0){
                      lhv = rhv;
                      break;
                   }
                }
                if(SI64_MIN + rhv > lhv){
-jeplusminus:
+jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
                }else
                   lhv -= rhv;
@@ -2593,7 +2824,7 @@ jeplusminus:
                   if(rhv != 0 && lhv != 0 && SI64_MAX / rhv > lhv){
                      if(!(f & a_SATURATED))
                         goto jenum_overflow;
-                     f |= a_SOFTERR;
+                     f |= a_SOFTOVERFLOW;
                      lhv = SI64_MAX;
                   }else
                      lhv *= rhv;
@@ -2602,7 +2833,7 @@ jeplusminus:
                      if(lhv != 0 && SI64_MIN / lhv < rhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        f |= a_SOFTERR;
+                        f |= a_SOFTOVERFLOW;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2610,7 +2841,7 @@ jeplusminus:
                      if(rhv != 0 && lhv != 0 && SI64_MIN / rhv < lhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
-                        f |= a_SOFTERR;
+                        f |= a_SOFTOVERFLOW;
                         lhv = SI64_MIN;
                      }else
                         lhv *= rhv;
@@ -2621,7 +2852,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = SI64_MAX;
                }else
                   lhv /= rhv;
@@ -2630,7 +2861,7 @@ jeplusminus:
                if(rhv == 0){
                   if(!(f & a_SATURATED))
                      goto jenum_range;
-                  f |= a_SOFTERR;
+                  f |= a_SOFTOVERFLOW;
                   lhv = SI64_MAX;
                }else
                   lhv %= rhv;
@@ -2712,14 +2943,14 @@ jeplusminus:
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      i = torek_hash(*++argv);
+      i = n_torek_hash(*++argv);
       lhv = (si64_t)i;
    }else if(is_asccaseprefix(cp, "file-expand")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
    }else if(is_asccaseprefix(cp, "random")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
@@ -2727,17 +2958,17 @@ jeplusminus:
       if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
-         goto jenum_range;
+         goto jestr_numrange;
       if(lhv == 0)
          lhv = NAME_MAX;
-      varres = getrandstring((size_t)lhv);
+      varres = n_random_create_cp((size_t)lhv);
    }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
       if((cp = strstr(argv[1], argv[2])) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
@@ -2748,7 +2979,7 @@ jeplusminus:
          goto jesynopsis;
 
       if((cp = asccasestr(argv[1], argv[2])) == NULL)
-         goto jsofterr;
+         goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
@@ -2766,7 +2997,7 @@ jeplusminus:
       else if((n_idec_si64_cp(&lhv, cp, 0, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
-         goto jenum_range;
+         goto jestr_numrange;
       if(UICMP(64, i, >=, lhv)){
          i -= lhv;
          varres += lhv;
@@ -2774,7 +3005,7 @@ jeplusminus:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
-         f |= a_SOFTERR;
+         f |= a_SOFTOVERFLOW;
       }
 
       if(argv[1] != NULL){
@@ -2783,7 +3014,7 @@ jeplusminus:
          else if((n_idec_si64_cp(&lhv, cp, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
-            goto jenum_range;
+            goto jestr_numrange;
          if(UICMP(64, i, >=, lhv)){
             if(UICMP(64, i, !=, lhv))
                varres = savestrbuf(varres, (size_t)lhv);
@@ -2791,7 +3022,7 @@ jeplusminus:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
-            f |= a_SOFTERR;
+            f |= a_SOFTOVERFLOW;
          }
       }
 #ifdef HAVE_REGEX
@@ -2810,14 +3041,15 @@ jeplusminus:
          reflrv |= REG_ICASE;
       if((reflrv = regcomp(&re, argv[2], reflrv))){
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_str(&re, reflrv));
+            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(&re, reflrv));
          assert(f & a_ERR);
-         goto jerr;
+         n_pstate_err_no = n_ERR_INVAL;
+         goto jestr;
       }
       reflrv = regexec(&re, argv[1], n_NELEM(rema), rema, 0);
       regfree(&re);
       if(reflrv == REG_NOMATCH)
-         goto jsofterr;
+         goto jestr_nodata;
 
       /* Search only?  Else replace, which is a bit */
       if(argv[3] == NULL){
@@ -2875,7 +3107,7 @@ jeplusminus:
          rele_all_sigs(); /* TODO DISLIKE! */
 
          if(varres == NULL)
-            goto jsofterr;
+            goto jestr_nodata;
          f &= ~(a_ISNUM | a_ISDECIMAL);
       }
    }else if(is_asccaseprefix(argv[0], "iregex")){
@@ -2885,6 +3117,7 @@ jeplusminus:
    }else
       goto jesubcmd;
 
+   n_pstate_err_no = (f & a_SOFTOVERFLOW) ? n_ERR_OVERFLOW : n_ERR_NONE;
    f &= ~a_ERR;
 
    /* Generate the variable value content for numerics.
@@ -2909,47 +3142,65 @@ jleave:
             }
          }
          varbuf[64 + 64 / 8 -1] = '\0';
-         fprintf(n_stdout, "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
-            varbuf, lhv, lhv, lhv);
-      }else
-         fprintf(n_stdout, "%s\n", varres);
-   }else if(!n_var_vset(varname, (uintptr_t)varres))
-      f |= a_ERR | a_SOFTERR;
-   else if(!(f & a_SOFTERR))
-      n_pstate_var__em = n_0;
+         if(fprintf(n_stdout,
+               "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
+               varbuf, lhv, lhv, lhv) < 0){
+            n_pstate_err_no = n_err_no;
+            f |= a_ERR;
+         }
+      }else if(fprintf(n_stdout, "%s\n", varres) < 0){
+         n_pstate_err_no = n_err_no;
+         f |= a_ERR;
+      }
+   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      f |= a_ERR;
+   }
    NYD_LEAVE;
    return (f & a_ERR) ? 1 : 0;
 
-jsofterr:
-   f &= ~a_ERR;
 jerr:
-   f &= ~(a_ISNUM | a_ISDECIMAL);
-   f |= a_SOFTERR | a_ISNUM;
+   f = a_ERR | a_ISNUM;
    lhv = -1;
    goto jleave;
 jesubcmd:
-   assert(f & a_ERR);
    n_err(_("`vexpr': invalid subcommand: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
+   n_pstate_err_no = n_ERR_INVAL;
    goto jerr;
 jesynopsis:
-   assert(f & a_ERR);
-   n_err(_("Synopsis: vexpr: <target-variable> <operator> <:argument:>\n"));
+   n_err(_("Synopsis: vexpr: <operator> <:argument:>\n"));
+   n_pstate_err_no = n_ERR_INVAL;
    goto jerr;
+
 jenum_range:
-   assert(f & a_ERR);
    n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_RANGE;
+   goto jerr;
 jenum_overflow:
-   assert(f & a_ERR);
    n_err(_("`vexpr': expression overflows datatype: %" PRId64 " %c %" PRId64
       "\n"), lhv, op, rhv);
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jerr;
+
+jestr_numrange:
+   n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
+      n_shexp_quote_cp(*argv, FAL0));
+   n_pstate_err_no = n_ERR_RANGE;
+   goto jestr;
 jestr_overflow:
-   assert(f & a_ERR);
    n_err(_("`vexpr': string length or offset overflows datatype\n"));
-   goto jsofterr;
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jestr;
+jestr_nodata:
+   n_pstate_err_no = n_ERR_NODATA;
+   /* FALLTHRU */
+jestr:
+   varres = n_empty;
+   f &= ~a_ISNUM;
+   f |= a_ERR;
+   goto jleave;
 }
 
 /* s-it-mode */

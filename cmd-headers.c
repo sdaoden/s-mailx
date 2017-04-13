@@ -42,7 +42,7 @@
 static int        _screen;
 
 /* ... And place the extracted date in `date' */
-static void    _parse_from_(struct message *mp, char date[FROM_DATEBUF]);
+static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * __hprf: handle *headline*
@@ -65,7 +65,7 @@ static int a_cmd_scroll(char const *arg, bool_t onlynew);
 static int     _headers(int msgspec);
 
 static void
-_parse_from_(struct message *mp, char date[FROM_DATEBUF]) /* TODO line pool */
+_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
 {
    FILE *ibuf;
    int hlen;
@@ -125,7 +125,7 @@ static void
 __hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, char const *attrlist)
 {
-   char buf[16], datebuf[FROM_DATEBUF], cbuf[8], *cp, *subjline;
+   char buf[16], datebuf[n_FROM_DATEBUF], cbuf[8], *cp, *subjline;
    char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
    int i, n, s, wleft, subjlen;
    struct message *mp;
@@ -173,12 +173,12 @@ jredo:
          memcpy(&time_current.tc_local, localtime(&datet),
             sizeof time_current.tc_local);
 
-      if ((i & 2) && (datet > time_current.tc_time + DATE_SECSDAY ||
-#define _6M ((DATE_DAYSYEAR / 2) * DATE_SECSDAY)
+      if ((i & 2) && (datet > time_current.tc_time + n_DATE_SECSDAY ||
+#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
             (datet + _6M < time_current.tc_time))) {
 #undef _6M
          if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
-            memset(datebuf, ' ', FROM_DATEBUF); /* xxx ur */
+            memset(datebuf, ' ', n_FROM_DATEBUF); /* xxx ur */
             memcpy(datebuf + 4, date + 4, 7);
             datebuf[4 + 7] = ' ';
             memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
@@ -258,20 +258,23 @@ jredo:
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
 #ifdef HAVE_COLOUR
-   if (flags & _ISDOT)
-      colo_tag = n_COLOUR_TAG_SUM_DOT;
-   cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
-   n_colour_pen_put(cpen_new = cpen_cur = cpen_bas, f);
+   if(n_COLOUR_IS_ACTIVE()){
+      if(flags & _ISDOT)
+         colo_tag = n_COLOUR_TAG_SUM_DOT;
+      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
+      n_colour_pen_put(cpen_new = cpen_cur = cpen_bas);
+   }else
+      cpen_new = cpen_bas = cpen_cur = NULL;
 #endif
 
    for (fp = fmt; *fp != '\0'; ++fp) {
       char c;
 
       if ((c = *fp & 0xFF) != '%') {
-#ifdef HAVE_COLOUR
-         if ((cpen_new = cpen_bas) != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
-#endif
+         n_COLOUR(
+            if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
+         );
          putc(c, f);
          continue;
       }
@@ -301,8 +304,11 @@ jredo:
       case '>':
       case '<':
          if (flags & _ISDOT) {
-            n_COLOUR( cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
-                  colo_tag); );
+            n_COLOUR(
+               if(n_COLOUR_IS_ACTIVE())
+                  cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
+                        colo_tag);
+            );
             if (n_psonce & n_PSO_UNICODE) {
                if (c == '>')
                   /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE: ▸ */
@@ -336,10 +342,12 @@ jredo:
          c = _dispc(mp, attrlist);
 jputcb:
 #ifdef HAVE_COLOUR
-         if (cpen_new == cpen_cur)
-            cpen_new = cpen_bas;
-         if (cpen_new != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
+         if(n_COLOUR_IS_ACTIVE()){
+            if(cpen_new == cpen_cur)
+               cpen_new = cpen_bas;
+            if(cpen_new != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
+         }
 #endif
          if (UICMP(32, n_ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
@@ -355,8 +363,8 @@ jputcb:
             wleft = 0; /* TODO I/O error.. ? break? */
          }
 #ifdef HAVE_COLOUR
-         if ((cpen_new = cpen_bas) != cpen_cur)
-            n_colour_pen_put(cpen_cur = cpen_new, f);
+         if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+            n_colour_pen_put(cpen_cur = cpen_new);
 #endif
          break;
       case 'd':
@@ -408,15 +416,17 @@ jputcb:
       case 'i':
          if (threaded) {
 #ifdef HAVE_COLOUR
-            cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
-            if (cpen_new != cpen_cur)
-               n_colour_pen_put(cpen_cur = cpen_new, f);
+            if(n_COLOUR_IS_ACTIVE()){
+               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
+               if(cpen_new != cpen_cur)
+                  n_colour_pen_put(cpen_cur = cpen_new);
+            }
 #endif
             n = __putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
-            if ((cpen_new = cpen_bas) != cpen_cur)
-               n_colour_pen_put(cpen_cur = cpen_new, f);
+            if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+               n_colour_pen_put(cpen_cur = cpen_new);
 #endif
          }
          break;
@@ -527,9 +537,7 @@ j_A_redo:
          break;
    }
 
-#ifdef HAVE_COLOUR
-   n_colour_reset(f);
-#endif
+   n_COLOUR( n_colour_reset(); )
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
@@ -790,8 +798,6 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   struct n_sigman sm;
-   bool_t volatile isrelax;
    ui32_t volatile flag;
    int g, k, mesg, size;
    int volatile lastg = 1;
@@ -800,20 +806,7 @@ _headers(int msgspec) /* TODO rework v15 */
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
-
    flag = 0;
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
-
-#ifdef HAVE_COLOUR
-   if (n_psonce & n_PSO_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
-#endif
 
    size = (int)/*TODO*/n_screensize();
    if (_screen < 0)
@@ -866,8 +859,8 @@ _headers(int msgspec) /* TODO rework v15 */
             }
       }
 
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      isrelax = TRU1;
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
          ++mesg;
          if (!visible(mp))
@@ -878,7 +871,7 @@ _headers(int msgspec) /* TODO rework v15 */
          srelax();
       }
       srelax_rele();
-      isrelax = FAL0;
+      n_COLOUR( n_colour_env_gut(); )
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -914,8 +907,8 @@ _headers(int msgspec) /* TODO rework v15 */
             }
       }
 
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      isrelax = TRU1;
       while (mp) {
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
@@ -929,7 +922,7 @@ _headers(int msgspec) /* TODO rework v15 */
          mp = next_in_thread(mp);
       }
       srelax_rele();
-      isrelax = FAL0;
+      n_COLOUR( n_colour_env_gut(); )
    }
 
    if (!flag) {
@@ -937,14 +930,7 @@ _headers(int msgspec) /* TODO rework v15 */
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return !flag;
 }
 
@@ -1027,23 +1013,14 @@ jerr:
 FL int
 c_from(void *v)
 {
-   struct n_sigman sm;
    int *msgvec = v, *ip, n;
    char *cp;
    FILE * volatile obuf;
-   bool_t volatile isrelax;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
    obuf = n_stdout;
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
 
    if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
@@ -1059,7 +1036,6 @@ c_from(void *v)
          if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
-      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf != n_stdout); )
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
@@ -1068,52 +1044,31 @@ c_from(void *v)
    if (--ip >= msgvec)
       setdot(message + *ip - 1);
 
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
-   isrelax = TRU1;
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
       _print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
       srelax();
    }
    srelax_rele();
-   isrelax = FAL0;
+   n_COLOUR( n_colour_env_gut(); )
 
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? obuf : NULL); )
    if (obuf != n_stdout)
       n_pager_close(obuf);
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return 0;
 }
 
 FL void
 print_headers(size_t bottom, size_t topx, bool_t only_marked)
 {
-   struct n_sigman sm;
-   bool_t volatile isrelax;
    size_t printed;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
 
-   isrelax = FAL0;
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
-   case 0:
-      break;
-   default:
-      goto jleave;
-   }
-
-#ifdef HAVE_COLOUR
-   if (n_psonce & n_PSO_INTERACTIVE)
-      n_colour_env_create(n_COLOUR_CTX_SUM, FAL0);
-#endif
-
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
    srelax_hold();
-   isrelax = TRU1;
    for (printed = 0; bottom <= topx; ++bottom) {
       struct message *mp = message + bottom - 1;
       if (only_marked) {
@@ -1125,15 +1080,8 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
       srelax();
    }
    srelax_rele();
-   isrelax = FAL0;
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if (isrelax)
-      srelax_rele();
-   n_COLOUR( n_colour_env_gut((sm.sm_signo != SIGPIPE) ? n_stdout : NULL); )
+   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
 /* s-it-mode */

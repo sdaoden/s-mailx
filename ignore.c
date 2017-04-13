@@ -1,6 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `headerpick', `retain' and `ignore'.
- *@ XXX Should these be in nam_a_grp.c?!
+ *@ `headerpick', `retain' and `ignore', and `un..' variants.
  *
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
@@ -59,9 +58,9 @@ struct a_ignore_type{
 struct n_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
-   bool_t i_auto;                   /* In auto-reclaimed, not heap memory */
-   bool_t i_bltin;                  /* Is a builtin n_IGNORE* type */
-   ui8_t i_ibm_idx;                 /* If .i_bltin: a_ignore_bltin_map[] idx */
+   bool_t i_auto;       /* In auto-reclaimed, not heap memory */
+   bool_t i_bltin;      /* Is a builtin n_IGNORE* type */
+   ui8_t i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
    ui8_t i__dummy[5];
 };
 
@@ -111,14 +110,14 @@ static void a_ignore_del_allof(struct n_ignore *ip, bool_t retain);
 /* Try to map a string to one of the builtin types */
 static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
-/* Logic behind `headerpick T T add' (a.k.a. `retain'+) */
+/* Logic behind `headerpick T T' (a.k.a. `retain'+) */
 static bool_t a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
                bool_t retain);
 
 static void a_ignore__show(struct n_ignore const *ip, bool_t retain);
 static int a_ignore__cmp(void const *l, void const *r);
 
-/* Logic behind `headerpick T T remove' (a.k.a. `unretain'+) */
+/* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
 static bool_t a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
                bool_t retain);
 
@@ -163,7 +162,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
 
    if(len == UIZ_MAX)
       len = strlen(dat);
-   hi = torek_ihashn(dat, len) % n_NELEM(self->i_retain.it_ht);
+   hi = n_torek_ihashn(dat, len) % n_NELEM(self->i_retain.it_ht);
 
    /* Again: doesn't handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
@@ -310,9 +309,9 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       char const *pre, *attr;
 
       if(itp->it_all)
-         pre = n_empty, attr = "*";
+         pre = n_empty, attr = n_star;
       else if(itp->it_count == 0)
-         pre = "#", attr = _("currently covers no fields");
+         pre = n_ns, attr = _("currently covers no fields");
       else
          break;
       fprintf(n_stdout, _("%sheaderpick %s %s %s\n"),
@@ -329,7 +328,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
 
    qsort(ring, PTR2SIZE(ap - ring), sizeof *ring, &a_ignore__cmp);
 
-   i = fprintf(n_stdout, "headerpick %s %s add",
+   i = fprintf(n_stdout, "headerpick %s %s",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
       (retain ? "retain" : "ignore"));
    sw = n_scrnwidth;
@@ -438,7 +437,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
       struct a_ignore_field **ifpp, *ifp;
       ui32_t hi;
 
-      hi = torek_ihashn(field, UIZ_MAX) % n_NELEM(itp->it_ht);
+      hi = n_torek_ihashn(field, UIZ_MAX) % n_NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
@@ -458,7 +457,7 @@ jleave:
 }
 
 FL int
-c_headerpick(void *v){
+c_headerpick(void *vp){
    bool_t retain;
    struct a_ignore_bltin_map const *ibmp;
    char const **argv;
@@ -466,7 +465,7 @@ c_headerpick(void *v){
    NYD_ENTER;
 
    rv = 1;
-   argv = v;
+   argv = vp;
 
    /* Without arguments, show all settings of all contexts */
    if(*argv == NULL){
@@ -483,9 +482,10 @@ c_headerpick(void *v){
       n_err(_("`headerpick': invalid context: %s\n"), *argv);
       goto jleave;
    }
+   ++argv;
 
    /* With only <context>, show all settings of it */
-   if(*++argv == NULL){
+   if(*argv == NULL){
       rv = 0;
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, TRU1);
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, FAL0);
@@ -500,66 +500,89 @@ c_headerpick(void *v){
       n_err(_("`headerpick': invalid type (retain, ignore): %s\n"), *argv);
       goto jleave;
    }
+   ++argv;
 
    /* With only <context> and <type>, show its settings */
-   if(*++argv == NULL){
+   if(*argv == NULL){
       rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
       goto jleave;
    }
 
-   if(argv[1] == NULL){
-      n_err(_("Synopsis: headerpick: [<context> [<type> "
-         "[<action> <header-list>]]]\n"));
-      goto jleave;
-   }else if(is_asccaseprefix(*argv, "add") ||
-         (argv[0][0] == '+' && argv[0][1] == '\0'))
-      rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, ++argv, retain);
-   else if(is_asccaseprefix(*argv, "remove") ||
-         (argv[0][0] == '-' && argv[0][1] == '\0'))
-      rv = !a_ignore_delcmd_mux(ibmp->ibm_ip, ++argv, retain);
-   else
-      n_err(_("`headerpick': invalid action (add, +, remove, -): %s\n"), *argv);
+   rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_retain(void *v){
+c_unheaderpick(void *vp){
+   bool_t retain;
+   struct a_ignore_bltin_map const *ibmp;
+   char const **argv;
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, v, TRU1);
+   rv = 1;
+   argv = vp;
+
+   if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
+      n_err(_("`unheaderpick': invalid context: %s\n"), *argv);
+      goto jleave;
+   }
+   ++argv;
+
+   if(is_asccaseprefix(*argv, "retain"))
+      retain = TRU1;
+   else if(is_asccaseprefix(*argv, "ignore"))
+      retain = FAL0;
+   else{
+      n_err(_("`unheaderpick': invalid type (retain, ignore): %s\n"), *argv);
+      goto jleave;
+   }
+   ++argv;
+
+   rv = !a_ignore_delcmd_mux(ibmp->ibm_ip, argv, retain);
+jleave:
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_ignore(void *v){
+c_retain(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, v, FAL0);
+   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, TRU1);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_unretain(void *v){
+c_ignore(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, v, TRU1);
+   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_unignore(void *v){
+c_unretain(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, v, FAL0);
+   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unignore(void *vp){
+   int rv;
+   NYD_ENTER;
+
+   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -649,8 +672,7 @@ n_ignore_new(bool_t isauto){
    struct n_ignore *self;
    NYD_ENTER;
 
-   self = isauto ? n_autorec_calloc(NULL, 1, sizeof *self)
-         : n_calloc(1, sizeof *self);
+   self = isauto ? n_autorec_calloc(1, sizeof *self) : n_calloc(1,sizeof *self);
    self->i_auto = isauto;
    NYD_LEAVE;
    return self;
@@ -747,7 +769,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       size_t i;
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
-      irp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
+      irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
@@ -755,7 +777,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(irp->ir_input, FAL0),
-            n_regex_err_to_str(&irp->ir_regex, s));
+            n_regex_err_to_doc(&irp->ir_regex, s));
          if(!self->i_auto)
             n_free(irp);
          rv = FAL0;
@@ -775,10 +797,10 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       size_t i;
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
-      ifp = self->i_auto ? n_autorec_alloc(NULL, i) : n_alloc(i);
+      ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
-      hi = torek_ihashn(dat, len) % n_NELEM(itp->it_ht);
+      hi = n_torek_ihashn(dat, len) % n_NELEM(itp->it_ht);
       ifp->if_next = itp->it_ht[hi];
       itp->it_ht[hi] = ifp;
    }

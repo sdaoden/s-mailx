@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 require 5.008_001;
 use utf8;
-#@ Parse 'enum okeys' from nail.h and create okeys.h.  And see accmacvar.c.
+#@ Parse 'enum okeys' from nail.h and create gen-okeys.h.  And see accmacvar.c.
 # Public Domain
 
 # Acceptable "longest distance" from hash-modulo-index to key
@@ -10,7 +10,7 @@ my $MAXDISTANCE_PENALTY = 5;
 # Generate a more verbose output.  Not for shipout versions.
 my $VERB = 1;
 
-my $OUT = 'okeys.h';
+my $OUT = 'gen-okeys.h';
 
 ##  --  >8  --  8<  --  ##
 
@@ -157,7 +157,7 @@ torek_hash(char const *name){
 #else
   /* Include what has been written in HASH_MODE */
 # define n_CTA(A,S)
-# include "okeys.h"
+# include "gen-okeys.h"
 
 static ui8_t seen_wraparound;
 static size_t longest_distance;

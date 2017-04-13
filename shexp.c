@@ -56,12 +56,13 @@
  *   defined in Portable Character Set and do not begin with a digit.
  *   Other characters may be permitted by an implementation;
  *   applications shall tolerate the presence of such names.
- * We do support the hyphen "-" because it is common for mailx.
- * We support some special parameter names for one-letter variable names;
- * note these have counterparts in the code that manages internal variables! */
+ * We do support the hyphen-minus "-" (except in last position for ${x[:]-y}).
+ * We support some special parameter names for one-letter(++) variable names;
+ * these have counterparts in the code that manages internal variables,
+ * and some more special treatment below! */
 #define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
-#define a_SHEXP_ISVARC_SPECIAL1(C) \
-   ((C) == '*' || (C) == '@' || (C) == '#' || (C) == '?' || (C) == '!')
+#define a_SHEXP_ISVARC_BAD1ST(C) (digitchar(C)) /* (Actually assumed below!) */
+#define a_SHEXP_ISVARC_BADNST(C) ((C) == '-')
 
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
@@ -337,14 +338,14 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    if((dp = opendir(myp)) == NULL){
       int err;
 
-      switch((err = errno)){
-      case ENOTDIR:
+      switch((err = n_err_no)){
+      case n_ERR_NOTDIR:
          ccp = N_("cannot access paths under non-directory");
          goto jerr;
-      case ENOENT:
+      case n_ERR_NOENT:
          ccp = N_("path component of (sub)pattern non-existent");
          goto jerr;
-      case EACCES:
+      case n_ERR_ACCES:
          ccp = N_("file permission for file (sub)pattern denied");
          goto jerr;
       default:
@@ -994,13 +995,19 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    char const *ib_save, *ib;
    enum{
       a_NONE = 0,
-      a_SKIPQ = 1<<0,   /* Skip rest of this quote (\c0 ..) */
-      a_SURPLUS = 1<<1, /* Extended sequence interpretation */
-      a_NTOKEN = 1<<2,  /* "New token": e.g., comments are possible */
-      a_ROUND_MASK = ~((1<<8) - 1),
-      a_COOKIE = 1<<8,
-      a_EXPLODE = 1<<9,
-      a_CONSUME = 1<<10 /* When done, "consume" remaining input */
+      a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\c0 ..) */
+      a_SURPLUS = 1u<<1,   /* Extended sequence interpretation */
+      a_NTOKEN = 1u<<2,    /* "New token": e.g., comments are possible */
+      a_BRACE = 1u<<3,     /* Variable substitution: brace enclosed */
+      a_DIGIT1 = 1u<<4,    /* ..first character was digit */
+      a_NONDIGIT = 1u<<5,  /* ..has seen any non-digits */
+      a_VARSUBST_MASK = n_BITENUM_MASK(3, 5),
+
+      a_ROUND_MASK = (int)~n_BITENUM_MASK(0, 7),
+      a_COOKIE = 1u<<8,
+      a_EXPLODE = 1u<<9,
+      a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
+      a_TMP = 1u<<30
    } state;
    NYD2_ENTER;
 
@@ -1159,7 +1166,7 @@ jrestart_empty:
                ++il, --ib;
             else if(flags & n_SHEXP_PARSE_META_SEMICOLON){
                if(il > 0)
-                  n_source_inject_input(n_INPUT_INJECT_COMMIT, ib, il);
+                  n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
                state |= a_CONSUME;
                rv |= n_SHEXP_STATE_STOP;
             }
@@ -1419,53 +1426,87 @@ j_dollar_ungetc:
                }
             }
          }else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{
-            bool_t brace;
+            state &= ~a_VARSUBST_MASK;
+            if(*ib == '{')
+               state |= a_BRACE;
 
-            if(!(brace = (*ib == '{')) || il > 1){
+            if(!(state & a_BRACE) || il > 1){
                char const *cp, *vp;
 
                ib_save = ib - 1;
-               il -= brace;
-               vp = (ib += brace);
+               if(state & a_BRACE)
+                  --il, ++ib;
+               vp = ib;
                state &= ~a_EXPLODE;
 
                for(i = 0; il > 0; --il, ++ib, ++i){
                   /* We have some special cases regarding macro-local special
-                   * parameters, so ensure these don't cause failure */
+                   * parameters, so ensure these don't cause failure.
+                   * This has counterparts in the code that manages internal
+                   * variables! */
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
-                     if(i == 0 && a_SHEXP_ISVARC_SPECIAL1(c)){
-                        if(c == '@' && quotec == '"')
-                           state |= a_EXPLODE;
+                     if(i == 0 && (c == '*' || c == '@' || c == '#' ||
+                              c == '?' || c == '!' || c == '^')){
+                        /* Skip over multiplexer */
+                        if(c == '^')
+                           continue;
+                        if(c == '@'){
+                           if(quotec == '"')
+                              state |= a_EXPLODE;
+                        }
                         --il, ++ib;
                         ++i;
                      }
                      break;
-                  }
+                  }else if(a_SHEXP_ISVARC_BAD1ST(c)){
+                     if(i == 0)
+                        state |= a_DIGIT1;
+                  }else
+                     state |= a_NONDIGIT;
                }
 
                if(state & a_SKIPQ){
-                  if(brace && il > 0 && *ib == '}')
+                  if((state & a_BRACE) && il > 0 && *ib == '}')
                      --il, ++ib;
                   continue;
                }
 
-               if(i == 0){
-                  if(brace){
+               /* XXX Digit in first place is not supported, however we do
+                * XXX support all digits because these refer to macro-local
+                * XXX variables; if we would have a notion of whether we're in
+                * XXX a macro this could be made more fine grained */
+               if((state & (a_DIGIT1 | a_NONDIGIT)) == (a_DIGIT1 | a_NONDIGIT)){
+                  if(state & a_BRACE){
+                     if(il > 0 && *ib == '}')
+                        --il, ++ib;
+                     else
+                        rv |= n_SHEXP_STATE_ERR_BRACE;
+                  }
+                  if(flags & n_SHEXP_PARSE_LOG)
+                     n_err(_("Invalid identifier for ${}: %.*s\n"),
+                        (int)input->l, input->s);
+                  rv |= n_SHEXP_STATE_ERR_IDENTIFIER;
+                  goto je_ib_save;
+               }else if(i == 0){
+                  if(state & a_BRACE){
                      if(flags & n_SHEXP_PARSE_LOG)
-                        n_err(_("Bad substitution (${}): %.*s\n  Near %.*s\n"),
-                           (int)input->l, input->s, (int)il, ib);
+                        n_err(_("Bad substitution for ${}: %.*s\n"),
+                           (int)input->l, input->s);
                      rv |= n_SHEXP_STATE_ERR_BADSUB;
+                     if(il > 0 && *ib == '}')
+                        --il, ++ib;
+                     else
+                        rv |= n_SHEXP_STATE_ERR_BRACE;
                      goto je_ib_save;
                   }
                   c = '$';
                }else{
-                  if(brace){
+                  if(state & a_BRACE){
                      if(il == 0 || *ib != '}'){
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("Missing closing brace for ${VAR}: %.*s\n"
-                                 "  Near: %.*s\n"),
-                              (int)input->l, input->s, (int)il, ib);
+                           n_err(_("No closing brace for ${}: %.*s\n"),
+                              (int)input->l, input->s);
                         rv |= n_SHEXP_STATE_ERR_QUOTEOPEN |
                               n_SHEXP_STATE_ERR_BRACE;
                         goto je_ib_save;
@@ -1487,8 +1528,22 @@ j_dollar_ungetc:
                      goto jrestart_empty;
                   }
 
-                  /* Check getenv(3) shall no internal variable exist! */
-                  vp = savestrbuf(vp, i);
+                  /* Check getenv(3) shall no internal variable exist!
+                   * XXX We have some common idioms, avoid memory for them
+                   * XXX Even better would be var_vlook_buf()! */
+                  if(i == 1){
+                     switch(*vp){
+                     case '?': vp = n_qm; break;
+                     case '!': vp = n_em; break;
+                     case '*': vp = n_star; break;
+                     case '@': vp = n_at; break;
+                     case '#': vp = n_ns; break;
+                     default: goto j_var_look_buf;
+                     }
+                  }else
+j_var_look_buf:
+                     vp = savestrbuf(vp, i);
+
                   if((cp = n_var_vlook(vp, TRU1)) != NULL){
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
@@ -1517,7 +1572,7 @@ j_dollar_ungetc:
 
    if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)
-         n_err(_("no closing quote: %.*s\n"), (int)input->l, input->s);
+         n_err(_("No closing quote: %.*s\n"), (int)input->l, input->s);
       rv |= n_SHEXP_STATE_ERR_QUOTEOPEN;
    }
 
@@ -1631,17 +1686,102 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
 
 FL bool_t
 n_shexp_is_valid_varname(char const *name){
-   char c;
+   char lc, c;
    bool_t rv;
    NYD2_ENTER;
 
-   for(rv = TRU1; (c = *name++) != '\0';)
-      if(!a_SHEXP_ISVARC(c)){
-         rv = FAL0;
-         break;
-      }
+   rv = FAL0;
+
+   for(lc = '\0'; (c = *name++) != '\0'; lc = c)
+      if(!a_SHEXP_ISVARC(c))
+         goto jleave;
+      else if(lc == '\0' && a_SHEXP_ISVARC_BAD1ST(c))
+         goto jleave;
+   if(a_SHEXP_ISVARC_BADNST(lc))
+      goto jleave;
+
+   rv = TRU1;
+jleave:
    NYD2_LEAVE;
    return rv;
+}
+
+FL int
+c_shcodec(void *v){
+   struct str in;
+   struct n_string sou_b, *soup;
+   si32_t nerrn;
+   size_t alen;
+   bool_t norndtrip;
+   char const **argv, *varname, *act, *cp;
+
+   soup = n_string_creat_auto(&sou_b);
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+
+   act = *argv;
+   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+      ;
+   if((norndtrip = (*act == '+')))
+      ++act;
+   if(act == cp)
+      goto jesynopsis;
+   alen = PTR2SIZE(cp - act);
+   if(*cp != '\0')
+      ++cp;
+
+   in.l = strlen(in.s = n_UNCONST(cp));
+   nerrn = n_ERR_NONE;
+
+   if(is_ascncaseprefix(act, "encode", alen))
+      soup = n_shexp_quote(soup, &in, !norndtrip);
+   else if(!norndtrip && is_ascncaseprefix(act, "decode", alen)){
+      for(;;){
+         enum n_shexp_state shs;
+
+         shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);
+         if(shs & n_SHEXP_STATE_ERR_MASK){
+            soup = n_string_assign_cp(soup, cp);
+            nerrn = n_ERR_CANCELED;
+            v = NULL;
+            break;
+         }
+         if(shs & n_SHEXP_STATE_STOP)
+            break;
+      }
+   }else
+      goto jesynopsis;
+
+   assert(cp != NULL);
+   if(varname != NULL){
+      cp = n_string_cp(soup);
+      if(!n_var_vset(varname, (uintptr_t)cp)){
+         nerrn = n_ERR_NOTSUP;
+         cp = NULL;
+      }
+   }else{
+      struct str out;
+
+      in.s = n_string_cp(soup);
+      in.l = soup->s_len;
+      makeprint(&in, &out);
+      if(fprintf(n_stdout, "%s\n", out.s) < 0){
+         nerrn = n_err_no;
+         cp = NULL;
+      }
+      free(out.s);
+   }
+
+jleave:
+   n_pstate_err_no = nerrn;
+   NYD_LEAVE;
+   return (cp != NULL ? 0 : 1);
+jesynopsis:
+   n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   nerrn = n_ERR_INVAL;
+   cp = NULL;
+   goto jleave;
 }
 
 /* s-it-mode */

@@ -95,7 +95,7 @@ struct mt_class_arg {
 };
 
 static struct mtbltin const   _mt_bltin[] = {
-#include "mime_types.h"
+#include "gen-mime-types.h"
 };
 
 static char const             _mt_typnames[][16] = {

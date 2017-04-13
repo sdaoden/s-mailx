@@ -266,7 +266,8 @@ _spam_action(enum spam_action sa, int *ip)
          setdot(vc.vc_mp);
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
             n_err(_("%s`%s': cannot load message %lu: %s\n"),
-               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno, strerror(errno));
+               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno,
+               n_err_to_doc(n_err_no));
             ok = FAL0;
             break;
          }
@@ -488,14 +489,14 @@ _spamd_interact(struct spam_vc *vcp)
 
    if ((dsfd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
       n_err(_("%s`%s': can't create unix(4) socket: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jleave;
    }
 
    if (connect(dsfd, (struct sockaddr*)&ssdp->d_sun, SUN_LEN(&ssdp->d_sun)) ==
          -1) {
       n_err(_("%s`%s': can't connect to *spam-socket*: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       close(dsfd);
       goto jleave;
    }
@@ -581,7 +582,7 @@ _spamd_interact(struct spam_vc *vcp)
       if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
          n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
-            vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+            vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
          goto jleave;
       }
    }
@@ -803,7 +804,7 @@ jecmd:
             != 0) {
          n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
             _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
-            n_regex_err_to_str(&sfp->f_score_regex, s));
+            n_regex_err_to_doc(&sfp->f_score_regex, s));
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
@@ -930,7 +931,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = getrandstring(n_MIN(NAME_MAX / 4, 16));
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16));
    scfp->cf_env[0] = str_concat_csvl(&s,
          n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
    /* v15 compat NAIL_ environments vanish! */
@@ -996,15 +997,15 @@ _spam_cf_interact(struct spam_vc *vcp)
    pid = 0; /* cc uninit */
 
    if (!pipe_cloexec(p2c)) {
-      n_err(_("%s`%s': cannot create parent pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+      n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jtail;
    }
    state |= _P2C;
 
    if (!pipe_cloexec(c2p)) {
       n_err(_("%s`%s': cannot create child pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jtail;
    }
    state |= _C2P;
@@ -1020,7 +1021,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    /* Start our command as requested */
    sigemptyset(&cset);
-   if ((pid = start_command(
+   if ((pid = n_child_start(
          (scfp->cf_acmd != NULL ? scfp->cf_acmd : scfp->cf_cmd),
          &cset, p2c[0], c2p[1],
          scfp->cf_a0, (scfp->cf_acmd != NULL ? scfp->cf_cmd : NULL), NULL,
@@ -1094,7 +1095,7 @@ jtail:
       }
 
       state &= ~_RUNNING;
-      wait_child(pid, &scfp->cf_waitstat);
+      n_child_wait(pid, &scfp->cf_waitstat);
       if (WIFEXITED(scfp->cf_waitstat))
          state |= _GOODRUN;
    }

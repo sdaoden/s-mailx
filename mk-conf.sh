@@ -1072,10 +1072,10 @@ option_evaluate
 msg 'done'
 
 # Add the known utility and some other variables
-printf "#define VAL_UAGENT \"${VAL_SID}${VAL_NAIL}\"\n" >> ${newh}
-printf "VAL_UAGENT = ${VAL_SID}${VAL_NAIL}\n" >> ${newmk}
+printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
+printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
-printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_NAIL}-privsep\"\n" >> ${newh}
+printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
 printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
 if feat_yes DOTLOCK; then
    printf "OPTIONAL_PRIVSEP = \$(VAL_PRIVSEP)\n" >> ${newmk}
@@ -1240,7 +1240,15 @@ ${cat} > ${makefile} << \!
 ## Generics
 
 # May be multiline..
+echo >> ${h}
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+
+# Generate n_err_number OS mappings
+(
+   feat_yes DEVEL && NV= || NV=noverbose
+   TARGET="${h}" awk="${awk}" ./mk-errors.sh ${NV} config
+) |
+   xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION
@@ -1875,7 +1883,6 @@ fi
 
 if feat_yes SOCKETS; then
    ${cat} > ${tmp2}.c << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -1905,7 +1912,6 @@ fi # feat_yes SOCKETS
 if feat_yes SOCKETS; then
    link_check getaddrinfo 'getaddrinfo(3)' \
       '#define HAVE_GETADDRINFO' << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -1930,7 +1936,6 @@ fi
 if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define HAVE_ARPA_INET_H' << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -1939,7 +1944,6 @@ if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
 !
 
    ${cat} > ${tmp2}.c << \!
-#include "config.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -2186,7 +2190,6 @@ int main(void){
             '#define HAVE_XSSL_CONF_CTX'
       elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
          '#define HAVE_XSSL_CONF_CTX' << \!
-#include "config.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){

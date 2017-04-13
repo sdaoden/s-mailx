@@ -3,8 +3,8 @@
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-_version_from_header = VERSION="`< version.h $(sed) \
-		-e '/ VERSION /b X' -e d -e ':X' \
+_version_from_header = VERSION="`< gen-version.h $(sed) \
+		-e '/ n_VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
 OBJ = $(OBJ_SRC:.c=.o)
@@ -20,13 +20,14 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(SIZE_CHECK)
 
 $(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
-$(AMALGAM_TARGET) accmacvar.o: okeys.h version.h
+$(AMALGAM_TARGET) auxlily.c: gen-errors.h
+$(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
 $(AMALGAM_TARGET) dotlock.o: dotlock.h
-$(AMALGAM_TARGET) lex_input.o: cmd_tab.h
-$(AMALGAM_TARGET) mime_types.o: mime_types.h
+$(AMALGAM_TARGET) go.o: cmd-tab.h
+$(AMALGAM_TARGET) mime-types.o: gen-mime-types.h
 $(AMALGAM_TARGET) pop3.o smtp.o urlcrecry.o: rfc1321.h
-$(AMALGAM_TARGET) smtp.o: smtp_gssapi.h
-$(AMALGAM_TARGET) termcap.o: tcaps.h
+$(AMALGAM_TARGET) smtp.o: smtp-gssapi.h
+$(AMALGAM_TARGET) termcap.o: gen-tcaps.h
 
 $(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
@@ -41,7 +42,7 @@ test: all
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
 	$(SHELL) ./cc-test.sh --check-only ./$(VAL_UAGENT)
 
-mime_types.h: mime.types
+gen-mime-types.h: mime.types
 	$(ECHO_GEN)\
 	LC_ALL=C < ./mime.types > $(@) $(awk) '\
 	function add(mt, ln) {\
@@ -238,7 +239,7 @@ uninstall:
 
 clean:
 	$(ECHO_CMD)\
-	$(rm) -f $(OBJ) $(VAL_UAGENT) ./mime_types.h ./uman.1 ./urc.rc;\
+	$(rm) -f $(OBJ) $(VAL_UAGENT) ./gen-mime-types.h ./uman.1 ./urc.rc;\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
 		$(rm) -f ./privsep.o ./$(VAL_PRIVSEP);\
 	fi;\
@@ -263,7 +264,7 @@ _update-version:
 			[ "`git status --porcelain |\
 				$(awk) '\
 					BEGIN {n=0}\
-					/version\.h/ {next}\
+					/gen-version\.h/ {next}\
 					/^\?\?/ {next}\
 					{++n}\
 					END {print n}\
@@ -284,12 +285,12 @@ _update-version:
 		$(sed) -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
 	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
 	trap "$(rm) ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define VERSION \"v$${VERSION}\"\n";\
-	printf >> ./version.tmp "#define VERSION_MAJOR \"$${vmaj}\"\n";\
-	printf >> ./version.tmp "#define VERSION_MINOR \"$${vmin}\"\n";\
-	printf >> ./version.tmp "#define VERSION_UPDATE \"$${vupd}\"\n";\
-	$(cmp) ./version.tmp ./version.h >/dev/null 2>&1 && exit;\
-	$(mv) ./version.tmp ./version.h;\
+	printf > ./version.tmp "#define n_VERSION \"v$${VERSION}\"\n";\
+	printf >> ./version.tmp "#define n_VERSION_MAJOR \"$${vmaj}\"\n";\
+	printf >> ./version.tmp "#define n_VERSION_MINOR \"$${vmin}\"\n";\
+	printf >> ./version.tmp "#define n_VERSION_UPDATE \"$${vupd}\"\n";\
+	$(cmp) ./version.tmp ./gen-version.h >/dev/null 2>&1 && exit;\
+	$(mv) ./version.tmp ./gen-version.h;\
 	trap : 0 1 2 15
 
 # s-mk-mode

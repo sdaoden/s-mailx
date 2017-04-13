@@ -65,6 +65,7 @@ static void          _send_onpipe(int signo);
 static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
+                        char **linedat, size_t *linesize,
                         ui64_t *stats, int level);
 
 /* Get a file for an attachment */
@@ -91,22 +92,20 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    char const *cp;
    NYD2_ENTER;
 
-#ifdef HAVE_COLOUR
-   {
-   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO,
-         NULL);
-   if ((cpre = n_colour_pen_to_str(cpen)) != NULL)
-      csuf = n_colour_reset_to_str();
-   else
-      csuf = NULL;
-   }
-#else
    cpre = csuf = NULL;
+#ifdef HAVE_COLOUR
+   if(n_COLOUR_IS_ACTIVE()){
+      struct n_colour_pen *cpen;
+
+      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO, NULL);
+      if((cpre = n_colour_pen_to_str(cpen)) != NULL)
+         csuf = n_colour_reset_to_str();
+   }
 #endif
 
    /* Take care of "99.99", i.e., 5 */
    if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
-      cp = "?";
+      cp = n_qm;
    if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
          cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
@@ -259,7 +258,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = getrandstring(n_MIN(NAME_MAX / 4, 16));
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16));
    env_addon[2] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
    env_addon[3] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,
@@ -296,7 +295,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       int pid;
 
       sigemptyset(&nset);
-      pid = run_command(sh, &nset, term_infd, COMMAND_FD_PASS, "-c",
+      pid = n_child_run(sh, &nset, term_infd, n_CHILD_FD_PASS, "-c",
             mhp->mh_shell_cmd, NULL, env_addon);
       rbuf = (pid < 0) ? NULL : (FILE*)-1;
    } else {
@@ -305,7 +304,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
 jerror:
       if (rbuf == NULL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
-            mhp->mh_msg, strerror(errno));
+            mhp->mh_msg, n_err_to_doc(n_err_no));
       else {
          fflush(*qbuf);
          if (*qbuf != n_stdout)
@@ -385,14 +384,15 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct n_ignore const *doitp, struct quoteflt *qf,
-   enum sendaction volatile action, ui64_t * volatile stats, int level)
+   enum sendaction volatile action,
+   char **linedat, size_t *linesize, ui64_t * volatile stats, int level)
 {
    int volatile rv = 0;
    struct mime_handler mh;
    struct str outrest, inrest;
-   char *line = NULL, *cp;
+   char *cp;
    char const * volatile tmpname = NULL;
-   size_t linesize = 0, linelen, cnt;
+   size_t linelen, cnt;
    int volatile term_infd;
    int dostat, c;
    struct mimepart *volatile np;
@@ -457,10 +457,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       size_t lcnt;
 
       lcnt = cnt;
-      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0) == NULL)
+      if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0) == NULL)
          break;
       ++lineno;
-      if (linelen == 0 || (cp = line)[0] == '\n')
+      if (linelen == 0 || (cp = *linedat)[0] == '\n')
          /* If line is blank, we've reached end of headers */
          break;
       if(cp[linelen - 1] == '\n')
@@ -493,7 +493,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             cnt = lcnt;
             break;
          }
-         cp = line;
+         cp = *linedat;
 jhdrpush:
          if(convert == CONV_NONE){
             hlp = n_string_push_buf(hlp, cp, (ui32_t)linelen);
@@ -533,16 +533,16 @@ jhdrput:
       }
 
       /* Dump it */
-#ifdef HAVE_COLOUR
-      if(n_pstate & n_PS_COLOUR_ACTIVE)
-         n_colour_put(obuf, n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
-#endif
+      n_COLOUR(
+         if(n_COLOUR_IS_ACTIVE())
+            n_colour_put(n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+      )
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NULL,NULL);
-#ifdef HAVE_COLOUR
-      if(n_pstate & n_PS_COLOUR_ACTIVE)
-         n_colour_reset(obuf);
-#endif
+      n_COLOUR(
+         if(n_COLOUR_IS_ACTIVE())
+            n_colour_reset();
+      )
       if(convert != CONV_NONE)
          putc('\n', obuf);
 
@@ -564,9 +564,6 @@ jhdrtrunc:
    } /* C99 */
 
    quoteflt_flush(qf);
-   cp = line;
-   line = NULL;
-   free(cp);
 
    if(ferror(obuf)){
       rv = -1;
@@ -788,8 +785,8 @@ jalter_plain:
                   }
                   hadpart = TRU1;
                   neednl = FAL0;
-                  rv = sendpart(zmp, np, obuf, doitp, qf, action, stats,
-                        level + 1);
+                  rv = sendpart(zmp, np, obuf, doitp, qf, action,
+                        linedat, linesize, stats, level + 1);
                   quoteflt_reset(qf, origobuf);
 
                   if (rv < 0)
@@ -843,7 +840,8 @@ jmulti:
             ispipe = FAL0;
             switch (action) {
             case SEND_TOFILE:
-               if (np->m_partstring && !strcmp(np->m_partstring, "1"))
+               if (np->m_partstring &&
+                     np->m_partstring[0] == '1' && np->m_partstring[1] == '\0')
                   break;
                stats = NULL;
                /* TODO Always open multipart on /dev/null, it's a hack to be
@@ -894,7 +892,8 @@ jmulti:
                   NULL,NULL);
                quoteflt_flush(dummy);
             }
-            if (sendpart(zmp, np, obuf, doitp, qf, action, stats, level+1) < 0)
+            if (sendpart(zmp, np, obuf, doitp, qf, action, linedat, linesize,
+                  stats, level+1) < 0)
                rv = -1;
             quoteflt_reset(qf, origobuf);
 
@@ -985,7 +984,7 @@ jpipe_close:
       if (asccasecmp(tcs, ip->m_charset) &&
             asccasecmp(ok_vlook(charset_7bit), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         if (iconvd == (iconv_t)-1 && errno == EINVAL) {
+         if (iconvd == (iconv_t)-1 && n_err_no == n_ERR_INVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
          }
@@ -999,7 +998,7 @@ jpipe_close:
       tmpname = NULL;
       qbuf = obuf;
 
-      term_infd = COMMAND_FD_PASS;
+      term_infd = n_CHILD_FD_PASS;
       if (mh.mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
          enum oflags of;
 
@@ -1076,7 +1075,6 @@ jsend:
             free(outrest.s);
          if (inrest.s != NULL)
             free(inrest.s);
-         free(line);
 #ifdef HAVE_ICONV
          if (iconvd != (iconv_t)-1)
             n_iconv_close(iconvd);
@@ -1087,9 +1085,9 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
-   while (!eof && fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
+   while (!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
-      if (_out(line, linelen, pbuf, convert, action, qf, stats, &outrest,
+      if (_out(*linedat, linelen, pbuf, convert, action, qf, stats, &outrest,
             (action & _TD_EOF ? NULL : &inrest)) < 0 || ferror(pbuf)) {
          rv = -1; /* XXX Should bail away?! */
          break;
@@ -1136,8 +1134,6 @@ joutln:
    }
 
 jend:
-   if (line != NULL)
-      free(line);
    if (pbuf != qbuf) {
       safe_signal(SIGPIPE, SIG_IGN);
       Pclose(pbuf, !(mh.mh_flags & MIME_HDL_ASYNC));
@@ -1188,10 +1184,10 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
        * TODO is implicit from outer `write' etc! */
       /* I18N: Filename input prompt with file type indication */
       str_concat_csvl(&prompt, _("Enter filename for part "),
-         (ip->m_partstring != NULL) ? ip->m_partstring : _("?"),
-         _(" ("), ip->m_ct_type_plain, _("): "), NULL);
+         (ip->m_partstring != NULL ? ip->m_partstring : n_qm),
+         " (", ip->m_ct_type_plain, "): ", NULL);
 jgetname:
-      f2 = n_lex_input_cp(n_LEXINPUT_CTX_DEFAULT | n_LEXINPUT_HIST_ADD,
+      f2 = n_go_input_cp(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_HIST_ADD,
             prompt.s, ((f != (char*)-1 && f != NULL)
                ? n_shexp_quote_cp(f, FAL0) : NULL));
       if(f2 != NULL){
@@ -1257,9 +1253,9 @@ jgetname:
       while((fp = Fopen(f, "wx")) == NULL){
          int e;
 
-         if((e = errno) != EEXIST){
+         if((e = n_err_no) != n_ERR_EXIST){
             n_err(_("Cannot open %s: %s\n"),
-               n_shexp_quote_cp(f, FAL0), strerror(e));
+               n_shexp_quote_cp(f, FAL0), n_err_to_doc(e));
             break;
          }
 
@@ -1367,9 +1363,15 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
       nl = n_empty;
    }
 
-   n_COLOUR( n_colour_put(fp, n_COLOUR_ID_VIEW_FROM_, NULL); )
+   n_COLOUR(
+      if(n_COLOUR_IS_ACTIVE())
+         n_colour_put(n_COLOUR_ID_VIEW_FROM_, NULL);
+   )
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   n_COLOUR( n_colour_reset(fp); )
+   n_COLOUR(
+      if(n_COLOUR_IS_ACTIVE())
+         n_colour_reset();
+   )
    if (i > 0 && stats != NULL)
       *stats += i;
    NYD_LEAVE;
@@ -1379,21 +1381,33 @@ FL int
 sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    char const *prefix, enum sendaction action, ui64_t *stats)
 {
+   struct n_sigman linedat_protect;
    struct quoteflt qf;
-   size_t cnt, sz, i;
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
-   int rv = -1, c;
+   size_t linesize, cnt, sz, i;
+   char *linedat;
+   int rv, c;
    NYD_ENTER;
 
    time_current_update(&time_current, TRU1);
+   rv = -1;
+   linedat = NULL;
+   linesize = 0;
+   quoteflt_init(&qf, prefix);
+
+   n_SIGMAN_ENTER_SWITCH(&linedat_protect, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    if (mp == dot && action != SEND_TOSRCH)
       n_pstate |= n_PS_DID_PRINT_DOT;
    if (stats != NULL)
       *stats = 0;
-   quoteflt_init(&qf, prefix);
 
    /* First line is the From_ line, so no headers there to worry about */
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
@@ -1404,15 +1418,19 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    {
    bool_t nozap;
    char const *cpre = n_empty, *csuf = n_empty;
-#ifdef HAVE_COLOUR
-   struct n_colour_pen *cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
-   struct str const *sp = n_colour_pen_to_str(cpen);
 
-   if (sp != NULL) {
-      cpre = sp->s;
-      sp = n_colour_reset_to_str();
-      if (sp != NULL)
-         csuf = sp->s;
+#ifdef HAVE_COLOUR
+   if(n_COLOUR_IS_ACTIVE()){
+      struct n_colour_pen *cpen;
+      struct str const *sp;
+
+      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
+      if((sp = n_colour_pen_to_str(cpen)) != NULL){
+         cpre = sp->s;
+         sp = n_colour_reset_to_str();
+         if(sp != NULL)
+            csuf = sp->s;
+      }
    }
 #endif
 
@@ -1433,7 +1451,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          sz += i;
       }
 #ifdef HAVE_COLOUR
-      if (cpre != NULL) {
+      if(*cpre != '\0'){
          fputs(cpre, obuf);
          cpre = (char const*)0x1;
       }
@@ -1441,7 +1459,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {
 #ifdef HAVE_COLOUR
-         if (c == '\n' && csuf != NULL) {
+         if(c == '\n' && *csuf != '\0'){
             cpre = (char const*)0x1;
             fputs(csuf, obuf);
          }
@@ -1454,7 +1472,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       }
 
 #ifdef HAVE_COLOUR
-      if (csuf != NULL && cpre != (char const*)0x1)
+      if(*csuf != '\0' && cpre != (char const*)0x1 && *cpre != '\0')
          fputs(csuf, obuf);
 #endif
    } else {
@@ -1474,10 +1492,16 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 
-   rv = sendpart(mp, ip, obuf, doitp, &qf, action, stats, 0);
+   rv = sendpart(mp, ip, obuf, doitp, &qf, action, &linedat, &linesize,
+         stats, 0);
+
+   n_sigman_cleanup_ping(&linedat_protect);
 jleave:
    quoteflt_destroy(&qf);
+   if(linedat != NULL)
+      free(linedat);
    NYD_LEAVE;
+   n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 

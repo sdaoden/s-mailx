@@ -186,7 +186,7 @@
 #define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE        '~'      /* Default escape for sending */
 #define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
-#define MAXARGC         1024     /* Maximum list of raw strings */
+#define n_MAXARGC       512      /* Maximum list of raw strings */
 #define MAXEXP          25       /* Maximum expansion of aliases */
 #define REFERENCES_MAX  20       /* Maximum entries in References: */
 #define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */
@@ -195,6 +195,10 @@
 
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 
+/* Special FD requests for n_child_run(), n_child_start() */
+#define n_CHILD_FD_PASS -1
+#define n_CHILD_FD_NULL -2
+
 /* Colour stuff */
 #ifdef HAVE_COLOUR
 # define n_COLOUR(X)       X
@@ -202,18 +206,15 @@
 # define n_COLOUR(X)
 #endif
 
-/* Special FD requests for run_command() / start_command() */
-#define COMMAND_FD_PASS -1
-#define COMMAND_FD_NULL -2
-
 /*  */
-#define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
-#define DATE_DAYSYEAR   365L
-#define DATE_SECSMIN    60L
-#define DATE_MINSHOUR   60L
-#define DATE_HOURSDAY   24L
-#define DATE_SECSHOUR   (DATE_SECSMIN * DATE_MINSHOUR)
-#define DATE_SECSDAY    (DATE_SECSHOUR * DATE_HOURSDAY)
+#define n_FROM_DATEBUF 64        /* Size of RFC 4155 From_ line date */
+#define n_DATE_DAYSYEAR 365u
+#define n_DATE_MILLISSEC 1000u
+#define n_DATE_SECSMIN 60u
+#define n_DATE_MINSHOUR 60u
+#define n_DATE_HOURSDAY 24u
+#define n_DATE_SECSHOUR (n_DATE_SECSMIN * n_DATE_MINSHOUR)
+#define n_DATE_SECSDAY (n_DATE_SECSHOUR * n_DATE_HOURSDAY)
 
 /* *indentprefix* default as of POSIX */
 #define INDENT_DEFAULT  "\t"
@@ -222,7 +223,7 @@
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
 #define n_MEMORY_AUTOREC_SIZE 0x2000u
 /* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_AUTOREC_TYPE_SIZEOF (7 * sizeof(void*))
+#define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
 
 /* Default *encoding* as enum mime_enc below */
 #define MIME_DEFAULT_ENCODING MIMEE_B64
@@ -273,6 +274,10 @@
 
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define QUOTE_TAB_SPACES 8
+
+/* For long iterative output, like `list', tabulator-completion, etc.,
+ * determine the screen width that should be used */
+#define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
 
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
@@ -878,6 +883,9 @@ enum n_dotlock_state{
    n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
+/* enum n_err_number from config.h via mk-conf.sh, which is in sync with
+ * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
+
 enum n_exit_status{
    n_EXIT_OK = EXIT_SUCCESS,
    n_EXIT_ERR = EXIT_FAILURE,
@@ -910,6 +918,38 @@ enum fexp_mode {
 enum n_file_lock_type{
    FLT_READ,
    FLT_WRITE
+};
+
+enum n_go_input_flags{
+   n_GO_INPUT_NONE,
+   n_GO_INPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
+   n_GO_INPUT_CTX_DEFAULT = 1,         /* Default input */
+   n_GO_INPUT_CTX_COMPOSE = 2,         /* Compose mode input */
+   n__GO_INPUT_CTX_MASK = 3,
+   n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
+
+   n_GO_INPUT_HOLDALLSIGS = 1u<<8,     /* hold_all_sigs() active TODO */
+   n_GO_INPUT_FORCE_STDIN = 1u<<9,     /* Even in macro, use stdin (`read')! */
+   n_GO_INPUT_NL_ESC = 1u<<10,         /* Support "\\$" line continuation */
+   n_GO_INPUT_NL_FOLLOW = 1u<<11,      /* ..on such a follow line */
+   n_GO_INPUT_PROMPT_NONE = 1u<<12,    /* Don't print prompt */
+   n_GO_INPUT_PROMPT_EVAL = 1u<<13,    /* Instead, evaluate *prompt* */
+#if 0
+   n_GO_INPUT_DROP_TRAIL_SPC = 1u<<14, /* Drop any trailing space */
+   n_GO_INPUT_DROP_LEAD_SPC = 1u<<15,  /* ..leading ones */
+   n_GO_INPUT_TRIM_SPACE = n_GO_INPUT_DROP_TRAIL_SPC | n_GO_INPUT_DROP_LEAD_SPC,
+#endif
+
+   n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
+   n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */
+
+   n__GO_FREEBIT = 24
+};
+
+enum n_go_input_inject_flags{
+   n_GO_INPUT_INJECT_NONE = 0,
+   n_GO_INPUT_INJECT_COMMIT = 1u<<0,   /* Auto-commit input */
+   n_GO_INPUT_INJECT_HISTORY = 1u<<1   /* Allow history addition */
 };
 
 enum n_iconv_flags{
@@ -969,35 +1009,6 @@ enum n_idec_state{
    n__IDEC_PRIVATE_SHIFT1 = 24
 };
 n_MCTA(n__IDEC_MODE_MASK <= (1<<8) - 1, "Shared bit range overlaps")
-
-enum n_lexinput_flags{
-   n_LEXINPUT_NONE,
-   n_LEXINPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
-   n_LEXINPUT_CTX_DEFAULT = 1,         /* Default input */
-   n_LEXINPUT_CTX_COMPOSE = 2,         /* Compose mode input */
-   n__LEXINPUT_CTX_MASK = 3,
-   n__LEXINPUT_CTX_MAX1 = n_LEXINPUT_CTX_COMPOSE + 1,
-
-   n_LEXINPUT_FORCE_STDIN = 1<<8,      /* Even in macro, use stdin (`read')! */
-   n_LEXINPUT_NL_ESC = 1<<9,           /* Support "\\$" line continuation */
-   n_LEXINPUT_NL_FOLLOW = 1<<10,       /* ..on such a follow line */
-   n_LEXINPUT_PROMPT_NONE = 1<<11,     /* Don't print prompt */
-   n_LEXINPUT_PROMPT_EVAL = 1<<12,     /* Instead, evaluate *prompt* */
-#if 0
-   n_LEXINPUT_DROP_TRAIL_SPC = 1<<14,  /* Drop any trailing space */
-   n_LEXINPUT_DROP_LEAD_SPC = 1<<15,   /* ..leading ones */
-   n_LEXINPUT_TRIM_SPACE = n_LEXINPUT_DROP_TRAIL_SPC | n_LEXINPUT_DROP_LEAD_SPC,
-#endif
-
-   n_LEXINPUT_HIST_ADD = 1<<16,        /* Add the result to history list */
-   n_LEXINPUT_HIST_GABBY = 1<<17       /* Consider history entry as gabby */
-};
-
-enum n_input_inject_flags{
-   n_INPUT_INJECT_NONE = 0,
-   n_INPUT_INJECT_COMMIT = 1<<0,       /* Auto-commit input */
-   n_INPUT_INJECT_HISTORY = 1<<1       /* Allow history addition */
-};
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
@@ -1206,7 +1217,7 @@ enum n_shexp_parse_flags{
    /* Recognize metacharacters to separate tokens */
    n_SHEXP_PARSE_META_VERTBAR = 1<<13,
    n_SHEXP_PARSE_META_AMPERSAND = 1<<14,
-   /* Interpret ; as a sequencing operator, source_inject_input() remainder */
+   /* Interpret ; as a sequencing operator, go_input_inject() remainder */
    n_SHEXP_PARSE_META_SEMICOLON = 1<<15,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
@@ -1231,10 +1242,11 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
    n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
-   n_SHEXP_STATE_ERR_BADSUB = 1<<20,   /* Empty/bad ${} substitution */
-   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<21, /* Quote remains open at EOS */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1<<20, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1<<21,   /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<22, /* Quote remains open at EOS */
 
-   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 21)
+   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
 };
 
 enum n_sigman_flags{
@@ -1442,12 +1454,11 @@ enum n_program_option{
    n_PO_E_FLAG = 1u<<6,       /* -E / *skipemptybody* */
    n_PO_F_FLAG = 1u<<7,       /* -F */
    n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
-   n_PO_N_FLAG = 1u<<9,       /* -N / *header* */
-   n_PO_R_FLAG = 1u<<10,      /* -R */
-   n_PO_r_FLAG = 1u<<11,      /* -r (plus n_poption_arg_r) */
-   n_PO_t_FLAG = 1u<<12,      /* -t */
-   n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
-   n_PO_BATCH_FLAG = 1u<<14,  /* -# */
+   n_PO_R_FLAG = 1u<<9,       /* -R */
+   n_PO_r_FLAG = 1u<<10,      /* -r (plus n_poption_arg_r) */
+   n_PO_t_FLAG = 1u<<11,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<12,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<13,  /* -# */
 
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
@@ -1481,13 +1492,16 @@ do{\
       n_pstate &= ~n_PS_ROOT;\
 }while(0)
 
-   n_PS_EXIT = 1u<<1,                  /* Exit request pending */
+   /* XXX These are internal to the state machine and do not belong here,
+    * XXX yet this was the easiest (accessible) approach */
+   n_PS_ERR_XIT = 1u<<0,               /* Unless `ignerr' seen -> n_PSO_XIT */
+   n_PS_ERR_QUIT = 1u<<1,              /* ..ditto: -> n_PSO_QUIT */
+   n_PS_ERR_EXIT_MASK = n_PS_ERR_XIT | n_PS_ERR_QUIT,
+
    n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
    n_PS_ROBOT = 1u<<3,                 /* .. even more robotic */
    n_PS_COMPOSE_MODE = 1u<<4,          /* State machine recursed */
-   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* *on-compose-done* running (fork(2)) */
-
-   n_PS_EVAL_ERROR = 1u<<6,            /* Last evaluate() command failed */
+   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* A hook running in a subprocess */
 
    n_PS_HOOK_NEWMAIL = 1u<<7,
    n_PS_HOOK = 1u<<8,
@@ -1515,23 +1529,27 @@ do{\
 
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<19,   /* mime_write_tohdr() not ASCII clean */
-   n_PS_READLINE_NL = 1u<<20,          /* readline_input()+ saw a \n */
-   n_PS_COLOUR_ACTIVE = 1u<<21         /* n_colour_env_create().._gut() cycle */
+   n_PS_READLINE_NL = 1u<<20           /* readline_input()+ saw a \n */
 };
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
+   /* Exit request pending (quick) */
+   n_PSO_XIT = 1u<<0,
+   n_PSO_QUIT = 1u<<1,
+   n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
+
    /* Pre _STARTED */
-   n_PSO_SENDMODE = 1u<<1,
-   n_PSO_INTERACTIVE = 1u<<2,
-   n_PSO_TTYIN = 1u<<3,
-   n_PSO_TTYOUT = 1u<<4, /* TODO should be TTYERR! */
+   n_PSO_SENDMODE = 1u<<2,
+   n_PSO_INTERACTIVE = 1u<<3,
+   n_PSO_TTYIN = 1u<<4,
+   n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
 
    n_PSO_UNICODE = 1u<<8,
    n_PSO_ENC_MBSTATE = 1u<<9,
 
    /* main.c startup code passed, we are functional! */
-   n_PSO_STARTED = 1u<<0,
+   n_PSO_STARTED = 1u<<15,
 
    /* (Likely) Post _STARTED */
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
@@ -1557,18 +1575,19 @@ enum n_program_state_once{
  * - most default VAL_ues come from in from build system via ./make.rc
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
-   /* This is used for all macro arguments etc., i.e., [*@#]|[1-9][0-9]*... */
+   /* This is used for all macro(-local) variables etc., i.e.,
+    * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
+    * It is also used for the ${^.+} multiplexer */
    ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
-   /* xxx __qm a.k.a. ? should be num=1 but that more expensive than what now */
+   /*__qm/__em aka ?/! should be num=1 but that more expensive than what now */
    ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
-   /* xxx __em a.k.a. ! should be num=1 but that more expensive than what now */
-   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1,i3val="0"} */
+   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1} */
 
-   ok_v__account,                      /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v__alternates,                   /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup,
    ok_b_allnet,
+   ok_v_alternates,                    /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_append,
    ok_b_ask,
    ok_b_askatend,
@@ -1586,7 +1605,7 @@ ok_b_autothread,
    ok_v_autosort,
 
    ok_b_bang,
-   ok_v_batch_exit_on_error,           /* {posnum=1} */
+ok_b_batch_exit_on_error,
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
    ok_b_bsdannounce,
    ok_b_bsdcompat,
@@ -1627,6 +1646,7 @@ ok_b_autothread,
    ok_b_editheaders,
    ok_b_emptystart,
    ok_v_encoding,
+   ok_b_errexit,
    ok_v_escape,
    ok_v_expandaddr,
    ok_v_expandargv,
@@ -1634,7 +1654,7 @@ ok_b_autothread,
    ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,
    ok_v_folder,                        /* {vip=1} */
-   ok_v__folder_resolved,              /* {rdonly=1,nodel=1} */
+   ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_v_followup_to_honour,
@@ -1643,8 +1663,8 @@ ok_b_autothread,
    ok_b_fullnames,
    ok_v_fwdheading,
 
-   ok_v_HOME,                          /* {vip=1,nodel=1,import=1} */
-   ok_b_header,                        /* {vip=1,i3val=TRU1} */
+   ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
+   ok_b_header,                        /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
    ok_v_history_file,
@@ -1669,13 +1689,14 @@ ok_b_autothread,
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
    ok_b_line_editor_no_defaults,
+   ok_v_log_prefix,                    /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
    ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
    ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
-   ok_v__mailbox_resolved,             /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v__mailbox_display,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailx_extra_rc,
    ok_b_markanswered,
    ok_b_mbox_rfc4155,
@@ -1707,10 +1728,10 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
-   ok_v_on_compose_done,               /* {notempty=1} */
-   ok_v_on_compose_done_shell,         /* {notempty=1} */
    ok_v_on_compose_enter,              /* {notempty=1} */
    ok_v_on_compose_leave,              /* {notempty=1} */
+   ok_v_on_compose_splice,             /* {notempty=1} */
+   ok_v_on_compose_splice_shell,       /* {notempty=1} */
    ok_b_outfolder,
 
    ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
@@ -1817,7 +1838,7 @@ ok_b_ssl_no_default_ca,
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,                  /* {import=1,notempty=1,defval=VAL_TMPDIR} */
+   ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
@@ -1832,10 +1853,10 @@ ok_b_ssl_no_default_ca,
    ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
    ok_b_verbose,                       /* {vip=1} */
-   ok_v_version,                       /* {virt=VERSION} */
-   ok_v_version_major,                 /* {virt=VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {virt=VERSION_MINOR} */
-   ok_v_version_update,                /* {virt=VERSION_UPDATE} */
+   ok_v_version,                       /* {virt=n_VERSION} */
+   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
+   ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
 
    ok_b_writebackedited
 };
@@ -1916,6 +1937,16 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
 };
 
 #ifdef HAVE_COLOUR
+struct n_colour_env{
+   struct n_colour_env *ce_last;
+   bool_t ce_enabled;   /* Colour enabled on this level */
+   ui8_t ce_ctx;        /* enum n_colour_ctx */
+   ui8_t ce_ispipe;     /* .ce_outfp known to be a pipe */
+   ui8_t ce__pad[5];
+   FILE *ce_outfp;
+   struct a_colour_map *ce_current; /* Active colour or NULL */
+};
+
 struct n_colour_pen;
 #endif
 
@@ -1970,28 +2001,23 @@ struct n_dotlock_info{
 };
 #endif
 
-/* Execution context bundles  */
-struct n_exec_ctx{
-
-   void *l_smem;                 /* salloc() memory TODO -> memraw? */
-   /* TODO our new per-exec-ctx memory "allocators" are yet very dumb.
-    * TODO for v15 those should not be wrapping nodes but real allocators */
-   struct n_mem_raw *l_memraw;   /* n_mem_alloc() (/ n_mem_free()) */
-   struct n_mem_wrap *l_memwrap; /* n_mem_wrap() (/ n_mem_unwrap()) */
+struct n_go_data_ctx{
+   /* The memory pool may be inherited from outer context, so we
+    * .gdc_mempool may be NE .gdc__mempool_buf */
+   void *gdc_mempool;
+   void *gdc_ifcond; /* Saved state of conditional stack */
+#ifdef HAVE_COLOUR
+   struct n_colour_env *gdc_colour;
+   bool_t gdc_colour_active;
+   ui8_t gdc__colour_pad[7];
+# define n_COLOUR_IS_ACTIVE() \
+   (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
+    /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
+#endif
+   char gdc__mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF];
 };
-
-struct n_mem_raw{
-   struct n_mem_raw *mr_prev;
-   struct n_mem_raw *mr_next;
-   char mr_buf[n_VFIELD_SIZE(0)];
-};
-
-struct n_mem_wrap{
-   struct n_mem_wrap *mw_prev;
-   struct n_mem_wrap *mw_next;
-   void *mw_obj;
-   void (*mw_dtor)(void *obj);
-};
+n_MCTA(n_MEMORY_POOL_TYPE_SIZEOF % sizeof(void*) == 0,
+   "Inacceptible size of n_go_data_ctx.gdc_mempool")
 
 struct mime_handler {
    enum mime_handler_flags mh_flags;
@@ -2313,7 +2339,7 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
    n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   n_CMD_ARG_EM = 1u<<30   /* Stores soft exit status in n_pstate_var__em */
+   n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
 enum gfield {
@@ -2507,6 +2533,25 @@ struct cw {
 # define VL extern
 #endif
 
+#ifndef HAVE_AMALGAMATION
+VL char const n_month_names[12 + 1][4];
+VL char const n_weekday_names[7 + 1][4];
+
+VL char const n_uagent[sizeof VAL_UAGENT];
+VL char const n_error[sizeof n_ERROR];
+VL char const n_unirepl[sizeof n_UNIREPL];
+VL char const n_empty[1];
+VL char const n_0[2];
+VL char const n_1[2];
+VL char const n_m1[3];     /* -1 */
+VL char const n_qm[2];     /* Question-mark ? */
+VL char const n_em[2];     /* Exclamation-mark ! */
+VL char const n_star[2];   /* Asterisk * */
+VL char const n_at[2];     /* Commercial at @ */
+VL char const n_ns[2];     /* Number sign # */
+VL ui16_t const n_class_char[1 + 0x7F];
+#endif
+
 VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
@@ -2514,28 +2559,31 @@ VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
 
 VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */
-VL ui32_t n_scrnwidth;           /* Screen width, or best guess */
-VL ui32_t n_scrnheight;          /* Screen height/guess (4 header) */
+VL ui32_t n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
+VL ui32_t n_scrnheight;          /* Screen height/guess (for header summary+) */
 
 VL char const *n_progname;       /* Our name */
 
 VL gid_t n_group_id;             /* getgid() and getuid() */
 VL uid_t n_user_id;
 
-VL int n_exit_status;            /* Exit status */
+VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts;        /* MTA options from command line */
 VL size_t n_smopts_cnt;          /* Entries in n_smopts */
 
-VL ui32_t n_pstate;              /* Bits of enum n_program_state */
+/* The current execution data context */
+VL struct n_go_data_ctx *n_go_data;
 VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
+VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
- * TODO struct CmdCtx where each command has its own ARGC/ARGV, soft/hard exit
- * TODO status and may-place-in-history bit, we need to manage the soft exit
- * TODO status with this global bypass, it is thus a.. */
-VL char const *n_pstate_var__em; /* TODO ..HACK */
+ * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
+ * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
+VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
+#define n_err_no errno           /* Don't use errno directly, for later XXX */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
@@ -2566,23 +2614,6 @@ VL sighandler_type dflpipe;
 
 /* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
 VL char const  *temporary_protocol_ext;
-
-/* The remaining variables need initialization */
-
-#ifndef HAVE_AMALGAMATION
-VL char const n_month_names[12 + 1][4];
-VL char const n_weekday_names[7 + 1][4];
-
-VL char const n_uagent[sizeof VAL_UAGENT];
-VL char const n_error[sizeof n_ERROR];
-VL char const n_unirepl[sizeof n_UNIREPL];
-VL char const n_empty[1];
-VL char const n_0[2];
-VL char const n_1[2];
-VL char const n_m1[3];
-
-VL ui16_t const n_class_char[1 + 0x7F];
-#endif
 
 /*
  * Finally, let's include the function prototypes XXX embed

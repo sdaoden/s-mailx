@@ -189,7 +189,7 @@ jleave:
 }
 
 FL bool_t
-n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){ /* TODO use this for cmd_tab! */
+n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){ /* TODO use this for cmd-tab.h! */
    struct n_cmd_arg ncap, *lcap;
    struct str shin_orig, shin;
    bool_t addca;

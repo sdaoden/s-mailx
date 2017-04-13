@@ -119,7 +119,7 @@ __maildircatch_hold(int s)
 }
 
 static unsigned
-a_maildir_hash(char const *cp) /* TODO obsolete that -> torek_hash */
+a_maildir_hash(char const *cp) /* TODO obsolete that -> n_torek_hash */
 {
    unsigned h = 0, g;
    NYD_ENTER;
@@ -468,7 +468,7 @@ mkname(time_t t, enum mflag f, char const *pref)
       if (mypid == 0)
          mypid = getpid();
       if (node == NULL) {
-         cp = nodename(0);
+         cp = n_nodename(FAL0);
          n = size = 0;
          do {
             if (UICMP(32, n, <, size + 8))
@@ -544,7 +544,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if ((!stat(tfn, &st) || errno == ENOENT) &&
+      if ((!stat(tfn, &st) || n_err_no == n_ERR_NOENT) &&
             (op = Fopen(tfn, "wx")) != NULL)
          break;
 
@@ -671,7 +671,7 @@ mktable(void)
    size_t i;
    NYD_ENTER;
 
-   _maildir_prime = nextprime(msgCount);
+   _maildir_prime = n_prime_next(msgCount);
    _maildir_table = scalloc(_maildir_prime, sizeof *_maildir_table);
    for (mp = message, i = msgCount; i-- != 0; ++mp)
       mdlook(mp->m_maildir_file + 4, mp);

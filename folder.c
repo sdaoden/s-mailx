@@ -92,7 +92,7 @@ _update_mailname(char const *name)
       enum protocol p = which_protocol(name);
 
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
-         if (realpath(name, mailname) == NULL && errno != ENOENT) {
+         if (realpath(name, mailname) == NULL && n_err_no != n_ERR_NOENT) {
             n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             rv = FAL0;
             goto jdocopy;
@@ -138,8 +138,8 @@ jdocopy:
          (int)j, mailp, mailp + i);
    }
 
-   n_PS_ROOT_BLOCK((ok_vset(_mailbox_resolved, mailname),
-      ok_vset(_mailbox_display, displayname)));
+   n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),
+      ok_vset(mailbox_display, displayname)));
    NYD_LEAVE;
    return rv;
 }
@@ -225,9 +225,9 @@ jlogname:
    }
 
    if ((ibuf = Zopen(name, "r")) == NULL) {
-      int e = errno;
+      int e = n_err_no;
 
-      if ((fm & FEDIT_SYSBOX) && e == ENOENT) {
+      if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {
          if (strcmp(who, ok_vlook(LOGNAME)) && getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
@@ -263,7 +263,7 @@ jlogname:
    } else {
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
-      errno = S_ISDIR(stb.st_mode) ? EISDIR : EINVAL;
+      n_err_no = S_ISDIR(stb.st_mode) ? n_ERR_ISDIR : n_ERR_INVAL;
       n_perr(name, 0);
       goto jem1;
    }
@@ -708,9 +708,9 @@ folder_query(void){
 
    sp = n_string_creat_auto(sp);
 
-   /* *folder* is linked with *_folder_resolved*: we only use the latter */
+   /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
-      if((rv = ok_vlook(_folder_resolved)) != NULL)
+      if((rv = ok_vlook(folder_resolved)) != NULL)
          break;
 
       /* POSIX says:
@@ -779,7 +779,7 @@ folder_query(void){
          (free)(cp);
 # endif
          rv = sp->s_dat;
-      }else if(errno == ENOENT)
+      }else if(n_err_no == n_ERR_NOENT)
          rv = cp;
       else{
          n_err(_("Can't canonicalize *folder*: %s\n"),
@@ -804,7 +804,7 @@ folder_query(void){
       }
 
 jset:
-      n_PS_ROOT_BLOCK(ok_vset(_folder_resolved, rv));
+      n_PS_ROOT_BLOCK(ok_vset(folder_resolved, rv));
    }
 
    if(err){

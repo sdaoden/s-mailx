@@ -110,6 +110,51 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
 }
 
 FL int
+c_sleep(void *v){
+   uiz_t sec, msec;
+   char **argv;
+   NYD_ENTER;
+
+   argv = v;
+
+   if((n_idec_uiz_cp(&sec, argv[0], 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      goto jesyn;
+
+   if(argv[1] == NULL)
+      msec = 0;
+   else if((n_idec_uiz_cp(&msec, argv[1], 0, NULL) &
+         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      goto jesyn;
+
+   if(UIZ_MAX / n_DATE_MILLISSEC < sec)
+      goto jeover;
+   sec *= n_DATE_MILLISSEC;
+
+   if(UIZ_MAX - sec < msec)
+      goto jeover;
+   msec += sec;
+
+   n_pstate_err_no = (n_msleep(msec, (argv[2] == NULL)) > 0)
+         ? n_ERR_INTR : n_ERR_NONE;
+jleave:
+   NYD_LEAVE;
+   return (argv == NULL);
+jeover:
+   n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   argv = NULL;
+   goto jleave;
+jesyn:
+   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>] [uninterruptible]\n"));
+   n_pstate_err_no = n_ERR_INVAL;
+   argv = NULL;
+   goto jleave;
+}
+
+FL int
 c_shell(void *v)
 {
    sigset_t mask;
@@ -119,9 +164,10 @@ c_shell(void *v)
    cp = a_cmisc_bangexp(v);
 
    sigemptyset(&mask);
-   run_command(ok_vlook(SHELL), &mask, COMMAND_FD_PASS, COMMAND_FD_PASS, "-c",
-      cp, NULL, NULL);
+   n_child_run(ok_vlook(SHELL), &mask, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
+      "-c", cp, NULL, NULL);
    fprintf(n_stdout, "!\n");
+   /* Line buffered fflush(n_stdout); */
    NYD_LEAVE;
    return 0;
 }
@@ -132,9 +178,10 @@ c_dosh(void *v)
    NYD_ENTER;
    n_UNUSED(v);
 
-   run_command(ok_vlook(SHELL), 0, COMMAND_FD_PASS, COMMAND_FD_PASS, NULL,
+   n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
       NULL, NULL, NULL);
    putc('\n', n_stdout);
+   /* Line buffered fflush(n_stdout); */
    NYD_LEAVE;
    return 0;
 }
@@ -156,8 +203,8 @@ c_cwd(void *v){
       if(getcwd(sp->s_dat, sp->s_len) == NULL){
          int e;
 
-         e = errno;
-         if(e == ERANGE)
+         e = n_err_no;
+         if(e == n_ERR_RANGE)
             continue;
          n_perr(_("Failed to getcwd(3)"), e);
          v = NULL;
@@ -165,17 +212,13 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(n_var_vset(varname, (uintptr_t)sp->s_dat))
-            n_pstate_var__em = n_0;
-         else
+         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
             v = NULL;
       }else{
          l = strlen(sp->s_dat);
          sp = n_string_trunc(sp, l);
          if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
-               putc('\n', n_stdout) != EOF)
-            n_pstate_var__em = n_0;
-         else
+               putc('\n', n_stdout) == EOF)
             v = NULL;
       }
       break;

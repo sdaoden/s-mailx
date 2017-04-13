@@ -40,7 +40,7 @@
 # include "nail.h"
 #endif
 
-struct a_coll_ocds_arg{
+struct a_coll_ocs_arg{
    sighandler_type coa_opipe;
    sighandler_type coa_oint;
    FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
@@ -59,7 +59,7 @@ static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
-static char const *a_coll_ocds__macname;  /* *on-compose-done* */
+static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
@@ -110,9 +110,9 @@ static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
 /* temporary_compose_mode_hook_call() setter hook */
 static void a_coll__hook_setter(void *arg);
 
-/* *on-compose-done* driver and *on-compose-done(-shell)?* finalizer */
-static int a_coll_ocds__mac(void);
-static void a_coll_ocds__finalize(void *vp);
+/* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
+static int a_coll_ocs__mac(void);
+static void a_coll_ocs__finalize(void *vp);
 
 static void
 _execute_command(struct header *hp, char const *linebuf, size_t linesize){
@@ -149,7 +149,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
       }
    while((ap = ap->a_flink) != NULL);
 
-   n_source_command(n_LEXINPUT_CTX_COMPOSE, linebuf);
+   n_go_command(n_GO_INPUT_CTX_COMPOSE, linebuf);
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -459,7 +459,7 @@ mespipe(char *cmd)
 
    /* stdin = current message.  stdout = new message */
    fflush(_coll_fp);
-   if (run_command(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
+   if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
          cmd, NULL, NULL) < 0) {
       Fclose(nf);
       goto jout;
@@ -541,7 +541,7 @@ a_collect_plumbing(char const *ms, struct header *hp){
    char const *cp, *cmd[4];
    NYD2_ENTER;
 
-   /* Protcol version for *on-compose-done-shell* -- update manual on change! */
+   /* Protcol version for *on-compose-splice** -- update manual on change! */
 #define a_COLL_PLUMBING_VERSION "0 0 1"
    cp = ms;
 
@@ -1344,34 +1344,34 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
 }
 
 static int
-a_coll_ocds__mac(void){
+a_coll_ocs__mac(void){
    /* Executes in a fork(2)ed child */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
-   temporary_compose_mode_hook_call(a_coll_ocds__macname, NULL, NULL);
+   temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
    _exit(n_EXIT_OK);
    /* NOTREACHED */
    return 0;
 }
 
 static void
-a_coll_ocds__finalize(void *vp){
+a_coll_ocs__finalize(void *vp){
    /* Note we use this for destruction upon setup errors, thus */
    sighandler_type opipe;
    sighandler_type oint;
-   struct a_coll_ocds_arg **coapp, *coap;
+   struct a_coll_ocs_arg **coapp, *coap;
    NYD2_ENTER;
 
    temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
 
    coap = *(coapp = vp);
-   *coapp = (struct a_coll_ocds_arg*)-1;
+   *coapp = (struct a_coll_ocs_arg*)-1;
 
    if(coap->coa_stdout != NULL)
       if(!Pclose(coap->coa_stdout, FAL0)){
          *coap->coa_senderr = TRU1;
-         n_err(_("*on-compose-done(-shell)?* failed: %s\n"),
+         n_err(_("*on-compose-splice(-shell)?* failed: %s\n"),
             n_shexp_quote_cp(coap->coa_cmd, FAL0));
       }
 
@@ -1400,10 +1400,11 @@ collect(struct header *hp, int printheaders, struct message *mp,
    char const *quotefile, int doprefix, si8_t *checkaddr_err)
 {
    struct n_ignore const *quoteitp;
-   struct a_coll_ocds_arg *coap;
+   struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
-   char *linebuf, escape_saved, escape;
+   char volatile escape;
+   char *linebuf, escape_saved;
    char const *cp, *coapm;
    size_t i, linesize; /* TODO line pool */
    long cnt;
@@ -1424,7 +1425,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-/* FIXME have dropped handlerpush() and localized onintr() in lex.c! */
+/* FIXME have dropped handlerpush() and localized onintr() in go.c! */
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
@@ -1474,7 +1475,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    if (!sigsetjmp(_coll_jmp, 1)) {
       /* Ask for some headers first, as necessary */
       if (getfields)
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, getfields, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
       /* Execute compose-enter TODO completely v15-compat intermediate!! */
       if((cp = ok_vlook(on_compose_enter)) != NULL){
@@ -1583,14 +1584,14 @@ jcont:
    /* The interactive collect loop */
    for(;;){
       /* C99 */{
-         enum n_lexinput_flags lif;
+         enum n_go_input_flags gif;
 
-         lif = n_LEXINPUT_CTX_COMPOSE;
+         gif = n_GO_INPUT_CTX_COMPOSE;
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
             if(!(n_poption & n_PO_t_FLAG))
-               lif |= n_LEXINPUT_NL_ESC;
+               gif |= n_GO_INPUT_NL_ESC;
          }
-         cnt = n_lex_input(lif, n_empty, &linebuf, &linesize, NULL);
+         cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL);
       }
 
       if (cnt < 0) {
@@ -1609,7 +1610,7 @@ jcont:
                ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
-            n_lex_input_clearerr();
+            n_go_input_clearerr();
             continue;
          }
          break;
@@ -1728,7 +1729,7 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp,
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),
               (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while(hp->h_to == NULL);
@@ -1738,7 +1739,7 @@ jearg:
          if(cnt != 2)
             goto jearg;
          do
-            grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GEXTRA, 0);
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          break;
       case 't':
@@ -1773,7 +1774,7 @@ jearg:
             hp->h_attach = n_attachment_append_list(aplist, &linebuf[3]);
          else
             hp->h_attach = n_attachment_list_edit(aplist,
-                  n_LEXINPUT_CTX_COMPOSE);
+                  n_GO_INPUT_CTX_COMPOSE);
       }  break;
       case 'c':
          /* Add to the CC list */
@@ -1820,7 +1821,7 @@ jearg:
             if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)) == NULL)
                break;
          }
-         if(is_dir(cp)){
+         if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             break;
          }
@@ -1958,9 +1959,9 @@ jhistcont:
    }
 
 jout:
-   /* Do we have *on-compose-done-shell*, or *on-compose-done*?
+   /* Do we have *on-compose-splice-shell*, or *on-compose-splice*?
     * TODO Usual f...ed up state of signals and terminal etc. */
-   if(coap == NULL && (cp = ok_vlook(on_compose_done_shell)) != NULL) Jocds:{
+   if(coap == NULL && (cp = ok_vlook(on_compose_splice_shell)) != NULL) Jocs:{
       union {int (*ptf)(void); char const *sh;} u;
       char const *cmd;
 
@@ -1968,16 +1969,16 @@ jout:
       escape = n_ESCAPE;
 
       if(coapm != NULL){
-         u.ptf = &a_coll_ocds__mac;
+         u.ptf = &a_coll_ocs__mac;
          cmd = (char*)-1;
-         a_coll_ocds__macname = cp = coapm;
+         a_coll_ocs__macname = cp = coapm;
       }else{
          u.sh = ok_vlook(SHELL);
          cmd = cp;
       }
 
       i = strlen(cp) +1;
-      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocds_arg, coa_cmd
+      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
@@ -1997,38 +1998,38 @@ jout:
          coap->coa_pipe[1] = -1;
 
          temporary_compose_mode_hook_call(NULL, NULL, NULL);
-         n_source_slice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
+         n_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
-            &a_coll_ocds__finalize, &coap);
+            &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
          fputs(a_COLL_PLUMBING_VERSION "\n", coap->coa_stdout);
 #undef a_COLL_PLUMBING_VERSION
          goto jcont;
       }
 
-      c = errno;
-      a_coll_ocds__finalize(coap);
-      n_perr(_("Cannot invoke *on-compose-done(-shell)?*"), c);
+      c = n_err_no;
+      a_coll_ocs__finalize(coap);
+      n_perr(_("Cannot invoke *on-compose-splice(-shell)?*"), c);
       goto jerr;
    }
    if(*checkaddr_err != 0){
       *checkaddr_err = 0;
       goto jerr;
    }
-   if(coapm == NULL && (coapm = ok_vlook(on_compose_done)) != NULL)
-      goto Jocds;
+   if(coapm == NULL && (coapm = ok_vlook(on_compose_splice)) != NULL)
+      goto Jocs;
    escape = escape_saved;
 
    /* Final chance to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
       if (hp->h_cc == NULL && ok_blook(askcc))
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GCC, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GCC, 1);
       if (hp->h_bcc == NULL && ok_blook(askbcc))
-         grab_headers(n_LEXINPUT_CTX_COMPOSE, hp, GBCC, 1);
+         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GBCC, 1);
    }
    if (hp->h_attach == NULL && ok_blook(askattach))
       hp->h_attach = n_attachment_list_edit(hp->h_attach,
-            n_LEXINPUT_CTX_COMPOSE);
+            n_GO_INPUT_CTX_COMPOSE);
 
    /* Execute compose-leave */
    if((cp = ok_vlook(on_compose_leave)) != NULL){
@@ -2062,7 +2063,8 @@ jout:
       cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
       if((sigfp = Fopen(cp, "r")) == NULL){
-         n_err(_("Can't open *signature* %s: %s\n"), cpq, strerror(errno));
+         n_err(_("Can't open *signature* %s: %s\n"),
+            cpq, n_err_to_doc(n_err_no));
          goto jerr;
       }
 
@@ -2078,14 +2080,14 @@ jout:
 
       /* C99 */{
          FILE *x = n_UNVOLATILE(sigfp);
-         int e = errno, ise = ferror(x);
+         int e = n_err_no, ise = ferror(x);
 
          sigfp = NULL;
          Fclose(x);
 
          if(ise){
             n_err(_("Errors while reading *signature* %s: %s\n"),
-               cpq, strerror(e));
+               cpq, n_err_to_doc(e));
             goto jerr;
          }
       }
@@ -2126,8 +2128,8 @@ jleave:
    return _coll_fp;
 
 jerr:
-   if(coap != NULL && coap != (struct a_coll_ocds_arg*)-1)
-      n_source_slice_hack_remove_after_jump();
+   if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1)
+      n_go_splice_hack_remove_after_jump();
    if(sigfp != NULL)
       Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {

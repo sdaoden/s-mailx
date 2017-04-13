@@ -924,7 +924,7 @@ mime_param_boundary_create(void)
    bp = salloc(36 + 6 +1);
    bp[0] = bp[2] = bp[39] = bp[41] = '=';
    bp[1] = bp[40] = '-';
-   memcpy(bp + 3, getrandstring(36), 36);
+   memcpy(bp + 3, n_random_create_cp(36), 36);
    bp[42] = '\0';
    NYD_LEAVE;
    return bp;

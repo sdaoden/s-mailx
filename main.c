@@ -70,6 +70,11 @@ VL char const n_empty[1] = "";
 VL char const n_0[2] = "0";
 VL char const n_1[2] = "1";
 VL char const n_m1[3] = "-1";
+VL char const n_qm[2] = "?";
+VL char const n_em[2] = "!";
+VL char const n_star[2] = "*";
+VL char const n_at[2] = "@";
+VL char const n_ns[2] = "#";
 VL ui16_t const n_class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL
@@ -233,12 +238,11 @@ a_main_startup(void){
    n_stdout = stdout;
    n_stderr = stderr;
    dflpipe = SIG_DFL;
+
    a_main_oind = /*_oerr =*/ 1;
 
    if((cp = strrchr(n_progname, '/')) != NULL)
       n_progname = ++cp;
-
-   /* Set up a reasonable environment */
 
 #ifdef HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
@@ -249,7 +253,11 @@ a_main_startup(void){
    safe_signal(SIGILL, &_nyd_oncrash);
    safe_signal(SIGSEGV, &_nyd_oncrash);
 #endif
-   command_manager_start();
+
+   /* Initialize our input, loop and command machinery */
+   n_go_init();
+
+   /* Set up a reasonable environment */
 
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
     * TODO For now we get this wrong, all over the place, as this software
@@ -362,24 +370,18 @@ a_main_setup_vars(void){
 
    /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
 
-   /* */
-   if((cp = ok_vlook(HOME)) == NULL ||
-         !is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
+   /* Ensure some variables get loaded and/or verified */
+
+   /* This is not automatized just as $TMPDIR is for the initial setting, since
+    * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
+   if((cp = ok_vlook(HOME)) == NULL){
       cp = pwuid->pw_dir;
       n_pstate |= n_PS_ROOT;
       ok_vset(HOME, cp);
       n_pstate &= ~n_PS_ROOT;
    }
 
-   cp = ok_vlook(TMPDIR);
-   assert(cp != NULL);
-   if(!is_dir(cp) || access(cp, R_OK | W_OK | X_OK)){
-      n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
-         n_shexp_quote_cp(cp, FAL0));
-      ok_vclear(TMPDIR);
-   }
-
-   /* Ensure some variables get loaded */
+   (void)ok_vlook(TMPDIR);
    (void)ok_blook(POSIXLY_CORRECT);
    NYD_LEAVE;
 }
@@ -512,7 +514,7 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    if(sigsetjmp(a_main__hdrjmp, 1) == 0){
       if((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &a_main_hdrstop);
-      if(!(n_poption & n_PO_N_FLAG)){
+      if(ok_blook(header)){
          if(!ok_blook(quiet))
             fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
                (ok_blook(bsdcompat) ? "Mail" : n_uagent), ok_vlook(version));
@@ -525,18 +527,20 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    /* Enter the command loop */
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
-   n_commands();
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_destroy();
+   n_go_main_loop();
+   if(!(n_psonce & n_PSO_XIT)){
+      if(n_psonce & n_PSO_INTERACTIVE)
+         n_tty_destroy();
 
-   if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
-      safe_signal(SIGHUP, SIG_IGN);
-      safe_signal(SIGINT, SIG_IGN);
-      safe_signal(SIGQUIT, SIG_IGN);
-   }
+      if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
+         safe_signal(SIGHUP, SIG_IGN);
+         safe_signal(SIGINT, SIG_IGN);
+         safe_signal(SIGQUIT, SIG_IGN);
+      }
 jquit:
-   save_mbox_for_possible_quitstuff();
-   quit(FAL0);
+      save_mbox_for_possible_quitstuff();
+      quit(FAL0);
+   }
 jleave:
    NYD_LEAVE;
    return n_exit_status;
@@ -841,26 +845,22 @@ joarg:
          if(!(n_psonce & n_PSO_INTERACTIVE))
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-         if (oargs_cnt + 8 >= oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 9, oargs_cnt);
          folder = "/dev/null";
-         ok_vset(MAIL, folder);
-         ok_vset(MBOX, folder);
-         ok_bset(emptystart);
-         ok_bclear(header);
-         ok_vset(inbox, folder);
-         ok_bset(quiet);
-         ok_bset(sendwait);
-         ok_bset(typescript_mode);
-         oargs[oargs_cnt + 0] = "MAIL=/dev/null";
-         oargs[oargs_cnt + 1] = "MBOX=/dev/null";
-         oargs[oargs_cnt + 2] = "emptystart";
-         oargs[oargs_cnt + 3] = "noheader";
-         oargs[oargs_cnt + 4] = "inbox=/dev/null";
-         oargs[oargs_cnt + 5] = "quiet";
-         oargs[oargs_cnt + 6] = "sendwait";
-         oargs[oargs_cnt + 7] = "typescript-mode";
-         oargs_cnt += 8;
+         if(oargs_cnt + 10 >= oargs_size)
+            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
+
+         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=/dev/null";
+         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=/dev/null";
+         ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
+         ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
+         ok_bclear(header), oargs[oargs_cnt++] = "noheader";
+
+         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=/dev/null";
+         ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
+         ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
+         ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
+         ok_bset(typescript_mode), oargs[oargs_cnt++] = "typescript-mode";
+
          break;
       case '.':
          n_psonce |= n_PSO_SENDMODE;
@@ -989,9 +989,9 @@ jgetopt_done:
    }else
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
 
-   /* Fixate the current snapshot of our global auto-reclaimed storage instance.
+   /* Fixate the current memory pool snapshot.
     * Memory is auto-reclaimed from now on */
-   n_memory_autorec_fixate();
+   n_memory_pool_fixate();
 
    /* load() any resource files */
    if(resfiles & a_RF_ALL){
@@ -1003,17 +1003,23 @@ jgetopt_done:
          if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
-         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC))
-            n_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC);
+         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC)){
+            if(!n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC))
+               goto j_leave;
+         }
       }
 
-      if(resfiles & a_RF_USER)
-         n_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO));
+      if(resfiles & a_RF_USER){
+         if(!n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
+            goto j_leave;
+      }
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
-      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL)
-         n_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO));
+      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL){
+         if(!n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
+            goto j_leave;
+      }
    }
 
    /* Ensure the -S and other command line options take precedence over
@@ -1079,8 +1085,10 @@ jgetopt_done:
    }
 
    /* "load()" commands given on command line */
-   if(Xargs_cnt > 0)
-      n_load_Xargs(Xargs, Xargs_cnt);
+   if(Xargs_cnt > 0){
+      if(!n_go_Xargs(Xargs, Xargs_cnt))
+         goto jleave;
+   }
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1127,7 +1135,7 @@ jgetopt_done:
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
    mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
-   if(n_psonce & n_PSO_INTERACTIVE)
+   if((n_psonce & (n_PSO_XIT | n_PSO_INTERACTIVE)) == n_PSO_INTERACTIVE)
       n_tty_destroy();
 
 jleave:
@@ -1139,7 +1147,7 @@ jleave:
 
 j_leave:
 #ifdef HAVE_MEMORY_DEBUG
-   n_memory_autorec_pop(NULL);
+   n_memory_pool_pop(NULL);
 #endif
 #if (defined HAVE_DEBUG || defined HAVE_DEVEL)
    n_memory_reset();

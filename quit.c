@@ -214,7 +214,7 @@ edstop(void) /* TODO oh my god */
    fflush(n_stdout);
 
    if ((obuf = Zopen(mailname, "r+")) == NULL) {
-      int e = errno;
+      int e = n_err_no;
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
@@ -347,7 +347,7 @@ quit(bool_t hold_sigs_on)
     * a message */
    fbuf = Zopen(mailname, "r+");
    if (fbuf == NULL) {
-      if (errno != ENOENT)
+      if (n_err_no != n_ERR_NOENT)
 jnewmail:
          fprintf(n_stdout, _("Thou hast new mail.\n"));
       rv = TRU1;

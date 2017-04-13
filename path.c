@@ -40,25 +40,21 @@
 #endif
 
 FL bool_t
-is_dir(char const *name)
-{
+n_is_dir(char const *name, bool_t check_access){
    struct stat sbuf;
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   for (rv = FAL0;;)
-      if (!stat(name, &sbuf)) {
-         rv = (S_ISDIR(sbuf.st_mode) != 0);
-         break;
-      } else if (errno != EINTR)
-         break;
-   NYD_LEAVE;
+   if((rv = (stat(name, &sbuf) == 0))){
+      if((rv = (S_ISDIR(sbuf.st_mode) != 0)) && check_access)
+         rv = (access(name, R_OK | W_OK | X_OK) == 0);
+   }
+   NYD2_LEAVE;
    return rv;
 }
 
 FL bool_t
-n_path_mkdir(char const *name)
-{
+n_path_mkdir(char const *name){
    struct stat st;
    bool_t rv;
    NYD_ENTER;
@@ -67,12 +63,11 @@ jredo:
    if(!mkdir(name, 0777))
       rv = TRU1;
    else{
-      int e = errno;
+      int e = n_err_no;
 
       /* Try it recursively */
-      if(e == ENOENT){
+      if(e == n_ERR_NOENT){
          char const *vp;
-
 
          if((vp = strrchr(name, '/')) != NULL){ /* TODO magic dirsep */
             while(vp > name && vp[-1] == '/')
@@ -84,7 +79,7 @@ jredo:
          }
       }
 
-      rv = ((e == EEXIST || e == ENOSYS) && !stat(name, &st) &&
+      rv = ((e == n_ERR_EXIST || e == n_ERR_NOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode));
    }
    NYD_LEAVE;
@@ -92,19 +87,18 @@ jredo:
 }
 
 FL bool_t
-n_path_rm(char const *name)
-{
+n_path_rm(char const *name){
    struct stat sb;
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (stat(name, &sb) != 0)
+   if(stat(name, &sb) != 0)
       rv = FAL0;
-   else if (!S_ISREG(sb.st_mode))
+   else if(!S_ISREG(sb.st_mode))
       rv = TRUM1;
    else
       rv = (unlink(name) == 0);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
