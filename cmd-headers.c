@@ -173,9 +173,10 @@ jredo:
          memcpy(&time_current.tc_local, localtime(&datet),
             sizeof time_current.tc_local);
 
-      if ((i & 2) && (datet > time_current.tc_time + n_DATE_SECSDAY ||
+      if ((i & 2) &&
+            (UICMP(64,datet, >, time_current.tc_time + n_DATE_SECSDAY) ||
 #define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
-            (datet + _6M < time_current.tc_time))) {
+            UICMP(64,datet + _6M, <, time_current.tc_time))) {
 #undef _6M
          if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
             memset(datebuf, ' ', n_FROM_DATEBUF); /* xxx ur */
