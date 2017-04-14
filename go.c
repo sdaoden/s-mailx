@@ -786,8 +786,10 @@ a_go_c_version(void *vp){
    NYD_ENTER;
    n_UNUSED(vp);
 
-   fprintf(n_stdout, _("%s version %s\nFeatures included (+) or not (-)\n"),
-      n_uagent, ok_vlook(version));
+   fprintf(n_stdout,
+      _("%s %s, %s (%s)\nFeatures included (+) or not (-)\n"),
+      n_uagent, ok_vlook(version), ok_vlook(version_date),
+      ok_vlook(build_osenv));
 
    /* *features* starts with dummy byte to avoid + -> *folder* expansions */
    i = strlen(cp = &ok_vlook(features)[1]) +1;

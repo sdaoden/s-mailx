@@ -1635,6 +1635,8 @@ ok_b_bsdannounce,
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
+   ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
+   ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    ok_v_charset_7bit,                  /* {lower=1,defval=CHARSET_7BIT} */
@@ -1876,6 +1878,7 @@ ok_b_ssl_no_default_ca,
    ok_b_v15_compat,
    ok_b_verbose,                       /* {vip=1} */
    ok_v_version,                       /* {virt=n_VERSION} */
+   ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
    ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
    ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
    ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */

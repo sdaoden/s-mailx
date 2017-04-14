@@ -7312,6 +7312,17 @@ field in message headers and with the
 .Sx "COMMAND ESCAPES" .
 .
 .Mx
+.Mx
+.It Va build-os , build-osenv
+\*(RO The operating system \*(UA has been build for, usually taken from
+.Xr uname 1
+via
+.Ql uname -s
+and
+.Ql uname -srm ,
+respectively, the former being lowercased.
+.
+.Mx
 .It Va charset-7bit
 The value that should appear in the
 .Ql charset=
@@ -10373,10 +10384,12 @@ is sufficient to disable verbosity as such.
 .Mx
 .Mx
 .Mx
-.It Va version , version-major , version-minor , version-update
+.Mx
+.It Va version , version-date , version-major , version-minor , version-update
 \*(RO \*(UA version information: the first variable contains a string
 containing the complete version identification, the latter three contain
 only digits: the major, minor and update version numbers.
+The date is in ISO 8601 notation.
 The output of the command
 .Ic version
 will include this information.

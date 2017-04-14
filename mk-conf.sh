@@ -233,9 +233,11 @@ _os_early_setup_sunos() {
 }
 
 os_setup() {
+   # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
-   OSFULLSPEC="${OS:-`uname -a | ${tr} '[A-Z]' '[a-z]'`}"
-   OS="${OS:-`uname -s | ${tr} '[A-Z]' '[a-z]'`}"
+   : ${OS:=`uname -s | ${tr} '[A-Z]' '[a-z]'`}
+   : ${OSENV:=`uname -srm`}
+   : ${OSFULLSPEC:=`uname -a`}
    msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = sunos ]; then
@@ -1242,6 +1244,8 @@ ${cat} > ${makefile} << \!
 # May be multiline..
 echo >> ${h}
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
+echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 
 # Generate n_err_number OS mappings
 (

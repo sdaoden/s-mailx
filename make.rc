@@ -119,7 +119,8 @@ VAL_VISUAL=vi
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
 # We require uname(1) -s, command(1) -v, echo(1), etc.
-# uname(1) can be circumvented by setting $OS.
+# uname(1) can be circumvented by setting $OS (and $OSENV, $OSFULLSPEC).
+# $OS must be all-lowercase.
 
 ## FEATURE SET ##
 

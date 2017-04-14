@@ -284,8 +284,10 @@ _update-version:
 	vupd="`echo \"$${VERSION}\" |\
 		$(sed) -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
 	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
-	trap "$(rm) ./version.tmp" 0 1 2 15;\
+	trap "$(rm) -f ./version.tmp" 0 1 2 15;\
 	printf > ./version.tmp "#define n_VERSION \"v$${VERSION}\"\n";\
+	printf >> ./version.tmp \
+		"#define n_VERSION_DATE \"`date -u +'%Y-%m-%d'`\"\n";\
 	printf >> ./version.tmp "#define n_VERSION_MAJOR \"$${vmaj}\"\n";\
 	printf >> ./version.tmp "#define n_VERSION_MINOR \"$${vmin}\"\n";\
 	printf >> ./version.tmp "#define n_VERSION_UPDATE \"$${vupd}\"\n";\
