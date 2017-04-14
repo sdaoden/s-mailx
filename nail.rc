@@ -15,7 +15,9 @@
 #@ S-nail(1): v14.9.0-pre4 / 2017-04-13
 #--MKREL-END--
 
-## The standard POSIX 2008/Cor 2-2016 mandates the following initial settings:
+## Variables
+
+# The standard POSIX 2008/Cor 2-2016 mandates the following initial settings:
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
@@ -23,19 +25,18 @@
 # [p-r] nopage, prompt="? ", noquiet, norecord,
 # [s]   save, nosendwait, noshowto, nosign, noSign,
 # [t-z] toplines="5"
+#
 # Notes:
 # - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
 # - no*onehop* doesn't exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
 #   separator on the command line or set the *sendmail-arguments* variable.)
 # (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
-
-## The remaining content adjusts the standard-imposed default settings.
-# Note that some of the following flags are specific to S-nail(1) and may thus
-# not work with other Mail(1) / mailx(1) programs.
-# Entries are marked [OPTION] if their availability is compile-time dependent
-
-## Variables
+#
+# Adjust the standard-imposed default variable settings.
+# Some of the following variables are not portable and may thus have no effect
+# with other Mail(1) / mailx(1) programs.
+# Entries are marked [OPTION] if their availability is compile-time dependent.
 
 # If threaded mode is activated, automatically collapse thread
 set autocollapse
@@ -90,6 +91,7 @@ set history-gabby history-gabby-persist
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
+# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'"
 set indentprefix="> "
 
 # Mark messages that have been answered
@@ -162,17 +164,26 @@ set showto
 
 ## Commands
 
+# Most commands are not portable to other Mail(1) / mailx(1) programs, which is
+# why most commands are commented out.  To remain portable, place anything
+# specific in its own file, then "set mailx-extra-rc=~/.my-file" in $MAILRC
+# (usually ~/.mailrc).
+
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
 # This affects message display and *reply-in-same-charset*
 #charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-headerpick type retain from_ date from to cc subject \
-   message-id mail-followup-to reply-to
+# `headerpick' is not portable, so use the standard `retain'
+retain from_ date from to cc subject message-id mail-followup-to reply-to
+#headerpick type retain from_ date from to cc subject \
+#   message-id mail-followup-to reply-to
 # ...when forwarding messages
-headerpick forward retain subject date from to cc
+#headerpick forward retain subject date from to cc
 # ...and don't include these when saving message, etc.
-#headerpick save ignore '^Original-.*$' '^X-.*$'
+#if [ "$features" =@ +regex ]
+#  headerpick save ignore '^Original-.*$' '^X-.*$'
+#end
 
 ## Some pipe-TYPE/SUBTYPE entries
 
@@ -199,12 +210,12 @@ headerpick forward retain subject date from to cc
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode)
 #if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
-#   colour 256 mle-position   fg=202
-#   colour 256 mle-prompt     fg=red
-#   colour iso mle-position   ft=reverse
-#   colour iso mle-prompt     fg=red
-#   colour mono mle-position  ft=reverse
-#   colour mono mle-prompt    ft=bold
+#   colour 256 mle-position fg=202
+#   colour 256 mle-prompt fg=red
+#   colour iso mle-position ft=reverse
+#   colour iso mle-prompt fg=red
+#   colour mono mle-position ft=reverse
+#   colour mono mle-prompt ft=bold
 #endif
 
 # s-it-mode
