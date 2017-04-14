@@ -3261,6 +3261,18 @@ command which follows, replacing unescaped exclamation marks with the
 previously executed command if the internal variable
 .Va bang
 is set.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) ,
+and sets the error number
+.Va \&!
+to
+.Va ^ERR Ns -CANCELED
+if the temporary file which is used to collect the standard output of
+the command for usage by
+.Cm vput
+cannot be created (also causing an empty result).
 .
 .Mx
 .It Ic #

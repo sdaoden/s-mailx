@@ -1697,7 +1697,13 @@ jearg:
          /* Shell escape, send the balance of line to sh -c */
          if(cnt == 2 || coap != NULL)
             goto jearg;
-         c_shell(&linebuf[3]);
+         else{
+            char const *argv[2];
+
+            argv[0] = &linebuf[3];
+            argv[1] = NULL;
+            c_shell(argv);
+         }
          goto jhistcont;
       case ':':
          /* FALLTHRU */

@@ -158,18 +158,59 @@ FL int
 c_shell(void *v)
 {
    sigset_t mask;
-   char const *cp;
+   FILE *fp;
+   char const **argv, *varname, *varres, *cp;
    NYD_ENTER;
 
-   cp = a_cmisc_bangexp(v);
+   n_pstate_err_no = n_ERR_NONE;
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
-   sigemptyset(&mask);
-   n_child_run(ok_vlook(SHELL), &mask, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
-      "-c", cp, NULL, NULL);
-   fprintf(n_stdout, "!\n");
-   /* Line buffered fflush(n_stdout); */
+   if(varname != NULL &&
+         (fp = Ftmp(NULL, "shell", OF_RDWR | OF_UNLINK | OF_REGISTER)
+            ) == NULL){
+      n_pstate_err_no = n_ERR_CANCELED;
+      varres = n_empty;
+   }else{
+      cp = a_cmisc_bangexp(*argv);
+
+      sigemptyset(&mask);
+      (void)n_child_run(ok_vlook(SHELL), &mask, /* TODO TRUE EXIT STATUS */
+            n_CHILD_FD_PASS, (varname != NULL ? fileno(fp) : n_CHILD_FD_PASS),
+            "-c", cp, NULL, NULL);
+
+      if(varname != NULL){
+         int c;
+         char *x;
+         off_t l;
+
+         fflush_rewind(fp);
+         l = fsize(fp);
+         if(UICMP(64, l, >=, UIZ_MAX -42)){
+            n_pstate_err_no = n_ERR_NOMEM;
+            varres = n_empty;
+         }else{
+            varres = x = n_autorec_alloc(l +1);
+
+            for(; l > 0 && (c = getc(fp)) != EOF; --l)
+               *x++ = c;
+            *x++ = '\0';
+            if(l != 0)
+               n_pstate_err_no = errno;
+         }
+         Fclose(fp);
+      }
+   }
+
+   if(varname != NULL){
+      if(!n_var_vset(varname, (uintptr_t)varres))
+         n_pstate_err_no = n_ERR_NOTSUP;
+   }else
+      fprintf(n_stdout, "!\n");
+      /* Line buffered fflush(n_stdout); */
+
    NYD_LEAVE;
-   return 0;
+   return (n_pstate_err_no != n_ERR_NONE);
 }
 
 FL int

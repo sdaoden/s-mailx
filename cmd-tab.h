@@ -116,7 +116,7 @@
      DS(N_("Mark <msglist> as not being read")) },
    { "New", &c_unread, (A | TMSGLST), 0, MMNDEL
      DS(N_("Mark <msglist> as not being read")) },
-   { n_em, &c_shell, (S | TSTRING), 0, 0
+   { n_em, &c_shell, (S | V | EM | TRAWDAT), 0, 0
      DS(N_("Execute <shell-command>")) },
    { "copy", &c_copy, (A | M | TSTRING), 0, 0
      DS(N_("Copy <msglist>, but don't mark them for deletion")) },
